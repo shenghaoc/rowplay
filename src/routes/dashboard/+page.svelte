@@ -2,7 +2,7 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_ICON, SPORT_LABEL } from '$lib/format';
-	import { distancePBs, summariseBySport } from '$lib/analytics';
+	import { distancePBs, distancePerStroke, summariseBySport } from '$lib/analytics';
 	import type { Sport, Workout } from '$lib/types';
 
 	let { data } = $props();
@@ -15,6 +15,24 @@
 	const filtered = $derived(
 		sportFilter === 'all' ? workouts : workouts.filter((w) => w.sport === sportFilter)
 	);
+
+	// ---- Latest-session hero: pace is the number you check first ----
+	// `workouts` arrives newest-first from the logbook.
+	const latest = $derived<Workout | undefined>(filtered[0]);
+
+	const heroDps = $derived(
+		latest && latest.strokeRate ? distancePerStroke(latest.pace, latest.strokeRate) : 0
+	);
+
+	// Pace delta vs the average of the previous same-sport sessions (lower pace
+	// is faster, so a negative delta is an improvement).
+	const paceDelta = $derived.by(() => {
+		if (!latest) return null;
+		const prior = filtered.filter((w) => w.sport === latest.sport && w.id !== latest.id);
+		if (!prior.length) return null;
+		const avg = prior.reduce((s, w) => s + w.pace, 0) / prior.length;
+		return latest.pace - avg; // seconds/500m; negative = faster than usual
+	});
 
 	const totalMeters = $derived(filtered.reduce((s, w) => s + w.distance, 0));
 	const totalTime = $derived(filtered.reduce((s, w) => s + w.time, 0));
@@ -73,6 +91,55 @@
 			{/each}
 		</div>
 	</div>
+
+	<!-- Latest session: pace front and centre -->
+	{#if latest}
+		<a class="card hero" href="/replay/{latest.id}">
+			<div class="herolead">
+				<div class="herotop muted">
+					<span class="hicon">{SPORT_ICON[latest.sport]}</span>
+					Latest · {latest.workoutType || SPORT_LABEL[latest.sport]} · {fmtDate(latest.date)}
+				</div>
+				<div class="heropace mono">{fmtPace(latest.pace).replace('/500m', '')}<span class="perunit">/500m</span></div>
+				{#if paceDelta != null}
+					<div class="herodelta" class:faster={paceDelta < 0} class:slower={paceDelta > 0}>
+						{paceDelta < 0 ? '▼' : '▲'}
+						{fmtPace(Math.abs(paceDelta)).replace('/500m', '')}
+						<span class="muted">vs your {SPORT_LABEL[latest.sport]} avg</span>
+					</div>
+				{/if}
+			</div>
+			<div class="herometrics">
+				<div class="hm">
+					<div class="hmv mono">{fmtDistance(latest.distance)}</div>
+					<div class="hml muted">distance</div>
+				</div>
+				<div class="hm">
+					<div class="hmv mono">{fmtTime(latest.time, true)}</div>
+					<div class="hml muted">time</div>
+				</div>
+				{#if latest.strokeRate}
+					<div class="hm">
+						<div class="hmv mono">{latest.strokeRate}</div>
+						<div class="hml muted">avg rate</div>
+					</div>
+				{/if}
+				{#if heroDps > 0}
+					<div class="hm">
+						<div class="hmv mono">{heroDps.toFixed(1)}m</div>
+						<div class="hml muted">dist/stroke</div>
+					</div>
+				{/if}
+				{#if latest.heartRateAvg}
+					<div class="hm">
+						<div class="hmv mono">{Math.round(latest.heartRateAvg)}</div>
+						<div class="hml muted">avg bpm</div>
+					</div>
+				{/if}
+			</div>
+			<div class="herocta tag">replay ▶</div>
+		</a>
+	{/if}
 
 	<div class="stats">
 		<div class="card stat">
@@ -205,6 +272,71 @@
 		color: white;
 		border-color: var(--accent);
 	}
+	.hero {
+		display: grid;
+		grid-template-columns: auto 1fr auto;
+		align-items: center;
+		gap: 1.5rem;
+		color: var(--text);
+		margin-bottom: 1rem;
+		background: linear-gradient(135deg, rgba(47, 129, 247, 0.12), var(--bg-elev) 60%);
+		border-color: rgba(47, 129, 247, 0.35);
+		transition: border-color 0.15s ease;
+	}
+	.hero:hover {
+		text-decoration: none;
+		border-color: var(--accent);
+	}
+	.herotop {
+		font-size: 0.85rem;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.hicon {
+		font-size: 1.1rem;
+	}
+	.heropace {
+		font-size: 3.2rem;
+		font-weight: 800;
+		line-height: 1;
+		margin: 0.3rem 0;
+		letter-spacing: -0.02em;
+	}
+	.perunit {
+		font-size: 1rem;
+		font-weight: 500;
+		color: var(--text-dim);
+		margin-left: 0.3rem;
+	}
+	.herodelta {
+		font-size: 0.95rem;
+		font-weight: 700;
+	}
+	.herodelta.faster {
+		color: var(--accent-2);
+	}
+	.herodelta.slower {
+		color: var(--warn);
+	}
+	.herometrics {
+		display: flex;
+		gap: 1.75rem;
+		flex-wrap: wrap;
+	}
+	.hmv {
+		font-size: 1.4rem;
+		font-weight: 700;
+	}
+	.hml {
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		margin-top: 0.15rem;
+	}
+	.herocta {
+		align-self: start;
+	}
 	.stats {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
@@ -314,6 +446,16 @@
 		}
 		.play {
 			display: none;
+		}
+		.hero {
+			grid-template-columns: 1fr;
+			gap: 0.75rem;
+		}
+		.heropace {
+			font-size: 2.6rem;
+		}
+		.herometrics {
+			gap: 1.25rem;
 		}
 	}
 </style>
