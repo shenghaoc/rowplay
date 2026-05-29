@@ -10,6 +10,9 @@
 		summariseBySport
 	} from '$lib/analytics';
 	import type { Sport, Workout } from '$lib/types';
+	import { invalidateAll } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
+	import { RefreshCw } from '@lucide/svelte';
 
 	let { data } = $props();
 	const workouts = $derived<Workout[]>(data.workouts);
@@ -19,6 +22,27 @@
 	let metric = $state<Metric>('pace');
 	// Selected distance band for pace/DPS trends; '' = auto (most-rowed band).
 	let bandKey = $state<string>('');
+
+	let syncing = $state(false);
+	async function sync() {
+		if (syncing) return;
+		syncing = true;
+		const t = toast.loading('Syncing your logbook…');
+		try {
+			const res = await fetch('/api/sync', { method: 'POST' });
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			const { added, total } = (await res.json()) as { added: number; total: number };
+			await invalidateAll();
+			toast.success(`Synced — ${added} new, ${total} total`, { id: t });
+		} catch (e) {
+			toast.error('Sync failed', {
+				id: t,
+				description: e instanceof Error ? e.message : 'Please try again.'
+			});
+		} finally {
+			syncing = false;
+		}
+	}
 
 	/** Whether the current metric only makes sense within one distance band. */
 	const bandScoped = $derived(metric === 'pace' || metric === 'dps');
@@ -196,14 +220,29 @@
 <div class="container">
 	<div class="head">
 		<h1>Dashboard</h1>
-		<div class="filters">
-			{#each sports as s}
-				<button class="chip" class:on={sportFilter === s} onclick={() => (sportFilter = s)}>
-					{s === 'all' ? 'All' : SPORT_LABEL[s]}
+		<div class="headright">
+			<div class="filters">
+				{#each sports as s}
+					<button class="chip" class:on={sportFilter === s} onclick={() => (sportFilter = s)}>
+						{s === 'all' ? 'All' : SPORT_LABEL[s]}
+					</button>
+				{/each}
+			</div>
+			{#if !data.demo}
+				<button class="btn ghost small sync" onclick={sync} disabled={syncing}>
+					<span class="syncicon" class:spin={syncing}><RefreshCw size={14} /></span>
+					{syncing ? 'Syncing…' : 'Sync'}
 				</button>
-			{/each}
+			{/if}
 		</div>
 	</div>
+	{#if !data.demo && data.sync}
+		<p class="syncnote muted">
+			{data.sync.total} workouts · last synced {fmtDate(new Date(data.sync.lastSyncAt).toISOString())}
+		</p>
+	{:else if !data.demo && !data.sync}
+		<p class="syncnote muted">Showing recent workouts — hit Sync to load your full history for accurate PBs and trends.</p>
+	{/if}
 
 	<!-- Latest session: pace front and centre -->
 	{#if latest}
@@ -408,7 +447,33 @@
 		justify-content: space-between;
 		flex-wrap: wrap;
 		gap: 1rem;
-		margin-bottom: 1.25rem;
+		margin-bottom: 0.5rem;
+	}
+	.headright {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+	.sync {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.syncicon {
+		display: inline-flex;
+	}
+	.syncicon.spin {
+		animation: spin 1s linear infinite;
+	}
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+	.syncnote {
+		font-size: 0.82rem;
+		margin: 0 0 1.25rem;
 	}
 	.filters,
 	.metrics {

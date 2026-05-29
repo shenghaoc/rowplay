@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { loadWorkouts } from '$lib/server/data';
+import { loadWorkouts, syncStatus } from '$lib/server/data';
 
 export const load: PageServerLoad = async (event) => {
 	// Require login unless we're in demo mode.
@@ -8,5 +8,6 @@ export const load: PageServerLoad = async (event) => {
 		throw redirect(303, '/auth/login');
 	}
 	const workouts = await loadWorkouts(event);
-	return { workouts };
+	const sync = event.locals.demo ? null : await syncStatus(event).catch(() => null);
+	return { workouts, sync, demo: event.locals.demo };
 };
