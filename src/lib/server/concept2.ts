@@ -109,6 +109,8 @@ export class Concept2Client {
 
 	private async accessToken(): Promise<string> {
 		const { tokens } = this.session;
+		// Personal (BYOT) tokens are long-lived and not refreshable — use directly.
+		if (this.session.personal) return tokens.accessToken;
 		if (Date.now() < tokens.expiresAt - 60_000) return tokens.accessToken;
 		const fresh = await refreshTokens(this.cfg, tokens.refreshToken);
 		this.session = { ...this.session, tokens: fresh };

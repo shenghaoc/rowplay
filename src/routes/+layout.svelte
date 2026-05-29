@@ -20,16 +20,17 @@
 			<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}>Dashboard</a>
 		</nav>
 		<div class="spacer"></div>
-		{#if data.demo}
-			<span class="tag">demo mode</span>
-		{/if}
 		{#if data.user}
 			<span class="muted user">@{data.user.username}</span>
 			<form method="POST" action="/auth/logout">
 				<button class="btn ghost small">Log out</button>
 			</form>
-		{:else if !data.demo}
-			<a class="btn small" href="/auth/login">Connect Concept2</a>
+		{:else}
+			<span class="tag">demo mode</span>
+			{#if data.oauthEnabled}
+				<a class="btn ghost small" href="/auth/login">Connect Concept2</a>
+			{/if}
+			<a class="btn small" href="/auth/token">Use a token</a>
 		{/if}
 	</div>
 </header>

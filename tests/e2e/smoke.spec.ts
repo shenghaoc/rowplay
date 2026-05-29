@@ -44,9 +44,24 @@ test.describe('smoke', () => {
 		expect(res?.ok(), 'GET /replay/1005 should be 2xx').toBeTruthy();
 
 		await expect(page.getByRole('link', { name: /rowplay/i })).toBeVisible();
-		await expect(page.locator('canvas')).toBeVisible();
+		// The replay renders several canvases (course + uPlot charts); any one
+		// visible means it mounted. `.first()` avoids a strict-mode violation.
+		await expect(page.locator('canvas').first()).toBeVisible();
 
 		await page.waitForTimeout(500);
+		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
+	});
+
+	test('token entry page renders its form', async ({ page }) => {
+		const errors = collectPageErrors(page);
+
+		const res = await page.goto('/auth/token');
+		expect(res?.ok(), 'GET /auth/token should be 2xx').toBeTruthy();
+
+		await expect(page.getByRole('heading', { name: /token/i })).toBeVisible();
+		await expect(page.locator('input[name="token"]')).toBeVisible();
+
+		await page.waitForTimeout(300);
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 });

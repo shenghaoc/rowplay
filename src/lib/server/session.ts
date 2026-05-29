@@ -17,6 +17,11 @@ export interface OAuthTokens {
 export interface SessionData {
 	user: SessionUser;
 	tokens: OAuthTokens;
+	/**
+	 * "Bring your own token" sessions: `tokens.accessToken` is a long-lived
+	 * personal API token the user pasted, used directly with no OAuth refresh.
+	 */
+	personal?: boolean;
 }
 
 const PREFIX = 'sess:';

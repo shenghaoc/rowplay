@@ -17,12 +17,13 @@ import {
 } from './db';
 
 async function client(event: RequestEvent): Promise<Concept2Client | null> {
-	const cfg = getConfig(event);
 	const env = event.platform?.env;
-	if (!cfg.clientId || !env?.SESSIONS || !event.locals.sessionId) return null;
+	if (!env?.SESSIONS || !event.locals.sessionId) return null;
 	const session = await readSession(env.SESSIONS, event.locals.sessionId);
 	if (!session) return null;
-	return new Concept2Client(cfg, env.SESSIONS, event.locals.sessionId, session);
+	// OAuth sessions carry a clientId for refresh; personal-token sessions don't
+	// need one, so the client is built from whatever config is present.
+	return new Concept2Client(getConfig(event), env.SESSIONS, event.locals.sessionId, session);
 }
 
 /**

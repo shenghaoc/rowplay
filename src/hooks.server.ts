@@ -3,10 +3,10 @@ import { readSession, SESSION_COOKIE } from '$lib/server/session';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const env = event.platform?.env;
-	const clientId = env?.CONCEPT2_CLIENT_ID ?? '';
 
-	// Demo mode: no credentials configured -> serve mock data, no auth required.
-	event.locals.demo = !clientId;
+	// Unauthenticated visitors see demo (mock) data; a valid session — OAuth or a
+	// pasted personal token — flips us to that user's real data.
+	event.locals.demo = true;
 	event.locals.user = null;
 	event.locals.sessionId = null;
 
@@ -16,6 +16,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (session) {
 			event.locals.sessionId = sid;
 			event.locals.user = session.user;
+			event.locals.demo = false;
 		}
 	}
 
