@@ -84,6 +84,10 @@ Set `CONCEPT2_CLIENT_ID` and `PUBLIC_APP_URL` (your production origin) in the
 `[vars]` block of `wrangler.toml`, and add the production
 `<origin>/auth/callback` to your Concept2 app's allowed redirect URIs.
 
+This app deploys to **`https://rowplay.shenghaoc.workers.dev`**, so the
+Concept2 redirect URI to register is
+`https://rowplay.shenghaoc.workers.dev/auth/callback`.
+
 ## Scripts
 
 | Script                     | Does                                          |

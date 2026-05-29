@@ -31,4 +31,6 @@ CONCEPT2_CLIENT_ID = ""
 # Use "https://log.concept2.com" for production, "https://log-dev.concept2.com" for the dev sandbox.
 CONCEPT2_BASE_URL = "https://log.concept2.com"
 # Public origin of this app, used to build the OAuth redirect URI.
-PUBLIC_APP_URL = "http://localhost:5173"
+# Concept2's allowed redirect URI must therefore be:
+#   https://rowplay.shenghaoc.workers.dev/auth/callback
+PUBLIC_APP_URL = "https://rowplay.shenghaoc.workers.dev"
