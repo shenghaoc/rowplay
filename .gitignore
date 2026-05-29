@@ -20,6 +20,9 @@ vite.config.ts.timestamp-*
 
 # Testing
 /coverage
+/test-results
+/playwright-report
+/blob-report
 
 # Logs
 npm-debug.log*
