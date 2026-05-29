@@ -6,7 +6,7 @@
 	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
 	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
 	import { themeFor } from '$lib/replay/sports';
-	import { hrZones, powerCurve } from '$lib/analytics';
+	import { hrZones, powerCurve, techniqueSummary, efficiencyByRate } from '$lib/analytics';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
 
@@ -161,6 +161,25 @@
 	const pcData: uPlot.AlignedData = [pc.map((p) => p.duration), pc.map((p) => p.watts)];
 	const pcOpts = metricOpts('best avg power', '#d2a8ff', false, (v) => `${Math.round(v)}w`);
 
+	// ---- Technique (stroke quality from logged pace/rate) ----
+	const tech = techniqueSummary(strokes);
+	const dpsData: uPlot.AlignedData = [tech.dps.map((d) => d.t), tech.dps.map((d) => d.v)];
+	const dpsOpts = metricOpts('dist/stroke', '#56d4ff', false, (v) => `${v.toFixed(1)}m`);
+
+	const eff = efficiencyByRate(strokes);
+	// Scatter: pace (y, inverted) vs rate (x); a uPlot line over rate-sorted medians.
+	const effData: uPlot.AlignedData = [eff.map((e) => e.spm), eff.map((e) => e.pace)];
+	const effOpts: Omit<uPlot.Options, 'width' | 'height'> = {
+		scales: { x: { time: false }, y: { dir: -1 } },
+		cursor: { show: true },
+		axes: [
+			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, values: (_u, sp) => sp.map((v) => `${Math.round(v)}`) },
+			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 52, values: (_u, sp) => sp.map((v) => fmtPace(v).replace('/500m', '')) }
+		],
+		series: [{}, { label: 'pace@rate', stroke: '#56d4ff', width: 2, points: { show: true, size: 7 } }],
+		legend: { show: false }
+	};
+
 	const paceRange = (() => {
 		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
 		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
@@ -277,6 +296,44 @@
 			<div class="card">
 				<div class="ctitle muted">Heart rate</div>
 				<UPlotChart data={hrData} options={hrOpts} height={150} marker={frame.t} />
+			</div>
+		{/if}
+	</div>
+
+	<!-- Technique (stroke quality) -->
+	<div class="card technique">
+		<div class="ctitle muted">Stroke quality</div>
+		<div class="techstats">
+			<div class="ts">
+				<div class="tv mono">{tech.avgDps.toFixed(1)}<span class="tu">m</span></div>
+				<div class="tl muted">avg dist / stroke</div>
+			</div>
+			<div class="ts">
+				<div class="tv mono">{Math.round(tech.avgSpm)}<span class="tu">{theme.cadenceUnit}</span></div>
+				<div class="tl muted">avg rate</div>
+			</div>
+			<div class="ts">
+				<div class="tv mono">{tech.paceConsistency.toFixed(1)}<span class="tu">%</span></div>
+				<div class="tl muted">pace variation <span class="hint">(lower = smoother)</span></div>
+			</div>
+			<div class="ts">
+				<div class="tv mono" class:good={tech.fade <= 0} class:bad={tech.fade > 1.5}>
+					{tech.fade > 0 ? '+' : ''}{tech.fade.toFixed(1)}<span class="tu">%</span>
+				</div>
+				<div class="tl muted">fade <span class="hint">({tech.fade <= 0 ? 'negative split 💪' : 'slowed down'})</span></div>
+			</div>
+		</div>
+	</div>
+
+	<div class="analysis">
+		<div class="card">
+			<div class="ctitle muted">Distance per stroke <span class="hint">— higher = more powerful stroke</span></div>
+			<UPlotChart data={dpsData} options={dpsOpts} height={150} marker={frame.t} />
+		</div>
+		{#if eff.length > 2}
+			<div class="card">
+				<div class="ctitle muted">Pace vs rate <span class="hint">— find your most efficient rating</span></div>
+				<UPlotChart data={effData} options={effOpts} height={150} />
 			</div>
 		{/if}
 	</div>
@@ -474,6 +531,47 @@
 		gap: 0.75rem;
 		margin-bottom: 0.75rem;
 	}
+	.technique {
+		margin-bottom: 0.75rem;
+	}
+	.techstats {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 0.75rem;
+		margin-top: 0.5rem;
+	}
+	.ts {
+		background: var(--bg-elev-2);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 0.6rem 0.8rem;
+	}
+	.tv {
+		font-size: 1.5rem;
+		font-weight: 700;
+	}
+	.tv.good {
+		color: var(--accent-2);
+	}
+	.tv.bad {
+		color: var(--warn);
+	}
+	.tu {
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: var(--text-dim);
+		margin-left: 0.15rem;
+	}
+	.tl {
+		font-size: 0.78rem;
+		margin-top: 0.2rem;
+	}
+	.hint {
+		font-weight: 400;
+		opacity: 0.7;
+		text-transform: none;
+		letter-spacing: 0;
+	}
 	.ctitle {
 		font-size: 0.8rem;
 		font-weight: 600;
@@ -527,7 +625,8 @@
 		border-bottom: 1px solid var(--bg-elev-2);
 	}
 	@media (max-width: 760px) {
-		.gauges {
+		.gauges,
+		.techstats {
 			grid-template-columns: repeat(2, 1fr);
 		}
 		.charts,

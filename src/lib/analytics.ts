@@ -115,6 +115,101 @@ export function hrZones(strokes: Stroke[], maxHr?: number): HrZone[] {
 	}));
 }
 
+// ---------------------------------------------------------------------------
+// Stroke-quality / technique analysis
+//
+// The logbook exposes pace, stroke-rate, distance and heart-rate per stroke —
+// not the PM5 force curve (that lives on the monitor over BLE). But for a
+// heavyweight chasing pace, *distance-per-stroke* is the real lever: holding a
+// pace at a lower rate means a more powerful, more efficient stroke. These
+// helpers turn the logged signal into coachable technique metrics.
+// ---------------------------------------------------------------------------
+
+/** Distance per stroke (metres) implied by a pace (sec/500m) and rate (spm). */
+export function distancePerStroke(pace: number, spm: number): number {
+	if (pace <= 0 || spm <= 0) return 0;
+	const speed = 500 / pace; // m/s
+	const strokesPerSec = spm / 60;
+	return speed / strokesPerSec;
+}
+
+export interface TechniqueSummary {
+	/** Distance-per-stroke timeline, aligned to stroke time `t`. */
+	dps: { t: number; v: number }[];
+	avgDps: number;
+	/** Coefficient of variation of pace (%). Lower = smoother, more even. */
+	paceConsistency: number;
+	/**
+	 * Fade: how much pace drifts from the first third to the last third of the
+	 * piece, as a % (positive = slowed down, negative = negative split).
+	 */
+	fade: number;
+	avgSpm: number;
+}
+
+export function techniqueSummary(strokes: Stroke[]): TechniqueSummary {
+	const valid = strokes.filter((s) => s.pace > 0 && s.spm > 0);
+	const dps = valid.map((s) => ({ t: s.t, v: distancePerStroke(s.pace, s.spm) }));
+	const avgDps = mean(dps.map((d) => d.v));
+	const avgSpm = mean(valid.map((s) => s.spm));
+
+	const paces = valid.map((s) => s.pace);
+	const mp = mean(paces);
+	const sd = Math.sqrt(mean(paces.map((p) => (p - mp) ** 2)));
+	const paceConsistency = mp > 0 ? (sd / mp) * 100 : 0;
+
+	// Fade by distance thirds (robust to uneven sampling in time).
+	let fade = 0;
+	if (valid.length >= 6) {
+		const third = Math.floor(valid.length / 3);
+		const firstPace = mean(valid.slice(0, third).map((s) => s.pace));
+		const lastPace = mean(valid.slice(-third).map((s) => s.pace));
+		fade = firstPace > 0 ? ((lastPace - firstPace) / firstPace) * 100 : 0;
+	}
+
+	return { dps, avgDps, paceConsistency, fade, avgSpm };
+}
+
+export interface EfficiencyPoint {
+	spm: number;
+	pace: number;
+	dps: number;
+}
+
+/**
+ * Pace-vs-rate efficiency cloud, bucketed by stroke rate. Reveals your most
+ * efficient rating band: where you hold the best pace for the rate (highest
+ * distance-per-stroke). Each point is the median pace observed at that rate.
+ */
+export function efficiencyByRate(strokes: Stroke[]): EfficiencyPoint[] {
+	const buckets = new Map<number, number[]>();
+	for (const s of strokes) {
+		if (s.pace <= 0 || s.spm <= 0) continue;
+		const r = Math.round(s.spm);
+		const arr = buckets.get(r) ?? [];
+		arr.push(s.pace);
+		buckets.set(r, arr);
+	}
+	return [...buckets.entries()]
+		.filter(([, paces]) => paces.length >= 2) // ignore one-off outliers
+		.map(([spm, paces]) => {
+			const pace = median(paces);
+			return { spm, pace, dps: distancePerStroke(pace, spm) };
+		})
+		.sort((a, b) => a.spm - b.spm);
+}
+
+function mean(xs: number[]): number {
+	return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+}
+
+function median(xs: number[]): number {
+	if (!xs.length) return 0;
+	const s = [...xs].sort((a, b) => a - b);
+	const m = s.length >> 1;
+	return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
 export interface PowerPoint {
 	duration: number;
 	watts: number;
