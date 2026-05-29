@@ -6,7 +6,13 @@
 	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
 	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
 	import { themeFor } from '$lib/replay/sports';
-	import { hrZones, powerCurve, techniqueSummary, efficiencyByRate } from '$lib/analytics';
+	import {
+		hrZones,
+		powerCurve,
+		techniqueSummary,
+		efficiencyByRate,
+		intervalBreakdown
+	} from '$lib/analytics';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
 
@@ -185,6 +191,14 @@
 		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
 	})();
 	const wattRange = { min: 0, max: Math.max(...strokes.map((s) => s.watts)) * 1.1 };
+
+	// ---- Interval / rep breakdown (null for single-segment pieces) ----
+	const intervals = intervalBreakdown(detail.splits, strokes);
+	// Bar widths for the per-rep pace comparison, scaled to the slowest rep.
+	function repBarPct(pace: number): number {
+		if (!intervals || intervals.slowest <= 0) return 0;
+		return (pace / intervals.slowest) * 100;
+	}
 </script>
 
 <svelte:head><title>Replay · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
@@ -374,8 +388,54 @@
 		{/if}
 	</div>
 
-	<!-- Splits -->
-	{#if detail.splits.length}
+	<!-- Interval / rep breakdown -->
+	{#if intervals}
+		<div class="card intervals">
+			<div class="ctitle muted">Interval breakdown — {intervals.reps.length} reps</div>
+
+			<div class="setstats">
+				<div class="ss">
+					<div class="ssv mono">{fmtPace(intervals.avgPace).replace('/500m', '')}</div>
+					<div class="ssl muted">avg rep pace</div>
+				</div>
+				<div class="ss">
+					<div class="ssv mono">{intervals.consistency.toFixed(1)}%</div>
+					<div class="ssl muted">consistency <span class="hint">(lower = evener)</span></div>
+				</div>
+				<div class="ss">
+					<div class="ssv mono" class:good={intervals.fade <= 0} class:bad={intervals.fade > 2}>
+						{intervals.fade > 0 ? '+' : ''}{intervals.fade.toFixed(1)}%
+					</div>
+					<div class="ssl muted">set fade <span class="hint">({intervals.fade <= 0 ? 'negative split 💪' : 'faded'})</span></div>
+				</div>
+				<div class="ss">
+					<div class="ssv mono">{fmtPace(intervals.fastest).replace('/500m', '')} → {fmtPace(intervals.slowest).replace('/500m', '')}</div>
+					<div class="ssl muted">fastest → slowest</div>
+				</div>
+			</div>
+
+			<div class="reps">
+				{#each intervals.reps as r}
+					<div class="rep" class:fastest={r.isFastest} class:slowest={r.isSlowest}>
+						<div class="repno mono">#{r.index + 1}</div>
+						<div class="repbarwrap">
+							<div class="repbar" style:width="{repBarPct(r.pace)}%" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : theme.color}></div>
+							<span class="repbarlabel mono">{fmtPace(r.pace).replace('/500m', '')}</span>
+						</div>
+						<div class="repmeta mono muted">
+							{fmtDistance(r.distance)} · {fmtTime(r.time, true)} · {r.spm}{theme.cadenceUnit}
+							{#if r.hr}· {r.hr}bpm{/if}
+							{#if r.dps > 0}· {r.dps.toFixed(1)}m/st{/if}
+						</div>
+						<div class="repdelta mono" class:good={r.vsAverage < 0} class:bad={r.vsAverage > 0}>
+							{r.vsAverage < 0 ? '−' : '+'}{fmtPace(Math.abs(r.vsAverage)).replace('/500m', '')}
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{:else if detail.splits.length}
+		<!-- Single-segment piece: plain split table -->
 		<div class="card splits">
 			<h3>Splits</h3>
 			<table class="mono">
@@ -608,6 +668,91 @@
 		height: 10px;
 		border-radius: 3px;
 	}
+	.intervals {
+		margin-bottom: 0.75rem;
+	}
+	.setstats {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 0.5rem;
+		margin: 0.5rem 0 1rem;
+	}
+	.ss {
+		background: var(--bg-elev-2);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 0.5rem 0.7rem;
+	}
+	.ssv {
+		font-size: 1.15rem;
+		font-weight: 700;
+	}
+	.ssv.good {
+		color: var(--accent-2);
+	}
+	.ssv.bad {
+		color: var(--warn);
+	}
+	.ssl {
+		font-size: 0.72rem;
+		margin-top: 0.15rem;
+	}
+	.reps {
+		display: grid;
+		gap: 0.4rem;
+	}
+	.rep {
+		display: grid;
+		grid-template-columns: 2.2rem 1fr auto;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.4rem 0.5rem;
+		border-radius: 8px;
+		background: var(--bg-elev-2);
+	}
+	.rep.fastest {
+		box-shadow: inset 0 0 0 1px var(--accent-2);
+	}
+	.rep.slowest {
+		box-shadow: inset 0 0 0 1px var(--warn);
+	}
+	.repno {
+		font-weight: 700;
+		color: var(--text-dim);
+	}
+	.repbarwrap {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		min-width: 0;
+	}
+	.repbar {
+		height: 1.4rem;
+		border-radius: 4px;
+		min-width: 2px;
+		transition: width 0.3s ease;
+	}
+	.repbarlabel {
+		font-weight: 700;
+		font-size: 0.9rem;
+		white-space: nowrap;
+	}
+	.repmeta {
+		font-size: 0.78rem;
+		grid-column: 2;
+	}
+	.repdelta {
+		font-weight: 700;
+		font-size: 0.85rem;
+		text-align: right;
+	}
+	.repdelta.good {
+		color: var(--accent-2);
+	}
+	.repdelta.bad {
+		color: var(--warn);
+	}
 	.splits table {
 		width: 100%;
 		border-collapse: collapse;
@@ -626,12 +771,19 @@
 	}
 	@media (max-width: 760px) {
 		.gauges,
-		.techstats {
+		.techstats,
+		.setstats {
 			grid-template-columns: repeat(2, 1fr);
 		}
 		.charts,
 		.analysis {
 			grid-template-columns: 1fr;
+		}
+		.rep {
+			grid-template-columns: 1.8rem 1fr auto;
+		}
+		.repmeta {
+			font-size: 0.72rem;
 		}
 	}
 </style>

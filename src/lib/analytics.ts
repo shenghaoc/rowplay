@@ -1,4 +1,4 @@
-import type { Sport, Stroke, Workout } from './types';
+import type { Split, Sport, Stroke, Workout } from './types';
 
 // ---------------------------------------------------------------------------
 // Pure analysis helpers. No DOM, no Svelte — safe to use on server or client,
@@ -345,4 +345,109 @@ export function powerCurve(strokes: Stroke[], durations?: number[]): PowerPoint[
 		}
 		return { duration: dur, watts: best };
 	});
+}
+
+// ---------------------------------------------------------------------------
+// Interval / rep breakdown
+//
+// A split is one work segment (a rep). We enrich each split with the stroke
+// samples that fall inside it — pace, rate, HR, DPS, plus how the rep was
+// paced internally (start vs end) — then compare reps to each other so you can
+// see if you held the pieces together or faded across the set.
+// ---------------------------------------------------------------------------
+
+export interface IntervalRep {
+	index: number;
+	distance: number;
+	time: number;
+	pace: number;
+	spm: number;
+	hr?: number;
+	dps: number;
+	/** Within-rep fade: last-third pace vs first-third pace, % (>0 = slowed). */
+	internalFade: number;
+	/** Pace delta vs the set's average rep pace, sec/500m (<0 = faster). */
+	vsAverage: number;
+	/** True for the fastest rep in the set. */
+	isFastest: boolean;
+	/** True for the slowest rep in the set. */
+	isSlowest: boolean;
+}
+
+export interface IntervalSet {
+	reps: IntervalRep[];
+	avgPace: number;
+	/** Pace spread across reps as a coefficient of variation, % (lower = evener). */
+	consistency: number;
+	/** Set-level fade: last rep pace vs first rep pace, % (>0 = slowed down). */
+	fade: number;
+	fastest: number;
+	slowest: number;
+}
+
+/**
+ * Build a rep-by-rep breakdown from a workout's splits, using strokes (when
+ * present) to compute distance-per-stroke and within-rep fade. Returns null for
+ * single-segment pieces — there's nothing to compare.
+ */
+export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalSet | null {
+	if (splits.length < 2) return null;
+
+	// Assign strokes to reps by cumulative split time. Strokes reset to t=0 each
+	// interval (handled on read), so we walk them and start a new rep bucket
+	// whenever the stroke time steps backwards or we exceed the split duration.
+	const buckets: Stroke[][] = splits.map(() => []);
+	if (strokes.length) {
+		let rep = 0;
+		let prevT = -Infinity;
+		for (const s of strokes) {
+			if (s.t < prevT && rep < splits.length - 1) rep++;
+			prevT = s.t;
+			(buckets[rep] ?? buckets[buckets.length - 1]).push(s);
+		}
+	}
+
+	const paces = splits.map((sp) => sp.pace).filter((p) => p > 0);
+	const avgPace = paces.length ? paces.reduce((a, b) => a + b, 0) / paces.length : 0;
+	const fastest = paces.length ? Math.min(...paces) : 0;
+	const slowest = paces.length ? Math.max(...paces) : 0;
+
+	const reps: IntervalRep[] = splits.map((sp, i) => {
+		const bucket = buckets[i] ?? [];
+		const spm = sp.spm ?? (bucket.length ? mean(bucket.map((s) => s.spm)) : 0);
+		const dps = sp.pace > 0 && spm > 0 ? distancePerStroke(sp.pace, spm) : 0;
+
+		let internalFade = 0;
+		if (bucket.length >= 6) {
+			const third = Math.floor(bucket.length / 3);
+			const first = mean(bucket.slice(0, third).map((s) => s.pace));
+			const last = mean(bucket.slice(-third).map((s) => s.pace));
+			internalFade = first > 0 ? ((last - first) / first) * 100 : 0;
+		}
+
+		return {
+			index: i,
+			distance: sp.distance,
+			time: sp.time,
+			pace: sp.pace,
+			spm: Math.round(spm),
+			hr: sp.hr ?? (bucket.some((s) => s.hr != null) ? Math.round(mean(bucket.map((s) => s.hr ?? 0))) : undefined),
+			dps,
+			internalFade,
+			vsAverage: sp.pace > 0 ? sp.pace - avgPace : 0,
+			isFastest: sp.pace === fastest && fastest > 0,
+			isSlowest: sp.pace === slowest && slowest > 0 && fastest !== slowest
+		};
+	});
+
+	const sd = paces.length
+		? Math.sqrt(paces.reduce((s, p) => s + (p - avgPace) ** 2, 0) / paces.length)
+		: 0;
+	const consistency = avgPace > 0 ? (sd / avgPace) * 100 : 0;
+
+	const firstPace = reps[0].pace;
+	const lastPace = reps[reps.length - 1].pace;
+	const fade = firstPace > 0 ? ((lastPace - firstPace) / firstPace) * 100 : 0;
+
+	return { reps, avgPace, consistency, fade, fastest, slowest };
 }
