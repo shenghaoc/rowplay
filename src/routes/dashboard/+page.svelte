@@ -2,7 +2,13 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_ICON, SPORT_LABEL } from '$lib/format';
-	import { distancePBs, distancePerStroke, linearTrend, summariseBySport } from '$lib/analytics';
+	import {
+		distanceBand,
+		distancePBs,
+		distancePerStroke,
+		linearTrend,
+		summariseBySport
+	} from '$lib/analytics';
 	import type { Sport, Workout } from '$lib/types';
 
 	let { data } = $props();
@@ -11,6 +17,11 @@
 	let sportFilter = $state<Sport | 'all'>('all');
 	type Metric = 'pace' | 'distance' | 'spm' | 'dps';
 	let metric = $state<Metric>('pace');
+	// Selected distance band for pace/DPS trends; '' = auto (most-rowed band).
+	let bandKey = $state<string>('');
+
+	/** Whether the current metric only makes sense within one distance band. */
+	const bandScoped = $derived(metric === 'pace' || metric === 'dps');
 
 	function metricValue(w: Workout, m: Metric): number | null {
 		switch (m) {
@@ -75,12 +86,39 @@
 	// Lower pace = better, so improving means the metric goes DOWN for pace.
 	const lowerIsBetter = $derived(metric === 'pace');
 
+	// Distance bands available for the dominant sport, ordered by distance,
+	// each annotated with how many sessions fall in it.
+	const bands = $derived.by(() => {
+		if (!bandScoped) return [];
+		const counts = new Map<string, { label: string; nominal: number; n: number }>();
+		for (const w of filtered) {
+			if (w.sport !== dominantSport) continue;
+			const b = distanceBand(w.distance);
+			const e = counts.get(b.key) ?? { label: b.label, nominal: b.nominal, n: 0 };
+			e.n++;
+			counts.set(b.key, e);
+		}
+		return [...counts.entries()]
+			.map(([key, v]) => ({ key, ...v }))
+			.sort((a, b) => a.nominal - b.nominal);
+	});
+
+	// The band actually in use: explicit selection, else the most-rowed one.
+	const activeBand = $derived.by(() => {
+		if (!bandScoped || bands.length === 0) return '';
+		if (bandKey && bands.some((b) => b.key === bandKey)) return bandKey;
+		return [...bands].sort((a, b) => b.n - a.n)[0].key;
+	});
+
 	const trendPoints = $derived.by(() => {
-		// Pace and DPS are sport-specific; distance/rate can span sports.
-		const base =
-			metric === 'pace' || metric === 'dps'
-				? filtered.filter((w) => w.sport === dominantSport)
-				: filtered;
+		// Pace and DPS are sport-specific and band-specific; distance/rate can
+		// span sports and distances.
+		let base = filtered;
+		if (bandScoped) {
+			base = filtered.filter(
+				(w) => w.sport === dominantSport && distanceBand(w.distance).key === activeBand
+			);
+		}
 		return base
 			.map((w) => ({ x: workoutEpoch(w), y: metricValue(w, metric) }))
 			.filter((p): p is { x: number; y: number } => p.y != null && isFinite(p.x))
@@ -276,13 +314,13 @@
 	{/if}
 
 	<!-- Trend -->
-	{#if trendPoints.length > 1}
+	{#if filtered.length > 1}
 		<div class="card chartcard">
 			<div class="trendhead">
 				<div class="label">
 					Trend over time
-					{#if metric === 'pace' || metric === 'dps'}
-						<span class="muted">· {SPORT_LABEL[dominantSport]} only</span>
+					{#if bandScoped}
+						<span class="muted">· {SPORT_LABEL[dominantSport]}, like-for-like distance</span>
 					{/if}
 				</div>
 				<div class="metrics">
@@ -291,6 +329,18 @@
 					{/each}
 				</div>
 			</div>
+
+			{#if bandScoped && bands.length > 1}
+				<div class="bands">
+					{#each bands as b}
+						<button
+							class="bchip"
+							class:on={activeBand === b.key}
+							onclick={() => (bandKey = b.key)}
+						>{b.label} <span class="bn">{b.n}</span></button>
+					{/each}
+				</div>
+			{/if}
 
 			{#if verdict}
 				<div class="verdict" class:good={verdict.better && !verdict.flat} class:bad={!verdict.better && !verdict.flat}>
@@ -314,7 +364,14 @@
 				</div>
 			{/if}
 
-			<UPlotChart data={trend} options={trendOptions} height={190} />
+			{#if trendPoints.length > 1}
+				<UPlotChart data={trend} options={trendOptions} height={190} />
+			{:else}
+				<p class="muted emptytrend">
+					Only {trendPoints.length} session in this band — log another
+					{bandScoped ? bands.find((b) => b.key === activeBand)?.label : ''} to see a trend.
+				</p>
+			{/if}
 		</div>
 	{/if}
 
@@ -510,6 +567,38 @@
 		margin-bottom: 0.5rem;
 		flex-wrap: wrap;
 		gap: 0.5rem;
+	}
+	.bands {
+		display: flex;
+		gap: 0.35rem;
+		flex-wrap: wrap;
+		margin-bottom: 0.75rem;
+	}
+	.bchip {
+		background: var(--bg-elev-2);
+		border: 1px solid var(--border);
+		color: var(--text-dim);
+		border-radius: 8px;
+		padding: 0.25rem 0.6rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: var(--mono);
+	}
+	.bchip.on {
+		background: var(--accent);
+		color: white;
+		border-color: var(--accent);
+	}
+	.bn {
+		opacity: 0.6;
+		font-size: 0.72rem;
+		margin-left: 0.15rem;
+	}
+	.emptytrend {
+		padding: 1.5rem 0;
+		text-align: center;
+		font-size: 0.9rem;
 	}
 	.verdict {
 		font-size: 0.95rem;

@@ -27,7 +27,11 @@ const SPECS: Spec[] = [
 	{ id: 1005, date: '2026-05-16 06:20:00', sport: 'rower', distance: 6000, basePace: 116, baseSpm: 28, baseHr: 160, workoutType: '4x1500m intervals' },
 	{ id: 1006, date: '2026-05-13 18:15:00', sport: 'rower', distance: 500, basePace: 96, baseSpm: 36, baseHr: 172, workoutType: '500m sprint' },
 	{ id: 1007, date: '2026-05-10 06:18:00', sport: 'rower', distance: 2000, basePace: 112, baseSpm: 29, baseHr: 166, workoutType: '2000m steady' },
-	{ id: 1008, date: '2026-05-06 07:00:00', sport: 'skierg', distance: 1000, basePace: 126, baseSpm: 40, baseHr: 162, workoutType: '1000m SkiErg' }
+	{ id: 1008, date: '2026-05-06 07:00:00', sport: 'skierg', distance: 1000, basePace: 126, baseSpm: 40, baseHr: 162, workoutType: '1000m SkiErg' },
+	// Extra 2k pieces so the like-for-like trend shows a clear progression.
+	{ id: 1009, date: '2026-04-29 06:25:00', sport: 'rower', distance: 2000, basePace: 113, baseSpm: 28, baseHr: 167, workoutType: '2000m test' },
+	{ id: 1010, date: '2026-04-22 06:30:00', sport: 'rower', distance: 2000, basePace: 115, baseSpm: 28, baseHr: 168, workoutType: '2000m test' },
+	{ id: 1011, date: '2026-04-15 06:28:00', sport: 'rower', distance: 2000, basePace: 117, baseSpm: 27, baseHr: 169, workoutType: '2000m test' }
 ];
 
 // Small deterministic PRNG so demo data is stable across reloads.

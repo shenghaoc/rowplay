@@ -45,6 +45,51 @@ export function linearTrend(points: { x: number; y: number }[]): TrendFit | null
 	return { slopePerDay: slope, y0, y1, delta: y1 - y0, n };
 }
 
+export interface DistanceBand {
+	/** Stable key, e.g. "2000". */
+	key: string;
+	label: string;
+	/** Nominal distance in metres (for sorting). */
+	nominal: number;
+}
+
+/**
+ * Bucket a workout distance into a like-for-like band so we compare 2k-to-2k
+ * rather than a sprint against a 5k. Standard erg distances get a tight ±6%
+ * window; anything else falls into a coarse range band.
+ */
+export function distanceBand(metres: number): DistanceBand {
+	const standards = [
+		{ d: 100, l: '100m' },
+		{ d: 500, l: '500m' },
+		{ d: 1000, l: '1k' },
+		{ d: 2000, l: '2k' },
+		{ d: 5000, l: '5k' },
+		{ d: 6000, l: '6k' },
+		{ d: 10000, l: '10k' },
+		{ d: 21097, l: 'Half' },
+		{ d: 42195, l: 'Full' }
+	];
+	for (const s of standards) {
+		if (Math.abs(metres - s.d) <= s.d * 0.06) {
+			return { key: String(s.d), label: s.l, nominal: s.d };
+		}
+	}
+	// Coarse fallback ranges for non-standard pieces.
+	const ranges: [number, number, string][] = [
+		[0, 750, '<750m'],
+		[750, 1500, '750m–1.5k'],
+		[1500, 3000, '1.5k–3k'],
+		[3000, 7000, '3k–7k'],
+		[7000, 15000, '7k–15k'],
+		[15000, Infinity, '15k+']
+	];
+	for (const [lo, hi, l] of ranges) {
+		if (metres >= lo && metres < hi) return { key: `r${lo}`, label: l, nominal: (lo + Math.min(hi, lo * 2)) / 2 };
+	}
+	return { key: 'other', label: 'Other', nominal: metres };
+}
+
 export interface SportSummary {
 	sport: Sport;
 	sessions: number;
