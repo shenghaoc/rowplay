@@ -2,8 +2,8 @@
 	"$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
 	"name": "rowplay",
 	"main": ".svelte-kit/cloudflare/_worker.js",
-	"compatibility_date": "2024-11-01",
-	"compatibility_flags": ["nodejs_compat"],
+	"compatibility_date": "2025-05-24",
+	"compatibility_flags": ["nodejs_als"],
 	// Static assets (client bundle, favicon) served by the Worker's built-in
 	// asset server. The SvelteKit adapter emits the worker and assets into the
 	// same directory and excludes _worker.js via .assetsignore.
