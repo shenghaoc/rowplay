@@ -1,4 +1,4 @@
-import type { KVNamespace, D1Database } from '@cloudflare/workers-types';
+import type { KVNamespace, D1Database, Fetcher } from '@cloudflare/workers-types';
 import type { SessionUser } from '$lib/server/session';
 
 declare global {
@@ -17,6 +17,8 @@ declare global {
 		}
 		interface Platform {
 			env: {
+				/** Static-asset server binding (Workers assets). */
+				ASSETS: Fetcher;
 				SESSIONS: KVNamespace;
 				DB: D1Database;
 				CONCEPT2_CLIENT_ID: string;

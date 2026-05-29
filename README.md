@@ -18,8 +18,8 @@ lower-resolution replay synthesised from splits.
 | Concern        | Choice                                                              |
 | -------------- | ------------------------------------------------------------------ |
 | App framework  | SvelteKit (Svelte 5) + Vite                                        |
-| Hosting        | Cloudflare Pages (`@sveltejs/adapter-cloudflare`)                  |
-| Server / OAuth | SvelteKit endpoints running on the Pages Worker runtime           |
+| Hosting        | Cloudflare **Workers** + static assets (`@sveltejs/adapter-cloudflare`) |
+| Server / OAuth | SvelteKit endpoints running on the Workers runtime                |
 | Sessions       | Cloudflare **KV** (`SESSIONS`)                                     |
 | Cache          | Cloudflare **D1** (`DB`) — caches hydrated workouts + strokes      |
 | Charts         | [uPlot](https://github.com/leeoniya/uPlot)                        |
@@ -73,10 +73,10 @@ wrangler d1 create rowplay                 # paste database_id into wrangler.tom
 npm run db:migrate                         # apply migrations to remote D1
 
 # secrets (never commit these)
-wrangler pages secret put CONCEPT2_CLIENT_SECRET
-wrangler pages secret put SESSION_SECRET
+wrangler secret put CONCEPT2_CLIENT_SECRET
+wrangler secret put SESSION_SECRET
 
-# build + deploy
+# build + deploy the Worker
 npm run deploy
 ```
 
@@ -90,9 +90,9 @@ Set `CONCEPT2_CLIENT_ID` and `PUBLIC_APP_URL` (your production origin) in the
 | -------------------------- | --------------------------------------------- |
 | `npm run dev`              | Local dev server                              |
 | `npm run build`            | Production build (`.svelte-kit/cloudflare`)   |
-| `npm run preview`          | Serve the build via `wrangler pages dev`      |
+| `npm run preview`          | Build + serve the Worker via `wrangler dev`   |
 | `npm run check`            | `svelte-check` type checking                  |
-| `npm run deploy`           | Build + deploy to Cloudflare Pages            |
+| `npm run deploy`           | Build + deploy the Worker (`wrangler deploy`) |
 | `npm run db:migrate[:local]` | Apply D1 migrations                         |
 
 ## Project layout

@@ -1,8 +1,15 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "rowplay"
+main = ".svelte-kit/cloudflare/_worker.js"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".svelte-kit/cloudflare"
+
+# Static assets (client bundle, favicon, prerendered pages) served by the
+# Worker's built-in asset server. The SvelteKit adapter emits the worker and
+# the assets into the same directory and excludes _worker.js via .assetsignore.
+[assets]
+binding = "ASSETS"
+directory = ".svelte-kit/cloudflare"
 
 # --- KV: short-lived sessions (OAuth tokens, login state) ---
 # Create with:  wrangler kv namespace create SESSIONS
@@ -18,7 +25,7 @@ database_name = "rowplay"
 database_id = "REPLACE_WITH_D1_DATABASE_ID"
 
 # Non-secret config. Secrets (CONCEPT2_CLIENT_SECRET, SESSION_SECRET) are set with:
-#   wrangler pages secret put CONCEPT2_CLIENT_SECRET
+#   wrangler secret put CONCEPT2_CLIENT_SECRET
 [vars]
 CONCEPT2_CLIENT_ID = ""
 # Use "https://log.concept2.com" for production, "https://log-dev.concept2.com" for the dev sandbox.

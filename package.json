@@ -6,9 +6,9 @@
   "private": true,
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
-    "preview": "wrangler pages dev .svelte-kit/cloudflare",
-    "deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare",
+    "build": "vite build && node scripts/postbuild.mjs",
+    "preview": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "db:migrate:local": "wrangler d1 migrations apply rowplay --local",
     "db:migrate": "wrangler d1 migrations apply rowplay --remote"
