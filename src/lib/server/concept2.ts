@@ -1,6 +1,6 @@
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { paceToWatts } from '../format';
-import { toSport, type Split, type Stroke, type Workout, type WorkoutDetail } from '../types';
+import { toSport, type Sport, type Split, type Stroke, type Workout, type WorkoutDetail } from '../types';
 import { writeSession, type OAuthTokens, type SessionData, type SessionUser } from './session';
 
 /** Scopes we request from the Concept2 logbook. */
@@ -133,7 +133,7 @@ export class Concept2Client {
 		if (base.hasStrokeData) {
 			try {
 				const s = await this.api<{ data: RawStroke[] }>(`/users/me/results/${id}/strokes`);
-				strokes = mapStrokes(s.data);
+				strokes = mapStrokes(s.data, base.sport);
 			} catch {
 				strokes = [];
 			}
@@ -205,15 +205,35 @@ export function mapResult(r: RawResult): Workout {
 	};
 }
 
-function mapStrokes(raw: RawStroke[]): Stroke[] {
+function mapStrokes(raw: RawStroke[], sport: Sport): Stroke[] {
+	// Per the API: stroke `p` is pace-per-500m for rower/skierg but
+	// pace-per-1000m for the bike. Normalise everything to sec/500m so the
+	// rest of the app (display + watts) is unit-consistent.
+	const paceDiv = sport === 'bike' ? 2 : 1;
+
+	// Per the API: for interval workouts, t and d restart at 0 each interval.
+	// Detect a reset (the counter going backwards) and carry a running offset
+	// so the replay timeline stays monotonic across intervals.
+	let tOffset = 0;
+	let dOffset = 0;
+	let prevT = 0;
+	let prevD = 0;
+
 	return raw.map((s) => {
-		const pace = s.p / 10;
+		const rawT = s.t / 10; // tenths of a second -> s
+		const rawD = s.d / 10; // decimetres -> m
+		if (rawT < prevT) tOffset += prevT;
+		if (rawD < prevD) dOffset += prevD;
+		prevT = rawT;
+		prevD = rawD;
+
+		const pace = s.p / 10 / paceDiv; // -> sec / 500m
 		return {
-			t: s.t / 10,
-			d: s.d / 10,
+			t: rawT + tOffset,
+			d: rawD + dOffset,
 			pace,
 			spm: s.spm,
-			hr: s.hr,
+			hr: s.hr ? s.hr : undefined,
 			watts: paceToWatts(pace)
 		};
 	});
