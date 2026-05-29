@@ -97,18 +97,15 @@ export class CourseRenderer {
 			}
 		}
 
-		// Finish flags.
-		ctx.font = '18px serif';
-		ctx.textAlign = 'center';
-		ctx.fillText('🏁', finishX, playerY - 20);
-		if (hasGhost) ctx.fillText('🏁', finishX, ghostY - 20);
+		// Finish flags (drawn, not emoji).
+		this.drawFinishFlag(finishX, playerY);
+		if (hasGhost) this.drawFinishFlag(finishX, ghostY);
 
 		if (hasGhost && state.ghost) {
 			this.drawLane(startX, span, ghostY, state.ghost.distFrac, '#8b949e', 0.55);
 			this.drawAvatar(
 				startX + span * clamp01(state.ghost.distFrac),
 				ghostY,
-				theme.avatar,
 				`PB · ${Math.round(state.ghost.distFrac * 100)}%`,
 				'#8b949e',
 				0.55,
@@ -120,12 +117,37 @@ export class CourseRenderer {
 		this.drawAvatar(
 			startX + span * clamp01(state.distFrac),
 			playerY,
-			theme.avatar,
 			`${Math.round(state.distFrac * 100)}% · ${fmtPace(state.frame.pace)}`,
 			theme.color,
 			1,
 			playing ? Math.sin(this.phase) * 2 : 0
 		);
+	}
+
+	/** A small checkered flag drawn at the finish line. */
+	private drawFinishFlag(x: number, baseY: number) {
+		const ctx = this.ctx;
+		const poleH = 26;
+		const top = baseY - poleH;
+		const fw = 14;
+		const fh = 10;
+		const cell = fh / 2;
+		ctx.save();
+		// Pole.
+		ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+		ctx.lineWidth = 1.5;
+		ctx.beginPath();
+		ctx.moveTo(x, baseY);
+		ctx.lineTo(x, top);
+		ctx.stroke();
+		// Checker.
+		for (let row = 0; row < fh / cell; row++) {
+			for (let col = 0; col < fw / cell; col++) {
+				ctx.fillStyle = (row + col) % 2 === 0 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.2)';
+				ctx.fillRect(x + col * cell, top + row * cell, cell, cell);
+			}
+		}
+		ctx.restore();
 	}
 
 	private drawLane(startX: number, span: number, y: number, frac: number, color: string, alpha: number) {
@@ -158,13 +180,28 @@ export class CourseRenderer {
 		ctx.restore();
 	}
 
-	private drawAvatar(x: number, y: number, glyph: string, label: string, color: string, alpha: number, bob: number) {
+	private drawAvatar(x: number, y: number, label: string, color: string, alpha: number, bob: number) {
 		const ctx = this.ctx;
+		const cy = y - 8 + bob;
 		ctx.save();
 		ctx.globalAlpha = alpha;
 		ctx.textAlign = 'center';
-		ctx.font = '24px serif';
-		ctx.fillText(glyph, x, y - 4 + bob);
+
+		// Glowing puck marker.
+		ctx.shadowColor = color;
+		ctx.shadowBlur = 12;
+		ctx.fillStyle = color;
+		ctx.beginPath();
+		ctx.arc(x, cy, 6, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.shadowBlur = 0;
+		// Inner highlight.
+		ctx.fillStyle = 'rgba(255,255,255,0.85)';
+		ctx.beginPath();
+		ctx.arc(x, cy, 2.5, 0, Math.PI * 2);
+		ctx.fill();
+
+		// Label above.
 		ctx.font = '600 11px ui-monospace, monospace';
 		ctx.fillStyle = color;
 		ctx.fillText(label, x, y - 28);

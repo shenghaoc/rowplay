@@ -40,12 +40,6 @@ export const SPORT_LABEL: Record<Sport, string> = {
 	bike: 'BikeErg'
 };
 
-export const SPORT_ICON: Record<Sport, string> = {
-	rower: '🚣',
-	skierg: '⛷️',
-	bike: '🚴'
-};
-
 /**
  * Concept2's power model: watts = 2.8 / pace^3, where pace is seconds-per-metre.
  * Given pace in sec/500m, pace-per-metre = pace/500.

@@ -2,7 +2,8 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import WorkoutList from '$components/WorkoutList.svelte';
-	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_ICON, SPORT_LABEL } from '$lib/format';
+	import SportIcon from '$components/SportIcon.svelte';
+	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import {
 		distanceBand,
 		distancePBs,
@@ -13,7 +14,7 @@
 	import type { Sport, Workout } from '$lib/types';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { RefreshCw } from '@lucide/svelte';
+	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play } from '@lucide/svelte';
 
 	let { data } = $props();
 	const workouts = $derived<Workout[]>(data.workouts);
@@ -250,7 +251,7 @@
 		<a class="card hero" href="/replay/{latest.id}">
 			<div class="herolead">
 				<div class="herotop muted">
-					<span class="hicon">{SPORT_ICON[latest.sport]}</span>
+					<span class="hicon"><SportIcon sport={latest.sport} size={16} /></span>
 					Latest · {latest.workoutType || SPORT_LABEL[latest.sport]} · {fmtDate(latest.date)}
 				</div>
 				<div class="heropace mono">{fmtPace(latest.pace).replace('/500m', '')}<span class="perunit">/500m</span></div>
@@ -290,7 +291,7 @@
 					</div>
 				{/if}
 			</div>
-			<div class="herocta tag">replay ▶</div>
+			<div class="herocta tag"><Play size={12} /> Replay</div>
 		</a>
 	{/if}
 
@@ -322,7 +323,7 @@
 					<div class="pb">
 						<div class="pbdist mono">{pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`}</div>
 						<div class="pbtime mono">{fmtTime(pb.time, true)}</div>
-						<div class="pbsub muted">{fmtPace(pb.pace)} · {SPORT_ICON[pb.sport]} {fmtDate(pb.date)}</div>
+						<div class="pbsub muted"><SportIcon sport={pb.sport} size={12} /> {fmtPace(pb.pace)} · {fmtDate(pb.date)}</div>
 					</div>
 				{/each}
 			</div>
@@ -340,7 +341,7 @@
 				<tbody>
 					{#each bySport as s}
 						<tr>
-							<td>{SPORT_ICON[s.sport]} {SPORT_LABEL[s.sport]}</td>
+							<td class="sportcell"><SportIcon sport={s.sport} size={14} /> {SPORT_LABEL[s.sport]}</td>
 							<td>{s.sessions}</td>
 							<td>{fmtDistance(s.distance)}</td>
 							<td>{fmtTime(s.time)}</td>
@@ -385,16 +386,16 @@
 			{#if verdict}
 				<div class="verdict" class:good={verdict.better && !verdict.flat} class:bad={!verdict.better && !verdict.flat}>
 					{#if verdict.flat}
-						➡️ Holding steady — {metric === 'pace' ? 'pace' : metric === 'dps' ? 'distance/stroke' : metric} flat over {Math.round(verdict.days)} days
+						<MoveRight size={16} /> Holding steady — {metric === 'pace' ? 'pace' : metric === 'dps' ? 'distance/stroke' : metric} flat over {Math.round(verdict.days)} days
 					{:else if verdict.better}
-						📈 Improving — {metric === 'pace'
+						<TrendingUp size={16} /> Improving — {metric === 'pace'
 							? `${metricFmt(verdict.delta)} faster`
 							: metric === 'dps'
 								? `+${verdict.delta.toFixed(1)}m/stroke`
 								: `+${metricFmt(verdict.delta)}`}
 						over {Math.round(verdict.days)} days
 					{:else}
-						📉 Slipping — {metric === 'pace'
+						<TrendingDown size={16} /> Slipping — {metric === 'pace'
 							? `${metricFmt(verdict.delta)} slower`
 							: metric === 'dps'
 								? `−${verdict.delta.toFixed(1)}m/stroke`
@@ -497,7 +498,9 @@
 		gap: 0.4rem;
 	}
 	.hicon {
-		font-size: 1.1rem;
+		display: inline-flex;
+		align-items: center;
+		color: var(--accent);
 	}
 	.heropace {
 		font-size: 3.2rem;
@@ -539,6 +542,9 @@
 	}
 	.herocta {
 		align-self: start;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 	}
 	.stats {
 		display: grid;
@@ -585,6 +591,13 @@
 	}
 	.pbsub {
 		font-size: 0.72rem;
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	.sportcell :global(svg) {
+		vertical-align: -2px;
+		color: var(--accent);
 	}
 	.breakdown table {
 		width: 100%;
@@ -651,6 +664,9 @@
 		margin-bottom: 0.75rem;
 		background: var(--bg-elev-2);
 		color: var(--text);
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
 	}
 	.verdict.good {
 		background: rgba(63, 185, 80, 0.12);

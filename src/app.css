@@ -124,6 +124,12 @@ h3 {
 	padding: 1.5rem;
 }
 
+@media (max-width: 560px) {
+	.container {
+		padding: 1rem 0.85rem;
+	}
+}
+
 .muted {
 	color: var(--text-dim);
 }

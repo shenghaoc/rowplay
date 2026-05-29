@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { page } from '$app/stores';
 	import { Toaster } from 'svelte-sonner';
+	import { Activity } from '@lucide/svelte';
 
 	let { data, children } = $props();
 </script>
@@ -12,7 +13,7 @@
 <header class="topbar">
 	<div class="topbar-inner">
 		<a class="brand" href="/">
-			<span class="logo">🚣</span>
+			<span class="logo"><Activity size={20} strokeWidth={2.5} /></span>
 			<span class="name">rowplay</span>
 		</a>
 		<nav>
@@ -72,7 +73,9 @@
 		text-decoration: none;
 	}
 	.logo {
-		font-size: 1.3rem;
+		display: inline-flex;
+		align-items: center;
+		color: var(--accent);
 	}
 	nav a {
 		color: var(--text-dim);

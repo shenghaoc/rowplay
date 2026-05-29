@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { createVirtualizer } from '@tanstack/svelte-virtual';
-	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_ICON, SPORT_LABEL } from '$lib/format';
+	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
+	import SportIcon from '$components/SportIcon.svelte';
+	import { ChevronRight } from '@lucide/svelte';
 	import type { Workout } from '$lib/types';
 
 	interface Props {
@@ -40,7 +42,7 @@
 </script>
 
 {#snippet row(w: Workout)}
-	<div class="sport">{SPORT_ICON[w.sport]}</div>
+	<div class="sport" style:color="var(--accent)"><SportIcon sport={w.sport} size={22} /></div>
 	<div class="rowmain">
 		<div class="rowtop">
 			<strong>{w.workoutType || SPORT_LABEL[w.sport]}</strong>
@@ -52,9 +54,7 @@
 			{#if w.heartRateAvg}· {Math.round(w.heartRateAvg)} bpm{/if}
 		</div>
 	</div>
-	<div class="play">
-		<span class="tag">{w.hasStrokeData ? 'replay ▶' : 'replay (low-res)'}</span>
-	</div>
+	<div class="play"><ChevronRight size={18} /></div>
 {/snippet}
 
 {#if workouts.length === 0}
@@ -128,7 +128,9 @@
 		text-align: right;
 	}
 	.sport {
-		font-size: 1.6rem;
+		display: flex;
+		align-items: center;
+		flex-shrink: 0;
 	}
 	.rowmain {
 		flex: 1;
@@ -147,9 +149,22 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
+	.play {
+		display: flex;
+		align-items: center;
+		color: var(--text-dim);
+		flex-shrink: 0;
+	}
 	@media (max-width: 720px) {
-		.play {
-			display: none;
+		.vscroll {
+			height: 70vh;
+		}
+		.row {
+			gap: 0.7rem;
+		}
+		.rowmeta {
+			white-space: normal;
+			font-size: 0.8rem;
 		}
 	}
 </style>

@@ -16,7 +16,8 @@
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
 	import { toast } from 'svelte-sonner';
-	import { ArrowLeft, Play, Pause } from '@lucide/svelte';
+	import { ArrowLeft, Play, Pause, Ghost } from '@lucide/svelte';
+	import SportIcon from '$components/SportIcon.svelte';
 
 	let { data } = $props();
 	const detail: WorkoutDetail = data.detail;
@@ -221,7 +222,7 @@
 <div class="container">
 	<a href="/dashboard" class="back muted"><ArrowLeft size={14} /> Back to dashboard</a>
 	<div class="head">
-		<h1>{theme.icon} {detail.workoutType || SPORT_LABEL[detail.sport]}</h1>
+		<h1><span class="h1icon"><SportIcon sport={detail.sport} size={22} /></span> {detail.workoutType || SPORT_LABEL[detail.sport]}</h1>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
 			{#if !detail.hasStrokeData}<span class="tag">low-res replay</span>{/if}
@@ -231,7 +232,7 @@
 	<!-- Ghost / race selector -->
 	{#if candidates.length}
 		<div class="card ghostbar">
-			<label for="ghost">👻 Race a past {SPORT_LABEL[detail.sport]} session:</label>
+			<label for="ghost"><Ghost size={15} /> Race a past {SPORT_LABEL[detail.sport]} session:</label>
 			<select id="ghost" value={ghostId} onchange={selectGhost}>
 				<option value="">None</option>
 				{#each candidates as c}
@@ -258,7 +259,7 @@
 
 	<!-- Transport controls -->
 	<div class="card controls">
-		<button class="btn play" onclick={() => engine?.toggle()}>
+		<button class="btn play" onclick={() => engine?.toggle()} aria-label={playing ? 'Pause' : 'Play'}>
 			{#if playing}<Pause size={16} /> Pause{:else}<Play size={16} /> Play{/if}
 		</button>
 		<div class="clock mono">
@@ -272,6 +273,7 @@
 			step="0.1"
 			value={frame.t}
 			oninput={onScrub}
+			aria-label="Seek"
 		/>
 		<div class="dist mono">{fmtDistance(frame.d)}</div>
 		<div class="speeds">
@@ -349,7 +351,7 @@
 				<div class="tv mono" class:good={tech.fade <= 0} class:bad={tech.fade > 1.5}>
 					{tech.fade > 0 ? '+' : ''}{tech.fade.toFixed(1)}<span class="tu">%</span>
 				</div>
-				<div class="tl muted">fade <span class="hint">({tech.fade <= 0 ? 'negative split 💪' : 'slowed down'})</span></div>
+				<div class="tl muted">fade <span class="hint">({tech.fade <= 0 ? 'negative split' : 'slowed down'})</span></div>
 			</div>
 		</div>
 	</div>
@@ -421,7 +423,7 @@
 					<div class="ssv mono" class:good={intervals.fade <= 0} class:bad={intervals.fade > 2}>
 						{intervals.fade > 0 ? '+' : ''}{intervals.fade.toFixed(1)}%
 					</div>
-					<div class="ssl muted">set fade <span class="hint">({intervals.fade <= 0 ? 'negative split 💪' : 'faded'})</span></div>
+					<div class="ssl muted">set fade <span class="hint">({intervals.fade <= 0 ? 'negative split' : 'faded'})</span></div>
 				</div>
 				<div class="ss">
 					<div class="ssv mono">{fmtPace(intervals.fastest).replace('/500m', '')} → {fmtPace(intervals.slowest).replace('/500m', '')}</div>
@@ -493,6 +495,13 @@
 	.head h1 {
 		margin: 0;
 		font-size: 1.5rem;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.h1icon {
+		display: inline-flex;
+		color: var(--accent);
 	}
 	.summary {
 		font-size: 0.95rem;
@@ -511,6 +520,9 @@
 	.ghostbar label {
 		font-size: 0.9rem;
 		font-weight: 600;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
 	}
 	.ghostbar select {
 		background: var(--bg-elev-2);
@@ -801,6 +813,48 @@
 		}
 		.repmeta {
 			font-size: 0.72rem;
+		}
+		/* Transport: play + clock on row 1, scrub full width on row 2,
+		   dist + speeds on row 3. */
+		.controls {
+			display: grid;
+			grid-template-columns: auto 1fr;
+			gap: 0.6rem 0.75rem;
+			align-items: center;
+		}
+		.play {
+			min-width: 0;
+		}
+		.clock {
+			min-width: 0;
+			justify-self: end;
+			font-size: 1rem;
+		}
+		.scrub {
+			grid-column: 1 / -1;
+			min-width: 0;
+			width: 100%;
+		}
+		.dist {
+			min-width: 0;
+			text-align: left;
+		}
+		.speeds {
+			justify-self: end;
+		}
+		.head h1 {
+			font-size: 1.25rem;
+		}
+		.summary {
+			font-size: 0.85rem;
+		}
+	}
+	@media (max-width: 420px) {
+		.gauges {
+			grid-template-columns: repeat(2, 1fr);
+		}
+		.sbtn {
+			padding: 0.3rem 0.4rem;
 		}
 	}
 </style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PlayCircle, LineChart, Zap } from '@lucide/svelte';
 	let { data } = $props();
 </script>
 
@@ -28,17 +29,17 @@
 
 	<div class="features">
 		<div class="card">
-			<div class="ficon">▶️</div>
+			<div class="ficon"><PlayCircle size={24} /></div>
 			<h3>Real-time replay</h3>
-			<p class="muted">Watch the avatar race the course while gauges and charts play back in sync.</p>
+			<p class="muted">Watch your pace race the course while gauges and charts play back in sync.</p>
 		</div>
 		<div class="card">
-			<div class="ficon">📊</div>
+			<div class="ficon"><LineChart size={24} /></div>
 			<h3>Split analytics</h3>
 			<p class="muted">Pace, stroke rate, power and HR over time — across all three machines.</p>
 		</div>
 		<div class="card">
-			<div class="ficon">⚡</div>
+			<div class="ficon"><Zap size={24} /></div>
 			<h3>On the edge</h3>
 			<p class="muted">Served from Cloudflare with cached stroke data for instant replays.</p>
 		</div>
@@ -75,7 +76,8 @@
 		gap: 1rem;
 	}
 	.ficon {
-		font-size: 1.5rem;
+		color: var(--accent);
+		margin-bottom: 0.25rem;
 	}
 	.features h3 {
 		margin: 0.5rem 0 0.25rem;

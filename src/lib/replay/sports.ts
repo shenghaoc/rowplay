@@ -2,9 +2,6 @@ import type { Sport } from '../types';
 
 export interface SportTheme {
 	label: string;
-	icon: string;
-	/** Avatar glyph drawn on the course. */
-	avatar: string;
 	/** Course accent colour. */
 	color: string;
 	/** Background gradient for the course strip. */
@@ -17,8 +14,6 @@ export interface SportTheme {
 export const SPORT_THEME: Record<Sport, SportTheme> = {
 	rower: {
 		label: 'RowErg',
-		icon: '🚣',
-		avatar: '🛶',
 		color: '#2f81f7',
 		courseTop: '#0b2a4a',
 		courseBottom: '#08406b',
@@ -26,8 +21,6 @@ export const SPORT_THEME: Record<Sport, SportTheme> = {
 	},
 	skierg: {
 		label: 'SkiErg',
-		icon: '⛷️',
-		avatar: '🎿',
 		color: '#56d4ff',
 		courseTop: '#1b2a3a',
 		courseBottom: '#2a4a66',
@@ -35,8 +28,6 @@ export const SPORT_THEME: Record<Sport, SportTheme> = {
 	},
 	bike: {
 		label: 'BikeErg',
-		icon: '🚴',
-		avatar: '🚲',
 		color: '#3fb950',
 		courseTop: '#13301a',
 		courseBottom: '#1c4a26',
