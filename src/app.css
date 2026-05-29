@@ -1,3 +1,23 @@
+@import 'tailwindcss';
+
+/* Bridge the existing design tokens into Tailwind v4 so utilities
+   (bg-elev, text-accent, etc.) and the hand-written CSS share one palette. */
+@theme {
+	--color-bg: #0d1117;
+	--color-elev: #161b22;
+	--color-elev-2: #1c2230;
+	--color-border: #2a3240;
+	--color-text: #e6edf3;
+	--color-text-dim: #8b949e;
+	--color-accent: #2f81f7;
+	--color-accent-2: #3fb950;
+	--color-warn: #d29922;
+	--color-danger: #f85149;
+	--color-hr: #f778ba;
+	--color-power: #d2a8ff;
+	--font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+}
+
 :root {
 	--bg: #0d1117;
 	--bg-elev: #161b22;

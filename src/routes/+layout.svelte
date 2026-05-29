@@ -1,9 +1,13 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/stores';
+	import { Toaster } from 'svelte-sonner';
 
 	let { data, children } = $props();
 </script>
+
+<Toaster theme="dark" position="bottom-right" richColors />
+
 
 <header class="topbar">
 	<div class="topbar-inner">

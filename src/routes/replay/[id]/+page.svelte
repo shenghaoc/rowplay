@@ -15,6 +15,8 @@
 	} from '$lib/analytics';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
+	import { toast } from 'svelte-sonner';
+	import { ArrowLeft, Play, Pause } from '@lucide/svelte';
 
 	let { data } = $props();
 	const detail: WorkoutDetail = data.detail;
@@ -111,11 +113,20 @@
 		loadingGhost = true;
 		try {
 			const res = await fetch(`/api/workouts/${id}`);
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const d = (await res.json()) as WorkoutDetail;
 			ghostDetail = d;
 			ghostStrokes = d.strokes;
 			renderer?.resize(courseWrap.clientWidth, 190);
 			renderCurrent();
+			toast.success(`Racing your ${fmtDate(d.date)} session`, {
+				description: `${fmtDistance(d.distance)} · ${fmtPace(d.pace)}`
+			});
+		} catch (e) {
+			ghostId = '';
+			toast.error('Could not load that session', {
+				description: e instanceof Error ? e.message : 'Please try again.'
+			});
 		} finally {
 			loadingGhost = false;
 		}
@@ -208,7 +219,7 @@
 <svelte:head><title>Replay · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
 
 <div class="container">
-	<a href="/dashboard" class="back muted">← Back to dashboard</a>
+	<a href="/dashboard" class="back muted"><ArrowLeft size={14} /> Back to dashboard</a>
 	<div class="head">
 		<h1>{theme.icon} {detail.workoutType || SPORT_LABEL[detail.sport]}</h1>
 		<div class="summary mono muted">
@@ -248,7 +259,7 @@
 	<!-- Transport controls -->
 	<div class="card controls">
 		<button class="btn play" onclick={() => engine?.toggle()}>
-			{playing ? '⏸ Pause' : '▶ Play'}
+			{#if playing}<Pause size={16} /> Pause{:else}<Play size={16} /> Play{/if}
 		</button>
 		<div class="clock mono">
 			{fmtTime(frame.t, true)} <span class="muted">/ {fmtTime(detail.time)}</span>
@@ -465,7 +476,9 @@
 
 <style>
 	.back {
-		display: inline-block;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		font-size: 0.9rem;
 		margin-bottom: 0.75rem;
 	}
