@@ -28,6 +28,7 @@
   "dependencies": {
     "@lucide/svelte": "^1.17.0",
     "@tailwindcss/vite": "^4.3.0",
+    "@tanstack/svelte-virtual": "^3.13.26",
     "bits-ui": "^2.18.1",
     "clsx": "^2.1.1",
     "svelte-sonner": "^1.1.1",

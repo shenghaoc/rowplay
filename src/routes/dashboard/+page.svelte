@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
+	import WorkoutList from '$components/WorkoutList.svelte';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_ICON, SPORT_LABEL } from '$lib/format';
 	import {
 		distanceBand,
@@ -414,30 +415,7 @@
 		</div>
 	{/if}
 
-	<div class="list">
-		{#each filtered as w (w.id)}
-			<a class="card row" href="/replay/{w.id}">
-				<div class="sport">{SPORT_ICON[w.sport]}</div>
-				<div class="rowmain">
-					<div class="rowtop">
-						<strong>{w.workoutType || SPORT_LABEL[w.sport]}</strong>
-						<span class="muted">{fmtDate(w.date)}</span>
-					</div>
-					<div class="rowmeta mono muted">
-						{fmtDistance(w.distance)} · {fmtTime(w.time, true)} · {fmtPace(w.pace)}
-						{#if w.strokeRate}· {w.strokeRate} spm{/if}
-						{#if w.heartRateAvg}· {Math.round(w.heartRateAvg)} bpm{/if}
-					</div>
-				</div>
-				<div class="play">
-					<span class="tag">{w.hasStrokeData ? 'replay ▶' : 'replay (low-res)'}</span>
-				</div>
-			</a>
-		{/each}
-		{#if filtered.length === 0}
-			<p class="muted">No workouts for this filter.</p>
-		{/if}
-	</div>
+	<WorkoutList workouts={filtered} />
 </div>
 
 <style>
@@ -682,44 +660,9 @@
 		background: rgba(210, 153, 34, 0.12);
 		color: var(--warn);
 	}
-	.list {
-		display: grid;
-		gap: 0.6rem;
-	}
-	.row {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		color: var(--text);
-		transition: border-color 0.15s ease;
-	}
-	.row:hover {
-		text-decoration: none;
-		border-color: var(--accent);
-	}
-	.sport {
-		font-size: 1.6rem;
-	}
-	.rowmain {
-		flex: 1;
-		min-width: 0;
-	}
-	.rowtop {
-		display: flex;
-		gap: 0.6rem;
-		align-items: baseline;
-		flex-wrap: wrap;
-	}
-	.rowmeta {
-		font-size: 0.85rem;
-		margin-top: 0.2rem;
-	}
 	@media (max-width: 720px) {
 		.stats {
 			grid-template-columns: repeat(2, 1fr);
-		}
-		.play {
-			display: none;
 		}
 		.hero {
 			grid-template-columns: 1fr;
