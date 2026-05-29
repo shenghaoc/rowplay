@@ -6,5 +6,5 @@ export const GET: RequestHandler = async (event) => {
 	const id = Number(event.params.id);
 	if (!Number.isFinite(id)) throw error(400, 'Invalid workout id.');
 	const detail = await loadWorkoutDetail(event, id);
-	return json(detail);
+	return json(detail, { headers: { 'cache-control': 'private, no-store' } });
 };

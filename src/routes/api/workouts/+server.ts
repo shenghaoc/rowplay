@@ -4,5 +4,9 @@ import { loadWorkouts } from '$lib/server/data';
 
 export const GET: RequestHandler = async (event) => {
 	const workouts = await loadWorkouts(event);
-	return json({ workouts, demo: event.locals.demo });
+	// Personal data — never let an intermediary or the browser cache it.
+	return json(
+		{ workouts, demo: event.locals.demo },
+		{ headers: { 'cache-control': 'private, no-store' } }
+	);
 };

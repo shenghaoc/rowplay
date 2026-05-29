@@ -13,8 +13,21 @@ export const GET: RequestHandler = async (event) => {
 	const cfg = getConfig(event);
 	const url = event.url;
 
+	// Whitelist known OAuth2 error codes rather than reflecting arbitrary input.
 	const denied = url.searchParams.get('error');
-	if (denied) throw error(400, `Authorization failed: ${denied}`);
+	if (denied) {
+		const known = new Set([
+			'access_denied',
+			'invalid_request',
+			'unauthorized_client',
+			'unsupported_response_type',
+			'invalid_scope',
+			'server_error',
+			'temporarily_unavailable'
+		]);
+		const code = known.has(denied) ? denied : 'unknown_error';
+		throw error(400, `Authorization failed (${code}). Please try logging in again.`);
+	}
 
 	const code = url.searchParams.get('code');
 	const state = url.searchParams.get('state');

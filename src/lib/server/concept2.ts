@@ -42,7 +42,8 @@ async function tokenRequest(cfg: Concept2Config, body: Record<string, string>): 
 		body: new URLSearchParams(body)
 	});
 	if (!res.ok) {
-		throw new Error(`Concept2 token request failed (${res.status}): ${await res.text()}`);
+		// Don't include the response body — it can echo client_id/secret hints.
+		throw new Error(`Concept2 token request failed (${res.status})`);
 	}
 	const json = (await res.json()) as TokenResponse;
 	return {
@@ -87,8 +88,11 @@ export async function fetchMe(cfg: Concept2Config, accessToken: string): Promise
 	return { id: json.data.id, username: json.data.username, firstName: json.data.first_name };
 }
 
+/** Explicitly pin the API version, as the Concept2 docs recommend. */
+const ACCEPT = 'application/vnd.c2logbook.v1+json';
+
 function authHeader(token: string) {
-	return { authorization: `Bearer ${token}`, accept: 'application/json' };
+	return { authorization: `Bearer ${token}`, accept: ACCEPT };
 }
 
 /**
