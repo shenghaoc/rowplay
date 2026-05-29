@@ -25,7 +25,7 @@
 		{
 			"binding": "DB",
 			"database_name": "rowplay",
-			"database_id": "REPLACE_WITH_D1_DATABASE_ID"
+			"database_id": "aa147782-70a5-46bb-a5fe-e286c7ea851e"
 		}
 	],
 	// Non-secret config. Secrets (CONCEPT2_CLIENT_SECRET, SESSION_SECRET) are set
