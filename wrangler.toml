@@ -1,0 +1,27 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "rowplay"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+# --- KV: short-lived sessions (OAuth tokens, login state) ---
+# Create with:  wrangler kv namespace create SESSIONS
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# --- D1: cached workouts + per-stroke detail so replays are instant ---
+# Create with:  wrangler d1 create rowplay
+[[d1_databases]]
+binding = "DB"
+database_name = "rowplay"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Non-secret config. Secrets (CONCEPT2_CLIENT_SECRET, SESSION_SECRET) are set with:
+#   wrangler pages secret put CONCEPT2_CLIENT_SECRET
+[vars]
+CONCEPT2_CLIENT_ID = ""
+# Use "https://log.concept2.com" for production, "https://log-dev.concept2.com" for the dev sandbox.
+CONCEPT2_BASE_URL = "https://log.concept2.com"
+# Public origin of this app, used to build the OAuth redirect URI.
+PUBLIC_APP_URL = "http://localhost:5173"

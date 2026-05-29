@@ -1,0 +1,13 @@
+# Copy to `.dev.vars` for local development (git-ignored).
+# Register an app at https://log.concept2.com/developers/keys to get these.
+#
+# Leave CONCEPT2_CLIENT_ID blank to run rowplay in DEMO MODE (mock data, no login needed).
+
+CONCEPT2_CLIENT_ID=""
+CONCEPT2_CLIENT_SECRET=""
+CONCEPT2_BASE_URL="https://log.concept2.com"
+PUBLIC_APP_URL="http://localhost:5173"
+
+# Random string used to sign session cookies. Generate one, e.g.:
+#   node -e "console.log(crypto.randomUUID()+crypto.randomUUID())"
+SESSION_SECRET=""
