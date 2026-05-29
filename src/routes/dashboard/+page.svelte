@@ -2,15 +2,32 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_ICON, SPORT_LABEL } from '$lib/format';
-	import { distancePBs, distancePerStroke, summariseBySport } from '$lib/analytics';
+	import { distancePBs, distancePerStroke, linearTrend, summariseBySport } from '$lib/analytics';
 	import type { Sport, Workout } from '$lib/types';
 
 	let { data } = $props();
 	const workouts = $derived<Workout[]>(data.workouts);
 
 	let sportFilter = $state<Sport | 'all'>('all');
-	type Metric = 'pace' | 'distance' | 'spm';
+	type Metric = 'pace' | 'distance' | 'spm' | 'dps';
 	let metric = $state<Metric>('pace');
+
+	function metricValue(w: Workout, m: Metric): number | null {
+		switch (m) {
+			case 'pace':
+				return w.pace > 0 ? w.pace : null;
+			case 'distance':
+				return w.distance;
+			case 'spm':
+				return w.strokeRate ?? null;
+			case 'dps':
+				return w.strokeRate ? distancePerStroke(w.pace, w.strokeRate) : null;
+		}
+	}
+
+	function workoutEpoch(w: Workout): number {
+		return new Date(w.date.replace(' ', 'T')).getTime();
+	}
 
 	const filtered = $derived(
 		sportFilter === 'all' ? workouts : workouts.filter((w) => w.sport === sportFilter)
@@ -43,31 +60,88 @@
 	const bySport = $derived(summariseBySport(filtered));
 	const pbs = $derived(distancePBs(filtered));
 
-	// Trend chart (oldest -> newest), metric switchable.
+	// Cross-session trend, plotted against real dates so spacing reflects how
+	// often you actually train. For pace/DPS we restrict to one sport (mixing
+	// sports muddies the metric) — default to the dominant sport.
+	const dominantSport = $derived.by((): Sport => {
+		const counts = new Map<Sport, number>();
+		for (const w of filtered) counts.set(w.sport, (counts.get(w.sport) ?? 0) + 1);
+		let best: Sport = 'rower';
+		let n = -1;
+		for (const [s, c] of counts) if (c > n) { n = c; best = s; }
+		return best;
+	});
+
+	// Lower pace = better, so improving means the metric goes DOWN for pace.
+	const lowerIsBetter = $derived(metric === 'pace');
+
+	const trendPoints = $derived.by(() => {
+		// Pace and DPS are sport-specific; distance/rate can span sports.
+		const base =
+			metric === 'pace' || metric === 'dps'
+				? filtered.filter((w) => w.sport === dominantSport)
+				: filtered;
+		return base
+			.map((w) => ({ x: workoutEpoch(w), y: metricValue(w, metric) }))
+			.filter((p): p is { x: number; y: number } => p.y != null && isFinite(p.x))
+			.sort((a, b) => a.x - b.x);
+	});
+
+	const fit = $derived(linearTrend(trendPoints));
+
+	// Verdict over the visible span.
+	const verdict = $derived.by(() => {
+		if (!fit || trendPoints.length < 3) return null;
+		const span = trendPoints[trendPoints.length - 1].x - trendPoints[0].x;
+		const days = Math.max(1, span / 86_400_000);
+		const range = Math.max(...trendPoints.map((p) => p.y)) - Math.min(...trendPoints.map((p) => p.y));
+		// "Flat" if the modelled change is small relative to session-to-session spread.
+		const flat = range === 0 || Math.abs(fit.delta) < range * 0.15;
+		const better = lowerIsBetter ? fit.delta < 0 : fit.delta > 0;
+		return { flat, better, delta: Math.abs(fit.delta), days, sport: dominantSport };
+	});
+
 	const trend = $derived.by((): uPlot.AlignedData => {
-		const ordered = [...filtered].reverse();
-		const xs = ordered.map((_, i) => i);
-		const ys = ordered.map((w) =>
-			metric === 'pace' ? w.pace : metric === 'distance' ? w.distance : (w.strokeRate ?? 0)
-		);
-		return [xs, ys];
+		const xs = trendPoints.map((p) => p.x / 1000); // uPlot time scale wants seconds
+		const ys = trendPoints.map((p) => p.y);
+		// Second series = the fit line (same x, linearly interpolated y endpoints).
+		let fitY: (number | null)[] = ys.map(() => null);
+		if (fit && trendPoints.length >= 2) {
+			const x0 = trendPoints[0].x;
+			const x1 = trendPoints[trendPoints.length - 1].x;
+			const span = x1 - x0 || 1;
+			fitY = trendPoints.map((p) => fit.y0 + ((fit.y1 - fit.y0) * (p.x - x0)) / span);
+		}
+		return [xs, ys, fitY];
+	});
+
+	const metricFmt = $derived((v: number) => {
+		switch (metric) {
+			case 'pace':
+				return fmtPace(v).replace('/500m', '');
+			case 'distance':
+				return fmtDistance(v);
+			case 'dps':
+				return `${v.toFixed(1)}m`;
+			default:
+				return `${Math.round(v)}`;
+		}
 	});
 
 	const trendOptions = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
-		const fmt =
-			metric === 'pace'
-				? (v: number) => fmtPace(v).replace('/500m', '')
-				: metric === 'distance'
-					? (v: number) => fmtDistance(v)
-					: (v: number) => `${Math.round(v)}`;
-		const color = metric === 'pace' ? '#2f81f7' : metric === 'distance' ? '#3fb950' : '#d2a8ff';
+		const color =
+			metric === 'pace' ? '#2f81f7' : metric === 'distance' ? '#3fb950' : metric === 'dps' ? '#56d4ff' : '#d2a8ff';
 		return {
-			scales: { x: { time: false }, y: metric === 'pace' ? { dir: -1 } : {} },
+			scales: { x: { time: true }, y: metric === 'pace' ? { dir: -1 } : {} },
 			axes: [
-				{ stroke: '#8b949e', show: false },
-				{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 56, values: (_u, sp) => sp.map(fmt) }
+				{ stroke: '#8b949e', grid: { stroke: '#1c2230' } },
+				{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 56, values: (_u, sp) => sp.map(metricFmt) }
 			],
-			series: [{}, { label: metric, stroke: color, width: 2, points: { show: true, size: 5 } }],
+			series: [
+				{},
+				{ label: metric, stroke: color, width: 2, points: { show: true, size: 5 } },
+				{ label: 'trend', stroke: '#8b949e', width: 1.5, dash: [6, 4], points: { show: false } }
+			],
 			legend: { show: false }
 		};
 	});
@@ -75,6 +149,7 @@
 	const sports: (Sport | 'all')[] = ['all', 'rower', 'skierg', 'bike'];
 	const metrics: { id: Metric; label: string }[] = [
 		{ id: 'pace', label: 'Pace' },
+		{ id: 'dps', label: 'Dist/stroke' },
 		{ id: 'distance', label: 'Distance' },
 		{ id: 'spm', label: 'Rate' }
 	];
@@ -201,17 +276,45 @@
 	{/if}
 
 	<!-- Trend -->
-	{#if filtered.length > 1}
+	{#if trendPoints.length > 1}
 		<div class="card chartcard">
 			<div class="trendhead">
-				<div class="muted label">Trend (oldest → newest)</div>
+				<div class="label">
+					Trend over time
+					{#if metric === 'pace' || metric === 'dps'}
+						<span class="muted">· {SPORT_LABEL[dominantSport]} only</span>
+					{/if}
+				</div>
 				<div class="metrics">
 					{#each metrics as m}
 						<button class="mchip" class:on={metric === m.id} onclick={() => (metric = m.id)}>{m.label}</button>
 					{/each}
 				</div>
 			</div>
-			<UPlotChart data={trend} options={trendOptions} height={180} />
+
+			{#if verdict}
+				<div class="verdict" class:good={verdict.better && !verdict.flat} class:bad={!verdict.better && !verdict.flat}>
+					{#if verdict.flat}
+						➡️ Holding steady — {metric === 'pace' ? 'pace' : metric === 'dps' ? 'distance/stroke' : metric} flat over {Math.round(verdict.days)} days
+					{:else if verdict.better}
+						📈 Improving — {metric === 'pace'
+							? `${metricFmt(verdict.delta)} faster`
+							: metric === 'dps'
+								? `+${verdict.delta.toFixed(1)}m/stroke`
+								: `+${metricFmt(verdict.delta)}`}
+						over {Math.round(verdict.days)} days
+					{:else}
+						📉 Slipping — {metric === 'pace'
+							? `${metricFmt(verdict.delta)} slower`
+							: metric === 'dps'
+								? `−${verdict.delta.toFixed(1)}m/stroke`
+								: `−${metricFmt(verdict.delta)}`}
+						over {Math.round(verdict.days)} days
+					{/if}
+				</div>
+			{/if}
+
+			<UPlotChart data={trend} options={trendOptions} height={190} />
 		</div>
 	{/if}
 
@@ -407,6 +510,23 @@
 		margin-bottom: 0.5rem;
 		flex-wrap: wrap;
 		gap: 0.5rem;
+	}
+	.verdict {
+		font-size: 0.95rem;
+		font-weight: 700;
+		padding: 0.5rem 0.8rem;
+		border-radius: 8px;
+		margin-bottom: 0.75rem;
+		background: var(--bg-elev-2);
+		color: var(--text);
+	}
+	.verdict.good {
+		background: rgba(63, 185, 80, 0.12);
+		color: var(--accent-2);
+	}
+	.verdict.bad {
+		background: rgba(210, 153, 34, 0.12);
+		color: var(--warn);
 	}
 	.list {
 		display: grid;

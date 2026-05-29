@@ -5,6 +5,46 @@ import type { Sport, Stroke, Workout } from './types';
 // and easy to unit test.
 // ---------------------------------------------------------------------------
 
+export interface TrendFit {
+	/** Slope in y-units per day. */
+	slopePerDay: number;
+	/** Predicted y at the first and last x (epoch ms) — the fit line endpoints. */
+	y0: number;
+	y1: number;
+	/** Total change implied by the fit across the whole span. */
+	delta: number;
+	n: number;
+}
+
+/**
+ * Ordinary least-squares fit of `points` (x = epoch ms, y = metric). Returns
+ * null if there aren't enough points or there's no time span. Used to draw a
+ * trend line and produce an "improving / flat / slowing" verdict.
+ */
+export function linearTrend(points: { x: number; y: number }[]): TrendFit | null {
+	const n = points.length;
+	if (n < 2) return null;
+	const xMin = Math.min(...points.map((p) => p.x));
+	// Work in days from the first point to keep the slope human-readable.
+	const xs = points.map((p) => (p.x - xMin) / 86_400_000);
+	const ys = points.map((p) => p.y);
+	const mx = xs.reduce((a, b) => a + b, 0) / n;
+	const my = ys.reduce((a, b) => a + b, 0) / n;
+	let num = 0;
+	let den = 0;
+	for (let i = 0; i < n; i++) {
+		num += (xs[i] - mx) * (ys[i] - my);
+		den += (xs[i] - mx) ** 2;
+	}
+	if (den === 0) return null; // all on the same day
+	const slope = num / den;
+	const intercept = my - slope * mx;
+	const xLast = Math.max(...xs);
+	const y0 = intercept;
+	const y1 = intercept + slope * xLast;
+	return { slopePerDay: slope, y0, y1, delta: y1 - y0, n };
+}
+
 export interface SportSummary {
 	sport: Sport;
 	sessions: number;
