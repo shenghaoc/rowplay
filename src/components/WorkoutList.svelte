@@ -4,6 +4,7 @@
 	import SportIcon from '$components/SportIcon.svelte';
 	import { ChevronRight } from '@lucide/svelte';
 	import type { Workout } from '$lib/types';
+	import { get } from 'svelte/store';
 
 	interface Props {
 		workouts: Workout[];
@@ -29,10 +30,15 @@
 	});
 
 	$effect(() => {
-		// Keep the virtualizer's count in sync with the (filtered) list length.
-		$rowVirtualizer.setOptions({
-			count: workouts.length,
-			getScrollElement: () => scrollEl ?? null,
+		// Keep the virtualizer's count + scroll element in sync with the (filtered)
+		// list. Read the instance with get() instead of $rowVirtualizer so the effect
+		// does NOT subscribe to the store it then writes via setOptions — otherwise
+		// each setOptions retriggers the effect (effect_update_depth_exceeded).
+		const count = workouts.length;
+		const el = scrollEl;
+		get(rowVirtualizer).setOptions({
+			count,
+			getScrollElement: () => el ?? null,
 			estimateSize: () => ROW,
 			overscan: 8
 		});
