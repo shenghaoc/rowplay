@@ -1,0 +1,69 @@
+# AGENTS.md
+
+## Project
+
+**rowplay** is a SvelteKit / Svelte 5 app: Concept2 logbook analytics plus a
+real-time workout replay, deployed to **Cloudflare Workers** (static assets +
+Worker via `@sveltejs/adapter-cloudflare`).
+
+All server logic runs in SvelteKit endpoints on the Workers runtime. There is no
+separate backend: the app talks to the Concept2 Logbook API over OAuth2
+(server-side only) and caches hydrated workouts in Cloudflare D1.
+
+## Key commands
+
+All commands use **npm** (lockfile: `package-lock.json`). See `package.json`
+`"scripts"` for the full list.
+
+| Task         | Command                                                      |
+| ------------ | ------------------------------------------------------------ |
+| Install deps | `npm install`                                                |
+| Dev server   | `npm run dev` (serves at `http://localhost:5173`)            |
+| Type check   | `npm run check` (`svelte-kit sync` + `svelte-check`)         |
+| Build        | `npm run build` (outputs `.svelte-kit/cloudflare`)           |
+| Preview      | `npm run preview` (build + `wrangler dev`, the real runtime) |
+| Deploy       | `npm run deploy` (build + `wrangler deploy`)                 |
+| D1 migrate   | `npm run db:migrate` (remote) / `db:migrate:local`           |
+
+## Architecture
+
+- `src/lib/server/` — server-only code: `concept2.ts` (OAuth + API client with
+  token refresh), `session.ts` (KV-backed sessions), `db.ts` (D1 cache),
+  `data.ts` (the demo/auth-aware data loader), `config.ts`.
+- `src/lib/replay/` — `engine.ts` (pure rAF clock + `sampleAt` interpolation),
+  `renderer.ts` (canvas course + ghost lane), `sports.ts` (per-sport theming).
+- `src/lib/analytics.ts` — pure analysis functions (DPS, efficiency, HR zones,
+  power curve, distance bands, linear trend). No DOM; safe on server or client.
+- `src/routes/` — `auth/` (OAuth login/callback/logout), `api/` (JSON
+  endpoints), `dashboard/`, `replay/[id]/`.
+- Charts use **uPlot**; styling is hand-written CSS in `src/app.css` and
+  scoped component `<style>` blocks (no Tailwind).
+
+## Non-obvious caveats
+
+- **Config is `wrangler.jsonc`**, not TOML. Bindings: `ASSETS` (static assets),
+  `SESSIONS` (KV), `DB` (D1). KV/D1 ids are placeholders — fill them before any
+  non-demo deploy or the Worker errors on the missing bindings at startup.
+- **Demo mode**: when `CONCEPT2_CLIENT_ID` is unset, the app serves deterministic
+  mock data (`src/lib/mockData.ts`) and skips auth — so `npm run dev` works with
+  zero configuration. Real data needs the OAuth env vars + KV/D1.
+- **Secrets** (`CONCEPT2_CLIENT_SECRET`, `SESSION_SECRET`) are set via
+  `wrangler secret put`, never committed. Local dev reads them from `.dev.vars`.
+- **Verify on the real runtime**: `vite dev` does not provide the Workers asset
+  server or KV/D1 bindings. Use `wrangler dev` (via `npm run preview`) to test
+  routing, bindings, and that `_worker.js` / sourcemaps are not served publicly.
+- **Stroke-data units** (handled in `concept2.ts > mapStrokes`): stroke pace `p`
+  is per-500m for rower/skierg but **per-1000m for the bike**; and for interval
+  workouts `t`/`d` **restart at 0 each interval**. Both are normalised on read —
+  keep that in mind before changing the parser.
+- `npm run build` runs `scripts/postbuild.mjs`, which appends `_worker.js.map`
+  to the adapter's `.assetsignore` (defensive; adapter 7 no longer emits it).
+- A `tsconfig.json` warning about `.svelte-kit/tsconfig.json` before the first
+  `svelte-kit sync` is harmless — it resolves after `npm run check` or dev runs.
+
+## Svelte conventions
+
+This is a runes-mode Svelte 5 project. Follow the bundled skills in
+`.agents/skills/` (`svelte-core-bestpractices`, `svelte-code-writer`): prefer
+`$state`/`$derived` over effects, keyed `{#each}`, `onclick={...}` handlers, and
+snippets over slots.

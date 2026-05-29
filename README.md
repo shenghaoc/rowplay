@@ -68,8 +68,8 @@ Open `/dashboard` and click any workout to watch the replay.
 
 ```bash
 # one-time resource creation
-wrangler kv namespace create SESSIONS      # paste id into wrangler.toml
-wrangler d1 create rowplay                 # paste database_id into wrangler.toml
+wrangler kv namespace create SESSIONS      # paste id into wrangler.jsonc
+wrangler d1 create rowplay                 # paste database_id into wrangler.jsonc
 npm run db:migrate                         # apply migrations to remote D1
 
 # secrets (never commit these)
@@ -81,7 +81,7 @@ npm run deploy
 ```
 
 Set `CONCEPT2_CLIENT_ID` and `PUBLIC_APP_URL` (your production origin) in the
-`[vars]` block of `wrangler.toml`, and add the production
+`vars` block of `wrangler.jsonc`, and add the production
 `<origin>/auth/callback` to your Concept2 app's allowed redirect URIs.
 
 This app deploys to **`https://rowplay.shenghaoc.workers.dev`**, so the
