@@ -143,8 +143,10 @@ export class Concept2Client {
 			}
 		}
 		const splits = mapSplits(detail.data);
+		// `intervals` in the API means work reps with rest between them.
+		const isInterval = !!detail.data.workout?.intervals?.length;
 		if (strokes.length === 0) strokes = synthStrokes(base, splits);
-		return { ...base, strokes, splits };
+		return { ...base, strokes, splits, isInterval };
 	}
 }
 

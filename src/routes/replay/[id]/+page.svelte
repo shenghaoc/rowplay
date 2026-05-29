@@ -194,6 +194,10 @@
 
 	// ---- Interval / rep breakdown (null for single-segment pieces) ----
 	const intervals = intervalBreakdown(detail.splits, strokes);
+	// "Interval breakdown" (reps with rest) vs "Splits" (even splits of a
+	// continuous piece) — same comparison, honest label.
+	const segLabel = detail.isInterval ? 'Interval breakdown' : 'Split breakdown';
+	const segUnit = detail.isInterval ? 'reps' : 'splits';
 	// Bar widths for the per-rep pace comparison, scaled to the slowest rep.
 	function repBarPct(pace: number): number {
 		if (!intervals || intervals.slowest <= 0) return 0;
@@ -388,15 +392,15 @@
 		{/if}
 	</div>
 
-	<!-- Interval / rep breakdown -->
+	<!-- Interval / split breakdown -->
 	{#if intervals}
 		<div class="card intervals">
-			<div class="ctitle muted">Interval breakdown — {intervals.reps.length} reps</div>
+			<div class="ctitle muted">{segLabel} — {intervals.reps.length} {segUnit}</div>
 
 			<div class="setstats">
 				<div class="ss">
 					<div class="ssv mono">{fmtPace(intervals.avgPace).replace('/500m', '')}</div>
-					<div class="ssl muted">avg rep pace</div>
+					<div class="ssl muted">avg {detail.isInterval ? 'rep' : 'split'} pace</div>
 				</div>
 				<div class="ss">
 					<div class="ssv mono">{intervals.consistency.toFixed(1)}%</div>

@@ -17,6 +17,7 @@ interface Spec {
 	baseHr: number;
 	workoutType: string;
 	comments?: string;
+	interval?: boolean;
 }
 
 const SPECS: Spec[] = [
@@ -24,7 +25,7 @@ const SPECS: Spec[] = [
 	{ id: 1002, date: '2026-05-24 07:05:00', sport: 'rower', distance: 5000, basePace: 118, baseSpm: 26, baseHr: 158, workoutType: '5000m steady' },
 	{ id: 1003, date: '2026-05-21 18:40:00', sport: 'skierg', distance: 1000, basePace: 122, baseSpm: 42, baseHr: 165, workoutType: '1000m SkiErg' },
 	{ id: 1004, date: '2026-05-19 06:30:00', sport: 'bike', distance: 8000, basePace: 95, baseSpm: 85, baseHr: 150, workoutType: '8000m BikeErg' },
-	{ id: 1005, date: '2026-05-16 06:20:00', sport: 'rower', distance: 6000, basePace: 116, baseSpm: 28, baseHr: 160, workoutType: '4x1500m intervals' },
+	{ id: 1005, date: '2026-05-16 06:20:00', sport: 'rower', distance: 6000, basePace: 116, baseSpm: 28, baseHr: 160, workoutType: '4x1500m intervals', interval: true },
 	{ id: 1006, date: '2026-05-13 18:15:00', sport: 'rower', distance: 500, basePace: 96, baseSpm: 36, baseHr: 172, workoutType: '500m sprint' },
 	{ id: 1007, date: '2026-05-10 06:18:00', sport: 'rower', distance: 2000, basePace: 112, baseSpm: 29, baseHr: 166, workoutType: '2000m steady' },
 	{ id: 1008, date: '2026-05-06 07:00:00', sport: 'skierg', distance: 1000, basePace: 126, baseSpm: 40, baseHr: 162, workoutType: '1000m SkiErg' },
@@ -120,13 +121,14 @@ function detailFor(spec: Spec): WorkoutDetail {
 		workoutType: spec.workoutType,
 		comments: spec.comments,
 		hasStrokeData: true,
+		isInterval: !!spec.interval,
 		strokes,
 		splits
 	};
 }
 
 function summaryOf(d: WorkoutDetail): Workout {
-	const { strokes, splits, ...rest } = d;
+	const { strokes, splits, isInterval, ...rest } = d;
 	return rest;
 }
 

@@ -67,4 +67,9 @@ export interface Split {
 export interface WorkoutDetail extends Workout {
 	strokes: Stroke[];
 	splits: Split[];
+	/**
+	 * True when `splits` are work *intervals* (rest between reps) rather than
+	 * the even splits of a continuous piece. Drives interval-vs-split labelling.
+	 */
+	isInterval: boolean;
 }
