@@ -1,44 +1,66 @@
 ---
 name: svelte-code-writer
-description: CLI tools for Svelte 5 / SvelteKit documentation lookup and code analysis. Load this skill when creating, editing, or analyzing a Svelte component or module.
+description: CLI tools for Svelte 5 documentation lookup and code analysis. MUST be used whenever creating, editing or analyzing any Svelte component (.svelte) or Svelte module (.svelte.ts/.svelte.js). If possible, this skill should be executed within the svelte-file-editor agent for optimal results.
 ---
 
-This skill provides three `@sveltejs/mcp` CLI commands for working on Svelte code.
+# Svelte 5 Code Writer
 
-## Commands
+## CLI Tools
 
-### List documentation sections
+You have access to `@sveltejs/mcp` CLI for Svelte-specific assistance. Use these commands via `npx`:
+
+### List Documentation Sections
 
 ```bash
 npx @sveltejs/mcp list-sections
 ```
 
-Lists all available Svelte 5 and SvelteKit documentation sections with their titles and paths.
+Lists all available Svelte 5 and SvelteKit documentation sections with titles and paths.
 
-### Get documentation
+### Get Documentation
 
 ```bash
 npx @sveltejs/mcp get-documentation "<section1>,<section2>,..."
 ```
 
-Retrieves the full documentation for the sections you identify from `list-sections`
-(e.g. `"$state,$derived,$effect"`).
+Retrieves full documentation for specified sections. Use after `list-sections` to fetch relevant docs.
 
-### Autofixer
+**Example:**
 
 ```bash
-npx @sveltejs/mcp svelte-autofixer "<code_or_path>"
+npx @sveltejs/mcp get-documentation "$state,$derived,$effect"
 ```
 
-Analyzes Svelte code and suggests fixes for common issues. Accepts either an inline
-code snippet or a file path, and supports async mode and a version target (Svelte 4 or 5).
+### Svelte Autofixer
 
-> [!IMPORTANT]
-> When passing code containing runes such as `$state` or `$derived` through the terminal,
-> escape the dollar sign as `\$` so the shell does not perform variable substitution.
+```bash
+npx @sveltejs/mcp svelte-autofixer "<code_or_path>" [options]
+```
 
-## Recommended workflow
+Analyzes Svelte code and suggests fixes for common issues.
 
-1. If unsure about syntax, check the documentation first with `list-sections` then `get-documentation`.
-2. Run `svelte-autofixer` while reviewing or debugging code.
-3. Validate every component with the autofixer before considering it complete.
+**Options:**
+
+- `--async` - Enable async Svelte mode (default: false)
+- `--svelte-version` - Target version: 4 or 5 (default: 5)
+
+**Examples:**
+
+```bash
+# Analyze inline code (escape $ as \$)
+npx @sveltejs/mcp svelte-autofixer '<script>let count = \$state(0);</script>'
+
+# Analyze a file
+npx @sveltejs/mcp svelte-autofixer ./src/lib/Component.svelte
+
+# Target Svelte 4
+npx @sveltejs/mcp svelte-autofixer ./Component.svelte --svelte-version 4
+```
+
+**Important:** When passing code with runes (`$state`, `$derived`, etc.) via the terminal, escape the `$` character as `\$` to prevent shell variable substitution.
+
+## Workflow
+
+1. **Uncertain about syntax?** Run `list-sections` then `get-documentation` for relevant topics
+2. **Reviewing/debugging?** Run `svelte-autofixer` on the code to detect issues
+3. **Always validate** - Run `svelte-autofixer` before finalizing any Svelte component
