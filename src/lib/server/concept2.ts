@@ -11,6 +11,8 @@ export interface Concept2Config {
 	clientSecret: string;
 	baseUrl: string;
 	appUrl: string;
+	/** When non-empty, only this Concept2 user id may authenticate. */
+	allowedUserId: string;
 }
 
 export function redirectUri(cfg: Concept2Config): string {
@@ -186,6 +188,7 @@ interface RawResult {
 	stroke_count?: number;
 	drag_factor?: number;
 	calories_total?: number;
+	wattminutes_total?: number;
 	workout_type?: string;
 	comments?: string;
 	stroke_data?: boolean;
@@ -214,6 +217,11 @@ function avgHr(hr: RawResult['heart_rate']): number | undefined {
 	return hr.average;
 }
 
+function hrBound(hr: RawResult['heart_rate'], key: 'min' | 'max'): number | undefined {
+	if (hr == null || typeof hr === 'number') return undefined;
+	return hr[key];
+}
+
 export function mapResult(r: RawResult): Workout {
 	const time = r.time / 10;
 	const pace = r.distance > 0 ? time / (r.distance / 500) : 0;
@@ -227,7 +235,10 @@ export function mapResult(r: RawResult): Workout {
 		strokeRate: r.stroke_rate,
 		strokeCount: r.stroke_count,
 		heartRateAvg: avgHr(r.heart_rate),
+		hrMin: hrBound(r.heart_rate, 'min'),
+		hrMax: hrBound(r.heart_rate, 'max'),
 		caloriesTotal: r.calories_total,
+		wattMinutes: r.wattminutes_total,
 		dragFactor: r.drag_factor,
 		workoutType: r.workout_type,
 		comments: r.comments,

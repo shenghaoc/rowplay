@@ -29,7 +29,12 @@ export interface Workout {
 	strokeRate?: number;
 	strokeCount?: number;
 	heartRateAvg?: number;
+	/** Heart-rate min/max over the piece, when the logbook reports them. */
+	hrMin?: number;
+	hrMax?: number;
 	caloriesTotal?: number;
+	/** Total watt-minutes; divided by elapsed minutes gives average power. */
+	wattMinutes?: number;
 	dragFactor?: number;
 	workoutType?: string;
 	comments?: string;
