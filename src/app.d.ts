@@ -1,5 +1,6 @@
 import type { KVNamespace, D1Database, Fetcher } from '@cloudflare/workers-types';
 import type { SessionUser } from '$lib/server/session';
+import type { Language } from '$lib/i18n';
 
 declare global {
 	namespace App {
@@ -10,6 +11,10 @@ declare global {
 			sessionId: string | null;
 			/** True when running without Concept2 credentials (serves mock data). */
 			demo: boolean;
+			/** UI language, resolved from the `lang` cookie (default en). */
+			lang: Language;
+			/** UI theme, resolved from the `theme` cookie (default dark). */
+			theme: 'light' | 'dark';
 		}
 		interface PageData {
 			user: SessionUser | null;

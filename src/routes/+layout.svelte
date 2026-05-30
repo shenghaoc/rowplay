@@ -2,12 +2,18 @@
 	import '../app.css';
 	import { page } from '$app/stores';
 	import { Toaster } from 'svelte-sonner';
-	import { Activity } from '@lucide/svelte';
+	import { Activity, Languages, Sun, Moon } from '@lucide/svelte';
+	import { I18n, setI18nContext } from '$lib/i18n.svelte';
+	import { Theme, setThemeContext } from '$lib/theme.svelte';
 
 	let { data, children } = $props();
+
+	const i18n = setI18nContext(new I18n(data.lang));
+	const theme = setThemeContext(new Theme(data.theme));
+	const t = i18n.t;
 </script>
 
-<Toaster theme="dark" position="bottom-right" richColors />
+<Toaster theme={theme.value} position="bottom-right" richColors />
 
 
 <header class="topbar">
@@ -17,20 +23,34 @@
 			<span class="name">rowplay</span>
 		</a>
 		<nav>
-			<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}>Dashboard</a>
+			<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}
+				>{t('nav.dashboard')}</a
+			>
 		</nav>
 		<div class="spacer"></div>
+		<button class="iconbtn" onclick={() => i18n.toggle()} title={t('lang.switch')} aria-label={t('lang.switch')}>
+			<Languages size={16} />
+			<span>{i18n.lang === 'en' ? '中文' : 'EN'}</span>
+		</button>
+		<button
+			class="iconbtn"
+			onclick={() => theme.toggle()}
+			title={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
+			aria-label={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
+		>
+			{#if theme.isDark}<Sun size={16} />{:else}<Moon size={16} />{/if}
+		</button>
 		{#if data.user}
 			<span class="muted user">@{data.user.username}</span>
 			<form method="POST" action="/auth/logout">
-				<button class="btn ghost small">Log out</button>
+				<button class="btn ghost small">{t('auth.logout')}</button>
 			</form>
 		{:else}
-			<span class="tag">demo mode</span>
+			<span class="tag">{t('common.demoMode')}</span>
 			{#if data.oauthEnabled}
-				<a class="btn ghost small" href="/auth/login">Connect Concept2</a>
+				<a class="btn ghost small" href="/auth/login">{t('auth.connect')}</a>
 			{/if}
-			<a class="btn small" href="/auth/token">Use a token</a>
+			<a class="btn small" href="/auth/token">{t('auth.useToken')}</a>
 		{/if}
 	</div>
 </header>
@@ -50,7 +70,7 @@
 		position: sticky;
 		top: 0;
 		z-index: 10;
-		background: rgba(13, 17, 23, 0.85);
+		background: var(--topbar-bg);
 		backdrop-filter: blur(8px);
 		border-bottom: 1px solid var(--border);
 	}
@@ -88,6 +108,23 @@
 	}
 	.spacer {
 		flex: 1;
+	}
+	.iconbtn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		background: transparent;
+		border: 1px solid var(--border);
+		color: var(--text-dim);
+		border-radius: 8px;
+		padding: 0.35rem 0.5rem;
+		font-size: 0.8rem;
+		font-family: var(--mono);
+		cursor: pointer;
+	}
+	.iconbtn:hover {
+		color: var(--text);
+		border-color: var(--accent);
 	}
 	.user {
 		font-size: 0.9rem;
