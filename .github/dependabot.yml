@@ -13,6 +13,13 @@ updates:
     commit-message:
       prefix: 'deps'
     groups:
+      # @sveltejs/vite-plugin-svelte v7+ requires Vite 8; major bumps must land together.
+      vite-svelte-toolchain:
+        patterns:
+          - 'vite'
+          - '@sveltejs/vite-plugin-svelte'
+        update-types:
+          - 'major'
       svelte:
         patterns:
           - '*svelte*'
