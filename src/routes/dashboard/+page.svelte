@@ -32,7 +32,16 @@
 		const t = toast.loading('Syncing your logbook…');
 		try {
 			const res = await fetch('/api/sync', { method: 'POST' });
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			if (!res.ok) {
+				let message = `HTTP ${res.status}`;
+				try {
+					const body = (await res.json()) as { message?: string };
+					if (body?.message) message = body.message;
+				} catch {
+					/* non-JSON error body */
+				}
+				throw new Error(message);
+			}
 			const { added, total } = (await res.json()) as { added: number; total: number };
 			await invalidateAll();
 			toast.success(`Synced — ${added} new, ${total} total`, { id: t });
