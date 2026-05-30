@@ -9,12 +9,14 @@
 		distancePBs,
 		distancePerStroke,
 		linearTrend,
-		summariseBySport
+		summariseBySport,
+		trainingLoad,
+		type FormBand
 	} from '$lib/analytics';
 	import type { Sport, Workout } from '$lib/types';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play } from '@lucide/svelte';
+	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play, Activity } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 
 	let { data } = $props();
@@ -107,6 +109,64 @@
 
 	const bySport = $derived(summariseBySport(filtered));
 	const pbs = $derived(distancePBs(filtered));
+
+	// ---- Fitness & Freshness (Performance Management Chart) ----
+	// Whole-athlete training load — independent of the sport filter, since form
+	// is systemic. Needs ~2 weeks of history before it reads meaningfully.
+	const load = $derived(trainingLoad(workouts));
+	const formReady = $derived(!!load && load.series.length >= 14);
+	const formBandClass: Record<FormBand, string> = {
+		transition: 'info',
+		fresh: 'good',
+		neutral: 'neutral',
+		productive: 'accent',
+		overreaching: 'bad'
+	};
+	const bandLabel: Record<FormBand, string> = {
+		transition: t('dashboard.bandTransition'),
+		fresh: t('dashboard.bandFresh'),
+		neutral: t('dashboard.bandNeutral'),
+		productive: t('dashboard.bandProductive'),
+		overreaching: t('dashboard.bandOverreaching')
+	};
+	const bandDesc: Record<FormBand, string> = {
+		transition: t('dashboard.descTransition'),
+		fresh: t('dashboard.descFresh'),
+		neutral: t('dashboard.descNeutral'),
+		productive: t('dashboard.descProductive'),
+		overreaching: t('dashboard.descOverreaching')
+	};
+	const formData = $derived.by((): uPlot.AlignedData => {
+		// Match the series count in formOptions (x + 3) so uPlot never sees a
+		// shape it can't render, even in the empty state.
+		if (!load) return [[], [], [], []];
+		return [
+			load.series.map((p) => p.day / 1000),
+			load.series.map((p) => p.ctl),
+			load.series.map((p) => p.atl),
+			load.series.map((p) => p.tsb)
+		];
+	});
+	const formOptions = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => ({
+		scales: { x: { time: true }, y: {}, tsb: {} },
+		axes: [
+			{ stroke: '#8b949e', grid: { stroke: '#1c2230' } },
+			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 40 },
+			{ stroke: '#8b949e', scale: 'tsb', side: 1, size: 40, grid: { show: false } }
+		],
+		series: [
+			{},
+			{ label: t('dashboard.formChartFitness'), scale: 'y', stroke: '#2f81f7', width: 2, fill: 'rgba(47,129,247,0.14)', points: { show: false } },
+			{ label: t('dashboard.formChartFatigue'), scale: 'y', stroke: '#f778ba', width: 1.5, points: { show: false } },
+			{ label: t('dashboard.formChartForm'), scale: 'tsb', stroke: '#3fb950', width: 1.5, dash: [4, 3], points: { show: false } }
+		],
+		legend: { show: false }
+	}));
+	const signed = (n: number) => {
+		// Round before testing the sign so a value like −0.1 doesn't render as "−0".
+		const r = Math.round(n);
+		return `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r)}`;
+	};
 
 	// Cross-session trend, plotted against real dates so spacing reflects how
 	// often you actually train. For pace/DPS we restrict to one sport (mixing
@@ -343,6 +403,66 @@
 			<div class="value mono">{fmtPace(avgPace)}</div>
 		</div>
 	</div>
+
+	<!-- Fitness & Freshness — the Performance Management Chart -->
+	{#if load}
+		<div class="card formcard">
+			<div class="formhead">
+				<div class="formtitle">
+					<Activity size={18} />
+					<span class="label">{t('dashboard.formTitle')}</span>
+					<span class="tag premium">{t('dashboard.formPremium')}</span>
+				</div>
+				<span class="badge {formBandClass[load.band]}">{bandLabel[load.band]}</span>
+			</div>
+			<p class="formsub muted">{t('dashboard.formSub')}</p>
+
+			<div class="formstats">
+				<div class="fs">
+					<div class="fsv mono" style="color: var(--accent)">{Math.round(load.ctl)}</div>
+					<div class="fsl">{t('dashboard.formFitness')}</div>
+					<div class="fsh muted">{t('dashboard.formFitnessHint')}</div>
+				</div>
+				<div class="fs">
+					<div class="fsv mono" style="color: #f778ba">{Math.round(load.atl)}</div>
+					<div class="fsl">{t('dashboard.formFatigue')}</div>
+					<div class="fsh muted">{t('dashboard.formFatigueHint')}</div>
+				</div>
+				<div class="fs">
+					<div class="fsv mono {formBandClass[load.band]}">{signed(load.tsb)}</div>
+					<div class="fsl">{t('dashboard.formForm')}</div>
+					<div class="fsh muted">{t('dashboard.formFormHint')}</div>
+				</div>
+				<div class="fs">
+					<div class="fsv mono">{load.ftp}<span class="unit">W</span></div>
+					<div class="fsl">{t('dashboard.formFtp')}</div>
+					<div class="fsh muted">
+						{load.cp.method === 'model' ? t('dashboard.formModelled') : t('dashboard.formEstimated')}
+						{#if load.cp.wPrime > 0} · W′ {(load.cp.wPrime / 1000).toFixed(1)}kJ{/if}
+					</div>
+				</div>
+			</div>
+
+			<div class="formread {formBandClass[load.band]}">
+				<strong>{bandLabel[load.band]}.</strong>
+				{bandDesc[load.band]}
+				{#if formReady}
+					<span class="muted">· {t('dashboard.formRamp')}: {signed(load.ramp)}</span>
+				{/if}
+			</div>
+
+			{#if formReady}
+				<UPlotChart data={formData} options={formOptions} height={190} />
+				<div class="formlegend muted">
+					<span><i style="background: #2f81f7"></i> {t('dashboard.formChartFitness')}</span>
+					<span><i style="background: #f778ba"></i> {t('dashboard.formChartFatigue')}</span>
+					<span><i style="background: #3fb950"></i> {t('dashboard.formChartForm')}</span>
+				</div>
+			{:else}
+				<p class="muted emptytrend">{t('dashboard.formEmpty')}</p>
+			{/if}
+		</div>
+	{/if}
 
 	<!-- Personal bests -->
 	{#if pbs.length}
@@ -582,8 +702,159 @@
 	}
 	.pbcard,
 	.breakdown,
-	.chartcard {
+	.chartcard,
+	.formcard {
 		margin-bottom: 1rem;
+	}
+	.formcard {
+		background: linear-gradient(135deg, rgba(47, 129, 247, 0.07), var(--bg-elev) 65%);
+		border-color: rgba(47, 129, 247, 0.28);
+	}
+	.formhead {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+	.formtitle {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		color: var(--accent);
+	}
+	.formtitle .label {
+		color: var(--text);
+		font-weight: 700;
+		font-size: 0.95rem;
+	}
+	.premium {
+		font-size: 0.66rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		background: rgba(210, 168, 255, 0.16);
+		color: #d2a8ff;
+		border: 1px solid rgba(210, 168, 255, 0.35);
+	}
+	.formsub {
+		font-size: 0.82rem;
+		margin: 0.4rem 0 0.9rem;
+	}
+	.badge {
+		font-size: 0.78rem;
+		font-weight: 700;
+		padding: 0.25rem 0.7rem;
+		border-radius: 999px;
+		border: 1px solid var(--border);
+		background: var(--bg-elev-2);
+		color: var(--text);
+	}
+	.badge.good,
+	.fsv.good {
+		color: var(--accent-2);
+	}
+	.badge.good {
+		background: rgba(63, 185, 80, 0.14);
+		border-color: rgba(63, 185, 80, 0.4);
+	}
+	.badge.bad,
+	.fsv.bad {
+		color: var(--warn);
+	}
+	.badge.bad {
+		background: rgba(248, 81, 73, 0.14);
+		border-color: rgba(248, 81, 73, 0.4);
+	}
+	.badge.accent,
+	.fsv.accent {
+		color: var(--accent);
+	}
+	.badge.accent {
+		background: rgba(47, 129, 247, 0.14);
+		border-color: rgba(47, 129, 247, 0.4);
+	}
+	.badge.info,
+	.fsv.info {
+		color: #56d4ff;
+	}
+	.badge.info {
+		background: rgba(86, 212, 255, 0.14);
+		border-color: rgba(86, 212, 255, 0.4);
+	}
+	.badge.neutral,
+	.fsv.neutral {
+		color: var(--text-dim);
+	}
+	.formstats {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 1rem;
+		margin-bottom: 0.9rem;
+	}
+	.fs {
+		background: var(--bg-elev-2);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 0.6rem 0.75rem;
+	}
+	.fsv {
+		font-size: 1.7rem;
+		font-weight: 800;
+		line-height: 1.05;
+	}
+	.fsv .unit {
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--text-dim);
+		margin-left: 0.15rem;
+	}
+	.fsl {
+		font-size: 0.82rem;
+		font-weight: 700;
+		margin-top: 0.15rem;
+	}
+	.fsh {
+		font-size: 0.7rem;
+		margin-top: 0.05rem;
+	}
+	.formread {
+		font-size: 0.9rem;
+		padding: 0.55rem 0.8rem;
+		border-radius: 8px;
+		margin-bottom: 0.9rem;
+		background: var(--bg-elev-2);
+		border-left: 3px solid var(--border);
+	}
+	.formread.good {
+		border-left-color: var(--accent-2);
+	}
+	.formread.bad {
+		border-left-color: var(--warn);
+	}
+	.formread.accent {
+		border-left-color: var(--accent);
+	}
+	.formread.info {
+		border-left-color: #56d4ff;
+	}
+	.formlegend {
+		display: flex;
+		gap: 1rem;
+		flex-wrap: wrap;
+		font-size: 0.78rem;
+		margin-top: 0.5rem;
+		justify-content: center;
+	}
+	.formlegend span {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+	.formlegend i {
+		width: 12px;
+		height: 3px;
+		border-radius: 2px;
+		display: inline-block;
 	}
 	.pbgrid {
 		display: grid;

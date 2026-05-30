@@ -1,4 +1,5 @@
 import type { Split, Sport, Stroke, Workout } from './types';
+import { paceToWatts } from './format';
 
 // ---------------------------------------------------------------------------
 // Pure analysis helpers. No DOM, no Svelte — safe to use on server or client,
@@ -281,6 +282,207 @@ export function efficiencyByRate(strokes: Stroke[]): EfficiencyPoint[] {
 			return { spm, pace, dps: distancePerStroke(pace, spm) };
 		})
 		.sort((a, b) => a.spm - b.spm);
+}
+
+// ---------------------------------------------------------------------------
+// Fitness & Freshness — the Performance Management Chart (PMC)
+//
+// This is the headline metric every endurance athlete wants and that Strava
+// and TrainingPeaks lock behind a subscription: "how fit am I, how tired am I,
+// and am I ready to perform?". It needs nothing live — just the session
+// summaries we already sync. We turn each session into a Training Stress Score
+// (TSS) from its average power, then track three exponentially-weighted loads:
+//
+//   • Fitness (CTL) — a 42-day average: your built-up training base.
+//   • Fatigue (ATL) — a 7-day average: recent, fast-decaying tiredness.
+//   • Form    (TSB) — Fitness − Fatigue: positive = fresh, negative = loaded.
+//
+// Power is the logbook's watt-minutes when present (correct per machine), else
+// Concept2's pace→watts model. Threshold power (FTP) is the athlete's own —
+// estimated from their power-duration envelope with a Critical Power fit, so
+// the load is scaled to *their* ability, not a generic number.
+// ---------------------------------------------------------------------------
+
+/**
+ * Average power (watts) sustained over a whole session. The logbook's
+ * watt-minutes are authoritative when present (and correct for every machine).
+ * Otherwise we fall back to Concept2's pace→watts model — but only for the
+ * RowErg and SkiErg: the BikeErg uses a different flywheel/pace relationship,
+ * so the same formula would wildly overstate its power. A bike session with no
+ * reported watts therefore returns 0 (unknown) rather than a bogus figure.
+ */
+export function workoutWatts(w: Workout): number {
+	const minutes = w.time / 60;
+	if (w.wattMinutes && w.wattMinutes > 0 && minutes > 0) return w.wattMinutes / minutes;
+	if (w.sport === 'bike') return 0;
+	return paceToWatts(w.pace);
+}
+
+export interface CriticalPower {
+	/** Critical (sustainable) power in watts — the asymptote of the P–t curve. */
+	cp: number;
+	/** Anaerobic work capacity W′ in joules (0 when only estimated). */
+	wPrime: number;
+	/** Functional threshold power in watts (≈ CP); used to scale training load. */
+	ftp: number;
+	/** 'model' = two-parameter CP fit; 'estimate' = best sustained-power fallback. */
+	method: 'model' | 'estimate';
+}
+
+/**
+ * Estimate the athlete's threshold power from their own results. Each session
+ * is one point on a power–duration curve (best *average* power for that
+ * length). The classic two-parameter model says P(t) = CP + W′/t, so a
+ * regression of power against 1/time gives CP (intercept) and W′ (slope). Falls
+ * back to the best long-effort power when there isn't enough range to fit.
+ */
+export function estimateCriticalPower(workouts: Workout[]): CriticalPower | null {
+	const fallback = (pool: { t: number; p: number }[]): CriticalPower | null => {
+		// Sprints (< 2 min) sit far above threshold, so never let one set FTP.
+		const valid = pool.filter((q) => q.t >= 120);
+		const longish = valid.filter((q) => q.t >= 600);
+		const src = longish.length ? longish : valid;
+		if (!src.length) return null;
+		const best = src.reduce((a, b) => (a.p >= b.p ? a : b));
+		// A short effort overstates threshold, so shade it down a touch.
+		const ftp = Math.round(best.p * (longish.length ? 1 : 0.9));
+		return ftp > 0 ? { cp: ftp, wPrime: 0, ftp, method: 'estimate' } : null;
+	};
+
+	const all = workouts
+		.map((w) => ({ t: w.time, p: workoutWatts(w) }))
+		.filter((q) => q.t > 0 && q.p > 0);
+	if (!all.length) return null;
+
+	// The CP model is only valid for a few-minutes-to-an-hour range.
+	const pts = all.filter((q) => q.t >= 120 && q.t <= 3600);
+	if (pts.length < 3) return fallback(all);
+
+	// Mean-maximal envelope: keep only the best power in each (geometric) duration
+	// bin so one easy session doesn't drag the fit down.
+	const bins = new Map<number, { t: number; p: number }>();
+	for (const q of pts) {
+		const key = Math.round(Math.log(q.t) * 4);
+		const cur = bins.get(key);
+		if (!cur || q.p > cur.p) bins.set(key, q);
+	}
+	const env = [...bins.values()];
+	if (env.length < 3) return fallback(pts);
+
+	const xs = env.map((q) => 1 / q.t);
+	const ys = env.map((q) => q.p);
+	const n = xs.length;
+	const mx = xs.reduce((a, b) => a + b, 0) / n;
+	const my = ys.reduce((a, b) => a + b, 0) / n;
+	let num = 0;
+	let den = 0;
+	for (let i = 0; i < n; i++) {
+		num += (xs[i] - mx) * (ys[i] - my);
+		den += (xs[i] - mx) ** 2;
+	}
+	if (den > 0) {
+		const wPrime = num / den; // slope, joules
+		const cp = my - wPrime * mx; // intercept, watts
+		if (cp > 0 && cp < 500 && wPrime > 0) {
+			return { cp: Math.round(cp), wPrime: Math.round(wPrime), ftp: Math.round(cp), method: 'model' };
+		}
+	}
+	return fallback(pts);
+}
+
+const DAY_MS = 86_400_000;
+
+/** One day on the Performance Management Chart. */
+export interface FormPoint {
+	/** Epoch ms at UTC midnight for this day. */
+	day: number;
+	tss: number;
+	/** Fitness — Chronic Training Load (42-day). */
+	ctl: number;
+	/** Fatigue — Acute Training Load (7-day). */
+	atl: number;
+	/** Form — Training Stress Balance (CTL − ATL). */
+	tsb: number;
+}
+
+export type FormBand = 'transition' | 'fresh' | 'neutral' | 'productive' | 'overreaching';
+
+export interface TrainingLoad {
+	series: FormPoint[];
+	cp: CriticalPower;
+	ftp: number;
+	/** Latest Fitness / Fatigue / Form. */
+	ctl: number;
+	atl: number;
+	tsb: number;
+	/** Fitness change over the trailing 7 days (ramp rate). */
+	ramp: number;
+	/** Where today's Form sits, for a plain-language read-out. */
+	band: FormBand;
+}
+
+/** Coggan-style TSS for one session, scaled to the athlete's threshold power. */
+function workoutTss(w: Workout, ftp: number): number {
+	if (ftp <= 0 || w.time <= 0) return 0;
+	const watts = workoutWatts(w);
+	if (watts <= 0) return 0;
+	// Intensity factor, capped so a noisy all-out sprint can't blow up the load.
+	const intensity = Math.min(watts / ftp, 1.6);
+	return (w.time / 3600) * intensity * intensity * 100;
+}
+
+/**
+ * Build the Performance Management Chart from session summaries. Sums each
+ * day's TSS (rest days count as zero so fatigue decays), then rolls the two
+ * exponentially-weighted loads forward to today. Returns null when there isn't
+ * enough power data to anchor a threshold.
+ */
+export function trainingLoad(workouts: Workout[], cpIn?: CriticalPower | null): TrainingLoad | null {
+	const cp = cpIn ?? estimateCriticalPower(workouts);
+	if (!cp || cp.ftp <= 0) return null;
+	const ftp = cp.ftp;
+
+	// Carry the curve through to today so a recent rest block shows as freshness.
+	const today = Date.parse(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
+
+	// Sum TSS per calendar day. The date-only key sidesteps timezone drift. We
+	// also clamp to a sane window — a corrupted date (year 0001, or a far-future
+	// timestamp) would otherwise make the day-by-day loop below run for millions
+	// of iterations and hang the page.
+	const EPOCH_2000 = 946_684_800_000;
+	const byDay = new Map<number, number>();
+	let firstDay = Infinity;
+	let lastDay = -Infinity;
+	for (const w of workouts) {
+		const day = Date.parse(w.date.slice(0, 10) + 'T00:00:00Z');
+		if (!isFinite(day) || day < EPOCH_2000 || day > today + DAY_MS) continue;
+		byDay.set(day, (byDay.get(day) ?? 0) + workoutTss(w, ftp));
+		if (day < firstDay) firstDay = day;
+		if (day > lastDay) lastDay = day;
+	}
+	if (!isFinite(firstDay)) return null;
+
+	const end = Math.max(lastDay, today);
+
+	const series: FormPoint[] = [];
+	let ctl = 0;
+	let atl = 0;
+	for (let day = firstDay; day <= end; day += DAY_MS) {
+		const tss = byDay.get(day) ?? 0;
+		ctl += (tss - ctl) / 42;
+		atl += (tss - atl) / 7;
+		series.push({ day, tss, ctl, atl, tsb: ctl - atl });
+	}
+
+	const last = series[series.length - 1];
+	const weekAgo = series[series.length - 8];
+	const ramp = weekAgo ? last.ctl - weekAgo.ctl : last.ctl;
+
+	const tsb = last.tsb;
+	const band: FormBand =
+		tsb > 25 ? 'transition' : tsb > 5 ? 'fresh' : tsb >= -10 ? 'neutral' : tsb >= -30 ? 'productive' : 'overreaching';
+
+	return { series, cp, ftp, ctl: last.ctl, atl: last.atl, tsb, ramp, band };
 }
 
 function mean(xs: number[]): number {
