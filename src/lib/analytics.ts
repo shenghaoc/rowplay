@@ -338,8 +338,10 @@ export interface CriticalPower {
  */
 export function estimateCriticalPower(workouts: Workout[]): CriticalPower | null {
 	const fallback = (pool: { t: number; p: number }[]): CriticalPower | null => {
-		const longish = pool.filter((q) => q.t >= 600);
-		const src = longish.length ? longish : pool;
+		// Sprints (< 2 min) sit far above threshold, so never let one set FTP.
+		const valid = pool.filter((q) => q.t >= 120);
+		const longish = valid.filter((q) => q.t >= 600);
+		const src = longish.length ? longish : valid;
 		if (!src.length) return null;
 		const best = src.reduce((a, b) => (a.p >= b.p ? a : b));
 		// A short effort overstates threshold, so shade it down a touch.
@@ -440,21 +442,26 @@ export function trainingLoad(workouts: Workout[], cpIn?: CriticalPower | null): 
 	if (!cp || cp.ftp <= 0) return null;
 	const ftp = cp.ftp;
 
-	// Sum TSS per calendar day. The date-only key sidesteps timezone drift.
+	// Carry the curve through to today so a recent rest block shows as freshness.
+	const today = Date.parse(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
+
+	// Sum TSS per calendar day. The date-only key sidesteps timezone drift. We
+	// also clamp to a sane window — a corrupted date (year 0001, or a far-future
+	// timestamp) would otherwise make the day-by-day loop below run for millions
+	// of iterations and hang the page.
+	const EPOCH_2000 = 946_684_800_000;
 	const byDay = new Map<number, number>();
 	let firstDay = Infinity;
 	let lastDay = -Infinity;
 	for (const w of workouts) {
 		const day = Date.parse(w.date.slice(0, 10) + 'T00:00:00Z');
-		if (!isFinite(day)) continue;
+		if (!isFinite(day) || day < EPOCH_2000 || day > today + DAY_MS) continue;
 		byDay.set(day, (byDay.get(day) ?? 0) + workoutTss(w, ftp));
 		if (day < firstDay) firstDay = day;
 		if (day > lastDay) lastDay = day;
 	}
 	if (!isFinite(firstDay)) return null;
 
-	// Carry the curve through to today so a recent rest block shows as freshness.
-	const today = Date.parse(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
 	const end = Math.max(lastDay, today);
 
 	const series: FormPoint[] = [];
