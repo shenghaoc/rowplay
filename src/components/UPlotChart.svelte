@@ -29,7 +29,8 @@
 			if (!isFinite(cx)) return;
 			const ctx = u.ctx;
 			ctx.save();
-			ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+			const C = getComputedStyle(document.documentElement).getPropertyValue('--ink-3').trim() || '#7a7062';
+			ctx.strokeStyle = C;
 			ctx.lineWidth = 1.5;
 			ctx.beginPath();
 			ctx.moveTo(cx, u.bbox.top);
