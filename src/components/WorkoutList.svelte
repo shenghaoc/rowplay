@@ -4,6 +4,7 @@
 	import SportIcon from '$components/SportIcon.svelte';
 	import { ChevronRight } from '@lucide/svelte';
 	import type { Workout } from '$lib/types';
+	import { MACHINE_COLOR } from '$lib/replay/sports';
 	import { get } from 'svelte/store';
 	import { getI18nContext } from '$lib/i18n.svelte';
 
@@ -51,7 +52,7 @@
 </script>
 
 {#snippet row(w: Workout)}
-	<div class="sport" style:color="var(--accent)"><SportIcon sport={w.sport} size={22} /></div>
+	<div class="sport" style:color={MACHINE_COLOR[w.sport]}><SportIcon sport={w.sport} size={22} /></div>
 	<div class="rowmain">
 		<div class="rowtop">
 			<strong>{w.workoutType || SPORT_LABEL[w.sport]}</strong>
@@ -104,8 +105,9 @@
 		position: relative;
 		height: 640px;
 		overflow-y: auto;
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
+		border: var(--bd-heavy);
+		border-radius: var(--r-card);
+		background: var(--paper-raised);
 		padding: 0.4rem;
 	}
 	.vinner {
@@ -116,12 +118,13 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		color: var(--text);
-		transition: border-color 0.15s ease;
+		color: var(--ink);
+		min-height: 64px;
+		transition: background 0.1s ease;
 	}
 	.row:hover {
 		text-decoration: none;
-		border-color: var(--accent);
+		background: var(--paper-inset);
 	}
 	.vrow {
 		position: absolute;

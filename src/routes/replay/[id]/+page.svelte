@@ -5,7 +5,7 @@
 	import MetricGauge from '$components/MetricGauge.svelte';
 	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
 	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
-	import { themeFor } from '$lib/replay/sports';
+	import { LIVE_COLOR, MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import {
 		hrZones,
 		powerCurve,
@@ -19,13 +19,16 @@
 	import { toast } from 'svelte-sonner';
 	import { ArrowLeft, Play, Pause, Ghost } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
+	import { getThemeContext } from '$lib/theme.svelte';
+	import { uplotChrome } from '$lib/chartTheme';
 	import SportIcon from '$components/SportIcon.svelte';
 
 	let { data } = $props();
 	const t = getI18nContext().t;
+	const uiTheme = getThemeContext();
 	const detail: WorkoutDetail = data.detail;
 	const candidates: Workout[] = data.candidates;
-	const theme = themeFor(detail.sport);
+	const sportTheme = themeFor(detail.sport);
 	const total = detail.distance;
 	const strokes = detail.strokes;
 
@@ -69,15 +72,15 @@
 	}
 
 	function renderCurrent() {
-		renderer?.render(buildState(frame), playing);
+		renderer?.render(buildState(frame), playing, uiTheme.value);
 	}
 
 	onMount(() => {
-		renderer = new CourseRenderer(canvasEl, theme);
+		renderer = new CourseRenderer(canvasEl, sportTheme);
 		engine = new ReplayEngine(strokes, (f, p) => {
 			frame = f;
 			playing = p;
-			renderer?.render(buildState(f), p);
+			renderer?.render(buildState(f), p, uiTheme.value);
 		});
 
 		const sizeIt = () => {
@@ -212,54 +215,64 @@
 		label: string,
 		color: string,
 		invert: boolean,
-		fmt: (v: number) => string
+		fmt: (v: number) => string,
+		chrome: ReturnType<typeof uplotChrome>
 	): Omit<uPlot.Options, 'width' | 'height'> {
 		return {
 			scales: { x: { time: false }, y: invert ? { dir: -1 } : {} },
 			cursor: { show: true, x: true, y: false },
 			axes: [
-				{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, values: (_u, sp) => sp.map((v) => fmtTime(v)) },
-				{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 52, values: (_u, sp) => sp.map(fmt) }
+				{ stroke: chrome.axis, grid: { stroke: chrome.grid }, values: (_u, sp) => sp.map((v) => fmtTime(v)) },
+				{ stroke: chrome.axis, grid: { stroke: chrome.grid }, size: 52, values: (_u, sp) => sp.map(fmt) }
 			],
 			series: [{}, { label, stroke: color, width: 1.5, fill: color + '22' }],
 			legend: { show: false }
 		};
 	}
 
+	const chartChrome = $derived(uplotChrome(uiTheme.value));
+
 	const paceData: uPlot.AlignedData = [xs, strokes.map((s) => s.pace)];
 	const rateData: uPlot.AlignedData = [xs, strokes.map((s) => s.spm)];
 	const powerData: uPlot.AlignedData = [xs, strokes.map((s) => s.watts)];
 	const hrData: uPlot.AlignedData = [xs, strokes.map((s) => s.hr ?? null)];
 
-	const paceOpts = metricOpts('pace', theme.color, true, (v) => fmtPace(v).replace('/500m', ''));
-	const rateOpts = metricOpts('rate', '#3fb950', false, (v) => `${Math.round(v)}`);
-	const powerOpts = metricOpts('power', '#d2a8ff', false, (v) => `${Math.round(v)}w`);
-	const hrOpts = metricOpts('hr', '#f778ba', false, (v) => `${Math.round(v)}`);
+	const paceOpts = $derived(metricOpts('pace', LIVE_COLOR, true, (v) => fmtPace(v).replace('/500m', ''), chartChrome));
+	const rateOpts = $derived(metricOpts('rate', '#2c6e63', false, (v) => `${Math.round(v)}`, chartChrome));
+	const powerOpts = $derived(metricOpts('power', '#9e5b2d', false, (v) => `${Math.round(v)}w`, chartChrome));
+	const hrOpts = $derived(metricOpts('hr', '#8e4a6b', false, (v) => `${Math.round(v)}`, chartChrome));
 
 	// ---- Analysis ----
 	const zones = hasHr ? hrZones(strokes) : [];
 	const pc = powerCurve(strokes);
 	const pcData: uPlot.AlignedData = [pc.map((p) => p.duration), pc.map((p) => p.watts)];
-	const pcOpts = metricOpts('best avg power', '#d2a8ff', false, (v) => `${Math.round(v)}w`);
+	const pcOpts = $derived(metricOpts('best avg power', '#9e5b2d', false, (v) => `${Math.round(v)}w`, chartChrome));
 
 	// ---- Technique (stroke quality from logged pace/rate) ----
 	const tech = techniqueSummary(strokes);
 	const dpsData: uPlot.AlignedData = [tech.dps.map((d) => d.t), tech.dps.map((d) => d.v)];
-	const dpsOpts = metricOpts('dist/stroke', '#56d4ff', false, (v) => `${v.toFixed(1)}m`);
+	const dpsOpts = $derived(metricOpts('dist/stroke', '#3f6e8c', false, (v) => `${v.toFixed(1)}m`, chartChrome));
 
 	const eff = efficiencyByRate(strokes);
 	// Scatter: pace (y, inverted) vs rate (x); a uPlot line over rate-sorted medians.
 	const effData: uPlot.AlignedData = [eff.map((e) => e.spm), eff.map((e) => e.pace)];
-	const effOpts: Omit<uPlot.Options, 'width' | 'height'> = {
-		scales: { x: { time: false }, y: { dir: -1 } },
-		cursor: { show: true },
-		axes: [
-			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, values: (_u, sp) => sp.map((v) => `${Math.round(v)}`) },
-			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 52, values: (_u, sp) => sp.map((v) => fmtPace(v).replace('/500m', '')) }
-		],
-		series: [{}, { label: 'pace@rate', stroke: '#56d4ff', width: 2, points: { show: true, size: 7 } }],
-		legend: { show: false }
-	};
+	const effOpts = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
+		return {
+			scales: { x: { time: false }, y: { dir: -1 } },
+			cursor: { show: true },
+			axes: [
+				{ stroke: chartChrome.axis, grid: { stroke: chartChrome.grid }, values: (_u, sp) => sp.map((v) => `${Math.round(v)}`) },
+				{
+					stroke: chartChrome.axis,
+					grid: { stroke: chartChrome.grid },
+					size: 52,
+					values: (_u, sp) => sp.map((v) => fmtPace(v).replace('/500m', ''))
+				}
+			],
+			series: [{}, { label: 'pace@rate', stroke: '#3f6e8c', width: 2, points: { show: true, size: 7 } }],
+			legend: { show: false }
+		};
+	});
 
 	const paceRange = (() => {
 		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
@@ -297,7 +310,12 @@
 <div class="container">
 	<a href="/dashboard" class="back muted"><ArrowLeft size={14} /> {t('replay.back')}</a>
 	<div class="head">
-		<h1><span class="h1icon"><SportIcon sport={detail.sport} size={22} /></span> {detail.workoutType || SPORT_LABEL[detail.sport]}</h1>
+		<h1
+			><span class="h1icon" style:color={MACHINE_COLOR[detail.sport]}
+				><SportIcon sport={detail.sport} size={22} /></span
+			>
+			{detail.workoutType || SPORT_LABEL[detail.sport]}</h1
+		>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
 			{#if !detail.hasStrokeData}<span class="tag">{t('replay.lowRes')}</span>{/if}
@@ -395,23 +413,23 @@
 		<MetricGauge
 			label={t('replay.gPace')} unit="/500m"
 			display={fmtPace(frame.pace).replace('/500m', '')}
-			value={frame.pace} min={paceRange.max} max={paceRange.min} color={theme.color}
+			value={frame.pace} min={paceRange.max} max={paceRange.min} color={LIVE_COLOR}
 		/>
 		<MetricGauge
-			label={t('replay.gRate')} unit={theme.cadenceUnit}
+			label={t('replay.gRate')} unit={sportTheme.cadenceUnit}
 			display={`${Math.round(frame.spm)}`}
-			value={frame.spm} min={0} max={60} color="#3fb950"
+			value={frame.spm} min={0} max={60} color="#2c6e63"
 		/>
 		<MetricGauge
 			label={t('replay.gPower')} unit="watts"
 			display={`${Math.round(frame.watts)}`}
-			value={frame.watts} min={wattRange.min} max={wattRange.max} color="#d2a8ff"
+			value={frame.watts} min={wattRange.min} max={wattRange.max} color="#9e5b2d"
 		/>
 		{#if hasHr}
 			<MetricGauge
 				label={t('replay.gHeart')} unit="bpm"
 				display={frame.hr != null ? `${Math.round(frame.hr)}` : '--'}
-				value={frame.hr ?? 0} min={90} max={200} color="#f778ba"
+				value={frame.hr ?? 0} min={90} max={200} color="#8e4a6b"
 			/>
 		{/if}
 	</div>
@@ -447,7 +465,7 @@
 				<div class="tl muted">{t('replay.avgDistStroke')}</div>
 			</div>
 			<div class="ts">
-				<div class="tv mono">{Math.round(tech.avgSpm)}<span class="tu">{theme.cadenceUnit}</span></div>
+				<div class="tv mono">{Math.round(tech.avgSpm)}<span class="tu">{sportTheme.cadenceUnit}</span></div>
 				<div class="tl muted">{t('replay.avgRate')}</div>
 			</div>
 			<div class="ts">
@@ -543,11 +561,11 @@
 					<div class="rep" class:fastest={r.isFastest} class:slowest={r.isSlowest}>
 						<div class="repno mono">#{r.index + 1}</div>
 						<div class="repbarwrap">
-							<div class="repbar" style:width="{repBarPct(r.pace)}%" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : theme.color}></div>
+							<div class="repbar" style:width="{repBarPct(r.pace)}%" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : sportTheme.color}></div>
 							<span class="repbarlabel mono">{fmtPace(r.pace).replace('/500m', '')}</span>
 						</div>
 						<div class="repmeta mono muted">
-							{fmtDistance(r.distance)} · {fmtTime(r.time, true)} · {r.spm}{theme.cadenceUnit}
+							{fmtDistance(r.distance)} · {fmtTime(r.time, true)} · {r.spm}{sportTheme.cadenceUnit}
 							{#if r.hr}· {r.hr}bpm{/if}
 							{#if r.dps > 0}· {r.dps.toFixed(1)}m/st{/if}
 						</div>
@@ -592,7 +610,7 @@
 			<div><dt>{t('replay.mDistance')}</dt><dd class="mono">{fmtDistance(detail.distance)}</dd></div>
 			<div><dt>{t('replay.mTime')}</dt><dd class="mono">{fmtTime(detail.time, true)}</dd></div>
 			<div><dt>{t('replay.mAvgPace')}</dt><dd class="mono">{fmtPace(detail.pace)}</dd></div>
-			<div><dt>{t('replay.mAvgRate')}</dt><dd class="mono">{detail.strokeRate ?? '—'} {theme.cadenceUnit}</dd></div>
+			<div><dt>{t('replay.mAvgRate')}</dt><dd class="mono">{detail.strokeRate ?? '—'} {sportTheme.cadenceUnit}</dd></div>
 			<div><dt>{t('replay.mStrokeCount')}</dt><dd class="mono">{detail.strokeCount ?? '—'}</dd></div>
 			<div><dt>{t('replay.mAvgPower')}</dt><dd class="mono">{avgWatts} W</dd></div>
 			<div>
@@ -636,9 +654,18 @@
 	.back {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
-		font-size: 0.9rem;
+		gap: 0.35rem;
+		font-family: var(--display);
+		font-size: 0.82rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--ink-2);
 		margin-bottom: 0.75rem;
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
 	}
 	.head {
 		display: flex;
@@ -647,17 +674,20 @@
 		flex-wrap: wrap;
 		gap: 0.5rem;
 		margin-bottom: 1rem;
+		padding-bottom: 0.75rem;
+		border-bottom: var(--bd-heavy);
 	}
 	.head h1 {
 		margin: 0;
-		font-size: 1.5rem;
+		font-size: clamp(1.4rem, 5vw, 1.75rem);
+		font-weight: 900;
+		text-transform: uppercase;
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 	}
 	.h1icon {
 		display: inline-flex;
-		color: var(--accent);
 	}
 	.summary {
 		font-size: 0.95rem;
@@ -681,29 +711,31 @@
 		gap: 0.35rem;
 	}
 	.ghostbar select {
-		background: var(--bg-elev-2);
-		color: var(--text);
-		border: 1px solid var(--border);
-		border-radius: 8px;
+		background: var(--paper-inset);
+		color: var(--ink);
+		border: var(--bd);
+		border-radius: var(--r-ctrl);
 		padding: 0.4rem 0.6rem;
 		font-size: 0.85rem;
 	}
 	.paceinput {
 		width: 5rem;
-		background: var(--bg-elev-2);
-		color: var(--text);
-		border: 1px solid var(--border);
-		border-radius: 8px;
+		background: var(--paper-inset);
+		color: var(--ink);
+		border: var(--bd);
+		border-radius: var(--r-ctrl);
 		padding: 0.4rem 0.6rem;
-		font-size: 0.85rem;
+		font-family: var(--mono);
+		font-size: 0.9rem;
+		text-align: center;
 	}
 	.fileinput {
 		font-size: 0.8rem;
-		color: var(--text-dim);
+		color: var(--ink-2);
 		max-width: 240px;
 	}
 	.err {
-		color: var(--danger);
+		color: var(--alarm);
 	}
 	.gap {
 		margin-left: auto;
@@ -713,12 +745,23 @@
 		border-radius: 999px;
 	}
 	.gap.ahead {
-		color: var(--accent-2);
-		background: rgba(63, 185, 80, 0.12);
+		color: var(--paper-raised);
+		background: var(--ahead);
+		border-radius: var(--r-ctrl);
+		font-family: var(--display);
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
 	}
 	.gap.behind {
-		color: var(--danger);
-		background: rgba(248, 81, 73, 0.12);
+		color: var(--ink);
+		background: var(--behind);
+		border-radius: var(--r-ctrl);
+		font-family: var(--display);
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+	:global([data-theme='dark']) .gap.behind {
+		color: var(--paper-raised);
 	}
 	.small {
 		font-size: 0.8rem;
@@ -749,31 +792,32 @@
 	.scrub {
 		flex: 1;
 		min-width: 160px;
-		accent-color: var(--accent);
+		accent-color: var(--live);
 	}
 	.dist {
 		min-width: 90px;
 		text-align: right;
-		color: var(--text-dim);
+		color: var(--ink-2);
 	}
 	.speeds {
 		display: flex;
 		gap: 0.3rem;
 	}
 	.sbtn {
-		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
-		color: var(--text-dim);
-		border-radius: 6px;
-		padding: 0.3rem 0.5rem;
-		font-size: 0.8rem;
+		background: var(--paper-raised);
+		border: var(--bd);
+		color: var(--ink);
+		border-radius: var(--r-ctrl);
+		padding: 0.28rem 0.5rem;
+		font-size: 0.78rem;
+		font-weight: 600;
 		cursor: pointer;
 		font-family: var(--mono);
 	}
 	.sbtn.on {
-		background: var(--accent);
-		color: white;
-		border-color: var(--accent);
+		background: var(--live);
+		color: var(--paper-raised);
+		border-color: var(--live);
 	}
 	.gauges {
 		display: grid;
@@ -803,8 +847,8 @@
 		margin-top: 0.5rem;
 	}
 	.ts {
-		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
+		background: var(--paper-inset);
+		border: var(--bd);
 		border-radius: 10px;
 		padding: 0.6rem 0.8rem;
 	}
@@ -813,15 +857,15 @@
 		font-weight: 700;
 	}
 	.tv.good {
-		color: var(--accent-2);
+		color: var(--ahead);
 	}
 	.tv.bad {
-		color: var(--warn);
+		color: var(--behind);
 	}
 	.tu {
 		font-size: 0.85rem;
 		font-weight: 500;
-		color: var(--text-dim);
+		color: var(--ink-2);
 		margin-left: 0.15rem;
 	}
 	.tl {
@@ -880,8 +924,8 @@
 		margin: 0.5rem 0 1rem;
 	}
 	.ss {
-		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
+		background: var(--paper-inset);
+		border: var(--bd);
 		border-radius: 10px;
 		padding: 0.5rem 0.7rem;
 	}
@@ -890,10 +934,10 @@
 		font-weight: 700;
 	}
 	.ssv.good {
-		color: var(--accent-2);
+		color: var(--ahead);
 	}
 	.ssv.bad {
-		color: var(--warn);
+		color: var(--behind);
 	}
 	.ssl {
 		font-size: 0.72rem;
@@ -920,7 +964,7 @@
 	}
 	.repno {
 		font-weight: 700;
-		color: var(--text-dim);
+		color: var(--ink-2);
 	}
 	.repbarwrap {
 		position: relative;
@@ -950,10 +994,10 @@
 		text-align: right;
 	}
 	.repdelta.good {
-		color: var(--accent-2);
+		color: var(--ahead);
 	}
 	.repdelta.bad {
-		color: var(--warn);
+		color: var(--behind);
 	}
 	.meta {
 		margin-bottom: 0.75rem;
@@ -969,14 +1013,14 @@
 		flex-direction: column;
 		gap: 0.1rem;
 		padding: 0.3rem 0;
-		border-bottom: 1px solid var(--bg-elev-2);
+		border-bottom: var(--bd);
 	}
 	.metagrid .wide {
 		grid-column: 1 / -1;
 	}
 	.metagrid dt {
 		font-size: 0.72rem;
-		color: var(--text-dim);
+		color: var(--ink-2);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
@@ -991,14 +1035,14 @@
 	}
 	.splits th {
 		text-align: left;
-		color: var(--text-dim);
+		color: var(--ink-2);
 		font-weight: 600;
 		padding: 0.3rem 0.5rem;
-		border-bottom: 1px solid var(--border);
+		border-bottom: var(--bd);
 	}
 	.splits td {
 		padding: 0.3rem 0.5rem;
-		border-bottom: 1px solid var(--bg-elev-2);
+		border-bottom: var(--bd);
 	}
 	@media (max-width: 760px) {
 		.gauges,

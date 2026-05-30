@@ -14,9 +14,9 @@ function persistTheme(theme: ThemeName) {
  * shared via context like {@link I18n}.
  */
 export class Theme {
-	value = $state<ThemeName>('dark');
+	value = $state<ThemeName>('light');
 
-	constructor(initial: ThemeName = 'dark') {
+	constructor(initial: ThemeName = 'light') {
 		this.value = initial;
 	}
 

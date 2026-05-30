@@ -56,14 +56,14 @@
 	}
 	input {
 		padding: 0.6rem 0.8rem;
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
-		background: var(--bg-elev);
-		color: var(--text);
+		border: var(--bd);
+		border-radius: var(--r-ctrl);
+		background: var(--paper-inset);
+		color: var(--ink);
 		font: inherit;
 	}
 	.err {
-		color: var(--danger);
+		color: var(--alarm);
 		font-size: 0.9rem;
 		margin: 0;
 	}
