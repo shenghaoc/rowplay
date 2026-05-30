@@ -150,8 +150,8 @@ export function distancePBs(workouts: Workout[]): { distance: number; time: numb
 // ---------------------------------------------------------------------------
 
 export interface HrZone {
+	/** 1-5. The display name is resolved via i18n (`replay.zone{n}`), not here. */
 	zone: number;
-	label: string;
 	color: string;
 	min: number;
 	max: number;
@@ -165,11 +165,11 @@ export interface HrZone {
  * it from the workout's peak heart rate.
  */
 export function hrZones(strokes: Stroke[], maxHr?: number): HrZone[] {
-	const peak = Math.max(0, ...strokes.map((s) => s.hr ?? 0));
+	// reduce, not Math.max(...spread): long pieces have many thousands of strokes.
+	const peak = strokes.reduce((m, s) => Math.max(m, s.hr ?? 0), 0);
 	const hrMax = maxHr && maxHr > 0 ? maxHr : Math.max(peak / 0.95, 160);
 
 	const bounds = [0, 0.6, 0.7, 0.8, 0.9, 1.2].map((f) => f * hrMax);
-	const labels = ['Z1 Recovery', 'Z2 Endurance', 'Z3 Tempo', 'Z4 Threshold', 'Z5 Max'];
 	const colors = ['#3fb950', '#56d4ff', '#d29922', '#f0883e', '#f85149'];
 	const seconds = new Array(5).fill(0);
 
@@ -189,10 +189,9 @@ export function hrZones(strokes: Stroke[], maxHr?: number): HrZone[] {
 	}
 
 	const total = seconds.reduce((a, b) => a + b, 0) || 1;
-	return labels.map((label, i) => ({
+	return colors.map((color, i) => ({
 		zone: i + 1,
-		label,
-		color: colors[i],
+		color,
 		min: Math.round(bounds[i]),
 		max: i < 4 ? Math.round(bounds[i + 1]) : Infinity,
 		seconds: seconds[i],

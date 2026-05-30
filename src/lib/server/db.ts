@@ -60,7 +60,10 @@ interface WorkoutRow {
 	stroke_rate: number | null;
 	stroke_count: number | null;
 	heart_rate: number | null;
+	hr_min: number | null;
+	hr_max: number | null;
 	calories: number | null;
+	watt_minutes: number | null;
 	drag_factor: number | null;
 	workout_type: string | null;
 	comments: string | null;
@@ -78,7 +81,10 @@ function rowToWorkout(r: WorkoutRow): Workout {
 		strokeRate: r.stroke_rate ?? undefined,
 		strokeCount: r.stroke_count ?? undefined,
 		heartRateAvg: r.heart_rate ?? undefined,
+		hrMin: r.hr_min ?? undefined,
+		hrMax: r.hr_max ?? undefined,
 		caloriesTotal: r.calories ?? undefined,
+		wattMinutes: r.watt_minutes ?? undefined,
 		dragFactor: r.drag_factor ?? undefined,
 		workoutType: r.workout_type ?? undefined,
 		comments: r.comments ?? undefined,
@@ -91,7 +97,8 @@ export async function getAllWorkouts(db: D1Database, userId: number): Promise<Wo
 	const res = await db
 		.prepare(
 			`SELECT workout_id, date, sport, distance, time, pace, stroke_rate, stroke_count,
-			        heart_rate, calories, drag_factor, workout_type, comments, has_stroke
+			        heart_rate, hr_min, hr_max, calories, watt_minutes, drag_factor, workout_type,
+			        comments, has_stroke
 			 FROM workouts WHERE user_id = ? ORDER BY date DESC`
 		)
 		.bind(userId)
@@ -129,14 +136,15 @@ export async function upsertWorkouts(
 ): Promise<void> {
 	const stmt = db.prepare(
 		`INSERT INTO workouts (user_id, workout_id, date, sport, distance, time, pace,
-		        stroke_rate, stroke_count, heart_rate, calories, drag_factor, workout_type,
-		        comments, has_stroke)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		        stroke_rate, stroke_count, heart_rate, hr_min, hr_max, calories, watt_minutes,
+		        drag_factor, workout_type, comments, has_stroke)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(user_id, workout_id) DO UPDATE SET
 		   date=excluded.date, sport=excluded.sport, distance=excluded.distance,
 		   time=excluded.time, pace=excluded.pace, stroke_rate=excluded.stroke_rate,
 		   stroke_count=excluded.stroke_count, heart_rate=excluded.heart_rate,
-		   calories=excluded.calories, drag_factor=excluded.drag_factor,
+		   hr_min=excluded.hr_min, hr_max=excluded.hr_max, calories=excluded.calories,
+		   watt_minutes=excluded.watt_minutes, drag_factor=excluded.drag_factor,
 		   workout_type=excluded.workout_type, comments=excluded.comments,
 		   has_stroke=excluded.has_stroke`
 	);
@@ -152,7 +160,10 @@ export async function upsertWorkouts(
 			w.strokeRate ?? null,
 			w.strokeCount ?? null,
 			w.heartRateAvg ?? null,
+			w.hrMin ?? null,
+			w.hrMax ?? null,
 			w.caloriesTotal ?? null,
+			w.wattMinutes ?? null,
 			w.dragFactor ?? null,
 			w.workoutType ?? null,
 			w.comments ?? null,

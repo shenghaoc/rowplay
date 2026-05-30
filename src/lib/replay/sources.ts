@@ -10,11 +10,17 @@ import { paceToWatts } from '../format';
 /** Parse a /500m pace like "1:52", "1:52.5", or "112" (seconds) into seconds. */
 export function parsePaceInput(input: string): number | null {
 	const s = input.trim();
-	const m = s.match(/^(?:(\d+):)?([0-5]?\d(?:\.\d+)?)$/);
-	if (!m) return null;
-	const mins = m[1] ? parseInt(m[1], 10) : 0;
-	const secs = parseFloat(m[2]);
-	const total = mins * 60 + secs;
+	// Either "M:SS(.t)" (seconds 0-59) or a bare seconds value (any magnitude).
+	const clock = s.match(/^(\d+):([0-5]?\d(?:\.\d+)?)$/);
+	const bare = s.match(/^(\d+(?:\.\d+)?)$/);
+	let total: number;
+	if (clock) {
+		total = parseInt(clock[1], 10) * 60 + parseFloat(clock[2]);
+	} else if (bare) {
+		total = parseFloat(bare[1]);
+	} else {
+		return null;
+	}
 	return total > 0 && isFinite(total) ? total : null;
 }
 
@@ -97,8 +103,14 @@ function parseCsv(text: string): RawSample[] {
 	const ti = find('time', 'seconds', 'elapsed');
 	const di = find('distance', 'meter', 'metre');
 	const pi = find('pace');
-	const si = find('stroke rate', 'strokerate', 'spm', 'cadence', 'rate');
 	const hi = find('heart', 'hr', 'bpm');
+	// Prefer explicit stroke-rate names; fall back to a generic 'rate' column
+	// only if it isn't the heart-rate column we already found.
+	let si = find('stroke rate', 'strokerate', 'spm', 'cadence');
+	if (si < 0) {
+		const rateIdx = header.findIndex((h) => h.includes('rate'));
+		if (rateIdx >= 0 && rateIdx !== hi) si = rateIdx;
+	}
 	const wi = find('watt', 'power');
 	if (ti < 0 || di < 0) return [];
 
@@ -264,7 +276,9 @@ function parseFit(buf: ArrayBuffer): RawSample[] {
 	}
 
 	if (!records.length) return [];
-	const ts0 = Math.min(...records.map((r) => r.ts as number));
+	// reduce, not Math.min(...spread): a multi-hour/high-frequency FIT can have
+	// 100k+ records and spreading them as args overflows the call stack.
+	const ts0 = records.reduce((min, r) => Math.min(min, r.ts as number), Infinity);
 	return records
 		.map((r): RawSample => {
 			const speed = r.speed != null ? r.speed / 1000 : undefined; // m/s
