@@ -47,7 +47,7 @@ export const GET: RequestHandler = async (event) => {
 	event.cookies.set(SESSION_COOKIE, sid, {
 		path: '/',
 		httpOnly: true,
-		secure: cfg.appUrl.startsWith('https'),
+		secure: event.url.protocol === 'https:',
 		sameSite: 'lax',
 		maxAge: 60 * 60 * 24 * 30
 	});

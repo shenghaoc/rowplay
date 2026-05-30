@@ -15,7 +15,7 @@ export const GET: RequestHandler = async (event) => {
 	event.cookies.set(OAUTH_STATE_COOKIE, state, {
 		path: '/',
 		httpOnly: true,
-		secure: cfg.appUrl.startsWith('https'),
+		secure: event.url.protocol === 'https:',
 		sameSite: 'lax',
 		maxAge: 600
 	});
