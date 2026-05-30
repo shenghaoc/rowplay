@@ -23,8 +23,6 @@ declare global {
 				DB: D1Database;
 				CONCEPT2_CLIENT_ID: string;
 				CONCEPT2_CLIENT_SECRET: string;
-				/** When set, only this Concept2 user id may authenticate (single-user lock). */
-				CONCEPT2_ALLOWED_USER_ID: string;
 				CONCEPT2_BASE_URL: string;
 				PUBLIC_APP_URL: string;
 				SESSION_SECRET: string;

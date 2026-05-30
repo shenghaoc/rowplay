@@ -1,6 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getConfig, isAllowedUser, requireSessions } from '$lib/server/config';
+import { getConfig, requireSessions } from '$lib/server/config';
 import { fetchMe } from '$lib/server/concept2';
 import {
 	newSessionId,
@@ -34,12 +34,6 @@ export const actions: Actions = {
 			user = await fetchMe(cfg, token);
 		} catch {
 			return fail(400, { error: 'Concept2 rejected that token. Check it and try again.' });
-		}
-
-		if (!isAllowedUser(cfg, user.id)) {
-			return fail(403, {
-				error: 'This rowplay is locked to a single Concept2 account, and that token belongs to a different user.'
-			});
 		}
 
 		const sid = newSessionId();

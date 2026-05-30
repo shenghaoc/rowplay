@@ -21,7 +21,7 @@
 		</nav>
 		<div class="spacer"></div>
 		{#if data.user}
-			<span class="muted user" title="Concept2 user id {data.user.id}">@{data.user.username} · #{data.user.id}</span>
+			<span class="muted user">@{data.user.username}</span>
 			<form method="POST" action="/auth/logout">
 				<button class="btn ghost small">Log out</button>
 			</form>

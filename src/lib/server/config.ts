@@ -9,18 +9,8 @@ export function getConfig(event: RequestEvent): Concept2Config {
 		clientId: env?.CONCEPT2_CLIENT_ID ?? '',
 		clientSecret: env?.CONCEPT2_CLIENT_SECRET ?? '',
 		baseUrl: env?.CONCEPT2_BASE_URL || 'https://log.concept2.com',
-		appUrl: env?.PUBLIC_APP_URL || new URL(event.request.url).origin,
-		allowedUserId: env?.CONCEPT2_ALLOWED_USER_ID ?? ''
+		appUrl: env?.PUBLIC_APP_URL || new URL(event.request.url).origin
 	};
-}
-
-/**
- * Single-user lock: when CONCEPT2_ALLOWED_USER_ID is set, only that Concept2
- * user id may authenticate. Empty = open (anyone with a valid token).
- */
-export function isAllowedUser(cfg: Concept2Config, userId: number): boolean {
-	const allowed = cfg.allowedUserId.trim();
-	return !allowed || String(userId) === allowed;
 }
 
 export function requireSessions(event: RequestEvent) {

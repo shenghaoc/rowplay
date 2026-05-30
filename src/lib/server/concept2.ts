@@ -11,8 +11,6 @@ export interface Concept2Config {
 	clientSecret: string;
 	baseUrl: string;
 	appUrl: string;
-	/** When non-empty, only this Concept2 user id may authenticate. */
-	allowedUserId: string;
 }
 
 export function redirectUri(cfg: Concept2Config): string {

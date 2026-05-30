@@ -32,9 +32,6 @@
 	// with: wrangler secret put CONCEPT2_CLIENT_SECRET
 	"vars": {
 		"CONCEPT2_CLIENT_ID": "",
-		// Lock to one Concept2 user id (shown in the header once logged in). Empty
-		// = anyone with a valid personal token may use this instance.
-		"CONCEPT2_ALLOWED_USER_ID": "",
 		// "https://log.concept2.com" for production, "https://log-dev.concept2.com" for the dev sandbox.
 		"CONCEPT2_BASE_URL": "https://log.concept2.com",
 		// Public origin, used to build the OAuth redirect URI. Concept2's allowed

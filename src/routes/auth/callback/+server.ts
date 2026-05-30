@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getConfig, isAllowedUser, requireSessions } from '$lib/server/config';
+import { getConfig, requireSessions } from '$lib/server/config';
 import { exchangeCode, fetchMe } from '$lib/server/concept2';
 import {
 	newSessionId,
@@ -41,10 +41,6 @@ export const GET: RequestHandler = async (event) => {
 	const kv = requireSessions(event);
 	const tokens = await exchangeCode(cfg, code);
 	const user = await fetchMe(cfg, tokens.accessToken);
-
-	if (!isAllowedUser(cfg, user.id)) {
-		throw error(403, 'This rowplay is locked to a single Concept2 account.');
-	}
 
 	const sid = newSessionId();
 	await writeSession(kv, sid, { user, tokens });
