@@ -36,8 +36,11 @@ All commands use **npm** (lockfile: `package-lock.json`). See `package.json`
   power curve, distance bands, linear trend). No DOM; safe on server or client.
 - `src/routes/` — `auth/` (OAuth login/callback/logout), `api/` (JSON
   endpoints), `dashboard/`, `replay/[id]/`.
-- Charts use **uPlot**; styling is hand-written CSS in `src/app.css` and
-  scoped component `<style>` blocks (no Tailwind).
+- `src/lib/i18n.ts` + `src/lib/i18n.svelte.ts` — hand-rolled i18n (en/zh);
+  pure dictionaries + reactive `I18n` class shared via Svelte context.
+- `src/lib/theme.svelte.ts` — light/dark theme toggle, also via context.
+- Charts use **uPlot**; styling uses **Tailwind CSS v4** plus CSS custom
+  properties for theming in `src/app.css` and scoped component `<style>` blocks.
 
 ## Non-obvious caveats
 
@@ -63,7 +66,16 @@ All commands use **npm** (lockfile: `package-lock.json`). See `package.json`
 
 ## Svelte conventions
 
-This is a runes-mode Svelte 5 project. Follow the bundled skills in
-`.agents/skills/` (`svelte-core-bestpractices`, `svelte-code-writer`): prefer
+This is a runes-mode Svelte 5 project. Follow the bundled Svelte skills
+(`svelte-core-bestpractices`, `svelte-code-writer`): prefer
 `$state`/`$derived` over effects, keyed `{#each}`, `onclick={...}` handlers, and
 snippets over slots.
+
+## I18n & theming
+
+- All user-visible strings go through `i18n.t('key.path')`, never hardcoded.
+- Language and theme state are `$state`-based classes (`I18n`, `Theme`) shared
+  via `createContext` in the root layout — SSR-safe, no shared singletons.
+- Preferences persist via cookies (`lang`, `theme`) so SSR matches the client.
+- Sport names (RowErg, SkiErg, BikeErg) are Concept2 trademarks and left
+  untranslated in both languages.
