@@ -3,6 +3,48 @@ import type { SportTheme } from './sports';
 import { GHOST_COLOR, LIVE_COLOR } from './sports';
 import { fmtPace } from '../format';
 
+interface CanvasColors {
+	tickMajor: string;
+	tickMinor: string;
+	tickText: string;
+	laneLine: string;
+	bibFill: string;
+	bibText: string;
+	bibDot: string;
+	finishDark: string;
+	finishLight: string;
+	labelBg: string;
+	labelText: string;
+}
+
+const COLORS_LIGHT: CanvasColors = {
+	tickMajor: '#c9bfa9',
+	tickMinor: '#dbd0ba',
+	tickText: '#6a6052',
+	laneLine: '#c9bfa9',
+	bibFill: '#efe8da',
+	bibText: '#18140d',
+	bibDot: '#fbf7ee',
+	finishDark: '#18140d',
+	finishLight: '#fbf7ee',
+	labelBg: '#fbf7ee',
+	labelText: '#18140d'
+};
+
+const COLORS_DARK: CanvasColors = {
+	tickMajor: '#3d3629',
+	tickMinor: '#2e2a23',
+	tickText: '#b5aa96',
+	laneLine: '#3d3629',
+	bibFill: '#2a251e',
+	bibText: '#e7dfce',
+	bibDot: '#18140d',
+	finishDark: '#e7dfce',
+	finishLight: '#18140d',
+	labelBg: '#18140d',
+	labelText: '#e7dfce'
+};
+
 export interface AvatarState {
 	/** Distance fraction 0..1 (position along the course). */
 	distFrac: number;
@@ -34,6 +76,7 @@ export class CourseRenderer {
 	private h = 0;
 	private phase = 0;
 	private ghostPhase = 0;
+	private colors: CanvasColors = COLORS_LIGHT;
 
 	constructor(canvas: HTMLCanvasElement, theme: SportTheme) {
 		const ctx = canvas.getContext('2d');
@@ -54,8 +97,10 @@ export class CourseRenderer {
 		this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 	}
 
-	render(state: RenderState, playing: boolean) {
+	render(state: RenderState, playing: boolean, themeName: 'light' | 'dark' = 'light') {
 		const { ctx, w, h, theme } = this;
+		const C = themeName === 'dark' ? COLORS_DARK : COLORS_LIGHT;
+		this.colors = C;
 		if (w === 0) return;
 		if (playing) {
 			this.phase += 0.15 + state.frame.spm / 600;
@@ -83,14 +128,14 @@ export class CourseRenderer {
 		ctx.textAlign = 'center';
 		for (let i = 0; i <= 10; i++) {
 			const x = startX + (span * i) / 10;
-			ctx.strokeStyle = i % 5 === 0 ? '#c9bfa9' : '#dbd0ba';
+			ctx.strokeStyle = i % 5 === 0 ? this.colors.tickMajor : this.colors.tickMinor;
 			ctx.lineWidth = 1;
 			ctx.beginPath();
 			ctx.moveTo(x, 14);
 			ctx.lineTo(x, h - 22);
 			ctx.stroke();
 			if (i % 5 === 0 || i === 10) {
-				ctx.fillStyle = '#6a6052';
+				ctx.fillStyle = this.colors.tickText;
 				const m = Math.round((state.totalDistance * i) / 10);
 				ctx.fillText(`${m}`, x, h - 8);
 			}
@@ -124,7 +169,7 @@ export class CourseRenderer {
 		const cell = 5;
 		ctx.save();
 		for (let yy = y0, r = 0; yy < y1; yy += cell, r++) {
-			ctx.fillStyle = r % 2 === 0 ? '#18140d' : '#fbf7ee';
+			ctx.fillStyle = r % 2 === 0 ? this.colors.finishDark : this.colors.finishLight;
 			ctx.fillRect(x - 2, yy, 4, cell);
 		}
 		ctx.restore();
@@ -144,7 +189,7 @@ export class CourseRenderer {
 		const avX = startX + span * clamp01(frac);
 		ctx.save();
 
-		ctx.strokeStyle = '#c9bfa9';
+		ctx.strokeStyle = this.colors.laneLine;
 		ctx.lineWidth = 1.5;
 		ctx.beginPath();
 		ctx.moveTo(startX, y);
@@ -162,8 +207,7 @@ export class CourseRenderer {
 
 		ctx.fillStyle = color;
 		ctx.fillRect(6, y - 9, padL - 16, 18);
-		ctx.fillStyle = '#fbf7ee';
-		ctx.font = '700 10px "Source Sans 3", system-ui, sans-serif';
+		ctx.fillStyle = this.colors.labelBg;
 		ctx.textAlign = 'center';
 		ctx.fillText(label, 6 + (padL - 16) / 2, y + 4);
 		ctx.restore();
@@ -172,7 +216,7 @@ export class CourseRenderer {
 	private drawBib(x: number, y: number, label: string, color: string, isYou: boolean) {
 		const ctx = this.ctx;
 		ctx.save();
-		ctx.fillStyle = isYou ? color : '#efe8da';
+		ctx.fillStyle = isYou ? color : this.colors.bibFill;
 		ctx.strokeStyle = color;
 		ctx.lineWidth = 2.5;
 		ctx.beginPath();
@@ -180,12 +224,12 @@ export class CourseRenderer {
 		ctx.fill();
 		ctx.stroke();
 		if (isYou) {
-			ctx.fillStyle = '#fbf7ee';
+			ctx.fillStyle = this.colors.bibDot;
 			ctx.beginPath();
 			ctx.arc(x, y, 2.5, 0, Math.PI * 2);
 			ctx.fill();
 		}
-		ctx.fillStyle = '#18140d';
+		ctx.fillStyle = this.colors.bibText;
 		ctx.font = '600 10px "Source Code Pro", ui-monospace, monospace';
 		ctx.textAlign = 'center';
 		ctx.fillText(label, x, y - 13);

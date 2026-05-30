@@ -72,7 +72,7 @@
 	}
 
 	function renderCurrent() {
-		renderer?.render(buildState(frame), playing);
+		renderer?.render(buildState(frame), playing, uiTheme.value);
 	}
 
 	onMount(() => {
@@ -80,7 +80,7 @@
 		engine = new ReplayEngine(strokes, (f, p) => {
 			frame = f;
 			playing = p;
-			renderer?.render(buildState(f), p);
+			renderer?.render(buildState(f), p, uiTheme.value);
 		});
 
 		const sizeIt = () => {
@@ -257,15 +257,14 @@
 	// Scatter: pace (y, inverted) vs rate (x); a uPlot line over rate-sorted medians.
 	const effData: uPlot.AlignedData = [eff.map((e) => e.spm), eff.map((e) => e.pace)];
 	const effOpts = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
-		const chrome = uplotChrome(uiTheme.value);
 		return {
 			scales: { x: { time: false }, y: { dir: -1 } },
 			cursor: { show: true },
 			axes: [
-				{ stroke: chrome.axis, grid: { stroke: chrome.grid }, values: (_u, sp) => sp.map((v) => `${Math.round(v)}`) },
+				{ stroke: chartChrome.axis, grid: { stroke: chartChrome.grid }, values: (_u, sp) => sp.map((v) => `${Math.round(v)}`) },
 				{
-					stroke: chrome.axis,
-					grid: { stroke: chrome.grid },
+					stroke: chartChrome.axis,
+					grid: { stroke: chartChrome.grid },
 					size: 52,
 					values: (_u, sp) => sp.map((v) => fmtPace(v).replace('/500m', ''))
 				}
