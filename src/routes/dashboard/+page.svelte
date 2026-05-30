@@ -2,6 +2,7 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import WorkoutList from '$components/WorkoutList.svelte';
+	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import {
@@ -343,6 +344,10 @@
 			<div class="value mono">{fmtPace(avgPace)}</div>
 		</div>
 	</div>
+
+	{#if filtered.length}
+		<TrainingHeatmap workouts={filtered} />
+	{/if}
 
 	<!-- Personal bests -->
 	{#if pbs.length}

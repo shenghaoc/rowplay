@@ -450,3 +450,212 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
 
 	return { reps, avgPace, consistency, fade, fastest, slowest };
 }
+
+// ---------------------------------------------------------------------------
+// Training calendar / consistency heatmap
+// ---------------------------------------------------------------------------
+
+export type VolumeMetric = 'distance' | 'time';
+
+export interface DayVolume {
+	day: string;
+	distance: number;
+	time: number;
+	sessions: number;
+}
+
+export function workoutDayKey(date: string): string {
+	const d = new Date(date.replace(' ', 'T'));
+	if (isNaN(d.getTime())) return date.slice(0, 10);
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, '0');
+	const day = String(d.getDate()).padStart(2, '0');
+	return `${y}-${m}-${day}`;
+}
+
+export function aggregateDailyVolume(workouts: Workout[]): Map<string, DayVolume> {
+	const map = new Map<string, DayVolume>();
+	for (const w of workouts) {
+		const day = workoutDayKey(w.date);
+		const e = map.get(day) ?? { day, distance: 0, time: 0, sessions: 0 };
+		e.distance += w.distance;
+		e.time += w.time;
+		e.sessions += 1;
+		map.set(day, e);
+	}
+	return map;
+}
+
+export function dayVolumeValue(v: DayVolume, metric: VolumeMetric): number {
+	return metric === 'distance' ? v.distance : v.time;
+}
+
+export interface CalendarCell {
+	day: string;
+	distance: number;
+	time: number;
+	sessions: number;
+	level: number;
+	week: number;
+	dow: number;
+}
+
+export interface TrainingCalendar {
+	cells: CalendarCell[];
+	weeks: number;
+	metric: VolumeMetric;
+	maxVolume: number;
+	maxLevel: number;
+	startDay: string;
+	endDay: string;
+	activeDays: number;
+	currentStreak: number;
+	longestStreak: number;
+	monthLabels: { week: number; label: string }[];
+}
+
+function startOfLocalDay(d: Date): Date {
+	const x = new Date(d);
+	x.setHours(0, 0, 0, 0);
+	return x;
+}
+
+function addLocalDays(d: Date, n: number): Date {
+	const x = new Date(d);
+	x.setDate(x.getDate() + n);
+	return x;
+}
+
+function localDayKey(d: Date): string {
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, '0');
+	const day = String(d.getDate()).padStart(2, '0');
+	return `${y}-${m}-${day}`;
+}
+
+export function volumeIntensityLevel(
+	value: number,
+	nonZeroVolumes: number[],
+	maxLevel = 4
+): number {
+	if (value <= 0 || maxLevel < 1) return 0;
+	if (!nonZeroVolumes.length) return 1;
+	const sorted = [...nonZeroVolumes].sort((a, b) => a - b);
+	const breaks: number[] = [];
+	for (let i = 1; i < maxLevel; i++) {
+		const idx = Math.min(sorted.length - 1, Math.ceil((sorted.length * i) / maxLevel) - 1);
+		breaks.push(sorted[Math.max(0, idx)]);
+	}
+	let level = maxLevel;
+	for (let i = 0; i < breaks.length; i++) {
+		if (value <= breaks[i]) {
+			level = i + 1;
+			break;
+		}
+	}
+	return level;
+}
+
+function trainingStreaks(activeDayKeys: string[], endDay: string): { current: number; longest: number } {
+	if (!activeDayKeys.length) return { current: 0, longest: 0 };
+	const set = new Set(activeDayKeys);
+	const sorted = [...activeDayKeys].sort();
+	let longest = 0;
+	let run = 0;
+	let prev: Date | null = null;
+	for (const key of sorted) {
+		const d = new Date(`${key}T12:00:00`);
+		if (prev && d.getTime() - prev.getTime() === 86_400_000) run++;
+		else run = 1;
+		longest = Math.max(longest, run);
+		prev = d;
+	}
+	let current = 0;
+	let cursor = new Date(`${endDay}T12:00:00`);
+	while (set.has(localDayKey(cursor))) {
+		current++;
+		cursor = addLocalDays(cursor, -1);
+	}
+	return { current, longest };
+}
+
+export function buildTrainingCalendar(
+	workouts: Workout[],
+	options?: {
+		end?: Date;
+		weeks?: number;
+		metric?: VolumeMetric;
+		maxLevel?: number;
+	}
+): TrainingCalendar {
+	const weeks = options?.weeks ?? 53;
+	const metric = options?.metric ?? 'distance';
+	const maxLevel = options?.maxLevel ?? 4;
+	const end = startOfLocalDay(options?.end ?? new Date());
+	const endSunday = addLocalDays(end, -end.getDay());
+	const start = addLocalDays(endSunday, -(weeks - 1) * 7);
+
+	const byDay = aggregateDailyVolume(workouts);
+	const cells: CalendarCell[] = [];
+	const volumesInRange: number[] = [];
+	const activeDayKeys: string[] = [];
+
+	for (let col = 0; col < weeks; col++) {
+		for (let row = 0; row < 7; row++) {
+			const d = addLocalDays(start, col * 7 + row);
+			const day = localDayKey(d);
+			if (d > end) {
+				cells.push({ day: '', distance: 0, time: 0, sessions: 0, level: 0, week: col, dow: row });
+				continue;
+			}
+			const vol = byDay.get(day);
+			const distance = vol?.distance ?? 0;
+			const time = vol?.time ?? 0;
+			const sessions = vol?.sessions ?? 0;
+			const value = metric === 'distance' ? distance : time;
+			if (sessions > 0) {
+				volumesInRange.push(value);
+				activeDayKeys.push(day);
+			}
+			cells.push({ day, distance, time, sessions, level: 0, week: col, dow: row });
+		}
+	}
+
+	const maxVolume = volumesInRange.length ? Math.max(...volumesInRange) : 0;
+	for (const cell of cells) {
+		if (!cell.day) continue;
+		const value = metric === 'distance' ? cell.distance : cell.time;
+		cell.level = volumeIntensityLevel(value, volumesInRange, maxLevel);
+	}
+
+	const endDay = localDayKey(end);
+	const { current: currentStreak, longest: longestStreak } = trainingStreaks(activeDayKeys, endDay);
+
+	const monthLabels: { week: number; label: string }[] = [];
+	let lastMonth = -1;
+	for (let col = 0; col < weeks; col++) {
+		const d = addLocalDays(start, col * 7);
+		const m = d.getMonth();
+		if (m !== lastMonth) {
+			monthLabels.push({
+				week: col,
+				label: d.toLocaleDateString(undefined, { month: 'short' })
+			});
+			lastMonth = m;
+		}
+	}
+
+	return {
+		cells,
+		weeks,
+		metric,
+		maxVolume,
+		maxLevel,
+		startDay: localDayKey(start),
+		endDay,
+		activeDays: activeDayKeys.length,
+		currentStreak,
+		longestStreak,
+		monthLabels
+	};
+}
