@@ -1,10 +1,13 @@
 import type { Handle } from '@sveltejs/kit';
+import { ensureTemporal } from '$lib/ensure-temporal';
 import { readSession, SESSION_COOKIE } from '$lib/server/session';
 import type { Language } from '$lib/i18n';
 
 const SUPPORTED_LANGS = new Set<Language>(['en', 'zh']);
 
 export const handle: Handle = async ({ event, resolve }) => {
+	await ensureTemporal();
+
 	const env = event.platform?.env;
 
 	// Unauthenticated visitors see demo (mock) data; a valid session — OAuth or a

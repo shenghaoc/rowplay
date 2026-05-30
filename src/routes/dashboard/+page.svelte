@@ -4,7 +4,8 @@
 	import WorkoutList from '$components/WorkoutList.svelte';
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
-	import { fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
+	import { fmtDate, fmtDateFromEpochMillis, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
+	import { logbookEpochMillis } from '$lib/datetime';
 	import {
 		distanceBand,
 		distancePBs,
@@ -75,7 +76,7 @@
 	}
 
 	function workoutEpoch(w: Workout): number {
-		return new Date(w.date.replace(' ', 'T')).getTime();
+		return logbookEpochMillis(w.date);
 	}
 
 	const filtered = $derived(
@@ -274,7 +275,7 @@
 		<p class="syncnote muted">
 			{t('dashboard.syncedNote', {
 				total: data.sync.total,
-				date: fmtDate(new Date(data.sync.lastSyncAt).toISOString())
+				date: fmtDateFromEpochMillis(data.sync.lastSyncAt)
 			})}
 		</p>
 	{:else if !data.demo && !data.sync}
