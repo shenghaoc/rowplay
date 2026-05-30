@@ -3,6 +3,9 @@
  * Call `ensureTemporal()` from hooks before SSR or client render.
  */
 
+/** Fixed zone for logbook wall-clock → epoch (SSR/client must agree). */
+const LOGBOOK_ZONE = 'UTC';
+
 /** Concept2 logbook timestamps: `YYYY-MM-DD HH:MM:SS` (no offset). */
 export function parseLogbookDateTime(text: string): Temporal.PlainDateTime | null {
 	try {
@@ -12,11 +15,11 @@ export function parseLogbookDateTime(text: string): Temporal.PlainDateTime | nul
 	}
 }
 
-/** Epoch milliseconds for sorting; treats logbook times in the user's local zone. */
+/** Epoch milliseconds for sorting; logbook wall times interpreted as UTC. */
 export function logbookEpochMillis(text: string): number {
 	const pdt = parseLogbookDateTime(text);
 	if (!pdt) return NaN;
-	return pdt.toZonedDateTime(Temporal.Now.timeZoneId()).epochMilliseconds;
+	return pdt.toZonedDateTime(LOGBOOK_ZONE).epochMilliseconds;
 }
 
 /** ISO-8601 instant or RFC 3339 string → epoch milliseconds. */
@@ -39,22 +42,28 @@ export function overlapDate(date: string): string {
 	return pdt.toPlainDate().subtract({ days: 1 }).toString();
 }
 
+const DATE_FMT: Intl.DateTimeFormatOptions = {
+	year: 'numeric',
+	month: 'short',
+	day: 'numeric'
+};
+
 /** Short locale date from a logbook string or ISO instant. */
 export function fmtDate(value: string): string {
 	const pdt = parseLogbookDateTime(value);
 	if (pdt) {
-		return logbookToZoned(pdt).toLocaleString(undefined, {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
+		return pdt.toLocaleString(undefined, DATE_FMT);
 	}
 	try {
 		return Temporal.Instant.from(value)
 			.toZonedDateTimeISO(Temporal.Now.timeZoneId())
-			.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+			.toLocaleString(undefined, DATE_FMT);
 	} catch {
-		return value;
+		try {
+			return Temporal.PlainDate.from(value).toLocaleString(undefined, DATE_FMT);
+		} catch {
+			return value;
+		}
 	}
 }
 
@@ -62,13 +71,9 @@ export function fmtDate(value: string): string {
 export function fmtLogbookDateTime(value: string): string {
 	const pdt = parseLogbookDateTime(value);
 	if (!pdt) return value;
-	return logbookToZoned(pdt).toLocaleString();
+	return pdt.toLocaleString();
 }
 
 export function fmtDateFromEpochMillis(epochMs: number): string {
 	return fmtDate(Temporal.Instant.fromEpochMilliseconds(epochMs).toString());
-}
-
-function logbookToZoned(pdt: Temporal.PlainDateTime): Temporal.ZonedDateTime {
-	return pdt.toZonedDateTime(Temporal.Now.timeZoneId());
 }
