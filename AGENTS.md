@@ -87,9 +87,9 @@ snippets over slots.
 - **Demo mode is the default** in this repo (`CONCEPT2_CLIENT_ID` empty in
   `wrangler.jsonc`). No `.dev.vars` or Concept2 credentials are required for
   dashboard/replay development or `npm run test:e2e`.
-- **Two local URLs**: `npm run dev` → `http://127.0.0.1:5173` (fast UI iteration;
+- **Two local URLs**: `npm run dev` → `http://localhost:5173` (fast UI iteration;
   no KV/D1). Workers-faithful runtime → `npm run preview` or Playwright’s
-  `wrangler dev` on **`http://127.0.0.1:8787`**.
+  `wrangler dev` on **`http://127.0.0.1:8787`** (see `playwright.config.ts`).
 - **E2E** (`npm run test:e2e`): builds and starts `wrangler dev` automatically.
   - First run on a fresh VM needs WebKit system libs:
     `npx playwright install --with-deps webkit`.
