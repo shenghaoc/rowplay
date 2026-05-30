@@ -18,9 +18,12 @@
 	import { toast } from 'svelte-sonner';
 	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
+	import { getThemeContext } from '$lib/theme.svelte';
+	import { uplotChrome } from '$lib/chartTheme';
 
 	let { data } = $props();
 	const t = getI18nContext().t;
+	const uiTheme = getThemeContext();
 	const workouts = $derived<Workout[]>(data.workouts);
 
 	let sportFilter = $state<Sport | 'all'>('all');
@@ -215,18 +218,24 @@
 	}
 
 	const trendOptions = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
+		const chrome = uplotChrome(uiTheme.value);
 		const color =
 			metric === 'pace' ? '#dc4327' : metric === 'distance' ? '#5e6b2c' : metric === 'dps' ? '#3f6e8c' : '#2c6e63';
 		return {
 			scales: { x: { time: true }, y: metric === 'pace' ? { dir: -1 } : {} },
 			axes: [
-				{ stroke: '#6a6052', grid: { stroke: '#c9bfa9' } },
-				{ stroke: '#6a6052', grid: { stroke: '#c9bfa9' }, size: 56, values: (_u, sp) => sp.map(metricFmt) }
+				{ stroke: chrome.axis, grid: { stroke: chrome.grid } },
+				{
+					stroke: chrome.axis,
+					grid: { stroke: chrome.grid },
+					size: 56,
+					values: (_u, sp) => sp.map(metricFmt)
+				}
 			],
 			series: [
 				{},
 				{ label: metric, stroke: color, width: 2, points: { show: true, size: 5 } },
-				{ label: 'trend', stroke: '#9a8f79', width: 1.5, dash: [6, 4], points: { show: false } }
+				{ label: 'trend', stroke: chrome.trend, width: 1.5, dash: [6, 4], points: { show: false } }
 			],
 			legend: { show: false }
 		};
@@ -715,7 +724,7 @@
 	}
 	.verdict.bad {
 		border-color: var(--behind);
-		color: var(--behind);
+		color: var(--alarm);
 	}
 	@media (max-width: 720px) {
 		.stats {

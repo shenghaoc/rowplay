@@ -69,6 +69,12 @@
 		plot?.destroy();
 	});
 
+	// Rebuild when options change (e.g. theme toggle updates axis/grid colours).
+	$effect(() => {
+		options;
+		if (plot && UPlotCtor) build();
+	});
+
 	// React to data changes.
 	$effect(() => {
 		data;
