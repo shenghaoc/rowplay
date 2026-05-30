@@ -123,6 +123,20 @@
 		productive: 'accent',
 		overreaching: 'bad'
 	};
+	const bandLabel: Record<FormBand, string> = {
+		transition: t('dashboard.bandTransition'),
+		fresh: t('dashboard.bandFresh'),
+		neutral: t('dashboard.bandNeutral'),
+		productive: t('dashboard.bandProductive'),
+		overreaching: t('dashboard.bandOverreaching')
+	};
+	const bandDesc: Record<FormBand, string> = {
+		transition: t('dashboard.descTransition'),
+		fresh: t('dashboard.descFresh'),
+		neutral: t('dashboard.descNeutral'),
+		productive: t('dashboard.descProductive'),
+		overreaching: t('dashboard.descOverreaching')
+	};
 	const formData = $derived.by((): uPlot.AlignedData => {
 		// Match the series count in formOptions (x + 3) so uPlot never sees a
 		// shape it can't render, even in the empty state.
@@ -408,7 +422,7 @@
 					<span class="label">{t('dashboard.formTitle')}</span>
 					<span class="tag premium">{t('dashboard.formPremium')}</span>
 				</div>
-				<span class="badge {formBandClass[load.band]}">{t(`dashboard.band${load.band[0].toUpperCase()}${load.band.slice(1)}`)}</span>
+				<span class="badge {formBandClass[load.band]}">{bandLabel[load.band]}</span>
 			</div>
 			<p class="formsub muted">{t('dashboard.formSub')}</p>
 
@@ -439,15 +453,17 @@
 			</div>
 
 			<div class="formread {formBandClass[load.band]}">
-				<strong>{t(`dashboard.band${load.band[0].toUpperCase()}${load.band.slice(1)}`)}.</strong>
-				{t(`dashboard.desc${load.band[0].toUpperCase()}${load.band.slice(1)}`)}
-				<span class="muted">· {t('dashboard.formRamp')}: {signed(load.ramp)}</span>
+				<strong>{bandLabel[load.band]}.</strong>
+				{bandDesc[load.band]}
+				{#if formReady}
+					<span class="muted">· {t('dashboard.formRamp')}: {signed(load.ramp)}</span>
+				{/if}
 			</div>
 
 			{#if formReady}
 				<UPlotChart data={formData} options={formOptions} height={190} />
 				<div class="formlegend muted">
-					<span><i style="background: var(--accent)"></i> {t('dashboard.formChartFitness')}</span>
+					<span><i style="background: #2f81f7"></i> {t('dashboard.formChartFitness')}</span>
 					<span><i style="background: #f778ba"></i> {t('dashboard.formChartFatigue')}</span>
 					<span><i style="background: #3fb950"></i> {t('dashboard.formChartForm')}</span>
 				</div>
