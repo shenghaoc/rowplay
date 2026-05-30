@@ -32,7 +32,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.lang = lang;
 	event.locals.theme = theme;
 
-	return resolve(event, {
+	const response = await resolve(event, {
 		transformPageChunk: ({ html }) => html.replace('%lang%', lang).replace('%theme%', theme)
 	});
+
+	response.headers.set('X-Frame-Options', 'DENY');
+	response.headers.set('X-Content-Type-Options', 'nosniff');
+	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+	return response;
 };
