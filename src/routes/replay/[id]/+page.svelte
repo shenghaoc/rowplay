@@ -13,7 +13,7 @@
 		efficiencyByRate,
 		intervalBreakdown
 	} from '$lib/analytics';
-	import { fmtDate, fmtDistance, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '$lib/format';
+	import { avgWatts, fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
 	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
 	import { toast } from 'svelte-sonner';
@@ -168,7 +168,7 @@
 			return;
 		}
 		ghostError = '';
-		setGhost(constantPaceGhost(secs, total), `${fmtPace(secs).replace('/500m', '')}/500m`);
+		setGhost(constantPaceGhost(secs, total), `${fmtPaceBare(secs)}/500m`);
 		toast.success(t('replay.pacingAt', { pace: fmtPace(secs) }));
 	}
 
@@ -231,7 +231,7 @@
 	const powerData: uPlot.AlignedData = [xs, strokes.map((s) => s.watts)];
 	const hrData: uPlot.AlignedData = [xs, strokes.map((s) => s.hr ?? null)];
 
-	const paceOpts = metricOpts('pace', theme.color, true, (v) => fmtPace(v).replace('/500m', ''));
+	const paceOpts = metricOpts('pace', theme.color, true, fmtPaceBare);
 	const rateOpts = metricOpts('rate', '#3fb950', false, (v) => `${Math.round(v)}`);
 	const powerOpts = metricOpts('power', '#d2a8ff', false, (v) => `${Math.round(v)}w`);
 	const hrOpts = metricOpts('hr', '#f778ba', false, (v) => `${Math.round(v)}`);
@@ -255,7 +255,7 @@
 		cursor: { show: true },
 		axes: [
 			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, values: (_u, sp) => sp.map((v) => `${Math.round(v)}`) },
-			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 52, values: (_u, sp) => sp.map((v) => fmtPace(v).replace('/500m', '')) }
+			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 52, values: (_u, sp) => sp.map(fmtPaceBare) }
 		],
 		series: [{}, { label: 'pace@rate', stroke: '#56d4ff', width: 2, points: { show: true, size: 7 } }],
 		legend: { show: false }
@@ -282,10 +282,7 @@
 	}
 
 	// ---- Full metadata ----
-	const avgWatts =
-		detail.wattMinutes && detail.time > 0
-			? Math.round(detail.wattMinutes / (detail.time / 60))
-			: Math.round(paceToWatts(detail.pace));
+	const watts = avgWatts(detail);
 	const dateTime = (() => {
 		const d = new Date(detail.date.replace(' ', 'T'));
 		return isNaN(d.getTime()) ? detail.date : d.toLocaleString();
@@ -394,7 +391,7 @@
 	<div class="gauges card">
 		<MetricGauge
 			label={t('replay.gPace')} unit="/500m"
-			display={fmtPace(frame.pace).replace('/500m', '')}
+			display={fmtPaceBare(frame.pace)}
 			value={frame.pace} min={paceRange.max} max={paceRange.min} color={theme.color}
 		/>
 		<MetricGauge
@@ -519,7 +516,7 @@
 
 			<div class="setstats">
 				<div class="ss">
-					<div class="ssv mono">{fmtPace(intervals.avgPace).replace('/500m', '')}</div>
+					<div class="ssv mono">{fmtPaceBare(intervals.avgPace)}</div>
 					<div class="ssl muted">{detail.isInterval ? t('replay.avgRepPace') : t('replay.avgSplitPace')}</div>
 				</div>
 				<div class="ss">
@@ -533,7 +530,7 @@
 					<div class="ssl muted">{t('replay.setFade')} <span class="hint">({intervals.fade <= 0 ? t('replay.negSplit') : t('replay.faded')})</span></div>
 				</div>
 				<div class="ss">
-					<div class="ssv mono">{fmtPace(intervals.fastest).replace('/500m', '')} → {fmtPace(intervals.slowest).replace('/500m', '')}</div>
+					<div class="ssv mono">{fmtPaceBare(intervals.fastest)} → {fmtPaceBare(intervals.slowest)}</div>
 					<div class="ssl muted">{t('replay.fastestSlowest')}</div>
 				</div>
 			</div>
@@ -544,7 +541,7 @@
 						<div class="repno mono">#{r.index + 1}</div>
 						<div class="repbarwrap">
 							<div class="repbar" style:width="{repBarPct(r.pace)}%" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : theme.color}></div>
-							<span class="repbarlabel mono">{fmtPace(r.pace).replace('/500m', '')}</span>
+							<span class="repbarlabel mono">{fmtPaceBare(r.pace)}</span>
 						</div>
 						<div class="repmeta mono muted">
 							{fmtDistance(r.distance)} · {fmtTime(r.time, true)} · {r.spm}{theme.cadenceUnit}
@@ -552,7 +549,7 @@
 							{#if r.dps > 0}· {r.dps.toFixed(1)}m/st{/if}
 						</div>
 						<div class="repdelta mono" class:good={r.vsAverage < 0} class:bad={r.vsAverage > 0}>
-							{r.vsAverage < 0 ? '−' : '+'}{fmtPace(Math.abs(r.vsAverage)).replace('/500m', '')}
+							{r.vsAverage < 0 ? '−' : '+'}{fmtPaceBare(Math.abs(r.vsAverage))}
 						</div>
 					</div>
 				{/each}
@@ -594,7 +591,7 @@
 			<div><dt>{t('replay.mAvgPace')}</dt><dd class="mono">{fmtPace(detail.pace)}</dd></div>
 			<div><dt>{t('replay.mAvgRate')}</dt><dd class="mono">{detail.strokeRate ?? '—'} {theme.cadenceUnit}</dd></div>
 			<div><dt>{t('replay.mStrokeCount')}</dt><dd class="mono">{detail.strokeCount ?? '—'}</dd></div>
-			<div><dt>{t('replay.mAvgPower')}</dt><dd class="mono">{avgWatts} W</dd></div>
+			<div><dt>{t('replay.mAvgPower')}</dt><dd class="mono">{watts} W</dd></div>
 			<div>
 				<dt>{t('replay.mAvgHr')}</dt>
 				<dd class="mono">{detail.heartRateAvg != null ? Math.round(detail.heartRateAvg) + ' bpm' : '—'}</dd>

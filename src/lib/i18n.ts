@@ -400,11 +400,26 @@ const zh = {
 
 const dictionaries = { en, zh } as const;
 
-export function getValue(language: Language, key: string): string | undefined {
-	let current: unknown = dictionaries[language];
-	for (const segment of key.split('.')) {
-		if (!current || typeof current !== 'object' || !(segment in current)) return undefined;
-		current = (current as Record<string, unknown>)[segment];
+function flattenDict(obj: Record<string, unknown>, prefix = ''): Map<string, string> {
+	const map = new Map<string, string>();
+	for (const [k, v] of Object.entries(obj)) {
+		const path = prefix ? `${prefix}.${k}` : k;
+		if (typeof v === 'string') {
+			map.set(path, v);
+		} else if (v && typeof v === 'object') {
+			for (const [subKey, subVal] of flattenDict(v as Record<string, unknown>, path)) {
+				map.set(subKey, subVal);
+			}
+		}
 	}
-	return typeof current === 'string' ? current : undefined;
+	return map;
+}
+
+const flatDictionaries: Record<Language, Map<string, string>> = {
+	en: flattenDict(en),
+	zh: flattenDict(zh)
+};
+
+export function getValue(language: Language, key: string): string | undefined {
+	return flatDictionaries[language].get(key);
 }
