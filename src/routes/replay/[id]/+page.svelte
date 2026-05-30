@@ -13,8 +13,9 @@
 		efficiencyByRate,
 		intervalBreakdown
 	} from '$lib/analytics';
-	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
+	import { fmtDate, fmtDistance, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '$lib/format';
 	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
+	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
 	import { toast } from 'svelte-sonner';
 	import { ArrowLeft, Play, Pause, Ghost } from '@lucide/svelte';
 	import SportIcon from '$components/SportIcon.svelte';
@@ -30,12 +31,20 @@
 	let playing = $state(false);
 	let speed = $state(1);
 
-	// Ghost (race a past session) state.
-	let ghostId = $state<string>('');
-	let ghostDetail = $state<WorkoutDetail | null>(null);
+	// Comparison ("ghost") state — race a past session, a constant pace, or an
+	// uploaded CSV/TCX/FIT file. All three resolve to a ghost stroke array.
+	type CompareMode = 'none' | 'session' | 'pace' | 'file';
+	let compareMode = $state<CompareMode>('none');
 	let ghostStrokes: Stroke[] | null = null;
+	let ghostActive = $state(false);
+	let ghostLabel = $state('');
 	let ghostFrame = $state<Frame | null>(null);
 	let loadingGhost = $state(false);
+	let ghostError = $state('');
+	// sub-control inputs
+	let ghostId = $state('');
+	let paceInput = $state('2:00');
+	let fileName = $state('');
 
 	let engine = $state<ReplayEngine | null>(null);
 	let renderer: CourseRenderer | null = null;
@@ -51,7 +60,9 @@
 			frame: f,
 			distFrac: total ? f.d / total : 0,
 			totalDistance: total,
-			ghost: g ? { distFrac: total ? g.d / total : 0, pace: g.pace, spm: g.spm } : undefined
+			ghost: g
+				? { distFrac: total ? g.d / total : 0, pace: g.pace, spm: g.spm, label: ghostLabel }
+				: undefined
 		};
 	}
 
@@ -69,7 +80,7 @@
 
 		const sizeIt = () => {
 			const w = courseWrap.clientWidth;
-			renderer?.resize(w, ghostDetail ? 190 : 150);
+			renderer?.resize(w, ghostActive ? 190 : 150);
 			renderCurrent();
 		};
 		sizeIt();
@@ -100,15 +111,33 @@
 		engine?.seek(Number((e.target as HTMLInputElement).value));
 	}
 
+	function setGhost(strokes: Stroke[] | null, label: string) {
+		ghostStrokes = strokes && strokes.length ? strokes : null;
+		ghostActive = ghostStrokes != null;
+		ghostLabel = ghostActive ? label : '';
+		if (!ghostActive) ghostFrame = null;
+		renderer?.resize(courseWrap.clientWidth, ghostActive ? 190 : 150);
+		renderCurrent();
+	}
+
+	function clearGhost() {
+		ghostId = '';
+		fileName = '';
+		ghostError = '';
+		setGhost(null, '');
+	}
+
+	function onModeChange(e: Event) {
+		compareMode = (e.target as HTMLSelectElement).value as CompareMode;
+		clearGhost();
+	}
+
 	async function selectGhost(e: Event) {
 		const id = (e.target as HTMLSelectElement).value;
 		ghostId = id;
+		ghostError = '';
 		if (!id) {
-			ghostStrokes = null;
-			ghostDetail = null;
-			ghostFrame = null;
-			renderer?.resize(courseWrap.clientWidth, 150);
-			renderCurrent();
+			setGhost(null, '');
 			return;
 		}
 		loadingGhost = true;
@@ -116,20 +145,50 @@
 			const res = await fetch(`/api/workouts/${id}`);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const d = (await res.json()) as WorkoutDetail;
-			ghostDetail = d;
-			ghostStrokes = d.strokes;
-			renderer?.resize(courseWrap.clientWidth, 190);
-			renderCurrent();
+			setGhost(d.strokes, `your ${fmtDate(d.date)}`);
 			toast.success(`Racing your ${fmtDate(d.date)} session`, {
 				description: `${fmtDistance(d.distance)} · ${fmtPace(d.pace)}`
 			});
-		} catch (e) {
+		} catch (err) {
 			ghostId = '';
 			toast.error('Could not load that session', {
-				description: e instanceof Error ? e.message : 'Please try again.'
+				description: err instanceof Error ? err.message : 'Please try again.'
 			});
 		} finally {
 			loadingGhost = false;
+		}
+	}
+
+	function applyPace() {
+		const secs = parsePaceInput(paceInput);
+		if (secs == null) {
+			ghostError = 'Enter a pace like 1:52';
+			return;
+		}
+		ghostError = '';
+		setGhost(constantPaceGhost(secs, total), `${fmtPace(secs).replace('/500m', '')}/500m`);
+		toast.success(`Pacing at ${fmtPace(secs)}`);
+	}
+
+	async function onFile(e: Event) {
+		const input = e.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		ghostError = '';
+		loadingGhost = true;
+		try {
+			const { strokes, name } = await parseWorkoutFile(file);
+			if (!strokes.length) throw new Error('No usable samples in that file.');
+			fileName = name;
+			setGhost(strokes, name);
+			toast.success(`Racing ${name}`, { description: `${strokes.length} samples` });
+		} catch (err) {
+			fileName = '';
+			ghostError = err instanceof Error ? err.message : 'Could not read that file.';
+			toast.error('Could not import that file', { description: ghostError });
+		} finally {
+			loadingGhost = false;
+			input.value = '';
 		}
 	}
 
@@ -215,6 +274,16 @@
 		if (!intervals || intervals.slowest <= 0) return 0;
 		return (pace / intervals.slowest) * 100;
 	}
+
+	// ---- Full metadata ----
+	const avgWatts =
+		detail.wattMinutes && detail.time > 0
+			? Math.round(detail.wattMinutes / (detail.time / 60))
+			: Math.round(paceToWatts(detail.pace));
+	const dateTime = (() => {
+		const d = new Date(detail.date.replace(' ', 'T'));
+		return isNaN(d.getTime()) ? detail.date : d.toLocaleString();
+	})();
 </script>
 
 <svelte:head><title>Replay · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
@@ -229,28 +298,58 @@
 		</div>
 	</div>
 
-	<!-- Ghost / race selector -->
-	{#if candidates.length}
-		<div class="card ghostbar">
-			<label for="ghost"><Ghost size={15} /> Race a past {SPORT_LABEL[detail.sport]} session:</label>
+	<!-- Comparison / race control -->
+	<div class="card ghostbar">
+		<label for="cmode"><Ghost size={15} /> Compare against:</label>
+		<select id="cmode" value={compareMode} onchange={onModeChange}>
+			<option value="none">None</option>
+			{#if candidates.length}<option value="session">A past session</option>{/if}
+			<option value="pace">A constant pace</option>
+			<option value="file">An uploaded file</option>
+		</select>
+
+		{#if compareMode === 'session' && candidates.length}
 			<select id="ghost" value={ghostId} onchange={selectGhost}>
-				<option value="">None</option>
+				<option value="">Choose a {SPORT_LABEL[detail.sport]} session…</option>
 				{#each candidates as c}
 					<option value={c.id}>
 						{fmtDate(c.date)} · {fmtDistance(c.distance)} · {fmtPace(c.pace)}
 					</option>
 				{/each}
 			</select>
-			{#if loadingGhost}<span class="muted small">loading…</span>{/if}
-			{#if ghostDetail && ghostFrame}
-				<div class="gap mono" class:ahead={gapMeters >= 0} class:behind={gapMeters < 0}>
-					{gapMeters >= 0 ? '▲ ahead' : '▼ behind'} by
-					{Math.abs(Math.round(gapMeters))}m
-					<span class="muted">({Math.abs(gapSeconds).toFixed(1)}s)</span>
-				</div>
-			{/if}
-		</div>
-	{/if}
+		{:else if compareMode === 'pace'}
+			<input
+				class="paceinput mono"
+				type="text"
+				bind:value={paceInput}
+				placeholder="1:52"
+				aria-label="Pace per 500m"
+				onkeydown={(e) => e.key === 'Enter' && applyPace()}
+			/>
+			<span class="muted small">/500m</span>
+			<button class="btn ghost small" onclick={applyPace}>Set pace</button>
+		{:else if compareMode === 'file'}
+			<input
+				class="fileinput"
+				type="file"
+				accept=".csv,.tcx,.fit"
+				onchange={onFile}
+				aria-label="Upload CSV, TCX, or FIT file"
+			/>
+			<span class="muted small">CSV · TCX · FIT</span>
+			{#if fileName}<span class="muted small">· {fileName}</span>{/if}
+		{/if}
+
+		{#if loadingGhost}<span class="muted small">loading…</span>{/if}
+		{#if ghostError}<span class="err small">{ghostError}</span>{/if}
+
+		{#if ghostActive && ghostFrame}
+			<div class="gap mono" class:ahead={gapMeters >= 0} class:behind={gapMeters < 0}>
+				{gapMeters >= 0 ? '▲ ahead' : '▼ behind'} by {Math.abs(Math.round(gapMeters))}m
+				<span class="muted">({Math.abs(gapSeconds).toFixed(1)}s)</span>
+			</div>
+		{/if}
+	</div>
 
 	<!-- Course -->
 	<div class="card course" bind:this={courseWrap}>
@@ -474,6 +573,51 @@
 			</table>
 		</div>
 	{/if}
+
+	<!-- Full workout metadata -->
+	<div class="card meta">
+		<div class="ctitle muted">Workout details</div>
+		<dl class="metagrid">
+			<div><dt>Date</dt><dd>{dateTime}</dd></div>
+			<div><dt>Sport</dt><dd>{SPORT_LABEL[detail.sport]}</dd></div>
+			<div><dt>Type</dt><dd>{detail.workoutType || '—'}</dd></div>
+			<div><dt>Distance</dt><dd class="mono">{fmtDistance(detail.distance)}</dd></div>
+			<div><dt>Time</dt><dd class="mono">{fmtTime(detail.time, true)}</dd></div>
+			<div><dt>Avg pace</dt><dd class="mono">{fmtPace(detail.pace)}</dd></div>
+			<div><dt>Avg rate</dt><dd class="mono">{detail.strokeRate ?? '—'} {theme.cadenceUnit}</dd></div>
+			<div><dt>Stroke count</dt><dd class="mono">{detail.strokeCount ?? '—'}</dd></div>
+			<div><dt>Avg power</dt><dd class="mono">{avgWatts} W</dd></div>
+			<div>
+				<dt>Avg HR</dt>
+				<dd class="mono">{detail.heartRateAvg != null ? Math.round(detail.heartRateAvg) + ' bpm' : '—'}</dd>
+			</div>
+			<div>
+				<dt>HR range</dt>
+				<dd class="mono">
+					{detail.hrMin != null && detail.hrMax != null
+						? `${detail.hrMin}–${detail.hrMax} bpm`
+						: '—'}
+				</dd>
+			</div>
+			<div>
+				<dt>Calories</dt>
+				<dd class="mono">{detail.caloriesTotal != null ? detail.caloriesTotal + ' cal' : '—'}</dd>
+			</div>
+			<div><dt>Drag factor</dt><dd class="mono">{detail.dragFactor ?? '—'}</dd></div>
+			<div>
+				<dt>Resolution</dt>
+				<dd class="mono">
+					{detail.strokes.length} samples · {detail.hasStrokeData ? 'per-stroke' : 'from splits'}
+				</dd>
+			</div>
+			<div>
+				<dt>Segments</dt>
+				<dd class="mono">{detail.splits.length} {detail.isInterval ? 'intervals' : 'splits'}</dd>
+			</div>
+			<div><dt>Workout id</dt><dd class="mono">{detail.id}</dd></div>
+			<div class="wide"><dt>Comments</dt><dd>{detail.comments || '—'}</dd></div>
+		</dl>
+	</div>
 </div>
 
 <style>
@@ -531,6 +675,23 @@
 		border-radius: 8px;
 		padding: 0.4rem 0.6rem;
 		font-size: 0.85rem;
+	}
+	.paceinput {
+		width: 5rem;
+		background: var(--bg-elev-2);
+		color: var(--text);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 0.4rem 0.6rem;
+		font-size: 0.85rem;
+	}
+	.fileinput {
+		font-size: 0.8rem;
+		color: var(--text-dim);
+		max-width: 240px;
+	}
+	.err {
+		color: var(--danger);
 	}
 	.gap {
 		margin-left: auto;
@@ -781,6 +942,35 @@
 	}
 	.repdelta.bad {
 		color: var(--warn);
+	}
+	.meta {
+		margin-bottom: 0.75rem;
+	}
+	.metagrid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+		gap: 0.4rem 1rem;
+		margin: 0.5rem 0 0;
+	}
+	.metagrid > div {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		padding: 0.3rem 0;
+		border-bottom: 1px solid var(--bg-elev-2);
+	}
+	.metagrid .wide {
+		grid-column: 1 / -1;
+	}
+	.metagrid dt {
+		font-size: 0.72rem;
+		color: var(--text-dim);
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+	.metagrid dd {
+		margin: 0;
+		font-size: 0.9rem;
 	}
 	.splits table {
 		width: 100%;

@@ -9,6 +9,8 @@ export interface AvatarState {
 	pace: number;
 	/** Stroke rate, drives the bob animation. */
 	spm: number;
+	/** Prefix shown above the ghost avatar (e.g. "PB", "2:00/500m", a filename). */
+	label?: string;
 }
 
 export interface RenderState {
@@ -106,7 +108,7 @@ export class CourseRenderer {
 			this.drawAvatar(
 				startX + span * clamp01(state.ghost.distFrac),
 				ghostY,
-				`PB · ${Math.round(state.ghost.distFrac * 100)}%`,
+				`${state.ghost.label || 'PB'} · ${Math.round(state.ghost.distFrac * 100)}%`,
 				'#8b949e',
 				0.55,
 				playing ? Math.sin(this.ghostPhase) * 2 : 0
