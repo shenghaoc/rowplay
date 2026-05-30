@@ -7,17 +7,17 @@
 
 	let {
 		workouts,
-		end = new Date()
+		endDay
 	}: {
 		workouts: Workout[];
-		/** Anchor the calendar window (defaults to today). */
-		end?: Date;
+		/** Inclusive grid end (`YYYY-MM-DD`), from server load for SSR-stable hydration. */
+		endDay: string;
 	} = $props();
 
 	const t = getI18nContext().t;
 	let metric = $state<VolumeMetric>('distance');
 
-	const calendar = $derived(buildTrainingCalendar(workouts, { end, metric }));
+	const calendar = $derived(buildTrainingCalendar(workouts, { endDay, metric }));
 
 	const DOW_KEYS = [
 		'dashboard.calDowSun',

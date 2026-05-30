@@ -464,13 +464,9 @@ export interface DayVolume {
 	sessions: number;
 }
 
+/** Logbook timestamps are `YYYY-MM-DD HH:MM:SS` — slice avoids TZ shifts. */
 export function workoutDayKey(date: string): string {
-	const d = new Date(date.replace(' ', 'T'));
-	if (isNaN(d.getTime())) return date.slice(0, 10);
-	const y = d.getFullYear();
-	const m = String(d.getMonth() + 1).padStart(2, '0');
-	const day = String(d.getDate()).padStart(2, '0');
-	return `${y}-${m}-${day}`;
+	return date.slice(0, 10);
 }
 
 export function aggregateDailyVolume(workouts: Workout[]): Map<string, DayVolume> {
@@ -514,23 +510,26 @@ export interface TrainingCalendar {
 	monthLabels: { week: number; label: string }[];
 }
 
-function startOfLocalDay(d: Date): Date {
-	const x = new Date(d);
-	x.setHours(0, 0, 0, 0);
-	return x;
+/** Add calendar days in UTC so DST never breaks streak/grid math. */
+function addDaysToKey(key: string, days: number): string {
+	const d = new Date(`${key}T00:00:00Z`);
+	d.setUTCDate(d.getUTCDate() + days);
+	return d.toISOString().slice(0, 10);
 }
 
-function addLocalDays(d: Date, n: number): Date {
-	const x = new Date(d);
-	x.setDate(x.getDate() + n);
-	return x;
+function dayOfWeekUtc(key: string): number {
+	return new Date(`${key}T00:00:00Z`).getUTCDay();
 }
 
-function localDayKey(d: Date): string {
-	const y = d.getFullYear();
-	const m = String(d.getMonth() + 1).padStart(2, '0');
-	const day = String(d.getDate()).padStart(2, '0');
-	return `${y}-${m}-${day}`;
+function isConsecutiveDay(prev: string, next: string): boolean {
+	return addDaysToKey(prev, 1) === next;
+}
+
+function monthLabelUtc(dayKey: string): string {
+	return new Date(`${dayKey}T00:00:00Z`).toLocaleDateString('en-US', {
+		month: 'short',
+		timeZone: 'UTC'
+	});
 }
 
 export function volumeIntensityLevel(
@@ -562,19 +561,20 @@ function trainingStreaks(activeDayKeys: string[], endDay: string): { current: nu
 	const sorted = [...activeDayKeys].sort();
 	let longest = 0;
 	let run = 0;
-	let prev: Date | null = null;
+	let prev: string | null = null;
 	for (const key of sorted) {
-		const d = new Date(`${key}T12:00:00`);
-		if (prev && d.getTime() - prev.getTime() === 86_400_000) run++;
+		if (prev && isConsecutiveDay(prev, key)) run++;
 		else run = 1;
 		longest = Math.max(longest, run);
-		prev = d;
+		prev = key;
 	}
 	let current = 0;
-	let cursor = new Date(`${endDay}T12:00:00`);
-	while (set.has(localDayKey(cursor))) {
+	let cursor = endDay;
+	// Grace period: streak still counts if they trained yesterday but not yet today.
+	if (!set.has(cursor)) cursor = addDaysToKey(cursor, -1);
+	while (set.has(cursor)) {
 		current++;
-		cursor = addLocalDays(cursor, -1);
+		cursor = addDaysToKey(cursor, -1);
 	}
 	return { current, longest };
 }
@@ -582,7 +582,8 @@ function trainingStreaks(activeDayKeys: string[], endDay: string): { current: nu
 export function buildTrainingCalendar(
 	workouts: Workout[],
 	options?: {
-		end?: Date;
+		/** Inclusive end of the grid, `YYYY-MM-DD` (pass from server for SSR stability). */
+		endDay?: string;
 		weeks?: number;
 		metric?: VolumeMetric;
 		maxLevel?: number;
@@ -591,20 +592,24 @@ export function buildTrainingCalendar(
 	const weeks = options?.weeks ?? 53;
 	const metric = options?.metric ?? 'distance';
 	const maxLevel = options?.maxLevel ?? 4;
-	const end = startOfLocalDay(options?.end ?? new Date());
-	const endSunday = addLocalDays(end, -end.getDay());
-	const start = addLocalDays(endSunday, -(weeks - 1) * 7);
 
 	const byDay = aggregateDailyVolume(workouts);
+	const historyDays = [...byDay.keys()].sort();
+	const endDay =
+		options?.endDay ??
+		(historyDays.length ? historyDays[historyDays.length - 1] : new Date().toISOString().slice(0, 10));
+
+	const endSunday = addDaysToKey(endDay, -dayOfWeekUtc(endDay));
+	const startDay = addDaysToKey(endSunday, -(weeks - 1) * 7);
+
 	const cells: CalendarCell[] = [];
 	const volumesInRange: number[] = [];
-	const activeDayKeys: string[] = [];
+	let activeDaysInRange = 0;
 
 	for (let col = 0; col < weeks; col++) {
 		for (let row = 0; row < 7; row++) {
-			const d = addLocalDays(start, col * 7 + row);
-			const day = localDayKey(d);
-			if (d > end) {
+			const day = addDaysToKey(startDay, col * 7 + row);
+			if (day > endDay) {
 				cells.push({ day: '', distance: 0, time: 0, sessions: 0, level: 0, week: col, dow: row });
 				continue;
 			}
@@ -615,7 +620,7 @@ export function buildTrainingCalendar(
 			const value = metric === 'distance' ? distance : time;
 			if (sessions > 0) {
 				volumesInRange.push(value);
-				activeDayKeys.push(day);
+				activeDaysInRange++;
 			}
 			cells.push({ day, distance, time, sessions, level: 0, week: col, dow: row });
 		}
@@ -628,20 +633,18 @@ export function buildTrainingCalendar(
 		cell.level = volumeIntensityLevel(value, volumesInRange, maxLevel);
 	}
 
-	const endDay = localDayKey(end);
-	const { current: currentStreak, longest: longestStreak } = trainingStreaks(activeDayKeys, endDay);
+	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, endDay);
 
 	const monthLabels: { week: number; label: string }[] = [];
 	let lastMonth = -1;
 	for (let col = 0; col < weeks; col++) {
-		const d = addLocalDays(start, col * 7);
-		const m = d.getMonth();
+		const weekStart = addDaysToKey(startDay, col * 7);
+		const m = parseInt(weekStart.slice(5, 7), 10);
 		if (m !== lastMonth) {
-			monthLabels.push({
-				week: col,
-				label: d.toLocaleDateString(undefined, { month: 'short' })
-			});
-			lastMonth = m;
+			if (monthLabels.length === 0 || col - monthLabels[monthLabels.length - 1].week >= 3) {
+				monthLabels.push({ week: col, label: monthLabelUtc(weekStart) });
+				lastMonth = m;
+			}
 		}
 	}
 
@@ -651,9 +654,9 @@ export function buildTrainingCalendar(
 		metric,
 		maxVolume,
 		maxLevel,
-		startDay: localDayKey(start),
+		startDay,
 		endDay,
-		activeDays: activeDayKeys.length,
+		activeDays: activeDaysInRange,
 		currentStreak,
 		longestStreak,
 		monthLabels

@@ -346,7 +346,7 @@
 	</div>
 
 	{#if filtered.length}
-		<TrainingHeatmap workouts={filtered} />
+		<TrainingHeatmap workouts={filtered} endDay={data.calendarEndDay} />
 	{/if}
 
 	<!-- Personal bests -->
