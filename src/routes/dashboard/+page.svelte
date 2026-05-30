@@ -31,7 +31,7 @@
 	async function sync() {
 		if (syncing) return;
 		syncing = true;
-		const t = toast.loading('Syncing your logbook…');
+		const toastId = toast.loading(t('sync.loading'));
 		try {
 			const res = await fetch('/api/sync', { method: 'POST' });
 			if (!res.ok) {
@@ -46,11 +46,11 @@
 			}
 			const { added, total } = (await res.json()) as { added: number; total: number };
 			await invalidateAll();
-			toast.success(`Synced — ${added} new, ${total} total`, { id: t });
+			toast.success(t('sync.done', { added, total }), { id: toastId });
 		} catch (e) {
-			toast.error('Sync failed', {
-				id: t,
-				description: e instanceof Error ? e.message : 'Please try again.'
+			toast.error(t('sync.failed'), {
+				id: toastId,
+				description: e instanceof Error ? e.message : t('common.tryAgain')
 			});
 		} finally {
 			syncing = false;

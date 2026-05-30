@@ -147,14 +147,14 @@
 			const res = await fetch(`/api/workouts/${id}`);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const d = (await res.json()) as WorkoutDetail;
-			setGhost(d.strokes, `your ${fmtDate(d.date)}`);
-			toast.success(`Racing your ${fmtDate(d.date)} session`, {
+			setGhost(d.strokes, t('replay.ghostYour', { date: fmtDate(d.date) }));
+			toast.success(t('replay.racingSession', { date: fmtDate(d.date) }), {
 				description: `${fmtDistance(d.distance)} · ${fmtPace(d.pace)}`
 			});
 		} catch (err) {
 			ghostId = '';
-			toast.error('Could not load that session', {
-				description: err instanceof Error ? err.message : 'Please try again.'
+			toast.error(t('replay.loadSessionFailed'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
 			});
 		} finally {
 			loadingGhost = false;
@@ -164,12 +164,12 @@
 	function applyPace() {
 		const secs = parsePaceInput(paceInput);
 		if (secs == null) {
-			ghostError = 'Enter a pace like 1:52';
+			ghostError = t('replay.paceError');
 			return;
 		}
 		ghostError = '';
 		setGhost(constantPaceGhost(secs, total), `${fmtPace(secs).replace('/500m', '')}/500m`);
-		toast.success(`Pacing at ${fmtPace(secs)}`);
+		toast.success(t('replay.pacingAt', { pace: fmtPace(secs) }));
 	}
 
 	async function onFile(e: Event) {
@@ -180,14 +180,16 @@
 		loadingGhost = true;
 		try {
 			const { strokes, name } = await parseWorkoutFile(file);
-			if (!strokes.length) throw new Error('No usable samples in that file.');
+			if (!strokes.length) throw new Error(t('replay.noSamples'));
 			fileName = name;
 			setGhost(strokes, name);
-			toast.success(`Racing ${name}`, { description: `${strokes.length} samples` });
+			toast.success(t('replay.racingFile', { name }), {
+				description: `${strokes.length} ${t('replay.samples')}`
+			});
 		} catch (err) {
 			fileName = '';
-			ghostError = err instanceof Error ? err.message : 'Could not read that file.';
-			toast.error('Could not import that file', { description: ghostError });
+			ghostError = err instanceof Error ? err.message : t('replay.fileReadError');
+			toast.error(t('replay.importFailed'), { description: ghostError });
 		} finally {
 			loadingGhost = false;
 			input.value = '';
@@ -492,7 +494,7 @@
 								class="zoneseg"
 								style:width="{z.fraction * 100}%"
 								style:background={z.color}
-								title="{z.label}: {fmtTime(z.seconds)}"
+								title="{t('replay.zone' + z.zone)}: {fmtTime(z.seconds)}"
 							></div>
 						{/if}
 					{/each}
@@ -501,7 +503,7 @@
 					{#each zones as z}
 						<div class="zli">
 							<span class="dot" style:background={z.color}></span>
-							<span class="zname">{z.label}</span>
+							<span class="zname">{t('replay.zone' + z.zone)}</span>
 							<span class="mono muted">{(z.fraction * 100).toFixed(0)}% · {fmtTime(z.seconds)}</span>
 						</div>
 					{/each}

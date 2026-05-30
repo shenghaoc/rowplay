@@ -35,7 +35,12 @@ export function interpolate(template: string, vars?: Record<string, string | num
 
 const en = {
 	nav: { dashboard: 'Dashboard' },
-	common: { demoMode: 'demo mode', replay: 'Replay', loading: 'loading…' },
+	common: { demoMode: 'demo mode', replay: 'Replay', loading: 'loading…', tryAgain: 'Please try again.' },
+	sync: {
+		loading: 'Syncing your logbook…',
+		done: 'Synced — {added} new, {total} total',
+		failed: 'Sync failed'
+	},
 	auth: {
 		connect: 'Connect Concept2',
 		useToken: 'Use a token',
@@ -179,7 +184,21 @@ const en = {
 		perStroke: 'per-stroke',
 		fromSplits: 'from splits',
 		intervalsWord: 'intervals',
-		splitsWord: 'splits'
+		splitsWord: 'splits',
+		racingSession: 'Racing your {date} session',
+		racingFile: 'Racing {name}',
+		ghostYour: 'your {date}',
+		loadSessionFailed: 'Could not load that session',
+		paceError: 'Enter a pace like 1:52',
+		pacingAt: 'Pacing at {pace}',
+		noSamples: 'No usable samples in that file.',
+		fileReadError: 'Could not read that file.',
+		importFailed: 'Could not import that file',
+		zone1: 'Z1 Recovery',
+		zone2: 'Z2 Endurance',
+		zone3: 'Z3 Tempo',
+		zone4: 'Z4 Threshold',
+		zone5: 'Z5 Max'
 	},
 	token: {
 		title: 'Use your Concept2 token',
@@ -199,7 +218,12 @@ const en = {
 
 const zh = {
 	nav: { dashboard: '仪表板' },
-	common: { demoMode: '演示模式', replay: '回放', loading: '加载中…' },
+	common: { demoMode: '演示模式', replay: '回放', loading: '加载中…', tryAgain: '请重试。' },
+	sync: {
+		loading: '正在同步你的日志…',
+		done: '已同步——新增 {added}，共 {total}',
+		failed: '同步失败'
+	},
 	auth: {
 		connect: '连接 Concept2',
 		useToken: '使用令牌',
@@ -343,7 +367,21 @@ const zh = {
 		perStroke: '逐桨',
 		fromSplits: '由分段合成',
 		intervalsWord: '组间歇',
-		splitsWord: '段'
+		splitsWord: '段',
+		racingSession: '正在与你 {date} 的训练竞速',
+		racingFile: '正在与 {name} 竞速',
+		ghostYour: '你的 {date}',
+		loadSessionFailed: '无法加载该训练',
+		paceError: '请输入配速，如 1:52',
+		pacingAt: '以 {pace} 配速',
+		noSamples: '该文件中没有可用的采样点。',
+		fileReadError: '无法读取该文件。',
+		importFailed: '无法导入该文件',
+		zone1: 'Z1 恢复',
+		zone2: 'Z2 耐力',
+		zone3: 'Z3 节奏',
+		zone4: 'Z4 阈值',
+		zone5: 'Z5 最大'
 	},
 	token: {
 		title: '使用你的 Concept2 令牌',
