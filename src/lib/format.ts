@@ -21,7 +21,7 @@ export function fmtPace(pace: number): string {
 
 /** Pace without the "/500m" suffix (for gauges, charts, and split labels). */
 export function fmtPaceBare(pace: number): string {
-	if (!isFinite(pace) || pace <= 0) return '--:--';
+	if (!isFinite(pace) || pace < 0) return '--:--';
 	return fmtTime(pace, true);
 }
 

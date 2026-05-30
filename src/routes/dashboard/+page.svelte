@@ -190,26 +190,27 @@
 		return [xs, ys, fitY];
 	});
 
-	const metricFmt = $derived((v: number) => {
+	function metricFmt(v: number) {
 		switch (metric) {
 			case 'pace':
 				return fmtPaceBare(v);
 			case 'distance':
 				return fmtDistance(v);
 			case 'dps':
-				return `${v.toFixed(1)}m/stroke`;
+				return `${v.toFixed(1)}m`;
 			default:
 				return `${Math.round(v)}`;
 		}
-	});
+	}
 
-	const metricChangeFmt = $derived((better: boolean, delta: number) => {
+	function metricChangeFmt(better: boolean, delta: number) {
 		if (metric === 'pace') {
 			return t(better ? 'dashboard.faster' : 'dashboard.slower', { delta: metricFmt(delta) });
 		}
 		const sign = better ? '+' : '−';
-		return `${sign}${metricFmt(delta)}`;
-	});
+		const suffix = metric === 'dps' ? '/stroke' : '';
+		return `${sign}${metricFmt(delta)}${suffix}`;
+	}
 
 	const trendOptions = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
 		const color =
