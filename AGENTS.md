@@ -79,3 +79,23 @@ snippets over slots.
 - Preferences persist via cookies (`lang`, `theme`) so SSR matches the client.
 - Sport names (RowErg, SkiErg, BikeErg) are Concept2 trademarks and left
   untranslated in both languages.
+
+## Cursor Cloud specific instructions
+
+- **No ESLint/Prettier scripts** — quality gate is `npm run check` (0 errors;
+  a few `state_referenced_locally` warnings are expected).
+- **Demo mode is the default** in this repo (`CONCEPT2_CLIENT_ID` empty in
+  `wrangler.jsonc`). No `.dev.vars` or Concept2 credentials are required for
+  dashboard/replay development or `npm run test:e2e`.
+- **Two local URLs**: `npm run dev` → `http://127.0.0.1:5173` (fast UI iteration;
+  no KV/D1). Workers-faithful runtime → `npm run preview` or Playwright’s
+  `wrangler dev` on **`http://127.0.0.1:8787`**.
+- **E2E** (`npm run test:e2e`): builds and starts `wrangler dev` automatically.
+  First run on a fresh VM needs WebKit system libs:
+  `npx playwright install --with-deps webkit`. Reuse an already-running preview
+  with `E2E_REUSE_SERVER=1 npm run test:e2e`.
+- **OAuth / sync / token auth** need `wrangler dev` (preview), local KV, and
+  usually `npm run db:migrate:local` once; copy `.dev.vars.example` → `.dev.vars`
+  for secrets. These flows are not testable on `vite dev` alone.
+- **Hello-world check**: open `/dashboard`, follow a `/replay/<id>` link, press
+  Play — canvas course and live pace/rate/power/HR should update.
