@@ -1,4 +1,5 @@
 import type { KVNamespace } from '@cloudflare/workers-types';
+import { nowEpochMillis } from '$lib/datetime';
 import { paceToWatts } from '../format';
 import { toSport, type Sport, type Split, type Stroke, type Workout, type WorkoutDetail } from '../types';
 import { writeSession, type OAuthTokens, type SessionData, type SessionUser } from './session';
@@ -49,7 +50,7 @@ async function tokenRequest(cfg: Concept2Config, body: Record<string, string>): 
 	return {
 		accessToken: json.access_token,
 		refreshToken: json.refresh_token,
-		expiresAt: Date.now() + json.expires_in * 1000,
+		expiresAt: nowEpochMillis() + json.expires_in * 1000,
 		scope: json.scope
 	};
 }
@@ -111,7 +112,7 @@ export class Concept2Client {
 		const { tokens } = this.session;
 		// Personal (BYOT) tokens are long-lived and not refreshable — use directly.
 		if (this.session.personal) return tokens.accessToken;
-		if (Date.now() < tokens.expiresAt - 60_000) return tokens.accessToken;
+		if (nowEpochMillis() < tokens.expiresAt - 60_000) return tokens.accessToken;
 		const fresh = await refreshTokens(this.cfg, tokens.refreshToken);
 		this.session = { ...this.session, tokens: fresh };
 		await writeSession(this.kv, this.sessionId, this.session);

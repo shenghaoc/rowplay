@@ -24,15 +24,7 @@ export function fmtDistance(metres: number): string {
 	return `${Math.round(metres)} m`;
 }
 
-export function fmtDate(iso: string): string {
-	const d = new Date(iso.replace(' ', 'T'));
-	if (isNaN(d.getTime())) return iso;
-	return d.toLocaleDateString(undefined, {
-		year: 'numeric',
-		month: 'short',
-		day: 'numeric'
-	});
-}
+export { fmtDate, fmtDateFromEpochMillis, fmtLogbookDateTime } from './datetime';
 
 export const SPORT_LABEL: Record<Sport, string> = {
 	rower: 'RowErg',

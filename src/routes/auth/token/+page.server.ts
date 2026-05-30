@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { nowEpochMillis } from '$lib/datetime';
 import { getConfig, requireSessions } from '$lib/server/config';
 import { getValue } from '$lib/i18n';
 import { fetchMe } from '$lib/server/concept2';
@@ -42,7 +43,7 @@ export const actions: Actions = {
 		await writeSession(kv, sid, {
 			user,
 			personal: true,
-			tokens: { accessToken: token, refreshToken: '', expiresAt: Date.now() + YEAR_MS, scope: '' }
+			tokens: { accessToken: token, refreshToken: '', expiresAt: nowEpochMillis() + YEAR_MS, scope: '' }
 		});
 		event.cookies.set(SESSION_COOKIE, sid, {
 			path: '/',

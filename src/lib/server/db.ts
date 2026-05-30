@@ -1,4 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
+import { nowEpochMillis } from '$lib/datetime';
 import type { Sport, Workout, WorkoutDetail } from '../types';
 
 /**
@@ -37,7 +38,7 @@ export async function putCachedDetail(
 				 ON CONFLICT(user_id, workout_id)
 				 DO UPDATE SET payload = excluded.payload, cached_at = excluded.cached_at`
 			)
-			.bind(userId, detail.id, JSON.stringify(detail), Date.now())
+			.bind(userId, detail.id, JSON.stringify(detail), nowEpochMillis())
 			.run();
 	} catch {
 		// ignore cache write failures
@@ -189,7 +190,7 @@ export async function setSyncState(
 			 ON CONFLICT(user_id) DO UPDATE SET
 			   last_date=excluded.last_date, last_sync_at=excluded.last_sync_at, total=excluded.total`
 		)
-		.bind(userId, lastDate, Date.now(), total)
+		.bind(userId, lastDate, nowEpochMillis(), total)
 		.run();
 }
 

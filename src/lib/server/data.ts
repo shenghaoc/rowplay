@@ -5,6 +5,7 @@ import { mockWorkoutDetail, mockWorkouts } from '../mockData';
 import { Concept2Client } from './concept2';
 import { getConfig } from './config';
 import { readSession } from './session';
+import { overlapDate } from '$lib/datetime';
 import {
 	countWorkouts,
 	getAllWorkouts,
@@ -95,13 +96,6 @@ export async function syncStatus(event: RequestEvent): Promise<SyncState | null>
 	const userId = event.locals.user?.id;
 	if (!db || userId == null) return null;
 	return getSyncState(db, userId);
-}
-
-/** Back up one day from a "YYYY-MM-DD HH:MM:SS" date, returning "YYYY-MM-DD". */
-function overlapDate(date: string): string {
-	const d = new Date(date.replace(' ', 'T'));
-	d.setDate(d.getDate() - 1);
-	return d.toISOString().slice(0, 10);
 }
 
 export async function loadWorkoutDetail(

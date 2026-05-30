@@ -13,7 +13,7 @@
 		efficiencyByRate,
 		intervalBreakdown
 	} from '$lib/analytics';
-	import { fmtDate, fmtDistance, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '$lib/format';
+	import { fmtDate, fmtDistance, fmtPace, fmtTime, fmtLogbookDateTime, paceToWatts, SPORT_LABEL } from '$lib/format';
 	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
 	import { toast } from 'svelte-sonner';
@@ -286,10 +286,7 @@
 		detail.wattMinutes && detail.time > 0
 			? Math.round(detail.wattMinutes / (detail.time / 60))
 			: Math.round(paceToWatts(detail.pace));
-	const dateTime = (() => {
-		const d = new Date(detail.date.replace(' ', 'T'));
-		return isNaN(d.getTime()) ? detail.date : d.toLocaleString();
-	})();
+	const dateTime = fmtLogbookDateTime(detail.date);
 </script>
 
 <svelte:head><title>{t('common.replay')} · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
