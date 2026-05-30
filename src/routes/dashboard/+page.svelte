@@ -123,7 +123,9 @@
 		overreaching: 'bad'
 	};
 	const formData = $derived.by((): uPlot.AlignedData => {
-		if (!load) return [[]];
+		// Match the series count in formOptions (x + 3) so uPlot never sees a
+		// shape it can't render, even in the empty state.
+		if (!load) return [[], [], [], []];
 		return [
 			load.series.map((p) => p.day / 1000),
 			load.series.map((p) => p.ctl),
@@ -146,7 +148,11 @@
 		],
 		legend: { show: false }
 	}));
-	const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(Math.round(n))}`;
+	const signed = (n: number) => {
+		// Round before testing the sign so a value like −0.1 doesn't render as "−0".
+		const r = Math.round(n);
+		return `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r)}`;
+	};
 
 	// Cross-session trend, plotted against real dates so spacing reflects how
 	// often you actually train. For pace/DPS we restrict to one sport (mixing
