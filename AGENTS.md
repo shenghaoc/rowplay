@@ -93,7 +93,7 @@ snippets over slots.
 - **E2E** (`npm run test:e2e`): builds and starts `wrangler dev` automatically.
   First run on a fresh VM needs WebKit system libs:
   `npx playwright install --with-deps webkit`. Reuse an already-running preview
-  with `E2E_REUSE_SERVER=1 npm run test:e2e`.
+  with `npm run test:e2e:reuse`.
 - **OAuth / sync / token auth** need `wrangler dev` (preview), local KV, and
   usually `npm run db:migrate:local` once; copy `.dev.vars.example` → `.dev.vars`
   for secrets. These flows are not testable on `vite dev` alone.
