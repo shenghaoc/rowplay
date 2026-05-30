@@ -1,47 +1,42 @@
 <script lang="ts">
 	import { PlayCircle, LineChart, Zap } from '@lucide/svelte';
+	import { getI18nContext } from '$lib/i18n.svelte';
 	let { data } = $props();
+	const t = getI18nContext().t;
 </script>
 
 <section class="hero container">
 	<div class="copy">
-		<span class="tag">Concept2 · RowErg · SkiErg · BikeErg</span>
-		<h1>Replay your workouts.<br />Understand your splits.</h1>
-		<p class="muted lead">
-			rowplay connects to your Concept2 logbook and turns every result into rich analytics — and a
-			real-time replay you can watch stroke by stroke, with a live course and synchronized
-			pace, rate, power and heart-rate telemetry.
-		</p>
+		<span class="tag">{t('landing.tagline')}</span>
+		<h1>{t('landing.title1')}<br />{t('landing.title2')}</h1>
+		<p class="muted lead">{t('landing.lead')}</p>
 		<div class="cta">
 			{#if data.user || data.demo}
-				<a class="btn" href="/dashboard">{data.demo ? 'Explore the demo' : 'Open dashboard'} →</a>
+				<a class="btn" href="/dashboard">{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
 			{:else}
-				<a class="btn" href="/auth/login">Connect your Concept2 logbook →</a>
+				<a class="btn" href="/auth/login">{t('landing.connect')}</a>
 			{/if}
 		</div>
 		{#if data.demo}
-			<p class="muted small">
-				Running in <strong>demo mode</strong> with sample data. Add your Concept2 API keys to load
-				your own logbook.
-			</p>
+			<p class="muted small">{t('landing.demoNote')}</p>
 		{/if}
 	</div>
 
 	<div class="features">
 		<div class="card">
 			<div class="ficon"><PlayCircle size={24} /></div>
-			<h3>Real-time replay</h3>
-			<p class="muted">Watch your pace race the course while gauges and charts play back in sync.</p>
+			<h3>{t('landing.feat1Title')}</h3>
+			<p class="muted">{t('landing.feat1Body')}</p>
 		</div>
 		<div class="card">
 			<div class="ficon"><LineChart size={24} /></div>
-			<h3>Split analytics</h3>
-			<p class="muted">Pace, stroke rate, power and HR over time — across all three machines.</p>
+			<h3>{t('landing.feat2Title')}</h3>
+			<p class="muted">{t('landing.feat2Body')}</p>
 		</div>
 		<div class="card">
 			<div class="ficon"><Zap size={24} /></div>
-			<h3>On the edge</h3>
-			<p class="muted">Served from Cloudflare with cached stroke data for instant replays.</p>
+			<h3>{t('landing.feat3Title')}</h3>
+			<p class="muted">{t('landing.feat3Body')}</p>
 		</div>
 	</div>
 </section>

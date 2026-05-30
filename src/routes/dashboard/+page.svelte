@@ -15,8 +15,10 @@
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play } from '@lucide/svelte';
+	import { getI18nContext } from '$lib/i18n.svelte';
 
 	let { data } = $props();
+	const t = getI18nContext().t;
 	const workouts = $derived<Workout[]>(data.workouts);
 
 	let sportFilter = $state<Sport | 'all'>('all');
@@ -220,39 +222,58 @@
 	});
 
 	const sports: (Sport | 'all')[] = ['all', 'rower', 'skierg', 'bike'];
-	const metrics: { id: Metric; label: string }[] = [
-		{ id: 'pace', label: 'Pace' },
-		{ id: 'dps', label: 'Dist/stroke' },
-		{ id: 'distance', label: 'Distance' },
-		{ id: 'spm', label: 'Rate' }
+	const metrics: { id: Metric; labelKey: string }[] = [
+		{ id: 'pace', labelKey: 'dashboard.mPace' },
+		{ id: 'dps', labelKey: 'dashboard.mDistStroke' },
+		{ id: 'distance', labelKey: 'dashboard.mDistance' },
+		{ id: 'spm', labelKey: 'dashboard.mRate' }
 	];
+
+	const metricName = $derived(
+		t(metrics.find((m) => m.id === metric)?.labelKey ?? 'dashboard.mPace')
+	);
+	const verdictText = $derived.by(() => {
+		if (!verdict) return '';
+		const days = Math.round(verdict.days);
+		if (verdict.flat) return t('dashboard.holdingSteady', { metric: metricName, days });
+		const change =
+			metric === 'pace'
+				? t(verdict.better ? 'dashboard.faster' : 'dashboard.slower', { delta: metricFmt(verdict.delta) })
+				: metric === 'dps'
+					? `${verdict.better ? '+' : '−'}${verdict.delta.toFixed(1)}m/stroke`
+					: `${verdict.better ? '+' : '−'}${metricFmt(verdict.delta)}`;
+		return t(verdict.better ? 'dashboard.improving' : 'dashboard.slipping', { change, days });
+	});
 </script>
 
 <div class="container">
 	<div class="head">
-		<h1>Dashboard</h1>
+		<h1>{t('dashboard.title')}</h1>
 		<div class="headright">
 			<div class="filters">
 				{#each sports as s}
 					<button class="chip" class:on={sportFilter === s} onclick={() => (sportFilter = s)}>
-						{s === 'all' ? 'All' : SPORT_LABEL[s]}
+						{s === 'all' ? t('dashboard.all') : SPORT_LABEL[s]}
 					</button>
 				{/each}
 			</div>
 			{#if !data.demo}
 				<button class="btn ghost small sync" onclick={sync} disabled={syncing}>
 					<span class="syncicon" class:spin={syncing}><RefreshCw size={14} /></span>
-					{syncing ? 'Syncing…' : 'Sync'}
+					{syncing ? t('dashboard.syncing') : t('dashboard.sync')}
 				</button>
 			{/if}
 		</div>
 	</div>
 	{#if !data.demo && data.sync}
 		<p class="syncnote muted">
-			{data.sync.total} workouts · last synced {fmtDate(new Date(data.sync.lastSyncAt).toISOString())}
+			{t('dashboard.syncedNote', {
+				total: data.sync.total,
+				date: fmtDate(new Date(data.sync.lastSyncAt).toISOString())
+			})}
 		</p>
 	{:else if !data.demo && !data.sync}
-		<p class="syncnote muted">Showing recent workouts — hit Sync to load your full history for accurate PBs and trends.</p>
+		<p class="syncnote muted">{t('dashboard.recentNote')}</p>
 	{/if}
 
 	<!-- Latest session: pace front and centre -->
@@ -261,64 +282,64 @@
 			<div class="herolead">
 				<div class="herotop muted">
 					<span class="hicon"><SportIcon sport={latest.sport} size={16} /></span>
-					Latest · {latest.workoutType || SPORT_LABEL[latest.sport]} · {fmtDate(latest.date)}
+					{t('dashboard.latest')} · {latest.workoutType || SPORT_LABEL[latest.sport]} · {fmtDate(latest.date)}
 				</div>
 				<div class="heropace mono">{fmtPace(latest.pace).replace('/500m', '')}<span class="perunit">/500m</span></div>
 				{#if paceDelta != null}
 					<div class="herodelta" class:faster={paceDelta < 0} class:slower={paceDelta > 0}>
 						{paceDelta < 0 ? '▼' : '▲'}
 						{fmtPace(Math.abs(paceDelta)).replace('/500m', '')}
-						<span class="muted">vs your {SPORT_LABEL[latest.sport]} avg</span>
+						<span class="muted">{t('dashboard.vsAvg', { sport: SPORT_LABEL[latest.sport] })}</span>
 					</div>
 				{/if}
 			</div>
 			<div class="herometrics">
 				<div class="hm">
 					<div class="hmv mono">{fmtDistance(latest.distance)}</div>
-					<div class="hml muted">distance</div>
+					<div class="hml muted">{t('dashboard.distance')}</div>
 				</div>
 				<div class="hm">
 					<div class="hmv mono">{fmtTime(latest.time, true)}</div>
-					<div class="hml muted">time</div>
+					<div class="hml muted">{t('dashboard.time')}</div>
 				</div>
 				{#if latest.strokeRate}
 					<div class="hm">
 						<div class="hmv mono">{latest.strokeRate}</div>
-						<div class="hml muted">avg rate</div>
+						<div class="hml muted">{t('dashboard.avgRate')}</div>
 					</div>
 				{/if}
 				{#if heroDps > 0}
 					<div class="hm">
 						<div class="hmv mono">{heroDps.toFixed(1)}m</div>
-						<div class="hml muted">dist/stroke</div>
+						<div class="hml muted">{t('dashboard.distStroke')}</div>
 					</div>
 				{/if}
 				{#if latest.heartRateAvg}
 					<div class="hm">
 						<div class="hmv mono">{Math.round(latest.heartRateAvg)}</div>
-						<div class="hml muted">avg bpm</div>
+						<div class="hml muted">{t('dashboard.avgBpm')}</div>
 					</div>
 				{/if}
 			</div>
-			<div class="herocta tag"><Play size={12} /> Replay</div>
+			<div class="herocta tag"><Play size={12} /> {t('common.replay')}</div>
 		</a>
 	{/if}
 
 	<div class="stats">
 		<div class="card stat">
-			<div class="muted label">Sessions</div>
+			<div class="muted label">{t('dashboard.sessions')}</div>
 			<div class="value mono">{filtered.length}</div>
 		</div>
 		<div class="card stat">
-			<div class="muted label">Total distance</div>
+			<div class="muted label">{t('dashboard.totalDistance')}</div>
 			<div class="value mono">{fmtDistance(totalMeters)}</div>
 		</div>
 		<div class="card stat">
-			<div class="muted label">Total time</div>
+			<div class="muted label">{t('dashboard.totalTime')}</div>
 			<div class="value mono">{fmtTime(totalTime)}</div>
 		</div>
 		<div class="card stat">
-			<div class="muted label">Avg pace</div>
+			<div class="muted label">{t('dashboard.avgPace')}</div>
 			<div class="value mono">{fmtPace(avgPace)}</div>
 		</div>
 	</div>
@@ -326,7 +347,7 @@
 	<!-- Personal bests -->
 	{#if pbs.length}
 		<div class="card pbcard">
-			<div class="muted label">Personal bests · standard distances</div>
+			<div class="muted label">{t('dashboard.pbTitle')}</div>
 			<div class="pbgrid">
 				{#each pbs as pb}
 					<div class="pb">
@@ -342,10 +363,10 @@
 	<!-- Per-sport breakdown -->
 	{#if bySport.length > 1}
 		<div class="card breakdown">
-			<div class="muted label">By sport</div>
+			<div class="muted label">{t('dashboard.bySport')}</div>
 			<table class="mono">
 				<thead>
-					<tr><th>Sport</th><th>Sessions</th><th>Distance</th><th>Time</th><th>Avg pace</th><th>Best pace</th></tr>
+					<tr><th>{t('dashboard.thSport')}</th><th>{t('dashboard.thSessions')}</th><th>{t('dashboard.thDistance')}</th><th>{t('dashboard.thTime')}</th><th>{t('dashboard.thAvgPace')}</th><th>{t('dashboard.thBestPace')}</th></tr>
 				</thead>
 				<tbody>
 					{#each bySport as s}
@@ -368,14 +389,14 @@
 		<div class="card chartcard">
 			<div class="trendhead">
 				<div class="label">
-					Trend over time
+					{t('dashboard.trendTitle')}
 					{#if bandScoped}
-						<span class="muted">· {SPORT_LABEL[dominantSport]}, like-for-like distance</span>
+						<span class="muted">· {t('dashboard.likeForLike', { sport: SPORT_LABEL[dominantSport] })}</span>
 					{/if}
 				</div>
 				<div class="metrics">
 					{#each metrics as m}
-						<button class="mchip" class:on={metric === m.id} onclick={() => (metric = m.id)}>{m.label}</button>
+						<button class="mchip" class:on={metric === m.id} onclick={() => (metric = m.id)}>{t(m.labelKey)}</button>
 					{/each}
 				</div>
 			</div>
@@ -394,23 +415,8 @@
 
 			{#if verdict}
 				<div class="verdict" class:good={verdict.better && !verdict.flat} class:bad={!verdict.better && !verdict.flat}>
-					{#if verdict.flat}
-						<MoveRight size={16} /> Holding steady — {metric === 'pace' ? 'pace' : metric === 'dps' ? 'distance/stroke' : metric} flat over {Math.round(verdict.days)} days
-					{:else if verdict.better}
-						<TrendingUp size={16} /> Improving — {metric === 'pace'
-							? `${metricFmt(verdict.delta)} faster`
-							: metric === 'dps'
-								? `+${verdict.delta.toFixed(1)}m/stroke`
-								: `+${metricFmt(verdict.delta)}`}
-						over {Math.round(verdict.days)} days
-					{:else}
-						<TrendingDown size={16} /> Slipping — {metric === 'pace'
-							? `${metricFmt(verdict.delta)} slower`
-							: metric === 'dps'
-								? `−${verdict.delta.toFixed(1)}m/stroke`
-								: `−${metricFmt(verdict.delta)}`}
-						over {Math.round(verdict.days)} days
-					{/if}
+					{#if verdict.flat}<MoveRight size={16} />{:else if verdict.better}<TrendingUp size={16} />{:else}<TrendingDown size={16} />{/if}
+					{verdictText}
 				</div>
 			{/if}
 
@@ -418,8 +424,10 @@
 				<UPlotChart data={trend} options={trendOptions} height={190} />
 			{:else}
 				<p class="muted emptytrend">
-					Only {trendPoints.length} session in this band — log another
-					{bandScoped ? bands.find((b) => b.key === activeBand)?.label : ''} to see a trend.
+					{t('dashboard.emptyTrend', {
+						n: trendPoints.length,
+						band: bandScoped ? (bands.find((b) => b.key === activeBand)?.label ?? '') : ''
+					})}
 				</p>
 			{/if}
 		</div>

@@ -1,39 +1,40 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { getI18nContext } from '$lib/i18n.svelte';
 	let { data, form } = $props();
+	const t = getI18nContext().t;
 </script>
 
 <svelte:head><title>Use a token · rowplay</title></svelte:head>
 
 <section class="wrap">
-	<h1>Use your Concept2 token</h1>
+	<h1>{t('token.title')}</h1>
 	<p class="muted">
-		Paste a personal API token from your Concept2 logbook (<a
+		{t('token.introBefore')}<a
 			href="https://log.concept2.com/profile/edit"
 			target="_blank"
-			rel="noreferrer">Edit Profile → Applications</a
-		>). rowplay keeps it server-side for your session only and uses it to read your own workouts —
-		it never reaches the browser.
+			rel="noreferrer">{t('token.introLink')}</a
+		>{t('token.introAfter')}
 	</p>
 
 	<form method="POST" use:enhance>
-		<label for="token">API token</label>
+		<label for="token">{t('token.apiToken')}</label>
 		<input
 			id="token"
 			name="token"
 			type="password"
 			autocomplete="off"
-			placeholder="Paste your token"
+			placeholder={t('token.placeholder')}
 			required
 		/>
 		{#if form?.error}
 			<p class="err" role="alert">{form.error}</p>
 		{/if}
-		<button class="btn" type="submit">Connect with token</button>
+		<button class="btn" type="submit">{t('token.connect')}</button>
 	</form>
 
 	{#if data.oauthEnabled}
-		<p class="muted small">Prefer the standard flow? <a href="/auth/login">Connect Concept2</a></p>
+		<p class="muted small">{t('token.preferBefore')}<a href="/auth/login">{t('token.preferLink')}</a></p>
 	{/if}
 </section>
 
@@ -57,12 +58,12 @@
 		padding: 0.6rem 0.8rem;
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
-		background: rgba(255, 255, 255, 0.03);
+		background: var(--bg-elev);
 		color: var(--text);
 		font: inherit;
 	}
 	.err {
-		color: #f85149;
+		color: var(--danger);
 		font-size: 0.9rem;
 		margin: 0;
 	}

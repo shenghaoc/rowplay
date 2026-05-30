@@ -18,9 +18,11 @@
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
 	import { toast } from 'svelte-sonner';
 	import { ArrowLeft, Play, Pause, Ghost } from '@lucide/svelte';
+	import { getI18nContext } from '$lib/i18n.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 
 	let { data } = $props();
+	const t = getI18nContext().t;
 	const detail: WorkoutDetail = data.detail;
 	const candidates: Workout[] = data.candidates;
 	const theme = themeFor(detail.sport);
@@ -267,8 +269,10 @@
 	const intervals = intervalBreakdown(detail.splits, strokes);
 	// "Interval breakdown" (reps with rest) vs "Splits" (even splits of a
 	// continuous piece) — same comparison, honest label.
-	const segLabel = detail.isInterval ? 'Interval breakdown' : 'Split breakdown';
-	const segUnit = detail.isInterval ? 'reps' : 'splits';
+	const segLabel = $derived(
+		detail.isInterval ? t('replay.intervalBreakdown') : t('replay.splitBreakdown')
+	);
+	const segUnit = $derived(detail.isInterval ? t('replay.segReps') : t('replay.segSplits'));
 	// Bar widths for the per-rep pace comparison, scaled to the slowest rep.
 	function repBarPct(pace: number): number {
 		if (!intervals || intervals.slowest <= 0) return 0;
@@ -286,31 +290,31 @@
 	})();
 </script>
 
-<svelte:head><title>Replay · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
+<svelte:head><title>{t('common.replay')} · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
 
 <div class="container">
-	<a href="/dashboard" class="back muted"><ArrowLeft size={14} /> Back to dashboard</a>
+	<a href="/dashboard" class="back muted"><ArrowLeft size={14} /> {t('replay.back')}</a>
 	<div class="head">
 		<h1><span class="h1icon"><SportIcon sport={detail.sport} size={22} /></span> {detail.workoutType || SPORT_LABEL[detail.sport]}</h1>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
-			{#if !detail.hasStrokeData}<span class="tag">low-res replay</span>{/if}
+			{#if !detail.hasStrokeData}<span class="tag">{t('replay.lowRes')}</span>{/if}
 		</div>
 	</div>
 
 	<!-- Comparison / race control -->
 	<div class="card ghostbar">
-		<label for="cmode"><Ghost size={15} /> Compare against:</label>
+		<label for="cmode"><Ghost size={15} /> {t('replay.compareAgainst')}</label>
 		<select id="cmode" value={compareMode} onchange={onModeChange}>
-			<option value="none">None</option>
-			{#if candidates.length}<option value="session">A past session</option>{/if}
-			<option value="pace">A constant pace</option>
-			<option value="file">An uploaded file</option>
+			<option value="none">{t('replay.none')}</option>
+			{#if candidates.length}<option value="session">{t('replay.pastSession')}</option>{/if}
+			<option value="pace">{t('replay.constantPace')}</option>
+			<option value="file">{t('replay.uploadedFile')}</option>
 		</select>
 
 		{#if compareMode === 'session' && candidates.length}
 			<select id="ghost" value={ghostId} onchange={selectGhost}>
-				<option value="">Choose a {SPORT_LABEL[detail.sport]} session…</option>
+				<option value="">{t('replay.chooseSession', { sport: SPORT_LABEL[detail.sport] })}</option>
 				{#each candidates as c}
 					<option value={c.id}>
 						{fmtDate(c.date)} · {fmtDistance(c.distance)} · {fmtPace(c.pace)}
@@ -327,7 +331,7 @@
 				onkeydown={(e) => e.key === 'Enter' && applyPace()}
 			/>
 			<span class="muted small">/500m</span>
-			<button class="btn ghost small" onclick={applyPace}>Set pace</button>
+			<button class="btn ghost small" onclick={applyPace}>{t('replay.setPace')}</button>
 		{:else if compareMode === 'file'}
 			<input
 				class="fileinput"
@@ -336,16 +340,18 @@
 				onchange={onFile}
 				aria-label="Upload CSV, TCX, or FIT file"
 			/>
-			<span class="muted small">CSV · TCX · FIT</span>
+			<span class="muted small">{t('replay.fileFormats')}</span>
 			{#if fileName}<span class="muted small">· {fileName}</span>{/if}
 		{/if}
 
-		{#if loadingGhost}<span class="muted small">loading…</span>{/if}
+		{#if loadingGhost}<span class="muted small">{t('common.loading')}</span>{/if}
 		{#if ghostError}<span class="err small">{ghostError}</span>{/if}
 
 		{#if ghostActive && ghostFrame}
 			<div class="gap mono" class:ahead={gapMeters >= 0} class:behind={gapMeters < 0}>
-				{gapMeters >= 0 ? '▲ ahead' : '▼ behind'} by {Math.abs(Math.round(gapMeters))}m
+				{gapMeters >= 0
+					? t('replay.ahead', { m: Math.abs(Math.round(gapMeters)) })
+					: t('replay.behind', { m: Math.abs(Math.round(gapMeters)) })}
 				<span class="muted">({Math.abs(gapSeconds).toFixed(1)}s)</span>
 			</div>
 		{/if}
@@ -358,8 +364,8 @@
 
 	<!-- Transport controls -->
 	<div class="card controls">
-		<button class="btn play" onclick={() => engine?.toggle()} aria-label={playing ? 'Pause' : 'Play'}>
-			{#if playing}<Pause size={16} /> Pause{:else}<Play size={16} /> Play{/if}
+		<button class="btn play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
+			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
 		<div class="clock mono">
 			{fmtTime(frame.t, true)} <span class="muted">/ {fmtTime(detail.time)}</span>
@@ -385,23 +391,23 @@
 	<!-- Live gauges -->
 	<div class="gauges card">
 		<MetricGauge
-			label="Pace" unit="/500m"
+			label={t('replay.gPace')} unit="/500m"
 			display={fmtPace(frame.pace).replace('/500m', '')}
 			value={frame.pace} min={paceRange.max} max={paceRange.min} color={theme.color}
 		/>
 		<MetricGauge
-			label="Rate" unit={theme.cadenceUnit}
+			label={t('replay.gRate')} unit={theme.cadenceUnit}
 			display={`${Math.round(frame.spm)}`}
 			value={frame.spm} min={0} max={60} color="#3fb950"
 		/>
 		<MetricGauge
-			label="Power" unit="watts"
+			label={t('replay.gPower')} unit="watts"
 			display={`${Math.round(frame.watts)}`}
 			value={frame.watts} min={wattRange.min} max={wattRange.max} color="#d2a8ff"
 		/>
 		{#if hasHr}
 			<MetricGauge
-				label="Heart" unit="bpm"
+				label={t('replay.gHeart')} unit="bpm"
 				display={frame.hr != null ? `${Math.round(frame.hr)}` : '--'}
 				value={frame.hr ?? 0} min={90} max={200} color="#f778ba"
 			/>
@@ -411,20 +417,20 @@
 	<!-- Telemetry traces -->
 	<div class="charts">
 		<div class="card">
-			<div class="ctitle muted">Pace</div>
+			<div class="ctitle muted">{t('replay.cPace')}</div>
 			<UPlotChart data={paceData} options={paceOpts} height={150} marker={frame.t} />
 		</div>
 		<div class="card">
-			<div class="ctitle muted">Stroke rate</div>
+			<div class="ctitle muted">{t('replay.cRate')}</div>
 			<UPlotChart data={rateData} options={rateOpts} height={150} marker={frame.t} />
 		</div>
 		<div class="card">
-			<div class="ctitle muted">Power</div>
+			<div class="ctitle muted">{t('replay.cPower')}</div>
 			<UPlotChart data={powerData} options={powerOpts} height={150} marker={frame.t} />
 		</div>
 		{#if hasHr}
 			<div class="card">
-				<div class="ctitle muted">Heart rate</div>
+				<div class="ctitle muted">{t('replay.cHeart')}</div>
 				<UPlotChart data={hrData} options={hrOpts} height={150} marker={frame.t} />
 			</div>
 		{/if}
@@ -432,37 +438,37 @@
 
 	<!-- Technique (stroke quality) -->
 	<div class="card technique">
-		<div class="ctitle muted">Stroke quality</div>
+		<div class="ctitle muted">{t('replay.strokeQuality')}</div>
 		<div class="techstats">
 			<div class="ts">
 				<div class="tv mono">{tech.avgDps.toFixed(1)}<span class="tu">m</span></div>
-				<div class="tl muted">avg dist / stroke</div>
+				<div class="tl muted">{t('replay.avgDistStroke')}</div>
 			</div>
 			<div class="ts">
 				<div class="tv mono">{Math.round(tech.avgSpm)}<span class="tu">{theme.cadenceUnit}</span></div>
-				<div class="tl muted">avg rate</div>
+				<div class="tl muted">{t('replay.avgRate')}</div>
 			</div>
 			<div class="ts">
 				<div class="tv mono">{tech.paceConsistency.toFixed(1)}<span class="tu">%</span></div>
-				<div class="tl muted">pace variation <span class="hint">(lower = smoother)</span></div>
+				<div class="tl muted">{t('replay.paceVariation')} <span class="hint">{t('replay.paceVariationHint')}</span></div>
 			</div>
 			<div class="ts">
 				<div class="tv mono" class:good={tech.fade <= 0} class:bad={tech.fade > 1.5}>
 					{tech.fade > 0 ? '+' : ''}{tech.fade.toFixed(1)}<span class="tu">%</span>
 				</div>
-				<div class="tl muted">fade <span class="hint">({tech.fade <= 0 ? 'negative split' : 'slowed down'})</span></div>
+				<div class="tl muted">{t('replay.fade')} <span class="hint">({tech.fade <= 0 ? t('replay.negSplit') : t('replay.slowedDown')})</span></div>
 			</div>
 		</div>
 	</div>
 
 	<div class="analysis">
 		<div class="card">
-			<div class="ctitle muted">Distance per stroke <span class="hint">— higher = more powerful stroke</span></div>
+			<div class="ctitle muted">{t('replay.distPerStroke')} <span class="hint">{t('replay.distPerStrokeHint')}</span></div>
 			<UPlotChart data={dpsData} options={dpsOpts} height={150} marker={frame.t} />
 		</div>
 		{#if eff.length > 2}
 			<div class="card">
-				<div class="ctitle muted">Pace vs rate <span class="hint">— find your most efficient rating</span></div>
+				<div class="ctitle muted">{t('replay.paceVsRate')} <span class="hint">{t('replay.paceVsRateHint')}</span></div>
 				<UPlotChart data={effData} options={effOpts} height={150} />
 			</div>
 		{/if}
@@ -472,13 +478,13 @@
 	<div class="analysis">
 		{#if pc.length}
 			<div class="card">
-				<div class="ctitle muted">Power curve (best average over duration)</div>
+				<div class="ctitle muted">{t('replay.powerCurve')}</div>
 				<UPlotChart data={pcData} options={pcOpts} height={170} />
 			</div>
 		{/if}
 		{#if zones.length}
 			<div class="card">
-				<div class="ctitle muted">Heart-rate zones (time in zone)</div>
+				<div class="ctitle muted">{t('replay.hrZones')}</div>
 				<div class="zonebar">
 					{#each zones as z}
 						{#if z.fraction > 0}
@@ -512,21 +518,21 @@
 			<div class="setstats">
 				<div class="ss">
 					<div class="ssv mono">{fmtPace(intervals.avgPace).replace('/500m', '')}</div>
-					<div class="ssl muted">avg {detail.isInterval ? 'rep' : 'split'} pace</div>
+					<div class="ssl muted">{detail.isInterval ? t('replay.avgRepPace') : t('replay.avgSplitPace')}</div>
 				</div>
 				<div class="ss">
 					<div class="ssv mono">{intervals.consistency.toFixed(1)}%</div>
-					<div class="ssl muted">consistency <span class="hint">(lower = evener)</span></div>
+					<div class="ssl muted">{t('replay.consistency')} <span class="hint">{t('replay.consistencyHint')}</span></div>
 				</div>
 				<div class="ss">
 					<div class="ssv mono" class:good={intervals.fade <= 0} class:bad={intervals.fade > 2}>
 						{intervals.fade > 0 ? '+' : ''}{intervals.fade.toFixed(1)}%
 					</div>
-					<div class="ssl muted">set fade <span class="hint">({intervals.fade <= 0 ? 'negative split' : 'faded'})</span></div>
+					<div class="ssl muted">{t('replay.setFade')} <span class="hint">({intervals.fade <= 0 ? t('replay.negSplit') : t('replay.faded')})</span></div>
 				</div>
 				<div class="ss">
 					<div class="ssv mono">{fmtPace(intervals.fastest).replace('/500m', '')} → {fmtPace(intervals.slowest).replace('/500m', '')}</div>
-					<div class="ssl muted">fastest → slowest</div>
+					<div class="ssl muted">{t('replay.fastestSlowest')}</div>
 				</div>
 			</div>
 
@@ -553,10 +559,10 @@
 	{:else if detail.splits.length}
 		<!-- Single-segment piece: plain split table -->
 		<div class="card splits">
-			<h3>Splits</h3>
+			<h3>{t('replay.splitsTitle')}</h3>
 			<table class="mono">
 				<thead>
-					<tr><th>#</th><th>Dist</th><th>Time</th><th>Pace</th><th>Rate</th><th>HR</th></tr>
+					<tr><th>{t('replay.thNum')}</th><th>{t('replay.thDist')}</th><th>{t('replay.thTime')}</th><th>{t('replay.thPace')}</th><th>{t('replay.thRate')}</th><th>{t('replay.thHr')}</th></tr>
 				</thead>
 				<tbody>
 					{#each detail.splits as sp}
@@ -576,23 +582,23 @@
 
 	<!-- Full workout metadata -->
 	<div class="card meta">
-		<div class="ctitle muted">Workout details</div>
+		<div class="ctitle muted">{t('replay.workoutDetails')}</div>
 		<dl class="metagrid">
-			<div><dt>Date</dt><dd>{dateTime}</dd></div>
-			<div><dt>Sport</dt><dd>{SPORT_LABEL[detail.sport]}</dd></div>
-			<div><dt>Type</dt><dd>{detail.workoutType || '—'}</dd></div>
-			<div><dt>Distance</dt><dd class="mono">{fmtDistance(detail.distance)}</dd></div>
-			<div><dt>Time</dt><dd class="mono">{fmtTime(detail.time, true)}</dd></div>
-			<div><dt>Avg pace</dt><dd class="mono">{fmtPace(detail.pace)}</dd></div>
-			<div><dt>Avg rate</dt><dd class="mono">{detail.strokeRate ?? '—'} {theme.cadenceUnit}</dd></div>
-			<div><dt>Stroke count</dt><dd class="mono">{detail.strokeCount ?? '—'}</dd></div>
-			<div><dt>Avg power</dt><dd class="mono">{avgWatts} W</dd></div>
+			<div><dt>{t('replay.mDate')}</dt><dd>{dateTime}</dd></div>
+			<div><dt>{t('replay.mSport')}</dt><dd>{SPORT_LABEL[detail.sport]}</dd></div>
+			<div><dt>{t('replay.mType')}</dt><dd>{detail.workoutType || '—'}</dd></div>
+			<div><dt>{t('replay.mDistance')}</dt><dd class="mono">{fmtDistance(detail.distance)}</dd></div>
+			<div><dt>{t('replay.mTime')}</dt><dd class="mono">{fmtTime(detail.time, true)}</dd></div>
+			<div><dt>{t('replay.mAvgPace')}</dt><dd class="mono">{fmtPace(detail.pace)}</dd></div>
+			<div><dt>{t('replay.mAvgRate')}</dt><dd class="mono">{detail.strokeRate ?? '—'} {theme.cadenceUnit}</dd></div>
+			<div><dt>{t('replay.mStrokeCount')}</dt><dd class="mono">{detail.strokeCount ?? '—'}</dd></div>
+			<div><dt>{t('replay.mAvgPower')}</dt><dd class="mono">{avgWatts} W</dd></div>
 			<div>
-				<dt>Avg HR</dt>
+				<dt>{t('replay.mAvgHr')}</dt>
 				<dd class="mono">{detail.heartRateAvg != null ? Math.round(detail.heartRateAvg) + ' bpm' : '—'}</dd>
 			</div>
 			<div>
-				<dt>HR range</dt>
+				<dt>{t('replay.mHrRange')}</dt>
 				<dd class="mono">
 					{detail.hrMin != null && detail.hrMax != null
 						? `${detail.hrMin}–${detail.hrMax} bpm`
@@ -600,22 +606,26 @@
 				</dd>
 			</div>
 			<div>
-				<dt>Calories</dt>
+				<dt>{t('replay.mCalories')}</dt>
 				<dd class="mono">{detail.caloriesTotal != null ? detail.caloriesTotal + ' cal' : '—'}</dd>
 			</div>
-			<div><dt>Drag factor</dt><dd class="mono">{detail.dragFactor ?? '—'}</dd></div>
+			<div><dt>{t('replay.mDragFactor')}</dt><dd class="mono">{detail.dragFactor ?? '—'}</dd></div>
 			<div>
-				<dt>Resolution</dt>
+				<dt>{t('replay.mResolution')}</dt>
 				<dd class="mono">
-					{detail.strokes.length} samples · {detail.hasStrokeData ? 'per-stroke' : 'from splits'}
+					{detail.strokes.length} {t('replay.samples')} · {detail.hasStrokeData
+						? t('replay.perStroke')
+						: t('replay.fromSplits')}
 				</dd>
 			</div>
 			<div>
-				<dt>Segments</dt>
-				<dd class="mono">{detail.splits.length} {detail.isInterval ? 'intervals' : 'splits'}</dd>
+				<dt>{t('replay.mSegments')}</dt>
+				<dd class="mono">
+					{detail.splits.length} {detail.isInterval ? t('replay.intervalsWord') : t('replay.splitsWord')}
+				</dd>
 			</div>
-			<div><dt>Workout id</dt><dd class="mono">{detail.id}</dd></div>
-			<div class="wide"><dt>Comments</dt><dd>{detail.comments || '—'}</dd></div>
+			<div><dt>{t('replay.mWorkoutId')}</dt><dd class="mono">{detail.id}</dd></div>
+			<div class="wide"><dt>{t('replay.mComments')}</dt><dd>{detail.comments || '—'}</dd></div>
 		</dl>
 	</div>
 </div>

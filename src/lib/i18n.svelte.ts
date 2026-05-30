@@ -1,5 +1,5 @@
 import { createContext } from 'svelte';
-import { getValue, persistLanguage, type Language } from './i18n';
+import { getValue, interpolate, persistLanguage, type Language } from './i18n';
 
 /**
  * Reactive translator. Instantiated once in the root layout and shared via
@@ -12,7 +12,8 @@ export class I18n {
 		this.lang = initial;
 	}
 
-	t = (key: string): string => getValue(this.lang, key) ?? getValue('en', key) ?? key;
+	t = (key: string, vars?: Record<string, string | number>): string =>
+		interpolate(getValue(this.lang, key) ?? getValue('en', key) ?? key, vars);
 
 	setLanguage(next: Language) {
 		this.lang = next;

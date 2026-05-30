@@ -5,6 +5,9 @@
 	import { ChevronRight } from '@lucide/svelte';
 	import type { Workout } from '$lib/types';
 	import { get } from 'svelte/store';
+	import { getI18nContext } from '$lib/i18n.svelte';
+
+	const t = getI18nContext().t;
 
 	interface Props {
 		workouts: Workout[];
@@ -64,7 +67,7 @@
 {/snippet}
 
 {#if workouts.length === 0}
-	<p class="muted">No workouts for this filter.</p>
+	<p class="muted">{t('workoutList.empty')}</p>
 {:else if virtual}
 	<!-- Windowed list: a fixed-height scroller with absolutely-positioned rows. -->
 	<div class="vscroll" bind:this={scrollEl}>
@@ -82,7 +85,7 @@
 			{/each}
 		</div>
 	</div>
-	<p class="vcount muted">{workouts.length} workouts · windowed for performance</p>
+	<p class="vcount muted">{t('workoutList.windowed', { n: workouts.length })}</p>
 {:else}
 	<!-- Small list: plain flow layout. -->
 	<div class="list">
