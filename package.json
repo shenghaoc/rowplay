@@ -4,6 +4,9 @@
   "description": "Concept2 logbook analytics + real-time workout replay, deployed on Cloudflare.",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=26"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && node scripts/postbuild.mjs",
