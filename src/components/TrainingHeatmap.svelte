@@ -15,6 +15,13 @@
 	} = $props();
 
 	const t = getI18nContext().t;
+	const locale = getI18nContext().lang;
+
+	function monthLabel(month: number): string {
+		// Use a synthetic date (year 2000, 1st of month) to get the short month name
+		// in the current locale. Works for both en (Jan) and zh (1月).
+		return new Date(2000, month - 1, 1).toLocaleDateString(locale, { month: 'short' });
+	}
 	let metric = $state<VolumeMetric>('distance');
 
 	const calendar = $derived(buildTrainingCalendar(workouts, { endDay, metric }));
@@ -31,7 +38,8 @@
 
 	function cellTitle(cell: (typeof calendar.cells)[0]): string {
 		if (!cell.day || cell.sessions === 0) {
-			return t('dashboard.calEmpty', { date: fmtDate(cell.day || calendar.endDay) });
+			const date = cell.day ?? calendar.endDay;
+			return t('dashboard.calEmpty', { date: fmtDate(date) });
 		}
 		const volume = metric === 'distance' ? fmtDistance(cell.distance) : fmtTime(cell.time);
 		return t('dashboard.calTooltip', {
@@ -81,7 +89,7 @@
 		<div class="calgridarea">
 			<div class="monthrow" aria-hidden="true">
 				{#each calendar.monthLabels as m (m.week)}
-					<span class="month muted" style:left="calc({m.week} * (var(--cell) + var(--gap)))">{m.label}</span>
+					<span class="month muted" style:left="calc({m.week} * (var(--cell) + var(--gap)))">{monthLabel(m.month)}</span>
 				{/each}
 			</div>
 			<div

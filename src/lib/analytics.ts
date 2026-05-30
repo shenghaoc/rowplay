@@ -507,7 +507,7 @@ export interface TrainingCalendar {
 	activeDays: number;
 	currentStreak: number;
 	longestStreak: number;
-	monthLabels: { week: number; label: string }[];
+	monthLabels: { week: number; month: number }[];
 }
 
 /** Add calendar days in UTC so DST never breaks streak/grid math. */
@@ -525,11 +525,8 @@ function isConsecutiveDay(prev: string, next: string): boolean {
 	return addDaysToKey(prev, 1) === next;
 }
 
-function monthLabelUtc(dayKey: string): string {
-	return new Date(`${dayKey}T00:00:00Z`).toLocaleDateString('en-US', {
-		month: 'short',
-		timeZone: 'UTC'
-	});
+function monthNumberOfUtc(dayKey: string): number {
+	return parseInt(dayKey.slice(5, 7), 10);
 }
 
 export function volumeIntensityLevel(
@@ -545,9 +542,15 @@ export function volumeIntensityLevel(
 		const idx = Math.min(sorted.length - 1, Math.ceil((sorted.length * i) / maxLevel) - 1);
 		breaks.push(sorted[Math.max(0, idx)]);
 	}
+	// When all volumes are identical, all breaks collapse to the same value.
+	// Every cell would get level 1, which hides real training variation.
+	// Deduplicate and fall back to maxLevel if there's no meaningful gradient.
+	const unique = [...new Set(breaks)].sort((a, b) => a - b);
+	if (unique.length === 0 || unique[0] === unique[unique.length - 1]) return value > 0 ? maxLevel : 0;
+	if (unique.length === 1) return value <= unique[0] ? 1 : maxLevel;
 	let level = maxLevel;
-	for (let i = 0; i < breaks.length; i++) {
-		if (value <= breaks[i]) {
+	for (let i = 0; i < unique.length; i++) {
+		if (value <= unique[i]) {
 			level = i + 1;
 			break;
 		}
@@ -635,14 +638,14 @@ export function buildTrainingCalendar(
 
 	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, endDay);
 
-	const monthLabels: { week: number; label: string }[] = [];
+	const monthLabels: { week: number; month: number }[] = [];
 	let lastMonth = -1;
 	for (let col = 0; col < weeks; col++) {
 		const weekStart = addDaysToKey(startDay, col * 7);
 		const m = parseInt(weekStart.slice(5, 7), 10);
 		if (m !== lastMonth) {
 			if (monthLabels.length === 0 || col - monthLabels[monthLabels.length - 1].week >= 3) {
-				monthLabels.push({ week: col, label: monthLabelUtc(weekStart) });
+				monthLabels.push({ week: col, month: monthNumberOfUtc(weekStart) });
 				lastMonth = m;
 			}
 		}
