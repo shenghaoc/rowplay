@@ -24,11 +24,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	// Locale + theme from cookies so SSR renders the right language/theme with no
-	// hydration flash. Defaults: English, and dark (rowplay is dark-first).
+	// hydration flash. Defaults: English, light (race-board paper is the primary look).
 	const langCookie = event.cookies.get('lang');
 	const lang: Language =
 		langCookie && SUPPORTED_LANGS.has(langCookie as Language) ? (langCookie as Language) : 'en';
-	const theme: 'light' | 'dark' = event.cookies.get('theme') === 'light' ? 'light' : 'dark';
+	const theme: 'light' | 'dark' = event.cookies.get('theme') === 'dark' ? 'dark' : 'light';
 	event.locals.lang = lang;
 	event.locals.theme = theme;
 

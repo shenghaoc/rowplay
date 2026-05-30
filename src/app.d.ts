@@ -13,7 +13,7 @@ declare global {
 			demo: boolean;
 			/** UI language, resolved from the `lang` cookie (default en). */
 			lang: Language;
-			/** UI theme, resolved from the `theme` cookie (default dark). */
+			/** UI theme, resolved from the `theme` cookie (default light). */
 			theme: 'light' | 'dark';
 		}
 		interface PageData {

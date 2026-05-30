@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PlayCircle, LineChart, Zap } from '@lucide/svelte';
+	import { PlayCircle, LineChart, GitCompare } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	let { data } = $props();
 	const t = getI18nContext().t;
@@ -7,7 +7,7 @@
 
 <section class="hero container">
 	<div class="copy">
-		<span class="tag">{t('landing.tagline')}</span>
+		<span class="tag live">{t('landing.tagline')}</span>
 		<h1>{t('landing.title1')}<br />{t('landing.title2')}</h1>
 		<p class="muted lead">{t('landing.lead')}</p>
 		<div class="cta">
@@ -23,18 +23,18 @@
 	</div>
 
 	<div class="features">
-		<div class="card">
-			<div class="ficon"><PlayCircle size={24} /></div>
+		<div class="card feat">
+			<div class="ficon"><PlayCircle size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat1Title')}</h3>
 			<p class="muted">{t('landing.feat1Body')}</p>
 		</div>
-		<div class="card">
-			<div class="ficon"><LineChart size={24} /></div>
+		<div class="card feat">
+			<div class="ficon"><GitCompare size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat2Title')}</h3>
 			<p class="muted">{t('landing.feat2Body')}</p>
 		</div>
-		<div class="card">
-			<div class="ficon"><Zap size={24} /></div>
+		<div class="card feat">
+			<div class="ficon"><LineChart size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat3Title')}</h3>
 			<p class="muted">{t('landing.feat3Body')}</p>
 		</div>
@@ -51,12 +51,15 @@
 		padding-bottom: 4rem;
 	}
 	h1 {
-		font-size: 2.8rem;
+		font-size: clamp(2rem, 6vw, 2.8rem);
+		font-weight: 900;
+		text-transform: uppercase;
 		line-height: 1.05;
 		margin: 1rem 0;
+		letter-spacing: -0.02em;
 	}
 	.lead {
-		font-size: 1.1rem;
+		font-size: 1.05rem;
 		line-height: 1.6;
 		max-width: 38ch;
 	}
@@ -65,17 +68,24 @@
 	}
 	.small {
 		font-size: 0.85rem;
+		font-family: var(--mono);
 	}
 	.features {
 		display: grid;
 		gap: 1rem;
 	}
+	.feat {
+		box-shadow: var(--stamp);
+	}
 	.ficon {
-		color: var(--accent);
+		color: var(--live);
 		margin-bottom: 0.25rem;
 	}
 	.features h3 {
 		margin: 0.5rem 0 0.25rem;
+		font-size: 1.05rem;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
 	}
 	.features p {
 		margin: 0;
@@ -85,9 +95,6 @@
 		.hero {
 			grid-template-columns: 1fr;
 			padding-top: 2rem;
-		}
-		h1 {
-			font-size: 2.1rem;
 		}
 	}
 </style>

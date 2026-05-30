@@ -1,63 +1,134 @@
 @import 'tailwindcss';
 
-/* Bridge the existing design tokens into Tailwind v4 so utilities
-   (bg-elev, text-accent, etc.) and the hand-written CSS share one palette. */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700;900&family=Source+Code+Pro:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;0,900;1,400&display=swap');
+
+/* Bridge design tokens into Tailwind v4 utilities. */
 @theme {
-	--color-bg: #0d1117;
-	--color-elev: #161b22;
-	--color-elev-2: #1c2230;
-	--color-border: #2a3240;
-	--color-text: #e6edf3;
-	--color-text-dim: #8b949e;
-	--color-accent: #2f81f7;
-	--color-accent-2: #3fb950;
-	--color-warn: #d29922;
-	--color-danger: #f85149;
-	--color-hr: #f778ba;
-	--color-power: #d2a8ff;
-	--font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+	--color-paper: #f1ebdf;
+	--color-paper-raised: #fbf7ee;
+	--color-paper-inset: #e7dfce;
+	--color-ink: #18140d;
+	--color-ink-2: #6a6052;
+	--color-live: #dc4327;
+	--color-ghost: #1e4e6b;
+	--color-ahead: #5e6b2c;
+	--color-behind: #c2851a;
+	--color-pace: #dc4327;
+	--color-rate: #2c6e63;
+	--color-power: #9e5b2d;
+	--color-hr: #8e4a6b;
+	--color-dps: #3f6e8c;
+	--font-display: 'Source Sans 3', 'Noto Sans SC', system-ui, sans-serif;
+	--font-ui: 'Source Sans 3', 'Noto Sans SC', system-ui, sans-serif;
+	--font-mono: 'Source Code Pro', ui-monospace, monospace;
 }
 
+/* ============================================================================
+   rowplay — RACE BOARD design tokens (light default)
+   ============================================================================ */
 :root {
-	/* Light theme (default); dark overrides below. */
 	color-scheme: light;
-	--bg: #ffffff;
-	--bg-elev: #f6f8fa;
-	--bg-elev-2: #eaeef2;
-	--border: #d0d7de;
-	--text: #1f2328;
-	--text-dim: #59636e;
-	--accent: #0969da;
-	--accent-2: #1a7f37;
-	--warn: #9a6700;
-	--danger: #cf222e;
-	--hr: #bf3989;
-	--power: #8250df;
-	--pace: #0969da;
-	--rate: #1a7f37;
-	--topbar-bg: rgba(255, 255, 255, 0.85);
-	--radius: 12px;
-	--mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
-	--sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+	--paper: #f1ebdf;
+	--paper-raised: #fbf7ee;
+	--paper-inset: #e7dfce;
+	--paper-deep: #ded4bf;
+
+	--ink: #18140d;
+	--ink-2: #6a6052;
+	--ink-3: #9a8f79;
+
+	--rule: #18140d;
+	--hairline: #c9bfa9;
+
+	--live: #dc4327;
+	--ghost: #1e4e6b;
+	--ahead: #5e6b2c;
+	--behind: #c2851a;
+	--alarm: #a8321f;
+
+	--accent: var(--live);
+	--accent-2: var(--ahead);
+	--warn: var(--behind);
+	--danger: var(--alarm);
+
+	--pace: #dc4327;
+	--rate: #2c6e63;
+	--power: #9e5b2d;
+	--hr: #8e4a6b;
+	--dps: #3f6e8c;
+
+	--m-rower: #2b5468;
+	--m-skierg: #3c7a6e;
+	--m-bike: #a65d2e;
+
+	--display: 'Source Sans 3', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+	--ui: 'Source Sans 3', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+	--mono: 'Source Code Pro', ui-monospace, 'SF Mono', monospace;
+	--sans: var(--ui);
+
+	--r-card: 4px;
+	--r-ctrl: 3px;
+	--radius: var(--r-card);
+
+	--bd: 1.5px solid var(--hairline);
+	--bd-heavy: 2px solid var(--rule);
+	--stamp: 3px 3px 0 var(--ink);
+	--stamp-live: 3px 3px 0 var(--live);
+	--stamp-ghost: 3px 3px 0 var(--ghost);
+
+	--clock-size: clamp(2.6rem, 8vw, 4rem);
+	--metric-size: 1.9rem;
+
+	/* Legacy aliases used across routes/components */
+	--bg: var(--paper);
+	--bg-elev: var(--paper-raised);
+	--bg-elev-2: var(--paper-inset);
+	--border: var(--hairline);
+	--text: var(--ink);
+	--text-dim: var(--ink-2);
+	--topbar-bg: var(--paper);
 }
 
+/* Night race board — keeps toggle useful without reverting to SaaS dark mode */
 :root[data-theme='dark'] {
 	color-scheme: dark;
-	--bg: #0d1117;
-	--bg-elev: #161b22;
-	--bg-elev-2: #1c2230;
-	--border: #2a3240;
-	--text: #e6edf3;
-	--text-dim: #8b949e;
-	--accent: #2f81f7;
-	--accent-2: #3fb950;
-	--warn: #d29922;
-	--danger: #f85149;
-	--hr: #f778ba;
-	--power: #d2a8ff;
-	--pace: #2f81f7;
-	--rate: #3fb950;
-	--topbar-bg: rgba(13, 17, 23, 0.85);
+
+	--paper: #14110c;
+	--paper-raised: #1c1812;
+	--paper-inset: #252018;
+	--paper-deep: #2e281e;
+
+	--ink: #f1ebdf;
+	--ink-2: #b5aa96;
+	--ink-3: #7a7062;
+
+	--rule: #f1ebdf;
+	--hairline: #3d3629;
+
+	--live: #e85a3f;
+	--ghost: #4a8fb8;
+	--ahead: #8fa84a;
+	--behind: #d9a23a;
+	--alarm: #e05a45;
+
+	--pace: var(--live);
+	--rate: #4a9a8a;
+	--power: #c08050;
+	--hr: #c07090;
+	--dps: #6a9ab8;
+
+	--m-rower: #5a8aaa;
+	--m-skierg: #5aaa9a;
+	--m-bike: #d09060;
+
+	--bg: var(--paper);
+	--bg-elev: var(--paper-raised);
+	--bg-elev-2: var(--paper-inset);
+	--border: var(--hairline);
+	--text: var(--ink);
+	--text-dim: var(--ink-2);
+	--topbar-bg: var(--paper);
 }
 
 * {
@@ -68,36 +139,83 @@ html,
 body {
 	margin: 0;
 	padding: 0;
-	background: var(--bg);
-	color: var(--text);
-	font-family: var(--sans);
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--ui);
+	font-size: 16px;
 	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+body {
+	position: relative;
+}
+
+body::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 9999;
+	opacity: 0.45;
+	mix-blend-mode: multiply;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='dark'] body::before {
+	opacity: 0.25;
+	mix-blend-mode: soft-light;
 }
 
 a {
-	color: var(--accent);
+	color: var(--ink);
 	text-decoration: none;
 }
 a:hover {
 	text-decoration: underline;
+	text-underline-offset: 3px;
+	text-decoration-thickness: 2px;
 }
 
 h1,
 h2,
 h3 {
-	font-weight: 650;
+	font-family: var(--display);
+	font-weight: 700;
+	line-height: 1.04;
 	letter-spacing: -0.01em;
 }
 
 .mono {
 	font-family: var(--mono);
 	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum' 1;
+}
+
+.board {
+	font-family: var(--display);
+	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.muted {
+	color: var(--ink-2);
+}
+
+.eyebrow {
+	font-family: var(--ui);
+	font-size: 0.74rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.14em;
+	color: var(--ink-2);
 }
 
 .card {
-	background: var(--bg-elev);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
+	background: var(--paper-raised);
+	border: var(--bd-heavy);
+	border-radius: var(--r-card);
 	padding: 1rem 1.25rem;
 }
 
@@ -105,43 +223,80 @@ h3 {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.5rem;
-	background: var(--accent);
-	color: white;
-	border: none;
-	border-radius: 8px;
-	padding: 0.6rem 1.1rem;
+	background: var(--ink);
+	color: var(--paper-raised);
+	border: var(--bd-heavy);
+	border-radius: var(--r-ctrl);
+	padding: 0.55rem 1.05rem;
+	font-family: var(--display);
 	font-size: 0.95rem;
-	font-weight: 600;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
 	cursor: pointer;
-	transition: filter 0.15s ease;
+	transition:
+		transform 0.05s ease,
+		box-shadow 0.05s ease,
+		filter 0.1s ease;
 }
 .btn:hover {
-	filter: brightness(1.1);
+	filter: brightness(1.05);
 	text-decoration: none;
 }
+.btn:not(.ghost) {
+	background: var(--live);
+	border-color: var(--live);
+	color: var(--paper-raised);
+	box-shadow: var(--stamp);
+}
+.btn:not(.ghost):hover {
+	transform: translate(1px, 1px);
+	box-shadow: 2px 2px 0 var(--ink);
+}
+.btn:not(.ghost):active {
+	transform: translate(3px, 3px);
+	box-shadow: none;
+}
 .btn.ghost {
-	background: transparent;
-	border: 1px solid var(--border);
-	color: var(--text);
+	background: var(--paper-raised);
+	color: var(--ink);
+	border: var(--bd-heavy);
+	box-shadow: none;
+}
+.btn.ghost:hover {
+	background: var(--paper-inset);
 }
 .btn:disabled {
-	opacity: 0.5;
+	opacity: 0.4;
 	cursor: not-allowed;
+	transform: none !important;
+	box-shadow: none !important;
 }
 
 .tag {
 	display: inline-block;
-	font-size: 0.72rem;
+	font-family: var(--ui);
+	font-size: 0.68rem;
 	font-weight: 600;
-	padding: 0.15rem 0.5rem;
-	border-radius: 999px;
-	background: var(--bg-elev-2);
-	color: var(--text-dim);
-	border: 1px solid var(--border);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding: 0.2rem 0.5rem;
+	border-radius: var(--r-ctrl);
+	background: var(--paper-raised);
+	color: var(--ink-2);
+	border: var(--bd);
+}
+.tag.live {
+	border-color: var(--live);
+	color: var(--live);
+}
+.tag.ghost {
+	border-color: var(--ghost);
+	color: var(--ghost);
 }
 
 .container {
-	max-width: 1180px;
+	max-width: 1160px;
 	margin: 0 auto;
 	padding: 1.5rem;
 }
@@ -152,8 +307,18 @@ h3 {
 	}
 }
 
-.muted {
-	color: var(--text-dim);
+@media (max-width: 640px) {
+	html,
+	body {
+		font-size: 15px;
+	}
+}
+
+@media (max-width: 400px) {
+	html,
+	body {
+		font-size: 14px;
+	}
 }
 
 .uplot {
