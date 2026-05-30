@@ -35,10 +35,11 @@ export function nowEpochMillis(): number {
 	return Temporal.Now.instant().epochMilliseconds;
 }
 
-/** `YYYY-MM-DD` one calendar day before a logbook date-time string. */
-export function overlapDate(date: string): string {
+/** `YYYY-MM-DD` one calendar day before a logbook date-time string.
+ *  Returns null when the input cannot be parsed as a logbook date. */
+export function overlapDate(date: string): string | null {
 	const pdt = parseLogbookDateTime(date);
-	if (!pdt) return date.slice(0, 10);
+	if (!pdt) return null;
 	return pdt.toPlainDate().subtract({ days: 1 }).toString();
 }
 
@@ -75,5 +76,7 @@ export function fmtLogbookDateTime(value: string): string {
 }
 
 export function fmtDateFromEpochMillis(epochMs: number): string {
-	return fmtDate(Temporal.Instant.fromEpochMilliseconds(epochMs).toString());
+	return Temporal.Instant.fromEpochMilliseconds(epochMs)
+		.toZonedDateTimeISO('UTC')
+		.toLocaleString(undefined, DATE_FMT);
 }

@@ -66,7 +66,7 @@ export async function syncWorkouts(event: RequestEvent, full = false): Promise<S
 	if (!db || userId == null) throw error(500, 'Database (D1) is not configured.');
 
 	const state = await getSyncState(db, userId);
-	const from = full || !state?.lastDate ? undefined : overlapDate(state.lastDate);
+	const from = full || !state?.lastDate ? undefined : (overlapDate(state.lastDate) ?? undefined);
 
 	let page = 1;
 	let totalPages = 1;
