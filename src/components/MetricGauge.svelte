@@ -44,8 +44,8 @@
 
 <div class="gauge">
 	<svg viewBox="0 0 120 72" aria-hidden="true">
-		<path d={bgPath} fill="none" stroke="var(--bg-elev-2)" stroke-width="8" stroke-linecap="round" />
-		<path d={arcPath} fill="none" stroke={color} stroke-width="8" stroke-linecap="round" />
+		<path d={bgPath} fill="none" stroke="var(--paper-deep)" stroke-width="6" stroke-linecap="round" />
+		<path d={arcPath} fill="none" stroke={color} stroke-width="6" stroke-linecap="round" />
 	</svg>
 	<div class="readout">
 		<div class="value mono" style:color>{display}</div>
@@ -69,13 +69,14 @@
 		margin-top: -0.5rem;
 	}
 	.value {
-		font-size: 1.5rem;
-		font-weight: 700;
-		line-height: 1.1;
+		font-family: var(--display);
+		font-size: 1.7rem;
+		font-weight: 800;
+		line-height: 1;
 	}
 	.label {
-		font-size: 0.72rem;
+		font-size: 0.64rem;
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.08em;
 	}
 </style>

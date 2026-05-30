@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { page } from '$app/stores';
 	import { Toaster } from 'svelte-sonner';
-	import { Activity, Languages, Sun, Moon } from '@lucide/svelte';
+	import { Languages, Sun, Moon } from '@lucide/svelte';
 	import { I18n, setI18nContext } from '$lib/i18n.svelte';
 	import { Theme, setThemeContext } from '$lib/theme.svelte';
 
@@ -15,14 +15,13 @@
 
 <Toaster theme={theme.value} position="bottom-right" richColors />
 
-
-<header class="topbar">
-	<div class="topbar-inner">
+<header class="masthead">
+	<div class="mast-inner">
 		<a class="brand" href="/">
-			<span class="logo"><Activity size={20} strokeWidth={2.5} /></span>
+			<span class="play-mark" aria-hidden="true"></span>
 			<span class="name">rowplay</span>
 		</a>
-		<nav>
+		<nav class="mast-tabs">
 			<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}
 				>{t('nav.dashboard')}</a
 			>
@@ -43,10 +42,10 @@
 		{#if data.user}
 			<span class="muted user">@{data.user.username}</span>
 			<form method="POST" action="/auth/logout">
-				<button class="btn ghost small">{t('auth.logout')}</button>
+				<button class="btn ghost small" type="submit">{t('auth.logout')}</button>
 			</form>
 		{:else}
-			<span class="tag">{t('common.demoMode')}</span>
+			<span class="tag live">{t('common.demoMode')}</span>
 			{#if data.oauthEnabled}
 				<a class="btn ghost small" href="/auth/login">{t('auth.connect')}</a>
 			{/if}
@@ -60,51 +59,79 @@
 </main>
 
 <footer>
-	<div class="container muted">
-		rowplay · Concept2 logbook analytics &amp; real-time replay · not affiliated with Concept2
+	<div class="container footer-inner muted">
+		<span>rowplay · Concept2 logbook analytics &amp; real-time replay</span>
+		<span>{t('common.notAffiliated')}</span>
 	</div>
 </footer>
 
 <style>
-	.topbar {
+	.masthead {
 		position: sticky;
 		top: 0;
 		z-index: 10;
-		background: var(--topbar-bg);
-		backdrop-filter: blur(8px);
-		border-bottom: 1px solid var(--border);
+		background: var(--paper);
+		border-bottom: var(--bd-heavy);
 	}
-	.topbar-inner {
-		max-width: 1180px;
+	.mast-inner {
+		max-width: 1160px;
 		margin: 0 auto;
 		display: flex;
-		align-items: center;
+		align-items: stretch;
 		gap: 1.25rem;
-		padding: 0.7rem 1.5rem;
+		padding: 0 1.5rem;
+		min-height: 60px;
 	}
 	.brand {
-		display: flex;
+		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
-		font-weight: 750;
-		font-size: 1.15rem;
-		color: var(--text);
+		align-self: center;
+		border: var(--bd-heavy);
+		border-radius: var(--r-ctrl);
+		padding: 0.25rem 0.65rem 0.25rem 0.5rem;
+		background: var(--paper-raised);
+		color: var(--ink);
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 1.35rem;
+		letter-spacing: 0.01em;
 	}
 	.brand:hover {
 		text-decoration: none;
 	}
-	.logo {
+	.play-mark {
+		width: 0;
+		height: 0;
+		border-style: solid;
+		border-width: 7px 0 7px 11px;
+		border-color: transparent transparent transparent var(--live);
+	}
+	.mast-tabs {
+		display: flex;
+		align-items: stretch;
+		gap: 1.25rem;
+		margin-left: 0.35rem;
+	}
+	.mast-tabs a {
 		display: inline-flex;
 		align-items: center;
-		color: var(--accent);
+		font-family: var(--display);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		font-size: 0.92rem;
+		color: var(--ink-2);
+		border-bottom: 3px solid transparent;
+		margin-bottom: -2px;
 	}
-	nav a {
-		color: var(--text-dim);
-		font-weight: 600;
-		font-size: 0.95rem;
+	.mast-tabs a.active {
+		color: var(--ink);
+		border-bottom-color: var(--live);
 	}
-	nav a.active {
-		color: var(--text);
+	.mast-tabs a:hover {
+		text-decoration: none;
+		color: var(--ink);
 	}
 	.spacer {
 		flex: 1;
@@ -113,35 +140,65 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.3rem;
-		background: transparent;
-		border: 1px solid var(--border);
-		color: var(--text-dim);
-		border-radius: 8px;
+		align-self: center;
+		background: var(--paper-raised);
+		border: var(--bd);
+		color: var(--ink-2);
+		border-radius: var(--r-ctrl);
 		padding: 0.35rem 0.5rem;
 		font-size: 0.8rem;
 		font-family: var(--mono);
 		cursor: pointer;
 	}
 	.iconbtn:hover {
-		color: var(--text);
-		border-color: var(--accent);
+		color: var(--ink);
+		border-color: var(--ink);
 	}
 	.user {
-		font-size: 0.9rem;
+		align-self: center;
+		font-family: var(--mono);
+		font-size: 0.78rem;
 	}
 	.btn.small {
-		padding: 0.4rem 0.8rem;
-		font-size: 0.85rem;
+		align-self: center;
+		padding: 0.4rem 0.75rem;
+		font-size: 0.82rem;
 	}
 	form {
 		margin: 0;
+		align-self: center;
 	}
 	main {
 		min-height: calc(100vh - 120px);
 	}
 	footer {
-		border-top: 1px solid var(--border);
-		padding: 1.5rem 0;
-		font-size: 0.85rem;
+		border-top: var(--bd-heavy);
+		margin-top: 2.5rem;
+	}
+	.footer-inner {
+		display: flex;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		font-family: var(--mono);
+		font-size: 0.76rem;
+		padding-top: 1.25rem;
+		padding-bottom: 1.25rem;
+	}
+	@media (max-width: 760px) {
+		.mast-inner {
+			gap: 0.75rem;
+			padding: 0 1rem;
+			min-height: 54px;
+		}
+		.user {
+			display: none;
+		}
+	}
+	@media (max-width: 460px) {
+		.mast-tabs {
+			gap: 0.75rem;
+			margin-left: 0;
+		}
 	}
 </style>

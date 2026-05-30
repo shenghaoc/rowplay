@@ -27,7 +27,7 @@ test.describe('smoke', () => {
 		const res = await page.goto('/dashboard');
 		expect(res?.ok(), 'GET /dashboard should be 2xx').toBeTruthy();
 
-		await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /Results & replays|成绩与回放/ })).toBeVisible();
 		await expect(page.getByRole('link', { name: /rowplay/i })).toBeVisible();
 		// The workout list must render at least one replay link.
 		await expect(page.locator('a[href^="/replay/"]').first()).toBeVisible();
