@@ -1,6 +1,9 @@
 import type { Handle } from '@sveltejs/kit';
+import { ensureTemporal } from '$lib/ensure-temporal';
 import { readSession, SESSION_COOKIE } from '$lib/server/session';
 import type { Language } from '$lib/i18n';
+
+await ensureTemporal();
 
 const SUPPORTED_LANGS = new Set<Language>(['en', 'zh']);
 

@@ -169,7 +169,13 @@ function parseTcx(text: string): RawSample[] {
 	const out: RawSample[] = [];
 	let t0: number | null = null;
 	for (const tp of tps) {
-		const ms = Date.parse(text1(tp, 'Time') ?? '');
+		const timeText = text1(tp, 'Time') ?? '';
+		let ms = NaN;
+		try {
+			ms = Temporal.Instant.from(timeText).epochMilliseconds;
+		} catch {
+			/* invalid TCX timestamp */
+		}
 		if (isFinite(ms) && t0 == null) t0 = ms;
 		const t = isFinite(ms) && t0 != null ? (ms - t0) / 1000 : NaN;
 		const d = numOrNaN(text1(tp, 'DistanceMeters'));
