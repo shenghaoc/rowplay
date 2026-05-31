@@ -196,9 +196,11 @@ export function filterAndSortWorkouts(
 			case 'time':
 				cmp = a.time - b.time;
 				break;
-			case 'pace':
-				cmp = (a.pace || Infinity) - (b.pace || Infinity);
+			case 'pace': {
+				const sentinel = dir > 0 ? Infinity : -1;
+				cmp = (a.pace > 0 ? a.pace : sentinel) - (b.pace > 0 ? b.pace : sentinel);
 				break;
+			}
 			case 'power': {
 				const pa = avgPowerWatts(a) ?? -1;
 				const pb = avgPowerWatts(b) ?? -1;

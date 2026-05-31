@@ -218,11 +218,15 @@ export async function queryWorkouts(
 		binds.push(...pbIds);
 	}
 
+	const paceExpr = q.dir === 'asc'
+		? 'CASE WHEN pace > 0 THEN pace ELSE 999999 END'
+		: 'CASE WHEN pace > 0 THEN pace ELSE -1 END';
+
 	const sortExpr: Record<WorkoutListQuery['sort'], string> = {
 		date: 'date',
 		distance: 'distance',
 		time: 'time',
-		pace: "CASE WHEN pace IS NULL OR pace = 0 THEN 999999 ELSE pace END",
+		pace: paceExpr,
 		power: 'CASE WHEN time > 0 AND watt_minutes IS NOT NULL THEN watt_minutes * 60.0 / time ELSE 0 END'
 	};
 	const dir = q.dir === 'asc' ? 'ASC' : 'DESC';
