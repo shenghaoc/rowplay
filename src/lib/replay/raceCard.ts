@@ -128,6 +128,8 @@ export function renderRaceCard(
 		ctx.lineTo(tx, stripY + stripH);
 		ctx.stroke();
 	}
+	// Decorative finish marker at a fixed 72% — this is a summary card, not a
+	// live progress readout, so the position is intentionally constant.
 	const frac = 0.72;
 	const ax = 56 + frac * (W - 112) - 18;
 	const ay = stripY + stripH / 2;
@@ -152,21 +154,29 @@ export function renderRaceCard(
 	ctx.fillText('rowplay · concept2 replay', 56, H - 48);
 }
 
-/** Trigger a PNG download of the race card in the browser. */
-export function downloadRaceCardPng(
+/**
+ * Trigger a PNG download of the race card in the browser. Rejects if the
+ * canvas cannot be encoded so callers can surface an error instead of
+ * silently doing nothing.
+ */
+export async function downloadRaceCardPng(
 	detail: WorkoutDetail,
 	theme: 'light' | 'dark',
 	labels: RaceCardLabels
-): void {
+): Promise<void> {
+	// Wait for the brand/mono webfonts so the PNG matches the UI — canvas falls
+	// back to system fonts for any face not yet used in the DOM.
+	if (document.fonts?.ready) await document.fonts.ready;
+
 	const canvas = document.createElement('canvas');
 	renderRaceCard(canvas, detail, theme, labels);
-	canvas.toBlob((blob) => {
-		if (!blob) return;
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `rowplay-${detail.id}-race-card.png`;
-		a.click();
-		URL.revokeObjectURL(url);
-	}, 'image/png');
+	const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+	if (!blob) throw new Error('Could not encode race card to PNG.');
+
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = `rowplay-${detail.id}-race-card.png`;
+	a.click();
+	URL.revokeObjectURL(url);
 }

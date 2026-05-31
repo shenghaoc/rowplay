@@ -368,9 +368,14 @@
 
 	const paceRange = (() => {
 		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
+		if (ps.length === 0) return { min: 60, max: 180 };
 		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
 	})();
-	const wattRange = { min: 0, max: Math.max(...strokes.map((s) => s.watts)) * 1.1 };
+	const wattRange = (() => {
+		const watts = strokes.map((s) => s.watts);
+		const maxWatt = watts.length > 0 ? Math.max(...watts) : 0;
+		return { min: 0, max: Math.max(100, maxWatt * 1.1) };
+	})();
 
 	// ---- Interval / rep breakdown (null for single-segment pieces) ----
 	const intervals = intervalBreakdown(detail.splits, strokes);
@@ -390,7 +395,9 @@
 	const avgWatts =
 		detail.wattMinutes && detail.time > 0
 			? Math.round(detail.wattMinutes / (detail.time / 60))
-			: Math.round(paceToWatts(detail.pace));
+			: detail.pace > 0
+				? Math.round(paceToWatts(detail.pace))
+				: 0;
 	const dateTime = fmtLogbookDateTime(detail.date);
 
 	let sharing = $state(false);
@@ -416,13 +423,19 @@
 		}
 	}
 
-	function downloadRaceCard() {
-		downloadRaceCardPng(detail, uiTheme.value, {
-			brand: t('share.raceCardBrand'),
-			avgPower: t('share.raceCardAvgPower'),
-			avgHr: t('share.raceCardAvgHr')
-		});
-		toast.success(t('share.imageSaved'));
+	async function downloadRaceCard() {
+		try {
+			await downloadRaceCardPng(detail, uiTheme.value, {
+				brand: t('share.raceCardBrand'),
+				avgPower: t('share.raceCardAvgPower'),
+				avgHr: t('share.raceCardAvgHr')
+			});
+			toast.success(t('share.imageSaved'));
+		} catch (err) {
+			toast.error(t('share.imageFailed'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
+			});
+		}
 	}
 </script>
 

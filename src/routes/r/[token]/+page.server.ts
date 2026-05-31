@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { error, isHttpError } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { loadSharedWorkout, shareMeta } from '$lib/server/share';
 import { getConfig } from '$lib/server/config';
@@ -13,9 +13,7 @@ export const load: PageServerLoad = async (event) => {
 		const meta = shareMeta(detail, url);
 		return { detail, meta, publicView: true as const };
 	} catch (e) {
-		if (e && typeof e === 'object' && 'status' in e && (e as { status: number }).status === 404) {
-			throw error(404, 'Share link not found.');
-		}
+		if (isHttpError(e, 404)) throw error(404, 'Share link not found.');
 		throw e;
 	}
 };

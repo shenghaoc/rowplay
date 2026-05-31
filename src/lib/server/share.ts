@@ -6,6 +6,7 @@ import { mockWorkoutDetail } from '../mockData';
 import { getConfig } from './config';
 import { loadWorkoutDetail } from './data';
 import {
+	getCachedDetail,
 	getCachedDetailByShareToken,
 	getShareToken,
 	putCachedDetail,
@@ -77,10 +78,17 @@ export async function createWorkoutShare(
 		const detail = mockWorkoutDetail(workoutId);
 		if (!detail) throw error(404, 'Workout not found.');
 		const kv = event.platform?.env?.SESSIONS;
-		// Re-use token if we already shared this workout in demo (scan not needed —
-		// generate fresh each time is fine, but stable link is nicer for UX).
+		if (!kv) throw error(500, 'Share store is not configured.');
+		// Reuse a stable token per workout via a reverse index so repeated shares
+		// don't flood KV with a fresh entry on every call (and the link is stable).
+		const indexKey = `${KV_PREFIX}demo:${workoutId}`;
+		const existing = await kv.get(indexKey);
+		if (existing) {
+			return { token: existing, path: sharePath(existing), url: shareUrl(event, existing), created: false };
+		}
 		const token = generateShareToken();
 		await writeDemoShare(kv, token, workoutId);
+		await kv.put(indexKey, token);
 		return { token, path: sharePath(token), url: shareUrl(event, token), created: true };
 	}
 
@@ -100,12 +108,22 @@ export async function createWorkoutShare(
 
 	const detail = await loadWorkoutDetail(event, workoutId);
 	await putCachedDetail(db, userId, detail);
+	// putCachedDetail swallows write errors, so confirm the payload actually
+	// landed — otherwise the share URL would resolve to nothing and 404.
+	const cached = await getCachedDetail(db, userId, workoutId);
+	if (!cached) throw error(500, 'Could not cache workout before sharing.');
 
 	const token = generateShareToken();
-	const ok = await setShareToken(db, userId, workoutId, token);
-	if (!ok) throw error(500, 'Could not enable sharing for this workout.');
+	const claimed = await setShareToken(db, userId, workoutId, token);
+	if (claimed) {
+		return { token, path: sharePath(token), url: shareUrl(event, token), created: true };
+	}
 
-	return { token, path: sharePath(token), url: shareUrl(event, token), created: true };
+	// A concurrent request set the token first; return whatever is now stored so
+	// both callers hand out the same working link.
+	const winner = await getShareToken(db, userId, workoutId);
+	if (!winner) throw error(500, 'Could not enable sharing for this workout.');
+	return { token: winner, path: sharePath(winner), url: shareUrl(event, winner), created: false };
 }
 
 /** Load a workout that was explicitly shared — no session required. */

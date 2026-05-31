@@ -434,7 +434,11 @@ export async function getUserAnnualGoal(
 // Public replay shares — capability tokens on cached detail only.
 // ---------------------------------------------------------------------------
 
-/** Assign or replace the share token on a cached workout (owner-only writes). */
+/**
+ * Assign a share token only if one is not already set. Returns true when this
+ * call is the one that set it; false means a token already existed (e.g. a
+ * concurrent share won the race) and the caller should re-read the live value.
+ */
 export async function setShareToken(
 	db: D1Database,
 	userId: number,
@@ -444,7 +448,7 @@ export async function setShareToken(
 	const res = await db
 		.prepare(
 			`UPDATE workout_detail SET share_token = ?
-			 WHERE user_id = ? AND workout_id = ?`
+			 WHERE user_id = ? AND workout_id = ? AND share_token IS NULL`
 		)
 		.bind(token, userId, workoutId)
 		.run();
