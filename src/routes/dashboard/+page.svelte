@@ -118,13 +118,13 @@
 
 	const bySport = $derived.by(() => {
 		const agg = data.aggregates?.bySport;
-		if (!agg) return summariseBySport(filtered);
+		if (!agg?.length) return summariseBySport(filtered);
 		return sportFilter === 'all' ? agg : agg.filter((s) => s.sport === sportFilter);
 	});
 
 	const pbs = $derived.by(() => {
 		const agg = data.aggregates?.pbs;
-		if (!agg) return distancePBs(filtered);
+		if (!agg?.length) return distancePBs(filtered);
 		if (sportFilter !== 'all') return agg.filter((pb) => pb.sport === sportFilter);
 		const best = new Map<number, (typeof agg)[0]>();
 		for (const pb of agg) {

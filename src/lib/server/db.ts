@@ -250,7 +250,7 @@ export async function getPersonalBests(db: D1Database, userId: number): Promise<
 			`SELECT sport, target_distance, time AS best_time, pace, date
 			 FROM (
 			   SELECT sport, time, pace, date, target_distance,
-			     ROW_NUMBER() OVER (PARTITION BY sport, target_distance ORDER BY time ASC) AS rn
+			     ROW_NUMBER() OVER (PARTITION BY sport, target_distance ORDER BY pace ASC) AS rn
 			   FROM (
 			     SELECT sport, time, pace, date,
 			       CASE
