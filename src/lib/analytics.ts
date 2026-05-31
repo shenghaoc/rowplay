@@ -137,11 +137,19 @@ const STANDARD_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
  */
 export function distancePBs(workouts: Workout[]): { distance: number; time: number; pace: number; date: string; sport: Sport }[] {
 	const out: { distance: number; time: number; pace: number; date: string; sport: Sport }[] = [];
-	for (const target of STANDARD_DISTANCES) {
-		const matches = workouts.filter((w) => Math.abs(w.distance - target) <= target * 0.02 && w.time > 0);
-		if (!matches.length) continue;
-		const best = matches.reduce((a, b) => (a.time <= b.time ? a : b));
-		out.push({ distance: target, time: best.time, pace: best.pace, date: best.date, sport: best.sport });
+	const bySport = new Map<string, Workout[]>();
+	for (const w of workouts) {
+		const arr = bySport.get(w.sport) ?? [];
+		arr.push(w);
+		bySport.set(w.sport, arr);
+	}
+	for (const sportWorkouts of bySport.values()) {
+		for (const target of STANDARD_DISTANCES) {
+			const matches = sportWorkouts.filter((w) => Math.abs(w.distance - target) <= target * 0.02 && w.time > 0);
+			if (!matches.length) continue;
+			const best = matches.reduce((a, b) => (a.time <= b.time ? a : b));
+			out.push({ distance: target, time: best.time, pace: best.pace, date: best.date, sport: best.sport });
+		}
 	}
 	return out;
 }
@@ -1300,14 +1308,22 @@ export function athleteBadges(
 	return badges;
 }
 
-/** Workout ids that currently hold a standard-distance PB. */
+/** Workout ids that currently hold a standard-distance PB (per sport). */
 export function pbWorkoutIds(workouts: Workout[]): Set<number> {
 	const ids = new Set<number>();
-	for (const target of STANDARD_DISTANCES) {
-		const matches = workouts.filter((w) => Math.abs(w.distance - target) <= target * 0.02 && w.time > 0);
-		if (!matches.length) continue;
-		const best = matches.reduce((a, b) => (a.time <= b.time ? a : b));
-		ids.add(best.id);
+	const bySport = new Map<string, Workout[]>();
+	for (const w of workouts) {
+		const arr = bySport.get(w.sport) ?? [];
+		arr.push(w);
+		bySport.set(w.sport, arr);
+	}
+	for (const sportWorkouts of bySport.values()) {
+		for (const target of STANDARD_DISTANCES) {
+			const matches = sportWorkouts.filter((w) => Math.abs(w.distance - target) <= target * 0.02 && w.time > 0);
+			if (!matches.length) continue;
+			const best = matches.reduce((a, b) => (a.time <= b.time ? a : b));
+			ids.add(best.id);
+		}
 	}
 	return ids;
 }
@@ -1316,10 +1332,10 @@ export type DistancePB = ReturnType<typeof distancePBs>[number];
 
 /** PBs that improved (or are new) after a sync or data refresh. */
 export function detectNewPBs(before: DistancePB[], after: DistancePB[]): DistancePB[] {
-	const beforeMap = new Map(before.map((p) => [p.distance, p]));
+	const beforeMap = new Map(before.map((p) => [`${p.sport}-${p.distance}`, p]));
 	const out: DistancePB[] = [];
 	for (const pb of after) {
-		const prev = beforeMap.get(pb.distance);
+		const prev = beforeMap.get(`${pb.sport}-${pb.distance}`);
 		if (!prev || pb.time < prev.time - 0.001) out.push(pb);
 	}
 	return out;

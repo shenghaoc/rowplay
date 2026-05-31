@@ -124,7 +124,14 @@
 			}
 			newPbIds = new Set(
 				newPbs
-					.map((pb) => workouts.find((w) => Math.abs(w.distance - pb.distance) <= pb.distance * 0.02 && w.time === pb.time)?.id)
+					.map((pb) =>
+						workouts.find(
+							(w) =>
+								w.sport === pb.sport &&
+								Math.abs(w.distance - pb.distance) <= pb.distance * 0.02 &&
+								w.time === pb.time
+						)?.id
+					)
 					.filter((id): id is number => id != null)
 			);
 		} catch (e) {
