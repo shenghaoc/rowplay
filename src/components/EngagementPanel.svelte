@@ -31,17 +31,16 @@
 
 	let goal = $state<AnnualGoal>({ ...initialGoal });
 	let kind = $state<AnnualGoalKind>(initialGoal.kind);
-	let targetInput = $state(
-		String(initialGoal.kind === 'meters' ? initialGoal.target : Math.round(initialGoal.target / 3600))
+	let targetInput = $state<number | null>(
+		initialGoal.kind === 'meters' ? initialGoal.target : Math.round(initialGoal.target / 3600)
 	);
 	let saving = $state(false);
 
 	$effect(() => {
 		goal = { ...initialGoal };
 		kind = initialGoal.kind;
-		targetInput = String(
-			initialGoal.kind === 'meters' ? initialGoal.target : Math.round(initialGoal.target / 3600)
-		);
+		targetInput =
+			initialGoal.kind === 'meters' ? initialGoal.target : Math.round(initialGoal.target / 3600);
 	});
 
 	const progress = $derived(annualGoalProgress(workouts, goal, endDay));
@@ -92,9 +91,8 @@
 	}
 
 	async function saveGoal() {
-		const raw = parseFloat(targetInput.replace(/,/g, ''));
-		if (!Number.isFinite(raw) || raw <= 0) return;
-		const target = kind === 'meters' ? Math.round(raw) : Math.round(raw * 3600);
+		if (targetInput == null || targetInput <= 0) return;
+		const target = kind === 'meters' ? Math.round(targetInput) : Math.round(targetInput * 3600);
 		const next: AnnualGoal = { year: goalYear, kind, target };
 		saving = true;
 		try {
@@ -117,7 +115,7 @@
 
 	function applyPreset(meters: number) {
 		kind = 'meters';
-		targetInput = String(meters);
+		targetInput = meters;
 	}
 </script>
 
@@ -153,7 +151,7 @@
 			<div class="presetrow">
 				<button type="button" class="bchip" onclick={() => applyPreset(1_000_000)}>1M m</button>
 				<button type="button" class="bchip" onclick={() => applyPreset(500_000)}>500k</button>
-				<button type="button" class="bchip" onclick={() => { kind = 'hours'; targetInput = '100'; }}>100h</button>
+				<button type="button" class="bchip" onclick={() => { kind = 'hours'; targetInput = 100; }}>100h</button>
 			</div>
 			<button type="button" class="btn small" onclick={saveGoal} disabled={saving}>
 				{saving ? t('dashboard.goalsSaving') : t('dashboard.goalsSave')}

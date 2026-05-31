@@ -113,24 +113,20 @@
 			};
 			await invalidateAll();
 			toast.success(t('sync.done', { added: body.added, total: body.total }), { id: toastId });
-			const fresh = await fetch('/api/workouts');
-			if (fresh.ok) {
-				const { workouts: afterList } = (await fresh.json()) as { workouts: Workout[] };
-				const newPbs =
-					body.newPbs?.length ? body.newPbs : detectNewPBs(pbsBefore, distancePBs(afterList));
-				if (newPbs.length === 1) {
-					const pb = newPbs[0];
-					const dist = pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`;
-					toast.success(t('dashboard.pbCelebrate', { distance: dist, time: fmtTime(pb.time, true) }));
-				} else if (newPbs.length > 1) {
-					toast.success(t('dashboard.pbCelebrateMore', { count: newPbs.length }));
-				}
-				newPbIds = new Set(
-					newPbs
-						.map((pb) => afterList.find((w) => Math.abs(w.distance - pb.distance) <= pb.distance * 0.02 && w.time === pb.time)?.id)
-						.filter((id): id is number => id != null)
-				);
+			const newPbs =
+				body.newPbs?.length ? body.newPbs : detectNewPBs(pbsBefore, distancePBs(workouts));
+			if (newPbs.length === 1) {
+				const pb = newPbs[0];
+				const dist = pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`;
+				toast.success(t('dashboard.pbCelebrate', { distance: dist, time: fmtTime(pb.time, true) }));
+			} else if (newPbs.length > 1) {
+				toast.success(t('dashboard.pbCelebrateMore', { count: newPbs.length }));
 			}
+			newPbIds = new Set(
+				newPbs
+					.map((pb) => workouts.find((w) => Math.abs(w.distance - pb.distance) <= pb.distance * 0.02 && w.time === pb.time)?.id)
+					.filter((id): id is number => id != null)
+			);
 		} catch (e) {
 			toast.error(t('sync.failed'), {
 				id: toastId,

@@ -172,8 +172,9 @@ export async function saveAnnualGoal(event: RequestEvent, goal: AnnualGoal): Pro
 		return;
 	}
 	const userId = event.locals.user?.id;
+	if (userId == null) throw error(401, 'Not authenticated.');
 	const db = event.platform?.env?.DB;
-	if (!db || userId == null) throw error(401, 'Not authenticated.');
+	if (!db) throw error(500, 'Database (D1) is not configured.');
 	await setUserAnnualGoal(db, userId, goal);
 }
 
