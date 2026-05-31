@@ -208,6 +208,7 @@ export class CourseRenderer {
 		ctx.fillStyle = color;
 		ctx.fillRect(6, y - 9, padL - 16, 18);
 		ctx.fillStyle = this.colors.labelBg;
+		ctx.font = '700 10px "Source Code Pro", ui-monospace, monospace';
 		ctx.textAlign = 'center';
 		ctx.fillText(label, 6 + (padL - 16) / 2, y + 4);
 		ctx.restore();
@@ -216,9 +217,9 @@ export class CourseRenderer {
 	private drawBib(x: number, y: number, label: string, color: string, isYou: boolean) {
 		const ctx = this.ctx;
 		ctx.save();
-		ctx.fillStyle = isYou ? color : this.colors.bibFill;
-		ctx.strokeStyle = color;
-		ctx.lineWidth = 2.5;
+		ctx.fillStyle = color;
+		ctx.strokeStyle = isYou ? color : this.colors.labelText;
+		ctx.lineWidth = isYou ? 2.5 : 2;
 		ctx.beginPath();
 		ctx.arc(x, y, 7, 0, Math.PI * 2);
 		ctx.fill();
@@ -228,11 +229,22 @@ export class CourseRenderer {
 			ctx.beginPath();
 			ctx.arc(x, y, 2.5, 0, Math.PI * 2);
 			ctx.fill();
+		} else {
+			ctx.fillStyle = this.colors.labelBg;
+			ctx.beginPath();
+			ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+			ctx.fill();
 		}
-		ctx.fillStyle = this.colors.bibText;
 		ctx.font = '600 10px "Source Code Pro", ui-monospace, monospace';
 		ctx.textAlign = 'center';
-		ctx.fillText(label, x, y - 13);
+		const tw = ctx.measureText(label).width;
+		const padX = 5;
+		const pillH = 14;
+		const pillY = y - 24;
+		ctx.fillStyle = isYou ? this.colors.labelBg : color;
+		ctx.fillRect(x - tw / 2 - padX, pillY, tw + padX * 2, pillH);
+		ctx.fillStyle = isYou ? color : this.colors.labelBg;
+		ctx.fillText(label, x, pillY + 10);
 		ctx.restore();
 	}
 }

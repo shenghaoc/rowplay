@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sampleAt } from './engine';
+import type { Stroke } from '$lib/types';
 import { ladderStrokes } from '../../../tests/unit/fixtures';
 import { mockWorkoutDetail } from '../mockData';
 
@@ -61,5 +62,28 @@ describe('sampleAt', () => {
 		const f = sampleAt(s, mid.t);
 		expect(f.d).toBeCloseTo(mid.d, 0);
 		expect(f.pace).toBeCloseTo(mid.pace, 0);
+	});
+
+	/** Both lanes must share the same engine clock `t` when sampled. */
+	describe('ghost coherence', () => {
+		const player: Stroke[] = [
+			{ t: 0, d: 0, pace: 120, spm: 28, watts: 200 },
+			{ t: 60, d: 250, pace: 118, spm: 29, watts: 210 },
+			{ t: 120, d: 500, pace: 116, spm: 30, watts: 220 }
+		];
+		const ghost: Stroke[] = [
+			{ t: 0, d: 0, pace: 125, spm: 26, watts: 180 },
+			{ t: 60, d: 230, pace: 124, spm: 27, watts: 185 },
+			{ t: 120, d: 480, pace: 122, spm: 28, watts: 190 }
+		];
+
+		for (const t of [0, 30, 60, 90, 120, 150]) {
+			it(`player and ghost align at t=${t}s`, () => {
+				const pf = sampleAt(player, t);
+				const gf = sampleAt(ghost, t);
+				expect(pf.t).toBe(gf.t);
+				expect(pf.t).toBe(t);
+			});
+		}
 	});
 });

@@ -111,36 +111,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 
 ---
 
-## Task 2 — Polish ghost racing into THE headline feature (it's 80% built)
-
-> **Reality check first:** ghost racing already works. `src/routes/replay/[id]/`
-> has a "compare against" control with three modes (`session` / `pace` / `file`),
-> resolves each to a ghost stroke array, renders a second avatar, and shows a live
-> `gapMeters` / `gapSeconds` readout. Read that code before touching anything.
-> Your job is to make it **obvious, smart, and finished** — not to rebuild it.
->
-> **Do (each is a small, shippable increment):**
-> 1. **Smart default opponent**: when the user opens the compare panel in `session`
->    mode, default the picker to a *meaningful* rival — same sport + closest
->    distance (e.g. their PB or most-recent comparable piece) — instead of an empty
->    select. Make the picker searchable if the list is long.
-> 2. **Finish result card**: when both lanes reach the end, show a clear verdict —
->    e.g. "You beat your 2025-03-01 2k by 4.2s (+38 m)" with win/lose color. Right
->    now there's a live gap but no satisfying finish moment.
-> 3. **Visual polish**: verify the ghost avatar + its label have strong contrast in
->    BOTH light and dark themes; make the gap readout glanceable (big, colored).
-> 4. **Coherence**: confirm scrub + speed (0.5×–8×) sample BOTH lanes at the same
->    engine time `t` (they should already; add a test that proves it).
->
-> **Rules:** all new strings i18n (en/zh). Keep `sampleAt` pure — ghost math stays
-> in the page/derived, not the engine. Works in demo mode (two mock workouts).
-> **Acceptance:** opening compare → `session` pre-selects a sensible rival; finishing
-> a race shows a verdict card; ghost is legible in both themes. Add an e2e step that
-> loads a replay, adds a pace-boat rival, and asserts the gap readout renders. Gate
-> passes.
-
----
-
 ## Task 3 — Shareable + exportable replays (the viral loop)
 
 > Replays are only fun if you can show them off. Add sharing/export. This is both a
