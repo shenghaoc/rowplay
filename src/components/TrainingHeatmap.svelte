@@ -14,13 +14,12 @@
 		endDay: string;
 	} = $props();
 
-	const t = getI18nContext().t;
-	const locale = getI18nContext().lang;
+	const i18n = getI18nContext();
 
 	function monthLabel(month: number): string {
 		// Use a synthetic date (year 2000, 1st of month) to get the short month name
 		// in the current locale. Works for both en (Jan) and zh (1月).
-		return new Date(2000, month - 1, 1).toLocaleDateString(locale, { month: 'short' });
+		return new Date(2000, month - 1, 1).toLocaleDateString(i18n.lang, { month: 'short' });
 	}
 	let metric = $state<VolumeMetric>('distance');
 
@@ -38,11 +37,11 @@
 
 	function cellTitle(cell: (typeof calendar.cells)[0]): string {
 		if (!cell.day || cell.sessions === 0) {
-			const date = cell.day ?? calendar.endDay;
-			return t('dashboard.calEmpty', { date: fmtDate(date) });
+			const date = cell.day || calendar.endDay;
+			return i18n.t('dashboard.calEmpty', { date: fmtDate(date) });
 		}
 		const volume = metric === 'distance' ? fmtDistance(cell.distance) : fmtTime(cell.time);
-		return t('dashboard.calTooltip', {
+		return i18n.t('dashboard.calTooltip', {
 			date: fmtDate(cell.day),
 			sessions: cell.sessions,
 			volume
@@ -54,25 +53,25 @@
 	<div class="calhead">
 		<div class="callabel">
 			<span class="calicon"><CalendarDays size={15} /></span>
-			<span class="muted label">{t('dashboard.calTitle')}</span>
+			<span class="muted label">{i18n.t('dashboard.calTitle')}</span>
 		</div>
 		<div class="calmetrics">
 			<button class="mchip" class:on={metric === 'distance'} onclick={() => (metric = 'distance')}>
-				{t('dashboard.calMetricDistance')}
+				{i18n.t('dashboard.calMetricDistance')}
 			</button>
 			<button class="mchip" class:on={metric === 'time'} onclick={() => (metric = 'time')}>
-				{t('dashboard.calMetricTime')}
+				{i18n.t('dashboard.calMetricTime')}
 			</button>
 		</div>
 	</div>
 
 	<div class="calstats muted">
-		<span>{t('dashboard.calActiveDays', { n: calendar.activeDays })}</span>
+		<span>{i18n.t('dashboard.calActiveDays', { n: calendar.activeDays })}</span>
 		{#if calendar.currentStreak > 0}
-			<span>· {t('dashboard.calCurrentStreak', { n: calendar.currentStreak })}</span>
+			<span>· {i18n.t('dashboard.calCurrentStreak', { n: calendar.currentStreak })}</span>
 		{/if}
 		{#if calendar.longestStreak > 1}
-			<span>· {t('dashboard.calLongestStreak', { n: calendar.longestStreak })}</span>
+			<span>· {i18n.t('dashboard.calLongestStreak', { n: calendar.longestStreak })}</span>
 		{/if}
 	</div>
 
@@ -80,7 +79,7 @@
 		<div class="dowlabels" aria-hidden="true">
 			{#each DOW_KEYS as key, i}
 				{#if i % 2 === 1}
-					<span class="dow muted">{t(key)}</span>
+					<span class="dow muted">{i18n.t(key)}</span>
 				{:else}
 					<span class="dow"></span>
 				{/if}
@@ -95,7 +94,7 @@
 			<div
 				class="heatmap"
 				role="img"
-				aria-label={t('dashboard.calAria', {
+				aria-label={i18n.t('dashboard.calAria', {
 					active: calendar.activeDays,
 					streak: calendar.currentStreak
 				})}
@@ -115,13 +114,13 @@
 				{/each}
 			</div>
 			<div class="legend muted">
-				<span>{t('dashboard.calLess')}</span>
+				<span>{i18n.t('dashboard.calLess')}</span>
 				<div class="legendcells">
 					{#each Array.from({ length: calendar.maxLevel + 1 }, (_, i) => i) as level}
 						<div class="cell" data-level={level}></div>
 					{/each}
 				</div>
-				<span>{t('dashboard.calMore')}</span>
+				<span>{i18n.t('dashboard.calMore')}</span>
 			</div>
 		</div>
 	</div>

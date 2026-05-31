@@ -531,25 +531,24 @@ function monthNumberOfUtc(dayKey: string): number {
 
 export function volumeIntensityLevel(
 	value: number,
-	nonZeroVolumes: number[],
+	sortedVolumes: number[], // Pre-sorted in ascending order to avoid O(N log N) inside loops
 	maxLevel = 4
 ): number {
 	if (value <= 0 || maxLevel < 1) return 0;
-	if (!nonZeroVolumes.length) return 1;
-	const sorted = [...nonZeroVolumes].sort((a, b) => a - b);
-	const max = sorted[sorted.length - 1];
-	const min = sorted[0];
+	if (!sortedVolumes.length) return 1;
+	const max = sortedVolumes[sortedVolumes.length - 1];
+	const min = sortedVolumes[0];
 	// When there's a real gradient, any value at or above the max always gets maxLevel.
 	if (max !== min && value >= max) return maxLevel;
 	const breaks: number[] = [];
 	for (let i = 1; i < maxLevel; i++) {
-		const idx = Math.min(sorted.length - 1, Math.ceil((sorted.length * i) / maxLevel) - 1);
-		breaks.push(sorted[Math.max(0, idx)]);
+		const idx = Math.min(sortedVolumes.length - 1, Math.ceil((sortedVolumes.length * i) / maxLevel) - 1);
+		breaks.push(sortedVolumes[Math.max(0, idx)]);
 	}
 	// When all volumes are identical, all breaks collapse to the same value.
 	// Every cell would get level 1, which hides real training variation.
 	// Deduplicate and fall back to maxLevel if there's no meaningful gradient.
-	const unique = [...new Set(breaks)].sort((a, b) => a - b);
+	const unique = [...new Set(breaks)];
 	if (unique.length === 0 || unique[0] === unique[unique.length - 1]) return value > 0 ? maxLevel : 0;
 	if (unique.length === 1) return value <= unique[0] ? 1 : maxLevel;
 	let level = maxLevel;
@@ -633,11 +632,12 @@ export function buildTrainingCalendar(
 		}
 	}
 
-	const maxVolume = volumesInRange.length ? Math.max(...volumesInRange) : 0;
+	const sortedVolumes = [...volumesInRange].sort((a, b) => a - b);
+	const maxVolume = sortedVolumes.length ? sortedVolumes[sortedVolumes.length - 1] : 0;
 	for (const cell of cells) {
 		if (!cell.day) continue;
 		const value = metric === 'distance' ? cell.distance : cell.time;
-		cell.level = volumeIntensityLevel(value, volumesInRange, maxLevel);
+		cell.level = volumeIntensityLevel(value, sortedVolumes, maxLevel);
 	}
 
 	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, endDay);
