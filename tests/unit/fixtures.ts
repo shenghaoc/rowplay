@@ -9,7 +9,7 @@ export function ladderStrokes(): Stroke[] {
 	];
 }
 
-/** Two-interval strokes with per-interval `t` reset (post-normalisation shape). */
+/** Two-interval strokes with per-interval `t` reset (pre-normalisation shape). */
 export function intervalResetStrokes(): Stroke[] {
 	const rep1: Stroke[] = [
 		{ t: 0, d: 0, pace: 120, spm: 28, watts: 100 },
@@ -24,9 +24,22 @@ export function intervalResetStrokes(): Stroke[] {
 	return [...rep1, ...rep2];
 }
 
+/** Two-interval strokes after normalisation (continuous t/d, same as what
+ * `normalizeRawStrokes` and production `mapStrokes` produce). */
+export function normalizedIntervalStrokes(): Stroke[] {
+	return [
+		{ t: 0, d: 0, pace: 120, spm: 28, watts: 100 },
+		{ t: 5, d: 25, pace: 118, spm: 29, watts: 105 },
+		{ t: 10, d: 50, pace: 116, spm: 30, watts: 110 },
+		{ t: 10, d: 50, pace: 122, spm: 27, watts: 95 },
+		{ t: 15, d: 75, pace: 120, spm: 28, watts: 100 },
+		{ t: 20, d: 100, pace: 118, spm: 29, watts: 105 }
+	];
+}
+
 export const intervalSplits: Split[] = [
-	{ index: 0, distance: 500, time: 120, pace: 120, spm: 28 },
-	{ index: 1, distance: 500, time: 122, pace: 122, spm: 27 }
+	{ index: 0, distance: 50, time: 10, pace: 120, spm: 28 },
+	{ index: 1, distance: 50, time: 10, pace: 122, spm: 27 }
 ];
 
 export function workout(overrides: Partial<Workout> & Pick<Workout, 'id'>): Workout {

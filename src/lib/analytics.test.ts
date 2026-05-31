@@ -20,7 +20,7 @@ import {
 	dayVolumeValue
 } from './analytics';
 import { mockWorkoutDetail, mockWorkouts } from './mockData';
-import { intervalResetStrokes, intervalSplits, ladderStrokes, normalizeRawStrokes, workout } from '../../tests/unit/fixtures';
+import { intervalResetStrokes, intervalSplits, ladderStrokes, normalizedIntervalStrokes, normalizeRawStrokes, workout } from '../../tests/unit/fixtures';
 
 const workouts = mockWorkouts();
 
@@ -168,12 +168,15 @@ describe('intervalBreakdown', () => {
 		expect(intervalBreakdown([detail.splits[0]], detail.strokes)).toBeNull();
 	});
 
-	it('assigns strokes across reps when t resets each interval', () => {
-		const result = intervalBreakdown(intervalSplits, intervalResetStrokes());
+	it('assigns strokes across reps using cumulative split time boundaries', () => {
+		const result = intervalBreakdown(intervalSplits, normalizedIntervalStrokes());
 		expect(result).not.toBeNull();
 		expect(result!.reps).toHaveLength(2);
 		expect(result!.reps[0].pace).toBe(120);
 		expect(result!.reps[1].pace).toBe(122);
+		// Rep 0 gets strokes with t ≤ 10 (the first 4), rep 1 gets t > 10 (the last 2)
+		expect(result!.reps[0].spm).toBeGreaterThan(0);
+		expect(result!.reps[1].spm).toBeGreaterThan(0);
 	});
 });
 
