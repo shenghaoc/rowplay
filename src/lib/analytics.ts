@@ -319,27 +319,25 @@ export function powerCurve(strokes: Stroke[], durations?: number[]): PowerPoint[
 		E[i] = E[i - 1] + ((w[i] + w[i - 1]) / 2) * (t[i] - t[i - 1]);
 	}
 
-	const energyAt = (time: number): number => {
-		if (time <= t[0]) return 0;
-		if (time >= t[t.length - 1]) return E[E.length - 1];
-		let lo = 0;
-		let hi = t.length - 1;
-		while (hi - lo > 1) {
-			const mid = (lo + hi) >> 1;
-			if (t[mid] <= time) lo = mid;
-			else hi = mid;
-		}
-		const f = (time - t[lo]) / (t[hi] - t[lo] || 1);
-		return E[lo] + (E[hi] - E[lo]) * f;
-	};
-
 	return windows.map((dur) => {
 		let best = 0;
+		let j = 0;
 		for (let i = 0; i < strokes.length; i++) {
 			const ta = t[i];
 			const tb = ta + dur;
 			if (tb > total) break;
-			const avg = (energyAt(tb) - energyAt(ta)) / dur;
+
+			// Sliding window: advance j until t[j+1] is past tb
+			while (j < t.length - 1 && t[j + 1] <= tb) {
+				j++;
+			}
+
+			const eTb =
+				j === t.length - 1
+					? E[j]
+					: E[j] + ((E[j + 1] - E[j]) * (tb - t[j])) / (t[j + 1] - t[j] || 1);
+
+			const avg = (eTb - E[i]) / dur;
 			if (avg > best) best = avg;
 		}
 		return { duration: dur, watts: best };
