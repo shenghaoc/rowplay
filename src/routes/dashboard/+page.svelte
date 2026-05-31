@@ -1027,5 +1027,38 @@
 		.herometrics {
 			gap: 1.25rem;
 		}
+		.head {
+			flex-direction: column;
+			align-items: stretch;
+		}
+		.headright {
+			width: 100%;
+		}
+		.filters {
+			flex-wrap: wrap;
+		}
+		.formhead {
+			flex-wrap: wrap;
+			gap: 0.5rem;
+		}
+	}
+	@media (max-width: 390px) {
+		.chip,
+		.mchip,
+		.bchip {
+			padding: 0.3rem 0.55rem;
+			font-size: 0.75rem;
+		}
+		.heropace {
+			font-size: 2.2rem;
+		}
+		.herometrics {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 0.75rem;
+		}
+		.pbgrid {
+			grid-template-columns: repeat(2, 1fr);
+		}
 	}
 </style>

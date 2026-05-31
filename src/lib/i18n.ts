@@ -54,6 +54,10 @@ const en = {
 	},
 	theme: { toLight: 'Switch to light mode', toDark: 'Switch to dark mode' },
 	lang: { switch: 'Switch language' },
+	pwa: {
+		updateAvailable: 'A new version of rowplay is ready.',
+		reload: 'Reload'
+	},
 	landing: {
 		tagline: 'Concept2 · RowErg · SkiErg · BikeErg',
 		title1: 'Replay your workouts.',
@@ -290,6 +294,10 @@ const zh = {
 	},
 	theme: { toLight: '切换到浅色模式', toDark: '切换到深色模式' },
 	lang: { switch: '切换语言' },
+	pwa: {
+		updateAvailable: 'rowplay 有新版本可用。',
+		reload: '重新加载'
+	},
 	landing: {
 		tagline: 'Concept2 · 划船机 · 滑雪机 · 单车机',
 		title1: '回放你的训练。',
