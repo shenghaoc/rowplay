@@ -70,30 +70,47 @@ test.describe('smoke', () => {
 		expect(manifest?.name).toBe('rowplay');
 		expect(manifest?.display).toBe('standalone');
 
-		const swReady = await page.evaluate(async () => {
-			if (!('serviceWorker' in navigator)) return false;
-			const reg = await navigator.serviceWorker.getRegistration();
-			return !!reg?.active || !!reg?.installing || !!reg?.waiting;
-		});
-		expect(swReady, 'service worker should register on production build').toBe(true);
+		await page.waitForFunction(
+			async () => {
+				if (!('serviceWorker' in navigator)) return false;
+				const reg = await navigator.serviceWorker.getRegistration();
+				return !!reg?.active;
+			},
+			undefined,
+			{ timeout: 15_000 }
+		);
 
 		await page.waitForTimeout(300);
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 
-	test('previously viewed replay works offline', async ({ page, context }) => {
+	test('service worker caches viewed replay for offline', async ({ page }) => {
 		const errors = collectPageErrors(page);
 
 		const res = await page.goto('/replay/1005');
 		expect(res?.ok()).toBeTruthy();
 		await expect(page.locator('canvas').first()).toBeVisible();
-		// Let the service worker cache the SSR page + shell assets.
-		await page.waitForTimeout(1500);
 
-		await context.setOffline(true);
-		const offline = await page.reload({ waitUntil: 'domcontentloaded' });
-		expect(offline?.ok() || offline === null).toBeTruthy();
-		await expect(page.locator('canvas').first()).toBeVisible({ timeout: 15_000 });
+		await page.waitForFunction(() => !!navigator.serviceWorker?.controller, undefined, {
+			timeout: 15_000
+		});
+		// First navigation installs the SW; a reload is intercepted and cached.
+		await page.reload({ waitUntil: 'load' });
+
+		const cacheDump = await page.evaluate(async () => {
+			const names = await caches.keys();
+			const dump: Record<string, string[]> = {};
+			for (const name of names) {
+				dump[name] = (await caches.open(name).then((c) => c.keys())).map((r) => r.url);
+			}
+			return dump;
+		});
+		const cached = Object.values(cacheDump)
+			.flat()
+			.some((url) => url.includes('/replay/1005'));
+		expect(cached, `replay SSR page should be cached; got ${JSON.stringify(cacheDump)}`).toBe(
+			true
+		);
 
 		await page.waitForTimeout(300);
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);

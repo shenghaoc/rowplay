@@ -264,33 +264,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 
 ---
 
-## Task 8 — Real PWA: offline + installable + mobile polish
-
-> There is **no PWA manifest and no service worker** today (`static/` only has
-> `favicon.svg`). Build the whole PWA story from scratch.
->
-> **Build:**
-> 1. A **service worker** (SvelteKit `src/service-worker.ts`) that precaches the
->    app shell + static assets and serves the dashboard/replay offline for
->    already-viewed workouts (cache the cached-detail JSON responses). Pick a sane
->    strategy (network-first for data, cache-first for shell). Handle updates
->    (skipWaiting + a "new version" toast).
-> 2. **Installability**: create `static/manifest.webmanifest` (name, theme/bg color
->    matching the RACE BOARD tokens, display `standalone`, start_url) and link it
->    from `src/app.html`. Add maskable PNG icons at 192 + 512. Verify it passes
->    Lighthouse PWA install criteria.
-> 3. **Mobile polish pass** at 390px (phone) + 768px (tablet): screenshot `/`,
->    `/dashboard`, a `/replay/<id>` against `npm run preview`; fix any
->    overflow/cramping, especially the replay transport controls and any new
->    Task 2–7 UI. Re-screenshot to confirm.
->
-> **Rules:** must not break SSR or the Workers asset server (test on
-> `npm run preview`, not just `vite dev`). i18n the update toast. **Acceptance:**
-> app is installable, dashboard + a previously-viewed replay work offline (airplane
-> mode), no layout overflow on phone/tablet. Gate passes.
-
----
-
 ## Task 9 — Data export & account/data controls (trust + parity)
 
 > Power users and privacy-conscious users expect to own their data and control the

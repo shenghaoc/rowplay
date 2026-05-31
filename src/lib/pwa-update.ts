@@ -2,6 +2,7 @@ import { toast } from 'svelte-sonner';
 import type { I18n } from '$lib/i18n.svelte';
 
 let updateToastShown = false;
+let reloadAfterUpdate = false;
 
 function showUpdateToast(i18n: I18n, registration: ServiceWorkerRegistration) {
 	if (updateToastShown || !registration.waiting) return;
@@ -12,6 +13,7 @@ function showUpdateToast(i18n: I18n, registration: ServiceWorkerRegistration) {
 		action: {
 			label: t('pwa.reload'),
 			onClick: () => {
+				reloadAfterUpdate = true;
 				registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
 			}
 		}
@@ -22,10 +24,8 @@ function showUpdateToast(i18n: I18n, registration: ServiceWorkerRegistration) {
 export function initPwaUpdate(i18n: I18n) {
 	if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
 
-	let refreshing = false;
 	navigator.serviceWorker.addEventListener('controllerchange', () => {
-		if (refreshing) return;
-		refreshing = true;
+		if (!reloadAfterUpdate) return;
 		location.reload();
 	});
 

@@ -9,7 +9,7 @@ const API_CACHE = 'api-v1';
 const SHELL_ASSETS = [...build, ...files];
 
 /** App routes that should work offline after a prior visit. */
-const OFFLINE_PATHS = ['/dashboard', '/replay/'];
+const OFFLINE_PATHS = ['/dashboard', '/replay'];
 
 function isOfflinePage(pathname: string): boolean {
 	return OFFLINE_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -17,10 +17,10 @@ function isOfflinePage(pathname: string): boolean {
 
 self.addEventListener('install', (event) => {
 	event.waitUntil(
-		caches
-			.open(SHELL_CACHE)
-			.then((cache) => cache.addAll(SHELL_ASSETS))
-			.then(() => self.skipWaiting())
+		caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_ASSETS)).then(() => {
+			// First install: take control immediately. Updates wait for the user toast.
+			if (!self.registration.active) return self.skipWaiting();
+		})
 	);
 });
 
