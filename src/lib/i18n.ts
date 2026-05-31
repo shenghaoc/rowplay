@@ -207,7 +207,7 @@ const en = {
 		cpExplainEstimate:
 			'CP is estimated at {cp} W from your best longer efforts — the power you could hold for a long piece without fading. Log more varied durations (sprints through 30+ min) to unlock a full CP/W′ model.',
 		cpPredictTitle: 'What can I hold?',
-		cpPredictSub: 'Even-split pace or finish time from your CP model — not a guarantee, but a useful target.',
+		cpPredictSub: 'Even-split pace or finish time from your CP model. Pace is /500m (RowErg & SkiErg only).',
 		cpModeDuration: 'Hold for…',
 		cpModeDistance: 'Time for…',
 		cpHoldFor: 'Hold for',
@@ -227,7 +227,6 @@ const en = {
 		cpChartHint: 'Dots are your session bests; the line is what CP/W′ predicts. Above the line = outperforming the model.',
 		cpChartActual: 'Your bests',
 		cpChartModel: 'CP model'
->>>>>>> c1ed3de (feat: surface critical power and pace predictor on dashboard)
 	},
 	workoutList: {
 		empty: 'No workouts for this filter.',
@@ -613,7 +612,7 @@ const zh = {
 		cpExplainEstimate:
 			'根据你较长距离的最佳表现，估算 CP 为 {cp} W。记录更多不同时长（冲刺到 30 分钟以上）可解锁完整 CP/W′ 模型。',
 		cpPredictTitle: '我能维持多少？',
-		cpPredictSub: '由 CP 模型推算的均速配速或完赛时间——仅供参考，但有助于定目标。',
+		cpPredictSub: '由 CP 模型推算的均速配速或完赛时间。配速为 /500m（仅适用于 RowErg 和 SkiErg）。',
 		cpModeDuration: '维持…',
 		cpModeDistance: '用时…',
 		cpHoldFor: '维持',
@@ -633,7 +632,6 @@ const zh = {
 		cpChartHint: '圆点为你的场次最佳；曲线为 CP/W′ 预测。高于曲线表示超出模型预期。',
 		cpChartActual: '你的最佳',
 		cpChartModel: 'CP 模型'
->>>>>>> c1ed3de (feat: surface critical power and pace predictor on dashboard)
 	},
 	workoutList: {
 		empty: '该筛选条件下没有训练。',

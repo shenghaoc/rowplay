@@ -45,7 +45,7 @@
 		if (!cp || predictMode !== 'duration') return null;
 		if (!durationMin || isNaN(durationMin)) return null;
 		const sec = durationMin * 60;
-		if (sec < 60) return null;
+		if (sec < 60 || sec > 7200) return null;
 		return predictPaceForDuration(cp, sec);
 	});
 
