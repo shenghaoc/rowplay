@@ -109,32 +109,36 @@
 	// Recreate renderer + engine whenever the workout changes (client-side navigation
 	// reuses the same component instance, so strokes/sportTheme may change).
 	$effect(() => {
+		// Read the reactive deps we want to track — everything else must be untracked
+		// to avoid an effect_update_depth_exceeded loop (renderCurrent reads $state).
 		const s = strokes;
 		const theme = sportTheme;
-		engine?.destroy();
-		// Reset all playback and ghost state for the new workout.
-		frame = sampleAt(s, 0);
-		playing = false;
-		speed = 1;
-		compareMode = 'none';
-		ghostStrokes = null;
-		ghostActive = false;
-		ghostLabel = '';
-		ghostRival = null;
-		ghostFrame = null;
-		ghostId = '';
-		sessionSearch = '';
-		fileName = '';
-		ghostError = '';
-		renderer = new CourseRenderer(canvasEl, theme);
-		engine = new ReplayEngine(s, (f, p) => {
-			frame = f;
-			playing = p;
-			renderer?.render(buildState(f), p, uiTheme.value);
+		untrack(() => {
+			engine?.destroy();
+			// Reset all playback and ghost state for the new workout.
+			frame = sampleAt(s, 0);
+			playing = false;
+			speed = 1;
+			compareMode = 'none';
+			ghostStrokes = null;
+			ghostActive = false;
+			ghostLabel = '';
+			ghostRival = null;
+			ghostFrame = null;
+			ghostId = '';
+			sessionSearch = '';
+			fileName = '';
+			ghostError = '';
+			renderer = new CourseRenderer(canvasEl, theme);
+			engine = new ReplayEngine(s, (f, p) => {
+				frame = f;
+				playing = p;
+				renderer?.render(buildState(f), p, uiTheme.value);
+			});
+			const w = courseWrap?.clientWidth;
+			if (w) renderer.resize(w, 150);
+			renderCurrent();
 		});
-		const w = courseWrap?.clientWidth;
-		if (w) renderer.resize(w, 150);
-		renderCurrent();
 		return () => engine?.destroy();
 	});
 
