@@ -398,7 +398,6 @@ const zh = {
 	}
 } as const;
 
-const dictionaries = { en, zh } as const;
 
 function flattenDict(obj: Record<string, unknown>, prefix = ''): Map<string, string> {
 	const map = new Map<string, string>();
