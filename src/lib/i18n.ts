@@ -331,7 +331,6 @@ const zh = {
 		faster: '快了 {delta}',
 		slower: '慢了 {delta}',
 		emptyTrend: '该区间只有 {n} 次训练——再记录一次 {band} 即可看到趋势。',
-<<<<<<< HEAD
 		calTitle: '训练日历',
 		calMetricDistance: '距离',
 		calMetricTime: '时间',
@@ -350,7 +349,6 @@ const zh = {
 		calDowThu: '四',
 		calDowFri: '五',
 		calDowSat: '六',
-=======
 		formTitle: '体能与状态',
 		formPremium: '高级功能 — 已解锁',
 		formSub: '涵盖全部器械的训练负荷，按你自己的阈值功率换算。',

@@ -20,6 +20,15 @@
 	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play, Activity } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 
+	// Static lookup — never changes, shared across instances.
+	const formBandClass: Record<FormBand, string> = {
+		transition: 'info',
+		fresh: 'good',
+		neutral: 'neutral',
+		productive: 'accent',
+		overreaching: 'bad'
+	};
+
 	let { data } = $props();
 	const t = getI18nContext().t;
 	const workouts = $derived<Workout[]>(data.workouts);
@@ -116,13 +125,6 @@
 	// is systemic. Needs ~2 weeks of history before it reads meaningfully.
 	const load = $derived(trainingLoad(workouts));
 	const formReady = $derived(!!load && load.series.length >= 14);
-	const formBandClass: Record<FormBand, string> = {
-		transition: 'info',
-		fresh: 'good',
-		neutral: 'neutral',
-		productive: 'accent',
-		overreaching: 'bad'
-	};
 	const bandLabel: Record<FormBand, string> = $derived({
 		transition: t('dashboard.bandTransition'),
 		fresh: t('dashboard.bandFresh'),
@@ -428,7 +430,7 @@
 
 			<div class="formstats">
 				<div class="fs">
-					<div class="fsv mono" style="color: var(--accent)">{Math.round(load.ctl)}</div>
+					<div class="fsv mono" style="color: #2f81f7">{Math.round(load.ctl)}</div>
 					<div class="fsl">{t('dashboard.formFitness')}</div>
 					<div class="fsh muted">{t('dashboard.formFitnessHint')}</div>
 				</div>
