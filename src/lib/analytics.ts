@@ -332,13 +332,10 @@ export function powerCurve(strokes: Stroke[], durations?: number[]): PowerPoint[
 				j++;
 			}
 
-			let e_tb = 0;
-			if (j === t.length - 1) {
-				e_tb = E[j];
-			} else {
-				const f = (tb - t[j]) / (t[j + 1] - t[j] || 1);
-				e_tb = E[j] + (E[j + 1] - E[j]) * f;
-			}
+			const e_tb =
+				j === t.length - 1
+					? E[j]
+					: E[j] + ((E[j + 1] - E[j]) * (tb - t[j])) / (t[j + 1] - t[j] || 1);
 
 			const avg = (e_tb - E[i]) / dur;
 			if (avg > best) best = avg;
