@@ -40,6 +40,23 @@ test.describe('smoke', () => {
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 
+	test('replay pace-boat rival shows live gap readout', async ({ page }) => {
+		const errors = collectPageErrors(page);
+
+		await page.goto('/replay/1005');
+		await expect(page.locator('canvas').first()).toBeVisible();
+
+		await page.locator('#cmode').selectOption('pace');
+		await page.getByRole('button', { name: /Set pace|设定配速/ }).click();
+
+		const gap = page.locator('.gap[role="status"]');
+		await expect(gap).toBeVisible();
+		await expect(gap).toContainText(/ahead|behind|领先|落后/);
+
+		await page.waitForTimeout(300);
+		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
+	});
+
 	test('replay loads cleanly and renders the course canvas', async ({ page }) => {
 		const errors = collectPageErrors(page);
 

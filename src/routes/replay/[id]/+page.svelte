@@ -16,6 +16,7 @@
 	import { fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, paceToWatts, SPORT_LABEL } from '$lib/format';
 	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
+	import { pickDefaultGhostCandidate } from '$lib/replay/ghostPick';
 	import { toast } from 'svelte-sonner';
 	import { ArrowLeft, Play, Pause, Ghost } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
@@ -39,17 +40,36 @@
 	// Comparison ("ghost") state — race a past session, a constant pace, or an
 	// uploaded CSV/TCX/FIT file. All three resolve to a ghost stroke array.
 	type CompareMode = 'none' | 'session' | 'pace' | 'file';
+	type GhostRival = {
+		kind: 'session' | 'pace' | 'file';
+		date?: string;
+		distance?: number;
+		name?: string;
+		paceLabel?: string;
+	};
 	let compareMode = $state<CompareMode>('none');
 	let ghostStrokes: Stroke[] | null = null;
 	let ghostActive = $state(false);
 	let ghostLabel = $state('');
 	let ghostFrame = $state<Frame | null>(null);
+	let ghostRival = $state<GhostRival | null>(null);
 	let loadingGhost = $state(false);
 	let ghostError = $state('');
 	// sub-control inputs
 	let ghostId = $state('');
+	let sessionSearch = $state('');
 	let paceInput = $state('2:00');
 	let fileName = $state('');
+
+	const SEARCHABLE_MIN = 8;
+	const filteredCandidates = $derived.by(() => {
+		const q = sessionSearch.trim().toLowerCase();
+		if (!q) return candidates;
+		return candidates.filter((c) => {
+			const hay = `${fmtDate(c.date)} ${fmtDistance(c.distance)} ${fmtPace(c.pace)}`.toLowerCase();
+			return hay.includes(q);
+		});
+	});
 
 	let engine = $state<ReplayEngine | null>(null);
 	let renderer: CourseRenderer | null = null;
@@ -122,10 +142,11 @@
 		engine?.seek(Number((e.target as HTMLInputElement).value));
 	}
 
-	function setGhost(strokes: Stroke[] | null, label: string) {
+	function setGhost(strokes: Stroke[] | null, label: string, rival: GhostRival | null = null) {
 		ghostStrokes = strokes && strokes.length ? strokes : null;
 		ghostActive = ghostStrokes != null;
 		ghostLabel = ghostActive ? label : '';
+		ghostRival = ghostActive ? rival : null;
 		if (!ghostActive) ghostFrame = null;
 		renderer?.resize(courseWrap.clientWidth, ghostActive ? 190 : 150);
 		renderCurrent();
@@ -135,20 +156,29 @@
 		ghostId = '';
 		fileName = '';
 		ghostError = '';
-		setGhost(null, '');
+		setGhost(null, '', null);
 	}
 
 	function onModeChange(e: Event) {
-		compareMode = (e.target as HTMLSelectElement).value as CompareMode;
+		const mode = (e.target as HTMLSelectElement).value as CompareMode;
+		compareMode = mode;
+		sessionSearch = '';
 		clearGhost();
+		if (mode === 'session' && candidates.length) {
+			const pick = pickDefaultGhostCandidate(candidates, {
+				id: detail.id,
+				distance: detail.distance,
+				sport: detail.sport
+			});
+			if (pick) void loadSessionGhost(String(pick.id));
+		}
 	}
 
-	async function selectGhost(e: Event) {
-		const id = (e.target as HTMLSelectElement).value;
+	async function loadSessionGhost(id: string) {
 		ghostId = id;
 		ghostError = '';
 		if (!id) {
-			setGhost(null, '');
+			setGhost(null, '', null);
 			return;
 		}
 		loadingGhost = true;
@@ -156,7 +186,11 @@
 			const res = await fetch(`/api/workouts/${id}`);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const d = (await res.json()) as WorkoutDetail;
-			setGhost(d.strokes, t('replay.ghostYour', { date: fmtDate(d.date) }));
+			setGhost(d.strokes, t('replay.ghostYour', { date: fmtDate(d.date) }), {
+				kind: 'session',
+				date: d.date,
+				distance: d.distance
+			});
 			toast.success(t('replay.racingSession', { date: fmtDate(d.date) }), {
 				description: `${fmtDistance(d.distance)} · ${fmtPace(d.pace)}`
 			});
@@ -170,6 +204,10 @@
 		}
 	}
 
+	async function selectGhost(e: Event) {
+		await loadSessionGhost((e.target as HTMLSelectElement).value);
+	}
+
 	function applyPace() {
 		const secs = parsePaceInput(paceInput);
 		if (secs == null) {
@@ -177,7 +215,8 @@
 			return;
 		}
 		ghostError = '';
-		setGhost(constantPaceGhost(secs, total), `${fmtPaceBare(secs)}/500m`);
+		const paceLabel = `${fmtPaceBare(secs)}/500m`;
+		setGhost(constantPaceGhost(secs, total), paceLabel, { kind: 'pace', paceLabel });
 		toast.success(t('replay.pacingAt', { pace: fmtPace(secs) }));
 	}
 
@@ -191,7 +230,7 @@
 			const { strokes, name } = await parseWorkoutFile(file);
 			if (!strokes.length) throw new Error(t('replay.noSamples'));
 			fileName = name;
-			setGhost(strokes, name);
+			setGhost(strokes, name, { kind: 'file', name });
 			toast.success(t('replay.racingFile', { name }), {
 				description: `${strokes.length} ${t('replay.samples')}`
 			});
@@ -211,6 +250,34 @@
 		if (!ghostFrame) return 0;
 		const speedMs = frame.pace > 0 ? 500 / frame.pace : 0;
 		return speedMs > 0 ? gapMeters / speedMs : 0;
+	});
+
+	const replayDuration = $derived(engine?.duration ?? detail.time);
+	const raceFinished = $derived(ghostActive && replayDuration > 0 && frame.t >= replayDuration - 0.05);
+
+	const verdictText = $derived.by(() => {
+		if (!raceFinished || !ghostRival) return '';
+		const won = gapMeters >= 0;
+		const secs = Math.abs(gapSeconds).toFixed(1);
+		const m = String(Math.abs(Math.round(gapMeters)));
+		const base = { seconds: secs, m };
+		if (ghostRival.kind === 'session' && ghostRival.date != null) {
+			const key = won ? 'replay.raceVerdictWinSession' : 'replay.raceVerdictLoseSession';
+			return t(key, {
+				...base,
+				date: fmtDate(ghostRival.date),
+				distance: fmtDistance(ghostRival.distance ?? 0)
+			});
+		}
+		if (ghostRival.kind === 'pace' && ghostRival.paceLabel) {
+			const key = won ? 'replay.raceVerdictWinPace' : 'replay.raceVerdictLosePace';
+			return t(key, { ...base, pace: ghostRival.paceLabel });
+		}
+		if (ghostRival.kind === 'file' && ghostRival.name) {
+			const key = won ? 'replay.raceVerdictWinFile' : 'replay.raceVerdictLoseFile';
+			return t(key, { ...base, name: ghostRival.name });
+		}
+		return '';
 	});
 
 	// ---- Telemetry charts ----
@@ -336,9 +403,18 @@
 		</select>
 
 		{#if compareMode === 'session' && candidates.length}
+			{#if candidates.length >= SEARCHABLE_MIN}
+				<input
+					class="session-search"
+					type="search"
+					bind:value={sessionSearch}
+					placeholder={t('replay.searchSessions')}
+					aria-label={t('replay.searchSessions')}
+				/>
+			{/if}
 			<select id="ghost" value={ghostId} onchange={selectGhost}>
 				<option value="">{t('replay.chooseSession', { sport: SPORT_LABEL[detail.sport] })}</option>
-				{#each candidates as c}
+				{#each filteredCandidates as c (c.id)}
 					<option value={c.id}>
 						{fmtDate(c.date)} · {fmtDistance(c.distance)} · {fmtPace(c.pace)}
 					</option>
@@ -370,15 +446,30 @@
 		{#if loadingGhost}<span class="muted small">{t('common.loading')}</span>{/if}
 		{#if ghostError}<span class="err small">{ghostError}</span>{/if}
 
-		{#if ghostActive && ghostFrame}
-			<div class="gap mono" class:ahead={gapMeters >= 0} class:behind={gapMeters < 0}>
-				{gapMeters >= 0
-					? t('replay.ahead', { m: Math.abs(Math.round(gapMeters)) })
-					: t('replay.behind', { m: Math.abs(Math.round(gapMeters)) })}
-				<span class="muted">({Math.abs(gapSeconds).toFixed(1)}s)</span>
+		{#if ghostActive && ghostFrame && !raceFinished}
+			<div class="gap mono" class:ahead={gapMeters >= 0} class:behind={gapMeters < 0} role="status" aria-live="polite">
+				<span class="gap-main">
+					{gapMeters >= 0
+						? t('replay.ahead', { m: Math.abs(Math.round(gapMeters)) })
+						: t('replay.behind', { m: Math.abs(Math.round(gapMeters)) })}
+				</span>
+				<span class="gap-secs">({Math.abs(gapSeconds).toFixed(1)}s)</span>
 			</div>
 		{/if}
 	</div>
+
+	{#if raceFinished && verdictText}
+		<div
+			class="card verdict"
+			class:win={gapMeters >= 0}
+			class:lose={gapMeters < 0}
+			role="status"
+			aria-live="polite"
+		>
+			<div class="verdict-kicker">{t('replay.raceFinished')}</div>
+			<p class="verdict-body">{verdictText}</p>
+		</div>
+	{/if}
 
 	<!-- Course -->
 	<div class="card course" bind:this={courseWrap}>
@@ -713,13 +804,18 @@
 		align-items: center;
 		gap: 0.35rem;
 	}
-	.ghostbar select {
+	.ghostbar select,
+	.session-search {
 		background: var(--paper-inset);
 		color: var(--ink);
 		border: var(--bd);
 		border-radius: var(--r-ctrl);
 		padding: 0.4rem 0.6rem;
 		font-size: 0.85rem;
+	}
+	.session-search {
+		min-width: 10rem;
+		max-width: 14rem;
 	}
 	.paceinput {
 		width: 5rem;
@@ -742,29 +838,71 @@
 	}
 	.gap {
 		margin-left: auto;
+		display: flex;
+		align-items: baseline;
+		gap: 0.45rem;
+		font-weight: 800;
+		font-size: clamp(1.05rem, 3.5vw, 1.35rem);
+		padding: 0.4rem 0.85rem;
+		border-radius: var(--r-ctrl);
+		border: var(--bd-heavy);
+		box-shadow: var(--stamp-live);
+	}
+	.gap-main {
+		letter-spacing: 0.02em;
+	}
+	.gap-secs {
+		font-size: 0.82em;
 		font-weight: 700;
-		font-size: 1rem;
-		padding: 0.25rem 0.7rem;
-		border-radius: 999px;
+		opacity: 0.92;
 	}
 	.gap.ahead {
 		color: var(--paper-raised);
 		background: var(--ahead);
-		border-radius: var(--r-ctrl);
 		font-family: var(--display);
 		text-transform: uppercase;
-		letter-spacing: 0.03em;
+		letter-spacing: 0.04em;
 	}
 	.gap.behind {
-		color: var(--ink);
+		color: var(--paper-raised);
 		background: var(--behind);
-		border-radius: var(--r-ctrl);
 		font-family: var(--display);
 		text-transform: uppercase;
-		letter-spacing: 0.03em;
+		letter-spacing: 0.04em;
 	}
-	:global([data-theme='dark']) .gap.behind {
-		color: var(--paper-raised);
+	.verdict {
+		margin-bottom: 0.75rem;
+		padding: 0.85rem 1.1rem;
+		border: var(--bd-heavy);
+	}
+	.verdict.win {
+		background: color-mix(in srgb, var(--ahead) 14%, var(--paper-raised));
+		border-color: var(--ahead);
+	}
+	.verdict.lose {
+		background: color-mix(in srgb, var(--behind) 14%, var(--paper-raised));
+		border-color: var(--behind);
+	}
+	.verdict-kicker {
+		font-family: var(--display);
+		font-size: 0.72rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--ink-2);
+		margin-bottom: 0.35rem;
+	}
+	.verdict-body {
+		margin: 0;
+		font-size: clamp(1rem, 3.2vw, 1.2rem);
+		font-weight: 700;
+		line-height: 1.35;
+	}
+	.verdict.win .verdict-body {
+		color: var(--ahead);
+	}
+	.verdict.lose .verdict-body {
+		color: var(--behind);
 	}
 	.small {
 		font-size: 0.8rem;
