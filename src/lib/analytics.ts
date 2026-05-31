@@ -537,6 +537,10 @@ export function volumeIntensityLevel(
 	if (value <= 0 || maxLevel < 1) return 0;
 	if (!nonZeroVolumes.length) return 1;
 	const sorted = [...nonZeroVolumes].sort((a, b) => a - b);
+	const max = sorted[sorted.length - 1];
+	const min = sorted[0];
+	// When there's a real gradient, any value at or above the max always gets maxLevel.
+	if (max !== min && value >= max) return maxLevel;
 	const breaks: number[] = [];
 	for (let i = 1; i < maxLevel; i++) {
 		const idx = Math.min(sorted.length - 1, Math.ceil((sorted.length * i) / maxLevel) - 1);

@@ -176,10 +176,10 @@
 		gap: 0.35rem;
 		overflow-x: auto;
 		padding-bottom: 0.25rem;
-	}
-	.dowlabels {
 		--cell: 11px;
 		--gap: 3px;
+	}
+	.dowlabels {
 		display: grid;
 		grid-template-rows: repeat(7, var(--cell));
 		gap: var(--gap);
@@ -199,8 +199,6 @@
 		position: relative;
 		height: 1rem;
 		margin-bottom: 0.15rem;
-		--cell: 11px;
-		--gap: 3px;
 	}
 	.month {
 		position: absolute;
@@ -208,8 +206,6 @@
 		white-space: nowrap;
 	}
 	.heatmap {
-		--cell: 11px;
-		--gap: 3px;
 		display: grid;
 		grid-template-rows: repeat(7, var(--cell));
 		grid-auto-flow: column;
