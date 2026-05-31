@@ -38,6 +38,9 @@
 			<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}
 				>{t('nav.dashboard')}</a
 			>
+			<a href="/settings" class:active={$page.url.pathname.startsWith('/settings')}
+				>{t('nav.settings')}</a
+			>
 		</nav>
 		<div class="spacer"></div>
 		<button class="iconbtn" onclick={() => i18n.toggle()} title={t('lang.switch')} aria-label={t('lang.switch')}>

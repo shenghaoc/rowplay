@@ -279,3 +279,12 @@ export async function getPersonalBests(db: D1Database, userId: number): Promise<
 		.all<PBRow>();
 	return res.results ?? [];
 }
+
+/** Remove all cached logbook data for a user (workouts, detail cache, sync cursor). */
+export async function deleteUserData(db: D1Database, userId: number): Promise<void> {
+	await db.batch([
+		db.prepare('DELETE FROM workouts WHERE user_id = ?').bind(userId),
+		db.prepare('DELETE FROM workout_detail WHERE user_id = ?').bind(userId),
+		db.prepare('DELETE FROM sync_state WHERE user_id = ?').bind(userId)
+	]);
+}

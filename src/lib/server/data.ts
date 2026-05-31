@@ -8,6 +8,7 @@ import { readSession } from './session';
 import { overlapDate } from '$lib/datetime';
 import {
 	countWorkouts,
+	deleteUserData,
 	getAllWorkouts,
 	getCachedDetail,
 	getPersonalBests,
@@ -19,6 +20,7 @@ import {
 	type SyncState
 } from './db';
 import type { SportSummary } from '$lib/analytics';
+import { destroySession } from './session';
 
 async function client(event: RequestEvent): Promise<Concept2Client | null> {
 	const env = event.platform?.env;
@@ -162,4 +164,16 @@ export async function loadWorkoutDetail(
 	const detail = await c.getWorkout(id);
 	await putCachedDetail(db, userId, detail);
 	return detail;
+}
+
+/** Purge D1 cache for the signed-in user and end their KV session. */
+export async function clearUserCachedData(event: RequestEvent): Promise<void> {
+	if (event.locals.demo) return;
+	const db = event.platform?.env?.DB;
+	const userId = event.locals.user?.id;
+	const kv = event.platform?.env?.SESSIONS;
+	const sid = event.locals.sessionId;
+	if (!db || userId == null) throw error(500, 'Database (D1) is not configured.');
+	await deleteUserData(db, userId);
+	if (kv && sid) await destroySession(kv, sid);
 }
