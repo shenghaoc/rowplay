@@ -2,7 +2,7 @@
 	import { createVirtualizer } from '@tanstack/svelte-virtual';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import SportIcon from '$components/SportIcon.svelte';
-	import { ChevronRight } from '@lucide/svelte';
+	import { ChevronRight, GitCompare } from '@lucide/svelte';
 	import type { Workout } from '$lib/types';
 	import { MACHINE_COLOR } from '$lib/replay/sports';
 	import { get } from 'svelte/store';
@@ -14,9 +14,13 @@
 		workouts: Workout[];
 		/** Above this many rows, switch to windowed (virtual) rendering. */
 		threshold?: number;
+		/** First workout selected for head-to-head compare (dashboard). */
+		compareAnchor?: number | null;
+		/** Called when the compare control on a row is activated. */
+		onCompare?: (w: Workout) => void;
 	}
 
-	let { workouts, threshold = 60 }: Props = $props();
+	let { workouts, threshold = 60, compareAnchor = null, onCompare }: Props = $props();
 
 	const ROW = 64; // px, must match .row min-height below
 	const virtual = $derived(workouts.length > threshold);
@@ -64,7 +68,33 @@
 			{#if w.heartRateAvg}· {Math.round(w.heartRateAvg)} bpm{/if}
 		</div>
 	</div>
-	<div class="play"><ChevronRight size={18} /></div>
+	<div class="actions">
+		{#if onCompare}
+			<span
+				role="button"
+				tabindex="0"
+				class="cmpbtn"
+				class:active={compareAnchor === w.id}
+				title={compareAnchor == null ? t('workoutList.comparePick') : t('workoutList.compareWith')}
+				aria-label={t('workoutList.compare')}
+				onclick={(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					onCompare(w);
+				}}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						e.stopPropagation();
+						onCompare(w);
+					}
+				}}
+			>
+				<GitCompare size={16} />
+			</span>
+		{/if}
+		<span class="play"><ChevronRight size={18} /></span>
+	</div>
 {/snippet}
 
 {#if workouts.length === 0}
@@ -161,11 +191,33 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
+	.actions {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		flex-shrink: 0;
+	}
 	.play {
 		display: flex;
 		align-items: center;
 		color: var(--text-dim);
-		flex-shrink: 0;
+	}
+	.cmpbtn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.35rem;
+		border: var(--bd);
+		border-radius: var(--r-ctrl);
+		background: var(--paper);
+		color: var(--ink-2);
+		cursor: pointer;
+	}
+	.cmpbtn:hover,
+	.cmpbtn.active {
+		color: var(--live);
+		border-color: var(--live);
+		background: color-mix(in srgb, var(--live) 10%, var(--paper));
 	}
 	@media (max-width: 720px) {
 		.vscroll {

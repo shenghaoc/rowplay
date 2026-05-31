@@ -246,24 +246,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 
 ---
 
-## Task 7 — Compare any two workouts head-to-head (analytics, not racing)
-
-> Distinct from Task 2's live ghost race: a **static side-by-side analysis** of two
-> pieces — the view you use to ask "is my 2k actually improving?".
->
-> **Build a `/compare?a=<id>&b=<id>` view** (or a "Compare" action from the list):
-> overlay both workouts' pace / HR / power **vs. distance** (normalize x to
-> distance so different-duration pieces align) on shared uPlot charts; a stat table
-> of deltas (time, avg/peak power, avg HR, DPS, split consistency); and
-> per-interval deltas when both are intervals (`intervalBreakdown`).
->
-> **Rules:** reuse `analytics.ts` + `UPlotChart.svelte`. i18n. Works in demo mode
-> (compare two mock workouts). **Acceptance:** picking two workouts shows aligned
-> overlay charts + a delta table; clearly indicates which piece was better and by
-> how much. Gate passes.
-
----
-
 ## Task 8 — Real PWA: offline + installable + mobile polish
 
 > There is **no PWA manifest and no service worker** today (`static/` only has

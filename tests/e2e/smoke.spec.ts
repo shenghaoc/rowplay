@@ -132,6 +132,20 @@ test.describe('smoke', () => {
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 
+	test('compare page loads two workouts with overlay charts', async ({ page }) => {
+		const errors = collectPageErrors(page);
+
+		const res = await page.goto('/compare?a=1001&b=1007');
+		expect(res?.ok(), 'GET /compare should be 2xx').toBeTruthy();
+
+		await expect(page.getByRole('heading', { name: /Compare workouts|训练对比/ })).toBeVisible();
+		await expect(page.getByText(/Head-to-head stats|逐项对比/)).toBeVisible();
+		await expect(page.locator('canvas').first()).toBeVisible();
+
+		await page.waitForTimeout(500);
+		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
+	});
+
 	test('token entry page renders its form', async ({ page }) => {
 		const errors = collectPageErrors(page);
 
