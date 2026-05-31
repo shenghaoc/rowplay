@@ -608,7 +608,7 @@
 		{workoutTypes}
 		resultCount={listWorkouts.length}
 		onchange={applyListQuery}
-		onclear={() => applyListQuery({ sort: 'date', dir: 'desc' })}
+		onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
 	/>
 	<WorkoutList workouts={listWorkouts} />
 </div>

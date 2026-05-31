@@ -115,7 +115,6 @@ export function serializeWorkoutListQuery(q: WorkoutListQuery): URLSearchParams 
 /** Whether any list-specific filter (beyond sort) is active. */
 export function listQueryIsFiltered(q: WorkoutListQuery): boolean {
 	return !!(
-		q.sport ||
 		q.workoutType ||
 		q.dateFrom ||
 		q.dateTo ||
@@ -130,16 +129,16 @@ export function listQueryIsFiltered(q: WorkoutListQuery): boolean {
 }
 
 export function avgPowerWatts(w: Workout): number | null {
-	if (!w.wattMinutes || w.time <= 0) return null;
+	if (w.wattMinutes == null || w.time <= 0) return null;
 	return (w.wattMinutes * 60) / w.time;
 }
 
-/** Workout ids that are a PB at a standard distance (±2%). */
-export function pbWorkoutIds(workouts: Workout[]): Set<number> {
+/** Workout ids that are a PB at a standard distance (±2%), optionally filtered by sport. */
+export function pbWorkoutIds(workouts: Workout[], sport?: Sport): Set<number> {
 	const ids = new Set<number>();
 	for (const target of STANDARD_PB_DISTANCES) {
 		const matches = workouts.filter(
-			(w) => Math.abs(w.distance - target) <= target * 0.02 && w.time > 0
+			(w) => Math.abs(w.distance - target) <= target * 0.02 && w.time > 0 && (!sport || w.sport === sport)
 		);
 		if (!matches.length) continue;
 		const best = matches.reduce((a, b) => (a.time <= b.time ? a : b));
@@ -163,7 +162,7 @@ export function filterAndSortWorkouts(
 	q: WorkoutListQuery,
 	pbIds?: Set<number>
 ): Workout[] {
-	const pbs = pbIds ?? (q.pbsOnly ? pbWorkoutIds(workouts) : undefined);
+	const pbs = pbIds ?? (q.pbsOnly ? pbWorkoutIds(workouts, q.sport) : undefined);
 
 	let out = workouts.filter((w) => {
 		if (q.sport && w.sport !== q.sport) return false;

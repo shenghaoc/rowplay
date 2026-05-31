@@ -1,4 +1,4 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '$lib/datetime';
 import type { WorkoutListQuery } from '$lib/workoutQuery';
 import type { Sport, Workout, WorkoutDetail } from '../types';
@@ -116,6 +116,8 @@ export async function getPbWorkoutIds(
 	sport?: Sport
 ): Promise<Set<number>> {
 	const ids = new Set<number>();
+	const statements: D1PreparedStatement[] = [];
+	const targets: number[] = [];
 	for (const target of STANDARD_PB_DISTANCES) {
 		const tol = target * 0.02;
 		let sql = `SELECT workout_id FROM workouts
@@ -134,8 +136,15 @@ export async function getPbWorkoutIds(
 			binds.push(sport);
 		}
 		sql += ') LIMIT 1';
-		const row = await db.prepare(sql).bind(...binds).first<{ workout_id: number }>();
-		if (row) ids.add(row.workout_id);
+		statements.push(db.prepare(sql).bind(...binds));
+		targets.push(target);
+	}
+	if (statements.length) {
+		const results = await db.batch(statements);
+		for (let i = 0; i < results.length; i++) {
+			const row = results[i]?.results?.[0] as { workout_id: number } | undefined;
+			if (row) ids.add(row.workout_id);
+		}
 	}
 	return ids;
 }
@@ -174,7 +183,7 @@ export async function queryWorkouts(
 		conditions.push('distance BETWEEN ? AND ?');
 		binds.push(q.distanceM - tol, q.distanceM + tol);
 	} else if (q.distanceBandKey) {
-		const nominal = Number(q.distanceBandKey);
+		const nominal = Number(q.distanceBandKey.replace(/\D/g, ''));
 		if (Number.isFinite(nominal) && nominal > 0) {
 			const tol = nominal * 0.06;
 			conditions.push('distance BETWEEN ? AND ?');
@@ -206,7 +215,7 @@ export async function queryWorkouts(
 		date: 'date',
 		distance: 'distance',
 		time: 'time',
-		pace: 'pace',
+		pace: "CASE WHEN pace IS NULL OR pace = 0 THEN 999999 ELSE pace END",
 		power: 'CASE WHEN time > 0 AND watt_minutes IS NOT NULL THEN watt_minutes * 60.0 / time ELSE 0 END'
 	};
 	const dir = q.dir === 'asc' ? 'ASC' : 'DESC';

@@ -65,7 +65,7 @@ export async function loadWorkoutList(
 ): Promise<Workout[]> {
 	if (event.locals.demo) {
 		const all = mockWorkouts();
-		const pbs = q.pbsOnly ? pbWorkoutIds(all) : undefined;
+		const pbs = q.pbsOnly ? pbWorkoutIds(all, q.sport) : undefined;
 		return filterAndSortWorkouts(all, q, pbs);
 	}
 
@@ -81,7 +81,7 @@ export async function loadWorkoutList(
 	}
 
 	const all = await loadWorkouts(event);
-	const pbs = q.pbsOnly ? pbWorkoutIds(all) : undefined;
+	const pbs = q.pbsOnly ? pbWorkoutIds(all, q.sport) : undefined;
 	return filterAndSortWorkouts(all, q, pbs);
 }
 
