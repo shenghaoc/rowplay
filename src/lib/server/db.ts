@@ -1,6 +1,7 @@
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '$lib/datetime';
 import type { WorkoutListQuery } from '$lib/workoutQuery';
+import type { AnnualGoal } from '../analytics';
 import type { Sport, Workout, WorkoutDetail } from '../types';
 
 const STANDARD_PB_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
@@ -409,4 +410,38 @@ export async function deleteUserData(db: D1Database, userId: number): Promise<vo
 		db.prepare('DELETE FROM workout_detail WHERE user_id = ?').bind(userId),
 		db.prepare('DELETE FROM sync_state WHERE user_id = ?').bind(userId)
 	]);
+}
+
+export async function getUserAnnualGoal(
+	db: D1Database | undefined,
+	userId: number,
+	year: number
+): Promise<AnnualGoal | null> {
+	if (!db) return null;
+	try {
+		const row = await db
+			.prepare('SELECT kind, target FROM user_goals WHERE user_id = ? AND year = ?')
+			.bind(userId, year)
+			.first<{ kind: string; target: number }>();
+		if (!row || (row.kind !== 'meters' && row.kind !== 'hours')) return null;
+		return { year, kind: row.kind, target: row.target };
+	} catch {
+		return null;
+	}
+}
+
+export async function setUserAnnualGoal(
+	db: D1Database,
+	userId: number,
+	goal: AnnualGoal
+): Promise<void> {
+	await db
+		.prepare(
+			`INSERT INTO user_goals (user_id, year, kind, target, updated_at)
+			 VALUES (?, ?, ?, ?, ?)
+			 ON CONFLICT(user_id, year) DO UPDATE SET
+			   kind=excluded.kind, target=excluded.target, updated_at=excluded.updated_at`
+		)
+		.bind(userId, goal.year, goal.kind, goal.target, nowEpochMillis())
+		.run();
 }

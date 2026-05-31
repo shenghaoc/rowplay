@@ -198,31 +198,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 
 ---
 
-## Task 5 — Goals, streaks & Concept2-style challenges
-
-> Parity feature with a retention hook. Concept2 athletes live for the Million
-> Meter club, holiday/marathon challenges, and yearly meter goals.
->
-> **Build:**
-> 1. **Season/annual goals**: let the user set a target (e.g. 1,000,000 m or X
->    hours this year), show progress bars + on-pace/behind projection on the
->    dashboard. Compute from full D1 history (pure helper in `analytics.ts`).
-> 2. **Streaks**: current + longest training streak, "days since last session",
->    weekly consistency — derive from `aggregateDailyVolume` (already exists).
-> 3. **Challenges / badges**: lifetime-meters milestones (100k / 500k / 1M / …),
->    distance-club PBs, "every-sport week". Pure, testable badge logic.
-> 4. **PB celebration**: when a sync produces a new PB (`distancePBs`), surface a
->    toast (`svelte-sonner` is already a dep) + a "new PB" marker in the list.
->
-> **Rules:** goals persist per user — store in D1 (new migration) keyed by the
-> session's logbook user; in demo mode use a sensible default/local value. i18n
-> all strings, including pluralization (en/zh). Works in demo mode.
-> **Acceptance:** I can set a yearly-meters goal and see progress; streak + a
-> couple of badges show on the dashboard; a new PB triggers a celebration. Gate
-> passes.
-
----
-
 ## Task 6 — Power-user workout list: search, filter, sort, date range, tags
 
 > The list (`WorkoutList.svelte`) is virtualized but you can't really *find*

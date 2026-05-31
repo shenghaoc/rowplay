@@ -18,9 +18,20 @@
 		compareAnchor?: number | null;
 		/** Called when the compare control on a row is activated. */
 		onCompare?: (w: Workout) => void;
+		/** Workout ids that hold a standard-distance PB. */
+		pbIds?: Set<number>;
+		/** Subset of pbIds newly earned since the last sync. */
+		newPbIds?: Set<number>;
 	}
 
-	let { workouts, threshold = 60, compareAnchor = null, onCompare }: Props = $props();
+	let {
+		workouts,
+		threshold = 60,
+		compareAnchor = null,
+		onCompare,
+		pbIds = new Set(),
+		newPbIds = new Set()
+	}: Props = $props();
 
 	const ROW = 64; // px, must match .row min-height below
 	const virtual = $derived(workouts.length > threshold);
@@ -60,6 +71,9 @@
 	<div class="rowmain">
 		<div class="rowtop">
 			<strong>{w.workoutType || SPORT_LABEL[w.sport]}</strong>
+			{#if pbIds.has(w.id)}
+				<span class="pbchip" class:new={newPbIds.has(w.id)}>{newPbIds.has(w.id) ? t('dashboard.pbNew') : t('dashboard.pbTag')}</span>
+			{/if}
 			<span class="muted">{fmtDate(w.date)}</span>
 		</div>
 		<div class="rowmeta mono muted">
@@ -183,6 +197,22 @@
 		gap: 0.6rem;
 		align-items: baseline;
 		flex-wrap: wrap;
+	}
+	.pbchip {
+		font-size: 0.65rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		padding: 0.1rem 0.4rem;
+		border-radius: 4px;
+		background: rgba(47, 129, 247, 0.15);
+		color: var(--accent);
+		border: 1px solid rgba(47, 129, 247, 0.35);
+	}
+	.pbchip.new {
+		background: rgba(63, 185, 80, 0.18);
+		color: var(--ahead);
+		border-color: rgba(63, 185, 80, 0.45);
 	}
 	.rowmeta {
 		font-size: 0.85rem;

@@ -4,13 +4,16 @@
 	import WorkoutList from '$components/WorkoutList.svelte';
 	import WorkoutListFilters from '$components/WorkoutListFilters.svelte';
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
+	import EngagementPanel from '$components/EngagementPanel.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { fmtDate, fmtDateFromEpochMillis, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
 	import { logbookEpochMillis } from '$lib/datetime';
 	import {
 		distanceBand,
 		distancePBs,
+		detectNewPBs,
 		distancePerStroke,
+		pbWorkoutIds,
 		linearTrend,
 		summariseBySport,
 		trainingLoad,
@@ -68,6 +71,8 @@
 
 	let syncing = $state(false);
 	let compareAnchor = $state<number | null>(null);
+	let newPbIds = $state<Set<number>>(new Set());
+	const pbIds = $derived(pbWorkoutIds(workouts));
 
 	function onCompareWorkout(w: Workout) {
 		if (compareAnchor == null) {
@@ -88,6 +93,7 @@
 		if (syncing) return;
 		syncing = true;
 		const toastId = toast.loading(t('sync.loading'));
+		const pbsBefore = distancePBs(workouts);
 		try {
 			const res = await fetch('/api/sync', { method: 'POST' });
 			if (!res.ok) {
@@ -100,9 +106,34 @@
 				}
 				throw new Error(message);
 			}
-			const { added, total } = (await res.json()) as { added: number; total: number };
+			const body = (await res.json()) as {
+				added: number;
+				total: number;
+				newPbs?: ReturnType<typeof distancePBs>;
+			};
 			await invalidateAll();
-			toast.success(t('sync.done', { added, total }), { id: toastId });
+			toast.success(t('sync.done', { added: body.added, total: body.total }), { id: toastId });
+			const newPbs =
+				body.newPbs?.length ? body.newPbs : detectNewPBs(pbsBefore, distancePBs(workouts));
+			if (newPbs.length === 1) {
+				const pb = newPbs[0];
+				const dist = pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`;
+				toast.success(t('dashboard.pbCelebrate', { distance: dist, time: fmtTime(pb.time, true) }));
+			} else if (newPbs.length > 1) {
+				toast.success(t('dashboard.pbCelebrateMore', { count: newPbs.length }));
+			}
+			newPbIds = new Set(
+				newPbs
+					.map((pb) =>
+						workouts.find(
+							(w) =>
+								w.sport === pb.sport &&
+								Math.abs(w.distance - pb.distance) <= pb.distance * 0.02 &&
+								w.time === pb.time
+						)?.id
+					)
+					.filter((id): id is number => id != null)
+			);
 		} catch (e) {
 			toast.error(t('sync.failed'), {
 				id: toastId,
@@ -479,6 +510,13 @@
 		</div>
 	</div>
 
+	<EngagementPanel
+		workouts={workouts}
+		annualGoal={data.annualGoal}
+		goalYear={data.goalYear}
+		endDay={data.calendarEndDay}
+	/>
+
 	{#if filtered.length}
 		<TrainingHeatmap workouts={filtered} endDay={data.calendarEndDay} />
 	{/if}
@@ -646,7 +684,7 @@
 			<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
 		</p>
 	{/if}
-	<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} />
+	<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} pbIds={pbIds} newPbIds={newPbIds} />
 </div>
 
 <style>
