@@ -116,14 +116,27 @@
 		return latest.pace - avg; // seconds/500m; negative = faster than usual
 	});
 
-	const totalMeters = $derived(filtered.reduce((s, w) => s + w.distance, 0));
-	const totalTime = $derived(filtered.reduce((s, w) => s + w.time, 0));
-	const avgPace = $derived(
-		totalMeters > 0 ? totalTime / (totalMeters / 500) : 0
-	);
+	const bySport = $derived.by(() => {
+		const agg = data.aggregates?.bySport;
+		if (!agg) return summariseBySport(filtered);
+		return sportFilter === 'all' ? agg : agg.filter((s) => s.sport === sportFilter);
+	});
 
-	const bySport = $derived(summariseBySport(filtered));
-	const pbs = $derived(distancePBs(filtered));
+	const pbs = $derived.by(() => {
+		const agg = data.aggregates?.pbs;
+		if (!agg) return distancePBs(filtered);
+		if (sportFilter !== 'all') return agg.filter((pb) => pb.sport === sportFilter);
+		const best = new Map<number, (typeof agg)[0]>();
+		for (const pb of agg) {
+			const cur = best.get(pb.distance);
+			if (!cur || pb.time < cur.time) best.set(pb.distance, pb);
+		}
+		return [...best.values()];
+	});
+
+	const totalMeters = $derived(bySport.reduce((s, r) => s + r.distance, 0));
+	const totalTime = $derived(bySport.reduce((s, r) => s + r.time, 0));
+	const avgPace = $derived(totalMeters > 0 ? totalTime / (totalMeters / 500) : 0);
 
 	// ---- Fitness & Freshness (Performance Management Chart) ----
 	// Whole-athlete training load — independent of the sport filter, since form
@@ -411,7 +424,7 @@
 	<div class="stats">
 		<div class="card stat">
 			<div class="muted label">{t('dashboard.sessions')}</div>
-			<div class="value mono">{filtered.length}</div>
+			<div class="value mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
 		</div>
 		<div class="card stat">
 			<div class="muted label">{t('dashboard.totalDistance')}</div>
