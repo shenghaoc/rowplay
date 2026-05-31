@@ -20,6 +20,7 @@ All commands use **npm** (lockfile: `package-lock.json`). See `package.json`
 | Install deps | `npm install`                                                |
 | Dev server   | `npm run dev` (serves at `http://localhost:5173`)            |
 | Type check   | `npm run check` (`svelte-kit sync` + `svelte-check`)         |
+| Unit tests   | `npm run test` (Vitest; pure `analytics` / `format` / replay `engine`) |
 | Build        | `npm run build` (outputs `.svelte-kit/cloudflare`)           |
 | Preview      | `npm run preview` (build + `wrangler dev`, the real runtime) |
 | Deploy       | `npm run deploy` (build + `wrangler deploy`)                 |
