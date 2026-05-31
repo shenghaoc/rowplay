@@ -20,7 +20,14 @@ import {
 	dayVolumeValue
 } from './analytics';
 import { mockWorkoutDetail, mockWorkouts } from './mockData';
-import { intervalSplits, normalizedIntervalStrokes, normalizeRawStrokes, workout } from '../../tests/unit/fixtures';
+import {
+	intervalSplits,
+	normalizedIntervalStrokes,
+	normalizeRawStrokes,
+	stroke,
+	twoRepSplits,
+	workout
+} from '../../tests/unit/fixtures';
 
 const workouts = mockWorkouts();
 
@@ -178,6 +185,30 @@ describe('intervalBreakdown', () => {
 		// spm is derived from the bucket since splits omit it, and rep values differ.
 		expect(result!.reps[0].spm).toBeGreaterThan(result!.reps[1].spm);
 		expect(result!.reps[0].spm).not.toBe(result!.reps[1].spm);
+	});
+
+	it('returns a breakdown with zero derived spm when strokes are empty', () => {
+		const result = intervalBreakdown(twoRepSplits, []);
+		expect(result).not.toBeNull();
+		expect(result!.reps).toHaveLength(2);
+		expect(result!.reps[0].spm).toBe(0);
+		expect(result!.reps[1].spm).toBe(0);
+	});
+
+	it('assigns a stroke exactly on a split boundary to that rep', () => {
+		const onFirstEdge = intervalBreakdown(twoRepSplits, [stroke(10, 99)]);
+		expect(onFirstEdge!.reps[0].spm).toBe(99);
+		expect(onFirstEdge!.reps[1].spm).toBe(0);
+
+		const onLastEdge = intervalBreakdown(twoRepSplits, [stroke(20, 88)]);
+		expect(onLastEdge!.reps[0].spm).toBe(0);
+		expect(onLastEdge!.reps[1].spm).toBe(88);
+	});
+
+	it('assigns strokes after the last split boundary to the final rep', () => {
+		const result = intervalBreakdown(twoRepSplits, [stroke(25, 77)]);
+		expect(result!.reps[0].spm).toBe(0);
+		expect(result!.reps[1].spm).toBe(77);
 	});
 });
 
