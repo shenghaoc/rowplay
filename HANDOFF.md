@@ -223,6 +223,27 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 
 ---
 
+## Task 6 — Power-user workout list: search, filter, sort, date range, tags
+
+> The list (`WorkoutList.svelte`) is virtualized but you can't really *find*
+> anything in a multi-thousand-workout logbook. Add real querying.
+>
+> **Build:**
+> - **Filter**: by sport, workout type (`workoutType`), date range, distance band,
+>   "has stroke data", and free-text in `comments`.
+> - **Sort**: by date / distance / time / pace / power, asc+desc.
+> - **Saved/again**: a "PBs only" toggle; quick chips for common distances
+>   (500/2k/5k/10k/marathon) and common durations.
+> - Push filtering/sorting into the **D1 query** (or the `/api/workouts` endpoint)
+>   where possible so it scales — don't pull all rows into JS first (PR #19's SQL
+>   approach is the model). Keep the JS path for demo mode.
+> - Reflect active filters in the URL (querystring) so views are shareable/bookmarkable.
+>
+> **Rules:** i18n all labels. Keep the virtualized list smooth at thousands of
+> rows. Works in demo mode. **Acceptance:** I can find "all my 2k rows in 2025
+> sorted by pace" in a few clicks; the URL captures the filter; list stays smooth.
+> Gate passes.
+
 ## Task 7 — Compare any two workouts head-to-head (analytics, not racing)
 
 > Distinct from Task 2's live ghost race: a **static side-by-side analysis** of two
@@ -265,29 +286,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 > `npm run preview`, not just `vite dev`). i18n the update toast. **Acceptance:**
 > app is installable, dashboard + a previously-viewed replay work offline (airplane
 > mode), no layout overflow on phone/tablet. Gate passes.
-
----
-
-## Task 9 — Data export & account/data controls (trust + parity)
-
-> Power users and privacy-conscious users expect to own their data and control the
-> cache. Mainstream-app parity.
->
-> **Build a small "Account / Data" section** (or `/settings`):
-> - **Export** the full logbook as **CSV** and **JSON** (one click, generated
->   server-side from D1 / the loader). Stretch: per-workout **FIT**/**TCX** export
->   so files open in Garmin/Strava/TrainingPeaks.
-> - **Re-sync controls**: a manual "full re-sync" and "incremental sync" button
->   wired to `POST /api/sync`, with last-sync time + progress.
-> - **Clear cache / delete my data**: purge this user's cached workouts + detail
->   from D1 and the session from KV; clear share tokens (Task 3).
-> - Show what's stored and why (a short, honest data-handling note).
->
-> **Rules:** destructive actions need a confirm step. Server-side only for any
-> secret-touching path. i18n. Works in demo mode (export the mock set; "delete" is
-> a no-op-with-toast in demo). **Acceptance:** I can download my logbook as
-> CSV/JSON, trigger a re-sync, and clear my cached data with confirmation. Gate
-> passes.
 
 ---
 

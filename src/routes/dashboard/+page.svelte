@@ -67,6 +67,23 @@
 	let bandKey = $state<string>('');
 
 	let syncing = $state(false);
+	let compareAnchor = $state<number | null>(null);
+
+	function onCompareWorkout(w: Workout) {
+		if (compareAnchor == null) {
+			compareAnchor = w.id;
+			toast.message(t('workoutList.comparePick'));
+			return;
+		}
+		if (compareAnchor === w.id) {
+			compareAnchor = null;
+			return;
+		}
+		const a = compareAnchor;
+		const b = w.id;
+		compareAnchor = null;
+		goto(`/compare?a=${a}&b=${b}`);
+	}
 	async function sync() {
 		if (syncing) return;
 		syncing = true;
@@ -138,14 +155,27 @@
 		return latest.pace - avg; // seconds/500m; negative = faster than usual
 	});
 
-	const totalMeters = $derived(filtered.reduce((s, w) => s + w.distance, 0));
-	const totalTime = $derived(filtered.reduce((s, w) => s + w.time, 0));
-	const avgPace = $derived(
-		totalMeters > 0 ? totalTime / (totalMeters / 500) : 0
-	);
+	const bySport = $derived.by(() => {
+		const agg = data.aggregates?.bySport;
+		if (!agg?.length) return summariseBySport(filtered);
+		return sportFilter === 'all' ? agg : agg.filter((s) => s.sport === sportFilter);
+	});
 
-	const bySport = $derived(summariseBySport(filtered));
-	const pbs = $derived(distancePBs(filtered));
+	const pbs = $derived.by(() => {
+		const agg = data.aggregates?.pbs;
+		if (!agg?.length) return distancePBs(filtered);
+		if (sportFilter !== 'all') return agg.filter((pb) => pb.sport === sportFilter);
+		const best = new Map<number, (typeof agg)[0]>();
+		for (const pb of agg) {
+			const cur = best.get(pb.distance);
+			if (!cur || pb.pace < cur.pace) best.set(pb.distance, pb);
+		}
+		return [...best.values()];
+	});
+
+	const totalMeters = $derived(bySport.reduce((s, r) => s + r.distance, 0));
+	const totalTime = $derived(bySport.reduce((s, r) => s + r.time, 0));
+	const avgPace = $derived(totalMeters > 0 ? totalTime / (totalMeters / 500) : 0);
 
 	// ---- Fitness & Freshness (Performance Management Chart) ----
 	// Whole-athlete training load — independent of the sport filter, since form
@@ -433,7 +463,7 @@
 	<div class="stats">
 		<div class="card stat">
 			<div class="muted label">{t('dashboard.sessions')}</div>
-			<div class="value mono">{filtered.length}</div>
+			<div class="value mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
 		</div>
 		<div class="card stat">
 			<div class="muted label">{t('dashboard.totalDistance')}</div>
@@ -610,7 +640,13 @@
 		onchange={applyListQuery}
 		onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
 	/>
-	<WorkoutList workouts={listWorkouts} />
+	{#if compareAnchor != null}
+		<p class="compare-hint card muted">
+			{t('workoutList.comparePick')}
+			<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
+		</p>
+	{/if}
+	<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} />
 </div>
 
 <style>
@@ -1029,6 +1065,24 @@
 		border-color: var(--behind);
 		color: var(--alarm);
 	}
+	.compare-hint {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.65rem 0.85rem;
+		margin-bottom: 0.65rem;
+		font-size: 0.88rem;
+	}
+	.linkish {
+		background: none;
+		border: none;
+		color: var(--live);
+		font-weight: 600;
+		cursor: pointer;
+		text-decoration: underline;
+		font-size: inherit;
+	}
 	@media (max-width: 720px) {
 		.stats {
 			grid-template-columns: repeat(2, 1fr);
@@ -1042,6 +1096,39 @@
 		}
 		.herometrics {
 			gap: 1.25rem;
+		}
+		.head {
+			flex-direction: column;
+			align-items: stretch;
+		}
+		.headright {
+			width: 100%;
+		}
+		.filters {
+			flex-wrap: wrap;
+		}
+		.formhead {
+			flex-wrap: wrap;
+			gap: 0.5rem;
+		}
+	}
+	@media (max-width: 390px) {
+		.chip,
+		.mchip,
+		.bchip {
+			padding: 0.3rem 0.55rem;
+			font-size: 0.75rem;
+		}
+		.heropace {
+			font-size: 2.2rem;
+		}
+		.herometrics {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 0.75rem;
+		}
+		.pbgrid {
+			grid-template-columns: repeat(2, 1fr);
 		}
 	}
 </style>

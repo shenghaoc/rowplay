@@ -322,6 +322,10 @@ h3 {
 	color: var(--ghost);
 }
 
+html {
+	overflow-x: clip;
+}
+
 .container {
 	max-width: 1160px;
 	margin: 0 auto;

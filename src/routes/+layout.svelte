@@ -1,16 +1,20 @@
 <script lang="ts">
 	import '../app.css';
+	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { Toaster } from 'svelte-sonner';
 	import { Languages, Sun, Moon } from '@lucide/svelte';
 	import { I18n, setI18nContext } from '$lib/i18n.svelte';
 	import { Theme, setThemeContext } from '$lib/theme.svelte';
+	import { initPwaUpdate } from '$lib/pwa-update';
 
 	let { data, children } = $props();
 
 	const i18n = setI18nContext(new I18n(data.lang));
 	const theme = setThemeContext(new Theme(data.theme));
 	const t = i18n.t;
+
+	onMount(() => initPwaUpdate(i18n));
 </script>
 
 <svelte:head>
@@ -34,6 +38,9 @@
 			<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}
 				>{t('nav.dashboard')}</a
 			>
+			<a href="/settings" class:active={$page.url.pathname.startsWith('/settings')}
+				>{t('nav.settings')}</a
+			>
 		</nav>
 		<div class="spacer"></div>
 		<button class="iconbtn" onclick={() => i18n.toggle()} title={t('lang.switch')} aria-label={t('lang.switch')}>
@@ -50,7 +57,7 @@
 		</button>
 		{#if data.user}
 			<span class="muted user">@{data.user.username}</span>
-			<form method="POST" action="/auth/logout">
+			<form method="POST" action="/auth/logout" onsubmit={() => { navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' }); }}>
 				<button class="btn ghost small" type="submit">{t('auth.logout')}</button>
 			</form>
 		{:else}
@@ -208,6 +215,26 @@
 		.mast-tabs {
 			gap: 0.75rem;
 			margin-left: 0;
+		}
+		.iconbtn span {
+			display: none;
+		}
+		.brand .name {
+			font-size: 1.15rem;
+		}
+	}
+	@media (max-width: 390px) {
+		.mast-inner {
+			flex-wrap: wrap;
+			padding: 0.5rem 0.75rem;
+			min-height: 48px;
+		}
+		.mast-tabs a {
+			font-size: 0.82rem;
+		}
+		.footer-inner {
+			flex-direction: column;
+			align-items: flex-start;
 		}
 	}
 </style>
