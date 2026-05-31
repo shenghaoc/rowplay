@@ -5,6 +5,7 @@
 	import WorkoutListFilters from '$components/WorkoutListFilters.svelte';
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
 	import EngagementPanel from '$components/EngagementPanel.svelte';
+	import CriticalPowerPanel from '$components/CriticalPowerPanel.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { fmtDate, fmtDateFromEpochMillis, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
 	import { logbookEpochMillis } from '$lib/datetime';
@@ -522,6 +523,8 @@
 	{/if}
 
 	<!-- Fitness & Freshness — the Performance Management Chart -->
+	<CriticalPowerPanel workouts={workouts} />
+
 	{#if load}
 		<div class="card formcard">
 			<div class="formhead">
