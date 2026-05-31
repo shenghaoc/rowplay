@@ -2,6 +2,7 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import WorkoutList from '$components/WorkoutList.svelte';
+	import WorkoutListFilters from '$components/WorkoutListFilters.svelte';
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { fmtDate, fmtDateFromEpochMillis, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
@@ -18,6 +19,7 @@
 	import type { Sport, Workout } from '$lib/types';
 	import { MACHINE_COLOR } from '$lib/replay/sports';
 	import { goto, invalidateAll } from '$app/navigation';
+	import { serializeWorkoutListQuery, type WorkoutListQuery } from '$lib/workoutQuery';
 	import { toast } from 'svelte-sonner';
 	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play, Activity } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
@@ -37,8 +39,28 @@
 	const t = getI18nContext().t;
 	const uiTheme = getThemeContext();
 	const workouts = $derived<Workout[]>(data.workouts);
+	const listWorkouts = $derived<Workout[]>(data.listWorkouts);
+	const listQuery = $derived(data.listQuery);
 
-	let sportFilter = $state<Sport | 'all'>('all');
+	const sportFilter = $derived<Sport | 'all'>(listQuery.sport ?? 'all');
+
+	const workoutTypes = $derived(
+		[...new Set(workouts.map((w) => w.workoutType).filter((t): t is string => !!t))].sort()
+	);
+
+	function applyListQuery(q: WorkoutListQuery) {
+		const params = serializeWorkoutListQuery(q);
+		const qs = params.toString();
+		goto(qs ? `/dashboard?${qs}` : '/dashboard', {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
+	}
+
+	function setSportFilter(s: Sport | 'all') {
+		applyListQuery({ ...listQuery, sport: s === 'all' ? undefined : s });
+	}
 	type Metric = 'pace' | 'distance' | 'spm' | 'dps';
 	let metric = $state<Metric>('pace');
 	// Selected distance band for pace/DPS trends; '' = auto (most-rowed band).
@@ -363,7 +385,7 @@
 		<div class="headright">
 			<div class="filters" role="group" aria-label="Sport filter">
 				{#each sports as s}
-					<button class="chip" class:on={sportFilter === s} aria-pressed={sportFilter === s} onclick={() => (sportFilter = s)}>
+					<button class="chip" class:on={sportFilter === s} aria-pressed={sportFilter === s} onclick={() => setSportFilter(s)}>
 						{s === 'all' ? t('dashboard.all') : SPORT_LABEL[s]}
 					</button>
 				{/each}
@@ -611,13 +633,20 @@
 		</div>
 	{/if}
 
+	<WorkoutListFilters
+		query={listQuery}
+		{workoutTypes}
+		resultCount={listWorkouts.length}
+		onchange={applyListQuery}
+		onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
+	/>
 	{#if compareAnchor != null}
 		<p class="compare-hint card muted">
 			{t('workoutList.comparePick')}
 			<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
 		</p>
 	{/if}
-	<WorkoutList workouts={filtered} {compareAnchor} onCompare={onCompareWorkout} />
+	<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} />
 </div>
 
 <style>

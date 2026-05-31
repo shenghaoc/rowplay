@@ -7,14 +7,22 @@ import { getConfig } from './config';
 import { readSession } from './session';
 import { overlapDate } from '$lib/datetime';
 import {
+	filterAndSortWorkouts,
+	parseWorkoutListQuery,
+	pbWorkoutIds,
+	type WorkoutListQuery
+} from '$lib/workoutQuery';
+import {
 	countWorkouts,
 	deleteUserData,
 	getAllWorkouts,
 	getCachedDetail,
+	getPbWorkoutIds,
 	getPersonalBests,
 	getSportAggregates,
 	getSyncState,
 	putCachedDetail,
+	queryWorkouts,
 	setSyncState,
 	upsertWorkouts,
 	type SyncState
@@ -51,6 +59,39 @@ export async function loadWorkouts(event: RequestEvent): Promise<Workout[]> {
 	const c = await client(event);
 	if (!c) throw error(401, 'Not authenticated.');
 	return c.listWorkouts();
+}
+
+/**
+ * Workout list for the dashboard — filtered/sorted in D1 when possible, else in JS.
+ */
+export async function loadWorkoutList(
+	event: RequestEvent,
+	q: WorkoutListQuery
+): Promise<Workout[]> {
+	if (event.locals.demo) {
+		const all = mockWorkouts();
+		const pbs = q.pbsOnly ? pbWorkoutIds(all, q.sport) : undefined;
+		return filterAndSortWorkouts(all, q, pbs);
+	}
+
+	const userId = event.locals.user?.id;
+	const db = event.platform?.env?.DB;
+
+	if (db && userId != null) {
+		const count = await countWorkouts(db, userId).catch(() => 0);
+		if (count > 0) {
+			const pbs = q.pbsOnly ? await getPbWorkoutIds(db, userId, q.sport) : undefined;
+			return queryWorkouts(db, userId, q, pbs);
+		}
+	}
+
+	const all = await loadWorkouts(event);
+	const pbs = q.pbsOnly ? pbWorkoutIds(all, q.sport) : undefined;
+	return filterAndSortWorkouts(all, q, pbs);
+}
+
+export function listQueryFromEvent(event: RequestEvent): WorkoutListQuery {
+	return parseWorkoutListQuery(event.url.searchParams);
 }
 
 export interface SyncResult {

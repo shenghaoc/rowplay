@@ -52,6 +52,23 @@ test.describe('smoke', () => {
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 
+	test('workout list filters update the URL and narrow results', async ({ page }) => {
+		const errors = collectPageErrors(page);
+
+		await page.goto('/dashboard');
+		await page.getByRole('button', { name: /More filters|更多筛选/ }).click();
+		await page.getByRole('button', { name: /^2k$/ }).click();
+		await expect(page).toHaveURL(/[?&]dist=2000/);
+
+		await page.getByRole('group', { name: /Sort|排序/ }).getByRole('button', { name: /Pace|配速/ }).click();
+		await expect(page).toHaveURL(/[?&]sort=pace/);
+
+		await expect(page.locator('a[href^="/replay/"]').first()).toBeVisible();
+
+		await page.waitForTimeout(400);
+		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
+	});
+
 	test('PWA manifest and service worker register', async ({ page }) => {
 		const errors = collectPageErrors(page);
 
