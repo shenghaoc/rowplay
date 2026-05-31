@@ -1,9 +1,10 @@
 import type { Sport, Stroke, Workout, WorkoutDetail } from '../types';
 
-/** Escape a CSV field (RFC 4180). */
+/** Escape a CSV field (RFC 4180). Prefixes formula-triggering characters to prevent injection. */
 function csvCell(value: string | number | boolean | null | undefined): string {
 	if (value == null || value === '') return '';
-	const s = String(value);
+	let s = String(value);
+	if (/^[=+\-@\t]/.test(s)) s = `\t${s}`;
 	if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
 	return s;
 }
@@ -114,14 +115,28 @@ export function workoutDetailToTcx(detail: WorkoutDetail): string {
 	const name = detail.workoutType || `rowplay ${detail.id}`;
 	const sport = SPORT_TCX[detail.sport];
 	const start = tcxTime(detail.date, 0);
-	let elapsed = 0;
-	const laps =
-		detail.splits.length > 0
-			? detail.splits
-					.map((s) => {
-						const lapStart = tcxTime(detail.date, elapsed);
-						elapsed += s.time;
-						return `
+	const trackpoints = strokeTrackpoints(detail.date, detail.strokes);
+
+	// TCX v2 requires Lap → Track; always include a summary lap wrapping the track
+	const summaryLap = `
+        <Lap StartTime="${xmlEscape(start)}">
+          <TotalTimeSeconds>${detail.time}</TotalTimeSeconds>
+          <DistanceMeters>${detail.distance}</DistanceMeters>
+          <Intensity>Active</Intensity>
+          <TriggerMethod>Manual</TriggerMethod>
+          <Track>${trackpoints}
+          </Track>
+        </Lap>`;
+
+	// supplemental split laps (metadata only, no Track — valid per TCX v2)
+	let splitLaps = '';
+	if (detail.splits.length > 0) {
+		let elapsed = 0;
+		splitLaps = detail.splits
+			.map((s) => {
+				const lapStart = tcxTime(detail.date, elapsed);
+				elapsed += s.time;
+				return `
         <Lap StartTime="${xmlEscape(lapStart)}">
           <TotalTimeSeconds>${s.time.toFixed(1)}</TotalTimeSeconds>
           <DistanceMeters>${s.distance}</DistanceMeters>
@@ -130,26 +145,16 @@ export function workoutDetailToTcx(detail: WorkoutDetail): string {
           <Intensity>Active</Intensity>
           <TriggerMethod>Manual</TriggerMethod>
         </Lap>`;
-					})
-					.join('')
-			: `
-        <Lap StartTime="${xmlEscape(start)}">
-          <TotalTimeSeconds>${detail.time}</TotalTimeSeconds>
-          <DistanceMeters>${detail.distance}</DistanceMeters>
-          <Intensity>Active</Intensity>
-          <TriggerMethod>Manual</TriggerMethod>
-        </Lap>`;
-
-	const trackpoints = strokeTrackpoints(detail.date, detail.strokes);
+			})
+			.join('');
+	}
 
 	return `<?xml version="1.0" encoding="UTF-8"?>
 <TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
   <Activities>
     <Activity Sport="${sport}">
       <Id>${xmlEscape(start)}</Id>
-      <Name>${xmlEscape(name)}</Name>${laps}
-      <Track>${trackpoints}
-      </Track>
+      <Notes>${xmlEscape(name)}</Notes>${summaryLap}${splitLaps}
     </Activity>
   </Activities>
 </TrainingCenterDatabase>
