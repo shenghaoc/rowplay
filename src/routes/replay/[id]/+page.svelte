@@ -18,7 +18,8 @@
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
 	import { pickDefaultGhostCandidate } from '$lib/replay/ghostPick';
 	import { toast } from 'svelte-sonner';
-	import { ArrowLeft, Play, Pause, Ghost } from '@lucide/svelte';
+	import { ArrowLeft, Play, Pause, Ghost, Share2, ImageDown } from '@lucide/svelte';
+	import { downloadRaceCardPng } from '$lib/replay/raceCard';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
 	import { uplotChrome } from '$lib/chartTheme';
@@ -367,9 +368,14 @@
 
 	const paceRange = (() => {
 		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
+		if (ps.length === 0) return { min: 60, max: 180 };
 		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
 	})();
-	const wattRange = { min: 0, max: Math.max(...strokes.map((s) => s.watts)) * 1.1 };
+	const wattRange = (() => {
+		const watts = strokes.map((s) => s.watts);
+		const maxWatt = watts.length > 0 ? Math.max(...watts) : 0;
+		return { min: 0, max: Math.max(100, maxWatt * 1.1) };
+	})();
 
 	// ---- Interval / rep breakdown (null for single-segment pieces) ----
 	const intervals = intervalBreakdown(detail.splits, strokes);
@@ -389,8 +395,48 @@
 	const avgWatts =
 		detail.wattMinutes && detail.time > 0
 			? Math.round(detail.wattMinutes / (detail.time / 60))
-			: Math.round(paceToWatts(detail.pace));
+			: detail.pace > 0
+				? Math.round(paceToWatts(detail.pace))
+				: 0;
 	const dateTime = fmtLogbookDateTime(detail.date);
+
+	let sharing = $state(false);
+
+	async function shareReplay() {
+		sharing = true;
+		try {
+			const res = await fetch(`/api/workouts/${detail.id}/share`, { method: 'POST' });
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			const body = (await res.json()) as { url: string };
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(body.url);
+				toast.success(t('share.linkCopied'), { description: t('share.linkReady') });
+			} else {
+				toast.success(body.url, { description: t('share.linkReady') });
+			}
+		} catch (err) {
+			toast.error(t('share.shareFailed'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
+			});
+		} finally {
+			sharing = false;
+		}
+	}
+
+	async function downloadRaceCard() {
+		try {
+			await downloadRaceCardPng(detail, uiTheme.value, {
+				brand: t('share.raceCardBrand'),
+				avgPower: t('share.raceCardAvgPower'),
+				avgHr: t('share.raceCardAvgHr')
+			});
+			toast.success(t('share.imageSaved'));
+		} catch (err) {
+			toast.error(t('share.imageFailed'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
+			});
+		}
+	}
 </script>
 
 <svelte:head><title>{t('common.replay')} · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
@@ -407,6 +453,16 @@
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
 			{#if !detail.hasStrokeData}<span class="tag">{t('replay.lowRes')}</span>{/if}
+		</div>
+		<div class="sharebar">
+			<button class="btn ghost small" type="button" disabled={sharing} onclick={shareReplay}>
+				<Share2 size={14} />
+				{sharing ? t('common.loading') : t('share.shareReplay')}
+			</button>
+			<button class="btn ghost small" type="button" onclick={downloadRaceCard}>
+				<ImageDown size={14} />
+				{t('share.downloadImage')}
+			</button>
 		</div>
 	</div>
 
@@ -806,6 +862,17 @@
 		display: flex;
 		gap: 0.5rem;
 		align-items: center;
+	}
+	.sharebar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-top: 0.75rem;
+	}
+	.sharebar .btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
 	}
 	.ghostbar {
 		display: flex;

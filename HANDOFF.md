@@ -80,8 +80,10 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
   KV sessions (`server/session.ts`), D1 cache (`server/db.ts`), full + incremental
   sync (`server/data.ts`, `POST /api/sync`), i18n (en/zh), light/dark theme,
   virtualized workout list (`WorkoutList.svelte`, TanStack Virtual), and a
-  Playwright WebKit smoke suite (`tests/e2e/smoke.spec.ts`). NOTE: `static/` holds
-  only `favicon.svg` — there is **no PWA manifest and no service worker yet**
+  Playwright WebKit smoke suite (`tests/e2e/smoke.spec.ts`, `tests/e2e/share.spec.ts`).
+  **Shareable replays**: public `/r/<token>` route, `share_token` on D1 cache,
+  race-card PNG export from the replay page. NOTE: `static/` holds only
+  `favicon.svg` — there is **no PWA manifest and no service worker yet**
   (see Task 8).
 
 ---
@@ -108,35 +110,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 > If both are green, merge them (squash). If either fails the gate, push the fix to
 > its branch and report what was wrong. **Acceptance:** both PRs merged (or
 > blocked with a written reason), `main` green on the full gate.
-
----
-
-## Task 3 — Shareable + exportable replays (the viral loop)
-
-> Replays are only fun if you can show them off. Add sharing/export. This is both a
-> parity feature (Strava shares) and a unique one (nobody shares an *erg replay*).
->
-> **Build:**
-> 1. **Shareable replay link**: a public, read-only replay route (e.g.
->    `/r/<token>`) that renders a specific workout's replay from the **D1 cache**
->    without requiring the viewer to be logged in. Generate an unguessable token;
->    store a `share_token` (new migration) on the cached detail; add a "Share"
->    button on the replay page that creates/copies the link. Respect privacy: only
->    workouts the owner explicitly shares are public. Set proper OpenGraph/Twitter
->    meta tags so the link unfurls.
-> 2. **Race-card image**: a "Download image" button that renders a summary card
->    (sport icon, distance, time, pace, avg power/HR, date, small course/pace
->    sparkline) to a PNG via canvas — shareable to socials. Reuse the canvas
->    renderer where sensible.
-> 3. **(Stretch) video/GIF export** of the replay: record the canvas with
->    `MediaRecorder` (`canvas.captureStream()`) to a short WebM the user can
->    download. Time-box this; ship the link + image first.
->
-> **Rules:** the share route must work in demo mode (share a mock workout). i18n
-> all UI. Security: tokens are capability URLs — no enumeration, no PII leak, the
-> share page must NOT expose the viewer's session or other workouts.
-> **Acceptance:** I can copy a share link, open it in a private window, and watch
-> the replay; I can download a race-card PNG. Gate passes.
 
 ---
 

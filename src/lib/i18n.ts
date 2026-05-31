@@ -232,6 +232,22 @@ const en = {
 		compareWith: 'Compare with this workout',
 		compareCancel: 'Cancel'
 	},
+	share: {
+		shareReplay: 'Share replay',
+		downloadImage: 'Download image',
+		linkCopied: 'Share link copied',
+		linkReady: 'Anyone with this link can watch the replay',
+		shareFailed: 'Could not create share link',
+		imageSaved: 'Race card saved',
+		imageFailed: 'Could not save race card',
+		publicBanner: 'Shared replay — read-only view',
+		ctaBefore: 'Want your own replays? ',
+		ctaLink: 'Try rowplay',
+		ctaAfter: ' — Concept2 logbook analytics and workout replay.',
+		raceCardBrand: 'rowplay',
+		raceCardAvgPower: 'Avg power',
+		raceCardAvgHr: 'Avg HR'
+	},
 	replay: {
 		back: 'Back to dashboard',
 		lowRes: 'low-res replay',
@@ -617,6 +633,22 @@ const zh = {
 		comparePick: '先选择要对比的训练',
 		compareWith: '与此训练对比',
 		compareCancel: '取消'
+	},
+	share: {
+		shareReplay: '分享回放',
+		downloadImage: '下载图片',
+		linkCopied: '分享链接已复制',
+		linkReady: '拥有此链接的人均可观看回放',
+		shareFailed: '无法创建分享链接',
+		imageSaved: '成绩卡已保存',
+		imageFailed: '无法保存成绩卡',
+		publicBanner: '共享回放 — 只读查看',
+		ctaBefore: '想要自己的回放？',
+		ctaLink: '试试 rowplay',
+		ctaAfter: ' — Concept2 日志分析与训练回放。',
+		raceCardBrand: 'rowplay',
+		raceCardAvgPower: '平均功率',
+		raceCardAvgHr: '平均心率'
 	},
 	replay: {
 		back: '返回仪表板',

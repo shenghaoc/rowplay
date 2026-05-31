@@ -430,6 +430,63 @@ export async function getUserAnnualGoal(
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Public replay shares — capability tokens on cached detail only.
+// ---------------------------------------------------------------------------
+
+/**
+ * Assign a share token only if one is not already set. Returns true when this
+ * call is the one that set it; false means a token already existed (e.g. a
+ * concurrent share won the race) and the caller should re-read the live value.
+ */
+export async function setShareToken(
+	db: D1Database,
+	userId: number,
+	workoutId: number,
+	token: string
+): Promise<boolean> {
+	const res = await db
+		.prepare(
+			`UPDATE workout_detail SET share_token = ?
+			 WHERE user_id = ? AND workout_id = ? AND share_token IS NULL`
+		)
+		.bind(token, userId, workoutId)
+		.run();
+	return (res.meta.changes ?? 0) > 0;
+}
+
+/** Remove a public share link for a workout. */
+export async function clearShareToken(
+	db: D1Database,
+	userId: number,
+	workoutId: number
+): Promise<void> {
+	await db
+		.prepare(
+			`UPDATE workout_detail SET share_token = NULL
+			 WHERE user_id = ? AND workout_id = ?`
+		)
+		.bind(userId, workoutId)
+		.run();
+}
+
+/** Read-only lookup by share token — no user id in the query path. */
+export async function getCachedDetailByShareToken(
+	db: D1Database | undefined,
+	token: string
+): Promise<WorkoutDetail | null> {
+	if (!db || !token) return null;
+	try {
+		const row = await db
+			.prepare('SELECT payload FROM workout_detail WHERE share_token = ?')
+			.bind(token)
+			.first<{ payload: string }>();
+		return row ? (JSON.parse(row.payload) as WorkoutDetail) : null;
+	} catch {
+		return null;
+	}
+}
+
 export async function setUserAnnualGoal(
 	db: D1Database,
 	userId: number,
@@ -444,4 +501,22 @@ export async function setUserAnnualGoal(
 		)
 		.bind(userId, goal.year, goal.kind, goal.target, nowEpochMillis())
 		.run();
+}
+
+/** Existing share token for a workout, if any. */
+export async function getShareToken(
+	db: D1Database | undefined,
+	userId: number,
+	workoutId: number
+): Promise<string | null> {
+	if (!db) return null;
+	try {
+		const row = await db
+			.prepare('SELECT share_token FROM workout_detail WHERE user_id = ? AND workout_id = ?')
+			.bind(userId, workoutId)
+			.first<{ share_token: string | null }>();
+		return row?.share_token ?? null;
+	} catch {
+		return null;
+	}
 }
