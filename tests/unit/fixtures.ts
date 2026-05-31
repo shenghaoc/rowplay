@@ -42,6 +42,13 @@ export const intervalSplits: Split[] = [
 	{ index: 1, distance: 50, time: 10, pace: 122 }
 ];
 
+/** Same as intervalSplits — two 10s reps (cumulative edges at 10s and 20s). */
+export const twoRepSplits: Split[] = intervalSplits;
+
+export function stroke(t: number, spm: number): Stroke {
+	return { t, d: 0, pace: 120, spm, watts: 100 };
+}
+
 export function workout(overrides: Partial<Workout> & Pick<Workout, 'id'>): Workout {
 	return {
 		date: '2026-05-01 06:00:00',

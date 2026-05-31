@@ -714,12 +714,16 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
 	}
 
 	// Assign each stroke to the first rep whose cumulative time boundary it
-	// falls within.
+	// falls within. We use a two-pointer approach since both strokes and edges
+	// are monotonically increasing in time, reducing O(N*M) to O(N).
 	const buckets: Stroke[][] = splits.map(() => []);
 	if (strokes.length) {
+		let edgeIdx = 0;
 		for (const s of strokes) {
-			const rep = edges.findIndex((e) => s.t <= e);
-			const idx = rep >= 0 ? rep : buckets.length - 1;
+			while (edgeIdx < edges.length && s.t > edges[edgeIdx]) {
+				edgeIdx++;
+			}
+			const idx = edgeIdx < edges.length ? edgeIdx : buckets.length - 1;
 			buckets[idx].push(s);
 		}
 	}
