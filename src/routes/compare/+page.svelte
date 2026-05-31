@@ -25,8 +25,8 @@
 	const detailA = $derived(data.detailA);
 	const detailB = $derived(data.detailB);
 
-	let pickA = $state(String(data.idA ?? ''));
-	let pickB = $state(String(data.idB ?? ''));
+	let pickA = $state('');
+	let pickB = $state('');
 
 	$effect(() => {
 		pickA = String(data.idA ?? '');

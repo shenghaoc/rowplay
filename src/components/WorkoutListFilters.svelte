@@ -32,8 +32,8 @@
 		{ id: 'power', labelKey: 'workoutList.sortPower' }
 	];
 
-	let searchDraft = $state(query.q ?? '');
-	let expanded = $state(listQueryIsFiltered(query));
+	let searchDraft = $state('');
+	let expanded = $state(false);
 
 	$effect(() => {
 		searchDraft = query.q ?? '';
