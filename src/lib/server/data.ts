@@ -6,6 +6,7 @@ import { Concept2Client } from './concept2';
 import { getConfig } from './config';
 import { readSession } from './session';
 import { overlapDate } from '$lib/datetime';
+import { detectNewPBs, distancePBs, type DistancePB } from '$lib/analytics';
 import {
 	filterAndSortWorkouts,
 	parseWorkoutListQuery,
@@ -21,14 +22,17 @@ import {
 	getPersonalBests,
 	getSportAggregates,
 	getSyncState,
+	getUserAnnualGoal,
 	putCachedDetail,
 	queryWorkouts,
 	setSyncState,
+	setUserAnnualGoal,
 	upsertWorkouts,
 	type SyncState
 } from './db';
-import type { SportSummary } from '$lib/analytics';
+import type { SportSummary, AnnualGoal } from '$lib/analytics';
 import { destroySession } from './session';
+import { defaultAnnualGoal, parseGoalsCookie } from '$lib/goals';
 
 async function client(event: RequestEvent): Promise<Concept2Client | null> {
 	const env = event.platform?.env;
@@ -97,6 +101,7 @@ export function listQueryFromEvent(event: RequestEvent): WorkoutListQuery {
 export interface SyncResult {
 	added: number;
 	total: number;
+	newPbs: DistancePB[];
 }
 
 /**
@@ -113,6 +118,8 @@ export async function syncWorkouts(event: RequestEvent, full = false): Promise<S
 
 	const state = await getSyncState(db, userId);
 	const from = full || !state?.lastDate ? undefined : (overlapDate(state.lastDate) ?? undefined);
+
+	const beforePbs = distancePBs(await getAllWorkouts(db, userId).catch(() => []));
 
 	let page = 1;
 	let totalPages = 1;
@@ -134,7 +141,40 @@ export async function syncWorkouts(event: RequestEvent, full = false): Promise<S
 
 	const total = await countWorkouts(db, userId);
 	await setSyncState(db, userId, newestDate, total);
-	return { added, total };
+	const afterPbs = distancePBs(await getAllWorkouts(db, userId));
+	const newPbs = detectNewPBs(beforePbs, afterPbs);
+	return { added, total, newPbs };
+}
+
+export async function loadAnnualGoal(event: RequestEvent, year: number): Promise<AnnualGoal> {
+	if (event.locals.demo) {
+		const fromCookie = parseGoalsCookie(event.cookies.get('annual_goal') ?? undefined);
+		if (fromCookie?.year === year) return fromCookie;
+		return defaultAnnualGoal(year);
+	}
+	const userId = event.locals.user?.id;
+	const db = event.platform?.env?.DB;
+	if (db && userId != null) {
+		const stored = await getUserAnnualGoal(db, userId, year);
+		if (stored) return stored;
+	}
+	return defaultAnnualGoal(year);
+}
+
+export async function saveAnnualGoal(event: RequestEvent, goal: AnnualGoal): Promise<void> {
+	if (event.locals.demo) {
+		event.cookies.set('annual_goal', JSON.stringify(goal), {
+			path: '/',
+			maxAge: 60 * 60 * 24 * 400,
+			sameSite: 'lax',
+			httpOnly: false
+		});
+		return;
+	}
+	const userId = event.locals.user?.id;
+	const db = event.platform?.env?.DB;
+	if (!db || userId == null) throw error(401, 'Not authenticated.');
+	await setUserAnnualGoal(db, userId, goal);
 }
 
 export async function syncStatus(event: RequestEvent): Promise<SyncState | null> {

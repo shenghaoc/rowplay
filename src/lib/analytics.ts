@@ -730,7 +730,7 @@ export interface TrainingCalendar {
 }
 
 /** Add calendar days in UTC so DST never breaks streak/grid math. */
-function addDaysToKey(key: string, days: number): string {
+export function addDaysToKey(key: string, days: number): string {
 	const d = new Date(`${key}T00:00:00Z`);
 	d.setUTCDate(d.getUTCDate() + days);
 	return d.toISOString().slice(0, 10);
@@ -780,7 +780,7 @@ export function volumeIntensityLevel(
 	return level;
 }
 
-function trainingStreaks(activeDayKeys: string[], endDay: string): { current: number; longest: number } {
+export function trainingStreaks(activeDayKeys: string[], endDay: string): { current: number; longest: number } {
 	if (!activeDayKeys.length) return { current: 0, longest: 0 };
 	const set = new Set(activeDayKeys);
 	const sorted = [...activeDayKeys].sort();
@@ -1094,4 +1094,230 @@ export function compareIntervalReps(a: WorkoutDetail, b: WorkoutDetail): Interva
 		});
 	}
 	return rows;
+// Goals, streaks, challenges (Task 5)
+// ---------------------------------------------------------------------------
+
+export type AnnualGoalKind = 'meters' | 'hours';
+
+export interface AnnualGoal {
+	year: number;
+	kind: AnnualGoalKind;
+	/** Target metres or seconds for the calendar year. */
+	target: number;
+}
+
+export interface AnnualGoalProgress {
+	year: number;
+	kind: AnnualGoalKind;
+	target: number;
+	current: number;
+	pct: number;
+	daysElapsed: number;
+	daysInYear: number;
+	/** Linear “should have by now” target for pacing. */
+	expected: number;
+	onPace: boolean;
+	/** Projected year-end total at the current daily rate. */
+	projected: number;
+}
+
+function daysInCalendarYear(year: number): number {
+	return (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365;
+}
+
+function dayOfYearUtc(dayKey: string): number {
+	const start = new Date(`${dayKey.slice(0, 4)}-01-01T00:00:00Z`).getTime();
+	const d = new Date(`${dayKey}T00:00:00Z`).getTime();
+	return Math.floor((d - start) / 86_400_000) + 1;
+}
+
+function daysBetweenUtc(from: string, to: string): number {
+	const a = new Date(`${from}T00:00:00Z`).getTime();
+	const b = new Date(`${to}T00:00:00Z`).getTime();
+	return Math.max(0, Math.round((b - a) / 86_400_000));
+}
+
+/** Year-to-date progress toward an annual distance or time goal. */
+export function annualGoalProgress(
+	workouts: Workout[],
+	goal: AnnualGoal,
+	endDay?: string
+): AnnualGoalProgress {
+	const end = endDay ?? new Date().toISOString().slice(0, 10);
+	const year = goal.year;
+	const yearPrefix = `${year}-`;
+	const inYear = workouts.filter((w) => workoutDayKey(w.date).startsWith(yearPrefix));
+	const current =
+		goal.kind === 'meters'
+			? inYear.reduce((s, w) => s + w.distance, 0)
+			: inYear.reduce((s, w) => s + w.time, 0);
+
+	const daysInYear = daysInCalendarYear(year);
+	const yearEnd = `${year}-12-31`;
+	const progressThrough = end.startsWith(yearPrefix) ? end : yearEnd;
+	const daysElapsed = Math.min(dayOfYearUtc(progressThrough), daysInYear);
+	const expected = goal.target > 0 ? (goal.target * daysElapsed) / daysInYear : 0;
+	const rate = daysElapsed > 0 ? current / daysElapsed : 0;
+	const projected = rate * daysInYear;
+	const pct = goal.target > 0 ? Math.min(100, (current / goal.target) * 100) : 0;
+
+	return {
+		year,
+		kind: goal.kind,
+		target: goal.target,
+		current,
+		pct,
+		daysElapsed,
+		daysInYear,
+		expected,
+		onPace: current >= expected,
+		projected
+	};
+}
+
+export interface TrainingStreakStats {
+	currentStreak: number;
+	longestStreak: number;
+	/** Calendar days since the last session day (0 = trained today). */
+	daysSinceLastSession: number | null;
+	weeklyConsistency: { activeWeeks: number; totalWeeks: number };
+}
+
+export function weeklyConsistency(
+	workouts: Workout[],
+	endDay: string,
+	lookbackWeeks = 8
+): { activeWeeks: number; totalWeeks: number } {
+	const activeDays = new Set([...aggregateDailyVolume(workouts).keys()].filter((d) => d <= endDay));
+	let activeWeeks = 0;
+	for (let w = 0; w < lookbackWeeks; w++) {
+		const weekEnd = addDaysToKey(endDay, -w * 7);
+		let any = false;
+		for (let d = 0; d < 7; d++) {
+			if (activeDays.has(addDaysToKey(weekEnd, -d))) {
+				any = true;
+				break;
+			}
+		}
+		if (any) activeWeeks++;
+	}
+	return { activeWeeks, totalWeeks: lookbackWeeks };
+}
+
+export function trainingStreakStats(workouts: Workout[], endDay?: string): TrainingStreakStats {
+	const end = endDay ?? new Date().toISOString().slice(0, 10);
+	const historyDays = [...aggregateDailyVolume(workouts).keys()].filter((d) => d <= end).sort();
+	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, end);
+	const lastDay = historyDays.length ? historyDays[historyDays.length - 1] : null;
+	const daysSinceLastSession = lastDay != null ? daysBetweenUtc(lastDay, end) : null;
+	return {
+		currentStreak,
+		longestStreak,
+		daysSinceLastSession,
+		weeklyConsistency: weeklyConsistency(workouts, end)
+	};
+}
+
+export type BadgeId =
+	| 'meters_100k'
+	| 'meters_500k'
+	| 'meters_1m'
+	| 'meters_2m'
+	| 'meters_5m'
+	| 'club_500'
+	| 'club_1000'
+	| 'club_2000'
+	| 'club_5000'
+	| 'club_10000'
+	| 'every_sport_week';
+
+export interface AthleteBadge {
+	id: BadgeId;
+	earned: boolean;
+	/** 0–1 progress toward the next lifetime-meters milestone (when not earned). */
+	progress?: number;
+}
+
+const LIFETIME_METER_BADGES: { id: BadgeId; meters: number }[] = [
+	{ id: 'meters_100k', meters: 100_000 },
+	{ id: 'meters_500k', meters: 500_000 },
+	{ id: 'meters_1m', meters: 1_000_000 },
+	{ id: 'meters_2m', meters: 2_000_000 },
+	{ id: 'meters_5m', meters: 5_000_000 }
+];
+
+const CLUB_DISTANCES: { id: BadgeId; metres: number }[] = [
+	{ id: 'club_500', metres: 500 },
+	{ id: 'club_1000', metres: 1000 },
+	{ id: 'club_2000', metres: 2000 },
+	{ id: 'club_5000', metres: 5000 },
+	{ id: 'club_10000', metres: 10000 }
+];
+
+/** Any rolling 7-day window with at least one session on each Concept2 sport. */
+export function hasEverySportWeek(workouts: Workout[]): boolean {
+	const daySports = new Map<string, Set<Sport>>();
+	for (const w of workouts) {
+		const day = workoutDayKey(w.date);
+		if (!daySports.has(day)) daySports.set(day, new Set());
+		daySports.get(day)!.add(w.sport);
+	}
+	const sorted = [...daySports.keys()].sort();
+	for (const start of sorted) {
+		const sports = new Set<Sport>();
+		for (let offset = 0; offset < 7; offset++) {
+			const s = daySports.get(addDaysToKey(start, offset));
+			if (s) for (const sp of s) sports.add(sp);
+		}
+		if (sports.has('rower') && sports.has('skierg') && sports.has('bike')) return true;
+	}
+	return false;
+}
+
+export function athleteBadges(
+	workouts: Workout[],
+	pbs: ReturnType<typeof distancePBs>
+): AthleteBadge[] {
+	const totalMeters = workouts.reduce((s, w) => s + w.distance, 0);
+	const pbDistances = new Set(pbs.map((p) => p.distance));
+	const badges: AthleteBadge[] = [];
+
+	for (const { id, meters } of LIFETIME_METER_BADGES) {
+		const earned = totalMeters >= meters;
+		badges.push({
+			id,
+			earned,
+			progress: earned ? 1 : Math.min(1, totalMeters / meters)
+		});
+	}
+	for (const { id, metres } of CLUB_DISTANCES) {
+		badges.push({ id, earned: pbDistances.has(metres) });
+	}
+	badges.push({ id: 'every_sport_week', earned: hasEverySportWeek(workouts) });
+	return badges;
+}
+
+/** Workout ids that currently hold a standard-distance PB. */
+export function pbWorkoutIds(workouts: Workout[]): Set<number> {
+	const ids = new Set<number>();
+	for (const target of STANDARD_DISTANCES) {
+		const matches = workouts.filter((w) => Math.abs(w.distance - target) <= target * 0.02 && w.time > 0);
+		if (!matches.length) continue;
+		const best = matches.reduce((a, b) => (a.time <= b.time ? a : b));
+		ids.add(best.id);
+	}
+	return ids;
+}
+
+export type DistancePB = ReturnType<typeof distancePBs>[number];
+
+/** PBs that improved (or are new) after a sync or data refresh. */
+export function detectNewPBs(before: DistancePB[], after: DistancePB[]): DistancePB[] {
+	const beforeMap = new Map(before.map((p) => [p.distance, p]));
+	const out: DistancePB[] = [];
+	for (const pb of after) {
+		const prev = beforeMap.get(pb.distance);
+		if (!prev || pb.time < prev.time - 0.001) out.push(pb);
+	}
+	return out;
 }
