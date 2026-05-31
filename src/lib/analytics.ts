@@ -988,7 +988,8 @@ export interface WorkoutSideStats {
 	time: number;
 	pace: number;
 	avgWatts: number;
-	peakWatts: number;
+	/** Best 5-second average power (from powerCurve). */
+	best5sPower: number;
 	avgHr: number | null;
 	peakHr: number | null;
 	avgDps: number;
@@ -999,9 +1000,9 @@ export interface WorkoutSideStats {
 export function workoutSideStats(detail: WorkoutDetail): WorkoutSideStats {
 	const tech = techniqueSummary(detail.strokes);
 	const pc = powerCurve(detail.strokes);
-	const peakWatts = pc.length ? Math.max(...pc.map((p) => p.watts)) : 0;
+	const best5sPower = pc.length ? Math.max(...pc.map((p) => p.watts)) : 0;
 	const hrs = detail.strokes.map((s) => s.hr).filter((h): h is number => h != null && h > 0);
-	const peakHr = hrs.length ? Math.max(...hrs) : null;
+	const peakHr = hrs.length ? hrs.reduce((m, h) => h > m ? h : m, 0) : null;
 	const avgHr =
 		detail.heartRateAvg && detail.heartRateAvg > 0
 			? detail.heartRateAvg
@@ -1013,7 +1014,7 @@ export function workoutSideStats(detail: WorkoutDetail): WorkoutSideStats {
 		time: detail.time,
 		pace: detail.pace,
 		avgWatts: Math.round(workoutWatts(detail)),
-		peakWatts: Math.round(peakWatts),
+		best5sPower: Math.round(best5sPower),
 		avgHr: avgHr != null ? Math.round(avgHr) : null,
 		peakHr: peakHr != null ? Math.round(peakHr) : null,
 		avgDps: tech.avgDps,

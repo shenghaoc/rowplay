@@ -187,7 +187,7 @@ const en = {
 		statTime: 'Time',
 		statPace: 'Avg pace',
 		statAvgPower: 'Avg power',
-		statPeakPower: 'Peak power',
+		statBest5sPower: 'Best 5 s power',
 		statAvgHr: 'Avg HR',
 		statDps: 'Dist / stroke',
 		statConsistency: 'Pace variation',
@@ -201,7 +201,9 @@ const en = {
 		noStrokeData: 'Stroke data is missing for one or both workouts — summary stats only.',
 		intervalTitle: 'Interval comparison',
 		intervalHint: 'Per-rep pace and time deltas when both pieces have matching interval structure.',
-		repTimeDelta: 'Time Δ'
+		repTimeDelta: 'Time Δ',
+		crossSport:
+			'These workouts are from different machines — paces and power use different units and are not directly comparable.'
 	},
 	replay: {
 		back: 'Back to dashboard',
@@ -500,7 +502,7 @@ const zh = {
 		statTime: '时间',
 		statPace: '平均配速',
 		statAvgPower: '平均功率',
-		statPeakPower: '峰值功率',
+		statBest5sPower: '最佳 5 秒功率',
 		statAvgHr: '平均心率',
 		statDps: '每桨距离',
 		statConsistency: '配速波动',
@@ -514,7 +516,8 @@ const zh = {
 		noStrokeData: '其中一场或两场缺少划桨数据——仅显示汇总统计。',
 		intervalTitle: '间歇对比',
 		intervalHint: '两场均为间歇结构时，按组对比配速与时间差。',
-		repTimeDelta: '时间 Δ'
+		repTimeDelta: '时间 Δ',
+		crossSport: '这两场训练来自不同的器械——配速和功率使用不同的单位，无法直接比较。'
 	},
 	replay: {
 		back: '返回仪表板',

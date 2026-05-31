@@ -122,7 +122,7 @@
 
 	const paceOpts = $derived(
 		overlayOpts(labelA, labelB, LIVE_COLOR, GHOST_COLOR, true, (v) =>
-			fmtPace(v).replace('/500m', '')
+			fmtPace(v).replace(/\/\d+m$/, '')
 		)
 	);
 	const powerOpts = $derived(
@@ -212,12 +212,12 @@
 			});
 		}
 
-		if (statsA.peakWatts > 0 || statsB.peakWatts > 0) {
-			const d = statsA.peakWatts - statsB.peakWatts;
+		if (statsA.best5sPower > 0 || statsB.best5sPower > 0) {
+			const d = statsA.best5sPower - statsB.best5sPower;
 			rows.push({
-				key: 'peakPower',
-				a: `${statsA.peakWatts} W`,
-				b: `${statsB.peakWatts} W`,
+				key: 'best5sPower',
+				a: `${statsA.best5sPower} W`,
+				b: `${statsB.best5sPower} W`,
 				delta: signedDelta(d, 0) + ' W',
 				deltaClass: d > 0 ? 'good' : d < 0 ? 'bad' : ''
 			});
@@ -259,7 +259,7 @@
 		time: 'compare.statTime',
 		pace: 'compare.statPace',
 		avgPower: 'compare.statAvgPower',
-		peakPower: 'compare.statPeakPower',
+		best5sPower: 'compare.statBest5sPower',
 		avgHr: 'compare.statAvgHr',
 		dps: 'compare.statDps',
 		consistency: 'compare.statConsistency'
@@ -328,6 +328,10 @@
 				</div>
 			{/each}
 		</div>
+
+		{#if detailA.sport !== detailB.sport}
+			<div class="sportwarn card">{t('compare.crossSport')}</div>
+		{/if}
 
 		{#if verdict}
 			<div
@@ -562,6 +566,14 @@
 	}
 	.verdict strong {
 		display: block;
+	}
+	.sportwarn {
+		padding: 0.7rem 1rem;
+		margin-bottom: 1rem;
+		border-left: 4px solid var(--warn, #f0ad4e);
+		background: color-mix(in srgb, var(--warn, #f0ad4e) 10%, var(--paper-raised));
+		font-size: 0.9rem;
+		color: var(--ink-2);
 	}
 	.align-note {
 		font-size: 0.85rem;
