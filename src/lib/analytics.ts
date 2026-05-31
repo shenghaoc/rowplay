@@ -913,30 +913,37 @@ export function sampleStrokeAtDistance(strokes: Stroke[], metres: number): Strok
 	if (metres <= first.d) return first;
 	const last = strokes[strokes.length - 1];
 	if (metres >= last.d) return last;
-	for (let i = 1; i < strokes.length; i++) {
-		const prev = strokes[i - 1];
-		const cur = strokes[i];
-		if (metres <= cur.d) {
-			const span = cur.d - prev.d;
-			if (span <= 0) return cur;
-			const f = (metres - prev.d) / span;
-			const hrA = prev.hr;
-			const hrB = cur.hr;
-			let hr: number | undefined;
-			if (hrA != null && hrB != null) hr = hrA + f * (hrB - hrA);
-			else if (hrA != null) hr = hrA;
-			else if (hrB != null) hr = hrB;
-			return {
-				t: prev.t + f * (cur.t - prev.t),
-				d: metres,
-				pace: prev.pace + f * (cur.pace - prev.pace),
-				spm: prev.spm + f * (cur.spm - prev.spm),
-				hr,
-				watts: prev.watts + f * (cur.watts - prev.watts)
-			};
+
+	let low = 0;
+	let high = strokes.length - 1;
+	while (low <= high) {
+		const mid = (low + high) >> 1;
+		if (strokes[mid].d < metres) {
+			low = mid + 1;
+		} else {
+			high = mid - 1;
 		}
 	}
-	return last;
+
+	const prev = strokes[low - 1];
+	const cur = strokes[low];
+	const span = cur.d - prev.d;
+	if (span <= 0) return cur;
+	const f = (metres - prev.d) / span;
+	const hrA = prev.hr;
+	const hrB = cur.hr;
+	let hr: number | undefined;
+	if (hrA != null && hrB != null) hr = hrA + f * (hrB - hrA);
+	else if (hrA != null) hr = hrA;
+	else if (hrB != null) hr = hrB;
+	return {
+		t: prev.t + f * (cur.t - prev.t),
+		d: metres,
+		pace: prev.pace + f * (cur.pace - prev.pace),
+		spm: prev.spm + f * (cur.spm - prev.spm),
+		hr,
+		watts: prev.watts + f * (cur.watts - prev.watts)
+	};
 }
 
 /**
@@ -1029,6 +1036,8 @@ export interface CompareVerdict {
  * otherwise compare average pace.
  */
 export function compareVerdict(a: WorkoutDetail, b: WorkoutDetail): CompareVerdict {
+	if (a.sport !== b.sport) return { winner: 'tie', timeDeltaSec: null, paceDelta: null };
+
 	const bandA = distanceBand(a.distance);
 	const bandB = distanceBand(b.distance);
 	const likeForLike = bandA.key === bandB.key;
@@ -1062,6 +1071,7 @@ export interface IntervalCompareRow {
 
 /** Per-rep deltas when both workouts have interval splits (by index). */
 export function compareIntervalReps(a: WorkoutDetail, b: WorkoutDetail): IntervalCompareRow[] | null {
+	if (a.sport !== b.sport) return null;
 	const setA = intervalBreakdown(a.splits, a.strokes);
 	const setB = intervalBreakdown(b.splits, b.strokes);
 	if (!setA || !setB) return null;

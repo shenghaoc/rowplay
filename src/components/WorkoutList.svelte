@@ -70,8 +70,9 @@
 	</div>
 	<div class="actions">
 		{#if onCompare}
-			<button
-				type="button"
+			<span
+				role="button"
+				tabindex="0"
 				class="cmpbtn"
 				class:active={compareAnchor === w.id}
 				title={compareAnchor == null ? t('workoutList.comparePick') : t('workoutList.compareWith')}
@@ -81,9 +82,16 @@
 					e.stopPropagation();
 					onCompare(w);
 				}}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						e.stopPropagation();
+						onCompare(w);
+					}
+				}}
 			>
 				<GitCompare size={16} />
-			</button>
+			</span>
 		{/if}
 		<span class="play"><ChevronRight size={18} /></span>
 	</div>

@@ -104,10 +104,10 @@
 	}
 
 	const labelA = $derived(
-		detailA ? fmtLogbookDateTime(detailA.date).slice(0, 10) : t('compare.workoutA')
+		detailA ? fmtDate(detailA.date) : t('compare.workoutA')
 	);
 	const labelB = $derived(
-		detailB ? fmtLogbookDateTime(detailB.date).slice(0, 10) : t('compare.workoutB')
+		detailB ? fmtDate(detailB.date) : t('compare.workoutB')
 	);
 
 	const paceData = $derived<uPlot.AlignedData | null>(
@@ -446,7 +446,7 @@
 				</div>
 			</div>
 		{/if}
-	{:else if !detailA && !detailB}
+	{:else}
 		<p class="muted pickhint">{t('compare.pickTwo')}</p>
 	{/if}
 </div>

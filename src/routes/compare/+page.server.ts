@@ -1,4 +1,4 @@
-import { error, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { loadWorkoutDetail, loadWorkouts } from '$lib/server/data';
 
@@ -13,8 +13,8 @@ export const load: PageServerLoad = async (event) => {
 		throw redirect(303, '/auth/login');
 	}
 
-	const idA = parseId(event.url.searchParams.get('a'));
-	const idB = parseId(event.url.searchParams.get('b'));
+	let idA = parseId(event.url.searchParams.get('a'));
+	let idB = parseId(event.url.searchParams.get('b'));
 
 	const workouts = await loadWorkouts(event);
 
@@ -25,14 +25,14 @@ export const load: PageServerLoad = async (event) => {
 		try {
 			detailA = await loadWorkoutDetail(event, idA);
 		} catch {
-			throw error(404, 'Workout A not found.');
+			idA = null;
 		}
 	}
 	if (idB != null) {
 		try {
 			detailB = await loadWorkoutDetail(event, idB);
 		} catch {
-			throw error(404, 'Workout B not found.');
+			idB = null;
 		}
 	}
 
