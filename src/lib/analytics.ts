@@ -340,12 +340,22 @@ export function estimateCriticalPower(workouts: Workout[]): CriticalPower | null
 	const fallback = (pool: { t: number; p: number }[]): CriticalPower | null => {
 		// Sprints (< 2 min) sit far above threshold, so never let one set FTP.
 		const valid = pool.filter((q) => q.t >= 120);
-		const longish = valid.filter((q) => q.t >= 600);
-		const src = longish.length ? longish : valid;
-		if (!src.length) return null;
-		const best = src.reduce((a, b) => (a.p >= b.p ? a : b));
-		// A short effort overstates threshold, so shade it down a touch.
-		const ftp = Math.round(best.p * (longish.length ? 1 : 0.9));
+		if (!valid.length) return null;
+		const best = valid.reduce((a, b) => (a.p >= b.p ? a : b));
+		// Duration-based scaling factor to estimate FTP/CP from a single best effort:
+		// - 20+ min: 95%
+		// - 10-20 min: 90%
+		// - 5-10 min: 80%
+		// - 2-5 min: 70%
+		let factor = 0.70;
+		if (best.t >= 1200) {
+			factor = 0.95;
+		} else if (best.t >= 600) {
+			factor = 0.90;
+		} else if (best.t >= 300) {
+			factor = 0.80;
+		}
+		const ftp = Math.round(best.p * factor);
 		return ftp > 0 ? { cp: ftp, wPrime: 0, ftp, method: 'estimate' } : null;
 	};
 
