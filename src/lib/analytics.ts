@@ -383,7 +383,7 @@ export function estimateCriticalPower(workouts: Workout[]): CriticalPower | null
 	if (den > 0) {
 		const wPrime = num / den; // slope, joules
 		const cp = my - wPrime * mx; // intercept, watts
-		if (cp > 0 && cp < 500 && wPrime > 0) {
+		if (cp > 0 && cp < 700 && wPrime > 0) {
 			return { cp: Math.round(cp), wPrime: Math.round(wPrime), ftp: Math.round(cp), method: 'model' };
 		}
 	}

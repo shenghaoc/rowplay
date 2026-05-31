@@ -123,20 +123,20 @@
 		productive: 'accent',
 		overreaching: 'bad'
 	};
-	const bandLabel: Record<FormBand, string> = {
+	const bandLabel: Record<FormBand, string> = $derived({
 		transition: t('dashboard.bandTransition'),
 		fresh: t('dashboard.bandFresh'),
 		neutral: t('dashboard.bandNeutral'),
 		productive: t('dashboard.bandProductive'),
 		overreaching: t('dashboard.bandOverreaching')
-	};
-	const bandDesc: Record<FormBand, string> = {
+	});
+	const bandDesc: Record<FormBand, string> = $derived({
 		transition: t('dashboard.descTransition'),
 		fresh: t('dashboard.descFresh'),
 		neutral: t('dashboard.descNeutral'),
 		productive: t('dashboard.descProductive'),
 		overreaching: t('dashboard.descOverreaching')
-	};
+	});
 	const formData = $derived.by((): uPlot.AlignedData => {
 		// Match the series count in formOptions (x + 3) so uPlot never sees a
 		// shape it can't render, even in the empty state.
