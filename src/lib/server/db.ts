@@ -19,11 +19,11 @@ export async function getCachedDetail(
 	try {
 		const row = await db
 			.prepare(
-				'SELECT payload, payload_version FROM workout_detail WHERE user_id = ? AND workout_id = ?'
+				'SELECT payload FROM workout_detail WHERE user_id = ? AND workout_id = ? AND payload_version = ?'
 			)
-			.bind(userId, workoutId)
-			.first<{ payload: string; payload_version: number }>();
-		if (!row || row.payload_version !== DETAIL_PAYLOAD_VERSION) return null;
+			.bind(userId, workoutId, DETAIL_PAYLOAD_VERSION)
+			.first<{ payload: string }>();
+		if (!row) return null;
 		return JSON.parse(row.payload) as WorkoutDetail;
 	} catch {
 		return null;
