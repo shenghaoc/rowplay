@@ -598,21 +598,30 @@ export interface IntervalSet {
  * Build a rep-by-rep breakdown from a workout's splits, using strokes (when
  * present) to compute distance-per-stroke and within-rep fade. Returns null for
  * single-segment pieces — there's nothing to compare.
+ *
+ * Stroke timestamps are assumed to be **continuous** (as normalised on read by
+ * `mapStrokes` / `normalizeRawStrokes`). Rep boundaries are determined by
+ * cumulative split durations rather than timestamp resets.
  */
 export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalSet | null {
 	if (splits.length < 2) return null;
 
-	// Assign strokes to reps by cumulative split time. Strokes reset to t=0 each
-	// interval (handled on read), so we walk them and start a new rep bucket
-	// whenever the stroke time steps backwards or we exceed the split duration.
+	// Build cumulative time boundaries from split durations.
+	const edges: number[] = [];
+	let cum = 0;
+	for (const sp of splits) {
+		cum += sp.time;
+		edges.push(cum);
+	}
+
+	// Assign each stroke to the first rep whose cumulative time boundary it
+	// falls within.
 	const buckets: Stroke[][] = splits.map(() => []);
 	if (strokes.length) {
-		let rep = 0;
-		let prevT = -Infinity;
 		for (const s of strokes) {
-			if (s.t < prevT && rep < splits.length - 1) rep++;
-			prevT = s.t;
-			(buckets[rep] ?? buckets[buckets.length - 1]).push(s);
+			const rep = edges.findIndex((e) => s.t <= e);
+			const idx = rep >= 0 ? rep : buckets.length - 1;
+			buckets[idx].push(s);
 		}
 	}
 
