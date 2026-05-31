@@ -421,5 +421,5 @@ const flatDictionaries: Record<Language, Map<string, string>> = {
 };
 
 export function getValue(language: Language, key: string): string | undefined {
-	return flatDictionaries[language].get(key);
+	return flatDictionaries[language]?.get(key);
 }

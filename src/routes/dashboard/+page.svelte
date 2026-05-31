@@ -205,7 +205,7 @@
 
 	function metricChangeFmt(better: boolean, delta: number) {
 		if (metric === 'pace') {
-			return t(better ? 'dashboard.faster' : 'dashboard.slower', { delta: metricFmt(delta) });
+			return t(better ? 'dashboard.faster' : 'dashboard.slower', { delta: fmtPaceBare(delta, true) });
 		}
 		const sign = better ? '+' : '−';
 		const suffix = metric === 'dps' ? '/stroke' : '';
@@ -292,7 +292,7 @@
 				{#if paceDelta != null}
 					<div class="herodelta" class:faster={paceDelta < 0} class:slower={paceDelta > 0}>
 						{paceDelta < 0 ? '▼' : '▲'}
-						{fmtPaceBare(Math.abs(paceDelta))}
+						{fmtPaceBare(Math.abs(paceDelta), true)}
 						<span class="muted">{t('dashboard.vsAvg', { sport: SPORT_LABEL[latest.sport] })}</span>
 					</div>
 				{/if}

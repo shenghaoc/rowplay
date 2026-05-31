@@ -219,7 +219,7 @@
 			cursor: { show: true, x: true, y: false },
 			axes: [
 				{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, values: (_u, sp) => sp.map((v) => fmtTime(v)) },
-				{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 52, values: (_u, sp) => sp.map(fmt) }
+				{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 52, values: (_u, sp) => sp.map((v) => fmt(v)) }
 			],
 			series: [{}, { label, stroke: color, width: 1.5, fill: color + '22' }],
 			legend: { show: false }
@@ -255,7 +255,7 @@
 		cursor: { show: true },
 		axes: [
 			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, values: (_u, sp) => sp.map((v) => `${Math.round(v)}`) },
-			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 52, values: (_u, sp) => sp.map(fmtPaceBare) }
+			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 52, values: (_u, sp) => sp.map((v) => fmtPaceBare(v)) }
 		],
 		series: [{}, { label: 'pace@rate', stroke: '#56d4ff', width: 2, points: { show: true, size: 7 } }],
 		legend: { show: false }
@@ -549,7 +549,7 @@
 							{#if r.dps > 0}· {r.dps.toFixed(1)}m/st{/if}
 						</div>
 						<div class="repdelta mono" class:good={r.vsAverage < 0} class:bad={r.vsAverage > 0}>
-							{r.vsAverage < 0 ? '−' : '+'}{fmtPaceBare(Math.abs(r.vsAverage))}
+							{r.vsAverage < 0 ? '−' : '+'}{fmtPaceBare(Math.abs(r.vsAverage), true)}
 						</div>
 					</div>
 				{/each}

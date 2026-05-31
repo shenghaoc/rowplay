@@ -19,9 +19,11 @@ export function fmtPace(pace: number): string {
 	return `${fmtTime(pace, true)}/500m`;
 }
 
-/** Pace without the "/500m" suffix (for gauges, charts, and split labels). */
-export function fmtPaceBare(pace: number): string {
-	if (!isFinite(pace) || pace < 0) return '--:--';
+/** Pace without the "/500m" suffix (for gauges, charts, and split labels).
+ * Zero is treated as invalid (--:--) unless `allowZero` is true, which is
+ * useful for formatting pace deltas (no change = 0:00.0). */
+export function fmtPaceBare(pace: number, allowZero = false): string {
+	if (!isFinite(pace) || (allowZero ? pace < 0 : pace <= 0)) return '--:--';
 	return fmtTime(pace, true);
 }
 
@@ -58,7 +60,7 @@ export function paceToWatts(pacePer500: number): number {
 
 /** Average watts from cached watt-minutes when present, else Concept2 pace model. */
 export function avgWatts(w: Pick<Workout, 'wattMinutes' | 'time' | 'pace'>): number {
-	if (w.wattMinutes && w.time > 0) {
+	if (w.wattMinutes != null && w.time > 0) {
 		return Math.round(w.wattMinutes / (w.time / 60));
 	}
 	return Math.round(paceToWatts(w.pace));
