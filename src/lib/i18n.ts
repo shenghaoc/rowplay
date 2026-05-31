@@ -35,7 +35,13 @@ export function interpolate(template: string, vars?: Record<string, string | num
 
 const en = {
 	nav: { dashboard: 'Dashboard' },
-	common: { demoMode: 'demo mode', replay: 'Replay', loading: 'loading…', tryAgain: 'Please try again.' },
+	common: {
+		demoMode: 'demo mode',
+		replay: 'Replay',
+		loading: 'loading…',
+		tryAgain: 'Please try again.',
+		notAffiliated: 'not affiliated with Concept2'
+	},
 	sync: {
 		loading: 'Syncing your logbook…',
 		done: 'Synced — {added} new, {total} total',
@@ -65,7 +71,8 @@ const en = {
 		feat3Body: 'Served from Cloudflare with cached stroke data for instant replays.'
 	},
 	dashboard: {
-		title: 'Dashboard',
+		eyebrow: 'Your logbook',
+		title: 'Results & replays',
 		all: 'All',
 		sync: 'Sync',
 		syncing: 'Syncing…',
@@ -236,7 +243,13 @@ const en = {
 
 const zh = {
 	nav: { dashboard: '仪表板' },
-	common: { demoMode: '演示模式', replay: '回放', loading: '加载中…', tryAgain: '请重试。' },
+	common: {
+		demoMode: '演示模式',
+		replay: '回放',
+		loading: '加载中…',
+		tryAgain: '请重试。',
+		notAffiliated: '与 Concept2 无关联'
+	},
 	sync: {
 		loading: '正在同步你的日志…',
 		done: '已同步——新增 {added}，共 {total}',
@@ -266,7 +279,8 @@ const zh = {
 		feat3Body: '由 Cloudflare 提供服务，缓存逐桨数据，实现即时回放。'
 	},
 	dashboard: {
-		title: '仪表板',
+		eyebrow: '你的日志',
+		title: '成绩与回放',
 		all: '全部',
 		sync: '同步',
 		syncing: '同步中…',

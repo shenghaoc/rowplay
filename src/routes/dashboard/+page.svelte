@@ -14,13 +14,17 @@
 		summariseBySport
 	} from '$lib/analytics';
 	import type { Sport, Workout } from '$lib/types';
+	import { MACHINE_COLOR } from '$lib/replay/sports';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
+	import { getThemeContext } from '$lib/theme.svelte';
+	import { uplotChrome } from '$lib/chartTheme';
 
 	let { data } = $props();
 	const t = getI18nContext().t;
+	const uiTheme = getThemeContext();
 	const workouts = $derived<Workout[]>(data.workouts);
 
 	let sportFilter = $state<Sport | 'all'>('all');
@@ -215,18 +219,24 @@
 	}
 
 	const trendOptions = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
+		const chrome = uplotChrome(uiTheme.value);
 		const color =
-			metric === 'pace' ? '#2f81f7' : metric === 'distance' ? '#3fb950' : metric === 'dps' ? '#56d4ff' : '#d2a8ff';
+			metric === 'pace' ? '#dc4327' : metric === 'distance' ? '#5e6b2c' : metric === 'dps' ? '#3f6e8c' : '#2c6e63';
 		return {
 			scales: { x: { time: true }, y: metric === 'pace' ? { dir: -1 } : {} },
 			axes: [
-				{ stroke: '#8b949e', grid: { stroke: '#1c2230' } },
-				{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 56, values: (_u, sp) => sp.map(metricFmt) }
+				{ stroke: chrome.axis, grid: { stroke: chrome.grid } },
+				{
+					stroke: chrome.axis,
+					grid: { stroke: chrome.grid },
+					size: 56,
+					values: (_u, sp) => sp.map(metricFmt)
+				}
 			],
 			series: [
 				{},
 				{ label: metric, stroke: color, width: 2, points: { show: true, size: 5 } },
-				{ label: 'trend', stroke: '#8b949e', width: 1.5, dash: [6, 4], points: { show: false } }
+				{ label: 'trend', stroke: chrome.trend, width: 1.5, dash: [6, 4], points: { show: false } }
 			],
 			legend: { show: false }
 		};
@@ -254,7 +264,10 @@
 
 <div class="container">
 	<div class="head">
-		<h1>{t('dashboard.title')}</h1>
+		<div>
+			<p class="eyebrow">{t('dashboard.eyebrow')}</p>
+			<h1>{t('dashboard.title')}</h1>
+		</div>
 		<div class="headright">
 			<div class="filters" role="group" aria-label="Sport filter">
 				{#each sports as s}
@@ -287,7 +300,9 @@
 		<a class="card hero" href="/replay/{latest.id}">
 			<div class="herolead">
 				<div class="herotop muted">
-					<span class="hicon"><SportIcon sport={latest.sport} size={16} /></span>
+					<span class="hicon" style:color={MACHINE_COLOR[latest.sport]}
+						><SportIcon sport={latest.sport} size={16} /></span
+					>
 					{t('dashboard.latest')} · {latest.workoutType || SPORT_LABEL[latest.sport]} · {fmtDate(latest.date)}
 				</div>
 				<div class="heropace mono">{fmtPaceBare(latest.pace)}<span class="perunit">/500m</span></div>
@@ -450,11 +465,20 @@
 <style>
 	.head {
 		display: flex;
-		align-items: center;
+		align-items: flex-end;
 		justify-content: space-between;
 		flex-wrap: wrap;
 		gap: 1rem;
 		margin-bottom: 0.5rem;
+		padding-bottom: 0.75rem;
+		border-bottom: var(--bd-heavy);
+	}
+	.head h1 {
+		font-size: clamp(1.7rem, 7vw, 2.4rem);
+		font-weight: 900;
+		text-transform: uppercase;
+		letter-spacing: -0.02em;
+		margin-top: 0.15rem;
 	}
 	.headright {
 		display: flex;
@@ -488,36 +512,43 @@
 		gap: 0.4rem;
 	}
 	.chip,
-	.mchip {
-		background: var(--bg-elev);
-		border: 1px solid var(--border);
-		color: var(--text-dim);
-		border-radius: 999px;
+	.mchip,
+	.bchip {
+		background: var(--paper-raised);
+		border: var(--bd-heavy);
+		color: var(--ink-2);
+		border-radius: var(--r-ctrl);
 		padding: 0.35rem 0.85rem;
+		font-family: var(--display);
 		font-size: 0.85rem;
-		font-weight: 600;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
 		cursor: pointer;
 	}
 	.chip.on,
-	.mchip.on {
-		background: var(--accent);
-		color: white;
-		border-color: var(--accent);
+	.mchip.on,
+	.bchip.on {
+		background: var(--ink);
+		color: var(--paper-raised);
+		border-color: var(--ink);
 	}
 	.hero {
 		display: grid;
 		grid-template-columns: auto 1fr auto;
 		align-items: center;
 		gap: 1.5rem;
-		color: var(--text);
+		color: var(--ink);
 		margin-bottom: 1rem;
-		background: linear-gradient(135deg, rgba(47, 129, 247, 0.12), var(--bg-elev) 60%);
-		border-color: rgba(47, 129, 247, 0.35);
-		transition: border-color 0.15s ease;
+		box-shadow: var(--stamp-live);
+		transition:
+			transform 0.05s ease,
+			box-shadow 0.05s ease;
 	}
 	.hero:hover {
 		text-decoration: none;
-		border-color: var(--accent);
+		transform: translate(1px, 1px);
+		box-shadow: 2px 2px 0 var(--ink);
 	}
 	.herotop {
 		font-size: 0.85rem;
@@ -528,11 +559,11 @@
 	.hicon {
 		display: inline-flex;
 		align-items: center;
-		color: var(--accent);
 	}
 	.heropace {
-		font-size: 3.2rem;
-		font-weight: 800;
+		font-family: var(--display);
+		font-size: var(--clock-size);
+		font-weight: 900;
 		line-height: 1;
 		margin: 0.3rem 0;
 		letter-spacing: -0.02em;
@@ -548,10 +579,12 @@
 		font-weight: 700;
 	}
 	.herodelta.faster {
-		color: var(--accent-2);
+		color: var(--ahead);
+		font-family: var(--mono);
 	}
 	.herodelta.slower {
-		color: var(--warn);
+		color: var(--behind);
+		font-family: var(--mono);
 	}
 	.herometrics {
 		display: flex;
@@ -603,9 +636,9 @@
 		margin-top: 0.6rem;
 	}
 	.pb {
-		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
-		border-radius: 10px;
+		background: var(--paper-inset);
+		border: var(--bd);
+		border-radius: var(--r-ctrl);
 		padding: 0.6rem 0.75rem;
 	}
 	.pbdist {
@@ -625,7 +658,6 @@
 	}
 	.sportcell :global(svg) {
 		vertical-align: -2px;
-		color: var(--accent);
 	}
 	.breakdown table {
 		width: 100%;
@@ -635,14 +667,17 @@
 	}
 	.breakdown th {
 		text-align: left;
-		color: var(--text-dim);
+		color: var(--ink-2);
 		font-weight: 600;
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
 		padding: 0.3rem 0.5rem;
-		border-bottom: 1px solid var(--border);
+		border-bottom: var(--bd);
 	}
 	.breakdown td {
 		padding: 0.35rem 0.5rem;
-		border-bottom: 1px solid var(--bg-elev-2);
+		border-bottom: var(--bd);
 	}
 	.trendhead {
 		display: flex;
@@ -658,22 +693,6 @@
 		flex-wrap: wrap;
 		margin-bottom: 0.75rem;
 	}
-	.bchip {
-		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
-		color: var(--text-dim);
-		border-radius: 8px;
-		padding: 0.25rem 0.6rem;
-		font-size: 0.8rem;
-		font-weight: 600;
-		cursor: pointer;
-		font-family: var(--mono);
-	}
-	.bchip.on {
-		background: var(--accent);
-		color: white;
-		border-color: var(--accent);
-	}
 	.bn {
 		opacity: 0.6;
 		font-size: 0.72rem;
@@ -685,24 +704,28 @@
 		font-size: 0.9rem;
 	}
 	.verdict {
+		font-family: var(--display);
 		font-size: 0.95rem;
 		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
 		padding: 0.5rem 0.8rem;
-		border-radius: 8px;
+		border-radius: var(--r-ctrl);
 		margin-bottom: 0.75rem;
-		background: var(--bg-elev-2);
-		color: var(--text);
+		background: var(--paper-inset);
+		border: var(--bd);
+		color: var(--ink);
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
 	}
 	.verdict.good {
-		background: rgba(63, 185, 80, 0.12);
-		color: var(--accent-2);
+		border-color: var(--ahead);
+		color: var(--ahead);
 	}
 	.verdict.bad {
-		background: rgba(210, 153, 34, 0.12);
-		color: var(--warn);
+		border-color: var(--behind);
+		color: var(--alarm);
 	}
 	@media (max-width: 720px) {
 		.stats {
