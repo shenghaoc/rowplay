@@ -36,17 +36,37 @@ export const handle: Handle = async ({ event, resolve }) => {
 		transformPageChunk: ({ html }) => html.replace('%lang%', lang).replace('%theme%', theme)
 	});
 
-	// Set security header defaults only when a route hasn't already chosen its
-	// own value, so individual endpoints can override (e.g. allow framing).
-	if (!response.headers.has('X-Frame-Options')) {
-		response.headers.set('X-Frame-Options', 'DENY');
-	}
-	if (!response.headers.has('X-Content-Type-Options')) {
-		response.headers.set('X-Content-Type-Options', 'nosniff');
-	}
-	if (!response.headers.has('Referrer-Policy')) {
-		response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-	}
-
-	return response;
+	return withSecurityHeaders(response);
 };
+
+// Defense-in-depth defaults applied to every response. Each is set only when a
+// route hasn't already chosen its own value, so individual endpoints can
+// override (e.g. allow framing on a specific page).
+const SECURITY_HEADERS: Record<string, string> = {
+	'X-Frame-Options': 'DENY',
+	'X-Content-Type-Options': 'nosniff',
+	'Referrer-Policy': 'strict-origin-when-cross-origin'
+};
+
+function applyDefaults(headers: Headers): void {
+	for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+		if (!headers.has(name)) headers.set(name, value);
+	}
+}
+
+function withSecurityHeaders(response: Response): Response {
+	try {
+		applyDefaults(response.headers);
+		return response;
+	} catch {
+		// Some responses (e.g. one returned directly from `fetch`) have immutable
+		// headers, and `.set()` throws. Rebuild with a mutable copy and retry.
+		const rebuilt = new Response(response.body, {
+			status: response.status,
+			statusText: response.statusText,
+			headers: new Headers(response.headers)
+		});
+		applyDefaults(rebuilt.headers);
+		return rebuilt;
+	}
+}
