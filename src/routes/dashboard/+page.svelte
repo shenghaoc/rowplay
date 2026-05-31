@@ -4,7 +4,7 @@
 	import WorkoutList from '$components/WorkoutList.svelte';
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
-	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
+	import { fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
 	import {
 		distanceBand,
 		distancePBs,
@@ -191,10 +191,10 @@
 		return [xs, ys, fitY];
 	});
 
-	const metricFmt = $derived((v: number) => {
+	function metricFmt(v: number) {
 		switch (metric) {
 			case 'pace':
-				return fmtPace(v).replace('/500m', '');
+				return fmtPaceBare(v);
 			case 'distance':
 				return fmtDistance(v);
 			case 'dps':
@@ -202,7 +202,16 @@
 			default:
 				return `${Math.round(v)}`;
 		}
-	});
+	}
+
+	function metricChangeFmt(better: boolean, delta: number) {
+		if (metric === 'pace') {
+			return t(better ? 'dashboard.faster' : 'dashboard.slower', { delta: fmtPaceBare(delta, true) });
+		}
+		const sign = better ? '+' : '−';
+		const suffix = metric === 'dps' ? '/stroke' : '';
+		return `${sign}${metricFmt(delta)}${suffix}`;
+	}
 
 	const trendOptions = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
 		const color =
@@ -237,12 +246,7 @@
 		if (!verdict) return '';
 		const days = Math.round(verdict.days);
 		if (verdict.flat) return t('dashboard.holdingSteady', { metric: metricName, days });
-		const change =
-			metric === 'pace'
-				? t(verdict.better ? 'dashboard.faster' : 'dashboard.slower', { delta: metricFmt(verdict.delta) })
-				: metric === 'dps'
-					? `${verdict.better ? '+' : '−'}${verdict.delta.toFixed(1)}m/stroke`
-					: `${verdict.better ? '+' : '−'}${metricFmt(verdict.delta)}`;
+		const change = metricChangeFmt(verdict.better, verdict.delta);
 		return t(verdict.better ? 'dashboard.improving' : 'dashboard.slipping', { change, days });
 	});
 </script>
@@ -285,11 +289,11 @@
 					<span class="hicon"><SportIcon sport={latest.sport} size={16} /></span>
 					{t('dashboard.latest')} · {latest.workoutType || SPORT_LABEL[latest.sport]} · {fmtDate(latest.date)}
 				</div>
-				<div class="heropace mono">{fmtPace(latest.pace).replace('/500m', '')}<span class="perunit">/500m</span></div>
+				<div class="heropace mono">{fmtPaceBare(latest.pace)}<span class="perunit">/500m</span></div>
 				{#if paceDelta != null}
 					<div class="herodelta" class:faster={paceDelta < 0} class:slower={paceDelta > 0}>
 						{paceDelta < 0 ? '▼' : '▲'}
-						{fmtPace(Math.abs(paceDelta)).replace('/500m', '')}
+						{fmtPaceBare(Math.abs(paceDelta), true)}
 						<span class="muted">{t('dashboard.vsAvg', { sport: SPORT_LABEL[latest.sport] })}</span>
 					</div>
 				{/if}

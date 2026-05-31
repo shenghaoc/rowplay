@@ -1,4 +1,4 @@
-import type { Sport } from './types';
+import type { Sport, Workout } from './types';
 
 /** Seconds -> "M:SS.t" or "H:MM:SS". */
 export function fmtTime(seconds: number, tenths = false): string {
@@ -17,6 +17,14 @@ export function fmtTime(seconds: number, tenths = false): string {
 export function fmtPace(pace: number): string {
 	if (!isFinite(pace) || pace <= 0) return '--:--';
 	return `${fmtTime(pace, true)}/500m`;
+}
+
+/** Pace without the "/500m" suffix (for gauges, charts, and split labels).
+ * Zero is treated as invalid (--:--) unless `allowZero` is true, which is
+ * useful for formatting pace deltas (no change = 0:00.0). */
+export function fmtPaceBare(pace: number, allowZero = false): string {
+	if (!isFinite(pace) || (allowZero ? pace < 0 : pace <= 0)) return '--:--';
+	return fmtTime(pace, true);
 }
 
 export function fmtDistance(metres: number): string {
@@ -48,4 +56,12 @@ export function paceToWatts(pacePer500: number): number {
 	if (!isFinite(pacePer500) || pacePer500 <= 0) return 0;
 	const perMetre = pacePer500 / 500;
 	return 2.8 / Math.pow(perMetre, 3);
+}
+
+/** Average watts from cached watt-minutes when present, else Concept2 pace model. */
+export function avgWatts(w: Pick<Workout, 'wattMinutes' | 'time' | 'pace'>): number {
+	if (w.wattMinutes && w.time > 0) {
+		return Math.round(w.wattMinutes / (w.time / 60));
+	}
+	return Math.round(paceToWatts(w.pace));
 }
