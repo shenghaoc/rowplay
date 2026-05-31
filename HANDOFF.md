@@ -80,9 +80,9 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
   KV sessions (`server/session.ts`), D1 cache (`server/db.ts`), full + incremental
   sync (`server/data.ts`, `POST /api/sync`), i18n (en/zh), light/dark theme,
   virtualized workout list (`WorkoutList.svelte`, TanStack Virtual), and a
-  Playwright WebKit smoke suite (`tests/e2e/smoke.spec.ts`). NOTE: `static/` holds
-  only `favicon.svg` — there is **no PWA manifest and no service worker yet**
-  (see Task 8).
+  Playwright WebKit smoke suite (`tests/e2e/smoke.spec.ts`). **PWA**: service
+  worker (`src/service-worker.ts`), `static/manifest.webmanifest`, and install
+  icons (192/512).
 
 ---
 
