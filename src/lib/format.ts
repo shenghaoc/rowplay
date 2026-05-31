@@ -50,6 +50,13 @@ export function paceToWatts(pacePer500: number): number {
 	return 2.8 / Math.pow(perMetre, 3);
 }
 
+/** Inverse of {@link paceToWatts}: watts → sec/500m. */
+export function wattsToPace(watts: number): number {
+	if (!isFinite(watts) || watts <= 0) return 0;
+	const perMetre = Math.pow(2.8 / watts, 1 / 3);
+	return perMetre * 500;
+}
+
 /** Average watts from cached watt-minutes when present, else Concept2 pace model. */
 export function avgWatts(w: Pick<Workout, 'wattMinutes' | 'time' | 'pace'>): number {
 	if (w.wattMinutes && w.time > 0) {

@@ -32,6 +32,11 @@ test.describe('smoke', () => {
 			page.getByText(/Season goals|赛季目标/)
 		).toBeVisible();
 		await expect(page.getByRole('link', { name: /rowplay/i })).toBeVisible();
+		// Critical-power panel (Task 4) — must render in demo mode.
+		await expect(
+			page.getByText(/Critical power & pace predictor|临界功率与配速预测/)
+		).toBeVisible();
+		await expect(page.getByText(/What can I hold\?|我能维持多少？/)).toBeVisible();
 		// The workout list must render at least one replay link.
 		await expect(page.locator('a[href^="/replay/"]').first()).toBeVisible();
 

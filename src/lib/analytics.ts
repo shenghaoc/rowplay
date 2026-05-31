@@ -1,5 +1,5 @@
 import type { Split, Sport, Stroke, Workout, WorkoutDetail } from './types';
-import { paceToWatts } from './format';
+import { paceToWatts, wattsToPace } from './format';
 
 // ---------------------------------------------------------------------------
 // Pure analysis helpers. No DOM, no Svelte — safe to use on server or client,
@@ -406,6 +406,97 @@ export function estimateCriticalPower(workouts: Workout[]): CriticalPower | null
 		}
 	}
 	return fallback(pts);
+}
+
+/** Sustainable average power (watts) for a fixed duration using CP/W′. */
+export function powerAtDuration(cp: CriticalPower, durationSec: number): number {
+	if (durationSec <= 0 || cp.cp <= 0) return 0;
+	return cp.cp + (cp.wPrime > 0 ? cp.wPrime / durationSec : 0);
+}
+
+/**
+ * Predict the even-split pace (sec/500m) sustainable for `durationSec` from a
+ * CP/W′ model. RowErg/SkiErg pace units; uses Concept2's pace→watts curve.
+ */
+export function predictPaceForDuration(cp: CriticalPower, durationSec: number): number | null {
+	const watts = powerAtDuration(cp, durationSec);
+	if (watts <= 0) return null;
+	const pace = wattsToPace(watts);
+	return pace > 0 && isFinite(pace) ? pace : null;
+}
+
+/**
+ * Predict finish time (seconds) for `distanceM` at the best effort the CP model
+ * allows — constant-power rowing at the sustainable watts for that duration.
+ */
+export function predictTimeForDistance(cp: CriticalPower, distanceM: number): number | null {
+	if (isNaN(distanceM) || distanceM <= 0 || cp.cp <= 0) return null;
+
+	const distanceAt = (durationSec: number): number => {
+		const pace = wattsToPace(powerAtDuration(cp, durationSec));
+		if (pace <= 0) return 0;
+		return (durationSec * 500) / pace;
+	};
+
+	let lo = 1;
+	let hi = 4 * 3600;
+	if (distanceAt(hi) < distanceM) return null;
+
+	while (hi - lo > 0.05) {
+		const mid = (lo + hi) / 2;
+		if (distanceAt(mid) < distanceM) lo = mid;
+		else hi = mid;
+	}
+	return lo;
+}
+
+/** Best session-average power at each target duration (mean-maximal envelope). */
+export function powerDurationEnvelope(workouts: Workout[]): PowerPoint[] {
+	const pts = workouts
+		.map((w) => ({ t: w.time, p: workoutWatts(w) }))
+		.filter((q) => q.t >= 120 && q.t <= 3600 && q.p > 0);
+	const bins = new Map<number, { t: number; p: number }>();
+	for (const q of pts) {
+		const key = Math.round(Math.log(q.t) * 4);
+		const cur = bins.get(key);
+		if (!cur || q.p > cur.p) bins.set(key, q);
+	}
+	return [...bins.values()]
+		.sort((a, b) => a.t - b.t)
+		.map((q) => ({ duration: q.t, watts: q.p }));
+}
+
+export interface PowerDurationComparison {
+	/** Shared x-axis durations (seconds), sorted ascending. */
+	durations: number[];
+	/** Best observed average power at each duration (null when no session nearby). */
+	actual: (number | null)[];
+	/** CP + W′/t model at each duration. */
+	modelled: number[];
+}
+
+const PD_DURATIONS = [120, 180, 300, 600, 900, 1200, 1800, 3600] as const;
+
+/**
+ * Compare the athlete's session-based power–duration bests to the fitted CP curve.
+ */
+export function powerDurationComparison(
+	workouts: Workout[],
+	cp: CriticalPower
+): PowerDurationComparison {
+	const env = powerDurationEnvelope(workouts);
+	const durations = [...PD_DURATIONS];
+	const actual = durations.map((d) => {
+		let best: number | null = null;
+		for (const e of env) {
+			// Session summaries only claim their average for durations near the piece length.
+			if (Math.abs(e.duration - d) / d > 0.12) continue;
+			if (best == null || e.watts > best) best = e.watts;
+		}
+		return best;
+	});
+	const modelled = durations.map((d) => Math.round(powerAtDuration(cp, d)));
+	return { durations, actual, modelled };
 }
 
 const DAY_MS = 86_400_000;
