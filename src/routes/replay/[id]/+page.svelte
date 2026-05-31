@@ -401,8 +401,12 @@
 			const res = await fetch(`/api/workouts/${detail.id}/share`, { method: 'POST' });
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const body = (await res.json()) as { url: string };
-			await navigator.clipboard.writeText(body.url);
-			toast.success(t('share.linkCopied'), { description: t('share.linkReady') });
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(body.url);
+				toast.success(t('share.linkCopied'), { description: t('share.linkReady') });
+			} else {
+				toast.success(body.url, { description: t('share.linkReady') });
+			}
 		} catch (err) {
 			toast.error(t('share.shareFailed'), {
 				description: err instanceof Error ? err.message : t('common.tryAgain')

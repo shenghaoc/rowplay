@@ -49,12 +49,12 @@ export function renderRaceCard(
 	const ctx = canvas.getContext('2d');
 	if (!ctx) throw new Error('2d context unavailable');
 
-	const dpr = Math.min(window.devicePixelRatio || 1, 2);
-	canvas.width = W * dpr;
-	canvas.height = H * dpr;
+	const scale = 2;
+	canvas.width = W * scale;
+	canvas.height = H * scale;
 	canvas.style.width = `${W}px`;
 	canvas.style.height = `${H}px`;
-	ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+	ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
 	const dark = theme === 'dark';
 	const bg = dark ? '#18140d' : '#fbf7ee';
@@ -90,7 +90,9 @@ export function renderRaceCard(
 	const avgWatts =
 		detail.wattMinutes && detail.time > 0
 			? Math.round(detail.wattMinutes / (detail.time / 60))
-			: Math.round(paceToWatts(detail.pace));
+			: detail.pace > 0
+				? Math.round(paceToWatts(detail.pace))
+				: 0;
 	const hr =
 		detail.heartRateAvg != null ? `${Math.round(detail.heartRateAvg)} bpm` : '—';
 

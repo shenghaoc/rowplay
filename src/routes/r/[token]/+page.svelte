@@ -90,9 +90,14 @@
 
 	const paceRange = (() => {
 		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
+		if (ps.length === 0) return { min: 60, max: 180 };
 		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
 	})();
-	const wattRange = { min: 0, max: Math.max(...strokes.map((s) => s.watts)) * 1.1 };
+	const wattRange = (() => {
+		const watts = strokes.map((s) => s.watts);
+		const maxWatt = watts.length > 0 ? Math.max(...watts) : 0;
+		return { min: 0, max: Math.max(100, maxWatt * 1.1) };
+	})();
 	const hasHr = strokes.some((s) => s.hr != null);
 </script>
 

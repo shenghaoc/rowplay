@@ -129,10 +129,12 @@ export async function loadSharedWorkout(
 export function shareMeta(detail: WorkoutDetail, url: string) {
 	const title = `${detail.workoutType || detail.sport} · rowplay replay`;
 	const distKm = (detail.distance / 1000).toFixed(detail.distance >= 10000 ? 1 : 2);
-	const mins = Math.floor(detail.time / 60);
-	const secs = Math.round(detail.time % 60);
-	const paceMin = Math.floor(detail.pace / 60);
-	const paceSec = Math.round(detail.pace % 60);
+	const totalSecs = Math.round(detail.time);
+	const mins = Math.floor(totalSecs / 60);
+	const secs = totalSecs % 60;
+	const totalPaceSecs = Math.round(detail.pace);
+	const paceMin = Math.floor(totalPaceSecs / 60);
+	const paceSec = totalPaceSecs % 60;
 	const description = `${distKm} km in ${mins}:${secs.toString().padStart(2, '0')} · ${paceMin}:${paceSec.toString().padStart(2, '0')}/500m`;
 	return { title, description, url };
 }
