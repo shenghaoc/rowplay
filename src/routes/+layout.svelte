@@ -1,16 +1,20 @@
 <script lang="ts">
 	import '../app.css';
+	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { Toaster } from 'svelte-sonner';
 	import { Languages, Sun, Moon } from '@lucide/svelte';
 	import { I18n, setI18nContext } from '$lib/i18n.svelte';
 	import { Theme, setThemeContext } from '$lib/theme.svelte';
+	import { initPwaUpdate } from '$lib/pwa-update';
 
 	let { data, children } = $props();
 
 	const i18n = setI18nContext(new I18n(data.lang));
 	const theme = setThemeContext(new Theme(data.theme));
 	const t = i18n.t;
+
+	onMount(() => initPwaUpdate(i18n));
 </script>
 
 <svelte:head>
@@ -208,6 +212,26 @@
 		.mast-tabs {
 			gap: 0.75rem;
 			margin-left: 0;
+		}
+		.iconbtn span {
+			display: none;
+		}
+		.brand .name {
+			font-size: 1.15rem;
+		}
+	}
+	@media (max-width: 390px) {
+		.mast-inner {
+			flex-wrap: wrap;
+			padding: 0.5rem 0.75rem;
+			min-height: 48px;
+		}
+		.mast-tabs a {
+			font-size: 0.82rem;
+		}
+		.footer-inner {
+			flex-direction: column;
+			align-items: flex-start;
 		}
 	}
 </style>

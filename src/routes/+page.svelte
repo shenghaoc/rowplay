@@ -97,4 +97,17 @@
 			padding-top: 2rem;
 		}
 	}
+	@media (max-width: 390px) {
+		.hero {
+			padding-top: 1.25rem;
+			padding-bottom: 2rem;
+			gap: 1.5rem;
+		}
+		h1 {
+			font-size: 1.85rem;
+		}
+		.lead {
+			font-size: 0.95rem;
+		}
+	}
 </style>

@@ -1106,4 +1106,41 @@
 			padding: 0.3rem 0.4rem;
 		}
 	}
+	@media (max-width: 390px) {
+		.ghostbar {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 0.5rem;
+		}
+		.ghostbar label {
+			width: 100%;
+		}
+		.ghostbar select,
+		.paceinput,
+		.fileinput {
+			width: 100%;
+			max-width: none;
+		}
+		.gap {
+			margin-left: 0;
+			width: 100%;
+			text-align: center;
+		}
+		.head {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+		.summary {
+			flex-wrap: wrap;
+		}
+		.speeds {
+			flex-wrap: wrap;
+			justify-self: stretch;
+			width: 100%;
+		}
+		.splits {
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+		}
+	}
 </style>

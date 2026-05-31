@@ -52,6 +52,53 @@ test.describe('smoke', () => {
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 
+	test('PWA manifest and service worker register', async ({ page }) => {
+		const errors = collectPageErrors(page);
+
+		const res = await page.goto('/dashboard');
+		expect(res?.ok(), 'GET /dashboard should be 2xx').toBeTruthy();
+
+		const manifest = await page.evaluate(async () => {
+			const link = document.querySelector('link[rel="manifest"]');
+			if (!link) return null;
+			const href = link.getAttribute('href');
+			if (!href) return null;
+			const r = await fetch(href);
+			if (!r.ok) return null;
+			return r.json() as Promise<{ name?: string; display?: string }>;
+		});
+		expect(manifest?.name).toBe('rowplay');
+		expect(manifest?.display).toBe('standalone');
+
+		const swReady = await page.evaluate(async () => {
+			if (!('serviceWorker' in navigator)) return false;
+			const reg = await navigator.serviceWorker.getRegistration();
+			return !!reg?.active || !!reg?.installing || !!reg?.waiting;
+		});
+		expect(swReady, 'service worker should register on production build').toBe(true);
+
+		await page.waitForTimeout(300);
+		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
+	});
+
+	test('previously viewed replay works offline', async ({ page, context }) => {
+		const errors = collectPageErrors(page);
+
+		const res = await page.goto('/replay/1005');
+		expect(res?.ok()).toBeTruthy();
+		await expect(page.locator('canvas').first()).toBeVisible();
+		// Let the service worker cache the SSR page + shell assets.
+		await page.waitForTimeout(1500);
+
+		await context.setOffline(true);
+		const offline = await page.reload({ waitUntil: 'domcontentloaded' });
+		expect(offline?.ok() || offline === null).toBeTruthy();
+		await expect(page.locator('canvas').first()).toBeVisible({ timeout: 15_000 });
+
+		await page.waitForTimeout(300);
+		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
+	});
+
 	test('token entry page renders its form', async ({ page }) => {
 		const errors = collectPageErrors(page);
 
