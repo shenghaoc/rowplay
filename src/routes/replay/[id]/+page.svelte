@@ -75,6 +75,12 @@
 		renderer?.render(buildState(frame), playing, uiTheme.value);
 	}
 
+	$effect(() => {
+		// Reactive trigger on theme toggle to re-render paused canvas
+		const _theme = uiTheme.value;
+		renderCurrent();
+	});
+
 	onMount(() => {
 		renderer = new CourseRenderer(canvasEl, sportTheme);
 		engine = new ReplayEngine(strokes, (f, p) => {
