@@ -97,7 +97,12 @@ async function networkFirst(request: Request, cacheName: string, options?: Cache
 	const cache = await caches.open(cacheName);
 	try {
 		const response = await fetch(request);
-		if (response.ok) await cache.put(request, response.clone());
+		// Respect cache-control: private / no-store headers so authenticated data
+		// is never persisted in the origin-wide Cache API.
+		const cc = response.headers.get('cache-control') ?? '';
+		if (response.ok && !cc.includes('no-store') && !cc.includes('private')) {
+			await cache.put(request, response.clone());
+		}
 		return response;
 	} catch {
 		const hit = await cache.match(request, options);

@@ -2,10 +2,11 @@
 	"name": "rowplay",
 	"short_name": "rowplay",
 	"description": "Concept2 logbook analytics and real-time workout replay.",
+	"id": "/",
 	"start_url": "/dashboard",
 	"scope": "/",
 	"display": "standalone",
-	"orientation": "portrait-primary",
+	"orientation": "natural",
 	"background_color": "#f1ebdf",
 	"theme_color": "#f1ebdf",
 	"icons": [

@@ -35,6 +35,9 @@ export function initPwaUpdate(i18n: I18n) {
 	void navigator.serviceWorker.ready.then((registration) => {
 		if (registration.waiting && navigator.serviceWorker.controller) showUpdateToast(i18n, registration);
 
+		// Periodically check for updates (every hour) for long-lived tabs.
+		setInterval(() => registration.update(), 60 * 60 * 1000);
+
 		registration.addEventListener('updatefound', () => {
 			const worker = registration.installing;
 			if (!worker) return;
