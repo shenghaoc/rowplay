@@ -69,6 +69,7 @@ export interface Split {
 }
 
 /** Full detail needed to drive a replay. */
+/** If you change this type, bump DETAIL_PAYLOAD_VERSION in src/lib/server/db.ts. */
 export interface WorkoutDetail extends Workout {
 	strokes: Stroke[];
 	splits: Split[];
