@@ -48,7 +48,9 @@
 		paceLabel?: string;
 	};
 	let compareMode = $state<CompareMode>('none');
-	let ghostStrokes: Stroke[] | null = null;
+	// `$state.raw` so reassigning the whole array is reactive (verdict/raceWon
+	// track it) without deep-proxying a large stroke array on the render hot path.
+	let ghostStrokes = $state.raw<Stroke[] | null>(null);
 	let ghostActive = $state(false);
 	let ghostLabel = $state('');
 	let ghostFrame = $state<Frame | null>(null);
@@ -256,11 +258,17 @@
 	const replayDuration = $derived(engine?.duration ?? detail.time);
 	const raceFinished = $derived(ghostActive && replayDuration > 0 && frame.t >= replayDuration - 0.05);
 
+	// Win/lose is decided by total time, not the live gap: when the ghost wins it
+	// finishes first, so by the time the player reaches the line `gapMeters` is ~0.
+	const raceWon = $derived(
+		raceFinished && ghostStrokes != null && detail.time <= ghostStrokes[ghostStrokes.length - 1].t
+	);
+
 	const verdictText = $derived.by(() => {
 		if (!raceFinished || !ghostRival || !ghostStrokes) return '';
 		const playerTime = detail.time;
 		const ghostTime = ghostStrokes[ghostStrokes.length - 1].t;
-		const won = playerTime <= ghostTime;
+		const won = raceWon;
 		let m = '0';
 		if (won) {
 			const ghostDistAtFinish = sampleAt(ghostStrokes, playerTime).d;
@@ -471,8 +479,8 @@
 	{#if raceFinished && verdictText}
 		<div
 			class="card verdict"
-			class:win={gapMeters >= 0}
-			class:lose={gapMeters < 0}
+			class:win={raceWon}
+			class:lose={!raceWon}
 			role="status"
 			aria-live="polite"
 		>
