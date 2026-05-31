@@ -9,5 +9,7 @@ export const load: PageServerLoad = async (event) => {
 	}
 	const workouts = await loadWorkouts(event);
 	const sync = event.locals.demo ? null : await syncStatus(event).catch(() => null);
-	return { workouts, sync, demo: event.locals.demo };
+	// UTC day key is stable across SSR (Workers) and client hydration.
+	const calendarEndDay = new Date().toISOString().slice(0, 10);
+	return { workouts, sync, demo: event.locals.demo, calendarEndDay };
 };

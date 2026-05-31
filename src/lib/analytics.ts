@@ -448,3 +448,222 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
 
 	return { reps, avgPace, consistency, fade, fastest, slowest };
 }
+
+// ---------------------------------------------------------------------------
+// Training calendar / consistency heatmap
+// ---------------------------------------------------------------------------
+
+export type VolumeMetric = 'distance' | 'time';
+
+export interface DayVolume {
+	day: string;
+	distance: number;
+	time: number;
+	sessions: number;
+}
+
+/** Logbook timestamps are `YYYY-MM-DD HH:MM:SS` — slice avoids TZ shifts. */
+export function workoutDayKey(date: string): string {
+	return date.slice(0, 10);
+}
+
+export function aggregateDailyVolume(workouts: Workout[]): Map<string, DayVolume> {
+	const map = new Map<string, DayVolume>();
+	for (const w of workouts) {
+		const day = workoutDayKey(w.date);
+		const e = map.get(day) ?? { day, distance: 0, time: 0, sessions: 0 };
+		e.distance += w.distance;
+		e.time += w.time;
+		e.sessions += 1;
+		map.set(day, e);
+	}
+	return map;
+}
+
+export function dayVolumeValue(v: DayVolume, metric: VolumeMetric): number {
+	return metric === 'distance' ? v.distance : v.time;
+}
+
+export interface CalendarCell {
+	day: string;
+	distance: number;
+	time: number;
+	sessions: number;
+	level: number;
+	week: number;
+	dow: number;
+}
+
+export interface TrainingCalendar {
+	cells: CalendarCell[];
+	weeks: number;
+	metric: VolumeMetric;
+	maxVolume: number;
+	maxLevel: number;
+	startDay: string;
+	endDay: string;
+	activeDays: number;
+	currentStreak: number;
+	longestStreak: number;
+	monthLabels: { week: number; month: number }[];
+}
+
+/** Add calendar days in UTC so DST never breaks streak/grid math. */
+function addDaysToKey(key: string, days: number): string {
+	const d = new Date(`${key}T00:00:00Z`);
+	d.setUTCDate(d.getUTCDate() + days);
+	return d.toISOString().slice(0, 10);
+}
+
+function dayOfWeekUtc(key: string): number {
+	return new Date(`${key}T00:00:00Z`).getUTCDay();
+}
+
+function isConsecutiveDay(prev: string, next: string): boolean {
+	return addDaysToKey(prev, 1) === next;
+}
+
+function monthNumberOfUtc(dayKey: string): number {
+	return parseInt(dayKey.slice(5, 7), 10);
+}
+
+export function volumeIntensityLevel(
+	value: number,
+	sortedVolumes: number[], // Pre-sorted in ascending order to avoid O(N log N) inside loops
+	maxLevel = 4
+): number {
+	if (value <= 0 || maxLevel < 1) return 0;
+	if (!sortedVolumes.length) return 1;
+	const max = sortedVolumes[sortedVolumes.length - 1];
+	const min = sortedVolumes[0];
+	// When there's a real gradient, any value at or above the max always gets maxLevel.
+	if (max !== min && value >= max) return maxLevel;
+	const breaks: number[] = [];
+	for (let i = 1; i < maxLevel; i++) {
+		const idx = Math.min(sortedVolumes.length - 1, Math.ceil((sortedVolumes.length * i) / maxLevel) - 1);
+		breaks.push(sortedVolumes[Math.max(0, idx)]);
+	}
+	// When all volumes are identical, all breaks collapse to the same value.
+	// Every cell would get level 1, which hides real training variation.
+	// Deduplicate and fall back to maxLevel if there's no meaningful gradient.
+	const unique = [...new Set(breaks)];
+	if (unique.length === 0 || unique[0] === unique[unique.length - 1]) return value > 0 ? maxLevel : 0;
+	if (unique.length === 1) return value <= unique[0] ? 1 : maxLevel;
+	let level = maxLevel;
+	for (let i = 0; i < unique.length; i++) {
+		if (value <= unique[i]) {
+			level = i + 1;
+			break;
+		}
+	}
+	return level;
+}
+
+function trainingStreaks(activeDayKeys: string[], endDay: string): { current: number; longest: number } {
+	if (!activeDayKeys.length) return { current: 0, longest: 0 };
+	const set = new Set(activeDayKeys);
+	const sorted = [...activeDayKeys].sort();
+	let longest = 0;
+	let run = 0;
+	let prev: string | null = null;
+	for (const key of sorted) {
+		if (prev && isConsecutiveDay(prev, key)) run++;
+		else run = 1;
+		longest = Math.max(longest, run);
+		prev = key;
+	}
+	let current = 0;
+	let cursor = endDay;
+	// Grace period: streak still counts if they trained yesterday but not yet today.
+	if (!set.has(cursor)) cursor = addDaysToKey(cursor, -1);
+	while (set.has(cursor)) {
+		current++;
+		cursor = addDaysToKey(cursor, -1);
+	}
+	return { current, longest };
+}
+
+export function buildTrainingCalendar(
+	workouts: Workout[],
+	options?: {
+		/** Inclusive end of the grid, `YYYY-MM-DD` (pass from server for SSR stability). */
+		endDay?: string;
+		weeks?: number;
+		metric?: VolumeMetric;
+		maxLevel?: number;
+	}
+): TrainingCalendar {
+	const weeks = options?.weeks ?? 53;
+	const metric = options?.metric ?? 'distance';
+	const maxLevel = options?.maxLevel ?? 4;
+
+	const byDay = aggregateDailyVolume(workouts);
+	const historyDays = [...byDay.keys()].sort();
+	const endDay =
+		options?.endDay ??
+		(historyDays.length ? historyDays[historyDays.length - 1] : new Date().toISOString().slice(0, 10));
+
+	const endSunday = addDaysToKey(endDay, -dayOfWeekUtc(endDay));
+	const startDay = addDaysToKey(endSunday, -(weeks - 1) * 7);
+
+	const cells: CalendarCell[] = [];
+	const volumesInRange: number[] = [];
+	let activeDaysInRange = 0;
+
+	for (let col = 0; col < weeks; col++) {
+		for (let row = 0; row < 7; row++) {
+			const day = addDaysToKey(startDay, col * 7 + row);
+			if (day > endDay) {
+				cells.push({ day: '', distance: 0, time: 0, sessions: 0, level: 0, week: col, dow: row });
+				continue;
+			}
+			const vol = byDay.get(day);
+			const distance = vol?.distance ?? 0;
+			const time = vol?.time ?? 0;
+			const sessions = vol?.sessions ?? 0;
+			const value = metric === 'distance' ? distance : time;
+			if (sessions > 0) {
+				volumesInRange.push(value);
+				activeDaysInRange++;
+			}
+			cells.push({ day, distance, time, sessions, level: 0, week: col, dow: row });
+		}
+	}
+
+	const sortedVolumes = [...volumesInRange].sort((a, b) => a - b);
+	const maxVolume = sortedVolumes.length ? sortedVolumes[sortedVolumes.length - 1] : 0;
+	for (const cell of cells) {
+		if (!cell.day) continue;
+		const value = metric === 'distance' ? cell.distance : cell.time;
+		cell.level = volumeIntensityLevel(value, sortedVolumes, maxLevel);
+	}
+
+	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, endDay);
+
+	const monthLabels: { week: number; month: number }[] = [];
+	let lastMonth = -1;
+	for (let col = 0; col < weeks; col++) {
+		const weekStart = addDaysToKey(startDay, col * 7);
+		const m = parseInt(weekStart.slice(5, 7), 10);
+		if (m !== lastMonth) {
+			if (monthLabels.length === 0 || col - monthLabels[monthLabels.length - 1].week >= 3) {
+				monthLabels.push({ week: col, month: monthNumberOfUtc(weekStart) });
+				lastMonth = m;
+			}
+		}
+	}
+
+	return {
+		cells,
+		weeks,
+		metric,
+		maxVolume,
+		maxLevel,
+		startDay,
+		endDay,
+		activeDays: activeDaysInRange,
+		currentStreak,
+		longestStreak,
+		monthLabels
+	};
+}

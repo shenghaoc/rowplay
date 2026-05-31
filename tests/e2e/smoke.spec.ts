@@ -28,6 +28,8 @@ test.describe('smoke', () => {
 		expect(res?.ok(), 'GET /dashboard should be 2xx').toBeTruthy();
 
 		await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+		await expect(page.getByText('Training calendar')).toBeVisible();
+		await expect(page.locator('.heatmap').first()).toBeVisible();
 		await expect(page.getByRole('link', { name: /rowplay/i })).toBeVisible();
 		// The workout list must render at least one replay link.
 		await expect(page.locator('a[href^="/replay/"]').first()).toBeVisible();
