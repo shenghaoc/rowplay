@@ -54,7 +54,7 @@
 		</button>
 		{#if data.user}
 			<span class="muted user">@{data.user.username}</span>
-			<form method="POST" action="/auth/logout">
+			<form method="POST" action="/auth/logout" onsubmit={() => { navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' }); }}>
 				<button class="btn ghost small" type="submit">{t('auth.logout')}</button>
 			</form>
 		{:else}

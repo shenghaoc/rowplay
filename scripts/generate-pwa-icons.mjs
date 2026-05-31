@@ -3,7 +3,7 @@
  * Run: node scripts/generate-pwa-icons.mjs
  */
 import sharp from 'sharp';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,7 +18,7 @@ async function renderIcon(size, maskable) {
 	const inner = size - pad * 2;
 	const icon = await sharp(svg).resize(inner, inner).png().toBuffer();
 	if (!pad) {
-		return sharp(icon).png().toBuffer();
+		return icon;
 	}
 	return sharp({
 		create: {
@@ -34,10 +34,8 @@ async function renderIcon(size, maskable) {
 }
 
 for (const size of sizes) {
-	await sharp(await renderIcon(size, false))
-		.toFile(join(staticDir, `icon-${size}.png`));
-	await sharp(await renderIcon(size, true))
-		.toFile(join(staticDir, `icon-${size}-maskable.png`));
+	writeFileSync(join(staticDir, `icon-${size}.png`), await renderIcon(size, false));
+	writeFileSync(join(staticDir, `icon-${size}-maskable.png`), await renderIcon(size, true));
 }
 
 console.log('Wrote icon-192*.png and icon-512*.png to static/');

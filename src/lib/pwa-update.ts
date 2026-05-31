@@ -16,6 +16,9 @@ function showUpdateToast(i18n: I18n, registration: ServiceWorkerRegistration) {
 				reloadAfterUpdate = true;
 				registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
 			}
+		},
+		onDismiss: () => {
+			updateToastShown = false;
 		}
 	});
 }
@@ -30,7 +33,7 @@ export function initPwaUpdate(i18n: I18n) {
 	});
 
 	void navigator.serviceWorker.ready.then((registration) => {
-		if (registration.waiting) showUpdateToast(i18n, registration);
+		if (registration.waiting && navigator.serviceWorker.controller) showUpdateToast(i18n, registration);
 
 		registration.addEventListener('updatefound', () => {
 			const worker = registration.installing;

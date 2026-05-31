@@ -3,8 +3,8 @@ import { build, files, version } from '$service-worker';
 
 /** Precached shell — versioned so activate can drop stale shells. */
 const SHELL_CACHE = `shell-${version}`;
-const PAGES_CACHE = 'pages-v1';
-const API_CACHE = 'api-v1';
+const PAGES_CACHE = `pages-${version}`;
+const API_CACHE = `api-${version}`;
 
 const SHELL_ASSETS = [...build, ...files];
 
@@ -12,7 +12,8 @@ const SHELL_ASSETS = [...build, ...files];
 const OFFLINE_PATHS = ['/dashboard', '/replay'];
 
 function isOfflinePage(pathname: string): boolean {
-	return OFFLINE_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+	const clean = pathname.replace(/\/__data\.json$/, '');
+	return OFFLINE_PATHS.some((p) => clean === p || clean.startsWith(`${p}/`));
 }
 
 self.addEventListener('install', (event) => {
@@ -30,7 +31,10 @@ self.addEventListener('activate', (event) => {
 			const keys = await caches.keys();
 			await Promise.all(
 				keys
-					.filter((key) => key.startsWith('shell-') && key !== SHELL_CACHE)
+					.filter((key) =>
+						(key.startsWith('shell-') || key.startsWith('pages-') || key.startsWith('api-')) &&
+						key !== SHELL_CACHE && key !== PAGES_CACHE && key !== API_CACHE
+					)
 					.map((key) => caches.delete(key))
 			);
 			await self.clients.claim();
@@ -41,6 +45,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('message', (event) => {
 	if (event.data?.type === 'SKIP_WAITING') {
 		self.skipWaiting();
+	}
+	if (event.data?.type === 'CLEAR_USER_CACHES') {
+		event.waitUntil(
+			Promise.all([caches.delete(PAGES_CACHE), caches.delete(API_CACHE)])
+		);
 	}
 });
 
@@ -65,6 +74,12 @@ self.addEventListener('fetch', (event) => {
 
 	// SSR pages: network-first so fresh data wins; cache for offline revisit.
 	if (request.mode === 'navigate' && isOfflinePage(url.pathname)) {
+		event.respondWith(networkFirst(request, PAGES_CACHE, { ignoreSearch: true }));
+		return;
+	}
+
+	// SvelteKit data requests for offline routes (e.g. /replay/1005/__data.json).
+	if (isOfflinePage(url.pathname) && url.pathname.endsWith('/__data.json')) {
 		event.respondWith(networkFirst(request, PAGES_CACHE));
 	}
 });
@@ -78,14 +93,14 @@ async function cacheFirst(request: Request, cacheName: string): Promise<Response
 	return response;
 }
 
-async function networkFirst(request: Request, cacheName: string): Promise<Response> {
+async function networkFirst(request: Request, cacheName: string, options?: CacheQueryOptions): Promise<Response> {
 	const cache = await caches.open(cacheName);
 	try {
 		const response = await fetch(request);
 		if (response.ok) await cache.put(request, response.clone());
 		return response;
 	} catch {
-		const hit = await cache.match(request);
+		const hit = await cache.match(request, options);
 		if (hit) return hit;
 		return new Response('Offline', { status: 503, statusText: 'Offline' });
 	}
