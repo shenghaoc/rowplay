@@ -14,6 +14,7 @@
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { pluralKey } from '$lib/i18nPlural';
 	import { Flame, Medal, Target, Trophy } from '@lucide/svelte';
+	import { untrack } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 
@@ -24,23 +25,25 @@
 		endDay: string;
 	}
 
-	let { workouts, annualGoal: initialGoal, goalYear, endDay }: Props = $props();
+	let { workouts, annualGoal, goalYear, endDay }: Props = $props();
 
 	const i18n = getI18nContext();
 	const t = i18n.t;
 
-	let goal = $state<AnnualGoal>({ ...initialGoal });
-	let kind = $state<AnnualGoalKind>(initialGoal.kind);
+	let savedGoal = $state<AnnualGoal | null>(null);
+	const goal = $derived<AnnualGoal>(savedGoal ?? { ...annualGoal });
+	let kind = $state<AnnualGoalKind>(untrack(() => annualGoal.kind));
 	let targetInput = $state<number | null>(
-		initialGoal.kind === 'meters' ? initialGoal.target : Math.round(initialGoal.target / 3600)
+		untrack(() =>
+			annualGoal.kind === 'meters' ? annualGoal.target : Math.round(annualGoal.target / 3600)
+		)
 	);
 	let saving = $state(false);
 
 	$effect(() => {
-		goal = { ...initialGoal };
-		kind = initialGoal.kind;
+		kind = annualGoal.kind;
 		targetInput =
-			initialGoal.kind === 'meters' ? initialGoal.target : Math.round(initialGoal.target / 3600);
+			annualGoal.kind === 'meters' ? annualGoal.target : Math.round(annualGoal.target / 3600);
 	});
 
 	const progress = $derived(annualGoalProgress(workouts, goal, endDay));
@@ -103,8 +106,9 @@
 			});
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const body = (await res.json()) as { goal: AnnualGoal };
-			goal = body.goal;
+			savedGoal = body.goal;
 			await invalidateAll();
+			savedGoal = null;
 			toast.success(t('dashboard.goalsSaved'));
 		} catch {
 			toast.error(t('dashboard.goalsSaveFailed'));

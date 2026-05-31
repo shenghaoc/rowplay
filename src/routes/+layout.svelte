@@ -10,7 +10,9 @@
 
 	let { data, children } = $props();
 
+	// svelte-ignore state_referenced_locally
 	const i18n = setI18nContext(new I18n(data.lang));
+	// svelte-ignore state_referenced_locally
 	const theme = setThemeContext(new Theme(data.theme));
 	const t = i18n.t;
 

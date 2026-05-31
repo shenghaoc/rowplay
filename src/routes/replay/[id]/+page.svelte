@@ -15,6 +15,7 @@
 	} from '$lib/analytics';
 	import { fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, paceToWatts, SPORT_LABEL } from '$lib/format';
 	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
+	import { untrack } from 'svelte';
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
 	import { pickDefaultGhostCandidate } from '$lib/replay/ghostPick';
 	import { toast } from 'svelte-sonner';
@@ -28,13 +29,13 @@
 	let { data } = $props();
 	const t = getI18nContext().t;
 	const uiTheme = getThemeContext();
-	const detail: WorkoutDetail = data.detail;
-	const candidates: Workout[] = data.candidates;
-	const sportTheme = themeFor(detail.sport);
-	const total = detail.distance;
-	const strokes = detail.strokes;
+	const detail = $derived(data.detail as WorkoutDetail);
+	const candidates = $derived(data.candidates as Workout[]);
+	const sportTheme = $derived(themeFor(detail.sport));
+	const total = $derived(detail.distance);
+	const strokes = $derived(detail.strokes);
 
-	let frame = $state<Frame>(sampleAt(strokes, 0));
+	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
 	let playing = $state(false);
 	let speed = $state(1);
 
@@ -105,20 +106,48 @@
 		renderCurrent();
 	});
 
-	onMount(() => {
-		renderer = new CourseRenderer(canvasEl, sportTheme);
-		engine = new ReplayEngine(strokes, (f, p) => {
-			frame = f;
-			playing = p;
-			renderer?.render(buildState(f), p, uiTheme.value);
+	// Recreate renderer + engine whenever the workout changes (client-side navigation
+	// reuses the same component instance, so strokes/sportTheme may change).
+	$effect(() => {
+		// Read the reactive deps we want to track — everything else must be untracked
+		// to avoid an effect_update_depth_exceeded loop (renderCurrent reads $state).
+		const s = strokes;
+		const theme = sportTheme;
+		untrack(() => {
+			engine?.destroy();
+			// Reset all playback and ghost state for the new workout.
+			frame = sampleAt(s, 0);
+			playing = false;
+			speed = 1;
+			compareMode = 'none';
+			ghostStrokes = null;
+			ghostActive = false;
+			ghostLabel = '';
+			ghostRival = null;
+			ghostFrame = null;
+			ghostId = '';
+			sessionSearch = '';
+			fileName = '';
+			ghostError = '';
+			renderer = new CourseRenderer(canvasEl, theme);
+			engine = new ReplayEngine(s, (f, p) => {
+				frame = f;
+				playing = p;
+				renderer?.render(buildState(f), p, uiTheme.value);
+			});
+			const w = courseWrap?.clientWidth;
+			if (w) renderer.resize(w, 150);
+			renderCurrent();
 		});
+		return () => engine?.destroy();
+	});
 
+	onMount(() => {
 		const sizeIt = () => {
 			const w = courseWrap.clientWidth;
 			renderer?.resize(w, ghostActive ? 190 : 150);
 			renderCurrent();
 		};
-		sizeIt();
 		const ro = new ResizeObserver(sizeIt);
 		ro.observe(courseWrap);
 
@@ -133,7 +162,6 @@
 		return () => {
 			ro.disconnect();
 			window.removeEventListener('keydown', onKey);
-			engine?.destroy();
 		};
 	});
 
@@ -300,8 +328,8 @@
 	});
 
 	// ---- Telemetry charts ----
-	const xs = strokes.map((s) => s.t);
-	const hasHr = strokes.some((s) => s.hr != null);
+	const xs = $derived(strokes.map((s) => s.t));
+	const hasHr = $derived(strokes.some((s) => s.hr != null));
 
 	function metricOpts(
 		label: string,
@@ -324,10 +352,10 @@
 
 	const chartChrome = $derived(uplotChrome(uiTheme.value));
 
-	const paceData: uPlot.AlignedData = [xs, strokes.map((s) => s.pace)];
-	const rateData: uPlot.AlignedData = [xs, strokes.map((s) => s.spm)];
-	const powerData: uPlot.AlignedData = [xs, strokes.map((s) => s.watts)];
-	const hrData: uPlot.AlignedData = [xs, strokes.map((s) => s.hr ?? null)];
+	const paceData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.pace)]);
+	const rateData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.spm)]);
+	const powerData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.watts)]);
+	const hrData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.hr ?? null)]);
 
 	const paceOpts = $derived(metricOpts('pace', LIVE_COLOR, true, (v) => fmtPace(v).replace('/500m', ''), chartChrome));
 	const rateOpts = $derived(metricOpts('rate', '#2c6e63', false, (v) => `${Math.round(v)}`, chartChrome));
@@ -335,19 +363,19 @@
 	const hrOpts = $derived(metricOpts('hr', '#8e4a6b', false, (v) => `${Math.round(v)}`, chartChrome));
 
 	// ---- Analysis ----
-	const zones = hasHr ? hrZones(strokes) : [];
-	const pc = powerCurve(strokes);
-	const pcData: uPlot.AlignedData = [pc.map((p) => p.duration), pc.map((p) => p.watts)];
+	const zones = $derived(hasHr ? hrZones(strokes) : []);
+	const pc = $derived(powerCurve(strokes));
+	const pcData = $derived<uPlot.AlignedData>([pc.map((p) => p.duration), pc.map((p) => p.watts)]);
 	const pcOpts = $derived(metricOpts('best avg power', '#9e5b2d', false, (v) => `${Math.round(v)}w`, chartChrome));
 
 	// ---- Technique (stroke quality from logged pace/rate) ----
-	const tech = techniqueSummary(strokes);
-	const dpsData: uPlot.AlignedData = [tech.dps.map((d) => d.t), tech.dps.map((d) => d.v)];
+	const tech = $derived(techniqueSummary(strokes));
+	const dpsData = $derived<uPlot.AlignedData>([tech.dps.map((d) => d.t), tech.dps.map((d) => d.v)]);
 	const dpsOpts = $derived(metricOpts('dist/stroke', '#3f6e8c', false, (v) => `${v.toFixed(1)}m`, chartChrome));
 
-	const eff = efficiencyByRate(strokes);
+	const eff = $derived(efficiencyByRate(strokes));
 	// Scatter: pace (y, inverted) vs rate (x); a uPlot line over rate-sorted medians.
-	const effData: uPlot.AlignedData = [eff.map((e) => e.spm), eff.map((e) => e.pace)];
+	const effData = $derived<uPlot.AlignedData>([eff.map((e) => e.spm), eff.map((e) => e.pace)]);
 	const effOpts = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
 		return {
 			scales: { x: { time: false }, y: { dir: -1 } },
@@ -366,19 +394,19 @@
 		};
 	});
 
-	const paceRange = (() => {
+	const paceRange = $derived.by(() => {
 		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
 		if (ps.length === 0) return { min: 60, max: 180 };
 		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
-	})();
-	const wattRange = (() => {
+	});
+	const wattRange = $derived.by(() => {
 		const watts = strokes.map((s) => s.watts);
 		const maxWatt = watts.length > 0 ? Math.max(...watts) : 0;
 		return { min: 0, max: Math.max(100, maxWatt * 1.1) };
-	})();
+	});
 
 	// ---- Interval / rep breakdown (null for single-segment pieces) ----
-	const intervals = intervalBreakdown(detail.splits, strokes);
+	const intervals = $derived(intervalBreakdown(detail.splits, strokes));
 	// "Interval breakdown" (reps with rest) vs "Splits" (even splits of a
 	// continuous piece) — same comparison, honest label.
 	const segLabel = $derived(
@@ -392,13 +420,14 @@
 	}
 
 	// ---- Full metadata ----
-	const avgWatts =
+	const avgWatts = $derived(
 		detail.wattMinutes && detail.time > 0
 			? Math.round(detail.wattMinutes / (detail.time / 60))
 			: detail.pace > 0
 				? Math.round(paceToWatts(detail.pace))
-				: 0;
-	const dateTime = fmtLogbookDateTime(detail.date);
+				: 0
+	);
+	const dateTime = $derived(fmtLogbookDateTime(detail.date));
 
 	let sharing = $state(false);
 
