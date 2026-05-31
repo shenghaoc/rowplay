@@ -2,6 +2,9 @@ import type { D1Database } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '$lib/datetime';
 import type { Sport, Workout, WorkoutDetail } from '../types';
 
+// Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
+export const DETAIL_PAYLOAD_VERSION = 1;
+
 /**
  * Best-effort D1 cache of fully-hydrated workout detail (including strokes), so
  * replaying a workout a second time doesn't re-hit the Concept2 API. All calls
@@ -15,10 +18,13 @@ export async function getCachedDetail(
 	if (!db) return null;
 	try {
 		const row = await db
-			.prepare('SELECT payload FROM workout_detail WHERE user_id = ? AND workout_id = ?')
+			.prepare(
+				'SELECT payload, payload_version FROM workout_detail WHERE user_id = ? AND workout_id = ?'
+			)
 			.bind(userId, workoutId)
-			.first<{ payload: string }>();
-		return row ? (JSON.parse(row.payload) as WorkoutDetail) : null;
+			.first<{ payload: string; payload_version: number }>();
+		if (!row || row.payload_version !== DETAIL_PAYLOAD_VERSION) return null;
+		return JSON.parse(row.payload) as WorkoutDetail;
 	} catch {
 		return null;
 	}
@@ -33,12 +39,13 @@ export async function putCachedDetail(
 	try {
 		await db
 			.prepare(
-				`INSERT INTO workout_detail (user_id, workout_id, payload, cached_at)
-				 VALUES (?, ?, ?, ?)
+				`INSERT INTO workout_detail (user_id, workout_id, payload, cached_at, payload_version)
+				 VALUES (?, ?, ?, ?, ?)
 				 ON CONFLICT(user_id, workout_id)
-				 DO UPDATE SET payload = excluded.payload, cached_at = excluded.cached_at`
+				 DO UPDATE SET payload = excluded.payload, cached_at = excluded.cached_at,
+				              payload_version = excluded.payload_version`
 			)
-			.bind(userId, detail.id, JSON.stringify(detail), nowEpochMillis())
+			.bind(userId, detail.id, JSON.stringify(detail), nowEpochMillis(), DETAIL_PAYLOAD_VERSION)
 			.run();
 	} catch {
 		// ignore cache write failures
