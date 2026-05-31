@@ -1,4 +1,4 @@
-import type { Split, Sport, Stroke, Workout } from './types';
+import type { Split, Sport, Stroke, Workout, WorkoutDetail } from './types';
 import { paceToWatts } from './format';
 
 // ---------------------------------------------------------------------------
@@ -887,4 +887,200 @@ export function buildTrainingCalendar(
 		longestStreak,
 		monthLabels
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Head-to-head workout comparison (static analytics, distance-aligned)
+// ---------------------------------------------------------------------------
+
+export interface DistanceOverlay {
+	/** Shared distance axis in metres (0 … min(endA, endB)). */
+	xs: number[];
+	paceA: (number | null)[];
+	paceB: (number | null)[];
+	powerA: (number | null)[];
+	powerB: (number | null)[];
+	hrA: (number | null)[];
+	hrB: (number | null)[];
+	/** Max distance used for alignment. */
+	alignedMetres: number;
+}
+
+/** Linearly interpolate a stroke sample at a cumulative distance. */
+export function sampleStrokeAtDistance(strokes: Stroke[], metres: number): Stroke | null {
+	if (!strokes.length) return null;
+	const first = strokes[0];
+	if (metres <= first.d) return first;
+	const last = strokes[strokes.length - 1];
+	if (metres >= last.d) return last;
+	for (let i = 1; i < strokes.length; i++) {
+		const prev = strokes[i - 1];
+		const cur = strokes[i];
+		if (metres <= cur.d) {
+			const span = cur.d - prev.d;
+			if (span <= 0) return cur;
+			const f = (metres - prev.d) / span;
+			const hrA = prev.hr;
+			const hrB = cur.hr;
+			let hr: number | undefined;
+			if (hrA != null && hrB != null) hr = hrA + f * (hrB - hrA);
+			else if (hrA != null) hr = hrA;
+			else if (hrB != null) hr = hrB;
+			return {
+				t: prev.t + f * (cur.t - prev.t),
+				d: metres,
+				pace: prev.pace + f * (cur.pace - prev.pace),
+				spm: prev.spm + f * (cur.spm - prev.spm),
+				hr,
+				watts: prev.watts + f * (cur.watts - prev.watts)
+			};
+		}
+	}
+	return last;
+}
+
+/**
+ * Resample two stroke streams onto a shared distance grid so pace / power / HR
+ * can be overlaid on one chart (different durations align by metres covered).
+ */
+export function buildDistanceOverlay(
+	strokesA: Stroke[],
+	strokesB: Stroke[],
+	steps = 120
+): DistanceOverlay | null {
+	const endA = strokesA.at(-1)?.d ?? 0;
+	const endB = strokesB.at(-1)?.d ?? 0;
+	const aligned = Math.min(endA, endB);
+	if (aligned <= 0 || !strokesA.length || !strokesB.length) return null;
+
+	const xs: number[] = [];
+	const paceA: (number | null)[] = [];
+	const paceB: (number | null)[] = [];
+	const powerA: (number | null)[] = [];
+	const powerB: (number | null)[] = [];
+	const hrA: (number | null)[] = [];
+	const hrB: (number | null)[] = [];
+
+	for (let i = 0; i <= steps; i++) {
+		const d = (aligned * i) / steps;
+		xs.push(d);
+		const sa = sampleStrokeAtDistance(strokesA, d);
+		const sb = sampleStrokeAtDistance(strokesB, d);
+		paceA.push(sa && sa.pace > 0 ? sa.pace : null);
+		paceB.push(sb && sb.pace > 0 ? sb.pace : null);
+		powerA.push(sa && sa.watts > 0 ? sa.watts : null);
+		powerB.push(sb && sb.watts > 0 ? sb.watts : null);
+		hrA.push(sa?.hr ?? null);
+		hrB.push(sb?.hr ?? null);
+	}
+
+	return { xs, paceA, paceB, powerA, powerB, hrA, hrB, alignedMetres: aligned };
+}
+
+export interface WorkoutSideStats {
+	time: number;
+	pace: number;
+	avgWatts: number;
+	peakWatts: number;
+	avgHr: number | null;
+	peakHr: number | null;
+	avgDps: number;
+	/** Pace coefficient of variation (%); lower = more even splits. */
+	paceConsistency: number;
+}
+
+export function workoutSideStats(detail: WorkoutDetail): WorkoutSideStats {
+	const tech = techniqueSummary(detail.strokes);
+	const pc = powerCurve(detail.strokes);
+	const peakWatts = pc.length ? Math.max(...pc.map((p) => p.watts)) : 0;
+	const hrs = detail.strokes.map((s) => s.hr).filter((h): h is number => h != null && h > 0);
+	const peakHr = hrs.length ? Math.max(...hrs) : null;
+	const avgHr =
+		detail.heartRateAvg && detail.heartRateAvg > 0
+			? detail.heartRateAvg
+			: hrs.length
+				? mean(hrs)
+				: null;
+
+	return {
+		time: detail.time,
+		pace: detail.pace,
+		avgWatts: Math.round(workoutWatts(detail)),
+		peakWatts: Math.round(peakWatts),
+		avgHr: avgHr != null ? Math.round(avgHr) : null,
+		peakHr: peakHr != null ? Math.round(peakHr) : null,
+		avgDps: tech.avgDps,
+		paceConsistency: tech.paceConsistency
+	};
+}
+
+export type CompareWinner = 'a' | 'b' | 'tie';
+
+export interface CompareVerdict {
+	winner: CompareWinner;
+	/** Seconds faster for workout A when distances are comparable. */
+	timeDeltaSec: number | null;
+	/** Pace delta (A − B) in sec/500m; negative = A is faster. */
+	paceDelta: number | null;
+}
+
+/**
+ * Decide which piece was "better" for like-for-like distances (same band),
+ * otherwise compare average pace.
+ */
+export function compareVerdict(a: WorkoutDetail, b: WorkoutDetail): CompareVerdict {
+	const bandA = distanceBand(a.distance);
+	const bandB = distanceBand(b.distance);
+	const likeForLike = bandA.key === bandB.key;
+
+	if (likeForLike && a.time > 0 && b.time > 0) {
+		const timeDeltaSec = b.time - a.time; // positive = A faster
+		let winner: CompareWinner = 'tie';
+		if (Math.abs(timeDeltaSec) >= 0.5) winner = timeDeltaSec > 0 ? 'a' : 'b';
+		return { winner, timeDeltaSec, paceDelta: a.pace - b.pace };
+	}
+
+	const paceDelta = a.pace - b.pace;
+	let winner: CompareWinner = 'tie';
+	if (a.pace > 0 && b.pace > 0 && Math.abs(paceDelta) >= 0.1) {
+		winner = paceDelta < 0 ? 'a' : 'b';
+	}
+	return { winner, timeDeltaSec: null, paceDelta };
+}
+
+export interface IntervalCompareRow {
+	index: number;
+	paceA: number;
+	paceB: number;
+	/** A pace − B pace (sec/500m); negative = A faster on this rep. */
+	paceDelta: number;
+	timeA: number;
+	timeB: number;
+	/** B time − A time (sec); positive = A faster. */
+	timeDelta: number;
+}
+
+/** Per-rep deltas when both workouts have interval splits (by index). */
+export function compareIntervalReps(a: WorkoutDetail, b: WorkoutDetail): IntervalCompareRow[] | null {
+	const setA = intervalBreakdown(a.splits, a.strokes);
+	const setB = intervalBreakdown(b.splits, b.strokes);
+	if (!setA || !setB) return null;
+	const n = Math.min(setA.reps.length, setB.reps.length);
+	if (n < 2) return null;
+
+	const rows: IntervalCompareRow[] = [];
+	for (let i = 0; i < n; i++) {
+		const ra = setA.reps[i];
+		const rb = setB.reps[i];
+		rows.push({
+			index: i + 1,
+			paceA: ra.pace,
+			paceB: rb.pace,
+			paceDelta: ra.pace - rb.pace,
+			timeA: ra.time,
+			timeB: rb.time,
+			timeDelta: rb.time - ra.time
+		});
+	}
+	return rows;
 }

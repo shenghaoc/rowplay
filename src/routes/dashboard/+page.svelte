@@ -17,7 +17,7 @@
 	} from '$lib/analytics';
 	import type { Sport, Workout } from '$lib/types';
 	import { MACHINE_COLOR } from '$lib/replay/sports';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play, Activity } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
@@ -45,6 +45,23 @@
 	let bandKey = $state<string>('');
 
 	let syncing = $state(false);
+	let compareAnchor = $state<number | null>(null);
+
+	function onCompareWorkout(w: Workout) {
+		if (compareAnchor == null) {
+			compareAnchor = w.id;
+			toast.message(t('workoutList.comparePick'));
+			return;
+		}
+		if (compareAnchor === w.id) {
+			compareAnchor = null;
+			return;
+		}
+		const a = compareAnchor;
+		const b = w.id;
+		compareAnchor = null;
+		goto(`/compare?a=${a}&b=${b}`);
+	}
 	async function sync() {
 		if (syncing) return;
 		syncing = true;
@@ -594,7 +611,13 @@
 		</div>
 	{/if}
 
-	<WorkoutList workouts={filtered} />
+	{#if compareAnchor != null}
+		<p class="compare-hint card muted">
+			{t('workoutList.comparePick')}
+			<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
+		</p>
+	{/if}
+	<WorkoutList workouts={filtered} {compareAnchor} onCompare={onCompareWorkout} />
 </div>
 
 <style>
@@ -1012,6 +1035,24 @@
 	.verdict.bad {
 		border-color: var(--behind);
 		color: var(--alarm);
+	}
+	.compare-hint {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.65rem 0.85rem;
+		margin-bottom: 0.65rem;
+		font-size: 0.88rem;
+	}
+	.linkish {
+		background: none;
+		border: none;
+		color: var(--live);
+		font-weight: 600;
+		cursor: pointer;
+		text-decoration: underline;
+		font-size: inherit;
 	}
 	@media (max-width: 720px) {
 		.stats {
