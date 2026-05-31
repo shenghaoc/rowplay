@@ -49,19 +49,24 @@ const DATE_FMT: Intl.DateTimeFormatOptions = {
 	day: 'numeric'
 };
 
-/** Short locale date from a logbook string or ISO instant. */
-export function fmtDate(value: string): string {
-	const pdt = parseLogbookDateTime(value);
-	if (pdt) {
-		return pdt.toLocaleString(undefined, DATE_FMT);
-	}
+/** Short locale date from a logbook string or ISO instant.
+ * Accepts optional locale and timeZone for SSR-safe formatting;
+ * defaults to the system timezone and locale when omitted. */
+export function fmtDate(value: string, locale?: string, timeZone?: string): string {
+	// ISO instants have embedded timezone info — check them first so the
+	// timezone offset is respected. parseLogbookDateTime uses PlainDateTime
+	// which silently discards the offset.
 	try {
 		return Temporal.Instant.from(value)
-			.toZonedDateTimeISO(Temporal.Now.timeZoneId())
-			.toLocaleString(undefined, DATE_FMT);
+			.toZonedDateTimeISO(timeZone ?? Temporal.Now.timeZoneId())
+			.toLocaleString(locale, DATE_FMT);
 	} catch {
+		const pdt = parseLogbookDateTime(value);
+		if (pdt) {
+			return pdt.toLocaleString(locale, DATE_FMT);
+		}
 		try {
-			return Temporal.PlainDate.from(value).toLocaleString(undefined, DATE_FMT);
+			return Temporal.PlainDate.from(value).toLocaleString(locale, DATE_FMT);
 		} catch {
 			return value;
 		}
@@ -69,14 +74,14 @@ export function fmtDate(value: string): string {
 }
 
 /** Locale date-time from a logbook `YYYY-MM-DD HH:MM:SS` string. */
-export function fmtLogbookDateTime(value: string): string {
+export function fmtLogbookDateTime(value: string, locale?: string): string {
 	const pdt = parseLogbookDateTime(value);
 	if (!pdt) return value;
-	return pdt.toLocaleString();
+	return pdt.toLocaleString(locale);
 }
 
-export function fmtDateFromEpochMillis(epochMs: number): string {
+export function fmtDateFromEpochMillis(epochMs: number, locale?: string): string {
 	return Temporal.Instant.fromEpochMilliseconds(epochMs)
 		.toZonedDateTimeISO('UTC')
-		.toLocaleString(undefined, DATE_FMT);
+		.toLocaleString(locale, DATE_FMT);
 }

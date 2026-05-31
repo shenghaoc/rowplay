@@ -174,7 +174,12 @@ function parseTcx(text: string): RawSample[] {
 		try {
 			ms = Temporal.Instant.from(timeText).epochMilliseconds;
 		} catch {
-			/* invalid TCX timestamp */
+			try {
+				// Fallback for timezone-less ISO strings, interpreting them as UTC
+				ms = Temporal.PlainDateTime.from(timeText).toZonedDateTime('UTC').epochMilliseconds;
+			} catch {
+				/* invalid TCX timestamp */
+			}
 		}
 		if (isFinite(ms) && t0 == null) t0 = ms;
 		const t = isFinite(ms) && t0 != null ? (ms - t0) / 1000 : NaN;
