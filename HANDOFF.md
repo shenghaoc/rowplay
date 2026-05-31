@@ -314,33 +314,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 
 ---
 
-## Task 10 — Unit test the pure core + wire CI (lock in correctness before scaling)
-
-> The only tests today are one Playwright smoke suite. `analytics.ts`,
-> `format.ts`, and `replay/engine.ts` are full of **pure functions** that are
-> trivially unit-testable and are exactly where a subtle bug (wrong pace unit,
-> off-by-one interval, NaN power) would silently corrupt every view above.
->
-> **Build:**
-> 1. Add **Vitest** (`npm run test`) and write unit tests for the pure libs:
->    `analytics.ts` (every exported fn — feed known stroke/workout fixtures, assert
->    PBs, HR zones, power curve, interval breakdown, training load, calendar),
->    `format.ts` (pace/time/distance formatting incl. the bike per-1000m and
->    interval-reset edge cases called out in `AGENTS.md`), and `replay/engine.ts`
->    (`sampleAt` interpolation at boundaries + mid-stroke). Use the mock data as
->    fixtures where possible.
-> 2. Add a **GitHub Actions CI** workflow (`.github/workflows/ci.yml`) running
->    `npm ci`, `npm run check`, `npm run build`, `npm run test`, and
->    `npm run test:e2e` (install WebKit deps) on PRs to `main`. Make the gate
->    actually enforced.
->
-> **Rules:** tests run in plain Node (no Workers runtime needed for pure libs).
-> Don't test `state_referenced_locally` false positives. **Acceptance:**
-> `npm run test` runs a meaningful suite that's green; CI runs the full gate on
-> every PR. Gate passes.
-
----
-
 ## Parking lot (real, but below the top 10)
 
 - **Live/near-live mode**: poll the logbook (or ErgData webhook if/when available)
