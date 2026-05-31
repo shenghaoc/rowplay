@@ -114,20 +114,23 @@ export function workoutDetailToTcx(detail: WorkoutDetail): string {
 	const name = detail.workoutType || `rowplay ${detail.id}`;
 	const sport = SPORT_TCX[detail.sport];
 	const start = tcxTime(detail.date, 0);
+	let elapsed = 0;
 	const laps =
 		detail.splits.length > 0
 			? detail.splits
-					.map(
-						(s) => `
-        <Lap StartTime="${xmlEscape(tcxTime(detail.date, 0))}">
+					.map((s) => {
+						const lapStart = tcxTime(detail.date, elapsed);
+						elapsed += s.time;
+						return `
+        <Lap StartTime="${xmlEscape(lapStart)}">
           <TotalTimeSeconds>${s.time.toFixed(1)}</TotalTimeSeconds>
           <DistanceMeters>${s.distance}</DistanceMeters>
           <MaximumSpeed>${s.pace > 0 ? (500 / s.pace).toFixed(3) : 0}</MaximumSpeed>
           <Calories>0</Calories>
           <Intensity>Active</Intensity>
           <TriggerMethod>Manual</TriggerMethod>
-        </Lap>`
-					)
+        </Lap>`;
+					})
 					.join('')
 			: `
         <Lap StartTime="${xmlEscape(start)}">
@@ -163,7 +166,7 @@ function strokeTrackpoints(date: string, strokes: Stroke[]): string {
 			];
 			if (s.spm > 0) parts.push(`<Cadence>${Math.round(s.spm)}</Cadence>`);
 			if (s.hr != null && s.hr > 0) parts.push(`<HeartRateBpm><Value>${s.hr}</Value></HeartRateBpm>`);
-			if (s.watts > 0) parts.push(`<Watts>${Math.round(s.watts)}</Watts>`);
+			if (s.watts > 0) parts.push(`<Extensions><TPX xmlns="http://www.garmin.com/xmlschemas/ActivityExtension/v2"><Watts>${Math.round(s.watts)}</Watts></TPX></Extensions>`);
 			return `\n        <Trackpoint>${parts.join('')}</Trackpoint>`;
 		})
 		.join('');

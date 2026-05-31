@@ -9,13 +9,13 @@ export const POST: RequestHandler = async (event) => {
 	}
 	if (!event.locals.user) throw error(401, 'Not authenticated.');
 
-	let body: { confirm?: boolean } = {};
+	let body: { confirm?: boolean } | null = null;
 	try {
 		body = (await event.request.json()) as { confirm?: boolean };
 	} catch {
 		/* empty body */
 	}
-	if (!body.confirm) throw error(400, 'Confirmation required.');
+	if (!body || typeof body !== 'object' || !body.confirm) throw error(400, 'Confirmation required.');
 
 	await clearUserCachedData(event);
 	event.cookies.delete(SESSION_COOKIE, { path: '/' });
