@@ -15,6 +15,7 @@
 	import { uplotChrome } from '$lib/chartTheme';
 	import { GHOST_COLOR, LIVE_COLOR, MACHINE_COLOR } from '$lib/replay/sports';
 	import type { Workout, WorkoutDetail } from '$lib/types';
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { ArrowLeft, GitCompare, TrendingDown, TrendingUp, MoveRight } from '@lucide/svelte';
 
@@ -25,8 +26,8 @@
 	const detailA = $derived(data.detailA);
 	const detailB = $derived(data.detailB);
 
-	let pickA = $state('');
-	let pickB = $state('');
+	let pickA = $state(untrack(() => String(data.idA ?? '')));
+	let pickB = $state(untrack(() => String(data.idB ?? '')));
 
 	$effect(() => {
 		pickA = String(data.idA ?? '');

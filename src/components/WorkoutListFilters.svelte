@@ -10,6 +10,7 @@
 		type WorkoutListQuery,
 		type WorkoutSortField
 	} from '$lib/workoutQuery';
+	import { untrack } from 'svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 
 	const t = getI18nContext().t;
@@ -32,8 +33,8 @@
 		{ id: 'power', labelKey: 'workoutList.sortPower' }
 	];
 
-	let searchDraft = $state('');
-	let expanded = $state(false);
+	let searchDraft = $state(untrack(() => query.q ?? ''));
+	let expanded = $state(untrack(() => listQueryIsFiltered(query)));
 
 	$effect(() => {
 		searchDraft = query.q ?? '';

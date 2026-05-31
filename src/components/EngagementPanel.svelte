@@ -14,6 +14,7 @@
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { pluralKey } from '$lib/i18nPlural';
 	import { Flame, Medal, Target, Trophy } from '@lucide/svelte';
+	import { untrack } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 
@@ -31,8 +32,12 @@
 
 	let savedGoal = $state<AnnualGoal | null>(null);
 	const goal = $derived<AnnualGoal>(savedGoal ?? { ...annualGoal });
-	let kind = $state<AnnualGoalKind>('meters');
-	let targetInput = $state<number | null>(0);
+	let kind = $state<AnnualGoalKind>(untrack(() => annualGoal.kind));
+	let targetInput = $state<number | null>(
+		untrack(() =>
+			annualGoal.kind === 'meters' ? annualGoal.target : Math.round(annualGoal.target / 3600)
+		)
+	);
 	let saving = $state(false);
 
 	$effect(() => {
