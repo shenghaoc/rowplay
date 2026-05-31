@@ -23,14 +23,19 @@
 		if (!UPlotCtor) return;
 		if (plot) plot.destroy();
 		const hooks = options.hooks ?? {};
+		// Resolve the cursor colour once outside the draw hook to avoid
+		// repeated forced synchronous layouts (getComputedStyle thrashing).
+		const markerColor =
+			typeof document !== 'undefined'
+				? getComputedStyle(document.documentElement).getPropertyValue('--ink-3').trim() || '#7a7062'
+				: '#7a7062';
 		const drawHook = (u: uPlot) => {
 			if (marker == null) return;
 			const cx = u.valToPos(marker, 'x', true);
 			if (!isFinite(cx)) return;
 			const ctx = u.ctx;
 			ctx.save();
-			const C = getComputedStyle(document.documentElement).getPropertyValue('--ink-3').trim() || '#7a7062';
-			ctx.strokeStyle = C;
+			ctx.strokeStyle = markerColor;
 			ctx.lineWidth = 1.5;
 			ctx.beginPath();
 			ctx.moveTo(cx, u.bbox.top);

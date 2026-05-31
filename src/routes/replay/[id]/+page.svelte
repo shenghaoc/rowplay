@@ -558,7 +558,7 @@
 					<div class="rep" class:fastest={r.isFastest} class:slowest={r.isSlowest}>
 						<div class="repno mono">#{r.index + 1}</div>
 						<div class="repbarwrap">
-						<div class="repbar" style:width="{repBarPct(r.pace)}%" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : sportTheme.color}></div>
+						<div class="repbar" style:width="{repBarPct(r.pace)}%" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : MACHINE_COLOR[detail.sport]}></div>
 							<span class="repbarlabel mono">{fmtPace(r.pace).replace('/500m', '')}</span>
 						</div>
 						<div class="repmeta mono muted">
