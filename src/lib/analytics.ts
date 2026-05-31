@@ -430,7 +430,7 @@ export function predictPaceForDuration(cp: CriticalPower, durationSec: number): 
  * allows — constant-power rowing at the sustainable watts for that duration.
  */
 export function predictTimeForDistance(cp: CriticalPower, distanceM: number): number | null {
-	if (distanceM <= 0 || cp.cp <= 0) return null;
+	if (isNaN(distanceM) || distanceM <= 0 || cp.cp <= 0) return null;
 
 	const distanceAt = (durationSec: number): number => {
 		const pace = wattsToPace(powerAtDuration(cp, durationSec));
@@ -438,11 +438,11 @@ export function predictTimeForDistance(cp: CriticalPower, distanceM: number): nu
 		return (durationSec * 500) / pace;
 	};
 
-	let lo = 30;
+	let lo = 1;
 	let hi = 4 * 3600;
 	if (distanceAt(hi) < distanceM) return null;
 
-	while (hi - lo > 0.5) {
+	while (hi - lo > 0.05) {
 		const mid = (lo + hi) / 2;
 		if (distanceAt(mid) < distanceM) lo = mid;
 		else hi = mid;

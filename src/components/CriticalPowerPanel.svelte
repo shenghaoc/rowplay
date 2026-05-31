@@ -43,6 +43,7 @@
 
 	const predictedPace = $derived.by(() => {
 		if (!cp || predictMode !== 'duration') return null;
+		if (!durationMin || isNaN(durationMin)) return null;
 		const sec = durationMin * 60;
 		if (sec < 60) return null;
 		return predictPaceForDuration(cp, sec);
@@ -50,12 +51,12 @@
 
 	const predictedTime = $derived.by(() => {
 		if (!cp || predictMode !== 'distance') return null;
-		if (distanceM < 100) return null;
+		if (!distanceM || isNaN(distanceM) || distanceM < 100) return null;
 		return predictTimeForDistance(cp, distanceM);
 	});
 
 	const predictedPaceFromDistance = $derived.by(() => {
-		if (predictedTime == null || predictedTime <= 0 || distanceM <= 0) return null;
+		if (predictedTime == null || predictedTime <= 0 || !distanceM || isNaN(distanceM) || distanceM <= 0) return null;
 		return (predictedTime * 500) / distanceM;
 	});
 
