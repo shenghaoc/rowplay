@@ -36,9 +36,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 		transformPageChunk: ({ html }) => html.replace('%lang%', lang).replace('%theme%', theme)
 	});
 
-	response.headers.set('X-Frame-Options', 'DENY');
-	response.headers.set('X-Content-Type-Options', 'nosniff');
-	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	// Set security header defaults only when a route hasn't already chosen its
+	// own value, so individual endpoints can override (e.g. allow framing).
+	if (!response.headers.has('X-Frame-Options')) {
+		response.headers.set('X-Frame-Options', 'DENY');
+	}
+	if (!response.headers.has('X-Content-Type-Options')) {
+		response.headers.set('X-Content-Type-Options', 'nosniff');
+	}
+	if (!response.headers.has('Referrer-Policy')) {
+		response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	}
 
 	return response;
 };
