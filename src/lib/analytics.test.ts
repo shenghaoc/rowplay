@@ -20,7 +20,7 @@ import {
 	dayVolumeValue
 } from './analytics';
 import { mockWorkoutDetail, mockWorkouts } from './mockData';
-import { intervalResetStrokes, intervalSplits, ladderStrokes, normalizedIntervalStrokes, normalizeRawStrokes, workout } from '../../tests/unit/fixtures';
+import { intervalSplits, normalizedIntervalStrokes, normalizeRawStrokes, workout } from '../../tests/unit/fixtures';
 
 const workouts = mockWorkouts();
 
@@ -174,9 +174,10 @@ describe('intervalBreakdown', () => {
 		expect(result!.reps).toHaveLength(2);
 		expect(result!.reps[0].pace).toBe(120);
 		expect(result!.reps[1].pace).toBe(122);
-		// Rep 0 gets strokes with t ≤ 10 (the first 4), rep 1 gets t > 10 (the last 2)
-		expect(result!.reps[0].spm).toBeGreaterThan(0);
-		expect(result!.reps[1].spm).toBeGreaterThan(0);
+		// Rep 0 gets strokes with t ≤ 10 (4 strokes), rep 1 gets t > 10 (2 strokes).
+		// spm is derived from the bucket since splits omit it, and rep values differ.
+		expect(result!.reps[0].spm).toBeGreaterThan(result!.reps[1].spm);
+		expect(result!.reps[0].spm).not.toBe(result!.reps[1].spm);
 	});
 });
 

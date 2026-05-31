@@ -28,18 +28,18 @@ export function intervalResetStrokes(): Stroke[] {
  * `normalizeRawStrokes` and production `mapStrokes` produce). */
 export function normalizedIntervalStrokes(): Stroke[] {
 	return [
-		{ t: 0, d: 0, pace: 120, spm: 28, watts: 100 },
-		{ t: 5, d: 25, pace: 118, spm: 29, watts: 105 },
-		{ t: 10, d: 50, pace: 116, spm: 30, watts: 110 },
-		{ t: 10, d: 50, pace: 122, spm: 27, watts: 95 },
-		{ t: 15, d: 75, pace: 120, spm: 28, watts: 100 },
-		{ t: 20, d: 100, pace: 118, spm: 29, watts: 105 }
+		{ t: 0, d: 0, pace: 120, spm: 30, watts: 100 },
+		{ t: 5, d: 25, pace: 118, spm: 31, watts: 105 },
+		{ t: 10, d: 50, pace: 116, spm: 32, watts: 110 },
+		{ t: 10, d: 50, pace: 122, spm: 22, watts: 95 },
+		{ t: 15, d: 75, pace: 120, spm: 24, watts: 100 },
+		{ t: 20, d: 100, pace: 118, spm: 26, watts: 105 }
 	];
 }
 
 export const intervalSplits: Split[] = [
-	{ index: 0, distance: 50, time: 10, pace: 120, spm: 28 },
-	{ index: 1, distance: 50, time: 10, pace: 122, spm: 27 }
+	{ index: 0, distance: 50, time: 10, pace: 120 },
+	{ index: 1, distance: 50, time: 10, pace: 122 }
 ];
 
 export function workout(overrides: Partial<Workout> & Pick<Workout, 'id'>): Workout {
