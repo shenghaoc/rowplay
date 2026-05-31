@@ -60,7 +60,7 @@ export function paceToWatts(pacePer500: number): number {
 
 /** Average watts from cached watt-minutes when present, else Concept2 pace model. */
 export function avgWatts(w: Pick<Workout, 'wattMinutes' | 'time' | 'pace'>): number {
-	if (w.wattMinutes != null && w.time > 0) {
+	if (w.wattMinutes && w.time > 0) {
 		return Math.round(w.wattMinutes / (w.time / 60));
 	}
 	return Math.round(paceToWatts(w.pace));
