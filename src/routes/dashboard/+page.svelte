@@ -250,9 +250,9 @@
 	<div class="head">
 		<h1>{t('dashboard.title')}</h1>
 		<div class="headright">
-			<div class="filters">
+			<div class="filters" role="group" aria-label="Sport filter">
 				{#each sports as s}
-					<button class="chip" class:on={sportFilter === s} onclick={() => (sportFilter = s)}>
+					<button class="chip" class:on={sportFilter === s} aria-pressed={sportFilter === s} onclick={() => (sportFilter = s)}>
 						{s === 'all' ? t('dashboard.all') : SPORT_LABEL[s]}
 					</button>
 				{/each}
@@ -394,19 +394,20 @@
 						<span class="muted">· {t('dashboard.likeForLike', { sport: SPORT_LABEL[dominantSport] })}</span>
 					{/if}
 				</div>
-				<div class="metrics">
+				<div class="metrics" role="group" aria-label="Metric filter">
 					{#each metrics as m}
-						<button class="mchip" class:on={metric === m.id} onclick={() => (metric = m.id)}>{t(m.labelKey)}</button>
+						<button class="mchip" class:on={metric === m.id} aria-pressed={metric === m.id} onclick={() => (metric = m.id)}>{t(m.labelKey)}</button>
 					{/each}
 				</div>
 			</div>
 
 			{#if bandScoped && bands.length > 1}
-				<div class="bands">
+				<div class="bands" role="group" aria-label="Distance band">
 					{#each bands as b}
 						<button
 							class="bchip"
 							class:on={activeBand === b.key}
+							aria-pressed={activeBand === b.key}
 							onclick={() => (bandKey = b.key)}
 						>{b.label} <span class="bn">{b.n}</span></button>
 					{/each}

@@ -383,9 +383,9 @@
 			aria-label="Seek"
 		/>
 		<div class="dist mono">{fmtDistance(frame.d)}</div>
-		<div class="speeds">
+		<div class="speeds" role="group" aria-label="Playback speed">
 			{#each SPEEDS as s}
-				<button class="sbtn" class:on={speed === s} onclick={() => setSpeed(s)}>{s}×</button>
+				<button class="sbtn" class:on={speed === s} aria-pressed={speed === s} onclick={() => setSpeed(s)}>{s}×</button>
 			{/each}
 		</div>
 	</div>
