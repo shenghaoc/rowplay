@@ -80,9 +80,9 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
   KV sessions (`server/session.ts`), D1 cache (`server/db.ts`), full + incremental
   sync (`server/data.ts`, `POST /api/sync`), i18n (en/zh), light/dark theme,
   virtualized workout list (`WorkoutList.svelte`, TanStack Virtual), and a
-  Playwright WebKit smoke suite (`tests/e2e/smoke.spec.ts`). **PWA**: service
-  worker (`src/service-worker.ts`), `static/manifest.webmanifest`, and install
-  icons (192/512).
+  Playwright WebKit smoke suite (`tests/e2e/smoke.spec.ts`). NOTE: `static/` holds
+  only `favicon.svg` — there is **no PWA manifest and no service worker yet**
+  (see Task 8).
 
 ---
 
@@ -264,26 +264,57 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 
 ---
 
-## Task 9 — Data export & account/data controls (trust + parity)
+## Task 8 — Real PWA: offline + installable + mobile polish
 
-> Power users and privacy-conscious users expect to own their data and control the
-> cache. Mainstream-app parity.
+> There is **no PWA manifest and no service worker** today (`static/` only has
+> `favicon.svg`). Build the whole PWA story from scratch.
 >
-> **Build a small "Account / Data" section** (or `/settings`):
-> - **Export** the full logbook as **CSV** and **JSON** (one click, generated
->   server-side from D1 / the loader). Stretch: per-workout **FIT**/**TCX** export
->   so files open in Garmin/Strava/TrainingPeaks.
-> - **Re-sync controls**: a manual "full re-sync" and "incremental sync" button
->   wired to `POST /api/sync`, with last-sync time + progress.
-> - **Clear cache / delete my data**: purge this user's cached workouts + detail
->   from D1 and the session from KV; clear share tokens (Task 3).
-> - Show what's stored and why (a short, honest data-handling note).
+> **Build:**
+> 1. A **service worker** (SvelteKit `src/service-worker.ts`) that precaches the
+>    app shell + static assets and serves the dashboard/replay offline for
+>    already-viewed workouts (cache the cached-detail JSON responses). Pick a sane
+>    strategy (network-first for data, cache-first for shell). Handle updates
+>    (skipWaiting + a "new version" toast).
+> 2. **Installability**: create `static/manifest.webmanifest` (name, theme/bg color
+>    matching the RACE BOARD tokens, display `standalone`, start_url) and link it
+>    from `src/app.html`. Add maskable PNG icons at 192 + 512. Verify it passes
+>    Lighthouse PWA install criteria.
+> 3. **Mobile polish pass** at 390px (phone) + 768px (tablet): screenshot `/`,
+>    `/dashboard`, a `/replay/<id>` against `npm run preview`; fix any
+>    overflow/cramping, especially the replay transport controls and any new
+>    Task 2–7 UI. Re-screenshot to confirm.
 >
-> **Rules:** destructive actions need a confirm step. Server-side only for any
-> secret-touching path. i18n. Works in demo mode (export the mock set; "delete" is
-> a no-op-with-toast in demo). **Acceptance:** I can download my logbook as
-> CSV/JSON, trigger a re-sync, and clear my cached data with confirmation. Gate
-> passes.
+> **Rules:** must not break SSR or the Workers asset server (test on
+> `npm run preview`, not just `vite dev`). i18n the update toast. **Acceptance:**
+> app is installable, dashboard + a previously-viewed replay work offline (airplane
+> mode), no layout overflow on phone/tablet. Gate passes.
+
+---
+
+## Task 10 — Unit test the pure core + wire CI (lock in correctness before scaling)
+
+> The only tests today are one Playwright smoke suite. `analytics.ts`,
+> `format.ts`, and `replay/engine.ts` are full of **pure functions** that are
+> trivially unit-testable and are exactly where a subtle bug (wrong pace unit,
+> off-by-one interval, NaN power) would silently corrupt every view above.
+>
+> **Build:**
+> 1. Add **Vitest** (`npm run test`) and write unit tests for the pure libs:
+>    `analytics.ts` (every exported fn — feed known stroke/workout fixtures, assert
+>    PBs, HR zones, power curve, interval breakdown, training load, calendar),
+>    `format.ts` (pace/time/distance formatting incl. the bike per-1000m and
+>    interval-reset edge cases called out in `AGENTS.md`), and `replay/engine.ts`
+>    (`sampleAt` interpolation at boundaries + mid-stroke). Use the mock data as
+>    fixtures where possible.
+> 2. Add a **GitHub Actions CI** workflow (`.github/workflows/ci.yml`) running
+>    `npm ci`, `npm run check`, `npm run build`, `npm run test`, and
+>    `npm run test:e2e` (install WebKit deps) on PRs to `main`. Make the gate
+>    actually enforced.
+>
+> **Rules:** tests run in plain Node (no Workers runtime needed for pure libs).
+> Don't test `state_referenced_locally` false positives. **Acceptance:**
+> `npm run test` runs a meaningful suite that's green; CI runs the full gate on
+> every PR. Gate passes.
 
 ---
 

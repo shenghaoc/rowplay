@@ -116,6 +116,22 @@ test.describe('smoke', () => {
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 
+	test('settings page loads with export controls', async ({ page }) => {
+		const errors = collectPageErrors(page);
+
+		const res = await page.goto('/settings');
+		expect(res?.ok(), 'GET /settings should be 2xx').toBeTruthy();
+
+		await expect(
+			page.getByRole('heading', { name: /Account & data|账户与数据/ })
+		).toBeVisible();
+		await expect(page.getByRole('link', { name: /Download CSV|下载 CSV/ })).toBeVisible();
+		await expect(page.getByRole('link', { name: /Download JSON|下载 JSON/ })).toBeVisible();
+
+		await page.waitForTimeout(300);
+		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
+	});
+
 	test('token entry page renders its form', async ({ page }) => {
 		const errors = collectPageErrors(page);
 

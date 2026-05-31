@@ -34,7 +34,7 @@ export function interpolate(template: string, vars?: Record<string, string | num
 }
 
 const en = {
-	nav: { dashboard: 'Dashboard' },
+	nav: { dashboard: 'Dashboard', settings: 'Data' },
 	common: {
 		demoMode: 'demo mode',
 		replay: 'Replay',
@@ -257,6 +257,40 @@ const en = {
 		zone4: 'Z4 Threshold',
 		zone5: 'Z5 Max'
 	},
+	settings: {
+		title: 'Account & data',
+		eyebrow: 'Privacy & control',
+		dataTitle: 'What we store',
+		dataNote:
+			'rowplay keeps a copy of your Concept2 workout summaries and cached stroke detail on Cloudflare so replays load instantly. Your session token lives in KV and is never sent to the browser.',
+		factWorkouts: '{n} workouts available to export',
+		factDemo: 'Demo mode — sample data only, nothing is persisted.',
+		factCache: 'Workout summaries and replay cache in D1 (per your account).',
+		factSession: 'Session credentials in KV (server-side only).',
+		exportTitle: 'Export logbook',
+		exportNote: 'Download your full history as CSV or JSON. Per-workout TCX (stroke data) opens in Garmin, Strava, or TrainingPeaks.',
+		exportCsv: 'Download CSV',
+		exportJson: 'Download JSON',
+		exportTcxNote: 'TCX export (per workout with stroke data):',
+		exportTcx: 'Workout #{id} · TCX',
+		syncTitle: 'Re-sync logbook',
+		syncNote:
+			'Incremental sync fetches workouts since your last sync. Full re-sync re-downloads your entire history (slower, use after issues).',
+		syncIncremental: 'Incremental sync',
+		syncFull: 'Full re-sync',
+		syncDemo: 'Sync is unavailable in demo mode — connect your logbook to sync real data.',
+		lastSync: '{total} workouts cached · last sync {date}',
+		neverSynced: 'never',
+		deleteTitle: 'Clear cached data',
+		deleteNote:
+			'Removes your cached workouts and replay detail from rowplay and signs you out. Your Concept2 logbook is untouched.',
+		deleteAction: 'Delete my cached data',
+		deleteConfirm:
+			'Delete all cached workouts and replay data from rowplay and sign out? Your Concept2 logbook will not be changed.',
+		deleteDemo: 'Demo mode — nothing was stored, so there is nothing to delete.',
+		deleteDone: 'Cached data cleared. You have been signed out.',
+		deleteFailed: 'Could not clear cached data'
+	},
 	token: {
 		title: 'Use your Concept2 token',
 		introBefore: 'Paste a personal API token from your Concept2 logbook (',
@@ -274,7 +308,7 @@ const en = {
 } as const;
 
 const zh = {
-	nav: { dashboard: '仪表板' },
+	nav: { dashboard: '仪表板', settings: '数据' },
 	common: {
 		demoMode: '演示模式',
 		replay: '回放',
@@ -496,6 +530,37 @@ const zh = {
 		zone3: 'Z3 节奏',
 		zone4: 'Z4 阈值',
 		zone5: 'Z5 最大'
+	},
+	settings: {
+		title: '账户与数据',
+		eyebrow: '隐私与控制',
+		dataTitle: '我们存储的内容',
+		dataNote:
+			'rowplay 在 Cloudflare 上保存你的 Concept2 训练摘要和缓存的逐桨详情，以便即时回放。会话令牌存放在 KV 中，绝不会发送到浏览器。',
+		factWorkouts: '可导出 {n} 次训练',
+		factDemo: '演示模式——仅示例数据，不会持久保存。',
+		factCache: '训练摘要与回放缓存在 D1（按账户）。',
+		factSession: '会话凭据在 KV 中（仅服务器端）。',
+		exportTitle: '导出日志',
+		exportNote: '以 CSV 或 JSON 下载完整历史。含逐桨数据的单次训练可导出 TCX，可在 Garmin、Strava 或 TrainingPeaks 中打开。',
+		exportCsv: '下载 CSV',
+		exportJson: '下载 JSON',
+		exportTcxNote: 'TCX 导出（含逐桨数据的训练）：',
+		exportTcx: '训练 #{id} · TCX',
+		syncTitle: '重新同步日志',
+		syncNote: '增量同步仅获取上次同步之后的训练。完整重新同步会重新下载全部历史（较慢，出问题时使用）。',
+		syncIncremental: '增量同步',
+		syncFull: '完整重新同步',
+		syncDemo: '演示模式下无法同步——连接你的日志以同步真实数据。',
+		lastSync: '已缓存 {total} 次训练 · 上次同步 {date}',
+		neverSynced: '从未',
+		deleteTitle: '清除缓存数据',
+		deleteNote: '从 rowplay 删除已缓存的训练与回放详情并退出登录。你的 Concept2 日志不会被修改。',
+		deleteAction: '删除我的缓存数据',
+		deleteConfirm: '删除 rowplay 中所有已缓存的训练与回放数据并退出登录？你的 Concept2 日志不会被更改。',
+		deleteDemo: '演示模式——未存储任何数据，无需删除。',
+		deleteDone: '已清除缓存数据，你已退出登录。',
+		deleteFailed: '无法清除缓存数据'
 	},
 	token: {
 		title: '使用你的 Concept2 令牌',
