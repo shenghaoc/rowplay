@@ -217,7 +217,7 @@ export class CourseRenderer {
 	private drawBib(x: number, y: number, label: string, color: string, isYou: boolean) {
 		const ctx = this.ctx;
 		ctx.save();
-		ctx.fillStyle = isYou ? color : color;
+		ctx.fillStyle = color;
 		ctx.strokeStyle = isYou ? color : this.colors.labelText;
 		ctx.lineWidth = isYou ? 2.5 : 2;
 		ctx.beginPath();

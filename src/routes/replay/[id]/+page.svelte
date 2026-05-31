@@ -66,6 +66,7 @@
 		const q = sessionSearch.trim().toLowerCase();
 		if (!q) return candidates;
 		return candidates.filter((c) => {
+			if (String(c.id) === ghostId) return true;
 			const hay = `${fmtDate(c.date)} ${fmtDistance(c.distance)} ${fmtPace(c.pace)}`.toLowerCase();
 			return hay.includes(q);
 		});
@@ -256,10 +257,19 @@
 	const raceFinished = $derived(ghostActive && replayDuration > 0 && frame.t >= replayDuration - 0.05);
 
 	const verdictText = $derived.by(() => {
-		if (!raceFinished || !ghostRival) return '';
-		const won = gapMeters >= 0;
-		const secs = Math.abs(gapSeconds).toFixed(1);
-		const m = String(Math.abs(Math.round(gapMeters)));
+		if (!raceFinished || !ghostRival || !ghostStrokes) return '';
+		const playerTime = detail.time;
+		const ghostTime = ghostStrokes[ghostStrokes.length - 1].t;
+		const won = playerTime <= ghostTime;
+		let m = '0';
+		if (won) {
+			const ghostDistAtFinish = sampleAt(ghostStrokes, playerTime).d;
+			m = String(Math.abs(Math.round(total - ghostDistAtFinish)));
+		} else {
+			const playerDistAtFinish = sampleAt(strokes, ghostTime).d;
+			m = String(Math.abs(Math.round(total - playerDistAtFinish)));
+		}
+		const secs = Math.abs(playerTime - ghostTime).toFixed(1);
 		const base = { seconds: secs, m };
 		if (ghostRival.kind === 'session' && ghostRival.date != null) {
 			const key = won ? 'replay.raceVerdictWinSession' : 'replay.raceVerdictLoseSession';
