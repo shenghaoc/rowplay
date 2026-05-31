@@ -129,7 +129,7 @@
 		const best = new Map<number, (typeof agg)[0]>();
 		for (const pb of agg) {
 			const cur = best.get(pb.distance);
-			if (!cur || pb.time < cur.time) best.set(pb.distance, pb);
+			if (!cur || pb.pace < cur.pace) best.set(pb.distance, pb);
 		}
 		return [...best.values()];
 	});
