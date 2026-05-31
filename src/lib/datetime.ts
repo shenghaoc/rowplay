@@ -81,7 +81,11 @@ export function fmtLogbookDateTime(value: string, locale?: string): string {
 }
 
 export function fmtDateFromEpochMillis(epochMs: number, locale?: string): string {
-	return Temporal.Instant.fromEpochMilliseconds(epochMs)
-		.toZonedDateTimeISO('UTC')
-		.toLocaleString(locale, DATE_FMT);
+	try {
+		return Temporal.Instant.fromEpochMilliseconds(epochMs)
+			.toZonedDateTimeISO('UTC')
+			.toLocaleString(locale, DATE_FMT);
+	} catch {
+		return '--';
+	}
 }
