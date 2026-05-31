@@ -32,7 +32,42 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.lang = lang;
 	event.locals.theme = theme;
 
-	return resolve(event, {
+	const response = await resolve(event, {
 		transformPageChunk: ({ html }) => html.replace('%lang%', lang).replace('%theme%', theme)
 	});
+
+	return withSecurityHeaders(response);
 };
+
+// Defense-in-depth defaults applied to every response. Each is set only when a
+// route hasn't already chosen its own value, so individual endpoints can
+// override (e.g. allow framing on a specific page).
+const SECURITY_HEADERS: Record<string, string> = {
+	'X-Frame-Options': 'DENY',
+	'X-Content-Type-Options': 'nosniff',
+	'Referrer-Policy': 'strict-origin-when-cross-origin'
+};
+
+function applyDefaults(headers: Headers): void {
+	for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+		if (!headers.has(name)) headers.set(name, value);
+	}
+}
+
+function withSecurityHeaders(response: Response): Response {
+	try {
+		applyDefaults(response.headers);
+		return response;
+	} catch (e) {
+		if (!(e instanceof TypeError)) throw e;
+		// Some responses (e.g. one returned directly from `fetch`) have immutable
+		// headers, and `.set()` throws. Rebuild with a mutable copy and retry.
+		const rebuilt = new Response(response.body, {
+			status: response.status,
+			statusText: response.statusText,
+			headers: new Headers(response.headers)
+		});
+		applyDefaults(rebuilt.headers);
+		return rebuilt;
+	}
+}
