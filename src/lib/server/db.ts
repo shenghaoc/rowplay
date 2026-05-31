@@ -208,3 +208,74 @@ export async function countWorkouts(db: D1Database, userId: number): Promise<num
 		.first<{ n: number }>();
 	return row?.n ?? 0;
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard aggregates — push totals / PBs / per-sport into D1 so the client
+// derives them from a handful of rows instead of iterating thousands.
+// ---------------------------------------------------------------------------
+
+interface SportAggRow {
+	sport: string;
+	sessions: number;
+	total_distance: number;
+	total_time: number;
+	avg_pace: number;
+	best_pace: number | null;
+	longest: number;
+}
+
+export async function getSportAggregates(db: D1Database, userId: number): Promise<SportAggRow[]> {
+	const res = await db
+		.prepare(
+			`SELECT sport,
+			        COUNT(*) AS sessions,
+			        SUM(distance) AS total_distance,
+			        SUM(time) AS total_time,
+			        CASE WHEN SUM(distance) > 0 THEN SUM(time) * 500.0 / SUM(distance) ELSE 0 END AS avg_pace,
+			        MIN(CASE WHEN pace > 0 THEN pace END) AS best_pace,
+			        MAX(distance) AS longest
+			 FROM workouts WHERE user_id = ?
+			 GROUP BY sport
+			 ORDER BY total_distance DESC`
+		)
+		.bind(userId)
+		.all<SportAggRow>();
+	return res.results ?? [];
+}
+
+interface PBRow {
+	sport: string;
+	target_distance: number;
+	best_time: number;
+	pace: number;
+	date: string;
+}
+
+export async function getPersonalBests(db: D1Database, userId: number): Promise<PBRow[]> {
+	const res = await db
+		.prepare(
+			`SELECT sport, target_distance, time AS best_time, pace, date
+			 FROM (
+			   SELECT sport, time, pace, date, target_distance,
+			     ROW_NUMBER() OVER (PARTITION BY sport, target_distance ORDER BY pace ASC) AS rn
+			   FROM (
+			     SELECT sport, time, pace, date,
+			       CASE
+			         WHEN ABS(distance - 500) <= 10 THEN 500
+			         WHEN ABS(distance - 1000) <= 20 THEN 1000
+			         WHEN ABS(distance - 2000) <= 40 THEN 2000
+			         WHEN ABS(distance - 5000) <= 100 THEN 5000
+			         WHEN ABS(distance - 6000) <= 120 THEN 6000
+			         WHEN ABS(distance - 10000) <= 200 THEN 10000
+			         WHEN ABS(distance - 21097) <= 421.94 THEN 21097
+			       END AS target_distance
+			     FROM workouts WHERE user_id = ? AND time > 0
+			   )
+			   WHERE target_distance IS NOT NULL
+			 )
+			 WHERE rn = 1`
+		)
+		.bind(userId)
+		.all<PBRow>();
+	return res.results ?? [];
+}

@@ -1,6 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
-import type { Workout, WorkoutDetail } from '../types';
+import type { Sport, Workout, WorkoutDetail } from '../types';
 import { mockWorkoutDetail, mockWorkouts } from '../mockData';
 import { Concept2Client } from './concept2';
 import { getConfig } from './config';
@@ -10,12 +10,15 @@ import {
 	countWorkouts,
 	getAllWorkouts,
 	getCachedDetail,
+	getPersonalBests,
+	getSportAggregates,
 	getSyncState,
 	putCachedDetail,
 	setSyncState,
 	upsertWorkouts,
 	type SyncState
 } from './db';
+import type { SportSummary } from '$lib/analytics';
 
 async function client(event: RequestEvent): Promise<Concept2Client | null> {
 	const env = event.platform?.env;
@@ -96,6 +99,47 @@ export async function syncStatus(event: RequestEvent): Promise<SyncState | null>
 	const userId = event.locals.user?.id;
 	if (!db || userId == null) return null;
 	return getSyncState(db, userId);
+}
+
+export interface DashboardAggregates {
+	bySport: SportSummary[];
+	pbs: { distance: number; time: number; pace: number; date: string; sport: Sport }[];
+}
+
+export async function loadDashboardAggregates(
+	event: RequestEvent
+): Promise<DashboardAggregates | null> {
+	if (event.locals.demo) return null;
+	const userId = event.locals.user?.id;
+	const db = event.platform?.env?.DB;
+	if (!db || userId == null) return null;
+
+	const [sportRows, pbRows] = await Promise.all([
+		getSportAggregates(db, userId).catch(() => []),
+		getPersonalBests(db, userId).catch(() => [])
+	]);
+
+	if (!sportRows.length && !pbRows.length) return null;
+
+	const bySport: SportSummary[] = sportRows.map((r) => ({
+		sport: r.sport as Sport,
+		sessions: r.sessions,
+		distance: r.total_distance,
+		time: r.total_time,
+		avgPace: r.avg_pace,
+		bestPace: r.best_pace ?? Infinity,
+		longest: r.longest
+	}));
+
+	const pbs = pbRows.map((r) => ({
+		distance: r.target_distance,
+		time: r.best_time,
+		pace: r.pace,
+		date: r.date,
+		sport: r.sport as Sport
+	}));
+
+	return { bySport, pbs };
 }
 
 export async function loadWorkoutDetail(
