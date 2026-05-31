@@ -223,29 +223,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 
 ---
 
-## Task 6 — Power-user workout list: search, filter, sort, date range, tags
-
-> The list (`WorkoutList.svelte`) is virtualized but you can't really *find*
-> anything in a multi-thousand-workout logbook. Add real querying.
->
-> **Build:**
-> - **Filter**: by sport, workout type (`workoutType`), date range, distance band,
->   "has stroke data", and free-text in `comments`.
-> - **Sort**: by date / distance / time / pace / power, asc+desc.
-> - **Saved/again**: a "PBs only" toggle; quick chips for common distances
->   (500/2k/5k/10k/marathon) and common durations.
-> - Push filtering/sorting into the **D1 query** (or the `/api/workouts` endpoint)
->   where possible so it scales — don't pull all rows into JS first (PR #19's SQL
->   approach is the model). Keep the JS path for demo mode.
-> - Reflect active filters in the URL (querystring) so views are shareable/bookmarkable.
->
-> **Rules:** i18n all labels. Keep the virtualized list smooth at thousands of
-> rows. Works in demo mode. **Acceptance:** I can find "all my 2k rows in 2025
-> sorted by pace" in a few clicks; the URL captures the filter; list stays smooth.
-> Gate passes.
-
----
-
 ## Task 7 — Compare any two workouts head-to-head (analytics, not racing)
 
 > Distinct from Task 2's live ghost race: a **static side-by-side analysis** of two

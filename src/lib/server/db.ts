@@ -1,6 +1,9 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '$lib/datetime';
+import type { WorkoutListQuery } from '$lib/workoutQuery';
 import type { Sport, Workout, WorkoutDetail } from '../types';
+
+const STANDARD_PB_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
 
 /**
  * Best-effort D1 cache of fully-hydrated workout detail (including strokes), so
@@ -93,17 +96,123 @@ function rowToWorkout(r: WorkoutRow): Workout {
 	};
 }
 
+const WORKOUT_SELECT = `SELECT workout_id, date, sport, distance, time, pace, stroke_rate, stroke_count,
+			        heart_rate, hr_min, hr_max, calories, watt_minutes, drag_factor, workout_type,
+			        comments, has_stroke`;
+
 /** All of a user's synced workouts, newest first. */
 export async function getAllWorkouts(db: D1Database, userId: number): Promise<Workout[]> {
 	const res = await db
-		.prepare(
-			`SELECT workout_id, date, sport, distance, time, pace, stroke_rate, stroke_count,
-			        heart_rate, hr_min, hr_max, calories, watt_minutes, drag_factor, workout_type,
-			        comments, has_stroke
-			 FROM workouts WHERE user_id = ? ORDER BY date DESC`
-		)
+		.prepare(`${WORKOUT_SELECT} FROM workouts WHERE user_id = ? ORDER BY date DESC`)
 		.bind(userId)
 		.all<WorkoutRow>();
+	return (res.results ?? []).map(rowToWorkout);
+}
+
+/** Workout ids that hold a standard-distance PB (±2%), one best per distance. */
+export async function getPbWorkoutIds(
+	db: D1Database,
+	userId: number,
+	sport?: Sport
+): Promise<Set<number>> {
+	const ids = new Set<number>();
+	for (const target of STANDARD_PB_DISTANCES) {
+		const tol = target * 0.02;
+		let sql = `SELECT workout_id FROM workouts
+			WHERE user_id = ? AND distance BETWEEN ? AND ? AND time > 0`;
+		const binds: (number | string)[] = [userId, target - tol, target + tol];
+		if (sport) {
+			sql += ' AND sport = ?';
+			binds.push(sport);
+		}
+		sql += ` AND time = (
+			SELECT MIN(time) FROM workouts
+			WHERE user_id = ? AND distance BETWEEN ? AND ? AND time > 0`;
+		binds.push(userId, target - tol, target + tol);
+		if (sport) {
+			sql += ' AND sport = ?';
+			binds.push(sport);
+		}
+		sql += ') LIMIT 1';
+		const row = await db.prepare(sql).bind(...binds).first<{ workout_id: number }>();
+		if (row) ids.add(row.workout_id);
+	}
+	return ids;
+}
+
+/**
+ * Filtered + sorted workout list in D1 (scales to large logbooks).
+ * `pbIds` should be precomputed when `pbsOnly` is set.
+ */
+export async function queryWorkouts(
+	db: D1Database,
+	userId: number,
+	q: WorkoutListQuery,
+	pbIds?: Set<number>
+): Promise<Workout[]> {
+	const conditions: string[] = ['user_id = ?'];
+	const binds: (number | string)[] = [userId];
+
+	if (q.sport) {
+		conditions.push('sport = ?');
+		binds.push(q.sport);
+	}
+	if (q.workoutType) {
+		conditions.push('workout_type = ?');
+		binds.push(q.workoutType);
+	}
+	if (q.dateFrom) {
+		conditions.push('date >= ?');
+		binds.push(`${q.dateFrom} 00:00:00`);
+	}
+	if (q.dateTo) {
+		conditions.push('date <= ?');
+		binds.push(`${q.dateTo} 23:59:59`);
+	}
+	if (q.distanceM != null) {
+		const tol = q.distanceM * 0.02;
+		conditions.push('distance BETWEEN ? AND ?');
+		binds.push(q.distanceM - tol, q.distanceM + tol);
+	} else if (q.distanceBandKey) {
+		const nominal = Number(q.distanceBandKey);
+		if (Number.isFinite(nominal) && nominal > 0) {
+			const tol = nominal * 0.06;
+			conditions.push('distance BETWEEN ? AND ?');
+			binds.push(nominal - tol, nominal + tol);
+		}
+	}
+	if (q.hasStroke === true) conditions.push('has_stroke = 1');
+	else if (q.hasStroke === false) conditions.push('has_stroke = 0');
+	if (q.q) {
+		conditions.push('LOWER(comments) LIKE ?');
+		binds.push(`%${q.q.toLowerCase()}%`);
+	}
+	if (q.durationMin != null) {
+		conditions.push('time >= ?');
+		binds.push(q.durationMin);
+	}
+	if (q.durationMax != null) {
+		conditions.push('time <= ?');
+		binds.push(q.durationMax);
+	}
+	if (q.pbsOnly) {
+		if (!pbIds?.size) return [];
+		const placeholders = [...pbIds].map(() => '?').join(',');
+		conditions.push(`workout_id IN (${placeholders})`);
+		binds.push(...pbIds);
+	}
+
+	const sortExpr: Record<WorkoutListQuery['sort'], string> = {
+		date: 'date',
+		distance: 'distance',
+		time: 'time',
+		pace: 'pace',
+		power: 'CASE WHEN time > 0 AND watt_minutes IS NOT NULL THEN watt_minutes * 60.0 / time ELSE 0 END'
+	};
+	const dir = q.dir === 'asc' ? 'ASC' : 'DESC';
+	const sql = `${WORKOUT_SELECT} FROM workouts WHERE ${conditions.join(' AND ')} ORDER BY ${sortExpr[q.sort]} ${dir}`;
+
+	const res = await db.prepare(sql).bind(...binds).all<WorkoutRow>();
 	return (res.results ?? []).map(rowToWorkout);
 }
 
