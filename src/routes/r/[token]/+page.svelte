@@ -14,7 +14,9 @@
 	let { data } = $props();
 	const t = getI18nContext().t;
 	const uiTheme = getThemeContext();
+	// svelte-ignore state_referenced_locally
 	const detail: WorkoutDetail = data.detail;
+	// svelte-ignore state_referenced_locally
 	const meta = data.meta;
 	const sportTheme = themeFor(detail.sport);
 	const total = detail.distance;
