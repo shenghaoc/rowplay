@@ -13,7 +13,7 @@
 		efficiencyByRate,
 		intervalBreakdown
 	} from '$lib/analytics';
-	import { avgWatts, fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
+	import { fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, paceToWatts, SPORT_LABEL } from '$lib/format';
 	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
 	import { toast } from 'svelte-sonner';
@@ -282,11 +282,11 @@
 	}
 
 	// ---- Full metadata ----
-	const watts = avgWatts(detail);
-	const dateTime = (() => {
-		const d = new Date(detail.date.replace(' ', 'T'));
-		return isNaN(d.getTime()) ? detail.date : d.toLocaleString();
-	})();
+	const avgWatts =
+		detail.wattMinutes && detail.time > 0
+			? Math.round(detail.wattMinutes / (detail.time / 60))
+			: Math.round(paceToWatts(detail.pace));
+	const dateTime = fmtLogbookDateTime(detail.date);
 </script>
 
 <svelte:head><title>{t('common.replay')} · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
@@ -591,7 +591,7 @@
 			<div><dt>{t('replay.mAvgPace')}</dt><dd class="mono">{fmtPace(detail.pace)}</dd></div>
 			<div><dt>{t('replay.mAvgRate')}</dt><dd class="mono">{detail.strokeRate ?? '—'} {theme.cadenceUnit}</dd></div>
 			<div><dt>{t('replay.mStrokeCount')}</dt><dd class="mono">{detail.strokeCount ?? '—'}</dd></div>
-			<div><dt>{t('replay.mAvgPower')}</dt><dd class="mono">{watts} W</dd></div>
+			<div><dt>{t('replay.mAvgPower')}</dt><dd class="mono">{avgWatts} W</dd></div>
 			<div>
 				<dt>{t('replay.mAvgHr')}</dt>
 				<dd class="mono">{detail.heartRateAvg != null ? Math.round(detail.heartRateAvg) + ' bpm' : '—'}</dd>
