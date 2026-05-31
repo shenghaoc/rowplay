@@ -1094,6 +1094,9 @@ export function compareIntervalReps(a: WorkoutDetail, b: WorkoutDetail): Interva
 		});
 	}
 	return rows;
+}
+
+// ---------------------------------------------------------------------------
 // Goals, streaks, challenges (Task 5)
 // ---------------------------------------------------------------------------
 
