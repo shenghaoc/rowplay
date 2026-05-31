@@ -58,7 +58,8 @@ function withSecurityHeaders(response: Response): Response {
 	try {
 		applyDefaults(response.headers);
 		return response;
-	} catch {
+	} catch (e) {
+		if (!(e instanceof TypeError)) throw e;
 		// Some responses (e.g. one returned directly from `fetch`) have immutable
 		// headers, and `.set()` throws. Rebuild with a mutable copy and retry.
 		const rebuilt = new Response(response.body, {
