@@ -11,7 +11,8 @@ import {
 	challengeDistanceMetres,
 	paceToWatts,
 	paceToWattsForSport,
-	SPORT_LABEL
+	SPORT_LABEL,
+	wattsToPaceForSport
 } from './format';
 import { bikePaceSecPer500, workout } from '../../tests/unit/fixtures';
 
@@ -81,6 +82,13 @@ describe('bike pace per-1000m normalisation', () => {
 		const normalized = bikePaceSecPer500(1900);
 		expect(normalized).toBe(95);
 		expect(paceToWattsForSport('bike', normalized)).toBeCloseTo(paceToWatts(95) / 8, 1);
+	});
+});
+
+describe('wattsToPaceForSport', () => {
+	it('inverts bike watts with the 8× scale factor', () => {
+		const pace = wattsToPaceForSport('bike', 51.03);
+		expect(pace).toBeCloseTo(95, 0);
 	});
 });
 

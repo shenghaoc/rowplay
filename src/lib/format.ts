@@ -68,11 +68,19 @@ export function challengeDistanceMetres(w: Pick<Workout, 'sport' | 'distance'>):
 	return w.sport === 'bike' ? w.distance / 2 : w.distance;
 }
 
-/** Inverse of {@link paceToWatts}: watts → sec/500m. */
+/** Inverse of {@link paceToWatts}: watts → sec/500m (RowErg/SkiErg PM basis). */
 export function wattsToPace(watts: number): number {
 	if (!isFinite(watts) || watts <= 0) return 0;
 	const perMetre = Math.pow(2.8 / watts, 1 / 3);
 	return perMetre * 500;
+}
+
+/** Inverse of {@link paceToWattsForSport}: normalised sec/500m from watts. */
+export function wattsToPaceForSport(sport: Sport | undefined, watts: number): number {
+	if (!isFinite(watts) || watts <= 0) return 0;
+	return sport === 'bike'
+		? wattsToPace(watts * BIKE_WATTS_FROM_NORMALIZED_PACE_DIVISOR)
+		: wattsToPace(watts);
 }
 
 /** Average watts from cached watt-minutes when present, else Concept2 pace model. */

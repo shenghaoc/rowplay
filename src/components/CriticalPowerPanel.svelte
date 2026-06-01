@@ -10,7 +10,7 @@
 		type CriticalPower
 	} from '$lib/analytics';
 	import { fmtDistance, fmtPace, fmtPaceBare, fmtTime } from '$lib/format';
-	import type { Workout } from '$lib/types';
+	import type { Sport, Workout } from '$lib/types';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
 	import { chartTheme, baseOptions } from '$lib/chartTheme';
@@ -23,6 +23,12 @@
 
 	const cp = $derived(estimateCriticalPower(workouts));
 	const comparison = $derived(cp ? powerDurationComparison(workouts, cp) : null);
+
+	/** Single-sport history → bike-aware pace inverse; mixed ergs use rower basis. */
+	const predictorSport = $derived.by((): Sport | undefined => {
+		const sports = new Set(workouts.map((w) => w.sport));
+		return sports.size === 1 ? [...sports][0] : undefined;
+	});
 
 	type PredictMode = 'duration' | 'distance';
 	let predictMode = $state<PredictMode>('duration');
@@ -47,13 +53,13 @@
 		if (!durationMin || isNaN(durationMin)) return null;
 		const sec = durationMin * 60;
 		if (sec < 60 || sec > 7200) return null;
-		return predictPaceForDuration(cp, sec);
+		return predictPaceForDuration(cp, sec, predictorSport);
 	});
 
 	const predictedTime = $derived.by(() => {
 		if (!cp || predictMode !== 'distance') return null;
 		if (!distanceM || isNaN(distanceM) || distanceM < 100) return null;
-		return predictTimeForDistance(cp, distanceM);
+		return predictTimeForDistance(cp, distanceM, predictorSport);
 	});
 
 	const predictedPaceFromDistance = $derived.by(() => {
