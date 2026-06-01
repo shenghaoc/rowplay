@@ -38,7 +38,8 @@
 		return {
 			frame: f,
 			distFrac: total ? f.d / total : 0,
-			totalDistance: total
+			totalDistance: total,
+			sport: detail.sport
 		};
 	}
 

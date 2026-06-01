@@ -153,6 +153,7 @@
 			frame: f,
 			distFrac: total ? f.d / total : 0,
 			totalDistance: total,
+			sport: detail.sport,
 			ghost: g
 				? { distFrac: total ? g.d / total : 0, pace: g.pace, spm: g.spm, label: ghostLabel }
 				: undefined
