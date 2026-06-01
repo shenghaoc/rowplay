@@ -428,7 +428,7 @@ export const ja = {
 		eyebrow: 'プライバシーと管理',
 		dataTitle: '保存している内容',
 		dataNote:
-			'rowplay は Concept2 ワークアウトの概要とキャッシュしたストローク詳細を Cloudflare に保存し、リプレイを即座に読み込みます。セッショントークンは KV にあり、ブラウザには送られません。',
+			'rowplay は Concept2 ワークアウトの概要とキャッシュしたストローク詳細を Cloudflare に保存し、リプレイを即座に読み込みます。API トークンはセッション用にサーバー側 KV に保存され、接続後は httpOnly セッション Cookie のみがブラウザに送られます。',
 		factWorkouts: 'エクスポート可能なワークアウト {n} 件',
 		factDemo: 'デモモード — サンプルデータのみ、永続化されません。',
 		factCache: 'ワークアウト概要とリプレイキャッシュは D1（アカウントごと）。',
@@ -463,7 +463,7 @@ export const ja = {
 		introBefore: 'Concept2 ログブックの個人 API トークンを貼り付け（',
 		introLink: 'プロフィール編集 → アプリケーション',
 		introAfter:
-			'）。rowplay はセッション中のみサーバー側に保持し、あなたのワークアウト読み取りに使用 — ブラウザには届きません。',
+			'）。ここに一度貼り付けてください — rowplay は HTTPS で Worker に送り、セッションに保存し、サーバー側のログブック読み取りにのみ使用します。接続後、ブラウザが保持するのは httpOnly Cookie のみで、トークン自体ではありません。',
 		apiToken: 'API トークン',
 		placeholder: 'トークンを貼り付け',
 		connect: 'トークンで接続',

@@ -19,18 +19,21 @@ lower-resolution replay synthesised from splits.
 | -------------- | ------------------------------------------------------------------ |
 | App framework  | SvelteKit (Svelte 5) + Vite                                        |
 | Hosting        | Cloudflare **Workers** + static assets (`@sveltejs/adapter-cloudflare`) |
-| Server / OAuth | SvelteKit endpoints running on the Workers runtime                |
+| Server         | SvelteKit endpoints on the Workers runtime                         |
+| Auth           | **Bring-your-own-token** (personal read-only API token)            |
 | Sessions       | Cloudflare **KV** (`SESSIONS`)                                     |
-| Cache          | Cloudflare **D1** (`DB`) — caches hydrated workouts + strokes      |
+| Cache          | Cloudflare **D1** (`DB`) — cached workouts + strokes               |
 | Charts         | [uPlot](https://github.com/leeoniya/uPlot)                        |
 | Replay engine  | rAF clock + linear interpolation (`src/lib/replay/`), Canvas course |
 
-The Concept2 **client secret never reaches the browser**: the OAuth code
-exchange and all logbook API calls happen server-side on the Worker.
+You paste a **read-only personal API token** from your Concept2 profile once.
+It is sent to the Worker over HTTPS, stored in your session (KV), and used only
+for **server-side** logbook reads. After connect, your browser holds an httpOnly
+session cookie — the token is not kept in client JS or `localStorage`.
 
 ## Quick start (demo mode)
 
-No Concept2 account needed — leave the client id blank and rowplay serves
+No Concept2 account needed — open the app without a session and rowplay serves
 realistic sample data.
 
 ```bash
@@ -40,88 +43,73 @@ npm run dev        # http://localhost:5173
 
 Open `/dashboard` and click any workout to watch the replay.
 
-## Connecting your real logbook
+## Connecting your real logbook (BYOT)
 
-1. Register an app at <https://log.concept2.com/developers/keys>.
-   Set the redirect URI to `<your-app-url>/auth/callback`
-   (e.g. `http://localhost:5173/auth/callback` for local dev).
-2. Copy `.dev.vars.example` → `.dev.vars` and fill in:
-
-   ```ini
-   CONCEPT2_CLIENT_ID="..."
-   CONCEPT2_CLIENT_SECRET="..."
-   CONCEPT2_BASE_URL="https://log.concept2.com"   # or https://log-dev.concept2.com
-   PUBLIC_APP_URL="http://localhost:5173"
-   SESSION_SECRET="<random string>"
-   ```
-
-3. For local KV/D1, `wrangler` provides them automatically via the
-   Cloudflare Vite integration. Apply the D1 schema once:
+1. In the Concept2 logbook, open **Edit Profile → Applications** and copy your
+   personal API token (read-only, works for your account only).
+2. In rowplay, click **Use a token** (`/auth/token`) and paste it.
+3. For local KV/D1 (token auth, sync, cache), use the Workers runtime:
 
    ```bash
+   cp .dev.vars.example .dev.vars
+   # set SESSION_SECRET (random string)
    npm run db:migrate:local
+   npm run preview    # http://127.0.0.1:8787 — not plain vite dev
    ```
 
-4. `npm run dev`, then click **Connect Concept2**.
+4. Paste your token at `/auth/token` on the preview URL.
+
+`CONCEPT2_CLIENT_ID` / `CONCEPT2_CLIENT_SECRET` are **optional** — only needed
+if you register a Concept2 developer app and enable the OAuth login flow.
 
 ## Deploying to Cloudflare
 
-```bash
-# one-time resource creation
-wrangler kv namespace create SESSIONS      # paste id into wrangler.jsonc
-wrangler d1 create rowplay                 # paste database_id into wrangler.jsonc
-npm run db:migrate                         # apply migrations to remote D1
+Production: **`https://rowplay.shenghaoc.workers.dev`**
 
-# secrets (never commit these)
-wrangler secret put CONCEPT2_CLIENT_SECRET
+```bash
+# secrets (never commit)
 wrangler secret put SESSION_SECRET
 
-# build + deploy the Worker
+# build + deploy
 npm run deploy
 ```
 
-Set `CONCEPT2_CLIENT_ID` and `PUBLIC_APP_URL` (your production origin) in the
-`vars` block of `wrangler.jsonc`, and add the production
-`<origin>/auth/callback` to your Concept2 app's allowed redirect URIs.
-
-This app deploys to **`https://rowplay.shenghaoc.workers.dev`**, so the
-Concept2 redirect URI to register is
-`https://rowplay.shenghaoc.workers.dev/auth/callback`.
+KV/D1 bindings and `PUBLIC_APP_URL` are already set in `wrangler.jsonc`. Apply
+remote migrations once: `npm run db:migrate`.
 
 ## Scripts
 
 | Script                     | Does                                          |
 | -------------------------- | --------------------------------------------- |
-| `npm run dev`              | Local dev server                              |
+| `npm run dev`              | Local dev server (demo mode; fast UI)         |
 | `npm run build`            | Production build (`.svelte-kit/cloudflare`)   |
-| `npm run preview`          | Build + serve the Worker via `wrangler dev`   |
+| `npm run preview`          | Build + serve via `wrangler dev` (real runtime) |
 | `npm run check`            | `svelte-check` type checking                  |
-| `npm run deploy`           | Build + deploy the Worker (`wrangler deploy`) |
+| `npm run test`             | Vitest unit tests                             |
+| `npm run test:e2e`         | Playwright smoke (WebKit + wrangler dev)      |
+| `npm run deploy`           | Build + deploy (`wrangler deploy`)            |
 | `npm run db:migrate[:local]` | Apply D1 migrations                         |
+
+## Agent / contributor docs
+
+See **[AGENTS.md](AGENTS.md)** (entry point for Cursor, Copilot, Claude, etc.)
+and **[`.kiro/steering/`](.kiro/steering/)** for product and architecture detail.
 
 ## Project layout
 
 ```
 src/
   lib/
-    replay/        engine.ts (clock + interpolation), renderer.ts (canvas course), sports.ts
-    server/        concept2.ts (OAuth + API client), session.ts (KV), db.ts (D1 cache), data.ts
-    types.ts       Workout / Stroke / Split model
+    replay/        engine, renderer, sports
+    server/        concept2 API client, session (KV), db (D1), data loader
+    analytics.ts   pure analysis functions
     mockData.ts    demo-mode sample workouts
   routes/
-    auth/          OAuth login / callback / logout
-    api/           JSON endpoints for workouts + detail
+    auth/token/    bring-your-own-token connect
     dashboard/     summary + workout list
-    replay/[id]/   the real-time replay
-  components/       UPlotChart, MetricGauge
+    replay/[id]/   real-time replay
+  components/    charts, gauges, panels
 ```
-
-### Ghost racing
-
-The replay engine's sampling (`sampleAt`) is a pure function, and the course
-renderer's geometry is a pure function of distance fraction — so racing a past
-session as a "ghost" later means sampling a second stroke array and drawing a
-second avatar, without reworking the engine.
 
 ---
 

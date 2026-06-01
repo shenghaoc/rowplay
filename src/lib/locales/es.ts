@@ -426,7 +426,7 @@ export const es = {
 		eyebrow: 'Privacidad y control',
 		dataTitle: 'Qué almacenamos',
 		dataNote:
-			'rowplay guarda una copia de los resúmenes de tus entrenamientos Concept2 y el detalle de palada en caché en Cloudflare para que los replays carguen al instante. Tu token de sesión está en KV y nunca se envía al navegador.',
+			'rowplay guarda una copia de los resúmenes de tus entrenamientos Concept2 y el detalle de palada en caché en Cloudflare para que los replays carguen al instante. Tu token API se guarda en el servidor (KV) para tu sesión; después solo se envía al navegador una cookie httpOnly de sesión.',
 		factWorkouts: '{n} entrenamientos disponibles para exportar',
 		factDemo: 'Modo demo — solo datos de ejemplo, no se persiste nada.',
 		factCache: 'Resúmenes y caché de replay en D1 (por tu cuenta).',
@@ -460,7 +460,7 @@ export const es = {
 		introBefore: 'Pega un token API personal de tu diario Concept2 (',
 		introLink: 'Editar perfil → Aplicaciones',
 		introAfter:
-			'). rowplay lo guarda solo en el servidor para tu sesión y lo usa para leer tus entrenamientos — nunca llega al navegador.',
+			'). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo guarda en tu sesión y lo usa solo para lecturas del diario en el servidor. Después, el navegador solo tiene una cookie httpOnly, no el token.',
 		apiToken: 'Token API',
 		placeholder: 'Pega tu token',
 		connect: 'Conectar con token',

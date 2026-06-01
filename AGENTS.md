@@ -1,104 +1,114 @@
-# AGENTS.md
+# AGENTS.md — rowplay agent entry point
 
-## Project
+Use this file as a **thin router**. Read the steering docs before coding; specs
+live under `.kiro/specs/`.
+
+## Read steering first
+
+- [Product vision](.kiro/steering/product.md) — replay-first; BYOT auth; demo mode.
+- [Technical constraints](.kiro/steering/tech.md) — SvelteKit on Cloudflare Workers, KV + D1.
+- [Repository structure](.kiro/steering/structure.md) — layout, naming, conventions.
+
+## Skills
+
+Reusable packs in [`.kiro/skills/`](.kiro/skills/):
+
+- **svelte-core-bestpractices** / **svelte-code-writer** — Svelte 5 runes mode.
+- **web-design-guidelines** — accessibility and UI review checklist.
+
+## Specs (`.kiro/specs/`)
+
+Each spec has `design.md`, `requirements.md`, and `tasks.md`.
+
+**Completed (do not rebuild):**
+
+- [Leaderboards](.kiro/specs/leaderboards/tasks.md)
+- [Live / near-live mode](.kiro/specs/live-near-live-mode/tasks.md)
+- [Heart-rate import](.kiro/specs/heart-rate-import/tasks.md)
+- [Detail cache TTL](.kiro/specs/detail-cache-ttl/tasks.md)
+
+## Project summary
 
 **rowplay** is a SvelteKit / Svelte 5 app: Concept2 logbook analytics plus a
 real-time workout replay, deployed to **Cloudflare Workers** (static assets +
 Worker via `@sveltejs/adapter-cloudflare`).
 
 All server logic runs in SvelteKit endpoints on the Workers runtime. There is no
-separate backend: the app talks to the Concept2 Logbook API over OAuth2
-(server-side only) and caches hydrated workouts in Cloudflare D1.
+separate backend: the app reads the Concept2 Logbook API **server-side** and
+caches hydrated workouts in Cloudflare D1.
+
+### Authentication (BYOT-first)
+
+Production uses **bring-your-own-token**: the athlete pastes a **read-only
+personal API token** from their Concept2 profile (`/auth/token`). The token is
+submitted once over HTTPS, validated on the Worker, stored in KV for the session,
+and used only for server-side logbook reads. After connect, the browser holds an
+**httpOnly session cookie** — not the token in client JS or `localStorage`.
+
+**Demo mode** (default): with no session, the app serves deterministic mock data
+(`src/lib/mockData.ts`). No Concept2 credentials required for dev or e2e.
+
+**Optional OAuth** (legacy): if `CONCEPT2_CLIENT_ID` is set in `wrangler.jsonc`,
+the OAuth login/callback routes are enabled. This requires a registered Concept2
+developer app and is not needed for the public BYOT deployment.
 
 ## Key commands
 
-All commands use **npm** (lockfile: `package-lock.json`). See `package.json`
-`"scripts"` for the full list.
+All commands use **npm** (lockfile: `package-lock.json`).
 
 | Task         | Command                                                      |
 | ------------ | ------------------------------------------------------------ |
 | Install deps | `npm install`                                                |
 | Dev server   | `npm run dev` (serves at `http://localhost:5173`)            |
 | Type check   | `npm run check` (`svelte-kit sync` + `svelte-check`)         |
-| Unit tests   | `npm run test` (Vitest; pure `analytics` / `format` / replay `engine`) |
+| Unit tests   | `npm run test` (Vitest)                                      |
 | Build        | `npm run build` (outputs `.svelte-kit/cloudflare`)           |
-| Preview      | `npm run preview` (build + `wrangler dev`, the real runtime) |
+| Preview      | `npm run preview` (build + `wrangler dev`, real runtime)     |
 | Deploy       | `npm run deploy` (build + `wrangler deploy`)                 |
 | D1 migrate   | `npm run db:migrate` (remote) / `db:migrate:local`           |
+| Locales      | `npm run validate:locales` (after adding i18n keys)          |
+| E2E          | `npm run test:e2e` (WebKit; needs `wrangler dev` runtime)    |
 
-## Architecture
+## Architecture (short)
 
-- `src/lib/server/` — server-only code: `concept2.ts` (OAuth + API client with
-  token refresh), `session.ts` (KV-backed sessions), `db.ts` (D1 cache),
-  `data.ts` (the demo/auth-aware data loader), `config.ts`.
-- `src/lib/replay/` — `engine.ts` (pure rAF clock + `sampleAt` interpolation),
-  `renderer.ts` (canvas course + ghost lane), `sports.ts` (per-sport theming).
-- `src/lib/analytics.ts` — pure analysis functions (DPS, efficiency, HR zones,
-  power curve, distance bands, linear trend). No DOM; safe on server or client.
-- `src/routes/` — `auth/` (OAuth login/callback/logout), `api/` (JSON
-  endpoints), `dashboard/`, `replay/[id]/`.
-- `src/lib/i18n.ts` + `src/lib/i18n.svelte.ts` + `src/lib/locales/` — hand-rolled
-  i18n (`en`, `zh`, `de`, `es`, `fr`, `ja`); pure dictionaries + reactive `I18n`
-  class shared via Svelte context. Run `npm run validate:locales` after adding keys.
-- `src/lib/theme.svelte.ts` — light/dark theme toggle, also via context.
-- Charts use **uPlot**; styling uses **Tailwind CSS v4** plus CSS custom
-  properties for theming in `src/app.css` and scoped component `<style>` blocks.
+- `src/lib/server/` — `concept2.ts`, `session.ts` (KV), `db.ts` (D1), `data.ts`.
+- `src/lib/replay/` — `engine.ts`, `renderer.ts`, `sports.ts`.
+- `src/lib/analytics.ts` — pure analysis; no DOM.
+- `src/routes/` — `auth/token/` (BYOT), `dashboard/`, `replay/[id]/`, `api/`.
+- i18n: `src/lib/locales/` (`en`, `zh`, `de`, `es`, `fr`, `ja`); all user strings via `i18n.t()`.
 
 ## Non-obvious caveats
 
-- **Config is `wrangler.jsonc`**, not TOML. Bindings: `ASSETS` (static assets),
-  `SESSIONS` (KV), `DB` (D1). KV/D1 ids are placeholders — fill them before any
-  non-demo deploy or the Worker errors on the missing bindings at startup.
-- **Demo mode**: when `CONCEPT2_CLIENT_ID` is unset, the app serves deterministic
-  mock data (`src/lib/mockData.ts`) and skips auth — so `npm run dev` works with
-  zero configuration. Real data needs the OAuth env vars + KV/D1.
-- **Secrets** (`CONCEPT2_CLIENT_SECRET`, `SESSION_SECRET`) are set via
-  `wrangler secret put`, never committed. Local dev reads them from `.dev.vars`.
-- **Verify on the real runtime**: `vite dev` does not provide the Workers asset
-  server or KV/D1 bindings. Use `wrangler dev` (via `npm run preview`) to test
-  routing, bindings, and that `_worker.js` / sourcemaps are not served publicly.
-- **Stroke-data units** (handled in `concept2.ts > mapStrokes`): stroke pace `p`
-  is per-500m for rower/skierg but **per-1000m for the bike**; and for interval
-  workouts `t`/`d` **restart at 0 each interval**. Both are normalised on read —
-  keep that in mind before changing the parser.
-- `npm run build` runs `scripts/postbuild.mjs`, which appends `_worker.js.map`
-  to the adapter's `.assetsignore` (defensive; adapter 7 no longer emits it).
-- A `tsconfig.json` warning about `.svelte-kit/tsconfig.json` before the first
-  `svelte-kit sync` is harmless — it resolves after `npm run check` or dev runs.
+- **Config is `wrangler.jsonc`**. Bindings: `ASSETS`, `SESSIONS` (KV), `DB` (D1).
+  Production deploy at `https://rowplay.shenghaoc.workers.dev` uses real KV/D1 ids.
+- **`CONCEPT2_CLIENT_ID` empty is intentional** for BYOT production. Set
+  `SESSION_SECRET` via `wrangler secret put` (and `CONCEPT2_CLIENT_SECRET` only
+  if OAuth is enabled).
+- **`vite dev` is not the Workers runtime** — no KV/D1/asset bindings. Use
+  `npm run preview` (`wrangler dev` on `http://127.0.0.1:8787`) for auth, sync,
+  and binding tests.
+- **Stroke-data units** (`concept2.ts > mapStrokes`): bike pace is per-1000m;
+  interval `t`/`d` restart per rep — both normalised on read.
+- `npm run build` runs `scripts/postbuild.mjs` (patches `.assetsignore`).
 
-## Svelte conventions
+## Quality gate
 
-This is a runes-mode Svelte 5 project. Follow the bundled Svelte skills
-(`svelte-core-bestpractices`, `svelte-code-writer`): prefer
-`$state`/`$derived` over effects, keyed `{#each}`, `onclick={...}` handlers, and
-snippets over slots.
+1. `npm run check` → 0 errors (`state_referenced_locally` warnings are known).
+2. `npm run build` → succeeds.
+3. `npm run test` → green.
+4. Feature work: verify in demo mode; token auth on `npm run preview` if touched.
 
-## I18n & theming
+## Svelte & i18n
 
-- All user-visible strings go through `i18n.t('key.path')`, never hardcoded.
-  Add keys to **every** locale under `src/lib/locales/` (start from `en.ts`).
-- Language and theme state are `$state`-based classes (`I18n`, `Theme`) shared
-  via `createContext` in the root layout — SSR-safe, no shared singletons.
-- Preferences persist via cookies (`lang`, `theme`) so SSR matches the client.
-- Sport names (RowErg, SkiErg, BikeErg) are Concept2 trademarks and left
-  untranslated in both languages.
+- Svelte 5 runes: `$state` / `$derived`, keyed `{#each}`, `onclick={...}`.
+- Every user-visible string through `i18n.t()` in **all** locale files.
+- Sport names (RowErg, SkiErg, BikeErg) stay untranslated.
 
 ## Cursor Cloud specific instructions
 
-- **No ESLint/Prettier scripts** — quality gate is `npm run check` (0 errors;
-  a few `state_referenced_locally` warnings are expected).
-- **Demo mode is the default** in this repo (`CONCEPT2_CLIENT_ID` empty in
-  `wrangler.jsonc`). No `.dev.vars` or Concept2 credentials are required for
-  dashboard/replay development or `npm run test:e2e`.
-- **Two local URLs**: `npm run dev` → `http://localhost:5173` (fast UI iteration;
-  no KV/D1). Workers-faithful runtime → `npm run preview` or Playwright’s
-  `wrangler dev` on **`http://127.0.0.1:8787`** (see `playwright.config.ts`).
-- **E2E** (`npm run test:e2e`): builds and starts `wrangler dev` automatically.
-  - First run on a fresh VM needs WebKit system libs:
-    `npx playwright install --with-deps webkit`.
-  - Reuse an already-running preview with `npm run test:e2e:reuse`.
-- **OAuth / sync / token auth** need `wrangler dev` (preview), local KV, and
-  usually `npm run db:migrate:local` once; copy `.dev.vars.example` → `.dev.vars`
-  for secrets. These flows are not testable on `vite dev` alone.
-- **Hello-world check**: open `/dashboard`, follow a `/replay/<id>` link, press
-  Play — canvas course and live pace/rate/power/HR should update.
+- **Demo mode is the default** — no `.dev.vars` needed for dashboard/replay/e2e.
+- **Two local URLs**: `npm run dev` → `http://localhost:5173` (fast UI);
+  `npm run preview` → `http://127.0.0.1:8787` (Workers-faithful).
+- **E2E**: `npm run test:e2e`; first run needs `npx playwright install --with-deps webkit`.
+- **Token auth / sync / KV / D1**: test on `npm run preview`, not `vite dev` alone.
+- **Hello-world**: `/dashboard` → `/replay/1001` → Play — canvas and gauges update.

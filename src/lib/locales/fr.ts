@@ -426,7 +426,7 @@ export const fr = {
 		eyebrow: 'Confidentialité et contrôle',
 		dataTitle: 'Ce que nous stockons',
 		dataNote:
-			'rowplay conserve une copie de vos résumés de séances Concept2 et le détail des coups en cache sur Cloudflare pour des replays instantanés. Votre jeton de session est dans KV et n’est jamais envoyé au navigateur.',
+			'rowplay conserve une copie de vos résumés de séances Concept2 et le détail des coups en cache sur Cloudflare pour des replays instantanés. Votre jeton API est stocké côté serveur (KV) pour votre session ; ensuite, seul un cookie httpOnly est envoyé au navigateur.',
 		factWorkouts: '{n} séances disponibles à l’export',
 		factDemo: 'Mode démo — données d’exemple uniquement, rien n’est persisté.',
 		factCache: 'Résumés de séances et cache replay dans D1 (par compte).',
@@ -460,7 +460,7 @@ export const fr = {
 		introBefore: 'Collez un jeton API personnel depuis votre logbook Concept2 (',
 		introLink: 'Modifier le profil → Applications',
 		introAfter:
-			'). rowplay le conserve côté serveur pour votre session uniquement et l’utilise pour lire vos séances — il n’atteint jamais le navigateur.',
+			'). Collez-le ici une fois — rowplay l’envoie au Worker en HTTPS, le stocke dans votre session et l’utilise uniquement pour les lectures côté serveur. Ensuite, le navigateur ne garde qu’un cookie httpOnly, pas le jeton.',
 		apiToken: 'Jeton API',
 		placeholder: 'Collez votre jeton',
 		connect: 'Connecter avec le jeton',
