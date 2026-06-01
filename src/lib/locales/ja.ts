@@ -60,7 +60,13 @@ export const ja = {
 		publishOffBoard: '公開できるのは標準距離（500m、1k、2k、5k、6k、10k、ハーフ）のみです。',
 		publishFailed: 'ランキングに公開できませんでした'
 	},
-	nav: { dashboard: 'ダッシュボード', leaderboard: 'ランキング', settings: 'データ' },
+	nav: {
+		dashboard: 'ダッシュボード',
+		leaderboard: 'ランキング',
+		settings: 'データ',
+		menuOpen: 'メニューを開く',
+		menuClose: 'メニューを閉じる'
+	},
 	common: {
 		demoMode: 'デモモード',
 		replay: 'リプレイ',

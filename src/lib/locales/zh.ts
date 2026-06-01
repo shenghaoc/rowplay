@@ -60,7 +60,13 @@ export const zh = {
 		publishOffBoard: '仅标准距离（500m、1k、2k、5k、6k、10k、半马）可发布到榜单。',
 		publishFailed: '无法发布到排行榜'
 	},
-	nav: { dashboard: '仪表板', leaderboard: '排行榜', settings: '数据' },
+	nav: {
+		dashboard: '仪表板',
+		leaderboard: '排行榜',
+		settings: '数据',
+		menuOpen: '打开菜单',
+		menuClose: '关闭菜单'
+	},
 	common: {
 		demoMode: '演示模式',
 		replay: '回放',

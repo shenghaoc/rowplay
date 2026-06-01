@@ -60,7 +60,13 @@ export const fr = {
 		publishOffBoard: 'Seules les séries de distance standard (500 m, 1k, 2k, 5k, 6k, 10k, semi) peuvent être publiées.',
 		publishFailed: 'Impossible de publier au classement'
 	},
-	nav: { dashboard: 'Tableau de bord', leaderboard: 'Classements', settings: 'Données' },
+	nav: {
+		dashboard: 'Tableau de bord',
+		leaderboard: 'Classements',
+		settings: 'Données',
+		menuOpen: 'Ouvrir le menu',
+		menuClose: 'Fermer le menu'
+	},
 	common: {
 		demoMode: 'mode démo',
 		replay: 'Replay',

@@ -173,6 +173,7 @@
 	.calwrap {
 		display: flex;
 		gap: 0.35rem;
+		max-width: 100%;
 		overflow-x: auto;
 		padding-bottom: 0.25rem;
 		--cell: 11px;
