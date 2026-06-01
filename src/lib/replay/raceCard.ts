@@ -88,7 +88,7 @@ export function renderRaceCard(
 	ctx.fillText(fmtLogbookDateTime(detail.date), 56, 290);
 
 	// Hero stats
-	const avgPower = detail.pace > 0 || (detail.wattMinutes && detail.time > 0) ? avgWatts(detail) : 0;
+	const avgPower = avgWatts(detail);
 	const hr =
 		detail.heartRateAvg != null ? `${Math.round(detail.heartRateAvg)} bpm` : '—';
 
