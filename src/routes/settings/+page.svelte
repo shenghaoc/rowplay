@@ -122,7 +122,7 @@
 		<h2><RefreshCw size={18} /> {t('settings.syncTitle')}</h2>
 		<p class="muted">{t('settings.syncNote')}</p>
 		{#if data.demo}
-			<p class="badge badge-primary">{t('settings.syncDemo')}</p>
+			<span class="badge badge-primary">{t('settings.syncDemo')}</span>
 		{:else}
 			<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: data.sync?.total ?? 0 })}</p>
 			<div class="row">
