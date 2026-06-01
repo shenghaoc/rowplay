@@ -26,6 +26,7 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [Live / near-live mode](.kiro/specs/live-near-live-mode/tasks.md)
 - [Heart-rate import](.kiro/specs/heart-rate-import/tasks.md)
 - [Detail cache TTL](.kiro/specs/detail-cache-ttl/tasks.md)
+- [3D replay view](.kiro/specs/3d-replay-view/tasks.md)
 
 ## Project summary
 

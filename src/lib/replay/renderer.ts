@@ -93,11 +93,18 @@ export interface RenderState {
 	ghost?: AvatarState;
 }
 
+/** Shared contract for 2D canvas and lazy-loaded 3D WebGL renderers. */
+export interface ReplayRenderer {
+	render(state: RenderState, playing: boolean, theme: 'light' | 'dark'): void;
+	resize(cssWidth: number, cssHeight: number): void;
+	destroy(): void;
+}
+
 /**
  * Draws the race-board course strip — warm paper lanes, ink ticks, vermilion YOU
  * and lake GHOST bibs. No gradients; structure from rules and spot colours.
  */
-export class CourseRenderer {
+export class CourseRenderer implements ReplayRenderer {
 	private ctx: CanvasRenderingContext2D;
 	private dpr = 1;
 	private w = 0;
@@ -194,6 +201,10 @@ export class CourseRenderer {
 			C.live,
 			true
 		);
+	}
+
+	destroy() {
+		// 2D canvas has no GPU resources to release.
 	}
 
 	private drawFinishFlag(x: number, y0: number, y1: number) {

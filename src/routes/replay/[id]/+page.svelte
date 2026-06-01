@@ -4,7 +4,16 @@
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
 	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
-	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
+	import { CourseRenderer, type RenderState, type ReplayRenderer } from '$lib/replay/renderer';
+	import {
+		loadRendererPref,
+		saveRendererPref,
+		loadQualityPref,
+		saveQualityPref,
+		type RendererKind,
+		type RenderQuality
+	} from '$lib/replay/replayRenderer';
+	import { webglSupported, loadRenderer3D, type Renderer3DCtor } from '$lib/replay/renderer3dLoader';
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import {
 		hrZones,
@@ -77,7 +86,9 @@
 
 	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
 	let playing = $state(false);
-	let speed = $state(1);
+	// Replays default to 8× — real-time is too slow to watch (a 2k is 8 min).
+	const DEFAULT_SPEED = 8;
+	let speed = $state(DEFAULT_SPEED);
 
 	// Comparison ("ghost") state — race a past session, a constant pace, or an
 	// uploaded CSV/TCX/FIT file. All three resolve to a ghost stroke array.
@@ -117,8 +128,20 @@
 	});
 
 	let engine = $state<ReplayEngine | null>(null);
-	let renderer: CourseRenderer | null = null;
-	let canvasEl: HTMLCanvasElement;
+	let renderer: ReplayRenderer | null = null;
+	let rendererKind = $state<RendererKind>('2d');
+	let quality = $state<RenderQuality>('medium');
+	let loading3d = $state(false);
+	let webglOk = $state(false);
+	let Ctor3D: Renderer3DCtor | null = null;
+	let activeLoadId = 0;
+	// 2D and 3D must NOT share a <canvas>: a canvas is locked to one context type
+	// for life, so the 2D renderer's getContext('2d') would make WebGL creation
+	// fail. The 2D renderer uses canvas2dEl; the 3D renderer creates its own canvas
+	// inside canvas3dHost. activeCanvas toggles which one is visible.
+	let canvas2dEl: HTMLCanvasElement;
+	let canvas3dHost: HTMLDivElement;
+	let activeCanvas = $state<RendererKind>('2d');
 	let courseWrap: HTMLDivElement;
 
 	const SPEEDS = [0.5, 1, 2, 4, 8];
@@ -136,8 +159,122 @@
 		};
 	}
 
+	function safeRender(state: RenderState, p: boolean, theme: 'light' | 'dark' = uiTheme.value) {
+		if (!renderer) return;
+		try {
+			renderer.render(state, p, theme);
+		} catch (err) {
+			if (rendererKind !== '3d') throw err;
+			toast.error(t('replay.view3dError'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
+			});
+			void setRenderer('2d');
+		}
+	}
+
 	function renderCurrent() {
-		renderer?.render(buildState(frame), playing, uiTheme.value);
+		safeRender(buildState(frame), playing, uiTheme.value);
+	}
+
+	function courseHeight() {
+		return ghostActive ? 190 : 150;
+	}
+
+	function resizeCourse() {
+		const w = courseWrap?.clientWidth;
+		if (w) renderer?.resize(w, courseHeight());
+	}
+
+	async function setRenderer(kind: RendererKind) {
+		if (activeLoadId < 0) return;
+		if (kind === '3d' && !webglOk) return;
+		rendererKind = kind;
+		saveRendererPref(kind);
+
+		const w = courseWrap?.clientWidth ?? 0;
+		const h = courseHeight();
+
+		renderer?.destroy();
+		renderer = null;
+
+		activeLoadId++;
+		const myLoadId = activeLoadId;
+
+		try {
+			if (kind === '2d') {
+				if (myLoadId !== activeLoadId) return;
+				// Clear any in-flight 3D loading flag — a pending 3D load's finally
+				// won't fire for this (superseded) myLoadId, so reset it here.
+				loading3d = false;
+				renderer = new CourseRenderer(canvas2dEl);
+				activeCanvas = '2d';
+				if (w) renderer.resize(w, h);
+				renderCurrent();
+				return;
+			}
+
+			if (!Ctor3D) {
+				loading3d = true;
+				const temp2d = new CourseRenderer(canvas2dEl);
+				renderer = temp2d;
+				activeCanvas = '2d';
+				if (w) temp2d.resize(w, h);
+				renderCurrent();
+				try {
+					Ctor3D = await loadRenderer3D();
+				} finally {
+					if (myLoadId === activeLoadId) loading3d = false;
+				}
+				if (myLoadId !== activeLoadId) {
+					// Superseded: a newer setRenderer() already ran renderer?.destroy()
+					// (which was temp2d) and took over. Only destroy here if we still
+					// own it, to avoid double-destroying the same instance.
+					if (renderer === temp2d) temp2d.destroy();
+					return;
+				}
+				temp2d.destroy();
+				renderer = null;
+			}
+			if (myLoadId !== activeLoadId) return;
+			renderer = new Ctor3D!(canvas3dHost, quality);
+			activeCanvas = '3d';
+			if (w) renderer.resize(w, h);
+			renderCurrent();
+		} catch (err) {
+			if (myLoadId !== activeLoadId) return;
+			loading3d = false;
+			rendererKind = '2d';
+			saveRendererPref('2d');
+			// renderer may still point at the temp2d placeholder; destroy before
+			// replacing to match the ownership pattern used elsewhere.
+			renderer?.destroy();
+			renderer = null;
+			renderer = new CourseRenderer(canvas2dEl);
+			activeCanvas = '2d';
+			if (w) renderer.resize(w, h);
+			renderCurrent();
+			toast.error(t('replay.view3dError'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
+			});
+		}
+	}
+
+	function onRendererToggle(kind: RendererKind) {
+		if (kind === rendererKind) return;
+		// Allow switching back to 2D even while a 3D chunk is still loading —
+		// setRenderer is cancellation-safe, so this lets the user bail out of a
+		// slow load. Only re-selecting 3D mid-load is a no-op.
+		if (loading3d && kind === '3d') return;
+		void setRenderer(kind);
+	}
+
+	function onQualityChange(q: RenderQuality) {
+		if (q === quality) return;
+		quality = q;
+		saveQualityPref(q);
+		// Quality affects renderer construction (antialias/dpr/water/shadows), so a
+		// live 3D view must be rebuilt. setRenderer('3d') reuses the cached chunk.
+		if (rendererKind === '3d' && !loading3d) void setRenderer('3d');
 	}
 
 	$effect(() => {
@@ -169,7 +306,7 @@
 			// Reset all playback and ghost state for the new workout.
 			frame = sampleAt(s, 0);
 			playing = false;
-			speed = 1;
+			speed = DEFAULT_SPEED;
 			compareMode = 'none';
 			ghostStrokes = null;
 			ghostActive = false;
@@ -180,17 +317,29 @@
 			sessionSearch = '';
 			fileName = '';
 			ghostError = '';
-			renderer = new CourseRenderer(canvasEl);
+			renderer?.destroy();
+			renderer = null;
 			engine = new ReplayEngine(s, (f, p) => {
 				frame = f;
 				playing = p;
-				renderer?.render(buildState(f), p, uiTheme.value);
+				safeRender(buildState(f), p, uiTheme.value);
 			});
-			const w = courseWrap?.clientWidth;
-			if (w) renderer.resize(w, 150);
-			renderCurrent();
+			engine.setSpeed(speed);
+			void setRenderer(rendererKind);
 		});
-		return () => engine?.destroy();
+		return () => {
+			// NB: do NOT set activeLoadId = -1 here. This cleanup also runs on every
+			// workout navigation (the effect re-runs), and a permanent -1 would make
+			// the subsequent setRenderer() bail on its `activeLoadId < 0` guard,
+			// leaving a blank canvas. setRenderer already increments activeLoadId and
+			// destroys the prior renderer, so per-navigation race safety is covered.
+			// The true unmount guard lives in onMount's cleanup.
+			engine?.destroy();
+			renderer?.destroy();
+			// Null it so the effect body's own renderer?.destroy() can't double-destroy
+			// the same (3D) instance — a second loseContext()/dispose() can throw.
+			renderer = null;
+		};
 	});
 
 	/**
@@ -211,10 +360,19 @@
 	}
 
 	onMount(() => {
+		webglOk = webglSupported();
+		quality = loadQualityPref();
+		const pref = loadRendererPref();
+		if (pref === '3d' && webglOk) {
+			void setRenderer('3d');
+		} else if (pref === '3d') {
+			rendererKind = '2d';
+			saveRendererPref('2d');
+		}
+
 		armGhostFromUrl();
 		const sizeIt = () => {
-			const w = courseWrap.clientWidth;
-			renderer?.resize(w, ghostActive ? 190 : 150);
+			resizeCourse();
 			renderCurrent();
 		};
 		const ro = new ResizeObserver(sizeIt);
@@ -231,6 +389,8 @@
 		return () => {
 			ro.disconnect();
 			window.removeEventListener('keydown', onKey);
+			activeLoadId = -1;
+			renderer?.destroy();
 		};
 	});
 
@@ -249,7 +409,7 @@
 		ghostLabel = ghostActive ? label : '';
 		ghostRival = ghostActive ? rival : null;
 		if (!ghostActive) ghostFrame = null;
-		renderer?.resize(courseWrap.clientWidth, ghostActive ? 190 : 150);
+		resizeCourse();
 		renderCurrent();
 	}
 
@@ -853,7 +1013,53 @@
 
 	<!-- Course -->
 	<div class="card course" bind:this={courseWrap}>
-		<canvas bind:this={canvasEl}></canvas>
+		<div
+			class="view-toggle"
+			role="group"
+			aria-label={t('replay.viewToggle')}
+		>
+			<button
+				type="button"
+				class="vbtn"
+				class:on={rendererKind === '2d'}
+				aria-pressed={rendererKind === '2d'}
+				onclick={() => onRendererToggle('2d')}
+			>
+				{t('replay.view2d')}
+			</button>
+			<button
+				type="button"
+				class="vbtn"
+				class:on={rendererKind === '3d'}
+				aria-pressed={rendererKind === '3d'}
+				disabled={!webglOk || loading3d}
+				title={!webglOk ? t('replay.view3dUnsupported') : undefined}
+				onclick={() => onRendererToggle('3d')}
+			>
+				{#if loading3d}
+					<span class="vspin" aria-hidden="true"></span>
+					{t('replay.view3dLoading')}
+				{:else}
+					{t('replay.view3d')}
+				{/if}
+			</button>
+		</div>
+		{#if rendererKind === '3d'}
+			<label class="quality-select">
+				<span class="quality-label">{t('replay.quality')}</span>
+				<select
+					value={quality}
+					disabled={loading3d}
+					onchange={(e) => onQualityChange(e.currentTarget.value as RenderQuality)}
+				>
+					<option value="low">{t('replay.qualityLow')}</option>
+					<option value="medium">{t('replay.qualityMedium')}</option>
+					<option value="high">{t('replay.qualityHigh')}</option>
+				</select>
+			</label>
+		{/if}
+		<canvas bind:this={canvas2dEl} class:hidden={activeCanvas !== '2d'}></canvas>
+		<div class="canvas3d-host" bind:this={canvas3dHost} class:hidden={activeCanvas !== '3d'}></div>
 	</div>
 
 	<!-- Transport controls -->
@@ -1344,9 +1550,81 @@
 		padding: 0.75rem;
 		margin-bottom: 0.75rem;
 	}
+	.view-toggle {
+		display: flex;
+		gap: 0.35rem;
+		margin-bottom: 0.5rem;
+	}
+	.quality-select {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-bottom: 0.5rem;
+		font-size: 0.78rem;
+		color: var(--muted-ink, var(--ink));
+	}
+	.quality-select select {
+		background: var(--paper-raised);
+		border: var(--bd);
+		color: var(--ink);
+		border-radius: var(--r-ctrl);
+		padding: 0.2rem 0.4rem;
+		font-size: 0.78rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.quality-select select:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+	.vbtn {
+		background: var(--paper-raised);
+		border: var(--bd);
+		color: var(--ink);
+		border-radius: var(--r-ctrl);
+		padding: 0.28rem 0.65rem;
+		font-size: 0.78rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: var(--display);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+	.vbtn.on {
+		background: var(--live);
+		color: var(--paper-raised);
+		border-color: var(--live);
+	}
+	.vbtn:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
+	}
+	.vspin {
+		width: 0.75rem;
+		height: 0.75rem;
+		border: 2px solid currentColor;
+		border-right-color: transparent;
+		border-radius: 50%;
+		animation: vspin 0.7s linear infinite;
+	}
+	@keyframes vspin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
 	.course canvas {
 		display: block;
 		width: 100%;
+	}
+	.course .canvas3d-host {
+		display: block;
+		width: 100%;
+	}
+	.course .hidden {
+		display: none;
 	}
 	.controls {
 		display: flex;
