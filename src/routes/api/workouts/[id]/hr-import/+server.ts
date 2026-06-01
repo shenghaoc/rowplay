@@ -7,7 +7,8 @@ import { clearHrImport, saveHrImport } from '$lib/server/hrImport';
 function parseBody(body: unknown): { samples: HrSample[]; offset: number } {
 	if (!body || typeof body !== 'object') throw error(400, 'Invalid body.');
 	const { samples, offset } = body as { samples?: unknown; offset?: unknown };
-	if (!Array.isArray(samples)) throw error(400, 'Missing samples.');
+	const MAX_SAMPLES = 20_000;
+	if (!Array.isArray(samples) || samples.length > MAX_SAMPLES) throw error(400, 'Missing samples.');
 	const parsed: HrSample[] = samples.map((s) => {
 		if (!s || typeof s !== 'object') throw error(400, 'Invalid sample.');
 		const { t, hr } = s as { t?: unknown; hr?: unknown };
@@ -21,7 +22,9 @@ function parseBody(body: unknown): { samples: HrSample[]; offset: number } {
 	} catch {
 		throw error(400, 'Too few heart-rate samples.');
 	}
-	const offsetSec = typeof offset === 'number' && isFinite(offset) ? offset : 0;
+	const MAX_OFFSET = 600;
+	const rawOffset = typeof offset === 'number' && isFinite(offset) ? offset : 0;
+	const offsetSec = Math.max(-MAX_OFFSET, Math.min(MAX_OFFSET, rawOffset));
 	return { samples: parsed, offset: offsetSec };
 }
 

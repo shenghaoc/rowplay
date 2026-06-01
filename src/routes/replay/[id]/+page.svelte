@@ -595,8 +595,8 @@
 			hrImportOffset = 0;
 			toast.success(t('replay.hrImportCleared'));
 		} catch (err) {
-			hrImportError = err instanceof Error ? err.message : t('replay.hrImportSaveFailed');
-			toast.error(t('replay.hrImportSaveFailed'), { description: hrImportError });
+			hrImportError = err instanceof Error ? err.message : t('replay.hrImportClearFailed');
+			toast.error(t('replay.hrImportClearFailed'), { description: hrImportError });
 		} finally {
 			hrImportBusy = false;
 		}
@@ -726,8 +726,8 @@
 						id="hr-offset"
 						class="offset-input mono"
 						type="range"
-						min="-120"
-						max="120"
+						min="-600"
+						max="600"
 						step="1"
 						bind:value={hrImportOffset}
 					/>

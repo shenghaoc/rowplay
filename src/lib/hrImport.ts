@@ -62,8 +62,8 @@ export function summarizeHr(strokes: Stroke[]): {
 	if (!hrs.length) return {};
 	return {
 		avg: Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length),
-		min: Math.min(...hrs),
-		max: Math.max(...hrs)
+		min: hrs.reduce((a, b) => (b < a ? b : a), hrs[0]),
+		max: hrs.reduce((a, b) => (b > a ? b : a), hrs[0])
 	};
 }
 

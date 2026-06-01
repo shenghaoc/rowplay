@@ -26,7 +26,7 @@ export async function saveHrImport(
 	if (event.locals.demo) throw error(400, 'Use client storage in demo mode.');
 	const detail = await loadWorkoutDetail(event, workoutId);
 	if (strokesHaveHr(detail.strokes)) {
-		throw error(409, 'Workout already has heart rate from the logbook.');
+		throw error(409, 'Workout already has heart rate. Clear the existing import first.');
 	}
 	const merged = applyHrImport(detail, samples, offsetSec);
 	const userId = event.locals.user!.id;
@@ -42,7 +42,8 @@ export async function clearHrImport(event: RequestEvent, workoutId: number): Pro
 	let detail: WorkoutDetail;
 	try {
 		detail = await freshFromApi(event, workoutId);
-	} catch {
+	} catch (e) {
+		if (e instanceof Response && e.status !== 404) throw e;
 		const cached = await getCachedDetail(db, userId, workoutId);
 		if (!cached) throw error(404, 'Workout not found.');
 		detail = stripHrFromDetail(cached);

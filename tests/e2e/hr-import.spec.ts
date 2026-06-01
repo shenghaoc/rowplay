@@ -25,7 +25,6 @@ test.describe('heart-rate import', () => {
 		await expect(page.getByText(/Heart rate|心率/).first()).toBeVisible();
 		await expect(page.locator('.gauges').getByText(/bpm/i)).toBeVisible();
 
-		await page.waitForTimeout(400);
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 });
