@@ -25,7 +25,7 @@ async function renderIcon(size, maskable) {
 			width: size,
 			height: size,
 			channels: 4,
-			background: { r: 241, g: 235, b: 223, alpha: 1 }
+			background: { r: 15, g: 42, b: 54, alpha: 1 }
 		}
 	})
 		.composite([{ input: icon, left: pad, top: pad }])
