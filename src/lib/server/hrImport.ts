@@ -27,7 +27,8 @@ export async function saveHrImport(
 	if (!event.locals.user) throw error(401, 'Not authenticated.');
 	const detail = await loadWorkoutDetail(event, workoutId);
 	if (strokesHaveHr(detail.strokes)) {
-		throw error(409, 'Workout already has heart rate. Clear the existing import first.');
+		// Could be logbook HR or a prior import — don't claim it's an "import" to clear.
+		throw error(409, 'Workout already has heart rate data.');
 	}
 	const merged = applyHrImport(detail, samples, offsetSec);
 	const userId = event.locals.user.id;
@@ -45,8 +46,12 @@ export async function clearHrImport(event: RequestEvent, workoutId: number): Pro
 	try {
 		detail = await freshFromApi(event, workoutId);
 	} catch (e) {
+		// Only fall back to stripping the cache on a genuine 404 (workout deleted
+		// from the logbook), where a fresh fetch can never succeed. A network
+		// error / 401 / 429 has no `.status` of 404, so re-throw it rather than
+		// destructively overwriting cached HR on a transient outage.
 		const status = (e as { status?: number }).status;
-		if (status && status !== 404) throw e;
+		if (status !== 404) throw e;
 		const cached = await getCachedDetail(db, userId, workoutId);
 		if (!cached) throw error(404, 'Workout not found.');
 		detail = stripHrFromDetail(cached);

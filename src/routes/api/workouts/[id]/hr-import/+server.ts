@@ -31,7 +31,7 @@ function parseBody(body: unknown): { samples: HrSample[]; offset: number } {
 export const POST: RequestHandler = async (event) => {
 	const id = Number(event.params.id);
 	if (!Number.isFinite(id)) throw error(400, 'Invalid workout id.');
-	if (event.locals.demo) throw error(400, 'Not available in demo mode.');
+	// Demo-mode + auth guards live in saveHrImport (the layer that needs a real DB).
 	const { samples, offset } = parseBody(await event.request.json());
 	const detail = await saveHrImport(event, id, samples, offset);
 	return json(detail, { headers: { 'cache-control': 'private, no-store' } });
@@ -40,7 +40,7 @@ export const POST: RequestHandler = async (event) => {
 export const DELETE: RequestHandler = async (event) => {
 	const id = Number(event.params.id);
 	if (!Number.isFinite(id)) throw error(400, 'Invalid workout id.');
-	if (event.locals.demo) throw error(400, 'Not available in demo mode.');
+	// Demo-mode + auth guards live in clearHrImport (the layer that needs a real DB).
 	const detail = await clearHrImport(event, id);
 	return json(detail, { headers: { 'cache-control': 'private, no-store' } });
 };
