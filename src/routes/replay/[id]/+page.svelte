@@ -18,9 +18,19 @@
 	import { matchStandardDistance } from '$lib/leaderboard';
 	import { untrack } from 'svelte';
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
+	import {
+		applyHrImport,
+		clearHrOverlay,
+		type HrOverlay,
+		parseHrFile,
+		previewMergedAvgHr,
+		readHrOverlay,
+		strokesHaveHr,
+		writeHrOverlay
+	} from '$lib/hrImport';
 	import { pickDefaultGhostCandidate } from '$lib/replay/ghostPick';
 	import { toast } from 'svelte-sonner';
-	import { ArrowLeft, Play, Pause, Ghost, Share2, ImageDown, Trophy } from '@lucide/svelte';
+	import { ArrowLeft, Play, Pause, Ghost, Share2, ImageDown, Trophy, Heart } from '@lucide/svelte';
 	import { downloadRaceCardPng } from '$lib/replay/raceCard';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
@@ -33,7 +43,7 @@
 	let { data } = $props();
 	const t = getI18nContext().t;
 	const uiTheme = getThemeContext();
-	const detail = $derived(data.detail as WorkoutDetail);
+	const baseDetail = $derived(data.detail as WorkoutDetail);
 	const candidates = $derived(data.candidates as Workout[]);
 	// Local, mutable copy (save/delete edit it in place). Re-seed from `data`
 	// whenever it changes so navigating between replays shows the right notes
@@ -42,6 +52,17 @@
 	$effect(() => {
 		annotations = data.annotations as Annotation[];
 	});
+	const isDemo = $derived(!!data.demo);
+	let hrOverlay = $state<HrOverlay | null>(null);
+	let hrImportPreview = $state<{ samples: HrOverlay['samples']; name: string } | null>(null);
+	let hrImportOffset = $state(0);
+	let hrImportError = $state('');
+	let hrImportBusy = $state(false);
+
+	const detail = $derived(
+		hrOverlay ? applyHrImport(baseDetail, hrOverlay.samples, hrOverlay.offset) : baseDetail
+	);
+	const logbookHasHr = $derived(strokesHaveHr(baseDetail.strokes));
 	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
 	const strokes = $derived(detail.strokes);
@@ -139,6 +160,10 @@
 			sessionSearch = '';
 			fileName = '';
 			ghostError = '';
+			hrImportPreview = null;
+			hrImportOffset = 0;
+			hrImportError = '';
+			hrOverlay = readHrOverlay(baseDetail.id);
 			renderer = new CourseRenderer(canvasEl);
 			engine = new ReplayEngine(s, (f, p) => {
 				frame = f;
@@ -357,7 +382,16 @@
 
 	// ---- Telemetry charts ----
 	const xs = $derived(strokes.map((s) => s.t));
-	const hasHr = $derived(strokes.some((s) => s.hr != null));
+	const hasHr = $derived(strokesHaveHr(strokes));
+
+	const hrPreviewLabel = $derived.by(() => {
+		if (!hrImportPreview) return '';
+		const avg = previewMergedAvgHr(baseDetail.strokes, hrImportPreview.samples, hrImportOffset);
+		return t('replay.hrImportPreview', {
+			count: String(hrImportPreview.samples.length),
+			avg: avg != null ? String(avg) : '—'
+		});
+	});
 
 	const chart = $derived(chartTheme(uiTheme.value));
 
@@ -487,6 +521,80 @@
 		}
 	}
 
+	async function onHrFile(e: Event) {
+		const input = e.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		hrImportError = '';
+		hrImportBusy = true;
+		try {
+			const { samples, name } = await parseHrFile(file);
+			hrImportPreview = { samples, name };
+			hrImportOffset = 0;
+		} catch (err) {
+			hrImportPreview = null;
+			const msg = err instanceof Error && err.message === 'too_few_samples'
+				? t('replay.hrImportTooFew')
+				: err instanceof Error
+					? err.message
+					: t('replay.fileReadError');
+			hrImportError = msg;
+		} finally {
+			hrImportBusy = false;
+			input.value = '';
+		}
+	}
+
+	async function applyHrImportAction() {
+		if (!hrImportPreview) return;
+		hrImportError = '';
+		hrImportBusy = true;
+		const payload: HrOverlay = { samples: hrImportPreview.samples, offset: hrImportOffset };
+		try {
+			if (isDemo) {
+				writeHrOverlay(baseDetail.id, payload);
+				hrOverlay = payload;
+			} else {
+				const res = await fetch(`/api/workouts/${baseDetail.id}/hr-import`, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify(payload)
+				});
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				hrOverlay = payload;
+			}
+			hrImportPreview = null;
+			toast.success(t('replay.hrImportApplied'));
+		} catch (err) {
+			hrImportError = err instanceof Error ? err.message : t('replay.hrImportSaveFailed');
+			toast.error(t('replay.hrImportSaveFailed'), { description: hrImportError });
+		} finally {
+			hrImportBusy = false;
+		}
+	}
+
+	async function clearHrImportAction() {
+		hrImportError = '';
+		hrImportBusy = true;
+		try {
+			if (isDemo) {
+				clearHrOverlay(baseDetail.id);
+			} else {
+				const res = await fetch(`/api/workouts/${baseDetail.id}/hr-import`, { method: 'DELETE' });
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			}
+			hrOverlay = null;
+			hrImportPreview = null;
+			hrImportOffset = 0;
+			toast.success(t('replay.hrImportCleared'));
+		} catch (err) {
+			hrImportError = err instanceof Error ? err.message : t('replay.hrImportSaveFailed');
+			toast.error(t('replay.hrImportSaveFailed'), { description: hrImportError });
+		} finally {
+			hrImportBusy = false;
+		}
+	}
+
 	async function shareReplay() {
 		sharing = true;
 		try {
@@ -586,6 +694,65 @@
 			{/if}
 		</div>
 	</div>
+
+	{#if !logbookHasHr}
+		<div class="card hrimport">
+			<div class="hrimport-head">
+				<Heart size={15} />
+				<strong>{t('replay.hrImportTitle')}</strong>
+			</div>
+			<p class="muted small hrimport-hint">{t('replay.hrImportHint')}</p>
+			<div class="hrimport-row">
+				<input
+					class="fileinput"
+					type="file"
+					accept=".csv,.tcx,.fit"
+					onchange={onHrFile}
+					aria-label={t('replay.hrImportTitle')}
+				/>
+				<span class="muted small">{t('replay.hrImportFormats')}</span>
+			</div>
+			{#if hrImportPreview}
+				<div class="hrimport-row">
+					<label class="muted small" for="hr-offset">{t('replay.hrImportOffset')}</label>
+					<input
+						id="hr-offset"
+						class="offset-input mono"
+						type="range"
+						min="-120"
+						max="120"
+						step="1"
+						bind:value={hrImportOffset}
+					/>
+					<span class="mono small">{hrImportOffset}s</span>
+				</div>
+				<p class="muted small">{t('replay.hrImportOffsetHint')}</p>
+				<p class="mono small">{hrPreviewLabel}</p>
+				<div class="hrimport-actions">
+					<button
+						class="btn ghost small"
+						type="button"
+						disabled={hrImportBusy}
+						onclick={applyHrImportAction}
+					>
+						{t('replay.hrImportApply')}
+					</button>
+				</div>
+			{/if}
+			{#if hrOverlay}
+				<button
+					class="btn ghost small"
+					type="button"
+					disabled={hrImportBusy}
+					onclick={clearHrImportAction}
+				>
+					{t('replay.hrImportClear')}
+				</button>
+			{/if}
+			{#if hrImportBusy}<span class="muted small">{t('common.loading')}</span>{/if}
+			{#if hrImportError}<span class="err small">{hrImportError}</span>{/if}
+		</div>
+	{/if}
 
 	<!-- Comparison / race control -->
 	<div class="card ghostbar">
@@ -1003,6 +1170,39 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.35rem;
+	}
+	.hrimport {
+		margin-bottom: 0.75rem;
+		padding: 0.75rem 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.hrimport-head {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.9rem;
+	}
+	.hrimport-hint {
+		margin: 0;
+		line-height: 1.45;
+	}
+	.hrimport-row {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+	.hrimport-actions {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+	.offset-input {
+		flex: 1;
+		min-width: 8rem;
+		max-width: 16rem;
 	}
 	.ghostbar {
 		display: flex;

@@ -22,5 +22,5 @@ export const load: PageServerLoad = async (event) => {
 		candidates = [];
 	}
 
-	return { detail, candidates, annotations };
+	return { detail, candidates, annotations, demo: event.locals.demo };
 };
