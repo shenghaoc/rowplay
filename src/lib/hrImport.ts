@@ -79,20 +79,34 @@ export function applyHrImport(
 ): WorkoutDetail {
 	const strokes = mergeHrIntoStrokes(detail.strokes, samples, offsetSec);
 	const { avg, min, max } = summarizeHr(strokes);
+	let cumulativeDistance = 0;
+	const splits = detail.splits.map((split) => {
+		const startD = cumulativeDistance;
+		cumulativeDistance += split.distance;
+		const endD = cumulativeDistance;
+		const hrs = strokes
+			.filter((s) => s.d > startD && s.d <= endD)
+			.map((s) => s.hr)
+			.filter((h): h is number => h != null && h > 0);
+		if (!hrs.length) return split;
+		return { ...split, hr: Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) };
+	});
 	return {
 		...detail,
 		strokes,
+		splits,
 		heartRateAvg: avg,
 		hrMin: min,
 		hrMax: max
 	};
 }
 
-/** Remove HR from strokes and summary fields (restore pre-import state). */
+/** Remove HR from strokes, splits, and summary fields (restore pre-import state). */
 export function stripHrFromDetail(detail: WorkoutDetail): WorkoutDetail {
 	const strokes = detail.strokes.map(({ hr: _hr, ...rest }) => rest);
+	const splits = detail.splits.map(({ hr: _hr, ...rest }) => rest);
 	const { heartRateAvg: _a, hrMin: _min, hrMax: _max, ...rest } = detail;
-	return { ...rest, strokes };
+	return { ...rest, strokes, splits };
 }
 
 export function validateHrSamples(samples: HrSample[]): void {

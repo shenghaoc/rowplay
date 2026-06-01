@@ -24,26 +24,29 @@ export async function saveHrImport(
 	offsetSec: number
 ): Promise<WorkoutDetail> {
 	if (event.locals.demo) throw error(400, 'Use client storage in demo mode.');
+	if (!event.locals.user) throw error(401, 'Not authenticated.');
 	const detail = await loadWorkoutDetail(event, workoutId);
 	if (strokesHaveHr(detail.strokes)) {
 		throw error(409, 'Workout already has heart rate. Clear the existing import first.');
 	}
 	const merged = applyHrImport(detail, samples, offsetSec);
-	const userId = event.locals.user!.id;
+	const userId = event.locals.user.id;
 	await putCachedDetail(event.platform?.env?.DB, userId, merged);
 	return merged;
 }
 
 export async function clearHrImport(event: RequestEvent, workoutId: number): Promise<WorkoutDetail> {
 	if (event.locals.demo) throw error(400, 'Use client storage in demo mode.');
-	const userId = event.locals.user!.id;
+	if (!event.locals.user) throw error(401, 'Not authenticated.');
+	const userId = event.locals.user.id;
 	const db = event.platform?.env?.DB;
 
 	let detail: WorkoutDetail;
 	try {
 		detail = await freshFromApi(event, workoutId);
 	} catch (e) {
-		if (e instanceof Response && e.status !== 404) throw e;
+		const status = (e as { status?: number }).status;
+		if (status && status !== 404) throw e;
 		const cached = await getCachedDetail(db, userId, workoutId);
 		if (!cached) throw error(404, 'Workout not found.');
 		detail = stripHrFromDetail(cached);
