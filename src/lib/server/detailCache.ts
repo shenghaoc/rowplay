@@ -18,10 +18,10 @@ export function detailCacheTtlMs(env?: DetailCacheEnv): number {
 
 /** True when `cachedAt` is still within the TTL window (inclusive at the boundary). */
 export function isDetailCacheFresh(
-	cachedAt: number,
+	cachedAt: number | null | undefined,
 	nowMs: number,
 	ttlMs: number = DETAIL_CACHE_TTL_MS
 ): boolean {
-	if (!Number.isFinite(cachedAt) || !Number.isFinite(nowMs) || ttlMs <= 0) return false;
+	if (typeof cachedAt !== 'number' || !Number.isFinite(cachedAt) || !Number.isFinite(nowMs) || ttlMs <= 0) return false;
 	return nowMs - cachedAt <= ttlMs;
 }

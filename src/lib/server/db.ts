@@ -33,7 +33,7 @@ export async function getCachedDetail(
 				 WHERE user_id = ? AND workout_id = ? AND payload_version = ?`
 			)
 			.bind(userId, workoutId, DETAIL_PAYLOAD_VERSION)
-			.first<{ payload: string; cached_at: number }>();
+			.first<{ payload: string; cached_at: number | null }>();
 		if (!row) return null;
 		const ttlMs = detailCacheTtlMs(env);
 		if (!isDetailCacheFresh(row.cached_at, nowEpochMillis(), ttlMs)) return null;
