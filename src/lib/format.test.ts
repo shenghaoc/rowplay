@@ -8,7 +8,9 @@ import {
 	fmtPace,
 	fmtPaceBare,
 	fmtTime,
+	challengeDistanceMetres,
 	paceToWatts,
+	paceToWattsForSport,
 	SPORT_LABEL
 } from './format';
 import { bikePaceSecPer500, workout } from '../../tests/unit/fixtures';
@@ -78,7 +80,14 @@ describe('bike pace per-1000m normalisation', () => {
 		// API reports 190.0 s/1000m → 95.0 s/500m (same speed as rower 1:35/500m).
 		const normalized = bikePaceSecPer500(1900);
 		expect(normalized).toBe(95);
-		expect(paceToWatts(normalized)).toBe(paceToWatts(95));
+		expect(paceToWattsForSport('bike', normalized)).toBeCloseTo(paceToWatts(95) / 8, 1);
+	});
+});
+
+describe('challengeDistanceMetres', () => {
+	it('counts BikeErg distance at half for logbook challenges', () => {
+		expect(challengeDistanceMetres({ sport: 'bike', distance: 8000 })).toBe(4000);
+		expect(challengeDistanceMetres({ sport: 'rower', distance: 8000 })).toBe(8000);
 	});
 });
 

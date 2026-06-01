@@ -41,13 +41,31 @@ export const SPORT_LABEL: Record<Sport, string> = {
 };
 
 /**
- * Concept2's power model: watts = 2.8 / pace^3, where pace is seconds-per-metre.
- * Given pace in sec/500m, pace-per-metre = pace/500.
+ * Concept2 RowErg/SkiErg power model: watts = 2.8 / pace³ with pace in sec/500m
+ * (pace-per-metre = pace/500).
  */
 export function paceToWatts(pacePer500: number): number {
 	if (!isFinite(pacePer500) || pacePer500 <= 0) return 0;
 	const perMetre = pacePer500 / 500;
 	return 2.8 / Math.pow(perMetre, 3);
+}
+
+/**
+ * BikeErg stroke pace in the API is per 1000m; we store sec/500m for display.
+ * The PM still applies the cubic formula on the 1000m split, so normalized
+ * sec/500m through the rower formula overstates power by 2³ = 8.
+ */
+export const BIKE_WATTS_FROM_NORMALIZED_PACE_DIVISOR = 8;
+
+/** Watts from stored sec/500m pace, accounting for sport-specific PM math. */
+export function paceToWattsForSport(sport: Sport | undefined, pacePer500: number): number {
+	const watts = paceToWatts(pacePer500);
+	return sport === 'bike' ? watts / BIKE_WATTS_FROM_NORMALIZED_PACE_DIVISOR : watts;
+}
+
+/** Metres credited toward Concept2 logbook challenges (BikeErg counts at half). */
+export function challengeDistanceMetres(w: Pick<Workout, 'sport' | 'distance'>): number {
+	return w.sport === 'bike' ? w.distance / 2 : w.distance;
 }
 
 /** Inverse of {@link paceToWatts}: watts → sec/500m. */
@@ -58,9 +76,9 @@ export function wattsToPace(watts: number): number {
 }
 
 /** Average watts from cached watt-minutes when present, else Concept2 pace model. */
-export function avgWatts(w: Pick<Workout, 'wattMinutes' | 'time' | 'pace'>): number {
+export function avgWatts(w: Pick<Workout, 'wattMinutes' | 'time' | 'pace' | 'sport'>): number {
 	if (w.wattMinutes && w.time > 0) {
 		return Math.round(w.wattMinutes / (w.time / 60));
 	}
-	return Math.round(paceToWatts(w.pace));
+	return Math.round(paceToWattsForSport(w.sport, w.pace));
 }

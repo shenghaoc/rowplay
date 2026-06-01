@@ -1,5 +1,5 @@
 import type { Split, Sport, Stroke, Workout, WorkoutDetail } from './types';
-import { paceToWatts, wattsToPace } from './format';
+import { challengeDistanceMetres, paceToWattsForSport, wattsToPace } from './format';
 
 // ---------------------------------------------------------------------------
 // Pure analysis helpers. No DOM, no Svelte — safe to use on server or client,
@@ -312,14 +312,13 @@ export function efficiencyByRate(strokes: Stroke[]): EfficiencyPoint[] {
 /**
  * Average power (watts) sustained over a whole session. The logbook's
  * watt-minutes are authoritative when present (and correct for every machine).
- * Otherwise we fall back to Concept2's pace→watts model. Session and stroke pace
- * are already normalised to sec/500m for every sport (BikeErg stroke pace is
- * per-1000m in the API and halved on read), so the same formula applies.
+ * Otherwise derive from normalised sec/500m pace. BikeErg API pace is per 1000m
+ * (halved on read for display); the PM cubic uses the 1000m basis, so divide by 8.
  */
 export function workoutWatts(w: Workout): number {
 	const minutes = w.time / 60;
 	if (w.wattMinutes && w.wattMinutes > 0 && minutes > 0) return w.wattMinutes / minutes;
-	return paceToWatts(w.pace);
+	return paceToWattsForSport(w.sport, w.pace);
 }
 
 export interface CriticalPower {
@@ -1251,7 +1250,7 @@ export function annualGoalProgress(
 	const inYear = workouts.filter((w) => workoutDayKey(w.date).startsWith(yearPrefix));
 	const current =
 		goal.kind === 'meters'
-			? inYear.reduce((s, w) => s + w.distance, 0)
+			? inYear.reduce((s, w) => s + challengeDistanceMetres(w), 0)
 			: inYear.reduce((s, w) => s + w.time, 0);
 
 	const daysInYear = daysInCalendarYear(year);
@@ -1380,7 +1379,7 @@ export function athleteBadges(
 	workouts: Workout[],
 	pbs: ReturnType<typeof distancePBs>
 ): AthleteBadge[] {
-	const totalMeters = workouts.reduce((s, w) => s + w.distance, 0);
+	const totalMeters = workouts.reduce((s, w) => s + challengeDistanceMetres(w), 0);
 	const pbDistances = new Set(pbs.map((p) => p.distance));
 	const badges: AthleteBadge[] = [];
 

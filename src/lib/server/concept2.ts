@@ -1,6 +1,6 @@
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '$lib/datetime';
-import { paceToWatts } from '../format';
+import { paceToWattsForSport } from '../format';
 import { toSport, type Sport, type Split, type Stroke, type Workout, type WorkoutDetail } from '../types';
 import { writeSession, type OAuthTokens, type SessionData, type SessionUser } from './session';
 
@@ -274,7 +274,7 @@ function mapStrokes(raw: RawStroke[], sport: Sport): Stroke[] {
 			pace,
 			spm: s.spm,
 			hr: s.hr ? s.hr : undefined,
-			watts: paceToWatts(pace)
+			watts: paceToWattsForSport(sport, pace)
 		};
 	});
 }
@@ -307,11 +307,18 @@ function synthStrokes(w: Workout, splits: Split[]): Stroke[] {
 	if (splits.length > 0) {
 		let t = 0;
 		let d = 0;
-		out.push({ t: 0, d: 0, pace: splits[0].pace, spm: splits[0].spm ?? 0, hr: splits[0].hr, watts: paceToWatts(splits[0].pace) });
+		out.push({
+			t: 0,
+			d: 0,
+			pace: splits[0].pace,
+			spm: splits[0].spm ?? 0,
+			hr: splits[0].hr,
+			watts: paceToWattsForSport(w.sport, splits[0].pace)
+		});
 		for (const s of splits) {
 			t += s.time;
 			d += s.distance;
-			out.push({ t, d, pace: s.pace, spm: s.spm ?? 0, hr: s.hr, watts: paceToWatts(s.pace) });
+			out.push({ t, d, pace: s.pace, spm: s.spm ?? 0, hr: s.hr, watts: paceToWattsForSport(w.sport, s.pace) });
 		}
 		return out;
 	}
@@ -325,7 +332,7 @@ function synthStrokes(w: Workout, splits: Split[]): Stroke[] {
 			pace: w.pace,
 			spm: w.strokeRate ?? 0,
 			hr: w.heartRateAvg,
-			watts: paceToWatts(w.pace)
+			watts: paceToWattsForSport(w.sport, w.pace)
 		});
 	}
 	return out;

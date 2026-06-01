@@ -22,7 +22,7 @@
 		efficiencyByRate,
 		intervalBreakdown
 	} from '$lib/analytics';
-	import { fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, paceToWatts, SPORT_LABEL } from '$lib/format';
+	import { fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, paceToWattsForSport, SPORT_LABEL } from '$lib/format';
 	import type { Sport, Stroke, Workout, WorkoutDetail } from '$lib/types';
 	import { matchStandardDistance } from '$lib/leaderboard';
 	import { untrack } from 'svelte';
@@ -650,7 +650,7 @@
 		detail.wattMinutes && detail.time > 0
 			? Math.round(detail.wattMinutes / (detail.time / 60))
 			: detail.pace > 0
-				? Math.round(paceToWatts(detail.pace))
+				? Math.round(paceToWattsForSport(detail.sport, detail.pace))
 				: 0
 	);
 	const dateTime = $derived(fmtLogbookDateTime(detail.date));

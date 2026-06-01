@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	aggregateDailyVolume,
+	annualGoalProgress,
 	buildTrainingCalendar,
 	distanceBand,
 	distancePBs,
@@ -128,7 +129,7 @@ describe('workoutWatts', () => {
 
 	it('derives watts from normalised pace for bike without watt-minutes', () => {
 		const w = workout({ id: 2, sport: 'bike', pace: 95, time: 600 });
-		expect(workoutWatts(w)).toBeGreaterThan(0);
+		expect(workoutWatts(w)).toBeCloseTo(51.03, 1);
 	});
 
 	it('derives watts from pace for rower', () => {
@@ -143,6 +144,17 @@ describe('estimateCriticalPower', () => {
 		expect(cp).not.toBeNull();
 		expect(cp!.ftp).toBeGreaterThan(0);
 		expect(['model', 'estimate']).toContain(cp!.method);
+	});
+});
+
+describe('annualGoalProgress', () => {
+	it('credits BikeErg distance at half toward metre goals', () => {
+		const progress = annualGoalProgress(
+			[workout({ id: 1, sport: 'bike', distance: 8000, time: 1000, pace: 95 })],
+			{ year: 2026, kind: 'meters', target: 1_000_000 },
+			'2026-06-01'
+		);
+		expect(progress.current).toBe(4000);
 	});
 });
 

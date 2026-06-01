@@ -1,4 +1,4 @@
-import { fmtDistance, fmtLogbookDateTime, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '../format';
+import { fmtDistance, fmtLogbookDateTime, fmtPace, fmtTime, paceToWattsForSport, SPORT_LABEL } from '../format';
 import { COLORS_DARK, COLORS_LIGHT } from './renderer';
 import { MACHINE_HEX } from './sports';
 import type { WorkoutDetail } from '../types';
@@ -92,7 +92,7 @@ export function renderRaceCard(
 		detail.wattMinutes && detail.time > 0
 			? Math.round(detail.wattMinutes / (detail.time / 60))
 			: detail.pace > 0
-				? Math.round(paceToWatts(detail.pace))
+				? Math.round(paceToWattsForSport(detail.sport, detail.pace))
 				: 0;
 	const hr =
 		detail.heartRateAvg != null ? `${Math.round(detail.heartRateAvg)} bpm` : '—';
