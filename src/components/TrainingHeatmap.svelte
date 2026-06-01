@@ -2,7 +2,7 @@
 	import type { Workout } from '$lib/types';
 	import { buildTrainingCalendar, type VolumeMetric } from '$lib/analytics';
 	import { fmtDate, fmtDistance, fmtTime } from '$lib/format';
-	import { CalendarDays } from '@lucide/svelte';
+	import CalendarDays from '@lucide/svelte/icons/calendar-days';
 	import { getI18nContext } from '$lib/i18n.svelte';
 
 	let {

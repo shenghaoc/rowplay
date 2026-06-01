@@ -3,7 +3,7 @@
 	"name": "rowplay",
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"compatibility_date": "2025-05-24",
-	"compatibility_flags": ["nodejs_als"],
+	"compatibility_flags": ["nodejs_compat"],
 	// Static assets (client bundle, favicon) served by the Worker's built-in
 	// asset server. The SvelteKit adapter emits the worker and assets into the
 	// same directory and excludes _worker.js via .assetsignore.

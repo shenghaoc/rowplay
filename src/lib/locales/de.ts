@@ -65,7 +65,8 @@ export const de = {
 		leaderboard: 'Bestenlisten',
 		settings: 'Daten',
 		menuOpen: 'Menü öffnen',
-		menuClose: 'Menü schließen'
+		menuClose: 'Menü schließen',
+		skipToContent: 'Zum Inhalt springen'
 	},
 	common: {
 		demoMode: 'Demo-Modus',

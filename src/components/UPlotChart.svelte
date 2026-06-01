@@ -133,6 +133,7 @@
 <style>
 	.uplot-host {
 		width: 100%;
+		contain: layout paint;
 	}
 
 	/* Visually hidden but exposed to assistive tech. */
@@ -143,7 +144,7 @@
 		padding: 0;
 		margin: -1px;
 		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
+		clip-path: inset(50%);
 		white-space: nowrap;
 		border: 0;
 	}

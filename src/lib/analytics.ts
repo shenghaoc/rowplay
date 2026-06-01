@@ -4,6 +4,7 @@ import {
 	paceToWattsForSport,
 	wattsToPaceForSport
 } from './format';
+import { dayKeyEpochMillis, todayKeyUtc } from './datetime';
 
 // ---------------------------------------------------------------------------
 // Pure analysis helpers. No DOM, no Svelte — safe to use on server or client,
@@ -560,7 +561,7 @@ export function trainingLoad(workouts: Workout[], cpIn?: CriticalPower | null): 
 	const ftp = cp.ftp;
 
 	// Carry the curve through to today so a recent rest block shows as freshness.
-	const today = Date.parse(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
+	const today = dayKeyEpochMillis(todayKeyUtc());
 
 	// Sum TSS per calendar day. The date-only key sidesteps timezone drift. We
 	// also clamp to a sane window — a corrupted date (year 0001, or a far-future
@@ -571,7 +572,7 @@ export function trainingLoad(workouts: Workout[], cpIn?: CriticalPower | null): 
 	let firstDay = Infinity;
 	let lastDay = -Infinity;
 	for (const w of workouts) {
-		const day = Date.parse(w.date.slice(0, 10) + 'T00:00:00Z');
+		const day = dayKeyEpochMillis(w.date.slice(0, 10));
 		if (!isFinite(day) || day < EPOCH_2000 || day > today + DAY_MS) continue;
 		byDay.set(day, (byDay.get(day) ?? 0) + workoutTss(w, ftp));
 		if (day < firstDay) firstDay = day;
@@ -840,15 +841,16 @@ export interface TrainingCalendar {
 	monthLabels: { week: number; month: number }[];
 }
 
-/** Add calendar days in UTC so DST never breaks streak/grid math. */
+/** Add calendar days to a `YYYY-MM-DD` key. PlainDate is timezone-free, so DST
+ *  can never shift streak/grid math. */
 export function addDaysToKey(key: string, days: number): string {
-	const d = new Date(`${key}T00:00:00Z`);
-	d.setUTCDate(d.getUTCDate() + days);
-	return d.toISOString().slice(0, 10);
+	return Temporal.PlainDate.from(key).add({ days }).toString();
 }
 
+/** Day of week, 0 = Sunday … 6 = Saturday (matches the old `getUTCDay`). */
 function dayOfWeekUtc(key: string): number {
-	return new Date(`${key}T00:00:00Z`).getUTCDay();
+	// Temporal uses ISO weekdays (1 = Monday … 7 = Sunday); % 7 maps Sunday → 0.
+	return Temporal.PlainDate.from(key).dayOfWeek % 7;
 }
 
 function isConsecutiveDay(prev: string, next: string): boolean {
@@ -932,8 +934,7 @@ export function buildTrainingCalendar(
 	const byDay = aggregateDailyVolume(workouts);
 	const historyDays = [...byDay.keys()].sort();
 	const endDay =
-		options?.endDay ??
-		(historyDays.length ? historyDays[historyDays.length - 1] : new Date().toISOString().slice(0, 10));
+		options?.endDay ?? (historyDays.length ? historyDays[historyDays.length - 1] : todayKeyUtc());
 
 	const endSunday = addDaysToKey(endDay, -dayOfWeekUtc(endDay));
 	const startDay = addDaysToKey(endSunday, -(weeks - 1) * 7);
@@ -1240,15 +1241,14 @@ function daysInCalendarYear(year: number): number {
 }
 
 function dayOfYearUtc(dayKey: string): number {
-	const start = new Date(`${dayKey.slice(0, 4)}-01-01T00:00:00Z`).getTime();
-	const d = new Date(`${dayKey}T00:00:00Z`).getTime();
-	return Math.floor((d - start) / 86_400_000) + 1;
+	return Temporal.PlainDate.from(dayKey).dayOfYear;
 }
 
 function daysBetweenUtc(from: string, to: string): number {
-	const a = new Date(`${from}T00:00:00Z`).getTime();
-	const b = new Date(`${to}T00:00:00Z`).getTime();
-	return Math.max(0, Math.round((b - a) / 86_400_000));
+	const days = Temporal.PlainDate.from(from).until(Temporal.PlainDate.from(to), {
+		largestUnit: 'day'
+	}).days;
+	return Math.max(0, days);
 }
 
 /** Year-to-date progress toward an annual distance or time goal. */
@@ -1257,7 +1257,7 @@ export function annualGoalProgress(
 	goal: AnnualGoal,
 	endDay?: string
 ): AnnualGoalProgress {
-	const end = endDay ?? new Date().toISOString().slice(0, 10);
+	const end = endDay ?? todayKeyUtc();
 	const year = goal.year;
 	const yearPrefix = `${year}-`;
 	const inYear = workouts.filter((w) => workoutDayKey(w.date).startsWith(yearPrefix));
@@ -1319,7 +1319,7 @@ export function weeklyConsistency(
 }
 
 export function trainingStreakStats(workouts: Workout[], endDay?: string): TrainingStreakStats {
-	const end = endDay ?? new Date().toISOString().slice(0, 10);
+	const end = endDay ?? todayKeyUtc();
 	const historyDays = [...aggregateDailyVolume(workouts).keys()].filter((d) => d <= end).sort();
 	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, end);
 	const lastDay = historyDays.length ? historyDays[historyDays.length - 1] : null;

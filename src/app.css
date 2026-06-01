@@ -1,5 +1,25 @@
 @import 'tailwindcss';
 
+/* ---- Self-hosted Latin fonts (CJK families stay on Google Fonts) ----------- */
+@import '@fontsource/source-sans-3/latin-400.css';
+@import '@fontsource/source-sans-3/latin-400-italic.css';
+@import '@fontsource/source-sans-3/latin-600.css';
+@import '@fontsource/source-sans-3/latin-700.css';
+@import '@fontsource/source-sans-3/latin-900.css';
+@import '@fontsource/source-code-pro/latin-400.css';
+@import '@fontsource/source-code-pro/latin-500.css';
+@import '@fontsource/source-code-pro/latin-600.css';
+@import '@fontsource/source-code-pro/latin-700.css';
+
+/* ============================================================================
+   @property — register custom tokens for animation / typed inheritance
+   ============================================================================ */
+@property --r-ctrl {
+	syntax: '<length>';
+	inherits: true;
+	initial-value: 0.625rem;
+}
+
 /* ============================================================================
    rowplay — Jet Set Blue design system (daisyUI-led)
    ----------------------------------------------------------------------------
@@ -127,73 +147,67 @@
 }
 
 /* ============================================================================
-   CSS custom properties — canonical Jet Set Blue tokens (light)
+   CSS custom properties — Jet Set Blue tokens (light-dark consolidated)
+   color-scheme on :root[data-theme='dark'] selects the dark arm of light-dark().
+   Multi-value shadows stay in the dark override block (comma collision).
    ============================================================================ */
 :root {
 	color-scheme: light;
+	interpolate-size: allow-keywords;
 
-	/* Paper & ink (cool, light) */
-	--paper: #F4F8FA;
-	--paper-raised: #FFFFFF;
-	--paper-inset: #E7EFF2;
-	--paper-deep: #D6E2E8;
+	--paper: light-dark(#F4F8FA, #0C1A22);
+	--paper-raised: light-dark(#FFFFFF, #11232E);
+	--paper-inset: light-dark(#E7EFF2, #17303C);
+	--paper-deep: light-dark(#D6E2E8, #1E3847);
 
-	--ink: #0F2A36;
-	--ink-2: #44616E;
-	--ink-3: #7C97A2;
+	--ink: light-dark(#0F2A36, #E9EFF1);
+	--ink-2: light-dark(#44616E, #9DB4BE);
+	--ink-3: light-dark(#7C97A2, #6A8794);
 
-	--rule: #0F2A36;
-	--hairline: #D2E0E6;
+	--rule: light-dark(#0F2A36, #E9EFF1);
+	--hairline: light-dark(#D2E0E6, #294455);
 
-	/* Race identity */
-	--live: #5240CE;
-	--ghost: #176B8C;
+	--live: light-dark(#5240CE, #8C7CF0);
+	--ghost: light-dark(#176B8C, #3AA8CC);
 	--chrome: var(--ghost);
-	--ahead: #2F8F6E;
-	--behind: #C2851A;
-	--alarm: #C0392B;
+	--ahead: light-dark(#2F8F6E, #4AAF8E);
+	--behind: light-dark(#C2851A, #D9A23A);
+	--alarm: light-dark(#C0392B, #E06B5C);
 
 	--accent: var(--live);
 	--accent-2: var(--ahead);
 	--warn: var(--behind);
 	--danger: var(--alarm);
 
-	/* Metric channels (cool spot inks) */
-	--pace: #5240CE;
-	--rate: #1E8C8C;
-	--power: #C2851A;
-	--hr: #B0467E;
-	--dps: #176B8C;
+	--pace: var(--live);
+	--rate: light-dark(#1E8C8C, #4ABABA);
+	--power: light-dark(#C2851A, #D9A23A);
+	--hr: light-dark(#B0467E, #D08090);
+	--dps: var(--ghost);
 
-	/* HR zone ramp (Z1 easy → Z5 max) */
-	--zone-1: #4A8C7E;
-	--zone-2: #2E8C8C;
-	--zone-3: #C2851A;
-	--zone-4: #B05A2E;
-	--zone-5: #8B2540;
+	--zone-1: light-dark(#4A8C7E, #5AAA90);
+	--zone-2: light-dark(#2E8C8C, #4AAAAA);
+	--zone-3: light-dark(#C2851A, #D9A23A);
+	--zone-4: light-dark(#B05A2E, #D08050);
+	--zone-5: light-dark(#8B2540, #B05060);
 
-	/* Machine coding */
-	--m-rower: #2B5E78;
-	--m-skierg: #2E8C7E;
-	--m-bike: #6257B8;
+	--m-rower: light-dark(#2B5E78, #5A8AAA);
+	--m-skierg: light-dark(#2E8C7E, #5AAA9A);
+	--m-bike: light-dark(#6257B8, #8A7AD0);
 
-	/* Type families (Adobe Source) */
 	--display: 'Source Sans 3', 'Noto Sans JP', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
 	--ui: 'Source Sans 3', 'Noto Sans JP', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
 	--mono: 'Source Code Pro', 'Noto Sans JP', 'Noto Sans SC', ui-monospace, 'SF Mono', monospace;
 	--sans: var(--ui);
 
-	/* Radii — rounded & delightful */
 	--r-card: 1rem;
 	--r-ctrl: 0.625rem;
 	--r-pill: 999px;
 	--radius: var(--r-card);
 
-	/* Borders — hairline, not heavy ink */
 	--bd: 1px solid var(--hairline);
 	--bd-heavy: 1.5px solid var(--hairline);
 
-	/* Elevation — soft, tinted shadows (replaces hard offset stamps) */
 	--shadow-sm: 0 1px 2px rgba(15, 42, 54, 0.06), 0 1px 3px rgba(15, 42, 54, 0.05);
 	--shadow-md: 0 2px 6px rgba(15, 42, 54, 0.07), 0 10px 24px -10px rgba(15, 42, 54, 0.18);
 	--shadow-lg: 0 4px 12px rgba(15, 42, 54, 0.08), 0 18px 40px -14px rgba(15, 42, 54, 0.24);
@@ -201,11 +215,9 @@
 	--stamp-live: 0 2px 6px rgba(82, 64, 206, 0.16), 0 14px 32px -12px rgba(82, 64, 206, 0.34);
 	--stamp-ghost: 0 2px 6px rgba(23, 107, 140, 0.15), 0 14px 32px -12px rgba(23, 107, 140, 0.3);
 
-	/* Type scale */
 	--clock-size: clamp(2.6rem, 8vw, 4rem);
 	--metric-size: 1.9rem;
 
-	/* Legacy aliases */
 	--bg: var(--paper);
 	--bg-elev: var(--paper-raised);
 	--bg-elev-2: var(--paper-inset);
@@ -215,44 +227,9 @@
 	--topbar-bg: color-mix(in srgb, var(--paper) 82%, transparent);
 }
 
-/* Jet Set Blue dark — cool deep teal-navy night race board */
+/* Shadow overrides only — light-dark() cannot wrap comma-separated values. */
 :root[data-theme='dark'] {
 	color-scheme: dark;
-
-	--paper: #0C1A22;
-	--paper-raised: #11232E;
-	--paper-inset: #17303C;
-	--paper-deep: #1E3847;
-
-	--ink: #E9EFF1;
-	--ink-2: #9DB4BE;
-	--ink-3: #6A8794;
-
-	--rule: #E9EFF1;
-	--hairline: #294455;
-
-	--live: #8C7CF0;
-	--ghost: #3AA8CC;
-	--chrome: var(--ghost);
-	--ahead: #4AAF8E;
-	--behind: #D9A23A;
-	--alarm: #E06B5C;
-
-	--zone-1: #5AAA90;
-	--zone-2: #4AAAAA;
-	--zone-3: #D9A23A;
-	--zone-4: #D08050;
-	--zone-5: #B05060;
-
-	--m-rower: #5A8AAA;
-	--m-skierg: #5AAA9A;
-	--m-bike: #8A7AD0;
-
-	--pace: var(--live);
-	--rate: #4ABABA;
-	--power: #D9A23A;
-	--hr: #D08090;
-	--dps: #3AA8CC;
 
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
 	--shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 12px 28px -10px rgba(0, 0, 0, 0.6);
@@ -260,13 +237,6 @@
 	--stamp: var(--shadow-md);
 	--stamp-live: 0 2px 8px rgba(140, 124, 240, 0.22), 0 14px 34px -12px rgba(140, 124, 240, 0.4);
 	--stamp-ghost: 0 2px 8px rgba(58, 168, 204, 0.2), 0 14px 34px -12px rgba(58, 168, 204, 0.36);
-
-	--bg: var(--paper);
-	--bg-elev: var(--paper-raised);
-	--bg-elev-2: var(--paper-inset);
-	--border: var(--hairline);
-	--text: var(--ink);
-	--text-dim: var(--ink-2);
 	--topbar-bg: color-mix(in srgb, var(--paper) 80%, transparent);
 }
 
@@ -318,6 +288,7 @@ h3 {
 	line-height: 1.08;
 	letter-spacing: -0.015em;
 	margin: 0;
+	text-wrap: balance;
 }
 
 /* Every number is monospaced + tabular — digits never jitter during replay. */
@@ -361,6 +332,8 @@ h3 {
 	text-transform: none;
 	border-radius: var(--r-ctrl);
 	transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+	text-box-trim: trim-both;
+	text-box-edge: cap alphabetic;
 }
 .btn:hover {
 	transform: translateY(-1px);
@@ -413,6 +386,8 @@ h3 {
 	background: var(--paper-raised);
 	border-color: var(--hairline);
 	color: var(--ink-2);
+	text-box-trim: trim-both;
+	text-box-edge: cap alphabetic;
 }
 .badge-primary {
 	background: color-mix(in srgb, var(--live) 12%, var(--paper-raised));
@@ -593,6 +568,87 @@ html {
 /* ============================================================================
    Reduced motion
    ============================================================================ */
+/* Off-screen list rows: skip paint until near viewport (non-virtualized lists). */
+.cv-auto {
+	content-visibility: auto;
+	contain-intrinsic-size: auto var(--cv-intrinsic-height, 64px);
+}
+
+.uplot-host,
+.canvas3d-host {
+	contain: layout paint;
+}
+
+/* ============================================================================
+   Scoped View Transitions
+   ============================================================================ */
+/* Only the main content region cross-fades on client navigation. Naming <main>
+   lifts it out of the root snapshot, so the sticky masthead and footer stay put
+   (root animation suppressed) instead of the whole viewport wiping. */
+main {
+	view-transition-name: rp-main;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+}
+::view-transition-old(rp-main) {
+	animation: rp-vt-out 160ms ease both;
+}
+::view-transition-new(rp-main) {
+	animation: rp-vt-in 200ms ease both;
+}
+@keyframes rp-vt-out {
+	to {
+		opacity: 0;
+	}
+}
+@keyframes rp-vt-in {
+	from {
+		opacity: 0;
+	}
+}
+
+.skip-link {
+	position: absolute;
+	left: -9999px;
+	top: auto;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	z-index: 100;
+}
+.skip-link:focus {
+	left: 0.75rem;
+	top: 0.75rem;
+	width: auto;
+	height: auto;
+	padding: 0.5rem 0.75rem;
+	background: var(--paper-raised);
+	color: var(--ink);
+	border: var(--bd-heavy);
+	border-radius: var(--r-ctrl);
+	font-weight: 600;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+@media (prefers-contrast: more) {
+	:root {
+		--hairline: light-dark(#94A8B0, #4A6575);
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*,
 	*::before,
@@ -601,5 +657,19 @@ html {
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
 		scroll-behavior: auto !important;
+	}
+	.row.new-entry,
+	.vrow.new-entry,
+	.vspin,
+	.spin,
+	.syncicon.spin {
+		animation: none !important;
+	}
+	/* View-transition pseudo-elements aren't matched by the universal rule above;
+	   the onNavigate guard skips the transition, this is belt-and-suspenders. */
+	::view-transition-group(*),
+	::view-transition-old(*),
+	::view-transition-new(*) {
+		animation: none !important;
 	}
 }

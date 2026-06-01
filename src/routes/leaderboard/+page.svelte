@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { Trophy, Play, ExternalLink } from '@lucide/svelte';
+	import Trophy from '@lucide/svelte/icons/trophy';
+	import Play from '@lucide/svelte/icons/play';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
@@ -21,13 +23,13 @@
 
 	// Resolve the selected sport from the URL, falling back to the first sport.
 	const selectedSport = $derived.by<Sport>(() => {
-		const q = $page.url.searchParams.get('sport') as Sport | null;
+		const q = page.url.searchParams.get('sport') as Sport | null;
 		if (q && sports.includes(q)) return q;
 		return sports[0];
 	});
 
 	const selectedDistance = $derived.by<number>(() => {
-		const q = Number($page.url.searchParams.get('distance'));
+		const q = Number(page.url.searchParams.get('distance'));
 		if (Number.isFinite(q) && distances.includes(q)) return q;
 		return 2000;
 	});

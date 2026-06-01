@@ -1,9 +1,13 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
+	import { onNavigate } from '$app/navigation';
 	import { Toaster } from 'svelte-sonner';
-	import { Sun, Moon, Menu, X } from '@lucide/svelte';
+	import Sun from '@lucide/svelte/icons/sun';
+	import Moon from '@lucide/svelte/icons/moon';
+	import Menu from '@lucide/svelte/icons/menu';
+	import X from '@lucide/svelte/icons/x';
 	import LanguagePicker from '$components/LanguagePicker.svelte';
 	import { I18n, setI18nContext } from '$lib/i18n.svelte';
 	import { Theme, setThemeContext } from '$lib/theme.svelte';
@@ -18,35 +22,48 @@
 	const t = $derived(i18n.translate);
 
 	let menuOpen = $state(false);
+	let mobileNav = $state<HTMLDialogElement | undefined>();
 
 	function closeMenu() {
+		mobileNav?.close();
+	}
+
+	function onNavClose() {
 		menuOpen = false;
 	}
 
 	function toggleMenu() {
-		menuOpen = !menuOpen;
+		if (!mobileNav) return;
+		if (mobileNav.open) closeMenu();
+		else {
+			mobileNav.showModal();
+			menuOpen = true;
+		}
 	}
 
 	$effect(() => {
-		void $page.url.pathname;
-		menuOpen = false;
+		void page.url.pathname;
+		closeMenu();
 	});
 
-	$effect(() => {
-		if (!menuOpen) return;
-
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === 'Escape') {
-				closeMenu();
-			}
-		};
-
-		window.addEventListener('keydown', handleKeyDown);
-		return () => window.removeEventListener('keydown', handleKeyDown);
+	// Scoped cross-fade between routes. Only the <main> region animates
+	// (view-transition-name: rp-main in app.css); the masthead/footer persist.
+	// Skipped when the API is unavailable or the user prefers reduced motion.
+	onNavigate((navigation) => {
+		if (!document.startViewTransition) return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
 	});
 
 	onMount(() => initPwaUpdate(i18n));
 </script>
+
+<a class="skip-link" href="#main">{t('nav.skipToContent')}</a>
 
 <Toaster theme={theme.value} position="bottom-right" richColors />
 
@@ -58,13 +75,13 @@
 		</a>
 
 		<nav class="mast-tabs desktop-only" aria-label="Main">
-			<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}
+			<a href="/dashboard" class:active={page.url.pathname.startsWith('/dashboard')}
 				>{t('nav.dashboard')}</a
 			>
-			<a href="/leaderboard" class:active={$page.url.pathname.startsWith('/leaderboard')}
+			<a href="/leaderboard" class:active={page.url.pathname.startsWith('/leaderboard')}
 				>{t('nav.leaderboard')}</a
 			>
-			<a href="/settings" class:active={$page.url.pathname.startsWith('/settings')}
+			<a href="/settings" class:active={page.url.pathname.startsWith('/settings')}
 				>{t('nav.settings')}</a
 			>
 		</nav>
@@ -107,30 +124,28 @@
 			onclick={toggleMenu}
 			aria-expanded={menuOpen}
 			aria-controls="mobile-nav"
-			aria-haspopup="menu"
+			aria-haspopup="dialog"
 			aria-label={menuOpen ? t('nav.menuClose') : t('nav.menuOpen')}
 		>
 			{#if menuOpen}<X size={18} />{:else}<Menu size={18} />{/if}
 		</button>
 	</div>
 
-	{#if menuOpen}
-		<button
-			class="scrim mobile-only"
-			type="button"
-			tabindex="-1"
-			aria-label={t('nav.menuClose')}
-			onclick={closeMenu}
-		></button>
-		<div id="mobile-nav" class="mobile-drawer mobile-only">
+	<dialog
+		id="mobile-nav"
+		class="mobile-drawer mobile-only"
+		bind:this={mobileNav}
+		closedby="any"
+		onclose={onNavClose}
+	>
 			<nav class="drawer-nav" aria-label="Main">
-				<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}
+				<a href="/dashboard" class:active={page.url.pathname.startsWith('/dashboard')}
 					>{t('nav.dashboard')}</a
 				>
-				<a href="/leaderboard" class:active={$page.url.pathname.startsWith('/leaderboard')}
+				<a href="/leaderboard" class:active={page.url.pathname.startsWith('/leaderboard')}
 					>{t('nav.leaderboard')}</a
 				>
-				<a href="/settings" class:active={$page.url.pathname.startsWith('/settings')}
+				<a href="/settings" class:active={page.url.pathname.startsWith('/settings')}
 					>{t('nav.settings')}</a
 				>
 			</nav>
@@ -161,14 +176,13 @@
 					{#if data.oauthEnabled}
 						<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
 					{/if}
-					<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
-				{/if}
-			</div>
-		</div>
-	{/if}
+			<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
+		{/if}
+	</div>
+	</dialog>
 </header>
 
-<main>
+<main id="main" inert={menuOpen ? true : undefined}>
 	{@render children()}
 </main>
 
@@ -288,25 +302,24 @@
 	.mobile-only {
 		display: none;
 	}
-	.scrim {
-		position: fixed;
-		inset: 0;
-		border: 0;
-		padding: 0;
-		background: rgb(15 42 54 / 0.35);
-		cursor: pointer;
-		z-index: 9;
-	}
 	.mobile-drawer {
-		position: absolute;
-		left: 0;
-		right: 0;
-		top: 100%;
-		z-index: 11;
-		background: var(--paper);
-		border-bottom: var(--bd-heavy);
-		box-shadow: 0 12px 28px rgb(15 42 54 / 0.12);
+		margin: 0;
 		padding: 0.75rem 1rem 1rem;
+		border: none;
+		border-bottom: var(--bd-heavy);
+		width: 100%;
+		max-width: 100vw;
+		max-height: calc(100dvh - 54px);
+		background: var(--paper);
+		box-shadow: 0 12px 28px rgb(15 42 54 / 0.12);
+	}
+	.mobile-drawer::backdrop {
+		background: rgb(15 42 54 / 0.35);
+	}
+	.mobile-drawer:not([open]) {
+		display: none;
+	}
+	.mobile-drawer[open] {
 		display: grid;
 		gap: 1rem;
 	}

@@ -25,8 +25,9 @@ test.describe('smoke', () => {
 		const errors = collectPageErrors(page);
 
 		await page.goto('/dashboard');
-		await expect(page.locator('.lang-picker select option')).toHaveCount(6);
-		const langSelect = page.locator('.lang-picker select');
+		// LanguagePicker appears twice (desktop masthead + mobile dialog); count one.
+		await expect(page.locator('.lang-picker').first().locator('select option')).toHaveCount(6);
+		const langSelect = page.locator('.lang-picker select').first();
 		// WebKit can miss Playwright's selectOption before hydration; dispatch change explicitly.
 		await langSelect.evaluate((el) => {
 			const select = el as HTMLSelectElement;

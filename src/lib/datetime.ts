@@ -89,3 +89,17 @@ export function fmtDateFromEpochMillis(epochMs: number, locale?: string): string
 		return '--';
 	}
 }
+
+/** Today as a `YYYY-MM-DD` key in UTC (SSR and client agree on the boundary). */
+export function todayKeyUtc(): string {
+	return Temporal.Now.plainDateISO('UTC').toString();
+}
+
+/** `YYYY-MM-DD` day key → UTC-midnight epoch milliseconds; NaN if unparseable. */
+export function dayKeyEpochMillis(key: string): number {
+	try {
+		return Temporal.PlainDate.from(key).toZonedDateTime('UTC').epochMilliseconds;
+	} catch {
+		return NaN;
+	}
+}

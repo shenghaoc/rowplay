@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { Pencil, Plus, Trash2, X, MessageSquareText } from '@lucide/svelte';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import X from '@lucide/svelte/icons/x';
+	import MessageSquareText from '@lucide/svelte/icons/message-square-text';
 	import { fmtTime } from '$lib/format';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import type { Annotation } from '$lib/types';
@@ -22,7 +26,29 @@
 	let draftText = $state('');
 	let saving = $state(false);
 	let saveError = $state('');
+	let deleteId = $state<number | null>(null);
+	let deleteDialog = $state<HTMLDialogElement | undefined>();
 
+	function requestDelete(id: number) {
+		deleteId = id;
+		deleteDialog?.showModal();
+	}
+
+	async function executeDelete() {
+		if (deleteId == null) return;
+		const id = deleteId;
+		deleteId = null;
+		deleteDialog?.close();
+		saving = true;
+		saveError = '';
+		try {
+			await ondelete?.(id);
+		} catch {
+			saveError = t('annotations.deleteError');
+		} finally {
+			saving = false;
+		}
+	}
 	function startAdd() {
 		draftText = '';
 		adding = true;
@@ -64,19 +90,6 @@
 			editingTimestamp = 0;
 		} catch {
 			saveError = t('annotations.saveError');
-		} finally {
-			saving = false;
-		}
-	}
-
-	async function confirmDelete(id: number) {
-		if (!window.confirm(t('annotations.confirmDelete'))) return;
-		saving = true;
-		saveError = '';
-		try {
-			await ondelete?.(id);
-		} catch {
-			saveError = t('annotations.deleteError');
 		} finally {
 			saving = false;
 		}
@@ -134,7 +147,7 @@
 	{:else}
 		<ul class="anno-list">
 			{#each annotations as a (a.id)}
-				<li class="anno-item" class:editing={editingId === a.id}>
+				<li class="anno-item cv-auto" style="--cv-intrinsic-height: 52px" class:editing={editingId === a.id}>
 					{#if editingId === a.id}
 						<div class="anno-form">
 							<div class="anno-ts mono">{t('annotations.timestampLabel')} <strong>{fmtTime(a.timestamp, true)}</strong></div>
@@ -161,7 +174,7 @@
 								<button class="btn-icon" onclick={() => startEdit(a)} aria-label={t('annotations.editNote')}>
 									<Pencil size={13} />
 								</button>
-								<button class="btn-icon danger" onclick={() => confirmDelete(a.id)} aria-label={t('annotations.deleteNote')}>
+								<button class="btn-icon danger" onclick={() => requestDelete(a.id)} aria-label={t('annotations.deleteNote')}>
 									<Trash2 size={13} />
 								</button>
 							</div>
@@ -172,6 +185,18 @@
 		</ul>
 	{/if}
 </div>
+
+<dialog class="anno-delete-dialog" bind:this={deleteDialog} closedby="any" aria-label={t('annotations.confirmDelete')}>
+	<p>{t('annotations.confirmDelete')}</p>
+	<div class="anno-delete-actions">
+		<button type="button" class="btn btn-ghost btn-sm" onclick={() => deleteDialog?.close()}>
+			{t('annotations.cancelNote')}
+		</button>
+		<button type="button" class="btn btn-error btn-sm" onclick={executeDelete}>
+			{t('annotations.deleteNote')}
+		</button>
+	</div>
+</dialog>
 
 <style>
 	.anno-panel {
@@ -330,5 +355,22 @@
 	}
 	.btn-icon.danger:hover {
 		color: #ef4444;
+	}
+	.anno-delete-dialog {
+		border: var(--bd-heavy);
+		border-radius: var(--r-card);
+		padding: 1rem 1.25rem;
+		max-width: 24rem;
+		background: var(--paper-raised);
+		color: var(--ink);
+	}
+	.anno-delete-dialog::backdrop {
+		background: rgb(15 42 54 / 0.35);
+	}
+	.anno-delete-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
+		margin-top: 0.75rem;
 	}
 </style>

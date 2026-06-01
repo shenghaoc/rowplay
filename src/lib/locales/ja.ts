@@ -65,7 +65,8 @@ export const ja = {
 		leaderboard: 'ランキング',
 		settings: 'データ',
 		menuOpen: 'メニューを開く',
-		menuClose: 'メニューを閉じる'
+		menuClose: 'メニューを閉じる',
+		skipToContent: '本文へスキップ'
 	},
 	common: {
 		demoMode: 'デモモード',

@@ -65,7 +65,8 @@ export const fr = {
 		leaderboard: 'Classements',
 		settings: 'Données',
 		menuOpen: 'Ouvrir le menu',
-		menuClose: 'Fermer le menu'
+		menuClose: 'Fermer le menu',
+		skipToContent: 'Aller au contenu'
 	},
 	common: {
 		demoMode: 'mode démo',

@@ -3,7 +3,10 @@
 	import { fmtDateFromEpochMillis } from '$lib/format';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { toast } from 'svelte-sonner';
-	import { Download, RefreshCw, Trash2, Database } from '@lucide/svelte';
+	import Download from '@lucide/svelte/icons/download';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import Database from '@lucide/svelte/icons/database';
 
 	let { data } = $props();
 	const i18n = getI18nContext();

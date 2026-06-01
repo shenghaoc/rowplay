@@ -39,13 +39,20 @@
 	} from '$lib/hrImport';
 	import { pickDefaultGhostCandidate } from '$lib/replay/ghostPick';
 	import { toast } from 'svelte-sonner';
-	import { ArrowLeft, Play, Pause, Ghost, Share2, ImageDown, Trophy, Heart } from '@lucide/svelte';
+	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import Play from '@lucide/svelte/icons/play';
+	import Pause from '@lucide/svelte/icons/pause';
+	import Ghost from '@lucide/svelte/icons/ghost';
+	import Share2 from '@lucide/svelte/icons/share-2';
+	import ImageDown from '@lucide/svelte/icons/image-down';
+	import Trophy from '@lucide/svelte/icons/trophy';
+	import Heart from '@lucide/svelte/icons/heart';
 	import { downloadRaceCardPng } from '$lib/replay/raceCard';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
 	import { chartTheme, baseOptions, type SeriesRole } from '$lib/chartTheme';
 	import SportIcon from '$components/SportIcon.svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import AnnotationPanel from '$components/AnnotationPanel.svelte';
 	import type { Annotation } from '$lib/types';
 
@@ -349,11 +356,11 @@
 	 * immediately. Invalid or absent params fall through to the solo replay.
 	 */
 	function armGhostFromUrl() {
-		const gp = $page.url.searchParams.get('ghostPace');
+		const gp = page.url.searchParams.get('ghostPace');
 		if (!gp) return;
 		const secs = parsePaceInput(gp);
 		if (secs == null || total <= 0) return;
-		const name = $page.url.searchParams.get('ghostName')?.trim();
+		const name = page.url.searchParams.get('ghostName')?.trim();
 		const paceLabel = `${fmtPaceBare(secs)}/500m`;
 		compareMode = 'pace';
 		paceInput = fmtPaceBare(secs);
@@ -776,6 +783,17 @@
 			const res = await fetch(`/api/workouts/${detail.id}/share`, { method: 'POST' });
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const body = (await res.json()) as { url: string };
+			const title = detail.workoutType || detail.sport;
+			if (typeof navigator.share === 'function') {
+				try {
+					await navigator.share({ url: body.url, title });
+					toast.success(t('share.linkReady'));
+					return;
+				} catch (e) {
+					if (e instanceof Error && e.name === 'AbortError') return;
+					throw e;
+				}
+			}
 			if (navigator.clipboard?.writeText) {
 				await navigator.clipboard.writeText(body.url);
 				toast.success(t('share.linkCopied'), { description: t('share.linkReady') });
@@ -941,13 +959,17 @@
 
 		{#if compareMode === 'session' && candidates.length}
 			{#if candidates.length >= SEARCHABLE_MIN}
+				<search>
 				<input
 					class="session-search"
 					type="search"
+					inputmode="search"
+					enterkeyhint="search"
 					bind:value={sessionSearch}
 					placeholder={t('replay.searchSessions')}
 					aria-label={t('replay.searchSessions')}
 				/>
+				</search>
 			{/if}
 			<select id="ghost" value={ghostId} onchange={selectGhost}>
 				<option value="">{t('replay.chooseSession', { sport: SPORT_LABEL[detail.sport] })}</option>

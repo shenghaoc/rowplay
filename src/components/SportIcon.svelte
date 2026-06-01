@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { Sailboat, Snowflake, Bike } from '@lucide/svelte';
+	import Sailboat from '@lucide/svelte/icons/sailboat';
+	import Snowflake from '@lucide/svelte/icons/snowflake';
+	import Bike from '@lucide/svelte/icons/bike';
 	import type { Sport } from '$lib/types';
 
 	interface Props {

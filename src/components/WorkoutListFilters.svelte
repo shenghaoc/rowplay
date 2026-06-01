@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { Search, SlidersHorizontal, X } from '@lucide/svelte';
+	import Search from '@lucide/svelte/icons/search';
+	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import X from '@lucide/svelte/icons/x';
 	import {
 		DISTANCE_CHIPS,
 		DURATION_CHIPS,
@@ -92,7 +94,8 @@
 		</div>
 	</div>
 
-	{#if expanded}
+	<details class="lq-details" bind:open={expanded}>
+		<summary class="lq-summary">{t('workoutList.expand')}</summary>
 		<div class="lqgrid">
 			<label class="field">
 				<span class="flabel muted">{t('workoutList.dateFrom')}</span>
@@ -138,16 +141,20 @@
 			</label>
 		</div>
 
+		<search>
 		<form class="searchrow" onsubmit={(e) => { e.preventDefault(); submitSearch(); }}>
 			<span class="sicon" aria-hidden="true"><Search size={16} /></span>
 			<input
 				type="search"
+				inputmode="search"
+				enterkeyhint="search"
 				placeholder={t('workoutList.searchComments')}
 				bind:value={searchDraft}
 				aria-label={t('workoutList.searchComments')}
 			/>
 			<button type="submit" class="btn btn-ghost btn-sm">{t('workoutList.search')}</button>
 		</form>
+		</search>
 
 		<div class="chips" role="group" aria-label={t('workoutList.distanceChips')}>
 			<span class="chiplabel muted">{t('workoutList.distanceChips')}</span>
@@ -205,7 +212,7 @@
 				{t('workoutList.pbsOnly')}
 			</button>
 		</div>
-	{/if}
+	</details>
 </section>
 
 <style>
@@ -244,6 +251,9 @@
 		display: flex;
 		gap: 0.4rem;
 		flex-wrap: wrap;
+	}
+	.lq-details > .lq-summary {
+		display: none;
 	}
 	.lqgrid {
 		display: grid;

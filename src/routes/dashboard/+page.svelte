@@ -25,7 +25,12 @@
 	import { onMount } from 'svelte';
 	import { serializeWorkoutListQuery, filterAndSortWorkouts, type WorkoutListQuery } from '$lib/workoutQuery';
 	import { toast } from 'svelte-sonner';
-	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play, Activity } from '@lucide/svelte';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+	import TrendingUp from '@lucide/svelte/icons/trending-up';
+	import TrendingDown from '@lucide/svelte/icons/trending-down';
+	import MoveRight from '@lucide/svelte/icons/move-right';
+	import Play from '@lucide/svelte/icons/play';
+	import Activity from '@lucide/svelte/icons/activity';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
 	import { chartTheme, baseOptions } from '$lib/chartTheme';
