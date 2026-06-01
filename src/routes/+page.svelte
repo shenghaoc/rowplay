@@ -5,16 +5,16 @@
 	const t = getI18nContext().t;
 </script>
 
-<section class="hero container">
+<section class="splash container">
 	<div class="copy">
-		<span class="tag live">{t('landing.tagline')}</span>
+		<span class="badge badge-primary">{t('landing.tagline')}</span>
 		<h1>{t('landing.title1')}<br />{t('landing.title2')}</h1>
 		<p class="muted lead">{t('landing.lead')}</p>
 		<div class="cta">
 			{#if data.user || data.demo}
-				<a class="btn" href="/dashboard">{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
+				<a class="btn btn-primary" href="/dashboard">{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
 			{:else}
-				<a class="btn" href="/auth/login">{t('landing.connect')}</a>
+				<a class="btn btn-primary" href="/auth/login">{t('landing.connect')}</a>
 			{/if}
 		</div>
 		{#if data.demo}
@@ -42,7 +42,7 @@
 </section>
 
 <style>
-	.hero {
+	.splash {
 		display: grid;
 		grid-template-columns: 1.2fr 1fr;
 		gap: 3rem;
@@ -92,13 +92,13 @@
 		font-size: 0.92rem;
 	}
 	@media (max-width: 860px) {
-		.hero {
+		.splash {
 			grid-template-columns: 1fr;
 			padding-top: 2rem;
 		}
 	}
 	@media (max-width: 390px) {
-		.hero {
+		.splash {
 			padding-top: 1.25rem;
 			padding-bottom: 2rem;
 			gap: 1.5rem;

@@ -34,6 +34,6 @@ export const MACHINE_COLOR: Record<Sport, string> = {
 
 /** Canvas mirror of --m-* in app.css; renderer.test.ts enforces sync. */
 export const MACHINE_HEX: Record<'light' | 'dark', Record<Sport, string>> = {
-	light: { rower: '#2b5468', skierg: '#3c7a6e', bike: '#a65d2e' },
-	dark: { rower: '#5a8aaa', skierg: '#5aaa9a', bike: '#d09060' }
+	light: { rower: '#2b5e78', skierg: '#2e8c7e', bike: '#6257b8' },
+	dark: { rower: '#5a8aaa', skierg: '#5aaa9a', bike: '#8a7ad0' }
 };

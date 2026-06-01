@@ -75,14 +75,14 @@
 		</div>
 		<div class="lqactions">
 			{#if listQueryIsFiltered(query)}
-				<button type="button" class="btn ghost small" onclick={onclear}>
+				<button type="button" class="btn btn-ghost btn-sm" onclick={onclear}>
 					<X size={14} />
 					{t('workoutList.clearFilters')}
 				</button>
 			{/if}
 			<button
 				type="button"
-				class="btn ghost small"
+				class="btn btn-ghost btn-sm"
 				aria-expanded={expanded}
 				onclick={() => (expanded = !expanded)}
 			>
@@ -145,7 +145,7 @@
 				bind:value={searchDraft}
 				aria-label={t('workoutList.searchComments')}
 			/>
-			<button type="submit" class="btn ghost small">{t('workoutList.search')}</button>
+			<button type="submit" class="btn btn-ghost btn-sm">{t('workoutList.search')}</button>
 		</form>
 
 		<div class="chips" role="group" aria-label={t('workoutList.distanceChips')}>

@@ -30,7 +30,7 @@
 		{#if form?.error}
 			<p class="err" role="alert">{form.error}</p>
 		{/if}
-		<button class="btn" type="submit">{t('token.connect')}</button>
+		<button class="btn btn-primary" type="submit">{t('token.connect')}</button>
 	</form>
 
 	{#if data.oauthEnabled}

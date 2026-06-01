@@ -468,14 +468,14 @@
 		>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
-			{#if !detail.hasStrokeData}<span class="tag">{t('replay.lowRes')}</span>{/if}
+			{#if !detail.hasStrokeData}<span class="badge">{t('replay.lowRes')}</span>{/if}
 		</div>
 		<div class="sharebar">
-			<button class="btn ghost small" type="button" disabled={sharing} onclick={shareReplay}>
+			<button class="btn btn-ghost btn-sm" type="button" disabled={sharing} onclick={shareReplay}>
 				<Share2 size={14} />
 				{sharing ? t('common.loading') : t('share.shareReplay')}
 			</button>
-			<button class="btn ghost small" type="button" onclick={downloadRaceCard}>
+			<button class="btn btn-ghost btn-sm" type="button" onclick={downloadRaceCard}>
 				<ImageDown size={14} />
 				{t('share.downloadImage')}
 			</button>
@@ -520,7 +520,7 @@
 				onkeydown={(e) => e.key === 'Enter' && applyPace()}
 			/>
 			<span class="muted small">/500m</span>
-			<button class="btn ghost small" onclick={applyPace}>{t('replay.setPace')}</button>
+			<button class="btn btn-ghost btn-sm" onclick={applyPace}>{t('replay.setPace')}</button>
 		{:else if compareMode === 'file'}
 			<input
 				class="fileinput"
@@ -568,7 +568,7 @@
 
 	<!-- Transport controls -->
 	<div class="card controls">
-		<button class="btn play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
+		<button class="btn btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
 		<div class="clock mono">

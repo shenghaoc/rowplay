@@ -157,7 +157,7 @@
 				<button type="button" class="bchip" onclick={() => applyPreset(500_000)}>500k</button>
 				<button type="button" class="bchip" onclick={() => { kind = 'hours'; targetInput = 100; }}>100h</button>
 			</div>
-			<button type="button" class="btn small" onclick={saveGoal} disabled={saving}>
+			<button type="button" class="btn btn-primary btn-sm" onclick={saveGoal} disabled={saving}>
 				{saving ? t('dashboard.goalsSaving') : t('dashboard.goalsSave')}
 			</button>
 		</div>

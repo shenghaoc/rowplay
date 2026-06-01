@@ -424,7 +424,7 @@
 				{/each}
 			</div>
 			{#if !data.demo}
-				<button class="btn ghost small sync" onclick={sync} disabled={syncing}>
+				<button class="btn btn-ghost btn-sm sync" onclick={sync} disabled={syncing}>
 					<span class="syncicon" class:spin={syncing}><RefreshCw size={14} /></span>
 					{syncing ? t('dashboard.syncing') : t('dashboard.sync')}
 				</button>
@@ -444,7 +444,7 @@
 
 	<!-- Latest session: pace front and centre -->
 	{#if latest}
-		<a class="card hero" href="/replay/{latest.id}">
+		<a class="card latest" href="/replay/{latest.id}">
 			<div class="herolead">
 				<div class="herotop muted">
 					<span class="hicon" style:color={MACHINE_COLOR[latest.sport]}
@@ -489,7 +489,7 @@
 					</div>
 				{/if}
 			</div>
-			<div class="herocta tag"><Play size={12} /> {t('common.replay')}</div>
+			<div class="herocta badge badge-primary"><Play size={12} /> {t('common.replay')}</div>
 		</a>
 	{/if}
 
@@ -532,7 +532,7 @@
 				<div class="formtitle">
 					<Activity size={18} />
 					<span class="label">{t('dashboard.formTitle')}</span>
-					<span class="tag premium">{t('dashboard.formPremium')}</span>
+					<span class="badge badge-primary">{t('dashboard.formPremium')}</span>
 				</div>
 				<span class="badge {formBandClass[load.band]}">{bandLabel[load.band]}</span>
 			</div>
@@ -611,6 +611,7 @@
 	{#if bySport.length > 1}
 		<div class="card breakdown">
 			<div class="muted label">{t('dashboard.bySport')}</div>
+			<div class="tablescroll">
 			<table class="mono">
 				<thead>
 					<tr><th>{t('dashboard.thSport')}</th><th>{t('dashboard.thSessions')}</th><th>{t('dashboard.thDistance')}</th><th>{t('dashboard.thTime')}</th><th>{t('dashboard.thAvgPace')}</th><th>{t('dashboard.thBestPace')}</th></tr>
@@ -628,6 +629,7 @@
 					{/each}
 				</tbody>
 			</table>
+			</div>
 		</div>
 	{/if}
 
@@ -774,7 +776,7 @@
 		color: var(--paper-raised);
 		border-color: var(--ink);
 	}
-	.hero {
+	.latest {
 		display: grid;
 		grid-template-columns: auto 1fr auto;
 		align-items: center;
@@ -786,10 +788,10 @@
 			transform 0.05s ease,
 			box-shadow 0.05s ease;
 	}
-	.hero:hover {
+	.latest:hover {
 		text-decoration: none;
-		transform: translate(1px, 1px);
-		box-shadow: 2px 2px 0 var(--ink);
+		transform: translateY(-2px);
+		box-shadow: var(--shadow-lg);
 	}
 	.herotop {
 		font-size: 0.85rem;
@@ -953,7 +955,7 @@
 	}
 	.formstats {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 		gap: 1rem;
 		margin-bottom: 0.9rem;
 	}
@@ -1052,11 +1054,15 @@
 	.sportcell :global(svg) {
 		vertical-align: -2px;
 	}
+	.tablescroll {
+		overflow-x: auto;
+		margin-top: 0.4rem;
+	}
 	.breakdown table {
 		width: 100%;
+		min-width: max-content;
 		border-collapse: collapse;
 		font-size: 0.85rem;
-		margin-top: 0.4rem;
 	}
 	.breakdown th {
 		text-align: left;
@@ -1140,9 +1146,9 @@
 	}
 	@media (max-width: 720px) {
 		.stats {
-			grid-template-columns: repeat(2, 1fr);
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
-		.hero {
+		.latest {
 			grid-template-columns: 1fr;
 			gap: 0.75rem;
 		}
@@ -1165,6 +1171,17 @@
 		.formhead {
 			flex-wrap: wrap;
 			gap: 0.5rem;
+		}
+	}
+	@media (max-width: 400px) {
+		.stats {
+			gap: 0.6rem;
+		}
+		.stat .value {
+			font-size: 1.25rem;
+		}
+		.fsv {
+			font-size: 1.35rem;
 		}
 	}
 	@media (max-width: 390px) {

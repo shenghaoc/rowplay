@@ -285,11 +285,11 @@
 			</label>
 		</div>
 		<div class="pickactions">
-			<button class="btn" type="button" disabled={!pickA || !pickB || pickA === pickB} onclick={applyCompare}>
+			<button class="btn btn-primary" type="button" disabled={!pickA || !pickB || pickA === pickB} onclick={applyCompare}>
 				{t('compare.run')}
 			</button>
 			{#if detailA && detailB}
-				<button class="btn ghost" type="button" onclick={swapWorkouts}>{t('compare.swap')}</button>
+				<button class="btn btn-ghost" type="button" onclick={swapWorkouts}>{t('compare.swap')}</button>
 			{/if}
 		</div>
 	</div>
@@ -497,6 +497,8 @@
 		color: var(--ink-2);
 	}
 	select {
+		width: 100%;
+		min-width: 0;
 		font-family: var(--mono);
 		font-size: 0.85rem;
 		padding: 0.45rem 0.5rem;

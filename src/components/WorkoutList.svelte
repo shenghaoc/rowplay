@@ -160,10 +160,12 @@
 	}
 	.row {
 		display: flex;
+		flex-direction: row;
 		align-items: center;
 		gap: 1rem;
 		color: var(--ink);
 		min-height: 64px;
+		padding: 0.55rem 0.95rem;
 		transition: background 0.1s ease;
 	}
 	.row:hover {

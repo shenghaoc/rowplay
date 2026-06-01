@@ -193,6 +193,7 @@
 	.calgridarea {
 		position: relative;
 		min-width: 0;
+		flex-shrink: 0;
 	}
 	.monthrow {
 		position: relative;
@@ -210,6 +211,7 @@
 		grid-auto-flow: column;
 		grid-auto-columns: var(--cell);
 		gap: var(--gap);
+		width: max-content;
 	}
 	.cell {
 		width: var(--cell);

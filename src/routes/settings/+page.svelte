@@ -102,8 +102,8 @@
 		<h2><Download size={18} /> {t('settings.exportTitle')}</h2>
 		<p class="muted">{t('settings.exportNote')}</p>
 		<div class="row">
-			<a class="btn" href="/api/export?format=csv" download>{t('settings.exportCsv')}</a>
-			<a class="btn" href="/api/export?format=json" download>{t('settings.exportJson')}</a>
+			<a class="btn btn-primary" href="/api/export?format=csv" download>{t('settings.exportCsv')}</a>
+			<a class="btn btn-neutral" href="/api/export?format=json" download>{t('settings.exportJson')}</a>
 		</div>
 		{#if data.tcxWorkouts.length}
 			<p class="muted small">{t('settings.exportTcxNote')}</p>
@@ -122,12 +122,12 @@
 		<h2><RefreshCw size={18} /> {t('settings.syncTitle')}</h2>
 		<p class="muted">{t('settings.syncNote')}</p>
 		{#if data.demo}
-			<p class="tag live">{t('settings.syncDemo')}</p>
+			<span class="badge badge-primary">{t('settings.syncDemo')}</span>
 		{:else}
 			<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: data.sync?.total ?? 0 })}</p>
 			<div class="row">
 				<button
-					class="btn"
+					class="btn btn-primary"
 					type="button"
 					disabled={syncing}
 					onclick={() => runSync(false)}
@@ -135,7 +135,7 @@
 					{syncMode === 'incremental' ? t('dashboard.syncing') : t('settings.syncIncremental')}
 				</button>
 				<button
-					class="btn ghost"
+					class="btn btn-ghost"
 					type="button"
 					disabled={syncing}
 					onclick={() => runSync(true)}
@@ -149,7 +149,7 @@
 	<article class="panel danger">
 		<h2><Trash2 size={18} /> {t('settings.deleteTitle')}</h2>
 		<p class="muted">{t('settings.deleteNote')}</p>
-		<button class="btn bad" type="button" disabled={deleting} onclick={deleteData}>
+		<button class="btn btn-error" type="button" disabled={deleting} onclick={deleteData}>
 			{deleting ? t('common.loading') : t('settings.deleteAction')}
 		</button>
 	</article>
@@ -183,7 +183,7 @@
 		gap: 0.75rem;
 	}
 	.panel.danger {
-		border-color: color-mix(in srgb, var(--alarm) 40%, var(--bd-color, #ccc));
+		border-color: var(--alarm);
 	}
 	h2 {
 		display: flex;
@@ -225,14 +225,5 @@
 		font-family: var(--mono);
 		font-size: 0.82rem;
 		margin: 0;
-	}
-	.btn.bad {
-		background: var(--alarm);
-		border-color: var(--alarm);
-		color: #fff;
-		justify-self: start;
-	}
-	.btn.bad:hover {
-		filter: brightness(1.05);
 	}
 </style>
