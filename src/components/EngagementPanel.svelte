@@ -376,8 +376,8 @@
 		letter-spacing: 0.03em;
 		padding: 0.25rem 0.55rem;
 		border-radius: 999px;
-		background: rgba(210, 168, 255, 0.14);
-		color: #9b6bcc;
-		border: 1px solid rgba(155, 107, 204, 0.35);
+		background: color-mix(in srgb, var(--behind) 14%, var(--paper-raised));
+		color: color-mix(in srgb, var(--behind) 45%, var(--ink));
+		border: 1px solid color-mix(in srgb, var(--behind) 35%, var(--paper-raised));
 	}
 </style>

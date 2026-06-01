@@ -1,5 +1,6 @@
 import { fmtDistance, fmtLogbookDateTime, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '../format';
-import { themeFor } from './sports';
+import { COLORS_DARK, COLORS_LIGHT } from './renderer';
+import { MACHINE_HEX } from './sports';
 import type { WorkoutDetail } from '../types';
 
 export interface RaceCardLabels {
@@ -60,8 +61,8 @@ export function renderRaceCard(
 	const bg = dark ? '#18140d' : '#fbf7ee';
 	const ink = dark ? '#e7dfce' : '#18140d';
 	const ink2 = dark ? '#b5aa96' : '#6a6052';
-	const accent = themeFor(detail.sport).color;
-	const live = '#dc4327';
+	const accent = MACHINE_HEX[theme][detail.sport];
+	const live = dark ? COLORS_DARK.live : COLORS_LIGHT.live;
 
 	ctx.fillStyle = bg;
 	ctx.fillRect(0, 0, W, H);
