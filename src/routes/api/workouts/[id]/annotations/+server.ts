@@ -15,12 +15,20 @@ export const POST: RequestHandler = async (event) => {
 	const workoutId = Number(event.params.id);
 	if (!Number.isFinite(workoutId)) throw error(400, 'Invalid workout id.');
 
-	const body = (await event.request.json()) as {
-		id?: number;
-		timestamp?: number;
-		text?: string;
-	};
+	let raw: unknown;
+	try {
+		raw = await event.request.json();
+	} catch {
+		throw error(400, 'Invalid JSON body.');
+	}
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+		throw error(400, 'Request body must be a JSON object.');
+	}
+	const body = raw as { id?: unknown; timestamp?: unknown; text?: unknown };
 
+	if (body.id !== undefined && (typeof body.id !== 'number' || !Number.isInteger(body.id) || body.id < 0)) {
+		throw error(400, 'Invalid annotation id.');
+	}
 	if (typeof body.timestamp !== 'number' || !Number.isFinite(body.timestamp) || body.timestamp < 0) {
 		throw error(400, 'Invalid timestamp.');
 	}

@@ -285,7 +285,7 @@ export async function loadAnnotations(
 	}
 	const db = event.platform?.env?.DB;
 	const userId = event.locals.user?.id;
-	if (!db || userId == null) return [];
+	if (!db || userId == null) throw error(401, 'Not authenticated.');
 	return dbGetAnnotations(db, userId, workoutId);
 }
 
@@ -297,21 +297,20 @@ export async function saveAnnotation(
 	if (event.locals.demo) {
 		const stored = demoAnnotationStore.get(workoutId) ?? mockAnnotations(workoutId);
 		const now = Date.now();
+		let result: Annotation;
 		if (annotation.id > 0) {
 			const idx = stored.findIndex((a) => a.id === annotation.id);
-			if (idx >= 0) {
-				// Preserve the original createdAt on edit, matching putAnnotation (DB).
-				stored[idx] = { ...annotation, createdAt: stored[idx].createdAt };
-			}
+			if (idx < 0) throw error(404, 'Annotation not found.');
+			// Preserve the original createdAt on edit, matching putAnnotation (DB).
+			stored[idx] = { ...annotation, createdAt: stored[idx].createdAt };
+			result = stored[idx];
 		} else {
 			const newId = stored.length ? Math.max(...stored.map((a) => a.id)) + 1 : 1;
-			stored.push({ id: newId, timestamp: annotation.timestamp, text: annotation.text, createdAt: now });
+			result = { id: newId, timestamp: annotation.timestamp, text: annotation.text, createdAt: now };
+			stored.push(result);
 		}
 		demoAnnotationStore.set(workoutId, stored);
-		return (
-			stored.find((a) => a.id === annotation.id) ??
-			stored[stored.length - 1]
-		);
+		return result;
 	}
 	const db = event.platform?.env?.DB;
 	const userId = event.locals.user?.id;
@@ -325,17 +324,17 @@ export async function removeAnnotation(
 	annotationId: number
 ): Promise<void> {
 	if (event.locals.demo) {
-		const stored = demoAnnotationStore.get(workoutId);
-		if (stored) {
-			demoAnnotationStore.set(
-				workoutId,
-				stored.filter((a) => a.id !== annotationId)
-			);
-		}
+		// Seed from the mock set when nothing's stored yet, so default demo notes
+		// are deletable (not just ones created this session).
+		const stored = demoAnnotationStore.get(workoutId) ?? mockAnnotations(workoutId);
+		demoAnnotationStore.set(
+			workoutId,
+			stored.filter((a) => a.id !== annotationId)
+		);
 		return;
 	}
 	const db = event.platform?.env?.DB;
 	const userId = event.locals.user?.id;
-	if (!db || userId == null) return;
+	if (!db || userId == null) throw error(401, 'Not authenticated.');
 	await dbDeleteAnnotation(db, userId, workoutId, annotationId);
 }

@@ -82,6 +82,9 @@
 	}
 
 	function onKeydown(e: KeyboardEvent) {
+		// Don't act on Enter while an IME is composing (e.g. zh/ja) — that Enter
+		// confirms the candidate, it isn't a submit.
+		if (e.isComposing) return;
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
 			save();
