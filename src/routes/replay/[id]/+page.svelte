@@ -41,7 +41,8 @@
 	import type { Annotation } from '$lib/types';
 
 	let { data } = $props();
-	const t = getI18nContext().t;
+	const i18n = getI18nContext();
+	const t = $derived(i18n.translate);
 	const uiTheme = getThemeContext();
 	const baseDetail = $derived(data.detail as WorkoutDetail);
 	const candidates = $derived(data.candidates as Workout[]);

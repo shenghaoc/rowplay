@@ -13,6 +13,7 @@
     "preview": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "validate:locales": "node --experimental-strip-types scripts/validate-locales.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

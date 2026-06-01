@@ -3,7 +3,8 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { Toaster } from 'svelte-sonner';
-	import { Languages, Sun, Moon } from '@lucide/svelte';
+	import { Sun, Moon } from '@lucide/svelte';
+	import LanguagePicker from '$components/LanguagePicker.svelte';
 	import { I18n, setI18nContext } from '$lib/i18n.svelte';
 	import { Theme, setThemeContext } from '$lib/theme.svelte';
 	import { initPwaUpdate } from '$lib/pwa-update';
@@ -14,11 +15,10 @@
 	const i18n = setI18nContext(new I18n(data.lang));
 	// svelte-ignore state_referenced_locally
 	const theme = setThemeContext(new Theme(data.theme));
-	const t = i18n.t;
+	const t = $derived(i18n.translate);
 
 	onMount(() => initPwaUpdate(i18n));
 </script>
-
 
 <Toaster theme={theme.value} position="bottom-right" richColors />
 
@@ -40,10 +40,7 @@
 			>
 		</nav>
 		<div class="spacer"></div>
-		<button class="iconbtn" onclick={() => i18n.toggle()} title={t('lang.switch')} aria-label={t('lang.switch')}>
-			<Languages size={16} />
-			<span>{i18n.lang === 'en' ? '中文' : 'EN'}</span>
-		</button>
+		<LanguagePicker />
 		<button
 			class="iconbtn"
 			onclick={() => theme.toggle()}
@@ -210,9 +207,6 @@
 		.mast-tabs {
 			gap: 0.75rem;
 			margin-left: 0;
-		}
-		.iconbtn span {
-			display: none;
 		}
 		.brand .name {
 			font-size: 1.15rem;

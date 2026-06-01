@@ -2,7 +2,8 @@
 	import { PlayCircle, LineChart, GitCompare } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	let { data } = $props();
-	const t = getI18nContext().t;
+	const i18n = getI18nContext();
+	const t = $derived(i18n.translate);
 </script>
 
 <section class="splash container">

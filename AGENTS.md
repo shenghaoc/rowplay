@@ -37,8 +37,9 @@ All commands use **npm** (lockfile: `package-lock.json`). See `package.json`
   power curve, distance bands, linear trend). No DOM; safe on server or client.
 - `src/routes/` — `auth/` (OAuth login/callback/logout), `api/` (JSON
   endpoints), `dashboard/`, `replay/[id]/`.
-- `src/lib/i18n.ts` + `src/lib/i18n.svelte.ts` — hand-rolled i18n (en/zh);
-  pure dictionaries + reactive `I18n` class shared via Svelte context.
+- `src/lib/i18n.ts` + `src/lib/i18n.svelte.ts` + `src/lib/locales/` — hand-rolled
+  i18n (`en`, `zh`, `de`, `es`, `fr`, `ja`); pure dictionaries + reactive `I18n`
+  class shared via Svelte context. Run `npm run validate:locales` after adding keys.
 - `src/lib/theme.svelte.ts` — light/dark theme toggle, also via context.
 - Charts use **uPlot**; styling uses **Tailwind CSS v4** plus CSS custom
   properties for theming in `src/app.css` and scoped component `<style>` blocks.
@@ -75,6 +76,7 @@ snippets over slots.
 ## I18n & theming
 
 - All user-visible strings go through `i18n.t('key.path')`, never hardcoded.
+  Add keys to **every** locale under `src/lib/locales/` (start from `en.ts`).
 - Language and theme state are `$state`-based classes (`I18n`, `Theme`) shared
   via `createContext` in the root layout — SSR-safe, no shared singletons.
 - Preferences persist via cookies (`lang`, `theme`) so SSR matches the client.

@@ -2,7 +2,8 @@
 	import { enhance } from '$app/forms';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	let { data, form } = $props();
-	const t = getI18nContext().t;
+	const i18n = getI18nContext();
+	const t = $derived(i18n.translate);
 </script>
 
 <svelte:head><title>Use a token · rowplay</title></svelte:head>

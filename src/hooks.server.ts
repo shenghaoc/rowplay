@@ -1,11 +1,9 @@
 import type { Handle } from '@sveltejs/kit';
 import { ensureTemporal } from '$lib/ensure-temporal';
 import { readSession, SESSION_COOKIE } from '$lib/server/session';
-import type { Language } from '$lib/i18n';
+import { isLanguage, type Language } from '$lib/i18n';
 
 await ensureTemporal();
-
-const SUPPORTED_LANGS = new Set<Language>(['en', 'zh']);
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const env = event.platform?.env;
@@ -29,8 +27,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// Locale + theme from cookies so SSR renders the right language/theme with no
 	// hydration flash. Defaults: English, light (race-board paper is the primary look).
 	const langCookie = event.cookies.get('lang');
-	const lang: Language =
-		langCookie && SUPPORTED_LANGS.has(langCookie as Language) ? (langCookie as Language) : 'en';
+	const lang: Language = isLanguage(langCookie) ? langCookie : 'en';
 	const theme: 'light' | 'dark' = event.cookies.get('theme') === 'dark' ? 'dark' : 'light';
 	event.locals.lang = lang;
 	event.locals.theme = theme;

@@ -1,5 +1,11 @@
 import { createContext } from 'svelte';
-import { getValue, interpolate, persistLanguage, type Language } from './i18n';
+import {
+	getValue,
+	interpolate,
+	persistLanguage,
+	SUPPORTED_LANGUAGES,
+	type Language
+} from './i18n';
 
 /**
  * Reactive translator. Instantiated once in the root layout and shared via
@@ -12,6 +18,14 @@ export class I18n {
 		this.lang = initial;
 	}
 
+	/** Reactive translator — use via `$derived(i18n.translate)` in components. */
+	translate = $derived.by(() => {
+		const lang = this.lang;
+		return (key: string, vars?: Record<string, string | number>) =>
+			interpolate(getValue(lang, key) ?? getValue('en', key) ?? key, vars);
+	});
+
+	/** Imperative translate (e.g. server callbacks); prefer `translate` in UI. */
 	t = (key: string, vars?: Record<string, string | number>): string =>
 		interpolate(getValue(this.lang, key) ?? getValue('en', key) ?? key, vars);
 
@@ -20,8 +34,11 @@ export class I18n {
 		persistLanguage(next);
 	}
 
-	toggle() {
-		this.setLanguage(this.lang === 'en' ? 'zh' : 'en');
+	/** Cycle through bundled locales (used where a compact control is enough). */
+	cycle() {
+		const i = SUPPORTED_LANGUAGES.indexOf(this.lang);
+		const next = SUPPORTED_LANGUAGES[(i + 1) % SUPPORTED_LANGUAGES.length];
+		this.setLanguage(next);
 	}
 }
 

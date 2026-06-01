@@ -29,8 +29,9 @@ little context. Tasks are independent unless a "Depends on" line says otherwise.
   **Every feature you build MUST work in demo mode**, because that's how it's
   developed, screenshotted, and e2e-tested.
 - **i18n is mandatory**: every user-visible string goes through `i18n.t('key')`.
-  Add keys to BOTH the `en` and `zh` dictionaries in `src/lib/i18n.ts`. Never
-  hardcode English. Sport names (RowErg/SkiErg/BikeErg) stay untranslated.
+  Add keys to **every** locale file under `src/lib/locales/` (start from `en.ts`).
+  Run `npm run validate:locales`. Never hardcode English. Sport names
+  (RowErg/SkiErg/BikeErg) stay untranslated.
 - **Theming**: light/dark via `src/lib/theme.svelte.ts` + CSS custom properties
   in `src/app.css`. Use the existing design tokens, Tailwind v4, and
   `@lucide/svelte` icons (no emoji). The look is the "RACE BOARD" design system.
@@ -239,6 +240,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 - **Live/near-live mode**: poll the logbook (or ErgData webhook if/when available)
   so a just-finished piece shows up without a manual sync.
 - **Coaching annotations**: let a coach leave timestamped notes on a shared replay.
-- **More languages** beyond en/zh (the i18n infra already supports it).
+
 When you finish a task, **delete it from this file** (or move it to a "Done" note)
 and open the PR — keep this backlog the single source of truth for what's left.

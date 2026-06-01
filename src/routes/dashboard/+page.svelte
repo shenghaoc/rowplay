@@ -45,7 +45,7 @@
 
 	let { data } = $props();
 	const i18n = getI18nContext();
-	const t = i18n.t;
+	const t = $derived(i18n.translate);
 	const uiTheme = getThemeContext();
 	let extraWorkouts = $state<Workout[]>([]);
 	let newEntryIds = $state<Set<number>>(new Set());

@@ -9,7 +9,8 @@
 	import type { Sport } from '$lib/types';
 
 	let { data } = $props();
-	const t = getI18nContext().t;
+	const i18n = getI18nContext();
+	const t = $derived(i18n.translate);
 
 	const boards = $derived(data.boards as Board[]);
 
