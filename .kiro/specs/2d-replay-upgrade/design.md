@@ -159,7 +159,7 @@ waterline so it doesn't bob with the figure). Under reduced motion the phase is
 frozen to a representative static pose. Figures are drawn in the lane `accent`
 with a contrast `rim`; the ghost lane keeps `globalAlpha 0.82`.
 
-### `drawNeutralPod` / legacy pod (fallback only)
+### `drawAvatar(o: AvatarOpts)` — shared chrome + dispatch
 
 ```ts
 interface AvatarOpts {
@@ -175,38 +175,44 @@ interface AvatarOpts {
 
 Steps:
 
-1. **Bob.** `by = y + (reduceMotion ? 0 : Math.sin(phase) * BOB_AMP)`; the pod,
-   shadow, bow wave and HUD pill all reference `by`.
-2. **Cast shadow.** Flattened ellipse on the water at `(x, y + 6)`, width ~`POD_R*1.8`,
-   height ~`POD_R*0.5`, `withAlpha('#000', 0.18)` (use a `shadow` palette field so
-   dark theme uses a lighter cast). Anchored to the waterline `y`, not `by`, so
-   the pod appears to lift off it.
-3. **Bow wave.** A small foam crescent just ahead of the pod (`x + POD_R`), an arc
-   in `foam` colour, amplitude scaled by `spm`; omit the splash motion under
-   reduced motion (draw a minimal static crescent).
-4. **Pod.** Filled circle radius `POD_R` in `accent`; a top highlight (smaller
-   off-centre arc in `withAlpha(foam, 0.5)`) for gloss; a 1.5px rim in
-   `accent` (YOU) or `labelText` (GHOST).
-5. **Sport glyph.** `drawSportGlyph(ctx, x, by, sport, glyphColor)` where
-   `glyphColor = labelBg`. Glyph fits within `~POD_R*1.2`. When `sport` is
-   undefined, draw the existing small inner dot (YOU: `bibDot`, GHOST: `labelBg`).
-6. **HUD pill.** Rounded label above the pod (`pillY = by - 24`), `accent`-tinted
-   per today's YOU/GHOST inversion, text in 600 10px mono, with a tiny downward
-   caret pointing at the pod. Reuse the current measure/pad logic.
+1. **Bob.** `bobY = y + (reduceMotion ? 0 : Math.sin(phase) * BOB_AMP)`; the
+   athlete's floating/upper parts reference `bobY`, while parts that touch the
+   water/ground (hull waterline, ski feet, bike wheels) stay on `y`.
+2. **Cast shadow.** Flattened ellipse on the water at `(x, y + 5)` in
+   `withAlpha(shadow, 0.18)` (the `shadow` palette field is theme-aware), so the
+   avatar appears to lift off the line.
+3. **Dispatch** on `sport` to `drawRower` / `drawSkier` / `drawCyclist`, else
+   `drawNeutralPod`. Each is drawn in `accent` with a contrast `rim`
+   (`C.labelText`). Ghost lane wraps in `globalAlpha 0.82`.
+4. **HUD pill.** Rounded label whose caret is anchored to the **waterline**
+   (`caretY = y - 22`) so it stays steady while the figure bobs; `accent`-tinted
+   per the YOU/GHOST inversion, 600 10px mono. `pillX` is clamped to the canvas
+   so the pill never clips at 0 %/100 % progress; the caret still points at `x`.
 
-## Sport glyphs — `drawSportGlyph(ctx, cx, cy, sport, color)`
+## Sport avatars — `drawRower` / `drawSkier` / `drawCyclist`
 
-Vector-only, ≤ `2*POD_R` wide, drawn in `color`. Keep simple and recognisable
-(these mirror the lucide icons used elsewhere: Sailboat / Snowflake / Bike):
+Side-profile athletes (facing the finish, `+x`) animated by `s = sin(phase)`
+(frozen to a representative pose under reduced motion):
 
-- **rower** → a sailboat: a shallow hull arc (chord under `cy`) + an upright mast
-  and a right-leaning triangular sail.
-- **skierg** → a snowflake: three lines through `cx,cy` at 0°/60°/120° with tiny
-  end barbs.
-- **bike** → a bike: two small wheel circles with a connecting frame stroke.
+- **`drawRower`** → pointed racing-shell hull (lozenge, accent fill + rim) on the
+  water; a seated rower whose torso leans **with** the oar — forward over the
+  stretcher at the catch (`s → +1`), laid back toward the bow at the finish
+  (`s → −1`); a single oar whose blade sweeps fore/aft, dipping with a small
+  `foam` splash on the drive.
+- **`drawSkier`** → standing figure double-poling: arm + pole swing from a high
+  forward reach (`s → +1`) to a low back-pull (`s → −1`), with a slight crouch on
+  the pull; feet planted on the waterline.
+- **`drawCyclist`** → two spoked wheels (rims grounded on `y`) whose spokes
+  rotate with `phase`; a frame + rider that **bob** with the stroke and a leg
+  pedalling around the crank.
+- **`drawNeutralPod`** (fallback, `sport` absent) → glossy `accent` disc with a
+  `foam` radial highlight, a `rim` outline, and a small `foam` centre dot. No bow
+  wave (the bow-wave concept moved to the rower's blade splash).
 
-Each is a handful of `moveTo/lineTo/arc` calls; stroke width ~1.2, `lineCap
-round`. Provide a `default` branch = a single filled dot (neutral marker).
+Shared helpers: `limb(ctx, x1,y1, x2,y2, w, color)` (round-capped segment) and
+`disc(ctx, x, y, r, color)` (filled dot). Figures fit within ~`2·POD_R` tall
+above the waterline so they clear the HUD pill in both the 150px and 190px
+strips.
 
 ## New palette fields
 

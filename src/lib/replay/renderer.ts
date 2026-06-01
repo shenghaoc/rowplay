@@ -334,13 +334,14 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
 		disc(ctx, wx, wheelY, 1, accent);
 	}
 
-	// Frame.
+	// Frame + rider bob with the stroke; the wheels stay grounded on `y`.
+	const lift = a.bobY - y;
 	const bbX = x;
-	const bbY = wheelY + 1;
+	const bbY = wheelY + 1 + lift;
 	const seatX = x - 3;
-	const seatY = wheelY - 7;
+	const seatY = wheelY - 7 + lift;
 	const barX = frontX - 1;
-	const barY = wheelY - 6;
+	const barY = wheelY - 6 + lift;
 	limb(ctx, rearX, wheelY, bbX, bbY, 1.6, accent);
 	limb(ctx, bbX, bbY, seatX, seatY, 1.6, accent);
 	limb(ctx, seatX, seatY, barX, barY, 1.6, accent);
@@ -349,7 +350,7 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
 
 	// Rider: torso → bars, head, arm, and a pedalling leg on the crank.
 	const rShX = x + 1;
-	const rShY = wheelY - 12;
+	const rShY = wheelY - 12 + lift;
 	limb(ctx, seatX, seatY, rShX, rShY, 2.4, accent);
 	disc(ctx, rShX + 1, rShY - 2.5, 2.3, accent);
 	limb(ctx, rShX, rShY, barX, barY, 1.8, accent);
@@ -802,7 +803,8 @@ export class CourseRenderer implements ReplayRenderer {
 		const padX = 6;
 		const pillH = 16;
 		const pillW = tw + padX * 2;
-		const pillX = x - pillW / 2;
+		// Keep the pill on-canvas at the start/finish; the caret still points at x.
+		const pillX = Math.max(4, Math.min(x - pillW / 2, this.w - pillW - 4));
 		const caretSize = 4;
 		const caretY = y - 22; // tip sits just above the figure
 		const pillY = caretY - caretSize - pillH;
@@ -820,9 +822,9 @@ export class CourseRenderer implements ReplayRenderer {
 		ctx.closePath();
 		ctx.fill();
 
-		// Pill text.
+		// Pill text (centred on the pill, which may be clamped away from x).
 		ctx.fillStyle = isYou ? accent : C.labelBg;
-		ctx.fillText(label, x, pillY + pillH - 4);
+		ctx.fillText(label, pillX + pillW / 2, pillY + pillH - 4);
 		ctx.restore();
 
 		ctx.restore(); // globalAlpha restore for non-you
