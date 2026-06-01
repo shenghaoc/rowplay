@@ -253,6 +253,11 @@ describe('Property 1: Bug Condition — Mobile Stat Cards Cramped Padding and Ga
 			const fontSize = findPropertyValue(media400, '.dash-stat .value', 'font-size');
 			expect(fontSize).toBe('1.25rem');
 		});
+
+		it('should have .dash-stat .label { min-height: 2.6em } in @media (max-width: 400px) (matches 720px block for alignment)', () => {
+			const minHeight = findPropertyValue(media400, '.dash-stat .label', 'min-height');
+			expect(minHeight).toBe('2.6em');
+		});
 	});
 });
 

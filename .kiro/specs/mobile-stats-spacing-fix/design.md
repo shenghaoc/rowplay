@@ -190,17 +190,20 @@ Because this is a CSS-only fix, the primary testing tools are computed-style ass
 ```
 FOR ALL viewport WHERE isBugCondition(viewport) DO
   render dashboard stat cards at viewport.widthPx
-  computedPadding := getComputedStyle(.stat).padding
-  computedGap     := getComputedStyle(.stats).gap
+  computedPadding := getComputedStyle(.dash-stat).padding
+  computedGap     := getComputedStyle(.dash-stats).gap
 
   IF viewport.widthPx <= 400 THEN
-    ASSERT computedPadding == "0.9rem 1rem"
-    ASSERT computedGap == "0.75rem"
+    -- jsdom returns px (e.g. "14.4px 16px"); compare numerically, not with >= on strings
+    ASSERT parseFloat(computedPadding.split(' ')[0]) >= 14.4
+    ASSERT parseFloat(computedGap) >= 12
   ELSE IF viewport.widthPx <= 720 THEN
-    ASSERT computedPadding == "1rem 1.1rem"
+    ASSERT parseFloat(computedPadding.split(' ')[0]) >= 16
   END IF
 END FOR
 ```
+
+The Vitest suite parses the scoped CSS source instead of `getComputedStyle`, so it asserts exact `rem` rule values (`toBe('0.9rem 1rem')`, etc.).
 
 ### Preservation Checking
 

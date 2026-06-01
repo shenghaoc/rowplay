@@ -1286,7 +1286,7 @@
 		}
 		.dash-stat .label {
 			font-size: 0.72rem;
-			min-height: 2.5em;
+			min-height: 2.6em;
 		}
 		.dash-stat .value {
 			font-size: 1.25rem;
