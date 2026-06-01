@@ -39,7 +39,14 @@
 	} from '$lib/hrImport';
 	import { pickDefaultGhostCandidate } from '$lib/replay/ghostPick';
 	import { toast } from 'svelte-sonner';
-	import { ArrowLeft, Play, Pause, Ghost, Share2, ImageDown, Trophy, Heart } from '@lucide/svelte';
+	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import Play from '@lucide/svelte/icons/play';
+	import Pause from '@lucide/svelte/icons/pause';
+	import Ghost from '@lucide/svelte/icons/ghost';
+	import Share2 from '@lucide/svelte/icons/share-2';
+	import ImageDown from '@lucide/svelte/icons/image-down';
+	import Trophy from '@lucide/svelte/icons/trophy';
+	import Heart from '@lucide/svelte/icons/heart';
 	import { downloadRaceCardPng } from '$lib/replay/raceCard';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';

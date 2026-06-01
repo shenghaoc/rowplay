@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
-	import { Zap } from '@lucide/svelte';
+	import Zap from '@lucide/svelte/icons/zap';
 	import {
 		estimateCriticalPower,
 		powerDurationComparison,

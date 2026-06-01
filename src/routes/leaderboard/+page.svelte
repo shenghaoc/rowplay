@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { Trophy, Play, ExternalLink } from '@lucide/svelte';
+	import Trophy from '@lucide/svelte/icons/trophy';
+	import Play from '@lucide/svelte/icons/play';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';

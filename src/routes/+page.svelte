@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { PlayCircle, LineChart, GitCompare } from '@lucide/svelte';
+	import PlayCircle from '@lucide/svelte/icons/play-circle';
+	import LineChart from '@lucide/svelte/icons/line-chart';
+	import GitCompare from '@lucide/svelte/icons/git-compare';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	let { data } = $props();
 	const i18n = getI18nContext();

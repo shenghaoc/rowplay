@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Languages } from '@lucide/svelte';
+	import Languages from '@lucide/svelte/icons/languages';
 	import { LANGUAGES, type Language } from '$lib/i18n';
 	import { getI18nContext } from '$lib/i18n.svelte';
 

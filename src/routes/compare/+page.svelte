@@ -17,7 +17,11 @@
 	import type { Workout, WorkoutDetail } from '$lib/types';
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, GitCompare, TrendingDown, TrendingUp, MoveRight } from '@lucide/svelte';
+	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import GitCompare from '@lucide/svelte/icons/git-compare';
+	import TrendingDown from '@lucide/svelte/icons/trending-down';
+	import TrendingUp from '@lucide/svelte/icons/trending-up';
+	import MoveRight from '@lucide/svelte/icons/move-right';
 
 	let { data } = $props();
 	const i18n = getI18nContext();

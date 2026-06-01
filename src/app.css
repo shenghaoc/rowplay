@@ -568,6 +568,12 @@ html {
 /* ============================================================================
    Reduced motion
    ============================================================================ */
+/* Native dialog / details transitions: allow-discrete enables smooth
+   display:none ↔ display:block at open/close boundaries. */
+dialog,
+details {
+	transition-behavior: allow-discrete;
+}
 /* Off-screen list rows: skip paint until near viewport (non-virtualized lists). */
 .cv-auto {
 	content-visibility: auto;

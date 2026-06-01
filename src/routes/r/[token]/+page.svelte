@@ -7,7 +7,8 @@
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import { fmtDistance, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '$lib/format';
 	import type { WorkoutDetail } from '$lib/types';
-	import { Play, Pause } from '@lucide/svelte';
+	import Play from '@lucide/svelte/icons/play';
+	import Pause from '@lucide/svelte/icons/pause';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
 	import AnnotationPanel from '$components/AnnotationPanel.svelte';

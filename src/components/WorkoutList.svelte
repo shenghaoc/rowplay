@@ -2,7 +2,8 @@
 	import { createVirtualizer } from '@tanstack/svelte-virtual';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import SportIcon from '$components/SportIcon.svelte';
-	import { ChevronRight, GitCompare } from '@lucide/svelte';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import GitCompare from '@lucide/svelte/icons/git-compare';
 	import type { Workout } from '$lib/types';
 	import { MACHINE_COLOR } from '$lib/replay/sports';
 	import { get } from 'svelte/store';

@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { Search, SlidersHorizontal, X } from '@lucide/svelte';
+	import Search from '@lucide/svelte/icons/search';
+	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import X from '@lucide/svelte/icons/x';
 	import {
 		DISTANCE_CHIPS,
 		DURATION_CHIPS,

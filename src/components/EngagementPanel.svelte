@@ -13,7 +13,10 @@
 	import type { Workout } from '$lib/types';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { pluralKey } from '$lib/i18nPlural';
-	import { Flame, Medal, Target, Trophy } from '@lucide/svelte';
+	import Flame from '@lucide/svelte/icons/flame';
+	import Medal from '@lucide/svelte/icons/medal';
+	import Target from '@lucide/svelte/icons/target';
+	import Trophy from '@lucide/svelte/icons/trophy';
 	import { untrack } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';

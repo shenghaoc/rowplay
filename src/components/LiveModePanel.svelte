@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { Radio, AlertTriangle, LoaderCircle } from '@lucide/svelte';
+	import Radio from '@lucide/svelte/icons/radio';
+	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { LIVE_INTERVALS, type LiveIntervalSec, type LiveMode } from '$lib/liveMode.svelte';
 

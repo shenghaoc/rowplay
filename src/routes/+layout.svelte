@@ -3,7 +3,10 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { Toaster } from 'svelte-sonner';
-	import { Sun, Moon, Menu, X } from '@lucide/svelte';
+	import Sun from '@lucide/svelte/icons/sun';
+	import Moon from '@lucide/svelte/icons/moon';
+	import Menu from '@lucide/svelte/icons/menu';
+	import X from '@lucide/svelte/icons/x';
 	import LanguagePicker from '$components/LanguagePicker.svelte';
 	import { I18n, setI18nContext } from '$lib/i18n.svelte';
 	import { Theme, setThemeContext } from '$lib/theme.svelte';
@@ -164,7 +167,7 @@
 	</dialog>
 </header>
 
-<main id="main">
+<main id="main" inert={menuOpen ? true : undefined}>
 	{@render children()}
 </main>
 

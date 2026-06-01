@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { Pencil, Plus, Trash2, X, MessageSquareText } from '@lucide/svelte';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import X from '@lucide/svelte/icons/x';
+	import MessageSquareText from '@lucide/svelte/icons/message-square-text';
 	import { fmtTime } from '$lib/format';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import type { Annotation } from '$lib/types';
