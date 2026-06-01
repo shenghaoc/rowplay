@@ -243,7 +243,5 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 - **Coaching annotations**: let a coach leave timestamped notes on a shared replay.
 - **Heart-rate device import** for workouts logged without HR.
 - **More languages** beyond en/zh (the i18n infra already supports it).
-- **Detail-cache TTL / re-hydration** policy beyond PR #18's version bump.
-
 When you finish a task, **delete it from this file** (or move it to a "Done" note)
 and open the PR — keep this backlog the single source of truth for what's left.
