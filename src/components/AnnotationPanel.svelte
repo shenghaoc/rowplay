@@ -145,7 +145,7 @@
 							</div>
 						</div>
 					{:else}
-						<button class="anno-seek" onclick={() => seekTo(a.timestamp)} aria-label="Seek to {a.timestamp}s">
+						<button class="anno-seek" onclick={() => seekTo(a.timestamp)} aria-label={t('annotations.seekTo', { time: fmtTime(a.timestamp, true) })}>
 							<span class="anno-marker"></span>
 							<span class="anno-ts mono">{fmtTime(a.timestamp, true)}</span>
 						</button>

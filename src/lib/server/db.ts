@@ -695,18 +695,25 @@ export async function putAnnotation(
 	if (!db) throw new Error('Database not available.');
 	const now = nowEpochMillis();
 	if (annotation.id > 0) {
-		const res = await db
+		// RETURNING created_at gives us the real stored value (UPDATE leaves
+		// created_at untouched) instead of the current time, and a null result
+		// means no row matched — the id doesn't exist or isn't this user's note,
+		// which we surface rather than returning a phantom "updated" annotation.
+		const row = await db
 			.prepare(
-				'UPDATE annotations SET timestamp = ?, text = ? WHERE id = ? AND user_id = ? AND workout_id = ?'
+				'UPDATE annotations SET timestamp = ?, text = ? WHERE id = ? AND user_id = ? AND workout_id = ? RETURNING created_at'
 			)
 			.bind(annotation.timestamp, annotation.text, annotation.id, userId, workoutId)
-			.run();
-		// No rows changed → the id doesn't exist or isn't this user's note; surface
-		// it rather than returning a phantom "updated" annotation.
-		if ((res.meta.changes ?? 0) === 0) {
+			.first<{ created_at: number }>();
+		if (!row) {
 			throw new Error('Annotation not found or unauthorized.');
 		}
-		return { id: annotation.id, timestamp: annotation.timestamp, text: annotation.text, createdAt: now };
+		return {
+			id: annotation.id,
+			timestamp: annotation.timestamp,
+			text: annotation.text,
+			createdAt: row.created_at
+		};
 	}
 	const res = await db
 		.prepare(
@@ -730,7 +737,11 @@ export async function deleteAnnotation(
 			.prepare('DELETE FROM annotations WHERE id = ? AND user_id = ? AND workout_id = ?')
 			.bind(annotationId, userId, workoutId)
 			.run();
-	} catch {
-		// ignore
+	} catch (e) {
+		// A failed delete is a real error (unlike the read paths, which degrade to
+		// []); log for Workers observability and propagate so the caller surfaces it
+		// instead of reporting a phantom success.
+		console.error('[db] deleteAnnotation failed:', e);
+		throw e;
 	}
 }
