@@ -246,8 +246,8 @@ function drawSportGlyph(
 					ctx.lineTo(ax, ay);
 					ctx.stroke();
 					// Two barbs at each end
+					const ba = angle + (sign > 0 ? Math.PI : 0);
 					for (const bSign of [1, -1]) {
-						const ba = angle + Math.PI / 2 + (sign > 0 ? 0 : Math.PI);
 						ctx.beginPath();
 						ctx.moveTo(ax, ay);
 						ctx.lineTo(
