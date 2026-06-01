@@ -2,10 +2,8 @@ import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types'
 import { nowEpochMillis } from '$lib/datetime';
 import type { WorkoutListQuery } from '$lib/workoutQuery';
 import type { AnnualGoal } from '../analytics';
-import type { LeaderboardEntry } from '$lib/leaderboard';
+import { STANDARD_DISTANCES, type LeaderboardEntry } from '$lib/leaderboard';
 import type { Sport, Workout, WorkoutDetail } from '../types';
-
-const STANDARD_PB_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
 export const DETAIL_PAYLOAD_VERSION = 1;
@@ -127,7 +125,7 @@ export async function getPbWorkoutIds(
 	const ids = new Set<number>();
 	const statements: D1PreparedStatement[] = [];
 	const targets: number[] = [];
-	for (const target of STANDARD_PB_DISTANCES) {
+	for (const target of STANDARD_DISTANCES) {
 		const tol = target * 0.02;
 		let sql = `SELECT workout_id FROM workouts
 			WHERE user_id = ? AND distance BETWEEN ? AND ? AND time > 0`;

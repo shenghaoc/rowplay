@@ -9,7 +9,10 @@ import type { Sport } from './types';
  * and the board ranks every athlete's best effort fastest-first.
  */
 
-/** Canonical race distances boards group by — mirrors STANDARD_PB_DISTANCES in db.ts. */
+/**
+ * Canonical race distances boards group by. Single source of truth — db.ts
+ * imports this for standard-distance PB detection too.
+ */
 export const STANDARD_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097] as const;
 
 /** Stable sport order for laying boards out predictably. */

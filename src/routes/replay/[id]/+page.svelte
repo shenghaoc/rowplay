@@ -14,12 +14,13 @@
 		intervalBreakdown
 	} from '$lib/analytics';
 	import { fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, paceToWatts, SPORT_LABEL } from '$lib/format';
-	import type { Stroke, Workout, WorkoutDetail } from '$lib/types';
+	import type { Sport, Stroke, Workout, WorkoutDetail } from '$lib/types';
+	import { matchStandardDistance } from '$lib/leaderboard';
 	import { untrack } from 'svelte';
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
 	import { pickDefaultGhostCandidate } from '$lib/replay/ghostPick';
 	import { toast } from 'svelte-sonner';
-	import { ArrowLeft, Play, Pause, Ghost, Share2, ImageDown } from '@lucide/svelte';
+	import { ArrowLeft, Play, Pause, Ghost, Share2, ImageDown, Trophy } from '@lucide/svelte';
 	import { downloadRaceCardPng } from '$lib/replay/raceCard';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
@@ -436,6 +437,46 @@
 	const dateTime = $derived(fmtLogbookDateTime(detail.date));
 
 	let sharing = $state(false);
+	let publishing = $state(false);
+
+	// Publishing to a board only applies to a signed-in athlete's own
+	// standard-distance piece — demo athletes and off-board distances can't rank.
+	const canPublish = $derived(
+		!data.demo && !!data.user && matchStandardDistance(detail.distance) != null
+	);
+
+	async function publishToLeaderboard() {
+		publishing = true;
+		try {
+			const res = await fetch('/api/leaderboard/publish', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ workoutId: detail.id })
+			});
+			if (res.status === 422) {
+				toast.info(t('leaderboard.publishOffBoard'));
+				return;
+			}
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			const result = (await res.json()) as {
+				board: { sport: Sport; distance: number };
+				rank: number;
+			};
+			toast.success(
+				t('leaderboard.publishOk', {
+					rank: result.rank,
+					sport: SPORT_LABEL[result.board.sport],
+					distance: fmtDistance(result.board.distance)
+				})
+			);
+		} catch (err) {
+			toast.error(t('leaderboard.publishFailed'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
+			});
+		} finally {
+			publishing = false;
+		}
+	}
 
 	async function shareReplay() {
 		sharing = true;
@@ -498,6 +539,17 @@
 				<ImageDown size={14} />
 				{t('share.downloadImage')}
 			</button>
+			{#if canPublish}
+				<button
+					class="btn ghost small"
+					type="button"
+					disabled={publishing}
+					onclick={publishToLeaderboard}
+				>
+					<Trophy size={14} />
+					{publishing ? t('leaderboard.publishing') : t('leaderboard.publish')}
+				</button>
+			{/if}
 		</div>
 	</div>
 

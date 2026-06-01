@@ -29,9 +29,14 @@ function displayNameFor(event: RequestEvent): string {
 export async function loadBoards(event: RequestEvent): Promise<Board[]> {
 	const db = event.platform?.env?.DB;
 	if (event.locals.demo || !db) {
-		// Demo mode (the default — note D1 is still bound on the Workers runtime,
-		// so we must key off `demo`, not the binding) or no D1 at all (vite dev):
-		// fall back to the deterministic demo seed.
+		// Deliberate policy: like the dashboard and replay, unauthenticated
+		// visitors are in demo mode (set in hooks.server.ts) and see the
+		// deterministic demo seed — boards are NOT a public read of real athlete
+		// data. Real D1 standings are shown only once a session flips `demo` off.
+		// (D1 stays bound on the Workers runtime, so we key off `demo`, not the
+		// binding; `!db` is just the vite-dev/no-D1 fallback.) The seed's "You"
+		// rows are intentional: demo mode presents the demo athlete as the viewer
+		// throughout the app.
 		return buildBoards(mockLeaderboard());
 	}
 	const rows = await getLeaderboardEntries(db);

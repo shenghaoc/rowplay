@@ -483,8 +483,11 @@ const en = {
 		race: 'Race',
 		raceHint: 'Race pre-arms a rival as a ghost on your own replay of this piece.',
 		empty: 'No entries on this board yet — be the first to publish a result.',
+		publish: 'Publish to leaderboard',
+		publishing: 'Publishing…',
 		publishOk: 'Published — you are rank {rank} on {sport} {distance}.',
-		publishOffBoard: 'Only standard-distance pieces (500m, 1k, 2k, 5k, 6k, 10k, half) can be published.'
+		publishOffBoard: 'Only standard-distance pieces (500m, 1k, 2k, 5k, 6k, 10k, half) can be published.',
+		publishFailed: 'Could not publish to leaderboard'
 	}
 } as const;
 
@@ -929,8 +932,11 @@ const zh = {
 		race: '竞速',
 		raceHint: '“竞速”会在你自己的回放中预设该对手为幽灵船。',
 		empty: '该榜单暂无成绩——快来成为第一个发布成绩的人。',
+		publish: '发布到排行榜',
+		publishing: '发布中…',
 		publishOk: '已发布——你在 {sport} {distance} 排名第 {rank}。',
-		publishOffBoard: '仅标准距离（500m、1k、2k、5k、6k、10k、半马）可发布到榜单。'
+		publishOffBoard: '仅标准距离（500m、1k、2k、5k、6k、10k、半马）可发布到榜单。',
+		publishFailed: '无法发布到排行榜'
 	}
 } as const;
 
