@@ -377,7 +377,7 @@
 		padding: 0.25rem 0.55rem;
 		border-radius: 999px;
 		background: color-mix(in srgb, var(--behind) 14%, var(--paper-raised));
-		color: var(--behind);
+		color: color-mix(in srgb, var(--behind) 45%, var(--ink));
 		border: 1px solid color-mix(in srgb, var(--behind) 35%, var(--paper-raised));
 	}
 </style>

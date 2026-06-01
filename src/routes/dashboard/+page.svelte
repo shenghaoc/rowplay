@@ -872,7 +872,7 @@
 		margin-bottom: 1rem;
 	}
 	.formcard {
-		background: linear-gradient(135deg, color-mix(in srgb, var(--ghost) 8%, transparent), var(--bg-elev) 65%);
+		background: linear-gradient(135deg, color-mix(in srgb, var(--ghost) 8%, var(--paper-raised)), var(--bg-elev) 65%);
 		border-color: color-mix(in srgb, var(--ghost) 30%, var(--bg-elev));
 	}
 	.formhead {
@@ -898,7 +898,7 @@
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		background: color-mix(in srgb, var(--behind) 16%, var(--paper-raised));
-		color: var(--behind);
+		color: color-mix(in srgb, var(--behind) 45%, var(--ink));
 		border: 1px solid color-mix(in srgb, var(--behind) 40%, var(--paper-raised));
 	}
 	.formsub {
