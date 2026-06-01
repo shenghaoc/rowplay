@@ -111,7 +111,7 @@ interface Shell {
  * per-boat accent colour (live `--live` / ghost `--ghost`) can be re-themed
  * without touching the rower (kit/skin) or oar shafts. Local +Z is the bow.
  */
-function makeShell(accent: number, castShadow: boolean): Shell {
+function makeShell(accent: number, castShadow: boolean, opacity = 1): Shell {
 	const group = new THREE.Group();
 	const accentMat = () =>
 		new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.1 });
@@ -166,6 +166,15 @@ function makeShell(accent: number, castShadow: boolean): Shell {
 		group.add(oar);
 		oars.push(oar);
 	}
+	// A translucent shell reads instantly as the "ghost" vs the solid live boat.
+	if (opacity < 1) {
+		group.traverse((o) => {
+			if (o instanceof THREE.Mesh && o.material instanceof THREE.Material) {
+				o.material.transparent = true;
+				o.material.opacity = opacity;
+			}
+		});
+	}
 	return { group, rower, oars };
 }
 
@@ -198,8 +207,10 @@ class WakeTrail {
 
 	update(x: number, z: number): void {
 		const n = this.segs.length;
-		this.hist.unshift(new THREE.Vector3(x, 0.02, z));
-		if (this.hist.length > n) this.hist.length = n;
+		// Recycle the tail vector once at capacity — no per-frame allocation.
+		const h = this.hist.length >= n ? this.hist.pop()! : new THREE.Vector3();
+		h.set(x, 0.02, z);
+		this.hist.unshift(h);
 		for (let i = 0; i < n; i++) {
 			const seg = this.segs[i];
 			const h = this.hist[i];
@@ -249,6 +260,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 	private lastLiveMeters = 0;
 	private lastGhostMeters = 0;
 	private reduceMotion = false;
+	private lastReduceMotion = false;
 	private theme: 'light' | 'dark' = 'light';
 
 	private host: HTMLElement;
@@ -317,7 +329,9 @@ export class CourseRenderer3D implements ReplayRenderer {
 		this.liveShell = makeShell(hex(COLORS_LIGHT.live), this.cfg.shadows);
 		this.liveBoat = new THREE.Group();
 		this.liveBoat.add(this.liveShell.group);
-		this.ghostShell = makeShell(hex(COLORS_LIGHT.ghost), this.cfg.shadows);
+		// Ghost: translucent + no shadow so it reads as a phantom, clearly distinct
+		// from the solid live boat.
+		this.ghostShell = makeShell(hex(COLORS_LIGHT.ghost), false, 0.45);
 		this.ghostGroup = new THREE.Group();
 		this.ghostGroup.visible = false;
 		this.ghostGroup.add(this.ghostShell.group);
@@ -527,9 +541,10 @@ export class CourseRenderer3D implements ReplayRenderer {
 
 		// Water displacement (skipped when flat/low quality or phase unchanged).
 		const water = this.waterMesh;
+		const reduceMotionChanged = this.reduceMotion !== this.lastReduceMotion;
 		if (
 			this.cfg.waves &&
-			this.waterPhase !== this.lastWaterPhase &&
+			(this.waterPhase !== this.lastWaterPhase || reduceMotionChanged) &&
 			water?.geometry instanceof THREE.PlaneGeometry
 		) {
 			const pos = water.geometry.attributes.position;
@@ -537,11 +552,14 @@ export class CourseRenderer3D implements ReplayRenderer {
 			const count = pos.count;
 			for (let i = 0; i < count; i++) {
 				const idx = i * 3;
-				arr[idx + 2] = this.reduceMotion ? 0 : Math.sin(arr[idx] * 0.25 + this.waterPhase) * 0.08;
+				// local y (arr[idx+1]) maps to world Z after the -90° X rotation, so
+				// ripples run along the course rather than as uniform cross-lane bands.
+				arr[idx + 2] = this.reduceMotion ? 0 : Math.sin(arr[idx + 1] * 0.25 + this.waterPhase) * 0.08;
 			}
 			pos.needsUpdate = true;
 			water.geometry.computeVertexNormals();
 			this.lastWaterPhase = this.waterPhase;
+			this.lastReduceMotion = this.reduceMotion;
 		}
 
 		const p = this.placeBoat(this.liveBoat, this.liveShell, this.loopRadius, liveMeters, state.frame.spm);
@@ -555,8 +573,8 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const lap = Math.min(laps, Math.floor(liveMeters / CourseRenderer3D.LOOP_METERS) + 1);
 		const liveText =
 			laps > 1
-				? `${fmtPace(state.frame.pace)} · Lap ${lap}/${laps}`
-				: `${fmtPace(state.frame.pace)} · ${Math.round(clamp01(state.distFrac) * 100)}%`;
+				? `YOU · ${fmtPace(state.frame.pace)} · L${lap}/${laps}`
+				: `YOU · ${fmtPace(state.frame.pace)} · ${Math.round(clamp01(state.distFrac) * 100)}%`;
 		if (liveText !== this.lastLiveLabel) {
 			updateTextSprite(this.liveLabel, this.liveLabelTex, liveText, C.labelBg, C.live);
 			this.lastLiveLabel = liveText;
@@ -570,6 +588,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 				this.ghostLabelTex = spr.texture;
 				this.scene.add(this.ghostLabel);
 			}
+			this.ghostLabel.visible = true;
 			this.ghostGroup.visible = true;
 			const ghostMeters = clamp01(state.ghost.distFrac) * state.totalDistance;
 			const dGhost = ghostMeters - this.lastGhostMeters;
@@ -589,6 +608,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 			this.ghostLabel.position.set(gp.x, 2.2 + gp.y, gp.z);
 		} else {
 			this.ghostGroup.visible = false;
+			if (this.ghostLabel) this.ghostLabel.visible = false;
 			this.ghostWake?.reset();
 			this.lastGhostLabel = '';
 		}
