@@ -112,6 +112,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 	private reduceMotion = false;
 	private theme: 'light' | 'dark' = 'light';
 
+	private waterMesh!: THREE.Mesh;
 	private liveBoat: THREE.Group;
 	private ghostBoat: THREE.Group;
 	private ghostGroup: THREE.Group;
@@ -163,7 +164,9 @@ export class CourseRenderer3D implements ReplayRenderer {
 	}
 
 	private buildStaticScene(): void {
-		const waterGeo = this.track(new THREE.PlaneGeometry(120, 120, 32, 32));
+		// 16×16 (289 verts) keeps the low-poly look while quartering the per-frame
+		// CPU vertex displacement + computeVertexNormals cost vs 32×32 on mobile.
+		const waterGeo = this.track(new THREE.PlaneGeometry(120, 120, 16, 16));
 		const waterMat = this.mat(
 			new THREE.MeshStandardMaterial({
 				color: 0x8aa2ac,
@@ -178,6 +181,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 		water.rotation.x = -Math.PI / 2;
 		water.position.y = -0.05;
 		water.name = 'water';
+		this.waterMesh = water;
 		this.scene.add(water);
 
 		const laneGeo = this.track(new THREE.BoxGeometry(8, 0.08, this.courseLength));
@@ -242,6 +246,21 @@ export class CourseRenderer3D implements ReplayRenderer {
 		recolor('lane', C.courseFill);
 		recolor('finish', C.finishDark);
 
+		// Posts and finish-checker cells are unnamed (built in loops), so recolour
+		// them directly from their stored arrays — otherwise they stay light in dark mode.
+		this.tickPosts.forEach((post, i) => {
+			if (post.material instanceof THREE.MeshStandardMaterial) {
+				post.material.color.setHex(hex(i % 5 === 0 ? C.tickMajor : C.tickMinor));
+			}
+		});
+		this.finishCells.forEach((cell, i) => {
+			const r = Math.floor(i / 3);
+			const c = i % 3;
+			if (cell.material instanceof THREE.MeshStandardMaterial) {
+				cell.material.color.setHex(hex((r + c) % 2 === 0 ? C.finishDark : C.finishLight));
+			}
+		});
+
 		this.tickPosts.forEach((post, i) => {
 			if (post.material instanceof THREE.MeshStandardMaterial) {
 				post.material.color.setHex(hex(i % 5 === 0 ? C.tickMajor : C.tickMinor));
@@ -288,7 +307,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 
 		if (playing && !this.reduceMotion) this.waterPhase += 0.04 + state.frame.spm / 800;
 
-		const water = this.scene.getObjectByName('water') as THREE.Mesh | undefined;
+		const water = this.waterMesh;
 		if (water?.geometry instanceof THREE.PlaneGeometry) {
 			const pos = water.geometry.attributes.position;
 			for (let i = 0; i < pos.count; i++) {
@@ -362,9 +381,10 @@ export class CourseRenderer3D implements ReplayRenderer {
 		this.ghostLabelTex?.dispose();
 		for (const m of this.disposables) m.dispose();
 		for (const g of this.geometries) g.dispose();
-		this.renderer.dispose();
+		// Lose the context *before* dispose(): once disposed, getContext() may
+		// return a stale/null reference in some three versions.
 		const gl = this.renderer.getContext();
-		const ext = gl.getExtension('WEBGL_lose_context');
-		ext?.loseContext();
+		gl.getExtension('WEBGL_lose_context')?.loseContext();
+		this.renderer.dispose();
 	}
 }

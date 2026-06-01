@@ -187,6 +187,9 @@
 		try {
 			if (kind === '2d') {
 				if (myLoadId !== activeLoadId) return;
+				// Clear any in-flight 3D loading flag — a pending 3D load's finally
+				// won't fire for this (superseded) myLoadId, so reset it here.
+				loading3d = false;
 				renderer = new CourseRenderer(canvasEl);
 				if (w) renderer.resize(w, h);
 				renderCurrent();
@@ -284,7 +287,12 @@
 			void setRenderer(rendererKind);
 		});
 		return () => {
-			activeLoadId = -1;
+			// NB: do NOT set activeLoadId = -1 here. This cleanup also runs on every
+			// workout navigation (the effect re-runs), and a permanent -1 would make
+			// the subsequent setRenderer() bail on its `activeLoadId < 0` guard,
+			// leaving a blank canvas. setRenderer already increments activeLoadId and
+			// destroys the prior renderer, so per-navigation race safety is covered.
+			// The true unmount guard lives in onMount's cleanup.
 			engine?.destroy();
 			renderer?.destroy();
 		};
