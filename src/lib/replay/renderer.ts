@@ -21,7 +21,11 @@ interface CanvasColors {
 	ghost: string;
 }
 
-const COLORS_LIGHT: CanvasColors = {
+// Canvas can't read CSS custom properties, so these mirror app.css. The
+// `live`/`ghost` values in particular MUST stay in sync with `--live`/`--ghost`
+// (light + dark) in app.css — `renderer.test.ts` parses app.css and fails if
+// they drift. Exported for that test.
+export const COLORS_LIGHT: CanvasColors = {
 	tickMajor: '#c9bfa9',
 	tickMinor: '#dbd0ba',
 	tickText: '#6a6052',
@@ -38,7 +42,7 @@ const COLORS_LIGHT: CanvasColors = {
 	ghost: '#1e4e6b'
 };
 
-const COLORS_DARK: CanvasColors = {
+export const COLORS_DARK: CanvasColors = {
 	tickMajor: '#3d3629',
 	tickMinor: '#2e2a23',
 	tickText: '#b5aa96',
