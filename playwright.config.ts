@@ -29,7 +29,7 @@ export default defineConfig({
 		trace: 'retain-on-failure'
 	},
 	webServer: {
-		command: `npm run build && npx wrangler dev --local --ip ${HOST} --port ${PORT}`,
+		command: `npm run build && npx wrangler dev --ip ${HOST} --port ${PORT}`,
 		url: BASE_URL,
 		reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
 		timeout: 180_000
