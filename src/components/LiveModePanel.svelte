@@ -69,13 +69,25 @@
 			<span>{t('liveMode.sound')}</span>
 		</label>
 		<p class="muted hint">{t('liveMode.soundHint')}</p>
-		<div class="status muted">
+		<div class="status" role="status" aria-live="polite">
 			{#if live.polling}
-				<span class="polling"><LoaderCircle size={12} class="spin" /> {t('liveMode.polling')}</span>
+				<div class="status-row polling">
+					<LoaderCircle size={12} class="spin" aria-hidden="true" />
+					<span>{t('liveMode.polling')}</span>
+				</div>
 			{:else}
-				<span>{t('liveMode.lastPoll', { time: fmtWallTime(live.lastPollAt) })}</span>
-				<span> · </span>
-				<span>{t('liveMode.nextPoll', { time: fmtWallTime(live.nextPollAt) })}</span>
+				<div class="status-row">
+					<span class="status-label muted">{t('liveMode.lastPollLabel')}</span>
+					<time class="status-time mono" datetime={live.lastPollAt ? new Date(live.lastPollAt).toISOString() : undefined}>
+						{fmtWallTime(live.lastPollAt)}
+					</time>
+				</div>
+				<div class="status-row">
+					<span class="status-label muted">{t('liveMode.nextPollLabel')}</span>
+					<time class="status-time mono" datetime={live.nextPollAt ? new Date(live.nextPollAt).toISOString() : undefined}>
+						{fmtWallTime(live.nextPollAt)}
+					</time>
+				</div>
 			{/if}
 		</div>
 	{/if}
@@ -160,17 +172,41 @@
 		margin-top: 0.35rem;
 	}
 	.status {
-		font-size: 0.78rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
 		margin-top: 0.5rem;
+		padding-top: 0.5rem;
+		border-top: 1px solid var(--hairline);
+		font-size: 0.78rem;
 	}
-	.polling {
-		display: inline-flex;
+	.status-row {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.75rem;
+		min-width: 0;
+	}
+	.status-label {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+	.status-time {
+		flex: 0 0 auto;
+		white-space: nowrap;
+		color: var(--ink);
+		font-size: 0.82rem;
+	}
+	.status-row.polling {
+		justify-content: flex-start;
 		align-items: center;
-		gap: 0.35rem;
+		gap: 0.4rem;
 		color: var(--live);
+		font-weight: 600;
 	}
-	.polling :global(.spin) {
+	.status-row.polling :global(.spin) {
 		animation: spin 1s linear infinite;
+		flex-shrink: 0;
 	}
 	@keyframes spin {
 		to {
