@@ -91,7 +91,7 @@
 		}
 	}
 
-	async function confirmDelete(id: number) {
+	function confirmDelete(id: number) {
 		requestDelete(id);
 	}
 
