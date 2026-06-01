@@ -114,11 +114,12 @@ export class LiveMode {
 		this.abort?.abort();
 		this.abort = null;
 		this.nextPollAt = null;
+		// Stop listening for visibility changes while disabled; start() re-binds.
+		document.removeEventListener('visibilitychange', this.onVisibility);
 	}
 
 	destroy() {
 		this.stop();
-		document.removeEventListener('visibilitychange', this.onVisibility);
 	}
 
 	private bindVisibility() {
@@ -168,7 +169,12 @@ export class LiveMode {
 				result = await this.apiPoll(signal);
 			}
 
-			if (signal.aborted) return;
+			// Aborted (tab hidden / stop) — release the 'polling' status so the next
+			// scheduled poll isn't blocked by the guard, but don't clobber 'stopped'.
+			if (signal.aborted) {
+				if (this.status === 'polling') this.status = 'idle';
+				return;
+			}
 
 			const hadFailures = this.failures >= 3;
 			const fresh = result.workouts.filter((w) => !this.knownIds.has(w.id));
@@ -192,7 +198,10 @@ export class LiveMode {
 				: effectiveIntervalSec(this.intervalSec, this.tabVisible) * 1000 + nextBackoffMs(0);
 			this.scheduleNext(interval);
 		} catch (e) {
-			if (signal.aborted) return;
+			if (signal.aborted) {
+				if (this.status === 'polling') this.status = 'idle';
+				return;
+			}
 			this.failures++;
 			this.status = 'error';
 			const msg = e instanceof Error ? e.message : String(e);
