@@ -57,6 +57,13 @@
 	--hr: #8e4a6b;
 	--dps: #3f6e8c;
 
+	/* HR zone heat ramp (Z1 easy → Z5 max), in the warm register. */
+	--zone-1: #6f8f4f;
+	--zone-2: #3c8a7e;
+	--zone-3: #c2851a;
+	--zone-4: #c0631f;
+	--zone-5: #a8321f;
+
 	--m-rower: #2b5468;
 	--m-skierg: #3c7a6e;
 	--m-bike: #a65d2e;
@@ -116,6 +123,13 @@
 	--power: #c08050;
 	--hr: #c07090;
 	--dps: #6a9ab8;
+
+	/* Zone ramp lifted for contrast on the night board. */
+	--zone-1: #8fae6a;
+	--zone-2: #5aab9b;
+	--zone-3: #d9a23a;
+	--zone-4: #d97f3e;
+	--zone-5: #e05a45;
 
 	--m-rower: #5a8aaa;
 	--m-skierg: #5aaa9a;

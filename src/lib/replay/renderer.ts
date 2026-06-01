@@ -1,6 +1,4 @@
 import type { Frame } from './engine';
-import type { SportTheme } from './sports';
-import { GHOST_COLOR, LIVE_COLOR } from './sports';
 import { fmtPace } from '../format';
 
 interface CanvasColors {
@@ -15,6 +13,12 @@ interface CanvasColors {
 	finishLight: string;
 	labelBg: string;
 	labelText: string;
+	/** Lane panel background — the "paper" the course is drawn on. */
+	courseFill: string;
+	/** Live athlete accent (mirrors --live). */
+	live: string;
+	/** Ghost comparison accent (mirrors --ghost). */
+	ghost: string;
 }
 
 const COLORS_LIGHT: CanvasColors = {
@@ -28,7 +32,10 @@ const COLORS_LIGHT: CanvasColors = {
 	finishDark: '#18140d',
 	finishLight: '#fbf7ee',
 	labelBg: '#fbf7ee',
-	labelText: '#18140d'
+	labelText: '#18140d',
+	courseFill: '#efe8da',
+	live: '#dc4327',
+	ghost: '#1e4e6b'
 };
 
 const COLORS_DARK: CanvasColors = {
@@ -42,7 +49,10 @@ const COLORS_DARK: CanvasColors = {
 	finishDark: '#e7dfce',
 	finishLight: '#18140d',
 	labelBg: '#18140d',
-	labelText: '#e7dfce'
+	labelText: '#e7dfce',
+	courseFill: '#201a12',
+	live: '#e85a3f',
+	ghost: '#4a8fb8'
 };
 
 export interface AvatarState {
@@ -70,7 +80,6 @@ export interface RenderState {
  */
 export class CourseRenderer {
 	private ctx: CanvasRenderingContext2D;
-	private theme: SportTheme;
 	private dpr = 1;
 	private w = 0;
 	private h = 0;
@@ -78,11 +87,10 @@ export class CourseRenderer {
 	private ghostPhase = 0;
 	private colors: CanvasColors = COLORS_LIGHT;
 
-	constructor(canvas: HTMLCanvasElement, theme: SportTheme) {
+	constructor(canvas: HTMLCanvasElement) {
 		const ctx = canvas.getContext('2d');
 		if (!ctx) throw new Error('2d context unavailable');
 		this.ctx = ctx;
-		this.theme = theme;
 	}
 
 	resize(cssWidth: number, cssHeight: number) {
@@ -98,7 +106,7 @@ export class CourseRenderer {
 	}
 
 	render(state: RenderState, playing: boolean, themeName: 'light' | 'dark' = 'light') {
-		const { ctx, w, h, theme } = this;
+		const { ctx, w, h } = this;
 		const C = themeName === 'dark' ? COLORS_DARK : COLORS_LIGHT;
 		this.colors = C;
 		if (w === 0) return;
@@ -109,7 +117,7 @@ export class CourseRenderer {
 
 		ctx.clearRect(0, 0, w, h);
 
-		ctx.fillStyle = theme.courseFill;
+		ctx.fillStyle = C.courseFill;
 		roundRect(ctx, 0, 0, w, h, 3);
 		ctx.fill();
 
@@ -144,22 +152,22 @@ export class CourseRenderer {
 		this.drawFinishFlag(finishX, 14, h - 22);
 
 		if (hasGhost && state.ghost) {
-			this.drawLane(startX, span, ghostY, state.ghost.distFrac, GHOST_COLOR, this.ghostPhase, 'GHOST', padL);
+			this.drawLane(startX, span, ghostY, state.ghost.distFrac, C.ghost, this.ghostPhase, 'GHOST', padL);
 			this.drawBib(
 				startX + span * clamp01(state.ghost.distFrac),
 				ghostY,
 				`${state.ghost.label || 'PB'} · ${Math.round(state.ghost.distFrac * 100)}%`,
-				GHOST_COLOR,
+				C.ghost,
 				false
 			);
 		}
 
-		this.drawLane(startX, span, playerY, state.distFrac, LIVE_COLOR, this.phase, 'YOU', padL);
+		this.drawLane(startX, span, playerY, state.distFrac, C.live, this.phase, 'YOU', padL);
 		this.drawBib(
 			startX + span * clamp01(state.distFrac),
 			playerY,
 			`${fmtPace(state.frame.pace)} · ${Math.round(state.distFrac * 100)}%`,
-			LIVE_COLOR,
+			C.live,
 			true
 		);
 	}

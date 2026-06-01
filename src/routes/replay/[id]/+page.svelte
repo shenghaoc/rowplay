@@ -112,7 +112,6 @@
 		// Read the reactive deps we want to track — everything else must be untracked
 		// to avoid an effect_update_depth_exceeded loop (renderCurrent reads $state).
 		const s = strokes;
-		const theme = sportTheme;
 		untrack(() => {
 			engine?.destroy();
 			// Reset all playback and ghost state for the new workout.
@@ -129,7 +128,7 @@
 			sessionSearch = '';
 			fileName = '';
 			ghostError = '';
-			renderer = new CourseRenderer(canvasEl, theme);
+			renderer = new CourseRenderer(canvasEl);
 			engine = new ReplayEngine(s, (f, p) => {
 				frame = f;
 				playing = p;
@@ -610,23 +609,23 @@
 		<MetricGauge
 			label={t('replay.gPace')} unit="/500m"
 		display={fmtPace(frame.pace).replace('/500m', '')}
-			value={frame.pace} min={paceRange.max} max={paceRange.min} color={LIVE_COLOR}
+			value={frame.pace} min={paceRange.max} max={paceRange.min} color="var(--pace)"
 		/>
 		<MetricGauge
 			label={t('replay.gRate')} unit={sportTheme.cadenceUnit}
 			display={`${Math.round(frame.spm)}`}
-			value={frame.spm} min={0} max={60} color="#2c6e63"
+			value={frame.spm} min={0} max={60} color="var(--rate)"
 		/>
 		<MetricGauge
 			label={t('replay.gPower')} unit="watts"
 			display={`${Math.round(frame.watts)}`}
-			value={frame.watts} min={wattRange.min} max={wattRange.max} color="#9e5b2d"
+			value={frame.watts} min={wattRange.min} max={wattRange.max} color="var(--power)"
 		/>
 		{#if hasHr}
 			<MetricGauge
 				label={t('replay.gHeart')} unit="bpm"
 				display={frame.hr != null ? `${Math.round(frame.hr)}` : '--'}
-				value={frame.hr ?? 0} min={90} max={200} color="#8e4a6b"
+				value={frame.hr ?? 0} min={90} max={200} color="var(--hr)"
 			/>
 		{/if}
 	</div>
@@ -708,7 +707,7 @@
 							<div
 								class="zoneseg"
 								style:width="{z.fraction * 100}%"
-								style:background={z.color}
+								style:background="var(--zone-{z.zone})"
 								title="{t('replay.zone' + z.zone)}: {fmtTime(z.seconds)}"
 							></div>
 						{/if}
@@ -717,7 +716,7 @@
 				<div class="zonelegend">
 					{#each zones as z}
 						<div class="zli">
-							<span class="dot" style:background={z.color}></span>
+							<span class="dot" style:background="var(--zone-{z.zone})"></span>
 							<span class="zname">{t('replay.zone' + z.zone)}</span>
 							<span class="mono muted">{(z.fraction * 100).toFixed(0)}% · {fmtTime(z.seconds)}</span>
 						</div>
