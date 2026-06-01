@@ -587,20 +587,20 @@
 		</a>
 	{/if}
 
-	<div class="stats">
-		<div class="card stat">
+	<div class="dash-stats">
+		<div class="card dash-stat">
 			<div class="muted label">{t('dashboard.sessions')}</div>
 			<div class="value mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
 		</div>
-		<div class="card stat">
+		<div class="card dash-stat">
 			<div class="muted label">{t('dashboard.totalDistance')}</div>
 			<div class="value mono">{fmtDistance(totalMeters)}</div>
 		</div>
-		<div class="card stat">
+		<div class="card dash-stat">
 			<div class="muted label">{t('dashboard.totalTime')}</div>
 			<div class="value mono">{fmtTime(totalTime)}</div>
 		</div>
-		<div class="card stat">
+		<div class="card dash-stat">
 			<div class="muted label">{t('dashboard.avgPace')}</div>
 			<div class="value mono">{fmtPace(avgPace)}</div>
 		</div>
@@ -944,19 +944,23 @@
 		align-items: center;
 		gap: 0.3rem;
 	}
-	.stats {
+	/* Avoid daisyUI `.stats` / `.stat` component classes (inline-grid row layout). */
+	.dash-stats {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 1rem;
 		margin-bottom: 1rem;
+		width: 100%;
 	}
-	.stat .label {
+	.dash-stat .label {
 		font-size: 0.8rem;
+		line-height: 1.3;
 	}
-	.stat .value {
+	.dash-stat .value {
 		font-size: 1.6rem;
 		font-weight: 700;
 		margin-top: 0.25rem;
+		line-height: 1.15;
 	}
 	.label {
 		font-size: 0.8rem;
@@ -1239,8 +1243,14 @@
 		font-size: inherit;
 	}
 	@media (max-width: 720px) {
-		.stats {
+		.dash-stats {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+		.dash-stat {
+			padding: 1rem 1.1rem;
+		}
+		.dash-stat .label {
+			min-height: 2.6em;
 		}
 		.latest {
 			grid-template-columns: 1fr;
@@ -1268,10 +1278,17 @@
 		}
 	}
 	@media (max-width: 400px) {
-		.stats {
-			gap: 0.6rem;
+		.dash-stats {
+			gap: 0.75rem;
 		}
-		.stat .value {
+		.dash-stat {
+			padding: 0.9rem 1rem;
+		}
+		.dash-stat .label {
+			font-size: 0.72rem;
+			min-height: 2.6em;
+		}
+		.dash-stat .value {
 			font-size: 1.25rem;
 		}
 		.fsv {
