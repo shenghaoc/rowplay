@@ -4,7 +4,9 @@
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
 	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
-	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
+	import { CourseRenderer, type RenderState, type ReplayRenderer } from '$lib/replay/renderer';
+	import { loadRendererPref, saveRendererPref, type RendererKind } from '$lib/replay/replayRenderer';
+	import { webglSupported, loadRenderer3D, type Renderer3DCtor } from '$lib/replay/renderer3dLoader';
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import {
 		hrZones,
@@ -117,7 +119,11 @@
 	});
 
 	let engine = $state<ReplayEngine | null>(null);
-	let renderer: CourseRenderer | null = null;
+	let renderer: ReplayRenderer | null = null;
+	let rendererKind = $state<RendererKind>('2d');
+	let loading3d = $state(false);
+	let webglOk = $state(false);
+	let Ctor3D: Renderer3DCtor | null = null;
 	let canvasEl: HTMLCanvasElement;
 	let courseWrap: HTMLDivElement;
 
@@ -138,6 +144,65 @@
 
 	function renderCurrent() {
 		renderer?.render(buildState(frame), playing, uiTheme.value);
+	}
+
+	function courseHeight() {
+		return ghostActive ? 190 : 150;
+	}
+
+	function resizeCourse() {
+		const w = courseWrap?.clientWidth;
+		if (w) renderer?.resize(w, courseHeight());
+	}
+
+	async function setRenderer(kind: RendererKind) {
+		if (kind === '3d' && !webglOk) return;
+		rendererKind = kind;
+		saveRendererPref(kind);
+
+		const w = courseWrap?.clientWidth ?? 0;
+		const h = courseHeight();
+
+		renderer?.destroy();
+		renderer = null;
+
+		try {
+			if (kind === '2d') {
+				renderer = new CourseRenderer(canvasEl);
+				if (w) renderer.resize(w, h);
+				renderCurrent();
+				return;
+			}
+
+			if (!Ctor3D) {
+				loading3d = true;
+				const temp2d = new CourseRenderer(canvasEl);
+				renderer = temp2d;
+				if (w) temp2d.resize(w, h);
+				renderCurrent();
+				Ctor3D = await loadRenderer3D();
+				temp2d.destroy();
+				loading3d = false;
+			}
+			renderer = new Ctor3D(canvasEl);
+			if (w) renderer.resize(w, h);
+			renderCurrent();
+		} catch (err) {
+			loading3d = false;
+			rendererKind = '2d';
+			saveRendererPref('2d');
+			renderer = new CourseRenderer(canvasEl);
+			if (w) renderer.resize(w, h);
+			renderCurrent();
+			toast.error(t('replay.view3dError'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
+			});
+		}
+	}
+
+	function onRendererToggle(kind: RendererKind) {
+		if (kind === rendererKind || loading3d) return;
+		void setRenderer(kind);
 	}
 
 	$effect(() => {
@@ -180,17 +245,24 @@
 			sessionSearch = '';
 			fileName = '';
 			ghostError = '';
-			renderer = new CourseRenderer(canvasEl);
+			renderer?.destroy();
+			if (rendererKind === '3d' && Ctor3D && webglOk) {
+				renderer = new Ctor3D(canvasEl);
+			} else {
+				renderer = new CourseRenderer(canvasEl);
+			}
 			engine = new ReplayEngine(s, (f, p) => {
 				frame = f;
 				playing = p;
 				renderer?.render(buildState(f), p, uiTheme.value);
 			});
-			const w = courseWrap?.clientWidth;
-			if (w) renderer.resize(w, 150);
+			resizeCourse();
 			renderCurrent();
 		});
-		return () => engine?.destroy();
+		return () => {
+			engine?.destroy();
+			renderer?.destroy();
+		};
 	});
 
 	/**
@@ -211,10 +283,18 @@
 	}
 
 	onMount(() => {
+		webglOk = webglSupported();
+		const pref = loadRendererPref();
+		if (pref === '3d' && webglOk) {
+			void setRenderer('3d');
+		} else if (pref === '3d') {
+			rendererKind = '2d';
+			saveRendererPref('2d');
+		}
+
 		armGhostFromUrl();
 		const sizeIt = () => {
-			const w = courseWrap.clientWidth;
-			renderer?.resize(w, ghostActive ? 190 : 150);
+			resizeCourse();
 			renderCurrent();
 		};
 		const ro = new ResizeObserver(sizeIt);
@@ -231,6 +311,7 @@
 		return () => {
 			ro.disconnect();
 			window.removeEventListener('keydown', onKey);
+			renderer?.destroy();
 		};
 	});
 
@@ -249,7 +330,7 @@
 		ghostLabel = ghostActive ? label : '';
 		ghostRival = ghostActive ? rival : null;
 		if (!ghostActive) ghostFrame = null;
-		renderer?.resize(courseWrap.clientWidth, ghostActive ? 190 : 150);
+		resizeCourse();
 		renderCurrent();
 	}
 
@@ -853,6 +934,38 @@
 
 	<!-- Course -->
 	<div class="card course" bind:this={courseWrap}>
+		<div
+			class="view-toggle"
+			role="group"
+			aria-label={t('replay.viewToggle')}
+		>
+			<button
+				type="button"
+				class="vbtn"
+				class:on={rendererKind === '2d'}
+				aria-pressed={rendererKind === '2d'}
+				disabled={loading3d}
+				onclick={() => onRendererToggle('2d')}
+			>
+				{t('replay.view2d')}
+			</button>
+			<button
+				type="button"
+				class="vbtn"
+				class:on={rendererKind === '3d'}
+				aria-pressed={rendererKind === '3d'}
+				disabled={!webglOk || loading3d}
+				title={!webglOk ? t('replay.view3dUnsupported') : undefined}
+				onclick={() => onRendererToggle('3d')}
+			>
+				{#if loading3d}
+					<span class="vspin" aria-hidden="true"></span>
+					{t('replay.view3dLoading')}
+				{:else}
+					{t('replay.view3d')}
+				{/if}
+			</button>
+		</div>
 		<canvas bind:this={canvasEl}></canvas>
 	</div>
 
@@ -1343,6 +1456,49 @@
 	.course {
 		padding: 0.75rem;
 		margin-bottom: 0.75rem;
+	}
+	.view-toggle {
+		display: flex;
+		gap: 0.35rem;
+		margin-bottom: 0.5rem;
+	}
+	.vbtn {
+		background: var(--paper-raised);
+		border: var(--bd);
+		color: var(--ink);
+		border-radius: var(--r-ctrl);
+		padding: 0.28rem 0.65rem;
+		font-size: 0.78rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: var(--display);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+	.vbtn.on {
+		background: var(--live);
+		color: var(--paper-raised);
+		border-color: var(--live);
+	}
+	.vbtn:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
+	}
+	.vspin {
+		width: 0.75rem;
+		height: 0.75rem;
+		border: 2px solid currentColor;
+		border-right-color: transparent;
+		border-radius: 50%;
+		animation: vspin 0.7s linear infinite;
+	}
+	@keyframes vspin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 	.course canvas {
 		display: block;
