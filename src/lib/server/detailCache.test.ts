@@ -20,6 +20,12 @@ describe('detailCacheTtlMs', () => {
 		expect(detailCacheTtlMs({ DETAIL_CACHE_TTL_DAYS: 'nope' })).toBe(DETAIL_CACHE_TTL_MS);
 		expect(detailCacheTtlMs({ DETAIL_CACHE_TTL_DAYS: '  ' })).toBe(DETAIL_CACHE_TTL_MS);
 	});
+
+	it('accepts a numeric override without crashing on .trim()', () => {
+		expect(detailCacheTtlMs({ DETAIL_CACHE_TTL_DAYS: 14 })).toBe(14 * 24 * 60 * 60 * 1000);
+		expect(detailCacheTtlMs({ DETAIL_CACHE_TTL_DAYS: 0 })).toBe(DETAIL_CACHE_TTL_MS);
+		expect(detailCacheTtlMs({ DETAIL_CACHE_TTL_DAYS: -3 })).toBe(DETAIL_CACHE_TTL_MS);
+	});
 });
 
 describe('isDetailCacheFresh', () => {

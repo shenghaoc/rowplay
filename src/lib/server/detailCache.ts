@@ -4,18 +4,22 @@ export const DETAIL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export type DetailCacheEnv = {
-	DETAIL_CACHE_TTL_DAYS?: string;
+	// Worker vars arrive as strings, but Miniflare/wrangler and mock test
+	// environments can hand the value back as a number — accept both.
+	DETAIL_CACHE_TTL_DAYS?: string | number;
 };
 
 /**
  * Resolve TTL from Worker vars, falling back to {@link DETAIL_CACHE_TTL_MS}.
- * `DETAIL_CACHE_TTL_DAYS` is parsed as whole days — a fractional value like
- * `"3.7"` truncates to 3 (Number.parseInt); operators should set an integer.
+ * `DETAIL_CACHE_TTL_DAYS` is parsed as whole days from a string — a fractional
+ * value like `"3.7"` truncates to 3 (Number.parseInt); operators should set an
+ * integer. A numeric value (some runtimes coerce vars) is used as-is so we never
+ * call `.trim()` on a non-string and crash the request with a TypeError.
  */
 export function detailCacheTtlMs(env?: DetailCacheEnv): number {
-	const raw = env?.DETAIL_CACHE_TTL_DAYS?.trim();
-	if (!raw) return DETAIL_CACHE_TTL_MS;
-	const days = Number.parseInt(raw, 10);
+	const raw = env?.DETAIL_CACHE_TTL_DAYS;
+	if (raw == null) return DETAIL_CACHE_TTL_MS;
+	const days = typeof raw === 'number' ? raw : Number.parseInt(String(raw).trim(), 10);
 	if (!Number.isFinite(days) || days <= 0) return DETAIL_CACHE_TTL_MS;
 	return days * MS_PER_DAY;
 }
