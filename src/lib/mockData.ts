@@ -169,6 +169,8 @@ export function generateMockWorkout(existingIds: Iterable<number>): Workout {
 		...tpl
 	};
 	generatedSpecs.set(id, spec);
+	// Cap the generated map to avoid unbounded growth in long-running isolates.
+	if (generatedSpecs.size > 50) generatedSpecs.delete(generatedSpecs.keys().next().value!);
 	return summaryOf(detailFor(spec));
 }
 

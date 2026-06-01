@@ -54,7 +54,7 @@ describe('liveMode', () => {
 		for (let i = 0; i < 20; i++) {
 			const d = randomMockDelayMs();
 			expect(d).toBeGreaterThanOrEqual(30_000);
-			expect(d).toBeLessThanOrEqual(180_000);
+			expect(d).toBeLessThan(180_000);
 		}
 	});
 });

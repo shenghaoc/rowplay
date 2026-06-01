@@ -33,21 +33,17 @@ export const POST: RequestHandler = async (event) => {
 };
 
 async function validHmac(secret: string, body: string, provided: string): Promise<boolean> {
+	const hex = provided.replace(/^sha256=/, '');
+	// Expected HMAC-SHA-256 hex is always 64 chars — a length guard is safe here.
+	if (hex.length !== 64) return false;
+
 	const key = await crypto.subtle.importKey(
 		'raw',
 		new TextEncoder().encode(secret),
 		{ name: 'HMAC', hash: 'SHA-256' },
 		false,
-		['sign']
+		['verify']
 	);
-	const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
-	const hex = [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
-	return timingSafeEqual(hex, provided.replace(/^sha256=/, ''));
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-	if (a.length !== b.length) return false;
-	let out = 0;
-	for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i);
-	return out === 0;
+	const sigBytes = new Uint8Array(hex.match(/../g)!.map((h) => parseInt(h, 16)));
+	return crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(body));
 }

@@ -115,11 +115,11 @@
 			listQuery,
 			listQuery.pbsOnly ? pbWorkoutIds([...workouts, ...batch]) : undefined
 		);
-		if (matching.length === 0 && batch.length > 0) return;
-
 		const toAdd = batch.filter((w) => !workouts.some((x) => x.id === w.id));
 		if (toAdd.length) extraWorkouts = [...toAdd, ...extraWorkouts];
 		newEntryIds = new Set([...newEntryIds, ...batch.map((w) => w.id)]);
+
+		if (matching.length === 0 && batch.length > 0) return;
 
 		if (batch.length === 1) {
 			const w = batch[0];

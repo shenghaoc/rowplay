@@ -177,6 +177,12 @@
 	.row.new-entry {
 		animation: fade-in 0.6s ease;
 	}
+	/* Virtualized rows use inline transform; animate opacity only so it
+	   doesn't fight the virtualizer's translateY. Non-virtual .row still
+	   uses transform in the keyframe for that listing mode. */
+	.vrow.new-entry {
+		animation-name: fade-in-opacity;
+	}
 	@keyframes fade-in {
 		from {
 			opacity: 0;
@@ -186,6 +192,10 @@
 			opacity: 1;
 			transform: translateY(0);
 		}
+	}
+	@keyframes fade-in-opacity {
+		from { opacity: 0; }
+		to   { opacity: 1; }
 	}
 	.vrow {
 		position: absolute;
