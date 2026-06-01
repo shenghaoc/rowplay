@@ -1,5 +1,9 @@
 import type { Split, Sport, Stroke, Workout, WorkoutDetail } from './types';
-import { paceToWatts, wattsToPace } from './format';
+import {
+	challengeDistanceMetres,
+	paceToWattsForSport,
+	wattsToPaceForSport
+} from './format';
 
 // ---------------------------------------------------------------------------
 // Pure analysis helpers. No DOM, no Svelte — safe to use on server or client,
@@ -312,16 +316,13 @@ export function efficiencyByRate(strokes: Stroke[]): EfficiencyPoint[] {
 /**
  * Average power (watts) sustained over a whole session. The logbook's
  * watt-minutes are authoritative when present (and correct for every machine).
- * Otherwise we fall back to Concept2's pace→watts model — but only for the
- * RowErg and SkiErg: the BikeErg uses a different flywheel/pace relationship,
- * so the same formula would wildly overstate its power. A bike session with no
- * reported watts therefore returns 0 (unknown) rather than a bogus figure.
+ * Otherwise derive from normalised sec/500m pace. BikeErg API pace is per 1000m
+ * (halved on read for display); the PM cubic uses the 1000m basis, so divide by 8.
  */
 export function workoutWatts(w: Workout): number {
 	const minutes = w.time / 60;
 	if (w.wattMinutes && w.wattMinutes > 0 && minutes > 0) return w.wattMinutes / minutes;
-	if (w.sport === 'bike') return 0;
-	return paceToWatts(w.pace);
+	return paceToWattsForSport(w.sport, w.pace);
 }
 
 export interface CriticalPower {
@@ -413,13 +414,18 @@ export function powerAtDuration(cp: CriticalPower, durationSec: number): number 
 }
 
 /**
- * Predict the even-split pace (sec/500m) sustainable for `durationSec` from a
- * CP/W′ model. RowErg/SkiErg pace units; uses Concept2's pace→watts curve.
+ * Predict the even-split pace (sec/500m normalised) sustainable for `durationSec`
+ * from a CP/W′ model. Pass `sport` when the CP envelope is single-sport (e.g. bike
+ * needs the 1000m-basis inverse); mixed-sport CP should omit it.
  */
-export function predictPaceForDuration(cp: CriticalPower, durationSec: number): number | null {
+export function predictPaceForDuration(
+	cp: CriticalPower,
+	durationSec: number,
+	sport?: Sport
+): number | null {
 	const watts = powerAtDuration(cp, durationSec);
 	if (watts <= 0) return null;
-	const pace = wattsToPace(watts);
+	const pace = wattsToPaceForSport(sport, watts);
 	return pace > 0 && isFinite(pace) ? pace : null;
 }
 
@@ -427,11 +433,15 @@ export function predictPaceForDuration(cp: CriticalPower, durationSec: number): 
  * Predict finish time (seconds) for `distanceM` at the best effort the CP model
  * allows — constant-power rowing at the sustainable watts for that duration.
  */
-export function predictTimeForDistance(cp: CriticalPower, distanceM: number): number | null {
+export function predictTimeForDistance(
+	cp: CriticalPower,
+	distanceM: number,
+	sport?: Sport
+): number | null {
 	if (isNaN(distanceM) || distanceM <= 0 || cp.cp <= 0) return null;
 
 	const distanceAt = (durationSec: number): number => {
-		const pace = wattsToPace(powerAtDuration(cp, durationSec));
+		const pace = wattsToPaceForSport(sport, powerAtDuration(cp, durationSec));
 		if (pace <= 0) return 0;
 		return (durationSec * 500) / pace;
 	};
@@ -1253,7 +1263,7 @@ export function annualGoalProgress(
 	const inYear = workouts.filter((w) => workoutDayKey(w.date).startsWith(yearPrefix));
 	const current =
 		goal.kind === 'meters'
-			? inYear.reduce((s, w) => s + w.distance, 0)
+			? inYear.reduce((s, w) => s + challengeDistanceMetres(w), 0)
 			: inYear.reduce((s, w) => s + w.time, 0);
 
 	const daysInYear = daysInCalendarYear(year);
@@ -1382,7 +1392,7 @@ export function athleteBadges(
 	workouts: Workout[],
 	pbs: ReturnType<typeof distancePBs>
 ): AthleteBadge[] {
-	const totalMeters = workouts.reduce((s, w) => s + w.distance, 0);
+	const totalMeters = workouts.reduce((s, w) => s + challengeDistanceMetres(w), 0);
 	const pbDistances = new Set(pbs.map((p) => p.distance));
 	const badges: AthleteBadge[] = [];
 

@@ -1,4 +1,4 @@
-import { paceToWatts } from './format';
+import { paceToWattsForSport } from './format';
 import type { Annotation, Split, Sport, Stroke, Workout, WorkoutDetail } from './types';
 
 /**
@@ -73,7 +73,7 @@ function buildStrokes(spec: Spec): { strokes: Stroke[]; time: number } {
 			d: round1(Math.min(d, spec.distance)),
 			pace: round1(pace),
 			spm: Math.round(spm),
-			watts: Math.round(paceToWatts(pace))
+			watts: Math.round(paceToWattsForSport(spec.sport, pace))
 		};
 		if (!spec.omitHr) {
 			const hr = Math.min(192, spec.baseHr * (0.8 + frac * 0.22) + (rand() - 0.5) * 3);

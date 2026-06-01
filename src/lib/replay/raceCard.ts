@@ -1,4 +1,4 @@
-import { fmtDistance, fmtLogbookDateTime, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '../format';
+import { avgWatts, fmtDistance, fmtLogbookDateTime, fmtPace, fmtTime, SPORT_LABEL } from '../format';
 import { COLORS_DARK, COLORS_LIGHT } from './renderer';
 import { MACHINE_HEX } from './sports';
 import type { WorkoutDetail } from '../types';
@@ -88,12 +88,7 @@ export function renderRaceCard(
 	ctx.fillText(fmtLogbookDateTime(detail.date), 56, 290);
 
 	// Hero stats
-	const avgWatts =
-		detail.wattMinutes && detail.time > 0
-			? Math.round(detail.wattMinutes / (detail.time / 60))
-			: detail.pace > 0
-				? Math.round(paceToWatts(detail.pace))
-				: 0;
+	const avgPower = avgWatts(detail);
 	const hr =
 		detail.heartRateAvg != null ? `${Math.round(detail.heartRateAvg)} bpm` : '—';
 
@@ -112,7 +107,7 @@ export function renderRaceCard(
 	ctx.font = '600 26px "Source Sans 3", system-ui, sans-serif';
 	ctx.fillStyle = ink2;
 	const rowY = 740;
-	ctx.fillText(`${labels.avgPower}: ${avgWatts} W`, 56, rowY);
+	ctx.fillText(`${labels.avgPower}: ${avgPower} W`, 56, rowY);
 	ctx.fillText(`${labels.avgHr}: ${hr}`, 56, rowY + 40);
 
 	// Course strip preview (simplified lane)

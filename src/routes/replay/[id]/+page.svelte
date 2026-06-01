@@ -22,7 +22,7 @@
 		efficiencyByRate,
 		intervalBreakdown
 	} from '$lib/analytics';
-	import { fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, paceToWatts, SPORT_LABEL } from '$lib/format';
+	import { avgWatts, fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, SPORT_LABEL } from '$lib/format';
 	import type { Sport, Stroke, Workout, WorkoutDetail } from '$lib/types';
 	import { matchStandardDistance } from '$lib/leaderboard';
 	import { untrack } from 'svelte';
@@ -646,12 +646,8 @@
 	}
 
 	// ---- Full metadata ----
-	const avgWatts = $derived(
-		detail.wattMinutes && detail.time > 0
-			? Math.round(detail.wattMinutes / (detail.time / 60))
-			: detail.pace > 0
-				? Math.round(paceToWatts(detail.pace))
-				: 0
+	const avgPower = $derived(
+		detail.pace > 0 || (detail.wattMinutes && detail.time > 0) ? avgWatts(detail) : 0
 	);
 	const dateTime = $derived(fmtLogbookDateTime(detail.date));
 
@@ -1301,7 +1297,7 @@
 			<div><dt>{t('replay.mAvgPace')}</dt><dd class="mono">{fmtPace(detail.pace)}</dd></div>
 			<div><dt>{t('replay.mAvgRate')}</dt><dd class="mono">{detail.strokeRate ?? '—'} {sportTheme.cadenceUnit}</dd></div>
 			<div><dt>{t('replay.mStrokeCount')}</dt><dd class="mono">{detail.strokeCount ?? '—'}</dd></div>
-			<div><dt>{t('replay.mAvgPower')}</dt><dd class="mono">{avgWatts} W</dd></div>
+			<div><dt>{t('replay.mAvgPower')}</dt><dd class="mono">{avgPower} W</dd></div>
 			<div>
 				<dt>{t('replay.mAvgHr')}</dt>
 				<dd class="mono">{detail.heartRateAvg != null ? Math.round(detail.heartRateAvg) + ' bpm' : '—'}</dd>
