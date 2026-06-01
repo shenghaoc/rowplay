@@ -126,9 +126,9 @@ describe('workoutWatts', () => {
 		expect(workoutWatts(w)).toBe(60);
 	});
 
-	it('returns 0 for bike without watt-minutes (pace model invalid)', () => {
+	it('derives watts from normalised pace for bike without watt-minutes', () => {
 		const w = workout({ id: 2, sport: 'bike', pace: 95, time: 600 });
-		expect(workoutWatts(w)).toBe(0);
+		expect(workoutWatts(w)).toBeGreaterThan(0);
 	});
 
 	it('derives watts from pace for rower', () => {

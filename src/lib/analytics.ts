@@ -312,15 +312,13 @@ export function efficiencyByRate(strokes: Stroke[]): EfficiencyPoint[] {
 /**
  * Average power (watts) sustained over a whole session. The logbook's
  * watt-minutes are authoritative when present (and correct for every machine).
- * Otherwise we fall back to Concept2's pace→watts model — but only for the
- * RowErg and SkiErg: the BikeErg uses a different flywheel/pace relationship,
- * so the same formula would wildly overstate its power. A bike session with no
- * reported watts therefore returns 0 (unknown) rather than a bogus figure.
+ * Otherwise we fall back to Concept2's pace→watts model. Session and stroke pace
+ * are already normalised to sec/500m for every sport (BikeErg stroke pace is
+ * per-1000m in the API and halved on read), so the same formula applies.
  */
 export function workoutWatts(w: Workout): number {
 	const minutes = w.time / 60;
 	if (w.wattMinutes && w.wattMinutes > 0 && minutes > 0) return w.wattMinutes / minutes;
-	if (w.sport === 'bike') return 0;
 	return paceToWatts(w.pace);
 }
 
