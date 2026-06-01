@@ -23,7 +23,7 @@ export async function getCachedDetail(
 	db: D1Database | undefined,
 	userId: number,
 	workoutId: number,
-	env?: DetailCacheEnv
+	env: DetailCacheEnv | undefined
 ): Promise<WorkoutDetail | null> {
 	if (!db) return null;
 	try {

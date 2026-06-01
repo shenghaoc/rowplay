@@ -42,4 +42,8 @@ describe('isDetailCacheFresh', () => {
 		expect(isDetailCacheFresh(Number.NaN, cachedAt + ttl, ttl)).toBe(false);
 		expect(isDetailCacheFresh(cachedAt, Number.POSITIVE_INFINITY, ttl)).toBe(false);
 	});
+
+	it('treats future cachedAt as fresh (clock skew)', () => {
+		expect(isDetailCacheFresh(cachedAt + 1000, cachedAt, ttl)).toBe(true);
+	});
 });
