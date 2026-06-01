@@ -113,6 +113,30 @@ export async function publishWorkout(
 
 	const boards = await loadBoards(event);
 	const board = findBoard(boards, workout.sport, distance);
-	const rank = board?.entries.find((e) => e.isYou)?.rank ?? 1;
-	return { board: { sport: workout.sport, distance }, rank };
+	let rank = board?.entries.find((e) => e.isYou)?.rank;
+
+	// loadBoards caps each board at its top 100, so an athlete ranked lower than
+	// that won't appear in `entries`. Compute their exact standing directly
+	// rather than falsely reporting rank 1. Ties share a rank (count of strictly
+	// faster entries + 1), matching buildBoards, and we rank on their stored best
+	// time (which the upsert just settled), not necessarily this workout's time.
+	if (rank == null && db) {
+		try {
+			const row = await db
+				.prepare(
+					`SELECT COUNT(*) + 1 AS rank FROM leaderboard_entry
+					 WHERE sport = ? AND distance = ? AND time < (
+					   SELECT time FROM leaderboard_entry
+					   WHERE sport = ? AND distance = ? AND user_id = ?
+					 )`
+				)
+				.bind(workout.sport, distance, workout.sport, distance, user.id)
+				.first<{ rank: number }>();
+			rank = row?.rank;
+		} catch (e) {
+			console.error('Failed to compute leaderboard rank:', (e as Error).message ?? e);
+		}
+	}
+
+	return { board: { sport: workout.sport, distance }, rank: rank ?? 1 };
 }
