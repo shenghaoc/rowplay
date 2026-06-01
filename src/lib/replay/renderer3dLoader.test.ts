@@ -33,4 +33,25 @@ describe('loadRenderer3D', () => {
 		const p2 = loadRenderer3D();
 		expect(p1).toBe(p2);
 	});
+
+	it('clears cache after a failed import so the next call retries', async () => {
+		resetRenderer3DCache();
+		let cached: Promise<unknown> | null = null;
+		const loadLikeRenderer3D = () => {
+			if (!cached) {
+				cached = Promise.reject(new Error('chunk load failed')).catch((err) => {
+					cached = null;
+					throw err;
+				});
+			}
+			return cached;
+		};
+		await expect(loadLikeRenderer3D()).rejects.toThrow('chunk load failed');
+		const inFlight = loadLikeRenderer3D();
+		expect(loadLikeRenderer3D()).toBe(inFlight);
+		await expect(inFlight).rejects.toThrow('chunk load failed');
+		const afterFailure = loadLikeRenderer3D();
+		expect(afterFailure).not.toBe(inFlight);
+		await expect(afterFailure).rejects.toThrow('chunk load failed');
+	});
 });

@@ -123,10 +123,11 @@ export class CourseRenderer3D implements ReplayRenderer {
 	private lookAt = new THREE.Vector3();
 	private disposables: THREE.Material[] = [];
 	private geometries: THREE.BufferGeometry[] = [];
+	private tickPosts: THREE.Mesh[] = [];
+	private finishCells: THREE.Mesh[] = [];
 
 	constructor(canvas: HTMLCanvasElement) {
 		this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-		this.renderer.setPixelRatio(1);
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
 		this.scene.add(new THREE.AmbientLight(0xffffff, 0.65));
@@ -182,8 +183,8 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const laneMat = this.mat(
 			new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.courseFill), roughness: 0.85 })
 		);
-		laneMat.name = 'lane';
 		const lane = new THREE.Mesh(laneGeo, laneMat);
+		lane.name = 'lane';
 		lane.position.set(0, 0, this.courseLength / 2);
 		this.scene.add(lane);
 
@@ -197,13 +198,14 @@ export class CourseRenderer3D implements ReplayRenderer {
 			);
 			const post = new THREE.Mesh(postGeo, postMat);
 			post.position.set(-5.5, 0.6, z);
+			this.tickPosts.push(post);
 			this.scene.add(post);
 		}
 
 		const finishGeo = this.track(new THREE.BoxGeometry(9, 2.2, 0.4));
 		const finishMat = this.mat(new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.finishDark) }));
-		finishMat.name = 'finish';
 		const finish = new THREE.Mesh(finishGeo, finishMat);
+		finish.name = 'finish';
 		finish.position.set(0, 1.1, this.courseLength + 0.5);
 		this.scene.add(finish);
 
@@ -217,6 +219,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 				);
 				const cell = new THREE.Mesh(cellGeo, cellMat);
 				cell.position.set(-2.5 + c * 2.5, 0.5 + r * 0.95, this.courseLength + 0.72);
+				this.finishCells.push(cell);
 				this.scene.add(cell);
 			}
 		}
@@ -238,6 +241,21 @@ export class CourseRenderer3D implements ReplayRenderer {
 		recolor('lane', C.courseFill);
 		recolor('finish', C.finishDark);
 
+		this.tickPosts.forEach((post, i) => {
+			if (post.material instanceof THREE.MeshStandardMaterial) {
+				post.material.color.setHex(hex(i % 5 === 0 ? C.tickMajor : C.tickMinor));
+			}
+		});
+		this.finishCells.forEach((cell, i) => {
+			if (cell.material instanceof THREE.MeshStandardMaterial) {
+				const r = Math.floor(i / 3);
+				const c = i % 3;
+				cell.material.color.setHex(
+					hex((r + c) % 2 === 0 ? C.finishDark : C.finishLight)
+				);
+			}
+		});
+
 		this.recolorBoat(this.liveBoat, C.live);
 		this.recolorBoat(this.ghostBoat, C.ghost);
 	}
@@ -256,7 +274,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 		this.h = cssHeight;
 		const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 2);
 		this.renderer.setPixelRatio(dpr);
-		this.renderer.setSize(cssWidth, cssHeight, false);
+		this.renderer.setSize(cssWidth, cssHeight);
 		this.camera.aspect = cssWidth / Math.max(cssHeight, 1);
 		this.camera.updateProjectionMatrix();
 	}
@@ -319,13 +337,26 @@ export class CourseRenderer3D implements ReplayRenderer {
 		this.chase.set(0, 5.5, liveZ - 9);
 		this.lookAt.set(0, 1.2, liveZ + 6);
 		this.camera.position.lerp(this.chase, 0.12);
-		const camLook = this.lookAt.clone();
-		this.camera.lookAt(camLook);
+		this.camera.lookAt(this.lookAt);
 
 		this.renderer.render(this.scene, this.camera);
 	}
 
+	private disposeObject3D(root: THREE.Object3D): void {
+		root.traverse((o) => {
+			if (o instanceof THREE.Mesh) {
+				o.geometry.dispose();
+				const mats = Array.isArray(o.material) ? o.material : [o.material];
+				for (const m of mats) m.dispose();
+			}
+		});
+	}
+
 	destroy(): void {
+		this.disposeObject3D(this.liveBoat);
+		this.disposeObject3D(this.ghostBoat);
+		if (this.liveLabel.material instanceof THREE.Material) this.liveLabel.material.dispose();
+		if (this.ghostLabel?.material instanceof THREE.Material) this.ghostLabel.material.dispose();
 		this.liveLabelTex.dispose();
 		this.ghostLabelTex?.dispose();
 		for (const m of this.disposables) m.dispose();

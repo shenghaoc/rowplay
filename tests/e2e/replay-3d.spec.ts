@@ -5,7 +5,9 @@ test.describe('replay 3D view toggle', () => {
 		await page.goto('/replay/1001');
 		await expect(page.locator('canvas').first()).toBeVisible();
 
-		const group = page.getByRole('group', { name: /Course view|赛道视图|Kursansicht/i });
+		const group = page.getByRole('group', {
+			name: /Course view|赛道视图|Kursansicht|Vue du parcours|Vista del recorrido|コース表示/i
+		});
 		await expect(group).toBeVisible();
 
 		const btn3d = group.getByRole('button', { name: /^3D$/ });

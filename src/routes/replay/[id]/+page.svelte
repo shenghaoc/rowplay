@@ -199,6 +199,7 @@
 					loading3d = false;
 				}
 				temp2d.destroy();
+				renderer = null;
 				if (rendererKind !== '3d') return;
 			}
 			renderer = new Ctor3D(canvasEl);
