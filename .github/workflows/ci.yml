@@ -69,6 +69,7 @@ jobs:
               - 'src/lib/i18n*'
               - 'src/lib/theme*'
               - 'src/lib/components/**'
+              - 'src/lib/mock*'
               - 'src/app.css'
               - 'src/app.html'
               - 'static/**'
