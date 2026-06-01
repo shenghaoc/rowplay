@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
@@ -16,17 +16,14 @@
 	let { data } = $props();
 	const t = getI18nContext().t;
 	const uiTheme = getThemeContext();
-	// svelte-ignore state_referenced_locally
-	const detail: WorkoutDetail = data.detail;
-	// svelte-ignore state_referenced_locally
-	const meta = data.meta;
-	// svelte-ignore state_referenced_locally
-	const annotations: Annotation[] = data.annotations;
-	const sportTheme = themeFor(detail.sport);
-	const total = detail.distance;
-	const strokes = detail.strokes;
+	const detail = $derived(data.detail as WorkoutDetail);
+	const meta = $derived(data.meta);
+	const annotations = $derived(data.annotations as Annotation[]);
+	const sportTheme = $derived(themeFor(detail.sport));
+	const total = $derived(detail.distance);
+	const strokes = $derived(detail.strokes);
 
-	let frame = $state<Frame>(sampleAt(strokes, 0));
+	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
 	let playing = $state(false);
 	let speed = $state(1);
 	let engine = $state<ReplayEngine | null>(null);
@@ -78,16 +75,9 @@
 		};
 		window.addEventListener('keydown', onKey);
 
-		const onSeek = (e: Event) => {
-			const ts = (e as CustomEvent<{ timestamp: number }>).detail.timestamp;
-			engine?.seek(ts);
-		};
-		window.addEventListener('annotation-seek', onSeek);
-
 		return () => {
 			ro.disconnect();
 			window.removeEventListener('keydown', onKey);
-			window.removeEventListener('annotation-seek', onSeek);
 			engine?.destroy();
 		};
 	});
@@ -101,17 +91,17 @@
 		engine?.seek(Number((e.target as HTMLInputElement).value));
 	}
 
-	const paceRange = (() => {
+	const paceRange = $derived.by(() => {
 		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
 		if (ps.length === 0) return { min: 60, max: 180 };
 		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
-	})();
-	const wattRange = (() => {
+	});
+	const wattRange = $derived.by(() => {
 		const watts = strokes.map((s) => s.watts);
 		const maxWatt = watts.length > 0 ? Math.max(...watts) : 0;
 		return { min: 0, max: Math.max(100, maxWatt * 1.1) };
-	})();
-	const hasHr = strokes.some((s) => s.hr != null);
+	});
+	const hasHr = $derived(strokes.some((s) => s.hr != null));
 </script>
 
 <svelte:head>
@@ -210,7 +200,7 @@
 		{/if}
 	</div>
 
-	<AnnotationPanel {annotations} currentTime={frame.t} readOnly={true} />
+	<AnnotationPanel {annotations} currentTime={frame.t} readOnly={true} onseek={(ts) => engine?.seek(ts)} />
 
 	<p class="cta muted">
 		{t('share.ctaBefore')}<a href="/">{t('share.ctaLink')}</a>{t('share.ctaAfter')}

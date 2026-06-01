@@ -35,7 +35,13 @@
 	const uiTheme = getThemeContext();
 	const detail = $derived(data.detail as WorkoutDetail);
 	const candidates = $derived(data.candidates as Workout[]);
-	let annotations = $state(data.annotations as Annotation[]);
+	// Local, mutable copy (save/delete edit it in place). Re-seed from `data`
+	// whenever it changes so navigating between replays shows the right notes
+	// rather than the first workout's, since the component instance is reused.
+	let annotations = $state([] as Annotation[]);
+	$effect(() => {
+		annotations = data.annotations as Annotation[];
+	});
 	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
 	const strokes = $derived(detail.strokes);
@@ -181,16 +187,9 @@
 		};
 		window.addEventListener('keydown', onKey);
 
-		const onSeek = (e: Event) => {
-			const ts = (e as CustomEvent<{ timestamp: number }>).detail.timestamp;
-			engine?.seek(ts);
-		};
-		window.addEventListener('annotation-seek', onSeek);
-
 		return () => {
 			ro.disconnect();
 			window.removeEventListener('keydown', onKey);
-			window.removeEventListener('annotation-seek', onSeek);
 		};
 	});
 
@@ -730,6 +729,7 @@
 		currentTime={frame.t}
 		onsave={saveAnnotation}
 		ondelete={deleteAnnotation}
+		onseek={(ts) => engine?.seek(ts)}
 	/>
 
 	<!-- Telemetry traces -->

@@ -21,7 +21,7 @@ export const POST: RequestHandler = async (event) => {
 		text?: string;
 	};
 
-	if (typeof body.timestamp !== 'number' || body.timestamp < 0) {
+	if (typeof body.timestamp !== 'number' || !Number.isFinite(body.timestamp) || body.timestamp < 0) {
 		throw error(400, 'Invalid timestamp.');
 	}
 	if (typeof body.text !== 'string' || !body.text.trim()) {

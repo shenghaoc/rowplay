@@ -695,12 +695,17 @@ export async function putAnnotation(
 	if (!db) throw new Error('Database not available.');
 	const now = nowEpochMillis();
 	if (annotation.id > 0) {
-		await db
+		const res = await db
 			.prepare(
 				'UPDATE annotations SET timestamp = ?, text = ? WHERE id = ? AND user_id = ? AND workout_id = ?'
 			)
 			.bind(annotation.timestamp, annotation.text, annotation.id, userId, workoutId)
 			.run();
+		// No rows changed → the id doesn't exist or isn't this user's note; surface
+		// it rather than returning a phantom "updated" annotation.
+		if ((res.meta.changes ?? 0) === 0) {
+			throw new Error('Annotation not found or unauthorized.');
+		}
 		return { id: annotation.id, timestamp: annotation.timestamp, text: annotation.text, createdAt: now };
 	}
 	const res = await db

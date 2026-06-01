@@ -9,7 +9,8 @@
 		currentTime = 0,
 		readOnly = false,
 		onsave = undefined as ((a: { id: number; timestamp: number; text: string }) => Promise<void>) | undefined,
-		ondelete = undefined as ((id: number) => Promise<void>) | undefined
+		ondelete = undefined as ((id: number) => Promise<void>) | undefined,
+		onseek = undefined as ((timestamp: number) => void) | undefined
 	} = $props();
 
 	const t = getI18nContext().t;
@@ -89,8 +90,7 @@
 	}
 
 	function seekTo(ts: number) {
-		// Dispatch a custom event so the parent can seek the replay
-		window.dispatchEvent(new CustomEvent('annotation-seek', { detail: { timestamp: ts } }));
+		onseek?.(ts);
 	}
 </script>
 
