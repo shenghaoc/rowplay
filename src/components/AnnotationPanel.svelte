@@ -111,6 +111,7 @@
 				bind:value={draftText}
 				placeholder={t('annotations.addPlaceholder')}
 				rows="2"
+				maxlength="1000"
 				onkeydown={onKeydown}
 				class="anno-input"
 			></textarea>
@@ -132,10 +133,11 @@
 				<li class="anno-item" class:editing={editingId === a.id}>
 					{#if editingId === a.id}
 						<div class="anno-form">
-							<div class="anno-ts mono">at <strong>{fmtTime(a.timestamp, true)}</strong></div>
+							<div class="anno-ts mono">{t('annotations.timestampLabel')} <strong>{fmtTime(a.timestamp, true)}</strong></div>
 							<textarea
 								bind:value={draftText}
 								rows="2"
+								maxlength="1000"
 								onkeydown={onKeydown}
 								class="anno-input"
 							></textarea>

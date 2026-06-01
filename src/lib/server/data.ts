@@ -300,7 +300,8 @@ export async function saveAnnotation(
 		if (annotation.id > 0) {
 			const idx = stored.findIndex((a) => a.id === annotation.id);
 			if (idx >= 0) {
-				stored[idx] = { ...annotation, createdAt: now };
+				// Preserve the original createdAt on edit, matching putAnnotation (DB).
+				stored[idx] = { ...annotation, createdAt: stored[idx].createdAt };
 			}
 		} else {
 			const newId = stored.length ? Math.max(...stored.map((a) => a.id)) + 1 : 1;
