@@ -141,6 +141,29 @@ export function mockWorkoutDetail(id: number): WorkoutDetail | null {
 	return spec ? detailFor(spec) : null;
 }
 
+const MOCK_TEMPLATES: Omit<Spec, 'id' | 'date'>[] = [
+	{ sport: 'rower', distance: 2000, basePace: 110, baseSpm: 29, baseHr: 165, workoutType: '2000m steady' },
+	{ sport: 'rower', distance: 5000, basePace: 118, baseSpm: 26, baseHr: 158, workoutType: '5000m steady' },
+	{ sport: 'skierg', distance: 1000, basePace: 124, baseSpm: 41, baseHr: 163, workoutType: '1000m SkiErg' },
+	{ sport: 'bike', distance: 4000, basePace: 98, baseSpm: 82, baseHr: 152, workoutType: '4000m BikeErg' },
+	{ sport: 'rower', distance: 500, basePace: 100, baseSpm: 35, baseHr: 170, workoutType: '500m sprint' }
+];
+
+/** Synthesise a new demo workout for live-mode mock polling. */
+export function generateMockWorkout(existingIds: Iterable<number>): Workout {
+	const used = new Set(existingIds);
+	let id = 2000 + Math.floor(Math.random() * 8000);
+	while (used.has(id)) id++;
+	const tpl = MOCK_TEMPLATES[Math.floor(Math.random() * MOCK_TEMPLATES.length)];
+	const now = new Date();
+	const spec: Spec = {
+		id,
+		date: now.toISOString().slice(0, 19).replace('T', ' '),
+		...tpl
+	};
+	return summaryOf(detailFor(spec));
+}
+
 function avg(xs: number[]): number {
 	return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
 }
