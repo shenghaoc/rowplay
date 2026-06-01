@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url';
 const fixture = path.join(path.dirname(fileURLToPath(import.meta.url)), '../fixtures/hr-watch.csv');
 
 test.describe('heart-rate import', () => {
+	// Applies HR then mounts several uPlot charts at once — keep off the parallel
+	// worker grid so WebKit + wrangler are not fighting other specs for chunks.
+	test.describe.configure({ mode: 'serial' });
+
 	test('demo workout without logbook HR can import watch file', async ({ page }) => {
 		const errors: string[] = [];
 		page.on('console', (msg) => {
@@ -22,11 +26,11 @@ test.describe('heart-rate import', () => {
 		await expect(page.getByRole('button', { name: /Apply heart rate|应用心率/ })).toBeVisible();
 		await page.getByRole('button', { name: /Apply heart rate|应用心率/ }).click();
 
-		await expect(page.getByText(/Heart rate|心率/).first()).toBeVisible();
-		await expect(page.locator('.gauges').getByText(/bpm/i)).toBeVisible();
-		// Wait for the import to fully settle (hrOverlay set, hrImportBusy false).
-		// This gives WebKit time to finish lazy module loading before we check errors.
 		await expect(page.getByRole('button', { name: /Remove imported HR|移除导入的心率/ })).toBeVisible();
+		await expect(page.locator('.gauges').getByText(/bpm/i)).toBeVisible();
+		// HR import mounts extra uPlot charts; wait until telemetry canvases settle.
+		await expect(page.locator('.charts canvas').first()).toBeVisible();
+		await page.waitForTimeout(600);
 
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy, untrack } from 'svelte';
-	import type uPlot from 'uplot';
+	import uPlot from 'uplot';
 	import 'uplot/dist/uPlot.min.css';
 
 	interface Props {
@@ -27,8 +27,8 @@
 	let el: HTMLDivElement;
 	let plot: uPlot | null = null;
 	let UPlotCtor: typeof uPlot | null = null;
-	// Flipped once the dynamic import resolves, so the build effect only fires
-	// after the constructor and host element are both ready.
+	// Flipped once the host element is measured, so the build effect only fires
+	// after the constructor and container are both ready.
 	let ready = $state(false);
 	let width = 600;
 	let ro: ResizeObserver | null = null;
@@ -78,25 +78,8 @@
 		);
 	}
 
-	// WebKit (under wrangler/Vite) intermittently fails a fresh dynamic-chunk
-	// fetch with "Importing a module script failed". Without a retry that bubbles
-	// out of this async onMount as an unhandled rejection (a pageerror) and the
-	// chart never renders. Retrying the fetch clears the transient.
-	async function loadUplot() {
-		let lastErr: unknown;
-		for (let attempt = 0; attempt < 3; attempt++) {
-			try {
-				return await import('uplot');
-			} catch (e) {
-				lastErr = e;
-			}
-		}
-		throw lastErr;
-	}
-
-	onMount(async () => {
-		const mod = await loadUplot();
-		UPlotCtor = mod.default;
+	onMount(() => {
+		UPlotCtor = uPlot;
 		width = el.clientWidth || 600;
 		ro = new ResizeObserver(() => {
 			const w = el.clientWidth;

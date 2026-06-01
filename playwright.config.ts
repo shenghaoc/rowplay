@@ -20,7 +20,8 @@ export default defineConfig({
 	testDir: './tests/e2e',
 	reporter: [['html', { open: 'never' }]],
 	fullyParallel: true,
-	workers: process.env.CI ? 2 : '75%',
+	// One worker in CI: wrangler + WebKit flake on parallel dynamic chunk loads.
+	workers: process.env.CI ? 1 : '75%',
 	retries: process.env.CI ? 2 : 0,
 	use: {
 		baseURL: BASE_URL,
