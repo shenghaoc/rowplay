@@ -99,3 +99,21 @@ describe('buildBoards', () => {
 		expect(findBoard(boards, 'bike', 8000)).toBeNull();
 	});
 });
+
+describe('mockLeaderboard (demo seed)', () => {
+	it('populates every standard board and includes the demo athlete', async () => {
+		const { mockLeaderboard } = await import('./mockLeaderboard');
+		const boards = buildBoards(mockLeaderboard());
+		// Every board is non-empty.
+		expect(boards.length).toBeGreaterThan(0);
+		expect(boards.every((b) => b.entries.length > 0)).toBe(true);
+		// The demo athlete appears on at least one board, ranked among rivals.
+		const you = boards.flatMap((b) => b.entries).filter((e) => e.isYou);
+		expect(you.length).toBeGreaterThan(0);
+		expect(you.every((e) => e.workoutId > 0)).toBe(true);
+		// A board the athlete rowed has both the athlete and rivals.
+		const rower2k = findBoard(boards, 'rower', 2000)!;
+		expect(rower2k.entries.some((e) => e.isYou)).toBe(true);
+		expect(rower2k.entries.some((e) => !e.isYou)).toBe(true);
+	});
+});
