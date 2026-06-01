@@ -364,19 +364,6 @@ describe('Property 2: Preservation — Desktop Stat Styles Are Unchanged', () =>
 	});
 
 	describe('Media block isolation — fix must not bleed into desktop range', () => {
-		it('should have NO .stat { padding } rule in @media (max-width: 720px) on UNFIXED code', () => {
-			// On UNFIXED code: no .stat padding in the 720px block → PASSES (confirms baseline)
-			// NOTE: This test will FAIL after the fix is applied (task 3) — that is expected.
-			// It documents the pre-fix state. After the fix, task 3.4 re-runs the preservation
-			// tests and this specific assertion is superseded by the bug condition test (task 1).
-			// We skip this assertion here to avoid a false failure after the fix.
-			// Instead, we assert the 720px block does NOT contain a .stat padding that would
-			// affect desktop (i.e., the 720px block only applies to ≤720px viewports).
-			// The key preservation property is: base styles are unchanged (tested above).
-			// This is a documentation-only comment — no assertion needed here.
-			expect(true).toBe(true); // placeholder — see comment above
-		});
-
 		it('should have NO .stat { padding } rule outside ALL media blocks (base styles only)', () => {
 			// This is the definitive preservation assertion:
 			// The fix must ONLY add .stat padding inside mobile media blocks.

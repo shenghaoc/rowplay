@@ -48,7 +48,7 @@ END FUNCTION
 
 ### Examples
 
-- **375px viewport (iPhone SE)**: `.card` padding drops to `0.95rem 1rem`, grid is 2-column, gap is `1rem`. Label and value text feel cramped against the card edges. Expected: `.stat` padding overrides to `1rem 1.1rem` at ≤720px.
+- **375px viewport (iPhone SE)**: `.card` padding drops to `0.95rem 1rem`, grid is 2-column, gap is `1rem`. Label and value text feel cramped against the card edges. Expected: `.stat` padding overrides to `0.9rem 1rem` (the ≤720px block sets `1rem 1.1rem`, but the later ≤400px block overrides it to `0.9rem 1rem` via cascade).
 - **360px viewport (small Android)**: gap drops to `0.6rem` at ≤400px, cards are squeezed together. Expected: gap stays at `0.75rem`.
 - **320px viewport (very small)**: both the gap reduction and the padding reduction compound. Expected: `.stat { padding: 0.9rem 1rem }` and `gap: 0.75rem`.
 - **800px viewport (desktop)**: 4-column grid, `padding: 1.25rem 1.4rem` — no bug condition, must remain unchanged.
@@ -194,10 +194,10 @@ FOR ALL viewport WHERE isBugCondition(viewport) DO
   computedGap     := getComputedStyle(.stats).gap
 
   IF viewport.widthPx <= 400 THEN
-    ASSERT computedPadding >= "0.9rem 1rem"
-    ASSERT computedGap >= "0.75rem"
+    ASSERT computedPadding == "0.9rem 1rem"
+    ASSERT computedGap == "0.75rem"
   ELSE IF viewport.widthPx <= 720 THEN
-    ASSERT computedPadding >= "1rem 1.1rem"
+    ASSERT computedPadding == "1rem 1.1rem"
   END IF
 END FOR
 ```

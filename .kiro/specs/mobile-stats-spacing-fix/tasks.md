@@ -49,7 +49,7 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
   - Write property-based tests in the same test file:
     - For all viewport widths in [721, 1440]: `.stat` padding SHALL equal `1.25rem 1.4rem` (global `.card` value, no stat override)
     - For all viewport widths in [721, 1440]: `.stats` gap SHALL equal `1rem`
-    - For all viewport widths in [721, 1440]: `.stats` grid-template-columns SHALL equal `repeat(4, minmax(0, 1fr))`
+    - For all viewport widths in [721, 1440]: `.stats` grid-template-columns SHALL equal `repeat(4, 1fr)`
   - Run tests on UNFIXED code: `npm run test -- --run`
   - **EXPECTED OUTCOME**: Tests PASS (confirms baseline desktop behavior to preserve)
   - Mark task complete when tests are written, run, and passing on unfixed code
@@ -96,7 +96,7 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
     - Start the dev server: `npm run dev`
     - Open the dashboard at `http://localhost:5173/dashboard` in a browser
     - Use DevTools device emulation to verify at the following widths:
-      - **375px** (iPhone SE): stat cards should have comfortable padding (`1rem 1.1rem`), 2-column grid, gap ≥ 1rem
+      - **375px** (iPhone SE): stat cards should have comfortable padding (`0.9rem 1rem` from ≤400px block overriding ≤720px), 2-column grid, gap ≥ 1rem
       - **360px** (small Android): gap between stat cards should be `0.75rem` (not cramped)
       - **320px** (very small): both padding (`0.9rem 1rem`) and gap (`0.75rem`) should be adequate
     - Confirm labels ("Sessions", "Total distance", "Total time", "Avg pace") and values are clearly legible with breathing room
