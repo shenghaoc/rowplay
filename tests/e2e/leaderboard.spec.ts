@@ -20,7 +20,7 @@ test.describe('leaderboard', () => {
 	test('distance selector updates the board and the URL', async ({ page }) => {
 		await page.goto('/leaderboard');
 		// Pick the 2,000 m board (present for RowErg in demo data).
-		await page.getByRole('button', { name: /2,?000\s*m|2\s*km/i }).first().click();
+		await page.getByRole('button', { name: /2[\.,]?00?\s*km|2,?000\s*m/i }).first().click();
 		await expect(page).toHaveURL(/distance=2000/);
 		await expect(page.locator('table.board tbody tr').first()).toBeVisible();
 	});
