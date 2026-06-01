@@ -163,8 +163,8 @@ Status reflects the current tree (post-remediation); the audit found every ❌ b
 | `text-box-trim` | ✅ | `.btn` / `.badge`; `text-wrap: balance` on headings (P2#18) |
 | `text-wrap: balance` | ✅ | Headings (P2#18) |
 | `@property` | ✅ | `--r-ctrl` registered for typed/animatable custom property (P3#24) |
-| `@starting-style` | ✅ | Live-mode `.new-entry` rows (P2#19); no-op in Firefox (no `@starting-style` support yet) — accepted progressive enhancement |
-| `interpolate-size: allow-keywords` | ✅ | On `:root` (P3#25) |
+| `@starting-style` | ✅ | Live-mode `.new-entry` rows (P2#19); Baseline 2024 — Firefox 129+ (Aug 2024), works in all current browsers |
+| `interpolate-size: allow-keywords` | ✅ | On `:root` (P3#25); Chromium-only as of June 2026 (Firefox/Safari pending) — progressive enhancement, `height:auto` simply snaps elsewhere |
 | `transition-behavior: allow-discrete` | ❌ | Not adopted — inert without an explicit `transition`, and `<details>` can't fade without hiding its summary; dialogs/details snap (reduced-motion-friendly) |
 | `prefers-contrast` | ✅ | `--hairline` adjusted under `prefers-contrast: more` (P1#10) |
 | `prefers-reduced-transparency` | N/A | No `backdrop-filter` in rowplay today |
