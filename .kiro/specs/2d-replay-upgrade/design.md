@@ -138,7 +138,28 @@ Steps:
 
 Ghost lane wraps steps in `ctx.save(); ctx.globalAlpha = 0.82; … ctx.restore()`.
 
-### `drawAvatar(o: AvatarOpts)`
+### Sport avatars (revised)
+
+The avatar is **not** a generic pod with a tiny clip-art glyph (that read as
+unfinished). Instead each sport draws a **side-profile athlete animated by the
+stroke phase**, so the marker both identifies the machine and conveys cadence:
+
+- **rower** → a racing shell on the water with a rower whose torso and **oar
+  sweep** through the catch→drive→recovery cycle (`sin(phase)`); the blade dips
+  and throws a small foam splash on the drive.
+- **skierg** → a skier **double-poling**: arms/poles swing from a high reach to a
+  low back-pull each stroke, with a slight crouch on the pull.
+- **bike** → a cyclist whose **wheels spin** (rotating spokes) and **legs pedal**
+  with the phase.
+- **default / `sport` absent** → the glossy neutral pod (graceful fallback).
+
+Shared chrome around every avatar: a cast shadow on the waterline, the bob
+(`sin(phase)`, 0 under reduced motion), and the HUD pill (anchored to the
+waterline so it doesn't bob with the figure). Under reduced motion the phase is
+frozen to a representative static pose. Figures are drawn in the lane `accent`
+with a contrast `rim`; the ghost lane keeps `globalAlpha 0.82`.
+
+### `drawNeutralPod` / legacy pod (fallback only)
 
 ```ts
 interface AvatarOpts {

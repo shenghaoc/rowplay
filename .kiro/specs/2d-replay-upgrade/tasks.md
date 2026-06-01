@@ -51,16 +51,16 @@ guard, `reduceMotion` read, phase advance, `clearRect`), and the
 - [ ] 5. Avatar — `drawAvatar(AvatarOpts)`
   - [ ] 5.1 Bob (`sin(phase)*BOB_AMP`, 0 under reduced motion); cast shadow on
         waterline (`withAlpha(shadow,0.18)`).
-  - [ ] 5.2 Bow wave foam crescent ahead of pod (static-minimal under reduced
-        motion).
-  - [ ] 5.3 Glossy pod: accent fill + `foam` highlight + rim (YOU vs GHOST rim).
-  - [ ] 5.4 HUD pill above pod with caret (reuse current YOU/GHOST inversion +
+  - [ ] 5.2 Dispatch to the per-sport athlete (or neutral pod fallback).
+  - [ ] 5.3 HUD pill anchored to the waterline with caret (YOU/GHOST inversion +
         measure/pad).
   - _Requirements: 1.4, 1.5, 4.1, 7.2_
 
-- [ ] 6. Sport glyphs — `drawSportGlyph(ctx, cx, cy, sport, color)`
-  - [ ] 6.1 rower=sailboat, skierg=snowflake, bike=bike (vector only, ≤2·POD_R).
-  - [ ] 6.2 `default`/undefined → neutral dot (graceful fallback).
+- [ ] 6. Sport avatars (animated, stroke-driven; replace clip-art glyphs)
+  - [ ] 6.1 `drawRower` — racing shell + rower with a sweeping oar/blade splash.
+  - [ ] 6.2 `drawSkier` — double-poling skier (high reach → low back-pull).
+  - [ ] 6.3 `drawCyclist` — spinning spoked wheels + pedalling rider.
+  - [ ] 6.4 `drawNeutralPod` — glossy pod fallback when `sport` is absent.
   - _Requirements: 6.1, 6.2, 6.3_
 
 - [ ] 7. Wire `render()` body to the new pipeline

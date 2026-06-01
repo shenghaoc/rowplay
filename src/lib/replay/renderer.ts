@@ -155,9 +155,16 @@ function roundRect(
 
 /**
  * Convert `#rgb` or `#rrggbb` to `rgba(r,g,b,a)`.
- * Pure, no allocation concerns.
+ *
+ * Memoised: the renderer calls this ~20×/frame but only ever with a small,
+ * constant set of `(hex, alpha)` pairs per theme, so the cache keeps the hot
+ * path allocation-free after warm-up (no per-frame `parseInt` or string churn).
  */
+const alphaCache = new Map<string, string>();
 function withAlpha(hex: string, a: number): string {
+	const key = `${hex}@${a}`;
+	const cached = alphaCache.get(key);
+	if (cached) return cached;
 	let r = 0,
 		g = 0,
 		b = 0;
@@ -171,7 +178,9 @@ function withAlpha(hex: string, a: number): string {
 		g = parseInt(h.slice(2, 4), 16);
 		b = parseInt(h.slice(4, 6), 16);
 	}
-	return `rgba(${r},${g},${b},${a})`;
+	const rgba = `rgba(${r},${g},${b},${a})`;
+	alphaCache.set(key, rgba);
+	return rgba;
 }
 
 /**
@@ -187,122 +196,193 @@ function streakLen(pace: number): number {
 	return 22 - t * (22 - 6); // 22 down to 6
 }
 
-// ── Sport glyph ──────────────────────────────────────────────────────────────
+// ── Sport avatars ─────────────────────────────────────────────────────────────
+// Each draws a side-profile athlete (facing the finish, +x) animated by the
+// stroke `phase`, so the marker both identifies the machine and conveys cadence.
+// `y` is the waterline; `bobY` is the bobbing centre; figures are drawn in the
+// lane `accent` with a contrast `rim` and `foam` highlights. `s = sin(phase)`
+// drives the stroke; under reduced motion the caller passes a frozen pose.
 
-function drawSportGlyph(
+/** Rounded limb / strut segment. */
+function limb(
 	ctx: CanvasRenderingContext2D,
-	cx: number,
-	cy: number,
-	sport: Sport | undefined,
+	x1: number,
+	y1: number,
+	x2: number,
+	y2: number,
+	w: number,
 	color: string
 ) {
-	ctx.save();
 	ctx.strokeStyle = color;
-	ctx.fillStyle = color;
-	ctx.lineWidth = 1.2;
+	ctx.lineWidth = w;
 	ctx.lineCap = 'round';
-	ctx.lineJoin = 'round';
+	ctx.beginPath();
+	ctx.moveTo(x1, y1);
+	ctx.lineTo(x2, y2);
+	ctx.stroke();
+}
 
-	const s = POD_R * 1.0; // glyph scale, fits within ~POD_R*1.2
+/** Filled disc (head / hub / joint). */
+function disc(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string) {
+	ctx.fillStyle = color;
+	ctx.beginPath();
+	ctx.arc(x, y, r, 0, Math.PI * 2);
+	ctx.fill();
+}
 
-	switch (sport) {
-		case 'rower': {
-			// Sailboat: hull arc + mast + triangular sail
-			// Hull — shallow arc below cy
-			ctx.beginPath();
-			ctx.moveTo(cx - s * 0.7, cy + s * 0.15);
-			ctx.quadraticCurveTo(cx, cy + s * 0.6, cx + s * 0.7, cy + s * 0.15);
-			ctx.stroke();
-			// Mast — vertical line
-			ctx.beginPath();
-			ctx.moveTo(cx - s * 0.05, cy + s * 0.1);
-			ctx.lineTo(cx - s * 0.05, cy - s * 0.75);
-			ctx.stroke();
-			// Sail — right-leaning triangle
-			ctx.beginPath();
-			ctx.moveTo(cx - s * 0.05, cy - s * 0.75);
-			ctx.lineTo(cx + s * 0.65, cy - s * 0.05);
-			ctx.lineTo(cx - s * 0.05, cy - s * 0.05);
-			ctx.closePath();
-			ctx.save();
-			ctx.globalAlpha *= 0.5;
-			ctx.fill();
-			ctx.restore();
-			ctx.stroke();
-			break;
-		}
-		case 'skierg': {
-			// Snowflake: 3 lines at 0°/60°/120° with tiny end barbs
-			const angles = [0, Math.PI / 3, (2 * Math.PI) / 3];
-			const armLen = s * 0.72;
-			const barbLen = s * 0.22;
-			const barbAngle = Math.PI / 4;
-			for (const angle of angles) {
-				for (const sign of [1, -1]) {
-					const ax = cx + Math.cos(angle) * armLen * sign;
-					const ay = cy + Math.sin(angle) * armLen * sign;
-					ctx.beginPath();
-					ctx.moveTo(cx, cy);
-					ctx.lineTo(ax, ay);
-					ctx.stroke();
-					// Two barbs at each end
-					const ba = angle + (sign > 0 ? Math.PI : 0);
-					for (const bSign of [1, -1]) {
-						ctx.beginPath();
-						ctx.moveTo(ax, ay);
-						ctx.lineTo(
-							ax + Math.cos(ba + barbAngle * bSign) * barbLen,
-							ay + Math.sin(ba + barbAngle * bSign) * barbLen
-						);
-						ctx.stroke();
-					}
-				}
-			}
-			break;
-		}
-		case 'bike': {
-			// Bike: two small wheels + frame stroke
-			const wheelR = s * 0.32;
-			const leftX = cx - s * 0.45;
-			const rightX = cx + s * 0.45;
-			const wheelY = cy + s * 0.2;
-			// Rear wheel
-			ctx.beginPath();
-			ctx.arc(leftX, wheelY, wheelR, 0, Math.PI * 2);
-			ctx.stroke();
-			// Front wheel
-			ctx.beginPath();
-			ctx.arc(rightX, wheelY, wheelR, 0, Math.PI * 2);
-			ctx.stroke();
-			// Frame: seat tube + top tube + down tube + chain stay
-			const seatX = cx - s * 0.12;
-			const seatY = cy - s * 0.38;
-			// Down tube: head-tube top → bottom bracket
-			ctx.beginPath();
-			ctx.moveTo(rightX - wheelR * 0.4, cy - s * 0.3);
-			ctx.lineTo(leftX + wheelR * 0.3, wheelY - wheelR);
-			ctx.stroke();
-			// Top tube: seat -> head
-			ctx.beginPath();
-			ctx.moveTo(seatX, seatY);
-			ctx.lineTo(rightX - wheelR * 0.4, cy - s * 0.3);
-			ctx.stroke();
-			// Seat tube
-			ctx.beginPath();
-			ctx.moveTo(seatX, seatY);
-			ctx.lineTo(leftX + wheelR * 0.3, wheelY - wheelR);
-			ctx.stroke();
-			break;
-		}
-		default: {
-			// Neutral: small filled dot
-			ctx.beginPath();
-			ctx.arc(cx, cy, s * 0.28, 0, Math.PI * 2);
-			ctx.fill();
-			break;
-		}
+interface AvatarDrawCtx {
+	x: number;
+	/** Waterline / ground. */
+	y: number;
+	/** Bobbing centre for floating parts. */
+	bobY: number;
+	/** sin(phase): stroke driver, −1..1 (frozen pose under reduced motion). */
+	s: number;
+	/** Raw phase for continuous rotation (wheels). */
+	phase: number;
+	accent: string;
+	rim: string;
+	foam: string;
+	reduce: boolean;
+}
+
+/** Rowing shell with a rower whose torso + oar sweep through the stroke. */
+function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
+	const { x, bobY, s, accent, rim, foam, reduce } = a;
+	const HL = 16;
+	const HH = 2.6;
+
+	// Hull — long, pointed racing shell on the water.
+	ctx.fillStyle = accent;
+	ctx.beginPath();
+	ctx.moveTo(x - HL, bobY);
+	ctx.quadraticCurveTo(x - HL * 0.2, bobY - HH, x + HL, bobY);
+	ctx.quadraticCurveTo(x - HL * 0.2, bobY + HH, x - HL, bobY);
+	ctx.closePath();
+	ctx.fill();
+	ctx.strokeStyle = rim;
+	ctx.lineWidth = 1;
+	ctx.stroke();
+
+	// Rower — seat at mid-hull; torso swings back on the drive (s → −1).
+	const seatX = x - 2;
+	const seatY = bobY - 2;
+	const shX = seatX - s * 3.5;
+	const shY = bobY - 9;
+	limb(ctx, seatX, seatY, x + 7, bobY - 1, 2, accent); // legs to stretcher
+	limb(ctx, seatX, seatY, shX, shY, 2.4, accent); // torso
+	disc(ctx, shX, shY - 3, 2.3, accent); // head
+
+	// Oar — sweeps fore/aft; blade dips and splashes on the drive.
+	const bladeX = x + s * 13;
+	const inWater = s > -0.15;
+	const bladeY = bobY + (inWater ? 4.5 : 1.5);
+	const handX = shX + 2.5;
+	const handY = shY + 2;
+	limb(ctx, handX, handY, bladeX, bladeY, 1.6, rim); // shaft
+	limb(ctx, bladeX - 1.6, bladeY - 1.6, bladeX + 1.6, bladeY + 1.6, 2.4, accent); // blade
+	if (!reduce && inWater) {
+		disc(ctx, bladeX, bobY + 2, 1, foam);
+		disc(ctx, bladeX + 2, bobY + 1, 0.8, foam);
 	}
-	ctx.restore();
+}
+
+/** Skier double-poling: arms/poles swing from a high reach to a low back-pull. */
+function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
+	const { x, y, bobY, s, accent, rim } = a;
+	const hipX = x;
+	const hipY = bobY - 7;
+	const crouch = (1 - s) * 0.6; // deeper crouch on the pull (s → −1)
+	const shX = x + 0.5 + (s < 0 ? 1.5 : 0);
+	const shY = bobY - 13 + crouch;
+
+	// Legs planted on the snow (the waterline).
+	limb(ctx, hipX, hipY + crouch, x + 4, y, 2.2, accent);
+	limb(ctx, hipX, hipY + crouch, x - 3, y, 2.2, accent);
+	// Torso + head.
+	limb(ctx, hipX, hipY + crouch, shX, shY, 2.6, accent);
+	disc(ctx, shX, shY - 3, 2.3, accent);
+	// Arm + pole: hands high & forward on the reach (s → +1), low & back on pull.
+	const handX = shX + 4 + s * 2;
+	const handY = shY + 4 - s * 4;
+	limb(ctx, shX, shY + 1, handX, handY, 2, accent);
+	limb(ctx, handX, handY, handX - 6 + s * 2, y, 1.2, rim); // pole to snow
+}
+
+/** Cyclist whose wheels spin and legs pedal with the phase. */
+function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
+	const { x, y, accent, rim, phase, reduce } = a;
+	const wr = 5;
+	const rearX = x - 8;
+	const frontX = x + 8;
+	const wheelY = y - wr;
+	const spin = reduce ? 0.3 : phase * 2;
+
+	// Wheels: rim + rotating spokes + hub.
+	for (const wx of [rearX, frontX]) {
+		ctx.strokeStyle = accent;
+		ctx.lineWidth = 1.4;
+		ctx.beginPath();
+		ctx.arc(wx, wheelY, wr, 0, Math.PI * 2);
+		ctx.stroke();
+		for (let k = 0; k < 4; k++) {
+			const ang = spin + (k * Math.PI) / 2;
+			limb(ctx, wx, wheelY, wx + Math.cos(ang) * wr, wheelY + Math.sin(ang) * wr, 0.8, rim);
+		}
+		disc(ctx, wx, wheelY, 1, accent);
+	}
+
+	// Frame.
+	const bbX = x;
+	const bbY = wheelY + 1;
+	const seatX = x - 3;
+	const seatY = wheelY - 7;
+	const barX = frontX - 1;
+	const barY = wheelY - 6;
+	limb(ctx, rearX, wheelY, bbX, bbY, 1.6, accent);
+	limb(ctx, bbX, bbY, seatX, seatY, 1.6, accent);
+	limb(ctx, seatX, seatY, barX, barY, 1.6, accent);
+	limb(ctx, bbX, bbY, barX, barY, 1.6, accent);
+	limb(ctx, frontX, wheelY, barX, barY, 1.6, accent);
+
+	// Rider: torso → bars, head, arm, and a pedalling leg on the crank.
+	const rShX = x + 1;
+	const rShY = wheelY - 12;
+	limb(ctx, seatX, seatY, rShX, rShY, 2.4, accent);
+	disc(ctx, rShX + 1, rShY - 2.5, 2.3, accent);
+	limb(ctx, rShX, rShY, barX, barY, 1.8, accent);
+	const crankX = bbX + Math.cos(spin) * 2.4;
+	const crankY = bbY + Math.sin(spin) * 2.4;
+	limb(ctx, seatX + 1, seatY + 1, crankX, crankY, 1.8, accent);
+}
+
+/** Glossy neutral pod — fallback when `sport` is absent. */
+function drawNeutralPod(
+	ctx: CanvasRenderingContext2D,
+	x: number,
+	bobY: number,
+	accent: string,
+	rim: string,
+	foam: string
+) {
+	ctx.fillStyle = accent;
+	ctx.beginPath();
+	ctx.arc(x, bobY, POD_R, 0, Math.PI * 2);
+	ctx.fill();
+	const gloss = ctx.createRadialGradient(x - POD_R * 0.3, bobY - POD_R * 0.4, 0, x, bobY, POD_R);
+	gloss.addColorStop(0, withAlpha(foam, 0.5));
+	gloss.addColorStop(0.5, withAlpha(foam, 0.1));
+	gloss.addColorStop(1, withAlpha(foam, 0));
+	ctx.fillStyle = gloss;
+	ctx.beginPath();
+	ctx.arc(x, bobY, POD_R, 0, Math.PI * 2);
+	ctx.fill();
+	ctx.strokeStyle = rim;
+	ctx.lineWidth = 1.5;
+	ctx.beginPath();
+	ctx.arc(x, bobY, POD_R, 0, Math.PI * 2);
+	ctx.stroke();
+	disc(ctx, x, bobY, 2.5, withAlpha(foam, 0.85));
 }
 
 // ── Lane types ───────────────────────────────────────────────────────────────
@@ -391,7 +471,7 @@ export class CourseRenderer implements ReplayRenderer {
 
 		// ── Scene layers ──────────────────────────────────────────────────────
 		this.drawBackground(w, h);
-		this.drawGrid(startX, span, h, state.totalDistance, playerY);
+		this.drawGrid(startX, span, h, state.totalDistance, hasGhost ? [ghostY, playerY] : [playerY]);
 		this.drawFinishGate(finishX, 10, h - 10);
 
 		// Ghost first so YOU overlaps on top
@@ -475,7 +555,7 @@ export class CourseRenderer implements ReplayRenderer {
 		span: number,
 		h: number,
 		totalDistance: number,
-		primaryY: number
+		waterlines: number[]
 	) {
 		const { ctx } = this;
 		const C = this.colors;
@@ -493,13 +573,15 @@ export class CourseRenderer implements ReplayRenderer {
 			ctx.lineTo(x, h - 18);
 			ctx.stroke();
 
-			// Buoy cap at the primary waterline
+			// Buoy cap on every lane's waterline (so the ghost lane has parity).
 			ctx.fillStyle = C.markerCap;
-			ctx.beginPath();
-			ctx.arc(x, primaryY, isMajor ? 3.5 : 2.5, 0, Math.PI * 2);
-			ctx.fill();
+			for (const ly of waterlines) {
+				ctx.beginPath();
+				ctx.arc(x, ly, isMajor ? 3.5 : 2.5, 0, Math.PI * 2);
+				ctx.fill();
+			}
 
-			if (isMajor || i === 10) {
+			if (isMajor) {
 				ctx.fillStyle = C.tickText;
 				const m = Math.round((totalDistance * i) / 10);
 				// Right-align the final label so it clears the finish gate posts.
@@ -534,7 +616,8 @@ export class CourseRenderer implements ReplayRenderer {
 			ctx.fillRect(x + 1, yy, 3, Math.min(cell, y1 - yy));
 		}
 
-		// Faint accent glow line on the left post
+		// Faint accent glow on the left post. The gate is shared across lanes, so
+		// it always uses the live accent (`C.live`) rather than a per-lane colour.
 		ctx.shadowColor = C.live;
 		ctx.shadowBlur = 6;
 		ctx.strokeStyle = withAlpha(C.live, 0.35);
@@ -543,9 +626,8 @@ export class CourseRenderer implements ReplayRenderer {
 		ctx.moveTo(x - 1, y0);
 		ctx.lineTo(x - 1, y1);
 		ctx.stroke();
-		ctx.shadowBlur = 0;
 
-		ctx.restore();
+		ctx.restore(); // restore() resets shadowBlur with the saved state
 	}
 
 	// ── Lane scene ────────────────────────────────────────────────────────────
@@ -610,8 +692,7 @@ export class CourseRenderer implements ReplayRenderer {
 				ctx.lineTo(x, y + Math.sin((x - avX) * 0.18 + phase) * waveAmp);
 			}
 			ctx.stroke();
-			ctx.shadowBlur = 0;
-			ctx.restore();
+			ctx.restore(); // restore() resets shadowBlur with the saved state
 
 			// Core stroke
 			ctx.strokeStyle = accent;
@@ -631,13 +712,16 @@ export class CourseRenderer implements ReplayRenderer {
 		const streakLens = [sLen, sLen * 0.75, sLen * 0.55, sLen * 0.4];
 		for (let si = 0; si < 4; si++) {
 			const shimmerOffset = this.reduceMotion ? 0 : Math.sin(phase + si * 0.8) * 3;
-			const sx = avX - streakLens[si] - shimmerOffset;
-			if (sx >= startX) {
+			// Clamp the start to the gate so streaks shorten gradually near the
+			// line rather than winking out the moment they cross it.
+			const sx = Math.max(avX - streakLens[si] - shimmerOffset, startX);
+			const ex = avX - shimmerOffset;
+			if (sx < ex) {
 				ctx.strokeStyle = withAlpha(accent, streakAlphas[si]);
 				ctx.lineWidth = 1.2;
 				ctx.beginPath();
 				ctx.moveTo(sx, streakY[si]);
-				ctx.lineTo(avX - shimmerOffset, streakY[si]);
+				ctx.lineTo(ex, streakY[si]);
 				ctx.stroke();
 			}
 		}
@@ -662,76 +746,47 @@ export class CourseRenderer implements ReplayRenderer {
 	private drawAvatar(o: AvatarOpts) {
 		const { ctx } = this;
 		const C = this.colors;
-		const { x, y, accent, phase, spm, isYou, sport, label } = o;
+		const { x, y, accent, phase, isYou, sport, label } = o;
 
 		ctx.save();
 		if (!isYou) {
 			ctx.globalAlpha = 0.82;
 		}
 
-		// 1. Bob — pod, shadow, bow wave, HUD all reference by
+		// Bob the floating/upper parts; figures stay rooted to the waterline.
+		const s = this.reduceMotion ? -0.2 : Math.sin(phase);
 		const bobY = y + (this.reduceMotion ? 0 : Math.sin(phase) * BOB_AMP);
+		// Contrast rim that reads on the accent fill in both themes.
+		const rim = C.labelText;
 
-		// 2. Cast shadow (anchored to waterline y, not bobY, so pod appears to lift)
+		// Cast shadow on the water (anchored to the waterline, so the avatar lifts).
 		ctx.save();
 		ctx.fillStyle = withAlpha(C.shadow, 0.18);
 		ctx.beginPath();
-		ctx.ellipse(x, y + 6, POD_R * 1.8, POD_R * 0.5, 0, 0, Math.PI * 2);
+		ctx.ellipse(x, y + 5, POD_R * 1.9, POD_R * 0.45, 0, 0, Math.PI * 2);
 		ctx.fill();
 		ctx.restore();
 
-		// 3. Bow wave (foam crescent just ahead of pod)
+		// Sport-specific animated athlete (or neutral pod fallback).
 		ctx.save();
-		const bowX = x + POD_R;
-		const bowAmp = this.reduceMotion ? 0.5 : 0.5 + (spm / 60) * 0.5;
-		ctx.strokeStyle = withAlpha(C.foam, 0.7);
-		ctx.lineWidth = 1.5;
-		ctx.lineCap = 'round';
-		ctx.beginPath();
-		// Upper arc of crescent
-		ctx.arc(bowX, bobY, POD_R * 0.7 * bowAmp, -Math.PI * 0.6, Math.PI * 0.6);
-		ctx.stroke();
+		const a: AvatarDrawCtx = { x, y, bobY, s, phase, accent, rim, foam: C.foam, reduce: this.reduceMotion };
+		switch (sport) {
+			case 'rower':
+				drawRower(ctx, a);
+				break;
+			case 'skierg':
+				drawSkier(ctx, a);
+				break;
+			case 'bike':
+				drawCyclist(ctx, a);
+				break;
+			default:
+				drawNeutralPod(ctx, x, bobY, accent, rim, C.foam);
+				break;
+		}
 		ctx.restore();
 
-		// 4. Pod — glossy circle
-		ctx.save();
-		// Main fill
-		ctx.fillStyle = accent;
-		ctx.beginPath();
-		ctx.arc(x, bobY, POD_R, 0, Math.PI * 2);
-		ctx.fill();
-
-		// Top highlight for gloss effect
-		const highlightGrad = ctx.createRadialGradient(
-			x - POD_R * 0.3,
-			bobY - POD_R * 0.4,
-			0,
-			x,
-			bobY,
-			POD_R
-		);
-		highlightGrad.addColorStop(0, withAlpha(C.foam, 0.5));
-		highlightGrad.addColorStop(0.5, withAlpha(C.foam, 0.1));
-		highlightGrad.addColorStop(1, withAlpha(C.foam, 0));
-		ctx.fillStyle = highlightGrad;
-		ctx.beginPath();
-		ctx.arc(x, bobY, POD_R, 0, Math.PI * 2);
-		ctx.fill();
-
-		// Rim stroke
-		ctx.strokeStyle = isYou ? accent : C.labelText;
-		ctx.lineWidth = 1.5;
-		ctx.beginPath();
-		ctx.arc(x, bobY, POD_R, 0, Math.PI * 2);
-		ctx.stroke();
-		ctx.restore();
-
-		// 5. Sport glyph
-		ctx.save();
-		drawSportGlyph(ctx, x, bobY, sport, C.labelBg);
-		ctx.restore();
-
-		// 6. HUD pill (rounded label above pod)
+		// HUD pill — anchored to the waterline (not the bob) so it stays steady.
 		ctx.save();
 		ctx.font = '600 10px "Source Code Pro", ui-monospace, monospace';
 		ctx.textAlign = 'center';
@@ -740,24 +795,24 @@ export class CourseRenderer implements ReplayRenderer {
 		const pillH = 16;
 		const pillW = tw + padX * 2;
 		const pillX = x - pillW / 2;
-		const pillY = bobY - 24 - pillH;
+		const caretSize = 4;
+		const caretY = y - 22; // tip sits just above the figure
+		const pillY = caretY - caretSize - pillH;
 
-		// Pill background: YOU gets labelBg (light chip), GHOST gets accent
+		// Pill background: YOU gets labelBg (light chip), GHOST gets accent.
 		roundRect(ctx, pillX, pillY, pillW, pillH, pillH / 2);
 		ctx.fillStyle = isYou ? C.labelBg : accent;
 		ctx.fill();
 
-		// Caret (tiny downward triangle pointing at the pod)
-		const caretSize = 4;
-		ctx.fillStyle = isYou ? C.labelBg : accent;
+		// Caret (tiny downward triangle pointing at the avatar).
 		ctx.beginPath();
 		ctx.moveTo(x - caretSize, pillY + pillH);
 		ctx.lineTo(x + caretSize, pillY + pillH);
-		ctx.lineTo(x, pillY + pillH + caretSize);
+		ctx.lineTo(x, caretY);
 		ctx.closePath();
 		ctx.fill();
 
-		// Pill text
+		// Pill text.
 		ctx.fillStyle = isYou ? accent : C.labelBg;
 		ctx.fillText(label, x, pillY + pillH - 4);
 		ctx.restore();
