@@ -25,6 +25,7 @@
 	import { getThemeContext } from '$lib/theme.svelte';
 	import { chartTheme, baseOptions, type SeriesRole } from '$lib/chartTheme';
 	import SportIcon from '$components/SportIcon.svelte';
+	import { page } from '$app/stores';
 
 	let { data } = $props();
 	const t = getI18nContext().t;
@@ -141,7 +142,25 @@
 		return () => engine?.destroy();
 	});
 
+	/**
+	 * Leaderboard deep-link: /replay/<id>?ghostPace=<sec>&ghostName=<name>
+	 * pre-arms a rival from a board as a constant-pace ghost so the race starts
+	 * immediately. Invalid or absent params fall through to the solo replay.
+	 */
+	function armGhostFromUrl() {
+		const gp = $page.url.searchParams.get('ghostPace');
+		if (!gp) return;
+		const secs = parsePaceInput(gp);
+		if (secs == null || total <= 0) return;
+		const name = $page.url.searchParams.get('ghostName')?.trim();
+		const paceLabel = `${fmtPaceBare(secs)}/500m`;
+		compareMode = 'pace';
+		paceInput = fmtPaceBare(secs);
+		setGhost(constantPaceGhost(secs, total), name || paceLabel, { kind: 'pace', paceLabel });
+	}
+
 	onMount(() => {
+		armGhostFromUrl();
 		const sizeIt = () => {
 			const w = courseWrap.clientWidth;
 			renderer?.resize(w, ghostActive ? 190 : 150);
