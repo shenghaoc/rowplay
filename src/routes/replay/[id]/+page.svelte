@@ -124,6 +124,7 @@
 	let loading3d = $state(false);
 	let webglOk = $state(false);
 	let Ctor3D: Renderer3DCtor | null = null;
+	let activeLoadId = 0;
 	let canvasEl: HTMLCanvasElement;
 	let courseWrap: HTMLDivElement;
 
@@ -169,6 +170,7 @@
 	}
 
 	async function setRenderer(kind: RendererKind) {
+		if (activeLoadId < 0) return;
 		if (kind === '3d' && !webglOk) return;
 		rendererKind = kind;
 		saveRendererPref(kind);
@@ -179,8 +181,12 @@
 		renderer?.destroy();
 		renderer = null;
 
+		activeLoadId++;
+		const myLoadId = activeLoadId;
+
 		try {
 			if (kind === '2d') {
+				if (myLoadId !== activeLoadId) return;
 				renderer = new CourseRenderer(canvasEl);
 				if (w) renderer.resize(w, h);
 				renderCurrent();
@@ -196,16 +202,21 @@
 				try {
 					Ctor3D = await loadRenderer3D();
 				} finally {
-					loading3d = false;
+					if (myLoadId === activeLoadId) loading3d = false;
+				}
+				if (myLoadId !== activeLoadId) {
+					temp2d.destroy();
+					return;
 				}
 				temp2d.destroy();
 				renderer = null;
-				if (rendererKind !== '3d') return;
 			}
-			renderer = new Ctor3D(canvasEl);
+			if (myLoadId !== activeLoadId) return;
+			renderer = new Ctor3D!(canvasEl);
 			if (w) renderer.resize(w, h);
 			renderCurrent();
 		} catch (err) {
+			if (myLoadId !== activeLoadId) return;
 			loading3d = false;
 			rendererKind = '2d';
 			saveRendererPref('2d');
@@ -273,6 +284,7 @@
 			void setRenderer(rendererKind);
 		});
 		return () => {
+			activeLoadId = -1;
 			engine?.destroy();
 			renderer?.destroy();
 		};
@@ -324,6 +336,7 @@
 		return () => {
 			ro.disconnect();
 			window.removeEventListener('keydown', onKey);
+			activeLoadId = -1;
 			renderer?.destroy();
 		};
 	});

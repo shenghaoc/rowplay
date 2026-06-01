@@ -17,7 +17,8 @@ test.describe('replay 3D view toggle', () => {
 
 		if (await btn3d.isEnabled()) {
 			await btn3d.click();
-			await expect(btn3d).toHaveAttribute('aria-pressed', 'true');
+			// Lazy Three.js chunk can take several seconds on CI WebKit.
+			await expect(btn3d).toHaveAttribute('aria-pressed', 'true', { timeout: 30_000 });
 			await expect(page.locator('canvas').first()).toBeVisible();
 			await btn2d.click();
 			await expect(btn2d).toHaveAttribute('aria-pressed', 'true');

@@ -62,10 +62,12 @@ function updateTextSprite(
 	const ctx = canvas.getContext('2d')!;
 	ctx.font = `600 ${fontSize}px "Source Code Pro", ui-monospace, monospace`;
 	const tw = ctx.measureText(text).width;
-	if (canvas.width !== Math.ceil(tw + pad * 2)) {
-		canvas.width = Math.ceil(tw + pad * 2);
+	const targetWidth = Math.ceil(tw + pad * 2);
+	const targetHeight = fontSize + pad * 2;
+	if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+		canvas.width = targetWidth;
+		canvas.height = targetHeight;
 	}
-	canvas.height = fontSize + pad * 2;
 	ctx.font = `600 ${fontSize}px "Source Code Pro", ui-monospace, monospace`;
 	ctx.fillStyle = bg;
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -168,8 +170,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 				transparent: true,
 				opacity: 0.35,
 				roughness: 0.9,
-				metalness: 0,
-				side: THREE.DoubleSide
+				metalness: 0
 			})
 		);
 		waterMat.name = 'water';
@@ -188,9 +189,9 @@ export class CourseRenderer3D implements ReplayRenderer {
 		lane.position.set(0, 0, this.courseLength / 2);
 		this.scene.add(lane);
 
+		const postGeo = this.track(new THREE.BoxGeometry(0.12, 1.2, 0.12));
 		for (let i = 0; i <= 10; i++) {
 			const z = (this.courseLength * i) / 10;
-			const postGeo = this.track(new THREE.BoxGeometry(0.12, 1.2, 0.12));
 			const postMat = this.mat(
 				new THREE.MeshStandardMaterial({
 					color: i % 5 === 0 ? hex(COLORS_LIGHT.tickMajor) : hex(COLORS_LIGHT.tickMinor)
@@ -209,9 +210,9 @@ export class CourseRenderer3D implements ReplayRenderer {
 		finish.position.set(0, 1.1, this.courseLength + 0.5);
 		this.scene.add(finish);
 
+		const cellGeo = this.track(new THREE.BoxGeometry(0.9, 0.9, 0.08));
 		for (let r = 0; r < 6; r++) {
 			for (let c = 0; c < 3; c++) {
-				const cellGeo = this.track(new THREE.BoxGeometry(0.9, 0.9, 0.08));
 				const cellMat = this.mat(
 					new THREE.MeshStandardMaterial({
 						color: (r + c) % 2 === 0 ? hex(COLORS_LIGHT.finishDark) : hex(COLORS_LIGHT.finishLight)
