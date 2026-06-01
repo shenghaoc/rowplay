@@ -2,9 +2,8 @@ import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types'
 import { nowEpochMillis } from '$lib/datetime';
 import type { WorkoutListQuery } from '$lib/workoutQuery';
 import type { AnnualGoal } from '../analytics';
+import { STANDARD_DISTANCES, type LeaderboardEntry } from '$lib/leaderboard';
 import type { Sport, Workout, WorkoutDetail } from '../types';
-
-const STANDARD_PB_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
 export const DETAIL_PAYLOAD_VERSION = 1;
@@ -126,7 +125,7 @@ export async function getPbWorkoutIds(
 	const ids = new Set<number>();
 	const statements: D1PreparedStatement[] = [];
 	const targets: number[] = [];
-	for (const target of STANDARD_PB_DISTANCES) {
+	for (const target of STANDARD_DISTANCES) {
 		const tol = target * 0.02;
 		let sql = `SELECT workout_id FROM workouts
 			WHERE user_id = ? AND distance BETWEEN ? AND ? AND time > 0`;
@@ -408,7 +407,8 @@ export async function deleteUserData(db: D1Database, userId: number): Promise<vo
 	await db.batch([
 		db.prepare('DELETE FROM workouts WHERE user_id = ?').bind(userId),
 		db.prepare('DELETE FROM workout_detail WHERE user_id = ?').bind(userId),
-		db.prepare('DELETE FROM sync_state WHERE user_id = ?').bind(userId)
+		db.prepare('DELETE FROM sync_state WHERE user_id = ?').bind(userId),
+		db.prepare('DELETE FROM leaderboard_entry WHERE user_id = ?').bind(userId)
 	]);
 }
 
@@ -518,5 +518,99 @@ export async function getShareToken(
 		return row?.share_token ?? null;
 	} catch {
 		return null;
+	}
+}
+
+/** A leaderboard row plus its owning user id (kept server-side only). */
+export interface LeaderboardRow extends LeaderboardEntry {
+	userId: number;
+}
+
+/**
+ * Publish (or update) one athlete's entry on a board, keeping only their faster
+ * result. Best-effort: the leaderboard is a feature, never a source of truth.
+ */
+export async function upsertLeaderboardEntry(
+	db: D1Database | undefined,
+	row: LeaderboardRow
+): Promise<void> {
+	if (!db) return;
+	try {
+		await db
+			.prepare(
+				`INSERT INTO leaderboard_entry
+				   (sport, distance, user_id, workout_id, display_name, time, pace, date, share_token, published_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				 ON CONFLICT(sport, distance, user_id) DO UPDATE SET
+				   workout_id=excluded.workout_id,
+				   display_name=excluded.display_name,
+				   time=excluded.time,
+				   pace=excluded.pace,
+				   date=excluded.date,
+				   share_token=excluded.share_token,
+				   published_at=excluded.published_at
+				 WHERE excluded.time < leaderboard_entry.time`
+			)
+			.bind(
+				row.sport,
+				row.distance,
+				row.userId,
+				row.workoutId,
+				row.displayName,
+				row.time,
+				row.pace,
+				row.date,
+				row.shareToken ?? null,
+				nowEpochMillis()
+			)
+			.run();
+	} catch (e) {
+		console.error('upsertLeaderboardEntry failed:', (e as Error).message ?? e);
+	}
+}
+
+/** All published leaderboard entries (every board). user_id is kept for `isYou`. */
+export async function getLeaderboardEntries(
+	db: D1Database | undefined
+): Promise<LeaderboardRow[]> {
+	if (!db) return [];
+	try {
+		const res = await db
+			.prepare(
+				// Cap each board at its top 100 results so a large table never
+				// loads wholesale into the Worker on every /leaderboard render.
+				`SELECT sport, distance, user_id, workout_id, display_name, time, pace, date, share_token
+				 FROM (
+				   SELECT sport, distance, user_id, workout_id, display_name, time, pace, date, share_token,
+				          ROW_NUMBER() OVER (PARTITION BY sport, distance ORDER BY time ASC) AS rn
+				   FROM leaderboard_entry
+				 )
+				 WHERE rn <= 100
+				 ORDER BY sport, distance, time ASC`
+			)
+			.all<{
+				sport: Sport;
+				distance: number;
+				user_id: number;
+				workout_id: number;
+				display_name: string;
+				time: number;
+				pace: number;
+				date: string;
+				share_token: string | null;
+			}>();
+		return (res.results ?? []).map((r) => ({
+			sport: r.sport,
+			distance: r.distance,
+			userId: r.user_id,
+			workoutId: r.workout_id,
+			displayName: r.display_name,
+			time: r.time,
+			pace: r.pace,
+			date: r.date,
+			shareToken: r.share_token ?? undefined
+		}));
+	} catch {
+		return [];
 	}
 }

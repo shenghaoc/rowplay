@@ -238,8 +238,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 
 - **Live/near-live mode**: poll the logbook (or ErgData webhook if/when available)
   so a just-finished piece shows up without a manual sync.
-- **Leaderboards / multiplayer race**: race ghosts of *other* rowplay users on the
-  same workout (extends Task 2 + Task 3's share infra).
 - **Coaching annotations**: let a coach leave timestamped notes on a shared replay.
 - **Heart-rate device import** for workouts logged without HR.
 - **More languages** beyond en/zh (the i18n infra already supports it).
