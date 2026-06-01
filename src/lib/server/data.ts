@@ -102,6 +102,8 @@ export interface SyncResult {
 	added: number;
 	total: number;
 	newPbs: DistancePB[];
+	/** Summaries upserted during this sync (for live-mode optimistic UI). */
+	workouts: Workout[];
 }
 
 /**
@@ -125,12 +127,14 @@ export async function syncWorkouts(event: RequestEvent, full = false): Promise<S
 	let totalPages = 1;
 	let added = 0;
 	let newestDate = state?.lastDate ?? null;
+	const synced: Workout[] = [];
 
 	do {
 		const { workouts, totalPages: tp } = await c.listWorkoutsPage(page, from);
 		totalPages = tp;
 		if (workouts.length) {
 			await upsertWorkouts(db, userId, workouts);
+			synced.push(...workouts);
 			added += workouts.length;
 			for (const w of workouts) {
 				if (!newestDate || w.date > newestDate) newestDate = w.date;
@@ -143,7 +147,7 @@ export async function syncWorkouts(event: RequestEvent, full = false): Promise<S
 	await setSyncState(db, userId, newestDate, total);
 	const afterPbs = distancePBs(await getAllWorkouts(db, userId));
 	const newPbs = detectNewPBs(beforePbs, afterPbs);
-	return { added, total, newPbs };
+	return { added, total, newPbs, workouts: synced };
 }
 
 export async function loadAnnualGoal(event: RequestEvent, year: number): Promise<AnnualGoal> {

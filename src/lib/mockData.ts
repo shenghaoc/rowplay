@@ -133,12 +133,45 @@ function summaryOf(d: WorkoutDetail): Workout {
 }
 
 export function mockWorkouts(): Workout[] {
-	return SPECS.map((s) => summaryOf(detailFor(s)));
+	const staticList = SPECS.map((s) => summaryOf(detailFor(s)));
+	const generated = [...generatedSpecs.values()].map((s) => summaryOf(detailFor(s)));
+	const byId = new Map<number, Workout>();
+	for (const w of [...staticList, ...generated]) byId.set(w.id, w);
+	return [...byId.values()].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export function mockWorkoutDetail(id: number): WorkoutDetail | null {
-	const spec = SPECS.find((s) => s.id === id);
+	const spec = SPECS.find((s) => s.id === id) ?? generatedSpecs.get(id);
 	return spec ? detailFor(spec) : null;
+}
+
+const MOCK_TEMPLATES: Omit<Spec, 'id' | 'date'>[] = [
+	{ sport: 'rower', distance: 2000, basePace: 110, baseSpm: 29, baseHr: 165, workoutType: '2000m steady' },
+	{ sport: 'rower', distance: 5000, basePace: 118, baseSpm: 26, baseHr: 158, workoutType: '5000m steady' },
+	{ sport: 'skierg', distance: 1000, basePace: 124, baseSpm: 41, baseHr: 163, workoutType: '1000m SkiErg' },
+	{ sport: 'bike', distance: 4000, basePace: 98, baseSpm: 82, baseHr: 152, workoutType: '4000m BikeErg' },
+	{ sport: 'rower', distance: 500, basePace: 100, baseSpm: 35, baseHr: 170, workoutType: '500m sprint' }
+];
+
+/** Runtime demo workouts created by live-mode mock polling. */
+const generatedSpecs = new Map<number, Spec>();
+
+/** Synthesise a new demo workout for live-mode mock polling. */
+export function generateMockWorkout(existingIds: Iterable<number>): Workout {
+	const used = new Set(existingIds);
+	let id = 2000 + Math.floor(Math.random() * 8000);
+	while (used.has(id)) id++;
+	const tpl = MOCK_TEMPLATES[Math.floor(Math.random() * MOCK_TEMPLATES.length)];
+	const now = new Date();
+	const spec: Spec = {
+		id,
+		date: now.toISOString().slice(0, 19).replace('T', ' '),
+		...tpl
+	};
+	generatedSpecs.set(id, spec);
+	// Cap the generated map to avoid unbounded growth in long-running isolates.
+	if (generatedSpecs.size > 50) generatedSpecs.delete(generatedSpecs.keys().next().value!);
+	return summaryOf(detailFor(spec));
 }
 
 function avg(xs: number[]): number {

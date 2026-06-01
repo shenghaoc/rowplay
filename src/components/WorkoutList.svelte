@@ -22,6 +22,8 @@
 		pbIds?: Set<number>;
 		/** Subset of pbIds newly earned since the last sync. */
 		newPbIds?: Set<number>;
+		/** Rows recently added by live mode (fade-in animation). */
+		newEntryIds?: Set<number>;
 	}
 
 	let {
@@ -30,7 +32,8 @@
 		compareAnchor = null,
 		onCompare,
 		pbIds = new Set(),
-		newPbIds = new Set()
+		newPbIds = new Set(),
+		newEntryIds = new Set()
 	}: Props = $props();
 
 	const ROW = 64; // px, must match .row min-height below
@@ -121,6 +124,7 @@
 				{@const w = workouts[item.index]}
 				<a
 					class="card row vrow"
+					class:new-entry={newEntryIds.has(w.id)}
 					href="/replay/{w.id}"
 					style:height="{item.size}px"
 					style:transform="translateY({item.start}px)"
@@ -135,7 +139,7 @@
 	<!-- Small list: plain flow layout. -->
 	<div class="list">
 		{#each workouts as w (w.id)}
-			<a class="card row" href="/replay/{w.id}">{@render row(w)}</a>
+			<a class="card row" class:new-entry={newEntryIds.has(w.id)} href="/replay/{w.id}">{@render row(w)}</a>
 		{/each}
 	</div>
 {/if}
@@ -171,6 +175,29 @@
 	.row:hover {
 		text-decoration: none;
 		background: var(--paper-inset);
+	}
+	.row.new-entry {
+		animation: fade-in 0.6s ease;
+	}
+	/* Virtualized rows use inline transform; animate opacity only so it
+	   doesn't fight the virtualizer's translateY. Non-virtual .row still
+	   uses transform in the keyframe for that listing mode. */
+	.vrow.new-entry {
+		animation-name: fade-in-opacity;
+	}
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+			transform: translateY(-6px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	@keyframes fade-in-opacity {
+		from { opacity: 0; }
+		to   { opacity: 1; }
 	}
 	.vrow {
 		position: absolute;

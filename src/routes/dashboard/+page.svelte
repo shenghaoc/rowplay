@@ -8,7 +8,6 @@
 	import CriticalPowerPanel from '$components/CriticalPowerPanel.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { fmtDate, fmtDateFromEpochMillis, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
-	import { logbookEpochMillis } from '$lib/datetime';
 	import {
 		distanceBand,
 		distancePBs,
@@ -23,12 +22,17 @@
 	import type { Sport, Workout } from '$lib/types';
 	import { MACHINE_COLOR } from '$lib/replay/sports';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { serializeWorkoutListQuery, type WorkoutListQuery } from '$lib/workoutQuery';
+	import { onMount } from 'svelte';
+	import { serializeWorkoutListQuery, filterAndSortWorkouts, type WorkoutListQuery } from '$lib/workoutQuery';
 	import { toast } from 'svelte-sonner';
 	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play, Activity } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
 	import { chartTheme, baseOptions } from '$lib/chartTheme';
+	import LiveModePanel from '$components/LiveModePanel.svelte';
+	import { LiveMode } from '$lib/liveMode.svelte';
+
+	import { logbookEpochMillis } from '$lib/datetime';
 
 	// Static lookup — never changes, shared across instances.
 	const formBandClass: Record<FormBand, string> = {
@@ -40,11 +44,26 @@
 	};
 
 	let { data } = $props();
-	const t = getI18nContext().t;
+	const i18n = getI18nContext();
+	const t = i18n.t;
 	const uiTheme = getThemeContext();
-	const workouts = $derived<Workout[]>(data.workouts);
-	const listWorkouts = $derived<Workout[]>(data.listWorkouts);
+	let extraWorkouts = $state<Workout[]>([]);
+	let newEntryIds = $state<Set<number>>(new Set());
 	const listQuery = $derived(data.listQuery);
+	const workouts = $derived.by(() => {
+		const byId = new Map<number, Workout>();
+		for (const w of [...extraWorkouts, ...data.workouts]) byId.set(w.id, w);
+		return [...byId.values()].sort((a, b) => b.date.localeCompare(a.date));
+	});
+	const listWorkouts = $derived.by(() =>
+		filterAndSortWorkouts(
+			workouts,
+			listQuery,
+			listQuery.pbsOnly ? pbWorkoutIds(workouts) : undefined
+		)
+	);
+
+	let liveMode = $state<LiveMode | null>(null);
 
 	const sportFilter = $derived<Sport | 'all'>(listQuery.sport ?? 'all');
 
@@ -90,6 +109,76 @@
 		compareAnchor = null;
 		goto(`/compare?a=${a}&b=${b}`);
 	}
+	function handleLiveWorkouts(batch: Workout[], newPbs: ReturnType<typeof distancePBs>) {
+		const toAdd = batch.filter((w) => !workouts.some((x) => x.id === w.id));
+		if (toAdd.length) extraWorkouts = [...toAdd, ...extraWorkouts];
+		newEntryIds = new Set([...newEntryIds, ...batch.map((w) => w.id)]);
+
+		// Global toasts/PB celebrations always fire on sync; the workout list's
+		// own filtering (via listWorkouts) decides what's actually shown.
+		if (batch.length === 1) {
+			const w = batch[0];
+			toast.success(t('liveMode.newWorkout', {
+				distance: fmtDistance(w.distance),
+				time: fmtTime(w.time, true),
+				sport: SPORT_LABEL[w.sport]
+			}), {
+				duration: 8000,
+				action: { label: t('liveMode.view'), onClick: () => goto(`/replay/${w.id}`) }
+			});
+		} else {
+			toast.success(t('liveMode.newWorkouts', { count: batch.length }), { duration: 8000 });
+		}
+
+		if (newPbs.length === 1) {
+			const pb = newPbs[0];
+			const dist = pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`;
+			toast.success(t('dashboard.pbCelebrate', { distance: dist, time: fmtTime(pb.time, true) }));
+		} else if (newPbs.length > 1) {
+			toast.success(t('dashboard.pbCelebrateMore', { count: newPbs.length }));
+		}
+
+		// The PB was just earned this tick, so its workout is in `batch` — match
+		// there rather than scanning all history (faster, no $derived-flush race).
+		newPbIds = new Set([
+			...newPbIds,
+			...newPbs
+				.map((pb) =>
+					batch.find(
+						(w) =>
+							w.sport === pb.sport &&
+							Math.abs(w.distance - pb.distance) <= pb.distance * 0.02 &&
+							w.time === pb.time
+					)?.id
+				)
+				.filter((id): id is number => id != null)
+		]);
+	}
+
+	onMount(() => {
+		const lm = new LiveMode(!!data.demo, {
+			onWorkouts: handleLiveWorkouts,
+			onError: (message, code) => {
+				if (code === 401) {
+					lm.stop();
+					lm.setEnabled(false);
+					toast.error(t('liveMode.reauth'));
+					return;
+				}
+				if (code === 429) {
+					toast.warning(t('liveMode.rateLimit'));
+					return;
+				}
+				toast.error(t('liveMode.error'), { description: `${message}. ${t('liveMode.errorRetry')}` });
+			},
+			onRecovered: () => toast.success(t('liveMode.recovered')),
+			t
+		}, data.workouts.map((w) => w.id));
+		liveMode = lm;
+		if (lm.enabled) lm.start();
+		return () => lm.destroy();
+	});
+
 	async function sync() {
 		if (syncing) return;
 		syncing = true;
@@ -135,6 +224,7 @@
 					)
 					.filter((id): id is number => id != null)
 			);
+			liveMode?.resetTimer();
 		} catch (e) {
 			toast.error(t('sync.failed'), {
 				id: toastId,
@@ -442,6 +532,10 @@
 		<p class="syncnote muted">{t('dashboard.recentNote')}</p>
 	{/if}
 
+	{#if liveMode}
+		<LiveModePanel live={liveMode} />
+	{/if}
+
 	<!-- Latest session: pace front and centre -->
 	{#if latest}
 		<a class="card latest" href="/replay/{latest.id}">
@@ -702,7 +796,7 @@
 			<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
 		</p>
 	{/if}
-	<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} pbIds={pbIds} newPbIds={newPbIds} />
+	<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} pbIds={pbIds} {newPbIds} {newEntryIds} />
 </div>
 
 <style>
