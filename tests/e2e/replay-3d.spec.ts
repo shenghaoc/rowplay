@@ -1,4 +1,20 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
+
+/**
+ * The 3D toggle is disabled during hydration (`webglOk` starts false until the
+ * onMount WebGL probe runs) and stays disabled where WebGL is unavailable.
+ * Resolve to whether 3D is actually supported only once the probe has settled,
+ * so callers don't race the transient disabled→enabled flip — a slow CI
+ * WebServer widens that window and was flaking the `else` branch.
+ */
+async function supports3d(btn3d: Locator): Promise<boolean> {
+	try {
+		await expect(btn3d).toBeEnabled({ timeout: 15_000 });
+		return true;
+	} catch {
+		return false;
+	}
+}
 
 test.describe('replay 3D view toggle', () => {
 	test('2D/3D toggle is present and canvas stays mounted', async ({ page }) => {
@@ -15,7 +31,7 @@ test.describe('replay 3D view toggle', () => {
 
 		await expect(btn2d).toHaveAttribute('aria-pressed', 'true');
 
-		if (await btn3d.isEnabled()) {
+		if (await supports3d(btn3d)) {
 			await btn3d.click();
 			// Lazy Three.js chunk can take several seconds on CI WebKit.
 			await expect(btn3d).toHaveAttribute('aria-pressed', 'true', { timeout: 30_000 });
@@ -45,7 +61,7 @@ test.describe('replay 3D view toggle', () => {
 			});
 			const btn3d = group.getByRole('button', { name: /^3D$/ });
 
-			if (await btn3d.isEnabled()) {
+			if (await supports3d(btn3d)) {
 				await btn3d.click();
 				await expect(btn3d).toHaveAttribute('aria-pressed', 'true', { timeout: 30_000 });
 				await expect(page.locator('.canvas3d-host canvas')).toBeVisible();
