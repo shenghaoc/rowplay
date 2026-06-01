@@ -102,6 +102,12 @@ export class LiveMode {
 	stop() {
 		this.status = 'stopped';
 		this.clearTimer();
+		if (this.debounceTimer) {
+			clearTimeout(this.debounceTimer);
+			this.debounceTimer = null;
+		}
+		this.pendingWorkouts = [];
+		this.pendingPbs = [];
 		this.abort?.abort();
 		this.abort = null;
 		this.nextPollAt = null;
@@ -126,7 +132,9 @@ export class LiveMode {
 		} else if (!visible && this.tabVisible) {
 			this.tabVisible = false;
 			this.abort?.abort();
-			this.scheduleNext(0);
+			// Tab went to the background: don't fire an immediate poll (that
+			// defeats backgrounding) — reschedule at the reduced interval.
+			this.scheduleNext(effectiveIntervalSec(this.intervalSec, false) * 1000);
 		}
 	};
 
@@ -233,18 +241,23 @@ export class LiveMode {
 	}
 }
 
+// One shared, lazily-created AudioContext: creating one per chime hits
+// browser concurrent-context limits and leaks contexts that autoplay policy
+// leaves 'suspended' (so onended never fires to close them).
+let sharedCtx: AudioContext | null = null;
+
 function playChime() {
 	try {
-		const ctx = new AudioContext();
-		const osc = ctx.createOscillator();
-		const gain = ctx.createGain();
+		sharedCtx ??= new AudioContext();
+		if (sharedCtx.state === 'suspended') void sharedCtx.resume();
+		const osc = sharedCtx.createOscillator();
+		const gain = sharedCtx.createGain();
 		osc.connect(gain);
-		gain.connect(ctx.destination);
+		gain.connect(sharedCtx.destination);
 		osc.frequency.value = 880;
 		gain.gain.value = 0.05;
 		osc.start();
-		osc.stop(ctx.currentTime + 0.12);
-		osc.onended = () => void ctx.close();
+		osc.stop(sharedCtx.currentTime + 0.12);
 	} catch {
 		/* audio optional */
 	}

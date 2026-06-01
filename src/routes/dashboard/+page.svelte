@@ -110,17 +110,12 @@
 		goto(`/compare?a=${a}&b=${b}`);
 	}
 	function handleLiveWorkouts(batch: Workout[], newPbs: ReturnType<typeof distancePBs>) {
-		const matching = filterAndSortWorkouts(
-			batch,
-			listQuery,
-			listQuery.pbsOnly ? pbWorkoutIds([...workouts, ...batch]) : undefined
-		);
 		const toAdd = batch.filter((w) => !workouts.some((x) => x.id === w.id));
 		if (toAdd.length) extraWorkouts = [...toAdd, ...extraWorkouts];
 		newEntryIds = new Set([...newEntryIds, ...batch.map((w) => w.id)]);
 
-		if (matching.length === 0 && batch.length > 0) return;
-
+		// Global toasts/PB celebrations always fire on sync; the workout list's
+		// own filtering (via listWorkouts) decides what's actually shown.
 		if (batch.length === 1) {
 			const w = batch[0];
 			toast.success(t('liveMode.newWorkout', {
@@ -143,11 +138,13 @@
 			toast.success(t('dashboard.pbCelebrateMore', { count: newPbs.length }));
 		}
 
+		// The PB was just earned this tick, so its workout is in `batch` — match
+		// there rather than scanning all history (faster, no $derived-flush race).
 		newPbIds = new Set([
 			...newPbIds,
 			...newPbs
 				.map((pb) =>
-					workouts.find(
+					batch.find(
 						(w) =>
 							w.sport === pb.sport &&
 							Math.abs(w.distance - pb.distance) <= pb.distance * 0.02 &&
