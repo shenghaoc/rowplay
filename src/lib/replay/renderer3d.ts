@@ -132,13 +132,21 @@ interface SportProfile {
 	make(accent: number, castShadow: boolean, opacity: number): Avatar;
 }
 
-/** Make every mesh in a group translucent (used for the ghost lane). */
-function applyOpacity(group: THREE.Group, opacity: number): void {
-	if (opacity >= 1) return;
+/**
+ * Finalize an avatar group: cast shadows from every mesh (so heads, oars, poles,
+ * wheels etc. aren't left floating shadowless) and, for the ghost lane, make all
+ * materials translucent. Handles both single and multi-material meshes.
+ */
+function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number): void {
 	group.traverse((o) => {
-		if (o instanceof THREE.Mesh && o.material instanceof THREE.Material) {
-			o.material.transparent = true;
-			o.material.opacity = opacity;
+		if (!(o instanceof THREE.Mesh)) return;
+		o.castShadow = castShadow;
+		const mats = Array.isArray(o.material) ? o.material : [o.material];
+		for (const mat of mats) {
+			if (opacity < 1 && mat instanceof THREE.Material) {
+				mat.transparent = true;
+				mat.opacity = opacity;
+			}
 		}
 	});
 }
@@ -158,7 +166,6 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
 	hull.scale.set(0.5, 0.42, 1); // narrow + low profile
 	hull.position.y = 0.16;
 	hull.userData.accent = true;
-	hull.castShadow = castShadow;
 	group.add(hull);
 
 	const deck = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 2.6), accentMat());
@@ -173,7 +180,6 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
 		new THREE.MeshStandardMaterial({ color: 0x2a2f36, roughness: 0.8 })
 	);
 	torso.position.y = 0.5;
-	torso.castShadow = castShadow;
 	const head = new THREE.Mesh(
 		new THREE.SphereGeometry(0.13, 8, 6),
 		new THREE.MeshStandardMaterial({ color: 0xd8b48a, roughness: 0.7 })
@@ -222,7 +228,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
 		}
 	};
 
-	applyOpacity(group, opacity);
+	finalizeAvatar(group, castShadow, opacity);
 	return { group, animate };
 }
 
@@ -242,7 +248,6 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
 		const ski = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 2.4), accentMat());
 		ski.position.set(side * 0.18, 0.03, 0.2);
 		ski.userData.accent = true;
-		ski.castShadow = castShadow;
 		group.add(ski);
 	}
 
@@ -250,7 +255,6 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
 	for (const side of [-1, 1]) {
 		const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.6, 0.18), neutralMat(0x2a2f36));
 		leg.position.set(side * 0.16, 0.4, 0);
-		leg.castShadow = castShadow;
 		group.add(leg);
 	}
 	const upper = new THREE.Group();
@@ -258,7 +262,6 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
 	const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.55, 0.28), accentMat());
 	torso.position.y = 0.28;
 	torso.userData.accent = true;
-	torso.castShadow = castShadow;
 	const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), neutralMat(0xd8b48a));
 	head.position.y = 0.7;
 	upper.add(torso, head);
@@ -295,7 +298,7 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
 		for (const p of poles) p.rotation.x = swing * 0.9 - 0.1;
 	};
 
-	applyOpacity(group, opacity);
+	finalizeAvatar(group, castShadow, opacity);
 	return { group, animate };
 }
 
@@ -320,7 +323,6 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
 			neutralMat(0x20242a, 0.6)
 		);
 		tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
-		tyre.castShadow = castShadow;
 		wheel.add(tyre);
 		// A bright cross-spoke makes the spin legible at low poly.
 		const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.04, wheelR * 1.8, 0.04), accentMat());
@@ -357,7 +359,6 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
 	torso.rotation.x = 0.6; // aero tuck
 	torso.position.y = 0.3;
 	torso.userData.accent = true;
-	torso.castShadow = castShadow;
 	const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), neutralMat(0xd8b48a));
 	head.position.set(0, 0.62, 0.35);
 	const thighs: THREE.Mesh[] = [];
@@ -384,7 +385,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
 		thighs[1].rotation.x = Math.sin(phase + Math.PI) * 0.5;
 	};
 
-	applyOpacity(group, opacity);
+	finalizeAvatar(group, castShadow, opacity);
 	return { group, animate };
 }
 
