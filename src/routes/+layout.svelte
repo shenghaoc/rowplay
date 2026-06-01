@@ -32,6 +32,19 @@
 		menuOpen = false;
 	});
 
+	$effect(() => {
+		if (!menuOpen) return;
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') {
+				closeMenu();
+			}
+		};
+
+		window.addEventListener('keydown', handleKeyDown);
+		return () => window.removeEventListener('keydown', handleKeyDown);
+	});
+
 	onMount(() => initPwaUpdate(i18n));
 </script>
 
@@ -101,7 +114,12 @@
 	</div>
 
 	{#if menuOpen}
-		<button class="scrim mobile-only" type="button" aria-label={t('nav.menuClose')} onclick={closeMenu}
+		<button
+			class="scrim mobile-only"
+			type="button"
+			tabindex="-1"
+			aria-label={t('nav.menuClose')}
+			onclick={closeMenu}
 		></button>
 		<div id="mobile-nav" class="mobile-drawer mobile-only">
 			<nav class="drawer-nav" aria-label="Main">
@@ -169,6 +187,8 @@
 		border-bottom: var(--bd-heavy);
 	}
 	.mast-inner {
+		position: relative;
+		z-index: 12;
 		max-width: 1160px;
 		margin: 0 auto;
 		display: flex;
@@ -270,7 +290,6 @@
 	.scrim {
 		position: fixed;
 		inset: 0;
-		top: 54px;
 		border: 0;
 		padding: 0;
 		background: rgb(15 42 54 / 0.35);
