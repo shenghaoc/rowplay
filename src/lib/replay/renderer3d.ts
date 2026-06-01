@@ -25,18 +25,18 @@ function clamp01(v: number): number {
 interface QualityConfig {
 	dprCap: number;
 	antialias: boolean;
-	/** Plane segments per side (1 = flat, no wave displacement). */
-	waterSegments: number;
-	waves: boolean;
+	/** Plane segments per side (1 = flat, no displacement). */
+	groundSegments: number;
+	displacement: boolean;
 	shadows: boolean;
 	/** Number of wake segments trailing each boat (0 = no wake). */
 	wake: number;
 }
 
 const QUALITY: Record<RenderQuality, QualityConfig> = {
-	low: { dprCap: 1, antialias: false, waterSegments: 1, waves: false, shadows: false, wake: 0 },
-	medium: { dprCap: 2, antialias: true, waterSegments: 16, waves: true, shadows: false, wake: 16 },
-	high: { dprCap: 2, antialias: true, waterSegments: 28, waves: true, shadows: true, wake: 28 }
+	low: { dprCap: 1, antialias: false, groundSegments: 1, displacement: false, shadows: false, wake: 0 },
+	medium: { dprCap: 2, antialias: true, groundSegments: 16, displacement: true, shadows: false, wake: 16 },
+	high: { dprCap: 2, antialias: true, groundSegments: 28, displacement: true, shadows: true, wake: 28 }
 };
 
 function makeTextSprite(
@@ -478,6 +478,7 @@ class WakeTrail {
 	}
 
 	dispose(): void {
+		for (const seg of this.segs) seg.removeFromParent();
 		for (const m of this.mats) m.dispose();
 	}
 }
@@ -501,8 +502,8 @@ export class CourseRenderer3D implements ReplayRenderer {
 	private cameraInit = false;
 	private w = 0;
 	private h = 0;
-	private waterPhase = 0;
-	private lastWaterPhase = NaN;
+	private animPhase = 0;
+	private lastAnimPhase = NaN;
 	private strokePhase = 0;
 	private lastLiveMeters = 0;
 	private lastGhostMeters = 0;
@@ -616,7 +617,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 	}
 
 	private buildStaticScene(): void {
-		const seg = this.profile.waves ? this.cfg.waterSegments : 1;
+		const seg = this.profile.waves ? this.cfg.groundSegments : 1;
 		const groundGeo = this.track(new THREE.PlaneGeometry(140, 140, seg, seg));
 		const groundMat = this.mat(
 			new THREE.MeshStandardMaterial({
@@ -749,12 +750,12 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const bob =
 			reduce || this.profile.bobAmp === 0
 				? 0
-				: Math.sin(this.waterPhase * 2 + cadence * 0.1) * this.profile.bobAmp;
+				: Math.sin(this.animPhase * 2 + cadence * 0.1) * this.profile.bobAmp;
 		outer.position.set(x, 0, z);
 		outer.rotation.y = Math.atan2(tx, tz); // local +Z (travel) -> tangent
 		avatar.group.position.y = bob;
 		avatar.group.rotation.z =
-			reduce || !this.profile.roll ? 0 : Math.sin(this.waterPhase + cadence * 0.05) * 0.05;
+			reduce || !this.profile.roll ? 0 : Math.sin(this.animPhase + cadence * 0.05) * 0.05;
 		avatar.animate(this.strokePhase, reduce);
 		return { x, z, tx, tz, y: bob };
 	}
@@ -765,7 +766,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const C = themeName === 'dark' ? COLORS_DARK : COLORS_LIGHT;
 		this.reduceMotion = prefersReducedMotion();
 
-		if (playing && !this.reduceMotion) this.waterPhase += 0.04 + state.frame.spm / 800;
+		if (playing && !this.reduceMotion) this.animPhase += 0.04 + state.frame.spm / 800;
 
 		// Stroke phase is driven by distance travelled (~11 m/stroke), so it speeds
 		// up with playback rate and freezes when paused — and stays in sync with the
@@ -780,9 +781,9 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const water = this.groundMesh;
 		const reduceMotionChanged = this.reduceMotion !== this.lastReduceMotion;
 		if (
-			this.cfg.waves &&
+			this.cfg.displacement &&
 			this.profile.waves &&
-			(this.waterPhase !== this.lastWaterPhase || reduceMotionChanged) &&
+			(this.animPhase !== this.lastAnimPhase || reduceMotionChanged) &&
 			water?.geometry instanceof THREE.PlaneGeometry
 		) {
 			const pos = water.geometry.attributes.position;
@@ -792,11 +793,11 @@ export class CourseRenderer3D implements ReplayRenderer {
 				const idx = i * 3;
 				// local y (arr[idx+1]) maps to world Z after the -90° X rotation, so
 				// ripples run along the course rather than as uniform cross-lane bands.
-				arr[idx + 2] = this.reduceMotion ? 0 : Math.sin(arr[idx + 1] * 0.25 + this.waterPhase) * 0.08;
+				arr[idx + 2] = this.reduceMotion ? 0 : Math.sin(arr[idx + 1] * 0.25 + this.animPhase) * 0.08;
 			}
 			pos.needsUpdate = true;
 			water.geometry.computeVertexNormals();
-			this.lastWaterPhase = this.waterPhase;
+			this.lastAnimPhase = this.animPhase;
 			this.lastReduceMotion = this.reduceMotion;
 		}
 
