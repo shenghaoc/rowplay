@@ -127,8 +127,11 @@ export function withAlpha(color: string, alpha: number): string {
 	}
 	const rgb = /^rgba?\(([^)]+)\)$/i.exec(color.trim());
 	if (rgb) {
-		const [r, g, b] = rgb[1].split(',').map((p) => p.trim());
-		return `rgba(${r}, ${g}, ${b}, ${a})`;
+		// Handle both legacy `rgb(10, 20, 30)` and CSS Color Level 4
+		// space-separated `rgb(10 20 30 / 0.5)` (which getComputedStyle may
+		// return) by splitting on commas, whitespace, or the alpha slash.
+		const [r, g, b] = rgb[1].split(/[\s,/]+/).filter(Boolean);
+		if (r != null && g != null && b != null) return `rgba(${r}, ${g}, ${b}, ${a})`;
 	}
 	return color;
 }

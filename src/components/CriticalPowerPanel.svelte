@@ -79,6 +79,8 @@
 			xFmt: fmtDurationAxis,
 			yAxes: [{ size: 48, fmt: (v) => `${Math.round(v)}` }],
 			series: [
+				// Actual points use the power token (this is a power-duration curve);
+				// the modelled line borrows dps (blue) for contrast — no dedicated token.
 				{ label: t('dashboard.cpChartActual'), role: 'power', width: 0, points: 7 },
 				{ label: t('dashboard.cpChartModel'), role: 'dps', width: 2 }
 			]

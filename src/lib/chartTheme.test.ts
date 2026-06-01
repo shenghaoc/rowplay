@@ -19,6 +19,11 @@ describe('withAlpha', () => {
 		expect(withAlpha('rgba(10, 20, 30, 0.9)', 0.1)).toBe('rgba(10, 20, 30, 0.1)');
 	});
 
+	it('parses CSS Color Level 4 space-separated rgb()', () => {
+		expect(withAlpha('rgb(10 20 30)', 0.4)).toBe('rgba(10, 20, 30, 0.4)');
+		expect(withAlpha('rgb(10 20 30 / 0.9)', 0.1)).toBe('rgba(10, 20, 30, 0.1)');
+	});
+
 	it('clamps alpha into [0, 1]', () => {
 		expect(withAlpha('#000000', 5)).toBe('rgba(0, 0, 0, 1)');
 		expect(withAlpha('#000000', -2)).toBe('rgba(0, 0, 0, 0)');
@@ -43,21 +48,24 @@ describe('chartTheme (no DOM)', () => {
 });
 
 // A deterministic palette so baseOptions assertions don't depend on the DOM.
+// Uses real 6-digit hex (the actual light tokens) so fill assertions exercise
+// withAlpha for real — non-hex placeholders would fall through unchanged and
+// make the alpha checks vacuous.
 const theme: ChartTheme = {
-	axis: '#axis0',
-	grid: '#grid0',
-	cursor: '#curs0',
+	axis: '#606060',
+	grid: '#707070',
+	cursor: '#808080',
 	role: {
-		pace: '#pace0',
-		rate: '#rate0',
-		power: '#powr0',
-		hr: '#hr0000',
-		dps: '#dps000',
-		live: '#live00',
-		ghost: '#ghost0',
-		ahead: '#ahead0',
-		behind: '#behnd0',
-		fit: '#fit000'
+		pace: '#dc4327',
+		rate: '#2c6e63',
+		power: '#9e5b2d',
+		hr: '#8e4a6b',
+		dps: '#3f6e8c',
+		live: '#dc4327',
+		ghost: '#1e4e6b',
+		ahead: '#5e6b2c',
+		behind: '#c2851a',
+		fit: '#9a8f79'
 	}
 };
 
@@ -70,8 +78,8 @@ describe('baseOptions', () => {
 		expect(o.scales).toEqual({ x: { time: false }, y: {} });
 		// uPlot needs a leading x placeholder series.
 		expect(o.series[0]).toEqual({});
-		expect(o.series[1]).toMatchObject({ label: 'Pace', scale: 'y', stroke: '#pace0', width: 2 });
-		expect(o.axes?.[0]).toMatchObject({ stroke: '#axis0', grid: { stroke: '#grid0' } });
+		expect(o.series[1]).toMatchObject({ label: 'Pace', scale: 'y', stroke: '#dc4327', width: 2 });
+		expect(o.axes?.[0]).toMatchObject({ stroke: '#606060', grid: { stroke: '#707070' } });
 		expect(o.legend).toEqual({ show: false });
 		// No cursor key unless asked.
 		expect(o.cursor).toBeUndefined();
@@ -83,17 +91,18 @@ describe('baseOptions', () => {
 	});
 
 	it('applies area fill with the default alpha for fill:true and a custom alpha otherwise', () => {
+		// Assert the literal rgba() so the alpha is actually verified (rate = #2c6e63).
 		const dflt = baseOptions({ theme, series: [{ label: 'P', role: 'rate', fill: true }] });
-		expect(dflt.series[1].fill).toBe(withAlpha('#rate0', 0.13));
+		expect(dflt.series[1].fill).toBe('rgba(44, 110, 99, 0.13)');
 		const custom = baseOptions({ theme, series: [{ label: 'P', role: 'rate', fill: 0.5 }] });
-		expect(custom.series[1].fill).toBe(withAlpha('#rate0', 0.5));
+		expect(custom.series[1].fill).toBe('rgba(44, 110, 99, 0.5)');
 		const none = baseOptions({ theme, series: [{ label: 'P', role: 'rate' }] });
 		expect(none.series[1].fill).toBeUndefined();
 	});
 
 	it('shows sized point markers or hides them', () => {
 		const pts = baseOptions({ theme, series: [{ label: 'P', role: 'dps', points: 7 }] });
-		expect(pts.series[1].points).toEqual({ show: true, size: 7, stroke: '#dps000', fill: '#dps000' });
+		expect(pts.series[1].points).toEqual({ show: true, size: 7, stroke: '#3f6e8c', fill: '#3f6e8c' });
 		const off = baseOptions({ theme, series: [{ label: 'P', role: 'dps' }] });
 		expect(off.series[1].points).toEqual({ show: false });
 	});
@@ -114,7 +123,7 @@ describe('baseOptions', () => {
 		expect(o.scales).toMatchObject({ x: { time: true }, y: {}, tsb: {} });
 		expect(o.axes).toHaveLength(3); // x + 2 y axes
 		expect(o.axes?.[2]).toMatchObject({ scale: 'tsb', side: 1, grid: { show: false } });
-		expect(o.series[2]).toMatchObject({ scale: 'tsb', stroke: '#ahead0' });
+		expect(o.series[2]).toMatchObject({ scale: 'tsb', stroke: '#5e6b2c' });
 	});
 
 	it('wires axis tick formatters through to uPlot values functions', () => {

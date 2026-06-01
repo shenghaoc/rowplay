@@ -243,6 +243,11 @@
 	// toggle and reads the live design tokens (see chartTheme).
 	const chart = $derived(chartTheme(uiTheme.value));
 
+	// Fitness/fatigue/form (CTL/ATL/TSB) have no dedicated palette tokens; they
+	// deliberately borrow dps (blue) / power (amber) / ahead (green) for three
+	// distinct, on-brand hues. The matching stat readouts below reuse the same
+	// borrow. If a dedicated token is ever wanted, add a role rather than inlining
+	// hex. (Same borrowing applies to trendOptions and CriticalPowerPanel.)
 	const formOptions = $derived.by(() =>
 		baseOptions({
 			theme: chart,
@@ -369,6 +374,8 @@
 	}
 
 	const trendOptions = $derived.by(() => {
+		// pace/dps map to their own tokens; distance borrows ahead (green) and rate
+		// (spm) borrows the rate token — see the formOptions note on borrowing.
 		const role =
 			metric === 'pace' ? 'pace' : metric === 'distance' ? 'ahead' : metric === 'dps' ? 'dps' : 'rate';
 		return baseOptions({

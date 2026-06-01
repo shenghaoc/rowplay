@@ -44,8 +44,14 @@
 				? getComputedStyle(document.documentElement).getPropertyValue('--ink-3').trim() || '#7a7062'
 				: '#7a7062';
 		const drawHook = (u: uPlot) => {
-			if (marker == null) return;
-			const cx = u.valToPos(marker, 'x', true);
+			// Read `marker` untracked. uPlot draws synchronously during construction,
+			// so this hook runs inside the build `$effect`; a tracked read would make
+			// the rebuild effect depend on `marker` and tear down/recreate the whole
+			// chart on every animation frame of a replay. Marker moves are handled
+			// cheaply by the dedicated redraw effect below instead.
+			const m = untrack(() => marker);
+			if (m == null) return;
+			const cx = u.valToPos(m, 'x', true);
 			if (!isFinite(cx)) return;
 			const ctx = u.ctx;
 			ctx.save();
