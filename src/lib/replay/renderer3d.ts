@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { ReplayRenderer, RenderState } from './renderer';
 import { COLORS_DARK, COLORS_LIGHT } from './renderer';
 import type { RenderQuality } from './replayRenderer';
+import type { Sport } from '../types';
 import { fmtPace } from '../format';
 
 const reducedMotionQuery =
@@ -24,18 +25,18 @@ function clamp01(v: number): number {
 interface QualityConfig {
 	dprCap: number;
 	antialias: boolean;
-	/** Plane segments per side (1 = flat, no wave displacement). */
-	waterSegments: number;
-	waves: boolean;
+	/** Plane segments per side (1 = flat, no displacement). */
+	groundSegments: number;
+	displacement: boolean;
 	shadows: boolean;
 	/** Number of wake segments trailing each boat (0 = no wake). */
 	wake: number;
 }
 
 const QUALITY: Record<RenderQuality, QualityConfig> = {
-	low: { dprCap: 1, antialias: false, waterSegments: 1, waves: false, shadows: false, wake: 0 },
-	medium: { dprCap: 2, antialias: true, waterSegments: 16, waves: true, shadows: false, wake: 16 },
-	high: { dprCap: 2, antialias: true, waterSegments: 28, waves: true, shadows: true, wake: 28 }
+	low: { dprCap: 1, antialias: false, groundSegments: 1, displacement: false, shadows: false, wake: 0 },
+	medium: { dprCap: 2, antialias: true, groundSegments: 16, displacement: true, shadows: false, wake: 16 },
+	high: { dprCap: 2, antialias: true, groundSegments: 28, displacement: true, shadows: true, wake: 28 }
 };
 
 function makeTextSprite(
@@ -98,20 +99,64 @@ function updateTextSprite(
 	sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
 }
 
-/** Animatable parts of a single scull, returned by `makeShell`. */
-interface Shell {
+/**
+ * A low-poly athlete + machine for one lane. `group` is placed on the lap
+ * circle (and receives bob/roll); `animate(phase, reduceMotion)` drives the
+ * sport-specific motion (oar sweep, double-pole, pedalling) from the shared
+ * distance-driven stroke phase. Parts that carry `userData.accent` re-theme to
+ * the per-lane accent (`--live` / `--ghost`); skin/kit/shafts stay fixed.
+ * Local +Z is the direction of travel.
+ */
+interface Avatar {
 	group: THREE.Group;
-	rower: THREE.Group;
-	oars: THREE.Group[]; // [port (-x), starboard (+x)]
+	animate(phase: number, reduceMotion: boolean): void;
+}
+
+/** Per-sport scene + animation tuning. */
+interface SportProfile {
+	/** Displace the ground plane into rolling water. */
+	waves: boolean;
+	/** Lean the avatar side-to-side (hull roll on water). */
+	roll: boolean;
+	/** Vertical bob amplitude (0 = planted). */
+	bobAmp: number;
+	/** Distance (m) per full animation cycle — drives stroke/pedal cadence. */
+	metersPerCycle: number;
+	/** Ground opacity (water is translucent; snow/asphalt solid). */
+	groundOpacity: number;
+	/** Trailing-spray colour, or `null` for sports that leave no wake. */
+	trailColor: number | null;
+	/** Ground base colour for the active theme. */
+	groundColor(theme: 'light' | 'dark'): number;
+	/** Build the lane avatar (athlete + machine). */
+	make(accent: number, castShadow: boolean, opacity: number): Avatar;
+}
+
+/**
+ * Finalize an avatar group: cast shadows from every mesh (so heads, oars, poles,
+ * wheels etc. aren't left floating shadowless) and, for the ghost lane, make all
+ * materials translucent. Handles both single and multi-material meshes.
+ */
+function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number): void {
+	group.traverse((o) => {
+		if (!(o instanceof THREE.Mesh)) return;
+		o.castShadow = castShadow;
+		const mats = Array.isArray(o.material) ? o.material : [o.material];
+		for (const mat of mats) {
+			if (opacity < 1 && mat instanceof THREE.Material) {
+				mat.transparent = true;
+				mat.opacity = opacity;
+			}
+		}
+	});
 }
 
 /**
  * Low-poly single scull: long thin hull (capsule), a seated rower, and two oars
- * with blades. The hull, deck and oar blades carry `userData.accent` so the
- * per-boat accent colour (live `--live` / ghost `--ghost`) can be re-themed
- * without touching the rower (kit/skin) or oar shafts. Local +Z is the bow.
+ * with blades. The hull, deck and oar blades carry `userData.accent`; the rower
+ * slides + leans and the oars sweep/feather per stroke.
  */
-function makeShell(accent: number, castShadow: boolean, opacity = 1): Shell {
+function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
 	const group = new THREE.Group();
 	const accentMat = () =>
 		new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.1 });
@@ -121,7 +166,6 @@ function makeShell(accent: number, castShadow: boolean, opacity = 1): Shell {
 	hull.scale.set(0.5, 0.42, 1); // narrow + low profile
 	hull.position.y = 0.16;
 	hull.userData.accent = true;
-	hull.castShadow = castShadow;
 	group.add(hull);
 
 	const deck = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 2.6), accentMat());
@@ -136,7 +180,6 @@ function makeShell(accent: number, castShadow: boolean, opacity = 1): Shell {
 		new THREE.MeshStandardMaterial({ color: 0x2a2f36, roughness: 0.8 })
 	);
 	torso.position.y = 0.5;
-	torso.castShadow = castShadow;
 	const head = new THREE.Mesh(
 		new THREE.SphereGeometry(0.13, 8, 6),
 		new THREE.MeshStandardMaterial({ color: 0xd8b48a, roughness: 0.7 })
@@ -166,31 +209,233 @@ function makeShell(accent: number, castShadow: boolean, opacity = 1): Shell {
 		group.add(oar);
 		oars.push(oar);
 	}
-	// A translucent shell reads instantly as the "ghost" vs the solid live boat.
-	if (opacity < 1) {
-		group.traverse((o) => {
-			if (o instanceof THREE.Mesh && o.material instanceof THREE.Material) {
-				o.material.transparent = true;
-				o.material.opacity = opacity;
-			}
-		});
-	}
-	return { group, rower, oars };
+
+	const animate = (phase: number, reduce: boolean): void => {
+		if (reduce) {
+			rower.position.z = -0.1;
+			rower.rotation.x = -0.1;
+			for (const oar of oars) oar.rotation.set(0, 0, 0);
+			return;
+		}
+		const drive = Math.cos(phase); // +1 catch (forward) … -1 finish
+		const recovery = Math.max(0, -Math.sin(phase)); // lift blades on return
+		rower.position.z = -0.1 + drive * 0.18;
+		rower.rotation.x = -0.1 - drive * 0.22;
+		for (const oar of oars) {
+			const side = (oar.userData.side as number) ?? 1;
+			oar.rotation.y = side * drive * 0.5; // sweep fore/aft
+			oar.rotation.z = side * recovery * 0.22; // feather/lift on recovery
+		}
+	};
+
+	finalizeAvatar(group, castShadow, opacity);
+	return { group, animate };
 }
 
 /**
- * A fading foam trail of flat quads dropped along a boat's recent path. Each
- * segment owns its material so opacity can fade toward the tail.
+ * Low-poly SkiErg skier: a standing athlete on skis, double-poling. Skis, vest
+ * and pole baskets carry `userData.accent`; the upper body crunches forward and
+ * both poles swing fore/aft together on each pull.
+ */
+function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
+	const group = new THREE.Group();
+	const accentMat = () =>
+		new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.1 });
+	const neutralMat = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 });
+
+	// Skis: two thin planks along travel (+Z).
+	for (const side of [-1, 1]) {
+		const ski = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 2.4), accentMat());
+		ski.position.set(side * 0.18, 0.03, 0.2);
+		ski.userData.accent = true;
+		group.add(ski);
+	}
+
+	// Legs are planted; the upper body pivots from the hips for the crunch.
+	for (const side of [-1, 1]) {
+		const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.6, 0.18), neutralMat(0x2a2f36));
+		leg.position.set(side * 0.16, 0.4, 0);
+		group.add(leg);
+	}
+	const upper = new THREE.Group();
+	upper.position.y = 0.7;
+	const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.55, 0.28), accentMat());
+	torso.position.y = 0.28;
+	torso.userData.accent = true;
+	const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), neutralMat(0xd8b48a));
+	head.position.y = 0.7;
+	upper.add(torso, head);
+	group.add(upper);
+
+	// Poles: pivot at the hands (shoulder height), basket near the snow.
+	const poles: THREE.Group[] = [];
+	for (const side of [-1, 1]) {
+		const pole = new THREE.Group();
+		const shaft = new THREE.Mesh(
+			new THREE.CylinderGeometry(0.02, 0.02, 1.2, 6),
+			neutralMat(0xe7eef0)
+		);
+		shaft.position.y = -0.6;
+		pole.add(shaft);
+		const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.03, 8), accentMat());
+		basket.position.y = -1.15;
+		basket.userData.accent = true;
+		pole.add(basket);
+		pole.position.set(side * 0.3, 1.1, 0.1);
+		group.add(pole);
+		poles.push(pole);
+	}
+
+	const animate = (phase: number, reduce: boolean): void => {
+		if (reduce) {
+			upper.rotation.x = 0.25;
+			for (const p of poles) p.rotation.x = -0.2;
+			return;
+		}
+		const swing = Math.sin(phase); // +1 forward (plant) … -1 back (drive)
+		const crunch = Math.max(0, -swing); // bend forward through the drive
+		upper.rotation.x = 0.2 + crunch * 0.5;
+		for (const p of poles) p.rotation.x = swing * 0.9 - 0.1;
+	};
+
+	finalizeAvatar(group, castShadow, opacity);
+	return { group, animate };
+}
+
+/**
+ * Low-poly BikeErg cyclist: a rider in an aero tuck on a two-wheeled frame.
+ * Frame, wheel spokes and jersey carry `userData.accent`; the wheels roll, the
+ * cranks turn and the rider's thighs pedal in opposition.
+ */
+function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
+	const group = new THREE.Group();
+	const accentMat = () =>
+		new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.2 });
+	const neutralMat = (c: number, rough = 0.7) =>
+		new THREE.MeshStandardMaterial({ color: c, roughness: rough });
+
+	const wheelR = 0.45;
+	const wheels: THREE.Group[] = [];
+	for (const z of [0.85, -0.85]) {
+		const wheel = new THREE.Group();
+		const tyre = new THREE.Mesh(
+			new THREE.TorusGeometry(wheelR, 0.06, 8, 16),
+			neutralMat(0x20242a, 0.6)
+		);
+		tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
+		wheel.add(tyre);
+		// A bright cross-spoke makes the spin legible at low poly.
+		const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.04, wheelR * 1.8, 0.04), accentMat());
+		spoke.userData.accent = true;
+		wheel.add(spoke);
+		wheel.position.set(0, wheelR, z);
+		group.add(wheel);
+		wheels.push(wheel);
+	}
+
+	// Frame: down tube + seat tube.
+	const downTube = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.6), accentMat());
+	downTube.position.set(0, wheelR + 0.15, 0);
+	downTube.userData.accent = true;
+	const seatTube = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.08), accentMat());
+	seatTube.position.set(0, wheelR + 0.45, -0.4);
+	seatTube.userData.accent = true;
+	group.add(downTube, seatTube);
+
+	// Cranks: spin about the bottom bracket (X axis) with two pedals.
+	const cranks = new THREE.Group();
+	cranks.position.set(0, wheelR, -0.05);
+	for (const dir of [1, -1]) {
+		const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), neutralMat(0x20242a));
+		pedal.position.set(0, dir * 0.18, 0);
+		cranks.add(pedal);
+	}
+	group.add(cranks);
+
+	// Rider: jersey torso in an aero lean + head + thighs that pedal.
+	const rider = new THREE.Group();
+	rider.position.set(0, wheelR + 0.5, -0.35);
+	const torso = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.6, 0.26), accentMat());
+	torso.rotation.x = 0.6; // aero tuck
+	torso.position.y = 0.3;
+	torso.userData.accent = true;
+	const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), neutralMat(0xd8b48a));
+	head.position.set(0, 0.62, 0.35);
+	const thighs: THREE.Mesh[] = [];
+	for (const side of [-1, 1]) {
+		const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.14), neutralMat(0x2a2f36));
+		thigh.position.set(side * 0.1, -0.1, 0.2);
+		rider.add(thigh);
+		thighs.push(thigh);
+	}
+	rider.add(torso, head);
+	group.add(rider);
+
+	const animate = (phase: number, reduce: boolean): void => {
+		if (reduce) {
+			for (const w of wheels) w.rotation.x = 0;
+			cranks.rotation.x = 0;
+			for (const t of thighs) t.rotation.x = 0;
+			return;
+		}
+		// Positive rotation about +X rolls the top of the wheel toward +Z (forward).
+		for (const w of wheels) w.rotation.x = phase * 2.4; // wheels roll fast
+		cranks.rotation.x = phase; // pedals turn
+		thighs[0].rotation.x = Math.sin(phase) * 0.5;
+		thighs[1].rotation.x = Math.sin(phase + Math.PI) * 0.5;
+	};
+
+	finalizeAvatar(group, castShadow, opacity);
+	return { group, animate };
+}
+
+const SPORT_PROFILES: Record<Sport, SportProfile> = {
+	rower: {
+		waves: true,
+		roll: true,
+		bobAmp: 0.06,
+		metersPerCycle: 11,
+		groundOpacity: 0.4,
+		trailColor: 0xffffff,
+		groundColor: (t) => hex((t === 'dark' ? COLORS_DARK : COLORS_LIGHT).laneLine),
+		make: makeRowerAvatar
+	},
+	skierg: {
+		waves: false,
+		roll: false,
+		bobAmp: 0.03,
+		metersPerCycle: 8,
+		groundOpacity: 1,
+		trailColor: 0xffffff,
+		groundColor: (t) => (t === 'dark' ? 0xb8c4cc : 0xeef4f7),
+		make: makeSkierAvatar
+	},
+	bike: {
+		waves: false,
+		roll: false,
+		bobAmp: 0.02,
+		metersPerCycle: 5,
+		groundOpacity: 1,
+		trailColor: null,
+		groundColor: (t) => (t === 'dark' ? 0x2a333a : 0x9aa4ac),
+		make: makeBikeAvatar
+	}
+};
+
+/**
+ * A fading trail of flat quads dropped along an avatar's recent path — water
+ * foam for the rower, snow spray for the skier. Each segment owns its material
+ * so opacity can fade toward the tail.
  */
 class WakeTrail {
 	private segs: THREE.Mesh[] = [];
 	private mats: THREE.MeshBasicMaterial[] = [];
 	private hist: THREE.Vector3[] = [];
 
-	constructor(scene: THREE.Scene, n: number, geo: THREE.PlaneGeometry) {
+	constructor(scene: THREE.Scene, n: number, geo: THREE.PlaneGeometry, color = 0xffffff) {
 		for (let i = 0; i < n; i++) {
 			const mat = new THREE.MeshBasicMaterial({
-				color: 0xffffff,
+				color,
 				transparent: true,
 				opacity: 0,
 				depthWrite: false
@@ -233,14 +478,17 @@ class WakeTrail {
 	}
 
 	dispose(): void {
+		for (const seg of this.segs) seg.removeFromParent();
 		for (const m of this.mats) m.dispose();
 	}
 }
 
 /**
  * WebGL course replay — lazy-loaded; mirrors 2D RenderState in a low-poly scene.
- * The athlete rows around a circular loop: one lap = 1 km (matching ErgData), so
- * longer pieces wrap multiple times. `three` is imported only in this module.
+ * The athlete travels around a circular loop: one lap = 1 km (matching ErgData),
+ * so longer pieces wrap multiple times. The avatar (rowing scull, SkiErg skier,
+ * or BikeErg cyclist) and ground (water / snow / asphalt) are chosen from the
+ * workout's `sport`. `three` is imported only in this module.
  */
 export class CourseRenderer3D implements ReplayRenderer {
 	private static readonly LOOP_METERS = 1000; // one lap = 1 km
@@ -254,8 +502,8 @@ export class CourseRenderer3D implements ReplayRenderer {
 	private cameraInit = false;
 	private w = 0;
 	private h = 0;
-	private waterPhase = 0;
-	private lastWaterPhase = NaN;
+	private animPhase = 0;
+	private lastAnimPhase = NaN;
 	private strokePhase = 0;
 	private lastLiveMeters = 0;
 	private lastGhostMeters = 0;
@@ -265,11 +513,12 @@ export class CourseRenderer3D implements ReplayRenderer {
 
 	private host: HTMLElement;
 	private canvas: HTMLCanvasElement;
-	private waterMesh!: THREE.Mesh;
+	private readonly profile: SportProfile;
+	private groundMesh!: THREE.Mesh;
 	private liveBoat: THREE.Group; // outer: position + heading
-	private liveShell: Shell; // inner: bob + roll + stroke
+	private liveAvatar: Avatar; // inner: bob + roll + stroke
 	private ghostGroup: THREE.Group; // outer: position + heading + visibility
-	private ghostShell: Shell;
+	private ghostAvatar: Avatar;
 	private liveWake: WakeTrail | null = null;
 	private ghostWake: WakeTrail | null = null;
 	private liveLabel: THREE.Sprite;
@@ -287,8 +536,9 @@ export class CourseRenderer3D implements ReplayRenderer {
 	private cellMatDark!: THREE.MeshStandardMaterial;
 	private cellMatLight!: THREE.MeshStandardMaterial;
 
-	constructor(host: HTMLElement, quality: RenderQuality = 'medium') {
+	constructor(host: HTMLElement, quality: RenderQuality = 'medium', sport: Sport = 'rower') {
 		this.cfg = QUALITY[quality];
+		this.profile = SPORT_PROFILES[sport];
 		// A canvas can only ever hold ONE context type for its lifetime, and the 2D
 		// renderer locks the shared page canvas to '2d'. So the 3D renderer creates
 		// and owns its own canvas (and removes it on destroy) — this also means a
@@ -326,15 +576,15 @@ export class CourseRenderer3D implements ReplayRenderer {
 		}
 		this.scene.add(sun);
 
-		this.liveShell = makeShell(hex(COLORS_LIGHT.live), this.cfg.shadows);
+		this.liveAvatar = this.profile.make(hex(COLORS_LIGHT.live), this.cfg.shadows, 1);
 		this.liveBoat = new THREE.Group();
-		this.liveBoat.add(this.liveShell.group);
+		this.liveBoat.add(this.liveAvatar.group);
 		// Ghost: translucent + no shadow so it reads as a phantom, clearly distinct
-		// from the solid live boat.
-		this.ghostShell = makeShell(hex(COLORS_LIGHT.ghost), false, 0.45);
+		// from the solid live avatar.
+		this.ghostAvatar = this.profile.make(hex(COLORS_LIGHT.ghost), false, 0.45);
 		this.ghostGroup = new THREE.Group();
 		this.ghostGroup.visible = false;
-		this.ghostGroup.add(this.ghostShell.group);
+		this.ghostGroup.add(this.ghostAvatar.group);
 		this.scene.add(this.liveBoat, this.ghostGroup);
 
 		const liveSpr = makeTextSprite('', COLORS_LIGHT.labelBg, COLORS_LIGHT.live);
@@ -344,10 +594,11 @@ export class CourseRenderer3D implements ReplayRenderer {
 
 		this.buildStaticScene();
 
-		if (this.cfg.wake > 0) {
+		if (this.cfg.wake > 0 && this.profile.trailColor !== null) {
 			const wakeGeo = this.track(new THREE.PlaneGeometry(0.9, 0.9));
-			this.liveWake = new WakeTrail(this.scene, this.cfg.wake, wakeGeo);
-			this.ghostWake = new WakeTrail(this.scene, this.cfg.wake, wakeGeo);
+			const c = this.profile.trailColor;
+			this.liveWake = new WakeTrail(this.scene, this.cfg.wake, wakeGeo, c);
+			this.ghostWake = new WakeTrail(this.scene, this.cfg.wake, wakeGeo, c);
 		}
 	}
 
@@ -366,25 +617,25 @@ export class CourseRenderer3D implements ReplayRenderer {
 	}
 
 	private buildStaticScene(): void {
-		const seg = this.cfg.waterSegments;
-		const waterGeo = this.track(new THREE.PlaneGeometry(140, 140, seg, seg));
-		const waterMat = this.mat(
+		const seg = this.profile.waves ? this.cfg.groundSegments : 1;
+		const groundGeo = this.track(new THREE.PlaneGeometry(140, 140, seg, seg));
+		const groundMat = this.mat(
 			new THREE.MeshStandardMaterial({
-				color: 0x8aa2ac,
-				transparent: true,
-				opacity: 0.4,
+				color: this.profile.groundColor('light'),
+				transparent: this.profile.groundOpacity < 1,
+				opacity: this.profile.groundOpacity,
 				roughness: 0.85,
 				metalness: 0.05
 			})
 		);
-		waterMat.name = 'water';
-		const water = new THREE.Mesh(waterGeo, waterMat);
-		water.rotation.x = -Math.PI / 2;
-		water.position.y = -0.05;
-		water.name = 'water';
-		water.receiveShadow = this.cfg.shadows;
-		this.waterMesh = water;
-		this.scene.add(water);
+		groundMat.name = 'ground';
+		const ground = new THREE.Mesh(groundGeo, groundMat);
+		ground.rotation.x = -Math.PI / 2;
+		ground.position.y = -0.05;
+		ground.name = 'ground';
+		ground.receiveShadow = this.cfg.shadows;
+		this.groundMesh = ground;
+		this.scene.add(ground);
 
 		const innerR = this.ghostRadius - 4;
 		const outerR = this.loopRadius + 4;
@@ -447,16 +698,18 @@ export class CourseRenderer3D implements ReplayRenderer {
 				obj.material.color.setHex(hex(color));
 			}
 		};
-		recolor('water', C.laneLine);
 		recolor('lane', C.courseFill);
+		if (this.groundMesh.material instanceof THREE.MeshStandardMaterial) {
+			this.groundMesh.material.color.setHex(this.profile.groundColor(themeName));
+		}
 
 		this.postMatMajor.color.setHex(hex(C.tickMajor));
 		this.postMatMinor.color.setHex(hex(C.tickMinor));
 		this.cellMatDark.color.setHex(hex(C.finishDark));
 		this.cellMatLight.color.setHex(hex(C.finishLight));
 
-		this.recolorAccent(this.liveShell.group, C.live);
-		this.recolorAccent(this.ghostShell.group, C.ghost);
+		this.recolorAccent(this.liveAvatar.group, C.live);
+		this.recolorAccent(this.ghostAvatar.group, C.ghost);
 	}
 
 	private recolorAccent(group: THREE.Group, color: string): void {
@@ -478,13 +731,13 @@ export class CourseRenderer3D implements ReplayRenderer {
 		this.camera.updateProjectionMatrix();
 	}
 
-	/** Place a boat on its lap circle and animate hull bob/roll + the stroke. */
-	private placeBoat(
+	/** Place an avatar on its lap circle and animate bob/roll + the stroke. */
+	private placeAvatar(
 		outer: THREE.Group,
-		shell: Shell,
+		avatar: Avatar,
 		radius: number,
 		meters: number,
-		spm: number
+		cadence: number
 	): { x: number; z: number; tx: number; tz: number; y: number } {
 		const a = this.loopAngle(meters);
 		const sin = Math.sin(a);
@@ -493,33 +746,18 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const z = radius * cos;
 		const tx = cos; // unit tangent (direction of increasing distance)
 		const tz = -sin;
-		const bob = this.reduceMotion ? 0 : Math.sin(this.waterPhase * 2 + spm * 0.1) * 0.06;
+		const reduce = this.reduceMotion;
+		const bob =
+			reduce || this.profile.bobAmp === 0
+				? 0
+				: Math.sin(this.animPhase * 2 + cadence * 0.1) * this.profile.bobAmp;
 		outer.position.set(x, 0, z);
-		outer.rotation.y = Math.atan2(tx, tz); // local +Z (bow) -> tangent
-		shell.group.position.y = bob;
-		shell.group.rotation.z = this.reduceMotion ? 0 : Math.sin(this.waterPhase + spm * 0.05) * 0.05;
-		this.animateStroke(shell);
+		outer.rotation.y = Math.atan2(tx, tz); // local +Z (travel) -> tangent
+		avatar.group.position.y = bob;
+		avatar.group.rotation.z =
+			reduce || !this.profile.roll ? 0 : Math.sin(this.animPhase + cadence * 0.05) * 0.05;
+		avatar.animate(this.strokePhase, reduce);
 		return { x, z, tx, tz, y: bob };
-	}
-
-	/** Drive oars + rower from the shared stroke phase (advanced by distance). */
-	private animateStroke(shell: Shell): void {
-		if (this.reduceMotion) {
-			shell.rower.position.z = -0.1;
-			shell.rower.rotation.x = -0.1;
-			for (const oar of shell.oars) oar.rotation.set(0, 0, 0);
-			return;
-		}
-		const drive = Math.cos(this.strokePhase); // +1 catch (forward) … -1 finish
-		const recovery = Math.max(0, -Math.sin(this.strokePhase)); // lift blades on return
-		// Rower slides forward at the catch, leans back through the finish.
-		shell.rower.position.z = -0.1 + drive * 0.18;
-		shell.rower.rotation.x = -0.1 - drive * 0.22;
-		for (const oar of shell.oars) {
-			const side = (oar.userData.side as number) ?? 1;
-			oar.rotation.y = side * drive * 0.5; // sweep fore/aft
-			oar.rotation.z = side * recovery * 0.22; // feather/lift on recovery
-		}
 	}
 
 	render(state: RenderState, playing: boolean, themeName: 'light' | 'dark' = 'light'): void {
@@ -528,7 +766,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const C = themeName === 'dark' ? COLORS_DARK : COLORS_LIGHT;
 		this.reduceMotion = prefersReducedMotion();
 
-		if (playing && !this.reduceMotion) this.waterPhase += 0.04 + state.frame.spm / 800;
+		if (playing && !this.reduceMotion) this.animPhase += 0.04 + state.frame.spm / 800;
 
 		// Stroke phase is driven by distance travelled (~11 m/stroke), so it speeds
 		// up with playback rate and freezes when paused — and stays in sync with the
@@ -536,14 +774,16 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const liveMeters = state.frame.d;
 		const dLive = liveMeters - this.lastLiveMeters;
 		this.lastLiveMeters = liveMeters;
-		if (!this.reduceMotion && dLive > 0) this.strokePhase += (dLive / 11) * Math.PI * 2;
+		if (!this.reduceMotion && dLive > 0)
+			this.strokePhase += (dLive / this.profile.metersPerCycle) * Math.PI * 2;
 
-		// Water displacement (skipped when flat/low quality or phase unchanged).
-		const water = this.waterMesh;
+		// Water displacement (rowing only; skipped when flat/low quality or phase unchanged).
+		const water = this.groundMesh;
 		const reduceMotionChanged = this.reduceMotion !== this.lastReduceMotion;
 		if (
-			this.cfg.waves &&
-			(this.waterPhase !== this.lastWaterPhase || reduceMotionChanged) &&
+			this.cfg.displacement &&
+			this.profile.waves &&
+			(this.animPhase !== this.lastAnimPhase || reduceMotionChanged) &&
 			water?.geometry instanceof THREE.PlaneGeometry
 		) {
 			const pos = water.geometry.attributes.position;
@@ -553,15 +793,15 @@ export class CourseRenderer3D implements ReplayRenderer {
 				const idx = i * 3;
 				// local y (arr[idx+1]) maps to world Z after the -90° X rotation, so
 				// ripples run along the course rather than as uniform cross-lane bands.
-				arr[idx + 2] = this.reduceMotion ? 0 : Math.sin(arr[idx + 1] * 0.25 + this.waterPhase) * 0.08;
+				arr[idx + 2] = this.reduceMotion ? 0 : Math.sin(arr[idx + 1] * 0.25 + this.animPhase) * 0.08;
 			}
 			pos.needsUpdate = true;
 			water.geometry.computeVertexNormals();
-			this.lastWaterPhase = this.waterPhase;
+			this.lastAnimPhase = this.animPhase;
 			this.lastReduceMotion = this.reduceMotion;
 		}
 
-		const p = this.placeBoat(this.liveBoat, this.liveShell, this.loopRadius, liveMeters, state.frame.spm);
+		const p = this.placeAvatar(this.liveBoat, this.liveAvatar, this.loopRadius, liveMeters, state.frame.spm);
 
 		if (this.liveWake) {
 			if (this.reduceMotion) this.liveWake.reset();
@@ -593,7 +833,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 			const dGhost = ghostMeters - this.lastGhostMeters;
 			this.lastGhostMeters = ghostMeters;
 			// Ghost shares the stroke phase visually; only its placement differs.
-			const gp = this.placeBoat(this.ghostGroup, this.ghostShell, this.ghostRadius, ghostMeters, state.ghost.spm);
+			const gp = this.placeAvatar(this.ghostGroup, this.ghostAvatar, this.ghostRadius, ghostMeters, state.ghost.spm);
 			if (this.ghostWake) {
 				if (this.reduceMotion || dGhost <= 0) {
 					if (this.reduceMotion) this.ghostWake.reset();
