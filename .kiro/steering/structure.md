@@ -88,10 +88,10 @@ src/
       token/                 Bring-your-own-token page (+page.server.ts, +page.svelte)
 
     api/
-      account/delete/+server.ts  DELETE /api/account/delete — purge user data
+      account/delete/+server.ts  POST /api/account/delete — purge user data
       export/+server.ts          GET /api/export — bulk workout export
       export/[id]/+server.ts     GET /api/export/:id — single workout export
-      goals/+server.ts           GET/POST /api/goals — annual goal persistence
+      goals/+server.ts           GET/PUT /api/goals — annual goal persistence
       sync/+server.ts            POST /api/sync — triggers a full logbook sync
       workouts/+server.ts        GET /api/workouts — paginated workout list
       workouts/[id]/+server.ts   GET /api/workouts/:id — single workout with strokes
