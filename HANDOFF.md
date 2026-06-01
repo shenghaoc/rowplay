@@ -239,7 +239,6 @@ helper already exists in `src/lib/analytics.ts`, `src/lib/format.ts`, or
 - **Live/near-live mode**: poll the logbook (or ErgData webhook if/when available)
   so a just-finished piece shows up without a manual sync.
 - **Coaching annotations**: let a coach leave timestamped notes on a shared replay.
-- **Heart-rate device import** for workouts logged without HR.
 - **More languages** beyond en/zh (the i18n infra already supports it).
 When you finish a task, **delete it from this file** (or move it to a "Done" note)
 and open the PR — keep this backlog the single source of truth for what's left.

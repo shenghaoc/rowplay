@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy, untrack } from 'svelte';
-	import type uPlot from 'uplot';
+	import uPlot from 'uplot';
 	import 'uplot/dist/uPlot.min.css';
 
 	interface Props {
@@ -27,8 +27,8 @@
 	let el: HTMLDivElement;
 	let plot: uPlot | null = null;
 	let UPlotCtor: typeof uPlot | null = null;
-	// Flipped once the dynamic import resolves, so the build effect only fires
-	// after the constructor and host element are both ready.
+	// Flipped once the host element is measured, so the build effect only fires
+	// after the constructor and container are both ready.
 	let ready = $state(false);
 	let width = 600;
 	let ro: ResizeObserver | null = null;
@@ -78,9 +78,8 @@
 		);
 	}
 
-	onMount(async () => {
-		const mod = await import('uplot');
-		UPlotCtor = mod.default;
+	onMount(() => {
+		UPlotCtor = uPlot;
 		width = el.clientWidth || 600;
 		ro = new ResizeObserver(() => {
 			const w = el.clientWidth;
