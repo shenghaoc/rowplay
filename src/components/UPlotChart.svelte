@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, untrack } from 'svelte';
 	import type uPlot from 'uplot';
 	import 'uplot/dist/uPlot.min.css';
 
@@ -9,29 +9,49 @@
 		height?: number;
 		/** Optional x position (in data units) to draw a vertical cursor line. */
 		marker?: number | null;
+		/**
+		 * Accessible name for the chart. uPlot paints to <canvas>, which is opaque
+		 * to assistive tech, so this becomes the chart's `aria-label`. Required so
+		 * a chart can't ship without a text alternative.
+		 */
+		caption: string;
+		/** Optional longer text alternative read out after the caption. */
+		description?: string;
 	}
 
-	let { data, options, height = 220, marker = null }: Props = $props();
+	let { data, options, height = 220, marker = null, caption, description }: Props = $props();
+
+	const uid = $props.id();
+	const descId = `${uid}-desc`;
 
 	let el: HTMLDivElement;
 	let plot: uPlot | null = null;
 	let UPlotCtor: typeof uPlot | null = null;
+	// Flipped once the dynamic import resolves, so the build effect only fires
+	// after the constructor and host element are both ready.
+	let ready = $state(false);
 	let width = 600;
 	let ro: ResizeObserver | null = null;
 
 	function build() {
-		if (!UPlotCtor) return;
-		if (plot) plot.destroy();
+		if (!UPlotCtor || !el) return;
+		plot?.destroy();
 		const hooks = options.hooks ?? {};
-		// Resolve the cursor colour once outside the draw hook to avoid
-		// repeated forced synchronous layouts (getComputedStyle thrashing).
+		// Resolve the cursor colour once outside the draw hook to avoid repeated
+		// forced synchronous layouts (getComputedStyle thrashing).
 		const markerColor =
 			typeof document !== 'undefined'
 				? getComputedStyle(document.documentElement).getPropertyValue('--ink-3').trim() || '#7a7062'
 				: '#7a7062';
 		const drawHook = (u: uPlot) => {
-			if (marker == null) return;
-			const cx = u.valToPos(marker, 'x', true);
+			// Read `marker` untracked. uPlot draws synchronously during construction,
+			// so this hook runs inside the build `$effect`; a tracked read would make
+			// the rebuild effect depend on `marker` and tear down/recreate the whole
+			// chart on every animation frame of a replay. Marker moves are handled
+			// cheaply by the dedicated redraw effect below instead.
+			const m = untrack(() => marker);
+			if (m == null) return;
+			const cx = u.valToPos(m, 'x', true);
 			if (!isFinite(cx)) return;
 			const ctx = u.ctx;
 			ctx.save();
@@ -43,6 +63,9 @@
 			ctx.stroke();
 			ctx.restore();
 		};
+		// Read `data` untracked: this build path is driven by `options`/`height`
+		// changes (theme, metric, labels). Plain data updates are far cheaper via
+		// `setData` in the effect below, so they must not trigger a full rebuild.
 		plot = new UPlotCtor(
 			{
 				...options,
@@ -50,7 +73,7 @@
 				height,
 				hooks: { ...hooks, draw: [...(hooks.draw ?? []), drawHook] }
 			},
-			data,
+			untrack(() => data),
 			el
 		);
 	}
@@ -59,7 +82,6 @@
 		const mod = await import('uplot');
 		UPlotCtor = mod.default;
 		width = el.clientWidth || 600;
-		build();
 		ro = new ResizeObserver(() => {
 			const w = el.clientWidth;
 			if (w && plot) {
@@ -68,6 +90,7 @@
 			}
 		});
 		ro.observe(el);
+		ready = true;
 	});
 
 	onDestroy(() => {
@@ -75,29 +98,54 @@
 		plot?.destroy();
 	});
 
-	// Rebuild when options change (e.g. theme toggle updates axis/grid colours).
+	// Single build path. Rebuilds when the options object or height changes
+	// (theme toggle, metric switch, new labels). `ready` gates the first run so
+	// there is no duplicate build on mount.
 	$effect(() => {
 		options;
-		if (plot && UPlotCtor) build();
+		height;
+		if (ready) build();
 	});
 
-	// React to data changes.
+	// Data updates are cheap — uPlot diffs internally; no teardown needed.
 	$effect(() => {
 		data;
 		if (plot) plot.setData(data);
 	});
 
-	// React to marker changes (redraw to move the cursor line).
+	// The marker just needs a redraw (the draw hook reads the latest value).
 	$effect(() => {
 		marker;
 		if (plot) plot.redraw();
 	});
 </script>
 
-<div class="uplot-host" bind:this={el}></div>
+<div
+	class="uplot-host"
+	bind:this={el}
+	role="img"
+	aria-label={caption}
+	aria-describedby={description ? descId : undefined}
+></div>
+{#if description}
+	<p id={descId} class="sr-only">{description}</p>
+{/if}
 
 <style>
 	.uplot-host {
 		width: 100%;
+	}
+
+	/* Visually hidden but exposed to assistive tech. */
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 </style>

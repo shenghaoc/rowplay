@@ -13,7 +13,7 @@
 	import type { Workout } from '$lib/types';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
-	import { uplotChrome } from '$lib/chartTheme';
+	import { chartTheme, baseOptions } from '$lib/chartTheme';
 
 	let { workouts }: { workouts: Workout[] } = $props();
 
@@ -72,41 +72,20 @@
 		return [xs, comparison.actual, comparison.modelled];
 	});
 
-	const curveOptions = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
-		const chrome = uplotChrome(uiTheme.value);
-		return {
-			scales: { x: { time: false }, y: {} },
-			axes: [
-				{
-					stroke: chrome.axis,
-					grid: { stroke: chrome.grid },
-					values: (_u, sp) => sp.map((v) => fmtDurationAxis(v))
-				},
-				{
-					stroke: chrome.axis,
-					grid: { stroke: chrome.grid },
-					size: 48,
-					values: (_u, sp) => sp.map((v) => `${Math.round(v)}`)
-				}
-			],
+	const chart = $derived(chartTheme(uiTheme.value));
+	const curveOptions = $derived.by(() =>
+		baseOptions({
+			theme: chart,
+			xFmt: fmtDurationAxis,
+			yAxes: [{ size: 48, fmt: (v) => `${Math.round(v)}` }],
 			series: [
-				{},
-				{
-					label: t('dashboard.cpChartActual'),
-					stroke: '#9e5b2d',
-					width: 0,
-					points: { show: true, size: 7, stroke: '#9e5b2d', fill: '#9e5b2d' }
-				},
-				{
-					label: t('dashboard.cpChartModel'),
-					stroke: '#2f81f7',
-					width: 2,
-					points: { show: false }
-				}
-			],
-			legend: { show: false }
-		};
-	});
+				// Actual points use the power token (this is a power-duration curve);
+				// the modelled line borrows dps (blue) for contrast — no dedicated token.
+				{ label: t('dashboard.cpChartActual'), role: 'power', width: 0, points: 7 },
+				{ label: t('dashboard.cpChartModel'), role: 'dps', width: 2 }
+			]
+		})
+	);
 
 	function cpExplain(cpVal: CriticalPower): string {
 		if (cpVal.method === 'model' && cpVal.wPrime > 0) {
@@ -217,7 +196,13 @@
 			<div class="curve">
 				<div class="label muted">{t('dashboard.cpChartTitle')}</div>
 				<p class="curvehint muted">{t('dashboard.cpChartHint')}</p>
-				<UPlotChart data={curveData} options={curveOptions} height={170} />
+				<UPlotChart
+					data={curveData}
+					options={curveOptions}
+					height={170}
+					caption={t('dashboard.cpChartTitle')}
+					description={cpExplain(cp)}
+				/>
 				<div class="curvelegend muted">
 					<span><i class="dot actual"></i> {t('dashboard.cpChartActual')}</span>
 					<span><i class="line model"></i> {t('dashboard.cpChartModel')}</span>
@@ -242,7 +227,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		color: #9e5b2d;
+		color: var(--power);
 	}
 	.cptitle .label {
 		color: var(--text);
@@ -286,7 +271,7 @@
 		padding: 0.55rem 0.75rem;
 		border-radius: 8px;
 		background: var(--bg-elev-2);
-		border-left: 3px solid #9e5b2d;
+		border-left: 3px solid var(--power);
 		margin-bottom: 1rem;
 	}
 	.predict {
@@ -392,13 +377,13 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: #9e5b2d;
+		background: var(--power);
 	}
 	.curvelegend .line {
 		width: 14px;
 		height: 3px;
 		border-radius: 2px;
-		background: #2f81f7;
+		background: var(--dps);
 	}
 	@media (max-width: 720px) {
 		.predrow {

@@ -23,7 +23,7 @@
 	import { downloadRaceCardPng } from '$lib/replay/raceCard';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
-	import { uplotChrome } from '$lib/chartTheme';
+	import { chartTheme, baseOptions, type SeriesRole } from '$lib/chartTheme';
 	import SportIcon from '$components/SportIcon.svelte';
 
 	let { data } = $props();
@@ -330,68 +330,56 @@
 	const xs = $derived(strokes.map((s) => s.t));
 	const hasHr = $derived(strokes.some((s) => s.hr != null));
 
+	const chart = $derived(chartTheme(uiTheme.value));
+
 	function metricOpts(
 		label: string,
-		color: string,
+		role: SeriesRole,
 		invert: boolean,
-		fmt: (v: number) => string,
-		chrome: ReturnType<typeof uplotChrome>
+		fmt: (v: number) => string
 	): Omit<uPlot.Options, 'width' | 'height'> {
-		return {
-			scales: { x: { time: false }, y: invert ? { dir: -1 } : {} },
-			cursor: { show: true, x: true, y: false },
-			axes: [
-			{ stroke: chrome.axis, grid: { stroke: chrome.grid }, values: (_u, sp) => sp.map((v) => fmtTime(v)) },
-				{ stroke: chrome.axis, grid: { stroke: chrome.grid }, size: 52, values: (_u, sp) => sp.map(fmt) }
-			],
-			series: [{}, { label, stroke: color, width: 1.5, fill: color + '22' }],
-			legend: { show: false }
-		};
+		return baseOptions({
+			theme: chart,
+			xFmt: (v) => fmtTime(v),
+			yAxes: [{ size: 52, fmt, invert }],
+			series: [{ label, role, width: 1.5, fill: true }],
+			cursor: { x: true, y: false }
+		});
 	}
-
-	const chartChrome = $derived(uplotChrome(uiTheme.value));
 
 	const paceData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.pace)]);
 	const rateData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.spm)]);
 	const powerData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.watts)]);
 	const hrData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.hr ?? null)]);
 
-	const paceOpts = $derived(metricOpts('pace', LIVE_COLOR, true, (v) => fmtPace(v).replace('/500m', ''), chartChrome));
-	const rateOpts = $derived(metricOpts('rate', '#2c6e63', false, (v) => `${Math.round(v)}`, chartChrome));
-	const powerOpts = $derived(metricOpts('power', '#9e5b2d', false, (v) => `${Math.round(v)}w`, chartChrome));
-	const hrOpts = $derived(metricOpts('hr', '#8e4a6b', false, (v) => `${Math.round(v)}`, chartChrome));
+	const paceOpts = $derived(metricOpts('pace', 'pace', true, (v) => fmtPace(v).replace('/500m', '')));
+	const rateOpts = $derived(metricOpts('rate', 'rate', false, (v) => `${Math.round(v)}`));
+	const powerOpts = $derived(metricOpts('power', 'power', false, (v) => `${Math.round(v)}w`));
+	const hrOpts = $derived(metricOpts('hr', 'hr', false, (v) => `${Math.round(v)}`));
 
 	// ---- Analysis ----
 	const zones = $derived(hasHr ? hrZones(strokes) : []);
 	const pc = $derived(powerCurve(strokes));
 	const pcData = $derived<uPlot.AlignedData>([pc.map((p) => p.duration), pc.map((p) => p.watts)]);
-	const pcOpts = $derived(metricOpts('best avg power', '#9e5b2d', false, (v) => `${Math.round(v)}w`, chartChrome));
+	const pcOpts = $derived(metricOpts('best avg power', 'power', false, (v) => `${Math.round(v)}w`));
 
 	// ---- Technique (stroke quality from logged pace/rate) ----
 	const tech = $derived(techniqueSummary(strokes));
 	const dpsData = $derived<uPlot.AlignedData>([tech.dps.map((d) => d.t), tech.dps.map((d) => d.v)]);
-	const dpsOpts = $derived(metricOpts('dist/stroke', '#3f6e8c', false, (v) => `${v.toFixed(1)}m`, chartChrome));
+	const dpsOpts = $derived(metricOpts('dist/stroke', 'dps', false, (v) => `${v.toFixed(1)}m`));
 
 	const eff = $derived(efficiencyByRate(strokes));
 	// Scatter: pace (y, inverted) vs rate (x); a uPlot line over rate-sorted medians.
 	const effData = $derived<uPlot.AlignedData>([eff.map((e) => e.spm), eff.map((e) => e.pace)]);
-	const effOpts = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
-		return {
-			scales: { x: { time: false }, y: { dir: -1 } },
-			cursor: { show: true },
-			axes: [
-				{ stroke: chartChrome.axis, grid: { stroke: chartChrome.grid }, values: (_u, sp) => sp.map((v) => `${Math.round(v)}`) },
-				{
-					stroke: chartChrome.axis,
-					grid: { stroke: chartChrome.grid },
-					size: 52,
-					values: (_u, sp) => sp.map((v) => fmtPace(v).replace('/500m', ''))
-				}
-			],
-			series: [{}, { label: 'pace@rate', stroke: '#3f6e8c', width: 2, points: { show: true, size: 7 } }],
-			legend: { show: false }
-		};
-	});
+	const effOpts = $derived(
+		baseOptions({
+			theme: chart,
+			xFmt: (v) => `${Math.round(v)}`,
+			yAxes: [{ size: 52, fmt: (v) => fmtPace(v).replace('/500m', ''), invert: true }],
+			series: [{ label: 'pace@rate', role: 'dps', width: 2, points: 7 }],
+			cursor: { x: true, y: true }
+		})
+	);
 
 	const paceRange = $derived.by(() => {
 		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
@@ -634,20 +622,20 @@
 	<div class="charts">
 		<div class="card">
 			<div class="ctitle muted">{t('replay.cPace')}</div>
-			<UPlotChart data={paceData} options={paceOpts} height={150} marker={frame.t} />
+			<UPlotChart data={paceData} options={paceOpts} height={150} marker={frame.t} caption={t('replay.cPace')} />
 		</div>
 		<div class="card">
 			<div class="ctitle muted">{t('replay.cRate')}</div>
-			<UPlotChart data={rateData} options={rateOpts} height={150} marker={frame.t} />
+			<UPlotChart data={rateData} options={rateOpts} height={150} marker={frame.t} caption={t('replay.cRate')} />
 		</div>
 		<div class="card">
 			<div class="ctitle muted">{t('replay.cPower')}</div>
-			<UPlotChart data={powerData} options={powerOpts} height={150} marker={frame.t} />
+			<UPlotChart data={powerData} options={powerOpts} height={150} marker={frame.t} caption={t('replay.cPower')} />
 		</div>
 		{#if hasHr}
 			<div class="card">
 				<div class="ctitle muted">{t('replay.cHeart')}</div>
-				<UPlotChart data={hrData} options={hrOpts} height={150} marker={frame.t} />
+				<UPlotChart data={hrData} options={hrOpts} height={150} marker={frame.t} caption={t('replay.cHeart')} />
 			</div>
 		{/if}
 	</div>
@@ -680,12 +668,12 @@
 	<div class="analysis">
 		<div class="card">
 			<div class="ctitle muted">{t('replay.distPerStroke')} <span class="hint">{t('replay.distPerStrokeHint')}</span></div>
-			<UPlotChart data={dpsData} options={dpsOpts} height={150} marker={frame.t} />
+			<UPlotChart data={dpsData} options={dpsOpts} height={150} marker={frame.t} caption={t('replay.distPerStroke')} />
 		</div>
 		{#if eff.length > 2}
 			<div class="card">
 				<div class="ctitle muted">{t('replay.paceVsRate')} <span class="hint">{t('replay.paceVsRateHint')}</span></div>
-				<UPlotChart data={effData} options={effOpts} height={150} />
+				<UPlotChart data={effData} options={effOpts} height={150} caption={t('replay.paceVsRate')} />
 			</div>
 		{/if}
 	</div>
@@ -695,7 +683,7 @@
 		{#if pc.length}
 			<div class="card">
 				<div class="ctitle muted">{t('replay.powerCurve')}</div>
-				<UPlotChart data={pcData} options={pcOpts} height={170} />
+				<UPlotChart data={pcData} options={pcOpts} height={170} caption={t('replay.powerCurve')} />
 			</div>
 		{/if}
 		{#if zones.length}

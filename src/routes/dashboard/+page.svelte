@@ -28,7 +28,7 @@
 	import { RefreshCw, TrendingUp, TrendingDown, MoveRight, Play, Activity } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
-	import { uplotChrome } from '$lib/chartTheme';
+	import { chartTheme, baseOptions } from '$lib/chartTheme';
 
 	// Static lookup — never changes, shared across instances.
 	const formBandClass: Record<FormBand, string> = {
@@ -239,21 +239,30 @@
 			load.series.map((p) => p.tsb)
 		];
 	});
-	const formOptions = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => ({
-		scales: { x: { time: true }, y: {}, tsb: {} },
-		axes: [
-			{ stroke: '#8b949e', grid: { stroke: '#1c2230' } },
-			{ stroke: '#8b949e', grid: { stroke: '#1c2230' }, size: 40 },
-			{ stroke: '#8b949e', scale: 'tsb', side: 1, size: 40, grid: { show: false } }
-		],
-		series: [
-			{},
-			{ label: t('dashboard.formChartFitness'), scale: 'y', stroke: '#2f81f7', width: 2, fill: 'rgba(47,129,247,0.14)', points: { show: false } },
-			{ label: t('dashboard.formChartFatigue'), scale: 'y', stroke: '#f778ba', width: 1.5, points: { show: false } },
-			{ label: t('dashboard.formChartForm'), scale: 'tsb', stroke: '#3fb950', width: 1.5, dash: [4, 3], points: { show: false } }
-		],
-		legend: { show: false }
-	}));
+	// Single palette source for every chart on this page; recomputes on theme
+	// toggle and reads the live design tokens (see chartTheme).
+	const chart = $derived(chartTheme(uiTheme.value));
+
+	// Fitness/fatigue/form (CTL/ATL/TSB) have no dedicated palette tokens; they
+	// deliberately borrow dps (blue) / power (amber) / ahead (green) for three
+	// distinct, on-brand hues. The matching stat readouts below reuse the same
+	// borrow. If a dedicated token is ever wanted, add a role rather than inlining
+	// hex. (Same borrowing applies to trendOptions and CriticalPowerPanel.)
+	const formOptions = $derived.by(() =>
+		baseOptions({
+			theme: chart,
+			time: true,
+			yAxes: [
+				{ scale: 'y', size: 40 },
+				{ scale: 'tsb', side: 1, size: 40, grid: false }
+			],
+			series: [
+				{ label: t('dashboard.formChartFitness'), role: 'dps', width: 2, fill: true, scale: 'y' },
+				{ label: t('dashboard.formChartFatigue'), role: 'power', width: 1.5, scale: 'y' },
+				{ label: t('dashboard.formChartForm'), role: 'ahead', width: 1.5, dash: [4, 3], scale: 'tsb' }
+			]
+		})
+	);
 	const signed = (n: number) => {
 		// Round before testing the sign so a value like −0.1 doesn't render as "−0".
 		const r = Math.round(n);
@@ -364,28 +373,20 @@
 		return `${sign}${metricFmt(delta)}${suffix}`;
 	}
 
-	const trendOptions = $derived.by((): Omit<uPlot.Options, 'width' | 'height'> => {
-		const chrome = uplotChrome(uiTheme.value);
-		const color =
-			metric === 'pace' ? '#dc4327' : metric === 'distance' ? '#5e6b2c' : metric === 'dps' ? '#3f6e8c' : '#2c6e63';
-		return {
-			scales: { x: { time: true }, y: metric === 'pace' ? { dir: -1 } : {} },
-			axes: [
-				{ stroke: chrome.axis, grid: { stroke: chrome.grid } },
-				{
-					stroke: chrome.axis,
-					grid: { stroke: chrome.grid },
-					size: 56,
-					values: (_u, sp) => sp.map(metricFmt)
-				}
-			],
+	const trendOptions = $derived.by(() => {
+		// pace/dps map to their own tokens; distance borrows ahead (green) and rate
+		// (spm) borrows the rate token — see the formOptions note on borrowing.
+		const role =
+			metric === 'pace' ? 'pace' : metric === 'distance' ? 'ahead' : metric === 'dps' ? 'dps' : 'rate';
+		return baseOptions({
+			theme: chart,
+			time: true,
+			yAxes: [{ size: 56, fmt: metricFmt, invert: metric === 'pace' }],
 			series: [
-				{},
-				{ label: metric, stroke: color, width: 2, points: { show: true, size: 5 } },
-				{ label: 'trend', stroke: chrome.trend, width: 1.5, dash: [6, 4], points: { show: false } }
-			],
-			legend: { show: false }
-		};
+				{ label: metric, role, width: 2, points: 5 },
+				{ label: 'trend', role: 'fit', width: 1.5, dash: [6, 4] }
+			]
+		});
 	});
 
 	const sports: (Sport | 'all')[] = ['all', 'rower', 'skierg', 'bike'];
@@ -539,12 +540,12 @@
 
 			<div class="formstats">
 				<div class="fs">
-					<div class="fsv mono" style="color: #2f81f7">{Math.round(load.ctl)}</div>
+					<div class="fsv mono" style="color: var(--dps)">{Math.round(load.ctl)}</div>
 					<div class="fsl">{t('dashboard.formFitness')}</div>
 					<div class="fsh muted">{t('dashboard.formFitnessHint')}</div>
 				</div>
 				<div class="fs">
-					<div class="fsv mono" style="color: #f778ba">{Math.round(load.atl)}</div>
+					<div class="fsv mono" style="color: var(--power)">{Math.round(load.atl)}</div>
 					<div class="fsl">{t('dashboard.formFatigue')}</div>
 					<div class="fsh muted">{t('dashboard.formFatigueHint')}</div>
 				</div>
@@ -572,11 +573,17 @@
 			</div>
 
 			{#if formReady}
-				<UPlotChart data={formData} options={formOptions} height={190} />
+				<UPlotChart
+					data={formData}
+					options={formOptions}
+					height={190}
+					caption={`${t('dashboard.formChartFitness')} · ${t('dashboard.formChartFatigue')} · ${t('dashboard.formChartForm')}`}
+					description={`${bandLabel[load.band]}. ${bandDesc[load.band]}`}
+				/>
 				<div class="formlegend muted">
-					<span><i style="background: #2f81f7"></i> {t('dashboard.formChartFitness')}</span>
-					<span><i style="background: #f778ba"></i> {t('dashboard.formChartFatigue')}</span>
-					<span><i style="background: #3fb950"></i> {t('dashboard.formChartForm')}</span>
+					<span><i style="background: var(--dps)"></i> {t('dashboard.formChartFitness')}</span>
+					<span><i style="background: var(--power)"></i> {t('dashboard.formChartFatigue')}</span>
+					<span><i style="background: var(--ahead)"></i> {t('dashboard.formChartForm')}</span>
 				</div>
 			{:else}
 				<p class="muted emptytrend">{t('dashboard.formEmpty')}</p>
@@ -662,7 +669,13 @@
 			{/if}
 
 			{#if trendPoints.length > 1}
-				<UPlotChart data={trend} options={trendOptions} height={190} />
+				<UPlotChart
+					data={trend}
+					options={trendOptions}
+					height={190}
+					caption={t('dashboard.trendTitle')}
+					description={verdictText}
+				/>
 			{:else}
 				<p class="muted emptytrend">
 					{t('dashboard.emptyTrend', {
