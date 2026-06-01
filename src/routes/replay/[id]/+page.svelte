@@ -153,7 +153,6 @@
 			frame: f,
 			distFrac: total ? f.d / total : 0,
 			totalDistance: total,
-			sport: detail.sport,
 			ghost: g
 				? { distFrac: total ? g.d / total : 0, pace: g.pace, spm: g.spm, label: ghostLabel }
 				: undefined
@@ -237,7 +236,7 @@
 				renderer = null;
 			}
 			if (myLoadId !== activeLoadId) return;
-			renderer = new Ctor3D!(canvas3dHost, quality, detail.sport);
+			renderer = new Ctor3D!(canvas3dHost, quality);
 			activeCanvas = '3d';
 			if (w) renderer.resize(w, h);
 			renderCurrent();

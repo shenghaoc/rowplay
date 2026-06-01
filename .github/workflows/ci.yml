@@ -53,7 +53,6 @@ jobs:
       pull-requests: read
     outputs:
       run_e2e: ${{ steps.filter.outputs.e2e }}
-      run_build: ${{ steps.filter.outputs.build }}
 
     steps:
       - uses: actions/checkout@v6
@@ -64,22 +63,8 @@ jobs:
           token: ${{ github.token }}
           filters: |
             e2e:
-              - 'src/routes/**'
-              - 'src/lib/replay/**'
-              - 'src/lib/i18n*'
-              - 'src/lib/theme*'
-              - 'src/lib/components/**'
-              - 'src/lib/mock*'
-              - 'src/app.css'
-              - 'src/app.html'
-              - 'static/**'
-              - 'tests/e2e/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'playwright.config.*'
-              - '.github/workflows/ci.yml'
-            build:
               - 'src/**'
+              - 'tests/e2e/**'
               - 'static/**'
               - 'migrations/**'
               - 'package.json'
@@ -87,6 +72,7 @@ jobs:
               - 'tsconfig*.json'
               - 'svelte.config.js'
               - 'vite.config.*'
+              - 'playwright.config.*'
               - 'wrangler.jsonc'
               - '.nvmrc'
               - '.github/workflows/ci.yml'
@@ -132,6 +118,7 @@ jobs:
         run: npm run test:e2e
         env:
           WRANGLER_SEND_METRICS: 'false'
+          E2E_REUSE_SERVER: '1'
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v7
@@ -139,18 +126,3 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
-
-  build-verify:
-    runs-on: ubuntu-latest
-    needs: [changes, quality]
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.run_build == 'true'
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Production build verification
-        run: npm run build

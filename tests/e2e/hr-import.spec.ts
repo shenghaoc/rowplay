@@ -18,7 +18,8 @@ test.describe('heart-rate import', () => {
 
 		await page.goto('/replay/1002');
 		await page.evaluate(() => localStorage.removeItem('rowplay:hr-import:1002'));
-		await page.reload();
+		// Navigate fresh instead of reload() — WebKit module-import flake on reload.
+		await page.goto('/replay/1002');
 		await expect(page.getByText(/Import heart rate|导入心率/)).toBeVisible();
 
 		const fileInput = page.locator('.hrimport input[type="file"]');
@@ -28,9 +29,13 @@ test.describe('heart-rate import', () => {
 
 		await expect(page.getByRole('button', { name: /Remove imported HR|移除导入的心率/ })).toBeVisible();
 		await expect(page.locator('.gauges').getByText(/bpm/i)).toBeVisible();
-		// HR import mounts extra uPlot charts; wait until telemetry canvases settle.
-		await expect(page.locator('.charts canvas').first()).toBeVisible();
-		await page.waitForTimeout(600);
+		// HR import mounts extra uPlot charts; verify at least one chart canvas rendered.
+		const chartCanvas = page.locator('.charts canvas').first();
+		await expect(chartCanvas).toBeVisible();
+		await expect(async () => {
+			const w = await chartCanvas.evaluate((el: HTMLCanvasElement) => el.width);
+			expect(w).toBeGreaterThan(0);
+		}).toPass({ timeout: 10_000 });
 
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
