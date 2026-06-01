@@ -17,10 +17,11 @@
 - **@tanstack/svelte-virtual** — virtualized lists for the workout list
 - **svelte-sonner** — toast notifications
 - **clsx** + **tailwind-merge** — conditional class composition
+- **temporal-polyfill** — Temporal API polyfill for date/time handling
 
 ## I18n & Theming
 
-- Hand-rolled i18n — no library. Pure dictionaries and helpers in `i18n.ts`; reactive `I18n` class (Svelte 5 `$state`) in `i18n.svelte.ts`
+- Hand-rolled i18n — no library. Pure dictionaries and helpers in `i18n.ts`; reactive `I18n` class (Svelte 5 `$state`) in `i18n.svelte.ts`; plural helpers in `i18nPlural.ts`
 - Languages: English (`en`) and Chinese Simplified (`zh`), with `{param}` interpolation
 - Light/dark theme via `Theme` class in `theme.svelte.ts`; CSS custom properties in `app.css`
 - Both are SSR-safe: state seeded from cookies (`lang`, `theme`) so server and client agree; shared via `createContext`, not module singletons
@@ -33,6 +34,7 @@
 
 ## Testing
 
+- **Vitest** — unit tests for pure functions (`npm run test` / `npm run test:watch`)
 - **Playwright** — E2E smoke tests run against the production build on the real Workers runtime (`wrangler dev`), not `vite dev`
 - **svelte-check** — TypeScript type checking for `.svelte` and `.ts` files
 
@@ -49,6 +51,8 @@
 | Install deps      | `npm install`              |
 | Dev server        | `npm run dev`              |
 | Type check        | `npm run check`            |
+| Unit tests        | `npm run test`             |
+| Unit tests watch  | `npm run test:watch`       |
 | Build             | `npm run build`            |
 | Preview (Workers) | `npm run preview`          |
 | Deploy            | `npm run deploy`           |
