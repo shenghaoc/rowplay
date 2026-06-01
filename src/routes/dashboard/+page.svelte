@@ -1242,6 +1242,9 @@
 		.stats {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
+		.stat {
+			padding: 1rem 1.1rem;
+		}
 		.latest {
 			grid-template-columns: 1fr;
 			gap: 0.75rem;
@@ -1269,7 +1272,10 @@
 	}
 	@media (max-width: 400px) {
 		.stats {
-			gap: 0.6rem;
+			gap: 0.75rem;
+		}
+		.stat {
+			padding: 0.9rem 1rem;
 		}
 		.stat .value {
 			font-size: 1.25rem;

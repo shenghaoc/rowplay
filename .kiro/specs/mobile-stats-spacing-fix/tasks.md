@@ -18,7 +18,7 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
 
 ## Tasks
 
-- [ ] 1. Write bug condition exploration test
+- [x] 1. Write bug condition exploration test
   - **Property 1: Bug Condition** - Mobile Stat Cards Cramped Padding and Gap
   - **CRITICAL**: This test MUST FAIL on unfixed code — failure confirms the bug exists
   - **DO NOT attempt to fix the test or the code when it fails**
@@ -39,7 +39,7 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
   - Mark task complete when test is written, run, and failure is documented
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
   - **Property 2: Preservation** - Desktop Stat Styles Are Unchanged
   - **IMPORTANT**: Follow observation-first methodology
   - Observe behavior on UNFIXED code for non-buggy inputs (viewport > 720px):
@@ -55,9 +55,9 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
   - Mark task complete when tests are written, run, and passing on unfixed code
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 3. Apply the CSS fix to `src/routes/dashboard/+page.svelte`
+- [x] 3. Apply the CSS fix to `src/routes/dashboard/+page.svelte`
 
-  - [ ] 3.1 Add `.stat { padding: 1rem 1.1rem; }` inside the `@media (max-width: 720px)` block
+  - [x] 3.1 Add `.stat { padding: 1rem 1.1rem; }` inside the `@media (max-width: 720px)` block
     - Open `src/routes/dashboard/+page.svelte` and locate the scoped `<style>` block
     - Find the existing `@media (max-width: 720px)` rule that sets `.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }`
     - Add `.stat { padding: 1rem 1.1rem; }` immediately after the `.stats` rule inside that block
@@ -67,7 +67,7 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
     - _Preservation: viewports > 720px must continue to use global .card padding of 1.25rem 1.4rem_
     - _Requirements: 2.1, 2.3, 3.1, 3.3_
 
-  - [ ] 3.2 Update `.stats { gap }` and add `.stat { padding }` inside the `@media (max-width: 400px)` block
+  - [x] 3.2 Update `.stats { gap }` and add `.stat { padding }` inside the `@media (max-width: 400px)` block
     - In the same scoped `<style>` block, locate the `@media (max-width: 400px)` rule
     - Change `.stats { gap: 0.6rem; }` to `.stats { gap: 0.75rem; }`
     - Add `.stat { padding: 0.9rem 1rem; }` after the updated `.stats` rule and before `.stat .value { font-size: 1.25rem; }`
@@ -77,7 +77,7 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
     - _Preservation: .stat .value { font-size: 1.25rem } and all other rules in the 400px block must remain unchanged_
     - _Requirements: 2.2, 2.3, 3.1, 3.3_
 
-  - [ ] 3.3 Verify bug condition exploration test now passes
+  - [x] 3.3 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - Mobile Stat Cards Cramped Padding and Gap
     - **IMPORTANT**: Re-run the SAME test from task 1 — do NOT write a new test
     - The test from task 1 encodes the expected behavior (padding ≥ thresholds, gap = 0.75rem)
@@ -85,14 +85,14 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
     - **EXPECTED OUTCOME**: Test PASSES (confirms the fix satisfies the expected behavior for all bug-condition viewports)
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 3.4 Verify preservation tests still pass
+  - [x] 3.4 Verify preservation tests still pass
     - **Property 2: Preservation** - Desktop Stat Styles Are Unchanged
     - **IMPORTANT**: Re-run the SAME tests from task 2 — do NOT write new tests
     - Run: `npm run test -- --run`
     - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions — desktop layout, global `.card` styles, and all other dashboard sections are unchanged)
     - Confirm all tests still pass after fix (no regressions)
 
-  - [ ] 3.5 Visual verification at mobile breakpoints
+  - [x] 3.5 Visual verification at mobile breakpoints
     - Start the dev server: `npm run dev`
     - Open the dashboard at `http://localhost:5173/dashboard` in a browser
     - Use DevTools device emulation to verify at the following widths:
@@ -102,13 +102,13 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
     - Confirm labels ("Sessions", "Total distance", "Total time", "Avg pace") and values are clearly legible with breathing room
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 3.6 Visual regression check at desktop width
+  - [x] 3.6 Visual regression check at desktop width
     - With the dev server still running, resize to 800px and wider
     - Confirm the stats section renders as a 4-column grid with the original spacing (gap `1rem`, padding `1.25rem 1.4rem`)
     - Confirm all other dashboard sections (latest session hero, engagement panel, heatmap, PMC, PBs, trend chart, workout list) are visually unchanged
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 4. Checkpoint — Ensure all tests pass
+- [x] 4. Checkpoint — Ensure all tests pass
   - Run the full unit test suite: `npm run test`
   - Run the type checker: `npm run check`
   - Confirm both pass with 0 errors before marking this task complete
