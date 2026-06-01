@@ -163,9 +163,9 @@ Status reflects the current tree (post-remediation); the audit found every ❌ b
 | `text-box-trim` | ✅ | `.btn` / `.badge`; `text-wrap: balance` on headings (P2#18) |
 | `text-wrap: balance` | ✅ | Headings (P2#18) |
 | `@property` | ✅ | `--r-ctrl` registered for typed/animatable custom property (P3#24) |
-| `@starting-style` | ✅ | Live-mode `.new-entry` rows (P2#19) |
+| `@starting-style` | ✅ | Live-mode `.new-entry` rows (P2#19); no-op in Firefox (no `@starting-style` support yet) — accepted progressive enhancement |
 | `interpolate-size: allow-keywords` | ✅ | On `:root` (P3#25) |
-| `transition-behavior: allow-discrete` | ✅ | On `dialog` / `details` |
+| `transition-behavior: allow-discrete` | ❌ | Not adopted — inert without an explicit `transition`, and `<details>` can't fade without hiding its summary; dialogs/details snap (reduced-motion-friendly) |
 | `prefers-contrast` | ✅ | `--hairline` adjusted under `prefers-contrast: more` (P1#10) |
 | `prefers-reduced-transparency` | N/A | No `backdrop-filter` in rowplay today |
 | `prefers-reduced-motion` on components | ✅ | Named-class suppression for `.row.new-entry`, `.vspin`, `.spin`, etc. (P1#9) |

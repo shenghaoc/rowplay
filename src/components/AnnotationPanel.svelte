@@ -95,10 +95,6 @@
 		}
 	}
 
-	function confirmDelete(id: number) {
-		requestDelete(id);
-	}
-
 	function onKeydown(e: KeyboardEvent) {
 		// Don't act on Enter while an IME is composing (e.g. zh/ja) — that Enter
 		// confirms the candidate, it isn't a submit.
@@ -178,7 +174,7 @@
 								<button class="btn-icon" onclick={() => startEdit(a)} aria-label={t('annotations.editNote')}>
 									<Pencil size={13} />
 								</button>
-								<button class="btn-icon danger" onclick={() => confirmDelete(a.id)} aria-label={t('annotations.deleteNote')}>
+								<button class="btn-icon danger" onclick={() => requestDelete(a.id)} aria-label={t('annotations.deleteNote')}>
 									<Trash2 size={13} />
 								</button>
 							</div>
