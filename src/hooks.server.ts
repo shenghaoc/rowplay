@@ -46,8 +46,11 @@ const SECURITY_HEADERS: Record<string, string> = {
 	'X-Frame-Options': 'DENY',
 	'X-Content-Type-Options': 'nosniff',
 	'Referrer-Policy': 'strict-origin-when-cross-origin',
+	// Report-only CSP baseline: validates syntax and surfaces violations in
+	// DevTools. about:blank report-uri silences the "no reporting endpoint"
+	// browser warning; wire up a real collector before switching to enforce mode.
 	'Content-Security-Policy-Report-Only':
-		"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " +
+		"default-src 'self'; base-uri 'self'; object-src 'none'; report-uri about:blank; " +
 		"script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
 		"font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'"
 };

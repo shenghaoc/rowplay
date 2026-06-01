@@ -106,7 +106,7 @@
 			onclick={toggleMenu}
 			aria-expanded={menuOpen}
 			aria-controls="mobile-nav"
-			aria-haspopup="menu"
+			aria-haspopup="dialog"
 			aria-label={menuOpen ? t('nav.menuClose') : t('nav.menuOpen')}
 		>
 			{#if menuOpen}<X size={18} />{:else}<Menu size={18} />{/if}

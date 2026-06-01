@@ -129,7 +129,7 @@
 					<tbody>
 						{#each entries as e (`${e.workoutId}:${e.displayName}`)}
 							{@const race = raceLink(e)}
-							<tr class="cv-auto" class:you={e.isYou} style="--cv-intrinsic-height: 48px">
+							<tr class:you={e.isYou}>
 								<td class="rank">{e.rank}</td>
 								<td class="name">
 									<span class="handle">{e.displayName}</span>

@@ -186,7 +186,7 @@
 	{/if}
 </div>
 
-<dialog class="anno-delete-dialog" bind:this={deleteDialog} closedby="any">
+<dialog class="anno-delete-dialog" bind:this={deleteDialog} closedby="any" aria-label={t('annotations.confirmDelete')}>
 	<p>{t('annotations.confirmDelete')}</p>
 	<div class="anno-delete-actions">
 		<button type="button" class="btn btn-ghost btn-sm" onclick={() => deleteDialog?.close()}>
