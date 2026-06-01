@@ -3,7 +3,7 @@ import { nowEpochMillis } from '$lib/datetime';
 import type { WorkoutListQuery } from '$lib/workoutQuery';
 import type { AnnualGoal } from '../analytics';
 import { STANDARD_DISTANCES, type LeaderboardEntry } from '$lib/leaderboard';
-import type { Sport, Workout, WorkoutDetail } from '../types';
+import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
 export const DETAIL_PAYLOAD_VERSION = 1;
@@ -612,5 +612,92 @@ export async function getLeaderboardEntries(
 		}));
 	} catch {
 		return [];
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Coaching annotations — timestamped notes on workouts.
+// ---------------------------------------------------------------------------
+
+interface AnnotationRow {
+	id: number;
+	user_id: number;
+	workout_id: number;
+	timestamp: number;
+	text: string;
+	created_at: number;
+}
+
+function rowToAnnotation(r: AnnotationRow): Annotation {
+	return {
+		id: r.id,
+		timestamp: r.timestamp,
+		text: r.text,
+		createdAt: r.created_at
+	};
+}
+
+/** All annotations for a workout, ordered by timestamp. */
+export async function getAnnotations(
+	db: D1Database | undefined,
+	userId: number,
+	workoutId: number
+): Promise<Annotation[]> {
+	if (!db) return [];
+	try {
+		const res = await db
+			.prepare(
+				'SELECT id, user_id, workout_id, timestamp, text, created_at FROM annotations WHERE user_id = ? AND workout_id = ? ORDER BY timestamp ASC'
+			)
+			.bind(userId, workoutId)
+			.all<AnnotationRow>();
+		return (res.results ?? []).map(rowToAnnotation);
+	} catch {
+		return [];
+	}
+}
+
+/** Upsert an annotation (id === 0 for insert-only; id > 0 for update). */
+export async function putAnnotation(
+	db: D1Database | undefined,
+	userId: number,
+	workoutId: number,
+	annotation: { id: number; timestamp: number; text: string }
+): Promise<Annotation> {
+	if (!db) throw new Error('Database not available.');
+	const now = nowEpochMillis();
+	if (annotation.id > 0) {
+		await db
+			.prepare(
+				'UPDATE annotations SET timestamp = ?, text = ?, created_at = ? WHERE id = ? AND user_id = ? AND workout_id = ?'
+			)
+			.bind(annotation.timestamp, annotation.text, now, annotation.id, userId, workoutId)
+			.run();
+		return { id: annotation.id, timestamp: annotation.timestamp, text: annotation.text, createdAt: now };
+	}
+	const res = await db
+		.prepare(
+			'INSERT INTO annotations (user_id, workout_id, timestamp, text, created_at) VALUES (?, ?, ?, ?, ?)'
+		)
+		.bind(userId, workoutId, annotation.timestamp, annotation.text, now)
+		.run();
+	return { id: res.meta.last_row_id ?? 0, timestamp: annotation.timestamp, text: annotation.text, createdAt: now };
+}
+
+/** Delete an annotation by id. */
+export async function deleteAnnotation(
+	db: D1Database | undefined,
+	userId: number,
+	workoutId: number,
+	annotationId: number
+): Promise<void> {
+	if (!db) return;
+	try {
+		await db
+			.prepare('DELETE FROM annotations WHERE id = ? AND user_id = ? AND workout_id = ?')
+			.bind(annotationId, userId, workoutId)
+			.run();
+	} catch {
+		// ignore
 	}
 }

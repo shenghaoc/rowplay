@@ -1,7 +1,7 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
-import type { Sport, Workout, WorkoutDetail } from '../types';
-import { mockWorkoutDetail, mockWorkouts } from '../mockData';
+import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
+import { mockAnnotations, mockWorkoutDetail, mockWorkouts } from '../mockData';
 import { Concept2Client } from './concept2';
 import { getConfig } from './config';
 import { readSession } from './session';
@@ -15,14 +15,17 @@ import {
 } from '$lib/workoutQuery';
 import {
 	countWorkouts,
+	deleteAnnotation as dbDeleteAnnotation,
 	deleteUserData,
 	getAllWorkouts,
+	getAnnotations as dbGetAnnotations,
 	getCachedDetail,
 	getPbWorkoutIds,
 	getPersonalBests,
 	getSportAggregates,
 	getSyncState,
 	getUserAnnualGoal,
+	putAnnotation as dbPutAnnotation,
 	putCachedDetail,
 	queryWorkouts,
 	setSyncState,
@@ -262,4 +265,76 @@ export async function clearUserCachedData(event: RequestEvent): Promise<void> {
 	if (!db || userId == null) throw error(500, 'Database (D1) is not configured.');
 	await deleteUserData(db, userId);
 	if (kv && sid) await destroySession(kv, sid);
+}
+
+// ---------------------------------------------------------------------------
+// Coaching annotations
+// ---------------------------------------------------------------------------
+
+/** Demo-mode annotation store (in-memory, lost on server restart — acceptable for demo). */
+const demoAnnotationStore = new Map<number, Annotation[]>();
+
+export async function loadAnnotations(
+	event: RequestEvent,
+	workoutId: number
+): Promise<Annotation[]> {
+	if (event.locals.demo) {
+		const stored = demoAnnotationStore.get(workoutId);
+		if (stored) return stored;
+		return mockAnnotations(workoutId);
+	}
+	const db = event.platform?.env?.DB;
+	const userId = event.locals.user?.id;
+	if (!db || userId == null) return [];
+	return dbGetAnnotations(db, userId, workoutId);
+}
+
+export async function saveAnnotation(
+	event: RequestEvent,
+	workoutId: number,
+	annotation: { id: number; timestamp: number; text: string }
+): Promise<Annotation> {
+	if (event.locals.demo) {
+		const stored = demoAnnotationStore.get(workoutId) ?? mockAnnotations(workoutId);
+		const now = Date.now();
+		if (annotation.id > 0) {
+			const idx = stored.findIndex((a) => a.id === annotation.id);
+			if (idx >= 0) {
+				stored[idx] = { ...annotation, createdAt: now };
+			}
+		} else {
+			const newId = stored.length ? Math.max(...stored.map((a) => a.id)) + 1 : 1;
+			stored.push({ id: newId, timestamp: annotation.timestamp, text: annotation.text, createdAt: now });
+		}
+		demoAnnotationStore.set(workoutId, stored);
+		return (
+			stored.find((a) => a.id === annotation.id) ??
+			stored[stored.length - 1]
+		);
+	}
+	const db = event.platform?.env?.DB;
+	const userId = event.locals.user?.id;
+	if (!db || userId == null) throw error(401, 'Not authenticated.');
+	return dbPutAnnotation(db, userId, workoutId, annotation);
+}
+
+export async function removeAnnotation(
+	event: RequestEvent,
+	workoutId: number,
+	annotationId: number
+): Promise<void> {
+	if (event.locals.demo) {
+		const stored = demoAnnotationStore.get(workoutId);
+		if (stored) {
+			demoAnnotationStore.set(
+				workoutId,
+				stored.filter((a) => a.id !== annotationId)
+			);
+		}
+		return;
+	}
+	const db = event.platform?.env?.DB;
+	const userId = event.locals.user?.id;
+	if (!db || userId == null) return;
+	await dbDeleteAnnotation(db, userId, workoutId, annotationId);
 }
