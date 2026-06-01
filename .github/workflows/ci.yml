@@ -73,6 +73,8 @@ jobs:
               - 'src/app.html'
               - 'static/**'
               - 'tests/e2e/**'
+              - 'package.json'
+              - 'package-lock.json'
               - 'playwright.config.*'
               - '.github/workflows/ci.yml'
             build:
@@ -85,6 +87,7 @@ jobs:
               - 'svelte.config.js'
               - 'vite.config.*'
               - 'wrangler.jsonc'
+              - '.nvmrc'
               - '.github/workflows/ci.yml'
 
   quality:
