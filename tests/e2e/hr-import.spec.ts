@@ -24,6 +24,9 @@ test.describe('heart-rate import', () => {
 
 		await expect(page.getByText(/Heart rate|心率/).first()).toBeVisible();
 		await expect(page.locator('.gauges').getByText(/bpm/i)).toBeVisible();
+		// Wait for the import to fully settle (hrOverlay set, hrImportBusy false).
+		// This gives WebKit time to finish lazy module loading before we check errors.
+		await expect(page.getByRole('button', { name: /Remove imported HR|移除导入的心率/ })).toBeVisible();
 
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
