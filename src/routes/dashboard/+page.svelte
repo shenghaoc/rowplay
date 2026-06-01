@@ -532,7 +532,7 @@
 				<div class="formtitle">
 					<Activity size={18} />
 					<span class="label">{t('dashboard.formTitle')}</span>
-			<span class="badge badge-primary">{t('dashboard.formPremium')}</span>
+					<span class="badge badge-primary">{t('dashboard.formPremium')}</span>
 				</div>
 				<span class="badge {formBandClass[load.band]}">{bandLabel[load.band]}</span>
 			</div>

@@ -121,9 +121,9 @@
 	--color-m-rower: var(--m-rower);
 	--color-m-skierg: var(--m-skierg);
 	--color-m-bike: var(--m-bike);
-	--font-display: 'Source Sans 3', system-ui, -apple-system, sans-serif;
-	--font-ui: 'Source Sans 3', system-ui, -apple-system, sans-serif;
-	--font-mono: 'Source Code Pro', ui-monospace, 'SF Mono', monospace;
+	--font-display: 'Source Sans 3', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+	--font-ui: 'Source Sans 3', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+	--font-mono: 'Source Code Pro', 'Noto Sans SC', ui-monospace, 'SF Mono', monospace;
 }
 
 /* ============================================================================
@@ -178,9 +178,9 @@
 	--m-bike: #6257B8;
 
 	/* Type families (Adobe Source) */
-	--display: 'Source Sans 3', system-ui, -apple-system, sans-serif;
-	--ui: 'Source Sans 3', system-ui, -apple-system, sans-serif;
-	--mono: 'Source Code Pro', ui-monospace, 'SF Mono', monospace;
+	--display: 'Source Sans 3', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+	--ui: 'Source Sans 3', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+	--mono: 'Source Code Pro', 'Noto Sans SC', ui-monospace, 'SF Mono', monospace;
 	--sans: var(--ui);
 
 	/* Radii — rounded & delightful */
@@ -236,6 +236,7 @@
 	--chrome: var(--ghost);
 	--ahead: #4AAF8E;
 	--behind: #D9A23A;
+	--alarm: #E06B5C;
 
 	--zone-1: #5AAA90;
 	--zone-2: #4AAAAA;
@@ -378,6 +379,9 @@ h3 {
 }
 .btn-neutral {
 	box-shadow: var(--shadow-md);
+}
+.btn-error {
+	box-shadow: 0 2px 6px rgba(192, 57, 43, 0.16), 0 14px 32px -12px rgba(192, 57, 43, 0.3);
 }
 .btn-ghost {
 	box-shadow: none;

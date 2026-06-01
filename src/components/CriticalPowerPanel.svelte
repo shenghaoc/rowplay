@@ -120,7 +120,7 @@
 				</div>
 			{/if}
 			<div class="cs">
-				<div class="csv mono">{cp.method === 'model' ? t('dashboard.formModelled') : t('dashboard.formEstimated')}</div>
+				<div class="csv"><span class="badge badge-secondary">{cp.method === 'model' ? t('dashboard.formModelled') : t('dashboard.formEstimated')}</span></div>
 				<div class="csl muted">{t('dashboard.cpMethod')}</div>
 			</div>
 		</div>
