@@ -79,6 +79,9 @@ export class LiveMode {
 	setInterval(sec: LiveIntervalSec) {
 		this.intervalSec = sec;
 		this.persist();
+		// If a poll is in flight, this 0 ms timer fires into poll()'s
+		// `status === 'polling'` early-return and is dropped — that's fine: the
+		// in-flight poll reschedules with the new intervalSec when it finishes.
 		if (this.enabled) this.scheduleNext(0);
 	}
 
@@ -181,6 +184,9 @@ export class LiveMode {
 			}
 			if (hadFailures) this.callbacks.onRecovered();
 
+			// Demo mode intentionally ignores intervalSec and uses a random delay
+			// to simulate the unpredictable arrival of real workouts; the interval
+			// selector only governs live (non-demo) polling cadence.
 			const interval = this.demo
 				? randomMockDelayMs()
 				: effectiveIntervalSec(this.intervalSec, this.tabVisible) * 1000 + nextBackoffMs(0);

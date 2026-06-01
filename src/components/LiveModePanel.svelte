@@ -14,7 +14,9 @@
 		return sec < 60 ? t('liveMode.intervalSec', { n: sec }) : t('liveMode.intervalMin', { n: sec / 60 });
 	}
 
-	function fmtTime(ts: number | null): string {
+	// Formats a wall-clock timestamp (ms epoch) to HH:MM:SS — distinct from
+	// $lib/format's fmtTime, which formats elapsed workout seconds.
+	function fmtWallTime(ts: number | null): string {
 		if (ts == null) return '—';
 		return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 	}
@@ -68,9 +70,9 @@
 			{#if live.polling}
 				<span class="polling"><LoaderCircle size={12} class="spin" /> {t('liveMode.polling')}</span>
 			{:else}
-				<span>{t('liveMode.lastPoll', { time: fmtTime(live.lastPollAt) })}</span>
+				<span>{t('liveMode.lastPoll', { time: fmtWallTime(live.lastPollAt) })}</span>
 				<span> · </span>
-				<span>{t('liveMode.nextPoll', { time: fmtTime(live.nextPollAt) })}</span>
+				<span>{t('liveMode.nextPoll', { time: fmtWallTime(live.nextPollAt) })}</span>
 			{/if}
 		</div>
 	{/if}
