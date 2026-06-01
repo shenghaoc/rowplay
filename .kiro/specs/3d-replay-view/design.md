@@ -126,22 +126,26 @@ Creates a `WebGLRenderer({ canvas, antialias: true })`, a `PerspectiveCamera`, a
 `Scene`, lights, and the avatar meshes. The course geometry is built once and
 reused (Req 5.1).
 
-**Scene layout (maps directly from `RenderState`):**
+**Scene layout (maps directly from `RenderState`):** the athlete rows around a
+**circular loop where one lap = 1 km** (matching ErgData); longer pieces wrap
+multiple laps.
 
 | RenderState field | 3D representation |
 |---|---|
-| `totalDistance` | length of the course/lane along +Z; distance ticks as posts |
-| `distFrac` | live avatar position = `lerp(start, finish, distFrac)` |
-| `frame.pace`, `frame.spm` | floating pace label above live avatar; spm drives a subtle bob |
-| `ghost?.distFrac` | ghost avatar in a parallel lane (only when ghost present) |
-| `ghost?.label` | floating label above ghost |
-| finish | checkered plane / gate at course end |
+| `frame.d` (metres) | live boat angle on the lap circle = `(d / 1000) · 2π`; lap = `floor(d/1000)` |
+| `totalDistance` | lap count `ceil(totalDistance/1000)`, shown in the live label |
+| `frame.pace`, `frame.spm` | floating label above the boat; spm drives a subtle bob + roll |
+| `ghost?.distFrac` | ghost boat on a concentric inner lane (`ghostMeters = distFrac · totalDistance`) |
+| `ghost?.label` | floating label above the ghost |
+| start/finish | checkered strip across the lane at the lap crossing (angle 0) |
 
-Avatars are low-poly boat-like meshes (live uses `--live`, ghost uses `--ghost`,
-read from the shared palette). The camera follows the live avatar with a smooth
-chase offset; on `seek`/pause it snaps to the new position via the next
-`render()` call. Pace/label text is rendered as sprites (canvas-texture or a
-lightweight SDF) to avoid pulling a font-geometry dependency.
+Boats are low-poly **single sculls** — a capsule hull, a seated rower, and two
+oars with blades. The hull/deck/blades carry `userData.accent` so the per-boat
+accent (live `--live`, ghost `--ghost`) re-themes without touching the rower or
+oar shafts. The camera chases behind the live boat along its travel tangent
+(raised, looking ahead), snapping to position on the first frame and lerping
+thereafter. Pace/label text is rendered as sprites (canvas-texture) to avoid
+pulling a font-geometry dependency.
 
 **`render(state, playing, theme)`:**
 1. On theme change, swap material colours to the matching `COLORS_*` palette (Req 4.6).
