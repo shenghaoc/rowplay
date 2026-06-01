@@ -27,10 +27,12 @@ function displayNameFor(event: RequestEvent): string {
 
 /** All ranked boards, with the viewer's own rows flagged `isYou`. */
 export async function loadBoards(event: RequestEvent): Promise<Board[]> {
-	if (event.locals.demo) {
+	const db = event.platform?.env?.DB;
+	if (!db) {
+		// No D1 binding available (dev mode or no backend configured) —
+		// fall back to the deterministic demo seed.
 		return buildBoards(mockLeaderboard());
 	}
-	const db = event.platform?.env?.DB;
 	const rows = await getLeaderboardEntries(db);
 	const me = event.locals.user?.id;
 	const entries: LeaderboardEntry[] = rows.map((r) => ({

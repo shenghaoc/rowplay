@@ -133,7 +133,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each entries as e (e.displayName + e.workoutId + e.time)}
+						{#each entries as e (`${e.sport}:${e.distance}:${e.displayName}`)}
 							{@const race = raceLink(e)}
 							<tr class:you={e.isYou}>
 								<td class="rank">{e.rank}</td>

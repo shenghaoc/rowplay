@@ -566,8 +566,8 @@ export async function upsertLeaderboardEntry(
 				nowEpochMillis()
 			)
 			.run();
-	} catch {
-		// swallow — best effort
+	} catch (e) {
+		console.error('upsertLeaderboardEntry failed:', (e as Error).message ?? e);
 	}
 }
 
