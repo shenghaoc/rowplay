@@ -35,7 +35,7 @@
 	const uiTheme = getThemeContext();
 	const detail = $derived(data.detail as WorkoutDetail);
 	const candidates = $derived(data.candidates as Workout[]);
-	const annotations = $state(data.annotations as Annotation[]);
+	let annotations = $state(data.annotations as Annotation[]);
 	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
 	const strokes = $derived(detail.strokes);
@@ -526,6 +526,29 @@
 
 	// --- Coaching annotations ---
 	async function saveAnnotation(a: { id: number; timestamp: number; text: string }) {
+		const res = await fetch(`/api/workouts/${detail.id}/annotations`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(a)
+		});
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		const { annotation } = (await res.json()) as { annotation: Annotation };
+		if (a.id > 0) {
+			const idx = annotations.findIndex((x) => x.id === a.id);
+			if (idx >= 0) annotations[idx] = annotation;
+		} else {
+			annotations = [...annotations, annotation];
+		}
+	}
+
+	async function deleteAnnotation(id: number) {
+		const res = await fetch(`/api/workouts/${detail.id}/annotations?annotationId=${id}`, {
+			method: 'DELETE'
+		});
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		annotations = annotations.filter((a) => a.id !== id);
+	}
+</script>
 
 <svelte:head><title>{t('common.replay')} · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
 
