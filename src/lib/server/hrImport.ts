@@ -52,7 +52,7 @@ export async function clearHrImport(event: RequestEvent, workoutId: number): Pro
 		// destructively overwriting cached HR on a transient outage.
 		const status = (e as { status?: number }).status;
 		if (status !== 404) throw e;
-		const cached = await getCachedDetail(db, userId, workoutId);
+		const cached = await getCachedDetail(db, userId, workoutId, event.platform?.env);
 		if (!cached) throw error(404, 'Workout not found.');
 		detail = stripHrFromDetail(cached);
 	}
