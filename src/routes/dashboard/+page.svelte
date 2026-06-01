@@ -424,7 +424,7 @@
 				{/each}
 			</div>
 			{#if !data.demo}
-				<button class="btn ghost small sync" onclick={sync} disabled={syncing}>
+				<button class="btn btn-ghost btn-sm sync" onclick={sync} disabled={syncing}>
 					<span class="syncicon" class:spin={syncing}><RefreshCw size={14} /></span>
 					{syncing ? t('dashboard.syncing') : t('dashboard.sync')}
 				</button>
@@ -489,7 +489,7 @@
 					</div>
 				{/if}
 			</div>
-			<div class="herocta tag"><Play size={12} /> {t('common.replay')}</div>
+			<div class="herocta badge badge-primary"><Play size={12} /> {t('common.replay')}</div>
 		</a>
 	{/if}
 
@@ -532,7 +532,7 @@
 				<div class="formtitle">
 					<Activity size={18} />
 					<span class="label">{t('dashboard.formTitle')}</span>
-					<span class="tag premium">{t('dashboard.formPremium')}</span>
+			<span class="badge badge-primary">{t('dashboard.formPremium')}</span>
 				</div>
 				<span class="badge {formBandClass[load.band]}">{bandLabel[load.band]}</span>
 			</div>

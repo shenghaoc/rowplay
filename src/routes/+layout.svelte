@@ -19,14 +19,6 @@
 	onMount(() => initPwaUpdate(i18n));
 </script>
 
-<svelte:head>
-	<link rel="preconnect" href="https://fonts.googleapis.com" />
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-	<link
-		rel="stylesheet"
-		href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700;900&family=Source+Code+Pro:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;0,900;1,400&display=swap"
-	/>
-</svelte:head>
 
 <Toaster theme={theme.value} position="bottom-right" richColors />
 
@@ -60,14 +52,14 @@
 		{#if data.user}
 			<span class="muted user">@{data.user.username}</span>
 			<form method="POST" action="/auth/logout" onsubmit={() => { navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' }); }}>
-				<button class="btn ghost small" type="submit">{t('auth.logout')}</button>
+				<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
 			</form>
 		{:else}
-			<span class="tag live">{t('common.demoMode')}</span>
+			<span class="badge badge-primary">{t('common.demoMode')}</span>
 			{#if data.oauthEnabled}
-				<a class="btn ghost small" href="/auth/login">{t('auth.connect')}</a>
+				<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
 			{/if}
-			<a class="btn small" href="/auth/token">{t('auth.useToken')}</a>
+			<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
 		{/if}
 	</div>
 </header>
@@ -123,7 +115,7 @@
 		height: 0;
 		border-style: solid;
 		border-width: 7px 0 7px 11px;
-		border-color: transparent transparent transparent var(--live);
+		border-color: transparent transparent transparent var(--chrome);
 	}
 	.mast-tabs {
 		display: flex;
@@ -145,7 +137,7 @@
 	}
 	.mast-tabs a.active {
 		color: var(--ink);
-		border-bottom-color: var(--live);
+		border-bottom-color: var(--chrome);
 	}
 	.mast-tabs a:hover {
 		text-decoration: none;
@@ -177,10 +169,8 @@
 		font-family: var(--mono);
 		font-size: 0.78rem;
 	}
-	.btn.small {
+	.btn-sm {
 		align-self: center;
-		padding: 0.4rem 0.75rem;
-		font-size: 0.82rem;
 	}
 	form {
 		margin: 0;

@@ -1,94 +1,167 @@
 @import 'tailwindcss';
 
+/* ============================================================================
+   rowplay — Jet Set Blue · RACE BOARD design system
+   ----------------------------------------------------------------------------
+   Visual language: printed regatta program / erg race-results sheet crossed
+   with a marine chronometer. Cool blue-grey paper, deep teal-navy ink rules,
+   Source Sans 3 (display/UI) + Source Code Pro (data), electric violet for
+   YOU/live, Jet Set Blue for the ghost you chase (and brand chrome).
+   ============================================================================ */
+
+/* ---- daisyUI plugin with custom rowplay theme --------------------------- */
+@plugin "daisyui" {
+	themes: rowplay --default;
+}
+
+@plugin "daisyui/theme" {
+	name: "rowplay";
+	default: true;
+	color-scheme: light;
+
+	/* Paper & ink */
+	--color-base-100: #E9EFF1;
+	--color-base-200: #DCE6EA;
+	--color-base-300: #CBD9DF;
+	--color-base-content: #0F2A36;
+
+	/* Primary = YOU / live / play (electric violet) */
+	--color-primary: #5240CE;
+	--color-primary-content: #F7FAFB;
+
+	/* Secondary = ghost / brand chrome (Jet Set Blue) */
+	--color-secondary: #176B8C;
+	--color-secondary-content: #F7FAFB;
+
+	/* Accent = ahead / improving (sea-green) */
+	--color-accent: #2F8F6E;
+	--color-accent-content: #F7FAFB;
+
+	/* Neutral = secondary ink */
+	--color-neutral: #4A6470;
+	--color-neutral-content: #F7FAFB;
+
+	/* Semantic */
+	--color-info: #1E8C8C;
+	--color-info-content: #F7FAFB;
+	--color-success: #2F8F6E;
+	--color-success-content: #F7FAFB;
+	--color-warning: #C2851A;
+	--color-warning-content: #0F2A36;
+	--color-error: #C0392B;
+	--color-error-content: #F7FAFB;
+
+	/* Radii — small, printed-label feel */
+	--radius-selector: 0.25rem;
+	--radius-field: 0.1875rem;
+	--radius-box: 0.25rem;
+
+	/* Borders */
+	--border: 2px;
+
+	/* Depth */
+	--depth: 0;
+	--noise: 0;
+}
 
 /* Bridge design tokens into Tailwind v4 utilities. */
-@theme {
-	--color-paper: #f1ebdf;
-	--color-paper-raised: #fbf7ee;
-	--color-paper-inset: #e7dfce;
-	--color-ink: #18140d;
-	--color-ink-2: #6a6052;
-	--color-live: #dc4327;
-	--color-ghost: #1e4e6b;
-	--color-ahead: #5e6b2c;
-	--color-behind: #c2851a;
-	--color-pace: #dc4327;
-	--color-rate: #2c6e63;
-	--color-power: #9e5b2d;
-	--color-hr: #8e4a6b;
-	--color-dps: #3f6e8c;
-	--font-display: 'Source Sans 3', 'Noto Sans SC', system-ui, sans-serif;
-	--font-ui: 'Source Sans 3', 'Noto Sans SC', system-ui, sans-serif;
-	--font-mono: 'Source Code Pro', ui-monospace, monospace;
+@theme inline {
+	--color-paper: #E9EFF1;
+	--color-paper-raised: #F7FAFB;
+	--color-paper-inset: #DCE6EA;
+	--color-ink: #0F2A36;
+	--color-ink-2: #4A6470;
+	--color-live: #5240CE;
+	--color-ghost: #176B8C;
+	--color-ahead: #2F8F6E;
+	--color-behind: #C2851A;
+	--color-pace: #5240CE;
+	--color-rate: #1E8C8C;
+	--color-power: #C2851A;
+	--color-hr: #B0467E;
+	--color-dps: #176B8C;
+	--color-m-rower: #2B5E78;
+	--color-m-skierg: #2E8C7E;
+	--color-m-bike: #6257B8;
+	--font-display: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+	--font-ui: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+	--font-mono: 'Source Code Pro', ui-monospace, 'SF Mono', monospace;
 }
 
 /* ============================================================================
-   rowplay — RACE BOARD design tokens (light default)
+   CSS custom properties — canonical Jet Set Blue tokens
    ============================================================================ */
 :root {
 	color-scheme: light;
 
-	--paper: #f1ebdf;
-	--paper-raised: #fbf7ee;
-	--paper-inset: #e7dfce;
-	--paper-deep: #ded4bf;
+	/* Paper & ink (cool, light) */
+	--paper: #E9EFF1;
+	--paper-raised: #F7FAFB;
+	--paper-inset: #DCE6EA;
+	--paper-deep: #CBD9DF;
 
-	--ink: #18140d;
-	--ink-2: #6a6052;
-	--ink-3: #9a8f79;
+	--ink: #0F2A36;
+	--ink-2: #4A6470;
+	--ink-3: #8AA2AC;
 
-	--rule: #18140d;
-	--hairline: #c9bfa9;
+	--rule: #0F2A36;
+	--hairline: #BED0D7;
 
-	--live: #dc4327;
-	--ghost: #1e4e6b;
-	--ahead: #5e6b2c;
-	--behind: #c2851a;
-	--alarm: #a8321f;
+	/* Race identity */
+	--live: #5240CE;
+	--ghost: #176B8C;
+	--chrome: var(--ghost);
+	--ahead: #2F8F6E;
+	--behind: #C2851A;
+	--alarm: #C0392B;
 
 	--accent: var(--live);
 	--accent-2: var(--ahead);
 	--warn: var(--behind);
 	--danger: var(--alarm);
 
-	--pace: #dc4327;
-	--rate: #2c6e63;
-	--power: #9e5b2d;
-	--hr: #8e4a6b;
-	--dps: #3f6e8c;
+	/* Metric channels (cool spot inks) */
+	--pace: #5240CE;
+	--rate: #1E8C8C;
+	--power: #C2851A;
+	--hr: #B0467E;
+	--dps: #176B8C;
 
-	/* HR zone heat ramp (Z1 easy → Z5 max), in the warm register. Z3–Z5 step
-	   down in lightness (gold → orange → deep red), not just hue, so adjacent
-	   zones stay distinguishable for red-green colour blindness / in greyscale. */
-	--zone-1: #6f8f4f;
-	--zone-2: #3c8a7e;
-	--zone-3: #d6a52e;
-	--zone-4: #c0631f;
-	--zone-5: #8f2a18;
+	/* HR zone ramp (Z1 easy → Z5 max) */
+	--zone-1: #4A8C7E;
+	--zone-2: #2E8C8C;
+	--zone-3: #C2851A;
+	--zone-4: #B05A2E;
+	--zone-5: #8B2540;
 
-	--m-rower: #2b5468;
-	--m-skierg: #3c7a6e;
-	--m-bike: #a65d2e;
+	/* Machine coding */
+	--m-rower: #2B5E78;
+	--m-skierg: #2E8C7E;
+	--m-bike: #6257B8;
 
-	--display: 'Source Sans 3', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
-	--ui: 'Source Sans 3', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+	/* Type families (Adobe Source) */
+	--display: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+	--ui: 'Source Sans 3', system-ui, -apple-system, sans-serif;
 	--mono: 'Source Code Pro', ui-monospace, 'SF Mono', monospace;
 	--sans: var(--ui);
 
+	/* Radii */
 	--r-card: 4px;
 	--r-ctrl: 3px;
 	--radius: var(--r-card);
 
+	/* Borders & stamp */
 	--bd: 1.5px solid var(--hairline);
 	--bd-heavy: 2px solid var(--rule);
 	--stamp: 3px 3px 0 var(--ink);
 	--stamp-live: 3px 3px 0 var(--live);
 	--stamp-ghost: 3px 3px 0 var(--ghost);
 
+	/* Type scale */
 	--clock-size: clamp(2.6rem, 8vw, 4rem);
 	--metric-size: 1.9rem;
 
-	/* Legacy aliases used across routes/components */
+	/* Legacy aliases */
 	--bg: var(--paper);
 	--bg-elev: var(--paper-raised);
 	--bg-elev-2: var(--paper-inset);
@@ -98,45 +171,43 @@
 	--topbar-bg: var(--paper);
 }
 
-/* Night race board — keeps toggle useful without reverting to SaaS dark mode */
+/* Jet Set Blue dark — cool deep teal-navy night race board */
 :root[data-theme='dark'] {
 	color-scheme: dark;
 
-	--paper: #14110c;
-	--paper-raised: #1c1812;
-	--paper-inset: #252018;
-	--paper-deep: #2e281e;
+	--paper: #0B1A22;
+	--paper-raised: #11232E;
+	--paper-inset: #172D3A;
+	--paper-deep: #1E3847;
 
-	--ink: #f1ebdf;
-	--ink-2: #b5aa96;
-	--ink-3: #7a7062;
+	--ink: #E9EFF1;
+	--ink-2: #8AA2AC;
+	--ink-3: #5A7684;
 
-	--rule: #f1ebdf;
-	--hairline: #3d3629;
+	--rule: #E9EFF1;
+	--hairline: #2E4A5A;
 
-	--live: #e85a3f;
-	--ghost: #4a8fb8;
-	--ahead: #8fa84a;
-	--behind: #d9a23a;
-	--alarm: #e05a45;
+	--live: #7B6DE0;
+	--ghost: #3AA8CC;
+	--chrome: var(--ghost);
+	--ahead: #4AAF8E;
+	--behind: #D9A23A;
+
+	--zone-1: #5AAA90;
+	--zone-2: #4AAAAA;
+	--zone-3: #D9A23A;
+	--zone-4: #D08050;
+	--zone-5: #B05060;
+
+	--m-rower: #5A8AAA;
+	--m-skierg: #5AAA9A;
+	--m-bike: #8A7AD0;
 
 	--pace: var(--live);
-	--rate: #4a9a8a;
-	--power: #c08050;
-	--hr: #c07090;
-	--dps: #6a9ab8;
-
-	/* Zone ramp lifted for contrast on the night board; same descending-lightness
-	   gold → orange → red across Z3–Z5 for colour-blind distinguishability. */
-	--zone-1: #8fae6a;
-	--zone-2: #5aab9b;
-	--zone-3: #e8c45a;
-	--zone-4: #d9803c;
-	--zone-5: #c84432;
-
-	--m-rower: #5a8aaa;
-	--m-skierg: #5aaa9a;
-	--m-bike: #d09060;
+	--rate: #4ABABA;
+	--power: #D9A23A;
+	--hr: #D08090;
+	--dps: #3AA8CC;
 
 	--bg: var(--paper);
 	--bg-elev: var(--paper-raised);
@@ -145,8 +216,14 @@
 	--text: var(--ink);
 	--text-dim: var(--ink-2);
 	--topbar-bg: var(--paper);
+	--stamp: 3px 3px 0 var(--rule);
+	--stamp-live: 3px 3px 0 var(--live);
+	--stamp-ghost: 3px 3px 0 var(--ghost);
 }
 
+/* ============================================================================
+   Global resets & base
+   ============================================================================ */
 * {
 	box-sizing: border-box;
 }
@@ -167,50 +244,21 @@ body {
 	position: relative;
 }
 
-/* Lightweight paper grain — CSS only (no SVG filters / blend modes). */
+/* Paper grain — SVG noise overlay keeps light surfaces from reading as flat. */
 body::before {
 	content: '';
 	position: fixed;
 	inset: 0;
 	pointer-events: none;
-	z-index: 99;
-	opacity: 0.35;
-	background-image:
-		repeating-linear-gradient(
-			0deg,
-			transparent,
-			transparent 2px,
-			rgba(24, 20, 13, 0.028) 2px,
-			rgba(24, 20, 13, 0.028) 3px
-		),
-		repeating-linear-gradient(
-			90deg,
-			transparent,
-			transparent 2px,
-			rgba(24, 20, 13, 0.02) 2px,
-			rgba(24, 20, 13, 0.02) 3px
-		);
+	z-index: 9999;
+	opacity: 0.42;
+	mix-blend-mode: multiply;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
 }
 
-:root[data-theme='dark'] body::before {
-	opacity: 0.2;
-	background-image:
-		repeating-linear-gradient(
-			0deg,
-			transparent,
-			transparent 2px,
-			rgba(241, 235, 223, 0.04) 2px,
-			rgba(241, 235, 223, 0.04) 3px
-		),
-		repeating-linear-gradient(
-			90deg,
-			transparent,
-			transparent 2px,
-			rgba(241, 235, 223, 0.03) 2px,
-			rgba(241, 235, 223, 0.03) 3px
-		);
-}
-
+/* ============================================================================
+   Typography defaults
+   ============================================================================ */
 a {
 	color: var(--ink);
 	text-decoration: none;
@@ -228,14 +276,17 @@ h3 {
 	font-weight: 700;
 	line-height: 1.04;
 	letter-spacing: -0.01em;
+	margin: 0;
 }
 
+/* Every number is monospaced + tabular — digits never jitter during replay. */
 .mono {
 	font-family: var(--mono);
 	font-variant-numeric: tabular-nums;
 	font-feature-settings: 'tnum' 1;
 }
 
+/* Race-board number voice (big metric readouts). */
 .board {
 	font-family: var(--display);
 	font-variant-numeric: tabular-nums;
@@ -247,6 +298,7 @@ h3 {
 	color: var(--ink-2);
 }
 
+/* Eyebrow / micro-label: ruled, uppercased, letterspaced. */
 .eyebrow {
 	font-family: var(--ui);
 	font-size: 0.74rem;
@@ -256,89 +308,98 @@ h3 {
 	color: var(--ink-2);
 }
 
-.card {
-	background: var(--paper-raised);
-	border: var(--bd-heavy);
-	border-radius: var(--r-card);
-	padding: 1rem 1.25rem;
-}
+/* ============================================================================
+   daisyUI overrides — align component classes with the RACE BOARD aesthetic
+   ============================================================================ */
 
+/* Buttons: heavy ink borders, stamp offset, uppercase display face */
 .btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.5rem;
-	background: var(--ink);
-	color: var(--paper-raised);
-	border: var(--bd-heavy);
-	border-radius: var(--r-ctrl);
-	padding: 0.55rem 1.05rem;
 	font-family: var(--display);
-	font-size: 0.95rem;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
-	cursor: pointer;
-	transition:
-		transform 0.05s ease,
-		box-shadow 0.05s ease,
-		filter 0.1s ease;
+	border-width: 2px;
+	border-radius: var(--r-ctrl);
+	transition: transform 0.05s ease, box-shadow 0.05s ease, filter 0.1s ease;
 }
-.btn:hover {
-	filter: brightness(1.05);
-	text-decoration: none;
+
+/* Primary (live/violet) — stamped */
+.btn-primary {
+	box-shadow: var(--stamp-live);
 }
-.btn:not(.ghost) {
-	background: var(--live);
-	border-color: var(--live);
-	color: var(--paper-raised);
-	box-shadow: var(--stamp);
-}
-.btn:not(.ghost):hover {
+.btn-primary:hover {
 	transform: translate(1px, 1px);
 	box-shadow: 2px 2px 0 var(--ink);
 }
-.btn:not(.ghost):active {
+.btn-primary:active {
 	transform: translate(3px, 3px);
 	box-shadow: none;
 }
-.btn.ghost {
+
+/* Ghost — paper raised bg, ink text, inset on hover */
+.btn-ghost {
 	background: var(--paper-raised);
 	color: var(--ink);
 	border: var(--bd-heavy);
-	box-shadow: none;
 }
-.btn.ghost:hover {
+.btn-ghost:hover {
 	background: var(--paper-inset);
 }
-.btn:disabled {
+
+/* Solid (ink) button */
+.btn-neutral {
+	box-shadow: var(--stamp);
+}
+.btn-neutral:hover {
+	transform: translate(1px, 1px);
+	box-shadow: 2px 2px 0 var(--ink);
+}
+.btn-neutral:active {
+	transform: translate(3px, 3px);
+	box-shadow: none;
+}
+
+/* Disabled */
+.btn:disabled,
+.btn-disabled {
 	opacity: 0.4;
 	cursor: not-allowed;
 	transform: none !important;
 	box-shadow: none !important;
 }
 
-.tag {
-	display: inline-block;
+/* Badges: match the old .tag look */
+.badge {
 	font-family: var(--ui);
-	font-size: 0.68rem;
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
-	padding: 0.2rem 0.5rem;
 	border-radius: var(--r-ctrl);
-	background: var(--paper-raised);
-	color: var(--ink-2);
-	border: var(--bd);
+	border-width: 1.5px;
 }
-.tag.live {
+.badge-primary {
 	border-color: var(--live);
 	color: var(--live);
 }
-.tag.ghost {
+.badge-secondary {
 	border-color: var(--ghost);
 	color: var(--ghost);
 }
 
+/* Cards */
+.card {
+	background: var(--paper-raised);
+	border-radius: var(--r-card);
+	border: var(--bd-heavy);
+	padding: 1rem 1.25rem;
+}
+.card-bordered {
+	border-color: var(--rule);
+}
+
+/* ============================================================================
+   Layout utilities
+   ============================================================================ */
 html {
 	overflow-x: clip;
 }
@@ -369,6 +430,9 @@ html {
 	}
 }
 
+/* ============================================================================
+   uPlot chart overrides
+   ============================================================================ */
 .uplot {
 	width: 100%;
 }
@@ -378,11 +442,7 @@ html {
 }
 
 /* ============================================================================
-   Reduced motion — respect the OS "reduce motion" setting.
-   Neutralises the infinite sync spinner and shrinks UI transitions (hover
-   lifts, progress-bar growth) to near-instant. The replay itself is essential,
-   user-initiated motion and is intentionally left running; its decorative
-   avatar wake is flattened separately in the canvas renderer.
+   Reduced motion
    ============================================================================ */
 @media (prefers-reduced-motion: reduce) {
 	*,

@@ -41,37 +41,37 @@ interface CanvasColors {
 // (light + dark) in app.css — `renderer.test.ts` parses app.css and fails if
 // they drift. Exported for that test.
 export const COLORS_LIGHT: CanvasColors = {
-	tickMajor: '#c9bfa9',
-	tickMinor: '#dbd0ba',
-	tickText: '#6a6052',
-	laneLine: '#c9bfa9',
-	bibFill: '#efe8da',
-	bibText: '#18140d',
-	bibDot: '#fbf7ee',
-	finishDark: '#18140d',
-	finishLight: '#fbf7ee',
-	labelBg: '#fbf7ee',
-	labelText: '#18140d',
-	courseFill: '#efe8da',
-	live: '#dc4327',
-	ghost: '#1e4e6b'
+	tickMajor: '#bed0d7',
+	tickMinor: '#d0dbdf',
+	tickText: '#4a6470',
+	laneLine: '#bed0d7',
+	bibFill: '#f0f4f6',
+	bibText: '#0f2a36',
+	bibDot: '#f7fafb',
+	finishDark: '#0f2a36',
+	finishLight: '#f7fafb',
+	labelBg: '#f7fafb',
+	labelText: '#0f2a36',
+	courseFill: '#e4ecef',
+	live: '#5240ce',
+	ghost: '#176b8c'
 };
 
 export const COLORS_DARK: CanvasColors = {
-	tickMajor: '#3d3629',
-	tickMinor: '#2e2a23',
-	tickText: '#b5aa96',
-	laneLine: '#3d3629',
-	bibFill: '#2a251e',
-	bibText: '#e7dfce',
-	bibDot: '#18140d',
-	finishDark: '#e7dfce',
-	finishLight: '#18140d',
-	labelBg: '#18140d',
-	labelText: '#e7dfce',
-	courseFill: '#201a12',
-	live: '#e85a3f',
-	ghost: '#4a8fb8'
+	tickMajor: '#3d505a',
+	tickMinor: '#2e3d45',
+	tickText: '#8aa2ac',
+	laneLine: '#3d505a',
+	bibFill: '#1c2a32',
+	bibText: '#dce6ea',
+	bibDot: '#0f2a36',
+	finishDark: '#dce6ea',
+	finishLight: '#0f2a36',
+	labelBg: '#0f2a36',
+	labelText: '#dce6ea',
+	courseFill: '#142128',
+	live: '#7b6de0',
+	ghost: '#3aa8cc'
 };
 
 export interface AvatarState {

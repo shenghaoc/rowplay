@@ -7,14 +7,14 @@
 
 <section class="hero container">
 	<div class="copy">
-		<span class="tag live">{t('landing.tagline')}</span>
+		<span class="badge badge-primary">{t('landing.tagline')}</span>
 		<h1>{t('landing.title1')}<br />{t('landing.title2')}</h1>
 		<p class="muted lead">{t('landing.lead')}</p>
 		<div class="cta">
 			{#if data.user || data.demo}
-				<a class="btn" href="/dashboard">{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
+				<a class="btn btn-primary" href="/dashboard">{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
 			{:else}
-				<a class="btn" href="/auth/login">{t('landing.connect')}</a>
+				<a class="btn btn-primary" href="/auth/login">{t('landing.connect')}</a>
 			{/if}
 		</div>
 		{#if data.demo}
