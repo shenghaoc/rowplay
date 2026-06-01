@@ -12,12 +12,12 @@
 - **SvelteKit** (Svelte 5, runes mode) — the app framework for both SSR and client-side routing
 - **Tailwind CSS v4** via `@tailwindcss/vite` — utility-first styling
 - **uPlot** — lightweight charting for telemetry (pace, stroke-rate, power, heart-rate)
-- **bits-ui** — headless Svelte UI primitives
 - **@lucide/svelte** — icon library
 - **@tanstack/svelte-virtual** — virtualized lists for the workout list
 - **svelte-sonner** — toast notifications
-- **clsx** + **tailwind-merge** — conditional class composition
-- **temporal-polyfill** — Temporal API polyfill for date/time handling
+- **temporal-polyfill** — Temporal API polyfill when `globalThis.Temporal` is missing (WebKit, Workers SSR); skipped on Node 26+ / Chromium when native
+
+> **Stack audit (June 2026):** See `.kiro/specs/platform-modernization-audit/` for the full dependency, HTML/CSS/JS, and PR #223 modernization review. `bits-ui`, `clsx`, and `tailwind-merge` are listed in `package.json` but unused in `src/` — remove or wire up per audit `tasks.md`.
 
 ## I18n & Theming
 

@@ -29,6 +29,10 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [3D replay view](.kiro/specs/3d-replay-view/tasks.md)
 - [Sport-aware 3D replay](.kiro/specs/3d-replay-sports/tasks.md)
 
+**Platform audit (read before new features or modernization work):**
+
+- [Platform modernization audit](.kiro/specs/platform-modernization-audit/design.md) — dependency, HTML/CSS/JS, WHATWG, Temporal, and PR #223 gap analysis (June 2026)
+
 ## Project summary
 
 **rowplay** is a SvelteKit / Svelte 5 app: Concept2 logbook analytics plus a
