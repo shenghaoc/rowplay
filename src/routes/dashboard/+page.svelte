@@ -924,7 +924,8 @@
 	}
 	.badge.bad,
 	.fsv.bad {
-		color: var(--warn);
+		/* Raw --warn is ~2.6:1 on its pale tint; darken toward --ink like .premium (theme-aware). */
+		color: color-mix(in srgb, var(--warn) 45%, var(--ink));
 	}
 	.badge.bad {
 		background: color-mix(in srgb, var(--warn) 14%, var(--paper-raised));
