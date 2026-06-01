@@ -142,8 +142,21 @@
 		};
 	}
 
+	function safeRender(state: RenderState, p: boolean, theme: 'light' | 'dark' = uiTheme.value) {
+		if (!renderer) return;
+		try {
+			renderer.render(state, p, theme);
+		} catch (err) {
+			if (rendererKind !== '3d') throw err;
+			toast.error(t('replay.view3dError'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
+			});
+			void setRenderer('2d');
+		}
+	}
+
 	function renderCurrent() {
-		renderer?.render(buildState(frame), playing, uiTheme.value);
+		safeRender(buildState(frame), playing, uiTheme.value);
 	}
 
 	function courseHeight() {
@@ -180,9 +193,13 @@
 				renderer = temp2d;
 				if (w) temp2d.resize(w, h);
 				renderCurrent();
-				Ctor3D = await loadRenderer3D();
+				try {
+					Ctor3D = await loadRenderer3D();
+				} finally {
+					loading3d = false;
+				}
 				temp2d.destroy();
-				loading3d = false;
+				if (rendererKind !== '3d') return;
 			}
 			renderer = new Ctor3D(canvasEl);
 			if (w) renderer.resize(w, h);
@@ -246,18 +263,13 @@
 			fileName = '';
 			ghostError = '';
 			renderer?.destroy();
-			if (rendererKind === '3d' && Ctor3D && webglOk) {
-				renderer = new Ctor3D(canvasEl);
-			} else {
-				renderer = new CourseRenderer(canvasEl);
-			}
+			renderer = null;
 			engine = new ReplayEngine(s, (f, p) => {
 				frame = f;
 				playing = p;
-				renderer?.render(buildState(f), p, uiTheme.value);
+				safeRender(buildState(f), p, uiTheme.value);
 			});
-			resizeCourse();
-			renderCurrent();
+			void setRenderer(rendererKind);
 		});
 		return () => {
 			engine?.destroy();

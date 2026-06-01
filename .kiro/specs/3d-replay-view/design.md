@@ -101,7 +101,14 @@ loader caches the resolved module so subsequent toggles don't re-import (Req 2.5
 ```ts
 let cached: Promise<Renderer3DCtor> | null = null;
 export function loadRenderer3D(): Promise<Renderer3DCtor> {
-	cached ??= import('./renderer3d').then((m) => m.CourseRenderer3D);
+	if (!cached) {
+		cached = import('./renderer3d')
+			.then((m) => m.CourseRenderer3D)
+			.catch((err) => {
+				cached = null;
+				throw err;
+			});
+	}
 	return cached;
 }
 ```
@@ -174,16 +181,16 @@ chosen client-side after mount; SSR always renders the 2D-ready canvas markup.
 
 Changes are localized to the renderer lifecycle already at lines ~119–252.
 
-- `let renderer: ReplayRenderer | null` (was `CourseRenderer | null`).
+- `let renderer: ReplayRenderer | null` (was `CourseRenderer | null`). Keep this as a **plain `let`** (or at most `$state.raw`) so Svelte 5 does not recursively proxy the Three.js object graph.
 - Add `$state` for `rendererKind`, `loading3d`, `webglOk` (computed once via `webglSupported()`), and `Ctor3D` (cached constructor once loaded).
 - A `setRenderer(kind)` helper:
   - Destroys the current renderer.
   - For `'2d'`: `new CourseRenderer(canvasEl)`.
-  - For `'3d'`: if `Ctor3D` is cached, construct immediately; else set `loading3d = true`, `await loadRenderer3D()`, construct, clear loading. On import or init failure: catch, revert `rendererKind = '2d'`, build 2D, surface an i18n error (toast).
+  - For `'3d'`: if `Ctor3D` is cached, construct immediately; else set `loading3d = true`, `await loadRenderer3D()`. After the await, verify `rendererKind` is still `'3d'` before constructing (avoids races if the user toggled back or navigated away). Construct, then clear loading. On import or init failure: catch, revert `rendererKind = '2d'`, build 2D, surface an i18n error (toast).
   - After construction: `resize(...)` to current `courseWrap` dims, then `renderCurrent()`.
-- The engine `onFrame` callback and `renderCurrent()` are unchanged — they call `renderer?.render(...)` against the interface.
+- The engine `onFrame` callback and `renderCurrent()` wrap `renderer?.render(...)` in try/catch; on failure, revert to `'2d'` and surface a non-blocking i18n toast (Req 3.6).
 - **Switching preserves playback** (Req 1.5): time/playing/speed live in `engine`/`$state`, not the renderer, so swapping the renderer and calling `render(buildState(frame), playing, theme)` resumes seamlessly.
-- On mount: read `loadRendererPref()`; if `'3d'` and `webglOk`, select 3D (which lazy-loads); otherwise 2D. The workout-change `$effect` constructs whichever kind is currently active instead of hard-coding `CourseRenderer`.
+- On mount: read `loadRendererPref()`; if `'3d'` and `webglOk`, select 3D (which lazy-loads); otherwise 2D. The workout-change `$effect` calls `setRenderer(rendererKind)` so async 3D load is handled safely.
 
 ### 7. Toggle UI
 

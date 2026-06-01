@@ -17,7 +17,14 @@ export function webglSupported(): boolean {
 
 /** Lazy-load the 3D renderer module (and Three.js) once per session. */
 export function loadRenderer3D(): Promise<Renderer3DCtor> {
-	cached ??= import('./renderer3d').then((m) => m.CourseRenderer3D);
+	if (!cached) {
+		cached = import('./renderer3d')
+			.then((m) => m.CourseRenderer3D)
+			.catch((err) => {
+				cached = null;
+				throw err;
+			});
+	}
 	return cached;
 }
 
