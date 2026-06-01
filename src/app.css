@@ -556,6 +556,9 @@ html {
 	.container {
 		padding: 1.1rem 0.9rem;
 	}
+	.card {
+		padding: 0.95rem 1rem;
+	}
 }
 
 @media (max-width: 640px) {

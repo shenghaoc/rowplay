@@ -497,6 +497,8 @@
 		color: var(--ink-2);
 	}
 	select {
+		width: 100%;
+		min-width: 0;
 		font-family: var(--mono);
 		font-size: 0.85rem;
 		padding: 0.45rem 0.5rem;

@@ -611,6 +611,7 @@
 	{#if bySport.length > 1}
 		<div class="card breakdown">
 			<div class="muted label">{t('dashboard.bySport')}</div>
+			<div class="tablescroll">
 			<table class="mono">
 				<thead>
 					<tr><th>{t('dashboard.thSport')}</th><th>{t('dashboard.thSessions')}</th><th>{t('dashboard.thDistance')}</th><th>{t('dashboard.thTime')}</th><th>{t('dashboard.thAvgPace')}</th><th>{t('dashboard.thBestPace')}</th></tr>
@@ -628,6 +629,7 @@
 					{/each}
 				</tbody>
 			</table>
+			</div>
 		</div>
 	{/if}
 
@@ -953,7 +955,7 @@
 	}
 	.formstats {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 		gap: 1rem;
 		margin-bottom: 0.9rem;
 	}
@@ -1052,11 +1054,15 @@
 	.sportcell :global(svg) {
 		vertical-align: -2px;
 	}
+	.tablescroll {
+		overflow-x: auto;
+		margin-top: 0.4rem;
+	}
 	.breakdown table {
 		width: 100%;
+		min-width: max-content;
 		border-collapse: collapse;
 		font-size: 0.85rem;
-		margin-top: 0.4rem;
 	}
 	.breakdown th {
 		text-align: left;
@@ -1140,7 +1146,7 @@
 	}
 	@media (max-width: 720px) {
 		.stats {
-			grid-template-columns: repeat(2, 1fr);
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 		.latest {
 			grid-template-columns: 1fr;
@@ -1165,6 +1171,17 @@
 		.formhead {
 			flex-wrap: wrap;
 			gap: 0.5rem;
+		}
+	}
+	@media (max-width: 400px) {
+		.stats {
+			gap: 0.6rem;
+		}
+		.stat .value {
+			font-size: 1.25rem;
+		}
+		.fsv {
+			font-size: 1.35rem;
 		}
 	}
 	@media (max-width: 390px) {
