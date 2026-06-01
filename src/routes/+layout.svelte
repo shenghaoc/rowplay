@@ -40,6 +40,9 @@
 			<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}
 				>{t('nav.dashboard')}</a
 			>
+			<a href="/leaderboard" class:active={$page.url.pathname.startsWith('/leaderboard')}
+				>{t('nav.leaderboard')}</a
+			>
 			<a href="/settings" class:active={$page.url.pathname.startsWith('/settings')}
 				>{t('nav.settings')}</a
 			>

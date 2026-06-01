@@ -34,7 +34,7 @@ export function interpolate(template: string, vars?: Record<string, string | num
 }
 
 const en = {
-	nav: { dashboard: 'Dashboard', settings: 'Data' },
+	nav: { dashboard: 'Dashboard', leaderboard: 'Leaderboards', settings: 'Data' },
 	common: {
 		demoMode: 'demo mode',
 		replay: 'Replay',
@@ -465,11 +465,31 @@ const en = {
 		vsDistance: 'vs distance',
 		intervalTitle: 'Interval comparison',
 		intervalHint: 'Per-rep pace and time deltas.'
+	},
+	leaderboard: {
+		title: 'Leaderboards',
+		lead: 'Race ghosts of other rowplay athletes on the same piece. Pick a sport and standard distance to see the standings.',
+		sport: 'Sport',
+		distance: 'Distance',
+		rank: 'Rank',
+		athlete: 'Athlete',
+		time: 'Time',
+		pace: 'Pace',
+		gap: 'Gap',
+		actions: 'Actions',
+		you: 'You',
+		athletes: '{n} athletes',
+		open: 'Open',
+		race: 'Race',
+		raceHint: 'Race pre-arms a rival as a ghost on your own replay of this piece.',
+		empty: 'No entries on this board yet — be the first to publish a result.',
+		publishOk: 'Published — you are rank {rank} on {sport} {distance}.',
+		publishOffBoard: 'Only standard-distance pieces (500m, 1k, 2k, 5k, 6k, 10k, half) can be published.'
 	}
 } as const;
 
 const zh = {
-	nav: { dashboard: '仪表板', settings: '数据' },
+	nav: { dashboard: '仪表板', leaderboard: '排行榜', settings: '数据' },
 	common: {
 		demoMode: '演示模式',
 		replay: '回放',
@@ -891,6 +911,26 @@ const zh = {
 		vsDistance: '对距离',
 		intervalTitle: '间歇对比',
 		intervalHint: '各组配速和时间差异。'
+	},
+	leaderboard: {
+		title: '排行榜',
+		lead: '与其他 rowplay 运动员在同一项目上同场竞技。选择器械和标准距离查看排名。',
+		sport: '器械',
+		distance: '距离',
+		rank: '名次',
+		athlete: '运动员',
+		time: '时间',
+		pace: '配速',
+		gap: '差距',
+		actions: '操作',
+		you: '你',
+		athletes: '{n} 名运动员',
+		open: '打开',
+		race: '竞速',
+		raceHint: '“竞速”会在你自己的回放中预设该对手为幽灵船。',
+		empty: '该榜单暂无成绩——快来成为第一个发布成绩的人。',
+		publishOk: '已发布——你在 {sport} {distance} 排名第 {rank}。',
+		publishOffBoard: '仅标准距离（500m、1k、2k、5k、6k、10k、半马）可发布到榜单。'
 	}
 } as const;
 
