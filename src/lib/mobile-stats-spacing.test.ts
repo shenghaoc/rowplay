@@ -8,15 +8,15 @@
  * directly from the dashboard component's scoped <style> block.
  *
  * On UNFIXED code this test MUST FAIL — that failure confirms the bug exists:
- *   - No `.stat { padding }` override in the @media (max-width: 720px) block
- *   - No `.stat { padding }` override in the @media (max-width: 400px) block
- *   - `.stats { gap: 0.6rem }` in the @media (max-width: 400px) block (too tight)
+ *   - No `.dash-stat { padding }` override in the @media (max-width: 720px) block
+ *   - No `.dash-stat { padding }` override in the @media (max-width: 400px) block
+ *   - `.dash-stats { gap: 0.6rem }` in the @media (max-width: 400px) block (too tight)
  *
  * Expected counterexamples on unfixed code:
- *   - At 375px: `.stat` padding is `0.95rem 1rem` (global `.card` value, no stat override)
- *   - At 500px: `.stat` padding is `1.25rem 1.4rem` (global `.card` value, no stat override)
- *   - At 360px: `.stats` gap is `0.6rem`, expected `0.75rem`
- *   - At 320px: both `.stat` padding and `.stats` gap are wrong
+ *   - At 375px: `.dash-stat` padding is `0.95rem 1rem` (global `.card` value, no stat override)
+ *   - At 500px: `.dash-stat` padding is `1.25rem 1.4rem` (global `.card` value, no stat override)
+ *   - At 360px: `.dash-stats` gap is `0.6rem`, expected `0.75rem`
+ *   - At 320px: both `.dash-stat` padding and `.dash-stats` gap are wrong
  *
  * NOTE: Because jsdom/happy-dom does not fully simulate CSS media query cascade,
  * this test uses a CSS text parsing approach: it reads the raw CSS from the
@@ -75,7 +75,7 @@ function findPropertyValue(
 	selector: string,
 	property: string
 ): string | null {
-	// Escape selector for use in regex (e.g. ".stat .value" → "\\.stat \\.value")
+	// Escape selector for use in regex (e.g. ".dash-stat .value" → "\\.dash-stat \\.value")
 	const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	// Match selector { ... } — simple single-level rule extraction
 	const selectorPattern = new RegExp(
@@ -128,19 +128,30 @@ function isBugCondition(viewport: { widthPx: number }): boolean {
 // Property 1: Bug Condition — Mobile Stat Cards Have Adequate Padding and Gap
 //
 // Scoped PBT approach: concrete failing viewport ranges
-//   - [401, 720]: .stat padding SHALL be `1rem 1.1rem`
-//   - [320, 400]: .stat padding SHALL be `0.9rem 1rem` AND .stats gap SHALL be `0.75rem`
+//   - [401, 720]: .dash-stat padding SHALL be `1rem 1.1rem`
+//   - [320, 400]: .dash-stat padding SHALL be `0.9rem 1rem` AND .dash-stats gap SHALL be `0.75rem`
 //
 // Because we parse CSS rules (not computed styles), we assert the rules EXIST
 // in the correct media blocks. On unfixed code these rules are absent → FAIL.
 // ---------------------------------------------------------------------------
 
+describe('daisyUI collision guard', () => {
+	it('dashboard markup must not use daisyUI .stats / .stat class names', () => {
+		const source = readFileSync(DASHBOARD_PATH, 'utf-8');
+		const html = source.slice(0, source.indexOf('<style>'));
+		expect(html).not.toMatch(/class="stats"/);
+		expect(html).not.toMatch(/class="card stat"/);
+		expect(html).toContain('class="dash-stats"');
+		expect(html).toContain('class="card dash-stat"');
+	});
+});
+
 describe('Property 1: Bug Condition — Mobile Stat Cards Cramped Padding and Gap', () => {
 	describe('Viewport range [401, 720] — 2-column layout, stat padding override required', () => {
-		it('should have .stat { padding: 1rem 1.1rem } inside @media (max-width: 720px)', () => {
-			// On UNFIXED code: no .stat padding rule exists in the 720px block → FAILS
-			// On FIXED code: .stat { padding: 1rem 1.1rem } is present → PASSES
-			const padding = findPropertyValue(media720, '.stat', 'padding');
+		it('should have .dash-stat { padding: 1rem 1.1rem } inside @media (max-width: 720px)', () => {
+			// On UNFIXED code: no .dash-stat padding rule exists in the 720px block → FAILS
+			// On FIXED code: .dash-stat { padding: 1rem 1.1rem } is present → PASSES
+			const padding = findPropertyValue(media720, '.dash-stat', 'padding');
 
 			// Document what was found vs expected (counterexample on unfixed code)
 			// Expected: "1rem 1.1rem"
@@ -149,12 +160,12 @@ describe('Property 1: Bug Condition — Mobile Stat Cards Cramped Padding and Ga
 			expect(padding).toBe('1rem 1.1rem');
 		});
 
-		it('should NOT have .stat padding defaulting to global .card value (1.25rem 1.4rem) at 720px breakpoint', () => {
+		it('should NOT have .dash-stat padding defaulting to global .card value (1.25rem 1.4rem) at 720px breakpoint', () => {
 			// Confirms the stat-specific override is present and not the global fallback.
 			// On UNFIXED code: padding is null (no override) → the global .card value applies
 			// This test passes on both fixed and unfixed code (it's a documentation assertion)
 			// The real failure is the test above — this one documents the counterexample.
-			const padding = findPropertyValue(media720, '.stat', 'padding');
+			const padding = findPropertyValue(media720, '.dash-stat', 'padding');
 			// On unfixed code, padding is null — no override means global .card (1.25rem 1.4rem) applies
 			// On fixed code, padding is '1rem 1.1rem' — the override is present
 			expect(padding).not.toBe('1.25rem 1.4rem'); // global .card value must NOT be the override
@@ -162,26 +173,26 @@ describe('Property 1: Bug Condition — Mobile Stat Cards Cramped Padding and Ga
 	});
 
 	describe('Viewport range [320, 400] — very small screens, gap and padding both required', () => {
-		it('should have .stats { gap: 0.75rem } inside @media (max-width: 400px)', () => {
+		it('should have .dash-stats { gap: 0.75rem } inside @media (max-width: 400px)', () => {
 			// On UNFIXED code: gap is 0.6rem → FAILS
 			// On FIXED code: gap is 0.75rem → PASSES
-			const gap = findPropertyValue(media400, '.stats', 'gap');
+			const gap = findPropertyValue(media400, '.dash-stats', 'gap');
 
 			// Counterexample on unfixed code:
-			//   At 360px: .stats gap is "0.6rem", expected "0.75rem"
-			//   At 320px: .stats gap is "0.6rem", expected "0.75rem"
+			//   At 360px: .dash-stats gap is "0.6rem", expected "0.75rem"
+			//   At 320px: .dash-stats gap is "0.6rem", expected "0.75rem"
 			expect(gap).not.toBeNull();
 			expect(gap).toBe('0.75rem');
 		});
 
-		it('should have .stat { padding: 0.9rem 1rem } inside @media (max-width: 400px)', () => {
-			// On UNFIXED code: no .stat padding rule in the 400px block → FAILS
-			// On FIXED code: .stat { padding: 0.9rem 1rem } is present → PASSES
-			const padding = findPropertyValue(media400, '.stat', 'padding');
+		it('should have .dash-stat { padding: 0.9rem 1rem } inside @media (max-width: 400px)', () => {
+			// On UNFIXED code: no .dash-stat padding rule in the 400px block → FAILS
+			// On FIXED code: .dash-stat { padding: 0.9rem 1rem } is present → PASSES
+			const padding = findPropertyValue(media400, '.dash-stat', 'padding');
 
 			// Counterexample on unfixed code:
-			//   At 375px: .stat padding is "0.95rem 1rem" (from global app.css .card override at ≤560px)
-			//   At 320px: .stat padding is "0.95rem 1rem" (global .card), expected "0.9rem 1rem"
+			//   At 375px: .dash-stat padding is "0.95rem 1rem" (from global app.css .card override at ≤560px)
+			//   At 320px: .dash-stat padding is "0.95rem 1rem" (global .card), expected "0.9rem 1rem"
 			expect(padding).not.toBeNull();
 			expect(padding).toBe('0.9rem 1rem');
 		});
@@ -200,30 +211,30 @@ describe('Property 1: Bug Condition — Mobile Stat Cards Cramped Padding and Ga
 		const viewportsIn320To400 = [320, 340, 360, 375, 390, 400];
 
 		it.each(viewportsIn401To720)(
-			'viewport %ipx (401–720): @media(max-width:720px) must contain .stat { padding: 1rem 1.1rem }',
+			'viewport %ipx (401–720): @media(max-width:720px) must contain .dash-stat { padding: 1rem 1.1rem }',
 			(width) => {
 				// All viewports in [401, 720] are covered by the 720px media block.
 				// The rule must exist in that block for the fix to apply.
 				expect(isBugCondition({ widthPx: width })).toBe(true);
 
-				const padding = findPropertyValue(media720, '.stat', 'padding');
-				// Counterexample: at ${width}px, .stat padding rule is absent in @media(max-width:720px)
+				const padding = findPropertyValue(media720, '.dash-stat', 'padding');
+				// Counterexample: at ${width}px, .dash-stat padding rule is absent in @media(max-width:720px)
 				// Expected: "1rem 1.1rem", Actual: null (unfixed code)
 				expect(padding).toBe('1rem 1.1rem');
 			}
 		);
 
 		it.each(viewportsIn320To400)(
-			'viewport %ipx (320–400): @media(max-width:400px) must contain .stats { gap: 0.75rem } and .stat { padding: 0.9rem 1rem }',
+			'viewport %ipx (320–400): @media(max-width:400px) must contain .dash-stats { gap: 0.75rem } and .dash-stat { padding: 0.9rem 1rem }',
 			(width) => {
 				expect(isBugCondition({ widthPx: width })).toBe(true);
 
-				const gap = findPropertyValue(media400, '.stats', 'gap');
-				const padding = findPropertyValue(media400, '.stat', 'padding');
+				const gap = findPropertyValue(media400, '.dash-stats', 'gap');
+				const padding = findPropertyValue(media400, '.dash-stat', 'padding');
 
 				// Counterexample at ${width}px:
-				//   .stats gap: found "0.6rem", expected "0.75rem"
-				//   .stat padding: found null (absent), expected "0.9rem 1rem"
+				//   .dash-stats gap: found "0.6rem", expected "0.75rem"
+				//   .dash-stat padding: found null (absent), expected "0.9rem 1rem"
 				expect(gap).toBe('0.75rem');
 				expect(padding).toBe('0.9rem 1rem');
 			}
@@ -231,15 +242,15 @@ describe('Property 1: Bug Condition — Mobile Stat Cards Cramped Padding and Ga
 	});
 
 	describe('Sanity checks — existing rules must be preserved', () => {
-		it('should preserve .stats { grid-template-columns: repeat(2, minmax(0, 1fr)) } in @media (max-width: 720px)', () => {
+		it('should preserve .dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) } in @media (max-width: 720px)', () => {
 			// This rule must remain unchanged — it is the 2-column layout trigger
-			const cols = findPropertyValue(media720, '.stats', 'grid-template-columns');
+			const cols = findPropertyValue(media720, '.dash-stats', 'grid-template-columns');
 			expect(cols).toBe('repeat(2, minmax(0, 1fr))');
 		});
 
-		it('should preserve .stat .value { font-size: 1.25rem } in @media (max-width: 400px)', () => {
+		it('should preserve .dash-stat .value { font-size: 1.25rem } in @media (max-width: 400px)', () => {
 			// This rule must remain unchanged — it reduces the value font size on very small screens
-			const fontSize = findPropertyValue(media400, '.stat .value', 'font-size');
+			const fontSize = findPropertyValue(media400, '.dash-stat .value', 'font-size');
 			expect(fontSize).toBe('1.25rem');
 		});
 	});
@@ -283,9 +294,9 @@ const baseStyles = extractBaseStyles(css);
 // Validates: Requirements 3.1, 3.2, 3.3, 3.4
 //
 // For all viewport widths in [721, 1440], the desktop styles must be unchanged:
-//   1. NO .stat { padding } override in base styles (desktop uses global .card value)
-//   2. .stats { gap: 1rem } in base styles
-//   3. .stats { grid-template-columns: repeat(4, 1fr) } in base styles
+//   1. NO .dash-stat { padding } override in base styles (desktop uses global .card value)
+//   2. .dash-stats { gap: 1rem } in base styles
+//   3. .dash-stats { grid-template-columns: repeat(4, minmax(0, 1fr)) } in base styles
 //
 // These tests PASS on unfixed code (desktop styles are already correct).
 // They serve as a regression guard: they must CONTINUE to pass after the fix.
@@ -293,26 +304,24 @@ const baseStyles = extractBaseStyles(css);
 
 describe('Property 2: Preservation — Desktop Stat Styles Are Unchanged', () => {
 	describe('Base styles (outside all @media blocks) — desktop defaults', () => {
-		it('should have NO .stat { padding } rule in base styles (desktop uses global .card padding)', () => {
-			// On UNFIXED code: no .stat padding override exists → PASSES (desktop is correct)
-			// On FIXED code: the fix only adds .stat padding INSIDE mobile media blocks → still PASSES
-			// If this fails after the fix, it means a .stat padding was accidentally added to base styles
-			const padding = findPropertyValue(baseStyles, '.stat', 'padding');
+		it('should have NO .dash-stat { padding } rule in base styles (desktop uses global .card padding)', () => {
+			// On UNFIXED code: no .dash-stat padding override exists → PASSES (desktop is correct)
+			// On FIXED code: the fix only adds .dash-stat padding INSIDE mobile media blocks → still PASSES
+			// If this fails after the fix, it means a .dash-stat padding was accidentally added to base styles
+			const padding = findPropertyValue(baseStyles, '.dash-stat', 'padding');
 			expect(padding).toBeNull();
 		});
 
-		it('should have .stats { gap: 1rem } in base styles', () => {
-			// On UNFIXED code: .stats gap is 1rem in base → PASSES
-			// On FIXED code: the fix does not touch the base .stats gap → still PASSES
-			const gap = findPropertyValue(baseStyles, '.stats', 'gap');
+		it('should have .dash-stats { gap: 1rem } in base styles', () => {
+			// On UNFIXED code: .dash-stats gap is 1rem in base → PASSES
+			// On FIXED code: the fix does not touch the base .dash-stats gap → still PASSES
+			const gap = findPropertyValue(baseStyles, '.dash-stats', 'gap');
 			expect(gap).toBe('1rem');
 		});
 
-		it('should have .stats { grid-template-columns: repeat(4, 1fr) } in base styles', () => {
-			// On UNFIXED code: .stats grid-template-columns is repeat(4, 1fr) in base → PASSES
-			// On FIXED code: the fix does not touch the base .stats grid → still PASSES
-			const cols = findPropertyValue(baseStyles, '.stats', 'grid-template-columns');
-			expect(cols).toBe('repeat(4, 1fr)');
+		it('should have .dash-stats { grid-template-columns: repeat(4, minmax(0, 1fr)) } in base styles', () => {
+			const cols = findPropertyValue(baseStyles, '.dash-stats', 'grid-template-columns');
+			expect(cols).toBe('repeat(4, minmax(0, 1fr))');
 		});
 	});
 
@@ -328,54 +337,53 @@ describe('Property 2: Preservation — Desktop Stat Styles Are Unchanged', () =>
 		const desktopViewports = [721, 768, 800, 900, 1024, 1280, 1440];
 
 		it.each(desktopViewports)(
-			'viewport %ipx (721–1440): base .stats gap must be 1rem (no media override applies)',
+			'viewport %ipx (721–1440): base .dash-stats gap must be 1rem (no media override applies)',
 			(width) => {
 				// For all desktop widths, the bug condition does NOT hold
 				expect(width).toBeGreaterThan(720);
 
-				// The base .stats gap must be 1rem — no media block overrides it above 720px
-				const gap = findPropertyValue(baseStyles, '.stats', 'gap');
+				// The base .dash-stats gap must be 1rem — no media block overrides it above 720px
+				const gap = findPropertyValue(baseStyles, '.dash-stats', 'gap');
 				expect(gap).toBe('1rem');
 			}
 		);
 
 		it.each(desktopViewports)(
-			'viewport %ipx (721–1440): base .stats grid-template-columns must be repeat(4, 1fr)',
+			'viewport %ipx (721–1440): base .dash-stats grid-template-columns must be repeat(4, minmax(0, 1fr))',
 			(width) => {
 				expect(width).toBeGreaterThan(720);
 
-				// The base .stats grid must be 4-column — no media block overrides it above 720px
-				const cols = findPropertyValue(baseStyles, '.stats', 'grid-template-columns');
-				expect(cols).toBe('repeat(4, 1fr)');
+				const cols = findPropertyValue(baseStyles, '.dash-stats', 'grid-template-columns');
+				expect(cols).toBe('repeat(4, minmax(0, 1fr))');
 			}
 		);
 
 		it.each(desktopViewports)(
-			'viewport %ipx (721–1440): NO .stat padding override in base styles (global .card value applies)',
+			'viewport %ipx (721–1440): NO .dash-stat padding override in base styles (global .card value applies)',
 			(width) => {
 				expect(width).toBeGreaterThan(720);
 
-				// No .stat padding override in base styles — desktop uses global .card (1.25rem 1.4rem)
+				// No .dash-stat padding override in base styles — desktop uses global .card (1.25rem 1.4rem)
 				// This must remain null both before and after the fix
-				const padding = findPropertyValue(baseStyles, '.stat', 'padding');
+				const padding = findPropertyValue(baseStyles, '.dash-stat', 'padding');
 				expect(padding).toBeNull();
 			}
 		);
 	});
 
 	describe('Media block isolation — fix must not bleed into desktop range', () => {
-		it('should have NO .stat { padding } rule outside ALL media blocks (base styles only)', () => {
+		it('should have NO .dash-stat { padding } rule outside ALL media blocks (base styles only)', () => {
 			// This is the definitive preservation assertion:
-			// The fix must ONLY add .stat padding inside mobile media blocks.
-			// The base styles (desktop default) must never have a .stat padding override.
-			const padding = findPropertyValue(baseStyles, '.stat', 'padding');
+			// The fix must ONLY add .dash-stat padding inside mobile media blocks.
+			// The base styles (desktop default) must never have a .dash-stat padding override.
+			const padding = findPropertyValue(baseStyles, '.dash-stat', 'padding');
 			expect(padding).toBeNull();
 		});
 
-		it('should have NO .stats { gap } override in @media (max-width: 720px)', () => {
-			// The 720px block must not override .stats gap — gap stays at 1rem for 401–720px range
+		it('should have NO .dash-stats { gap } override in @media (max-width: 720px)', () => {
+			// The 720px block must not override .dash-stats gap — gap stays at 1rem for 401–720px range
 			// (the 400px block handles the gap reduction for very small screens)
-			const gap = findPropertyValue(media720, '.stats', 'gap');
+			const gap = findPropertyValue(media720, '.dash-stats', 'gap');
 			expect(gap).toBeNull();
 		});
 	});
