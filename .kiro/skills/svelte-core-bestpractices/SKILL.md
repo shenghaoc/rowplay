@@ -173,4 +173,4 @@ Always use runes mode for new code, and avoid features that have more modern rep
 - use `import Self from './ThisComponent.svelte'` and `<Self>` instead of `<svelte:self>`
 - use classes with `$state` fields to share reactivity between components, instead of using stores
 - use `{@attach ...}` instead of `use:action`
-- use clsx-style arrays and objects in `class` attributes, instead of the `class:` directive
+- use the `class:` directive for conditional classes in this project (see platform-modernization-audit spec); avoid adding `clsx` unless merging many dynamic class strings

@@ -178,27 +178,17 @@
 		background: var(--paper-inset);
 	}
 	.row.new-entry {
-		animation: fade-in 0.6s ease;
-	}
-	/* Virtualized rows use inline transform; animate opacity only so it
-	   doesn't fight the virtualizer's translateY. Non-virtual .row still
-	   uses transform in the keyframe for that listing mode. */
-	.vrow.new-entry {
-		animation-name: fade-in-opacity;
-	}
-	@keyframes fade-in {
-		from {
+		@starting-style {
 			opacity: 0;
 			transform: translateY(-6px);
 		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
+		transition: opacity 0.4s ease, transform 0.4s ease;
 	}
-	@keyframes fade-in-opacity {
-		from { opacity: 0; }
-		to   { opacity: 1; }
+	.vrow.new-entry {
+		@starting-style {
+			opacity: 0;
+		}
+		transition: opacity 0.4s ease;
 	}
 	.vrow {
 		position: absolute;

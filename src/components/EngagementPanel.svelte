@@ -148,6 +148,7 @@
 					class="mono targetin"
 					type="number"
 					min="1"
+					enterkeyhint="done"
 					bind:value={targetInput}
 					placeholder={kind === 'meters' ? String(DEFAULT_ANNUAL_METERS) : '100'}
 				/>

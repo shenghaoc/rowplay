@@ -65,7 +65,8 @@ export const es = {
 		leaderboard: 'Clasificaciones',
 		settings: 'Datos',
 		menuOpen: 'Abrir menú',
-		menuClose: 'Cerrar menú'
+		menuClose: 'Cerrar menú',
+		skipToContent: 'Saltar al contenido'
 	},
 	common: {
 		demoMode: 'modo demo',

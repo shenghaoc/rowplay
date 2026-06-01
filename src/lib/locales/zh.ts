@@ -65,7 +65,8 @@ export const zh = {
 		leaderboard: '排行榜',
 		settings: '数据',
 		menuOpen: '打开菜单',
-		menuClose: '关闭菜单'
+		menuClose: '关闭菜单',
+		skipToContent: '跳到主要内容'
 	},
 	common: {
 		demoMode: '演示模式',

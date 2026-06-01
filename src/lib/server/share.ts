@@ -154,5 +154,6 @@ export function shareMeta(detail: WorkoutDetail, url: string) {
 	const paceMin = Math.floor(totalPaceSecs / 60);
 	const paceSec = totalPaceSecs % 60;
 	const description = `${distKm} km in ${mins}:${secs.toString().padStart(2, '0')} · ${paceMin}:${paceSec.toString().padStart(2, '0')}/500m`;
-	return { title, description, url };
+	const origin = new URL(url).origin;
+	return { title, description, url, image: `${origin}/icon-512.png` };
 }

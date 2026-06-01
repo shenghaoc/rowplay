@@ -45,7 +45,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 const SECURITY_HEADERS: Record<string, string> = {
 	'X-Frame-Options': 'DENY',
 	'X-Content-Type-Options': 'nosniff',
-	'Referrer-Policy': 'strict-origin-when-cross-origin'
+	'Referrer-Policy': 'strict-origin-when-cross-origin',
+	'Content-Security-Policy-Report-Only':
+		"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " +
+		"script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+		"font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'"
 };
 
 function applyDefaults(headers: Headers): void {

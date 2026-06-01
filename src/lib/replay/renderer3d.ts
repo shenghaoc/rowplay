@@ -553,6 +553,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 			antialias: this.cfg.antialias,
 			alpha: true
 		});
+		this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 		if (this.cfg.shadows) {
 			this.renderer.shadowMap.enabled = true;
 			this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;

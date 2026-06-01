@@ -22,7 +22,29 @@
 	let draftText = $state('');
 	let saving = $state(false);
 	let saveError = $state('');
+	let deleteId = $state<number | null>(null);
+	let deleteDialog = $state<HTMLDialogElement | undefined>();
 
+	function requestDelete(id: number) {
+		deleteId = id;
+		deleteDialog?.showModal();
+	}
+
+	async function executeDelete() {
+		if (deleteId == null) return;
+		const id = deleteId;
+		deleteId = null;
+		deleteDialog?.close();
+		saving = true;
+		saveError = '';
+		try {
+			await ondelete?.(id);
+		} catch {
+			saveError = t('annotations.deleteError');
+		} finally {
+			saving = false;
+		}
+	}
 	function startAdd() {
 		draftText = '';
 		adding = true;
@@ -70,16 +92,7 @@
 	}
 
 	async function confirmDelete(id: number) {
-		if (!window.confirm(t('annotations.confirmDelete'))) return;
-		saving = true;
-		saveError = '';
-		try {
-			await ondelete?.(id);
-		} catch {
-			saveError = t('annotations.deleteError');
-		} finally {
-			saving = false;
-		}
+		requestDelete(id);
 	}
 
 	function onKeydown(e: KeyboardEvent) {
@@ -134,7 +147,7 @@
 	{:else}
 		<ul class="anno-list">
 			{#each annotations as a (a.id)}
-				<li class="anno-item" class:editing={editingId === a.id}>
+				<li class="anno-item cv-auto" style="--cv-intrinsic-height: 52px" class:editing={editingId === a.id}>
 					{#if editingId === a.id}
 						<div class="anno-form">
 							<div class="anno-ts mono">{t('annotations.timestampLabel')} <strong>{fmtTime(a.timestamp, true)}</strong></div>
@@ -172,6 +185,18 @@
 		</ul>
 	{/if}
 </div>
+
+<dialog class="anno-delete-dialog" bind:this={deleteDialog} closedby="any">
+	<p>{t('annotations.confirmDelete')}</p>
+	<div class="anno-delete-actions">
+		<button type="button" class="btn btn-ghost btn-sm" onclick={() => deleteDialog?.close()}>
+			{t('annotations.cancelNote')}
+		</button>
+		<button type="button" class="btn btn-error btn-sm" onclick={executeDelete}>
+			{t('annotations.deleteNote')}
+		</button>
+	</div>
+</dialog>
 
 <style>
 	.anno-panel {
@@ -330,5 +355,22 @@
 	}
 	.btn-icon.danger:hover {
 		color: #ef4444;
+	}
+	.anno-delete-dialog {
+		border: var(--bd-heavy);
+		border-radius: var(--r-card);
+		padding: 1rem 1.25rem;
+		max-width: 24rem;
+		background: var(--paper-raised);
+		color: var(--ink);
+	}
+	.anno-delete-dialog::backdrop {
+		background: rgb(15 42 54 / 0.35);
+	}
+	.anno-delete-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
+		margin-top: 0.75rem;
 	}
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { Trophy, Play, ExternalLink } from '@lucide/svelte';
 	import SportIcon from '$components/SportIcon.svelte';
@@ -21,13 +21,13 @@
 
 	// Resolve the selected sport from the URL, falling back to the first sport.
 	const selectedSport = $derived.by<Sport>(() => {
-		const q = $page.url.searchParams.get('sport') as Sport | null;
+		const q = page.url.searchParams.get('sport') as Sport | null;
 		if (q && sports.includes(q)) return q;
 		return sports[0];
 	});
 
 	const selectedDistance = $derived.by<number>(() => {
-		const q = Number($page.url.searchParams.get('distance'));
+		const q = Number(page.url.searchParams.get('distance'));
 		if (Number.isFinite(q) && distances.includes(q)) return q;
 		return 2000;
 	});
@@ -129,7 +129,7 @@
 					<tbody>
 						{#each entries as e (`${e.workoutId}:${e.displayName}`)}
 							{@const race = raceLink(e)}
-							<tr class:you={e.isYou}>
+							<tr class="cv-auto" class:you={e.isYou} style="--cv-intrinsic-height: 48px">
 								<td class="rank">{e.rank}</td>
 								<td class="name">
 									<span class="handle">{e.displayName}</span>

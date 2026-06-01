@@ -333,4 +333,43 @@ When starting a **new feature** via Kiro:
 6. New animations MUST include `prefers-reduced-motion` suppression in CSS classes (not inline)
 7. New date logic SHOULD use Temporal via `datetime.ts` helpers after `ensureTemporal()`
 
-Implementation of audit remediations is **out of scope** for the design-only Kiro pass on the next feature unless explicitly requested.
+---
+
+## 11. Idiomatic patterns already in use (do not “modernize” away)
+
+| Pattern | Example | Notes |
+|---------|---------|-------|
+| `untrack()` in effects | `UPlotChart.svelte`, `WorkoutListFilters.svelte` | Prevents effect loops / unnecessary chart rebuilds |
+| `$props.id()` for a11y | `UPlotChart.svelte` | Stable `aria-describedby` ids |
+| Callback props | `AnnotationPanel` `onsave` / `ondelete` | Svelte 5 replacement for `createEventDispatcher` |
+| Keyed `{#each}` | Throughout | Required for list correctness |
+| `style:prop` | Replay pages, sport colors | Preferred over inline `style="..."` strings |
+| `$effect` cleanup | Layout (removed after `<dialog>`), live mode | Return teardown functions |
+| `class:` directive | Replay toggles, compare deltas | **Project convention** — valid Svelte 5; do not add `clsx` unless merging many dynamic classes |
+| `get()` from `svelte/store` | `WorkoutList.svelte` virtualizer | Required TanStack Virtual workaround |
+| Top-level `await` in hooks | `hooks.server.ts`, `hooks.client.ts` | Modern ESM Workers pattern |
+| `transformPageChunk` for `%lang%` / `%theme%` | `hooks.server.ts` | SSR theme/lang without flash |
+| Cookie + `localStorage` dual persist | lang, theme, live prefs | SSR cookie + client mirror |
+| `fail()` / `throw redirect()` outside `try` | `auth/token/+page.server.ts` | SvelteKit idiom — redirect throws |
+
+### Documentation conflicts resolved
+
+| Doc | Issue | Resolution |
+|-----|-------|------------|
+| `.kiro/steering/tech.md` | Listed `bits-ui`, `clsx`, `tailwind-merge` as active | Removed; packages deleted from `package.json` |
+| `.kiro/skills/svelte-core-bestpractices/SKILL.md` | Recommends clsx over `class:` | Skill is generic; **this project uses `class:`** unless clsx is reintroduced |
+| `AGENTS.md` | No audit reference | Links this spec |
+
+### Optional items deferred (documented, not implemented)
+
+| Item | Reason deferred |
+|------|-----------------|
+| Lucide subpath imports | Large churn; barrel imports remain tree-shakable |
+| View Transitions API | Needs scoped design per route; not user-visible alone |
+| `@property` / `interpolate-size` | No height animations yet beyond `@starting-style` |
+| Analytics `Temporal.PlainDate` unification | Low priority; `Date` bucketing works |
+| Font self-hosting | CSP still report-only; Google Fonts retained |
+| `hreflang` URLs | i18n is cookie-based, not locale-prefixed routes |
+| `showPicker()` on file inputs | Progressive enhancement; low impact |
+| `theme_color` in manifest for dark | Non-standard; `app.html` `theme-color` media queries cover browser chrome |
+| Full CSP enforce mode | Report-only first; tighten after font/script audit |

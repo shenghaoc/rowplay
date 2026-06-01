@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document records a **read-only audit** of rowplay (June 2026) against current library documentation (Context7 MCP), the [WHATWG HTML living standard](https://html.spec.whatwg.org/multipage/), 2026 platform capabilities (Node 26+ native Temporal, WebKit gaps), and the modernization checklist already applied in [hdb-resale-visualizer PR #223](https://github.com/shenghaoc/hdb-resale-visualizer/pull/223).
+This document records the June 2026 audit of rowplay against current library documentation (Context7 MCP), the [WHATWG HTML living standard](https://html.spec.whatwg.org/multipage/), 2026 platform capabilities (Node 26+ native Temporal, WebKit gaps), and the modernization checklist from [hdb-resale-visualizer PR #223](https://github.com/shenghaoc/hdb-resale-visualizer/pull/223). Findings live in `design.md`; remediation is tracked in `tasks.md` and implemented in the same PR.
 
 **Scope:** `package.json` dependencies and devDependencies; configuration (`vite.config.ts`, `svelte.config.js`, `wrangler.jsonc`, Vitest/Playwright); HTML (`app.html`); CSS (`app.css` + component styles); JavaScript/TypeScript patterns in `src/`; PWA/service worker; security headers; accessibility; i18n/storage patterns.
 
@@ -82,7 +82,7 @@ This document records a **read-only audit** of rowplay (June 2026) against curre
 
 1. `tech.md` SHALL NOT list `bits-ui`, `clsx`, or `tailwind-merge` as active stack unless wired up or removed
 2. THIS spec SHALL be the canonical reference for modernization work until tasks are completed
-3. Implementation of audit tasks SHALL be a separate phase from this design/spec pass
+3. Implementation of audit tasks ships in the same PR as this spec (see `tasks.md` checkboxes)
 
 ## Audit Verdict Summary
 
