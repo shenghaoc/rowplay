@@ -27,12 +27,21 @@
 	import { chartTheme, baseOptions, type SeriesRole } from '$lib/chartTheme';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { page } from '$app/stores';
+	import AnnotationPanel from '$components/AnnotationPanel.svelte';
+	import type { Annotation } from '$lib/types';
 
 	let { data } = $props();
 	const t = getI18nContext().t;
 	const uiTheme = getThemeContext();
 	const detail = $derived(data.detail as WorkoutDetail);
 	const candidates = $derived(data.candidates as Workout[]);
+	// Local, mutable copy (save/delete edit it in place). Re-seed from `data`
+	// whenever it changes so navigating between replays shows the right notes
+	// rather than the first workout's, since the component instance is reused.
+	let annotations = $state([] as Annotation[]);
+	$effect(() => {
+		annotations = data.annotations as Annotation[];
+	});
 	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
 	const strokes = $derived(detail.strokes);
@@ -513,6 +522,31 @@
 			});
 		}
 	}
+
+	// --- Coaching annotations ---
+	async function saveAnnotation(a: { id: number; timestamp: number; text: string }) {
+		const res = await fetch(`/api/workouts/${detail.id}/annotations`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(a)
+		});
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		const { annotation } = (await res.json()) as { annotation: Annotation };
+		if (a.id > 0) {
+			const idx = annotations.findIndex((x) => x.id === a.id);
+			if (idx >= 0) annotations[idx] = annotation;
+		} else {
+			annotations = [...annotations, annotation];
+		}
+	}
+
+	async function deleteAnnotation(id: number) {
+		const res = await fetch(`/api/workouts/${detail.id}/annotations?annotationId=${id}`, {
+			method: 'DELETE'
+		});
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		annotations = annotations.filter((a) => a.id !== id);
+	}
 </script>
 
 <svelte:head><title>{t('common.replay')} · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
@@ -688,6 +722,15 @@
 			/>
 		{/if}
 	</div>
+
+	<!-- Coaching annotations -->
+	<AnnotationPanel
+		{annotations}
+		currentTime={frame.t}
+		onsave={saveAnnotation}
+		ondelete={deleteAnnotation}
+		onseek={(ts) => engine?.seek(ts)}
+	/>
 
 	<!-- Telemetry traces -->
 	<div class="charts">

@@ -68,6 +68,18 @@ export interface Split {
 	hr?: number;
 }
 
+/** A coach/self timestamped note attached to a workout. */
+export interface Annotation {
+	/** Opaque id (auto-increment in D1; local counter in demo). */
+	id: number;
+	/** Seconds since workout start — snaps to the nearest stroke. */
+	timestamp: number;
+	/** Free-text coaching note. */
+	text: string;
+	/** Epoch milliseconds when the annotation was created. */
+	createdAt: number;
+}
+
 /** Full detail needed to drive a replay. */
 /** If you change this type, bump DETAIL_PAYLOAD_VERSION in src/lib/server/db.ts. */
 export interface WorkoutDetail extends Workout {

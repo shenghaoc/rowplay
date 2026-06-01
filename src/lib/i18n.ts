@@ -300,6 +300,22 @@ const en = {
 		raceCardAvgPower: 'Avg power',
 		raceCardAvgHr: 'Avg HR'
 	},
+	annotations: {
+		title: 'Coaching notes',
+		addNote: 'Add note',
+		editNote: 'Edit note',
+		deleteNote: 'Delete',
+		saveNote: 'Save',
+		cancelNote: 'Cancel',
+		addPlaceholder: 'What should the athlete focus on at this moment?',
+		noNotes: 'No coaching notes yet. Drag the scrubber to a moment and add a note.',
+		confirmDelete: 'Delete this note?',
+		seekTo: 'Seek to {time}',
+		timestampLabel: 'at',
+		pinnedTo: 'Pinned to timeline marker',
+		saveError: 'Failed to save note. Please try again.',
+		deleteError: 'Failed to delete note. Please try again.'
+	},
 	replay: {
 		back: 'Back to dashboard',
 		lowRes: 'low-res replay',
@@ -776,6 +792,22 @@ const zh = {
 		raceCardBrand: 'rowplay',
 		raceCardAvgPower: '平均功率',
 		raceCardAvgHr: '平均心率'
+	},
+	annotations: {
+		title: '教练笔记',
+		addNote: '添加笔记',
+		editNote: '编辑笔记',
+		deleteNote: '删除',
+		saveNote: '保存',
+		cancelNote: '取消',
+		addPlaceholder: '运动员此时应该注意什么？',
+		noNotes: '暂无教练笔记。拖动进度条到某个时间点，然后添加笔记。',
+		confirmDelete: '确认删除这条笔记？',
+		seekTo: '跳转到 {time}',
+		timestampLabel: '于',
+		pinnedTo: '固定在时间轴标记处',
+		saveError: '保存笔记失败，请重试。',
+		deleteError: '删除笔记失败，请重试。'
 	},
 	replay: {
 		back: '返回仪表板',

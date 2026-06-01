@@ -8,7 +8,7 @@ import {
 } from './detailCache';
 import type { AnnualGoal } from '../analytics';
 import { STANDARD_DISTANCES, type LeaderboardEntry } from '$lib/leaderboard';
-import type { Sport, Workout, WorkoutDetail } from '../types';
+import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
 export const DETAIL_PAYLOAD_VERSION = 1;
@@ -628,5 +628,136 @@ export async function getLeaderboardEntries(
 		}));
 	} catch {
 		return [];
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Coaching annotations — timestamped notes on workouts.
+// ---------------------------------------------------------------------------
+
+interface AnnotationRow {
+	id: number;
+	user_id: number;
+	workout_id: number;
+	timestamp: number;
+	text: string;
+	created_at: number;
+}
+
+function rowToAnnotation(r: AnnotationRow): Annotation {
+	return {
+		id: r.id,
+		timestamp: r.timestamp,
+		text: r.text,
+		createdAt: r.created_at
+	};
+}
+
+/** All annotations for a workout, ordered by timestamp. */
+export async function getAnnotations(
+	db: D1Database | undefined,
+	userId: number,
+	workoutId: number
+): Promise<Annotation[]> {
+	if (!db) return [];
+	try {
+		const res = await db
+			.prepare(
+				'SELECT id, user_id, workout_id, timestamp, text, created_at FROM annotations WHERE user_id = ? AND workout_id = ? ORDER BY timestamp ASC'
+			)
+			.bind(userId, workoutId)
+			.all<AnnotationRow>();
+		return (res.results ?? []).map(rowToAnnotation);
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Load annotations for a workout via its share token — for public /r/<token>
+ * pages where the viewer is unauthenticated. Resolves the owner's user_id
+ * by joining through workout_detail.share_token.
+ */
+export async function getAnnotationsByShareToken(
+	db: D1Database | undefined,
+	token: string,
+	workoutId: number
+): Promise<Annotation[]> {
+	if (!db) return [];
+	try {
+		const res = await db
+			.prepare(
+				`SELECT a.id, a.user_id, a.workout_id, a.timestamp, a.text, a.created_at
+				 FROM annotations a
+				 JOIN workout_detail w ON w.user_id = a.user_id AND w.workout_id = a.workout_id
+				 WHERE w.share_token = ? AND a.workout_id = ?
+				 ORDER BY a.timestamp ASC`
+			)
+			.bind(token, workoutId)
+			.all<AnnotationRow>();
+		return (res.results ?? []).map(rowToAnnotation);
+	} catch {
+		return [];
+	}
+}
+
+/** Upsert an annotation (id === 0 for insert-only; id > 0 for update). */
+export async function putAnnotation(
+	db: D1Database | undefined,
+	userId: number,
+	workoutId: number,
+	annotation: { id: number; timestamp: number; text: string }
+): Promise<Annotation> {
+	if (!db) throw new Error('Database not available.');
+	const now = nowEpochMillis();
+	if (annotation.id > 0) {
+		// RETURNING created_at gives us the real stored value (UPDATE leaves
+		// created_at untouched) instead of the current time, and a null result
+		// means no row matched — the id doesn't exist or isn't this user's note,
+		// which we surface rather than returning a phantom "updated" annotation.
+		const row = await db
+			.prepare(
+				'UPDATE annotations SET timestamp = ?, text = ? WHERE id = ? AND user_id = ? AND workout_id = ? RETURNING created_at'
+			)
+			.bind(annotation.timestamp, annotation.text, annotation.id, userId, workoutId)
+			.first<{ created_at: number }>();
+		if (!row) {
+			throw new Error('Annotation not found or unauthorized.');
+		}
+		return {
+			id: annotation.id,
+			timestamp: annotation.timestamp,
+			text: annotation.text,
+			createdAt: row.created_at
+		};
+	}
+	const res = await db
+		.prepare(
+			'INSERT INTO annotations (user_id, workout_id, timestamp, text, created_at) VALUES (?, ?, ?, ?, ?)'
+		)
+		.bind(userId, workoutId, annotation.timestamp, annotation.text, now)
+		.run();
+	return { id: res.meta.last_row_id ?? 0, timestamp: annotation.timestamp, text: annotation.text, createdAt: now };
+}
+
+/** Delete an annotation by id. */
+export async function deleteAnnotation(
+	db: D1Database | undefined,
+	userId: number,
+	workoutId: number,
+	annotationId: number
+): Promise<void> {
+	if (!db) return;
+	try {
+		await db
+			.prepare('DELETE FROM annotations WHERE id = ? AND user_id = ? AND workout_id = ?')
+			.bind(annotationId, userId, workoutId)
+			.run();
+	} catch (e) {
+		// A failed delete is a real error (unlike the read paths, which degrade to
+		// []); log for Workers observability and propagate so the caller surfaces it
+		// instead of reporting a phantom success.
+		console.error('[db] deleteAnnotation failed:', e);
+		throw e;
 	}
 }
