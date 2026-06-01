@@ -27,6 +27,9 @@ export const POST: RequestHandler = async (event) => {
 	if (typeof body.text !== 'string' || !body.text.trim()) {
 		throw error(400, 'Annotation text is required.');
 	}
+	if (body.text.trim().length > 1000) {
+		throw error(400, 'Annotation text must be 1000 characters or fewer.');
+	}
 
 	const annotation = await saveAnnotation(event, workoutId, {
 		id: typeof body.id === 'number' ? body.id : 0,

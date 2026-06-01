@@ -311,7 +311,9 @@ const en = {
 		noNotes: 'No coaching notes yet. Drag the scrubber to a moment and add a note.',
 		confirmDelete: 'Delete this note?',
 		timestampLabel: 'at',
-		pinnedTo: 'Pinned to timeline marker'
+		pinnedTo: 'Pinned to timeline marker',
+		saveError: 'Failed to save note. Please try again.',
+		deleteError: 'Failed to delete note. Please try again.'
 	},
 	replay: {
 		back: 'Back to dashboard',
@@ -801,7 +803,9 @@ const zh = {
 		noNotes: '暂无教练笔记。拖动进度条到某个时间点，然后添加笔记。',
 		confirmDelete: '确认删除这条笔记？',
 		timestampLabel: '于',
-		pinnedTo: '固定在时间轴标记处'
+		pinnedTo: '固定在时间轴标记处',
+		saveError: '保存笔记失败，请重试。',
+		deleteError: '删除笔记失败，请重试。'
 	},
 	replay: {
 		back: '返回仪表板',

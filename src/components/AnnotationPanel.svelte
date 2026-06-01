@@ -8,45 +8,76 @@
 		annotations = [] as Annotation[],
 		currentTime = 0,
 		readOnly = false,
-		onsave = undefined as ((a: { id: number; timestamp: number; text: string }) => void) | undefined,
-		ondelete = undefined as ((id: number) => void) | undefined
+		onsave = undefined as ((a: { id: number; timestamp: number; text: string }) => Promise<void>) | undefined,
+		ondelete = undefined as ((id: number) => Promise<void>) | undefined
 	} = $props();
 
 	const t = getI18nContext().t;
 
 	let adding = $state(false);
 	let editingId = $state<number | null>(null);
+	let editingTimestamp = $state(0); // preserved from original during edit
 	let draftText = $state('');
+	let saving = $state(false);
+	let saveError = $state('');
 
 	function startAdd() {
 		draftText = '';
 		adding = true;
 		editingId = null;
+		editingTimestamp = 0;
+		saveError = '';
 	}
 
 	function startEdit(a: Annotation) {
 		draftText = a.text;
 		editingId = a.id;
+		editingTimestamp = a.timestamp;
 		adding = false;
+		saveError = '';
 	}
 
 	function cancel() {
 		adding = false;
 		editingId = null;
+		editingTimestamp = 0;
 		draftText = '';
+		saveError = '';
 	}
 
-	function save() {
+	async function save() {
 		const text = draftText.trim();
-		if (!text) return;
-		if (editingId != null) {
-			onsave?.({ id: editingId, timestamp: currentTime, text });
-		} else {
-			onsave?.({ id: 0, timestamp: currentTime, text });
+		if (!text || saving) return;
+		saving = true;
+		saveError = '';
+		try {
+			if (editingId != null) {
+				await onsave?.({ id: editingId, timestamp: editingTimestamp, text });
+			} else {
+				await onsave?.({ id: 0, timestamp: currentTime, text });
+			}
+			draftText = '';
+			adding = false;
+			editingId = null;
+			editingTimestamp = 0;
+		} catch {
+			saveError = t('annotations.saveError');
+		} finally {
+			saving = false;
 		}
-		draftText = '';
-		adding = false;
-		editingId = null;
+	}
+
+	async function confirmDelete(id: number) {
+		if (!window.confirm(t('annotations.confirmDelete'))) return;
+		saving = true;
+		saveError = '';
+		try {
+			await ondelete?.(id);
+		} catch {
+			saveError = t('annotations.deleteError');
+		} finally {
+			saving = false;
+		}
 	}
 
 	function onKeydown(e: KeyboardEvent) {
@@ -67,7 +98,7 @@
 	<div class="anno-head">
 		<h3 class="anno-title"><MessageSquareText size={16} /> {t('annotations.title')}</h3>
 		{#if !readOnly}
-			<button class="btn add-btn" onclick={startAdd} aria-label={t('annotations.addNote')}>
+			<button class="btn add-btn" onclick={startAdd} aria-label={t('annotations.addNote')} disabled={saving}>
 				<Plus size={14} /> {t('annotations.addNote')}
 			</button>
 		{/if}
@@ -90,6 +121,9 @@
 		</div>
 	{/if}
 
+	{#if saveError}
+		<p class="anno-error">{saveError}</p>
+	{/if}
 	{#if annotations.length === 0 && !adding}
 		<p class="anno-empty muted">{t('annotations.noNotes')}</p>
 	{:else}
@@ -121,7 +155,7 @@
 								<button class="btn-icon" onclick={() => startEdit(a)} aria-label={t('annotations.editNote')}>
 									<Pencil size={13} />
 								</button>
-								<button class="btn-icon danger" onclick={() => ondelete?.(a.id)} aria-label={t('annotations.deleteNote')}>
+								<button class="btn-icon danger" onclick={() => confirmDelete(a.id)} aria-label={t('annotations.deleteNote')}>
 									<Trash2 size={13} />
 								</button>
 							</div>
@@ -160,6 +194,14 @@
 	}
 	.anno-empty {
 		font-size: 0.85rem;
+	}
+	.anno-error {
+		font-size: 0.8rem;
+		color: #ef4444;
+		margin: 0.5rem 0;
+		padding: 0.35rem 0.6rem;
+		background: #fef2f2;
+		border-radius: var(--r-ctrl);
 	}
 	.anno-form {
 		border: var(--bd);

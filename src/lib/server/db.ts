@@ -657,6 +657,34 @@ export async function getAnnotations(
 	}
 }
 
+/**
+ * Load annotations for a workout via its share token — for public /r/<token>
+ * pages where the viewer is unauthenticated. Resolves the owner's user_id
+ * by joining through workout_detail.share_token.
+ */
+export async function getAnnotationsByShareToken(
+	db: D1Database | undefined,
+	token: string,
+	workoutId: number
+): Promise<Annotation[]> {
+	if (!db) return [];
+	try {
+		const res = await db
+			.prepare(
+				`SELECT a.id, a.user_id, a.workout_id, a.timestamp, a.text, a.created_at
+				 FROM annotations a
+				 JOIN workout_detail w ON w.user_id = a.user_id AND w.workout_id = a.workout_id
+				 WHERE w.share_token = ? AND a.workout_id = ?
+				 ORDER BY a.timestamp ASC`
+			)
+			.bind(token, workoutId)
+			.all<AnnotationRow>();
+		return (res.results ?? []).map(rowToAnnotation);
+	} catch {
+		return [];
+	}
+}
+
 /** Upsert an annotation (id === 0 for insert-only; id > 0 for update). */
 export async function putAnnotation(
 	db: D1Database | undefined,
@@ -669,9 +697,9 @@ export async function putAnnotation(
 	if (annotation.id > 0) {
 		await db
 			.prepare(
-				'UPDATE annotations SET timestamp = ?, text = ?, created_at = ? WHERE id = ? AND user_id = ? AND workout_id = ?'
+				'UPDATE annotations SET timestamp = ?, text = ? WHERE id = ? AND user_id = ? AND workout_id = ?'
 			)
-			.bind(annotation.timestamp, annotation.text, now, annotation.id, userId, workoutId)
+			.bind(annotation.timestamp, annotation.text, annotation.id, userId, workoutId)
 			.run();
 		return { id: annotation.id, timestamp: annotation.timestamp, text: annotation.text, createdAt: now };
 	}
