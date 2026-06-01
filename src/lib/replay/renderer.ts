@@ -3,6 +3,21 @@ import type { SportTheme } from './sports';
 import { GHOST_COLOR, LIVE_COLOR } from './sports';
 import { fmtPace } from '../format';
 
+// The replay playback itself is essential, user-initiated motion (the user
+// presses play), so it is preserved under `prefers-reduced-motion`. What we do
+// suppress is the *decorative* wake animation behind each avatar — a continuous
+// sine wiggle that isn't conveying any data. One module-level MediaQueryList,
+// read per frame: `.matches` updates live with the OS setting, so there's no
+// per-frame allocation and no listener to leak.
+const reducedMotionQuery =
+	typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+		? window.matchMedia('(prefers-reduced-motion: reduce)')
+		: null;
+
+function prefersReducedMotion(): boolean {
+	return reducedMotionQuery?.matches ?? false;
+}
+
 interface CanvasColors {
 	tickMajor: string;
 	tickMinor: string;
@@ -77,6 +92,8 @@ export class CourseRenderer {
 	private phase = 0;
 	private ghostPhase = 0;
 	private colors: CanvasColors = COLORS_LIGHT;
+	// Refreshed each render() from the OS setting; flattens the avatar wake.
+	private reduceMotion = false;
 
 	constructor(canvas: HTMLCanvasElement, theme: SportTheme) {
 		const ctx = canvas.getContext('2d');
@@ -102,7 +119,10 @@ export class CourseRenderer {
 		const C = themeName === 'dark' ? COLORS_DARK : COLORS_LIGHT;
 		this.colors = C;
 		if (w === 0) return;
-		if (playing) {
+		this.reduceMotion = prefersReducedMotion();
+		// Advance the wake phase only while playing and only when motion is
+		// allowed; otherwise the trail is drawn flat (amplitude 0 in drawLane).
+		if (playing && !this.reduceMotion) {
 			this.phase += 0.15 + state.frame.spm / 600;
 			if (state.ghost) this.ghostPhase += 0.15 + state.ghost.spm / 600;
 		}
@@ -200,8 +220,9 @@ export class CourseRenderer {
 		ctx.lineWidth = 3;
 		ctx.beginPath();
 		ctx.moveTo(startX, y);
+		const waveAmp = this.reduceMotion ? 0 : 1.2;
 		for (let x = startX; x <= avX; x += 6) {
-			ctx.lineTo(x, y + Math.sin((x - avX) * 0.18 + phase) * 1.2);
+			ctx.lineTo(x, y + Math.sin((x - avX) * 0.18 + phase) * waveAmp);
 		}
 		ctx.stroke();
 

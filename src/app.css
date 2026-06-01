@@ -359,3 +359,21 @@ html {
 	font-family: var(--mono);
 	font-size: 0.8rem;
 }
+
+/* ============================================================================
+   Reduced motion — respect the OS "reduce motion" setting.
+   Neutralises the infinite sync spinner and shrinks UI transitions (hover
+   lifts, progress-bar growth) to near-instant. The replay itself is essential,
+   user-initiated motion and is intentionally left running; its decorative
+   avatar wake is flattened separately in the canvas renderer.
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
