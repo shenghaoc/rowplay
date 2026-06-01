@@ -5,7 +5,14 @@
 	import MetricGauge from '$components/MetricGauge.svelte';
 	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
 	import { CourseRenderer, type RenderState, type ReplayRenderer } from '$lib/replay/renderer';
-	import { loadRendererPref, saveRendererPref, type RendererKind } from '$lib/replay/replayRenderer';
+	import {
+		loadRendererPref,
+		saveRendererPref,
+		loadQualityPref,
+		saveQualityPref,
+		type RendererKind,
+		type RenderQuality
+	} from '$lib/replay/replayRenderer';
 	import { webglSupported, loadRenderer3D, type Renderer3DCtor } from '$lib/replay/renderer3dLoader';
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import {
@@ -79,7 +86,9 @@
 
 	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
 	let playing = $state(false);
-	let speed = $state(1);
+	// Replays default to 8× — real-time is too slow to watch (a 2k is 8 min).
+	const DEFAULT_SPEED = 8;
+	let speed = $state(DEFAULT_SPEED);
 
 	// Comparison ("ghost") state — race a past session, a constant pace, or an
 	// uploaded CSV/TCX/FIT file. All three resolve to a ghost stroke array.
@@ -121,6 +130,7 @@
 	let engine = $state<ReplayEngine | null>(null);
 	let renderer: ReplayRenderer | null = null;
 	let rendererKind = $state<RendererKind>('2d');
+	let quality = $state<RenderQuality>('medium');
 	let loading3d = $state(false);
 	let webglOk = $state(false);
 	let Ctor3D: Renderer3DCtor | null = null;
@@ -226,7 +236,7 @@
 				renderer = null;
 			}
 			if (myLoadId !== activeLoadId) return;
-			renderer = new Ctor3D!(canvas3dHost);
+			renderer = new Ctor3D!(canvas3dHost, quality);
 			activeCanvas = '3d';
 			if (w) renderer.resize(w, h);
 			renderCurrent();
@@ -252,6 +262,15 @@
 		// slow load. Only re-selecting 3D mid-load is a no-op.
 		if (loading3d && kind === '3d') return;
 		void setRenderer(kind);
+	}
+
+	function onQualityChange(q: RenderQuality) {
+		if (q === quality) return;
+		quality = q;
+		saveQualityPref(q);
+		// Quality affects renderer construction (antialias/dpr/water/shadows), so a
+		// live 3D view must be rebuilt. setRenderer('3d') reuses the cached chunk.
+		if (rendererKind === '3d' && !loading3d) void setRenderer('3d');
 	}
 
 	$effect(() => {
@@ -283,7 +302,7 @@
 			// Reset all playback and ghost state for the new workout.
 			frame = sampleAt(s, 0);
 			playing = false;
-			speed = 1;
+			speed = DEFAULT_SPEED;
 			compareMode = 'none';
 			ghostStrokes = null;
 			ghostActive = false;
@@ -301,6 +320,7 @@
 				playing = p;
 				safeRender(buildState(f), p, uiTheme.value);
 			});
+			engine.setSpeed(speed);
 			void setRenderer(rendererKind);
 		});
 		return () => {
@@ -337,6 +357,7 @@
 
 	onMount(() => {
 		webglOk = webglSupported();
+		quality = loadQualityPref();
 		const pref = loadRendererPref();
 		if (pref === '3d' && webglOk) {
 			void setRenderer('3d');
@@ -1019,6 +1040,20 @@
 				{/if}
 			</button>
 		</div>
+		{#if rendererKind === '3d'}
+			<label class="quality-select">
+				<span class="quality-label">{t('replay.quality')}</span>
+				<select
+					value={quality}
+					disabled={loading3d}
+					onchange={(e) => onQualityChange(e.currentTarget.value as RenderQuality)}
+				>
+					<option value="low">{t('replay.qualityLow')}</option>
+					<option value="medium">{t('replay.qualityMedium')}</option>
+					<option value="high">{t('replay.qualityHigh')}</option>
+				</select>
+			</label>
+		{/if}
 		<canvas bind:this={canvas2dEl} class:hidden={activeCanvas !== '2d'}></canvas>
 		<div class="canvas3d-host" bind:this={canvas3dHost} class:hidden={activeCanvas !== '3d'}></div>
 	</div>
@@ -1515,6 +1550,28 @@
 		display: flex;
 		gap: 0.35rem;
 		margin-bottom: 0.5rem;
+	}
+	.quality-select {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-bottom: 0.5rem;
+		font-size: 0.78rem;
+		color: var(--muted-ink, var(--ink));
+	}
+	.quality-select select {
+		background: var(--paper-raised);
+		border: var(--bd);
+		color: var(--ink);
+		border-radius: var(--r-ctrl);
+		padding: 0.2rem 0.4rem;
+		font-size: 0.78rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.quality-select select:disabled {
+		opacity: 0.5;
+		cursor: default;
 	}
 	.vbtn {
 		background: var(--paper-raised);
