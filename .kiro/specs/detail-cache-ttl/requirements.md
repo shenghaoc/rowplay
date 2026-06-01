@@ -40,6 +40,7 @@ PR #18 added `payload_version` on `workout_detail` so a bumped `DETAIL_PAYLOAD_V
 
 1. WHEN detail is resolved by `share_token` (unauthenticated), THEN the system SHALL NOT apply TTL expiry (no OAuth to re-hydrate).
 2. WHEN the owner opens replay after TTL expiry, THEN re-hydration SHALL refresh the shared payload in D1 for subsequent token lookups.
+3. WHEN the cached row's `payload_version` does not equal `DETAIL_PAYLOAD_VERSION`, THEN share-token reads SHALL still serve the cached payload (NOT treat it as a miss): an anonymous reader cannot re-hydrate, so a version filter would 404 the link after a deliberate schema bump until the owner re-opens the workout. Consuming pages SHALL tolerate older payload shapes; the owner re-opening refreshes the shared payload.
 
 ### Requirement 4: Testable policy helpers
 

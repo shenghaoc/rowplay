@@ -481,7 +481,11 @@ export async function clearShareToken(
 
 /**
  * Read-only lookup by share token — no user id in the query path.
- * Intentionally skips TTL: anonymous readers cannot re-hydrate from Concept2.
+ * Intentionally skips both the TTL and the `payload_version` check: an
+ * anonymous reader cannot re-hydrate from Concept2, so a version filter would
+ * permanently 404 a shared link after a (rare, deliberate) schema bump until
+ * the owner happens to re-open that workout. We prefer serving the last-cached
+ * snapshot; the owner re-opening refreshes the shared payload for later reads.
  */
 export async function getCachedDetailByShareToken(
 	db: D1Database | undefined,

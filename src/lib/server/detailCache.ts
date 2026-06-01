@@ -7,7 +7,11 @@ export type DetailCacheEnv = {
 	DETAIL_CACHE_TTL_DAYS?: string;
 };
 
-/** Resolve TTL from Worker vars, falling back to {@link DETAIL_CACHE_TTL_MS}. */
+/**
+ * Resolve TTL from Worker vars, falling back to {@link DETAIL_CACHE_TTL_MS}.
+ * `DETAIL_CACHE_TTL_DAYS` is parsed as whole days — a fractional value like
+ * `"3.7"` truncates to 3 (Number.parseInt); operators should set an integer.
+ */
 export function detailCacheTtlMs(env?: DetailCacheEnv): number {
 	const raw = env?.DETAIL_CACHE_TTL_DAYS?.trim();
 	if (!raw) return DETAIL_CACHE_TTL_MS;
@@ -22,6 +26,10 @@ export function isDetailCacheFresh(
 	nowMs: number,
 	ttlMs: number = DETAIL_CACHE_TTL_MS
 ): boolean {
-	if (typeof cachedAt !== 'number' || !Number.isFinite(cachedAt) || !Number.isFinite(nowMs) || ttlMs <= 0) return false;
+	// Reject a negative cachedAt explicitly: putCachedDetail always writes
+	// nowEpochMillis() (>= 0), so a negative value is corrupt — treat it as a
+	// miss (re-fetch) rather than letting the arithmetic decide implicitly.
+	if (typeof cachedAt !== 'number' || !Number.isFinite(cachedAt) || cachedAt < 0 || !Number.isFinite(nowMs) || ttlMs <= 0)
+		return false;
 	return nowMs - cachedAt <= ttlMs;
 }
