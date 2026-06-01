@@ -32,6 +32,8 @@ declare global {
 				CONCEPT2_CLIENT_SECRET: string;
 				CONCEPT2_BASE_URL: string;
 				PUBLIC_APP_URL: string;
+				/** Optional override for D1 detail-cache TTL (integer days). */
+				DETAIL_CACHE_TTL_DAYS?: string;
 				SESSION_SECRET: string;
 			};
 		}

@@ -240,7 +240,7 @@ export async function loadWorkoutDetail(
 
 	const userId = event.locals.user!.id;
 	const db = event.platform?.env?.DB;
-	const cached = await getCachedDetail(db, userId, id);
+	const cached = await getCachedDetail(db, userId, id, event.platform?.env);
 	if (cached) return cached;
 
 	const detail = await c.getWorkout(id);

@@ -110,7 +110,7 @@ export async function createWorkoutShare(
 	await putCachedDetail(db, userId, detail);
 	// putCachedDetail swallows write errors, so confirm the payload actually
 	// landed — otherwise the share URL would resolve to nothing and 404.
-	const cached = await getCachedDetail(db, userId, workoutId);
+	const cached = await getCachedDetail(db, userId, workoutId, event.platform?.env);
 	if (!cached) throw error(500, 'Could not cache workout before sharing.');
 
 	const token = generateShareToken();
