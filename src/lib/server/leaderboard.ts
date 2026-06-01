@@ -65,6 +65,10 @@ export async function publishWorkout(
 	event: RequestEvent,
 	workoutId: number
 ): Promise<PublishResult> {
+	// Authenticate before touching any data loaders: a live (non-demo) caller
+	// without a session must get a clean 401, not a crash inside loadWorkouts.
+	if (!event.locals.demo && !event.locals.user) throw error(401, 'Not authenticated.');
+
 	// Resolve the workout summary (demo mock or the athlete's synced history).
 	const workouts = event.locals.demo ? mockWorkouts() : await loadWorkouts(event);
 	const workout = workouts.find((w) => w.id === workoutId);

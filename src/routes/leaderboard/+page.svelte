@@ -5,7 +5,7 @@
 	import SportIcon from '$components/SportIcon.svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
-	import { findBoard, type Board, type RankedEntry } from '$lib/leaderboard';
+	import { findBoard, SPORT_ORDER, STANDARD_DISTANCES, type Board, type RankedEntry } from '$lib/leaderboard';
 	import type { Sport } from '$lib/types';
 
 	let { data } = $props();
@@ -13,29 +13,22 @@
 
 	const boards = $derived(data.boards as Board[]);
 
-	// Sports that actually have a board, in the boards' stable order.
-	const sports = $derived.by<Sport[]>(() => {
-		const seen: Sport[] = [];
-		for (const b of boards) if (!seen.includes(b.sport)) seen.push(b.sport);
-		return seen;
-	});
+	// Always offer the full set of boards so the selectors stay populated and
+	// browsable even when a board (or the whole table) is empty.
+	const sports: Sport[] = SPORT_ORDER;
+	const distances: number[] = [...STANDARD_DISTANCES];
 
-	// Resolve the selected sport from the URL, falling back to the first board.
+	// Resolve the selected sport from the URL, falling back to the first sport.
 	const selectedSport = $derived.by<Sport>(() => {
 		const q = $page.url.searchParams.get('sport') as Sport | null;
 		if (q && sports.includes(q)) return q;
-		return sports[0] ?? 'rower';
+		return sports[0];
 	});
-
-	// Standard distances available for the selected sport.
-	const distances = $derived(
-		boards.filter((b) => b.sport === selectedSport).map((b) => b.distance)
-	);
 
 	const selectedDistance = $derived.by<number>(() => {
 		const q = Number($page.url.searchParams.get('distance'));
 		if (Number.isFinite(q) && distances.includes(q)) return q;
-		return distances[0] ?? 0;
+		return 2000;
 	});
 
 	const board = $derived(findBoard(boards, selectedSport, selectedDistance));
@@ -133,7 +126,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each entries as e (`${e.sport}:${e.distance}:${e.displayName}`)}
+						{#each entries as e, i (`${e.displayName}-${e.workoutId}-${i}`)}
 							{@const race = raceLink(e)}
 							<tr class:you={e.isYou}>
 								<td class="rank">{e.rank}</td>

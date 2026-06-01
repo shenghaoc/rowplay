@@ -579,8 +579,15 @@ export async function getLeaderboardEntries(
 	try {
 		const res = await db
 			.prepare(
+				// Cap each board at its top 100 results so a large table never
+				// loads wholesale into the Worker on every /leaderboard render.
 				`SELECT sport, distance, user_id, workout_id, display_name, time, pace, date, share_token
-				 FROM leaderboard_entry
+				 FROM (
+				   SELECT sport, distance, user_id, workout_id, display_name, time, pace, date, share_token,
+				          ROW_NUMBER() OVER (PARTITION BY sport, distance ORDER BY time ASC) AS rn
+				   FROM leaderboard_entry
+				 )
+				 WHERE rn <= 100
 				 ORDER BY sport, distance, time ASC`
 			)
 			.all<{

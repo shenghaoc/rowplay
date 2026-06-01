@@ -11,7 +11,7 @@ export const POST: RequestHandler = async (event) => {
 		throw error(400, 'Expected a JSON body.');
 	}
 	const workoutId = Number(body.workoutId);
-	if (!Number.isFinite(workoutId)) throw error(400, 'Invalid workout id.');
+	if (!Number.isInteger(workoutId) || workoutId <= 0) throw error(400, 'Invalid workout id.');
 
 	const result = await publishWorkout(event, workoutId);
 	return json(result, { headers: { 'cache-control': 'private, no-store' } });

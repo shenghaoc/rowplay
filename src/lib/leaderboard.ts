@@ -13,7 +13,7 @@ import type { Sport } from './types';
 export const STANDARD_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097] as const;
 
 /** Stable sport order for laying boards out predictably. */
-const SPORT_ORDER: Sport[] = ['rower', 'skierg', 'bike'];
+export const SPORT_ORDER: Sport[] = ['rower', 'skierg', 'bike'];
 
 /** One athlete's published result on a board. `isYou` flags the viewer's row. */
 export interface LeaderboardEntry {
