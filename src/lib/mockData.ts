@@ -1,5 +1,5 @@
 import { paceToWatts } from './format';
-import type { Split, Sport, Stroke, Workout, WorkoutDetail } from './types';
+import type { Annotation, Split, Sport, Stroke, Workout, WorkoutDetail } from './types';
 
 /**
  * Deterministic demo data so rowplay is fully explorable without registering a
@@ -172,6 +172,30 @@ export function generateMockWorkout(existingIds: Iterable<number>): Workout {
 	// Cap the generated map to avoid unbounded growth in long-running isolates.
 	if (generatedSpecs.size > 50) generatedSpecs.delete(generatedSpecs.keys().next().value!);
 	return summaryOf(detailFor(spec));
+}
+
+/**
+ * Stable mock annotations for demo mode so coaching notes are explorable.
+ * Timestamps align with the workout timeline (seconds since start).
+ */
+const MOCK_ANNOTATIONS: Record<number, Annotation[]> = {
+	1001: [
+		{ id: 1, timestamp: 30, text: 'Strong start — keep the rate at 30', createdAt: 0 },
+		{ id: 2, timestamp: 90, text: 'Settle into 1:48 pace through the middle 1000', createdAt: 0 },
+		{ id: 3, timestamp: 160, text: 'Sprint! Empty the tank in the last 250', createdAt: 0 }
+	],
+	1007: [
+		{ id: 5, timestamp: 45, text: 'Good rhythm, body over at the finish', createdAt: 0 },
+		{ id: 6, timestamp: 120, text: 'Watch the catch — no pause at the back', createdAt: 0 }
+	],
+	1005: [
+		{ id: 7, timestamp: 15, text: 'Interval 1 start — controlled effort', createdAt: 0 },
+		{ id: 8, timestamp: 150, text: 'Interval 2 — hold steady through the rest', createdAt: 0 }
+	]
+};
+
+export function mockAnnotations(workoutId: number): Annotation[] {
+	return MOCK_ANNOTATIONS[workoutId] ?? [];
 }
 
 function avg(xs: number[]): number {
