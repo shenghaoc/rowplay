@@ -359,6 +359,19 @@ h3 {
 	box-shadow: none;
 }
 
+/* Secondary (Jet Set Blue / the ghost you chase) — stamped in ghost ink */
+.btn-secondary {
+	box-shadow: var(--stamp-ghost);
+}
+.btn-secondary:hover {
+	transform: translate(1px, 1px);
+	box-shadow: 2px 2px 0 var(--ink);
+}
+.btn-secondary:active {
+	transform: translate(3px, 3px);
+	box-shadow: none;
+}
+
 /* Disabled */
 .btn:disabled,
 .btn-disabled {
@@ -368,7 +381,12 @@ h3 {
 	box-shadow: none !important;
 }
 
-/* Badges: match the old .tag look */
+/* Badges: printed stamp-tags — outline on paper, never filled-on-filled.
+   daisyUI's `badge-primary`/`-secondary` paint a *solid* primary background
+   with same-hued content; if we only recolor the text/border the label turns
+   violet-on-violet and is unreadable on any page without its own scoped
+   `.badge` background. So we reset the surface to a faint paper tint and keep
+   the spot ink for the text — readable everywhere, in both themes. */
 .badge {
 	font-family: var(--ui);
 	font-weight: 600;
@@ -376,14 +394,36 @@ h3 {
 	letter-spacing: 0.08em;
 	border-radius: var(--r-ctrl);
 	border-width: 1.5px;
+	background: var(--paper-raised);
+	border-color: var(--hairline);
+	color: var(--ink);
 }
 .badge-primary {
+	background: color-mix(in srgb, var(--live) 12%, var(--paper-raised));
 	border-color: var(--live);
 	color: var(--live);
 }
 .badge-secondary {
+	background: color-mix(in srgb, var(--ghost) 12%, var(--paper-raised));
 	border-color: var(--ghost);
 	color: var(--ghost);
+}
+.badge-accent {
+	background: color-mix(in srgb, var(--ahead) 12%, var(--paper-raised));
+	border-color: var(--ahead);
+	color: color-mix(in srgb, var(--ahead) 70%, var(--ink));
+}
+.badge-warning {
+	background: color-mix(in srgb, var(--behind) 14%, var(--paper-raised));
+	border-color: color-mix(in srgb, var(--behind) 55%, var(--paper-raised));
+	color: color-mix(in srgb, var(--behind) 45%, var(--ink));
+}
+/* Solid stamp variant — for when a filled chip is genuinely wanted; uses the
+   high-contrast paper-raised content so the label always reads. */
+.badge-live {
+	background: var(--live);
+	border-color: var(--live);
+	color: var(--paper-raised);
 }
 
 /* Cards */
@@ -395,6 +435,103 @@ h3 {
 }
 .card-bordered {
 	border-color: var(--rule);
+}
+
+/* ============================================================================
+   Interaction & accessibility — keyboard focus, selection, form controls
+   ----------------------------------------------------------------------------
+   The RACE BOARD chrome leaned entirely on hover/box-shadow stamps and shipped
+   no visible keyboard-focus state. Give every interactive surface a single,
+   consistent stamped focus ring (keyboard-only, so pointer users never see it)
+   that rides *on top of* the stamp shadows without fighting them.
+   ============================================================================ */
+:where(a, button, .btn, .badge, input, select, textarea, summary, [tabindex]):focus-visible {
+	outline: 2.5px solid var(--live);
+	outline-offset: 2px;
+	border-radius: var(--r-ctrl);
+}
+/* The mast brand/play-mark and ghost you chase focus in their own hue. */
+.btn-secondary:focus-visible,
+.brand:focus-visible {
+	outline-color: var(--ghost);
+}
+
+/* Themed text selection — violet ink on a faint live wash. */
+::selection {
+	background: color-mix(in srgb, var(--live) 28%, var(--paper-raised));
+	color: var(--ink);
+}
+
+/* Native form controls — paper-inset fields, heavy ink rule on focus, spot-ink
+   accents for check/radio/range. Components without their own field styling
+   inherit a coherent look for free. */
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+select,
+textarea {
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	color: var(--ink);
+	background: var(--paper-raised);
+	border: var(--bd);
+	border-radius: var(--r-ctrl);
+	padding: 0.4rem 0.55rem;
+}
+input:focus,
+select:focus,
+textarea:focus {
+	border-color: var(--live);
+	outline: none;
+}
+input::placeholder,
+textarea::placeholder {
+	color: var(--ink-3);
+}
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'] {
+	accent-color: var(--live);
+}
+
+/* Themed scrollbars keep the cool paper palette edge-to-edge. */
+* {
+	scrollbar-color: var(--ink-3) transparent;
+}
+::-webkit-scrollbar {
+	width: 11px;
+	height: 11px;
+}
+::-webkit-scrollbar-thumb {
+	background: var(--ink-3);
+	border: 3px solid var(--paper);
+	border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: var(--ink-2);
+}
+
+/* ============================================================================
+   Print — collapse to a clean black-ink race-results sheet
+   ============================================================================ */
+@media print {
+	body::before {
+		display: none;
+	}
+	.masthead,
+	footer,
+	.iconbtn,
+	.btn {
+		display: none !important;
+	}
+	html,
+	body {
+		background: #fff;
+		color: #000;
+	}
+	.card {
+		box-shadow: none;
+		border: 1.5px solid #000;
+		break-inside: avoid;
+	}
 }
 
 /* ============================================================================
