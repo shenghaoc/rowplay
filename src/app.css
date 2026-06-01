@@ -57,6 +57,15 @@
 	--hr: #8e4a6b;
 	--dps: #3f6e8c;
 
+	/* HR zone heat ramp (Z1 easy → Z5 max), in the warm register. Z3–Z5 step
+	   down in lightness (gold → orange → deep red), not just hue, so adjacent
+	   zones stay distinguishable for red-green colour blindness / in greyscale. */
+	--zone-1: #6f8f4f;
+	--zone-2: #3c8a7e;
+	--zone-3: #d6a52e;
+	--zone-4: #c0631f;
+	--zone-5: #8f2a18;
+
 	--m-rower: #2b5468;
 	--m-skierg: #3c7a6e;
 	--m-bike: #a65d2e;
@@ -116,6 +125,14 @@
 	--power: #c08050;
 	--hr: #c07090;
 	--dps: #6a9ab8;
+
+	/* Zone ramp lifted for contrast on the night board; same descending-lightness
+	   gold → orange → red across Z3–Z5 for colour-blind distinguishability. */
+	--zone-1: #8fae6a;
+	--zone-2: #5aab9b;
+	--zone-3: #e8c45a;
+	--zone-4: #d9803c;
+	--zone-5: #c84432;
 
 	--m-rower: #5a8aaa;
 	--m-skierg: #5aaa9a;

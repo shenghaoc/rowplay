@@ -4,7 +4,7 @@
 	import SportIcon from '$components/SportIcon.svelte';
 	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
 	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
-	import { LIVE_COLOR, MACHINE_COLOR, themeFor } from '$lib/replay/sports';
+	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import { fmtDistance, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '$lib/format';
 	import type { WorkoutDetail } from '$lib/types';
 	import { Play, Pause } from '@lucide/svelte';
@@ -50,7 +50,7 @@
 	});
 
 	onMount(() => {
-		renderer = new CourseRenderer(canvasEl, sportTheme);
+		renderer = new CourseRenderer(canvasEl);
 		engine = new ReplayEngine(strokes, (f, p) => {
 			frame = f;
 			playing = p;
@@ -166,7 +166,7 @@
 			value={frame.pace}
 			min={paceRange.max}
 			max={paceRange.min}
-			color={LIVE_COLOR}
+			color="var(--pace)"
 		/>
 		<MetricGauge
 			label={t('replay.gRate')}
@@ -175,7 +175,7 @@
 			value={frame.spm}
 			min={0}
 			max={60}
-			color="#2c6e63"
+			color="var(--rate)"
 		/>
 		<MetricGauge
 			label={t('replay.gPower')}
@@ -184,7 +184,7 @@
 			value={frame.watts}
 			min={wattRange.min}
 			max={wattRange.max}
-			color="#9e5b2d"
+			color="var(--power)"
 		/>
 		{#if hasHr}
 			<MetricGauge
@@ -194,7 +194,7 @@
 				value={frame.hr ?? 0}
 				min={90}
 				max={200}
-				color="#8e4a6b"
+				color="var(--hr)"
 			/>
 		{/if}
 	</div>

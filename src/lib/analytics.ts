@@ -159,9 +159,9 @@ export function distancePBs(workouts: Workout[]): { distance: number; time: numb
 // ---------------------------------------------------------------------------
 
 export interface HrZone {
-	/** 1-5. The display name is resolved via i18n (`replay.zone{n}`), not here. */
+	/** 1-5. The display name (i18n `replay.zone{n}`) and colour (CSS `--zone-{n}`)
+	 *  are both resolved at the presentation layer, keyed off this number. */
 	zone: number;
-	color: string;
 	min: number;
 	max: number;
 	seconds: number;
@@ -179,7 +179,6 @@ export function hrZones(strokes: Stroke[], maxHr?: number): HrZone[] {
 	const hrMax = maxHr && maxHr > 0 ? maxHr : Math.max(peak / 0.95, 160);
 
 	const bounds = [0, 0.6, 0.7, 0.8, 0.9, 1.2].map((f) => f * hrMax);
-	const colors = ['#3fb950', '#56d4ff', '#d29922', '#f0883e', '#f85149'];
 	const seconds = new Array(5).fill(0);
 
 	for (let i = 1; i < strokes.length; i++) {
@@ -198,13 +197,12 @@ export function hrZones(strokes: Stroke[], maxHr?: number): HrZone[] {
 	}
 
 	const total = seconds.reduce((a, b) => a + b, 0) || 1;
-	return colors.map((color, i) => ({
+	return seconds.map((sec, i) => ({
 		zone: i + 1,
-		color,
 		min: Math.round(bounds[i]),
 		max: i < 4 ? Math.round(bounds[i + 1]) : Infinity,
-		seconds: seconds[i],
-		fraction: seconds[i] / total
+		seconds: sec,
+		fraction: sec / total
 	}));
 }
 
