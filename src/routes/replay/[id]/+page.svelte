@@ -27,12 +27,15 @@
 	import { chartTheme, baseOptions, type SeriesRole } from '$lib/chartTheme';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { page } from '$app/stores';
+	import AnnotationPanel from '$components/AnnotationPanel.svelte';
+	import type { Annotation } from '$lib/types';
 
 	let { data } = $props();
 	const t = getI18nContext().t;
 	const uiTheme = getThemeContext();
 	const detail = $derived(data.detail as WorkoutDetail);
 	const candidates = $derived(data.candidates as Workout[]);
+	const annotations = $state(data.annotations as Annotation[]);
 	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
 	const strokes = $derived(detail.strokes);
@@ -178,9 +181,16 @@
 		};
 		window.addEventListener('keydown', onKey);
 
+		const onSeek = (e: Event) => {
+			const ts = (e as CustomEvent<{ timestamp: number }>).detail.timestamp;
+			engine?.seek(ts);
+		};
+		window.addEventListener('annotation-seek', onSeek);
+
 		return () => {
 			ro.disconnect();
 			window.removeEventListener('keydown', onKey);
+			window.removeEventListener('annotation-seek', onSeek);
 		};
 	});
 
@@ -513,7 +523,9 @@
 			});
 		}
 	}
-</script>
+
+	// --- Coaching annotations ---
+	async function saveAnnotation(a: { id: number; timestamp: number; text: string }) {
 
 <svelte:head><title>{t('common.replay')} · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
 
@@ -688,6 +700,14 @@
 			/>
 		{/if}
 	</div>
+
+	<!-- Coaching annotations -->
+	<AnnotationPanel
+		{annotations}
+		currentTime={frame.t}
+		onsave={saveAnnotation}
+		ondelete={deleteAnnotation}
+	/>
 
 	<!-- Telemetry traces -->
 	<div class="charts">

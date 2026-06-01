@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { loadWorkoutDetail, loadWorkouts } from '$lib/server/data';
+import { loadAnnotations, loadWorkoutDetail, loadWorkouts } from '$lib/server/data';
 import type { Workout } from '$lib/types';
 
 export const load: PageServerLoad = async (event) => {
@@ -9,6 +9,7 @@ export const load: PageServerLoad = async (event) => {
 	}
 	const id = Number(event.params.id);
 	const detail = await loadWorkoutDetail(event, id);
+	const annotations = await loadAnnotations(event, id);
 
 	// Candidate ghosts: other sessions of the same sport to race against.
 	let candidates: Workout[] = [];
@@ -21,5 +22,5 @@ export const load: PageServerLoad = async (event) => {
 		candidates = [];
 	}
 
-	return { detail, candidates };
+	return { detail, candidates, annotations };
 };

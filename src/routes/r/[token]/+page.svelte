@@ -10,6 +10,8 @@
 	import { Play, Pause } from '@lucide/svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
+	import AnnotationPanel from '$components/AnnotationPanel.svelte';
+	import type { Annotation } from '$lib/types';
 
 	let { data } = $props();
 	const t = getI18nContext().t;
@@ -18,6 +20,8 @@
 	const detail: WorkoutDetail = data.detail;
 	// svelte-ignore state_referenced_locally
 	const meta = data.meta;
+	// svelte-ignore state_referenced_locally
+	const annotations: Annotation[] = data.annotations;
 	const sportTheme = themeFor(detail.sport);
 	const total = detail.distance;
 	const strokes = detail.strokes;
@@ -74,9 +78,16 @@
 		};
 		window.addEventListener('keydown', onKey);
 
+		const onSeek = (e: Event) => {
+			const ts = (e as CustomEvent<{ timestamp: number }>).detail.timestamp;
+			engine?.seek(ts);
+		};
+		window.addEventListener('annotation-seek', onSeek);
+
 		return () => {
 			ro.disconnect();
 			window.removeEventListener('keydown', onKey);
+			window.removeEventListener('annotation-seek', onSeek);
 			engine?.destroy();
 		};
 	});
@@ -198,6 +209,8 @@
 			/>
 		{/if}
 	</div>
+
+	<AnnotationPanel {annotations} currentTime={frame.t} readOnly={true} />
 
 	<p class="cta muted">
 		{t('share.ctaBefore')}<a href="/">{t('share.ctaLink')}</a>{t('share.ctaAfter')}
