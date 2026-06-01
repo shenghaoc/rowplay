@@ -33,6 +33,8 @@ declare global {
 				CONCEPT2_BASE_URL: string;
 				PUBLIC_APP_URL: string;
 				SESSION_SECRET: string;
+				/** Optional — enables ErgData webhook signature validation. */
+				ERGDATA_WEBHOOK_SECRET?: string;
 			};
 		}
 	}
