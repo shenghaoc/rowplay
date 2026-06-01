@@ -261,21 +261,6 @@ export class CourseRenderer3D implements ReplayRenderer {
 			}
 		});
 
-		this.tickPosts.forEach((post, i) => {
-			if (post.material instanceof THREE.MeshStandardMaterial) {
-				post.material.color.setHex(hex(i % 5 === 0 ? C.tickMajor : C.tickMinor));
-			}
-		});
-		this.finishCells.forEach((cell, i) => {
-			if (cell.material instanceof THREE.MeshStandardMaterial) {
-				const r = Math.floor(i / 3);
-				const c = i % 3;
-				cell.material.color.setHex(
-					hex((r + c) % 2 === 0 ? C.finishDark : C.finishLight)
-				);
-			}
-		});
-
 		this.recolorBoat(this.liveBoat, C.live);
 		this.recolorBoat(this.ghostBoat, C.ghost);
 	}

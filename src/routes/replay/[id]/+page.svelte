@@ -208,7 +208,10 @@
 					if (myLoadId === activeLoadId) loading3d = false;
 				}
 				if (myLoadId !== activeLoadId) {
-					temp2d.destroy();
+					// Superseded: a newer setRenderer() already ran renderer?.destroy()
+					// (which was temp2d) and took over. Only destroy here if we still
+					// own it, to avoid double-destroying the same instance.
+					if (renderer === temp2d) temp2d.destroy();
 					return;
 				}
 				temp2d.destroy();
