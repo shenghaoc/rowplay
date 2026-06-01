@@ -28,9 +28,9 @@
 
 ## Backend (SvelteKit Endpoints on Workers)
 
-- **Cloudflare KV** (`SESSIONS` binding) — short-lived session storage for OAuth tokens and login state
+- **Cloudflare KV** (`SESSIONS` binding) — session storage (personal API token or optional OAuth tokens)
 - **Cloudflare D1** (`DB` binding) — SQLite database caching hydrated workouts and per-stroke detail so replays are instant
-- **Concept2 Logbook API** — OAuth2 server-side flow for authentication and workout data retrieval
+- **Concept2 Logbook API** — read server-side only. **Primary auth:** user pastes a read-only personal API token at `/auth/token`. **Optional:** OAuth2 if `CONCEPT2_CLIENT_ID` is configured
 
 ## Testing
 
@@ -42,7 +42,7 @@
 
 - `wrangler.jsonc` (JSONC, not TOML) — Cloudflare Worker configuration including KV/D1 bindings and environment vars
 - `.dev.vars` (git-ignored) — local development secrets
-- `wrangler secret put` — production secrets (`CONCEPT2_CLIENT_SECRET`, `SESSION_SECRET`)
+- `wrangler secret put SESSION_SECRET` — required for production sessions. `CONCEPT2_CLIENT_SECRET` only if OAuth is enabled
 
 ## Development Commands
 

@@ -426,7 +426,7 @@ export const en = {
 		eyebrow: 'Privacy & control',
 		dataTitle: 'What we store',
 		dataNote:
-			'rowplay keeps a copy of your Concept2 workout summaries and cached stroke detail on Cloudflare so replays load instantly. Your session token lives in KV and is never sent to the browser.',
+			'rowplay keeps a copy of your Concept2 workout summaries and cached stroke detail on Cloudflare so replays load instantly. Your API token is stored server-side in KV for your session; after connect, only an httpOnly session cookie is sent to the browser.',
 		factWorkouts: '{n} workouts available to export',
 		factDemo: 'Demo mode — sample data only, nothing is persisted.',
 		factCache: 'Workout summaries and replay cache in D1 (per your account).',
@@ -460,7 +460,7 @@ export const en = {
 		introBefore: 'Paste a personal API token from your Concept2 logbook (',
 		introLink: 'Edit Profile → Applications',
 		introAfter:
-			'). rowplay keeps it server-side for your session only and uses it to read your own workouts — it never reaches the browser.',
+			'). Paste it here once — rowplay sends it to the Worker over HTTPS, stores it in your session, and uses it only for server-side logbook reads. After connect, your browser holds an httpOnly cookie, not the token itself.',
 		apiToken: 'API token',
 		placeholder: 'Paste your token',
 		connect: 'Connect with token',

@@ -68,7 +68,7 @@ src/
       sports.ts              Per-sport theming (colors, icons, unit labels)
 
     server/                Server-only code (never shipped to the browser)
-      concept2.ts            OAuth2 flow + Concept2 API client with token refresh
+      concept2.ts            Concept2 API client (+ optional OAuth2 when configured)
       config.ts              Environment / binding configuration
       data.ts                Demo/auth-aware data loader (routes data from mock or API/D1)
       db.ts                  D1 cache layer for workouts, strokes, PBs, goals, sync state
@@ -82,10 +82,10 @@ src/
     +page.svelte           Landing page (/)
 
     auth/
-      login/+server.ts       Initiates OAuth2 redirect to Concept2
-      callback/+server.ts    Handles OAuth2 callback, creates session
+      login/+server.ts       Optional OAuth2 redirect (when CONCEPT2_CLIENT_ID set)
+      callback/+server.ts    Optional OAuth2 callback
       logout/+server.ts      Destroys session
-      token/                 Bring-your-own-token page (+page.server.ts, +page.svelte)
+      token/                 Primary auth: paste personal API token (+page.server.ts, +page.svelte)
 
     api/
       account/delete/+server.ts  POST /api/account/delete — purge user data
@@ -155,7 +155,7 @@ src/
 - **No separate backend** — all server logic runs in SvelteKit endpoints on the Workers runtime
 - **Server-only imports** go in `src/lib/server/` so SvelteKit tree-shakes them from client bundles
 - **Pure functions** for analysis (`analytics.ts`) and replay sampling (`engine.ts > sampleAt`) — no side effects, safe to run anywhere and easy to unit test
-- **Demo mode** activates when `CONCEPT2_CLIENT_ID` is unset; no auth or external bindings required
+- **Demo mode** when no session: mock data, no auth required. **BYOT** is the production auth path; OAuth is optional when `CONCEPT2_CLIENT_ID` is set
 
 ### Database
 
@@ -166,4 +166,4 @@ src/
 ### Secrets
 
 - Never committed — set via `wrangler secret put` for production, `.dev.vars` for local dev
-- Required secrets: `CONCEPT2_CLIENT_SECRET`, `SESSION_SECRET`
+- Required secret: `SESSION_SECRET`. `CONCEPT2_CLIENT_SECRET` only if OAuth is enabled

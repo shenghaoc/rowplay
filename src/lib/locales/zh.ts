@@ -424,7 +424,7 @@ export const zh = {
 		eyebrow: '隐私与控制',
 		dataTitle: '我们存储的内容',
 		dataNote:
-			'rowplay 在 Cloudflare 上保存你的 Concept2 训练摘要和缓存的逐桨详情，以便即时回放。会话令牌存放在 KV 中，绝不会发送到浏览器。',
+			'rowplay 在 Cloudflare 上保存你的 Concept2 训练摘要和缓存的逐桨详情，以便即时回放。API 令牌在服务器端 KV 中为你的会话保存；连接后，浏览器只会收到 httpOnly 会话 cookie。',
 		factWorkouts: '可导出 {n} 次训练',
 		factDemo: '演示模式——仅示例数据，不会持久保存。',
 		factCache: '训练摘要与回放缓存在 D1（按账户）。',
@@ -454,7 +454,7 @@ export const zh = {
 		title: '使用你的 Concept2 令牌',
 		introBefore: '从你的 Concept2 日志粘贴一个个人 API 令牌（',
 		introLink: '编辑资料 → 应用',
-		introAfter: '）。rowplay 仅在你的会话中将其保存在服务器端，用于读取你自己的训练——它绝不会进入浏览器。',
+		introAfter: '）。在此粘贴一次 — rowplay 通过 HTTPS 发送到 Worker，保存在你的会话中，仅用于服务器端读取日志。连接后，浏览器只持有 httpOnly cookie，而不是令牌本身。',
 		apiToken: 'API 令牌',
 		placeholder: '粘贴你的令牌',
 		connect: '使用令牌连接',
