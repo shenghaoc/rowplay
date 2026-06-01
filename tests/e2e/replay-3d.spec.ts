@@ -28,4 +28,30 @@ test.describe('replay 3D view toggle', () => {
 			await expect(btn3d).toBeDisabled();
 		}
 	});
+
+	// The 3D scene picks its avatar + ground from the workout's sport. Exercise the
+	// SkiErg (skier) and BikeErg (cyclist) paths so a sport-specific init throw
+	// (which reverts to 2D) would fail the test rather than pass silently.
+	for (const { id, sport } of [
+		{ id: 1003, sport: 'SkiErg' },
+		{ id: 1004, sport: 'BikeErg' }
+	]) {
+		test(`3D view renders for ${sport}`, async ({ page }) => {
+			await page.goto(`/replay/${id}`);
+			await expect(page.locator('canvas').first()).toBeVisible();
+
+			const group = page.getByRole('group', {
+				name: /Course view|赛道视图|Kursansicht|Vue du parcours|Vista del recorrido|コース表示/i
+			});
+			const btn3d = group.getByRole('button', { name: /^3D$/ });
+
+			if (await btn3d.isEnabled()) {
+				await btn3d.click();
+				await expect(btn3d).toHaveAttribute('aria-pressed', 'true', { timeout: 30_000 });
+				await expect(page.locator('.canvas3d-host canvas')).toBeVisible();
+			} else {
+				await expect(btn3d).toBeDisabled();
+			}
+		});
+	}
 });

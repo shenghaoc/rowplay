@@ -236,7 +236,7 @@
 				renderer = null;
 			}
 			if (myLoadId !== activeLoadId) return;
-			renderer = new Ctor3D!(canvas3dHost, quality);
+			renderer = new Ctor3D!(canvas3dHost, quality, detail.sport);
 			activeCanvas = '3d';
 			if (w) renderer.resize(w, h);
 			renderCurrent();

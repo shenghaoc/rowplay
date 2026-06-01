@@ -27,6 +27,7 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [Heart-rate import](.kiro/specs/heart-rate-import/tasks.md)
 - [Detail cache TTL](.kiro/specs/detail-cache-ttl/tasks.md)
 - [3D replay view](.kiro/specs/3d-replay-view/tasks.md)
+- [Sport-aware 3D replay](.kiro/specs/3d-replay-sports/tasks.md)
 
 ## Project summary
 
