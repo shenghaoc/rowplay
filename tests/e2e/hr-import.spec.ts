@@ -13,6 +13,8 @@ test.describe('heart-rate import', () => {
 		page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`));
 
 		await page.goto('/replay/1002');
+		await page.evaluate(() => localStorage.removeItem('rowplay:hr-import:1002'));
+		await page.reload();
 		await expect(page.getByText(/Import heart rate|导入心率/)).toBeVisible();
 
 		const fileInput = page.locator('.hrimport input[type="file"]');

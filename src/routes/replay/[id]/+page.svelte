@@ -138,6 +138,17 @@
 		renderCurrent();
 	});
 
+	// Restore demo HR overlay when navigating between workouts (not when strokes update).
+	$effect(() => {
+		const id = baseDetail.id;
+		untrack(() => {
+			hrOverlay = readHrOverlay(id);
+			hrImportPreview = null;
+			hrImportOffset = 0;
+			hrImportError = '';
+		});
+	});
+
 	// Recreate renderer + engine whenever the workout changes (client-side navigation
 	// reuses the same component instance, so strokes/sportTheme may change).
 	$effect(() => {
@@ -160,10 +171,6 @@
 			sessionSearch = '';
 			fileName = '';
 			ghostError = '';
-			hrImportPreview = null;
-			hrImportOffset = 0;
-			hrImportError = '';
-			hrOverlay = readHrOverlay(baseDetail.id);
 			renderer = new CourseRenderer(canvasEl);
 			engine = new ReplayEngine(s, (f, p) => {
 				frame = f;
