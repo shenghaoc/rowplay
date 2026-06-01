@@ -19,9 +19,11 @@ test.describe('replay 3D view toggle', () => {
 			await btn3d.click();
 			// Lazy Three.js chunk can take several seconds on CI WebKit.
 			await expect(btn3d).toHaveAttribute('aria-pressed', 'true', { timeout: 30_000 });
-			await expect(page.locator('canvas').first()).toBeVisible();
+			// 3D renders into its own canvas inside the host; the 2D canvas is hidden.
+			await expect(page.locator('.canvas3d-host canvas')).toBeVisible();
 			await btn2d.click();
 			await expect(btn2d).toHaveAttribute('aria-pressed', 'true');
+			await expect(page.locator('canvas').first()).toBeVisible();
 		} else {
 			await expect(btn3d).toBeDisabled();
 		}

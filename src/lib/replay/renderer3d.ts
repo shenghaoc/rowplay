@@ -109,9 +109,12 @@ export class CourseRenderer3D implements ReplayRenderer {
 	private w = 0;
 	private h = 0;
 	private waterPhase = 0;
+	private lastWaterPhase = NaN;
 	private reduceMotion = false;
 	private theme: 'light' | 'dark' = 'light';
 
+	private host: HTMLElement;
+	private canvas: HTMLCanvasElement;
 	private waterMesh!: THREE.Mesh;
 	private liveBoat: THREE.Group;
 	private ghostBoat: THREE.Group;
@@ -126,11 +129,24 @@ export class CourseRenderer3D implements ReplayRenderer {
 	private lookAt = new THREE.Vector3();
 	private disposables: THREE.Material[] = [];
 	private geometries: THREE.BufferGeometry[] = [];
-	private tickPosts: THREE.Mesh[] = [];
-	private finishCells: THREE.Mesh[] = [];
+	// Four shared materials cover all 11 posts + 18 finish cells (vs 29 distinct
+	// materials); theme changes recolour these four, no per-mesh tracking needed.
+	private postMatMajor!: THREE.MeshStandardMaterial;
+	private postMatMinor!: THREE.MeshStandardMaterial;
+	private cellMatDark!: THREE.MeshStandardMaterial;
+	private cellMatLight!: THREE.MeshStandardMaterial;
 
-	constructor(canvas: HTMLCanvasElement) {
-		this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+	constructor(host: HTMLElement) {
+		// A canvas can only ever hold ONE context type for its lifetime, and the 2D
+		// renderer locks the shared page canvas to '2d'. So the 3D renderer creates
+		// and owns its own canvas (and removes it on destroy) — this also means a
+		// fresh context every time, so destroy()'s loseContext() can't poison reuse.
+		this.host = host;
+		this.canvas = document.createElement('canvas');
+		this.canvas.style.display = 'block';
+		this.canvas.style.width = '100%';
+		host.appendChild(this.canvas);
+		this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true });
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
 		this.scene.add(new THREE.AmbientLight(0xffffff, 0.65));
@@ -193,17 +209,17 @@ export class CourseRenderer3D implements ReplayRenderer {
 		lane.position.set(0, 0, this.courseLength / 2);
 		this.scene.add(lane);
 
+		this.postMatMajor = this.mat(
+			new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.tickMajor) })
+		);
+		this.postMatMinor = this.mat(
+			new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.tickMinor) })
+		);
 		const postGeo = this.track(new THREE.BoxGeometry(0.12, 1.2, 0.12));
 		for (let i = 0; i <= 10; i++) {
 			const z = (this.courseLength * i) / 10;
-			const postMat = this.mat(
-				new THREE.MeshStandardMaterial({
-					color: i % 5 === 0 ? hex(COLORS_LIGHT.tickMajor) : hex(COLORS_LIGHT.tickMinor)
-				})
-			);
-			const post = new THREE.Mesh(postGeo, postMat);
+			const post = new THREE.Mesh(postGeo, i % 5 === 0 ? this.postMatMajor : this.postMatMinor);
 			post.position.set(-5.5, 0.6, z);
-			this.tickPosts.push(post);
 			this.scene.add(post);
 		}
 
@@ -214,17 +230,17 @@ export class CourseRenderer3D implements ReplayRenderer {
 		finish.position.set(0, 1.1, this.courseLength + 0.5);
 		this.scene.add(finish);
 
+		this.cellMatDark = this.mat(
+			new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.finishDark) })
+		);
+		this.cellMatLight = this.mat(
+			new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.finishLight) })
+		);
 		const cellGeo = this.track(new THREE.BoxGeometry(0.9, 0.9, 0.08));
 		for (let r = 0; r < 6; r++) {
 			for (let c = 0; c < 3; c++) {
-				const cellMat = this.mat(
-					new THREE.MeshStandardMaterial({
-						color: (r + c) % 2 === 0 ? hex(COLORS_LIGHT.finishDark) : hex(COLORS_LIGHT.finishLight)
-					})
-				);
-				const cell = new THREE.Mesh(cellGeo, cellMat);
+				const cell = new THREE.Mesh(cellGeo, (r + c) % 2 === 0 ? this.cellMatDark : this.cellMatLight);
 				cell.position.set(-2.5 + c * 2.5, 0.5 + r * 0.95, this.courseLength + 0.72);
-				this.finishCells.push(cell);
 				this.scene.add(cell);
 			}
 		}
@@ -246,20 +262,12 @@ export class CourseRenderer3D implements ReplayRenderer {
 		recolor('lane', C.courseFill);
 		recolor('finish', C.finishDark);
 
-		// Posts and finish-checker cells are unnamed (built in loops), so recolour
-		// them directly from their stored arrays — otherwise they stay light in dark mode.
-		this.tickPosts.forEach((post, i) => {
-			if (post.material instanceof THREE.MeshStandardMaterial) {
-				post.material.color.setHex(hex(i % 5 === 0 ? C.tickMajor : C.tickMinor));
-			}
-		});
-		this.finishCells.forEach((cell, i) => {
-			const r = Math.floor(i / 3);
-			const c = i % 3;
-			if (cell.material instanceof THREE.MeshStandardMaterial) {
-				cell.material.color.setHex(hex((r + c) % 2 === 0 ? C.finishDark : C.finishLight));
-			}
-		});
+		// Posts and finish-checker cells share four materials — recolour those
+		// directly rather than walking every mesh (otherwise they stay light in dark).
+		this.postMatMajor.color.setHex(hex(C.tickMajor));
+		this.postMatMinor.color.setHex(hex(C.tickMinor));
+		this.cellMatDark.color.setHex(hex(C.finishDark));
+		this.cellMatLight.color.setHex(hex(C.finishLight));
 
 		this.recolorBoat(this.liveBoat, C.live);
 		this.recolorBoat(this.ghostBoat, C.ghost);
@@ -292,17 +300,22 @@ export class CourseRenderer3D implements ReplayRenderer {
 
 		if (playing && !this.reduceMotion) this.waterPhase += 0.04 + state.frame.spm / 800;
 
+		// Only re-displace the water when the phase actually moved (it advances
+		// solely while playing && !reduceMotion). Direct Float32Array writes avoid
+		// ~289×3 accessor calls/frame; computeVertexNormals is the real cost so we
+		// skip the whole block when nothing changed (paused, seek, theme, resize).
 		const water = this.waterMesh;
-		if (water?.geometry instanceof THREE.PlaneGeometry) {
+		if (this.waterPhase !== this.lastWaterPhase && water?.geometry instanceof THREE.PlaneGeometry) {
 			const pos = water.geometry.attributes.position;
-			for (let i = 0; i < pos.count; i++) {
-				const x = pos.getX(i);
-				const y = pos.getY(i);
-				const wave = this.reduceMotion ? 0 : Math.sin(x * 0.25 + this.waterPhase) * 0.08;
-				pos.setZ(i, wave);
+			const arr = pos.array as Float32Array;
+			const count = pos.count;
+			for (let i = 0; i < count; i++) {
+				const idx = i * 3;
+				arr[idx + 2] = this.reduceMotion ? 0 : Math.sin(arr[idx] * 0.25 + this.waterPhase) * 0.08;
 			}
 			pos.needsUpdate = true;
 			water.geometry.computeVertexNormals();
+			this.lastWaterPhase = this.waterPhase;
 		}
 
 		const liveZ = clamp01(state.distFrac) * this.courseLength;
@@ -371,5 +384,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const gl = this.renderer.getContext();
 		gl.getExtension('WEBGL_lose_context')?.loseContext();
 		this.renderer.dispose();
+		// Remove the owned canvas so the next 3D activation builds a fresh one.
+		this.canvas.remove();
 	}
 }

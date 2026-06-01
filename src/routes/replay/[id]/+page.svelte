@@ -125,7 +125,13 @@
 	let webglOk = $state(false);
 	let Ctor3D: Renderer3DCtor | null = null;
 	let activeLoadId = 0;
-	let canvasEl: HTMLCanvasElement;
+	// 2D and 3D must NOT share a <canvas>: a canvas is locked to one context type
+	// for life, so the 2D renderer's getContext('2d') would make WebGL creation
+	// fail. The 2D renderer uses canvas2dEl; the 3D renderer creates its own canvas
+	// inside canvas3dHost. activeCanvas toggles which one is visible.
+	let canvas2dEl: HTMLCanvasElement;
+	let canvas3dHost: HTMLDivElement;
+	let activeCanvas = $state<RendererKind>('2d');
 	let courseWrap: HTMLDivElement;
 
 	const SPEEDS = [0.5, 1, 2, 4, 8];
@@ -190,7 +196,8 @@
 				// Clear any in-flight 3D loading flag — a pending 3D load's finally
 				// won't fire for this (superseded) myLoadId, so reset it here.
 				loading3d = false;
-				renderer = new CourseRenderer(canvasEl);
+				renderer = new CourseRenderer(canvas2dEl);
+				activeCanvas = '2d';
 				if (w) renderer.resize(w, h);
 				renderCurrent();
 				return;
@@ -198,8 +205,9 @@
 
 			if (!Ctor3D) {
 				loading3d = true;
-				const temp2d = new CourseRenderer(canvasEl);
+				const temp2d = new CourseRenderer(canvas2dEl);
 				renderer = temp2d;
+				activeCanvas = '2d';
 				if (w) temp2d.resize(w, h);
 				renderCurrent();
 				try {
@@ -218,7 +226,8 @@
 				renderer = null;
 			}
 			if (myLoadId !== activeLoadId) return;
-			renderer = new Ctor3D!(canvasEl);
+			renderer = new Ctor3D!(canvas3dHost);
+			activeCanvas = '3d';
 			if (w) renderer.resize(w, h);
 			renderCurrent();
 		} catch (err) {
@@ -226,7 +235,8 @@
 			loading3d = false;
 			rendererKind = '2d';
 			saveRendererPref('2d');
-			renderer = new CourseRenderer(canvasEl);
+			renderer = new CourseRenderer(canvas2dEl);
+			activeCanvas = '2d';
 			if (w) renderer.resize(w, h);
 			renderCurrent();
 			toast.error(t('replay.view3dError'), {
@@ -236,7 +246,11 @@
 	}
 
 	function onRendererToggle(kind: RendererKind) {
-		if (kind === rendererKind || loading3d) return;
+		if (kind === rendererKind) return;
+		// Allow switching back to 2D even while a 3D chunk is still loading —
+		// setRenderer is cancellation-safe, so this lets the user bail out of a
+		// slow load. Only re-selecting 3D mid-load is a no-op.
+		if (loading3d && kind === '3d') return;
 		void setRenderer(kind);
 	}
 
@@ -298,6 +312,9 @@
 			// The true unmount guard lives in onMount's cleanup.
 			engine?.destroy();
 			renderer?.destroy();
+			// Null it so the effect body's own renderer?.destroy() can't double-destroy
+			// the same (3D) instance — a second loseContext()/dispose() can throw.
+			renderer = null;
 		};
 	});
 
@@ -981,7 +998,6 @@
 				class="vbtn"
 				class:on={rendererKind === '2d'}
 				aria-pressed={rendererKind === '2d'}
-				disabled={loading3d}
 				onclick={() => onRendererToggle('2d')}
 			>
 				{t('replay.view2d')}
@@ -1003,7 +1019,8 @@
 				{/if}
 			</button>
 		</div>
-		<canvas bind:this={canvasEl}></canvas>
+		<canvas bind:this={canvas2dEl} class:hidden={activeCanvas !== '2d'}></canvas>
+		<div class="canvas3d-host" bind:this={canvas3dHost} class:hidden={activeCanvas !== '3d'}></div>
 	</div>
 
 	<!-- Transport controls -->
@@ -1540,6 +1557,13 @@
 	.course canvas {
 		display: block;
 		width: 100%;
+	}
+	.course .canvas3d-host {
+		display: block;
+		width: 100%;
+	}
+	.course .hidden {
+		display: none;
 	}
 	.controls {
 		display: flex;
