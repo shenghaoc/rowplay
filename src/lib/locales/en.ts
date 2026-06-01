@@ -340,13 +340,15 @@ export const en = {
 		searchSessions: 'Search sessions…',
 		suggestedRival: 'Suggested rival',
 		raceVerdictWinSession:
-			'You beat your {date} {distance} by {seconds}s (+{m} m)',
+			'You beat your {date} {distance} by {seconds}s ({m} m ahead at the finish)',
 		raceVerdictLoseSession:
-			'Your {date} {distance} beat you by {seconds}s (−{m} m)',
-		raceVerdictWinPace: 'You beat the {pace} pace boat by {seconds}s (+{m} m)',
-		raceVerdictLosePace: 'The {pace} pace boat beat you by {seconds}s (−{m} m)',
-		raceVerdictWinFile: 'You beat {name} by {seconds}s (+{m} m)',
-		raceVerdictLoseFile: '{name} beat you by {seconds}s (−{m} m)',
+			'Your {date} {distance} beat you by {seconds}s ({m} m behind at the finish)',
+		raceVerdictWinPace:
+			'You beat the {pace} pace boat by {seconds}s ({m} m ahead at the finish)',
+		raceVerdictLosePace:
+			'The {pace} pace boat beat you by {seconds}s ({m} m behind at the finish)',
+		raceVerdictWinFile: 'You beat {name} by {seconds}s ({m} m ahead at the finish)',
+		raceVerdictLoseFile: '{name} beat you by {seconds}s ({m} m behind at the finish)',
 		raceFinished: 'Race finished',
 		play: 'Play',
 		pause: 'Pause',
