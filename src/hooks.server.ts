@@ -2,8 +2,17 @@ import type { Handle } from '@sveltejs/kit';
 import { ensureTemporal } from '$lib/ensure-temporal';
 import { readSession, SESSION_COOKIE } from '$lib/server/session';
 import { isLanguage, type Language } from '$lib/i18n';
+// Vite resolves this to the hashed, self-hosted asset URL at build time so the
+// preload href always matches the emitted woff2.
+import sourceSans400Url from '@fontsource/source-sans-3/files/source-sans-3-latin-400-normal.woff2?url';
 
 await ensureTemporal();
+
+// Preload only the primary body weight (Source Sans 3 400). The other weights
+// and the mono face are discovered on demand from the layout CSS; pulling them
+// all forward would waste bandwidth. crossorigin is required even same-origin —
+// fonts are always fetched in CORS mode, and omitting it causes a double fetch.
+const FONT_PRELOAD = `<link rel="preload" href="${sourceSans400Url}" as="font" type="font/woff2" crossorigin="anonymous" />`;
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const env = event.platform?.env;
@@ -33,7 +42,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.theme = theme;
 
 	const response = await resolve(event, {
-		transformPageChunk: ({ html }) => html.replace('%lang%', lang).replace('%theme%', theme)
+		transformPageChunk: ({ html }) =>
+			html
+				.replace('%lang%', lang)
+				.replace('%theme%', theme)
+				.replace('%fontPreload%', FONT_PRELOAD)
 	});
 
 	return withSecurityHeaders(response);

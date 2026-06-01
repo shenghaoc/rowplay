@@ -52,15 +52,15 @@ Priority key: **P0** = correctness · **P1** = high value · **P2** = polish · 
 
 ---
 
-## P3 — Optional / deferred
+## P3 — Optional / deferred (now completed)
 
-- [ ] 22. Lucide subpath imports
-- [ ] 23. Scoped View Transitions API
-- [ ] 24. `@property` registrations
-- [ ] 25. `interpolate-size: allow-keywords`
-- [ ] 26. Analytics calendar math → `Temporal.PlainDate`
-- [ ] 27. Font self-hosting + preload
-- [ ] 28. `wrangler.jsonc` `nodejs_compat` review
+- [x] 22. Lucide subpath imports
+- [x] 23. Scoped View Transitions API (`onNavigate` → `startViewTransition`, scoped to `<main>` via `view-transition-name: rp-main`; reduced-motion guarded)
+- [x] 24. `@property` registrations
+- [x] 25. `interpolate-size: allow-keywords`
+- [x] 26. Analytics calendar math → `Temporal.PlainDate` (`addDaysToKey`/`dayOfWeekUtc`/`dayOfYearUtc`/`daysBetweenUtc` + new `datetime.ts` `todayKeyUtc`/`dayKeyEpochMillis`)
+- [x] 27. Font self-hosting + preload (Source Sans 3 / Source Code Pro via `@fontsource`; `?url` preload of the 400 body weight injected through `%fontPreload%`)
+- [x] 28. `wrangler.jsonc` `nodejs_compat` review
 - [x] 29. Three.js `outputColorSpace = SRGBColorSpace`
 
 ---
@@ -71,7 +71,7 @@ Priority key: **P0** = correctness · **P1** = high value · **P2** = polish · 
 - [x] `npm run build` — succeeds
 - [x] `npm run test` — green (176 tests)
 - [x] `npm run validate:locales` — after `nav.skipToContent` keys
-- [ ] `npm run test:e2e` — WebKit (not run in agent VM)
+- [x] `npm run test:e2e` — WebKit (38 passed; run with the CI profile `CI=1` / 2 workers locally — `75%` workers + 0 retries flakes on the single `wrangler dev`)
 
 ---
 

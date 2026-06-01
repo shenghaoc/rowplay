@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { onNavigate } from '$app/navigation';
 	import { Toaster } from 'svelte-sonner';
 	import Sun from '@lucide/svelte/icons/sun';
 	import Moon from '@lucide/svelte/icons/moon';
@@ -43,6 +44,20 @@
 	$effect(() => {
 		void page.url.pathname;
 		closeMenu();
+	});
+
+	// Scoped cross-fade between routes. Only the <main> region animates
+	// (view-transition-name: rp-main in app.css); the masthead/footer persist.
+	// Skipped when the API is unavailable or the user prefers reduced motion.
+	onNavigate((navigation) => {
+		if (!document.startViewTransition) return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
 	});
 
 	onMount(() => initPwaUpdate(i18n));

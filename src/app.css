@@ -585,6 +585,36 @@ details {
 	contain: layout paint;
 }
 
+/* ============================================================================
+   Scoped View Transitions
+   ============================================================================ */
+/* Only the main content region cross-fades on client navigation. Naming <main>
+   lifts it out of the root snapshot, so the sticky masthead and footer stay put
+   (root animation suppressed) instead of the whole viewport wiping. */
+main {
+	view-transition-name: rp-main;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+}
+::view-transition-old(rp-main) {
+	animation: rp-vt-out 160ms ease both;
+}
+::view-transition-new(rp-main) {
+	animation: rp-vt-in 200ms ease both;
+}
+@keyframes rp-vt-out {
+	to {
+		opacity: 0;
+	}
+}
+@keyframes rp-vt-in {
+	from {
+		opacity: 0;
+	}
+}
+
 .skip-link {
 	position: absolute;
 	left: -9999px;
@@ -639,6 +669,13 @@ details {
 	.vspin,
 	.spin,
 	.syncicon.spin {
+		animation: none !important;
+	}
+	/* View-transition pseudo-elements aren't matched by the universal rule above;
+	   the onNavigate guard skips the transition, this is belt-and-suspenders. */
+	::view-transition-group(*),
+	::view-transition-old(*),
+	::view-transition-new(*) {
 		animation: none !important;
 	}
 }

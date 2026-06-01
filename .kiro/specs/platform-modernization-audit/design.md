@@ -23,7 +23,7 @@ Audited against Context7 current documentation. Version pins are aggressive and 
 
 | Package | Version | Verdict | Usage / notes |
 |---------|---------|---------|---------------|
-| `@lucide/svelte` | ^1.17 | ✅ | Tree-shakable named imports; `{size}`, `{strokeWidth}`. Optional: subpath `@lucide/svelte/icons/name` for max tree-shaking |
+| `@lucide/svelte` | ^1.17 | ✅ | Subpath imports `@lucide/svelte/icons/name` for max tree-shaking (P3#22); `{size}`, `{strokeWidth}` |
 | `@tailwindcss/vite` | ^4.3 | ✅ | Plugin in `vite.config.ts` before `sveltekit()` |
 | `@tanstack/svelte-virtual` | ^3.13 | ✅ | `createVirtualizer` in `WorkoutList.svelte`; intentional `get()` from `svelte/store` to avoid `effect_update_depth_exceeded` |
 | `bits-ui` | ^2.18 | ❌ | **Zero imports in `src/`** — dead dependency |
@@ -52,7 +52,7 @@ Audited against Context7 current documentation. Version pins are aggressive and 
 | `typescript` | ^6.0 | ✅ | Strict typing |
 | `vite` | ^8.0 | ✅ | ESM, Tailwind + SK plugins |
 | `vitest` | ^4.1 | ✅ | `defineConfig` from `vitest/config`; node environment |
-| `wrangler` | ^4.95 | ⚠️ | Uses `nodejs_als` not Cloudflare auto-template `nodejs_compat` — intentional if ALS-only; revisit if Node APIs missing |
+| `wrangler` | ^4.95 | ✅ | `compatibility_flags: ["nodejs_compat"]` (superset of `nodejs_als`) per Cloudflare auto-template (P3#28) |
 
 ### 1.3 Configuration files
 
@@ -153,22 +153,24 @@ Migration: `import { page } from '$app/state'`; use `page.data` / `page.url` wit
 
 Reference: [PR #223](https://github.com/shenghaoc/hdb-resale-visualizer/pull/223)
 
+Status reflects the current tree (post-remediation); the audit found every ❌ below missing.
+
 | PR #223 feature | In rowplay? | Rowplay applicability |
 |-----------------|-------------|------------------------|
-| `light-dark()` token consolidation | ❌ | High — ~140 lines duplicated in `:root` + `:root[data-theme='dark']`. Keep daisyUI `@plugin` themes separate; consolidate custom `--paper`/`--ink`/… tokens only |
-| Shadow token pattern | ⚠️ partial | `--stamp-*` exist; use per-var overrides — `light-dark()` cannot wrap multi-value shadows (comma collision) |
-| `content-visibility: auto` | ❌ | Partial — **skip virtualized `WorkoutList`** (TanStack Virtual). Apply to leaderboard rows, annotation list, compare table rows with `--cv-intrinsic-height` |
-| `text-box-trim` | ❌ | `.btn`, `.badge`, `.chip`, `.sbtn`, tab controls |
-| `text-wrap: balance` | ❌ | `h1`, `h2`, `h3`, map-style titles |
-| `@property` | ❌ | `--r-ctrl`, animatable tokens if transitions added |
-| `@starting-style` | ❌ | Live-mode `.new-entry` rows (replace `@keyframes fade-in`) |
-| `interpolate-size: allow-keywords` | ❌ | Only if animating `height: auto` (drawer/filters) |
-| `transition-behavior: allow-discrete` | ❌ | Pair with dialog/details transitions |
-| `prefers-contrast` | ❌ | Adjust `--hairline` / border tokens |
+| `light-dark()` token consolidation | ✅ | Custom `--paper`/`--ink`/… tokens consolidated; daisyUI `@plugin` themes kept separate (P1#7) |
+| Shadow token pattern | ⚠️ partial | `--stamp-*` exist; per-var overrides — `light-dark()` cannot wrap multi-value shadows (comma collision) |
+| `content-visibility: auto` | ✅ | `.cv-auto` on leaderboard rows, annotation list; `WorkoutList` stays virtualized (TanStack) (P2#17) |
+| `text-box-trim` | ✅ | `.btn` / `.badge`; `text-wrap: balance` on headings (P2#18) |
+| `text-wrap: balance` | ✅ | Headings (P2#18) |
+| `@property` | ✅ | `--r-ctrl` registered for typed/animatable custom property (P3#24) |
+| `@starting-style` | ✅ | Live-mode `.new-entry` rows (P2#19) |
+| `interpolate-size: allow-keywords` | ✅ | On `:root` (P3#25) |
+| `transition-behavior: allow-discrete` | ✅ | On `dialog` / `details` |
+| `prefers-contrast` | ✅ | `--hairline` adjusted under `prefers-contrast: more` (P1#10) |
 | `prefers-reduced-transparency` | N/A | No `backdrop-filter` in rowplay today |
-| `prefers-reduced-motion` on components | ⚠️ | Global guard exists; **component animations bypass it**: `.row.new-entry`, `.vspin`, `.spin` in `WorkoutList`, `LiveModePanel`, dashboard |
-| `contain: layout paint` | ❌ | Replay canvas host, uPlot containers |
-| View Transitions API | ❌ | Dashboard → replay; **scope to element** (PR #223 lesson: not root-level) |
+| `prefers-reduced-motion` on components | ✅ | Named-class suppression for `.row.new-entry`, `.vspin`, `.spin`, etc. (P1#9) |
+| `contain: layout paint` | ✅ | `.uplot-host` / `.canvas3d-host` (P2#21) |
+| View Transitions API | ✅ | `onNavigate` → `startViewTransition`, scoped to `<main>` via `view-transition-name: rp-main` (root suppressed); reduced-motion guarded (P3#23) |
 
 **PR #223 lessons to apply when implementing:**
 
@@ -203,7 +205,7 @@ flowchart LR
 - WebKit retry with exponential backoff in `ensure-temporal.ts` (chunk load failures)
 - **Keep polyfill permanently** — e2e targets WebKit; Workers lack native Temporal
 
-**Inconsistency (low priority):** `analytics.ts` calendar bucketing still uses `Date` / `Date.parse`; hot paths in `datetime.ts` use Temporal. Unify on `Temporal.PlainDate` only when touching analytics.
+**Resolved (P3#26):** `analytics.ts` calendar bucketing now uses `Temporal.PlainDate` throughout — no `Date` / `Date.parse` remain in the calendar math. Shared helpers `todayKeyUtc()` and `dayKeyEpochMillis()` live in `datetime.ts`; `FormPoint.day` keeps its epoch-ms contract.
 
 ### 5.2 Modern APIs in use
 
@@ -228,7 +230,6 @@ flowchart LR
 - `Intl.DurationFormat` — workout duration formatting
 - `AbortSignal.timeout()` — fetch timeouts
 - `structuredClone()` — deep copy without JSON round-trip
-- View Transitions API — route transitions (scoped)
 - Cookie Store API — not worth it until Safari support is universal
 
 ### 5.4 Storage pattern
@@ -260,8 +261,8 @@ Missing: **Content-Security-Policy** (even report-only initially). BYOT app hand
 
 ### 6.3 Fonts (`app.html`)
 
-- Google Fonts via render-blocking `<link>` with `display=swap` in URL — acceptable
-- Optional: self-host, `rel="preload"` woff2, CSP-friendly
+- Latin faces (Source Sans 3 / Source Code Pro) self-hosted via `@fontsource` (P3#27); the 400 body weight is preloaded (`?url` import → `%fontPreload%` token injected in `hooks.server.ts`)
+- CJK (Noto Sans JP/SC) stays on Google Fonts via render-blocking `<link>` with `display=swap` — too large to self-host
 
 ### 6.4 Share page SEO (`/r/[token]`)
 
@@ -360,16 +361,20 @@ When starting a **new feature** via Kiro:
 | `.kiro/skills/svelte-core-bestpractices/SKILL.md` | Recommends clsx over `class:` | Skill is generic; **this project uses `class:`** unless clsx is reintroduced |
 | `AGENTS.md` | No audit reference | Links this spec |
 
-### Optional items deferred (documented, not implemented)
+### P3 items — now implemented
+
+The optional P3 batch (22–29 in `tasks.md`) was subsequently completed: Lucide
+subpath imports, scoped View Transitions (`onNavigate` → `startViewTransition`,
+`view-transition-name: rp-main` on `<main>`), `@property` / `interpolate-size`,
+analytics `Temporal.PlainDate` unification, Latin font self-hosting + preload,
+`nodejs_compat`, and Three.js `outputColorSpace`.
+
+### Still deferred (out of audit scope)
 
 | Item | Reason deferred |
 |------|-----------------|
-| Lucide subpath imports | Large churn; barrel imports remain tree-shakable |
-| View Transitions API | Needs scoped design per route; not user-visible alone |
-| `@property` / `interpolate-size` | No height animations yet beyond `@starting-style` |
-| Analytics `Temporal.PlainDate` unification | Low priority; `Date` bucketing works |
-| Font self-hosting | CSP still report-only; Google Fonts retained |
 | `hreflang` URLs | i18n is cookie-based, not locale-prefixed routes |
 | `showPicker()` on file inputs | Progressive enhancement; low impact |
 | `theme_color` in manifest for dark | Non-standard; `app.html` `theme-color` media queries cover browser chrome |
 | Full CSP enforce mode | Report-only first; tighten after font/script audit |
+| CJK font self-hosting (Noto Sans JP/SC) | Too large to self-host; stays on Google Fonts |
