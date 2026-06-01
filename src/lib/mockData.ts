@@ -18,11 +18,13 @@ interface Spec {
 	workoutType: string;
 	comments?: string;
 	interval?: boolean;
+	/** Demo-only: erg logged without HR — exercises device import. */
+	omitHr?: boolean;
 }
 
 const SPECS: Spec[] = [
 	{ id: 1001, date: '2026-05-27 06:12:00', sport: 'rower', distance: 2000, basePace: 108, baseSpm: 30, baseHr: 168, workoutType: '2000m test', comments: 'PB attempt — held on for the sprint.' },
-	{ id: 1002, date: '2026-05-24 07:05:00', sport: 'rower', distance: 5000, basePace: 118, baseSpm: 26, baseHr: 158, workoutType: '5000m steady' },
+	{ id: 1002, date: '2026-05-24 07:05:00', sport: 'rower', distance: 5000, basePace: 118, baseSpm: 26, baseHr: 158, workoutType: '5000m steady', omitHr: true },
 	{ id: 1003, date: '2026-05-21 18:40:00', sport: 'skierg', distance: 1000, basePace: 122, baseSpm: 42, baseHr: 165, workoutType: '1000m SkiErg' },
 	{ id: 1004, date: '2026-05-19 06:30:00', sport: 'bike', distance: 8000, basePace: 95, baseSpm: 85, baseHr: 150, workoutType: '8000m BikeErg' },
 	{ id: 1005, date: '2026-05-16 06:20:00', sport: 'rower', distance: 6000, basePace: 116, baseSpm: 28, baseHr: 160, workoutType: '4x1500m intervals', interval: true },
@@ -66,15 +68,18 @@ function buildStrokes(spec: Spec): { strokes: Stroke[]; time: number } {
 		t += dt;
 		d += dStep;
 		const spm = spec.baseSpm + (frac > 0.9 ? 4 : 0) + (rand() - 0.5) * 2;
-		const hr = Math.min(192, spec.baseHr * (0.8 + frac * 0.22) + (rand() - 0.5) * 3);
-		strokes.push({
+		const stroke: Stroke = {
 			t: round1(t),
 			d: round1(Math.min(d, spec.distance)),
 			pace: round1(pace),
 			spm: Math.round(spm),
-			hr: Math.round(hr),
 			watts: Math.round(paceToWatts(pace))
-		});
+		};
+		if (!spec.omitHr) {
+			const hr = Math.min(192, spec.baseHr * (0.8 + frac * 0.22) + (rand() - 0.5) * 3);
+			stroke.hr = Math.round(hr);
+		}
+		strokes.push(stroke);
 	}
 	return { strokes, time: t };
 }
@@ -90,14 +95,17 @@ function buildSplits(spec: Spec, strokes: Stroke[], time: number): Split[] {
 		if (within.length === 0) continue;
 		const segTime = within[within.length - 1].t - (i === 0 ? 0 : strokes.filter((s) => s.d <= startD).slice(-1)[0]?.t ?? 0);
 		const pace = segTime > 0 ? segTime / (seg / 500) : spec.basePace;
-		splits.push({
+		const split: Split = {
 			index: i,
 			distance: Math.round(seg),
 			time: round1(segTime),
 			pace: round1(pace),
-			spm: Math.round(avg(within.map((s) => s.spm))),
-			hr: Math.round(avg(within.map((s) => s.hr ?? 0)))
-		});
+			spm: Math.round(avg(within.map((s) => s.spm)))
+		};
+		if (!spec.omitHr) {
+			split.hr = Math.round(avg(within.map((s) => s.hr ?? 0)));
+		}
+		splits.push(split);
 	}
 	return splits;
 }
@@ -106,7 +114,7 @@ function detailFor(spec: Spec): WorkoutDetail {
 	const { strokes, time } = buildStrokes(spec);
 	const splits = buildSplits(spec, strokes, time);
 	const pace = time / (spec.distance / 500);
-	return {
+	const detail: WorkoutDetail = {
 		id: spec.id,
 		date: spec.date,
 		sport: spec.sport,
@@ -115,7 +123,6 @@ function detailFor(spec: Spec): WorkoutDetail {
 		pace: round1(pace),
 		strokeRate: Math.round(avg(strokes.map((s) => s.spm))),
 		strokeCount: strokes.length,
-		heartRateAvg: Math.round(avg(strokes.map((s) => s.hr ?? 0))),
 		caloriesTotal: Math.round((time / 60) * 12),
 		dragFactor: spec.sport === 'rower' ? 130 : spec.sport === 'skierg' ? 110 : undefined,
 		workoutType: spec.workoutType,
@@ -125,6 +132,10 @@ function detailFor(spec: Spec): WorkoutDetail {
 		strokes,
 		splits
 	};
+	if (!spec.omitHr) {
+		detail.heartRateAvg = Math.round(avg(strokes.map((s) => s.hr ?? 0)));
+	}
+	return detail;
 }
 
 function summaryOf(d: WorkoutDetail): Workout {
