@@ -1,6 +1,11 @@
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '$lib/datetime';
 import type { WorkoutListQuery } from '$lib/workoutQuery';
+import {
+	detailCacheTtlMs,
+	isDetailCacheFresh,
+	type DetailCacheEnv
+} from './detailCache';
 import type { AnnualGoal } from '../analytics';
 import type { Sport, Workout, WorkoutDetail } from '../types';
 
@@ -17,17 +22,21 @@ export const DETAIL_PAYLOAD_VERSION = 1;
 export async function getCachedDetail(
 	db: D1Database | undefined,
 	userId: number,
-	workoutId: number
+	workoutId: number,
+	env?: DetailCacheEnv
 ): Promise<WorkoutDetail | null> {
 	if (!db) return null;
 	try {
 		const row = await db
 			.prepare(
-				'SELECT payload FROM workout_detail WHERE user_id = ? AND workout_id = ? AND payload_version = ?'
+				`SELECT payload, cached_at FROM workout_detail
+				 WHERE user_id = ? AND workout_id = ? AND payload_version = ?`
 			)
 			.bind(userId, workoutId, DETAIL_PAYLOAD_VERSION)
-			.first<{ payload: string }>();
+			.first<{ payload: string; cached_at: number }>();
 		if (!row) return null;
+		const ttlMs = detailCacheTtlMs(env);
+		if (!isDetailCacheFresh(row.cached_at, nowEpochMillis(), ttlMs)) return null;
 		return JSON.parse(row.payload) as WorkoutDetail;
 	} catch {
 		return null;
@@ -470,7 +479,10 @@ export async function clearShareToken(
 		.run();
 }
 
-/** Read-only lookup by share token — no user id in the query path. */
+/**
+ * Read-only lookup by share token — no user id in the query path.
+ * Intentionally skips TTL: anonymous readers cannot re-hydrate from Concept2.
+ */
 export async function getCachedDetailByShareToken(
 	db: D1Database | undefined,
 	token: string
