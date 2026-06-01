@@ -264,10 +264,12 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
 	ctx.lineWidth = 1;
 	ctx.stroke();
 
-	// Rower — seat at mid-hull; torso swings back on the drive (s → −1).
+	// Rower — seat at mid-hull; torso swings with the stroke. At the catch
+	// (s → +1) the body is forward over the stretcher; at the finish (s → −1)
+	// it lays back toward the bow — moving with the oar, not against it.
 	const seatX = x - 2;
 	const seatY = bobY - 2;
-	const shX = seatX - s * 3.5;
+	const shX = seatX + s * 3.5;
 	const shY = bobY - 9;
 	limb(ctx, seatX, seatY, x + 7, bobY - 1, 2, accent); // legs to stretcher
 	limb(ctx, seatX, seatY, shX, shY, 2.4, accent); // torso
@@ -661,24 +663,38 @@ export class CourseRenderer implements ReplayRenderer {
 		ctx.lineTo(startX + span, y);
 		ctx.stroke();
 
-		// 3. Ripples (2 sine polylines just below waterline)
-		const rippleAmp = this.reduceMotion ? 0 : 1.5;
+		// 3. Ripples (2 polylines just below the waterline). Under reduced motion
+		// the amplitude is 0, so draw a straight line directly and skip the trig.
 		for (let ri = 0; ri < 2; ri++) {
 			const offsetY = y + 5 + ri * 6;
-			const phaseOff = ri * 1.1;
 			ctx.strokeStyle = withAlpha(accent, 0.25);
 			ctx.lineWidth = 0.8;
 			ctx.beginPath();
 			ctx.moveTo(startX, offsetY);
-			for (let rx = startX; rx <= startX + span; rx += 6) {
-				ctx.lineTo(rx, offsetY + Math.sin((rx * 0.12) + phase + phaseOff) * rippleAmp);
+			if (this.reduceMotion) {
+				ctx.lineTo(startX + span, offsetY);
+			} else {
+				const phaseOff = ri * 1.1;
+				for (let rx = startX; rx <= startX + span; rx += 6) {
+					ctx.lineTo(rx, offsetY + Math.sin(rx * 0.12 + phase + phaseOff) * 1.5);
+				}
 			}
 			ctx.stroke();
 		}
 
-		// 4. Wake trail: outer glow + core sine
+		// 4. Wake trail: outer glow + core. Reduced motion → a flat line (no trig).
 		if (avX > startX) {
-			const waveAmp = this.reduceMotion ? 0 : 1.2;
+			const traceWake = () => {
+				ctx.beginPath();
+				ctx.moveTo(startX, y);
+				if (this.reduceMotion) {
+					ctx.lineTo(avX, y);
+				} else {
+					for (let x = startX; x <= avX; x += 6) {
+						ctx.lineTo(x, y + Math.sin((x - avX) * 0.18 + phase) * 1.2);
+					}
+				}
+			};
 
 			// Outer glow
 			ctx.save();
@@ -686,27 +702,19 @@ export class CourseRenderer implements ReplayRenderer {
 			ctx.shadowBlur = 8;
 			ctx.strokeStyle = withAlpha(accent, 0.45);
 			ctx.lineWidth = 7;
-			ctx.beginPath();
-			ctx.moveTo(startX, y);
-			for (let x = startX; x <= avX; x += 6) {
-				ctx.lineTo(x, y + Math.sin((x - avX) * 0.18 + phase) * waveAmp);
-			}
+			traceWake();
 			ctx.stroke();
 			ctx.restore(); // restore() resets shadowBlur with the saved state
 
 			// Core stroke
 			ctx.strokeStyle = accent;
 			ctx.lineWidth = 3;
-			ctx.beginPath();
-			ctx.moveTo(startX, y);
-			for (let x = startX; x <= avX; x += 6) {
-				ctx.lineTo(x, y + Math.sin((x - avX) * 0.18 + phase) * waveAmp);
-			}
+			traceWake();
 			ctx.stroke();
 		}
 
-		// 5. Speed streaks behind avX
-		const sLen = clamp01((streakLen(pace) - 6) / (22 - 6)) * 16 + 6; // 6..22
+		// 5. Speed streaks behind avX (streakLen already returns a 6..22 length)
+		const sLen = streakLen(pace);
 		const streakY = [y - 3, y, y + 3, y - 5];
 		const streakAlphas = [0.35, 0.28, 0.22, 0.16];
 		const streakLens = [sLen, sLen * 0.75, sLen * 0.55, sLen * 0.4];
