@@ -54,13 +54,20 @@
 	});
 	const isDemo = $derived(!!data.demo);
 	let hrOverlay = $state<HrOverlay | null>(null);
+	// Workout id the current overlay belongs to. On client-side navigation
+	// `baseDetail` updates a frame before the restore $effect runs, so without
+	// this guard the previous workout's overlay would briefly apply to the new
+	// strokes (a telemetry flash). Only overlay when the ids match.
+	let hrOverlayId = $state<number | null>(null);
 	let hrImportPreview = $state<{ samples: HrOverlay['samples']; name: string } | null>(null);
 	let hrImportOffset = $state(0);
 	let hrImportError = $state('');
 	let hrImportBusy = $state(false);
 
 	const detail = $derived(
-		hrOverlay ? applyHrImport(baseDetail, hrOverlay.samples, hrOverlay.offset) : baseDetail
+		hrOverlay && hrOverlayId === baseDetail.id
+			? applyHrImport(baseDetail, hrOverlay.samples, hrOverlay.offset)
+			: baseDetail
 	);
 	const logbookHasHr = $derived(strokesHaveHr(baseDetail.strokes));
 	const sportTheme = $derived(themeFor(detail.sport));
@@ -143,6 +150,7 @@
 		const id = baseDetail.id;
 		untrack(() => {
 			hrOverlay = readHrOverlay(id);
+			hrOverlayId = id;
 			hrImportPreview = null;
 			hrImportOffset = 0;
 			hrImportError = '';
@@ -570,6 +578,7 @@
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
 				hrOverlay = payload;
 			}
+			hrOverlayId = baseDetail.id;
 			hrImportPreview = null;
 			toast.success(t('replay.hrImportApplied'));
 		} catch (err) {
@@ -591,6 +600,7 @@
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			}
 			hrOverlay = null;
+			hrOverlayId = null;
 			hrImportPreview = null;
 			hrImportOffset = 0;
 			toast.success(t('replay.hrImportCleared'));
