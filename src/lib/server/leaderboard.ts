@@ -28,8 +28,9 @@ function displayNameFor(event: RequestEvent): string {
 /** All ranked boards, with the viewer's own rows flagged `isYou`. */
 export async function loadBoards(event: RequestEvent): Promise<Board[]> {
 	const db = event.platform?.env?.DB;
-	if (!db) {
-		// No D1 binding available (dev mode or no backend configured) —
+	if (event.locals.demo || !db) {
+		// Demo mode (the default — note D1 is still bound on the Workers runtime,
+		// so we must key off `demo`, not the binding) or no D1 at all (vite dev):
 		// fall back to the deterministic demo seed.
 		return buildBoards(mockLeaderboard());
 	}
