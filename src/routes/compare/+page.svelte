@@ -12,8 +12,8 @@
 	import { fmtDate, fmtDistance, fmtLogbookDateTime, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
-	import { uplotChrome } from '$lib/chartTheme';
-	import { GHOST_COLOR, LIVE_COLOR, MACHINE_COLOR } from '$lib/replay/sports';
+	import { chartTheme, baseOptions, type SeriesRole } from '$lib/chartTheme';
+	import { MACHINE_COLOR } from '$lib/replay/sports';
 	import type { Workout, WorkoutDetail } from '$lib/types';
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -69,39 +69,27 @@
 		)
 	);
 
-	const chartChrome = $derived(uplotChrome(uiTheme.value));
+	const chart = $derived(chartTheme(uiTheme.value));
 
 	function overlayOpts(
 		labelA: string,
 		labelB: string,
-		colorA: string,
-		colorB: string,
+		roleA: SeriesRole,
+		roleB: SeriesRole,
 		invert: boolean,
 		fmtY: (v: number) => string
 	): Omit<uPlot.Options, 'width' | 'height'> {
-		return {
-			scales: { x: { time: false }, y: invert ? { dir: -1 } : {} },
-			cursor: { show: true, x: true, y: true },
-			axes: [
-				{
-					stroke: chartChrome.axis,
-					grid: { stroke: chartChrome.grid },
-					values: (_u, sp) => sp.map((v) => fmtDistance(v))
-				},
-				{
-					stroke: chartChrome.axis,
-					grid: { stroke: chartChrome.grid },
-					size: 52,
-					values: (_u, sp) => sp.map(fmtY)
-				}
-			],
+		return baseOptions({
+			theme: chart,
+			xFmt: (v) => fmtDistance(v),
+			yAxes: [{ size: 52, fmt: fmtY, invert }],
 			series: [
-				{},
-				{ label: labelA, stroke: colorA, width: 2 },
-				{ label: labelB, stroke: colorB, width: 1.75, dash: [6, 4] }
+				{ label: labelA, role: roleA, width: 2 },
+				{ label: labelB, role: roleB, width: 1.75, dash: [6, 4] }
 			],
-			legend: { show: true }
-		};
+			legend: true,
+			cursor: { x: true, y: true }
+		});
 	}
 
 	const labelA = $derived(
@@ -122,15 +110,13 @@
 	);
 
 	const paceOpts = $derived(
-		overlayOpts(labelA, labelB, LIVE_COLOR, GHOST_COLOR, true, (v) =>
-			fmtPace(v).replace(/\/\d+m$/, '')
-		)
+		overlayOpts(labelA, labelB, 'live', 'ghost', true, (v) => fmtPace(v).replace(/\/\d+m$/, ''))
 	);
 	const powerOpts = $derived(
-		overlayOpts(labelA, labelB, LIVE_COLOR, GHOST_COLOR, false, (v) => `${Math.round(v)} W`)
+		overlayOpts(labelA, labelB, 'live', 'ghost', false, (v) => `${Math.round(v)} W`)
 	);
 	const hrOpts = $derived(
-		overlayOpts(labelA, labelB, LIVE_COLOR, GHOST_COLOR, false, (v) => `${Math.round(v)}`)
+		overlayOpts(labelA, labelB, 'live', 'ghost', false, (v) => `${Math.round(v)}`)
 	);
 
 	function signedDelta(delta: number, decimals = 1): string {
@@ -361,16 +347,31 @@
 			<div class="charts">
 				<div class="card">
 					<div class="ctitle muted">{t('replay.cPace')} · {t('compare.vsDistance')}</div>
-					<UPlotChart data={paceData!} options={paceOpts} height={200} />
+					<UPlotChart
+						data={paceData!}
+						options={paceOpts}
+						height={200}
+						caption={`${t('replay.cPace')} · ${t('compare.vsDistance')} · ${labelA} / ${labelB}`}
+					/>
 				</div>
 				<div class="card">
 					<div class="ctitle muted">{t('replay.cPower')} · {t('compare.vsDistance')}</div>
-					<UPlotChart data={powerData!} options={powerOpts} height={200} />
+					<UPlotChart
+						data={powerData!}
+						options={powerOpts}
+						height={200}
+						caption={`${t('replay.cPower')} · ${t('compare.vsDistance')} · ${labelA} / ${labelB}`}
+					/>
 				</div>
 				{#if hasHr}
 					<div class="card">
 						<div class="ctitle muted">{t('replay.cHeart')} · {t('compare.vsDistance')}</div>
-						<UPlotChart data={hrData!} options={hrOpts} height={200} />
+						<UPlotChart
+							data={hrData!}
+							options={hrOpts}
+							height={200}
+							caption={`${t('replay.cHeart')} · ${t('compare.vsDistance')} · ${labelA} / ${labelB}`}
+						/>
 					</div>
 				{/if}
 			</div>
