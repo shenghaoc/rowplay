@@ -444,7 +444,7 @@
 
 	<!-- Latest session: pace front and centre -->
 	{#if latest}
-		<a class="card hero" href="/replay/{latest.id}">
+		<a class="card latest" href="/replay/{latest.id}">
 			<div class="herolead">
 				<div class="herotop muted">
 					<span class="hicon" style:color={MACHINE_COLOR[latest.sport]}
@@ -774,7 +774,7 @@
 		color: var(--paper-raised);
 		border-color: var(--ink);
 	}
-	.hero {
+	.latest {
 		display: grid;
 		grid-template-columns: auto 1fr auto;
 		align-items: center;
@@ -786,10 +786,10 @@
 			transform 0.05s ease,
 			box-shadow 0.05s ease;
 	}
-	.hero:hover {
+	.latest:hover {
 		text-decoration: none;
-		transform: translate(1px, 1px);
-		box-shadow: 2px 2px 0 var(--ink);
+		transform: translateY(-2px);
+		box-shadow: var(--shadow-lg);
 	}
 	.herotop {
 		font-size: 0.85rem;
@@ -1142,7 +1142,7 @@
 		.stats {
 			grid-template-columns: repeat(2, 1fr);
 		}
-		.hero {
+		.latest {
 			grid-template-columns: 1fr;
 			gap: 0.75rem;
 		}

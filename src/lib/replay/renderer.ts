@@ -70,7 +70,7 @@ export const COLORS_DARK: CanvasColors = {
 	labelBg: '#0f2a36',
 	labelText: '#dce6ea',
 	courseFill: '#142128',
-	live: '#7b6de0',
+	live: '#8c7cf0',
 	ghost: '#3aa8cc'
 };
 

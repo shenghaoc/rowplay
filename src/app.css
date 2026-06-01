@@ -1,17 +1,18 @@
 @import 'tailwindcss';
 
 /* ============================================================================
-   rowplay — Jet Set Blue · RACE BOARD design system
+   rowplay — Jet Set Blue design system (daisyUI-led)
    ----------------------------------------------------------------------------
-   Visual language: printed regatta program / erg race-results sheet crossed
-   with a marine chronometer. Cool blue-grey paper, deep teal-navy ink rules,
-   Source Sans 3 (display/UI) + Source Code Pro (data), electric violet for
-   YOU/live, Jet Set Blue for the ghost you chase (and brand chrome).
+   Cool blue-grey paper, deep teal-navy ink, electric violet for YOU/live and
+   Jet Set Blue for the ghost you chase. daisyUI v5 owns the component language:
+   rounded, depth-aware, soft elevation. Source Sans 3 (display/UI) + Source
+   Code Pro (data). Every token below is consumed by component-scoped styles,
+   so retuning them here re-skins the whole app coherently.
    ============================================================================ */
 
 /* ---- daisyUI plugin with custom rowplay theme --------------------------- */
 @plugin "daisyui" {
-	themes: rowplay --default;
+	themes: rowplay --default, dark;
 }
 
 @plugin "daisyui/theme" {
@@ -20,9 +21,9 @@
 	color-scheme: light;
 
 	/* Paper & ink */
-	--color-base-100: #E9EFF1;
-	--color-base-200: #DCE6EA;
-	--color-base-300: #CBD9DF;
+	--color-base-100: #F4F8FA;
+	--color-base-200: #E7EFF2;
+	--color-base-300: #D6E2E8;
 	--color-base-content: #0F2A36;
 
 	/* Primary = YOU / live / play (electric violet) */
@@ -38,8 +39,8 @@
 	--color-accent-content: #F7FAFB;
 
 	/* Neutral = secondary ink */
-	--color-neutral: #4A6470;
-	--color-neutral-content: #F7FAFB;
+	--color-neutral: #1C3A47;
+	--color-neutral-content: #EAF2F4;
 
 	/* Semantic */
 	--color-info: #1E8C8C;
@@ -47,65 +48,102 @@
 	--color-success: #2F8F6E;
 	--color-success-content: #F7FAFB;
 	--color-warning: #C2851A;
-	--color-warning-content: #0F2A36;
+	--color-warning-content: #2A1C04;
 	--color-error: #C0392B;
-	--color-error-content: #F7FAFB;
+	--color-error-content: #FCEEEC;
 
-	/* Radii — small, printed-label feel */
-	--radius-selector: 0.25rem;
-	--radius-field: 0.1875rem;
-	--radius-box: 0.25rem;
+	/* Radii — rounded & friendly */
+	--radius-selector: 0.625rem;
+	--radius-field: 0.625rem;
+	--radius-box: 1rem;
 
 	/* Borders */
-	--border: 2px;
+	--border: 1px;
 
-	/* Depth */
-	--depth: 0;
+	/* Depth — let daisyUI render dimensional buttons/inputs */
+	--depth: 1;
+	--noise: 0;
+}
+
+@plugin "daisyui/theme" {
+	name: "dark";
+	default: false;
+	prefersdark: false;
+	color-scheme: dark;
+
+	--color-base-100: #11232E;
+	--color-base-200: #0C1A22;
+	--color-base-300: #1A3543;
+	--color-base-content: #E9EFF1;
+
+	--color-primary: #8C7CF0;
+	--color-primary-content: #0B1422;
+	--color-secondary: #3AA8CC;
+	--color-secondary-content: #06151C;
+	--color-accent: #4AAF8E;
+	--color-accent-content: #04140E;
+	--color-neutral: #1A3543;
+	--color-neutral-content: #E9EFF1;
+
+	--color-info: #4ABABA;
+	--color-info-content: #05161C;
+	--color-success: #4AAF8E;
+	--color-success-content: #04140E;
+	--color-warning: #D9A23A;
+	--color-warning-content: #241803;
+	--color-error: #E06B5C;
+	--color-error-content: #1E0805;
+
+	--radius-selector: 0.625rem;
+	--radius-field: 0.625rem;
+	--radius-box: 1rem;
+	--border: 1px;
+	--depth: 1;
 	--noise: 0;
 }
 
 /* Bridge design tokens into Tailwind v4 utilities. */
 @theme inline {
-	--color-paper: #E9EFF1;
-	--color-paper-raised: #F7FAFB;
-	--color-paper-inset: #DCE6EA;
-	--color-ink: #0F2A36;
-	--color-ink-2: #4A6470;
-	--color-live: #5240CE;
-	--color-ghost: #176B8C;
-	--color-ahead: #2F8F6E;
-	--color-behind: #C2851A;
-	--color-pace: #5240CE;
-	--color-rate: #1E8C8C;
-	--color-power: #C2851A;
-	--color-hr: #B0467E;
-	--color-dps: #176B8C;
-	--color-m-rower: #2B5E78;
-	--color-m-skierg: #2E8C7E;
-	--color-m-bike: #6257B8;
+	--color-paper: var(--paper);
+	--color-paper-raised: var(--paper-raised);
+	--color-paper-inset: var(--paper-inset);
+	--color-ink: var(--ink);
+	--color-ink-2: var(--ink-2);
+	--color-live: var(--live);
+	--color-ghost: var(--ghost);
+	--color-ahead: var(--ahead);
+	--color-behind: var(--behind);
+	--color-pace: var(--pace);
+	--color-rate: var(--rate);
+	--color-power: var(--power);
+	--color-hr: var(--hr);
+	--color-dps: var(--dps);
+	--color-m-rower: var(--m-rower);
+	--color-m-skierg: var(--m-skierg);
+	--color-m-bike: var(--m-bike);
 	--font-display: 'Source Sans 3', system-ui, -apple-system, sans-serif;
 	--font-ui: 'Source Sans 3', system-ui, -apple-system, sans-serif;
 	--font-mono: 'Source Code Pro', ui-monospace, 'SF Mono', monospace;
 }
 
 /* ============================================================================
-   CSS custom properties — canonical Jet Set Blue tokens
+   CSS custom properties — canonical Jet Set Blue tokens (light)
    ============================================================================ */
 :root {
 	color-scheme: light;
 
 	/* Paper & ink (cool, light) */
-	--paper: #E9EFF1;
-	--paper-raised: #F7FAFB;
-	--paper-inset: #DCE6EA;
-	--paper-deep: #CBD9DF;
+	--paper: #F4F8FA;
+	--paper-raised: #FFFFFF;
+	--paper-inset: #E7EFF2;
+	--paper-deep: #D6E2E8;
 
 	--ink: #0F2A36;
-	--ink-2: #4A6470;
-	--ink-3: #8AA2AC;
+	--ink-2: #44616E;
+	--ink-3: #7C97A2;
 
 	--rule: #0F2A36;
-	--hairline: #BED0D7;
+	--hairline: #D2E0E6;
 
 	/* Race identity */
 	--live: #5240CE;
@@ -145,17 +183,23 @@
 	--mono: 'Source Code Pro', ui-monospace, 'SF Mono', monospace;
 	--sans: var(--ui);
 
-	/* Radii */
-	--r-card: 4px;
-	--r-ctrl: 3px;
+	/* Radii — rounded & delightful */
+	--r-card: 1rem;
+	--r-ctrl: 0.625rem;
+	--r-pill: 999px;
 	--radius: var(--r-card);
 
-	/* Borders & stamp */
-	--bd: 1.5px solid var(--hairline);
-	--bd-heavy: 2px solid var(--rule);
-	--stamp: 3px 3px 0 var(--ink);
-	--stamp-live: 3px 3px 0 var(--live);
-	--stamp-ghost: 3px 3px 0 var(--ghost);
+	/* Borders — hairline, not heavy ink */
+	--bd: 1px solid var(--hairline);
+	--bd-heavy: 1.5px solid var(--hairline);
+
+	/* Elevation — soft, tinted shadows (replaces hard offset stamps) */
+	--shadow-sm: 0 1px 2px rgba(15, 42, 54, 0.06), 0 1px 3px rgba(15, 42, 54, 0.05);
+	--shadow-md: 0 2px 6px rgba(15, 42, 54, 0.07), 0 10px 24px -10px rgba(15, 42, 54, 0.18);
+	--shadow-lg: 0 4px 12px rgba(15, 42, 54, 0.08), 0 18px 40px -14px rgba(15, 42, 54, 0.24);
+	--stamp: var(--shadow-md);
+	--stamp-live: 0 2px 6px rgba(82, 64, 206, 0.16), 0 14px 32px -12px rgba(82, 64, 206, 0.34);
+	--stamp-ghost: 0 2px 6px rgba(23, 107, 140, 0.15), 0 14px 32px -12px rgba(23, 107, 140, 0.3);
 
 	/* Type scale */
 	--clock-size: clamp(2.6rem, 8vw, 4rem);
@@ -168,26 +212,26 @@
 	--border: var(--hairline);
 	--text: var(--ink);
 	--text-dim: var(--ink-2);
-	--topbar-bg: var(--paper);
+	--topbar-bg: color-mix(in srgb, var(--paper) 82%, transparent);
 }
 
 /* Jet Set Blue dark — cool deep teal-navy night race board */
 :root[data-theme='dark'] {
 	color-scheme: dark;
 
-	--paper: #0B1A22;
+	--paper: #0C1A22;
 	--paper-raised: #11232E;
-	--paper-inset: #172D3A;
+	--paper-inset: #17303C;
 	--paper-deep: #1E3847;
 
 	--ink: #E9EFF1;
-	--ink-2: #8AA2AC;
-	--ink-3: #5A7684;
+	--ink-2: #9DB4BE;
+	--ink-3: #6A8794;
 
 	--rule: #E9EFF1;
-	--hairline: #2E4A5A;
+	--hairline: #294455;
 
-	--live: #7B6DE0;
+	--live: #8C7CF0;
 	--ghost: #3AA8CC;
 	--chrome: var(--ghost);
 	--ahead: #4AAF8E;
@@ -209,16 +253,20 @@
 	--hr: #D08090;
 	--dps: #3AA8CC;
 
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+	--shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 12px 28px -10px rgba(0, 0, 0, 0.6);
+	--shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.45), 0 22px 48px -14px rgba(0, 0, 0, 0.7);
+	--stamp: var(--shadow-md);
+	--stamp-live: 0 2px 8px rgba(140, 124, 240, 0.22), 0 14px 34px -12px rgba(140, 124, 240, 0.4);
+	--stamp-ghost: 0 2px 8px rgba(58, 168, 204, 0.2), 0 14px 34px -12px rgba(58, 168, 204, 0.36);
+
 	--bg: var(--paper);
 	--bg-elev: var(--paper-raised);
 	--bg-elev-2: var(--paper-inset);
 	--border: var(--hairline);
 	--text: var(--ink);
 	--text-dim: var(--ink-2);
-	--topbar-bg: var(--paper);
-	--stamp: 3px 3px 0 var(--rule);
-	--stamp-live: 3px 3px 0 var(--live);
-	--stamp-ghost: 3px 3px 0 var(--ghost);
+	--topbar-bg: color-mix(in srgb, var(--paper) 80%, transparent);
 }
 
 /* ============================================================================
@@ -242,31 +290,23 @@ body {
 
 body {
 	position: relative;
-}
-
-/* Paper grain — SVG noise overlay keeps light surfaces from reading as flat. */
-body::before {
-	content: '';
-	position: fixed;
-	inset: 0;
-	pointer-events: none;
-	z-index: 9999;
-	opacity: 0.42;
-	mix-blend-mode: multiply;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+	background-image:
+		radial-gradient(1200px 600px at 100% -10%, color-mix(in srgb, var(--ghost) 7%, transparent), transparent 60%),
+		radial-gradient(900px 500px at -10% 0%, color-mix(in srgb, var(--live) 6%, transparent), transparent 55%);
+	background-attachment: fixed;
 }
 
 /* ============================================================================
    Typography defaults
    ============================================================================ */
-a {
-	color: var(--ink);
+a:not(.btn) {
+	color: var(--ghost);
 	text-decoration: none;
 }
-a:hover {
+a:not(.btn):hover {
 	text-decoration: underline;
 	text-underline-offset: 3px;
-	text-decoration-thickness: 2px;
+	text-decoration-thickness: 1.5px;
 }
 
 h1,
@@ -274,8 +314,8 @@ h2,
 h3 {
 	font-family: var(--display);
 	font-weight: 700;
-	line-height: 1.04;
-	letter-spacing: -0.01em;
+	line-height: 1.08;
+	letter-spacing: -0.015em;
 	margin: 0;
 }
 
@@ -304,167 +344,131 @@ h3 {
 	font-size: 0.74rem;
 	font-weight: 600;
 	text-transform: uppercase;
-	letter-spacing: 0.14em;
+	letter-spacing: 0.12em;
 	color: var(--ink-2);
 }
 
 /* ============================================================================
-   daisyUI overrides — align component classes with the RACE BOARD aesthetic
+   daisyUI component polish — keep the framework's shapes, add brand voice
    ============================================================================ */
 
-/* Buttons: heavy ink borders, stamp offset, uppercase display face */
+/* Buttons: daisyUI owns the shape/depth; we set the display face + soft lift */
 .btn {
 	font-family: var(--display);
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	border-width: 2px;
+	font-weight: 600;
+	letter-spacing: 0;
+	text-transform: none;
 	border-radius: var(--r-ctrl);
-	transition: transform 0.05s ease, box-shadow 0.05s ease, filter 0.1s ease;
+	transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
-
-/* Primary (live/violet) — stamped */
+.btn:hover {
+	transform: translateY(-1px);
+}
+.btn:active {
+	transform: translateY(0);
+}
 .btn-primary {
 	box-shadow: var(--stamp-live);
 }
 .btn-primary:hover {
-	transform: translate(1px, 1px);
-	box-shadow: 2px 2px 0 var(--ink);
+	box-shadow: var(--shadow-lg);
 }
-.btn-primary:active {
-	transform: translate(3px, 3px);
-	box-shadow: none;
-}
-
-/* Ghost — paper raised bg, ink text, inset on hover */
-.btn-ghost {
-	background: var(--paper-raised);
-	color: var(--ink);
-	border: var(--bd-heavy);
-}
-.btn-ghost:hover {
-	background: var(--paper-inset);
-}
-
-/* Solid (ink) button */
-.btn-neutral {
-	box-shadow: var(--stamp);
-}
-.btn-neutral:hover {
-	transform: translate(1px, 1px);
-	box-shadow: 2px 2px 0 var(--ink);
-}
-.btn-neutral:active {
-	transform: translate(3px, 3px);
-	box-shadow: none;
-}
-
-/* Secondary (Jet Set Blue / the ghost you chase) — stamped in ghost ink */
 .btn-secondary {
 	box-shadow: var(--stamp-ghost);
 }
-.btn-secondary:hover {
-	transform: translate(1px, 1px);
-	box-shadow: 2px 2px 0 var(--ink);
+.btn-neutral {
+	box-shadow: var(--shadow-md);
 }
-.btn-secondary:active {
-	transform: translate(3px, 3px);
+.btn-ghost {
 	box-shadow: none;
 }
-
-/* Disabled */
+.btn-ghost:hover {
+	transform: none;
+	background: var(--paper-inset);
+}
 .btn:disabled,
 .btn-disabled {
-	opacity: 0.4;
+	opacity: 0.5;
 	cursor: not-allowed;
 	transform: none !important;
 	box-shadow: none !important;
 }
 
-/* Badges: printed stamp-tags — outline on paper, never filled-on-filled.
-   daisyUI's `badge-primary`/`-secondary` paint a *solid* primary background
-   with same-hued content; if we only recolor the text/border the label turns
-   violet-on-violet and is unreadable on any page without its own scoped
-   `.badge` background. So we reset the surface to a faint paper tint and keep
-   the spot ink for the text — readable everywhere, in both themes. */
+/* Badges: soft pill tags. daisyUI's `badge-primary` paints a solid primary
+   fill with same-hued content; recoloring only text/border there yields an
+   unreadable violet-on-violet chip on pages without their own scoped `.badge`
+   background. Reset the surface to a faint paper tint and keep the spot ink. */
 .badge {
 	font-family: var(--ui);
 	font-weight: 600;
+	font-size: 0.72rem;
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	border-radius: var(--r-ctrl);
-	border-width: 1.5px;
+	letter-spacing: 0.06em;
+	border-radius: var(--r-pill);
+	border-width: 1px;
 	background: var(--paper-raised);
 	border-color: var(--hairline);
-	color: var(--ink);
+	color: var(--ink-2);
 }
 .badge-primary {
 	background: color-mix(in srgb, var(--live) 12%, var(--paper-raised));
-	border-color: var(--live);
+	border-color: color-mix(in srgb, var(--live) 40%, var(--paper-raised));
 	color: var(--live);
 }
 .badge-secondary {
 	background: color-mix(in srgb, var(--ghost) 12%, var(--paper-raised));
-	border-color: var(--ghost);
+	border-color: color-mix(in srgb, var(--ghost) 40%, var(--paper-raised));
 	color: var(--ghost);
 }
 .badge-accent {
 	background: color-mix(in srgb, var(--ahead) 12%, var(--paper-raised));
-	border-color: var(--ahead);
-	color: color-mix(in srgb, var(--ahead) 70%, var(--ink));
+	border-color: color-mix(in srgb, var(--ahead) 40%, var(--paper-raised));
+	color: color-mix(in srgb, var(--ahead) 72%, var(--ink));
 }
 .badge-warning {
 	background: color-mix(in srgb, var(--behind) 14%, var(--paper-raised));
-	border-color: color-mix(in srgb, var(--behind) 55%, var(--paper-raised));
+	border-color: color-mix(in srgb, var(--behind) 45%, var(--paper-raised));
 	color: color-mix(in srgb, var(--behind) 45%, var(--ink));
 }
-/* Solid stamp variant — for when a filled chip is genuinely wanted; uses the
-   high-contrast paper-raised content so the label always reads. */
+/* Solid stamp variant — guaranteed-readable filled chip when wanted. */
 .badge-live {
 	background: var(--live);
 	border-color: var(--live);
-	color: var(--paper-raised);
+	color: #F7FAFB;
 }
 
-/* Cards */
+/* Cards: rounded, soft elevation, hairline edge. */
 .card {
 	background: var(--paper-raised);
 	border-radius: var(--r-card);
-	border: var(--bd-heavy);
-	padding: 1rem 1.25rem;
+	border: var(--bd);
+	box-shadow: var(--shadow-md);
+	padding: 1.25rem 1.4rem;
 }
 .card-bordered {
-	border-color: var(--rule);
+	border-color: var(--hairline);
 }
 
 /* ============================================================================
    Interaction & accessibility — keyboard focus, selection, form controls
-   ----------------------------------------------------------------------------
-   The RACE BOARD chrome leaned entirely on hover/box-shadow stamps and shipped
-   no visible keyboard-focus state. Give every interactive surface a single,
-   consistent stamped focus ring (keyboard-only, so pointer users never see it)
-   that rides *on top of* the stamp shadows without fighting them.
    ============================================================================ */
 :where(a, button, .btn, .badge, input, select, textarea, summary, [tabindex]):focus-visible {
 	outline: 2.5px solid var(--live);
 	outline-offset: 2px;
 	border-radius: var(--r-ctrl);
 }
-/* The mast brand/play-mark and ghost you chase focus in their own hue. */
 .btn-secondary:focus-visible,
 .brand:focus-visible {
 	outline-color: var(--ghost);
 }
 
-/* Themed text selection — violet ink on a faint live wash. */
+/* Themed text selection. */
 ::selection {
-	background: color-mix(in srgb, var(--live) 28%, var(--paper-raised));
+	background: color-mix(in srgb, var(--live) 26%, var(--paper-raised));
 	color: var(--ink);
 }
 
-/* Native form controls — paper-inset fields, heavy ink rule on focus, spot-ink
-   accents for check/radio/range. Components without their own field styling
-   inherit a coherent look for free. */
+/* Native form controls — rounded paper fields with a live-ink focus ring. */
 input:not([type='checkbox']):not([type='radio']):not([type='range']),
 select,
 textarea {
@@ -474,12 +478,13 @@ textarea {
 	background: var(--paper-raised);
 	border: var(--bd);
 	border-radius: var(--r-ctrl);
-	padding: 0.4rem 0.55rem;
+	padding: 0.5rem 0.7rem;
 }
 input:focus,
 select:focus,
 textarea:focus {
 	border-color: var(--live);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 18%, transparent);
 	outline: none;
 }
 input::placeholder,
@@ -492,13 +497,13 @@ input[type='range'] {
 	accent-color: var(--live);
 }
 
-/* Themed scrollbars keep the cool paper palette edge-to-edge. */
+/* Themed scrollbars. */
 * {
 	scrollbar-color: var(--ink-3) transparent;
 }
 ::-webkit-scrollbar {
-	width: 11px;
-	height: 11px;
+	width: 12px;
+	height: 12px;
 }
 ::-webkit-scrollbar-thumb {
 	background: var(--ink-3);
@@ -510,11 +515,12 @@ input[type='range'] {
 }
 
 /* ============================================================================
-   Print — collapse to a clean black-ink race-results sheet
+   Print — collapse to a clean results sheet
    ============================================================================ */
 @media print {
-	body::before {
-		display: none;
+	body {
+		background: #fff !important;
+		background-image: none !important;
 	}
 	.masthead,
 	footer,
@@ -524,12 +530,11 @@ input[type='range'] {
 	}
 	html,
 	body {
-		background: #fff;
 		color: #000;
 	}
 	.card {
 		box-shadow: none;
-		border: 1.5px solid #000;
+		border: 1px solid #000;
 		break-inside: avoid;
 	}
 }
@@ -544,12 +549,12 @@ html {
 .container {
 	max-width: 1160px;
 	margin: 0 auto;
-	padding: 1.5rem;
+	padding: 1.75rem 1.5rem;
 }
 
 @media (max-width: 560px) {
 	.container {
-		padding: 1rem 0.85rem;
+		padding: 1.1rem 0.9rem;
 	}
 }
 
