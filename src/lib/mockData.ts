@@ -133,11 +133,15 @@ function summaryOf(d: WorkoutDetail): Workout {
 }
 
 export function mockWorkouts(): Workout[] {
-	return SPECS.map((s) => summaryOf(detailFor(s)));
+	const staticList = SPECS.map((s) => summaryOf(detailFor(s)));
+	const generated = [...generatedSpecs.values()].map((s) => summaryOf(detailFor(s)));
+	const byId = new Map<number, Workout>();
+	for (const w of [...staticList, ...generated]) byId.set(w.id, w);
+	return [...byId.values()].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export function mockWorkoutDetail(id: number): WorkoutDetail | null {
-	const spec = SPECS.find((s) => s.id === id);
+	const spec = SPECS.find((s) => s.id === id) ?? generatedSpecs.get(id);
 	return spec ? detailFor(spec) : null;
 }
 
@@ -148,6 +152,9 @@ const MOCK_TEMPLATES: Omit<Spec, 'id' | 'date'>[] = [
 	{ sport: 'bike', distance: 4000, basePace: 98, baseSpm: 82, baseHr: 152, workoutType: '4000m BikeErg' },
 	{ sport: 'rower', distance: 500, basePace: 100, baseSpm: 35, baseHr: 170, workoutType: '500m sprint' }
 ];
+
+/** Runtime demo workouts created by live-mode mock polling. */
+const generatedSpecs = new Map<number, Spec>();
 
 /** Synthesise a new demo workout for live-mode mock polling. */
 export function generateMockWorkout(existingIds: Iterable<number>): Workout {
@@ -161,6 +168,7 @@ export function generateMockWorkout(existingIds: Iterable<number>): Workout {
 		date: now.toISOString().slice(0, 19).replace('T', ' '),
 		...tpl
 	};
+	generatedSpecs.set(id, spec);
 	return summaryOf(detailFor(spec));
 }
 
