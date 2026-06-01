@@ -60,7 +60,13 @@ export const en = {
 		publishOffBoard: 'Only standard-distance pieces (500m, 1k, 2k, 5k, 6k, 10k, half) can be published.',
 		publishFailed: 'Could not publish to leaderboard'
 	},
-	nav: { dashboard: 'Dashboard', leaderboard: 'Leaderboards', settings: 'Data' },
+	nav: {
+		dashboard: 'Dashboard',
+		leaderboard: 'Leaderboards',
+		settings: 'Data',
+		menuOpen: 'Open menu',
+		menuClose: 'Close menu'
+	},
 	common: {
 		demoMode: 'demo mode',
 		replay: 'Replay',

@@ -60,7 +60,13 @@ export const de = {
 		publishOffBoard: 'Nur Standarddistanzen (500 m, 1k, 2k, 5k, 6k, 10k, Halbmarathon) können veröffentlicht werden.',
 		publishFailed: 'Konnte nicht in der Bestenliste veröffentlicht werden'
 	},
-	nav: { dashboard: 'Dashboard', leaderboard: 'Bestenlisten', settings: 'Daten' },
+	nav: {
+		dashboard: 'Dashboard',
+		leaderboard: 'Bestenlisten',
+		settings: 'Daten',
+		menuOpen: 'Menü öffnen',
+		menuClose: 'Menü schließen'
+	},
 	common: {
 		demoMode: 'Demo-Modus',
 		replay: 'Replay',

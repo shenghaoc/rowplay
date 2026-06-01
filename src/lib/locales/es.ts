@@ -60,7 +60,13 @@ export const es = {
 		publishOffBoard: 'Solo se pueden publicar series de distancia estándar (500 m, 1k, 2k, 5k, 6k, 10k, media).',
 		publishFailed: 'No se pudo publicar en la clasificación'
 	},
-	nav: { dashboard: 'Panel', leaderboard: 'Clasificaciones', settings: 'Datos' },
+	nav: {
+		dashboard: 'Panel',
+		leaderboard: 'Clasificaciones',
+		settings: 'Datos',
+		menuOpen: 'Abrir menú',
+		menuClose: 'Cerrar menú'
+	},
 	common: {
 		demoMode: 'modo demo',
 		replay: 'Replay',

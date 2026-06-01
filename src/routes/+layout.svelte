@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { Toaster } from 'svelte-sonner';
-	import { Sun, Moon } from '@lucide/svelte';
+	import { Sun, Moon, Menu, X } from '@lucide/svelte';
 	import LanguagePicker from '$components/LanguagePicker.svelte';
 	import { I18n, setI18nContext } from '$lib/i18n.svelte';
 	import { Theme, setThemeContext } from '$lib/theme.svelte';
@@ -17,6 +17,21 @@
 	const theme = setThemeContext(new Theme(data.theme));
 	const t = $derived(i18n.translate);
 
+	let menuOpen = $state(false);
+
+	function closeMenu() {
+		menuOpen = false;
+	}
+
+	function toggleMenu() {
+		menuOpen = !menuOpen;
+	}
+
+	$effect(() => {
+		void $page.url.pathname;
+		menuOpen = false;
+	});
+
 	onMount(() => initPwaUpdate(i18n));
 </script>
 
@@ -28,7 +43,8 @@
 			<span class="play-mark" aria-hidden="true"></span>
 			<span class="name">rowplay</span>
 		</a>
-		<nav class="mast-tabs">
+
+		<nav class="mast-tabs desktop-only" aria-label="Main">
 			<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}
 				>{t('nav.dashboard')}</a
 			>
@@ -39,29 +55,98 @@
 				>{t('nav.settings')}</a
 			>
 		</nav>
-		<div class="spacer"></div>
-		<LanguagePicker />
-		<button
-			class="iconbtn"
-			onclick={() => theme.toggle()}
-			title={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
-			aria-label={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
-		>
-			{#if theme.isDark}<Sun size={16} />{:else}<Moon size={16} />{/if}
-		</button>
-		{#if data.user}
-			<span class="muted user">@{data.user.username}</span>
-			<form method="POST" action="/auth/logout" onsubmit={() => { navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' }); }}>
-				<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
-			</form>
-		{:else}
-			<span class="badge badge-primary">{t('common.demoMode')}</span>
-			{#if data.oauthEnabled}
-				<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
+
+		<div class="spacer desktop-only"></div>
+
+		<div class="mast-actions desktop-only">
+			<LanguagePicker />
+			<button
+				class="iconbtn"
+				onclick={() => theme.toggle()}
+				title={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
+				aria-label={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
+			>
+				{#if theme.isDark}<Sun size={16} />{:else}<Moon size={16} />{/if}
+			</button>
+			{#if data.user}
+				<span class="muted user">@{data.user.username}</span>
+				<form
+					method="POST"
+					action="/auth/logout"
+					onsubmit={() => {
+						navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
+					}}
+				>
+					<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
+				</form>
+			{:else}
+				<span class="badge badge-primary">{t('common.demoMode')}</span>
+				{#if data.oauthEnabled}
+					<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
+				{/if}
+				<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
 			{/if}
-			<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
-		{/if}
+		</div>
+
+		<button
+			class="iconbtn menu-btn mobile-only"
+			type="button"
+			onclick={toggleMenu}
+			aria-expanded={menuOpen}
+			aria-controls="mobile-nav"
+			aria-label={menuOpen ? t('nav.menuClose') : t('nav.menuOpen')}
+		>
+			{#if menuOpen}<X size={18} />{:else}<Menu size={18} />{/if}
+		</button>
 	</div>
+
+	{#if menuOpen}
+		<button class="scrim mobile-only" type="button" aria-label={t('nav.menuClose')} onclick={closeMenu}
+		></button>
+		<div id="mobile-nav" class="mobile-drawer mobile-only">
+			<nav class="drawer-nav" aria-label="Main">
+				<a href="/dashboard" class:active={$page.url.pathname.startsWith('/dashboard')}
+					>{t('nav.dashboard')}</a
+				>
+				<a href="/leaderboard" class:active={$page.url.pathname.startsWith('/leaderboard')}
+					>{t('nav.leaderboard')}</a
+				>
+				<a href="/settings" class:active={$page.url.pathname.startsWith('/settings')}
+					>{t('nav.settings')}</a
+				>
+			</nav>
+			<div class="drawer-actions">
+				<LanguagePicker />
+				<button
+					class="iconbtn drawer-theme"
+					type="button"
+					onclick={() => theme.toggle()}
+					aria-label={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
+				>
+					{#if theme.isDark}<Sun size={16} />{:else}<Moon size={16} />{/if}
+					<span>{theme.isDark ? t('theme.toLight') : t('theme.toDark')}</span>
+				</button>
+				{#if data.user}
+					<span class="muted user">@{data.user.username}</span>
+					<form
+						method="POST"
+						action="/auth/logout"
+						onsubmit={() => {
+							navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
+						}}
+					>
+						<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
+					</form>
+				{:else}
+					<span class="badge badge-primary">{t('common.demoMode')}</span>
+					{#if data.oauthEnabled}
+						<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
+					{/if}
+					<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
+				{/if}
+			</div>
+		</div>
+	{/if}
 </header>
 
 <main>
@@ -87,7 +172,7 @@
 		max-width: 1160px;
 		margin: 0 auto;
 		display: flex;
-		align-items: stretch;
+		align-items: center;
 		gap: 1.25rem;
 		padding: 0 1.5rem;
 		min-height: 60px;
@@ -96,7 +181,6 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
-		align-self: center;
 		border: var(--bd-heavy);
 		border-radius: var(--r-ctrl);
 		padding: 0.25rem 0.65rem 0.25rem 0.5rem;
@@ -106,6 +190,7 @@
 		font-weight: 800;
 		font-size: 1.35rem;
 		letter-spacing: 0.01em;
+		flex-shrink: 0;
 	}
 	.brand:hover {
 		text-decoration: none;
@@ -143,6 +228,12 @@
 		text-decoration: none;
 		color: var(--ink);
 	}
+	.mast-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-shrink: 0;
+	}
 	.spacer {
 		flex: 1;
 	}
@@ -150,7 +241,6 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.3rem;
-		align-self: center;
 		background: var(--paper-raised);
 		border: var(--bd);
 		color: var(--ink-2);
@@ -164,17 +254,76 @@
 		color: var(--ink);
 		border-color: var(--ink);
 	}
+	.menu-btn {
+		margin-left: auto;
+	}
 	.user {
-		align-self: center;
 		font-family: var(--mono);
 		font-size: 0.78rem;
 	}
-	.btn-sm {
-		align-self: center;
-	}
 	form {
 		margin: 0;
-		align-self: center;
+	}
+	.mobile-only {
+		display: none;
+	}
+	.scrim {
+		position: fixed;
+		inset: 0;
+		top: 54px;
+		border: 0;
+		padding: 0;
+		background: rgb(15 42 54 / 0.35);
+		cursor: pointer;
+		z-index: 9;
+	}
+	.mobile-drawer {
+		position: absolute;
+		left: 0;
+		right: 0;
+		top: 100%;
+		z-index: 11;
+		background: var(--paper);
+		border-bottom: var(--bd-heavy);
+		box-shadow: 0 12px 28px rgb(15 42 54 / 0.12);
+		padding: 0.75rem 1rem 1rem;
+		display: grid;
+		gap: 1rem;
+	}
+	.drawer-nav {
+		display: grid;
+		gap: 0.35rem;
+	}
+	.drawer-nav a {
+		display: block;
+		padding: 0.55rem 0.65rem;
+		border-radius: var(--r-ctrl);
+		font-family: var(--display);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		font-size: 0.92rem;
+		color: var(--ink-2);
+	}
+	.drawer-nav a.active {
+		color: var(--ink);
+		background: var(--paper-raised);
+	}
+	.drawer-nav a:hover {
+		text-decoration: none;
+		color: var(--ink);
+		background: var(--paper-raised);
+	}
+	.drawer-actions {
+		display: grid;
+		gap: 0.65rem;
+		justify-items: start;
+		padding-top: 0.35rem;
+		border-top: var(--bd);
+	}
+	.drawer-theme {
+		font-family: var(--display);
+		font-size: 0.85rem;
 	}
 	main {
 		min-height: calc(100vh - 120px);
@@ -194,32 +343,22 @@
 		padding-bottom: 1.25rem;
 	}
 	@media (max-width: 760px) {
+		.desktop-only {
+			display: none !important;
+		}
+		.mobile-only {
+			display: block;
+		}
+		.menu-btn.mobile-only {
+			display: inline-flex;
+		}
 		.mast-inner {
 			gap: 0.75rem;
 			padding: 0 1rem;
 			min-height: 54px;
 		}
-		.user {
-			display: none;
-		}
-	}
-	@media (max-width: 460px) {
-		.mast-tabs {
-			gap: 0.75rem;
-			margin-left: 0;
-		}
 		.brand .name {
 			font-size: 1.15rem;
-		}
-	}
-	@media (max-width: 390px) {
-		.mast-inner {
-			flex-wrap: wrap;
-			padding: 0.5rem 0.75rem;
-			min-height: 48px;
-		}
-		.mast-tabs a {
-			font-size: 0.82rem;
 		}
 		.footer-inner {
 			flex-direction: column;
