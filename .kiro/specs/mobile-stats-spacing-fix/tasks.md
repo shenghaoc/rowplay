@@ -2,7 +2,7 @@
 
 ## Overview
 
-Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/dashboard/+page.svelte` to resolve cramped stat card padding and gap on mobile viewports. The workflow follows the exploratory bugfix methodology: write tests first to confirm the bug, then apply the fix, then verify both the fix and preservation of desktop behavior.
+Fix cramped dashboard stat cards on mobile: rename classes to `.dash-stats` / `.dash-stat` (daisyUI collision), then adjust scoped CSS in `src/routes/dashboard/+page.svelte` for padding, gap, and label alignment. The workflow follows the exploratory bugfix methodology: write tests first to confirm the bug, then apply the fix, then verify both the fix and preservation of desktop behavior.
 
 ## Task Dependency Graph
 
@@ -27,15 +27,15 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
   - **Scoped PBT Approach**: Scope the property to the concrete failing viewport ranges: widths in [320, 720] for padding and [320, 400] for gap
   - Create a Vitest test file at `src/lib/mobile-stats-spacing.test.ts` (or co-locate with the dashboard if preferred)
   - Use `jsdom` / happy-dom + a CSS parsing helper (or inline style injection) to simulate the computed styles at given viewport widths
-  - **Bug Condition (from design)**: `isBugCondition(viewport)` returns `true` when `viewport.widthPx <= 720` and no `.stat` padding override is present, OR when `viewport.widthPx <= 400` and `.stats { gap }` is `0.6rem`
+  - **Bug Condition (from design)**: `isBugCondition(viewport)` returns `true` when `viewport.widthPx <= 720` and no `.dash-stat` padding override is present, OR when `viewport.widthPx <= 400` and `.dash-stats { gap }` is `0.6rem`
   - Test assertions (expected behavior after fix):
-    - For viewports in [401, 720]: `.stat` computed padding SHALL be `1rem 1.1rem`
-    - For viewports in [320, 400]: `.stat` computed padding SHALL be `0.9rem 1rem` and `.stats` gap SHALL be `0.75rem`
+    - For viewports in [401, 720]: `.dash-stat` computed padding SHALL be `1rem 1.1rem`
+    - For viewports in [320, 400]: `.dash-stat` computed padding SHALL be `0.9rem 1rem` and `.dash-stats` gap SHALL be `0.75rem`
   - Run test on UNFIXED code: `npm run test -- --run`
-  - **EXPECTED OUTCOME**: Test FAILS (confirms the bug — no `.stat` padding override exists and gap is `0.6rem` at ≤400px)
+  - **EXPECTED OUTCOME**: Test FAILS (confirms the bug — no `.dash-stat` padding override exists and gap is `0.6rem` at ≤400px)
   - Document counterexamples found, e.g.:
     - "At 375px: `.dash-stat` padding is `0.95rem 1rem` (global `.card` value), expected `0.9rem 1rem` (≤400px block overrides ≤720px)"
-    - "At 360px: `.stats` gap is `0.6rem`, expected `0.75rem`"
+    - "At 360px: `.dash-stats` gap is `0.6rem`, expected `0.75rem`"
   - Mark task complete when test is written, run, and failure is documented
   - _Requirements: 1.1, 1.2, 1.3_
 
@@ -43,12 +43,12 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
   - **Property 2: Preservation** - Desktop Stat Styles Are Unchanged
   - **IMPORTANT**: Follow observation-first methodology
   - Observe behavior on UNFIXED code for non-buggy inputs (viewport > 720px):
-    - Observe: `.stat` computed padding at 800px is `1.25rem 1.4rem` (global `.card` base)
-    - Observe: `.stats` gap at 800px is `1rem`
-    - Observe: `.stats` grid-template-columns at 800px is `repeat(4, minmax(0, 1fr))`
+    - Observe: `.dash-stat` computed padding at 800px is `1.25rem 1.4rem` (global `.card` base)
+    - Observe: `.dash-stats` gap at 800px is `1rem`
+    - Observe: `.dash-stats` grid-template-columns at 800px is `repeat(4, minmax(0, 1fr))`
   - Write property-based tests in the same test file:
-    - For all viewport widths in [721, 1440]: `.stat` padding SHALL equal `1.25rem 1.4rem` (global `.card` value, no stat override)
-    - For all viewport widths in [721, 1440]: `.stats` gap SHALL equal `1rem`
+    - For all viewport widths in [721, 1440]: `.dash-stat` padding SHALL equal `1.25rem 1.4rem` (global `.card` value, no stat override)
+    - For all viewport widths in [721, 1440]: `.dash-stats` gap SHALL equal `1rem`
     - For all viewport widths in [721, 1440]: `.dash-stats` grid-template-columns SHALL equal `repeat(4, minmax(0, 1fr))`
   - Run tests on UNFIXED code: `npm run test -- --run`
   - **EXPECTED OUTCOME**: Tests PASS (confirms baseline desktop behavior to preserve)
@@ -57,24 +57,24 @@ Apply a CSS-only fix to the dashboard's scoped `<style>` block in `src/routes/da
 
 - [x] 3. Apply the CSS fix to `src/routes/dashboard/+page.svelte`
 
-  - [x] 3.1 Add `.stat { padding: 1rem 1.1rem; }` inside the `@media (max-width: 720px)` block
+  - [x] 3.1 Add `.dash-stat { padding: 1rem 1.1rem; }` inside the `@media (max-width: 720px)` block
     - Open `src/routes/dashboard/+page.svelte` and locate the scoped `<style>` block
-    - Find the existing `@media (max-width: 720px)` rule that sets `.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }`
-    - Add `.stat { padding: 1rem 1.1rem; }` immediately after the `.stats` rule inside that block
+    - Find the existing `@media (max-width: 720px)` rule that sets `.dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }`
+    - Add `.dash-stat { padding: 1rem 1.1rem; }` immediately after the `.dash-stats` rule inside that block
     - Do NOT modify `app.css` or any other file
-    - _Bug_Condition: isBugCondition(viewport) where viewport.widthPx <= 720 and no .stat padding override exists_
-    - _Expected_Behavior: .stat computed padding >= "1rem 1.1rem" for all viewports in (400, 720]_
+    - _Bug_Condition: isBugCondition(viewport) where viewport.widthPx <= 720 and no .dash-stat padding override exists_
+    - _Expected_Behavior: .dash-stat computed padding >= "1rem 1.1rem" for all viewports in (400, 720]_
     - _Preservation: viewports > 720px must continue to use global .card padding of 1.25rem 1.4rem_
     - _Requirements: 2.1, 2.3, 3.1, 3.3_
 
-  - [x] 3.2 Update `.stats { gap }` and add `.stat { padding }` inside the `@media (max-width: 400px)` block
+  - [x] 3.2 Update `.dash-stats { gap }` and add `.dash-stat { padding }` inside the `@media (max-width: 400px)` block
     - In the same scoped `<style>` block, locate the `@media (max-width: 400px)` rule
-    - Change `.stats { gap: 0.6rem; }` to `.stats { gap: 0.75rem; }`
-    - Add `.stat { padding: 0.9rem 1rem; }` after the updated `.stats` rule and before `.stat .value { font-size: 1.25rem; }`
+    - Change `.dash-stats { gap: 0.6rem; }` to `.dash-stats { gap: 0.75rem; }`
+    - Add `.dash-stat { padding: 0.9rem 1rem; }` after the updated `.dash-stats` rule and before `.dash-stat .value { font-size: 1.25rem; }`
     - Do NOT modify `app.css` or any other file
-    - _Bug_Condition: isBugCondition(viewport) where viewport.widthPx <= 400 and .stats gap = 0.6rem_
-    - _Expected_Behavior: .stats gap = "0.75rem" and .stat padding = "0.9rem 1rem" for all viewports in [320, 400]_
-    - _Preservation: .stat .value { font-size: 1.25rem } and all other rules in the 400px block must remain unchanged_
+    - _Bug_Condition: isBugCondition(viewport) where viewport.widthPx <= 400 and .dash-stats gap = 0.6rem_
+    - _Expected_Behavior: .dash-stats gap = "0.75rem" and .dash-stat padding = "0.9rem 1rem" for all viewports in [320, 400]_
+    - _Preservation: .dash-stat .value { font-size: 1.25rem } and all other rules in the 400px block must remain unchanged_
     - _Requirements: 2.2, 2.3, 3.1, 3.3_
 
   - [x] 3.3 Verify bug condition exploration test now passes
