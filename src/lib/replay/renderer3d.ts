@@ -392,8 +392,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const laneMat = this.mat(
 			new THREE.MeshStandardMaterial({
 				color: hex(COLORS_LIGHT.courseFill),
-				roughness: 0.85,
-				side: THREE.DoubleSide
+				roughness: 0.85
 			})
 		);
 		laneMat.name = 'lane';

@@ -245,6 +245,10 @@
 			loading3d = false;
 			rendererKind = '2d';
 			saveRendererPref('2d');
+			// renderer may still point at the temp2d placeholder; destroy before
+			// replacing to match the ownership pattern used elsewhere.
+			renderer?.destroy();
+			renderer = null;
 			renderer = new CourseRenderer(canvas2dEl);
 			activeCanvas = '2d';
 			if (w) renderer.resize(w, h);
