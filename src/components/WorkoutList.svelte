@@ -205,14 +205,14 @@
 		letter-spacing: 0.04em;
 		padding: 0.1rem 0.4rem;
 		border-radius: 4px;
-		background: rgba(47, 129, 247, 0.15);
+		background: color-mix(in srgb, var(--accent) 15%, var(--paper-raised));
 		color: var(--accent);
-		border: 1px solid rgba(47, 129, 247, 0.35);
+		border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--paper-raised));
 	}
 	.pbchip.new {
-		background: rgba(63, 185, 80, 0.18);
+		background: color-mix(in srgb, var(--ahead) 18%, var(--paper-raised));
 		color: var(--ahead);
-		border-color: rgba(63, 185, 80, 0.45);
+		border-color: color-mix(in srgb, var(--ahead) 45%, var(--paper-raised));
 	}
 	.rowmeta {
 		font-size: 0.85rem;

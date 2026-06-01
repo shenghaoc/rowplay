@@ -5,7 +5,7 @@
 	import MetricGauge from '$components/MetricGauge.svelte';
 	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
 	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
-	import { LIVE_COLOR, MACHINE_COLOR, themeFor } from '$lib/replay/sports';
+	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import {
 		hrZones,
 		powerCurve,

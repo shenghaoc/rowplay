@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { COLORS_LIGHT, COLORS_DARK } from './renderer';
+import { MACHINE_HEX } from './sports';
 
 // The course renderer paints to <canvas>, which can't resolve CSS custom
 // properties, so it mirrors the live/ghost accent tokens as constants. app.css
@@ -35,5 +36,22 @@ describe('renderer canvas palette mirrors app.css', () => {
 	it('dark live/ghost match --live/--ghost', () => {
 		expect(COLORS_DARK.live).toBe(token(dark, '--live'));
 		expect(COLORS_DARK.ghost).toBe(token(dark, '--ghost'));
+	});
+});
+
+describe('race-card machine palette mirrors app.css', () => {
+	const light = blockBody(':root');
+	const dark = blockBody(":root[data-theme='dark']");
+
+	it('light machine hues match --m-*', () => {
+		expect(MACHINE_HEX.light.rower).toBe(token(light, '--m-rower'));
+		expect(MACHINE_HEX.light.skierg).toBe(token(light, '--m-skierg'));
+		expect(MACHINE_HEX.light.bike).toBe(token(light, '--m-bike'));
+	});
+
+	it('dark machine hues match --m-*', () => {
+		expect(MACHINE_HEX.dark.rower).toBe(token(dark, '--m-rower'));
+		expect(MACHINE_HEX.dark.skierg).toBe(token(dark, '--m-skierg'));
+		expect(MACHINE_HEX.dark.bike).toBe(token(dark, '--m-bike'));
 	});
 });

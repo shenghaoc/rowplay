@@ -2,10 +2,6 @@ import type { Sport } from '../types';
 
 export interface SportTheme {
 	label: string;
-	/** Machine accent (bibs, icons). */
-	color: string;
-	/** Course panel fill. */
-	courseFill: string;
 	/** Word for the per-minute cadence metric. */
 	cadenceUnit: string;
 }
@@ -13,35 +9,36 @@ export interface SportTheme {
 export const SPORT_THEME: Record<Sport, SportTheme> = {
 	rower: {
 		label: 'RowErg',
-		color: '#2b5468',
-		courseFill: '#efe8da',
 		cadenceUnit: 'spm'
 	},
 	skierg: {
 		label: 'SkiErg',
-		color: '#3c7a6e',
-		courseFill: '#efe8da',
 		cadenceUnit: 'spm'
 	},
 	bike: {
 		label: 'BikeErg',
-		color: '#a65d2e',
-		courseFill: '#efe8da',
 		cadenceUnit: 'rpm'
 	}
 };
-
-/** Vermilion = live athlete; lake = ghost comparison. */
-export const LIVE_COLOR = '#dc4327';
-export const GHOST_COLOR = '#1e4e6b';
 
 export function themeFor(sport: Sport): SportTheme {
 	return SPORT_THEME[sport];
 }
 
-/** CSS color for machine icons and accents. */
+/** CSS color for machine icons and accents (DOM contexts that resolve var()). */
 export const MACHINE_COLOR: Record<Sport, string> = {
 	rower: 'var(--m-rower)',
 	skierg: 'var(--m-skierg)',
 	bike: 'var(--m-bike)'
+};
+
+/**
+ * Machine accent as a concrete hex per theme — the <canvas> mirror of
+ * `--m-rower/-skierg/-bike` in app.css, for canvas contexts (the race-card
+ * PNG export) that can't resolve CSS custom properties. MUST stay in sync with
+ * app.css: `renderer.test.ts` parses both and fails if the mirror drifts.
+ */
+export const MACHINE_HEX: Record<'light' | 'dark', Record<Sport, string>> = {
+	light: { rower: '#2b5468', skierg: '#3c7a6e', bike: '#a65d2e' },
+	dark: { rower: '#5a8aaa', skierg: '#5aaa9a', bike: '#d09060' }
 };

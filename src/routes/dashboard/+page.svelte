@@ -872,8 +872,8 @@
 		margin-bottom: 1rem;
 	}
 	.formcard {
-		background: linear-gradient(135deg, rgba(47, 129, 247, 0.07), var(--bg-elev) 65%);
-		border-color: rgba(47, 129, 247, 0.28);
+		background: linear-gradient(135deg, color-mix(in srgb, var(--ghost) 8%, transparent), var(--bg-elev) 65%);
+		border-color: color-mix(in srgb, var(--ghost) 30%, var(--bg-elev));
 	}
 	.formhead {
 		display: flex;
@@ -897,9 +897,9 @@
 		font-size: 0.66rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		background: rgba(210, 168, 255, 0.16);
-		color: #d2a8ff;
-		border: 1px solid rgba(210, 168, 255, 0.35);
+		background: color-mix(in srgb, var(--behind) 16%, var(--paper-raised));
+		color: var(--behind);
+		border: 1px solid color-mix(in srgb, var(--behind) 40%, var(--paper-raised));
 	}
 	.formsub {
 		font-size: 0.82rem;
@@ -919,32 +919,32 @@
 		color: var(--accent-2);
 	}
 	.badge.good {
-		background: rgba(63, 185, 80, 0.14);
-		border-color: rgba(63, 185, 80, 0.4);
+		background: color-mix(in srgb, var(--accent-2) 14%, var(--paper-raised));
+		border-color: color-mix(in srgb, var(--accent-2) 40%, var(--paper-raised));
 	}
 	.badge.bad,
 	.fsv.bad {
 		color: var(--warn);
 	}
 	.badge.bad {
-		background: rgba(248, 81, 73, 0.14);
-		border-color: rgba(248, 81, 73, 0.4);
+		background: color-mix(in srgb, var(--warn) 14%, var(--paper-raised));
+		border-color: color-mix(in srgb, var(--warn) 40%, var(--paper-raised));
 	}
 	.badge.accent,
 	.fsv.accent {
 		color: var(--accent);
 	}
 	.badge.accent {
-		background: rgba(47, 129, 247, 0.14);
-		border-color: rgba(47, 129, 247, 0.4);
+		background: color-mix(in srgb, var(--accent) 14%, var(--paper-raised));
+		border-color: color-mix(in srgb, var(--accent) 40%, var(--paper-raised));
 	}
 	.badge.info,
 	.fsv.info {
-		color: #56d4ff;
+		color: var(--ghost);
 	}
 	.badge.info {
-		background: rgba(86, 212, 255, 0.14);
-		border-color: rgba(86, 212, 255, 0.4);
+		background: color-mix(in srgb, var(--ghost) 14%, var(--paper-raised));
+		border-color: color-mix(in srgb, var(--ghost) 40%, var(--paper-raised));
 	}
 	.badge.neutral,
 	.fsv.neutral {
@@ -1000,7 +1000,7 @@
 		border-left-color: var(--accent);
 	}
 	.formread.info {
-		border-left-color: #56d4ff;
+		border-left-color: var(--ghost);
 	}
 	.formlegend {
 		display: flex;
