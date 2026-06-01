@@ -8,7 +8,8 @@
 	}
 
 	let { live }: Props = $props();
-	const t = getI18nContext().t;
+	const i18n = getI18nContext();
+	const t = $derived(i18n.translate);
 
 	function intervalLabel(sec: LiveIntervalSec): string {
 		return sec < 60 ? t('liveMode.intervalSec', { n: sec }) : t('liveMode.intervalMin', { n: sec / 60 });

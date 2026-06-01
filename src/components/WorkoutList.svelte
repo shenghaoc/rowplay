@@ -8,7 +8,8 @@
 	import { get } from 'svelte/store';
 	import { getI18nContext } from '$lib/i18n.svelte';
 
-	const t = getI18nContext().t;
+	const i18n = getI18nContext();
+	const t = $derived(i18n.translate);
 
 	interface Props {
 		workouts: Workout[];

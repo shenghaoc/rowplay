@@ -6,7 +6,8 @@
 	import { Download, RefreshCw, Trash2, Database } from '@lucide/svelte';
 
 	let { data } = $props();
-	const t = getI18nContext().t;
+	const i18n = getI18nContext();
+	const t = $derived(i18n.translate);
 
 	let syncing = $state(false);
 	let syncMode = $state<'incremental' | 'full' | null>(null);

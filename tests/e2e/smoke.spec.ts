@@ -21,6 +21,27 @@ function collectPageErrors(page: Page): string[] {
 }
 
 test.describe('smoke', () => {
+	test('language picker switches dashboard copy', async ({ page }) => {
+		const errors = collectPageErrors(page);
+
+		await page.goto('/dashboard');
+		await expect(page.locator('.lang-picker select option')).toHaveCount(6);
+		const langSelect = page.locator('.lang-picker select');
+		// WebKit can miss Playwright's selectOption before hydration; dispatch change explicitly.
+		await langSelect.evaluate((el) => {
+			const select = el as HTMLSelectElement;
+			select.value = 'de';
+			select.dispatchEvent(new Event('change', { bubbles: true }));
+		});
+		await expect(langSelect).toHaveValue('de');
+		await expect(
+			page.getByRole('heading', { name: /Ergebnisse & Replays/ })
+		).toBeVisible();
+
+		await page.waitForTimeout(300);
+		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
+	});
+
 	test('dashboard loads cleanly and lists workouts', async ({ page }) => {
 		const errors = collectPageErrors(page);
 

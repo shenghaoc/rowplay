@@ -13,7 +13,8 @@
 		onseek = undefined as ((timestamp: number) => void) | undefined
 	} = $props();
 
-	const t = getI18nContext().t;
+	const i18n = getI18nContext();
+	const t = $derived(i18n.translate);
 
 	let adding = $state(false);
 	let editingId = $state<number | null>(null);
