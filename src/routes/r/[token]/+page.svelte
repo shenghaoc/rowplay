@@ -8,6 +8,7 @@
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import { fmtDistance, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '$lib/format';
 	import type { WorkoutDetail } from '$lib/types';
+	import { isExrSource } from '$lib/exrSource';
 	import Play from '@lucide/svelte/icons/play';
 	import Pause from '@lucide/svelte/icons/pause';
 	import { getI18nContext } from '$lib/i18n.svelte';
@@ -22,6 +23,7 @@
 	const t = $derived(i18n.translate);
 	const uiTheme = getThemeContext();
 	const detail = $derived(data.detail as WorkoutDetail);
+	const exrFlagged = $derived(isExrSource(detail));
 	const meta = $derived(data.meta);
 	const annotations = $derived(data.annotations as Annotation[]);
 	const sportTheme = $derived(themeFor(detail.sport));
@@ -141,6 +143,9 @@
 		</h1>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
+			{#if exrFlagged}
+				<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
+			{/if}
 		</div>
 	</div>
 

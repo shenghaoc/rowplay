@@ -462,6 +462,10 @@ export const en = {
 		mFirmware: 'Firmware',
 		mSerial: 'Serial number',
 		mDevice: 'Device',
+		mSource: 'Logged by',
+		exrBadge: 'EXR source',
+		exrBadgeTitle:
+			'Pace and power were synthesised by EXR, not read from the PM5. Numbers may not be directly comparable to PM-logged workouts.',
 		mErgModel: 'Erg model',
 		mHrSensor: 'HR sensor',
 		targetsTitle: 'Targets',
