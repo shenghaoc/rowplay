@@ -32,9 +32,9 @@ checked as the work lands. Requirement references point at `requirements.md`.
   - _Requirements: 3.1, 3.2, 3.3, 4.1_
 
 - [x] **6. Metadata rows + public redaction** — InspectorPanel + shared view
-  - Render the result `metadata` block (incl. source app) when present; omit
-    `serialNumber`/`device` on the public `/r/<token>` view. Optional-chained so
-    it no-ops until full-fidelity-data lands.
+  - `WorkoutMetadata` on `WorkoutDetail`; render `metadata` (incl. source app)
+    when present; `isPublic` prop omits `serialNumber`/`device` on `/r/<token>`.
+    Optional-chained so it no-ops until full-fidelity-data lands.
   - _Requirements: 5.2, 5.3, 5.4_
 
 - [x] **7. i18n** — all six locales

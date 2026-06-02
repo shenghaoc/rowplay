@@ -28,8 +28,9 @@ strokes[] ──> sampleIndexAt(strokes, frame.t) ──> idx │  (changes only
 export function sampleIndexAt(strokes: Stroke[], t: number): number;
 ```
 
-- Mirrors `sampleAt`'s bracketing logic but returns the **lower** index (the
-  real sample in effect), clamped to `[0, n-1]`; `-1` only for an empty array.
+- Returns `-1` when `strokes` is empty (guard before any index access). Otherwise
+  mirrors `sampleAt`'s bracketing logic but returns the **lower** index (the real
+  sample in effect), clamped to `[0, n-1]`.
 - `t <= strokes[0].t` → `0`; `t >= strokes[n-1].t` → `n-1`; otherwise the binary
   search's `lo`. Reuses the same search shape so behaviour can't drift from
   `sampleAt`.
@@ -63,8 +64,8 @@ Reconstructs the Concept2 wire representation from the normalized `Stroke` by
 **Interval reset:** for interval workouts the API resets `t`/`d` to 0 each rep,
 and `mapStrokes` adds a cumulative offset to keep the timeline monotonic — so the
 cumulative `Stroke.t`/`d` no longer equal the wire value. `mapStrokes` therefore
-retains the per-interval value on the stroke (`rawT`/`rawD`, populated only once
-an offset has been applied), and `asLoggedStroke` inverts from those when present
+retains the per-interval wire value on every stroke (`rawT`/`rawD` in seconds /
+metres before the cumulative offset), and `asLoggedStroke` inverts from those
 (`s.rawT ?? s.t`). The cache `DETAIL_PAYLOAD_VERSION` is bumped accordingly.
 
 `watts` is derived (not logged per stroke) so it is shown as **normalized only**,
@@ -103,8 +104,9 @@ export function distancePerStroke(s: Stroke): number | undefined;
 
 - **Static section** (rendered once, not per sample): sport, distance, time,
   drag factor, workout type, and — when present — the result `metadata` block
-  (PM/firmware/erg model/HR type/**source app**). Public view omits
-  `serialNumber`/`device` (Req 5.2, 5.3).
+  (PM/firmware/erg model/HR type/**source app**). An `isPublic` boolean prop
+  (from `/r/<token>`) omits `serialNumber`/`device` on public shares (Req 5.2,
+  5.3).
 - **Per-sample table**: one row per field with columns *field · as-logged ·
   normalized*, plus derived rows (`progress`, split index, distance-per-stroke).
 - **Presentation**: monospace, `font-variant-numeric: tabular-nums`, fixed

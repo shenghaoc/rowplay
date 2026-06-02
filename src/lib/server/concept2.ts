@@ -381,19 +381,16 @@ export function mapStrokes(raw: RawStroke[], sport: Sport): Stroke[] {
 		prevD = rawD;
 
 		const pace = s.p / 10 / paceDiv; // -> sec / 500m
-		const stroke: Stroke = {
+		return {
 			t: rawT + tOffset,
 			d: rawD + dOffset,
+			rawT,
+			rawD,
 			pace,
 			spm: s.spm,
 			hr: s.hr ? s.hr : undefined,
 			watts: paceToWattsForSport(sport, pace)
 		};
-		// Once an interval reset has shifted the cumulative t/d, the wire value no
-		// longer equals t/d; retain it so the raw inspector shows the real value.
-		if (tOffset > 0) stroke.rawT = rawT;
-		if (dOffset > 0) stroke.rawD = rawD;
-		return stroke;
 	});
 }
 

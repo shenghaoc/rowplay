@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+/** Matches `inspector.toggle` in all six locales. */
+const INSPECTOR_TOGGLE =
+	/Field inspector|字段检查器|Feld-Inspektor|Inspector de campos|Inspecteur de champs|フィールドインスペクター/i;
+
 function seekScrub(page: import('@playwright/test').Page, seconds: number) {
 	return page.locator('input.scrub').evaluate((el, t) => {
 		const input = el as HTMLInputElement;
@@ -13,37 +17,34 @@ test.describe('raw field inspector', () => {
 		await page.goto('/replay/1001');
 		await expect(page.locator('canvas').first()).toBeVisible();
 
-		const toggle = page.getByRole('button', {
-			name: /Field inspector|字段检查器|Feld-Inspektor/i
-		});
+		const toggle = page.getByRole('button', { name: INSPECTOR_TOGGLE });
 		await toggle.click();
 		await expect(toggle).toHaveAttribute('aria-pressed', 'true');
 
-		const rawP = page.getByTestId('inspector-raw-p');
-		await expect(rawP).toBeVisible();
-		const initial = ((await rawP.textContent()) ?? '').trim();
+		const rawT = page.getByTestId('inspector-raw-t');
+		await expect(rawT).toBeVisible();
+		const initial = ((await rawT.textContent()) ?? '').trim();
 		expect(initial).toBeTruthy();
 
 		const scrub = page.locator('input.scrub');
 		const t0 = Number(await scrub.inputValue());
 		// Within a sample span the as-logged value holds (sample-and-hold).
 		await seekScrub(page, t0 + 0.5);
-		await expect(rawP).toHaveText(initial);
+		await expect(rawT).toHaveText(initial);
 
-		// Across a sample boundary it changes.
+		// Across a sample boundary elapsed time (t) always changes.
 		await seekScrub(page, t0 + 20);
-		await expect(rawP).not.toHaveText(initial);
+		await expect(rawT).not.toHaveText(initial);
 	});
 
 	test('toggle is keyboard-operable', async ({ page }) => {
 		await page.goto('/replay/1001');
-		const toggle = page.getByRole('button', {
-			name: /Field inspector|字段检查器|Feld-Inspektor/i
-		});
+		const toggle = page.getByTestId('inspector-toggle');
 		await toggle.focus();
-		await page.keyboard.press('Space');
+		await expect(toggle).toBeFocused();
+		await toggle.press('Enter');
 		await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-		await page.keyboard.press('Space');
+		await toggle.press('Enter');
 		await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 	});
 });

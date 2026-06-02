@@ -56,6 +56,8 @@ describe('distancePerStroke', () => {
 	it('returns undefined when pace or spm is invalid', () => {
 		expect(distancePerStroke({ ...ladderStrokes()[0], pace: 0 })).toBeUndefined();
 		expect(distancePerStroke({ ...ladderStrokes()[0], spm: 0 })).toBeUndefined();
+		expect(distancePerStroke({ ...ladderStrokes()[0], pace: NaN })).toBeUndefined();
+		expect(distancePerStroke({ ...ladderStrokes()[0], spm: NaN })).toBeUndefined();
 	});
 
 	it('matches the analytics formula', () => {

@@ -156,7 +156,14 @@
 			class:on={inspectorOpen}
 			aria-pressed={inspectorOpen}
 			aria-label={inspectorOpen ? t('inspector.toggleOn') : t('inspector.toggle')}
+			data-testid="inspector-toggle"
 			onclick={() => (inspectorOpen = !inspectorOpen)}
+			onkeydown={(e) => {
+				if (e.key !== 'Enter' && e.key !== ' ') return;
+				e.preventDefault();
+				e.stopPropagation();
+				inspectorOpen = !inspectorOpen;
+			}}
 		>
 			<Binary size={14} aria-hidden="true" />
 			{t('inspector.toggle')}
