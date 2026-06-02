@@ -100,6 +100,7 @@
 			<label class="field">
 				<span class="flabel muted">{t('workoutList.dateFrom')}</span>
 				<input
+					class="input input-bordered w-full"
 					type="date"
 					value={query.dateFrom ?? ''}
 					onchange={(e) => patch({ dateFrom: e.currentTarget.value || undefined })}
@@ -108,6 +109,7 @@
 			<label class="field">
 				<span class="flabel muted">{t('workoutList.dateTo')}</span>
 				<input
+					class="input input-bordered w-full"
 					type="date"
 					value={query.dateTo ?? ''}
 					onchange={(e) => patch({ dateTo: e.currentTarget.value || undefined })}
@@ -116,6 +118,7 @@
 			<label class="field grow">
 				<span class="flabel muted">{t('workoutList.workoutType')}</span>
 				<select
+					class="select select-bordered w-full"
 					value={query.workoutType ?? ''}
 					onchange={(e) => patch({ workoutType: e.currentTarget.value || undefined })}
 				>
@@ -146,6 +149,7 @@
 		<form class="searchrow" onsubmit={(e) => { e.preventDefault(); submitSearch(); }}>
 			<span class="sicon" aria-hidden="true"><Search size={16} /></span>
 			<input
+				class="input input-bordered w-full"
 				type="search"
 				inputmode="search"
 				enterkeyhint="search"
@@ -274,15 +278,6 @@
 		font-size: 0.72rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-	}
-	input,
-	select {
-		background: var(--paper-inset);
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		color: var(--ink);
-		padding: 0.4rem 0.55rem;
-		font-size: 0.88rem;
 	}
 	.searchrow {
 		display: flex;
