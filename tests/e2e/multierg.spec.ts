@@ -1,4 +1,16 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+/** Set the replay scrubber (WebKit rejects non-step-aligned range values). */
+function seekScrub(page: Page, seconds: number) {
+	return page.locator('input.scrub').evaluate((el, t) => {
+		const input = el as HTMLInputElement;
+		const step = Number(input.step) || 0.1;
+		const snapped = Math.round(t / step) * step;
+		const clamped = Math.min(Number(input.max), Math.max(Number(input.min), snapped));
+		input.value = String(clamped);
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+	}, seconds);
+}
 
 test.describe('MultiErg replay (demo 1012)', () => {
 	test('switches pace units, shows rest overlay, hides publish', async ({ page }) => {
@@ -14,23 +26,20 @@ test.describe('MultiErg replay (demo 1012)', () => {
 		await expect(spmLabel).toBeVisible();
 		await expect(page.getByRole('button', { name: /Publish to leaderboard|Publish/i })).toHaveCount(0);
 
-		const scrub = page.getByRole('slider', { name: 'Seek' });
+		const scrub = page.locator('input.scrub');
 		const max = Number(await scrub.getAttribute('max'));
-		await scrub.fill(String(max * 0.75));
-		await scrub.dispatchEvent('input');
+
+		await seekScrub(page, max * 0.75);
 		await page.waitForTimeout(200);
 		await expect(paceLabel1000).toBeVisible();
 		await expect(rpmLabel).toBeVisible();
 
-		await scrub.fill(String(max * 0.08));
-		await scrub.dispatchEvent('input');
+		await seekScrub(page, max * 0.08);
 		await page.waitForTimeout(200);
 		await expect(paceLabel).toBeVisible();
 		await expect(spmLabel).toBeVisible();
 
-		const midRest = max * 0.28;
-		await scrub.fill(String(midRest));
-		await scrub.dispatchEvent('input');
+		await seekScrub(page, max * 0.28);
 		await page.waitForTimeout(200);
 		await expect(page.getByText(/Rest/i).first()).toBeVisible();
 	});
