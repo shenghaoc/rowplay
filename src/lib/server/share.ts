@@ -3,6 +3,7 @@ import { error } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { WorkoutDetail } from '../types';
 import { mockWorkoutDetail } from '../mockData';
+import { resolveDemoBoardShare } from '../mockLeaderboard';
 import { getConfig } from './config';
 import { loadWorkoutDetail } from './data';
 import {
@@ -147,6 +148,9 @@ export async function loadSharedWorkout(
 	token: string
 ): Promise<WorkoutDetail> {
 	if (!/^[a-f0-9]{48}$/.test(token)) throw error(404, 'Share link not found.');
+
+	const demoBoard = resolveDemoBoardShare(token);
+	if (demoBoard) return demoBoard;
 
 	const db = event.platform?.env?.DB;
 	const fromDb = await getCachedDetailByShareToken(db, token);

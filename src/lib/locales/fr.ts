@@ -64,7 +64,8 @@ export const fr = {
 		withdraw: 'Retirer du classement',
 		withdrawing: 'Retrait…',
 		withdrawOk: 'Retiré du classement.',
-		withdrawFailed: 'Impossible de retirer du classement'
+		withdrawFailed: 'Impossible de retirer du classement',
+		ghostFallbackToast: 'Impossible de charger les coups du rival — course avec leur allure moyenne',
 	},
 	nav: {
 		dashboard: 'Tableau de bord',

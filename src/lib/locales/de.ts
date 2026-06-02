@@ -64,7 +64,8 @@ export const de = {
 		withdraw: 'Aus Bestenliste entfernen',
 		withdrawing: 'Wird entfernt…',
 		withdrawOk: 'Aus der Bestenliste entfernt.',
-		withdrawFailed: 'Konnte nicht aus der Bestenliste entfernt werden'
+		withdrawFailed: 'Konnte nicht aus der Bestenliste entfernt werden',
+		ghostFallbackToast: 'Konnten die Schläge des Rivalen nicht laden — Rennen mit deren Durchschnittstempo',
 	},
 	nav: {
 		dashboard: 'Dashboard',

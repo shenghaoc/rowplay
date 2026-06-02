@@ -115,5 +115,7 @@ describe('mockLeaderboard (demo seed)', () => {
 		const rower2k = findBoard(boards, 'rower', 2000)!;
 		expect(rower2k.entries.some((e) => e.isYou)).toBe(true);
 		expect(rower2k.entries.some((e) => !e.isYou)).toBe(true);
+		const otter = rower2k.entries.find((e) => e.displayName === 'Otter');
+		expect(otter?.shareToken).toBeDefined();
 	});
 });

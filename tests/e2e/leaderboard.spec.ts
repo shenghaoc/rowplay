@@ -33,4 +33,17 @@ test.describe('leaderboard', () => {
 		await expect(page).toHaveURL(/\/replay\/\d+\?.*ghostPace=/);
 		await expect(page.locator('canvas').first()).toBeVisible();
 	});
+
+	test('racing Otter on the 2k board uses a stroke-accurate share token', async ({ page }) => {
+		await page.goto('/leaderboard?sport=rower&distance=2000');
+		const otterRow = page.locator('table.board tbody tr', { hasText: 'Otter' });
+		await expect(otterRow).toBeVisible();
+		const race = otterRow.getByRole('link', { name: /Race|竞速/ });
+		await race.click();
+		await expect(page).toHaveURL(/\/replay\/\d+\?.*ghostToken=/);
+		await expect(page).toHaveURL(/ghostPace=/);
+		await expect(page.locator('canvas').first()).toBeVisible();
+		// Ghost lane armed once the shared trace resolves (or optimistic pace ghost).
+		await expect(page.locator('.ghostbar .gap')).toBeVisible();
+	});
 });

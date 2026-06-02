@@ -11,6 +11,7 @@
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import { findBoard, SPORT_ORDER, STANDARD_DISTANCES, type Board, type RankedEntry } from '$lib/leaderboard';
+	import { buildRaceDeepLink } from '$lib/replay/rivalGhost';
 	import type { Sport } from '$lib/types';
 
 	let { data } = $props();
@@ -77,14 +78,14 @@
 		}
 	}
 
-	/** Replay link that pre-arms this rival as a constant-pace ghost. */
+	/** Replay link that pre-arms this rival (stroke trace when shared, else pace ghost). */
 	function raceLink(rival: RankedEntry): string | null {
 		if (!youEntry || rival.isYou) return null;
-		const params = new URLSearchParams({
-			ghostPace: String(rival.pace),
-			ghostName: rival.displayName
+		return buildRaceDeepLink(youEntry.workoutId, {
+			pace: rival.pace,
+			displayName: rival.displayName,
+			shareToken: rival.shareToken
 		});
-		return `/replay/${youEntry.workoutId}?${params.toString()}`;
 	}
 
 	function gapLabel(e: RankedEntry): string {

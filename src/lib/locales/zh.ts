@@ -63,7 +63,8 @@ export const zh = {
 		withdraw: '从排行榜移除',
 		withdrawing: '正在移除…',
 		withdrawOk: '已从排行榜移除。',
-		withdrawFailed: '无法从排行榜移除'
+		withdrawFailed: '无法从排行榜移除',
+		ghostFallbackToast: '无法加载对手的划桨数据 — 正在以其平均配速比赛',
 	},
 	nav: {
 		dashboard: '仪表板',
