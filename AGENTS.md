@@ -14,7 +14,7 @@ live under `.kiro/specs/`.
 Reusable packs in [`.kiro/skills/`](.kiro/skills/):
 
 - **svelte-core-bestpractices** / **svelte-code-writer** — Svelte 5 runes mode.
-- **daisyui** — daisyUI 5 component classes, themes, and `du-` prefix rules ([`.kiro/skills/daisyui/SKILL.md`](.kiro/skills/daisyui/SKILL.md)).
+- **daisyui** — daisyUI 5 component classes, themes, and component class rules ([`.kiro/skills/daisyui/SKILL.md`](.kiro/skills/daisyui/SKILL.md)).
 - **web-design-guidelines** — accessibility and UI review checklist.
 
 ## Specs (`.kiro/specs/`)
@@ -97,7 +97,7 @@ All commands use **npm** (lockfile: `package-lock.json`).
 - **Stroke-data units** (`concept2.ts > mapStrokes`): bike pace is per-1000m;
   interval `t`/`d` restart per rep — both normalised on read.
 - `npm run build` runs `scripts/postbuild.mjs` (patches `.assetsignore`).
-- **daisyUI** uses the Tailwind v4 CSS plugin in `src/app.css` (not `tailwind.config.js`). Framework classes are **`du-` prefixed** (`du-btn`, `du-card`, …). Details: [tech.md → daisyUI](.kiro/steering/tech.md#daisyui-tailwind-css-v4-plugin). Install docs: [SvelteKit](https://daisyui.com/docs/install/sveltekit/), [general](https://daisyui.com/docs/install/).
+- **daisyUI** uses the Tailwind v4 CSS plugin in `src/app.css` (not `tailwind.config.js`). Use idiomatic daisyUI classes (`btn`, `card`, `input`, `join`, `toggle`, …). Details: [tech.md → daisyUI](.kiro/steering/tech.md#daisyui-tailwind-css-v4-plugin). Install docs: [SvelteKit](https://daisyui.com/docs/install/sveltekit/), [general](https://daisyui.com/docs/install/).
 
 ## Quality gate
 
@@ -109,7 +109,7 @@ All commands use **npm** (lockfile: `package-lock.json`).
 ## Svelte, daisyUI and i18n
 
 - Svelte 5 runes: `$state` / `$derived`, keyed `{#each}`, `onclick={...}`.
-- daisyUI: use **`du-` prefixed** classes (`du-btn`, `du-card`, …); keep custom hooks unprefixed (`field-label`, `dash-stats`, `wlist`). See [tech.md → daisyUI](.kiro/steering/tech.md#daisyui-tailwind-css-v4-plugin).
+- daisyUI: prefer built-in components (`btn`, `join`, `filter`, `input input-bordered`, `stat` parts, `alert`, `toggle`) over custom chip/form CSS; keep `dash-stats` and sport tokens custom. See [tech.md → daisyUI](.kiro/steering/tech.md#daisyui-tailwind-css-v4-plugin).
 - Every user-visible string through `i18n.t()` in **all** locale files.
 - Sport names (RowErg, SkiErg, BikeErg) stay untranslated.
 

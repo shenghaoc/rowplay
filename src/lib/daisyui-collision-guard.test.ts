@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DAISY_PREFIX, findUnprefixedDaisyTokens, labelHasToggleCollision } from './daisyui-collision';
+import { findForbiddenLayoutTokens, labelHasToggleCollision } from './daisyui-collision';
 
 const SRC = resolve('src');
 
@@ -24,20 +24,20 @@ function markupOnly(source: string): string {
 	return style === -1 ? source : source.slice(0, style);
 }
 
-describe('daisyUI prefix guard (du-)', () => {
-	it('app.css enables du- prefix on the daisyUI plugin', () => {
+describe('daisyUI layout collision guard', () => {
+	it('app.css does not use a class prefix (idiomatic daisyUI)', () => {
 		const css = readFileSync('src/app.css', 'utf-8');
-		expect(css).toMatch(/@plugin\s+"daisyui"\s*\{[^}]*prefix:\s*du-/s);
+		expect(css).not.toMatch(/prefix:\s*du-/);
 	});
 
-	it('no Svelte markup uses unprefixed daisyUI component classes', () => {
+	it('no markup repurposes daisyUI stats/stat as custom layout hooks', () => {
 		const violations: string[] = [];
 		for (const file of collectSvelteFiles(SRC)) {
 			const html = markupOnly(readFileSync(file, 'utf-8'));
 			const re = /class="([^"]*)"/g;
 			let m: RegExpExecArray | null;
 			while ((m = re.exec(html))) {
-				const bad = findUnprefixedDaisyTokens(m[1]);
+				const bad = findForbiddenLayoutTokens(m[1]);
 				if (bad.length) {
 					violations.push(`${file.replace(SRC + '/', '')}: "${m[1]}" → ${bad.join(', ')}`);
 				}
@@ -61,12 +61,11 @@ describe('daisyUI prefix guard (du-)', () => {
 		expect(violations).toEqual([]);
 	});
 
-	it('dashboard summary uses prefixed stat parts inside dash-stats', () => {
+	it('dashboard summary uses daisyUI stat parts inside dash-stats', () => {
 		const html = markupOnly(readFileSync('src/routes/dashboard/+page.svelte', 'utf-8'));
 		expect(html).toContain('dash-stats');
-		expect(html).toContain(`${DAISY_PREFIX}stat-title`);
-		expect(html).toContain(`${DAISY_PREFIX}stat dash-stat`);
+		expect(html).toContain('stat-title');
+		expect(html).toContain('class="stat"');
 		expect(html).not.toMatch(/class="stats"/);
-		expect(html).not.toMatch(/class="[^"]*\bcard dash-stat/);
 	});
 });

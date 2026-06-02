@@ -13,6 +13,8 @@
 		type WorkoutSortField
 	} from '$lib/workoutQuery';
 	import { untrack } from 'svelte';
+	import ChipButton from '$components/ChipButton.svelte';
+	import ChipGroup from '$components/ChipGroup.svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 
 	const i18n = getI18nContext();
@@ -69,7 +71,7 @@
 	}
 </script>
 
-<section class="listquery" aria-label={t('workoutList.filtersTitle')}>
+<section class="card listquery" aria-label={t('workoutList.filtersTitle')}>
 	<div class="lqhead">
 		<div class="lqtitle">
 			<SlidersHorizontal size={16} />
@@ -78,14 +80,14 @@
 		</div>
 		<div class="lqactions">
 			{#if listQueryIsFiltered(query)}
-				<button type="button" class="du-btn du-btn-ghost du-btn-sm" onclick={onclear}>
+				<button type="button" class="btn btn-ghost btn-sm" onclick={onclear}>
 					<X size={14} />
 					{t('workoutList.clearFilters')}
 				</button>
 			{/if}
 			<button
 				type="button"
-				class="du-btn du-btn-ghost du-btn-sm"
+				class="btn btn-ghost btn-sm"
 				aria-expanded={expanded}
 				onclick={() => (expanded = !expanded)}
 			>
@@ -97,47 +99,24 @@
 	<details class="lq-details" bind:open={expanded}>
 		<summary class="lq-summary">{t('workoutList.expand')}</summary>
 		<div class="lqgrid">
-			<label class="field">
-				<span class="flabel muted">{t('workoutList.dateFrom')}</span>
-				<input
-					class="du-input du-input-bordered w-full"
-					type="date"
-					value={query.dateFrom ?? ''}
-					onchange={(e) => patch({ dateFrom: e.currentTarget.value || undefined })}
-				/>
+			<label class="form-control w-full">
+				<span class="label py-0"><span class="label-text text-xs uppercase opacity-70">{t('workoutList.dateFrom')}</span></span>
+				<input type="date" class="input input-bordered input-sm w-full" value={query.dateFrom ?? ''} onchange={(e) => patch({ dateFrom: e.currentTarget.value || undefined })} />
 			</label>
-			<label class="field">
-				<span class="flabel muted">{t('workoutList.dateTo')}</span>
-				<input
-					class="du-input du-input-bordered w-full"
-					type="date"
-					value={query.dateTo ?? ''}
-					onchange={(e) => patch({ dateTo: e.currentTarget.value || undefined })}
-				/>
+			<label class="form-control w-full">
+				<span class="label py-0"><span class="label-text text-xs uppercase opacity-70">{t('workoutList.dateTo')}</span></span>
+				<input type="date" class="input input-bordered input-sm w-full" value={query.dateTo ?? ''} onchange={(e) => patch({ dateTo: e.currentTarget.value || undefined })} />
 			</label>
-			<label class="field grow">
-				<span class="flabel muted">{t('workoutList.workoutType')}</span>
-				<select
-					class="du-select du-select-bordered w-full"
-					value={query.workoutType ?? ''}
-					onchange={(e) => patch({ workoutType: e.currentTarget.value || undefined })}
-				>
+			<label class="form-control w-full min-w-48">
+				<span class="label py-0"><span class="label-text text-xs uppercase opacity-70">{t('workoutList.workoutType')}</span></span>
+				<select class="select select-bordered select-sm w-full" value={query.workoutType ?? ''} onchange={(e) => patch({ workoutType: e.currentTarget.value || undefined })}>
 					<option value="">{t('workoutList.anyType')}</option>
-					{#each workoutTypes as wt}
-						<option value={wt}>{wt}</option>
-					{/each}
+					{#each workoutTypes as wt}<option value={wt}>{wt}</option>{/each}
 				</select>
 			</label>
-			<label class="field grow">
-				<span class="flabel muted">{t('workoutList.strokeData')}</span>
-				<select
-					class="du-select du-select-bordered w-full"
-					value={query.hasStroke === true ? '1' : query.hasStroke === false ? '0' : ''}
-					onchange={(e) => {
-						const v = e.currentTarget.value;
-						patch({ hasStroke: v === '1' ? true : v === '0' ? false : undefined });
-					}}
-				>
+			<label class="form-control w-full min-w-48">
+				<span class="label py-0"><span class="label-text text-xs uppercase opacity-70">{t('workoutList.strokeData')}</span></span>
+				<select class="select select-bordered select-sm w-full" value={query.hasStroke === true ? '1' : query.hasStroke === false ? '0' : ''} onchange={(e) => { const v = e.currentTarget.value; patch({ hasStroke: v === '1' ? true : v === '0' ? false : undefined }); }}>
 					<option value="">{t('workoutList.strokeAny')}</option>
 					<option value="1">{t('workoutList.strokeYes')}</option>
 					<option value="0">{t('workoutList.strokeNo')}</option>
@@ -146,87 +125,43 @@
 		</div>
 
 		<search>
-		<form class="searchrow" onsubmit={(e) => { e.preventDefault(); submitSearch(); }}>
-			<span class="sicon" aria-hidden="true"><Search size={16} /></span>
-			<input
-				class="du-input du-input-bordered w-full"
-				type="search"
-				inputmode="search"
-				enterkeyhint="search"
-				placeholder={t('workoutList.searchComments')}
-				bind:value={searchDraft}
-				aria-label={t('workoutList.searchComments')}
-			/>
-			<button type="submit" class="du-btn du-btn-ghost du-btn-sm">{t('workoutList.search')}</button>
-		</form>
+			<form class="join w-full searchrow" onsubmit={(e) => { e.preventDefault(); submitSearch(); }}>
+				<label class="input input-bordered join-item flex flex-1 items-center gap-2 min-w-0">
+					<Search size={16} class="opacity-60 shrink-0" aria-hidden="true" />
+					<input type="search" class="grow min-w-0 bg-transparent border-0 outline-none" inputmode="search" enterkeyhint="search" placeholder={t('workoutList.searchComments')} bind:value={searchDraft} aria-label={t('workoutList.searchComments')} />
+				</label>
+				<button type="submit" class="btn btn-ghost btn-sm join-item">{t('workoutList.search')}</button>
+			</form>
 		</search>
 
-		<div class="chips" role="group" aria-label={t('workoutList.distanceChips')}>
-			<span class="chiplabel muted">{t('workoutList.distanceChips')}</span>
+		<ChipGroup label={t('workoutList.distanceChips')} ariaLabel={t('workoutList.distanceChips')}>
 			{#each DISTANCE_CHIPS as chip}
-				<button
-					type="button"
-					class="chip"
-					class:on={query.distanceM === chip.m}
-					aria-pressed={query.distanceM === chip.m}
-					onclick={() => onchange(toggleDistanceChip(query, chip.m))}
-				>
-					{distanceLabel(chip.m)}
-				</button>
+				<ChipButton active={query.distanceM === chip.m} onclick={() => onchange(toggleDistanceChip(query, chip.m))}>{distanceLabel(chip.m)}</ChipButton>
 			{/each}
-		</div>
+		</ChipGroup>
 
-		<div class="chips" role="group" aria-label={t('workoutList.durationChips')}>
-			<span class="chiplabel muted">{t('workoutList.durationChips')}</span>
+		<ChipGroup label={t('workoutList.durationChips')} ariaLabel={t('workoutList.durationChips')}>
 			{#each DURATION_CHIPS as chip}
-				<button
-					type="button"
-					class="chip"
-					class:on={durationChipActive(query, chip.sec)}
-					aria-pressed={durationChipActive(query, chip.sec)}
-					onclick={() => onchange(toggleDurationChip(query, chip.sec))}
-				>
-					{t('workoutList.durationMin', { n: chip.key })}
-				</button>
+				<ChipButton active={durationChipActive(query, chip.sec)} onclick={() => onchange(toggleDurationChip(query, chip.sec))}>{t('workoutList.durationMin', { n: chip.key })}</ChipButton>
 			{/each}
-		</div>
+		</ChipGroup>
 
-		<div class="chips" role="group" aria-label={t('workoutList.sortGroup')}>
-			<span class="chiplabel muted">{t('workoutList.sortGroup')}</span>
+		<ChipGroup label={t('workoutList.sortGroup')} ariaLabel={t('workoutList.sortGroup')}>
 			{#each sorts as s}
-				<button
-					type="button"
-					class="chip"
-					class:on={query.sort === s.id}
-					aria-pressed={query.sort === s.id}
-					onclick={() => toggleSort(s.id)}
-				>
-					{t(s.labelKey)}
-					{#if query.sort === s.id}
-						<span class="dir">{query.dir === 'asc' ? '↑' : '↓'}</span>
-					{/if}
-				</button>
+				<ChipButton active={query.sort === s.id} onclick={() => toggleSort(s.id)}>
+					{t(s.labelKey)}{#if query.sort === s.id}<span class="opacity-70 text-xs">{query.dir === 'asc' ? '↑' : '↓'}</span>{/if}
+				</ChipButton>
 			{/each}
-			<button
-				type="button"
-				class="chip"
-				class:on={query.pbsOnly}
-				aria-pressed={query.pbsOnly}
-				onclick={() => patch({ pbsOnly: !query.pbsOnly })}
-			>
-				{t('workoutList.pbsOnly')}
-			</button>
-		</div>
-	</details>
+			<ChipButton active={query.pbsOnly} onclick={() => patch({ pbsOnly: !query.pbsOnly })}>{t('workoutList.pbsOnly')}</ChipButton>
+		</ChipGroup>
+
+		</details>
 </section>
 
 <style>
 	.listquery {
 		margin-bottom: 0.75rem;
 		padding: 0.85rem 1rem;
-		border: var(--bd-heavy);
-		border-radius: var(--r-card);
-		background: var(--paper-raised);
 	}
 	.lqhead {
 		display: flex;
@@ -266,68 +201,8 @@
 		gap: 0.65rem;
 		margin-top: 0.85rem;
 	}
-	.field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-	.field.grow {
-		min-width: 12rem;
-	}
-	.flabel {
-		font-size: 0.72rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
 	.searchrow {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
 		margin-top: 0.75rem;
-	}
-	.sicon {
-		display: inline-flex;
-		color: var(--text-dim);
-		flex-shrink: 0;
-	}
-	.searchrow input {
-		flex: 1;
-		min-width: 0;
-	}
-	.chips {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.35rem;
-		margin-top: 0.65rem;
-	}
-	.chiplabel {
-		font-size: 0.72rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		margin-right: 0.25rem;
-	}
-	.chip {
-		background: var(--paper-inset);
-		border: var(--bd-heavy);
-		color: var(--ink-2);
-		border-radius: var(--r-ctrl);
-		padding: 0.3rem 0.7rem;
-		font-family: var(--display);
-		font-size: 0.8rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		cursor: pointer;
-	}
-	.chip.on {
-		background: var(--ink);
-		color: var(--paper-raised);
-		border-color: var(--ink);
-	}
-	.dir {
-		margin-left: 0.2rem;
-		font-size: 0.75rem;
 	}
 	@media (max-width: 720px) {
 		.lqgrid {

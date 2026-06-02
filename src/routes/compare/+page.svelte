@@ -268,7 +268,7 @@
 		<p class="muted lead">{t('compare.lead')}</p>
 	</div>
 
-	<div class="du-card picker">
+	<div class="card picker">
 		<div class="pickrow">
 			<label>
 				<span class="lbl">{t('compare.workoutA')}</span>
@@ -290,11 +290,11 @@
 			</label>
 		</div>
 		<div class="pickactions">
-			<button class="du-btn du-btn-primary" type="button" disabled={!pickA || !pickB || pickA === pickB} onclick={applyCompare}>
+			<button class="btn btn-primary" type="button" disabled={!pickA || !pickB || pickA === pickB} onclick={applyCompare}>
 				{t('compare.run')}
 			</button>
 			{#if detailA && detailB}
-				<button class="du-btn du-btn-ghost" type="button" onclick={swapWorkouts}>{t('compare.swap')}</button>
+				<button class="btn btn-ghost" type="button" onclick={swapWorkouts}>{t('compare.swap')}</button>
 			{/if}
 		</div>
 	</div>
@@ -302,7 +302,7 @@
 	{#if detailA && detailB}
 		<div class="summaries">
 			{#each [{ d: detailA, side: 'a' }, { d: detailB, side: 'b' }] as { d, side }}
-				<div class="du-card summary">
+				<div class="card summary">
 					<div class="sumhead">
 						<span class="side-tag" class:a={side === 'a'} class:b={side === 'b'}>
 							{side === 'a' ? t('compare.workoutA') : t('compare.workoutB')}
@@ -322,12 +322,12 @@
 		</div>
 
 		{#if detailA.sport !== detailB.sport}
-			<div class="sportwarn du-card">{t('compare.crossSport')}</div>
+			<div class="sportwarn card">{t('compare.crossSport')}</div>
 		{/if}
 
 		{#if verdict}
 			<div
-				class="verdict du-card"
+				class="verdict card"
 				class:good={verdict.winner === 'a'}
 				class:bad={verdict.winner === 'b'}
 			>
@@ -350,7 +350,7 @@
 				{t('compare.alignedNote', { distance: fmtDistance(overlay.alignedMetres) })}
 			</p>
 			<div class="charts">
-				<div class="du-card">
+				<div class="card">
 					<div class="ctitle muted">{t('replay.cPace')} · {t('compare.vsDistance')}</div>
 					<UPlotChart
 						data={paceData!}
@@ -359,7 +359,7 @@
 						caption={`${t('replay.cPace')} · ${t('compare.vsDistance')} · ${labelA} / ${labelB}`}
 					/>
 				</div>
-				<div class="du-card">
+				<div class="card">
 					<div class="ctitle muted">{t('replay.cPower')} · {t('compare.vsDistance')}</div>
 					<UPlotChart
 						data={powerData!}
@@ -369,7 +369,7 @@
 					/>
 				</div>
 				{#if hasHr}
-					<div class="du-card">
+					<div class="card">
 						<div class="ctitle muted">{t('replay.cHeart')} · {t('compare.vsDistance')}</div>
 						<UPlotChart
 							data={hrData!}
@@ -381,11 +381,11 @@
 				{/if}
 			</div>
 		{:else}
-			<p class="muted du-card empty">{t('compare.noStrokeData')}</p>
+			<p class="muted card empty">{t('compare.noStrokeData')}</p>
 		{/if}
 
 		{#if statRows.length}
-			<div class="du-card tablecard">
+			<div class="card tablecard">
 				<h2 class="sectitle">{t('compare.deltaTable')}</h2>
 				<p class="muted hint">{t('compare.deltaHint')}</p>
 				<div class="tablewrap">
@@ -416,7 +416,7 @@
 		{/if}
 
 		{#if intervalRows?.length}
-			<div class="du-card tablecard">
+			<div class="card tablecard">
 				<h2 class="sectitle">{t('compare.intervalTitle')}</h2>
 				<p class="muted hint">{t('compare.intervalHint')}</p>
 				<div class="tablewrap">
@@ -594,8 +594,8 @@
 		gap: 0.85rem;
 		margin-bottom: 1.25rem;
 	}
-	.charts .du-card:only-child,
-	.charts .du-card:last-child:nth-child(odd) {
+	.charts .card:only-child,
+	.charts .card:last-child:nth-child(odd) {
 		grid-column: 1 / -1;
 	}
 	.ctitle {

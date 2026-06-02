@@ -54,15 +54,15 @@ const css = extractSvelteStyle(DASHBOARD_PATH);
 const media720 = extractMediaBlock(css, 720);
 const media400 = extractMediaBlock(css, 400);
 
-describe('daisyUI prefix + collision guard', () => {
-	it('dashboard summary uses dash-stats + du-stat parts, not du-stats container', () => {
+describe('daisyUI collision guard', () => {
+	it('dashboard summary uses dash-stats + stat parts, not stats container', () => {
 		const source = readFileSync(DASHBOARD_PATH, 'utf-8');
 		const html = source.slice(0, source.indexOf('<style>'));
-		expect(html).not.toMatch(/class="du-stats"/);
-		expect(html).not.toMatch(/class="[^"]*\bdu-card dash-stat/);
+		expect(html).not.toMatch(/class="stats"/);
 		expect(html).toContain('dash-stats');
-		expect(html).toContain('du-stat-title');
-		expect(html).toContain('du-stat dash-stat');
+		expect(html).toContain('stat-title');
+		expect(html).toContain('class="card dash-stat"');
+		expect(html).toContain('class="stat"');
 	});
 });
 
@@ -92,12 +92,14 @@ describe('Property 1: Bug Condition — Mobile Stat Cards Cramped Padding and Ga
 			expect(cols).toBe('repeat(2, minmax(0, 1fr))');
 		});
 
-		it('should preserve du-stat-value font-size at 400px', () => {
-			expect(media400).toMatch(/\.dash-stat\s+:global\(\.du-stat-value\)[\s\S]*font-size:\s*1\.25rem/);
+		it('should preserve stat-value font-size at 400px', () => {
+			const fontSize = findPropertyValue(media400, '.dash-stat .stat-value', 'font-size');
+			expect(fontSize).toBe('1.25rem');
 		});
 
-		it('should preserve du-stat-title min-height at 400px', () => {
-			expect(media400).toMatch(/\.dash-stat\s+:global\(\.du-stat-title\)[\s\S]*min-height:\s*2\.6em/);
+		it('should preserve stat-title min-height at 400px', () => {
+			const minHeight = findPropertyValue(media400, '.dash-stat .stat-title', 'min-height');
+			expect(minHeight).toBe('2.6em');
 		});
 	});
 });

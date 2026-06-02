@@ -135,12 +135,12 @@
 		</div>
 	</div>
 
-	<div class="du-card course" bind:this={courseWrap}>
+	<div class="card course" bind:this={courseWrap}>
 		<canvas bind:this={canvasEl}></canvas>
 	</div>
 
-	<div class="du-card controls">
-		<button class="du-btn du-btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
+	<div class="card controls">
+		<button class="btn btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
 		<div class="clock mono">
@@ -164,7 +164,7 @@
 		</div>
 	</div>
 
-	<div class="gauges du-card">
+	<div class="gauges card">
 		<MetricGauge
 			label={t('replay.gPace')}
 			unit="/500m"

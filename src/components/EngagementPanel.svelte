@@ -126,29 +126,29 @@
 	}
 </script>
 
-<div class="du-card engagement">
+<div class="card engagement">
 	<div class="enghead">
 		<div class="engtitle">
 			<Target size={18} />
-			<span class="field-label">{t('dashboard.goalsTitle')}</span>
+			<span class="label">{t('dashboard.goalsTitle')}</span>
 		</div>
 	</div>
 
 	<div class="goalblock">
 		<div class="muted sub">{t('dashboard.goalsYear', { year: goalYear })}</div>
 		<div class="goalform">
-			<div class="kindrow" role="group" aria-label={t('dashboard.goalsYear', { year: goalYear })}>
-				<button type="button" class="chip" class:on={kind === 'meters'} onclick={() => (kind = 'meters')}>
+			<div class="join join-horizontal" role="group" aria-label={t('dashboard.goalsYear', { year: goalYear })}>
+				<button type="button" class="btn btn-sm join-item" class:btn-active={kind === 'meters'} class:btn-neutral={kind === 'meters'} onclick={() => (kind = 'meters')}>
 					{t('dashboard.goalsKindMeters')}
 				</button>
-				<button type="button" class="chip" class:on={kind === 'hours'} onclick={() => (kind = 'hours')}>
+				<button type="button" class="btn btn-sm join-item" class:btn-active={kind === 'hours'} class:btn-neutral={kind === 'hours'} onclick={() => (kind = 'hours')}>
 					{t('dashboard.goalsKindHours')}
 				</button>
 			</div>
-			<label class="targetrow">
-				<span class="muted">{kind === 'meters' ? t('dashboard.goalsTargetMeters') : t('dashboard.goalsTargetHours')}</span>
+			<label class="form-control targetrow">
+				<span class="label py-0"><span class="label-text muted">{kind === 'meters' ? t('dashboard.goalsTargetMeters') : t('dashboard.goalsTargetHours')}</span></span>
 				<input
-					class="mono targetin"
+					class="input input-bordered input-sm mono w-full max-w-xs"
 					type="number"
 					min="1"
 					enterkeyhint="done"
@@ -161,7 +161,7 @@
 				<button type="button" class="bchip" onclick={() => applyPreset(500_000)}>500k</button>
 				<button type="button" class="bchip" onclick={() => { kind = 'hours'; targetInput = 100; }}>100h</button>
 			</div>
-			<button type="button" class="du-btn du-btn-primary du-btn-sm" onclick={saveGoal} disabled={saving}>
+			<button type="button" class="btn btn-primary btn-sm" onclick={saveGoal} disabled={saving}>
 				{saving ? t('dashboard.goalsSaving') : t('dashboard.goalsSave')}
 			</button>
 		</div>
@@ -236,7 +236,7 @@
 		gap: 0.5rem;
 		color: var(--accent);
 	}
-	.engtitle .field-label {
+	.engtitle .label {
 		font-weight: 700;
 		font-size: 0.95rem;
 		color: var(--text);

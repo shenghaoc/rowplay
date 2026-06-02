@@ -125,7 +125,7 @@
 			{#each items as item (item.key)}
 				{@const w = workouts[item.index]}
 				<a
-					class="du-card row vrow"
+					class="card row vrow"
 					class:new-entry={newEntryIds.has(w.id)}
 					href="/replay/{w.id}"
 					style:height="{item.size}px"
@@ -141,7 +141,7 @@
 	<!-- Small list: plain flow layout. -->
 	<div class="wlist">
 		{#each workouts as w (w.id)}
-			<a class="du-card row" class:new-entry={newEntryIds.has(w.id)} href="/replay/{w.id}">{@render row(w)}</a>
+			<a class="card row" class:new-entry={newEntryIds.has(w.id)} href="/replay/{w.id}">{@render row(w)}</a>
 		{/each}
 	</div>
 {/if}

@@ -37,23 +37,21 @@ rowplay follows the official **SvelteKit + Tailwind v4** install path. Do not ad
 
 Configured in `src/app.css`:
 
-- **`prefix: du-`** — all daisyUI classes are prefixed (`du-btn`, `du-card`, `du-badge`, …). Short names like `label`, `list`, `stats`, and `badge` are reserved for **custom** layout/CSS without colliding with the framework. See [daisyUI config → prefix](https://daisyui.com/docs/config).
 - **`themes: rowplay --default, dark`** plus `@plugin "daisyui/theme"` blocks for Jet Set Blue palettes.
-- **Brand polish** — global rules on `.du-btn`, `.du-badge`, `.du-card` in `app.css` (fonts, shadows, soft badges).
+- **Brand polish** — global rules on `.btn`, `.badge`, `.card` in `app.css` (fonts, shadows, soft badges).
 - **Custom tokens** — `--paper`, `--ink`, `--live`, etc. alongside daisyUI semantic colors (`primary`, `base-100`, …).
 
 ### Markup conventions
 
-- Use **prefixed** daisyUI component + modifier classes: `du-btn du-btn-primary`, `du-input du-input-bordered`, `du-stat-title`, `du-toggle du-toggle-primary`.
-- Use **unprefixed** rowplay-specific hooks where needed: `field-label`, `dash-stats`, `wlist`, `side-tag`, `add-btn` (custom, not daisyUI).
-- Avoid the daisyUI **`stats` container** on the dashboard summary grid — it forces `inline-grid` columns. Use a custom `dash-stats` CSS grid with `du-stat` cells and `du-stat-title` / `du-stat-value` parts instead.
-- Do not put `toggle` on a `<label>`; put `du-toggle` on the `<input type="checkbox">`. Use `du-label` on the label wrapper when following daisyUI’s toggle pattern.
+- Use **prefixed** daisyUI component + modifier classes: `btn btn-primary`, `input input-bordered`, `stat-title`, `toggle toggle-primary`.
+- Use **rowplay-specific layout hooks** only where daisyUI has no equivalent: `dash-stats` (not `stats`), replay canvas, charts, sport metric colors (`--pace`, `--hr`).
+- Avoid the daisyUI **`stats` container** on the dashboard summary grid — it forces `inline-grid` columns. Use a custom `dash-stats` CSS grid with `stat` cells and `stat-title` / `stat-value` parts instead.
+- Do not put `toggle` on a `<label>`; put `toggle` on the `<input type="checkbox">`. Use `label` on the label wrapper when following daisyUI’s toggle pattern.
 
 ### Tooling and tests
 
-- `scripts/prefix-daisyui.mjs` — codemod to prefix daisyUI class tokens in `src/` after plugin or class-name changes.
-- `src/lib/daisyui-collision.ts` + `daisyui-collision-guard.test.ts` — CI fails if markup uses **unprefixed** daisyUI tokens (`btn`, `card`, `badge`, …).
-- `src/lib/mobile-stats-spacing.test.ts` — dashboard stat grid spacing regression tests (uses `du-stat-*` parts).
+- - `src/lib/daisyui-collision.ts` + `daisyui-collision-guard.test.ts` — CI fails if markup uses the daisyUI **`stats` container** as a custom layout hook (`btn`, `card`, `badge`, …).
+- `src/lib/mobile-stats-spacing.test.ts` — dashboard stat grid spacing regression tests (uses `stat-*` parts).
 
 ## I18n & Theming
 

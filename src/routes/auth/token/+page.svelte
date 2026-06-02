@@ -31,7 +31,7 @@
 		{#if form?.error}
 			<p class="err" role="alert">{form.error}</p>
 		{/if}
-		<button class="du-btn du-btn-primary" type="submit">{t('token.connect')}</button>
+		<button class="btn btn-primary" type="submit">{t('token.connect')}</button>
 	</form>
 
 	{#if data.oauthEnabled}
@@ -46,27 +46,6 @@
 		padding: 0 1.5rem;
 		display: grid;
 		gap: 1rem;
-	}
-	form {
-		display: grid;
-		gap: 0.6rem;
-	}
-	label {
-		font-weight: 600;
-		font-size: 0.9rem;
-	}
-	input {
-		padding: 0.6rem 0.8rem;
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		background: var(--paper-inset);
-		color: var(--ink);
-		font: inherit;
-	}
-	.err {
-		color: var(--alarm);
-		font-size: 0.9rem;
-		margin: 0;
 	}
 	.small {
 		font-size: 0.85rem;

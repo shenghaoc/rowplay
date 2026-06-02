@@ -10,14 +10,14 @@
 
 <section class="splash container">
 	<div class="copy">
-		<span class="du-badge du-badge-primary">{t('landing.tagline')}</span>
+		<span class="badge badge-primary">{t('landing.tagline')}</span>
 		<h1>{t('landing.title1')}<br />{t('landing.title2')}</h1>
 		<p class="muted lead">{t('landing.lead')}</p>
 		<div class="cta">
 			{#if data.user || data.demo}
-				<a class="du-btn du-btn-primary" href="/dashboard">{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
+				<a class="btn btn-primary" href="/dashboard">{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
 			{:else}
-				<a class="du-btn du-btn-primary" href="/auth/login">{t('landing.connect')}</a>
+				<a class="btn btn-primary" href="/auth/login">{t('landing.connect')}</a>
 			{/if}
 		</div>
 		{#if data.demo}
@@ -26,17 +26,17 @@
 	</div>
 
 	<div class="features">
-		<div class="du-card feat">
+		<div class="card feat">
 			<div class="ficon"><PlayCircle size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat1Title')}</h3>
 			<p class="muted">{t('landing.feat1Body')}</p>
 		</div>
-		<div class="du-card feat">
+		<div class="card feat">
 			<div class="ficon"><GitCompare size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat2Title')}</h3>
 			<p class="muted">{t('landing.feat2Body')}</p>
 		</div>
-		<div class="du-card feat">
+		<div class="card feat">
 			<div class="ficon"><LineChart size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat3Title')}</h3>
 			<p class="muted">{t('landing.feat3Body')}</p>

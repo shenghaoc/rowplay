@@ -1,5 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 import { ensureTemporal } from '$lib/ensure-temporal';
+import { daisyThemeName, type ThemeName } from '$lib/theme.svelte';
 import { readSession, SESSION_COOKIE } from '$lib/server/session';
 import { isLanguage, type Language } from '$lib/i18n';
 // Vite resolves this to the hashed, self-hosted asset URL at build time so the
