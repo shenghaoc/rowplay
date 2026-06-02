@@ -333,6 +333,11 @@ export const zh = {
 		hrImportClearFailed: '无法移除心率导入',
 		back: '返回仪表板',
 		lowRes: '低分辨率回放',
+		multiErg: 'MultiErg',
+		restInterval: '休息',
+		segmentMachine: '器械',
+		multiErgNote:
+			'MultiErg 训练会在间歇之间切换器械。此成绩不支持发布排行榜或 MultiErg 幽灵对决。',
 		compareAgainst: '对比对象：',
 		none: '无',
 		pastSession: '一次过往训练',

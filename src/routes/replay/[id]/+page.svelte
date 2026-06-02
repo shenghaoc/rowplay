@@ -3,7 +3,18 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
-	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '$lib/replay/engine';
+	import {
+		ReplayEngine,
+		activeMachineAt,
+		activeSegmentIndexAt,
+		buildSegmentMap,
+		paceRangeForSegment,
+		restProgressAt,
+		sampleAt,
+		sampleIndexAt,
+		type Frame,
+		type RestProgress
+	} from '$lib/replay/engine';
 	import { splitIndexAt } from '$lib/replay/inspector';
 	import { CourseRenderer, type RenderState, type ReplayRenderer } from '$lib/replay/renderer';
 	import {
@@ -94,11 +105,19 @@
 			: baseDetail
 	);
 	const logbookHasHr = $derived(strokesHaveHr(baseDetail.strokes));
-	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
 	const strokes = $derived(detail.strokes);
 
 	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
+	const segMap = $derived(buildSegmentMap(detail.splits, detail.sport));
+	const activeSport = $derived(activeMachineAt(segMap, frame.d));
+	const activeSegIdx = $derived(activeSegmentIndexAt(segMap, frame.d));
+	const sportTheme = $derived(themeFor(activeSport));
+	let manualRest = $state<RestProgress | null>(null);
+	let restRafId = 0;
+	let restWallStart = 0;
+	let restSegIdx = -1;
+	let suppressRestAnim = false;
 	const sampleIdx = $derived(sampleIndexAt(strokes, frame.t));
 	const rawStroke = $derived(sampleIdx >= 0 ? strokes[sampleIdx] : null);
 	const inspectorSplitIdx = $derived(
@@ -139,8 +158,10 @@
 	const SEARCHABLE_MIN = 8;
 	const filteredCandidates = $derived.by(() => {
 		const q = sessionSearch.trim().toLowerCase();
-		if (!q) return candidates;
-		return candidates.filter((c) => {
+		let list = candidates;
+		if (detail.isMultiErg) list = list.filter((c) => !c.isMultiErg);
+		if (!q) return list;
+		return list.filter((c) => {
 			if (String(c.id) === ghostId) return true;
 			const hay = `${fmtDate(c.date)} ${fmtDistance(c.distance)} ${fmtPace(c.pace)}`.toLowerCase();
 			return hay.includes(q);
@@ -167,14 +188,72 @@
 
 	const SPEEDS = [0.5, 1, 2, 4, 8];
 
+	function prefersReducedMotion(): boolean {
+		return (
+			typeof window !== 'undefined' &&
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches
+		);
+	}
+
+	function cancelRestAnim() {
+		if (restRafId) cancelAnimationFrame(restRafId);
+		restRafId = 0;
+		manualRest = null;
+		restWallStart = 0;
+		restSegIdx = -1;
+	}
+
+	function maybeStartRestPlayback(f: Frame, playingNow: boolean) {
+		if (!playingNow || !detail.isMultiErg || manualRest || suppressRestAnim || prefersReducedMotion())
+			return;
+		for (let k = 0; k < segMap.length - 1; k++) {
+			const next = segMap[k + 1];
+			if (next.restBefore <= 0) continue;
+			const endT = segMap[k].endT;
+			if (f.t >= endT - 0.02 && f.t < next.startT) {
+				if (restSegIdx === k) return;
+				restSegIdx = k;
+				engine?.pause();
+				restWallStart = performance.now();
+				const tick = () => {
+					const elapsed = (performance.now() - restWallStart) / 1000;
+					const phase = Math.min(1, elapsed / next.restBefore);
+					manualRest = {
+						phase,
+						from: segMap[k].machine,
+						to: next.machine,
+						remaining: Math.max(0, next.restBefore - elapsed)
+					};
+					safeRender(buildState(frame), false, uiTheme.value);
+					if (phase >= 1) {
+						cancelRestAnim();
+						suppressRestAnim = false;
+						engine?.seek(next.startT);
+						engine?.play();
+						return;
+					}
+					restRafId = requestAnimationFrame(tick);
+				};
+				restRafId = requestAnimationFrame(tick);
+				return;
+			}
+		}
+	}
+
 	function buildState(f: Frame): RenderState {
 		const g = ghostStrokes ? sampleAt(ghostStrokes, f.t) : null;
 		ghostFrame = g;
+		const rest = manualRest ?? restProgressAt(segMap, f.t);
 		return {
 			frame: f,
 			distFrac: total ? f.d / total : 0,
 			totalDistance: total,
-			sport: detail.sport,
+			sport: activeMachineAt(segMap, f.d),
+			segmentIndex: activeSegmentIndexAt(segMap, f.d),
+			transitionPhase: rest?.phase,
+			transitionFrom: rest?.from,
+			transitionTo: rest?.to,
+			transitionRemaining: rest?.remaining,
 			ghost: g
 				? { distFrac: total ? g.d / total : 0, pace: g.pace, spm: g.spm, label: ghostLabel }
 				: undefined
@@ -341,9 +420,12 @@
 			ghostError = '';
 			renderer?.destroy();
 			renderer = null;
+			cancelRestAnim();
+			suppressRestAnim = false;
 			engine = new ReplayEngine(s, (f, p) => {
 				frame = f;
 				playing = p;
+				maybeStartRestPlayback(f, p);
 				safeRender(buildState(f), p, uiTheme.value);
 			});
 			engine.setSpeed(speed);
@@ -461,6 +543,8 @@
 	}
 
 	function onScrub(e: Event) {
+		cancelRestAnim();
+		suppressRestAnim = true;
 		engine?.seek(Number((e.target as HTMLInputElement).value));
 	}
 
@@ -685,11 +769,15 @@
 		})
 	);
 
-	const paceRange = $derived.by(() => {
-		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
-		if (ps.length === 0) return { min: 60, max: 180 };
-		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
-	});
+	const paceRange = $derived(
+		paceRangeForSegment(segMap, activeSegIdx, strokes, activeSport)
+	);
+	const paceGaugeUnit = $derived(activeSport === 'bike' ? '/1000m' : '/500m');
+	const paceGaugeDisplay = $derived(
+		activeSport === 'bike'
+			? fmtPace(frame.pace * 2).replace('/500m', '')
+			: fmtPace(frame.pace).replace('/500m', '')
+	);
 	const wattRange = $derived.by(() => {
 		const watts = strokes.map((s) => s.watts);
 		const maxWatt = watts.length > 0 ? Math.max(...watts) : 0;
@@ -788,7 +876,10 @@
 	// Publishing to a board only applies to a signed-in athlete's own
 	// standard-distance piece — demo athletes and off-board distances can't rank.
 	const canPublish = $derived(
-		!data.demo && !!data.user && matchStandardDistance(detail.distance) != null
+		!data.demo &&
+			!!data.user &&
+			!detail.isMultiErg &&
+			matchStandardDistance(detail.distance) != null
 	);
 
 	async function publishToLeaderboard() {
@@ -1007,8 +1098,12 @@
 		>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
+			{#if detail.isMultiErg}<span class="badge">{t('replay.multiErg')}</span>{/if}
 			{#if !detail.hasStrokeData}<span class="badge">{t('replay.lowRes')}</span>{/if}
 		</div>
+		{#if detail.isMultiErg}
+			<p class="muted small multierg-note">{t('replay.multiErgNote')}</p>
+		{/if}
 		<div class="sharebar">
 			<button class="btn btn-ghost btn-sm" type="button" disabled={sharing} onclick={shareReplay}>
 				<Share2 size={14} />
@@ -1293,9 +1388,13 @@
 	<!-- Live gauges -->
 	<div class="gauges card bg-base-100 border border-base-300 shadow-md p-5">
 		<MetricGauge
-			label={t('replay.gPace')} unit="/500m"
-		display={fmtPace(frame.pace).replace('/500m', '')}
-			value={frame.pace} min={paceRange.max} max={paceRange.min} color="var(--pace)"
+			label={t('replay.gPace')}
+			axisLabel={paceGaugeUnit}
+			display={paceGaugeDisplay}
+			value={frame.pace}
+			min={paceRange.max}
+			max={paceRange.min}
+			color="var(--pace)"
 		/>
 		<MetricGauge
 			label={t('replay.gRate')} unit={sportTheme.cadenceUnit}
@@ -1475,6 +1574,7 @@
 				<thead>
 					<tr>
 						<th>{t('replay.thNum')}</th>
+						{#if detail.isMultiErg}<th>{t('replay.segmentMachine')}</th>{/if}
 						<th>{t('replay.thDist')}</th>
 						<th>{t('replay.thTime')}</th>
 						<th>{t('replay.thPace')}</th>
@@ -1492,6 +1592,15 @@
 					{#each detail.splits as sp}
 						<tr class:rest-row={sp.isRest}>
 							<td>{sp.index + 1}</td>
+							{#if detail.isMultiErg}
+								<td
+									>{sp.isRest
+										? t('replay.restInterval')
+										: sp.machine
+											? SPORT_LABEL[sp.machine]
+											: '—'}</td
+								>
+							{/if}
 							<td>{sp.isRest ? '—' : fmtDistance(sp.distance)}</td>
 							<td>{fmtTime(sp.time, true)}</td>
 							<td>{sp.pace > 0 ? fmtPace(sp.pace) : '—'}</td>

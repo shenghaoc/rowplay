@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { mapHeartRate, mapMetadata, mapResult, mapSplits, mapTargets } from './concept2';
+import {
+	computeIsMultiErg,
+	mapHeartRate,
+	mapMetadata,
+	mapResult,
+	mapSplits,
+	mapStrokes,
+	mapTargets
+} from './concept2';
+import type { Split } from '../types';
 import { bikePaceSecPer500 } from '../../../tests/unit/fixtures';
 
 describe('mapHeartRate', () => {
@@ -135,5 +144,57 @@ describe('mapSplits', () => {
 describe('mapStrokes bike pace', () => {
 	it('matches fixture halving for bike', () => {
 		expect(bikePaceSecPer500(2000)).toBe(100);
+	});
+
+	it('halves bike segment pace when splits carry machine', () => {
+		const splits: Split[] = [
+			{ index: 0, distance: 500, time: 100, pace: 100, machine: 'rower', isRest: false },
+			{ index: 1, distance: 500, time: 100, pace: 100, machine: 'bike', isRest: false }
+		];
+		const strokes = mapStrokes(
+			[
+				{ t: 100, d: 500, p: 2000, spm: 28 },
+				{ t: 50, d: 250, p: 4000, spm: 80 }
+			],
+			'rower',
+			splits
+		);
+		expect(strokes[0].pace).toBe(200);
+		expect(strokes[1].pace).toBe(200);
+	});
+
+	it('matches single-sport output with and without splits', () => {
+		const raw = [{ t: 100, d: 250, p: 2000, spm: 28 }];
+		const a = mapStrokes(raw, 'rower');
+		const b = mapStrokes(raw, 'rower', []);
+		expect(a).toEqual(b);
+	});
+
+	it('assigns strokes after a reset to the next segment machine', () => {
+		const splits: Split[] = [
+			{ index: 0, distance: 500, time: 100, pace: 100, machine: 'rower', isRest: false },
+			{ index: 1, distance: 500, time: 100, pace: 100, machine: 'bike', isRest: false }
+		];
+		const strokes = mapStrokes(
+			[
+				{ t: 100, d: 500, p: 2000, spm: 28 },
+				{ t: 10, d: 50, p: 4000, spm: 80 }
+			],
+			'rower',
+			splits
+		);
+		expect(strokes[0].rawD).toBe(50);
+		expect(strokes[1].rawD).toBe(5);
+		expect(strokes[1].d).toBeGreaterThan(strokes[0].d);
+	});
+});
+
+describe('computeIsMultiErg', () => {
+	it('is true when two work machines appear', () => {
+		const splits: Split[] = [
+			{ index: 0, distance: 500, time: 100, pace: 100, machine: 'rower', isRest: false },
+			{ index: 1, distance: 500, time: 100, pace: 100, machine: 'bike', isRest: false }
+		];
+		expect(computeIsMultiErg(splits)).toBe(true);
 	});
 });

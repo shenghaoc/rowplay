@@ -334,6 +334,11 @@ export const de = {
 		hrImportClearFailed: 'Herzfrequenz-Import konnte nicht entfernt werden',
 		back: 'Zurück zum Dashboard',
 		lowRes: 'Replay in niedriger Auflösung',
+		multiErg: 'MultiErg',
+		restInterval: 'Pause',
+		segmentMachine: 'Gerät',
+		multiErgNote:
+			'MultiErg-Trainings wechseln das Gerät zwischen den Intervallen. Leaderboard-Veröffentlichung und MultiErg-Geisterrennen sind für dieses Training nicht verfügbar.',
 		compareAgainst: 'Vergleichen mit:',
 		none: 'Keine',
 		pastSession: 'Eine vergangene Einheit',

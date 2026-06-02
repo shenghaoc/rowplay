@@ -1,9 +1,10 @@
 import * as THREE from 'three';
+import { SPORTS } from './engine';
 import type { ReplayRenderer, RenderState } from './renderer';
 import { COLORS_DARK, COLORS_LIGHT } from './renderer';
 import type { RenderQuality } from './replayRenderer';
 import type { Sport } from '../types';
-import { fmtPace } from '../format';
+import { fmtPace, fmtTime } from '../format';
 
 const reducedMotionQuery =
 	typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -477,6 +478,14 @@ class WakeTrail {
 		for (const seg of this.segs) seg.visible = false;
 	}
 
+	setColor(c: number | null): void {
+		if (c === null) {
+			for (const seg of this.segs) seg.visible = false;
+			return;
+		}
+		for (const mat of this.mats) mat.color.setHex(c);
+	}
+
 	dispose(): void {
 		for (const seg of this.segs) seg.removeFromParent();
 		for (const m of this.mats) m.dispose();
@@ -513,12 +522,14 @@ export class CourseRenderer3D implements ReplayRenderer {
 
 	private host: HTMLElement;
 	private canvas: HTMLCanvasElement;
-	private readonly profile: SportProfile;
+	private readonly initialSport: Sport;
+	private activeProfile: SportProfile;
 	private groundMesh!: THREE.Mesh;
-	private liveBoat: THREE.Group; // outer: position + heading
-	private liveAvatar: Avatar; // inner: bob + roll + stroke
-	private ghostGroup: THREE.Group; // outer: position + heading + visibility
-	private ghostAvatar: Avatar;
+	private liveBoat: THREE.Group;
+	private liveAvatars: Record<Sport, Avatar>;
+	private ghostGroup: THREE.Group;
+	private ghostAvatars: Record<Sport, Avatar>;
+	private lastRenderedSport: Sport | null = null;
 	private liveWake: WakeTrail | null = null;
 	private ghostWake: WakeTrail | null = null;
 	private liveLabel: THREE.Sprite;
@@ -538,7 +549,8 @@ export class CourseRenderer3D implements ReplayRenderer {
 
 	constructor(host: HTMLElement, quality: RenderQuality = 'medium', sport: Sport = 'rower') {
 		this.cfg = QUALITY[quality];
-		this.profile = SPORT_PROFILES[sport];
+		this.initialSport = sport;
+		this.activeProfile = SPORT_PROFILES[sport];
 		// A canvas can only ever hold ONE context type for its lifetime, and the 2D
 		// renderer locks the shared page canvas to '2d'. So the 3D renderer creates
 		// and owns its own canvas (and removes it on destroy) — this also means a
@@ -577,15 +589,22 @@ export class CourseRenderer3D implements ReplayRenderer {
 		}
 		this.scene.add(sun);
 
-		this.liveAvatar = this.profile.make(hex(COLORS_LIGHT.live), this.cfg.shadows, 1);
+		this.liveAvatars = {} as Record<Sport, Avatar>;
+		this.ghostAvatars = {} as Record<Sport, Avatar>;
 		this.liveBoat = new THREE.Group();
-		this.liveBoat.add(this.liveAvatar.group);
-		// Ghost: translucent + no shadow so it reads as a phantom, clearly distinct
-		// from the solid live avatar.
-		this.ghostAvatar = this.profile.make(hex(COLORS_LIGHT.ghost), false, 0.45);
 		this.ghostGroup = new THREE.Group();
 		this.ghostGroup.visible = false;
-		this.ghostGroup.add(this.ghostAvatar.group);
+		for (const s of SPORTS) {
+			const live = SPORT_PROFILES[s].make(hex(COLORS_LIGHT.live), this.cfg.shadows, 1);
+			const ghost = SPORT_PROFILES[s].make(hex(COLORS_LIGHT.ghost), false, 0.45);
+			live.group.visible = s === sport;
+			ghost.group.visible = s === sport;
+			this.liveAvatars[s] = live;
+			this.ghostAvatars[s] = ghost;
+			this.liveBoat.add(live.group);
+			this.ghostGroup.add(ghost.group);
+		}
+		this.lastRenderedSport = sport;
 		this.scene.add(this.liveBoat, this.ghostGroup);
 
 		const liveSpr = makeTextSprite('', COLORS_LIGHT.labelBg, COLORS_LIGHT.live);
@@ -595,12 +614,63 @@ export class CourseRenderer3D implements ReplayRenderer {
 
 		this.buildStaticScene();
 
-		if (this.cfg.wake > 0 && this.profile.trailColor !== null) {
+		if (this.cfg.wake > 0) {
 			const wakeGeo = this.track(new THREE.PlaneGeometry(0.9, 0.9));
-			const c = this.profile.trailColor;
+			const c = this.activeProfile.trailColor ?? 0xffffff;
 			this.liveWake = new WakeTrail(this.scene, this.cfg.wake, wakeGeo, c);
 			this.ghostWake = new WakeTrail(this.scene, this.cfg.wake, wakeGeo, c);
 		}
+	}
+
+	private liveAvatar(): Avatar {
+		return this.liveAvatars[this.lastRenderedSport ?? this.initialSport];
+	}
+
+	private ghostAvatar(): Avatar {
+		return this.ghostAvatars[this.lastRenderedSport ?? this.initialSport];
+	}
+
+	private switchAvatarTo(sport: Sport): void {
+		for (const s of SPORTS) {
+			this.liveAvatars[s].group.visible = s === sport;
+			this.ghostAvatars[s].group.visible = s === sport;
+		}
+		this.activeProfile = SPORT_PROFILES[sport];
+		this.liveWake?.reset();
+		this.ghostWake?.reset();
+		const trail = this.activeProfile.trailColor;
+		this.liveWake?.setColor(trail);
+		this.ghostWake?.setColor(trail);
+	}
+
+	private switchGroundTo(sport: Sport, themeName: 'light' | 'dark'): void {
+		const profile = SPORT_PROFILES[sport];
+		if (this.groundMesh.material instanceof THREE.MeshStandardMaterial) {
+			this.groundMesh.material.color.setHex(profile.groundColor(themeName));
+			this.groundMesh.material.opacity = profile.groundOpacity;
+			this.groundMesh.material.transparent = profile.groundOpacity < 1;
+		}
+		const seg = profile.waves ? this.cfg.groundSegments : 1;
+		if (this.groundMesh.geometry instanceof THREE.PlaneGeometry) {
+			const pos = this.groundMesh.geometry.attributes.position;
+			if (pos.count !== (seg + 1) * (seg + 1)) {
+				this.groundMesh.geometry.dispose();
+				this.groundMesh.geometry = this.track(new THREE.PlaneGeometry(140, 140, seg, seg));
+			}
+		}
+	}
+
+	private lerpHex(a: number, b: number, t: number): number {
+		const ar = (a >> 16) & 0xff;
+		const ag = (a >> 8) & 0xff;
+		const ab = a & 0xff;
+		const br = (b >> 16) & 0xff;
+		const bg = (b >> 8) & 0xff;
+		const bb = b & 0xff;
+		const r = Math.round(ar + (br - ar) * t);
+		const g = Math.round(ag + (bg - ag) * t);
+		const bl = Math.round(ab + (bb - ab) * t);
+		return (r << 16) | (g << 8) | bl;
 	}
 
 	private track<T extends THREE.BufferGeometry>(g: T): T {
@@ -618,13 +688,13 @@ export class CourseRenderer3D implements ReplayRenderer {
 	}
 
 	private buildStaticScene(): void {
-		const seg = this.profile.waves ? this.cfg.groundSegments : 1;
+		const seg = this.activeProfile.waves ? this.cfg.groundSegments : 1;
 		const groundGeo = this.track(new THREE.PlaneGeometry(140, 140, seg, seg));
 		const groundMat = this.mat(
 			new THREE.MeshStandardMaterial({
-				color: this.profile.groundColor('light'),
-				transparent: this.profile.groundOpacity < 1,
-				opacity: this.profile.groundOpacity,
+				color: this.activeProfile.groundColor('light'),
+				transparent: this.activeProfile.groundOpacity < 1,
+				opacity: this.activeProfile.groundOpacity,
 				roughness: 0.85,
 				metalness: 0.05
 			})
@@ -700,17 +770,17 @@ export class CourseRenderer3D implements ReplayRenderer {
 			}
 		};
 		recolor('lane', C.courseFill);
-		if (this.groundMesh.material instanceof THREE.MeshStandardMaterial) {
-			this.groundMesh.material.color.setHex(this.profile.groundColor(themeName));
-		}
+		this.switchGroundTo(this.lastRenderedSport ?? this.initialSport, themeName);
 
 		this.postMatMajor.color.setHex(hex(C.tickMajor));
 		this.postMatMinor.color.setHex(hex(C.tickMinor));
 		this.cellMatDark.color.setHex(hex(C.finishDark));
 		this.cellMatLight.color.setHex(hex(C.finishLight));
 
-		this.recolorAccent(this.liveAvatar.group, C.live);
-		this.recolorAccent(this.ghostAvatar.group, C.ghost);
+		for (const s of SPORTS) {
+			this.recolorAccent(this.liveAvatars[s].group, C.live);
+			this.recolorAccent(this.ghostAvatars[s].group, C.ghost);
+		}
 	}
 
 	private recolorAccent(group: THREE.Group, color: string): void {
@@ -748,15 +818,16 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const tx = cos; // unit tangent (direction of increasing distance)
 		const tz = -sin;
 		const reduce = this.reduceMotion;
+		const profile = SPORT_PROFILES[this.lastRenderedSport ?? this.initialSport];
 		const bob =
-			reduce || this.profile.bobAmp === 0
+			reduce || profile.bobAmp === 0
 				? 0
-				: Math.sin(this.animPhase * 2 + cadence * 0.1) * this.profile.bobAmp;
+				: Math.sin(this.animPhase * 2 + cadence * 0.1) * profile.bobAmp;
 		outer.position.set(x, 0, z);
 		outer.rotation.y = Math.atan2(tx, tz); // local +Z (travel) -> tangent
 		avatar.group.position.y = bob;
 		avatar.group.rotation.z =
-			reduce || !this.profile.roll ? 0 : Math.sin(this.animPhase + cadence * 0.05) * 0.05;
+			reduce || !profile.roll ? 0 : Math.sin(this.animPhase + cadence * 0.05) * 0.05;
 		avatar.animate(this.strokePhase, reduce);
 		return { x, z, tx, tz, y: bob };
 	}
@@ -767,7 +838,31 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const C = themeName === 'dark' ? COLORS_DARK : COLORS_LIGHT;
 		this.reduceMotion = prefersReducedMotion();
 
-		if (playing && !this.reduceMotion) this.animPhase += 0.04 + state.frame.spm / 800;
+		const displaySport =
+			state.transitionPhase != null && state.transitionFrom != null
+				? state.transitionFrom
+				: state.sport;
+		if (displaySport !== this.lastRenderedSport) {
+			this.switchAvatarTo(displaySport);
+			this.switchGroundTo(displaySport, themeName);
+			this.lastRenderedSport = displaySport;
+		}
+
+		if (
+			state.transitionPhase != null &&
+			state.transitionFrom != null &&
+			state.transitionTo != null &&
+			this.groundMesh.material instanceof THREE.MeshStandardMaterial
+		) {
+			const fromC = SPORT_PROFILES[state.transitionFrom].groundColor(themeName);
+			const toC = SPORT_PROFILES[state.transitionTo].groundColor(themeName);
+			this.groundMesh.material.color.setHex(
+				this.lerpHex(fromC, toC, state.transitionPhase)
+			);
+		}
+
+		if (playing && !this.reduceMotion && state.transitionPhase == null)
+			this.animPhase += 0.04 + state.frame.spm / 800;
 
 		// Stroke phase is driven by distance travelled (~11 m/stroke), so it speeds
 		// up with playback rate and freezes when paused — and stays in sync with the
@@ -775,15 +870,16 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const liveMeters = state.frame.d;
 		const dLive = liveMeters - this.lastLiveMeters;
 		this.lastLiveMeters = liveMeters;
-		if (!this.reduceMotion && dLive > 0)
-			this.strokePhase += (dLive / this.profile.metersPerCycle) * Math.PI * 2;
+		if (!this.reduceMotion && dLive > 0 && state.transitionPhase == null)
+			this.strokePhase += (dLive / this.activeProfile.metersPerCycle) * Math.PI * 2;
 
 		// Water displacement (rowing only; skipped when flat/low quality or phase unchanged).
 		const water = this.groundMesh;
 		const reduceMotionChanged = this.reduceMotion !== this.lastReduceMotion;
 		if (
 			this.cfg.displacement &&
-			this.profile.waves &&
+			this.activeProfile.waves &&
+			state.transitionPhase == null &&
 			(this.animPhase !== this.lastAnimPhase || reduceMotionChanged) &&
 			water?.geometry instanceof THREE.PlaneGeometry
 		) {
@@ -802,7 +898,15 @@ export class CourseRenderer3D implements ReplayRenderer {
 			this.lastReduceMotion = this.reduceMotion;
 		}
 
-		const p = this.placeAvatar(this.liveBoat, this.liveAvatar, this.loopRadius, liveMeters, state.frame.spm);
+		const frozen = state.transitionPhase != null;
+		const p = this.placeAvatar(
+			this.liveBoat,
+			this.liveAvatar(),
+			this.loopRadius,
+			liveMeters,
+			frozen ? 0 : state.frame.spm
+		);
+		if (frozen) this.liveAvatar().animate(0, true);
 
 		if (this.liveWake) {
 			if (this.reduceMotion) this.liveWake.reset();
@@ -811,8 +915,9 @@ export class CourseRenderer3D implements ReplayRenderer {
 
 		const laps = Math.max(1, Math.ceil(state.totalDistance / CourseRenderer3D.LOOP_METERS));
 		const lap = Math.min(laps, Math.floor(liveMeters / CourseRenderer3D.LOOP_METERS) + 1);
-		const liveText =
-			laps > 1
+		const liveText = frozen
+			? `Rest · ${fmtTime(state.transitionRemaining ?? 0, true)}`
+			: laps > 1
 				? `YOU · ${fmtPace(state.frame.pace)} · L${lap}/${laps}`
 				: `YOU · ${fmtPace(state.frame.pace)} · ${Math.round(clamp01(state.distFrac) * 100)}%`;
 		if (liveText !== this.lastLiveLabel) {
@@ -834,7 +939,14 @@ export class CourseRenderer3D implements ReplayRenderer {
 			const dGhost = ghostMeters - this.lastGhostMeters;
 			this.lastGhostMeters = ghostMeters;
 			// Ghost shares the stroke phase visually; only its placement differs.
-			const gp = this.placeAvatar(this.ghostGroup, this.ghostAvatar, this.ghostRadius, ghostMeters, state.ghost.spm);
+			const gp = this.placeAvatar(
+				this.ghostGroup,
+				this.ghostAvatar(),
+				this.ghostRadius,
+				ghostMeters,
+				frozen ? 0 : state.ghost.spm
+			);
+			if (frozen) this.ghostAvatar().animate(0, true);
 			if (this.ghostWake) {
 				if (this.reduceMotion || dGhost <= 0) {
 					if (this.reduceMotion) this.ghostWake.reset();
@@ -881,8 +993,10 @@ export class CourseRenderer3D implements ReplayRenderer {
 	}
 
 	destroy(): void {
-		this.disposeObject3D(this.liveBoat);
-		this.disposeObject3D(this.ghostGroup);
+		for (const s of SPORTS) {
+			this.disposeObject3D(this.liveAvatars[s].group);
+			this.disposeObject3D(this.ghostAvatars[s].group);
+		}
 		this.liveWake?.dispose();
 		this.ghostWake?.dispose();
 		if (this.liveLabel.material instanceof THREE.Material) this.liveLabel.material.dispose();

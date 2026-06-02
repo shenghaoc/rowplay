@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { sampleAt, sampleIndexAt } from './engine';
+import {
+	activeMachineAt,
+	activeSegmentIndexAt,
+	buildSegmentMap,
+	restProgressAt,
+	sampleAt,
+	sampleIndexAt
+} from './engine';
+import type { Split } from '$lib/types';
 import type { Stroke } from '$lib/types';
 import { ladderStrokes } from '../../../tests/unit/fixtures';
 import { mockWorkoutDetail } from '../mockData';
@@ -110,5 +118,47 @@ describe('sampleAt', () => {
 				expect(pf.t).toBe(t);
 			});
 		}
+	});
+});
+
+describe('buildSegmentMap', () => {
+	const multiSplits: Split[] = [
+		{ index: 0, distance: 1000, time: 240, pace: 120, machine: 'rower', isRest: false },
+		{ index: 1, distance: 0, time: 60, pace: 0, isRest: true, restTime: 60 },
+		{ index: 2, distance: 500, time: 120, pace: 120, machine: 'skierg', isRest: false },
+		{ index: 3, distance: 0, time: 60, pace: 0, isRest: true, restTime: 60 },
+		{ index: 4, distance: 2000, time: 400, pace: 100, machine: 'bike', isRest: false }
+	];
+
+	it('builds three work segments with rest gaps in time', () => {
+		const map = buildSegmentMap(multiSplits);
+		expect(map).toHaveLength(3);
+		expect(map[0].machine).toBe('rower');
+		expect(map[1].restBefore).toBe(60);
+		expect(map[1].startT).toBe(map[0].endT + 60);
+		expect(map[2].machine).toBe('bike');
+	});
+
+	it('resolves active machine by distance', () => {
+		const map = buildSegmentMap(multiSplits);
+		expect(activeMachineAt(map, 500)).toBe('rower');
+		expect(activeMachineAt(map, 1200)).toBe('skierg');
+		expect(activeMachineAt(map, 3000)).toBe('bike');
+		expect(activeSegmentIndexAt(map, 1200)).toBe(1);
+	});
+
+	it('detects rest progress between segments', () => {
+		const map = buildSegmentMap(multiSplits);
+		const midRest = map[0].endT + 30;
+		const rest = restProgressAt(map, midRest);
+		expect(rest).not.toBeNull();
+		expect(rest?.from).toBe('rower');
+		expect(rest?.to).toBe('skierg');
+	});
+
+	it('falls back to one segment when splits are empty', () => {
+		const map = buildSegmentMap([], 'bike');
+		expect(map).toHaveLength(1);
+		expect(map[0].machine).toBe('bike');
 	});
 });

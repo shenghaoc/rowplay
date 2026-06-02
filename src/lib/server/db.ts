@@ -12,7 +12,7 @@ import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
 // v3: strokes carry rawT/rawD for the raw inspector's as-logged interval values.
-export const DETAIL_PAYLOAD_VERSION = 3;
+export const DETAIL_PAYLOAD_VERSION = 4;
 
 /**
  * Best-effort D1 cache of fully-hydrated workout detail (including strokes), so

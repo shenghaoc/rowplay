@@ -37,3 +37,10 @@ export const MACHINE_HEX: Record<'light' | 'dark', Record<Sport, string>> = {
 	light: { rower: '#2b5e78', skierg: '#2e8c7e', bike: '#6257b8' },
 	dark: { rower: '#5a8aaa', skierg: '#5aaa9a', bike: '#8a7ad0' }
 };
+
+/** 2D lane fills — mirrors `SPORT_PROFILES` ground colours in `renderer3d.ts`. */
+export const SPORT_LANE_COLORS: Record<Sport, { light: string; dark: string }> = {
+	rower: { light: '#b8d4e8', dark: '#4a6a80' },
+	skierg: { light: '#eef4f7', dark: '#b8c4cc' },
+	bike: { light: '#9aa4ac', dark: '#2a333a' }
+};
