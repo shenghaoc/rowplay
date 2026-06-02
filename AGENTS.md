@@ -14,6 +14,7 @@ live under `.kiro/specs/`.
 Reusable packs in [`.kiro/skills/`](.kiro/skills/):
 
 - **svelte-core-bestpractices** / **svelte-code-writer** — Svelte 5 runes mode.
+- **daisyui** — daisyUI 5 component classes, themes, and prefix rules ([`.kiro/skills/daisyui/SKILL.md`](.kiro/skills/daisyui/SKILL.md)).
 - **web-design-guidelines** — accessibility and UI review checklist.
 
 ## Specs (`.kiro/specs/`)

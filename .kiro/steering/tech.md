@@ -11,6 +11,7 @@
 
 - **SvelteKit** (Svelte 5, runes mode) — the app framework for both SSR and client-side routing
 - **Tailwind CSS v4** via `@tailwindcss/vite` — utility-first styling
+- **daisyUI 5** (`daisyui` devDependency) — component classes via the Tailwind CSS v4 CSS plugin (no `tailwind.config.js`). Official install: [SvelteKit](https://daisyui.com/docs/install/sveltekit/), [general](https://daisyui.com/docs/install/). Agent skill: [`.kiro/skills/daisyui/SKILL.md`](../skills/daisyui/SKILL.md)
 - **uPlot** — lightweight charting for telemetry (pace, stroke-rate, power, heart-rate)
 - **@lucide/svelte** — icon library
 - **@tanstack/svelte-virtual** — virtualized lists for the workout list
