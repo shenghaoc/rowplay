@@ -107,19 +107,19 @@
 						navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
 					}}
 				>
-					<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
+					<button class="du-btn du-btn-ghost du-btn-sm" type="submit">{t('auth.logout')}</button>
 				</form>
 			{:else}
-				<span class="badge badge-primary">{t('common.demoMode')}</span>
+				<span class="du-badge du-badge-primary">{t('common.demoMode')}</span>
 				{#if data.oauthEnabled}
-					<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
+					<a class="du-btn du-btn-ghost du-btn-sm" href="/auth/login">{t('auth.connect')}</a>
 				{/if}
-				<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
+				<a class="du-btn du-btn-primary du-btn-sm" href="/auth/token">{t('auth.useToken')}</a>
 			{/if}
 		</div>
 
 		<button
-			class="iconbtn menu-btn mobile-only"
+			class="iconbtn du-menu-btn mobile-only"
 			type="button"
 			onclick={toggleMenu}
 			aria-expanded={menuOpen}
@@ -138,7 +138,7 @@
 		closedby="any"
 		onclose={onNavClose}
 	>
-			<nav class="drawer-nav" aria-label="Main">
+			<nav class="du-drawer-nav" aria-label="Main">
 				<a href="/dashboard" class:active={page.url.pathname.startsWith('/dashboard')}
 					>{t('nav.dashboard')}</a
 				>
@@ -149,10 +149,10 @@
 					>{t('nav.settings')}</a
 				>
 			</nav>
-			<div class="drawer-actions">
+			<div class="du-drawer-actions">
 				<LanguagePicker />
 				<button
-					class="iconbtn drawer-theme"
+					class="iconbtn du-drawer-theme"
 					type="button"
 					onclick={() => theme.toggle()}
 					aria-label={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
@@ -169,14 +169,14 @@
 							navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
 						}}
 					>
-						<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
+						<button class="du-btn du-btn-ghost du-btn-sm" type="submit">{t('auth.logout')}</button>
 					</form>
 				{:else}
-					<span class="badge badge-primary">{t('common.demoMode')}</span>
+					<span class="du-badge du-badge-primary">{t('common.demoMode')}</span>
 					{#if data.oauthEnabled}
-						<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
+						<a class="du-btn du-btn-ghost du-btn-sm" href="/auth/login">{t('auth.connect')}</a>
 					{/if}
-			<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
+			<a class="du-btn du-btn-primary du-btn-sm" href="/auth/token">{t('auth.useToken')}</a>
 		{/if}
 	</div>
 	</dialog>
@@ -187,7 +187,7 @@
 </main>
 
 <footer>
-	<div class="container footer-inner muted">
+	<div class="container du-footer-inner muted">
 		<span>rowplay · Concept2 logbook analytics &amp; real-time replay</span>
 		<span>{t('common.notAffiliated')}</span>
 	</div>
@@ -289,7 +289,7 @@
 		color: var(--ink);
 		border-color: var(--ink);
 	}
-	.menu-btn {
+	.du-menu-btn {
 		margin-left: auto;
 	}
 	.user {
@@ -323,11 +323,11 @@
 		display: grid;
 		gap: 1rem;
 	}
-	.drawer-nav {
+	.du-drawer-nav {
 		display: grid;
 		gap: 0.35rem;
 	}
-	.drawer-nav a {
+	.du-drawer-nav a {
 		display: block;
 		padding: 0.55rem 0.65rem;
 		border-radius: var(--r-ctrl);
@@ -338,23 +338,23 @@
 		font-size: 0.92rem;
 		color: var(--ink-2);
 	}
-	.drawer-nav a.active {
+	.du-drawer-nav a.active {
 		color: var(--ink);
 		background: var(--paper-raised);
 	}
-	.drawer-nav a:hover {
+	.du-drawer-nav a:hover {
 		text-decoration: none;
 		color: var(--ink);
 		background: var(--paper-raised);
 	}
-	.drawer-actions {
+	.du-drawer-actions {
 		display: grid;
 		gap: 0.65rem;
 		justify-items: start;
 		padding-top: 0.35rem;
 		border-top: var(--bd);
 	}
-	.drawer-theme {
+	.du-drawer-theme {
 		font-family: var(--display);
 		font-size: 0.85rem;
 	}
@@ -365,7 +365,7 @@
 		border-top: var(--bd-heavy);
 		margin-top: 2.5rem;
 	}
-	.footer-inner {
+	.du-footer-inner {
 		display: flex;
 		justify-content: space-between;
 		flex-wrap: wrap;
@@ -382,7 +382,7 @@
 		.mobile-only {
 			display: block;
 		}
-		.menu-btn.mobile-only {
+		.du-menu-btn.mobile-only {
 			display: inline-flex;
 		}
 		.mast-inner {
@@ -393,7 +393,7 @@
 		.brand .name {
 			font-size: 1.15rem;
 		}
-		.footer-inner {
+		.du-footer-inner {
 			flex-direction: column;
 			align-items: flex-start;
 		}

@@ -25,7 +25,7 @@
 	}
 </script>
 
-<div class="card live-panel">
+<div class="du-card live-panel">
 	<div class="live-head">
 		<div class="live-title">
 			<span class="icon" class:spin={live.polling}><Radio size={16} /></span>
@@ -34,11 +34,11 @@
 				<span class="warn" title={t('liveMode.warning', { count: live.failures })}><AlertTriangle size={14} /></span>
 			{/if}
 		</div>
-		<label class="label cursor-pointer justify-end gap-2">
+		<label class="du-label cursor-pointer justify-end gap-2">
 			<span>{t('liveMode.enabled')}</span>
 			<input
 				type="checkbox"
-				class="toggle toggle-primary"
+				class="du-toggle du-toggle-primary"
 				checked={live.enabled}
 				onchange={(e) => live.setEnabled(e.currentTarget.checked)}
 			/>
@@ -61,11 +61,11 @@
 				{/each}
 			</div>
 		</div>
-		<label class="label cursor-pointer justify-end gap-2 sound">
+		<label class="du-label cursor-pointer justify-end gap-2 sound">
 			<span>{t('liveMode.sound')}</span>
 			<input
 				type="checkbox"
-				class="toggle toggle-primary"
+				class="du-toggle du-toggle-primary"
 				checked={live.soundEnabled}
 				onchange={(e) => live.setSound(e.currentTarget.checked)}
 			/>
@@ -73,20 +73,20 @@
 		<p class="muted hint">{t('liveMode.soundHint')}</p>
 		<div class="poll-status" role="status" aria-live="polite">
 			{#if live.polling}
-				<div class="status-row polling">
+				<div class="du-status-row polling">
 					<LoaderCircle size={12} class="spin" aria-hidden="true" />
 					<span>{t('liveMode.polling')}</span>
 				</div>
 			{:else}
-				<div class="status-row">
-					<span class="status-label muted">{t('liveMode.lastPollLabel')}</span>
-					<time class="status-time mono" datetime={live.lastPollAt ? new Date(live.lastPollAt).toISOString() : undefined}>
+				<div class="du-status-row">
+					<span class="du-status-label muted">{t('liveMode.lastPollLabel')}</span>
+					<time class="du-status-time mono" datetime={live.lastPollAt ? new Date(live.lastPollAt).toISOString() : undefined}>
 						{fmtWallTime(live.lastPollAt)}
 					</time>
 				</div>
-				<div class="status-row">
-					<span class="status-label muted">{t('liveMode.nextPollLabel')}</span>
-					<time class="status-time mono" datetime={live.nextPollAt ? new Date(live.nextPollAt).toISOString() : undefined}>
+				<div class="du-status-row">
+					<span class="du-status-label muted">{t('liveMode.nextPollLabel')}</span>
+					<time class="du-status-time mono" datetime={live.nextPollAt ? new Date(live.nextPollAt).toISOString() : undefined}>
 						{fmtWallTime(live.nextPollAt)}
 					</time>
 				</div>
@@ -129,7 +129,7 @@
 		color: var(--warn);
 		display: inline-flex;
 	}
-	.live-head :global(.label) {
+	.live-head :global(.du-label) {
 		font-size: 0.85rem;
 	}
 	.hint {
@@ -178,31 +178,31 @@
 		border-top: 1px solid var(--hairline);
 		font-size: 0.78rem;
 	}
-	.status-row {
+	.du-status-row {
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
 		gap: 0.75rem;
 		min-width: 0;
 	}
-	.status-label {
+	.du-status-label {
 		flex: 1 1 auto;
 		min-width: 0;
 	}
-	.status-time {
+	.du-status-time {
 		flex: 0 0 auto;
 		white-space: nowrap;
 		color: var(--ink);
 		font-size: 0.82rem;
 	}
-	.status-row.polling {
+	.du-status-row.polling {
 		justify-content: flex-start;
 		align-items: center;
 		gap: 0.4rem;
 		color: var(--live);
 		font-weight: 600;
 	}
-	.status-row.polling :global(.spin) {
+	.du-status-row.polling :global(.spin) {
 		animation: spin 1s linear infinite;
 		flex-shrink: 0;
 	}

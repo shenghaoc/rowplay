@@ -78,14 +78,14 @@
 		</div>
 		<div class="lqactions">
 			{#if listQueryIsFiltered(query)}
-				<button type="button" class="btn btn-ghost btn-sm" onclick={onclear}>
+				<button type="button" class="du-btn du-btn-ghost du-btn-sm" onclick={onclear}>
 					<X size={14} />
 					{t('workoutList.clearFilters')}
 				</button>
 			{/if}
 			<button
 				type="button"
-				class="btn btn-ghost btn-sm"
+				class="du-btn du-btn-ghost du-btn-sm"
 				aria-expanded={expanded}
 				onclick={() => (expanded = !expanded)}
 			>
@@ -100,7 +100,7 @@
 			<label class="field">
 				<span class="flabel muted">{t('workoutList.dateFrom')}</span>
 				<input
-					class="input input-bordered w-full"
+					class="du-input du-input-bordered w-full"
 					type="date"
 					value={query.dateFrom ?? ''}
 					onchange={(e) => patch({ dateFrom: e.currentTarget.value || undefined })}
@@ -109,7 +109,7 @@
 			<label class="field">
 				<span class="flabel muted">{t('workoutList.dateTo')}</span>
 				<input
-					class="input input-bordered w-full"
+					class="du-input du-input-bordered w-full"
 					type="date"
 					value={query.dateTo ?? ''}
 					onchange={(e) => patch({ dateTo: e.currentTarget.value || undefined })}
@@ -118,7 +118,7 @@
 			<label class="field grow">
 				<span class="flabel muted">{t('workoutList.workoutType')}</span>
 				<select
-					class="select select-bordered w-full"
+					class="du-select du-select-bordered w-full"
 					value={query.workoutType ?? ''}
 					onchange={(e) => patch({ workoutType: e.currentTarget.value || undefined })}
 				>
@@ -131,7 +131,7 @@
 			<label class="field grow">
 				<span class="flabel muted">{t('workoutList.strokeData')}</span>
 				<select
-					class="select select-bordered w-full"
+					class="du-select du-select-bordered w-full"
 					value={query.hasStroke === true ? '1' : query.hasStroke === false ? '0' : ''}
 					onchange={(e) => {
 						const v = e.currentTarget.value;
@@ -149,7 +149,7 @@
 		<form class="searchrow" onsubmit={(e) => { e.preventDefault(); submitSearch(); }}>
 			<span class="sicon" aria-hidden="true"><Search size={16} /></span>
 			<input
-				class="input input-bordered w-full"
+				class="du-input du-input-bordered w-full"
 				type="search"
 				inputmode="search"
 				enterkeyhint="search"
@@ -157,7 +157,7 @@
 				bind:value={searchDraft}
 				aria-label={t('workoutList.searchComments')}
 			/>
-			<button type="submit" class="btn btn-ghost btn-sm">{t('workoutList.search')}</button>
+			<button type="submit" class="du-btn du-btn-ghost du-btn-sm">{t('workoutList.search')}</button>
 		</form>
 		</search>
 

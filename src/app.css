@@ -33,6 +33,8 @@
 /* ---- daisyUI plugin with custom rowplay theme --------------------------- */
 @plugin "daisyui" {
 	themes: rowplay --default, dark;
+	prefix: du-;
+	logs: false;
 }
 
 @plugin "daisyui/theme" {
@@ -270,11 +272,11 @@ body {
 /* ============================================================================
    Typography defaults
    ============================================================================ */
-a:not(.btn) {
+a:not(.du-btn) {
 	color: var(--ghost);
 	text-decoration: none;
 }
-a:not(.btn):hover {
+a:not(.du-btn):hover {
 	text-decoration: underline;
 	text-underline-offset: 3px;
 	text-decoration-thickness: 1.5px;
@@ -325,7 +327,7 @@ h3 {
    ============================================================================ */
 
 /* Buttons: daisyUI owns the shape/depth; we set the display face + soft lift */
-.btn {
+.du-btn {
 	font-family: var(--display);
 	font-weight: 600;
 	letter-spacing: 0;
@@ -335,36 +337,36 @@ h3 {
 	text-box-trim: trim-both;
 	text-box-edge: cap alphabetic;
 }
-.btn:hover {
+.du-btn:hover {
 	transform: translateY(-1px);
 }
-.btn:active {
+.du-btn:active {
 	transform: translateY(0);
 }
-.btn-primary {
+.du-btn-primary {
 	box-shadow: var(--stamp-live);
 }
-.btn-primary:hover {
+.du-btn-primary:hover {
 	box-shadow: var(--shadow-lg);
 }
-.btn-secondary {
+.du-btn-secondary {
 	box-shadow: var(--stamp-ghost);
 }
-.btn-neutral {
+.du-btn-neutral {
 	box-shadow: var(--shadow-md);
 }
-.btn-error {
+.du-btn-error {
 	box-shadow: 0 2px 6px rgba(192, 57, 43, 0.16), 0 14px 32px -12px rgba(192, 57, 43, 0.3);
 }
-.btn-ghost {
+.du-btn-ghost {
 	box-shadow: none;
 }
-.btn-ghost:hover {
+.du-btn-ghost:hover {
 	transform: none;
 	background: var(--paper-inset);
 }
-.btn:disabled,
-.btn-disabled {
+.du-btn:disabled,
+.du-btn-disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 	transform: none !important;
@@ -375,7 +377,7 @@ h3 {
    fill with same-hued content; recoloring only text/border there yields an
    unreadable violet-on-violet chip on pages without their own scoped `.badge`
    background. Reset the surface to a faint paper tint and keep the spot ink. */
-.badge {
+.du-badge {
 	font-family: var(--ui);
 	font-weight: 600;
 	font-size: 0.72rem;
@@ -389,54 +391,54 @@ h3 {
 	text-box-trim: trim-both;
 	text-box-edge: cap alphabetic;
 }
-.badge-primary {
+.du-badge-primary {
 	background: color-mix(in srgb, var(--live) 12%, var(--paper-raised));
 	border-color: color-mix(in srgb, var(--live) 40%, var(--paper-raised));
 	color: var(--live);
 }
-.badge-secondary {
+.du-badge-secondary {
 	background: color-mix(in srgb, var(--ghost) 12%, var(--paper-raised));
 	border-color: color-mix(in srgb, var(--ghost) 40%, var(--paper-raised));
 	color: var(--ghost);
 }
-.badge-accent {
+.du-badge-accent {
 	background: color-mix(in srgb, var(--ahead) 12%, var(--paper-raised));
 	border-color: color-mix(in srgb, var(--ahead) 40%, var(--paper-raised));
 	color: color-mix(in srgb, var(--ahead) 72%, var(--ink));
 }
-.badge-warning {
+.du-badge-warning {
 	background: color-mix(in srgb, var(--behind) 14%, var(--paper-raised));
 	border-color: color-mix(in srgb, var(--behind) 45%, var(--paper-raised));
 	color: color-mix(in srgb, var(--behind) 45%, var(--ink));
 }
 /* Solid stamp variant — guaranteed-readable filled chip when wanted. */
-.badge-live {
+.du-badge-live {
 	background: var(--live);
 	border-color: var(--live);
 	color: #F7FAFB;
 }
 
 /* Cards: rounded, soft elevation, hairline edge. */
-.card {
+.du-card {
 	background: var(--paper-raised);
 	border-radius: var(--r-card);
 	border: var(--bd);
 	box-shadow: var(--shadow-md);
 	padding: 1.25rem 1.4rem;
 }
-.card-bordered {
+.du-card-bordered {
 	border-color: var(--hairline);
 }
 
 /* ============================================================================
    Interaction & accessibility — keyboard focus, selection, form controls
    ============================================================================ */
-:where(a, button, .btn, .badge, input, select, textarea, summary, [tabindex]):focus-visible {
+:where(a, button, .du-btn, .du-badge, input, select, textarea, summary, [tabindex]):focus-visible {
 	outline: 2.5px solid var(--live);
 	outline-offset: 2px;
 	border-radius: var(--r-ctrl);
 }
-.btn-secondary:focus-visible,
+.du-btn-secondary:focus-visible,
 .brand:focus-visible {
 	outline-color: var(--ghost);
 }
@@ -447,12 +449,10 @@ h3 {
 	color: var(--ink);
 }
 
-/* Native controls without daisyUI classes — prefer `input` / `select` / `textarea` in markup. */
-input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.input):not(.toggle):not(
-		.checkbox
-	):not(.radio):not(.range),
-select:not(.select),
-textarea:not(.textarea) {
+/* Native form controls — rounded paper fields with a live-ink focus ring. */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.du-input):not(.du-toggle):not(.du-checkbox):not(.du-radio):not(.du-range),
+select:not(.du-select),
+textarea:not(.du-textarea) {
 	font-family: var(--ui);
 	font-size: 0.95rem;
 	color: var(--ink);
@@ -506,14 +506,14 @@ input[type='range'] {
 	.masthead,
 	footer,
 	.iconbtn,
-	.btn {
+	.du-btn {
 		display: none !important;
 	}
 	html,
 	body {
 		color: #000;
 	}
-	.card {
+	.du-card {
 		box-shadow: none;
 		border: 1px solid #000;
 		break-inside: avoid;
@@ -537,7 +537,7 @@ html {
 	.container {
 		padding: 1.1rem 0.9rem;
 	}
-	.card {
+	.du-card {
 		padding: 0.95rem 1rem;
 	}
 }

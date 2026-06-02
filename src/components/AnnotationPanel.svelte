@@ -111,11 +111,11 @@
 	}
 </script>
 
-<div class="anno-panel card">
+<div class="anno-panel du-card">
 	<div class="anno-head">
 		<h3 class="anno-title"><MessageSquareText size={16} /> {t('annotations.title')}</h3>
 		{#if !readOnly}
-			<button class="btn add-btn" onclick={startAdd} aria-label={t('annotations.addNote')} disabled={saving}>
+			<button class="du-btn add-btn" onclick={startAdd} aria-label={t('annotations.addNote')} disabled={saving}>
 				<Plus size={14} /> {t('annotations.addNote')}
 			</button>
 		{/if}
@@ -133,8 +133,8 @@
 				class="anno-input"
 			></textarea>
 			<div class="anno-actions">
-				<button class="btn save-btn" onclick={save} disabled={!draftText.trim()}>{t('annotations.saveNote')}</button>
-				<button class="btn cancel-btn" onclick={cancel}>{t('annotations.cancelNote')}</button>
+				<button class="du-btn save-btn" onclick={save} disabled={!draftText.trim()}>{t('annotations.saveNote')}</button>
+				<button class="du-btn cancel-btn" onclick={cancel}>{t('annotations.cancelNote')}</button>
 			</div>
 		</div>
 	{/if}
@@ -159,8 +159,8 @@
 								class="anno-input"
 							></textarea>
 							<div class="anno-actions">
-								<button class="btn save-btn" onclick={save} disabled={!draftText.trim()}>{t('annotations.saveNote')}</button>
-								<button class="btn cancel-btn" onclick={cancel}>{t('annotations.cancelNote')}</button>
+								<button class="du-btn save-btn" onclick={save} disabled={!draftText.trim()}>{t('annotations.saveNote')}</button>
+								<button class="du-btn cancel-btn" onclick={cancel}>{t('annotations.cancelNote')}</button>
 							</div>
 						</div>
 					{:else}
@@ -171,10 +171,10 @@
 						<span class="anno-text">{a.text}</span>
 						{#if !readOnly}
 							<div class="anno-item-actions">
-								<button class="btn-icon" onclick={() => startEdit(a)} aria-label={t('annotations.editNote')}>
+								<button class="du-btn-icon" onclick={() => startEdit(a)} aria-label={t('annotations.editNote')}>
 									<Pencil size={13} />
 								</button>
-								<button class="btn-icon danger" onclick={() => requestDelete(a.id)} aria-label={t('annotations.deleteNote')}>
+								<button class="du-btn-icon danger" onclick={() => requestDelete(a.id)} aria-label={t('annotations.deleteNote')}>
 									<Trash2 size={13} />
 								</button>
 							</div>
@@ -189,10 +189,10 @@
 <dialog class="anno-delete-dialog" bind:this={deleteDialog} closedby="any" aria-label={t('annotations.confirmDelete')}>
 	<p>{t('annotations.confirmDelete')}</p>
 	<div class="anno-delete-actions">
-		<button type="button" class="btn btn-ghost btn-sm" onclick={() => deleteDialog?.close()}>
+		<button type="button" class="du-btn du-btn-ghost du-btn-sm" onclick={() => deleteDialog?.close()}>
 			{t('annotations.cancelNote')}
 		</button>
-		<button type="button" class="btn btn-error btn-sm" onclick={executeDelete}>
+		<button type="button" class="du-btn du-btn-error du-btn-sm" onclick={executeDelete}>
 			{t('annotations.deleteNote')}
 		</button>
 	</div>
@@ -340,7 +340,7 @@
 	.anno-item:hover .anno-item-actions {
 		opacity: 1;
 	}
-	.btn-icon {
+	.du-btn-icon {
 		background: none;
 		border: none;
 		color: var(--ink-2);
@@ -349,11 +349,11 @@
 		border-radius: var(--r-ctrl);
 		display: flex;
 	}
-	.btn-icon:hover {
+	.du-btn-icon:hover {
 		background: var(--paper-inset);
 		color: var(--ink);
 	}
-	.btn-icon.danger:hover {
+	.du-btn-icon.danger:hover {
 		color: #ef4444;
 	}
 	.anno-delete-dialog {

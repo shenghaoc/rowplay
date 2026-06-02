@@ -49,7 +49,7 @@
 	}
 </script>
 
-<div class="calcard card">
+<div class="calcard du-card">
 	<div class="calhead">
 		<div class="callabel">
 			<span class="calicon"><CalendarDays size={15} /></span>
