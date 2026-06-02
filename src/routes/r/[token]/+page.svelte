@@ -144,11 +144,6 @@
 		</div>
 	</div>
 
-	<div class="card bg-base-100 border border-base-300 shadow-md p-5 course" bind:this={courseWrap}>
-		<canvas bind:this={canvasEl}></canvas>
-	</div>
-
-	<div class="card bg-base-100 border border-base-300 shadow-md p-5 controls">
 	<div class="card course" bind:this={courseWrap}>
 		<button
 			type="button"

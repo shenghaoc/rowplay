@@ -137,18 +137,6 @@ export interface Split {
 	isRest?: boolean;
 }
 
-/** Result-level provenance from the logbook (full-fidelity capture). */
-export interface WorkoutMetadata {
-	pmVersion?: string;
-	firmware?: string;
-	ergModel?: string;
-	hrSensorType?: string;
-	/** Source / entered app (e.g. ErgRace, C2 Logbook). */
-	sourceApp?: string;
-	serialNumber?: string;
-	device?: string;
-}
-
 /** A coach/self timestamped note attached to a workout. */
 export interface Annotation {
 	/** Opaque id (auto-increment in D1; local counter in demo). */
@@ -171,6 +159,4 @@ export interface WorkoutDetail extends Workout {
 	 * the even splits of a continuous piece. Drives interval-vs-split labelling.
 	 */
 	isInterval: boolean;
-	/** PM / device provenance when full-fidelity capture is enabled. */
-	metadata?: WorkoutMetadata;
 }

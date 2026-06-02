@@ -1143,7 +1143,6 @@
 	{/if}
 
 	<!-- Course -->
-	<div class="card bg-base-100 border border-base-300 shadow-md p-5 course" bind:this={courseWrap}>
 	<div class="card course" bind:this={courseWrap}>
 		<div class="course-tools">
 		<div
