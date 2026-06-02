@@ -28,6 +28,7 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [Detail cache TTL](.kiro/specs/detail-cache-ttl/tasks.md)
 - [3D replay view](.kiro/specs/3d-replay-view/tasks.md)
 - [Sport-aware 3D replay](.kiro/specs/3d-replay-sports/tasks.md)
+- [Concept2 token privacy](.kiro/specs/concept2-token-privacy/tasks.md) — BYOT token sealed in an httpOnly cookie (never in KV); session-scoped D1 cache purged on disconnect; reversible leaderboard opt-in.
 
 **Platform audit (read before new features or modernization work):**
 
