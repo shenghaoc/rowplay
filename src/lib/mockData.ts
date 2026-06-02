@@ -110,6 +110,70 @@ function buildSplits(spec: Spec, strokes: Stroke[], time: number): Split[] {
 	return splits;
 }
 
+/** Demo-only: exercise full-fidelity fields on selected fixtures. */
+function applyFullFidelityDemo(spec: Spec, detail: WorkoutDetail): void {
+	if (spec.id === 1005 && spec.interval) {
+		const repDist = 1500;
+		const repTime = round1(timeForDistance(repDist, spec.basePace));
+		const restTime = 90;
+		detail.splits = [];
+		for (let i = 0; i < 4; i++) {
+			detail.splits.push({
+				index: detail.splits.length,
+				distance: repDist,
+				time: repTime,
+				pace: spec.basePace,
+				spm: spec.baseSpm,
+				hr: spec.baseHr + i,
+				heartRate: { average: spec.baseHr + i, ending: spec.baseHr + i + 4 },
+				caloriesTotal: 95 + i * 2,
+				wattMinutes: 38 + i,
+				type: 'distance',
+				isRest: false
+			});
+			if (i < 3) {
+				detail.splits.push({
+					index: detail.splits.length,
+					distance: 0,
+					time: restTime,
+					pace: 0,
+					heartRate: { rest: 118, recovery: 112 },
+					isRest: true
+				});
+			}
+		}
+		detail.restTime = restTime * 3;
+		detail.restDistance = 0;
+		detail.verified = true;
+		detail.weightClass = 'H';
+		detail.targets = { strokeRate: 28, pace: spec.basePace + 2, watts: 210 };
+		detail.heartRate = { average: spec.baseHr, min: 142, max: 178, ending: 172, recovery: 128 };
+		detail.heartRateAvg = detail.heartRate.average;
+		detail.hrMin = detail.heartRate.min;
+		detail.hrMax = detail.heartRate.max;
+		detail.wattMinutes = 168;
+		detail.metadata = {
+			pmVersion: 5,
+			firmwareVersion: '707',
+			serialNumber: 'DEMO-SN-1005',
+			device: 'Demo iPhone',
+			deviceOs: 'iOS',
+			ergModelType: 0,
+			hrType: 'BT'
+		};
+	}
+	if (spec.id === 1007) {
+		detail.heartRate = { average: spec.baseHr, min: 145, max: 174, ending: 170, recovery: 122 };
+		detail.heartRateAvg = detail.heartRate.average;
+		detail.hrMin = detail.heartRate.min;
+		detail.hrMax = detail.heartRate.max;
+	}
+}
+
+function timeForDistance(metres: number, paceSecPer500: number): number {
+	return (metres / 500) * paceSecPer500;
+}
+
 function detailFor(spec: Spec): WorkoutDetail {
 	const { strokes, time } = buildStrokes(spec);
 	const splits = buildSplits(spec, strokes, time);
@@ -135,6 +199,7 @@ function detailFor(spec: Spec): WorkoutDetail {
 	if (!spec.omitHr) {
 		detail.heartRateAvg = Math.round(avg(strokes.map((s) => s.hr ?? 0)));
 	}
+	applyFullFidelityDemo(spec, detail);
 	return detail;
 }
 

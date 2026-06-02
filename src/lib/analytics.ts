@@ -173,17 +173,42 @@ export interface HrZone {
 	fraction: number;
 }
 
+/** Karvonen-style zone boundaries as fractions of `maxHr` (zones 1–5). */
+const HR_ZONE_FRACTIONS = [0, 0.6, 0.7, 0.8, 0.9, 1.2];
+
+/**
+ * Estimate `maxHr`: use the supplied value, else infer it from the workout's
+ * peak heart rate (assuming the peak is ~95% of true max), floored at 160.
+ */
+export function estimateHrMax(strokes: Stroke[], maxHr?: number): number {
+	if (maxHr && maxHr > 0) return maxHr;
+	// reduce, not Math.max(...spread): long pieces have many thousands of strokes.
+	const peak = strokes.reduce((m, s) => Math.max(m, s.hr ?? 0), 0);
+	return Math.max(peak / 0.95, 160);
+}
+
+/**
+ * Map a heart rate to a Concept2-style zone index (0–5), using the same
+ * boundaries as `hrZones`. Zone 0 is below 60% of max; zone 5 is the top band.
+ */
+export function hrZoneOf(hr: number, hrMax: number): number {
+	if (hrMax <= 0 || !hrMax || hr <= 0) return 0;
+	const bounds = HR_ZONE_FRACTIONS.map((f) => f * hrMax);
+	for (let b = 1; b < bounds.length; b++) {
+		if (hr >= bounds[b - 1] && hr < bounds[b]) return b - 1;
+	}
+	return 5;
+}
+
 /**
  * Time-in-zone distribution. Zones are defined as percentages of `maxHr`
  * (Karvonen-style boundaries: 60/70/80/90%). If `maxHr` is omitted we estimate
  * it from the workout's peak heart rate.
  */
 export function hrZones(strokes: Stroke[], maxHr?: number): HrZone[] {
-	// reduce, not Math.max(...spread): long pieces have many thousands of strokes.
-	const peak = strokes.reduce((m, s) => Math.max(m, s.hr ?? 0), 0);
-	const hrMax = maxHr && maxHr > 0 ? maxHr : Math.max(peak / 0.95, 160);
+	const hrMax = estimateHrMax(strokes, maxHr);
 
-	const bounds = [0, 0.6, 0.7, 0.8, 0.9, 1.2].map((f) => f * hrMax);
+	const bounds = HR_ZONE_FRACTIONS.map((f) => f * hrMax);
 	const seconds = new Array(5).fill(0);
 
 	for (let i = 1; i < strokes.length; i++) {
@@ -1442,4 +1467,126 @@ export function detectNewPBs(before: DistancePB[], after: DistancePB[]): Distanc
 		if (!prev || pb.time < prev.time - 0.001) out.push(pb);
 	}
 	return out;
+}
+
+// ---------------------------------------------------------------------------
+// Full-fidelity analyses (HR recovery, work:rest, targets)
+// ---------------------------------------------------------------------------
+
+export interface HrRecoveryPoint {
+	id: number;
+	date: string;
+	ending?: number;
+	recovery?: number;
+	/** ending − recovery; larger = better cardiac recovery */
+	drop?: number;
+}
+
+/**
+ * HR recovery trend across sessions. `ending` / `recovery` are only populated
+ * from the detail endpoint (or D1 detail cache), not the workout list.
+ */
+export function hrRecoveryTrend(details: WorkoutDetail[]): HrRecoveryPoint[] {
+	const points: HrRecoveryPoint[] = [];
+	for (const d of details) {
+		const ending = d.heartRate?.ending;
+		const recovery = d.heartRate?.recovery;
+		if (ending == null && recovery == null) continue;
+		const drop = ending != null && recovery != null ? ending - recovery : undefined;
+		points.push({ id: d.id, date: d.date, ending, recovery, drop });
+	}
+	return points.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export interface WorkRestEfficiency {
+	workTime: number;
+	restTime?: number;
+	workDistance: number;
+	restDistance?: number;
+	/** work seconds per rest second */
+	timeRatio?: number;
+	avgWorkPace: number;
+}
+
+/** Work:rest summary for interval pieces using captured rest fields. */
+export function workRestEfficiency(detail: WorkoutDetail): WorkRestEfficiency | null {
+	if (!detail.isInterval) return null;
+	const workSplits = detail.splits.filter((s) => !s.isRest);
+	if (!workSplits.length) return null;
+	const workTime = workSplits.reduce((a, s) => a + s.time, 0);
+	const workDistance = workSplits.reduce((a, s) => a + s.distance, 0);
+	const restFromSplits = detail.splits.filter((s) => s.isRest).reduce((a, s) => a + s.time, 0);
+	const restTime = detail.restTime ?? (restFromSplits > 0 ? restFromSplits : undefined);
+	const restDistance =
+		detail.restDistance ??
+		(detail.splits.some((s) => s.isRest && s.restDistance != null)
+			? detail.splits.filter((s) => s.isRest).reduce((a, s) => a + (s.restDistance ?? 0), 0)
+			: undefined);
+	const paces = workSplits.map((s) => s.pace).filter((p) => p > 0);
+	const avgWorkPace = paces.length ? paces.reduce((a, b) => a + b, 0) / paces.length : detail.pace;
+	const timeRatio = restTime != null && restTime > 0 ? workTime / restTime : undefined;
+	return { workTime, restTime, workDistance, restDistance, timeRatio, avgWorkPace };
+}
+
+export type TargetMetric = 'pace' | 'watts' | 'strokeRate' | 'heartRateZone' | 'calories';
+
+export interface TargetVsActualRow {
+	metric: TargetMetric;
+	target: number;
+	actual: number;
+	delta: number;
+	hit: boolean;
+}
+
+/** Compare logged targets to achieved summary metrics. */
+export function targetVsActual(detail: WorkoutDetail): TargetVsActualRow[] {
+	const t = detail.targets;
+	if (!t) return [];
+	const rows: TargetVsActualRow[] = [];
+	if (t.pace != null && detail.pace > 0) {
+		const delta = detail.pace - t.pace;
+		rows.push({ metric: 'pace', target: t.pace, actual: detail.pace, delta, hit: delta <= 0 });
+	}
+	if (t.watts != null) {
+		const actual = workoutWatts(detail);
+		if (actual > 0) {
+			const delta = actual - t.watts;
+			rows.push({ metric: 'watts', target: t.watts, actual, delta, hit: delta >= 0 });
+		}
+	}
+	if (t.strokeRate != null && detail.strokeRate != null) {
+		const delta = detail.strokeRate - t.strokeRate;
+		rows.push({
+			metric: 'strokeRate',
+			target: t.strokeRate,
+			actual: detail.strokeRate,
+			delta,
+			hit: Math.abs(delta) <= 1
+		});
+	}
+	if (t.calories != null && detail.caloriesTotal != null) {
+		const delta = detail.caloriesTotal - t.calories;
+		rows.push({
+			metric: 'calories',
+			target: t.calories,
+			actual: detail.caloriesTotal,
+			delta,
+			hit: delta >= 0
+		});
+	}
+	if (t.heartRateZone != null && detail.heartRateAvg != null) {
+		// Target is a zone index (0–5); the achieved zone must be derived from the
+		// average HR (bpm) before comparing — comparing bpm to a zone is nonsense.
+		const hrMax = estimateHrMax(detail.strokes, detail.hrMax);
+		const actualZone = hrZoneOf(detail.heartRateAvg, hrMax);
+		const delta = actualZone - t.heartRateZone;
+		rows.push({
+			metric: 'heartRateZone',
+			target: t.heartRateZone,
+			actual: actualZone,
+			delta,
+			hit: delta === 0
+		});
+	}
+	return rows;
 }
