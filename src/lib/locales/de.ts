@@ -526,6 +526,16 @@ export const de = {
 		metaSerial: 'Seriennummer',
 		metaDevice: 'Gerät'
 	},
+	drift: {
+		toggle: 'Effizienzdrift anzeigen',
+		toggleOn: 'Effizienzdrift ausblenden',
+		baseline: 'Eröffnungs-Baseline',
+		fade: 'Effizienzverlust',
+		unit: ' m/Schlag',
+		summaryTitle: 'Schlaglängen-Drift',
+		summaryHint: 'DPS-Änderung vom Eröffnungssegment bis zum Schluss',
+		axisLabel: 'DPS'
+	},
 	settings: {
 		title: 'Konto & Daten',
 		eyebrow: 'Datenschutz & Kontrolle',

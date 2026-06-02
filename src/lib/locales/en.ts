@@ -526,6 +526,16 @@ export const en = {
 		metaSerial: 'Serial number',
 		metaDevice: 'Device'
 	},
+	drift: {
+		toggle: 'Show efficiency drift',
+		toggleOn: 'Hide efficiency drift',
+		baseline: 'Opening baseline',
+		fade: 'Efficiency fade',
+		unit: ' m/st',
+		summaryTitle: 'Distance-per-stroke drift',
+		summaryHint: 'DPS change from opening segment to close',
+		axisLabel: 'DPS'
+	},
 	settings: {
 		title: 'Account & data',
 		eyebrow: 'Privacy & control',

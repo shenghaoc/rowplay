@@ -525,6 +525,16 @@ export const zh = {
 		metaSerial: '序列号',
 		metaDevice: '设备'
 	},
+	drift: {
+		toggle: '显示效率漂移',
+		toggleOn: '隐藏效率漂移',
+		baseline: '开局基线',
+		fade: '效率衰减',
+		unit: ' 米/桨',
+		summaryTitle: '每桨距离漂移',
+		summaryHint: '从开局段到结束段的 DPS 变化',
+		axisLabel: 'DPS'
+	},
 	settings: {
 		title: '账户与数据',
 		eyebrow: '隐私与控制',

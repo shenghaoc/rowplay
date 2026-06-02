@@ -526,6 +526,16 @@ export const es = {
 		metaSerial: 'Número de serie',
 		metaDevice: 'Dispositivo'
 	},
+	drift: {
+		toggle: 'Mostrar deriva de eficiencia',
+		toggleOn: 'Ocultar deriva de eficiencia',
+		baseline: 'Línea base inicial',
+		fade: 'Pérdida de eficiencia',
+		unit: ' m/braz',
+		summaryTitle: 'Deriva de metros por brazada',
+		summaryHint: 'Cambio de DPS del segmento inicial al cierre',
+		axisLabel: 'DPS'
+	},
 	settings: {
 		title: 'Cuenta y datos',
 		eyebrow: 'Privacidad y control',

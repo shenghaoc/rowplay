@@ -528,6 +528,16 @@ export const ja = {
 		metaSerial: 'シリアル番号',
 		metaDevice: 'デバイス'
 	},
+	drift: {
+		toggle: '効率ドリフトを表示',
+		toggleOn: '効率ドリフトを非表示',
+		baseline: '序盤ベースライン',
+		fade: '効率の低下',
+		unit: ' m/ストローク',
+		summaryTitle: 'ストローク当たり距離のドリフト',
+		summaryHint: '序盤セグメントから終盤までの DPS の変化',
+		axisLabel: 'DPS'
+	},
 	settings: {
 		title: 'アカウントとデータ',
 		eyebrow: 'プライバシーと管理',

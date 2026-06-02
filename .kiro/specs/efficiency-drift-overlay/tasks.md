@@ -9,7 +9,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
 
 ---
 
-- [ ] **1. `EfficiencyDriftResult` type + `efficiencyDrift` function** —
+- [x] **1. `EfficiencyDriftResult` type + `efficiencyDrift` function** —
   `src/lib/analytics.ts`
   - Export `EfficiencyDriftResult` interface (`series`, `baseline`,
     `baselineEndD`, `fadeDelta`, `fadePercent`).
@@ -22,7 +22,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
   - Pure; no DOM; no Svelte imports.
   - _Requirements: 1.1–1.9_
 
-- [ ] **2. Unit tests for `efficiencyDrift`** — `src/lib/analytics.test.ts`
+- [x] **2. Unit tests for `efficiencyDrift`** — `src/lib/analytics.test.ts`
   (or `src/lib/efficiencyDrift.test.ts`)
   - Steady fixture: constant pace/spm → flat series, `|fadeDelta| < 0.01`.
   - Fading fixture: pace degrades → `fadeDelta < 0`, series non-increasing.
@@ -32,7 +32,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
     min-5 floor is respected.
   - _Requirements: 1.1–1.9, 7.3_
 
-- [ ] **3. Chart theme — `var(--dps)` role** — `src/lib/chartTheme.ts`
+- [x] **3. Chart theme — `var(--dps)` role** — `src/lib/chartTheme.ts`
   - Ensure a `'dps'` `SeriesRole` entry exists with appropriate `color` values
     for light and dark themes (warm amber, e.g. `#d97706` / `#fbbf24`).
   - If `--dps` CSS variable is already present from an existing DPS chart, verify
@@ -40,7 +40,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
     (or equivalent). Add it if missing.
   - _Requirements: 3.4_
 
-- [ ] **4. Page `$derived` wiring + null-padded overlay data** —
+- [x] **4. Page `$derived` wiring + null-padded overlay data** —
   `src/routes/replay/[id]/+page.svelte`
   - `import { efficiencyDrift, type EfficiencyDriftResult } from '$lib/analytics'`.
   - `const drift = $derived(efficiencyDrift(strokes))` — recomputes only when
@@ -51,7 +51,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
   - Extend `paceData` to include `dpsAligned` when non-null.
   - _Requirements: 3.3, 3.6, 2.3_
 
-- [ ] **5. Dual-series pace chart options** — `src/routes/replay/[id]/+page.svelte`
+- [x] **5. Dual-series pace chart options** — `src/routes/replay/[id]/+page.svelte`
   - When `driftOverlayOn` is true, build overlay chart options: right-side DPS
     y-axis (not inverted), `spanGaps: false` on the DPS series, `color: 'var(--dps)'`.
   - Add `drawHook` (uPlot plugin or `hooks.draw`) to render a dashed horizontal
@@ -61,7 +61,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
     pace-only options (no regression to existing behaviour).
   - _Requirements: 3.1, 3.2, 3.4, 3.5_
 
-- [ ] **6. Toggle button and fade summary badge** —
+- [x] **6. Toggle button and fade summary badge** —
   `src/routes/replay/[id]/+page.svelte`
   - Render the toggle button inside the pace chart card only when
     `drift.series.length >= 5`.
@@ -74,7 +74,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
     if not yet present.
   - _Requirements: 4.1–4.3, 6.2_
 
-- [ ] **7. i18n — all six locales** — `src/lib/locales/{en,zh,de,es,fr,ja}.ts`
+- [x] **7. i18n — all six locales** — `src/lib/locales/{en,zh,de,es,fr,ja}.ts`
   (or `.json`)
   - Add `drift` block: `toggle`, `toggleOn`, `baseline`, `fade`, `unit`,
     `summaryTitle`, `summaryHint`, `axisLabel`.
@@ -82,7 +82,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
     pass before the task is closed.
   - _Requirements: 6.1–6.3_
 
-- [ ] **8. E2E smoke test** — `tests/e2e/efficiency-drift.spec.ts`
+- [x] **8. E2E smoke test** — `tests/e2e/efficiency-drift.spec.ts`
   - In demo mode at `/replay/1001` (WebKit):
     1. Assert toggle button is present and has `aria-pressed="false"`.
     2. Click the toggle; assert `aria-pressed="true"`.
@@ -90,7 +90,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
        matching `/\d+\.\d/` (e.g. `"8.2"`).
   - _Requirements: 5.1, 6.2, 7.4_
 
-- [ ] **9. Full quality gate** — (no code; CI verification step)
+- [x] **9. Full quality gate** — (no code; CI verification step)
   - `npm run check` → 0 errors.
   - `npm run build` → succeeds.
   - `npm run test` → green (including new unit tests from task 2).
