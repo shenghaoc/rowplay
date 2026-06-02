@@ -152,13 +152,12 @@
 			<div class="drawer-actions">
 				<LanguagePicker />
 				<button
-					class="btn btn-ghost btn-sm drawer-theme"
+					class="btn btn-ghost btn-square btn-sm drawer-theme"
 					type="button"
 					onclick={() => theme.toggle()}
 					aria-label={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
 				>
 					{#if theme.isDark}<Sun size={16} />{:else}<Moon size={16} />{/if}
-					<span>{theme.isDark ? t('theme.toLight') : t('theme.toDark')}</span>
 				</button>
 				{#if data.user}
 					<span class="muted user">@{data.user.username}</span>
