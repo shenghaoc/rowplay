@@ -20,6 +20,41 @@
 
 > **Stack audit (June 2026):** See `.kiro/specs/platform-modernization-audit/` for the full dependency, HTML/CSS/JS, and PR #223 modernization review. `bits-ui`, `clsx`, and `tailwind-merge` are listed in `package.json` but unused in `src/` — remove or wire up per audit `tasks.md`.
 
+## daisyUI (Tailwind CSS v4 plugin)
+
+rowplay follows the official **SvelteKit + Tailwind v4** install path. Do not add `tailwind.config.js` or `plugins: [require('daisyui')]` — that is the old Tailwind 3 setup.
+
+### Baseline (matches upstream docs)
+
+| Piece | Location |
+| ----- | -------- |
+| Packages | `tailwindcss`, `@tailwindcss/vite`, `daisyui` in `package.json` |
+| Vite | `tailwindcss()` then `sveltekit()` in `vite.config.ts` |
+| Plugin | `@import 'tailwindcss';` and `@plugin "daisyui";` in `src/app.css` |
+| Global CSS | `import '../app.css'` in `src/routes/+layout.svelte` |
+
+### rowplay extensions (intentional)
+
+Configured in `src/app.css`:
+
+- **`prefix: du-`** — all daisyUI classes are prefixed (`du-btn`, `du-card`, `du-badge`, …). Short names like `label`, `list`, `stats`, and `badge` are reserved for **custom** layout/CSS without colliding with the framework. See [daisyUI config → prefix](https://daisyui.com/docs/config).
+- **`themes: rowplay --default, dark`** plus `@plugin "daisyui/theme"` blocks for Jet Set Blue palettes.
+- **Brand polish** — global rules on `.du-btn`, `.du-badge`, `.du-card` in `app.css` (fonts, shadows, soft badges).
+- **Custom tokens** — `--paper`, `--ink`, `--live`, etc. alongside daisyUI semantic colors (`primary`, `base-100`, …).
+
+### Markup conventions
+
+- Use **prefixed** daisyUI component + modifier classes: `du-btn du-btn-primary`, `du-input du-input-bordered`, `du-stat-title`, `du-toggle du-toggle-primary`.
+- Use **unprefixed** rowplay-specific hooks where needed: `field-label`, `dash-stats`, `wlist`, `side-tag`, `add-btn` (custom, not daisyUI).
+- Avoid the daisyUI **`stats` container** on the dashboard summary grid — it forces `inline-grid` columns. Use a custom `dash-stats` CSS grid with `du-stat` cells and `du-stat-title` / `du-stat-value` parts instead.
+- Do not put `toggle` on a `<label>`; put `du-toggle` on the `<input type="checkbox">`. Use `du-label` on the label wrapper when following daisyUI’s toggle pattern.
+
+### Tooling and tests
+
+- `scripts/prefix-daisyui.mjs` — codemod to prefix daisyUI class tokens in `src/` after plugin or class-name changes.
+- `src/lib/daisyui-collision.ts` + `daisyui-collision-guard.test.ts` — CI fails if markup uses **unprefixed** daisyUI tokens (`btn`, `card`, `badge`, …).
+- `src/lib/mobile-stats-spacing.test.ts` — dashboard stat grid spacing regression tests (uses `du-stat-*` parts).
+
 ## I18n & Theming
 
 - Hand-rolled i18n — no library. Pure dictionaries and helpers in `i18n.ts`; reactive `I18n` class (Svelte 5 `$state`) in `i18n.svelte.ts`; plural helpers in `i18nPlural.ts`
