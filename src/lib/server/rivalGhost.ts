@@ -13,8 +13,7 @@ export async function loadRivalGhostTrace(event: RequestEvent, token: string) {
 	return toRivalGhostTrace(detail);
 }
 
-export function rivalGhostJson(event: RequestEvent, token: string) {
-	return loadRivalGhostTrace(event, token).then((trace) =>
-		json(trace, { headers: { 'cache-control': GHOST_TRACE_CACHE } })
-	);
+export async function rivalGhostJson(event: RequestEvent, token: string) {
+	const trace = await loadRivalGhostTrace(event, token);
+	return json(trace, { headers: { 'cache-control': GHOST_TRACE_CACHE } });
 }

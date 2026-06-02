@@ -64,7 +64,7 @@ export const en = {
 		withdraw: 'Remove from leaderboard',
 		withdrawing: 'Removing…',
 		withdrawOk: 'Removed from the leaderboard.',
-		withdrawFailed: 'Could not remove from leaderboard'
+		withdrawFailed: 'Could not remove from leaderboard',
 		ghostFallbackToast: "Could not load rival's strokes — racing their average pace instead"
 	},
 	nav: {

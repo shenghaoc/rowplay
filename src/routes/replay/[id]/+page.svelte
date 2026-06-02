@@ -121,6 +121,7 @@
 	let ghostRival = $state<GhostRival | null>(null);
 	let loadingGhost = $state(false);
 	let ghostError = $state('');
+	let ghostLoadGen = $state(0);
 	// sub-control inputs
 	let ghostId = $state('');
 	let sessionSearch = $state('');
@@ -381,22 +382,27 @@
 			if (hasPace && gp) armPaceGhostFromParams(gp, name);
 			loadingGhost = true;
 			ghostError = '';
+			const gen = ++ghostLoadGen;
 			try {
 				const res = await fetch(`/api/ghost/${token}`);
+				if (gen !== ghostLoadGen) return;
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
 				const data = (await res.json()) as RivalGhostTrace;
+				if (gen !== ghostLoadGen) return;
 				if (!data.strokes?.length) throw new Error('empty trace');
 				const label = name || data.workoutType || t('leaderboard.race');
+				if (gen !== ghostLoadGen) return;
 				setGhost(data.strokes, label, { kind: 'rival', name: label });
 				compareMode = 'none';
 			} catch {
+				if (gen !== ghostLoadGen) return;
 				if (!hasPace) {
 					setGhost(null, '', null);
 				} else {
 					toast.warning(t('leaderboard.ghostFallbackToast'));
 				}
 			} finally {
-				loadingGhost = false;
+				if (gen === ghostLoadGen) loadingGhost = false;
 			}
 			return;
 		}
@@ -435,6 +441,7 @@
 			ro.disconnect();
 			window.removeEventListener('keydown', onKey);
 			activeLoadId = -1;
+			ghostLoadGen = -1;
 			renderer?.destroy();
 		};
 	});
