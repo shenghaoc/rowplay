@@ -34,20 +34,21 @@
 				<span class="warn" title={t('liveMode.warning', { count: live.failures })}><AlertTriangle size={14} /></span>
 			{/if}
 		</div>
-		<label class="toggle">
+		<label class="label cursor-pointer justify-end gap-2">
+			<span>{t('liveMode.enabled')}</span>
 			<input
 				type="checkbox"
+				class="toggle toggle-primary"
 				checked={live.enabled}
 				onchange={(e) => live.setEnabled(e.currentTarget.checked)}
 			/>
-			<span>{t('liveMode.enabled')}</span>
 		</label>
 	</div>
 
 	{#if live.enabled}
 		<p class="muted hint">{t('liveMode.enabledHint')}</p>
 		<div class="interval-row">
-			<span class="muted label">{t('liveMode.interval')}</span>
+			<span class="muted field-label">{t('liveMode.interval')}</span>
 			<div class="chips" role="group" aria-label={t('liveMode.interval')}>
 				{#each LIVE_INTERVALS as sec}
 					<button
@@ -60,13 +61,14 @@
 				{/each}
 			</div>
 		</div>
-		<label class="toggle sound">
+		<label class="label cursor-pointer justify-end gap-2 sound">
+			<span>{t('liveMode.sound')}</span>
 			<input
 				type="checkbox"
+				class="toggle toggle-primary"
 				checked={live.soundEnabled}
 				onchange={(e) => live.setSound(e.currentTarget.checked)}
 			/>
-			<span>{t('liveMode.sound')}</span>
 		</label>
 		<p class="muted hint">{t('liveMode.soundHint')}</p>
 		<div class="poll-status" role="status" aria-live="polite">
@@ -127,12 +129,8 @@
 		color: var(--warn);
 		display: inline-flex;
 	}
-	.toggle {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
+	.live-head :global(.label) {
 		font-size: 0.85rem;
-		cursor: pointer;
 	}
 	.hint {
 		font-size: 0.78rem;
@@ -145,7 +143,7 @@
 		flex-wrap: wrap;
 		margin: 0.5rem 0;
 	}
-	.label {
+	.field-label {
 		font-size: 0.78rem;
 	}
 	.chips {

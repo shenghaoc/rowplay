@@ -139,7 +139,7 @@
 	<p class="vcount muted">{t('workoutList.windowed', { n: workouts.length })}</p>
 {:else}
 	<!-- Small list: plain flow layout. -->
-	<div class="list">
+	<div class="wlist">
 		{#each workouts as w (w.id)}
 			<a class="card row" class:new-entry={newEntryIds.has(w.id)} href="/replay/{w.id}">{@render row(w)}</a>
 		{/each}
@@ -147,7 +147,7 @@
 {/if}
 
 <style>
-	.list {
+	.wlist {
 		display: grid;
 		gap: 0.6rem;
 	}

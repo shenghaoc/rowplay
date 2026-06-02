@@ -876,7 +876,7 @@
 			</button>
 			{#if canPublish}
 				<button
-					class="btn ghost small"
+					class="btn btn-ghost btn-sm"
 					type="button"
 					disabled={publishing}
 					onclick={publishToLeaderboard}
@@ -923,7 +923,7 @@
 				<p class="mono small">{hrPreviewLabel}</p>
 				<div class="hrimport-actions">
 					<button
-						class="btn ghost small"
+						class="btn btn-ghost btn-sm"
 						type="button"
 						disabled={hrImportBusy}
 						onclick={applyHrImportAction}
@@ -934,7 +934,7 @@
 			{/if}
 			{#if hrOverlay}
 				<button
-					class="btn ghost small"
+					class="btn btn-ghost btn-sm"
 					type="button"
 					disabled={hrImportBusy}
 					onclick={clearHrImportAction}

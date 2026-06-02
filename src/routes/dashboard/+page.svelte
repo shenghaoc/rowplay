@@ -48,6 +48,14 @@
 		overreaching: 'bad'
 	};
 
+	const formBandBadge: Record<FormBand, string> = {
+		transition: 'badge-info',
+		fresh: 'badge-success',
+		neutral: 'badge-ghost',
+		productive: 'badge-primary',
+		overreaching: 'badge-warning'
+	};
+
 	let { data } = $props();
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);
@@ -593,21 +601,21 @@
 	{/if}
 
 	<div class="dash-stats">
-		<div class="card dash-stat">
-			<div class="muted label">{t('dashboard.sessions')}</div>
-			<div class="value mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
+		<div class="stat dash-stat place-items-start">
+			<div class="stat-title muted">{t('dashboard.sessions')}</div>
+			<div class="stat-value mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
 		</div>
-		<div class="card dash-stat">
-			<div class="muted label">{t('dashboard.totalDistance')}</div>
-			<div class="value mono">{fmtDistance(totalMeters)}</div>
+		<div class="stat dash-stat place-items-start">
+			<div class="stat-title muted">{t('dashboard.totalDistance')}</div>
+			<div class="stat-value mono">{fmtDistance(totalMeters)}</div>
 		</div>
-		<div class="card dash-stat">
-			<div class="muted label">{t('dashboard.totalTime')}</div>
-			<div class="value mono">{fmtTime(totalTime)}</div>
+		<div class="stat dash-stat place-items-start">
+			<div class="stat-title muted">{t('dashboard.totalTime')}</div>
+			<div class="stat-value mono">{fmtTime(totalTime)}</div>
 		</div>
-		<div class="card dash-stat">
-			<div class="muted label">{t('dashboard.avgPace')}</div>
-			<div class="value mono">{fmtPace(avgPace)}</div>
+		<div class="stat dash-stat place-items-start">
+			<div class="stat-title muted">{t('dashboard.avgPace')}</div>
+			<div class="stat-value mono">{fmtPace(avgPace)}</div>
 		</div>
 	</div>
 
@@ -630,10 +638,10 @@
 			<div class="formhead">
 				<div class="formtitle">
 					<Activity size={18} />
-					<span class="label">{t('dashboard.formTitle')}</span>
+					<span class="field-label">{t('dashboard.formTitle')}</span>
 					<span class="badge badge-primary">{t('dashboard.formPremium')}</span>
 				</div>
-				<span class="badge {formBandClass[load.band]}">{bandLabel[load.band]}</span>
+				<span class="badge {formBandBadge[load.band]}">{bandLabel[load.band]}</span>
 			</div>
 			<p class="formsub muted">{t('dashboard.formSub')}</p>
 
@@ -693,7 +701,7 @@
 	<!-- Personal bests -->
 	{#if pbs.length}
 		<div class="card pbcard">
-			<div class="muted label">{t('dashboard.pbTitle')}</div>
+			<div class="muted field-label">{t('dashboard.pbTitle')}</div>
 			<div class="pbgrid">
 				{#each pbs as pb}
 					<div class="pb">
@@ -709,7 +717,7 @@
 	<!-- Per-sport breakdown -->
 	{#if bySport.length > 1}
 		<div class="card breakdown">
-			<div class="muted label">{t('dashboard.bySport')}</div>
+			<div class="muted field-label">{t('dashboard.bySport')}</div>
 			<div class="tablescroll">
 			<table class="mono">
 				<thead>
@@ -736,7 +744,7 @@
 	{#if filtered.length > 1}
 		<div class="card chartcard">
 			<div class="trendhead">
-				<div class="label">
+				<div class="field-label">
 					{t('dashboard.trendTitle')}
 					{#if bandScoped}
 						<span class="muted">· {t('dashboard.likeForLike', { sport: SPORT_LABEL[dominantSport] })}</span>
@@ -957,17 +965,17 @@
 		margin-bottom: 1rem;
 		width: 100%;
 	}
-	.dash-stat .label {
+	.dash-stat :global(.stat-title) {
 		font-size: 0.8rem;
 		line-height: 1.3;
 	}
-	.dash-stat .value {
+	.dash-stat :global(.stat-value) {
 		font-size: 1.6rem;
 		font-weight: 700;
 		margin-top: 0.25rem;
 		line-height: 1.15;
 	}
-	.label {
+	.field-label {
 		font-size: 0.8rem;
 	}
 	.pbcard,
@@ -993,7 +1001,7 @@
 		gap: 0.5rem;
 		color: var(--accent);
 	}
-	.formtitle .label {
+	.formtitle .field-label {
 		color: var(--text);
 		font-weight: 700;
 		font-size: 0.95rem;
@@ -1010,49 +1018,18 @@
 		font-size: 0.82rem;
 		margin: 0.4rem 0 0.9rem;
 	}
-	.badge {
-		font-size: 0.78rem;
-		font-weight: 700;
-		padding: 0.25rem 0.7rem;
-		border-radius: 999px;
-		border: 1px solid var(--border);
-		background: var(--bg-elev-2);
-		color: var(--text);
-	}
-	.badge.good,
 	.fsv.good {
 		color: var(--accent-2);
 	}
-	.badge.good {
-		background: color-mix(in srgb, var(--accent-2) 14%, var(--paper-raised));
-		border-color: color-mix(in srgb, var(--accent-2) 40%, var(--paper-raised));
-	}
-	.badge.bad,
 	.fsv.bad {
-		/* Raw --warn is ~2.6:1 on its pale tint; darken toward --ink like .premium (theme-aware). */
 		color: color-mix(in srgb, var(--warn) 45%, var(--ink));
 	}
-	.badge.bad {
-		background: color-mix(in srgb, var(--warn) 14%, var(--paper-raised));
-		border-color: color-mix(in srgb, var(--warn) 40%, var(--paper-raised));
-	}
-	.badge.accent,
 	.fsv.accent {
 		color: var(--accent);
 	}
-	.badge.accent {
-		background: color-mix(in srgb, var(--accent) 14%, var(--paper-raised));
-		border-color: color-mix(in srgb, var(--accent) 40%, var(--paper-raised));
-	}
-	.badge.info,
 	.fsv.info {
 		color: var(--ghost);
 	}
-	.badge.info {
-		background: color-mix(in srgb, var(--ghost) 14%, var(--paper-raised));
-		border-color: color-mix(in srgb, var(--ghost) 40%, var(--paper-raised));
-	}
-	.badge.neutral,
 	.fsv.neutral {
 		color: var(--text-dim);
 	}
@@ -1254,7 +1231,7 @@
 		.dash-stat {
 			padding: 1rem 1.1rem;
 		}
-		.dash-stat .label {
+		.dash-stat :global(.stat-title) {
 			min-height: 2.6em;
 		}
 		.latest {
@@ -1289,11 +1266,11 @@
 		.dash-stat {
 			padding: 0.9rem 1rem;
 		}
-		.dash-stat .label {
+		.dash-stat :global(.stat-title) {
 			font-size: 0.72rem;
 			min-height: 2.6em;
 		}
-		.dash-stat .value {
+		.dash-stat :global(.stat-value) {
 			font-size: 1.25rem;
 		}
 		.fsv {

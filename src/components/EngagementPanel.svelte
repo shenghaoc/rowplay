@@ -130,7 +130,7 @@
 	<div class="enghead">
 		<div class="engtitle">
 			<Target size={18} />
-			<span class="label">{t('dashboard.goalsTitle')}</span>
+			<span class="field-label">{t('dashboard.goalsTitle')}</span>
 		</div>
 	</div>
 
@@ -236,7 +236,7 @@
 		gap: 0.5rem;
 		color: var(--accent);
 	}
-	.engtitle .label {
+	.engtitle .field-label {
 		font-weight: 700;
 		font-size: 0.95rem;
 		color: var(--text);

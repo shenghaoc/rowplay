@@ -447,10 +447,12 @@ h3 {
 	color: var(--ink);
 }
 
-/* Native form controls — rounded paper fields with a live-ink focus ring. */
-input:not([type='checkbox']):not([type='radio']):not([type='range']),
-select,
-textarea {
+/* Native controls without daisyUI classes — prefer `input` / `select` / `textarea` in markup. */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.input):not(.toggle):not(
+		.checkbox
+	):not(.radio):not(.range),
+select:not(.select),
+textarea:not(.textarea) {
 	font-family: var(--ui);
 	font-size: 0.95rem;
 	color: var(--ink);

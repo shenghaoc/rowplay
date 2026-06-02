@@ -53,7 +53,7 @@
 	<div class="calhead">
 		<div class="callabel">
 			<span class="calicon"><CalendarDays size={15} /></span>
-			<span class="muted label">{i18n.t('dashboard.calTitle')}</span>
+			<span class="muted field-label">{i18n.t('dashboard.calTitle')}</span>
 		</div>
 		<div class="calmetrics">
 			<button class="mchip" class:on={metric === 'distance'} onclick={() => (metric = 'distance')}>

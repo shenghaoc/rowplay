@@ -304,7 +304,7 @@
 			{#each [{ d: detailA, side: 'a' }, { d: detailB, side: 'b' }] as { d, side }}
 				<div class="card summary">
 					<div class="sumhead">
-						<span class="badge" class:a={side === 'a'} class:b={side === 'b'}>
+						<span class="side-tag" class:a={side === 'a'} class:b={side === 'b'}>
 							{side === 'a' ? t('compare.workoutA') : t('compare.workoutB')}
 						</span>
 						<span class="h1icon" style:color={MACHINE_COLOR[d.sport]}
@@ -533,7 +533,7 @@
 		gap: 0.5rem;
 		flex-wrap: wrap;
 	}
-	.badge {
+	.side-tag {
 		font-size: 0.7rem;
 		font-weight: 800;
 		text-transform: uppercase;
@@ -541,11 +541,11 @@
 		border-radius: var(--r-ctrl);
 		border: var(--bd);
 	}
-	.badge.a {
+	.side-tag.a {
 		background: color-mix(in srgb, var(--live) 12%, transparent);
 		color: var(--live);
 	}
-	.badge.b {
+	.side-tag.b {
 		background: color-mix(in srgb, var(--ghost) 12%, transparent);
 		color: var(--ghost);
 	}

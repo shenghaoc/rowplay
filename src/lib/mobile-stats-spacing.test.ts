@@ -136,13 +136,14 @@ function isBugCondition(viewport: { widthPx: number }): boolean {
 // ---------------------------------------------------------------------------
 
 describe('daisyUI collision guard', () => {
-	it('dashboard markup must not use daisyUI .stats / .stat class names', () => {
+	it('dashboard summary uses dash-stats + stat parts, not stats container', () => {
 		const source = readFileSync(DASHBOARD_PATH, 'utf-8');
 		const html = source.slice(0, source.indexOf('<style>'));
 		expect(html).not.toMatch(/class="stats"/);
-		expect(html).not.toMatch(/class="card stat"/);
+		expect(html).not.toMatch(/class="card dash-stat"/);
 		expect(html).toContain('class="dash-stats"');
-		expect(html).toContain('class="card dash-stat"');
+		expect(html).toContain('stat-title');
+		expect(html).toContain('class="stat dash-stat');
 	});
 });
 
@@ -248,15 +249,12 @@ describe('Property 1: Bug Condition — Mobile Stat Cards Cramped Padding and Ga
 			expect(cols).toBe('repeat(2, minmax(0, 1fr))');
 		});
 
-		it('should preserve .dash-stat .value { font-size: 1.25rem } in @media (max-width: 400px)', () => {
-			// This rule must remain unchanged — it reduces the value font size on very small screens
-			const fontSize = findPropertyValue(media400, '.dash-stat .value', 'font-size');
-			expect(fontSize).toBe('1.25rem');
+		it('should preserve .dash-stat :global(.stat-value) font-size in @media (max-width: 400px)', () => {
+			expect(media400).toMatch(/\.dash-stat\s+:global\(\.stat-value\)[\s\S]*font-size:\s*1\.25rem/);
 		});
 
-		it('should have .dash-stat .label { min-height: 2.6em } in @media (max-width: 400px) (matches 720px block for alignment)', () => {
-			const minHeight = findPropertyValue(media400, '.dash-stat .label', 'min-height');
-			expect(minHeight).toBe('2.6em');
+		it('should have .dash-stat :global(.stat-title) min-height in @media (max-width: 400px)', () => {
+			expect(media400).toMatch(/\.dash-stat\s+:global\(\.stat-title\)[\s\S]*min-height:\s*2\.6em/);
 		});
 	});
 });

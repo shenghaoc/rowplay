@@ -100,6 +100,7 @@
 			<label class="field">
 				<span class="flabel muted">{t('workoutList.dateFrom')}</span>
 				<input
+					class="input input-bordered w-full"
 					type="date"
 					value={query.dateFrom ?? ''}
 					onchange={(e) => patch({ dateFrom: e.currentTarget.value || undefined })}
@@ -145,6 +146,7 @@
 		<form class="searchrow" onsubmit={(e) => { e.preventDefault(); submitSearch(); }}>
 			<span class="sicon" aria-hidden="true"><Search size={16} /></span>
 			<input
+				class="input input-bordered w-full"
 				type="search"
 				inputmode="search"
 				enterkeyhint="search"

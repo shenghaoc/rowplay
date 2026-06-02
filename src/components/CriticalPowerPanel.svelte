@@ -110,7 +110,7 @@
 		<div class="cphead">
 			<div class="cptitle">
 				<Zap size={18} />
-				<span class="label">{t('dashboard.cpTitle')}</span>
+				<span class="field-label">{t('dashboard.cpTitle')}</span>
 			</div>
 		</div>
 		<p class="cpsub muted">{t('dashboard.cpSub')}</p>
@@ -135,7 +135,7 @@
 		<p class="cpexplain">{cpExplain(cp)}</p>
 
 		<div class="predict">
-			<div class="predhead label">{t('dashboard.cpPredictTitle')}</div>
+			<div class="predhead field-label">{t('dashboard.cpPredictTitle')}</div>
 			<p class="predsub muted">{t('dashboard.cpPredictSub')}</p>
 
 			<div class="predmodes" role="group" aria-label={t('dashboard.cpPredictTitle')}>
@@ -201,7 +201,7 @@
 
 		{#if comparison && comparison.durations.length > 0}
 			<div class="curve">
-				<div class="label muted">{t('dashboard.cpChartTitle')}</div>
+				<div class="field-label muted">{t('dashboard.cpChartTitle')}</div>
 				<p class="curvehint muted">{t('dashboard.cpChartHint')}</p>
 				<UPlotChart
 					data={curveData}
@@ -236,7 +236,7 @@
 		gap: 0.5rem;
 		color: var(--power);
 	}
-	.cptitle .label {
+	.cptitle .field-label {
 		color: var(--text);
 		font-weight: 700;
 		font-size: 0.95rem;
