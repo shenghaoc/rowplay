@@ -6,9 +6,9 @@ import {
 	matchStandardDistance,
 	type Board,
 	type LeaderboardEntry
-} from '$lib/leaderboard';
-import { mockLeaderboard } from '$lib/mockLeaderboard';
-import { mockWorkouts } from '$lib/mockData';
+} from '../leaderboard';
+import { mockLeaderboard } from '../mockLeaderboard';
+import { mockWorkouts } from '../mockData';
 import { deleteLeaderboardEntry, getLeaderboardEntries, upsertLeaderboardEntry } from './db';
 import { loadWorkouts } from './data';
 import { createWorkoutShare } from './share';

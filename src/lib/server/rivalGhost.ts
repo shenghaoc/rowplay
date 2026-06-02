@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
-import { toRivalGhostTrace } from '$lib/replay/rivalGhost';
+import { toRivalGhostTrace } from '../replay/rivalGhost';
 import { loadSharedWorkout } from './share';
 
 /** Cache-Control for token-gated public ghost traces (capability URLs). */

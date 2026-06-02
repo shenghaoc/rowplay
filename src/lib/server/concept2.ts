@@ -1,5 +1,5 @@
 import type { KVNamespace } from '@cloudflare/workers-types';
-import { nowEpochMillis } from '$lib/datetime';
+import { nowEpochMillis } from '../datetime';
 import { paceToWattsForSport } from '../format';
 import {
 	toSport,

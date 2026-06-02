@@ -6,14 +6,14 @@ import { Concept2Client } from './concept2';
 import { getConfig } from './config';
 import { readSession, TOKEN_COOKIE } from './session';
 import { openToken } from './tokenCrypto';
-import { overlapDate } from '$lib/datetime';
-import { detectNewPBs, distancePBs, type DistancePB } from '$lib/analytics';
+import { overlapDate } from '../datetime';
+import { detectNewPBs, distancePBs, type DistancePB } from '../analytics';
 import {
 	filterAndSortWorkouts,
 	parseWorkoutListQuery,
 	pbWorkoutIds,
 	type WorkoutListQuery
-} from '$lib/workoutQuery';
+} from '../workoutQuery';
 import {
 	countWorkouts,
 	deleteAnnotation as dbDeleteAnnotation,
@@ -34,9 +34,9 @@ import {
 	upsertWorkouts,
 	type SyncState
 } from './db';
-import type { SportSummary, AnnualGoal } from '$lib/analytics';
+import type { SportSummary, AnnualGoal } from '../analytics';
 import { destroySession } from './session';
-import { defaultAnnualGoal, parseGoalsCookie } from '$lib/goals';
+import { defaultAnnualGoal, parseGoalsCookie } from '../goals';
 
 async function client(event: RequestEvent): Promise<Concept2Client | null> {
 	const env = event.platform?.env;

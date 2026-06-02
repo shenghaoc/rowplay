@@ -1,13 +1,13 @@
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
-import { nowEpochMillis } from '$lib/datetime';
-import type { WorkoutListQuery } from '$lib/workoutQuery';
+import { nowEpochMillis } from '../datetime';
+import type { WorkoutListQuery } from '../workoutQuery';
 import {
 	detailCacheTtlMs,
 	isDetailCacheFresh,
 	type DetailCacheEnv
 } from './detailCache';
 import type { AnnualGoal } from '../analytics';
-import { STANDARD_DISTANCES, type LeaderboardEntry } from '$lib/leaderboard';
+import { STANDARD_DISTANCES, type LeaderboardEntry } from '../leaderboard';
 import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
