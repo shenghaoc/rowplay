@@ -11,8 +11,9 @@ depend on #61 being live.
 ## Tasks
 
 - [x] 1. Pure detector + unit tests
-  - [x] 1.1 Create `src/lib/exrSource.ts` exporting `isExrSource(workout: Pick<Workout, 'source'>): boolean`.
-        The function returns `true` iff `workout.source?.toUpperCase() === 'EXR'`.
+  - [x] 1.1 Create `src/lib/exrSource.ts` exporting `isExrSource(workout?: Pick<Workout, 'source'> | null): boolean`.
+        The function returns `true` iff `workout?.source?.toUpperCase() === 'EXR'`
+        (observed EXR token; Concept2 docs do not enumerate `source` values).
         No DOM access; safe in server, client, and test contexts.
   - [x] 1.2 Create `src/lib/exrSource.test.ts` with Vitest unit tests covering:
         - `source: 'EXR'` → `true`
@@ -20,6 +21,7 @@ depend on #61 being live.
         - `source: 'ErgData'` → `false`
         - `source: 'Web'` → `false`
         - `source` absent (`{}`) → `false`
+        - `workout` null / undefined → `false`
   - [x] 1.3 Run `npm run test` locally to confirm the new tests pass before
         proceeding.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_

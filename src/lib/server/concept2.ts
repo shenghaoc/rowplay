@@ -236,7 +236,7 @@ interface RawResult {
 	timezone?: string;
 	weight_class?: 'H' | 'L';
 	privacy?: string;
-	/** How the workout was logged: Web, ErgData, EXR, etc. */
+	/** Concept2 results `source` — undocumented enum; docs illustrate Web/ErgData only. */
 	source?: string;
 	verified?: boolean;
 	rest_time?: number;

@@ -3,8 +3,8 @@
 ## Overview
 
 This spec adds an **"EXR / algorithmic source" badge** to the workout-detail /
-replay view whenever the Concept2 logbook reports that a workout was recorded by
-EXR. The feature is deliberately narrow: read the `source` field captured by PR
+replay view when the workout's `source` field matches the observed EXR value.
+The feature is deliberately narrow: read the `source` field captured by PR
 #61, run it through a pure detector, and surface a caveated badge. Nothing else
 changes — analytics, leaderboard logic, and the replay engine are untouched.
 
@@ -16,17 +16,37 @@ provenance is a false equivalence. Flagging is the minimum honest intervention.
 
 ## Where the `source` field lives
 
-`Workout.source?: string` is defined in `src/lib/types.ts` (line 83). The comment
-in that file already reads: `"How the workout was logged: Web, ErgData, EXR,
-etc."` It is populated by `mapResult()` in `src/lib/server/concept2.ts` from the
-raw API field `r.source`, which PR #61 introduced.
+`Workout.source?: string` is defined in `src/lib/types.ts`. It is populated by
+`mapResult()` in `src/lib/server/concept2.ts` from the raw API field `r.source`,
+which PR #61 introduced.
 
-Known values include `"ErgData"`, `"ErgZone"`, `"Web"` (Concept2 logbook web UI),
-and `"EXR"`. The field is a free string from the API, so the detector does a
-case-insensitive match rather than a strict equality check.
+### Concept2 API alignment
 
-The `source` field is part of the `Workout` summary and therefore present on both
-`Workout` and `WorkoutDetail`. It is passed through `redactForPublic()` in
+The Logbook API exposes `source` as a read-only string on results, but the
+reference docs **do not enumerate** allowed values — they only show `"Web"` and
+`"ErgData"` as examples. Values such as `"EXR"` (and `"ErgZone"`) are
+**observed in the wild, not documented**; treat any new value as unverified until
+confirmed against real logbook traffic.
+
+The detector therefore treats `source` as a free string, matches `"EXR"`
+case-insensitively, and returns `false` for anything else (including absent
+values). That tolerance is intentional: the API enum is unspecified.
+
+### D1 persistence (internal)
+
+The D1 `workouts` summary table has **no `source` column** (`upsertWorkouts` /
+`rowToWorkout` do not round-trip it). List/dashboard rows loaded only from D1
+summaries will have `source === undefined`. For this spec (replay/detail and
+share views), `source` is available on:
+
+- freshly synced API payloads and `workout_detail` JSON cache rows (full detail), and
+- demo fixtures in `mockData.ts`.
+
+Persisting `source` on the summary table is **out of scope** here; it is required
+only if the badge must appear on list/dashboard items without opening detail.
+
+The `source` field is part of the `Workout` type and therefore present on both
+`Workout` and `WorkoutDetail` when populated. It is passed through `redactForPublic()` in
 `src/lib/server/share.ts` unchanged (only `serialNumber`, `device`, `deviceOs`,
 and `deviceOsVersion` are stripped — `source` is not hardware-identifying).
 
@@ -38,13 +58,11 @@ and `deviceOsVersion` are stripped — `source` is not hardware-identifying).
 import type { Workout } from './types';
 
 /**
- * Returns true when the workout was logged by EXR (the virtual rowing game),
- * whose pace/power figures are algorithmically synthesised rather than
- * read from the PM5. Case-insensitive to tolerate future API capitalisation
- * changes.
+ * True when source matches the observed EXR value (case-insensitive).
+ * EXR is not listed in Concept2 API docs; verify against real logbook data.
  */
-export function isExrSource(workout: Pick<Workout, 'source'>): boolean {
-  return workout.source?.toUpperCase() === 'EXR';
+export function isExrSource(workout?: Pick<Workout, 'source'> | null): boolean {
+  return workout?.source?.toUpperCase() === 'EXR';
 }
 ```
 
@@ -65,6 +83,10 @@ describe('isExrSource', () => {
   it('returns false for ErgData', () => expect(isExrSource({ source: 'ErgData' })).toBe(false));
   it('returns false for Web', () => expect(isExrSource({ source: 'Web' })).toBe(false));
   it('returns false when source is absent', () => expect(isExrSource({})).toBe(false));
+  it('returns false when workout is null or undefined', () => {
+    expect(isExrSource(null)).toBe(false);
+    expect(isExrSource(undefined)).toBe(false);
+  });
 });
 ```
 
@@ -79,7 +101,7 @@ The badge is added to the `.summary` row, immediately after the existing
 
 ```svelte
 {#if !detail.hasStrokeData}<span class="badge">{t('replay.lowRes')}</span>{/if}
-{#if isExrSource(detail)}<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>{/if}
+{#if exrFlagged}<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>{/if}
 ```
 
 The `.badge` class is already used for `lowRes` and provides the correct pill
@@ -177,7 +199,7 @@ implementation; the validator only checks key presence.
 | Leaderboard publish logic | EXR pieces may be published; no exclusion |
 | `src/lib/replay/renderer.ts` and `engine.ts` | No EXR-specific rendering |
 | `redactForPublic()` in `share.ts` | `source` already passes through |
-| D1 schema / `db.ts` | `source` is stored in the JSON payload, no column change |
+| D1 `workouts` summary table | No `source` column; badge scope uses detail cache / API only |
 | Race card PNG download | No EXR annotation on the card (out of scope) |
 
 ---

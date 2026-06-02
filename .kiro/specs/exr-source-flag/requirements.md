@@ -23,6 +23,16 @@ results endpoint into `Workout.source` (already present in `src/lib/types.ts`)
 and surfaces it in the metadata panel. This spec depends on that data being
 available. All implementation tasks must not be started until #61 is merged.
 
+**Concept2 API alignment:** The Logbook reference documents `source` as a string
+but only illustrates `"Web"` and `"ErgData"`. It does **not** guarantee `"EXR"`
+(or `"ErgZone"`). rowplay treats `source` as a free string; the EXR badge fires
+only when the value matches the **observed-in-the-wild** `"EXR"` token
+(case-insensitive). Verify against real logbook data when extending matchers.
+
+**D1 note:** The `workouts` summary table does not persist `source`; replay/detail
+and share views read it from API responses or the `workout_detail` JSON cache.
+List/dashboard badges would require persisting `source` separately (out of scope).
+
 ---
 
 ## Requirement 1: Pure EXR detector
@@ -33,12 +43,13 @@ is consistent.
 
 ### Acceptance Criteria
 
-1. GIVEN a `Workout` or `WorkoutDetail` whose `source` field equals `"EXR"` (case-
-   insensitive), WHEN `isExrSource(workout)` is called, THEN it SHALL return
-   `true`.
-2. GIVEN a workout whose `source` field is absent, `null`, or any other value
-   (e.g. `"ErgData"`, `"Web"`, `"ErgZone"`), WHEN `isExrSource(workout)` is
-   called, THEN it SHALL return `false`.
+1. GIVEN a `Workout` or `WorkoutDetail` whose `source` field equals the observed
+   `"EXR"` token (case-insensitive), WHEN `isExrSource(workout)` is called, THEN
+   it SHALL return `true`.
+2. GIVEN a workout whose `source` field is absent, the workout reference is
+   `null`/`undefined`, or `source` is any other value (e.g. documented examples
+   `"ErgData"`, `"Web"`, or other observed strings), WHEN `isExrSource(workout)`
+   is called, THEN it SHALL return `false`.
 3. The helper SHALL be a pure function with **no DOM dependency** so it can be
    imported by server, client, and unit-test contexts alike.
 4. The helper SHALL live in `src/lib/exrSource.ts` alongside a companion Vitest
