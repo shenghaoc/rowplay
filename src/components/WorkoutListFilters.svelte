@@ -99,23 +99,23 @@
 	<details class="lq-details" bind:open={expanded}>
 		<summary class="lq-summary">{t('workoutList.expand')}</summary>
 		<div class="lqgrid">
-			<label class="form-control w-full">
-				<span class="label py-0"><span class="label-text text-xs uppercase opacity-70">{t('workoutList.dateFrom')}</span></span>
+			<label class="flex flex-col gap-1 w-full">
+				<span class="text-xs uppercase opacity-70">{t('workoutList.dateFrom')}</span>
 				<input type="date" class="input input-bordered input-sm w-full" value={query.dateFrom ?? ''} onchange={(e) => patch({ dateFrom: e.currentTarget.value || undefined })} />
 			</label>
-			<label class="form-control w-full">
-				<span class="label py-0"><span class="label-text text-xs uppercase opacity-70">{t('workoutList.dateTo')}</span></span>
+			<label class="flex flex-col gap-1 w-full">
+				<span class="text-xs uppercase opacity-70">{t('workoutList.dateTo')}</span>
 				<input type="date" class="input input-bordered input-sm w-full" value={query.dateTo ?? ''} onchange={(e) => patch({ dateTo: e.currentTarget.value || undefined })} />
 			</label>
-			<label class="form-control w-full min-w-48">
-				<span class="label py-0"><span class="label-text text-xs uppercase opacity-70">{t('workoutList.workoutType')}</span></span>
+			<label class="flex flex-col gap-1 w-full min-w-48">
+				<span class="text-xs uppercase opacity-70">{t('workoutList.workoutType')}</span>
 				<select class="select select-bordered select-sm w-full" value={query.workoutType ?? ''} onchange={(e) => patch({ workoutType: e.currentTarget.value || undefined })}>
 					<option value="">{t('workoutList.anyType')}</option>
 					{#each workoutTypes as wt}<option value={wt}>{wt}</option>{/each}
 				</select>
 			</label>
-			<label class="form-control w-full min-w-48">
-				<span class="label py-0"><span class="label-text text-xs uppercase opacity-70">{t('workoutList.strokeData')}</span></span>
+			<label class="flex flex-col gap-1 w-full min-w-48">
+				<span class="text-xs uppercase opacity-70">{t('workoutList.strokeData')}</span>
 				<select class="select select-bordered select-sm w-full" value={query.hasStroke === true ? '1' : query.hasStroke === false ? '0' : ''} onchange={(e) => { const v = e.currentTarget.value; patch({ hasStroke: v === '1' ? true : v === '0' ? false : undefined }); }}>
 					<option value="">{t('workoutList.strokeAny')}</option>
 					<option value="1">{t('workoutList.strokeYes')}</option>

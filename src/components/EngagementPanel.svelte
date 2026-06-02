@@ -145,8 +145,8 @@
 					{t('dashboard.goalsKindHours')}
 				</button>
 			</div>
-			<label class="form-control targetrow">
-				<span class="label py-0"><span class="label-text muted">{kind === 'meters' ? t('dashboard.goalsTargetMeters') : t('dashboard.goalsTargetHours')}</span></span>
+			<label class="targetrow">
+				<span class="muted">{kind === 'meters' ? t('dashboard.goalsTargetMeters') : t('dashboard.goalsTargetHours')}</span>
 				<input
 					class="input input-bordered input-sm mono w-full max-w-xs"
 					type="number"
@@ -252,44 +252,23 @@
 		align-items: flex-end;
 		margin-bottom: 0.85rem;
 	}
-	.kindrow {
-		display: flex;
-		gap: 0.35rem;
-	}
-	.chip,
 	.bchip {
 		background: var(--paper-raised);
 		border: var(--bd-heavy);
 		color: var(--ink-2);
 		border-radius: var(--r-ctrl);
-		padding: 0.3rem 0.7rem;
+		padding: 0.25rem 0.5rem;
 		font-family: var(--display);
-		font-size: 0.78rem;
+		font-size: 0.72rem;
 		font-weight: 700;
 		text-transform: uppercase;
 		cursor: pointer;
-	}
-	.chip.on {
-		background: var(--ink);
-		color: var(--paper-raised);
-		border-color: var(--ink);
-	}
-	.bchip {
-		font-size: 0.72rem;
-		padding: 0.25rem 0.5rem;
 	}
 	.targetrow {
 		display: flex;
 		flex-direction: column;
 		gap: 0.2rem;
 		font-size: 0.75rem;
-	}
-	.targetin {
-		width: 8rem;
-		padding: 0.35rem 0.5rem;
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		background: var(--paper-inset);
 	}
 	.presetrow {
 		display: flex;

@@ -34,7 +34,7 @@
 			{/if}
 		</div>
 		<label class="label cursor-pointer gap-2">
-			<span class="label-text">{t('liveMode.enabled')}</span>
+			<span>{t('liveMode.enabled')}</span>
 			<input
 				type="checkbox"
 				class="toggle toggle-primary"
@@ -54,7 +54,7 @@
 			{/each}
 		</ChipGroup>
 		<label class="label cursor-pointer gap-2 sound">
-			<span class="label-text">{t('liveMode.sound')}</span>
+			<span>{t('liveMode.sound')}</span>
 			<input
 				type="checkbox"
 				class="toggle toggle-primary"
