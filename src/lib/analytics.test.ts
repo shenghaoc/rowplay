@@ -18,7 +18,10 @@ import {
 	volumeIntensityLevel,
 	workoutDayKey,
 	workoutWatts,
-	dayVolumeValue
+	dayVolumeValue,
+	hrRecoveryTrend,
+	workRestEfficiency,
+	targetVsActual
 } from './analytics';
 import { mockWorkoutDetail, mockWorkouts } from './mockData';
 import {
@@ -272,5 +275,30 @@ describe('stroke normalisation (bike + intervals)', () => {
 		const raw = [{ t: 0, d: 0, p: 1900, spm: 85 }];
 		const norm = normalizeRawStrokes(raw, 'bike');
 		expect(norm[0].pace).toBe(95);
+	});
+});
+
+describe('full-fidelity analytics', () => {
+	it('hrRecoveryTrend uses ending/recovery when present', () => {
+		const detail = mockWorkoutDetail(1007)!;
+		const { strokes: _s, splits: _sp, isInterval: _i, ...summary } = detail;
+		const trend = hrRecoveryTrend([summary]);
+		expect(trend.length).toBe(1);
+		expect(trend[0].drop).toBe(48);
+	});
+
+	it('workRestEfficiency summarises interval work vs rest', () => {
+		const detail = mockWorkoutDetail(1005)!;
+		const eff = workRestEfficiency(detail);
+		expect(eff).not.toBeNull();
+		expect(eff!.restTime).toBe(270);
+		expect(eff!.timeRatio).toBeGreaterThan(0);
+	});
+
+	it('targetVsActual compares pace and watts', () => {
+		const detail = mockWorkoutDetail(1005)!;
+		const rows = targetVsActual(detail);
+		expect(rows.some((r) => r.metric === 'pace')).toBe(true);
+		expect(rows.some((r) => r.metric === 'watts')).toBe(true);
 	});
 });

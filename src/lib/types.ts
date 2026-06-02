@@ -15,6 +15,42 @@ export function toSport(type: string | undefined): Sport {
 	}
 }
 
+export interface HeartRateDetail {
+	average?: number;
+	min?: number;
+	max?: number;
+	/** bpm at the end of the effort */
+	ending?: number;
+	/** bpm during rest (split-level) */
+	rest?: number;
+	/** bpm after recovery window */
+	recovery?: number;
+}
+
+export interface WorkoutTargets {
+	strokeRate?: number;
+	/** 0–5 */
+	heartRateZone?: number;
+	/** sec / 500m (normalised from API tenths) */
+	pace?: number;
+	watts?: number;
+	calories?: number;
+}
+
+export interface LoggingMetadata {
+	pmVersion?: number;
+	firmwareVersion?: string;
+	/** Sensitive — stripped on public /r view */
+	serialNumber?: string;
+	/** Sensitive — stripped on public /r view */
+	device?: string;
+	deviceOs?: string;
+	deviceOsVersion?: string;
+	/** 0=D/E/RowErg/Dynamic, 1=C/B, 2=A */
+	ergModelType?: number;
+	hrType?: 'BT' | 'ANT' | 'Apple' | string;
+}
+
 /** A summary row as returned by the Concept2 results list. */
 export interface Workout {
 	id: number;
@@ -32,12 +68,23 @@ export interface Workout {
 	/** Heart-rate min/max over the piece, when the logbook reports them. */
 	hrMin?: number;
 	hrMax?: number;
+	heartRate?: HeartRateDetail;
 	caloriesTotal?: number;
 	/** Total watt-minutes; divided by elapsed minutes gives average power. */
 	wattMinutes?: number;
 	dragFactor?: number;
 	workoutType?: string;
 	comments?: string;
+	timezone?: string;
+	weightClass?: 'H' | 'L';
+	privacy?: string;
+	verified?: boolean;
+	/** Total rest time in seconds (interval pieces). */
+	restTime?: number;
+	/** Total rest distance in metres (interval pieces). */
+	restDistance?: number;
+	targets?: WorkoutTargets;
+	metadata?: LoggingMetadata;
 	/** Whether per-stroke detail is available for a real-time replay. */
 	hasStrokeData: boolean;
 }
@@ -58,6 +105,8 @@ export interface Stroke {
 	watts: number;
 }
 
+export type SplitIntervalType = 'time' | 'distance' | 'calorie' | 'wattminute';
+
 /** A split/interval summary inside a workout. */
 export interface Split {
 	index: number;
@@ -65,7 +114,17 @@ export interface Split {
 	time: number;
 	pace: number;
 	spm?: number;
+	/** Legacy scalar avg HR — prefer `heartRate.average` when present. */
 	hr?: number;
+	heartRate?: HeartRateDetail;
+	caloriesTotal?: number;
+	wattMinutes?: number;
+	type?: SplitIntervalType;
+	restTime?: number;
+	restDistance?: number;
+	machine?: Sport;
+	/** True when this row is a rest segment (work:rest analysis). */
+	isRest?: boolean;
 }
 
 /** A coach/self timestamped note attached to a workout. */

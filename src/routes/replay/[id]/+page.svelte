@@ -20,7 +20,10 @@
 		powerCurve,
 		techniqueSummary,
 		efficiencyByRate,
-		intervalBreakdown
+		intervalBreakdown,
+		targetVsActual,
+		workRestEfficiency,
+		type TargetVsActualRow
 	} from '$lib/analytics';
 	import { avgWatts, fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, SPORT_LABEL } from '$lib/format';
 	import type { Sport, Stroke, Workout, WorkoutDetail } from '$lib/types';
@@ -658,6 +661,65 @@
 		detail.pace > 0 || (detail.wattMinutes && detail.time > 0) ? avgWatts(detail) : 0
 	);
 	const dateTime = $derived(fmtLogbookDateTime(detail.date));
+	const workRest = $derived(workRestEfficiency(detail));
+	const targetRows = $derived(targetVsActual(detail));
+	const hrDrop = $derived(
+		detail.heartRate?.ending != null && detail.heartRate?.recovery != null
+			? detail.heartRate.ending - detail.heartRate.recovery
+			: undefined
+	);
+	const splitsHaveDetail = $derived(
+		detail.splits.some(
+			(s) =>
+				s.caloriesTotal != null ||
+				s.wattMinutes != null ||
+				s.heartRate != null ||
+				s.type != null ||
+				s.isRest
+		)
+	);
+
+	function targetMetricLabel(row: TargetVsActualRow): string {
+		switch (row.metric) {
+			case 'pace':
+				return t('replay.mTargetPace');
+			case 'watts':
+				return t('replay.mTargetWatts');
+			case 'strokeRate':
+				return t('replay.mTargetRate');
+			case 'heartRateZone':
+				return t('replay.mTargetHrZone');
+			case 'calories':
+				return t('replay.mTargetCalories');
+		}
+	}
+
+	function formatTargetDelta(row: TargetVsActualRow): string {
+		if (row.metric === 'pace') {
+			const sign = row.delta <= 0 ? '−' : '+';
+			return `${sign}${fmtPaceBare(Math.abs(row.delta), true)}`;
+		}
+		if (row.metric === 'watts' || row.metric === 'calories' || row.metric === 'strokeRate') {
+			const sign = row.delta >= 0 ? '+' : '−';
+			return `${sign}${Math.abs(Math.round(row.delta))}`;
+		}
+		return String(Math.round(row.delta));
+	}
+
+	function splitTypeLabel(type: string | undefined): string {
+		switch (type) {
+			case 'time':
+				return t('replay.intervalTypeTime');
+			case 'distance':
+				return t('replay.intervalTypeDistance');
+			case 'calorie':
+				return t('replay.intervalTypeCalorie');
+			case 'wattminute':
+				return t('replay.intervalTypeWattminute');
+			default:
+				return '—';
+		}
+	}
 
 	let sharing = $state(false);
 	let publishing = $state(false);
@@ -1290,17 +1352,42 @@
 			<h3>{t('replay.splitsTitle')}</h3>
 			<table class="mono">
 				<thead>
-					<tr><th>{t('replay.thNum')}</th><th>{t('replay.thDist')}</th><th>{t('replay.thTime')}</th><th>{t('replay.thPace')}</th><th>{t('replay.thRate')}</th><th>{t('replay.thHr')}</th></tr>
+					<tr>
+						<th>{t('replay.thNum')}</th>
+						<th>{t('replay.thDist')}</th>
+						<th>{t('replay.thTime')}</th>
+						<th>{t('replay.thPace')}</th>
+						<th>{t('replay.thRate')}</th>
+						<th>{t('replay.thHr')}</th>
+						{#if splitsHaveDetail}
+							<th>{t('replay.thCalories')}</th>
+							<th>{t('replay.thWattMin')}</th>
+							<th>{t('replay.thIntervalType')}</th>
+							<th>{t('replay.thRest')}</th>
+						{/if}
+					</tr>
 				</thead>
 				<tbody>
 					{#each detail.splits as sp}
-						<tr>
+						<tr class:rest-row={sp.isRest}>
 							<td>{sp.index + 1}</td>
-							<td>{fmtDistance(sp.distance)}</td>
+							<td>{sp.isRest ? '—' : fmtDistance(sp.distance)}</td>
 							<td>{fmtTime(sp.time, true)}</td>
-							<td>{fmtPace(sp.pace)}</td>
+							<td>{sp.pace > 0 ? fmtPace(sp.pace) : '—'}</td>
 							<td>{sp.spm ?? '–'}</td>
-							<td>{sp.hr ? Math.round(sp.hr) : '–'}</td>
+							<td>
+								{sp.heartRate?.ending != null
+									? Math.round(sp.heartRate.ending)
+									: sp.hr
+										? Math.round(sp.hr)
+										: '–'}
+							</td>
+							{#if splitsHaveDetail}
+								<td>{sp.caloriesTotal ?? '–'}</td>
+								<td>{sp.wattMinutes ?? '–'}</td>
+								<td>{splitTypeLabel(sp.type)}</td>
+								<td>{sp.isRest ? t('replay.thRestYes') : '—'}</td>
+							{/if}
 						</tr>
 					{/each}
 				</tbody>
@@ -1356,6 +1443,116 @@
 			<div class="wide"><dt>{t('replay.mComments')}</dt><dd>{detail.comments || '—'}</dd></div>
 		</dl>
 	</div>
+
+	{#if detail.heartRate?.ending != null || detail.heartRate?.recovery != null || detail.restTime != null || detail.targets || detail.metadata || detail.verified != null || targetRows.length || workRest}
+		<details class="card meta full-metrics">
+			<summary class="ctitle muted">{t('replay.fullMetrics')}</summary>
+			<dl class="metagrid">
+				{#if detail.heartRate?.ending != null}
+					<div><dt>{t('replay.mHrEnding')}</dt><dd class="mono">{detail.heartRate.ending} bpm</dd></div>
+				{/if}
+				{#if detail.heartRate?.recovery != null}
+					<div><dt>{t('replay.mHrRecovery')}</dt><dd class="mono">{detail.heartRate.recovery} bpm</dd></div>
+				{/if}
+				{#if hrDrop != null}
+					<div><dt>{t('replay.mHrDrop')}</dt><dd class="mono">{hrDrop} bpm</dd></div>
+				{/if}
+				{#if detail.restTime != null}
+					<div><dt>{t('replay.mRestTime')}</dt><dd class="mono">{fmtTime(detail.restTime, true)}</dd></div>
+				{/if}
+				{#if detail.restDistance != null}
+					<div><dt>{t('replay.mRestDistance')}</dt><dd class="mono">{fmtDistance(detail.restDistance)}</dd></div>
+				{/if}
+				{#if detail.weightClass}
+					<div>
+						<dt>{t('replay.mWeightClass')}</dt>
+						<dd>{detail.weightClass === 'H' ? t('replay.weightHeavy') : t('replay.weightLight')}</dd>
+					</div>
+				{/if}
+				{#if detail.verified != null}
+					<div>
+						<dt>{t('replay.mVerified')}</dt>
+						<dd>{detail.verified ? t('replay.verifiedYes') : t('replay.verifiedNo')}</dd>
+					</div>
+				{/if}
+				{#if detail.timezone}
+					<div><dt>{t('replay.mTimezone')}</dt><dd>{detail.timezone}</dd></div>
+				{/if}
+				{#if detail.privacy}
+					<div><dt>{t('replay.mPrivacy')}</dt><dd>{detail.privacy}</dd></div>
+				{/if}
+				{#if detail.wattMinutes != null}
+					<div><dt>{t('replay.mWattMinutes')}</dt><dd class="mono">{detail.wattMinutes}</dd></div>
+				{/if}
+				{#if workRest?.timeRatio != null}
+					<div>
+						<dt>{t('replay.workRestTitle')}</dt>
+						<dd class="mono">{workRest.timeRatio.toFixed(2)}× ({t('replay.workRestRatio')})</dd>
+					</div>
+				{/if}
+			</dl>
+
+			{#if detail.targets}
+				<h4 class="subhead muted">{t('replay.targetsTitle')}</h4>
+				<dl class="metagrid">
+					{#if detail.targets.pace != null}
+						<div><dt>{t('replay.mTargetPace')}</dt><dd class="mono">{fmtPace(detail.targets.pace)}</dd></div>
+					{/if}
+					{#if detail.targets.watts != null}
+						<div><dt>{t('replay.mTargetWatts')}</dt><dd class="mono">{detail.targets.watts} W</dd></div>
+					{/if}
+					{#if detail.targets.strokeRate != null}
+						<div><dt>{t('replay.mTargetRate')}</dt><dd class="mono">{detail.targets.strokeRate}</dd></div>
+					{/if}
+					{#if detail.targets.heartRateZone != null}
+						<div><dt>{t('replay.mTargetHrZone')}</dt><dd class="mono">{detail.targets.heartRateZone}</dd></div>
+					{/if}
+					{#if detail.targets.calories != null}
+						<div><dt>{t('replay.mTargetCalories')}</dt><dd class="mono">{detail.targets.calories}</dd></div>
+					{/if}
+				</dl>
+			{/if}
+
+			{#if targetRows.length}
+				<h4 class="subhead muted">{t('replay.targetVsActualTitle')}</h4>
+				<ul class="target-rows">
+					{#each targetRows as row}
+						<li>
+							<span>{targetMetricLabel(row)}</span>
+							<span class="mono">{formatTargetDelta(row)}</span>
+							<span class="badge" class:badge-success={row.hit} class:badge-warning={!row.hit}>
+								{row.hit ? t('replay.targetHit') : t('replay.targetMiss')}
+							</span>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+
+			{#if detail.metadata}
+				<h4 class="subhead muted">{t('replay.provenanceTitle')}</h4>
+				<dl class="metagrid">
+					{#if detail.metadata.pmVersion != null}
+						<div><dt>{t('replay.mPmVersion')}</dt><dd class="mono">{detail.metadata.pmVersion}</dd></div>
+					{/if}
+					{#if detail.metadata.firmwareVersion}
+						<div><dt>{t('replay.mFirmware')}</dt><dd>{detail.metadata.firmwareVersion}</dd></div>
+					{/if}
+					{#if detail.metadata.serialNumber}
+						<div><dt>{t('replay.mSerial')}</dt><dd>{detail.metadata.serialNumber}</dd></div>
+					{/if}
+					{#if detail.metadata.device}
+						<div><dt>{t('replay.mDevice')}</dt><dd>{detail.metadata.device}</dd></div>
+					{/if}
+					{#if detail.metadata.ergModelType != null}
+						<div><dt>{t('replay.mErgModel')}</dt><dd class="mono">{detail.metadata.ergModelType}</dd></div>
+					{/if}
+					{#if detail.metadata.hrType}
+						<div><dt>{t('replay.mHrSensor')}</dt><dd>{detail.metadata.hrType}</dd></div>
+					{/if}
+				</dl>
+			{/if}
+		</details>
+	{/if}
 </div>
 
 <style>
@@ -1898,6 +2095,40 @@
 	.metagrid dd {
 		margin: 0;
 		font-size: 0.9rem;
+	}
+	.full-metrics {
+		margin-top: 0.75rem;
+	}
+	.full-metrics summary {
+		cursor: pointer;
+		list-style: none;
+	}
+	.full-metrics summary::-webkit-details-marker {
+		display: none;
+	}
+	.subhead {
+		margin: 1rem 0 0.35rem;
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.target-rows {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+	.target-rows li {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem 0.75rem;
+		font-size: 0.88rem;
+	}
+	.splits tr.rest-row {
+		opacity: 0.72;
 	}
 	.splits table {
 		width: 100%;

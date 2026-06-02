@@ -1443,3 +1443,116 @@ export function detectNewPBs(before: DistancePB[], after: DistancePB[]): Distanc
 	}
 	return out;
 }
+
+// ---------------------------------------------------------------------------
+// Full-fidelity analyses (HR recovery, work:rest, targets)
+// ---------------------------------------------------------------------------
+
+export interface HrRecoveryPoint {
+	id: number;
+	date: string;
+	ending?: number;
+	recovery?: number;
+	/** ending − recovery; larger = better cardiac recovery */
+	drop?: number;
+}
+
+export function hrRecoveryTrend(workouts: Workout[]): HrRecoveryPoint[] {
+	const points: HrRecoveryPoint[] = [];
+	for (const w of workouts) {
+		const ending = w.heartRate?.ending;
+		const recovery = w.heartRate?.recovery;
+		if (ending == null && recovery == null) continue;
+		const drop = ending != null && recovery != null ? ending - recovery : undefined;
+		points.push({ id: w.id, date: w.date, ending, recovery, drop });
+	}
+	return points.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export interface WorkRestEfficiency {
+	workTime: number;
+	restTime?: number;
+	workDistance: number;
+	restDistance?: number;
+	/** work seconds per rest second */
+	timeRatio?: number;
+	avgWorkPace: number;
+}
+
+/** Work:rest summary for interval pieces using captured rest fields. */
+export function workRestEfficiency(detail: WorkoutDetail): WorkRestEfficiency | null {
+	if (!detail.isInterval) return null;
+	const workSplits = detail.splits.filter((s) => !s.isRest);
+	if (!workSplits.length) return null;
+	const workTime = workSplits.reduce((a, s) => a + s.time, 0);
+	const workDistance = workSplits.reduce((a, s) => a + s.distance, 0);
+	const restFromSplits = detail.splits.filter((s) => s.isRest).reduce((a, s) => a + s.time, 0);
+	const restTime = detail.restTime ?? (restFromSplits > 0 ? restFromSplits : undefined);
+	const restDistance =
+		detail.restDistance ??
+		(detail.splits.some((s) => s.isRest && s.restDistance != null)
+			? detail.splits.filter((s) => s.isRest).reduce((a, s) => a + (s.restDistance ?? 0), 0)
+			: undefined);
+	const paces = workSplits.map((s) => s.pace).filter((p) => p > 0);
+	const avgWorkPace = paces.length ? paces.reduce((a, b) => a + b, 0) / paces.length : detail.pace;
+	const timeRatio = restTime != null && restTime > 0 ? workTime / restTime : undefined;
+	return { workTime, restTime, workDistance, restDistance, timeRatio, avgWorkPace };
+}
+
+export type TargetMetric = 'pace' | 'watts' | 'strokeRate' | 'heartRateZone' | 'calories';
+
+export interface TargetVsActualRow {
+	metric: TargetMetric;
+	target: number;
+	actual: number;
+	delta: number;
+	hit: boolean;
+}
+
+/** Compare logged targets to achieved summary metrics. */
+export function targetVsActual(detail: WorkoutDetail): TargetVsActualRow[] {
+	const t = detail.targets;
+	if (!t) return [];
+	const rows: TargetVsActualRow[] = [];
+	if (t.pace != null && detail.pace > 0) {
+		const delta = detail.pace - t.pace;
+		rows.push({ metric: 'pace', target: t.pace, actual: detail.pace, delta, hit: delta <= 0 });
+	}
+	if (t.watts != null) {
+		const actual = workoutWatts(detail);
+		if (actual > 0) {
+			const delta = actual - t.watts;
+			rows.push({ metric: 'watts', target: t.watts, actual, delta, hit: delta >= 0 });
+		}
+	}
+	if (t.strokeRate != null && detail.strokeRate != null) {
+		const delta = detail.strokeRate - t.strokeRate;
+		rows.push({
+			metric: 'strokeRate',
+			target: t.strokeRate,
+			actual: detail.strokeRate,
+			delta,
+			hit: Math.abs(delta) <= 1
+		});
+	}
+	if (t.calories != null && detail.caloriesTotal != null) {
+		const delta = detail.caloriesTotal - t.calories;
+		rows.push({
+			metric: 'calories',
+			target: t.calories,
+			actual: detail.caloriesTotal,
+			delta,
+			hit: delta >= 0
+		});
+	}
+	if (t.heartRateZone != null && detail.heartRateAvg != null) {
+		rows.push({
+			metric: 'heartRateZone',
+			target: t.heartRateZone,
+			actual: detail.heartRateAvg,
+			delta: detail.heartRateAvg - t.heartRateZone,
+			hit: true
+		});
+	}
+	return rows;
+}

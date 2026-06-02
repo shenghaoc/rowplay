@@ -126,6 +126,21 @@ export async function createWorkoutShare(
 	return { token: winner, path: sharePath(winner), url: shareUrl(event, winner), created: false };
 }
 
+/** Strip hardware-identifying provenance from a shared replay payload. */
+export function redactForPublic(detail: WorkoutDetail): WorkoutDetail {
+	if (!detail.metadata) return detail;
+	const { serialNumber: _sn, device: _dev, deviceOs: _os, deviceOsVersion: _osv, ...safe } =
+		detail.metadata;
+	const metadata =
+		safe.pmVersion != null ||
+		safe.firmwareVersion != null ||
+		safe.ergModelType != null ||
+		safe.hrType != null
+			? safe
+			: undefined;
+	return { ...detail, metadata };
+}
+
 /** Load a workout that was explicitly shared — no session required. */
 export async function loadSharedWorkout(
 	event: RequestEvent,
@@ -135,10 +150,10 @@ export async function loadSharedWorkout(
 
 	const db = event.platform?.env?.DB;
 	const fromDb = await getCachedDetailByShareToken(db, token);
-	if (fromDb) return fromDb;
+	if (fromDb) return redactForPublic(fromDb);
 
 	const fromKv = await readDemoShare(event.platform?.env?.SESSIONS, token);
-	if (fromKv) return fromKv;
+	if (fromKv) return redactForPublic(fromKv);
 
 	throw error(404, 'Share link not found or sharing was revoked.');
 }

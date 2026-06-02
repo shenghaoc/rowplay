@@ -1,7 +1,18 @@
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '$lib/datetime';
 import { paceToWattsForSport } from '../format';
-import { toSport, type Sport, type Split, type Stroke, type Workout, type WorkoutDetail } from '../types';
+import {
+	toSport,
+	type HeartRateDetail,
+	type LoggingMetadata,
+	type Sport,
+	type Split,
+	type SplitIntervalType,
+	type Stroke,
+	type Workout,
+	type WorkoutDetail,
+	type WorkoutTargets
+} from '../types';
 import { writeSession, type OAuthTokens, type SessionData, type SessionUser } from './session';
 
 /** Scopes we request from the Concept2 logbook. */
@@ -130,7 +141,7 @@ export class Concept2Client {
 		const json = await this.api<{ data: RawResult[] }>(
 			`/users/me/results?page=${page}&number=${number}`
 		);
-		return json.data.map(mapResult);
+		return json.data.map((r) => mapResult(r));
 	}
 
 	/**
@@ -150,14 +161,16 @@ export class Concept2Client {
 			meta?: { pagination?: { total_pages?: number } };
 		}>(`/users/me/results?${qs}`);
 		return {
-			workouts: json.data.map(mapResult),
+			workouts: json.data.map((r) => mapResult(r)),
 			totalPages: json.meta?.pagination?.total_pages ?? 1
 		};
 	}
 
 	async getWorkout(id: number): Promise<WorkoutDetail> {
-		const detail = await this.api<{ data: RawResult }>(`/users/me/results/${id}`);
-		const base = mapResult(detail.data);
+		const detail = await this.api<{ data: RawResult; metadata?: RawMetadata }>(
+			`/users/me/results/${id}?include=metadata`
+		);
+		const base = mapResult(detail.data, detail.metadata ?? detail.data.metadata);
 		let strokes: Stroke[] = [];
 		if (base.hasStrokeData) {
 			try {
@@ -177,6 +190,35 @@ export class Concept2Client {
 
 // ---- Raw API shapes (loosely typed; the logbook is permissive) ----
 
+interface RawHeartRate {
+	average?: number;
+	min?: number;
+	max?: number;
+	ending?: number;
+	rest?: number;
+	recovery?: number;
+}
+
+interface RawTargets {
+	stroke_rate?: number;
+	heart_rate_zone?: number;
+	pace?: number;
+	watts?: number;
+	calories?: number;
+}
+
+interface RawMetadata {
+	pm_version?: number;
+	firmware_version?: string;
+	serial_number?: string;
+	device?: string;
+	device_os?: string;
+	device_os_version?: string;
+	erg_model_type?: number;
+	hr_type?: string;
+	other?: string;
+}
+
 interface RawResult {
 	id: number;
 	date: string;
@@ -191,15 +233,32 @@ interface RawResult {
 	workout_type?: string;
 	comments?: string;
 	stroke_data?: boolean;
-	heart_rate?: number | { average?: number; min?: number; max?: number };
-	workout?: { splits?: RawSplit[]; intervals?: RawSplit[] };
+	timezone?: string;
+	weight_class?: 'H' | 'L';
+	privacy?: string;
+	verified?: boolean;
+	rest_time?: number;
+	rest_distance?: number;
+	heart_rate?: number | RawHeartRate;
+	metadata?: RawMetadata;
+	workout?: {
+		splits?: RawSplit[];
+		intervals?: RawSplit[];
+		targets?: RawTargets;
+	};
 }
 
 interface RawSplit {
 	distance?: number;
 	time?: number; // tenths
 	stroke_rate?: number;
-	heart_rate?: number | { average?: number };
+	calories_total?: number;
+	wattminutes_total?: number;
+	heart_rate?: number | RawHeartRate;
+	type?: string;
+	rest_time?: number;
+	rest_distance?: number;
+	machine?: string;
 }
 
 interface RawStroke {
@@ -210,37 +269,96 @@ interface RawStroke {
 	hr?: number;
 }
 
-function avgHr(hr: RawResult['heart_rate']): number | undefined {
+export function mapHeartRate(hr: number | RawHeartRate | undefined): HeartRateDetail | undefined {
 	if (hr == null) return undefined;
-	if (typeof hr === 'number') return hr;
-	return hr.average;
+	if (typeof hr === 'number') return { average: hr };
+	const out: HeartRateDetail = {};
+	if (hr.average != null) out.average = hr.average;
+	if (hr.min != null) out.min = hr.min;
+	if (hr.max != null) out.max = hr.max;
+	if (hr.ending != null) out.ending = hr.ending;
+	if (hr.rest != null) out.rest = hr.rest;
+	if (hr.recovery != null) out.recovery = hr.recovery;
+	return Object.keys(out).length ? out : undefined;
+}
+
+export function mapTargets(raw: RawTargets | undefined, sport: Sport): WorkoutTargets | undefined {
+	if (!raw) return undefined;
+	const paceDiv = sport === 'bike' ? 2 : 1;
+	const out: WorkoutTargets = {};
+	if (raw.stroke_rate != null) out.strokeRate = raw.stroke_rate;
+	if (raw.heart_rate_zone != null) out.heartRateZone = raw.heart_rate_zone;
+	if (raw.pace != null) out.pace = raw.pace / 10 / paceDiv;
+	if (raw.watts != null) out.watts = raw.watts;
+	if (raw.calories != null) out.calories = raw.calories;
+	return Object.keys(out).length ? out : undefined;
+}
+
+export function mapMetadata(raw: RawMetadata | undefined): LoggingMetadata | undefined {
+	if (!raw) return undefined;
+	const out: LoggingMetadata = {};
+	if (raw.pm_version != null) out.pmVersion = raw.pm_version;
+	if (raw.firmware_version != null) out.firmwareVersion = raw.firmware_version;
+	if (raw.serial_number != null) out.serialNumber = raw.serial_number;
+	if (raw.device != null) out.device = raw.device;
+	if (raw.device_os != null) out.deviceOs = raw.device_os;
+	if (raw.device_os_version != null) out.deviceOsVersion = raw.device_os_version;
+	if (raw.erg_model_type != null) out.ergModelType = raw.erg_model_type;
+	if (raw.hr_type != null) out.hrType = raw.hr_type;
+	return Object.keys(out).length ? out : undefined;
+}
+
+function avgHr(hr: RawResult['heart_rate']): number | undefined {
+	return mapHeartRate(hr)?.average;
 }
 
 function hrBound(hr: RawResult['heart_rate'], key: 'min' | 'max'): number | undefined {
-	if (hr == null || typeof hr === 'number') return undefined;
-	return hr[key];
+	return mapHeartRate(hr)?.[key];
 }
 
-export function mapResult(r: RawResult): Workout {
+function mapSplitType(raw: string | undefined): SplitIntervalType | undefined {
+	switch (raw) {
+		case 'time':
+		case 'distance':
+		case 'calorie':
+		case 'wattminute':
+			return raw;
+		default:
+			return undefined;
+	}
+}
+
+export function mapResult(r: RawResult, metadata?: RawMetadata): Workout {
+	const sport = toSport(r.type);
 	const time = r.time / 10;
 	const pace = r.distance > 0 ? time / (r.distance / 500) : 0;
+	const heartRate = mapHeartRate(r.heart_rate);
 	return {
 		id: r.id,
 		date: r.date,
-		sport: toSport(r.type),
+		sport,
 		distance: r.distance,
 		time,
 		pace,
 		strokeRate: r.stroke_rate,
 		strokeCount: r.stroke_count,
-		heartRateAvg: avgHr(r.heart_rate),
-		hrMin: hrBound(r.heart_rate, 'min'),
-		hrMax: hrBound(r.heart_rate, 'max'),
+		heartRate,
+		heartRateAvg: heartRate?.average ?? avgHr(r.heart_rate),
+		hrMin: heartRate?.min ?? hrBound(r.heart_rate, 'min'),
+		hrMax: heartRate?.max ?? hrBound(r.heart_rate, 'max'),
 		caloriesTotal: r.calories_total,
 		wattMinutes: r.wattminutes_total,
 		dragFactor: r.drag_factor,
 		workoutType: r.workout_type,
 		comments: r.comments,
+		timezone: r.timezone,
+		weightClass: r.weight_class,
+		privacy: r.privacy,
+		verified: r.verified,
+		restTime: r.rest_time != null ? r.rest_time / 10 : undefined,
+		restDistance: r.rest_distance,
+		targets: mapTargets(r.workout?.targets, sport),
+		metadata: mapMetadata(metadata ?? r.metadata),
 		hasStrokeData: !!r.stroke_data
 	};
 }
@@ -279,21 +397,30 @@ function mapStrokes(raw: RawStroke[], sport: Sport): Stroke[] {
 	});
 }
 
-function mapSplits(r: RawResult): Split[] {
+export function mapSplits(r: RawResult): Split[] {
 	const raw = r.workout?.splits ?? r.workout?.intervals ?? [];
-	let cumD = 0;
+	const sport = toSport(r.type);
 	return raw.map((s, i) => {
 		const time = (s.time ?? 0) / 10;
 		const distance = s.distance ?? 0;
-		cumD += distance;
 		const pace = distance > 0 ? time / (distance / 500) : 0;
+		const heartRate = mapHeartRate(s.heart_rate);
+		const isRest = distance === 0 && time > 0;
 		return {
 			index: i,
 			distance,
 			time,
 			pace,
 			spm: s.stroke_rate,
-			hr: typeof s.heart_rate === 'number' ? s.heart_rate : s.heart_rate?.average
+			hr: heartRate?.average,
+			heartRate,
+			caloriesTotal: s.calories_total,
+			wattMinutes: s.wattminutes_total,
+			type: mapSplitType(s.type),
+			restTime: s.rest_time != null ? s.rest_time / 10 : undefined,
+			restDistance: s.rest_distance,
+			machine: s.machine ? toSport(s.machine) : undefined,
+			isRest
 		};
 	});
 }

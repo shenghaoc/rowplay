@@ -11,7 +11,7 @@ import { STANDARD_DISTANCES, type LeaderboardEntry } from '$lib/leaderboard';
 import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
-export const DETAIL_PAYLOAD_VERSION = 1;
+export const DETAIL_PAYLOAD_VERSION = 2;
 
 /**
  * Best-effort D1 cache of fully-hydrated workout detail (including strokes), so

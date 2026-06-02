@@ -189,6 +189,18 @@ with zero credentials.
   HR-recovery + a target-vs-actual row render; open the same workout via a public
   `/r/<token>` link and assert no serial number / device is shown.
 
+## Read schema verification (task 1)
+
+Verified against the [Concept2 Logbook API documentation](https://log.concept2.com/developers/documentation/) (June 2026). A live token read was not available in this environment; findings below match the published create/read model and the `GET …/results/{id}?include=metadata` contract.
+
+| Item | On read? | rowplay handling |
+| --- | --- | --- |
+| `workout.targets` (`stroke_rate`, `heart_rate_zone`, `pace`, `watts`, `calories`) | **Yes** — documented under workout details on list and detail responses | Capture when present; target-vs-actual is best-effort |
+| Result `metadata` (`pm_version`, `firmware_version`, `serial_number`, `device`, …) | **Opt-in** — returned when `?include=metadata` is passed on `GET /api/users/me/results/{id}` | `getWorkout` requests `include=metadata`; absent → `undefined` |
+| Stroke `stroke_data` | **Yes** (separate `/strokes` endpoint) | Unchanged — already complete |
+
+**Downgrade:** Any field still missing on a given response remains `undefined` (Req 1.4); UI and analysis omit those rows.
+
 ## Out of scope (follow-ups)
 
 - The three parked "go faster" specs (rival ghost, PB celebration, target
