@@ -23,6 +23,7 @@
 	import { MACHINE_COLOR } from '$lib/replay/sports';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { readHomeTimezoneClient } from '$lib/homeTimezone';
 	import { serializeWorkoutListQuery, filterAndSortWorkouts, type WorkoutListQuery } from '$lib/workoutQuery';
 	import { toast } from 'svelte-sonner';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
@@ -69,6 +70,9 @@
 	);
 
 	let liveMode = $state<LiveMode | null>(null);
+	let demoHomeTz = $state<string | undefined>(undefined);
+
+	const homeTz = $derived(data.demo ? demoHomeTz : data.homeTimezone);
 
 	const sportFilter = $derived<Sport | 'all'>(listQuery.sport ?? 'all');
 
@@ -161,6 +165,7 @@
 	}
 
 	onMount(() => {
+		if (data.demo) demoHomeTz = readHomeTimezoneClient();
 		const lm = new LiveMode(!!data.demo, {
 			onWorkouts: handleLiveWorkouts,
 			onError: (message, code) => {
@@ -624,10 +629,11 @@
 		annualGoal={data.annualGoal}
 		goalYear={data.goalYear}
 		endDay={data.calendarEndDay}
+		{homeTz}
 	/>
 
 	{#if filtered.length}
-		<TrainingHeatmap workouts={filtered} endDay={data.calendarEndDay} />
+		<TrainingHeatmap workouts={filtered} endDay={data.calendarEndDay} {homeTz} />
 	{/if}
 
 	<!-- Fitness & Freshness — the Performance Management Chart -->

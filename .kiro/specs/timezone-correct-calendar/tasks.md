@@ -11,7 +11,7 @@ timezone path only activates in production once #61 is merged.
 
 ---
 
-- [ ] **1. `workoutLocalDayKey` + `todayKeyForTz`** — `src/lib/datetime.ts`
+- [x] **1. `workoutLocalDayKey` + `todayKeyForTz`** — `src/lib/datetime.ts`
   - Add `workoutLocalDayKey(date, workoutTz?, homeTz?): string` implementing the
     resolution chain: workout tz → home tz → UTC; each timezone attempt wrapped
     in try/catch so an invalid IANA string falls through silently.
@@ -20,7 +20,7 @@ timezone path only activates in production once #61 is merged.
   - Both functions pure, DOM-free, exported.
   - _Requirements: 1.1, 1.2, 1.3, 1.5_
 
-- [ ] **2. Unit tests — `datetime.ts`**
+- [x] **2. Unit tests — `datetime.ts`**
   - Vitest tests covering: UTC fallback (unchanged behaviour), cross-timezone
     late-night case (`"2024-01-14 23:30:00"` + `"America/New_York"` → `"2024-01-14"`),
     early-morning cross-day, home-tz-wins-when-no-workout-tz, workout-tz-wins-over-home-tz,
@@ -28,7 +28,7 @@ timezone path only activates in production once #61 is merged.
   - Tests for `todayKeyForTz` with and without a valid timezone.
   - _Requirements: 1.4, 5.1_
 
-- [ ] **3. Analytics bucketing** — `src/lib/analytics.ts`
+- [x] **3. Analytics bucketing** — `src/lib/analytics.ts`
   - Update `workoutDayKey` to delegate to `workoutLocalDayKey`, accepting the
     optional `workoutTz?` and `homeTz?` parameters.
   - Thread `homeTz?` through `aggregateDailyVolume`, `buildTrainingCalendar`,
@@ -39,7 +39,7 @@ timezone path only activates in production once #61 is merged.
     `todayKeyForTz(homeTz)`.
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] **4. Analytics regression tests** — `src/lib/analytics.test.ts`
+- [x] **4. Analytics regression tests** — `src/lib/analytics.test.ts`
   - Add fixtures verifying `buildTrainingCalendar` with the cross-timezone mock
     workout (`date: "2024-01-14 23:30:00"`, `timezone: "America/New_York"`)
     places it on `2024-01-14` with `homeTz: "America/New_York"` and on
@@ -47,20 +47,20 @@ timezone path only activates in production once #61 is merged.
   - Confirm no existing analytics tests regress (all default callers omit `homeTz`).
   - _Requirements: 2.4, 5.1_
 
-- [ ] **5. Timezone options list** — `src/lib/timezoneOptions.ts` (new file)
+- [x] **5. Timezone options list** — `src/lib/timezoneOptions.ts` (new file)
   - Static curated list of ~60 IANA identifiers covering every inhabited UTC
     offset, grouped by region (Americas, Europe/Africa, Asia/Pacific).
   - Exported as `TIMEZONE_OPTIONS: { group: string; options: { value: string; label: string }[] }[]`.
   - No runtime Intl lookups; pure compile-time constant.
   - _Requirements: 3.1_
 
-- [ ] **6. Session KV — home timezone** — `src/lib/server/session.ts`
+- [x] **6. Session KV — home timezone** — `src/lib/server/session.ts`
   - Add optional `homeTimezone?: string` to the session record type.
   - Expose `getHomeTimezone(session)` and `setHomeTimezone(session, tz)` helpers
     (or inline in the settings action).
   - _Requirements: 3.2_
 
-- [ ] **7. Settings page — home timezone panel** — `src/routes/settings/`
+- [x] **7. Settings page — home timezone panel** — `src/routes/settings/`
   - `+page.server.ts`: load action reads `homeTimezone` from session KV and
     returns it; `saveTimezone` action validates and writes it back.
   - `+page.svelte`: add a new "Home timezone" panel (between data facts and
@@ -70,21 +70,21 @@ timezone path only activates in production once #61 is merged.
   - Use daisyUI `select select-bordered` component class.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.6_
 
-- [ ] **8. Dashboard server load — thread `homeTz`** — `src/routes/dashboard/+page.server.ts`
+- [x] **8. Dashboard server load — thread `homeTz`** — `src/routes/dashboard/+page.server.ts`
   - Read `homeTimezone` from the session (or `undefined` for demo).
   - Pass as `options.homeTz` to `buildTrainingCalendar` and `trainingStreakStats`.
   - Return `homeTimezone` in `data` so the client can use it for demo-mode
     `localStorage` round-trip.
   - _Requirements: 2.2, 2.3, 4.2_
 
-- [ ] **9. Demo mock data** — `src/lib/mockData.ts`
+- [x] **9. Demo mock data** — `src/lib/mockData.ts`
   - Add cross-timezone fixture workout:
     `{ id: 9001, date: '2024-01-14 23:30:00', timezone: 'America/New_York', sport: 'rower', distance: 5000, time: 1260, pace: 126, hasStrokeData: false }`.
   - Verify heatmap and streak in demo mode show correct bucketing for both
     UTC-fallback and `homeTz: "America/New_York"` paths.
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] **10. i18n** — all six locale files
+- [x] **10. i18n** — all six locale files
   - Add `settings.timezoneTitle`, `settings.timezoneNote`, `settings.timezoneLabel`,
     `settings.timezoneSaved`, `settings.timezoneUtcDefault`,
     `settings.timezoneGroupAmericas`, `settings.timezoneGroupEuropeAfrica`,
@@ -92,7 +92,7 @@ timezone path only activates in production once #61 is merged.
   - Run `npm run validate:locales`.
   - _Requirements: 3.5, 5.2_
 
-- [ ] **11. Quality gate**
+- [x] **11. Quality gate**
   - `npm run check` → 0 errors.
   - `npm run build` → succeeds.
   - `npm run test` → all green (including new unit tests from tasks 2 and 4).

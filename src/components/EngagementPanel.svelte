@@ -26,9 +26,10 @@
 		annualGoal: AnnualGoal;
 		goalYear: number;
 		endDay: string;
+		homeTz?: string;
 	}
 
-	let { workouts, annualGoal, goalYear, endDay }: Props = $props();
+	let { workouts, annualGoal, goalYear, endDay, homeTz }: Props = $props();
 
 	const i18n = getI18nContext();
 	const t = i18n.t;
@@ -49,8 +50,8 @@
 			annualGoal.kind === 'meters' ? annualGoal.target : Math.round(annualGoal.target / 3600);
 	});
 
-	const progress = $derived(annualGoalProgress(workouts, goal, endDay));
-	const streaks = $derived(trainingStreakStats(workouts, endDay));
+	const progress = $derived(annualGoalProgress(workouts, goal, endDay, homeTz));
+	const streaks = $derived(trainingStreakStats(workouts, endDay, homeTz));
 	const badges = $derived(athleteBadges(workouts, distancePBs(workouts)));
 	const earnedBadges = $derived(badges.filter((b) => b.earned));
 

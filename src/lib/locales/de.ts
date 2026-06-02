@@ -558,7 +558,16 @@ export const de = {
 			'Alle gecachten Workouts und Replay-Daten aus rowplay löschen und abmelden? Dein Concept2-Logbuch wird nicht geändert.',
 		deleteDemo: 'Demo-Modus — nichts wurde gespeichert, es gibt nichts zu löschen.',
 		deleteDone: 'Gecachte Daten gelöscht. Du wurdest abgemeldet.',
-		deleteFailed: 'Gecachte Daten konnten nicht gelöscht werden'
+		deleteFailed: 'Gecachte Daten konnten nicht gelöscht werden',
+		timezoneTitle: 'Heimatzeitzone',
+		timezoneNote:
+			'Wähle deine lokale Zeitzone, damit Training nahe Mitternacht auf dem richtigen Kalendertag erscheint.',
+		timezoneLabel: 'Heimatzeitzone',
+		timezoneSaved: 'Zeitzone gespeichert',
+		timezoneUtcDefault: 'UTC (Standard)',
+		timezoneGroupAmericas: 'Amerika',
+		timezoneGroupEuropeAfrica: 'Europa / Afrika',
+		timezoneGroupAsiaPacific: 'Asien / Pazifik'
 	},
 	token: {
 		title: 'Dein Concept2-Token verwenden',

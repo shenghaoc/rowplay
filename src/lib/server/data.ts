@@ -4,7 +4,7 @@ import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 import { mockAnnotations, mockWorkoutDetail, mockWorkouts } from '../mockData';
 import { Concept2Client } from './concept2';
 import { getConfig } from './config';
-import { readSession, TOKEN_COOKIE } from './session';
+import { getHomeTimezone, readSession, setHomeTimezone, TOKEN_COOKIE } from './session';
 import { openToken } from './tokenCrypto';
 import { overlapDate } from '$lib/datetime';
 import { detectNewPBs, distancePBs, type DistancePB } from '$lib/analytics';
@@ -178,6 +178,23 @@ export async function loadAnnualGoal(event: RequestEvent, year: number): Promise
 		if (stored) return stored;
 	}
 	return defaultAnnualGoal(year);
+}
+
+export async function loadHomeTimezone(event: RequestEvent): Promise<string | undefined> {
+	if (event.locals.demo) return undefined;
+	const env = event.platform?.env;
+	if (!env?.SESSIONS || !event.locals.sessionId) return undefined;
+	const session = await readSession(env.SESSIONS, event.locals.sessionId);
+	return session ? getHomeTimezone(session) : undefined;
+}
+
+export async function saveHomeTimezone(event: RequestEvent, timezone: string | undefined): Promise<void> {
+	if (event.locals.demo) return;
+	const env = event.platform?.env;
+	if (!env?.SESSIONS || !event.locals.sessionId) throw error(401, 'Not authenticated.');
+	const session = await readSession(env.SESSIONS, event.locals.sessionId);
+	if (!session) throw error(401, 'Not authenticated.');
+	await setHomeTimezone(env.SESSIONS, event.locals.sessionId, session, timezone);
 }
 
 export async function saveAnnualGoal(event: RequestEvent, goal: AnnualGoal): Promise<void> {

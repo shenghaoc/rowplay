@@ -554,7 +554,15 @@ export const zh = {
 		deleteConfirm: '删除 rowplay 中所有已缓存的训练与回放数据并退出登录？你的 Concept2 日志不会被更改。',
 		deleteDemo: '演示模式——未存储任何数据，无需删除。',
 		deleteDone: '已清除缓存数据，你已退出登录。',
-		deleteFailed: '无法清除缓存数据'
+		deleteFailed: '无法清除缓存数据',
+		timezoneTitle: '主时区',
+		timezoneNote: '选择你的本地时区，使临近午夜划行的训练显示在正确的日历日上。',
+		timezoneLabel: '主时区',
+		timezoneSaved: '时区已保存',
+		timezoneUtcDefault: 'UTC（默认）',
+		timezoneGroupAmericas: '美洲',
+		timezoneGroupEuropeAfrica: '欧洲 / 非洲',
+		timezoneGroupAsiaPacific: '亚洲 / 太平洋'
 	},
 	token: {
 		title: '使用你的 Concept2 令牌',

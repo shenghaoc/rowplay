@@ -558,7 +558,16 @@ export const fr = {
 			'Supprimer toutes les séances en cache et les données replay de rowplay et se déconnecter ? Votre logbook Concept2 ne sera pas modifié.',
 		deleteDemo: 'Mode démo — rien n’a été stocké, rien à supprimer.',
 		deleteDone: 'Données en cache effacées. Vous êtes déconnecté.',
-		deleteFailed: 'Impossible d’effacer les données en cache'
+		deleteFailed: 'Impossible d’effacer les données en cache',
+		timezoneTitle: 'Fuseau horaire principal',
+		timezoneNote:
+			'Choisissez votre fuseau local pour que les séances près de minuit apparaissent sur le bon jour du calendrier.',
+		timezoneLabel: 'Fuseau horaire principal',
+		timezoneSaved: 'Fuseau horaire enregistré',
+		timezoneUtcDefault: 'UTC (par défaut)',
+		timezoneGroupAmericas: 'Amériques',
+		timezoneGroupEuropeAfrica: 'Europe / Afrique',
+		timezoneGroupAsiaPacific: 'Asie / Pacifique'
 	},
 	token: {
 		title: 'Utiliser votre jeton Concept2',

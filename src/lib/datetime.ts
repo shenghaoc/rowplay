@@ -95,6 +95,43 @@ export function todayKeyUtc(): string {
 	return Temporal.Now.plainDateISO('UTC').toString();
 }
 
+function dayKeyInZone(pdt: Temporal.PlainDateTime, tz: string): string | null {
+	try {
+		return pdt.toZonedDateTime(tz).toPlainDate().toString();
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Calendar day key for a workout using: workout tz → home tz → plain date (UTC slice).
+ * Never throws; invalid IANA strings fall through silently.
+ */
+export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: string): string {
+	const pdt = parseLogbookDateTime(date);
+	if (!pdt) return date.slice(0, 10);
+
+	if (workoutTz?.trim()) {
+		const key = dayKeyInZone(pdt, workoutTz.trim());
+		if (key) return key;
+	}
+	if (homeTz?.trim()) {
+		const key = dayKeyInZone(pdt, homeTz.trim());
+		if (key) return key;
+	}
+	return pdt.toPlainDate().toString();
+}
+
+/** Today as `YYYY-MM-DD` in the given IANA zone, or UTC when absent/invalid. */
+export function todayKeyForTz(tz?: string): string {
+	if (!tz?.trim()) return todayKeyUtc();
+	try {
+		return Temporal.Now.plainDateISO(tz.trim()).toString();
+	} catch {
+		return todayKeyUtc();
+	}
+}
+
 /** `YYYY-MM-DD` day key → UTC-midnight epoch milliseconds; NaN if unparseable. */
 export function dayKeyEpochMillis(key: string): number {
 	try {

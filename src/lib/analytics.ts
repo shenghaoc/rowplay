@@ -4,7 +4,7 @@ import {
 	paceToWattsForSport,
 	wattsToPaceForSport
 } from './format';
-import { dayKeyEpochMillis, todayKeyUtc } from './datetime';
+import { dayKeyEpochMillis, todayKeyForTz, todayKeyUtc, workoutLocalDayKey } from './datetime';
 
 // ---------------------------------------------------------------------------
 // Pure analysis helpers. No DOM, no Svelte — safe to use on server or client,
@@ -820,15 +820,15 @@ export interface DayVolume {
 	sessions: number;
 }
 
-/** Logbook timestamps are `YYYY-MM-DD HH:MM:SS` — slice avoids TZ shifts. */
-export function workoutDayKey(date: string): string {
-	return date.slice(0, 10);
+/** Logbook day key with optional workout/home timezone resolution. */
+export function workoutDayKey(date: string, workoutTz?: string, homeTz?: string): string {
+	return workoutLocalDayKey(date, workoutTz, homeTz);
 }
 
-export function aggregateDailyVolume(workouts: Workout[]): Map<string, DayVolume> {
+export function aggregateDailyVolume(workouts: Workout[], homeTz?: string): Map<string, DayVolume> {
 	const map = new Map<string, DayVolume>();
 	for (const w of workouts) {
-		const day = workoutDayKey(w.date);
+		const day = workoutDayKey(w.date, w.timezone, homeTz);
 		const e = map.get(day) ?? { day, distance: 0, time: 0, sessions: 0 };
 		e.distance += w.distance;
 		e.time += w.time;
@@ -950,16 +950,20 @@ export function buildTrainingCalendar(
 		weeks?: number;
 		metric?: VolumeMetric;
 		maxLevel?: number;
+		/** User home IANA timezone for bucketing when workout tz is absent. */
+		homeTz?: string;
 	}
 ): TrainingCalendar {
 	const weeks = options?.weeks ?? 53;
 	const metric = options?.metric ?? 'distance';
 	const maxLevel = options?.maxLevel ?? 4;
+	const homeTz = options?.homeTz;
 
-	const byDay = aggregateDailyVolume(workouts);
+	const byDay = aggregateDailyVolume(workouts, homeTz);
 	const historyDays = [...byDay.keys()].sort();
 	const endDay =
-		options?.endDay ?? (historyDays.length ? historyDays[historyDays.length - 1] : todayKeyUtc());
+		options?.endDay ??
+		(historyDays.length ? historyDays[historyDays.length - 1] : todayKeyForTz(homeTz));
 
 	const endSunday = addDaysToKey(endDay, -dayOfWeekUtc(endDay));
 	const startDay = addDaysToKey(endSunday, -(weeks - 1) * 7);
@@ -1280,12 +1284,13 @@ function daysBetweenUtc(from: string, to: string): number {
 export function annualGoalProgress(
 	workouts: Workout[],
 	goal: AnnualGoal,
-	endDay?: string
+	endDay?: string,
+	homeTz?: string
 ): AnnualGoalProgress {
-	const end = endDay ?? todayKeyUtc();
+	const end = endDay ?? todayKeyForTz(homeTz);
 	const year = goal.year;
 	const yearPrefix = `${year}-`;
-	const inYear = workouts.filter((w) => workoutDayKey(w.date).startsWith(yearPrefix));
+	const inYear = workouts.filter((w) => workoutDayKey(w.date, w.timezone, homeTz).startsWith(yearPrefix));
 	const current =
 		goal.kind === 'meters'
 			? inYear.reduce((s, w) => s + challengeDistanceMetres(w), 0)
@@ -1325,9 +1330,12 @@ export interface TrainingStreakStats {
 export function weeklyConsistency(
 	workouts: Workout[],
 	endDay: string,
-	lookbackWeeks = 8
+	lookbackWeeks = 8,
+	homeTz?: string
 ): { activeWeeks: number; totalWeeks: number } {
-	const activeDays = new Set([...aggregateDailyVolume(workouts).keys()].filter((d) => d <= endDay));
+	const activeDays = new Set(
+		[...aggregateDailyVolume(workouts, homeTz).keys()].filter((d) => d <= endDay)
+	);
 	let activeWeeks = 0;
 	for (let w = 0; w < lookbackWeeks; w++) {
 		const weekEnd = addDaysToKey(endDay, -w * 7);
@@ -1343,9 +1351,9 @@ export function weeklyConsistency(
 	return { activeWeeks, totalWeeks: lookbackWeeks };
 }
 
-export function trainingStreakStats(workouts: Workout[], endDay?: string): TrainingStreakStats {
-	const end = endDay ?? todayKeyUtc();
-	const historyDays = [...aggregateDailyVolume(workouts).keys()].filter((d) => d <= end).sort();
+export function trainingStreakStats(workouts: Workout[], endDay?: string, homeTz?: string): TrainingStreakStats {
+	const end = endDay ?? todayKeyForTz(homeTz);
+	const historyDays = [...aggregateDailyVolume(workouts, homeTz).keys()].filter((d) => d <= end).sort();
 	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, end);
 	const lastDay = historyDays.length ? historyDays[historyDays.length - 1] : null;
 	const daysSinceLastSession = lastDay != null ? daysBetweenUtc(lastDay, end) : null;
@@ -1353,7 +1361,7 @@ export function trainingStreakStats(workouts: Workout[], endDay?: string): Train
 		currentStreak,
 		longestStreak,
 		daysSinceLastSession,
-		weeklyConsistency: weeklyConsistency(workouts, end)
+		weeklyConsistency: weeklyConsistency(workouts, end, 8, homeTz)
 	};
 }
 
@@ -1394,10 +1402,10 @@ const CLUB_DISTANCES: { id: BadgeId; metres: number }[] = [
 ];
 
 /** Any rolling 7-day window with at least one session on each Concept2 sport. */
-export function hasEverySportWeek(workouts: Workout[]): boolean {
+export function hasEverySportWeek(workouts: Workout[], homeTz?: string): boolean {
 	const daySports = new Map<string, Set<Sport>>();
 	for (const w of workouts) {
-		const day = workoutDayKey(w.date);
+		const day = workoutDayKey(w.date, w.timezone, homeTz);
 		if (!daySports.has(day)) daySports.set(day, new Set());
 		daySports.get(day)!.add(w.sport);
 	}
