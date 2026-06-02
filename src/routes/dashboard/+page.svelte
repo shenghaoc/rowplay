@@ -1020,8 +1020,9 @@
 	}
 	/* Scoped form-band badges. `.badge.good`/`.badge.bad`/`.badge.accent`/`.badge.info`
 	   are rowplay status modifiers (NOT daisyUI variants like `badge-soft`); they
-	   re-skin daisyUI's `.badge` base within this component via Svelte scoping. */
-	.badge {
+	   re-skin daisyUI's `.badge` base within this component via Svelte scoping. The
+	   `:not()` keeps real daisyUI badges (e.g. `badge-soft badge-primary`) untouched. */
+	.badge:not(.badge-soft):not(.badge-primary) {
 		font-size: 0.78rem;
 		font-weight: 700;
 		padding: 0.25rem 0.7rem;

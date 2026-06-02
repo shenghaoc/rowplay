@@ -20,7 +20,7 @@
 
 	<form method="POST" use:enhance>
 		<fieldset class="fieldset">
-			<label for="token">{t('token.apiToken')}</label>
+			<label class="fieldset-legend" for="token">{t('token.apiToken')}</label>
 			<input
 				id="token"
 				name="token"
