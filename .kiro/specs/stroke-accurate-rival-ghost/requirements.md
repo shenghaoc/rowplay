@@ -31,8 +31,7 @@ gate (`check` + `build` + `test` + `test:e2e`).
 
 ## Dependencies and parking
 
-This spec is a **parked draft** (`requirements.md` only; `design.md` /
-`tasks.md` follow when unparked). It is sequenced **after** the
+This spec was sequenced **after** the
 `full-fidelity-data` spec (#61) lands, but that is a **product ordering** choice,
 not a stroke-schema blocker:
 
