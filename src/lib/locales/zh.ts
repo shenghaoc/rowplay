@@ -343,8 +343,10 @@ export const zh = {
 			'你战胜了 {date} 的 {distance}，领先 {seconds} 秒（冲线时领先 {m} 米）',
 		raceVerdictLoseSession:
 			'{date} 的 {distance} 战胜了你，领先 {seconds} 秒（冲线时落后 {m} 米）',
-		raceVerdictWinPace: '你战胜了 {pace} 配速艇，领先 {seconds} 秒（冲线时领先 {m} 米）',
-		raceVerdictLosePace: '{pace} 配速艇战胜了你，领先 {seconds} 秒（冲线时落后 {m} 米）',
+		raceVerdictWinPace:
+			'你战胜了 {pace} 配速艇，领先 {seconds} 秒（冲线时领先 {m} 米）',
+		raceVerdictLosePace:
+			'{pace} 配速艇战胜了你，领先 {seconds} 秒（冲线时落后 {m} 米）',
 		raceVerdictWinFile: '你战胜了 {name}，领先 {seconds} 秒（冲线时领先 {m} 米）',
 		raceVerdictLoseFile: '{name} 战胜了你，领先 {seconds} 秒（冲线时落后 {m} 米）',
 		raceFinished: '竞速结束',
