@@ -100,7 +100,6 @@
 			<label class="field">
 				<span class="flabel muted">{t('workoutList.dateFrom')}</span>
 				<input
-					class="input input-bordered w-full"
 					type="date"
 					value={query.dateFrom ?? ''}
 					onchange={(e) => patch({ dateFrom: e.currentTarget.value || undefined })}
@@ -129,6 +128,7 @@
 			<label class="field grow">
 				<span class="flabel muted">{t('workoutList.strokeData')}</span>
 				<select
+					class="select select-bordered w-full"
 					value={query.hasStroke === true ? '1' : query.hasStroke === false ? '0' : ''}
 					onchange={(e) => {
 						const v = e.currentTarget.value;
