@@ -46,9 +46,6 @@ function findPropertyValue(cssBlock: string, selector: string, property: string)
 	return null;
 }
 
-function isBugCondition(viewport: { widthPx: number }): boolean {
-	return viewport.widthPx <= 720;
-}
 
 const css = extractSvelteStyle(DASHBOARD_PATH);
 const media720 = extractMediaBlock(css, 720);

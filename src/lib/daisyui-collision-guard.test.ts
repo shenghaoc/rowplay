@@ -1,7 +1,11 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { findForbiddenLayoutTokens, labelHasToggleCollision } from './daisyui-collision';
+import {
+	findForbiddenLayoutTokens,
+	isDaisyUiMarkupToken,
+	labelHasToggleCollision
+} from './daisyui-collision';
 
 const SRC = resolve('src');
 
@@ -30,7 +34,35 @@ describe('daisyUI layout collision guard', () => {
 		expect(css).not.toMatch(/prefix:\s*du-/);
 	});
 
-	it('no markup repurposes daisyUI stats/stat as custom layout hooks', () => {
+	it('isDaisyUiMarkupToken does not false-positive on custom layout class names', () => {
+		const custom = [
+			'drawer-nav',
+			'drawer-actions',
+			'drawer-theme',
+			'menu-btn',
+			'footer-inner',
+			'status-row',
+			'status-label',
+			'status-time',
+			'dash-stats',
+			'dash-stat',
+			'side-tag'
+		];
+		for (const name of custom) {
+			expect(isDaisyUiMarkupToken(name), name).toBe(false);
+		}
+	});
+
+	it('isDaisyUiMarkupToken recognizes idiomatic daisyUI variants', () => {
+		expect(isDaisyUiMarkupToken('btn')).toBe(true);
+		expect(isDaisyUiMarkupToken('btn-primary')).toBe(true);
+		expect(isDaisyUiMarkupToken('btn-ghost')).toBe(true);
+		expect(isDaisyUiMarkupToken('stat-title')).toBe(true);
+		expect(isDaisyUiMarkupToken('toggle-primary')).toBe(true);
+		expect(isDaisyUiMarkupToken('input-bordered')).toBe(true);
+	});
+
+	it('no markup repurposes daisyUI stats as a custom layout hook', () => {
 		const violations: string[] = [];
 		for (const file of collectSvelteFiles(SRC)) {
 			const html = markupOnly(readFileSync(file, 'utf-8'));
@@ -65,6 +97,7 @@ describe('daisyUI layout collision guard', () => {
 		const html = markupOnly(readFileSync('src/routes/dashboard/+page.svelte', 'utf-8'));
 		expect(html).toContain('dash-stats');
 		expect(html).toContain('stat-title');
+		expect(html).toContain('stat-value');
 		expect(html).toContain('class="stat"');
 		expect(html).not.toMatch(/class="stats"/);
 	});
