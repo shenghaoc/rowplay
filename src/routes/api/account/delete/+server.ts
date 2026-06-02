@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { clearUserCachedData } from '$lib/server/data';
-import { SESSION_COOKIE } from '$lib/server/session';
+import { SESSION_COOKIE, TOKEN_COOKIE } from '$lib/server/session';
 
 export const POST: RequestHandler = async (event) => {
 	if (event.locals.demo) {
@@ -19,6 +19,7 @@ export const POST: RequestHandler = async (event) => {
 
 	await clearUserCachedData(event);
 	event.cookies.delete(SESSION_COOKIE, { path: '/' });
+	event.cookies.delete(TOKEN_COOKIE, { path: '/' });
 
 	return json({ ok: true }, { headers: { 'cache-control': 'private, no-store' } });
 };

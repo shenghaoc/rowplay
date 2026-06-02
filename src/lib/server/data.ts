@@ -4,7 +4,8 @@ import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 import { mockAnnotations, mockWorkoutDetail, mockWorkouts } from '../mockData';
 import { Concept2Client } from './concept2';
 import { getConfig } from './config';
-import { readSession } from './session';
+import { readSession, TOKEN_COOKIE } from './session';
+import { openToken } from './tokenCrypto';
 import { overlapDate } from '$lib/datetime';
 import { detectNewPBs, distancePBs, type DistancePB } from '$lib/analytics';
 import {
@@ -42,6 +43,17 @@ async function client(event: RequestEvent): Promise<Concept2Client | null> {
 	if (!env?.SESSIONS || !event.locals.sessionId) return null;
 	const session = await readSession(env.SESSIONS, event.locals.sessionId);
 	if (!session) return null;
+	if (session.personal) {
+		// BYOT: the credential isn't in KV — it's sealed in the cookie. Open it
+		// just-in-time and inject it into the in-memory session. A missing/rotated/
+		// tampered cookie (or no secret) yields no token → null → callers 401 →
+		// reconnect. Legacy KV-token sessions have no cookie and land here too.
+		const sealed = event.cookies.get(TOKEN_COOKIE);
+		const secret = env.SESSION_SECRET;
+		const token = sealed && secret ? await openToken(secret, sealed) : null;
+		if (!token) return null;
+		session.tokens = { ...session.tokens, accessToken: token };
+	}
 	// OAuth sessions carry a clientId for refresh; personal-token sessions don't
 	// need one, so the client is built from whatever config is present.
 	return new Concept2Client(getConfig(event), env.SESSIONS, event.locals.sessionId, session);

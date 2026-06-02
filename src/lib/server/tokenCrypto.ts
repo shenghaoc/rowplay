@@ -54,8 +54,10 @@ export async function openToken(secret: string, blob: string): Promise<string | 
 	try {
 		const packed = fromBase64Url(blob);
 		if (packed.length <= IV_BYTES) return null;
-		const iv = packed.subarray(0, IV_BYTES);
-		const ct = packed.subarray(IV_BYTES);
+		// Copy into fresh ArrayBuffer-backed views (subarray's ArrayBufferLike
+		// generic isn't assignable to WebCrypto's BufferSource).
+		const iv = new Uint8Array(packed.subarray(0, IV_BYTES));
+		const ct = new Uint8Array(packed.subarray(IV_BYTES));
 		const key = await deriveKey(secret);
 		const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
 		return new TextDecoder().decode(pt);

@@ -9,7 +9,7 @@ import {
 } from '$lib/leaderboard';
 import { mockLeaderboard } from '$lib/mockLeaderboard';
 import { mockWorkouts } from '$lib/mockData';
-import { getLeaderboardEntries, upsertLeaderboardEntry } from './db';
+import { deleteLeaderboardEntry, getLeaderboardEntries, upsertLeaderboardEntry } from './db';
 import { loadWorkouts } from './data';
 import { createWorkoutShare } from './share';
 
@@ -139,4 +139,26 @@ export async function publishWorkout(
 	}
 
 	return { board: { sport: workout.sport, distance }, rank: rank ?? 1 };
+}
+
+/**
+ * Withdraw a previously published workout from its board — the symmetric,
+ * reversible opt-out. Removes only the athlete's rowplay leaderboard entry; it
+ * does NOT touch their Concept2 logbook. Demo mode is a no-op success.
+ */
+export async function withdrawWorkout(event: RequestEvent, workoutId: number): Promise<void> {
+	if (!event.locals.demo && !event.locals.user) throw error(401, 'Not authenticated.');
+	if (event.locals.demo) return; // demo board is a fixed seed; nothing to remove
+
+	const user = event.locals.user;
+	if (!user) throw error(401, 'Not authenticated.');
+
+	const workouts = await loadWorkouts(event);
+	const workout = workouts.find((w) => w.id === workoutId);
+	if (!workout) throw error(404, 'Workout not found.');
+
+	const distance = matchStandardDistance(workout.distance);
+	if (distance == null) return; // never could have been on a board
+
+	await deleteLeaderboardEntry(event.platform?.env?.DB, user.id, workout.sport, distance);
 }

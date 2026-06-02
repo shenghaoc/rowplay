@@ -585,6 +585,26 @@ export async function upsertLeaderboardEntry(
 	}
 }
 
+/** Withdraw an athlete's entry from one (sport, distance) board. Best-effort. */
+export async function deleteLeaderboardEntry(
+	db: D1Database | undefined,
+	userId: number,
+	sport: Sport,
+	distance: number
+): Promise<void> {
+	if (!db) return;
+	try {
+		await db
+			.prepare(
+				'DELETE FROM leaderboard_entry WHERE user_id = ? AND sport = ? AND distance = ?'
+			)
+			.bind(userId, sport, distance)
+			.run();
+	} catch (e) {
+		console.error('deleteLeaderboardEntry failed:', (e as Error).message ?? e);
+	}
+}
+
 /** All published leaderboard entries (every board). user_id is kept for `isYou`. */
 export async function getLeaderboardEntries(
 	db: D1Database | undefined

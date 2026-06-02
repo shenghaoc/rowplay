@@ -22,6 +22,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.demo = true;
 	event.locals.user = null;
 	event.locals.sessionId = null;
+	event.locals.personal = false;
 
 	const sid = event.cookies.get(SESSION_COOKIE) ?? null;
 	if (sid && env?.SESSIONS) {
@@ -30,6 +31,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			event.locals.sessionId = sid;
 			event.locals.user = session.user;
 			event.locals.demo = false;
+			event.locals.personal = session.personal === true;
 		}
 	}
 
