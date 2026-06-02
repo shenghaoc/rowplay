@@ -12,10 +12,25 @@
 
 const IV_BYTES = 12; // GCM standard nonce length
 
-/** Derive a 256-bit AES-GCM key from the secret (SHA-256 of its UTF-8 bytes). */
-async function deriveKey(secret: string): Promise<CryptoKey> {
-	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
-	return crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+// `SESSION_SECRET` is constant for a Worker instance's lifetime, so the imported
+// CryptoKey can be reused across every seal/open instead of re-running SHA-256 +
+// importKey per call. Cached by secret (a Map, in case it's ever rotated/varied).
+const keyCache = new Map<string, Promise<CryptoKey>>();
+
+/** Derive (and memoise) a 256-bit AES-GCM key from the secret (SHA-256 of its UTF-8 bytes). */
+function deriveKey(secret: string): Promise<CryptoKey> {
+	let key = keyCache.get(secret);
+	if (!key) {
+		key = (async () => {
+			const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+			return crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, [
+				'encrypt',
+				'decrypt'
+			]);
+		})();
+		keyCache.set(secret, key);
+	}
+	return key;
 }
 
 function toBase64Url(bytes: Uint8Array): string {
@@ -25,6 +40,9 @@ function toBase64Url(bytes: Uint8Array): string {
 }
 
 function fromBase64Url(text: string): Uint8Array {
+	// `toBase64Url` strips `=` padding; we don't restore it here because `atob`
+	// performs WHATWG "forgiving base64 decode" (padding optional). The Workers
+	// runtime (V8) implements this, so the unpadded round-trip is safe.
 	const bin = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
 	const bytes = new Uint8Array(bin.length);
 	for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);

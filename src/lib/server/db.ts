@@ -411,7 +411,25 @@ export async function getPersonalBests(db: D1Database, userId: number): Promise<
 	return res.results ?? [];
 }
 
-/** Remove all cached logbook data for a user (workouts, detail cache, sync cursor). */
+/**
+ * Purge a user's *private* cached logbook data (workouts, detail cache, sync
+ * cursor). Deliberately leaves `leaderboard_entry` untouched: published standings
+ * are governed solely by the explicit publish/withdraw controls, so logging out or
+ * disconnecting a session must not silently retract them. Use this on logout.
+ */
+export async function purgePrivateCache(db: D1Database, userId: number): Promise<void> {
+	await db.batch([
+		db.prepare('DELETE FROM workouts WHERE user_id = ?').bind(userId),
+		db.prepare('DELETE FROM workout_detail WHERE user_id = ?').bind(userId),
+		db.prepare('DELETE FROM sync_state WHERE user_id = ?').bind(userId)
+	]);
+}
+
+/**
+ * Remove *all* of a user's data, including published leaderboard entries. This is
+ * the account-deletion path — for plain logout/disconnect use `purgePrivateCache`,
+ * which preserves the athlete's opt-in standings.
+ */
 export async function deleteUserData(db: D1Database, userId: number): Promise<void> {
 	await db.batch([
 		db.prepare('DELETE FROM workouts WHERE user_id = ?').bind(userId),
@@ -419,6 +437,24 @@ export async function deleteUserData(db: D1Database, userId: number): Promise<vo
 		db.prepare('DELETE FROM sync_state WHERE user_id = ?').bind(userId),
 		db.prepare('DELETE FROM leaderboard_entry WHERE user_id = ?').bind(userId)
 	]);
+}
+
+/** Whether the user has a published leaderboard entry for this specific workout. */
+export async function isWorkoutPublished(
+	db: D1Database | undefined,
+	userId: number,
+	workoutId: number
+): Promise<boolean> {
+	if (!db) return false;
+	try {
+		const row = await db
+			.prepare('SELECT 1 FROM leaderboard_entry WHERE user_id = ? AND workout_id = ? LIMIT 1')
+			.bind(userId, workoutId)
+			.first();
+		return row != null;
+	} catch {
+		return false;
+	}
 }
 
 export async function getUserAnnualGoal(
