@@ -65,6 +65,7 @@ export const ja = {
 		withdrawing: '削除中…',
 		withdrawOk: 'ランキングから削除しました。',
 		withdrawFailed: 'ランキングから削除できませんでした'
+		ghostFallbackToast: 'Could not load rival strokes — racing their average pace instead',
 	},
 	nav: {
 		dashboard: 'ダッシュボード',

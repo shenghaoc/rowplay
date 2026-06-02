@@ -65,6 +65,7 @@ export const es = {
 		withdrawing: 'Quitando…',
 		withdrawOk: 'Quitado de la clasificación.',
 		withdrawFailed: 'No se pudo quitar de la clasificación'
+		ghostFallbackToast: 'Could not load rival strokes — racing their average pace instead',
 	},
 	nav: {
 		dashboard: 'Panel',

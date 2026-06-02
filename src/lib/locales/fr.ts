@@ -65,6 +65,7 @@ export const fr = {
 		withdrawing: 'Retrait…',
 		withdrawOk: 'Retiré du classement.',
 		withdrawFailed: 'Impossible de retirer du classement'
+		ghostFallbackToast: 'Could not load rival strokes — racing their average pace instead',
 	},
 	nav: {
 		dashboard: 'Tableau de bord',

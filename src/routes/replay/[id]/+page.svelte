@@ -390,7 +390,11 @@
 				setGhost(data.strokes, label, { kind: 'rival', name: label });
 				compareMode = 'none';
 			} catch {
-				if (!hasPace) setGhost(null, '', null);
+				if (!hasPace) {
+					setGhost(null, '', null);
+				} else {
+					toast.warning(t('leaderboard.ghostFallbackToast'));
+				}
 			} finally {
 				loadingGhost = false;
 			}

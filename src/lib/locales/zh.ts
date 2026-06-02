@@ -64,6 +64,7 @@ export const zh = {
 		withdrawing: '正在移除…',
 		withdrawOk: '已从排行榜移除。',
 		withdrawFailed: '无法从排行榜移除'
+		ghostFallbackToast: 'Could not load rival strokes — racing their average pace instead',
 	},
 	nav: {
 		dashboard: '仪表板',
