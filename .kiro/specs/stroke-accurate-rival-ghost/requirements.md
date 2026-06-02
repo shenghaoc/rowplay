@@ -104,6 +104,12 @@ logging in, so that racing a public board entry needs no extra permission.
    replay (a public capability resource), not `private, no-store`. **Design**
    SHALL decide whether this reuses the full `/r/<token>` payload or a smaller,
    more cacheable strokes-only response.
+5. THE cache lifetime SHALL be **bounded** so that revoking a share token stops
+   the trace from being served within a reasonable window — i.e. a short
+   `max-age` (and/or `must-revalidate` / `stale-while-revalidate`), never an
+   effectively-immortal public cache. The chosen TTL SHALL match the existing
+   shared-replay policy so revocation semantics stay consistent across both
+   public surfaces.
 
 ### Requirement 3 — Deep-link contract and backward compatibility
 
@@ -172,6 +178,12 @@ mount).
 5. IF the fetch fails (404, network error) THE system SHALL apply Req 3.2
    (pace fallback when `ghostPace` present) and SHALL NOT leave a stale
    stroke ghost armed.
+6. WHEN a stroke-accurate fetch fails AND the system falls back to the
+   constant-pace ghost THE replay SHALL surface a **non-blocking** notification
+   (a toast, reusing the existing `toast` affordance and an i18n'd string such
+   as "Couldn't load your rival's strokes — racing their average pace instead")
+   so the athlete knows they are racing a pace approximation, not the real
+   trace. A silent solo fallback (no `ghostPace`) needs no toast.
 
 ### Requirement 6 — Demo mode and e2e
 
