@@ -24,12 +24,13 @@
 			id="token"
 			name="token"
 			type="password"
+			class="input input-bordered w-full"
 			autocomplete="off"
 			placeholder={t('token.placeholder')}
 			required
 		/>
 		{#if form?.error}
-			<p class="err" role="alert">{form.error}</p>
+			<div class="alert alert-error" role="alert">{form.error}</div>
 		{/if}
 		<button class="btn btn-primary" type="submit">{t('token.connect')}</button>
 	</form>

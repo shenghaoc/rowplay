@@ -46,7 +46,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		transformPageChunk: ({ html }) =>
 			html
 				.replace('%lang%', lang)
-				.replace('%theme%', theme)
+				.replace('%theme%', daisyThemeName(theme))
 				.replace('%fontPreload%', FONT_PRELOAD)
 	});
 

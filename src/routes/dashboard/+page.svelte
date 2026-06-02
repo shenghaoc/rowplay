@@ -1018,6 +1018,9 @@
 		font-size: 0.82rem;
 		margin: 0.4rem 0 0.9rem;
 	}
+	/* Scoped form-band badges. `.badge.good`/`.badge.bad`/`.badge.accent`/`.badge.info`
+	   are rowplay status modifiers (NOT daisyUI variants like `badge-soft`); they
+	   re-skin daisyUI's `.badge` base within this component via Svelte scoping. */
 	.badge {
 		font-size: 0.78rem;
 		font-weight: 700;
