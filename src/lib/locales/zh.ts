@@ -570,6 +570,18 @@ export const zh = {
 		preferBefore: '想用标准流程？',
 		preferLink: '连接 Concept2'
 	},
+	comparability: {
+		blockedTitle: '无法对比的训练',
+		guidance: '请选择同一器械、同一类型且距离或时长区间相同的两次训练。',
+		noComparableCandidates: '没有可对比的历史训练。',
+		groupComparable: '可对比',
+		groupIncomparable: '其他（不可对比）',
+		reason: {
+			crossSport: '这两次训练使用的器械不同。',
+			crossAxis: '一次为固定距离，另一次为固定时间。',
+			crossBand: '这两次训练的距离或时长区间不同。'
+		}
+	},
 	compare: {
 		title: '训练对比',
 		lead: '两次训练的并排数据与叠加图表。',

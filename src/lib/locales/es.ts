@@ -576,6 +576,19 @@ export const es = {
 		preferBefore: '¿Prefieres el flujo habitual? ',
 		preferLink: 'Conectar Concept2'
 	},
+	comparability: {
+		blockedTitle: 'Entrenamientos no comparables',
+		guidance:
+			'Elige dos entrenamientos en la misma máquina, del mismo tipo y en la misma banda de distancia o duración.',
+		noComparableCandidates: 'No hay sesiones comparables.',
+		groupComparable: 'Comparables',
+		groupIncomparable: 'Otros (no comparables)',
+		reason: {
+			crossSport: 'Estos entrenamientos son en máquinas distintas.',
+			crossAxis: 'Uno es pieza a distancia fija; el otro a tiempo fijo.',
+			crossBand: 'Estos entrenamientos están en bandas de distancia o duración distintas.'
+		}
+	},
 	compare: {
 		title: 'Comparar entrenamientos',
 		lead: 'Estadísticas lado a lado y gráficos superpuestos para dos sesiones cualesquiera.',

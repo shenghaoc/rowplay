@@ -576,6 +576,18 @@ export const en = {
 		preferBefore: 'Prefer the standard flow? ',
 		preferLink: 'Connect Concept2'
 	},
+	comparability: {
+		blockedTitle: 'Incomparable workouts',
+		guidance: 'Choose two workouts of the same machine, piece type, and distance or duration band.',
+		noComparableCandidates: 'No comparable sessions found.',
+		groupComparable: 'Comparable',
+		groupIncomparable: 'Other (incomparable)',
+		reason: {
+			crossSport: 'These workouts are on different machines.',
+			crossAxis: 'One is a fixed-distance piece; the other is a fixed-time piece.',
+			crossBand: 'These workouts are in different distance or duration bands.'
+		}
+	},
 	compare: {
 		title: 'Compare workouts',
 		lead: 'Side-by-side stats and overlay charts for any two sessions.',

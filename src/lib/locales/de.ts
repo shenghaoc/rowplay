@@ -576,6 +576,19 @@ export const de = {
 		preferBefore: 'Lieber der Standardweg? ',
 		preferLink: 'Concept2 verbinden'
 	},
+	comparability: {
+		blockedTitle: 'Nicht vergleichbare Workouts',
+		guidance:
+			'Wähle zwei Workouts auf demselben Gerät, mit demselben Stücktyp und in derselben Distanz- oder Dauerband.',
+		noComparableCandidates: 'Keine vergleichbaren Einheiten gefunden.',
+		groupComparable: 'Vergleichbar',
+		groupIncomparable: 'Sonstige (nicht vergleichbar)',
+		reason: {
+			crossSport: 'Diese Workouts sind auf verschiedenen Geräten.',
+			crossAxis: 'Eines ist ein Distanzstück, das andere ein Zeitstück.',
+			crossBand: 'Diese Workouts liegen in verschiedenen Distanz- oder Dauerbändern.'
+		}
+	},
 	compare: {
 		title: 'Workouts vergleichen',
 		lead: 'Statistiken nebeneinander und überlagerte Charts für beliebige zwei Einheiten.',
