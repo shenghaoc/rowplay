@@ -85,7 +85,10 @@ export const en = {
 	sync: {
 		loading: 'Syncing your logbook…',
 		done: 'Synced — {added} new, {total} total',
-		failed: 'Sync failed'
+		failed: 'Sync failed',
+		historyWindow: 'Showing the last {months} months — loading older history…',
+		historyBackfilling: '{total} workouts · history back to {date}',
+		historyComplete: 'Full history synced'
 	},
 	auth: {
 		connect: 'Connect Concept2',
@@ -547,6 +550,7 @@ export const en = {
 			'Incremental sync fetches workouts since your last sync. Full re-sync re-downloads your entire history (slower, use after issues).',
 		syncIncremental: 'Incremental sync',
 		syncFull: 'Full re-sync',
+		loadFullHistory: 'Load full history',
 		syncDemo: 'Sync is unavailable in demo mode — connect your logbook to sync real data.',
 		lastSync: '{total} workouts cached · last sync {date}',
 		neverSynced: 'never',

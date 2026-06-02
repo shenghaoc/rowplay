@@ -85,7 +85,10 @@ export const de = {
 	sync: {
 		loading: 'Synchronisiere dein Logbuch…',
 		done: 'Synchronisiert — {added} neu, {total} gesamt',
-		failed: 'Synchronisation fehlgeschlagen'
+		failed: 'Synchronisation fehlgeschlagen',
+		historyWindow: 'Zeigt die letzten {months} Monate — ältere Historie wird geladen…',
+		historyBackfilling: '{total} Workouts · Historie bis {date}',
+		historyComplete: 'Vollständige Historie synchronisiert'
 	},
 	auth: {
 		connect: 'Concept2 verbinden',
@@ -547,6 +550,7 @@ export const de = {
 			'Inkrementeller Sync holt Workouts seit deinem letzten Sync. Vollständiger Re-Sync lädt deinen gesamten Verlauf neu (langsamer, nach Problemen nutzen).',
 		syncIncremental: 'Inkrementeller Sync',
 		syncFull: 'Vollständiger Re-Sync',
+		loadFullHistory: 'Vollständige Historie laden',
 		syncDemo: 'Sync ist im Demo-Modus nicht verfügbar — verbinde dein Logbuch, um echte Daten zu synchronisieren.',
 		lastSync: '{total} Workouts gecacht · letzter Sync {date}',
 		neverSynced: 'nie',

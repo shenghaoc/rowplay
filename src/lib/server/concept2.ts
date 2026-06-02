@@ -152,10 +152,12 @@ export class Concept2Client {
 	async listWorkoutsPage(
 		page: number,
 		from?: string,
+		to?: string,
 		number = 250
 	): Promise<{ workouts: Workout[]; totalPages: number }> {
 		const qs = new URLSearchParams({ page: String(page), number: String(number) });
 		if (from) qs.set('from', from);
+		if (to) qs.set('to', to);
 		const json = await this.api<{
 			data: RawResult[];
 			meta?: { pagination?: { total_pages?: number } };

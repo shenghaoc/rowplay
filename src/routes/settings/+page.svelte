@@ -7,20 +7,66 @@
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Database from '@lucide/svelte/icons/database';
+	import { fmtDate } from '$lib/format';
+	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
 
 	let { data } = $props();
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);
 
 	let syncing = $state(false);
-	let syncMode = $state<'incremental' | 'full' | null>(null);
+	let syncMode = $state<'incremental' | 'full' | 'history' | null>(null);
 	let deleting = $state(false);
+
+	const syncHistoryNote = $derived.by(() => {
+		const sync = data.sync;
+		if (!sync) return '';
+		if (sync.backfillDone) return t('sync.historyComplete');
+		if (sync.oldestDate) {
+			return t('sync.historyBackfilling', {
+				total: sync.total,
+				date: fmtDate(sync.oldestDate)
+			});
+		}
+		return t('sync.historyWindow', { months: sync.historyWindowMonths });
+	});
+
+	$effect(() => {
+		const sync = data.sync;
+		if (data.demo || !sync || sync.backfillDone) return;
+		const ac = new AbortController();
+		void runHistoryBackfillLoop({ signal: ac.signal }).catch((e) => {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			console.error('[historyBackfill]', e);
+		});
+		return () => ac.abort();
+	});
 
 	const lastSyncLabel = $derived(
 		data.sync?.lastSyncAt
 			? fmtDateFromEpochMillis(data.sync.lastSyncAt)
 			: t('settings.neverSynced')
 	);
+
+	async function loadFullHistory() {
+		if (data.demo || syncing) return;
+		syncing = true;
+		syncMode = 'history';
+		const toastId = toast.loading(t('sync.historyWindow', { months: data.sync?.historyWindowMonths ?? 12 }));
+		try {
+			await runHistoryBackfillLoop();
+			await invalidateAll();
+			toast.success(t('sync.historyComplete'), { id: toastId });
+		} catch (e) {
+			toast.error(t('sync.failed'), {
+				id: toastId,
+				description: e instanceof Error ? e.message : t('common.tryAgain')
+			});
+		} finally {
+			syncing = false;
+			syncMode = null;
+		}
+	}
 
 	async function runSync(full: boolean) {
 		if (data.demo || syncing) return;
@@ -128,7 +174,12 @@
 		{#if data.demo}
 			<span class="badge badge-soft badge-primary">{t('settings.syncDemo')}</span>
 		{:else}
-			<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: data.sync?.total ?? 0 })}</p>
+			{#if data.sync}
+				<p class="sync-meta muted">{syncHistoryNote}</p>
+				<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: data.sync.total })}</p>
+			{:else}
+				<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: 0 })}</p>
+			{/if}
 			<div class="row">
 				<button
 					class="btn btn-primary"
@@ -146,6 +197,16 @@
 				>
 					{syncMode === 'full' ? t('dashboard.syncing') : t('settings.syncFull')}
 				</button>
+				{#if data.sync && !data.sync.backfillDone}
+					<button
+						class="btn btn-ghost"
+						type="button"
+						disabled={syncing}
+						onclick={loadFullHistory}
+					>
+						{syncMode === 'history' ? t('dashboard.syncing') : t('settings.loadFullHistory')}
+					</button>
+				{/if}
 			</div>
 		{/if}
 	</article>

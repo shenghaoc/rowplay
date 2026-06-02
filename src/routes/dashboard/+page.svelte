@@ -36,6 +36,7 @@
 	import { chartTheme, baseOptions } from '$lib/chartTheme';
 	import LiveModePanel from '$components/LiveModePanel.svelte';
 	import { LiveMode } from '$lib/liveMode.svelte';
+	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
 
 	import { logbookEpochMillis } from '$lib/datetime';
 
@@ -98,6 +99,30 @@
 	let compareAnchor = $state<number | null>(null);
 	let newPbIds = $state<Set<number>>(new Set());
 	const pbIds = $derived(pbWorkoutIds(workouts));
+
+	const syncHistoryNote = $derived.by(() => {
+		const sync = data.sync;
+		if (!sync) return '';
+		if (sync.backfillDone) return t('sync.historyComplete');
+		if (sync.oldestDate) {
+			return t('sync.historyBackfilling', {
+				total: sync.total,
+				date: fmtDate(sync.oldestDate)
+			});
+		}
+		return t('sync.historyWindow', { months: sync.historyWindowMonths });
+	});
+
+	$effect(() => {
+		const sync = data.sync;
+		if (data.demo || !sync || sync.backfillDone) return;
+		const ac = new AbortController();
+		void runHistoryBackfillLoop({ signal: ac.signal }).catch((e) => {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			console.error('[historyBackfill]', e);
+		});
+		return () => ac.abort();
+	});
 
 	function onCompareWorkout(w: Workout) {
 		if (compareAnchor == null) {
@@ -526,14 +551,13 @@
 			{/if}
 		</div>
 	</div>
-	{#if !data.demo && data.sync}
+	{#if data.demo}
 		<p class="syncnote muted">
-			{t('dashboard.syncedNote', {
-				total: data.sync.total,
-				date: fmtDateFromEpochMillis(data.sync.lastSyncAt)
-			})}
+			<span class="badge badge-soft badge-primary">{t('settings.syncDemo')}</span>
 		</p>
-	{:else if !data.demo && !data.sync}
+	{:else if data.sync}
+		<p class="syncnote muted">{syncHistoryNote}</p>
+	{:else}
 		<p class="syncnote muted">{t('dashboard.recentNote')}</p>
 	{/if}
 
