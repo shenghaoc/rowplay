@@ -152,7 +152,7 @@
 			<div class="drawer-actions">
 				<LanguagePicker />
 				<button
-					class="btn btn-ghost btn-square btn-sm iconbtn drawer-theme"
+					class="btn btn-ghost btn-sm drawer-theme"
 					type="button"
 					onclick={() => theme.toggle()}
 					aria-label={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
@@ -304,12 +304,15 @@
 	}
 	.mobile-drawer {
 		margin: 0;
+		/* Top sheet: pin to top, height from content (not the modal's inset:0). */
+		inset: 0 0 auto 0;
 		padding: 0.75rem 1rem 1rem;
 		border: none;
 		border-bottom: var(--bd-heavy);
 		width: 100%;
 		max-width: 100vw;
 		max-height: calc(100dvh - 54px);
+		overflow-y: auto;
 		background: var(--paper);
 		box-shadow: 0 12px 28px rgb(15 42 54 / 0.12);
 	}
@@ -322,10 +325,12 @@
 	.mobile-drawer[open] {
 		display: grid;
 		gap: 1rem;
+		align-content: start;
 	}
 	.drawer-nav {
 		display: grid;
 		gap: 0.35rem;
+		align-content: start;
 	}
 	.drawer-nav a {
 		display: block;
@@ -351,6 +356,7 @@
 		display: grid;
 		gap: 0.65rem;
 		justify-items: start;
+		align-content: start;
 		padding-top: 0.35rem;
 		border-top: var(--bd);
 	}
