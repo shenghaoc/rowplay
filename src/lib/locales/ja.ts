@@ -58,7 +58,13 @@ export const ja = {
 		publishing: '公開中…',
 		publishOk: '公開しました — {sport} {distance} で {rank} 位です。',
 		publishOffBoard: '公開できるのは標準距離（500m、1k、2k、5k、6k、10k、ハーフ）のみです。',
-		publishFailed: 'ランキングに公開できませんでした'
+		publishFailed: 'ランキングに公開できませんでした',
+		publishNote:
+			'公開すると、この記録は rowplay のランキングで公開されます。Concept2 のログブックには一切変更を加えません。',
+		withdraw: 'ランキングから削除',
+		withdrawing: '削除中…',
+		withdrawOk: 'ランキングから削除しました。',
+		withdrawFailed: 'ランキングから削除できませんでした'
 	},
 	nav: {
 		dashboard: 'ダッシュボード',
@@ -445,11 +451,11 @@ export const ja = {
 		eyebrow: 'プライバシーと管理',
 		dataTitle: '保存している内容',
 		dataNote:
-			'rowplay は Concept2 ワークアウトの概要とキャッシュしたストローク詳細を Cloudflare に保存し、リプレイを即座に読み込みます。API トークンはセッション用にサーバー側 KV に保存され、接続後は httpOnly セッション Cookie のみがブラウザに送られます。',
+			'rowplay は Concept2 のワークアウトを必要に応じて読み取り、リプレイを即座に表示できるよう Cloudflare にキャッシュします。API トークンはサーバーには一切保存されず、ブラウザ内の httpOnly Cookie に封印されます。キャッシュはセッションに紐づき、切断時に消去されます。',
 		factWorkouts: 'エクスポート可能なワークアウト {n} 件',
 		factDemo: 'デモモード — サンプルデータのみ、永続化されません。',
-		factCache: 'ワークアウト概要とリプレイキャッシュは D1（アカウントごと）。',
-		factSession: 'セッション認証情報は KV（サーバーのみ）。',
+		factCache: 'ワークアウト概要とリプレイキャッシュは D1 — 切断時に消去されます。',
+		factSession: 'トークンはブラウザの Cookie に封印 — サーバーには保存されません。',
 		exportTitle: 'ログブックをエクスポート',
 		exportNote:
 			'全履歴を CSV または JSON でダウンロード。ストロークデータ付きのワークアウト単位の TCX は Garmin、Strava、TrainingPeaks で開けます。',
@@ -480,11 +486,13 @@ export const ja = {
 		introBefore: 'Concept2 ログブックの個人 API トークンを貼り付け（',
 		introLink: 'プロフィール編集 → アプリケーション',
 		introAfter:
-			'）。ここに一度貼り付けてください — rowplay は HTTPS で Worker に送り、セッションに保存し、サーバー側のログブック読み取りにのみ使用します。接続後、ブラウザが保持するのは httpOnly Cookie のみで、トークン自体ではありません。',
+			'）。ここに一度貼り付けてください — rowplay は HTTPS で Worker に送り、ブラウザ内に留まる httpOnly Cookie に封印し、サーバー側のログブック読み取りにのみ使用します。トークンがサーバーに保存されることはありません。',
 		apiToken: 'API トークン',
 		placeholder: 'トークンを貼り付け',
 		connect: 'トークンで接続',
 		rejected: 'Concept2 がそのトークンを拒否しました。確認して再試行してください。',
+		serverMisconfigured:
+			'このデプロイはトークンサインインに対応していません（SESSION_SECRET が未設定）。サイト管理者にお問い合わせください。',
 		empty: 'Concept2 API トークンを貼り付けてください。',
 		preferBefore: '標準フローがよい？ ',
 		preferLink: 'Concept2 に接続'

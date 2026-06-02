@@ -58,7 +58,13 @@ export const es = {
 		publishing: 'Publicando…',
 		publishOk: 'Publicado — eres el puesto {rank} en {sport} {distance}.',
 		publishOffBoard: 'Solo se pueden publicar series de distancia estándar (500 m, 1k, 2k, 5k, 6k, 10k, media).',
-		publishFailed: 'No se pudo publicar en la clasificación'
+		publishFailed: 'No se pudo publicar en la clasificación',
+		publishNote:
+			'Publicar hace público este resultado en la clasificación de rowplay. No cambia nada en tu diario de Concept2.',
+		withdraw: 'Quitar de la clasificación',
+		withdrawing: 'Quitando…',
+		withdrawOk: 'Quitado de la clasificación.',
+		withdrawFailed: 'No se pudo quitar de la clasificación'
 	},
 	nav: {
 		dashboard: 'Panel',
@@ -443,11 +449,11 @@ export const es = {
 		eyebrow: 'Privacidad y control',
 		dataTitle: 'Qué almacenamos',
 		dataNote:
-			'rowplay guarda una copia de los resúmenes de tus entrenamientos Concept2 y el detalle de palada en caché en Cloudflare para que los replays carguen al instante. Tu token API se guarda en el servidor (KV) para tu sesión; después solo se envía al navegador una cookie httpOnly de sesión.',
+			'rowplay lee tus entrenamientos de Concept2 a demanda y los almacena en caché en Cloudflare para que los replays carguen al instante. Tu token API nunca se guarda en el servidor — permanece sellado en una cookie httpOnly en tu navegador. La caché está ligada a tu sesión y se borra al desconectar.',
 		factWorkouts: '{n} entrenamientos disponibles para exportar',
 		factDemo: 'Modo demo — solo datos de ejemplo, no se persiste nada.',
-		factCache: 'Resúmenes y caché de replay en D1 (por tu cuenta).',
-		factSession: 'Credenciales de sesión en KV (solo en el servidor).',
+		factCache: 'Resúmenes y caché de replay en D1 — se borran al desconectar.',
+		factSession: 'Token sellado en una cookie del navegador — nunca se guarda en el servidor.',
 		exportTitle: 'Exportar diario',
 		exportNote: 'Descarga todo tu historial en CSV o JSON. El TCX por entrenamiento (datos de palada) se abre en Garmin, Strava o TrainingPeaks.',
 		exportCsv: 'Descargar CSV',
@@ -477,11 +483,13 @@ export const es = {
 		introBefore: 'Pega un token API personal de tu diario Concept2 (',
 		introLink: 'Editar perfil → Aplicaciones',
 		introAfter:
-			'). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo guarda en tu sesión y lo usa solo para lecturas del diario en el servidor. Después, el navegador solo tiene una cookie httpOnly, no el token.',
+			'). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo sella en una cookie httpOnly que permanece en tu navegador, y lo usa solo para lecturas del diario en el servidor. El token nunca se guarda en el servidor.',
 		apiToken: 'Token API',
 		placeholder: 'Pega tu token',
 		connect: 'Conectar con token',
 		rejected: 'Concept2 rechazó ese token. Compruébalo e inténtalo de nuevo.',
+		serverMisconfigured:
+			'Esta instalación no está configurada para iniciar sesión con token (falta SESSION_SECRET). Contacta con el propietario del sitio.',
 		empty: 'Pega tu token API de Concept2.',
 		preferBefore: '¿Prefieres el flujo habitual? ',
 		preferLink: 'Conectar Concept2'

@@ -58,7 +58,13 @@ export const de = {
 		publishing: 'Wird veröffentlicht…',
 		publishOk: 'Veröffentlicht — du bist Rang {rank} auf {sport} {distance}.',
 		publishOffBoard: 'Nur Standarddistanzen (500 m, 1k, 2k, 5k, 6k, 10k, Halbmarathon) können veröffentlicht werden.',
-		publishFailed: 'Konnte nicht in der Bestenliste veröffentlicht werden'
+		publishFailed: 'Konnte nicht in der Bestenliste veröffentlicht werden',
+		publishNote:
+			'Mit dem Veröffentlichen wird dieses Ergebnis auf der rowplay-Bestenliste öffentlich. An deinem Concept2-Logbuch ändert sich nichts.',
+		withdraw: 'Aus Bestenliste entfernen',
+		withdrawing: 'Wird entfernt…',
+		withdrawOk: 'Aus der Bestenliste entfernt.',
+		withdrawFailed: 'Konnte nicht aus der Bestenliste entfernt werden'
 	},
 	nav: {
 		dashboard: 'Dashboard',
@@ -443,11 +449,11 @@ export const de = {
 		eyebrow: 'Datenschutz & Kontrolle',
 		dataTitle: 'Was wir speichern',
 		dataNote:
-			'rowplay behält eine Kopie deiner Concept2-Workout-Zusammenfassungen und gecachter Schlagdetails auf Cloudflare, damit Replays sofort laden. Dein API-Token wird serverseitig in KV für deine Session gespeichert; danach erhält der Browser nur ein httpOnly-Session-Cookie.',
+			'rowplay liest deine Concept2-Workouts bei Bedarf und cacht sie auf Cloudflare, damit Replays sofort laden. Dein API-Token wird nie auf dem Server gespeichert — es bleibt versiegelt in einem httpOnly-Cookie in deinem Browser. Der Cache ist an deine Session gebunden und wird beim Trennen gelöscht.',
 		factWorkouts: '{n} Workouts zum Export verfügbar',
 		factDemo: 'Demo-Modus — nur Beispieldaten, nichts wird persistiert.',
-		factCache: 'Workout-Zusammenfassungen und Replay-Cache in D1 (pro Konto).',
-		factSession: 'Session-Zugangsdaten in KV (nur serverseitig).',
+		factCache: 'Workout-Zusammenfassungen und Replay-Cache in D1 — beim Trennen gelöscht.',
+		factSession: 'Token versiegelt in einem Browser-Cookie — nie serverseitig gespeichert.',
 		exportTitle: 'Logbuch exportieren',
 		exportNote: 'Lade deinen vollständigen Verlauf als CSV oder JSON herunter. TCX pro Workout (Schlagdaten) öffnet sich in Garmin, Strava oder TrainingPeaks.',
 		exportCsv: 'CSV herunterladen',
@@ -477,11 +483,13 @@ export const de = {
 		introBefore: 'Füge ein persönliches API-Token aus deinem Concept2-Logbuch ein (',
 		introLink: 'Profil bearbeiten → Anwendungen',
 		introAfter:
-			'). Füge es hier einmal ein — rowplay sendet es per HTTPS an den Worker, speichert es in deiner Session und nutzt es nur für serverseitige Logbuch-Abfragen. Danach hält der Browser nur ein httpOnly-Cookie, nicht das Token selbst.',
+			'). Füge es hier einmal ein — rowplay sendet es per HTTPS an den Worker, versiegelt es in einem httpOnly-Cookie, das in deinem Browser bleibt, und nutzt es nur für serverseitige Logbuch-Abfragen. Das Token wird nie auf dem Server gespeichert.',
 		apiToken: 'API-Token',
 		placeholder: 'Token einfügen',
 		connect: 'Mit Token verbinden',
 		rejected: 'Concept2 hat dieses Token abgelehnt. Prüfe es und versuche es erneut.',
+		serverMisconfigured:
+			'Diese Installation ist nicht für die Token-Anmeldung eingerichtet (SESSION_SECRET fehlt). Wende dich an den Betreiber.',
 		empty: 'Füge dein Concept2-API-Token ein.',
 		preferBefore: 'Lieber der Standardweg? ',
 		preferLink: 'Concept2 verbinden'

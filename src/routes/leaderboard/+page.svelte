@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 	import Trophy from '@lucide/svelte/icons/trophy';
 	import Play from '@lucide/svelte/icons/play';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
@@ -49,6 +50,29 @@
 			keepFocus: true,
 			noScroll: true
 		});
+	}
+
+	let withdrawingId = $state<number | null>(null);
+
+	/** Withdraw the viewer's own entry from the board (reversible opt-out). */
+	async function withdraw(e: RankedEntry) {
+		withdrawingId = e.workoutId;
+		try {
+			const res = await fetch('/api/leaderboard/publish', {
+				method: 'DELETE',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ workoutId: e.workoutId })
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			toast.success(t('leaderboard.withdrawOk'));
+			await invalidateAll();
+		} catch (err) {
+			toast.error(t('leaderboard.withdrawFailed'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
+			});
+		} finally {
+			withdrawingId = null;
+		}
 	}
 
 	/** Replay link that pre-arms this rival as a constant-pace ghost. */
@@ -150,6 +174,18 @@
 										<a class="rowbtn race" href={race}>
 											<Play size={14} /> {t('leaderboard.race')}
 										</a>
+									{/if}
+									{#if e.isYou && !data.demo}
+										<button
+											class="rowbtn"
+											type="button"
+											disabled={withdrawingId === e.workoutId}
+											onclick={() => withdraw(e)}
+										>
+											{withdrawingId === e.workoutId
+												? t('leaderboard.withdrawing')
+												: t('leaderboard.withdraw')}
+										</button>
 									{/if}
 								</td>
 							</tr>

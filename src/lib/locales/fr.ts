@@ -58,7 +58,13 @@ export const fr = {
 		publishing: 'Publication…',
 		publishOk: 'Publié — vous êtes au rang {rank} sur {sport} {distance}.',
 		publishOffBoard: 'Seules les séries de distance standard (500 m, 1k, 2k, 5k, 6k, 10k, semi) peuvent être publiées.',
-		publishFailed: 'Impossible de publier au classement'
+		publishFailed: 'Impossible de publier au classement',
+		publishNote:
+			'Publier rend ce résultat public sur le classement rowplay. Cela ne modifie rien dans votre carnet Concept2.',
+		withdraw: 'Retirer du classement',
+		withdrawing: 'Retrait…',
+		withdrawOk: 'Retiré du classement.',
+		withdrawFailed: 'Impossible de retirer du classement'
 	},
 	nav: {
 		dashboard: 'Tableau de bord',
@@ -443,11 +449,11 @@ export const fr = {
 		eyebrow: 'Confidentialité et contrôle',
 		dataTitle: 'Ce que nous stockons',
 		dataNote:
-			'rowplay conserve une copie de vos résumés de séances Concept2 et le détail des coups en cache sur Cloudflare pour des replays instantanés. Votre jeton API est stocké côté serveur (KV) pour votre session ; ensuite, seul un cookie httpOnly est envoyé au navigateur.',
+			'rowplay lit vos séances Concept2 à la demande et les met en cache sur Cloudflare pour des replays instantanés. Votre jeton API n’est jamais stocké côté serveur — il reste scellé dans un cookie httpOnly de votre navigateur. Le cache est lié à votre session et effacé à la déconnexion.',
 		factWorkouts: '{n} séances disponibles à l’export',
 		factDemo: 'Mode démo — données d’exemple uniquement, rien n’est persisté.',
-		factCache: 'Résumés de séances et cache replay dans D1 (par compte).',
-		factSession: 'Identifiants de session dans KV (côté serveur uniquement).',
+		factCache: 'Résumés de séances et cache replay dans D1 — effacés à la déconnexion.',
+		factSession: 'Jeton scellé dans un cookie du navigateur — jamais stocké côté serveur.',
 		exportTitle: 'Exporter le logbook',
 		exportNote: 'Téléchargez tout votre historique en CSV ou JSON. L’export TCX par séance (données de coups) s’ouvre dans Garmin, Strava ou TrainingPeaks.',
 		exportCsv: 'Télécharger CSV',
@@ -477,11 +483,13 @@ export const fr = {
 		introBefore: 'Collez un jeton API personnel depuis votre logbook Concept2 (',
 		introLink: 'Modifier le profil → Applications',
 		introAfter:
-			'). Collez-le ici une fois — rowplay l’envoie au Worker en HTTPS, le stocke dans votre session et l’utilise uniquement pour les lectures côté serveur. Ensuite, le navigateur ne garde qu’un cookie httpOnly, pas le jeton.',
+			'). Collez-le ici une fois — rowplay l’envoie au Worker en HTTPS, le scelle dans un cookie httpOnly qui reste dans votre navigateur, et l’utilise uniquement pour les lectures côté serveur. Le jeton n’est jamais stocké sur le serveur.',
 		apiToken: 'Jeton API',
 		placeholder: 'Collez votre jeton',
 		connect: 'Connecter avec le jeton',
 		rejected: 'Concept2 a refusé ce jeton. Vérifiez-le et réessayez.',
+		serverMisconfigured:
+			'Ce déploiement n’est pas configuré pour la connexion par jeton (SESSION_SECRET manquant). Contactez le propriétaire du site.',
 		empty: 'Collez votre jeton API Concept2.',
 		preferBefore: 'Vous préférez le flux standard ? ',
 		preferLink: 'Connecter Concept2'
