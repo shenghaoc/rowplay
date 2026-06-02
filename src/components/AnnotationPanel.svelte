@@ -171,10 +171,10 @@
 						<span class="anno-text">{a.text}</span>
 						{#if !readOnly}
 							<div class="anno-item-actions">
-								<button class="du-btn-icon" onclick={() => startEdit(a)} aria-label={t('annotations.editNote')}>
+								<button class="btn-icon" onclick={() => startEdit(a)} aria-label={t('annotations.editNote')}>
 									<Pencil size={13} />
 								</button>
-								<button class="du-btn-icon danger" onclick={() => requestDelete(a.id)} aria-label={t('annotations.deleteNote')}>
+								<button class="btn-icon danger" onclick={() => requestDelete(a.id)} aria-label={t('annotations.deleteNote')}>
 									<Trash2 size={13} />
 								</button>
 							</div>
@@ -340,7 +340,7 @@
 	.anno-item:hover .anno-item-actions {
 		opacity: 1;
 	}
-	.du-btn-icon {
+	.btn-icon {
 		background: none;
 		border: none;
 		color: var(--ink-2);
@@ -349,11 +349,11 @@
 		border-radius: var(--r-ctrl);
 		display: flex;
 	}
-	.du-btn-icon:hover {
+	.btn-icon:hover {
 		background: var(--paper-inset);
 		color: var(--ink);
 	}
-	.du-btn-icon.danger:hover {
+	.btn-icon.danger:hover {
 		color: #ef4444;
 	}
 	.anno-delete-dialog {

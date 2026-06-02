@@ -412,7 +412,7 @@ h3 {
 	color: color-mix(in srgb, var(--behind) 45%, var(--ink));
 }
 /* Solid stamp variant — guaranteed-readable filled chip when wanted. */
-.du-badge-live {
+.badge-live {
 	background: var(--live);
 	border-color: var(--live);
 	color: #F7FAFB;

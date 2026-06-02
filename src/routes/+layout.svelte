@@ -119,7 +119,7 @@
 		</div>
 
 		<button
-			class="iconbtn du-menu-btn mobile-only"
+			class="iconbtn menu-btn mobile-only"
 			type="button"
 			onclick={toggleMenu}
 			aria-expanded={menuOpen}
@@ -138,7 +138,7 @@
 		closedby="any"
 		onclose={onNavClose}
 	>
-			<nav class="du-drawer-nav" aria-label="Main">
+			<nav class="drawer-nav" aria-label="Main">
 				<a href="/dashboard" class:active={page.url.pathname.startsWith('/dashboard')}
 					>{t('nav.dashboard')}</a
 				>
@@ -149,10 +149,10 @@
 					>{t('nav.settings')}</a
 				>
 			</nav>
-			<div class="du-drawer-actions">
+			<div class="drawer-actions">
 				<LanguagePicker />
 				<button
-					class="iconbtn du-drawer-theme"
+					class="iconbtn drawer-theme"
 					type="button"
 					onclick={() => theme.toggle()}
 					aria-label={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
@@ -187,7 +187,7 @@
 </main>
 
 <footer>
-	<div class="container du-footer-inner muted">
+	<div class="container footer-inner muted">
 		<span>rowplay · Concept2 logbook analytics &amp; real-time replay</span>
 		<span>{t('common.notAffiliated')}</span>
 	</div>
@@ -289,7 +289,7 @@
 		color: var(--ink);
 		border-color: var(--ink);
 	}
-	.du-menu-btn {
+	.menu-btn {
 		margin-left: auto;
 	}
 	.user {
@@ -323,11 +323,11 @@
 		display: grid;
 		gap: 1rem;
 	}
-	.du-drawer-nav {
+	.drawer-nav {
 		display: grid;
 		gap: 0.35rem;
 	}
-	.du-drawer-nav a {
+	.drawer-nav a {
 		display: block;
 		padding: 0.55rem 0.65rem;
 		border-radius: var(--r-ctrl);
@@ -338,23 +338,23 @@
 		font-size: 0.92rem;
 		color: var(--ink-2);
 	}
-	.du-drawer-nav a.active {
+	.drawer-nav a.active {
 		color: var(--ink);
 		background: var(--paper-raised);
 	}
-	.du-drawer-nav a:hover {
+	.drawer-nav a:hover {
 		text-decoration: none;
 		color: var(--ink);
 		background: var(--paper-raised);
 	}
-	.du-drawer-actions {
+	.drawer-actions {
 		display: grid;
 		gap: 0.65rem;
 		justify-items: start;
 		padding-top: 0.35rem;
 		border-top: var(--bd);
 	}
-	.du-drawer-theme {
+	.drawer-theme {
 		font-family: var(--display);
 		font-size: 0.85rem;
 	}
@@ -365,7 +365,7 @@
 		border-top: var(--bd-heavy);
 		margin-top: 2.5rem;
 	}
-	.du-footer-inner {
+	.footer-inner {
 		display: flex;
 		justify-content: space-between;
 		flex-wrap: wrap;
@@ -382,7 +382,7 @@
 		.mobile-only {
 			display: block;
 		}
-		.du-menu-btn.mobile-only {
+		.menu-btn.mobile-only {
 			display: inline-flex;
 		}
 		.mast-inner {
@@ -393,7 +393,7 @@
 		.brand .name {
 			font-size: 1.15rem;
 		}
-		.du-footer-inner {
+		.footer-inner {
 			flex-direction: column;
 			align-items: flex-start;
 		}

@@ -5,85 +5,12 @@
  */
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { DAISY_PREFIX, isDaisyClassToken } from '../src/lib/daisyui-vocabulary.js';
 
-const PREFIX = 'du-';
-
-/** daisyUI v5 component roots — see .kiro/skills/daisyui/SKILL.md */
-const DAISY_ROOTS = [
-	'accordion',
-	'alert',
-	'avatar',
-	'badge',
-	'breadcrumbs',
-	'btn',
-	'calendar',
-	'card',
-	'carousel',
-	'chat',
-	'checkbox',
-	'collapse',
-	'countdown',
-	'diff',
-	'divider',
-	'dock',
-	'drawer',
-	'dropdown',
-	'fab',
-	'fieldset',
-	'file-input',
-	'filter',
-	'footer',
-	'hero',
-	'indicator',
-	'input',
-	'join',
-	'kbd',
-	'label',
-	'link',
-	'list',
-	'loading',
-	'mask',
-	'menu',
-	'modal',
-	'navbar',
-	'pagination',
-	'progress',
-	'radio',
-	'range',
-	'rating',
-	'select',
-	'skeleton',
-	'stack',
-	'stat',
-	'stats',
-	'status',
-	'steps',
-	'swap',
-	'tab',
-	'table',
-	'tabs',
-	'textarea',
-	'timeline',
-	'toast',
-	'toggle',
-	'tooltip',
-	'validator',
-	'theme-controller'
-];
-
-const ROOT_SET = new Set(DAISY_ROOTS);
-
-function isDaisyToken(token) {
-	if (token.startsWith(PREFIX)) return false;
-	if (ROOT_SET.has(token)) return true;
-	for (const r of DAISY_ROOTS) {
-		if (token.startsWith(`${r}-`)) return true;
-	}
-	return false;
-}
+const PREFIX = DAISY_PREFIX;
 
 function prefixToken(token) {
-	if (!isDaisyToken(token)) return token;
+	if (!isDaisyClassToken(token)) return token;
 	return PREFIX + token;
 }
 
@@ -108,19 +35,25 @@ function prefixClassAttributes(content) {
 	});
 }
 
-function prefixCssSelectors(content) {
-	let out = content;
-	// Longest roots first to avoid partial replacements
-	const sorted = [...DAISY_ROOTS].sort((a, b) => b.length - a.length);
-	for (const root of sorted) {
-		// .btn-primary, .btn:hover, :not(.btn), .btn-disabled
-		const re = new RegExp(`(?<=[\\s,.:#[(]|^)\\.(${root})(?=-|[\\s,.:#)\\]{}>+~]|$)`, 'g');
-		out = out.replace(re, `.${PREFIX}$1`);
-		// :not(.btn)
-		const reNot = new RegExp(`:not\\(\\.(${root})\\)`, 'g');
-		out = out.replace(reNot, `:not(.${PREFIX}$1)`);
-	}
-	return out;
+function prefixCssSelectors(css) {
+	// Prefix only genuine daisyUI tokens (via prefixToken) in class selectors.
+	// The leading `.` must sit in selector position (after whitespace, a
+	// combinator, `(`, `[`, `#`, `,`, `.` or start) and the name must be
+	// followed by a selector boundary (not `(`, so JS member calls like
+	// `.filter(...)` are never matched). Custom classes that merely share a
+	// root prefix (.drawer-nav, .status-row, .btn-icon) are left untouched.
+	return css.replace(
+		/(?<=[\s,.:#[(>+~]|^)\.(-?[A-Za-z_][\w-]*)(?=[\s,.:#)\]{}>+~]|$)/g,
+		(_, name) => `.${prefixToken(name)}`
+	);
+}
+
+/** Apply CSS-selector prefixing only inside Svelte `<style>` blocks. */
+function prefixSvelteStyleBlocks(content) {
+	return content.replace(
+		/(<style[^>]*>)([\s\S]*?)(<\/style>)/g,
+		(_, open, css, close) => open + prefixCssSelectors(css) + close
+	);
 }
 
 function walk(dir, acc = []) {
@@ -145,9 +78,8 @@ for (const file of [...new Set(files)]) {
 	const orig = text;
 	if (file.endsWith('.svelte')) {
 		text = prefixClassAttributes(text);
-	}
-	if (file.endsWith('.css') || file.endsWith('.svelte')) {
-		// Svelte scoped CSS blocks
+		text = prefixSvelteStyleBlocks(text);
+	} else if (file.endsWith('.css')) {
 		text = prefixCssSelectors(text);
 	}
 	if (text !== orig) {

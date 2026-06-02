@@ -73,20 +73,20 @@
 		<p class="muted hint">{t('liveMode.soundHint')}</p>
 		<div class="poll-status" role="status" aria-live="polite">
 			{#if live.polling}
-				<div class="du-status-row polling">
+				<div class="status-row polling">
 					<LoaderCircle size={12} class="spin" aria-hidden="true" />
 					<span>{t('liveMode.polling')}</span>
 				</div>
 			{:else}
-				<div class="du-status-row">
-					<span class="du-status-label muted">{t('liveMode.lastPollLabel')}</span>
-					<time class="du-status-time mono" datetime={live.lastPollAt ? new Date(live.lastPollAt).toISOString() : undefined}>
+				<div class="status-row">
+					<span class="status-label muted">{t('liveMode.lastPollLabel')}</span>
+					<time class="status-time mono" datetime={live.lastPollAt ? new Date(live.lastPollAt).toISOString() : undefined}>
 						{fmtWallTime(live.lastPollAt)}
 					</time>
 				</div>
-				<div class="du-status-row">
-					<span class="du-status-label muted">{t('liveMode.nextPollLabel')}</span>
-					<time class="du-status-time mono" datetime={live.nextPollAt ? new Date(live.nextPollAt).toISOString() : undefined}>
+				<div class="status-row">
+					<span class="status-label muted">{t('liveMode.nextPollLabel')}</span>
+					<time class="status-time mono" datetime={live.nextPollAt ? new Date(live.nextPollAt).toISOString() : undefined}>
 						{fmtWallTime(live.nextPollAt)}
 					</time>
 				</div>
@@ -178,31 +178,31 @@
 		border-top: 1px solid var(--hairline);
 		font-size: 0.78rem;
 	}
-	.du-status-row {
+	.status-row {
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
 		gap: 0.75rem;
 		min-width: 0;
 	}
-	.du-status-label {
+	.status-label {
 		flex: 1 1 auto;
 		min-width: 0;
 	}
-	.du-status-time {
+	.status-time {
 		flex: 0 0 auto;
 		white-space: nowrap;
 		color: var(--ink);
 		font-size: 0.82rem;
 	}
-	.du-status-row.polling {
+	.status-row.polling {
 		justify-content: flex-start;
 		align-items: center;
 		gap: 0.4rem;
 		color: var(--live);
 		font-weight: 600;
 	}
-	.du-status-row.polling :global(.spin) {
+	.status-row.polling :global(.spin) {
 		animation: spin 1s linear infinite;
 		flex-shrink: 0;
 	}
