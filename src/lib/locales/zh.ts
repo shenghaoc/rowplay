@@ -58,7 +58,12 @@ export const zh = {
 		publishing: '发布中…',
 		publishOk: '已发布——你在 {sport} {distance} 排名第 {rank}。',
 		publishOffBoard: '仅标准距离（500m、1k、2k、5k、6k、10k、半马）可发布到榜单。',
-		publishFailed: '无法发布到排行榜'
+		publishFailed: '无法发布到排行榜',
+		publishNote: '发布会将该成绩公开到 rowplay 排行榜，但不会更改你的 Concept2 日志中的任何内容。',
+		withdraw: '从排行榜移除',
+		withdrawing: '正在移除…',
+		withdrawOk: '已从排行榜移除。',
+		withdrawFailed: '无法从排行榜移除'
 	},
 	nav: {
 		dashboard: '仪表板',
@@ -445,11 +450,11 @@ export const zh = {
 		eyebrow: '隐私与控制',
 		dataTitle: '我们存储的内容',
 		dataNote:
-			'rowplay 在 Cloudflare 上保存你的 Concept2 训练摘要和缓存的逐桨详情，以便即时回放。API 令牌在服务器端 KV 中为你的会话保存；连接后，浏览器只会收到 httpOnly 会话 cookie。',
+			'rowplay 按需读取你的 Concept2 训练并在 Cloudflare 上缓存，以便即时回放。你的 API 令牌绝不会保存在服务器上 — 它密封在浏览器的 httpOnly cookie 中。缓存与你的会话绑定，断开连接时清除。',
 		factWorkouts: '可导出 {n} 次训练',
 		factDemo: '演示模式——仅示例数据，不会持久保存。',
-		factCache: '训练摘要与回放缓存在 D1（按账户）。',
-		factSession: '会话凭据在 KV 中（仅服务器端）。',
+		factCache: '训练摘要与回放缓存在 D1 — 断开连接时清除。',
+		factSession: '令牌密封在浏览器 cookie 中 — 绝不存储在服务器端。',
 		exportTitle: '导出日志',
 		exportNote: '以 CSV 或 JSON 下载完整历史。含逐桨数据的单次训练可导出 TCX，可在 Garmin、Strava 或 TrainingPeaks 中打开。',
 		exportCsv: '下载 CSV',
@@ -475,11 +480,12 @@ export const zh = {
 		title: '使用你的 Concept2 令牌',
 		introBefore: '从你的 Concept2 日志粘贴一个个人 API 令牌（',
 		introLink: '编辑资料 → 应用',
-		introAfter: '）。在此粘贴一次 — rowplay 通过 HTTPS 发送到 Worker，保存在你的会话中，仅用于服务器端读取日志。连接后，浏览器只持有 httpOnly cookie，而不是令牌本身。',
+		introAfter: '）。在此粘贴一次 — rowplay 通过 HTTPS 发送到 Worker，将其密封在仅浏览器可见的 httpOnly cookie 中，仅用于服务器端读取日志。令牌绝不会保存在服务器上。',
 		apiToken: 'API 令牌',
 		placeholder: '粘贴你的令牌',
 		connect: '使用令牌连接',
 		rejected: 'Concept2 拒绝了该令牌，请检查后重试。',
+		serverMisconfigured: '此部署未配置令牌登录（缺少 SESSION_SECRET）。请联系站点所有者。',
 		empty: '请粘贴你的 Concept2 API 令牌。',
 		preferBefore: '想用标准流程？',
 		preferLink: '连接 Concept2'

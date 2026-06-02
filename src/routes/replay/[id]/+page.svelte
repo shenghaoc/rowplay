@@ -661,6 +661,10 @@
 
 	let sharing = $state(false);
 	let publishing = $state(false);
+	let withdrawing = $state(false);
+	// Whether this piece is currently on the board. Seeded from the server (which
+	// knows about entries published in a past session) and flipped on publish/withdraw.
+	let published = $state(data.published ?? false);
 
 	// Publishing to a board only applies to a signed-in athlete's own
 	// standard-distance piece — demo athletes and off-board distances can't rank.
@@ -685,6 +689,7 @@
 				board: { sport: Sport; distance: number };
 				rank: number;
 			};
+			published = true;
 			toast.success(
 				t('leaderboard.publishOk', {
 					rank: result.rank,
@@ -698,6 +703,26 @@
 			});
 		} finally {
 			publishing = false;
+		}
+	}
+
+	async function withdrawFromLeaderboard() {
+		withdrawing = true;
+		try {
+			const res = await fetch('/api/leaderboard/publish', {
+				method: 'DELETE',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ workoutId: detail.id })
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			published = false;
+			toast.success(t('leaderboard.withdrawOk'));
+		} catch (err) {
+			toast.error(t('leaderboard.withdrawFailed'), {
+				description: err instanceof Error ? err.message : t('common.tryAgain')
+			});
+		} finally {
+			withdrawing = false;
 		}
 	}
 
@@ -884,8 +909,21 @@
 					<Trophy size={14} />
 					{publishing ? t('leaderboard.publishing') : t('leaderboard.publish')}
 				</button>
+				{#if published}
+					<button
+						class="btn ghost small"
+						type="button"
+						disabled={withdrawing}
+						onclick={withdrawFromLeaderboard}
+					>
+						{withdrawing ? t('leaderboard.withdrawing') : t('leaderboard.withdraw')}
+					</button>
+				{/if}
 			{/if}
 		</div>
+		{#if canPublish}
+			<p class="muted small publish-note">{t('leaderboard.publishNote')}</p>
+		{/if}
 	</div>
 
 	{#if !logbookHasHr}

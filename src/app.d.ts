@@ -13,6 +13,11 @@ declare global {
 			sessionId: string | null;
 			/** True when running without Concept2 credentials (serves mock data). */
 			demo: boolean;
+			/**
+			 * True for a "bring your own token" session (token sealed in a cookie,
+			 * not stored in KV). Drives cache purge-on-disconnect.
+			 */
+			personal: boolean;
 			/** UI language, resolved from the `lang` cookie (default en). */
 			lang: Language;
 			/** UI theme, resolved from the `theme` cookie (default light). */

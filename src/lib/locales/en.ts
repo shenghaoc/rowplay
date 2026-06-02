@@ -58,7 +58,13 @@ export const en = {
 		publishing: 'Publishing…',
 		publishOk: 'Published — you are rank {rank} on {sport} {distance}.',
 		publishOffBoard: 'Only standard-distance pieces (500m, 1k, 2k, 5k, 6k, 10k, half) can be published.',
-		publishFailed: 'Could not publish to leaderboard'
+		publishFailed: 'Could not publish to leaderboard',
+		publishNote:
+			'Publishing makes this result public on the rowplay leaderboard. It does not change anything in your Concept2 logbook.',
+		withdraw: 'Remove from leaderboard',
+		withdrawing: 'Removing…',
+		withdrawOk: 'Removed from the leaderboard.',
+		withdrawFailed: 'Could not remove from leaderboard'
 	},
 	nav: {
 		dashboard: 'Dashboard',
@@ -445,11 +451,11 @@ export const en = {
 		eyebrow: 'Privacy & control',
 		dataTitle: 'What we store',
 		dataNote:
-			'rowplay keeps a copy of your Concept2 workout summaries and cached stroke detail on Cloudflare so replays load instantly. Your API token is stored server-side in KV for your session; after connect, only an httpOnly session cookie is sent to the browser.',
+			'rowplay reads your Concept2 workouts on demand and caches them on Cloudflare so replays load instantly. Your API token is never stored on the server — it stays sealed in an httpOnly cookie in your browser. The cache is tied to your session and cleared when you disconnect.',
 		factWorkouts: '{n} workouts available to export',
 		factDemo: 'Demo mode — sample data only, nothing is persisted.',
-		factCache: 'Workout summaries and replay cache in D1 (per your account).',
-		factSession: 'Session credentials in KV (server-side only).',
+		factCache: 'Workout summaries and replay cache in D1 — cleared when you disconnect.',
+		factSession: 'Token sealed in a browser cookie — never stored server-side.',
 		exportTitle: 'Export logbook',
 		exportNote: 'Download your full history as CSV or JSON. Per-workout TCX (stroke data) opens in Garmin, Strava, or TrainingPeaks.',
 		exportCsv: 'Download CSV',
@@ -479,11 +485,13 @@ export const en = {
 		introBefore: 'Paste a personal API token from your Concept2 logbook (',
 		introLink: 'Edit Profile → Applications',
 		introAfter:
-			'). Paste it here once — rowplay sends it to the Worker over HTTPS, stores it in your session, and uses it only for server-side logbook reads. After connect, your browser holds an httpOnly cookie, not the token itself.',
+			'). Paste it here once — rowplay sends it to the Worker over HTTPS, seals it in an httpOnly cookie that stays in your browser, and uses it only for server-side logbook reads. The token is never stored on the server.',
 		apiToken: 'API token',
 		placeholder: 'Paste your token',
 		connect: 'Connect with token',
 		rejected: 'Concept2 rejected that token. Check it and try again.',
+		serverMisconfigured:
+			'This deployment isn’t set up for token sign-in (missing SESSION_SECRET). Contact the site owner.',
 		empty: 'Paste your Concept2 API token.',
 		preferBefore: 'Prefer the standard flow? ',
 		preferLink: 'Connect Concept2'

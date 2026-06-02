@@ -7,6 +7,11 @@ export interface SessionUser {
 }
 
 export interface OAuthTokens {
+	/**
+	 * OAuth access token. Empty for "bring your own token" (personal) sessions:
+	 * their credential is never stored server-side — it lives sealed in the
+	 * `rp_tok` cookie and is opened on demand (see `tokenCrypto.ts`).
+	 */
 	accessToken: string;
 	refreshToken: string;
 	/** Epoch milliseconds when the access token expires. */
@@ -30,6 +35,11 @@ const TTL_SECONDS = 60 * 60 * 24 * 30;
 
 export const SESSION_COOKIE = 'rp_session';
 export const OAUTH_STATE_COOKIE = 'rp_oauth_state';
+/**
+ * Holds the athlete's personal token, sealed with `SESSION_SECRET`. httpOnly, so
+ * it is never readable by client JS and never stored in KV/D1 (BYOT privacy).
+ */
+export const TOKEN_COOKIE = 'rp_tok';
 
 export function newSessionId(): string {
 	return crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');

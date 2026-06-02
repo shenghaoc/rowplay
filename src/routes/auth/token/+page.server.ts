@@ -7,9 +7,11 @@ import { fetchMe } from '$lib/server/concept2';
 import {
 	newSessionId,
 	SESSION_COOKIE,
+	TOKEN_COOKIE,
 	writeSession,
 	type SessionUser
 } from '$lib/server/session';
+import { sealToken } from '$lib/server/tokenCrypto';
 
 export const load: PageServerLoad = async (event) => {
 	// Already authenticated — nothing to enter.
@@ -28,6 +30,10 @@ export const actions: Actions = {
 
 		const cfg = getConfig(event);
 		const kv = requireSessions(event);
+		// The token is sealed into an httpOnly cookie, never stored in KV. Without a
+		// secret we can't seal it — fail clearly rather than fall back to plaintext.
+		const secret = event.platform?.env?.SESSION_SECRET;
+		if (!secret) return fail(500, { error: tr('token.serverMisconfigured') });
 
 		// Validate by fetching the owner; a bad token is rejected here. Note: the
 		// redirect below must stay OUTSIDE this try — redirect() throws, and a
@@ -39,19 +45,24 @@ export const actions: Actions = {
 			return fail(400, { error: tr('token.rejected') });
 		}
 
+		const sealed = await sealToken(secret, token);
 		const sid = newSessionId();
+		// KV holds identity only — the access token stays empty here and lives
+		// sealed in the cookie below.
 		await writeSession(kv, sid, {
 			user,
 			personal: true,
-			tokens: { accessToken: token, refreshToken: '', expiresAt: nowEpochMillis() + YEAR_MS, scope: '' }
+			tokens: { accessToken: '', refreshToken: '', expiresAt: nowEpochMillis() + YEAR_MS, scope: '' }
 		});
-		event.cookies.set(SESSION_COOKIE, sid, {
+		const cookieOpts = {
 			path: '/',
 			httpOnly: true,
 			secure: event.url.protocol === 'https:',
-			sameSite: 'lax',
+			sameSite: 'lax' as const,
 			maxAge: 60 * 60 * 24 * 30
-		});
+		};
+		event.cookies.set(SESSION_COOKIE, sid, cookieOpts);
+		event.cookies.set(TOKEN_COOKIE, sealed, cookieOpts);
 
 		throw redirect(303, '/dashboard');
 	}
