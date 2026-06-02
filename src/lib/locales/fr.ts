@@ -340,15 +340,15 @@ export const fr = {
 		searchSessions: 'Rechercher des séances…',
 		suggestedRival: 'Adversaire suggéré',
 		raceVerdictWinSession:
-			'Vous avez battu votre {distance} du {date} de {seconds}s ({m} m d’avance à l’arrivée)',
+			'Vous avez battu votre {distance} du {date} de {seconds}s (vous aviez {m} m d’avance à l’arrivée)',
 		raceVerdictLoseSession:
-			'Votre {distance} du {date} vous a battu de {seconds}s ({m} m de retard à l’arrivée)',
+			'Votre {distance} du {date} vous a battu de {seconds}s (vous aviez {m} m de retard à l’arrivée)',
 		raceVerdictWinPace:
-			'Vous avez battu le bateau à {pace} de {seconds}s ({m} m d’avance à l’arrivée)',
+			'Vous avez battu le bateau à {pace} de {seconds}s (vous aviez {m} m d’avance à l’arrivée)',
 		raceVerdictLosePace:
-			'Le bateau à {pace} vous a battu de {seconds}s ({m} m de retard à l’arrivée)',
-		raceVerdictWinFile: 'Vous avez battu {name} de {seconds}s ({m} m d’avance à l’arrivée)',
-		raceVerdictLoseFile: '{name} vous a battu de {seconds}s ({m} m de retard à l’arrivée)',
+			'Le bateau à {pace} vous a battu de {seconds}s (vous aviez {m} m de retard à l’arrivée)',
+		raceVerdictWinFile: 'Vous avez battu {name} de {seconds}s (vous aviez {m} m d’avance à l’arrivée)',
+		raceVerdictLoseFile: '{name} vous a battu de {seconds}s (vous aviez {m} m de retard à l’arrivée)',
 		raceFinished: 'Course terminée',
 		play: 'Lecture',
 		pause: 'Pause',

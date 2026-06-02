@@ -342,15 +342,15 @@ export const ja = {
 		searchSessions: 'セッションを検索…',
 		suggestedRival: 'おすすめのライバル',
 		raceVerdictWinSession:
-			'{date} の {distance} に {seconds} 秒差で勝利（ゴール時 {m} m リード）',
+			'{date} の {distance} に {seconds} 秒差で勝利（ゴール時あなたが {m} m リード）',
 		raceVerdictLoseSession:
-			'{date} の {distance} に {seconds} 秒差で敗北（ゴール時 {m} m ビハインド）',
+			'{date} の {distance} に {seconds} 秒差で敗北（ゴール時あなたが {m} m ビハインド）',
 		raceVerdictWinPace:
-			'{pace} ペースボートに {seconds} 秒差で勝利（ゴール時 {m} m リード）',
+			'{pace} ペースボートに {seconds} 秒差で勝利（ゴール時あなたが {m} m リード）',
 		raceVerdictLosePace:
-			'{pace} ペースボートに {seconds} 秒差で敗北（ゴール時 {m} m ビハインド）',
-		raceVerdictWinFile: '{name} に {seconds} 秒差で勝利（ゴール時 {m} m リード）',
-		raceVerdictLoseFile: '{name} に {seconds} 秒差で敗北（ゴール時 {m} m ビハインド）',
+			'{pace} ペースボートに {seconds} 秒差で敗北（ゴール時あなたが {m} m ビハインド）',
+		raceVerdictWinFile: '{name} に {seconds} 秒差で勝利（ゴール時あなたが {m} m リード）',
+		raceVerdictLoseFile: '{name} に {seconds} 秒差で敗北（ゴール時あなたが {m} m ビハインド）',
 		raceFinished: 'レース終了',
 		play: '再生',
 		pause: '一時停止',

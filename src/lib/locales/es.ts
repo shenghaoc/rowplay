@@ -340,15 +340,15 @@ export const es = {
 		searchSessions: 'Buscar sesiones…',
 		suggestedRival: 'Rival sugerido',
 		raceVerdictWinSession:
-			'Ganaste a tu {distance} del {date} por {seconds}s ({m} m por delante en la meta)',
+			'Ganaste a tu {distance} del {date} por {seconds}s (quedaste {m} m por delante en la meta)',
 		raceVerdictLoseSession:
-			'Tu {distance} del {date} te ganó por {seconds}s ({m} m por detrás en la meta)',
+			'Tu {distance} del {date} te ganó por {seconds}s (quedaste {m} m por detrás en la meta)',
 		raceVerdictWinPace:
-			'Ganaste al barco de ritmo {pace} por {seconds}s ({m} m por delante en la meta)',
+			'Ganaste al barco de ritmo {pace} por {seconds}s (quedaste {m} m por delante en la meta)',
 		raceVerdictLosePace:
-			'El barco de ritmo {pace} te ganó por {seconds}s ({m} m por detrás en la meta)',
-		raceVerdictWinFile: 'Ganaste a {name} por {seconds}s ({m} m por delante en la meta)',
-		raceVerdictLoseFile: '{name} te ganó por {seconds}s ({m} m por detrás en la meta)',
+			'El barco de ritmo {pace} te ganó por {seconds}s (quedaste {m} m por detrás en la meta)',
+		raceVerdictWinFile: 'Ganaste a {name} por {seconds}s (quedaste {m} m por delante en la meta)',
+		raceVerdictLoseFile: '{name} te ganó por {seconds}s (quedaste {m} m por detrás en la meta)',
 		raceFinished: 'Carrera terminada',
 		play: 'Reproducir',
 		pause: 'Pausa',
