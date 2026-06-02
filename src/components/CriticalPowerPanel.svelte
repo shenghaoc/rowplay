@@ -253,7 +253,7 @@
 	}
 	.cs {
 		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
+		border: 1px solid var(--hairline);
 		border-radius: 10px;
 		padding: 0.55rem 0.7rem;
 	}
@@ -282,7 +282,7 @@
 		margin-bottom: 1rem;
 	}
 	.predict {
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--hairline);
 		padding-top: 0.9rem;
 		margin-bottom: 0.9rem;
 	}
@@ -349,7 +349,7 @@
 		margin-top: 0.5rem;
 		padding: 0.65rem 0.8rem;
 		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
+		border: 1px solid var(--hairline);
 		border-radius: 10px;
 	}
 	.predval {

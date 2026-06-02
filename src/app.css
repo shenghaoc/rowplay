@@ -221,7 +221,6 @@
 	--bg: var(--paper);
 	--bg-elev: var(--paper-raised);
 	--bg-elev-2: var(--paper-inset);
-	--border: var(--hairline);
 	--text: var(--ink);
 	--text-dim: var(--ink-2);
 	--topbar-bg: color-mix(in srgb, var(--paper) 82%, transparent);

@@ -176,7 +176,7 @@ function suffixAllowed(root: string, suffix: string): boolean {
  */
 export function isDaisyUiMarkupToken(token: string): boolean {
 	if (ROWPLAY_LAYOUT_HOOKS.has(token)) return false;
-	if (FORBIDDEN.has(token)) return true;
+	if (FORBIDDEN.has(token)) return true; // still a real daisyUI class, just forbidden as a custom layout root (see findForbiddenLayoutTokens)
 	if (!token.includes('-')) return ROOT_SET.has(token);
 	const dash = token.indexOf('-');
 	const root = token.slice(0, dash);

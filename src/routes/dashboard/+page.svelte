@@ -1026,7 +1026,7 @@
 		font-weight: 700;
 		padding: 0.25rem 0.7rem;
 		border-radius: 999px;
-		border: 1px solid var(--border);
+		border: 1px solid var(--hairline);
 		background: var(--bg-elev-2);
 		color: var(--text);
 	}
@@ -1075,7 +1075,7 @@
 	}
 	.fs {
 		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
+		border: 1px solid var(--hairline);
 		border-radius: 10px;
 		padding: 0.6rem 0.75rem;
 	}
@@ -1105,7 +1105,7 @@
 		border-radius: 8px;
 		margin-bottom: 0.9rem;
 		background: var(--bg-elev-2);
-		border-left: 3px solid var(--border);
+		border-left: 3px solid var(--hairline);
 	}
 	.formread.good {
 		border-left-color: var(--accent-2);

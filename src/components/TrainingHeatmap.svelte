@@ -153,7 +153,7 @@
 	}
 	.mchip {
 		background: var(--bg-elev);
-		border: 1px solid var(--border);
+		border: 1px solid var(--hairline);
 		color: var(--text-dim);
 		border-radius: 999px;
 		padding: 0.3rem 0.75rem;
