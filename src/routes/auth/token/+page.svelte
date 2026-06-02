@@ -18,7 +18,7 @@
 		>{t('token.introAfter')}
 	</p>
 
-	<form method="POST" use:enhance>
+	<form method="POST" use:enhance class="grid gap-3">
 		<label for="token">{t('token.apiToken')}</label>
 		<input
 			id="token"

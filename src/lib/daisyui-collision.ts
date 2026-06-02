@@ -191,5 +191,8 @@ export function findForbiddenLayoutTokens(classAttr: string): string[] {
 }
 
 export function labelHasToggleCollision(labelOpenTag: string): boolean {
-	return /\bclass="[^"]*\btoggle\b/.test(labelOpenTag);
+	return (
+		/\bclass\s*=\s*["'][^"']*\btoggle\b/.test(labelOpenTag) ||
+		/\bclass:toggle\b/.test(labelOpenTag)
+	);
 }

@@ -98,7 +98,7 @@ describe('daisyUI layout collision guard', () => {
 		expect(html).toContain('dash-stats');
 		expect(html).toContain('stat-title');
 		expect(html).toContain('stat-value');
-		expect(html).toContain('class="stat"');
+		expect(html).toMatch(/class="stat\b/);
 		expect(html).not.toMatch(/class="stats"/);
 	});
 });

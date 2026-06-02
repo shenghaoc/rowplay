@@ -116,7 +116,14 @@
 			</label>
 			<label class="flex flex-col gap-1 w-full min-w-48">
 				<span class="text-xs uppercase opacity-70">{t('workoutList.strokeData')}</span>
-				<select class="select select-bordered select-sm w-full" value={query.hasStroke === true ? '1' : query.hasStroke === false ? '0' : ''} onchange={(e) => { const v = e.currentTarget.value; patch({ hasStroke: v === '1' ? true : v === '0' ? false : undefined }); }}>
+				<select
+					class="select select-bordered select-sm w-full"
+					value={query.hasStroke === true ? '1' : query.hasStroke === false ? '0' : ''}
+					onchange={(e) => {
+						const v = e.currentTarget.value;
+						patch({ hasStroke: v === '1' ? true : v === '0' ? false : undefined });
+					}}
+				>
 					<option value="">{t('workoutList.strokeAny')}</option>
 					<option value="1">{t('workoutList.strokeYes')}</option>
 					<option value="0">{t('workoutList.strokeNo')}</option>

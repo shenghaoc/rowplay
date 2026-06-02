@@ -59,7 +59,7 @@ describe('daisyUI collision guard', () => {
 		expect(html).toContain('dash-stats');
 		expect(html).toContain('stat-title');
 		expect(html).toMatch(/class="card\b[^"]*\bdash-stat\b/);
-		expect(html).toContain('class="stat"');
+		expect(html).toMatch(/class="stat\b/);
 	});
 });
 

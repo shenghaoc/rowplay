@@ -227,9 +227,10 @@
 	--topbar-bg: color-mix(in srgb, var(--paper) 82%, transparent);
 }
 
-/* Align domain tokens with the active daisyUI theme (rowplay / dark). */
-:root[data-theme='rowplay'],
-:root[data-theme='light'] {
+/* Align domain tokens with the active daisyUI theme. daisyUI rewrites the
+   --color-* customs per data-theme, so one [data-theme] block covers every
+   theme; the dark block then only carries its shadow/color-scheme overrides. */
+:root[data-theme] {
 	--paper: var(--color-base-100);
 	--paper-raised: var(--color-base-100);
 	--paper-inset: var(--color-base-200);
@@ -253,25 +254,6 @@
 /* Shadow overrides only — light-dark() cannot wrap comma-separated values. */
 :root[data-theme='dark'] {
 	color-scheme: dark;
-
-	--paper: var(--color-base-100);
-	--paper-raised: var(--color-base-100);
-	--paper-inset: var(--color-base-200);
-	--paper-deep: var(--color-base-300);
-	--ink: var(--color-base-content);
-	--ink-2: color-mix(in srgb, var(--color-base-content) 55%, transparent);
-	--ink-3: color-mix(in srgb, var(--color-base-content) 40%, transparent);
-	--hairline: var(--color-base-300);
-	--live: var(--color-primary);
-	--ghost: var(--color-secondary);
-	--ahead: var(--color-accent);
-	--behind: var(--color-warning);
-	--alarm: var(--color-error);
-	--bg: var(--paper);
-	--bg-elev: var(--paper-raised);
-	--bg-elev-2: var(--paper-inset);
-	--text: var(--ink);
-	--text-dim: var(--ink-2);
 
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
 	--shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 12px 28px -10px rgba(0, 0, 0, 0.6);

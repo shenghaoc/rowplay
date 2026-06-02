@@ -594,25 +594,25 @@
 
 	<div class="dash-stats">
 		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
-			<div class="stat">
+			<div class="stat p-0">
 				<div class="stat-title">{t('dashboard.sessions')}</div>
 				<div class="stat-value mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
 			</div>
 		</div>
 		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
-			<div class="stat">
+			<div class="stat p-0">
 				<div class="stat-title">{t('dashboard.totalDistance')}</div>
 				<div class="stat-value mono">{fmtDistance(totalMeters)}</div>
 			</div>
 		</div>
 		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
-			<div class="stat">
+			<div class="stat p-0">
 				<div class="stat-title">{t('dashboard.totalTime')}</div>
 				<div class="stat-value mono">{fmtTime(totalTime)}</div>
 			</div>
 		</div>
 		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
-			<div class="stat">
+			<div class="stat p-0">
 				<div class="stat-title">{t('dashboard.avgPace')}</div>
 				<div class="stat-value mono">{fmtPace(avgPace)}</div>
 			</div>
