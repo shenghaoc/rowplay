@@ -10,7 +10,7 @@
 
 <section class="splash container">
 	<div class="copy">
-		<span class="badge badge-primary">{t('landing.tagline')}</span>
+		<span class="badge badge-soft badge-primary">{t('landing.tagline')}</span>
 		<h1>{t('landing.title1')}<br />{t('landing.title2')}</h1>
 		<p class="muted lead">{t('landing.lead')}</p>
 		<div class="cta">
@@ -26,17 +26,17 @@
 	</div>
 
 	<div class="features">
-		<div class="card feat">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 feat">
 			<div class="ficon"><PlayCircle size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat1Title')}</h3>
 			<p class="muted">{t('landing.feat1Body')}</p>
 		</div>
-		<div class="card feat">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 feat">
 			<div class="ficon"><GitCompare size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat2Title')}</h3>
 			<p class="muted">{t('landing.feat2Body')}</p>
 		</div>
-		<div class="card feat">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 feat">
 			<div class="ficon"><LineChart size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat3Title')}</h3>
 			<p class="muted">{t('landing.feat3Body')}</p>

@@ -110,7 +110,7 @@
 					<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
 				</form>
 			{:else}
-				<span class="badge badge-primary">{t('common.demoMode')}</span>
+				<span class="badge badge-soft badge-primary">{t('common.demoMode')}</span>
 				{#if data.oauthEnabled}
 					<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
 				{/if}
@@ -172,7 +172,7 @@
 						<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
 					</form>
 				{:else}
-					<span class="badge badge-primary">{t('common.demoMode')}</span>
+					<span class="badge badge-soft badge-primary">{t('common.demoMode')}</span>
 					{#if data.oauthEnabled}
 						<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
 					{/if}

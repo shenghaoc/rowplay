@@ -24,7 +24,7 @@
 	}
 </script>
 
-<div class="card live-panel">
+<div class="card bg-base-100 border border-base-300 shadow-md p-5 live-panel">
 	<div class="live-head">
 		<div class="live-title">
 			<span class="icon" class:spin={live.polling}><Radio size={16} /></span>

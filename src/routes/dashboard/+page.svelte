@@ -543,7 +543,7 @@
 
 	<!-- Latest session: pace front and centre -->
 	{#if latest}
-		<a class="card latest" href="/replay/{latest.id}">
+		<a class="card bg-base-100 border border-base-300 shadow-md p-5 latest" href="/replay/{latest.id}">
 			<div class="herolead">
 				<div class="herotop muted">
 					<span class="hicon" style:color={MACHINE_COLOR[latest.sport]}
@@ -588,30 +588,30 @@
 					</div>
 				{/if}
 			</div>
-			<div class="herocta badge badge-primary"><Play size={12} /> {t('common.replay')}</div>
+			<div class="herocta badge badge-soft badge-primary"><Play size={12} /> {t('common.replay')}</div>
 		</a>
 	{/if}
 
 	<div class="dash-stats">
-		<div class="card dash-stat">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
 			<div class="stat">
 				<div class="stat-title">{t('dashboard.sessions')}</div>
 				<div class="stat-value mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
 			</div>
 		</div>
-		<div class="card dash-stat">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
 			<div class="stat">
 				<div class="stat-title">{t('dashboard.totalDistance')}</div>
 				<div class="stat-value mono">{fmtDistance(totalMeters)}</div>
 			</div>
 		</div>
-		<div class="card dash-stat">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
 			<div class="stat">
 				<div class="stat-title">{t('dashboard.totalTime')}</div>
 				<div class="stat-value mono">{fmtTime(totalTime)}</div>
 			</div>
 		</div>
-		<div class="card dash-stat">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
 			<div class="stat">
 				<div class="stat-title">{t('dashboard.avgPace')}</div>
 				<div class="stat-value mono">{fmtPace(avgPace)}</div>
@@ -634,12 +634,12 @@
 	<CriticalPowerPanel workouts={workouts} />
 
 	{#if load}
-		<div class="card formcard">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 formcard">
 			<div class="formhead">
 				<div class="formtitle">
 					<Activity size={18} />
 					<span class="label">{t('dashboard.formTitle')}</span>
-					<span class="badge badge-primary">{t('dashboard.formPremium')}</span>
+					<span class="badge badge-soft badge-primary">{t('dashboard.formPremium')}</span>
 				</div>
 				<span class="badge {formBandClass[load.band]}">{bandLabel[load.band]}</span>
 			</div>
@@ -700,7 +700,7 @@
 
 	<!-- Personal bests -->
 	{#if pbs.length}
-		<div class="card pbcard">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 pbcard">
 			<div class="muted label">{t('dashboard.pbTitle')}</div>
 			<div class="pbgrid">
 				{#each pbs as pb}
@@ -716,7 +716,7 @@
 
 	<!-- Per-sport breakdown -->
 	{#if bySport.length > 1}
-		<div class="card breakdown">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 breakdown">
 			<div class="muted label">{t('dashboard.bySport')}</div>
 			<div class="tablescroll">
 			<table class="mono">
@@ -742,7 +742,7 @@
 
 	<!-- Trend -->
 	{#if filtered.length > 1}
-		<div class="card chartcard">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 chartcard">
 			<div class="trendhead">
 				<div class="label">
 					{t('dashboard.trendTitle')}
@@ -804,7 +804,7 @@
 		onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
 	/>
 	{#if compareAnchor != null}
-		<p class="compare-hint card muted">
+		<p class="compare-hint card bg-base-100 border border-base-300 shadow-md p-5 muted">
 			{t('workoutList.comparePick')}
 			<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
 		</p>

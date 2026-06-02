@@ -106,7 +106,7 @@
 </script>
 
 {#if cp}
-	<div class="card cpcard">
+	<div class="card bg-base-100 border border-base-300 shadow-md p-5 cpcard">
 		<div class="cphead">
 			<div class="cptitle">
 				<Zap size={18} />
@@ -127,7 +127,7 @@
 				</div>
 			{/if}
 			<div class="cs">
-				<div class="csv"><span class="badge badge-secondary">{cp.method === 'model' ? t('dashboard.formModelled') : t('dashboard.formEstimated')}</span></div>
+				<div class="csv"><span class="badge badge-soft badge-secondary">{cp.method === 'model' ? t('dashboard.formModelled') : t('dashboard.formEstimated')}</span></div>
 				<div class="csl muted">{t('dashboard.cpMethod')}</div>
 			</div>
 		</div>
