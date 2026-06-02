@@ -18,21 +18,23 @@
 		>{t('token.introAfter')}
 	</p>
 
-	<form method="POST" use:enhance class="grid gap-3">
-		<label for="token">{t('token.apiToken')}</label>
-		<input
-			id="token"
-			name="token"
-			type="password"
-			class="input input-bordered w-full"
-			autocomplete="off"
-			placeholder={t('token.placeholder')}
-			required
-		/>
-		{#if form?.error}
-			<div class="alert alert-error" role="alert">{form.error}</div>
-		{/if}
-		<button class="btn btn-primary" type="submit">{t('token.connect')}</button>
+	<form method="POST" use:enhance>
+		<fieldset class="fieldset">
+			<label for="token">{t('token.apiToken')}</label>
+			<input
+				id="token"
+				name="token"
+				type="password"
+				class="input input-bordered w-full"
+				autocomplete="off"
+				placeholder={t('token.placeholder')}
+				required
+			/>
+			{#if form?.error}
+				<div class="alert alert-error" role="alert">{form.error}</div>
+			{/if}
+			<button class="btn btn-primary" type="submit">{t('token.connect')}</button>
+		</fieldset>
 	</form>
 
 	{#if data.oauthEnabled}
