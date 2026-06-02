@@ -340,13 +340,15 @@ export const de = {
 		searchSessions: 'Einheiten suchen…',
 		suggestedRival: 'Vorgeschlagener Rivale',
 		raceVerdictWinSession:
-			'Du hast deine {date} {distance} um {seconds}s geschlagen (+{m} m)',
+			'Du hast deine {date} {distance} um {seconds}s geschlagen (du warst am Ziel {m} m voraus)',
 		raceVerdictLoseSession:
-			'Deine {date} {distance} hat dich um {seconds}s geschlagen (−{m} m)',
-		raceVerdictWinPace: 'Du hast das {pace}-Pace-Boot um {seconds}s geschlagen (+{m} m)',
-		raceVerdictLosePace: 'Das {pace}-Pace-Boot hat dich um {seconds}s geschlagen (−{m} m)',
-		raceVerdictWinFile: 'Du hast {name} um {seconds}s geschlagen (+{m} m)',
-		raceVerdictLoseFile: '{name} hat dich um {seconds}s geschlagen (−{m} m)',
+			'Deine {date} {distance} hat dich um {seconds}s geschlagen (du warst am Ziel {m} m zurück)',
+		raceVerdictWinPace:
+			'Du hast das {pace}-Pace-Boot um {seconds}s geschlagen (du warst am Ziel {m} m voraus)',
+		raceVerdictLosePace:
+			'Das {pace}-Pace-Boot hat dich um {seconds}s geschlagen (du warst am Ziel {m} m zurück)',
+		raceVerdictWinFile: 'Du hast {name} um {seconds}s geschlagen (du warst am Ziel {m} m voraus)',
+		raceVerdictLoseFile: '{name} hat dich um {seconds}s geschlagen (du warst am Ziel {m} m zurück)',
 		raceFinished: 'Rennen beendet',
 		play: 'Abspielen',
 		pause: 'Pause',

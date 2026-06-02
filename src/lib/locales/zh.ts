@@ -339,12 +339,16 @@ export const zh = {
 		behind: '▼ 落后 {m} 米',
 		searchSessions: '搜索训练…',
 		suggestedRival: '推荐对手',
-		raceVerdictWinSession: '你战胜了 {date} 的 {distance}，领先 {seconds} 秒（+{m} 米）',
-		raceVerdictLoseSession: '{date} 的 {distance} 战胜了你，领先 {seconds} 秒（−{m} 米）',
-		raceVerdictWinPace: '你战胜了 {pace} 配速艇，领先 {seconds} 秒（+{m} 米）',
-		raceVerdictLosePace: '{pace} 配速艇战胜了你，领先 {seconds} 秒（−{m} 米）',
-		raceVerdictWinFile: '你战胜了 {name}，领先 {seconds} 秒（+{m} 米）',
-		raceVerdictLoseFile: '{name} 战胜了你，领先 {seconds} 秒（−{m} 米）',
+		raceVerdictWinSession:
+			'你战胜了 {date} 的 {distance}，领先 {seconds} 秒（冲线时你领先 {m} 米）',
+		raceVerdictLoseSession:
+			'{date} 的 {distance} 战胜了你，领先 {seconds} 秒（冲线时你落后 {m} 米）',
+		raceVerdictWinPace:
+			'你战胜了 {pace} 配速艇，领先 {seconds} 秒（冲线时你领先 {m} 米）',
+		raceVerdictLosePace:
+			'{pace} 配速艇战胜了你，领先 {seconds} 秒（冲线时你落后 {m} 米）',
+		raceVerdictWinFile: '你战胜了 {name}，领先 {seconds} 秒（冲线时你领先 {m} 米）',
+		raceVerdictLoseFile: '{name} 战胜了你，领先 {seconds} 秒（冲线时你落后 {m} 米）',
 		raceFinished: '竞速结束',
 		play: '播放',
 		pause: '暂停',
