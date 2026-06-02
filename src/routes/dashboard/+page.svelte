@@ -518,7 +518,7 @@
 						role="tab"
 						class="tab"
 						class:tab-active={sportFilter === s}
-						aria-pressed={sportFilter === s}
+						aria-selected={sportFilter === s}
 						onclick={() => setSportFilter(s)}
 					>
 						{s === 'all' ? t('dashboard.all') : SPORT_LABEL[s]}
@@ -736,7 +736,7 @@
 						</div>
 						<div role="tablist" class="tabs tabs-box tabs-xs metrictabs" aria-label="Metric filter">
 							{#each metrics as m}
-								<button role="tab" class="tab" class:tab-active={metric === m.id} aria-pressed={metric === m.id} onclick={() => (metric = m.id)}>{t(m.labelKey)}</button>
+								<button role="tab" class="tab" class:tab-active={metric === m.id} aria-selected={metric === m.id} onclick={() => (metric = m.id)}>{t(m.labelKey)}</button>
 							{/each}
 						</div>
 					</div>
