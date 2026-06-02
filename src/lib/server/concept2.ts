@@ -308,14 +308,6 @@ export function mapMetadata(raw: RawMetadata | undefined): LoggingMetadata | und
 	return Object.keys(out).length ? out : undefined;
 }
 
-function avgHr(hr: RawResult['heart_rate']): number | undefined {
-	return mapHeartRate(hr)?.average;
-}
-
-function hrBound(hr: RawResult['heart_rate'], key: 'min' | 'max'): number | undefined {
-	return mapHeartRate(hr)?.[key];
-}
-
 function mapSplitType(raw: string | undefined): SplitIntervalType | undefined {
 	switch (raw) {
 		case 'time':
@@ -343,9 +335,9 @@ export function mapResult(r: RawResult, metadata?: RawMetadata): Workout {
 		strokeRate: r.stroke_rate,
 		strokeCount: r.stroke_count,
 		heartRate,
-		heartRateAvg: heartRate?.average ?? avgHr(r.heart_rate),
-		hrMin: heartRate?.min ?? hrBound(r.heart_rate, 'min'),
-		hrMax: heartRate?.max ?? hrBound(r.heart_rate, 'max'),
+		heartRateAvg: heartRate?.average,
+		hrMin: heartRate?.min,
+		hrMax: heartRate?.max,
 		caloriesTotal: r.calories_total,
 		wattMinutes: r.wattminutes_total,
 		dragFactor: r.drag_factor,
@@ -399,7 +391,6 @@ function mapStrokes(raw: RawStroke[], sport: Sport): Stroke[] {
 
 export function mapSplits(r: RawResult): Split[] {
 	const raw = r.workout?.splits ?? r.workout?.intervals ?? [];
-	const sport = toSport(r.type);
 	return raw.map((s, i) => {
 		const time = (s.time ?? 0) / 10;
 		const distance = s.distance ?? 0;

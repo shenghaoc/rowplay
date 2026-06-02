@@ -173,17 +173,38 @@ export interface HrZone {
 	fraction: number;
 }
 
+/** Karvonen-style zone boundaries as fractions of `maxHr` (zones 1–5). */
+const HR_ZONE_FRACTIONS = [0, 0.6, 0.7, 0.8, 0.9, 1.2];
+
+/**
+ * Estimate `maxHr`: use the supplied value, else infer it from the workout's
+ * peak heart rate (assuming the peak is ~95% of true max), floored at 160.
+ */
+export function estimateHrMax(strokes: Stroke[], maxHr?: number): number {
+	if (maxHr && maxHr > 0) return maxHr;
+	// reduce, not Math.max(...spread): long pieces have many thousands of strokes.
+	const peak = strokes.reduce((m, s) => Math.max(m, s.hr ?? 0), 0);
+	return Math.max(peak / 0.95, 160);
+}
+
+/** Map a single heart rate to its 1–5 zone, using the same boundaries as `hrZones`. */
+export function hrZoneOf(hr: number, hrMax: number): number {
+	const bounds = HR_ZONE_FRACTIONS.map((f) => f * hrMax);
+	for (let b = 1; b < bounds.length; b++) {
+		if (hr < bounds[b]) return b;
+	}
+	return 5;
+}
+
 /**
  * Time-in-zone distribution. Zones are defined as percentages of `maxHr`
  * (Karvonen-style boundaries: 60/70/80/90%). If `maxHr` is omitted we estimate
  * it from the workout's peak heart rate.
  */
 export function hrZones(strokes: Stroke[], maxHr?: number): HrZone[] {
-	// reduce, not Math.max(...spread): long pieces have many thousands of strokes.
-	const peak = strokes.reduce((m, s) => Math.max(m, s.hr ?? 0), 0);
-	const hrMax = maxHr && maxHr > 0 ? maxHr : Math.max(peak / 0.95, 160);
+	const hrMax = estimateHrMax(strokes, maxHr);
 
-	const bounds = [0, 0.6, 0.7, 0.8, 0.9, 1.2].map((f) => f * hrMax);
+	const bounds = HR_ZONE_FRACTIONS.map((f) => f * hrMax);
 	const seconds = new Array(5).fill(0);
 
 	for (let i = 1; i < strokes.length; i++) {
@@ -1546,12 +1567,17 @@ export function targetVsActual(detail: WorkoutDetail): TargetVsActualRow[] {
 		});
 	}
 	if (t.heartRateZone != null && detail.heartRateAvg != null) {
+		// Target is a zone index (0–5); the achieved zone must be derived from the
+		// average HR (bpm) before comparing — comparing bpm to a zone is nonsense.
+		const hrMax = estimateHrMax(detail.strokes, detail.hrMax);
+		const actualZone = hrZoneOf(detail.heartRateAvg, hrMax);
+		const delta = actualZone - t.heartRateZone;
 		rows.push({
 			metric: 'heartRateZone',
 			target: t.heartRateZone,
-			actual: detail.heartRateAvg,
-			delta: detail.heartRateAvg - t.heartRateZone,
-			hit: true
+			actual: actualZone,
+			delta,
+			hit: delta === 0
 		});
 	}
 	return rows;

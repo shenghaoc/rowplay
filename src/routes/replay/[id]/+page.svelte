@@ -2127,6 +2127,12 @@
 		gap: 0.5rem 0.75rem;
 		font-size: 0.88rem;
 	}
+	.splits {
+		/* Up to 10 columns for full-fidelity interval data — scroll on any
+		   viewport that can't fit them rather than only the narrowest. */
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
 	.splits tr.rest-row {
 		opacity: 0.72;
 	}
@@ -2236,10 +2242,6 @@
 			flex-wrap: wrap;
 			justify-self: stretch;
 			width: 100%;
-		}
-		.splits {
-			overflow-x: auto;
-			-webkit-overflow-scrolling: touch;
 		}
 	}
 </style>
