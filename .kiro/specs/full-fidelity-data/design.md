@@ -102,8 +102,9 @@ export interface LoggingMetadata {
 
 `Workout` gains (all optional): `timezone`, `weightClass` (`'H' | 'L'`),
 `privacy`, `verified`, `restTime`, `restDistance`, `heartRate?: HeartRateDetail`
-(supersedes the flat `heartRateAvg`/`hrMin`/`hrMax` — keep those as derived
-getters or retain for back-compat), `targets?: WorkoutTargets`,
+(supersedes the flat `heartRateAvg`/`hrMin`/`hrMax` — keep those as redundant
+flat properties populated alongside `heartRate` for back-compat),
+`targets?: WorkoutTargets`,
 `metadata?: LoggingMetadata`.
 
 `Split` gains (all optional): `caloriesTotal`, `wattMinutes`,
@@ -136,8 +137,10 @@ getters or retain for back-compat), `targets?: WorkoutTargets`,
 
 New pure functions (DOM-free, fixture-tested per Req 5.4):
 
-- `hrRecoveryTrend(workouts)` → per-session `{ date, ending, recovery, drop }`
-  where `drop = ending - recovery`; a larger drop = better cardiac recovery.
+- `hrRecoveryTrend(details: WorkoutDetail[])` → per-session `{ date, ending, recovery, drop }`
+  where `drop = ending - recovery`. `ending` / `recovery` come from the **detail**
+  endpoint (or D1 detail cache after the athlete opens a workout), not the list
+  endpoint — the trend is only available for previously hydrated workouts.
 - `workRestEfficiency(detail)` → for interval pieces, work:rest ratio from
   `restTime`/`restDistance` (total + per interval) and average work pace vs the
   rest gap.
@@ -163,11 +166,31 @@ are imported by the detail UI.
 ### Privacy on public replays (Req 6.1)
 
 The shared loader (`loadSharedWorkout` in `server/share.ts`) feeds `/r/<token>`.
-Strip the sensitive provenance — `serialNumber`, `device` (and optionally the
-whole `metadata` block) — from the detail returned for the public view, so a
-shared link never fingerprints the athlete's hardware. The owner's authenticated
-detail keeps everything. Implement as a `redactForPublic(detail)` step in the
-shared path; unit-test that `serialNumber`/`device` are gone.
+`getCachedDetailByShareToken` (`db.ts`) **intentionally skips** the
+`payload_version` check so anonymous readers are not 404'd when the schema
+bumps; old share snapshots therefore keep whatever fields were cached at share
+time until the owner re-opens the workout. That is acceptable because all new
+fields are optional.
+
+`redactForPublic(detail)` **must** run inside `loadSharedWorkout` (not
+optionally at call sites). Strip `serialNumber`, `device`, `deviceOs`, and
+`deviceOsVersion` from metadata; keep non-identifying provenance (`pmVersion`,
+`firmwareVersion`, `ergModelType`, `hrType`) when present. Unit-test redaction;
+handle absent optional fields defensively.
+
+### Targets scope
+
+Result-level `workout.targets` is in scope for steady and fixed-interval pieces.
+**Per-interval targets** on variable-interval workouts are **deferred** — only
+piece-level `targets` are captured today; `targetVsActual` compares summary
+metrics to that block.
+
+### `isRest` on splits
+
+Concept2 may return rest either as **separate** `intervals[]` elements
+(`distance === 0`, `time > 0`) or only via `rest_time` / `rest_distance` on work
+elements. Mapping sets `isRest` when a row has zero distance and positive time;
+work:rest analysis also uses result-level `restTime` / `restDistance`.
 
 ## Demo data — `src/lib/mockData.ts`
 
@@ -197,6 +220,8 @@ Verified against the [Concept2 Logbook API documentation](https://log.concept2.c
 | --- | --- | --- |
 | `workout.targets` (`stroke_rate`, `heart_rate_zone`, `pace`, `watts`, `calories`) | **Yes** — documented under workout details on list and detail responses | Capture when present; target-vs-actual is best-effort |
 | Result `metadata` (`pm_version`, `firmware_version`, `serial_number`, `device`, …) | **Opt-in** — returned when `?include=metadata` is passed on `GET /api/users/me/results/{id}` | `getWorkout` requests `include=metadata`; absent → `undefined` |
+| Rest in `intervals[]` | **Mixed** — validator examples show zero-distance rest rows; some pieces only expose `rest_time` on work rows | `isRest` when `distance === 0 && time > 0`; else use result-level rest fields |
+| `erg_model_type` | **Yes** when metadata included | Numeric codes per Concept2 HTTP headers / BLE `OBJ_ERGMODELTYPE_T` (0=D/E/RowErg/Dynamic, 1=C/B, 2=A) — stored as-is |
 | Stroke `stroke_data` | **Yes** (separate `/strokes` endpoint) | Unchanged — already complete |
 
 **Downgrade:** Any field still missing on a given response remains `undefined` (Req 1.4); UI and analysis omit those rows.

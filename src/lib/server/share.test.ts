@@ -10,6 +10,7 @@ describe('redactForPublic', () => {
 		expect(redacted.metadata?.serialNumber).toBeUndefined();
 		expect(redacted.metadata?.device).toBeUndefined();
 		expect(redacted.metadata?.deviceOs).toBeUndefined();
+		expect(redacted.metadata?.deviceOsVersion).toBeUndefined();
 		expect(redacted.metadata?.pmVersion).toBe(detail.metadata?.pmVersion);
 	});
 

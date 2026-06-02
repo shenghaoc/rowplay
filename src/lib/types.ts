@@ -46,9 +46,10 @@ export interface LoggingMetadata {
 	device?: string;
 	deviceOs?: string;
 	deviceOsVersion?: string;
-	/** 0=D/E/RowErg/Dynamic, 1=C/B, 2=A */
+	/** Concept2 `erg_model_type` / X-Erg-Model-Type (0=D/E/RowErg/Dynamic, 1=C/B, 2=A). */
 	ergModelType?: number;
-	hrType?: 'BT' | 'ANT' | 'Apple' | string;
+	/** Known values include BT, ANT, Apple — stored as plain string from the API. */
+	hrType?: string;
 }
 
 /** A summary row as returned by the Concept2 results list. */

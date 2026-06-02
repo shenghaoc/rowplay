@@ -20,6 +20,7 @@ import {
 	workoutWatts,
 	dayVolumeValue,
 	hrRecoveryTrend,
+	hrZoneOf,
 	workRestEfficiency,
 	targetVsActual
 } from './analytics';
@@ -281,10 +282,30 @@ describe('stroke normalisation (bike + intervals)', () => {
 describe('full-fidelity analytics', () => {
 	it('hrRecoveryTrend uses ending/recovery when present', () => {
 		const detail = mockWorkoutDetail(1007)!;
-		const { strokes: _s, splits: _sp, isInterval: _i, ...summary } = detail;
-		const trend = hrRecoveryTrend([summary]);
+		const trend = hrRecoveryTrend([detail]);
 		expect(trend.length).toBe(1);
 		expect(trend[0].drop).toBe(48);
+	});
+
+	it('hrZoneOf returns 0-indexed zones aligned with Concept2 targets', () => {
+		const hrMax = 200;
+		expect(hrZoneOf(100, hrMax)).toBe(0);
+		expect(hrZoneOf(130, hrMax)).toBe(1);
+		expect(hrZoneOf(190, hrMax)).toBe(4);
+		expect(hrZoneOf(250, hrMax)).toBe(5);
+	});
+
+	it('targetVsActual compares HR zone index to derived zone, not bpm', () => {
+		const detail = mockWorkoutDetail(1005)!;
+		detail.targets = { ...detail.targets, heartRateZone: 3 };
+		detail.heartRateAvg = 160;
+		detail.hrMax = 200;
+		const row = targetVsActual(detail).find((r) => r.metric === 'heartRateZone');
+		expect(row).toBeDefined();
+		expect(row!.actual).toBeLessThanOrEqual(5);
+		expect(row!.actual).toBeGreaterThanOrEqual(0);
+		expect(typeof row!.actual).toBe('number');
+		expect(row!.actual).not.toBe(detail.heartRateAvg);
 	});
 
 	it('workRestEfficiency summarises interval work vs rest', () => {

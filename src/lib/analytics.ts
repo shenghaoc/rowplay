@@ -187,11 +187,14 @@ export function estimateHrMax(strokes: Stroke[], maxHr?: number): number {
 	return Math.max(peak / 0.95, 160);
 }
 
-/** Map a single heart rate to its 1–5 zone, using the same boundaries as `hrZones`. */
+/**
+ * Map a heart rate to a Concept2-style zone index (0–5), using the same
+ * boundaries as `hrZones`. Zone 0 is below 60% of max; zone 5 is the top band.
+ */
 export function hrZoneOf(hr: number, hrMax: number): number {
 	const bounds = HR_ZONE_FRACTIONS.map((f) => f * hrMax);
 	for (let b = 1; b < bounds.length; b++) {
-		if (hr < bounds[b]) return b;
+		if (hr >= bounds[b - 1] && hr < bounds[b]) return b - 1;
 	}
 	return 5;
 }
@@ -1478,14 +1481,18 @@ export interface HrRecoveryPoint {
 	drop?: number;
 }
 
-export function hrRecoveryTrend(workouts: Workout[]): HrRecoveryPoint[] {
+/**
+ * HR recovery trend across sessions. `ending` / `recovery` are only populated
+ * from the detail endpoint (or D1 detail cache), not the workout list.
+ */
+export function hrRecoveryTrend(details: WorkoutDetail[]): HrRecoveryPoint[] {
 	const points: HrRecoveryPoint[] = [];
-	for (const w of workouts) {
-		const ending = w.heartRate?.ending;
-		const recovery = w.heartRate?.recovery;
+	for (const d of details) {
+		const ending = d.heartRate?.ending;
+		const recovery = d.heartRate?.recovery;
 		if (ending == null && recovery == null) continue;
 		const drop = ending != null && recovery != null ? ending - recovery : undefined;
-		points.push({ id: w.id, date: w.date, ending, recovery, drop });
+		points.push({ id: d.id, date: d.date, ending, recovery, drop });
 	}
 	return points.sort((a, b) => a.date.localeCompare(b.date));
 }

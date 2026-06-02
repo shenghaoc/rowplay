@@ -127,7 +127,8 @@ so that "more fields" turns into "deeper insight."
 
 1. THE system SHALL add a pure, DOM-free analysis (in/alongside `analytics.ts`)
    for **HR recovery** (using `heart_rate.ending` → `recovery`) trended across
-   sessions.
+   **hydrated workout details** (`WorkoutDetail[]` from the detail endpoint or
+   D1 cache — not the summary list alone).
 2. THE system SHALL add a **work:rest efficiency** analysis for interval pieces
    using the captured `rest_time` / `rest_distance` (total and per interval).
 3. WHERE a piece carries `targets` THE system SHALL compute and present
@@ -144,9 +145,10 @@ sensitive provenance, so that it ships safely.
 #### Acceptance criteria
 
 1. THE public shared replay (`/r/<token>`) SHALL NOT expose identifying
-   provenance — specifically `serial_number`, `device`, and any metadata that
-   could fingerprint the athlete's hardware — even though the owner sees it on
-   their own view.
+   provenance — specifically `serial_number`, `device`, `device_os`,
+   `device_os_version`, and any metadata that could fingerprint the athlete's
+   hardware — even though the owner sees it on their own view. `redactForPublic`
+   SHALL run inside `loadSharedWorkout`.
 2. THE mapping and analysis logic SHALL be covered by Vitest unit tests, and
    `mockData.ts` SHALL be extended so demo mode exercises every new field
    (including an interval piece with rest + targets + metadata).
@@ -164,6 +166,8 @@ a field on write without echoing it on read:
 
 1. Whether `workout.targets` is returned on read.
 2. Whether the result `metadata` block is returned on read (and which keys).
+3. Whether rest periods appear as separate `intervals[]` elements or only via
+   `rest_time` / `rest_distance` on work interval elements (determines `isRest`).
 
 If either is read-only-absent, its capture/surface/analysis tasks drop to
 "best-effort when present" rather than guaranteed.
