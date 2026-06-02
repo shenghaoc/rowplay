@@ -79,6 +79,8 @@ export interface Workout {
 	timezone?: string;
 	weightClass?: 'H' | 'L';
 	privacy?: string;
+	/** How the workout was logged: Web, ErgData, EXR, etc. */
+	source?: string;
 	verified?: boolean;
 	/** Total rest time in seconds (interval pieces). */
 	restTime?: number;

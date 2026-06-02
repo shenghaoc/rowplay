@@ -236,6 +236,8 @@ interface RawResult {
 	timezone?: string;
 	weight_class?: 'H' | 'L';
 	privacy?: string;
+	/** How the workout was logged: Web, ErgData, EXR, etc. */
+	source?: string;
 	verified?: boolean;
 	rest_time?: number;
 	rest_distance?: number;
@@ -346,6 +348,7 @@ export function mapResult(r: RawResult, metadata?: RawMetadata): Workout {
 		timezone: r.timezone,
 		weightClass: r.weight_class,
 		privacy: r.privacy,
+		source: r.source,
 		verified: r.verified,
 		restTime: r.rest_time != null ? r.rest_time / 10 : undefined,
 		restDistance: r.rest_distance,
