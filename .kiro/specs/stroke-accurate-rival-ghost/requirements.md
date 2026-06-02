@@ -29,6 +29,22 @@ back to the pace ghost where no real strokes exist), every string goes through
 infrastructure (no new identity or auth surface), and it passes the full quality
 gate (`check` + `build` + `test` + `test:e2e`).
 
+## Dependencies and parking
+
+This spec is a **parked draft** (`requirements.md` only; `design.md` /
+`tasks.md` follow when unparked). It is sequenced **after** the
+`full-fidelity-data` spec (#61) lands, but that is a **product ordering** choice,
+not a stroke-schema blocker:
+
+- **`full-fidelity-data` does not widen strokes.** Per that spec, stroke-level
+  fields (`t`, `d`, `p`, `spm`, `hr`) are already complete in
+  `WorkoutDetail.strokes`; no new stroke shape is required here.
+- **What this feature actually needs (all exist today):** `share_token` on
+  published board rows, `loadSharedWorkout` / demo KV share pointers, the replay
+  engine's `sampleAt` + second lane, and `setGhost` on the replay page.
+- **Unpark trigger:** `full-fidelity-data` merged and prioritised, or an
+  explicit decision to implement this spec sooner — not a D1 payload migration.
+
 ## Glossary
 
 - **Rival ghost** — the second avatar/lane in the replay, driven by a rival
@@ -38,7 +54,8 @@ gate (`check` + `build` + `test` + `test:e2e`).
 - **Share token** — the unguessable capability segment already minted by
   `createWorkoutShare`; `/r/<token>` resolves it to a public `WorkoutDetail`.
 - **Pace-only fallback** — the existing `constantPaceGhost`, used when no real
-  trace is available (demo rivals, missing/expired token, fetch failure).
+  trace is available (demo rivals without a token, missing/expired token, fetch
+  failure).
 
 ## Requirements
 
@@ -51,8 +68,9 @@ instead of a flat pacer.
 #### Acceptance criteria
 
 1. WHERE a board entry exposes a public `shareToken` THE "Race" action SHALL
-   deep-link the replay so the rival ghost is driven by that rival's **real
-   stroke trace**, not a constant pace.
+   deep-link the replay with **both** `ghostToken` (rival share token) **and**
+   `ghostPace` (rival pace in sec/500m) plus `ghostName`, so a token fetch
+   failure can still arm the pace ghost (Req 3.2).
 2. WHEN the replay arms a stroke-accurate rival ghost THEN the second lane SHALL
    reflect the rival's variable pace over the piece (lead changes are visible)
    using the existing engine `sampleAt` + renderer second-lane — **no new
@@ -60,8 +78,9 @@ instead of a flat pacer.
 3. THE rival ghost SHALL be labelled with the rival's display name (never an
    email, user id, or other PII).
 4. WHERE a board entry has **no** `shareToken` (e.g. a synthetic demo rival or
-   an unshared result) THE "Race" action SHALL fall back to the existing
-   constant-pace ghost so racing always works.
+   an unshared result) THE "Race" action SHALL deep-link with `ghostPace` and
+   `ghostName` only and SHALL fall back to the existing constant-pace ghost so
+   racing always works.
 
 ### Requirement 2 — Public, read-only access to a shared trace
 
@@ -72,14 +91,19 @@ logging in, so that racing a public board entry needs no extra permission.
 
 1. THE system SHALL expose the rival's strokes through a **public, read-only**
    path gated solely by the share token (the same capability model as
-   `/r/<token>`), requiring no session.
+   `/r/<token>`), requiring no session. **Route shape is deferred to
+   `design.md`** (e.g. a dedicated JSON endpoint such as `/api/ghost/<token>`
+   vs. reusing `/r/<token>` with a strokes-only response); requirements only
+   mandate token-gated, session-free access.
 2. WHERE the token is unknown, malformed, or no longer shared THE system SHALL
-   respond with a not-found result and the replay SHALL fall back to the
-   pace-only ghost (or solo) **without throwing**.
+   respond with a not-found result and the replay SHALL fall back per Req 3.2
+   **without throwing**.
 3. THE response SHALL contain only what the ghost lane needs (strokes +
    public display fields) and SHALL NOT leak the owner's user id or email.
 4. THE endpoint SHALL set `cache-control` consistent with the existing shared
-   replay (a public capability resource), not `private, no-store`.
+   replay (a public capability resource), not `private, no-store`. **Design**
+   SHALL decide whether this reuses the full `/r/<token>` payload or a smaller,
+   more cacheable strokes-only response.
 
 ### Requirement 3 — Deep-link contract and backward compatibility
 
@@ -89,14 +113,18 @@ keep working, so that nothing regresses while the richer ghost lands.
 #### Acceptance criteria
 
 1. THE replay page SHALL accept a new `ghostToken` query parameter (rival share
-   token) alongside the existing `ghostName`.
+   token) alongside the existing `ghostName` and `ghostPace`.
 2. WHERE both `ghostToken` and `ghostPace` are present THE system SHALL prefer
-   the stroke-accurate `ghostToken`, using `ghostPace` only if the token fetch
-   fails.
-3. WHERE only `ghostPace` is present (old links, demo rivals) THE system SHALL
-   behave exactly as today (constant-pace ghost).
-4. THE arming SHALL run from the existing `armGhostFromUrl()` path on mount; an
-   invalid or absent parameter set SHALL leave the solo replay untouched.
+   the stroke-accurate `ghostToken`; on fetch failure it SHALL fall back to the
+   constant-pace ghost from `ghostPace` (never silent solo when pace is present).
+3. WHERE only `ghostPace` is present (old links, demo rivals without a token)
+   THE system SHALL behave exactly as today (constant-pace ghost).
+4. WHERE only `ghostToken` is present (no `ghostPace`) AND the fetch fails THE
+   replay SHALL remain solo — an edge case; leaderboard links SHALL always
+   include redundant `ghostPace` (Req 1.1).
+5. THE arming SHALL run from the existing `armGhostFromUrl()` entry point on
+   mount (see Req 5 for async behaviour); an invalid or absent parameter set
+   SHALL leave the solo replay untouched.
 
 ### Requirement 4 — Quality, privacy, and i18n
 
@@ -112,5 +140,53 @@ that it ships without regressions.
 3. EVERY new user-visible string SHALL be added to **all six** i18n
    dictionaries (en, zh, de, es, fr, ja); sport names stay untranslated.
 4. THE feature SHALL pass the full gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, and `npm run test:e2e` (a smoke spec races a
-   demo rival via the board and asserts the ghost lane is armed).
+   `npm run build`, `npm run test`, and `npm run test:e2e` (see Req 6.3).
+
+### Requirement 5 — Async rival-ghost arming
+
+**User story:** As an athlete opening a "Race" link, I want the ghost to appear
+promptly and upgrade to the real trace when ready, so the replay never feels
+broken while data loads.
+
+**Context:** `armGhostFromUrl()` today is synchronous and only handles
+`ghostPace`. Stroke-accurate arming requires a network fetch (same pattern as
+`loadSessionGhost`, which already uses `loadingGhost` + `setGhost` after
+mount).
+
+#### Acceptance criteria
+
+1. WHEN `ghostToken` is present `armGhostFromUrl()` (or its delegate) SHALL
+   fetch the rival trace **asynchronously** on mount without blocking first
+   paint of the primary workout.
+2. WHERE both `ghostToken` and `ghostPace` are present WHILE the token fetch is
+   in flight THE replay SHALL arm the **pace-only ghost immediately** from
+   `ghostPace` and `ghostName`; WHEN the fetch succeeds THE system SHALL
+   **replace** it with the stroke-accurate ghost via `setGhost` (the engine
+   already tolerates ghost swaps after mount).
+3. WHERE only `ghostToken` is present (no `ghostPace`) WHILE the fetch is in
+   flight THE replay SHALL stay solo; WHEN the fetch succeeds THE system SHALL
+   arm the stroke ghost; on failure it SHALL remain solo.
+4. DURING any in-flight rival-ghost fetch THE replay UI SHALL show the existing
+   `loadingGhost` / `common.loading` affordance (same as session/file ghost
+   pickers) — no new loading chrome required unless copy differs.
+5. IF the fetch fails (404, network error) THE system SHALL apply Req 3.2
+   (pace fallback when `ghostPace` present) and SHALL NOT leave a stale
+   stroke ghost armed.
+
+### Requirement 6 — Demo mode and e2e
+
+**User story:** As a maintainer, I want demo mode and e2e to exercise the full
+stroke-accurate path without Concept2 credentials.
+
+#### Acceptance criteria
+
+1. Demo rivals **without** a `shareToken` SHALL continue to race via pace-only
+   deep links (unchanged behaviour; `mockLeaderboard.ts` synthetic rivals).
+2. Demo mode SHALL include **at least one** board entry with a `shareToken` that
+   resolves to real stroke data via the demo share store (KV `share:<token>` →
+   `mockWorkoutDetail`, same as `/r/<token>`), so the stroke-accurate path is
+   explorable without auth.
+3. E2E (`test:e2e`) SHALL include a smoke case: from `/leaderboard` in demo
+   mode, follow a **Race** link for a token-backed rival and assert the ghost
+   lane is armed (stroke-accurate when fetch completes, or pace ghost during
+   optimistic phase per Req 5.2).
