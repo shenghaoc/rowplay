@@ -69,7 +69,7 @@
 			<span>{t('liveMode.sound')}</span>
 		</label>
 		<p class="muted hint">{t('liveMode.soundHint')}</p>
-		<div class="status" role="status" aria-live="polite">
+		<div class="poll-status" role="status" aria-live="polite">
 			{#if live.polling}
 				<div class="status-row polling">
 					<LoaderCircle size={12} class="spin" aria-hidden="true" />
@@ -171,7 +171,7 @@
 	.sound {
 		margin-top: 0.35rem;
 	}
-	.status {
+	.poll-status {
 		display: flex;
 		flex-direction: column;
 		gap: 0.3rem;
