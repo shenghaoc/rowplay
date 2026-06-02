@@ -139,17 +139,18 @@
 
 	const meta = $derived(detail.metadata);
 	const provenanceRows = $derived.by(() => {
-		if (!meta) return [];
 		const rows: { key: string; label: string; value: string }[] = [];
-		if (meta.pmVersion != null) rows.push({ key: 'pm', label: t('inspector.metaPm'), value: String(meta.pmVersion) });
-		if (meta.firmwareVersion) rows.push({ key: 'fw', label: t('inspector.metaFirmware'), value: meta.firmwareVersion });
-		if (meta.ergModelType != null) rows.push({ key: 'erg', label: t('inspector.metaErg'), value: String(meta.ergModelType) });
-		if (meta.hrType) rows.push({ key: 'hr', label: t('inspector.metaHrSensor'), value: meta.hrType });
-		if (detail.source) rows.push({ key: 'src', label: t('inspector.metaSource'), value: detail.source });
-		if (!isPublic) {
-			if (meta.serialNumber) rows.push({ key: 'sn', label: t('inspector.metaSerial'), value: meta.serialNumber });
-			if (meta.device) rows.push({ key: 'dev', label: t('inspector.metaDevice'), value: meta.device });
+		if (meta) {
+			if (meta.pmVersion != null) rows.push({ key: 'pm', label: t('inspector.metaPm'), value: String(meta.pmVersion) });
+			if (meta.firmwareVersion) rows.push({ key: 'fw', label: t('inspector.metaFirmware'), value: meta.firmwareVersion });
+			if (meta.ergModelType != null) rows.push({ key: 'erg', label: t('inspector.metaErg'), value: String(meta.ergModelType) });
+			if (meta.hrType) rows.push({ key: 'hr', label: t('inspector.metaHrSensor'), value: meta.hrType });
+			if (!isPublic) {
+				if (meta.serialNumber) rows.push({ key: 'sn', label: t('inspector.metaSerial'), value: meta.serialNumber });
+				if (meta.device) rows.push({ key: 'dev', label: t('inspector.metaDevice'), value: meta.device });
+			}
 		}
+		if (detail.source) rows.push({ key: 'src', label: t('inspector.metaSource'), value: detail.source });
 		return rows;
 	});
 </script>

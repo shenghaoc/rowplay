@@ -11,7 +11,7 @@ import { STANDARD_DISTANCES, type LeaderboardEntry } from '$lib/leaderboard';
 import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
-// v2: strokes carry rawT/rawD for the raw inspector's as-logged interval values.
+// v3: strokes carry rawT/rawD for the raw inspector's as-logged interval values.
 export const DETAIL_PAYLOAD_VERSION = 3;
 
 /**
