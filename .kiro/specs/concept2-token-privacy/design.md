@@ -9,22 +9,27 @@ A. Token holding   paste → validate (fetchMe) → SEAL into httpOnly `rp_tok` 
                    KV session keeps identity only (no token)
                    client() opens the cookie per request to call Concept2
 
-B. Data default    personal session ⇒ read Concept2 LIVE, write nothing to D1
-                   (OAuth session unchanged; demo unchanged)
+B. Data cache      keep the D1 cache of the athlete's workouts (fast dashboard),
+                   but treat it as SESSION-SCOPED: purge on disconnect/logout and
+                   account-delete; demo unchanged
 
-C. Leaderboard     publish = the one explicit write to shared storage
+C. Leaderboard     publish = the one explicit thing exposed to OTHER athletes
                    + withdraw (delete) = the symmetric, reversible opt-out
 ```
 
-The seam we exploit: `event.locals` already distinguishes `demo` vs real, and the
-session already carries a `personal` flag. We surface `personal` on `locals`, then
-branch the data layer on it. Token handling moves from "stored in KV, read from
-session" to "sealed in a cookie, opened on demand."
+The token is the privacy crux (Part A). The athlete's own workout data stays
+cached in D1 for speed (Part B) — the only change there is **lifecycle**: the
+cache is purged when the athlete disconnects, so it doesn't outlive the session.
+
+Token handling moves from "stored in KV, read from session" to "sealed in a
+cookie, opened on demand." We surface the session's existing `personal` flag on
+`locals` so logout knows to purge a personal athlete's cache.
 
 ```
 hooks.server.ts ──reads KV session──> locals.user / locals.personal   (identity only)
 data.ts/client() ──opens rp_tok cookie──> Concept2Client               (credential, per request)
-data loaders ──branch on locals.personal──> live API  | D1 (OAuth) | mock (demo)
+data loaders ─────> D1 cache (lazy-filled from live API) | mock (demo)
+logout/disconnect ─(personal)─> purge D1 cache + clear both cookies + destroy KV
 ```
 
 ## A. Token holding — sealed httpOnly cookie
@@ -122,88 +127,73 @@ Clear `TOKEN_COOKIE` in addition to `SESSION_COOKIE`, and `destroySession`. Same
 addition in `clearUserCachedData` (account delete) so disconnecting removes every
 trace from the browser.
 
-## B. Lazy live reads, no D1 mirror (personal sessions)
+## B. Session-scoped D1 cache (keep the cache, bind its lifecycle to the session)
 
-The data layer (`src/lib/server/data.ts`) currently branches `demo` vs live, and
-live = D1-first with an API fallback. We add a third branch: **personal = live,
-no persistence.** A small helper keeps it readable:
+The data layer (`src/lib/server/data.ts`) already caches the athlete's workouts in
+D1 (D1-first reads, lazy-filled from the live API via `syncWorkouts`, plus the
+TTL'd `workout_detail` cache from the detail-cache-ttl spec). That stays — it is
+what makes the dashboard fast, and the data is the athlete's own. The **only**
+change is lifecycle: the cache must not outlive the session.
 
-```ts
-// true when we must read live and persist nothing (BYOT privacy default).
-function liveNoMirror(event): boolean { return !event.locals.demo && event.locals.personal; }
-```
+So the data-loader code paths (`loadWorkouts`, `loadWorkoutList`,
+`loadDashboardAggregates`, `loadWorkoutDetail`, `syncWorkouts`) are **left as they
+are today** for both BYOT and OAuth — no `liveNoMirror` branch, no JS-side
+aggregate reimplementation, no disabling of sync. The work in Part B is purely:
 
-### B.1 `loadWorkouts`
+### B.1 Surface `personal` on `locals`
 
-- demo → `mockWorkouts()` (unchanged).
-- personal (`liveNoMirror`) → page the **full history live** via the existing
-  `Concept2Client.listWorkoutsPage` loop (250/page until `totalPages`), return the
-  array. **No `upsertWorkouts`.** The Concept2 API is unmetered, so full-history
-  paging on demand is acceptable (maintainer-confirmed).
-- OAuth → existing D1-first behavior.
+`hooks.server.ts` sets `event.locals.personal = session.personal === true` (also
+needed by Part A). This lets logout decide whether to purge.
 
-To avoid re-paging the full history three times within one dashboard render
-(`loadWorkouts`, `loadWorkoutList`, aggregates all call it), memoize the live
-fetch **per request** using `event.locals` (an in-request promise cache —
-`locals` lives for one request only, so this persists nothing across requests).
+### B.2 Purge the cache on disconnect/logout — `auth/logout`
 
-### B.2 `loadWorkoutList`
+Today logout destroys the KV session and clears the session cookie but leaves the
+D1 cache. For a **personal** session, logout now also:
 
-- demo → unchanged.
-- personal → load the full live list (via the memoized `loadWorkouts`) and
-  filter/sort in JS with the existing `filterAndSortWorkouts` + `pbWorkoutIds`
-  (this is already the non-D1 fallback path — we just always take it for BYOT).
-- OAuth → existing D1 query path.
+- clears the `rp_tok` cookie (Part A.6), and
+- purges the athlete's cached workout data via the existing
+  `deleteUserData(db, userId)` (the same helper account-delete already uses).
 
-### B.3 `loadDashboardAggregates`
+This is what makes the D1 copy "session-scoped": once you disconnect, nothing of
+your logbook remains in D1 (your published leaderboard entries are separate and
+governed by Part C's explicit opt-in/withdraw). The trade-off — re-connecting
+re-pages the history into the cache — is acceptable (the Concept2 API is
+unmetered, and it only happens on an explicit reconnect).
 
-- demo → `null` (unchanged; the page derives from `workouts`).
-- personal → compute aggregates **in JS** from the memoized full live list using
-  the existing pure helpers in `analytics.ts` (per-sport summaries + distance
-  PBs), returning the same `DashboardAggregates` shape the page already consumes.
-  (Factor the SQL aggregation's JS equivalent out of `analytics.ts` if not already
-  exposed; `distancePBs` / sport summaries already exist there.)
-- OAuth → existing D1 aggregate path.
+### B.3 Cache freshness (unchanged, noted)
 
-### B.4 `loadWorkoutDetail`
+The incremental `syncWorkouts` (overlap-date refresh) and the `workout_detail`
+TTL already keep the cache from going stale; no change. The dashboard's existing
+sync affordance stays available for BYOT (it is the cache's refresh control), so
+**Req 2.5's earlier "disable sync for BYOT" idea is dropped** — sync is the
+cache, not a separate mirror.
 
-- demo → mock (unchanged).
-- personal → `client.getWorkout(id)` live, **no `getCachedDetail` / `putCachedDetail`**.
-- OAuth → existing D1 detail cache path.
+### B.4 Account-delete (unchanged)
 
-### B.5 Sync — `/api/sync` + dashboard UI
+`clearUserCachedData` already purges the D1 cache and destroys the session; Part
+A.6/C.2 extend it to also clear the token cookie and leaderboard entries.
 
-- `syncWorkouts` is the eager mirror; it must not run for personal sessions.
-  `/api/sync/+server.ts`: if `event.locals.personal`, return a clean
-  `400`/`409` ("Sync isn't used in token mode — your data is read live") instead
-  of writing D1. (Kept functional for OAuth, where the mirror is intentional.)
-- The dashboard's sync affordance (the "Sync" button / `syncStatus` panel) is
-  **hidden** for personal sessions (`{#if !data.demo && !data.personal}`); the
-  dashboard load skips `syncStatus()` for them. `data.personal` is plumbed from
-  `locals` through the page `load`.
+### B.5 Annotations & goals (app-authored data)
 
-### B.6 Annotations & goals (app-authored data, not Concept2 data)
-
-Out of scope to move, but called out for clarity: coaching **annotations** and
-**annual goals** are content the athlete creates *in rowplay*, not a copy of their
-Concept2 logbook, so keeping them in D1/cookie does not contradict the privacy
-goal (no Concept2 credential or logbook mirror). Goals already use a cookie in
-demo mode. We leave these as-is; a follow-up could move annotations to a
-cookie/local store if desired.
+Unchanged and unaffected: coaching **annotations** and **annual goals** are
+content the athlete creates *in rowplay*, not a copy of their Concept2 logbook.
+They live in D1 keyed by user and are purged by the same `deleteUserData` path on
+disconnect/account-delete.
 
 ## C. Explicit, reversible leaderboard opt-in
 
 Publishing already is the explicit write (the leaderboard spec's `publishWorkout`
 upserts the minimal entry + a share token). Two adjustments:
 
-### C.1 Publish still works without a mirror
+### C.1 Publish (unchanged path)
 
-`publishWorkout` resolves the workout via `loadWorkouts(event)` — now a live read
-for BYOT — then `createWorkoutShare` + `upsertLeaderboardEntry`. `createWorkoutShare`
-calls `loadWorkoutDetail` (live) and persists the **shared** detail + token to D1.
-That persistence is **intended and consented**: it only happens because the
-athlete chose to publish. No code change needed beyond confirming the live path
-flows through; add a test.
+`publishWorkout` resolves the workout via `loadWorkouts(event)` (served from the
+D1 cache), then `createWorkoutShare` + `upsertLeaderboardEntry`. The share token +
+public leaderboard entry are the **only** artifacts exposed to *other* athletes,
+and they are written **only** because the athlete chose to publish. No code change
+needed; add a test. Note the lifecycle distinction: disconnect purges the
+*private cache* (Part B.2) but **not** published entries/share tokens — those are
+governed solely by the explicit publish/withdraw controls (Part C.2).
 
 ### C.2 Withdraw — the symmetric opt-out (new)
 
@@ -258,33 +248,31 @@ cookie and leaderboard entries.
   for reads.
 - **Existing personal sessions** (token in KV) keep working for *identity* but
   `client()` finds no `rp_tok` cookie → 401 → reconnect. On reconnect the new
-  sealed-cookie path takes over and the next `clearUserCachedData`/logout drops
-  the stale KV token. (Optional nicety, not required: a one-time hook that
-  proactively clears the legacy `tokens.accessToken` from KV on first request.)
-- **Existing D1 mirror rows** for personal users are not auto-deleted (some may be
-  OAuth users); they are removable via account-delete. Documented in the PR notes.
+  sealed-cookie path takes over.
+- **Legacy KV records** that still hold a plaintext token are cleared
+  **manually** by the maintainer — current scale is the maintainer's own data
+  only, so no automatic migration/scrub is built (maintainer-confirmed).
 
 ## Testing
 
 - **Unit (`tokenCrypto.test.ts`)**: seal→open round-trip; open(tampered)→null;
   open(wrong secret)→null; open(garbage)→null.
-- **Unit (data layer)**: with a mocked Concept2 client and `locals.personal`,
-  `loadWorkouts`/`loadWorkoutList` read live and perform **no** D1 writes
-  (assert the D1 upsert spies are never called); `loadWorkoutDetail` does not hit
-  the D1 cache. Update any existing test that asserted a token in KV.
+- **Unit (logout/disconnect)**: a personal-session logout purges the D1 cache
+  (`deleteUserData` spy called) and clears both cookies; an OAuth/non-personal
+  logout does **not** purge. Update any existing test that asserted a token in KV.
 - **Unit (leaderboard)**: `withdrawWorkout` removes the athlete's entry; account
   delete clears entries.
 - **E2E (demo)**: unchanged smoke — demo mode persists/needs nothing, so existing
   specs must stay green (guards Req 2.6).
 - **Manual on `npm run preview`** (recorded in tasks): paste token → connect →
-  confirm `rp_tok` cookie is `HttpOnly` and KV holds no token → dashboard renders
-  from live reads → publish → entry appears → withdraw → entry gone → logout →
-  both cookies cleared.
+  confirm `rp_tok` cookie is `HttpOnly` and KV holds **no** token → dashboard
+  reads from the D1 cache → publish → entry appears → withdraw → entry gone →
+  logout → both cookies cleared **and** the D1 cache purged.
 
 ## Out of scope (follow-ups)
 
-- Moving annotations/goals off D1 to a browser/local store (B.6).
-- A short-lived encrypted edge cache of the live workout list for very large
-  logbooks (kept out to preserve the "no server-side copy" guarantee).
-- Proactive KV migration that scrubs legacy plaintext tokens on first request
-  (current plan lets them expire / be cleared on reconnect/logout).
+- Moving annotations/goals off D1 to a browser/local store (B.5).
+- Automatic eviction of caches whose KV session has expired (no KV-expiry
+  callback exists); abandoned caches are handled by manual deletion at the
+  current scale, and freshness TTLs keep stale data from being served.
+- Proactive KV migration that scrubs legacy plaintext tokens (done manually).

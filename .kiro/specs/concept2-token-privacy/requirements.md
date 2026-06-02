@@ -22,17 +22,21 @@ records. With BYOT, the previous design is now a privacy problem on two fronts:
 
 Because the token authenticates against Concept2's official API, it is sound to
 treat a **validated token as proof of identity** — we do not need to store it to
-trust who the caller is for the duration of a request. And because the Concept2
-logbook API is effectively **unmetered**, reading the athlete's data **live and
-lazily** on each request is acceptable; we do not need a server-side mirror to be
-fast enough.
+trust who the caller is for the duration of a request.
+
+The **credential** and the **data** are not equally sensitive. The token is the
+crux: it can mutate the athlete's Concept2 account, so it must never be stored
+server-side. The athlete's own workout data, by contrast, is fine to **cache in
+our D1** to keep the app fast — provided that cache behaves like a **cache, not a
+durable mirror**: it is tied to an active session, refreshable, **purged on
+disconnect**, and manually deletable.
 
 This spec makes BYOT **private by default**: the token lives only in the
 athlete's browser (sealed, httpOnly — never in client JS, never in shared server
-storage), the athlete's Concept2 data is read live and **never persisted
-server-side by default**, and the **only** way any of the athlete's data leaves
-their browser onto shared storage is an **explicit, reversible** choice to
-publish to the leaderboard.
+storage); the athlete's workout data is **cached in D1 only for the life of a
+session** and purged when they disconnect; and the **only** way any of the
+athlete's data is exposed to *other* athletes is an **explicit, reversible**
+choice to publish to the leaderboard.
 
 It must obey every project rule in `AGENTS.md`: it works in **demo mode**
 unchanged, every new user-visible string goes through **i18n** in **all** locale
@@ -44,9 +48,10 @@ quality gate (`check` + `build` + `test` + `test:e2e`).
 - **Token holding:** the validated personal token is **sealed (encrypted) into an
   httpOnly cookie** with `SESSION_SECRET`. It is never returned in client JS and
   never written to KV or D1.
-- **Data default:** **lazy live reads, no D1 mirror.** For BYOT sessions the
-  dashboard/replay read from the Concept2 API on demand; nothing of the athlete's
-  Concept2 data is persisted server-side by default.
+- **Data default:** **session-scoped D1 cache.** The athlete's data is cached in
+  D1 (read fast from there, refreshed from the live API), but the cache is bound
+  to an active session — purged on disconnect/logout and account-delete, and
+  manually deletable. It is a cache, not a permanent mirror.
 - **Leaderboard:** **explicit opt-in, and reversible** (publish AND withdraw).
   Publishing is the single, deliberate moment an athlete's result is written to
   shared storage.
@@ -59,8 +64,10 @@ quality gate (`check` + `build` + `test` + `test:e2e`).
   with a key derived from `SESSION_SECRET`. "Seal" = encrypt, "open" = decrypt +
   verify; a tampered or wrong-key blob fails to open.
 - **Token cookie** — the httpOnly cookie (`rp_tok`) carrying the sealed token.
-- **Mirror** — a durable server-side copy of the athlete's Concept2 data (the D1
-  `workout` rows and cached `workout_detail`). This spec removes it as a default.
+- **Session-scoped cache** — the D1 `workout` rows and cached `workout_detail`
+  for an athlete, treated as a cache whose lifecycle is bound to an active
+  session: lazily populated, refreshable, and purged on disconnect. (As opposed
+  to a *durable mirror* that lives on indefinitely by default.)
 
 ## Requirements
 
@@ -89,35 +96,38 @@ else's database.
    cookie (and the session cookie) so no credential remains in the browser, and
    SHALL destroy the KV session record.
 6. WHERE a legacy personal session still carries a plaintext token in KV (created
-   before this change) THE system SHALL NOT use it; the athlete SHALL be treated
-   as unauthenticated and prompted to reconnect, and the stale KV record SHALL be
-   cleared.
+   before this change) THE system SHALL NOT use it (there is no token cookie to
+   open); the athlete SHALL be treated as unauthenticated and prompted to
+   reconnect. Clearing the small set of legacy KV records is done **manually** by
+   the maintainer (current scale: maintainer's own data only) — no automatic
+   migration/scrub is required.
 
-### Requirement 2 — Athlete data is read live and not mirrored by default
+### Requirement 2 — Athlete data is a session-scoped cache, not a durable mirror
 
-**User story:** As an athlete, I want my training history to be read on demand
-rather than copied into the app's database, so that connecting doesn't hand over
-a durable copy of all my workouts.
+**User story:** As an athlete, I want my training history cached so the app is
+fast, but tied to my session and easy to purge, so that connecting doesn't leave
+a permanent copy of all my workouts sitting around after I disconnect.
 
 #### Acceptance criteria
 
-1. WHERE a session is a personal (BYOT) session THE system SHALL read workout
-   summaries, lists, detail, and dashboard aggregates **live from the Concept2
-   API** and SHALL NOT write the athlete's Concept2 data to D1 (no `workout`
-   upserts, no `workout_detail` cache) as part of normal browsing.
-2. THE dashboard SHALL present the same information as before (full-history list,
-   PBs, per-sport aggregates, annual goal progress) computed from the live-read
-   data using the existing pure analytics helpers — not from D1 SQL.
-3. THE replay view SHALL load workout detail (including strokes) live for a
-   personal session, with no durable server-side cache write.
-4. WHERE a session is a legacy OAuth session (only when `CONCEPT2_CLIENT_ID` is
-   configured) THE existing D1-backed sync/cache behavior MAY be retained
-   unchanged; this spec's no-mirror rule targets BYOT sessions.
-5. THE eager "sync my whole history into D1" path SHALL NOT run for personal
-   sessions; any sync UI/endpoint SHALL be hidden or rejected for them so the
-   mirror is not silently re-created.
+1. THE system MAY cache the athlete's workout summaries and detail in D1 (the
+   existing `workout` rows and `workout_detail` cache) so the dashboard and replay
+   read fast, populated lazily from the live Concept2 API.
+2. THE cached data SHALL be refreshable from the live API (incremental sync of
+   new/edited workouts), so the cache does not silently go stale.
+3. WHEN the athlete disconnects/logs out THEN the system SHALL purge that
+   athlete's cached workout data from D1 (so the cache does not outlive the
+   session), in addition to clearing the cookies and KV session.
+4. WHEN the athlete deletes their account / clears their data THEN the system
+   SHALL purge all of their cached workout data from D1 (unchanged from today).
+5. THE cached data SHALL be manually deletable by the maintainer (acceptable for
+   the current single-user scale).
 6. THE demo-mode experience SHALL be byte-for-byte unchanged (mock data, no
    network, no persistence).
+7. NO cached workout data SHALL be readable without the athlete's own valid
+   session; the cache is keyed by the athlete's logbook `user_id` and never
+   exposed to other athletes (sharing is only via the explicit leaderboard /
+   share-token paths).
 
 ### Requirement 3 — Publishing to the leaderboard is the only persistence, and it is explicit
 
@@ -127,13 +137,15 @@ leaves my browser onto shared storage.
 
 #### Acceptance criteria
 
-1. BY DEFAULT, after connecting, the system SHALL have written none of the
-   athlete's Concept2 data to shared storage; the leaderboard SHALL show no entry
-   for the athlete until they publish.
+1. BY DEFAULT, after connecting, the athlete's data SHALL be visible only to the
+   athlete (private session-scoped cache); the public leaderboard SHALL show no
+   entry for the athlete, and no share token / public replay SHALL exist for any
+   of their workouts, until they publish.
 2. WHEN the athlete explicitly publishes a result THEN — and only then — the
-   system SHALL write the minimal entry (display name, time, pace, date, sport,
-   distance, the public replay share token, and `user_id` as a non-exposed key)
-   to D1, reusing the existing publish path.
+   system SHALL write the public-facing artifacts: a minimal leaderboard entry
+   (display name, time, pace, date, sport, distance, the public replay share
+   token, and `user_id` as a non-exposed key) plus the shared replay detail,
+   reusing the existing publish path.
 3. THE UI that triggers a publish SHALL make clear, in i18n'd copy, that
    publishing makes the result public and is the moment the data leaves the
    browser.

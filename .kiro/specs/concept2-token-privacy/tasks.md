@@ -31,30 +31,25 @@ checked as the work lands. Requirement references point at `requirements.md`.
     `Concept2Client` unchanged.
   - _Requirements: 1.1, 1.6_
 
-- [ ] **6. Logout / disconnect clears the cookie** — `auth/logout`, `clearUserCachedData`
+- [ ] **6. Logout / disconnect clears the cookie + purges the cache** — `auth/logout`, `clearUserCachedData`
   - Delete `rp_tok` alongside `rp_session`; `destroySession`.
-  - _Requirements: 1.5, 1.6, 4.4_
+  - For a **personal** session, also purge the D1 cache via `deleteUserData`
+    (session-scoped cache); non-personal/OAuth logout does not purge.
+  - _Requirements: 1.5, 2.3, 4.4_
 
-- [ ] **7. Live reads, no D1 mirror** — `src/lib/server/data.ts`
-  - `liveNoMirror(event)` helper + per-request memoized full live fetch on
-    `locals`. Branch `loadWorkouts`, `loadWorkoutList`, `loadDashboardAggregates`,
-    `loadWorkoutDetail` so personal sessions read live and write nothing to D1.
-  - Compute dashboard aggregates in JS via `analytics.ts` for personal sessions.
-  - _Requirements: 2.1, 2.2, 2.3, 2.4_
+- [ ] **7. Keep the D1 cache (no data-loader churn)** — `src/lib/server/data.ts`
+  - Confirm `loadWorkouts`/`loadWorkoutList`/`loadDashboardAggregates`/
+    `loadWorkoutDetail`/`syncWorkouts` stay as-is for BYOT (D1 cache, lazy-filled,
+    TTL-refreshed). No `liveNoMirror` branch; sync stays enabled for BYOT.
+  - _Requirements: 2.1, 2.2_
 
-- [ ] **8. Disable the eager mirror for BYOT** — `/api/sync`, dashboard page
-  - `/api/sync`: reject for `locals.personal` with a clean status + i18n message.
-  - Dashboard `load`: skip `syncStatus()` and plumb `personal` to the page;
-    `+page.svelte`: hide the sync UI for personal sessions.
-  - _Requirements: 2.5_
-
-- [ ] **9. Data-layer unit tests** — `src/lib/server/*.test.ts`
-  - Mocked client + `locals.personal`: live reads happen, D1 upsert/cache spies
-    are never called; detail bypasses the D1 cache. Update/replace any test that
+- [ ] **8. Logout/disconnect unit tests** — `src/lib/server/*.test.ts`
+  - Personal logout purges the D1 cache (`deleteUserData` spy called) and clears
+    both cookies; non-personal logout does not purge. Update/replace any test that
     asserted a token in KV.
-  - _Requirements: 2.1, 2.3, 5.2_
+  - _Requirements: 2.3, 5.2_
 
-- [ ] **10. Withdraw (reversible opt-out)** — db, server, API
+- [ ] **9. Withdraw (reversible opt-out)** — db, server, API
   - `db.ts`: `deleteLeaderboardEntry`, `deleteAllLeaderboardEntries`; confirm
     `deleteUserData` removes the user's `leaderboard_entry` rows (extend if not).
   - `server/leaderboard.ts`: `withdrawWorkout` (demo no-op, 401 unauth).
@@ -62,20 +57,20 @@ checked as the work lands. Requirement references point at `requirements.md`.
   - `clearUserCachedData`: also clear leaderboard entries + their share tokens.
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] **11. UI + privacy copy** — leaderboard, replay publish control, settings
+- [ ] **10. UI + privacy copy** — leaderboard, replay publish control, settings
   - Withdraw action on `isYou` rows / after publish; publish + withdraw copy
     clarifying public-vs-Concept2 (Req 3.3, 4.5); settings privacy statement.
   - _Requirements: 3.1, 3.3, 4.1, 4.5_
 
-- [ ] **12. i18n** — all locale files
-  - New keys (server-misconfig error, sync-disabled, publish/withdraw copy,
-    privacy statement) in `en, zh, de, es, fr, ja`; `npm run validate:locales`.
+- [ ] **11. i18n** — all locale files
+  - New keys (server-misconfig error, publish/withdraw copy, privacy statement)
+    in `en, zh, de, es, fr, ja`; `npm run validate:locales`.
   - _Requirements: 5.3_
 
-- [ ] **13. Gate + manual verification**
+- [ ] **12. Gate + manual verification**
   - `npm run check` (0 errors) + `npm run build` + `npm run test` + `npm run test:e2e`.
   - On `npm run preview`: connect → `rp_tok` is HttpOnly + KV has no token →
-    dashboard from live reads → publish appears → withdraw removes → logout clears
-    both cookies. Record the run in the PR notes.
+    dashboard reads from the D1 cache → publish appears → withdraw removes →
+    logout clears both cookies **and** purges the D1 cache. Record in the PR notes.
   - Add this spec to the AGENTS.md "Completed" list.
   - _Requirements: 2.6, 5.2, 5.3, 5.4_
