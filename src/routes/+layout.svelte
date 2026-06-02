@@ -110,7 +110,7 @@
 					<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
 				</form>
 			{:else}
-				<span class="badge badge-primary">{t('common.demoMode')}</span>
+				<span class="badge badge-soft badge-primary">{t('common.demoMode')}</span>
 				{#if data.oauthEnabled}
 					<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
 				{/if}
@@ -152,13 +152,12 @@
 			<div class="drawer-actions">
 				<LanguagePicker />
 				<button
-					class="iconbtn drawer-theme"
+					class="btn btn-ghost btn-square btn-sm drawer-theme"
 					type="button"
 					onclick={() => theme.toggle()}
 					aria-label={theme.isDark ? t('theme.toLight') : t('theme.toDark')}
 				>
 					{#if theme.isDark}<Sun size={16} />{:else}<Moon size={16} />{/if}
-					<span>{theme.isDark ? t('theme.toLight') : t('theme.toDark')}</span>
 				</button>
 				{#if data.user}
 					<span class="muted user">@{data.user.username}</span>
@@ -172,7 +171,7 @@
 						<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
 					</form>
 				{:else}
-					<span class="badge badge-primary">{t('common.demoMode')}</span>
+					<span class="badge badge-soft badge-primary">{t('common.demoMode')}</span>
 					{#if data.oauthEnabled}
 						<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
 					{/if}
@@ -304,12 +303,15 @@
 	}
 	.mobile-drawer {
 		margin: 0;
+		/* Top sheet: pin to top, height from content (not the modal's inset:0). */
+		inset: 0 0 auto 0;
 		padding: 0.75rem 1rem 1rem;
 		border: none;
 		border-bottom: var(--bd-heavy);
 		width: 100%;
 		max-width: 100vw;
 		max-height: calc(100dvh - 54px);
+		overflow-y: auto;
 		background: var(--paper);
 		box-shadow: 0 12px 28px rgb(15 42 54 / 0.12);
 	}
@@ -322,10 +324,12 @@
 	.mobile-drawer[open] {
 		display: grid;
 		gap: 1rem;
+		align-content: start;
 	}
 	.drawer-nav {
 		display: grid;
 		gap: 0.35rem;
+		align-content: start;
 	}
 	.drawer-nav a {
 		display: block;
@@ -351,6 +355,7 @@
 		display: grid;
 		gap: 0.65rem;
 		justify-items: start;
+		align-content: start;
 		padding-top: 0.35rem;
 		border-top: var(--bd);
 	}

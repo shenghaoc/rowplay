@@ -221,10 +221,33 @@
 	--bg: var(--paper);
 	--bg-elev: var(--paper-raised);
 	--bg-elev-2: var(--paper-inset);
-	--border: var(--hairline);
 	--text: var(--ink);
 	--text-dim: var(--ink-2);
 	--topbar-bg: color-mix(in srgb, var(--paper) 82%, transparent);
+}
+
+/* Align domain tokens with the active daisyUI theme. daisyUI rewrites the
+   --color-* customs per data-theme, so one [data-theme] block covers every
+   theme; the dark block then only carries its shadow/color-scheme overrides. */
+:root[data-theme] {
+	--paper: var(--color-base-100);
+	--paper-raised: var(--color-base-100);
+	--paper-inset: var(--color-base-200);
+	--paper-deep: var(--color-base-300);
+	--ink: var(--color-base-content);
+	--ink-2: color-mix(in srgb, var(--color-base-content) 55%, transparent);
+	--ink-3: color-mix(in srgb, var(--color-base-content) 40%, transparent);
+	--hairline: var(--color-base-300);
+	--live: var(--color-primary);
+	--ghost: var(--color-secondary);
+	--ahead: var(--color-accent);
+	--behind: var(--color-warning);
+	--alarm: var(--color-error);
+	--bg: var(--paper);
+	--bg-elev: var(--paper-raised);
+	--bg-elev-2: var(--paper-inset);
+	--text: var(--ink);
+	--text-dim: var(--ink-2);
 }
 
 /* Shadow overrides only — light-dark() cannot wrap comma-separated values. */
@@ -321,112 +344,12 @@ h3 {
 }
 
 /* ============================================================================
-   daisyUI component polish — keep the framework's shapes, add brand voice
+   Components are owned by daisyUI now. Buttons + badges use daisyUI's theme
+   classes (with `badge-soft` for tinted chips); cards use the daisyUI `card`
+   class plus Tailwind surface utilities in markup
+   (`bg-base-100 border border-base-300 shadow-md p-5`). Per-panel scoped styles
+   still override these (Tailwind utilities sit in a low-priority layer).
    ============================================================================ */
-
-/* Buttons: daisyUI owns the shape/depth; we set the display face + soft lift */
-.btn {
-	font-family: var(--display);
-	font-weight: 600;
-	letter-spacing: 0;
-	text-transform: none;
-	border-radius: var(--r-ctrl);
-	transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
-	text-box-trim: trim-both;
-	text-box-edge: cap alphabetic;
-}
-.btn:hover {
-	transform: translateY(-1px);
-}
-.btn:active {
-	transform: translateY(0);
-}
-.btn-primary {
-	box-shadow: var(--stamp-live);
-}
-.btn-primary:hover {
-	box-shadow: var(--shadow-lg);
-}
-.btn-secondary {
-	box-shadow: var(--stamp-ghost);
-}
-.btn-neutral {
-	box-shadow: var(--shadow-md);
-}
-.btn-error {
-	box-shadow: 0 2px 6px rgba(192, 57, 43, 0.16), 0 14px 32px -12px rgba(192, 57, 43, 0.3);
-}
-.btn-ghost {
-	box-shadow: none;
-}
-.btn-ghost:hover {
-	transform: none;
-	background: var(--paper-inset);
-}
-.btn:disabled,
-.btn-disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-	transform: none !important;
-	box-shadow: none !important;
-}
-
-/* Badges: soft pill tags. daisyUI's `badge-primary` paints a solid primary
-   fill with same-hued content; recoloring only text/border there yields an
-   unreadable violet-on-violet chip on pages without their own scoped `.badge`
-   background. Reset the surface to a faint paper tint and keep the spot ink. */
-.badge {
-	font-family: var(--ui);
-	font-weight: 600;
-	font-size: 0.72rem;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	border-radius: var(--r-pill);
-	border-width: 1px;
-	background: var(--paper-raised);
-	border-color: var(--hairline);
-	color: var(--ink-2);
-	text-box-trim: trim-both;
-	text-box-edge: cap alphabetic;
-}
-.badge-primary {
-	background: color-mix(in srgb, var(--live) 12%, var(--paper-raised));
-	border-color: color-mix(in srgb, var(--live) 40%, var(--paper-raised));
-	color: var(--live);
-}
-.badge-secondary {
-	background: color-mix(in srgb, var(--ghost) 12%, var(--paper-raised));
-	border-color: color-mix(in srgb, var(--ghost) 40%, var(--paper-raised));
-	color: var(--ghost);
-}
-.badge-accent {
-	background: color-mix(in srgb, var(--ahead) 12%, var(--paper-raised));
-	border-color: color-mix(in srgb, var(--ahead) 40%, var(--paper-raised));
-	color: color-mix(in srgb, var(--ahead) 72%, var(--ink));
-}
-.badge-warning {
-	background: color-mix(in srgb, var(--behind) 14%, var(--paper-raised));
-	border-color: color-mix(in srgb, var(--behind) 45%, var(--paper-raised));
-	color: color-mix(in srgb, var(--behind) 45%, var(--ink));
-}
-/* Solid stamp variant — guaranteed-readable filled chip when wanted. */
-.badge-live {
-	background: var(--live);
-	border-color: var(--live);
-	color: #F7FAFB;
-}
-
-/* Cards: rounded, soft elevation, hairline edge. */
-.card {
-	background: var(--paper-raised);
-	border-radius: var(--r-card);
-	border: var(--bd);
-	box-shadow: var(--shadow-md);
-	padding: 1.25rem 1.4rem;
-}
-.card-bordered {
-	border-color: var(--hairline);
-}
 
 /* ============================================================================
    Interaction & accessibility — keyboard focus, selection, form controls

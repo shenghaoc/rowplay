@@ -268,7 +268,7 @@
 		<p class="muted lead">{t('compare.lead')}</p>
 	</div>
 
-	<div class="card picker">
+	<div class="card bg-base-100 border border-base-300 shadow-md p-5 picker">
 		<div class="pickrow">
 			<label>
 				<span class="lbl">{t('compare.workoutA')}</span>
@@ -302,9 +302,9 @@
 	{#if detailA && detailB}
 		<div class="summaries">
 			{#each [{ d: detailA, side: 'a' }, { d: detailB, side: 'b' }] as { d, side }}
-				<div class="card summary">
+				<div class="card bg-base-100 border border-base-300 shadow-md p-5 summary">
 					<div class="sumhead">
-						<span class="badge" class:a={side === 'a'} class:b={side === 'b'}>
+						<span class="side-tag" class:a={side === 'a'} class:b={side === 'b'}>
 							{side === 'a' ? t('compare.workoutA') : t('compare.workoutB')}
 						</span>
 						<span class="h1icon" style:color={MACHINE_COLOR[d.sport]}
@@ -322,12 +322,12 @@
 		</div>
 
 		{#if detailA.sport !== detailB.sport}
-			<div class="sportwarn card">{t('compare.crossSport')}</div>
+			<div class="sportwarn card bg-base-100 border border-base-300 shadow-md p-5">{t('compare.crossSport')}</div>
 		{/if}
 
 		{#if verdict}
 			<div
-				class="verdict card"
+				class="verdict card bg-base-100 border border-base-300 shadow-md p-5"
 				class:good={verdict.winner === 'a'}
 				class:bad={verdict.winner === 'b'}
 			>
@@ -350,7 +350,7 @@
 				{t('compare.alignedNote', { distance: fmtDistance(overlay.alignedMetres) })}
 			</p>
 			<div class="charts">
-				<div class="card">
+				<div class="card bg-base-100 border border-base-300 shadow-md p-5">
 					<div class="ctitle muted">{t('replay.cPace')} · {t('compare.vsDistance')}</div>
 					<UPlotChart
 						data={paceData!}
@@ -359,7 +359,7 @@
 						caption={`${t('replay.cPace')} · ${t('compare.vsDistance')} · ${labelA} / ${labelB}`}
 					/>
 				</div>
-				<div class="card">
+				<div class="card bg-base-100 border border-base-300 shadow-md p-5">
 					<div class="ctitle muted">{t('replay.cPower')} · {t('compare.vsDistance')}</div>
 					<UPlotChart
 						data={powerData!}
@@ -369,7 +369,7 @@
 					/>
 				</div>
 				{#if hasHr}
-					<div class="card">
+					<div class="card bg-base-100 border border-base-300 shadow-md p-5">
 						<div class="ctitle muted">{t('replay.cHeart')} · {t('compare.vsDistance')}</div>
 						<UPlotChart
 							data={hrData!}
@@ -381,11 +381,11 @@
 				{/if}
 			</div>
 		{:else}
-			<p class="muted card empty">{t('compare.noStrokeData')}</p>
+			<p class="muted card bg-base-100 border border-base-300 shadow-md p-5 empty">{t('compare.noStrokeData')}</p>
 		{/if}
 
 		{#if statRows.length}
-			<div class="card tablecard">
+			<div class="card bg-base-100 border border-base-300 shadow-md p-5 tablecard">
 				<h2 class="sectitle">{t('compare.deltaTable')}</h2>
 				<p class="muted hint">{t('compare.deltaHint')}</p>
 				<div class="tablewrap">
@@ -416,7 +416,7 @@
 		{/if}
 
 		{#if intervalRows?.length}
-			<div class="card tablecard">
+			<div class="card bg-base-100 border border-base-300 shadow-md p-5 tablecard">
 				<h2 class="sectitle">{t('compare.intervalTitle')}</h2>
 				<p class="muted hint">{t('compare.intervalHint')}</p>
 				<div class="tablewrap">
@@ -533,7 +533,7 @@
 		gap: 0.5rem;
 		flex-wrap: wrap;
 	}
-	.badge {
+	.side-tag {
 		font-size: 0.7rem;
 		font-weight: 800;
 		text-transform: uppercase;
@@ -541,11 +541,11 @@
 		border-radius: var(--r-ctrl);
 		border: var(--bd);
 	}
-	.badge.a {
+	.side-tag.a {
 		background: color-mix(in srgb, var(--live) 12%, transparent);
 		color: var(--live);
 	}
-	.badge.b {
+	.side-tag.b {
 		background: color-mix(in srgb, var(--ghost) 12%, transparent);
 		color: var(--ghost);
 	}

@@ -135,11 +135,11 @@
 		</div>
 	</div>
 
-	<div class="card course" bind:this={courseWrap}>
+	<div class="card bg-base-100 border border-base-300 shadow-md p-5 course" bind:this={courseWrap}>
 		<canvas bind:this={canvasEl}></canvas>
 	</div>
 
-	<div class="card controls">
+	<div class="card bg-base-100 border border-base-300 shadow-md p-5 controls">
 		<button class="btn btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
@@ -164,7 +164,7 @@
 		</div>
 	</div>
 
-	<div class="gauges card">
+	<div class="gauges card bg-base-100 border border-base-300 shadow-md p-5">
 		<MetricGauge
 			label={t('replay.gPace')}
 			unit="/500m"

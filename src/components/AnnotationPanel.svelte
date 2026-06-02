@@ -111,7 +111,7 @@
 	}
 </script>
 
-<div class="anno-panel card">
+<div class="anno-panel card bg-base-100 border border-base-300 shadow-md p-5">
 	<div class="anno-head">
 		<h3 class="anno-title"><MessageSquareText size={16} /> {t('annotations.title')}</h3>
 		{#if !readOnly}

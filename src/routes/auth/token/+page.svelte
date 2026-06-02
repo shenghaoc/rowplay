@@ -19,19 +19,22 @@
 	</p>
 
 	<form method="POST" use:enhance>
-		<label for="token">{t('token.apiToken')}</label>
-		<input
-			id="token"
-			name="token"
-			type="password"
-			autocomplete="off"
-			placeholder={t('token.placeholder')}
-			required
-		/>
-		{#if form?.error}
-			<p class="err" role="alert">{form.error}</p>
-		{/if}
-		<button class="btn btn-primary" type="submit">{t('token.connect')}</button>
+		<fieldset class="fieldset">
+			<label class="fieldset-legend" for="token">{t('token.apiToken')}</label>
+			<input
+				id="token"
+				name="token"
+				type="password"
+				class="input input-bordered w-full"
+				autocomplete="off"
+				placeholder={t('token.placeholder')}
+				required
+			/>
+			{#if form?.error}
+				<div class="alert alert-error" role="alert">{form.error}</div>
+			{/if}
+			<button class="btn btn-primary" type="submit">{t('token.connect')}</button>
+		</fieldset>
 	</form>
 
 	{#if data.oauthEnabled}
@@ -46,27 +49,6 @@
 		padding: 0 1.5rem;
 		display: grid;
 		gap: 1rem;
-	}
-	form {
-		display: grid;
-		gap: 0.6rem;
-	}
-	label {
-		font-weight: 600;
-		font-size: 0.9rem;
-	}
-	input {
-		padding: 0.6rem 0.8rem;
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		background: var(--paper-inset);
-		color: var(--ink);
-		font: inherit;
-	}
-	.err {
-		color: var(--alarm);
-		font-size: 0.9rem;
-		margin: 0;
 	}
 	.small {
 		font-size: 0.85rem;

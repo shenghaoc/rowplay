@@ -106,11 +106,11 @@
 </script>
 
 {#if cp}
-	<div class="card cpcard">
+	<div class="card bg-base-100 border border-base-300 shadow-md p-5 cpcard">
 		<div class="cphead">
 			<div class="cptitle">
 				<Zap size={18} />
-				<span class="label">{t('dashboard.cpTitle')}</span>
+				<span class="field-label">{t('dashboard.cpTitle')}</span>
 			</div>
 		</div>
 		<p class="cpsub muted">{t('dashboard.cpSub')}</p>
@@ -127,7 +127,7 @@
 				</div>
 			{/if}
 			<div class="cs">
-				<div class="csv"><span class="badge badge-secondary">{cp.method === 'model' ? t('dashboard.formModelled') : t('dashboard.formEstimated')}</span></div>
+				<div class="csv"><span class="badge badge-soft badge-secondary">{cp.method === 'model' ? t('dashboard.formModelled') : t('dashboard.formEstimated')}</span></div>
 				<div class="csl muted">{t('dashboard.cpMethod')}</div>
 			</div>
 		</div>
@@ -135,7 +135,7 @@
 		<p class="cpexplain">{cpExplain(cp)}</p>
 
 		<div class="predict">
-			<div class="predhead label">{t('dashboard.cpPredictTitle')}</div>
+			<div class="predhead field-label">{t('dashboard.cpPredictTitle')}</div>
 			<p class="predsub muted">{t('dashboard.cpPredictSub')}</p>
 
 			<div class="predmodes" role="group" aria-label={t('dashboard.cpPredictTitle')}>
@@ -201,7 +201,7 @@
 
 		{#if comparison && comparison.durations.length > 0}
 			<div class="curve">
-				<div class="label muted">{t('dashboard.cpChartTitle')}</div>
+				<div class="field-label muted">{t('dashboard.cpChartTitle')}</div>
 				<p class="curvehint muted">{t('dashboard.cpChartHint')}</p>
 				<UPlotChart
 					data={curveData}
@@ -236,7 +236,7 @@
 		gap: 0.5rem;
 		color: var(--power);
 	}
-	.cptitle .label {
+	.cptitle .field-label {
 		color: var(--text);
 		font-weight: 700;
 		font-size: 0.95rem;
@@ -253,7 +253,7 @@
 	}
 	.cs {
 		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
+		border: 1px solid var(--hairline);
 		border-radius: 10px;
 		padding: 0.55rem 0.7rem;
 	}
@@ -282,7 +282,7 @@
 		margin-bottom: 1rem;
 	}
 	.predict {
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--hairline);
 		padding-top: 0.9rem;
 		margin-bottom: 0.9rem;
 	}
@@ -349,7 +349,7 @@
 		margin-top: 0.5rem;
 		padding: 0.65rem 0.8rem;
 		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
+		border: 1px solid var(--hairline);
 		border-radius: 10px;
 	}
 	.predval {

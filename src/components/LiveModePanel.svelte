@@ -1,7 +1,8 @@
 <script lang="ts">
 	import Radio from '@lucide/svelte/icons/radio';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
-	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import ChipButton from '$components/ChipButton.svelte';
+	import ChipGroup from '$components/ChipGroup.svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { LIVE_INTERVALS, type LiveIntervalSec, type LiveMode } from '$lib/liveMode.svelte';
 
@@ -17,15 +18,13 @@
 		return sec < 60 ? t('liveMode.intervalSec', { n: sec }) : t('liveMode.intervalMin', { n: sec / 60 });
 	}
 
-	// Formats a wall-clock timestamp (ms epoch) to HH:MM:SS — distinct from
-	// $lib/format's fmtTime, which formats elapsed workout seconds.
 	function fmtWallTime(ts: number | null): string {
 		if (ts == null) return '—';
 		return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 	}
 </script>
 
-<div class="card live-panel">
+<div class="card bg-base-100 border border-base-300 shadow-md live-panel">
 	<div class="live-head">
 		<div class="live-title">
 			<span class="icon" class:spin={live.polling}><Radio size={16} /></span>
@@ -34,45 +33,40 @@
 				<span class="warn" title={t('liveMode.warning', { count: live.failures })}><AlertTriangle size={14} /></span>
 			{/if}
 		</div>
-		<label class="toggle">
+		<label class="label cursor-pointer gap-2">
+			<span>{t('liveMode.enabled')}</span>
 			<input
 				type="checkbox"
+				class="toggle toggle-primary"
 				checked={live.enabled}
 				onchange={(e) => live.setEnabled(e.currentTarget.checked)}
 			/>
-			<span>{t('liveMode.enabled')}</span>
 		</label>
 	</div>
 
 	{#if live.enabled}
 		<p class="muted hint">{t('liveMode.enabledHint')}</p>
-		<div class="interval-row">
-			<span class="muted label">{t('liveMode.interval')}</span>
-			<div class="chips" role="group" aria-label={t('liveMode.interval')}>
-				{#each LIVE_INTERVALS as sec}
-					<button
-						type="button"
-						class="chip"
-						class:on={live.intervalSec === sec}
-						aria-pressed={live.intervalSec === sec}
-						onclick={() => live.setInterval(sec)}
-					>{intervalLabel(sec)}</button>
-				{/each}
-			</div>
-		</div>
-		<label class="toggle sound">
+		<ChipGroup label={t('liveMode.interval')} ariaLabel={t('liveMode.interval')}>
+			{#each LIVE_INTERVALS as sec}
+				<ChipButton active={live.intervalSec === sec} onclick={() => live.setInterval(sec)}>
+					{intervalLabel(sec)}
+				</ChipButton>
+			{/each}
+		</ChipGroup>
+		<label class="label cursor-pointer gap-2 sound">
+			<span>{t('liveMode.sound')}</span>
 			<input
 				type="checkbox"
+				class="toggle toggle-primary"
 				checked={live.soundEnabled}
 				onchange={(e) => live.setSound(e.currentTarget.checked)}
 			/>
-			<span>{t('liveMode.sound')}</span>
 		</label>
 		<p class="muted hint">{t('liveMode.soundHint')}</p>
 		<div class="poll-status" role="status" aria-live="polite">
 			{#if live.polling}
 				<div class="status-row polling">
-					<LoaderCircle size={12} class="spin" aria-hidden="true" />
+					<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>
 					<span>{t('liveMode.polling')}</span>
 				</div>
 			{:else}
@@ -112,10 +106,6 @@
 		font-weight: 700;
 		font-size: 0.9rem;
 	}
-	.live-title :global(.spin) {
-		animation: spin 1.2s linear infinite;
-		color: var(--live);
-	}
 	.live-title .icon {
 		display: inline-flex;
 	}
@@ -127,46 +117,9 @@
 		color: var(--warn);
 		display: inline-flex;
 	}
-	.toggle {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		font-size: 0.85rem;
-		cursor: pointer;
-	}
 	.hint {
 		font-size: 0.78rem;
 		margin: 0.35rem 0 0.5rem;
-	}
-	.interval-row {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-		margin: 0.5rem 0;
-	}
-	.label {
-		font-size: 0.78rem;
-	}
-	.chips {
-		display: flex;
-		gap: 0.35rem;
-		flex-wrap: wrap;
-	}
-	.chip {
-		background: var(--paper-raised);
-		border: var(--bd-heavy);
-		color: var(--ink-2);
-		border-radius: var(--r-ctrl);
-		padding: 0.25rem 0.6rem;
-		font-size: 0.78rem;
-		font-weight: 600;
-		cursor: pointer;
-	}
-	.chip.on {
-		background: var(--ink);
-		color: var(--paper-raised);
-		border-color: var(--ink);
 	}
 	.sound {
 		margin-top: 0.35rem;
@@ -203,10 +156,6 @@
 		gap: 0.4rem;
 		color: var(--live);
 		font-weight: 600;
-	}
-	.status-row.polling :global(.spin) {
-		animation: spin 1s linear infinite;
-		flex-shrink: 0;
 	}
 	@keyframes spin {
 		to {

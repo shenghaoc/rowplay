@@ -49,11 +49,11 @@
 	}
 </script>
 
-<div class="calcard card">
+<div class="calcard card bg-base-100 border border-base-300 shadow-md p-5">
 	<div class="calhead">
 		<div class="callabel">
 			<span class="calicon"><CalendarDays size={15} /></span>
-			<span class="muted label">{i18n.t('dashboard.calTitle')}</span>
+			<span class="muted field-label">{i18n.t('dashboard.calTitle')}</span>
 		</div>
 		<div class="calmetrics">
 			<button class="mchip" class:on={metric === 'distance'} onclick={() => (metric = 'distance')}>
@@ -153,7 +153,7 @@
 	}
 	.mchip {
 		background: var(--bg-elev);
-		border: 1px solid var(--border);
+		border: 1px solid var(--hairline);
 		color: var(--text-dim);
 		border-radius: 999px;
 		padding: 0.3rem 0.75rem;

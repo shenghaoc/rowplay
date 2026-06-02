@@ -11,6 +11,7 @@
 
 - **SvelteKit** (Svelte 5, runes mode) — the app framework for both SSR and client-side routing
 - **Tailwind CSS v4** via `@tailwindcss/vite` — utility-first styling
+- **daisyUI 5** (`daisyui` devDependency) — component classes via the Tailwind CSS v4 CSS plugin (no `tailwind.config.js`). Official install: [SvelteKit](https://daisyui.com/docs/install/sveltekit/), [general](https://daisyui.com/docs/install/). Agent skill: [`.kiro/skills/daisyui/SKILL.md`](../skills/daisyui/SKILL.md)
 - **uPlot** — lightweight charting for telemetry (pace, stroke-rate, power, heart-rate)
 - **@lucide/svelte** — icon library
 - **@tanstack/svelte-virtual** — virtualized lists for the workout list
@@ -18,6 +19,39 @@
 - **temporal-polyfill** — Temporal API polyfill when `globalThis.Temporal` is missing (WebKit, Workers SSR); skipped on Node 26+ / Chromium when native
 
 > **Stack audit (June 2026):** See `.kiro/specs/platform-modernization-audit/` for the full dependency, HTML/CSS/JS, and PR #223 modernization review. `bits-ui`, `clsx`, and `tailwind-merge` are listed in `package.json` but unused in `src/` — remove or wire up per audit `tasks.md`.
+
+## daisyUI (Tailwind CSS v4 plugin)
+
+rowplay follows the official **SvelteKit + Tailwind v4** install path. Do not add `tailwind.config.js` or `plugins: [require('daisyui')]` — that is the old Tailwind 3 setup.
+
+### Baseline (matches upstream docs)
+
+| Piece | Location |
+| ----- | -------- |
+| Packages | `tailwindcss`, `@tailwindcss/vite`, `daisyui` in `package.json` |
+| Vite | `tailwindcss()` then `sveltekit()` in `vite.config.ts` |
+| Plugin | `@import 'tailwindcss';` and `@plugin "daisyui";` in `src/app.css` |
+| Global CSS | `import '../app.css'` in `src/routes/+layout.svelte` |
+
+### rowplay extensions (intentional)
+
+Configured in `src/app.css`:
+
+- **`themes: rowplay --default, dark`** plus `@plugin "daisyui/theme"` blocks for Jet Set Blue palettes.
+- **Brand polish** — global rules on `.btn`, `.badge`, `.card` in `app.css` (fonts, shadows, soft badges).
+- **Custom tokens** — `--paper`, `--ink`, `--live`, etc. alongside daisyUI semantic colors (`primary`, `base-100`, …).
+
+### Markup conventions
+
+- Use **prefixed** daisyUI component + modifier classes: `btn btn-primary`, `input input-bordered`, `stat-title`, `toggle toggle-primary`.
+- Use **rowplay-specific layout hooks** only where daisyUI has no equivalent: `dash-stats` (not `stats`), replay canvas, charts, sport metric colors (`--pace`, `--hr`).
+- Avoid the daisyUI **`stats` container** on the dashboard summary grid — it forces `inline-grid` columns. Use a custom `dash-stats` CSS grid with `stat` cells and `stat-title` / `stat-value` parts instead.
+- Do not put `toggle` on a `<label>`; put `toggle` on the `<input type="checkbox">`. Use `label` on the label wrapper when following daisyUI’s toggle pattern.
+
+### Tooling and tests
+
+- - `src/lib/daisyui-collision.ts` + `daisyui-collision-guard.test.ts` — CI fails if markup uses the daisyUI **`stats` container** as a custom layout hook (`btn`, `card`, `badge`, …).
+- `src/lib/mobile-stats-spacing.test.ts` — dashboard stat grid spacing regression tests (uses `stat-*` parts).
 
 ## I18n & Theming
 

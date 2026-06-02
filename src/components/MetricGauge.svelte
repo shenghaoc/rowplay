@@ -49,7 +49,7 @@
 	</svg>
 	<div class="readout">
 		<div class="value mono" style:color>{display}</div>
-		<div class="label muted">{label}{unit ? ` · ${unit}` : ''}</div>
+		<div class="field-label muted">{label}{unit ? ` · ${unit}` : ''}</div>
 	</div>
 </div>
 
@@ -74,7 +74,7 @@
 		font-weight: 800;
 		line-height: 1;
 	}
-	.label {
+	.field-label {
 		font-size: 0.64rem;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;

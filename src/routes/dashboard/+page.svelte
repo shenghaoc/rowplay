@@ -543,7 +543,7 @@
 
 	<!-- Latest session: pace front and centre -->
 	{#if latest}
-		<a class="card latest" href="/replay/{latest.id}">
+		<a class="card bg-base-100 border border-base-300 shadow-md p-5 latest" href="/replay/{latest.id}">
 			<div class="herolead">
 				<div class="herotop muted">
 					<span class="hicon" style:color={MACHINE_COLOR[latest.sport]}
@@ -588,26 +588,34 @@
 					</div>
 				{/if}
 			</div>
-			<div class="herocta badge badge-primary"><Play size={12} /> {t('common.replay')}</div>
+			<div class="herocta badge badge-soft badge-primary"><Play size={12} /> {t('common.replay')}</div>
 		</a>
 	{/if}
 
 	<div class="dash-stats">
-		<div class="card dash-stat">
-			<div class="muted label">{t('dashboard.sessions')}</div>
-			<div class="value mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
+			<div class="stat p-0">
+				<div class="stat-title">{t('dashboard.sessions')}</div>
+				<div class="stat-value mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
+			</div>
 		</div>
-		<div class="card dash-stat">
-			<div class="muted label">{t('dashboard.totalDistance')}</div>
-			<div class="value mono">{fmtDistance(totalMeters)}</div>
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
+			<div class="stat p-0">
+				<div class="stat-title">{t('dashboard.totalDistance')}</div>
+				<div class="stat-value mono">{fmtDistance(totalMeters)}</div>
+			</div>
 		</div>
-		<div class="card dash-stat">
-			<div class="muted label">{t('dashboard.totalTime')}</div>
-			<div class="value mono">{fmtTime(totalTime)}</div>
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
+			<div class="stat p-0">
+				<div class="stat-title">{t('dashboard.totalTime')}</div>
+				<div class="stat-value mono">{fmtTime(totalTime)}</div>
+			</div>
 		</div>
-		<div class="card dash-stat">
-			<div class="muted label">{t('dashboard.avgPace')}</div>
-			<div class="value mono">{fmtPace(avgPace)}</div>
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
+			<div class="stat p-0">
+				<div class="stat-title">{t('dashboard.avgPace')}</div>
+				<div class="stat-value mono">{fmtPace(avgPace)}</div>
+			</div>
 		</div>
 	</div>
 
@@ -626,12 +634,12 @@
 	<CriticalPowerPanel workouts={workouts} />
 
 	{#if load}
-		<div class="card formcard">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 formcard">
 			<div class="formhead">
 				<div class="formtitle">
 					<Activity size={18} />
 					<span class="label">{t('dashboard.formTitle')}</span>
-					<span class="badge badge-primary">{t('dashboard.formPremium')}</span>
+					<span class="badge badge-soft badge-primary">{t('dashboard.formPremium')}</span>
 				</div>
 				<span class="badge {formBandClass[load.band]}">{bandLabel[load.band]}</span>
 			</div>
@@ -692,7 +700,7 @@
 
 	<!-- Personal bests -->
 	{#if pbs.length}
-		<div class="card pbcard">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 pbcard">
 			<div class="muted label">{t('dashboard.pbTitle')}</div>
 			<div class="pbgrid">
 				{#each pbs as pb}
@@ -708,7 +716,7 @@
 
 	<!-- Per-sport breakdown -->
 	{#if bySport.length > 1}
-		<div class="card breakdown">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 breakdown">
 			<div class="muted label">{t('dashboard.bySport')}</div>
 			<div class="tablescroll">
 			<table class="mono">
@@ -734,7 +742,7 @@
 
 	<!-- Trend -->
 	{#if filtered.length > 1}
-		<div class="card chartcard">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 chartcard">
 			<div class="trendhead">
 				<div class="label">
 					{t('dashboard.trendTitle')}
@@ -796,7 +804,7 @@
 		onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
 	/>
 	{#if compareAnchor != null}
-		<p class="compare-hint card muted">
+		<p class="compare-hint card bg-base-100 border border-base-300 shadow-md p-5 muted">
 			{t('workoutList.comparePick')}
 			<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
 		</p>
@@ -957,11 +965,11 @@
 		margin-bottom: 1rem;
 		width: 100%;
 	}
-	.dash-stat .label {
+	.dash-stat .stat-title {
 		font-size: 0.8rem;
 		line-height: 1.3;
 	}
-	.dash-stat .value {
+	.dash-stat .stat-value {
 		font-size: 1.6rem;
 		font-weight: 700;
 		margin-top: 0.25rem;
@@ -1010,12 +1018,16 @@
 		font-size: 0.82rem;
 		margin: 0.4rem 0 0.9rem;
 	}
-	.badge {
+	/* Scoped form-band badges. `.badge.good`/`.badge.bad`/`.badge.accent`/`.badge.info`
+	   are rowplay status modifiers (NOT daisyUI variants like `badge-soft`); they
+	   re-skin daisyUI's `.badge` base within this component via Svelte scoping. The
+	   `:not()` keeps real daisyUI badges (e.g. `badge-soft badge-primary`) untouched. */
+	.badge:not(.badge-soft):not(.badge-primary) {
 		font-size: 0.78rem;
 		font-weight: 700;
 		padding: 0.25rem 0.7rem;
 		border-radius: 999px;
-		border: 1px solid var(--border);
+		border: 1px solid var(--hairline);
 		background: var(--bg-elev-2);
 		color: var(--text);
 	}
@@ -1064,7 +1076,7 @@
 	}
 	.fs {
 		background: var(--bg-elev-2);
-		border: 1px solid var(--border);
+		border: 1px solid var(--hairline);
 		border-radius: 10px;
 		padding: 0.6rem 0.75rem;
 	}
@@ -1094,7 +1106,7 @@
 		border-radius: 8px;
 		margin-bottom: 0.9rem;
 		background: var(--bg-elev-2);
-		border-left: 3px solid var(--border);
+		border-left: 3px solid var(--hairline);
 	}
 	.formread.good {
 		border-left-color: var(--accent-2);
@@ -1254,7 +1266,7 @@
 		.dash-stat {
 			padding: 1rem 1.1rem;
 		}
-		.dash-stat .label {
+		.dash-stat .stat-title {
 			min-height: 2.6em;
 		}
 		.latest {
@@ -1289,11 +1301,11 @@
 		.dash-stat {
 			padding: 0.9rem 1rem;
 		}
-		.dash-stat .label {
+		.dash-stat .stat-title {
 			font-size: 0.72rem;
 			min-height: 2.6em;
 		}
-		.dash-stat .value {
+		.dash-stat .stat-value {
 			font-size: 1.25rem;
 		}
 		.fsv {

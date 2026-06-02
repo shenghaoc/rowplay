@@ -5,6 +5,8 @@
 	import Trophy from '@lucide/svelte/icons/trophy';
 	import Play from '@lucide/svelte/icons/play';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import ChipButton from '$components/ChipButton.svelte';
+	import ChipGroup from '$components/ChipGroup.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
@@ -100,7 +102,7 @@
 		<p class="lead muted">{t('leaderboard.lead')}</p>
 	</div>
 
-	<div class="card selector">
+	<div class="card bg-base-100 border border-base-300 shadow-md p-5 selector">
 		<div class="selrow">
 			<span class="lbl">{t('leaderboard.sport')}</span>
 			<div class="seg">
@@ -134,7 +136,7 @@
 	</div>
 
 	{#if entries.length}
-		<div class="card boardcard">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 boardcard">
 			<div class="boardhead">
 				<SportIcon sport={selectedSport} size={18} />
 				<span class="boardname">{SPORT_LABEL[selectedSport]} · {fmtDistance(selectedDistance)}</span>
@@ -198,7 +200,7 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="card empty">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-5 empty">
 			<p>{t('leaderboard.empty')}</p>
 		</div>
 	{/if}
