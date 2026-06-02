@@ -2,7 +2,8 @@
 	import { onMount, untrack } from 'svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
-	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
+	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '$lib/replay/engine';
+	import { splitIndexAt } from '$lib/replay/inspector';
 	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import { fmtDistance, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '$lib/format';
@@ -12,6 +13,8 @@
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
 	import AnnotationPanel from '$components/AnnotationPanel.svelte';
+	import InspectorPanel from '$components/InspectorPanel.svelte';
+	import Binary from '@lucide/svelte/icons/binary';
 	import type { Annotation } from '$lib/types';
 
 	let { data } = $props();
@@ -26,6 +29,12 @@
 	const strokes = $derived(detail.strokes);
 
 	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
+	const sampleIdx = $derived(sampleIndexAt(strokes, frame.t));
+	const rawStroke = $derived(sampleIdx >= 0 ? strokes[sampleIdx] : null);
+	const inspectorSplitIdx = $derived(
+		rawStroke && detail.splits.length ? splitIndexAt(detail.splits, rawStroke.d) : null
+	);
+	let inspectorOpen = $state(false);
 	let playing = $state(false);
 	let speed = $state(1);
 	let engine = $state<ReplayEngine | null>(null);
@@ -140,6 +149,34 @@
 	</div>
 
 	<div class="card bg-base-100 border border-base-300 shadow-md p-5 controls">
+	<div class="card course" bind:this={courseWrap}>
+		<button
+			type="button"
+			class="inspector-toggle"
+			class:on={inspectorOpen}
+			aria-pressed={inspectorOpen}
+			aria-label={inspectorOpen ? t('inspector.toggleOn') : t('inspector.toggle')}
+			onclick={() => (inspectorOpen = !inspectorOpen)}
+		>
+			<Binary size={14} aria-hidden="true" />
+			{t('inspector.toggle')}
+		</button>
+		<canvas bind:this={canvasEl}></canvas>
+	</div>
+
+	{#if inspectorOpen}
+		<div class="card inspector-card">
+			<InspectorPanel
+				{detail}
+				{rawStroke}
+				progress={frame.progress}
+				splitIndex={inspectorSplitIdx}
+				isPublic={true}
+			/>
+		</div>
+	{/if}
+
+	<div class="card controls">
 		<button class="btn btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
@@ -242,6 +279,32 @@
 	}
 	.course {
 		padding: 0.75rem;
+		margin-bottom: 0.75rem;
+		position: relative;
+	}
+	.inspector-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		margin-bottom: 0.5rem;
+		background: var(--paper-raised);
+		border: var(--bd);
+		color: var(--ink);
+		border-radius: var(--r-ctrl);
+		padding: 0.28rem 0.55rem;
+		font-size: 0.78rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: var(--display);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+	.inspector-toggle.on {
+		background: var(--live);
+		color: var(--paper-raised);
+		border-color: var(--live);
+	}
+	.inspector-card {
 		margin-bottom: 0.75rem;
 	}
 	.course canvas {

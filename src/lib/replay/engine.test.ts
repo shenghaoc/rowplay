@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sampleAt } from './engine';
+import { sampleAt, sampleIndexAt } from './engine';
 import type { Stroke } from '$lib/types';
 import { ladderStrokes } from '../../../tests/unit/fixtures';
 import { mockWorkoutDetail } from '../mockData';
@@ -62,6 +62,31 @@ describe('sampleAt', () => {
 		const f = sampleAt(s, mid.t);
 		expect(f.d).toBeCloseTo(mid.d, 0);
 		expect(f.pace).toBeCloseTo(mid.pace, 0);
+	});
+
+	describe('sampleIndexAt', () => {
+		it('returns -1 for empty strokes', () => {
+			expect(sampleIndexAt([], 5)).toBe(-1);
+		});
+
+		it('clamps before first sample', () => {
+			expect(sampleIndexAt(strokes, -1)).toBe(0);
+		});
+
+		it('clamps after last sample', () => {
+			expect(sampleIndexAt(strokes, 100)).toBe(strokes.length - 1);
+		});
+
+		it('returns exact index on stroke timestamps', () => {
+			expect(sampleIndexAt(strokes, strokes[1].t)).toBe(1);
+		});
+
+		it('holds the lower bracket between samples', () => {
+			expect(sampleIndexAt(strokes, 15)).toBe(1);
+			const f = sampleAt(strokes, 15);
+			expect(f.pace).not.toBe(strokes[1].pace);
+			expect(strokes[sampleIndexAt(strokes, 15)].pace).toBe(strokes[1].pace);
+		});
 	});
 
 	/** Both lanes must share the same engine clock `t` when sampled. */

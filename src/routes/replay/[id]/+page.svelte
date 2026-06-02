@@ -3,7 +3,8 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
-	import { ReplayEngine, sampleAt, type Frame } from '$lib/replay/engine';
+	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '$lib/replay/engine';
+	import { splitIndexAt } from '$lib/replay/inspector';
 	import { CourseRenderer, type RenderState, type ReplayRenderer } from '$lib/replay/renderer';
 	import {
 		loadRendererPref,
@@ -50,6 +51,7 @@
 	import ImageDown from '@lucide/svelte/icons/image-down';
 	import Trophy from '@lucide/svelte/icons/trophy';
 	import Heart from '@lucide/svelte/icons/heart';
+	import Binary from '@lucide/svelte/icons/binary';
 	import { downloadRaceCardPng } from '$lib/replay/raceCard';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
@@ -57,6 +59,7 @@
 	import SportIcon from '$components/SportIcon.svelte';
 	import { page } from '$app/state';
 	import AnnotationPanel from '$components/AnnotationPanel.svelte';
+	import InspectorPanel from '$components/InspectorPanel.svelte';
 	import type { Annotation } from '$lib/types';
 
 	let { data } = $props();
@@ -95,6 +98,11 @@
 	const strokes = $derived(detail.strokes);
 
 	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
+	const sampleIdx = $derived(sampleIndexAt(strokes, frame.t));
+	const rawStroke = $derived(sampleIdx >= 0 ? strokes[sampleIdx] : null);
+	const inspectorSplitIdx = $derived(
+		rawStroke && detail.splits.length ? splitIndexAt(detail.splits, rawStroke.d) : null
+	);
 	let playing = $state(false);
 	// Replays default to 8× — real-time is too slow to watch (a 2k is 8 min).
 	const DEFAULT_SPEED = 8;
@@ -141,6 +149,7 @@
 	let renderer: ReplayRenderer | null = null;
 	let rendererKind = $state<RendererKind>('2d');
 	let quality = $state<RenderQuality>('medium');
+	let inspectorOpen = $state(false);
 	let loading3d = $state(false);
 	let webglOk = $state(false);
 	let Ctor3D: Renderer3DCtor | null = null;
@@ -1135,6 +1144,8 @@
 
 	<!-- Course -->
 	<div class="card bg-base-100 border border-base-300 shadow-md p-5 course" bind:this={courseWrap}>
+	<div class="card course" bind:this={courseWrap}>
+		<div class="course-tools">
 		<div
 			class="view-toggle"
 			role="group"
@@ -1166,6 +1177,18 @@
 				{/if}
 			</button>
 		</div>
+		<button
+			type="button"
+			class="vbtn inspector-btn"
+			class:on={inspectorOpen}
+			aria-pressed={inspectorOpen}
+			aria-label={inspectorOpen ? t('inspector.toggleOn') : t('inspector.toggle')}
+			onclick={() => (inspectorOpen = !inspectorOpen)}
+		>
+			<Binary size={14} aria-hidden="true" />
+			{t('inspector.toggle')}
+		</button>
+		</div>
 		{#if rendererKind === '3d'}
 			<label class="quality-select">
 				<span class="quality-label">{t('replay.quality')}</span>
@@ -1183,6 +1206,18 @@
 		<canvas bind:this={canvas2dEl} class:hidden={activeCanvas !== '2d'}></canvas>
 		<div class="canvas3d-host" bind:this={canvas3dHost} class:hidden={activeCanvas !== '3d'}></div>
 	</div>
+
+	{#if inspectorOpen}
+		<div class="card inspector-card">
+			<InspectorPanel
+				{detail}
+				{rawStroke}
+				progress={frame.progress}
+				splitIndex={inspectorSplitIdx}
+				isPublic={false}
+			/>
+		</div>
+	{/if}
 
 	<!-- Transport controls -->
 	<div class="card bg-base-100 border border-base-300 shadow-md p-5 controls">
@@ -1807,10 +1842,24 @@
 		padding: 0.75rem;
 		margin-bottom: 0.75rem;
 	}
+	.course-tools {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
+		margin-bottom: 0.5rem;
+	}
 	.view-toggle {
 		display: flex;
 		gap: 0.35rem;
-		margin-bottom: 0.5rem;
+	}
+	.inspector-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	.inspector-card {
+		margin-bottom: 0.75rem;
 	}
 	.quality-select {
 		display: flex;
