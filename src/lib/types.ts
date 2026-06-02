@@ -106,6 +106,14 @@ export interface Stroke {
 	hr?: number;
 	/** Watts, derived from pace when not reported. */
 	watts: number;
+	/**
+	 * As-logged per-interval time (s) / distance (m), before the cumulative
+	 * offset is applied. Present only on interval workouts after the first rep,
+	 * where the API resets `t`/`d` to 0 each interval — so the raw inspector can
+	 * reconstruct the true wire value rather than the offset cumulative one.
+	 */
+	rawT?: number;
+	rawD?: number;
 }
 
 export type SplitIntervalType = 'time' | 'distance' | 'calorie' | 'wattminute';

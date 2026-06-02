@@ -16,9 +16,14 @@ export interface LoggedStroke {
 /** Inverse of `concept2.ts > mapStrokes` for a single sample. */
 export function asLoggedStroke(s: Stroke, sport: Sport): LoggedStroke {
 	const paceMul = sport === 'bike' ? 2 : 1;
+	// For interval workouts the API resets t/d to 0 each rep; `mapStrokes` adds a
+	// cumulative offset for the timeline, so reconstruct from the retained
+	// per-interval value (rawT/rawD) when present to show the true wire value.
+	const baseT = s.rawT ?? s.t;
+	const baseD = s.rawD ?? s.d;
 	return {
-		t: Math.round(s.t * 10),
-		d: Math.round(s.d * 10),
+		t: Math.round(baseT * 10),
+		d: Math.round(baseD * 10),
 		p: Math.round(s.pace * 10 * paceMul),
 		spm: s.spm,
 		...(s.hr != null ? { hr: Math.round(s.hr) } : {})
@@ -27,7 +32,8 @@ export function asLoggedStroke(s: Stroke, sport: Sport): LoggedStroke {
 
 /** Metres per stroke at this instant; undefined when pace or rate is invalid. */
 export function distancePerStroke(s: Stroke): number | undefined {
-	if (s.pace <= 0 || s.spm <= 0) return undefined;
+	// `!(x > 0)` rather than `x <= 0` so NaN (NaN <= 0 is false) is also rejected.
+	if (!(s.pace > 0) || !(s.spm > 0)) return undefined;
 	const dps = dpsFromPaceSpm(s.pace, s.spm);
 	return dps > 0 ? dps : undefined;
 }

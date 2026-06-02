@@ -21,20 +21,18 @@ test.describe('raw field inspector', () => {
 
 		const rawP = page.getByTestId('inspector-raw-p');
 		await expect(rawP).toBeVisible();
-		const initial = (await rawP.textContent())?.trim();
+		const initial = ((await rawP.textContent()) ?? '').trim();
 		expect(initial).toBeTruthy();
 
 		const scrub = page.locator('input.scrub');
 		const t0 = Number(await scrub.inputValue());
+		// Within a sample span the as-logged value holds (sample-and-hold).
 		await seekScrub(page, t0 + 0.5);
-		await page.waitForTimeout(150);
-		expect((await rawP.textContent())?.trim()).toBe(initial);
+		await expect(rawP).toHaveText(initial);
 
+		// Across a sample boundary it changes.
 		await seekScrub(page, t0 + 20);
-		await page.waitForTimeout(150);
-		const after = (await rawP.textContent())?.trim();
-		expect(after).toBeTruthy();
-		expect(after).not.toBe(initial);
+		await expect(rawP).not.toHaveText(initial);
 	});
 
 	test('toggle is keyboard-operable', async ({ page }) => {

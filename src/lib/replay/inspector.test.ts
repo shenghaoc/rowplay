@@ -37,6 +37,19 @@ describe('asLoggedStroke', () => {
 	it('round-trips skierg strokes', () => {
 		roundTrip(raw, 'skierg');
 	});
+
+	it('round-trips interval workouts where t/d reset each rep', () => {
+		// The API resets t/d to 0 each interval; mapStrokes makes them cumulative.
+		// asLoggedStroke must recover the original per-rep wire values, not the
+		// offset cumulative ones.
+		const intervalRaw: RawStroke[] = [
+			{ t: 0, d: 0, p: 1200, spm: 28 },
+			{ t: 105, d: 523, p: 1185, spm: 29 },
+			{ t: 0, d: 0, p: 1190, spm: 30 }, // rep 2 — counters reset
+			{ t: 110, d: 540, p: 1180, spm: 31 }
+		];
+		roundTrip(intervalRaw, 'rower');
+	});
 });
 
 describe('distancePerStroke', () => {

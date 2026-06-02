@@ -60,8 +60,16 @@ Reconstructs the Concept2 wire representation from the normalized `Stroke` by
 | `spm` | spm | identity |
 | `hr` bpm | hr | identity |
 
+**Interval reset:** for interval workouts the API resets `t`/`d` to 0 each rep,
+and `mapStrokes` adds a cumulative offset to keep the timeline monotonic — so the
+cumulative `Stroke.t`/`d` no longer equal the wire value. `mapStrokes` therefore
+retains the per-interval value on the stroke (`rawT`/`rawD`, populated only once
+an offset has been applied), and `asLoggedStroke` inverts from those when present
+(`s.rawT ?? s.t`). The cache `DETAIL_PAYLOAD_VERSION` is bumped accordingly.
+
 `watts` is derived (not logged per stroke) so it is shown as **normalized only**,
-labelled "derived". Round-trip tested against `mapStrokes` (Req 2.2).
+labelled "derived". Round-trip tested against `mapStrokes`, including an interval
+fixture that resets mid-piece (Req 2.2).
 
 ### `distancePerStroke` — `src/lib/replay/inspector.ts` (pure)
 
@@ -70,8 +78,9 @@ export function distancePerStroke(s: Stroke): number | undefined;
 ```
 
 `DPS = 30000 / (pace * spm)` metres/stroke (from speed `500/pace` m/s ÷
-`spm/60` strokes/s); `undefined` when `pace<=0` or `spm<=0`. This is the seed
-quantity the later **efficiency-drift** spec consumes (Req 2.4).
+`spm/60` strokes/s); `undefined` when pace or rate is non-positive **or NaN**
+(guarded with `!(x > 0)`). This is the seed quantity the later
+**efficiency-drift** spec consumes (Req 2.4).
 
 ## Page wiring — `src/routes/replay/[id]/+page.svelte`
 
@@ -83,8 +92,9 @@ quantity the later **efficiency-drift** spec consumes (Req 2.4).
 - `const rawStroke = $derived(sampleIdx >= 0 ? strokes[sampleIdx] : null);` —
   identity-stable between boundaries, so any `$derived`/child keyed off
   `rawStroke` (or `sampleIdx`) only recomputes when the sample changes (Req 3.2).
-- Pass `rawStroke`, `detail.sport`, the split index (reuse existing split lookup
-  by distance), and the static workout/metadata fields into `InspectorPanel`.
+- Pass `rawStroke`, `detail.sport`, the split index (computed by the new
+  `splitIndexAt(splits, frame.d)` — there is no pre-existing split lookup), and
+  the static workout/metadata fields into `InspectorPanel`.
 - Split-only workouts: the replay already synthesizes strokes for these; the
   inspector reads those synthesized samples and labels the section accordingly
   (Req 3.3).
