@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { mockWorkoutDetail } from '../../src/lib/mockData';
+import { buildSegmentMap } from '../../src/lib/replay/engine';
 
 /** Set the replay scrubber (WebKit rejects non-step-aligned range values). */
 function seekScrub(page: Page, seconds: number) {
@@ -10,6 +12,14 @@ function seekScrub(page: Page, seconds: number) {
 		input.value = String(clamped);
 		input.dispatchEvent(new Event('input', { bubbles: true }));
 	}, seconds);
+}
+
+/** Midpoint of the first inter-segment rest in demo fixture 1012. */
+function firstRestMidpoint(): number {
+	const detail = mockWorkoutDetail(1012);
+	if (!detail) throw new Error('demo 1012 missing');
+	const segMap = buildSegmentMap(detail.splits, detail.sport);
+	return (segMap[0].endT + segMap[1].startT) / 2;
 }
 
 test.describe('MultiErg replay (demo 1012)', () => {
@@ -30,17 +40,14 @@ test.describe('MultiErg replay (demo 1012)', () => {
 		const max = Number(await scrub.getAttribute('max'));
 
 		await seekScrub(page, max * 0.75);
-		await page.waitForTimeout(200);
 		await expect(paceLabel1000).toBeVisible();
 		await expect(rpmLabel).toBeVisible();
 
 		await seekScrub(page, max * 0.08);
-		await page.waitForTimeout(200);
 		await expect(paceLabel).toBeVisible();
 		await expect(spmLabel).toBeVisible();
 
-		await seekScrub(page, max * 0.28);
-		await page.waitForTimeout(200);
-		await expect(page.getByText(/Rest/i).first()).toBeVisible();
+		await seekScrub(page, firstRestMidpoint());
+		await expect(page.getByTestId('rest-transition')).toBeVisible();
 	});
 });

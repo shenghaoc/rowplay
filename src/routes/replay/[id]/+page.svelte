@@ -114,6 +114,7 @@
 	const activeSegIdx = $derived(activeSegmentIndexAt(segMap, frame.d));
 	const sportTheme = $derived(themeFor(activeSport));
 	let manualRest = $state<RestProgress | null>(null);
+	const inRest = $derived(manualRest != null || restProgressAt(segMap, frame.t) != null);
 	let restRafId = 0;
 	let restWallStart = 0;
 	let restSegIdx = -1;
@@ -1366,6 +1367,9 @@
 		</button>
 		<div class="clock mono">
 			{fmtTime(frame.t, true)} <span class="muted">/ {fmtTime(detail.time)}</span>
+			{#if detail.isMultiErg && inRest}
+				<span class="badge rest-badge" data-testid="rest-transition">{t('replay.restInterval')}</span>
+			{/if}
 		</div>
 		<input
 			class="scrub"
