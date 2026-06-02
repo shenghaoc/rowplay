@@ -62,6 +62,26 @@ function lerp(a: number, b: number, f: number): number {
 }
 
 /**
+ * Index of the most recent stroke at or before `t` (sample-and-hold).
+ * Mirrors `sampleAt`'s bracketing search but returns the lower index.
+ */
+export function sampleIndexAt(strokes: Stroke[], t: number): number {
+	const n = strokes.length;
+	if (n === 0) return -1;
+	if (t <= strokes[0].t) return 0;
+	if (t >= strokes[n - 1].t) return n - 1;
+
+	let lo = 0;
+	let hi = n - 1;
+	while (hi - lo > 1) {
+		const mid = (lo + hi) >> 1;
+		if (strokes[mid].t <= t) lo = mid;
+		else hi = mid;
+	}
+	return lo;
+}
+
+/**
  * requestAnimationFrame-driven playback clock. Reports the current frame back
  * to the consumer via `onFrame`; the consumer owns all rendering.
  */

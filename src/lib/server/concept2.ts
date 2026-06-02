@@ -358,7 +358,7 @@ export function mapResult(r: RawResult, metadata?: RawMetadata): Workout {
 	};
 }
 
-function mapStrokes(raw: RawStroke[], sport: Sport): Stroke[] {
+export function mapStrokes(raw: RawStroke[], sport: Sport): Stroke[] {
 	// Per the API: stroke `p` is pace-per-500m for rower/skierg but
 	// pace-per-1000m for the bike. Normalise everything to sec/500m so the
 	// rest of the app (display + watts) is unit-consistent.
@@ -384,6 +384,8 @@ function mapStrokes(raw: RawStroke[], sport: Sport): Stroke[] {
 		return {
 			t: rawT + tOffset,
 			d: rawD + dOffset,
+			rawT,
+			rawD,
 			pace,
 			spm: s.spm,
 			hr: s.hr ? s.hr : undefined,

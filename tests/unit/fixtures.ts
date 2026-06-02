@@ -89,6 +89,8 @@ export function normalizeRawStrokes(
 		return {
 			t: rawT + tOffset,
 			d: rawD + dOffset,
+			rawT,
+			rawD,
 			pace,
 			spm: s.spm,
 			hr: s.hr,

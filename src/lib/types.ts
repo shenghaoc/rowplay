@@ -106,6 +106,13 @@ export interface Stroke {
 	hr?: number;
 	/** Watts, derived from pace when not reported. */
 	watts: number;
+	/**
+	 * As-logged time (s) / distance (m) before interval cumulative offsets.
+	 * Set by `mapStrokes` on every API stroke so the inspector can show wire
+	 * values (which reset to 0 each interval) rather than the monotonic timeline.
+	 */
+	rawT?: number;
+	rawD?: number;
 }
 
 export type SplitIntervalType = 'time' | 'distance' | 'calorie' | 'wattminute';
