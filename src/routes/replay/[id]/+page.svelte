@@ -695,15 +695,18 @@
 	}
 
 	function formatTargetDelta(row: TargetVsActualRow): string {
+		const delta = Math.abs(row.delta);
+		if (row.delta === 0) return '0';
 		if (row.metric === 'pace') {
-			const sign = row.delta <= 0 ? '−' : '+';
-			return `${sign}${fmtPaceBare(Math.abs(row.delta), true)}`;
+			const sign = row.delta < 0 ? '−' : '+';
+			return `${sign}${fmtPaceBare(delta, true)}`;
 		}
 		if (row.metric === 'watts' || row.metric === 'calories' || row.metric === 'strokeRate') {
-			const sign = row.delta >= 0 ? '+' : '−';
-			return `${sign}${Math.abs(Math.round(row.delta))}`;
+			const sign = row.delta > 0 ? '+' : '−';
+			return `${sign}${Math.round(delta)}`;
 		}
-		return String(Math.round(row.delta));
+		const n = Math.round(delta);
+		return row.delta > 0 ? `+${n}` : `−${n}`;
 	}
 
 	function splitTypeLabel(type: string | undefined): string {

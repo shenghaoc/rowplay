@@ -192,6 +192,7 @@ export function estimateHrMax(strokes: Stroke[], maxHr?: number): number {
  * boundaries as `hrZones`. Zone 0 is below 60% of max; zone 5 is the top band.
  */
 export function hrZoneOf(hr: number, hrMax: number): number {
+	if (hrMax <= 0 || !hrMax || hr <= 0) return 0;
 	const bounds = HR_ZONE_FRACTIONS.map((f) => f * hrMax);
 	for (let b = 1; b < bounds.length; b++) {
 		if (hr >= bounds[b - 1] && hr < bounds[b]) return b - 1;
