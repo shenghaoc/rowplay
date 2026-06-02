@@ -23,7 +23,7 @@
 	);
 
 	async function runSync(full: boolean) {
-		if (data.demo || syncing) return;
+		if (data.demo || syncing || deleting) return;
 		syncing = true;
 		syncMode = full ? 'full' : 'incremental';
 		const toastId = toast.loading(t('sync.loading'));
@@ -55,7 +55,7 @@
 	}
 
 	async function deleteData() {
-		if (deleting) return;
+		if (deleting || syncing) return;
 		if (!confirm(t('settings.deleteConfirm'))) return;
 		deleting = true;
 		try {
@@ -133,7 +133,7 @@
 				<button
 					class="btn btn-primary"
 					type="button"
-					disabled={syncing}
+					disabled={syncing || deleting}
 					onclick={() => runSync(false)}
 				>
 					{#if syncMode === 'incremental'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
@@ -142,7 +142,7 @@
 				<button
 					class="btn btn-ghost"
 					type="button"
-					disabled={syncing}
+					disabled={syncing || deleting}
 					onclick={() => runSync(true)}
 				>
 					{#if syncMode === 'full'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
@@ -155,7 +155,7 @@
 	<article class="panel danger">
 		<h2><Trash2 size={18} /> {t('settings.deleteTitle')}</h2>
 		<p class="muted">{t('settings.deleteNote')}</p>
-		<button class="btn btn-error" type="button" disabled={deleting} onclick={deleteData}>
+		<button class="btn btn-error" type="button" disabled={deleting || syncing} onclick={deleteData}>
 			{#if deleting}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 			{deleting ? t('common.loading') : t('settings.deleteAction')}
 		</button>
