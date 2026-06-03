@@ -79,7 +79,6 @@ const ROOT_SET = new Set<string>(DAISY_ROOTS);
 /** rowplay layout hooks — never prefix or treat as daisyUI markup */
 export const ROWPLAY_LAYOUT_HOOKS = new Set([
 	'dash-stats',
-	'dash-stat',
 	'side-tag',
 	'iconbtn',
 	'drawer-nav',

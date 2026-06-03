@@ -261,7 +261,7 @@
 <svelte:head><title>{t('compare.title')} · rowplay</title></svelte:head>
 
 <div class="container">
-	<a href="/dashboard" class="back muted"><ArrowLeft size={14} /> {t('compare.back')}</a>
+	<a href="/dashboard" class="btn btn-ghost btn-sm"><ArrowLeft size={14} /> {t('compare.back')}</a>
 
 	<div class="head">
 		<h1><GitCompare size={26} /> {t('compare.title')}</h1>
@@ -272,7 +272,7 @@
 		<div class="pickrow">
 			<label>
 				<span class="lbl">{t('compare.workoutA')}</span>
-				<select bind:value={pickA}>
+				<select class="select select-bordered select-sm" bind:value={pickA}>
 					<option value="">{t('compare.choose')}</option>
 					{#each data.workouts as w (w.id)}
 						<option value={String(w.id)}>{workoutLabel(w)}</option>
@@ -281,7 +281,7 @@
 			</label>
 			<label>
 				<span class="lbl">{t('compare.workoutB')}</span>
-				<select bind:value={pickB}>
+				<select class="select select-bordered select-sm" bind:value={pickB}>
 					<option value="">{t('compare.choose')}</option>
 					{#each data.workouts as w (w.id)}
 						<option value={String(w.id)}>{workoutLabel(w)}</option>
@@ -501,16 +501,11 @@
 		letter-spacing: 0.04em;
 		color: var(--ink-2);
 	}
-	select {
+	.select {
 		width: 100%;
 		min-width: 0;
 		font-family: var(--mono);
 		font-size: 0.85rem;
-		padding: 0.45rem 0.5rem;
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		background: var(--paper-raised);
-		color: var(--ink);
 	}
 	.pickactions {
 		display: flex;
@@ -534,20 +529,22 @@
 		flex-wrap: wrap;
 	}
 	.side-tag {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.15rem 0.5rem;
+		border-radius: 0.25rem;
 		font-size: 0.7rem;
 		font-weight: 800;
 		text-transform: uppercase;
-		padding: 0.15rem 0.45rem;
-		border-radius: var(--r-ctrl);
-		border: var(--bd);
+		letter-spacing: 0.06em;
 	}
 	.side-tag.a {
-		background: color-mix(in srgb, var(--live) 12%, transparent);
-		color: var(--live);
+		background: var(--live);
+		color: var(--color-primary-content, #fff);
 	}
 	.side-tag.b {
-		background: color-mix(in srgb, var(--ghost) 12%, transparent);
-		color: var(--ghost);
+		background: var(--ghost);
+		color: var(--color-secondary-content, #fff);
 	}
 	.meta {
 		font-size: 0.82rem;
@@ -599,9 +596,11 @@
 		grid-column: 1 / -1;
 	}
 	.ctitle {
-		font-size: 0.78rem;
+		font-size: 0.72rem;
 		font-weight: 700;
 		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--ink-2);
 		margin-bottom: 0.35rem;
 		padding: 0.65rem 0.75rem 0;
 	}

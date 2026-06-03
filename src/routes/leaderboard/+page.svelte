@@ -5,8 +5,6 @@
 	import Trophy from '@lucide/svelte/icons/trophy';
 	import Play from '@lucide/svelte/icons/play';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
-	import ChipButton from '$components/ChipButton.svelte';
-	import ChipGroup from '$components/ChipGroup.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
@@ -98,20 +96,25 @@
 </svelte:head>
 
 <div class="container">
-	<div class="head">
-		<h1><Trophy size={26} /> {t('leaderboard.title')}</h1>
+	<div class="boardpage-head">
+		<h1>
+			<Trophy size={26} style="color: var(--behind)" />
+			{t('leaderboard.title')}
+		</h1>
 		<p class="lead muted">{t('leaderboard.lead')}</p>
 	</div>
 
 	<div class="card bg-base-100 border border-base-300 shadow-md p-5 selector">
 		<div class="selrow">
 			<span class="lbl">{t('leaderboard.sport')}</span>
-			<div class="seg">
+			<div class="flex flex-wrap gap-1">
 				{#each sports as s (s)}
 					<button
 						type="button"
-						class="segbtn"
-						class:on={s === selectedSport}
+						class="btn btn-sm"
+						class:btn-active={s === selectedSport}
+						class:btn-neutral={s === selectedSport}
+						class:btn-outline={s !== selectedSport}
 						onclick={() => selectSport(s)}
 					>
 						<SportIcon sport={s} size={15} /> {SPORT_LABEL[s]}
@@ -121,12 +124,14 @@
 		</div>
 		<div class="selrow">
 			<span class="lbl">{t('leaderboard.distance')}</span>
-			<div class="chips">
+			<div class="flex flex-wrap gap-1">
 				{#each distances as d (d)}
 					<button
 						type="button"
-						class="chip"
-						class:on={d === selectedDistance}
+						class="btn btn-xs"
+						class:btn-active={d === selectedDistance}
+						class:btn-neutral={d === selectedDistance}
+						class:btn-outline={d !== selectedDistance}
 						onclick={() => selectDistance(d)}
 					>
 						{fmtDistance(d)}
@@ -137,50 +142,58 @@
 	</div>
 
 	{#if entries.length}
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 boardcard">
+		<div class="card bg-base-100 border border-base-300 shadow-md p-0 boardcard">
 			<div class="boardhead">
 				<SportIcon sport={selectedSport} size={18} />
 				<span class="boardname">{SPORT_LABEL[selectedSport]} · {fmtDistance(selectedDistance)}</span>
 				<span class="count muted">{t('leaderboard.athletes', { n: entries.length })}</span>
 			</div>
-			<div class="tablewrap">
-				<table class="board">
+			<div class="overflow-x-auto">
+				<table class="table table-zebra table-sm mono">
 					<thead>
 						<tr>
-							<th class="rank">{t('leaderboard.rank')}</th>
+							<th class="rank-col">{t('leaderboard.rank')}</th>
 							<th>{t('leaderboard.athlete')}</th>
-							<th class="num">{t('leaderboard.time')}</th>
-							<th class="num">{t('leaderboard.pace')}</th>
-							<th class="num">{t('leaderboard.gap')}</th>
-							<th class="act">{t('leaderboard.actions')}</th>
+							<th class="text-right font-mono">{t('leaderboard.time')}</th>
+							<th class="text-right font-mono">{t('leaderboard.pace')}</th>
+							<th class="text-right font-mono">{t('leaderboard.gap')}</th>
+							<th class="text-right">{t('leaderboard.actions')}</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each entries as e (`${e.workoutId}:${e.displayName}`)}
 							{@const race = raceLink(e)}
 							<tr class:you={e.isYou}>
-								<td class="rank">{e.rank}</td>
-								<td class="name">
-									<span class="handle">{e.displayName}</span>
-									{#if e.isYou}<span class="youbadge">{t('leaderboard.you')}</span>{/if}
+								<td class="rank-col font-mono font-bold">{e.rank}</td>
+								<td>
+									<span class="name-cell">
+										<span class="handle">{e.displayName}</span>
+										{#if e.isYou}
+											<span class="badge badge-soft badge-primary badge-xs"
+												>{t('leaderboard.you')}</span
+											>
+										{/if}
+									</span>
 								</td>
-								<td class="num strong">{fmtTime(e.time)}</td>
-								<td class="num">{fmtPace(e.pace)}</td>
-								<td class="num gap">{gapLabel(e)}</td>
-								<td class="act">
+								<td class="text-right font-mono font-bold">{fmtTime(e.time)}</td>
+								<td class="text-right font-mono">{fmtPace(e.pace)}</td>
+								<td class="text-right font-mono gap-col">{gapLabel(e)}</td>
+								<td class="text-right whitespace-nowrap">
 									{#if e.shareToken}
-										<a class="rowbtn" href={`/r/${e.shareToken}`}>
-											<ExternalLink size={14} /> {t('leaderboard.open')}
+										<a class="btn btn-xs btn-ghost" href={`/r/${e.shareToken}`}>
+											<ExternalLink size={13} />
+											{t('leaderboard.open')}
 										</a>
 									{/if}
 									{#if race}
-										<a class="rowbtn race" href={race}>
-											<Play size={14} /> {t('leaderboard.race')}
+										<a class="btn btn-xs btn-primary ml-1" href={race}>
+											<Play size={13} />
+											{t('leaderboard.race')}
 										</a>
 									{/if}
 									{#if e.isYou && !data.demo}
 										<button
-											class="rowbtn"
+											class="btn btn-xs btn-ghost ml-1"
 											type="button"
 											disabled={withdrawingId === e.workoutId}
 											onclick={() => withdraw(e)}
@@ -208,12 +221,12 @@
 </div>
 
 <style>
-	.head {
+	.boardpage-head {
 		margin: 1rem 0 1.25rem;
 		padding-bottom: 0.75rem;
 		border-bottom: var(--bd-heavy);
 	}
-	.head h1 {
+	.boardpage-head h1 {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
@@ -226,7 +239,6 @@
 		max-width: 42rem;
 	}
 	.selector {
-		padding: 0.9rem 1.1rem;
 		margin-bottom: 1.1rem;
 		display: flex;
 		flex-direction: column;
@@ -246,41 +258,8 @@
 		color: var(--ink-2);
 		min-width: 5.5rem;
 	}
-	.seg {
-		display: flex;
-		gap: 0.35rem;
-		flex-wrap: wrap;
-	}
-	.segbtn,
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		background: var(--paper-inset);
-		border: var(--bd-heavy);
-		color: var(--ink-2);
-		border-radius: var(--r-ctrl);
-		padding: 0.32rem 0.75rem;
-		font-family: var(--display);
-		font-size: 0.8rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		cursor: pointer;
-	}
-	.chips {
-		display: flex;
-		gap: 0.35rem;
-		flex-wrap: wrap;
-	}
-	.segbtn.on,
-	.chip.on {
-		background: var(--ink);
-		color: var(--paper-raised);
-		border-color: var(--ink);
-	}
 	.boardcard {
-		padding: 0.5rem 0 0.75rem;
+		overflow: hidden;
 	}
 	.boardhead {
 		display: flex;
@@ -299,92 +278,28 @@
 		margin-left: auto;
 		font-size: 0.78rem;
 	}
-	.tablewrap {
-		overflow-x: auto;
-	}
-	table.board {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: 0.9rem;
-	}
-	table.board th {
-		text-align: left;
-		font-size: 0.7rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--ink-2);
-		padding: 0.55rem 0.85rem;
-		border-bottom: var(--bd);
-	}
-	table.board td {
-		padding: 0.55rem 0.85rem;
-		border-bottom: var(--bd);
-		vertical-align: middle;
-	}
-	th.num,
-	td.num {
-		text-align: right;
-		font-family: var(--mono);
-	}
-	td.strong {
-		font-weight: 700;
-	}
-	.rank {
+	.rank-col {
 		width: 3rem;
-		font-family: var(--mono);
-		font-weight: 700;
 	}
-	td.gap {
-		color: var(--ink-2);
-	}
-	tr.you {
-		background: var(--paper-inset);
-	}
-	.name {
+	.name-cell {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.4rem;
 	}
 	.handle {
 		font-weight: 600;
 	}
-	.youbadge {
-		font-size: 0.62rem;
-		font-weight: 800;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		background: var(--ink);
-		color: var(--paper-raised);
-		padding: 0.1rem 0.4rem;
-		border-radius: var(--r-ctrl);
+	.gap-col {
+		color: var(--ink-2);
 	}
-	td.act,
-	th.act {
-		text-align: right;
-		white-space: nowrap;
-	}
-	.rowbtn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.3rem;
-		font-size: 0.74rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		padding: 0.25rem 0.55rem;
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		color: var(--ink);
-		margin-left: 0.35rem;
-	}
-	.rowbtn.race {
-		background: var(--ink);
-		color: var(--paper-raised);
-		border-color: var(--ink);
+	/* Highlight the viewer's own row. Scoped + unlayered, so it beats daisyUI's
+	   layered `table-zebra` stripe (which sits in @layer with :where()). */
+	tr.you {
+		background: color-mix(in srgb, var(--live) 8%, var(--paper-raised));
 	}
 	.hint {
 		font-size: 0.78rem;
-		padding: 0.7rem 1rem 0.2rem;
+		padding: 0.7rem 1rem 0.5rem;
 	}
 	.empty {
 		padding: 2rem 1rem;
