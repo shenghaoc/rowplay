@@ -1,12 +1,13 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
+import type { D1Database } from '@cloudflare/workers-types';
 import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 import { mockAnnotations, mockWorkoutDetail, mockWorkouts } from '../mockData';
 import { Concept2Client } from './concept2';
 import { getConfig } from './config';
-import { readSession, TOKEN_COOKIE } from './session';
+import { readSession, TOKEN_COOKIE, type SessionData, type SessionUser } from './session';
 import { openToken } from './tokenCrypto';
-import { overlapDate } from '$lib/datetime';
+import { nowEpochMillis, overlapDate } from '$lib/datetime';
 import { detectNewPBs, distancePBs, type DistancePB } from '$lib/analytics';
 import {
 	filterAndSortWorkouts,
@@ -59,13 +60,28 @@ async function client(event: RequestEvent): Promise<Concept2Client | null> {
 	return new Concept2Client(getConfig(event), env.SESSIONS, event.locals.sessionId, session);
 }
 
+/** Per-request memo: a single dashboard load calls loadWorkouts directly *and*
+ *  via loadWorkoutList's cold fallback, which would otherwise race two live API
+ *  pages on first connect. Keyed by the request event, so it's scoped to one
+ *  request and garbage-collected with it. */
+const workoutsByEvent = new WeakMap<RequestEvent, Promise<Workout[]>>();
+
 /**
  * List workouts for display/analytics. In live mode this reads the user's FULL
  * history from D1 (synced separately) so PBs/trends span everything — not just
  * the most recent API page. If D1 is empty (never synced) it falls back to a
  * single live API page so the dashboard is never blank.
  */
-export async function loadWorkouts(event: RequestEvent): Promise<Workout[]> {
+export function loadWorkouts(event: RequestEvent): Promise<Workout[]> {
+	let cached = workoutsByEvent.get(event);
+	if (!cached) {
+		cached = loadWorkoutsFresh(event);
+		workoutsByEvent.set(event, cached);
+	}
+	return cached;
+}
+
+async function loadWorkoutsFresh(event: RequestEvent): Promise<Workout[]> {
 	if (event.locals.demo) return mockWorkouts();
 	const userId = event.locals.user?.id;
 	const db = event.platform?.env?.DB;
@@ -140,7 +156,19 @@ export async function syncWorkouts(event: RequestEvent, full = false): Promise<S
 	const userId = event.locals.user?.id;
 	if (!c) throw error(401, 'Not authenticated.');
 	if (!db || userId == null) throw error(500, 'Database (D1) is not configured.');
+	return runSync(db, userId, c, full);
+}
 
+/**
+ * Core sync loop, decoupled from `RequestEvent` so it can also run in a
+ * background task (`waitUntil`) right after connect — see `scheduleConnectSync`.
+ */
+async function runSync(
+	db: D1Database,
+	userId: number,
+	c: Concept2Client,
+	full: boolean
+): Promise<SyncResult> {
 	const state = await getSyncState(db, userId);
 	const from = full || !state?.lastDate ? undefined : (overlapDate(state.lastDate) ?? undefined);
 
@@ -171,6 +199,39 @@ export async function syncWorkouts(event: RequestEvent, full = false): Promise<S
 	const afterPbs = distancePBs(await getAllWorkouts(db, userId));
 	const newPbs = detectNewPBs(beforePbs, afterPbs);
 	return { added, total, newPbs, workouts: synced };
+}
+
+const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+
+/**
+ * Right after a BYOT connect, kick a full history backfill into the D1 cache in
+ * the background so the *first* dashboard load is served locally instead of a
+ * live API page. Runs via the Workers `waitUntil` (survives past the redirect);
+ * the client is built directly from the just-validated token — no KV round-trip,
+ * sidestepping read-after-write lag, and never touching the post-response event.
+ * Best-effort, and a no-op without the Workers runtime (e.g. `vite dev`) — the
+ * per-load lazy-fill still covers that case. `full` is forced so a reconnect
+ * after a disconnect-purge re-pages everything rather than trusting stale state.
+ */
+export function scheduleConnectSync(
+	event: RequestEvent,
+	sid: string,
+	user: SessionUser,
+	token: string
+): void {
+	const env = event.platform?.env;
+	const ctx = event.platform?.context;
+	const db = env?.DB;
+	if (!db || !env?.SESSIONS || typeof ctx?.waitUntil !== 'function') return;
+	// In-memory session carrying the real token (KV still holds none); for a
+	// personal session the client uses tokens.accessToken directly with no refresh.
+	const session: SessionData = {
+		user,
+		personal: true,
+		tokens: { accessToken: token, refreshToken: '', expiresAt: nowEpochMillis() + YEAR_MS, scope: '' }
+	};
+	const c = new Concept2Client(getConfig(event), env.SESSIONS, sid, session);
+	ctx.waitUntil(runSync(db, user.id, c, true).catch(() => {}));
 }
 
 export async function loadAnnualGoal(event: RequestEvent, year: number): Promise<AnnualGoal> {
