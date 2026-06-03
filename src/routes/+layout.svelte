@@ -138,6 +138,7 @@
 		closedby="any"
 		onclose={onNavClose}
 		onclick={(e) => {
+			if (!mobileNav?.open) return;
 			if (e.target === mobileNav) {
 				const rect = mobileNav.getBoundingClientRect();
 				if (
