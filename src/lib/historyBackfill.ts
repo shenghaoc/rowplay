@@ -46,7 +46,7 @@ export async function runHistoryBackfillLoop(opts?: {
 			// (oldest date reached, count synced), not just a jump at the end.
 			await invalidateAll();
 			if (chunk.done) return;
-			await sleep(PACE_MS + nextBackoffMs(0), opts?.signal);
+			await sleep(PACE_MS, opts?.signal);
 		} catch (e) {
 			if (opts?.signal?.aborted) return;
 			const code = (e as { status?: number }).status;

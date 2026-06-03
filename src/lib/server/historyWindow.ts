@@ -39,8 +39,14 @@ export function planSync(
 	if (mode === 'backfill') {
 		if (!state || state.backfillDone) return { kind: 'done' };
 		if (!state.oldestDate) return { kind: 'done' };
-		const to = overlapDate(state.oldestDate);
-		if (!to) return { kind: 'done' };
+		// The backfill `to` must always bridge to the window start so there is no
+		// gap between the initial window fetch and the oldest known workout date.
+		const overlap = overlapDate(state.oldestDate);
+		if (!overlap) return { kind: 'done' };
+		const windowFrom = historyWindowStart(now);
+		// Pick the earlier date — the backfill should reach *at least* the window
+		// start, and overlapDate already subtracts one day for safety.
+		const to = overlap < windowFrom ? overlap : windowFrom;
 		return { kind: 'backfill', to };
 	}
 

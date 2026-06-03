@@ -91,11 +91,35 @@ describe('planSync', () => {
 		expect(plan).toEqual({ kind: 'backfill', to: '2025-06-01' });
 	});
 
+	it('backfill bridges to window start when oldestDate is far from window', () => {
+		// Gap scenario: window starts at 2025-06-02 but oldest known workout is 2025-09-01.
+		// The backfill to must reach at least the window start.
+		const gapped = { ...state, oldestDate: '2025-09-01' };
+		const plan = planSync(gapped, now, 'backfill');
+		expect(plan).toEqual({ kind: 'backfill', to: '2025-06-02' });
+	});
+
 	it('done → done for backfill mode', () => {
 		expect(planSync({ ...state, backfillDone: true }, now, 'backfill')).toEqual({ kind: 'done' });
 	});
 
 	it('full → unbounded incremental', () => {
 		expect(planSync(state, now, 'full')).toEqual({ kind: 'incremental', from: undefined });
+	});
+
+	it('already-synced user → incremental, not window (regression)', () => {
+		// Bug: perpetual backfill loop for already-synced users.
+		// An already-synced user with state must get 'incremental', not 'window'.
+		const plan = planSync(state, now, 'forward');
+		expect(plan.kind).toBe('incremental');
+		expect(plan).not.toEqual({ kind: 'window', from: expect.any(String) });
+	});
+
+	it('no lastDate but oldestDate exists → still window (fresh connect corner case)', () => {
+		const odd = { ...state, lastDate: null };
+		expect(planSync(odd, now, 'forward')).toEqual({
+			kind: 'window',
+			from: '2025-06-02'
+		});
 	});
 });
