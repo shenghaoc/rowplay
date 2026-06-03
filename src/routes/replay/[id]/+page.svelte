@@ -117,8 +117,11 @@
 	const inRest = $derived(manualRest != null || restProgressAt(segMap, frame.t) != null);
 	let restRafId = 0;
 	let restWallStart = 0;
+	// Highest inter-segment boundary whose rest interstitial has already played on the
+	// current forward pass. A monotonic high-water mark: each boundary fires once, and a
+	// fast (high-speed) frame that overshoots a boundary still triggers it.
 	let restSegIdx = -1;
-	let suppressRestAnim = false;
+	const REST_EPS = 0.02; // s — tolerance for "reached" a boundary on the work-time clock
 	const sampleIdx = $derived(sampleIndexAt(strokes, frame.t));
 	const rawStroke = $derived(sampleIdx >= 0 ? strokes[sampleIdx] : null);
 	const inspectorSplitIdx = $derived(
@@ -201,66 +204,56 @@
 		restRafId = 0;
 		manualRest = null;
 		restWallStart = 0;
-		restSegIdx = -1;
+	}
+
+	/**
+	 * Highest boundary index already passed at work-time `T` — used to re-seat the
+	 * high-water mark after a scrub. Scrubbing to just *before* a boundary leaves it
+	 * pending (REST_EPS slack) so playing through it still shows the rest interstitial.
+	 */
+	function boundaryConsumedIdx(T: number): number {
+		let idx = -1;
+		for (let k = 0; k < segMap.length - 1; k++) {
+			if (segMap[k].endT <= T - REST_EPS) idx = k;
+			else break;
+		}
+		return idx;
 	}
 
 	function maybeStartRestPlayback(f: Frame, playingNow: boolean) {
 		if (!playingNow || !detail.isMultiErg || manualRest || prefersReducedMotion()) return;
-		// Once the playhead is no longer sitting on a rest boundary, clear a prior
-		// scrub-suppression and the stale segment index so future rests can fire.
-		// Without this, a scrub (which sets suppressRestAnim) would disable the rest
-		// interstitial permanently for the rest of the session.
-		let nearBoundary = false;
-		for (let k = 0; k < segMap.length - 1; k++) {
+		// Fire the rest interstitial when the playhead reaches or passes the next
+		// unconsumed boundary. There is deliberately no upper bound on the window: on the
+		// work-time clock a boundary is a single instant (next.startT === endT), so a high
+		// playback speed can step past it in one frame — an unbounded `>=` still catches
+		// it, while `restSegIdx` keeps each boundary firing only once per forward pass.
+		for (let k = restSegIdx + 1; k < segMap.length - 1; k++) {
+			if (f.t < segMap[k].endT - REST_EPS) break; // not reached; later boundaries neither (ordered)
 			const next = segMap[k + 1];
-			if (next.restBefore <= 0) continue;
-			const endT = segMap[k].endT;
-			if (f.t >= endT - 0.02 && f.t <= endT + 0.02) {
-				nearBoundary = true;
-				break;
-			}
-		}
-		if (!nearBoundary) {
-			suppressRestAnim = false;
-			restSegIdx = -1;
-		}
-		if (suppressRestAnim) return;
-
-		for (let k = 0; k < segMap.length - 1; k++) {
-			const next = segMap[k + 1];
-			if (next.restBefore <= 0) continue;
-			const endT = segMap[k].endT;
-			// Bounded window [endT-0.02, endT): on the work-time clock next.startT
-			// equals endT, so this scopes each trigger to its own boundary (an
-			// unbounded f.t >= endT would re-fire earlier boundaries on a 3-segment
-			// piece). restSegIdx dedups repeated frames within the same window.
-			if (f.t >= endT - 0.02 && f.t < next.startT) {
-				if (restSegIdx === k) return;
-				restSegIdx = k;
-				engine?.pause();
-				restWallStart = performance.now();
-				const tick = () => {
-					const elapsed = (performance.now() - restWallStart) / 1000;
-					const phase = Math.min(1, elapsed / next.restBefore);
-					manualRest = {
-						phase,
-						from: segMap[k].machine,
-						to: next.machine,
-						remaining: Math.max(0, next.restBefore - elapsed)
-					};
-					safeRender(buildState(frame), false, uiTheme.value);
-					if (phase >= 1) {
-						cancelRestAnim();
-						suppressRestAnim = false;
-						engine?.seek(next.startT);
-						engine?.play();
-						return;
-					}
-					restRafId = requestAnimationFrame(tick);
+			restSegIdx = k; // consume this boundary
+			if (next.restBefore <= 0) continue; // no rest here — keep scanning this frame
+			engine?.pause();
+			restWallStart = performance.now();
+			const tick = () => {
+				const elapsed = (performance.now() - restWallStart) / 1000;
+				const phase = Math.min(1, elapsed / next.restBefore);
+				manualRest = {
+					phase,
+					from: segMap[k].machine,
+					to: next.machine,
+					remaining: Math.max(0, next.restBefore - elapsed)
 				};
+				safeRender(buildState(frame), false, uiTheme.value);
+				if (phase >= 1) {
+					cancelRestAnim(); // clears manualRest; restSegIdx stays consumed
+					engine?.seek(next.startT);
+					engine?.play();
+					return;
+				}
 				restRafId = requestAnimationFrame(tick);
-				return;
-			}
+			};
+			restRafId = requestAnimationFrame(tick);
+			return;
 		}
 	}
 
@@ -445,7 +438,7 @@
 			renderer?.destroy();
 			renderer = null;
 			cancelRestAnim();
-			suppressRestAnim = false;
+			restSegIdx = -1;
 			engine = new ReplayEngine(s, (f, p) => {
 				frame = f;
 				playing = p;
@@ -568,8 +561,12 @@
 
 	function onScrub(e: Event) {
 		cancelRestAnim();
-		suppressRestAnim = true;
-		engine?.seek(Number((e.target as HTMLInputElement).value));
+		const target = Number((e.target as HTMLInputElement).value);
+		// Re-seat the high-water mark so scrubbing back re-arms earlier boundaries and
+		// scrubbing forward marks skipped ones consumed (rest plays live, never on the
+		// scrubber itself).
+		restSegIdx = boundaryConsumedIdx(target);
+		engine?.seek(target);
 	}
 
 	function setGhost(strokes: Stroke[] | null, label: string, rival: GhostRival | null = null) {

@@ -14,15 +14,20 @@ function seekScrub(page: Page, seconds: number) {
 	}, seconds);
 }
 
-/** Midpoint of the first inter-segment rest in demo fixture 1012. */
-function firstRestMidpoint(): number {
+/** Work-time of the first segment boundary preceded by a rest (demo fixture 1012). */
+function firstBoundaryT(): number {
 	const detail = mockWorkoutDetail(1012);
 	if (!detail) throw new Error('demo 1012 missing');
 	const segMap = buildSegmentMap(detail.splits, detail.sport);
-	return (segMap[0].endT + segMap[1].startT) / 2;
+	for (let k = 0; k < segMap.length - 1; k++) {
+		if (segMap[k + 1].restBefore > 0) return segMap[k].endT;
+	}
+	throw new Error('demo 1012 has no inter-segment rest');
 }
 
 test.describe('MultiErg replay (demo 1012)', () => {
+	// The rest interstitial honours prefers-reduced-motion; Playwright's default
+	// emulation is 'no-preference' (motion on), so the overlay plays in CI.
 	test('switches pace units, shows rest overlay, hides publish', async ({ page }) => {
 		await page.goto('/replay/1012');
 		await expect(page.getByText(/MultiErg/i).first()).toBeVisible();
@@ -47,7 +52,11 @@ test.describe('MultiErg replay (demo 1012)', () => {
 		await expect(paceLabel).toBeVisible();
 		await expect(spmLabel).toBeVisible();
 
-		await seekScrub(page, firstRestMidpoint());
-		await expect(page.getByTestId('rest-transition')).toBeVisible();
+		// Rest is a live-play interstitial, not a scrubber position (spec: a "visual-only
+		// interstitial, not clock extension"). Scrub to just before the first boundary
+		// with a rest, play, and the overlay appears as the playhead crosses it.
+		await seekScrub(page, firstBoundaryT() - 0.5);
+		await page.locator('button.play').click();
+		await expect(page.getByTestId('rest-transition')).toBeVisible({ timeout: 10_000 });
 	});
 });
