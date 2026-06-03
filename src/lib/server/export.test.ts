@@ -121,7 +121,7 @@ describe('workoutDetailToTcx', () => {
 		isInterval: false
 	};
 
-	it('produces valid XML with the .FIT opening tag', () => {
+	it('produces valid TCX XML', () => {
 		const tcx = workoutDetailToTcx(detail);
 		expect(tcx).toContain('<?xml version="1.0"');
 		expect(tcx).toContain('TrainingCenterDatabase');

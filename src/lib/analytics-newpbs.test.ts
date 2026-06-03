@@ -63,8 +63,8 @@ describe('detectNewPBs', () => {
 	});
 
 	it('detects a brand-new distance that did not exist before', () => {
-		const before: typeof after = [];
 		const after = [makeDistancePb('rower', 5000, 1200)];
+		const before: typeof after = [];
 		const newPbs = detectNewPBs(before, after);
 		expect(newPbs).toHaveLength(1);
 		expect(newPbs[0].distance).toBe(5000);

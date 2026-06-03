@@ -11,7 +11,7 @@ vi.mock('./share', () => ({
 	createWorkoutShare: vi.fn().mockResolvedValue({ token: 'abc123tok', path: '/r/abc123tok', url: 'https://example.com/r/abc123tok', created: true })
 }));
 
-import { loadBoards, publishWorkout } from './leaderboard';
+import { loadBoards, publishWorkout, withdrawWorkout } from './leaderboard';
 import { loadWorkouts } from './data';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,6 +63,28 @@ describe('publishWorkout — demo mode', () => {
 	it('throws 422 for a non-standard distance workout', async () => {
 		// id 1004 is a BikeErg 8000m — not a standard board distance
 		await expect(publishWorkout(demoEvent(), 1004)).rejects.toMatchObject({ status: 422 });
+	});
+});
+
+describe('publishWorkout — authenticated user', () => {
+	it('returns a PublishResult for a standard-distance workout', async () => {
+		const mockDetail = {
+			id: 1001, date: '2026-01-01 06:00:00', sport: 'rower' as const,
+			distance: 2000, time: 480, pace: 120, hasStrokeData: false,
+			strokes: [], splits: [], isInterval: false
+		};
+		(loadWorkouts as ReturnType<typeof vi.fn>).mockResolvedValue([mockDetail]);
+		const event = authedEvent({ id: 7, username: 'athlete' });
+		const result = await publishWorkout(event, 1001);
+		expect(result.board.distance).toBe(2000);
+		expect(typeof result.rank).toBe('number');
+	});
+});
+
+describe('withdrawWorkout — auth guard', () => {
+	it('throws 401 when not authenticated and not demo', async () => {
+		const event = { locals: { demo: false, user: null }, platform: { env: { DB: {} } } };
+		await expect(withdrawWorkout(event as never, 1001)).rejects.toMatchObject({ status: 401 });
 	});
 });
 

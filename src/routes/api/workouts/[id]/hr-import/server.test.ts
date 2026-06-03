@@ -8,6 +8,7 @@ vi.mock('$lib/hrImport', () => ({
 	validateHrSamples: vi.fn()
 }));
 
+import { saveHrImport } from '$lib/server/hrImport';
 import { DELETE, POST } from './+server';
 
 function fakePostEvent(id: string, body: unknown) {
@@ -47,9 +48,7 @@ describe('POST /api/workouts/[id]/hr-import', () => {
 	});
 
 	it('clamps offset to ±600s', async () => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { saveHrImport } = await import('$lib/server/hrImport');
-		(saveHrImport as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 1001 });
+		vi.mocked(saveHrImport).mockResolvedValue({ id: 1001 } as never);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		await POST(fakePostEvent('1001', { samples: validSamples, offset: 9999 }) as any);
 		expect(saveHrImport).toHaveBeenCalledWith(expect.anything(), 1001, expect.anything(), 600);

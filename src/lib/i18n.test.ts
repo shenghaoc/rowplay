@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+afterEach(() => vi.unstubAllGlobals());
 import { interpolate, isLanguage, SUPPORTED_LANGUAGES, getStoredLanguage, persistLanguage } from './i18n';
 
 describe('isLanguage', () => {
@@ -70,7 +72,6 @@ describe('getStoredLanguage', () => {
 			getItem: (_key: string) => 'zh'
 		});
 		expect(getStoredLanguage()).toBe('zh');
-		vi.unstubAllGlobals();
 	});
 
 	it('returns "en" when localStorage has an unknown code', () => {
@@ -79,7 +80,6 @@ describe('getStoredLanguage', () => {
 			getItem: (_key: string) => 'klingon'
 		});
 		expect(getStoredLanguage()).toBe('en');
-		vi.unstubAllGlobals();
 	});
 
 	it('returns "en" when localStorage throws', () => {
@@ -88,7 +88,6 @@ describe('getStoredLanguage', () => {
 			getItem: () => { throw new Error('blocked'); }
 		});
 		expect(getStoredLanguage()).toBe('en');
-		vi.unstubAllGlobals();
 	});
 
 	it('returns "en" when localStorage returns null', () => {
@@ -97,7 +96,6 @@ describe('getStoredLanguage', () => {
 			getItem: () => null
 		});
 		expect(getStoredLanguage()).toBe('en');
-		vi.unstubAllGlobals();
 	});
 });
 
@@ -124,7 +122,6 @@ describe('persistLanguage', () => {
 
 		expect(stored['lang']).toBe('de');
 		expect(cookiesSet.some((c) => c.startsWith('lang=de'))).toBe(true);
-		vi.unstubAllGlobals();
 	});
 
 	it('does not throw when localStorage is blocked', () => {
@@ -137,6 +134,5 @@ describe('persistLanguage', () => {
 		});
 		vi.stubGlobal('location', { protocol: 'https:' });
 		expect(() => persistLanguage('fr')).not.toThrow();
-		vi.unstubAllGlobals();
 	});
 });

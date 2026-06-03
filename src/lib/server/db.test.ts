@@ -1,28 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import {
 	DETAIL_PAYLOAD_VERSION,
+	clearShareToken,
 	countWorkouts,
 	deleteAnnotation,
 	deleteLeaderboardEntry,
 	deleteUserData,
 	getAllWorkouts,
 	getAnnotations,
+	getAnnotationsByShareToken,
 	getCachedDetail,
 	getCachedDetailByShareToken,
 	getLeaderboardEntries,
+	getPersonalBests,
 	getShareToken,
+	getSportAggregates,
 	getUserAnnualGoal,
 	isWorkoutPublished,
+	getPbWorkoutIds,
 	putAnnotation,
 	putCachedDetail,
 	purgePrivateCache,
+	queryWorkouts,
 	setShareToken,
 	setSyncState,
 	getSyncState,
 	setUserAnnualGoal,
-	upsertLeaderboardEntry
+	upsertLeaderboardEntry,
+	upsertWorkouts
 } from './db';
-import type { WorkoutDetail } from '../types';
+import type { Workout, WorkoutDetail } from '../types';
 
 // ---------------------------------------------------------------------------
 // Fake D1 — records SQL/args; optionally returns preset rows for all/first.
@@ -534,5 +541,169 @@ describe('getLeaderboardEntries', () => {
 			})
 		};
 		expect(await getLeaderboardEntries(db as never)).toEqual([]);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Additional coverage for previously untested exported functions
+// ---------------------------------------------------------------------------
+
+function makeWorkout(id: number): Workout {
+	return {
+		id,
+		date: '2026-01-01 06:00:00',
+		sport: 'rower',
+		distance: 2000,
+		time: 480,
+		pace: 120,
+		hasStrokeData: false
+	} as Workout;
+}
+
+describe('getPbWorkoutIds', () => {
+	it('returns an empty set when no PBs match', async () => {
+		const { db } = fakeDb();
+		const ids = await getPbWorkoutIds(db as never, 1);
+		expect(ids.size).toBe(0);
+	});
+
+	it('returns a set containing the PB workout id', async () => {
+		const db = {
+			prepare: () => ({
+				bind: function() { return this; },
+				run: async () => ({ meta: { changes: 1 }, results: [{ workout_id: 42 }] })
+			}),
+			batch: async () => [{ results: [{ workout_id: 42 }] }]
+		};
+		const ids = await getPbWorkoutIds(db as never, 1);
+		expect(ids.has(42)).toBe(true);
+	});
+
+	it('applies sport filter when provided', async () => {
+		const sqlsSeen: string[] = [];
+		const db = {
+			prepare: (sql: string) => {
+				sqlsSeen.push(sql);
+				return {
+					bind: function() { return this; },
+					run: async () => ({ meta: { changes: 1 }, results: [] })
+				};
+			},
+			batch: async () => []
+		};
+		await getPbWorkoutIds(db as never, 1, 'bike');
+		expect(sqlsSeen.some((s) => s.includes('sport = ?'))).toBe(true);
+	});
+});
+
+describe('upsertWorkouts', () => {
+	it('executes an INSERT for each workout', async () => {
+		const { db, executed } = fakeDb();
+		await upsertWorkouts(db as never, 7, [makeWorkout(1001), makeWorkout(1002)]);
+		expect(executed.length).toBe(2);
+		expect(executed[0].sql).toContain('INSERT INTO workouts');
+	});
+
+	it('processes 101 workouts across two batch calls', async () => {
+		const { db, executed } = fakeDb();
+		const workouts = Array.from({ length: 101 }, (_, i) => makeWorkout(1000 + i));
+		await upsertWorkouts(db as never, 7, workouts);
+		expect(executed.length).toBe(101);
+	});
+});
+
+describe('clearShareToken', () => {
+	it('executes an UPDATE to set share_token to NULL', async () => {
+		const { db, executed } = fakeDb();
+		await clearShareToken(db as never, 7, 1001);
+		expect(executed[0].sql).toContain('share_token = NULL');
+		expect(executed[0].args).toEqual([7, 1001]);
+	});
+});
+
+describe('queryWorkouts', () => {
+	it('returns mapped workout rows', async () => {
+		const row = {
+			workout_id: 1001, user_id: 7, date: '2026-01-01 06:00:00',
+			sport: 'rower', distance: 2000, time: 480, pace: 120,
+			stroke_rate: null, stroke_count: null, heart_rate: null,
+			hr_min: null, hr_max: null, calories: null, watt_minutes: null,
+			drag_factor: null, workout_type: null, comments: null, has_stroke: 0
+		};
+		const { db } = fakeDb({ allRows: [row] });
+		const results = await queryWorkouts(db as never, 7, { sort: 'date', dir: 'desc' });
+		expect(results).toHaveLength(1);
+		expect(results[0].id).toBe(1001);
+	});
+
+	it('applies sport filter when provided', async () => {
+		const { db, executed } = fakeDb({ allRows: [] });
+		await queryWorkouts(db as never, 7, { sort: 'date', dir: 'desc', sport: 'bike' });
+		expect(executed[0].sql).toContain('sport = ?');
+	});
+
+	it('returns empty array when pbsOnly is true but pbIds is empty', async () => {
+		const { db } = fakeDb({ allRows: [] });
+		const results = await queryWorkouts(db as never, 7, { sort: 'date', dir: 'desc', pbsOnly: true }, new Set());
+		expect(results).toHaveLength(0);
+	});
+
+	it('applies distance band filter', async () => {
+		const { db, executed } = fakeDb({ allRows: [] });
+		await queryWorkouts(db as never, 7, { sort: 'date', dir: 'desc', distanceBandKey: '2000m' });
+		expect(executed[0].sql).toContain('BETWEEN');
+	});
+});
+
+describe('getSportAggregates', () => {
+	it('returns empty array when no rows', async () => {
+		const { db } = fakeDb({ allRows: [] });
+		const rows = await getSportAggregates(db as never, 7);
+		expect(rows).toEqual([]);
+	});
+
+	it('returns aggregated rows', async () => {
+		const row = { sport: 'rower', sessions: 10, total_distance: 20000, total_time: 4800, avg_pace: 120, best_pace: 115, longest: 5000 };
+		const { db } = fakeDb({ allRows: [row] });
+		const rows = await getSportAggregates(db as never, 7);
+		expect(rows).toHaveLength(1);
+		expect(rows[0].sport).toBe('rower');
+	});
+});
+
+describe('getPersonalBests', () => {
+	it('returns empty array when no PBs', async () => {
+		const { db } = fakeDb({ allRows: [] });
+		const rows = await getPersonalBests(db as never, 7);
+		expect(rows).toEqual([]);
+	});
+
+	it('returns PB rows', async () => {
+		const row = { sport: 'rower', target_distance: 2000, best_time: 420, pace: 105, date: '2026-01-01 06:00:00' };
+		const { db } = fakeDb({ allRows: [row] });
+		const rows = await getPersonalBests(db as never, 7);
+		expect(rows).toHaveLength(1);
+		expect(rows[0].target_distance).toBe(2000);
+	});
+});
+
+describe('getAnnotationsByShareToken', () => {
+	it('returns empty array when db is undefined', async () => {
+		const rows = await getAnnotationsByShareToken(undefined, 'tok', 1001);
+		expect(rows).toEqual([]);
+	});
+
+	it('returns mapped annotations by share token', async () => {
+		const row = { id: 5, user_id: 7, workout_id: 1001, timestamp: 30, text: 'Good pace', created_at: '2026-01-01T06:00:00Z' };
+		const { db } = fakeDb({ allRows: [row] });
+		const rows = await getAnnotationsByShareToken(db as never, 'mytoken', 1001);
+		expect(rows).toHaveLength(1);
+		expect(rows[0].text).toBe('Good pace');
+	});
+
+	it('swallows errors and returns empty array', async () => {
+		const db = { prepare: () => ({ bind: () => ({ all: async () => { throw new Error(); } }) }) };
+		const rows = await getAnnotationsByShareToken(db as never, 'tok', 1001);
+		expect(rows).toEqual([]);
 	});
 });
