@@ -2,6 +2,7 @@ import type { KVNamespace } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '../datetime';
 import { paceToWattsForSport } from '../format';
 import {
+	computeIsMultiErg,
 	toSport,
 	type HeartRateDetail,
 	type LoggingMetadata,
@@ -364,12 +365,6 @@ export function mapResult(r: RawResult, metadata?: RawMetadata): Workout {
 	};
 }
 
-export function computeIsMultiErg(splits: Split[]): boolean {
-	const workMachines = splits
-		.filter((s) => !s.isRest && s.machine != null)
-		.map((s) => s.machine!);
-	return new Set(workMachines).size >= 2;
-}
 
 export function mapStrokes(raw: RawStroke[], sport: Sport, splits?: Split[]): Stroke[] {
 	// Per the API: stroke `p` is pace-per-500m for rower/skierg but

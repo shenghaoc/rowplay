@@ -8,15 +8,15 @@
 		activeSegmentIndexAt,
 		buildSegmentMap,
 		paceRangeForSegment,
-		restProgressAt,
 		sampleAt,
 		sampleIndexAt,
-		type Frame
+		type Frame,
+		type RestProgress
 	} from '$lib/replay/engine';
 	import { splitIndexAt } from '$lib/replay/inspector';
 	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
-	import { fmtDistance, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '$lib/format';
+	import { fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import type { WorkoutDetail } from '$lib/types';
 	import Play from '@lucide/svelte/icons/play';
 	import Pause from '@lucide/svelte/icons/pause';
@@ -55,10 +55,16 @@
 	let canvasEl: HTMLCanvasElement;
 	let courseWrap: HTMLDivElement;
 
+	let manualRest = $state<RestProgress | null>(null);
+	let restRafId = 0;
+	let restWallStart = 0;
+	let restSegIdx = -1;
+	const REST_EPS = 0.02;
+
 	const SPEEDS = [0.5, 1, 2, 4, 8];
 
 	function buildState(f: Frame): RenderState {
-		const rest = restProgressAt(segMap, f.t);
+		const rest = manualRest;
 		return {
 			frame: f,
 			distFrac: total ? f.d / total : 0,
@@ -76,6 +82,76 @@
 		renderer?.render(buildState(frame), playing, uiTheme.value);
 	}
 
+	function prefersReducedMotion(): boolean {
+		return (
+			typeof window !== 'undefined' &&
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches
+		);
+	}
+
+	function cancelRestAnim() {
+		if (restRafId) cancelAnimationFrame(restRafId);
+		restRafId = 0;
+		manualRest = null;
+		restWallStart = 0;
+	}
+
+	function boundaryConsumedIdx(T: number): number {
+		let idx = -1;
+		for (let k = 0; k < segMap.length - 1; k++) {
+			if (segMap[k].endT <= T - REST_EPS) idx = k;
+			else break;
+		}
+		return idx;
+	}
+
+	function safeRender(state: RenderState, p: boolean, theme: 'light' | 'dark') {
+		renderer?.render(state, p, theme);
+	}
+
+	function maybeStartRestPlayback(f: Frame, playingNow: boolean) {
+		if (!playingNow || manualRest || prefersReducedMotion()) return;
+		for (let k = restSegIdx + 1; k < segMap.length - 1; k++) {
+			if (f.t < segMap[k].endT - REST_EPS) break;
+			const next = segMap[k + 1];
+			restSegIdx = k;
+			if (next.restBefore <= 0) continue;
+			engine?.pause();
+			restWallStart = performance.now();
+			const tick = () => {
+				const elapsed = (performance.now() - restWallStart) / 1000;
+				const phase = Math.min(1, elapsed / next.restBefore);
+				manualRest = {
+					phase,
+					from: segMap[k].machine,
+					to: next.machine,
+					remaining: Math.max(0, next.restBefore - elapsed)
+				};
+				safeRender(buildState(frame), false, uiTheme.value);
+				if (phase >= 1) {
+					cancelRestAnim();
+					engine?.seek(next.startT);
+					engine?.play();
+					return;
+				}
+				restRafId = requestAnimationFrame(tick);
+			};
+			restRafId = requestAnimationFrame(tick);
+			return;
+		}
+	}
+
+	function togglePlay() {
+		if (manualRest) {
+			const next = segMap[restSegIdx + 1];
+			cancelRestAnim();
+			if (next) engine?.seek(next.startT);
+			engine?.play();
+		} else {
+			engine?.toggle();
+		}
+	}
+
 	$effect(() => {
 		const _theme = uiTheme.value;
 		renderCurrent();
@@ -86,7 +162,8 @@
 		engine = new ReplayEngine(strokes, (f, p) => {
 			frame = f;
 			playing = p;
-			renderer?.render(buildState(f), p, uiTheme.value);
+			maybeStartRestPlayback(f, p);
+			safeRender(buildState(f), p, uiTheme.value);
 		});
 
 		const sizeIt = () => {
@@ -101,7 +178,7 @@
 		const onKey = (e: KeyboardEvent) => {
 			if (e.code === 'Space' && !(e.target as HTMLElement)?.matches?.('select, input, button')) {
 				e.preventDefault();
-				engine?.toggle();
+				togglePlay();
 			}
 		};
 		window.addEventListener('keydown', onKey);
@@ -119,7 +196,10 @@
 	}
 
 	function onScrub(e: Event) {
-		engine?.seek(Number((e.target as HTMLInputElement).value));
+		cancelRestAnim();
+		const target = Number((e.target as HTMLInputElement).value);
+		restSegIdx = boundaryConsumedIdx(target);
+		engine?.seek(target);
 	}
 
 	const paceRange = $derived(
@@ -196,7 +276,7 @@
 	{/if}
 
 	<div class="card controls">
-		<button class="btn btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
+		<button class="btn btn-primary play" onclick={togglePlay} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
 		<div class="clock mono">

@@ -1,5 +1,5 @@
 import { paceToWattsForSport } from './format';
-import { computeIsMultiErg } from './server/concept2';
+import { computeIsMultiErg } from './types';
 import type { Annotation, Split, Sport, Stroke, Workout, WorkoutDetail } from './types';
 
 /**
