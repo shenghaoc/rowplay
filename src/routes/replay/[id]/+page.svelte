@@ -1662,7 +1662,7 @@
 							<dt>{t('replay.mSource')}</dt>
 							<dd>
 								{detail.source}
-								{#if exrFlagged}<span class="badge">{t('replay.exrBadge')}</span>{/if}
+								{#if exrFlagged}<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>{/if}
 							</dd>
 						</div>
 					{/if}
