@@ -11,7 +11,7 @@ export default defineConfig({
 			provider: 'v8',
 			reporter: ['text', 'lcov'],
 			include: ['src/**/*.ts'],
-			exclude: ['src/**/*.test.ts', 'src/**/*.svelte.ts', 'src/**/types.ts', 'src/**/$types.ts']
+			exclude: ['src/**/*.test.ts', 'src/**/types.ts', 'src/**/$types.ts']
 		}
 	}
 });

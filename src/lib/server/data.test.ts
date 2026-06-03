@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 
 // Mock all heavy dependencies so we only exercise the data.ts orchestration logic.
 vi.mock('./concept2', () => ({ Concept2Client: vi.fn() }));
@@ -35,6 +35,7 @@ import {
 	loadWorkoutDetail,
 	loadWorkouts,
 	removeAnnotation,
+	resetDemoAnnotationStore,
 	saveAnnualGoal,
 	saveAnnotation,
 	syncStatus
@@ -65,6 +66,10 @@ function authedEvent(extras: Record<string, unknown> = {}): any {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+});
+
+afterEach(() => {
+	resetDemoAnnotationStore();
 });
 
 // ---------------------------------------------------------------------------
