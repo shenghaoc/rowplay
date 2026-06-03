@@ -49,7 +49,8 @@ describe('load /compare', () => {
 	it('returns null details when no ids provided', async () => {
 		const event = fakeEvent({ demo: true });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.detailA).toBeNull();
 		expect(data.detailB).toBeNull();
 		expect(data.idA).toBeNull();
@@ -62,7 +63,8 @@ describe('load /compare', () => {
 			.mockResolvedValueOnce(sampleDetailB);
 		const event = fakeEvent({ demo: true, a: '1001', b: '1002' });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.detailA?.id).toBe(1001);
 		expect(data.detailB?.id).toBe(1002);
 	});
@@ -71,7 +73,8 @@ describe('load /compare', () => {
 		(loadWorkoutDetail as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Not found'));
 		const event = fakeEvent({ demo: true, a: '9999' });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.detailA).toBeNull();
 		expect(data.idA).toBeNull();
 	});
@@ -79,7 +82,8 @@ describe('load /compare', () => {
 	it('ignores invalid (non-numeric) ids', async () => {
 		const event = fakeEvent({ demo: true, a: 'abc', b: 'xyz' });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.idA).toBeNull();
 		expect(data.idB).toBeNull();
 		// vi.clearAllMocks resets call counts in beforeEach — no call expected here

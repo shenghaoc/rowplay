@@ -37,7 +37,8 @@ describe('load /replay/[id]', () => {
 		(loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
 		const event = fakeEvent({ demo: true });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.detail.id).toBe(1001);
 		expect(data.demo).toBe(true);
 	});
@@ -51,7 +52,8 @@ describe('load /replay/[id]', () => {
 		]);
 		const event = fakeEvent({ demo: true });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.candidates).toHaveLength(1);
 		expect(data.candidates[0].id).toBe(1002);
 	});
@@ -60,7 +62,8 @@ describe('load /replay/[id]', () => {
 		(loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
 		const event = fakeEvent({ demo: true });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.published).toBe(false);
 	});
 });

@@ -20,7 +20,8 @@ describe('load /leaderboard', () => {
 	it('returns boards and demo flag', async () => {
 		const event = fakeEvent(true);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(Array.isArray(data.boards)).toBe(true);
 		expect(data.demo).toBe(true);
 	});
@@ -28,7 +29,8 @@ describe('load /leaderboard', () => {
 	it('works for authenticated users too', async () => {
 		const event = fakeEvent(false);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(Array.isArray(data.boards)).toBe(true);
 	});
 });

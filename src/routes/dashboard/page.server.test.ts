@@ -29,7 +29,8 @@ describe('load /dashboard', () => {
 	it('returns data in demo mode', async () => {
 		const event = fakeEvent({ demo: true });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.demo).toBe(true);
 		expect(Array.isArray(data.workouts)).toBe(true);
 		expect(data.sync).toBeNull(); // demo mode => no sync
@@ -38,7 +39,8 @@ describe('load /dashboard', () => {
 	it('returns data for authenticated user', async () => {
 		const event = fakeEvent({ demo: false, user: { id: 7 } });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.demo).toBe(false);
 		expect(data.workouts).toBeDefined();
 	});
@@ -46,7 +48,8 @@ describe('load /dashboard', () => {
 	it('includes calendarEndDay in ISO format', async () => {
 		const event = fakeEvent({ demo: true });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.calendarEndDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 	});
 });

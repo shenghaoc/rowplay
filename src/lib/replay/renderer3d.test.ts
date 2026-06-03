@@ -53,13 +53,12 @@ const origDocument = globalThis.document;
 
 beforeEach(() => {
 	// Stub document so canvas creation works without jsdom.
-	// @ts-expect-error intentional partial stub
 	globalThis.document = {
 		createElement: (tag: string) => {
 			if (tag === 'canvas') return makeCanvas();
 			return {};
 		}
-	};
+	} as unknown as Document;
 	// window.matchMedia isn't available in Node; stub it for prefersReducedMotion
 	// @ts-expect-error stub
 	globalThis.window = {
@@ -111,7 +110,7 @@ describe('CourseRenderer3D', () => {
 	it('appends its canvas to the host element', () => {
 		const host = makeHost();
 		new CourseRenderer3D(host, 'low', 'rower');
-		expect((host as { children: unknown[] }).children.length).toBe(1);
+		expect((host as unknown as { children: unknown[] }).children.length).toBe(1);
 	});
 
 	it('exposes the LOOP_METERS static constant', () => {
@@ -146,7 +145,7 @@ describe('CourseRenderer3D', () => {
 			const r = new CourseRenderer3D(host, 'low', 'rower');
 			r.resize(800, 600);
 			const stateWithGhost = makeRenderState({
-				ghost: { distFrac: 0.4, spm: 24, label: 'PB' }
+				ghost: { distFrac: 0.4, pace: 118, spm: 24, label: 'PB' }
 			});
 			expect(() => r.render(stateWithGhost, false)).not.toThrow();
 		});

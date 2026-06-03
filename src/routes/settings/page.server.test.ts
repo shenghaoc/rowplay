@@ -27,7 +27,8 @@ describe('load /settings', () => {
 	it('returns workoutCount and null sync in demo mode', async () => {
 		const event = fakeEvent({ demo: true });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.workoutCount).toBe(2);
 		expect(data.sync).toBeNull();
 		expect(data.demo).toBe(true);
@@ -36,7 +37,8 @@ describe('load /settings', () => {
 	it('only includes workouts with hasStrokeData in tcxWorkouts', async () => {
 		const event = fakeEvent({ demo: true });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.tcxWorkouts).toHaveLength(1);
 		expect(data.tcxWorkouts[0].id).toBe(1001);
 	});
@@ -44,7 +46,8 @@ describe('load /settings', () => {
 	it('returns sync status for authenticated user', async () => {
 		const event = fakeEvent({ demo: false, user: { id: 7 } });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.sync).toBeDefined();
 	});
 });

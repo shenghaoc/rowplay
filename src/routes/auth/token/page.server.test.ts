@@ -62,7 +62,8 @@ describe('load /auth/token', () => {
 	it('returns oauthEnabled:false when no clientId', async () => {
 		const event = fakeLoadEvent(null);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const data = await load(event as any);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const data = await load(event as any) as any;
 		expect(data.oauthEnabled).toBe(false);
 	});
 });

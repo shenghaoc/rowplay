@@ -55,7 +55,7 @@ describe('GET /auth/callback', () => {
 	it('throws 400 for unknown error codes (sanitizes arbitrary input)', async () => {
 		const { event } = fakeEvent({ errorParam: 'some_injected_value' });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const err = await GET(event as any).catch((e) => e);
+		const err = await (GET(event as any) as Promise<Response>).catch((e) => e);
 		expect(err.status).toBe(400);
 		expect(err.body?.message ?? err.message ?? '').toContain('unknown_error');
 	});
