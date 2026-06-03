@@ -6,30 +6,37 @@ describe('workoutLocalDayKey', () => {
 		expect(workoutLocalDayKey('2024-01-15 01:00:00')).toBe('2024-01-15');
 	});
 
-	it('keeps a late-UTC workout on the same day in a western zone', () => {
-		// 23:30 UTC → 18:30 EST, still Jan 14 in New York.
+	it('keeps the plain date as-is when date is in workoutTz (monitor-local)', () => {
+		// 23:30 in America/New_York is still Jan 14.
 		expect(workoutLocalDayKey('2024-01-14 23:30:00', 'America/New_York')).toBe('2024-01-14');
 	});
 
-	it('rolls a late-UTC workout to the next day in an eastern zone', () => {
-		// 23:30 UTC → 12:30 NZDT (UTC+13), already Jan 15 in Auckland.
-		expect(workoutLocalDayKey('2024-01-14 23:30:00', 'Pacific/Auckland')).toBe('2024-01-15');
+	it('keeps the plain date as-is for Auckland workoutTz (monitor-local, not UTC-shifted)', () => {
+		// 23:30 NZDT is still Jan 14 in Auckland — NOT Jan 15.
+		expect(workoutLocalDayKey('2024-01-14 23:30:00', 'Pacific/Auckland')).toBe('2024-01-14');
 	});
 
-	it('uses home timezone when workout timezone is absent', () => {
-		expect(workoutLocalDayKey('2024-01-14 23:30:00', undefined, 'America/New_York')).toBe(
-			'2024-01-14'
-		);
-	});
-
-	it('prefers workout timezone over home timezone', () => {
+	it('cross-zone: Auckland evening workout converted to New York home timezone', () => {
+		// 23:30 NZDT = 05:30 EST, still Jan 14 in New York.
 		expect(
 			workoutLocalDayKey('2024-01-14 23:30:00', 'Pacific/Auckland', 'America/New_York')
+		).toBe('2024-01-14');
+	});
+
+	it('cross-zone: New York late workout converted to Auckland home timezone rolls forward', () => {
+		// 23:30 EST (UTC-5) = 17:30 NZDT (UTC+13) next day → Jan 15 in Auckland.
+		expect(
+			workoutLocalDayKey('2024-01-14 23:30:00', 'America/New_York', 'Pacific/Auckland')
 		).toBe('2024-01-15');
 	});
 
-	it('falls through invalid workout tz to home tz', () => {
-		expect(workoutLocalDayKey('2024-01-14 23:30:00', 'Not/Real', 'America/New_York')).toBe(
+	it('falls through invalid workout tz to plain date', () => {
+		expect(workoutLocalDayKey('2024-01-14 23:30:00', 'Not/Real')).toBe('2024-01-14');
+	});
+
+	it('uses plain date when only homeTz is known (no source zone info)', () => {
+		// Without knowing the source zone, plain date is best effort.
+		expect(workoutLocalDayKey('2024-01-14 23:30:00', undefined, 'America/New_York')).toBe(
 			'2024-01-14'
 		);
 	});

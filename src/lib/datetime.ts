@@ -95,13 +95,19 @@ export function todayKeyUtc(): string {
 	return Temporal.Now.plainDateISO('UTC').toString();
 }
 
-function dayKeyInZone(pdt: Temporal.PlainDateTime, tz: string): string | null {
+/**
+ * Convert a logbook PlainDateTime from `fromZone` into the calendar day in
+ * `toZone` (or the same zone when `toZone` is omitted / identical).
+ * The Concept2 `date` is monitor-local (confirmed in C2 API docs), so when
+ * `fromZone` matches the workout's actual timezone the plain-date portion
+ * *is* the workout's local day — no conversion needed for same-zone bucketing.
+ */
+function dayKeyInZone(pdt: Temporal.PlainDateTime, fromZone: string, toZone?: string): string | null {
 	try {
-		// The logbook `date` is an offset-less wall-clock string, so interpret it as
-		// UTC and convert into `tz`; the resulting calendar day is the athlete's local
-		// day. (`pdt.toZonedDateTime(tz)` would instead attach `tz` without shifting,
-		// leaving the day unchanged — i.e. a no-op.)
-		return pdt.toZonedDateTime('UTC').withTimeZone(tz).toPlainDate().toString();
+		if (!toZone || toZone === fromZone) {
+			return pdt.toPlainDate().toString();
+		}
+		return pdt.toZonedDateTime(fromZone).withTimeZone(toZone).toPlainDate().toString();
 	} catch {
 		return null;
 	}
@@ -109,31 +115,33 @@ function dayKeyInZone(pdt: Temporal.PlainDateTime, tz: string): string | null {
 
 /**
  * Calendar day key for a workout using the resolution chain: workout tz → home
- * tz → UTC. The Concept2 `date` is an offset-less wall-clock string, so it is
- * interpreted as UTC and converted into the resolved zone (so a late-UTC workout
- * lands on the correct local day east/west of the meridian). With no zone, the
- * UTC date — its own date part — is used. Never throws; invalid IANA strings
- * fall through silently.
+ * tz → plain-date fallback. The Concept2 `date` is monitor-local (confirmed in
+ * the C2 API docs), so when `workoutTz` is known the date string is taken as
+ * being in that zone — its plain-date portion *is* the workout's local day.
+ * Cross-zone conversion is only applied when `homeTz` differs from `workoutTz`.
+ * With no zone, the plain date part is used as-is. Never throws; invalid IANA
+ * strings fall through silently.
  */
 export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: string): string {
 	const cleanWtz = workoutTz?.trim();
 	const cleanHtz = homeTz?.trim();
-	// Fast path: with no zone to convert into, the UTC interpretation of the
-	// offset-less timestamp is just its own date part — skip Temporal parsing and
-	// allocation entirely (the overwhelming common case). The typeof guard also
-	// avoids a throw on a corrupt/missing date.
+	// Fast path: with no zone to convert into, the plain date part of the
+	// offset-less timestamp is the best we can do — skip Temporal parsing and
+	// allocation entirely (the overwhelming common case).
 	if (!cleanWtz && !cleanHtz) return typeof date === 'string' ? date.slice(0, 10) : '';
 
 	const pdt = parseLogbookDateTime(date);
 	if (!pdt) return typeof date === 'string' ? date.slice(0, 10) : '';
 
 	if (cleanWtz) {
-		const key = dayKeyInZone(pdt, cleanWtz);
-		if (key) return key;
+		// Date IS in workoutTz (monitor-local). Bucket in homeTz when it differs.
+		const day = dayKeyInZone(pdt, cleanWtz, cleanHtz !== cleanWtz ? cleanHtz : undefined);
+		if (day) return day;
 	}
+	// Only homeTz available: without knowing the source zone we can't convert.
+	// Fall back to the plain date part.
 	if (cleanHtz) {
-		const key = dayKeyInZone(pdt, cleanHtz);
-		if (key) return key;
+		return pdt.toPlainDate().toString();
 	}
 	return pdt.toPlainDate().toString();
 }
