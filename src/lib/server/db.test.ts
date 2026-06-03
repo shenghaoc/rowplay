@@ -67,12 +67,17 @@ function fakeDb(opts: { firstRow?: unknown; allRows?: unknown[] } = {}) {
 		return stmt;
 	};
 
+	const batchCalls: ReturnType<typeof make>[][] = [];
+
 	return {
 		executed,
+		batchCalls,
 		db: {
 			prepare: make,
-			batch: async (stmts: ReturnType<typeof make>[]) =>
-				Promise.all(stmts.map((s) => s.run()))
+			batch: async (stmts: ReturnType<typeof make>[]) => {
+				batchCalls.push(stmts);
+				return Promise.all(stmts.map((s) => s.run()));
+			}
 		}
 	};
 }
@@ -605,10 +610,13 @@ describe('upsertWorkouts', () => {
 	});
 
 	it('processes 101 workouts across two batch calls', async () => {
-		const { db, executed } = fakeDb();
+		const { db, executed, batchCalls } = fakeDb();
 		const workouts = Array.from({ length: 101 }, (_, i) => makeWorkout(1000 + i));
 		await upsertWorkouts(db as never, 7, workouts);
 		expect(executed.length).toBe(101);
+		expect(batchCalls.length).toBe(2);
+		expect(batchCalls[0].length).toBe(100);
+		expect(batchCalls[1].length).toBe(1);
 	});
 });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	dayKeyEpochMillis,
 	fmtDate,
@@ -137,14 +137,21 @@ describe('fmtDateFromEpochMillis', () => {
 });
 
 describe('todayKeyUtc', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-06-03T12:00:00Z'));
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('returns a YYYY-MM-DD string', () => {
 		expect(todayKeyUtc()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 	});
 
-	it('matches the current UTC date', () => {
-		const key = todayKeyUtc();
-		const today = new Date().toISOString().slice(0, 10);
-		expect(key).toBe(today);
+	it('matches the frozen UTC date', () => {
+		expect(todayKeyUtc()).toBe('2026-06-03');
 	});
 });
 

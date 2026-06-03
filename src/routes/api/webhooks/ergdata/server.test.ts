@@ -23,7 +23,7 @@ function fakeEvent(opts: {
 	return {
 		platform: { env: opts.secret ? { ERGDATA_WEBHOOK_SECRET: opts.secret } : {} },
 		request: {
-			headers: { get: (name: string) => name === 'x-ergdata-signature' ? (opts.sig ?? null) : null },
+			headers: { get: (name: string) => name.toLowerCase() === 'x-ergdata-signature' ? (opts.sig ?? null) : null },
 			text: async () => body
 		}
 	};
