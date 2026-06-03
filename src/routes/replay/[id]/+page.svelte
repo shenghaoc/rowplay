@@ -785,6 +785,15 @@
 	// knows about entries published in a past session) and flipped on publish/withdraw.
 	let published = $state(data.published ?? false);
 
+	// Re-sync from server data on client-side navigation between replays. The
+	// $state initializer above only runs once when the component is instantiated,
+	// so without this `published` would keep the previous workout's value when the
+	// component is reused. This only re-runs when data.published actually changes,
+	// so it never clobbers the optimistic publish/withdraw flips below.
+	$effect(() => {
+		published = data.published ?? false;
+	});
+
 	// Publishing to a board only applies to a signed-in athlete's own
 	// standard-distance piece — demo athletes and off-board distances can't rank.
 	const canPublish = $derived(
