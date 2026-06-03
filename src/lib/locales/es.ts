@@ -569,6 +569,7 @@ export const es = {
 		apiToken: 'Token API',
 		placeholder: 'Pega tu token',
 		connect: 'Conectar con token',
+		connecting: 'Conectando…',
 		rejected: 'Concept2 rechazó ese token. Compruébalo e inténtalo de nuevo.',
 		serverMisconfigured:
 			'Esta instalación no está configurada para iniciar sesión con token (falta SESSION_SECRET). Contacta con el propietario del sitio.',

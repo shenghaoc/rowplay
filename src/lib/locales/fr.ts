@@ -569,6 +569,7 @@ export const fr = {
 		apiToken: 'Jeton API',
 		placeholder: 'Collez votre jeton',
 		connect: 'Connecter avec le jeton',
+		connecting: 'Connexion…',
 		rejected: 'Concept2 a refusé ce jeton. Vérifiez-le et réessayez.',
 		serverMisconfigured:
 			'Ce déploiement n’est pas configuré pour la connexion par jeton (SESSION_SECRET manquant). Contactez le propriétaire du site.',

@@ -569,6 +569,7 @@ export const en = {
 		apiToken: 'API token',
 		placeholder: 'Paste your token',
 		connect: 'Connect with token',
+		connecting: 'Connecting…',
 		rejected: 'Concept2 rejected that token. Check it and try again.',
 		serverMisconfigured:
 			'This deployment isn’t set up for token sign-in (missing SESSION_SECRET). Contact the site owner.',
