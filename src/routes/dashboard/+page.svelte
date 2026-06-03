@@ -620,37 +620,7 @@
 
 	<!-- ============ MAIN + RAIL ============ -->
 	<div class="dash-grid">
-		<!-- Right rail (engagement) — declared first so it sits high on mobile. -->
-		<aside class="col-rail">
-			{#if liveMode}
-				<LiveModePanel live={liveMode} />
-			{/if}
-
-			<EngagementPanel
-				workouts={workouts}
-				annualGoal={data.annualGoal}
-				goalYear={data.goalYear}
-				endDay={data.calendarEndDay}
-			/>
-
-			<!-- Personal bests -->
-			{#if pbs.length}
-				<div class="card panel pbcard">
-					<div class="muted label">{t('dashboard.pbTitle')}</div>
-					<div class="pbgrid">
-						{#each pbs as pb}
-							<div class="pb">
-								<div class="pbdist mono">{pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`}</div>
-								<div class="pbtime mono">{fmtTime(pb.time, true)}</div>
-								<div class="pbsub muted"><SportIcon sport={pb.sport} size={12} /> {fmtPace(pb.pace)} · {fmtDate(pb.date)}</div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/if}
-		</aside>
-
-		<!-- Main column (analysis) -->
+		<!-- Main column (analysis) — first in DOM so main content leads on mobile. -->
 		<div class="col-main">
 			{#if filtered.length}
 				<TrainingHeatmap workouts={filtered} endDay={data.calendarEndDay} />
@@ -823,6 +793,36 @@
 			{/if}
 			<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} pbIds={pbIds} {newPbIds} {newEntryIds} />
 		</div>
+
+		<!-- Right rail (engagement) — visually column 2 on desktop via CSS grid-column. -->
+		<aside class="col-rail">
+			{#if liveMode}
+				<LiveModePanel live={liveMode} />
+			{/if}
+
+			<EngagementPanel
+				workouts={workouts}
+				annualGoal={data.annualGoal}
+				goalYear={data.goalYear}
+				endDay={data.calendarEndDay}
+			/>
+
+			<!-- Personal bests -->
+			{#if pbs.length}
+				<div class="card panel pbcard">
+					<div class="muted label">{t('dashboard.pbTitle')}</div>
+					<div class="pbgrid">
+						{#each pbs as pb}
+							<div class="pb">
+								<div class="pbdist mono">{pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`}</div>
+								<div class="pbtime mono">{fmtTime(pb.time, true)}</div>
+								<div class="pbsub muted"><SportIcon sport={pb.sport} size={12} /> {fmtPace(pb.pace)} · {fmtDate(pb.date)}</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+		</aside>
 	</div>
 </div>
 

@@ -167,10 +167,7 @@
 		</div>
 	</article>
 
-	<article
-		class="card bg-base-100 shadow-md p-5 border"
-		style="border-color: color-mix(in srgb, var(--alarm) 45%, var(--hairline))"
-	>
+	<article class="card bg-base-100 shadow-md p-5 border danger-card">
 		<div class="card-body p-0 gap-3">
 			<h2 class="section-head">
 				<Trash2 size={18} style="color: var(--ghost)" />
@@ -179,8 +176,7 @@
 			<p class="muted">{t('settings.deleteNote')}</p>
 			<div>
 				<button
-					class="btn btn-ghost btn-sm"
-					style="color: var(--alarm)"
+					class="btn btn-ghost btn-sm danger-action"
 					type="button"
 					disabled={deleting || syncing}
 					onclick={deleteData}
@@ -257,4 +253,6 @@
 		font-size: 0.82rem;
 		margin: 0;
 	}
+	.danger-card { border-color: color-mix(in srgb, var(--alarm) 45%, var(--hairline)); }
+	.danger-action { color: var(--alarm); }
 </style>
