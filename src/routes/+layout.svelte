@@ -137,9 +137,20 @@
 		bind:this={mobileNav}
 		closedby="any"
 		onclose={onNavClose}
-		onclick={(e) => { if (e.target === mobileNav) closeMenu(); }}
+		onclick={(e) => {
+			if (e.target === mobileNav) {
+				const rect = mobileNav.getBoundingClientRect();
+				if (
+					e.clientX < rect.left ||
+					e.clientX > rect.right ||
+					e.clientY < rect.top ||
+					e.clientY > rect.bottom
+				) {
+					closeMenu();
+				}
+			}
+		}}
 	>
-		<div class="drawer-sheet">
 			<nav class="drawer-nav" aria-label="Main">
 				<a href="/dashboard" class:active={page.url.pathname.startsWith('/dashboard')}
 					>{t('nav.dashboard')}</a
@@ -180,7 +191,6 @@
 					<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
 				{/if}
 			</div>
-		</div>
 	</dialog>
 </header>
 
@@ -306,39 +316,28 @@
 	}
 	.mobile-drawer {
 		margin: 0;
-		inset: 0;
-		padding: 0;
+		/* Top sheet: pin to top, height from content (not the modal's inset:0). */
+		inset: 0 0 auto 0;
+		padding: 0.75rem 1rem 1rem;
 		border: none;
+		border-bottom: var(--bd-heavy);
 		width: 100%;
 		max-width: 100vw;
-		height: 100dvh;
-		max-height: 100dvh;
-		overflow: visible;
-		background: transparent;
+		max-height: calc(100dvh - 54px);
+		overflow-y: auto;
+		background: var(--paper);
+		box-shadow: 0 12px 28px rgb(15 42 54 / 0.12);
 	}
 	.mobile-drawer::backdrop {
-		background: transparent;
+		background: rgb(15 42 54 / 0.35);
 	}
 	.mobile-drawer:not([open]) {
 		display: none;
 	}
 	.mobile-drawer[open] {
-		display: block;
-		background: rgb(15 42 54 / 0.35);
-		cursor: pointer;
-	}
-	.drawer-sheet {
-		padding: 0.75rem 1rem 1rem;
-		border-bottom: var(--bd-heavy);
-		width: 100%;
-		max-height: calc(100dvh - 54px);
-		overflow-y: auto;
-		background: var(--paper);
-		box-shadow: 0 12px 28px rgb(15 42 54 / 0.12);
 		display: grid;
 		gap: 1rem;
 		align-content: start;
-		cursor: default;
 	}
 	.drawer-nav {
 		display: grid;
