@@ -113,7 +113,10 @@
 		return t('sync.historyWindow', { months: sync.historyWindowMonths });
 	});
 
-	$effect(() => {
+	// Run the backfill loop once on mount, NOT in a $effect: an effect would track
+	// data.sync, and the loop's invalidateAll() updates data.sync — that would tear
+	// down and restart the loop every chunk, bypassing PACE_MS and hammering the API.
+	onMount(() => {
 		const sync = data.sync;
 		if (data.demo || !sync || sync.backfillDone) return;
 		const ac = new AbortController();

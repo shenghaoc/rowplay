@@ -255,7 +255,10 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 			backfillDone: state?.backfillDone ?? false
 		},
 		dates,
-		dates.length === 0
+		// Reached the end when this run drained every page older than the cursor
+		// (page > totalPages), not only when a chunk comes back empty — that saves
+		// one redundant confirming API call at the tail of the history.
+		dates.length === 0 || page > totalPages
 	);
 
 	const total = await countWorkouts(db, userId);

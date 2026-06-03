@@ -42,10 +42,10 @@ export async function runHistoryBackfillLoop(opts?: {
 			const chunk = await fetchBackfillChunk(opts?.signal);
 			failures = 0;
 			opts?.onChunk?.(chunk);
-			if (chunk.done) {
-				await invalidateAll();
-				return;
-			}
+			// Refresh after every chunk so the sync-status note shows live progress
+			// (oldest date reached, count synced), not just a jump at the end.
+			await invalidateAll();
+			if (chunk.done) return;
 			await sleep(PACE_MS + nextBackoffMs(0), opts?.signal);
 		} catch (e) {
 			if (opts?.signal?.aborted) return;
@@ -66,14 +66,16 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 			reject(new DOMException('Aborted', 'AbortError'));
 			return;
 		}
-		const id = setTimeout(resolve, ms);
-		signal?.addEventListener(
-			'abort',
-			() => {
-				clearTimeout(id);
-				reject(new DOMException('Aborted', 'AbortError'));
-			},
-			{ once: true }
-		);
+		const id = setTimeout(() => {
+			// Remove the listener on the normal path: the same signal is reused for
+			// every sleep in the loop, so never-fired listeners would otherwise pile up.
+			signal?.removeEventListener('abort', onAbort);
+			resolve();
+		}, ms);
+		function onAbort() {
+			clearTimeout(id);
+			reject(new DOMException('Aborted', 'AbortError'));
+		}
+		signal?.addEventListener('abort', onAbort, { once: true });
 	});
 }

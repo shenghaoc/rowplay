@@ -9,6 +9,7 @@
 	import Database from '@lucide/svelte/icons/database';
 	import { fmtDate } from '$lib/format';
 	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
 	const i18n = getI18nContext();
@@ -31,7 +32,10 @@
 		return t('sync.historyWindow', { months: sync.historyWindowMonths });
 	});
 
-	$effect(() => {
+	// onMount, not $effect: the loop's invalidateAll() updates data.sync, which an
+	// effect would treat as a dependency change — restarting the loop and bypassing
+	// the PACE_MS pacing. onMount runs it exactly once.
+	onMount(() => {
 		const sync = data.sync;
 		if (data.demo || !sync || sync.backfillDone) return;
 		const ac = new AbortController();
