@@ -98,4 +98,9 @@ describe('durationBand', () => {
 	it('handles boundary at range edge', () => {
 		expect(durationBand(90).key).toBe('r90');
 	});
+
+	it('gives the lowest band a non-zero nominal (midpoint of 0–90s)', () => {
+		expect(durationBand(30).key).toBe('r0');
+		expect(durationBand(30).nominal).toBe(45);
+	});
 });

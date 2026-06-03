@@ -8,8 +8,8 @@ export interface GhostPickContext {
 	sport: Sport;
 	/** Total elapsed seconds (for time-axis comparability). */
 	time?: number;
-	/** Concept2 workout_type (for axis classification). */
-	workoutType?: string;
+	/** Concept2 workout_type (for axis classification; D1 columns are string | null). */
+	workoutType?: string | null;
 }
 
 function toComparable(current: GhostPickContext) {

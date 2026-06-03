@@ -132,7 +132,10 @@ export function durationBand(seconds: number): DurationBand {
 	];
 	for (const [lo, hi, l] of ranges) {
 		if (seconds >= lo && seconds < hi) {
-			return { key: `r${lo}`, label: l, nominal: (lo + Math.min(hi, lo * 2)) / 2 };
+			// For the lowest band lo === 0, so Math.min(hi, lo*2) would be 0 and the
+			// nominal would collapse to 0 — use hi as the upper bound in that case.
+			const upper = lo === 0 ? hi : Math.min(hi, lo * 2);
+			return { key: `r${lo}`, label: l, nominal: (lo + upper) / 2 };
 		}
 	}
 	return { key: 'other', label: 'Other', nominal: seconds };

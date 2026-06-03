@@ -21,7 +21,7 @@ const TIME_AXIS_MARKERS = ['JustRow', 'FixedTime'] as const;
  * piece is fixed-distance, so an unclassified type is bucketed by distance band
  * rather than blocked outright.
  */
-export function classifyAxis(workoutType: string | undefined): ComparabilityAxis {
+export function classifyAxis(workoutType: string | null | undefined): ComparabilityAxis {
 	if (!workoutType) return 'distance';
 	const upper = workoutType.toUpperCase();
 	for (const marker of TIME_AXIS_MARKERS) {
@@ -36,8 +36,8 @@ export interface ComparableContext {
 	distance: number;
 	/** Total elapsed time in seconds. */
 	time: number;
-	/** Concept2 workout_type string (may be absent). */
-	workoutType?: string;
+	/** Concept2 workout_type string (may be absent; D1 columns are string | null). */
+	workoutType?: string | null;
 }
 
 /**
