@@ -592,7 +592,6 @@ export const zh = {
 		run: '对比',
 		swap: '交换',
 		pickTwo: '请在上方选择两次训练进行对比。',
-		crossSport: '不同器械——配速和功率可能不可直接对比。',
 		deltaTable: '逐项对比',
 		deltaHint: '正的差值表示训练 A 更高。',
 		alignedNote: '对齐距离：{distance}',

@@ -598,7 +598,6 @@ export const en = {
 		run: 'Compare',
 		swap: 'Swap',
 		pickTwo: 'Pick two workouts above to compare.',
-		crossSport: 'Different sports — pace and power scales may not be directly comparable.',
 		deltaTable: 'Head-to-head stats',
 		deltaHint: 'Positive delta means workout A is higher.',
 		alignedNote: 'Aligned over {distance}',

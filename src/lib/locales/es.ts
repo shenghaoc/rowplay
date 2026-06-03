@@ -599,7 +599,6 @@ export const es = {
 		run: 'Comparar',
 		swap: 'Intercambiar',
 		pickTwo: 'Elige dos entrenamientos arriba para comparar.',
-		crossSport: 'Deportes distintos — las escalas de ritmo y potencia pueden no ser directamente comparables.',
 		deltaTable: 'Estadísticas cara a cara',
 		deltaHint: 'Un delta positivo significa que el entrenamiento A es mayor.',
 		alignedNote: 'Alineado sobre {distance}',

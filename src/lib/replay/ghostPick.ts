@@ -1,5 +1,5 @@
 import { distanceBand } from '$lib/analytics';
-import { areComparable } from '$lib/replay/comparabilityGuard';
+import { areComparable, classifyAxis } from '$lib/replay/comparabilityGuard';
 import type { Sport, Workout } from '$lib/types';
 
 export interface GhostPickContext {
@@ -43,6 +43,22 @@ export function pickDefaultGhostCandidate(
 		(c) => c.id !== current.id && areComparable(currentCtx, workoutToComparable(c))
 	);
 	if (!pool.length) return null;
+
+	// `pool` is already band-matched by areComparable. For time-axis pieces the
+	// shared band is the duration band, so ranking by distance band (below) would
+	// wrongly drop a legitimately comparable session that happens to cover a
+	// different distance (e.g. two 30-min rows at 7500 m vs 6500 m). Rank those by
+	// closeness in elapsed time instead.
+	if (classifyAxis(current.workoutType) === 'time') {
+		const target = current.time ?? 0;
+		const ranked = [...pool].sort((a, b) => {
+			const dt = Math.abs(a.time - target) - Math.abs(b.time - target);
+			if (dt !== 0) return dt;
+			if (a.pace !== b.pace) return a.pace - b.pace;
+			return b.date.localeCompare(a.date);
+		});
+		return ranked[0] ?? null;
+	}
 
 	const band = distanceBand(current.distance);
 	const inBand = pool.filter((c) => distanceBand(c.distance).key === band.key);

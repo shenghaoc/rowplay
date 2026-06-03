@@ -68,8 +68,12 @@ describe('classifyAxis', () => {
 		expect(classifyAxis('JustRow')).toBe('time');
 	});
 
-	it('classifies FixedTimePace as time', () => {
-		expect(classifyAxis('FixedTimePace')).toBe('time');
+	it('classifies FixedTimeSplits as time', () => {
+		expect(classifyAxis('FixedTimeSplits')).toBe('time');
+	});
+
+	it('classifies FixedTimeInterval as time', () => {
+		expect(classifyAxis('FixedTimeInterval')).toBe('time');
 	});
 
 	it('defaults undefined to distance', () => {

@@ -6,12 +6,20 @@ export { durationBand } from '$lib/analytics';
 
 export type ComparabilityAxis = 'distance' | 'time';
 
-const TIME_AXIS_MARKERS = ['JustRow', 'JustSki', 'JustBike', 'FixedTime'] as const;
+// Concept2 workout_type is machine-agnostic: `JustRow` is the only "Just*" value
+// (it covers every erg, recording elapsed time as its axis), and `FixedTime`
+// catches the documented `FixedTimeSplits` / `FixedTimeInterval` types. There is
+// no `JustSki` / `JustBike` in the API.
+const TIME_AXIS_MARKERS = ['JustRow', 'FixedTime'] as const;
 
 /**
  * Map a Concept2 workout_type string to its comparability axis.
- * Time-axis types are explicitly timed workouts; everything else —
- * including undefined / unknown strings — is distance-axis.
+ * Time-axis types are explicitly timed workouts; everything else — including
+ * undefined / unknown strings, and the calorie / watt-minute / variable-interval
+ * types (`FixedCalorie*`, `FixedWattMinute*`, `VariableInterval*`) — falls
+ * through to distance-axis. That fallback is a safe default: Concept2's default
+ * piece is fixed-distance, so an unclassified type is bucketed by distance band
+ * rather than blocked outright.
  */
 export function classifyAxis(workoutType: string | undefined): ComparabilityAxis {
 	if (!workoutType) return 'distance';

@@ -601,7 +601,6 @@ export const ja = {
 		run: '比較',
 		swap: '入れ替え',
 		pickTwo: '上で 2 つのワークアウトを選んで比較してください。',
-		crossSport: '種目が異なります — ペースとパワーのスケールは直接比較できない場合があります。',
 		deltaTable: '対決統計',
 		deltaHint: '差分が正のとき、ワークアウト A の方が高い。',
 		alignedNote: '{distance} で位置合わせ',
