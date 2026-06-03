@@ -6,6 +6,12 @@ export default defineConfig({
 	test: {
 		include: ['src/**/*.test.ts', 'tests/unit/**/*.test.ts'],
 		environment: 'node',
-		setupFiles: ['tests/unit/setup.ts']
+		setupFiles: ['tests/unit/setup.ts'],
+		coverage: {
+			provider: 'v8',
+			reporter: ['text', 'lcov'],
+			include: ['src/**/*.ts'],
+			exclude: ['src/**/*.test.ts', 'src/**/*.svelte.ts', 'src/**/types.ts', 'src/**/$types.ts']
+		}
 	}
 });
