@@ -52,7 +52,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 				.replace('%fontPreload%', FONT_PRELOAD)
 	});
 
-	return withSecurityHeaders(response);
+	return withSecurityHeaders(response, event.url.protocol === 'https:');
 };
 
 // Defense-in-depth defaults applied to every response. Each is set only when a
@@ -62,6 +62,9 @@ const SECURITY_HEADERS: Record<string, string> = {
 	'X-Frame-Options': 'DENY',
 	'X-Content-Type-Options': 'nosniff',
 	'Referrer-Policy': 'strict-origin-when-cross-origin',
+	// Deny powerful APIs the app never uses so injected or embedded content can't
+	// reach them either.
+	'Permissions-Policy': 'geolocation=(), camera=(), microphone=()',
 	// Report-only CSP baseline: validates syntax and surfaces violations in
 	// DevTools. about:blank report-uri silences the "no reporting endpoint"
 	// browser warning; wire up a real collector before switching to enforce mode.
@@ -71,15 +74,24 @@ const SECURITY_HEADERS: Record<string, string> = {
 		"font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'"
 };
 
-function applyDefaults(headers: Headers): void {
+// HSTS is emitted only over HTTPS: browsers ignore it on plain-HTTP responses
+// (e.g. local `wrangler dev`), so gating it keeps the header honest about the
+// transport. `preload` is intentionally omitted — it's a standing commitment
+// that requires explicit submission to the browser preload list.
+const HSTS_VALUE = 'max-age=31536000; includeSubDomains';
+
+function applyDefaults(headers: Headers, secure: boolean): void {
 	for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
 		if (!headers.has(name)) headers.set(name, value);
 	}
+	if (secure && !headers.has('Strict-Transport-Security')) {
+		headers.set('Strict-Transport-Security', HSTS_VALUE);
+	}
 }
 
-function withSecurityHeaders(response: Response): Response {
+function withSecurityHeaders(response: Response, secure: boolean): Response {
 	try {
-		applyDefaults(response.headers);
+		applyDefaults(response.headers, secure);
 		return response;
 	} catch (e) {
 		if (!(e instanceof TypeError)) throw e;
@@ -90,7 +102,7 @@ function withSecurityHeaders(response: Response): Response {
 			statusText: response.statusText,
 			headers: new Headers(response.headers)
 		});
-		applyDefaults(rebuilt.headers);
+		applyDefaults(rebuilt.headers, secure);
 		return rebuilt;
 	}
 }

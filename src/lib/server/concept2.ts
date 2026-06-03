@@ -18,6 +18,13 @@ import { writeSession, type OAuthTokens, type SessionData, type SessionUser } fr
 /** Scopes we request from the Concept2 logbook. */
 export const OAUTH_SCOPE = 'user:read,results:read';
 
+/**
+ * Hard timeout on every Concept2 request. Without it a hung upstream would tie
+ * up the Worker until the platform's own limit; aborting early surfaces as a
+ * normal request failure (reconnect / sync error) that callers already handle.
+ */
+const REQUEST_TIMEOUT_MS = 10_000;
+
 export interface Concept2Config {
 	clientId: string;
 	clientSecret: string;
@@ -51,7 +58,8 @@ async function tokenRequest(cfg: Concept2Config, body: Record<string, string>): 
 	const res = await fetch(`${cfg.baseUrl}/oauth/access_token`, {
 		method: 'POST',
 		headers: { 'content-type': 'application/x-www-form-urlencoded' },
-		body: new URLSearchParams(body)
+		body: new URLSearchParams(body),
+		signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
 	});
 	if (!res.ok) {
 		// Don't include the response body — it can echo client_id/secret hints.
@@ -93,7 +101,8 @@ interface MeResponse {
 
 export async function fetchMe(cfg: Concept2Config, accessToken: string): Promise<SessionUser> {
 	const res = await fetch(`${cfg.baseUrl}/api/users/me`, {
-		headers: authHeader(accessToken)
+		headers: authHeader(accessToken),
+		signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
 	});
 	if (!res.ok) throw new Error(`fetchMe failed (${res.status})`);
 	const json = (await res.json()) as MeResponse;
@@ -132,7 +141,10 @@ export class Concept2Client {
 
 	private async api<T>(path: string): Promise<T> {
 		const token = await this.accessToken();
-		const res = await fetch(`${this.cfg.baseUrl}/api${path}`, { headers: authHeader(token) });
+		const res = await fetch(`${this.cfg.baseUrl}/api${path}`, {
+			headers: authHeader(token),
+			signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+		});
 		if (!res.ok) throw new Error(`Concept2 API ${path} failed (${res.status})`);
 		return (await res.json()) as T;
 	}
