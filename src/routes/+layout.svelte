@@ -137,6 +137,7 @@
 		bind:this={mobileNav}
 		closedby="any"
 		onclose={onNavClose}
+		onclick={(e) => { if (e.target === mobileNav) closeMenu(); }}
 	>
 			<nav class="drawer-nav" aria-label="Main">
 				<a href="/dashboard" class:active={page.url.pathname.startsWith('/dashboard')}
