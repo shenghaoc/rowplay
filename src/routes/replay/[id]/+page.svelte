@@ -1570,7 +1570,7 @@
 		</dl>
 	</div>
 
-	{#if detail.heartRate?.ending != null || detail.heartRate?.recovery != null || detail.restTime != null || detail.targets || detail.metadata || detail.verified != null || targetRows.length || workRest}
+	{#if detail.heartRate?.ending != null || detail.heartRate?.recovery != null || detail.restTime != null || detail.targets || detail.metadata || detail.source || detail.verified != null || targetRows.length || workRest}
 		<details class="card meta full-metrics">
 			<summary class="ctitle muted">{t('replay.fullMetrics')}</summary>
 			<dl class="metagrid">
@@ -1667,22 +1667,22 @@
 						</div>
 					{/if}
 					{#if detail.metadata?.pmVersion != null}
-						<div><dt>{t('replay.mPmVersion')}</dt><dd class="mono">{detail.metadata.pmVersion}</dd></div>
+						<div><dt>{t('replay.mPmVersion')}</dt><dd class="mono">{detail.metadata?.pmVersion}</dd></div>
 					{/if}
 					{#if detail.metadata?.firmwareVersion}
-						<div><dt>{t('replay.mFirmware')}</dt><dd>{detail.metadata.firmwareVersion}</dd></div>
+						<div><dt>{t('replay.mFirmware')}</dt><dd>{detail.metadata?.firmwareVersion}</dd></div>
 					{/if}
 					{#if detail.metadata?.serialNumber}
-						<div><dt>{t('replay.mSerial')}</dt><dd>{detail.metadata.serialNumber}</dd></div>
+						<div><dt>{t('replay.mSerial')}</dt><dd>{detail.metadata?.serialNumber}</dd></div>
 					{/if}
 					{#if detail.metadata?.device}
-						<div><dt>{t('replay.mDevice')}</dt><dd>{detail.metadata.device}</dd></div>
+						<div><dt>{t('replay.mDevice')}</dt><dd>{detail.metadata?.device}</dd></div>
 					{/if}
 					{#if detail.metadata?.ergModelType != null}
-						<div><dt>{t('replay.mErgModel')}</dt><dd class="mono">{detail.metadata.ergModelType}</dd></div>
+						<div><dt>{t('replay.mErgModel')}</dt><dd class="mono">{detail.metadata?.ergModelType}</dd></div>
 					{/if}
 					{#if detail.metadata?.hrType}
-						<div><dt>{t('replay.mHrSensor')}</dt><dd>{detail.metadata.hrType}</dd></div>
+						<div><dt>{t('replay.mHrSensor')}</dt><dd>{detail.metadata?.hrType}</dd></div>
 					{/if}
 				</dl>
 			{/if}
