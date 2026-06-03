@@ -52,7 +52,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 				.replace('%fontPreload%', FONT_PRELOAD)
 	});
 
-	return withSecurityHeaders(response, event.url.protocol === 'https:');
+	return withSecurityHeaders(response, hstsEligible(event.url));
 };
 
 // Defense-in-depth defaults applied to every response. Each is set only when a
@@ -79,6 +79,16 @@ const SECURITY_HEADERS: Record<string, string> = {
 // transport. `preload` is intentionally omitted — it's a standing commitment
 // that requires explicit submission to the browser preload list.
 const HSTS_VALUE = 'max-age=31536000; includeSubDomains';
+
+// ...but never send HSTS for localhost/loopback: a cached policy there forces
+// *every* local HTTP service on that host (any port) to HTTPS, breaking other
+// dev servers. Browsers don't apply HSTS to bare IPs, but we exclude them too
+// for clarity.
+const NO_HSTS_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+function hstsEligible(url: URL): boolean {
+	return url.protocol === 'https:' && !NO_HSTS_HOSTS.has(url.hostname);
+}
 
 function applyDefaults(headers: Headers, secure: boolean): void {
 	for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
