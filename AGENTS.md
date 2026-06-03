@@ -31,6 +31,7 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [Sport-aware 3D replay](.kiro/specs/3d-replay-sports/tasks.md)
 - [Concept2 token privacy](.kiro/specs/concept2-token-privacy/tasks.md) — BYOT token sealed in an httpOnly cookie (never in KV); session-scoped D1 cache purged on disconnect; reversible leaderboard opt-in.
 - [Mobile nav backdrop dismiss](.kiro/specs/mobile-nav-backdrop-dismiss/tasks.md) — cross-browser backdrop tap to close the hamburger menu; bounding-rect `onclick` fallback for WebKit (iOS Safari).
+- [Snappy connect & dashboard cache warm-up](.kiro/specs/connect-cache-warmup/tasks.md) — connect pending-state; background warm-cache sync on connect (`waitUntil`); D1 read as the full history only after a sync completes (no partial cache); per-request load de-dup.
 
 **Platform audit (read before new features or modernization work):**
 
