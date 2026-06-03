@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { mapResult, mapStrokes, mapSplits } from './concept2';
 import type { Split, Stroke } from '../types';
 import rowerSteady from '../../../tests/fixtures/golden/rower-steady.fixture.json' with { type: 'json' };
@@ -39,7 +39,17 @@ function assertSplit(actual: Split, expected: Partial<Split>) {
 
 function runGoldenSuite(name: string, fixture: GoldenFixture) {
 	describe(`golden: ${name}`, () => {
-		const result = mapResult(fixture.rawResult);
+		// Compute in beforeAll, not at describe/collection time: a throw here then
+		// surfaces as a named test failure rather than a test-collection error.
+		let result: ReturnType<typeof mapResult>;
+		let strokes: Stroke[] = [];
+
+		beforeAll(() => {
+			result = mapResult(fixture.rawResult);
+			if (fixture.rawStrokes.length > 0) {
+				strokes = mapStrokes(fixture.rawStrokes, result.sport);
+			}
+		});
 
 		it('mapResult normalises summary fields', () => {
 			const exp = fixture.expected.result;
@@ -58,12 +68,12 @@ function runGoldenSuite(name: string, fixture: GoldenFixture) {
 		});
 
 		if (fixture.rawStrokes.length > 0) {
-			const strokes = mapStrokes(fixture.rawStrokes, result.sport);
-
 			it('mapStrokes matches hand-verified key strokes', () => {
 				for (const expected of fixture.expected.strokes) {
 					const { _index, ...fields } = expected;
-					assertStroke(strokes[_index], fields);
+					const stroke = strokes[_index];
+					expect(stroke, `stroke at index ${_index} should be defined`).toBeDefined();
+					assertStroke(stroke, fields);
 				}
 			});
 		}
@@ -73,7 +83,9 @@ function runGoldenSuite(name: string, fixture: GoldenFixture) {
 				const splits = mapSplits(fixture.rawResult);
 				for (const expected of fixture.expected.splits) {
 					const { _index, ...fields } = expected;
-					assertSplit(splits[_index], fields);
+					const split = splits[_index];
+					expect(split, `split at index ${_index} should be defined`).toBeDefined();
+					assertSplit(split, fields);
 				}
 			});
 		}
@@ -101,6 +113,7 @@ describe('golden: rower-interval offset', () => {
 		const result = mapResult(fixture.rawResult);
 		const strokes = mapStrokes(fixture.rawStrokes, result.sport);
 		const rep2First = strokes[fixture._rep2FirstIndex!];
+		expect(rep2First, `stroke at index ${fixture._rep2FirstIndex} should be defined`).toBeDefined();
 		expect(rep2First.rawT).toBeCloseTo(0, 3);
 		expect(rep2First.rawD).toBeCloseTo(0, 3);
 		expect(rep2First.t).toBeCloseTo(fixture._rep1FinalT!, 3);
