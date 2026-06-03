@@ -93,12 +93,14 @@ describe('daisyUI layout collision guard', () => {
 		expect(violations).toEqual([]);
 	});
 
-	it('dashboard summary uses daisyUI stat parts inside dash-stats', () => {
+	it('dashboard summary uses a custom dash-stats grid, not the daisyUI stats container', () => {
 		const html = markupOnly(readFileSync('src/routes/dashboard/+page.svelte', 'utf-8'));
+		// Redesign: custom `.statcard` cards (daisyUI `card`) inside a custom `.dash-stats`
+		// grid — never the daisyUI `.stats`/`.stat` inline-grid container (the collision).
 		expect(html).toContain('dash-stats');
-		expect(html).toContain('stat-title');
-		expect(html).toContain('stat-value');
-		expect(html).toMatch(/class="stat\b/);
+		expect(html).toMatch(/class="card statcard/);
+		expect(html).toContain('statval');
 		expect(html).not.toMatch(/class="stats"/);
+		expect(html).not.toMatch(/class="stat\b/);
 	});
 });
