@@ -375,6 +375,10 @@ export async function clearUserCachedData(event: RequestEvent): Promise<void> {
 /** Demo-mode annotation store (in-memory, lost on server restart — acceptable for demo). */
 const demoAnnotationStore = new Map<number, Annotation[]>();
 
+export function resetDemoAnnotationStore(): void {
+	demoAnnotationStore.clear();
+}
+
 export async function loadAnnotations(
 	event: RequestEvent,
 	workoutId: number

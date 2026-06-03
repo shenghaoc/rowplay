@@ -1,3 +1,5 @@
+> **Note for AI Agents:** Please read `AGENTS.md` before proposing or making any changes to this repository to ensure architecture and quality invariants are strictly preserved.
+
 # rowplay
 
 Concept2 logbook analytics **and a real-time workout replay**, deployed on Cloudflare.
