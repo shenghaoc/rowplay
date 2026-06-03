@@ -90,14 +90,17 @@ export function buildSegmentMap(splits: Split[], fallbackSport: Sport = 'rower')
 		const totalT = splits.reduce((a, s) => a + (s.isRest ? 0 : s.time), 0);
 		const machine = splits.find((s) => s.machine)?.machine ?? fallbackSport;
 		if (totalD <= 0 && totalT <= 0) {
+			// One unbounded segment so paceRangeForSegment matches every stroke; a
+			// zero-width (endD/endT = 0) segment would match nothing and fall back to
+			// static pace defaults for any workout that arrives without splits.
 			return [
 				{
 					index: 0,
 					machine,
 					startD: 0,
-					endD: 0,
+					endD: Infinity,
 					startT: 0,
-					endT: 0,
+					endT: Infinity,
 					restBefore: 0
 				}
 			];

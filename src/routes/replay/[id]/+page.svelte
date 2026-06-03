@@ -257,6 +257,22 @@
 		}
 	}
 
+	/**
+	 * Rest-aware play/pause. Clicking play (or pressing Space) while the rest
+	 * interstitial is animating skips straight to the resumption point instead of
+	 * letting the engine run under the overlay and snap back when the rest completes.
+	 */
+	function togglePlay() {
+		if (manualRest) {
+			const next = segMap[restSegIdx + 1];
+			cancelRestAnim();
+			if (next) engine?.seek(next.startT);
+			engine?.play();
+		} else {
+			engine?.toggle();
+		}
+	}
+
 	function buildState(f: Frame): RenderState {
 		const g = ghostStrokes ? sampleAt(ghostStrokes, f.t) : null;
 		ghostFrame = g;
@@ -540,7 +556,7 @@
 		const onKey = (e: KeyboardEvent) => {
 			if (e.code === 'Space' && !(e.target as HTMLElement)?.matches?.('select, input, button')) {
 				e.preventDefault();
-				engine?.toggle();
+				togglePlay();
 			}
 		};
 		window.addEventListener('keydown', onKey);
@@ -1384,7 +1400,7 @@
 
 	<!-- Transport controls -->
 	<div class="card bg-base-100 border border-base-300 shadow-md p-5 controls">
-		<button class="btn btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
+		<button class="btn btn-primary play" onclick={togglePlay} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
 		<div class="clock mono">

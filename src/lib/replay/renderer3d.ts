@@ -530,6 +530,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 	private ghostGroup: THREE.Group;
 	private ghostAvatars: Record<Sport, Avatar>;
 	private lastRenderedSport: Sport | null = null;
+	private readonly _tempColor = new THREE.Color();
 	private liveWake: WakeTrail | null = null;
 	private ghostWake: WakeTrail | null = null;
 	private liveLabel: THREE.Sprite;
@@ -664,19 +665,6 @@ export class CourseRenderer3D implements ReplayRenderer {
 				this.groundMesh.geometry = this.track(new THREE.PlaneGeometry(140, 140, seg, seg));
 			}
 		}
-	}
-
-	private lerpHex(a: number, b: number, t: number): number {
-		const ar = (a >> 16) & 0xff;
-		const ag = (a >> 8) & 0xff;
-		const ab = a & 0xff;
-		const br = (b >> 16) & 0xff;
-		const bg = (b >> 8) & 0xff;
-		const bb = b & 0xff;
-		const r = Math.round(ar + (br - ar) * t);
-		const g = Math.round(ag + (bg - ag) * t);
-		const bl = Math.round(ab + (bb - ab) * t);
-		return (r << 16) | (g << 8) | bl;
 	}
 
 	private track<T extends THREE.BufferGeometry>(g: T): T {
@@ -867,9 +855,12 @@ export class CourseRenderer3D implements ReplayRenderer {
 		) {
 			const fromC = SPORT_PROFILES[state.transitionFrom].groundColor(themeName);
 			const toC = SPORT_PROFILES[state.transitionTo].groundColor(themeName);
-			this.groundMesh.material.color.setHex(
-				this.lerpHex(fromC, toC, state.transitionPhase)
-			);
+			// Crossfade the ground colour with THREE's Color.lerp, reusing _tempColor so
+			// there is no per-frame allocation. Interpolation happens in the renderer's
+			// working colour space.
+			this.groundMesh.material.color
+				.setHex(fromC)
+				.lerp(this._tempColor.setHex(toC), state.transitionPhase);
 		}
 
 		if (playing && !this.reduceMotion && state.transitionPhase == null)
