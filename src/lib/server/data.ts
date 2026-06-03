@@ -211,6 +211,18 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 	const now = Temporal.Now.plainDateISO('UTC');
 	const plan = planSync(state, now, 'backfill');
 	if (plan.kind !== 'backfill') {
+		// Latch backfill_done so already-synced users stop re-triggering the loop.
+		// A pre-windowing full sync leaves oldest_date = NULL with backfill_done = 0,
+		// which planSync resolves to 'done' — but without persisting that, every
+		// page mount would POST /api/sync/backfill again. Write it back once.
+		if (plan.kind === 'done' && state && !state.backfillDone) {
+			await setSyncState(db, userId, {
+				lastDate: state.lastDate,
+				total: await countWorkouts(db, userId),
+				oldestDate: state.oldestDate,
+				backfillDone: true
+			});
+		}
 		return {
 			added: 0,
 			oldestDate: state?.oldestDate ?? null,

@@ -74,6 +74,19 @@ export function mergeWatermark(
   (no results older than `to`). Stale/out-of-order chunks can't regress it (Req
   2.5). Pure, fully unit-tested.
 
+**Day-boundary precision (accepted limitation).** The `to` bound is the calendar
+day *before* the oldest workout seen (`overlapDate`), so the cursor always moves
+strictly backward and is guaranteed to terminate. The trade-off: if a single
+calendar day holds more workouts than one backfill run can drain
+(`BACKFILL_PAGES_PER_RUN × 250` = 1000), the un-fetched remainder of that day is
+skipped once the cursor steps past it. This is accepted — 1000 logged pieces in
+one calendar day is not a real athlete profile. An *inclusive* same-day bound
+(`to = oldest.slice(0,10)`) is deliberately **not** used: because each run
+re-pages newest-first from page 1, an inclusive bound would re-fetch the same
+newest pages every run and never advance `oldest_date` for any athlete with more
+than 1000 total workouts — a far worse failure than the boundary skip it would
+close.
+
 Server-only module so the constant never leaks the token-bearing path to the
 client; the window length reaches the UI through the `syncStatus` loader (Req
 4.4).
@@ -95,8 +108,10 @@ ALTER TABLE sync_state ADD COLUMN backfill_done INTEGER NOT NULL DEFAULT 0;  -- 
 - `backfill_done` — latches to 1 when no history older than the watermark
   remains. The existing `last_date` / `total` columns are unchanged.
 - No data migration needed: existing rows get `oldest_date = NULL`,
-  `backfill_done = 0`, so already-synced users transparently gain a (no-op)
-  backfill cursor that completes on its first empty chunk.
+  `backfill_done = 0`. `planSync` resolves that state to `done`, and
+  `backfillWorkouts` then **latches `backfill_done = 1` on that first no-op
+  pass** (persisting the watermark even though no chunk was fetched) so the
+  client stops re-triggering the backfill loop on every page mount.
 
 ### `db.ts` changes
 
