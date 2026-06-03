@@ -464,6 +464,10 @@ export const ja = {
 		mFirmware: 'ファームウェア',
 		mSerial: 'シリアル番号',
 		mDevice: 'デバイス',
+		mSource: '記録元',
+		exrBadge: 'EXR ソース',
+		exrBadgeTitle:
+			'ペースとパワーは PM5 からではなく EXR によって合成されています。PM 記録のワークアウトと直接比較できない場合があります。',
 		mErgModel: 'エルグモデル',
 		mHrSensor: '心拍センサー',
 		targetsTitle: '目標',

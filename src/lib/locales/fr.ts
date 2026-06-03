@@ -462,6 +462,10 @@ export const fr = {
 		mFirmware: 'Firmware',
 		mSerial: 'Numéro de série',
 		mDevice: 'Appareil',
+		mSource: 'Enregistré par',
+		exrBadge: 'Source EXR',
+		exrBadgeTitle:
+			'Le rythme et la puissance ont été synthétisés par EXR, pas lus sur le PM5. Les chiffres peuvent ne pas être directement comparables aux séances enregistrées par PM.',
 		mErgModel: 'Modèle d\'erg',
 		mHrSensor: 'Capteur FC',
 		targetsTitle: 'Objectifs',

@@ -29,6 +29,7 @@
 	import { avgWatts, fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, SPORT_LABEL } from '$lib/format';
 	import type { Sport, Stroke, Workout, WorkoutDetail } from '$lib/types';
 	import { matchStandardDistance } from '$lib/leaderboard';
+	import { isExrSource } from '$lib/exrSource';
 	import { untrack } from 'svelte';
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
 	import { isShareToken, type RivalGhostTrace } from '$lib/replay/rivalGhost';
@@ -93,6 +94,7 @@
 			? applyHrImport(baseDetail, hrOverlay.samples, hrOverlay.offset)
 			: baseDetail
 	);
+	const exrFlagged = $derived(isExrSource(detail));
 	const logbookHasHr = $derived(strokesHaveHr(baseDetail.strokes));
 	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
@@ -1007,6 +1009,9 @@
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
 			{#if !detail.hasStrokeData}<span class="badge">{t('replay.lowRes')}</span>{/if}
+			{#if exrFlagged}
+				<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
+			{/if}
 		</div>
 		<div class="sharebar">
 			<button class="btn btn-ghost btn-sm" type="button" disabled={sharing} onclick={shareReplay}>
@@ -1590,7 +1595,7 @@
 		</dl>
 	</div>
 
-	{#if detail.heartRate?.ending != null || detail.heartRate?.recovery != null || detail.restTime != null || detail.targets || detail.metadata || detail.verified != null || targetRows.length || workRest}
+	{#if detail.heartRate?.ending != null || detail.heartRate?.recovery != null || detail.restTime != null || detail.targets || detail.metadata || detail.source || detail.verified != null || targetRows.length || workRest}
 		<details class="card meta full-metrics">
 			<summary class="ctitle muted">{t('replay.fullMetrics')}</summary>
 			<dl class="metagrid">
@@ -1674,26 +1679,35 @@
 				</ul>
 			{/if}
 
-			{#if detail.metadata}
+			{#if detail.metadata || detail.source}
 				<h4 class="subhead muted">{t('replay.provenanceTitle')}</h4>
 				<dl class="metagrid">
-					{#if detail.metadata.pmVersion != null}
-						<div><dt>{t('replay.mPmVersion')}</dt><dd class="mono">{detail.metadata.pmVersion}</dd></div>
+					{#if detail.source}
+						<div>
+							<dt>{t('replay.mSource')}</dt>
+							<dd>
+								{detail.source}
+								{#if exrFlagged}<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>{/if}
+							</dd>
+						</div>
 					{/if}
-					{#if detail.metadata.firmwareVersion}
-						<div><dt>{t('replay.mFirmware')}</dt><dd>{detail.metadata.firmwareVersion}</dd></div>
+					{#if detail.metadata?.pmVersion != null}
+						<div><dt>{t('replay.mPmVersion')}</dt><dd class="mono">{detail.metadata?.pmVersion}</dd></div>
 					{/if}
-					{#if detail.metadata.serialNumber}
-						<div><dt>{t('replay.mSerial')}</dt><dd>{detail.metadata.serialNumber}</dd></div>
+					{#if detail.metadata?.firmwareVersion}
+						<div><dt>{t('replay.mFirmware')}</dt><dd>{detail.metadata?.firmwareVersion}</dd></div>
 					{/if}
-					{#if detail.metadata.device}
-						<div><dt>{t('replay.mDevice')}</dt><dd>{detail.metadata.device}</dd></div>
+					{#if detail.metadata?.serialNumber}
+						<div><dt>{t('replay.mSerial')}</dt><dd>{detail.metadata?.serialNumber}</dd></div>
 					{/if}
-					{#if detail.metadata.ergModelType != null}
-						<div><dt>{t('replay.mErgModel')}</dt><dd class="mono">{detail.metadata.ergModelType}</dd></div>
+					{#if detail.metadata?.device}
+						<div><dt>{t('replay.mDevice')}</dt><dd>{detail.metadata?.device}</dd></div>
 					{/if}
-					{#if detail.metadata.hrType}
-						<div><dt>{t('replay.mHrSensor')}</dt><dd>{detail.metadata.hrType}</dd></div>
+					{#if detail.metadata?.ergModelType != null}
+						<div><dt>{t('replay.mErgModel')}</dt><dd class="mono">{detail.metadata?.ergModelType}</dd></div>
+					{/if}
+					{#if detail.metadata?.hrType}
+						<div><dt>{t('replay.mHrSensor')}</dt><dd>{detail.metadata?.hrType}</dd></div>
 					{/if}
 				</dl>
 			{/if}

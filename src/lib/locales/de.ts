@@ -462,6 +462,10 @@ export const de = {
 		mFirmware: 'Firmware',
 		mSerial: 'Seriennummer',
 		mDevice: 'Gerät',
+		mSource: 'Aufgezeichnet von',
+		exrBadge: 'EXR-Quelle',
+		exrBadgeTitle:
+			'Tempo und Leistung wurden von EXR synthetisiert, nicht vom PM5 gemessen. Die Werte sind möglicherweise nicht direkt mit PM-Aufzeichnungen vergleichbar.',
 		mErgModel: 'Erg-Modell',
 		mHrSensor: 'HF-Sensor',
 		targetsTitle: 'Ziele',
