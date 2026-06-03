@@ -10,11 +10,13 @@ export const PUT: RequestHandler = async (event) => {
 	if (!event.locals.user) throw error(401, 'Not authenticated.');
 
 	const body = (await event.request.json()) as { timezone?: string | null };
-	const raw = body.timezone;
-	if (raw != null && raw !== '' && !TIMEZONE_VALUES.has(raw)) {
+	// Trim first: a valid zone with stray whitespace should pass, and a
+	// whitespace-only value should clear the setting rather than 400.
+	const raw = body.timezone?.trim();
+	if (raw && !TIMEZONE_VALUES.has(raw)) {
 		throw error(400, 'Invalid timezone.');
 	}
-	const tz = raw?.trim() || undefined;
+	const tz = raw || undefined;
 	await saveHomeTimezone(event, tz);
 	return json({ ok: true, timezone: tz ?? null }, { headers: { 'cache-control': 'private, no-store' } });
 };

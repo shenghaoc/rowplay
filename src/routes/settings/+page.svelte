@@ -23,13 +23,13 @@
 	let syncing = $state(false);
 	let syncMode = $state<'incremental' | 'full' | null>(null);
 	let deleting = $state(false);
-	let selectedTz = $state('');
+	// Seed from server data so SSR renders the selected option (no flash of the
+	// default "UTC" option before hydration). Demo mode reads localStorage on mount.
+	let selectedTz = $state(data.homeTimezone ?? '');
 	let savingTz = $state(false);
 
 	onMount(() => {
-		selectedTz = data.demo
-			? (readHomeTimezoneClient() ?? '')
-			: (data.homeTimezone ?? '');
+		if (data.demo) selectedTz = readHomeTimezoneClient() ?? '';
 	});
 
 	const lastSyncLabel = $derived(

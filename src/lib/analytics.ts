@@ -1294,7 +1294,18 @@ export function annualGoalProgress(
 	const end = endDay ?? todayKeyForTz(homeTz);
 	const year = goal.year;
 	const yearPrefix = `${year}-`;
-	const inYear = workouts.filter((w) => workoutDayKey(w.date, w.timezone, homeTz).startsWith(yearPrefix));
+	// Pre-filter on the raw date's year (a cheap string slice) before the
+	// Temporal-backed workoutDayKey: a tz shift moves a workout by at most one
+	// day, so only the adjacent years can cross into `year`. This skips Temporal
+	// work for the bulk of a multi-year history.
+	const prevYearStr = String(year - 1);
+	const nextYearStr = String(year + 1);
+	const inYear = workouts
+		.filter((w) => {
+			const wYear = w.date.slice(0, 4);
+			return wYear === String(year) || wYear === prevYearStr || wYear === nextYearStr;
+		})
+		.filter((w) => workoutDayKey(w.date, w.timezone, homeTz).startsWith(yearPrefix));
 	const current =
 		goal.kind === 'meters'
 			? inYear.reduce((s, w) => s + challengeDistanceMetres(w), 0)

@@ -111,15 +111,23 @@ function dayKeyInZone(pdt: Temporal.PlainDateTime, tz: string): string | null {
  * Never throws; invalid IANA strings fall through silently.
  */
 export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: string): string {
-	const pdt = parseLogbookDateTime(date);
-	if (!pdt) return date.slice(0, 10);
+	const cleanWtz = workoutTz?.trim();
+	const cleanHtz = homeTz?.trim();
+	// Fast path: with no zone to apply, the logbook timestamp is already
+	// monitor-local, so its date part is the answer — skip Temporal parsing and
+	// allocation entirely (this is the overwhelming common case). The defensive
+	// typeof guard also avoids a throw on a corrupt/missing date.
+	if (!cleanWtz && !cleanHtz) return typeof date === 'string' ? date.slice(0, 10) : '';
 
-	if (workoutTz?.trim()) {
-		const key = dayKeyInZone(pdt, workoutTz.trim());
+	const pdt = parseLogbookDateTime(date);
+	if (!pdt) return typeof date === 'string' ? date.slice(0, 10) : '';
+
+	if (cleanWtz) {
+		const key = dayKeyInZone(pdt, cleanWtz);
 		if (key) return key;
 	}
-	if (homeTz?.trim()) {
-		const key = dayKeyInZone(pdt, homeTz.trim());
+	if (cleanHtz) {
+		const key = dayKeyInZone(pdt, cleanHtz);
 		if (key) return key;
 	}
 	return pdt.toPlainDate().toString();
