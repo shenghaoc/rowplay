@@ -67,6 +67,25 @@ async function client(event: RequestEvent): Promise<Concept2Client | null> {
 const workoutsByEvent = new WeakMap<RequestEvent, Promise<Workout[]>>();
 
 /**
+ * Per-request memo of the user's sync state. D1 is treated as the authoritative
+ * FULL history only once a sync has completed (this row exists). Until then a
+ * cold or mid-fill D1 — which may hold just the most recent page — must not be
+ * read as complete, or PBs/aggregates/export would silently omit older workouts.
+ */
+const syncStateByEvent = new WeakMap<RequestEvent, Promise<SyncState | null>>();
+function syncStateFor(event: RequestEvent): Promise<SyncState | null> {
+	let cached = syncStateByEvent.get(event);
+	if (!cached) {
+		const db = event.platform?.env?.DB;
+		const userId = event.locals.user?.id;
+		cached =
+			db && userId != null ? getSyncState(db, userId).catch(() => null) : Promise.resolve(null);
+		syncStateByEvent.set(event, cached);
+	}
+	return cached;
+}
+
+/**
  * List workouts for display/analytics. In live mode this reads the user's FULL
  * history from D1 (synced separately) so PBs/trends span everything — not just
  * the most recent API page. If D1 is empty (never synced) it falls back to a
@@ -86,22 +105,20 @@ async function loadWorkoutsFresh(event: RequestEvent): Promise<Workout[]> {
 	const userId = event.locals.user?.id;
 	const db = event.platform?.env?.DB;
 
-	if (db && userId != null) {
+	// Serve D1 only once a sync has completed — a cold or mid-fill cache may hold
+	// just the most recent page, and returning that as the full history would skew
+	// PBs/aggregates/export until the backfill finishes.
+	if (db && userId != null && (await syncStateFor(event))) {
 		const fromDb = await getAllWorkouts(db, userId).catch(() => []);
 		if (fromDb.length) return fromDb;
 	}
-	// Cold start (no sync yet): show one live page rather than nothing — and cache
-	// it into D1 so the next navigation is a fast local read instead of another
-	// ~1s live Concept2 round-trip. Best-effort: a cache-write hiccup must not
-	// fail the page. We intentionally don't write sync state here, so an explicit
-	// Sync still does a full history backfill (not just this first page).
+	// Not synced yet: show one live page so the dashboard isn't blank. We do NOT
+	// persist it — a partial page must never masquerade as the complete history
+	// (that's what the sync-state gate above guards). The background connect-sync
+	// (or a manual Sync) fills D1 fully and writes sync state, flipping the gate.
 	const c = await client(event);
 	if (!c) throw error(401, 'Not authenticated.');
-	const live = await c.listWorkouts();
-	if (db && userId != null && live.length) {
-		await upsertWorkouts(db, userId, live).catch(() => {});
-	}
-	return live;
+	return c.listWorkouts();
 }
 
 /**
@@ -120,7 +137,9 @@ export async function loadWorkoutList(
 	const userId = event.locals.user?.id;
 	const db = event.platform?.env?.DB;
 
-	if (db && userId != null) {
+	// As in loadWorkouts: only query D1 once a sync has completed, so a partial
+	// cache can't yield a truncated (and mis-paginated) list.
+	if (db && userId != null && (await syncStateFor(event))) {
 		const count = await countWorkouts(db, userId).catch(() => 0);
 		if (count > 0) {
 			const pbs = q.pbsOnly ? await getPbWorkoutIds(db, userId, q.sport) : undefined;
@@ -267,10 +286,7 @@ export async function saveAnnualGoal(event: RequestEvent, goal: AnnualGoal): Pro
 }
 
 export async function syncStatus(event: RequestEvent): Promise<SyncState | null> {
-	const db = event.platform?.env?.DB;
-	const userId = event.locals.user?.id;
-	if (!db || userId == null) return null;
-	return getSyncState(db, userId);
+	return syncStateFor(event);
 }
 
 export interface DashboardAggregates {
@@ -285,6 +301,10 @@ export async function loadDashboardAggregates(
 	const userId = event.locals.user?.id;
 	const db = event.platform?.env?.DB;
 	if (!db || userId == null) return null;
+	// Aggregates are computed in SQL over the cached rows; if the cache is still
+	// filling (no completed sync) they'd be partial, so defer to the client-side
+	// computation from the live page rather than showing skewed totals/PBs.
+	if (!(await syncStateFor(event))) return null;
 
 	const [sportRows, pbRows] = await Promise.all([
 		getSportAggregates(db, userId).catch(() => []),
