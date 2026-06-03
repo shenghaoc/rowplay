@@ -1,6 +1,6 @@
 /// <reference types="temporal-polyfill/global" />
 
-import type { KVNamespace, D1Database, Fetcher } from '@cloudflare/workers-types';
+import type { KVNamespace, D1Database, Fetcher, ExecutionContext } from '@cloudflare/workers-types';
 import type { SessionUser } from '$lib/server/session';
 import type { Language } from '$lib/i18n';
 
@@ -43,6 +43,9 @@ declare global {
 				/** Optional — enables ErgData webhook signature validation. */
 				ERGDATA_WEBHOOK_SECRET?: string;
 			};
+			/** Cloudflare execution context — `waitUntil` keeps background work
+			 *  (e.g. warm-cache sync after connect) alive past the response. */
+			context: ExecutionContext;
 		}
 	}
 }

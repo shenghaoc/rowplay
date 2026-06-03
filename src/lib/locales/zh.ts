@@ -564,6 +564,7 @@ export const zh = {
 		apiToken: 'API 令牌',
 		placeholder: '粘贴你的令牌',
 		connect: '使用令牌连接',
+		connecting: '连接中…',
 		rejected: 'Concept2 拒绝了该令牌，请检查后重试。',
 		serverMisconfigured: '此部署未配置令牌登录（缺少 SESSION_SECRET）。请联系站点所有者。',
 		empty: '请粘贴你的 Concept2 API 令牌。',

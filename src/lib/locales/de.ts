@@ -569,6 +569,7 @@ export const de = {
 		apiToken: 'API-Token',
 		placeholder: 'Token einfügen',
 		connect: 'Mit Token verbinden',
+		connecting: 'Verbinden…',
 		rejected: 'Concept2 hat dieses Token abgelehnt. Prüfe es und versuche es erneut.',
 		serverMisconfigured:
 			'Diese Installation ist nicht für die Token-Anmeldung eingerichtet (SESSION_SECRET fehlt). Wende dich an den Betreiber.',
