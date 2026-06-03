@@ -1,5 +1,5 @@
 {
-	"description": "4×500 m RowErg interval — t/d reset between reps with cumulative offset; two interval splits",
+	"description": "2×500 m RowErg interval (minimum case for t/d reset) — two reps with cumulative offset; two interval splits",
 	"_rep2FirstIndex": 5,
 	"_rep1FinalT": 3.2,
 	"_rep1FinalD": 16,

@@ -18,7 +18,7 @@ tests/fixtures/golden/
   rower-steady.fixture.json      ← RowErg 2000 m (Req 1.1, 1.6)
   bike-steady.fixture.json       ← BikeErg 4000 m (Req 1.2)
   ski-steady.fixture.json        ← SkiErg 6000 m  (Req 1.3)
-  rower-interval.fixture.json    ← 4×500 m RowErg (Req 1.4, 1.6)
+  rower-interval.fixture.json    ← 2×500 m RowErg interval (Req 1.4, 1.6)
   REDACTION.md                   ← redaction policy (Req 3.6)
 
 src/lib/server/
@@ -121,7 +121,7 @@ Confirms `paceDiv = 1` for SkiErg — pace should **not** be halved.
 
 | Wire field | Example value | Expected normalized |
 |---|---|---|
-| `type` | `"ski"` | `sport = 'ski'` |
+| `type` | `"ski"` | `sport = 'skierg'` |
 | Stroke `p` | `1440` (tenths, per-500m) | `144` s/500m (`1440/10/1`) |
 
 `expected.strokes` asserts the first and last stroke. No splits assertion.
@@ -160,7 +160,7 @@ test can assert the pre-offset value separately (Req 2.3).
 ## Test file design — `src/lib/server/concept2.golden.test.ts`
 
 ```ts
-import { describe, it, expect } from 'vitest';
+import { beforeAll, describe, it, expect } from 'vitest';
 import { mapResult, mapStrokes, mapSplits } from './concept2';
 import type { Split, Stroke } from '../types';
 

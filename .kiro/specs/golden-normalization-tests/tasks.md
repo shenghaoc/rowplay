@@ -39,12 +39,12 @@ checked as the work lands. Requirement references point at `requirements.md`.
   - Construct a realistic SkiErg 6000 m result body with `type = "ski"`,
     4–8 `rawStrokes` with `p` values in per-500m tenths (no halving).
   - Apply redaction policy (Req 3).
-  - Populate `expected.result` (`sport = 'ski'`), `expected.strokes` (first
+  - Populate `expected.result` (`sport = 'skierg'`), `expected.strokes` (first
     + last). `expected.splits = []`.
   - _Requirements: 1.3, 1.5, 2.1, 2.2, 3.1–3.5, 4.1–4.2_
 
 - [x] **5. Interval RowErg fixture** — `tests/fixtures/golden/rower-interval.fixture.json`
-  - Construct a 4×500 m RowErg result body where `rawStrokes` contains two
+  - Construct a 2×500 m RowErg result body (minimum case for t/d reset) where `rawStrokes` contains two
     runs of strokes (minimum 5 per rep) whose `t` and `d` values restart from
     zero at the start of rep 2, matching the real API behaviour.
   - Include `workout.intervals` with at least two split entries.
