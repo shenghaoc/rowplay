@@ -54,6 +54,17 @@ describe('pickDefaultGhostCandidate', () => {
 		expect(pickDefaultGhostCandidate(candidates, current)?.id).toBe(3);
 	});
 
+	it('picks time-closest candidate for time-axis current piece', () => {
+		const current = { id: 1, distance: 7500, sport: 'rower' as const, time: 1800, workoutType: 'JustRow' };
+		const candidates = [
+			w(2, 7200, 120, '2026-01-01', { time: 1760, workoutType: 'JustRow' }),
+			w(3, 8000, 118, '2026-02-01', { time: 1900, workoutType: 'JustRow' }),
+			w(4, 7800, 115, '2026-03-01', { time: 1850, workoutType: 'JustRow' })
+		];
+		// Candidate 2 is closest in time (|1800-1760|=40 vs |1800-1900|=100 vs |1800-1850|=50)
+		expect(pickDefaultGhostCandidate(candidates, current)?.id).toBe(2);
+	});
+
 	it('breaks an equidistant tie by fastest pace, not most recent', () => {
 		const current = { id: 1, distance: 2000, sport: 'rower' as const, time: 480 };
 		const candidates = [

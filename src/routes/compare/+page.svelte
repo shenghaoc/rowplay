@@ -49,6 +49,8 @@
 		return `${fmtDate(w.date)} · ${fmtDistance(w.distance)} · ${fmtPace(w.pace)}`;
 	}
 
+	// Mirrors areComparable() from comparabilityGuard — keep the two in sync.
+	// See comparabilityGuard.ts for the authoritative comparability logic.
 	function incomparableReasonFor(
 		a: WorkoutDetail | null,
 		b: WorkoutDetail | null

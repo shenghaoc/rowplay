@@ -1,9 +1,6 @@
 import { distanceBand, durationBand } from '$lib/analytics';
 import type { Sport } from '$lib/types';
 
-export type { DurationBand } from '$lib/analytics';
-export { durationBand } from '$lib/analytics';
-
 export type ComparabilityAxis = 'distance' | 'time';
 
 // Concept2 workout_type is machine-agnostic: `JustRow` is the only "Just*" value
