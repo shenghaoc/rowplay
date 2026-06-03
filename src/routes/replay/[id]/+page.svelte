@@ -3,17 +3,7 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
-	import {
-		ReplayEngine,
-		activeMachineAt,
-		activeSegmentIndexAt,
-		buildSegmentMap,
-		paceRangeForSegment,
-		sampleAt,
-		sampleIndexAt,
-		type Frame,
-		type RestProgress
-	} from '$lib/replay/engine';
+	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '$lib/replay/engine';
 	import { splitIndexAt } from '$lib/replay/inspector';
 	import { CourseRenderer, type RenderState, type ReplayRenderer } from '$lib/replay/renderer';
 	import {
@@ -104,23 +94,11 @@
 			: baseDetail
 	);
 	const logbookHasHr = $derived(strokesHaveHr(baseDetail.strokes));
+	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
 	const strokes = $derived(detail.strokes);
 
 	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
-	const segMap = $derived(buildSegmentMap(detail.splits, detail.sport));
-	const activeSport = $derived(activeMachineAt(segMap, frame.d));
-	const activeSegIdx = $derived(activeSegmentIndexAt(segMap, frame.d));
-	const sportTheme = $derived(themeFor(activeSport));
-	let manualRest = $state<RestProgress | null>(null);
-	const inRest = $derived(manualRest != null);
-	let restRafId = 0;
-	let restWallStart = 0;
-	// Highest inter-segment boundary whose rest interstitial has already played on the
-	// current forward pass. A monotonic high-water mark: each boundary fires once, and a
-	// fast (high-speed) frame that overshoots a boundary still triggers it.
-	let restSegIdx = -1;
-	const REST_EPS = 0.02; // s — tolerance for "reached" a boundary on the work-time clock
 	const sampleIdx = $derived(sampleIndexAt(strokes, frame.t));
 	const rawStroke = $derived(sampleIdx >= 0 ? strokes[sampleIdx] : null);
 	const inspectorSplitIdx = $derived(
@@ -161,10 +139,8 @@
 	const SEARCHABLE_MIN = 8;
 	const filteredCandidates = $derived.by(() => {
 		const q = sessionSearch.trim().toLowerCase();
-		let list = candidates;
-		if (detail.isMultiErg) list = list.filter((c) => !c.isMultiErg);
-		if (!q) return list;
-		return list.filter((c) => {
+		if (!q) return candidates;
+		return candidates.filter((c) => {
 			if (String(c.id) === ghostId) return true;
 			const hay = `${fmtDate(c.date)} ${fmtDistance(c.distance)} ${fmtPace(c.pace)}`.toLowerCase();
 			return hay.includes(q);
@@ -191,101 +167,14 @@
 
 	const SPEEDS = [0.5, 1, 2, 4, 8];
 
-	function prefersReducedMotion(): boolean {
-		return (
-			typeof window !== 'undefined' &&
-			window.matchMedia('(prefers-reduced-motion: reduce)').matches
-		);
-	}
-
-	function cancelRestAnim() {
-		if (restRafId) cancelAnimationFrame(restRafId);
-		restRafId = 0;
-		manualRest = null;
-		restWallStart = 0;
-	}
-
-	/**
-	 * Highest boundary index already passed at work-time `T` — used to re-seat the
-	 * high-water mark after a scrub. Scrubbing to just *before* a boundary leaves it
-	 * pending (REST_EPS slack) so playing through it still shows the rest interstitial.
-	 */
-	function boundaryConsumedIdx(T: number): number {
-		let idx = -1;
-		for (let k = 0; k < segMap.length - 1; k++) {
-			if (segMap[k].endT <= T - REST_EPS) idx = k;
-			else break;
-		}
-		return idx;
-	}
-
-	function maybeStartRestPlayback(f: Frame, playingNow: boolean) {
-		if (!playingNow || !detail.isMultiErg || manualRest || prefersReducedMotion()) return;
-		// Fire the rest interstitial when the playhead reaches or passes the next
-		// unconsumed boundary. There is deliberately no upper bound on the window: on the
-		// work-time clock a boundary is a single instant (next.startT === endT), so a high
-		// playback speed can step past it in one frame — an unbounded `>=` still catches
-		// it, while `restSegIdx` keeps each boundary firing only once per forward pass.
-		for (let k = restSegIdx + 1; k < segMap.length - 1; k++) {
-			if (f.t < segMap[k].endT - REST_EPS) break; // not reached; later boundaries neither (ordered)
-			const next = segMap[k + 1];
-			restSegIdx = k; // consume this boundary
-			if (next.restBefore <= 0) continue; // no rest here — keep scanning this frame
-			engine?.pause();
-			restWallStart = performance.now();
-			const tick = () => {
-				const elapsed = (performance.now() - restWallStart) / 1000;
-				const phase = Math.min(1, elapsed / next.restBefore);
-				manualRest = {
-					phase,
-					from: segMap[k].machine,
-					to: next.machine,
-					remaining: Math.max(0, next.restBefore - elapsed)
-				};
-				safeRender(buildState(frame), false, uiTheme.value);
-				if (phase >= 1) {
-					cancelRestAnim(); // clears manualRest; restSegIdx stays consumed
-					engine?.seek(next.startT);
-					engine?.play();
-					return;
-				}
-				restRafId = requestAnimationFrame(tick);
-			};
-			restRafId = requestAnimationFrame(tick);
-			return;
-		}
-	}
-
-	/**
-	 * Rest-aware play/pause. Clicking play (or pressing Space) while the rest
-	 * interstitial is animating skips straight to the resumption point instead of
-	 * letting the engine run under the overlay and snap back when the rest completes.
-	 */
-	function togglePlay() {
-		if (manualRest) {
-			const next = segMap[restSegIdx + 1];
-			cancelRestAnim();
-			if (next) engine?.seek(next.startT);
-			engine?.play();
-		} else {
-			engine?.toggle();
-		}
-	}
-
 	function buildState(f: Frame): RenderState {
 		const g = ghostStrokes ? sampleAt(ghostStrokes, f.t) : null;
 		ghostFrame = g;
-		const rest = manualRest;
 		return {
 			frame: f,
 			distFrac: total ? f.d / total : 0,
 			totalDistance: total,
-			sport: activeMachineAt(segMap, f.d),
-			segmentIndex: activeSegmentIndexAt(segMap, f.d),
-			transitionPhase: rest?.phase,
-			transitionFrom: rest?.from,
-			transitionTo: rest?.to,
-			transitionRemaining: rest?.remaining,
+			sport: detail.sport,
 			ghost: g
 				? { distFrac: total ? g.d / total : 0, pace: g.pace, spm: g.spm, label: ghostLabel }
 				: undefined
@@ -452,12 +341,9 @@
 			ghostError = '';
 			renderer?.destroy();
 			renderer = null;
-			cancelRestAnim();
-			restSegIdx = -1;
 			engine = new ReplayEngine(s, (f, p) => {
 				frame = f;
 				playing = p;
-				maybeStartRestPlayback(f, p);
 				safeRender(buildState(f), p, uiTheme.value);
 			});
 			engine.setSpeed(speed);
@@ -555,7 +441,7 @@
 		const onKey = (e: KeyboardEvent) => {
 			if (e.code === 'Space' && !(e.target as HTMLElement)?.matches?.('select, input, button')) {
 				e.preventDefault();
-				togglePlay();
+				engine?.toggle();
 			}
 		};
 		window.addEventListener('keydown', onKey);
@@ -575,13 +461,7 @@
 	}
 
 	function onScrub(e: Event) {
-		cancelRestAnim();
-		const target = Number((e.target as HTMLInputElement).value);
-		// Re-seat the high-water mark so scrubbing back re-arms earlier boundaries and
-		// scrubbing forward marks skipped ones consumed (rest plays live, never on the
-		// scrubber itself).
-		restSegIdx = boundaryConsumedIdx(target);
-		engine?.seek(target);
+		engine?.seek(Number((e.target as HTMLInputElement).value));
 	}
 
 	function setGhost(strokes: Stroke[] | null, label: string, rival: GhostRival | null = null) {
@@ -805,17 +685,11 @@
 		})
 	);
 
-	const paceRange = $derived(
-		paceRangeForSegment(segMap, activeSegIdx, strokes, activeSport)
-	);
-	const paceGaugeUnit = $derived(activeSport === 'bike' ? '/1000m' : '/500m');
-	// frame.pace is normalised to sec/500m for every sport; BikeErg is shown in its
-	// native per-1000m, so double the value (and relabel the unit above) for bike.
-	const paceGaugeDisplay = $derived(
-		activeSport === 'bike'
-			? fmtPace(frame.pace * 2).replace('/500m', '')
-			: fmtPace(frame.pace).replace('/500m', '')
-	);
+	const paceRange = $derived.by(() => {
+		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
+		if (ps.length === 0) return { min: 60, max: 180 };
+		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
+	});
 	const wattRange = $derived.by(() => {
 		const watts = strokes.map((s) => s.watts);
 		const maxWatt = watts.length > 0 ? Math.max(...watts) : 0;
@@ -914,10 +788,7 @@
 	// Publishing to a board only applies to a signed-in athlete's own
 	// standard-distance piece — demo athletes and off-board distances can't rank.
 	const canPublish = $derived(
-		!data.demo &&
-			!!data.user &&
-			!detail.isMultiErg &&
-			matchStandardDistance(detail.distance) != null
+		!data.demo && !!data.user && matchStandardDistance(detail.distance) != null
 	);
 
 	async function publishToLeaderboard() {
@@ -1059,8 +930,15 @@
 		sharing = true;
 		try {
 			const res = await fetch(`/api/workouts/${detail.id}/share`, { method: 'POST' });
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const body = (await res.json()) as { url: string };
+			// Parse defensively: a gateway error (502/504) or non-JSON body would make
+			// an unconditional res.json() throw a SyntaxError before the !res.ok check.
+			const body = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+			if (!res.ok) {
+				const message = body?.error ? t(body.error) : t('share.shareFailed');
+				toast.error(message);
+				return;
+			}
+			if (!body?.url) throw new Error('Missing share URL');
 			const title = detail.workoutType || detail.sport;
 			if (typeof navigator.share === 'function') {
 				try {
@@ -1141,12 +1019,8 @@
 		>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
-			{#if detail.isMultiErg}<span class="badge">{t('replay.multiErg')}</span>{/if}
 			{#if !detail.hasStrokeData}<span class="badge">{t('replay.lowRes')}</span>{/if}
 		</div>
-		{#if detail.isMultiErg}
-			<p class="muted small multierg-note">{t('replay.multiErgNote')}</p>
-		{/if}
 		<div class="sharebar">
 			<button class="btn btn-ghost btn-sm" type="button" disabled={sharing} onclick={shareReplay}>
 				<Share2 size={14} />
@@ -1404,14 +1278,11 @@
 
 	<!-- Transport controls -->
 	<div class="card bg-base-100 border border-base-300 shadow-md p-5 controls">
-		<button class="btn btn-primary play" onclick={togglePlay} aria-label={playing ? t('replay.pause') : t('replay.play')}>
+		<button class="btn btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
 		<div class="clock mono">
 			{fmtTime(frame.t, true)} <span class="muted">/ {fmtTime(detail.time)}</span>
-			{#if detail.isMultiErg && inRest}
-				<span class="badge rest-badge" data-testid="rest-transition">{t('replay.restInterval')}</span>
-			{/if}
 		</div>
 		<input
 			class="scrub"
@@ -1434,13 +1305,9 @@
 	<!-- Live gauges -->
 	<div class="gauges card bg-base-100 border border-base-300 shadow-md p-5">
 		<MetricGauge
-			label={t('replay.gPace')}
-			axisLabel={paceGaugeUnit}
-			display={paceGaugeDisplay}
-			value={frame.pace}
-			min={paceRange.max}
-			max={paceRange.min}
-			color="var(--pace)"
+			label={t('replay.gPace')} unit="/500m"
+		display={fmtPace(frame.pace).replace('/500m', '')}
+			value={frame.pace} min={paceRange.max} max={paceRange.min} color="var(--pace)"
 		/>
 		<MetricGauge
 			label={t('replay.gRate')} unit={sportTheme.cadenceUnit}
@@ -1620,7 +1487,6 @@
 				<thead>
 					<tr>
 						<th>{t('replay.thNum')}</th>
-						{#if detail.isMultiErg}<th>{t('replay.segmentMachine')}</th>{/if}
 						<th>{t('replay.thDist')}</th>
 						<th>{t('replay.thTime')}</th>
 						<th>{t('replay.thPace')}</th>
@@ -1638,15 +1504,6 @@
 					{#each detail.splits as sp}
 						<tr class:rest-row={sp.isRest}>
 							<td>{sp.index + 1}</td>
-							{#if detail.isMultiErg}
-								<td
-									>{sp.isRest
-										? t('replay.restInterval')
-										: sp.machine
-											? SPORT_LABEL[sp.machine]
-											: '—'}</td
-								>
-							{/if}
 							<td>{sp.isRest ? '—' : fmtDistance(sp.distance)}</td>
 							<td>{fmtTime(sp.time, true)}</td>
 							<td>{sp.pace > 0 ? fmtPace(sp.pace) : '—'}</td>
