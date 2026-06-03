@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-	computeIsMultiErg,
 	mapHeartRate,
 	mapMetadata,
 	mapResult,
@@ -8,6 +7,7 @@ import {
 	mapStrokes,
 	mapTargets
 } from './concept2';
+import { computeIsMultiErg } from '../types';
 import type { Split } from '../types';
 import { bikePaceSecPer500 } from '../../../tests/unit/fixtures';
 

@@ -164,3 +164,11 @@ export interface WorkoutDetail extends Workout {
 	/** True when work intervals use two or more distinct machines. */
 	isMultiErg: boolean;
 }
+
+/** True when splits contain 2+ distinct machines (pure, shared). */
+export function computeIsMultiErg(splits: Split[]): boolean {
+	const workMachines = splits
+		.filter((s) => !s.isRest && s.machine != null)
+		.map((s) => s.machine!);
+	return new Set(workMachines).size >= 2;
+}

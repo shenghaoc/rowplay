@@ -2,6 +2,7 @@ import type { KVNamespace } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '../datetime';
 import { paceToWattsForSport } from '../format';
 import {
+	computeIsMultiErg,
 	toSport,
 	type HeartRateDetail,
 	type LoggingMetadata,
@@ -362,13 +363,6 @@ export function mapResult(r: RawResult, metadata?: RawMetadata): Workout {
 		// are absent from the result (e.g. a list payload without intervals).
 		isMultiErg: computeIsMultiErg(mapSplits(r))
 	};
-}
-
-export function computeIsMultiErg(splits: Split[]): boolean {
-	const workMachines = splits
-		.filter((s) => !s.isRest && s.machine != null)
-		.map((s) => s.machine!);
-	return new Set(workMachines).size >= 2;
 }
 
 export function mapStrokes(raw: RawStroke[], sport: Sport, splits?: Split[]): Stroke[] {

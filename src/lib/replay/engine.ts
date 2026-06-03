@@ -173,26 +173,7 @@ export function activeSegmentIndexAt(segMap: SegmentInfo[], d: number): number {
 	return findSegmentByDistance(segMap, d).index;
 }
 
-export function restProgressAt(segMap: SegmentInfo[], t: number): RestProgress | null {
-	for (let k = 0; k < segMap.length - 1; k++) {
-		const cur = segMap[k];
-		const next = segMap[k + 1];
-		if (next.restBefore <= 0) continue;
-		if (t >= cur.endT && t < next.startT) {
-			const span = next.startT - cur.endT;
-			const phase = span > 0 ? (t - cur.endT) / span : 1;
-			return {
-				phase,
-				from: cur.machine,
-				to: next.machine,
-				remaining: next.startT - t
-			};
-		}
-	}
-	return null;
-}
-
-/** Pace gauge range for the active work segment. */
+export { SPORTS };
 export function paceRangeForSegment(
 	segMap: SegmentInfo[],
 	segIdx: number,

@@ -3,7 +3,6 @@ import {
 	activeMachineAt,
 	activeSegmentIndexAt,
 	buildSegmentMap,
-	restProgressAt,
 	sampleAt,
 	sampleIndexAt
 } from './engine';
@@ -147,15 +146,6 @@ describe('buildSegmentMap', () => {
 		expect(activeMachineAt(map, 1200)).toBe('skierg');
 		expect(activeMachineAt(map, 3000)).toBe('bike');
 		expect(activeSegmentIndexAt(map, 1200)).toBe(1);
-	});
-
-	it('reports no scrubbable rest gap on the work-time clock', () => {
-		// Rests are zero-width on the work-time clock, so a scrub position can never
-		// land "inside" a rest: restProgressAt returns null and the rest interstitial
-		// is instead driven live by the replay page (manualRest) at the boundary.
-		const map = buildSegmentMap(multiSplits);
-		expect(restProgressAt(map, map[0].endT + 30)).toBeNull();
-		expect(restProgressAt(map, map[0].endT)).toBeNull();
 	});
 
 	it('falls back to one segment when splits are empty', () => {

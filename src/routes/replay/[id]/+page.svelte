@@ -9,7 +9,6 @@
 		activeSegmentIndexAt,
 		buildSegmentMap,
 		paceRangeForSegment,
-		restProgressAt,
 		sampleAt,
 		sampleIndexAt,
 		type Frame,
@@ -114,7 +113,7 @@
 	const activeSegIdx = $derived(activeSegmentIndexAt(segMap, frame.d));
 	const sportTheme = $derived(themeFor(activeSport));
 	let manualRest = $state<RestProgress | null>(null);
-	const inRest = $derived(manualRest != null || restProgressAt(segMap, frame.t) != null);
+	const inRest = $derived(manualRest != null);
 	let restRafId = 0;
 	let restWallStart = 0;
 	// Highest inter-segment boundary whose rest interstitial has already played on the
@@ -276,7 +275,7 @@
 	function buildState(f: Frame): RenderState {
 		const g = ghostStrokes ? sampleAt(ghostStrokes, f.t) : null;
 		ghostFrame = g;
-		const rest = manualRest ?? restProgressAt(segMap, f.t);
+		const rest = manualRest;
 		return {
 			frame: f,
 			distFrac: total ? f.d / total : 0,
@@ -933,7 +932,12 @@
 				toast.info(t('leaderboard.publishOffBoard'));
 				return;
 			}
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			if (!res.ok) {
+				// A 403 from the privacy guard carries an i18n key in { error }.
+				const body = (await res.json().catch(() => null)) as { error?: string } | null;
+				toast.error(body?.error ? t(body.error) : t('leaderboard.publishFailed'));
+				return;
+			}
 			const result = (await res.json()) as {
 				board: { sport: Sport; distance: number };
 				rank: number;
