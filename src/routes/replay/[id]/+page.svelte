@@ -774,6 +774,8 @@
 		paceRangeForSegment(segMap, activeSegIdx, strokes, activeSport)
 	);
 	const paceGaugeUnit = $derived(activeSport === 'bike' ? '/1000m' : '/500m');
+	// frame.pace is normalised to sec/500m for every sport; BikeErg is shown in its
+	// native per-1000m, so double the value (and relabel the unit above) for bike.
 	const paceGaugeDisplay = $derived(
 		activeSport === 'bike'
 			? fmtPace(frame.pace * 2).replace('/500m', '')

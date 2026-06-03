@@ -355,7 +355,12 @@ export function mapResult(r: RawResult, metadata?: RawMetadata): Workout {
 		restDistance: r.rest_distance,
 		targets: mapTargets(r.workout?.targets, sport),
 		metadata: mapMetadata(metadata ?? r.metadata),
-		hasStrokeData: !!r.stroke_data
+		hasStrokeData: !!r.stroke_data,
+		// Derive MultiErg from the per-interval machine fields so the summary
+		// (and its D1 round-trip) carries it — the replay ghost-racing fence
+		// reads this on candidate summaries. False when intervals/machine data
+		// are absent from the result (e.g. a list payload without intervals).
+		isMultiErg: computeIsMultiErg(mapSplits(r))
 	};
 }
 
@@ -384,11 +389,15 @@ export function mapStrokes(raw: RawStroke[], sport: Sport, splits?: Split[]): St
 	return raw.map((s) => {
 		const rawT = s.t / 10; // tenths of a second -> s
 		const rawD = s.d / 10; // decimetres -> m
-		if (rawT < prevT) {
-			tOffset += prevT;
-			segmentIndex++;
-		}
-		if (rawD < prevD) dOffset += prevD;
+		// A new interval/segment is marked by either counter resetting to 0.
+		// Advance the segment index once per boundary (not once per counter) so a
+		// distance-only reset still steps the machine lookup, and a simultaneous
+		// t+d reset doesn't double-count.
+		const tReset = rawT < prevT;
+		const dReset = rawD < prevD;
+		if (tReset) tOffset += prevT;
+		if (dReset) dOffset += prevD;
+		if (tReset || dReset) segmentIndex++;
 		prevT = rawT;
 		prevD = rawD;
 
@@ -439,6 +448,10 @@ export function mapSplits(r: RawResult): Split[] {
  * When per-stroke data is unavailable, synthesise a smooth timeline from splits
  * (or the overall summary) so the replay still works — just lower resolution.
  */
+// Fallback strokes synthesised from split summaries when a workout has no stroke
+// data. NB: this uses the workout-level `w.sport` for every split, so a MultiErg
+// with no stroke data gets approximate (single-sport) watts/pace — an accepted
+// degraded-mode limitation, since per-segment normalisation needs real strokes.
 function synthStrokes(w: Workout, splits: Split[]): Stroke[] {
 	const out: Stroke[] = [];
 	if (splits.length > 0) {

@@ -808,7 +808,8 @@ export class CourseRenderer3D implements ReplayRenderer {
 		avatar: Avatar,
 		radius: number,
 		meters: number,
-		cadence: number
+		cadence: number,
+		sport: Sport
 	): { x: number; z: number; tx: number; tz: number; y: number } {
 		const a = this.loopAngle(meters);
 		const sin = Math.sin(a);
@@ -818,7 +819,11 @@ export class CourseRenderer3D implements ReplayRenderer {
 		const tx = cos; // unit tangent (direction of increasing distance)
 		const tz = -sin;
 		const reduce = this.reduceMotion;
-		const profile = SPORT_PROFILES[this.lastRenderedSport ?? this.initialSport];
+		// Bob/roll profile follows the sport being displayed this frame (passed in
+		// explicitly). During a rest transition that is `transitionFrom`, so the
+		// idle avatar keeps its outgoing-sport motion rather than relying on the
+		// timing of when lastRenderedSport happens to be updated.
+		const profile = SPORT_PROFILES[sport];
 		const bob =
 			reduce || profile.bobAmp === 0
 				? 0
@@ -904,7 +909,8 @@ export class CourseRenderer3D implements ReplayRenderer {
 			this.liveAvatar(),
 			this.loopRadius,
 			liveMeters,
-			frozen ? 0 : state.frame.spm
+			frozen ? 0 : state.frame.spm,
+			displaySport
 		);
 		if (frozen) this.liveAvatar().animate(0, true);
 
@@ -944,7 +950,8 @@ export class CourseRenderer3D implements ReplayRenderer {
 				this.ghostAvatar(),
 				this.ghostRadius,
 				ghostMeters,
-				frozen ? 0 : state.ghost.spm
+				frozen ? 0 : state.ghost.spm,
+				displaySport
 			);
 			if (frozen) this.ghostAvatar().animate(0, true);
 			if (this.ghostWake) {
