@@ -663,8 +663,9 @@
 		return xs.map((t) => map.get(t) ?? null) as (number | null)[];
 	});
 
+	const paceSeries = $derived(strokes.map((s) => s.pace));
 	const paceData = $derived<uPlot.AlignedData>(
-		dpsAligned ? [xs, strokes.map((s) => s.pace), dpsAligned] : [xs, strokes.map((s) => s.pace)]
+		dpsAligned ? [xs, paceSeries, dpsAligned] : [xs, paceSeries]
 	);
 	const rateData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.spm)]);
 	const powerData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.watts)]);
