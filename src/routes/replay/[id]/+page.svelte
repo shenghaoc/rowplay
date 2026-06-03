@@ -481,8 +481,7 @@
 		setGhost(null, '', null);
 	}
 
-	function onModeChange(e: Event) {
-		const mode = (e.target as HTMLSelectElement).value as CompareMode;
+	function setCompareMode(mode: CompareMode) {
 		compareMode = mode;
 		sessionSearch = '';
 		clearGhost();
@@ -1113,7 +1112,7 @@
 				class="btn btn-sm join-item"
 				class:btn-active={compareMode === 'none'}
 				class:btn-neutral={compareMode === 'none'}
-				onclick={() => { compareMode = 'none'; sessionSearch = ''; clearGhost(); }}
+				onclick={() => setCompareMode('none')}
 			>{t('replay.none')}</button>
 			{#if candidates.length}
 				<button
@@ -1121,7 +1120,7 @@
 					class="btn btn-sm join-item"
 					class:btn-active={compareMode === 'session'}
 					class:btn-neutral={compareMode === 'session'}
-					onclick={() => { compareMode = 'session'; sessionSearch = ''; clearGhost(); const pick = pickDefaultGhostCandidate(candidates, { id: detail.id, distance: detail.distance, sport: detail.sport }); if (pick) void loadSessionGhost(String(pick.id)); }}
+					onclick={() => setCompareMode('session')}
 				>{t('replay.pastSession')}</button>
 			{/if}
 			<button
@@ -1129,14 +1128,14 @@
 				class="btn btn-sm join-item"
 				class:btn-active={compareMode === 'pace'}
 				class:btn-neutral={compareMode === 'pace'}
-				onclick={() => { compareMode = 'pace'; sessionSearch = ''; clearGhost(); }}
+				onclick={() => setCompareMode('pace')}
 			>{t('replay.constantPace')}</button>
 			<button
 				type="button"
 				class="btn btn-sm join-item"
 				class:btn-active={compareMode === 'file'}
 				class:btn-neutral={compareMode === 'file'}
-				onclick={() => { compareMode = 'file'; sessionSearch = ''; clearGhost(); }}
+				onclick={() => setCompareMode('file')}
 			>{t('replay.uploadedFile')}</button>
 		</div>
 

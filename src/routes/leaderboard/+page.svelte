@@ -109,11 +109,11 @@
 	<div class="card bg-base-100 border border-base-300 shadow-md p-5 selector">
 		<div class="selrow">
 			<span class="lbl">{t('leaderboard.sport')}</span>
-			<div class="join">
+			<div class="flex flex-wrap gap-1">
 				{#each sports as s (s)}
 					<button
 						type="button"
-						class="btn btn-sm join-item"
+						class="btn btn-sm"
 						class:btn-active={s === selectedSport}
 						class:btn-neutral={s === selectedSport}
 						class:btn-outline={s !== selectedSport}
@@ -126,11 +126,11 @@
 		</div>
 		<div class="selrow">
 			<span class="lbl">{t('leaderboard.distance')}</span>
-			<div class="join">
+			<div class="flex flex-wrap gap-1">
 				{#each distances as d (d)}
 					<button
 						type="button"
-						class="btn btn-xs join-item"
+						class="btn btn-xs"
 						class:btn-active={d === selectedDistance}
 						class:btn-neutral={d === selectedDistance}
 						class:btn-outline={d !== selectedDistance}
@@ -165,12 +165,7 @@
 					<tbody>
 						{#each entries as e (`${e.workoutId}:${e.displayName}`)}
 							{@const race = raceLink(e)}
-							<tr
-								class:you={e.isYou}
-								style={e.isYou
-									? 'background: color-mix(in srgb, var(--live) 8%, var(--paper-raised))'
-									: undefined}
-							>
+							<tr class:you={e.isYou}>
 								<td class="rank-col font-mono font-bold">{e.rank}</td>
 								<td>
 									<span class="name-cell">
@@ -298,6 +293,11 @@
 	}
 	.gap-col {
 		color: var(--ink-2);
+	}
+	/* Highlight the viewer's own row. Scoped + unlayered, so it beats daisyUI's
+	   layered `table-zebra` stripe (which sits in @layer with :where()). */
+	tr.you {
+		background: color-mix(in srgb, var(--live) 8%, var(--paper-raised));
 	}
 	.hint {
 		font-size: 0.78rem;
