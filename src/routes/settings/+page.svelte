@@ -9,7 +9,6 @@
 	import Database from '@lucide/svelte/icons/database';
 	import { fmtDate } from '$lib/format';
 	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
-	import { onMount } from 'svelte';
 
 	let { data } = $props();
 	const i18n = getI18nContext();
@@ -32,18 +31,25 @@
 		return t('sync.historyWindow', { months: sync.historyWindowMonths });
 	});
 
-	// onMount, not $effect: the loop's invalidateAll() updates data.sync, which an
-	// effect would treat as a dependency change — restarting the loop and bypassing
-	// the PACE_MS pacing. onMount runs it exactly once.
-	onMount(() => {
-		const sync = data.sync;
-		if (data.demo || !sync || sync.backfillDone) return;
-		const ac = new AbortController();
-		void runHistoryBackfillLoop({ signal: ac.signal }).catch((e) => {
+	// Start the backfill loop when the windowed sync is present and incomplete. Gate on a
+	// STABLE derived rather than raw data.sync: the loop's invalidateAll() replaces
+	// data.sync every chunk, but shouldBackfill stays `true` until backfillDone flips, so
+	// the effect runs once and does not restart per chunk (which would bypass PACE_MS and
+	// hammer the API). $effect rather than onMount also covers first connect, where
+	// data.sync is null at mount and only appears after the initial sync. The
+	// component-level controller lets loadFullHistory() cancel this background loop, and
+	// the cleanup aborts whichever loop is in flight when the page unmounts.
+	let backfillController: AbortController | null = null;
+	const shouldBackfill = $derived(!!data.sync && !data.sync.backfillDone && !data.demo);
+
+	$effect(() => {
+		if (!shouldBackfill) return;
+		backfillController = new AbortController();
+		void runHistoryBackfillLoop({ signal: backfillController.signal }).catch((e) => {
 			if (e instanceof DOMException && e.name === 'AbortError') return;
 			console.error('[historyBackfill]', e);
 		});
-		return () => ac.abort();
+		return () => backfillController?.abort();
 	});
 
 	const lastSyncLabel = $derived(
@@ -56,12 +62,17 @@
 		if (data.demo || syncing) return;
 		syncing = true;
 		syncMode = 'history';
+		// Cancel the background backfill so the manual run is the only loop in flight, and
+		// give it its own signal so it stops cleanly if the user navigates away.
+		backfillController?.abort();
+		backfillController = new AbortController();
 		const toastId = toast.loading(t('sync.historyWindow', { months: data.sync?.historyWindowMonths ?? 12 }));
 		try {
-			await runHistoryBackfillLoop();
+			await runHistoryBackfillLoop({ signal: backfillController.signal });
 			await invalidateAll();
 			toast.success(t('sync.historyComplete'), { id: toastId });
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
 			toast.error(t('sync.failed'), {
 				id: toastId,
 				description: e instanceof Error ? e.message : t('common.tryAgain')

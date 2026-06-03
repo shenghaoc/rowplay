@@ -113,12 +113,16 @@
 		return t('sync.historyWindow', { months: sync.historyWindowMonths });
 	});
 
-	// Run the backfill loop once on mount, NOT in a $effect: an effect would track
-	// data.sync, and the loop's invalidateAll() updates data.sync — that would tear
-	// down and restart the loop every chunk, bypassing PACE_MS and hammering the API.
-	onMount(() => {
-		const sync = data.sync;
-		if (data.demo || !sync || sync.backfillDone) return;
+	// Start the backfill loop when the windowed sync is present and incomplete. We gate on
+	// a STABLE derived rather than raw data.sync: the loop's invalidateAll() replaces
+	// data.sync every chunk, but shouldBackfill stays `true` until backfillDone flips, so
+	// the effect body runs once and does not restart per chunk (which would bypass PACE_MS
+	// and hammer the API). $effect rather than onMount also covers first connect, where
+	// data.sync is still null at mount and only appears once the initial sync completes.
+	const shouldBackfill = $derived(!!data.sync && !data.sync.backfillDone && !data.demo);
+
+	$effect(() => {
+		if (!shouldBackfill) return;
 		const ac = new AbortController();
 		void runHistoryBackfillLoop({ signal: ac.signal }).catch((e) => {
 			if (e instanceof DOMException && e.name === 'AbortError') return;
