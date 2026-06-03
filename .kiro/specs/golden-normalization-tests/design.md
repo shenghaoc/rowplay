@@ -162,19 +162,22 @@ test can assert the pre-offset value separately (Req 2.3).
 ```ts
 import { describe, it, expect } from 'vitest';
 import { mapResult, mapStrokes, mapSplits } from './concept2';
+import type { Split, Stroke } from '../types';
 
-// Static JSON imports — resolved at bundle time by Vite/Vitest.
+// Static JSON imports — resolved at bundle time by Vite/Vitest. Use the
+// current `with { type: 'json' }` attribute syntax (the older `assert { … }`
+// form is deprecated in TS 5.3+); a bare import with no attribute also works.
 import rowerSteady   from '../../../tests/fixtures/golden/rower-steady.fixture.json'
-                     assert { type: 'json' };
+                     with { type: 'json' };
 import bikeSteady    from '../../../tests/fixtures/golden/bike-steady.fixture.json'
-                     assert { type: 'json' };
+                     with { type: 'json' };
 import skiSteady     from '../../../tests/fixtures/golden/ski-steady.fixture.json'
-                     assert { type: 'json' };
+                     with { type: 'json' };
 import rowerInterval from '../../../tests/fixtures/golden/rower-interval.fixture.json'
-                     assert { type: 'json' };
+                     with { type: 'json' };
 
-// Tolerance for floating-point pace / time assertions (Req 2.2).
-const PACE_TOL = 0.001;
+// Floating-point pace/time assertions use vitest's `toBeCloseTo(value, 3)`
+// directly (≈ ±0.0005), so no separate tolerance constant is needed.
 
 function assertStroke(actual: Stroke, expected: Partial<Stroke>) {
     if (expected.t    !== undefined) expect(actual.t   ).toBeCloseTo(expected.t,    3);
@@ -247,11 +250,13 @@ Same `_index` pattern as strokes.
 **Interval offset assertion** (Req 2.3):
 ```ts
 // Rep 2 first stroke: t = rawT + tOffset where tOffset = rep1 final t.
-const rep2First = strokes[fixture.expected._rep2FirstIndex];
+// These `_`-prefixed annotations live at the fixture top level (they describe
+// fixture structure, not normalized output), so they are read off `fixture`.
+const rep2First = strokes[fixture._rep2FirstIndex];
 expect(rep2First.rawT).toBeCloseTo(0.0, 3);           // wire resets to 0
 expect(rep2First.rawD).toBeCloseTo(0.0, 3);           // wire resets to 0
-expect(rep2First.t).toBeCloseTo(fixture.expected._rep1FinalT, 3); // offset applied
-expect(rep2First.d).toBeCloseTo(fixture.expected._rep1FinalD, 3); // offset applied
+expect(rep2First.t).toBeCloseTo(fixture._rep1FinalT, 3); // offset applied
+expect(rep2First.d).toBeCloseTo(fixture._rep1FinalD, 3); // offset applied
 ```
 
 The `_`-prefixed fields are fixture-level annotations (not part of `Stroke`)

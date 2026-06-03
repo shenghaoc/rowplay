@@ -57,7 +57,8 @@ checked as the work lands. Requirement references point at `requirements.md`.
   - _Requirements: 1.4, 1.5, 1.6, 2.1, 2.2, 2.3, 3.1–3.5, 4.1–4.2_
 
 - [x] **6. Test file** — `src/lib/server/concept2.golden.test.ts`
-  - Import all four fixtures via static JSON imports with `assert { type: 'json' }`.
+  - Import all four fixtures via static JSON imports with `with { type: 'json' }`
+    (the current attribute syntax; `assert { … }` is deprecated in TS 5.3+).
   - Implement `assertStroke` and `assertSplit` helpers (see design.md).
   - Write one `describe` block per fixture with `it` cases for each
     normalization function exercised.

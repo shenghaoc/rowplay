@@ -47,7 +47,14 @@ function runGoldenSuite(name: string, fixture: GoldenFixture) {
 			if (exp.time != null) expect(result.time).toBeCloseTo(exp.time, 3);
 			if (exp.distance != null) expect(result.distance).toBe(exp.distance);
 			if (exp.pace != null) expect(result.pace).toBeCloseTo(exp.pace, 3);
-			expect(result.metadata).toBeUndefined();
+			// Only assert metadata when the fixture pins it; otherwise assert absence.
+			// A future full-fidelity fixture can add `expected.result.metadata`
+			// without this hardcoded `toBeUndefined()` failing the whole suite.
+			if ('metadata' in exp) {
+				expect(result.metadata).toEqual(exp.metadata);
+			} else {
+				expect(result.metadata).toBeUndefined();
+			}
 		});
 
 		if (fixture.rawStrokes.length > 0) {

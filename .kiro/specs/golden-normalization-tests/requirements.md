@@ -63,7 +63,7 @@ least one test.
 
 3. THE suite SHALL include a fixture case for a **SkiErg piece**, asserting
    that `mapStrokes` uses `paceDiv = 1` (identical to rower — no halving),
-   and that `sport = 'ski'`.
+   and that `sport = 'skierg'` (the value `toSport('ski')` returns).
 
 4. THE suite SHALL include a fixture case for an **interval RowErg piece**
    (minimum two work reps), asserting that `mapStrokes` detects the t/d

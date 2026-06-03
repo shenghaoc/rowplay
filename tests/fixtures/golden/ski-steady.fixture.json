@@ -1,5 +1,5 @@
 {
-	"description": "SkiErg 6000 m steady — paceDiv=1 (same halving rule as rower, per-500m wire pace)",
+	"description": "SkiErg 6000 m steady — paceDiv=1 (no halving, same as rower; per-500m wire pace)",
 	"rawResult": {
 		"id": 9003,
 		"date": "2026-05-17 09:15:00",
