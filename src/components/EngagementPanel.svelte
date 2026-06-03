@@ -52,7 +52,7 @@
 
 	const progress = $derived(annualGoalProgress(workouts, goal, endDay, homeTz));
 	const streaks = $derived(trainingStreakStats(workouts, endDay, homeTz));
-	const badges = $derived(athleteBadges(workouts, distancePBs(workouts)));
+	const badges = $derived(athleteBadges(workouts, distancePBs(workouts), homeTz));
 	const earnedBadges = $derived(badges.filter((b) => b.earned));
 
 	const currentLabel = $derived(

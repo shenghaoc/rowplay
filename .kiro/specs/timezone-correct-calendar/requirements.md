@@ -96,9 +96,11 @@ that no surface contradicts another.
    `datetime.ts`, forwarding the per-workout `timezone` field and the resolved
    home timezone from the calling context.
 2. THE functions `aggregateDailyVolume`, `buildTrainingCalendar`,
-   `trainingStreaks`, `trainingStreakStats`, `annualGoalProgress`, and
+   `weeklyConsistency`, `trainingStreakStats`, `annualGoalProgress`, and
    `hasEverySportWeek` SHALL all accept an optional `homeTz?: string` parameter
    and pass it through to `workoutLocalDayKey`, so all bucketing is consistent.
+   (`trainingStreaks` itself operates on already-resolved day keys and needs no
+   `homeTz` — see design.md.)
 3. THE "today" key used for calendar grid end and streak end-day SHALL respect
    the same timezone: a `todayKeyForTz(tz?: string): string` helper SHALL be
    added to `datetime.ts`, returning today's date in the given IANA timezone

@@ -104,7 +104,10 @@ function dayKeyInZone(pdt: Temporal.PlainDateTime, tz: string): string | null {
 }
 
 /**
- * Calendar day key for a workout using: workout tz → home tz → plain date (UTC slice).
+ * Calendar day key for a workout using: workout tz → home tz → the logbook
+ * timestamp's own date. The final fallback is NOT a UTC conversion — the
+ * Concept2 `date` field is already monitor-local (the end-of-workout wall
+ * clock), so its date part is the local calendar day when no IANA zone is known.
  * Never throws; invalid IANA strings fall through silently.
  */
 export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: string): string {

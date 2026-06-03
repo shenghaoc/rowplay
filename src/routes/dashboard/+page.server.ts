@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
+import { todayKeyForTz } from '$lib/datetime';
 import {
 	listQueryFromEvent,
 	loadAnnualGoal,
@@ -21,10 +22,14 @@ export const load: PageServerLoad = async (event) => {
 		loadDashboardAggregates(event)
 	]);
 	const sync = event.locals.demo ? null : await syncStatus(event).catch(() => null);
-	const calendarEndDay = new Date().toISOString().slice(0, 10);
+	// Resolve the home timezone first so the calendar's right edge ("today") is
+	// the athlete's local day, not UTC — otherwise athletes east of UTC see the
+	// grid end on yesterday after local midnight. (Demo mode has no server-side
+	// tz; todayKeyForTz(undefined) falls back to UTC and the client re-derives.)
+	const homeTimezone = await loadHomeTimezone(event);
+	const calendarEndDay = todayKeyForTz(homeTimezone);
 	const goalYear = parseInt(calendarEndDay.slice(0, 4), 10);
 	const annualGoal = await loadAnnualGoal(event, goalYear);
-	const homeTimezone = await loadHomeTimezone(event);
 	return {
 		workouts,
 		listWorkouts,

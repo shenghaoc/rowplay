@@ -588,10 +588,14 @@ export function trainingLoad(workouts: Workout[], cpIn?: CriticalPower | null): 
 	// Carry the curve through to today so a recent rest block shows as freshness.
 	const today = dayKeyEpochMillis(todayKeyUtc());
 
-	// Sum TSS per calendar day. The date-only key sidesteps timezone drift. We
-	// also clamp to a sane window — a corrupted date (year 0001, or a far-future
-	// timestamp) would otherwise make the day-by-day loop below run for millions
-	// of iterations and hang the page.
+	// Sum TSS per calendar day. The PMC/fitness curve intentionally buckets by the
+	// UTC date-only key — it is deliberately outside the home-timezone day-bucketing
+	// scope (which covers the calendar / heatmap / streak surfaces). A ±1-day shift
+	// on a multi-week exponentially-weighted curve is immaterial, and keeping it
+	// tz-free avoids threading homeTz through this hot loop. We also clamp to a sane
+	// window — a corrupted date (year 0001, or a far-future timestamp) would
+	// otherwise make the day-by-day loop below run for millions of iterations and
+	// hang the page.
 	const EPOCH_2000 = 946_684_800_000;
 	const byDay = new Map<number, number>();
 	let firstDay = Infinity;
@@ -1423,7 +1427,8 @@ export function hasEverySportWeek(workouts: Workout[], homeTz?: string): boolean
 
 export function athleteBadges(
 	workouts: Workout[],
-	pbs: ReturnType<typeof distancePBs>
+	pbs: ReturnType<typeof distancePBs>,
+	homeTz?: string
 ): AthleteBadge[] {
 	const totalMeters = workouts.reduce((s, w) => s + challengeDistanceMetres(w), 0);
 	const pbDistances = new Set(pbs.map((p) => p.distance));
@@ -1440,7 +1445,7 @@ export function athleteBadges(
 	for (const { id, metres } of CLUB_DISTANCES) {
 		badges.push({ id, earned: pbDistances.has(metres) });
 	}
-	badges.push({ id: 'every_sport_week', earned: hasEverySportWeek(workouts) });
+	badges.push({ id: 'every_sport_week', earned: hasEverySportWeek(workouts, homeTz) });
 	return badges;
 }
 
