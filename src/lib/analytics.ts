@@ -307,7 +307,7 @@ function closingSegment(
 ): { stroke: Stroke; dps: number }[] {
 	const totalD = valid[valid.length - 1]!.stroke.d;
 	const minCount = 5;
-	let startIdx = Math.max(0, valid.length - minCount);
+	let startIdx = 0;
 	for (let i = valid.length - 1; i >= 0; i--) {
 		startIdx = i;
 		const spanFromEnd = totalD - valid[i]!.stroke.d;

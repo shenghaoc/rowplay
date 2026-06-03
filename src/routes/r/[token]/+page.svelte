@@ -200,8 +200,8 @@
 	<div class="gauges card bg-base-100 border border-base-300 shadow-md p-5">
 		<MetricGauge
 			label={t('replay.gPace')}
-			unit="/500m"
-			display={fmtPace(frame.pace).replace('/500m', '')}
+			axisLabel={paceGaugeUnit}
+			display={paceGaugeDisplay}
 			value={frame.pace}
 			min={paceRange.max}
 			max={paceRange.min}
