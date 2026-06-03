@@ -336,24 +336,25 @@
 				<span class="lbl">{t('compare.workoutA')}</span>
 				<select bind:value={pickA}>
 					<option value="">{t('compare.choose')}</option>
-					{#if pickAGroups.comparable.length}
-						<optgroup label={t('comparability.groupComparable')}>
-							{#each pickAGroups.comparable as w (w.id)}
-								<option value={String(w.id)}>{workoutLabel(w)}</option>
-							{/each}
-						</optgroup>
-					{/if}
-					{#if pickAGroups.incomparable.length}
-						<optgroup label={t('comparability.groupIncomparable')}>
-							{#each pickAGroups.incomparable as w (w.id)}
-								<option value={String(w.id)}>{workoutLabel(w)}</option>
-							{/each}
-						</optgroup>
-					{/if}
-					{#if !pickAGroups.comparable.length && !pickAGroups.incomparable.length}
+					{#if !refForPickA()}
 						{#each data.workouts as w (w.id)}
 							<option value={String(w.id)}>{workoutLabel(w)}</option>
 						{/each}
+					{:else}
+						{#if pickAGroups.comparable.length}
+							<optgroup label={t('comparability.groupComparable')}>
+								{#each pickAGroups.comparable as w (w.id)}
+									<option value={String(w.id)}>{workoutLabel(w)}</option>
+								{/each}
+							</optgroup>
+						{/if}
+						{#if pickAGroups.incomparable.length}
+							<optgroup label={t('comparability.groupIncomparable')}>
+								{#each pickAGroups.incomparable as w (w.id)}
+									<option value={String(w.id)}>{workoutLabel(w)}</option>
+								{/each}
+							</optgroup>
+						{/if}
 					{/if}
 				</select>
 			</label>
@@ -361,24 +362,25 @@
 				<span class="lbl">{t('compare.workoutB')}</span>
 				<select bind:value={pickB}>
 					<option value="">{t('compare.choose')}</option>
-					{#if pickBGroups.comparable.length}
-						<optgroup label={t('comparability.groupComparable')}>
-							{#each pickBGroups.comparable as w (w.id)}
-								<option value={String(w.id)}>{workoutLabel(w)}</option>
-							{/each}
-						</optgroup>
-					{/if}
-					{#if pickBGroups.incomparable.length}
-						<optgroup label={t('comparability.groupIncomparable')}>
-							{#each pickBGroups.incomparable as w (w.id)}
-								<option value={String(w.id)}>{workoutLabel(w)}</option>
-							{/each}
-						</optgroup>
-					{/if}
-					{#if !pickBGroups.comparable.length && !pickBGroups.incomparable.length}
+					{#if !refForPickB()}
 						{#each data.workouts as w (w.id)}
 							<option value={String(w.id)}>{workoutLabel(w)}</option>
 						{/each}
+					{:else}
+						{#if pickBGroups.comparable.length}
+							<optgroup label={t('comparability.groupComparable')}>
+								{#each pickBGroups.comparable as w (w.id)}
+									<option value={String(w.id)}>{workoutLabel(w)}</option>
+								{/each}
+							</optgroup>
+						{/if}
+						{#if pickBGroups.incomparable.length}
+							<optgroup label={t('comparability.groupIncomparable')}>
+								{#each pickBGroups.incomparable as w (w.id)}
+									<option value={String(w.id)}>{workoutLabel(w)}</option>
+								{/each}
+							</optgroup>
+						{/if}
 					{/if}
 				</select>
 			</label>

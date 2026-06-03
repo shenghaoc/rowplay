@@ -1122,7 +1122,7 @@
 		<label for="cmode"><Ghost size={15} /> {t('replay.compareAgainst')}</label>
 		<select id="cmode" value={compareMode} onchange={onModeChange}>
 			<option value="none">{t('replay.none')}</option>
-			{#if comparableCandidates.length}<option value="session">{t('replay.pastSession')}</option>{/if}
+			<option value="session">{t('replay.pastSession')}</option>
 			<option value="pace">{t('replay.constantPace')}</option>
 			<option value="file">{t('replay.uploadedFile')}</option>
 		</select>
