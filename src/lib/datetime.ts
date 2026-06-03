@@ -97,26 +97,31 @@ export function todayKeyUtc(): string {
 
 function dayKeyInZone(pdt: Temporal.PlainDateTime, tz: string): string | null {
 	try {
-		return pdt.toZonedDateTime(tz).toPlainDate().toString();
+		// The logbook `date` is an offset-less wall-clock string, so interpret it as
+		// UTC and convert into `tz`; the resulting calendar day is the athlete's local
+		// day. (`pdt.toZonedDateTime(tz)` would instead attach `tz` without shifting,
+		// leaving the day unchanged — i.e. a no-op.)
+		return pdt.toZonedDateTime('UTC').withTimeZone(tz).toPlainDate().toString();
 	} catch {
 		return null;
 	}
 }
 
 /**
- * Calendar day key for a workout using: workout tz → home tz → the logbook
- * timestamp's own date. The final fallback is NOT a UTC conversion — the
- * Concept2 `date` field is already monitor-local (the end-of-workout wall
- * clock), so its date part is the local calendar day when no IANA zone is known.
- * Never throws; invalid IANA strings fall through silently.
+ * Calendar day key for a workout using the resolution chain: workout tz → home
+ * tz → UTC. The Concept2 `date` is an offset-less wall-clock string, so it is
+ * interpreted as UTC and converted into the resolved zone (so a late-UTC workout
+ * lands on the correct local day east/west of the meridian). With no zone, the
+ * UTC date — its own date part — is used. Never throws; invalid IANA strings
+ * fall through silently.
  */
 export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: string): string {
 	const cleanWtz = workoutTz?.trim();
 	const cleanHtz = homeTz?.trim();
-	// Fast path: with no zone to apply, the logbook timestamp is already
-	// monitor-local, so its date part is the answer — skip Temporal parsing and
-	// allocation entirely (this is the overwhelming common case). The defensive
-	// typeof guard also avoids a throw on a corrupt/missing date.
+	// Fast path: with no zone to convert into, the UTC interpretation of the
+	// offset-less timestamp is just its own date part — skip Temporal parsing and
+	// allocation entirely (the overwhelming common case). The typeof guard also
+	// avoids a throw on a corrupt/missing date.
 	if (!cleanWtz && !cleanHtz) return typeof date === 'string' ? date.slice(0, 10) : '';
 
 	const pdt = parseLogbookDateTime(date);

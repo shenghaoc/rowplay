@@ -6,12 +6,14 @@ describe('workoutLocalDayKey', () => {
 		expect(workoutLocalDayKey('2024-01-15 01:00:00')).toBe('2024-01-15');
 	});
 
-	it('uses workout timezone for late-night local day', () => {
+	it('keeps a late-UTC workout on the same day in a western zone', () => {
+		// 23:30 UTC → 18:30 EST, still Jan 14 in New York.
 		expect(workoutLocalDayKey('2024-01-14 23:30:00', 'America/New_York')).toBe('2024-01-14');
 	});
 
-	it('uses workout timezone for early-morning local day', () => {
-		expect(workoutLocalDayKey('2024-01-15 00:30:00', 'America/New_York')).toBe('2024-01-15');
+	it('rolls a late-UTC workout to the next day in an eastern zone', () => {
+		// 23:30 UTC → 12:30 NZDT (UTC+13), already Jan 15 in Auckland.
+		expect(workoutLocalDayKey('2024-01-14 23:30:00', 'Pacific/Auckland')).toBe('2024-01-15');
 	});
 
 	it('uses home timezone when workout timezone is absent', () => {
@@ -23,7 +25,7 @@ describe('workoutLocalDayKey', () => {
 	it('prefers workout timezone over home timezone', () => {
 		expect(
 			workoutLocalDayKey('2024-01-14 23:30:00', 'Pacific/Auckland', 'America/New_York')
-		).toBe('2024-01-14');
+		).toBe('2024-01-15');
 	});
 
 	it('falls through invalid workout tz to home tz', () => {
