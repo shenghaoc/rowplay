@@ -166,6 +166,28 @@ describe('efficiencyDrift', () => {
 		expect(r.series).toHaveLength(10);
 		expect(r.baselineEndD).toBeGreaterThanOrEqual(100);
 	});
+
+	it('spans 500 m from the first valid stroke on a long piece, not the min-5 floor', () => {
+		// Two leading invalid strokes, then the first valid stroke at d=600 m on a
+		// ~6000 m piece (so the 500 m threshold applies). With an absolute-distance
+		// check the opening would collapse to 5 strokes (d already > 500); measuring
+		// span from the first valid stroke keeps the full ~500 m opening window.
+		const lead = [
+			{ t: 0, d: 0, pace: 0, spm: 20, watts: 100 },
+			{ t: 10, d: 300, pace: 0, spm: 20, watts: 100 }
+		];
+		const valid = Array.from({ length: 180 }, (_, i) => ({
+			t: 20 + i * 10,
+			d: 600 + i * 30,
+			pace: 120,
+			spm: 20,
+			watts: 100
+		}));
+		const r = efficiencyDrift([...lead, ...valid]);
+		// First valid stroke at d=600 → opening closes ~500 m later (~d=1100),
+		// well past the d=720 the min-5 floor alone would give.
+		expect(r.baselineEndD).toBeGreaterThanOrEqual(1080);
+	});
 });
 
 describe('distancePerStroke', () => {

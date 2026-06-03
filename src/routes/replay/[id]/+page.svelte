@@ -341,6 +341,7 @@
 			sessionSearch = '';
 			fileName = '';
 			ghostError = '';
+			driftOverlayOn = false;
 			renderer?.destroy();
 			renderer = null;
 			engine = new ReplayEngine(s, (f, p) => {

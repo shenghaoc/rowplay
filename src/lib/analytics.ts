@@ -285,10 +285,16 @@ function openingSegment(
 	threshold: number
 ): { strokes: { stroke: Stroke; dps: number }[]; endD: number } {
 	const minCount = 5;
+	// Measure the opening span from the FIRST valid stroke, mirroring how
+	// closingSegment measures span from the end. Using absolute cumulative
+	// distance here would collapse the opening to the min-5 floor whenever
+	// leading strokes are invalid and the first valid stroke already sits past
+	// the threshold (e.g. d = 700 m on a long piece).
+	const firstD = valid[0]!.stroke.d;
 	let endIdx = Math.min(minCount - 1, valid.length - 1);
 	for (let i = 0; i < valid.length; i++) {
 		endIdx = i;
-		if (valid[i].stroke.d >= threshold && i >= minCount - 1) break;
+		if (valid[i].stroke.d - firstD >= threshold && i >= minCount - 1) break;
 	}
 	const strokes = valid.slice(0, endIdx + 1);
 	return { strokes, endD: strokes[strokes.length - 1]!.stroke.d };
