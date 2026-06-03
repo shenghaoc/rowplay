@@ -654,7 +654,13 @@ export class CourseRenderer3D implements ReplayRenderer {
 		if (this.groundMesh.geometry instanceof THREE.PlaneGeometry) {
 			const pos = this.groundMesh.geometry.attributes.position;
 			if (pos.count !== (seg + 1) * (seg + 1)) {
-				this.groundMesh.geometry.dispose();
+				// Drop the old geometry from the tracked list before disposing so it
+				// can be GC'd — scrubbing back and forth across boundaries recreates
+				// the ground repeatedly, and a never-removed reference would pile up.
+				const oldGeo = this.groundMesh.geometry;
+				const idx = this.geometries.indexOf(oldGeo);
+				if (idx >= 0) this.geometries.splice(idx, 1);
+				oldGeo.dispose();
 				this.groundMesh.geometry = this.track(new THREE.PlaneGeometry(140, 140, seg, seg));
 			}
 		}

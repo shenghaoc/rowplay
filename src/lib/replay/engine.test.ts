@@ -130,12 +130,14 @@ describe('buildSegmentMap', () => {
 		{ index: 4, distance: 2000, time: 400, pace: 100, machine: 'bike', isRest: false }
 	];
 
-	it('builds three work segments with rest gaps in time', () => {
+	it('builds three work segments on a work-time clock with rest carried separately', () => {
 		const map = buildSegmentMap(multiSplits);
 		expect(map).toHaveLength(3);
 		expect(map[0].machine).toBe('rower');
 		expect(map[1].restBefore).toBe(60);
-		expect(map[1].startT).toBe(map[0].endT + 60);
+		// Work-time clock: segments are contiguous (the 60 s rest lives in
+		// restBefore, not in the timeline) so it stays aligned with the engine.
+		expect(map[1].startT).toBe(map[0].endT);
 		expect(map[2].machine).toBe('bike');
 	});
 
@@ -147,13 +149,13 @@ describe('buildSegmentMap', () => {
 		expect(activeSegmentIndexAt(map, 1200)).toBe(1);
 	});
 
-	it('detects rest progress between segments', () => {
+	it('reports no scrubbable rest gap on the work-time clock', () => {
+		// Rests are zero-width on the work-time clock, so a scrub position can never
+		// land "inside" a rest: restProgressAt returns null and the rest interstitial
+		// is instead driven live by the replay page (manualRest) at the boundary.
 		const map = buildSegmentMap(multiSplits);
-		const midRest = map[0].endT + 30;
-		const rest = restProgressAt(map, midRest);
-		expect(rest).not.toBeNull();
-		expect(rest?.from).toBe('rower');
-		expect(rest?.to).toBe('skierg');
+		expect(restProgressAt(map, map[0].endT + 30)).toBeNull();
+		expect(restProgressAt(map, map[0].endT)).toBeNull();
 	});
 
 	it('falls back to one segment when splits are empty', () => {

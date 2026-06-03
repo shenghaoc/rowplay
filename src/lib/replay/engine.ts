@@ -129,7 +129,14 @@ export function buildSegmentMap(splits: Split[], fallbackSport: Sport = 'rower')
 		const restBefore = pendingRest;
 		pendingRest = 0;
 		const startD = d;
-		const startT = t + restBefore;
+		// Work-time timeline (rests excluded). The engine's playback clock is driven
+		// by strokes, which carry no time during rests, so segment boundaries must
+		// align with cumulative WORK time; `restBefore` is kept separately for the
+		// display-only rest interstitial. A wall-clock startT (t + restBefore) here
+		// desynced the map from the engine: resuming at next.startT after a rest
+		// skipped strokes, and later boundaries (whose wall-clock endT the work
+		// clock never reaches) never triggered their rest.
+		const startT = t;
 		const endD = d + s.distance;
 		const endT = startT + s.time;
 		segs.push({

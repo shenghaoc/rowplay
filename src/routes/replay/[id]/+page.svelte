@@ -205,12 +205,35 @@
 	}
 
 	function maybeStartRestPlayback(f: Frame, playingNow: boolean) {
-		if (!playingNow || !detail.isMultiErg || manualRest || suppressRestAnim || prefersReducedMotion())
-			return;
+		if (!playingNow || !detail.isMultiErg || manualRest || prefersReducedMotion()) return;
+		// Once the playhead is no longer sitting on a rest boundary, clear a prior
+		// scrub-suppression and the stale segment index so future rests can fire.
+		// Without this, a scrub (which sets suppressRestAnim) would disable the rest
+		// interstitial permanently for the rest of the session.
+		let nearBoundary = false;
 		for (let k = 0; k < segMap.length - 1; k++) {
 			const next = segMap[k + 1];
 			if (next.restBefore <= 0) continue;
 			const endT = segMap[k].endT;
+			if (f.t >= endT - 0.02 && f.t <= endT + 0.02) {
+				nearBoundary = true;
+				break;
+			}
+		}
+		if (!nearBoundary) {
+			suppressRestAnim = false;
+			restSegIdx = -1;
+		}
+		if (suppressRestAnim) return;
+
+		for (let k = 0; k < segMap.length - 1; k++) {
+			const next = segMap[k + 1];
+			if (next.restBefore <= 0) continue;
+			const endT = segMap[k].endT;
+			// Bounded window [endT-0.02, endT): on the work-time clock next.startT
+			// equals endT, so this scopes each trigger to its own boundary (an
+			// unbounded f.t >= endT would re-fire earlier boundaries on a 3-segment
+			// piece). restSegIdx dedups repeated frames within the same window.
 			if (f.t >= endT - 0.02 && f.t < next.startT) {
 				if (restSegIdx === k) return;
 				restSegIdx = k;
