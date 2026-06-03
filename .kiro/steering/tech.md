@@ -68,9 +68,59 @@ Configured in `src/app.css`:
 
 ## Testing
 
-- **Vitest** — unit tests for pure functions (`npm run test` / `npm run test:watch`)
+- **Vitest** — unit tests (`npm run test` / `npm run test:watch`); 692 tests across 69 files
+- **@vitest/coverage-v8** — coverage reporter; `provider: 'v8'`, `reporter: ['text', 'lcov']`, scoped to `src/**/*.ts` (excludes `*.test.ts`, `*.svelte.ts`, generated `*.d.ts`)
 - **Playwright** — E2E smoke tests run against the production build on the real Workers runtime (`wrangler dev`), not `vite dev`
 - **svelte-check** — TypeScript type checking for `.svelte` and `.ts` files
+
+### Test scope
+
+| Layer | Files tested | Pattern |
+| ----- | ------------ | ------- |
+| Pure library | `datetime.ts`, `goals.ts`, `workoutQuery.ts`, `i18n.ts`, `i18nPlural.ts`, `mockData.ts`, `analytics-newpbs.ts`, `replay/sports.ts`, `replay/sources.ts` | Direct import, minimal mocking |
+| Server data/DB | `server/db.ts`, `server/data.ts`, `server/session.ts`, `server/export.ts`, `server/concept2-strokes.ts`, `server/share.ts`, `server/config.ts`, `server/leaderboard.ts`, `server/hrImport.ts`, `server/rivalGhost.ts` | Fake D1/KV (see below) |
+| Route handlers | All 18 `+server.ts` + 7 `+page.server.ts` files | Fake `RequestEvent`; service layer mocked via `vi.mock` |
+| Svelte reactive classes | `i18n.svelte.ts`, `theme.svelte.ts`, `liveMode.svelte.ts` | Node-only stubs; no jsdom required |
+| Three.js renderer | `replay/renderer3d.ts` | Partial mock — only `THREE.WebGLRenderer`; all other Three.js classes run as real headless Node implementations |
+
+### Fake D1 pattern
+
+```ts
+function fakeDb(opts: { firstRow?: unknown; allRows?: unknown[] } = {}) {
+  const executed: { sql: string; args: unknown[] }[] = [];
+  const make = (sql: string) => {
+    let bound: unknown[] = [];
+    const stmt = {
+      bind: (...args) => { bound = args; return stmt; },
+      run:  async () => { executed.push({ sql, args: bound }); return { meta: { changes: 1, last_row_id: 99 } }; },
+      first: async <T>() => { executed.push({ sql, args: bound }); return (opts.firstRow ?? null) as T; },
+      all:  async <T>() => { executed.push({ sql, args: bound }); return { results: (opts.allRows ?? []) as T[] }; }
+    };
+    return stmt;
+  };
+  return { executed, db: { prepare: make, batch: async (stmts) => Promise.all(stmts.map(s => s.run())) } };
+}
+```
+
+### Fake KV pattern
+
+```ts
+function fakeKv() {
+  const store = new Map<string, string>();
+  return {
+    get:    async (key: string) => store.get(key) ?? null,
+    put:    async (key: string, value: string) => { store.set(key, value); },
+    delete: async (key: string) => { store.delete(key); }
+  };
+}
+```
+
+### What is NOT covered by unit tests
+
+- **Svelte components (`.svelte`)** — require jsdom or a real browser; covered by Playwright E2E.
+- **`liveMode.svelte.ts` poll/fetch loop** — `fetch`, `AudioContext`, and tab-visibility wiring require a real browser event model.
+- **`renderer3d.ts` rendering fidelity** — actual WebGL pixel output cannot be verified in Node; unit tests validate construction, state transitions, and invocation only.
+- **`hooks.server.ts`** — SvelteKit hook wiring requires a real SvelteKit request cycle; covered by E2E.
 
 ## Configuration
 
