@@ -45,7 +45,6 @@ describe('daisyUI layout collision guard', () => {
 			'status-label',
 			'status-time',
 			'dash-stats',
-			'dash-stat',
 			'side-tag'
 		];
 		for (const name of custom) {

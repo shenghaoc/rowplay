@@ -261,7 +261,7 @@
 <svelte:head><title>{t('compare.title')} · rowplay</title></svelte:head>
 
 <div class="container">
-	<a href="/dashboard" class="btn btn-ghost btn-sm back"><ArrowLeft size={14} /> {t('compare.back')}</a>
+	<a href="/dashboard" class="btn btn-ghost btn-sm"><ArrowLeft size={14} /> {t('compare.back')}</a>
 
 	<div class="head">
 		<h1><GitCompare size={26} /> {t('compare.title')}</h1>
@@ -537,13 +537,14 @@
 		font-weight: 800;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		color: #fff;
 	}
 	.side-tag.a {
 		background: var(--live);
+		color: var(--color-primary-content, #fff);
 	}
 	.side-tag.b {
 		background: var(--ghost);
+		color: var(--color-secondary-content, #fff);
 	}
 	.meta {
 		font-size: 0.82rem;
