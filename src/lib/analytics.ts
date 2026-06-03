@@ -294,7 +294,7 @@ function openingSegment(
 	let endIdx = Math.min(minCount - 1, valid.length - 1);
 	for (let i = 0; i < valid.length; i++) {
 		endIdx = i;
-		if (valid[i].stroke.d - firstD >= threshold && i >= minCount - 1) break;
+		if (valid[i]!.stroke.d - firstD >= threshold && i >= minCount - 1) break;
 	}
 	const strokes = valid.slice(0, endIdx + 1);
 	return { strokes, endD: strokes[strokes.length - 1]!.stroke.d };

@@ -659,8 +659,19 @@
 
 	const dpsAligned = $derived.by(() => {
 		if (!driftOverlayOn || !driftReady) return null;
-		const map = new Map(drift.series.map((p) => [p.t, p.dps]));
-		return xs.map((t) => map.get(t) ?? null) as (number | null)[];
+		const aligned: (number | null)[] = [];
+		let driftIdx = 0;
+		const series = drift.series;
+		for (let i = 0; i < xs.length; i++) {
+			const t = xs[i];
+			if (driftIdx < series.length && series[driftIdx]!.t === t) {
+				aligned.push(series[driftIdx]!.dps);
+				driftIdx++;
+			} else {
+				aligned.push(null);
+			}
+		}
+		return aligned;
 	});
 
 	const paceSeries = $derived(strokes.map((s) => s.pace));
