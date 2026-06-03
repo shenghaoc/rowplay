@@ -1,18 +1,18 @@
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
-import { nowEpochMillis } from '$lib/datetime';
-import type { WorkoutListQuery } from '$lib/workoutQuery';
+import { nowEpochMillis } from '../datetime';
+import type { WorkoutListQuery } from '../workoutQuery';
 import {
 	detailCacheTtlMs,
 	isDetailCacheFresh,
 	type DetailCacheEnv
 } from './detailCache';
 import type { AnnualGoal } from '../analytics';
-import { STANDARD_DISTANCES, type LeaderboardEntry } from '$lib/leaderboard';
+import { STANDARD_DISTANCES, type LeaderboardEntry } from '../leaderboard';
 import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
 // v3: strokes carry rawT/rawD for the raw inspector's as-logged interval values.
-export const DETAIL_PAYLOAD_VERSION = 3;
+export const DETAIL_PAYLOAD_VERSION = 4;
 
 /**
  * Best-effort D1 cache of fully-hydrated workout detail (including strokes), so
@@ -89,6 +89,7 @@ interface WorkoutRow {
 	workout_type: string | null;
 	comments: string | null;
 	has_stroke: number;
+	is_multi_erg: number;
 }
 
 function rowToWorkout(r: WorkoutRow): Workout {
@@ -109,13 +110,14 @@ function rowToWorkout(r: WorkoutRow): Workout {
 		dragFactor: r.drag_factor ?? undefined,
 		workoutType: r.workout_type ?? undefined,
 		comments: r.comments ?? undefined,
-		hasStrokeData: r.has_stroke === 1
+		hasStrokeData: r.has_stroke === 1,
+		isMultiErg: r.is_multi_erg === 1
 	};
 }
 
 const WORKOUT_SELECT = `SELECT workout_id, date, sport, distance, time, pace, stroke_rate, stroke_count,
 			        heart_rate, hr_min, hr_max, calories, watt_minutes, drag_factor, workout_type,
-			        comments, has_stroke`;
+			        comments, has_stroke, is_multi_erg`;
 
 /** All of a user's synced workouts, newest first. */
 export async function getAllWorkouts(db: D1Database, userId: number): Promise<Workout[]> {
@@ -277,8 +279,8 @@ export async function upsertWorkouts(
 	const stmt = db.prepare(
 		`INSERT INTO workouts (user_id, workout_id, date, sport, distance, time, pace,
 		        stroke_rate, stroke_count, heart_rate, hr_min, hr_max, calories, watt_minutes,
-		        drag_factor, workout_type, comments, has_stroke)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		        drag_factor, workout_type, comments, has_stroke, is_multi_erg)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(user_id, workout_id) DO UPDATE SET
 		   date=excluded.date, sport=excluded.sport, distance=excluded.distance,
 		   time=excluded.time, pace=excluded.pace, stroke_rate=excluded.stroke_rate,
@@ -286,7 +288,7 @@ export async function upsertWorkouts(
 		   hr_min=excluded.hr_min, hr_max=excluded.hr_max, calories=excluded.calories,
 		   watt_minutes=excluded.watt_minutes, drag_factor=excluded.drag_factor,
 		   workout_type=excluded.workout_type, comments=excluded.comments,
-		   has_stroke=excluded.has_stroke`
+		   has_stroke=excluded.has_stroke, is_multi_erg=excluded.is_multi_erg`
 	);
 	const batch = workouts.map((w) =>
 		stmt.bind(
@@ -307,7 +309,8 @@ export async function upsertWorkouts(
 			w.dragFactor ?? null,
 			w.workoutType ?? null,
 			w.comments ?? null,
-			w.hasStrokeData ? 1 : 0
+			w.hasStrokeData ? 1 : 0,
+			w.isMultiErg ? 1 : 0
 		)
 	);
 	// D1 batch caps at 100 statements; chunk to be safe.

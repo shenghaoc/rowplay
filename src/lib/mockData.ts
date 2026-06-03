@@ -1,4 +1,5 @@
 import { paceToWattsForSport } from './format';
+import { computeIsMultiErg } from './types';
 import type { Annotation, Split, Sport, Stroke, Workout, WorkoutDetail } from './types';
 
 /**
@@ -21,6 +22,7 @@ interface Spec {
 	source?: string;
 	/** Demo-only: erg logged without HR — exercises device import. */
 	omitHr?: boolean;
+	isMultiErg?: true;
 }
 
 const SPECS: Spec[] = [
@@ -45,7 +47,19 @@ const SPECS: Spec[] = [
 	// Extra 2k pieces so the like-for-like trend shows a clear progression.
 	{ id: 1009, date: '2026-04-29 06:25:00', sport: 'rower', distance: 2000, basePace: 113, baseSpm: 28, baseHr: 167, workoutType: '2000m test' },
 	{ id: 1010, date: '2026-04-22 06:30:00', sport: 'rower', distance: 2000, basePace: 115, baseSpm: 28, baseHr: 168, workoutType: '2000m test' },
-	{ id: 1011, date: '2026-04-15 06:28:00', sport: 'rower', distance: 2000, basePace: 117, baseSpm: 27, baseHr: 169, workoutType: '2000m test' }
+	{ id: 1011, date: '2026-04-15 06:28:00', sport: 'rower', distance: 2000, basePace: 117, baseSpm: 27, baseHr: 169, workoutType: '2000m test' },
+	{
+		id: 1012,
+		date: '2026-06-01 07:00:00',
+		sport: 'rower',
+		distance: 3500,
+		basePace: 110,
+		baseSpm: 30,
+		baseHr: 165,
+		workoutType: 'MultiErg — Row/Ski/Bike',
+		isMultiErg: true,
+		interval: true
+	}
 ];
 
 // Small deterministic PRNG so demo data is stable across reloads.
@@ -185,7 +199,106 @@ function timeForDistance(metres: number, paceSecPer500: number): number {
 	return (metres / 500) * paceSecPer500;
 }
 
+function buildMultiErgDetail(spec: Spec): WorkoutDetail {
+	const segments: {
+		machine: Sport;
+		distance: number;
+		basePace: number;
+		baseSpm: number;
+		restAfter: number;
+	}[] = [
+		{ machine: 'rower', distance: 1000, basePace: 108, baseSpm: 30, restAfter: 60 },
+		{ machine: 'skierg', distance: 500, basePace: 122, baseSpm: 42, restAfter: 60 },
+		{ machine: 'bike', distance: 2000, basePace: 95, baseSpm: 85, restAfter: 0 }
+	];
+
+	const rand = rng(spec.id);
+	const strokes: Stroke[] = [];
+	const splits: Split[] = [];
+	let tOffset = 0;
+	let dOffset = 0;
+	let splitIdx = 0;
+
+	for (let si = 0; si < segments.length; si++) {
+		const seg = segments[si];
+		let rawT = 0;
+		const dStep = seg.distance / 80;
+		let d = 0;
+
+		while (d < seg.distance) {
+			const frac = d / seg.distance;
+			const noise = (rand() - 0.5) * 3;
+			const paceSec = Math.max(70, seg.basePace * paceProfile(frac) + noise);
+			const speed = 500 / paceSec;
+			const dt = dStep / speed;
+			rawT += dt;
+			d += dStep;
+			const rawD = Math.min(d, seg.distance);
+			strokes.push({
+				t: round1(tOffset + rawT),
+				d: round1(dOffset + rawD),
+				rawT: round1(rawT),
+				rawD: round1(rawD),
+				pace: round1(paceSec),
+				spm: Math.round(seg.baseSpm + (rand() - 0.5) * 2),
+				hr: Math.round(spec.baseHr * (0.85 + frac * 0.2)),
+				watts: Math.round(paceToWattsForSport(seg.machine, paceSec))
+			});
+		}
+
+		const segTimeFromRaw = rawT;
+		splits.push({
+			index: splitIdx++,
+			distance: seg.distance,
+			time: round1(segTimeFromRaw),
+			pace: round1(segTimeFromRaw / (seg.distance / 500)),
+			spm: seg.baseSpm,
+			machine: seg.machine,
+			isRest: false
+		});
+
+		tOffset += rawT;
+		dOffset += seg.distance;
+
+		if (seg.restAfter > 0) {
+			tOffset += seg.restAfter;
+			splits.push({
+				index: splitIdx++,
+				distance: 0,
+				time: seg.restAfter,
+				pace: 0,
+				isRest: true,
+				restTime: seg.restAfter
+			});
+		}
+	}
+
+	const totalTime = round1(tOffset);
+	const detail: WorkoutDetail = {
+		id: spec.id,
+		date: spec.date,
+		sport: spec.sport,
+		distance: spec.distance,
+		time: totalTime,
+		pace: round1(totalTime / (spec.distance / 500)),
+		strokeRate: Math.round(avg(strokes.map((s) => s.spm))),
+		strokeCount: strokes.length,
+		caloriesTotal: Math.round((totalTime / 60) * 14),
+		workoutType: spec.workoutType,
+		hasStrokeData: true,
+		isInterval: true,
+		isMultiErg: true,
+		strokes,
+		splits,
+		heartRateAvg: spec.baseHr,
+		restTime: 120
+	};
+	return detail;
+}
+
 function detailFor(spec: Spec): WorkoutDetail {
+	if (spec.isMultiErg) return buildMultiErgDetail(spec);
+
 	const { strokes, time } = buildStrokes(spec);
 	const splits = buildSplits(spec, strokes, time);
 	const pace = time / (spec.distance / 500);
@@ -204,6 +317,7 @@ function detailFor(spec: Spec): WorkoutDetail {
 		comments: spec.comments,
 		hasStrokeData: true,
 		isInterval: !!spec.interval,
+		isMultiErg: computeIsMultiErg(splits),
 		strokes,
 		splits
 	};

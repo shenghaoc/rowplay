@@ -2,7 +2,17 @@
 	import { onMount, untrack } from 'svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
-	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '$lib/replay/engine';
+	import {
+		ReplayEngine,
+		activeMachineAt,
+		activeSegmentIndexAt,
+		buildSegmentMap,
+		paceRangeForSegment,
+		restProgressAt,
+		sampleAt,
+		sampleIndexAt,
+		type Frame
+	} from '$lib/replay/engine';
 	import { splitIndexAt } from '$lib/replay/inspector';
 	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
@@ -26,11 +36,14 @@
 	const exrFlagged = $derived(isExrSource(detail));
 	const meta = $derived(data.meta);
 	const annotations = $derived(data.annotations as Annotation[]);
-	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
 	const strokes = $derived(detail.strokes);
 
 	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
+	const segMap = $derived(buildSegmentMap(detail.splits, detail.sport));
+	const activeSport = $derived(activeMachineAt(segMap, frame.d));
+	const activeSegIdx = $derived(activeSegmentIndexAt(segMap, frame.d));
+	const sportTheme = $derived(themeFor(activeSport));
 	const sampleIdx = $derived(sampleIndexAt(strokes, frame.t));
 	const rawStroke = $derived(sampleIdx >= 0 ? strokes[sampleIdx] : null);
 	const inspectorSplitIdx = $derived(
@@ -47,11 +60,17 @@
 	const SPEEDS = [0.5, 1, 2, 4, 8];
 
 	function buildState(f: Frame): RenderState {
+		const rest = restProgressAt(segMap, f.t);
 		return {
 			frame: f,
 			distFrac: total ? f.d / total : 0,
 			totalDistance: total,
-			sport: detail.sport
+			sport: activeMachineAt(segMap, f.d),
+			segmentIndex: activeSegmentIndexAt(segMap, f.d),
+			transitionPhase: rest?.phase,
+			transitionFrom: rest?.from,
+			transitionTo: rest?.to,
+			transitionRemaining: rest?.remaining
 		};
 	}
 
@@ -105,11 +124,15 @@
 		engine?.seek(Number((e.target as HTMLInputElement).value));
 	}
 
-	const paceRange = $derived.by(() => {
-		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
-		if (ps.length === 0) return { min: 60, max: 180 };
-		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
-	});
+	const paceRange = $derived(
+		paceRangeForSegment(segMap, activeSegIdx, strokes, activeSport)
+	);
+	const paceGaugeUnit = $derived(activeSport === 'bike' ? '/1000m' : '/500m');
+	const paceGaugeDisplay = $derived(
+		activeSport === 'bike'
+			? fmtPace(frame.pace * 2).replace('/500m', '')
+			: fmtPace(frame.pace).replace('/500m', '')
+	);
 	const wattRange = $derived.by(() => {
 		const watts = strokes.map((s) => s.watts);
 		const maxWatt = watts.length > 0 ? Math.max(...watts) : 0;
@@ -213,8 +236,8 @@
 	<div class="gauges card bg-base-100 border border-base-300 shadow-md p-5">
 		<MetricGauge
 			label={t('replay.gPace')}
-			unit="/500m"
-			display={fmtPace(frame.pace).replace('/500m', '')}
+			axisLabel={paceGaugeUnit}
+			display={paceGaugeDisplay}
 			value={frame.pace}
 			min={paceRange.max}
 			max={paceRange.min}

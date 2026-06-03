@@ -9,9 +9,11 @@
 		max: number;
 		color: string;
 		unit?: string;
+		/** Overrides `unit` in the field label when set. */
+		axisLabel?: string;
 	}
 
-	let { label, display, value, min, max, color, unit = '' }: Props = $props();
+	let { label, display, value, min, max, color, unit = '', axisLabel }: Props = $props();
 
 	// Semicircle arc geometry.
 	const R = 46;
@@ -49,7 +51,7 @@
 	</svg>
 	<div class="readout">
 		<div class="value mono" style:color>{display}</div>
-		<div class="field-label muted">{label}{unit ? ` · ${unit}` : ''}</div>
+		<div class="field-label muted">{label}{axisLabel ?? (unit ? ` · ${unit}` : '')}</div>
 	</div>
 </div>
 

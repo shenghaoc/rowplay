@@ -67,7 +67,8 @@ describe('applyHrImport / stripHrFromDetail', () => {
 		hasStrokeData: true,
 		strokes: [stroke(0), stroke(10)],
 		splits: [],
-		isInterval: false
+		isInterval: false,
+		isMultiErg: false
 	};
 
 	it('sets summary fields from merged strokes', () => {

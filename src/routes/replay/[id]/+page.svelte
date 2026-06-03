@@ -786,6 +786,15 @@
 	// knows about entries published in a past session) and flipped on publish/withdraw.
 	let published = $state(data.published ?? false);
 
+	// Re-sync from server data on client-side navigation between replays. The
+	// $state initializer above only runs once when the component is instantiated,
+	// so without this `published` would keep the previous workout's value when the
+	// component is reused. This only re-runs when data.published actually changes,
+	// so it never clobbers the optimistic publish/withdraw flips below.
+	$effect(() => {
+		published = data.published ?? false;
+	});
+
 	// Publishing to a board only applies to a signed-in athlete's own
 	// standard-distance piece — demo athletes and off-board distances can't rank.
 	const canPublish = $derived(
@@ -804,7 +813,12 @@
 				toast.info(t('leaderboard.publishOffBoard'));
 				return;
 			}
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			if (!res.ok) {
+				// A 403 from the privacy guard carries an i18n key in { error }.
+				const body = (await res.json().catch(() => null)) as { error?: string } | null;
+				toast.error(body?.error ? t(body.error) : t('leaderboard.publishFailed'));
+				return;
+			}
 			const result = (await res.json()) as {
 				board: { sport: Sport; distance: number };
 				rank: number;
@@ -926,8 +940,15 @@
 		sharing = true;
 		try {
 			const res = await fetch(`/api/workouts/${detail.id}/share`, { method: 'POST' });
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const body = (await res.json()) as { url: string };
+			// Parse defensively: a gateway error (502/504) or non-JSON body would make
+			// an unconditional res.json() throw a SyntaxError before the !res.ok check.
+			const body = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+			if (!res.ok) {
+				const message = body?.error ? t(body.error) : t('share.shareFailed');
+				toast.error(message);
+				return;
+			}
+			if (!body?.url) throw new Error('Missing share URL');
 			const title = detail.workoutType || detail.sport;
 			if (typeof navigator.share === 'function') {
 				try {
