@@ -3,6 +3,24 @@
 Use this file as a **thin router**. Read the steering docs before coding; specs
 live under `.kiro/specs/`.
 
+## Critical Quality Gates
+
+Before proposing or making changes, consult the steering docs under `.kiro/steering/` to preserve architecture invariants.
+
+**Every session must pass all five gates before closing:**
+
+1. `npm run check` → 0 errors (`state_referenced_locally` warnings are known/allowed).
+2. `npm run build` → succeeds.
+3. `npm run test` → green, and the test count must **not decrease**.
+4. Feature work: verify in demo mode (`/dashboard` → `/replay/1001`); token auth on `npm run preview` if auth/session code was touched.
+5. **New production files** (`+server.ts`, `+page.server.ts`, `src/lib/**/*.ts`) must have a co-located `*.test.ts`. The co-location convention is: `foo.ts` → `foo.test.ts` in the same directory.
+
+**Architecture boundaries:**
+- Server-only code lives in `src/lib/server/` — never imported by client bundles.
+- Route tests use fake `RequestEvent` objects; service dependencies are always mocked with `vi.mock('$lib/server/...')`.
+- D1 and KV are never touched in unit tests — use the fake D1/KV patterns documented in `.kiro/steering/tech.md`.
+- Demo mode must always work without credentials; never break the unauthenticated path.
+
 ## Read steering first
 
 - [Product vision](.kiro/steering/product.md) — replay-first; BYOT auth; demo mode.
@@ -102,13 +120,6 @@ All commands use **npm** (lockfile: `package-lock.json`).
   interval `t`/`d` restart per rep — both normalised on read.
 - `npm run build` runs `scripts/postbuild.mjs` (patches `.assetsignore`).
 - **daisyUI** uses the Tailwind v4 CSS plugin in `src/app.css` (not `tailwind.config.js`). Use idiomatic daisyUI classes (`btn`, `card`, `input`, `join`, `toggle`, …). Details: [tech.md → daisyUI](.kiro/steering/tech.md#daisyui-tailwind-css-v4-plugin). Install docs: [SvelteKit](https://daisyui.com/docs/install/sveltekit/), [general](https://daisyui.com/docs/install/).
-
-## Quality gate
-
-1. `npm run check` → 0 errors (`state_referenced_locally` warnings are known).
-2. `npm run build` → succeeds.
-3. `npm run test` → green.
-4. Feature work: verify in demo mode; token auth on `npm run preview` if touched.
 
 ## Svelte, daisyUI and i18n
 
