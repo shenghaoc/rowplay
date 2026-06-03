@@ -74,10 +74,18 @@ export async function loadWorkouts(event: RequestEvent): Promise<Workout[]> {
 		const fromDb = await getAllWorkouts(db, userId).catch(() => []);
 		if (fromDb.length) return fromDb;
 	}
-	// Cold start (no sync yet): show one live page rather than nothing.
+	// Cold start (no sync yet): show one live page rather than nothing — and cache
+	// it into D1 so the next navigation is a fast local read instead of another
+	// ~1s live Concept2 round-trip. Best-effort: a cache-write hiccup must not
+	// fail the page. We intentionally don't write sync state here, so an explicit
+	// Sync still does a full history backfill (not just this first page).
 	const c = await client(event);
 	if (!c) throw error(401, 'Not authenticated.');
-	return c.listWorkouts();
+	const live = await c.listWorkouts();
+	if (db && userId != null && live.length) {
+		await upsertWorkouts(db, userId, live).catch(() => {});
+	}
+	return live;
 }
 
 /**
