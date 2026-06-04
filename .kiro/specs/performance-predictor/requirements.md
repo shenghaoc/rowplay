@@ -27,7 +27,7 @@ and understand my cross-distance equivalences.
 1. WHEN the athlete provides a distance and a time THEN the system SHALL display
    predicted finish times for all other standard distances using Paul's Law
    (`T₂ = T₁ × (D₂/D₁)^1.06`).
-2. THE standard distances SHALL be: 500 m, 1 000 m, 2 000 m, 4 000 m, 5 000 m,
+2. THE standard distances SHALL be: 500 m, 1 000 m, 2 000 m, 5 000 m,
    6 000 m, 10 000 m, and 21 097 m.
 3. THE source distance SHALL appear in the table at the entered time (no
    prediction applied to itself).
@@ -73,7 +73,7 @@ time, so that the predictor doesn't silently produce nonsense.
 1. WHEN the time input contains a non-parseable or non-positive value THEN the
    system SHALL show an inline error message and SHALL NOT display a prediction
    table.
-2. THE time input SHALL accept `M:SS` and `MM:SS` formats (minutes:seconds).
+2. THE time input SHALL accept `M:SS`, `MM:SS`, `M:SS.T`, and `MM:SS.T` formats (minutes:seconds with optional tenths).
 
 ### Requirement 5 — Quality
 

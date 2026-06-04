@@ -25,11 +25,11 @@ aerobic cost at longer distances.
 
 ```ts
 /** Standard Concept2 race distances in metres. */
-export const PREDICTOR_DISTANCES = [500, 1000, 2000, 4000, 5000, 6000, 10000, 21097] as const;
+export const PREDICTOR_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097] as const;
 
 export type PredictorDistance = typeof PREDICTOR_DISTANCES[number];
 
-export type PredictionStatus = 'beaten' | 'slower' | 'untried';
+export type PredictionStatus = 'beaten' | 'behind' | 'untried';
 
 export interface PredictionRow {
   distance: PredictorDistance;
@@ -54,7 +54,7 @@ export function predictTimes(
  *
  * status:
  *   'beaten'  — athlete's actual PB is faster than predicted
- *   'slower'  — athlete has a result at this distance but it is slower than predicted
+ *   'behind'  — athlete has a result at this distance but it is slower than predicted
  *   'untried' — no personal best on record for this distance
  *
  * The source distance row shows knownSeconds as predictedSeconds and the
@@ -63,7 +63,7 @@ export function predictTimes(
 export function buildPredictionTable(
   knownDistance: number,
   knownSeconds: number,
-  personalBests: Array<{ distance: number; seconds: number }>,
+  personalBests: Array<{ distance: number; time: number }>,
 ): PredictionRow[];
 ```
 
@@ -82,7 +82,7 @@ No DOM, no Svelte, no network. Pure maths.
     Uses the `parsePaceInput` helper if that spec (pace-band-overlay) lands
     first; otherwise inline parse logic with the same `M:SS` regex.
   - "Predict" button: runs `buildPredictionTable` and renders the table.
-- **Pre-fill:** On open, if `personalBests[2000]` (RowErg 2k) is available,
+- **Pre-fill:** On open, if a RowErg 2k PB is available (`personalBests.find(pb => pb.distance === 2000)`),
   pre-select distance = 2000 m and pre-fill the time input with that PB.
 - **Output table:** one row per `PREDICTOR_DISTANCES` entry:
   - Distance (formatted)
