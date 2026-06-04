@@ -334,10 +334,17 @@ h3 {
 }
 
 /* daisyUI badge-soft contrast — default foreground is too light for WCAG AA.
-   Use a 70% base-content mix instead of daisyUI's default. */
+   Base: darken uncolored soft badges. Per-variant: light-dark() preserves the
+   semantic color identity in light mode while falling back to the token in dark. */
 .badge-soft {
 	color: color-mix(in srgb, var(--color-base-content) 72%, transparent);
 }
+.badge-soft.badge-primary   { color: light-dark(#3b2d8c, var(--color-primary));   }
+.badge-soft.badge-secondary { color: light-dark(#4a1f7a, var(--color-secondary)); }
+.badge-soft.badge-success   { color: light-dark(#1a5c45, var(--color-success));   }
+.badge-soft.badge-warning   { color: light-dark(#7a4e00, var(--color-warning));   }
+.badge-soft.badge-info      { color: light-dark(#1a4a6e, var(--color-info));      }
+.badge-soft.badge-error     { color: light-dark(#7a1a1a, var(--color-error));     }
 
 /* Eyebrow / micro-label: ruled, uppercased, letterspaced. */
 .eyebrow {

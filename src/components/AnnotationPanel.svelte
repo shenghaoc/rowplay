@@ -248,12 +248,6 @@
 	}
 	.anno-input {
 		width: 100%;
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		padding: 0.4rem 0.5rem;
-		font-size: 0.82rem;
-		background: var(--paper);
-		color: var(--ink);
 		resize: vertical;
 		font-family: inherit;
 	}

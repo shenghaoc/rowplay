@@ -1975,16 +1975,10 @@
 	}
 	.paceinput {
 		width: 5rem;
-		background: var(--paper-inset);
-		color: var(--ink);
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		padding: 0.4rem 0.6rem;
 		font-family: var(--mono);
-		font-size: 0.9rem;
 		text-align: center;
 	}
-	:global(.file-input) {
+	.file-input {
 		font-size: 0.8rem;
 		color: var(--ink-2);
 		max-width: 240px;
@@ -2540,7 +2534,7 @@
 		}
 		.ghostbar select,
 		.paceinput,
-		:global(.file-input) {
+		.file-input {
 			width: 100%;
 			max-width: none;
 		}
