@@ -108,6 +108,10 @@
 	let dpsMetric = $state<'rawDps' | 'normDps'>('rawDps');
 	let dpsMaWindow = $state<7 | 28>(28);
 	let dpsHoverIdx = $state<number | null>(null);
+	let dpsPointsRef = $state<ReturnType<typeof computeDpsTrend>>([]);
+	$effect(() => {
+		dpsPointsRef = dpsPoints;
+	});
 
 	let syncing = $state(false);
 	let compareAnchor = $state<number | null>(null);
@@ -568,7 +572,6 @@
 	}
 
 	const dpsChartOptions = $derived.by(() => {
-		const pts = dpsPoints;
 		return baseOptions({
 			theme: chart,
 			time: true,
@@ -598,6 +601,7 @@
 						u.over.style.cursor = 'pointer';
 						u.over.addEventListener('click', () => {
 							const idx = u.cursor.idx;
+							const pts = dpsPointsRef;
 							if (idx != null && idx >= 0 && pts[idx]) goto(`/replay/${pts[idx].workoutId}`);
 						});
 					}
@@ -854,7 +858,7 @@
 			{/if}
 
 			<!-- DPS trend — stroke efficiency over time -->
-			<div class="card card-border bg-base-100 shadow-md p-5 chartcard dpscard">
+			<div class="card card-border bg-base-100 shadow-md p-5 chartcard">
 				<div class="trendhead">
 					<div class="label">{t('dashboard.dpsTrend.title')}</div>
 					<div class="dpscontrols">
@@ -895,7 +899,9 @@
 						<p class="dpstip muted mono" aria-live="polite">
 							{fmtDate(dpsHover.date)} · {SPORT_LABEL[dpsHover.sport]} ·
 							{t('dashboard.dpsTrend.tooltipDps')}: {dpsHover.rawDps.toFixed(1)}m ·
-							{t('dashboard.dpsTrend.normalised')}: {dpsHover.normDps.toFixed(1)}m ·
+							{#if dpsMetric === 'normDps'}
+								{t('dashboard.dpsTrend.normalised')}: {dpsHover.normDps.toFixed(1)}m ·
+							{/if}
 							{t('dashboard.dpsTrend.tooltipPace')}: {fmtPace(dpsHover.avgPaceSecs)}
 						</p>
 					{/if}
