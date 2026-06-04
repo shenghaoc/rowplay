@@ -65,6 +65,8 @@
 	import { page } from '$app/state';
 	import AnnotationPanel from '$components/AnnotationPanel.svelte';
 	import InspectorPanel from '$components/InspectorPanel.svelte';
+	import RepComparisonChart from '$components/RepComparisonChart.svelte';
+	import { detectReps, repColor, repsHaveHr, type RepMetric } from '$lib/repComparison';
 	import type { Annotation } from '$lib/types';
 
 	let { data } = $props();
@@ -168,6 +170,17 @@
 	let quality = $state<RenderQuality>('medium');
 	let inspectorOpen = $state(false);
 	let driftOverlayOn = $state(false);
+
+	// --- Rep comparison ---
+	const repSeries = $derived(detectReps(detail) ?? []);
+	const hasReps = $derived(repSeries.length >= 2);
+	const showHrMetric = $derived(repsHaveHr(repSeries));
+	let repMetric = $state<RepMetric>('pace');
+	let repHighlight = $state<number | null>(null);
+
+	function toggleRepHighlight(idx: number) {
+		repHighlight = repHighlight === idx ? null : idx;
+	}
 	// Target pace is intentionally preserved across workout navigation —
 	// it represents a user's personal goal, not workout-specific state.
 	let targetPaceSecs = $state<number | null>(null);
@@ -364,6 +377,7 @@
 			fileName = '';
 			ghostError = '';
 			driftOverlayOn = false;
+			repHighlight = null;
 			renderer?.destroy();
 			renderer = null;
 			engine = new ReplayEngine(s, (f, p) => {
@@ -1677,6 +1691,68 @@
 		{/if}
 	</div>
 
+	<!-- Rep comparison -->
+	{#if hasReps}
+		<details class="card card-border bg-base-100 shadow-md p-5 rep-comparison" open>
+			<summary class="ctitle muted cursor-pointer select-none">
+				{t('replay.repComparison')}
+			</summary>
+			<div class="rep-metric-tabs" role="group" aria-label={t('replay.repMetricTabs')}>
+				<button
+					type="button"
+					class="btn btn-xs"
+					class:btn-primary={repMetric === 'pace'}
+					onclick={() => (repMetric = 'pace')}
+				>
+					{t('replay.repComparisonMetricPace')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-xs"
+					class:btn-primary={repMetric === 'rate'}
+					onclick={() => (repMetric = 'rate')}
+				>
+					{t('replay.repComparisonMetricRate')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-xs"
+					class:btn-primary={repMetric === 'power'}
+					onclick={() => (repMetric = 'power')}
+				>
+					{t('replay.repComparisonMetricPower')}
+				</button>
+				{#if showHrMetric}
+					<button
+						type="button"
+						class="btn btn-xs"
+						class:btn-primary={repMetric === 'hr'}
+						onclick={() => (repMetric = 'hr')}
+					>
+						{t('replay.repComparisonMetricHr')}
+					</button>
+				{/if}
+			</div>
+			<RepComparisonChart reps={repSeries} metric={repMetric} highlight={repHighlight} />
+			<div class="rep-legend">
+				{#each repSeries as rep (rep.repIndex)}
+					<button
+						type="button"
+						class="rep-legend-item"
+						class:active={repHighlight === rep.repIndex}
+						aria-pressed={repHighlight === rep.repIndex}
+						onclick={() => toggleRepHighlight(rep.repIndex)}
+					>
+						<span class="rep-swatch" style:background={repColor(rep.repIndex)}></span>
+						<span class="mono">
+							{t('replay.repComparisonRep', { n: rep.repIndex + 1 })} — {fmtPaceBare(rep.avgPace)}
+						</span>
+					</button>
+				{/each}
+			</div>
+		</details>
+	{/if}
+
 	<!-- Technique (stroke quality) -->
 	<div class="card card-border bg-base-100 shadow-md p-5 technique">
 		<div class="ctitle muted">{t('replay.strokeQuality')}</div>
@@ -2363,6 +2439,51 @@
 		gap: 0.75rem;
 		margin-bottom: 0.75rem;
 	}
+	/* Rep comparison */
+	.rep-comparison summary {
+		margin-bottom: 0.75rem;
+	}
+
+	.rep-metric-tabs {
+		display: flex;
+		gap: 0.375rem;
+		margin-bottom: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.rep-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-top: 0.75rem;
+	}
+
+	.rep-legend-item {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.25rem 0.625rem;
+		border-radius: 9999px;
+		border: 1px solid oklch(var(--bc) / 0.2);
+		background: transparent;
+		cursor: pointer;
+		font-size: 0.8rem;
+		transition: background 0.15s, border-color 0.15s;
+	}
+
+	.rep-legend-item.active,
+	.rep-legend-item:hover {
+		background: oklch(var(--b2));
+		border-color: oklch(var(--bc) / 0.4);
+	}
+
+	.rep-swatch {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
 	.technique {
 		margin-bottom: 0.75rem;
 	}
