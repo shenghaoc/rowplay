@@ -15,6 +15,9 @@ export const POST: RequestHandler = async (event) => {
 	} catch (e) {
 		if (isHttpError(e)) throw e;
 		const msg = e instanceof Error ? e.message : String(e);
+		if (/failed \(429\)/i.test(msg)) {
+			throw error(429, 'Rate limit exceeded on Concept2 API. Please try again later.');
+		}
 		if (/no such table|D1_ERROR/i.test(msg)) {
 			throw error(
 				503,
