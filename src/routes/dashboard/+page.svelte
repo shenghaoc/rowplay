@@ -6,6 +6,7 @@
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
 	import EngagementPanel from '$components/EngagementPanel.svelte';
 	import CriticalPowerPanel from '$components/CriticalPowerPanel.svelte';
+	import PerformancePredictorCard from '$components/PerformancePredictorCard.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { fmtDate, fmtDateFromEpochMillis, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
 	import {
@@ -865,6 +866,8 @@
 					</div>
 				</div>
 			{/if}
+
+			<PerformancePredictorCard personalBests={pbs} />
 		</aside>
 	</div>
 </div>
