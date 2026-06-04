@@ -157,6 +157,17 @@ export const es = {
 		faster: '{delta} más rápido',
 		slower: '{delta} más lento',
 		emptyTrend: 'Solo {n} sesión en este rango — registra otro {band} para ver la tendencia.',
+		dpsTrend: {
+			title: 'Eficiencia de palada (DPS)',
+			raw: 'DPS bruto',
+			normalised: 'Normalizado por ritmo',
+			ma7: 'Media 7 días',
+			ma28: 'Media 28 días',
+			yLabel: 'm/palada',
+			empty: 'No hay datos de conteo de paladas',
+			tooltipPace: 'Ritmo medio',
+			tooltipDps: 'DPS'
+		},
 		calTitle: 'Calendario de entrenamiento',
 		calMetricDistance: 'Metros',
 		calMetricTime: 'Tiempo',

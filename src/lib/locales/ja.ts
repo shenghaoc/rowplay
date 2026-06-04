@@ -158,6 +158,17 @@ export const ja = {
 		faster: '{delta} 速い',
 		slower: '{delta} 遅い',
 		emptyTrend: 'この帯域は {n} セッションのみ — あと 1 回 {band} を記録するとトレンドが見えます。',
+		dpsTrend: {
+			title: 'ストローク効率 (DPS)',
+			raw: '生 DPS',
+			normalised: 'ペース正規化',
+			ma7: '7 日平均',
+			ma28: '28 日平均',
+			yLabel: 'm/ストローク',
+			empty: 'ストローク数データがありません',
+			tooltipPace: '平均ペース',
+			tooltipDps: 'DPS'
+		},
 		calTitle: 'トレーニングカレンダー',
 		calMetricDistance: '距離',
 		calMetricTime: '時間',

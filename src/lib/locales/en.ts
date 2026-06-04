@@ -157,6 +157,17 @@ export const en = {
 		faster: '{delta} faster',
 		slower: '{delta} slower',
 		emptyTrend: 'Only {n} session in this band — log another {band} to see a trend.',
+		dpsTrend: {
+			title: 'Stroke efficiency (DPS)',
+			raw: 'Raw DPS',
+			normalised: 'Pace-normalised',
+			ma7: '7-day avg',
+			ma28: '28-day avg',
+			yLabel: 'm/stroke',
+			empty: 'No stroke-count data available',
+			tooltipPace: 'Avg pace',
+			tooltipDps: 'DPS'
+		},
 		calTitle: 'Training calendar',
 		calMetricDistance: 'Meters',
 		calMetricTime: 'Time',
