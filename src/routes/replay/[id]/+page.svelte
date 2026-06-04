@@ -734,7 +734,7 @@
 	const paceData = $derived.by((): uPlot.AlignedData => {
 		const rows: (number | null)[][] = [xs, paceSeries];
 		if (dpsAligned) rows.push(dpsAligned);
-		if (targetPaceSecs != null && xs.length > 0) {
+		if (targetPaceSecs != null && xs.length > 0 && !targetPaceInvalid) {
 			const t = targetPaceSecs;
 			const line = Array.from({ length: xs.length }, () => t);
 			if (showBand) {
@@ -758,7 +758,7 @@
 		const dataSeriesCount = driftOn ? 2 : 1;
 
 		const targetSeries: SeriesConfig[] = [];
-		if (targetPaceSecs != null) {
+		if (targetPaceSecs != null && xs.length > 0) {
 			if (showBand) {
 				const bandLowIdx = dataSeriesCount + 1;
 				targetSeries.push(
@@ -1597,7 +1597,7 @@
 			{/if}
 			<UPlotChart data={paceData} options={paceOpts} height={150} marker={frame.t} caption={t('replay.cPace')} />
 			<div class="target-pace">
-				{#if targetPaceOpen || targetPaceSecs != null}
+				{#if targetPaceOpen}
 					<div class="target-pace-row">
 						<label class="target-pace-label muted small" for="target-pace-input"
 							>{t('replay.targetPace')}</label
