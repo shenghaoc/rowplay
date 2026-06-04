@@ -157,6 +157,17 @@ export const fr = {
 		faster: '{delta} plus rapide',
 		slower: '{delta} plus lent',
 		emptyTrend: 'Une seule séance dans cette tranche — enregistrez un autre {band} pour voir une tendance.',
+		dpsTrend: {
+			title: 'Efficacité de coups (DPS)',
+			raw: 'DPS brut',
+			normalised: 'Normalisé par allure',
+			ma7: 'Moy. 7 jours',
+			ma28: 'Moy. 28 jours',
+			yLabel: 'm/coup',
+			empty: 'Aucune donnée de nombre de coups',
+			tooltipPace: 'Allure moy.',
+			tooltipDps: 'DPS'
+		},
 		calTitle: 'Calendrier d’entraînement',
 		calMetricDistance: 'Mètres',
 		calMetricTime: 'Temps',

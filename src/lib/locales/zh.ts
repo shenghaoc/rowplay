@@ -156,6 +156,17 @@ export const zh = {
 		faster: '快了 {delta}',
 		slower: '慢了 {delta}',
 		emptyTrend: '该区间只有 {n} 次训练——再记录一次 {band} 即可看到趋势。',
+		dpsTrend: {
+			title: '划桨效率 (DPS)',
+			raw: '原始 DPS',
+			normalised: '配速归一化',
+			ma7: '7 日均值',
+			ma28: '28 日均值',
+			yLabel: '米/桨',
+			empty: '暂无桨数数据',
+			tooltipPace: '平均配速',
+			tooltipDps: 'DPS'
+		},
 		calTitle: '训练日历',
 		calMetricDistance: '距离',
 		calMetricTime: '时间',

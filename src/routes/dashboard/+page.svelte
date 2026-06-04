@@ -40,6 +40,7 @@
 	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
 
 	import { logbookEpochMillis, todayKeyForTz } from '$lib/datetime';
+	import { computeDpsTrend, movingAverage } from '$lib/dpsTrend';
 
 	// Static lookup — never changes, shared across instances.
 	const formBandClass: Record<FormBand, string> = {
@@ -104,6 +105,9 @@
 	let metric = $state<Metric>('pace');
 	// Selected distance band for pace/DPS trends; '' = auto (most-rowed band).
 	let bandKey = $state<string>('');
+	let dpsMetric = $state<'rawDps' | 'normDps'>('rawDps');
+	let dpsMaWindow = $state<7 | 28>(28);
+	let dpsHoverIdx = $state<number | null>(null);
 
 	let syncing = $state(false);
 	let compareAnchor = $state<number | null>(null);
@@ -545,6 +549,62 @@
 		const change = metricChangeFmt(verdict.better, verdict.delta);
 		return t(verdict.better ? 'dashboard.improving' : 'dashboard.slipping', { change, days });
 	});
+
+	const dpsPoints = $derived(
+		computeDpsTrend(filtered, sportFilter === 'all' ? undefined : sportFilter)
+	);
+	const dpsMa = $derived(movingAverage(dpsPoints, dpsMetric, dpsMaWindow));
+	const dpsHover = $derived(dpsHoverIdx != null ? (dpsPoints[dpsHoverIdx] ?? null) : null);
+
+	const dpsChartData = $derived.by((): uPlot.AlignedData => {
+		const xs = dpsPoints.map((p) => logbookEpochMillis(p.date) / 1000);
+		const ys = dpsPoints.map((p) => p[dpsMetric]);
+		const ma = dpsMa.map((m) => m.value);
+		return [xs, ys, ma];
+	});
+
+	function onDpsCursor(u: uPlot) {
+		dpsHoverIdx = u.cursor.idx ?? null;
+	}
+
+	const dpsChartOptions = $derived.by(() => {
+		const pts = dpsPoints;
+		return baseOptions({
+			theme: chart,
+			time: true,
+			legend: true,
+			yAxes: [{ size: 56, fmt: (v) => `${v.toFixed(1)}` }],
+			series: [
+				{
+					label:
+						dpsMetric === 'rawDps'
+							? t('dashboard.dpsTrend.raw')
+							: t('dashboard.dpsTrend.normalised'),
+					role: 'dps',
+					width: 0,
+					points: 7
+				},
+				{
+					label: dpsMaWindow === 7 ? t('dashboard.dpsTrend.ma7') : t('dashboard.dpsTrend.ma28'),
+					role: 'fit',
+					width: 2
+				}
+			],
+			cursor: { x: true, y: true },
+			hooks: {
+				setCursor: [onDpsCursor],
+				ready: [
+					(u: uPlot) => {
+						u.over.style.cursor = 'pointer';
+						u.over.addEventListener('click', () => {
+							const idx = u.cursor.idx;
+							if (idx != null && idx >= 0 && pts[idx]) goto(`/replay/${pts[idx].workoutId}`);
+						});
+					}
+				]
+			}
+		});
+	});
 </script>
 
 <div class="container">
@@ -792,6 +852,62 @@
 					{/if}
 				</div>
 			{/if}
+
+			<!-- DPS trend — stroke efficiency over time -->
+			<div class="card card-border bg-base-100 shadow-md p-5 chartcard dpscard">
+				<div class="trendhead">
+					<div class="label">{t('dashboard.dpsTrend.title')}</div>
+					<div class="dpscontrols">
+						<label class="label cursor-pointer gap-2">
+							<span class="label-text text-xs">{t('dashboard.dpsTrend.raw')}</span>
+							<input
+								type="checkbox"
+								class="toggle toggle-sm"
+								checked={dpsMetric === 'normDps'}
+								onchange={(e) =>
+									(dpsMetric = (e.currentTarget as HTMLInputElement).checked ? 'normDps' : 'rawDps')}
+							/>
+							<span class="label-text text-xs">{t('dashboard.dpsTrend.normalised')}</span>
+						</label>
+						<div class="join" role="group" aria-label="Moving average window">
+							<button
+								class="btn btn-xs join-item"
+								class:btn-active={dpsMaWindow === 7}
+								class:btn-neutral={dpsMaWindow === 7}
+								aria-pressed={dpsMaWindow === 7}
+								onclick={() => (dpsMaWindow = 7)}
+							>{t('dashboard.dpsTrend.ma7')}</button>
+							<button
+								class="btn btn-xs join-item"
+								class:btn-active={dpsMaWindow === 28}
+								class:btn-neutral={dpsMaWindow === 28}
+								aria-pressed={dpsMaWindow === 28}
+								onclick={() => (dpsMaWindow = 28)}
+							>{t('dashboard.dpsTrend.ma28')}</button>
+						</div>
+					</div>
+				</div>
+
+				{#if dpsPoints.length === 0}
+					<p class="muted emptytrend">{t('dashboard.dpsTrend.empty')}</p>
+				{:else}
+					{#if dpsHover}
+						<p class="dpstip muted mono" aria-live="polite">
+							{fmtDate(dpsHover.date)} · {SPORT_LABEL[dpsHover.sport]} ·
+							{t('dashboard.dpsTrend.tooltipDps')}: {dpsHover.rawDps.toFixed(1)}m ·
+							{t('dashboard.dpsTrend.normalised')}: {dpsHover.normDps.toFixed(1)}m ·
+							{t('dashboard.dpsTrend.tooltipPace')}: {fmtPace(dpsHover.avgPaceSecs)}
+						</p>
+					{/if}
+					<UPlotChart
+						data={dpsChartData}
+						options={dpsChartOptions}
+						height={190}
+						caption={t('dashboard.dpsTrend.title')}
+						description={t('dashboard.dpsTrend.yLabel')}
+					/>
+				{/if}
+			</div>
 
 			<!-- Per-sport breakdown -->
 			{#if bySport.length > 1}
@@ -1042,6 +1158,9 @@
 	.verdict { font-size: 0.9rem; font-weight: 600; padding: 0.6rem 0.85rem; margin-bottom: 0.85rem; background: var(--paper-inset); border: 1px solid var(--hairline); color: var(--ink-2); }
 	.verdict-good { background: color-mix(in srgb, var(--ahead) 12%, var(--paper-raised)); border-color: color-mix(in srgb, var(--ahead) 30%, transparent); color: var(--ahead); }
 	.verdict-bad { background: color-mix(in srgb, var(--alarm) 12%, var(--paper-raised)); border-color: color-mix(in srgb, var(--alarm) 30%, transparent); color: var(--alarm); }
+
+	.dpscontrols { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+	.dpstip { font-size: 0.82rem; margin-bottom: 0.65rem; min-height: 1.25rem; }
 
 	/* ---- Breakdown table ---------------------------------------------------- */
 	.tablescroll { overflow-x: auto; }

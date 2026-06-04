@@ -157,6 +157,17 @@ export const de = {
 		faster: '{delta} schneller',
 		slower: '{delta} langsamer',
 		emptyTrend: 'Nur {n} Einheit in dieser Kategorie — logge noch eine {band}, um einen Trend zu sehen.',
+		dpsTrend: {
+			title: 'Schlag-Effizienz (DPS)',
+			raw: 'Rohes DPS',
+			normalised: 'Pace-normalisiert',
+			ma7: '7-Tage-Schnitt',
+			ma28: '28-Tage-Schnitt',
+			yLabel: 'm/Schlag',
+			empty: 'Keine Schlagzahlen verfügbar',
+			tooltipPace: 'Ø Pace',
+			tooltipDps: 'DPS'
+		},
 		calTitle: 'Trainingskalender',
 		calMetricDistance: 'Meter',
 		calMetricTime: 'Zeit',
