@@ -168,10 +168,13 @@
 	let quality = $state<RenderQuality>('medium');
 	let inspectorOpen = $state(false);
 	let driftOverlayOn = $state(false);
+	// Target pace is intentionally preserved across workout navigation —
+	// it represents a user's personal goal, not workout-specific state.
 	let targetPaceSecs = $state<number | null>(null);
 	let showBand = $state(false);
 	let targetPaceOpen = $state(false);
 	let targetPaceInput = $state('');
+	let targetPaceInvalid = $state(false);
 	const TARGET_BAND_SECS = 5;
 	let loading3d = $state(false);
 	let webglOk = $state(false);
@@ -566,15 +569,24 @@
 		const trimmed = targetPaceInput.trim();
 		if (!trimmed) {
 			targetPaceSecs = null;
+			targetPaceInvalid = false;
 			return;
 		}
-		targetPaceSecs = parsePaceInput(trimmed);
+		const secs = parsePaceInput(trimmed);
+		if (secs == null) {
+			targetPaceInvalid = true;
+			return;
+		}
+		targetPaceInvalid = false;
+		targetPaceSecs = secs;
 	}
 
 	function clearTargetPace() {
 		targetPaceSecs = null;
 		targetPaceInput = '';
 		showBand = false;
+		targetPaceOpen = false;
+		targetPaceInvalid = false;
 	}
 
 	function applyPace() {
@@ -1593,6 +1605,7 @@
 						<input
 							id="target-pace-input"
 							class="input input-bordered input-sm mono target-pace-input"
+							class:input-error={targetPaceInvalid}
 							type="text"
 							bind:value={targetPaceInput}
 							placeholder={t('replay.targetPacePlaceholder')}
@@ -1607,6 +1620,12 @@
 						<button type="button" class="btn btn-ghost btn-xs" onclick={clearTargetPace}
 							>{t('replay.targetPaceClear')}</button
 						>
+						<button
+							type="button"
+							class="btn btn-ghost btn-xs"
+							onclick={() => (targetPaceOpen = false)}
+							aria-label="Close"
+						>✕</button>
 					</div>
 				{:else}
 					<button
