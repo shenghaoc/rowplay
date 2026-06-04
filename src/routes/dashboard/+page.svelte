@@ -6,6 +6,7 @@
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
 	import EngagementPanel from '$components/EngagementPanel.svelte';
 	import CriticalPowerPanel from '$components/CriticalPowerPanel.svelte';
+	import PerformancePredictorCard from '$components/PerformancePredictorCard.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { fmtDate, fmtDateFromEpochMillis, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
 	import {
@@ -342,6 +343,11 @@
 		}
 		return [...best.values()];
 	});
+
+	// Unfiltered PBs (all sports) for the performance predictor — ensures the
+	// RowErg 2k pre-fill and rower-only comparison always work regardless of the
+	// active sport tab.
+	const allPbs = $derived(data.aggregates?.pbs ?? distancePBs(workouts));
 
 	const totalMeters = $derived(bySport.reduce((s, r) => s + r.distance, 0));
 	const totalTime = $derived(bySport.reduce((s, r) => s + r.time, 0));
@@ -881,6 +887,8 @@
 					</div>
 				</div>
 			{/if}
+
+			<PerformancePredictorCard personalBests={allPbs} />
 		</aside>
 	</div>
 </div>
