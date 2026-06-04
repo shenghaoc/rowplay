@@ -828,10 +828,10 @@
 				onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
 			/>
 			{#if compareAnchor != null}
-				<p class="compare-hint card bg-base-100 border border-base-300 shadow-md p-5 muted">
+				<div class="compare-hint card bg-base-100 border border-base-300 shadow-md p-5 muted" role="status">
 					{t('workoutList.comparePick')}
 					<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
-				</p>
+				</div>
 			{/if}
 			<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} pbIds={pbIds} {newPbIds} {newEntryIds} />
 		</div>
