@@ -6,6 +6,7 @@
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
 	import TrainingIntensityChart from '$components/TrainingIntensityChart.svelte';
 	import EngagementPanel from '$components/EngagementPanel.svelte';
+	import MilestonesPanel from '$components/MilestonesPanel.svelte';
 	import CriticalPowerPanel from '$components/CriticalPowerPanel.svelte';
 	import PerformancePredictorCard from '$components/PerformancePredictorCard.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
@@ -40,6 +41,7 @@
 	import LiveModePanel from '$components/LiveModePanel.svelte';
 	import { LiveMode } from '$lib/liveMode.svelte';
 	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
+	import { computeMilestones, newlyAchievedMilestones } from '$lib/milestones';
 
 	import { logbookEpochMillis, todayKeyForTz } from '$lib/datetime';
 	import { computeDpsTrend, movingAverage } from '$lib/dpsTrend';
@@ -114,6 +116,7 @@
 	let compareAnchor = $state<number | null>(null);
 	let newPbIds = $state<Set<number>>(new Set());
 	const pbIds = $derived(pbWorkoutIds(workouts));
+	const milestonePBs = $derived(distancePBs(workouts));
 
 	const syncHistoryNote = $derived.by(() => {
 		const sync = data.sync;
@@ -161,10 +164,27 @@
 		compareAnchor = null;
 		goto(`/compare?a=${a}&b=${b}`);
 	}
+	function milestoneOpts() {
+		return { endDay: calendarEndDay, homeTz };
+	}
+
+	function toastNewMilestones(before: ReturnType<typeof computeMilestones>, merged: Workout[]) {
+		const after = computeMilestones(merged, distancePBs(merged), milestoneOpts());
+		for (const m of newlyAchievedMilestones(before, after)) {
+			toast.success(t(`${m.labelKey}.toast`));
+		}
+	}
+
 	function handleLiveWorkouts(batch: Workout[], newPbs: ReturnType<typeof distancePBs>) {
+		const milestonesBefore = computeMilestones(workouts, distancePBs(workouts), milestoneOpts());
 		const toAdd = batch.filter((w) => !workouts.some((x) => x.id === w.id));
 		if (toAdd.length) extraWorkouts = [...toAdd, ...extraWorkouts];
 		newEntryIds = new Set([...newEntryIds, ...batch.map((w) => w.id)]);
+		if (toAdd.length) {
+			const byId = new Map<number, Workout>();
+			for (const w of [...toAdd, ...workouts]) byId.set(w.id, w);
+			toastNewMilestones(milestonesBefore, [...byId.values()]);
+		}
 
 		// Global toasts/PB celebrations always fire on sync; the workout list's
 		// own filtering (via listWorkouts) decides what's actually shown.
@@ -237,6 +257,7 @@
 		syncing = true;
 		const toastId = toast.loading(t('sync.loading'));
 		const pbsBefore = distancePBs(workouts);
+		const milestonesBefore = computeMilestones(workouts, pbsBefore, milestoneOpts());
 		try {
 			const res = await fetch('/api/sync', { method: 'POST' });
 			if (!res.ok) {
@@ -256,6 +277,7 @@
 			};
 			await invalidateAll();
 			toast.success(t('sync.done', { added: body.added, total: body.total }), { id: toastId });
+			toastNewMilestones(milestonesBefore, workouts);
 			const newPbs =
 				body.newPbs?.length ? body.newPbs : detectNewPBs(pbsBefore, distancePBs(workouts));
 			if (newPbs.length === 1) {
@@ -651,6 +673,8 @@
 	{:else}
 		<p class="syncnote muted">{t('dashboard.recentNote')}</p>
 	{/if}
+
+	<MilestonesPanel workouts={workouts} personalBests={milestonePBs} endDay={calendarEndDay} {homeTz} />
 
 	<!-- ============ HERO — LATEST SESSION ============ -->
 	{#if latest}
