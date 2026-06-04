@@ -1343,14 +1343,14 @@ export interface TrainingStreakStats {
 }
 
 export function weeklyConsistency(
-	workouts: Workout[],
+	workouts: Workout[] | Set<string>,
 	endDay: string,
 	lookbackWeeks = 8,
 	homeTz?: string
 ): { activeWeeks: number; totalWeeks: number } {
-	const activeDays = new Set(
-		[...aggregateDailyVolume(workouts, homeTz).keys()].filter((d) => d <= endDay)
-	);
+	const activeDays = workouts instanceof Set
+		? workouts
+		: new Set([...aggregateDailyVolume(workouts, homeTz).keys()].filter((d) => d <= endDay));
 	let activeWeeks = 0;
 	for (let w = 0; w < lookbackWeeks; w++) {
 		const weekEnd = addDaysToKey(endDay, -w * 7);
@@ -1368,7 +1368,8 @@ export function weeklyConsistency(
 
 export function trainingStreakStats(workouts: Workout[], endDay?: string, homeTz?: string): TrainingStreakStats {
 	const end = endDay ?? todayKeyForTz(homeTz);
-	const historyDays = [...aggregateDailyVolume(workouts, homeTz).keys()].filter((d) => d <= end).sort();
+	const activeDaysList = [...aggregateDailyVolume(workouts, homeTz).keys()].filter((d) => d <= end);
+	const historyDays = [...activeDaysList].sort();
 	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, end);
 	const lastDay = historyDays.length ? historyDays[historyDays.length - 1] : null;
 	const daysSinceLastSession = lastDay != null ? daysBetweenUtc(lastDay, end) : null;
@@ -1376,7 +1377,7 @@ export function trainingStreakStats(workouts: Workout[], endDay?: string, homeTz
 		currentStreak,
 		longestStreak,
 		daysSinceLastSession,
-		weeklyConsistency: weeklyConsistency(workouts, end, 8, homeTz)
+		weeklyConsistency: weeklyConsistency(new Set(activeDaysList), end, 8, homeTz)
 	};
 }
 

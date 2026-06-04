@@ -123,15 +123,16 @@ function dayKeyInZone(pdt: Temporal.PlainDateTime, fromZone: string, toZone?: st
  * strings fall through silently.
  */
 export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: string): string {
+	if (typeof date !== 'string') return '';
 	const cleanWtz = workoutTz?.trim();
 	const cleanHtz = homeTz?.trim();
 	// Fast path: with no zone to convert into, the plain date part of the
 	// offset-less timestamp is the best we can do — skip Temporal parsing and
 	// allocation entirely (the overwhelming common case).
-	if (!cleanWtz && !cleanHtz) return typeof date === 'string' ? date.slice(0, 10) : '';
+	if (!cleanWtz && !cleanHtz) return date.slice(0, 10);
 
 	const pdt = parseLogbookDateTime(date);
-	if (!pdt) return typeof date === 'string' ? date.slice(0, 10) : '';
+	if (!pdt) return date.slice(0, 10);
 
 	if (cleanWtz) {
 		// Date IS in workoutTz (monitor-local). Bucket in homeTz when it differs.
