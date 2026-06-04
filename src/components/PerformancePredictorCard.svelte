@@ -48,7 +48,7 @@
 	function runPredict() {
 		inputError = '';
 		const secs = parsePaceInput(timeInput);
-		if (secs == null) {
+		if (secs == null || secs <= 0) {
 			inputError = t('dashboard.predictor.inputError');
 			rows = null;
 			return;
@@ -56,7 +56,9 @@
 		rows = buildPredictionTable(
 			knownDistance,
 			secs,
-			personalBests.map((p) => ({ distance: p.distance, time: p.time }))
+			personalBests
+				.filter((p) => p.sport === 'rower')
+				.map((p) => ({ distance: p.distance, time: p.time }))
 		);
 	}
 
@@ -77,7 +79,7 @@
 
 	{#if open}
 		<div class="predictor-body">
-			<div class="predictor-form">
+			<form class="predictor-form" onsubmit={(e) => { e.preventDefault(); runPredict(); }}>
 				<label class="predictor-field">
 					<span class="muted field-label">{t('dashboard.predictor.distance')}</span>
 					<select class="select select-bordered select-sm" bind:value={knownDistance}>
@@ -99,7 +101,7 @@
 				<button type="button" class="btn btn-primary btn-sm" onclick={runPredict}>
 					{t('dashboard.predictor.predict')}
 				</button>
-			</div>
+			</form>
 			{#if inputError}
 				<p class="predictor-error" role="alert">{inputError}</p>
 			{/if}
@@ -120,11 +122,11 @@
 								<tr class:predictor-source={row.distance === knownDistance}>
 									<td>{fmtDistance(row.distance)}</td>
 									<td class="num" class:muted={row.distance === knownDistance}>
-										{fmtTime(row.predictedSeconds, !Number.isInteger(row.predictedSeconds))}
+										{fmtTime(row.predictedSeconds, true)}
 									</td>
 									<td class="num">
 										{row.actualBestSeconds != null
-											? fmtTime(row.actualBestSeconds, !Number.isInteger(row.actualBestSeconds))
+											? fmtTime(row.actualBestSeconds, true)
 											: t('dashboard.predictor.noTime')}
 									</td>
 									<td>

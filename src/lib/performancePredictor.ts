@@ -24,6 +24,9 @@ export function predictTimes(
 	knownDistance: number,
 	knownSeconds: number
 ): Map<PredictorDistance, number> {
+	if (knownDistance <= 0 || knownSeconds <= 0) {
+		return new Map<PredictorDistance, number>();
+	}
 	const out = new Map<PredictorDistance, number>();
 	for (const d of PREDICTOR_DISTANCES) {
 		if (d === knownDistance) {

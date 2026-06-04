@@ -344,6 +344,11 @@
 		return [...best.values()];
 	});
 
+	// Unfiltered PBs (all sports) for the performance predictor — ensures the
+	// RowErg 2k pre-fill and rower-only comparison always work regardless of the
+	// active sport tab.
+	const allPbs = $derived(data.aggregates?.pbs ?? distancePBs(workouts));
+
 	const totalMeters = $derived(bySport.reduce((s, r) => s + r.distance, 0));
 	const totalTime = $derived(bySport.reduce((s, r) => s + r.time, 0));
 	const avgPace = $derived(totalMeters > 0 ? totalTime / (totalMeters / 500) : 0);
@@ -867,7 +872,7 @@
 				</div>
 			{/if}
 
-			<PerformancePredictorCard personalBests={pbs} />
+			<PerformancePredictorCard personalBests={allPbs} />
 		</aside>
 	</div>
 </div>
