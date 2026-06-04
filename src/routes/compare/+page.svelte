@@ -77,11 +77,13 @@
 	}
 
 	function refForPickA(): Workout | WorkoutDetail | null {
-		return detailB ?? data.workouts.find((w) => String(w.id) === pickB) ?? null;
+		if (detailB && String(detailB.id) === pickB) return detailB;
+		return data.workouts.find((w) => String(w.id) === pickB) ?? null;
 	}
 
 	function refForPickB(): Workout | WorkoutDetail | null {
-		return detailA ?? data.workouts.find((w) => String(w.id) === pickA) ?? null;
+		if (detailA && String(detailA.id) === pickA) return detailA;
+		return data.workouts.find((w) => String(w.id) === pickA) ?? null;
 	}
 
 	function isWorkoutComparableTo(w: Workout, ref: Workout | WorkoutDetail | null): boolean {
