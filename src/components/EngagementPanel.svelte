@@ -127,7 +127,7 @@
 	}
 </script>
 
-<div class="card bg-base-100 border border-base-300 shadow-md p-5 engagement">
+<div class="card card-border bg-base-100 shadow-md p-5 engagement">
 	<div class="enghead">
 		<div class="engtitle">
 			<Target size={18} />

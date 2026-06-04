@@ -229,7 +229,7 @@ src/
 
 - **Tailwind CSS v4** for utility classes
 - **daisyUI v5** component classes (`btn`, `card`, `badge`, `toggle`, `join`, `tabs`, …) — prefer idiomatic daisyUI over custom CSS
-- Card containers: `class="card bg-base-100 border border-base-300 shadow-md p-5"` — use this consistently across all pages
+- Card containers: `class="card card-border bg-base-100 shadow-md p-5"` — use this consistently across all pages
 - Badge modifiers: always include a variant (`badge-soft`, `badge-outline`) and a semantic color (`badge-primary`, `badge-info`, `badge-warning`, …)
 - CSS custom properties in `app.css` for design tokens (colors, chart palette, theme variants)
 - Scoped `<style>` blocks in components for component-specific styles

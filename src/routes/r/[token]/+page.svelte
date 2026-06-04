@@ -151,7 +151,7 @@
 		</div>
 	</div>
 
-	<div class="card bg-base-100 border border-base-300 shadow-md course" bind:this={courseWrap}>
+	<div class="card card-border bg-base-100 shadow-md course" bind:this={courseWrap}>
 		<button
 			type="button"
 			class="btn btn-ghost btn-sm inspector-toggle"
@@ -168,7 +168,7 @@
 	</div>
 
 	{#if inspectorOpen}
-		<div class="card bg-base-100 border border-base-300 shadow-md inspector-card">
+		<div class="card card-border bg-base-100 shadow-md inspector-card">
 			<InspectorPanel
 				{detail}
 				{rawStroke}
@@ -179,7 +179,7 @@
 		</div>
 	{/if}
 
-	<div class="card bg-base-100 border border-base-300 shadow-md controls">
+	<div class="card card-border bg-base-100 shadow-md controls">
 		<button class="btn btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
@@ -210,7 +210,7 @@
 		</div>
 	</div>
 
-	<div class="gauges card bg-base-100 border border-base-300 shadow-md p-5">
+	<div class="gauges card card-border bg-base-100 shadow-md p-5">
 		<MetricGauge
 			label={t('replay.gPace')}
 			unit="/500m"
