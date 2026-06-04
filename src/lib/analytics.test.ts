@@ -6,6 +6,7 @@ import {
 	distanceBand,
 	distancePBs,
 	distancePerStroke,
+	efficiencyDrift,
 	efficiencyByRate,
 	estimateCriticalPower,
 	hrZones,
@@ -92,6 +93,100 @@ describe('hrZones', () => {
 		const total = zones.reduce((s, z) => s + z.fraction, 0);
 		expect(total).toBeCloseTo(1, 5);
 		expect(zones.every((z) => z.seconds >= 0)).toBe(true);
+	});
+});
+
+function driftStrokes(
+	n: number,
+	paceAt: (i: number) => number,
+	opts?: { spm?: number; stepD?: number; stepT?: number }
+): { t: number; d: number; pace: number; spm: number; watts: number }[] {
+	const spm = opts?.spm ?? 20;
+	const stepD = opts?.stepD ?? 50;
+	const stepT = opts?.stepT ?? 10;
+	return Array.from({ length: n }, (_, i) => ({
+		t: i * stepT,
+		d: i * stepD,
+		pace: paceAt(i),
+		spm,
+		watts: 100
+	}));
+}
+
+describe('efficiencyDrift', () => {
+	it('returns flat fade for steady pace and rate', () => {
+		const strokes = driftStrokes(10, () => 120);
+		const r = efficiencyDrift(strokes);
+		expect(r.series).toHaveLength(10);
+		expect(Math.abs(r.fadeDelta)).toBeLessThan(0.01);
+		expect(Math.abs(r.fadePercent)).toBeLessThan(0.1);
+	});
+
+	it('detects fading when pace slows', () => {
+		const strokes = driftStrokes(20, (i) => 120 + i * 2);
+		const r = efficiencyDrift(strokes);
+		expect(r.fadeDelta).toBeLessThan(0);
+		expect(r.fadePercent).toBeLessThan(0);
+		for (let i = 1; i < r.series.length; i++) {
+			expect(r.series[i]!.dps).toBeLessThanOrEqual(r.series[i - 1]!.dps + 1e-9);
+		}
+	});
+
+	it('returns empty when fewer than five valid strokes', () => {
+		const strokes = driftStrokes(3, () => 120);
+		const r = efficiencyDrift(strokes);
+		expect(r.series).toHaveLength(0);
+		expect(r.baseline).toBe(0);
+	});
+
+	it('omits invalid strokes from the series', () => {
+		const strokes = driftStrokes(10, (i) => (i === 2 || i === 5 || i === 8 ? 0 : 120));
+		const r = efficiencyDrift(strokes);
+		expect(r.series).toHaveLength(7);
+	});
+
+	it('uses a 10% opening threshold on short pieces', () => {
+		const strokes = driftStrokes(8, () => 120, { stepD: 50 });
+		const r = efficiencyDrift(strokes);
+		expect(r.baseline).toBeGreaterThan(0);
+		expect(r.series).toHaveLength(8);
+	});
+
+	it('baselines from the first valid stroke when leading strokes are invalid', () => {
+		const strokes = [
+			{ t: 0, d: 0, pace: 0, spm: 20, watts: 100 },
+			{ t: 10, d: 50, pace: 0, spm: 20, watts: 100 },
+			...driftStrokes(10, () => 120, { stepD: 50, stepT: 10 }).map((s, i) => ({
+				...s,
+				t: 20 + i * 10,
+				d: 100 + i * 50
+			}))
+		];
+		const r = efficiencyDrift(strokes);
+		expect(r.series).toHaveLength(10);
+		expect(r.baselineEndD).toBeGreaterThanOrEqual(100);
+	});
+
+	it('spans 500 m from the first valid stroke on a long piece, not the min-5 floor', () => {
+		// Two leading invalid strokes, then the first valid stroke at d=600 m on a
+		// ~6000 m piece (so the 500 m threshold applies). With an absolute-distance
+		// check the opening would collapse to 5 strokes (d already > 500); measuring
+		// span from the first valid stroke keeps the full ~500 m opening window.
+		const lead = [
+			{ t: 0, d: 0, pace: 0, spm: 20, watts: 100 },
+			{ t: 10, d: 300, pace: 0, spm: 20, watts: 100 }
+		];
+		const valid = Array.from({ length: 180 }, (_, i) => ({
+			t: 20 + i * 10,
+			d: 600 + i * 30,
+			pace: 120,
+			spm: 20,
+			watts: 100
+		}));
+		const r = efficiencyDrift([...lead, ...valid]);
+		// First valid stroke at d=600 → opening closes ~500 m later (~d=1100),
+		// well past the d=720 the min-5 floor alone would give.
+		expect(r.baselineEndD).toBeGreaterThanOrEqual(1080);
 	});
 });
 
