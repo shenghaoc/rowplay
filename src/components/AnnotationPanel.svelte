@@ -113,7 +113,7 @@
 
 <div class="anno-panel card card-border bg-base-100 shadow-md p-5">
 	<div class="anno-head">
-		<h3 class="anno-title"><MessageSquareText size={16} /> {t('annotations.title')}</h3>
+		<h2 class="anno-title"><MessageSquareText size={16} /> {t('annotations.title')}</h2>
 		{#if !readOnly}
 			<button class="btn add-btn" onclick={startAdd} aria-label={t('annotations.addNote')} disabled={saving}>
 				<Plus size={14} /> {t('annotations.addNote')}

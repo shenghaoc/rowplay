@@ -235,8 +235,8 @@
 	--paper-inset: var(--color-base-200);
 	--paper-deep: var(--color-base-300);
 	--ink: var(--color-base-content);
-	--ink-2: color-mix(in srgb, var(--color-base-content) 55%, transparent);
-	--ink-3: color-mix(in srgb, var(--color-base-content) 40%, transparent);
+	--ink-2: color-mix(in srgb, var(--color-base-content) 62%, transparent);
+	--ink-3: color-mix(in srgb, var(--color-base-content) 45%, transparent);
 	--hairline: var(--color-base-300);
 	--live: var(--color-primary);
 	--ghost: var(--color-secondary);
@@ -331,6 +331,17 @@ h3 {
 
 .muted {
 	color: var(--ink-2);
+}
+
+/* daisyUI badge-soft contrast — default foreground is too light for WCAG AA */
+.badge-soft.badge-success {
+	color: #1a5c45;
+}
+.badge-soft.badge-warning {
+	color: #7a4e00;
+}
+.badge-soft.badge-info {
+	color: #1a4a6e;
 }
 
 /* Eyebrow / micro-label: ruled, uppercased, letterspaced. */
@@ -446,6 +457,7 @@ input[type='range'] {
    ============================================================================ */
 html {
 	overflow-x: clip;
+	touch-action: manipulation;
 }
 
 .container {

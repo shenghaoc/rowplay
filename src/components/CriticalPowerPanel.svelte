@@ -157,7 +157,7 @@
 				<div class="predrow">
 					<label class="predlabel muted" for="cp-duration">{t('dashboard.cpHoldFor')}</label>
 					<div class="predinput">
-						<input id="cp-duration" type="number" min="2" max="120" step="1" enterkeyhint="done" bind:value={durationMin} />
+						<input id="cp-duration" type="number" min="2" max="120" step="1" enterkeyhint="done" class="input input-bordered input-sm" bind:value={durationMin} />
 						<span class="muted">{t('dashboard.cpMinutes')}</span>
 					</div>
 				</div>
@@ -176,7 +176,7 @@
 				<div class="predrow">
 					<label class="predlabel muted" for="cp-distance">{t('dashboard.cpDistance')}</label>
 					<div class="predinput">
-						<input id="cp-distance" type="number" min="100" max="50000" step="100" enterkeyhint="done" bind:value={distanceM} />
+						<input id="cp-distance" type="number" min="100" max="50000" step="100" enterkeyhint="done" class="input input-bordered input-sm" bind:value={distanceM} />
 						<span class="muted">m</span>
 					</div>
 				</div>

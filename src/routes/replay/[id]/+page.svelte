@@ -1254,7 +1254,7 @@
 				/>
 				</search>
 			{/if}
-			<select id="ghost" value={ghostId} onchange={selectGhost}>
+			<select id="ghost" class="select select-bordered select-sm" value={ghostId} onchange={selectGhost}>
 				<option value="">{t('replay.chooseSession', { sport: SPORT_LABEL[detail.sport] })}</option>
 				{#each filteredCandidates as c (c.id)}
 					<option value={c.id}>
@@ -1366,6 +1366,7 @@
 			<label class="quality-select">
 				<span class="quality-label">{t('replay.quality')}</span>
 				<select
+					class="select select-bordered select-sm"
 					value={quality}
 					disabled={loading3d}
 					onchange={(e) => onQualityChange(e.currentTarget.value as RenderQuality)}
