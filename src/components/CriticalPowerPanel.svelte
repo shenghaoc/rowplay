@@ -338,8 +338,6 @@
 	.predinput input {
 		width: 4.5rem;
 		font-family: var(--mono);
-		font-size: 1rem;
-		color: var(--ink);
 	}
 	.predresult {
 		margin-top: 0.5rem;

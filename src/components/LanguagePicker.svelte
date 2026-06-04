@@ -8,7 +8,7 @@
 </script>
 
 <label class="lang-picker" title={t('lang.switch')}>
-	<Languages size={16} aria-hidden="true" />
+	<Languages size={16} aria-hidden="true" class="icon" />
 	<select
 		class="select select-ghost select-xs"
 		value={i18n.lang}
@@ -25,33 +25,11 @@
 	.lang-picker {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
+		gap: 0.2rem;
 		align-self: center;
-		background: var(--paper-raised);
-		border: var(--bd);
 		color: var(--ink-2);
-		border-radius: var(--r-ctrl);
-		padding: 0.35rem 0.5rem;
-		font-size: 0.8rem;
-		font-family: var(--mono);
-		cursor: pointer;
 	}
-	.lang-picker:hover {
-		color: var(--ink);
-		border-color: var(--ink);
-	}
-	select {
-		appearance: none;
-		border: none;
-		background: transparent;
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
-		padding: 0;
-		max-width: 6.5rem;
-	}
-	select:focus-visible {
-		outline: 2px solid var(--live);
-		outline-offset: 2px;
+	.lang-picker :global(.icon) {
+		flex-shrink: 0;
 	}
 </style>

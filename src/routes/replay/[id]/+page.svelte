@@ -1969,9 +1969,6 @@
 		align-items: center;
 		gap: 0.35rem;
 	}
-	.ghostbar select,
-	.session-search {
-	}
 	.session-search {
 		min-width: 10rem;
 		max-width: 14rem;
@@ -2098,8 +2095,6 @@
 		color: var(--muted-ink, var(--ink));
 	}
 	.quality-select select {
-		font-size: 0.78rem;
-		font-weight: 600;
 		cursor: pointer;
 	}
 	.quality-select select:disabled {
