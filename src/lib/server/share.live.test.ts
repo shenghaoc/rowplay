@@ -13,9 +13,9 @@ vi.mock('./db', () => ({
 	getCachedDetailByShareToken: vi.fn()
 }));
 
-import { createWorkoutShare } from './share';
+import { createWorkoutShare, loadSharedWorkout } from './share';
 import { loadWorkoutDetail } from './data';
-import { getShareToken, putCachedDetail } from './db';
+import { getCachedDetailByShareToken, getShareToken, putCachedDetail } from './db';
 
 const mockLoad = loadWorkoutDetail as ReturnType<typeof vi.fn>;
 const mockGetToken = getShareToken as ReturnType<typeof vi.fn>;
@@ -55,5 +55,20 @@ describe('createWorkoutShare live path — privacy block re-syncs the cache', ()
 		// Re-sharing refreshes the cache so the existing link redeems against
 		// current data (and current privacy), not a stale snapshot.
 		expect(putCachedDetail).toHaveBeenCalledWith(event.platform.env.DB, 7, detail);
+	});
+});
+
+describe('loadSharedWorkout — D1 redemption path re-checks privacy', () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it('blocks a token whose cached D1 payload is no longer public', async () => {
+		(getCachedDetailByShareToken as ReturnType<typeof vi.fn>).mockResolvedValue({
+			id: 9,
+			privacy: 'private'
+		} as unknown as WorkoutDetail);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const event = { platform: { env: { DB: {} } } } as any;
+
+		await expect(loadSharedWorkout(event, 'a'.repeat(48))).rejects.toMatchObject({ status: 403 });
 	});
 });
