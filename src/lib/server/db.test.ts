@@ -26,6 +26,7 @@ import {
 	setSyncState,
 	getSyncState,
 	setUserAnnualGoal,
+	setWorkoutTag,
 	upsertLeaderboardEntry,
 	upsertWorkouts
 } from './db';
@@ -181,7 +182,9 @@ describe('getAllWorkouts', () => {
 		drag_factor: null,
 		workout_type: null,
 		comments: null,
-		has_stroke: 1
+		timezone: null,
+		has_stroke: 1,
+		user_tag: null
 	};
 
 	it('maps DB rows to Workout objects', async () => {
@@ -608,6 +611,21 @@ describe('getPbWorkoutIds', () => {
 	});
 });
 
+describe('setWorkoutTag', () => {
+	it('updates user_tag for the owned workout row', async () => {
+		const { db, executed } = fakeDb();
+		await setWorkoutTag(db as never, 7, 1001, 'interval');
+		expect(executed[0].sql).toContain('UPDATE workouts SET user_tag = ?');
+		expect(executed[0].args).toEqual(['interval', 7, 1001]);
+	});
+
+	it('clears user_tag when tag is null', async () => {
+		const { db, executed } = fakeDb();
+		await setWorkoutTag(db as never, 7, 1001, null);
+		expect(executed[0].args).toEqual([null, 7, 1001]);
+	});
+});
+
 describe('upsertWorkouts', () => {
 	it('executes an INSERT for each workout', async () => {
 		const { db, executed } = fakeDb();
@@ -643,7 +661,8 @@ describe('queryWorkouts', () => {
 			sport: 'rower', distance: 2000, time: 480, pace: 120,
 			stroke_rate: null, stroke_count: null, heart_rate: null,
 			hr_min: null, hr_max: null, calories: null, watt_minutes: null,
-			drag_factor: null, workout_type: null, comments: null, has_stroke: 0
+			drag_factor: null, workout_type: null, comments: null, timezone: null,
+			has_stroke: 0, user_tag: 'steady-state'
 		};
 		const { db } = fakeDb({ allRows: [row] });
 		const results = await queryWorkouts(db as never, 7, { sort: 'date', dir: 'desc' });

@@ -251,8 +251,8 @@ function detailFor(spec: Spec): WorkoutDetail {
 }
 
 function summaryOf(d: WorkoutDetail): Workout {
-	const { strokes, splits, isInterval, ...rest } = d;
-	return rest;
+	const { strokes, splits, ...rest } = d;
+	return { ...rest, isInterval: d.isInterval };
 }
 
 export function mockWorkouts(): Workout[] {

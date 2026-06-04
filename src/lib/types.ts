@@ -92,6 +92,10 @@ export interface Workout {
 	metadata?: LoggingMetadata;
 	/** Whether per-stroke detail is available for a real-time replay. */
 	hasStrokeData: boolean;
+	/** Athlete override for auto-detected workout type tag (D1 `user_tag`; null = auto). */
+	userTag?: string | null;
+	/** Present on detail payloads and some summaries when interval structure is known. */
+	isInterval?: boolean;
 }
 
 /** One sample on the workout timeline. Distances in metres, time in seconds. */

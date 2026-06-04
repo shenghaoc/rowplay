@@ -1,3 +1,4 @@
+import { error } from '@sveltejs/kit';
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '$lib/datetime';
 import type { WorkoutListQuery } from '$lib/workoutQuery';
@@ -9,6 +10,7 @@ import {
 import type { AnnualGoal } from '../analytics';
 import { STANDARD_DISTANCES, type LeaderboardEntry } from '$lib/leaderboard';
 import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
+import type { WorkoutTag } from '../workoutTag';
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
 // v3: strokes carry rawT/rawD for the raw inspector's as-logged interval values.
@@ -90,6 +92,7 @@ interface WorkoutRow {
 	comments: string | null;
 	timezone: string | null;
 	has_stroke: number;
+	user_tag: string | null;
 }
 
 function rowToWorkout(r: WorkoutRow): Workout {
@@ -111,13 +114,14 @@ function rowToWorkout(r: WorkoutRow): Workout {
 		workoutType: r.workout_type ?? undefined,
 		comments: r.comments ?? undefined,
 		timezone: r.timezone ?? undefined,
-		hasStrokeData: r.has_stroke === 1
+		hasStrokeData: r.has_stroke === 1,
+		userTag: r.user_tag ?? undefined
 	};
 }
 
 const WORKOUT_SELECT = `SELECT workout_id, date, sport, distance, time, pace, stroke_rate, stroke_count,
 			        heart_rate, hr_min, hr_max, calories, watt_minutes, drag_factor, workout_type,
-			        comments, timezone, has_stroke`;
+			        comments, timezone, has_stroke, user_tag`;
 
 /** All of a user's synced workouts, newest first. */
 export async function getAllWorkouts(db: D1Database, userId: number): Promise<Workout[]> {
@@ -335,6 +339,20 @@ export async function upsertWorkouts(
 	for (let i = 0; i < batch.length; i += 100) {
 		await db.batch(batch.slice(i, i + 100));
 	}
+}
+
+/** Write or clear the athlete's type-tag override for one workout. */
+export async function setWorkoutTag(
+	db: D1Database,
+	userId: number,
+	workoutId: number,
+	tag: WorkoutTag | null
+): Promise<void> {
+	const res = await db
+		.prepare(`UPDATE workouts SET user_tag = ? WHERE user_id = ? AND workout_id = ?`)
+		.bind(tag, userId, workoutId)
+		.run();
+	if ((res.meta?.changes ?? 0) === 0) throw error(404, 'Workout not found.');
 }
 
 export async function setSyncState(

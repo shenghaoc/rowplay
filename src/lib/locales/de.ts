@@ -411,6 +411,20 @@ export const de = {
 	pb_2k_sub630: '2k unter 6:30',
 	'pb_2k_sub630.toast': '🎉 2k unter 6:30!',
 	},
+	workout: {
+		tag: {
+			label: 'Typ',
+			auto: 'Automatisch',
+			'steady-state': 'Dauerleistung',
+			interval: 'Intervall',
+			'race-piece': 'Wettkampfstück',
+			'time-trial': 'Zeitfahren',
+			'warmup-cooldown': 'Aufwärmen / Abwärmen',
+			unknown: 'Sonstiges',
+			filter: { all: 'Alle Typen' },
+			saveError: 'Tag konnte nicht gespeichert werden — bitte erneut versuchen.'
+		}
+	},
 	workoutList: {
 		empty: 'Keine Workouts für diesen Filter.',
 		windowed: '{n} Workouts · für Performance begrenzt',
