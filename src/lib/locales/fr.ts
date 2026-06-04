@@ -311,6 +311,7 @@ export const fr = {
 		linkCopied: 'Lien de partage copié',
 		linkReady: 'Toute personne avec ce lien peut regarder le replay',
 		shareFailed: 'Impossible de créer le lien de partage',
+		privacyBlocked: 'Cet entraînement n’est pas public sur Concept2 et ne peut donc pas être partagé. Réglez d’abord sa confidentialité sur « Everyone » dans votre logbook.',
 		imageSaved: 'Carte de course enregistrée',
 		imageFailed: 'Impossible d’enregistrer la carte de course',
 		publicBanner: 'Replay partagé — lecture seule',

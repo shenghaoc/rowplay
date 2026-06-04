@@ -313,6 +313,7 @@ export const ja = {
 		linkCopied: '共有リンクをコピーしました',
 		linkReady: 'このリンクがあれば誰でもリプレイを視聴できます',
 		shareFailed: '共有リンクを作成できませんでした',
+		privacyBlocked: 'このワークアウトは Concept2 で公開されていないため共有できません。まずログブックでプライバシーを「Everyone」に設定してください。',
 		imageSaved: 'レースカードを保存しました',
 		imageFailed: 'レースカードを保存できませんでした',
 		publicBanner: '共有リプレイ — 読み取り専用',

@@ -3,6 +3,7 @@ import { error } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { WorkoutDetail } from '../types';
 import { mockWorkoutDetail } from '../mockData';
+import { isPubliclyShareable } from '../privacy';
 import { resolveDemoBoardShare } from '../mockLeaderboard';
 import { getConfig } from './config';
 import { loadWorkoutDetail } from './data';
@@ -15,6 +16,13 @@ import {
 } from './db';
 
 const KV_PREFIX = 'share:';
+
+/** Fallback message for a blocked share; the UI localizes via `share.privacyBlocked`. */
+const PRIVACY_BLOCKED =
+	'This workout isn’t public on Concept2, so it can’t be shared. Set its privacy to “Everyone” in your logbook first.';
+
+/** Shown when a previously-public link is opened after the workout went non-public. */
+const SHARE_NO_LONGER_PUBLIC = 'This workout is no longer shared publicly.';
 
 /** 48 hex chars — unguessable capability URL segment. */
 export function generateShareToken(): string {
@@ -78,6 +86,7 @@ export async function createWorkoutShare(
 	if (event.locals.demo) {
 		const detail = mockWorkoutDetail(workoutId);
 		if (!detail) throw error(404, 'Workout not found.');
+		if (!isPubliclyShareable(detail.privacy)) throw error(403, PRIVACY_BLOCKED);
 		const kv = event.platform?.env?.SESSIONS;
 		if (!kv) throw error(500, 'Share store is not configured.');
 		// Reuse a stable token per workout via a reverse index so repeated shares
@@ -97,6 +106,15 @@ export async function createWorkoutShare(
 	const db = event.platform?.env?.DB;
 	if (!db) throw error(500, 'Database is not configured.');
 
+	// Load the workout up front and re-sync the cache on every share attempt so an
+	// existing link always redeems against current data. This also runs on the
+	// block path below: the share_token row is preserved, so writing the now-private
+	// payload makes the redemption-time servePublic() check fail any issued link
+	// closed — closing the stale-cache gap, not just blocking new shares.
+	const detail = await loadWorkoutDetail(event, workoutId);
+	await putCachedDetail(db, userId, detail);
+	if (!isPubliclyShareable(detail.privacy)) throw error(403, PRIVACY_BLOCKED);
+
 	const existing = await getShareToken(db, userId, workoutId);
 	if (existing) {
 		return {
@@ -107,8 +125,6 @@ export async function createWorkoutShare(
 		};
 	}
 
-	const detail = await loadWorkoutDetail(event, workoutId);
-	await putCachedDetail(db, userId, detail);
 	// putCachedDetail swallows write errors, so confirm the payload actually
 	// landed — otherwise the share URL would resolve to nothing and 404.
 	const cached = await getCachedDetail(db, userId, workoutId, event.platform?.env);
@@ -142,6 +158,16 @@ export function redactForPublic(detail: WorkoutDetail): WorkoutDetail {
 	return { ...detail, metadata };
 }
 
+/**
+ * Serve a shared workout, re-checking privacy at redemption time so a link
+ * minted while a piece was public stops resolving once the athlete makes it
+ * non-public and the cache re-syncs — fail closed, like createWorkoutShare.
+ */
+function servePublic(detail: WorkoutDetail): WorkoutDetail {
+	if (!isPubliclyShareable(detail.privacy)) throw error(403, SHARE_NO_LONGER_PUBLIC);
+	return redactForPublic(detail);
+}
+
 /** Load a workout that was explicitly shared — no session required. */
 export async function loadSharedWorkout(
 	event: RequestEvent,
@@ -150,14 +176,14 @@ export async function loadSharedWorkout(
 	if (!/^[a-f0-9]{48}$/.test(token)) throw error(404, 'Share link not found.');
 
 	const demoBoard = resolveDemoBoardShare(token);
-	if (demoBoard) return demoBoard;
+	if (demoBoard) return servePublic(demoBoard);
 
 	const db = event.platform?.env?.DB;
 	const fromDb = await getCachedDetailByShareToken(db, token);
-	if (fromDb) return redactForPublic(fromDb);
+	if (fromDb) return servePublic(fromDb);
 
 	const fromKv = await readDemoShare(event.platform?.env?.SESSIONS, token);
-	if (fromKv) return redactForPublic(fromKv);
+	if (fromKv) return servePublic(fromKv);
 
 	throw error(404, 'Share link not found or sharing was revoked.');
 }
