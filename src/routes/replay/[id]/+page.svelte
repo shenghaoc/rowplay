@@ -1971,12 +1971,6 @@
 	}
 	.ghostbar select,
 	.session-search {
-		background: var(--paper-inset);
-		color: var(--ink);
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		padding: 0.4rem 0.6rem;
-		font-size: 0.85rem;
 	}
 	.session-search {
 		min-width: 10rem;
@@ -2104,11 +2098,6 @@
 		color: var(--muted-ink, var(--ink));
 	}
 	.quality-select select {
-		background: var(--paper-raised);
-		border: var(--bd);
-		color: var(--ink);
-		border-radius: var(--r-ctrl);
-		padding: 0.2rem 0.4rem;
 		font-size: 0.78rem;
 		font-weight: 600;
 		cursor: pointer;

@@ -339,10 +339,6 @@
 		width: 4.5rem;
 		font-family: var(--mono);
 		font-size: 1rem;
-		padding: 0.35rem 0.5rem;
-		border: var(--bd-heavy);
-		border-radius: var(--r-ctrl);
-		background: var(--paper-inset);
 		color: var(--ink);
 	}
 	.predresult {

@@ -333,15 +333,10 @@ h3 {
 	color: var(--ink-2);
 }
 
-/* daisyUI badge-soft contrast — default foreground is too light for WCAG AA */
-.badge-soft.badge-success {
-	color: #1a5c45;
-}
-.badge-soft.badge-warning {
-	color: #7a4e00;
-}
-.badge-soft.badge-info {
-	color: #1a4a6e;
+/* daisyUI badge-soft contrast — default foreground is too light for WCAG AA.
+   Use a 70% base-content mix instead of daisyUI's default. */
+.badge-soft {
+	color: color-mix(in srgb, var(--color-base-content) 72%, transparent);
 }
 
 /* Eyebrow / micro-label: ruled, uppercased, letterspaced. */
