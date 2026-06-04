@@ -13,7 +13,7 @@ test.describe('leaderboard', () => {
 
 		await expect(page.getByRole('heading', { name: /Leaderboards|排行榜/ })).toBeVisible();
 		// Standings table has ranked rows and the viewer's own row is flagged.
-		await expect(page.locator('table.board tbody tr').first()).toBeVisible();
+		await expect(page.locator('.boardcard table tbody tr').first()).toBeVisible();
 		await expect(page.getByText(/^You$|^你$/).first()).toBeVisible();
 	});
 
@@ -22,7 +22,7 @@ test.describe('leaderboard', () => {
 		// Pick the 2,000 m board (present for RowErg in demo data).
 		await page.getByRole('button', { name: /2[\.,]?00?\s*km|2,?000\s*m/i }).first().click();
 		await expect(page).toHaveURL(/distance=2000/);
-		await expect(page.locator('table.board tbody tr').first()).toBeVisible();
+		await expect(page.locator('.boardcard table tbody tr').first()).toBeVisible();
 	});
 
 	test('racing a rival opens a replay pre-armed with a ghost', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('leaderboard', () => {
 
 	test('racing Otter on the 2k board uses a stroke-accurate share token', async ({ page }) => {
 		await page.goto('/leaderboard?sport=rower&distance=2000');
-		const otterRow = page.locator('table.board tbody tr', { hasText: 'Otter' });
+		const otterRow = page.locator('.boardcard table tbody tr', { hasText: 'Otter' });
 		await expect(otterRow).toBeVisible();
 		const race = otterRow.getByRole('link', { name: /Race|竞速/ });
 		await race.click();

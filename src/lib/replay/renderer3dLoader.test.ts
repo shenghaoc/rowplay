@@ -27,11 +27,13 @@ describe('loadRenderer3D', () => {
 		resetRenderer3DCache();
 	});
 
-	it('reuses the same import promise', () => {
+	it('reuses the same import promise', async () => {
 		resetRenderer3DCache();
 		const p1 = loadRenderer3D();
 		const p2 = loadRenderer3D();
 		expect(p1).toBe(p2);
+		// Await the import so it completes before environment teardown.
+		await p1.catch(() => {});
 	});
 
 	it('clears cache after a failed import so the next call retries', async () => {

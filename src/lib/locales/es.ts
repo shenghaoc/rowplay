@@ -462,6 +462,10 @@ export const es = {
 		mFirmware: 'Firmware',
 		mSerial: 'Número de serie',
 		mDevice: 'Dispositivo',
+		mSource: 'Registrado por',
+		exrBadge: 'Origen EXR',
+		exrBadgeTitle:
+			'El ritmo y la potencia fueron sintetizados por EXR, no leídos del PM5. Los números pueden no ser directamente comparables con entrenamientos registrados por PM.',
 		mErgModel: 'Modelo de erg',
 		mHrSensor: 'Sensor FC',
 		targetsTitle: 'Objetivos',
@@ -569,6 +573,7 @@ export const es = {
 		apiToken: 'Token API',
 		placeholder: 'Pega tu token',
 		connect: 'Conectar con token',
+		connecting: 'Conectando…',
 		rejected: 'Concept2 rechazó ese token. Compruébalo e inténtalo de nuevo.',
 		serverMisconfigured:
 			'Esta instalación no está configurada para iniciar sesión con token (falta SESSION_SECRET). Contacta con el propietario del sitio.',

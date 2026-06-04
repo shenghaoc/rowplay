@@ -8,6 +8,7 @@
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import { fmtDistance, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '$lib/format';
 	import type { WorkoutDetail } from '$lib/types';
+	import { isExrSource } from '$lib/exrSource';
 	import Play from '@lucide/svelte/icons/play';
 	import Pause from '@lucide/svelte/icons/pause';
 	import { getI18nContext } from '$lib/i18n.svelte';
@@ -22,6 +23,7 @@
 	const t = $derived(i18n.translate);
 	const uiTheme = getThemeContext();
 	const detail = $derived(data.detail as WorkoutDetail);
+	const exrFlagged = $derived(isExrSource(detail));
 	const meta = $derived(data.meta);
 	const annotations = $derived(data.annotations as Annotation[]);
 	const sportTheme = $derived(themeFor(detail.sport));
@@ -131,7 +133,9 @@
 </svelte:head>
 
 <div class="container">
-	<div class="banner muted">{t('share.publicBanner')}</div>
+	<div class="alert alert-info mb-3 text-sm">
+		<span>{t('share.publicBanner')}</span>
+	</div>
 	<div class="head">
 		<h1>
 			<span class="h1icon" style:color={MACHINE_COLOR[detail.sport]}>
@@ -141,14 +145,17 @@
 		</h1>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
+			{#if exrFlagged}
+				<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
+			{/if}
 		</div>
 	</div>
 
-	<div class="card course" bind:this={courseWrap}>
+	<div class="card bg-base-100 border border-base-300 shadow-md course" bind:this={courseWrap}>
 		<button
 			type="button"
-			class="inspector-toggle"
-			class:on={inspectorOpen}
+			class="btn btn-ghost btn-sm inspector-toggle"
+			class:btn-active={inspectorOpen}
 			aria-pressed={inspectorOpen}
 			aria-label={inspectorOpen ? t('inspector.toggleOn') : t('inspector.toggle')}
 			data-testid="inspector-toggle"
@@ -161,7 +168,7 @@
 	</div>
 
 	{#if inspectorOpen}
-		<div class="card inspector-card">
+		<div class="card bg-base-100 border border-base-300 shadow-md inspector-card">
 			<InspectorPanel
 				{detail}
 				{rawStroke}
@@ -172,7 +179,7 @@
 		</div>
 	{/if}
 
-	<div class="card controls">
+	<div class="card bg-base-100 border border-base-300 shadow-md controls">
 		<button class="btn btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
@@ -180,7 +187,7 @@
 			{fmtTime(frame.t, true)} <span class="muted">/ {fmtTime(detail.time)}</span>
 		</div>
 		<input
-			class="scrub"
+			class="range range-primary range-xs scrub"
 			type="range"
 			min="0"
 			max={engine?.duration ?? detail.time}
@@ -190,9 +197,15 @@
 			aria-label="Seek"
 		/>
 		<div class="dist mono">{fmtDistance(frame.d)}</div>
-		<div class="speeds" role="group" aria-label="Playback speed">
+		<div class="join speeds" role="group" aria-label="Playback speed">
 			{#each SPEEDS as s}
-				<button class="sbtn" class:on={speed === s} aria-pressed={speed === s} onclick={() => setSpeed(s)}>{s}×</button>
+				<button
+					class="btn btn-xs join-item"
+					class:btn-active={speed === s}
+					class:btn-neutral={speed === s}
+					aria-pressed={speed === s}
+					onclick={() => setSpeed(s)}
+				>{s}×</button>
 			{/each}
 		</div>
 	</div>
@@ -240,9 +253,11 @@
 
 	<AnnotationPanel {annotations} currentTime={frame.t} readOnly={true} onseek={(ts) => engine?.seek(ts)} />
 
-	<p class="cta muted">
-		{t('share.ctaBefore')}<a href="/">{t('share.ctaLink')}</a>{t('share.ctaAfter')}
-	</p>
+	<div class="alert mt-4 mb-2">
+		<span class="text-sm">
+			{t('share.ctaBefore')}<a class="link link-primary font-semibold" href="/">{t('share.ctaLink')}</a>{t('share.ctaAfter')}
+		</span>
+	</div>
 </div>
 
 <style>
@@ -250,14 +265,6 @@
 		max-width: 960px;
 		margin: 0 auto;
 		padding: 1rem 1.25rem 3rem;
-	}
-	.banner {
-		font-size: 0.85rem;
-		margin-bottom: 0.75rem;
-		padding: 0.5rem 0.75rem;
-		background: var(--paper-inset);
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
 	}
 	.head h1 {
 		display: flex;
@@ -279,26 +286,7 @@
 		position: relative;
 	}
 	.inspector-toggle {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.3rem;
 		margin-bottom: 0.5rem;
-		background: var(--paper-raised);
-		border: var(--bd);
-		color: var(--ink);
-		border-radius: var(--r-ctrl);
-		padding: 0.28rem 0.55rem;
-		font-size: 0.78rem;
-		font-weight: 600;
-		cursor: pointer;
-		font-family: var(--display);
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-	}
-	.inspector-toggle.on {
-		background: var(--live);
-		color: var(--paper-raised);
-		border-color: var(--live);
 	}
 	.inspector-card {
 		margin-bottom: 0.75rem;
@@ -312,6 +300,7 @@
 		align-items: center;
 		gap: 1rem;
 		margin-bottom: 0.75rem;
+		padding: 0.75rem 1rem;
 		flex-wrap: wrap;
 	}
 	.play {
@@ -325,7 +314,6 @@
 	.scrub {
 		flex: 1;
 		min-width: 160px;
-		accent-color: var(--live);
 	}
 	.dist {
 		min-width: 90px;
@@ -334,37 +322,12 @@
 	}
 	.speeds {
 		display: flex;
-		gap: 0.3rem;
-	}
-	.sbtn {
-		background: var(--paper-raised);
-		border: var(--bd);
-		color: var(--ink);
-		border-radius: var(--r-ctrl);
-		padding: 0.28rem 0.5rem;
-		font-size: 0.78rem;
-		font-weight: 600;
-		cursor: pointer;
-		font-family: var(--mono);
-	}
-	.sbtn.on {
-		background: var(--live);
-		color: var(--paper-raised);
-		border-color: var(--live);
 	}
 	.gauges {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		gap: 0.75rem;
 		margin-bottom: 1.5rem;
-	}
-	.cta {
-		text-align: center;
-		font-size: 0.9rem;
-	}
-	.cta a {
-		color: var(--live);
-		font-weight: 600;
 	}
 	@media (max-width: 760px) {
 		.gauges {

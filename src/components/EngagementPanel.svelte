@@ -162,6 +162,7 @@
 				<button type="button" class="bchip" onclick={() => { kind = 'hours'; targetInput = 100; }}>100h</button>
 			</div>
 			<button type="button" class="btn btn-primary btn-sm" onclick={saveGoal} disabled={saving}>
+				{#if saving}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 				{saving ? t('dashboard.goalsSaving') : t('dashboard.goalsSave')}
 			</button>
 		</div>

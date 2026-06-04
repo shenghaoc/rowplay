@@ -35,14 +35,12 @@ export function nowEpochMillis(): number {
 	return Temporal.Now.instant().epochMilliseconds;
 }
 
-/** `YYYY-MM-DD` two calendar days before a logbook date-time string, giving a
- *  safe overlap window for incremental syncs regardless of whether the Concept2
- *  API treats `from` as inclusive (>=) or exclusive (>).
+/** `YYYY-MM-DD` one calendar day before a logbook date-time string.
  *  Returns null when the input cannot be parsed as a logbook date. */
 export function overlapDate(date: string): string | null {
 	const pdt = parseLogbookDateTime(date);
 	if (!pdt) return null;
-	return pdt.toPlainDate().subtract({ days: 2 }).toString();
+	return pdt.toPlainDate().subtract({ days: 1 }).toString();
 }
 
 const DATE_FMT: Intl.DateTimeFormatOptions = {
