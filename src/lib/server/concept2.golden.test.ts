@@ -29,6 +29,9 @@ function assertStroke(actual: Stroke, expected: Partial<Stroke>) {
 	if (expected.pace != null) expect(actual.pace).toBeCloseTo(expected.pace, 3);
 	if (expected.rawT != null) expect(actual.rawT).toBeCloseTo(expected.rawT, 3);
 	if (expected.rawD != null) expect(actual.rawD).toBeCloseTo(expected.rawD, 3);
+	if (expected.spm != null) expect(actual.spm).toBe(expected.spm);
+	if (expected.hr != null) expect(actual.hr).toBe(expected.hr);
+	if (expected.watts != null) expect(actual.watts).toBeCloseTo(expected.watts, 3);
 }
 
 function assertSplit(actual: Split, expected: Partial<Split>) {
@@ -46,7 +49,7 @@ function runGoldenSuite(name: string, fixture: GoldenFixture) {
 
 		beforeAll(() => {
 			result = mapResult(fixture.rawResult);
-			if (fixture.rawStrokes.length > 0) {
+			if (fixture.rawStrokes?.length > 0) {
 				strokes = mapStrokes(fixture.rawStrokes, result.sport);
 			}
 		});
@@ -57,6 +60,18 @@ function runGoldenSuite(name: string, fixture: GoldenFixture) {
 			if (exp.time != null) expect(result.time).toBeCloseTo(exp.time, 3);
 			if (exp.distance != null) expect(result.distance).toBe(exp.distance);
 			if (exp.pace != null) expect(result.pace).toBeCloseTo(exp.pace, 3);
+			if (exp.strokeRate != null) expect(result.strokeRate).toBe(exp.strokeRate);
+			if (exp.strokeCount != null) expect(result.strokeCount).toBe(exp.strokeCount);
+			if (exp.heartRateAvg != null) expect(result.heartRateAvg).toBe(exp.heartRateAvg);
+			if (exp.hrMin != null) expect(result.hrMin).toBe(exp.hrMin);
+			if (exp.hrMax != null) expect(result.hrMax).toBe(exp.hrMax);
+			if (exp.heartRate != null) expect(result.heartRate).toEqual(exp.heartRate);
+			if (exp.caloriesTotal != null) expect(result.caloriesTotal).toBe(exp.caloriesTotal);
+			if (exp.wattMinutes != null) expect(result.wattMinutes).toBe(exp.wattMinutes);
+			if (exp.dragFactor != null) expect(result.dragFactor).toBe(exp.dragFactor);
+			if (exp.restTime != null) expect(result.restTime).toBeCloseTo(exp.restTime, 3);
+			if (exp.restDistance != null) expect(result.restDistance).toBe(exp.restDistance);
+			if (exp.targets != null) expect(result.targets).toEqual(exp.targets);
 			// Only assert metadata when the fixture pins it; otherwise assert absence.
 			// A future full-fidelity fixture can add `expected.result.metadata`
 			// without this hardcoded `toBeUndefined()` failing the whole suite.
@@ -67,9 +82,9 @@ function runGoldenSuite(name: string, fixture: GoldenFixture) {
 			}
 		});
 
-		if (fixture.rawStrokes.length > 0) {
+		if (fixture.rawStrokes?.length > 0) {
 			it('mapStrokes matches hand-verified key strokes', () => {
-				for (const expected of fixture.expected.strokes) {
+				for (const expected of fixture.expected?.strokes ?? []) {
 					const { _index, ...fields } = expected;
 					const stroke = strokes[_index];
 					expect(stroke, `stroke at index ${_index} should be defined`).toBeDefined();
@@ -78,10 +93,10 @@ function runGoldenSuite(name: string, fixture: GoldenFixture) {
 			});
 		}
 
-		if (fixture.expected.splits.length > 0) {
+		if (fixture.expected?.splits?.length > 0) {
 			it('mapSplits matches hand-verified splits', () => {
 				const splits = mapSplits(fixture.rawResult);
-				for (const expected of fixture.expected.splits) {
+				for (const expected of fixture.expected?.splits ?? []) {
 					const { _index, ...fields } = expected;
 					const split = splits[_index];
 					expect(split, `split at index ${_index} should be defined`).toBeDefined();
