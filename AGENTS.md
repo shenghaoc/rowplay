@@ -30,6 +30,9 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [3D replay view](.kiro/specs/3d-replay-view/tasks.md)
 - [Sport-aware 3D replay](.kiro/specs/3d-replay-sports/tasks.md)
 - [Concept2 token privacy](.kiro/specs/concept2-token-privacy/tasks.md) — BYOT token sealed in an httpOnly cookie (never in KV); session-scoped D1 cache purged on disconnect; reversible leaderboard opt-in.
+- [Mobile nav backdrop dismiss](.kiro/specs/mobile-nav-backdrop-dismiss/tasks.md) — cross-browser backdrop tap to close the hamburger menu; bounding-rect `onclick` fallback for WebKit (iOS Safari).
+- [Snappy connect & dashboard cache warm-up](.kiro/specs/connect-cache-warmup/tasks.md) — connect pending-state; background warm-cache sync on connect (`waitUntil`); D1 read as the full history only after a sync completes (no partial cache); per-request load de-dup.
+- [Test coverage](.kiro/specs/test-coverage/tasks.md) — 692 Vitest tests across pure helpers, server/DB layer, all route handlers, Svelte reactive classes, and the Three.js 3D renderer; `@vitest/coverage-v8` with `text` + `lcov` reporters.
 
 **Platform audit (read before new features or modernization work):**
 
@@ -104,8 +107,9 @@ All commands use **npm** (lockfile: `package-lock.json`).
 
 1. `npm run check` → 0 errors (`state_referenced_locally` warnings are known).
 2. `npm run build` → succeeds.
-3. `npm run test` → green.
+3. `npm run test` → green, and the test count must not decrease.
 4. Feature work: verify in demo mode; token auth on `npm run preview` if touched.
+5. New `+server.ts`, `+page.server.ts`, or `src/lib/**/*.ts` files must have a co-located `*.test.ts`.
 
 ## Svelte, daisyUI and i18n
 

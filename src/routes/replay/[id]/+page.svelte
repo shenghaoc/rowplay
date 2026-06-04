@@ -30,6 +30,7 @@
 	import { avgWatts, fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, SPORT_LABEL } from '$lib/format';
 	import type { Sport, Stroke, Workout, WorkoutDetail } from '$lib/types';
 	import { matchStandardDistance } from '$lib/leaderboard';
+	import { isExrSource } from '$lib/exrSource';
 	import { untrack } from 'svelte';
 	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
 	import { isShareToken, type RivalGhostTrace } from '$lib/replay/rivalGhost';
@@ -94,6 +95,7 @@
 			? applyHrImport(baseDetail, hrOverlay.samples, hrOverlay.offset)
 			: baseDetail
 	);
+	const exrFlagged = $derived(isExrSource(detail));
 	const logbookHasHr = $derived(strokesHaveHr(baseDetail.strokes));
 	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
@@ -484,8 +486,7 @@
 		setGhost(null, '', null);
 	}
 
-	function onModeChange(e: Event) {
-		const mode = (e.target as HTMLSelectElement).value as CompareMode;
+	function setCompareMode(mode: CompareMode) {
 		compareMode = mode;
 		sessionSearch = '';
 		clearGhost();
@@ -1083,6 +1084,9 @@
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
 			{#if !detail.hasStrokeData}<span class="badge">{t('replay.lowRes')}</span>{/if}
+			{#if exrFlagged}
+				<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
+			{/if}
 		</div>
 		<div class="sharebar">
 			<button class="btn btn-ghost btn-sm" type="button" disabled={sharing} onclick={shareReplay}>
@@ -1142,7 +1146,7 @@
 					<label class="muted small" for="hr-offset">{t('replay.hrImportOffset')}</label>
 					<input
 						id="hr-offset"
-						class="offset-input mono"
+						class="offset-input range range-primary range-xs"
 						type="range"
 						min="-600"
 						max="600"
@@ -1181,13 +1185,39 @@
 
 	<!-- Comparison / race control -->
 	<div class="card bg-base-100 border border-base-300 shadow-md p-5 ghostbar">
-		<label for="cmode"><Ghost size={15} /> {t('replay.compareAgainst')}</label>
-		<select id="cmode" value={compareMode} onchange={onModeChange}>
-			<option value="none">{t('replay.none')}</option>
-			{#if candidates.length}<option value="session">{t('replay.pastSession')}</option>{/if}
-			<option value="pace">{t('replay.constantPace')}</option>
-			<option value="file">{t('replay.uploadedFile')}</option>
-		</select>
+		<label><Ghost size={15} /> {t('replay.compareAgainst')}</label>
+		<div class="join" role="group" aria-label={t('replay.compareAgainst')}>
+			<button
+				type="button"
+				class="btn btn-sm join-item"
+				class:btn-active={compareMode === 'none'}
+				class:btn-neutral={compareMode === 'none'}
+				onclick={() => setCompareMode('none')}
+			>{t('replay.none')}</button>
+			{#if candidates.length}
+				<button
+					type="button"
+					class="btn btn-sm join-item"
+					class:btn-active={compareMode === 'session'}
+					class:btn-neutral={compareMode === 'session'}
+					onclick={() => setCompareMode('session')}
+				>{t('replay.pastSession')}</button>
+			{/if}
+			<button
+				type="button"
+				class="btn btn-sm join-item"
+				class:btn-active={compareMode === 'pace'}
+				class:btn-neutral={compareMode === 'pace'}
+				onclick={() => setCompareMode('pace')}
+			>{t('replay.constantPace')}</button>
+			<button
+				type="button"
+				class="btn btn-sm join-item"
+				class:btn-active={compareMode === 'file'}
+				class:btn-neutral={compareMode === 'file'}
+				onclick={() => setCompareMode('file')}
+			>{t('replay.uploadedFile')}</button>
+		</div>
 
 		{#if compareMode === 'session' && candidates.length}
 			{#if candidates.length >= SEARCHABLE_MIN}
@@ -1341,14 +1371,14 @@
 
 	<!-- Transport controls -->
 	<div class="card bg-base-100 border border-base-300 shadow-md p-5 controls">
-		<button class="btn btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
+		<button class="btn btn-lg btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
 		<div class="clock mono">
 			{fmtTime(frame.t, true)} <span class="muted">/ {fmtTime(detail.time)}</span>
 		</div>
 		<input
-			class="scrub"
+			class="scrub range range-primary range-xs"
 			type="range"
 			min="0"
 			max={engine?.duration ?? detail.time}
@@ -1358,9 +1388,9 @@
 			aria-label="Seek"
 		/>
 		<div class="dist mono">{fmtDistance(frame.d)}</div>
-		<div class="speeds" role="group" aria-label="Playback speed">
+		<div class="join speeds" role="group" aria-label="Playback speed">
 			{#each SPEEDS as s}
-				<button class="sbtn" class:on={speed === s} aria-pressed={speed === s} onclick={() => setSpeed(s)}>{s}×</button>
+				<button class="btn btn-xs join-item" class:btn-active={speed === s} class:btn-neutral={speed === s} aria-pressed={speed === s} onclick={() => setSpeed(s)}>{s}×</button>
 			{/each}
 		</div>
 	</div>
@@ -1669,7 +1699,7 @@
 		</dl>
 	</div>
 
-	{#if detail.heartRate?.ending != null || detail.heartRate?.recovery != null || detail.restTime != null || detail.targets || detail.metadata || detail.verified != null || targetRows.length || workRest}
+	{#if detail.heartRate?.ending != null || detail.heartRate?.recovery != null || detail.restTime != null || detail.targets || detail.metadata || detail.source || detail.verified != null || targetRows.length || workRest}
 		<details class="card meta full-metrics">
 			<summary class="ctitle muted">{t('replay.fullMetrics')}</summary>
 			<dl class="metagrid">
@@ -1753,26 +1783,35 @@
 				</ul>
 			{/if}
 
-			{#if detail.metadata}
+			{#if detail.metadata || detail.source}
 				<h4 class="subhead muted">{t('replay.provenanceTitle')}</h4>
 				<dl class="metagrid">
-					{#if detail.metadata.pmVersion != null}
-						<div><dt>{t('replay.mPmVersion')}</dt><dd class="mono">{detail.metadata.pmVersion}</dd></div>
+					{#if detail.source}
+						<div>
+							<dt>{t('replay.mSource')}</dt>
+							<dd>
+								{detail.source}
+								{#if exrFlagged}<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>{/if}
+							</dd>
+						</div>
 					{/if}
-					{#if detail.metadata.firmwareVersion}
-						<div><dt>{t('replay.mFirmware')}</dt><dd>{detail.metadata.firmwareVersion}</dd></div>
+					{#if detail.metadata?.pmVersion != null}
+						<div><dt>{t('replay.mPmVersion')}</dt><dd class="mono">{detail.metadata?.pmVersion}</dd></div>
 					{/if}
-					{#if detail.metadata.serialNumber}
-						<div><dt>{t('replay.mSerial')}</dt><dd>{detail.metadata.serialNumber}</dd></div>
+					{#if detail.metadata?.firmwareVersion}
+						<div><dt>{t('replay.mFirmware')}</dt><dd>{detail.metadata?.firmwareVersion}</dd></div>
 					{/if}
-					{#if detail.metadata.device}
-						<div><dt>{t('replay.mDevice')}</dt><dd>{detail.metadata.device}</dd></div>
+					{#if detail.metadata?.serialNumber}
+						<div><dt>{t('replay.mSerial')}</dt><dd>{detail.metadata?.serialNumber}</dd></div>
 					{/if}
-					{#if detail.metadata.ergModelType != null}
-						<div><dt>{t('replay.mErgModel')}</dt><dd class="mono">{detail.metadata.ergModelType}</dd></div>
+					{#if detail.metadata?.device}
+						<div><dt>{t('replay.mDevice')}</dt><dd>{detail.metadata?.device}</dd></div>
 					{/if}
-					{#if detail.metadata.hrType}
-						<div><dt>{t('replay.mHrSensor')}</dt><dd>{detail.metadata.hrType}</dd></div>
+					{#if detail.metadata?.ergModelType != null}
+						<div><dt>{t('replay.mErgModel')}</dt><dd class="mono">{detail.metadata?.ergModelType}</dd></div>
+					{/if}
+					{#if detail.metadata?.hrType}
+						<div><dt>{t('replay.mHrSensor')}</dt><dd>{detail.metadata?.hrType}</dd></div>
 					{/if}
 				</dl>
 			{/if}
@@ -2110,22 +2149,6 @@
 		display: flex;
 		gap: 0.3rem;
 	}
-	.sbtn {
-		background: var(--paper-raised);
-		border: var(--bd);
-		color: var(--ink);
-		border-radius: var(--r-ctrl);
-		padding: 0.28rem 0.5rem;
-		font-size: 0.78rem;
-		font-weight: 600;
-		cursor: pointer;
-		font-family: var(--mono);
-	}
-	.sbtn.on {
-		background: var(--live);
-		color: var(--paper-raised);
-		border-color: var(--live);
-	}
 	.gauges {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
@@ -2214,11 +2237,12 @@
 		letter-spacing: 0;
 	}
 	.ctitle {
-		font-size: 0.8rem;
-		font-weight: 600;
+		font-size: 0.74rem;
+		font-weight: 700;
 		margin-bottom: 0.4rem;
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.05em;
+		color: var(--ink-2);
 	}
 	.zonebar {
 		display: flex;
@@ -2473,9 +2497,6 @@
 	@media (max-width: 420px) {
 		.gauges {
 			grid-template-columns: repeat(2, 1fr);
-		}
-		.sbtn {
-			padding: 0.3rem 0.4rem;
 		}
 	}
 	@media (max-width: 390px) {
