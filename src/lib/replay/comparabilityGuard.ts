@@ -3,11 +3,11 @@ import type { Sport } from '$lib/types';
 
 export type ComparabilityAxis = 'distance' | 'time';
 
-// "Just*" types record elapsed time as their axis; alongside `JustRow` we also
-// match the ski/bike-flavoured `JustSki` / `JustBike` markers so SkiErg and
-// BikeErg free pieces are classified as time-axis too. `FixedTime` catches the
-// documented `FixedTimeSplits` / `FixedTimeInterval` types.
-const TIME_AXIS_MARKERS = ['JustRow', 'JustSki', 'JustBike', 'FixedTime'] as const;
+// Concept2 workout_type is machine-agnostic: `JustRow` is the only "Just*" value
+// (it covers every erg, recording elapsed time as its axis), and `FixedTime`
+// catches the documented `FixedTimeSplits` / `FixedTimeInterval` types. There is
+// no `JustSki` / `JustBike` in the API.
+const TIME_AXIS_MARKERS = ['JustRow', 'FixedTime'] as const;
 
 /**
  * Map a Concept2 workout_type string to its comparability axis.
