@@ -43,13 +43,17 @@ describe('createWorkoutShare live path — privacy block re-syncs the cache', ()
 		expect(putCachedDetail).toHaveBeenCalledWith(event.platform.env.DB, 7, detail);
 	});
 
-	it('does not re-sync or block a public workout that already has a token', async () => {
-		mockLoad.mockResolvedValue({ id: 42, privacy: 'everyone' } as unknown as WorkoutDetail);
+	it('re-syncs the cache for a public workout that already has a token (no block)', async () => {
+		const detail = { id: 42, privacy: 'everyone' } as unknown as WorkoutDetail;
+		mockLoad.mockResolvedValue(detail);
 		mockGetToken.mockResolvedValue('existingtoken');
+		const event = liveEvent();
 
-		const share = await createWorkoutShare(liveEvent(), 42);
+		const share = await createWorkoutShare(event, 42);
 
 		expect(share).toMatchObject({ token: 'existingtoken', created: false });
-		expect(putCachedDetail).not.toHaveBeenCalled();
+		// Re-sharing refreshes the cache so the existing link redeems against
+		// current data (and current privacy), not a stale snapshot.
+		expect(putCachedDetail).toHaveBeenCalledWith(event.platform.env.DB, 7, detail);
 	});
 });

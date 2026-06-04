@@ -106,17 +106,14 @@ export async function createWorkoutShare(
 	const db = event.platform?.env?.DB;
 	if (!db) throw error(500, 'Database is not configured.');
 
-	// Load the workout up front so a non-public piece is blocked before any token
-	// is minted or returned — even one shared earlier while it was still public.
+	// Load the workout up front and re-sync the cache on every share attempt so an
+	// existing link always redeems against current data. This also runs on the
+	// block path below: the share_token row is preserved, so writing the now-private
+	// payload makes the redemption-time servePublic() check fail any issued link
+	// closed — closing the stale-cache gap, not just blocking new shares.
 	const detail = await loadWorkoutDetail(event, workoutId);
-	if (!isPubliclyShareable(detail.privacy)) {
-		// Re-sync the cache with the now-private detail before refusing. The
-		// share_token on this row is preserved, so refreshing the payload makes the
-		// redemption-time servePublic() check fail closed for any link already
-		// handed out — closing the stale-cache gap, not just blocking new shares.
-		await putCachedDetail(db, userId, detail);
-		throw error(403, PRIVACY_BLOCKED);
-	}
+	await putCachedDetail(db, userId, detail);
+	if (!isPubliclyShareable(detail.privacy)) throw error(403, PRIVACY_BLOCKED);
 
 	const existing = await getShareToken(db, userId, workoutId);
 	if (existing) {
@@ -128,7 +125,6 @@ export async function createWorkoutShare(
 		};
 	}
 
-	await putCachedDetail(db, userId, detail);
 	// putCachedDetail swallows write errors, so confirm the payload actually
 	// landed — otherwise the share URL would resolve to nothing and 404.
 	const cached = await getCachedDetail(db, userId, workoutId, event.platform?.env);
