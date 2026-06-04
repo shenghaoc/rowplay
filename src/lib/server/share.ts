@@ -109,7 +109,14 @@ export async function createWorkoutShare(
 	// Load the workout up front so a non-public piece is blocked before any token
 	// is minted or returned — even one shared earlier while it was still public.
 	const detail = await loadWorkoutDetail(event, workoutId);
-	if (!isPubliclyShareable(detail.privacy)) throw error(403, PRIVACY_BLOCKED);
+	if (!isPubliclyShareable(detail.privacy)) {
+		// Re-sync the cache with the now-private detail before refusing. The
+		// share_token on this row is preserved, so refreshing the payload makes the
+		// redemption-time servePublic() check fail closed for any link already
+		// handed out — closing the stale-cache gap, not just blocking new shares.
+		await putCachedDetail(db, userId, detail);
+		throw error(403, PRIVACY_BLOCKED);
+	}
 
 	const existing = await getShareToken(db, userId, workoutId);
 	if (existing) {

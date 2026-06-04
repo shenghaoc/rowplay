@@ -1,0 +1,55 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { WorkoutDetail } from '../types';
+
+// The live (non-demo) createWorkoutShare path loads the workout via ./data and
+// touches the D1 layer; mock both so we can exercise the privacy block in
+// isolation (the demo path is covered by real functions in share.test.ts).
+vi.mock('./data', () => ({ loadWorkoutDetail: vi.fn() }));
+vi.mock('./db', () => ({
+	getShareToken: vi.fn(),
+	setShareToken: vi.fn(),
+	putCachedDetail: vi.fn(),
+	getCachedDetail: vi.fn(),
+	getCachedDetailByShareToken: vi.fn()
+}));
+
+import { createWorkoutShare } from './share';
+import { loadWorkoutDetail } from './data';
+import { getShareToken, putCachedDetail } from './db';
+
+const mockLoad = loadWorkoutDetail as ReturnType<typeof vi.fn>;
+const mockGetToken = getShareToken as ReturnType<typeof vi.fn>;
+
+function liveEvent() {
+	return {
+		locals: { demo: false, user: { id: 7 } },
+		platform: { env: { DB: {}, PUBLIC_APP_URL: 'https://x.test' } }
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	} as any;
+}
+
+describe('createWorkoutShare live path — privacy block re-syncs the cache', () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it('refreshes the cache before refusing a now-private workout', async () => {
+		const detail = { id: 42, privacy: 'private' } as unknown as WorkoutDetail;
+		mockLoad.mockResolvedValue(detail);
+		const event = liveEvent();
+
+		await expect(createWorkoutShare(event, 42)).rejects.toMatchObject({ status: 403 });
+
+		// The private detail is written back (share_token row preserved) so any link
+		// already handed out now fails closed at redemption — not just new shares.
+		expect(putCachedDetail).toHaveBeenCalledWith(event.platform.env.DB, 7, detail);
+	});
+
+	it('does not re-sync or block a public workout that already has a token', async () => {
+		mockLoad.mockResolvedValue({ id: 42, privacy: 'everyone' } as unknown as WorkoutDetail);
+		mockGetToken.mockResolvedValue('existingtoken');
+
+		const share = await createWorkoutShare(liveEvent(), 42);
+
+		expect(share).toMatchObject({ token: 'existingtoken', created: false });
+		expect(putCachedDetail).not.toHaveBeenCalled();
+	});
+});
