@@ -171,6 +171,8 @@ export interface SeriesConfig {
 	points?: boolean | number;
 	/** Area fill: `true` for the default opacity, or a 0–1 alpha. Defaults to none. */
 	fill?: boolean | number;
+	/** Fill the area between this series and another (uPlot `series.fill` = index). */
+	fillTo?: number;
 }
 
 export interface BaseOptionsConfig {
@@ -231,7 +233,15 @@ export function baseOptions(cfg: BaseOptionsConfig): Omit<uPlot.Options, 'width'
 		};
 		if (s.dash) ser.dash = s.dash;
 		if (s.spanGaps != null) ser.spanGaps = s.spanGaps;
-		if (s.fill) ser.fill = withAlpha(color, s.fill === true ? DEFAULT_FILL_ALPHA : s.fill);
+		if (s.fillTo != null) {
+			ser.fillTo = s.fillTo;
+			const bandAlpha = typeof s.fill === 'number' && s.fill > 0 && s.fill < 1 ? s.fill : DEFAULT_FILL_ALPHA;
+			const bandFill = withAlpha(color, bandAlpha);
+			ser.stroke = bandFill;
+			ser.fill = bandFill;
+		} else if (s.fill) {
+			ser.fill = withAlpha(color, s.fill === true ? DEFAULT_FILL_ALPHA : s.fill);
+		}
 		ser.points = s.points
 			? { show: true, size: typeof s.points === 'number' ? s.points : DEFAULT_POINT_SIZE, stroke: color, fill: color }
 			: { show: false };

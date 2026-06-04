@@ -32,7 +32,7 @@
 	import { matchStandardDistance } from '$lib/leaderboard';
 	import { isExrSource } from '$lib/exrSource';
 	import { untrack } from 'svelte';
-	import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from '$lib/replay/sources';
+	import { constantPaceGhost, parseWorkoutFile } from '$lib/replay/sources';
 	import { isShareToken, type RivalGhostTrace } from '$lib/replay/rivalGhost';
 	import {
 		applyHrImport,
@@ -59,7 +59,8 @@
 	import { downloadRaceCardPng } from '$lib/replay/raceCard';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
-	import { chartTheme, baseOptions, type SeriesRole } from '$lib/chartTheme';
+	import { chartTheme, baseOptions, type SeriesConfig, type SeriesRole } from '$lib/chartTheme';
+	import { formatPaceInput, parsePaceInput } from '$lib/paceInput';
 	import SportIcon from '$components/SportIcon.svelte';
 	import { page } from '$app/state';
 	import AnnotationPanel from '$components/AnnotationPanel.svelte';
@@ -167,6 +168,14 @@
 	let quality = $state<RenderQuality>('medium');
 	let inspectorOpen = $state(false);
 	let driftOverlayOn = $state(false);
+	// Target pace is intentionally preserved across workout navigation —
+	// it represents a user's personal goal, not workout-specific state.
+	let targetPaceSecs = $state<number | null>(null);
+	let showBand = $state(false);
+	let targetPaceOpen = $state(false);
+	let targetPaceInput = $state('');
+	let targetPaceInvalid = $state(false);
+	const TARGET_BAND_SECS = 5;
 	let loading3d = $state(false);
 	let webglOk = $state(false);
 	let Ctor3D: Renderer3DCtor | null = null;
@@ -447,6 +456,15 @@
 		}
 
 		void armGhostFromUrl();
+		const tp = page.url.searchParams.get('targetPace');
+		if (tp) {
+			const secs = parsePaceInput(tp);
+			if (secs != null) {
+				targetPaceSecs = secs;
+				targetPaceInput = formatPaceInput(secs);
+				targetPaceOpen = true;
+			}
+		}
 		const sizeIt = () => {
 			resizeCourse();
 			renderCurrent();
@@ -545,6 +563,31 @@
 
 	async function selectGhost(e: Event) {
 		await loadSessionGhost((e.target as HTMLSelectElement).value);
+	}
+
+	function applyTargetPaceInput() {
+		const trimmed = targetPaceInput.trim();
+		if (!trimmed) {
+			targetPaceSecs = null;
+			targetPaceInvalid = false;
+			return;
+		}
+		const secs = parsePaceInput(trimmed);
+		if (secs == null) {
+			targetPaceInvalid = true;
+			targetPaceSecs = null;
+			return;
+		}
+		targetPaceInvalid = false;
+		targetPaceSecs = secs;
+	}
+
+	function clearTargetPace() {
+		targetPaceSecs = null;
+		targetPaceInput = '';
+		showBand = false;
+		targetPaceOpen = false;
+		targetPaceInvalid = false;
 	}
 
 	function applyPace() {
@@ -689,23 +732,107 @@
 	});
 
 	const paceSeries = $derived(strokes.map((s) => s.pace));
-	const paceData = $derived<uPlot.AlignedData>(
-		dpsAligned ? [xs, paceSeries, dpsAligned] : [xs, paceSeries]
-	);
+	const paceData = $derived.by((): uPlot.AlignedData => {
+		const rows: (number | null)[][] = [xs, paceSeries];
+		if (dpsAligned) rows.push(dpsAligned);
+		if (targetPaceSecs != null && !targetPaceInvalid) {
+			const t = targetPaceSecs;
+			const line = Array(xs.length).fill(t);
+			if (showBand) {
+				rows.push(
+					Array(xs.length).fill(t - TARGET_BAND_SECS),
+					Array(xs.length).fill(t + TARGET_BAND_SECS)
+				);
+			}
+			rows.push(line);
+		}
+		return rows as uPlot.AlignedData;
+	});
 	const rateData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.spm)]);
 	const powerData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.watts)]);
 	const hrData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.hr ?? null)]);
 
 	const paceOpts = $derived.by(() => {
-		if (!driftOverlayOn || !dpsAligned) {
-			return metricOpts('pace', 'pace', true, (v) => fmtPace(v).replace('/500m', ''));
+		const paceFmt = (v: number) => fmtPace(v).replace('/500m', '');
+		const paceColor = chart.role.pace;
+		const driftOn = driftOverlayOn && !!dpsAligned;
+		const dataSeriesCount = driftOn ? 2 : 1;
+
+		const targetSeries: SeriesConfig[] = [];
+		if (targetPaceSecs != null && xs.length > 0 && !targetPaceInvalid) {
+			if (showBand) {
+				const bandLowIdx = dataSeriesCount + 1;
+				targetSeries.push(
+					{ label: 'target-band', role: 'pace', width: 0, points: false },
+					{
+						label: 'target-band',
+						role: 'pace',
+						width: 0,
+						points: false,
+						fillTo: bandLowIdx,
+						fill: 0.12
+					}
+				);
+			}
+			targetSeries.push({
+				label: 'target',
+				role: 'pace',
+				width: 1.5,
+				dash: [6, 4],
+				points: false
+			});
 		}
+
+		const targetLabelHook = (u: uPlot) => {
+			if (targetPaceSecs == null) return;
+			const y = u.valToPos(targetPaceSecs, 'y', true);
+			if (!isFinite(y)) return;
+			const ctx = u.ctx;
+			ctx.save();
+			ctx.font = '11px var(--font-mono, ui-monospace, monospace)';
+			ctx.fillStyle = paceColor;
+			ctx.textAlign = 'right';
+			ctx.textBaseline = 'middle';
+			ctx.fillText(`${fmtPaceBare(targetPaceSecs)}/500m`, u.bbox.left + u.bbox.width - 4, y);
+			ctx.restore();
+		};
+
+		const drawHooks: Array<(u: uPlot) => void> = [];
+		if (targetPaceSecs != null && !targetPaceInvalid) drawHooks.push(targetLabelHook);
+
+		if (!driftOn) {
+			return baseOptions({
+				theme: chart,
+				xFmt: (v) => fmtTime(v),
+				yAxes: [{ size: 52, fmt: paceFmt, invert: true }],
+				series: [{ label: 'pace', role: 'pace', width: 1.5, fill: true }, ...targetSeries],
+				cursor: { x: true, y: false },
+				hooks: drawHooks.length ? { draw: drawHooks } : undefined
+			});
+		}
+
 		const baseline = drift.baseline;
+		drawHooks.push((u: uPlot) => {
+			if (baseline <= 0) return;
+			const y = u.valToPos(baseline, 'y2', true);
+			if (!isFinite(y)) return;
+			const ctx = u.ctx;
+			ctx.save();
+			ctx.strokeStyle = chart.cursor;
+			ctx.setLineDash([4, 4]);
+			ctx.lineWidth = 1;
+			ctx.beginPath();
+			ctx.moveTo(u.bbox.left, y);
+			ctx.lineTo(u.bbox.left + u.bbox.width, y);
+			ctx.stroke();
+			ctx.restore();
+		});
+
 		return baseOptions({
 			theme: chart,
 			xFmt: (v) => fmtTime(v),
 			yAxes: [
-				{ size: 52, fmt: (v) => fmtPace(v).replace('/500m', ''), invert: true },
+				{ size: 52, fmt: paceFmt, invert: true },
 				{
 					scale: 'y2',
 					side: 1,
@@ -722,28 +849,11 @@
 					scale: 'y2',
 					width: 1.5,
 					spanGaps: false
-				}
+				},
+				...targetSeries
 			],
 			cursor: { x: true, y: false },
-			hooks: {
-				draw: [
-					(u: uPlot) => {
-						if (baseline <= 0) return;
-						const y = u.valToPos(baseline, 'y2', true);
-						if (!isFinite(y)) return;
-						const ctx = u.ctx;
-						ctx.save();
-						ctx.strokeStyle = chart.cursor;
-						ctx.setLineDash([4, 4]);
-						ctx.lineWidth = 1;
-						ctx.beginPath();
-						ctx.moveTo(u.bbox.left, y);
-						ctx.lineTo(u.bbox.left + u.bbox.width, y);
-						ctx.stroke();
-						ctx.restore();
-					}
-				]
-			}
+			hooks: { draw: drawHooks }
 		});
 	});
 	const rateOpts = $derived(metricOpts('rate', 'rate', false, (v) => `${Math.round(v)}`));
@@ -1509,6 +1619,47 @@
 				</div>
 			{/if}
 			<UPlotChart data={paceData} options={paceOpts} height={150} marker={frame.t} caption={t('replay.cPace')} />
+			<div class="target-pace">
+				{#if targetPaceOpen}
+					<div class="target-pace-row">
+						<label class="target-pace-label muted small" for="target-pace-input"
+							>{t('replay.targetPace')}</label
+						>
+						<input
+							id="target-pace-input"
+							class="input input-bordered input-sm mono target-pace-input"
+							class:input-error={targetPaceInvalid}
+							type="text"
+							bind:value={targetPaceInput}
+							placeholder={t('replay.targetPacePlaceholder')}
+							onchange={applyTargetPaceInput}
+							onblur={applyTargetPaceInput}
+							onkeydown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
+						/>
+						<label class="target-pace-band">
+							<input type="checkbox" class="toggle toggle-sm" bind:checked={showBand} />
+							<span class="muted small">{t('replay.targetPaceBand')}</span>
+						</label>
+						<button type="button" class="btn btn-ghost btn-xs" onclick={clearTargetPace}
+							>{t('replay.targetPaceClear')}</button
+						>
+						<button
+							type="button"
+							class="btn btn-ghost btn-xs"
+							onclick={() => (targetPaceOpen = false)}
+							aria-label="Close"
+						>✕</button>
+					</div>
+				{:else}
+					<button
+						type="button"
+						class="btn btn-ghost btn-xs target-pace-open"
+						onclick={() => (targetPaceOpen = true)}
+					>
+						{t('replay.targetPaceSet')}
+					</button>
+				{/if}
+			</div>
 		</div>
 		<div class="card card-border bg-base-100 shadow-md p-5">
 			<div class="ctitle muted">{t('replay.cRate')}</div>
@@ -2247,6 +2398,30 @@
 		justify-content: space-between;
 		gap: 0.5rem;
 		margin-bottom: 0.35rem;
+	}
+	.target-pace {
+		margin-top: 0.65rem;
+	}
+	.target-pace-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem 0.75rem;
+	}
+	.target-pace-input {
+		width: 5.5rem;
+	}
+	.target-pace-band {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		cursor: pointer;
+	}
+	.target-pace-open {
+		padding-inline: 0.25rem;
+		min-height: 0;
+		height: auto;
+		font-size: 0.8rem;
 	}
 	.drift-toggle {
 		font-size: 0.78rem;
