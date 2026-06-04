@@ -71,7 +71,10 @@
 			await invalidateAll();
 			toast.success(t('sync.historyComplete'), { id: toastId });
 		} catch (e) {
-			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (e instanceof DOMException && e.name === 'AbortError') {
+				toast.dismiss(toastId);
+				return;
+			}
 			toast.error(t('sync.failed'), {
 				id: toastId,
 				description: e instanceof Error ? e.message : t('common.tryAgain')

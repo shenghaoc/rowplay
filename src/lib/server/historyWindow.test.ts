@@ -103,6 +103,16 @@ describe('planSync', () => {
 		expect(planSync({ ...state, backfillDone: true }, now, 'backfill')).toEqual({ kind: 'done' });
 	});
 
+	it('already-synced user (null oldestDate, backfillDone false) → done', () => {
+		expect(
+			planSync(
+				{ lastDate: '2026-05-20 08:00:00', oldestDate: null, backfillDone: false },
+				now,
+				'backfill'
+			)
+		).toEqual({ kind: 'done' });
+	});
+
 	it('full → unbounded incremental', () => {
 		expect(planSync(state, now, 'full')).toEqual({ kind: 'incremental', from: undefined });
 	});
