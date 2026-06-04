@@ -126,7 +126,7 @@ Confirms `paceDiv = 1` for SkiErg — pace should **not** be halved.
 
 `expected.strokes` asserts the first and last stroke. No splits assertion.
 
-### `rower-interval.fixture.json` — 4 x 500 m RowErg
+### `rower-interval.fixture.json` — 2×500 m RowErg interval
 
 The critical test for the interval t/d reset and offset accumulation logic.
 The raw stroke data contains two consecutive reps where `t` and `d` restart

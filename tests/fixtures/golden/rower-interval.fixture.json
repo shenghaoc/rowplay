@@ -7,8 +7,8 @@
 		"id": 9004,
 		"date": "2026-05-18 06:45:00",
 		"type": "rower",
-		"distance": 2000,
-		"time": 4500,
+		"distance": 1000,
+		"time": 2250,
 		"stroke_rate": 34,
 		"stroke_count": 180,
 		"stroke_data": true,
@@ -35,8 +35,8 @@
 	"expected": {
 		"result": {
 			"sport": "rower",
-			"time": 450,
-			"distance": 2000,
+			"time": 225,
+			"distance": 1000,
 			"pace": 112.5
 		},
 		"strokes": [
