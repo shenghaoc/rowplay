@@ -1154,7 +1154,7 @@
 			<p class="muted small hrimport-hint">{t('replay.hrImportHint')}</p>
 			<div class="hrimport-row">
 				<input
-					class="fileinput"
+					class="file-input file-input-sm"
 					type="file"
 					accept=".csv,.tcx,.fit"
 					onchange={onHrFile}
@@ -1244,7 +1244,7 @@
 			{#if comparableCandidates.length >= SEARCHABLE_MIN}
 				<search>
 				<input
-					class="session-search"
+					class="input input-bordered input-sm session-search"
 					type="search"
 					inputmode="search"
 					enterkeyhint="search"
@@ -1266,7 +1266,7 @@
 			<p class="muted small">{t('comparability.noComparableCandidates')}</p>
 		{:else if compareMode === 'pace'}
 			<input
-				class="paceinput mono"
+				class="input input-bordered input-sm paceinput mono"
 				type="text"
 				bind:value={paceInput}
 				placeholder="1:52"
@@ -1277,7 +1277,7 @@
 			<button class="btn btn-ghost btn-sm" onclick={applyPace}>{t('replay.setPace')}</button>
 		{:else if compareMode === 'file'}
 			<input
-				class="fileinput"
+				class="file-input file-input-sm"
 				type="file"
 				accept=".csv,.tcx,.fit"
 				onchange={onFile}
@@ -1993,7 +1993,7 @@
 		font-size: 0.9rem;
 		text-align: center;
 	}
-	.fileinput {
+	:global(.file-input) {
 		font-size: 0.8rem;
 		color: var(--ink-2);
 		max-width: 240px;
@@ -2556,7 +2556,7 @@
 		}
 		.ghostbar select,
 		.paceinput,
-		.fileinput {
+		:global(.file-input) {
 			width: 100%;
 			max-width: none;
 		}

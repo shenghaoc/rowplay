@@ -37,7 +37,7 @@
 			<span>{t('liveMode.enabled')}</span>
 			<input
 				type="checkbox"
-				class="toggle toggle-primary"
+				class="checkbox checkbox-sm"
 				checked={live.enabled}
 				onchange={(e) => live.setEnabled(e.currentTarget.checked)}
 			/>
@@ -57,7 +57,7 @@
 			<span>{t('liveMode.sound')}</span>
 			<input
 				type="checkbox"
-				class="toggle toggle-primary"
+				class="checkbox checkbox-sm"
 				checked={live.soundEnabled}
 				onchange={(e) => live.setSound(e.currentTarget.checked)}
 			/>

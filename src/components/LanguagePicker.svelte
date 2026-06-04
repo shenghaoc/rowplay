@@ -10,6 +10,7 @@
 <label class="lang-picker" title={t('lang.switch')}>
 	<Languages size={16} aria-hidden="true" />
 	<select
+		class="select select-ghost select-xs"
 		value={i18n.lang}
 		onchange={(e) => i18n.setLanguage((e.currentTarget as HTMLSelectElement).value as Language)}
 		aria-label={t('lang.switch')}

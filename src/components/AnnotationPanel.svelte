@@ -130,7 +130,7 @@
 				rows="2"
 				maxlength="1000"
 				onkeydown={onKeydown}
-				class="anno-input"
+				class="textarea textarea-bordered anno-input"
 			></textarea>
 			<div class="anno-actions">
 				<button class="btn save-btn" onclick={save} disabled={!draftText.trim()}>{t('annotations.saveNote')}</button>
@@ -156,7 +156,7 @@
 								rows="2"
 								maxlength="1000"
 								onkeydown={onKeydown}
-								class="anno-input"
+								class="textarea textarea-bordered anno-input"
 							></textarea>
 							<div class="anno-actions">
 								<button class="btn save-btn" onclick={save} disabled={!draftText.trim()}>{t('annotations.saveNote')}</button>
