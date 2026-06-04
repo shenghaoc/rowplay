@@ -52,7 +52,7 @@
 	}
 </script>
 
-<div class="calcard card bg-base-100 border border-base-300 shadow-md p-5">
+<div class="calcard card card-border bg-base-100 shadow-md p-5">
 	<div class="calhead">
 		<div class="callabel">
 			<span class="calicon"><CalendarDays size={15} /></span>

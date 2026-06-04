@@ -201,7 +201,7 @@
 
 <footer>
 	<div class="container footer-inner muted">
-		<span>rowplay · Concept2 logbook analytics &amp; real-time replay</span>
+		<span>{t('common.tagline')}</span>
 		<span>{t('common.notAffiliated')}</span>
 	</div>
 </footer>

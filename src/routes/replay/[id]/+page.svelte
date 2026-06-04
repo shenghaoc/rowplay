@@ -1104,9 +1104,9 @@
 		>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
-			{#if !detail.hasStrokeData}<span class="badge">{t('replay.lowRes')}</span>{/if}
+			{#if !detail.hasStrokeData}<span class="badge badge-soft badge-warning">{t('replay.lowRes')}</span>{/if}
 			{#if exrFlagged}
-				<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
+				<span class="badge badge-soft badge-info" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
 			{/if}
 		</div>
 		<div class="sharebar">
@@ -1130,7 +1130,7 @@
 				</button>
 				{#if published}
 					<button
-						class="btn ghost small"
+						class="btn btn-ghost btn-sm"
 						type="button"
 						disabled={withdrawing}
 						onclick={withdrawFromLeaderboard}
@@ -1146,7 +1146,7 @@
 	</div>
 
 	{#if !logbookHasHr}
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 hrimport">
+		<div class="card card-border bg-base-100 shadow-md p-5 hrimport">
 			<div class="hrimport-head">
 				<Heart size={15} />
 				<strong>{t('replay.hrImportTitle')}</strong>
@@ -1205,7 +1205,7 @@
 	{/if}
 
 	<!-- Comparison / race control -->
-	<div class="card bg-base-100 border border-base-300 shadow-md p-5 ghostbar">
+	<div class="card card-border bg-base-100 shadow-md p-5 ghostbar">
 		<label><Ghost size={15} /> {t('replay.compareAgainst')}</label>
 		<div class="join" role="group" aria-label={t('replay.compareAgainst')}>
 			<button
@@ -1304,7 +1304,7 @@
 
 	{#if raceFinished && verdictText}
 		<div
-			class="card bg-base-100 border border-base-300 shadow-md p-5 verdict"
+			class="card card-border bg-base-100 shadow-md p-5 verdict"
 			class:win={raceWon}
 			class:lose={!raceWon}
 			role="status"
@@ -1393,7 +1393,7 @@
 	{/if}
 
 	<!-- Transport controls -->
-	<div class="card bg-base-100 border border-base-300 shadow-md p-5 controls">
+	<div class="card card-border bg-base-100 shadow-md p-5 controls">
 		<button class="btn btn-lg btn-primary play" onclick={() => engine?.toggle()} aria-label={playing ? t('replay.pause') : t('replay.play')}>
 			{#if playing}<Pause size={16} /> {t('replay.pause')}{:else}<Play size={16} /> {t('replay.play')}{/if}
 		</button>
@@ -1419,7 +1419,7 @@
 	</div>
 
 	<!-- Live gauges -->
-	<div class="gauges card bg-base-100 border border-base-300 shadow-md p-5">
+	<div class="gauges card card-border bg-base-100 shadow-md p-5">
 		<MetricGauge
 			label={t('replay.gPace')} unit="/500m"
 		display={fmtPace(frame.pace).replace('/500m', '')}
@@ -1455,7 +1455,7 @@
 
 	<!-- Telemetry traces -->
 	<div class="charts">
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5">
+		<div class="card card-border bg-base-100 shadow-md p-5">
 			<div class="pace-card-head">
 				<div class="ctitle muted">{t('replay.cPace')}</div>
 				{#if driftReady}
@@ -1488,16 +1488,16 @@
 			{/if}
 			<UPlotChart data={paceData} options={paceOpts} height={150} marker={frame.t} caption={t('replay.cPace')} />
 		</div>
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5">
+		<div class="card card-border bg-base-100 shadow-md p-5">
 			<div class="ctitle muted">{t('replay.cRate')}</div>
 			<UPlotChart data={rateData} options={rateOpts} height={150} marker={frame.t} caption={t('replay.cRate')} />
 		</div>
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5">
+		<div class="card card-border bg-base-100 shadow-md p-5">
 			<div class="ctitle muted">{t('replay.cPower')}</div>
 			<UPlotChart data={powerData} options={powerOpts} height={150} marker={frame.t} caption={t('replay.cPower')} />
 		</div>
 		{#if hasHr}
-			<div class="card bg-base-100 border border-base-300 shadow-md p-5">
+			<div class="card card-border bg-base-100 shadow-md p-5">
 				<div class="ctitle muted">{t('replay.cHeart')}</div>
 				<UPlotChart data={hrData} options={hrOpts} height={150} marker={frame.t} caption={t('replay.cHeart')} />
 			</div>
@@ -1505,7 +1505,7 @@
 	</div>
 
 	<!-- Technique (stroke quality) -->
-	<div class="card bg-base-100 border border-base-300 shadow-md p-5 technique">
+	<div class="card card-border bg-base-100 shadow-md p-5 technique">
 		<div class="ctitle muted">{t('replay.strokeQuality')}</div>
 		<div class="techstats">
 			<div class="ts">
@@ -1530,12 +1530,12 @@
 	</div>
 
 	<div class="analysis">
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5">
+		<div class="card card-border bg-base-100 shadow-md p-5">
 			<div class="ctitle muted">{t('replay.distPerStroke')} <span class="hint">{t('replay.distPerStrokeHint')}</span></div>
 			<UPlotChart data={dpsData} options={dpsOpts} height={150} marker={frame.t} caption={t('replay.distPerStroke')} />
 		</div>
 		{#if eff.length > 2}
-			<div class="card bg-base-100 border border-base-300 shadow-md p-5">
+			<div class="card card-border bg-base-100 shadow-md p-5">
 				<div class="ctitle muted">{t('replay.paceVsRate')} <span class="hint">{t('replay.paceVsRateHint')}</span></div>
 				<UPlotChart data={effData} options={effOpts} height={150} caption={t('replay.paceVsRate')} />
 			</div>
@@ -1545,13 +1545,13 @@
 	<!-- Analysis -->
 	<div class="analysis">
 		{#if pc.length}
-			<div class="card bg-base-100 border border-base-300 shadow-md p-5">
+			<div class="card card-border bg-base-100 shadow-md p-5">
 				<div class="ctitle muted">{t('replay.powerCurve')}</div>
 				<UPlotChart data={pcData} options={pcOpts} height={170} caption={t('replay.powerCurve')} />
 			</div>
 		{/if}
 		{#if zones.length}
-			<div class="card bg-base-100 border border-base-300 shadow-md p-5">
+			<div class="card card-border bg-base-100 shadow-md p-5">
 				<div class="ctitle muted">{t('replay.hrZones')}</div>
 				<div class="zonebar">
 					{#each zones as z}
@@ -1580,7 +1580,7 @@
 
 	<!-- Interval / split breakdown -->
 	{#if intervals}
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 intervals">
+		<div class="card card-border bg-base-100 shadow-md p-5 intervals">
 			<div class="ctitle muted">{segLabel} — {intervals.reps.length} {segUnit}</div>
 
 			<div class="setstats">
@@ -1626,7 +1626,7 @@
 		</div>
 	{:else if detail.splits.length}
 		<!-- Single-segment piece: plain split table -->
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 splits">
+		<div class="card card-border bg-base-100 shadow-md p-5 splits">
 			<h3>{t('replay.splitsTitle')}</h3>
 			<table class="mono">
 				<thead>
@@ -1674,7 +1674,7 @@
 	{/if}
 
 	<!-- Full workout metadata -->
-	<div class="card bg-base-100 border border-base-300 shadow-md p-5 meta">
+	<div class="card card-border bg-base-100 shadow-md p-5 meta">
 		<div class="ctitle muted">{t('replay.workoutDetails')}</div>
 		<dl class="metagrid">
 			<div><dt>{t('replay.mDate')}</dt><dd>{dateTime}</dd></div>
@@ -1798,7 +1798,7 @@
 						<li>
 							<span>{targetMetricLabel(row)}</span>
 							<span class="mono">{formatTargetDelta(row)}</span>
-							<span class="badge" class:badge-success={row.hit} class:badge-warning={!row.hit}>
+							<span class="badge badge-soft" class:badge-success={row.hit} class:badge-warning={!row.hit}>
 								{row.hit ? t('replay.targetHit') : t('replay.targetMiss')}
 							</span>
 						</li>
@@ -1814,7 +1814,7 @@
 							<dt>{t('replay.mSource')}</dt>
 							<dd>
 								{detail.source}
-								{#if exrFlagged}<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>{/if}
+								{#if exrFlagged}<span class="badge badge-soft badge-info" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>{/if}
 							</dd>
 						</div>
 					{/if}

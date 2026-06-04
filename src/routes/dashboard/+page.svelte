@@ -672,7 +672,7 @@
 			<CriticalPowerPanel workouts={workouts} />
 
 			{#if load}
-				<div class="card panel formcard">
+				<div class="card card-border bg-base-100 shadow-md p-5 formcard">
 					<div class="formhead">
 						<div class="formtitle">
 							<Activity size={18} />
@@ -738,7 +738,7 @@
 
 			<!-- Trend -->
 			{#if filtered.length > 1}
-				<div class="card panel chartcard">
+				<div class="card card-border bg-base-100 shadow-md p-5 chartcard">
 					<div class="trendhead">
 						<div class="label">
 							{t('dashboard.trendTitle')}
@@ -795,7 +795,7 @@
 
 			<!-- Per-sport breakdown -->
 			{#if bySport.length > 1}
-				<div class="card panel breakdown">
+				<div class="card card-border bg-base-100 shadow-md p-5 breakdown">
 					<div class="muted label">{t('dashboard.bySport')}</div>
 					<div class="tablescroll">
 						<table class="table table-zebra table-sm mono breakdowntable">
@@ -828,10 +828,10 @@
 				onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
 			/>
 			{#if compareAnchor != null}
-				<p class="compare-hint card panel muted">
+				<div class="compare-hint card card-border bg-base-100 shadow-md p-5 muted" role="status">
 					{t('workoutList.comparePick')}
 					<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
-				</p>
+				</div>
 			{/if}
 			<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} pbIds={pbIds} {newPbIds} {newEntryIds} />
 		</div>
@@ -852,7 +852,7 @@
 
 			<!-- Personal bests -->
 			{#if pbs.length}
-				<div class="card panel pbcard">
+				<div class="card card-border bg-base-100 shadow-md p-5 pbcard">
 					<div class="muted label">{t('dashboard.pbTitle')}</div>
 					<div class="pbgrid">
 						{#each pbs as pb}
@@ -989,13 +989,6 @@
 	.col-main { grid-column: 1; display: grid; gap: 1rem; align-content: start; min-width: 0; }
 	.col-rail { grid-column: 2; grid-row: 1; display: grid; gap: 1rem; align-content: start; min-width: 0; }
 
-	/* Shared panel surface (matches daisyUI card defaults used elsewhere). */
-	.panel {
-		padding: 1.25rem;
-		background: var(--paper-raised);
-		border: 1px solid var(--hairline);
-		box-shadow: var(--shadow-md);
-	}
 	.label { font-size: 0.8rem; font-weight: 700; }
 
 	/* ---- Form / PMC card ---------------------------------------------------- */

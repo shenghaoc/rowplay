@@ -194,7 +194,7 @@
 	<p class="eyebrow">{t('settings.eyebrow')}</p>
 	<h1>{t('settings.title')}</h1>
 
-	<article class="card bg-base-100 border border-base-300 shadow-md p-5">
+	<article class="card card-border bg-base-100 shadow-md p-5">
 		<div class="card-body p-0 gap-3">
 			<h2 class="section-head">
 				<Database size={18} style="color: var(--ghost)" />
@@ -213,7 +213,7 @@
 		</div>
 	</article>
 
-	<article class="card bg-base-100 border border-base-300 shadow-md p-5">
+	<article class="card card-border bg-base-100 shadow-md p-5">
 		<div class="card-body p-0 gap-3">
 			<h2 class="section-head">
 				<Globe size={18} style="color: var(--ghost)" />
@@ -241,7 +241,7 @@
 		</div>
 	</article>
 
-	<article class="card bg-base-100 border border-base-300 shadow-md p-5">
+	<article class="card card-border bg-base-100 shadow-md p-5">
 		<div class="card-body p-0 gap-3">
 			<h2 class="section-head">
 				<Download size={18} style="color: var(--ghost)" />
@@ -266,7 +266,7 @@
 		</div>
 	</article>
 
-	<article class="card bg-base-100 border border-base-300 shadow-md p-5">
+	<article class="card card-border bg-base-100 shadow-md p-5">
 		<div class="card-body p-0 gap-3">
 			<h2 class="section-head">
 				<RefreshCw size={18} style="color: var(--ghost)" />

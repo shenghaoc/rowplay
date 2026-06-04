@@ -80,7 +80,8 @@ export const en = {
 		replay: 'Replay',
 		loading: 'loading…',
 		tryAgain: 'Please try again.',
-		notAffiliated: 'not affiliated with Concept2'
+		notAffiliated: 'not affiliated with Concept2',
+		tagline: 'rowplay · Concept2 logbook analytics & real-time replay'
 	},
 	sync: {
 		loading: 'Syncing your logbook…',

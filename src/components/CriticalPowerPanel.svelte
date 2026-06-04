@@ -106,7 +106,7 @@
 </script>
 
 {#if cp}
-	<div class="card bg-base-100 border border-base-300 shadow-md p-5 cpcard">
+	<div class="card card-border bg-base-100 shadow-md p-5 cpcard">
 		<div class="cphead">
 			<div class="cptitle">
 				<Zap size={18} />

@@ -71,7 +71,7 @@
 	}
 </script>
 
-<section class="card bg-base-100 border border-base-300 shadow-md listquery" aria-label={t('workoutList.filtersTitle')}>
+<section class="card card-border bg-base-100 shadow-md listquery" aria-label={t('workoutList.filtersTitle')}>
 	<div class="lqhead">
 		<div class="lqtitle">
 			<SlidersHorizontal size={16} />

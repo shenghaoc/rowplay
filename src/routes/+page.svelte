@@ -26,17 +26,17 @@
 	</div>
 
 	<div class="features">
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 feat">
+		<div class="card card-border bg-base-100 shadow-md p-5 feat">
 			<div class="ficon"><PlayCircle size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat1Title')}</h3>
 			<p class="muted">{t('landing.feat1Body')}</p>
 		</div>
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 feat">
+		<div class="card card-border bg-base-100 shadow-md p-5 feat">
 			<div class="ficon"><GitCompare size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat2Title')}</h3>
 			<p class="muted">{t('landing.feat2Body')}</p>
 		</div>
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 feat">
+		<div class="card card-border bg-base-100 shadow-md p-5 feat">
 			<div class="ficon"><LineChart size={24} strokeWidth={2} /></div>
 			<h3>{t('landing.feat3Title')}</h3>
 			<p class="muted">{t('landing.feat3Body')}</p>

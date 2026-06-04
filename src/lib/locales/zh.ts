@@ -79,7 +79,8 @@ export const zh = {
 		replay: '回放',
 		loading: '加载中…',
 		tryAgain: '请重试。',
-		notAffiliated: '与 Concept2 无关联'
+		notAffiliated: '与 Concept2 无关联',
+		tagline: 'rowplay · Concept2 训练日志分析与实时回放'
 	},
 	sync: {
 		loading: '正在同步你的日志…',

@@ -104,7 +104,7 @@
 		<p class="lead muted">{t('leaderboard.lead')}</p>
 	</div>
 
-	<div class="card bg-base-100 border border-base-300 shadow-md p-5 selector">
+	<div class="card card-border bg-base-100 shadow-md p-5 selector">
 		<div class="selrow">
 			<span class="lbl">{t('leaderboard.sport')}</span>
 			<div class="flex flex-wrap gap-1">
@@ -142,7 +142,7 @@
 	</div>
 
 	{#if entries.length}
-		<div class="card bg-base-100 border border-base-300 shadow-md p-0 boardcard">
+		<div class="card card-border bg-base-100 shadow-md p-0 boardcard">
 			<div class="boardhead">
 				<SportIcon sport={selectedSport} size={18} />
 				<span class="boardname">{SPORT_LABEL[selectedSport]} · {fmtDistance(selectedDistance)}</span>
@@ -214,7 +214,7 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 empty">
+		<div class="card card-border bg-base-100 shadow-md p-5 empty">
 			<p>{t('leaderboard.empty')}</p>
 		</div>
 	{/if}
