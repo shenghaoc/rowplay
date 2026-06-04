@@ -27,14 +27,20 @@ begins. Requirement references point at `requirements.md`.
   - Collapsed by default; "Set target pace" expander link.
   - When expanded: `input input-bordered input-sm` for M:SS entry, `toggle
     toggle-sm` for band, clear button.
-  - On input change: call `parsePaceInput`; on valid result update
-    `targetPaceSecs`; on invalid or empty set to `null`.
+  - On blur or Enter (not keystroke): call `parsePaceInput`; on valid result
+    update `targetPaceSecs`; on invalid or empty set to `null`. Bind to
+    `onchange` / `onblur` rather than `oninput` to avoid input lag and chart
+    flickering from re-initialising the uPlot series on every keystroke.
   - _Requirements: 2.1, 2.4_
 
 - [ ] **5. uPlot horizontal line + optional band** — `replay/[id]/+page.svelte`
   - Pass `targetPaceSecs` and `showBand` into the pace chart initialisation.
   - Constant-value series for the target line (dashed stroke style via uPlot
     series `stroke` / `dash` options).
+  - **uPlot `AlignedData` constraint:** all series arrays MUST match the X-axis
+    array length. When constructing the target line and band series, pre-fill
+    each with `Array(xs.length).fill(value)` so every data array has exactly
+    `xs.length` elements.
   - Band: two constant-value series (target ± 5) with `fill` between them using
     low-opacity `--pace` colour.
   - Label: uPlot `hook` or annotation drawn at x = max to show formatted pace.
