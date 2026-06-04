@@ -60,7 +60,7 @@ that it ships without regressions.
    module and SHALL be covered by Vitest unit tests (parse round-trip, invalid
    inputs, edge cases).
 2. Every user-visible string SHALL be added to all six locale files (en, zh, de,
-   es, fr, ja) via `i18n.t()`.
+   es, fr, ja) via `t()`.
 3. The feature SHALL pass the full quality gate: `npm run check` (0 errors),
    `npm run build`, and `npm run test` (test count must not decrease).
 4. The feature SHALL work in demo mode with no Concept2 credentials.
