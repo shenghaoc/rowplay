@@ -165,6 +165,8 @@ export interface SeriesConfig {
 	dash?: number[];
 	/** Scale id. Defaults to `'y'`. */
 	scale?: string;
+	/** Bridge null gaps in data. Defaults to uPlot's `true`; set `false` for honest breaks. */
+	spanGaps?: boolean;
 	/** Show point markers; pass a number to set the radius. Defaults to off. */
 	points?: boolean | number;
 	/** Area fill: `true` for the default opacity, or a 0–1 alpha. Defaults to none. */
@@ -185,6 +187,8 @@ export interface BaseOptionsConfig {
 	legend?: boolean;
 	/** Cursor cross-hair lines that follow the pointer. Defaults to uPlot's. */
 	cursor?: { x?: boolean; y?: boolean } | false;
+	/** Optional uPlot draw hooks (merged with UPlotChart's marker hook). */
+	hooks?: uPlot.Hooks.Arrays;
 }
 
 /**
@@ -226,6 +230,7 @@ export function baseOptions(cfg: BaseOptionsConfig): Omit<uPlot.Options, 'width'
 			width: s.width ?? 2
 		};
 		if (s.dash) ser.dash = s.dash;
+		if (s.spanGaps != null) ser.spanGaps = s.spanGaps;
 		if (s.fill) ser.fill = withAlpha(color, s.fill === true ? DEFAULT_FILL_ALPHA : s.fill);
 		ser.points = s.points
 			? { show: true, size: typeof s.points === 'number' ? s.points : DEFAULT_POINT_SIZE, stroke: color, fill: color }
@@ -245,5 +250,6 @@ export function baseOptions(cfg: BaseOptionsConfig): Omit<uPlot.Options, 'width'
 				? { show: false }
 				: { show: true, x: cfg.cursor.x ?? true, y: cfg.cursor.y ?? false };
 	}
+	if (cfg.hooks) opts.hooks = cfg.hooks;
 	return opts;
 }
