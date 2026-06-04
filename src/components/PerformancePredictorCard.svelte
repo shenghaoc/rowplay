@@ -91,7 +91,7 @@
 						class="input input-bordered input-sm mono"
 						type="text"
 						inputmode="decimal"
-						placeholder="7:04"
+						placeholder="7:04.5"
 						bind:value={timeInput}
 					/>
 				</label>
@@ -119,11 +119,11 @@
 								<tr class:predictor-source={row.distance === knownDistance}>
 									<td>{fmtDistance(row.distance)}</td>
 									<td class="num" class:muted={row.distance === knownDistance}>
-										{fmtTime(row.predictedSeconds, true)}
+										{fmtTime(row.predictedSeconds, !Number.isInteger(row.predictedSeconds))}
 									</td>
 									<td class="num">
 										{row.actualBestSeconds != null
-											? fmtTime(row.actualBestSeconds, true)
+											? fmtTime(row.actualBestSeconds, !Number.isInteger(row.actualBestSeconds))
 											: t('dashboard.predictor.noTime')}
 									</td>
 									<td>
