@@ -1,5 +1,6 @@
 import type { DistancePB } from '$lib/analytics';
 import type { Workout } from '$lib/types';
+import { safeStorage } from './safeStorage';
 
 /** Polling interval presets (seconds). Minimum 30 per Concept2 rate guidance. */
 export const LIVE_INTERVALS = [30, 60, 120, 300] as const;
@@ -37,9 +38,8 @@ function parseInterval(n: unknown): LiveIntervalSec {
 
 /** Read persisted live mode preferences (client-only). */
 export function loadLivePrefs(): LiveModePrefs {
-	if (typeof localStorage === 'undefined') return { ...DEFAULT_LIVE_PREFS };
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
+		const raw = safeStorage.getItem(STORAGE_KEY);
 		if (!raw) return { ...DEFAULT_LIVE_PREFS };
 		const p = JSON.parse(raw) as Partial<LiveModePrefs>;
 		return {
@@ -55,8 +55,7 @@ export function loadLivePrefs(): LiveModePrefs {
 
 /** Persist live mode preferences and mirror to a cookie for SSR hints. */
 export function saveLivePrefs(prefs: LiveModePrefs): void {
-	if (typeof localStorage === 'undefined') return;
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+	safeStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
 	if (typeof document !== 'undefined') {
 		const secure = location.protocol === 'https:' ? '; Secure' : '';
 		document.cookie = `live_mode=${prefs.enabled ? '1' : '0'}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;

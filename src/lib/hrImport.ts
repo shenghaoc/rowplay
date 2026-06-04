@@ -1,5 +1,6 @@
 import type { Stroke, WorkoutDetail } from './types';
 import { parseWorkoutFile } from './replay/sources';
+import { safeStorage } from './safeStorage';
 
 /** One heart-rate sample on the import file's elapsed-time axis (seconds). */
 export interface HrSample {
@@ -142,9 +143,8 @@ export interface HrOverlay {
 }
 
 export function readHrOverlay(workoutId: number): HrOverlay | null {
-	if (typeof localStorage === 'undefined') return null;
 	try {
-		const raw = localStorage.getItem(hrOverlayStorageKey(workoutId));
+		const raw = safeStorage.getItem(hrOverlayStorageKey(workoutId));
 		if (!raw) return null;
 		const parsed = JSON.parse(raw) as HrOverlay;
 		if (!parsed?.samples?.length) return null;
@@ -155,9 +155,9 @@ export function readHrOverlay(workoutId: number): HrOverlay | null {
 }
 
 export function writeHrOverlay(workoutId: number, overlay: HrOverlay): void {
-	localStorage.setItem(hrOverlayStorageKey(workoutId), JSON.stringify(overlay));
+	safeStorage.setItem(hrOverlayStorageKey(workoutId), JSON.stringify(overlay));
 }
 
 export function clearHrOverlay(workoutId: number): void {
-	localStorage.removeItem(hrOverlayStorageKey(workoutId));
+	safeStorage.removeItem(hrOverlayStorageKey(workoutId));
 }

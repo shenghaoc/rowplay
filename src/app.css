@@ -572,6 +572,16 @@ main {
 	}
 }
 
+@media (prefers-reduced-transparency: reduce) {
+	/* Remove decorative semi-transparent gradients; ensure topbar uses solid fill. */
+	body {
+		background-image: none;
+	}
+	:root {
+		--topbar-bg: var(--paper);
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*,
 	*::before,
