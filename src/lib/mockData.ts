@@ -25,11 +25,13 @@ interface Spec {
 	timezone?: string;
 	/** Skip stroke synthesis for lightweight calendar fixtures. */
 	noStrokes?: boolean;
+	/** Demo-only: simulate the Concept2 `privacy` level (defaults to `everyone`). */
+	privacy?: string;
 }
 
 const SPECS: Spec[] = [
 	{ id: 1001, date: '2026-05-27 06:12:00', sport: 'rower', distance: 2000, basePace: 108, baseSpm: 30, baseHr: 168, workoutType: '2000m test', comments: 'PB attempt — held on for the sprint.' },
-	{ id: 1002, date: '2026-05-24 07:05:00', sport: 'rower', distance: 5000, basePace: 118, baseSpm: 26, baseHr: 158, workoutType: '5000m steady', omitHr: true },
+	{ id: 1002, date: '2026-05-24 07:05:00', sport: 'rower', distance: 5000, basePace: 118, baseSpm: 26, baseHr: 158, workoutType: '5000m steady', omitHr: true, privacy: 'private' },
 	{ id: 1003, date: '2026-05-21 18:40:00', sport: 'skierg', distance: 1000, basePace: 122, baseSpm: 42, baseHr: 165, workoutType: '1000m SkiErg' },
 	{
 		id: 1004,
@@ -241,6 +243,9 @@ function detailFor(spec: Spec): WorkoutDetail {
 		detail.heartRateAvg = Math.round(avg(strokes.map((s) => s.hr ?? 0)));
 	}
 	if (spec.source) detail.source = spec.source;
+	// Demo workouts simulate a public Concept2 privacy level so the share flow
+	// works out of the box; specific specs override to exercise the block path.
+	detail.privacy = spec.privacy ?? 'everyone';
 	applyFullFidelityDemo(spec, detail);
 	return detail;
 }

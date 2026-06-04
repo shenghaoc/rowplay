@@ -310,6 +310,7 @@ export const zh = {
 		linkCopied: '分享链接已复制',
 		linkReady: '拥有此链接的人均可观看回放',
 		shareFailed: '无法创建分享链接',
+		privacyBlocked: '此训练在 Concept2 上未公开，无法分享。请先在日志中将其隐私设置为“Everyone”。',
 		imageSaved: '成绩卡已保存',
 		imageFailed: '无法保存成绩卡',
 		publicBanner: '共享回放 — 只读查看',

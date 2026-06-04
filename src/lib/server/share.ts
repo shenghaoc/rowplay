@@ -3,6 +3,7 @@ import { error } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { WorkoutDetail } from '../types';
 import { mockWorkoutDetail } from '../mockData';
+import { isPubliclyShareable } from '../privacy';
 import { resolveDemoBoardShare } from '../mockLeaderboard';
 import { getConfig } from './config';
 import { loadWorkoutDetail } from './data';
@@ -15,6 +16,10 @@ import {
 } from './db';
 
 const KV_PREFIX = 'share:';
+
+/** Fallback message for a blocked share; the UI localizes via `share.privacyBlocked`. */
+const PRIVACY_BLOCKED =
+	'This workout isn’t public on Concept2, so it can’t be shared. Set its privacy to “Everyone” in your logbook first.';
 
 /** 48 hex chars — unguessable capability URL segment. */
 export function generateShareToken(): string {
@@ -78,6 +83,7 @@ export async function createWorkoutShare(
 	if (event.locals.demo) {
 		const detail = mockWorkoutDetail(workoutId);
 		if (!detail) throw error(404, 'Workout not found.');
+		if (!isPubliclyShareable(detail.privacy)) throw error(403, PRIVACY_BLOCKED);
 		const kv = event.platform?.env?.SESSIONS;
 		if (!kv) throw error(500, 'Share store is not configured.');
 		// Reuse a stable token per workout via a reverse index so repeated shares
@@ -97,6 +103,11 @@ export async function createWorkoutShare(
 	const db = event.platform?.env?.DB;
 	if (!db) throw error(500, 'Database is not configured.');
 
+	// Load the workout up front so a non-public piece is blocked before any token
+	// is minted or returned — even one shared earlier while it was still public.
+	const detail = await loadWorkoutDetail(event, workoutId);
+	if (!isPubliclyShareable(detail.privacy)) throw error(403, PRIVACY_BLOCKED);
+
 	const existing = await getShareToken(db, userId, workoutId);
 	if (existing) {
 		return {
@@ -107,7 +118,6 @@ export async function createWorkoutShare(
 		};
 	}
 
-	const detail = await loadWorkoutDetail(event, workoutId);
 	await putCachedDetail(db, userId, detail);
 	// putCachedDetail swallows write errors, so confirm the payload actually
 	// landed — otherwise the share URL would resolve to nothing and 404.

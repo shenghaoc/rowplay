@@ -1014,6 +1014,10 @@
 		sharing = true;
 		try {
 			const res = await fetch(`/api/workouts/${detail.id}/share`, { method: 'POST' });
+			if (res.status === 403) {
+				toast.error(t('share.privacyBlocked'));
+				return;
+			}
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const body = (await res.json()) as { url: string };
 			const title = detail.workoutType || detail.sport;

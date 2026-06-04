@@ -311,6 +311,7 @@ export const en = {
 		linkCopied: 'Share link copied',
 		linkReady: 'Anyone with this link can watch the replay',
 		shareFailed: 'Could not create share link',
+		privacyBlocked: 'This workout isn’t public on Concept2, so it can’t be shared. Set its privacy to “Everyone” in your logbook first.',
 		imageSaved: 'Race card saved',
 		imageFailed: 'Could not save race card',
 		publicBanner: 'Shared replay — read-only view',
