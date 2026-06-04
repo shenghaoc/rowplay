@@ -29,17 +29,17 @@ visible inside an individual replay — there is no long-run view.
 
 ## Data source
 
-The workout summary list already loaded for the dashboard. Each `WorkoutSummary`
-is expected to carry `totalDistance`, `totalTime`, and optionally `strokeCount`
-(total strokes for the piece). Workouts without `strokeCount` are excluded from
-the chart (no imputation).
+The workout summary list already loaded for the dashboard. Each `Workout`
+is expected to carry `distance`, `time`, and optionally `strokeCount`
+(total strokes for the piece). Workouts without `strokeCount` or with average
+pace ≤ 0 are excluded from the chart (no imputation — division-by-zero guard).
 
 No new D1 queries or API calls are needed.
 
 ## Pure module — `src/lib/dpsTrend.ts`
 
 ```ts
-import type { WorkoutSummary, Sport } from '$lib/types';
+import type { Workout, Sport } from '$lib/types';
 
 export interface DpsPoint {
   date: string;           // ISO date string
@@ -57,13 +57,14 @@ export interface MovingAvgPoint {
 }
 
 /**
- * Compute one DpsPoint per workout that has a stroke count.
- * Workouts without strokeCount are excluded (not imputed).
+ * Compute one DpsPoint per workout that has a stroke count and valid pace.
+ * Workouts without strokeCount or with average pace ≤ 0 are excluded
+ * (no imputation, division-by-zero guard).
  * referencePace: median avgPaceSecs across the returned points,
  *   or 120 if fewer than 3 points.
  */
 export function computeDpsTrend(
-  workouts: WorkoutSummary[],
+  workouts: Workout[],
   sport?: Sport,
 ): DpsPoint[];
 
