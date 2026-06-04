@@ -4,7 +4,7 @@ import {
 	paceToWattsForSport,
 	wattsToPaceForSport
 } from './format';
-import { dayKeyEpochMillis, todayKeyUtc } from './datetime';
+import { dayKeyEpochMillis, todayKeyForTz, todayKeyUtc, workoutLocalDayKey } from './datetime';
 
 // ---------------------------------------------------------------------------
 // Pure analysis helpers. No DOM, no Svelte — safe to use on server or client,
@@ -94,6 +94,51 @@ export function distanceBand(metres: number): DistanceBand {
 		if (metres >= lo && metres < hi) return { key: `r${lo}`, label: l, nominal: (lo + Math.min(hi, lo * 2)) / 2 };
 	}
 	return { key: 'other', label: 'Other', nominal: metres };
+}
+
+export interface DurationBand {
+	/** Stable key, e.g. "1800". */
+	key: string;
+	label: string;
+	/** Nominal duration in seconds (for sorting). */
+	nominal: number;
+}
+
+/**
+ * Bucket a workout duration into a like-for-like band so 30min-vs-30min
+ * compares correctly and a 20min piece is not raced against a 60min piece.
+ * Mirrors `distanceBand` for fixed-time pieces.
+ */
+export function durationBand(seconds: number): DurationBand {
+	const standards = [
+		{ s: 60, l: '1 min' },
+		{ s: 240, l: '4 min' },
+		{ s: 1200, l: '20 min' },
+		{ s: 1800, l: '30 min' },
+		{ s: 3600, l: '60 min' }
+	];
+	for (const t of standards) {
+		if (Math.abs(seconds - t.s) <= t.s * 0.1) {
+			return { key: String(t.s), label: t.l, nominal: t.s };
+		}
+	}
+	const ranges: [number, number, string][] = [
+		[0, 90, '<90s'],
+		[90, 360, '90s–6m'],
+		[360, 900, '6–15m'],
+		[900, 2400, '15–40m'],
+		[2400, 4800, '40–80m'],
+		[4800, Infinity, '80m+']
+	];
+	for (const [lo, hi, l] of ranges) {
+		if (seconds >= lo && seconds < hi) {
+			// For the lowest band lo === 0, so Math.min(hi, lo*2) would be 0 and the
+			// nominal would collapse to 0 — use hi as the upper bound in that case.
+			const upper = lo === 0 ? hi : Math.min(hi, lo * 2);
+			return { key: `r${lo}`, label: l, nominal: (lo + upper) / 2 };
+		}
+	}
+	return { key: 'other', label: 'Other', nominal: seconds };
 }
 
 export interface SportSummary {
@@ -252,6 +297,100 @@ export function distancePerStroke(pace: number, spm: number): number {
 	const speed = 500 / pace; // m/s
 	const strokesPerSec = spm / 60;
 	return speed / strokesPerSec;
+}
+
+export interface EfficiencyDriftResult {
+	/** Valid DPS points only; t = stroke time in seconds. */
+	series: { t: number; dps: number }[];
+	/** Mean DPS over the opening segment. 0 when insufficient data. */
+	baseline: number;
+	/** Distance at which the opening segment closes (metres). */
+	baselineEndD: number;
+	/** Closing-segment mean DPS minus baseline (negative = fade). */
+	fadeDelta: number;
+	/** fadeDelta / baseline × 100, or 0 when baseline is 0. */
+	fadePercent: number;
+}
+
+const EMPTY_DRIFT: EfficiencyDriftResult = {
+	series: [],
+	baseline: 0,
+	baselineEndD: 0,
+	fadeDelta: 0,
+	fadePercent: 0
+};
+
+function openingSegmentThreshold(totalDistance: number): number {
+	return totalDistance < 5000 ? totalDistance * 0.1 : 500;
+}
+
+/** Mean DPS over strokes from the piece start until the distance threshold (min 5). */
+function openingSegment(
+	valid: { stroke: Stroke; dps: number }[],
+	threshold: number
+): { strokes: { stroke: Stroke; dps: number }[]; endD: number } {
+	const minCount = 5;
+	// Measure the opening span from the FIRST valid stroke, mirroring how
+	// closingSegment measures span from the end. Using absolute cumulative
+	// distance here would collapse the opening to the min-5 floor whenever
+	// leading strokes are invalid and the first valid stroke already sits past
+	// the threshold (e.g. d = 700 m on a long piece).
+	const firstD = valid[0]!.stroke.d;
+	let endIdx = Math.min(minCount - 1, valid.length - 1);
+	for (let i = 0; i < valid.length; i++) {
+		endIdx = i;
+		if (valid[i]!.stroke.d - firstD >= threshold && i >= minCount - 1) break;
+	}
+	const strokes = valid.slice(0, endIdx + 1);
+	return { strokes, endD: strokes[strokes.length - 1]!.stroke.d };
+}
+
+/** Mean DPS over strokes from the piece end until the distance threshold (min 5). */
+function closingSegment(
+	valid: { stroke: Stroke; dps: number }[],
+	threshold: number
+): { stroke: Stroke; dps: number }[] {
+	const totalD = valid[valid.length - 1]!.stroke.d;
+	const minCount = 5;
+	let startIdx = 0;
+	for (let i = valid.length - 1; i >= 0; i--) {
+		startIdx = i;
+		const spanFromEnd = totalD - valid[i]!.stroke.d;
+		if (spanFromEnd >= threshold && valid.length - i >= minCount) break;
+	}
+	return valid.slice(startIdx);
+}
+
+/**
+ * Within-piece DPS drift: opening-segment baseline, full valid series, and
+ * closing-vs-opening fade summary. Pure; no DOM.
+ */
+export function efficiencyDrift(strokes: Stroke[]): EfficiencyDriftResult {
+	const valid: { stroke: Stroke; dps: number }[] = [];
+	for (const s of strokes) {
+		const dps = distancePerStroke(s.pace, s.spm);
+		if (dps > 0) valid.push({ stroke: s, dps });
+	}
+	if (valid.length < 5) return { ...EMPTY_DRIFT };
+
+	const series = valid.map(({ stroke: s, dps }) => ({ t: s.t, dps }));
+	const totalD = valid[valid.length - 1]!.stroke.d;
+	const threshold = openingSegmentThreshold(totalD);
+
+	const opening = openingSegment(valid, threshold);
+	const closing = closingSegment(valid, threshold);
+	const baseline = mean(opening.strokes.map((x) => x.dps));
+	const closingMean = mean(closing.map((x) => x.dps));
+	const fadeDelta = closingMean - baseline;
+	const fadePercent = baseline > 0 ? (fadeDelta / baseline) * 100 : 0;
+
+	return {
+		series,
+		baseline,
+		baselineEndD: opening.endD,
+		fadeDelta,
+		fadePercent
+	};
 }
 
 export interface TechniqueSummary {
@@ -588,10 +727,14 @@ export function trainingLoad(workouts: Workout[], cpIn?: CriticalPower | null): 
 	// Carry the curve through to today so a recent rest block shows as freshness.
 	const today = dayKeyEpochMillis(todayKeyUtc());
 
-	// Sum TSS per calendar day. The date-only key sidesteps timezone drift. We
-	// also clamp to a sane window — a corrupted date (year 0001, or a far-future
-	// timestamp) would otherwise make the day-by-day loop below run for millions
-	// of iterations and hang the page.
+	// Sum TSS per calendar day. The PMC/fitness curve intentionally buckets by the
+	// UTC date-only key — it is deliberately outside the home-timezone day-bucketing
+	// scope (which covers the calendar / heatmap / streak surfaces). A ±1-day shift
+	// on a multi-week exponentially-weighted curve is immaterial, and keeping it
+	// tz-free avoids threading homeTz through this hot loop. We also clamp to a sane
+	// window — a corrupted date (year 0001, or a far-future timestamp) would
+	// otherwise make the day-by-day loop below run for millions of iterations and
+	// hang the page.
 	const EPOCH_2000 = 946_684_800_000;
 	const byDay = new Map<number, number>();
 	let firstDay = Infinity;
@@ -820,15 +963,15 @@ export interface DayVolume {
 	sessions: number;
 }
 
-/** Logbook timestamps are `YYYY-MM-DD HH:MM:SS` — slice avoids TZ shifts. */
-export function workoutDayKey(date: string): string {
-	return date.slice(0, 10);
+/** Logbook day key with optional workout/home timezone resolution. */
+export function workoutDayKey(date: string, workoutTz?: string, homeTz?: string): string {
+	return workoutLocalDayKey(date, workoutTz, homeTz);
 }
 
-export function aggregateDailyVolume(workouts: Workout[]): Map<string, DayVolume> {
+export function aggregateDailyVolume(workouts: Workout[], homeTz?: string): Map<string, DayVolume> {
 	const map = new Map<string, DayVolume>();
 	for (const w of workouts) {
-		const day = workoutDayKey(w.date);
+		const day = workoutDayKey(w.date, w.timezone, homeTz);
 		const e = map.get(day) ?? { day, distance: 0, time: 0, sessions: 0 };
 		e.distance += w.distance;
 		e.time += w.time;
@@ -950,16 +1093,20 @@ export function buildTrainingCalendar(
 		weeks?: number;
 		metric?: VolumeMetric;
 		maxLevel?: number;
+		/** User home IANA timezone for bucketing when workout tz is absent. */
+		homeTz?: string;
 	}
 ): TrainingCalendar {
 	const weeks = options?.weeks ?? 53;
 	const metric = options?.metric ?? 'distance';
 	const maxLevel = options?.maxLevel ?? 4;
+	const homeTz = options?.homeTz;
 
-	const byDay = aggregateDailyVolume(workouts);
+	const byDay = aggregateDailyVolume(workouts, homeTz);
 	const historyDays = [...byDay.keys()].sort();
 	const endDay =
-		options?.endDay ?? (historyDays.length ? historyDays[historyDays.length - 1] : todayKeyUtc());
+		options?.endDay ??
+		(historyDays.length ? historyDays[historyDays.length - 1] : todayKeyForTz(homeTz));
 
 	const endSunday = addDaysToKey(endDay, -dayOfWeekUtc(endDay));
 	const startDay = addDaysToKey(endSunday, -(weeks - 1) * 7);
@@ -1280,12 +1427,24 @@ function daysBetweenUtc(from: string, to: string): number {
 export function annualGoalProgress(
 	workouts: Workout[],
 	goal: AnnualGoal,
-	endDay?: string
+	endDay?: string,
+	homeTz?: string
 ): AnnualGoalProgress {
-	const end = endDay ?? todayKeyUtc();
+	const end = endDay ?? todayKeyForTz(homeTz);
 	const year = goal.year;
 	const yearPrefix = `${year}-`;
-	const inYear = workouts.filter((w) => workoutDayKey(w.date).startsWith(yearPrefix));
+	// Pre-filter on the raw date's year (a cheap string slice) before the
+	// Temporal-backed workoutDayKey: a tz shift moves a workout by at most one
+	// day, so only the adjacent years can cross into `year`. This skips Temporal
+	// work for the bulk of a multi-year history.
+	const prevYearStr = String(year - 1);
+	const nextYearStr = String(year + 1);
+	const inYear = workouts
+		.filter((w) => {
+			const wYear = w.date.slice(0, 4);
+			return wYear === String(year) || wYear === prevYearStr || wYear === nextYearStr;
+		})
+		.filter((w) => workoutDayKey(w.date, w.timezone, homeTz).startsWith(yearPrefix));
 	const current =
 		goal.kind === 'meters'
 			? inYear.reduce((s, w) => s + challengeDistanceMetres(w), 0)
@@ -1323,11 +1482,14 @@ export interface TrainingStreakStats {
 }
 
 export function weeklyConsistency(
-	workouts: Workout[],
+	workouts: Workout[] | Set<string>,
 	endDay: string,
-	lookbackWeeks = 8
+	lookbackWeeks = 8,
+	homeTz?: string
 ): { activeWeeks: number; totalWeeks: number } {
-	const activeDays = new Set([...aggregateDailyVolume(workouts).keys()].filter((d) => d <= endDay));
+	const activeDays = workouts instanceof Set
+		? workouts
+		: new Set([...aggregateDailyVolume(workouts, homeTz).keys()].filter((d) => d <= endDay));
 	let activeWeeks = 0;
 	for (let w = 0; w < lookbackWeeks; w++) {
 		const weekEnd = addDaysToKey(endDay, -w * 7);
@@ -1343,9 +1505,10 @@ export function weeklyConsistency(
 	return { activeWeeks, totalWeeks: lookbackWeeks };
 }
 
-export function trainingStreakStats(workouts: Workout[], endDay?: string): TrainingStreakStats {
-	const end = endDay ?? todayKeyUtc();
-	const historyDays = [...aggregateDailyVolume(workouts).keys()].filter((d) => d <= end).sort();
+export function trainingStreakStats(workouts: Workout[], endDay?: string, homeTz?: string): TrainingStreakStats {
+	const end = endDay ?? todayKeyForTz(homeTz);
+	const activeDaysList = [...aggregateDailyVolume(workouts, homeTz).keys()].filter((d) => d <= end);
+	const historyDays = [...activeDaysList].sort();
 	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, end);
 	const lastDay = historyDays.length ? historyDays[historyDays.length - 1] : null;
 	const daysSinceLastSession = lastDay != null ? daysBetweenUtc(lastDay, end) : null;
@@ -1353,7 +1516,7 @@ export function trainingStreakStats(workouts: Workout[], endDay?: string): Train
 		currentStreak,
 		longestStreak,
 		daysSinceLastSession,
-		weeklyConsistency: weeklyConsistency(workouts, end)
+		weeklyConsistency: weeklyConsistency(new Set(activeDaysList), end, 8, homeTz)
 	};
 }
 
@@ -1394,10 +1557,10 @@ const CLUB_DISTANCES: { id: BadgeId; metres: number }[] = [
 ];
 
 /** Any rolling 7-day window with at least one session on each Concept2 sport. */
-export function hasEverySportWeek(workouts: Workout[]): boolean {
+export function hasEverySportWeek(workouts: Workout[], homeTz?: string): boolean {
 	const daySports = new Map<string, Set<Sport>>();
 	for (const w of workouts) {
-		const day = workoutDayKey(w.date);
+		const day = workoutDayKey(w.date, w.timezone, homeTz);
 		if (!daySports.has(day)) daySports.set(day, new Set());
 		daySports.get(day)!.add(w.sport);
 	}
@@ -1415,7 +1578,8 @@ export function hasEverySportWeek(workouts: Workout[]): boolean {
 
 export function athleteBadges(
 	workouts: Workout[],
-	pbs: ReturnType<typeof distancePBs>
+	pbs: ReturnType<typeof distancePBs>,
+	homeTz?: string
 ): AthleteBadge[] {
 	const totalMeters = workouts.reduce((s, w) => s + challengeDistanceMetres(w), 0);
 	const pbDistances = new Set(pbs.map((p) => p.distance));
@@ -1432,7 +1596,7 @@ export function athleteBadges(
 	for (const { id, metres } of CLUB_DISTANCES) {
 		badges.push({ id, earned: pbDistances.has(metres) });
 	}
-	badges.push({ id: 'every_sport_week', earned: hasEverySportWeek(workouts) });
+	badges.push({ id: 'every_sport_week', earned: hasEverySportWeek(workouts, homeTz) });
 	return badges;
 }
 

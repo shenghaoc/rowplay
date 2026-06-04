@@ -533,6 +533,16 @@ export const fr = {
 		metaSerial: 'Numéro de série',
 		metaDevice: 'Appareil'
 	},
+	drift: {
+		toggle: 'Afficher la dérive d’efficacité',
+		toggleOn: 'Masquer la dérive d’efficacité',
+		baseline: 'Référence d’ouverture',
+		fade: 'Perte d’efficacité',
+		unit: ' m/coup',
+		summaryTitle: 'Dérive de distance par coup',
+		summaryHint: 'Évolution du DPS du segment d’ouverture à la fin',
+		axisLabel: 'DPS'
+	},
 	settings: {
 		title: 'Compte et données',
 		eyebrow: 'Confidentialité et contrôle',
@@ -566,7 +576,16 @@ export const fr = {
 			'Supprimer toutes les séances en cache et les données replay de rowplay et se déconnecter ? Votre logbook Concept2 ne sera pas modifié.',
 		deleteDemo: 'Mode démo — rien n’a été stocké, rien à supprimer.',
 		deleteDone: 'Données en cache effacées. Vous êtes déconnecté.',
-		deleteFailed: 'Impossible d’effacer les données en cache'
+		deleteFailed: 'Impossible d’effacer les données en cache',
+		timezoneTitle: 'Fuseau horaire principal',
+		timezoneNote:
+			'Choisissez votre fuseau local pour que les séances près de minuit apparaissent sur le bon jour du calendrier.',
+		timezoneLabel: 'Fuseau horaire principal',
+		timezoneSaved: 'Fuseau horaire enregistré',
+		timezoneUtcDefault: 'UTC (par défaut)',
+		timezoneGroupAmericas: 'Amériques',
+		timezoneGroupEuropeAfrica: 'Europe / Afrique',
+		timezoneGroupAsiaPacific: 'Asie / Pacifique'
 	},
 	token: {
 		title: 'Utiliser votre jeton Concept2',
@@ -585,6 +604,19 @@ export const fr = {
 		preferBefore: 'Vous préférez le flux standard ? ',
 		preferLink: 'Connecter Concept2'
 	},
+	comparability: {
+		blockedTitle: 'Séances non comparables',
+		guidance:
+			'Choisissez deux séances sur la même machine, du même type et dans la même bande de distance ou de durée.',
+		noComparableCandidates: 'Aucune séance comparable trouvée.',
+		groupComparable: 'Comparables',
+		groupIncomparable: 'Autres (non comparables)',
+		reason: {
+			crossSport: 'Ces séances sont sur des machines différentes.',
+			crossAxis: "L'une est une pièce à distance fixe, l'autre à temps fixe.",
+			crossBand: 'Ces séances sont dans des bandes de distance ou de durée différentes.'
+		}
+	},
 	compare: {
 		title: 'Comparer des séances',
 		lead: 'Statistiques côte à côte et graphiques superposés pour deux séances au choix.',
@@ -595,7 +627,6 @@ export const fr = {
 		run: 'Comparer',
 		swap: 'Inverser',
 		pickTwo: 'Choisissez deux séances ci-dessus pour comparer.',
-		crossSport: 'Sports différents — les échelles d’allure et de puissance peuvent ne pas être directement comparables.',
 		deltaTable: 'Statistiques face à face',
 		deltaHint: 'Un delta positif signifie que la séance A est plus élevée.',
 		alignedNote: 'Aligné sur {distance}',

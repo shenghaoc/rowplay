@@ -533,6 +533,16 @@ export const de = {
 		metaSerial: 'Seriennummer',
 		metaDevice: 'Gerät'
 	},
+	drift: {
+		toggle: 'Effizienzdrift anzeigen',
+		toggleOn: 'Effizienzdrift ausblenden',
+		baseline: 'Eröffnungs-Baseline',
+		fade: 'Effizienzverlust',
+		unit: ' m/Schlag',
+		summaryTitle: 'Schlaglängen-Drift',
+		summaryHint: 'DPS-Änderung vom Eröffnungssegment bis zum Schluss',
+		axisLabel: 'DPS'
+	},
 	settings: {
 		title: 'Konto & Daten',
 		eyebrow: 'Datenschutz & Kontrolle',
@@ -566,7 +576,16 @@ export const de = {
 			'Alle gecachten Workouts und Replay-Daten aus rowplay löschen und abmelden? Dein Concept2-Logbuch wird nicht geändert.',
 		deleteDemo: 'Demo-Modus — nichts wurde gespeichert, es gibt nichts zu löschen.',
 		deleteDone: 'Gecachte Daten gelöscht. Du wurdest abgemeldet.',
-		deleteFailed: 'Gecachte Daten konnten nicht gelöscht werden'
+		deleteFailed: 'Gecachte Daten konnten nicht gelöscht werden',
+		timezoneTitle: 'Heimatzeitzone',
+		timezoneNote:
+			'Wähle deine lokale Zeitzone, damit Training nahe Mitternacht auf dem richtigen Kalendertag erscheint.',
+		timezoneLabel: 'Heimatzeitzone',
+		timezoneSaved: 'Zeitzone gespeichert',
+		timezoneUtcDefault: 'UTC (Standard)',
+		timezoneGroupAmericas: 'Amerika',
+		timezoneGroupEuropeAfrica: 'Europa / Afrika',
+		timezoneGroupAsiaPacific: 'Asien / Pazifik'
 	},
 	token: {
 		title: 'Dein Concept2-Token verwenden',
@@ -585,6 +604,19 @@ export const de = {
 		preferBefore: 'Lieber der Standardweg? ',
 		preferLink: 'Concept2 verbinden'
 	},
+	comparability: {
+		blockedTitle: 'Nicht vergleichbare Workouts',
+		guidance:
+			'Wähle zwei Workouts auf demselben Gerät, mit demselben Stücktyp und in derselben Distanz- oder Dauerband.',
+		noComparableCandidates: 'Keine vergleichbaren Einheiten gefunden.',
+		groupComparable: 'Vergleichbar',
+		groupIncomparable: 'Sonstige (nicht vergleichbar)',
+		reason: {
+			crossSport: 'Diese Workouts sind auf verschiedenen Geräten.',
+			crossAxis: 'Eines ist ein Distanzstück, das andere ein Zeitstück.',
+			crossBand: 'Diese Workouts liegen in verschiedenen Distanz- oder Dauerbändern.'
+		}
+	},
 	compare: {
 		title: 'Workouts vergleichen',
 		lead: 'Statistiken nebeneinander und überlagerte Charts für beliebige zwei Einheiten.',
@@ -595,7 +627,6 @@ export const de = {
 		run: 'Vergleichen',
 		swap: 'Tauschen',
 		pickTwo: 'Wähle oben zwei Workouts zum Vergleichen.',
-		crossSport: 'Verschiedene Sportarten — Pace- und Power-Skalen sind evtl. nicht direkt vergleichbar.',
 		deltaTable: 'Direktvergleich',
 		deltaHint: 'Positives Delta bedeutet, Workout A ist höher.',
 		alignedNote: 'Ausgerichtet über {distance}',

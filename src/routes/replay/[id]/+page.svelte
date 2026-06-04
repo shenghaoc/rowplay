@@ -20,6 +20,7 @@
 		hrZones,
 		powerCurve,
 		techniqueSummary,
+		efficiencyDrift,
 		efficiencyByRate,
 		intervalBreakdown,
 		targetVsActual,
@@ -44,6 +45,7 @@
 		writeHrOverlay
 	} from '$lib/hrImport';
 	import { pickDefaultGhostCandidate } from '$lib/replay/ghostPick';
+	import { areComparable } from '$lib/replay/comparabilityGuard';
 	import { toast } from 'svelte-sonner';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Play from '@lucide/svelte/icons/play';
@@ -139,10 +141,20 @@
 	let fileName = $state('');
 
 	const SEARCHABLE_MIN = 8;
+	const comparableDetail = $derived({
+		sport: detail.sport,
+		distance: detail.distance,
+		time: detail.time,
+		workoutType: detail.workoutType
+	});
+	const comparableCandidates = $derived(
+		candidates.filter((c) => areComparable(comparableDetail, c))
+	);
 	const filteredCandidates = $derived.by(() => {
 		const q = sessionSearch.trim().toLowerCase();
-		if (!q) return candidates;
-		return candidates.filter((c) => {
+		const pool = comparableCandidates;
+		if (!q) return pool;
+		return pool.filter((c) => {
 			if (String(c.id) === ghostId) return true;
 			const hay = `${fmtDate(c.date)} ${fmtDistance(c.distance)} ${fmtPace(c.pace)}`.toLowerCase();
 			return hay.includes(q);
@@ -154,6 +166,7 @@
 	let rendererKind = $state<RendererKind>('2d');
 	let quality = $state<RenderQuality>('medium');
 	let inspectorOpen = $state(false);
+	let driftOverlayOn = $state(false);
 	let loading3d = $state(false);
 	let webglOk = $state(false);
 	let Ctor3D: Renderer3DCtor | null = null;
@@ -341,6 +354,7 @@
 			sessionSearch = '';
 			fileName = '';
 			ghostError = '';
+			driftOverlayOn = false;
 			renderer?.destroy();
 			renderer = null;
 			engine = new ReplayEngine(s, (f, p) => {
@@ -487,11 +501,13 @@
 		compareMode = mode;
 		sessionSearch = '';
 		clearGhost();
-		if (mode === 'session' && candidates.length) {
+		if (mode === 'session' && comparableCandidates.length) {
 			const pick = pickDefaultGhostCandidate(candidates, {
 				id: detail.id,
 				distance: detail.distance,
-				sport: detail.sport
+				sport: detail.sport,
+				time: detail.time,
+				workoutType: detail.workoutType
 			});
 			if (pick) void loadSessionGhost(String(pick.id));
 		}
@@ -652,12 +668,84 @@
 		});
 	}
 
-	const paceData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.pace)]);
+	const drift = $derived(efficiencyDrift(strokes));
+	const driftReady = $derived(drift.series.length >= 5);
+
+	const dpsAligned = $derived.by(() => {
+		if (!driftOverlayOn || !driftReady) return null;
+		const aligned: (number | null)[] = [];
+		let driftIdx = 0;
+		const series = drift.series;
+		for (let i = 0; i < xs.length; i++) {
+			const t = xs[i];
+			if (driftIdx < series.length && series[driftIdx]!.t === t) {
+				aligned.push(series[driftIdx]!.dps);
+				driftIdx++;
+			} else {
+				aligned.push(null);
+			}
+		}
+		return aligned;
+	});
+
+	const paceSeries = $derived(strokes.map((s) => s.pace));
+	const paceData = $derived<uPlot.AlignedData>(
+		dpsAligned ? [xs, paceSeries, dpsAligned] : [xs, paceSeries]
+	);
 	const rateData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.spm)]);
 	const powerData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.watts)]);
 	const hrData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.hr ?? null)]);
 
-	const paceOpts = $derived(metricOpts('pace', 'pace', true, (v) => fmtPace(v).replace('/500m', '')));
+	const paceOpts = $derived.by(() => {
+		if (!driftOverlayOn || !dpsAligned) {
+			return metricOpts('pace', 'pace', true, (v) => fmtPace(v).replace('/500m', ''));
+		}
+		const baseline = drift.baseline;
+		return baseOptions({
+			theme: chart,
+			xFmt: (v) => fmtTime(v),
+			yAxes: [
+				{ size: 52, fmt: (v) => fmtPace(v).replace('/500m', ''), invert: true },
+				{
+					scale: 'y2',
+					side: 1,
+					size: 48,
+					grid: false,
+					fmt: (v) => `${v.toFixed(1)}`
+				}
+			],
+			series: [
+				{ label: 'pace', role: 'pace', width: 1.5, fill: true },
+				{
+					label: t('drift.axisLabel'),
+					role: 'dps',
+					scale: 'y2',
+					width: 1.5,
+					spanGaps: false
+				}
+			],
+			cursor: { x: true, y: false },
+			hooks: {
+				draw: [
+					(u: uPlot) => {
+						if (baseline <= 0) return;
+						const y = u.valToPos(baseline, 'y2', true);
+						if (!isFinite(y)) return;
+						const ctx = u.ctx;
+						ctx.save();
+						ctx.strokeStyle = chart.cursor;
+						ctx.setLineDash([4, 4]);
+						ctx.lineWidth = 1;
+						ctx.beginPath();
+						ctx.moveTo(u.bbox.left, y);
+						ctx.lineTo(u.bbox.left + u.bbox.width, y);
+						ctx.stroke();
+						ctx.restore();
+					}
+				]
+			}
+		});
+	});
 	const rateOpts = $derived(metricOpts('rate', 'rate', false, (v) => `${Math.round(v)}`));
 	const powerOpts = $derived(metricOpts('power', 'power', false, (v) => `${Math.round(v)}w`));
 	const hrOpts = $derived(metricOpts('hr', 'hr', false, (v) => `${Math.round(v)}`));
@@ -1144,8 +1232,8 @@
 			>{t('replay.uploadedFile')}</button>
 		</div>
 
-		{#if compareMode === 'session' && candidates.length}
-			{#if candidates.length >= SEARCHABLE_MIN}
+		{#if compareMode === 'session' && comparableCandidates.length}
+			{#if comparableCandidates.length >= SEARCHABLE_MIN}
 				<search>
 				<input
 					class="session-search"
@@ -1166,6 +1254,8 @@
 					</option>
 				{/each}
 			</select>
+		{:else if compareMode === 'session' && !comparableCandidates.length}
+			<p class="muted small">{t('comparability.noComparableCandidates')}</p>
 		{:else if compareMode === 'pace'}
 			<input
 				class="paceinput mono"
@@ -1358,7 +1448,36 @@
 	<!-- Telemetry traces -->
 	<div class="charts">
 		<div class="card bg-base-100 border border-base-300 shadow-md p-5">
-			<div class="ctitle muted">{t('replay.cPace')}</div>
+			<div class="pace-card-head">
+				<div class="ctitle muted">{t('replay.cPace')}</div>
+				{#if driftReady}
+					<button
+						type="button"
+						class="vbtn drift-toggle"
+						data-testid="drift-toggle"
+						aria-pressed={driftOverlayOn}
+						onclick={() => (driftOverlayOn = !driftOverlayOn)}
+					>
+						{driftOverlayOn ? t('drift.toggleOn') : t('drift.toggle')}
+					</button>
+				{/if}
+			</div>
+			{#if driftOverlayOn && driftReady}
+				<div class="drift-summary" data-testid="drift-summary">
+					<span class="muted small">{t('drift.baseline')}</span>
+					<span class="mono">{drift.baseline.toFixed(1)}{t('drift.unit')}</span>
+					<span class="muted small">{t('drift.fade')}</span>
+					<span
+						class="mono"
+						class:good={drift.fadeDelta >= 0}
+						class:warn={drift.fadePercent < 0 && drift.fadePercent >= -5}
+						class:bad={drift.fadePercent < -5}
+					>
+						{drift.fadeDelta >= 0 ? '+' : ''}{drift.fadeDelta.toFixed(1)}{t('drift.unit')}
+						({drift.fadePercent >= 0 ? '+' : ''}{drift.fadePercent.toFixed(1)}%)
+					</span>
+				</div>
+			{/if}
 			<UPlotChart data={paceData} options={paceOpts} height={150} marker={frame.t} caption={t('replay.cPace')} />
 		</div>
 		<div class="card bg-base-100 border border-base-300 shadow-md p-5">
@@ -2086,6 +2205,34 @@
 		color: var(--ahead);
 	}
 	.tv.bad {
+		color: var(--behind);
+	}
+	.drift-summary .mono.warn {
+		color: var(--warn);
+	}
+	.pace-card-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		margin-bottom: 0.35rem;
+	}
+	.drift-toggle {
+		font-size: 0.78rem;
+	}
+	.drift-summary {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.35rem 0.6rem;
+		margin-bottom: 0.5rem;
+		font-size: 0.85rem;
+	}
+	.drift-summary .mono.good {
+		color: var(--ahead);
+	}
+	.drift-summary .mono.bad {
 		color: var(--behind);
 	}
 	.tu {

@@ -6,7 +6,8 @@ vi.mock('$lib/server/data', () => ({
 	loadWorkoutList: vi.fn().mockResolvedValue([]),
 	loadDashboardAggregates: vi.fn().mockResolvedValue({ totalDistance: 0, totalTime: 0, workoutCount: 0 }),
 	loadAnnualGoal: vi.fn().mockResolvedValue(null),
-	syncStatus: vi.fn().mockResolvedValue({ lastSyncAt: null })
+	syncStatus: vi.fn().mockResolvedValue({ lastSyncAt: null }),
+	loadHomeTimezone: vi.fn().mockResolvedValue(undefined)
 }));
 
 import { load } from './+page.server';

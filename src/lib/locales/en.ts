@@ -533,6 +533,16 @@ export const en = {
 		metaSerial: 'Serial number',
 		metaDevice: 'Device'
 	},
+	drift: {
+		toggle: 'Show efficiency drift',
+		toggleOn: 'Hide efficiency drift',
+		baseline: 'Opening baseline',
+		fade: 'Efficiency fade',
+		unit: ' m/st',
+		summaryTitle: 'Distance-per-stroke drift',
+		summaryHint: 'DPS change from opening segment to close',
+		axisLabel: 'DPS'
+	},
 	settings: {
 		title: 'Account & data',
 		eyebrow: 'Privacy & control',
@@ -566,7 +576,16 @@ export const en = {
 			'Delete all cached workouts and replay data from rowplay and sign out? Your Concept2 logbook will not be changed.',
 		deleteDemo: 'Demo mode — nothing was stored, so there is nothing to delete.',
 		deleteDone: 'Cached data cleared. You have been signed out.',
-		deleteFailed: 'Could not clear cached data'
+		deleteFailed: 'Could not clear cached data',
+		timezoneTitle: 'Home timezone',
+		timezoneNote:
+			'Choose your local timezone so workouts rowed near midnight appear on the right calendar day.',
+		timezoneLabel: 'Home timezone',
+		timezoneSaved: 'Timezone saved',
+		timezoneUtcDefault: 'UTC (default)',
+		timezoneGroupAmericas: 'Americas',
+		timezoneGroupEuropeAfrica: 'Europe / Africa',
+		timezoneGroupAsiaPacific: 'Asia / Pacific'
 	},
 	token: {
 		title: 'Use your Concept2 token',
@@ -585,6 +604,18 @@ export const en = {
 		preferBefore: 'Prefer the standard flow? ',
 		preferLink: 'Connect Concept2'
 	},
+	comparability: {
+		blockedTitle: 'Incomparable workouts',
+		guidance: 'Choose two workouts of the same machine, piece type, and distance or duration band.',
+		noComparableCandidates: 'No comparable sessions found.',
+		groupComparable: 'Comparable',
+		groupIncomparable: 'Other (incomparable)',
+		reason: {
+			crossSport: 'These workouts are on different machines.',
+			crossAxis: 'One is a fixed-distance piece; the other is a fixed-time piece.',
+			crossBand: 'These workouts are in different distance or duration bands.'
+		}
+	},
 	compare: {
 		title: 'Compare workouts',
 		lead: 'Side-by-side stats and overlay charts for any two sessions.',
@@ -595,7 +626,6 @@ export const en = {
 		run: 'Compare',
 		swap: 'Swap',
 		pickTwo: 'Pick two workouts above to compare.',
-		crossSport: 'Different sports — pace and power scales may not be directly comparable.',
 		deltaTable: 'Head-to-head stats',
 		deltaHint: 'Positive delta means workout A is higher.',
 		alignedNote: 'Aligned over {distance}',

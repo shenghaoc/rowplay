@@ -8,6 +8,14 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Database from '@lucide/svelte/icons/database';
 	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
+	import Globe from '@lucide/svelte/icons/globe';
+	import { TIMEZONE_OPTIONS } from '$lib/timezoneOptions';
+	import {
+		clearHomeTimezoneClient,
+		readHomeTimezoneClient,
+		writeHomeTimezoneClient
+	} from '$lib/homeTimezone';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
 	const i18n = getI18nContext();
@@ -16,6 +24,14 @@
 	let syncing = $state(false);
 	let syncMode = $state<'incremental' | 'full' | 'history' | null>(null);
 	let deleting = $state(false);
+	// Seed from server data so SSR renders the selected option (no flash of the
+	// default "UTC" option before hydration). Demo mode reads localStorage on mount.
+	let selectedTz = $state(data.homeTimezone ?? '');
+	let savingTz = $state(false);
+
+	onMount(() => {
+		if (data.demo) selectedTz = readHomeTimezoneClient() ?? '';
+	});
 
 	const syncHistoryNote = $derived.by(() => {
 		const sync = data.sync;
@@ -117,6 +133,33 @@
 		}
 	}
 
+	async function saveTimezone() {
+		if (savingTz) return;
+		savingTz = true;
+		const tz = selectedTz.trim() || undefined;
+		try {
+			if (data.demo) {
+				if (tz) writeHomeTimezoneClient(tz);
+				else clearHomeTimezoneClient();
+			} else {
+				const res = await fetch('/api/settings/timezone', {
+					method: 'PUT',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ timezone: tz ?? null })
+				});
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			}
+			await invalidateAll();
+			toast.success(t('settings.timezoneSaved'));
+		} catch (e) {
+			toast.error(t('common.tryAgain'), {
+				description: e instanceof Error ? e.message : undefined
+			});
+		} finally {
+			savingTz = false;
+		}
+	}
+
 	async function deleteData() {
 		if (deleting || syncing) return;
 		if (!confirm(t('settings.deleteConfirm'))) return;
@@ -167,6 +210,34 @@
 					<li>{t('settings.factSession')}</li>
 				{/if}
 			</ul>
+		</div>
+	</article>
+
+	<article class="card bg-base-100 border border-base-300 shadow-md p-5">
+		<div class="card-body p-0 gap-3">
+			<h2 class="section-head">
+				<Globe size={18} style="color: var(--ghost)" />
+				{t('settings.timezoneTitle')}
+			</h2>
+			<p class="muted">{t('settings.timezoneNote')}</p>
+			<label class="tzlabel" for="tz-select">{t('settings.timezoneLabel')}</label>
+			<select
+				id="tz-select"
+				name="timezone"
+				class="select select-bordered w-full max-w-md"
+				bind:value={selectedTz}
+				disabled={savingTz}
+				onchange={saveTimezone}
+			>
+				<option value="">{t('settings.timezoneUtcDefault')}</option>
+				{#each TIMEZONE_OPTIONS as group (group.group)}
+					<optgroup label={t(group.group)}>
+						{#each group.options as opt (opt.value)}
+							<option value={opt.value}>{opt.label}</option>
+						{/each}
+					</optgroup>
+				{/each}
+			</select>
 		</div>
 	</article>
 
@@ -331,6 +402,9 @@
 		font-family: var(--mono);
 		font-size: 0.82rem;
 		margin: 0;
+	}
+	.tzlabel {
+		font-size: 0.85rem;
 	}
 	.danger-card { border-color: color-mix(in srgb, var(--alarm) 45%, var(--hairline)); }
 	.danger-action { color: var(--alarm); }

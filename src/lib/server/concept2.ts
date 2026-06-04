@@ -248,6 +248,8 @@ interface RawResult {
 	comments?: string;
 	stroke_data?: boolean;
 	timezone?: string;
+	/** True UTC instant of workout end (Concept2 `date_utc`; null when the API omits it). */
+	date_utc?: string | null;
 	weight_class?: 'H' | 'L';
 	privacy?: string;
 	/** Concept2 results `source` — undocumented enum; docs illustrate Web/ErgData only. */
@@ -360,6 +362,7 @@ export function mapResult(r: RawResult, metadata?: RawMetadata): Workout {
 		workoutType: r.workout_type,
 		comments: r.comments,
 		timezone: r.timezone,
+		dateUtc: r.date_utc ?? undefined,
 		weightClass: r.weight_class,
 		privacy: r.privacy,
 		source: r.source,

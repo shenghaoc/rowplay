@@ -27,6 +27,25 @@ export interface SessionData {
 	 * personal API token the user pasted, used directly with no OAuth refresh.
 	 */
 	personal?: boolean;
+	/** IANA home timezone for calendar/streak bucketing when workout tz is absent. */
+	homeTimezone?: string;
+}
+
+export function getHomeTimezone(session: SessionData): string | undefined {
+	const tz = session.homeTimezone?.trim();
+	return tz || undefined;
+}
+
+export async function setHomeTimezone(
+	kv: KVNamespace,
+	sessionId: string,
+	session: SessionData,
+	tz: string | undefined
+): Promise<void> {
+	const next: SessionData = { ...session };
+	if (tz?.trim()) next.homeTimezone = tz.trim();
+	else delete next.homeTimezone;
+	await writeSession(kv, sessionId, next);
 }
 
 const PREFIX = 'sess:';

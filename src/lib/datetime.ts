@@ -95,6 +95,65 @@ export function todayKeyUtc(): string {
 	return Temporal.Now.plainDateISO('UTC').toString();
 }
 
+/**
+ * Convert a logbook PlainDateTime from `fromZone` into the calendar day in
+ * `toZone` (or the same zone when `toZone` is omitted / identical).
+ * The Concept2 `date` is monitor-local (confirmed in C2 API docs), so when
+ * `fromZone` matches the workout's actual timezone the plain-date portion
+ * *is* the workout's local day — no conversion needed for same-zone bucketing.
+ */
+function dayKeyInZone(pdt: Temporal.PlainDateTime, fromZone: string, toZone?: string): string | null {
+	try {
+		if (!toZone || toZone === fromZone) {
+			return pdt.toPlainDate().toString();
+		}
+		return pdt.toZonedDateTime(fromZone).withTimeZone(toZone).toPlainDate().toString();
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Calendar day key for a workout using the resolution chain: workout tz → home
+ * tz → plain-date fallback. The Concept2 `date` is monitor-local (confirmed in
+ * the C2 API docs), so when `workoutTz` is known the date string is taken as
+ * being in that zone — its plain-date portion *is* the workout's local day.
+ * Cross-zone conversion is only applied when `homeTz` differs from `workoutTz`.
+ * With no zone, the plain date part is used as-is. Never throws; invalid IANA
+ * strings fall through silently.
+ */
+export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: string): string {
+	if (typeof date !== 'string') return '';
+	const cleanWtz = workoutTz?.trim();
+	const cleanHtz = homeTz?.trim();
+	// Fast path: with no zone to convert into, the plain date part of the
+	// offset-less timestamp is the best we can do — skip Temporal parsing and
+	// allocation entirely (the overwhelming common case).
+	if (!cleanWtz && !cleanHtz) return date.slice(0, 10);
+
+	const pdt = parseLogbookDateTime(date);
+	if (!pdt) return date.slice(0, 10);
+
+	if (cleanWtz) {
+		// Date IS in workoutTz (monitor-local). Bucket in homeTz when it differs.
+		const day = dayKeyInZone(pdt, cleanWtz, cleanHtz !== cleanWtz ? cleanHtz : undefined);
+		if (day) return day;
+	}
+	// Fall back to the plain date part — either only homeTz was given (no source
+	// zone to convert from) or workoutTz was invalid.
+	return pdt.toPlainDate().toString();
+}
+
+/** Today as `YYYY-MM-DD` in the given IANA zone, or UTC when absent/invalid. */
+export function todayKeyForTz(tz?: string): string {
+	if (!tz?.trim()) return todayKeyUtc();
+	try {
+		return Temporal.Now.plainDateISO(tz.trim()).toString();
+	} catch {
+		return todayKeyUtc();
+	}
+}
+
 /** `YYYY-MM-DD` day key → UTC-midnight epoch milliseconds; NaN if unparseable. */
 export function dayKeyEpochMillis(key: string): number {
 	try {

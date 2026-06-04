@@ -88,6 +88,7 @@ interface WorkoutRow {
 	drag_factor: number | null;
 	workout_type: string | null;
 	comments: string | null;
+	timezone: string | null;
 	has_stroke: number;
 }
 
@@ -109,13 +110,14 @@ function rowToWorkout(r: WorkoutRow): Workout {
 		dragFactor: r.drag_factor ?? undefined,
 		workoutType: r.workout_type ?? undefined,
 		comments: r.comments ?? undefined,
+		timezone: r.timezone ?? undefined,
 		hasStrokeData: r.has_stroke === 1
 	};
 }
 
 const WORKOUT_SELECT = `SELECT workout_id, date, sport, distance, time, pace, stroke_rate, stroke_count,
 			        heart_rate, hr_min, hr_max, calories, watt_minutes, drag_factor, workout_type,
-			        comments, has_stroke`;
+			        comments, timezone, has_stroke`;
 
 /** All of a user's synced workouts, newest first. */
 export async function getAllWorkouts(db: D1Database, userId: number): Promise<Workout[]> {
@@ -295,8 +297,8 @@ export async function upsertWorkouts(
 	const stmt = db.prepare(
 		`INSERT INTO workouts (user_id, workout_id, date, sport, distance, time, pace,
 		        stroke_rate, stroke_count, heart_rate, hr_min, hr_max, calories, watt_minutes,
-		        drag_factor, workout_type, comments, has_stroke)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		        drag_factor, workout_type, comments, timezone, has_stroke)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(user_id, workout_id) DO UPDATE SET
 		   date=excluded.date, sport=excluded.sport, distance=excluded.distance,
 		   time=excluded.time, pace=excluded.pace, stroke_rate=excluded.stroke_rate,
@@ -304,7 +306,7 @@ export async function upsertWorkouts(
 		   hr_min=excluded.hr_min, hr_max=excluded.hr_max, calories=excluded.calories,
 		   watt_minutes=excluded.watt_minutes, drag_factor=excluded.drag_factor,
 		   workout_type=excluded.workout_type, comments=excluded.comments,
-		   has_stroke=excluded.has_stroke`
+		   timezone=excluded.timezone, has_stroke=excluded.has_stroke`
 	);
 	const batch = workouts.map((w) =>
 		stmt.bind(
@@ -325,6 +327,7 @@ export async function upsertWorkouts(
 			w.dragFactor ?? null,
 			w.workoutType ?? null,
 			w.comments ?? null,
+			w.timezone ?? null,
 			w.hasStrokeData ? 1 : 0
 		)
 	);

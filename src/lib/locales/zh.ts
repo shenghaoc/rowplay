@@ -532,6 +532,16 @@ export const zh = {
 		metaSerial: '序列号',
 		metaDevice: '设备'
 	},
+	drift: {
+		toggle: '显示效率漂移',
+		toggleOn: '隐藏效率漂移',
+		baseline: '开局基线',
+		fade: '效率衰减',
+		unit: ' 米/桨',
+		summaryTitle: '每桨距离漂移',
+		summaryHint: '从开局段到结束段的 DPS 变化',
+		axisLabel: 'DPS'
+	},
 	settings: {
 		title: '账户与数据',
 		eyebrow: '隐私与控制',
@@ -562,7 +572,15 @@ export const zh = {
 		deleteConfirm: '删除 rowplay 中所有已缓存的训练与回放数据并退出登录？你的 Concept2 日志不会被更改。',
 		deleteDemo: '演示模式——未存储任何数据，无需删除。',
 		deleteDone: '已清除缓存数据，你已退出登录。',
-		deleteFailed: '无法清除缓存数据'
+		deleteFailed: '无法清除缓存数据',
+		timezoneTitle: '主时区',
+		timezoneNote: '选择你的本地时区，使临近午夜划行的训练显示在正确的日历日上。',
+		timezoneLabel: '主时区',
+		timezoneSaved: '时区已保存',
+		timezoneUtcDefault: 'UTC（默认）',
+		timezoneGroupAmericas: '美洲',
+		timezoneGroupEuropeAfrica: '欧洲 / 非洲',
+		timezoneGroupAsiaPacific: '亚洲 / 太平洋'
 	},
 	token: {
 		title: '使用你的 Concept2 令牌',
@@ -579,6 +597,18 @@ export const zh = {
 		preferBefore: '想用标准流程？',
 		preferLink: '连接 Concept2'
 	},
+	comparability: {
+		blockedTitle: '无法对比的训练',
+		guidance: '请选择同一器械、同一类型且距离或时长区间相同的两次训练。',
+		noComparableCandidates: '没有可对比的历史训练。',
+		groupComparable: '可对比',
+		groupIncomparable: '其他（不可对比）',
+		reason: {
+			crossSport: '这两次训练使用的器械不同。',
+			crossAxis: '一次为固定距离，另一次为固定时间。',
+			crossBand: '这两次训练的距离或时长区间不同。'
+		}
+	},
 	compare: {
 		title: '训练对比',
 		lead: '两次训练的并排数据与叠加图表。',
@@ -589,7 +619,6 @@ export const zh = {
 		run: '对比',
 		swap: '交换',
 		pickTwo: '请在上方选择两次训练进行对比。',
-		crossSport: '不同器械——配速和功率可能不可直接对比。',
 		deltaTable: '逐项对比',
 		deltaHint: '正的差值表示训练 A 更高。',
 		alignedNote: '对齐距离：{distance}',
