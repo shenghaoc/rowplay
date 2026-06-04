@@ -25,7 +25,6 @@ export function isLanguage(value: unknown): value is Language {
 }
 
 export function getStoredLanguage(): Language {
-	if (typeof window === 'undefined') return 'en';
 	const stored = safeStorage.getItem('lang');
 	return isLanguage(stored) ? stored : 'en';
 }
