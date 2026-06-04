@@ -45,6 +45,7 @@
 		writeHrOverlay
 	} from '$lib/hrImport';
 	import { pickDefaultGhostCandidate } from '$lib/replay/ghostPick';
+	import { areComparable } from '$lib/replay/comparabilityGuard';
 	import { toast } from 'svelte-sonner';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Play from '@lucide/svelte/icons/play';
@@ -140,10 +141,20 @@
 	let fileName = $state('');
 
 	const SEARCHABLE_MIN = 8;
+	const comparableDetail = $derived({
+		sport: detail.sport,
+		distance: detail.distance,
+		time: detail.time,
+		workoutType: detail.workoutType
+	});
+	const comparableCandidates = $derived(
+		candidates.filter((c) => areComparable(comparableDetail, c))
+	);
 	const filteredCandidates = $derived.by(() => {
 		const q = sessionSearch.trim().toLowerCase();
-		if (!q) return candidates;
-		return candidates.filter((c) => {
+		const pool = comparableCandidates;
+		if (!q) return pool;
+		return pool.filter((c) => {
 			if (String(c.id) === ghostId) return true;
 			const hay = `${fmtDate(c.date)} ${fmtDistance(c.distance)} ${fmtPace(c.pace)}`.toLowerCase();
 			return hay.includes(q);
@@ -490,11 +501,13 @@
 		compareMode = mode;
 		sessionSearch = '';
 		clearGhost();
-		if (mode === 'session' && candidates.length) {
+		if (mode === 'session' && comparableCandidates.length) {
 			const pick = pickDefaultGhostCandidate(candidates, {
 				id: detail.id,
 				distance: detail.distance,
-				sport: detail.sport
+				sport: detail.sport,
+				time: detail.time,
+				workoutType: detail.workoutType
 			});
 			if (pick) void loadSessionGhost(String(pick.id));
 		}
@@ -1219,8 +1232,8 @@
 			>{t('replay.uploadedFile')}</button>
 		</div>
 
-		{#if compareMode === 'session' && candidates.length}
-			{#if candidates.length >= SEARCHABLE_MIN}
+		{#if compareMode === 'session' && comparableCandidates.length}
+			{#if comparableCandidates.length >= SEARCHABLE_MIN}
 				<search>
 				<input
 					class="session-search"
@@ -1241,6 +1254,8 @@
 					</option>
 				{/each}
 			</select>
+		{:else if compareMode === 'session' && !comparableCandidates.length}
+			<p class="muted small">{t('comparability.noComparableCandidates')}</p>
 		{:else if compareMode === 'pace'}
 			<input
 				class="paceinput mono"

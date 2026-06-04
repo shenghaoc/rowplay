@@ -61,6 +61,17 @@ const SPECS: Spec[] = [
 		baseHr: 160,
 		workoutType: '5000m steady',
 		noStrokes: true
+	},
+	// Fixed-time piece for comparability-guard demo (ghost/compare block vs 2k distance pieces).
+	{
+		id: 1012,
+		date: '2026-04-08 06:00:00',
+		sport: 'rower',
+		distance: 7500,
+		basePace: 120,
+		baseSpm: 26,
+		baseHr: 160,
+		workoutType: 'JustRow'
 	}
 ];
 
