@@ -746,7 +746,7 @@
 								<span class="muted">· {t('dashboard.likeForLike', { sport: SPORT_LABEL[dominantSport] })}</span>
 							{/if}
 						</div>
-						<div role="tablist" class="tabs tabs-box tabs-xs metrictabs" aria-label="Metric filter">
+						<div role="tablist" class="tabs tabs-box tabs-sm metrictabs" aria-label="Metric filter">
 							{#each metrics as m}
 								<button role="tab" class="tab" class:tab-active={metric === m.id} aria-selected={metric === m.id} onclick={() => (metric = m.id)}>{t(m.labelKey)}</button>
 							{/each}
@@ -771,7 +771,7 @@
 					>
 						{#each bands as b (b.key)}
 							<button
-								class="btn btn-xs join-item"
+								class="btn btn-sm join-item"
 								class:btn-active={activeBand === b.key}
 								class:btn-neutral={activeBand === b.key}
 								role="radio"

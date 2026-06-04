@@ -29,6 +29,7 @@
 		align-self: center;
 		color: var(--ink-2);
 		cursor: pointer;
+		min-height: 2.75rem; /* 44px touch target */
 	}
 	.lang-picker:hover {
 		color: var(--ink);
