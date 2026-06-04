@@ -90,8 +90,6 @@ export interface Workout {
 	metadata?: LoggingMetadata;
 	/** Whether per-stroke detail is available for a real-time replay. */
 	hasStrokeData: boolean;
-	/** True when the piece alternates between two or more machine types (MultiErg). */
-	isMultiErg?: boolean;
 }
 
 /** One sample on the workout timeline. Distances in metres, time in seconds. */
@@ -161,14 +159,4 @@ export interface WorkoutDetail extends Workout {
 	 * the even splits of a continuous piece. Drives interval-vs-split labelling.
 	 */
 	isInterval: boolean;
-	/** True when work intervals use two or more distinct machines. */
-	isMultiErg: boolean;
-}
-
-/** True when splits contain 2+ distinct machines (pure, shared). */
-export function computeIsMultiErg(splits: Split[]): boolean {
-	const workMachines = splits
-		.filter((s) => !s.isRest && s.machine != null)
-		.map((s) => s.machine!);
-	return new Set(workMachines).size >= 2;
 }

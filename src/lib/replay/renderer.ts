@@ -1,7 +1,6 @@
 import type { Frame } from './engine';
 import type { Sport } from '../types';
-import { fmtPace, fmtTime } from '../format';
-import { SPORT_LANE_COLORS } from './sports';
+import { fmtPace } from '../format';
 
 // The replay playback itself is essential, user-initiated motion (the user
 // presses play), so it is preserved under `prefers-reduced-motion`. What we do
@@ -113,15 +112,8 @@ export interface RenderState {
 	totalDistance: number;
 	/** Optional ghost (a past session being raced), drawn in its own lane. */
 	ghost?: AvatarState;
-	/** Active machine for this frame (lane + avatar). */
-	sport: Sport;
-	segmentIndex?: number;
-	/** 0..1 during a rest interval between machines. */
-	transitionPhase?: number;
-	transitionFrom?: Sport;
-	transitionTo?: Sport;
-	/** Seconds left in the current rest (for HUD). */
-	transitionRemaining?: number;
+	/** Optional sport, used for the avatar pod glyph. Renderer degrades to a neutral marker when absent. */
+	sport?: Sport;
 }
 
 /** Shared contract for 2D canvas and lazy-loaded 3D WebGL renderers. */
@@ -409,7 +401,6 @@ interface LaneOpts {
 	isYou: boolean;
 	nameTab: string;
 	padL: number;
-	sport: Sport;
 }
 
 interface AvatarOpts {
@@ -419,9 +410,8 @@ interface AvatarOpts {
 	phase: number;
 	spm: number;
 	isYou: boolean;
-	sport: Sport;
+	sport?: Sport;
 	label: string;
-	frozenPose?: boolean;
 }
 
 /**
@@ -481,14 +471,6 @@ export class CourseRenderer implements ReplayRenderer {
 		const hasGhost = !!state.ghost;
 		const playerY = hasGhost ? h * 0.7 : h * 0.56;
 		const ghostY = h * 0.34;
-		const laneSport =
-			state.transitionPhase != null && state.transitionFrom != null
-				? state.transitionFrom
-				: state.sport;
-		const inRest = state.transitionPhase != null;
-		const avatarLabel = inRest
-			? `Rest · ${fmtTime(state.transitionRemaining ?? 0, true)}`
-			: `${fmtPace(state.frame.pace)} · ${Math.round(clamp01(state.distFrac) * 100)}%`;
 
 		// ── Scene layers ──────────────────────────────────────────────────────
 		this.drawBackground(w, h);
@@ -509,8 +491,7 @@ export class CourseRenderer implements ReplayRenderer {
 				pace: state.ghost.pace,
 				isYou: false,
 				nameTab: 'GHOST',
-				padL: PAD_L,
-				sport: laneSport
+				padL: PAD_L
 			});
 			this.drawAvatar({
 				x: ghostAvX,
@@ -519,9 +500,8 @@ export class CourseRenderer implements ReplayRenderer {
 				phase: this.ghostPhase,
 				spm: state.ghost.spm,
 				isYou: false,
-				sport: laneSport,
-				label: `${state.ghost.label || 'PB'} · ${Math.round(ghostFrac * 100)}%`,
-				frozenPose: inRest
+				sport: state.sport,
+				label: `${state.ghost.label || 'PB'} · ${Math.round(ghostFrac * 100)}%`
 			});
 		}
 
@@ -537,19 +517,17 @@ export class CourseRenderer implements ReplayRenderer {
 			pace: state.frame.pace,
 			isYou: true,
 			nameTab: 'YOU',
-			padL: PAD_L,
-			sport: laneSport
+			padL: PAD_L
 		});
 		this.drawAvatar({
 			x: playerAvX,
 			y: playerY,
 			accent: C.live,
-			phase: inRest ? 0 : this.phase,
+			phase: this.phase,
 			spm: state.frame.spm,
 			isYou: true,
-			sport: laneSport,
-			label: avatarLabel,
-			frozenPose: inRest
+			sport: state.sport,
+			label: `${fmtPace(state.frame.pace)} · ${Math.round(playerFrac * 100)}%`
 		});
 	}
 
@@ -660,27 +638,21 @@ export class CourseRenderer implements ReplayRenderer {
 	private drawLane(o: LaneOpts) {
 		const { ctx } = this;
 		const C = this.colors;
-		const { startX, span, y, frac, accent, phase, pace, isYou, nameTab, padL, sport } = o;
+		const { startX, span, y, frac, accent, phase, pace, isYou, nameTab, padL } = o;
 		const avX = startX + span * frac;
-		const themeName = C === COLORS_DARK ? 'dark' : 'light';
-		const isRow = sport === 'rower';
 
 		ctx.save();
 		if (!isYou) {
 			ctx.globalAlpha = 0.82;
 		}
 
-		// 1. Lane band (water gradient for rower; flat snow/asphalt for ski/bike)
+		// 1. Water band
 		const waterTop = y - WATER_H * 0.3;
 		const waterBottom = y + WATER_H * 0.7;
-		if (isRow) {
-			const waterGrad = ctx.createLinearGradient(0, waterTop, 0, waterBottom);
-			waterGrad.addColorStop(0, withAlpha(accent, 0.05));
-			waterGrad.addColorStop(1, withAlpha(accent, 0.2));
-			ctx.fillStyle = waterGrad;
-		} else {
-			ctx.fillStyle = SPORT_LANE_COLORS[sport][themeName];
-		}
+		const waterGrad = ctx.createLinearGradient(0, waterTop, 0, waterBottom);
+		waterGrad.addColorStop(0, withAlpha(accent, 0.05));
+		waterGrad.addColorStop(1, withAlpha(accent, 0.2));
+		ctx.fillStyle = waterGrad;
 		roundRect(ctx, startX, waterTop, span, waterBottom - waterTop, 4);
 		ctx.fill();
 
@@ -692,24 +664,23 @@ export class CourseRenderer implements ReplayRenderer {
 		ctx.lineTo(startX + span, y);
 		ctx.stroke();
 
-		// 3. Ripples (rower only)
-		if (isRow) {
-			for (let ri = 0; ri < 2; ri++) {
-				const offsetY = y + 5 + ri * 6;
-				ctx.strokeStyle = withAlpha(accent, 0.25);
-				ctx.lineWidth = 0.8;
-				ctx.beginPath();
-				ctx.moveTo(startX, offsetY);
-				if (this.reduceMotion) {
-					ctx.lineTo(startX + span, offsetY);
-				} else {
-					const phaseOff = ri * 1.1;
-					for (let rx = startX; rx <= startX + span; rx += 6) {
-						ctx.lineTo(rx, offsetY + Math.sin(rx * 0.12 + phase + phaseOff) * 1.5);
-					}
+		// 3. Ripples (2 polylines just below the waterline). Under reduced motion
+		// the amplitude is 0, so draw a straight line directly and skip the trig.
+		for (let ri = 0; ri < 2; ri++) {
+			const offsetY = y + 5 + ri * 6;
+			ctx.strokeStyle = withAlpha(accent, 0.25);
+			ctx.lineWidth = 0.8;
+			ctx.beginPath();
+			ctx.moveTo(startX, offsetY);
+			if (this.reduceMotion) {
+				ctx.lineTo(startX + span, offsetY);
+			} else {
+				const phaseOff = ri * 1.1;
+				for (let rx = startX; rx <= startX + span; rx += 6) {
+					ctx.lineTo(rx, offsetY + Math.sin(rx * 0.12 + phase + phaseOff) * 1.5);
 				}
-				ctx.stroke();
 			}
+			ctx.stroke();
 		}
 
 		// 4. Wake trail: outer glow + core. Reduced motion → a flat line (no trig).
@@ -717,7 +688,7 @@ export class CourseRenderer implements ReplayRenderer {
 			const traceWake = () => {
 				ctx.beginPath();
 				ctx.moveTo(startX, y);
-				if (this.reduceMotion || !isRow) {
+				if (this.reduceMotion) {
 					ctx.lineTo(avX, y);
 				} else {
 					for (let x = startX; x <= avX; x += 6) {
@@ -784,7 +755,7 @@ export class CourseRenderer implements ReplayRenderer {
 	private drawAvatar(o: AvatarOpts) {
 		const { ctx } = this;
 		const C = this.colors;
-		const { x, y, accent, phase, isYou, sport, label, frozenPose } = o;
+		const { x, y, accent, phase, isYou, sport, label } = o;
 
 		ctx.save();
 		if (!isYou) {
@@ -792,7 +763,7 @@ export class CourseRenderer implements ReplayRenderer {
 		}
 
 		// Bob the floating/upper parts; figures stay rooted to the waterline.
-		const s = frozenPose || this.reduceMotion ? 0 : Math.sin(phase);
+		const s = this.reduceMotion ? -0.2 : Math.sin(phase);
 		const bobY = y + (this.reduceMotion ? 0 : Math.sin(phase) * BOB_AMP);
 		// Contrast rim that reads on the accent fill in both themes.
 		const rim = C.labelText;

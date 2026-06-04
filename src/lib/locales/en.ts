@@ -334,11 +334,6 @@ export const en = {
 		hrImportClearFailed: 'Could not remove heart-rate import',
 		back: 'Back to dashboard',
 		lowRes: 'low-res replay',
-		multiErg: 'MultiErg',
-		restInterval: 'Rest',
-		segmentMachine: 'Machine',
-		multiErgNote:
-			'MultiErg workouts switch machines between intervals. Leaderboard publish and MultiErg ghost races are not available for this piece.',
 		compareAgainst: 'Compare against:',
 		none: 'None',
 		pastSession: 'A past session',

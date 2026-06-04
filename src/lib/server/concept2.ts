@@ -1,8 +1,7 @@
 import type { KVNamespace } from '@cloudflare/workers-types';
-import { nowEpochMillis } from '../datetime';
+import { nowEpochMillis } from '$lib/datetime';
 import { paceToWattsForSport } from '../format';
 import {
-	computeIsMultiErg,
 	toSport,
 	type HeartRateDetail,
 	type LoggingMetadata,
@@ -185,20 +184,19 @@ export class Concept2Client {
 		);
 		const base = mapResult(detail.data, detail.metadata ?? detail.data.metadata);
 		let strokes: Stroke[] = [];
-		const splits = mapSplits(detail.data);
-		const isMultiErg = computeIsMultiErg(splits);
 		if (base.hasStrokeData) {
 			try {
 				const s = await this.api<{ data: RawStroke[] }>(`/users/me/results/${id}/strokes`);
-				strokes = mapStrokes(s.data, base.sport, splits);
+				strokes = mapStrokes(s.data, base.sport);
 			} catch {
 				strokes = [];
 			}
 		}
+		const splits = mapSplits(detail.data);
 		// `intervals` in the API means work reps with rest between them.
 		const isInterval = !!detail.data.workout?.intervals?.length;
 		if (strokes.length === 0) strokes = synthStrokes(base, splits);
-		return { ...base, strokes, splits, isInterval, isMultiErg };
+		return { ...base, strokes, splits, isInterval };
 	}
 }
 
@@ -368,21 +366,15 @@ export function mapResult(r: RawResult, metadata?: RawMetadata): Workout {
 		restDistance: r.rest_distance,
 		targets: mapTargets(r.workout?.targets, sport),
 		metadata: mapMetadata(metadata ?? r.metadata),
-		hasStrokeData: !!r.stroke_data,
-		// Derive MultiErg from the per-interval machine fields so the summary
-		// (and its D1 round-trip) carries it — the replay ghost-racing fence
-		// reads this on candidate summaries. False when intervals/machine data
-		// are absent from the result (e.g. a list payload without intervals).
-		isMultiErg: computeIsMultiErg(mapSplits(r))
+		hasStrokeData: !!r.stroke_data
 	};
 }
 
-export function mapStrokes(raw: RawStroke[], sport: Sport, splits?: Split[]): Stroke[] {
+export function mapStrokes(raw: RawStroke[], sport: Sport): Stroke[] {
 	// Per the API: stroke `p` is pace-per-500m for rower/skierg but
 	// pace-per-1000m for the bike. Normalise everything to sec/500m so the
 	// rest of the app (display + watts) is unit-consistent.
-	const workSplits = splits?.filter((s) => !s.isRest) ?? [];
-	let segmentIndex = 0;
+	const paceDiv = sport === 'bike' ? 2 : 1;
 
 	// Per the API: for interval workouts, t and d restart at 0 each interval.
 	// Detect a reset (the counter going backwards) and carry a running offset
@@ -395,20 +387,11 @@ export function mapStrokes(raw: RawStroke[], sport: Sport, splits?: Split[]): St
 	return raw.map((s) => {
 		const rawT = s.t / 10; // tenths of a second -> s
 		const rawD = s.d / 10; // decimetres -> m
-		// A new interval/segment is marked by either counter resetting to 0.
-		// Advance the segment index once per boundary (not once per counter) so a
-		// distance-only reset still steps the machine lookup, and a simultaneous
-		// t+d reset doesn't double-count.
-		const tReset = rawT < prevT;
-		const dReset = rawD < prevD;
-		if (tReset) tOffset += prevT;
-		if (dReset) dOffset += prevD;
-		if (tReset || dReset) segmentIndex++;
+		if (rawT < prevT) tOffset += prevT;
+		if (rawD < prevD) dOffset += prevD;
 		prevT = rawT;
 		prevD = rawD;
 
-		const machine = workSplits[segmentIndex]?.machine ?? sport;
-		const paceDiv = machine === 'bike' ? 2 : 1;
 		const pace = s.p / 10 / paceDiv; // -> sec / 500m
 		return {
 			t: rawT + tOffset,
@@ -418,7 +401,7 @@ export function mapStrokes(raw: RawStroke[], sport: Sport, splits?: Split[]): St
 			pace,
 			spm: s.spm,
 			hr: s.hr ? s.hr : undefined,
-			watts: paceToWattsForSport(machine, pace)
+			watts: paceToWattsForSport(sport, pace)
 		};
 	});
 }
@@ -454,10 +437,6 @@ export function mapSplits(r: RawResult): Split[] {
  * When per-stroke data is unavailable, synthesise a smooth timeline from splits
  * (or the overall summary) so the replay still works — just lower resolution.
  */
-// Fallback strokes synthesised from split summaries when a workout has no stroke
-// data. NB: this uses the workout-level `w.sport` for every split, so a MultiErg
-// with no stroke data gets approximate (single-sport) watts/pace — an accepted
-// degraded-mode limitation, since per-segment normalisation needs real strokes.
 function synthStrokes(w: Workout, splits: Split[]): Stroke[] {
 	const out: Stroke[] = [];
 	if (splits.length > 0) {

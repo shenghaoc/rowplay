@@ -1,7 +1,7 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import type { HrSample } from '../hrImport';
-import { applyHrImport, stripHrFromDetail, strokesHaveHr } from '../hrImport';
-import type { WorkoutDetail } from '../types';
+import type { HrSample } from '$lib/hrImport';
+import { applyHrImport, stripHrFromDetail, strokesHaveHr } from '$lib/hrImport';
+import type { WorkoutDetail } from '$lib/types';
 import { loadWorkoutDetail } from './data';
 import { getCachedDetail, putCachedDetail } from './db';
 import { Concept2Client } from './concept2';
