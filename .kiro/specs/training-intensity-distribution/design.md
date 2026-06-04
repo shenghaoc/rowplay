@@ -24,8 +24,27 @@ pace (`P₂k` in seconds per 500 m):
 These boundaries are the community-standard Concept2 training zones expressed
 relative to 2k pace (erg coaches routinely present them this way).
 
-**Fallback (no 2k PB available):** a simplified **3-zone model** based on the
-athlete's median training pace (`P̃`) across all workouts in the period:
+> **⚠️ Sport-specific caution:** The 5-zone model uses RowErg 2k PB pace as its
+> reference. Applying the same 2k pace to SkiErg or BikeErg workouts produces
+> inaccurate zone classifications because each sport has a different effort-pace
+> relationship. To handle multi-sport scenarios:
+>
+> - Fall back to the 3-zone model (based on sport-specific median pace) for
+>   non-RowErg workouts, OR
+> - Restrict the TID chart to only display when a single sport (e.g. RowErg) is
+>   selected in the period filter, OR
+> - Compute sport-specific distributions (using that sport's 2k PB or median)
+>   and aggregate/render them as separate bars or charts.
+>
+> The implementation must pick one approach and document the trade-off.
+
+**Fallback (no 2k PB available):** a simplified **3-zone model** based on a
+**static/historical median training pace** (`P̃`). Use a fixed reference window
+(e.g. last 365 days or all-time) rather than the selected period to compute the
+median. A dynamic median that shifts as the period filter changes causes zone
+boundaries to drift between views, making it impossible to compare a workout's
+classification across different period selections. The static reference keeps
+zone boundaries stable.
 
 | Zone | Label | Pace range |
 |------|-------|-----------|
@@ -46,7 +65,15 @@ athlete's median training pace (`P̃`) across all workouts in the period:
   chart only by their summary-level average pace × total duration (lowest
   accuracy; still correct at the gross level).
 
-The data is already loaded for the dashboard; no new API calls are needed.
+> **Note on data availability:** The dashboard currently loads only workout
+> summaries (average pace, total time/distance) — not per-stroke or per-split
+> data. The TID chart should either (a) classify using summary-level average pace
+> × duration from already-loaded data, avoiding the need to fetch raw stroke
+> detail, or (b) fetch a pre-aggregated zone distribution server-side (e.g. a
+> dedicated API endpoint that computes the distribution in the Worker and returns
+> only the zone slices). Approach (a) is simpler and sufficient for an initial
+> implementation; approach (b) trades latency for accuracy when stroke data is
+> available in D1.
 
 ## Pure module — `src/lib/trainingZones.ts`
 
@@ -55,10 +82,9 @@ export const ZONES_5 = ['UT2', 'UT1', 'AT', 'TR', 'AN'] as const;
 export const ZONES_3 = ['Easy', 'Moderate', 'Hard'] as const;
 export type ZoneLabel = typeof ZONES_5[number] | typeof ZONES_3[number];
 
-export interface ZoneConfig {
-  basePace: number | null;   // 2k PB pace (sec/500m); null → 3-zone fallback
-  medianPace?: number;       // required only when basePace is null
-}
+export type ZoneConfig =
+  | { basePace: number; medianPace?: number }   // 5-zone model: 2k PB pace available
+  | { basePace: null; medianPace: number };      // 3-zone fallback: median pace required
 
 export interface ZoneSlice {
   zone: ZoneLabel;
