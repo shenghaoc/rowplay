@@ -108,11 +108,6 @@
 	let dpsMetric = $state<'rawDps' | 'normDps'>('rawDps');
 	let dpsMaWindow = $state<7 | 28>(28);
 	let dpsHoverIdx = $state<number | null>(null);
-	let dpsPointsRef = $state<ReturnType<typeof computeDpsTrend>>([]);
-	$effect(() => {
-		dpsPointsRef = dpsPoints;
-	});
-
 	let syncing = $state(false);
 	let compareAnchor = $state<number | null>(null);
 	let newPbIds = $state<Set<number>>(new Set());
@@ -601,7 +596,7 @@
 						u.over.style.cursor = 'pointer';
 						u.over.addEventListener('click', () => {
 							const idx = u.cursor.idx;
-							const pts = dpsPointsRef;
+							const pts = dpsPoints;
 							if (idx != null && idx >= 0 && pts[idx]) goto(`/replay/${pts[idx].workoutId}`);
 						});
 					}

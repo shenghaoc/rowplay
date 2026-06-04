@@ -17,17 +17,6 @@ export interface MovingAvgPoint {
 
 const DEFAULT_REFERENCE_PACE = 120;
 
-function dayKey(date: string): string {
-	return date.slice(0, 10);
-}
-
-/** Signed calendar-day distance from `from` to `to`. */
-function calendarDayDiff(from: string, to: string): number {
-	const a = Date.parse(`${dayKey(from)}T00:00:00Z`);
-	const b = Date.parse(`${dayKey(to)}T00:00:00Z`);
-	return Math.round((b - a) / 86_400_000);
-}
-
 function median(values: number[]): number {
 	if (values.length === 0) return DEFAULT_REFERENCE_PACE;
 	const sorted = [...values].sort((a, b) => a - b);
@@ -77,11 +66,19 @@ export function movingAverage(
 	windowDays: number
 ): MovingAvgPoint[] {
 	if (points.length === 0) return [];
-	const half = windowDays / 2;
+	const halfMs = (windowDays / 2) * 86_400_000;
+	const epochs = points.map(p => new Date(p.date.slice(0, 10) + 'T00:00:00Z').getTime());
 
-	return points.map((p) => {
-		const inWindow = points.filter((q) => Math.abs(calendarDayDiff(p.date, q.date)) <= half);
-		const value = inWindow.reduce((sum, q) => sum + q[metric], 0) / inWindow.length;
-		return { date: p.date, value };
+	return points.map((p, i) => {
+		const pEpoch = epochs[i]!;
+		let sum = 0;
+		let count = 0;
+		for (let j = 0; j < points.length; j++) {
+			if (Math.abs(epochs[j]! - pEpoch) <= halfMs) {
+				sum += points[j]![metric];
+				count++;
+			}
+		}
+		return { date: p.date, value: sum / count };
 	});
 }
