@@ -491,7 +491,7 @@ class WakeTrail {
  * workout's `sport`. `three` is imported only in this module.
  */
 export class CourseRenderer3D implements ReplayRenderer {
-	private static readonly LOOP_METERS = 1000; // one lap = 1 km
+	static readonly LOOP_METERS = 1000; // one lap = 1 km
 	private readonly loopRadius = 30;
 	private readonly ghostRadius = 26;
 

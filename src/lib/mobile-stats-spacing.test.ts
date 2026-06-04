@@ -1,8 +1,12 @@
 /**
- * Bug Condition Exploration Test — Mobile Stat Cards Cramped Padding and Gap
+ * Mobile Stat Cards — Spacing Guard
  *
- * Property 1: Bug Condition
- * Validates: Requirements 1.1, 1.2, 1.3
+ * The dashboard stat strip must stay comfortable (never cramped) down to small
+ * phones. The Jet Set Blue redesign replaced the old `.dash-stat` + daisyUI
+ * `.stat` parts with custom `.statcard` / `.statlabel` / `.statval` cards that
+ * carry comfortable padding at every breakpoint and simply collapse columns
+ * (4 → 2 → 1) as the viewport narrows. These tests assert that property against
+ * the current implementation. (Originally: Requirements 1.1, 1.2, 1.3.)
  */
 
 import { readFileSync } from 'node:fs';
@@ -46,61 +50,6 @@ function findPropertyValue(cssBlock: string, selector: string, property: string)
 	return null;
 }
 
-
-const css = extractSvelteStyle(DASHBOARD_PATH);
-const media720 = extractMediaBlock(css, 720);
-const media400 = extractMediaBlock(css, 400);
-
-describe('daisyUI collision guard', () => {
-	it('dashboard summary uses dash-stats + stat parts, not stats container', () => {
-		const source = readFileSync(DASHBOARD_PATH, 'utf-8');
-		const html = source.slice(0, source.indexOf('<style>'));
-		expect(html).not.toMatch(/class="stats"/);
-		expect(html).toContain('dash-stats');
-		expect(html).toContain('stat-title');
-		expect(html).toMatch(/class="card\b[^"]*\bdash-stat\b/);
-		expect(html).toMatch(/class="stat\b/);
-	});
-});
-
-describe('Property 1: Bug Condition — Mobile Stat Cards Cramped Padding and Gap', () => {
-	describe('Viewport range [401, 720]', () => {
-		it('should have .dash-stat { padding: 1rem 1.1rem } inside @media (max-width: 720px)', () => {
-			const padding = findPropertyValue(media720, '.dash-stat', 'padding');
-			expect(padding).toBe('1rem 1.1rem');
-		});
-	});
-
-	describe('Viewport range [320, 400]', () => {
-		it('should have .dash-stats { gap: 0.75rem } inside @media (max-width: 400px)', () => {
-			const gap = findPropertyValue(media400, '.dash-stats', 'gap');
-			expect(gap).toBe('0.75rem');
-		});
-
-		it('should have .dash-stat { padding: 0.9rem 1rem } inside @media (max-width: 400px)', () => {
-			const padding = findPropertyValue(media400, '.dash-stat', 'padding');
-			expect(padding).toBe('0.9rem 1rem');
-		});
-	});
-
-	describe('Sanity checks', () => {
-		it('should preserve 2-column dash-stats at 720px', () => {
-			const cols = findPropertyValue(media720, '.dash-stats', 'grid-template-columns');
-			expect(cols).toBe('repeat(2, minmax(0, 1fr))');
-		});
-
-		it('should preserve stat-value font-size at 400px', () => {
-			const fontSize = findPropertyValue(media400, '.dash-stat .stat-value', 'font-size');
-			expect(fontSize).toBe('1.25rem');
-		});
-
-		it('should preserve stat-title min-height at 400px', () => {
-			const minHeight = findPropertyValue(media400, '.dash-stat .stat-title', 'min-height');
-			expect(minHeight).toBe('2.6em');
-		});
-	});
-});
-
 function extractBaseStyles(css: string): string {
 	let result = css;
 	let mediaStart = result.search(/@media\s*\(/);
@@ -119,14 +68,52 @@ function extractBaseStyles(css: string): string {
 	return result;
 }
 
+const css = extractSvelteStyle(DASHBOARD_PATH);
 const baseStyles = extractBaseStyles(css);
+const media720 = extractMediaBlock(css, 720);
+const media460 = extractMediaBlock(css, 460);
 
-describe('Property 2: Preservation — Desktop Stat Styles', () => {
-	it('should have NO .dash-stat padding in base styles', () => {
-		expect(findPropertyValue(baseStyles, '.dash-stat', 'padding')).toBeNull();
+describe('daisyUI collision guard', () => {
+	it('dashboard summary uses a custom dash-stats grid, not the daisyUI stats container', () => {
+		const source = readFileSync(DASHBOARD_PATH, 'utf-8');
+		const html = source.slice(0, source.indexOf('<style>'));
+		expect(html).not.toMatch(/class="stats"/);
+		expect(html).toContain('dash-stats');
+		expect(html).toMatch(/class="card statcard/);
+		expect(html).not.toMatch(/class="stat\b/);
+	});
+});
+
+describe('Property 1: Mobile stat cards stay comfortable (not cramped)', () => {
+	it('statcard carries comfortable padding in base styles (applies at every width)', () => {
+		// Redesign keeps a single comfortable padding everywhere instead of shrinking it
+		// at breakpoints — the strongest guarantee against cramping on small phones.
+		expect(findPropertyValue(baseStyles, '.statcard', 'padding')).toBe('1rem 1.1rem');
 	});
 
-	it('should have .dash-stats { gap: 1rem } in base styles', () => {
-		expect(findPropertyValue(baseStyles, '.dash-stats', 'gap')).toBe('1rem');
+	it('dash-stats keeps a comfortable gap in base styles', () => {
+		expect(findPropertyValue(baseStyles, '.dash-stats', 'gap')).toBe('0.85rem');
+	});
+
+	it('collapses to 2 columns at 720px so cards are not squeezed', () => {
+		expect(findPropertyValue(media720, '.dash-stats', 'grid-template-columns')).toBe(
+			'repeat(2, minmax(0, 1fr))'
+		);
+	});
+
+	it('collapses to a single column on small phones (max-width: 460px)', () => {
+		expect(findPropertyValue(media460, '.dash-stats', 'grid-template-columns')).toBe('1fr');
+	});
+});
+
+describe('Property 2: Desktop stat strip is a 4-up grid', () => {
+	it('dash-stats is a 4-column grid in base styles', () => {
+		expect(findPropertyValue(baseStyles, '.dash-stats', 'grid-template-columns')).toBe(
+			'repeat(4, minmax(0, 1fr))'
+		);
+	});
+
+	it('statval keeps a prominent numeric voice', () => {
+		expect(findPropertyValue(baseStyles, '.statval', 'font-size')).toBe('1.7rem');
 	});
 });

@@ -18,6 +18,7 @@ interface Spec {
 	workoutType: string;
 	comments?: string;
 	interval?: boolean;
+	source?: string;
 	/** Demo-only: erg logged without HR — exercises device import. */
 	omitHr?: boolean;
 }
@@ -26,7 +27,17 @@ const SPECS: Spec[] = [
 	{ id: 1001, date: '2026-05-27 06:12:00', sport: 'rower', distance: 2000, basePace: 108, baseSpm: 30, baseHr: 168, workoutType: '2000m test', comments: 'PB attempt — held on for the sprint.' },
 	{ id: 1002, date: '2026-05-24 07:05:00', sport: 'rower', distance: 5000, basePace: 118, baseSpm: 26, baseHr: 158, workoutType: '5000m steady', omitHr: true },
 	{ id: 1003, date: '2026-05-21 18:40:00', sport: 'skierg', distance: 1000, basePace: 122, baseSpm: 42, baseHr: 165, workoutType: '1000m SkiErg' },
-	{ id: 1004, date: '2026-05-19 06:30:00', sport: 'bike', distance: 8000, basePace: 95, baseSpm: 85, baseHr: 150, workoutType: '8000m BikeErg' },
+	{
+		id: 1004,
+		date: '2026-05-19 06:30:00',
+		sport: 'bike',
+		distance: 8000,
+		basePace: 95,
+		baseSpm: 85,
+		baseHr: 150,
+		workoutType: '8000m BikeErg',
+		source: 'EXR'
+	},
 	{ id: 1005, date: '2026-05-16 06:20:00', sport: 'rower', distance: 6000, basePace: 116, baseSpm: 28, baseHr: 160, workoutType: '4x1500m intervals', interval: true },
 	{ id: 1006, date: '2026-05-13 18:15:00', sport: 'rower', distance: 500, basePace: 96, baseSpm: 36, baseHr: 172, workoutType: '500m sprint' },
 	{ id: 1007, date: '2026-05-10 06:18:00', sport: 'rower', distance: 2000, basePace: 112, baseSpm: 29, baseHr: 166, workoutType: '2000m steady' },
@@ -199,6 +210,7 @@ function detailFor(spec: Spec): WorkoutDetail {
 	if (!spec.omitHr) {
 		detail.heartRateAvg = Math.round(avg(strokes.map((s) => s.hr ?? 0)));
 	}
+	if (spec.source) detail.source = spec.source;
 	applyFullFidelityDemo(spec, detail);
 	return detail;
 }

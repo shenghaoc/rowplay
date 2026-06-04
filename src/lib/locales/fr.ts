@@ -465,6 +465,10 @@ export const fr = {
 		mFirmware: 'Firmware',
 		mSerial: 'Numéro de série',
 		mDevice: 'Appareil',
+		mSource: 'Enregistré par',
+		exrBadge: 'Source EXR',
+		exrBadgeTitle:
+			'Le rythme et la puissance ont été synthétisés par EXR, pas lus sur le PM5. Les chiffres peuvent ne pas être directement comparables aux séances enregistrées par PM.',
 		mErgModel: 'Modèle d\'erg',
 		mHrSensor: 'Capteur FC',
 		targetsTitle: 'Objectifs',
@@ -573,6 +577,7 @@ export const fr = {
 		apiToken: 'Jeton API',
 		placeholder: 'Collez votre jeton',
 		connect: 'Connecter avec le jeton',
+		connecting: 'Connexion…',
 		rejected: 'Concept2 a refusé ce jeton. Vérifiez-le et réessayez.',
 		serverMisconfigured:
 			'Ce déploiement n’est pas configuré pour la connexion par jeton (SESSION_SECRET manquant). Contactez le propriétaire du site.',

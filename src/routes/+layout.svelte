@@ -137,6 +137,20 @@
 		bind:this={mobileNav}
 		closedby="any"
 		onclose={onNavClose}
+		onclick={(e) => {
+			if (!mobileNav?.open) return;
+			if (e.target === mobileNav) {
+				const rect = mobileNav.getBoundingClientRect();
+				if (
+					e.clientX < rect.left ||
+					e.clientX > rect.right ||
+					e.clientY < rect.top ||
+					e.clientY > rect.bottom
+				) {
+					closeMenu();
+				}
+			}
+		}}
 	>
 			<nav class="drawer-nav" aria-label="Main">
 				<a href="/dashboard" class:active={page.url.pathname.startsWith('/dashboard')}
@@ -175,9 +189,9 @@
 					{#if data.oauthEnabled}
 						<a class="btn btn-ghost btn-sm" href="/auth/login">{t('auth.connect')}</a>
 					{/if}
-			<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
-		{/if}
-	</div>
+					<a class="btn btn-primary btn-sm" href="/auth/token">{t('auth.useToken')}</a>
+				{/if}
+			</div>
 	</dialog>
 </header>
 
