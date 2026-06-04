@@ -22,8 +22,14 @@ src/
   hooks.server.ts        SvelteKit server hooks (runs on every request)
 
   components/            Reusable Svelte components
+    AnnotationPanel.svelte     Coaching-note CRUD panel (replay page)
+    ChipButton.svelte          Pill/chip toggle button
+    ChipGroup.svelte           Group of chip buttons for filter UIs
     CriticalPowerPanel.svelte  Critical power / FTP analysis panel
     EngagementPanel.svelte     Training engagement / PMC panel
+    InspectorPanel.svelte      Raw-field inspector overlay (replay page)
+    LanguagePicker.svelte      Language selector dropdown
+    LiveModePanel.svelte       Live / near-live polling panel (dashboard)
     MetricGauge.svelte         Radial gauge for pace / stroke-rate / power / HR
     SportIcon.svelte           Ergometer sport icon
     TrainingHeatmap.svelte     Calendar heatmap of training volume
@@ -43,21 +49,33 @@ src/
                               light/dark palette changes flow through automatically;
                               includes baseOptions() builder and withAlpha() helper
     chartTheme.test.ts        Vitest unit tests for chartTheme
+    daisyui-collision.ts      daisyUI v5 class collision guard (token validator + layout-hook set)
     datetime.ts               Temporal API helpers for logbook date parsing and formatting
     datetime.test.ts          Vitest unit tests for datetime
     ensure-temporal.ts        Temporal polyfill bootstrap (call before SSR or client render)
+    exrSource.ts              EXR (third-party rowing app) source-flag detection
+    exrSource.test.ts         Vitest unit tests for exrSource
     format.ts                 Display formatting helpers (pace, distance, time, watts)
     format.test.ts            Vitest unit tests for format
     goals.ts                  Annual goal helpers (cookie serialization, defaults)
     goals.test.ts             Vitest unit tests for goals
-    i18n.ts                   Pure i18n dictionaries (en/zh) + helpers (interpolation, persistence)
+    hrImport.ts               Heart-rate import/merge helpers (client-side CSV/TCX/FIT parsing)
+    hrImport.test.ts          Vitest unit tests for hrImport
+    i18n.ts                   Pure i18n types/helpers (language list, interpolation, persistence)
     i18n.test.ts              Vitest unit tests for i18n helpers
     i18n.svelte.ts            Reactive I18n class ($state) + Svelte context
     i18n.svelte.test.ts       Vitest unit tests for I18n reactive class (Node-only, no jsdom)
     i18nPlural.ts             Plural-form helpers for i18n
     i18nPlural.test.ts        Vitest unit tests for i18nPlural
+    leaderboard.ts            Leaderboard domain logic (standard distances, board keys, entry types)
+    leaderboard.test.ts       Vitest unit tests for leaderboard
+    liveMode.ts               Pure live-mode helpers (poll interval, failure tracking)
+    liveMode.test.ts          Vitest unit tests for liveMode
+    liveMode.svelte.ts        Reactive LiveMode class ($state) — live/near-live polling
+    liveMode.svelte.test.ts   Vitest unit tests for LiveMode reactive class (fake timers, no DOM)
     mockData.ts               Deterministic sample workouts for demo mode
     mockData.test.ts          Vitest unit tests for mockData
+    mockLeaderboard.ts        Demo-mode leaderboard data
     pwa-update.ts             PWA service worker update helper
     theme.svelte.ts           Reactive Theme class ($state, light/dark) + Svelte context
     theme.svelte.test.ts      Vitest unit tests for Theme reactive class (Node-only, no jsdom)
@@ -66,24 +84,27 @@ src/
                               distance/duration chips; PB detection helpers
     workoutQuery.test.ts      Vitest unit tests for workoutQuery
 
-    locales/                  i18n locale dictionaries
+    locales/                  i18n locale dictionaries (en, zh, de, es, fr, ja)
       locales.test.ts           Key-completeness test: all non-English locales must match `en`
-
-    liveMode.svelte.ts        Reactive LiveMode class ($state) — live/near-live polling
-    liveMode.svelte.test.ts   Vitest unit tests for LiveMode reactive class (fake timers, no DOM)
 
     replay/                Replay engine (client-side)
       engine.ts              rAF clock + sampleAt interpolation
       engine.test.ts         Vitest unit tests for engine
       ghostPick.ts           Ghost selection logic for race comparisons
       ghostPick.test.ts      Vitest unit tests for ghostPick
-      raceCard.ts            Race card data model for ghost racing
-      renderer.ts            Canvas course + ghost lane rendering
+      inspector.ts           Raw-field inspector (split index, stroke lookup)
+      inspector.test.ts      Vitest unit tests for inspector
+      raceCard.ts            Race card PNG export via OffscreenCanvas
+      renderer.ts            2D canvas course + ghost lane rendering
       renderer.test.ts       Vitest unit tests for renderer
       renderer3d.ts          Three.js 3D course renderer (WebGLRenderer + scene graph)
       renderer3d.test.ts     Vitest unit tests for renderer3d (partial THREE mock — WebGLRenderer only)
       renderer3dLoader.ts    Dynamic-import cache + webglSupported() detection
       renderer3dLoader.test.ts  Vitest unit tests for renderer3dLoader
+      replayRenderer.ts      Renderer preference persistence (2D/3D, quality)
+      replayRenderer.test.ts Vitest unit tests for replayRenderer
+      rivalGhost.ts          Rival ghost trace types + share-token helpers
+      rivalGhost.test.ts     Vitest unit tests for rivalGhost
       sources.ts             Data source abstraction for replay inputs
       sources.test.ts        Vitest unit tests for sources (parsePaceInput, parseWorkoutFile)
       sports.ts              Per-sport theming (colors, icons, unit labels)
@@ -109,7 +130,12 @@ src/
       session.ts             KV-backed session management
       session.test.ts        Vitest unit tests for session lifecycle (fake KV pattern)
       share.ts               Shareable replay link helpers
+      share.test.ts          Vitest unit tests for share helpers
       share-extended.test.ts Vitest unit tests for generateShareToken, shareMeta
+      tokenCrypto.ts         Sealed-token encryption for httpOnly BYOT cookie
+      tokenCrypto.test.ts    Vitest unit tests for tokenCrypto
+      detailCache.ts         Workout-detail D1 cache with TTL management
+      detailCache.test.ts    Vitest unit tests for detailCache
 
   routes/
     +layout.server.ts      Root layout server load (session / auth state, lang, theme)
@@ -122,6 +148,7 @@ src/
       callback/+server.ts      Optional OAuth2 callback
       callback/server.test.ts  Vitest unit tests for callback handler
       logout/+server.ts        Destroys session
+      logout/server.test.ts    Vitest unit tests for logout handler
       token/                   Primary auth: paste personal API token (+page.server.ts, +page.svelte)
       token/page.server.test.ts  Vitest unit tests for token load + actions
 
@@ -201,13 +228,16 @@ src/
 ### Styling
 
 - **Tailwind CSS v4** for utility classes
+- **daisyUI v5** component classes (`btn`, `card`, `badge`, `toggle`, `join`, `tabs`, …) — prefer idiomatic daisyUI over custom CSS
+- Card containers: `class="card bg-base-100 border border-base-300 shadow-md p-5"` — use this consistently across all pages
+- Badge modifiers: always include a variant (`badge-soft`, `badge-outline`) and a semantic color (`badge-primary`, `badge-info`, `badge-warning`, …)
 - CSS custom properties in `app.css` for design tokens (colors, chart palette, theme variants)
 - Scoped `<style>` blocks in components for component-specific styles
 - Chart colors are resolved from live CSS custom properties via `chartTheme()` — never hardcode hex values for charts
 
 ### File Naming
 
-- kebab-case for non-component files (`mock-data.ts`, `concept2.ts`)
+- camelCase for non-component TypeScript files (`mockData.ts`, `concept2.ts`, `chartTheme.ts`)
 - PascalCase for Svelte components (`MetricGauge.svelte`, `UPlotChart.svelte`)
 - SvelteKit routing conventions for `+page.svelte`, `+server.ts`, `+page.server.ts`, `+layout.svelte`
 - Test files co-located with source: `engine.test.ts` next to `engine.ts`; route tests use `server.test.ts` / `page.server.test.ts` in the same directory as the handler
@@ -215,10 +245,10 @@ src/
 ### I18n & Theming
 
 - All user-visible strings use `i18n.t('key.path')` — never hardcode English text in templates
-- Dictionaries live in `src/lib/i18n.ts`; the reactive class in `i18n.svelte.ts`
+- Dictionaries live in `src/lib/locales/` (en, zh, de, es, fr, ja); the reactive class in `i18n.svelte.ts`
 - Language and theme state are `$state`-based classes shared via `createContext` in the root layout — SSR-safe, no module-level singletons
 - Preferences persist via cookies (`lang`, `theme`) so SSR renders correctly with no hydration flash
-- Sport names (RowErg, SkiErg, BikeErg) are Concept2 trademarks — left untranslated in both languages
+- Sport names (RowErg, SkiErg, BikeErg) are Concept2 trademarks — left untranslated in all locales
 
 ### Architecture
 

@@ -80,7 +80,8 @@ export const es = {
 		replay: 'Replay',
 		loading: 'cargando…',
 		tryAgain: 'Inténtalo de nuevo.',
-		notAffiliated: 'no afiliado a Concept2'
+		notAffiliated: 'no afiliado a Concept2',
+		tagline: 'rowplay · análisis de diario Concept2 y replay en tiempo real'
 	},
 	sync: {
 		loading: 'Sincronizando tu diario…',

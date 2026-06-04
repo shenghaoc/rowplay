@@ -1104,9 +1104,9 @@
 		>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
-			{#if !detail.hasStrokeData}<span class="badge">{t('replay.lowRes')}</span>{/if}
+			{#if !detail.hasStrokeData}<span class="badge badge-soft badge-warning">{t('replay.lowRes')}</span>{/if}
 			{#if exrFlagged}
-				<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
+				<span class="badge badge-soft badge-info" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
 			{/if}
 		</div>
 		<div class="sharebar">
@@ -1130,7 +1130,7 @@
 				</button>
 				{#if published}
 					<button
-						class="btn ghost small"
+						class="btn btn-ghost btn-sm"
 						type="button"
 						disabled={withdrawing}
 						onclick={withdrawFromLeaderboard}
@@ -1798,7 +1798,7 @@
 						<li>
 							<span>{targetMetricLabel(row)}</span>
 							<span class="mono">{formatTargetDelta(row)}</span>
-							<span class="badge" class:badge-success={row.hit} class:badge-warning={!row.hit}>
+							<span class="badge badge-soft" class:badge-success={row.hit} class:badge-warning={!row.hit}>
 								{row.hit ? t('replay.targetHit') : t('replay.targetMiss')}
 							</span>
 						</li>
@@ -1814,7 +1814,7 @@
 							<dt>{t('replay.mSource')}</dt>
 							<dd>
 								{detail.source}
-								{#if exrFlagged}<span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>{/if}
+								{#if exrFlagged}<span class="badge badge-soft badge-info" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>{/if}
 							</dd>
 						</div>
 					{/if}

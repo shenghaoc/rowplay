@@ -80,7 +80,8 @@ export const ja = {
 		replay: 'リプレイ',
 		loading: '読み込み中…',
 		tryAgain: 'もう一度お試しください。',
-		notAffiliated: 'Concept2 とは無関係です'
+		notAffiliated: 'Concept2 とは無関係です',
+		tagline: 'rowplay · Concept2 ログブック分析 & リアルタイムリプレイ'
 	},
 	sync: {
 		loading: 'ログブックを同期しています…',

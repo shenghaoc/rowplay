@@ -80,7 +80,8 @@ export const de = {
 		replay: 'Replay',
 		loading: 'lädt…',
 		tryAgain: 'Bitte versuche es erneut.',
-		notAffiliated: 'nicht mit Concept2 verbunden'
+		notAffiliated: 'nicht mit Concept2 verbunden',
+		tagline: 'rowplay · Concept2-Logbuch-Analyse & Echtzeit-Replay'
 	},
 	sync: {
 		loading: 'Synchronisiere dein Logbuch…',
