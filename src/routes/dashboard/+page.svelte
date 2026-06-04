@@ -737,7 +737,7 @@
 				</div>
 			{/if}
 
-			<TrainingIntensityChart workouts={workouts} />
+			<TrainingIntensityChart workouts={filtered} />
 
 			<!-- Trend -->
 			{#if filtered.length > 1}

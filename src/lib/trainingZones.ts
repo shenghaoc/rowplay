@@ -89,7 +89,7 @@ export function buildZoneConfig(workouts: Workout[], nowMs = Date.now()): ZoneCo
 		skierg: medianTrainingPace(ref, 'skierg'),
 		bike: medianTrainingPace(ref, 'bike')
 	};
-	const base = rower2kBasePace(ref);
+	const base = rower2kBasePace(workouts);
 	if (base != null) {
 		return { basePace: base, medianPace: sportMedians.rower, sportMedians };
 	}
