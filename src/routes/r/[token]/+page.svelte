@@ -212,7 +212,7 @@
 				if (next >= 0) { e.preventDefault(); setSpeed(SPEEDS[next]); btns[next].focus(); }
 			}}
 		>
-			{#each SPEEDS as s}
+			{#each SPEEDS as s (s)}
 				<button
 					class="btn btn-xs join-item"
 					class:btn-active={speed === s}

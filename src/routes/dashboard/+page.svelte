@@ -769,7 +769,7 @@
 							if (next >= 0) { e.preventDefault(); btns[next].click(); btns[next].focus(); }
 						}}
 					>
-						{#each bands as b}
+						{#each bands as b (b.key)}
 							<button
 								class="btn btn-xs join-item"
 								class:btn-active={activeBand === b.key}
