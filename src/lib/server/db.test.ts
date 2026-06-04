@@ -253,9 +253,16 @@ describe('getSyncState', () => {
 describe('setSyncState', () => {
 	it('executes an UPSERT into sync_state', async () => {
 		const { db, executed } = fakeDb();
-		await setSyncState(db as never, 1, '2026-05-01 06:00:00', 42);
+		await setSyncState(db as never, 1, {
+			lastDate: '2026-05-01 06:00:00',
+			total: 42,
+			oldestDate: '2025-05-01 06:00:00',
+			backfillDone: false
+		});
 		expect(executed[0].sql).toContain('INSERT INTO sync_state');
 		expect(executed[0].args.slice(0, 3)).toEqual([1, '2026-05-01 06:00:00', expect.any(Number)]);
+		// Windowed sync columns are persisted alongside the watermark (#71).
+		expect(executed[0].args.slice(3)).toEqual([42, '2025-05-01 06:00:00', 0]);
 	});
 });
 

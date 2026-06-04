@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { fmtDateFromEpochMillis } from '$lib/format';
+	import { fmtDate, fmtDateFromEpochMillis } from '$lib/format';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { toast } from 'svelte-sonner';
 	import Download from '@lucide/svelte/icons/download';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Database from '@lucide/svelte/icons/database';
+	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
 	import Globe from '@lucide/svelte/icons/globe';
 	import { TIMEZONE_OPTIONS } from '$lib/timezoneOptions';
 	import {
@@ -21,7 +22,7 @@
 	const t = $derived(i18n.translate);
 
 	let syncing = $state(false);
-	let syncMode = $state<'incremental' | 'full' | null>(null);
+	let syncMode = $state<'incremental' | 'full' | 'history' | null>(null);
 	let deleting = $state(false);
 	// Seed from server data so SSR renders the selected option (no flash of the
 	// default "UTC" option before hydration). Demo mode reads localStorage on mount.
@@ -32,11 +33,73 @@
 		if (data.demo) selectedTz = readHomeTimezoneClient() ?? '';
 	});
 
+	const syncHistoryNote = $derived.by(() => {
+		const sync = data.sync;
+		if (!sync) return '';
+		if (sync.backfillDone) return t('sync.historyComplete');
+		if (sync.oldestDate) {
+			return t('sync.historyBackfilling', {
+				total: sync.total,
+				date: fmtDate(sync.oldestDate)
+			});
+		}
+		return t('sync.historyWindow', { months: sync.historyWindowMonths });
+	});
+
+	// Start the backfill loop when the windowed sync is present and incomplete. Gate on a
+	// STABLE derived rather than raw data.sync: the loop's invalidateAll() replaces
+	// data.sync every chunk, but shouldBackfill stays `true` until backfillDone flips, so
+	// the effect runs once and does not restart per chunk (which would bypass PACE_MS and
+	// hammer the API). $effect rather than onMount also covers first connect, where
+	// data.sync is null at mount and only appears after the initial sync. The
+	// component-level controller lets loadFullHistory() cancel this background loop, and
+	// the cleanup aborts whichever loop is in flight when the page unmounts.
+	let backfillController: AbortController | null = null;
+	const shouldBackfill = $derived(!!data.sync && !data.sync.backfillDone && !data.demo);
+
+	$effect(() => {
+		if (!shouldBackfill) return;
+		backfillController = new AbortController();
+		void runHistoryBackfillLoop({ signal: backfillController.signal }).catch((e) => {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			console.error('[historyBackfill]', e);
+		});
+		return () => backfillController?.abort();
+	});
+
 	const lastSyncLabel = $derived(
 		data.sync?.lastSyncAt
 			? fmtDateFromEpochMillis(data.sync.lastSyncAt)
 			: t('settings.neverSynced')
 	);
+
+	async function loadFullHistory() {
+		if (data.demo || syncing) return;
+		syncing = true;
+		syncMode = 'history';
+		// Cancel the background backfill so the manual run is the only loop in flight, and
+		// give it its own signal so it stops cleanly if the user navigates away.
+		backfillController?.abort();
+		backfillController = new AbortController();
+		const toastId = toast.loading(t('sync.historyWindow', { months: data.sync?.historyWindowMonths ?? 12 }));
+		try {
+			await runHistoryBackfillLoop({ signal: backfillController.signal });
+			await invalidateAll();
+			toast.success(t('sync.historyComplete'), { id: toastId });
+		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') {
+				toast.dismiss(toastId);
+				return;
+			}
+			toast.error(t('sync.failed'), {
+				id: toastId,
+				description: e instanceof Error ? e.message : t('common.tryAgain')
+			});
+		} finally {
+			syncing = false;
+			syncMode = null;
+		}
+	}
 
 	async function runSync(full: boolean) {
 		if (data.demo || syncing || deleting) return;
@@ -213,7 +276,12 @@
 			{#if data.demo}
 				<span class="badge badge-soft badge-primary">{t('settings.syncDemo')}</span>
 			{:else}
-				<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: data.sync?.total ?? 0 })}</p>
+				{#if data.sync}
+					<p class="sync-meta muted">{syncHistoryNote}</p>
+					<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: data.sync.total })}</p>
+				{:else}
+					<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: 0 })}</p>
+				{/if}
 				<div class="row">
 					<button
 						class="btn btn-primary btn-sm"
@@ -233,6 +301,17 @@
 						{#if syncMode === 'full'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 						{syncMode === 'full' ? t('dashboard.syncing') : t('settings.syncFull')}
 					</button>
+					{#if data.sync && !data.sync.backfillDone}
+						<button
+							class="btn btn-ghost btn-sm"
+							type="button"
+							disabled={syncing || deleting}
+							onclick={loadFullHistory}
+						>
+							{#if syncMode === 'history'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
+							{syncMode === 'history' ? t('dashboard.syncing') : t('settings.loadFullHistory')}
+						</button>
+					{/if}
 				</div>
 			{/if}
 		</div>

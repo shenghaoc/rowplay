@@ -85,7 +85,10 @@ export const es = {
 	sync: {
 		loading: 'Sincronizando tu diario…',
 		done: 'Sincronizado — {added} nuevos, {total} en total',
-		failed: 'Error al sincronizar'
+		failed: 'Error al sincronizar',
+		historyWindow: 'Mostrando los últimos {months} meses — cargando historial anterior…',
+		historyBackfilling: '{total} entrenamientos · historial hasta {date}',
+		historyComplete: 'Historial completo sincronizado'
 	},
 	auth: {
 		connect: 'Conectar Concept2',
@@ -561,6 +564,7 @@ export const es = {
 			'La sincronización incremental obtiene entrenamientos desde tu última sync. La resincronización completa vuelve a descargar todo el historial (más lenta; úsala tras incidencias).',
 		syncIncremental: 'Sincronización incremental',
 		syncFull: 'Resincronización completa',
+		loadFullHistory: 'Cargar historial completo',
 		syncDemo: 'La sincronización no está disponible en modo demo — conecta tu diario para sincronizar datos reales.',
 		lastSync: '{total} entrenamientos en caché · última sync {date}',
 		neverSynced: 'nunca',

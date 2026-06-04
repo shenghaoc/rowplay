@@ -37,6 +37,7 @@
 	import { chartTheme, baseOptions } from '$lib/chartTheme';
 	import LiveModePanel from '$components/LiveModePanel.svelte';
 	import { LiveMode } from '$lib/liveMode.svelte';
+	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
 
 	import { logbookEpochMillis, todayKeyForTz } from '$lib/datetime';
 
@@ -108,6 +109,37 @@
 	let compareAnchor = $state<number | null>(null);
 	let newPbIds = $state<Set<number>>(new Set());
 	const pbIds = $derived(pbWorkoutIds(workouts));
+
+	const syncHistoryNote = $derived.by(() => {
+		const sync = data.sync;
+		if (!sync) return '';
+		if (sync.backfillDone) return t('sync.historyComplete');
+		if (sync.oldestDate) {
+			return t('sync.historyBackfilling', {
+				total: sync.total,
+				date: fmtDate(sync.oldestDate)
+			});
+		}
+		return t('sync.historyWindow', { months: sync.historyWindowMonths });
+	});
+
+	// Start the backfill loop when the windowed sync is present and incomplete. We gate on
+	// a STABLE derived rather than raw data.sync: the loop's invalidateAll() replaces
+	// data.sync every chunk, but shouldBackfill stays `true` until backfillDone flips, so
+	// the effect body runs once and does not restart per chunk (which would bypass PACE_MS
+	// and hammer the API). $effect rather than onMount also covers first connect, where
+	// data.sync is still null at mount and only appears once the initial sync completes.
+	const shouldBackfill = $derived(!!data.sync && !data.sync.backfillDone && !data.demo);
+
+	$effect(() => {
+		if (!shouldBackfill) return;
+		const ac = new AbortController();
+		void runHistoryBackfillLoop({ signal: ac.signal }).catch((e) => {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			console.error('[historyBackfill]', e);
+		});
+		return () => ac.abort();
+	});
 
 	function onCompareWorkout(w: Workout) {
 		if (compareAnchor == null) {
@@ -544,14 +576,13 @@
 			{/if}
 		</div>
 	</div>
-	{#if !data.demo && data.sync}
+	{#if data.demo}
 		<p class="syncnote muted">
-			{t('dashboard.syncedNote', {
-				total: data.sync.total,
-				date: fmtDateFromEpochMillis(data.sync.lastSyncAt)
-			})}
+			<span class="badge badge-soft badge-primary">{t('settings.syncDemo')}</span>
 		</p>
-	{:else if !data.demo && !data.sync}
+	{:else if data.sync}
+		<p class="syncnote muted">{syncHistoryNote}</p>
+	{:else}
 		<p class="syncnote muted">{t('dashboard.recentNote')}</p>
 	{/if}
 

@@ -252,6 +252,8 @@ export interface SyncState {
 	lastDate: string | null;
 	lastSyncAt: number;
 	total: number;
+	oldestDate: string | null;
+	backfillDone: boolean;
 }
 
 export async function getSyncState(
@@ -261,10 +263,26 @@ export async function getSyncState(
 	if (!db) return null;
 	try {
 		const row = await db
-			.prepare('SELECT last_date, last_sync_at, total FROM sync_state WHERE user_id = ?')
+			.prepare(
+				'SELECT last_date, last_sync_at, total, oldest_date, backfill_done FROM sync_state WHERE user_id = ?'
+			)
 			.bind(userId)
-			.first<{ last_date: string | null; last_sync_at: number; total: number }>();
-		return row ? { lastDate: row.last_date, lastSyncAt: row.last_sync_at, total: row.total } : null;
+			.first<{
+				last_date: string | null;
+				last_sync_at: number;
+				total: number;
+				oldest_date: string | null;
+				backfill_done: number;
+			}>();
+		return row
+			? {
+					lastDate: row.last_date,
+					lastSyncAt: row.last_sync_at,
+					total: row.total,
+					oldestDate: row.oldest_date,
+					backfillDone: row.backfill_done === 1
+				}
+			: null;
 	} catch {
 		return null;
 	}
@@ -322,17 +340,32 @@ export async function upsertWorkouts(
 export async function setSyncState(
 	db: D1Database,
 	userId: number,
-	lastDate: string | null,
-	total: number
+	patch: {
+		lastDate: string | null;
+		total: number;
+		oldestDate: string | null;
+		backfillDone: boolean;
+	}
 ): Promise<void> {
 	await db
 		.prepare(
-			`INSERT INTO sync_state (user_id, last_date, last_sync_at, total)
-			 VALUES (?, ?, ?, ?)
+			`INSERT INTO sync_state (user_id, last_date, last_sync_at, total, oldest_date, backfill_done)
+			 VALUES (?, ?, ?, ?, ?, ?)
 			 ON CONFLICT(user_id) DO UPDATE SET
-			   last_date=excluded.last_date, last_sync_at=excluded.last_sync_at, total=excluded.total`
+			   last_date=excluded.last_date,
+			   last_sync_at=excluded.last_sync_at,
+			   total=excluded.total,
+			   oldest_date=excluded.oldest_date,
+			   backfill_done=excluded.backfill_done`
 		)
-		.bind(userId, lastDate, nowEpochMillis(), total)
+		.bind(
+			userId,
+			patch.lastDate,
+			nowEpochMillis(),
+			patch.total,
+			patch.oldestDate,
+			patch.backfillDone ? 1 : 0
+		)
 		.run();
 }
 

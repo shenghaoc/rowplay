@@ -85,7 +85,10 @@ export const ja = {
 	sync: {
 		loading: 'ログブックを同期しています…',
 		done: '同期完了 — 新規 {added}、合計 {total}',
-		failed: '同期に失敗しました'
+		failed: '同期に失敗しました',
+		historyWindow: '直近 {months} か月を表示 — より古い履歴を読み込み中…',
+		historyBackfilling: '{total} ワークアウト · 履歴は {date} まで',
+		historyComplete: '全履歴の同期が完了しました'
 	},
 	auth: {
 		connect: 'Concept2 に接続',
@@ -564,6 +567,7 @@ export const ja = {
 			'増分同期は前回以降のワークアウトのみ取得。完全再同期は全履歴を再ダウンロード（時間がかかり、問題時に使用）。',
 		syncIncremental: '増分同期',
 		syncFull: '完全再同期',
+		loadFullHistory: '全履歴を読み込む',
 		syncDemo: 'デモモードでは同期不可 — ログブックに接続して実データを同期してください。',
 		lastSync: '{total} ワークアウトをキャッシュ · 最終同期 {date}',
 		neverSynced: '未同期',

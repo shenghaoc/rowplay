@@ -14,7 +14,7 @@ import {
 	type SessionUser
 } from './session';
 import { openToken } from './tokenCrypto';
-import { nowEpochMillis, overlapDate } from '$lib/datetime';
+import { nowEpochMillis } from '$lib/datetime';
 import { detectNewPBs, distancePBs, type DistancePB } from '$lib/analytics';
 import {
 	filterAndSortWorkouts,
@@ -22,6 +22,13 @@ import {
 	pbWorkoutIds,
 	type WorkoutListQuery
 } from '$lib/workoutQuery';
+import {
+	BACKFILL_PAGES_PER_RUN,
+	historyWindowStart,
+	mergeWatermark,
+	planSync,
+	HISTORY_WINDOW_MONTHS
+} from './historyWindow';
 import {
 	countWorkouts,
 	deleteAnnotation as dbDeleteAnnotation,
@@ -172,9 +179,9 @@ export interface SyncResult {
 }
 
 /**
- * Page through the Concept2 logbook and upsert summaries into D1. Incremental:
- * only fetches workouts on/after the last synced date (minus a day of overlap
- * to catch edits), unless `full` forces a complete backfill.
+ * Page through the Concept2 logbook and upsert summaries into D1. First connect
+ * uses a recent window (`HISTORY_WINDOW_MONTHS`); later runs are incremental
+ * unless `full` forces a complete re-sync.
  */
 export async function syncWorkouts(event: RequestEvent, full = false): Promise<SyncResult> {
 	const c = await client(event);
@@ -196,14 +203,16 @@ async function runSync(
 	full: boolean
 ): Promise<SyncResult> {
 	const state = await getSyncState(db, userId);
-	const from = full || !state?.lastDate ? undefined : (overlapDate(state.lastDate) ?? undefined);
+	const now = Temporal.Now.plainDateISO('UTC');
+	const plan = planSync(state, now, full ? 'full' : 'forward');
+	const from =
+		plan.kind === 'window' ? plan.from : plan.kind === 'incremental' ? plan.from : undefined;
 
 	const beforePbs = distancePBs(await getAllWorkouts(db, userId).catch(() => []));
 
 	let page = 1;
 	let totalPages = 1;
 	let added = 0;
-	let newestDate = state?.lastDate ?? null;
 	const synced: Workout[] = [];
 
 	do {
@@ -213,18 +222,117 @@ async function runSync(
 			await upsertWorkouts(db, userId, workouts);
 			synced.push(...workouts);
 			added += workouts.length;
-			for (const w of workouts) {
-				if (!newestDate || w.date > newestDate) newestDate = w.date;
-			}
 		}
 		page++;
 	} while (page <= totalPages);
 
+	const dates = synced.map((w) => w.date);
+	let wm = mergeWatermark(
+		{
+			lastDate: state?.lastDate ?? null,
+			oldestDate: state?.oldestDate ?? null,
+			backfillDone: state?.backfillDone ?? false
+		},
+		dates,
+		false
+	);
+
+	if (plan.kind === 'window') {
+		wm = { ...wm, oldestDate: historyWindowStart(now), backfillDone: false };
+	}
+	if (full) {
+		wm = { ...wm, backfillDone: true };
+	}
+
 	const total = await countWorkouts(db, userId);
-	await setSyncState(db, userId, newestDate, total);
+	await setSyncState(db, userId, {
+		lastDate: wm.lastDate,
+		total,
+		oldestDate: wm.oldestDate,
+		backfillDone: wm.backfillDone
+	});
 	const afterPbs = distancePBs(await getAllWorkouts(db, userId));
 	const newPbs = detectNewPBs(beforePbs, afterPbs);
 	return { added, total, newPbs, workouts: synced };
+}
+
+export interface BackfillResult {
+	added: number;
+	oldestDate: string | null;
+	done: boolean;
+}
+
+/** One chunked backfill pass — older than the persisted watermark. */
+export async function backfillWorkouts(event: RequestEvent): Promise<BackfillResult> {
+	const c = await client(event);
+	const db = event.platform?.env?.DB;
+	const userId = event.locals.user?.id;
+	if (!c) throw error(401, 'Not authenticated.');
+	if (!db || userId == null) throw error(500, 'Database (D1) is not configured.');
+
+	const state = await getSyncState(db, userId);
+	const now = Temporal.Now.plainDateISO('UTC');
+	const plan = planSync(state, now, 'backfill');
+	if (plan.kind !== 'backfill') {
+		// Latch backfill_done so already-synced users stop re-triggering the loop.
+		// A pre-windowing full sync leaves oldest_date = NULL with backfill_done = 0,
+		// which planSync resolves to 'done' — but without persisting that, every
+		// page mount would POST /api/sync/backfill again. Write it back once.
+		if (plan.kind === 'done' && state && !state.backfillDone) {
+			await setSyncState(db, userId, {
+				lastDate: state.lastDate,
+				total: await countWorkouts(db, userId),
+				oldestDate: state.oldestDate,
+				backfillDone: true
+			});
+		}
+		return {
+			added: 0,
+			oldestDate: state?.oldestDate ?? null,
+			done: plan.kind === 'done'
+		};
+	}
+
+	let page = 1;
+	let totalPages = 1;
+	let added = 0;
+	const dates: string[] = [];
+	let pagesFetched = 0;
+
+	while (page <= totalPages && pagesFetched < BACKFILL_PAGES_PER_RUN) {
+		const { workouts, totalPages: tp } = await c.listWorkoutsPage(page, undefined, plan.to);
+		totalPages = tp;
+		if (workouts.length) {
+			await upsertWorkouts(db, userId, workouts);
+			added += workouts.length;
+			dates.push(...workouts.map((w) => w.date));
+		}
+		page++;
+		pagesFetched++;
+	}
+
+	const wm = mergeWatermark(
+		{
+			lastDate: state?.lastDate ?? null,
+			oldestDate: state?.oldestDate ?? null,
+			backfillDone: state?.backfillDone ?? false
+		},
+		dates,
+		// Reached the end when this run drained every page older than the cursor
+		// (page > totalPages), not only when a chunk comes back empty — that saves
+		// one redundant confirming API call at the tail of the history.
+		dates.length === 0 || page > totalPages
+	);
+
+	const total = await countWorkouts(db, userId);
+	await setSyncState(db, userId, {
+		lastDate: wm.lastDate,
+		total,
+		oldestDate: wm.oldestDate,
+		backfillDone: wm.backfillDone
+	});
+
+	return { added, oldestDate: wm.oldestDate, done: wm.backfillDone };
 }
 
 const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
@@ -309,8 +417,15 @@ export async function saveAnnualGoal(event: RequestEvent, goal: AnnualGoal): Pro
 	await setUserAnnualGoal(db, userId, goal);
 }
 
-export async function syncStatus(event: RequestEvent): Promise<SyncState | null> {
-	return syncStateFor(event);
+export type SyncStatusPayload = SyncState & { historyWindowMonths: number };
+
+export async function syncStatus(event: RequestEvent): Promise<SyncStatusPayload | null> {
+	// Reuse the per-request sync-state memo (main) so a dashboard load that also
+	// gates loadWorkouts/aggregates on sync state doesn't hit D1 twice; then wrap
+	// it with the history-window length the backfill UI needs (#71).
+	const state = await syncStateFor(event);
+	if (!state) return null;
+	return { ...state, historyWindowMonths: HISTORY_WINDOW_MONTHS };
 }
 
 export interface DashboardAggregates {

@@ -85,7 +85,10 @@ export const fr = {
 	sync: {
 		loading: 'Synchronisation de votre logbook…',
 		done: 'Synchronisé — {added} nouveau(x), {total} au total',
-		failed: 'Échec de la synchronisation'
+		failed: 'Échec de la synchronisation',
+		historyWindow: 'Affichage des {months} derniers mois — chargement de l’historique plus ancien…',
+		historyBackfilling: '{total} séances · historique jusqu’au {date}',
+		historyComplete: 'Historique complet synchronisé'
 	},
 	auth: {
 		connect: 'Connecter Concept2',
@@ -561,6 +564,7 @@ export const fr = {
 			'La sync incrémentale récupère les séances depuis votre dernière sync. La resync complète retélécharge tout l’historique (plus lent, en cas de problème).',
 		syncIncremental: 'Sync incrémentale',
 		syncFull: 'Resync complète',
+		loadFullHistory: 'Charger tout l’historique',
 		syncDemo: 'Sync indisponible en mode démo — connectez votre logbook pour synchroniser de vraies données.',
 		lastSync: '{total} séances en cache · dernière sync {date}',
 		neverSynced: 'jamais',

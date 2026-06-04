@@ -84,7 +84,10 @@ export const zh = {
 	sync: {
 		loading: '正在同步你的日志…',
 		done: '已同步——新增 {added}，共 {total}',
-		failed: '同步失败'
+		failed: '同步失败',
+		historyWindow: '显示最近 {months} 个月——正在加载更早的历史…',
+		historyBackfilling: '已缓存 {total} 次训练 · 历史回溯至 {date}',
+		historyComplete: '完整历史已同步'
 	},
 	auth: {
 		connect: '连接 Concept2',
@@ -559,6 +562,7 @@ export const zh = {
 		syncNote: '增量同步仅获取上次同步之后的训练。完整重新同步会重新下载全部历史（较慢，出问题时使用）。',
 		syncIncremental: '增量同步',
 		syncFull: '完整重新同步',
+		loadFullHistory: '加载完整历史',
 		syncDemo: '演示模式下无法同步——连接你的日志以同步真实数据。',
 		lastSync: '已缓存 {total} 次训练 · 上次同步 {date}',
 		neverSynced: '从未',
