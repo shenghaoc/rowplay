@@ -341,6 +341,46 @@ describe('calendar helpers', () => {
 		expect(cal.activeDays).toBeGreaterThan(0);
 		expect(cal.longestStreak).toBeGreaterThanOrEqual(cal.currentStreak);
 	});
+
+	it('buckets cross-timezone workouts on the athlete local day', () => {
+		const crossTz = {
+			id: 9001,
+			date: '2024-01-14 23:30:00',
+			timezone: 'America/New_York',
+			sport: 'rower' as const,
+			distance: 5000,
+			time: 1260,
+			pace: 126,
+			hasStrokeData: false
+		};
+		const withHome = buildTrainingCalendar([crossTz], {
+			endDay: '2024-01-20',
+			weeks: 2,
+			homeTz: 'America/New_York'
+		});
+		const jan14WithHome = withHome.cells.find((c) => c.day === '2024-01-14');
+		expect(jan14WithHome?.sessions).toBe(1);
+
+		const withWorkoutTzOnly = buildTrainingCalendar([crossTz], {
+			endDay: '2024-01-20',
+			weeks: 2
+		});
+		const jan14WorkoutTz = withWorkoutTzOnly.cells.find((c) => c.day === '2024-01-14');
+		expect(jan14WorkoutTz?.sessions).toBe(1);
+
+		// Cross-zone: the same workout viewed from Auckland rolls into the next
+		// calendar day. 23:30 EST on Jan 14 is 17:30 NZDT on Jan 15, so the
+		// session must bucket on 2024-01-15 — never on Jan 14.
+		const withAucklandHome = buildTrainingCalendar([crossTz], {
+			endDay: '2024-01-20',
+			weeks: 2,
+			homeTz: 'Pacific/Auckland'
+		});
+		const jan15Auckland = withAucklandHome.cells.find((c) => c.day === '2024-01-15');
+		expect(jan15Auckland?.sessions).toBe(1);
+		const jan14Auckland = withAucklandHome.cells.find((c) => c.day === '2024-01-14');
+		expect(jan14Auckland?.sessions ?? 0).toBe(0);
+	});
 });
 
 describe('volumeIntensityLevel', () => {

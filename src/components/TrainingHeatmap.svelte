@@ -7,11 +7,14 @@
 
 	let {
 		workouts,
-		endDay
+		endDay,
+		homeTz
 	}: {
 		workouts: Workout[];
 		/** Inclusive grid end (`YYYY-MM-DD`), from server load for SSR-stable hydration. */
 		endDay: string;
+		/** User home IANA timezone for calendar bucketing. */
+		homeTz?: string;
 	} = $props();
 
 	const i18n = getI18nContext();
@@ -23,7 +26,7 @@
 	}
 	let metric = $state<VolumeMetric>('distance');
 
-	const calendar = $derived(buildTrainingCalendar(workouts, { endDay, metric }));
+	const calendar = $derived(buildTrainingCalendar(workouts, { endDay, metric, homeTz }));
 
 	const DOW_KEYS = [
 		'dashboard.calDowSun',

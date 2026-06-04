@@ -572,7 +572,16 @@ export const es = {
 			'¿Borrar todos los entrenamientos en caché y datos de replay de rowplay y cerrar sesión? Tu diario Concept2 no cambiará.',
 		deleteDemo: 'Modo demo — no se guardó nada, no hay nada que borrar.',
 		deleteDone: 'Datos en caché borrados. Has cerrado sesión.',
-		deleteFailed: 'No se pudieron borrar los datos en caché'
+		deleteFailed: 'No se pudieron borrar los datos en caché',
+		timezoneTitle: 'Zona horaria principal',
+		timezoneNote:
+			'Elige tu zona horaria local para que los entrenamientos cerca de medianoche aparezcan en el día correcto del calendario.',
+		timezoneLabel: 'Zona horaria principal',
+		timezoneSaved: 'Zona horaria guardada',
+		timezoneUtcDefault: 'UTC (predeterminado)',
+		timezoneGroupAmericas: 'Américas',
+		timezoneGroupEuropeAfrica: 'Europa / África',
+		timezoneGroupAsiaPacific: 'Asia / Pacífico'
 	},
 	token: {
 		title: 'Usar tu token de Concept2',

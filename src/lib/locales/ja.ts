@@ -575,7 +575,16 @@ export const ja = {
 			'rowplay のキャッシュしたワークアウトとリプレイデータをすべて削除してログアウトしますか？Concept2 ログブックは変更されません。',
 		deleteDemo: 'デモモード — 保存されていないため、削除するものはありません。',
 		deleteDone: 'キャッシュを削除しました。ログアウトしました。',
-		deleteFailed: 'キャッシュを削除できませんでした'
+		deleteFailed: 'キャッシュを削除できませんでした',
+		timezoneTitle: 'ホームタイムゾーン',
+		timezoneNote:
+			'深夜近くのワークアウトが正しいカレンダー日に表示されるよう、ローカルタイムゾーンを選択してください。',
+		timezoneLabel: 'ホームタイムゾーン',
+		timezoneSaved: 'タイムゾーンを保存しました',
+		timezoneUtcDefault: 'UTC（デフォルト）',
+		timezoneGroupAmericas: 'アメリカ',
+		timezoneGroupEuropeAfrica: 'ヨーロッパ / アフリカ',
+		timezoneGroupAsiaPacific: 'アジア / 太平洋'
 	},
 	token: {
 		title: 'Concept2 トークンを使う',

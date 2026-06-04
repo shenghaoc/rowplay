@@ -23,6 +23,7 @@
 	import { MACHINE_COLOR } from '$lib/replay/sports';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { readHomeTimezoneClient } from '$lib/homeTimezone';
 	import { serializeWorkoutListQuery, filterAndSortWorkouts, type WorkoutListQuery } from '$lib/workoutQuery';
 	import { toast } from 'svelte-sonner';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
@@ -37,7 +38,7 @@
 	import LiveModePanel from '$components/LiveModePanel.svelte';
 	import { LiveMode } from '$lib/liveMode.svelte';
 
-	import { logbookEpochMillis } from '$lib/datetime';
+	import { logbookEpochMillis, todayKeyForTz } from '$lib/datetime';
 
 	// Static lookup — never changes, shared across instances.
 	const formBandClass: Record<FormBand, string> = {
@@ -69,6 +70,15 @@
 	);
 
 	let liveMode = $state<LiveMode | null>(null);
+	let demoHomeTz = $state<string | undefined>(undefined);
+
+	const homeTz = $derived(data.demo ? demoHomeTz : data.homeTimezone);
+
+	// In demo mode the server has no access to the client-stored home tz, so it
+	// computed data.calendarEndDay/goalYear in UTC. Re-derive on the client once
+	// the demo home tz is known so the calendar's right edge and goal year track it.
+	const calendarEndDay = $derived(data.demo && homeTz ? todayKeyForTz(homeTz) : data.calendarEndDay);
+	const goalYear = $derived(parseInt(calendarEndDay.slice(0, 4), 10));
 
 	const sportFilter = $derived<Sport | 'all'>(listQuery.sport ?? 'all');
 
@@ -161,6 +171,7 @@
 	}
 
 	onMount(() => {
+		if (data.demo) demoHomeTz = readHomeTimezoneClient();
 		const lm = new LiveMode(!!data.demo, {
 			onWorkouts: handleLiveWorkouts,
 			onError: (message, code) => {
@@ -623,7 +634,7 @@
 		<!-- Main column (analysis) — first in DOM so main content leads on mobile. -->
 		<div class="col-main">
 			{#if filtered.length}
-				<TrainingHeatmap workouts={filtered} endDay={data.calendarEndDay} />
+				<TrainingHeatmap workouts={filtered} endDay={calendarEndDay} {homeTz} />
 			{/if}
 
 			<!-- Fitness & Freshness — the Performance Management Chart -->
@@ -803,8 +814,9 @@
 			<EngagementPanel
 				workouts={workouts}
 				annualGoal={data.annualGoal}
-				goalYear={data.goalYear}
-				endDay={data.calendarEndDay}
+				{goalYear}
+				endDay={calendarEndDay}
+				{homeTz}
 			/>
 
 			<!-- Personal bests -->

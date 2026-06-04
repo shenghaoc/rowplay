@@ -77,6 +77,8 @@ export interface Workout {
 	workoutType?: string;
 	comments?: string;
 	timezone?: string;
+	/** True UTC instant of workout end (Concept2 `date_utc` field; `null` when the API omits it). */
+	dateUtc?: string | null;
 	weightClass?: 'H' | 'L';
 	privacy?: string;
 	/** Logging app/channel from Concept2 `source` (free string; docs only show Web/ErgData). */

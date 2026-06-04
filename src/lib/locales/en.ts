@@ -572,7 +572,16 @@ export const en = {
 			'Delete all cached workouts and replay data from rowplay and sign out? Your Concept2 logbook will not be changed.',
 		deleteDemo: 'Demo mode — nothing was stored, so there is nothing to delete.',
 		deleteDone: 'Cached data cleared. You have been signed out.',
-		deleteFailed: 'Could not clear cached data'
+		deleteFailed: 'Could not clear cached data',
+		timezoneTitle: 'Home timezone',
+		timezoneNote:
+			'Choose your local timezone so workouts rowed near midnight appear on the right calendar day.',
+		timezoneLabel: 'Home timezone',
+		timezoneSaved: 'Timezone saved',
+		timezoneUtcDefault: 'UTC (default)',
+		timezoneGroupAmericas: 'Americas',
+		timezoneGroupEuropeAfrica: 'Europe / Africa',
+		timezoneGroupAsiaPacific: 'Asia / Pacific'
 	},
 	token: {
 		title: 'Use your Concept2 token',

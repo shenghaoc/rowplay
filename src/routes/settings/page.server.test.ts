@@ -5,7 +5,8 @@ vi.mock('$lib/server/data', () => ({
 		{ id: 1001, hasStrokeData: true, date: '2026-01-01' },
 		{ id: 1002, hasStrokeData: false, date: '2026-01-02' }
 	]),
-	syncStatus: vi.fn().mockResolvedValue({ lastSyncAt: '2026-01-02T00:00:00Z' })
+	syncStatus: vi.fn().mockResolvedValue({ lastSyncAt: '2026-01-02T00:00:00Z' }),
+	loadHomeTimezone: vi.fn().mockResolvedValue(undefined)
 }));
 
 import { load } from './+page.server';

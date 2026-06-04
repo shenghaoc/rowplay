@@ -21,6 +21,10 @@ interface Spec {
 	source?: string;
 	/** Demo-only: erg logged without HR — exercises device import. */
 	omitHr?: boolean;
+	/** IANA zone for calendar bucketing demos (cross-timezone fixture). */
+	timezone?: string;
+	/** Skip stroke synthesis for lightweight calendar fixtures. */
+	noStrokes?: boolean;
 }
 
 const SPECS: Spec[] = [
@@ -46,6 +50,18 @@ const SPECS: Spec[] = [
 	{ id: 1009, date: '2026-04-29 06:25:00', sport: 'rower', distance: 2000, basePace: 113, baseSpm: 28, baseHr: 167, workoutType: '2000m test' },
 	{ id: 1010, date: '2026-04-22 06:30:00', sport: 'rower', distance: 2000, basePace: 115, baseSpm: 28, baseHr: 168, workoutType: '2000m test' },
 	{ id: 1011, date: '2026-04-15 06:28:00', sport: 'rower', distance: 2000, basePace: 117, baseSpm: 27, baseHr: 169, workoutType: '2000m test' },
+	{
+		id: 9001,
+		date: '2024-01-14 23:30:00',
+		timezone: 'America/New_York',
+		sport: 'rower',
+		distance: 5000,
+		basePace: 126,
+		baseSpm: 28,
+		baseHr: 160,
+		workoutType: '5000m steady',
+		noStrokes: true
+	},
 	// Fixed-time piece for comparability-guard demo (ghost/compare block vs 2k distance pieces).
 	{
 		id: 1012,
@@ -197,8 +213,10 @@ function timeForDistance(metres: number, paceSecPer500: number): number {
 }
 
 function detailFor(spec: Spec): WorkoutDetail {
-	const { strokes, time } = buildStrokes(spec);
-	const splits = buildSplits(spec, strokes, time);
+	const { strokes, time } = spec.noStrokes
+		? { strokes: [] as Stroke[], time: timeForDistance(spec.distance, spec.basePace) }
+		: buildStrokes(spec);
+	const splits = spec.noStrokes ? [] : buildSplits(spec, strokes, time);
 	const pace = time / (spec.distance / 500);
 	const detail: WorkoutDetail = {
 		id: spec.id,
@@ -207,17 +225,18 @@ function detailFor(spec: Spec): WorkoutDetail {
 		distance: spec.distance,
 		time: round1(time),
 		pace: round1(pace),
-		strokeRate: Math.round(avg(strokes.map((s) => s.spm))),
+		strokeRate: strokes.length ? Math.round(avg(strokes.map((s) => s.spm))) : spec.baseSpm,
 		strokeCount: strokes.length,
 		caloriesTotal: Math.round((time / 60) * 12),
 		dragFactor: spec.sport === 'rower' ? 130 : spec.sport === 'skierg' ? 110 : undefined,
 		workoutType: spec.workoutType,
 		comments: spec.comments,
-		hasStrokeData: true,
+		hasStrokeData: !spec.noStrokes,
 		isInterval: !!spec.interval,
 		strokes,
 		splits
 	};
+	if (spec.timezone) detail.timezone = spec.timezone;
 	if (!spec.omitHr) {
 		detail.heartRateAvg = Math.round(avg(strokes.map((s) => s.hr ?? 0)));
 	}
