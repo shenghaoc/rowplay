@@ -4,6 +4,7 @@
 	import WorkoutList from '$components/WorkoutList.svelte';
 	import WorkoutListFilters from '$components/WorkoutListFilters.svelte';
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
+	import TrainingIntensityChart from '$components/TrainingIntensityChart.svelte';
 	import EngagementPanel from '$components/EngagementPanel.svelte';
 	import CriticalPowerPanel from '$components/CriticalPowerPanel.svelte';
 	import PerformancePredictorCard from '$components/PerformancePredictorCard.svelte';
@@ -741,6 +742,8 @@
 					{/if}
 				</div>
 			{/if}
+
+			<TrainingIntensityChart workouts={filtered} />
 
 			<!-- Trend -->
 			{#if filtered.length > 1}

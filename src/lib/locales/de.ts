@@ -175,6 +175,25 @@ export const de = {
 		calDowThu: 'Do',
 		calDowFri: 'Fr',
 		calDowSat: 'Sa',
+		tid: {
+			title: 'Trainingsintensität',
+			time: 'Zeit',
+			distance: 'Distanz',
+			period4w: 'Letzte 4 Wochen',
+			period3m: 'Letzte 3 Monate',
+			period12m: 'Letzte 12 Monate',
+			empty: 'Keine Trainings in diesem Zeitraum',
+			zone: {
+				UT2: 'UT2 — Erholung',
+				UT1: 'UT1 — Aerob',
+				AT: 'AT — Schwelle',
+				TR: 'TR — Renntempo',
+				AN: 'AN — Anaerob',
+				Easy: 'Leicht',
+				Moderate: 'Mittel',
+				Hard: 'Hart'
+			}
+		},
 		formTitle: 'Fitness & Frische',
 		formPremium: 'Premium-Funktion — freigeschaltet',
 		formSub: 'Trainingsbelastung über alle Geräte, skaliert auf deine eigene Schwellenleistung.',

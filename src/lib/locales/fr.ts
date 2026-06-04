@@ -175,6 +175,25 @@ export const fr = {
 		calDowThu: 'jeu.',
 		calDowFri: 'ven.',
 		calDowSat: 'sam.',
+		tid: {
+			title: 'Intensité d\'entraînement',
+			time: 'Temps',
+			distance: 'Distance',
+			period4w: '4 dernières semaines',
+			period3m: '3 derniers mois',
+			period12m: '12 derniers mois',
+			empty: 'Aucun entraînement sur cette période',
+			zone: {
+				UT2: 'UT2 — Récupération',
+				UT1: 'UT1 — Aérobie',
+				AT: 'AT — Seuil',
+				TR: 'TR — Allure course',
+				AN: 'AN — Anaérobie',
+				Easy: 'Facile',
+				Moderate: 'Modéré',
+				Hard: 'Dur'
+			}
+		},
 		formTitle: 'Forme et fraîcheur',
 		formPremium: 'Fonction premium — débloquée',
 		formSub: 'Charge d’entraînement sur toutes les machines, calée sur votre propre puissance seuil.',
