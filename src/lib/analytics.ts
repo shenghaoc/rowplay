@@ -299,6 +299,100 @@ export function distancePerStroke(pace: number, spm: number): number {
 	return speed / strokesPerSec;
 }
 
+export interface EfficiencyDriftResult {
+	/** Valid DPS points only; t = stroke time in seconds. */
+	series: { t: number; dps: number }[];
+	/** Mean DPS over the opening segment. 0 when insufficient data. */
+	baseline: number;
+	/** Distance at which the opening segment closes (metres). */
+	baselineEndD: number;
+	/** Closing-segment mean DPS minus baseline (negative = fade). */
+	fadeDelta: number;
+	/** fadeDelta / baseline × 100, or 0 when baseline is 0. */
+	fadePercent: number;
+}
+
+const EMPTY_DRIFT: EfficiencyDriftResult = {
+	series: [],
+	baseline: 0,
+	baselineEndD: 0,
+	fadeDelta: 0,
+	fadePercent: 0
+};
+
+function openingSegmentThreshold(totalDistance: number): number {
+	return totalDistance < 5000 ? totalDistance * 0.1 : 500;
+}
+
+/** Mean DPS over strokes from the piece start until the distance threshold (min 5). */
+function openingSegment(
+	valid: { stroke: Stroke; dps: number }[],
+	threshold: number
+): { strokes: { stroke: Stroke; dps: number }[]; endD: number } {
+	const minCount = 5;
+	// Measure the opening span from the FIRST valid stroke, mirroring how
+	// closingSegment measures span from the end. Using absolute cumulative
+	// distance here would collapse the opening to the min-5 floor whenever
+	// leading strokes are invalid and the first valid stroke already sits past
+	// the threshold (e.g. d = 700 m on a long piece).
+	const firstD = valid[0]!.stroke.d;
+	let endIdx = Math.min(minCount - 1, valid.length - 1);
+	for (let i = 0; i < valid.length; i++) {
+		endIdx = i;
+		if (valid[i]!.stroke.d - firstD >= threshold && i >= minCount - 1) break;
+	}
+	const strokes = valid.slice(0, endIdx + 1);
+	return { strokes, endD: strokes[strokes.length - 1]!.stroke.d };
+}
+
+/** Mean DPS over strokes from the piece end until the distance threshold (min 5). */
+function closingSegment(
+	valid: { stroke: Stroke; dps: number }[],
+	threshold: number
+): { stroke: Stroke; dps: number }[] {
+	const totalD = valid[valid.length - 1]!.stroke.d;
+	const minCount = 5;
+	let startIdx = 0;
+	for (let i = valid.length - 1; i >= 0; i--) {
+		startIdx = i;
+		const spanFromEnd = totalD - valid[i]!.stroke.d;
+		if (spanFromEnd >= threshold && valid.length - i >= minCount) break;
+	}
+	return valid.slice(startIdx);
+}
+
+/**
+ * Within-piece DPS drift: opening-segment baseline, full valid series, and
+ * closing-vs-opening fade summary. Pure; no DOM.
+ */
+export function efficiencyDrift(strokes: Stroke[]): EfficiencyDriftResult {
+	const valid: { stroke: Stroke; dps: number }[] = [];
+	for (const s of strokes) {
+		const dps = distancePerStroke(s.pace, s.spm);
+		if (dps > 0) valid.push({ stroke: s, dps });
+	}
+	if (valid.length < 5) return { ...EMPTY_DRIFT };
+
+	const series = valid.map(({ stroke: s, dps }) => ({ t: s.t, dps }));
+	const totalD = valid[valid.length - 1]!.stroke.d;
+	const threshold = openingSegmentThreshold(totalD);
+
+	const opening = openingSegment(valid, threshold);
+	const closing = closingSegment(valid, threshold);
+	const baseline = mean(opening.strokes.map((x) => x.dps));
+	const closingMean = mean(closing.map((x) => x.dps));
+	const fadeDelta = closingMean - baseline;
+	const fadePercent = baseline > 0 ? (fadeDelta / baseline) * 100 : 0;
+
+	return {
+		series,
+		baseline,
+		baselineEndD: opening.endD,
+		fadeDelta,
+		fadePercent
+	};
+}
+
 export interface TechniqueSummary {
 	/** Distance-per-stroke timeline, aligned to stroke time `t`. */
 	dps: { t: number; v: number }[];

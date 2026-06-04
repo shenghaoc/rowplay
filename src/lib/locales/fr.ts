@@ -530,6 +530,16 @@ export const fr = {
 		metaSerial: 'Numéro de série',
 		metaDevice: 'Appareil'
 	},
+	drift: {
+		toggle: 'Afficher la dérive d’efficacité',
+		toggleOn: 'Masquer la dérive d’efficacité',
+		baseline: 'Référence d’ouverture',
+		fade: 'Perte d’efficacité',
+		unit: ' m/coup',
+		summaryTitle: 'Dérive de distance par coup',
+		summaryHint: 'Évolution du DPS du segment d’ouverture à la fin',
+		axisLabel: 'DPS'
+	},
 	settings: {
 		title: 'Compte et données',
 		eyebrow: 'Confidentialité et contrôle',
