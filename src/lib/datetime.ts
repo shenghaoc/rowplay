@@ -49,28 +49,42 @@ const DATE_FMT: Intl.DateTimeFormatOptions = {
 	day: 'numeric'
 };
 
+const fmtDateCache = new Map<string, string>();
+
 /** Short locale date from a logbook string or ISO instant.
  * Accepts optional locale and timeZone for SSR-safe formatting;
  * defaults to the system timezone and locale when omitted. */
 export function fmtDate(value: string, locale?: string, timeZone?: string): string {
+	const cacheKey = `${value}\x00${locale ?? ''}\x00${timeZone ?? ''}`;
+	const cached = fmtDateCache.get(cacheKey);
+	if (cached !== undefined) return cached;
+
 	// ISO instants have embedded timezone info — check them first so the
 	// timezone offset is respected. parseLogbookDateTime uses PlainDateTime
 	// which silently discards the offset.
+	let result: string;
 	try {
-		return Temporal.Instant.from(value)
+		result = Temporal.Instant.from(value)
 			.toZonedDateTimeISO(timeZone ?? Temporal.Now.timeZoneId())
 			.toLocaleString(locale, DATE_FMT);
 	} catch {
 		const pdt = parseLogbookDateTime(value);
 		if (pdt) {
-			return pdt.toLocaleString(locale, DATE_FMT);
-		}
-		try {
-			return Temporal.PlainDate.from(value).toLocaleString(locale, DATE_FMT);
-		} catch {
-			return value;
+			result = pdt.toLocaleString(locale, DATE_FMT);
+		} else {
+			try {
+				result = Temporal.PlainDate.from(value).toLocaleString(locale, DATE_FMT);
+			} catch {
+				result = value;
+			}
 		}
 	}
+
+	if (fmtDateCache.size > 1000) {
+		fmtDateCache.clear();
+	}
+	fmtDateCache.set(cacheKey, result);
+	return result;
 }
 
 /** Locale date-time from a logbook `YYYY-MM-DD HH:MM:SS` string. */

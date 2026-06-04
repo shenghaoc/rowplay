@@ -331,14 +331,38 @@
 	}
 	.mobile-drawer::backdrop {
 		background: rgb(15 42 54 / 0.35);
+		transition:
+			background 0.2s ease,
+			display 0.2s ease,
+			overlay 0.2s ease;
+		transition-behavior: allow-discrete;
 	}
 	.mobile-drawer:not([open]) {
 		display: none;
+		opacity: 0;
+		translate: 0 -8px;
 	}
 	.mobile-drawer[open] {
 		display: grid;
 		gap: 1rem;
 		align-content: start;
+		opacity: 1;
+		translate: 0 0;
+		transition:
+			opacity 0.18s ease,
+			translate 0.18s ease,
+			display 0.18s ease,
+			overlay 0.18s ease;
+		transition-behavior: allow-discrete;
+	}
+	@starting-style {
+		.mobile-drawer[open] {
+			opacity: 0;
+			translate: 0 -8px;
+		}
+		.mobile-drawer[open]::backdrop {
+			background: rgb(15 42 54 / 0);
+		}
 	}
 	.drawer-nav {
 		display: grid;

@@ -65,6 +65,10 @@ const SECURITY_HEADERS: Record<string, string> = {
 	// Deny powerful APIs the app never uses so injected or embedded content can't
 	// reach them either.
 	'Permissions-Policy': 'geolocation=(), camera=(), microphone=()',
+	// Prevent a cross-origin opener from accessing this window via window.opener,
+	// and prevent this page from accessing cross-origin openers. This isolates the
+	// browsing context so attackers can't redirect or inspect the tab.
+	'Cross-Origin-Opener-Policy': 'same-origin',
 	// Report-only CSP baseline: validates syntax and surfaces violations in
 	// DevTools. about:blank report-uri silences the "no reporting endpoint"
 	// browser warning; wire up a real collector before switching to enforce mode.

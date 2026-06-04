@@ -197,13 +197,29 @@
 			aria-label="Seek"
 		/>
 		<div class="dist mono">{fmtDistance(frame.d)}</div>
-		<div class="join speeds" role="group" aria-label="Playback speed">
-			{#each SPEEDS as s}
+		<div
+			class="join speeds"
+			role="radiogroup"
+			aria-label="Playback speed"
+			tabindex="-1"
+			onkeydown={(e) => {
+				const btns = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+				const idx = btns.indexOf(e.target as HTMLButtonElement);
+				if (idx < 0) return;
+				let next = -1;
+				if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % btns.length;
+				else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + btns.length) % btns.length;
+				if (next >= 0) { e.preventDefault(); setSpeed(SPEEDS[next]); btns[next].focus(); }
+			}}
+		>
+			{#each SPEEDS as s (s)}
 				<button
 					class="btn btn-xs join-item"
 					class:btn-active={speed === s}
 					class:btn-neutral={speed === s}
-					aria-pressed={speed === s}
+					role="radio"
+					aria-checked={speed === s}
+					tabindex={speed === s ? 0 : -1}
 					onclick={() => setSpeed(s)}
 				>{s}×</button>
 			{/each}

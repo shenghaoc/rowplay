@@ -754,17 +754,33 @@
 					</div>
 
 					{#if bandScoped && bands.length > 1}
-						<div class="join bands" role="group" aria-label="Distance band">
-							{#each bands as b}
-								<button
-									class="btn btn-xs join-item"
-									class:btn-active={activeBand === b.key}
-									class:btn-neutral={activeBand === b.key}
-									aria-pressed={activeBand === b.key}
-									onclick={() => (bandKey = b.key)}
-								>{b.label} <span class="bn">{b.n}</span></button>
-							{/each}
-						</div>
+						<div
+						class="join bands"
+						role="radiogroup"
+						aria-label="Distance band"
+						tabindex="-1"
+						onkeydown={(e) => {
+							const btns = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+							const idx = btns.indexOf(e.target as HTMLButtonElement);
+							if (idx < 0) return;
+							let next = -1;
+							if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % btns.length;
+							else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + btns.length) % btns.length;
+							if (next >= 0) { e.preventDefault(); btns[next].click(); btns[next].focus(); }
+						}}
+					>
+						{#each bands as b (b.key)}
+							<button
+								class="btn btn-xs join-item"
+								class:btn-active={activeBand === b.key}
+								class:btn-neutral={activeBand === b.key}
+								role="radio"
+								aria-checked={activeBand === b.key}
+								tabindex={activeBand === b.key ? 0 : -1}
+								onclick={() => (bandKey = b.key)}
+							>{b.label} <span class="bn">{b.n}</span></button>
+						{/each}
+					</div>
 					{/if}
 
 					{#if verdict}
