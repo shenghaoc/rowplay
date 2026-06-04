@@ -26,7 +26,10 @@ export interface ZoneDistribution {
 	totalMeters: number;
 }
 
-/** Workouts optionally carrying cached stroke/split detail for finer attribution. */
+/**
+ * Workouts optionally carrying cached stroke/split detail for finer attribution.
+ * @internal — reserved for future per-stroke/per-split distribution
+ */
 export type WorkoutForDistribution = Workout & {
 	strokes?: Stroke[];
 	splits?: Split[];
@@ -134,6 +137,7 @@ function addToSlice(slices: ZoneSlice[], zone: ZoneLabel, seconds: number, meter
 	s.meters += meters;
 }
 
+/** @internal — reserved for future per-stroke distribution */
 function accumulateStrokes(
 	strokes: Stroke[],
 	sport: Sport,
@@ -152,6 +156,7 @@ function accumulateStrokes(
 	}
 }
 
+/** @internal — reserved for future per-split distribution */
 function accumulateSplits(
 	splits: Split[],
 	sport: Sport,
@@ -180,6 +185,8 @@ export function buildDistribution(
 ): ZoneDistribution {
 	const slices = emptySlices(config);
 	for (const w of workouts) {
+		// @internal — per-stroke / per-split paths reserved for future use;
+		// the dashboard currently only passes Workout[] (no strokes/splits).
 		if (w.strokes?.length) {
 			accumulateStrokes(w.strokes, w.sport, config, slices);
 			continue;
