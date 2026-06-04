@@ -173,7 +173,7 @@ export async function loadSharedWorkout(
 	if (!/^[a-f0-9]{48}$/.test(token)) throw error(404, 'Share link not found.');
 
 	const demoBoard = resolveDemoBoardShare(token);
-	if (demoBoard) return demoBoard;
+	if (demoBoard) return servePublic(demoBoard);
 
 	const db = event.platform?.env?.DB;
 	const fromDb = await getCachedDetailByShareToken(db, token);

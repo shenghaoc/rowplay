@@ -42,6 +42,14 @@ describe('createWorkoutShare privacy guard', () => {
 		await expect(createWorkoutShare(demoEvent(), 1002)).rejects.toMatchObject({ status: 403 });
 	});
 
+	it('refuses even when a share token already exists for a now-private workout', async () => {
+		const event = demoEvent();
+		// Pre-seed the reverse index as if 1002 had been shared while public; the
+		// privacy guard must still fire before the existing token is returned.
+		await event.platform.env.SESSIONS.put('share:demo:1002', 'preexisting-token');
+		await expect(createWorkoutShare(event, 1002)).rejects.toMatchObject({ status: 403 });
+	});
+
 	it('mints a link for a public (everyone) workout', async () => {
 		// Demo workouts default to privacy: 'everyone'.
 		const share = await createWorkoutShare(demoEvent(), 1001);

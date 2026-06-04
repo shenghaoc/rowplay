@@ -1,10 +1,6 @@
-/**
- * Concept2 logbook `privacy` levels (the result's `privacy` field). Only
- * `everyone` makes a workout publicly visible; `logged_in`, `partners` and
- * `private` are progressively narrower.
- */
-export const CONCEPT2_PRIVACY_LEVELS = ['everyone', 'logged_in', 'partners', 'private'] as const;
-
+// Concept2 logbook `privacy` levels (the result's `privacy` field): only
+// `everyone` makes a workout publicly visible; `logged_in`, `partners`, and
+// `private` are progressively narrower.
 const PUBLIC_PRIVACY = 'everyone';
 
 /**
