@@ -1,28 +1,14 @@
 import type { Stroke } from '../types';
 import { paceToWatts } from '../format';
+import { parsePaceInput } from '../paceInput';
+
+export { parsePaceInput };
 
 /**
  * Ghost "sources" for the replay comparison: a constant pace, or an uploaded
  * CSV / TCX / FIT file. Each resolves to a Stroke[] that the replay renders in
  * the ghost lane via the existing `sampleAt`.
  */
-
-/** Parse a /500m pace like "1:52", "1:52.5", or "112" (seconds) into seconds. */
-export function parsePaceInput(input: string): number | null {
-	const s = input.trim();
-	// Either "M:SS(.t)" (seconds 0-59) or a bare seconds value (any magnitude).
-	const clock = s.match(/^(\d+):([0-5]?\d(?:\.\d+)?)$/);
-	const bare = s.match(/^(\d+(?:\.\d+)?)$/);
-	let total: number;
-	if (clock) {
-		total = parseInt(clock[1], 10) * 60 + parseFloat(clock[2]);
-	} else if (bare) {
-		total = parseFloat(bare[1]);
-	} else {
-		return null;
-	}
-	return total > 0 && isFinite(total) ? total : null;
-}
 
 /**
  * A flat-pace pacer ghost over `totalDistance`. Two points suffice because
