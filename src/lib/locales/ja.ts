@@ -464,6 +464,10 @@ export const ja = {
 		mFirmware: 'ファームウェア',
 		mSerial: 'シリアル番号',
 		mDevice: 'デバイス',
+		mSource: '記録元',
+		exrBadge: 'EXR ソース',
+		exrBadgeTitle:
+			'ペースとパワーは PM5 からではなく EXR によって合成されています。PM 記録のワークアウトと直接比較できない場合があります。',
 		mErgModel: 'エルグモデル',
 		mHrSensor: '心拍センサー',
 		targetsTitle: '目標',
@@ -581,6 +585,7 @@ export const ja = {
 		apiToken: 'API トークン',
 		placeholder: 'トークンを貼り付け',
 		connect: 'トークンで接続',
+		connecting: '接続中…',
 		rejected: 'Concept2 がそのトークンを拒否しました。確認して再試行してください。',
 		serverMisconfigured:
 			'このデプロイはトークンサインインに対応していません（SESSION_SECRET が未設定）。サイト管理者にお問い合わせください。',

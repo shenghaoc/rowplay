@@ -516,15 +516,22 @@
 </script>
 
 <div class="container">
+	<!-- ============ HEAD + SPORT FILTER ============ -->
 	<div class="head">
-		<div>
+		<div class="head-titles">
 			<p class="eyebrow">{t('dashboard.eyebrow')}</p>
-			<h1>{t('dashboard.title')}</h1>
+			<h1 class="race-head">{t('dashboard.title')}</h1>
 		</div>
 		<div class="headright">
-			<div class="filters" role="group" aria-label="Sport filter">
+			<div role="tablist" class="tabs tabs-box tabs-sm filtertabs" aria-label="Sport filter">
 				{#each sports as s}
-					<button class="chip" class:on={sportFilter === s} aria-pressed={sportFilter === s} onclick={() => setSportFilter(s)}>
+					<button
+						role="tab"
+						class="tab"
+						class:tab-active={sportFilter === s}
+						aria-selected={sportFilter === s}
+						onclick={() => setSportFilter(s)}
+					>
 						{s === 'all' ? t('dashboard.all') : SPORT_LABEL[s]}
 					</button>
 				{/each}
@@ -548,298 +555,313 @@
 		<p class="syncnote muted">{t('dashboard.recentNote')}</p>
 	{/if}
 
-	{#if liveMode}
-		<LiveModePanel live={liveMode} />
-	{/if}
-
-	<!-- Latest session: pace front and centre -->
+	<!-- ============ HERO — LATEST SESSION ============ -->
 	{#if latest}
-		<a class="card bg-base-100 border border-base-300 shadow-md p-5 latest" href="/replay/{latest.id}">
-			<div class="herolead">
-				<div class="herotop muted">
-					<span class="hicon" style:color={MACHINE_COLOR[latest.sport]}
-						><SportIcon sport={latest.sport} size={16} /></span
-					>
-					{t('dashboard.latest')} · {latest.workoutType || SPORT_LABEL[latest.sport]} · {fmtDate(latest.date)}
-				</div>
-				<div class="heropace mono">{fmtPaceBare(latest.pace)}<span class="perunit">/500m</span></div>
-				{#if paceDelta != null}
-					<div class="herodelta" class:faster={paceDelta < 0} class:slower={paceDelta > 0}>
-						{paceDelta < 0 ? '▼' : '▲'}
-						{fmtPaceBare(Math.abs(paceDelta), true)}
-						<span class="muted">{t('dashboard.vsAvg', { sport: SPORT_LABEL[latest.sport] })}</span>
+		<a class="card latest" href="/replay/{latest.id}">
+			<span class="latest-accent" aria-hidden="true"></span>
+			<div class="card-body latest-body">
+				<div class="latest-main">
+					<div class="herotop muted">
+						<span class="hicon" style:color={MACHINE_COLOR[latest.sport]}><SportIcon sport={latest.sport} size={16} /></span>
+						{t('dashboard.latest')} · {latest.workoutType || SPORT_LABEL[latest.sport]} · {fmtDate(latest.date)}
 					</div>
-				{/if}
+					<div class="heropace mono">{fmtPaceBare(latest.pace)}<span class="perunit">/500m</span></div>
+					{#if paceDelta != null}
+						<div class="herodelta mono" class:faster={paceDelta < 0} class:slower={paceDelta > 0}>
+							{paceDelta < 0 ? '▼' : '▲'}
+							{fmtPaceBare(Math.abs(paceDelta), true)}
+							<span class="muted">{t('dashboard.vsAvg', { sport: SPORT_LABEL[latest.sport] })}</span>
+						</div>
+					{/if}
+					<div class="herometrics">
+						<div class="hm">
+							<div class="hmv mono">{fmtDistance(latest.distance)}</div>
+							<div class="hml eyebrow">{t('dashboard.distance')}</div>
+						</div>
+						<div class="hm">
+							<div class="hmv mono">{fmtTime(latest.time, true)}</div>
+							<div class="hml eyebrow">{t('dashboard.time')}</div>
+						</div>
+						{#if latest.strokeRate}
+							<div class="hm">
+								<div class="hmv mono" style="color: var(--rate)">{latest.strokeRate}</div>
+								<div class="hml eyebrow">{t('dashboard.avgRate')}</div>
+							</div>
+						{/if}
+						{#if heroDps > 0}
+							<div class="hm">
+								<div class="hmv mono" style="color: var(--dps)">{heroDps.toFixed(1)}m</div>
+								<div class="hml eyebrow">{t('dashboard.distStroke')}</div>
+							</div>
+						{/if}
+						{#if latest.heartRateAvg}
+							<div class="hm">
+								<div class="hmv mono" style="color: var(--hr)">{Math.round(latest.heartRateAvg)}</div>
+								<div class="hml eyebrow">{t('dashboard.avgBpm')}</div>
+							</div>
+						{/if}
+					</div>
+				</div>
+				<div class="latest-cta">
+					<span class="btn btn-primary btn-lg latest-replay"><Play size={18} /> {t('common.replay')}</span>
+				</div>
 			</div>
-			<div class="herometrics">
-				<div class="hm">
-					<div class="hmv mono">{fmtDistance(latest.distance)}</div>
-					<div class="hml muted">{t('dashboard.distance')}</div>
-				</div>
-				<div class="hm">
-					<div class="hmv mono">{fmtTime(latest.time, true)}</div>
-					<div class="hml muted">{t('dashboard.time')}</div>
-				</div>
-				{#if latest.strokeRate}
-					<div class="hm">
-						<div class="hmv mono">{latest.strokeRate}</div>
-						<div class="hml muted">{t('dashboard.avgRate')}</div>
-					</div>
-				{/if}
-				{#if heroDps > 0}
-					<div class="hm">
-						<div class="hmv mono">{heroDps.toFixed(1)}m</div>
-						<div class="hml muted">{t('dashboard.distStroke')}</div>
-					</div>
-				{/if}
-				{#if latest.heartRateAvg}
-					<div class="hm">
-						<div class="hmv mono">{Math.round(latest.heartRateAvg)}</div>
-						<div class="hml muted">{t('dashboard.avgBpm')}</div>
-					</div>
-				{/if}
-			</div>
-			<div class="herocta badge badge-soft badge-primary"><Play size={12} /> {t('common.replay')}</div>
 		</a>
 	{/if}
 
+	<!-- ============ STAT STRIP ============ -->
 	<div class="dash-stats">
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
-			<div class="stat p-0">
-				<div class="stat-title">{t('dashboard.sessions')}</div>
-				<div class="stat-value mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
-			</div>
+		<div class="card statcard">
+			<div class="statlabel eyebrow">{t('dashboard.sessions')}</div>
+			<div class="statval mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
 		</div>
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
-			<div class="stat p-0">
-				<div class="stat-title">{t('dashboard.totalDistance')}</div>
-				<div class="stat-value mono">{fmtDistance(totalMeters)}</div>
-			</div>
+		<div class="card statcard">
+			<div class="statlabel eyebrow">{t('dashboard.totalDistance')}</div>
+			<div class="statval mono">{fmtDistance(totalMeters)}</div>
 		</div>
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
-			<div class="stat p-0">
-				<div class="stat-title">{t('dashboard.totalTime')}</div>
-				<div class="stat-value mono">{fmtTime(totalTime)}</div>
-			</div>
+		<div class="card statcard">
+			<div class="statlabel eyebrow">{t('dashboard.totalTime')}</div>
+			<div class="statval mono">{fmtTime(totalTime)}</div>
 		</div>
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 dash-stat">
-			<div class="stat p-0">
-				<div class="stat-title">{t('dashboard.avgPace')}</div>
-				<div class="stat-value mono">{fmtPace(avgPace)}</div>
-			</div>
+		<div class="card statcard statcard--pace">
+			<div class="statlabel eyebrow">{t('dashboard.avgPace')}</div>
+			<div class="statval mono" style="color: var(--pace)">{fmtPace(avgPace)}</div>
 		</div>
 	</div>
 
-	<EngagementPanel
-		workouts={workouts}
-		annualGoal={data.annualGoal}
-		{goalYear}
-		endDay={calendarEndDay}
-		{homeTz}
-	/>
-
-	{#if filtered.length}
-		<TrainingHeatmap workouts={filtered} endDay={calendarEndDay} {homeTz} />
-	{/if}
-
-	<!-- Fitness & Freshness — the Performance Management Chart -->
-	<CriticalPowerPanel workouts={workouts} />
-
-	{#if load}
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 formcard">
-			<div class="formhead">
-				<div class="formtitle">
-					<Activity size={18} />
-					<span class="label">{t('dashboard.formTitle')}</span>
-					<span class="badge badge-soft badge-primary">{t('dashboard.formPremium')}</span>
-				</div>
-				<span class="badge {formBandClass[load.band]}">{bandLabel[load.band]}</span>
-			</div>
-			<p class="formsub muted">{t('dashboard.formSub')}</p>
-
-			<div class="formstats">
-				<div class="fs">
-					<div class="fsv mono" style="color: var(--dps)">{Math.round(load.ctl)}</div>
-					<div class="fsl">{t('dashboard.formFitness')}</div>
-					<div class="fsh muted">{t('dashboard.formFitnessHint')}</div>
-				</div>
-				<div class="fs">
-					<div class="fsv mono" style="color: var(--power)">{Math.round(load.atl)}</div>
-					<div class="fsl">{t('dashboard.formFatigue')}</div>
-					<div class="fsh muted">{t('dashboard.formFatigueHint')}</div>
-				</div>
-				<div class="fs">
-					<div class="fsv mono {formBandClass[load.band]}">{signed(load.tsb)}</div>
-					<div class="fsl">{t('dashboard.formForm')}</div>
-					<div class="fsh muted">{t('dashboard.formFormHint')}</div>
-				</div>
-				<div class="fs">
-					<div class="fsv mono">{load.ftp}<span class="unit">W</span></div>
-					<div class="fsl">{t('dashboard.formFtp')}</div>
-					<div class="fsh muted">
-						{load.cp.method === 'model' ? t('dashboard.formModelled') : t('dashboard.formEstimated')}
-						{#if load.cp.wPrime > 0} · W′ {(load.cp.wPrime / 1000).toFixed(1)}kJ{/if}
-					</div>
-				</div>
-			</div>
-
-			<div class="formread {formBandClass[load.band]}">
-				<strong>{bandLabel[load.band]}.</strong>
-				{bandDesc[load.band]}
-				{#if formReady}
-					<span class="muted">· {t('dashboard.formRamp')}: {signed(load.ramp)}</span>
-				{/if}
-			</div>
-
-			{#if formReady}
-				<UPlotChart
-					data={formData}
-					options={formOptions}
-					height={190}
-					caption={`${t('dashboard.formChartFitness')} · ${t('dashboard.formChartFatigue')} · ${t('dashboard.formChartForm')}`}
-					description={`${bandLabel[load.band]}. ${bandDesc[load.band]}`}
-				/>
-				<div class="formlegend muted">
-					<span><i style="background: var(--dps)"></i> {t('dashboard.formChartFitness')}</span>
-					<span><i style="background: var(--power)"></i> {t('dashboard.formChartFatigue')}</span>
-					<span><i style="background: var(--ahead)"></i> {t('dashboard.formChartForm')}</span>
-				</div>
-			{:else}
-				<p class="muted emptytrend">{t('dashboard.formEmpty')}</p>
+	<!-- ============ MAIN + RAIL ============ -->
+	<div class="dash-grid">
+		<!-- Main column (analysis) — first in DOM so main content leads on mobile. -->
+		<div class="col-main">
+			{#if filtered.length}
+				<TrainingHeatmap workouts={filtered} endDay={calendarEndDay} {homeTz} />
 			{/if}
-		</div>
-	{/if}
 
-	<!-- Personal bests -->
-	{#if pbs.length}
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 pbcard">
-			<div class="muted label">{t('dashboard.pbTitle')}</div>
-			<div class="pbgrid">
-				{#each pbs as pb}
-					<div class="pb">
-						<div class="pbdist mono">{pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`}</div>
-						<div class="pbtime mono">{fmtTime(pb.time, true)}</div>
-						<div class="pbsub muted"><SportIcon sport={pb.sport} size={12} /> {fmtPace(pb.pace)} · {fmtDate(pb.date)}</div>
+			<!-- Fitness & Freshness — the Performance Management Chart -->
+			<CriticalPowerPanel workouts={workouts} />
+
+			{#if load}
+				<div class="card panel formcard">
+					<div class="formhead">
+						<div class="formtitle">
+							<Activity size={18} />
+							<span class="label">{t('dashboard.formTitle')}</span>
+							<span class="badge badge-soft badge-primary">{t('dashboard.formPremium')}</span>
+						</div>
+						<span class="badge band-{formBandClass[load.band]}">{bandLabel[load.band]}</span>
 					</div>
-				{/each}
-			</div>
-		</div>
-	{/if}
+					<p class="formsub muted">{t('dashboard.formSub')}</p>
 
-	<!-- Per-sport breakdown -->
-	{#if bySport.length > 1}
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 breakdown">
-			<div class="muted label">{t('dashboard.bySport')}</div>
-			<div class="tablescroll">
-			<table class="mono">
-				<thead>
-					<tr><th>{t('dashboard.thSport')}</th><th>{t('dashboard.thSessions')}</th><th>{t('dashboard.thDistance')}</th><th>{t('dashboard.thTime')}</th><th>{t('dashboard.thAvgPace')}</th><th>{t('dashboard.thBestPace')}</th></tr>
-				</thead>
-				<tbody>
-					{#each bySport as s}
-						<tr>
-							<td class="sportcell"><SportIcon sport={s.sport} size={14} /> {SPORT_LABEL[s.sport]}</td>
-							<td>{s.sessions}</td>
-							<td>{fmtDistance(s.distance)}</td>
-							<td>{fmtTime(s.time)}</td>
-							<td>{fmtPace(s.avgPace)}</td>
-							<td>{fmtPace(s.bestPace)}</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-			</div>
-		</div>
-	{/if}
+					<div class="formstats">
+						<div class="fs">
+							<div class="fsv mono" style="color: var(--dps)">{Math.round(load.ctl)}</div>
+							<div class="fsl">{t('dashboard.formFitness')}</div>
+							<div class="fsh muted">{t('dashboard.formFitnessHint')}</div>
+						</div>
+						<div class="fs">
+							<div class="fsv mono" style="color: var(--power)">{Math.round(load.atl)}</div>
+							<div class="fsl">{t('dashboard.formFatigue')}</div>
+							<div class="fsh muted">{t('dashboard.formFatigueHint')}</div>
+						</div>
+						<div class="fs">
+							<div class="fsv mono band-{formBandClass[load.band]}">{signed(load.tsb)}</div>
+							<div class="fsl">{t('dashboard.formForm')}</div>
+							<div class="fsh muted">{t('dashboard.formFormHint')}</div>
+						</div>
+						<div class="fs">
+							<div class="fsv mono">{load.ftp}<span class="unit">W</span></div>
+							<div class="fsl">{t('dashboard.formFtp')}</div>
+							<div class="fsh muted">
+								{load.cp.method === 'model' ? t('dashboard.formModelled') : t('dashboard.formEstimated')}
+								{#if load.cp.wPrime > 0} · W′ {(load.cp.wPrime / 1000).toFixed(1)}kJ{/if}
+							</div>
+						</div>
+					</div>
 
-	<!-- Trend -->
-	{#if filtered.length > 1}
-		<div class="card bg-base-100 border border-base-300 shadow-md p-5 chartcard">
-			<div class="trendhead">
-				<div class="label">
-					{t('dashboard.trendTitle')}
-					{#if bandScoped}
-						<span class="muted">· {t('dashboard.likeForLike', { sport: SPORT_LABEL[dominantSport] })}</span>
+					<div class="formread band-{formBandClass[load.band]}">
+						<strong>{bandLabel[load.band]}.</strong>
+						{bandDesc[load.band]}
+						{#if formReady}
+							<span class="muted">· {t('dashboard.formRamp')}: {signed(load.ramp)}</span>
+						{/if}
+					</div>
+
+					{#if formReady}
+						<UPlotChart
+							data={formData}
+							options={formOptions}
+							height={190}
+							caption={`${t('dashboard.formChartFitness')} · ${t('dashboard.formChartFatigue')} · ${t('dashboard.formChartForm')}`}
+							description={`${bandLabel[load.band]}. ${bandDesc[load.band]}`}
+						/>
+						<div class="formlegend muted">
+							<span><i style="background: var(--dps)"></i> {t('dashboard.formChartFitness')}</span>
+							<span><i style="background: var(--power)"></i> {t('dashboard.formChartFatigue')}</span>
+							<span><i style="background: var(--ahead)"></i> {t('dashboard.formChartForm')}</span>
+						</div>
+					{:else}
+						<p class="muted emptytrend">{t('dashboard.formEmpty')}</p>
 					{/if}
 				</div>
-				<div class="metrics" role="group" aria-label="Metric filter">
-					{#each metrics as m}
-						<button class="mchip" class:on={metric === m.id} aria-pressed={metric === m.id} onclick={() => (metric = m.id)}>{t(m.labelKey)}</button>
-					{/each}
-				</div>
-			</div>
+			{/if}
 
-			{#if bandScoped && bands.length > 1}
-				<div class="bands" role="group" aria-label="Distance band">
-					{#each bands as b}
-						<button
-							class="bchip"
-							class:on={activeBand === b.key}
-							aria-pressed={activeBand === b.key}
-							onclick={() => (bandKey = b.key)}
-						>{b.label} <span class="bn">{b.n}</span></button>
-					{/each}
+			<!-- Trend -->
+			{#if filtered.length > 1}
+				<div class="card panel chartcard">
+					<div class="trendhead">
+						<div class="label">
+							{t('dashboard.trendTitle')}
+							{#if bandScoped}
+								<span class="muted">· {t('dashboard.likeForLike', { sport: SPORT_LABEL[dominantSport] })}</span>
+							{/if}
+						</div>
+						<div role="tablist" class="tabs tabs-box tabs-xs metrictabs" aria-label="Metric filter">
+							{#each metrics as m}
+								<button role="tab" class="tab" class:tab-active={metric === m.id} aria-selected={metric === m.id} onclick={() => (metric = m.id)}>{t(m.labelKey)}</button>
+							{/each}
+						</div>
+					</div>
+
+					{#if bandScoped && bands.length > 1}
+						<div class="join bands" role="group" aria-label="Distance band">
+							{#each bands as b}
+								<button
+									class="btn btn-xs join-item"
+									class:btn-active={activeBand === b.key}
+									class:btn-neutral={activeBand === b.key}
+									aria-pressed={activeBand === b.key}
+									onclick={() => (bandKey = b.key)}
+								>{b.label} <span class="bn">{b.n}</span></button>
+							{/each}
+						</div>
+					{/if}
+
+					{#if verdict}
+						<div class="alert verdict" class:verdict-good={verdict.better && !verdict.flat} class:verdict-bad={!verdict.better && !verdict.flat}>
+							{#if verdict.flat}<MoveRight size={16} />{:else if verdict.better}<TrendingUp size={16} />{:else}<TrendingDown size={16} />{/if}
+							<span>{verdictText}</span>
+						</div>
+					{/if}
+
+					{#if trendPoints.length > 1}
+						<UPlotChart
+							data={trend}
+							options={trendOptions}
+							height={190}
+							caption={t('dashboard.trendTitle')}
+							description={verdictText}
+						/>
+					{:else}
+						<p class="muted emptytrend">
+							{t('dashboard.emptyTrend', {
+								n: trendPoints.length,
+								band: bandScoped ? (bands.find((b) => b.key === activeBand)?.label ?? '') : ''
+							})}
+						</p>
+					{/if}
 				</div>
 			{/if}
 
-			{#if verdict}
-				<div class="verdict" class:good={verdict.better && !verdict.flat} class:bad={!verdict.better && !verdict.flat}>
-					{#if verdict.flat}<MoveRight size={16} />{:else if verdict.better}<TrendingUp size={16} />{:else}<TrendingDown size={16} />{/if}
-					{verdictText}
+			<!-- Per-sport breakdown -->
+			{#if bySport.length > 1}
+				<div class="card panel breakdown">
+					<div class="muted label">{t('dashboard.bySport')}</div>
+					<div class="tablescroll">
+						<table class="table table-zebra table-sm mono breakdowntable">
+							<thead>
+								<tr><th>{t('dashboard.thSport')}</th><th class="num">{t('dashboard.thSessions')}</th><th class="num">{t('dashboard.thDistance')}</th><th class="num">{t('dashboard.thTime')}</th><th class="num">{t('dashboard.thAvgPace')}</th><th class="num">{t('dashboard.thBestPace')}</th></tr>
+							</thead>
+							<tbody>
+								{#each bySport as s}
+									<tr>
+										<td class="sportcell"><span class="mdot" style:background={MACHINE_COLOR[s.sport]}></span><SportIcon sport={s.sport} size={14} /> {SPORT_LABEL[s.sport]}</td>
+										<td class="num">{s.sessions}</td>
+										<td class="num">{fmtDistance(s.distance)}</td>
+										<td class="num">{fmtTime(s.time)}</td>
+										<td class="num">{fmtPace(s.avgPace)}</td>
+										<td class="num best">{fmtPace(s.bestPace)}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
 				</div>
 			{/if}
 
-			{#if trendPoints.length > 1}
-				<UPlotChart
-					data={trend}
-					options={trendOptions}
-					height={190}
-					caption={t('dashboard.trendTitle')}
-					description={verdictText}
-				/>
-			{:else}
-				<p class="muted emptytrend">
-					{t('dashboard.emptyTrend', {
-						n: trendPoints.length,
-						band: bandScoped ? (bands.find((b) => b.key === activeBand)?.label ?? '') : ''
-					})}
+			<!-- Result sheet -->
+			<WorkoutListFilters
+				query={listQuery}
+				{workoutTypes}
+				resultCount={listWorkouts.length}
+				onchange={applyListQuery}
+				onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
+			/>
+			{#if compareAnchor != null}
+				<p class="compare-hint card panel muted">
+					{t('workoutList.comparePick')}
+					<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
 				</p>
 			{/if}
+			<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} pbIds={pbIds} {newPbIds} {newEntryIds} />
 		</div>
-	{/if}
 
-	<WorkoutListFilters
-		query={listQuery}
-		{workoutTypes}
-		resultCount={listWorkouts.length}
-		onchange={applyListQuery}
-		onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
-	/>
-	{#if compareAnchor != null}
-		<p class="compare-hint card bg-base-100 border border-base-300 shadow-md p-5 muted">
-			{t('workoutList.comparePick')}
-			<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
-		</p>
-	{/if}
-	<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} pbIds={pbIds} {newPbIds} {newEntryIds} />
+		<!-- Right rail (engagement) — visually column 2 on desktop via CSS grid-column. -->
+		<aside class="col-rail">
+			{#if liveMode}
+				<LiveModePanel live={liveMode} />
+			{/if}
+
+			<EngagementPanel
+				workouts={workouts}
+				annualGoal={data.annualGoal}
+				{goalYear}
+				endDay={calendarEndDay}
+				{homeTz}
+			/>
+
+			<!-- Personal bests -->
+			{#if pbs.length}
+				<div class="card panel pbcard">
+					<div class="muted label">{t('dashboard.pbTitle')}</div>
+					<div class="pbgrid">
+						{#each pbs as pb}
+							<div class="pb">
+								<div class="pbdist mono">{pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`}</div>
+								<div class="pbtime mono">{fmtTime(pb.time, true)}</div>
+								<div class="pbsub muted"><SportIcon sport={pb.sport} size={12} /> {fmtPace(pb.pace)} · {fmtDate(pb.date)}</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+		</aside>
+	</div>
 </div>
 
 <style>
+	/* ============================================================================
+	   Dashboard — daisyUI-led redesign. daisyUI owns components (card / btn / badge
+	   / tabs / table / join); these scoped rules handle page layout, the hero, the
+	   stat strip and the editorial number voice. Tokens come from app.css.
+	   ============================================================================ */
+
 	.head {
 		display: flex;
 		align-items: flex-end;
 		justify-content: space-between;
 		flex-wrap: wrap;
 		gap: 1rem;
-		margin-bottom: 0.5rem;
-		padding-bottom: 0.75rem;
-		border-bottom: var(--bd-heavy);
+		margin-bottom: 1.25rem;
+		padding-bottom: 0.85rem;
+		border-bottom: 2px solid var(--ink);
 	}
-	.head h1 {
-		font-size: clamp(1.7rem, 7vw, 2.4rem);
+	.head-titles { min-width: 0; }
+	.race-head {
+		font-size: clamp(1.7rem, 6vw, 2.45rem);
 		font-weight: 900;
 		text-transform: uppercase;
 		letter-spacing: -0.02em;
+		line-height: 1;
 		margin-top: 0.15rem;
 	}
 	.headright {
@@ -848,499 +870,185 @@
 		gap: 0.75rem;
 		flex-wrap: wrap;
 	}
-	.sync {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-	}
-	.syncicon {
-		display: inline-flex;
-	}
-	.syncicon.spin {
-		animation: spin 1s linear infinite;
-	}
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-	.syncnote {
-		font-size: 0.82rem;
-		margin: 0 0 1.25rem;
-	}
-	.filters,
-	.metrics {
-		display: flex;
-		gap: 0.4rem;
-	}
-	.chip,
-	.mchip,
-	.bchip {
-		background: var(--paper-raised);
-		border: var(--bd-heavy);
-		color: var(--ink-2);
-		border-radius: var(--r-ctrl);
-		padding: 0.35rem 0.85rem;
+	.filtertabs {
+		background: var(--paper-inset);
 		font-family: var(--display);
-		font-size: 0.85rem;
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
-		cursor: pointer;
 	}
-	.chip.on,
-	.mchip.on,
-	.bchip.on {
-		background: var(--ink);
-		color: var(--paper-raised);
-		border-color: var(--ink);
-	}
+	.sync { display: inline-flex; align-items: center; gap: 0.4rem; }
+	.syncicon { display: inline-flex; }
+	.syncicon.spin { animation: rp-spin 1s linear infinite; }
+	@keyframes rp-spin { to { transform: rotate(360deg); } }
+	.syncnote { font-size: 0.82rem; margin: -0.5rem 0 1.25rem; }
+
+	/* ---- Hero --------------------------------------------------------------- */
 	.latest {
+		position: relative;
+		display: block;
+		overflow: hidden;
+		margin-bottom: 1rem;
+		color: var(--ink);
+		border: 1px solid color-mix(in srgb, var(--live) 26%, var(--hairline));
+		background: linear-gradient(120deg, color-mix(in srgb, var(--live) 7%, var(--paper-raised)), var(--paper-raised) 58%);
+		box-shadow: var(--stamp-live);
+		transition: transform 0.06s ease, box-shadow 0.06s ease;
+	}
+	.latest:hover { text-decoration: none; transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+	.latest-accent { position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--live); }
+	.latest-body {
 		display: grid;
-		grid-template-columns: auto 1fr auto;
+		grid-template-columns: minmax(0, 1fr) auto;
 		align-items: center;
 		gap: 1.5rem;
-		color: var(--ink);
-		margin-bottom: 1rem;
-		box-shadow: var(--stamp-live);
-		transition:
-			transform 0.05s ease,
-			box-shadow 0.05s ease;
+		padding: 1.5rem 1.6rem 1.5rem 1.85rem;
 	}
-	.latest:hover {
-		text-decoration: none;
-		transform: translateY(-2px);
-		box-shadow: var(--shadow-lg);
-	}
-	.herotop {
-		font-size: 0.85rem;
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-	}
-	.hicon {
-		display: inline-flex;
-		align-items: center;
-	}
+	.herotop { font-size: 0.85rem; display: flex; align-items: center; gap: 0.45rem; }
+	.hicon { display: inline-flex; align-items: center; }
 	.heropace {
 		font-family: var(--display);
 		font-size: var(--clock-size);
 		font-weight: 900;
-		line-height: 1;
-		margin: 0.3rem 0;
-		letter-spacing: -0.02em;
+		line-height: 0.92;
+		letter-spacing: -0.03em;
+		margin: 0.35rem 0 0.15rem;
 	}
-	.perunit {
-		font-size: 1rem;
-		font-weight: 500;
-		color: var(--text-dim);
-		margin-left: 0.3rem;
-	}
-	.herodelta {
-		font-size: 0.95rem;
-		font-weight: 700;
-	}
-	.herodelta.faster {
-		color: var(--ahead);
-		font-family: var(--mono);
-	}
-	.herodelta.slower {
-		color: var(--behind);
-		font-family: var(--mono);
-	}
-	.herometrics {
-		display: flex;
-		gap: 1.75rem;
-		flex-wrap: wrap;
-	}
-	.hmv {
-		font-size: 1.4rem;
-		font-weight: 700;
-	}
-	.hml {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		margin-top: 0.15rem;
-	}
-	.herocta {
-		align-self: start;
-		display: inline-flex;
-		align-items: center;
-		gap: 0.3rem;
-	}
-	/* Avoid daisyUI `.stats` / `.stat` component classes (inline-grid row layout). */
+	.perunit { font-size: 1rem; font-weight: 500; color: var(--ink-2); margin-left: 0.35rem; }
+	.herodelta { font-size: 0.95rem; font-weight: 700; }
+	.herodelta.faster { color: var(--ahead); }
+	.herodelta.slower { color: var(--behind); }
+	.herometrics { display: flex; gap: 1.75rem 2rem; flex-wrap: wrap; margin-top: 1.25rem; }
+	.hmv { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+	.hml { margin-top: 0.4rem; }
+	.latest-cta { align-self: center; }
+	.latest-replay { pointer-events: none; }
+
+	/* ---- Stat strip --------------------------------------------------------- */
 	.dash-stats {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 1rem;
-		margin-bottom: 1rem;
-		width: 100%;
+		gap: 0.85rem;
+		margin-bottom: 1.5rem;
 	}
-	.dash-stat .stat-title {
-		font-size: 0.8rem;
-		line-height: 1.3;
-	}
-	.dash-stat .stat-value {
-		font-size: 1.6rem;
-		font-weight: 700;
-		margin-top: 0.25rem;
-		line-height: 1.15;
-	}
-	.label {
-		font-size: 0.8rem;
-	}
-	.pbcard,
-	.breakdown,
-	.chartcard,
-	.formcard {
-		margin-bottom: 1rem;
-	}
-	.formcard {
-		background: linear-gradient(135deg, color-mix(in srgb, var(--ghost) 8%, var(--paper-raised)), var(--bg-elev) 65%);
-		border-color: color-mix(in srgb, var(--ghost) 30%, var(--bg-elev));
-	}
-	.formhead {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-	}
-	.formtitle {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		color: var(--accent);
-	}
-	.formtitle .label {
-		color: var(--text);
-		font-weight: 700;
-		font-size: 0.95rem;
-	}
-	.premium {
-		font-size: 0.66rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		background: color-mix(in srgb, var(--behind) 16%, var(--paper-raised));
-		color: color-mix(in srgb, var(--behind) 45%, var(--ink));
-		border: 1px solid color-mix(in srgb, var(--behind) 40%, var(--paper-raised));
-	}
-	.formsub {
-		font-size: 0.82rem;
-		margin: 0.4rem 0 0.9rem;
-	}
-	/* Scoped form-band badges. `.badge.good`/`.badge.bad`/`.badge.accent`/`.badge.info`
-	   are rowplay status modifiers (NOT daisyUI variants like `badge-soft`); they
-	   re-skin daisyUI's `.badge` base within this component via Svelte scoping. The
-	   `:not()` keeps real daisyUI badges (e.g. `badge-soft badge-primary`) untouched. */
-	.badge:not(.badge-soft):not(.badge-primary) {
-		font-size: 0.78rem;
-		font-weight: 700;
-		padding: 0.25rem 0.7rem;
-		border-radius: 999px;
+	.statcard {
+		position: relative;
+		padding: 1rem 1.1rem;
+		background: var(--paper-raised);
 		border: 1px solid var(--hairline);
-		background: var(--bg-elev-2);
-		color: var(--text);
+		box-shadow: var(--shadow-sm);
+		overflow: hidden;
 	}
-	.badge.good,
-	.fsv.good {
-		color: var(--accent-2);
+	.statcard::before {
+		content: '';
+		position: absolute; inset: 0 auto 0 0; width: 3px;
+		background: var(--hairline);
 	}
-	.badge.good {
-		background: color-mix(in srgb, var(--accent-2) 14%, var(--paper-raised));
-		border-color: color-mix(in srgb, var(--accent-2) 40%, var(--paper-raised));
-	}
-	.badge.bad,
-	.fsv.bad {
-		/* Raw --warn is ~2.6:1 on its pale tint; darken toward --ink like .premium (theme-aware). */
-		color: color-mix(in srgb, var(--warn) 45%, var(--ink));
-	}
-	.badge.bad {
-		background: color-mix(in srgb, var(--warn) 14%, var(--paper-raised));
-		border-color: color-mix(in srgb, var(--warn) 40%, var(--paper-raised));
-	}
-	.badge.accent,
-	.fsv.accent {
-		color: var(--accent);
-	}
-	.badge.accent {
-		background: color-mix(in srgb, var(--accent) 14%, var(--paper-raised));
-		border-color: color-mix(in srgb, var(--accent) 40%, var(--paper-raised));
-	}
-	.badge.info,
-	.fsv.info {
-		color: var(--ghost);
-	}
-	.badge.info {
-		background: color-mix(in srgb, var(--ghost) 14%, var(--paper-raised));
-		border-color: color-mix(in srgb, var(--ghost) 40%, var(--paper-raised));
-	}
-	.badge.neutral,
-	.fsv.neutral {
-		color: var(--text-dim);
-	}
-	.formstats {
+	.statcard--pace::before { background: var(--pace); }
+	.statlabel { line-height: 1.2; }
+	.statval { font-size: 1.7rem; font-weight: 700; margin-top: 0.35rem; line-height: 1.1; }
+
+	/* ---- Main + rail grid --------------------------------------------------- */
+	.dash-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+		grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 		gap: 1rem;
-		margin-bottom: 0.9rem;
+		align-items: start;
 	}
-	.fs {
-		background: var(--bg-elev-2);
+	.col-main { grid-column: 1; display: grid; gap: 1rem; align-content: start; min-width: 0; }
+	.col-rail { grid-column: 2; grid-row: 1; display: grid; gap: 1rem; align-content: start; min-width: 0; }
+
+	/* Shared panel surface (matches daisyUI card defaults used elsewhere). */
+	.panel {
+		padding: 1.25rem;
+		background: var(--paper-raised);
 		border: 1px solid var(--hairline);
-		border-radius: 10px;
-		padding: 0.6rem 0.75rem;
+		box-shadow: var(--shadow-md);
 	}
-	.fsv {
-		font-size: 1.7rem;
-		font-weight: 800;
-		line-height: 1.05;
+	.label { font-size: 0.8rem; font-weight: 700; }
+
+	/* ---- Form / PMC card ---------------------------------------------------- */
+	.formcard {
+		background: linear-gradient(135deg, color-mix(in srgb, var(--ghost) 8%, var(--paper-raised)), var(--paper-raised) 65%);
+		border-color: color-mix(in srgb, var(--ghost) 28%, var(--hairline));
 	}
-	.fsv .unit {
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: var(--text-dim);
-		margin-left: 0.15rem;
-	}
-	.fsl {
-		font-size: 0.82rem;
-		font-weight: 700;
-		margin-top: 0.15rem;
-	}
-	.fsh {
-		font-size: 0.7rem;
-		margin-top: 0.05rem;
-	}
+	.formhead { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+	.formtitle { display: flex; align-items: center; gap: 0.5rem; }
+	.formtitle .label { font-weight: 700; }
+	.formsub { font-size: 0.82rem; margin: 0.4rem 0 0.85rem; }
+	.formstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 0.85rem; }
+	.fsv { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+	.fsl { font-size: 0.82rem; font-weight: 600; margin-top: 0.3rem; }
+	.fsh { font-size: 0.72rem; margin-top: 0.1rem; }
+	.unit { font-size: 0.9rem; margin-left: 0.1rem; }
 	.formread {
-		font-size: 0.9rem;
-		padding: 0.55rem 0.8rem;
-		border-radius: 8px;
-		margin-bottom: 0.9rem;
-		background: var(--bg-elev-2);
-		border-left: 3px solid var(--hairline);
+		font-size: 0.9rem; line-height: 1.5;
+		padding: 0.7rem 0.9rem; border-radius: var(--r-ctrl);
+		background: color-mix(in srgb, var(--ink) 4%, transparent);
+		border-left: 3px solid var(--ink-3);
+		margin-bottom: 0.85rem;
 	}
-	.formread.good {
-		border-left-color: var(--accent-2);
-	}
-	.formread.bad {
-		border-left-color: var(--warn);
-	}
-	.formread.accent {
-		border-left-color: var(--accent);
-	}
-	.formread.info {
-		border-left-color: var(--ghost);
-	}
-	.formlegend {
-		display: flex;
-		gap: 1rem;
-		flex-wrap: wrap;
-		font-size: 0.78rem;
-		margin-top: 0.5rem;
-		justify-content: center;
-	}
-	.formlegend span {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-	}
-	.formlegend i {
-		width: 12px;
-		height: 3px;
-		border-radius: 2px;
-		display: inline-block;
-	}
-	.pbgrid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-		gap: 0.75rem;
-		margin-top: 0.6rem;
-	}
-	.pb {
-		background: var(--paper-inset);
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		padding: 0.6rem 0.75rem;
-	}
-	.pbdist {
-		font-size: 0.8rem;
-		color: var(--text-dim);
-	}
-	.pbtime {
-		font-size: 1.35rem;
-		font-weight: 700;
-		margin: 0.1rem 0;
-	}
-	.pbsub {
-		font-size: 0.72rem;
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-	}
-	.sportcell :global(svg) {
-		vertical-align: -2px;
-	}
-	.tablescroll {
-		overflow-x: auto;
-		margin-top: 0.4rem;
-	}
-	.breakdown table {
-		width: 100%;
-		min-width: max-content;
-		border-collapse: collapse;
-		font-size: 0.85rem;
-	}
-	.breakdown th {
-		text-align: left;
-		color: var(--ink-2);
-		font-weight: 600;
-		font-size: 0.72rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		padding: 0.3rem 0.5rem;
-		border-bottom: var(--bd);
-	}
-	.breakdown td {
-		padding: 0.35rem 0.5rem;
-		border-bottom: var(--bd);
-	}
-	.trendhead {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 0.5rem;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-	}
-	.bands {
-		display: flex;
-		gap: 0.35rem;
-		flex-wrap: wrap;
-		margin-bottom: 0.75rem;
-	}
-	.bn {
-		opacity: 0.6;
-		font-size: 0.72rem;
-		margin-left: 0.15rem;
-	}
-	.emptytrend {
-		padding: 1.5rem 0;
-		text-align: center;
-		font-size: 0.9rem;
-	}
-	.verdict {
-		font-family: var(--display);
-		font-size: 0.95rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		padding: 0.5rem 0.8rem;
-		border-radius: var(--r-ctrl);
-		margin-bottom: 0.75rem;
-		background: var(--paper-inset);
-		border: var(--bd);
-		color: var(--ink);
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-	}
-	.verdict.good {
-		border-color: var(--ahead);
-		color: var(--ahead);
-	}
-	.verdict.bad {
-		border-color: var(--behind);
-		color: var(--alarm);
-	}
-	.compare-hint {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-		padding: 0.65rem 0.85rem;
-		margin-bottom: 0.65rem;
-		font-size: 0.88rem;
-	}
-	.linkish {
-		background: none;
-		border: none;
-		color: var(--live);
-		font-weight: 600;
-		cursor: pointer;
-		text-decoration: underline;
-		font-size: inherit;
+	.formlegend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; font-size: 0.76rem; margin-top: 0.5rem; }
+	.formlegend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 2px; margin-right: 0.3rem; vertical-align: -1px; }
+	.emptytrend { font-size: 0.85rem; padding: 0.5rem 0; }
+
+	/* Form-band semantic colours (formBandClass: info/good/neutral/accent/bad).
+	   `bad` darkens --behind toward --ink so the text clears WCAG AA on its pale
+	   tint (raw --behind is ~2.6:1) — matches the contrast fix on main. */
+	.band-info { color: var(--ghost); }
+	.band-good { color: var(--ahead); }
+	.band-neutral { color: var(--ink-2); }
+	.band-accent { color: var(--live); }
+	.band-bad { color: color-mix(in srgb, var(--behind) 45%, var(--ink)); }
+	.badge.band-info { background: color-mix(in srgb, var(--ghost) 16%, var(--paper-raised)); color: var(--ghost); border: 1px solid color-mix(in srgb, var(--ghost) 35%, transparent); }
+	.badge.band-good { background: color-mix(in srgb, var(--ahead) 16%, var(--paper-raised)); color: var(--ahead); border: 1px solid color-mix(in srgb, var(--ahead) 35%, transparent); }
+	.badge.band-neutral { background: var(--paper-inset); color: var(--ink-2); border: 1px solid var(--hairline); }
+	.badge.band-accent { background: color-mix(in srgb, var(--live) 16%, var(--paper-raised)); color: var(--live); border: 1px solid color-mix(in srgb, var(--live) 35%, transparent); }
+	.badge.band-bad { background: color-mix(in srgb, var(--behind) 16%, var(--paper-raised)); color: color-mix(in srgb, var(--behind) 45%, var(--ink)); border: 1px solid color-mix(in srgb, var(--behind) 40%, transparent); }
+	.formread.band-good { border-left-color: var(--ahead); }
+	.formread.band-bad { border-left-color: var(--behind); }
+	.formread.band-accent { border-left-color: var(--live); }
+	.formread.band-info { border-left-color: var(--ghost); }
+
+	/* ---- Trend -------------------------------------------------------------- */
+	.trendhead { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+	.metrictabs { background: var(--paper-inset); font-family: var(--display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+	.bands { margin-bottom: 0.75rem; }
+	.bands .bn { opacity: 0.6; margin-left: 0.25rem; }
+	.verdict { font-size: 0.9rem; font-weight: 600; padding: 0.6rem 0.85rem; margin-bottom: 0.85rem; background: var(--paper-inset); border: 1px solid var(--hairline); color: var(--ink-2); }
+	.verdict-good { background: color-mix(in srgb, var(--ahead) 12%, var(--paper-raised)); border-color: color-mix(in srgb, var(--ahead) 30%, transparent); color: var(--ahead); }
+	.verdict-bad { background: color-mix(in srgb, var(--alarm) 12%, var(--paper-raised)); border-color: color-mix(in srgb, var(--alarm) 30%, transparent); color: var(--alarm); }
+
+	/* ---- Breakdown table ---------------------------------------------------- */
+	.tablescroll { overflow-x: auto; }
+	.breakdowntable .num { text-align: right; }
+	.breakdowntable thead th { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; color: var(--ink-2); }
+	.sportcell { display: flex; align-items: center; gap: 0.45rem; font-family: var(--ui); font-weight: 600; }
+	.mdot { width: 0.55rem; height: 0.55rem; border-radius: 999px; flex-shrink: 0; }
+	.breakdowntable .best { color: var(--ahead); }
+
+	/* ---- Personal bests ----------------------------------------------------- */
+	.pbcard .pbgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.65rem; }
+	.pb { padding: 0.7rem 0.8rem; border-radius: var(--r-ctrl); background: var(--paper-inset); border: 1px solid var(--hairline); }
+	.pbdist { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; background: color-mix(in srgb, var(--ghost) 14%, var(--paper-raised)); color: var(--ghost); border: 1px solid color-mix(in srgb, var(--ghost) 30%, transparent); }
+	.pbtime { font-size: 1.2rem; font-weight: 700; margin-top: 0.4rem; line-height: 1; }
+	.pbsub { font-size: 0.72rem; margin-top: 0.3rem; display: flex; align-items: center; gap: 0.25rem; }
+
+	.compare-hint { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+	.linkish { background: none; border: none; color: var(--ghost); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; font: inherit; padding: 0; }
+
+	/* ---- Responsive --------------------------------------------------------- */
+	@media (max-width: 960px) {
+		.dash-grid { grid-template-columns: 1fr; }
+		.col-main, .col-rail { grid-column: 1; grid-row: auto; }
 	}
 	@media (max-width: 720px) {
-		.dash-stats {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-		.dash-stat {
-			padding: 1rem 1.1rem;
-		}
-		.dash-stat .stat-title {
-			min-height: 2.6em;
-		}
-		.latest {
-			grid-template-columns: 1fr;
-			gap: 0.75rem;
-		}
-		.heropace {
-			font-size: 2.6rem;
-		}
-		.herometrics {
-			gap: 1.25rem;
-		}
-		.head {
-			flex-direction: column;
-			align-items: stretch;
-		}
-		.headright {
-			width: 100%;
-		}
-		.filters {
-			flex-wrap: wrap;
-		}
-		.formhead {
-			flex-wrap: wrap;
-			gap: 0.5rem;
-		}
+		.dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+		.latest-body { grid-template-columns: 1fr; }
+		.latest-cta { justify-self: start; }
+		.latest-replay { width: 100%; }
 	}
-	@media (max-width: 400px) {
-		.dash-stats {
-			gap: 0.75rem;
-		}
-		.dash-stat {
-			padding: 0.9rem 1rem;
-		}
-		.dash-stat .stat-title {
-			font-size: 0.72rem;
-			min-height: 2.6em;
-		}
-		.dash-stat .stat-value {
-			font-size: 1.25rem;
-		}
-		.fsv {
-			font-size: 1.35rem;
-		}
-	}
-	@media (max-width: 390px) {
-		.chip,
-		.mchip,
-		.bchip {
-			padding: 0.3rem 0.55rem;
-			font-size: 0.75rem;
-		}
-		.heropace {
-			font-size: 2.2rem;
-		}
-		.herometrics {
-			display: grid;
-			grid-template-columns: repeat(2, 1fr);
-			gap: 0.75rem;
-		}
-		.pbgrid {
-			grid-template-columns: repeat(2, 1fr);
-		}
+	@media (max-width: 460px) {
+		.dash-stats { grid-template-columns: 1fr; }
 	}
 </style>

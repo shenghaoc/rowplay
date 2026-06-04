@@ -73,7 +73,7 @@ test.describe('smoke', () => {
 		await page.goto('/replay/1005');
 		await expect(page.locator('canvas').first()).toBeVisible();
 
-		await page.locator('#cmode').selectOption('pace');
+		await page.getByRole('button', { name: /A constant pace|恒定配速/ }).click();
 		await page.getByRole('button', { name: /Set pace|设定配速/ }).click();
 
 		const gap = page.locator('.gap[role="status"]');

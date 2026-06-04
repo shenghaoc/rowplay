@@ -462,6 +462,10 @@ export const en = {
 		mFirmware: 'Firmware',
 		mSerial: 'Serial number',
 		mDevice: 'Device',
+		mSource: 'Logged by',
+		exrBadge: 'EXR source',
+		exrBadgeTitle:
+			'Pace and power were synthesised by EXR, not read from the PM5. Numbers may not be directly comparable to PM-logged workouts.',
 		mErgModel: 'Erg model',
 		mHrSensor: 'HR sensor',
 		targetsTitle: 'Targets',
@@ -578,6 +582,7 @@ export const en = {
 		apiToken: 'API token',
 		placeholder: 'Paste your token',
 		connect: 'Connect with token',
+		connecting: 'Connecting…',
 		rejected: 'Concept2 rejected that token. Check it and try again.',
 		serverMisconfigured:
 			'This deployment isn’t set up for token sign-in (missing SESSION_SECRET). Contact the site owner.',

@@ -4,6 +4,10 @@
 	let { data, form } = $props();
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);
+
+	// Validating the token hits the Concept2 API server-side, so the submit can
+	// take a few seconds. Drive a pending state so the button isn't a dead click.
+	let submitting = $state(false);
 </script>
 
 <svelte:head><title>Use a token · rowplay</title></svelte:head>
@@ -18,7 +22,18 @@
 		>{t('token.introAfter')}
 	</p>
 
-	<form method="POST" use:enhance>
+	<form
+		method="POST"
+		use:enhance={() => {
+			// Show a spinner + disable the button until the action redirects
+			// (success) or returns an error (failure re-enables it for a retry).
+			submitting = true;
+			return async ({ update }) => {
+				await update();
+				submitting = false;
+			};
+		}}
+	>
 		<fieldset class="fieldset">
 			<label class="fieldset-legend" for="token">{t('token.apiToken')}</label>
 			<input
@@ -33,7 +48,12 @@
 			{#if form?.error}
 				<div class="alert alert-error" role="alert">{form.error}</div>
 			{/if}
-			<button class="btn btn-primary" type="submit">{t('token.connect')}</button>
+			<button class="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting}>
+				{#if submitting}
+					<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+				{/if}
+				{submitting ? t('token.connecting') : t('token.connect')}
+			</button>
 		</fieldset>
 	</form>
 

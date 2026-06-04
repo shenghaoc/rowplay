@@ -81,7 +81,7 @@ export interface Workout {
 	dateUtc?: string | null;
 	weightClass?: 'H' | 'L';
 	privacy?: string;
-	/** How the workout was logged: Web, ErgData, EXR, etc. */
+	/** Logging app/channel from Concept2 `source` (free string; docs only show Web/ErgData). */
 	source?: string;
 	verified?: boolean;
 	/** Total rest time in seconds (interval pieces). */

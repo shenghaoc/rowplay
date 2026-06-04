@@ -34,3 +34,6 @@ yarn-error.log*
 
 # Antigravity CLI local files
 .antigravitycli/
+
+# Claude Code agent worktrees
+.claude/worktrees/

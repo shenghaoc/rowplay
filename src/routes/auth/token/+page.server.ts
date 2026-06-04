@@ -12,6 +12,7 @@ import {
 	type SessionUser
 } from '$lib/server/session';
 import { sealToken } from '$lib/server/tokenCrypto';
+import { scheduleConnectSync } from '$lib/server/data';
 
 export const load: PageServerLoad = async (event) => {
 	// Already authenticated — nothing to enter.
@@ -63,6 +64,10 @@ export const actions: Actions = {
 		};
 		event.cookies.set(SESSION_COOKIE, sid, cookieOpts);
 		event.cookies.set(TOKEN_COOKIE, sealed, cookieOpts);
+
+		// Warm the D1 cache with a full backfill in the background so the first
+		// dashboard load reads locally instead of paying live API round-trips.
+		scheduleConnectSync(event, sid, user, token);
 
 		throw redirect(303, '/dashboard');
 	}
