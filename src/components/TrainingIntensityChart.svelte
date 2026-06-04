@@ -104,6 +104,7 @@
 					type="button"
 					class="mchip"
 					class:on={measure === 'time'}
+					aria-pressed={measure === 'time'}
 					onclick={() => (measure = 'time')}
 				>
 					{i18n.t('dashboard.tid.time')}
@@ -112,6 +113,7 @@
 					type="button"
 					class="mchip"
 					class:on={measure === 'distance'}
+					aria-pressed={measure === 'distance'}
 					onclick={() => (measure = 'distance')}
 				>
 					{i18n.t('dashboard.tid.distance')}
