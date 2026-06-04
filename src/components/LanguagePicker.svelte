@@ -8,9 +8,9 @@
 </script>
 
 <label class="lang-picker" title={t('lang.switch')}>
-	<Languages size={16} aria-hidden="true" class="icon" />
+	<Languages size={16} aria-hidden="true" />
 	<select
-		class="select select-ghost select-xs"
+		class="lang-select"
 		value={i18n.lang}
 		onchange={(e) => i18n.setLanguage((e.currentTarget as HTMLSelectElement).value as Language)}
 		aria-label={t('lang.switch')}
@@ -25,11 +25,27 @@
 	.lang-picker {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.2rem;
+		gap: 0.25rem;
 		align-self: center;
 		color: var(--ink-2);
+		cursor: pointer;
 	}
-	.lang-picker :global(.icon) {
-		flex-shrink: 0;
+	.lang-picker:hover {
+		color: var(--ink);
+	}
+	.lang-select {
+		appearance: none;
+		background: transparent;
+		border: none;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+		padding: 0 1.1rem 0 0;
+		max-width: 7rem;
+	}
+	.lang-select:focus-visible {
+		outline: 2px solid var(--live);
+		outline-offset: 2px;
+		border-radius: 4px;
 	}
 </style>

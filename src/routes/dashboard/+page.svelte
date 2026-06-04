@@ -1078,7 +1078,7 @@
 	.linkish { background: none; border: none; color: var(--ghost); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; font: inherit; padding: 0; }
 
 	/* ---- Responsive --------------------------------------------------------- */
-	@media (max-width: 960px) {
+	@media (max-width: 1100px) {
 		.dash-grid { grid-template-columns: 1fr; }
 		.col-main, .col-rail { grid-column: 1; grid-row: auto; }
 	}
