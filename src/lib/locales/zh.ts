@@ -410,6 +410,20 @@ export const zh = {
 	pb_2k_sub630: '2k 进 6:30',
 	'pb_2k_sub630.toast': '🎉 2k 进 6:30!',
 	},
+	workout: {
+		tag: {
+			label: '类型',
+			auto: '自动识别',
+			'steady-state': '稳态',
+			interval: '间歇',
+			'race-piece': '竞赛距离',
+			'time-trial': '计时测试',
+			'warmup-cooldown': '热身/放松',
+			unknown: '其他',
+			filter: { all: '全部类型' },
+			saveError: '无法保存标签，请重试。'
+		}
+	},
 	workoutList: {
 		empty: '该筛选条件下没有训练。',
 		windowed: '{n} 次训练 · 已开启窗口化渲染以提升性能',

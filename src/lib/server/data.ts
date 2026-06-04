@@ -46,9 +46,11 @@ import {
 	queryWorkouts,
 	setSyncState,
 	setUserAnnualGoal,
+	setWorkoutTag,
 	upsertWorkouts,
 	type SyncState
 } from './db';
+import { type WorkoutTag } from '../workoutTag';
 import type { SportSummary, AnnualGoal } from '$lib/analytics';
 import { destroySession } from './session';
 import { defaultAnnualGoal, parseGoalsCookie } from '$lib/goals';
@@ -115,7 +117,7 @@ export function loadWorkouts(event: RequestEvent): Promise<Workout[]> {
 }
 
 async function loadWorkoutsFresh(event: RequestEvent): Promise<Workout[]> {
-	if (event.locals.demo) return mockWorkouts();
+	if (event.locals.demo) return applyDemoWorkoutTags(mockWorkouts());
 	const userId = event.locals.user?.id;
 	const db = event.platform?.env?.DB;
 
@@ -480,6 +482,9 @@ export async function loadWorkoutDetail(
 	if (event.locals.demo) {
 		const d = mockWorkoutDetail(id);
 		if (!d) throw error(404, 'Workout not found.');
+		if (demoWorkoutTagStore.has(id)) {
+			return { ...d, userTag: demoWorkoutTagStore.get(id) ?? null };
+		}
 		return d;
 	}
 	const c = await client(event);
@@ -513,6 +518,13 @@ export async function clearUserCachedData(event: RequestEvent): Promise<void> {
 
 /** Demo-mode annotation store (in-memory, lost on server restart — acceptable for demo). */
 const demoAnnotationStore = new Map<number, Annotation[]>();
+
+/** Demo-mode workout type tag overrides (workout id → tag or null for auto). */
+const demoWorkoutTagStore = new Map<number, WorkoutTag | null>();
+
+export function resetDemoWorkoutTagStore(): void {
+	demoWorkoutTagStore.clear();
+}
 
 export function resetDemoAnnotationStore(): void {
 	demoAnnotationStore.clear();
@@ -581,4 +593,30 @@ export async function removeAnnotation(
 	const userId = event.locals.user?.id;
 	if (!db || userId == null) throw error(401, 'Not authenticated.');
 	await dbDeleteAnnotation(db, userId, workoutId, annotationId);
+}
+
+export async function saveWorkoutTag(
+	event: RequestEvent,
+	workoutId: number,
+	tag: WorkoutTag | null
+): Promise<WorkoutTag | null> {
+	if (event.locals.demo) {
+		demoWorkoutTagStore.set(workoutId, tag);
+		return tag;
+	}
+	const userId = event.locals.user?.id;
+	if (userId == null) throw error(401, 'Not authenticated.');
+	const db = event.platform?.env?.DB;
+	if (!db) throw error(500, 'Database (D1) is not configured.');
+	await setWorkoutTag(db, userId, workoutId, tag);
+	return tag;
+}
+
+/** Apply demo tag overrides to workout rows returned in demo mode. */
+export function applyDemoWorkoutTags(workouts: Workout[]): Workout[] {
+	if (!demoWorkoutTagStore.size) return workouts;
+	return workouts.map((w) => {
+		if (!demoWorkoutTagStore.has(w.id)) return w;
+		return { ...w, userTag: demoWorkoutTagStore.get(w.id) ?? null };
+	});
 }

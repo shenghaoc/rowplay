@@ -5,6 +5,8 @@
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import GitCompare from '@lucide/svelte/icons/git-compare';
 	import type { Workout } from '$lib/types';
+	import WorkoutTagBadge from '$components/WorkoutTagBadge.svelte';
+	import type { WorkoutTag } from '$lib/workoutTag';
 	import { MACHINE_COLOR } from '$lib/replay/sports';
 	import { get } from 'svelte/store';
 	import { getI18nContext } from '$lib/i18n.svelte';
@@ -26,6 +28,9 @@
 		newPbIds?: Set<number>;
 		/** Rows recently added by live mode (fade-in animation). */
 		newEntryIds?: Set<number>;
+		/** Athlete median pace for tag auto-detection rules. */
+		medianPaceSecs?: number;
+		onTagSaved?: (workoutId: number, userTag: WorkoutTag | null) => void;
 	}
 
 	let {
@@ -35,7 +40,9 @@
 		onCompare,
 		pbIds = new Set(),
 		newPbIds = new Set(),
-		newEntryIds = new Set()
+		newEntryIds = new Set(),
+		medianPaceSecs,
+		onTagSaved
 	}: Props = $props();
 
 	const ROW = 64; // px, must match .row min-height below
@@ -76,6 +83,7 @@
 	<div class="rowmain">
 		<div class="rowtop">
 			<strong>{w.workoutType || SPORT_LABEL[w.sport]}</strong>
+			<WorkoutTagBadge workout={w} {medianPaceSecs} {onTagSaved} />
 			{#if pbIds.has(w.id)}
 				<span class="pbchip" class:new={newPbIds.has(w.id)}>{newPbIds.has(w.id) ? t('dashboard.pbNew') : t('dashboard.pbTag')}</span>
 			{/if}

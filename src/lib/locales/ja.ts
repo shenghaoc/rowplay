@@ -413,6 +413,20 @@ export const ja = {
 	pb_2k_sub630: '2k 6:30切り',
 	'pb_2k_sub630.toast': '🎉 2k 6:30切り!',
 	},
+	workout: {
+		tag: {
+			label: 'タイプ',
+			auto: '自動判定',
+			'steady-state': 'ステディ',
+			interval: 'インターバル',
+			'race-piece': 'レース距離',
+			'time-trial': 'タイムトライアル',
+			'warmup-cooldown': 'ウォームアップ / クールダウン',
+			unknown: 'その他',
+			filter: { all: 'すべてのタイプ' },
+			saveError: 'タグを保存できませんでした。もう一度お試しください。'
+		}
+	},
 	workoutList: {
 		empty: 'このフィルターに該当するワークアウトはありません。',
 		windowed: '{n} ワークアウト · パフォーマンスのため表示を制限',

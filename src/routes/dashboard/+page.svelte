@@ -28,6 +28,14 @@
 	import { onMount } from 'svelte';
 	import { readHomeTimezoneClient } from '$lib/homeTimezone';
 	import { serializeWorkoutListQuery, filterAndSortWorkouts, type WorkoutListQuery } from '$lib/workoutQuery';
+	import {
+		athleteMedianPace,
+		resolveTag,
+		WORKOUT_TAGS,
+		type WorkoutTag
+	} from '$lib/workoutTag';
+	import ChipButton from '$components/ChipButton.svelte';
+	import ChipGroup from '$components/ChipGroup.svelte';
 	import { toast } from 'svelte-sonner';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import TrendingUp from '@lucide/svelte/icons/trending-up';
@@ -61,19 +69,37 @@
 	const uiTheme = getThemeContext();
 	let extraWorkouts = $state<Workout[]>([]);
 	let newEntryIds = $state<Set<number>>(new Set());
+	let tagOverrides = $state<Map<number, WorkoutTag | null>>(new Map());
+	let tagFilter = $state<WorkoutTag | 'all'>('all');
 	const listQuery = $derived(data.listQuery);
 	const workouts = $derived.by(() => {
 		const byId = new Map<number, Workout>();
 		for (const w of [...extraWorkouts, ...data.workouts]) byId.set(w.id, w);
 		return [...byId.values()].sort((a, b) => b.date.localeCompare(a.date));
 	});
-	const listWorkouts = $derived.by(() =>
-		filterAndSortWorkouts(
-			workouts,
-			listQuery,
-			listQuery.pbsOnly ? pbWorkoutIds(workouts) : undefined
+	const medianPaceSecs = $derived(athleteMedianPace(workouts));
+	const workoutsWithTags = $derived(
+		workouts.map((w) =>
+			tagOverrides.has(w.id) ? { ...w, userTag: tagOverrides.get(w.id) ?? null } : w
 		)
 	);
+	const listWorkouts = $derived.by(() => {
+		let list = filterAndSortWorkouts(
+			workoutsWithTags,
+			listQuery,
+			listQuery.pbsOnly ? pbWorkoutIds(workoutsWithTags) : undefined
+		);
+		if (tagFilter !== 'all') {
+			list = list.filter(
+				(w) => resolveTag(w, { medianPaceSecs }) === tagFilter
+			);
+		}
+		return list;
+	});
+
+	function onWorkoutTagSaved(workoutId: number, userTag: WorkoutTag | null) {
+		tagOverrides = new Map(tagOverrides).set(workoutId, userTag);
+	}
 
 	let liveMode = $state<LiveMode | null>(null);
 	let demoHomeTz = $state<string | undefined>(undefined);
@@ -993,13 +1019,35 @@
 				onchange={applyListQuery}
 				onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
 			/>
+			<div class="tagfilter card card-border bg-base-100 shadow-md p-4">
+				<div class="text-xs uppercase opacity-70 mb-2">{t('workout.tag.label')}</div>
+				<ChipGroup ariaLabel={t('workout.tag.label')}>
+					<ChipButton active={tagFilter === 'all'} onclick={() => (tagFilter = 'all')}>
+						{t('workout.tag.filter.all')}
+					</ChipButton>
+					{#each WORKOUT_TAGS as tag}
+						<ChipButton active={tagFilter === tag} onclick={() => (tagFilter = tag)}>
+							{t(`workout.tag.${tag}`)}
+						</ChipButton>
+					{/each}
+				</ChipGroup>
+			</div>
 			{#if compareAnchor != null}
 				<div class="compare-hint card card-border bg-base-100 shadow-md p-5 muted" role="status">
 					{t('workoutList.comparePick')}
 					<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
 				</div>
 			{/if}
-			<WorkoutList workouts={listWorkouts} {compareAnchor} onCompare={onCompareWorkout} pbIds={pbIds} {newPbIds} {newEntryIds} />
+			<WorkoutList
+				workouts={listWorkouts}
+				{compareAnchor}
+				onCompare={onCompareWorkout}
+				pbIds={pbIds}
+				{newPbIds}
+				{newEntryIds}
+				{medianPaceSecs}
+				onTagSaved={onWorkoutTagSaved}
+			/>
 		</div>
 
 		<!-- Right rail (engagement) — visually column 2 on desktop via CSS grid-column. -->

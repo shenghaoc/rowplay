@@ -411,6 +411,20 @@ export const fr = {
 	pb_2k_sub630: '2k sous 6:30',
 	'pb_2k_sub630.toast': '🎉 2k sous 6:30!',
 	},
+	workout: {
+		tag: {
+			label: 'Type',
+			auto: 'Détection auto',
+			'steady-state': 'Endurance',
+			interval: 'Intervalles',
+			'race-piece': 'Pièce course',
+			'time-trial': 'Contre-la-montre',
+			'warmup-cooldown': 'Échauffement / retour au calme',
+			unknown: 'Autre',
+			filter: { all: 'Tous les types' },
+			saveError: "Impossible d'enregistrer le tag — réessayez."
+		}
+	},
 	workoutList: {
 		empty: 'Aucune séance pour ce filtre.',
 		windowed: '{n} séances · fenêtre limitée pour les performances',

@@ -62,6 +62,9 @@
 	import { chartTheme, baseOptions, type SeriesConfig, type SeriesRole } from '$lib/chartTheme';
 	import { formatPaceInput, parsePaceInput } from '$lib/paceInput';
 	import SportIcon from '$components/SportIcon.svelte';
+	import WorkoutTagBadge from '$components/WorkoutTagBadge.svelte';
+	import { athleteMedianPace } from '$lib/workoutTag';
+	import type { WorkoutTag } from '$lib/workoutTag';
 	import { page } from '$app/state';
 	import AnnotationPanel from '$components/AnnotationPanel.svelte';
 	import InspectorPanel from '$components/InspectorPanel.svelte';
@@ -75,6 +78,8 @@
 	const uiTheme = getThemeContext();
 	const baseDetail = $derived(data.detail as WorkoutDetail);
 	const candidates = $derived(data.candidates as Workout[]);
+	const medianPaceSecs = $derived(athleteMedianPace(candidates));
+	let tagUserOverride = $state<{ id: number; tag: WorkoutTag | null } | null>(null);
 	// Local, mutable copy (save/delete edit it in place). Re-seed from `data`
 	// whenever it changes so navigating between replays shows the right notes
 	// rather than the first workout's, since the component instance is reused.
@@ -94,11 +99,16 @@
 	let hrImportError = $state('');
 	let hrImportBusy = $state(false);
 
-	const detail = $derived(
-		hrOverlay && hrOverlayId === baseDetail.id
-			? applyHrImport(baseDetail, hrOverlay.samples, hrOverlay.offset)
-			: baseDetail
-	);
+	const detail = $derived.by(() => {
+		const base =
+			hrOverlay && hrOverlayId === baseDetail.id
+				? applyHrImport(baseDetail, hrOverlay.samples, hrOverlay.offset)
+				: baseDetail;
+		if (tagUserOverride && tagUserOverride.id === baseDetail.id) {
+			return { ...base, userTag: tagUserOverride.tag };
+		}
+		return base;
+	});
 	const exrFlagged = $derived(isExrSource(detail));
 	const logbookHasHr = $derived(strokesHaveHr(baseDetail.strokes));
 	const sportTheme = $derived(themeFor(detail.sport));
@@ -1228,6 +1238,13 @@
 		>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
+			<WorkoutTagBadge
+				workout={detail}
+				{medianPaceSecs}
+				onTagSaved={(_id, userTag) => {
+					tagUserOverride = { id: baseDetail.id, tag: userTag };
+				}}
+			/>
 			{#if !detail.hasStrokeData}<span class="badge badge-soft badge-warning">{t('replay.lowRes')}</span>{/if}
 			{#if exrFlagged}
 				<span class="badge badge-soft badge-info" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>

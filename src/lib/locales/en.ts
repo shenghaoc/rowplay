@@ -411,6 +411,22 @@ export const en = {
 	pb_2k_sub630: 'Sub-6:30 2k',
 	'pb_2k_sub630.toast': '🎉 Sub-6:30 2k!',
 	},
+	workout: {
+		tag: {
+			label: 'Type',
+			auto: 'Auto-detect',
+			'steady-state': 'Steady state',
+			interval: 'Interval',
+			'race-piece': 'Race piece',
+			'time-trial': 'Time trial',
+			'warmup-cooldown': 'Warm-up / cool-down',
+			unknown: 'Other',
+			filter: {
+				all: 'All types'
+			},
+			saveError: "Couldn't save tag — please try again."
+		}
+	},
 	workoutList: {
 		empty: 'No workouts for this filter.',
 		windowed: '{n} workouts · windowed for performance',
