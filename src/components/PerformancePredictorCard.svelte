@@ -14,7 +14,7 @@
 
 	type PbRow = { distance: number; time: number; sport: Sport };
 
-	let { personalBests }: { personalBests: PbRow[] } = $props();
+	let { personalBests = [] }: { personalBests: PbRow[] } = $props();
 
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);
