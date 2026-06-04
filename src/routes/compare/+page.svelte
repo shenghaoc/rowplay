@@ -6,9 +6,13 @@
 		buildDistanceOverlay,
 		compareIntervalReps,
 		compareVerdict,
+		distanceBand,
+		durationBand,
 		workoutSideStats,
 		type CompareWinner
 	} from '$lib/analytics';
+	import { areComparable, classifyAxis } from '$lib/replay/comparabilityGuard';
+	import type { ComparableContext } from '$lib/replay/comparabilityGuard';
 	import { fmtDate, fmtDistance, fmtLogbookDateTime, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
@@ -39,8 +43,65 @@
 		pickB = String(data.idB ?? '');
 	});
 
+	type IncomparableReason = 'crossSport' | 'crossAxis' | 'crossBand';
+
 	function workoutLabel(w: Workout): string {
 		return `${fmtDate(w.date)} · ${fmtDistance(w.distance)} · ${fmtPace(w.pace)}`;
+	}
+
+	// Mirrors areComparable() from comparabilityGuard — keep the two in sync.
+	// See comparabilityGuard.ts for the authoritative comparability logic.
+	function incomparableReasonFor(
+		a: WorkoutDetail | null,
+		b: WorkoutDetail | null
+	): IncomparableReason | null {
+		if (!a || !b) return null;
+		if (a.sport !== b.sport) return 'crossSport';
+		const axA = classifyAxis(a.workoutType);
+		const axB = classifyAxis(b.workoutType);
+		if (axA !== axB) return 'crossAxis';
+		const bandOk =
+			axA === 'distance'
+				? distanceBand(a.distance).key === distanceBand(b.distance).key
+				: durationBand(a.time).key === durationBand(b.time).key;
+		return bandOk ? null : 'crossBand';
+	}
+
+	function toComparable(w: Workout | WorkoutDetail): ComparableContext {
+		return {
+			sport: w.sport,
+			distance: w.distance,
+			time: w.time,
+			workoutType: w.workoutType
+		};
+	}
+
+	function refForPickA(): Workout | WorkoutDetail | null {
+		if (detailB && String(detailB.id) === pickB) return detailB;
+		return data.workouts.find((w) => String(w.id) === pickB) ?? null;
+	}
+
+	function refForPickB(): Workout | WorkoutDetail | null {
+		if (detailA && String(detailA.id) === pickA) return detailA;
+		return data.workouts.find((w) => String(w.id) === pickA) ?? null;
+	}
+
+	function isWorkoutComparableTo(w: Workout, ref: Workout | WorkoutDetail | null): boolean {
+		if (!ref) return true;
+		return areComparable(toComparable(w), toComparable(ref));
+	}
+
+	function groupedWorkouts(ref: Workout | WorkoutDetail | null): {
+		comparable: Workout[];
+		incomparable: Workout[];
+	} {
+		const comparable: Workout[] = [];
+		const incomparable: Workout[] = [];
+		for (const w of data.workouts) {
+			if (isWorkoutComparableTo(w, ref)) comparable.push(w);
+			else incomparable.push(w);
+		}
+		return { comparable, incomparable };
 	}
 
 	function applyCompare() {
@@ -66,6 +127,11 @@
 	const intervalRows = $derived(
 		detailA && detailB ? compareIntervalReps(detailA, detailB) : null
 	);
+
+	const incomparableReason = $derived(incomparableReasonFor(detailA, detailB));
+
+	const pickAGroups = $derived(groupedWorkouts(refForPickA()));
+	const pickBGroups = $derived(groupedWorkouts(refForPickB()));
 
 	const hasHr = $derived(
 		Boolean(
@@ -274,18 +340,52 @@
 				<span class="lbl">{t('compare.workoutA')}</span>
 				<select class="select select-bordered select-sm" bind:value={pickA}>
 					<option value="">{t('compare.choose')}</option>
-					{#each data.workouts as w (w.id)}
-						<option value={String(w.id)}>{workoutLabel(w)}</option>
-					{/each}
+					{#if !refForPickA()}
+						{#each data.workouts as w (w.id)}
+							<option value={String(w.id)}>{workoutLabel(w)}</option>
+						{/each}
+					{:else}
+						{#if pickAGroups.comparable.length}
+							<optgroup label={t('comparability.groupComparable')}>
+								{#each pickAGroups.comparable as w (w.id)}
+									<option value={String(w.id)}>{workoutLabel(w)}</option>
+								{/each}
+							</optgroup>
+						{/if}
+						{#if pickAGroups.incomparable.length}
+							<optgroup label={t('comparability.groupIncomparable')}>
+								{#each pickAGroups.incomparable as w (w.id)}
+									<option value={String(w.id)}>{workoutLabel(w)}</option>
+								{/each}
+							</optgroup>
+						{/if}
+					{/if}
 				</select>
 			</label>
 			<label>
 				<span class="lbl">{t('compare.workoutB')}</span>
 				<select class="select select-bordered select-sm" bind:value={pickB}>
 					<option value="">{t('compare.choose')}</option>
-					{#each data.workouts as w (w.id)}
-						<option value={String(w.id)}>{workoutLabel(w)}</option>
-					{/each}
+					{#if !refForPickB()}
+						{#each data.workouts as w (w.id)}
+							<option value={String(w.id)}>{workoutLabel(w)}</option>
+						{/each}
+					{:else}
+						{#if pickBGroups.comparable.length}
+							<optgroup label={t('comparability.groupComparable')}>
+								{#each pickBGroups.comparable as w (w.id)}
+									<option value={String(w.id)}>{workoutLabel(w)}</option>
+								{/each}
+							</optgroup>
+						{/if}
+						{#if pickBGroups.incomparable.length}
+							<optgroup label={t('comparability.groupIncomparable')}>
+								{#each pickBGroups.incomparable as w (w.id)}
+									<option value={String(w.id)}>{workoutLabel(w)}</option>
+								{/each}
+							</optgroup>
+						{/if}
+					{/if}
 				</select>
 			</label>
 		</div>
@@ -321,11 +421,16 @@
 			{/each}
 		</div>
 
-		{#if detailA.sport !== detailB.sport}
-			<div class="sportwarn card bg-base-100 border border-base-300 shadow-md p-5">{t('compare.crossSport')}</div>
-		{/if}
-
-		{#if verdict}
+		{#if incomparableReason}
+			<div
+				class="incomparable-block card bg-base-100 border border-error shadow-md p-5"
+				role="alert"
+			>
+				<strong>{t('comparability.blockedTitle')}</strong>
+				<p>{t(`comparability.reason.${incomparableReason}`)}</p>
+				<p class="muted">{t('comparability.guidance')}</p>
+			</div>
+		{:else if verdict}
 			<div
 				class="verdict card bg-base-100 border border-base-300 shadow-md p-5"
 				class:good={verdict.winner === 'a'}
@@ -345,7 +450,7 @@
 			</div>
 		{/if}
 
-		{#if overlay}
+		{#if !incomparableReason && overlay}
 			<p class="muted align-note">
 				{t('compare.alignedNote', { distance: fmtDistance(overlay.alignedMetres) })}
 			</p>
@@ -380,11 +485,11 @@
 					</div>
 				{/if}
 			</div>
-		{:else}
+		{:else if !incomparableReason}
 			<p class="muted card bg-base-100 border border-base-300 shadow-md p-5 empty">{t('compare.noStrokeData')}</p>
 		{/if}
 
-		{#if statRows.length}
+		{#if !incomparableReason && statRows.length}
 			<div class="card bg-base-100 border border-base-300 shadow-md p-5 tablecard">
 				<h2 class="sectitle">{t('compare.deltaTable')}</h2>
 				<p class="muted hint">{t('compare.deltaHint')}</p>
@@ -415,7 +520,7 @@
 			</div>
 		{/if}
 
-		{#if intervalRows?.length}
+		{#if !incomparableReason && intervalRows?.length}
 			<div class="card bg-base-100 border border-base-300 shadow-md p-5 tablecard">
 				<h2 class="sectitle">{t('compare.intervalTitle')}</h2>
 				<p class="muted hint">{t('compare.intervalHint')}</p>
@@ -573,13 +678,17 @@
 	.verdict strong {
 		display: block;
 	}
-	.sportwarn {
-		padding: 0.7rem 1rem;
+	.incomparable-block {
 		margin-bottom: 1rem;
-		border-left: 4px solid var(--warn, #f0ad4e);
-		background: color-mix(in srgb, var(--warn, #f0ad4e) 10%, var(--paper-raised));
+		border-left: 4px solid var(--bad, #e74c3c);
+	}
+	.incomparable-block strong {
+		display: block;
+		margin-bottom: 0.35rem;
+	}
+	.incomparable-block p {
+		margin: 0.25rem 0;
 		font-size: 0.9rem;
-		color: var(--ink-2);
 	}
 	.align-note {
 		font-size: 0.85rem;

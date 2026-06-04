@@ -591,6 +591,19 @@ export const fr = {
 		preferBefore: 'Vous préférez le flux standard ? ',
 		preferLink: 'Connecter Concept2'
 	},
+	comparability: {
+		blockedTitle: 'Séances non comparables',
+		guidance:
+			'Choisissez deux séances sur la même machine, du même type et dans la même bande de distance ou de durée.',
+		noComparableCandidates: 'Aucune séance comparable trouvée.',
+		groupComparable: 'Comparables',
+		groupIncomparable: 'Autres (non comparables)',
+		reason: {
+			crossSport: 'Ces séances sont sur des machines différentes.',
+			crossAxis: "L'une est une pièce à distance fixe, l'autre à temps fixe.",
+			crossBand: 'Ces séances sont dans des bandes de distance ou de durée différentes.'
+		}
+	},
 	compare: {
 		title: 'Comparer des séances',
 		lead: 'Statistiques côte à côte et graphiques superposés pour deux séances au choix.',
@@ -601,7 +614,6 @@ export const fr = {
 		run: 'Comparer',
 		swap: 'Inverser',
 		pickTwo: 'Choisissez deux séances ci-dessus pour comparer.',
-		crossSport: 'Sports différents — les échelles d’allure et de puissance peuvent ne pas être directement comparables.',
 		deltaTable: 'Statistiques face à face',
 		deltaHint: 'Un delta positif signifie que la séance A est plus élevée.',
 		alignedNote: 'Aligné sur {distance}',

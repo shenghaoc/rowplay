@@ -195,7 +195,7 @@ export class LiveMode {
 			// selector only governs live (non-demo) polling cadence.
 			const interval = this.demo
 				? randomMockDelayMs()
-				: effectiveIntervalSec(this.intervalSec, this.tabVisible) * 1000 + nextBackoffMs(0);
+				: effectiveIntervalSec(this.intervalSec, this.tabVisible) * 1000;
 			this.scheduleNext(interval);
 		} catch (e) {
 			if (signal.aborted) {

@@ -594,6 +594,18 @@ export const ja = {
 		preferBefore: '標準フローがよい？ ',
 		preferLink: 'Concept2 に接続'
 	},
+	comparability: {
+		blockedTitle: '比較できないワークアウト',
+		guidance: '同じマシン・同じ種類・同じ距離または時間帯の 2 セッションを選んでください。',
+		noComparableCandidates: '比較可能なセッションがありません。',
+		groupComparable: '比較可能',
+		groupIncomparable: 'その他（比較不可）',
+		reason: {
+			crossSport: 'マシンが異なります。',
+			crossAxis: '一方は固定距離、もう一方は固定時間のピースです。',
+			crossBand: '距離または時間の帯が異なります。'
+		}
+	},
 	compare: {
 		title: 'ワークアウト比較',
 		lead: '任意の 2 セッションの並列統計とオーバーレイチャート。',
@@ -604,7 +616,6 @@ export const ja = {
 		run: '比較',
 		swap: '入れ替え',
 		pickTwo: '上で 2 つのワークアウトを選んで比較してください。',
-		crossSport: '種目が異なります — ペースとパワーのスケールは直接比較できない場合があります。',
 		deltaTable: '対決統計',
 		deltaHint: '差分が正のとき、ワークアウト A の方が高い。',
 		alignedNote: '{distance} で位置合わせ',

@@ -96,6 +96,51 @@ export function distanceBand(metres: number): DistanceBand {
 	return { key: 'other', label: 'Other', nominal: metres };
 }
 
+export interface DurationBand {
+	/** Stable key, e.g. "1800". */
+	key: string;
+	label: string;
+	/** Nominal duration in seconds (for sorting). */
+	nominal: number;
+}
+
+/**
+ * Bucket a workout duration into a like-for-like band so 30min-vs-30min
+ * compares correctly and a 20min piece is not raced against a 60min piece.
+ * Mirrors `distanceBand` for fixed-time pieces.
+ */
+export function durationBand(seconds: number): DurationBand {
+	const standards = [
+		{ s: 60, l: '1 min' },
+		{ s: 240, l: '4 min' },
+		{ s: 1200, l: '20 min' },
+		{ s: 1800, l: '30 min' },
+		{ s: 3600, l: '60 min' }
+	];
+	for (const t of standards) {
+		if (Math.abs(seconds - t.s) <= t.s * 0.1) {
+			return { key: String(t.s), label: t.l, nominal: t.s };
+		}
+	}
+	const ranges: [number, number, string][] = [
+		[0, 90, '<90s'],
+		[90, 360, '90s–6m'],
+		[360, 900, '6–15m'],
+		[900, 2400, '15–40m'],
+		[2400, 4800, '40–80m'],
+		[4800, Infinity, '80m+']
+	];
+	for (const [lo, hi, l] of ranges) {
+		if (seconds >= lo && seconds < hi) {
+			// For the lowest band lo === 0, so Math.min(hi, lo*2) would be 0 and the
+			// nominal would collapse to 0 — use hi as the upper bound in that case.
+			const upper = lo === 0 ? hi : Math.min(hi, lo * 2);
+			return { key: `r${lo}`, label: l, nominal: (lo + upper) / 2 };
+		}
+	}
+	return { key: 'other', label: 'Other', nominal: seconds };
+}
+
 export interface SportSummary {
 	sport: Sport;
 	sessions: number;
