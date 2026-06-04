@@ -116,7 +116,7 @@ function usesFiveZone(config: ZoneConfig, sport: Sport): boolean {
 }
 
 function medianForSport(config: ZoneConfig, sport: Sport): number {
-	return config.sportMedians?.[sport] ?? config.medianPace ?? 120;
+	return config.sportMedians?.[sport] || config.medianPace || 120;
 }
 
 /**
@@ -130,6 +130,7 @@ export function classifyPace(pace: number, config: ZoneConfig, sport: Sport = 'r
 }
 
 function addToSlice(slices: ZoneSlice[], zone: ZoneLabel, seconds: number, meters: number) {
+	if (Number.isNaN(seconds) || Number.isNaN(meters)) return;
 	if (seconds <= 0 && meters <= 0) return;
 	const s = slices.find((x) => x.zone === zone);
 	if (!s) return;

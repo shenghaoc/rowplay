@@ -139,7 +139,6 @@
 						class="tidseg tidseg--{seg.zone}"
 						role="presentation"
 						onmouseenter={() => (hoverZone = seg.zone)}
-						onfocus={() => (hoverZone = seg.zone)}
 					/>
 				{/each}
 			</svg>
@@ -159,7 +158,7 @@
 					<li>
 						<span class="tidswatch tidseg--{zone}" aria-hidden="true"></span>
 						<span class="tidleglabel">{i18n.t(zoneLabelKey(zone))}</span>
-						<span class="tidlegpct mono">{pct.toFixed(0)}%</span>
+						<span class="tidlegpct mono">{pct < 1 && pct > 0 ? '<1%' : pct.toFixed(0) + '%'}</span>
 						<span class="muted tidlegval">
 							{measure === 'time' ? fmtTime(slice.seconds) : fmtDistance(slice.meters)}
 						</span>
