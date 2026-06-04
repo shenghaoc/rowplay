@@ -25,7 +25,12 @@ const { en } = await import(new URL('./en.ts', localesDir));
 const enKeys = new Set(flatten(en));
 
 const localeFiles = readdirSync(localesDir).filter(
-	(f) => f.endsWith('.ts') && f !== 'en.ts' && f !== 'index.ts' && f !== 'types.ts'
+	(f) =>
+		f.endsWith('.ts') &&
+		!f.endsWith('.test.ts') &&
+		f !== 'en.ts' &&
+		f !== 'index.ts' &&
+		f !== 'types.ts'
 );
 
 let failed = false;

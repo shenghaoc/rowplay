@@ -174,6 +174,25 @@ export const zh = {
 		calDowThu: '四',
 		calDowFri: '五',
 		calDowSat: '六',
+		tid: {
+			title: '训练强度分布',
+			time: '时间',
+			distance: '距离',
+			period4w: '近 4 周',
+			period3m: '近 3 个月',
+			period12m: '近 12 个月',
+			empty: '该时段暂无训练',
+			zone: {
+				UT2: 'UT2 — 恢复',
+				UT1: 'UT1 — 有氧',
+				AT: 'AT — 阈值',
+				TR: 'TR — 比赛配速',
+				AN: 'AN — 无氧',
+				Easy: '轻松',
+				Moderate: '中等',
+				Hard: '高强度'
+			}
+		},
 		formTitle: '体能与状态',
 		formPremium: '高级功能 — 已解锁',
 		formSub: '涵盖全部器械的训练负荷，按你自己的阈值功率换算。',

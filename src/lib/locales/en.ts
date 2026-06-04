@@ -175,6 +175,25 @@ export const en = {
 		calDowThu: 'Thu',
 		calDowFri: 'Fri',
 		calDowSat: 'Sat',
+		tid: {
+			title: 'Training intensity',
+			time: 'Time',
+			distance: 'Distance',
+			period4w: 'Last 4 weeks',
+			period3m: 'Last 3 months',
+			period12m: 'Last 12 months',
+			empty: 'No workouts in this period',
+			zone: {
+				UT2: 'UT2 — Recovery',
+				UT1: 'UT1 — Aerobic',
+				AT: 'AT — Threshold',
+				TR: 'TR — Race pace',
+				AN: 'AN — Anaerobic',
+				Easy: 'Easy',
+				Moderate: 'Moderate',
+				Hard: 'Hard'
+			}
+		},
 		formTitle: 'Fitness & Freshness',
 		formPremium: 'Premium feature — unlocked',
 		formSub: 'Training load across all machines, scaled to your own threshold power.',

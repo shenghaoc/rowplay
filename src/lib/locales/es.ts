@@ -175,6 +175,25 @@ export const es = {
 		calDowThu: 'Jue',
 		calDowFri: 'Vie',
 		calDowSat: 'Sáb',
+		tid: {
+			title: 'Intensidad de entrenamiento',
+			time: 'Tiempo',
+			distance: 'Distancia',
+			period4w: 'Últimas 4 semanas',
+			period3m: 'Últimos 3 meses',
+			period12m: 'Últimos 12 meses',
+			empty: 'Sin entrenamientos en este periodo',
+			zone: {
+				UT2: 'UT2 — Recuperación',
+				UT1: 'UT1 — Aeróbico',
+				AT: 'AT — Umbral',
+				TR: 'TR — Ritmo de carrera',
+				AN: 'AN — Anaeróbico',
+				Easy: 'Fácil',
+				Moderate: 'Moderado',
+				Hard: 'Duro'
+			}
+		},
 		formTitle: 'Forma y frescura',
 		formPremium: 'Función premium — desbloqueada',
 		formSub: 'Carga de entrenamiento en todas las máquinas, escalada a tu propia potencia umbral.',

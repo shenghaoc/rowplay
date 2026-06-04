@@ -176,6 +176,25 @@ export const ja = {
 		calDowThu: '木',
 		calDowFri: '金',
 		calDowSat: '土',
+		tid: {
+			title: 'トレーニング強度',
+			time: '時間',
+			distance: '距離',
+			period4w: '直近4週間',
+			period3m: '直近3か月',
+			period12m: '直近12か月',
+			empty: 'この期間にワークアウトがありません',
+			zone: {
+				UT2: 'UT2 — 回復',
+				UT1: 'UT1 — 有酸素',
+				AT: 'AT — 閾値',
+				TR: 'TR — レースペース',
+				AN: 'AN — 無酸素',
+				Easy: 'イージー',
+				Moderate: '中強度',
+				Hard: '高強度'
+			}
+		},
 		formTitle: 'フィットネスとコンディション',
 		formPremium: 'プレミアム機能 — 利用可能',
 		formSub: '全マシン横断のトレーニング負荷を、あなた自身のしきい値パワーに換算。',
