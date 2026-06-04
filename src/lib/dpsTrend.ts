@@ -67,18 +67,26 @@ export function movingAverage(
 ): MovingAvgPoint[] {
 	if (points.length === 0) return [];
 	const halfMs = (windowDays / 2) * 86_400_000;
-	const epochs = points.map(p => new Date(p.date.slice(0, 10) + 'T00:00:00Z').getTime());
+	const epochs = points.map((p) => Date.parse(p.date.slice(0, 10) + 'T00:00:00Z'));
+
+	let left = 0;
+	let right = 0;
+	let sum = 0;
 
 	return points.map((p, i) => {
 		const pEpoch = epochs[i]!;
-		let sum = 0;
-		let count = 0;
-		for (let j = 0; j < points.length; j++) {
-			if (Math.abs(epochs[j]! - pEpoch) <= halfMs) {
-				sum += points[j]![metric];
-				count++;
-			}
+		const minEpoch = pEpoch - halfMs;
+		const maxEpoch = pEpoch + halfMs;
+
+		while (right < points.length && epochs[right]! <= maxEpoch) {
+			sum += points[right]![metric];
+			right++;
 		}
-		return { date: p.date, value: sum / count };
+		while (left < points.length && epochs[left]! < minEpoch) {
+			sum -= points[left]![metric];
+			left++;
+		}
+		const count = right - left;
+		return { date: p.date, value: count > 0 ? sum / count : 0 };
 	});
 }
