@@ -37,6 +37,7 @@
 	}
 
 	function prefillFromPb() {
+		if (timeInput) return;
 		const pb = personalBests.find((p) => p.distance === 2000 && p.sport === 'rower');
 		if (pb) {
 			knownDistance = pb.distance;
@@ -104,7 +105,7 @@
 			{/if}
 
 			{#if rows}
-				<div class="tablescroll predictor-table-wrap">
+				<div class="predictor-table-wrap">
 					<table class="table table-zebra table-sm mono predictor-table">
 						<thead>
 							<tr>
@@ -127,7 +128,9 @@
 											: t('dashboard.predictor.noTime')}
 									</td>
 									<td>
-										<span class={statusBadgeClass(row.status)}>{statusText(row.status)}</span>
+										{#if row.distance !== knownDistance}
+											<span class={statusBadgeClass(row.status)}>{statusText(row.status)}</span>
+										{/if}
 									</td>
 								</tr>
 							{/each}
@@ -187,6 +190,7 @@
 	}
 	.predictor-table-wrap {
 		margin-top: 0.85rem;
+		overflow-x: auto;
 	}
 	.predictor-table .num {
 		text-align: right;
