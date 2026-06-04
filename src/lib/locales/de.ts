@@ -462,6 +462,10 @@ export const de = {
 		mFirmware: 'Firmware',
 		mSerial: 'Seriennummer',
 		mDevice: 'Gerät',
+		mSource: 'Aufgezeichnet von',
+		exrBadge: 'EXR-Quelle',
+		exrBadgeTitle:
+			'Tempo und Leistung wurden von EXR synthetisiert, nicht vom PM5 gemessen. Die Werte sind möglicherweise nicht direkt mit PM-Aufzeichnungen vergleichbar.',
 		mErgModel: 'Erg-Modell',
 		mHrSensor: 'HF-Sensor',
 		targetsTitle: 'Ziele',
@@ -569,6 +573,7 @@ export const de = {
 		apiToken: 'API-Token',
 		placeholder: 'Token einfügen',
 		connect: 'Mit Token verbinden',
+		connecting: 'Verbinden…',
 		rejected: 'Concept2 hat dieses Token abgelehnt. Prüfe es und versuche es erneut.',
 		serverMisconfigured:
 			'Diese Installation ist nicht für die Token-Anmeldung eingerichtet (SESSION_SECRET fehlt). Wende dich an den Betreiber.',
