@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	activeMachineAt,
-	activeSegmentIndexAt,
-	buildSegmentMap,
-	sampleAt,
-	sampleIndexAt
-} from './engine';
-import type { Split } from '$lib/types';
+import { sampleAt, sampleIndexAt } from './engine';
 import type { Stroke } from '$lib/types';
 import { ladderStrokes } from '../../../tests/unit/fixtures';
 import { mockWorkoutDetail } from '../mockData';
@@ -117,40 +110,5 @@ describe('sampleAt', () => {
 				expect(pf.t).toBe(t);
 			});
 		}
-	});
-});
-
-describe('buildSegmentMap', () => {
-	const multiSplits: Split[] = [
-		{ index: 0, distance: 1000, time: 240, pace: 120, machine: 'rower', isRest: false },
-		{ index: 1, distance: 0, time: 60, pace: 0, isRest: true, restTime: 60 },
-		{ index: 2, distance: 500, time: 120, pace: 120, machine: 'skierg', isRest: false },
-		{ index: 3, distance: 0, time: 60, pace: 0, isRest: true, restTime: 60 },
-		{ index: 4, distance: 2000, time: 400, pace: 100, machine: 'bike', isRest: false }
-	];
-
-	it('builds three work segments on a work-time clock with rest carried separately', () => {
-		const map = buildSegmentMap(multiSplits);
-		expect(map).toHaveLength(3);
-		expect(map[0].machine).toBe('rower');
-		expect(map[1].restBefore).toBe(60);
-		// Work-time clock: segments are contiguous (the 60 s rest lives in
-		// restBefore, not in the timeline) so it stays aligned with the engine.
-		expect(map[1].startT).toBe(map[0].endT);
-		expect(map[2].machine).toBe('bike');
-	});
-
-	it('resolves active machine by distance', () => {
-		const map = buildSegmentMap(multiSplits);
-		expect(activeMachineAt(map, 500)).toBe('rower');
-		expect(activeMachineAt(map, 1200)).toBe('skierg');
-		expect(activeMachineAt(map, 3000)).toBe('bike');
-		expect(activeSegmentIndexAt(map, 1200)).toBe(1);
-	});
-
-	it('falls back to one segment when splits are empty', () => {
-		const map = buildSegmentMap([], 'bike');
-		expect(map).toHaveLength(1);
-		expect(map[0].machine).toBe('bike');
 	});
 });

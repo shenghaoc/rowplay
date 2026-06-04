@@ -336,11 +336,6 @@ export const ja = {
 		hrImportClearFailed: '心拍数インポートを削除できませんでした',
 		back: 'ダッシュボードに戻る',
 		lowRes: '低解像度リプレイ',
-		multiErg: 'MultiErg',
-		restInterval: '休憩',
-		segmentMachine: 'マシン',
-		multiErgNote:
-			'MultiErgワークアウトはインターバルごとにマシンが切り替わります。リーダーボード公開とMultiErgゴーストレースはこのピースでは利用できません。',
 		compareAgainst: '比較対象:',
 		none: 'なし',
 		pastSession: '過去のセッション',

@@ -334,11 +334,6 @@ export const fr = {
 		hrImportClearFailed: 'Impossible de retirer l’import de fréquence cardiaque',
 		back: 'Retour au tableau de bord',
 		lowRes: 'replay basse résolution',
-		multiErg: 'MultiErg',
-		restInterval: 'Repos',
-		segmentMachine: 'Machine',
-		multiErgNote:
-			'Les séances MultiErg changent de machine entre les intervalles. La publication au classement et les courses fantômes MultiErg ne sont pas disponibles pour cette séance.',
 		compareAgainst: 'Comparer à :',
 		none: 'Aucun',
 		pastSession: 'Une séance passée',
