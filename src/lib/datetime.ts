@@ -139,11 +139,8 @@ export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: st
 		const day = dayKeyInZone(pdt, cleanWtz, cleanHtz !== cleanWtz ? cleanHtz : undefined);
 		if (day) return day;
 	}
-	// Only homeTz available: without knowing the source zone we can't convert.
-	// Fall back to the plain date part.
-	if (cleanHtz) {
-		return pdt.toPlainDate().toString();
-	}
+	// Fall back to the plain date part — either only homeTz was given (no source
+	// zone to convert from) or workoutTz was invalid.
 	return pdt.toPlainDate().toString();
 }
 
