@@ -21,6 +21,9 @@ const KV_PREFIX = 'share:';
 const PRIVACY_BLOCKED =
 	'This workout isn’t public on Concept2, so it can’t be shared. Set its privacy to “Everyone” in your logbook first.';
 
+/** Shown when a previously-public link is opened after the workout went non-public. */
+const SHARE_NO_LONGER_PUBLIC = 'This workout is no longer shared publicly.';
+
 /** 48 hex chars — unguessable capability URL segment. */
 export function generateShareToken(): string {
 	const bytes = new Uint8Array(24);
@@ -152,6 +155,16 @@ export function redactForPublic(detail: WorkoutDetail): WorkoutDetail {
 	return { ...detail, metadata };
 }
 
+/**
+ * Serve a shared workout, re-checking privacy at redemption time so a link
+ * minted while a piece was public stops resolving once the athlete makes it
+ * non-public and the cache re-syncs — fail closed, like createWorkoutShare.
+ */
+function servePublic(detail: WorkoutDetail): WorkoutDetail {
+	if (!isPubliclyShareable(detail.privacy)) throw error(403, SHARE_NO_LONGER_PUBLIC);
+	return redactForPublic(detail);
+}
+
 /** Load a workout that was explicitly shared — no session required. */
 export async function loadSharedWorkout(
 	event: RequestEvent,
@@ -164,10 +177,10 @@ export async function loadSharedWorkout(
 
 	const db = event.platform?.env?.DB;
 	const fromDb = await getCachedDetailByShareToken(db, token);
-	if (fromDb) return redactForPublic(fromDb);
+	if (fromDb) return servePublic(fromDb);
 
 	const fromKv = await readDemoShare(event.platform?.env?.SESSIONS, token);
-	if (fromKv) return redactForPublic(fromKv);
+	if (fromKv) return servePublic(fromKv);
 
 	throw error(404, 'Share link not found or sharing was revoked.');
 }

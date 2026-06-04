@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mockWorkoutDetail } from '../mockData';
-import { createWorkoutShare, redactForPublic } from './share';
+import { createWorkoutShare, loadSharedWorkout, redactForPublic } from './share';
 
 describe('redactForPublic', () => {
 	it('removes serial number and device from metadata', () => {
@@ -49,5 +49,31 @@ describe('createWorkoutShare privacy guard', () => {
 		expect(share.path).toBe(`/r/${share.token}`);
 		expect(share.url).toBe(`https://share.test/r/${share.token}`);
 		expect(share.created).toBe(true);
+	});
+});
+
+describe('loadSharedWorkout privacy re-check', () => {
+	// Seed a demo share pointer (the KV redemption path) for a given workout.
+	function eventWithShare(workoutId: number) {
+		const token = 'a'.repeat(48);
+		const store = new Map<string, string>([
+			[`share:${token}`, JSON.stringify({ demo: true, workoutId })]
+		]);
+		const kv = { get: async (k: string) => store.get(k) ?? null };
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const event = { platform: { env: { SESSIONS: kv, DB: undefined } } } as any;
+		return { event, token };
+	}
+
+	it('refuses a previously-public link once the workout is non-public', async () => {
+		const { event, token } = eventWithShare(1002); // privacy: 'private'
+		await expect(loadSharedWorkout(event, token)).rejects.toMatchObject({ status: 403 });
+	});
+
+	it('still serves a public shared workout, redacted', async () => {
+		const { event, token } = eventWithShare(1005); // privacy: 'everyone', has metadata
+		const detail = await loadSharedWorkout(event, token);
+		expect(detail.id).toBe(1005);
+		expect(detail.metadata?.serialNumber).toBeUndefined();
 	});
 });

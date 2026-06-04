@@ -892,6 +892,10 @@
 				toast.info(t('leaderboard.publishOffBoard'));
 				return;
 			}
+			if (res.status === 403) {
+				toast.error(t('share.privacyBlocked'));
+				return;
+			}
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const result = (await res.json()) as {
 				board: { sport: Sport; distance: number };
