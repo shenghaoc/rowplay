@@ -5,6 +5,7 @@
  */
 export const safeStorage = {
 	getItem(key: string): string | null {
+		if (typeof localStorage === 'undefined') return null;
 		try {
 			return localStorage.getItem(key);
 		} catch {
@@ -13,6 +14,7 @@ export const safeStorage = {
 	},
 
 	setItem(key: string, value: string): void {
+		if (typeof localStorage === 'undefined') return;
 		try {
 			localStorage.setItem(key, value);
 		} catch {
@@ -21,6 +23,7 @@ export const safeStorage = {
 	},
 
 	removeItem(key: string): void {
+		if (typeof localStorage === 'undefined') return;
 		try {
 			localStorage.removeItem(key);
 		} catch {

@@ -80,6 +80,9 @@ export function fmtDate(value: string, locale?: string, timeZone?: string): stri
 		}
 	}
 
+	if (fmtDateCache.size > 1000) {
+		fmtDateCache.clear();
+	}
 	fmtDateCache.set(cacheKey, result);
 	return result;
 }
