@@ -131,10 +131,13 @@ export function classifyPace(pace: number, config: ZoneConfig, sport: Sport = 'r
 
 function addToSlice(slices: ZoneSlice[], zone: ZoneLabel, seconds: number, meters: number) {
 	if (!Number.isFinite(seconds) || !Number.isFinite(meters) || (seconds <= 0 && meters <= 0)) return;
-	const s = slices.find((x) => x.zone === zone);
-	if (!s) return;
-	s.seconds += seconds;
-	s.meters += meters;
+	for (const slice of slices) {
+		if (slice.zone === zone) {
+			slice.seconds += seconds;
+			slice.meters += meters;
+			return;
+		}
+	}
 }
 
 /** @internal — reserved for future per-stroke distribution */

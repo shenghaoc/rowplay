@@ -5,3 +5,7 @@
 ## 2026-05-30 - Optimize intervalBreakdown with two pointers
 **Learning:** Nested loops where the inner loop does a linear lookup (e.g. `findIndex`) on sorted time boundaries inside a sequential time series array lead to an O(N*M) bottleneck.
 **Action:** When mapping time series elements (like strokes) into contiguous chronological buckets (like intervals), replace the inner lookup with an O(N) two-pointer / sliding window technique.
+
+## 2026-05-31 - Avoid closures in high-frequency loops
+**Learning:** `Array.prototype.find` (and similar early-exit iterator methods) creates a new closure object on every call. When used inside a hot loop traversing long time-series arrays (like parsing every stroke of a long workout), this leads to unnecessary garbage collection overhead.
+**Action:** Replace `find` with a `for...of` loop **only when the containing function is called in a tight inner loop** (e.g., per-stroke in a thousands-of-strokes traversal). Do not apply this to `filter` or `map` outside hot paths — replacing readable functional style there is a readability regression for no gain.
