@@ -210,7 +210,8 @@ async function runSync(
 	const from =
 		plan.kind === 'window' ? plan.from : plan.kind === 'incremental' ? plan.from : undefined;
 
-	const beforePbs = distancePBs(await getAllWorkouts(db, userId).catch(() => []));
+	const allBefore = await getAllWorkouts(db, userId).catch(() => []);
+	const beforePbs = distancePBs(allBefore);
 
 	let page = 1;
 	let totalPages = 1;
@@ -253,7 +254,15 @@ async function runSync(
 		oldestDate: wm.oldestDate,
 		backfillDone: wm.backfillDone
 	});
-	const afterPbs = distancePBs(await getAllWorkouts(db, userId));
+	// Compute afterPbs from the saved pre-sync list merged with this sync's batch,
+	// avoiding a second full-table scan on every sync.
+	const syncedById = new Map(synced.map((w) => [w.id, w]));
+	const existingIds = new Set(allBefore.map((w) => w.id));
+	const afterWorkouts = [
+		...allBefore.map((w) => syncedById.get(w.id) ?? w),
+		...synced.filter((w) => !existingIds.has(w.id))
+	];
+	const afterPbs = distancePBs(afterWorkouts);
 	const newPbs = detectNewPBs(beforePbs, afterPbs);
 	return { added, total, newPbs, workouts: synced };
 }
