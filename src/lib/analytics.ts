@@ -1029,6 +1029,39 @@ function monthNumberOfUtc(dayKey: string): number {
 	return parseInt(dayKey.slice(5, 7), 10);
 }
 
+/** Compute the deduped quantile breakpoints for a pre-sorted volumes array. */
+function computeLevelBreaks(sortedVolumes: number[], maxLevel: number): number[] {
+	const breaks: number[] = [];
+	for (let i = 1; i < maxLevel; i++) {
+		const idx = Math.min(sortedVolumes.length - 1, Math.ceil((sortedVolumes.length * i) / maxLevel) - 1);
+		breaks.push(sortedVolumes[Math.max(0, idx)]);
+	}
+	return [...new Set(breaks)];
+}
+
+/** Map a value to a level using pre-computed breaks (call computeLevelBreaks once, then this per cell). */
+function applyVolumeLevel(
+	value: number,
+	max: number,
+	min: number,
+	uniqueBreaks: number[],
+	maxLevel: number
+): number {
+	if (value <= 0) return 0;
+	if (!uniqueBreaks.length) return 1;
+	if (max !== min && value >= max) return maxLevel;
+	// uniqueBreaks is Set-deduped; length===1 means no gradient (all volumes equal or maxLevel=2).
+	if (uniqueBreaks[0] === uniqueBreaks[uniqueBreaks.length - 1]) return maxLevel;
+	let level = maxLevel;
+	for (let i = 0; i < uniqueBreaks.length; i++) {
+		if (value <= uniqueBreaks[i]) {
+			level = i + 1;
+			break;
+		}
+	}
+	return level;
+}
+
 export function volumeIntensityLevel(
 	value: number,
 	sortedVolumes: number[], // Pre-sorted in ascending order to avoid O(N log N) inside loops
@@ -1040,15 +1073,10 @@ export function volumeIntensityLevel(
 	const min = sortedVolumes[0];
 	// When there's a real gradient, any value at or above the max always gets maxLevel.
 	if (max !== min && value >= max) return maxLevel;
-	const breaks: number[] = [];
-	for (let i = 1; i < maxLevel; i++) {
-		const idx = Math.min(sortedVolumes.length - 1, Math.ceil((sortedVolumes.length * i) / maxLevel) - 1);
-		breaks.push(sortedVolumes[Math.max(0, idx)]);
-	}
 	// When all volumes are identical, all breaks collapse to the same value.
 	// Every cell would get level 1, which hides real training variation.
 	// Deduplicate and fall back to maxLevel if there's no meaningful gradient.
-	const unique = [...new Set(breaks)];
+	const unique = computeLevelBreaks(sortedVolumes, maxLevel);
 	if (unique.length === 0 || unique[0] === unique[unique.length - 1]) return value > 0 ? maxLevel : 0;
 	if (unique.length === 1) return value <= unique[0] ? 1 : maxLevel;
 	let level = maxLevel;
@@ -1137,10 +1165,13 @@ export function buildTrainingCalendar(
 
 	const sortedVolumes = [...volumesInRange].sort((a, b) => a - b);
 	const maxVolume = sortedVolumes.length ? sortedVolumes[sortedVolumes.length - 1] : 0;
+	// Precompute breaks once for all cells instead of recomputing inside each volumeIntensityLevel call.
+	const calMin = sortedVolumes.length ? sortedVolumes[0] : 0;
+	const uniqueBreaks = sortedVolumes.length ? computeLevelBreaks(sortedVolumes, maxLevel) : [];
 	for (const cell of cells) {
 		if (!cell.day) continue;
 		const value = metric === 'distance' ? cell.distance : cell.time;
-		cell.level = volumeIntensityLevel(value, sortedVolumes, maxLevel);
+		cell.level = applyVolumeLevel(value, maxVolume, calMin, uniqueBreaks, maxLevel);
 	}
 
 	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, endDay);

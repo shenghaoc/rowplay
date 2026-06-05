@@ -513,10 +513,13 @@
 				(w) => w.sport === dominantSport && distanceBand(w.distance).key === activeBand
 			);
 		}
-		return base
-			.map((w) => ({ x: workoutEpoch(w), y: metricValue(w, metric) }))
-			.filter((p): p is { x: number; y: number } => p.y != null && isFinite(p.x))
-			.sort((a, b) => a.x - b.x);
+		const pts: { x: number; y: number }[] = [];
+		for (const w of base) {
+			const x = workoutEpoch(w);
+			const y = metricValue(w, metric);
+			if (y != null && isFinite(x)) pts.push({ x, y });
+		}
+		return pts.sort((a, b) => a.x - b.x);
 	});
 
 	const fit = $derived(linearTrend(trendPoints));
