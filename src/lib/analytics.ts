@@ -1166,13 +1166,12 @@ export function buildTrainingCalendar(
 	const sortedVolumes = [...volumesInRange].sort((a, b) => a - b);
 	const maxVolume = sortedVolumes.length ? sortedVolumes[sortedVolumes.length - 1] : 0;
 	// Precompute breaks once for all cells instead of recomputing inside each volumeIntensityLevel call.
-	const calMax = maxVolume;
 	const calMin = sortedVolumes.length ? sortedVolumes[0] : 0;
 	const uniqueBreaks = sortedVolumes.length ? computeLevelBreaks(sortedVolumes, maxLevel) : [];
 	for (const cell of cells) {
 		if (!cell.day) continue;
 		const value = metric === 'distance' ? cell.distance : cell.time;
-		cell.level = applyVolumeLevel(value, calMax, calMin, uniqueBreaks, maxLevel);
+		cell.level = applyVolumeLevel(value, maxVolume, calMin, uniqueBreaks, maxLevel);
 	}
 
 	const { current: currentStreak, longest: longestStreak } = trainingStreaks(historyDays, endDay);
