@@ -132,6 +132,7 @@
 <style>
 	.calcard {
 		margin-bottom: 1rem;
+		min-width: 0; /* grid items default to min-width:auto; this allows the card to be constrained to its track */
 	}
 	.calhead {
 		display: flex;
@@ -176,9 +177,8 @@
 	.calwrap {
 		display: flex;
 		gap: 0.35rem;
-		max-width: 100%;
 		overflow-x: auto;
-		padding-bottom: 0.25rem;
+		padding-bottom: 0.5rem;
 		--cell: 11px;
 		--gap: 3px;
 	}

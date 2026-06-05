@@ -113,7 +113,7 @@
 
 <div class="anno-panel card card-border bg-base-100 shadow-md p-5">
 	<div class="anno-head">
-		<h3 class="anno-title"><MessageSquareText size={16} /> {t('annotations.title')}</h3>
+		<h2 class="anno-title"><MessageSquareText size={16} /> {t('annotations.title')}</h2>
 		{#if !readOnly}
 			<button class="btn add-btn" onclick={startAdd} aria-label={t('annotations.addNote')} disabled={saving}>
 				<Plus size={14} /> {t('annotations.addNote')}
@@ -130,7 +130,7 @@
 				rows="2"
 				maxlength="1000"
 				onkeydown={onKeydown}
-				class="anno-input"
+				class="textarea textarea-bordered anno-input"
 			></textarea>
 			<div class="anno-actions">
 				<button class="btn save-btn" onclick={save} disabled={!draftText.trim()}>{t('annotations.saveNote')}</button>
@@ -156,7 +156,7 @@
 								rows="2"
 								maxlength="1000"
 								onkeydown={onKeydown}
-								class="anno-input"
+								class="textarea textarea-bordered anno-input"
 							></textarea>
 							<div class="anno-actions">
 								<button class="btn save-btn" onclick={save} disabled={!draftText.trim()}>{t('annotations.saveNote')}</button>
@@ -248,12 +248,6 @@
 	}
 	.anno-input {
 		width: 100%;
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		padding: 0.4rem 0.5rem;
-		font-size: 0.82rem;
-		background: var(--paper);
-		color: var(--ink);
 		resize: vertical;
 		font-family: inherit;
 	}

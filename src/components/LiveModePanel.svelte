@@ -98,6 +98,7 @@
 		justify-content: space-between;
 		gap: 0.75rem;
 		flex-wrap: wrap;
+		min-height: 2.75rem; /* 44px touch target for the toggle row */
 	}
 	.live-title {
 		display: inline-flex;

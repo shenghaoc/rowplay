@@ -1295,7 +1295,7 @@
 			<p class="muted small hrimport-hint">{t('replay.hrImportHint')}</p>
 			<div class="hrimport-row">
 				<input
-					class="fileinput"
+					class="file-input file-input-sm"
 					type="file"
 					accept=".csv,.tcx,.fit"
 					onchange={onHrFile}
@@ -1385,7 +1385,7 @@
 			{#if comparableCandidates.length >= SEARCHABLE_MIN}
 				<search>
 				<input
-					class="session-search"
+					class="input input-bordered input-sm session-search"
 					type="search"
 					inputmode="search"
 					enterkeyhint="search"
@@ -1395,7 +1395,7 @@
 				/>
 				</search>
 			{/if}
-			<select id="ghost" value={ghostId} onchange={selectGhost}>
+			<select id="ghost" class="select select-bordered select-sm" value={ghostId} onchange={selectGhost}>
 				<option value="">{t('replay.chooseSession', { sport: SPORT_LABEL[detail.sport] })}</option>
 				{#each filteredCandidates as c (c.id)}
 					<option value={c.id}>
@@ -1407,7 +1407,7 @@
 			<p class="muted small">{t('comparability.noComparableCandidates')}</p>
 		{:else if compareMode === 'pace'}
 			<input
-				class="paceinput mono"
+				class="input input-bordered input-sm paceinput mono"
 				type="text"
 				bind:value={paceInput}
 				placeholder="1:52"
@@ -1418,7 +1418,7 @@
 			<button class="btn btn-ghost btn-sm" onclick={applyPace}>{t('replay.setPace')}</button>
 		{:else if compareMode === 'file'}
 			<input
-				class="fileinput"
+				class="file-input file-input-sm"
 				type="file"
 				accept=".csv,.tcx,.fit"
 				onchange={onFile}
@@ -1507,6 +1507,7 @@
 			<label class="quality-select">
 				<span class="quality-label">{t('replay.quality')}</span>
 				<select
+					class="select select-bordered select-sm"
 					value={quality}
 					disabled={loading3d}
 					onchange={(e) => onQualityChange(e.currentTarget.value as RenderQuality)}
@@ -2212,31 +2213,16 @@
 		align-items: center;
 		gap: 0.35rem;
 	}
-	.ghostbar select,
-	.session-search {
-		background: var(--paper-inset);
-		color: var(--ink);
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		padding: 0.4rem 0.6rem;
-		font-size: 0.85rem;
-	}
 	.session-search {
 		min-width: 10rem;
 		max-width: 14rem;
 	}
 	.paceinput {
 		width: 5rem;
-		background: var(--paper-inset);
-		color: var(--ink);
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		padding: 0.4rem 0.6rem;
 		font-family: var(--mono);
-		font-size: 0.9rem;
 		text-align: center;
 	}
-	.fileinput {
+	.file-input {
 		font-size: 0.8rem;
 		color: var(--ink-2);
 		max-width: 240px;
@@ -2347,13 +2333,6 @@
 		color: var(--muted-ink, var(--ink));
 	}
 	.quality-select select {
-		background: var(--paper-raised);
-		border: var(--bd);
-		color: var(--ink);
-		border-radius: var(--r-ctrl);
-		padding: 0.2rem 0.4rem;
-		font-size: 0.78rem;
-		font-weight: 600;
 		cursor: pointer;
 	}
 	.quality-select select:disabled {
@@ -2868,7 +2847,7 @@
 		}
 		.ghostbar select,
 		.paceinput,
-		.fileinput {
+		.file-input {
 			width: 100%;
 			max-width: none;
 		}

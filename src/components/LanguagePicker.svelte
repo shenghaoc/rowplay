@@ -10,6 +10,7 @@
 <label class="lang-picker" title={t('lang.switch')}>
 	<Languages size={16} aria-hidden="true" />
 	<select
+		class="lang-select"
 		value={i18n.lang}
 		onchange={(e) => i18n.setLanguage((e.currentTarget as HTMLSelectElement).value as Language)}
 		aria-label={t('lang.switch')}
@@ -24,33 +25,28 @@
 	.lang-picker {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
+		gap: 0.25rem;
 		align-self: center;
-		background: var(--paper-raised);
-		border: var(--bd);
 		color: var(--ink-2);
-		border-radius: var(--r-ctrl);
-		padding: 0.35rem 0.5rem;
-		font-size: 0.8rem;
-		font-family: var(--mono);
 		cursor: pointer;
+		min-height: 2.75rem; /* 44px touch target */
 	}
 	.lang-picker:hover {
 		color: var(--ink);
-		border-color: var(--ink);
 	}
-	select {
+	.lang-select {
 		appearance: none;
-		border: none;
 		background: transparent;
+		border: none;
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
-		padding: 0;
-		max-width: 6.5rem;
+		padding: 0 1.1rem 0 0;
+		max-width: 7rem;
 	}
-	select:focus-visible {
+	.lang-select:focus-visible {
 		outline: 2px solid var(--live);
 		outline-offset: 2px;
+		border-radius: 4px;
 	}
 </style>
