@@ -409,21 +409,41 @@ export interface TechniqueSummary {
 
 export function techniqueSummary(strokes: Stroke[]): TechniqueSummary {
 	const valid = strokes.filter((s) => s.pace > 0 && s.spm > 0);
-	const dps = valid.map((s) => ({ t: s.t, v: distancePerStroke(s.pace, s.spm) }));
-	const avgDps = mean(dps.map((d) => d.v));
-	const avgSpm = mean(valid.map((s) => s.spm));
+	const n = valid.length;
+	const dps = new Array<{ t: number; v: number }>(n);
+	let sumDps = 0, sumSpm = 0, sumPace = 0;
 
-	const paces = valid.map((s) => s.pace);
-	const mp = mean(paces);
-	const sd = Math.sqrt(mean(paces.map((p) => (p - mp) ** 2)));
+	for (let i = 0; i < n; i++) {
+		const s = valid[i];
+		const v = distancePerStroke(s.pace, s.spm);
+		dps[i] = { t: s.t, v };
+		sumDps += v;
+		sumSpm += s.spm;
+		sumPace += s.pace;
+	}
+
+	const avgDps = n ? sumDps / n : 0;
+	const avgSpm = n ? sumSpm / n : 0;
+	const mp = n ? sumPace / n : 0;
+
+	let sumSq = 0;
+	for (let i = 0; i < n; i++) {
+		sumSq += (valid[i].pace - mp) ** 2;
+	}
+	const sd = n ? Math.sqrt(sumSq / n) : 0;
 	const paceConsistency = mp > 0 ? (sd / mp) * 100 : 0;
 
 	// Fade by distance thirds (robust to uneven sampling in time).
 	let fade = 0;
-	if (valid.length >= 6) {
-		const third = Math.floor(valid.length / 3);
-		const firstPace = mean(valid.slice(0, third).map((s) => s.pace));
-		const lastPace = mean(valid.slice(-third).map((s) => s.pace));
+	if (n >= 6) {
+		const third = Math.floor(n / 3);
+		let firstSum = 0, lastSum = 0;
+		for (let i = 0; i < third; i++) {
+			firstSum += valid[i].pace;
+			lastSum += valid[n - 1 - i].pace;
+		}
+		const firstPace = firstSum / third;
+		const lastPace = lastSum / third;
 		fade = firstPace > 0 ? ((lastPace - firstPace) / firstPace) * 100 : 0;
 	}
 
