@@ -7,9 +7,10 @@
 		powerDurationComparison,
 		predictPaceForDuration,
 		predictTimeForDistance,
-		type CriticalPower
+		type CriticalPower,
+		type CriticalPowerWarning
 	} from '$lib/analytics';
-	import { fmtDistance, fmtPace, fmtPaceBare, fmtTime } from '$lib/format';
+	import { fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
 	import type { Sport, Workout } from '$lib/types';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
@@ -21,14 +22,21 @@
 	const t = $derived(i18n.translate);
 	const uiTheme = getThemeContext();
 
-	const cp = $derived(estimateCriticalPower(workouts));
-	const comparison = $derived(cp ? powerDurationComparison(workouts, cp) : null);
-
-	/** Single-sport history → bike-aware pace inverse; mixed ergs use rower basis. */
-	const predictorSport = $derived.by((): Sport | undefined => {
-		const sports = new Set(workouts.map((w) => w.sport));
-		return sports.size === 1 ? [...sports][0] : undefined;
-	});
+	type Scope = Sport | 'all';
+	let scope = $state<Scope>('all');
+	const scopes: Scope[] = ['all', 'rower', 'skierg', 'bike'];
+	const scopedWorkouts = $derived.by(() =>
+		scope === 'all' ? workouts : workouts.filter((w) => w.sport === scope)
+	);
+	const anyCp = $derived(estimateCriticalPower(workouts));
+	const cp = $derived(scope === 'all' ? anyCp : estimateCriticalPower(scopedWorkouts));
+	const comparison = $derived(cp ? powerDurationComparison(scopedWorkouts, cp) : null);
+	const predictorSport = $derived< Sport | undefined >(
+		scope === 'all' ? (cp?.sportScope === 'mixed' ? undefined : cp?.sportScope) : scope
+	);
+	const canPredictPace = $derived(predictorSport != null);
+	const cpScopeLabel = $derived(scope === 'all' ? t('dashboard.cpScopeAll') : SPORT_LABEL[scope]);
+	const predictionScopeLabel = $derived(predictorSport ? SPORT_LABEL[predictorSport] : cpScopeLabel);
 
 	type PredictMode = 'duration' | 'distance';
 	let predictMode = $state<PredictMode>('duration');
@@ -98,23 +106,44 @@
 		if (cpVal.method === 'model' && cpVal.wPrime > 0) {
 			return t('dashboard.cpExplainModel', {
 				cp: cpVal.cp,
-				wPrime: (cpVal.wPrime / 1000).toFixed(1)
+				wPrime: (cpVal.wPrime / 1000).toFixed(1),
+				scope: cpScopeLabel
 			});
 		}
-		return t('dashboard.cpExplainEstimate', { cp: cpVal.cp });
+		return t('dashboard.cpExplainEstimate', { cp: cpVal.cp, scope: cpScopeLabel });
+	}
+
+	function warningClass(w: CriticalPowerWarning): string {
+		return w === 'stale-efforts' || w === 'mixed-sports' || w === 'unrealistic-fit'
+			? 'badge-warning'
+			: 'badge-ghost';
 	}
 </script>
 
-{#if cp}
+{#if anyCp}
 	<div class="card card-border bg-base-100 shadow-md p-5 cpcard">
 		<div class="cphead">
 			<div class="cptitle">
 				<Zap size={18} />
 				<span class="field-label">{t('dashboard.cpTitle')}</span>
 			</div>
+			<div role="tablist" class="tabs tabs-box tabs-sm cpscopes" aria-label={t('dashboard.cpScopeLabel')}>
+				{#each scopes as s}
+					<button
+						role="tab"
+						class="tab"
+						class:tab-active={scope === s}
+						aria-selected={scope === s}
+						onclick={() => (scope = s)}
+					>
+						{s === 'all' ? t('dashboard.cpScopeAll') : SPORT_LABEL[s]}
+					</button>
+				{/each}
+			</div>
 		</div>
 		<p class="cpsub muted">{t('dashboard.cpSub')}</p>
 
+		{#if cp}
 		<div class="cpstats">
 			<div class="cs">
 				<div class="csv mono">{cp.cp}<span class="unit">W</span></div>
@@ -130,72 +159,96 @@
 				<div class="csv"><span class="badge badge-soft badge-secondary">{cp.method === 'model' ? t('dashboard.formModelled') : t('dashboard.formEstimated')}</span></div>
 				<div class="csl muted">{t('dashboard.cpMethod')}</div>
 			</div>
+			<div class="cs">
+				<div class="csv"><span class="badge badge-soft cpconfidence cpconfidence-{cp.confidence}">{t(`dashboard.cpConfidence.${cp.confidence}`)}</span></div>
+				<div class="csl muted">{t('dashboard.cpConfidenceLabel')}</div>
+			</div>
 		</div>
 
 		<p class="cpexplain">{cpExplain(cp)}</p>
+		<div class="cptrust">
+			<span>{t('dashboard.cpSample', { n: cp.sampleSize, points: cp.envelopePoints })}</span>
+			{#if cp.newestEffortDate}
+				<span>{t('dashboard.cpFreshness', { date: cp.newestEffortDate })}</span>
+			{/if}
+			{#if cp.fitQuality}
+				<span>{t('dashboard.cpFit', { r2: cp.fitQuality.r2.toFixed(2), residual: cp.fitQuality.residualPct.toFixed(1) })}</span>
+			{/if}
+		</div>
+		{#if cp.warnings.length}
+			<div class="cpwarnings" aria-label={t('dashboard.cpWarningsLabel')}>
+				{#each cp.warnings as w}
+					<span class="badge badge-sm badge-soft {warningClass(w)}">{t(`dashboard.cpWarning.${w}`)}</span>
+				{/each}
+			</div>
+		{/if}
 
 		<div class="predict">
 			<div class="predhead field-label">{t('dashboard.cpPredictTitle')}</div>
 			<p class="predsub muted">{t('dashboard.cpPredictSub')}</p>
 
-			<div class="predmodes" role="group" aria-label={t('dashboard.cpPredictTitle')}>
-				<button
-					class="pchip"
-					class:on={predictMode === 'duration'}
-					aria-pressed={predictMode === 'duration'}
-					onclick={() => (predictMode = 'duration')}
-				>{t('dashboard.cpModeDuration')}</button>
-				<button
-					class="pchip"
-					class:on={predictMode === 'distance'}
-					aria-pressed={predictMode === 'distance'}
-					onclick={() => (predictMode = 'distance')}
-				>{t('dashboard.cpModeDistance')}</button>
-			</div>
+			{#if canPredictPace}
+				<div class="predmodes" role="group" aria-label={t('dashboard.cpPredictTitle')}>
+					<button
+						class="pchip"
+						class:on={predictMode === 'duration'}
+						aria-pressed={predictMode === 'duration'}
+						onclick={() => (predictMode = 'duration')}
+					>{t('dashboard.cpModeDuration')}</button>
+					<button
+						class="pchip"
+						class:on={predictMode === 'distance'}
+						aria-pressed={predictMode === 'distance'}
+						onclick={() => (predictMode = 'distance')}
+					>{t('dashboard.cpModeDistance')}</button>
+				</div>
 
-			{#if predictMode === 'duration'}
-				<div class="predrow">
-					<label class="predlabel muted" for="cp-duration">{t('dashboard.cpHoldFor')}</label>
-					<div class="predinput">
-						<input id="cp-duration" type="number" min="2" max="120" step="1" enterkeyhint="done" class="input input-bordered input-sm" bind:value={durationMin} />
-						<span class="muted">{t('dashboard.cpMinutes')}</span>
-					</div>
-				</div>
-				<div class="presets">
-					{#each durationPresets as p}
-						<button class="pchip small" onclick={() => (durationMin = p.min)}>{t(p.labelKey)}</button>
-					{/each}
-				</div>
-				{#if predictedPace}
-					<div class="predresult">
-						<div class="predval mono">{fmtPace(predictedPace)}</div>
-						<div class="predhint muted">{t('dashboard.cpPaceHint', { min: durationMin })}</div>
-					</div>
-				{/if}
-			{:else}
-				<div class="predrow">
-					<label class="predlabel muted" for="cp-distance">{t('dashboard.cpDistance')}</label>
-					<div class="predinput">
-						<input id="cp-distance" type="number" min="100" max="50000" step="100" enterkeyhint="done" class="input input-bordered input-sm" bind:value={distanceM} />
-						<span class="muted">m</span>
-					</div>
-				</div>
-				<div class="presets">
-					{#each distancePresets as p}
-						<button class="pchip small" onclick={() => (distanceM = p.m)}>{t(p.labelKey)}</button>
-					{/each}
-				</div>
-				{#if predictedTime}
-					<div class="predresult">
-						<div class="predval mono">{fmtTime(predictedTime, true)}</div>
-						<div class="predhint muted">
-							{t('dashboard.cpTimeHint', { dist: fmtDistance(distanceM) })}
-							{#if predictedPaceFromDistance}
-								· {fmtPaceBare(predictedPaceFromDistance)}/500m
-							{/if}
+				{#if predictMode === 'duration'}
+					<div class="predrow">
+						<label class="predlabel muted" for="cp-duration">{t('dashboard.cpHoldFor')}</label>
+						<div class="predinput">
+							<input id="cp-duration" type="number" min="2" max="120" step="1" enterkeyhint="done" class="input input-bordered input-sm" bind:value={durationMin} />
+							<span class="muted">{t('dashboard.cpMinutes')}</span>
 						</div>
 					</div>
+					<div class="presets">
+						{#each durationPresets as p}
+							<button class="pchip small" onclick={() => (durationMin = p.min)}>{t(p.labelKey)}</button>
+						{/each}
+					</div>
+					{#if predictedPace}
+						<div class="predresult">
+							<div class="predval mono">{fmtPace(predictedPace)}</div>
+							<div class="predhint muted">{t('dashboard.cpPaceHint', { min: durationMin, scope: predictionScopeLabel })}</div>
+						</div>
+					{/if}
+				{:else}
+					<div class="predrow">
+						<label class="predlabel muted" for="cp-distance">{t('dashboard.cpDistance')}</label>
+						<div class="predinput">
+							<input id="cp-distance" type="number" min="100" max="50000" step="100" enterkeyhint="done" class="input input-bordered input-sm" bind:value={distanceM} />
+							<span class="muted">m</span>
+						</div>
+					</div>
+					<div class="presets">
+						{#each distancePresets as p}
+							<button class="pchip small" onclick={() => (distanceM = p.m)}>{t(p.labelKey)}</button>
+						{/each}
+					</div>
+					{#if predictedTime}
+						<div class="predresult">
+							<div class="predval mono">{fmtTime(predictedTime, true)}</div>
+							<div class="predhint muted">
+								{t('dashboard.cpTimeHint', { dist: fmtDistance(distanceM), scope: predictionScopeLabel })}
+								{#if predictedPaceFromDistance}
+									· {fmtPaceBare(predictedPaceFromDistance)}/500m
+								{/if}
+							</div>
+						</div>
+					{/if}
 				{/if}
+			{:else}
+				<p class="predsub muted">{t('dashboard.cpMixedPredictNote')}</p>
 			{/if}
 		</div>
 
@@ -216,6 +269,9 @@
 				</div>
 			</div>
 		{/if}
+		{:else if scope !== 'all'}
+			<p class="cpexplain">{t('dashboard.cpEmptyScope', { scope: cpScopeLabel })}</p>
+		{/if}
 	</div>
 {/if}
 
@@ -232,6 +288,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		gap: 0.75rem;
+		flex-wrap: wrap;
 	}
 	.cptitle {
 		display: flex;
@@ -247,6 +305,9 @@
 	.cpsub {
 		font-size: 0.82rem;
 		margin: 0.4rem 0 0.85rem;
+	}
+	.cpscopes {
+		flex-wrap: wrap;
 	}
 	.cpstats {
 		display: grid;
@@ -283,6 +344,38 @@
 		background: var(--bg-elev-2);
 		border-left: 3px solid var(--power);
 		margin-bottom: 1rem;
+	}
+	.cptrust {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem 0.75rem;
+		font-size: 0.78rem;
+		color: var(--text-dim);
+		margin: -0.35rem 0 0.75rem;
+	}
+	.cptrust span::before {
+		content: '•';
+		margin-right: 0.45rem;
+		color: var(--power);
+	}
+	.cpwarnings {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+		margin: -0.25rem 0 0.9rem;
+	}
+	.cpconfidence {
+		white-space: nowrap;
+	}
+	.cpconfidence-high {
+		--badge-color: var(--ahead);
+	}
+	.cpconfidence-medium {
+		--badge-color: var(--live);
+	}
+	.cpconfidence-low,
+	.cpconfidence-insufficient {
+		--badge-color: var(--warn);
 	}
 	.predict {
 		border-top: 1px solid var(--hairline);

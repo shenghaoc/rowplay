@@ -86,6 +86,16 @@ describe('parseWorkoutListQuery', () => {
 		const q = parseWorkoutListQuery(new URLSearchParams('type=JustRow'));
 		expect(q.workoutType).toBe('JustRow');
 	});
+
+	it('parses resolved workout tag', () => {
+		const q = parseWorkoutListQuery(new URLSearchParams('tag=race-piece'));
+		expect(q.tag).toBe('race-piece');
+	});
+
+	it('ignores unknown workout tag values', () => {
+		const q = parseWorkoutListQuery(new URLSearchParams('tag=sprint'));
+		expect(q.tag).toBeUndefined();
+	});
 });
 
 describe('serializeWorkoutListQuery', () => {
@@ -103,11 +113,13 @@ describe('serializeWorkoutListQuery', () => {
 
 	it('round-trips through parseWorkoutListQuery', () => {
 		const original = parseWorkoutListQuery(
-			new URLSearchParams('sport=bike&sort=pace&dir=asc&from=2026-01-01&dist=2000&pbs=1')
+			new URLSearchParams('sport=bike&tag=interval&type=JustRow&sort=pace&dir=asc&from=2026-01-01&dist=2000&pbs=1')
 		);
 		const serialized = serializeWorkoutListQuery(original);
 		const parsed = parseWorkoutListQuery(serialized);
 		expect(parsed.sport).toBe(original.sport);
+		expect(parsed.tag).toBe(original.tag);
+		expect(parsed.workoutType).toBe(original.workoutType);
 		expect(parsed.sort).toBe(original.sort);
 		expect(parsed.dir).toBe(original.dir);
 		expect(parsed.dateFrom).toBe(original.dateFrom);
@@ -137,6 +149,10 @@ describe('listQueryIsFiltered', () => {
 
 	it('returns true when pbsOnly is set', () => {
 		expect(listQueryIsFiltered({ ...base, pbsOnly: true })).toBe(true);
+	});
+
+	it('returns true when resolved tag is set', () => {
+		expect(listQueryIsFiltered({ ...base, tag: 'time-trial' })).toBe(true);
 	});
 });
 
@@ -210,6 +226,14 @@ describe('filterAndSortWorkouts', () => {
 	it('filters by workout type', () => {
 		const wType = workout({ id: 6, workoutType: 'JustRow' });
 		const result = filterAndSortWorkouts([w2k, wType], { ...base, workoutType: 'JustRow' });
+		expect(result).toHaveLength(1);
+		expect(result[0].id).toBe(6);
+	});
+
+	it('filters by resolved workout tag', () => {
+		const tagged = workout({ id: 6, userTag: 'interval' });
+		const other = workout({ id: 7, userTag: 'steady-state' });
+		const result = filterAndSortWorkouts([tagged, other], { ...base, tag: 'interval' });
 		expect(result).toHaveLength(1);
 		expect(result[0].id).toBe(6);
 	});

@@ -74,6 +74,46 @@ const SPECS: Spec[] = [
 		baseSpm: 26,
 		baseHr: 160,
 		workoutType: 'JustRow'
+	},
+	{
+		id: 1013,
+		date: '2026-04-05 06:00:00',
+		sport: 'rower',
+		distance: 1000,
+		basePace: 170,
+		baseSpm: 18,
+		baseHr: 118,
+		workoutType: 'Warm-up'
+	},
+	{
+		id: 1014,
+		date: '2026-04-03 06:00:00',
+		sport: 'rower',
+		distance: 3500,
+		basePace: 132,
+		baseSpm: 24,
+		baseHr: 145,
+		workoutType: 'Technique drills'
+	},
+	{
+		id: 1015,
+		date: '2026-03-28 07:10:00',
+		sport: 'skierg',
+		distance: 5000,
+		basePace: 132,
+		baseSpm: 38,
+		baseHr: 155,
+		workoutType: '5000m SkiErg steady'
+	},
+	{
+		id: 1016,
+		date: '2026-03-22 07:10:00',
+		sport: 'bike',
+		distance: 2000,
+		basePace: 88,
+		baseSpm: 92,
+		baseHr: 165,
+		workoutType: '2000m BikeErg time trial'
 	}
 ];
 
@@ -207,6 +247,14 @@ function applyFullFidelityDemo(spec: Spec, detail: WorkoutDetail): void {
 		detail.heartRateAvg = detail.heartRate.average;
 		detail.hrMin = detail.heartRate.min;
 		detail.hrMax = detail.heartRate.max;
+	}
+	if (spec.id === 1014) {
+		detail.splits = [
+			{ index: 0, distance: 1000, time: 220, pace: 110, spm: 30 },
+			{ index: 1, distance: 1000, time: 270, pace: 135, spm: 22 },
+			{ index: 2, distance: 1000, time: 220, pace: 110, spm: 30 },
+			{ index: 3, distance: 500, time: 138, pace: 138, spm: 20 }
+		];
 	}
 }
 

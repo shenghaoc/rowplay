@@ -44,7 +44,7 @@ describe('linearTrend', () => {
 	});
 
 	it('fits a downward pace trend for improving 2k pieces', () => {
-		const twoKs = workouts.filter((w) => Math.abs(w.distance - 2000) < 50).sort((a, b) => a.date.localeCompare(b.date));
+		const twoKs = workouts.filter((w) => w.sport === 'rower' && Math.abs(w.distance - 2000) < 50).sort((a, b) => a.date.localeCompare(b.date));
 		const points = twoKs.map((w) => ({ x: Date.parse(w.date.replace(' ', 'T') + 'Z'), y: w.pace }));
 		const fit = linearTrend(points);
 		expect(fit).not.toBeNull();
@@ -287,6 +287,111 @@ describe('estimateCriticalPower', () => {
 		expect(cp).not.toBeNull();
 		expect(cp!.ftp).toBeGreaterThan(0);
 		expect(['model', 'estimate']).toContain(cp!.method);
+		expect(cp!.sampleSize).toBeGreaterThan(0);
+		expect(cp!.warnings).toEqual(expect.any(Array));
+	});
+
+	function powerWorkout(
+		id: number,
+		seconds: number,
+		watts: number,
+		opts: { sport?: 'rower' | 'skierg' | 'bike'; date?: string } = {}
+	) {
+		return workout({
+			id,
+			sport: opts.sport ?? 'rower',
+			time: seconds,
+			wattMinutes: watts * (seconds / 60),
+			date: opts.date ?? `2026-05-${String(id).padStart(2, '0')} 06:00:00`
+		});
+	}
+
+	it('flags too few efforts and returns an estimate-only result', () => {
+		const cp = estimateCriticalPower([powerWorkout(1, 1200, 240)], { asOf: '2026-06-01' });
+		expect(cp).not.toBeNull();
+		expect(cp!.method).toBe('estimate');
+		expect(cp!.confidence).toBe('insufficient');
+		expect(cp!.warnings).toContain('too-few-efforts');
+		expect(cp!.warnings).toContain('estimate-only');
+	});
+
+	it('fits model diagnostics from varied maximal efforts', () => {
+		const efforts = [
+			powerWorkout(1, 180, 200 + 18_000 / 180),
+			powerWorkout(2, 600, 200 + 18_000 / 600),
+			powerWorkout(3, 1200, 200 + 18_000 / 1200),
+			powerWorkout(4, 2400, 200 + 18_000 / 2400)
+		];
+		const cp = estimateCriticalPower(efforts, { asOf: '2026-06-01' });
+		expect(cp).not.toBeNull();
+		expect(cp!.method).toBe('model');
+		expect(cp!.cp).toBeCloseTo(200, 0);
+		expect(cp!.wPrime).toBeCloseTo(18_000, -2);
+		expect(cp!.fitQuality!.r2).toBeGreaterThan(0.99);
+		expect(cp!.confidence).toBe('medium');
+	});
+
+	it('flags mixed sports instead of hiding the scope assumption', () => {
+		const cp = estimateCriticalPower([
+			powerWorkout(1, 180, 300, { sport: 'rower' }),
+			powerWorkout(2, 900, 230, { sport: 'skierg' }),
+			powerWorkout(3, 1800, 210, { sport: 'bike' })
+		], { asOf: '2026-06-01' });
+		expect(cp).not.toBeNull();
+		expect(cp!.sportScope).toBe('mixed');
+		expect(cp!.warnings).toContain('mixed-sports');
+	});
+
+	it('flags stale efforts using the supplied asOf date', () => {
+		const cp = estimateCriticalPower([
+			powerWorkout(1, 180, 300, { date: '2025-01-01 06:00:00' }),
+			powerWorkout(2, 900, 230, { date: '2025-01-08 06:00:00' }),
+			powerWorkout(3, 1800, 210, { date: '2025-01-15 06:00:00' })
+		], { asOf: '2026-06-01' });
+		expect(cp).not.toBeNull();
+		expect(cp!.warnings).toContain('stale-efforts');
+	});
+
+	it('flags narrow duration coverage', () => {
+		const cp = estimateCriticalPower([
+			powerWorkout(1, 1200, 240),
+			powerWorkout(2, 1500, 235),
+			powerWorkout(3, 1800, 230)
+		], { asOf: '2026-06-01' });
+		expect(cp).not.toBeNull();
+		expect(cp!.warnings).toContain('narrow-duration-range');
+	});
+
+	it('rejects unrealistic negative-slope fits and falls back', () => {
+		const cp = estimateCriticalPower([
+			powerWorkout(1, 180, 180),
+			powerWorkout(2, 600, 260),
+			powerWorkout(3, 1800, 320)
+		], { asOf: '2026-06-01' });
+		expect(cp).not.toBeNull();
+		expect(cp!.method).toBe('estimate');
+		expect(cp!.warnings).toContain('unrealistic-fit');
+	});
+
+	it('keeps RowErg, SkiErg, and BikeErg scopes separate when filtered upstream', () => {
+		const rower = estimateCriticalPower([
+			powerWorkout(1, 180, 300, { sport: 'rower' }),
+			powerWorkout(2, 900, 230, { sport: 'rower' }),
+			powerWorkout(3, 1800, 210, { sport: 'rower' })
+		], { asOf: '2026-06-01' });
+		const skierg = estimateCriticalPower([
+			powerWorkout(4, 180, 260, { sport: 'skierg' }),
+			powerWorkout(5, 900, 210, { sport: 'skierg' }),
+			powerWorkout(6, 1800, 190, { sport: 'skierg' })
+		], { asOf: '2026-06-01' });
+		const bike = estimateCriticalPower([
+			powerWorkout(7, 180, 210, { sport: 'bike' }),
+			powerWorkout(8, 900, 170, { sport: 'bike' }),
+			powerWorkout(9, 1800, 155, { sport: 'bike' })
+		], { asOf: '2026-06-01' });
+		expect(rower!.sportScope).toBe('rower');
+		expect(skierg!.sportScope).toBe('skierg');
+		expect(bike!.sportScope).toBe('bike');
 	});
 });
 

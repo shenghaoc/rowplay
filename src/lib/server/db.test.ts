@@ -687,6 +687,30 @@ describe('queryWorkouts', () => {
 		await queryWorkouts(db as never, 7, { sort: 'date', dir: 'desc', distanceBandKey: '2000m' });
 		expect(executed[0].sql).toContain('BETWEEN');
 	});
+
+	it('filters mapped rows by resolved workout tag', async () => {
+		const rows = [
+			{
+				workout_id: 1001, user_id: 7, date: '2026-01-01 06:00:00',
+				sport: 'rower', distance: 2000, time: 480, pace: 120,
+				stroke_rate: null, stroke_count: null, heart_rate: null,
+				hr_min: null, hr_max: null, calories: null, watt_minutes: null,
+				drag_factor: null, workout_type: null, comments: null, timezone: null,
+				has_stroke: 0, user_tag: 'interval'
+			},
+			{
+				workout_id: 1002, user_id: 7, date: '2026-01-02 06:00:00',
+				sport: 'rower', distance: 5000, time: 1200, pace: 120,
+				stroke_rate: null, stroke_count: null, heart_rate: null,
+				hr_min: null, hr_max: null, calories: null, watt_minutes: null,
+				drag_factor: null, workout_type: null, comments: null, timezone: null,
+				has_stroke: 0, user_tag: 'steady-state'
+			}
+		];
+		const { db } = fakeDb({ allRows: rows });
+		const results = await queryWorkouts(db as never, 7, { sort: 'date', dir: 'desc', tag: 'interval' });
+		expect(results.map((w) => w.id)).toEqual([1001]);
+	});
 });
 
 describe('getSportAggregates', () => {

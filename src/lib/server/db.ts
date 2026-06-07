@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { nowEpochMillis } from '$lib/datetime';
-import type { WorkoutListQuery } from '$lib/workoutQuery';
+import { filterAndSortWorkouts, type WorkoutListQuery } from '$lib/workoutQuery';
 import {
 	detailCacheTtlMs,
 	isDetailCacheFresh,
@@ -249,7 +249,8 @@ export async function queryWorkouts(
 	const sql = `${WORKOUT_SELECT} FROM workouts WHERE ${conditions.join(' AND ')} ORDER BY ${sortExpr[q.sort]} ${dir}`;
 
 	const res = await db.prepare(sql).bind(...binds).all<WorkoutRow>();
-	return (res.results ?? []).map(rowToWorkout);
+	const rows = (res.results ?? []).map(rowToWorkout);
+	return q.tag ? filterAndSortWorkouts(rows, q, pbIds) : rows;
 }
 
 export interface SyncState {

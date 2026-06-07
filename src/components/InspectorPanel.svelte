@@ -6,6 +6,7 @@
 		distancePerStroke,
 		type LoggedStroke
 	} from '$lib/replay/inspector';
+	import { themeFor } from '$lib/replay/sports';
 	import type { Sport, Stroke, WorkoutDetail } from '$lib/types';
 
 	let {
@@ -27,6 +28,7 @@
 
 	const logged = $derived(rawStroke ? asLoggedStroke(rawStroke, detail.sport) : null);
 	const dps = $derived(rawStroke ? distancePerStroke(rawStroke) : undefined);
+	const sportTheme = $derived(themeFor(detail.sport));
 
 	type RowKind = 'stroke' | 'derived';
 	interface Row {
@@ -80,8 +82,8 @@
 				key: 'spm',
 				token: 'spm',
 				desc: t('inspector.fieldSpm'),
-				asLogged: fmtLogged(l, 'spm'),
-				normalized: String(Math.round(s.spm)),
+				asLogged: `${fmtLogged(l, 'spm')} ${sportTheme.cadenceUnit}`,
+				normalized: `${Math.round(s.spm)} ${sportTheme.cadenceUnit}`,
 				kind: 'stroke'
 			}
 		];

@@ -7,7 +7,7 @@
 	import type { Workout } from '$lib/types';
 	import WorkoutTagBadge from '$components/WorkoutTagBadge.svelte';
 	import type { WorkoutTag } from '$lib/workoutTag';
-	import { MACHINE_COLOR } from '$lib/replay/sports';
+	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import { get } from 'svelte/store';
 	import { getI18nContext } from '$lib/i18n.svelte';
 
@@ -91,7 +91,7 @@
 		</div>
 		<div class="rowmeta mono muted">
 			{fmtDistance(w.distance)} · {fmtTime(w.time, true)} · {fmtPace(w.pace)}
-			{#if w.strokeRate}· {w.strokeRate} spm{/if}
+			{#if w.strokeRate}· {w.strokeRate} {themeFor(w.sport).cadenceUnit}{/if}
 			{#if w.heartRateAvg}· {Math.round(w.heartRateAvg)} bpm{/if}
 		</div>
 	</div>

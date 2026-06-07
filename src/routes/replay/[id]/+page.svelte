@@ -1963,7 +1963,7 @@
 							<span class="repbarlabel mono">{fmtPace(r.pace).replace('/500m', '')}</span>
 						</div>
 						<div class="repmeta mono muted">
-							{fmtDistance(r.distance)} · {fmtTime(r.time, true)} · {r.spm}{sportTheme.cadenceUnit}
+							{fmtDistance(r.distance)} · {fmtTime(r.time, true)} · {r.spm} {sportTheme.cadenceUnit}
 							{#if r.hr}· {r.hr}bpm{/if}
 							{#if r.dps > 0}· {r.dps.toFixed(1)}m/st{/if}
 						</div>
@@ -2002,7 +2002,7 @@
 							<td>{sp.isRest ? '—' : fmtDistance(sp.distance)}</td>
 							<td>{fmtTime(sp.time, true)}</td>
 							<td>{sp.pace > 0 ? fmtPace(sp.pace) : '—'}</td>
-							<td>{sp.spm ?? '–'}</td>
+							<td>{sp.spm != null ? `${sp.spm} ${sportTheme.cadenceUnit}` : '–'}</td>
 							<td>
 								{sp.heartRate?.ending != null
 									? Math.round(sp.heartRate.ending)
