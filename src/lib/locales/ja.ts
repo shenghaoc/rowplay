@@ -716,7 +716,18 @@ export const ja = {
 		intervalTypeTime: '時間',
 		intervalTypeDistance: '距離',
 		intervalTypeCalorie: 'カロリー',
-		intervalTypeWattminute: 'ワット分'
+		intervalTypeWattminute: 'ワット分',
+		removeGhost: 'ゴーストを削除',
+		racingAgainst: 'レース相手：{name}',
+		compareAction: '比較',
+		legendTitle: '凡例',
+		legendGhost: 'ゴースト',
+		kbTitle: 'キーボードショートカット',
+		kbSpaceHint: '再生 / 一時停止',
+		kbArrowHint: '±10 秒スクラブ',
+		kbArrowShiftHint: '±30 秒スクラブ',
+		kbBracketHint: '速度変更',
+		kbHomeHint: '最初にリセット'
 	},
 	inspector: {
 		toggle: 'フィールドインスペクター',

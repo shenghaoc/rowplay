@@ -713,7 +713,18 @@ export const zh = {
 		intervalTypeTime: '时间',
 		intervalTypeDistance: '距离',
 		intervalTypeCalorie: '卡路里',
-		intervalTypeWattminute: '瓦特分钟'
+		intervalTypeWattminute: '瓦特分钟',
+		removeGhost: '移除对手',
+		racingAgainst: '正在与 {name} 竞赛',
+		compareAction: '对比',
+		legendTitle: '图例',
+		legendGhost: '幽灵',
+		kbTitle: '键盘快捷键',
+		kbSpaceHint: '播放 / 暂停',
+		kbArrowHint: '快退/快进 ±10 秒',
+		kbArrowShiftHint: '快退/快进 ±30 秒',
+		kbBracketHint: '调整速度',
+		kbHomeHint: '重置到开始'
 	},
 	inspector: {
 		toggle: '字段检查器',
