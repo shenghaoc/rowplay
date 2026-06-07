@@ -1355,6 +1355,9 @@
 	.records-grid > :global(*) {
 		min-width: 0;
 	}
+	#workout-filters {
+		scroll-margin-top: 5rem;
+	}
 	.analysis-kicker {
 		padding: 0.3rem 0 0.1rem;
 		border-top: 2px solid var(--ink);

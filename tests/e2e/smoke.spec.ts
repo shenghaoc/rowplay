@@ -78,7 +78,7 @@ test.describe('smoke', () => {
 		await expect(tour.locator('a[href="/dashboard#workout-filters"]')).toBeVisible();
 		await expect(tour.locator('a[href^="/leaderboard"]')).toBeVisible();
 
-		const order = await page.locator('[data-e2e="latest-replay"], [data-e2e="workout-section"], [data-e2e="advanced-section"]').evaluateAll((els) =>
+		const order = await page.locator('[data-e2e="core-summary"], [data-e2e="workout-section"], [data-e2e="advanced-section"]').evaluateAll((els) =>
 			els.map((el) => {
 				const rect = el.getBoundingClientRect();
 				return rect.top + window.scrollY;
