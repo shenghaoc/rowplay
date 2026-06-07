@@ -6,7 +6,7 @@ import {
 	workoutsToJson,
 	workoutsToCsv
 } from './export';
-import type { Workout, WorkoutDetail } from '../types';
+import type { Stroke, Workout, WorkoutDetail } from '../types';
 
 function makeWorkout(overrides: Partial<Workout> = {}): Workout {
 	return {
@@ -170,6 +170,51 @@ describe('workoutDetailToTcx', () => {
 	it('handles empty strokes gracefully', () => {
 		const d = { ...detail, strokes: [], splits: [] };
 		expect(() => workoutDetailToTcx(d)).not.toThrow();
+	});
+
+	it('handles strokes with missing t and d fields', () => {
+		const d: WorkoutDetail = {
+			...detail,
+			strokes: [
+				{ t: undefined as unknown as number, d: undefined as unknown as number, pace: 0, spm: 0, watts: 0 },
+				{ t: 100, d: 500, pace: 0, spm: 0, watts: 0 },
+			]
+		};
+		expect(() => workoutDetailToTcx(d)).not.toThrow();
+		const tcx = workoutDetailToTcx(d);
+		expect(tcx).toContain('<Trackpoint>');
+	});
+
+	it('handles undefined strokes array', () => {
+		const d = { ...detail, strokes: undefined as unknown as Stroke[] };
+		expect(() => workoutDetailToTcx(d)).not.toThrow();
+	});
+
+	it('skips Cadence when spm is 0', () => {
+		const d: WorkoutDetail = {
+			...detail,
+			strokes: [{ t: 0, d: 0, pace: 120, spm: 0, watts: 120 }]
+		};
+		const tcx = workoutDetailToTcx(d);
+		expect(tcx).not.toContain('<Cadence>');
+	});
+
+	it('skips HeartRateBpm when hr is null', () => {
+		const d: WorkoutDetail = {
+			...detail,
+			strokes: [{ t: 0, d: 0, pace: 120, spm: 28, watts: 120 }]
+		};
+		const tcx = workoutDetailToTcx(d);
+		expect(tcx).not.toContain('<HeartRateBpm>');
+	});
+
+	it('skips watts Extension when watts is 0', () => {
+		const d: WorkoutDetail = {
+			...detail,
+			strokes: [{ t: 0, d: 0, pace: 120, spm: 28, watts: 0 }]
+		};
+		const tcx = workoutDetailToTcx(d);
+		expect(tcx).not.toContain('<Watts>');
 	});
 });
 

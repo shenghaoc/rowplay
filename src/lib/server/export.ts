@@ -9,6 +9,27 @@ function csvCell(value: string | number | boolean | null | undefined): string {
 	return s;
 }
 
+/**
+ * CSV export column order (stable, do not reorder without versioning the export).
+ *
+ *   id              — Concept2 logbook workout ID
+ *   date            — logbook date string
+ *   sport           — rower | skierg | bike
+ *   distance_m      — total distance in metres
+ *   time_s          — total elapsed time in seconds
+ *   pace_s_per_500m — average pace in seconds per 500 m
+ *   stroke_rate     — average strokes per minute (spm), or empty
+ *   stroke_count    — total stroke count, or empty
+ *   heart_rate_avg  — average heart rate (bpm), or empty
+ *   hr_min          — minimum HR, or empty
+ *   hr_max          — maximum HR, or empty
+ *   calories        — total calories, or empty
+ *   watt_minutes    — watt-minutes, or empty
+ *   drag_factor     — drag factor setting, or empty
+ *   workout_type    — workout type label, or empty
+ *   comments        — free-text comments, or empty
+ *   has_stroke_data — 1 when per-stroke data is available, 0 otherwise
+ */
 const CSV_HEADERS = [
 	'id',
 	'date',
@@ -123,7 +144,8 @@ export function workoutDetailToTcx(detail: WorkoutDetail): string {
 	const name = detail.workoutType || `rowplay ${detail.id}`;
 	const sport = SPORT_TCX[detail.sport];
 	const start = tcxTime(detail.date, 0);
-	const trackpoints = strokeTrackpoints(detail.date, detail.strokes);
+	const strokes = Array.isArray(detail.strokes) ? detail.strokes : [];
+	const trackpoints = strokeTrackpoints(detail.date, strokes);
 
 	// TCX v2 requires Lap → Track; always include a summary lap wrapping the track
 	const summaryLap = `
@@ -173,13 +195,15 @@ function strokeTrackpoints(date: string, strokes: Stroke[]): string {
 	if (!strokes.length) return '';
 	return strokes
 		.map((s) => {
+			const t = typeof s.t === 'number' ? s.t : 0;
+			const d = typeof s.d === 'number' ? s.d : 0;
 			const parts = [
-				`<Time>${xmlEscape(tcxTime(date, s.t))}</Time>`,
-				`<DistanceMeters>${s.d.toFixed(1)}</DistanceMeters>`
+				`<Time>${xmlEscape(tcxTime(date, t))}</Time>`,
+				`<DistanceMeters>${d.toFixed(1)}</DistanceMeters>`
 			];
-			if (s.spm > 0) parts.push(`<Cadence>${Math.round(s.spm)}</Cadence>`);
-			if (s.hr != null && s.hr > 0) parts.push(`<HeartRateBpm><Value>${s.hr}</Value></HeartRateBpm>`);
-			if (s.watts > 0) parts.push(`<Extensions><TPX xmlns="http://www.garmin.com/xmlschemas/ActivityExtension/v2"><Watts>${Math.round(s.watts)}</Watts></TPX></Extensions>`);
+			if (typeof s.spm === 'number' && s.spm > 0) parts.push(`<Cadence>${Math.round(s.spm)}</Cadence>`);
+			if (typeof s.hr === 'number' && s.hr > 0) parts.push(`<HeartRateBpm><Value>${s.hr}</Value></HeartRateBpm>`);
+			if (typeof s.watts === 'number' && s.watts > 0) parts.push(`<Extensions><TPX xmlns="http://www.garmin.com/xmlschemas/ActivityExtension/v2"><Watts>${Math.round(s.watts)}</Watts></TPX></Extensions>`);
 			return `\n        <Trackpoint>${parts.join('')}</Trackpoint>`;
 		})
 		.join('');
