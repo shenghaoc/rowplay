@@ -346,7 +346,7 @@ export const de = {
 		cpExplainModel:
 			'CP ist die Power, die du über ein langes Stück ohne Einbrechen halten könntest — ungefähr deine 30–60-Min-Obergrenze. W′ ({wPrime} kJ) ist der Extra-Burst über CP für kurze Anstrengungen. Zusammen prognostizieren sie, wie hart du für jede Dauer gehen kannst.',
 		cpExplainEstimate:
-			'CP wird auf {cp} W aus deinen besten längeren Anstrengungen geschätzt — die Power, die du über ein langes Stück ohne Einbrechen halten könntest. Logge mehr verschiedene Dauern (Sprints bis 30+ Min), um ein vollständigeres CP/W′-Modell zu fitten.',
+			'CP wird auf {cp} W aus deinen besten längeren Anstrengungen geschätzt — die Power, die du über ein langes Stück ohne Einbrechen halten könntest. Logge mehr verschiedene Dauern (Sprints bis 30+ Min), um ein vollständigeres CP/W′-Modell anzupassen.',
 		cpPredictTitle: 'Was kann ich halten?',
 		cpPredictSub: 'Gleichmäßige Split-Pace oder Zielzeit aus deinem CP-Modell. Pace ist /500m (nur RowErg & SkiErg).',
 		cpModeDuration: 'Halten für…',
