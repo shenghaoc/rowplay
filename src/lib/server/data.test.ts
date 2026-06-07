@@ -216,12 +216,20 @@ describe('scheduleConnectSync', () => {
 		await scheduled;
 		expect(listWorkoutsPage).toHaveBeenCalledWith(1, undefined);
 		expect(upsertWorkouts).toHaveBeenCalledWith(db, 7, [workout]);
-		expect(setSyncState).toHaveBeenCalled();
-		const d1WriteArgs = JSON.stringify([
-			(upsertWorkouts as Mock).mock.calls,
-			(setSyncState as Mock).mock.calls
-		]);
-		expect(d1WriteArgs).not.toContain(personalToken);
+		expect(setSyncState).toHaveBeenCalledWith(
+			db,
+			7,
+			expect.objectContaining({
+				lastDate: '2026-05-01 06:00:00',
+				oldestDate: '2026-05-01 06:00:00',
+				total: 0,
+				backfillDone: true
+			})
+		);
+		const persistedWorkouts = (upsertWorkouts as Mock).mock.calls[0]?.[2] as Workout[];
+		const persistedSyncPatch = (setSyncState as Mock).mock.calls[0]?.[2] as Record<string, unknown>;
+		expect(persistedWorkouts).toEqual([workout]);
+		expect(Object.values(persistedSyncPatch)).not.toContain(personalToken);
 	});
 });
 
