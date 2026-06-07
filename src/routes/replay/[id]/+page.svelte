@@ -500,42 +500,44 @@
 		ro.observe(courseWrap);
 
 		const onKey = (e: KeyboardEvent) => {
-			const inField = (e.target as HTMLElement | null)?.matches?.(
-				'select, input, textarea, button'
-			);
+			const target = e.target as HTMLElement | null;
+			const inField =
+				target?.matches?.('select, input, textarea, button, summary, [role="button"]') ||
+				target?.isContentEditable;
 			if (inField) return;
-			switch (e.code) {
-				case 'Space':
+			switch (e.key) {
+				case ' ':
 					e.preventDefault();
 					engine?.toggle();
 					break;
 				case 'ArrowLeft': {
+					if (e.altKey || e.metaKey || e.ctrlKey) break;
 					e.preventDefault();
 					const delta = e.shiftKey ? 30 : 10;
 					engine?.seek((engine?.time ?? 0) - delta);
 					break;
 				}
 				case 'ArrowRight': {
+					if (e.altKey || e.metaKey || e.ctrlKey) break;
 					e.preventDefault();
 					const delta = e.shiftKey ? 30 : 10;
 					engine?.seek((engine?.time ?? 0) + delta);
 					break;
 				}
-				case 'BracketLeft': {
+				case '[': {
 					e.preventDefault();
 					const prevIdx = SPEEDS.indexOf(speed);
 					if (prevIdx > 0) setSpeed(SPEEDS[prevIdx - 1]);
 					break;
 				}
-				case 'BracketRight': {
+				case ']': {
 					e.preventDefault();
 					const nextIdx = SPEEDS.indexOf(speed);
 					if (nextIdx < SPEEDS.length - 1) setSpeed(SPEEDS[nextIdx + 1]);
 					break;
 				}
 				case 'Home':
-				case 'Digit0':
-				case 'Numpad0':
+				case '0':
 					e.preventDefault();
 					engine?.seek(0);
 					break;
@@ -572,6 +574,8 @@
 	}
 
 	function clearGhost() {
+		ghostLoadGen++; // invalidate any in-flight ghost fetch
+		loadingGhost = false;
 		ghostId = '';
 		fileName = '';
 		ghostError = '';
@@ -1479,7 +1483,6 @@
 				<button
 					type="button"
 					class="btn btn-ghost btn-xs"
-					aria-label={t('replay.removeGhost')}
 					onclick={clearGhost}
 				>
 					<X size={12} aria-hidden="true" />
@@ -1671,7 +1674,7 @@
 				value={frame.hr ?? 0} min={90} max={200} color="var(--hr)"
 			/>
 		{/if}
-		<div class="gauge-legend" aria-label={t('replay.legendTitle')}>
+		<div class="gauge-legend" role="group" aria-label={t('replay.legendTitle')}>
 			<span class="legend-item"><span class="ldot" style:background="var(--pace)"></span>{t('replay.gPace')}</span>
 			<span class="legend-item"><span class="ldot" style:background="var(--rate)"></span>{t('replay.gRate')}</span>
 			<span class="legend-item"><span class="ldot" style:background="var(--power)"></span>{t('replay.gPower')}</span>

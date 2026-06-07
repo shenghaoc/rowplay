@@ -66,7 +66,7 @@ test.describe('replay keyboard controls (demo mode)', () => {
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 
-	test('BracketRight/BracketLeft change playback speed', async ({ page }) => {
+	test('[ and ] change playback speed', async ({ page }) => {
 		const errors = collectPageErrors(page);
 
 		await page.goto('/replay/1001');
@@ -74,21 +74,21 @@ test.describe('replay keyboard controls (demo mode)', () => {
 
 		await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
 
-		// Default speed is 8×; BracketLeft should decrease it to 4×.
-		await page.keyboard.press('BracketLeft');
+		// Default speed is 8×; [ should decrease it to 4×.
+		await page.keyboard.press('[');
 		// The active speed button should now be 4×.
 		const fourX = page.locator('.speeds button[aria-checked="true"]');
 		await expect(fourX).toContainText('4×', { timeout: 2000 });
 
-		// BracketRight should restore to 8×.
-		await page.keyboard.press('BracketRight');
+		// ] should restore to 8×.
+		await page.keyboard.press(']');
 		await expect(fourX).toContainText('8×', { timeout: 2000 });
 
 		await page.waitForTimeout(300);
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 
-	test('Digit0 resets the replay to the start', async ({ page }) => {
+	test('0 resets the replay to the start', async ({ page }) => {
 		const errors = collectPageErrors(page);
 
 		await page.goto('/replay/1001');
@@ -99,7 +99,7 @@ test.describe('replay keyboard controls (demo mode)', () => {
 		// Advance 10s then reset.
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
-		await page.keyboard.press('Digit0');
+		await page.keyboard.press('0');
 		await page.waitForTimeout(150);
 
 		const clock = page.locator('.clock').first();
