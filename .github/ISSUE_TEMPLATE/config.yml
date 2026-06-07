@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security disclosure
+    url: https://github.com/shenghaoc/rowplay/security/advisories/new
+    about: Report a security vulnerability privately (see SECURITY.md)
