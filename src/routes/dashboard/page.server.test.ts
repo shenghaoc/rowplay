@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type Mock } from 'vitest';
 
 vi.mock('$lib/server/data', () => ({
 	listQueryFromEvent: vi.fn().mockReturnValue({ sport: null, distance: null, sort: 'date' }),
@@ -10,6 +10,7 @@ vi.mock('$lib/server/data', () => ({
 	loadHomeTimezone: vi.fn().mockResolvedValue(undefined)
 }));
 
+import { syncStatus } from '$lib/server/data';
 import { load } from './+page.server';
 
 function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null } = {}) {
@@ -55,5 +56,44 @@ describe('load /dashboard', () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const data = await load(event as any) as any;
 		expect(data.calendarEndDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+	});
+
+	it('sets partialSync true when sync is incomplete (not backfillDone)', async () => {
+		(syncStatus as Mock).mockResolvedValue({
+			lastDate: '2026-06-01', lastSyncAt: 1717000000000, total: 5,
+			oldestDate: '2025-01-01', backfillDone: false,
+			inProgress: false, lastError: null, lastErrorAt: 0,
+			historyWindowMonths: 12
+		});
+		const event = fakeEvent({ demo: false, user: { id: 7 } });
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const result = await load(event as any) as any;
+		expect(result.partialSync).toBe(true);
+	});
+
+	it('sets partialSync false when sync is complete (backfillDone)', async () => {
+		(syncStatus as Mock).mockResolvedValue({
+			lastDate: '2026-06-01', lastSyncAt: 1717000000000, total: 5,
+			oldestDate: '2025-01-01', backfillDone: true,
+			inProgress: false, lastError: null, lastErrorAt: 0,
+			historyWindowMonths: 12
+		});
+		const event = fakeEvent({ demo: false, user: { id: 7 } });
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const result = await load(event as any) as any;
+		expect(result.partialSync).toBe(false);
+	});
+
+	it('sets partialSync false in demo mode', async () => {
+		(syncStatus as Mock).mockResolvedValue({
+			lastDate: '2026-06-01', lastSyncAt: 1717000000000, total: 5,
+			oldestDate: '2025-01-01', backfillDone: false,
+			inProgress: false, lastError: null, lastErrorAt: 0,
+			historyWindowMonths: 12
+		});
+		const event = fakeEvent({ demo: true });
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const result = await load(event as any) as any;
+		expect(result.partialSync).toBe(false);
 	});
 });

@@ -29,6 +29,7 @@ export const load: PageServerLoad = async (event) => {
 		loadDashboardAggregates(event)
 	]);
 	const sync = event.locals.demo ? null : await syncStatus(event).catch(() => null);
+	const partialSync = !event.locals.demo && !!sync && !sync.backfillDone;
 	// Resolve the home timezone first so the calendar's right edge ("today") is
 	// the athlete's local day, not UTC — otherwise athletes east of UTC see the
 	// grid end on yesterday after local midnight. (Demo mode has no server-side
@@ -48,6 +49,7 @@ export const load: PageServerLoad = async (event) => {
 		calendarEndDay,
 		annualGoal,
 		goalYear,
-		homeTimezone
+		homeTimezone,
+		partialSync
 	};
 };
