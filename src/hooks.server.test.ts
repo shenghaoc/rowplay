@@ -96,9 +96,14 @@ describe('security headers', () => {
 		expect(csp).toContain("style-src 'self' 'unsafe-inline'");
 		expect(csp).toContain("img-src 'self' data: blob:");
 		expect(csp).toContain("connect-src 'self'");
-		expect(csp).toContain("frame-ancestors 'none'");
-		expect(csp).toContain("form-action 'self'");
 		expect(csp).toContain("base-uri 'self'");
+	});
+
+	it('does not include frame-ancestors or form-action (browsers ignore in report-only)', async () => {
+		const headers = await getResponseHeaders();
+		const csp = headers.get('Content-Security-Policy-Report-Only')!;
+		expect(csp).not.toContain('frame-ancestors');
+		expect(csp).not.toContain('form-action');
 	});
 
 	it('does not allow unsafe-eval in script-src', async () => {

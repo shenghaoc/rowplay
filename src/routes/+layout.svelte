@@ -104,7 +104,7 @@
 					method="POST"
 					action="/auth/logout"
 					onsubmit={() => {
-						navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
+						navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
 					}}
 				>
 					<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>
@@ -179,7 +179,7 @@
 						method="POST"
 						action="/auth/logout"
 						onsubmit={() => {
-							navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
+							navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
 						}}
 					>
 						<button class="btn btn-ghost btn-sm" type="submit">{t('auth.logout')}</button>

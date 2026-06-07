@@ -86,11 +86,12 @@ const SECURITY_HEADERS: Record<string, string> = {
 	//    via @fontsource. Self-hosting CJK fonts would remove these allowances but
 	//    each CJK weight is 4–8 MB.
 	//
-	// Already tightened vs baseline: frame-ancestors 'none' mirrors X-Frame-Options;
-	// form-action 'self' restricts form submissions to same origin (logout, delete).
+	// NOTE: frame-ancestors and form-action are not set in report-only mode
+	// because browsers ignore both directives in report-only policies and log
+	// a console error. X-Frame-Options: DENY covers framing defense in the
+	// meantime. Both will be added when CSP is promoted to enforce mode.
 	'Content-Security-Policy-Report-Only':
 		"default-src 'self'; base-uri 'self'; object-src 'none'; " +
-		"frame-ancestors 'none'; form-action 'self'; " +
 		"script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
 		"font-src 'self' https://fonts.gstatic.com data:; " +
 		"img-src 'self' data: blob:; connect-src 'self'; " +

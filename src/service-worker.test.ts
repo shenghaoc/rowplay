@@ -9,9 +9,9 @@ import { describe, expect, it } from 'vitest';
  * Vitest can't easily simulate, so we extract and test the filtering logic.
  */
 
-/** Mirror of the service worker's cache eligibility check. */
+/** Mirror of the service worker's cache eligibility check (lowercase-normalized). */
 function shouldCacheResponse(ccHeader: string | null): boolean {
-	const cc = ccHeader ?? '';
+	const cc = (ccHeader ?? '').toLowerCase();
 	return !cc.includes('no-store') && !cc.includes('private');
 }
 
@@ -39,6 +39,13 @@ describe('service-worker cache eligibility', () => {
 		expect(
 			shouldCacheResponse('private, max-age=0, stale-while-revalidate=86400'),
 		).toBe(false);
+	});
+
+	it('handles case-insensitive cache-control values', () => {
+		expect(shouldCacheResponse('Private, No-Store')).toBe(false);
+		expect(shouldCacheResponse('PRIVATE')).toBe(false);
+		expect(shouldCacheResponse('NO-STORE')).toBe(false);
+		expect(shouldCacheResponse('Public, Max-Age=3600')).toBe(true);
 	});
 });
 

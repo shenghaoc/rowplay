@@ -98,8 +98,9 @@ async function networkFirst(request: Request, cacheName: string, options?: Cache
 	try {
 		const response = await fetch(request);
 		// Respect cache-control: private / no-store headers so authenticated data
-		// is never persisted in the origin-wide Cache API.
-		const cc = response.headers.get('cache-control') ?? '';
+		// is never persisted in the origin-wide Cache API. Normalized to
+		// lowercase for case-insensitive matching.
+		const cc = (response.headers.get('cache-control') ?? '').toLowerCase();
 		if (response.ok && !cc.includes('no-store') && !cc.includes('private')) {
 			await cache.put(request, response.clone());
 		}
