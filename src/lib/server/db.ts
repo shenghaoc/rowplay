@@ -259,6 +259,9 @@ export interface SyncState {
 	total: number;
 	oldestDate: string | null;
 	backfillDone: boolean;
+	inProgress: boolean;
+	lastError: string | null;
+	lastErrorAt: number;
 }
 
 export async function getSyncState(
@@ -269,7 +272,7 @@ export async function getSyncState(
 	try {
 		const row = await db
 			.prepare(
-				'SELECT last_date, last_sync_at, total, oldest_date, backfill_done FROM sync_state WHERE user_id = ?'
+				'SELECT last_date, last_sync_at, total, oldest_date, backfill_done, in_progress, last_error, last_error_at FROM sync_state WHERE user_id = ?'
 			)
 			.bind(userId)
 			.first<{
@@ -278,6 +281,9 @@ export async function getSyncState(
 				total: number;
 				oldest_date: string | null;
 				backfill_done: number;
+				in_progress: number;
+				last_error: string | null;
+				last_error_at: number;
 			}>();
 		return row
 			? {
@@ -285,7 +291,10 @@ export async function getSyncState(
 					lastSyncAt: row.last_sync_at,
 					total: row.total,
 					oldestDate: row.oldest_date,
-					backfillDone: row.backfill_done === 1
+					backfillDone: row.backfill_done === 1,
+					inProgress: row.in_progress === 1,
+					lastError: row.last_error,
+					lastErrorAt: row.last_error_at
 				}
 			: null;
 	} catch {
@@ -364,18 +373,24 @@ export async function setSyncState(
 		total: number;
 		oldestDate: string | null;
 		backfillDone: boolean;
+		inProgress?: boolean;
+		lastError?: string | null;
+		lastErrorAt?: number;
 	}
 ): Promise<void> {
 	await db
 		.prepare(
-			`INSERT INTO sync_state (user_id, last_date, last_sync_at, total, oldest_date, backfill_done)
-			 VALUES (?, ?, ?, ?, ?, ?)
+			`INSERT INTO sync_state (user_id, last_date, last_sync_at, total, oldest_date, backfill_done, in_progress, last_error, last_error_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT(user_id) DO UPDATE SET
 			   last_date=excluded.last_date,
 			   last_sync_at=excluded.last_sync_at,
 			   total=excluded.total,
 			   oldest_date=excluded.oldest_date,
-			   backfill_done=excluded.backfill_done`
+			   backfill_done=excluded.backfill_done,
+			   in_progress=excluded.in_progress,
+			   last_error=excluded.last_error,
+			   last_error_at=excluded.last_error_at`
 		)
 		.bind(
 			userId,
@@ -383,7 +398,10 @@ export async function setSyncState(
 			nowEpochMillis(),
 			patch.total,
 			patch.oldestDate,
-			patch.backfillDone ? 1 : 0
+			patch.backfillDone ? 1 : 0,
+			patch.inProgress ? 1 : 0,
+			patch.lastError ?? null,
+			patch.lastErrorAt ?? 0
 		)
 		.run();
 }

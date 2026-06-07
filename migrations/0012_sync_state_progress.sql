@@ -1,0 +1,3 @@
+ALTER TABLE sync_state ADD COLUMN in_progress INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sync_state ADD COLUMN last_error TEXT;
+ALTER TABLE sync_state ADD COLUMN last_error_at INTEGER NOT NULL DEFAULT 0;

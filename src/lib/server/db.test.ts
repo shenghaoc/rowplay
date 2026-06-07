@@ -265,7 +265,9 @@ describe('setSyncState', () => {
 		expect(executed[0].sql).toContain('INSERT INTO sync_state');
 		expect(executed[0].args.slice(0, 3)).toEqual([1, '2026-05-01 06:00:00', expect.any(Number)]);
 		// Windowed sync columns are persisted alongside the watermark (#71).
-		expect(executed[0].args.slice(3)).toEqual([42, '2025-05-01 06:00:00', 0]);
+		expect(executed[0].args.slice(3, 6)).toEqual([42, '2025-05-01 06:00:00', 0]);
+		// New progress/error columns default to 0, null, 0.
+		expect(executed[0].args.slice(6)).toEqual([0, null, 0]);
 	});
 });
 
