@@ -718,11 +718,11 @@ export const ja = {
 		eyebrow: 'プライバシーと管理',
 		dataTitle: '保存している内容',
 		dataNote:
-			'rowplay は Concept2 のワークアウトを必要に応じて読み取り、リプレイを即座に表示できるよう Cloudflare にキャッシュします。API トークンはサーバーには一切保存されず、ブラウザ内の httpOnly Cookie に封印されます。キャッシュはセッションに紐づき、切断時に消去されます。',
+			'rowplay は Concept2 のワークアウトを必要に応じて読み取り、リプレイを即座に表示できるよう Cloudflare にキャッシュします。API トークンは SESSION_SECRET で httpOnly rp_tok Cookie に封印されます。KV はセッションの本人情報/状態のみを保存し、D1 はワークアウトとリプレイのキャッシュだけを保存します。トークンは保存しません。切断またはデータ削除で、キャッシュされたユーザーデータとセッション状態を消去します。',
 		factWorkouts: 'エクスポート可能なワークアウト {n} 件',
 		factDemo: 'デモモード — サンプルデータのみ、永続化されません。',
-		factCache: 'ワークアウト概要とリプレイキャッシュは D1 — 切断時に消去されます。',
-		factSession: 'トークンはブラウザの Cookie に封印 — サーバーには保存されません。',
+		factCache: 'D1 はワークアウト/リプレイのキャッシュを保存 — トークンは保存しません。',
+		factSession: 'KV はセッションの本人情報/状態を保存し、トークンは httpOnly rp_tok に封印します。',
 		exportTitle: 'ログブックをエクスポート',
 		exportNote:
 			'全履歴を CSV または JSON でダウンロード。ストロークデータ付きのワークアウト単位の TCX は Garmin、Strava、TrainingPeaks で開けます。',
@@ -763,7 +763,7 @@ export const ja = {
 		introBefore: 'Concept2 ログブックの個人 API トークンを貼り付け（',
 		introLink: 'プロフィール編集 → アプリケーション',
 		introAfter:
-			'）。ここに一度貼り付けてください — rowplay は HTTPS で Worker に送り、ブラウザ内に留まる httpOnly Cookie に封印し、サーバー側のログブック読み取りにのみ使用します。トークンがサーバーに保存されることはありません。',
+			'）。ここに一度貼り付けてください — rowplay は HTTPS で Worker に送り、検証してから httpOnly rp_tok Cookie に封印し、サーバー側のログブック読み取りにのみ使用します。トークンは KV にも D1 にも保存されません。',
 		apiToken: 'API トークン',
 		placeholder: 'トークンを貼り付け',
 		connect: 'トークンで接続',

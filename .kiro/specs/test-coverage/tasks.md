@@ -1,7 +1,9 @@
 # Test Coverage — Tasks
 
 Implementation plan. All tasks completed on `claude/test-coverage-analysis-geB4s`.
-Final gate: `npm run test` → 69 files, 692 tests, all green, 0 unhandled errors.
+Historical final-gate snapshot when this spec landed: `npm run test` was green
+with the suite size at that point and 0 unhandled errors. Use current
+`npm run test` output for the live project count.
 
 ---
 

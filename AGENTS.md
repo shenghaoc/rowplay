@@ -32,7 +32,7 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [Concept2 token privacy](.kiro/specs/concept2-token-privacy/tasks.md) — BYOT token sealed in an httpOnly cookie (never in KV); session-scoped D1 cache purged on disconnect; reversible leaderboard opt-in.
 - [Mobile nav backdrop dismiss](.kiro/specs/mobile-nav-backdrop-dismiss/tasks.md) — cross-browser backdrop tap to close the hamburger menu; bounding-rect `onclick` fallback for WebKit (iOS Safari).
 - [Snappy connect & dashboard cache warm-up](.kiro/specs/connect-cache-warmup/tasks.md) — connect pending-state; background warm-cache sync on connect (`waitUntil`); D1 read as the full history only after a sync completes (no partial cache); per-request load de-dup.
-- [Test coverage](.kiro/specs/test-coverage/tasks.md) — 692 Vitest tests across pure helpers, server/DB layer, all route handlers, Svelte reactive classes, and the Three.js 3D renderer; `@vitest/coverage-v8` with `text` + `lcov` reporters.
+- [Test coverage](.kiro/specs/test-coverage/tasks.md) — broad Vitest coverage across pure helpers, server/DB layer, route handlers, Svelte reactive classes, and the Three.js 3D renderer; `@vitest/coverage-v8` with `text` + `lcov` reporters. The spec records its landing snapshot; use `npm run test` for current health.
 
 **Platform audit (read before new features or modernization work):**
 
@@ -50,11 +50,12 @@ caches hydrated workouts in Cloudflare D1.
 
 ### Authentication (BYOT-first)
 
-Production uses **bring-your-own-token**: the athlete pastes a **read-only
-personal API token** from their Concept2 profile (`/auth/token`). The token is
-submitted once over HTTPS, validated on the Worker, stored in KV for the session,
-and used only for server-side logbook reads. After connect, the browser holds an
-**httpOnly session cookie** — not the token in client JS or `localStorage`.
+Production uses **bring-your-own-token**: the athlete pastes a **personal
+Concept2 API token** from their Concept2 profile (`/auth/token`). The token is
+submitted once over HTTPS, validated on the Worker, and sealed into the
+**httpOnly `rp_tok` cookie** using `SESSION_SECRET`. KV stores session
+identity/state, not the personal token; D1 stores cached workout/replay data,
+not the token. Disconnect/delete clears cached user data and session state.
 
 **Demo mode** (default): with no session, the app serves deterministic mock data
 (`src/lib/mockData.ts`). No Concept2 credentials required for dev or e2e.

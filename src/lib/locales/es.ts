@@ -716,11 +716,11 @@ export const es = {
 		eyebrow: 'Privacidad y control',
 		dataTitle: 'Qué almacenamos',
 		dataNote:
-			'rowplay lee tus entrenamientos de Concept2 a demanda y los almacena en caché en Cloudflare para que los replays carguen al instante. Tu token API nunca se guarda en el servidor — permanece sellado en una cookie httpOnly en tu navegador. La caché está ligada a tu sesión y se borra al desconectar.',
+			'rowplay lee tus entrenamientos de Concept2 a demanda y los almacena en caché en Cloudflare para que los replays carguen al instante. Tu token API se sella en la cookie httpOnly rp_tok con SESSION_SECRET. KV solo guarda identidad/estado de sesión; D1 almacena en caché entrenamientos y replays, nunca el token. Desconectar o borrar datos elimina los datos de usuario en caché y el estado de sesión.',
 		factWorkouts: '{n} entrenamientos disponibles para exportar',
 		factDemo: 'Modo demo — solo datos de ejemplo, no se persiste nada.',
-		factCache: 'Resúmenes y caché de replay en D1 — se borran al desconectar.',
-		factSession: 'Token sellado en una cookie del navegador — nunca se guarda en el servidor.',
+		factCache: 'D1 guarda datos de entrenamiento/replay en caché — nunca el token.',
+		factSession: 'KV guarda identidad/estado de sesión; el token va sellado en httpOnly rp_tok.',
 		exportTitle: 'Exportar diario',
 		exportNote: 'Descarga todo tu historial en CSV o JSON. El TCX por entrenamiento (datos de palada) se abre en Garmin, Strava o TrainingPeaks.',
 		exportCsv: 'Descargar CSV',
@@ -760,7 +760,7 @@ export const es = {
 		introBefore: 'Pega un token API personal de tu diario Concept2 (',
 		introLink: 'Editar perfil → Aplicaciones',
 		introAfter:
-			'). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo sella en una cookie httpOnly que permanece en tu navegador, y lo usa solo para lecturas del diario en el servidor. El token nunca se guarda en el servidor.',
+			'). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo valida, lo sella en la cookie httpOnly rp_tok y lo usa solo para lecturas del diario en el servidor. El token nunca se guarda en KV ni D1.',
 		apiToken: 'Token API',
 		placeholder: 'Pega tu token',
 		connect: 'Conectar con token',

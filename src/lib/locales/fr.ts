@@ -716,11 +716,11 @@ export const fr = {
 		eyebrow: 'Confidentialité et contrôle',
 		dataTitle: 'Ce que nous stockons',
 		dataNote:
-			'rowplay lit vos séances Concept2 à la demande et les met en cache sur Cloudflare pour des replays instantanés. Votre jeton API n’est jamais stocké côté serveur — il reste scellé dans un cookie httpOnly de votre navigateur. Le cache est lié à votre session et effacé à la déconnexion.',
+			'rowplay lit vos séances Concept2 à la demande et les met en cache sur Cloudflare pour des replays instantanés. Votre jeton API est scellé dans le cookie httpOnly rp_tok avec SESSION_SECRET. KV ne stocke que l’identité/l’état de session ; D1 met en cache les séances et replays, jamais le jeton. La déconnexion ou la suppression des données efface les données utilisateur en cache et l’état de session.',
 		factWorkouts: '{n} séances disponibles à l’export',
 		factDemo: 'Mode démo — données d’exemple uniquement, rien n’est persisté.',
-		factCache: 'Résumés de séances et cache replay dans D1 — effacés à la déconnexion.',
-		factSession: 'Jeton scellé dans un cookie du navigateur — jamais stocké côté serveur.',
+		factCache: 'D1 stocke les données séance/replay en cache — jamais le jeton.',
+		factSession: 'KV stocke l’identité/l’état de session ; le jeton est scellé dans httpOnly rp_tok.',
 		exportTitle: 'Exporter le logbook',
 		exportNote: 'Téléchargez tout votre historique en CSV ou JSON. L’export TCX par séance (données de coups) s’ouvre dans Garmin, Strava ou TrainingPeaks.',
 		exportCsv: 'Télécharger CSV',
@@ -760,7 +760,7 @@ export const fr = {
 		introBefore: 'Collez un jeton API personnel depuis votre logbook Concept2 (',
 		introLink: 'Modifier le profil → Applications',
 		introAfter:
-			'). Collez-le ici une fois — rowplay l’envoie au Worker en HTTPS, le scelle dans un cookie httpOnly qui reste dans votre navigateur, et l’utilise uniquement pour les lectures côté serveur. Le jeton n’est jamais stocké sur le serveur.',
+			'). Collez-le ici une fois — rowplay l’envoie au Worker en HTTPS, le valide, le scelle dans le cookie httpOnly rp_tok et l’utilise uniquement pour les lectures côté serveur. Le jeton n’est jamais stocké dans KV ni D1.',
 		apiToken: 'Jeton API',
 		placeholder: 'Collez votre jeton',
 		connect: 'Connecter avec le jeton',

@@ -25,7 +25,9 @@ vi.mock('./db', () => ({
 	putAnnotation: vi.fn(),
 	deleteAnnotation: vi.fn().mockResolvedValue(undefined),
 	deleteUserData: vi.fn().mockResolvedValue(undefined),
-	destroySession: vi.fn().mockResolvedValue(undefined)
+	destroySession: vi.fn().mockResolvedValue(undefined),
+	upsertWorkouts: vi.fn().mockResolvedValue(undefined),
+	setSyncState: vi.fn().mockResolvedValue(undefined)
 }));
 
 import {
@@ -38,9 +40,15 @@ import {
 	resetDemoAnnotationStore,
 	saveAnnualGoal,
 	saveAnnotation,
+	scheduleConnectSync,
 	syncStatus
 } from './data';
+import { Concept2Client } from './concept2';
+import { setSyncState, upsertWorkouts } from './db';
 import { mockWorkouts, mockAnnotations } from '../mockData';
+import type { Workout } from '../types';
+
+type Mock = ReturnType<typeof vi.fn>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function demoEvent(extras: Record<string, unknown> = {}): any {
@@ -66,6 +74,7 @@ function authedEvent(extras: Record<string, unknown> = {}): any {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	(Concept2Client as unknown as Mock).mockReset();
 });
 
 afterEach(() => {
@@ -164,6 +173,63 @@ describe('saveAnnualGoal — auth guard', () => {
 	it('throws 401 when not authenticated and not demo', async () => {
 		const event = authedEvent({ locals: { demo: false, user: null } });
 		await expect(saveAnnualGoal(event, { year: 2026, kind: 'meters', target: 1e6 })).rejects.toMatchObject({ status: 401 });
+	});
+});
+
+// ---------------------------------------------------------------------------
+// scheduleConnectSync — BYOT privacy
+// ---------------------------------------------------------------------------
+
+describe('scheduleConnectSync', () => {
+	it('keeps the plaintext token in the in-memory client and out of D1 writes', async () => {
+		const personalToken = 'plain-personal-token';
+		const workout: Workout = {
+			id: 1001,
+			date: '2026-05-01 06:00:00',
+			sport: 'rower',
+			distance: 2000,
+			time: 480,
+			pace: 120,
+			hasStrokeData: false
+		};
+		const listWorkoutsPage = vi.fn().mockResolvedValue({ workouts: [workout], totalPages: 1 });
+		(Concept2Client as unknown as Mock).mockImplementation(function(_cfg, _kv, _sid, session) {
+			expect(session.tokens.accessToken).toBe(personalToken);
+			return { listWorkoutsPage };
+		});
+		let scheduled: Promise<unknown> | undefined;
+		const db = { marker: 'fake-d1' };
+		const sessions = { marker: 'fake-kv' };
+		const waitUntil = vi.fn((promise: Promise<unknown>) => {
+			scheduled = promise;
+		});
+		const event = authedEvent({
+			platform: {
+				env: { DB: db, SESSIONS: sessions },
+				context: { waitUntil }
+			}
+		});
+
+		scheduleConnectSync(event, 'sid-123', { id: 7, username: 'athlete' }, personalToken);
+
+		expect(waitUntil).toHaveBeenCalledOnce();
+		await scheduled;
+		expect(listWorkoutsPage).toHaveBeenCalledWith(1, undefined);
+		expect(upsertWorkouts).toHaveBeenCalledWith(db, 7, [workout]);
+		expect(setSyncState).toHaveBeenCalledWith(
+			db,
+			7,
+			expect.objectContaining({
+				lastDate: '2026-05-01 06:00:00',
+				oldestDate: '2026-05-01 06:00:00',
+				total: 0,
+				backfillDone: true
+			})
+		);
+		const persistedWorkouts = (upsertWorkouts as Mock).mock.calls[0]?.[2] as Workout[];
+		const persistedSyncPatch = (setSyncState as Mock).mock.calls[0]?.[2] as Record<string, unknown>;
+		expect(persistedWorkouts).toEqual([workout]);
+		expect(Object.values(persistedSyncPatch)).not.toContain(personalToken);
 	});
 });
 

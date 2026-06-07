@@ -718,11 +718,11 @@ export const en = {
 		eyebrow: 'Privacy & control',
 		dataTitle: 'What we store',
 		dataNote:
-			'rowplay reads your Concept2 workouts on demand and caches them on Cloudflare so replays load instantly. Your API token is never stored on the server — it stays sealed in an httpOnly cookie in your browser. The cache is tied to your session and cleared when you disconnect.',
+			'rowplay reads your Concept2 workouts on demand and caches them on Cloudflare so replays load instantly. Your API token is sealed into the httpOnly rp_tok cookie with SESSION_SECRET. KV stores session identity/state only; D1 caches workout and replay data, never the token. Disconnecting or deleting data clears cached user data and session state.',
 		factWorkouts: '{n} workouts available to export',
 		factDemo: 'Demo mode — sample data only, nothing is persisted.',
-		factCache: 'Workout summaries and replay cache in D1 — cleared when you disconnect.',
-		factSession: 'Token sealed in a browser cookie — never stored server-side.',
+		factCache: 'D1 stores cached workout/replay data — never the token.',
+		factSession: 'KV stores session identity/state; the token is sealed in httpOnly rp_tok.',
 		exportTitle: 'Export logbook',
 		exportNote: 'Download your full history as CSV or JSON. Per-workout TCX (stroke data) opens in Garmin, Strava, or TrainingPeaks.',
 		exportCsv: 'Download CSV',
@@ -762,7 +762,7 @@ export const en = {
 		introBefore: 'Paste a personal API token from your Concept2 logbook (',
 		introLink: 'Edit Profile → Applications',
 		introAfter:
-			'). Paste it here once — rowplay sends it to the Worker over HTTPS, seals it in an httpOnly cookie that stays in your browser, and uses it only for server-side logbook reads. The token is never stored on the server.',
+			'). Paste it here once — rowplay sends it to the Worker over HTTPS, validates it, seals it into the httpOnly rp_tok cookie, and uses it only for server-side logbook reads. The token is never stored in KV or D1.',
 		apiToken: 'API token',
 		placeholder: 'Paste your token',
 		connect: 'Connect with token',
