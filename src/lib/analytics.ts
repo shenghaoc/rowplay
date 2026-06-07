@@ -1529,15 +1529,32 @@ export interface WorkoutSideStats {
 export function workoutSideStats(detail: WorkoutDetail): WorkoutSideStats {
 	const tech = techniqueSummary(detail.strokes);
 	const pc = powerCurve(detail.strokes);
-	const best5sPower = pc.length ? Math.max(...pc.map((p) => p.watts)) : 0;
-	const hrs = detail.strokes.map((s) => s.hr).filter((h): h is number => h != null && h > 0);
-	const peakHr = hrs.length ? hrs.reduce((m, h) => h > m ? h : m, 0) : null;
+
+	// Fast single pass for best 5s power (avoid map closure on power curve)
+	let best5sPower = 0;
+	for (let i = 0; i < pc.length; i++) {
+		if (pc[i].watts > best5sPower) best5sPower = pc[i].watts;
+	}
+
+	// Single pass calculation for HR to avoid intermediate arrays and closures
+	let hrSum = 0;
+	let hrCount = 0;
+	let peakHr = 0;
+	for (let i = 0; i < detail.strokes.length; i++) {
+		const hr = detail.strokes[i].hr;
+		if (hr != null && hr > 0) {
+			hrSum += hr;
+			hrCount++;
+			if (hr > peakHr) peakHr = hr;
+		}
+	}
+	const computedAvgHr = hrCount > 0 ? hrSum / hrCount : null;
+	const finalPeakHr = hrCount > 0 ? peakHr : null;
+
 	const avgHr =
 		detail.heartRateAvg && detail.heartRateAvg > 0
 			? detail.heartRateAvg
-			: hrs.length
-				? mean(hrs)
-				: null;
+			: computedAvgHr;
 
 	return {
 		time: detail.time,
@@ -1545,7 +1562,7 @@ export function workoutSideStats(detail: WorkoutDetail): WorkoutSideStats {
 		avgWatts: Math.round(workoutWatts(detail)),
 		best5sPower: Math.round(best5sPower),
 		avgHr: avgHr != null ? Math.round(avgHr) : null,
-		peakHr: peakHr != null ? Math.round(peakHr) : null,
+		peakHr: finalPeakHr != null ? Math.round(finalPeakHr) : null,
 		avgDps: tech.avgDps,
 		paceConsistency: tech.paceConsistency
 	};
