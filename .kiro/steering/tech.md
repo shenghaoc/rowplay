@@ -66,6 +66,22 @@ Configured in `src/app.css`:
 - **Cloudflare D1** (`DB` binding) — SQLite database caching hydrated workouts and per-stroke detail so replays are instant; never stores the personal token
 - **Concept2 Logbook API** — read server-side only. **Primary auth:** user pastes a personal Concept2 API token at `/auth/token`; it is submitted once over HTTPS and sealed into the httpOnly `rp_tok` cookie with `SESSION_SECRET`. **Optional:** OAuth2 if `CONCEPT2_CLIENT_ID` is configured
 
+### Server Observability (Privacy-Safe)
+
+- Use `createLogger(console)` from `src/lib/server/logger.ts` instead of raw `console.error` / `console.warn` in server code.
+- Errors **worth logging** (non-exhaustive):
+  - Concept2 API failure
+  - Sync failure
+  - D1/KV failure
+  - Invalid sealed token (BYOT cookie)
+  - Replay detail cache miss
+- Logs **must never** include:
+  - Personal Concept2 tokens (sealed or plaintext)
+  - Raw `rp_tok` or session cookie values
+  - Full workout payloads (JSON with strokes/splits)
+  - Personally sensitive fields (names, emails)
+- `redact()` runs a regex allow/deny list before `console.error` receives the message; the underlying `console` object is injected so tests can assert redaction.
+
 ## Testing
 
 - **Vitest** — unit tests (`npm run test` / `npm run test:watch`) across pure helpers, server/DB code, route handlers, Svelte reactive classes, and replay renderers. Use the command output for the current test count.
