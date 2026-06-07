@@ -255,8 +255,11 @@
 				<a class="btn btn-primary btn-sm" href="/api/export?format=csv" download>{t('settings.exportCsv')}</a>
 				<a class="btn btn-neutral btn-sm" href="/api/export?format=json" download>{t('settings.exportJson')}</a>
 			</div>
+			<p class="muted small">{t('settings.exportPreviewCsv')}</p>
+			<p class="muted small">{t('settings.exportPreviewJson')}</p>
 			{#if data.tcxWorkouts.length}
 				<p class="muted small">{t('settings.exportTcxNote')}</p>
+				<p class="muted small">{t('settings.exportPreviewTcx')}</p>
 				<ul class="tcx-list">
 					{#each data.tcxWorkouts as w (w.id)}
 						<li>
@@ -265,6 +268,8 @@
 						</li>
 					{/each}
 				</ul>
+			{:else}
+				<p class="muted small">{t('settings.noTcxAvailable')}</p>
 			{/if}
 		</div>
 	</article>
