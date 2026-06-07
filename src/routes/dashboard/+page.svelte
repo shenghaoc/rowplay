@@ -77,7 +77,6 @@
 	let extraWorkouts = $state<Workout[]>([]);
 	let newEntryIds = $state<Set<number>>(new Set());
 	let tagOverrides = $state<Map<number, WorkoutTag | null>>(new Map());
-	let tagFilter = $state<WorkoutTag | 'all'>('all');
 	const listQuery = $derived(data.listQuery);
 	const workouts = $derived.by(() => {
 		const byId = new Map<number, Workout>();
@@ -96,9 +95,9 @@
 			listQuery,
 			listQuery.pbsOnly ? pbWorkoutIds(workoutsWithTags) : undefined
 		);
-		if (tagFilter !== 'all') {
+		if (listQuery.tag) {
 			list = list.filter(
-				(w) => resolveTag(w, { medianPaceSecs }) === tagFilter
+				(w) => resolveTag(w, { medianPaceSecs }) === listQuery.tag
 			);
 		}
 		return list;
@@ -873,11 +872,11 @@
 		<div class="tagfilter card card-border bg-base-100 shadow-md p-4">
 			<div class="text-xs uppercase opacity-70 mb-2">{t('workout.tag.label')}</div>
 			<ChipGroup ariaLabel={t('workout.tag.label')}>
-				<ChipButton active={tagFilter === 'all'} onclick={() => (tagFilter = 'all')}>
+				<ChipButton active={!listQuery.tag} onclick={() => applyListQuery({ ...listQuery, tag: undefined })}>
 					{t('workout.tag.filter.all')}
 				</ChipButton>
 				{#each WORKOUT_TAGS as tag}
-					<ChipButton active={tagFilter === tag} onclick={() => (tagFilter = tag)}>
+					<ChipButton active={listQuery.tag === tag} onclick={() => applyListQuery({ ...listQuery, tag })}>
 						{t(`workout.tag.${tag}`)}
 					</ChipButton>
 				{/each}

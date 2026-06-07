@@ -45,7 +45,14 @@ function intervalSplits(reps: number, repDist = 500, repPace = 110, restSec = 90
 
 describe('WORKOUT_TAGS', () => {
 	it('lists six tag values', () => {
-		expect(WORKOUT_TAGS).toHaveLength(6);
+		expect(WORKOUT_TAGS).toEqual([
+			'steady-state',
+			'interval',
+			'race-piece',
+			'time-trial',
+			'warmup-cooldown',
+			'unknown'
+		]);
 	});
 });
 
@@ -56,6 +63,17 @@ describe('autoDetectTag', () => {
 			time: 2400,
 			splits: intervalSplits(4, 1000, 115),
 			isInterval: true
+		});
+		expect(autoDetectTag(w)).toBe('interval');
+	});
+
+	it('classifies interval workouts from summary flags when split detail is missing', () => {
+		const w = base({
+			distance: 4000,
+			time: 1800,
+			restTime: 240,
+			isInterval: true,
+			workoutType: 'JustRow'
 		});
 		expect(autoDetectTag(w)).toBe('interval');
 	});
@@ -93,6 +111,11 @@ describe('autoDetectTag', () => {
 		expect(autoDetectTag(w)).toBe('steady-state');
 	});
 
+	it('can classify a missing-split long single piece as steady-state', () => {
+		const w = base({ distance: 15000, time: 3600, pace: 120, splits: undefined });
+		expect(autoDetectTag(w)).toBe('steady-state');
+	});
+
 	it('classifies mid-duration low-variance as time-trial', () => {
 		const splits: Split[] = [
 			{ index: 0, distance: 3000, time: 720, pace: 120 },
@@ -113,6 +136,16 @@ describe('autoDetectTag', () => {
 			{ index: 1, distance: 2000, time: 520, pace: 130 }
 		];
 		const w = base({ distance: 4000, time: 1000, pace: 115, splits });
+		expect(autoDetectTag(w, { medianPaceSecs: 120 })).toBe('unknown');
+	});
+
+	it('keeps high-variance mid-duration pieces as unknown', () => {
+		const splits: Split[] = [
+			{ index: 0, distance: 2000, time: 440, pace: 110 },
+			{ index: 1, distance: 2000, time: 540, pace: 135 },
+			{ index: 2, distance: 2000, time: 440, pace: 110 }
+		];
+		const w = base({ distance: 6000, time: 1420, pace: 118, splits });
 		expect(autoDetectTag(w, { medianPaceSecs: 120 })).toBe('unknown');
 	});
 });

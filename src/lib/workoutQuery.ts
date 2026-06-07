@@ -1,5 +1,6 @@
 import { distanceBand } from '$lib/analytics';
 import type { Sport, Workout } from '$lib/types';
+import { isValidWorkoutTag, type WorkoutTag } from '$lib/workoutTag';
 
 /** Fields the list can sort by. */
 export type WorkoutSortField = 'date' | 'distance' | 'time' | 'pace' | 'power';
@@ -9,6 +10,9 @@ export type SortDir = 'asc' | 'desc';
 /** Parsed list query — mirrors URL search params. */
 export interface WorkoutListQuery {
 	sport?: Sport;
+	/** Resolved rowplay workout tag, applied client-side where auto tags are known. */
+	tag?: WorkoutTag;
+	/** Raw Concept2 workout_type/source label. */
 	workoutType?: string;
 	dateFrom?: string;
 	dateTo?: string;
@@ -69,6 +73,8 @@ export function parseWorkoutListQuery(params: URLSearchParams): WorkoutListQuery
 	const q: WorkoutListQuery = { sort, dir };
 
 	if (sport === 'rower' || sport === 'skierg' || sport === 'bike') q.sport = sport;
+	const tag = params.get('tag');
+	if (isValidWorkoutTag(tag)) q.tag = tag;
 	const wt = params.get('type');
 	if (wt) q.workoutType = wt;
 	const df = params.get('from');
@@ -96,6 +102,7 @@ export function parseWorkoutListQuery(params: URLSearchParams): WorkoutListQuery
 export function serializeWorkoutListQuery(q: WorkoutListQuery): URLSearchParams {
 	const p = new URLSearchParams();
 	if (q.sport) p.set('sport', q.sport);
+	if (q.tag) p.set('tag', q.tag);
 	if (q.workoutType) p.set('type', q.workoutType);
 	if (q.dateFrom) p.set('from', q.dateFrom);
 	if (q.dateTo) p.set('to', q.dateTo);
@@ -115,6 +122,7 @@ export function serializeWorkoutListQuery(q: WorkoutListQuery): URLSearchParams 
 /** Whether any list-specific filter (beyond sort) is active. */
 export function listQueryIsFiltered(q: WorkoutListQuery): boolean {
 	return !!(
+		q.tag ||
 		q.workoutType ||
 		q.dateFrom ||
 		q.dateTo ||

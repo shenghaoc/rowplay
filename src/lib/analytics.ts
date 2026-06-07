@@ -530,6 +530,155 @@ export interface CriticalPower {
 	ftp: number;
 	/** 'model' = two-parameter CP fit; 'estimate' = best sustained-power fallback. */
 	method: 'model' | 'estimate';
+	/** Usable efforts considered after basic sanity filtering. */
+	sampleSize: number;
+	/** Mean-maximal envelope points used for the CP fit. */
+	envelopePoints: number;
+	/** Single-sport scope when all usable efforts share one machine; otherwise mixed. */
+	sportScope: Sport | 'mixed';
+	/** Oldest usable effort date, when known. */
+	oldestEffortDate?: string;
+	/** Newest usable effort date, when known. */
+	newestEffortDate?: string;
+	/** Plain-language confidence bucket for display. */
+	confidence: 'high' | 'medium' | 'low' | 'insufficient';
+	/** Regression fit quality for model-based fits. */
+	fitQuality?: { r2: number; residualPct: number };
+	/** Diagnostic warnings for the presentation layer. */
+	warnings: CriticalPowerWarning[];
+}
+
+export type CriticalPowerWarning =
+	| 'too-few-efforts'
+	| 'narrow-duration-range'
+	| 'stale-efforts'
+	| 'mixed-sports'
+	| 'outlier-sensitive'
+	| 'unrealistic-fit'
+	| 'estimate-only';
+
+interface CriticalPowerEffort {
+	t: number;
+	p: number;
+	sport: Sport;
+	date?: string;
+}
+
+interface CriticalPowerOptions {
+	/** Date key used for stale-effort diagnostics; defaults to today UTC. */
+	asOf?: string;
+}
+
+function effortDayMs(date: string | undefined): number | null {
+	if (!date) return null;
+	const day = date.slice(0, 10);
+	const ms = dayKeyEpochMillis(day);
+	return Number.isFinite(ms) ? ms : null;
+}
+
+function effortDateRange(efforts: CriticalPowerEffort[]): { oldest?: string; newest?: string } {
+	let oldestMs = Infinity;
+	let newestMs = -Infinity;
+	let oldest: string | undefined;
+	let newest: string | undefined;
+	for (const e of efforts) {
+		const ms = effortDayMs(e.date);
+		if (ms == null) continue;
+		if (ms < oldestMs) {
+			oldestMs = ms;
+			oldest = e.date!.slice(0, 10);
+		}
+		if (ms > newestMs) {
+			newestMs = ms;
+			newest = e.date!.slice(0, 10);
+		}
+	}
+	return { oldest, newest };
+}
+
+function effortSportScope(efforts: CriticalPowerEffort[]): Sport | 'mixed' {
+	const sports = new Set(efforts.map((e) => e.sport));
+	return sports.size === 1 ? [...sports][0]! : 'mixed';
+}
+
+function durationCoverageWarning(efforts: CriticalPowerEffort[]): boolean {
+	const bands = new Set<'short' | 'medium' | 'long'>();
+	for (const e of efforts) {
+		if (e.t >= 120 && e.t < 600) bands.add('short');
+		else if (e.t >= 600 && e.t < 1200) bands.add('medium');
+		else if (e.t >= 1200 && e.t <= 3600) bands.add('long');
+	}
+	return bands.size < 3;
+}
+
+function baseCpWarnings(
+	efforts: CriticalPowerEffort[],
+	asOf: string,
+	envelopePoints: number
+): CriticalPowerWarning[] {
+	const warnings = new Set<CriticalPowerWarning>();
+	if (efforts.length < 3 || envelopePoints < 3) warnings.add('too-few-efforts');
+	if (durationCoverageWarning(efforts)) warnings.add('narrow-duration-range');
+	if (effortSportScope(efforts) === 'mixed') warnings.add('mixed-sports');
+	const newestMs = Math.max(...efforts.map((e) => effortDayMs(e.date) ?? -Infinity));
+	const asOfMs = dayKeyEpochMillis(asOf);
+	if (Number.isFinite(newestMs) && Number.isFinite(asOfMs) && asOfMs - newestMs > 90 * DAY_MS) {
+		warnings.add('stale-efforts');
+	}
+	return [...warnings];
+}
+
+function cpConfidence(
+	method: CriticalPower['method'],
+	sampleSize: number,
+	envelopePoints: number,
+	warnings: CriticalPowerWarning[],
+	fitQuality?: CriticalPower['fitQuality']
+): CriticalPower['confidence'] {
+	if (method === 'estimate' || warnings.includes('too-few-efforts')) return 'insufficient';
+	if (sampleSize >= 6 && envelopePoints >= 5 && fitQuality && fitQuality.r2 >= 0.9 && warnings.length === 0) {
+		return 'high';
+	}
+	if (sampleSize >= 4 && envelopePoints >= 4 && fitQuality && fitQuality.r2 >= 0.75) return 'medium';
+	return 'low';
+}
+
+function buildCriticalPowerResult(
+	params: {
+		cp: number;
+		wPrime: number;
+		method: CriticalPower['method'];
+		efforts: CriticalPowerEffort[];
+		envelopePoints: number;
+		asOf: string;
+		fitQuality?: CriticalPower['fitQuality'];
+		extraWarnings?: CriticalPowerWarning[];
+	}
+): CriticalPower | null {
+	const cp = Math.round(params.cp);
+	const wPrime = Math.round(params.wPrime);
+	if (!Number.isFinite(cp) || cp <= 0) return null;
+	const warnings = new Set<CriticalPowerWarning>(
+		baseCpWarnings(params.efforts, params.asOf, params.envelopePoints)
+	);
+	for (const w of params.extraWarnings ?? []) warnings.add(w);
+	if (params.method === 'estimate') warnings.add('estimate-only');
+	const warningList = [...warnings];
+	const range = effortDateRange(params.efforts);
+	return {
+		cp,
+		wPrime,
+		ftp: cp,
+		method: params.method,
+		sampleSize: params.efforts.length,
+		envelopePoints: params.envelopePoints,
+		sportScope: effortSportScope(params.efforts),
+		oldestEffortDate: range.oldest,
+		newestEffortDate: range.newest,
+		confidence: cpConfidence(params.method, params.efforts.length, params.envelopePoints, warningList, params.fitQuality),
+		fitQuality: params.fitQuality,
+		warnings: warningList
+	};
 }
 
 /**
@@ -539,8 +688,12 @@ export interface CriticalPower {
  * regression of power against 1/time gives CP (intercept) and W′ (slope). Falls
  * back to the best long-effort power when there isn't enough range to fit.
  */
-export function estimateCriticalPower(workouts: Workout[]): CriticalPower | null {
-	const fallback = (pool: { t: number; p: number }[]): CriticalPower | null => {
+export function estimateCriticalPower(workouts: Workout[], opts: CriticalPowerOptions = {}): CriticalPower | null {
+	const asOf = opts.asOf ?? todayKeyUtc();
+	const fallback = (
+		pool: CriticalPowerEffort[],
+		extraWarnings: CriticalPowerWarning[] = []
+	): CriticalPower | null => {
 		// Sprints (< 2 min) sit far above threshold, so never let one set FTP.
 		const valid = pool.filter((q) => q.t >= 120);
 		if (!valid.length) return null;
@@ -559,12 +712,20 @@ export function estimateCriticalPower(workouts: Workout[]): CriticalPower | null
 			factor = 0.80;
 		}
 		const ftp = Math.round(best.p * factor);
-		return ftp > 0 ? { cp: ftp, wPrime: 0, ftp, method: 'estimate' } : null;
+		return buildCriticalPowerResult({
+			cp: ftp,
+			wPrime: 0,
+			method: 'estimate',
+			efforts: valid,
+			envelopePoints: 0,
+			asOf,
+			extraWarnings
+		});
 	};
 
 	const all = workouts
-		.map((w) => ({ t: w.time, p: workoutWatts(w) }))
-		.filter((q) => q.t > 0 && q.p > 0);
+		.map((w) => ({ t: w.time, p: workoutWatts(w), sport: w.sport, date: w.date }))
+		.filter((q) => q.t > 0 && q.p > 0 && q.p < 2500);
 	if (!all.length) return null;
 
 	// The CP model is only valid for a few-minutes-to-an-hour range.
@@ -573,7 +734,7 @@ export function estimateCriticalPower(workouts: Workout[]): CriticalPower | null
 
 	// Mean-maximal envelope: keep only the best power in each (geometric) duration
 	// bin so one easy session doesn't drag the fit down.
-	const bins = new Map<number, { t: number; p: number }>();
+	const bins = new Map<number, CriticalPowerEffort>();
 	for (const q of pts) {
 		const key = Math.round(Math.log(q.t) * 4);
 		const cur = bins.get(key);
@@ -596,9 +757,28 @@ export function estimateCriticalPower(workouts: Workout[]): CriticalPower | null
 	if (den > 0) {
 		const wPrime = num / den; // slope, joules
 		const cp = my - wPrime * mx; // intercept, watts
-		if (cp > 0 && cp < 700 && wPrime > 0) {
-			return { cp: Math.round(cp), wPrime: Math.round(wPrime), ftp: Math.round(cp), method: 'model' };
+		const fitted = xs.map((x) => cp + wPrime * x);
+		const ssRes = fitted.reduce((s, y, i) => s + (ys[i]! - y) ** 2, 0);
+		const ssTot = ys.reduce((s, y) => s + (y - my) ** 2, 0);
+		const r2 = ssTot > 0 ? Math.max(0, 1 - ssRes / ssTot) : 1;
+		const residualPct = my > 0 ? (Math.sqrt(ssRes / n) / my) * 100 : Infinity;
+		const fitQuality = { r2, residualPct };
+		const extraWarnings: CriticalPowerWarning[] = [];
+		if (r2 < 0.7 || residualPct > 18) extraWarnings.push('outlier-sensitive');
+		if (cp <= 0 || cp >= 700 || wPrime <= 0 || wPrime > 80_000) extraWarnings.push('unrealistic-fit');
+		if (cp > 0 && cp < 700 && wPrime > 0 && wPrime <= 80_000) {
+			return buildCriticalPowerResult({
+				cp,
+				wPrime,
+				method: 'model',
+				efforts: pts,
+				envelopePoints: env.length,
+				asOf,
+				fitQuality,
+				extraWarnings
+			});
 		}
+		return fallback(pts, extraWarnings);
 	}
 	return fallback(pts);
 }

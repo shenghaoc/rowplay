@@ -86,9 +86,21 @@ describe('bike pace per-1000m normalisation', () => {
 });
 
 describe('wattsToPaceForSport', () => {
+	it('round-trips rower and skierg pace on the RowErg/SkiErg PM basis', () => {
+		for (const sport of ['rower', 'skierg'] as const) {
+			const watts = paceToWattsForSport(sport, 120);
+			expect(wattsToPaceForSport(sport, watts)).toBeCloseTo(120, 5);
+		}
+	});
+
 	it('inverts bike watts with the 8× scale factor', () => {
 		const pace = wattsToPaceForSport('bike', 51.03);
 		expect(pace).toBeCloseTo(95, 0);
+	});
+
+	it('round-trips BikeErg normalized /500m pace through sport-specific watts', () => {
+		const watts = paceToWattsForSport('bike', 95);
+		expect(wattsToPaceForSport('bike', watts)).toBeCloseTo(95, 5);
 	});
 });
 
@@ -122,6 +134,7 @@ describe('datetime formatters', () => {
 describe('SPORT_LABEL', () => {
 	it('keeps Concept2 trademark names', () => {
 		expect(SPORT_LABEL.rower).toBe('RowErg');
+		expect(SPORT_LABEL.skierg).toBe('SkiErg');
 		expect(SPORT_LABEL.bike).toBe('BikeErg');
 	});
 });
