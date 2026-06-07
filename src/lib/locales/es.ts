@@ -85,9 +85,16 @@ export const es = {
 		tagline: 'rowplay · análisis de diario Concept2 y replay en tiempo real'
 	},
 	sync: {
-		loading: 'Sincronizando tu diario…',
-		done: 'Sincronizado — {added} nuevos, {total} en total',
+		loading: 'Sincronizando…',
+		done: '{added} nuevos · {total} entrenamientos en caché',
 		failed: 'Error al sincronizar',
+		incrementalDone: 'Al día — {total} entrenamientos en caché',
+		retry: 'Reintentar sincronización',
+		errorBadge: 'Error en la última sincronización',
+		errorHint: '{message}',
+		demoUnavailable: 'Sincronización no disponible en modo demo — conecta tu diario para sincronizar datos reales.',
+		partialWarning: 'El historial aún se está cargando — los totales y RPs pueden estar incompletos hasta que termine la sincronización.',
+		inProgress: 'Sincronización en curso…',
 		historyWindow: 'Mostrando los últimos {months} meses — cargando historial anterior…',
 		historyBackfilling: '{total} entrenamientos · historial hasta {date}',
 		historyComplete: 'Historial completo sincronizado'
@@ -839,7 +846,13 @@ export const es = {
 		timezoneUtcDefault: 'UTC (predeterminado)',
 		timezoneGroupAmericas: 'Américas',
 		timezoneGroupEuropeAfrica: 'Europa / África',
-		timezoneGroupAsiaPacific: 'Asia / Pacífico'
+		timezoneGroupAsiaPacific: 'Asia / Pacífico',
+		lastSyncError: '{total} entrenamientos · último sync falló: {message}',
+		partialCache: '{n} entrenamientos en caché · historial aún cargándose',
+		exportPreviewCsv: 'CSV: una fila por entrenamiento, orden de columnas estable (17 columnas)',
+		exportPreviewJson: 'JSON: array con metadatos de esquema (versión 1)',
+		exportPreviewTcx: 'TCX 2.0: trackpoints por palada, compatible con Garmin/Strava',
+		noTcxAvailable: 'No hay entrenamientos con datos de palada para exportar TCX.'
 	},
 	token: {
 		title: 'Usar tu token de Concept2',

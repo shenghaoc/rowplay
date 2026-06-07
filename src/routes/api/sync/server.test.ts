@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('$lib/server/data', () => ({
-	syncWorkouts: vi.fn()
+	syncWorkouts: vi.fn(),
+	syncStatus: vi.fn()
 }));
 
 import { POST } from './+server';
-import { syncWorkouts } from '$lib/server/data';
+import { syncWorkouts, syncStatus } from '$lib/server/data';
 
 function fakeEvent(opts: { demo?: boolean; url?: string } = {}) {
 	return {
@@ -24,6 +25,7 @@ describe('POST /api/sync', () => {
 
 	it('returns sync result on success', async () => {
 		(syncWorkouts as ReturnType<typeof vi.fn>).mockResolvedValue({ added: 5, total: 10, workouts: [], newPbs: [] });
+		(syncStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ backfillDone: true, inProgress: false });
 		const event = fakeEvent({ url: 'http://localhost/api/sync' });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const res = await POST(event as any);
@@ -33,6 +35,7 @@ describe('POST /api/sync', () => {
 
 	it('passes full=1 param to syncWorkouts', async () => {
 		(syncWorkouts as ReturnType<typeof vi.fn>).mockResolvedValue({ added: 0, total: 0, workouts: [], newPbs: [] });
+		(syncStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ backfillDone: true, inProgress: false });
 		const event = fakeEvent({ url: 'http://localhost/api/sync?full=1' });
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		await POST(event as any);
@@ -44,6 +47,23 @@ describe('POST /api/sync', () => {
 		const event = fakeEvent();
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		await expect(POST(event as any)).rejects.toMatchObject({ status: 503 });
+	});
+
+	it('includes sync state in successful response', async () => {
+		(syncWorkouts as ReturnType<typeof vi.fn>).mockResolvedValue({ added: 5, total: 10, workouts: [], newPbs: [] });
+		(syncStatus as ReturnType<typeof vi.fn>).mockResolvedValue({
+			lastDate: '2026-06-01', lastSyncAt: 1717000000000, total: 10,
+			oldestDate: '2025-06-01', backfillDone: true,
+			inProgress: false, lastError: null, lastErrorAt: 0,
+			historyWindowMonths: 12
+		});
+		const event = fakeEvent({ url: 'http://localhost/api/sync' });
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const res = await POST(event as any);
+		const body = await res.json();
+		expect(body.sync).toBeDefined();
+		expect(body.sync.backfillDone).toBe(true);
+		expect(body.sync.inProgress).toBe(false);
 	});
 
 	it('throws 502 on other sync errors', async () => {

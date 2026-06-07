@@ -4,7 +4,7 @@ vi.mock('$lib/server/data', () => ({
 	loadWorkouts: vi.fn()
 }));
 vi.mock('$lib/server/export', () => ({
-	exportFilename: vi.fn().mockReturnValue('export.csv'),
+	exportFilename: vi.fn().mockImplementation((ext: string) => `rowplay-logbook-2026-01-01.${ext}`),
 	workoutsToCsv: vi.fn().mockReturnValue('date,distance\n2026-01-01,2000'),
 	workoutsToJson: vi.fn().mockReturnValue('[]')
 }));
@@ -59,5 +59,42 @@ describe('GET /api/export', () => {
 		(loadWorkouts as ReturnType<typeof vi.fn>).mockResolvedValue(sampleWorkouts);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		await expect(GET(fakeEvent('xml') as any)).rejects.toMatchObject({ status: 400 });
+	});
+
+	it('sets cache-control: private, no-store on csv response', async () => {
+		(loadWorkouts as ReturnType<typeof vi.fn>).mockResolvedValue(sampleWorkouts);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const res = await GET(fakeEvent('csv') as any);
+		expect(res.headers.get('cache-control')).toBe('private, no-store');
+	});
+
+	it('sets content-disposition with attachment filename for csv', async () => {
+		(loadWorkouts as ReturnType<typeof vi.fn>).mockResolvedValue(sampleWorkouts);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const res = await GET(fakeEvent('csv') as any);
+		const disposition = res.headers.get('content-disposition');
+		expect(disposition).toContain('attachment');
+		expect(disposition).toMatch(/filename="rowplay-logbook-\d{4}-\d{2}-\d{2}\.csv"/);
+	});
+
+	it('sets content-type correctly for csv', async () => {
+		(loadWorkouts as ReturnType<typeof vi.fn>).mockResolvedValue(sampleWorkouts);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const res = await GET(fakeEvent('csv') as any);
+		expect(res.headers.get('content-type')).toBe('text/csv; charset=utf-8');
+	});
+
+	it('sets content-type correctly for json', async () => {
+		(loadWorkouts as ReturnType<typeof vi.fn>).mockResolvedValue(sampleWorkouts);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const res = await GET(fakeEvent('json') as any);
+		expect(res.headers.get('content-type')).toBe('application/json; charset=utf-8');
+	});
+
+	it('sets cache-control: private, no-store on json response', async () => {
+		(loadWorkouts as ReturnType<typeof vi.fn>).mockResolvedValue(sampleWorkouts);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const res = await GET(fakeEvent('json') as any);
+		expect(res.headers.get('cache-control')).toBe('private, no-store');
 	});
 });

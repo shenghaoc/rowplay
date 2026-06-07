@@ -85,9 +85,16 @@ export const fr = {
 		tagline: 'rowplay · analyse de logbook Concept2 & replay en temps réel'
 	},
 	sync: {
-		loading: 'Synchronisation de votre logbook…',
-		done: 'Synchronisé — {added} nouveau(x), {total} au total',
+		loading: 'Synchronisation…',
+		done: '{added} nouveau(x) · {total} séances en cache',
 		failed: 'Échec de la synchronisation',
+		incrementalDone: 'À jour — {total} séances en cache',
+		retry: 'Réessayer la synchronisation',
+		errorBadge: 'Échec de la dernière synchronisation',
+		errorHint: '{message}',
+		demoUnavailable: 'Sync indisponible en mode démo — connectez votre logbook pour synchroniser de vraies données.',
+		partialWarning: 'L’historique est encore en cours de chargement — les totaux et RP peuvent être incomplets jusqu’à la fin de la synchronisation.',
+		inProgress: 'Sync en cours…',
 		historyWindow: 'Affichage des {months} derniers mois — chargement de l’historique plus ancien…',
 		historyBackfilling: '{total} séances · historique jusqu’au {date}',
 		historyComplete: 'Historique complet synchronisé'
@@ -839,7 +846,13 @@ export const fr = {
 		timezoneUtcDefault: 'UTC (par défaut)',
 		timezoneGroupAmericas: 'Amériques',
 		timezoneGroupEuropeAfrica: 'Europe / Afrique',
-		timezoneGroupAsiaPacific: 'Asie / Pacifique'
+		timezoneGroupAsiaPacific: 'Asie / Pacifique',
+		lastSyncError: '{total} séances · dernière sync échouée : {message}',
+		partialCache: '{n} séances en cache · historique encore en chargement',
+		exportPreviewCsv: 'CSV : une ligne par séance, ordre des colonnes stable (17 colonnes)',
+		exportPreviewJson: 'JSON : tableau avec métadonnées de schéma (version 1)',
+		exportPreviewTcx: 'TCX 2.0 : trackpoints par coup, compatible Garmin/Strava',
+		noTcxAvailable: 'Aucune séance avec données de coups pour l’export TCX.'
 	},
 	token: {
 		title: 'Utiliser votre jeton Concept2',

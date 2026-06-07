@@ -85,9 +85,16 @@ export const en = {
 		tagline: 'rowplay · Concept2 logbook analytics & real-time replay'
 	},
 	sync: {
-		loading: 'Syncing your logbook…',
-		done: 'Synced — {added} new, {total} total',
+		loading: 'Syncing…',
+		done: '{added} new · {total} total workouts cached',
 		failed: 'Sync failed',
+		incrementalDone: 'Caught up — {total} workouts cached',
+		retry: 'Retry sync',
+		errorBadge: 'Last sync failed',
+		errorHint: '{message}',
+		demoUnavailable: 'Sync is unavailable in demo mode — connect your logbook to sync real data.',
+		partialWarning: 'History is still loading — totals and PBs may be incomplete until the sync finishes.',
+		inProgress: 'Sync in progress…',
 		historyWindow: 'Showing the last {months} months — loading older history…',
 		historyBackfilling: '{total} workouts · history back to {date}',
 		historyComplete: 'Full history synced'
@@ -842,7 +849,13 @@ export const en = {
 		timezoneUtcDefault: 'UTC (default)',
 		timezoneGroupAmericas: 'Americas',
 		timezoneGroupEuropeAfrica: 'Europe / Africa',
-		timezoneGroupAsiaPacific: 'Asia / Pacific'
+		timezoneGroupAsiaPacific: 'Asia / Pacific',
+		lastSyncError: '{total} workouts · last sync failed: {message}',
+		partialCache: '{n} workouts cached · history still loading',
+		exportPreviewCsv: 'CSV: one row per workout, stable column order (17 columns)',
+		exportPreviewJson: 'JSON: array wrapped with schema metadata (version 1)',
+		exportPreviewTcx: 'TCX 2.0: per-stroke trackpoints, Garmin/Strava compatible',
+		noTcxAvailable: 'No workouts with per-stroke data for TCX export.'
 	},
 	token: {
 		title: 'Use your Concept2 token',

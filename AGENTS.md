@@ -104,6 +104,13 @@ All commands use **npm** (lockfile: `package-lock.json`).
 - `npm run build` runs `scripts/postbuild.mjs` (patches `.assetsignore`).
 - **daisyUI** uses the Tailwind v4 CSS plugin in `src/app.css` (not `tailwind.config.js`). Use idiomatic daisyUI classes (`btn`, `card`, `input`, `join`, `toggle`, …). Details: [tech.md → daisyUI](.kiro/steering/tech.md#daisyui-tailwind-css-v4-plugin). Install docs: [SvelteKit](https://daisyui.com/docs/install/sveltekit/), [general](https://daisyui.com/docs/install/).
 
+## Server logging
+
+- Use `{ createLogger }` from `src/lib/server/logger.ts`, not bare `console.error`.
+- All server-originated `console.error` calls must go through the logger so
+  personal tokens, cookie values, and full workout payloads are redacted before
+  emission to Workers logs. See `.kiro/steering/tech.md#server-observability`.
+
 ## Quality gate
 
 1. `npm run check` → 0 errors (`state_referenced_locally` warnings are known).

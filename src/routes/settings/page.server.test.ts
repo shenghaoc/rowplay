@@ -1,15 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type Mock } from 'vitest';
 
 vi.mock('$lib/server/data', () => ({
 	loadWorkouts: vi.fn().mockResolvedValue([
 		{ id: 1001, hasStrokeData: true, date: '2026-01-01' },
 		{ id: 1002, hasStrokeData: false, date: '2026-01-02' }
 	]),
-	syncStatus: vi.fn().mockResolvedValue({ lastSyncAt: '2026-01-02T00:00:00Z' }),
+	syncStatus: vi.fn().mockResolvedValue(null),
 	loadHomeTimezone: vi.fn().mockResolvedValue(undefined)
 }));
 
+import { loadWorkouts, syncStatus } from '$lib/server/data';
 import { load } from './+page.server';
+
+function authedEvent(opts: { demo?: boolean } = {}) {
+	return {
+		locals: { demo: opts.demo ?? false, user: { id: 7 } },
+		platform: { env: { DB: {}, SESSIONS: {} } },
+		setHeaders: vi.fn()
+	};
+}
 
 function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null } = {}) {
 	return {
@@ -51,5 +60,33 @@ describe('load /settings', () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const data = await load(event as any) as any;
 		expect(data.sync).toBeDefined();
+	});
+
+	it('loads sync state with inProgress flag', async () => {
+		(loadWorkouts as Mock).mockResolvedValue([]);
+		(syncStatus as Mock).mockResolvedValue({
+			lastDate: '2026-06-01', lastSyncAt: 1717000000000, total: 5,
+			oldestDate: '2025-01-01', backfillDone: false,
+			inProgress: true, lastError: null, lastErrorAt: 0,
+			historyWindowMonths: 12
+		});
+		const event = authedEvent();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const result = await load(event as any) as any;
+		expect(result.sync?.inProgress).toBe(true);
+	});
+
+	it('loads sync state with lastError', async () => {
+		(loadWorkouts as Mock).mockResolvedValue([]);
+		(syncStatus as Mock).mockResolvedValue({
+			lastDate: null, lastSyncAt: 0, total: 0,
+			oldestDate: null, backfillDone: false,
+			inProgress: false, lastError: 'Network timeout', lastErrorAt: 1717000000000,
+			historyWindowMonths: 12
+		});
+		const event = authedEvent();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const result = await load(event as any) as any;
+		expect(result.sync?.lastError).toBe('Network timeout');
 	});
 });
