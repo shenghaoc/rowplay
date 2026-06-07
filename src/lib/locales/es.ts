@@ -714,7 +714,17 @@ export const es = {
 		intervalTypeTime: 'Tiempo',
 		intervalTypeDistance: 'Distancia',
 		intervalTypeCalorie: 'Caloría',
-		intervalTypeWattminute: 'Vatio-minuto'
+		intervalTypeWattminute: 'Vatio-minuto',
+		removeGhost: 'Eliminar fantasma',
+		racingAgainst: 'Compitiendo contra: {name}',
+		compareAction: 'Comparar',
+		legendTitle: 'Leyenda',
+		legendGhost: 'Fantasma',
+		kbTitle: 'Atajos de teclado',
+		kbSpaceHint: 'reproducir / pausar',
+		kbArrowHint: 'desplazar ±10 s',
+		kbBracketHint: 'cambiar velocidad',
+		kbHomeHint: 'volver al inicio'
 	},
 	inspector: {
 		toggle: 'Inspector de campos',

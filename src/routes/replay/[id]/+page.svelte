@@ -34,6 +34,7 @@
 	import { untrack } from 'svelte';
 	import { constantPaceGhost, parseWorkoutFile } from '$lib/replay/sources';
 	import { isShareToken, type RivalGhostTrace } from '$lib/replay/rivalGhost';
+	import { raceGapMetres, raceGapSeconds } from '$lib/replay/replayGap';
 	import {
 		applyHrImport,
 		clearHrOverlay,
@@ -51,6 +52,8 @@
 	import Play from '@lucide/svelte/icons/play';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Ghost from '@lucide/svelte/icons/ghost';
+	import GitCompare from '@lucide/svelte/icons/git-compare';
+	import X from '@lucide/svelte/icons/x';
 	import Share2 from '@lucide/svelte/icons/share-2';
 	import ImageDown from '@lucide/svelte/icons/image-down';
 	import Trophy from '@lucide/svelte/icons/trophy';
@@ -497,9 +500,45 @@
 		ro.observe(courseWrap);
 
 		const onKey = (e: KeyboardEvent) => {
-			if (e.code === 'Space' && !(e.target as HTMLElement)?.matches?.('select, input, button')) {
-				e.preventDefault();
-				engine?.toggle();
+			const inField = (e.target as HTMLElement | null)?.matches?.(
+				'select, input, textarea, button'
+			);
+			if (inField) return;
+			switch (e.code) {
+				case 'Space':
+					e.preventDefault();
+					engine?.toggle();
+					break;
+				case 'ArrowLeft': {
+					e.preventDefault();
+					const delta = e.shiftKey ? 30 : 10;
+					engine?.seek((engine?.time ?? 0) - delta);
+					break;
+				}
+				case 'ArrowRight': {
+					e.preventDefault();
+					const delta = e.shiftKey ? 30 : 10;
+					engine?.seek((engine?.time ?? 0) + delta);
+					break;
+				}
+				case 'BracketLeft': {
+					e.preventDefault();
+					const prevIdx = SPEEDS.indexOf(speed);
+					if (prevIdx > 0) setSpeed(SPEEDS[prevIdx - 1]);
+					break;
+				}
+				case 'BracketRight': {
+					e.preventDefault();
+					const nextIdx = SPEEDS.indexOf(speed);
+					if (nextIdx < SPEEDS.length - 1) setSpeed(SPEEDS[nextIdx + 1]);
+					break;
+				}
+				case 'Home':
+				case 'Digit0':
+				case 'Numpad0':
+					e.preventDefault();
+					engine?.seek(0);
+					break;
 			}
 		};
 		window.addEventListener('keydown', onKey);
@@ -651,12 +690,8 @@
 	}
 
 	// Race gap (positive = player ahead of ghost), in metres and seconds.
-	const gapMeters = $derived(ghostFrame ? frame.d - ghostFrame.d : 0);
-	const gapSeconds = $derived.by(() => {
-		if (!ghostFrame) return 0;
-		const speedMs = frame.pace > 0 ? 500 / frame.pace : 0;
-		return speedMs > 0 ? gapMeters / speedMs : 0;
-	});
+	const gapMeters = $derived(ghostFrame ? raceGapMetres(frame.d, ghostFrame.d) : 0);
+	const gapSeconds = $derived(ghostFrame ? raceGapSeconds(gapMeters, frame.pace) : 0);
 
 	const replayDuration = $derived(engine?.duration ?? detail.time);
 	const raceFinished = $derived(ghostActive && replayDuration > 0 && frame.t >= replayDuration - 0.05);
@@ -1251,6 +1286,10 @@
 			{/if}
 		</div>
 		<div class="sharebar">
+			<a class="btn btn-ghost btn-sm" href="/compare?a={detail.id}">
+				<GitCompare size={14} />
+				{t('replay.compareAction')}
+			</a>
 			<button class="btn btn-ghost btn-sm" type="button" disabled={sharing} onclick={shareReplay}>
 				<Share2 size={14} />
 				{sharing ? t('common.loading') : t('share.shareReplay')}
@@ -1431,15 +1470,32 @@
 		{#if loadingGhost}<span class="muted small">{t('common.loading')}</span>{/if}
 		{#if ghostError}<span class="err small">{ghostError}</span>{/if}
 
-		{#if ghostActive && ghostFrame && !raceFinished}
-			<div class="gap mono" class:ahead={gapMeters >= 0} class:behind={gapMeters < 0} role="status" aria-live="polite">
-				<span class="gap-main">
-					{gapMeters >= 0
-						? t('replay.ahead', { m: Math.abs(Math.round(gapMeters)) })
-						: t('replay.behind', { m: Math.abs(Math.round(gapMeters)) })}
+		{#if ghostActive}
+			<div class="ghost-status">
+				<span class="ghost-status-name muted small">
+					<Ghost size={13} aria-hidden="true" />
+					{t('replay.racingAgainst', { name: ghostLabel })}
 				</span>
-				<span class="gap-secs">({Math.abs(gapSeconds).toFixed(1)}s)</span>
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					aria-label={t('replay.removeGhost')}
+					onclick={clearGhost}
+				>
+					<X size={12} aria-hidden="true" />
+					{t('replay.removeGhost')}
+				</button>
 			</div>
+			{#if ghostFrame && !raceFinished}
+				<div class="gap mono" class:ahead={gapMeters >= 0} class:behind={gapMeters < 0} role="status" aria-live="polite">
+					<span class="gap-main">
+						{gapMeters >= 0
+							? t('replay.ahead', { m: Math.abs(Math.round(gapMeters)) })
+							: t('replay.behind', { m: Math.abs(Math.round(gapMeters)) })}
+					</span>
+					<span class="gap-secs">({Math.abs(gapSeconds).toFixed(1)}s)</span>
+				</div>
+			{/if}
 		{/if}
 	</div>
 
@@ -1580,6 +1636,15 @@
 				>{s}×</button>
 			{/each}
 		</div>
+		<details class="kb-hints">
+			<summary class="muted small">{t('replay.kbTitle')}</summary>
+			<dl class="kb-list">
+				<div><dt><kbd>Space</kbd></dt><dd>{t('replay.kbSpaceHint')}</dd></div>
+				<div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>{t('replay.kbArrowHint')}</dd></div>
+				<div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>{t('replay.kbBracketHint')}</dd></div>
+				<div><dt><kbd>0</kbd></dt><dd>{t('replay.kbHomeHint')}</dd></div>
+			</dl>
+		</details>
 	</div>
 
 	<!-- Live gauges -->
@@ -1606,6 +1671,13 @@
 				value={frame.hr ?? 0} min={90} max={200} color="var(--hr)"
 			/>
 		{/if}
+		<div class="gauge-legend" aria-label={t('replay.legendTitle')}>
+			<span class="legend-item"><span class="ldot" style:background="var(--pace)"></span>{t('replay.gPace')}</span>
+			<span class="legend-item"><span class="ldot" style:background="var(--rate)"></span>{t('replay.gRate')}</span>
+			<span class="legend-item"><span class="ldot" style:background="var(--power)"></span>{t('replay.gPower')}</span>
+			{#if hasHr}<span class="legend-item"><span class="ldot" style:background="var(--hr)"></span>{t('replay.gHeart')}</span>{/if}
+			{#if ghostActive}<span class="legend-item"><Ghost size={11} aria-hidden="true" />{t('replay.legendGhost')}</span>{/if}
+		</div>
 	</div>
 
 	<!-- Coaching annotations -->
@@ -2213,6 +2285,21 @@
 		align-items: center;
 		gap: 0.35rem;
 	}
+	.ghost-status {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		width: 100%;
+		padding-top: 0.35rem;
+		border-top: var(--bd);
+		margin-top: 0.15rem;
+	}
+	.ghost-status-name {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		flex: 1;
+	}
 	.session-search {
 		min-width: 10rem;
 		max-width: 14rem;
@@ -2417,11 +2504,84 @@
 		display: flex;
 		gap: 0.3rem;
 	}
+	.kb-hints {
+		width: 100%;
+	}
+	.kb-hints summary {
+		cursor: pointer;
+		user-select: none;
+		font-size: 0.78rem;
+		color: var(--ink-2);
+		list-style: none;
+	}
+	.kb-hints summary::marker,
+	.kb-hints summary::-webkit-details-marker {
+		display: none;
+	}
+	.kb-hints summary::before {
+		content: '▸ ';
+	}
+	details.kb-hints[open] summary::before {
+		content: '▾ ';
+	}
+	.kb-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1.25rem;
+		margin: 0.4rem 0 0;
+		padding: 0;
+	}
+	.kb-list > div {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.kb-list dt {
+		display: flex;
+		gap: 0.2rem;
+	}
+	.kb-list dd {
+		margin: 0;
+		font-size: 0.76rem;
+		color: var(--ink-2);
+	}
+	kbd {
+		font-family: var(--mono);
+		font-size: 0.72rem;
+		padding: 0.1rem 0.35rem;
+		border: 1px solid var(--ink-2);
+		border-bottom-width: 2px;
+		border-radius: 3px;
+		background: var(--paper-raised);
+		color: var(--ink);
+	}
 	.gauges {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		gap: 0.5rem;
 		margin-bottom: 0.75rem;
+	}
+	.gauge-legend {
+		grid-column: 1 / -1;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem 1rem;
+		border-top: var(--bd);
+		padding-top: 0.5rem;
+		margin-top: 0.15rem;
+	}
+	.legend-item {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		font-size: 0.76rem;
+		color: var(--ink-2);
+	}
+	.ldot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		flex-shrink: 0;
 	}
 	.charts {
 		display: grid;

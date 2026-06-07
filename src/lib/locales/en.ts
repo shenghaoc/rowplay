@@ -716,7 +716,17 @@ export const en = {
 		intervalTypeTime: 'Time',
 		intervalTypeDistance: 'Distance',
 		intervalTypeCalorie: 'Calorie',
-		intervalTypeWattminute: 'Watt-minute'
+		intervalTypeWattminute: 'Watt-minute',
+		removeGhost: 'Remove ghost',
+		racingAgainst: 'Racing: {name}',
+		compareAction: 'Compare',
+		legendTitle: 'Legend',
+		legendGhost: 'Ghost',
+		kbTitle: 'Keyboard shortcuts',
+		kbSpaceHint: 'play / pause',
+		kbArrowHint: 'scrub ±10 s',
+		kbBracketHint: 'change speed',
+		kbHomeHint: 'reset to start'
 	},
 	inspector: {
 		toggle: 'Field inspector',
