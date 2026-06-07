@@ -165,6 +165,9 @@
 		if (!confirm(t('settings.deleteConfirm'))) return;
 		deleting = true;
 		try {
+			// Clear the service-worker caches before the account-delete request
+			// so cached authenticated pages/api responses don't outlive the session.
+			navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
 			const res = await fetch('/api/account/delete', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },

@@ -16,6 +16,12 @@ export const load: PageServerLoad = async (event) => {
 	if (!event.locals.demo && !event.locals.user) {
 		throw redirect(303, '/auth/login');
 	}
+	// Prevent the service worker from caching authenticated dashboard pages.
+	// Demo-mode pages (no personal data) remain cacheable for offline use.
+	if (!event.locals.demo) {
+		event.setHeaders({ 'cache-control': 'private, no-store' });
+	}
+
 	const listQuery = listQueryFromEvent(event);
 	const [workouts, listWorkouts, aggregates] = await Promise.all([
 		loadWorkouts(event),

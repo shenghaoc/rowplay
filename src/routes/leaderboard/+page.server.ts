@@ -10,6 +10,12 @@ import { loadBoards } from '$lib/server/leaderboard';
  * $lib/server/leaderboard.ts for the gate.
  */
 export const load: PageServerLoad = async (event) => {
+	// Prevent the service worker from caching leaderboard pages which may contain
+	// the authenticated athlete's flagged rows.
+	if (!event.locals.demo) {
+		event.setHeaders({ 'cache-control': 'private, no-store' });
+	}
+
 	const boards = await loadBoards(event);
 	return { boards, demo: event.locals.demo };
 };

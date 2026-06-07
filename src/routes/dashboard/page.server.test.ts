@@ -16,7 +16,8 @@ function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null } = {}) 
 	return {
 		locals: { demo: opts.demo ?? false, user: opts.user ?? null },
 		url: new URL('http://localhost/dashboard'),
-		platform: { env: { DB: {}, SESSIONS: {} } }
+		platform: { env: { DB: {}, SESSIONS: {} } },
+		setHeaders: vi.fn()
 	};
 }
 

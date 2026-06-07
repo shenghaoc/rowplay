@@ -6,6 +6,12 @@ export const load: PageServerLoad = async (event) => {
 	if (!event.locals.demo && !event.locals.user) {
 		throw redirect(303, '/auth/login');
 	}
+	// Prevent the service worker from caching authenticated settings pages.
+	// Demo-mode pages (no personal data) remain cacheable for offline use.
+	if (!event.locals.demo) {
+		event.setHeaders({ 'cache-control': 'private, no-store' });
+	}
+
 	const workouts = await loadWorkouts(event);
 	const sync = event.locals.demo ? null : await syncStatus(event).catch(() => null);
 	const tcxWorkouts = workouts.filter((w) => w.hasStrokeData).map((w) => ({ id: w.id, date: w.date }));
