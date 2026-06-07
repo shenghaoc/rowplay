@@ -80,6 +80,7 @@ export const ja = {
 		replay: 'リプレイ',
 		loading: '読み込み中…',
 		tryAgain: 'もう一度お試しください。',
+		dismiss: '閉じる',
 		notAffiliated: 'Concept2 とは無関係です',
 		tagline: 'rowplay · Concept2 ログブック分析 & リアルタイムリプレイ'
 	},
@@ -116,7 +117,15 @@ export const ja = {
 		feat2Title: 'スプリット分析',
 		feat2Body: 'ペース・ストロークレート・パワー・HR の推移 — 3 台すべてに対応。',
 		feat3Title: 'エッジで配信',
-		feat3Body: 'Cloudflare から配信。ストロークデータをキャッシュし、即座にリプレイ。'
+		feat3Body: 'Cloudflare から配信。ストロークデータをキャッシュし、即座にリプレイ。',
+		tourEyebrow: '初回',
+		tourTitle: '最初に試す 4 つ',
+		tourBody: 'ダッシュボードを見て、リプレイを開き、リーダーボードのゴーストと競い、外部で確認したいデータをエクスポートします。',
+		tourDashboard: 'ダッシュボード：合計、トレンド、PB',
+		tourReplay: 'リプレイ：同期したコースとゲージ',
+		tourGhost: 'ゴーストレース：過去またはライバルを追う',
+		tourExport: 'エクスポート：CSV、JSON、リプレイファイル',
+		tourDismiss: '初回ツアーを閉じる'
 	},
 	dashboard: {
 		eyebrow: 'あなたのログブック',
@@ -138,6 +147,49 @@ export const ja = {
 		totalDistance: '総距離',
 		totalTime: '総時間',
 		avgPace: '平均ペース',
+		sectionCoreEyebrow: 'ここから',
+		sectionCore: '今日の読み取り',
+		sectionWorkoutsEyebrow: 'ワークアウト',
+		sectionWorkouts: 'リプレイを探す',
+		sectionWorkoutsBody: '深い分析パネルに入る前に、ワークアウトを絞り込み、タグ付け、比較、再生できます。',
+		sectionRecordsEyebrow: '目標',
+		sectionRecords: '目標、バッジ、PB',
+		sectionRecordsBody: 'シーズン目標、マイルストーン、標準距離ベスト、予測ツールをまとめています。',
+		sectionAdvancedEyebrow: '分析',
+		sectionAdvanced: '高度な分析',
+		sectionAdvancedBody: 'パワーモデル、トレーニング負荷、ストローク効率、長期トレンドを詳しく確認できます。',
+		sectionPower: 'CP/W′ とコンディション',
+		sectionPowerBody: '自分の履歴からクリティカルパワー、維持可能ペース、負荷バランスを確認します。',
+		sectionTraining: 'トレーニング構造',
+		sectionTrainingBody: 'カレンダー、強度、トレンドで練習の配分を確認します。',
+		sectionStroke: 'ストローク効率と種目別',
+		sectionStrokeBody: 'DPS トレンドとマシン別サマリーで技術とペースの文脈を見ます。',
+		tour: {
+			eyebrow: 'デモガイド',
+			title: 'まずこれを試す',
+			body: 'これらのヒントは任意で、このブラウザでは閉じた状態が保存されます。',
+			dismissHint: '{title} を閉じる',
+			latestReplay: {
+				title: '最新ワークアウトを再生',
+				body: '最新のデモピースを開いて再生します。',
+				action: 'リプレイを開く'
+			},
+			criticalPower: {
+				title: 'CP/W′ を確認',
+				body: '持続パワーモデルとペース予測を見ます。',
+				action: 'パネルへ移動'
+			},
+			workoutFilters: {
+				title: 'フィルターを使う',
+				body: '距離、タグ、ストロークデータ、ペースで絞り込みます。',
+				action: 'フィルターを試す'
+			},
+			leaderboardGhost: {
+				title: 'リーダーボードのゴーストと競う',
+				body: '標準ボードを開き、Race でライバルを事前設定します。',
+				action: 'リーダーボードを開く'
+			}
+		},
 		pbTitle: '自己ベスト · 標準距離',
 		bySport: '種目別',
 		thSport: '種目',
@@ -207,7 +259,7 @@ export const ja = {
 			}
 		},
 		formTitle: 'フィットネスとコンディション',
-		formPremium: 'プレミアム機能 — 利用可能',
+		formAdvanced: '高度な分析',
 		formSub: '全マシン横断のトレーニング負荷を、あなた自身のしきい値パワーに換算。',
 		formFitness: 'フィットネス',
 		formFatigue: '疲労',
@@ -296,7 +348,7 @@ export const ja = {
 		cpExplainModel:
 			'CP は長いピースでも落ちにくい、持続できるパワー — おおよそ 30〜60 分の上限。W′（{wPrime} kJ）は CP を超えて短時間に使える追加分。組み合わせて任意の時間の持続強度を予測します。',
 		cpExplainEstimate:
-			'CP は長めのベストから {cp} W と推定 — 長いピースでも落ちにくい持続パワーです。スプリントから 30 分以上まで幅広い時間を記録すると、完全な CP/W′ モデルが使えます。',
+			'CP は長めのベストから {cp} W と推定 — 長いピースでも落ちにくい持続パワーです。スプリントから 30 分以上まで幅広い時間を記録すると、より完全な CP/W′ モデルをフィットできます。',
 		cpPredictTitle: 'どれくらい維持できる？',
 		cpPredictSub: 'CP モデルからのイーブンスプリットのペースまたはゴールタイム。ペースは /500m（RowErg と SkiErg のみ）。',
 		cpModeDuration: '維持時間…',
@@ -764,6 +816,15 @@ export const ja = {
 		introLink: 'プロフィール編集 → アプリケーション',
 		introAfter:
 			'）。ここに一度貼り付けてください — rowplay は HTTPS で Worker に送り、検証してから httpOnly rp_tok Cookie に封印し、サーバー側のログブック読み取りにのみ使用します。トークンは KV にも D1 にも保存されません。',
+		trustTitle: 'rowplay のトークン処理',
+		trustAccessTitle: 'アクセス：',
+		trustAccessBody: '個人 Concept2 トークンはあなたとして認証します。rowplay はサーバー側でプロフィール、ワークアウト、ストロークデータを読むためだけに使います。',
+		trustStoredTitle: '保存：',
+		trustStoredBody: '検証済みトークンは httpOnly rp_tok Cookie に封印され、localStorage、KV、D1 には保存されません。',
+		trustDisconnectTitle: '切断：',
+		trustDisconnectBody: 'データ画面でログアウトまたはアカウントデータ削除を行うと、トークン Cookie、セッション、非公開キャッシュが消えます。',
+		trustCacheTitle: 'キャッシュ：',
+		trustCacheBody: '接続中は D1 がワークアウト概要とリプレイ詳細をキャッシュします。公開共有やリーダーボード項目は公開した場合だけ作成されます。',
 		apiToken: 'API トークン',
 		placeholder: 'トークンを貼り付け',
 		connect: 'トークンで接続',

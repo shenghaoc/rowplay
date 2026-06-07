@@ -80,6 +80,7 @@ export const en = {
 		replay: 'Replay',
 		loading: 'loading…',
 		tryAgain: 'Please try again.',
+		dismiss: 'Dismiss',
 		notAffiliated: 'not affiliated with Concept2',
 		tagline: 'rowplay · Concept2 logbook analytics & real-time replay'
 	},
@@ -116,7 +117,15 @@ export const en = {
 		feat2Title: 'Split analytics',
 		feat2Body: 'Pace, stroke rate, power and HR over time — across all three machines.',
 		feat3Title: 'On the edge',
-		feat3Body: 'Served from Cloudflare with cached stroke data for instant replays.'
+		feat3Body: 'Served from Cloudflare with cached stroke data for instant replays.',
+		tourEyebrow: 'First run',
+		tourTitle: 'Four things to try',
+		tourBody: 'Start with the dashboard, open a replay, race a ghost from the leaderboard, then export the data you want to inspect elsewhere.',
+		tourDashboard: 'Dashboard: totals, trends and PBs',
+		tourReplay: 'Replay: synchronized course and gauges',
+		tourGhost: 'Ghost racing: chase a past or rival effort',
+		tourExport: 'Export: CSV, JSON or replay files',
+		tourDismiss: 'Dismiss first-run tour'
 	},
 	dashboard: {
 		eyebrow: 'Your logbook',
@@ -137,6 +146,49 @@ export const en = {
 		totalDistance: 'Total distance',
 		totalTime: 'Total time',
 		avgPace: 'Avg pace',
+		sectionCoreEyebrow: 'Start here',
+		sectionCore: 'Today’s readout',
+		sectionWorkoutsEyebrow: 'Workouts',
+		sectionWorkouts: 'Find a replay',
+		sectionWorkoutsBody: 'Filter, tag, compare and open workouts without digging through the deeper analysis panels.',
+		sectionRecordsEyebrow: 'Goals',
+		sectionRecords: 'Goals, badges & PBs',
+		sectionRecordsBody: 'Season targets, milestones, standard-distance bests and predictor tools stay together.',
+		sectionAdvancedEyebrow: 'Analysis',
+		sectionAdvanced: 'Advanced analysis',
+		sectionAdvancedBody: 'Power model, training load, stroke efficiency and long-range trends for deeper review.',
+		sectionPower: 'CP/W′ & freshness',
+		sectionPowerBody: 'Critical power, sustainable pace and load balance from your own history.',
+		sectionTraining: 'Training shape',
+		sectionTrainingBody: 'Calendar, intensity and trend views for how the work is distributed.',
+		sectionStroke: 'Stroke efficiency & sport splits',
+		sectionStrokeBody: 'DPS trend and per-machine summaries for technique and pacing context.',
+		tour: {
+			eyebrow: 'Demo guide',
+			title: 'Try this first',
+			body: 'These hints are optional and stay dismissed on this browser.',
+			dismissHint: 'Dismiss {title}',
+			latestReplay: {
+				title: 'Replay the latest workout',
+				body: 'Open the newest demo piece and press play.',
+				action: 'Open replay'
+			},
+			criticalPower: {
+				title: 'Check CP/W′',
+				body: 'See the sustainable-power model and pace predictor.',
+				action: 'Jump to panel'
+			},
+			workoutFilters: {
+				title: 'Use workout filters',
+				body: 'Narrow the list by distance, tags, stroke data or pace.',
+				action: 'Try filters'
+			},
+			leaderboardGhost: {
+				title: 'Race a leaderboard ghost',
+				body: 'Open a standard board and use Race to pre-arm a rival.',
+				action: 'Open leaderboard'
+			}
+		},
 		pbTitle: 'Personal bests · standard distances',
 		bySport: 'By sport',
 		thSport: 'Sport',
@@ -206,7 +258,7 @@ export const en = {
 			}
 		},
 		formTitle: 'Fitness & Freshness',
-		formPremium: 'Premium feature — unlocked',
+		formAdvanced: 'Advanced analysis',
 		formSub: 'Training load across all machines, scaled to your own threshold power.',
 		formFitness: 'Fitness',
 		formFatigue: 'Fatigue',
@@ -222,7 +274,7 @@ export const en = {
 		formChartFitness: 'Fitness',
 		formChartFatigue: 'Fatigue',
 		formChartForm: 'Form',
-		formEmpty: 'Log a few more sessions over a couple of weeks to unlock your fitness & freshness chart.',
+		formEmpty: 'Log a few more sessions over a couple of weeks to show your fitness & freshness chart.',
 		bandTransition: 'Detraining',
 		descTransition: 'Very fresh, but fitness is slipping. Time to put work in.',
 		bandFresh: 'Fresh',
@@ -294,7 +346,7 @@ export const en = {
 		cpExplainModel:
 			'CP is the power you could hold for a long piece without fading — roughly your 30–60 min ceiling. W′ ({wPrime} kJ) is the extra burst above CP for short efforts. Together they predict how hard you can go for any duration.',
 		cpExplainEstimate:
-			'CP is estimated at {cp} W from your best longer efforts — the power you could hold for a long piece without fading. Log more varied durations (sprints through 30+ min) to unlock a full CP/W′ model.',
+			'CP is estimated at {cp} W from your best longer efforts — the power you could hold for a long piece without fading. Log more varied durations (sprints through 30+ min) to fit a fuller CP/W′ model.',
 		cpPredictTitle: 'What can I hold?',
 		cpPredictSub: 'Even-split pace or finish time from your CP model. Pace is /500m (RowErg & SkiErg only).',
 		cpModeDuration: 'Hold for…',
@@ -763,6 +815,15 @@ export const en = {
 		introLink: 'Edit Profile → Applications',
 		introAfter:
 			'). Paste it here once — rowplay sends it to the Worker over HTTPS, validates it, seals it into the httpOnly rp_tok cookie, and uses it only for server-side logbook reads. The token is never stored in KV or D1.',
+		trustTitle: 'How rowplay handles the token',
+		trustAccessTitle: 'Access:',
+		trustAccessBody: 'a personal Concept2 token authenticates as you; rowplay uses it only to read your profile, workouts and stroke data server-side.',
+		trustStoredTitle: 'Storage:',
+		trustStoredBody: 'the validated token is sealed into the httpOnly rp_tok cookie, not localStorage, KV or D1.',
+		trustDisconnectTitle: 'Disconnect:',
+		trustDisconnectBody: 'log out or delete account data from Data to clear the token cookie, session and private cache.',
+		trustCacheTitle: 'Cache:',
+		trustCacheBody: 'D1 caches workout summaries and replay detail while connected; public shares or leaderboard entries are created only when you publish.',
 		apiToken: 'API token',
 		placeholder: 'Paste your token',
 		connect: 'Connect with token',

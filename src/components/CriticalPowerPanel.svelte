@@ -221,6 +221,9 @@
 
 <style>
 	.cpcard {
+		min-width: 0;
+		max-width: 100%;
+		overflow-x: clip;
 		margin-bottom: 1rem;
 		background: linear-gradient(135deg, rgba(158, 91, 45, 0.08), var(--bg-elev) 65%);
 		border-color: rgba(158, 91, 45, 0.28);

@@ -10,6 +10,7 @@ import {
 	loadWorkouts,
 	syncStatus
 } from '$lib/server/data';
+import { firstRunEligible } from '$lib/firstRun';
 
 export const load: PageServerLoad = async (event) => {
 	if (!event.locals.demo && !event.locals.user) {
@@ -37,6 +38,7 @@ export const load: PageServerLoad = async (event) => {
 		aggregates,
 		sync,
 		demo: event.locals.demo,
+		firstRunEligible: firstRunEligible(event.locals.demo, event.locals.user),
 		calendarEndDay,
 		annualGoal,
 		goalYear,

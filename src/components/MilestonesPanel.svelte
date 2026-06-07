@@ -104,6 +104,10 @@
 {/if}
 
 <style>
+	.milestones {
+		min-width: 0;
+		overflow: hidden;
+	}
 	.milestones-title {
 		display: flex;
 		align-items: center;
@@ -113,17 +117,16 @@
 		margin: 0;
 	}
 	.milestones-row {
-		display: flex;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
 		gap: 0.65rem;
-		overflow-x: auto;
+		max-width: 100%;
+		min-width: 0;
 		padding-bottom: 0.15rem;
-		scroll-snap-type: x proximity;
 	}
 	.milestone-card {
-		flex: 0 0 auto;
-		min-width: 9.5rem;
-		max-width: 12rem;
-		scroll-snap-align: start;
+		min-width: 0;
+		max-width: none;
 		border: 1px solid var(--hairline);
 	}
 	.milestone-card--earned {
@@ -131,8 +134,6 @@
 	}
 	.milestone-card--next {
 		opacity: 0.88;
-		min-width: 13rem;
-		max-width: 16rem;
 	}
 	.milestone-icon {
 		color: var(--ghost);

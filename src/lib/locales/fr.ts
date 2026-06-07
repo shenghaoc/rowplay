@@ -80,6 +80,7 @@ export const fr = {
 		replay: 'Replay',
 		loading: 'chargement…',
 		tryAgain: 'Veuillez réessayer.',
+		dismiss: 'Fermer',
 		notAffiliated: 'non affilié à Concept2',
 		tagline: 'rowplay · analyse de logbook Concept2 & replay en temps réel'
 	},
@@ -116,7 +117,15 @@ export const fr = {
 		feat2Title: 'Analyses par fraction',
 		feat2Body: 'Allure, cadence, puissance et HR dans le temps — sur les trois machines.',
 		feat3Title: 'En périphérie',
-		feat3Body: 'Servi depuis Cloudflare avec des données de coups en cache pour des replays instantanés.'
+		feat3Body: 'Servi depuis Cloudflare avec des données de coups en cache pour des replays instantanés.',
+		tourEyebrow: 'Première visite',
+		tourTitle: 'Quatre choses à essayer',
+		tourBody: 'Commencez par le tableau de bord, ouvrez un replay, affrontez un ghost du leaderboard, puis exportez les données à inspecter ailleurs.',
+		tourDashboard: 'Tableau de bord : totaux, tendances et PB',
+		tourReplay: 'Replay : parcours et jauges synchronisés',
+		tourGhost: 'Ghost racing : chassez un effort passé ou rival',
+		tourExport: 'Export : CSV, JSON ou fichiers replay',
+		tourDismiss: 'Fermer la visite initiale'
 	},
 	dashboard: {
 		eyebrow: 'Votre logbook',
@@ -137,6 +146,49 @@ export const fr = {
 		totalDistance: 'Distance totale',
 		totalTime: 'Temps total',
 		avgPace: 'Allure moy.',
+		sectionCoreEyebrow: 'Commencer ici',
+		sectionCore: 'Lecture du jour',
+		sectionWorkoutsEyebrow: 'Séances',
+		sectionWorkouts: 'Trouver un replay',
+		sectionWorkoutsBody: 'Filtrez, taguez, comparez et ouvrez les séances sans passer d’abord par les panneaux d’analyse avancée.',
+		sectionRecordsEyebrow: 'Objectifs',
+		sectionRecords: 'Objectifs, badges et PB',
+		sectionRecordsBody: 'Objectifs de saison, jalons, records standard et outils de prédiction restent ensemble.',
+		sectionAdvancedEyebrow: 'Analyse',
+		sectionAdvanced: 'Analyse avancée',
+		sectionAdvancedBody: 'Modèle de puissance, charge d’entraînement, efficacité de coups et tendances longues pour l’analyse détaillée.',
+		sectionPower: 'CP/W′ et fraîcheur',
+		sectionPowerBody: 'Critical power, allure soutenable et équilibre de charge depuis votre historique.',
+		sectionTraining: 'Structure d’entraînement',
+		sectionTrainingBody: 'Calendrier, intensité et tendances montrent la répartition du travail.',
+		sectionStroke: 'Efficacité de coups et sports',
+		sectionStrokeBody: 'Tendance DPS et synthèses par machine pour le contexte technique et d’allure.',
+		tour: {
+			eyebrow: 'Guide démo',
+			title: 'Essayez ceci d’abord',
+			body: 'Ces conseils sont optionnels et restent fermés dans ce navigateur.',
+			dismissHint: 'Fermer {title}',
+			latestReplay: {
+				title: 'Rejouer la dernière séance',
+				body: 'Ouvrez la dernière pièce démo et appuyez sur lecture.',
+				action: 'Ouvrir le replay'
+			},
+			criticalPower: {
+				title: 'Consulter CP/W′',
+				body: 'Voir le modèle de puissance soutenable et le prédicteur d’allure.',
+				action: 'Aller au panneau'
+			},
+			workoutFilters: {
+				title: 'Utiliser les filtres',
+				body: 'Réduisez la liste par distance, tags, coups ou allure.',
+				action: 'Tester les filtres'
+			},
+			leaderboardGhost: {
+				title: 'Affronter un ghost',
+				body: 'Ouvrez un tableau standard et utilisez Race pour préarmer un rival.',
+				action: 'Ouvrir le leaderboard'
+			}
+		},
 		pbTitle: 'Records personnels · distances standard',
 		bySport: 'Par sport',
 		thSport: 'Sport',
@@ -206,7 +258,7 @@ export const fr = {
 			}
 		},
 		formTitle: 'Forme et fraîcheur',
-		formPremium: 'Fonction premium — débloquée',
+		formAdvanced: 'Analyse avancée',
 		formSub: 'Charge d’entraînement sur toutes les machines, calée sur votre propre puissance seuil.',
 		formFitness: 'Forme',
 		formFatigue: 'Fatigue',
@@ -222,7 +274,7 @@ export const fr = {
 		formChartFitness: 'Forme',
 		formChartFatigue: 'Fatigue',
 		formChartForm: 'État de forme',
-		formEmpty: 'Enregistrez quelques séances de plus sur quelques semaines pour débloquer votre graphique forme et fraîcheur.',
+		formEmpty: 'Enregistrez quelques séances de plus sur quelques semaines pour afficher votre graphique forme et fraîcheur.',
 		bandTransition: 'Désentraînement',
 		descTransition: 'Très frais, mais la forme baisse. Il est temps de reprendre le travail.',
 		bandFresh: 'Frais',
@@ -294,7 +346,7 @@ export const fr = {
 		cpExplainModel:
 			'Le CP est la puissance que vous pourriez tenir sur un long morceau sans décroître — environ votre plafond 30–60 min. W′ ({wPrime} kJ) est le surplus au-dessus du CP pour les efforts courts. Ensemble, ils prédisent l’intensité tenable pour toute durée.',
 		cpExplainEstimate:
-			'Le CP est estimé à {cp} W à partir de vos meilleurs efforts longs — la puissance tenable sur un long morceau sans décroître. Enregistrez plus de durées variées (sprints jusqu’à 30+ min) pour débloquer un modèle CP/W′ complet.',
+			'Le CP est estimé à {cp} W à partir de vos meilleurs efforts longs — la puissance tenable sur un long morceau sans décroître. Enregistrez plus de durées variées (sprints jusqu’à 30+ min) pour ajuster un modèle CP/W′ plus complet.',
 		cpPredictTitle: 'Que puis-je tenir ?',
 		cpPredictSub: 'Allure en fraction régulière ou temps au finish selon votre modèle CP. Allure en /500m (RowErg et SkiErg uniquement).',
 		cpModeDuration: 'Tenir pendant…',
@@ -761,6 +813,15 @@ export const fr = {
 		introLink: 'Modifier le profil → Applications',
 		introAfter:
 			'). Collez-le ici une fois — rowplay l’envoie au Worker en HTTPS, le valide, le scelle dans le cookie httpOnly rp_tok et l’utilise uniquement pour les lectures côté serveur. Le jeton n’est jamais stocké dans KV ni D1.',
+		trustTitle: 'Comment rowplay gère le jeton',
+		trustAccessTitle: 'Accès :',
+		trustAccessBody: 'un jeton Concept2 personnel vous authentifie ; rowplay l’utilise uniquement côté serveur pour lire profil, séances et données de coups.',
+		trustStoredTitle: 'Stockage :',
+		trustStoredBody: 'le jeton validé est scellé dans le cookie httpOnly rp_tok, pas dans localStorage, KV ni D1.',
+		trustDisconnectTitle: 'Déconnexion :',
+		trustDisconnectBody: 'se déconnecter ou supprimer les données du compte depuis Données efface le cookie de jeton, la session et le cache privé.',
+		trustCacheTitle: 'Cache :',
+		trustCacheBody: 'D1 cache les résumés de séances et détails de replay pendant la connexion ; les partages publics ou entrées leaderboard ne sont créés que si vous publiez.',
 		apiToken: 'Jeton API',
 		placeholder: 'Collez votre jeton',
 		connect: 'Connecter avec le jeton',

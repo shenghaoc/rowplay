@@ -80,6 +80,7 @@ export const de = {
 		replay: 'Replay',
 		loading: 'lädt…',
 		tryAgain: 'Bitte versuche es erneut.',
+		dismiss: 'Ausblenden',
 		notAffiliated: 'nicht mit Concept2 verbunden',
 		tagline: 'rowplay · Concept2-Logbuch-Analyse & Echtzeit-Replay'
 	},
@@ -116,7 +117,15 @@ export const de = {
 		feat2Title: 'Split-Analysen',
 		feat2Body: 'Pace, Schlagfrequenz, Power und HF über die Zeit — auf allen drei Geräten.',
 		feat3Title: 'Am Edge',
-		feat3Body: 'Über Cloudflare ausgeliefert, mit gecachten Schlagdaten für sofortige Replays.'
+		feat3Body: 'Über Cloudflare ausgeliefert, mit gecachten Schlagdaten für sofortige Replays.',
+		tourEyebrow: 'Erster Start',
+		tourTitle: 'Vier Dinge zum Ausprobieren',
+		tourBody: 'Starte im Dashboard, öffne ein Replay, fahre gegen einen Leaderboard-Geist und exportiere dann die Daten, die du extern prüfen willst.',
+		tourDashboard: 'Dashboard: Summen, Trends und PBs',
+		tourReplay: 'Replay: synchrone Strecke und Anzeigen',
+		tourGhost: 'Ghost-Racing: jage eine frühere oder fremde Leistung',
+		tourExport: 'Export: CSV, JSON oder Replay-Dateien',
+		tourDismiss: 'Erststart-Tour ausblenden'
 	},
 	dashboard: {
 		eyebrow: 'Dein Logbuch',
@@ -137,6 +146,49 @@ export const de = {
 		totalDistance: 'Gesamtdistanz',
 		totalTime: 'Gesamtzeit',
 		avgPace: 'Ø Pace',
+		sectionCoreEyebrow: 'Hier starten',
+		sectionCore: 'Heutiger Überblick',
+		sectionWorkoutsEyebrow: 'Workouts',
+		sectionWorkouts: 'Replay finden',
+		sectionWorkoutsBody: 'Filtere, tagge, vergleiche und öffne Workouts, ohne zuerst durch tiefere Analysebereiche zu gehen.',
+		sectionRecordsEyebrow: 'Ziele',
+		sectionRecords: 'Ziele, Abzeichen & PBs',
+		sectionRecordsBody: 'Saisonziele, Meilensteine, Standarddistanz-Bestzeiten und Prognosen bleiben zusammen.',
+		sectionAdvancedEyebrow: 'Analyse',
+		sectionAdvanced: 'Erweiterte Analyse',
+		sectionAdvancedBody: 'Power-Modell, Trainingslast, Schlag-Effizienz und Langzeittrends für die tiefere Auswertung.',
+		sectionPower: 'CP/W′ & Frische',
+		sectionPowerBody: 'Critical Power, haltbare Pace und Lastbalance aus deiner eigenen Historie.',
+		sectionTraining: 'Trainingsstruktur',
+		sectionTrainingBody: 'Kalender, Intensität und Trends zeigen, wie die Arbeit verteilt ist.',
+		sectionStroke: 'Schlag-Effizienz & Sport-Splits',
+		sectionStrokeBody: 'DPS-Trend und Geräte-Zusammenfassungen für Technik- und Pace-Kontext.',
+		tour: {
+			eyebrow: 'Demo-Leitfaden',
+			title: 'Das zuerst probieren',
+			body: 'Diese Hinweise sind optional und bleiben in diesem Browser ausgeblendet.',
+			dismissHint: '{title} ausblenden',
+			latestReplay: {
+				title: 'Neuestes Workout abspielen',
+				body: 'Öffne das neueste Demo-Stück und drücke Play.',
+				action: 'Replay öffnen'
+			},
+			criticalPower: {
+				title: 'CP/W′ prüfen',
+				body: 'Sieh dir das nachhaltige Power-Modell und den Pace-Prädiktor an.',
+				action: 'Zum Panel'
+			},
+			workoutFilters: {
+				title: 'Workout-Filter nutzen',
+				body: 'Grenze die Liste nach Distanz, Tags, Schlagdaten oder Pace ein.',
+				action: 'Filter testen'
+			},
+			leaderboardGhost: {
+				title: 'Leaderboard-Geist fahren',
+				body: 'Öffne ein Standard-Board und nutze Race, um einen Rivalen vorzubereiten.',
+				action: 'Leaderboard öffnen'
+			}
+		},
 		pbTitle: 'Persönliche Bestzeiten · Standarddistanzen',
 		bySport: 'Nach Sport',
 		thSport: 'Sport',
@@ -206,7 +258,7 @@ export const de = {
 			}
 		},
 		formTitle: 'Fitness & Frische',
-		formPremium: 'Premium-Funktion — freigeschaltet',
+		formAdvanced: 'Erweiterte Analyse',
 		formSub: 'Trainingsbelastung über alle Geräte, skaliert auf deine eigene Schwellenleistung.',
 		formFitness: 'Fitness',
 		formFatigue: 'Ermüdung',
@@ -222,7 +274,7 @@ export const de = {
 		formChartFitness: 'Fitness',
 		formChartFatigue: 'Ermüdung',
 		formChartForm: 'Form',
-		formEmpty: 'Logge noch ein paar Einheiten über einige Wochen, um dein Fitness-&-Frische-Diagramm freizuschalten.',
+		formEmpty: 'Logge noch ein paar Einheiten über einige Wochen, damit dein Fitness-&-Frische-Diagramm angezeigt werden kann.',
 		bandTransition: 'Enttraining',
 		descTransition: 'Sehr frisch, aber die Fitness lässt nach. Zeit, wieder Gas zu geben.',
 		bandFresh: 'Frisch',
@@ -294,7 +346,7 @@ export const de = {
 		cpExplainModel:
 			'CP ist die Power, die du über ein langes Stück ohne Einbrechen halten könntest — ungefähr deine 30–60-Min-Obergrenze. W′ ({wPrime} kJ) ist der Extra-Burst über CP für kurze Anstrengungen. Zusammen prognostizieren sie, wie hart du für jede Dauer gehen kannst.',
 		cpExplainEstimate:
-			'CP wird auf {cp} W aus deinen besten längeren Anstrengungen geschätzt — die Power, die du über ein langes Stück ohne Einbrechen halten könntest. Logge mehr verschiedene Dauern (Sprints bis 30+ Min), um ein vollständiges CP/W′-Modell freizuschalten.',
+			'CP wird auf {cp} W aus deinen besten längeren Anstrengungen geschätzt — die Power, die du über ein langes Stück ohne Einbrechen halten könntest. Logge mehr verschiedene Dauern (Sprints bis 30+ Min), um ein vollständigeres CP/W′-Modell zu fitten.',
 		cpPredictTitle: 'Was kann ich halten?',
 		cpPredictSub: 'Gleichmäßige Split-Pace oder Zielzeit aus deinem CP-Modell. Pace ist /500m (nur RowErg & SkiErg).',
 		cpModeDuration: 'Halten für…',
@@ -761,6 +813,15 @@ export const de = {
 		introLink: 'Profil bearbeiten → Anwendungen',
 		introAfter:
 			'). Füge es hier einmal ein — rowplay sendet es per HTTPS an den Worker, validiert es, versiegelt es im httpOnly-Cookie rp_tok und nutzt es nur für serverseitige Logbuch-Abfragen. Das Token wird nie in KV oder D1 gespeichert.',
+		trustTitle: 'Wie rowplay das Token behandelt',
+		trustAccessTitle: 'Zugriff:',
+		trustAccessBody: 'ein persönliches Concept2-Token authentifiziert dich; rowplay nutzt es nur serverseitig zum Lesen von Profil, Workouts und Schlagdaten.',
+		trustStoredTitle: 'Speicherung:',
+		trustStoredBody: 'das validierte Token wird im httpOnly-Cookie rp_tok versiegelt, nicht in localStorage, KV oder D1.',
+		trustDisconnectTitle: 'Trennen:',
+		trustDisconnectBody: 'Abmelden oder Kontodaten unter Daten löschen entfernt Token-Cookie, Sitzung und privaten Cache.',
+		trustCacheTitle: 'Cache:',
+		trustCacheBody: 'D1 speichert Workout-Zusammenfassungen und Replay-Details während der Verbindung; öffentliche Shares oder Leaderboard-Einträge entstehen nur durch Veröffentlichung.',
 		apiToken: 'API-Token',
 		placeholder: 'Token einfügen',
 		connect: 'Mit Token verbinden',

@@ -43,6 +43,7 @@
 	import MoveRight from '@lucide/svelte/icons/move-right';
 	import Play from '@lucide/svelte/icons/play';
 	import Activity from '@lucide/svelte/icons/activity';
+	import X from '@lucide/svelte/icons/x';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { getThemeContext } from '$lib/theme.svelte';
 	import { chartTheme, baseOptions } from '$lib/chartTheme';
@@ -50,6 +51,12 @@
 	import { LiveMode } from '$lib/liveMode.svelte';
 	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
 	import { computeMilestones, newlyAchievedMilestones } from '$lib/milestones';
+	import {
+		dismissDashboardHint,
+		dismissFirstRunSurface,
+		visibleDashboardHints,
+		type DashboardHintId
+	} from '$lib/firstRun';
 
 	import { logbookEpochMillis, todayKeyForTz } from '$lib/datetime';
 	import { computeDpsTrend, movingAverage } from '$lib/dpsTrend';
@@ -103,6 +110,7 @@
 
 	let liveMode = $state<LiveMode | null>(null);
 	let demoHomeTz = $state<string | undefined>(undefined);
+	let dashboardHintIds = $state<DashboardHintId[]>([]);
 
 	const homeTz = $derived(data.demo ? demoHomeTz : data.homeTimezone);
 
@@ -254,6 +262,7 @@
 	}
 
 	onMount(() => {
+		if (data.firstRunEligible) dashboardHintIds = visibleDashboardHints();
 		if (data.demo) demoHomeTz = readHomeTimezoneClient();
 		const lm = new LiveMode(!!data.demo, {
 			onWorkouts: handleLiveWorkouts,
@@ -277,6 +286,16 @@
 		if (lm.enabled) lm.start();
 		return () => lm.destroy();
 	});
+
+	function dismissHint(id: DashboardHintId) {
+		dismissDashboardHint(id);
+		dashboardHintIds = dashboardHintIds.filter((hintId) => hintId !== id);
+	}
+
+	function dismissDashboardTour() {
+		dismissFirstRunSurface('dashboard');
+		dashboardHintIds = [];
+	}
 
 	async function sync() {
 		if (syncing) return;
@@ -363,6 +382,23 @@
 	// ---- Latest-session hero: pace is the number you check first ----
 	// `workouts` arrives newest-first from the logbook.
 	const latest = $derived<Workout | undefined>(filtered[0]);
+
+	const dashboardHints = $derived.by(() => {
+		const hrefs: Record<DashboardHintId, string> = {
+			latestReplay: latest ? `/replay/${latest.id}` : '/dashboard#workouts',
+			criticalPower: '/dashboard#critical-power',
+			workoutFilters: '/dashboard#workout-filters',
+			leaderboardGhost: '/leaderboard?sport=rower&distance=2000'
+		};
+		return dashboardHintIds.map((id) => ({
+			id,
+			href: hrefs[id],
+			title: t(`dashboard.tour.${id}.title`),
+			body: t(`dashboard.tour.${id}.body`),
+			action: t(`dashboard.tour.${id}.action`)
+		}));
+	});
+	const showDashboardTour = $derived(data.firstRunEligible && dashboardHints.length > 0);
 
 	const heroDps = $derived(
 		latest && latest.strokeRate ? distancePerStroke(latest.pace, latest.strokeRate) : 0
@@ -703,11 +739,50 @@
 		<p class="syncnote muted">{t('dashboard.recentNote')}</p>
 	{/if}
 
-	<MilestonesPanel workouts={workouts} personalBests={milestonePBs} endDay={calendarEndDay} {homeTz} />
+	{#if showDashboardTour}
+		<section class="card card-border bg-base-100 shadow-md p-5 tour-card" data-e2e="dashboard-tour" aria-labelledby="dashboard-tour-title">
+			<div class="tour-head">
+				<div>
+					<p class="eyebrow">{t('dashboard.tour.eyebrow')}</p>
+					<h2 id="dashboard-tour-title">{t('dashboard.tour.title')}</h2>
+					<p class="muted tour-copy">{t('dashboard.tour.body')}</p>
+				</div>
+				<button type="button" class="btn btn-ghost btn-sm" onclick={dismissDashboardTour}>
+					<X size={14} aria-hidden="true" />
+					{t('common.dismiss')}
+				</button>
+			</div>
+			<div class="tour-grid">
+				{#each dashboardHints as hint (hint.id)}
+					<div class="tour-hint">
+						<a class="tour-link" href={hint.href}>
+							<span class="tour-title">{hint.title}</span>
+							<span class="muted">{hint.body}</span>
+							<span class="tour-action">{hint.action}</span>
+						</a>
+						<button
+							type="button"
+							class="btn btn-ghost btn-square btn-xs"
+							aria-label={t('dashboard.tour.dismissHint', { title: hint.title })}
+							onclick={() => dismissHint(hint.id)}
+						>
+							<X size={12} aria-hidden="true" />
+						</button>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	<section class="core-stack" data-e2e="core-summary" aria-labelledby="dashboard-core-title">
+		<div class="section-head section-head--compact">
+			<p class="eyebrow">{t('dashboard.sectionCoreEyebrow')}</p>
+			<h2 id="dashboard-core-title">{t('dashboard.sectionCore')}</h2>
+		</div>
 
 	<!-- ============ HERO — LATEST SESSION ============ -->
 	{#if latest}
-		<a class="card latest" href="/replay/{latest.id}">
+		<a class="card latest" href="/replay/{latest.id}" data-e2e="latest-replay">
 			<span class="latest-accent" aria-hidden="true"></span>
 			<div class="card-body latest-body">
 				<div class="latest-main">
@@ -756,11 +831,11 @@
 					<span class="btn btn-primary btn-lg latest-replay"><Play size={18} /> {t('common.replay')}</span>
 				</div>
 			</div>
-		</a>
-	{/if}
+			</a>
+		{/if}
 
 	<!-- ============ STAT STRIP ============ -->
-	<div class="dash-stats">
+		<div class="dash-stats">
 		<div class="card statcard">
 			<div class="statlabel eyebrow">{t('dashboard.sessions')}</div>
 			<div class="statval mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
@@ -777,26 +852,115 @@
 			<div class="statlabel eyebrow">{t('dashboard.avgPace')}</div>
 			<div class="statval mono" style="color: var(--pace)">{fmtPace(avgPace)}</div>
 		</div>
-	</div>
+		</div>
+	</section>
 
-	<!-- ============ MAIN + RAIL ============ -->
-	<div class="dash-grid">
-		<!-- Main column (analysis) — first in DOM so main content leads on mobile. -->
-		<div class="col-main">
-			{#if filtered.length}
-				<TrainingHeatmap workouts={filtered} endDay={calendarEndDay} {homeTz} />
+	<section id="workouts" class="dashboard-section workout-section" data-e2e="workout-section" aria-labelledby="workouts-title">
+		<div class="section-head">
+			<p class="eyebrow">{t('dashboard.sectionWorkoutsEyebrow')}</p>
+			<h2 id="workouts-title">{t('dashboard.sectionWorkouts')}</h2>
+			<p class="muted">{t('dashboard.sectionWorkoutsBody')}</p>
+		</div>
+		<div id="workout-filters">
+			<WorkoutListFilters
+				query={listQuery}
+				{workoutTypes}
+				resultCount={listWorkouts.length}
+				onchange={applyListQuery}
+				onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
+			/>
+		</div>
+		<div class="tagfilter card card-border bg-base-100 shadow-md p-4">
+			<div class="text-xs uppercase opacity-70 mb-2">{t('workout.tag.label')}</div>
+			<ChipGroup ariaLabel={t('workout.tag.label')}>
+				<ChipButton active={tagFilter === 'all'} onclick={() => (tagFilter = 'all')}>
+					{t('workout.tag.filter.all')}
+				</ChipButton>
+				{#each WORKOUT_TAGS as tag}
+					<ChipButton active={tagFilter === tag} onclick={() => (tagFilter = tag)}>
+						{t(`workout.tag.${tag}`)}
+					</ChipButton>
+				{/each}
+			</ChipGroup>
+		</div>
+		{#if compareAnchor != null}
+			<div class="compare-hint card card-border bg-base-100 shadow-md p-5 muted" role="status">
+				{t('workoutList.comparePick')}
+				<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
+			</div>
+		{/if}
+		<WorkoutList
+			workouts={listWorkouts}
+			{compareAnchor}
+			onCompare={onCompareWorkout}
+			pbIds={pbIds}
+			{newPbIds}
+			{newEntryIds}
+			{medianPaceSecs}
+			onTagSaved={onWorkoutTagSaved}
+		/>
+	</section>
+
+	<section id="goals-records" class="dashboard-section" data-e2e="records-section" aria-labelledby="records-title">
+		<div class="section-head">
+			<p class="eyebrow">{t('dashboard.sectionRecordsEyebrow')}</p>
+			<h2 id="records-title">{t('dashboard.sectionRecords')}</h2>
+			<p class="muted">{t('dashboard.sectionRecordsBody')}</p>
+		</div>
+		<div class="records-grid">
+			<EngagementPanel
+				workouts={workouts}
+				annualGoal={data.annualGoal}
+				{goalYear}
+				endDay={calendarEndDay}
+				{homeTz}
+			/>
+
+			<MilestonesPanel workouts={workouts} personalBests={milestonePBs} endDay={calendarEndDay} {homeTz} />
+
+			{#if pbs.length}
+				<div class="card card-border bg-base-100 shadow-md p-5 pbcard">
+					<div class="muted label">{t('dashboard.pbTitle')}</div>
+					<div class="pbgrid">
+						{#each pbs as pb}
+							<div class="pb">
+								<div class="pbdist mono">{pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`}</div>
+								<div class="pbtime mono">{fmtTime(pb.time, true)}</div>
+								<div class="pbsub muted"><SportIcon sport={pb.sport} size={12} /> {fmtPace(pb.pace)} · {fmtDate(pb.date)}</div>
+							</div>
+						{/each}
+					</div>
+				</div>
 			{/if}
 
-			<!-- Fitness & Freshness — the Performance Management Chart -->
-			<CriticalPowerPanel workouts={workouts} />
+			<PerformancePredictorCard personalBests={allPbs} />
+		</div>
+	</section>
 
-			{#if load}
-				<div class="card card-border bg-base-100 shadow-md p-5 formcard">
+	<section id="advanced-analysis" class="dashboard-section" data-e2e="advanced-section" aria-labelledby="advanced-title">
+		<div class="section-head">
+			<p class="eyebrow">{t('dashboard.sectionAdvancedEyebrow')}</p>
+			<h2 id="advanced-title">{t('dashboard.sectionAdvanced')}</h2>
+			<p class="muted">{t('dashboard.sectionAdvancedBody')}</p>
+		</div>
+
+	<!-- ============ MAIN + RAIL ============ -->
+		<div class="dash-grid">
+			<!-- Main column (analysis) — first in DOM so main content leads on mobile. -->
+			<div class="col-main">
+				<div id="critical-power" class="analysis-kicker">
+					<h3>{t('dashboard.sectionPower')}</h3>
+					<p class="muted">{t('dashboard.sectionPowerBody')}</p>
+				</div>
+				<CriticalPowerPanel workouts={workouts} />
+
+				{#if load}
+					<div class="card card-border bg-base-100 shadow-md p-5 formcard">
 					<div class="formhead">
 						<div class="formtitle">
 							<Activity size={18} />
 							<span class="label">{t('dashboard.formTitle')}</span>
-							<span class="badge badge-soft badge-primary">{t('dashboard.formPremium')}</span>
+							<span class="badge badge-soft badge-primary">{t('dashboard.formAdvanced')}</span>
 						</div>
 						<span class="badge band-{formBandClass[load.band]}">{bandLabel[load.band]}</span>
 					</div>
@@ -852,10 +1016,18 @@
 					{:else}
 						<p class="muted emptytrend">{t('dashboard.formEmpty')}</p>
 					{/if}
-				</div>
-			{/if}
+					</div>
+				{/if}
 
-			<TrainingIntensityChart workouts={filtered} />
+				<div class="analysis-kicker">
+					<h3>{t('dashboard.sectionTraining')}</h3>
+					<p class="muted">{t('dashboard.sectionTrainingBody')}</p>
+				</div>
+				{#if filtered.length}
+					<TrainingHeatmap workouts={filtered} endDay={calendarEndDay} {homeTz} />
+				{/if}
+
+				<TrainingIntensityChart workouts={filtered} />
 
 			<!-- Trend -->
 			{#if filtered.length > 1}
@@ -928,10 +1100,14 @@
 						</p>
 					{/if}
 				</div>
-			{/if}
+				{/if}
 
-			<!-- DPS trend — stroke efficiency over time -->
-			<div class="card card-border bg-base-100 shadow-md p-5 chartcard">
+				<!-- DPS trend — stroke efficiency over time -->
+				<div class="analysis-kicker">
+					<h3>{t('dashboard.sectionStroke')}</h3>
+					<p class="muted">{t('dashboard.sectionStrokeBody')}</p>
+				</div>
+				<div class="card card-border bg-base-100 shadow-md p-5 chartcard">
 				<div class="trendhead">
 					<div class="label">{t('dashboard.dpsTrend.title')}</div>
 					<div class="dpscontrols">
@@ -1014,78 +1190,16 @@
 				</div>
 			{/if}
 
-			<!-- Result sheet -->
-			<WorkoutListFilters
-				query={listQuery}
-				{workoutTypes}
-				resultCount={listWorkouts.length}
-				onchange={applyListQuery}
-				onclear={() => applyListQuery({ sport: listQuery.sport, sort: 'date', dir: 'desc' })}
-			/>
-			<div class="tagfilter card card-border bg-base-100 shadow-md p-4">
-				<div class="text-xs uppercase opacity-70 mb-2">{t('workout.tag.label')}</div>
-				<ChipGroup ariaLabel={t('workout.tag.label')}>
-					<ChipButton active={tagFilter === 'all'} onclick={() => (tagFilter = 'all')}>
-						{t('workout.tag.filter.all')}
-					</ChipButton>
-					{#each WORKOUT_TAGS as tag}
-						<ChipButton active={tagFilter === tag} onclick={() => (tagFilter = tag)}>
-							{t(`workout.tag.${tag}`)}
-						</ChipButton>
-					{/each}
-				</ChipGroup>
-			</div>
-			{#if compareAnchor != null}
-				<div class="compare-hint card card-border bg-base-100 shadow-md p-5 muted" role="status">
-					{t('workoutList.comparePick')}
-					<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
-				</div>
-			{/if}
-			<WorkoutList
-				workouts={listWorkouts}
-				{compareAnchor}
-				onCompare={onCompareWorkout}
-				pbIds={pbIds}
-				{newPbIds}
-				{newEntryIds}
-				{medianPaceSecs}
-				onTagSaved={onWorkoutTagSaved}
-			/>
 		</div>
 
-		<!-- Right rail (engagement) — visually column 2 on desktop via CSS grid-column. -->
-		<aside class="col-rail">
-			{#if liveMode}
+		{#if liveMode}
+			<!-- Right rail: keep live-mode controls adjacent to advanced telemetry. -->
+			<aside class="col-rail">
 				<LiveModePanel live={liveMode} />
-			{/if}
-
-			<EngagementPanel
-				workouts={workouts}
-				annualGoal={data.annualGoal}
-				{goalYear}
-				endDay={calendarEndDay}
-				{homeTz}
-			/>
-
-			<!-- Personal bests -->
-			{#if pbs.length}
-				<div class="card card-border bg-base-100 shadow-md p-5 pbcard">
-					<div class="muted label">{t('dashboard.pbTitle')}</div>
-					<div class="pbgrid">
-						{#each pbs as pb}
-							<div class="pb">
-								<div class="pbdist mono">{pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`}</div>
-								<div class="pbtime mono">{fmtTime(pb.time, true)}</div>
-								<div class="pbsub muted"><SportIcon sport={pb.sport} size={12} /> {fmtPace(pb.pace)} · {fmtDate(pb.date)}</div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/if}
-
-			<PerformancePredictorCard personalBests={allPbs} />
-		</aside>
+			</aside>
+		{/if}
 	</div>
+	</section>
 </div>
 
 <style>
@@ -1119,19 +1233,143 @@
 		align-items: center;
 		gap: 0.75rem;
 		flex-wrap: wrap;
+		max-width: 100%;
+		min-width: 0;
 	}
 	.filtertabs {
+		max-width: 100%;
+		overflow-x: auto;
 		background: var(--paper-inset);
 		font-family: var(--display);
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
+	.filtertabs .tab {
+		flex: 0 0 auto;
+	}
 	.sync { display: inline-flex; align-items: center; gap: 0.4rem; }
 	.syncicon { display: inline-flex; }
 	.syncicon.spin { animation: rp-spin 1s linear infinite; }
 	@keyframes rp-spin { to { transform: rotate(360deg); } }
 	.syncnote { font-size: 0.82rem; margin: -0.5rem 0 1.25rem; }
+
+	.tour-card {
+		margin-bottom: 1.25rem;
+		border-color: color-mix(in srgb, var(--live) 24%, var(--hairline));
+		background: linear-gradient(135deg, color-mix(in srgb, var(--live) 7%, var(--paper-raised)), var(--paper-raised) 72%);
+	}
+	.tour-head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+	.tour-head h2 {
+		margin: 0.15rem 0 0;
+		font-size: 1.05rem;
+		font-weight: 800;
+		text-transform: uppercase;
+	}
+	.tour-copy {
+		margin: 0.35rem 0 0;
+		max-width: 64ch;
+		font-size: 0.9rem;
+	}
+	.tour-grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 0.65rem;
+		margin-top: 1rem;
+	}
+	.tour-hint {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 0.4rem;
+		align-items: start;
+		padding: 0.7rem;
+		border: 1px solid var(--hairline);
+		border-radius: var(--r-ctrl);
+		background: var(--paper-inset);
+	}
+	.tour-link {
+		display: grid;
+		gap: 0.25rem;
+		color: var(--ink);
+	}
+	.tour-link:hover {
+		text-decoration: none;
+	}
+	.tour-title,
+	.tour-action {
+		font-weight: 800;
+		font-size: 0.82rem;
+	}
+	.tour-title {
+		font-family: var(--display);
+		text-transform: uppercase;
+	}
+	.tour-link .muted {
+		font-size: 0.78rem;
+		line-height: 1.35;
+	}
+	.tour-action {
+		color: var(--ghost);
+	}
+
+	.core-stack,
+	.dashboard-section {
+		display: grid;
+		gap: 1rem;
+		min-width: 0;
+		scroll-margin-top: 5rem;
+	}
+	.dashboard-section {
+		margin-top: 2rem;
+	}
+	.section-head {
+		max-width: 54rem;
+		min-width: 0;
+	}
+	.section-head--compact {
+		margin-bottom: -0.25rem;
+	}
+	.section-head h2 {
+		margin: 0.1rem 0 0;
+		font-size: clamp(1.1rem, 3vw, 1.45rem);
+		font-weight: 900;
+		line-height: 1.05;
+		text-transform: uppercase;
+	}
+	.section-head p:last-child {
+		margin: 0.4rem 0 0;
+		font-size: 0.92rem;
+	}
+	.records-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 1rem;
+		align-items: start;
+		min-width: 0;
+	}
+	.records-grid > :global(*) {
+		min-width: 0;
+	}
+	.analysis-kicker {
+		padding: 0.3rem 0 0.1rem;
+		border-top: 2px solid var(--ink);
+		scroll-margin-top: 5rem;
+	}
+	.analysis-kicker h3 {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 900;
+		text-transform: uppercase;
+	}
+	.analysis-kicker p {
+		margin: 0.25rem 0 0;
+		font-size: 0.86rem;
+	}
 
 	/* ---- Hero --------------------------------------------------------------- */
 	.latest {
@@ -1179,7 +1417,7 @@
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 0.85rem;
-		margin-bottom: 1.5rem;
+		margin-bottom: 0;
 	}
 	.statcard {
 		position: relative;
@@ -1204,9 +1442,17 @@
 		grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 		gap: 1rem;
 		align-items: start;
+		width: 100%;
+		max-width: 100%;
+		min-width: 0;
+		overflow-x: clip;
 	}
-	.col-main { grid-column: 1; display: grid; gap: 1rem; align-content: start; min-width: 0; }
+	.col-main { grid-column: 1; display: grid; gap: 1rem; align-content: start; max-width: 100%; min-width: 0; overflow-x: clip; }
 	.col-rail { grid-column: 2; grid-row: 1; display: grid; gap: 1rem; align-content: start; min-width: 0; }
+	.col-main > :global(*) {
+		max-width: 100%;
+		min-width: 0;
+	}
 
 	.label { font-size: 0.8rem; font-weight: 700; }
 
@@ -1287,12 +1533,23 @@
 	@media (max-width: 1100px) {
 		.dash-grid { grid-template-columns: 1fr; }
 		.col-main, .col-rail { grid-column: 1; grid-row: auto; }
+		.tour-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	}
+	@media (min-width: 860px) {
+		.records-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}
 	@media (max-width: 720px) {
 		.dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 		.latest-body { grid-template-columns: 1fr; }
 		.latest-cta { justify-self: start; }
 		.latest-replay { width: 100%; }
+		.records-grid,
+		.tour-grid {
+			grid-template-columns: 1fr;
+		}
+		.tour-head {
+			flex-direction: column;
+		}
 	}
 	@media (max-width: 460px) {
 		.dash-stats { grid-template-columns: 1fr; }
