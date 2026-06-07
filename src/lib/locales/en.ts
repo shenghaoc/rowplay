@@ -70,6 +70,7 @@ export const en = {
 	nav: {
 		dashboard: 'Dashboard',
 		leaderboard: 'Leaderboards',
+		docs: 'Docs',
 		settings: 'Data',
 		menuOpen: 'Open menu',
 		menuClose: 'Close menu',
@@ -111,6 +112,7 @@ export const en = {
 		exploreDemo: 'Explore the demo →',
 		openDashboard: 'Open dashboard →',
 		connect: 'Connect your Concept2 logbook →',
+		readGuide: 'Read the guide',
 		demoNote: 'Running in demo mode with sample data. Add a personal token to load your own logbook.',
 		feat1Title: 'Real-time replay',
 		feat1Body: 'Watch your pace race the course while gauges and charts play back in sync.',
@@ -126,6 +128,13 @@ export const en = {
 		tourGhost: 'Ghost racing: chase a past or rival effort',
 		tourExport: 'Export: CSV, JSON or replay files',
 		tourDismiss: 'Dismiss first-run tour'
+	},
+	docs: {
+		title: 'User guide',
+		description: 'How to use rowplay and keep repository documentation in sync with the website.',
+		badge: 'Repository-backed docs',
+		openDashboard: 'Open dashboard',
+		openSource: 'View source'
 	},
 	dashboard: {
 		eyebrow: 'Your logbook',

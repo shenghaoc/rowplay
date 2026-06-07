@@ -70,6 +70,7 @@ export const es = {
 	nav: {
 		dashboard: 'Panel',
 		leaderboard: 'Clasificaciones',
+		docs: 'Docs',
 		settings: 'Datos',
 		menuOpen: 'Abrir menú',
 		menuClose: 'Cerrar menú',
@@ -111,6 +112,7 @@ export const es = {
 		exploreDemo: 'Explorar la demo →',
 		openDashboard: 'Abrir el panel →',
 		connect: 'Conectar tu diario Concept2 →',
+		readGuide: 'Leer la guía',
 		demoNote: 'Modo demo con datos de ejemplo. Añade un token personal para cargar tu propio diario.',
 		feat1Title: 'Replay en tiempo real',
 		feat1Body: 'Mira tu ritmo en la pista mientras los indicadores y gráficos se reproducen en sincronía.',
@@ -126,6 +128,13 @@ export const es = {
 		tourGhost: 'Ghost racing: persigue un esfuerzo pasado o rival',
 		tourExport: 'Exportar: CSV, JSON o archivos de replay',
 		tourDismiss: 'Cerrar tour inicial'
+	},
+	docs: {
+		title: 'Guía de uso',
+		description: 'Cómo usar rowplay y mantener la documentación del repositorio sincronizada con el sitio.',
+		badge: 'Docs desde el repositorio',
+		openDashboard: 'Abrir panel',
+		openSource: 'Abrir fuente'
 	},
 	dashboard: {
 		eyebrow: 'Tu diario',

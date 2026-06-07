@@ -70,6 +70,7 @@ export const de = {
 	nav: {
 		dashboard: 'Dashboard',
 		leaderboard: 'Bestenlisten',
+		docs: 'Docs',
 		settings: 'Daten',
 		menuOpen: 'Menü öffnen',
 		menuClose: 'Menü schließen',
@@ -111,6 +112,7 @@ export const de = {
 		exploreDemo: 'Demo erkunden →',
 		openDashboard: 'Dashboard öffnen →',
 		connect: 'Concept2-Logbuch verbinden →',
+		readGuide: 'Guide lesen',
 		demoNote: 'Demo-Modus mit Beispieldaten. Füge ein persönliches Token hinzu, um dein eigenes Logbuch zu laden.',
 		feat1Title: 'Echtzeit-Replay',
 		feat1Body: 'Sieh zu, wie deine Pace die Strecke entlangfährt, während Anzeigen und Charts synchron ablaufen.',
@@ -126,6 +128,13 @@ export const de = {
 		tourGhost: 'Ghost-Racing: jage eine frühere oder fremde Leistung',
 		tourExport: 'Export: CSV, JSON oder Replay-Dateien',
 		tourDismiss: 'Erststart-Tour ausblenden'
+	},
+	docs: {
+		title: 'User Guide',
+		description: 'So nutzt du rowplay und hältst Repository-Dokumentation und Website synchron.',
+		badge: 'Docs aus dem Repository',
+		openDashboard: 'Dashboard öffnen',
+		openSource: 'Quelle öffnen'
 	},
 	dashboard: {
 		eyebrow: 'Dein Logbuch',

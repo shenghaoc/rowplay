@@ -70,6 +70,7 @@ export const fr = {
 	nav: {
 		dashboard: 'Tableau de bord',
 		leaderboard: 'Classements',
+		docs: 'Docs',
 		settings: 'Données',
 		menuOpen: 'Ouvrir le menu',
 		menuClose: 'Fermer le menu',
@@ -111,6 +112,7 @@ export const fr = {
 		exploreDemo: 'Explorer la démo →',
 		openDashboard: 'Ouvrir le tableau de bord →',
 		connect: 'Connecter votre logbook Concept2 →',
+		readGuide: 'Lire le guide',
 		demoNote: 'Mode démo avec des données d’exemple. Ajoutez un jeton personnel pour charger votre propre logbook.',
 		feat1Title: 'Replay en temps réel',
 		feat1Body: 'Regardez votre allure sur le parcours pendant que les jauges et graphiques défilent en synchronisation.',
@@ -126,6 +128,13 @@ export const fr = {
 		tourGhost: 'Ghost racing : chassez un effort passé ou rival',
 		tourExport: 'Export : CSV, JSON ou fichiers replay',
 		tourDismiss: 'Fermer la visite initiale'
+	},
+	docs: {
+		title: 'Guide utilisateur',
+		description: 'Comment utiliser rowplay et garder la documentation du dépôt synchronisée avec le site.',
+		badge: 'Docs depuis le dépôt',
+		openDashboard: 'Ouvrir le tableau',
+		openSource: 'Ouvrir la source'
 	},
 	dashboard: {
 		eyebrow: 'Votre logbook',

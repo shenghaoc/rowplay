@@ -69,6 +69,7 @@ export const zh = {
 	nav: {
 		dashboard: '仪表板',
 		leaderboard: '排行榜',
+		docs: '文档',
 		settings: '数据',
 		menuOpen: '打开菜单',
 		menuClose: '关闭菜单',
@@ -110,6 +111,7 @@ export const zh = {
 		exploreDemo: '体验演示 →',
 		openDashboard: '打开仪表板 →',
 		connect: '连接你的 Concept2 日志 →',
+		readGuide: '阅读指南',
 		demoNote: '正在以演示模式运行，使用示例数据。添加个人令牌以加载你自己的日志。',
 		feat1Title: '实时回放',
 		feat1Body: '观看你的配速在赛道上竞速，仪表与图表同步回放。',
@@ -125,6 +127,13 @@ export const zh = {
 		tourGhost: '幽灵竞速：追赶历史或对手成绩',
 		tourExport: '导出：CSV、JSON 或回放文件',
 		tourDismiss: '关闭首次使用引导'
+	},
+	docs: {
+		title: '使用指南',
+		description: '了解如何使用 rowplay，并让仓库文档与网站保持同步。',
+		badge: '仓库文档驱动',
+		openDashboard: '打开仪表板',
+		openSource: '打开源文件'
 	},
 	dashboard: {
 		eyebrow: '你的日志',

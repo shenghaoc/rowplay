@@ -70,6 +70,7 @@ export const ja = {
 	nav: {
 		dashboard: 'ダッシュボード',
 		leaderboard: 'ランキング',
+		docs: 'Docs',
 		settings: 'データ',
 		menuOpen: 'メニューを開く',
 		menuClose: 'メニューを閉じる',
@@ -111,6 +112,7 @@ export const ja = {
 		exploreDemo: 'デモを試す →',
 		openDashboard: 'ダッシュボードを開く →',
 		connect: 'Concept2 ログブックに接続 →',
+		readGuide: 'ガイドを読む',
 		demoNote: 'サンプルデータのデモモードで動作中。個人トークンを追加すると自分のログブックを読み込めます。',
 		feat1Title: 'リアルタイムリプレイ',
 		feat1Body: 'ペースがコースを走り抜ける様子を、ゲージとチャートが同期して再生。',
@@ -126,6 +128,13 @@ export const ja = {
 		tourGhost: 'ゴーストレース：過去またはライバルを追う',
 		tourExport: 'エクスポート：CSV、JSON、リプレイファイル',
 		tourDismiss: '初回ツアーを閉じる'
+	},
+	docs: {
+		title: 'ユーザーガイド',
+		description: 'rowplay の使い方と、リポジトリ文書をサイトと同期して保つ方法。',
+		badge: 'リポジトリ由来の docs',
+		openDashboard: 'ダッシュボードを開く',
+		openSource: 'ソースを開く'
 	},
 	dashboard: {
 		eyebrow: 'あなたのログブック',
