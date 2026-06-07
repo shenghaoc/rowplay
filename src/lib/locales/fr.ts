@@ -723,6 +723,7 @@ export const fr = {
 		kbTitle: 'Raccourcis clavier',
 		kbSpaceHint: 'lecture / pause',
 		kbArrowHint: 'avancer/reculer ±10 s',
+		kbArrowShiftHint: 'avancer/reculer ±30 s',
 		kbBracketHint: 'changer la vitesse',
 		kbHomeHint: 'revenir au début'
 	},

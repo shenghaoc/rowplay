@@ -722,6 +722,7 @@ export const zh = {
 		kbTitle: '键盘快捷键',
 		kbSpaceHint: '播放 / 暂停',
 		kbArrowHint: '快退/快进 ±10 秒',
+		kbArrowShiftHint: '快退/快进 ±30 秒',
 		kbBracketHint: '调整速度',
 		kbHomeHint: '重置到开始'
 	},

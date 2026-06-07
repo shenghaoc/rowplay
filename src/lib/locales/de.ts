@@ -723,6 +723,7 @@ export const de = {
 		kbTitle: 'Tastaturkürzel',
 		kbSpaceHint: 'abspielen / pausieren',
 		kbArrowHint: 'spulen ±10 s',
+		kbArrowShiftHint: 'spulen ±30 s',
 		kbBracketHint: 'Geschwindigkeit ändern',
 		kbHomeHint: 'zum Anfang zurücksetzen'
 	},

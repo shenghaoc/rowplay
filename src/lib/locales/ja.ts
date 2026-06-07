@@ -725,6 +725,7 @@ export const ja = {
 		kbTitle: 'キーボードショートカット',
 		kbSpaceHint: '再生 / 一時停止',
 		kbArrowHint: '±10 秒スクラブ',
+		kbArrowShiftHint: '±30 秒スクラブ',
 		kbBracketHint: '速度変更',
 		kbHomeHint: '最初にリセット'
 	},

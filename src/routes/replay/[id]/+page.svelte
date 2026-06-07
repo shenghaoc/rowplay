@@ -34,7 +34,12 @@
 	import { untrack } from 'svelte';
 	import { constantPaceGhost, parseWorkoutFile } from '$lib/replay/sources';
 	import { isShareToken, type RivalGhostTrace } from '$lib/replay/rivalGhost';
-	import { raceGapMetres, raceGapSeconds } from '$lib/replay/replayGap';
+	import {
+		raceGapMetres,
+		raceGapSeconds,
+		ghostDistAtPlayerFinish,
+		playerDistAtGhostFinish
+	} from '$lib/replay/replayGap';
 	import {
 		applyHrImport,
 		clearHrOverlay,
@@ -606,10 +611,13 @@
 			return;
 		}
 		loadingGhost = true;
+		const gen = ++ghostLoadGen;
 		try {
 			const res = await fetch(`/api/workouts/${id}`);
+			if (gen !== ghostLoadGen) return;
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const d = (await res.json()) as WorkoutDetail;
+			if (gen !== ghostLoadGen) return;
 			setGhost(d.strokes, t('replay.ghostYour', { date: fmtDate(d.date) }), {
 				kind: 'session',
 				date: d.date,
@@ -619,12 +627,13 @@
 				description: `${fmtDistance(d.distance)} · ${fmtPace(d.pace)}`
 			});
 		} catch (err) {
+			if (gen !== ghostLoadGen) return;
 			ghostId = '';
 			toast.error(t('replay.loadSessionFailed'), {
 				description: err instanceof Error ? err.message : t('common.tryAgain')
 			});
 		} finally {
-			loadingGhost = false;
+			if (gen === ghostLoadGen) loadingGhost = false;
 		}
 	}
 
@@ -713,11 +722,9 @@
 		const won = raceWon;
 		let m = '0';
 		if (won) {
-			const ghostDistAtFinish = sampleAt(ghostStrokes, playerTime).d;
-			m = String(Math.abs(Math.round(total - ghostDistAtFinish)));
+			m = String(Math.abs(Math.round(total - ghostDistAtPlayerFinish(ghostStrokes, playerTime))));
 		} else {
-			const playerDistAtFinish = sampleAt(strokes, ghostTime).d;
-			m = String(Math.abs(Math.round(total - playerDistAtFinish)));
+			m = String(Math.abs(Math.round(total - playerDistAtGhostFinish(strokes, ghostTime))));
 		}
 		const secs = Math.abs(playerTime - ghostTime).toFixed(1);
 		const base = { seconds: secs, m };
@@ -1644,8 +1651,9 @@
 			<dl class="kb-list">
 				<div><dt><kbd>Space</kbd></dt><dd>{t('replay.kbSpaceHint')}</dd></div>
 				<div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>{t('replay.kbArrowHint')}</dd></div>
+				<div><dt><kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd></dt><dd>{t('replay.kbArrowShiftHint')}</dd></div>
 				<div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>{t('replay.kbBracketHint')}</dd></div>
-				<div><dt><kbd>0</kbd></dt><dd>{t('replay.kbHomeHint')}</dd></div>
+				<div><dt><kbd>0</kbd> / <kbd>Home</kbd></dt><dd>{t('replay.kbHomeHint')}</dd></div>
 			</dl>
 		</details>
 	</div>

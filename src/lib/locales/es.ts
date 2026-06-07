@@ -723,6 +723,7 @@ export const es = {
 		kbTitle: 'Atajos de teclado',
 		kbSpaceHint: 'reproducir / pausar',
 		kbArrowHint: 'desplazar ±10 s',
+		kbArrowShiftHint: 'desplazar ±30 s',
 		kbBracketHint: 'cambiar velocidad',
 		kbHomeHint: 'volver al inicio'
 	},

@@ -725,6 +725,7 @@ export const en = {
 		kbTitle: 'Keyboard shortcuts',
 		kbSpaceHint: 'play / pause',
 		kbArrowHint: 'scrub ±10 s',
+		kbArrowShiftHint: 'scrub ±30 s',
 		kbBracketHint: 'change speed',
 		kbHomeHint: 'reset to start'
 	},
