@@ -305,7 +305,7 @@
 				{/if}
 
 				{#if !data.sync?.backfillDone && data.sync && !data.sync?.inProgress}
-					<p class="sync-meta muted" style="color: var(--warn)">{t('sync.partialWarning')}</p>
+					<p class="sync-meta text-warning">{t('sync.partialWarning')}</p>
 				{/if}
 
 				<div class="row">
@@ -334,6 +334,7 @@
 							disabled={syncing || deleting}
 							onclick={() => runSync(false)}
 						>
+							{#if syncMode === 'incremental'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 							{syncMode === 'incremental' ? t('sync.loading') : t('sync.retry')}
 						</button>
 					{/if}

@@ -70,12 +70,16 @@ describe('createLogger', () => {
 		expect(logged).not.toContain('secret123');
 	});
 
-	it('redacts Error message content', () => {
+	it('redacts Error message content and preserves original Error unmodified', () => {
 		const errors: unknown[][] = [];
 		const fakeConsole = { error: vi.fn((...args: unknown[]) => errors.push(args)) };
 		const log = createLogger(fakeConsole as unknown as Console);
 
-		log.error(new Error('Token abcdef0123456789abcdef0123456789 was rejected'));
+		const original = new Error('Token abcdef0123456789abcdef0123456789 was rejected');
+		log.error(original);
+		// The original Error must NOT be mutated
+		expect(original.message).toContain('abcdef0123456789');
+		// The logged Error (new copy) is redacted
 		const firstArg = errors[0]?.[0];
 		expect(firstArg).toBeInstanceOf(Error);
 		expect((firstArg as Error).message).not.toContain('abcdef0123456789');

@@ -86,9 +86,9 @@ const workoutsByEvent = new WeakMap<RequestEvent, Promise<Workout[]>>();
 
 /**
  * Per-request memo of the user's sync state. D1 is treated as the authoritative
- * FULL history only once a sync has completed (this row exists). Until then a
- * cold or mid-fill D1 — which may hold just the most recent page — must not be
- * read as complete, or PBs/aggregates/export would silently omit older workouts.
+ * FULL history only once a sync has completed AND is not in-progress — a mid-fill
+ * cache may hold just the most recent page, and returning that as the full
+ * history would skew PBs/aggregates/export until the backfill finishes.
  */
 const syncStateByEvent = new WeakMap<RequestEvent, Promise<SyncState | null>>();
 function syncStateFor(event: RequestEvent): Promise<SyncState | null> {
@@ -101,6 +101,12 @@ function syncStateFor(event: RequestEvent): Promise<SyncState | null> {
 		syncStateByEvent.set(event, cached);
 	}
 	return cached;
+}
+
+/** True when the D1 cache is safe to read as the full history. */
+async function isCacheComplete(event: RequestEvent): Promise<boolean> {
+	const s = await syncStateFor(event);
+	return !!s && !s.inProgress;
 }
 
 /**
@@ -123,10 +129,10 @@ async function loadWorkoutsFresh(event: RequestEvent): Promise<Workout[]> {
 	const userId = event.locals.user?.id;
 	const db = event.platform?.env?.DB;
 
-	// Serve D1 only once a sync has completed — a cold or mid-fill cache may hold
-	// just the most recent page, and returning that as the full history would skew
-	// PBs/aggregates/export until the backfill finishes.
-	if (db && userId != null && (await syncStateFor(event))) {
+	// Serve D1 only once a sync has completed AND is not in-progress — a mid-fill
+	// cache may hold just the most recent page, and returning that as the full
+	// history would skew PBs/aggregates/export until the backfill finishes.
+	if (db && userId != null && (await isCacheComplete(event))) {
 		const fromDb = await getAllWorkouts(db, userId).catch(() => []);
 		if (fromDb.length) return fromDb;
 	}
@@ -157,7 +163,7 @@ export async function loadWorkoutList(
 
 	// As in loadWorkouts: only query D1 once a sync has completed, so a partial
 	// cache can't yield a truncated (and mis-paginated) list.
-	if (db && userId != null && (await syncStateFor(event))) {
+	if (db && userId != null && (await isCacheComplete(event))) {
 		const count = await countWorkouts(db, userId).catch(() => 0);
 		if (count > 0) {
 			const pbs = q.pbsOnly ? await getPbWorkoutIds(db, userId, q.sport) : undefined;
@@ -208,34 +214,40 @@ async function runSync(
 	c: Concept2Client,
 	full: boolean
 ): Promise<SyncResult> {
-	try {
-		const state = await getSyncState(db, userId);
-		// Mark in-progress so concurrent requests don't race
-		await setSyncState(db, userId, {
-			lastDate: state?.lastDate ?? null,
-			total: await countWorkouts(db, userId),
-			oldestDate: state?.oldestDate ?? null,
-			backfillDone: state?.backfillDone ?? false,
-			inProgress: true
-		});
-	const now = Temporal.Now.plainDateISO('UTC');
-	const plan = planSync(state, now, full ? 'full' : 'forward');
-	const from =
-		plan.kind === 'window' ? plan.from : plan.kind === 'incremental' ? plan.from : undefined;
-
-	let allBeforeFailed = false;
-	const allBefore = await getAllWorkouts(db, userId).catch(() => {
-		allBeforeFailed = true;
-		return [] as Workout[];
+	const state = await getSyncState(db, userId);
+	// Guard against concurrent sync runs: if another sync is already in flight,
+	// bail out instead of racing it. The post-connect `waitUntil` full sync is
+	// the most common concurrent caller; the caller can retry once the flag clears.
+	if (state?.inProgress) {
+		return { added: 0, total: state?.total ?? 0, newPbs: [], workouts: [] };
+	}
+	// Mark in-progress so concurrent requests don't race
+	await setSyncState(db, userId, {
+		lastDate: state?.lastDate ?? null,
+		total: await countWorkouts(db, userId),
+		oldestDate: state?.oldestDate ?? null,
+		backfillDone: state?.backfillDone ?? false,
+		inProgress: true
 	});
-	const beforePbs = distancePBs(allBefore);
-
-	let page = 1;
-	let totalPages = 1;
-	let added = 0;
-	const synced: Workout[] = [];
 
 	try {
+		const now = Temporal.Now.plainDateISO('UTC');
+		const plan = planSync(state, now, full ? 'full' : 'forward');
+		const from =
+			plan.kind === 'window' ? plan.from : plan.kind === 'incremental' ? plan.from : undefined;
+
+		let allBeforeFailed = false;
+		const allBefore = await getAllWorkouts(db, userId).catch(() => {
+			allBeforeFailed = true;
+			return [] as Workout[];
+		});
+		const beforePbs = distancePBs(allBefore);
+
+		let page = 1;
+		let totalPages = 1;
+		let added = 0;
+		const synced: Workout[] = [];
+
 		do {
 			const { workouts, totalPages: tp } = await c.listWorkoutsPage(page, from);
 			totalPages = tp;
@@ -246,8 +258,57 @@ async function runSync(
 			}
 			page++;
 		} while (page <= totalPages);
+
+		const dates = synced.map((w) => w.date);
+		let wm = mergeWatermark(
+			{
+				lastDate: state?.lastDate ?? null,
+				oldestDate: state?.oldestDate ?? null,
+				backfillDone: state?.backfillDone ?? false
+			},
+			dates,
+			false
+		);
+
+		if (plan.kind === 'window') {
+			wm = { ...wm, oldestDate: historyWindowStart(now), backfillDone: false };
+		}
+		if (full) {
+			wm = { ...wm, backfillDone: true };
+		}
+
+		const total = await countWorkouts(db, userId);
+		await setSyncState(db, userId, {
+			lastDate: wm.lastDate,
+			total,
+			oldestDate: wm.oldestDate,
+			backfillDone: wm.backfillDone,
+			inProgress: false,
+			lastError: null,
+			lastErrorAt: 0
+		});
+		// Compute afterPbs from the saved pre-sync list merged with this sync's batch,
+		// avoiding a second full-table scan on every sync.
+		// If the initial read failed, fall back to a fresh query so PB detection is accurate.
+		let afterPbs: DistancePB[];
+		if (allBeforeFailed) {
+			afterPbs = distancePBs(await getAllWorkouts(db, userId));
+		} else {
+			const syncedById = new Map(synced.map((w) => [w.id, w]));
+			const existingIds = new Set(allBefore.map((w) => w.id));
+			const afterWorkouts = [
+				...allBefore.map((w) => syncedById.get(w.id) ?? w),
+				...synced.filter((w) => !existingIds.has(w.id))
+			];
+			afterPbs = distancePBs(afterWorkouts);
+		}
+		const newPbs = detectNewPBs(beforePbs, afterPbs);
+		return { added, total, newPbs, workouts: synced };
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : String(e);
+		logger.error('[sync] runSync failed:', msg);
+		// Reset inProgress and record the error. Preserve lastSyncAt so the
+		// UI still shows the last *successful* sync time, not this failure.
 		await setSyncState(db, userId, {
 			lastDate: state?.lastDate ?? null,
 			total: await countWorkouts(db, userId).catch(() => 0),
@@ -255,57 +316,9 @@ async function runSync(
 			backfillDone: state?.backfillDone ?? false,
 			inProgress: false,
 			lastError: msg,
-			lastErrorAt: nowEpochMillis()
+			lastErrorAt: nowEpochMillis(),
+			lastSyncAt: state?.lastSyncAt ?? undefined
 		}).catch(() => {});
-		throw e;
-	}
-
-	const dates = synced.map((w) => w.date);
-	let wm = mergeWatermark(
-		{
-			lastDate: state?.lastDate ?? null,
-			oldestDate: state?.oldestDate ?? null,
-			backfillDone: state?.backfillDone ?? false
-		},
-		dates,
-		false
-	);
-
-	if (plan.kind === 'window') {
-		wm = { ...wm, oldestDate: historyWindowStart(now), backfillDone: false };
-	}
-	if (full) {
-		wm = { ...wm, backfillDone: true };
-	}
-
-	const total = await countWorkouts(db, userId);
-	await setSyncState(db, userId, {
-		lastDate: wm.lastDate,
-		total,
-		oldestDate: wm.oldestDate,
-		backfillDone: wm.backfillDone,
-		inProgress: false
-	});
-	// Compute afterPbs from the saved pre-sync list merged with this sync's batch,
-	// avoiding a second full-table scan on every sync.
-	// If the initial read failed, fall back to a fresh query so PB detection is accurate.
-	let afterPbs: DistancePB[];
-	if (allBeforeFailed) {
-		afterPbs = distancePBs(await getAllWorkouts(db, userId));
-	} else {
-		const syncedById = new Map(synced.map((w) => [w.id, w]));
-		const existingIds = new Set(allBefore.map((w) => w.id));
-		const afterWorkouts = [
-			...allBefore.map((w) => syncedById.get(w.id) ?? w),
-			...synced.filter((w) => !existingIds.has(w.id))
-		];
-		afterPbs = distancePBs(afterWorkouts);
-	}
-	const newPbs = detectNewPBs(beforePbs, afterPbs);
-	return { added, total, newPbs, workouts: synced };
-	} catch (e) {
-		const msg = e instanceof Error ? e.message : String(e);
-		logger.error('[sync] runSync failed:', msg);
 		throw e;
 	}
 }
@@ -318,14 +331,17 @@ export interface BackfillResult {
 
 /** One chunked backfill pass — older than the persisted watermark. */
 export async function backfillWorkouts(event: RequestEvent): Promise<BackfillResult> {
-	try {
-		const c = await client(event);
+	const c = await client(event);
 	const db = event.platform?.env?.DB;
 	const userId = event.locals.user?.id;
 	if (!c) throw error(401, 'Not authenticated.');
 	if (!db || userId == null) throw error(500, 'Database (D1) is not configured.');
 
 	const state = await getSyncState(db, userId);
+	// Guard against concurrent backfill runs
+	if (state?.inProgress) {
+		return { added: 0, oldestDate: state?.oldestDate ?? null, done: state?.backfillDone ?? false };
+	}
 	// Mark in-progress so concurrent requests don't race
 	await setSyncState(db, userId, {
 		lastDate: state?.lastDate ?? null,
@@ -335,45 +351,42 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 		inProgress: true
 	});
 
-	const now = Temporal.Now.plainDateISO('UTC');
-	const plan = planSync(state, now, 'backfill');
-	if (plan.kind !== 'backfill') {
-		// Latch backfill_done so already-synced users stop re-triggering the loop.
-		// A pre-windowing full sync leaves oldest_date = NULL with backfill_done = 0,
-		// which planSync resolves to 'done' — but without persisting that, every
-		// page mount would POST /api/sync/backfill again. Write it back once.
-		if (plan.kind === 'done' && state && !state.backfillDone) {
-			await setSyncState(db, userId, {
-				lastDate: state.lastDate,
-				total: await countWorkouts(db, userId),
-				oldestDate: state.oldestDate,
-				backfillDone: true,
-				inProgress: false
-			});
-		} else {
-			// Clear in-progress flag even when no latch update is needed
-			await setSyncState(db, userId, {
-				lastDate: state?.lastDate ?? null,
-				total: await countWorkouts(db, userId),
-				oldestDate: state?.oldestDate ?? null,
-				backfillDone: state?.backfillDone ?? false,
-				inProgress: false
-			});
-		}
-		return {
-			added: 0,
-			oldestDate: state?.oldestDate ?? null,
-			done: plan.kind === 'done'
-		};
-	}
-
-	let page = 1;
-	let totalPages = 1;
-	let added = 0;
-	const dates: string[] = [];
-	let pagesFetched = 0;
-
 	try {
+		const now = Temporal.Now.plainDateISO('UTC');
+		const plan = planSync(state, now, 'backfill');
+		if (plan.kind !== 'backfill') {
+			// Latch backfill_done so already-synced users stop re-triggering the loop.
+			if (plan.kind === 'done' && state && !state.backfillDone) {
+				await setSyncState(db, userId, {
+					lastDate: state.lastDate,
+					total: await countWorkouts(db, userId),
+					oldestDate: state.oldestDate,
+					backfillDone: true,
+					inProgress: false
+				});
+			} else {
+				// Clear in-progress flag even when no latch update is needed
+				await setSyncState(db, userId, {
+					lastDate: state?.lastDate ?? null,
+					total: await countWorkouts(db, userId),
+					oldestDate: state?.oldestDate ?? null,
+					backfillDone: state?.backfillDone ?? false,
+					inProgress: false
+				});
+			}
+			return {
+				added: 0,
+				oldestDate: state?.oldestDate ?? null,
+				done: plan.kind === 'done'
+			};
+		}
+
+		let page = 1;
+		let totalPages = 1;
+		let added = 0;
+		const dates: string[] = [];
+		let pagesFetched = 0;
+
 		while (page <= totalPages && pagesFetched < BACKFILL_PAGES_PER_RUN) {
 			const { workouts, totalPages: tp } = await c.listWorkoutsPage(page, undefined, plan.to);
 			totalPages = tp;
@@ -385,8 +398,34 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 			page++;
 			pagesFetched++;
 		}
+
+		const wm = mergeWatermark(
+			{
+				lastDate: state?.lastDate ?? null,
+				oldestDate: state?.oldestDate ?? null,
+				backfillDone: state?.backfillDone ?? false
+			},
+			dates,
+			dates.length === 0 || page > totalPages
+		);
+
+		const total = await countWorkouts(db, userId);
+		await setSyncState(db, userId, {
+			lastDate: wm.lastDate,
+			total,
+			oldestDate: wm.oldestDate,
+			backfillDone: wm.backfillDone,
+			inProgress: false,
+			lastError: null,
+			lastErrorAt: 0
+		});
+
+		return { added, oldestDate: wm.oldestDate, done: wm.backfillDone };
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : String(e);
+		logger.error('[sync] backfillWorkouts failed:', msg);
+		// Reset inProgress and record the error. Preserve lastSyncAt so the
+		// UI still shows the last *successful* sync time, not this failure.
 		await setSyncState(db, userId, {
 			lastDate: state?.lastDate ?? null,
 			total: await countWorkouts(db, userId).catch(() => 0),
@@ -394,37 +433,9 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 			backfillDone: state?.backfillDone ?? false,
 			inProgress: false,
 			lastError: msg,
-			lastErrorAt: nowEpochMillis()
+			lastErrorAt: nowEpochMillis(),
+			lastSyncAt: state?.lastSyncAt ?? undefined
 		}).catch(() => {});
-		throw e;
-	}
-
-	const wm = mergeWatermark(
-		{
-			lastDate: state?.lastDate ?? null,
-			oldestDate: state?.oldestDate ?? null,
-			backfillDone: state?.backfillDone ?? false
-		},
-		dates,
-		// Reached the end when this run drained every page older than the cursor
-		// (page > totalPages), not only when a chunk comes back empty — that saves
-		// one redundant confirming API call at the tail of the history.
-		dates.length === 0 || page > totalPages
-	);
-
-	const total = await countWorkouts(db, userId);
-	await setSyncState(db, userId, {
-		lastDate: wm.lastDate,
-		total,
-		oldestDate: wm.oldestDate,
-		backfillDone: wm.backfillDone,
-		inProgress: false
-	});
-
-	return { added, oldestDate: wm.oldestDate, done: wm.backfillDone };
-	} catch (e) {
-		const msg = e instanceof Error ? e.message : String(e);
-		logger.error('[sync] backfillWorkouts failed:', msg);
 		throw e;
 	}
 }
@@ -533,9 +544,9 @@ export async function loadDashboardAggregates(
 	const db = event.platform?.env?.DB;
 	if (!db || userId == null) return null;
 	// Aggregates are computed in SQL over the cached rows; if the cache is still
-	// filling (no completed sync) they'd be partial, so defer to the client-side
-	// computation from the live page rather than showing skewed totals/PBs.
-	if (!(await syncStateFor(event))) return null;
+	// filling (no completed sync or sync in progress) they'd be partial, so defer
+	// to the client-side computation rather than showing skewed totals/PBs.
+	if (!(await isCacheComplete(event))) return null;
 
 	const [sportRows, pbRows] = await Promise.all([
 		getSportAggregates(db, userId).catch(() => []),

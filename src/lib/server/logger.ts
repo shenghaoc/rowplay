@@ -46,12 +46,21 @@ function redactArgs(args: unknown[]): unknown[] {
 	return args.map((a) => {
 		if (typeof a === 'string') return redact(a);
 		if (a instanceof Error) {
-			a.message = redact(a.message);
-			return a;
+			// Create a new Error so callers inspecting the original don't see a
+			// mutated message as a side-effect. Preserve the original stack so
+			// the trace still points at the real throw site.
+			const redactedError = new Error(redact(a.message));
+			redactedError.stack = a.stack;
+			return redactedError;
 		}
 		if (typeof a === 'object' && a !== null) {
 			try {
-				return JSON.parse(redact(JSON.stringify(a)));
+				const serialized = JSON.stringify(a);
+				const result = redact(serialized);
+				// When the whole value was redacted, don't try to JSON.parse
+				// a bare REDACTED string — return the marker directly.
+				if (result === REDACTED) return REDACTED;
+				return JSON.parse(result);
 			} catch {
 				return redact(String(a));
 			}

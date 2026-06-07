@@ -376,6 +376,8 @@ export async function setSyncState(
 		inProgress?: boolean;
 		lastError?: string | null;
 		lastErrorAt?: number;
+		/** Override the timestamp written to last_sync_at (defaults to now). */
+		lastSyncAt?: number;
 	}
 ): Promise<void> {
 	await db
@@ -395,7 +397,7 @@ export async function setSyncState(
 		.bind(
 			userId,
 			patch.lastDate,
-			nowEpochMillis(),
+			patch.lastSyncAt ?? nowEpochMillis(),
 			patch.total,
 			patch.oldestDate,
 			patch.backfillDone ? 1 : 0,
