@@ -209,6 +209,34 @@ describe('techniqueSummary', () => {
 		expect(t.avgSpm).toBeGreaterThan(0);
 		expect(t.dps.length).toBeGreaterThan(0);
 	});
+
+	it('filters invalid strokes while preserving aggregate semantics', () => {
+		const strokes = [
+			{ ...stroke(1, 30), pace: 120 },
+			{ ...stroke(2, 30), pace: 0 },
+			{ ...stroke(3, 30), pace: 130 },
+			{ ...stroke(4, 30), pace: 150 },
+			{ ...stroke(5, 0), pace: 155 },
+			{ ...stroke(6, 30), pace: 160 },
+			{ ...stroke(7, 30), pace: 170 },
+			{ ...stroke(8, 30), pace: 180 }
+		];
+
+		const summary = techniqueSummary(strokes);
+		const validPaces = [120, 130, 150, 160, 170, 180];
+		const meanPace = validPaces.reduce((sum, pace) => sum + pace, 0) / validPaces.length;
+		const sd = Math.sqrt(
+			validPaces.reduce((sum, pace) => sum + (pace - meanPace) ** 2, 0) / validPaces.length
+		);
+
+		expect(summary.dps.map((point) => point.t)).toEqual([1, 3, 4, 6, 7, 8]);
+		expect(summary.avgDps).toBeCloseTo(
+			validPaces.reduce((sum, pace) => sum + distancePerStroke(pace, 30), 0) / validPaces.length
+		);
+		expect(summary.avgSpm).toBe(30);
+		expect(summary.paceConsistency).toBeCloseTo((sd / meanPace) * 100);
+		expect(summary.fade).toBeCloseTo(40);
+	});
 });
 
 describe('efficiencyByRate', () => {
