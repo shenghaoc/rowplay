@@ -16,6 +16,8 @@ import {
 import { openToken } from './tokenCrypto';
 import { nowEpochMillis } from '$lib/datetime';
 import { detectNewPBs, distancePBs, type DistancePB } from '$lib/analytics';
+import { createLogger } from './logger';
+const logger = createLogger(console);
 import {
 	filterAndSortWorkouts,
 	parseWorkoutListQuery,
@@ -206,16 +208,16 @@ async function runSync(
 	c: Concept2Client,
 	full: boolean
 ): Promise<SyncResult> {
-	const state = await getSyncState(db, userId);
-	// Mark in-progress so concurrent requests don't race
-	await setSyncState(db, userId, {
-		lastDate: state?.lastDate ?? null,
-		total: await countWorkouts(db, userId),
-		oldestDate: state?.oldestDate ?? null,
-		backfillDone: state?.backfillDone ?? false,
-		inProgress: true
-	});
-
+	try {
+		const state = await getSyncState(db, userId);
+		// Mark in-progress so concurrent requests don't race
+		await setSyncState(db, userId, {
+			lastDate: state?.lastDate ?? null,
+			total: await countWorkouts(db, userId),
+			oldestDate: state?.oldestDate ?? null,
+			backfillDone: state?.backfillDone ?? false,
+			inProgress: true
+		});
 	const now = Temporal.Now.plainDateISO('UTC');
 	const plan = planSync(state, now, full ? 'full' : 'forward');
 	const from =
@@ -301,6 +303,11 @@ async function runSync(
 	}
 	const newPbs = detectNewPBs(beforePbs, afterPbs);
 	return { added, total, newPbs, workouts: synced };
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : String(e);
+		logger.error('[sync] runSync failed:', msg);
+		throw e;
+	}
 }
 
 export interface BackfillResult {
@@ -311,7 +318,8 @@ export interface BackfillResult {
 
 /** One chunked backfill pass — older than the persisted watermark. */
 export async function backfillWorkouts(event: RequestEvent): Promise<BackfillResult> {
-	const c = await client(event);
+	try {
+		const c = await client(event);
 	const db = event.platform?.env?.DB;
 	const userId = event.locals.user?.id;
 	if (!c) throw error(401, 'Not authenticated.');
@@ -414,6 +422,11 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 	});
 
 	return { added, oldestDate: wm.oldestDate, done: wm.backfillDone };
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : String(e);
+		logger.error('[sync] backfillWorkouts failed:', msg);
+		throw e;
+	}
 }
 
 const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
@@ -442,7 +455,9 @@ export function scheduleConnectSync(
 		tokens: { accessToken: token, refreshToken: '', expiresAt: nowEpochMillis() + YEAR_MS, scope: '' }
 	};
 	const c = new Concept2Client(getConfig(event), env.SESSIONS, sid, session);
-	ctx.waitUntil(runSync(db, user.id, c, true).catch(() => {}));
+	ctx.waitUntil(runSync(db, user.id, c, true).catch((e) => {
+		logger.error('[sync] connectSync background sync failed:', e instanceof Error ? e.message : String(e));
+	}));
 }
 
 export async function loadAnnualGoal(event: RequestEvent, year: number): Promise<AnnualGoal> {
