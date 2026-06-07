@@ -248,7 +248,7 @@ async function runSync(
 		const msg = e instanceof Error ? e.message : String(e);
 		await setSyncState(db, userId, {
 			lastDate: state?.lastDate ?? null,
-			total: await countWorkouts(db, userId),
+			total: await countWorkouts(db, userId).catch(() => 0),
 			oldestDate: state?.oldestDate ?? null,
 			backfillDone: state?.backfillDone ?? false,
 			inProgress: false,
@@ -342,6 +342,15 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 				backfillDone: true,
 				inProgress: false
 			});
+		} else {
+			// Clear in-progress flag even when no latch update is needed
+			await setSyncState(db, userId, {
+				lastDate: state?.lastDate ?? null,
+				total: await countWorkouts(db, userId),
+				oldestDate: state?.oldestDate ?? null,
+				backfillDone: state?.backfillDone ?? false,
+				inProgress: false
+			});
 		}
 		return {
 			added: 0,
@@ -372,7 +381,7 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 		const msg = e instanceof Error ? e.message : String(e);
 		await setSyncState(db, userId, {
 			lastDate: state?.lastDate ?? null,
-			total: await countWorkouts(db, userId),
+			total: await countWorkouts(db, userId).catch(() => 0),
 			oldestDate: state?.oldestDate ?? null,
 			backfillDone: state?.backfillDone ?? false,
 			inProgress: false,
