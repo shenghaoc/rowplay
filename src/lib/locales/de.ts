@@ -85,9 +85,16 @@ export const de = {
 		tagline: 'rowplay · Concept2-Logbuch-Analyse & Echtzeit-Replay'
 	},
 	sync: {
-		loading: 'Synchronisiere dein Logbuch…',
-		done: 'Synchronisiert — {added} neu, {total} gesamt',
+		loading: 'Synchronisiere…',
+		done: '{added} neu · {total} Workouts gesamt gecacht',
 		failed: 'Synchronisation fehlgeschlagen',
+		incrementalDone: 'Auf dem neuesten Stand — {total} Workouts gecacht',
+		retry: 'Sync wiederholen',
+		errorBadge: 'Letzte Synchronisation fehlgeschlagen',
+		errorHint: '{message}',
+		demoUnavailable: 'Sync im Demo-Modus nicht verfügbar — verbinde dein Logbuch für echte Daten.',
+		partialWarning: 'Verlauf wird noch geladen — Summen und PBs können unvollständig sein, bis der Sync abgeschlossen ist.',
+		inProgress: 'Sync läuft…',
 		historyWindow: 'Zeigt die letzten {months} Monate — ältere Historie wird geladen…',
 		historyBackfilling: '{total} Workouts · Historie bis {date}',
 		historyComplete: 'Vollständige Historie synchronisiert'
@@ -839,7 +846,13 @@ export const de = {
 		timezoneUtcDefault: 'UTC (Standard)',
 		timezoneGroupAmericas: 'Amerika',
 		timezoneGroupEuropeAfrica: 'Europa / Afrika',
-		timezoneGroupAsiaPacific: 'Asien / Pazifik'
+		timezoneGroupAsiaPacific: 'Asien / Pazifik',
+		lastSyncError: '{total} Workouts · letzter Sync fehlgeschlagen: {message}',
+		partialCache: '{n} Workouts gecacht · Verlauf wird noch geladen',
+		exportPreviewCsv: 'CSV: eine Zeile pro Workout, stabile Spaltenreihenfolge (17 Spalten)',
+		exportPreviewJson: 'JSON: Array mit Schema-Metadaten (Version 1)',
+		exportPreviewTcx: 'TCX 2.0: Trackpoints pro Schlag, Garmin/Strava-kompatibel',
+		noTcxAvailable: 'Keine Workouts mit Schlagdaten für TCX-Export vorhanden.'
 	},
 	token: {
 		title: 'Dein Concept2-Token verwenden',

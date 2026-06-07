@@ -84,9 +84,16 @@ export const zh = {
 		tagline: 'rowplay · Concept2 训练日志分析与实时回放'
 	},
 	sync: {
-		loading: '正在同步你的日志…',
-		done: '已同步——新增 {added}，共 {total}',
+		loading: '正在同步…',
+		done: '新增 {added} · 共 {total} 次训练已缓存',
 		failed: '同步失败',
+		incrementalDone: '已是最新 — {total} 次训练已缓存',
+		retry: '重试同步',
+		errorBadge: '上次同步失败',
+		errorHint: '{message}',
+		demoUnavailable: '演示模式下无法同步 — 连接你的日志以同步真实数据。',
+		partialWarning: '历史记录仍在加载 — 在同步完成之前，总计和个人最佳成绩可能不完整。',
+		inProgress: '同步进行中…',
 		historyWindow: '显示最近 {months} 个月——正在加载更早的历史…',
 		historyBackfilling: '已缓存 {total} 次训练 · 历史回溯至 {date}',
 		historyComplete: '完整历史已同步'
@@ -832,7 +839,13 @@ export const zh = {
 		timezoneUtcDefault: 'UTC（默认）',
 		timezoneGroupAmericas: '美洲',
 		timezoneGroupEuropeAfrica: '欧洲 / 非洲',
-		timezoneGroupAsiaPacific: '亚洲 / 太平洋'
+		timezoneGroupAsiaPacific: '亚洲 / 太平洋',
+		lastSyncError: '{total} 次训练 · 上次同步失败：{message}',
+		partialCache: '已缓存 {n} 次训练 · 历史记录仍在加载',
+		exportPreviewCsv: 'CSV：每次训练一行，列顺序固定（17 列）',
+		exportPreviewJson: 'JSON：包含架构元数据的数组（版本 1）',
+		exportPreviewTcx: 'TCX 2.0：逐桨轨迹点，兼容 Garmin/Strava',
+		noTcxAvailable: '没有含逐桨数据的训练可用于 TCX 导出。'
 	},
 	token: {
 		title: '使用你的 Concept2 令牌',

@@ -85,9 +85,16 @@ export const ja = {
 		tagline: 'rowplay · Concept2 ログブック分析 & リアルタイムリプレイ'
 	},
 	sync: {
-		loading: 'ログブックを同期しています…',
-		done: '同期完了 — 新規 {added}、合計 {total}',
+		loading: '同期中…',
+		done: '新規 {added} · 合計 {total} ワークアウトをキャッシュ',
 		failed: '同期に失敗しました',
+		incrementalDone: '最新です — {total} ワークアウトをキャッシュ',
+		retry: '再試行',
+		errorBadge: '前回の同期に失敗',
+		errorHint: '{message}',
+		demoUnavailable: 'デモモードでは同期不可 — ログブックに接続して実データを同期してください。',
+		partialWarning: '履歴はまだ読み込み中です — 同期が完了するまで合計と自己ベストが不完全な場合があります。',
+		inProgress: '同期実行中…',
 		historyWindow: '直近 {months} か月を表示 — より古い履歴を読み込み中…',
 		historyBackfilling: '{total} ワークアウト · 履歴は {date} まで',
 		historyComplete: '全履歴の同期が完了しました'
@@ -842,7 +849,13 @@ export const ja = {
 		timezoneUtcDefault: 'UTC（デフォルト）',
 		timezoneGroupAmericas: 'アメリカ',
 		timezoneGroupEuropeAfrica: 'ヨーロッパ / アフリカ',
-		timezoneGroupAsiaPacific: 'アジア / 太平洋'
+		timezoneGroupAsiaPacific: 'アジア / 太平洋',
+		lastSyncError: '{total} ワークアウト · 前回の同期失敗: {message}',
+		partialCache: '{n} ワークアウトをキャッシュ · 履歴はまだ読み込み中',
+		exportPreviewCsv: 'CSV: ワークアウトごとに1行、安定した列順（17列）',
+		exportPreviewJson: 'JSON: スキーマメタデータ付き配列（バージョン1）',
+		exportPreviewTcx: 'TCX 2.0: ストロークごとのトラックポイント、Garmin/Strava互換',
+		noTcxAvailable: 'TCXエクスポート用のストロークデータがあるワークアウトはありません。'
 	},
 	token: {
 		title: 'Concept2 トークンを使う',
