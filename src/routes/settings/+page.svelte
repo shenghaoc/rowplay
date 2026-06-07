@@ -274,7 +274,7 @@
 			</h2>
 			<p class="muted">{t('settings.syncNote')}</p>
 			{#if data.demo}
-				<span class="badge badge-soft badge-primary">{t('settings.syncDemo')}</span>
+				<span class="badge badge-soft badge-primary" data-testid="settings-sync-demo-badge">{t('settings.syncDemo')}</span>
 			{:else}
 				{#if data.sync}
 					<p class="sync-meta muted">{syncHistoryNote}</p>

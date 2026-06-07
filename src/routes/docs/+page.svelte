@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
@@ -16,7 +15,6 @@
 	function isExternalHref(href: string) {
 		return /^https?:\/\//.test(href);
 	}
-
 </script>
 
 <svelte:head>
@@ -32,8 +30,13 @@
 			<code>{node.text}</code>
 		{:else if node.type === 'strong'}
 			<strong>{@render inline(node.children)}</strong>
+		{:else if isExternalHref(node.href)}
+			<a href={node.href} target="_blank" rel="external noopener noreferrer">
+				{@render inline(node.children)}
+			</a>
 		{:else}
-			<a href={node.href} target={isExternalHref(node.href) ? '_blank' : undefined} rel="external noreferrer">
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a href={node.href}>
 				{@render inline(node.children)}
 			</a>
 		{/if}
@@ -47,11 +50,12 @@
 			{t('docs.badge')}
 		</span>
 		<div class="join">
-			<a class="btn btn-primary btn-sm join-item" href={resolve('/dashboard')}>
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a class="btn btn-primary btn-sm join-item" href="/dashboard">
 				<LayoutDashboard size={15} aria-hidden="true" />
 				{t('docs.openDashboard')}
 			</a>
-			<a class="btn btn-ghost btn-sm join-item" href={sourceHref} target="_blank" rel="noreferrer">
+			<a class="btn btn-ghost btn-sm join-item" href={sourceHref} target="_blank" rel="noopener noreferrer">
 				<ExternalLink size={15} aria-hidden="true" />
 				{t('docs.openSource')}
 			</a>

@@ -153,12 +153,13 @@ export function parseGuideMarkdown(markdown: string): MarkdownDocument {
 		const heading = HEADING_RE.exec(line);
 		if (heading) {
 			const text = heading[2].trim();
+			const children = parseInline(text);
 			blocks.push({
 				id: nextId('block'),
 				type: 'heading',
 				depth: heading[1].length as 1 | 2 | 3,
-				slug: slugFor(text),
-				children: parseInline(text)
+				slug: slugFor(plainText(children)),
+				children
 			});
 			index += 1;
 			continue;

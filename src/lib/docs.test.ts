@@ -54,4 +54,12 @@ npm run check:docs -- origin/main
 			])
 		);
 	});
+
+	it('uses rendered heading text for slugs and titles', () => {
+		const guide = parseGuideMarkdown('# **Use** `rowplay` [docs](/docs)');
+		const heading = guide.blocks[0];
+
+		expect(guide.title).toBe('Use rowplay docs');
+		expect(heading).toMatchObject({ type: 'heading', slug: 'use-rowplay-docs' });
+	});
 });

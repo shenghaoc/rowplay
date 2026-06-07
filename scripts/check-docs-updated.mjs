@@ -44,10 +44,21 @@ function docFile(path) {
 
 if (!refExists(baseRef) && baseRef.startsWith('origin/')) {
 	const branch = baseRef.slice('origin/'.length);
-	git(['fetch', 'origin', `${branch}:refs/remotes/origin/${branch}`]);
+	try {
+		git(['fetch', 'origin', `${branch}:refs/remotes/origin/${branch}`]);
+	} catch {
+		console.warn(`docs gate warning: failed to fetch ${baseRef} from origin; proceeding with local refs`);
+	}
 }
 
-const mergeBase = git(['merge-base', baseRef, 'HEAD']);
+let mergeBase;
+try {
+	mergeBase = git(['merge-base', baseRef, 'HEAD']);
+} catch {
+	console.error(`docs gate error: failed to find merge-base between ${baseRef} and HEAD.`);
+	console.error('This can happen in shallow clones. Fetch more history or set actions/checkout fetch-depth: 0.');
+	process.exit(1);
+}
 const changed = [
 	...new Set([
 		...gitList(['diff', '--name-only', `${mergeBase}...HEAD`]),
