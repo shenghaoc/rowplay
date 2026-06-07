@@ -620,7 +620,10 @@ function baseCpWarnings(
 	if (efforts.length < 3 || envelopePoints < 3) warnings.add('too-few-efforts');
 	if (durationCoverageWarning(efforts)) warnings.add('narrow-duration-range');
 	if (effortSportScope(efforts) === 'mixed') warnings.add('mixed-sports');
-	const newestMs = Math.max(...efforts.map((e) => effortDayMs(e.date) ?? -Infinity));
+	const newestMs = efforts.reduce(
+		(max, e) => Math.max(max, effortDayMs(e.date) ?? -Infinity),
+		-Infinity
+	);
 	const asOfMs = dayKeyEpochMillis(asOf);
 	if (Number.isFinite(newestMs) && Number.isFinite(asOfMs) && asOfMs - newestMs > 90 * DAY_MS) {
 		warnings.add('stale-efforts');
