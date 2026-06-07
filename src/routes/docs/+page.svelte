@@ -2,13 +2,13 @@
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
-	import usageGuideMarkdown from '$docs/usage.md?raw';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { parseGuideMarkdown, type InlineNode } from '$lib/docs';
 
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);
-	const guide = parseGuideMarkdown(usageGuideMarkdown);
+	const guideMarkdown = $derived(t('docs.guideMarkdown'));
+	const guide = $derived(parseGuideMarkdown(guideMarkdown));
 	const sourceHref = 'https://github.com/shenghaoc/rowplay/blob/main/docs/usage.md';
 	const pageTitle = $derived(`${guide.title ?? t('docs.title')} · rowplay`);
 

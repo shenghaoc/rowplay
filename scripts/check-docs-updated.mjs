@@ -39,7 +39,7 @@ function refExists(ref) {
 }
 
 function docFile(path) {
-	return docsPaths.some((docPath) => path === docPath || path.startsWith(docPath));
+	return docsPaths.some((docPath) => (docPath.endsWith('/') ? path.startsWith(docPath) : path === docPath));
 }
 
 if (!refExists(baseRef) && baseRef.startsWith('origin/')) {

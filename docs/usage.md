@@ -86,9 +86,9 @@ does not provide the production KV/D1 bindings.
 
 ## Contributor documentation policy
 
-This guide is intentionally stored in the repository instead of copied into the
-Svelte route. The website imports `docs/usage.md` at build time and renders the
-same content at `/docs`.
+This guide is intentionally stored in the repository as the English reference
+for contributors. The in-app `/docs` page renders guide content through the
+locale dictionaries so every bundled language uses the same i18n path.
 
 When a change alters user-visible behavior, workflows, routes, auth, data
 handling, setup, or deployment expectations, update this file in the same pull

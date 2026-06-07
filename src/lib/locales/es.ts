@@ -134,7 +134,74 @@ export const es = {
 		description: 'Cómo usar rowplay y mantener la documentación del repositorio sincronizada con el sitio.',
 		badge: 'Docs desde el repositorio',
 		openDashboard: 'Abrir panel',
-		openSource: 'Abrir fuente'
+		openSource: 'Abrir fuente',
+		guideMarkdown: `# Guía de uso de rowplay
+
+rowplay convierte resultados del logbook de Concept2 en un panel, replay, comparación y leaderboard para entrenamientos de RowErg, SkiErg y BikeErg.
+
+## Empezar en modo demo
+
+El modo demo es el predeterminado. Abre rowplay sin iniciar sesión y la app carga entrenamientos de muestra deterministas, para que pruebes el panel y el replay sin una cuenta de Concept2.
+
+1. Abre /dashboard.
+2. Elige un entrenamiento de la lista.
+3. Pulsa **Replay** y usa reproducir, pausar, arrastrar la línea de tiempo y controles de velocidad.
+4. Abre /leaderboard para probar una carrera ghost con datos de muestra.
+
+## Conectar tu logbook de Concept2
+
+La autenticación en producción usa bring-your-own-token. El token personal de la API de Concept2 se envía una vez por HTTPS, el Worker lo valida y lo sella en la cookie httpOnly rp_tok. KV guarda la identidad de sesión y D1 guarda entrenamientos y datos de replay en caché. El token no se guarda en KV ni en D1.
+
+1. En el logbook de Concept2, abre **Edit Profile -> Applications**.
+2. Copia tu token personal de API.
+3. En rowplay, abre /auth/token.
+4. Pega el token y envíalo.
+5. Abre /dashboard y usa **Sincronizar** para cargar todo el historial del logbook.
+
+Usa /settings para desconectar o borrar datos de cuenta en caché.
+
+## Leer el panel
+
+- Usa filtros de deporte y distancia para acotar la lista de entrenamientos.
+- Revisa totales, tendencias de ritmo, marcas personales, objetivos anuales y carga de entrenamiento.
+- Abre el entrenamiento más reciente directamente o compara dos esfuerzos desde la lista.
+- Usa etiquetas y filtros para encontrar sesiones concretas más adelante.
+
+Cuando rowplay solo tiene historial reciente, ejecuta **Sincronizar** antes de confiar en marcas personales o tendencias de largo plazo.
+
+## Reproducir un entrenamiento
+
+- Pulsa reproducir o pausar para controlar la reproducción.
+- Arrastra la línea de tiempo para inspeccionar un punto concreto.
+- Cambia la velocidad de 0.5x a 8x.
+- Cambia entre renderizadores 2D y 3D cuando el navegador soporte WebGL.
+- Añade notas de entrenamiento en un punto del workout.
+- Exporta el entrenamiento cuando necesites CSV, JSON o datos de replay fuera.
+
+Se usan datos por palada cuando Concept2 los proporciona. Los entrenamientos sin paladas vuelven a un replay basado en splits, así que el recorrido se sigue reproduciendo.
+
+## Competir contra ghosts y comparar entrenamientos
+
+- Usa /leaderboard para encontrar resultados de distancias estándar e iniciar un ghost rival.
+- Usa los controles del replay para comparar tu ritmo con el ghost.
+- Usa /compare para un resumen lado a lado de dos entrenamientos.
+- Comparte un enlace público de replay cuando quieras que otra persona inspeccione un entrenamiento.
+
+Publicar en el leaderboard es opcional y reversible. No cambia la entrada original del logbook de Concept2.
+
+## Modo live e importaciones
+
+El modo live puede consultar entrenamientos nuevos después de una sesión y avisarte cuando aparezcan datos recientes. La importación de frecuencia cardiaca puede fusionar datos HR externos cuando la entrada del logbook no los incluye.
+
+Usa npm run preview para autenticación local, sincronización, modo live y pruebas KV/D1. Plain npm run dev es más rápido para UI, pero no es el runtime de Workers y no proporciona bindings KV/D1 de producción.
+
+## Política de documentación para contribuidores
+
+La guía inglesa orientada al repositorio vive en docs/usage.md. El sitio dentro de la app renderiza la guía desde los diccionarios de locale, de modo que todos los idiomas incluidos usan la misma ruta i18n.
+
+Cuando un cambio altere comportamiento visible, flujos, rutas, autenticación, manejo de datos, setup o expectativas de despliegue, actualiza docs/usage.md, README.md o la documentación relevante del repositorio en el mismo pull request.
+
+Ejecuta la puerta localmente con npm run check:docs -- origin/main.`
 	},
 	dashboard: {
 		eyebrow: 'Tu diario',

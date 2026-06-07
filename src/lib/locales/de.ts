@@ -134,7 +134,74 @@ export const de = {
 		description: 'So nutzt du rowplay und hältst Repository-Dokumentation und Website synchron.',
 		badge: 'Docs aus dem Repository',
 		openDashboard: 'Dashboard öffnen',
-		openSource: 'Quelle öffnen'
+		openSource: 'Quelle öffnen',
+		guideMarkdown: `# rowplay User Guide
+
+rowplay macht aus Concept2-Logbook-Ergebnissen ein Dashboard, Replay, Vergleichs- und Leaderboard-Erlebnis für RowErg-, SkiErg- und BikeErg-Workouts.
+
+## Im Demo-Modus starten
+
+Der Demo-Modus ist der Standard. Öffne rowplay ohne Anmeldung und die App lädt deterministische Beispiel-Workouts, damit du Dashboard und Replay ohne Concept2-Konto testen kannst.
+
+1. Öffne /dashboard.
+2. Wähle ein Workout aus der Liste.
+3. Drücke **Replay** und nutze Play, Pause, Scrubbing und Tempo-Steuerung.
+4. Öffne /leaderboard, um mit Beispieldaten gegen einen Geist zu fahren.
+
+## Dein Concept2-Logbook verbinden
+
+Die Produktion nutzt Bring-your-own-token. Der persönliche Concept2 API token wird einmal über HTTPS gesendet, vom Worker validiert und im httpOnly rp_tok Cookie versiegelt. KV speichert nur Sitzungsidentität, D1 speichert gecachte Workout- und Replay-Daten. Der Token wird nicht in KV oder D1 gespeichert.
+
+1. Öffne im Concept2 Logbook **Edit Profile -> Applications**.
+2. Kopiere deinen persönlichen API token.
+3. Öffne in rowplay /auth/token.
+4. Füge den Token ein und sende ihn ab.
+5. Öffne /dashboard und nutze **Sync**, um die vollständige Logbook-Historie zu laden.
+
+Unter /settings kannst du die Verbindung trennen oder gecachte Kontodaten löschen.
+
+## Das Dashboard lesen
+
+- Nutze Sport- und Distanzfilter, um die Workout-Liste einzugrenzen.
+- Verfolge Summen, Pace-Trends, persönliche Bestzeiten, Jahresziele und Trainingslast.
+- Öffne das neueste Workout direkt oder vergleiche zwei Leistungen aus der Liste.
+- Nutze Tags und Filter, damit bestimmte Einheiten später leicht auffindbar bleiben.
+
+Wenn rowplay nur aktuelle Historie hat, führe **Sync** aus, bevor du dich auf langfristige Bestzeiten oder Trends verlässt.
+
+## Ein Workout replayen
+
+- Drücke Play oder Pause, um die Wiedergabe zu steuern.
+- Scrubbe die Zeitleiste, um einen bestimmten Punkt zu prüfen.
+- Ändere die Geschwindigkeit von 0.5x bis 8x.
+- Wechsle zwischen 2D- und 3D-Renderer, wenn der Browser WebGL unterstützt.
+- Füge Coaching-Notizen an einem Punkt im Workout hinzu.
+- Exportiere das Workout, wenn du CSV-, JSON- oder Replay-Daten anderswo brauchst.
+
+Schlagdaten werden verwendet, wenn Concept2 sie liefert. Workouts ohne Schlagdaten fallen auf Split-basiertes Replay zurück, sodass die Strecke weiter abspielt.
+
+## Gegen Geister fahren und Workouts vergleichen
+
+- Nutze /leaderboard, um Standarddistanz-Ergebnisse zu finden und einen Rivalen-Geist zu starten.
+- Nutze Replay-Steuerungen, um deine Pace mit dem Geist zu vergleichen.
+- Nutze /compare für eine Side-by-side-Zusammenfassung zweier Workouts.
+- Teile einen öffentlichen Replay-Link, wenn jemand anderes ein Workout prüfen soll.
+
+Die Veröffentlichung im Leaderboard ist opt-in und umkehrbar. Sie ändert den ursprünglichen Concept2-Logbook-Eintrag nicht.
+
+## Live-Modus und Importe
+
+Der Live-Modus kann nach einer Einheit nach neuen Workouts fragen und dich benachrichtigen, wenn frische Daten erscheinen. Der Herzfrequenz-Import kann externe HR-Daten in ein Workout übernehmen, wenn der Logbook-Eintrag sie noch nicht enthält.
+
+Nutze npm run preview für lokale Auth-, Sync-, Live-Modus- und KV/D1-Tests. Plain npm run dev ist schneller für UI-Arbeit, ist aber nicht die Workers-Laufzeit und stellt keine Produktions-KV/D1-Bindings bereit.
+
+## Dokumentationsregeln für Beitragende
+
+Der repository-seitige englische Guide liegt in docs/usage.md. Die In-App-Website rendert Guide-Inhalte über Locale-Dictionaries, sodass jede gebündelte Sprache denselben i18n-Pfad nutzt.
+
+Wenn eine Änderung sichtbares Verhalten, Workflows, Routen, Auth, Datenverarbeitung, Setup oder Deployment-Erwartungen ändert, aktualisiere docs/usage.md, README.md oder die relevante Repository-Dokumentation im selben Pull Request.
+
+Führe das Gate lokal mit npm run check:docs -- origin/main aus.`
 	},
 	dashboard: {
 		eyebrow: 'Dein Logbuch',

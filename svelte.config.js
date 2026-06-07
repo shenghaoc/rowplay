@@ -7,8 +7,7 @@ const config = {
 	kit: {
 		adapter: adapter(),
 		alias: {
-			$components: 'src/components',
-			$docs: 'docs'
+			$components: 'src/components'
 		},
 		serviceWorker: {
 			register: true

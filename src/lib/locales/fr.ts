@@ -134,7 +134,74 @@ export const fr = {
 		description: 'Comment utiliser rowplay et garder la documentation du dépôt synchronisée avec le site.',
 		badge: 'Docs depuis le dépôt',
 		openDashboard: 'Ouvrir le tableau',
-		openSource: 'Ouvrir la source'
+		openSource: 'Ouvrir la source',
+		guideMarkdown: `# Guide utilisateur rowplay
+
+rowplay transforme les résultats du logbook Concept2 en tableau de bord, replay, comparaison et leaderboard pour les séances RowErg, SkiErg et BikeErg.
+
+## Commencer en mode démo
+
+Le mode démo est le mode par défaut. Ouvrez rowplay sans connexion et l’application charge des séances d’exemple déterministes, pour tester le tableau de bord et le replay sans compte Concept2.
+
+1. Ouvrez /dashboard.
+2. Choisissez une séance dans la liste.
+3. Appuyez sur **Replay** et utilisez lecture, pause, scrub et contrôles de vitesse.
+4. Ouvrez /leaderboard pour essayer une course ghost avec les données d’exemple.
+
+## Connecter votre logbook Concept2
+
+L’authentification de production utilise bring-your-own-token. Le token API Concept2 personnel est envoyé une seule fois en HTTPS, validé par le Worker, puis scellé dans le cookie httpOnly rp_tok. KV stocke l’identité de session et D1 stocke les séances et données de replay en cache. Le token n’est pas stocké dans KV ni D1.
+
+1. Dans le logbook Concept2, ouvrez **Edit Profile -> Applications**.
+2. Copiez votre token API personnel.
+3. Dans rowplay, ouvrez /auth/token.
+4. Collez le token et envoyez-le.
+5. Ouvrez /dashboard et utilisez **Sync** pour charger tout l’historique du logbook.
+
+Utilisez /settings pour vous déconnecter ou supprimer les données de compte en cache.
+
+## Lire le tableau de bord
+
+- Utilisez les filtres de sport et de distance pour réduire la liste des séances.
+- Suivez totaux, tendances d’allure, records personnels, objectifs annuels et charge d’entraînement.
+- Ouvrez directement la dernière séance ou comparez deux efforts depuis la liste.
+- Utilisez tags et filtres pour retrouver facilement certaines séances plus tard.
+
+Lorsque rowplay ne possède qu’un historique récent, lancez **Sync** avant de vous fier aux records ou tendances de long terme.
+
+## Rejouer une séance
+
+- Appuyez sur lecture ou pause pour contrôler la lecture.
+- Scrubbez la timeline pour inspecter un point précis.
+- Changez la vitesse de 0.5x à 8x.
+- Passez entre les rendus 2D et 3D quand le navigateur prend WebGL en charge.
+- Ajoutez des notes de coaching à un point de la séance.
+- Exportez la séance quand vous avez besoin de CSV, JSON ou données de replay ailleurs.
+
+Les données coup par coup sont utilisées quand Concept2 les fournit. Les séances sans données de coups basculent vers un replay basé sur les splits, donc le parcours reste lisible.
+
+## Courir contre des ghosts et comparer des séances
+
+- Utilisez /leaderboard pour trouver des résultats de distance standard et lancer un ghost rival.
+- Utilisez les contrôles de replay pour comparer votre allure au ghost.
+- Utilisez /compare pour un résumé côte à côte de deux séances.
+- Partagez un lien de replay public si quelqu’un d’autre doit inspecter une séance.
+
+La publication au leaderboard est optionnelle et réversible. Elle ne modifie pas l’entrée Concept2 source.
+
+## Mode live et imports
+
+Le mode live peut rechercher de nouvelles séances après une session et vous notifier quand des données fraîches apparaissent. L’import de fréquence cardiaque peut fusionner des données HR externes quand l’entrée du logbook ne les contient pas déjà.
+
+Utilisez npm run preview pour l’auth locale, la sync, le mode live et les tests KV/D1. Plain npm run dev est plus rapide pour l’UI, mais ce n’est pas le runtime Workers et il ne fournit pas les bindings KV/D1 de production.
+
+## Politique de documentation pour les contributeurs
+
+Le guide anglais destiné au dépôt se trouve dans docs/usage.md. Le site intégré rend le contenu du guide depuis les dictionnaires de locale, afin que chaque langue fournie utilise le même chemin i18n.
+
+Lorsqu’un changement modifie le comportement visible, les workflows, routes, l’auth, le traitement des données, le setup ou les attentes de déploiement, mettez à jour docs/usage.md, README.md ou la documentation pertinente du dépôt dans le même pull request.
+
+Lancez le gate localement avec npm run check:docs -- origin/main.`
 	},
 	dashboard: {
 		eyebrow: 'Votre logbook',
