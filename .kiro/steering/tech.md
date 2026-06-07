@@ -62,13 +62,13 @@ Configured in `src/app.css`:
 
 ## Backend (SvelteKit Endpoints on Workers)
 
-- **Cloudflare KV** (`SESSIONS` binding) — session storage (personal API token or optional OAuth tokens)
-- **Cloudflare D1** (`DB` binding) — SQLite database caching hydrated workouts and per-stroke detail so replays are instant
-- **Concept2 Logbook API** — read server-side only. **Primary auth:** user pastes a read-only personal API token at `/auth/token`. **Optional:** OAuth2 if `CONCEPT2_CLIENT_ID` is configured
+- **Cloudflare KV** (`SESSIONS` binding) — session identity/state; personal BYOT sessions keep an empty `accessToken` because the token is sealed in `rp_tok`
+- **Cloudflare D1** (`DB` binding) — SQLite database caching hydrated workouts and per-stroke detail so replays are instant; never stores the personal token
+- **Concept2 Logbook API** — read server-side only. **Primary auth:** user pastes a personal Concept2 API token at `/auth/token`; it is submitted once over HTTPS and sealed into the httpOnly `rp_tok` cookie with `SESSION_SECRET`. **Optional:** OAuth2 if `CONCEPT2_CLIENT_ID` is configured
 
 ## Testing
 
-- **Vitest** — unit tests (`npm run test` / `npm run test:watch`); 692 tests across 69 files
+- **Vitest** — unit tests (`npm run test` / `npm run test:watch`) across pure helpers, server/DB code, route handlers, Svelte reactive classes, and replay renderers. Use the command output for the current test count.
 - **@vitest/coverage-v8** — coverage reporter; `provider: 'v8'`, `reporter: ['text', 'lcov']`, scoped to `src/**/*.ts` (excludes `*.test.ts`, `*.svelte.ts`, generated `*.d.ts`)
 - **Playwright** — E2E smoke tests run against the production build on the real Workers runtime (`wrangler dev`), not `vite dev`
 - **svelte-check** — TypeScript type checking for `.svelte` and `.ts` files
@@ -79,7 +79,7 @@ Configured in `src/app.css`:
 | ----- | ------------ | ------- |
 | Pure library | `datetime.ts`, `goals.ts`, `workoutQuery.ts`, `i18n.ts`, `i18nPlural.ts`, `mockData.ts`, `analytics-newpbs.ts`, `replay/sports.ts`, `replay/sources.ts` | Direct import, minimal mocking |
 | Server data/DB | `server/db.ts`, `server/data.ts`, `server/session.ts`, `server/export.ts`, `server/concept2-strokes.ts`, `server/share.ts`, `server/config.ts`, `server/leaderboard.ts`, `server/hrImport.ts`, `server/rivalGhost.ts` | Fake D1/KV (see below) |
-| Route handlers | All 18 `+server.ts` + 7 `+page.server.ts` files | Fake `RequestEvent`; service layer mocked via `vi.mock` |
+| Route handlers | SvelteKit `+server.ts` and `+page.server.ts` files | Fake `RequestEvent`; service layer mocked via `vi.mock` |
 | Svelte reactive classes | `i18n.svelte.ts`, `theme.svelte.ts`, `liveMode.svelte.ts` | Node-only stubs; no jsdom required |
 | Three.js renderer | `replay/renderer3d.ts` | Partial mock — only `THREE.WebGLRenderer`; all other Three.js classes run as real headless Node implementations |
 

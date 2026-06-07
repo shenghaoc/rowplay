@@ -3,8 +3,10 @@
 Spec: `.kiro/specs/connect-cache-warmup/`
 Requirements: Req 1–5 · Design: `auth/token` + `server/data.ts` + `app.d.ts`
 
-Status: implemented on `claude/clever-rubin-wJ2kc` (PR #75). Automated gate green —
-`check` 0 errors, `test` 193 pass, `build` succeeds, `validate:locales` ok (6 langs).
+Status: implemented on `claude/clever-rubin-wJ2kc` (PR #75). The automated gate
+was green when this spec landed (`check`, `test`, `build`, `validate:locales`).
+Historical verification notes in this file are landing snapshots, not the
+current whole-app suite size.
 Spec written retroactively after the code landed. The `npm run preview` manual
 walkthrough (Workers runtime + real token) is left to the maintainer.
 
@@ -40,7 +42,7 @@ walkthrough (Workers runtime + real token) is left to the maintainer.
   - _Requirements: 4.1, 4.2, 4.3_
 
 - [x] **5. Gate + docs**
-  - [x] 5.1 `npm run check` (0 errors) · `npm run test` (193) · `npm run build` · `validate:locales`
+  - [x] 5.1 `npm run check` (0 errors) · `npm run test` green at the spec landing snapshot · `npm run build` · `validate:locales`
   - [x] 5.2 Resolve the PR #75 P1 review thread (reply + mark resolved)
   - [x] 5.3 Add this spec to the `AGENTS.md` completed list
   - [ ] 5.4 Maintainer: `npm run preview` walkthrough with a real token + `SESSION_SECRET`

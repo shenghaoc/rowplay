@@ -3,10 +3,12 @@
 Implementation plan. Each task is committed and pushed on its own. Boxes are
 checked as the work lands. Requirement references point at `requirements.md`.
 
-Status: implemented on `claude/concept2-token-privacy-HvbAl`. Automated gate is
-green (`check` 0 errors, `test` all pass, `build` succeeds, `validate:locales`
-ok). The `npm run preview` manual walkthrough in task 12 still needs the
-maintainer (it requires a real Concept2 token, which the agent does not have).
+Status: implemented on `claude/concept2-token-privacy-HvbAl`. The automated
+gate was green when this spec landed (`check`, `test`, `build`,
+`validate:locales`). Historical verification notes below are landing snapshots,
+not the current whole-app suite size. The `npm run preview` manual walkthrough
+in task 12 still needs the maintainer (it requires a real Concept2 token, which
+the agent does not have).
 
 - [x] **1. Token-crypto core** — `src/lib/server/tokenCrypto.ts`
   - `sealToken` / `openToken` (AES-GCM, key derived from `SESSION_SECRET`,
@@ -71,9 +73,10 @@ maintainer (it requires a real Concept2 token, which the agent does not have).
     in `en, zh, de, es, fr, ja`; `npm run validate:locales`.
   - _Requirements: 5.3_
 
-- [x] **12. Gate + verification**
-  - ✅ `npm run check` (0 errors), `npm run test` (183 pass), `npm run build`
-    (succeeds), `npm run validate:locales` (489 keys × 6 langs).
+- [x] **12. Historical gate + verification snapshot**
+  - ✅ `npm run check` (0 errors), `npm run test` (green at the spec landing
+    snapshot), `npm run build` (succeeds), `npm run validate:locales` (green at
+    the locale snapshot).
   - ✅ Real Workers runtime (`wrangler dev`) demo smoke via curl: `/`, `/dashboard`,
     `/leaderboard`, `/replay/1001`, `/auth/token`, `/settings` all 200; publish →
     rank, **withdraw `DELETE` → `{ok:true}`**, bad id → 400, account-delete → demo.

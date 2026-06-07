@@ -716,11 +716,11 @@ export const de = {
 		eyebrow: 'Datenschutz & Kontrolle',
 		dataTitle: 'Was wir speichern',
 		dataNote:
-			'rowplay liest deine Concept2-Workouts bei Bedarf und cacht sie auf Cloudflare, damit Replays sofort laden. Dein API-Token wird nie auf dem Server gespeichert — es bleibt versiegelt in einem httpOnly-Cookie in deinem Browser. Der Cache ist an deine Session gebunden und wird beim Trennen gelöscht.',
+			'rowplay liest deine Concept2-Workouts bei Bedarf und cacht sie auf Cloudflare, damit Replays sofort laden. Dein API-Token wird mit SESSION_SECRET im httpOnly-Cookie rp_tok versiegelt. KV speichert nur Session-Identität/-Status; D1 cacht Workout- und Replay-Daten, niemals das Token. Trennen oder Datenlöschen entfernt gecachte Nutzerdaten und Session-Status.',
 		factWorkouts: '{n} Workouts zum Export verfügbar',
 		factDemo: 'Demo-Modus — nur Beispieldaten, nichts wird persistiert.',
-		factCache: 'Workout-Zusammenfassungen und Replay-Cache in D1 — beim Trennen gelöscht.',
-		factSession: 'Token versiegelt in einem Browser-Cookie — nie serverseitig gespeichert.',
+		factCache: 'D1 speichert gecachte Workout-/Replay-Daten — niemals das Token.',
+		factSession: 'KV speichert Session-Identität/-Status; das Token ist in httpOnly rp_tok versiegelt.',
 		exportTitle: 'Logbuch exportieren',
 		exportNote: 'Lade deinen vollständigen Verlauf als CSV oder JSON herunter. TCX pro Workout (Schlagdaten) öffnet sich in Garmin, Strava oder TrainingPeaks.',
 		exportCsv: 'CSV herunterladen',
@@ -760,7 +760,7 @@ export const de = {
 		introBefore: 'Füge ein persönliches API-Token aus deinem Concept2-Logbuch ein (',
 		introLink: 'Profil bearbeiten → Anwendungen',
 		introAfter:
-			'). Füge es hier einmal ein — rowplay sendet es per HTTPS an den Worker, versiegelt es in einem httpOnly-Cookie, das in deinem Browser bleibt, und nutzt es nur für serverseitige Logbuch-Abfragen. Das Token wird nie auf dem Server gespeichert.',
+			'). Füge es hier einmal ein — rowplay sendet es per HTTPS an den Worker, validiert es, versiegelt es im httpOnly-Cookie rp_tok und nutzt es nur für serverseitige Logbuch-Abfragen. Das Token wird nie in KV oder D1 gespeichert.',
 		apiToken: 'API-Token',
 		placeholder: 'Token einfügen',
 		connect: 'Mit Token verbinden',

@@ -65,13 +65,17 @@ Priority key: **P0** = correctness · **P1** = high value · **P2** = polish · 
 
 ---
 
-## Verification
+## Historical Verification Snapshot
+
+These checks record the PR #55 landing state for this completed audit. They are
+not the current whole-app test counts; use `npm run check`, `npm run test`,
+`npm run build`, and `npm run validate:locales` for current project health.
 
 - [x] `npm run check` — 0 errors
 - [x] `npm run build` — succeeds
-- [x] `npm run test` — green (176 tests)
+- [x] `npm run test` — green at the time this audit landed
 - [x] `npm run validate:locales` — after `nav.skipToContent` keys
-- [x] `npm run test:e2e` — WebKit (38 passed; run with the CI profile `CI=1` / 2 workers locally — `75%` workers + 0 retries flakes on the single `wrangler dev`)
+- [x] `npm run test:e2e` — WebKit snapshot passed; run with the CI profile `CI=1` / 2 workers locally because `75%` workers + 0 retries flakes on the single `wrangler dev`
 
 ---
 

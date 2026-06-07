@@ -23,8 +23,9 @@ export interface SessionData {
 	user: SessionUser;
 	tokens: OAuthTokens;
 	/**
-	 * "Bring your own token" sessions: `tokens.accessToken` is a long-lived
-	 * personal API token the user pasted, used directly with no OAuth refresh.
+	 * "Bring your own token" sessions: `tokens.accessToken` is intentionally
+	 * empty in KV. The personal token lives sealed in `rp_tok` and is opened only
+	 * in memory for server-side Concept2 reads.
 	 */
 	personal?: boolean;
 	/** IANA home timezone for calendar/streak bucketing when workout tz is absent. */

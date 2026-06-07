@@ -22,16 +22,17 @@ lower-resolution replay synthesised from splits.
 | App framework  | SvelteKit (Svelte 5) + Vite                                        |
 | Hosting        | Cloudflare **Workers** + static assets (`@sveltejs/adapter-cloudflare`) |
 | Server         | SvelteKit endpoints on the Workers runtime                         |
-| Auth           | **Bring-your-own-token** (personal read-only API token)            |
+| Auth           | **Bring-your-own-token** (personal Concept2 API token)             |
 | Sessions       | Cloudflare **KV** (`SESSIONS`)                                     |
 | Cache          | Cloudflare **D1** (`DB`) — cached workouts + strokes               |
 | Charts         | [uPlot](https://github.com/leeoniya/uPlot)                        |
 | Replay engine  | rAF clock + linear interpolation (`src/lib/replay/`), Canvas course |
 
-You paste a **read-only personal API token** from your Concept2 profile once.
-It is sent to the Worker over HTTPS, stored in your session (KV), and used only
-for **server-side** logbook reads. After connect, your browser holds an httpOnly
-session cookie — the token is not kept in client JS or `localStorage`.
+You paste a **personal Concept2 API token** from your Concept2 profile once.
+It is sent to the Worker over HTTPS, validated, and sealed into the httpOnly
+`rp_tok` cookie with `SESSION_SECRET`. KV stores session identity/state, not the
+token; D1 stores cached workout/replay data, not the token. Disconnecting or
+deleting account data clears the cached user data and session state.
 
 ## Quick start (demo mode)
 
@@ -48,7 +49,7 @@ Open `/dashboard` and click any workout to watch the replay.
 ## Connecting your real logbook (BYOT)
 
 1. In the Concept2 logbook, open **Edit Profile → Applications** and copy your
-   personal API token (read-only, works for your account only).
+   personal API token (works for your account only).
 2. In rowplay, click **Use a token** (`/auth/token`) and paste it.
 3. For local KV/D1 (token auth, sync, cache), use the Workers runtime:
 
@@ -89,6 +90,7 @@ remote migrations once: `npm run db:migrate`.
 | `npm run check`            | `svelte-check` type checking                  |
 | `npm run test`             | Vitest unit tests                             |
 | `npm run test:e2e`         | Playwright smoke (WebKit + wrangler dev)      |
+| `npm run validate:locales` | Verify locale dictionary key parity           |
 | `npm run deploy`           | Build + deploy (`wrangler deploy`)            |
 | `npm run db:migrate[:local]` | Apply D1 migrations                         |
 
