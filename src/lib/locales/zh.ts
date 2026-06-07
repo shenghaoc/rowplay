@@ -79,6 +79,7 @@ export const zh = {
 		replay: '回放',
 		loading: '加载中…',
 		tryAgain: '请重试。',
+		dismiss: '关闭',
 		notAffiliated: '与 Concept2 无关联',
 		tagline: 'rowplay · Concept2 训练日志分析与实时回放'
 	},
@@ -115,7 +116,15 @@ export const zh = {
 		feat2Title: '分段分析',
 		feat2Body: '配速、桨频、功率与心率随时间变化——涵盖全部三种器械。',
 		feat3Title: '边缘加速',
-		feat3Body: '由 Cloudflare 提供服务，缓存逐桨数据，实现即时回放。'
+		feat3Body: '由 Cloudflare 提供服务，缓存逐桨数据，实现即时回放。',
+		tourEyebrow: '首次使用',
+		tourTitle: '先试这四件事',
+		tourBody: '先看仪表板，再打开一次回放，去排行榜挑战幽灵对手，最后导出你想在别处查看的数据。',
+		tourDashboard: '仪表板：总量、趋势与 PB',
+		tourReplay: '回放：同步赛道与仪表',
+		tourGhost: '幽灵竞速：追赶历史或对手成绩',
+		tourExport: '导出：CSV、JSON 或回放文件',
+		tourDismiss: '关闭首次使用引导'
 	},
 	dashboard: {
 		eyebrow: '你的日志',
@@ -136,6 +145,49 @@ export const zh = {
 		totalDistance: '总距离',
 		totalTime: '总时间',
 		avgPace: '平均配速',
+		sectionCoreEyebrow: '从这里开始',
+		sectionCore: '今日读数',
+		sectionWorkoutsEyebrow: '训练',
+		sectionWorkouts: '查找回放',
+		sectionWorkoutsBody: '直接筛选、标记、对比并打开训练，无需先钻进深层分析面板。',
+		sectionRecordsEyebrow: '目标',
+		sectionRecords: '目标、徽章与 PB',
+		sectionRecordsBody: '赛季目标、里程碑、标准距离个人最佳和预测工具集中在这里。',
+		sectionAdvancedEyebrow: '分析',
+		sectionAdvanced: '进阶分析',
+		sectionAdvancedBody: '功率模型、训练负荷、划桨效率和长期趋势，用于更深入复盘。',
+		sectionPower: 'CP/W′ 与状态',
+		sectionPowerBody: '基于你的历史记录估算临界功率、可维持配速和负荷平衡。',
+		sectionTraining: '训练结构',
+		sectionTrainingBody: '用日历、强度和趋势查看训练如何分布。',
+		sectionStroke: '划桨效率与器械拆分',
+		sectionStrokeBody: 'DPS 趋势和按器械汇总提供技术与配速背景。',
+		tour: {
+			eyebrow: '演示引导',
+			title: '先试这些',
+			body: '这些提示是可选的，在此浏览器关闭后会保持关闭。',
+			dismissHint: '关闭 {title}',
+			latestReplay: {
+				title: '回放最新训练',
+				body: '打开最新演示训练并点击播放。',
+				action: '打开回放'
+			},
+			criticalPower: {
+				title: '查看 CP/W′',
+				body: '查看可维持功率模型和配速预测。',
+				action: '跳到面板'
+			},
+			workoutFilters: {
+				title: '使用训练筛选',
+				body: '按距离、标签、逐桨数据或配速缩小列表。',
+				action: '尝试筛选'
+			},
+			leaderboardGhost: {
+				title: '挑战排行榜幽灵',
+				body: '打开标准距离榜单，用“竞速”预载一个对手。',
+				action: '打开排行榜'
+			}
+		},
 		pbTitle: '个人最佳 · 标准距离',
 		bySport: '按器械',
 		thSport: '器械',
@@ -205,7 +257,7 @@ export const zh = {
 			}
 		},
 		formTitle: '体能与状态',
-		formPremium: '高级功能 — 已解锁',
+		formAdvanced: '进阶分析',
 		formSub: '涵盖全部器械的训练负荷，按你自己的阈值功率换算。',
 		formFitness: '体能',
 		formFatigue: '疲劳',
@@ -221,7 +273,7 @@ export const zh = {
 		formChartFitness: '体能',
 		formChartFatigue: '疲劳',
 		formChartForm: '状态',
-		formEmpty: '在几周内再多记录几次训练，即可解锁你的体能与状态图。',
+		formEmpty: '在几周内再多记录几次训练，即可显示你的体能与状态图表。',
 		bandTransition: '体能流失',
 		descTransition: '状态很轻松，但体能正在下降。该加练了。',
 		bandFresh: '充沛',
@@ -293,7 +345,7 @@ export const zh = {
 		cpExplainModel:
 			'CP 是你长时间稳定输出、不易掉速的功率上限，大致对应 30–60 分钟能力。W′（{wPrime} kJ）是短于 CP 时可额外透支的做功。二者可推算任意时长的可持续功率。',
 		cpExplainEstimate:
-			'根据你较长距离的最佳表现，估算 CP 为 {cp} W。记录更多不同时长（冲刺到 30 分钟以上）可解锁完整 CP/W′ 模型。',
+			'根据你较长距离的最佳表现，估算 CP 为 {cp} W。记录更多不同时长（冲刺到 30 分钟以上）可拟合更完整的 CP/W′ 模型。',
 		cpPredictTitle: '我能维持多少？',
 		cpPredictSub: '由 CP 模型推算的均速配速或完赛时间。配速为 /500m（仅适用于 RowErg 和 SkiErg）。',
 		cpModeDuration: '维持…',
@@ -755,6 +807,15 @@ export const zh = {
 		introBefore: '从你的 Concept2 日志粘贴一个个人 API 令牌（',
 		introLink: '编辑资料 → 应用',
 		introAfter: '）。在此粘贴一次 — rowplay 通过 HTTPS 发送到 Worker，验证后将其密封到 httpOnly rp_tok cookie 中，并仅用于服务器端读取日志。令牌绝不会保存在 KV 或 D1 中。',
+		trustTitle: 'rowplay 如何处理令牌',
+		trustAccessTitle: '访问：',
+		trustAccessBody: '个人 Concept2 令牌代表你本人认证；rowplay 只在服务器端用它读取资料、训练和逐桨数据。',
+		trustStoredTitle: '存储：',
+		trustStoredBody: '验证后的令牌会密封到 httpOnly rp_tok cookie 中，不放入 localStorage、KV 或 D1。',
+		trustDisconnectTitle: '断开：',
+		trustDisconnectBody: '在“数据”页退出或删除账户数据，会清除令牌 cookie、会话和私有缓存。',
+		trustCacheTitle: '缓存：',
+		trustCacheBody: '连接期间 D1 会缓存训练摘要和回放详情；只有你主动发布时才会创建公开分享或排行榜条目。',
 		apiToken: 'API 令牌',
 		placeholder: '粘贴你的令牌',
 		connect: '使用令牌连接',

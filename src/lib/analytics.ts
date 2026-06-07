@@ -494,11 +494,10 @@ export function efficiencyByRate(strokes: Stroke[]): EfficiencyPoint[] {
 // ---------------------------------------------------------------------------
 // Fitness & Freshness — the Performance Management Chart (PMC)
 //
-// This is the headline metric every endurance athlete wants and that Strava
-// and TrainingPeaks lock behind a subscription: "how fit am I, how tired am I,
-// and am I ready to perform?". It needs nothing live — just the session
-// summaries we already sync. We turn each session into a Training Stress Score
-// (TSS) from its average power, then track three exponentially-weighted loads:
+// This is the headline metric many endurance athletes want: "how fit am I, how
+// tired am I, and am I ready to perform?". It needs nothing live — just the
+// session summaries we already sync. We turn each session into a Training Stress
+// Score (TSS) from its average power, then track three exponentially-weighted loads:
 //
 //   • Fitness (CTL) — a 42-day average: your built-up training base.
 //   • Fatigue (ATL) — a 7-day average: recent, fast-decaying tiredness.

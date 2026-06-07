@@ -80,6 +80,7 @@ export const es = {
 		replay: 'Replay',
 		loading: 'cargando…',
 		tryAgain: 'Inténtalo de nuevo.',
+		dismiss: 'Cerrar',
 		notAffiliated: 'no afiliado a Concept2',
 		tagline: 'rowplay · análisis de diario Concept2 y replay en tiempo real'
 	},
@@ -116,7 +117,15 @@ export const es = {
 		feat2Title: 'Análisis de parciales',
 		feat2Body: 'Ritmo, cadencia, potencia y HR a lo largo del tiempo — en las tres máquinas.',
 		feat3Title: 'En el edge',
-		feat3Body: 'Servido desde Cloudflare con datos de palada en caché para replays instantáneos.'
+		feat3Body: 'Servido desde Cloudflare con datos de palada en caché para replays instantáneos.',
+		tourEyebrow: 'Primer uso',
+		tourTitle: 'Cuatro cosas que probar',
+		tourBody: 'Empieza por el panel, abre un replay, compite contra un ghost del leaderboard y exporta los datos que quieras revisar fuera.',
+		tourDashboard: 'Panel: totales, tendencias y PBs',
+		tourReplay: 'Replay: recorrido e indicadores sincronizados',
+		tourGhost: 'Ghost racing: persigue un esfuerzo pasado o rival',
+		tourExport: 'Exportar: CSV, JSON o archivos de replay',
+		tourDismiss: 'Cerrar tour inicial'
 	},
 	dashboard: {
 		eyebrow: 'Tu diario',
@@ -137,6 +146,49 @@ export const es = {
 		totalDistance: 'Distancia total',
 		totalTime: 'Tiempo total',
 		avgPace: 'Ritmo medio',
+		sectionCoreEyebrow: 'Empieza aquí',
+		sectionCore: 'Lectura de hoy',
+		sectionWorkoutsEyebrow: 'Entrenamientos',
+		sectionWorkouts: 'Buscar un replay',
+		sectionWorkoutsBody: 'Filtra, etiqueta, compara y abre entrenamientos sin pasar antes por los paneles de análisis profundo.',
+		sectionRecordsEyebrow: 'Objetivos',
+		sectionRecords: 'Objetivos, insignias y PBs',
+		sectionRecordsBody: 'Objetivos de temporada, hitos, mejores marcas estándar y predicciones quedan juntos.',
+		sectionAdvancedEyebrow: 'Análisis',
+		sectionAdvanced: 'Análisis avanzado',
+		sectionAdvancedBody: 'Modelo de potencia, carga de entrenamiento, eficiencia de palada y tendencias largas para revisar a fondo.',
+		sectionPower: 'CP/W′ y frescura',
+		sectionPowerBody: 'Potencia crítica, ritmo sostenible y balance de carga desde tu historial.',
+		sectionTraining: 'Forma del entrenamiento',
+		sectionTrainingBody: 'Calendario, intensidad y tendencias para ver cómo se distribuye el trabajo.',
+		sectionStroke: 'Eficiencia de palada y desglose por máquina',
+		sectionStrokeBody: 'Tendencia DPS y resúmenes por máquina para contexto técnico y de ritmo.',
+		tour: {
+			eyebrow: 'Guía demo',
+			title: 'Prueba esto primero',
+			body: 'Estas pistas son opcionales y quedan cerradas en este navegador.',
+			dismissHint: 'Cerrar {title}',
+			latestReplay: {
+				title: 'Reproducir el último entrenamiento',
+				body: 'Abre la pieza demo más reciente y pulsa play.',
+				action: 'Abrir replay'
+			},
+			criticalPower: {
+				title: 'Revisar CP/W′',
+				body: 'Mira el modelo de potencia sostenible y el predictor de ritmo.',
+				action: 'Ir al panel'
+			},
+			workoutFilters: {
+				title: 'Usar filtros',
+				body: 'Acota la lista por distancia, etiquetas, datos de palada o ritmo.',
+				action: 'Probar filtros'
+			},
+			leaderboardGhost: {
+				title: 'Competir contra un ghost',
+				body: 'Abre una tabla estándar y usa Race para preparar un rival.',
+				action: 'Abrir leaderboard'
+			}
+		},
 		pbTitle: 'Mejores marcas · distancias estándar',
 		bySport: 'Por deporte',
 		thSport: 'Deporte',
@@ -206,7 +258,7 @@ export const es = {
 			}
 		},
 		formTitle: 'Forma y frescura',
-		formPremium: 'Función premium — desbloqueada',
+		formAdvanced: 'Análisis avanzado',
 		formSub: 'Carga de entrenamiento en todas las máquinas, escalada a tu propia potencia umbral.',
 		formFitness: 'Forma',
 		formFatigue: 'Fatiga',
@@ -222,7 +274,7 @@ export const es = {
 		formChartFitness: 'Forma',
 		formChartFatigue: 'Fatiga',
 		formChartForm: 'Estado',
-		formEmpty: 'Registra más sesiones durante un par de semanas para desbloquear tu gráfico de forma y frescura.',
+		formEmpty: 'Registra más sesiones durante un par de semanas para mostrar tu gráfico de forma y frescura.',
 		bandTransition: 'Desentrenamiento',
 		descTransition: 'Muy fresco, pero la forma baja. Hora de meter trabajo.',
 		bandFresh: 'Fresco',
@@ -294,7 +346,7 @@ export const es = {
 		cpExplainModel:
 			'CP es la potencia que podrías mantener en una tirada larga sin fundirte — aproximadamente tu techo de 30–60 min. W′ ({wPrime} kJ) es el extra por encima de CP en esfuerzos cortos. Juntos predicen cuánto puedes apretar en cualquier duración.',
 		cpExplainEstimate:
-			'CP se estima en {cp} W a partir de tus mejores esfuerzos largos — la potencia que podrías mantener en una tirada larga sin fundirte. Registra más duraciones variadas (sprints hasta 30+ min) para desbloquear un modelo CP/W′ completo.',
+			'CP se estima en {cp} W a partir de tus mejores esfuerzos largos — la potencia que podrías mantener en una tirada larga sin fundirte. Registra más duraciones variadas (sprints hasta 30+ min) para ajustar un modelo CP/W′ más completo.',
 		cpPredictTitle: '¿Qué puedo aguantar?',
 		cpPredictSub: 'Ritmo a parciales iguales o tiempo de llegada según tu modelo CP. El ritmo es /500m (solo RowErg y SkiErg).',
 		cpModeDuration: 'Aguantar durante…',
@@ -761,6 +813,15 @@ export const es = {
 		introLink: 'Editar perfil → Aplicaciones',
 		introAfter:
 			'). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo valida, lo sella en la cookie httpOnly rp_tok y lo usa solo para lecturas del diario en el servidor. El token nunca se guarda en KV ni D1.',
+		trustTitle: 'Cómo gestiona rowplay el token',
+		trustAccessTitle: 'Acceso:',
+		trustAccessBody: 'un token personal de Concept2 autentica como tú; rowplay solo lo usa en el servidor para leer perfil, entrenamientos y datos de palada.',
+		trustStoredTitle: 'Almacenamiento:',
+		trustStoredBody: 'el token validado se sella en la cookie httpOnly rp_tok, no en localStorage, KV ni D1.',
+		trustDisconnectTitle: 'Desconectar:',
+		trustDisconnectBody: 'cerrar sesión o borrar datos de cuenta desde Datos limpia la cookie del token, la sesión y la caché privada.',
+		trustCacheTitle: 'Caché:',
+		trustCacheBody: 'D1 guarda resúmenes y detalles de replay mientras estés conectado; los enlaces públicos o entradas del leaderboard solo se crean si publicas.',
 		apiToken: 'Token API',
 		placeholder: 'Pega tu token',
 		connect: 'Conectar con token',

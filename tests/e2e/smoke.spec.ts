@@ -67,6 +67,61 @@ test.describe('smoke', () => {
 		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
 	});
 
+	test('dashboard hierarchy keeps workouts before advanced analysis and hints persist dismissal', async ({ page }) => {
+		const errors = collectPageErrors(page);
+
+		await page.goto('/dashboard');
+		const tour = page.locator('[data-e2e="dashboard-tour"]');
+		await expect(tour.getByRole('heading', { name: /Try this first/ })).toBeVisible();
+		await expect(tour.locator('a[href^="/replay/"]').first()).toBeVisible();
+		await expect(tour.locator('a[href="/dashboard#critical-power"]')).toBeVisible();
+		await expect(tour.locator('a[href="/dashboard#workout-filters"]')).toBeVisible();
+		await expect(tour.locator('a[href^="/leaderboard"]')).toBeVisible();
+
+		const order = await page.locator('[data-e2e="core-summary"], [data-e2e="workout-section"], [data-e2e="advanced-section"]').evaluateAll((els) =>
+			els.map((el) => {
+				const rect = el.getBoundingClientRect();
+				return rect.top + window.scrollY;
+			})
+		);
+		expect(order).toHaveLength(3);
+		expect(order[0]).toBeLessThan(order[1]);
+		expect(order[1]).toBeLessThan(order[2]);
+
+		const overflow = await page.evaluate(() => {
+			const viewport = document.documentElement.clientWidth;
+			const offenders = [...document.querySelectorAll<HTMLElement>('body *')]
+				.map((el) => {
+					const rect = el.getBoundingClientRect();
+					return {
+						tag: el.tagName.toLowerCase(),
+						className: el.className.toString(),
+						text: el.textContent?.trim().slice(0, 80) ?? '',
+						left: Math.round(rect.left),
+						right: Math.round(rect.right),
+						width: Math.round(rect.width)
+					};
+				})
+				.filter((item) => item.right > viewport + 1 || item.left < -1)
+				.slice(0, 8);
+			return {
+				ok: document.documentElement.scrollWidth <= viewport + 1,
+				viewport,
+				scrollWidth: document.documentElement.scrollWidth,
+				offenders
+			};
+		});
+		expect(overflow.ok, JSON.stringify(overflow, null, 2)).toBe(true);
+
+		await tour.getByRole('button', { name: /^Dismiss$/ }).click();
+		await expect(tour).toBeHidden();
+		await page.reload();
+		await expect(page.locator('[data-e2e="dashboard-tour"]')).toBeHidden();
+
+		await page.waitForTimeout(300);
+		expect(errors, `unexpected page errors:\n${errors.join('\n')}`).toEqual([]);
+	});
+
 	test('replay pace-boat rival shows live gap readout', async ({ page }) => {
 		const errors = collectPageErrors(page);
 
@@ -216,7 +271,8 @@ test.describe('smoke', () => {
 		const res = await page.goto('/auth/token');
 		expect(res?.ok(), 'GET /auth/token should be 2xx').toBeTruthy();
 
-		await expect(page.getByRole('heading', { name: /token/i })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /^Use your Concept2 token$/ })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /How rowplay handles the token/i })).toBeVisible();
 		await expect(page.locator('input[name="token"]')).toBeVisible();
 
 		await page.waitForTimeout(300);

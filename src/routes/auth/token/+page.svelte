@@ -22,6 +22,16 @@
 		>{t('token.introAfter')}
 	</p>
 
+	<div class="card card-border bg-base-100 shadow-md p-5 trust">
+		<h2>{t('token.trustTitle')}</h2>
+		<ul>
+			<li><strong>{t('token.trustAccessTitle')}</strong> {t('token.trustAccessBody')}</li>
+			<li><strong>{t('token.trustStoredTitle')}</strong> {t('token.trustStoredBody')}</li>
+			<li><strong>{t('token.trustDisconnectTitle')}</strong> {t('token.trustDisconnectBody')}</li>
+			<li><strong>{t('token.trustCacheTitle')}</strong> {t('token.trustCacheBody')}</li>
+		</ul>
+	</div>
+
 	<form
 		method="POST"
 		use:enhance={() => {
@@ -72,6 +82,25 @@
 	}
 	.small {
 		font-size: 0.85rem;
+	}
+	.trust {
+		border-color: color-mix(in srgb, var(--live) 24%, var(--hairline));
+		background: linear-gradient(135deg, color-mix(in srgb, var(--live) 6%, var(--paper-raised)), var(--paper-raised) 72%);
+	}
+	.trust h2 {
+		margin: 0 0 0.65rem;
+		font-size: 0.95rem;
+		font-weight: 800;
+		text-transform: uppercase;
+	}
+	.trust ul {
+		margin: 0;
+		padding-left: 1rem;
+		display: grid;
+		gap: 0.5rem;
+	}
+	.trust li {
+		line-height: 1.45;
 	}
 	button {
 		justify-self: start;

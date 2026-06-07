@@ -33,6 +33,7 @@ describe('load /dashboard', () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const data = await load(event as any) as any;
 		expect(data.demo).toBe(true);
+		expect(data.firstRunEligible).toBe(true);
 		expect(Array.isArray(data.workouts)).toBe(true);
 		expect(data.sync).toBeNull(); // demo mode => no sync
 	});
@@ -43,6 +44,7 @@ describe('load /dashboard', () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const data = await load(event as any) as any;
 		expect(data.demo).toBe(false);
+		expect(data.firstRunEligible).toBe(false);
 		expect(data.workouts).toBeDefined();
 	});
 

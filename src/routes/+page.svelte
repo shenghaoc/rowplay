@@ -2,10 +2,29 @@
 	import PlayCircle from '@lucide/svelte/icons/play-circle';
 	import LineChart from '@lucide/svelte/icons/line-chart';
 	import GitCompare from '@lucide/svelte/icons/git-compare';
+	import Download from '@lucide/svelte/icons/download';
+	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+	import X from '@lucide/svelte/icons/x';
+	import { onMount } from 'svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
+	import {
+		dismissFirstRunSurface,
+		isFirstRunSurfaceDismissed
+	} from '$lib/firstRun';
 	let { data } = $props();
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);
+
+	let showLandingTour = $state(false);
+
+	onMount(() => {
+		showLandingTour = data.firstRunEligible && !isFirstRunSurfaceDismissed('landing');
+	});
+
+	function dismissLandingTour() {
+		dismissFirstRunSurface('landing');
+		showLandingTour = false;
+	}
 </script>
 
 <section class="splash container">
@@ -22,6 +41,43 @@
 		</div>
 		{#if data.demo}
 			<p class="muted small">{t('landing.demoNote')}</p>
+		{/if}
+		{#if showLandingTour}
+			<div class="card card-border bg-base-100 shadow-md p-5 tour" data-e2e="landing-tour">
+				<div class="tour-head">
+					<div>
+						<p class="eyebrow">{t('landing.tourEyebrow')}</p>
+						<h2>{t('landing.tourTitle')}</h2>
+					</div>
+					<button
+						type="button"
+						class="btn btn-ghost btn-square btn-sm"
+						aria-label={t('landing.tourDismiss')}
+						onclick={dismissLandingTour}
+					>
+						<X size={16} />
+					</button>
+				</div>
+				<p class="muted tour-body">{t('landing.tourBody')}</p>
+				<div class="tour-steps">
+					<div class="tour-step">
+						<LayoutDashboard size={18} aria-hidden="true" />
+						<span>{t('landing.tourDashboard')}</span>
+					</div>
+					<div class="tour-step">
+						<PlayCircle size={18} aria-hidden="true" />
+						<span>{t('landing.tourReplay')}</span>
+					</div>
+					<div class="tour-step">
+						<GitCompare size={18} aria-hidden="true" />
+						<span>{t('landing.tourGhost')}</span>
+					</div>
+					<div class="tour-step">
+						<Download size={18} aria-hidden="true" />
+						<span>{t('landing.tourExport')}</span>
+					</div>
+				</div>
+			</div>
 		{/if}
 	</div>
 
@@ -94,6 +150,49 @@
 		margin: 0;
 		font-size: 0.92rem;
 	}
+	.tour {
+		margin-top: 1.25rem;
+		border-color: color-mix(in srgb, var(--live) 28%, var(--hairline));
+		background: linear-gradient(135deg, color-mix(in srgb, var(--live) 8%, var(--paper-raised)), var(--paper-raised) 70%);
+	}
+	.tour-head {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
+		align-items: flex-start;
+	}
+	.tour h2 {
+		font-size: 1rem;
+		font-weight: 800;
+		margin: 0.15rem 0 0;
+		text-transform: uppercase;
+	}
+	.tour-body {
+		font-size: 0.9rem;
+		margin: 0.65rem 0 0;
+	}
+	.tour-steps {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.55rem;
+		margin-top: 0.9rem;
+	}
+	.tour-step {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		min-width: 0;
+		padding: 0.55rem 0.65rem;
+		border: 1px solid var(--hairline);
+		border-radius: var(--r-ctrl);
+		background: var(--paper-inset);
+		font-size: 0.82rem;
+		font-weight: 700;
+	}
+	.tour-step :global(svg) {
+		flex: 0 0 auto;
+		color: var(--live);
+	}
 	@media (max-width: 860px) {
 		.splash {
 			grid-template-columns: 1fr;
@@ -111,6 +210,9 @@
 		}
 		.lead {
 			font-size: 0.95rem;
+		}
+		.tour-steps {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>
