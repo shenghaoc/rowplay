@@ -46,13 +46,14 @@ function redactArgs(args: unknown[]): unknown[] {
 	return args.map((a) => {
 		if (typeof a === 'string') return redact(a);
 		if (a instanceof Error) {
-			return new Error(redact(a.message));
+			a.message = redact(a.message);
+			return a;
 		}
 		if (typeof a === 'object' && a !== null) {
 			try {
 				return JSON.parse(redact(JSON.stringify(a)));
 			} catch {
-				return a;
+				return redact(String(a));
 			}
 		}
 		return a;

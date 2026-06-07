@@ -43,10 +43,12 @@ describe('createLogger', () => {
 		const fakeConsole = { error: vi.fn((...args: unknown[]) => errors.push(args)) };
 		const log = createLogger(fakeConsole as unknown as Console);
 
-		log.error('Sync failed with token', 'abc123def456tokenvalue1234567890ab');
+		log.error('Sync failed', 'abcdef0123456789abcdef0123456789');
 		expect(fakeConsole.error).toHaveBeenCalled();
-		const firstArg = errors[0]?.[0];
-		expect(firstArg).not.toContain('abc123');
+		// The hex token in second arg should be redacted
+		expect(errors[0]?.[1]).toBe(REDACTED);
+		// First arg (safe message) should be untouched
+		expect(errors[0]?.[0]).toBe('Sync failed');
 	});
 
 	it('does not redact safe log messages', () => {
