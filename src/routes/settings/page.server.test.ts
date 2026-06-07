@@ -14,7 +14,8 @@ import { load } from './+page.server';
 function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null } = {}) {
 	return {
 		locals: { demo: opts.demo ?? false, user: opts.user ?? null },
-		platform: { env: { DB: {}, SESSIONS: {} } }
+		platform: { env: { DB: {}, SESSIONS: {} } },
+		setHeaders: vi.fn()
 	};
 }
 

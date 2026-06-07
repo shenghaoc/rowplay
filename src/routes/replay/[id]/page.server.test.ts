@@ -22,7 +22,8 @@ function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null; id?: st
 	return {
 		params: { id: opts.id ?? '1001' },
 		locals: { demo: opts.demo ?? false, user: opts.user ?? null },
-		platform: { env: { DB: {} } }
+		platform: { env: { DB: {} } },
+		setHeaders: vi.fn()
 	};
 }
 

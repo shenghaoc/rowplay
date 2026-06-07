@@ -8,6 +8,12 @@ export const load: PageServerLoad = async (event) => {
 	if (!event.locals.demo && !event.locals.user) {
 		throw redirect(303, '/auth/login');
 	}
+	// Prevent the service worker from caching authenticated replay pages.
+	// Demo-mode pages (no personal data) remain cacheable for offline use.
+	if (!event.locals.demo) {
+		event.setHeaders({ 'cache-control': 'private, no-store' });
+	}
+
 	const id = Number(event.params.id);
 	const detail = await loadWorkoutDetail(event, id);
 	const annotations = await loadAnnotations(event, id);

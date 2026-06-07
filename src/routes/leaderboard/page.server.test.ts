@@ -12,7 +12,8 @@ import { load } from './+page.server';
 function fakeEvent(demo = true) {
 	return {
 		locals: { demo },
-		platform: { env: { DB: {} } }
+		platform: { env: { DB: {} } },
+		setHeaders: vi.fn()
 	};
 }
 

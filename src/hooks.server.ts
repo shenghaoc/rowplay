@@ -72,10 +72,30 @@ const SECURITY_HEADERS: Record<string, string> = {
 	// Report-only CSP baseline: validates syntax and surfaces violations in
 	// DevTools. about:blank report-uri silences the "no reporting endpoint"
 	// browser warning; wire up a real collector before switching to enforce mode.
+	//
+	// BLOCKERS preventing enforce mode:
+	// 1. script-src 'unsafe-inline' — SvelteKit injects inline <script> tags for
+	//    hydration bootstrapping. Hash/nonce of these dynamically-generated scripts
+	//    is not viable without framework-level changes. This is the single hard
+	//    requirement preventing script-src enforcement.
+	// 2. style-src 'unsafe-inline' — daisyUI (Tailwind v4 CSS plugin) and Svelte
+	//    scoped component styles produce inline <style> elements. Could be converted
+	//    to hashes with a post-build step but adds fragility.
+	// 3. style-src https://fonts.googleapis.com + font-src https://fonts.gstatic.com —
+	//    Required for CJK Noto fonts (Noto Sans JP/SC). Latin fonts are self-hosted
+	//    via @fontsource. Self-hosting CJK fonts would remove these allowances but
+	//    each CJK weight is 4–8 MB.
+	//
+	// NOTE: frame-ancestors and form-action are not set in report-only mode
+	// because browsers ignore both directives in report-only policies and log
+	// a console error. X-Frame-Options: DENY covers framing defense in the
+	// meantime. Both will be added when CSP is promoted to enforce mode.
 	'Content-Security-Policy-Report-Only':
-		"default-src 'self'; base-uri 'self'; object-src 'none'; report-uri about:blank; " +
+		"default-src 'self'; base-uri 'self'; object-src 'none'; " +
 		"script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-		"font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'"
+		"font-src 'self' https://fonts.gstatic.com data:; " +
+		"img-src 'self' data: blob:; connect-src 'self'; " +
+		"report-uri about:blank"
 };
 
 // HSTS is emitted only over HTTPS: browsers ignore it on plain-HTTP responses
