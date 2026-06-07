@@ -321,8 +321,8 @@ src/
 - **3D replay requires WebGL.** The 3D view uses Three.js; devices without
   WebGL support fall back to the 2D canvas renderer automatically.
 - **Live mode polls.** There is no real-time push from Concept2 — live/near-live
-  mode uses periodic polling (every 30s by default) and only reflects workouts
-  recorded with ErgData.
+  mode uses periodic polling at a configurable interval (60s default, 30s minimum)
+  and only reflects workouts recorded with ErgData.
 - **Single account per session.** BYOT tokens are personal read-only tokens tied
   to one Concept2 profile. Multi-account dashboards are not supported.
 - **Workers free tier limits.** Cloudflare's free tier includes 100k requests/day
