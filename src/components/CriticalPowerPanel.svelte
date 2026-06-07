@@ -29,15 +29,11 @@
 		scope === 'all' ? workouts : workouts.filter((w) => w.sport === scope)
 	);
 	const anyCp = $derived(estimateCriticalPower(workouts));
-	const cp = $derived(estimateCriticalPower(scopedWorkouts));
+	const cp = $derived(scope === 'all' ? anyCp : estimateCriticalPower(scopedWorkouts));
 	const comparison = $derived(cp ? powerDurationComparison(scopedWorkouts, cp) : null);
 	const predictorSport = $derived< Sport | undefined >(scope === 'all' ? undefined : scope);
 	const canPredictPace = $derived(scope !== 'all');
 	const cpScopeLabel = $derived(scope === 'all' ? t('dashboard.cpScopeAll') : SPORT_LABEL[scope]);
-	const warningLabels = $derived.by(() => {
-		if (!cp) return [];
-		return cp.warnings.map((w) => t(`dashboard.cpWarning.${w}`));
-	});
 
 	type PredictMode = 'duration' | 'distance';
 	let predictMode = $state<PredictMode>('duration');
@@ -144,9 +140,7 @@
 		</div>
 		<p class="cpsub muted">{t('dashboard.cpSub')}</p>
 
-		{#if !cp}
-			<p class="cpexplain">{t('dashboard.cpEmptyScope', { scope: cpScopeLabel })}</p>
-		{:else}
+		{#if cp}
 		<div class="cpstats">
 			<div class="cs">
 				<div class="csv mono">{cp.cp}<span class="unit">W</span></div>
@@ -178,7 +172,7 @@
 				<span>{t('dashboard.cpFit', { r2: cp.fitQuality.r2.toFixed(2), residual: cp.fitQuality.residualPct.toFixed(1) })}</span>
 			{/if}
 		</div>
-		{#if warningLabels.length}
+		{#if cp.warnings.length}
 			<div class="cpwarnings" aria-label={t('dashboard.cpWarningsLabel')}>
 				{#each cp.warnings as w}
 					<span class="badge badge-sm badge-soft {warningClass(w)}">{t(`dashboard.cpWarning.${w}`)}</span>
@@ -272,6 +266,8 @@
 				</div>
 			</div>
 		{/if}
+		{:else if scope !== 'all'}
+			<p class="cpexplain">{t('dashboard.cpEmptyScope', { scope: cpScopeLabel })}</p>
 		{/if}
 	</div>
 {/if}
