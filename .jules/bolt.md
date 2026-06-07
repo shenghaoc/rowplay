@@ -9,3 +9,7 @@
 ## 2026-05-31 - Avoid closures in high-frequency loops
 **Learning:** `Array.prototype.find` (and similar early-exit iterator methods) creates a new closure object on every call. When used inside a hot loop traversing long time-series arrays (like parsing every stroke of a long workout), this leads to unnecessary garbage collection overhead.
 **Action:** Replace `find` with a `for...of` loop **only when the containing function is called in a tight inner loop** (e.g., per-stroke in a thousands-of-strokes traversal). Do not apply this to `filter` or `map` outside hot paths — replacing readable functional style there is a readability regression for no gain.
+
+## 2026-06-03 - Optimize analytics loops and avoid map/reduce closures
+**Learning:** Chaining `.map()`, `.filter()`, and `.reduce()` inside analytics functions (like `techniqueSummary`) that process high-frequency time series (e.g., thousands of stroke objects) creates numerous closures and intermediate arrays. This results in significant garbage collection overhead and O(N) execution time with a large constant factor.
+**Action:** When computing multi-step metrics over time series arrays, replace functional `.map()/.reduce()` chains with traditional `for` loops that compute aggregations (sums, averages, variances) directly in a single pass without allocating intermediate memory.

@@ -408,22 +408,54 @@ export interface TechniqueSummary {
 }
 
 export function techniqueSummary(strokes: Stroke[]): TechniqueSummary {
-	const valid = strokes.filter((s) => s.pace > 0 && s.spm > 0);
-	const dps = valid.map((s) => ({ t: s.t, v: distancePerStroke(s.pace, s.spm) }));
-	const avgDps = mean(dps.map((d) => d.v));
-	const avgSpm = mean(valid.map((s) => s.spm));
+	let n = 0;
+	for (let i = 0; i < strokes.length; i++) {
+		const s = strokes[i];
+		if (s.pace > 0 && s.spm > 0) {
+			n++;
+		}
+	}
 
-	const paces = valid.map((s) => s.pace);
-	const mp = mean(paces);
-	const sd = Math.sqrt(mean(paces.map((p) => (p - mp) ** 2)));
+	const dps = new Array<{ t: number; v: number }>(n);
+	const third = n >= 6 ? Math.floor(n / 3) : 0;
+	let sumDps = 0, sumSpm = 0, sumPace = 0, meanPace = 0, paceM2 = 0, firstSum = 0, lastSum = 0;
+	let validIndex = 0;
+
+	for (let i = 0; i < strokes.length; i++) {
+		const s = strokes[i];
+		if (!(s.pace > 0 && s.spm > 0)) continue;
+		const v = distancePerStroke(s.pace, s.spm);
+		dps[validIndex] = { t: s.t, v };
+		sumDps += v;
+		sumSpm += s.spm;
+		sumPace += s.pace;
+
+		const paceCount = validIndex + 1;
+		const delta = s.pace - meanPace;
+		meanPace += delta / paceCount;
+		paceM2 += delta * (s.pace - meanPace);
+
+		if (validIndex < third) {
+			firstSum += s.pace;
+		}
+		if (third > 0 && validIndex >= n - third) {
+			lastSum += s.pace;
+		}
+		validIndex++;
+	}
+
+	const avgDps = n ? sumDps / n : 0;
+	const avgSpm = n ? sumSpm / n : 0;
+	const mp = n ? sumPace / n : 0;
+
+	const sd = n ? Math.sqrt(paceM2 / n) : 0;
 	const paceConsistency = mp > 0 ? (sd / mp) * 100 : 0;
 
 	// Fade by distance thirds (robust to uneven sampling in time).
 	let fade = 0;
-	if (valid.length >= 6) {
-		const third = Math.floor(valid.length / 3);
-		const firstPace = mean(valid.slice(0, third).map((s) => s.pace));
-		const lastPace = mean(valid.slice(-third).map((s) => s.pace));
+	if (third > 0) {
+		const firstPace = firstSum / third;
+		const lastPace = lastSum / third;
 		fade = firstPace > 0 ? ((lastPace - firstPace) / firstPace) * 100 : 0;
 	}
 
