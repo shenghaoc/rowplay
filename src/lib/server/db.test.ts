@@ -260,7 +260,8 @@ describe('setSyncState', () => {
 			lastDate: '2026-05-01 06:00:00',
 			total: 42,
 			oldestDate: '2025-05-01 06:00:00',
-			backfillDone: false
+			backfillDone: false,
+			inProgress: false
 		});
 		expect(executed[0].sql).toContain('INSERT INTO sync_state');
 		expect(executed[0].args.slice(0, 3)).toEqual([1, '2026-05-01 06:00:00', expect.any(Number)]);

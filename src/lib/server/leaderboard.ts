@@ -12,6 +12,8 @@ import { mockWorkouts } from '$lib/mockData';
 import { deleteLeaderboardEntry, getLeaderboardEntries, upsertLeaderboardEntry } from './db';
 import { loadWorkouts } from './data';
 import { createWorkoutShare } from './share';
+import { createLogger } from './logger';
+const logger = createLogger(console);
 
 /**
  * Server-side leaderboard layer. Reads build public boards (demo seed or D1);
@@ -134,7 +136,7 @@ export async function publishWorkout(
 				.first<{ rank: number }>();
 			rank = row?.rank;
 		} catch (e) {
-			console.error('Failed to compute leaderboard rank:', (e as Error).message ?? e);
+			logger.error('Failed to compute leaderboard rank:', (e as Error).message ?? e);
 		}
 	}
 

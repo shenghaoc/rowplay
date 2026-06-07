@@ -16,8 +16,6 @@ import {
 import { openToken } from './tokenCrypto';
 import { nowEpochMillis } from '$lib/datetime';
 import { detectNewPBs, distancePBs, type DistancePB } from '$lib/analytics';
-import { createLogger } from './logger';
-const logger = createLogger(console);
 import {
 	filterAndSortWorkouts,
 	parseWorkoutListQuery,
@@ -56,6 +54,9 @@ import { type WorkoutTag } from '../workoutTag';
 import type { SportSummary, AnnualGoal } from '$lib/analytics';
 import { destroySession } from './session';
 import { defaultAnnualGoal, parseGoalsCookie } from '$lib/goals';
+import { createLogger } from './logger';
+
+const logger = createLogger(console);
 
 async function client(event: RequestEvent): Promise<Concept2Client | null> {
 	const env = event.platform?.env;
@@ -89,6 +90,13 @@ const workoutsByEvent = new WeakMap<RequestEvent, Promise<Workout[]>>();
  * FULL history only once a sync has completed AND is not in-progress — a mid-fill
  * cache may hold just the most recent page, and returning that as the full
  * history would skew PBs/aggregates/export until the backfill finishes.
+ *
+ * Important: this WeakMap is per-RequestEvent. The sync API handler (POST /api/sync)
+ * calls runSync() directly via getSyncState() (bypassing this memo), so the
+ * WeakMap is empty when syncStatus() is called after a sync — it reads the freshly
+ * updated state from D1. If a future handler reads from this memo before syncing,
+ * syncStatus() will get the stale pre-sync value. Keep loadWorkouts/isCacheComplete
+ * and syncStatus calls ordered accordingly.
  */
 const syncStateByEvent = new WeakMap<RequestEvent, Promise<SyncState | null>>();
 function syncStateFor(event: RequestEvent): Promise<SyncState | null> {
