@@ -695,7 +695,7 @@ export async function upsertLeaderboardEntry(
 			)
 			.run();
 	} catch (e) {
-		logger.error('upsertLeaderboardEntry failed:', (e as Error).message ?? e);
+		logger.error('upsertLeaderboardEntry failed:', e instanceof Error ? e.message : String(e));
 	}
 }
 
@@ -715,7 +715,7 @@ export async function deleteLeaderboardEntry(
 			.bind(userId, sport, distance)
 			.run();
 	} catch (e) {
-		logger.error('deleteLeaderboardEntry failed:', (e as Error).message ?? e);
+		logger.error('deleteLeaderboardEntry failed:', e instanceof Error ? e.message : String(e));
 	}
 }
 

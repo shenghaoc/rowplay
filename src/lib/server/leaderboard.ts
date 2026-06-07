@@ -136,7 +136,7 @@ export async function publishWorkout(
 				.first<{ rank: number }>();
 			rank = row?.rank;
 		} catch (e) {
-			logger.error('Failed to compute leaderboard rank:', (e as Error).message ?? e);
+			logger.error('Failed to compute leaderboard rank:', e instanceof Error ? e.message : String(e));
 		}
 	}
 
