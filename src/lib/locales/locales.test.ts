@@ -20,6 +20,10 @@ function flatKeys(obj: Record<string, unknown>, prefix = ''): Set<string> {
 
 const enKeys = flatKeys(dictionaries.en as unknown as Record<string, unknown>);
 
+function guideMarkdown(lang: (typeof SUPPORTED_LANGUAGES)[number]) {
+	return (dictionaries[lang] as { docs: { guideMarkdown: string } }).docs.guideMarkdown;
+}
+
 describe('locale completeness', () => {
 	for (const lang of SUPPORTED_LANGUAGES) {
 		if (lang === 'en') continue;
@@ -48,6 +52,19 @@ describe('locale values', () => {
 	it('all locales export the correct named export', () => {
 		for (const lang of SUPPORTED_LANGUAGES) {
 			expect(dictionaries[lang], `dictionaries.${lang} should exist`).toBeDefined();
+		}
+	});
+
+	it('all locales provide localized guide markdown', () => {
+		const englishGuide = guideMarkdown('en');
+		expect(englishGuide).toMatch(/^# /);
+
+		for (const lang of SUPPORTED_LANGUAGES) {
+			const guide = guideMarkdown(lang);
+			expect(guide, `${lang} guide should be markdown`).toMatch(/^# /);
+			if (lang !== 'en') {
+				expect(guide, `${lang} guide should not fall back to English`).not.toBe(englishGuide);
+			}
 		}
 	});
 });

@@ -38,6 +38,7 @@
 			{:else}
 				<a class="btn btn-primary" href="/auth/login">{t('landing.connect')}</a>
 			{/if}
+			<a class="btn btn-ghost" href="/docs">{t('landing.readGuide')}</a>
 		</div>
 		{#if data.demo}
 			<p class="muted small">{t('landing.demoNote')}</p>
@@ -123,6 +124,9 @@
 		max-width: 38ch;
 	}
 	.cta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
 		margin: 1.5rem 0 0.75rem;
 	}
 	.small {

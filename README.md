@@ -15,6 +15,15 @@ every RowErg / SkiErg / BikeErg result into:
 Per-stroke data is used when available; workouts without it fall back to a
 lower-resolution replay synthesised from splits.
 
+## User guide
+
+The canonical user guide lives in **[docs/usage.md](docs/usage.md)** and is
+rendered directly on the website at `/docs` from the same markdown source.
+
+Keep end-user workflow details there instead of copying them into Svelte route
+files. CI runs `npm run check:docs` on pull requests and fails non-doc changes
+that do not update repository documentation.
+
 ## Stack
 
 | Concern        | Choice                                                              |
@@ -88,6 +97,7 @@ remote migrations once: `npm run db:migrate`.
 | `npm run build`            | Production build (`.svelte-kit/cloudflare`)   |
 | `npm run preview`          | Build + serve via `wrangler dev` (real runtime) |
 | `npm run check`            | `svelte-check` type checking                  |
+| `npm run check:docs`       | Require docs updates for non-doc PR changes   |
 | `npm run test`             | Vitest unit tests                             |
 | `npm run test:e2e`         | Playwright smoke (WebKit + wrangler dev)      |
 | `npm run validate:locales` | Verify locale dictionary key parity           |

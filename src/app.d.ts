@@ -4,6 +4,11 @@ import type { KVNamespace, D1Database, Fetcher, ExecutionContext } from '@cloudf
 import type { SessionUser } from '$lib/server/session';
 import type { Language } from '$lib/i18n';
 
+declare module '*.md?raw' {
+	const content: string;
+	export default content;
+}
+
 declare global {
 	namespace App {
 		interface Locals {
