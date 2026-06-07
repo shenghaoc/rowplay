@@ -178,6 +178,8 @@ export interface SyncResult {
 	newPbs: DistancePB[];
 	/** Summaries upserted during this sync (for live-mode optimistic UI). */
 	workouts: Workout[];
+	/** Populated when the sync fails — client uses this for retry UI. */
+	error?: string;
 }
 
 /**
@@ -205,6 +207,15 @@ async function runSync(
 	full: boolean
 ): Promise<SyncResult> {
 	const state = await getSyncState(db, userId);
+	// Mark in-progress so concurrent requests don't race
+	await setSyncState(db, userId, {
+		lastDate: state?.lastDate ?? null,
+		total: await countWorkouts(db, userId),
+		oldestDate: state?.oldestDate ?? null,
+		backfillDone: state?.backfillDone ?? false,
+		inProgress: true
+	});
+
 	const now = Temporal.Now.plainDateISO('UTC');
 	const plan = planSync(state, now, full ? 'full' : 'forward');
 	const from =
@@ -222,16 +233,30 @@ async function runSync(
 	let added = 0;
 	const synced: Workout[] = [];
 
-	do {
-		const { workouts, totalPages: tp } = await c.listWorkoutsPage(page, from);
-		totalPages = tp;
-		if (workouts.length) {
-			await upsertWorkouts(db, userId, workouts);
-			synced.push(...workouts);
-			added += workouts.length;
-		}
-		page++;
-	} while (page <= totalPages);
+	try {
+		do {
+			const { workouts, totalPages: tp } = await c.listWorkoutsPage(page, from);
+			totalPages = tp;
+			if (workouts.length) {
+				await upsertWorkouts(db, userId, workouts);
+				synced.push(...workouts);
+				added += workouts.length;
+			}
+			page++;
+		} while (page <= totalPages);
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : String(e);
+		await setSyncState(db, userId, {
+			lastDate: state?.lastDate ?? null,
+			total: await countWorkouts(db, userId),
+			oldestDate: state?.oldestDate ?? null,
+			backfillDone: state?.backfillDone ?? false,
+			inProgress: false,
+			lastError: msg,
+			lastErrorAt: nowEpochMillis()
+		}).catch(() => {});
+		throw e;
+	}
 
 	const dates = synced.map((w) => w.date);
 	let wm = mergeWatermark(
@@ -256,7 +281,8 @@ async function runSync(
 		lastDate: wm.lastDate,
 		total,
 		oldestDate: wm.oldestDate,
-		backfillDone: wm.backfillDone
+		backfillDone: wm.backfillDone,
+		inProgress: false
 	});
 	// Compute afterPbs from the saved pre-sync list merged with this sync's batch,
 	// avoiding a second full-table scan on every sync.
@@ -292,6 +318,15 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 	if (!db || userId == null) throw error(500, 'Database (D1) is not configured.');
 
 	const state = await getSyncState(db, userId);
+	// Mark in-progress so concurrent requests don't race
+	await setSyncState(db, userId, {
+		lastDate: state?.lastDate ?? null,
+		total: await countWorkouts(db, userId),
+		oldestDate: state?.oldestDate ?? null,
+		backfillDone: state?.backfillDone ?? false,
+		inProgress: true
+	});
+
 	const now = Temporal.Now.plainDateISO('UTC');
 	const plan = planSync(state, now, 'backfill');
 	if (plan.kind !== 'backfill') {
@@ -304,7 +339,8 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 				lastDate: state.lastDate,
 				total: await countWorkouts(db, userId),
 				oldestDate: state.oldestDate,
-				backfillDone: true
+				backfillDone: true,
+				inProgress: false
 			});
 		}
 		return {
@@ -320,16 +356,30 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 	const dates: string[] = [];
 	let pagesFetched = 0;
 
-	while (page <= totalPages && pagesFetched < BACKFILL_PAGES_PER_RUN) {
-		const { workouts, totalPages: tp } = await c.listWorkoutsPage(page, undefined, plan.to);
-		totalPages = tp;
-		if (workouts.length) {
-			await upsertWorkouts(db, userId, workouts);
-			added += workouts.length;
-			dates.push(...workouts.map((w) => w.date));
+	try {
+		while (page <= totalPages && pagesFetched < BACKFILL_PAGES_PER_RUN) {
+			const { workouts, totalPages: tp } = await c.listWorkoutsPage(page, undefined, plan.to);
+			totalPages = tp;
+			if (workouts.length) {
+				await upsertWorkouts(db, userId, workouts);
+				added += workouts.length;
+				dates.push(...workouts.map((w) => w.date));
+			}
+			page++;
+			pagesFetched++;
 		}
-		page++;
-		pagesFetched++;
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : String(e);
+		await setSyncState(db, userId, {
+			lastDate: state?.lastDate ?? null,
+			total: await countWorkouts(db, userId),
+			oldestDate: state?.oldestDate ?? null,
+			backfillDone: state?.backfillDone ?? false,
+			inProgress: false,
+			lastError: msg,
+			lastErrorAt: nowEpochMillis()
+		}).catch(() => {});
+		throw e;
 	}
 
 	const wm = mergeWatermark(
@@ -350,7 +400,8 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
 		lastDate: wm.lastDate,
 		total,
 		oldestDate: wm.oldestDate,
-		backfillDone: wm.backfillDone
+		backfillDone: wm.backfillDone,
+		inProgress: false
 	});
 
 	return { added, oldestDate: wm.oldestDate, done: wm.backfillDone };
@@ -360,13 +411,9 @@ const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 /**
  * Right after a BYOT connect, kick a full history backfill into the D1 cache in
- * the background so the *first* dashboard load is served locally instead of a
- * live API page. Runs via the Workers `waitUntil` (survives past the redirect);
- * the client is built directly from the just-validated token — no KV round-trip,
- * sidestepping read-after-write lag, and never touching the post-response event.
- * Best-effort, and a no-op without the Workers runtime (e.g. `vite dev`) — the
- * per-load lazy-fill still covers that case. `full` is forced so a reconnect
- * after a disconnect-purge re-pages everything rather than trusting stale state.
+ * the background. Sets in_progress=1 in the sync_state row while running so the
+ * dashboard can show a "syncing…" indicator; clears it on completion or error.
+ * Runs via the Workers `waitUntil`; best-effort, no-op without Workers runtime.
  */
 export function scheduleConnectSync(
 	event: RequestEvent,
