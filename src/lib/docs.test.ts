@@ -62,4 +62,23 @@ npm run check:docs -- origin/main
 		expect(guide.title).toBe('Use rowplay docs');
 		expect(heading).toMatchObject({ type: 'heading', slug: 'use-rowplay-docs' });
 	});
+
+	it('parses multi-line blockquotes with inline formatting', () => {
+		const guide = parseGuideMarkdown(`> First line
+>
+> Second **line** with [docs](/docs)`);
+		const quote = guide.blocks[0];
+
+		expect(quote).toMatchObject({ type: 'quote' });
+		if (quote.type !== 'quote') throw new Error('expected quote');
+
+		expect(JSON.stringify(quote.children)).toContain('First line');
+		expect(JSON.stringify(quote.children)).toContain('Second ');
+		expect(quote.children).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'strong' }),
+				expect.objectContaining({ type: 'link', href: '/docs' })
+			])
+		);
+	});
 });

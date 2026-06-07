@@ -2,7 +2,7 @@
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
-	import usageGuideMarkdown from '../../../docs/usage.md?raw';
+	import usageGuideMarkdown from '$docs/usage.md?raw';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { parseGuideMarkdown, type InlineNode } from '$lib/docs';
 
@@ -14,6 +14,10 @@
 
 	function isExternalHref(href: string) {
 		return /^https?:\/\//.test(href);
+	}
+
+	function renderUnsupportedInlineNode(_node: never) {
+		return '';
 	}
 </script>
 
@@ -30,15 +34,19 @@
 			<code>{node.text}</code>
 		{:else if node.type === 'strong'}
 			<strong>{@render inline(node.children)}</strong>
-		{:else if isExternalHref(node.href)}
-			<a href={node.href} target="_blank" rel="external noopener noreferrer">
-				{@render inline(node.children)}
-			</a>
+		{:else if node.type === 'link'}
+			{#if isExternalHref(node.href)}
+				<a href={node.href} target="_blank" rel="external noopener noreferrer">
+					{@render inline(node.children)}
+				</a>
+			{:else}
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+				<a href={node.href}>
+					{@render inline(node.children)}
+				</a>
+			{/if}
 		{:else}
-			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a href={node.href}>
-				{@render inline(node.children)}
-			</a>
+			{renderUnsupportedInlineNode(node)}
 		{/if}
 	{/each}
 {/snippet}
