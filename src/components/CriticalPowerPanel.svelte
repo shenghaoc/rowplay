@@ -31,9 +31,12 @@
 	const anyCp = $derived(estimateCriticalPower(workouts));
 	const cp = $derived(scope === 'all' ? anyCp : estimateCriticalPower(scopedWorkouts));
 	const comparison = $derived(cp ? powerDurationComparison(scopedWorkouts, cp) : null);
-	const predictorSport = $derived< Sport | undefined >(scope === 'all' ? undefined : scope);
-	const canPredictPace = $derived(scope !== 'all');
+	const predictorSport = $derived< Sport | undefined >(
+		scope === 'all' ? (cp?.sportScope === 'mixed' ? undefined : cp?.sportScope) : scope
+	);
+	const canPredictPace = $derived(predictorSport != null);
 	const cpScopeLabel = $derived(scope === 'all' ? t('dashboard.cpScopeAll') : SPORT_LABEL[scope]);
+	const predictionScopeLabel = $derived(predictorSport ? SPORT_LABEL[predictorSport] : cpScopeLabel);
 
 	type PredictMode = 'duration' | 'distance';
 	let predictMode = $state<PredictMode>('duration');
@@ -216,7 +219,7 @@
 					{#if predictedPace}
 						<div class="predresult">
 							<div class="predval mono">{fmtPace(predictedPace)}</div>
-							<div class="predhint muted">{t('dashboard.cpPaceHint', { min: durationMin, scope: cpScopeLabel })}</div>
+							<div class="predhint muted">{t('dashboard.cpPaceHint', { min: durationMin, scope: predictionScopeLabel })}</div>
 						</div>
 					{/if}
 				{:else}
@@ -236,7 +239,7 @@
 						<div class="predresult">
 							<div class="predval mono">{fmtTime(predictedTime, true)}</div>
 							<div class="predhint muted">
-								{t('dashboard.cpTimeHint', { dist: fmtDistance(distanceM), scope: cpScopeLabel })}
+								{t('dashboard.cpTimeHint', { dist: fmtDistance(distanceM), scope: predictionScopeLabel })}
 								{#if predictedPaceFromDistance}
 									· {fmtPaceBare(predictedPaceFromDistance)}/500m
 								{/if}

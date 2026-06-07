@@ -30,7 +30,6 @@
 	import { serializeWorkoutListQuery, filterAndSortWorkouts, type WorkoutListQuery } from '$lib/workoutQuery';
 	import {
 		athleteMedianPace,
-		resolveTag,
 		WORKOUT_TAGS,
 		type WorkoutTag
 	} from '$lib/workoutTag';
@@ -90,17 +89,11 @@
 		)
 	);
 	const listWorkouts = $derived.by(() => {
-		let list = filterAndSortWorkouts(
+		return filterAndSortWorkouts(
 			workoutsWithTags,
 			listQuery,
 			listQuery.pbsOnly ? pbWorkoutIds(workoutsWithTags) : undefined
 		);
-		if (listQuery.tag) {
-			list = list.filter(
-				(w) => resolveTag(w, { medianPaceSecs }) === listQuery.tag
-			);
-		}
-		return list;
 	});
 
 	function onWorkoutTagSaved(workoutId: number, userTag: WorkoutTag | null) {

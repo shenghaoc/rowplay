@@ -230,6 +230,14 @@ describe('filterAndSortWorkouts', () => {
 		expect(result[0].id).toBe(6);
 	});
 
+	it('filters by resolved workout tag', () => {
+		const tagged = workout({ id: 6, userTag: 'interval' });
+		const other = workout({ id: 7, userTag: 'steady-state' });
+		const result = filterAndSortWorkouts([tagged, other], { ...base, tag: 'interval' });
+		expect(result).toHaveLength(1);
+		expect(result[0].id).toBe(6);
+	});
+
 	it('filters pbsOnly using provided pbIds', () => {
 		const pbIds = new Set([1]);
 		const result = filterAndSortWorkouts(all, { ...base, pbsOnly: true }, pbIds);

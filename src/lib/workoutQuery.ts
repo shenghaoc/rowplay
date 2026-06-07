@@ -1,6 +1,6 @@
 import { distanceBand } from '$lib/analytics';
 import type { Sport, Workout } from '$lib/types';
-import { isValidWorkoutTag, type WorkoutTag } from '$lib/workoutTag';
+import { athleteMedianPace, isValidWorkoutTag, resolveTag, type WorkoutTag } from '$lib/workoutTag';
 
 /** Fields the list can sort by. */
 export type WorkoutSortField = 'date' | 'distance' | 'time' | 'pace' | 'power';
@@ -10,7 +10,7 @@ export type SortDir = 'asc' | 'desc';
 /** Parsed list query — mirrors URL search params. */
 export interface WorkoutListQuery {
 	sport?: Sport;
-	/** Resolved rowplay workout tag, applied client-side where auto tags are known. */
+	/** Resolved rowplay workout tag. */
 	tag?: WorkoutTag;
 	/** Raw Concept2 workout_type/source label. */
 	workoutType?: string;
@@ -171,9 +171,11 @@ export function filterAndSortWorkouts(
 	pbIds?: Set<number>
 ): Workout[] {
 	const pbs = pbIds ?? (q.pbsOnly ? pbWorkoutIds(workouts, q.sport) : undefined);
+	const medianPaceSecs = q.tag ? athleteMedianPace(workouts) : undefined;
 
 	let out = workouts.filter((w) => {
 		if (q.sport && w.sport !== q.sport) return false;
+		if (q.tag && resolveTag(w, { medianPaceSecs }) !== q.tag) return false;
 		if (q.workoutType && w.workoutType !== q.workoutType) return false;
 		if (q.dateFrom && w.date.slice(0, 10) < q.dateFrom) return false;
 		if (q.dateTo && w.date.slice(0, 10) > q.dateTo) return false;
