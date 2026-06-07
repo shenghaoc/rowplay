@@ -73,6 +73,10 @@ self.addEventListener('fetch', (event) => {
 	}
 
 	// SSR pages: network-first so fresh data wins; cache for offline revisit.
+	// NOTE: authenticated SSR pages set cache-control: private, no-store (see
+	// page.server.ts load functions). The service worker honours that header,
+	// so authenticated offline visits will receive a 503 — by design. Demo-mode
+	// users (no session) still get full offline support.
 	if (request.mode === 'navigate' && isOfflinePage(url.pathname)) {
 		event.respondWith(networkFirst(request, PAGES_CACHE, { ignoreSearch: true }));
 		return;

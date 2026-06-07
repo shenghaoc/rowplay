@@ -104,6 +104,11 @@
 					method="POST"
 					action="/auth/logout"
 					onsubmit={() => {
+						// Clear page/api caches before the logout POST so stale
+						// data doesn't outlive the session. The fetch is a
+						// best-effort fire-and-forget: the server-side session
+						// invalidation and no-store headers are the authoritative
+						// guards — this just cleans up proactively.
 						navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
 					}}
 				>
@@ -179,6 +184,11 @@
 						method="POST"
 						action="/auth/logout"
 						onsubmit={() => {
+							// Clear page/api caches before the logout POST so stale
+							// data doesn't outlive the session. The fetch is a
+							// best-effort fire-and-forget: the server-side session
+							// invalidation and no-store headers are the authoritative
+							// guards — this just cleans up proactively.
 							navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_USER_CACHES' });
 						}}
 					>

@@ -112,7 +112,7 @@ describe('security headers', () => {
 		expect(csp).not.toContain("'unsafe-eval'");
 	});
 
-	it('does not allow data: in font-src (only for real fonts, not arbitrary data)', async () => {
+	it('font-src allows data: for @fontsource base64 preloads but no wildcard sources', async () => {
 		// font-src 'self' https://fonts.gstatic.com data: — data: is needed for
 		// inline base64 font preloads from @fontsource. Verify no wildcard src.
 		const headers = await getResponseHeaders();
