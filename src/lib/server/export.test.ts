@@ -78,21 +78,27 @@ describe('workoutsToCsv', () => {
 });
 
 describe('workoutsToJson', () => {
-	it('produces valid JSON with the right shape', () => {
+	it('produces valid JSON with schema metadata', () => {
 		const json = workoutsToJson([makeWorkout({ id: 7 })]);
 		const parsed = JSON.parse(json);
-		expect(Array.isArray(parsed)).toBe(true);
-		expect(parsed[0].id).toBe(7);
-		expect(parsed[0].sport).toBe('rower');
+		expect(parsed.schema).toBe('rowplay-logbook-export');
+		expect(parsed.version).toBe(1);
+		expect(parsed.exportedAt).toBeDefined();
+		expect(parsed.workoutCount).toBe(1);
+		expect(Array.isArray(parsed.workouts)).toBe(true);
+		expect(parsed.workouts[0].id).toBe(7);
+		expect(parsed.workouts[0].sport).toBe('rower');
 	});
 
-	it('returns an empty array for no workouts', () => {
-		expect(JSON.parse(workoutsToJson([]))).toEqual([]);
+	it('returns empty workouts array for no workouts', () => {
+		const parsed = JSON.parse(workoutsToJson([]));
+		expect(parsed.workoutCount).toBe(0);
+		expect(parsed.workouts).toEqual([]);
 	});
 
 	it('includes all expected fields', () => {
 		const json = workoutsToJson([makeWorkout()]);
-		const row = JSON.parse(json)[0];
+		const row = JSON.parse(json).workouts[0];
 		const expected = ['id', 'date', 'sport', 'distance', 'time', 'pace', 'hasStrokeData'];
 		for (const key of expected) {
 			expect(row).toHaveProperty(key);

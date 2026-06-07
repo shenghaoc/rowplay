@@ -60,28 +60,36 @@ export function workoutsToCsv(workouts: Workout[]): string {
 	return lines.join('\n') + '\n';
 }
 
-/** Full logbook export as JSON (array of workout summaries). */
+const EXPORT_SCHEMA_VERSION = 1;
+
+/** Full logbook export as JSON with schema metadata. */
 export function workoutsToJson(workouts: Workout[]): string {
 	return JSON.stringify(
-		workouts.map((w) => ({
-			id: w.id,
-			date: w.date,
-			sport: w.sport,
-			distance: w.distance,
-			time: w.time,
-			pace: w.pace,
-			strokeRate: w.strokeRate,
-			strokeCount: w.strokeCount,
-			heartRateAvg: w.heartRateAvg,
-			hrMin: w.hrMin,
-			hrMax: w.hrMax,
-			caloriesTotal: w.caloriesTotal,
-			wattMinutes: w.wattMinutes,
-			dragFactor: w.dragFactor,
-			workoutType: w.workoutType,
-			comments: w.comments,
-			hasStrokeData: w.hasStrokeData
-		})),
+		{
+			schema: 'rowplay-logbook-export',
+			version: EXPORT_SCHEMA_VERSION,
+			exportedAt: new Date().toISOString(),
+			workoutCount: workouts.length,
+			workouts: workouts.map((w) => ({
+				id: w.id,
+				date: w.date,
+				sport: w.sport,
+				distance: w.distance,
+				time: w.time,
+				pace: w.pace,
+				strokeRate: w.strokeRate,
+				strokeCount: w.strokeCount,
+				heartRateAvg: w.heartRateAvg,
+				hrMin: w.hrMin,
+				hrMax: w.hrMax,
+				caloriesTotal: w.caloriesTotal,
+				wattMinutes: w.wattMinutes,
+				dragFactor: w.dragFactor,
+				workoutType: w.workoutType,
+				comments: w.comments,
+				hasStrokeData: w.hasStrokeData
+			}))
+		},
 		null,
 		2
 	);
