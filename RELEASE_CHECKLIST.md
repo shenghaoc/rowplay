@@ -56,6 +56,6 @@ If something goes wrong:
 npx wrangler rollback
 
 # Or deploy a specific tag:
-git checkout v0.1.x
+git checkout <tag>
 npm run deploy
 ```
