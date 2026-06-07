@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { loadHomeTimezone, loadWorkouts, syncStatus } from '$lib/server/data';
+import { loadHomeTimezone, loadWorkouts, syncStatus, type SyncStatusPayload } from '$lib/server/data';
 
 export const load: PageServerLoad = async (event) => {
 	if (!event.locals.demo && !event.locals.user) {

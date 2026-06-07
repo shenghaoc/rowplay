@@ -278,33 +278,61 @@
 			<p class="muted">{t('settings.syncNote')}</p>
 			{#if data.demo}
 				<span class="badge badge-soft badge-primary">{t('settings.syncDemo')}</span>
+				<p class="muted small">{t('sync.demoUnavailable')}</p>
 			{:else}
-				{#if data.sync}
-					<p class="sync-meta muted">{syncHistoryNote}</p>
-					<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: data.sync.total })}</p>
-				{:else}
-					<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: 0 })}</p>
+				{#if data.sync?.inProgress}
+					<div class="flex items-center gap-2">
+						<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+						<span class="sync-meta muted">{t('sync.inProgress')}</span>
+					</div>
+				{:else if data.sync?.lastError}
+					<span class="badge badge-soft badge-error">{t('sync.errorBadge')}</span>
+					<p class="sync-meta muted">{t('settings.lastSyncError', { total: data.sync?.total ?? 0, message: data.sync.lastError })}</p>
 				{/if}
+
+				{#if !data.sync?.inProgress}
+					{#if data.sync}
+						<p class="sync-meta muted">{syncHistoryNote}</p>
+						<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: data.sync.total })}</p>
+					{:else}
+						<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: 0 })}</p>
+					{/if}
+				{/if}
+
+				{#if !data.sync?.backfillDone && data.sync && !data.sync?.inProgress}
+					<p class="sync-meta muted" style="color: var(--warn)">{t('sync.partialWarning')}</p>
+				{/if}
+
 				<div class="row">
 					<button
 						class="btn btn-primary btn-sm"
 						type="button"
-						disabled={syncing || deleting}
+						disabled={syncing || deleting || !!data.sync?.inProgress}
 						onclick={() => runSync(false)}
 					>
 						{#if syncMode === 'incremental'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
-						{syncMode === 'incremental' ? t('dashboard.syncing') : t('settings.syncIncremental')}
+						{syncMode === 'incremental' ? t('sync.loading') : t('settings.syncIncremental')}
 					</button>
 					<button
 						class="btn btn-ghost btn-sm"
 						type="button"
-						disabled={syncing || deleting}
+						disabled={syncing || deleting || !!data.sync?.inProgress}
 						onclick={() => runSync(true)}
 					>
 						{#if syncMode === 'full'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
-						{syncMode === 'full' ? t('dashboard.syncing') : t('settings.syncFull')}
+						{syncMode === 'full' ? t('sync.loading') : t('settings.syncFull')}
 					</button>
-					{#if data.sync && !data.sync.backfillDone}
+					{#if data.sync?.lastError && !data.sync?.inProgress}
+						<button
+							class="btn btn-ghost btn-sm"
+							type="button"
+							disabled={syncing || deleting}
+							onclick={() => runSync(false)}
+						>
+							{syncMode === 'incremental' ? t('sync.loading') : t('sync.retry')}
+						</button>
+					{/if}
+					{#if data.sync && !data.sync.backfillDone && !data.sync?.inProgress}
 						<button
 							class="btn btn-ghost btn-sm"
 							type="button"
@@ -312,7 +340,7 @@
 							onclick={loadFullHistory}
 						>
 							{#if syncMode === 'history'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
-							{syncMode === 'history' ? t('dashboard.syncing') : t('settings.loadFullHistory')}
+							{syncMode === 'history' ? t('sync.loading') : t('settings.loadFullHistory')}
 						</button>
 					{/if}
 				</div>
