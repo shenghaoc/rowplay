@@ -408,7 +408,13 @@ export interface TechniqueSummary {
 }
 
 export function techniqueSummary(strokes: Stroke[]): TechniqueSummary {
-	const valid = strokes.filter((s) => s.pace > 0 && s.spm > 0);
+	const valid: Stroke[] = [];
+	for (let i = 0; i < strokes.length; i++) {
+		const s = strokes[i];
+		if (s.pace > 0 && s.spm > 0) {
+			valid.push(s);
+		}
+	}
 	const n = valid.length;
 	const dps = new Array<{ t: number; v: number }>(n);
 	let sumDps = 0, sumSpm = 0, sumPace = 0;
