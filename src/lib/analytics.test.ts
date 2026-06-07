@@ -237,6 +237,22 @@ describe('techniqueSummary', () => {
 		expect(summary.paceConsistency).toBeCloseTo((sd / meanPace) * 100);
 		expect(summary.fade).toBeCloseTo(40);
 	});
+
+	it('ignores NaN validity fields consistently across passes', () => {
+		const summary = techniqueSummary([
+			{ ...stroke(1, 30), pace: 120 },
+			{ ...stroke(2, 30), pace: Number.NaN },
+			{ ...stroke(3, Number.NaN), pace: 130 },
+			{ ...stroke(4, 30), pace: 140 }
+		]);
+
+		expect(summary.dps).toHaveLength(2);
+		expect(summary.dps.map((point) => point.t)).toEqual([1, 4]);
+		expect(summary.avgDps).toBeCloseTo((distancePerStroke(120, 30) + distancePerStroke(140, 30)) / 2);
+		expect(summary.avgSpm).toBe(30);
+		expect(summary.paceConsistency).toBeCloseTo(1000 / 130);
+		expect(summary.fade).toBe(0);
+	});
 });
 
 describe('efficiencyByRate', () => {

@@ -423,7 +423,7 @@ export function techniqueSummary(strokes: Stroke[]): TechniqueSummary {
 
 	for (let i = 0; i < strokes.length; i++) {
 		const s = strokes[i];
-		if (s.pace <= 0 || s.spm <= 0) continue;
+		if (!(s.pace > 0 && s.spm > 0)) continue;
 		const v = distancePerStroke(s.pace, s.spm);
 		dps[validIndex] = { t: s.t, v };
 		sumDps += v;
