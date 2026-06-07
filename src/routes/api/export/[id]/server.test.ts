@@ -5,7 +5,7 @@ vi.mock('$lib/server/data', () => ({
 }));
 vi.mock('$lib/server/export', () => ({
 	workoutDetailToTcx: vi.fn().mockReturnValue('<TrainingCenterDatabase/>'),
-	workoutExportFilename: vi.fn().mockReturnValue('workout-1001.tcx')
+	workoutExportFilename: vi.fn().mockReturnValue('rowplay-workout-1001.tcx')
 }));
 
 import { GET } from './+server';
@@ -53,5 +53,41 @@ describe('GET /api/export/[id]', () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const res = await GET(fakeEvent('1001') as any);
 		expect(res.headers.get('content-type')).toContain('tcx');
+	});
+
+	it('throws 400 for zero id', async () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		await expect(GET(fakeEvent('0') as any)).rejects.toMatchObject({ status: 400 });
+	});
+
+	it('throws 400 for negative id', async () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		await expect(GET(fakeEvent('-1') as any)).rejects.toMatchObject({ status: 400 });
+	});
+
+	it('throws 400 for fractional id', async () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		await expect(GET(fakeEvent('1.5') as any)).rejects.toMatchObject({ status: 400 });
+	});
+
+	it('sets correct content-type for tcx', async () => {
+		(loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const res = await GET(fakeEvent('1001', 'tcx') as any);
+		expect(res.headers.get('content-type')).toBe('application/vnd.garmin.tcx+xml; charset=utf-8');
+	});
+
+	it('sets cache-control: private, no-store on tcx response', async () => {
+		(loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const res = await GET(fakeEvent('1001', 'tcx') as any);
+		expect(res.headers.get('cache-control')).toBe('private, no-store');
+	});
+
+	it('sets content-disposition with filename for tcx', async () => {
+		(loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const res = await GET(fakeEvent('1001', 'tcx') as any);
+		expect(res.headers.get('content-disposition')).toContain('filename="rowplay-workout-1001.tcx"');
 	});
 });
