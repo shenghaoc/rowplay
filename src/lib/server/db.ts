@@ -11,6 +11,8 @@ import type { AnnualGoal } from '../analytics';
 import { STANDARD_DISTANCES, type LeaderboardEntry } from '$lib/leaderboard';
 import type { Annotation, Sport, Workout, WorkoutDetail } from '../types';
 import type { WorkoutTag } from '../workoutTag';
+import { createLogger } from './logger';
+const logger = createLogger(console);
 
 // Bump when the WorkoutDetail shape changes so stale cached rows are re-fetched.
 // v3: strokes carry rawT/rawD for the raw inspector's as-logged interval values.
@@ -373,7 +375,7 @@ export async function setSyncState(
 		total: number;
 		oldestDate: string | null;
 		backfillDone: boolean;
-		inProgress?: boolean;
+		inProgress: boolean;
 		lastError?: string | null;
 		lastErrorAt?: number;
 		/** Override the timestamp written to last_sync_at (defaults to now). */
@@ -693,7 +695,7 @@ export async function upsertLeaderboardEntry(
 			)
 			.run();
 	} catch (e) {
-		console.error('upsertLeaderboardEntry failed:', (e as Error).message ?? e);
+		logger.error('upsertLeaderboardEntry failed:', e instanceof Error ? e.message : String(e));
 	}
 }
 
@@ -713,7 +715,7 @@ export async function deleteLeaderboardEntry(
 			.bind(userId, sport, distance)
 			.run();
 	} catch (e) {
-		console.error('deleteLeaderboardEntry failed:', (e as Error).message ?? e);
+		logger.error('deleteLeaderboardEntry failed:', e instanceof Error ? e.message : String(e));
 	}
 }
 
@@ -889,7 +891,7 @@ export async function deleteAnnotation(
 		// A failed delete is a real error (unlike the read paths, which degrade to
 		// []); log for Workers observability and propagate so the caller surfaces it
 		// instead of reporting a phantom success.
-		console.error('[db] deleteAnnotation failed:', e);
+		logger.error('[db] deleteAnnotation failed:', e instanceof Error ? e.message : String(e));
 		throw e;
 	}
 }
