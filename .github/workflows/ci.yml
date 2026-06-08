@@ -146,7 +146,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cloudflare-build
-          path: .svelte-kit/cloudflare
+          path: .svelte-kit
           include-hidden-files: true
           retention-days: 1
 
@@ -182,7 +182,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: cloudflare-build
-          path: .svelte-kit/cloudflare
+          path: .svelte-kit
       - name: Get Playwright version
         id: playwright-version
         run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
@@ -225,7 +225,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: cloudflare-build
-          path: .svelte-kit/cloudflare
+          path: .svelte-kit
       - name: Get Playwright version
         id: playwright-version
         run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
