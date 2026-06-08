@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && node scripts/postbuild.mjs",
-    "preview": "npm run build && wrangler dev",
+    "preview": "npm run build && npm run preview:ci",
+    "preview:ci": "wrangler dev --ip 127.0.0.1 --port 8787",
     "deploy": "npm run build && wrangler deploy",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:docs": "node scripts/check-docs-updated.mjs",
@@ -18,13 +19,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test tests/e2e/smoke.spec.ts --project webkit",
     "test:e2e:reuse": "E2E_REUSE_SERVER=1 playwright test",
     "db:migrate:local": "wrangler d1 migrations apply rowplay --local",
     "db:migrate": "wrangler d1 migrations apply rowplay --remote"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260601.1",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "1.60.0",
     "@sveltejs/adapter-cloudflare": "^7.2.8",
     "@sveltejs/kit": "^2.61.1",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",

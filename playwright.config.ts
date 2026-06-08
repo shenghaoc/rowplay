@@ -1,11 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * E2E smoke runs against the production build on the real Workers runtime
- * (`npm run preview` = `npm run build && wrangler dev`), never `vite dev`:
- * SvelteKit's server endpoints only run under the Workers runtime, and
- * WebKit/bundling issues only surface after the adapter build. Demo mode (no
- * CONCEPT2_CLIENT_ID) serves deterministic mock data, so no auth/secrets needed.
+ * E2E smoke runs against the production build on the real Workers runtime via
+ * `wrangler dev`, never `vite dev`: SvelteKit's server endpoints only run under
+ * the Workers runtime, and WebKit/bundling issues only surface after the adapter
+ * build. Demo mode (no CONCEPT2_CLIENT_ID) serves deterministic mock data, so
+ * no auth/secrets needed.
+ *
+ * In CI the build is done by a separate job and the artifact is downloaded
+ * before Playwright runs. Set E2E_SKIP_BUILD=1 to use a pre-built artifact so
+ * the webServer only starts `wrangler dev` without rebuilding.
  *
  * WebKit on Linux needs system libraries — `npx playwright install --with-deps
  * webkit` on Debian/Ubuntu (CI). Other distros (e.g. RHEL) must install the
@@ -29,7 +33,10 @@ export default defineConfig({
 		trace: 'retain-on-failure'
 	},
 	webServer: {
-		command: `npm run build && npx wrangler dev --ip ${HOST} --port ${PORT}`,
+		command:
+			process.env.E2E_SKIP_BUILD === '1'
+				? 'npm run preview:ci'
+				: 'npm run preview',
 		url: BASE_URL,
 		reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
 		timeout: 180_000

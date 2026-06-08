@@ -76,10 +76,12 @@ All commands use **npm** (lockfile: `package-lock.json`).
 | Unit tests   | `npm run test` (Vitest)                                      |
 | Build        | `npm run build` (outputs `.svelte-kit/cloudflare`)           |
 | Preview      | `npm run preview` (build + `wrangler dev`, real runtime)     |
+| Preview (CI) | `npm run preview:ci` (`wrangler dev` only, needs pre-built output) |
 | Deploy       | `npm run deploy` (build + `wrangler deploy`)                 |
 | D1 migrate   | `npm run db:migrate` (remote) / `db:migrate:local`           |
 | Locales      | `npm run validate:locales` (after adding i18n keys)          |
-| E2E          | `npm run test:e2e` (WebKit; needs `wrangler dev` runtime)    |
+| E2E (full)   | `npm run test:e2e` (all specs, WebKit desktop + mobile)      |
+| E2E (smoke)  | `npm run test:e2e:smoke` (smoke.spec.ts, WebKit desktop only) |
 
 ## Architecture (short)
 
@@ -131,6 +133,7 @@ All commands use **npm** (lockfile: `package-lock.json`).
 - **Demo mode is the default** — no `.dev.vars` needed for dashboard/replay/e2e.
 - **Two local URLs**: `npm run dev` → `http://localhost:5173` (fast UI);
   `npm run preview` → `http://127.0.0.1:8787` (Workers-faithful).
-- **E2E**: `npm run test:e2e`; first run needs `npx playwright install --with-deps webkit`.
+- **E2E smoke** (PR gate): `npm run test:e2e:smoke`; first run needs `npx playwright install --with-deps webkit`.
+- **E2E full** (all specs): `npm run test:e2e` — runs on `workflow_dispatch` and nightly in CI.
 - **Token auth / sync / KV / D1**: test on `npm run preview`, not `vite dev` alone.
 - **Hello-world**: `/dashboard` → `/replay/1001` → Play — canvas and gauges update.
