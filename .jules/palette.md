@@ -2,3 +2,4 @@
 ## 2026-05-30 - Added loading spinners to async buttons
 **Learning:** DaisyUI provides a `loading loading-spinner` class which acts as a great visual cue. It's important to add `aria-hidden="true"` to visual loading spinners within buttons so screen readers don't misinterpret them, relying instead on the changed button text (e.g. "Saving..." vs "Save") or live regions.
 **Action:** When adding visual loading indicators, always consider adding `aria-hidden="true"` if the loading state is already communicated via text changes or ARIA live regions.
+## 2026-06-08 - Added aria-pressed to dashboard toggle buttons

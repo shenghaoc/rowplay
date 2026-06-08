@@ -100,3 +100,4 @@ Run the gate locally with:
 ```bash
 npm run check:docs -- origin/main
 ```
+Added aria-pressed to dashboard toggle buttons.
