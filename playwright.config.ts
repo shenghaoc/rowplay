@@ -36,7 +36,7 @@ export default defineConfig({
 		command:
 			process.env.E2E_SKIP_BUILD === '1'
 				? 'npm run preview:ci'
-				: `npm run build && npm run preview:ci`,
+				: 'npm run preview',
 		url: BASE_URL,
 		reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
 		timeout: 180_000
