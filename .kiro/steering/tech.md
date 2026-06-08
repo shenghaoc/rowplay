@@ -93,7 +93,7 @@ Configured in `src/app.css`:
 
 | Layer | Files tested | Pattern |
 | ----- | ------------ | ------- |
-| Pure library | `datetime.ts`, `goals.ts`, `workoutQuery.ts`, `i18n.ts`, `i18nPlural.ts`, `mockData.ts`, `analytics-newpbs.ts`, `replay/sports.ts`, `replay/sources.ts` | Direct import, minimal mocking |
+| Pure library | `analytics.ts`, `datetime.ts`, `goals.ts`, `workoutQuery.ts`, `i18n.ts`, `i18nPlural.ts`, `mockData.ts`, `analytics-newpbs.ts`, `replay/sports.ts`, `replay/sources.ts` | Direct import, minimal mocking |
 | Server data/DB | `server/db.ts`, `server/data.ts`, `server/session.ts`, `server/export.ts`, `server/concept2-strokes.ts`, `server/share.ts`, `server/config.ts`, `server/leaderboard.ts`, `server/hrImport.ts`, `server/rivalGhost.ts` | Fake D1/KV (see below) |
 | Route handlers | SvelteKit `+server.ts` and `+page.server.ts` files | Fake `RequestEvent`; service layer mocked via `vi.mock` |
 | Svelte reactive classes | `i18n.svelte.ts`, `theme.svelte.ts`, `liveMode.svelte.ts` | Node-only stubs; no jsdom required |
