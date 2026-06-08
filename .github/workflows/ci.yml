@@ -147,6 +147,7 @@ jobs:
         with:
           name: cloudflare-build
           path: .svelte-kit/cloudflare
+          include-hidden-files: true
           retention-days: 1
 
   locale-validation:
