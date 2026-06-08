@@ -104,6 +104,9 @@ All commands use **npm** (lockfile: `package-lock.json`).
 - **Stroke-data units** (`concept2.ts > mapStrokes`): bike pace is per-1000m;
   interval `t`/`d` restart per rep — both normalised on read.
 - `npm run build` runs `scripts/postbuild.mjs` (patches `.assetsignore`).
+- **UPlotChart** (`src/components/UPlotChart.svelte`): `plot` is `$state.raw`
+  so the `setData` effect re-fires after each build; the build effect must
+  `untrack` the old-plot destroy to avoid a circular dependency.
 - **daisyUI** uses the Tailwind v4 CSS plugin in `src/app.css` (not `tailwind.config.js`). Use idiomatic daisyUI classes (`btn`, `card`, `input`, `join`, `toggle`, …). Details: [tech.md → daisyUI](.kiro/steering/tech.md#daisyui-tailwind-css-v4-plugin). Install docs: [SvelteKit](https://daisyui.com/docs/install/sveltekit/), [general](https://daisyui.com/docs/install/).
 
 ## Server logging
