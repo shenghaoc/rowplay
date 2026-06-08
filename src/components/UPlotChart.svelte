@@ -30,6 +30,8 @@
 	// Flipped once the host element is measured, so the build effect only fires
 	// after the constructor and container are both ready.
 	let ready = $state(false);
+	// Incremented on each build so the setData effect re-fires after construction.
+	let buildGen = $state(0);
 	let width = 600;
 	let ro: ResizeObserver | null = null;
 
@@ -76,6 +78,7 @@
 			untrack(() => data),
 			el
 		);
+		buildGen++;
 	}
 
 	onMount(() => {
@@ -107,8 +110,11 @@
 	});
 
 	// Data updates are cheap — uPlot diffs internally; no teardown needed.
+	// Also re-fires after each build (via buildGen) to catch cases where
+	// untrack() inside build() read stale data before derivations settled.
 	$effect(() => {
 		data;
+		buildGen;
 		if (plot) plot.setData(data);
 	});
 
