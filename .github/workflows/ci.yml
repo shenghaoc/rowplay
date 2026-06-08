@@ -44,6 +44,8 @@ on:
       - '.nvmrc'
       - '.github/pull_request_template.md'
       - '.github/workflows/ci.yml'
+  schedule:
+    - cron: '0 3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -102,7 +104,7 @@ jobs:
               - '.nvmrc'
               - '.github/workflows/ci.yml'
 
-  quality:
+  typecheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -114,21 +116,9 @@ jobs:
         run: npm ci
       - name: Type check
         run: npm run check
-      - name: Unit tests
-        run: npm run test
-      - name: Production build
-        run: npm run build
-      - name: Locale validation
-        run: npm run validate:locales
 
-  e2e-smoke:
-    # Playwright smoke runs only for changes that can affect browser/runtime behavior
-    # (or manual dispatch) to keep CI time reasonable. The Playwright config starts
-    # `wrangler dev`, not `vite dev`, because SvelteKit endpoints, KV/D1 bindings,
-    # and adapter output must be exercised on the Workers runtime.
+  unit-tests:
     runs-on: ubuntu-latest
-    needs: [changes, quality]
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.run_e2e == 'true'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -137,6 +127,61 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Unit tests
+        run: npm run test
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Production build
+        run: npm run build
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-build
+          path: .svelte-kit/cloudflare
+          retention-days: 1
+
+  locale-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Locale validation
+        run: npm run validate:locales
+
+  e2e-pr:
+    # PR smoke: smoke.spec.ts only on WebKit desktop. Runs when relevant paths
+    # change on a PR or push to main, after all quality gates pass. Keeps CI
+    # under ~2 min for the common case without dropping Workers-runtime fidelity.
+    runs-on: ubuntu-latest
+    needs: [changes, typecheck, unit-tests, build, locale-validation]
+    if: needs.changes.outputs.run_e2e == 'true' && (github.event_name == 'pull_request' || github.event_name == 'push')
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudflare-build
+          path: .svelte-kit/cloudflare
       - name: Get Playwright version
         id: playwright-version
         run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
@@ -147,17 +192,58 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
       - name: Install WebKit + system deps
         run: npx playwright install --with-deps webkit
-      - name: End-to-end smoke (WebKit)
-        # WebKit is the browser target for rowplay's smoke suite because Safari/iOS
-        # catches runtime and compatibility regressions that Chromium-only CI misses.
-        run: npm run test:e2e
+      - name: PR smoke (WebKit desktop)
+        run: npm run test:e2e:smoke
         env:
           WRANGLER_SEND_METRICS: 'false'
-          E2E_REUSE_SERVER: '1'
+          E2E_SKIP_BUILD: '1'
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-pr
+          path: playwright-report/
+          retention-days: 7
+
+  e2e-full:
+    # Full suite: all specs on WebKit desktop + iPhone 14. Runs on manual
+    # dispatch or the nightly schedule. Not a PR merge gate — use for deep
+    # verification before a release or after a large refactor.
+    runs-on: ubuntu-latest
+    needs: [typecheck, unit-tests, build, locale-validation]
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudflare-build
+          path: .svelte-kit/cloudflare
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+      - name: Install WebKit + system deps
+        run: npx playwright install --with-deps webkit
+      - name: End-to-end (WebKit desktop + mobile)
+        run: npm run test:e2e
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+          E2E_SKIP_BUILD: '1'
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-full
           path: playwright-report/
           retention-days: 7
