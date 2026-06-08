@@ -25,19 +25,17 @@
 	const descId = `${uid}-desc`;
 
 	let el: HTMLDivElement;
-	let plot: uPlot | null = null;
+	let plot = $state.raw<uPlot | null>(null);
 	let UPlotCtor: typeof uPlot | null = null;
 	// Flipped once the host element is measured, so the build effect only fires
 	// after the constructor and container are both ready.
 	let ready = $state(false);
-	// Incremented on each build so the setData effect re-fires after construction.
-	let buildGen = $state(0);
 	let width = 600;
 	let ro: ResizeObserver | null = null;
 
 	function build() {
 		if (!UPlotCtor || !el) return;
-		plot?.destroy();
+		untrack(() => plot)?.destroy();
 		const hooks = options.hooks ?? {};
 		// Resolve the cursor colour once outside the draw hook to avoid repeated
 		// forced synchronous layouts (getComputedStyle thrashing).
@@ -78,7 +76,6 @@
 			untrack(() => data),
 			el
 		);
-		buildGen++;
 	}
 
 	onMount(() => {
@@ -110,11 +107,9 @@
 	});
 
 	// Data updates are cheap — uPlot diffs internally; no teardown needed.
-	// Also re-fires after each build (via buildGen) to catch cases where
-	// untrack() inside build() read stale data before derivations settled.
+	// Also re-fires after each build because plot is $state.raw, ensuring
+	// the latest derived data is applied even if untrack() read stale data.
 	$effect(() => {
-		data;
-		buildGen;
 		if (plot) plot.setData(data);
 	});
 
