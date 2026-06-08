@@ -154,13 +154,26 @@ function fakeKv() {
 | Unit tests        | `npm run test`             |
 | Unit tests watch  | `npm run test:watch`       |
 | Build             | `npm run build`            |
-| Preview (Workers) | `npm run preview`          |
-| Deploy            | `npm run deploy`           |
-| D1 migrate local  | `npm run db:migrate:local` |
-| D1 migrate remote | `npm run db:migrate`       |
-| E2E tests         | `npm run test:e2e`         |
+| Preview (Workers) | `npm run preview`            |
+| Preview CI        | `npm run preview:ci`         |
+| Deploy            | `npm run deploy`             |
+| D1 migrate local  | `npm run db:migrate:local`   |
+| D1 migrate remote | `npm run db:migrate`         |
+| E2E (full)        | `npm run test:e2e`           |
+| E2E (PR smoke)    | `npm run test:e2e:smoke`     |
 
 ## CI
 
-- GitHub Actions (`.github/workflows/ci.yml`)
-- Dependabot for automated dependency updates
+GitHub Actions (`.github/workflows/ci.yml`). All quality jobs run in parallel:
+
+- **typecheck** — `npm run check`
+- **unit-tests** — `npm run test`
+- **build** — `npm run build`; uploads `.svelte-kit/cloudflare` as a 1-day artifact
+- **locale-validation** — `npm run validate:locales`
+
+E2E jobs download the build artifact and set `E2E_SKIP_BUILD=1` so wrangler dev starts without rebuilding:
+
+- **e2e-pr** — `test:e2e:smoke` (smoke.spec.ts, WebKit desktop). PR merge gate when e2e paths change.
+- **e2e-full** — `test:e2e` (all specs, WebKit desktop + iPhone 14). Runs on `workflow_dispatch` and nightly (`schedule: 0 3 * * *`).
+
+Dependabot handles automated dependency updates.

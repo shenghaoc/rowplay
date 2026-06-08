@@ -276,10 +276,12 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 | `npm run dev` | Local dev server (Vite; fast UI iteration, no KV/D1) |
 | `npm run build` | Production build → `.svelte-kit/cloudflare` |
 | `npm run preview` | Build + `wrangler dev` (Workers runtime with local KV/D1) |
+| `npm run preview:ci` | `wrangler dev` only — for CI after the build artifact is downloaded |
 | `npm run check` | `svelte-check` type checking |
 | `npm run check:docs` | Require docs updates for non-doc PR changes |
 | `npm run test` | Vitest unit tests |
-| `npm run test:e2e` | Playwright smoke tests (WebKit; requires `wrangler dev`) |
+| `npm run test:e2e` | Playwright E2E — all specs, WebKit desktop + iPhone 14 |
+| `npm run test:e2e:smoke` | Playwright PR smoke — `smoke.spec.ts` on WebKit desktop only |
 | `npm run validate:locales` | Verify locale dictionary key parity across all languages |
 | `npm run deploy` | Build + `wrangler deploy` |
 | `npm run db:migrate` | Apply D1 migrations (remote) |
