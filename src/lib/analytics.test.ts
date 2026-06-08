@@ -23,7 +23,8 @@ import {
 	hrRecoveryTrend,
 	hrZoneOf,
 	workRestEfficiency,
-	targetVsActual
+	targetVsActual,
+	workoutSideStats
 } from './analytics';
 import { mockWorkoutDetail, mockWorkouts } from './mockData';
 import {
@@ -605,5 +606,90 @@ describe('full-fidelity analytics', () => {
 		const rows = targetVsActual(detail);
 		expect(rows.some((r) => r.metric === 'pace')).toBe(true);
 		expect(rows.some((r) => r.metric === 'watts')).toBe(true);
+	});
+});
+
+describe('workoutSideStats', () => {
+	const baseDetail = {
+		id: 1,
+		date: '2026-01-01 06:00:00',
+		sport: 'rower' as const,
+		distance: 2000,
+		time: 480,
+		pace: 120,
+		hasStrokeData: true,
+		splits: [],
+		isInterval: false
+	};
+
+	it('returns null avgHr and peakHr when no strokes have HR data', () => {
+		const detail = {
+			...baseDetail,
+			strokes: [
+				{ t: 0, d: 0, pace: 120, spm: 28, watts: 100 },
+				{ t: 10, d: 50, pace: 118, spm: 29, watts: 110 }
+			]
+		};
+		const stats = workoutSideStats(detail);
+		expect(stats.avgHr).toBeNull();
+		expect(stats.peakHr).toBeNull();
+	});
+
+	it('computes avgHr and peakHr from stroke HR data', () => {
+		const detail = {
+			...baseDetail,
+			strokes: [
+				{ t: 0, d: 0, pace: 120, spm: 28, watts: 100, hr: 140 },
+				{ t: 10, d: 50, pace: 118, spm: 29, watts: 110, hr: 160 },
+				{ t: 20, d: 100, pace: 116, spm: 30, watts: 120, hr: 150 }
+			]
+		};
+		const stats = workoutSideStats(detail);
+		expect(stats.peakHr).toBe(160);
+		expect(stats.avgHr).toBe(Math.round((140 + 160 + 150) / 3));
+	});
+
+	it('uses heartRateAvg override instead of computing from strokes', () => {
+		const detail = {
+			...baseDetail,
+			heartRateAvg: 155,
+			strokes: [
+				{ t: 0, d: 0, pace: 120, spm: 28, watts: 100, hr: 140 },
+				{ t: 10, d: 50, pace: 118, spm: 29, watts: 110, hr: 160 }
+			]
+		};
+		const stats = workoutSideStats(detail);
+		expect(stats.avgHr).toBe(155);
+	});
+
+	it('ignores zero and null HR values', () => {
+		const detail = {
+			...baseDetail,
+			strokes: [
+				{ t: 0, d: 0, pace: 120, spm: 28, watts: 100, hr: 0 },
+				{ t: 10, d: 50, pace: 118, spm: 29, watts: 110, hr: null as unknown as number },
+				{ t: 20, d: 100, pace: 116, spm: 30, watts: 120, hr: 150 }
+			]
+		};
+		const stats = workoutSideStats(detail);
+		expect(stats.peakHr).toBe(150);
+		expect(stats.avgHr).toBe(150);
+	});
+
+	it('returns best5sPower of 0 when powerCurve is empty', () => {
+		const detail = {
+			...baseDetail,
+			strokes: []
+		};
+		const stats = workoutSideStats(detail);
+		expect(stats.best5sPower).toBe(0);
+		expect(stats.avgHr).toBeNull();
+		expect(stats.peakHr).toBeNull();
+	});
+
+	it('returns positive best5sPower from stroke data', () => {
+		const detail = mockWorkoutDetail(1001)!;
+		const stats = workoutSideStats(detail);
+		expect(stats.best5sPower).toBeGreaterThan(0);
 	});
 });

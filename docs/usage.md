@@ -100,4 +100,3 @@ Run the gate locally with:
 ```bash
 npm run check:docs -- origin/main
 ```
-Updated analytics side stats to be faster and memory efficient

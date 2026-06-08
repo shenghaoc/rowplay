@@ -1530,13 +1530,11 @@ export function workoutSideStats(detail: WorkoutDetail): WorkoutSideStats {
 	const tech = techniqueSummary(detail.strokes);
 	const pc = powerCurve(detail.strokes);
 
-	// Fast single pass for best 5s power (avoid map closure on power curve)
 	let best5sPower = 0;
 	for (let i = 0; i < pc.length; i++) {
 		if (pc[i].watts > best5sPower) best5sPower = pc[i].watts;
 	}
 
-	// Single pass calculation for HR to avoid intermediate arrays and closures
 	let hrSum = 0;
 	let hrCount = 0;
 	let peakHr = 0;
