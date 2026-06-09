@@ -206,9 +206,7 @@ Utilisez npm run preview pour l’auth locale, la sync, le mode live et les test
 
 Le guide anglais destiné au dépôt se trouve dans docs/usage.md. Le site intégré rend le contenu du guide depuis les dictionnaires de locale, afin que chaque langue fournie utilise le même chemin i18n.
 
-Lorsqu’un changement modifie le comportement visible, les workflows, routes, l’auth, le traitement des données, le setup ou les attentes de déploiement, mettez à jour docs/usage.md, README.md ou la documentation pertinente du dépôt dans le même pull request.
-
-Lancez le gate localement avec npm run check:docs -- origin/main.`
+Lorsqu’un changement modifie le comportement visible, les workflows, routes, l’auth, le traitement des données, le setup ou les attentes de déploiement, mettez à jour docs/usage.md, README.md ou la documentation pertinente du dépôt dans le même pull request.`
 	},
 	dashboard: {
 		eyebrow: 'Votre logbook',

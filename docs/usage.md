@@ -92,12 +92,4 @@ locale dictionaries so every bundled language uses the same i18n path.
 
 When a change alters user-visible behavior, workflows, routes, auth, data
 handling, setup, or deployment expectations, update this file in the same pull
-request. The CI documentation gate fails pull requests that change non-doc files
-without also changing repository documentation.
-
-Run the gate locally with:
-
-```bash
-npm run check:docs -- origin/main
-```
-Added aria-pressed to dashboard toggle buttons.
+request.

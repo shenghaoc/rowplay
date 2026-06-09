@@ -206,9 +206,7 @@ Nutze npm run preview für lokale Auth-, Sync-, Live-Modus- und KV/D1-Tests. Pla
 
 Der repository-seitige englische Guide liegt in docs/usage.md. Die In-App-Website rendert Guide-Inhalte über Locale-Dictionaries, sodass jede gebündelte Sprache denselben i18n-Pfad nutzt.
 
-Wenn eine Änderung sichtbares Verhalten, Workflows, Routen, Auth, Datenverarbeitung, Setup oder Deployment-Erwartungen ändert, aktualisiere docs/usage.md, README.md oder die relevante Repository-Dokumentation im selben Pull Request.
-
-Führe das Gate lokal mit npm run check:docs -- origin/main aus.`
+Wenn eine Änderung sichtbares Verhalten, Workflows, Routen, Auth, Datenverarbeitung, Setup oder Deployment-Erwartungen ändert, aktualisiere docs/usage.md, README.md oder die relevante Repository-Dokumentation im selben Pull Request.`
 	},
 	dashboard: {
 		eyebrow: 'Dein Logbuch',
