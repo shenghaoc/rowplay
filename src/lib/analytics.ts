@@ -162,11 +162,17 @@ export function summariseBySport(workouts: Workout[]): SportSummary[] {
 	}
 	const out: SportSummary[] = [];
 	for (const [sport, ws] of by) {
-		const distance = ws.reduce((s, w) => s + w.distance, 0);
-		const time = ws.reduce((s, w) => s + w.time, 0);
+		let distance = 0;
+		let time = 0;
+		let bestPace = Infinity;
+		let longest = -Infinity;
+		for (const w of ws) {
+			distance += w.distance;
+			time += w.time;
+			if (w.pace > 0 && w.pace < bestPace) bestPace = w.pace;
+			if (w.distance > longest) longest = w.distance;
+		}
 		const avgPace = distance > 0 ? time / (distance / 500) : 0;
-		const bestPace = Math.min(...ws.map((w) => w.pace).filter((p) => p > 0));
-		const longest = Math.max(...ws.map((w) => w.distance));
 		out.push({ sport, sessions: ws.length, distance, time, avgPace, bestPace, longest });
 	}
 	return out.sort((a, b) => b.distance - a.distance);
@@ -726,13 +732,20 @@ export function estimateCriticalPower(workouts: Workout[], opts: CriticalPowerOp
 		});
 	};
 
-	const all = workouts
-		.map((w) => ({ t: w.time, p: workoutWatts(w), sport: w.sport, date: w.date }))
-		.filter((q) => q.t > 0 && q.p > 0 && q.p < 2500);
+	const all: CriticalPowerEffort[] = [];
+	const pts: CriticalPowerEffort[] = [];
+	for (const w of workouts) {
+		const t = w.time;
+		const p = workoutWatts(w);
+		if (t > 0 && p > 0 && p < 2500) {
+			const effort = { t, p, sport: w.sport, date: w.date };
+			all.push(effort);
+			// The CP model is only valid for a few-minutes-to-an-hour range.
+			if (t >= 120 && t <= 3600) pts.push(effort);
+		}
+	}
 	if (!all.length) return null;
 
-	// The CP model is only valid for a few-minutes-to-an-hour range.
-	const pts = all.filter((q) => q.t >= 120 && q.t <= 3600);
 	if (pts.length < 3) return fallback(all);
 
 	// Mean-maximal envelope: keep only the best power in each (geometric) duration
@@ -839,9 +852,12 @@ export function predictTimeForDistance(
 
 /** Best session-average power at each target duration (mean-maximal envelope). */
 export function powerDurationEnvelope(workouts: Workout[]): PowerPoint[] {
-	const pts = workouts
-		.map((w) => ({ t: w.time, p: workoutWatts(w) }))
-		.filter((q) => q.t >= 120 && q.t <= 3600 && q.p > 0);
+	const pts: { t: number; p: number }[] = [];
+	for (const w of workouts) {
+		const t = w.time;
+		const p = workoutWatts(w);
+		if (t >= 120 && t <= 3600 && p > 0) pts.push({ t, p });
+	}
 	const bins = new Map<number, { t: number; p: number }>();
 	for (const q of pts) {
 		const key = Math.round(Math.log(q.t) * 4);

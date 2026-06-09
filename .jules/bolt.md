@@ -16,3 +16,7 @@
 ## 2026-06-07 - Avoid array allocations in workoutSideStats
 **Learning:** The `Math.max(...array.map())` pattern allocates intermediate arrays and risks `RangeError: Maximum call stack size exceeded` on very large arrays. Chaining array methods like `.map(...).filter(...)` on large time series data creates several short-lived arrays resulting in GC pressure.
 **Action:** Use single-pass `for` loops for calculating metrics on large arrays to avoid intermediate memory allocations and stack size limits.
+
+## 2026-06-08 - Avoid array allocations in analytics functions
+**Learning:** Chaining array methods like `.map().filter()` or `.reduce()` combined with `.map()` and spread syntax (`Math.max(...array)`) over large history arrays (e.g. all workouts) causes similar GC pressure and risk of stack overflow on large profiles.
+**Action:** Use single-pass `for` loops for aggregation or filtering over large unpaginated top-level arrays (like an athlete's entire history) rather than array methods.
