@@ -139,10 +139,10 @@
 		<div class="muted sub">{t('dashboard.goalsYear', { year: goalYear })}</div>
 		<div class="goalform">
 			<div class="join join-horizontal" role="group" aria-label={t('dashboard.goalsYear', { year: goalYear })}>
-				<button type="button" class="btn btn-sm join-item" class:btn-active={kind === 'meters'} class:btn-neutral={kind === 'meters'} onclick={() => (kind = 'meters')}>
+				<button type="button" class="btn btn-sm join-item" class:btn-active={kind === 'meters'} class:btn-neutral={kind === 'meters'} aria-pressed={kind === 'meters'} onclick={() => (kind = 'meters')}>
 					{t('dashboard.goalsKindMeters')}
 				</button>
-				<button type="button" class="btn btn-sm join-item" class:btn-active={kind === 'hours'} class:btn-neutral={kind === 'hours'} onclick={() => (kind = 'hours')}>
+				<button type="button" class="btn btn-sm join-item" class:btn-active={kind === 'hours'} class:btn-neutral={kind === 'hours'} aria-pressed={kind === 'hours'} onclick={() => (kind = 'hours')}>
 					{t('dashboard.goalsKindHours')}
 				</button>
 			</div>
