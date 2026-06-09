@@ -14,7 +14,6 @@
     "preview:ci": "wrangler dev --ip 127.0.0.1 --port 8787",
     "deploy": "npm run build && wrangler deploy",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:docs": "node scripts/check-docs-updated.mjs",
     "validate:locales": "node --experimental-strip-types scripts/validate-locales.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

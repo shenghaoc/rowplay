@@ -131,6 +131,11 @@ All commands use **npm** (lockfile: `package-lock.json`).
 - Every user-visible string through `i18n.t()` in **all** locale files.
 - Sport names (RowErg, SkiErg, BikeErg) stay untranslated.
 
+## Review priorities
+
+P1 (must fix before merge):
+- Missing or outdated user-facing documentation in `docs/` for user-visible changes.
+
 ## Cursor Cloud specific instructions
 
 - **Demo mode is the default** — no `.dev.vars` needed for dashboard/replay/e2e.
