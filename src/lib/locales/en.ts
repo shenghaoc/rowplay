@@ -206,9 +206,7 @@ Use npm run preview for local auth, sync, live mode, and KV/D1 testing. Plain np
 
 The repository-facing English guide lives in docs/usage.md. The in-app website renders guide content through locale dictionaries so every bundled language uses the same i18n path.
 
-When a change alters user-visible behavior, workflows, routes, auth, data handling, setup, or deployment expectations, update docs/usage.md, README.md, or the relevant repository documentation in the same pull request.
-
-Run the gate locally with npm run check:docs -- origin/main.`
+When a change alters user-visible behavior, workflows, routes, auth, data handling, setup, or deployment expectations, update docs/usage.md, README.md, or the relevant repository documentation in the same pull request.`
 	},
 	dashboard: {
 		eyebrow: 'Your logbook',

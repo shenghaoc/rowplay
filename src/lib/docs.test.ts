@@ -13,7 +13,7 @@ Intro with **strong text**, \`inline code\`, and [a link](/dashboard).
 2. Press Replay.
 
 \`\`\`bash
-npm run check:docs -- origin/main
+npm run validate:locales
 \`\`\`
 `);
 
@@ -36,7 +36,7 @@ npm run check:docs -- origin/main
 		expect(guide.blocks[4]).toMatchObject({
 			type: 'code',
 			language: 'bash',
-			code: 'npm run check:docs -- origin/main'
+			code: 'npm run validate:locales'
 		});
 	});
 

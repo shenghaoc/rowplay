@@ -134,7 +134,7 @@ All commands use **npm** (lockfile: `package-lock.json`).
 ## Review priorities
 
 P1 (must fix before merge):
-- Missing or outdated user-facing documentation in `docs/` for user-visible changes.
+- Missing or outdated documentation (in `docs/`, `README.md`, `.kiro/steering/`, or `.kiro/specs/`) for user-visible or architectural changes.
 
 ## Cursor Cloud specific instructions
 

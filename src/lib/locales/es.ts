@@ -206,9 +206,7 @@ Usa npm run preview para autenticación local, sincronización, modo live y prue
 
 La guía inglesa orientada al repositorio vive en docs/usage.md. El sitio dentro de la app renderiza la guía desde los diccionarios de locale, de modo que todos los idiomas incluidos usan la misma ruta i18n.
 
-Cuando un cambio altere comportamiento visible, flujos, rutas, autenticación, manejo de datos, setup o expectativas de despliegue, actualiza docs/usage.md, README.md o la documentación relevante del repositorio en el mismo pull request.
-
-Ejecuta la puerta localmente con npm run check:docs -- origin/main.`
+Cuando un cambio altere comportamiento visible, flujos, rutas, autenticación, manejo de datos, setup o expectativas de despliegue, actualiza docs/usage.md, README.md o la documentación relevante del repositorio en el mismo pull request.`
 	},
 	dashboard: {
 		eyebrow: 'Tu diario',
