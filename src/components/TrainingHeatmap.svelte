@@ -59,10 +59,10 @@
 			<span class="muted field-label">{i18n.t('dashboard.calTitle')}</span>
 		</div>
 		<div class="calmetrics">
-			<button class="mchip" class:on={metric === 'distance'} aria-pressed={metric === 'distance'} onclick={() => (metric = 'distance')}>
+			<button type="button" class="mchip" class:on={metric === 'distance'} aria-pressed={metric === 'distance'} onclick={() => (metric = 'distance')}>
 				{i18n.t('dashboard.calMetricDistance')}
 			</button>
-			<button class="mchip" class:on={metric === 'time'} aria-pressed={metric === 'time'} onclick={() => (metric = 'time')}>
+			<button type="button" class="mchip" class:on={metric === 'time'} aria-pressed={metric === 'time'} onclick={() => (metric = 'time')}>
 				{i18n.t('dashboard.calMetricTime')}
 			</button>
 		</div>
