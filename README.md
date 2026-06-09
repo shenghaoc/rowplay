@@ -100,6 +100,22 @@ all controls work in demo mode with zero configuration.
 
 ---
 
+## Connecting your Concept2 account (BYOT)
+
+rowplay does not require an OAuth flow or a registered developer application —
+it uses Concept2's **Personal API Tokens**.
+
+1. Generate a token on your [Concept2 Logbook Applications](https://log.concept2.com/profile/applications) page.
+2. Paste it into rowplay (at `/auth/token`).
+3. rowplay's Cloudflare Worker syncs your logbook from the Concept2 API
+   server-side and caches it for fast dashboards and replays.
+
+rowplay only calls read endpoints with your token (your profile and workout
+results) and never stores it in a database — see [Privacy model](#privacy-model)
+for exactly where it lives.
+
+---
+
 ## Privacy model
 
 rowplay is designed so that **your personal Concept2 token never leaves your
