@@ -3,3 +3,6 @@
 **Learning:** DaisyUI provides a `loading loading-spinner` class which acts as a great visual cue. It's important to add `aria-hidden="true"` to visual loading spinners within buttons so screen readers don't misinterpret them, relying instead on the changed button text (e.g. "Saving..." vs "Save") or live regions.
 **Action:** When adding visual loading indicators, always consider adding `aria-hidden="true"` if the loading state is already communicated via text changes or ARIA live regions.
 ## 2026-06-08 - Added aria-pressed to dashboard toggle buttons
+## 2025-06-10 - Missing ARIA pressed state on custom button toggles
+**Learning:** This app extensively uses Tailwind/DaisyUI utility classes like `btn-active` or custom toggles like `class:on` to indicate selected state visually. However, this is frequently not paired with `aria-pressed` or `aria-selected`, meaning screen readers miss the active state.
+**Action:** When working on UI components, actively look for visual state toggles (`class:btn-active={cond}`) and ensure they are always paired with the corresponding semantic ARIA attribute (e.g. `aria-pressed={cond}`).
