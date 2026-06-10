@@ -557,7 +557,15 @@
 		if (!fit || trendPoints.length < 3) return null;
 		const span = trendPoints[trendPoints.length - 1].x - trendPoints[0].x;
 		const days = Math.max(1, span / 86_400_000);
-		const range = Math.max(...trendPoints.map((p) => p.y)) - Math.min(...trendPoints.map((p) => p.y));
+		// Bolt: Calculate minY and maxY using a single-pass loop avoiding intermediate map arrays and spread syntax limits
+		let minY = Infinity;
+		let maxY = -Infinity;
+		for (let i = 0; i < trendPoints.length; i++) {
+			const y = trendPoints[i].y;
+			if (y < minY) minY = y;
+			if (y > maxY) maxY = y;
+		}
+		const range = maxY - minY;
 		// "Flat" if the modelled change is small relative to session-to-session spread.
 		const flat = range === 0 || Math.abs(fit.delta) < range * 0.15;
 		const better = lowerIsBetter ? fit.delta < 0 : fit.delta > 0;
