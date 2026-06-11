@@ -24,3 +24,7 @@
 ## 2026-06-15 - Replace spread Math.max on derived calculations
 **Learning:** Spread syntax `Math.max(...array)` on dynamically mapped values inside reactive `$derived` blocks risks `Maximum call stack size exceeded` for large datasets and incurs unneeded allocation overhead.
 **Action:** Replace map/filter chains and array spreading inside reactive calculations with explicit single-pass `for` loops, adding inline explanations to clarify the performance optimization over built-ins.
+
+## 2026-06-21 - Optimize workRestEfficiency with single-pass loops
+**Learning:** Chaining `.filter()`, `.reduce()`, and `.map()` to extract multiple metrics from the same array causes O(N*M) traversals and garbage collection pressure.
+**Action:** Consolidate multiple metrics calculations into a single `for` loop to avoid intermediate memory allocations and redundant iterations.
