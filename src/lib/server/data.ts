@@ -111,7 +111,13 @@ function syncStateFor(event: RequestEvent): Promise<SyncState | null> {
 	return cached;
 }
 
-/** True when the D1 cache is safe to read as the full history. */
+/**
+ * True when the D1 cache is safe to read as the full history. The gate only
+ * checks `inProgress` — `backfillDone` is irrelevant here because a completed
+ * forward-sync still marks the cache as complete (the backfill flag only
+ * controls whether older pages have been fetched, not whether the cache is
+ * safe to serve as the authoritative source).
+ */
 async function isCacheComplete(event: RequestEvent): Promise<boolean> {
 	const s = await syncStateFor(event);
 	return !!s && !s.inProgress;
