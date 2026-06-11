@@ -5,24 +5,25 @@ elaborate branching, no version milestones. Tag, push, deploy.
 
 ## Before tagging
 
-- [ ] `npm run check` — zero type errors
-- [ ] `npm run test` — all tests green, count has not decreased
-- [ ] `npm run build` — production build succeeds
-- [ ] `npm run test:e2e` — Playwright smoke passes (requires `wrangler dev`)
-- [ ] `npm run validate:locales` — all i18n keys consistent across languages
+- [ ] `pnpm check` — zero type errors
+- [ ] `pnpm test` — all tests green, count has not decreased
+- [ ] `pnpm build` — production build succeeds
+- [ ] `pnpm test:e2e` — Playwright smoke passes (requires `wrangler dev`)
+- [ ] `pnpm validate:locales` — all i18n keys consistent across languages
 - [ ] Manual smoke in demo mode: `/dashboard` → click a workout → replay plays
-- [ ] If auth/sync touched, manual smoke with a real token on `npm run preview`
-- [ ] If new DB migrations added, `npm run db:migrate:local` succeeds
+- [ ] If auth/sync touched, manual smoke with a real token on `pnpm preview`
+- [ ] If new DB migrations added, `pnpm db:migrate:local` succeeds
 
 ## Tag and release
 
 ```bash
 # Bump version in package.json (follow semver)
-npm version patch   # or minor, or major
+pnpm version patch   # or minor, or major
 git push --follow-tags
 ```
 
 Then create a **GitHub Release** from the tag:
+
 1. Go to [Releases](https://github.com/shenghaoc/rowplay/releases) → **Draft a new release**.
 2. Choose the tag you just pushed.
 3. Click **Generate release notes** — GitHub auto-populates merged PRs since
@@ -35,10 +36,10 @@ Then create a **GitHub Release** from the tag:
 
 ```bash
 # Apply any pending remote DB migrations first
-npm run db:migrate
+pnpm db:migrate
 
 # Build + deploy to Cloudflare Workers
-npm run deploy
+pnpm deploy
 ```
 
 ## After deploy
@@ -57,5 +58,5 @@ npx wrangler rollback
 
 # Or deploy a specific tag:
 git checkout <tag>
-npm run deploy
+pnpm deploy
 ```
