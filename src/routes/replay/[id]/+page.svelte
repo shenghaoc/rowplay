@@ -1419,6 +1419,7 @@
 				class="btn btn-sm join-item"
 				class:btn-active={compareMode === 'none'}
 				class:btn-neutral={compareMode === 'none'}
+				aria-pressed={compareMode === 'none'}
 				onclick={() => setCompareMode('none')}
 			>{t('replay.none')}</button>
 			{#if candidates.length}
@@ -1427,6 +1428,7 @@
 					class="btn btn-sm join-item"
 					class:btn-active={compareMode === 'session'}
 					class:btn-neutral={compareMode === 'session'}
+					aria-pressed={compareMode === 'session'}
 					onclick={() => setCompareMode('session')}
 				>{t('replay.pastSession')}</button>
 			{/if}
@@ -1435,6 +1437,7 @@
 				class="btn btn-sm join-item"
 				class:btn-active={compareMode === 'pace'}
 				class:btn-neutral={compareMode === 'pace'}
+				aria-pressed={compareMode === 'pace'}
 				onclick={() => setCompareMode('pace')}
 			>{t('replay.constantPace')}</button>
 			<button
@@ -1442,6 +1445,7 @@
 				class="btn btn-sm join-item"
 				class:btn-active={compareMode === 'file'}
 				class:btn-neutral={compareMode === 'file'}
+				aria-pressed={compareMode === 'file'}
 				onclick={() => setCompareMode('file')}
 			>{t('replay.uploadedFile')}</button>
 		</div>
