@@ -1,27 +1,37 @@
 {
   "name": "rowplay",
   "version": "0.1.0",
+  "private": true,
   "description": "Concept2 logbook analytics + real-time workout replay, deployed on Cloudflare.",
   "type": "module",
-  "private": true,
-  "engines": {
-    "node": ">=26"
-  },
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build && node scripts/postbuild.mjs",
-    "preview": "npm run build && npm run preview:ci",
+    "dev": "vp dev",
+    "build": "vp build && node scripts/postbuild.mjs",
+    "preview": "pnpm build && pnpm preview:ci",
     "preview:ci": "wrangler dev --ip 127.0.0.1 --port 8787",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "pnpm build && wrangler deploy",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "validate:locales": "node --experimental-strip-types scripts/validate-locales.mjs",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vp test run",
+    "test:watch": "vp test",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test tests/e2e/smoke.spec.ts --project webkit",
     "test:e2e:reuse": "E2E_REUSE_SERVER=1 playwright test",
     "db:migrate:local": "wrangler d1 migrations apply rowplay --local",
-    "db:migrate": "wrangler d1 migrations apply rowplay --remote"
+    "db:migrate": "wrangler d1 migrations apply rowplay --remote",
+    "prepare": "vp config"
+  },
+  "dependencies": {
+    "@fontsource/source-code-pro": "^5.2.7",
+    "@fontsource/source-sans-3": "^5.2.9",
+    "@lucide/svelte": "^1.17.0",
+    "@tailwindcss/vite": "^4.3.0",
+    "@tanstack/svelte-virtual": "^3.13.26",
+    "svelte-sonner": "^1.1.1",
+    "tailwindcss": "^4.3.0",
+    "temporal-polyfill": "~0.3.2",
+    "three": "^0.184.0",
+    "uplot": "^1.6.31"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260601.1",
@@ -36,20 +46,17 @@
     "svelte": "^5.56.0",
     "svelte-check": "^4.4.6",
     "typescript": "^6.0.3",
-    "vite": "^8.0.14",
-    "vitest": "^4.1.7",
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.1.24",
+    "vite-plus": "0.1.24",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@0.1.24",
     "wrangler": "^4.95.0"
   },
-  "dependencies": {
-    "@fontsource/source-code-pro": "^5.2.7",
-    "@fontsource/source-sans-3": "^5.2.9",
-    "@lucide/svelte": "^1.17.0",
-    "@tailwindcss/vite": "^4.3.0",
-    "@tanstack/svelte-virtual": "^3.13.26",
-    "svelte-sonner": "^1.1.1",
-    "tailwindcss": "^4.3.0",
-    "temporal-polyfill": "~0.3.2",
-    "three": "^0.184.0",
-    "uplot": "^1.6.31"
-  }
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.1.24",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@0.1.24"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "packageManager": "pnpm@10.12.1"
 }

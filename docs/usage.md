@@ -78,10 +78,10 @@ Use the Workers preview runtime for local auth, sync, live mode, and KV/D1
 testing:
 
 ```bash
-npm run preview
+pnpm preview
 ```
 
-Plain `npm run dev` is faster for UI work, but it is not the Workers runtime and
+Plain `pnpm dev` is faster for UI work, but it is not the Workers runtime and
 does not provide the production KV/D1 bindings.
 
 ## Contributor documentation policy

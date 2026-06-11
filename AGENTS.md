@@ -32,7 +32,7 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [Concept2 token privacy](.kiro/specs/concept2-token-privacy/tasks.md) — BYOT token sealed in an httpOnly cookie (never in KV); session-scoped D1 cache purged on disconnect; reversible leaderboard opt-in.
 - [Mobile nav backdrop dismiss](.kiro/specs/mobile-nav-backdrop-dismiss/tasks.md) — cross-browser backdrop tap to close the hamburger menu; bounding-rect `onclick` fallback for WebKit (iOS Safari).
 - [Snappy connect & dashboard cache warm-up](.kiro/specs/connect-cache-warmup/tasks.md) — connect pending-state; background warm-cache sync on connect (`waitUntil`); D1 read as the full history only after a sync completes (no partial cache); per-request load de-dup.
-- [Test coverage](.kiro/specs/test-coverage/tasks.md) — broad Vitest coverage across pure helpers, server/DB layer, route handlers, Svelte reactive classes, and the Three.js 3D renderer; `@vitest/coverage-v8` with `text` + `lcov` reporters. The spec records its landing snapshot; use `npm run test` for current health.
+- [Test coverage](.kiro/specs/test-coverage/tasks.md) — broad Vitest coverage across pure helpers, server/DB layer, route handlers, Svelte reactive classes, and the Three.js 3D renderer; `@vitest/coverage-v8` with `text` + `lcov` reporters. The spec records its landing snapshot; use `pnpm test` for current health.
 
 **Platform audit (read before new features or modernization work):**
 
@@ -66,22 +66,22 @@ developer app and is not needed for the public BYOT deployment.
 
 ## Key commands
 
-All commands use **npm** (lockfile: `package-lock.json`).
+All commands use **pnpm** (lockfile: `pnpm-lock.yaml`).
 
-| Task         | Command                                                      |
-| ------------ | ------------------------------------------------------------ |
-| Install deps | `npm install`                                                |
-| Dev server   | `npm run dev` (serves at `http://localhost:5173`)            |
-| Type check   | `npm run check` (`svelte-kit sync` + `svelte-check`)         |
-| Unit tests   | `npm run test` (Vitest)                                      |
-| Build        | `npm run build` (outputs `.svelte-kit/cloudflare`)           |
-| Preview      | `npm run preview` (build + `wrangler dev`, real runtime)     |
-| Preview (CI) | `npm run preview:ci` (`wrangler dev` only, needs pre-built output) |
-| Deploy       | `npm run deploy` (build + `wrangler deploy`)                 |
-| D1 migrate   | `npm run db:migrate` (remote) / `db:migrate:local`           |
-| Locales      | `npm run validate:locales` (after adding i18n keys)          |
-| E2E (full)   | `npm run test:e2e` (all specs, WebKit desktop + mobile)      |
-| E2E (smoke)  | `npm run test:e2e:smoke` (smoke.spec.ts, WebKit desktop only) |
+| Task         | Command                                                         |
+| ------------ | --------------------------------------------------------------- |
+| Install deps | `pnpm install`                                                  |
+| Dev server   | `pnpm dev` (serves at `http://localhost:5173`)                  |
+| Type check   | `pnpm check` (`svelte-kit sync` + `svelte-check`)               |
+| Unit tests   | `pnpm test` (Vitest)                                            |
+| Build        | `pnpm build` (outputs `.svelte-kit/cloudflare`)                 |
+| Preview      | `pnpm preview` (build + `wrangler dev`, real runtime)           |
+| Preview (CI) | `pnpm preview:ci` (`wrangler dev` only, needs pre-built output) |
+| Deploy       | `pnpm deploy` (build + `wrangler deploy`)                       |
+| D1 migrate   | `pnpm db:migrate` (remote) / `db:migrate:local`                 |
+| Locales      | `pnpm validate:locales` (after adding i18n keys)                |
+| E2E (full)   | `pnpm test:e2e` (all specs, WebKit desktop + mobile)            |
+| E2E (smoke)  | `pnpm test:e2e:smoke` (smoke.spec.ts, WebKit desktop only)      |
 
 ## Architecture (short)
 
@@ -99,11 +99,11 @@ All commands use **npm** (lockfile: `package-lock.json`).
   `SESSION_SECRET` via `wrangler secret put` (and `CONCEPT2_CLIENT_SECRET` only
   if OAuth is enabled).
 - **`vite dev` is not the Workers runtime** — no KV/D1/asset bindings. Use
-  `npm run preview` (`wrangler dev` on `http://127.0.0.1:8787`) for auth, sync,
+  `pnpm preview` (`wrangler dev` on `http://127.0.0.1:8787`) for auth, sync,
   and binding tests.
 - **Stroke-data units** (`concept2.ts > mapStrokes`): bike pace is per-1000m;
   interval `t`/`d` restart per rep — both normalised on read.
-- `npm run build` runs `scripts/postbuild.mjs` (patches `.assetsignore`).
+- `pnpm build` runs `scripts/postbuild.mjs` (patches `.assetsignore`).
 - **UPlotChart** (`src/components/UPlotChart.svelte`): `plot` is `$state.raw`
   so the `setData` effect re-fires after each build; the build effect must
   `untrack` the old-plot destroy to avoid a circular dependency.
@@ -118,10 +118,10 @@ All commands use **npm** (lockfile: `package-lock.json`).
 
 ## Quality gate
 
-1. `npm run check` → 0 errors (`state_referenced_locally` warnings are known).
-2. `npm run build` → succeeds.
-3. `npm run test` → green, and the test count must not decrease.
-4. Feature work: verify in demo mode; token auth on `npm run preview` if touched.
+1. `pnpm check` → 0 errors (`state_referenced_locally` warnings are known).
+2. `pnpm build` → succeeds.
+3. `pnpm test` → green, and the test count must not decrease.
+4. Feature work: verify in demo mode; token auth on `pnpm preview` if touched.
 5. New `+server.ts`, `+page.server.ts`, or `src/lib/**/*.ts` files must have a co-located `*.test.ts`.
 
 ## Svelte, daisyUI and i18n
@@ -134,14 +134,15 @@ All commands use **npm** (lockfile: `package-lock.json`).
 ## Review priorities
 
 P1 (must fix before merge):
+
 - Missing or outdated user-facing documentation in `docs/` for user-visible changes.
 
 ## Cursor Cloud specific instructions
 
 - **Demo mode is the default** — no `.dev.vars` needed for dashboard/replay/e2e.
-- **Two local URLs**: `npm run dev` → `http://localhost:5173` (fast UI);
-  `npm run preview` → `http://127.0.0.1:8787` (Workers-faithful).
-- **E2E smoke** (PR gate): `npm run test:e2e:smoke`; first run needs `npx playwright install --with-deps webkit`.
-- **E2E full** (all specs): `npm run test:e2e` — runs on `workflow_dispatch` and nightly in CI.
-- **Token auth / sync / KV / D1**: test on `npm run preview`, not `vite dev` alone.
+- **Two local URLs**: `pnpm dev` → `http://localhost:5173` (fast UI);
+  `pnpm preview` → `http://127.0.0.1:8787` (Workers-faithful).
+- **E2E smoke** (PR gate): `pnpm test:e2e:smoke`; first run needs `pnpm exec playwright install --with-deps webkit`.
+- **E2E full** (all specs): `pnpm test:e2e` — runs on `workflow_dispatch` and nightly in CI.
+- **Token auth / sync / KV / D1**: test on `pnpm preview`, not `vite dev` alone.
 - **Hello-world**: `/dashboard` → `/replay/1001` → Play — canvas and gauges update.

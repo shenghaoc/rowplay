@@ -26,12 +26,12 @@ rowplay follows the official **SvelteKit + Tailwind v4** install path. Do not ad
 
 ### Baseline (matches upstream docs)
 
-| Piece | Location |
-| ----- | -------- |
-| Packages | `tailwindcss`, `@tailwindcss/vite`, `daisyui` in `package.json` |
-| Vite | `tailwindcss()` then `sveltekit()` in `vite.config.ts` |
-| Plugin | `@import 'tailwindcss';` and `@plugin "daisyui";` in `src/app.css` |
-| Global CSS | `import '../app.css'` in `src/routes/+layout.svelte` |
+| Piece      | Location                                                           |
+| ---------- | ------------------------------------------------------------------ |
+| Packages   | `tailwindcss`, `@tailwindcss/vite`, `daisyui` in `package.json`    |
+| Vite       | `tailwindcss()` then `sveltekit()` in `vite.config.ts`             |
+| Plugin     | `@import 'tailwindcss';` and `@plugin "daisyui";` in `src/app.css` |
+| Global CSS | `import '../app.css'` in `src/routes/+layout.svelte`               |
 
 ### rowplay extensions (intentional)
 
@@ -84,20 +84,20 @@ Configured in `src/app.css`:
 
 ## Testing
 
-- **Vitest** — unit tests (`npm run test` / `npm run test:watch`) across pure helpers, server/DB code, route handlers, Svelte reactive classes, and replay renderers. Use the command output for the current test count.
+- **Vitest** — unit tests (`pnpm test` / `pnpm test:watch`) across pure helpers, server/DB code, route handlers, Svelte reactive classes, and replay renderers. Use the command output for the current test count.
 - **@vitest/coverage-v8** — coverage reporter; `provider: 'v8'`, `reporter: ['text', 'lcov']`, scoped to `src/**/*.ts` (excludes `*.test.ts`, `*.svelte.ts`, generated `*.d.ts`)
 - **Playwright** — E2E smoke tests run against the production build on the real Workers runtime (`wrangler dev`), not `vite dev`
 - **svelte-check** — TypeScript type checking for `.svelte` and `.ts` files
 
 ### Test scope
 
-| Layer | Files tested | Pattern |
-| ----- | ------------ | ------- |
-| Pure library | `datetime.ts`, `goals.ts`, `workoutQuery.ts`, `i18n.ts`, `i18nPlural.ts`, `mockData.ts`, `analytics-newpbs.ts`, `replay/sports.ts`, `replay/sources.ts` | Direct import, minimal mocking |
-| Server data/DB | `server/db.ts`, `server/data.ts`, `server/session.ts`, `server/export.ts`, `server/concept2-strokes.ts`, `server/share.ts`, `server/config.ts`, `server/leaderboard.ts`, `server/hrImport.ts`, `server/rivalGhost.ts` | Fake D1/KV (see below) |
-| Route handlers | SvelteKit `+server.ts` and `+page.server.ts` files | Fake `RequestEvent`; service layer mocked via `vi.mock` |
-| Svelte reactive classes | `i18n.svelte.ts`, `theme.svelte.ts`, `liveMode.svelte.ts` | Node-only stubs; no jsdom required |
-| Three.js renderer | `replay/renderer3d.ts` | Partial mock — only `THREE.WebGLRenderer`; all other Three.js classes run as real headless Node implementations |
+| Layer                   | Files tested                                                                                                                                                                                                          | Pattern                                                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Pure library            | `datetime.ts`, `goals.ts`, `workoutQuery.ts`, `i18n.ts`, `i18nPlural.ts`, `mockData.ts`, `analytics-newpbs.ts`, `replay/sports.ts`, `replay/sources.ts`                                                               | Direct import, minimal mocking                                                                                  |
+| Server data/DB          | `server/db.ts`, `server/data.ts`, `server/session.ts`, `server/export.ts`, `server/concept2-strokes.ts`, `server/share.ts`, `server/config.ts`, `server/leaderboard.ts`, `server/hrImport.ts`, `server/rivalGhost.ts` | Fake D1/KV (see below)                                                                                          |
+| Route handlers          | SvelteKit `+server.ts` and `+page.server.ts` files                                                                                                                                                                    | Fake `RequestEvent`; service layer mocked via `vi.mock`                                                         |
+| Svelte reactive classes | `i18n.svelte.ts`, `theme.svelte.ts`, `liveMode.svelte.ts`                                                                                                                                                             | Node-only stubs; no jsdom required                                                                              |
+| Three.js renderer       | `replay/renderer3d.ts`                                                                                                                                                                                                | Partial mock — only `THREE.WebGLRenderer`; all other Three.js classes run as real headless Node implementations |
 
 ### Fake D1 pattern
 
@@ -107,14 +107,29 @@ function fakeDb(opts: { firstRow?: unknown; allRows?: unknown[] } = {}) {
   const make = (sql: string) => {
     let bound: unknown[] = [];
     const stmt = {
-      bind: (...args) => { bound = args; return stmt; },
-      run:  async () => { executed.push({ sql, args: bound }); return { meta: { changes: 1, last_row_id: 99 } }; },
-      first: async <T>() => { executed.push({ sql, args: bound }); return (opts.firstRow ?? null) as T; },
-      all:  async <T>() => { executed.push({ sql, args: bound }); return { results: (opts.allRows ?? []) as T[] }; }
+      bind: (...args) => {
+        bound = args;
+        return stmt;
+      },
+      run: async () => {
+        executed.push({ sql, args: bound });
+        return { meta: { changes: 1, last_row_id: 99 } };
+      },
+      first: async <T>() => {
+        executed.push({ sql, args: bound });
+        return (opts.firstRow ?? null) as T;
+      },
+      all: async <T>() => {
+        executed.push({ sql, args: bound });
+        return { results: (opts.allRows ?? []) as T[] };
+      },
     };
     return stmt;
   };
-  return { executed, db: { prepare: make, batch: async (stmts) => Promise.all(stmts.map(s => s.run())) } };
+  return {
+    executed,
+    db: { prepare: make, batch: async (stmts) => Promise.all(stmts.map((s) => s.run())) },
+  };
 }
 ```
 
@@ -124,9 +139,13 @@ function fakeDb(opts: { firstRow?: unknown; allRows?: unknown[] } = {}) {
 function fakeKv() {
   const store = new Map<string, string>();
   return {
-    get:    async (key: string) => store.get(key) ?? null,
-    put:    async (key: string, value: string) => { store.set(key, value); },
-    delete: async (key: string) => { store.delete(key); }
+    get: async (key: string) => store.get(key) ?? null,
+    put: async (key: string, value: string) => {
+      store.set(key, value);
+    },
+    delete: async (key: string) => {
+      store.delete(key);
+    },
   };
 }
 ```
@@ -146,30 +165,30 @@ function fakeKv() {
 
 ## Development Commands
 
-| Task              | Command                    |
-| ----------------- | -------------------------- |
-| Install deps      | `npm install`              |
-| Dev server        | `npm run dev`              |
-| Type check        | `npm run check`            |
-| Unit tests        | `npm run test`             |
-| Unit tests watch  | `npm run test:watch`       |
-| Build             | `npm run build`            |
-| Preview (Workers) | `npm run preview`            |
-| Preview CI        | `npm run preview:ci`         |
-| Deploy            | `npm run deploy`             |
-| D1 migrate local  | `npm run db:migrate:local`   |
-| D1 migrate remote | `npm run db:migrate`         |
-| E2E (full)        | `npm run test:e2e`           |
-| E2E (PR smoke)    | `npm run test:e2e:smoke`     |
+| Task              | Command                 |
+| ----------------- | ----------------------- |
+| Install deps      | `pnpm install`          |
+| Dev server        | `pnpm dev`              |
+| Type check        | `pnpm check`            |
+| Unit tests        | `pnpm test`             |
+| Unit tests watch  | `pnpm test:watch`       |
+| Build             | `pnpm build`            |
+| Preview (Workers) | `pnpm preview`          |
+| Preview CI        | `pnpm preview:ci`       |
+| Deploy            | `pnpm deploy`           |
+| D1 migrate local  | `pnpm db:migrate:local` |
+| D1 migrate remote | `pnpm db:migrate`       |
+| E2E (full)        | `pnpm test:e2e`         |
+| E2E (PR smoke)    | `pnpm test:e2e:smoke`   |
 
 ## CI
 
 GitHub Actions (`.github/workflows/ci.yml`). All quality jobs run in parallel:
 
-- **typecheck** — `npm run check`
-- **unit-tests** — `npm run test`
-- **build** — `npm run build`; uploads `.svelte-kit/cloudflare` as a 1-day artifact
-- **locale-validation** — `npm run validate:locales`
+- **typecheck** — `pnpm check`
+- **unit-tests** — `pnpm test`
+- **build** — `pnpm build`; uploads `.svelte-kit/cloudflare` as a 1-day artifact
+- **locale-validation** — `pnpm validate:locales`
 
 E2E jobs download the build artifact and set `E2E_SKIP_BUILD=1` so wrangler dev starts without rebuilding:
 
