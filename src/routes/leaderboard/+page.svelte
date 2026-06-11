@@ -115,7 +115,7 @@
 						class:btn-active={s === selectedSport}
 						class:btn-neutral={s === selectedSport}
 						class:btn-outline={s !== selectedSport}
-						aria-pressed={s === selectedSport}
+						aria-current={s === selectedSport ? 'true' : undefined}
 						onclick={() => selectSport(s)}
 					>
 						<SportIcon sport={s} size={15} /> {SPORT_LABEL[s]}
@@ -133,7 +133,7 @@
 						class:btn-active={d === selectedDistance}
 						class:btn-neutral={d === selectedDistance}
 						class:btn-outline={d !== selectedDistance}
-						aria-pressed={d === selectedDistance}
+						aria-current={d === selectedDistance ? 'true' : undefined}
 						onclick={() => selectDistance(d)}
 					>
 						{fmtDistance(d)}
