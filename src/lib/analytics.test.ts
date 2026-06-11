@@ -1,32 +1,33 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
-  aggregateDailyVolume,
-  annualGoalProgress,
-  buildTrainingCalendar,
-  distanceBand,
-  distancePBs,
-  distancePerStroke,
-  efficiencyDrift,
-  efficiencyByRate,
-  estimateCriticalPower,
-  hrZones,
-  intervalBreakdown,
-  linearTrend,
-  powerCurve,
-  summariseBySport,
-  techniqueSummary,
-  trainingLoad,
-  volumeIntensityLevel,
-  workoutDayKey,
-  workoutWatts,
-  dayVolumeValue,
-  hrRecoveryTrend,
-  hrZoneOf,
-  workRestEfficiency,
-  targetVsActual,
-  workoutSideStats,
-} from "./analytics";
-import { mockWorkoutDetail, mockWorkouts } from "./mockData";
+	aggregateDailyVolume,
+	annualGoalProgress,
+	buildTrainingCalendar,
+	distanceBand,
+	distancePBs,
+	distancePerStroke,
+	efficiencyDrift,
+	efficiencyByRate,
+	estimateCriticalPower,
+	estimateHrMax,
+	hrZones,
+	intervalBreakdown,
+	linearTrend,
+	powerCurve,
+	summariseBySport,
+	techniqueSummary,
+	trainingLoad,
+	volumeIntensityLevel,
+	workoutDayKey,
+	workoutWatts,
+	dayVolumeValue,
+	hrRecoveryTrend,
+	hrZoneOf,
+	workRestEfficiency,
+	targetVsActual,
+	workoutSideStats
+} from './analytics';
+import { mockWorkoutDetail, mockWorkouts } from './mockData';
 import {
   intervalSplits,
   normalizedIntervalStrokes,
@@ -44,16 +45,28 @@ describe("linearTrend", () => {
     expect(linearTrend([{ x: 0, y: 1 }])).toBeNull();
   });
 
-  it("fits a downward pace trend for improving 2k pieces", () => {
-    const twoKs = workouts
-      .filter((w) => w.sport === "rower" && Math.abs(w.distance - 2000) < 50)
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const points = twoKs.map((w) => ({ x: Date.parse(w.date.replace(" ", "T") + "Z"), y: w.pace }));
-    const fit = linearTrend(points);
-    expect(fit).not.toBeNull();
-    expect(fit!.n).toBeGreaterThanOrEqual(2);
-    expect(fit!.delta).toBeLessThan(0);
-  });
+	it('fits a downward pace trend for improving 2k pieces', () => {
+		const twoKs = workouts.filter((w) => w.sport === 'rower' && Math.abs(w.distance - 2000) < 50).sort((a, b) => a.date.localeCompare(b.date));
+		const points = twoKs.map((w) => ({ x: Date.parse(w.date.replace(' ', 'T') + 'Z'), y: w.pace }));
+		const fit = linearTrend(points);
+		expect(fit).not.toBeNull();
+		expect(fit!.n).toBeGreaterThanOrEqual(2);
+		expect(fit!.delta).toBeLessThan(0);
+	});
+
+	it('uses the largest x value for the trend endpoint even when points are unsorted', () => {
+		const day = 86_400_000;
+		const fit = linearTrend([
+			{ x: 2 * day, y: 140 },
+			{ x: 0, y: 120 },
+			{ x: 1 * day, y: 130 }
+		]);
+
+		expect(fit).not.toBeNull();
+		expect(fit!.y0).toBeCloseTo(120);
+		expect(fit!.y1).toBeCloseTo(140);
+		expect(fit!.delta).toBeCloseTo(20);
+	});
 });
 
 describe("distanceBand", () => {
@@ -67,15 +80,27 @@ describe("distanceBand", () => {
   });
 });
 
-describe("summariseBySport", () => {
-  it("aggregates mock history by sport", () => {
-    const rows = summariseBySport(workouts);
-    expect(rows.length).toBeGreaterThanOrEqual(2);
-    const rower = rows.find((r) => r.sport === "rower");
-    expect(rower!.sessions).toBeGreaterThan(0);
-    expect(rower!.distance).toBeGreaterThan(0);
-    expect(rower!.avgPace).toBeGreaterThan(0);
-  });
+describe('summariseBySport', () => {
+	it('aggregates mock history by sport', () => {
+		const rows = summariseBySport(workouts);
+		expect(rows.length).toBeGreaterThanOrEqual(2);
+		const rower = rows.find((r) => r.sport === 'rower');
+		expect(rower!.sessions).toBeGreaterThan(0);
+		expect(rower!.distance).toBeGreaterThan(0);
+		expect(rower!.avgPace).toBeGreaterThan(0);
+	});
+
+	it('preserves the Infinity sentinel when a sport has no positive pace', () => {
+		const rows = summariseBySport([
+			workout({ id: 1, sport: 'rower', distance: 2000, time: 500, pace: 0 }),
+			workout({ id: 2, sport: 'rower', distance: 1000, time: 260, pace: -1 })
+		]);
+
+		expect(rows).toHaveLength(1);
+		expect(rows[0].sessions).toBe(2);
+		expect(rows[0].bestPace).toBe(Infinity);
+		expect(rows[0].avgPace).toBeCloseTo(760 / 6);
+	});
 });
 
 describe("distancePBs", () => {
@@ -97,6 +122,23 @@ describe("hrZones", () => {
     expect(total).toBeCloseTo(1, 5);
     expect(zones.every((z) => z.seconds >= 0)).toBe(true);
   });
+});
+
+describe('estimateHrMax', () => {
+	it('uses a positive explicit max HR override', () => {
+		expect(estimateHrMax([{ ...stroke(0, 28), hr: 140 }], 188)).toBe(188);
+	});
+
+	it('falls back to the 160 bpm floor when strokes have no positive HR', () => {
+		expect(estimateHrMax([
+			{ ...stroke(0, 28), hr: 0 },
+			{ ...stroke(10, 28) }
+		])).toBe(160);
+	});
+
+	it('infers max HR from the observed peak when it exceeds the floor', () => {
+		expect(estimateHrMax([{ ...stroke(0, 28), hr: 190 }])).toBeCloseTo(200);
+	});
 });
 
 function driftStrokes(
@@ -483,11 +525,44 @@ describe("intervalBreakdown", () => {
     expect(onLastEdge!.reps[1].spm).toBe(88);
   });
 
-  it("assigns strokes after the last split boundary to the final rep", () => {
-    const result = intervalBreakdown(twoRepSplits, [stroke(25, 77)]);
-    expect(result!.reps[0].spm).toBe(0);
-    expect(result!.reps[1].spm).toBe(77);
-  });
+	it('assigns strokes after the last split boundary to the final rep', () => {
+		const result = intervalBreakdown(twoRepSplits, [stroke(25, 77)]);
+		expect(result!.reps[0].spm).toBe(0);
+		expect(result!.reps[1].spm).toBe(77);
+	});
+
+	it('handles all-zero pace splits without fastest/slowest Infinity sentinels', () => {
+		const result = intervalBreakdown([
+			{ index: 0, distance: 500, time: 120, pace: 0 },
+			{ index: 1, distance: 500, time: 120, pace: 0 },
+			{ index: 2, distance: 500, time: 120, pace: 0 }
+		], []);
+
+		expect(result).not.toBeNull();
+		expect(result!.avgPace).toBe(0);
+		expect(result!.fastest).toBe(0);
+		expect(result!.slowest).toBe(0);
+		expect(result!.consistency).toBe(0);
+		expect(result!.reps.every((rep) => !rep.isFastest && !rep.isSlowest)).toBe(true);
+	});
+
+	it('keeps large interval sets stable under the single-pass pace calculations', () => {
+		const splits = Array.from({ length: 5_000 }, (_, index) => ({
+			index,
+			distance: 10,
+			time: 2,
+			pace: 120 + (index % 5)
+		}));
+
+		const result = intervalBreakdown(splits, []);
+
+		expect(result).not.toBeNull();
+		expect(result!.reps).toHaveLength(5_000);
+		expect(result!.avgPace).toBe(122);
+		expect(result!.fastest).toBe(120);
+		expect(result!.slowest).toBe(124);
+		expect(result!.consistency).toBeCloseTo((Math.sqrt(2) / 122) * 100);
+	});
 });
 
 describe("calendar helpers", () => {

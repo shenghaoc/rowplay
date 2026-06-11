@@ -31,22 +31,35 @@ vi.mock("./db", () => ({
 }));
 
 import {
-  loadAnnualGoal,
-  loadAnnotations,
-  loadDashboardAggregates,
-  loadWorkoutDetail,
-  loadWorkouts,
-  removeAnnotation,
-  resetDemoAnnotationStore,
-  saveAnnualGoal,
-  saveAnnotation,
-  scheduleConnectSync,
-  syncStatus,
-} from "./data";
-import { Concept2Client } from "./concept2";
-import { setSyncState, upsertWorkouts } from "./db";
-import { mockWorkouts, mockAnnotations } from "../mockData";
-import type { Workout } from "../types";
+	backfillWorkouts,
+	loadAnnualGoal,
+	loadAnnotations,
+	loadDashboardAggregates,
+	loadWorkoutDetail,
+	loadWorkoutList,
+	loadWorkouts,
+	removeAnnotation,
+	resetDemoAnnotationStore,
+	saveAnnualGoal,
+	saveAnnotation,
+	scheduleConnectSync,
+	syncWorkouts,
+	syncStatus
+} from './data';
+import { Concept2Client } from './concept2';
+import {
+	countWorkouts,
+	getAllWorkouts,
+	getPbWorkoutIds,
+	getSyncState,
+	queryWorkouts,
+	setSyncState,
+	upsertWorkouts
+} from './db';
+import { readSession } from './session';
+import { openToken } from './tokenCrypto';
+import { mockWorkouts, mockAnnotations } from '../mockData';
+import type { Workout } from '../types';
 
 type Mock = ReturnType<typeof vi.fn>;
 
@@ -65,16 +78,31 @@ function demoEvent(extras: Record<string, unknown> = {}): any {
 function authedEvent(extras: Record<string, unknown> = {}): any {
   return {
     locals: { demo: false, user: { id: 7 }, sessionId: "sid-test" },
-    platform: { env: { DB: {}, SESSIONS: {} } },
+    platform: { env: { DB: {}, SESSIONS: {}, SESSION_SECRET: 'test-secret' } },
     url: new URL("http://localhost/"),
-    cookies: { get: () => null, set: vi.fn() },
+    cookies: { get: () => 'sealed-token', set: vi.fn() },
     ...extras,
   };
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  (Concept2Client as unknown as Mock).mockReset();
+	vi.clearAllMocks();
+	(Concept2Client as unknown as Mock).mockReset();
+	(readSession as unknown as Mock).mockReset();
+	(openToken as unknown as Mock).mockReset();
+	(getAllWorkouts as unknown as Mock).mockReset().mockResolvedValue([]);
+	(countWorkouts as unknown as Mock).mockReset().mockResolvedValue(0);
+	(getPbWorkoutIds as unknown as Mock).mockReset().mockResolvedValue(new Set());
+	(queryWorkouts as unknown as Mock).mockReset().mockResolvedValue([]);
+	(getSyncState as unknown as Mock).mockReset().mockResolvedValue(null);
+	(upsertWorkouts as unknown as Mock).mockReset().mockResolvedValue(undefined);
+	(setSyncState as unknown as Mock).mockReset().mockResolvedValue(undefined);
+	(readSession as unknown as Mock).mockResolvedValue({
+		user: { id: 7, username: 'athlete' },
+		personal: true,
+		tokens: { accessToken: '', refreshToken: '', expiresAt: 0, scope: '' }
+	});
+	(openToken as unknown as Mock).mockResolvedValue('personal-token');
 });
 
 afterEach(() => {
@@ -90,6 +118,147 @@ describe("loadWorkouts — demo mode", () => {
     const result = await loadWorkouts(demoEvent());
     expect(result).toEqual(mockWorkouts());
   });
+});
+
+describe('loadWorkouts — authenticated cache gate', () => {
+	const dbWorkout: Workout = {
+		id: 5001,
+		date: '2026-06-01 06:00:00',
+		sport: 'rower',
+		distance: 2000,
+		time: 480,
+		pace: 120,
+		hasStrokeData: false
+	};
+	const liveWorkout: Workout = {
+		id: 5002,
+		date: '2026-06-02 06:00:00',
+		sport: 'rower',
+		distance: 5000,
+		time: 1260,
+		pace: 126,
+		hasStrokeData: false
+	};
+
+	it('serves completed D1 cache as full history', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue({
+			lastDate: '2026-06-01 06:00:00',
+			lastSyncAt: 1717000000000,
+			total: 1,
+			oldestDate: '2026-06-01 06:00:00',
+			backfillDone: true,
+			inProgress: false,
+			lastError: null,
+			lastErrorAt: 0
+		});
+		(getAllWorkouts as unknown as Mock).mockResolvedValue([dbWorkout]);
+		const listWorkouts = vi.fn().mockResolvedValue([liveWorkout]);
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkouts }; });
+
+		await expect(loadWorkouts(authedEvent())).resolves.toEqual([dbWorkout]);
+
+		expect(getAllWorkouts).toHaveBeenCalledOnce();
+		expect(listWorkouts).not.toHaveBeenCalled();
+	});
+
+	it('falls back to a live page while sync is in progress so partial D1 is not treated as complete', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue({
+			lastDate: '2026-06-01 06:00:00',
+			lastSyncAt: 1717000000000,
+			total: 1,
+			oldestDate: '2026-06-01 06:00:00',
+			backfillDone: false,
+			inProgress: true,
+			lastError: null,
+			lastErrorAt: 0
+		});
+		(getAllWorkouts as unknown as Mock).mockResolvedValue([dbWorkout]);
+		const listWorkouts = vi.fn().mockResolvedValue([liveWorkout]);
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkouts }; });
+
+		await expect(loadWorkouts(authedEvent())).resolves.toEqual([liveWorkout]);
+
+		expect(getAllWorkouts).not.toHaveBeenCalled();
+		expect(listWorkouts).toHaveBeenCalledOnce();
+	});
+
+	it('falls back to a live page when the completed cache is empty to avoid a blank dashboard', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue({
+			lastDate: '2026-06-01 06:00:00',
+			lastSyncAt: 1717000000000,
+			total: 0,
+			oldestDate: '2026-06-01 06:00:00',
+			backfillDone: true,
+			inProgress: false,
+			lastError: null,
+			lastErrorAt: 0
+		});
+		(getAllWorkouts as unknown as Mock).mockResolvedValue([]);
+		const listWorkouts = vi.fn().mockResolvedValue([liveWorkout]);
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkouts }; });
+
+		await expect(loadWorkouts(authedEvent())).resolves.toEqual([liveWorkout]);
+
+		expect(getAllWorkouts).toHaveBeenCalledOnce();
+		expect(listWorkouts).toHaveBeenCalledOnce();
+	});
+});
+
+describe('loadWorkoutList — authenticated cache gate', () => {
+	const q = { sort: 'date' as const, dir: 'desc' as const };
+	const liveWorkout: Workout = {
+		id: 5101,
+		date: '2026-06-03 06:00:00',
+		sport: 'rower',
+		distance: 2000,
+		time: 480,
+		pace: 120,
+		hasStrokeData: false
+	};
+
+	it('queries D1 when sync state is complete and rows exist', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue({
+			lastDate: '2026-06-01 06:00:00',
+			lastSyncAt: 1717000000000,
+			total: 2,
+			oldestDate: '2025-06-01 06:00:00',
+			backfillDone: true,
+			inProgress: false,
+			lastError: null,
+			lastErrorAt: 0
+		});
+		(countWorkouts as unknown as Mock).mockResolvedValue(2);
+		(queryWorkouts as unknown as Mock).mockResolvedValue([liveWorkout]);
+		const listWorkouts = vi.fn().mockResolvedValue([]);
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkouts }; });
+
+		await expect(loadWorkoutList(authedEvent(), q)).resolves.toEqual([liveWorkout]);
+
+		expect(queryWorkouts).toHaveBeenCalledWith(expect.anything(), 7, q, undefined);
+		expect(listWorkouts).not.toHaveBeenCalled();
+	});
+
+	it('uses live fallback when backfill is still in progress instead of querying a partial list', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue({
+			lastDate: '2026-06-01 06:00:00',
+			lastSyncAt: 1717000000000,
+			total: 2,
+			oldestDate: '2025-06-01 06:00:00',
+			backfillDone: false,
+			inProgress: true,
+			lastError: null,
+			lastErrorAt: 0
+		});
+		(countWorkouts as unknown as Mock).mockResolvedValue(2);
+		const listWorkouts = vi.fn().mockResolvedValue([liveWorkout]);
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkouts }; });
+
+		await expect(loadWorkoutList(authedEvent(), q)).resolves.toEqual([liveWorkout]);
+
+		expect(countWorkouts).not.toHaveBeenCalled();
+		expect(queryWorkouts).not.toHaveBeenCalled();
+		expect(listWorkouts).toHaveBeenCalledOnce();
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -233,6 +402,234 @@ describe("scheduleConnectSync", () => {
     expect(persistedWorkouts).toEqual([workout]);
     expect(Object.values(persistedSyncPatch)).not.toContain(personalToken);
   });
+});
+
+// ---------------------------------------------------------------------------
+// syncWorkouts / backfillWorkouts — authenticated orchestration
+// ---------------------------------------------------------------------------
+
+describe('syncWorkouts', () => {
+	const workout: Workout = {
+		id: 6001,
+		date: '2026-06-04 06:00:00',
+		sport: 'rower',
+		distance: 2000,
+		time: 480,
+		pace: 120,
+		hasStrokeData: false
+	};
+
+	it('no-ops when another sync is already in progress', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue({
+			lastDate: '2026-06-01 06:00:00',
+			lastSyncAt: 1717000000000,
+			total: 42,
+			oldestDate: '2025-06-01 06:00:00',
+			backfillDone: false,
+			inProgress: true,
+			lastError: null,
+			lastErrorAt: 0
+		});
+		const listWorkoutsPage = vi.fn().mockResolvedValue({ workouts: [workout], totalPages: 1 });
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkoutsPage }; });
+
+		await expect(syncWorkouts(authedEvent())).resolves.toEqual({
+			added: 0,
+			total: 42,
+			newPbs: [],
+			workouts: []
+		});
+
+		expect(listWorkoutsPage).not.toHaveBeenCalled();
+		expect(setSyncState).not.toHaveBeenCalled();
+	});
+
+	it('marks sync complete and clears stale errors after a successful page fetch', async () => {
+		(countWorkouts as unknown as Mock).mockResolvedValueOnce(0).mockResolvedValueOnce(1);
+		const listWorkoutsPage = vi.fn().mockResolvedValue({ workouts: [workout], totalPages: 1 });
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkoutsPage }; });
+		const db = { marker: 'fake-d1' };
+
+		const result = await syncWorkouts(authedEvent({ platform: { env: { DB: db, SESSIONS: {}, SESSION_SECRET: 'test-secret' } } }));
+
+		expect(result).toMatchObject({ added: 1, total: 1, workouts: [workout] });
+		expect(listWorkoutsPage).toHaveBeenCalledWith(1, expect.any(String));
+		expect(upsertWorkouts).toHaveBeenCalledWith(db, 7, [workout]);
+		expect(setSyncState).toHaveBeenLastCalledWith(
+			db,
+			7,
+			expect.objectContaining({
+				lastDate: workout.date,
+				oldestDate: expect.any(String),
+				inProgress: false,
+				lastError: null,
+				lastErrorAt: 0
+			})
+		);
+	});
+
+	it('resets inProgress and preserves last successful sync timestamp when the API fails', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue({
+			lastDate: '2026-06-01 06:00:00',
+			lastSyncAt: 1717000000000,
+			total: 2,
+			oldestDate: '2025-06-01 06:00:00',
+			backfillDone: false,
+			inProgress: false,
+			lastError: null,
+			lastErrorAt: 0
+		});
+		(countWorkouts as unknown as Mock).mockResolvedValue(2);
+		const listWorkoutsPage = vi.fn().mockRejectedValue(new Error('Concept2 failed (500)'));
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkoutsPage }; });
+
+		await expect(syncWorkouts(authedEvent())).rejects.toThrow('Concept2 failed');
+
+		expect(setSyncState).toHaveBeenLastCalledWith(
+			expect.anything(),
+			7,
+			expect.objectContaining({
+				lastDate: '2026-06-01 06:00:00',
+				total: 2,
+				oldestDate: '2025-06-01 06:00:00',
+				backfillDone: false,
+				inProgress: false,
+				lastError: 'Concept2 failed (500)',
+				lastSyncAt: 1717000000000
+			})
+		);
+	});
+
+	it('still clears inProgress when counting workouts fails during error recovery', async () => {
+		(countWorkouts as unknown as Mock)
+			.mockResolvedValueOnce(5)
+			.mockRejectedValueOnce(new Error('count unavailable'));
+		const listWorkoutsPage = vi.fn().mockRejectedValue(new Error('Concept2 failed (500)'));
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkoutsPage }; });
+
+		await expect(syncWorkouts(authedEvent())).rejects.toThrow('Concept2 failed');
+
+		expect(setSyncState).toHaveBeenLastCalledWith(
+			expect.anything(),
+			7,
+			expect.objectContaining({
+				total: 0,
+				inProgress: false,
+				lastError: 'Concept2 failed (500)'
+			})
+		);
+	});
+});
+
+describe('backfillWorkouts', () => {
+	const state = {
+		lastDate: '2026-06-01 06:00:00',
+		lastSyncAt: 1717000000000,
+		total: 12,
+		oldestDate: '2025-09-01 06:00:00',
+		backfillDone: false,
+		inProgress: false,
+		lastError: null,
+		lastErrorAt: 0
+	};
+	const oldWorkout: Workout = {
+		id: 6101,
+		date: '2024-12-31 06:00:00',
+		sport: 'rower',
+		distance: 5000,
+		time: 1260,
+		pace: 126,
+		hasStrokeData: false
+	};
+
+	it('no-ops when another sync/backfill run is already in progress', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue({ ...state, inProgress: true });
+		const listWorkoutsPage = vi.fn().mockResolvedValue({ workouts: [oldWorkout], totalPages: 1 });
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkoutsPage }; });
+
+		await expect(backfillWorkouts(authedEvent())).resolves.toEqual({
+			added: 0,
+			oldestDate: state.oldestDate,
+			done: false
+		});
+
+		expect(listWorkoutsPage).not.toHaveBeenCalled();
+		expect(setSyncState).not.toHaveBeenCalled();
+	});
+
+	it('fetches an older chunk and advances the oldest watermark', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue(state);
+		(countWorkouts as unknown as Mock).mockResolvedValueOnce(12).mockResolvedValueOnce(13);
+		const listWorkoutsPage = vi.fn().mockResolvedValue({ workouts: [oldWorkout], totalPages: 1 });
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkoutsPage }; });
+
+		await expect(backfillWorkouts(authedEvent())).resolves.toEqual({
+			added: 1,
+			oldestDate: oldWorkout.date,
+			done: true
+		});
+
+		expect(listWorkoutsPage).toHaveBeenCalledWith(1, undefined, expect.any(String));
+		expect(upsertWorkouts).toHaveBeenCalledWith(expect.anything(), 7, [oldWorkout]);
+		expect(setSyncState).toHaveBeenLastCalledWith(
+			expect.anything(),
+			7,
+			expect.objectContaining({
+				lastDate: state.lastDate,
+				total: 13,
+				oldestDate: oldWorkout.date,
+				backfillDone: true,
+				inProgress: false,
+				lastError: null,
+				lastErrorAt: 0
+			})
+		);
+	});
+
+	it('clears inProgress when the planner reports done for an already-latched user', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue({ ...state, backfillDone: true });
+		(countWorkouts as unknown as Mock).mockResolvedValue(12);
+		const listWorkoutsPage = vi.fn().mockResolvedValue({ workouts: [oldWorkout], totalPages: 1 });
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkoutsPage }; });
+
+		await expect(backfillWorkouts(authedEvent())).resolves.toEqual({
+			added: 0,
+			oldestDate: state.oldestDate,
+			done: true
+		});
+
+		expect(listWorkoutsPage).not.toHaveBeenCalled();
+		expect(setSyncState).toHaveBeenLastCalledWith(
+			expect.anything(),
+			7,
+			expect.objectContaining({
+				backfillDone: true,
+				inProgress: false
+			})
+		);
+	});
+
+	it('resets inProgress and records rate-limit failures', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue(state);
+		(countWorkouts as unknown as Mock).mockResolvedValue(12);
+		const listWorkoutsPage = vi.fn().mockRejectedValue(new Error('Concept2 failed (429)'));
+		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkoutsPage }; });
+
+		await expect(backfillWorkouts(authedEvent())).rejects.toThrow('Concept2 failed (429)');
+
+		expect(setSyncState).toHaveBeenLastCalledWith(
+			expect.anything(),
+			7,
+			expect.objectContaining({
+				lastDate: state.lastDate,
+				oldestDate: state.oldestDate,
+				backfillDone: false,
+				inProgress: false,
+				lastError: 'Concept2 failed (429)',
+				lastSyncAt: state.lastSyncAt
+			})
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
