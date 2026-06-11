@@ -21,10 +21,19 @@ function drawSparkline(
 	h: number,
 	color: string
 ) {
-	const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
+	// Bolt: Construct ps array, min, and max using a single-pass loop avoiding multiple intermediate array map/filter combinations
+	const ps: number[] = [];
+	let min = Infinity;
+	let max = -Infinity;
+	for (let i = 0; i < strokes.length; i++) {
+		const p = strokes[i].pace;
+		if (p > 0) {
+			ps.push(p);
+			if (p < min) min = p;
+			if (p > max) max = p;
+		}
+	}
 	if (ps.length < 2) return;
-	const min = Math.min(...ps);
-	const max = Math.max(...ps);
 	const span = max - min || 1;
 	ctx.strokeStyle = color;
 	ctx.lineWidth = 3;

@@ -45,7 +45,11 @@ export function linearTrend(points: { x: number; y: number }[]): TrendFit | null
 	if (den === 0) return null; // all on the same day
 	const slope = num / den;
 	const intercept = my - slope * mx;
-	const xLast = Math.max(...xs);
+	// Bolt: Single-pass for loop avoiding array allocations and Max Call Stack size exceeded risk of Math.max(...array)
+	let xLast = -Infinity;
+	for (let i = 0; i < xs.length; i++) {
+		if (xs[i] > xLast) xLast = xs[i];
+	}
 	const y0 = intercept;
 	const y1 = intercept + slope * xLast;
 	return { slopePerDay: slope, y0, y1, delta: y1 - y0, n };
@@ -233,8 +237,12 @@ const HR_ZONE_FRACTIONS = [0, 0.6, 0.7, 0.8, 0.9, 1.2];
  */
 export function estimateHrMax(strokes: Stroke[], maxHr?: number): number {
 	if (maxHr && maxHr > 0) return maxHr;
-	// reduce, not Math.max(...spread): long pieces have many thousands of strokes.
-	const peak = strokes.reduce((m, s) => Math.max(m, s.hr ?? 0), 0);
+	// Bolt: Reduced to a single-pass for loop avoiding array allocations and Max Call Stack size exceeded risk of Math.max(...array)
+	let peak = 0;
+	for (let i = 0; i < strokes.length; i++) {
+		const hr = strokes[i].hr ?? 0;
+		if (hr > peak) peak = hr;
+	}
 	return Math.max(peak / 0.95, 160);
 }
 
@@ -1135,10 +1143,25 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
 		}
 	}
 
-	const paces = splits.map((sp) => sp.pace).filter((p) => p > 0);
-	const avgPace = paces.length ? paces.reduce((a, b) => a + b, 0) / paces.length : 0;
-	const fastest = paces.length ? Math.min(...paces) : 0;
-	const slowest = paces.length ? Math.max(...paces) : 0;
+	// Bolt: Calculate avgPace, fastest, and slowest with a single pass for loop to prevent closures, intermediate arrays, and Max Call Stack size exceeded risk
+	let paceSum = 0;
+	let paceCount = 0;
+	let fastest = Infinity;
+	let slowest = -Infinity;
+	for (let i = 0; i < splits.length; i++) {
+		const p = splits[i].pace;
+		if (p > 0) {
+			paceSum += p;
+			paceCount++;
+			if (p < fastest) fastest = p;
+			if (p > slowest) slowest = p;
+		}
+	}
+	const avgPace = paceCount ? paceSum / paceCount : 0;
+	if (paceCount === 0) {
+		fastest = 0;
+		slowest = 0;
+	}
 
 	const reps: IntervalRep[] = splits.map((sp, i) => {
 		const bucket = buckets[i] ?? [];
@@ -1168,9 +1191,17 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
 		};
 	});
 
-	const sd = paces.length
-		? Math.sqrt(paces.reduce((s, p) => s + (p - avgPace) ** 2, 0) / paces.length)
-		: 0;
+	// Bolt: Single-pass for loop avoiding intermediate array allocations to compute the variance sum
+	let sumSqDiff = 0;
+	if (paceCount > 0) {
+		for (let i = 0; i < splits.length; i++) {
+			const p = splits[i].pace;
+			if (p > 0) {
+				sumSqDiff += (p - avgPace) ** 2;
+			}
+		}
+	}
+	const sd = paceCount > 0 ? Math.sqrt(sumSqDiff / paceCount) : 0;
 	const consistency = avgPace > 0 ? (sd / avgPace) * 100 : 0;
 
 	const firstPace = reps[0].pace;

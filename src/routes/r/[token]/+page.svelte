@@ -106,13 +106,28 @@
 	}
 
 	const paceRange = $derived.by(() => {
-		const ps = strokes.map((s) => s.pace).filter((p) => p > 0);
-		if (ps.length === 0) return { min: 60, max: 180 };
-		return { min: Math.min(...ps) - 5, max: Math.max(...ps) + 5 };
+		// Bolt: Calculate minPace and maxPace with a single-pass loop avoiding map/filter intermediate arrays and Max Call Stack risk on large datasets
+		let minPace = Infinity;
+		let maxPace = -Infinity;
+		let hasPace = false;
+		for (let i = 0; i < strokes.length; i++) {
+			const p = strokes[i].pace;
+			if (p > 0) {
+				hasPace = true;
+				if (p < minPace) minPace = p;
+				if (p > maxPace) maxPace = p;
+			}
+		}
+		if (!hasPace) return { min: 60, max: 180 };
+		return { min: minPace - 5, max: maxPace + 5 };
 	});
 	const wattRange = $derived.by(() => {
-		const watts = strokes.map((s) => s.watts);
-		const maxWatt = watts.length > 0 ? Math.max(...watts) : 0;
+		// Bolt: Calculate maxWatt using single-pass loop avoiding map allocations and Max Call Stack risk on large datasets
+		let maxWatt = 0;
+		for (let i = 0; i < strokes.length; i++) {
+			const w = strokes[i].watts;
+			if (w > maxWatt) maxWatt = w;
+		}
 		return { min: 0, max: Math.max(100, maxWatt * 1.1) };
 	});
 	const hasHr = $derived(strokes.some((s) => s.hr != null));
