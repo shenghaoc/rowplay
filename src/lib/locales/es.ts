@@ -337,6 +337,12 @@ Abre cualquier entrenamiento desde el panel y pulsa **Reproducir**.
 - Cambia entre vistas del recorrido en **2D y 3D** (la 3D necesita un navegador razonablemente moderno).
 - Define un **ritmo objetivo** para dibujar una línea de referencia en el gráfico de ritmo.
 
+El atleta se anima a la cadencia real del entrenamiento — una palada (o impulso de bastones, o pedalada) por cada palada registrada, con salpicaduras en cada ataque — y se acelera junto con la velocidad de reproducción. La cámara 3D de seguimiento abre ligeramente el objetivo cuando el bote va más rápido.
+
+En 3D, el selector de **Calidad** elige gráficos bajos, medios o altos. Si el dispositivo no mantiene una tasa de cuadros fluida, el renderizador baja automáticamente primero la resolución y después los efectos, así que probar la calidad alta es seguro en cualquier hardware. La animación del replay respeta el ajuste de movimiento reducido del sistema operativo.
+
+Se usan datos por palada cuando Concept2 los proporciona. Los entrenamientos sin paladas vuelven a un replay basado en splits, así que el recorrido se sigue reproduciendo.
+
 ## Añadir notas de entrenador
 
 Con la reproducción pausada en un momento, añade una nota («aquí apresuras el carro»). Las notas se fijan a la línea de tiempo, de modo que tú — o quien reciba la reproducción — puede saltar directamente a ellas.
