@@ -63,6 +63,10 @@ import type { Workout } from '../types';
 
 type Mock = ReturnType<typeof vi.fn>;
 
+function mockConcept2Client(methods: Record<string, unknown>) {
+	(Concept2Client as unknown as Mock).mockImplementation(function () { return methods; });
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function demoEvent(extras: Record<string, unknown> = {}): any {
   return {
@@ -247,6 +251,28 @@ describe('loadWorkoutList — authenticated cache gate', () => {
 
 		expect(queryWorkouts).toHaveBeenCalledWith(expect.anything(), 7, q, undefined);
 		expect(listWorkouts).not.toHaveBeenCalled();
+	});
+
+	it('falls back to live when D1 is complete but empty to avoid a blank dashboard', async () => {
+		(getSyncState as unknown as Mock).mockResolvedValue({
+			lastDate: '2026-06-01 06:00:00',
+			lastSyncAt: 1717000000000,
+			total: 0,
+			oldestDate: '2026-06-01 06:00:00',
+			backfillDone: true,
+			inProgress: false,
+			lastError: null,
+			lastErrorAt: 0
+		});
+		(countWorkouts as unknown as Mock).mockResolvedValue(0);
+		const listWorkouts = vi.fn().mockResolvedValue([liveWorkout]);
+		mockConcept2Client({ listWorkouts });
+
+		await expect(loadWorkoutList(authedEvent(), q)).resolves.toEqual([liveWorkout]);
+
+		expect(countWorkouts).toHaveBeenCalledOnce();
+		expect(queryWorkouts).not.toHaveBeenCalled();
+		expect(listWorkouts).toHaveBeenCalledOnce();
 	});
 
 	it('uses live fallback when backfill is still in progress instead of querying a partial list', async () => {
@@ -456,6 +482,8 @@ describe('syncWorkouts', () => {
 	});
 
 	it('marks sync complete and clears stale errors after a successful page fetch', async () => {
+		// First count: inside the in-progress setSyncState (line 235 of data.ts).
+		// Second count: at the end to report the final total (line 288 of data.ts).
 		(countWorkouts as unknown as Mock).mockResolvedValueOnce(0).mockResolvedValueOnce(1);
 		const listWorkoutsPage = vi.fn().mockResolvedValue({ workouts: [workout], totalPages: 1 });
 		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkoutsPage }; });
@@ -475,6 +503,28 @@ describe('syncWorkouts', () => {
 				inProgress: false,
 				lastError: null,
 				lastErrorAt: 0
+			})
+		);
+	});
+
+	it('latches backfillDone when full=true to mark the complete history as synced', async () => {
+		(countWorkouts as unknown as Mock).mockResolvedValueOnce(0).mockResolvedValueOnce(1);
+		const listWorkoutsPage = vi.fn().mockResolvedValue({ workouts: [workout], totalPages: 1 });
+		mockConcept2Client({ listWorkoutsPage });
+		const db = { marker: 'fake-d1' };
+
+		const result = await syncWorkouts(
+			authedEvent({ platform: { env: { DB: db, SESSIONS: {} } } }),
+			true
+		);
+
+		expect(result).toMatchObject({ added: 1, total: 1, workouts: [workout] });
+		expect(setSyncState).toHaveBeenLastCalledWith(
+			db,
+			7,
+			expect.objectContaining({
+				backfillDone: true,
+				inProgress: false
 			})
 		);
 	});

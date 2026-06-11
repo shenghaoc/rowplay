@@ -63,6 +63,15 @@ describe('POST /api/sync/backfill', () => {
 		});
 	});
 
+	it('maps D1_ERROR failures to 503 alongside the no-such-table branch', async () => {
+		(backfillWorkouts as unknown as Mock).mockRejectedValue(new Error('D1_ERROR: table not found'));
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		await expect(POST(fakeEvent() as any)).rejects.toMatchObject({
+			status: 503
+		});
+	});
+
 	it('maps unexpected backfill failures to 502', async () => {
 		(backfillWorkouts as unknown as Mock).mockRejectedValue(new Error('Network timeout'));
 

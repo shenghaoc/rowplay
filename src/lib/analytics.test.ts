@@ -754,19 +754,19 @@ describe("workoutSideStats", () => {
     expect(stats.avgHr).toBe(155);
   });
 
-  it("ignores zero and null HR values", () => {
-    const detail = {
-      ...baseDetail,
-      strokes: [
-        { t: 0, d: 0, pace: 120, spm: 28, watts: 100, hr: 0 },
-        { t: 10, d: 50, pace: 118, spm: 29, watts: 110, hr: null as unknown as number },
-        { t: 20, d: 100, pace: 116, spm: 30, watts: 120, hr: 150 },
-      ],
-    };
-    const stats = workoutSideStats(detail);
-    expect(stats.peakHr).toBe(150);
-    expect(stats.avgHr).toBe(150);
-  });
+	it('ignores zero and null HR values', () => {
+		const detail = {
+			...baseDetail,
+			strokes: [
+				{ t: 0, d: 0, pace: 120, spm: 28, watts: 100, hr: 0 },
+				{ t: 10, d: 50, pace: 118, spm: 29, watts: 110, hr: null as unknown as number }, // simulate a null HR value from a real-world partial response
+				{ t: 20, d: 100, pace: 116, spm: 30, watts: 120, hr: 150 }
+			]
+		};
+		const stats = workoutSideStats(detail);
+		expect(stats.peakHr).toBe(150);
+		expect(stats.avgHr).toBe(150);
+	});
 
   it("returns best5sPower of 0 when powerCurve is empty", () => {
     const detail = {
