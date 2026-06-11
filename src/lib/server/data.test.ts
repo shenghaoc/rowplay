@@ -76,13 +76,24 @@ function demoEvent(extras: Record<string, unknown> = {}): any {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function authedEvent(extras: Record<string, unknown> = {}): any {
-  return {
-    locals: { demo: false, user: { id: 7 }, sessionId: "sid-test" },
-    platform: { env: { DB: {}, SESSIONS: {}, SESSION_SECRET: 'test-secret' } },
-    url: new URL("http://localhost/"),
-    cookies: { get: () => 'sealed-token', set: vi.fn() },
-    ...extras,
-  };
+	const base = {
+		locals: { demo: false, user: { id: 7 }, sessionId: 'sid-test' },
+		platform: { env: { DB: {}, SESSIONS: {}, SESSION_SECRET: 'test-secret' } },
+		url: new URL('http://localhost/'),
+		cookies: { get: () => 'sealed-token', set: vi.fn() }
+	};
+	const platform = extras.platform as { env?: Record<string, unknown>; context?: unknown } | undefined;
+	return {
+		...base,
+		...extras,
+		locals: { ...base.locals, ...((extras.locals as Record<string, unknown> | undefined) ?? {}) },
+		platform: {
+			...base.platform,
+			...(platform ?? {}),
+			env: { ...base.platform.env, ...(platform?.env ?? {}) }
+		},
+		cookies: { ...base.cookies, ...((extras.cookies as Record<string, unknown> | undefined) ?? {}) }
+	};
 }
 
 beforeEach(() => {
@@ -450,7 +461,7 @@ describe('syncWorkouts', () => {
 		(Concept2Client as unknown as Mock).mockImplementation(function () { return { listWorkoutsPage }; });
 		const db = { marker: 'fake-d1' };
 
-		const result = await syncWorkouts(authedEvent({ platform: { env: { DB: db, SESSIONS: {}, SESSION_SECRET: 'test-secret' } } }));
+		const result = await syncWorkouts(authedEvent({ platform: { env: { DB: db, SESSIONS: {} } } }));
 
 		expect(result).toMatchObject({ added: 1, total: 1, workouts: [workout] });
 		expect(listWorkoutsPage).toHaveBeenCalledWith(1, expect.any(String));
