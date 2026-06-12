@@ -36,7 +36,7 @@
 		<nav class="docs-nav" aria-label={t('docs.navLabel')}>
 			<ul class="menu menu-sm w-full p-0">
 				{#each DOCS_SECTIONS as section (section.key)}
-					{@const active = isActiveDocsSection(section.slug, page.url.pathname)}
+					{@const active = isActiveDocsSection(section.slug, page.url.pathname.slice(base.length) || '/')}
 					<li>
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 						<a

@@ -2,6 +2,7 @@
 	import { createVirtualizer } from '@tanstack/svelte-virtual';
 	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
 	import SportIcon from '$components/SportIcon.svelte';
+	import { base } from '$app/paths';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import GitCompare from '@lucide/svelte/icons/git-compare';
 	import type { Workout } from '$lib/types';
@@ -128,7 +129,7 @@
 	<p class="muted">
 		{t('workoutList.empty')}
 		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-		<a href="/docs/getting-started">{t('docs.contextual.gettingStarted')}</a>
+		<a href="{base}/docs/getting-started">{t('docs.contextual.gettingStarted')}</a>
 	</p>
 {:else if virtual}
 	<!-- Windowed list: a fixed-height scroller with absolutely-positioned rows. -->

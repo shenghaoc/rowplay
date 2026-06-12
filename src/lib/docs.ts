@@ -217,7 +217,7 @@ export function parseGuideMarkdown(markdown: string): MarkdownDocument {
       blocks.push({
         id: nextId("block"),
         type: "quote",
-        children: parseInline(quoteLines.join(" ")),
+        children: parseInline(quoteLines.filter(Boolean).join(" ")),
       });
       continue;
     }

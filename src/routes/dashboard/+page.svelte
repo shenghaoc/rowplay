@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
+	import { base } from '$app/paths';
 	import WorkoutList from '$components/WorkoutList.svelte';
 	import WorkoutListFilters from '$components/WorkoutListFilters.svelte';
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
@@ -1097,8 +1098,8 @@
 								n: trendPoints.length,
 								band: bandScoped ? (bands.find((b) => b.key === activeBand)?.label ?? '') : ''
 							})}
-							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-							<a href="/docs/charts-and-progress">{t('docs.contextual.charts')}</a>
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href="{base}/docs/charts-and-progress">{t('docs.contextual.charts')}</a>
 						</p>
 					{/if}
 				</div>
@@ -1146,8 +1147,8 @@
 				{#if dpsPoints.length === 0}
 					<p class="muted emptytrend">
 						{t('dashboard.dpsTrend.empty')}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href="/docs/troubleshooting">{t('docs.contextual.troubleshooting')}</a>
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href="{base}/docs/troubleshooting">{t('docs.contextual.troubleshooting')}</a>
 					</p>
 				{:else}
 					{#if dpsHover}
