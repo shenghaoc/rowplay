@@ -7,7 +7,7 @@
 
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);
-	const sectionTitle = $derived(t(`docs.sections.${section}.navTitle`));
+	const sectionTitle = $derived(t(`docs.sections.${section}.navTitle`) || '');
 	const pageTitle = $derived(
 		section === 'overview'
 			? `${t('docs.title')} · rowplay`

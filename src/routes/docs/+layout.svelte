@@ -2,6 +2,7 @@
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { DOCS_SECTIONS, docsSectionPath, isActiveDocsSection } from '$lib/docs';
@@ -20,8 +21,7 @@
 			{t('docs.badge')}
 		</span>
 		<div class="join">
-			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a class="btn btn-primary btn-sm join-item" href="/dashboard">
+			<a class="btn btn-primary btn-sm join-item" href="{base}/dashboard">
 				<LayoutDashboard size={15} aria-hidden="true" />
 				{t('docs.openDashboard')}
 			</a>
@@ -40,7 +40,7 @@
 					<li>
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 						<a
-							href={docsSectionPath(section.slug)}
+							href="{base}{docsSectionPath(section.slug)}"
 							class:menu-active={active}
 							aria-current={active ? 'page' : undefined}
 						>

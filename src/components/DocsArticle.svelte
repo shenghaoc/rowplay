@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { parseGuideMarkdown, type InlineNode } from '$lib/docs';
 
 	let { markdown, label }: { markdown: string; label: string } = $props();
 
-	const guide = $derived(parseGuideMarkdown(markdown));
+	const guide = $derived(parseGuideMarkdown(markdown || ''));
 
 	function isExternalHref(href: string) {
 		return /^https?:\/\//.test(href);
@@ -27,12 +28,12 @@
 				<a href={node.href} target="_blank" rel="external noopener noreferrer">
 					{@render inline(node.children)}
 				</a>
-			{:else}
-				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-				<a href={node.href}>
-					{@render inline(node.children)}
-				</a>
-			{/if}
+		{:else}
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a href="{base}{node.href}">
+				{@render inline(node.children)}
+			</a>
+		{/if}
 		{:else}
 			{renderUnsupportedInlineNode(node)}
 		{/if}
