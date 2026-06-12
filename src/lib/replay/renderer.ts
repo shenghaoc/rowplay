@@ -1,14 +1,7 @@
 import type { Frame } from "./engine";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
-import {
-  METERS_PER_CYCLE,
-  ParticlePool,
-  catchEvents,
-  clampDt,
-  strokeSurge,
-  warpStrokePhase,
-} from "./motion";
+import { ParticlePool, catchEvents, clampDt, strokeSurge, warpStrokePhase } from "./motion";
 
 // The replay playback itself is essential, user-initiated motion (the user
 // presses play), so it is preserved under `prefers-reduced-motion`. What we do
@@ -453,8 +446,7 @@ export class CourseRenderer implements ReplayRenderer {
   /** Stroke phase — distance driven, so figures row at the true cadence. */
   private strokePhase = 0;
   private ghostStrokePhase = 0;
-  private lastD = NaN;
-  private lastGhostD = NaN;
+
   private lastNow = NaN;
   private liveSplash = new ParticlePool(SPLASH_CAP);
   private ghostSplash = new ParticlePool(SPLASH_CAP);
@@ -499,24 +491,15 @@ export class CourseRenderer implements ReplayRenderer {
       if (state.ghost) this.ghostWavePhase += (9 + state.ghost.spm / 10) * dt;
     }
 
-    // Stroke phases advance with distance travelled, so the figures stroke at
-    // the workout's true cadence and stay in step at any playback speed.
-    // TODO(P2): Use recorded stroke rate (spm) for 2D cadence instead of
-    // METERS_PER_CYCLE — the current approach ignores actual stroke rate.
-    const cycleM = METERS_PER_CYCLE[state.sport ?? "rower"];
+    // Stroke phases advance by time at the recorded stroke rate (spm), so the
+    // figures stroke at the workout's true cadence — a 20 spm interval animates
+    // slower than a 36 spm sprint, matching the real erg rhythm.
     const prevStroke = this.strokePhase;
-    if (!this.reduceMotion && Number.isFinite(this.lastD)) {
-      const dd = state.frame.d - this.lastD;
-      if (dd > 0) this.strokePhase += (dd / cycleM) * Math.PI * 2;
-    }
-    this.lastD = state.frame.d;
+    if (animate && state.frame.spm > 0)
+      this.strokePhase += (state.frame.spm / 60) * dt * Math.PI * 2;
     const prevGhostStroke = this.ghostStrokePhase;
-    const ghostD = state.ghost ? clamp01(state.ghost.distFrac) * state.totalDistance : NaN;
-    if (state.ghost && !this.reduceMotion && Number.isFinite(this.lastGhostD)) {
-      const dd = ghostD - this.lastGhostD;
-      if (dd > 0) this.ghostStrokePhase += (dd / cycleM) * Math.PI * 2;
-    }
-    this.lastGhostD = ghostD;
+    if (animate && state.ghost && state.ghost.spm > 0)
+      this.ghostStrokePhase += (state.ghost.spm / 60) * dt * Math.PI * 2;
 
     if (this.reduceMotion) {
       this.liveSplash.clear();

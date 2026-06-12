@@ -224,6 +224,18 @@ describe("PerfGovernor", () => {
     for (let i = 0; i < 100; i++) g.sample(1000);
     expect(g.level).toBe(0);
   });
+
+  it("degrades on an already-overloaded device (calibration at 100 ms/frame)", () => {
+    const g = new PerfGovernor({ budgetMs: 22, window: 5, graceFrames: 5, maxLevel: 3 });
+    // Calibration at 100 ms/frame (10 fps) — the quality tier is too heavy.
+    for (let i = 0; i < 30; i++) g.sample(100);
+    // After calibration the budget is capped at 2×floor (44 ms), not the
+    // uncapped median×1.6 (160 ms), so sustained 100 ms frames trigger
+    // degradation quickly.
+    let stepped: number | null = null;
+    for (let i = 0; i < 50 && stepped === null; i++) stepped = g.sample(100);
+    expect(stepped).toBe(1);
+  });
 });
 
 describe("METERS_PER_CYCLE", () => {

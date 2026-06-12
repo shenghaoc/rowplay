@@ -1012,15 +1012,15 @@ export class CourseRenderer3D implements ReplayRenderer {
 
     if (playing && !this.reduceMotion) this.animPhase += (2.4 + state.frame.spm / 13) * dt;
 
-    // Stroke phase is driven by distance travelled (~11 m/stroke), so it speeds
-    // up with playback rate and freezes when paused — and stays in sync with the
-    // boat's motion around the loop regardless of replay speed.
+    // Stroke phase advances by time at the recorded stroke rate (spm), so the
+    // figures stroke at the workout's true cadence — a 20 spm interval animates
+    // slower than a 36 spm sprint, matching the real erg rhythm.
     const liveMeters = state.frame.d;
     const dLive = liveMeters - this.lastLiveMeters;
     this.lastLiveMeters = liveMeters;
     const prevStroke = this.strokePhase;
-    if (!this.reduceMotion && dLive > 0)
-      this.strokePhase += (dLive / this.profile.metersPerCycle) * Math.PI * 2;
+    if (!this.reduceMotion && dt > 0 && state.frame.spm > 0)
+      this.strokePhase += (state.frame.spm / 60) * dt * Math.PI * 2;
 
     // Water displacement (rowing only; skipped when flat/low quality, governor
     //-flattened, or phase unchanged). Three interfering wave trains read as a

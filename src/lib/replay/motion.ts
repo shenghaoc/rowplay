@@ -229,10 +229,13 @@ export class PerfGovernor {
       if (this.calCount === this.calibration.length) {
         const sorted = Array.from(this.calibration).sort((a, b) => a - b);
         const median = sorted[sorted.length >> 1];
-        // TODO(P2): Avoid calibrating to already-overloaded frames — when
-        // the selected quality is too heavy from the start, calibration
-        // records a slow median and the budget becomes too generous.
-        this.budget = Math.max(this.floorBudgetMs, median * 1.6);
+        // Cap the budget so a device that is already overloaded during
+        // calibration (e.g. high quality on weak GPU) still triggers
+        // degradation. 2× the floor (~44 ms ≈ 22 fps) is generous enough
+        // for refresh-capped displays (30 Hz = 33 ms) but tight enough
+        // that truly overloaded frames (80–100 ms) step down quickly.
+        const calBudgetCap = this.floorBudgetMs * 2;
+        this.budget = Math.min(calBudgetCap, Math.max(this.floorBudgetMs, median * 1.6));
         this.emaMs = median;
       }
       return null;
