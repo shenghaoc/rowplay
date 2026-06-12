@@ -28,3 +28,6 @@
 ## 2026-06-21 - Optimize workRestEfficiency with single-pass loops
 **Learning:** Chaining `.filter()`, `.reduce()`, and `.map()` to extract multiple metrics from the same array causes O(N*M) traversals and garbage collection pressure.
 **Action:** Consolidate multiple metrics calculations into a single `for` loop to avoid intermediate memory allocations and redundant iterations.
+## 2026-06-25 - Avoid map/slice chains in analytics interval processing
+**Learning:** Using multiple intermediate array operations like `.slice(0, third).map(...)` or `mean(bucket.map(...))` inside a `.map()` loop (like `intervalBreakdown`'s splits processing) causes significant allocation overhead and multiple loop iterations over the same data.
+**Action:** Replace `.map()` and `.slice().map()` chains with single-pass `for` loops inside outer mapping loops to avoid allocating intermediate arrays and reduce GC pressure.
