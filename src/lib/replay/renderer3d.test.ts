@@ -228,9 +228,8 @@ describe("CourseRenderer3D", () => {
         const host = makeHost();
         const r = new CourseRenderer3D(host, "medium", "rower");
         r.resize(800, 600);
-        const gl = (
-          r as unknown as { renderer: { setPixelRatio: ReturnType<typeof vi.fn> } }
-        ).renderer;
+        const gl = (r as unknown as { renderer: { setPixelRatio: ReturnType<typeof vi.fn> } })
+          .renderer;
         // Calibration sees healthy 60 Hz frames, then frames run at 40 ms —
         // persistently over the calibrated budget — until the governor walks
         // the ladder: level 1 caps dpr at 1.5, level 2 at 1.
