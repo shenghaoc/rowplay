@@ -561,9 +561,9 @@ class WakeTrail {
   update(x: number, z: number): void {
     const n = this.segs.length;
     // Recycle the tail vector once at capacity — no per-frame allocation.
-    const h = this.hist.length >= n ? this.hist.pop()! : new THREE.Vector3();
-    h.set(x, 0.02, z);
-    this.hist.unshift(h);
+    const entry = this.hist.length >= n ? this.hist.pop()! : new THREE.Vector3();
+    entry.set(x, 0.02, z);
+    this.hist.unshift(entry);
     // Travel direction, refreshed per segment from its older neighbour and
     // reused when a neighbour is missing.
     let dx = 0;
@@ -1149,6 +1149,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       if (this.ghostLabel) this.ghostLabel.visible = false;
       this.ghostWake?.reset();
       this.lastGhostLabel = "";
+      this.lastGhostMeters = NaN;
     }
 
     // Speed-aware FOV: the lens breathes out gently as the boat runs faster
