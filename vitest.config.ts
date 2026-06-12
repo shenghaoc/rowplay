@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [sveltekit()],
   test: {
     include: ["src/**/*.test.ts", "tests/unit/**/*.test.ts"],
+    exclude: ["src/**/*.browser.test.ts"],
     environment: "node",
     setupFiles: ["tests/unit/setup.ts"],
     coverage: {

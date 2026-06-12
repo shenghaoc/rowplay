@@ -291,23 +291,53 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 
 ## Scripts
 
-| Script                  | Does                                                              |
-| ----------------------- | ----------------------------------------------------------------- |
-| `pnpm dev`              | Local dev server (Vite; fast UI iteration, no KV/D1)              |
-| `pnpm build`            | Production build → `.svelte-kit/cloudflare`                       |
-| `pnpm preview`          | Build + `wrangler dev` (Workers runtime with local KV/D1)         |
-| `pnpm preview:wrangler` | `wrangler dev` only — needs a prior `pnpm run build`              |
-| `pnpm run format`       | Format the repo (`vp fmt`); `format:check` verifies only          |
-| `pnpm run lint`         | Lint (`vp lint`); fails on findings                               |
-| `pnpm run typecheck`    | `svelte-check` type checking                                      |
-| `pnpm run check`        | Full quality gate: format:check + lint + typecheck + test + build |
-| `pnpm test`             | Vitest unit tests                                                 |
-| `pnpm test:e2e`         | Playwright E2E — all specs, WebKit desktop + iPhone 14            |
-| `pnpm test:e2e:smoke`   | Playwright PR smoke — `smoke.spec.ts` on WebKit desktop only      |
-| `pnpm validate:locales` | Verify locale dictionary key parity across all languages          |
-| `pnpm deploy`           | Build + `wrangler deploy`                                         |
-| `pnpm db:migrate`       | Apply D1 migrations (remote)                                      |
-| `pnpm db:migrate:local` | Apply D1 migrations (local preview)                               |
+| Script                    | Does                                                              |
+| ------------------------- | ----------------------------------------------------------------- |
+| `pnpm dev`                | Local dev server (Vite; fast UI iteration, no KV/D1)              |
+| `pnpm build`              | Production build → `.svelte-kit/cloudflare`                       |
+| `pnpm preview`            | Build + `wrangler dev` (Workers runtime with local KV/D1)         |
+| `pnpm preview:wrangler`   | `wrangler dev` only — needs a prior `pnpm run build`              |
+| `pnpm run format`         | Format the repo (`vp fmt`); `format:check` verifies only          |
+| `pnpm run lint`           | Lint (`vp lint`); fails on findings                               |
+| `pnpm run typecheck`      | `svelte-check` type checking                                      |
+| `pnpm run check`          | Full quality gate: format:check + lint + typecheck + test + build |
+| `pnpm test`               | Vitest unit tests (node environment)                              |
+| `pnpm test:browser`       | Vitest Browser Mode — real-browser component/integration tests    |
+| `pnpm test:browser:watch` | Vitest Browser Mode in watch mode (opens Chromium)                |
+| `pnpm test:e2e`           | Playwright E2E — all specs, WebKit desktop + iPhone 14            |
+| `pnpm test:e2e:smoke`     | Playwright PR smoke — `smoke.spec.ts` on WebKit desktop only      |
+| `pnpm validate:locales`   | Verify locale dictionary key parity across all languages          |
+| `pnpm deploy`             | Build + `wrangler deploy`                                         |
+| `pnpm db:migrate`         | Apply D1 migrations (remote)                                      |
+| `pnpm db:migrate:local`   | Apply D1 migrations (local preview)                               |
+
+### Testing tiers
+
+rowplay has three test layers — each serves a different purpose:
+
+| Command             | What runs                                | When to use                                       |
+| ------------------- | ---------------------------------------- | ------------------------------------------------- |
+| `pnpm test`         | Vitest unit tests (node env, ~95 files)  | CI gate; pure logic, helpers, server              |
+| `pnpm test:browser` | Vitest Browser Mode (real Chromium)      | Component/DOM behaviour that needs a real browser |
+| `pnpm test:e2e`     | Playwright E2E (full user flows, WebKit) | End-to-end: auth, sync, replay, share             |
+
+**Browser Mode** runs `*.browser.test.ts` files in a real Chromium browser via
+Vitest + Playwright. Use it for tests that exercise real DOM APIs, Svelte
+component mounting, cookie behaviour, or CSS-dependent interactions — things
+that are awkward to stub in a node environment.
+
+Browser tests live alongside their source: `src/lib/theme.svelte.browser.test.ts`,
+`src/components/ChipButton.browser.test.ts`, etc. They are _not_ part of the
+default `pnpm test` gate (that stays fast and node-only); run them explicitly
+with `pnpm test:browser`.
+
+**Prerequisite:** Browser Mode needs Chromium installed via Playwright. If you
+already ran `pnpm test:e2e` (which installs WebKit), Chromium may be present;
+otherwise install it once:
+
+```bash
+pnpm exec playwright install --with-deps chromium
+```
 
 ---
 
