@@ -3,6 +3,7 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
+	import { base } from '$app/paths';
 	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '$lib/replay/engine';
 	import { splitIndexAt } from '$lib/replay/inspector';
 	import { CourseRenderer, type RenderState, type ReplayRenderer } from '$lib/replay/renderer';
@@ -1813,6 +1814,10 @@
 			</div>
 		{/if}
 	</div>
+	<p class="muted charts-help">
+	<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+	<a href="{base}/docs/pace-splits-watts">{t('docs.contextual.metrics')}</a>
+	</p>
 
 	<!-- Rep comparison -->
 	{#if hasReps}
@@ -2621,6 +2626,10 @@
 		grid-template-columns: repeat(2, 1fr);
 		gap: 0.75rem;
 		margin-bottom: 0.75rem;
+	}
+	.charts-help {
+		margin: 0 0 0.75rem;
+		font-size: 0.85rem;
 	}
 	.analysis {
 		display: grid;

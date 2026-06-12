@@ -74,7 +74,7 @@ export const de = {
   nav: {
     dashboard: "Dashboard",
     leaderboard: "Bestenlisten",
-    docs: "Docs",
+    docs: "Hilfe",
     settings: "Daten",
     menuOpen: "Menü öffnen",
     menuClose: "Menü schließen",
@@ -146,75 +146,310 @@ export const de = {
   },
   docs: {
     title: "User Guide",
-    description: "So nutzt du rowplay und hältst Repository-Dokumentation und Website synchron.",
+    description:
+      "So nutzt du rowplay: erste Schritte, Ruderbegriffe, Pace und Watt, Diagramme, Abläufe, FAQ und Problemlösung.",
     badge: "Docs aus dem Repository",
     openDashboard: "Dashboard öffnen",
     openSource: "Quelle öffnen",
-    guideMarkdown: `# rowplay User Guide
+    navLabel: "Abschnitte des User Guide",
+    contextual: {
+      gettingStarted: "Neu hier? Lies die Erste-Schritte-Anleitung",
+      metrics: "Was bedeuten Pace, Watt und Schlagzahl?",
+      charts: "So liest du dieses Diagramm",
+      troubleshooting: "Daten fehlen oder wirken seltsam? Siehe Problemlösung",
+      workflows: "So funktionieren Leaderboards und Geisterrennen",
+    },
+    sections: {
+      overview: {
+        navTitle: "Überblick",
+        markdown: `# rowplay User Guide
 
-rowplay macht aus Concept2-Logbook-Ergebnissen ein Dashboard, Replay, Vergleichs- und Leaderboard-Erlebnis für RowErg-, SkiErg- und BikeErg-Workouts.
+rowplay macht aus deinen Indoor-Ruder-, Ski- und Rad-Workouts etwas zum Erkunden: ein Dashboard mit Summen und Trends, ein Replay Schlag für Schlag, Vergleiche nebeneinander und freundschaftliche Leaderboards.
 
-## Im Demo-Modus starten
+Es funktioniert mit Workouts von Concept2-Geräten — dem RowErg (Rudergerät), SkiErg und BikeErg — und liest sie aus dem kostenlosen Concept2-Online-Logbuch. Du musst kein Ruder-Fachvokabular kennen: Dieser Guide erklärt jeden Begriff, den er verwendet.
 
-Der Demo-Modus ist der Standard. Öffne rowplay ohne Anmeldung und die App lädt deterministische Beispiel-Workouts, damit du Dashboard und Replay ohne Concept2-Konto testen kannst.
+## Was du hier tun kannst
 
-1. Öffne /dashboard.
-2. Wähle ein Workout aus der Liste.
-3. Drücke **Replay** und nutze Play, Pause, Scrubbing und Tempo-Steuerung.
-4. Öffne /leaderboard, um mit Beispieldaten gegen einen Geist zu fahren.
+- **Dashboard** — Summen, Trends, persönliche Bestzeiten und Trainingslast auf einen Blick.
+- **Replay** — sieh jedem Workout Schlag für Schlag zu, mit synchronen Diagrammen für Pace, Schlagzahl, Leistung und Herzfrequenz.
+- **Vergleichen** — zwei Workouts nebeneinander, Split für Split.
+- **Leaderboards** — veröffentliche ein Ergebnis und tritt gegen andere Athleten als „Geister" auf dem Bildschirm an.
 
-## Dein Concept2-Logbook verbinden
+## Abschnitte des Guide
 
-Die Produktion nutzt Bring-your-own-token. Der persönliche Concept2 API token wird einmal über HTTPS gesendet, vom Worker validiert und im httpOnly rp_tok Cookie versiegelt. KV speichert nur Sitzungsidentität, D1 speichert gecachte Workout- und Replay-Daten. Der Token wird nicht in KV oder D1 gespeichert.
+- [Erste Schritte](/docs/getting-started) — Demo-Modus, Logbuch verbinden, erste Synchronisation.
+- [Rudern-Grundlagen](/docs/rowing-metrics) — Schläge, Splits und die anderen Begriffe, die dir begegnen.
+- [Pace, Splits & Watt](/docs/pace-splits-watts) — was die Zahlen bedeuten und wie sie zusammenhängen.
+- [Diagramme & Fortschritt](/docs/charts-and-progress) — so liest du die Dashboard-Panels.
+- [Typische Abläufe](/docs/workflows) — Replay, Geisterrennen, Vergleichen, Teilen, Exportieren.
+- [FAQ](/docs/faq) — kurze Antworten zu Konten, Privatsphäre und Daten.
+- [Problemlösung](/docs/troubleshooting) — fehlende Daten, seltsame Zahlen, Darstellungsprobleme.
 
-1. Öffne im Concept2 Logbook **Edit Profile -> Applications**.
-2. Kopiere deinen persönlichen API token.
-3. Öffne in rowplay /auth/token.
+> Tipp: rowplay startet im Demo-Modus mit Beispiel-Workouts — du kannst also alles auf dieser Liste ausprobieren, bevor du ein Concept2-Konto verbindest.`,
+      },
+      gettingStarted: {
+        navTitle: "Erste Schritte",
+        markdown: `# Erste Schritte
+
+## Erst die Demo ausprobieren
+
+rowplay startet im Demo-Modus: Ohne verbundenes Konto sind alle Seiten mit realistischen Beispiel-Workouts gefüllt. Nichts, was du im Demo-Modus tust, berührt ein echtes Konto.
+
+1. Öffne das [Dashboard](/dashboard).
+2. Wähle ein beliebiges Workout aus der Liste.
+3. Drücke **Replay** und probiere Wiedergabe, Pause, Scrubben und die Geschwindigkeitsregler.
+4. Öffne die [Leaderboards](/leaderboard) und fahre ein Geisterrennen.
+
+## Eigene Workouts verbinden
+
+Deine Workouts liegen im Concept2-Logbuch — dem kostenlosen Online-Tagebuch, in das Concept2-Geräte (und die ErgData-App) Ergebnisse hochladen. rowplay liest dieses Logbuch über einen persönlichen Zugriffstoken: einen langen Code, der wie ein Leseschlüssel für deine Daten wirkt.
+
+1. Melde dich in deinem Logbuch auf log.concept2.com an.
+2. Öffne **Edit Profile → Applications** und kopiere deinen persönlichen API-Token.
+3. Zurück in rowplay öffnest du [Token verwenden](/auth/token).
 4. Füge den Token ein und sende ihn ab.
-5. Öffne /dashboard und nutze **Sync**, um die vollständige Logbook-Historie zu laden.
+5. Drücke im Dashboard auf **Sync**, um deine Workout-Historie zu laden.
 
-Unter /settings kannst du die Verbindung trennen oder gecachte Kontodaten löschen.
+Der Token wird einmal über eine verschlüsselte Verbindung gesendet und nur in einem geschützten Browser-Cookie gehalten. rowplays Server cachen Workout-Daten, damit Seiten schnell laden — den Token selbst speichern sie nie.
 
-## Das Dashboard lesen
+## Deine erste Synchronisation
 
-- Nutze Sport- und Distanzfilter, um die Workout-Liste einzugrenzen.
-- Verfolge Summen, Pace-Trends, persönliche Bestzeiten, Jahresziele und Trainingslast.
-- Öffne das neueste Workout direkt oder vergleiche zwei Leistungen aus der Liste.
-- Nutze Tags und Filter, damit bestimmte Einheiten später leicht auffindbar bleiben.
+Die erste Synchronisation lädt aktuelle Workouts sofort und füllt ältere Historie im Hintergrund nach. Bis sie fertig ist, können Langzeit-Summen und Bestzeiten unvollständig wirken — das ist normal. Sieht später noch etwas falsch aus, hilft die [Problemlösung](/docs/troubleshooting).
 
-Wenn rowplay nur aktuelle Historie hat, führe **Sync** aus, bevor du dich auf langfristige Bestzeiten oder Trends verlässt.
+## Trennen
 
-## Ein Workout replayen
+Öffne jederzeit [Daten](/settings), um die Verbindung zu trennen. Das löscht deine Sitzung und entfernt deine gecachten Workout-Daten aus rowplay. Dein Concept2-Logbuch wird nie verändert.`,
+      },
+      rowingMetrics: {
+        navTitle: "Rudern-Grundlagen",
+        markdown: `# Rudern-Grundlagen
 
-- Drücke Play oder Pause, um die Wiedergabe zu steuern.
-- Scrubbe die Zeitleiste, um einen bestimmten Punkt zu prüfen.
-- Ändere die Geschwindigkeit von 0.5x bis 8x.
-- Wechsle zwischen 2D- und 3D-Renderer, wenn der Browser WebGL unterstützt.
-- Füge Coaching-Notizen an einem Punkt im Workout hinzu.
-- Exportiere das Workout, wenn du CSV-, JSON- oder Replay-Daten anderswo brauchst.
+Neu beim Indoor-Rudern — oder nur bei seinem Vokabular? Das sind die Begriffe, die rowplay verwendet.
 
-Schlagdaten werden verwendet, wenn Concept2 sie liefert. Workouts ohne Schlagdaten fallen auf Split-basiertes Replay zurück, sodass die Strecke weiter abspielt.
+## Die Geräte
 
-## Gegen Geister fahren und Workouts vergleichen
+- **RowErg** — das Rudergerät von Concept2 („Erg" ist kurz für Ergometer, ein Gerät, das Arbeit misst).
+- **SkiErg** — ein Standgerät, das die Stockbewegung beim Skilanglauf nachbildet.
+- **BikeErg** — das Standrad von Concept2.
 
-- Nutze /leaderboard, um Standarddistanz-Ergebnisse zu finden und einen Rivalen-Geist zu starten.
-- Nutze Replay-Steuerungen, um deine Pace mit dem Geist zu vergleichen.
-- Nutze /compare für eine Side-by-side-Zusammenfassung zweier Workouts.
-- Teile einen öffentlichen Replay-Link, wenn jemand anderes ein Workout prüfen soll.
+Alle drei messen die Anstrengung auf dieselbe Weise, daher zeigt rowplay sie mit denselben Arten von Zahlen.
 
-Die Veröffentlichung im Leaderboard ist opt-in und umkehrbar. Sie ändert den ursprünglichen Concept2-Logbook-Eintrag nicht.
+## Der Schlag
 
-## Live-Modus und Importe
+Ein **Schlag** ist ein vollständiger Bewegungszyklus — am RowErg: der Beinstoß, der Zug und das Zurückrollen in die Ausgangsposition. Zwei Zahlen beschreiben deine Schläge:
 
-Der Live-Modus kann nach einer Einheit nach neuen Workouts fragen und dich benachrichtigen, wenn frische Daten erscheinen. Der Herzfrequenz-Import kann externe HR-Daten in ein Workout übernehmen, wenn der Logbook-Eintrag sie noch nicht enthält.
+- **Schlagzahl (spm)** — Schläge pro Minute: wie schnell du die Bewegung durchläufst. Ruhiges Rudern liegt typischerweise bei 18–30 spm.
+- **Distanz pro Schlag (DPS)** — wie viele Meter dir jeder Schlag einbringt. Höher bedeutet meist einen kraftvolleren, effizienteren Schlag.
 
-Nutze pnpm preview für lokale Auth-, Sync-, Live-Modus- und KV/D1-Tests. Plain pnpm dev ist schneller für UI-Arbeit, ist aber nicht die Workers-Laufzeit und stellt keine Produktions-KV/D1-Bindings bereit.
+Eine hohe Schlagzahl bedeutet nicht automatisch mehr Tempo: 20 kräftige Schläge pro Minute können dich schneller bewegen als 30 gehetzte.
 
-## Dokumentationsregeln für Beitragende
+## Distanz und Zeit
 
-Der repository-seitige englische Guide liegt in docs/usage.md. Die In-App-Website rendert Guide-Inhalte über Locale-Dictionaries, sodass jede gebündelte Sprache denselben i18n-Pfad nutzt.
+Das Gerät rechnet deine Anstrengung in **Meter** um, als würdest du ein Boot (oder Ski oder ein Rad) über eine Strecke bewegen. Workouts sind entweder distanzbasiert („rudere 2000m") oder zeitbasiert („rudere 30 Minuten"). Ein **Intervall-Workout** zerlegt das Stück in Wiederholungen mit Pausen dazwischen — zum Beispiel 4 × 500m.
 
-Wenn eine Änderung sichtbares Verhalten, Workflows, Routen, Auth, Datenverarbeitung, Setup oder Deployment-Erwartungen ändert, aktualisiere docs/usage.md, README.md oder die relevante Repository-Dokumentation im selben Pull Request.`,
+## Pace und Splits
+
+**Pace** ist die Zeit, die du für eine feste Distanz brauchst — 500 Meter am RowErg und SkiErg, 1000 Meter am BikeErg. Ein **Split** ist deine Pace über einen Abschnitt des Workouts. Diese beiden sind das Herz des Erg-Trainings und haben [eine eigene Seite](/docs/pace-splits-watts).
+
+## Herzfrequenz
+
+Trägst du einen Brustgurt oder eine Uhr, die mit dem Gerät oder der ErgData-App verbunden ist, erscheinen Schläge pro Minute (**bpm**) neben den anderen Zahlen und bekommen im Replay ein eigenes Diagramm.`,
+      },
+      paceSplitsWatts: {
+        navTitle: "Pace, Splits & Watt",
+        markdown: `# Pace, Splits & Watt
+
+Um diese Zahlen dreht sich das Erg-Training. rowplay berechnet alles für dich — aber zu wissen, was sie bedeuten, macht jedes Diagramm leichter lesbar.
+
+## Pace: Zeit pro 500m
+
+Pace beantwortet die Frage: „Wie lange würde ich bei diesem Tempo für 500 Meter brauchen?" Sie wird wie eine Uhrzeit geschrieben — **2:05** heißt 2 Minuten 5 Sekunden pro 500m.
+
+- **Niedriger ist schneller.** 1:55 ist eine schnellere Pace als 2:05.
+- In Diagrammen bedeutet bessere Pace eine Linie, die nach **unten** geht.
+- **BikeErg-Pace gilt pro 1000m**, nicht pro 500m, weil Räder schneller sind. rowplay behandelt das automatisch — wundere dich also nicht, dass Rad-Paces ähnlich wie Ruder-Paces aussehen.
+
+## Splits
+
+Ein Split ist deine durchschnittliche Pace über einen Teil des Workouts — jede 500m eines 2000m-Stücks oder jedes Intervall einer Intervalleinheit. Splits zu vergleichen zeigt, wie du deine Kraft eingeteilt hast: gleichmäßige Splits, ein Einbruch am Ende oder ein schneller Schluss (ein „negativer Split" heißt: jeder Split schneller als der vorige).
+
+## Watt
+
+Watt messen deine Leistungsabgabe — dieselbe Einheit wie bei einer Glühbirne. Wo die Pace dir das Ergebnis nennt, nennen Watt dir die Arbeit. Beide sind zwei Sichten auf dieselbe Anstrengung: Rund 2:00/500m zu halten kostet etwa 200 Watt, und kleine Pace-Gewinne verlangen überproportional mehr Leistung — von 2:00 auf 1:54 kostet etwa 30 Watt extra.
+
+Ruhiges Rudern liegt je nach Fitness zwischen 100 und 250 Watt; Sprints können weit darüber ausschlagen.
+
+## Schlagzahl ist nicht Anstrengung
+
+Die Schlagzahl (spm) sagt, wie oft du ziehst — nicht, wie hart. Zwei Ruderer können beide 2:00 Pace halten: einer mit 22 kräftigen Schlägen pro Minute, einer mit 28 leichteren. Pace **und** Schlagzahl zusammen zu beobachten (das Replay zeigt beide) verrät Technik: dieselbe Pace bei niedrigerer Schlagzahl heißt mehr Distanz pro Schlag.
+
+## Wo du das alles siehst
+
+- Das **Dashboard** zeigt Durchschnittspace, Summen und Bestzeiten über Workouts hinweg.
+- Das **Replay** zeichnet Pace, Schlagzahl, Watt und Herzfrequenz über das ganze Workout, synchron zur Wiedergabe.
+- Der **Intervall-Vergleich** im Replay zerlegt Intervall-Workouts in Balken, Split für Split.`,
+      },
+      chartsAndProgress: {
+        navTitle: "Diagramme & Fortschritt",
+        markdown: `# Diagramme & Fortschritt
+
+Das Dashboard macht aus deiner Historie eine Reihe von Panels. Diese Seite erklärt, wie du sie liest.
+
+## Trend über die Zeit
+
+Das Trend-Diagramm verfolgt eine Metrik — Pace, Distanz, Schlagzahl oder Distanz pro Schlag — über Wochen von Workouts. Damit der Vergleich fair bleibt, vergleichen Pace-Trends **Gleiches mit Gleichem**: Ein Sprint und ein langes ruhiges Rudern landen nie in einer Linie. Workouts werden in Distanzbänder gruppiert, und du wählst das Band aus.
+
+- Bei **Pace** ist unten besser (weniger Zeit pro 500m).
+- Eine Bewertungszeile über dem Diagramm fasst die Richtung zusammen: verbessernd, stabil oder nachlassend.
+- Ein Band braucht mindestens zwei Einheiten, bevor ein Trend gezeichnet werden kann.
+
+## Persönliche Bestzeiten
+
+Das PB-Panel verfolgt deine schnellsten Ergebnisse über Standarddistanzen (500m, 1k, 2k, 5k, 6k, 10k und länger). Vertraue Allzeit-Bestzeiten erst, wenn eine vollständige Synchronisation abgeschlossen ist — siehe [Problemlösung](/docs/troubleshooting).
+
+## Trainingskalender & Intensität
+
+Der Kalender färbt jeden Tag danach, wie viel du trainiert hast — Serien und Lücken springen sofort ins Auge. Die Intensitätsansicht zeigt, wie sich dein Training auf leichte und harte Arbeit verteilt.
+
+## Fitness, Ermüdung & Form
+
+Das Frische-Panel schätzt drei Kurven aus deiner Trainingslast: **Fitness** (die langfristig angesparte Arbeit), **Ermüdung** (die kurzfristige Müdigkeit aus jüngsten Einheiten) und **Form** (Fitness minus Ermüdung — deine heutige Bereitschaft). Hartes Training hebt Fitness und Ermüdung gemeinsam; Erholung senkt die Ermüdung schneller als die Fitness — deshalb erreicht die Form nach einer lockeren Phase ihren Höhepunkt.
+
+## Critical Power
+
+Das Critical-Power-Panel schätzt die höchste Leistung, die du über eine lange Anstrengung halten könntest — berechnet aus deinen eigenen besten Ergebnissen. Es speist den Pace-Prädiktor: eine Schätzung, was du über eine Distanz halten könntest, die du länger nicht gefahren bist.
+
+## Schlag-Effizienz (DPS)
+
+Das DPS-Diagramm verfolgt die Meter pro Schlag. Der Pace-normalisierte Schalter entfernt den Effekt, einfach härter zu rudern — was bleibt, ist näher an reiner Technik. Nutze den 7-Tage-Schnitt für die aktuelle Form und den 28-Tage-Schnitt für das große Bild.`,
+      },
+      workflows: {
+        navTitle: "Typische Abläufe",
+        markdown: `# Typische Abläufe
+
+## Ein Workout abspielen
+
+Öffne ein beliebiges Workout im Dashboard und drücke **Replay**.
+
+- **Wiedergabe / Pause** steuert die Wiedergabe; Streckenansicht und alle Anzeigen bleiben synchron.
+- **Scrubbe** die Zeitleiste, um zu jedem Moment zu springen.
+- **Geschwindigkeit** lässt das Replay mit 0,5× bis 8× Echtzeit laufen.
+- Wechsle zwischen **2D- und 3D-Ansicht** der Strecke (3D braucht einen halbwegs modernen Browser).
+- Setze eine **Ziel-Pace**, um eine Referenzlinie im Pace-Diagramm zu zeichnen.
+
+## Coaching-Notizen hinzufügen
+
+Halte das Replay an einem Moment an und füge eine Notiz hinzu („hier den Rollsitz überhastet"). Notizen heften sich an die Zeitleiste, sodass du — oder wer auch immer das Replay erhält — direkt dorthin springen kann.
+
+## Ein Geisterrennen fahren
+
+Ein Geist ist eine frühere Leistung, die auf dem Bildschirm gegen dich antritt.
+
+1. Öffne die [Leaderboards](/leaderboard) und wähle Sport und Distanz.
+2. Drücke **Rennen** neben einem Eintrag.
+3. Dein eigenes Replay dieses Stücks zeigt den Rivalen nun als zweites Boot zum Jagen.
+
+Du kannst auch gegen deine eigenen früheren Ergebnisse antreten und genau sehen, wo ein Bestzeit-Versuch Zeit gewonnen oder verloren hat.
+
+## Zwei Workouts vergleichen
+
+Nutze in der Workout-Liste des Dashboards den Vergleichen-Knopf an einem Workout und wähle dann ein zweites. Die Vergleichsansicht stellt beide Leistungen Split für Split nebeneinander.
+
+## Auf ein Leaderboard veröffentlichen
+
+Ergebnisse über Standarddistanzen (500m, 1k, 2k, 5k, 6k, 10k, Halbmarathon) lassen sich von der Replay-Seite aus auf das rowplay-Leaderboard stellen. Die Veröffentlichung ist freiwillig, widerrufbar und ändert nie etwas in deinem Concept2-Logbuch.
+
+## Teilen und exportieren
+
+- **Teilen** auf einem Replay erzeugt einen öffentlichen, schreibgeschützten Link — praktisch für Trainer.
+- **Export** auf der [Daten](/settings)-Seite lädt dein Logbuch als CSV oder JSON herunter, dazu TCX-Dateien pro Workout mit Schlagdaten.
+
+## Daten frisch halten
+
+**Sync** im Dashboard holt neue Ergebnisse auf Abruf. Der **Live-Modus** (ebenfalls im Dashboard) fragt das Logbuch nach Zeitplan ab und meldet sich, wenn ein neues Workout eintrifft — praktisch direkt nach einer Einheit.
+
+## Herzfrequenz importieren
+
+Hat ein Workout keine Herzfrequenzdaten, deine Uhr aber schon, öffne das Replay und nutze **Herzfrequenz importieren**, um einen CSV-, TCX- oder FIT-Export der Uhr in das Workout zu übernehmen.`,
+      },
+      faq: {
+        navTitle: "FAQ",
+        markdown: `# FAQ
+
+## Brauche ich ein Concept2-Konto?
+
+Nicht zum Umschauen — der Demo-Modus funktioniert ohne. Für deine eigenen Workouts brauchst du ein kostenloses Concept2-Logbuch-Konto; dort legt das Gerät (oder die ErgData-App) deine Ergebnisse ab.
+
+## Ist mein Zugriffstoken sicher?
+
+Der Token wird einmal über HTTPS übertragen und in einem geschützten, httpOnly-Browser-Cookie versiegelt. Auf rowplays Servern wird er nie gespeichert. Trennen löscht ihn.
+
+## Können andere meine Workouts sehen?
+
+Nein — dein Dashboard und deine Replays sind standardmäßig privat. Andere sehen ein Workout nur, wenn du es auf ein Leaderboard veröffentlichst oder seinen öffentlichen Link teilst — beides ist widerrufbar.
+
+## Verändert rowplay mein Concept2-Logbuch?
+
+Nie. rowplay liest nur. Auf ein rowplay-Leaderboard zu veröffentlichen oder hier gecachte Daten zu löschen verändert den Logbuch-Eintrag nicht.
+
+## Welche Geräte werden unterstützt?
+
+RowErg, SkiErg und BikeErg. Die Pace wird beim Rudern und Skifahren pro 500m angezeigt, beim Rad pro 1000m.
+
+## Warum haben manche Workouts kein Schlag-für-Schlag-Replay?
+
+Nicht jeder Logbuch-Eintrag enthält Daten pro Schlag — das hängt von der Aufzeichnung ab. Diese Workouts werden trotzdem abgespielt, nur anhand ihrer Splits und mit weniger Datenpunkten.
+
+## Kann ich rowplay auf dem Handy nutzen?
+
+Ja — die ganze App inklusive Replays läuft im mobilen Browser, und du kannst sie wie eine App zum Startbildschirm hinzufügen.
+
+## Welche Sprachen gibt es?
+
+English, Deutsch, Español, Français, 日本語 und 中文 — umschaltbar in der Kopfzeile (auf dem Handy hinter dem Menü-Knopf).`,
+      },
+      troubleshooting: {
+        navTitle: "Problemlösung",
+        markdown: `# Problemlösung
+
+## Meine Summen oder Bestzeiten wirken falsch
+
+Meistens ist die vollständige Historie noch nicht fertig synchronisiert. Die erste Synchronisation füllt ältere Workouts im Hintergrund nach; bis sie abgeschlossen ist, kann alles, was „über die gesamte Zeit" berechnet wird, unvollständig sein. Prüfe den Sync-Status unter [Daten](/settings) und starte bei Bedarf eine vollständige Synchronisation.
+
+## Eine Pace wirkt völlig daneben
+
+- **BikeErg-Paces gelten pro 1000m**, nicht pro 500m — eine 2:00-Rad-Pace ist nicht dasselbe Tempo wie eine 2:00-Ruder-Pace.
+- Intervall-Workouts melden die Pace der Arbeitsintervalle; Pausen zählen nicht mit.
+
+## Das Trend-Diagramm verlangt mehr Einheiten
+
+Trends vergleichen gleichartige Distanzen und brauchen daher mindestens zwei Einheiten im selben Distanzband. Logge ein weiteres ähnliches Workout, und der Trend erscheint.
+
+## Ein Workout hat keine Schlag-Diagramme
+
+Dieser Logbuch-Eintrag enthält keine Daten pro Schlag — häufig bei älteren Ergebnissen und manchen Aufzeichnungsarten. Das Replay greift auf Splits zurück. Schlagabhängige Panels (Distanz pro Schlag, Schlag-Vergleich) brauchen Schlagdaten und sagen es, wenn sie fehlen.
+
+## Herzfrequenz fehlt
+
+Das Logbuch hat nur dann Herzfrequenz, wenn während des Workouts ein Gurt oder eine Uhr verbunden war. Hat eine Uhr sie separat aufgezeichnet, nutze **Herzfrequenz importieren** auf der Replay-Seite, um einen CSV-, TCX- oder FIT-Export zu übernehmen.
+
+## Die Synchronisation schlägt fehl oder die Sitzung läuft ab
+
+Persönliche Tokens können ablaufen oder widerrufen werden. Verbinde dich unter [Token verwenden](/auth/token) mit einem frischen Token aus deinem Concept2-Profil neu. Wurden in kurzer Zeit viele Anfragen gestellt, drosselt das Logbuch eventuell kurz — warte eine Minute und versuche es erneut.
+
+## Ein neues Workout erscheint nicht
+
+Prüfe zuerst, ob das Workout dein Concept2-Logbuch erreicht hat (es muss vom Gerät oder der ErgData-App hochgeladen werden). Drücke dann **Sync** im Dashboard oder aktiviere den Live-Modus für automatische Abfragen.
+
+## Darstellungsprobleme
+
+- **3D-Replay startet nicht** — der Browser braucht WebGL; die 2D-Ansicht funktioniert immer.
+- **Diagramme wirken auf dem Handy gequetscht** — drehe ins Querformat für breitere Diagramme; Panels ordnen sich auf kleinen Bildschirmen neu an.
+- **Falsches Theme oder falsche Sprache** — beide Schalter sitzen in der Kopfzeile (auf dem Handy hinter dem Menü-Knopf) und werden pro Browser gemerkt.
+
+Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses Guide ist über **Hilfe** in der Kopfzeile erreichbar.`,
+      },
+    },
   },
   dashboard: {
     eyebrow: "Dein Logbuch",

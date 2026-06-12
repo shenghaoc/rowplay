@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
+	import { base } from '$app/paths';
 	import { fmtDate, fmtDateFromEpochMillis } from '$lib/format';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import { toast } from 'svelte-sonner';
@@ -291,20 +292,28 @@
 					</div>
 				{:else if data.sync?.lastError}
 					<span class="badge badge-soft badge-error">{t('sync.errorBadge')}</span>
-					<p class="sync-meta muted">{t('settings.lastSyncError', { total: data.sync?.total ?? 0, message: data.sync.lastError })}</p>
-				{/if}
+					<p class="sync-meta muted">
+						{t('settings.lastSyncError', { total: data.sync?.total ?? 0, message: data.sync.lastError })}
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href="{base}/docs/troubleshooting">{t('docs.contextual.troubleshooting')}</a>
+				</p>
+			{/if}
 
-				{#if !data.sync?.inProgress}
-					{#if data.sync}
-						<p class="sync-meta muted">{syncHistoryNote}</p>
-						<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: data.sync.total })}</p>
-					{:else}
-						<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: 0 })}</p>
-					{/if}
+			{#if !data.sync?.inProgress}
+				{#if data.sync}
+					<p class="sync-meta muted">{syncHistoryNote}</p>
+					<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: data.sync.total })}</p>
+				{:else}
+					<p class="sync-meta muted">{t('settings.lastSync', { date: lastSyncLabel, total: 0 })}</p>
 				{/if}
+			{/if}
 
-				{#if !data.sync?.backfillDone && data.sync && !data.sync?.inProgress}
-					<p class="sync-meta text-warning">{t('sync.partialWarning')}</p>
+			{#if !data.sync?.backfillDone && data.sync && !data.sync?.inProgress}
+				<p class="sync-meta text-warning">
+					{t('sync.partialWarning')}
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href="{base}/docs/troubleshooting">{t('docs.contextual.troubleshooting')}</a>
+					</p>
 				{/if}
 
 				<div class="row">

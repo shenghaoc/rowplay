@@ -73,7 +73,7 @@ export const fr = {
   nav: {
     dashboard: "Tableau de bord",
     leaderboard: "Classements",
-    docs: "Docs",
+    docs: "Aide",
     settings: "Données",
     menuOpen: "Ouvrir le menu",
     menuClose: "Fermer le menu",
@@ -148,75 +148,309 @@ export const fr = {
   docs: {
     title: "Guide utilisateur",
     description:
-      "Comment utiliser rowplay et garder la documentation du dépôt synchronisée avec le site.",
+      "Comment utiliser rowplay : premiers pas, vocabulaire de l'aviron, allure et watts, graphiques, usages courants, FAQ et dépannage.",
     badge: "Docs depuis le dépôt",
     openDashboard: "Ouvrir le tableau",
     openSource: "Ouvrir la source",
-    guideMarkdown: `# Guide utilisateur rowplay
+    navLabel: "Sections du guide utilisateur",
+    contextual: {
+      gettingStarted: "Nouveau ici ? Lisez le guide de premiers pas",
+      metrics: "Que signifient l'allure, les watts et la cadence ?",
+      charts: "Comment lire ce graphique",
+      troubleshooting: "Données manquantes ou étranges ? Consultez le dépannage",
+      workflows: "Découvrez les classements et les courses fantômes",
+    },
+    sections: {
+      overview: {
+        navTitle: "Vue d'ensemble",
+        markdown: `# Guide utilisateur rowplay
 
-rowplay transforme les résultats du logbook Concept2 en tableau de bord, replay, comparaison et leaderboard pour les séances RowErg, SkiErg et BikeErg.
+rowplay transforme vos séances d'aviron, de ski et de vélo indoor en quelque chose à explorer : un tableau de bord avec totaux et tendances, une relecture coup par coup, des comparaisons côte à côte et des classements amicaux.
 
-## Commencer en mode démo
+Il fonctionne avec les séances enregistrées sur les machines Concept2 — le RowErg (rameur), le SkiErg et le BikeErg — et les lit depuis le logbook en ligne gratuit de Concept2. Inutile de connaître le jargon de l'aviron pour commencer : ce guide explique chaque terme qu'il emploie.
 
-Le mode démo est le mode par défaut. Ouvrez rowplay sans connexion et l’application charge des séances d’exemple déterministes, pour tester le tableau de bord et le replay sans compte Concept2.
+## Ce que vous pouvez faire ici
 
-1. Ouvrez /dashboard.
-2. Choisissez une séance dans la liste.
-3. Appuyez sur **Replay** et utilisez lecture, pause, scrub et contrôles de vitesse.
-4. Ouvrez /leaderboard pour essayer une course ghost avec les données d’exemple.
+- **Tableau de bord** — totaux, tendances, records personnels et charge d'entraînement en un coup d'œil.
+- **Relecture** — regardez n'importe quelle séance se rejouer coup par coup, avec des graphiques synchronisés d'allure, de cadence, de puissance et de fréquence cardiaque.
+- **Comparer** — placez deux séances côte à côte, split par split.
+- **Classements** — publiez un résultat et affrontez d'autres athlètes sous forme de « fantômes » à l'écran.
 
-## Connecter votre logbook Concept2
+## Sections du guide
 
-L’authentification de production utilise bring-your-own-token. Le token API Concept2 personnel est envoyé une seule fois en HTTPS, validé par le Worker, puis scellé dans le cookie httpOnly rp_tok. KV stocke l’identité de session et D1 stocke les séances et données de replay en cache. Le token n’est pas stocké dans KV ni D1.
+- [Premiers pas](/docs/getting-started) — mode démo, connexion du logbook, première synchronisation.
+- [Bases de l'aviron](/docs/rowing-metrics) — coups, splits et les autres termes que vous croiserez.
+- [Allure, splits & watts](/docs/pace-splits-watts) — ce que signifient les chiffres et comment ils se relient.
+- [Graphiques & progression](/docs/charts-and-progress) — comment lire les panneaux du tableau de bord.
+- [Usages courants](/docs/workflows) — relecture, courses fantômes, comparaison, partage, export.
+- [FAQ](/docs/faq) — réponses rapides sur les comptes, la confidentialité et les données.
+- [Dépannage](/docs/troubleshooting) — données manquantes, chiffres bizarres, soucis d'affichage.
 
-1. Dans le logbook Concept2, ouvrez **Edit Profile -> Applications**.
-2. Copiez votre token API personnel.
-3. Dans rowplay, ouvrez /auth/token.
-4. Collez le token et envoyez-le.
-5. Ouvrez /dashboard et utilisez **Sync** pour charger tout l’historique du logbook.
+> Astuce : rowplay démarre en mode démo avec des séances d'exemple — vous pouvez donc tout essayer sur cette liste avant de connecter un compte Concept2.`,
+      },
+      gettingStarted: {
+        navTitle: "Premiers pas",
+        markdown: `# Premiers pas
 
-Utilisez /settings pour vous déconnecter ou supprimer les données de compte en cache.
+## Essayez d'abord la démo
 
-## Lire le tableau de bord
+rowplay démarre en mode démo : sans compte connecté, chaque page se remplit de séances d'exemple réalistes. Rien de ce que vous faites en mode démo ne touche un vrai compte.
 
-- Utilisez les filtres de sport et de distance pour réduire la liste des séances.
-- Suivez totaux, tendances d’allure, records personnels, objectifs annuels et charge d’entraînement.
-- Ouvrez directement la dernière séance ou comparez deux efforts depuis la liste.
-- Utilisez tags et filtres pour retrouver facilement certaines séances plus tard.
+1. Ouvrez le [tableau de bord](/dashboard).
+2. Choisissez n'importe quelle séance dans la liste.
+3. Appuyez sur **Relecture** et essayez la lecture, la pause, le défilement et les vitesses.
+4. Ouvrez les [classements](/leaderboard) et tentez une course fantôme.
 
-Lorsque rowplay ne possède qu’un historique récent, lancez **Sync** avant de vous fier aux records ou tendances de long terme.
+## Connecter vos propres séances
+
+Vos séances vivent dans le logbook Concept2 — le journal en ligne gratuit vers lequel les machines Concept2 (et l'app ErgData) téléversent les résultats. rowplay lit ce logbook grâce à un jeton d'accès personnel : un long code qui agit comme une clé de lecture de vos données.
+
+1. Connectez-vous à votre logbook sur log.concept2.com.
+2. Ouvrez **Edit Profile → Applications** et copiez votre jeton d'API personnel.
+3. De retour dans rowplay, ouvrez [Utiliser un jeton](/auth/token).
+4. Collez le jeton et validez.
+5. Sur le tableau de bord, appuyez sur **Synchroniser** pour charger votre historique.
+
+Le jeton est envoyé une seule fois via une connexion chiffrée et conservé uniquement dans un cookie protégé du navigateur. Les serveurs de rowplay mettent en cache les données de séances pour des pages rapides, mais ne stockent jamais le jeton lui-même.
+
+## Votre première synchronisation
+
+La première synchronisation charge immédiatement les séances récentes et complète l'historique plus ancien en arrière-plan. Tant qu'elle n'est pas terminée, les totaux de long terme et les records personnels peuvent sembler incomplets — c'est normal. Si quelque chose cloche encore ensuite, voyez le [dépannage](/docs/troubleshooting).
+
+## Se déconnecter
+
+Ouvrez [Données](/settings) à tout moment pour vous déconnecter. Cela efface votre session et supprime vos données de séances mises en cache de rowplay. Votre logbook Concept2 n'est jamais modifié.`,
+      },
+      rowingMetrics: {
+        navTitle: "Bases de l'aviron",
+        markdown: `# Bases de l'aviron
+
+Nouveau dans l'aviron indoor — ou seulement dans son vocabulaire ? Voici les termes que rowplay emploie.
+
+## Les machines
+
+- **RowErg** — le rameur de Concept2 (« erg » est l'abréviation d'ergomètre, une machine qui mesure le travail).
+- **SkiErg** — une machine debout qui imite le mouvement de bâtons du ski de fond.
+- **BikeErg** — le vélo stationnaire de Concept2.
+
+Toutes trois mesurent l'effort de la même façon, donc rowplay les affiche avec les mêmes types de chiffres.
+
+## Le coup d'aviron
+
+Un **coup** est un cycle complet du mouvement — sur le RowErg : la poussée des jambes, le tirage et le retour glissé à la position de départ. Deux chiffres décrivent vos coups :
+
+- **Cadence (spm)** — coups par minute : la vitesse à laquelle vous enchaînez le mouvement. L'aviron régulier se situe typiquement entre 18 et 30 spm.
+- **Distance par coup (DPS)** — combien de mètres chaque coup vous rapporte. Plus haut signifie en général un coup plus puissant et plus efficace.
+
+Une cadence élevée ne veut pas automatiquement dire plus de vitesse : 20 coups solides par minute peuvent vous faire avancer plus vite que 30 coups précipités.
+
+## Distance et temps
+
+La machine convertit votre effort en **mètres**, comme si vous déplaciez un bateau (ou des skis, ou un vélo) sur un parcours. Les séances sont soit en distance (« ramez 2000m »), soit en temps (« ramez 30 minutes »). Une **séance par intervalles** découpe l'effort en répétitions entrecoupées de repos — par exemple 4 × 500m.
+
+## Allure et splits
+
+L'**allure** est le temps qu'il vous faut pour couvrir une distance fixe — 500 mètres sur RowErg et SkiErg, 1000 mètres sur BikeErg. Un **split** est votre allure sur un segment de la séance. Ces deux notions sont le cœur de l'entraînement sur ergomètre : elles ont [leur propre page](/docs/pace-splits-watts).
+
+## Fréquence cardiaque
+
+Si vous portez une ceinture ou une montre cardio connectée à la machine ou à l'app ErgData, les battements par minute (**bpm**) apparaissent à côté des autres chiffres et ont leur propre graphique dans la relecture.`,
+      },
+      paceSplitsWatts: {
+        navTitle: "Allure, splits & watts",
+        markdown: `# Allure, splits & watts
+
+Ce sont les chiffres autour desquels tourne l'entraînement sur ergomètre. rowplay calcule tout pour vous — mais savoir ce qu'ils signifient rend chaque graphique plus facile à lire.
+
+## L'allure : un temps par 500m
+
+L'allure répond à la question : « à cette vitesse, combien de temps me faudrait-il pour 500 mètres ? ». Elle s'écrit comme une heure — **2:05** signifie 2 minutes 5 secondes par 500m.
+
+- **Plus bas, c'est plus rapide.** 1:55 est une allure plus rapide que 2:05.
+- Sur les graphiques, une allure qui s'améliore est une courbe qui descend **vers le bas**.
+- **L'allure du BikeErg est par 1000m**, pas 500m, car le vélo va plus vite. rowplay gère cela automatiquement — ne soyez donc pas surpris que les allures vélo ressemblent aux allures aviron.
+
+## Les splits
+
+Un split est votre allure moyenne sur une portion de séance — chaque 500m d'un 2000m, ou chaque intervalle d'une séance fractionnée. Comparer les splits montre comment vous avez dépensé votre effort : splits réguliers, baisse de régime à la fin, ou final rapide (un « negative split » signifie que chaque split est plus rapide que le précédent).
+
+## Les watts
+
+Les watts mesurent votre puissance — la même unité qu'une ampoule. Là où l'allure donne le résultat, les watts donnent le travail. Ce sont deux vues du même effort : tenir environ 2:00/500m demande à peu près 200 watts, et les petits gains d'allure exigent une puissance disproportionnée — passer de 2:00 à 1:54 coûte environ 30 watts de plus.
+
+L'aviron régulier se situe entre 100 et 250 watts selon la condition physique ; les sprints peuvent grimper bien au-delà.
+
+## La cadence n'est pas l'effort
+
+La cadence (spm) indique la fréquence de vos coups, pas leur intensité. Deux rameurs peuvent tenir tous deux une allure de 2:00 — l'un à 22 coups solides par minute, l'autre à 28 coups plus légers. Observer l'allure **et** la cadence ensemble (la relecture trace les deux) révèle la technique : la même allure à cadence plus basse signifie plus de distance par coup.
+
+## Où voir tout cela
+
+- Le **tableau de bord** montre l'allure moyenne, les totaux et les records sur l'ensemble des séances.
+- La **relecture** trace l'allure, la cadence, les watts et la fréquence cardiaque sur toute la séance, synchronisés avec la lecture.
+- La **comparaison par répétition** d'une relecture découpe les séances fractionnées en barres, split par split.`,
+      },
+      chartsAndProgress: {
+        navTitle: "Graphiques & progression",
+        markdown: `# Graphiques & progression
+
+Le tableau de bord transforme votre historique en une série de panneaux. Cette page explique comment les lire.
+
+## Tendance dans le temps
+
+Le graphique de tendance suit une métrique — allure, distance, cadence ou distance par coup — sur des semaines de séances. Pour rester équitable, les tendances d'allure comparent **ce qui est comparable** : un sprint et une longue sortie régulière ne sont jamais mélangés dans une même courbe. Les séances sont regroupées en bandes de distance, et vous choisissez la bande à inspecter.
+
+- Pour l'**allure**, vers le bas, c'est mieux (moins de temps par 500m).
+- Une ligne de verdict au-dessus du graphique résume la direction : en progrès, stable ou en recul.
+- Une bande a besoin d'au moins deux séances avant qu'une tendance puisse être tracée.
+
+## Records personnels
+
+Le panneau des records suit vos meilleurs résultats sur les distances standard (500m, 1k, 2k, 5k, 6k, 10k et plus). Assurez-vous qu'une synchronisation complète est terminée avant de vous fier aux records absolus — voir le [dépannage](/docs/troubleshooting).
+
+## Calendrier d'entraînement & intensité
+
+Le calendrier teinte chaque jour selon votre volume d'entraînement, de sorte que les séries et les trous sautent aux yeux. La vue d'intensité montre comment votre entraînement se répartit entre travail facile et difficile.
+
+## Forme, fatigue & fraîcheur
+
+Le panneau de fraîcheur estime trois courbes à partir de votre charge d'entraînement : la **forme** (le travail accumulé sur le long terme), la **fatigue** (la lassitude à court terme des séances récentes) et la **fraîcheur** (forme moins fatigue — votre disponibilité du jour). S'entraîner dur fait monter forme et fatigue ensemble ; se reposer fait baisser la fatigue plus vite que la forme — c'est pourquoi la fraîcheur culmine après une période plus calme.
+
+## Puissance critique
+
+Le panneau de puissance critique estime la puissance la plus élevée que vous pourriez soutenir sur un effort long, calculée à partir de vos propres meilleurs résultats. Il alimente le prédicteur d'allure — une estimation de ce que vous pourriez tenir sur une distance que vous n'avez pas courue récemment.
+
+## Efficacité de coup (DPS)
+
+Le graphique DPS suit les mètres gagnés par coup. L'interrupteur normalisé par l'allure retire l'effet de simplement ramer plus fort : ce qui reste se rapproche de la technique pure. Utilisez la moyenne sur 7 jours pour la forme récente et celle sur 28 jours pour la vue d'ensemble.`,
+      },
+      workflows: {
+        navTitle: "Usages courants",
+        markdown: `# Usages courants
 
 ## Rejouer une séance
 
-- Appuyez sur lecture ou pause pour contrôler la lecture.
-- Scrubbez la timeline pour inspecter un point précis.
-- Changez la vitesse de 0.5x à 8x.
-- Passez entre les rendus 2D et 3D quand le navigateur prend WebGL en charge.
-- Ajoutez des notes de coaching à un point de la séance.
-- Exportez la séance quand vous avez besoin de CSV, JSON ou données de replay ailleurs.
+Ouvrez n'importe quelle séance depuis le tableau de bord et appuyez sur **Relecture**.
 
-Les données coup par coup sont utilisées quand Concept2 les fournit. Les séances sans données de coups basculent vers un replay basé sur les splits, donc le parcours reste lisible.
+- **Lecture / pause** contrôle la lecture ; la vue du parcours et toutes les jauges restent synchronisées.
+- **Faites défiler** la frise chronologique pour sauter à n'importe quel instant.
+- La **vitesse** fait tourner la relecture de 0,5× à 8× le temps réel.
+- Basculez entre les vues du parcours en **2D et 3D** (la 3D demande un navigateur raisonnablement récent).
+- Définissez une **allure cible** pour tracer une ligne de référence sur le graphique d'allure.
 
-## Courir contre des ghosts et comparer des séances
+## Ajouter des notes de coach
 
-- Utilisez /leaderboard pour trouver des résultats de distance standard et lancer un ghost rival.
-- Utilisez les contrôles de replay pour comparer votre allure au ghost.
-- Utilisez /compare pour un résumé côte à côte de deux séances.
-- Partagez un lien de replay public si quelqu’un d’autre doit inspecter une séance.
+En pause à un instant de la relecture, ajoutez une note (« coulisse précipitée ici »). Les notes s'épinglent à la frise, si bien que vous — ou la personne à qui vous partagez la relecture — pouvez y sauter directement.
 
-La publication au leaderboard est optionnelle et réversible. Elle ne modifie pas l’entrée Concept2 source.
+## Courir contre un fantôme
 
-## Mode live et imports
+Un fantôme est un effort passé qui rame à vos côtés à l'écran.
 
-Le mode live peut rechercher de nouvelles séances après une session et vous notifier quand des données fraîches apparaissent. L’import de fréquence cardiaque peut fusionner des données HR externes quand l’entrée du logbook ne les contient pas déjà.
+1. Ouvrez les [classements](/leaderboard) et choisissez un sport et une distance.
+2. Appuyez sur **Course** à côté d'une entrée.
+3. Votre propre relecture de cette épreuve montre désormais le rival comme un second bateau à chasser.
 
-Utilisez pnpm preview pour l’auth locale, la sync, le mode live et les tests KV/D1. Plain pnpm dev est plus rapide pour l’UI, mais ce n’est pas le runtime Workers et il ne fournit pas les bindings KV/D1 de production.
+Vous pouvez aussi affronter vos propres résultats passés pour voir exactement où une tentative de record a gagné ou perdu du temps.
 
-## Politique de documentation pour les contributeurs
+## Comparer deux séances
 
-Le guide anglais destiné au dépôt se trouve dans docs/usage.md. Le site intégré rend le contenu du guide depuis les dictionnaires de locale, afin que chaque langue fournie utilise le même chemin i18n.
+Dans la liste des séances du tableau de bord, utilisez le bouton de comparaison sur une séance, puis choisissez-en une seconde. La vue de comparaison aligne les deux efforts split par split.
 
-Lorsqu’un changement modifie le comportement visible, les workflows, routes, l’auth, le traitement des données, le setup ou les attentes de déploiement, mettez à jour docs/usage.md, README.md ou la documentation pertinente du dépôt dans le même pull request.`,
+## Publier sur un classement
+
+Les résultats sur distances standard (500m, 1k, 2k, 5k, 6k, 10k, semi-marathon) peuvent être publiés sur le classement rowplay depuis la page de relecture. La publication est volontaire, réversible, et ne change jamais rien dans votre logbook Concept2.
+
+## Partager et exporter
+
+- **Partager** sur une relecture crée un lien public en lecture seule — pratique pour les entraîneurs.
+- **Exporter** sur la page [Données](/settings) télécharge votre logbook en CSV ou JSON, plus des fichiers TCX par séance pour celles qui ont des données de coups.
+
+## Garder les données à jour
+
+**Synchroniser** sur le tableau de bord récupère les nouveaux résultats à la demande. Le **mode direct** (aussi sur le tableau de bord) interroge le logbook à intervalle régulier et vous prévient quand une nouvelle séance arrive — pratique juste après l'entraînement.
+
+## Importer la fréquence cardiaque
+
+Si une séance n'a pas de données cardio mais que votre montre les a enregistrées, ouvrez la relecture et utilisez **Importer la fréquence cardiaque** pour fusionner un export CSV, TCX ou FIT de la montre avec la séance.`,
+      },
+      faq: {
+        navTitle: "FAQ",
+        markdown: `# FAQ
+
+## Ai-je besoin d'un compte Concept2 ?
+
+Pas pour explorer — le mode démo fonctionne sans. Pour voir vos propres séances, il vous faut un compte gratuit du logbook Concept2 : c'est là que la machine (ou l'app ErgData) range vos résultats.
+
+## Mon jeton d'accès est-il en sécurité ?
+
+Le jeton est transmis une seule fois en HTTPS et scellé dans un cookie httpOnly protégé du navigateur. Il n'est jamais stocké sur les serveurs de rowplay. Se déconnecter l'efface.
+
+## D'autres personnes peuvent-elles voir mes séances ?
+
+Non — votre tableau de bord et vos relectures sont privés par défaut. Les autres ne voient une séance que si vous la publiez sur un classement ou partagez son lien public, et les deux sont réversibles.
+
+## rowplay modifie-t-il mon logbook Concept2 ?
+
+Jamais. rowplay ne fait que lire. Publier sur un classement rowplay ou supprimer des données en cache ici ne modifie pas l'entrée d'origine du logbook.
+
+## Quelles machines sont prises en charge ?
+
+RowErg, SkiErg et BikeErg. L'allure est affichée par 500m pour l'aviron et le ski, et par 1000m pour le vélo.
+
+## Pourquoi certaines séances n'ont-elles pas de relecture coup par coup ?
+
+Toutes les entrées du logbook n'incluent pas de données par coup — cela dépend de la façon dont la séance a été enregistrée. Ces séances se rejouent quand même à partir de leurs splits, juste avec moins de points de données.
+
+## Puis-je utiliser rowplay sur mon téléphone ?
+
+Oui — toute l'app, relectures comprises, fonctionne dans les navigateurs mobiles, et vous pouvez l'installer sur votre écran d'accueil comme une app.
+
+## Quelles langues sont disponibles ?
+
+English, Deutsch, Español, Français, 日本語 et 中文 — à changer depuis l'en-tête (derrière le bouton de menu sur mobile).`,
+      },
+      troubleshooting: {
+        navTitle: "Dépannage",
+        markdown: `# Dépannage
+
+## Mes totaux ou records semblent faux
+
+Le plus souvent, l'historique complet n'a pas fini de se synchroniser. La première synchronisation complète les anciennes séances en arrière-plan ; tant qu'elle n'est pas terminée, tout ce qui est calculé « sur l'ensemble du temps » peut être incomplet. Vérifiez l'état de synchronisation dans [Données](/settings) et lancez une synchronisation complète si nécessaire.
+
+## Une allure semble complètement fausse
+
+- **Les allures BikeErg sont par 1000m**, pas par 500m — une allure vélo de 2:00 n'est pas la même vitesse qu'une allure aviron de 2:00.
+- Les séances fractionnées rapportent l'allure des intervalles de travail ; les repos ne comptent pas.
+
+## Le graphique de tendance réclame plus de séances
+
+Les tendances comparent des distances similaires : elles exigent au moins deux séances dans la même bande de distance. Enregistrez une autre séance comparable et la tendance apparaîtra.
+
+## Une séance n'a pas de graphiques de coups
+
+Cette entrée du logbook n'a pas de données par coup — courant pour les anciens résultats et certaines méthodes d'enregistrement. La relecture se rabat sur les splits. Les panneaux dépendants des coups (distance par coup, comparaison par coup) ont besoin de ces données et le signalent quand elles manquent.
+
+## La fréquence cardiaque manque
+
+Le logbook n'a la fréquence cardiaque que si une ceinture ou une montre était connectée pendant la séance. Si une montre l'a enregistrée à part, utilisez **Importer la fréquence cardiaque** sur la page de relecture pour fusionner un export CSV, TCX ou FIT avec la séance.
+
+## La synchronisation échoue ou la session expire
+
+Les jetons personnels peuvent expirer ou être révoqués. Reconnectez-vous via [Utiliser un jeton](/auth/token) avec un jeton frais de votre profil Concept2. Si beaucoup de requêtes ont été faites en peu de temps, le logbook peut limiter brièvement le débit — attendez une minute et réessayez.
+
+## Une nouvelle séance n'apparaît pas
+
+Vérifiez d'abord que la séance a bien atteint votre logbook Concept2 (elle doit être téléversée depuis la machine ou l'app ErgData). Appuyez ensuite sur **Synchroniser** dans le tableau de bord, ou activez le mode direct pour interroger automatiquement.
+
+## Problèmes d'affichage
+
+- **La relecture 3D ne démarre pas** — le navigateur a besoin de WebGL ; la vue 2D fonctionne toujours.
+- **Les graphiques sont à l'étroit sur téléphone** — passez en paysage pour des graphiques plus larges ; les panneaux se réorganisent sur petits écrans.
+- **Mauvais thème ou mauvaise langue** — les deux interrupteurs sont dans l'en-tête (derrière le bouton de menu sur mobile) et sont mémorisés par navigateur.
+
+Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce guide est accessible via **Aide** dans l'en-tête.`,
+      },
+    },
   },
   dashboard: {
     eyebrow: "Votre logbook",

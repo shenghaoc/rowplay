@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { base } from '$app/paths';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import Trophy from '@lucide/svelte/icons/trophy';
@@ -217,7 +218,11 @@
 		</div>
 	{:else}
 		<div class="card card-border bg-base-100 shadow-md p-5 empty">
-			<p>{t('leaderboard.empty')}</p>
+			<p>
+				{t('leaderboard.empty')}
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a href="{base}/docs/workflows">{t('docs.contextual.workflows')}</a>
+			</p>
 		</div>
 	{/if}
 </div>

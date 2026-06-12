@@ -2,6 +2,7 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import SportIcon from '$components/SportIcon.svelte';
+	import { base } from '$app/paths';
 	import {
 		buildDistanceOverlay,
 		compareIntervalReps,
@@ -486,7 +487,11 @@
 				{/if}
 			</div>
 		{:else if !incomparableReason}
-			<p class="muted card card-border bg-base-100 shadow-md p-5 empty">{t('compare.noStrokeData')}</p>
+			<p class="muted card card-border bg-base-100 shadow-md p-5 empty">
+				{t('compare.noStrokeData')}
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a href="{base}/docs/troubleshooting">{t('docs.contextual.troubleshooting')}</a>
+			</p>
 		{/if}
 
 		{#if !incomparableReason && statRows.length}

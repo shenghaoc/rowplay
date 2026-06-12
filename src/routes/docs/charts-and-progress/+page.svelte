@@ -2,4 +2,4 @@
 	import DocsPage from '$components/DocsPage.svelte';
 </script>
 
-<DocsPage section="overview" />
+<DocsPage section="chartsAndProgress" />

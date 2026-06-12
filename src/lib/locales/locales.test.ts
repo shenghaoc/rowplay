@@ -20,8 +20,12 @@ function flatKeys(obj: Record<string, unknown>, prefix = ""): Set<string> {
 
 const enKeys = flatKeys(dictionaries.en as unknown as Record<string, unknown>);
 
-function guideMarkdown(lang: (typeof SUPPORTED_LANGUAGES)[number]) {
-  return (dictionaries[lang] as { docs: { guideMarkdown: string } }).docs.guideMarkdown;
+function guideSections(lang: (typeof SUPPORTED_LANGUAGES)[number]) {
+  return (
+    dictionaries[lang] as {
+      docs: { sections: Record<string, { navTitle: string; markdown: string }> };
+    }
+  ).docs.sections;
 }
 
 describe("locale completeness", () => {
@@ -55,15 +59,22 @@ describe("locale values", () => {
     }
   });
 
-  it("all locales provide localized guide markdown", () => {
-    const englishGuide = guideMarkdown("en");
-    expect(englishGuide).toMatch(/^# /);
+  it("all locales provide localized guide markdown for every section", () => {
+    const englishSections = guideSections("en");
+    expect(Object.keys(englishSections).length).toBeGreaterThan(0);
 
     for (const lang of SUPPORTED_LANGUAGES) {
-      const guide = guideMarkdown(lang);
-      expect(guide, `${lang} guide should be markdown`).toMatch(/^# /);
-      if (lang !== "en") {
-        expect(guide, `${lang} guide should not fall back to English`).not.toBe(englishGuide);
+      const sections = guideSections(lang);
+      for (const [key, englishSection] of Object.entries(englishSections)) {
+        const section = sections[key];
+        expect(section, `${lang} should provide docs section ${key}`).toBeDefined();
+        expect(section.markdown, `${lang} ${key} should be markdown`).toMatch(/^# /);
+        expect(section.navTitle, `${lang} ${key} should have a nav title`).toBeTruthy();
+        if (lang !== "en") {
+          expect(section.markdown, `${lang} ${key} should not fall back to English`).not.toBe(
+            englishSection.markdown,
+          );
+        }
       }
     }
   });
