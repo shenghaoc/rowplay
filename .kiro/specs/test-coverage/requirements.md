@@ -29,17 +29,15 @@ mode (mock data) and with authentication guards where applicable.
 
 **3.1** — Every `+server.ts` route file has a co-located `server.test.ts` that
 tests:
-
-- Demo-mode guard (400) where applicable
-- Authentication guard (401) where applicable
-- Input validation errors (400) for all validated parameters
-- Happy-path response shape (status 200, correct `Content-Type` / body keys)
+  - Demo-mode guard (400) where applicable
+  - Authentication guard (401) where applicable
+  - Input validation errors (400) for all validated parameters
+  - Happy-path response shape (status 200, correct `Content-Type` / body keys)
 
 **3.2** — Every `+page.server.ts` `load()` function is tested for:
-
-- Auth redirect (303 → `/auth/login`) when `!demo && !user`
-- Happy-path return value shape in demo mode
-- Key data properties are present in the returned object
+  - Auth redirect (303 → `/auth/login`) when `!demo && !user`
+  - Happy-path return value shape in demo mode
+  - Key data properties are present in the returned object
 
 **3.3** — Route tests do not import real D1/KV/Concept2 API — service layer
 dependencies are always mocked with `vi.mock('$lib/server/...')`.
@@ -48,10 +46,9 @@ dependencies are always mocked with `vi.mock('$lib/server/...')`.
 
 **4.1** — `I18n`, `Theme`, and `LiveMode` classes (`.svelte.ts`) each have a
 test file that covers:
-
-- Constructor with non-default initial state
-- State mutation methods (`setLanguage`, `toggle`, `setEnabled`, etc.)
-- Derived/computed properties (`isDark`, `hasWarning`, `polling`)
+  - Constructor with non-default initial state
+  - State mutation methods (`setLanguage`, `toggle`, `setEnabled`, etc.)
+  - Derived/computed properties (`isDark`, `hasWarning`, `polling`)
 
 **4.2** — Tests must not require jsdom or a real DOM. Browser-specific side
 effects (`persistLanguage`, `persistTheme`, `document.cookie`) are stubbed.

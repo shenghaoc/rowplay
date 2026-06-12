@@ -5,7 +5,7 @@
 Most Concept2 athletes train by perceived effort or split targets without a
 clear picture of where their training volume actually lands across intensity
 zones. rowplay already computes a Performance Management Chart (PMC) showing
-fitness/fatigue, but it gives no insight into the _composition_ of the training
+fitness/fatigue, but it gives no insight into the *composition* of the training
 load — is the athlete spending 80% at easy pace (polarised model) or grinding
 in the grey zone?
 

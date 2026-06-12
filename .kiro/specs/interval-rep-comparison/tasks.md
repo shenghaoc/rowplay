@@ -31,7 +31,7 @@ Implementation plan. Requirement references point at `requirements.md`.
   - _Requirements: 1.1, 1.2, 2.5, 2.6, 3.1, 3.3_
 
 - [x] **4. uPlot overlay chart** — inline in the panel or extracted to a
-      dedicated Svelte component `RepComparisonChart.svelte`
+  dedicated Svelte component `RepComparisonChart.svelte`
   - Initialise a uPlot instance when the panel expands; destroy on collapse or
     component unmount.
   - Multi-series data from `RepSeries[]` using `uPlot.AlignedData` format: a

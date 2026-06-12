@@ -74,8 +74,8 @@ know the pace and power figures were synthesised by EXR, not read from the PM.
    `"EXR source"`).
 3. The badge SHALL carry an accessible `title` attribute whose text comes from
    i18n key `replay.exrBadgeTitle` (English: `"Pace and power were synthesised
-by EXR, not read from the PM5. Numbers may not be directly comparable to
-PM-logged workouts."`).
+   by EXR, not read from the PM5. Numbers may not be directly comparable to
+   PM-logged workouts."`).
 4. The badge SHALL be rendered using the existing `.badge` CSS class (as used by
    the `lowRes` badge) — no new CSS classes shall be added solely for this
    badge's shape.

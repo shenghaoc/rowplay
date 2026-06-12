@@ -80,8 +80,8 @@ bucket consistently without ad-hoc logic scattered across the codebase.
 #### Acceptance criteria
 
 1. THE system SHALL add a pure function `durationBand(seconds: number):
-DurationBand` to `src/lib/analytics.ts`, returning `{ key: string; label:
-string; nominal: number }`.
+   DurationBand` to `src/lib/analytics.ts`, returning `{ key: string; label:
+   string; nominal: number }`.
 2. `durationBand` SHALL snap standard fixed-time targets to a stable key using
    a ±10% window:
    - 1 minute (60 s) → `"60"`
@@ -104,7 +104,7 @@ classification is not duplicated across the codebase.
 #### Acceptance criteria
 
 1. THE system SHALL provide a pure function `classifyAxis(workoutType: string |
-undefined): 'distance' | 'time'` in `src/lib/replay/comparabilityGuard.ts`.
+   undefined): 'distance' | 'time'` in `src/lib/replay/comparabilityGuard.ts`.
 2. The function SHALL classify as `'time'` any `workout_type` value whose
    semantics indicate a fixed-time target (e.g. strings containing `"FixedTime"`,
    `"JustRow"`, or the equivalent Concept2 canonical names for timed pieces).

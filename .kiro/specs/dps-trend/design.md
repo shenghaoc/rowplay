@@ -39,21 +39,21 @@ No new D1 queries or API calls are needed.
 ## Pure module — `src/lib/dpsTrend.ts`
 
 ```ts
-import type { Workout, Sport } from "$lib/types";
+import type { Workout, Sport } from '$lib/types';
 
 export interface DpsPoint {
-  date: string; // ISO date string
+  date: string;           // ISO date string
   workoutId: number;
   sport: Sport;
-  rawDps: number; // metres per stroke
-  normDps: number; // pace-normalised metres per stroke
-  avgPaceSecs: number; // seconds per 500 m (for tooltip)
+  rawDps: number;         // metres per stroke
+  normDps: number;        // pace-normalised metres per stroke
+  avgPaceSecs: number;    // seconds per 500 m (for tooltip)
   strokeCount: number;
 }
 
 export interface MovingAvgPoint {
   date: string;
-  value: number; // smoothed rawDps or normDps
+  value: number;          // smoothed rawDps or normDps
 }
 
 /**
@@ -63,7 +63,10 @@ export interface MovingAvgPoint {
  * referencePace: median avgPaceSecs across the returned points,
  *   or 120 if fewer than 3 points.
  */
-export function computeDpsTrend(workouts: Workout[], sport?: Sport): DpsPoint[];
+export function computeDpsTrend(
+  workouts: Workout[],
+  sport?: Sport,
+): DpsPoint[];
 
 /**
  * Centred rolling mean over windowDays calendar days.
@@ -71,7 +74,7 @@ export function computeDpsTrend(workouts: Workout[], sport?: Sport): DpsPoint[];
  */
 export function movingAverage(
   points: DpsPoint[],
-  metric: "rawDps" | "normDps",
+  metric: 'rawDps' | 'normDps',
   windowDays: number,
 ): MovingAvgPoint[];
 ```
@@ -104,17 +107,17 @@ chart, so stroke efficiency sits next to pace trend for easy mental pairing.
 
 New keys under `dashboard.dpsTrend` (all 6 locale files):
 
-| Key                              | EN value                       |
-| -------------------------------- | ------------------------------ |
-| `dashboard.dpsTrend.title`       | Stroke efficiency (DPS)        |
-| `dashboard.dpsTrend.raw`         | Raw DPS                        |
-| `dashboard.dpsTrend.normalised`  | Pace-normalised                |
-| `dashboard.dpsTrend.ma7`         | 7-day avg                      |
-| `dashboard.dpsTrend.ma28`        | 28-day avg                     |
-| `dashboard.dpsTrend.yLabel`      | m/stroke                       |
-| `dashboard.dpsTrend.empty`       | No stroke-count data available |
-| `dashboard.dpsTrend.tooltipPace` | Avg pace                       |
-| `dashboard.dpsTrend.tooltipDps`  | DPS                            |
+| Key | EN value |
+|-----|----------|
+| `dashboard.dpsTrend.title` | Stroke efficiency (DPS) |
+| `dashboard.dpsTrend.raw` | Raw DPS |
+| `dashboard.dpsTrend.normalised` | Pace-normalised |
+| `dashboard.dpsTrend.ma7` | 7-day avg |
+| `dashboard.dpsTrend.ma28` | 28-day avg |
+| `dashboard.dpsTrend.yLabel` | m/stroke |
+| `dashboard.dpsTrend.empty` | No stroke-count data available |
+| `dashboard.dpsTrend.tooltipPace` | Avg pace |
+| `dashboard.dpsTrend.tooltipDps` | DPS |
 
 ## Demo mode
 

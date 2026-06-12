@@ -32,7 +32,8 @@ guard, `reduceMotion` read, phase advance, `clearRect`), and the
         gradient (replaces flat `courseFill`).
   - [ ] 3.2 `drawGrid()` — 11 guides (minor/major), buoy `markerCap` cap at the
         primary waterline, bottom mono labels (keep current label maths).
-  - [ ] 3.3 `drawFinishGate()` — posts + checkered banner (reuse `cell` pattern) + faint accent glow; replaces `drawFinishFlag`.
+  - [ ] 3.3 `drawFinishGate()` — posts + checkered banner (reuse `cell` pattern)
+        + faint accent glow; replaces `drawFinishFlag`.
   - _Requirements: 1.1, 1.6_
 
 - [ ] 4. Lane scene — `drawLane(LaneOpts)`
@@ -84,7 +85,4 @@ guard, `reduceMotion` read, phase advance, `clearRect`), and the
   - [ ] 9.4 Manual demo verification (light/dark, play, scrub, ghost, sports,
         reduced-motion, shared `/r/<token>`).
   - _Requirements: 2.3, 3.1, 3.2, 5.1_
-
-```
-
 ```

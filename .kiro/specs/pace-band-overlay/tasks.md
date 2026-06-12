@@ -26,7 +26,7 @@ begins. Requirement references point at `requirements.md`.
 - [ ] **4. Target-pace UI control** — `replay/[id]/+page.svelte`
   - Collapsed by default; "Set target pace" expander link.
   - When expanded: `input input-bordered input-sm` for M:SS entry, `toggle
-toggle-sm` for band, clear button.
+    toggle-sm` for band, clear button.
   - On blur or Enter (not keystroke): call `parsePaceInput`; on valid result
     update `targetPaceSecs`; on invalid or empty set to `null`. Bind to
     `onchange` / `onblur` rather than `oninput` to avoid input lag and chart

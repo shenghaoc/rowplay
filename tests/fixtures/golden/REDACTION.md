@@ -6,12 +6,12 @@ data, credentials, or device identifiers.
 
 ## Removed or absent fields
 
-| Field                                                               | Policy                                                   |
-| ------------------------------------------------------------------- | -------------------------------------------------------- |
-| Result / user `id`                                                  | Replace with deterministic stand-ins (`9001`, `9002`, …) |
-| `first_name`, `last_name`, `username`, `email`, names in `comments` | Omit or `"REDACTED"`                                     |
-| `serial_number`, `device` (in `metadata`)                           | Omit entirely — not replaced with placeholders           |
-| Tokens, cookies, Authorization headers                              | Never included — fixtures are response bodies only       |
+| Field | Policy |
+|-------|--------|
+| Result / user `id` | Replace with deterministic stand-ins (`9001`, `9002`, …) |
+| `first_name`, `last_name`, `username`, `email`, names in `comments` | Omit or `"REDACTED"` |
+| `serial_number`, `device` (in `metadata`) | Omit entirely — not replaced with placeholders |
+| Tokens, cookies, Authorization headers | Never included — fixtures are response bodies only |
 
 ## Realistic performance values
 

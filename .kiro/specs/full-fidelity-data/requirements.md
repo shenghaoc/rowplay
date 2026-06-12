@@ -4,8 +4,8 @@
 
 rowplay reads the Concept2 Logbook result model server-side (`mapResult` /
 `mapSplits` in `src/lib/server/concept2.ts`) but keeps only a **subset** of the
-fields Concept2 carries. The athlete wants to _deeply_ analyze performance and
-_see everything Concept2 provides_ — and today the data layer silently drops
+fields Concept2 carries. The athlete wants to *deeply* analyze performance and
+*see everything Concept2 provides* — and today the data layer silently drops
 fields the API returns, so the analysis and the UI literally cannot reference
 data that exists.
 

@@ -56,6 +56,7 @@ Fix cramped dashboard stat cards on mobile: rename classes to `.dash-stats` / `.
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
 - [x] 3. Apply the CSS fix to `src/routes/dashboard/+page.svelte`
+
   - [x] 3.1 Add `.dash-stat { padding: 1rem 1.1rem; }` inside the `@media (max-width: 720px)` block
     - Open `src/routes/dashboard/+page.svelte` and locate the scoped `<style>` block
     - Find the existing `@media (max-width: 720px)` rule that sets `.dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }`

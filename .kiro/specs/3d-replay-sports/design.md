@@ -22,19 +22,19 @@ supplies the avatar builder plus a handful of scene/animation knobs.
 
 ```ts
 interface Avatar {
-  group: THREE.Group; // placed on the lap circle; gets bob/roll
-  animate(phase: number, reduceMotion: boolean): void; // sport-specific motion
+	group: THREE.Group;                       // placed on the lap circle; gets bob/roll
+	animate(phase: number, reduceMotion: boolean): void; // sport-specific motion
 }
 
 interface SportProfile {
-  waves: boolean; // displace the ground into rolling water
-  roll: boolean; // side-to-side hull roll (water only)
-  bobAmp: number; // vertical bob amplitude (0 = planted)
-  metersPerCycle: number; // distance per full stroke/pedal cycle
-  groundOpacity: number; // water translucent; snow/asphalt solid
-  trailColor: number | null; // spray colour, or null for no wake
-  groundColor(theme: "light" | "dark"): number;
-  make(accent: number, castShadow: boolean, opacity: number): Avatar;
+	waves: boolean;            // displace the ground into rolling water
+	roll: boolean;             // side-to-side hull roll (water only)
+	bobAmp: number;            // vertical bob amplitude (0 = planted)
+	metersPerCycle: number;    // distance per full stroke/pedal cycle
+	groundOpacity: number;     // water translucent; snow/asphalt solid
+	trailColor: number | null; // spray colour, or null for no wake
+	groundColor(theme: 'light' | 'dark'): number;
+	make(accent: number, castShadow: boolean, opacity: number): Avatar;
 }
 ```
 
@@ -60,11 +60,11 @@ A shared `applyOpacity(group, opacity)` helper makes the ghost lane translucent.
 
 ## Per-sport tuning
 
-| Sport  | ground                         | waves | roll | bobAmp | m/cycle | trail         |
-| ------ | ------------------------------ | ----- | ---- | ------ | ------- | ------------- |
-| rower  | water (laneLine palette, 0.4α) | yes   | yes  | 0.06   | 11      | foam (white)  |
-| skierg | snow (opaque)                  | no    | no   | 0.03   | 8       | spray (white) |
-| bike   | asphalt (opaque)               | no    | no   | 0.02   | 5       | none          |
+| Sport | ground | waves | roll | bobAmp | m/cycle | trail |
+|---|---|---|---|---|---|---|
+| rower | water (laneLine palette, 0.4α) | yes | yes | 0.06 | 11 | foam (white) |
+| skierg | snow (opaque) | no | no | 0.03 | 8 | spray (white) |
+| bike | asphalt (opaque) | no | no | 0.02 | 5 | none |
 
 Rowing values reproduce the previous behaviour exactly, so existing rowing
 replays look identical.
@@ -112,9 +112,9 @@ rowing and a bike workout rebuilds with the correct sport for free.
 
 ## File Manifest
 
-| File                                  | Change                                                                                                                |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/replay/renderer3d.ts`        | `Avatar` + `SportProfile`; rower/skier/cyclist builders; ground/wake/cadence driven by profile; sport constructor arg |
-| `src/routes/replay/[id]/+page.svelte` | Pass `detail.sport` to `CourseRenderer3D`                                                                             |
-| `tests/e2e/replay-3d.spec.ts`         | SkiErg + BikeErg 3D-toggle cases                                                                                      |
-| `.kiro/specs/3d-replay-sports/*`      | This spec                                                                                                             |
+| File | Change |
+|---|---|
+| `src/lib/replay/renderer3d.ts` | `Avatar` + `SportProfile`; rower/skier/cyclist builders; ground/wake/cadence driven by profile; sport constructor arg |
+| `src/routes/replay/[id]/+page.svelte` | Pass `detail.sport` to `CourseRenderer3D` |
+| `tests/e2e/replay-3d.spec.ts` | SkiErg + BikeErg 3D-toggle cases |
+| `.kiro/specs/3d-replay-sports/*` | This spec |

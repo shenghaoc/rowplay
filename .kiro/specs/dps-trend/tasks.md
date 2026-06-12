@@ -19,7 +19,7 @@ Implementation plan. Requirement references point at `requirements.md`.
 - [ ] **2. Unit tests** — `src/lib/dpsTrend.test.ts`
   - DPS formula: `distance=10000`, `strokeCount=500` → `rawDps=20`.
   - Normalisation identity: when `avgPaceSecs === referencePace`, `normDps ===
-rawDps`.
+    rawDps`.
   - Exclusion: workout with undefined `strokeCount` not in output.
   - Moving average: 5 points, window 3 days → known mean for middle point.
   - Empty input → empty output array.

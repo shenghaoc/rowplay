@@ -86,17 +86,17 @@ This document records the June 2026 audit of rowplay against current library doc
 
 ## Audit Verdict Summary
 
-| Area                     | Overall verdict                            |
-| ------------------------ | ------------------------------------------ |
-| Svelte 5 / runes         | ✅ Modern                                  |
-| SvelteKit 2 patterns     | ⚠️ `$app/stores` deprecated                |
-| Tailwind v4 + daisyUI v5 | ✅ Modern CSS-first setup                  |
-| Unused npm packages      | ❌ 3 dead dependencies                     |
-| HTML semantics           | ✅ Good; native overlay primitives missing |
-| 2026 CSS (PR_223 set)    | ❌ Not adopted in rowplay                  |
-| Temporal strategy        | ✅ Correct polyfill gating                 |
-| Security                 | ⚠️ No CSP                                  |
-| E2E target (WebKit)      | ✅ Appropriate for polyfill coverage       |
+| Area | Overall verdict |
+|------|-----------------|
+| Svelte 5 / runes | ✅ Modern |
+| SvelteKit 2 patterns | ⚠️ `$app/stores` deprecated |
+| Tailwind v4 + daisyUI v5 | ✅ Modern CSS-first setup |
+| Unused npm packages | ❌ 3 dead dependencies |
+| HTML semantics | ✅ Good; native overlay primitives missing |
+| 2026 CSS (PR_223 set) | ❌ Not adopted in rowplay |
+| Temporal strategy | ✅ Correct polyfill gating |
+| Security | ⚠️ No CSP |
+| E2E target (WebKit) | ✅ Appropriate for polyfill coverage |
 
 ## References
 

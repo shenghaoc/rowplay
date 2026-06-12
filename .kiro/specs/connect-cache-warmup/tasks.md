@@ -21,7 +21,7 @@ walkthrough (Workers runtime + real token) is left to the maintainer.
 - [x] **2. Warm the cache on connect** — `data.ts`, `auth/token/+page.server.ts`, `app.d.ts`
   - [x] 2.1 Extract `runSync(db, userId, client, full)` from `syncWorkouts`
   - [x] 2.2 `scheduleConnectSync(event, sid, user, token)`: build client from the token,
-        `ctx.waitUntil(runSync(…, /* full */ true))`; no-op without `waitUntil`/D1
+    `ctx.waitUntil(runSync(…, /* full */ true))`; no-op without `waitUntil`/D1
   - [x] 2.3 Call it from the connect action after cookies, before redirect
   - [x] 2.4 `app.d.ts`: add `Platform.context: ExecutionContext`
   - [x] 2.5 Confirm KV still stores an empty access token (no token leak)

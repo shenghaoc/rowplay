@@ -17,7 +17,7 @@ checked as the work lands. Requirement references point at `requirements.md`.
   - _Requirements: 1.3_
 
 - [x] **4. Server helpers + API** — `src/lib/server/hrImport.ts`,
-      `src/routes/api/workouts/[id]/hr-import/+server.ts`
+  `src/routes/api/workouts/[id]/hr-import/+server.ts`
   - POST merge + cache; DELETE strip/refetch; 401 in live mode.
   - _Requirements: 4.2, 4.5_
 
@@ -31,9 +31,9 @@ checked as the work lands. Requirement references point at `requirements.md`.
   - _Requirements: 5.2_
 
 - [x] **7. E2E smoke + fixture** — `tests/fixtures/hr-watch.csv`,
-      `tests/e2e/hr-import.spec.ts`
+  `tests/e2e/hr-import.spec.ts`
   - _Requirements: 5.3_
 
 - [x] **8. Full gate + HANDOFF** — run check/build/test/e2e; remove parking-lot
-      line from `HANDOFF.md`; check task boxes in this file.
+  line from `HANDOFF.md`; check task boxes in this file.
   - _Requirements: 5.3_

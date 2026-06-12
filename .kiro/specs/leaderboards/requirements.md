@@ -5,7 +5,7 @@
 rowplay's moat is the post-workout **replay / re-watch** experience: an avatar
 racing a course with synchronized telemetry, plus **ghost racing** your past
 self, a constant pace, or an uploaded file. Today that race is always solo —
-the only rivals available are _your own_ sessions, a synthetic pace boat, or a
+the only rivals available are *your own* sessions, a synthetic pace boat, or a
 file you upload.
 
 This feature opens the race up to **other rowplay athletes**. Athletes publish a
@@ -17,7 +17,7 @@ exist: **shareable replays** (`/r/<token>`, capability tokens on D1) and
 **ghost racing** (the replay engine's second-avatar lane).
 
 This is a parking-lot item promoted from `HANDOFF.md`
-("Leaderboards / multiplayer race: race ghosts of _other_ rowplay users on the
+("Leaderboards / multiplayer race: race ghosts of *other* rowplay users on the
 same workout — extends the share infra"). It must obey every project rule in
 `AGENTS.md`: it works in **demo mode**, every string goes through **i18n**
 (en + zh), it uses the existing **RACE BOARD** design tokens, and it passes the

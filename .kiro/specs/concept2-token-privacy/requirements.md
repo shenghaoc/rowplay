@@ -35,7 +35,7 @@ This spec makes BYOT **private by default**: the token lives only in the
 athlete's browser (sealed, httpOnly — never in client JS, never in shared server
 storage); the athlete's workout data is **cached in D1 only for the life of a
 session** and purged when they disconnect; and the **only** way any of the
-athlete's data is exposed to _other_ athletes is an **explicit, reversible**
+athlete's data is exposed to *other* athletes is an **explicit, reversible**
 choice to publish to the leaderboard.
 
 It must obey every project rule in `AGENTS.md`: it works in **demo mode**
@@ -67,7 +67,7 @@ quality gate (`check` + `build` + `test` + `test:e2e`).
 - **Session-scoped cache** — the D1 `workout` rows and cached `workout_detail`
   for an athlete, treated as a cache whose lifecycle is bound to an active
   session: lazily populated, refreshable, and purged on disconnect. (As opposed
-  to a _durable mirror_ that lives on indefinitely by default.)
+  to a *durable mirror* that lives on indefinitely by default.)
 
 ## Requirements
 

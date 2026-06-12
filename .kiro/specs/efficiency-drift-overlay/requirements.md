@@ -2,14 +2,14 @@
 
 ## Introduction
 
-The replay scrubber turns a raw workout into a _film_. This feature adds a
+The replay scrubber turns a raw workout into a *film*. This feature adds a
 **second layer of intelligence to that film**: a distance-per-stroke (DPS) trace
 that animates with the playhead and shows, at a glance, whether the athlete's
 efficiency held, drifted, or collapsed as the piece wore on.
 
 DPS (metres/stroke = `30000 / (pace × spm)`) is the **real output metric** for
 a Concept2 athlete: it captures exactly how much work each stroke produced.
-Efficiency _fade_ manifests as DPS sagging while stroke rate holds or rises — the
+Efficiency *fade* manifests as DPS sagging while stroke rate holds or rises — the
 athlete is working harder for less boat. This is the insight the overlay delivers.
 
 The overlay is **self-contained**: it defines its own baseline from the opening

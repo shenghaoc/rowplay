@@ -49,21 +49,17 @@ export function historyWindowStart(now?: Temporal.PlainDate): string;
 
 /** Pure decision: what the next sync run should do, given persisted state. */
 export type SyncPlan =
-  | { kind: "window"; from: string } // first connect
-  | { kind: "incremental"; from: string | undefined } // forward catch-up
-  | { kind: "backfill"; to: string } // older than watermark
-  | { kind: "done" }; // fully backfilled
-export function planSync(
-  state: SyncState | null,
-  now: Temporal.PlainDate,
-  mode: SyncMode,
-): SyncPlan;
+  | { kind: 'window'; from: string }                 // first connect
+  | { kind: 'incremental'; from: string | undefined } // forward catch-up
+  | { kind: 'backfill'; to: string }                 // older than watermark
+  | { kind: 'done' };                                // fully backfilled
+export function planSync(state: SyncState | null, now: Temporal.PlainDate, mode: SyncMode): SyncPlan;
 
 /** Fold a fetched chunk into the watermark; only ever moves outward. */
 export function mergeWatermark(
   prev: { lastDate: string | null; oldestDate: string | null; backfillDone: boolean },
   chunkDates: string[],
-  reachedEnd: boolean,
+  reachedEnd: boolean
 ): { lastDate: string | null; oldestDate: string | null; backfillDone: boolean };
 ```
 
@@ -79,12 +75,12 @@ export function mergeWatermark(
   2.5). Pure, fully unit-tested.
 
 **Day-boundary precision (accepted limitation).** The `to` bound is the calendar
-day _before_ the oldest workout seen (`overlapDate`), so the cursor always moves
+day *before* the oldest workout seen (`overlapDate`), so the cursor always moves
 strictly backward and is guaranteed to terminate. The trade-off: if a single
 calendar day holds more workouts than one backfill run can drain
 (`BACKFILL_PAGES_PER_RUN × 250` = 1000), the un-fetched remainder of that day is
 skipped once the cursor steps past it. This is accepted — 1000 logged pieces in
-one calendar day is not a real athlete profile. An _inclusive_ same-day bound
+one calendar day is not a real athlete profile. An *inclusive* same-day bound
 (`to = oldest.slice(0,10)`) is deliberately **not** used: because each run
 re-pages newest-first from page 1, an inclusive bound would re-fetch the same
 newest pages every run and never advance `oldest_date` for any athlete with more
@@ -182,7 +178,7 @@ Both paths reuse `upsertWorkouts` (idempotent) and `countWorkouts` for `total`.
   returns `{ added, oldestDate, done }`. Demo returns `{ added: 0, done: true }`
   (no-op), mirroring `/api/live/poll`'s demo short-circuit.
 - Both: `isHttpError` passthrough, `no such table` → 503, `cache-control:
-private, no-store` — matching the existing handlers.
+  private, no-store` — matching the existing handlers.
 
 ## Background driver + on-demand — UI
 
@@ -191,7 +187,7 @@ private, no-store` — matching the existing handlers.
   repeatedly until `done`, **paced** between calls and backing off on 429 —
   modeled on the existing live-mode poll loop in `dashboard/+page.svelte`. It
   resumes naturally next session because the cursor is in D1 (Req 2.2).
-- **Note:** the docs state the API is _not currently_ rate limited ("This may
+- **Note:** the docs state the API is *not currently* rate limited ("This may
   change in the future. Abuse of the API will result in either rate limits or
   removal of access."), so the chunking + pacing + 429 backoff are **good
   citizenship / future-proofing**, not a workaround for a present hard limit —

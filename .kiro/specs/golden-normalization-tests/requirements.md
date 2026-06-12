@@ -6,7 +6,7 @@ rowplay's normalization layer (`mapResult`, `mapStrokes`, `mapSplits` in
 `src/lib/server/concept2.ts`) converts raw Concept2 API wire values — time in
 tenths of a second, distance in decimetres, pace in tenths with BikeErg
 per-1000m — into the internal SI-like units the rest of the app consumes. Today
-nothing _proves_ these conversions are correct end-to-end: the raw-field
+nothing *proves* these conversions are correct end-to-end: the raw-field
 inspector shows raw-vs-normalized but both values derive from the same code path,
 so a systematic bug in `mapStrokes` would appear self-consistent in the UI while
 silently corrupting every replay, pace display, and watt calculation.
@@ -147,28 +147,18 @@ how to import it.
    ```jsonc
    {
      "description": "<human-readable case description>",
-     "rawResult": {
-       /* RawResult shape as returned by GET /results/{id} */
-     },
-     "rawStrokes": [
-       /* RawStroke[] as returned by GET /results/{id}/strokes */
-     ],
+     "rawResult": { /* RawResult shape as returned by GET /results/{id} */ },
+     "rawStrokes": [ /* RawStroke[] as returned by GET /results/{id}/strokes */ ],
      "expected": {
-       "result": {
-         /* Partial<Workout> — the fields under test */
-       },
-       "strokes": [
-         /* selected Stroke objects (first, last, key reps) */
-       ],
-       "splits": [
-         /* Split[] or [] if not asserted */
-       ],
-     },
+       "result": { /* Partial<Workout> — the fields under test */ },
+       "strokes": [ /* selected Stroke objects (first, last, key reps) */ ],
+       "splits": [ /* Split[] or [] if not asserted */ ]
+     }
    }
    ```
 3. THE test file SHALL import fixtures via static Vite/Vitest JSON imports
    (e.g. `import fixture from '../../fixtures/golden/rower-steady.fixture.json'
-assert { type: 'json' }`) — no `fs.readFileSync`, no dynamic runtime I/O.
+   assert { type: 'json' }`) — no `fs.readFileSync`, no dynamic runtime I/O.
 4. WHERE the fixture does not assert `mapStrokes` (e.g. splits-only fallback
    case), `rawStrokes` SHALL be an empty array `[]` and
    `expected.strokes` SHALL be `[]`.

@@ -18,7 +18,7 @@ checked as the work lands. Requirement references point at `requirements.md`.
 
 - [x] **3. D1 watermark** — `migrations/0006_history_window.sql` + `db.ts`
   - `ALTER TABLE sync_state ADD oldest_date TEXT`, `ADD backfill_done INTEGER
-NOT NULL DEFAULT 0`. Extend `SyncState`, `getSyncState`, and
+    NOT NULL DEFAULT 0`. Extend `SyncState`, `getSyncState`, and
     `setSyncState`/`setBackfillState`. Verify `purgePrivateCache` /
     `deleteUserData` still clear it (no change expected).
   - _Requirements: 1.4, 2.2, 7.2_

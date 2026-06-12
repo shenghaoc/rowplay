@@ -55,14 +55,14 @@ and `deviceOsVersion` are stripped — `source` is not hardware-identifying).
 ## Pure detector: `src/lib/exrSource.ts`
 
 ```ts
-import type { Workout } from "./types";
+import type { Workout } from './types';
 
 /**
  * True when source matches the observed EXR value (case-insensitive).
  * EXR is not listed in Concept2 API docs; verify against real logbook data.
  */
-export function isExrSource(workout?: Pick<Workout, "source"> | null): boolean {
-  return workout?.source?.toUpperCase() === "EXR";
+export function isExrSource(workout?: Pick<Workout, 'source'> | null): boolean {
+  return workout?.source?.toUpperCase() === 'EXR';
 }
 ```
 
@@ -74,16 +74,16 @@ export function isExrSource(workout?: Pick<Workout, "source"> | null): boolean {
 ### Unit test: `src/lib/exrSource.test.ts`
 
 ```ts
-import { describe, it, expect } from "vitest";
-import { isExrSource } from "./exrSource";
+import { describe, it, expect } from 'vitest';
+import { isExrSource } from './exrSource';
 
-describe("isExrSource", () => {
-  it('returns true for "EXR"', () => expect(isExrSource({ source: "EXR" })).toBe(true));
-  it("returns true case-insensitively", () => expect(isExrSource({ source: "exr" })).toBe(true));
-  it("returns false for ErgData", () => expect(isExrSource({ source: "ErgData" })).toBe(false));
-  it("returns false for Web", () => expect(isExrSource({ source: "Web" })).toBe(false));
-  it("returns false when source is absent", () => expect(isExrSource({})).toBe(false));
-  it("returns false when workout is null or undefined", () => {
+describe('isExrSource', () => {
+  it('returns true for "EXR"', () => expect(isExrSource({ source: 'EXR' })).toBe(true));
+  it('returns true case-insensitively', () => expect(isExrSource({ source: 'exr' })).toBe(true));
+  it('returns false for ErgData', () => expect(isExrSource({ source: 'ErgData' })).toBe(false));
+  it('returns false for Web', () => expect(isExrSource({ source: 'Web' })).toBe(false));
+  it('returns false when source is absent', () => expect(isExrSource({})).toBe(false));
+  it('returns false when workout is null or undefined', () => {
     expect(isExrSource(null)).toBe(false);
     expect(isExrSource(undefined)).toBe(false);
   });
@@ -180,10 +180,10 @@ All locale files (`en`, `zh`, `de`, `es`, `fr`, `ja`) under `src/lib/locales/`
 must gain these three keys under the `replay` namespace, inserted after the
 existing `provenanceTitle` / `mDevice` block for locality:
 
-| Key                    | English value                                                                                                                    |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `replay.mSource`       | `"Logged by"`                                                                                                                    |
-| `replay.exrBadge`      | `"EXR source"`                                                                                                                   |
+| Key | English value |
+|-----|--------------|
+| `replay.mSource` | `"Logged by"` |
+| `replay.exrBadge` | `"EXR source"` |
 | `replay.exrBadgeTitle` | `"Pace and power were synthesised by EXR, not read from the PM5. Numbers may not be directly comparable to PM-logged workouts."` |
 
 Non-English locales may use a machine-translation placeholder in the initial
@@ -193,26 +193,26 @@ implementation; the validator only checks key presence.
 
 ## What is explicitly NOT changing
 
-| Area                                         | Reason                                                       |
-| -------------------------------------------- | ------------------------------------------------------------ |
-| `src/lib/analytics.ts`                       | EXR pieces are analysed identically; FLAG not quarantine     |
-| Leaderboard publish logic                    | EXR pieces may be published; no exclusion                    |
-| `src/lib/replay/renderer.ts` and `engine.ts` | No EXR-specific rendering                                    |
-| `redactForPublic()` in `share.ts`            | `source` already passes through                              |
-| D1 `workouts` summary table                  | No `source` column; badge scope uses detail cache / API only |
-| Race card PNG download                       | No EXR annotation on the card (out of scope)                 |
+| Area | Reason |
+|------|--------|
+| `src/lib/analytics.ts` | EXR pieces are analysed identically; FLAG not quarantine |
+| Leaderboard publish logic | EXR pieces may be published; no exclusion |
+| `src/lib/replay/renderer.ts` and `engine.ts` | No EXR-specific rendering |
+| `redactForPublic()` in `share.ts` | `source` already passes through |
+| D1 `workouts` summary table | No `source` column; badge scope uses detail cache / API only |
+| Race card PNG download | No EXR annotation on the card (out of scope) |
 
 ---
 
 ## Testing strategy
 
-| Layer         | Coverage                                                                       |
-| ------------- | ------------------------------------------------------------------------------ |
-| Unit          | `exrSource.test.ts` — true/false/absent/case-insensitive paths                 |
-| Type          | `pnpm run check` — `isExrSource` call sites type-check; `Spec.source` optional |
-| Build         | `pnpm run build` — no SSR access to DOM; `isExrSource` is pure                 |
-| Manual (demo) | `/replay/1004` → EXR badge visible; `/replay/1001` → no badge                  |
-| Locale        | `pnpm run validate:locales` — zero missing-key errors                          |
+| Layer | Coverage |
+|-------|---------|
+| Unit | `exrSource.test.ts` — true/false/absent/case-insensitive paths |
+| Type | `pnpm run check` — `isExrSource` call sites type-check; `Spec.source` optional |
+| Build | `pnpm run build` — no SSR access to DOM; `isExrSource` is pure |
+| Manual (demo) | `/replay/1004` → EXR badge visible; `/replay/1001` → no badge |
+| Locale | `pnpm run validate:locales` — zero missing-key errors |
 
 ---
 

@@ -4,12 +4,12 @@ Implementation plan. Each task is committed and pushed on its own. Boxes are
 checked as the work lands. Requirement references point at `requirements.md`.
 
 - [x] **1. Confirm the read schema** — capture a real
-      `GET /api/users/me/results/{id}` response (interval + steady) and verify the
-      three open items: is `workout.targets` echoed on read; is the result
-      `metadata` block echoed (and which keys); are rest periods separate
-      `intervals[]` rows or only `rest_time`/`rest_distance` on work rows. Record
-      findings in `design.md`; downgrade any read-absent field to "best-effort when
-      present".
+  `GET /api/users/me/results/{id}` response (interval + steady) and verify the
+  three open items: is `workout.targets` echoed on read; is the result
+  `metadata` block echoed (and which keys); are rest periods separate
+  `intervals[]` rows or only `rest_time`/`rest_distance` on work rows. Record
+  findings in `design.md`; downgrade any read-absent field to "best-effort when
+  present".
   - _Requirements: 1.2, 1.3, Open verification_
 
 - [x] **2. Widen the shared types** — `src/lib/types.ts`
