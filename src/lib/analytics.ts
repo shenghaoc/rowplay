@@ -1982,20 +1982,43 @@ export interface WorkRestEfficiency {
 /** Work:rest summary for interval pieces using captured rest fields. */
 export function workRestEfficiency(detail: WorkoutDetail): WorkRestEfficiency | null {
 	if (!detail.isInterval) return null;
-	const workSplits = detail.splits.filter((s) => !s.isRest);
-	if (!workSplits.length) return null;
-	const workTime = workSplits.reduce((a, s) => a + s.time, 0);
-	const workDistance = workSplits.reduce((a, s) => a + s.distance, 0);
-	const restFromSplits = detail.splits.filter((s) => s.isRest).reduce((a, s) => a + s.time, 0);
+
+	let workTime = 0;
+	let workDistance = 0;
+	let restFromSplits = 0;
+	let restDistanceFromSplits = 0;
+	let hasRestDistance = false;
+	let workCount = 0;
+	let paceSum = 0;
+	let paceCount = 0;
+
+	for (let i = 0; i < detail.splits.length; i++) {
+		const s = detail.splits[i];
+		if (s.isRest) {
+			restFromSplits += s.time;
+			if (s.restDistance != null) {
+				restDistanceFromSplits += s.restDistance;
+				hasRestDistance = true;
+			}
+		} else {
+			workCount++;
+			workTime += s.time;
+			workDistance += s.distance;
+			if (s.pace > 0) {
+				paceSum += s.pace;
+				paceCount++;
+			}
+		}
+	}
+
+	if (workCount === 0) return null;
+
 	const restTime = detail.restTime ?? (restFromSplits > 0 ? restFromSplits : undefined);
 	const restDistance =
-		detail.restDistance ??
-		(detail.splits.some((s) => s.isRest && s.restDistance != null)
-			? detail.splits.filter((s) => s.isRest).reduce((a, s) => a + (s.restDistance ?? 0), 0)
-			: undefined);
-	const paces = workSplits.map((s) => s.pace).filter((p) => p > 0);
-	const avgWorkPace = paces.length ? paces.reduce((a, b) => a + b, 0) / paces.length : detail.pace;
+		detail.restDistance ?? (hasRestDistance ? restDistanceFromSplits : undefined);
+	const avgWorkPace = paceCount > 0 ? paceSum / paceCount : detail.pace;
 	const timeRatio = restTime != null && restTime > 0 ? workTime / restTime : undefined;
+
 	return { workTime, restTime, workDistance, restDistance, timeRatio, avgWorkPace };
 }
 
