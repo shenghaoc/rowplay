@@ -1813,6 +1813,10 @@
 			</div>
 		{/if}
 	</div>
+	<p class="muted charts-help">
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+		<a href="/docs/pace-splits-watts">{t('docs.contextual.metrics')}</a>
+	</p>
 
 	<!-- Rep comparison -->
 	{#if hasReps}
@@ -2621,6 +2625,10 @@
 		grid-template-columns: repeat(2, 1fr);
 		gap: 0.75rem;
 		margin-bottom: 0.75rem;
+	}
+	.charts-help {
+		margin: 0 0 0.75rem;
+		font-size: 0.85rem;
 	}
 	.analysis {
 		display: grid;

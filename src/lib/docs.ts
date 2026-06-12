@@ -1,3 +1,30 @@
+/**
+ * Registry of in-app user-guide sections. Each entry maps a SvelteKit route
+ * under /docs to the locale dictionary key that holds its nav title and
+ * markdown body (docs.sections.<key>).
+ */
+export const DOCS_SECTIONS = [
+  { slug: "", key: "overview" },
+  { slug: "getting-started", key: "gettingStarted" },
+  { slug: "rowing-metrics", key: "rowingMetrics" },
+  { slug: "pace-splits-watts", key: "paceSplitsWatts" },
+  { slug: "charts-and-progress", key: "chartsAndProgress" },
+  { slug: "workflows", key: "workflows" },
+  { slug: "faq", key: "faq" },
+  { slug: "troubleshooting", key: "troubleshooting" },
+] as const;
+
+export type DocsSectionKey = (typeof DOCS_SECTIONS)[number]["key"];
+
+export function docsSectionPath(slug: string): string {
+  return slug ? `/docs/${slug}` : "/docs";
+}
+
+export function isActiveDocsSection(slug: string, pathname: string): boolean {
+  if (!slug) return pathname === "/docs" || pathname === "/docs/";
+  return pathname === `/docs/${slug}` || pathname.startsWith(`/docs/${slug}/`);
+}
+
 export type InlineNode =
   | { id: string; type: "text"; text: string }
   | { id: string; type: "code"; text: string }

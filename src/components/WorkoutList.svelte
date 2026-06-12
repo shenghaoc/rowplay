@@ -125,7 +125,11 @@
 {/snippet}
 
 {#if workouts.length === 0}
-	<p class="muted">{t('workoutList.empty')}</p>
+	<p class="muted">
+		{t('workoutList.empty')}
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+		<a href="/docs/getting-started">{t('docs.contextual.gettingStarted')}</a>
+	</p>
 {:else if virtual}
 	<!-- Windowed list: a fixed-height scroller with absolutely-positioned rows. -->
 	<div class="vscroll" bind:this={scrollEl}>

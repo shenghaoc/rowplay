@@ -71,7 +71,7 @@ export const en = {
   nav: {
     dashboard: "Dashboard",
     leaderboard: "Leaderboards",
-    docs: "Docs",
+    docs: "Help",
     settings: "Data",
     menuOpen: "Open menu",
     menuClose: "Close menu",
@@ -142,75 +142,310 @@ export const en = {
   },
   docs: {
     title: "User guide",
-    description: "How to use rowplay and keep repository documentation in sync with the website.",
+    description:
+      "How to use rowplay: getting started, rowing terms, pace and watts, charts, workflows, FAQ, and troubleshooting.",
     badge: "Repository-backed docs",
     openDashboard: "Open dashboard",
     openSource: "View source",
-    guideMarkdown: `# rowplay user guide
+    navLabel: "User guide sections",
+    contextual: {
+      gettingStarted: "New here? Read the getting-started guide",
+      metrics: "What do pace, watts, and stroke rate mean?",
+      charts: "How to read this chart",
+      troubleshooting: "Missing or confusing data? See troubleshooting",
+      workflows: "Learn how leaderboards and ghost racing work",
+    },
+    sections: {
+      overview: {
+        navTitle: "Overview",
+        markdown: `# rowplay user guide
 
-rowplay turns Concept2 logbook results into a dashboard, replay, comparison, and leaderboard experience for RowErg, SkiErg, and BikeErg workouts.
+rowplay turns your indoor rowing, skiing, and riding workouts into something you can explore: a dashboard of totals and trends, a stroke-by-stroke replay, side-by-side comparisons, and friendly leaderboards.
 
-## Start in demo mode
+It works with workouts recorded on Concept2 machines — the RowErg (rowing machine), SkiErg, and BikeErg — and reads them from the free Concept2 online logbook. You do not need to know any rowing jargon to start: this guide explains every term it uses.
 
-Demo mode is the default. Open rowplay without signing in and the app loads deterministic sample workouts, so you can try the dashboard and replay without a Concept2 account.
+## What you can do here
 
-1. Open /dashboard.
-2. Pick a workout from the list.
-3. Press **Replay** and use play, pause, scrub, and speed controls.
-4. Open /leaderboard to try a ghost race from sample data.
+- **Dashboard** — totals, trends, personal bests, and training load at a glance.
+- **Replay** — watch any workout play back stroke by stroke, with pace, stroke rate, power, and heart-rate charts in sync.
+- **Compare** — put two workouts side by side, split by split.
+- **Leaderboards** — publish a result and race other athletes as on-screen "ghosts".
 
-## Connect your Concept2 logbook
+## Guide sections
 
-Production authentication is bring-your-own-token. The personal Concept2 API token is sent once over HTTPS, validated by the Worker, and sealed into the httpOnly rp_tok cookie. KV stores session identity, and D1 stores cached workouts and replay data. The token is not stored in KV or D1.
+- [Getting started](/docs/getting-started) — demo mode, connecting your logbook, your first sync.
+- [Rowing basics](/docs/rowing-metrics) — strokes, splits, and the other terms you will meet.
+- [Pace, splits & watts](/docs/pace-splits-watts) — what the numbers mean and how they relate.
+- [Charts & progress](/docs/charts-and-progress) — how to read the dashboard panels.
+- [Common workflows](/docs/workflows) — replaying, ghost racing, comparing, sharing, exporting.
+- [FAQ](/docs/faq) — quick answers about accounts, privacy, and data.
+- [Troubleshooting](/docs/troubleshooting) — missing data, odd numbers, display issues.
 
-1. In the Concept2 logbook, open **Edit Profile -> Applications**.
-2. Copy your personal API token.
-3. In rowplay, open /auth/token.
-4. Paste the token and submit it.
-5. Open /dashboard and use **Sync** to load the full logbook history.
+> Tip: rowplay starts in demo mode with sample workouts, so you can try everything on this list before connecting a Concept2 account.`,
+      },
+      gettingStarted: {
+        navTitle: "Getting started",
+        markdown: `# Getting started
 
-Use /settings to disconnect or delete cached account data.
+## Try the demo first
 
-## Read the dashboard
+rowplay starts in demo mode: with no account connected, every page is filled with realistic sample workouts. Nothing you do in demo mode touches a real account.
 
-- Use sport and distance filters to narrow the workout list.
-- Watch totals, pace trends, personal bests, annual goals, and training load.
-- Open the latest workout directly, or compare two efforts from the list.
-- Use tags and filters to keep specific sessions easy to find later.
+1. Open the [dashboard](/dashboard).
+2. Pick any workout from the list.
+3. Press **Replay** and try the play, pause, scrub, and speed controls.
+4. Open the [leaderboards](/leaderboard) and try racing a ghost.
 
-When rowplay only has recent history, run **Sync** before relying on long-range personal bests or trends.
+## Connect your own workouts
+
+Your workouts live in the Concept2 logbook — the free online diary that Concept2 machines (and the ErgData phone app) upload results to. rowplay reads from that logbook using a personal access token: a long code that acts as a read key for your data.
+
+1. Sign in to your logbook at log.concept2.com.
+2. Open **Edit Profile → Applications** and copy your personal API token.
+3. Back in rowplay, open [Use a token](/auth/token).
+4. Paste the token and submit.
+5. On the dashboard, press **Sync** to load your workout history.
+
+The token is sent once over an encrypted connection and kept only in a protected browser cookie. rowplay's servers cache workout data so pages load fast, but never store the token itself.
+
+## Your first sync
+
+The first sync loads recent workouts right away and keeps filling in older history in the background. Until it finishes, long-term totals and personal bests may look incomplete — that is normal. If something still looks off later, see [Troubleshooting](/docs/troubleshooting).
+
+## Disconnecting
+
+Open [Data](/settings) at any time to disconnect. This clears your session and removes your cached workout data from rowplay. Your Concept2 logbook is never modified.`,
+      },
+      rowingMetrics: {
+        navTitle: "Rowing basics",
+        markdown: `# Rowing basics
+
+New to indoor rowing — or just to its vocabulary? These are the terms rowplay uses.
+
+## The machines
+
+- **RowErg** — Concept2's rowing machine ("erg" is short for ergometer, a machine that measures work).
+- **SkiErg** — a standing machine that mimics the poling motion of cross-country skiing.
+- **BikeErg** — Concept2's stationary bike.
+
+All three measure effort the same way, so rowplay shows them with the same kinds of numbers.
+
+## The stroke
+
+One **stroke** is one complete cycle of the movement — on the RowErg: the leg drive, the pull, and the slide back to the start. Two numbers describe your strokes:
+
+- **Stroke rate (spm)** — strokes per minute: how fast you cycle the movement. Steady rowing is typically 18–30 spm.
+- **Distance per stroke (DPS)** — how many meters each stroke earns you. Higher usually means a more powerful, more efficient stroke.
+
+A high stroke rate does not automatically mean more speed: 20 strong strokes per minute can move you faster than 30 rushed ones.
+
+## Distance and time
+
+The machine converts your effort into **meters**, as if you were moving a boat (or skis, or a bike) over a course. Workouts are either distance-based ("row 2000m") or time-based ("row for 30 minutes"). An **interval workout** breaks the piece into repeats with rest in between — for example 4 × 500m.
+
+## Pace and splits
+
+**Pace** is how long you take to cover a fixed distance — 500 meters on the RowErg and SkiErg, 1000 meters on the BikeErg. A **split** is your pace over one segment of a workout. These two are the heart of erg training, so they have [their own page](/docs/pace-splits-watts).
+
+## Heart rate
+
+If you wear a heart-rate belt or watch connected to the machine or the ErgData app, beats per minute (**bpm**) appear alongside the other numbers and get their own chart in the replay.`,
+      },
+      paceSplitsWatts: {
+        navTitle: "Pace, splits & watts",
+        markdown: `# Pace, splits & watts
+
+These are the numbers erg training centers on. rowplay computes everything for you — but knowing what they mean makes every chart easier to read.
+
+## Pace: time per 500m
+
+Pace answers: "at this speed, how long would 500 meters take me?" It is written like a clock time — **2:05** means 2 minutes 5 seconds per 500m.
+
+- **Lower is faster.** 1:55 is a faster pace than 2:05.
+- On charts, improving pace means the line going **down**.
+- **BikeErg pace is per 1000m**, not 500m, because bikes are faster. rowplay handles this automatically — so don't be surprised that bike paces look similar to rowing paces.
+
+## Splits
+
+A split is your average pace over one chunk of a workout — each 500m of a 2000m piece, or each interval of an interval session. Comparing splits shows how you spent your effort: even splits, a fade at the end, or a fast finish (a "negative split" means each split is faster than the last).
+
+## Watts
+
+Watts measure your power output — the same unit as a light bulb. Where pace tells you the result, watts tell you the work. They are two views of the same effort: holding roughly 2:00/500m takes about 200 watts, and small pace gains demand disproportionately more power — going from 2:00 to 1:54 costs around 30 extra watts.
+
+Steady rowing might sit between 100 and 250 watts depending on fitness; sprints can spike far higher.
+
+## Stroke rate is not effort
+
+Stroke rate (spm) tells you how often you stroke, not how hard. Two rowers can both hold 2:00 pace — one at 22 strong strokes per minute, one at 28 lighter ones. Watching pace **and** rate together (the replay charts both) reveals technique: the same pace at a lower rate means more distance per stroke.
+
+## Where to see these
+
+- The **dashboard** shows average pace, totals, and personal bests across workouts.
+- The **replay** charts pace, stroke rate, watts, and heart rate over the whole workout, synchronized with playback.
+- The **per-rep comparison** in a replay breaks interval workouts into split-by-split bars.`,
+      },
+      chartsAndProgress: {
+        navTitle: "Charts & progress",
+        markdown: `# Charts & progress
+
+The dashboard turns your history into a set of panels. This page explains how to read them.
+
+## Trend over time
+
+The trend chart follows one metric — pace, distance, stroke rate, or distance per stroke — across weeks of workouts. To stay fair, pace trends compare **like for like**: a sprint and a long steady row are never mixed into one line. Workouts are grouped into distance bands, and you pick the band to inspect.
+
+- For **pace**, down is better (less time per 500m).
+- A verdict line above the chart summarizes the direction: improving, holding steady, or slipping.
+- A band needs at least two sessions before a trend can be drawn.
+
+## Personal bests
+
+The PB panel tracks your fastest results at standard distances (500m, 1k, 2k, 5k, 6k, 10k, and longer). Make sure a full sync has finished before trusting all-time bests — see [Troubleshooting](/docs/troubleshooting).
+
+## Training calendar & intensity
+
+The calendar shades each day by how much you trained, so streaks and gaps stand out at a glance. The intensity view shows how your training is distributed between easy and hard work.
+
+## Fitness, fatigue & form
+
+The freshness panel estimates three curves from your training load: **fitness** (the long-term work you have banked), **fatigue** (the short-term tiredness from recent sessions), and **form** (fitness minus fatigue — your readiness today). Training hard raises fitness and fatigue together; resting drops fatigue faster than fitness, which is why form peaks after an easier stretch.
+
+## Critical power
+
+The critical-power panel estimates the highest output you could sustain over a long effort, computed from your own best results. It feeds the pace predictor — an estimate of what you could hold over a distance you have not raced recently.
+
+## Stroke efficiency (DPS)
+
+The DPS chart tracks meters gained per stroke. The pace-normalised toggle removes the effect of simply rowing harder, so what remains is closer to pure technique. Use the 7-day average for recent shape and the 28-day average for the bigger picture.`,
+      },
+      workflows: {
+        navTitle: "Common workflows",
+        markdown: `# Common workflows
 
 ## Replay a workout
 
-- Press play or pause to control playback.
-- Scrub the timeline to inspect a specific point.
-- Change speed from 0.5x to 8x.
-- Switch between 2D and 3D renderers when the browser supports WebGL.
-- Add coaching notes at a point in the workout.
-- Export the workout when you need CSV, JSON, or replay data elsewhere.
+Open any workout from the dashboard and press **Replay**.
 
-Per-stroke data is used when Concept2 provides it. Workouts without stroke data fall back to split-based replay, so the course still plays back.
+- **Play / pause** controls playback; the course view and all gauges stay in sync.
+- **Scrub** the timeline to jump to any moment.
+- **Speed** runs the replay from 0.5× to 8× real time.
+- Switch between **2D and 3D** course views (3D needs a reasonably modern browser).
+- Set a **target pace** to draw a reference line on the pace chart.
 
-## Race ghosts and compare workouts
+## Add coaching notes
 
-- Use /leaderboard to find standard-distance results and start a rival ghost.
-- Use replay controls to compare your pacing against the ghost.
-- Use /compare for a side-by-side summary of two workouts.
-- Share a public replay link when you want someone else to inspect a workout.
+While paused at a moment in a replay, add a note ("rushing the slide here"). Notes pin to the timeline, so you — or anyone you share the replay with — can jump straight to them.
 
-Publishing to the leaderboard is opt-in and reversible. It does not change the source Concept2 logbook entry.
+## Race a ghost
 
-## Live mode and imports
+A ghost is a past effort that races alongside you on screen.
 
-Live mode can poll for new workouts after a session and notify you when fresh data appears. Heart-rate import can merge external HR data into a workout when the logbook entry does not already include it.
+1. Open the [leaderboards](/leaderboard) and pick a sport and distance.
+2. Press **Race** next to an entry.
+3. Your own replay of that piece now shows the rival as a second boat to chase.
 
-Use pnpm preview for local auth, sync, live mode, and KV/D1 testing. Plain pnpm dev is faster for UI work, but it is not the Workers runtime and does not provide production KV/D1 bindings.
+You can also race your own earlier results to see exactly where a personal-best attempt won or lost time.
 
-## Contributor documentation policy
+## Compare two workouts
 
-The repository-facing English guide lives in docs/usage.md. The in-app website renders guide content through locale dictionaries so every bundled language uses the same i18n path.
+In the dashboard workout list, use the compare button on one workout, then pick a second. The compare view lines both efforts up split by split.
 
-When a change alters user-visible behavior, workflows, routes, auth, data handling, setup, or deployment expectations, update docs/usage.md, README.md, or the relevant repository documentation in the same pull request.`,
+## Publish to a leaderboard
+
+Standard-distance results (500m, 1k, 2k, 5k, 6k, 10k, half marathon) can be published to the rowplay leaderboard from the replay page. Publishing is opt-in, reversible, and never changes anything in your Concept2 logbook.
+
+## Share and export
+
+- **Share** on a replay creates a public, read-only link — handy for coaches.
+- **Export** on the [Data](/settings) page downloads your logbook as CSV or JSON, plus per-workout TCX files for workouts with stroke data.
+
+## Keep data fresh
+
+**Sync** on the dashboard pulls new results on demand. **Live mode** (also on the dashboard) polls the logbook on a schedule and notifies you when a new workout lands — handy right after a session.
+
+## Import heart rate
+
+If a workout has no heart-rate data but your watch recorded it, open the replay and use **Import heart rate** to merge a CSV, TCX, or FIT export from the watch into the workout.`,
+      },
+      faq: {
+        navTitle: "FAQ",
+        markdown: `# FAQ
+
+## Do I need a Concept2 account?
+
+Not to look around — demo mode works without one. To see your own workouts you need a free Concept2 logbook account, which is where the machine (or the ErgData app) stores your results.
+
+## Is my access token safe?
+
+The token is transmitted once over HTTPS and sealed into a protected, httpOnly browser cookie. It is never stored on rowplay's servers. Disconnecting clears it.
+
+## Can other people see my workouts?
+
+No — your dashboard and replays are private by default. Others can only see a workout if you publish it to a leaderboard or share its public link, and both are reversible.
+
+## Does rowplay change my Concept2 logbook?
+
+Never. rowplay only reads. Publishing to a rowplay leaderboard or deleting cached data here does not modify the source logbook entry.
+
+## Which machines are supported?
+
+RowErg, SkiErg, and BikeErg. Pace is shown per 500m for rowing and skiing and per 1000m for the bike.
+
+## Why don't some workouts have a stroke-by-stroke replay?
+
+Not every logbook entry includes per-stroke data — it depends on how the workout was recorded. Those workouts still replay using their splits, just with fewer data points.
+
+## Can I use rowplay on my phone?
+
+Yes — the whole app, including replays, works in mobile browsers, and you can install it to your home screen like an app.
+
+## Which languages are available?
+
+English, Deutsch, Español, Français, 日本語, and 中文 — switch from the header (behind the menu button on mobile).`,
+      },
+      troubleshooting: {
+        navTitle: "Troubleshooting",
+        markdown: `# Troubleshooting
+
+## My totals or personal bests look wrong
+
+Most often the full history has not finished syncing. The first sync backfills older workouts in the background; until it completes, anything computed "across all time" can be incomplete. Check [Data](/settings) for sync status and run a full sync if needed.
+
+## A pace looks way off
+
+- **BikeErg paces are per 1000m**, not per 500m — a 2:00 bike pace is not the same speed as a 2:00 rowing pace.
+- Interval workouts report pace for the work intervals; rest periods do not count.
+
+## The trend chart says it needs more sessions
+
+Trends compare like-for-like distances, so they need at least two sessions in the same distance band. Log another similar workout and the trend appears.
+
+## A workout has no stroke charts
+
+That logbook entry has no per-stroke data — common for older results and some recording methods. The replay falls back to splits. Stroke-dependent panels (distance per stroke, per-stroke comparison) need stroke data and will say so when it is missing.
+
+## Heart rate is missing
+
+The logbook only has heart rate when a belt or watch was connected during the workout. If a watch recorded it separately, use **Import heart rate** on the replay page to merge a CSV, TCX, or FIT export into the workout.
+
+## Sync fails or the session expires
+
+Personal tokens can expire or be revoked. Reconnect at [Use a token](/auth/token) with a fresh token from your Concept2 profile. If many requests were made in a short time, the logbook may rate-limit briefly — wait a minute and retry.
+
+## A new workout does not appear
+
+First confirm the workout reached your Concept2 logbook (it must upload from the machine or the ErgData app). Then press **Sync** on the dashboard, or enable live mode to poll automatically.
+
+## Display issues
+
+- **3D replay will not start** — the browser needs WebGL; the 2D view always works.
+- **Charts look cramped on a phone** — rotate to landscape for wider charts; panels reflow on small screens.
+- **Wrong theme or language** — both switches live in the header (behind the menu button on mobile) and are remembered per browser.
+
+Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is reachable from **Help** in the header.`,
+      },
+    },
   },
   dashboard: {
     eyebrow: "Your logbook",

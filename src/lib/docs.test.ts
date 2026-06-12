@@ -1,5 +1,43 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseGuideMarkdown } from "./docs";
+import { DOCS_SECTIONS, docsSectionPath, isActiveDocsSection, parseGuideMarkdown } from "./docs";
+
+describe("DOCS_SECTIONS", () => {
+  it("has unique slugs and keys, with the overview first", () => {
+    const slugs = DOCS_SECTIONS.map((section) => section.slug);
+    const keys = DOCS_SECTIONS.map((section) => section.key);
+
+    expect(new Set(slugs).size).toBe(slugs.length);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(DOCS_SECTIONS[0]).toEqual({ slug: "", key: "overview" });
+  });
+
+  it("uses URL-safe slugs", () => {
+    for (const section of DOCS_SECTIONS.slice(1)) {
+      expect(section.slug).toMatch(/^[a-z0-9-]+$/);
+    }
+  });
+});
+
+describe("docsSectionPath", () => {
+  it("maps the overview to /docs and sections to /docs/<slug>", () => {
+    expect(docsSectionPath("")).toBe("/docs");
+    expect(docsSectionPath("getting-started")).toBe("/docs/getting-started");
+  });
+});
+
+describe("isActiveDocsSection", () => {
+  it("matches the overview only on the docs root", () => {
+    expect(isActiveDocsSection("", "/docs")).toBe(true);
+    expect(isActiveDocsSection("", "/docs/")).toBe(true);
+    expect(isActiveDocsSection("", "/docs/faq")).toBe(false);
+  });
+
+  it("matches a section on its own route without prefix collisions", () => {
+    expect(isActiveDocsSection("faq", "/docs/faq")).toBe(true);
+    expect(isActiveDocsSection("faq", "/docs/faq-other")).toBe(false);
+    expect(isActiveDocsSection("faq", "/docs")).toBe(false);
+  });
+});
 
 describe("parseGuideMarkdown", () => {
   it("parses headings, paragraphs, lists, links, inline code, and code fences", () => {

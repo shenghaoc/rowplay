@@ -291,7 +291,11 @@
 					</div>
 				{:else if data.sync?.lastError}
 					<span class="badge badge-soft badge-error">{t('sync.errorBadge')}</span>
-					<p class="sync-meta muted">{t('settings.lastSyncError', { total: data.sync?.total ?? 0, message: data.sync.lastError })}</p>
+					<p class="sync-meta muted">
+						{t('settings.lastSyncError', { total: data.sync?.total ?? 0, message: data.sync.lastError })}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href="/docs/troubleshooting">{t('docs.contextual.troubleshooting')}</a>
+					</p>
 				{/if}
 
 				{#if !data.sync?.inProgress}
@@ -304,7 +308,11 @@
 				{/if}
 
 				{#if !data.sync?.backfillDone && data.sync && !data.sync?.inProgress}
-					<p class="sync-meta text-warning">{t('sync.partialWarning')}</p>
+					<p class="sync-meta text-warning">
+						{t('sync.partialWarning')}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href="/docs/troubleshooting">{t('docs.contextual.troubleshooting')}</a>
+					</p>
 				{/if}
 
 				<div class="row">

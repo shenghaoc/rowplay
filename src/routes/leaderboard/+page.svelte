@@ -217,7 +217,11 @@
 		</div>
 	{:else}
 		<div class="card card-border bg-base-100 shadow-md p-5 empty">
-			<p>{t('leaderboard.empty')}</p>
+			<p>
+				{t('leaderboard.empty')}
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+				<a href="/docs/workflows">{t('docs.contextual.workflows')}</a>
+			</p>
 		</div>
 	{/if}
 </div>

@@ -73,7 +73,7 @@ export const es = {
   nav: {
     dashboard: "Panel",
     leaderboard: "Clasificaciones",
-    docs: "Docs",
+    docs: "Ayuda",
     settings: "Datos",
     menuOpen: "Abrir menú",
     menuClose: "Cerrar menú",
@@ -147,75 +147,309 @@ export const es = {
   docs: {
     title: "Guía de uso",
     description:
-      "Cómo usar rowplay y mantener la documentación del repositorio sincronizada con el sitio.",
+      "Cómo usar rowplay: primeros pasos, términos de remo, ritmo y vatios, gráficos, flujos de trabajo, FAQ y solución de problemas.",
     badge: "Docs desde el repositorio",
     openDashboard: "Abrir panel",
     openSource: "Abrir fuente",
-    guideMarkdown: `# Guía de uso de rowplay
+    navLabel: "Secciones de la guía de uso",
+    contextual: {
+      gettingStarted: "¿Nuevo por aquí? Lee la guía de primeros pasos",
+      metrics: "¿Qué significan el ritmo, los vatios y la cadencia?",
+      charts: "Cómo leer este gráfico",
+      troubleshooting: "¿Datos ausentes o confusos? Consulta la solución de problemas",
+      workflows: "Descubre cómo funcionan las clasificaciones y las carreras fantasma",
+    },
+    sections: {
+      overview: {
+        navTitle: "Visión general",
+        markdown: `# Guía de uso de rowplay
 
-rowplay convierte resultados del logbook de Concept2 en un panel, replay, comparación y leaderboard para entrenamientos de RowErg, SkiErg y BikeErg.
+rowplay convierte tus entrenamientos de remo, esquí y bici indoor en algo que puedes explorar: un panel con totales y tendencias, una reproducción palada a palada, comparaciones lado a lado y clasificaciones amistosas.
 
-## Empezar en modo demo
+Funciona con entrenamientos registrados en máquinas Concept2 — el RowErg (remoergómetro), el SkiErg y el BikeErg — y los lee del cuaderno en línea gratuito de Concept2. No necesitas conocer la jerga del remo para empezar: esta guía explica cada término que usa.
 
-El modo demo es el predeterminado. Abre rowplay sin iniciar sesión y la app carga entrenamientos de muestra deterministas, para que pruebes el panel y el replay sin una cuenta de Concept2.
+## Qué puedes hacer aquí
 
-1. Abre /dashboard.
-2. Elige un entrenamiento de la lista.
-3. Pulsa **Replay** y usa reproducir, pausar, arrastrar la línea de tiempo y controles de velocidad.
-4. Abre /leaderboard para probar una carrera ghost con datos de muestra.
+- **Panel** — totales, tendencias, marcas personales y carga de entrenamiento de un vistazo.
+- **Reproducción** — mira cualquier entrenamiento palada a palada, con gráficos sincronizados de ritmo, cadencia, potencia y frecuencia cardiaca.
+- **Comparar** — pon dos entrenamientos lado a lado, parcial a parcial.
+- **Clasificaciones** — publica un resultado y compite contra otros atletas como «fantasmas» en pantalla.
 
-## Conectar tu logbook de Concept2
+## Secciones de la guía
 
-La autenticación en producción usa bring-your-own-token. El token personal de la API de Concept2 se envía una vez por HTTPS, el Worker lo valida y lo sella en la cookie httpOnly rp_tok. KV guarda la identidad de sesión y D1 guarda entrenamientos y datos de replay en caché. El token no se guarda en KV ni en D1.
+- [Primeros pasos](/docs/getting-started) — modo demo, conectar tu cuaderno, primera sincronización.
+- [Conceptos de remo](/docs/rowing-metrics) — paladas, parciales y los demás términos que encontrarás.
+- [Ritmo, parciales y vatios](/docs/pace-splits-watts) — qué significan los números y cómo se relacionan.
+- [Gráficos y progreso](/docs/charts-and-progress) — cómo leer los paneles del panel principal.
+- [Flujos habituales](/docs/workflows) — reproducir, carreras fantasma, comparar, compartir, exportar.
+- [FAQ](/docs/faq) — respuestas rápidas sobre cuentas, privacidad y datos.
+- [Solución de problemas](/docs/troubleshooting) — datos ausentes, números raros, problemas de pantalla.
 
-1. En el logbook de Concept2, abre **Edit Profile -> Applications**.
-2. Copia tu token personal de API.
-3. En rowplay, abre /auth/token.
+> Consejo: rowplay arranca en modo demo con entrenamientos de ejemplo, así que puedes probar todo lo de esta lista antes de conectar una cuenta de Concept2.`,
+      },
+      gettingStarted: {
+        navTitle: "Primeros pasos",
+        markdown: `# Primeros pasos
+
+## Prueba primero la demo
+
+rowplay arranca en modo demo: sin ninguna cuenta conectada, todas las páginas se llenan de entrenamientos de ejemplo realistas. Nada de lo que hagas en modo demo toca una cuenta real.
+
+1. Abre el [panel](/dashboard).
+2. Elige cualquier entrenamiento de la lista.
+3. Pulsa **Reproducir** y prueba los controles de reproducción, pausa, desplazamiento y velocidad.
+4. Abre las [clasificaciones](/leaderboard) y prueba una carrera fantasma.
+
+## Conecta tus propios entrenamientos
+
+Tus entrenamientos viven en el cuaderno de Concept2 — el diario en línea gratuito al que las máquinas Concept2 (y la app ErgData) suben los resultados. rowplay lee ese cuaderno mediante un token de acceso personal: un código largo que actúa como una llave de lectura de tus datos.
+
+1. Inicia sesión en tu cuaderno en log.concept2.com.
+2. Abre **Edit Profile → Applications** y copia tu token de API personal.
+3. De vuelta en rowplay, abre [Usar un token](/auth/token).
 4. Pega el token y envíalo.
-5. Abre /dashboard y usa **Sincronizar** para cargar todo el historial del logbook.
+5. En el panel, pulsa **Sincronizar** para cargar tu historial de entrenamientos.
 
-Usa /settings para desconectar o borrar datos de cuenta en caché.
+El token se envía una sola vez por una conexión cifrada y se guarda solo en una cookie protegida del navegador. Los servidores de rowplay cachean datos de entrenamientos para que las páginas carguen rápido, pero nunca almacenan el token.
 
-## Leer el panel
+## Tu primera sincronización
 
-- Usa filtros de deporte y distancia para acotar la lista de entrenamientos.
-- Revisa totales, tendencias de ritmo, marcas personales, objetivos anuales y carga de entrenamiento.
-- Abre el entrenamiento más reciente directamente o compara dos esfuerzos desde la lista.
-- Usa etiquetas y filtros para encontrar sesiones concretas más adelante.
+La primera sincronización carga los entrenamientos recientes de inmediato y sigue rellenando el historial antiguo en segundo plano. Hasta que termina, los totales de largo plazo y las marcas personales pueden parecer incompletos — es normal. Si algo sigue raro después, consulta la [solución de problemas](/docs/troubleshooting).
 
-Cuando rowplay solo tiene historial reciente, ejecuta **Sincronizar** antes de confiar en marcas personales o tendencias de largo plazo.
+## Desconectar
+
+Abre [Datos](/settings) en cualquier momento para desconectar. Esto borra tu sesión y elimina tus datos de entrenamiento cacheados de rowplay. Tu cuaderno de Concept2 nunca se modifica.`,
+      },
+      rowingMetrics: {
+        navTitle: "Conceptos de remo",
+        markdown: `# Conceptos de remo
+
+¿Nuevo en el remo indoor — o solo en su vocabulario? Estos son los términos que usa rowplay.
+
+## Las máquinas
+
+- **RowErg** — el remoergómetro de Concept2 («erg» es la abreviatura de ergómetro, una máquina que mide el trabajo).
+- **SkiErg** — una máquina de pie que imita el movimiento de bastones del esquí de fondo.
+- **BikeErg** — la bicicleta estática de Concept2.
+
+Las tres miden el esfuerzo de la misma manera, por lo que rowplay las muestra con los mismos tipos de números.
+
+## La palada
+
+Una **palada** es un ciclo completo del movimiento — en el RowErg: el empuje de piernas, el tirón y el deslizamiento de vuelta al inicio. Dos números describen tus paladas:
+
+- **Cadencia (spm)** — paladas por minuto: la rapidez con que repites el movimiento. El remo constante suele estar entre 18 y 30 spm.
+- **Distancia por palada (DPS)** — cuántos metros te da cada palada. Más alto suele significar una palada más potente y eficiente.
+
+Una cadencia alta no significa automáticamente más velocidad: 20 paladas fuertes por minuto pueden moverte más rápido que 30 apresuradas.
+
+## Distancia y tiempo
+
+La máquina convierte tu esfuerzo en **metros**, como si movieras un bote (o esquís, o una bici) por un recorrido. Los entrenamientos son por distancia («rema 2000m») o por tiempo («rema 30 minutos»). Un **entrenamiento por intervalos** divide la pieza en repeticiones con descanso entre medias — por ejemplo, 4 × 500m.
+
+## Ritmo y parciales
+
+El **ritmo** es cuánto tardas en cubrir una distancia fija — 500 metros en el RowErg y el SkiErg, 1000 metros en el BikeErg. Un **parcial** (split) es tu ritmo en un segmento del entrenamiento. Estos dos son el corazón del entrenamiento en ergómetro, así que tienen [su propia página](/docs/pace-splits-watts).
+
+## Frecuencia cardiaca
+
+Si llevas una banda o un reloj de pulso conectados a la máquina o a la app ErgData, los latidos por minuto (**bpm**) aparecen junto a los demás números y tienen su propio gráfico en la reproducción.`,
+      },
+      paceSplitsWatts: {
+        navTitle: "Ritmo, parciales y vatios",
+        markdown: `# Ritmo, parciales y vatios
+
+Estos son los números en torno a los que gira el entrenamiento en ergómetro. rowplay lo calcula todo por ti — pero saber qué significan hace que cada gráfico sea más fácil de leer.
+
+## Ritmo: tiempo por 500m
+
+El ritmo responde a la pregunta: «a esta velocidad, ¿cuánto tardaría en recorrer 500 metros?». Se escribe como una hora de reloj — **2:05** significa 2 minutos y 5 segundos por 500m.
+
+- **Más bajo es más rápido.** 1:55 es un ritmo más rápido que 2:05.
+- En los gráficos, mejorar el ritmo significa que la línea baja **hacia abajo**.
+- **El ritmo del BikeErg es por 1000m**, no por 500m, porque las bicis son más rápidas. rowplay lo gestiona automáticamente — no te sorprendas de que los ritmos de bici se parezcan a los de remo.
+
+## Parciales
+
+Un parcial es tu ritmo medio en un tramo del entrenamiento — cada 500m de una pieza de 2000m, o cada intervalo de una sesión de intervalos. Comparar parciales muestra cómo repartiste el esfuerzo: parciales iguales, un bajón al final o un cierre rápido (un «parcial negativo» significa que cada parcial es más rápido que el anterior).
+
+## Vatios
+
+Los vatios miden tu potencia — la misma unidad que una bombilla. Donde el ritmo te dice el resultado, los vatios te dicen el trabajo. Son dos vistas del mismo esfuerzo: mantener unos 2:00/500m exige alrededor de 200 vatios, y las pequeñas mejoras de ritmo piden desproporcionadamente más potencia — pasar de 2:00 a 1:54 cuesta unos 30 vatios más.
+
+El remo constante puede situarse entre 100 y 250 vatios según la forma física; los sprints pueden dispararse mucho más.
+
+## La cadencia no es esfuerzo
+
+La cadencia (spm) dice con qué frecuencia das paladas, no con qué fuerza. Dos remeros pueden mantener ambos un ritmo de 2:00 — uno a 22 paladas fuertes por minuto, otro a 28 más ligeras. Mirar el ritmo **y** la cadencia juntos (la reproducción muestra ambos) revela la técnica: el mismo ritmo con menos cadencia significa más distancia por palada.
+
+## Dónde ver todo esto
+
+- El **panel** muestra el ritmo medio, los totales y las marcas personales entre entrenamientos.
+- La **reproducción** grafica ritmo, cadencia, vatios y frecuencia cardiaca durante todo el entrenamiento, sincronizados con la reproducción.
+- La **comparación por repeticiones** de una reproducción divide los entrenamientos por intervalos en barras, parcial a parcial.`,
+      },
+      chartsAndProgress: {
+        navTitle: "Gráficos y progreso",
+        markdown: `# Gráficos y progreso
+
+El panel convierte tu historial en un conjunto de paneles. Esta página explica cómo leerlos.
+
+## Tendencia en el tiempo
+
+El gráfico de tendencia sigue una métrica — ritmo, distancia, cadencia o distancia por palada — a lo largo de semanas de entrenamientos. Para ser justo, las tendencias de ritmo comparan **igual con igual**: un sprint y un remo largo y constante nunca se mezclan en una misma línea. Los entrenamientos se agrupan en bandas de distancia, y tú eliges la banda que inspeccionar.
+
+- Para el **ritmo**, hacia abajo es mejor (menos tiempo por 500m).
+- Una línea de veredicto sobre el gráfico resume la dirección: mejorando, estable o empeorando.
+- Una banda necesita al menos dos sesiones antes de poder dibujar una tendencia.
+
+## Marcas personales
+
+El panel de marcas sigue tus mejores resultados en distancias estándar (500m, 1k, 2k, 5k, 6k, 10k y más). Asegúrate de que una sincronización completa ha terminado antes de fiarte de las mejores marcas históricas — ve a la [solución de problemas](/docs/troubleshooting).
+
+## Calendario de entrenamiento e intensidad
+
+El calendario sombrea cada día según cuánto entrenaste, de modo que las rachas y los huecos saltan a la vista. La vista de intensidad muestra cómo se reparte tu entrenamiento entre trabajo suave y duro.
+
+## Forma física, fatiga y frescura
+
+El panel de frescura estima tres curvas a partir de tu carga de entrenamiento: **forma física** (el trabajo acumulado a largo plazo), **fatiga** (el cansancio a corto plazo de las sesiones recientes) y **frescura** (forma menos fatiga — tu disposición de hoy). Entrenar duro sube la forma y la fatiga a la vez; descansar baja la fatiga más rápido que la forma, y por eso la frescura alcanza su pico tras un tramo suave.
+
+## Potencia crítica
+
+El panel de potencia crítica estima la mayor potencia que podrías sostener en un esfuerzo largo, calculada a partir de tus propios mejores resultados. Alimenta el predictor de ritmo — una estimación de lo que podrías mantener en una distancia que hace tiempo que no compites.
+
+## Eficiencia de palada (DPS)
+
+El gráfico de DPS sigue los metros ganados por palada. El conmutador normalizado por ritmo elimina el efecto de simplemente remar más fuerte, de modo que lo que queda se acerca a la técnica pura. Usa la media de 7 días para la forma reciente y la de 28 días para la visión de conjunto.`,
+      },
+      workflows: {
+        navTitle: "Flujos habituales",
+        markdown: `# Flujos habituales
 
 ## Reproducir un entrenamiento
 
-- Pulsa reproducir o pausar para controlar la reproducción.
-- Arrastra la línea de tiempo para inspeccionar un punto concreto.
-- Cambia la velocidad de 0.5x a 8x.
-- Cambia entre renderizadores 2D y 3D cuando el navegador soporte WebGL.
-- Añade notas de entrenamiento en un punto del workout.
-- Exporta el entrenamiento cuando necesites CSV, JSON o datos de replay fuera.
+Abre cualquier entrenamiento desde el panel y pulsa **Reproducir**.
 
-Se usan datos por palada cuando Concept2 los proporciona. Los entrenamientos sin paladas vuelven a un replay basado en splits, así que el recorrido se sigue reproduciendo.
+- **Reproducir / pausar** controla la reproducción; la vista del recorrido y todos los indicadores se mantienen sincronizados.
+- **Desplázate** por la línea de tiempo para saltar a cualquier momento.
+- La **velocidad** ejecuta la reproducción de 0,5× a 8× el tiempo real.
+- Cambia entre vistas del recorrido en **2D y 3D** (la 3D necesita un navegador razonablemente moderno).
+- Define un **ritmo objetivo** para dibujar una línea de referencia en el gráfico de ritmo.
 
-## Competir contra ghosts y comparar entrenamientos
+## Añadir notas de entrenador
 
-- Usa /leaderboard para encontrar resultados de distancias estándar e iniciar un ghost rival.
-- Usa los controles del replay para comparar tu ritmo con el ghost.
-- Usa /compare para un resumen lado a lado de dos entrenamientos.
-- Comparte un enlace público de replay cuando quieras que otra persona inspeccione un entrenamiento.
+Con la reproducción pausada en un momento, añade una nota («aquí apresuras el carro»). Las notas se fijan a la línea de tiempo, de modo que tú — o quien reciba la reproducción — puede saltar directamente a ellas.
 
-Publicar en el leaderboard es opcional y reversible. No cambia la entrada original del logbook de Concept2.
+## Correr contra un fantasma
 
-## Modo live e importaciones
+Un fantasma es un esfuerzo pasado que rema a tu lado en pantalla.
 
-El modo live puede consultar entrenamientos nuevos después de una sesión y avisarte cuando aparezcan datos recientes. La importación de frecuencia cardiaca puede fusionar datos HR externos cuando la entrada del logbook no los incluye.
+1. Abre las [clasificaciones](/leaderboard) y elige deporte y distancia.
+2. Pulsa **Competir** junto a una entrada.
+3. Tu propia reproducción de esa pieza muestra ahora al rival como un segundo bote al que perseguir.
 
-Usa pnpm preview para autenticación local, sincronización, modo live y pruebas KV/D1. Plain pnpm dev es más rápido para UI, pero no es el runtime de Workers y no proporciona bindings KV/D1 de producción.
+También puedes competir contra tus propios resultados anteriores para ver exactamente dónde un intento de marca personal ganó o perdió tiempo.
 
-## Política de documentación para contribuidores
+## Comparar dos entrenamientos
 
-La guía inglesa orientada al repositorio vive en docs/usage.md. El sitio dentro de la app renderiza la guía desde los diccionarios de locale, de modo que todos los idiomas incluidos usan la misma ruta i18n.
+En la lista de entrenamientos del panel, usa el botón de comparar en un entrenamiento y luego elige un segundo. La vista de comparación alinea ambos esfuerzos parcial a parcial.
 
-Cuando un cambio altere comportamiento visible, flujos, rutas, autenticación, manejo de datos, setup o expectativas de despliegue, actualiza docs/usage.md, README.md o la documentación relevante del repositorio en el mismo pull request.`,
+## Publicar en una clasificación
+
+Los resultados de distancias estándar (500m, 1k, 2k, 5k, 6k, 10k, medio maratón) pueden publicarse en la clasificación de rowplay desde la página de reproducción. Publicar es opcional, reversible y nunca cambia nada en tu cuaderno de Concept2.
+
+## Compartir y exportar
+
+- **Compartir** en una reproducción crea un enlace público de solo lectura — práctico para entrenadores.
+- **Exportar** en la página de [Datos](/settings) descarga tu cuaderno como CSV o JSON, además de archivos TCX por entrenamiento con datos de paladas.
+
+## Mantener los datos al día
+
+**Sincronizar** en el panel trae los resultados nuevos bajo demanda. El **modo en vivo** (también en el panel) consulta el cuaderno según un horario y te avisa cuando llega un entrenamiento nuevo — práctico justo después de una sesión.
+
+## Importar frecuencia cardiaca
+
+Si un entrenamiento no tiene datos de pulso pero tu reloj sí los registró, abre la reproducción y usa **Importar frecuencia cardiaca** para fusionar una exportación CSV, TCX o FIT del reloj con el entrenamiento.`,
+      },
+      faq: {
+        navTitle: "FAQ",
+        markdown: `# FAQ
+
+## ¿Necesito una cuenta de Concept2?
+
+No para curiosear — el modo demo funciona sin ella. Para ver tus propios entrenamientos necesitas una cuenta gratuita del cuaderno de Concept2, que es donde la máquina (o la app ErgData) guarda tus resultados.
+
+## ¿Está seguro mi token de acceso?
+
+El token se transmite una sola vez por HTTPS y se sella en una cookie httpOnly protegida del navegador. Nunca se almacena en los servidores de rowplay. Desconectar lo borra.
+
+## ¿Pueden otras personas ver mis entrenamientos?
+
+No — tu panel y tus reproducciones son privados por defecto. Otros solo pueden ver un entrenamiento si lo publicas en una clasificación o compartes su enlace público, y ambas cosas son reversibles.
+
+## ¿rowplay cambia mi cuaderno de Concept2?
+
+Nunca. rowplay solo lee. Publicar en una clasificación de rowplay o borrar datos cacheados aquí no modifica la entrada original del cuaderno.
+
+## ¿Qué máquinas están soportadas?
+
+RowErg, SkiErg y BikeErg. El ritmo se muestra por 500m en remo y esquí y por 1000m en la bici.
+
+## ¿Por qué algunos entrenamientos no tienen reproducción palada a palada?
+
+No todas las entradas del cuaderno incluyen datos por palada — depende de cómo se registró el entrenamiento. Esos entrenamientos se reproducen igualmente usando sus parciales, solo que con menos puntos de datos.
+
+## ¿Puedo usar rowplay en el móvil?
+
+Sí — toda la app, incluidas las reproducciones, funciona en navegadores móviles, y puedes instalarla en tu pantalla de inicio como una app.
+
+## ¿Qué idiomas hay disponibles?
+
+English, Deutsch, Español, Français, 日本語 y 中文 — se cambian desde la cabecera (tras el botón de menú en el móvil).`,
+      },
+      troubleshooting: {
+        navTitle: "Solución de problemas",
+        markdown: `# Solución de problemas
+
+## Mis totales o marcas personales parecen incorrectos
+
+Lo más habitual es que el historial completo no haya terminado de sincronizarse. La primera sincronización rellena los entrenamientos antiguos en segundo plano; hasta que termina, todo lo calculado «sobre todo el historial» puede estar incompleto. Revisa el estado de sincronización en [Datos](/settings) y lanza una sincronización completa si hace falta.
+
+## Un ritmo parece muy desviado
+
+- **Los ritmos del BikeErg son por 1000m**, no por 500m — un ritmo de 2:00 en bici no es la misma velocidad que un 2:00 remando.
+- Los entrenamientos por intervalos informan del ritmo de los intervalos de trabajo; los descansos no cuentan.
+
+## El gráfico de tendencia pide más sesiones
+
+Las tendencias comparan distancias similares, así que necesitan al menos dos sesiones en la misma banda de distancia. Registra otro entrenamiento parecido y la tendencia aparecerá.
+
+## Un entrenamiento no tiene gráficos de paladas
+
+Esa entrada del cuaderno no tiene datos por palada — algo común en resultados antiguos y algunos métodos de registro. La reproducción recurre a los parciales. Los paneles que dependen de paladas (distancia por palada, comparación por palada) necesitan esos datos y lo indican cuando faltan.
+
+## Falta la frecuencia cardiaca
+
+El cuaderno solo tiene pulso cuando había una banda o un reloj conectados durante el entrenamiento. Si un reloj lo registró por separado, usa **Importar frecuencia cardiaca** en la página de reproducción para fusionar una exportación CSV, TCX o FIT con el entrenamiento.
+
+## La sincronización falla o la sesión caduca
+
+Los tokens personales pueden caducar o revocarse. Vuelve a conectarte en [Usar un token](/auth/token) con un token nuevo de tu perfil de Concept2. Si se hicieron muchas peticiones en poco tiempo, el cuaderno puede limitar el ritmo brevemente — espera un minuto y reintenta.
+
+## Un entrenamiento nuevo no aparece
+
+Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe subirse desde la máquina o la app ErgData). Después pulsa **Sincronizar** en el panel, o activa el modo en vivo para consultar automáticamente.
+
+## Problemas de pantalla
+
+- **La reproducción 3D no arranca** — el navegador necesita WebGL; la vista 2D funciona siempre.
+- **Los gráficos se ven apretados en el móvil** — gira a horizontal para gráficos más anchos; los paneles se reorganizan en pantallas pequeñas.
+- **Tema o idioma equivocados** — ambos conmutadores están en la cabecera (tras el botón de menú en el móvil) y se recuerdan por navegador.
+
+¿Sigues atascado? La [FAQ](/docs/faq) cubre más casos, y todas las páginas de esta guía están accesibles desde **Ayuda** en la cabecera.`,
+      },
+    },
   },
   dashboard: {
     eyebrow: "Tu diario",
