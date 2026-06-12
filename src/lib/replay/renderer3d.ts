@@ -1160,7 +1160,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.smoothedSpeed = 0;
       this.fovCurrent = 46;
     } else {
-      if (dt > 0 && dLive < dt * 120) {
+      if (dt > 0 && dLive >= 0 && dLive < dt * 120) {
         const inst = dLive > 0 ? Math.min(dLive / dt, 40) : 0;
         this.smoothedSpeed += (inst - this.smoothedSpeed) * dampFactor(3, dt);
       }
