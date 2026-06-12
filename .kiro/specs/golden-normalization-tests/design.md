@@ -277,7 +277,7 @@ When `mapStrokes` or `mapResult` changes a conversion factor:
 1. Recompute the affected expected values independently (do not copy from the
    function output).
 2. Update `expected` in the fixture JSON.
-3. `npm run test` must pass.
+3. `pnpm run test` must pass.
 
 When a fixture needs to be replaced (e.g. the original source data is lost and
 a fresh capture is taken):

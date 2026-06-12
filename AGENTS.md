@@ -66,22 +66,25 @@ developer app and is not needed for the public BYOT deployment.
 
 ## Key commands
 
-All commands use **pnpm** (lockfile: `pnpm-lock.yaml`).
+All commands use **pnpm 11** (lockfile: `pnpm-lock.yaml`; `pnpm ci` for clean CI installs).
 
-| Task         | Command                                                         |
-| ------------ | --------------------------------------------------------------- |
-| Install deps | `pnpm install`                                                  |
-| Dev server   | `pnpm dev` (serves at `http://localhost:5173`)                  |
-| Type check   | `pnpm check` (`svelte-kit sync` + `svelte-check`)               |
-| Unit tests   | `pnpm test` (Vitest)                                            |
-| Build        | `pnpm build` (outputs `.svelte-kit/cloudflare`)                 |
-| Preview      | `pnpm preview` (build + `wrangler dev`, real runtime)           |
-| Preview (CI) | `pnpm preview:ci` (`wrangler dev` only, needs pre-built output) |
-| Deploy       | `pnpm deploy` (build + `wrangler deploy`)                       |
-| D1 migrate   | `pnpm db:migrate` (remote) / `db:migrate:local`                 |
-| Locales      | `pnpm validate:locales` (after adding i18n keys)                |
-| E2E (full)   | `pnpm test:e2e` (all specs, WebKit desktop + mobile)            |
-| E2E (smoke)  | `pnpm test:e2e:smoke` (smoke.spec.ts, WebKit desktop only)      |
+| Task               | Command                                                           |
+| ------------------ | ----------------------------------------------------------------- |
+| Install deps       | `pnpm install` (dev) / `pnpm ci` (CI, clean install)              |
+| Dev server         | `pnpm dev` (serves at `http://localhost:5173`)                    |
+| Format             | `pnpm run format` (write) / `pnpm run format:check` (check only)  |
+| Lint               | `pnpm run lint` (`vp lint`, fails on findings)                    |
+| Type check         | `pnpm run typecheck` (`svelte-kit sync` + `svelte-check`)         |
+| Unit tests         | `pnpm run test` (Vitest)                                          |
+| Build              | `pnpm run build` (outputs `.svelte-kit/cloudflare`)               |
+| Full quality gate  | `pnpm run check` (format:check + lint + typecheck + test + build) |
+| Preview            | `pnpm preview` (build + `wrangler dev`, real runtime)             |
+| Preview (wrangler) | `pnpm preview:wrangler` (`wrangler dev` only, needs prior build)  |
+| Deploy             | `pnpm deploy` (build + `wrangler deploy`)                         |
+| D1 migrate         | `pnpm db:migrate` (remote) / `db:migrate:local`                   |
+| Locales            | `pnpm validate:locales` (after adding i18n keys)                  |
+| E2E (full)         | `pnpm test:e2e` (all specs, WebKit desktop + mobile)              |
+| E2E (smoke)        | `pnpm test:e2e:smoke` (smoke.spec.ts, WebKit desktop only)        |
 
 ## Architecture (short)
 
@@ -118,11 +121,12 @@ All commands use **pnpm** (lockfile: `pnpm-lock.yaml`).
 
 ## Quality gate
 
-1. `pnpm check` → 0 errors (`state_referenced_locally` warnings are known).
-2. `pnpm build` → succeeds.
-3. `pnpm test` → green, and the test count must not decrease.
-4. Feature work: verify in demo mode; token auth on `pnpm preview` if touched.
-5. New `+server.ts`, `+page.server.ts`, or `src/lib/**/*.ts` files must have a co-located `*.test.ts`.
+1. `pnpm run check` → passes. It runs `format:check`, `lint`, `typecheck`
+   (`state_referenced_locally` warnings are known), `test`, and `build` —
+   the same gate base CI runs after `pnpm ci`.
+2. `pnpm run test` → green, and the test count must not decrease.
+3. Feature work: verify in demo mode; token auth on `pnpm preview` if touched.
+4. New `+server.ts`, `+page.server.ts`, or `src/lib/**/*.ts` files must have a co-located `*.test.ts`.
 
 ## Svelte, daisyUI and i18n
 

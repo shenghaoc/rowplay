@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import { describe, expect, it } from "vite-plus/test";
 import { POST } from "./+server";
 import { SESSION_COOKIE, TOKEN_COOKIE } from "$lib/server/session";
 

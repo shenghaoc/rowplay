@@ -172,18 +172,18 @@ language, so that the feature feels native.
    unit strings.
 2. THE toggle SHALL be keyboard-operable with a visible focus ring and an
    `aria-pressed` attribute (or equivalent checkbox semantics).
-3. `npm run validate:locales` SHALL pass with no missing keys.
+3. `pnpm run validate:locales` SHALL pass with no missing keys.
 
 ### Requirement 7 — Quality gate
 
 #### Acceptance criteria
 
-1. `npm run check` SHALL report 0 errors (existing `state_referenced_locally`
+1. `pnpm run check` SHALL report 0 errors (existing `state_referenced_locally`
    warnings are accepted).
-2. `npm run build` SHALL succeed.
-3. `npm run test` SHALL be green, including new unit tests for `efficiencyDrift`
+2. `pnpm run build` SHALL succeed.
+3. `pnpm run test` SHALL be green, including new unit tests for `efficiencyDrift`
    (steady-pace fixture ≈ flat series, fading fixture trends down, short fixture
    returns empty, gap handling).
-4. `npm run test:e2e` SHALL pass; a new smoke spec SHALL: open demo replay at
+4. `pnpm run test:e2e` SHALL pass; a new smoke spec SHALL: open demo replay at
    `/replay/1001`, toggle the overlay on, assert the DPS chart series is visible,
    and assert the fade summary element appears with a numeric value.

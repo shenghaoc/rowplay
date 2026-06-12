@@ -4,6 +4,4 @@
 
 ## Validation
 
-- [ ] `npm run check`
-- [ ] `npm run test`
-- [ ] `npm run build`
+- [ ] `pnpm run check` (format:check + lint + typecheck + test + build)

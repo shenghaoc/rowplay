@@ -249,7 +249,7 @@ imports of `three` elsewhere.
   - `renderer3dLoader.test.ts` — `webglSupported()` returns false with no canvas/context (mock `document`); `loadRenderer3D()` caches.
   - Existing `renderer.test.ts` unchanged (2D still default) and the new
     `implements ReplayRenderer` keeps it type-checked (Req 7.3).
-- **Type:** `npm run check` verifies both renderers satisfy `ReplayRenderer`.
+- **Type:** `pnpm run check` verifies both renderers satisfy `ReplayRenderer`.
 - **E2E (WebKit):** existing replay flow stays on 2D and must pass unchanged. A
   new spec toggles to 3D, asserts the canvas is present and the toggle reflects
   state; pixel assertions are avoided (Req 7.2, 7.3). Where WebKit lacks WebGL in
@@ -261,7 +261,7 @@ imports of `three` elsewhere.
 ## i18n
 
 New keys added to **all** locale files in `src/lib/locales/` (`en`, `zh`, `de`,
-`es`, `fr`, `ja`) and validated by `npm run validate:locales`:
+`es`, `fr`, `ja`) and validated by `pnpm run validate:locales`:
 
 - `replay.view2d`, `replay.view3d` — toggle labels.
 - `replay.view3dUnsupported` — tooltip when WebGL is unavailable.

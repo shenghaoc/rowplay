@@ -1,13 +1,13 @@
-import { distanceBand, durationBand } from '$lib/analytics';
-import type { Sport } from '$lib/types';
+import { distanceBand, durationBand } from "$lib/analytics";
+import type { Sport } from "$lib/types";
 
-export type ComparabilityAxis = 'distance' | 'time';
+export type ComparabilityAxis = "distance" | "time";
 
 // Concept2 workout_type is machine-agnostic: `JustRow` is the only "Just*" value
 // (it covers every erg, recording elapsed time as its axis), and `FixedTime`
 // catches the documented `FixedTimeSplits` / `FixedTimeInterval` types. There is
 // no `JustSki` / `JustBike` in the API.
-const TIME_AXIS_MARKERS = ['JustRow', 'FixedTime'] as const;
+const TIME_AXIS_MARKERS = ["JustRow", "FixedTime"] as const;
 
 /**
  * Map a Concept2 workout_type string to its comparability axis.
@@ -19,22 +19,22 @@ const TIME_AXIS_MARKERS = ['JustRow', 'FixedTime'] as const;
  * rather than blocked outright.
  */
 export function classifyAxis(workoutType: string | null | undefined): ComparabilityAxis {
-	if (!workoutType) return 'distance';
-	const upper = workoutType.toUpperCase();
-	for (const marker of TIME_AXIS_MARKERS) {
-		if (upper.includes(marker.toUpperCase())) return 'time';
-	}
-	return 'distance';
+  if (!workoutType) return "distance";
+  const upper = workoutType.toUpperCase();
+  for (const marker of TIME_AXIS_MARKERS) {
+    if (upper.includes(marker.toUpperCase())) return "time";
+  }
+  return "distance";
 }
 
 export interface ComparableContext {
-	sport: Sport;
-	/** Total distance in metres. */
-	distance: number;
-	/** Total elapsed time in seconds. */
-	time: number;
-	/** Concept2 workout_type string (may be absent; D1 columns are string | null). */
-	workoutType?: string | null;
+  sport: Sport;
+  /** Total distance in metres. */
+  distance: number;
+  /** Total elapsed time in seconds. */
+  time: number;
+  /** Concept2 workout_type string (may be absent; D1 columns are string | null). */
+  workoutType?: string | null;
 }
 
 /**
@@ -42,12 +42,12 @@ export interface ComparableContext {
  * like-for-like: same sport, same axis (distance vs time), same axis-band.
  */
 export function areComparable(a: ComparableContext, b: ComparableContext): boolean {
-	if (a.sport !== b.sport) return false;
-	const axisA = classifyAxis(a.workoutType);
-	const axisB = classifyAxis(b.workoutType);
-	if (axisA !== axisB) return false;
-	if (axisA === 'distance') {
-		return distanceBand(a.distance).key === distanceBand(b.distance).key;
-	}
-	return durationBand(a.time).key === durationBand(b.time).key;
+  if (a.sport !== b.sport) return false;
+  const axisA = classifyAxis(a.workoutType);
+  const axisB = classifyAxis(b.workoutType);
+  if (axisA !== axisB) return false;
+  if (axisA === "distance") {
+    return distanceBand(a.distance).key === distanceBand(b.distance).key;
+  }
+  return durationBand(a.time).key === durationBand(b.time).key;
 }

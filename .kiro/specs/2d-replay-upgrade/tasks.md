@@ -80,8 +80,8 @@ guard, `reduceMotion` read, phase advance, `clearRect`), and the
   - [ ] 9.1 Keep `renderer.test.ts` green (palette mirror).
   - [ ] 9.2 (Optional) add a render smoke test (stub 2D ctx) covering solo, ghost,
         each sport, reduced-motion — no throw.
-  - [ ] 9.3 `npm run check` → 0 errors; `npm run build` → succeeds;
-        `npm run test` → green.
+  - [ ] 9.3 `pnpm run check` → 0 errors; `pnpm run build` → succeeds;
+        `pnpm run test` → green.
   - [ ] 9.4 Manual demo verification (light/dark, play, scrub, ghost, sports,
         reduced-motion, shared `/r/<token>`).
   - _Requirements: 2.3, 3.1, 3.2, 5.1_

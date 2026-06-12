@@ -22,7 +22,7 @@ depend on #61 being live.
         - `source: 'Web'` → `false`
         - `source` absent (`{}`) → `false`
         - `workout` null / undefined → `false`
-  - [x] 1.3 Run `npm run test` locally to confirm the new tests pass before
+  - [x] 1.3 Run `pnpm run test` locally to confirm the new tests pass before
         proceeding.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
@@ -33,7 +33,7 @@ depend on #61 being live.
         for readability.
   - [x] 2.2 Add the same three keys (with appropriate translations or placeholders)
         to `zh.ts`, `de.ts`, `es.ts`, `fr.ts`, and `ja.ts`.
-  - [x] 2.3 Run `npm run validate:locales` and confirm zero missing-key errors.
+  - [x] 2.3 Run `pnpm run validate:locales` and confirm zero missing-key errors.
   - _Requirements: 6.1, 6.2, 6.3_
 
 - [x] 3. Demo mode — EXR-sourced mock workout
@@ -84,9 +84,9 @@ depend on #61 being live.
   - _Requirements: 4.1, 4.2, 4.3_
 
 - [x] 6. Quality gate
-  - [x] 6.1 `npm run check` → zero type errors.
-  - [x] 6.2 `npm run build` → succeeds.
-  - [x] 6.3 `npm run test` → green (includes the new `exrSource.test.ts`).
+  - [x] 6.1 `pnpm run check` → zero type errors.
+  - [x] 6.2 `pnpm run build` → succeeds.
+  - [x] 6.3 `pnpm run test` → green (includes the new `exrSource.test.ts`).
   - [x] 6.4 Manual demo verification:
         - `/replay/1004` shows the EXR badge in the header `.summary` row and in
           the provenance panel.

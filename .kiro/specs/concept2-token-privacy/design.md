@@ -264,7 +264,7 @@ cookie and leaderboard entries.
   delete clears entries.
 - **E2E (demo)**: unchanged smoke — demo mode persists/needs nothing, so existing
   specs must stay green (guards Req 2.6).
-- **Manual on `npm run preview`** (recorded in tasks): paste token → connect →
+- **Manual on `pnpm run preview`** (recorded in tasks): paste token → connect →
   confirm `rp_tok` cookie is `HttpOnly` and KV holds **no** token → dashboard
   reads from the D1 cache → publish → entry appears → withdraw → entry gone →
   logout → both cookies cleared **and** the D1 cache purged.

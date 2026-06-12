@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { I18n } from "./i18n.svelte";
 import { SUPPORTED_LANGUAGES } from "./i18n";
 

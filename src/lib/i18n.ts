@@ -5,44 +5,44 @@
  * back to English, then the key itself, and supports `{param}` interpolation.
  * Sport names (RowErg/SkiErg/BikeErg) are Concept2 brand terms — left untranslated.
  */
-import { safeStorage } from './safeStorage';
+import { safeStorage } from "./safeStorage";
 
 /** BCP-47-ish codes for every bundled locale. Extend here when adding a language. */
-export const SUPPORTED_LANGUAGES = ['en', 'zh', 'de', 'es', 'fr', 'ja'] as const;
+export const SUPPORTED_LANGUAGES = ["en", "zh", "de", "es", "fr", "ja"] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
 export const LANGUAGES: { value: Language; label: string }[] = [
-	{ value: 'en', label: 'English' },
-	{ value: 'zh', label: '中文' },
-	{ value: 'de', label: 'Deutsch' },
-	{ value: 'es', label: 'Español' },
-	{ value: 'fr', label: 'Français' },
-	{ value: 'ja', label: '日本語' }
+  { value: "en", label: "English" },
+  { value: "zh", label: "中文" },
+  { value: "de", label: "Deutsch" },
+  { value: "es", label: "Español" },
+  { value: "fr", label: "Français" },
+  { value: "ja", label: "日本語" },
 ];
 
 export function isLanguage(value: unknown): value is Language {
-	return (SUPPORTED_LANGUAGES as readonly unknown[]).includes(value);
+  return (SUPPORTED_LANGUAGES as readonly unknown[]).includes(value);
 }
 
 export function getStoredLanguage(): Language {
-	const stored = safeStorage.getItem('lang');
-	return isLanguage(stored) ? stored : 'en';
+  const stored = safeStorage.getItem("lang");
+  return isLanguage(stored) ? stored : "en";
 }
 
 export function persistLanguage(language: Language) {
-	if (typeof document === 'undefined') return;
-	safeStorage.setItem('lang', language);
-	document.documentElement.lang = language;
-	const secure = location.protocol === 'https:' ? '; Secure' : '';
-	document.cookie = `lang=${language}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+  if (typeof document === "undefined") return;
+  safeStorage.setItem("lang", language);
+  document.documentElement.lang = language;
+  const secure = location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `lang=${language}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
 }
 
 export function interpolate(template: string, vars?: Record<string, string | number>): string {
-	if (!vars) return template;
-	return Object.entries(vars).reduce(
-		(acc, [key, value]) => acc.replaceAll(`{${key}}`, String(value)),
-		template
-	);
+  if (!vars) return template;
+  return Object.entries(vars).reduce(
+    (acc, [key, value]) => acc.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
 }
 
-export { getValue } from './locales';
+export { getValue } from "./locales";

@@ -99,7 +99,7 @@ rowing and a bike workout rebuilds with the correct sport for free.
 
 ## Testing
 
-- **Type:** `npm run check` verifies the `Avatar` / `SportProfile` shapes and the
+- **Type:** `pnpm run check` verifies the `Avatar` / `SportProfile` shapes and the
   new constructor signature.
 - **Unit:** existing Vitest suites stay green (loader/preference tests don't
   import `three`).
@@ -108,7 +108,7 @@ rowing and a bike workout rebuilds with the correct sport for free.
   canvas mounts — a sport-specific init throw (which would revert to 2D) fails
   the test instead of passing silently. Where CI WebKit lacks WebGL, the 3D
   option is asserted disabled (existing fallback path).
-- **Build:** `npm run build` confirms `three` stays in its own lazy chunk.
+- **Build:** `pnpm run build` confirms `three` stays in its own lazy chunk.
 
 ## File Manifest
 

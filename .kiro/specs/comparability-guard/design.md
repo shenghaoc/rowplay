@@ -346,6 +346,6 @@ Additional `durationBand` and `classifyAxis` cases (Req 7.2, 7.3).
 
 ### Quality gate
 
-`npm run check` + `npm run build` + `npm run test` + `npm run validate:locales`
+`pnpm run check` + `pnpm run build` + `pnpm run test` + `pnpm run validate:locales`
 (Req 9). E2E is not required for this spec: the guard is pure logic tested at
 the unit level; the UI integration is visible in demo mode via manual smoke.

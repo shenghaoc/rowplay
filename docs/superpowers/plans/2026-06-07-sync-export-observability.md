@@ -164,7 +164,7 @@ ALTER TABLE sync_state ADD COLUMN last_error_at INTEGER NOT NULL DEFAULT 0;
 
 Run local migration:
 ```
-npm run db:migrate:local
+pnpm run db:migrate:local
 ```
 
 - [ ] **Step 3: Update existing tests for new SyncState shape**
@@ -178,7 +178,7 @@ lastErrorAt: 0
 
 Also update any `getSyncState` mock return values in `src/lib/server/data.test.ts` to include these fields.
 
-Run: `npm run test -- src/lib/server/db.test.ts`
+Run: `pnpm run test -- src/lib/server/db.test.ts`
 Expected: All existing tests pass with updated shape.
 
 - [ ] **Step 4: Commit**
@@ -436,7 +436,7 @@ export function scheduleConnectSync(
 
 - [ ] **Step 5: Run tests**
 
-Run: `npm run test -- src/lib/server/data.test.ts`
+Run: `pnpm run test -- src/lib/server/data.test.ts`
 Expected: scheduleConnectSync test still passes, plus any new tests.
 
 - [ ] **Step 6: Commit**
@@ -510,7 +510,7 @@ Note: You'll need to add `syncStatus` to the mock imports in the test file. Upda
 
 - [ ] **Step 3: Run tests**
 
-Run: `npm run test -- src/routes/api/sync/server.test.ts`
+Run: `pnpm run test -- src/routes/api/sync/server.test.ts`
 Expected: All tests pass.
 
 - [ ] **Step 4: Commit**
@@ -564,7 +564,7 @@ partialCache: '{n} workouts cached · history still loading',
 
 For each locale file (`zh.ts`, `de.ts`, `es.ts`, `fr.ts`, `ja.ts`), add the same structure with appropriate translations. If a locale file is large, use the `locales.test.ts` completeness check to verify:
 
-Run: `npm run validate:locales`
+Run: `pnpm run validate:locales`
 Expected: All locales have the new keys (may warn about missing translations which is acceptable).
 
 - [ ] **Step 3: Commit**
@@ -744,7 +744,7 @@ vi.mock('$lib/server/data', () => ({
 
 - [ ] **Step 4: Run tests**
 
-Run: `npm run test -- src/routes/settings/page.server.test.ts`
+Run: `pnpm run test -- src/routes/settings/page.server.test.ts`
 Expected: All tests pass.
 
 - [ ] **Step 5: Commit**
@@ -825,7 +825,7 @@ it('sets partialSync false when sync is complete', async () => {
 
 - [ ] **Step 4: Run tests**
 
-Run: `npm run test -- src/routes/dashboard/page.server.test.ts`
+Run: `pnpm run test -- src/routes/dashboard/page.server.test.ts`
 Expected: All tests pass.
 
 - [ ] **Step 5: Commit**
@@ -922,7 +922,7 @@ describe('sync state transitions', () => {
 
 - [ ] **Step 2: Run tests**
 
-Run: `npm run test -- src/lib/server/syncState.test.ts`
+Run: `pnpm run test -- src/lib/server/syncState.test.ts`
 Expected: All tests pass.
 
 - [ ] **Step 3: Commit**
@@ -1036,7 +1036,7 @@ describe('workoutsToJson', () => {
 
 - [ ] **Step 3: Run tests**
 
-Run: `npm run test -- src/lib/server/export.test.ts`
+Run: `pnpm run test -- src/lib/server/export.test.ts`
 Expected: Updated tests pass. Old tests that expected flat array `parsed[0].id` now fail — update them.
 
 - [ ] **Step 4: Commit**
@@ -1083,7 +1083,7 @@ The `CSV_HEADERS` array itself does not change — it is already the stable head
 
 - [ ] **Step 2: Run tests (existing should still pass)**
 
-Run: `npm run test -- src/lib/server/export.test.ts`
+Run: `pnpm run test -- src/lib/server/export.test.ts`
 Expected: All pass.
 
 - [ ] **Step 3: Commit**
@@ -1193,7 +1193,7 @@ it('skips watts Extension when watts is 0', () => {
 
 - [ ] **Step 4: Run tests**
 
-Run: `npm run test -- src/lib/server/export.test.ts`
+Run: `pnpm run test -- src/lib/server/export.test.ts`
 Expected: All tests pass.
 
 - [ ] **Step 5: Commit**
@@ -1275,8 +1275,8 @@ In `src/routes/settings/+page.svelte`, update the export section (around line 24
 
 - [ ] **Step 4: Run tests and build**
 
-Run: `npm run test -- src/routes/settings/page.server.test.ts`
-Run: `npm run validate:locales`
+Run: `pnpm run test -- src/routes/settings/page.server.test.ts`
+Run: `pnpm run validate:locales`
 Expected: All pass.
 
 - [ ] **Step 5: Commit**
@@ -1363,7 +1363,7 @@ it('sets content-disposition with filename', async () => {
 
 - [ ] **Step 3: Run tests**
 
-Run: `npm run test -- src/routes/api/export/`
+Run: `pnpm run test -- src/routes/api/export/`
 Expected: All tests pass.
 
 - [ ] **Step 4: Commit**
@@ -1475,7 +1475,7 @@ describe('createLogger', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm run test -- src/lib/server/logger.test.ts`
+Run: `pnpm run test -- src/lib/server/logger.test.ts`
 Expected: FAIL — `Cannot find module './logger'`
 
 - [ ] **Step 3: Implement the logger**
@@ -1561,7 +1561,7 @@ export function createLogger(consoleObj: Pick<Console, 'error' | 'warn'>): Logge
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `npm run test -- src/lib/server/logger.test.ts`
+Run: `pnpm run test -- src/lib/server/logger.test.ts`
 Expected: All tests pass.
 
 - [ ] **Step 5: Commit**
@@ -1609,7 +1609,7 @@ ctx.waitUntil(runSync(db, user.id, c, true).catch((e) => {
 
 - [ ] **Step 2: Run tests**
 
-Run: `npm run test -- src/lib/server/data.test.ts`
+Run: `pnpm run test -- src/lib/server/data.test.ts`
 Expected: All pass. The logger is transparent to tests — console.error is silenced by Vitest.
 
 - [ ] **Step 3: Commit**
@@ -1681,8 +1681,8 @@ git commit -m "docs: add privacy-safe logging convention to tech.md and AGENTS.m
 ### Quality Gate (after all changes)
 
 ```
-npm run check
-npm run test
-npm run build
-npm run validate:locales
+pnpm run check
+pnpm run test
+pnpm run build
+pnpm run validate:locales
 ```

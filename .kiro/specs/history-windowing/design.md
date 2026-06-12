@@ -226,7 +226,7 @@ bindings, so unit tests and the e2e smoke run credential-free (Req 5.1, 5.3).
 New keys in the `sync` (and/or `dashboard`/`settings`) blocks across all six
 locales: window label (with `{months}` / `{date}` params), "loading older
 history", backfilling progress, "full history synced", and the "load full
-history" action. Run `npm run validate:locales`. Dates formatted via existing
+history" action. Run `pnpm run validate:locales`. Dates formatted via existing
 `fmtDate` / `fmtDateFromEpochMillis`.
 
 ## Testing

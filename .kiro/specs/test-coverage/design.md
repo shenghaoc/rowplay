@@ -7,7 +7,7 @@ a pure-function-focused baseline to broad coverage of the production surface:
 pure utilities, server data/DB layer, route handlers, page load functions,
 Svelte reactive state classes, and the Three.js 3D renderer. The exact counts in
 this spec describe the landing point for this work, not the current project test
-count; use `npm run test` for current health.
+count; use `pnpm run test` for current health.
 
 Coverage infrastructure was also added: `@vitest/coverage-v8` with `text` +
 `lcov` reporters, scoped to `src/**/*.ts`, excluding test files and generated

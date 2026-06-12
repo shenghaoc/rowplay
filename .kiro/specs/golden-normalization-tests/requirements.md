@@ -197,22 +197,22 @@ anchor the wider capture as real data becomes available.
 ### Requirement 6 — Quality gate and CI integration
 
 **User story:** As a maintainer, I want the golden-file tests to run in the
-existing `npm run test` Vitest suite and fail CI on any normalization regression,
+existing `pnpm run test` Vitest suite and fail CI on any normalization regression,
 without requiring any new tooling or credentials.
 
 #### Acceptance criteria
 
 1. THE golden-file tests SHALL live in a single test file at
    `src/lib/server/concept2.golden.test.ts` (alongside the existing
-   `concept2.test.ts`) so that `npm run test` picks them up automatically
+   `concept2.test.ts`) so that `pnpm run test` picks them up automatically
    without config changes.
 2. THE tests SHALL be pure Vitest (`describe`/`it`/`expect`) with no DOM
    dependency, no network calls, and no environment variables required.
 3. THE tests SHALL NOT depend on the Cloudflare Workers runtime
    (`KVNamespace`, `D1Database`) — the normalization functions accept plain
    data and return plain objects.
-4. `npm run test` SHALL pass with the new tests present. `npm run check` and
-   `npm run build` SHALL also pass (no new TypeScript errors introduced by
+4. `pnpm run test` SHALL pass with the new tests present. `pnpm run check` and
+   `pnpm run build` SHALL also pass (no new TypeScript errors introduced by
    fixture types).
 5. THE tests SHALL run in under 500 ms total (they are pure data
    transformations with no I/O).

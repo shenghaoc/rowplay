@@ -221,7 +221,7 @@ roles.
 | `drift.axisLabel` | `DPS` |
 
 All six locale files receive the same keys (translated appropriately).
-`npm run validate:locales` enforces completeness.
+`pnpm run validate:locales` enforces completeness.
 
 ## Testing
 

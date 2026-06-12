@@ -209,10 +209,10 @@ implementation; the validator only checks key presence.
 | Layer | Coverage |
 |-------|---------|
 | Unit | `exrSource.test.ts` — true/false/absent/case-insensitive paths |
-| Type | `npm run check` — `isExrSource` call sites type-check; `Spec.source` optional |
-| Build | `npm run build` — no SSR access to DOM; `isExrSource` is pure |
+| Type | `pnpm run check` — `isExrSource` call sites type-check; `Spec.source` optional |
+| Build | `pnpm run build` — no SSR access to DOM; `isExrSource` is pure |
 | Manual (demo) | `/replay/1004` → EXR badge visible; `/replay/1001` → no badge |
-| Locale | `npm run validate:locales` — zero missing-key errors |
+| Locale | `pnpm run validate:locales` — zero missing-key errors |
 
 ---
 

@@ -54,7 +54,7 @@ If something goes wrong:
 
 ```bash
 # Roll back to the previous deploy (Workers keeps the last deployable version)
-npx wrangler rollback
+pnpm exec wrangler rollback
 
 # Or deploy a specific tag:
 git checkout <tag>

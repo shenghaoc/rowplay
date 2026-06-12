@@ -168,9 +168,9 @@ account, so that I can verify correctness locally.
    present and passing.
 2. EVERY user-visible string introduced by this feature SHALL appear in all six
    locale files (`en`, `zh`, `de`, `es`, `fr`, `ja`) and pass
-   `npm run validate:locales`.
-3. THE feature SHALL pass the full quality gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, `npm run validate:locales`.
+   `pnpm run validate:locales`.
+3. THE feature SHALL pass the full quality gate: `pnpm run check` (0 errors),
+   `pnpm run build`, `pnpm run test`, `pnpm run validate:locales`.
 4. THE dashboard and calendar views SHALL produce correct output in both
-   `npm run dev` (vite, demo mode) and `npm run preview` (Workers runtime,
+   `pnpm run dev` (vite, demo mode) and `pnpm run preview` (Workers runtime,
    real session KV).

@@ -155,7 +155,7 @@ badge and tooltip to appear in my language.
    - `replay.exrBadge` — short badge label (e.g. `"EXR source"`)
    - `replay.exrBadgeTitle` — longer tooltip / accessible description
    - `replay.mSource` — metadata-panel label for the "Logged by" row
-2. After adding the keys, `npm run validate:locales` SHALL pass with zero
+2. After adding the keys, `pnpm run validate:locales` SHALL pass with zero
    missing-key errors.
 3. Non-English translations MAY use a reasonable machine-translation placeholder
    for the initial implementation, as long as the key is present and non-empty.
@@ -168,10 +168,10 @@ badge and tooltip to appear in my language.
 
 ### Acceptance Criteria
 
-1. `npm run check` SHALL report zero type errors (the known
+1. `pnpm run check` SHALL report zero type errors (the known
    `state_referenced_locally` warnings remain acceptable).
-2. `npm run build` SHALL succeed.
-3. `npm run test` SHALL be green, including the new `exrSource.test.ts` unit tests.
+2. `pnpm run build` SHALL succeed.
+3. `pnpm run test` SHALL be green, including the new `exrSource.test.ts` unit tests.
 4. Manual demo verification: navigating to the EXR-flagged demo workout
    (`/replay/<id>`) SHALL show the badge; any non-EXR workout SHALL NOT show the
    badge.

@@ -272,8 +272,8 @@ When `this.reduceMotion`:
 | Layer  | What |
 |--------|------|
 | Unit   | `renderer.test.ts` stays green (palette mirror). Optionally add a smoke test that constructs `CourseRenderer` against a stubbed 2D context and calls `resize`+`render` for solo, ghost, each `sport`, and reduced-motion without throwing. |
-| Type   | `npm run check` → 0 errors. New `sport?` field type-checks at both call sites. |
-| Build  | `npm run build` succeeds (renderer is client-only; no SSR `window` access outside the existing guard). |
+| Type   | `pnpm run check` → 0 errors. New `sport?` field type-checks at both call sites. |
+| Build  | `pnpm run build` succeeds (renderer is client-only; no SSR `window` access outside the existing guard). |
 | Manual | Demo: `/replay/1001` light+dark, play/pause, scrub, ghost on/off, each sport; `prefers-reduced-motion` shows static scene; shared `/r/<token>` still renders. |
 
 If a smoke test is added, the stubbed context must implement the methods the

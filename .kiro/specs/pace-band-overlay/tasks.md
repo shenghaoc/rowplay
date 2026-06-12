@@ -51,11 +51,11 @@ begins. Requirement references point at `requirements.md`.
 - [ ] **6. i18n keys** — `src/lib/locales/{en,zh,de,es,fr,ja}.ts`
   - Add `replay.targetPace`, `replay.targetPacePlaceholder`, `replay.targetPaceSet`,
     `replay.targetPaceClear`, `replay.targetPaceBand` to all six locale files.
-  - Run `npm run validate:locales` to confirm parity.
+  - Run `pnpm run validate:locales` to confirm parity.
   - _Requirements: 3.2_
 
 - [ ] **7. Quality gate**
-  - `npm run check` → 0 errors.
-  - `npm run build` → succeeds.
-  - `npm run test` → green; test count ≥ previous count.
+  - `pnpm run check` → 0 errors.
+  - `pnpm run build` → succeeds.
+  - `pnpm run test` → green; test count ≥ previous count.
   - _Requirements: 3.3, 3.4, 3.5_

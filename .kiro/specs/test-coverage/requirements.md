@@ -10,7 +10,7 @@ read in CI and locally.
 (`*.test.ts`), Svelte reactive files (`*.svelte.ts`), and generated type stubs
 (`*.d.ts`, `$types.ts`).
 
-**1.3** — `npm run test` remains the single command that runs all unit tests.
+**1.3** — `pnpm run test` remains the single command that runs all unit tests.
 No new scripts are introduced.
 
 ## 2. Server data and DB layer
@@ -67,7 +67,7 @@ as real implementations so that geometry/scene logic is exercised.
 
 ## 6. Quality gate
 
-**6.1** — `npm run test` passes with zero failures and zero unhandled errors.
+**6.1** — `pnpm run test` passes with zero failures and zero unhandled errors.
 
 **6.2** — Adding new production code follows the co-location convention: test
 file next to the source file, same directory.

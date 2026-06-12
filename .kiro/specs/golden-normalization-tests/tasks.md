@@ -69,9 +69,9 @@ checked as the work lands. Requirement references point at `requirements.md`.
   - _Requirements: 1.1–1.6, 2.1–2.4, 4.3–4.5, 6.1–6.5_
 
 - [x] **7. Full quality gate pass**
-  - `npm run check` → 0 errors.
-  - `npm run build` → succeeds.
-  - `npm run test` → all tests green including the new golden suite, in under
+  - `pnpm run check` → 0 errors.
+  - `pnpm run build` → succeeds.
+  - `pnpm run test` → all tests green including the new golden suite, in under
     500 ms for the new tests.
   - Confirm no new TypeScript errors from fixture import types.
   - _Requirements: 6.1–6.5_

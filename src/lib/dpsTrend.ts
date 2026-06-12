@@ -1,29 +1,27 @@
-import type { Sport, Workout } from './types';
+import type { Sport, Workout } from "./types";
 
 export interface DpsPoint {
-	date: string;
-	workoutId: number;
-	sport: Sport;
-	rawDps: number;
-	normDps: number;
-	avgPaceSecs: number;
-	strokeCount: number;
+  date: string;
+  workoutId: number;
+  sport: Sport;
+  rawDps: number;
+  normDps: number;
+  avgPaceSecs: number;
+  strokeCount: number;
 }
 
 export interface MovingAvgPoint {
-	date: string;
-	value: number;
+  date: string;
+  value: number;
 }
 
 const DEFAULT_REFERENCE_PACE = 120;
 
 function median(values: number[]): number {
-	if (values.length === 0) return DEFAULT_REFERENCE_PACE;
-	const sorted = [...values].sort((a, b) => a - b);
-	const mid = Math.floor(sorted.length / 2);
-	return sorted.length % 2 === 1
-		? sorted[mid]!
-		: (sorted[mid - 1]! + sorted[mid]!) / 2;
+  if (values.length === 0) return DEFAULT_REFERENCE_PACE;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
 /**
@@ -31,29 +29,29 @@ function median(values: number[]): number {
  * Workouts without strokeCount are excluded (not imputed).
  */
 export function computeDpsTrend(workouts: Workout[], sport?: Sport): DpsPoint[] {
-	let pool = workouts.filter(
-		(w) => w.strokeCount != null && w.strokeCount > 0 && w.distance > 0 && w.pace > 0
-	);
-	if (sport) pool = pool.filter((w) => w.sport === sport);
+  let pool = workouts.filter(
+    (w) => w.strokeCount != null && w.strokeCount > 0 && w.distance > 0 && w.pace > 0,
+  );
+  if (sport) pool = pool.filter((w) => w.sport === sport);
 
-	const preliminary = pool.map((w) => ({
-		date: w.date,
-		workoutId: w.id,
-		sport: w.sport,
-		rawDps: w.distance / w.strokeCount!,
-		avgPaceSecs: w.pace,
-		strokeCount: w.strokeCount!
-	}));
+  const preliminary = pool.map((w) => ({
+    date: w.date,
+    workoutId: w.id,
+    sport: w.sport,
+    rawDps: w.distance / w.strokeCount!,
+    avgPaceSecs: w.pace,
+    strokeCount: w.strokeCount!,
+  }));
 
-	const paces = preliminary.map((p) => p.avgPaceSecs);
-	const referencePace = paces.length >= 3 ? median(paces) : DEFAULT_REFERENCE_PACE;
+  const paces = preliminary.map((p) => p.avgPaceSecs);
+  const referencePace = paces.length >= 3 ? median(paces) : DEFAULT_REFERENCE_PACE;
 
-	const points: DpsPoint[] = preliminary.map((p) => ({
-		...p,
-		normDps: p.rawDps * Math.sqrt(referencePace / p.avgPaceSecs)
-	}));
+  const points: DpsPoint[] = preliminary.map((p) => ({
+    ...p,
+    normDps: p.rawDps * Math.sqrt(referencePace / p.avgPaceSecs),
+  }));
 
-	return points.sort((a, b) => a.date.localeCompare(b.date));
+  return points.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /**
@@ -61,32 +59,32 @@ export function computeDpsTrend(workouts: Workout[], sport?: Sport): DpsPoint[] 
  * Points outside the window at either end use a shrinking window.
  */
 export function movingAverage(
-	points: DpsPoint[],
-	metric: 'rawDps' | 'normDps',
-	windowDays: number
+  points: DpsPoint[],
+  metric: "rawDps" | "normDps",
+  windowDays: number,
 ): MovingAvgPoint[] {
-	if (points.length === 0) return [];
-	const halfMs = (windowDays / 2) * 86_400_000;
-	const epochs = points.map((p) => Date.parse(p.date.slice(0, 10) + 'T00:00:00Z'));
+  if (points.length === 0) return [];
+  const halfMs = (windowDays / 2) * 86_400_000;
+  const epochs = points.map((p) => Date.parse(p.date.slice(0, 10) + "T00:00:00Z"));
 
-	let left = 0;
-	let right = 0;
-	let sum = 0;
+  let left = 0;
+  let right = 0;
+  let sum = 0;
 
-	return points.map((p, i) => {
-		const pEpoch = epochs[i]!;
-		const minEpoch = pEpoch - halfMs;
-		const maxEpoch = pEpoch + halfMs;
+  return points.map((p, i) => {
+    const pEpoch = epochs[i]!;
+    const minEpoch = pEpoch - halfMs;
+    const maxEpoch = pEpoch + halfMs;
 
-		while (right < points.length && epochs[right]! <= maxEpoch) {
-			sum += points[right]![metric];
-			right++;
-		}
-		while (left < points.length && epochs[left]! < minEpoch) {
-			sum -= points[left]![metric];
-			left++;
-		}
-		const count = right - left;
-		return { date: p.date, value: count > 0 ? sum / count : 0 };
-	});
+    while (right < points.length && epochs[right]! <= maxEpoch) {
+      sum += points[right]![metric];
+      right++;
+    }
+    while (left < points.length && epochs[left]! < minEpoch) {
+      sum -= points[left]![metric];
+      left++;
+    }
+    const count = right - left;
+    return { date: p.date, value: count > 0 ? sum / count : 0 };
+  });
 }

@@ -24,7 +24,7 @@
 	const uid = $props.id();
 	const descId = `${uid}-desc`;
 
-	let el: HTMLDivElement;
+	let el = $state<HTMLDivElement>();
 	let plot = $state.raw<uPlot | null>(null);
 	let UPlotCtor: typeof uPlot | null = null;
 	// Flipped once the host element is measured, so the build effect only fires
@@ -34,7 +34,8 @@
 	let ro: ResizeObserver | null = null;
 
 	function build() {
-		if (!UPlotCtor || !el) return;
+		const host = el;
+		if (!UPlotCtor || !host) return;
 		untrack(() => plot)?.destroy();
 		const hooks = options.hooks ?? {};
 		// Resolve the cursor colour once outside the draw hook to avoid repeated
@@ -74,21 +75,23 @@
 				hooks: { ...hooks, draw: [...(hooks.draw ?? []), drawHook] }
 			},
 			untrack(() => data),
-			el
+			host
 		);
 	}
 
 	onMount(() => {
+		const host = el;
+		if (!host) return;
 		UPlotCtor = uPlot;
-		width = el.clientWidth || 600;
+		width = host.clientWidth || 600;
 		ro = new ResizeObserver(() => {
-			const w = el.clientWidth;
+			const w = host.clientWidth;
 			if (w && plot) {
 				width = w;
 				plot.setSize({ width: w, height });
 			}
 		});
-		ro.observe(el);
+		ro.observe(host);
 		ready = true;
 	});
 
@@ -101,8 +104,8 @@
 	// (theme toggle, metric switch, new labels). `ready` gates the first run so
 	// there is no duplicate build on mount.
 	$effect(() => {
-		options;
-		height;
+		void options;
+		void height;
 		if (ready) build();
 	});
 
@@ -115,7 +118,7 @@
 
 	// The marker just needs a redraw (the draw hook reads the latest value).
 	$effect(() => {
-		marker;
+		void marker;
 		if (plot) plot.redraw();
 	});
 </script>

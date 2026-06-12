@@ -144,8 +144,8 @@ that it ships without regressions.
    strokes — never PII (Req 2.3).
 3. EVERY new user-visible string SHALL be added to **all six** i18n
    dictionaries (en, zh, de, es, fr, ja); sport names stay untranslated.
-4. THE feature SHALL pass the full gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, and `npm run test:e2e` (see Req 6.3).
+4. THE feature SHALL pass the full gate: `pnpm run check` (0 errors),
+   `pnpm run build`, `pnpm run test`, and `pnpm run test:e2e` (see Req 6.3).
 
 ### Requirement 5 — Async rival-ghost arming
 

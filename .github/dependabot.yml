@@ -1,86 +1,86 @@
 version: 2
 updates:
-  - package-ecosystem: 'npm'
-    directory: '/'
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
-      interval: 'monthly'
-      day: 'monday'
-      time: '09:00'
-      timezone: 'Asia/Singapore'
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Singapore"
     open-pull-requests-limit: 10
     labels:
-      - 'dependencies'
+      - "dependencies"
     commit-message:
-      prefix: 'deps'
+      prefix: "deps"
     groups:
       # @sveltejs/vite-plugin-svelte v7+ requires Vite 8; major bumps must land together.
       vite-svelte-toolchain:
         patterns:
-          - 'vite'
-          - '@sveltejs/vite-plugin-svelte'
+          - "vite"
+          - "@sveltejs/vite-plugin-svelte"
         update-types:
-          - 'major'
+          - "major"
       svelte:
         patterns:
-          - '*svelte*'
+          - "*svelte*"
         update-types:
-          - 'minor'
-          - 'patch'
+          - "minor"
+          - "patch"
       vite:
         patterns:
-          - 'vite'
-          - 'vitest'
-          - '@vitest/*'
+          - "vite"
+          - "vitest"
+          - "@vitest/*"
         update-types:
-          - 'minor'
-          - 'patch'
+          - "minor"
+          - "patch"
       typescript:
         patterns:
-          - 'typescript'
-          - 'tslib'
-          - '@typescript-eslint/*'
-          - '@types/*'
+          - "typescript"
+          - "tslib"
+          - "@typescript-eslint/*"
+          - "@types/*"
         update-types:
-          - 'minor'
-          - 'patch'
+          - "minor"
+          - "patch"
       linting:
         patterns:
-          - 'eslint'
-          - 'eslint-*'
-          - '@eslint/*'
-          - 'prettier'
-          - 'prettier-*'
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "prettier"
+          - "prettier-*"
         update-types:
-          - 'minor'
-          - 'patch'
+          - "minor"
+          - "patch"
       cloudflare:
         patterns:
-          - '@cloudflare/*'
-          - 'wrangler'
+          - "@cloudflare/*"
+          - "wrangler"
         update-types:
-          - 'minor'
-          - 'patch'
+          - "minor"
+          - "patch"
       miscellaneous:
         patterns:
-          - '*'
+          - "*"
         update-types:
-          - 'minor'
-          - 'patch'
+          - "minor"
+          - "patch"
 
-  - package-ecosystem: 'github-actions'
-    directory: '/'
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: 'monthly'
+      interval: "monthly"
     open-pull-requests-limit: 2
     labels:
-      - 'dependencies'
-      - 'github-actions'
+      - "dependencies"
+      - "github-actions"
     commit-message:
-      prefix: 'ci'
+      prefix: "ci"
     groups:
       actions-minor-and-patch:
         patterns:
-          - '*'
+          - "*"
         update-types:
-          - 'minor'
-          - 'patch'
+          - "minor"
+          - "patch"

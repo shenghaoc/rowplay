@@ -108,15 +108,15 @@ the work is traceable.
 
 #### Acceptance Criteria
 
-1. `npm run check` SHALL report 0 errors; `npm run test` SHALL pass; `npm run build`
-   SHALL succeed; `npm run validate:locales` SHALL pass.
+1. `pnpm run check` SHALL report 0 errors; `pnpm run test` SHALL pass; `pnpm run build`
+   SHALL succeed; `pnpm run validate:locales` SHALL pass.
 2. WHEN the spec is complete, THEN it SHALL be listed in `AGENTS.md`.
 
 ## Non-functional requirements
 
 - Demo mode is unchanged (no auth, no D1, deterministic mocks).
 - Items in Requirements 2–4 take effect only on the Workers runtime
-  (`npm run preview` / production) with D1 migrations applied; they are inert under
+  (`pnpm run preview` / production) with D1 migrations applied; they are inert under
   plain `vite dev`.
 - No new D1 migration (`sync_state` already exists).
 - Cache writes remain best-effort: D1 errors are swallowed and fall through to a live

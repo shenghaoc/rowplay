@@ -275,9 +275,7 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 7. **Verify the build:**
 
    ```bash
-   pnpm check             # type checking
-   pnpm test              # unit tests
-   pnpm build             # production build
+   pnpm run check         # full gate: format:check + lint + typecheck + test + build
    ```
 
 8. **Deploy:**
@@ -293,20 +291,23 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 
 ## Scripts
 
-| Script                  | Does                                                                |
-| ----------------------- | ------------------------------------------------------------------- |
-| `pnpm dev`              | Local dev server (Vite; fast UI iteration, no KV/D1)                |
-| `pnpm build`            | Production build → `.svelte-kit/cloudflare`                         |
-| `pnpm preview`          | Build + `wrangler dev` (Workers runtime with local KV/D1)           |
-| `pnpm preview:ci`       | `wrangler dev` only — for CI after the build artifact is downloaded |
-| `pnpm check`            | `svelte-check` type checking                                        |
-| `pnpm test`             | Vitest unit tests                                                   |
-| `pnpm test:e2e`         | Playwright E2E — all specs, WebKit desktop + iPhone 14              |
-| `pnpm test:e2e:smoke`   | Playwright PR smoke — `smoke.spec.ts` on WebKit desktop only        |
-| `pnpm validate:locales` | Verify locale dictionary key parity across all languages            |
-| `pnpm deploy`           | Build + `wrangler deploy`                                           |
-| `pnpm db:migrate`       | Apply D1 migrations (remote)                                        |
-| `pnpm db:migrate:local` | Apply D1 migrations (local preview)                                 |
+| Script                  | Does                                                              |
+| ----------------------- | ----------------------------------------------------------------- |
+| `pnpm dev`              | Local dev server (Vite; fast UI iteration, no KV/D1)              |
+| `pnpm build`            | Production build → `.svelte-kit/cloudflare`                       |
+| `pnpm preview`          | Build + `wrangler dev` (Workers runtime with local KV/D1)         |
+| `pnpm preview:wrangler` | `wrangler dev` only — needs a prior `pnpm run build`              |
+| `pnpm run format`       | Format the repo (`vp fmt`); `format:check` verifies only          |
+| `pnpm run lint`         | Lint (`vp lint`); fails on findings                               |
+| `pnpm run typecheck`    | `svelte-check` type checking                                      |
+| `pnpm run check`        | Full quality gate: format:check + lint + typecheck + test + build |
+| `pnpm test`             | Vitest unit tests                                                 |
+| `pnpm test:e2e`         | Playwright E2E — all specs, WebKit desktop + iPhone 14            |
+| `pnpm test:e2e:smoke`   | Playwright PR smoke — `smoke.spec.ts` on WebKit desktop only      |
+| `pnpm validate:locales` | Verify locale dictionary key parity across all languages          |
+| `pnpm deploy`           | Build + `wrangler deploy`                                         |
+| `pnpm db:migrate`       | Apply D1 migrations (remote)                                      |
+| `pnpm db:migrate:local` | Apply D1 migrations (local preview)                               |
 
 ---
 
@@ -364,20 +365,20 @@ src/
 
 ## Stack
 
-| Concern       | Choice                                                                       |
-| ------------- | ---------------------------------------------------------------------------- |
-| App framework | SvelteKit (Svelte 5, runes mode) + Vite                                      |
-| Hosting       | Cloudflare **Workers** + static assets (`@sveltejs/adapter-cloudflare`)      |
-| Server        | SvelteKit endpoints on the Workers runtime                                   |
-| Auth          | **Bring-your-own-token** (personal Concept2 API token)                       |
-| Sessions      | Cloudflare **KV** (`SESSIONS`)                                               |
-| Cache         | Cloudflare **D1** (`DB`) — cached workouts + strokes                         |
-| Charts        | [uPlot](https://github.com/leeoniya/uPlot)                                   |
-| 3D            | [Three.js](https://threejs.org/)                                             |
-| UI            | [daisyUI 5](https://daisyui.com/) + Tailwind CSS v4                          |
-| Icons         | [Lucide](https://lucide.dev/)                                                |
-| I18n          | Hand-rolled; 6 languages                                                     |
-| CI            | GitHub Actions (type-check, unit tests, build, locale validation, E2E smoke) |
+| Concern       | Choice                                                                               |
+| ------------- | ------------------------------------------------------------------------------------ |
+| App framework | SvelteKit (Svelte 5, runes mode) + Vite                                              |
+| Hosting       | Cloudflare **Workers** + static assets (`@sveltejs/adapter-cloudflare`)              |
+| Server        | SvelteKit endpoints on the Workers runtime                                           |
+| Auth          | **Bring-your-own-token** (personal Concept2 API token)                               |
+| Sessions      | Cloudflare **KV** (`SESSIONS`)                                                       |
+| Cache         | Cloudflare **D1** (`DB`) — cached workouts + strokes                                 |
+| Charts        | [uPlot](https://github.com/leeoniya/uPlot)                                           |
+| 3D            | [Three.js](https://threejs.org/)                                                     |
+| UI            | [daisyUI 5](https://daisyui.com/) + Tailwind CSS v4                                  |
+| Icons         | [Lucide](https://lucide.dev/)                                                        |
+| I18n          | Hand-rolled; 6 languages                                                             |
+| CI            | GitHub Actions (`pnpm ci` + `pnpm run check`; separate locale + E2E smoke workflows) |
 
 ---
 

@@ -187,9 +187,9 @@ that it ships without regressions and the privacy properties are tested.
 2. NO test, log line, error message, or response body SHALL print the raw token;
    existing tests asserting a token in KV SHALL be updated to the new model.
 3. EVERY new user-visible string SHALL be added to ALL locale files
-   (`en`, `zh`, `de`, `es`, `fr`, `ja`) and pass `npm run validate:locales`;
+   (`en`, `zh`, `de`, `es`, `fr`, `ja`) and pass `pnpm run validate:locales`;
    sport names (RowErg/SkiErg/BikeErg) stay untranslated.
-4. THE feature SHALL pass the full gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, and `npm run test:e2e` (demo-mode smoke
+4. THE feature SHALL pass the full gate: `pnpm run check` (0 errors),
+   `pnpm run build`, `pnpm run test`, and `pnpm run test:e2e` (demo-mode smoke
    unaffected). Token-cookie + live-read behavior SHALL be verified on
-   `npm run preview` (Workers runtime) and the steps recorded in the spec.
+   `pnpm run preview` (Workers runtime) and the steps recorded in the spec.

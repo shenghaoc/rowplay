@@ -1,4 +1,4 @@
-name: CI
+name: Locales
 
 on:
   pull_request:
@@ -14,23 +14,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: pnpm ci + check
+  locale-validation:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
+    timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm ci
-      - name: Run checks
-        run: pnpm run check
+      - name: Locale validation
+        run: pnpm run validate:locales

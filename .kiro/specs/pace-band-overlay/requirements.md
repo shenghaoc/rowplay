@@ -61,8 +61,8 @@ that it ships without regressions.
    inputs, edge cases).
 2. Every user-visible string SHALL be added to all six locale files (en, zh, de,
    es, fr, ja) via `t()`.
-3. The feature SHALL pass the full quality gate: `npm run check` (0 errors),
-   `npm run build`, and `npm run test` (test count must not decrease).
+3. The feature SHALL pass the full quality gate: `pnpm run check` (0 errors),
+   `pnpm run build`, and `pnpm run test` (test count must not decrease).
 4. The feature SHALL work in demo mode with no Concept2 credentials.
 5. No existing replay functionality (gauges, telemetry charts, ghost racing,
    speed controls) SHALL be affected.

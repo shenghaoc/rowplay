@@ -37,5 +37,5 @@ Requirements: Req 1–5 · Design: `detailCache.ts` + `db.ts` + optional env
 
 - [x] 7. Housekeeping
   - [x] 7.1 Remove parking-lot line from `HANDOFF.md`
-  - [x] 7.2 Run `npm run check` and `npm run test`
+  - [x] 7.2 Run `pnpm run check` and `pnpm run test`
   - _Requirements: 5.1_

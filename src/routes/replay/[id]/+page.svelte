@@ -215,10 +215,10 @@
 	// for life, so the 2D renderer's getContext('2d') would make WebGL creation
 	// fail. The 2D renderer uses canvas2dEl; the 3D renderer creates its own canvas
 	// inside canvas3dHost. activeCanvas toggles which one is visible.
-	let canvas2dEl: HTMLCanvasElement;
-	let canvas3dHost: HTMLDivElement;
+	let canvas2dEl = $state<HTMLCanvasElement>();
+	let canvas3dHost = $state<HTMLDivElement>();
 	let activeCanvas = $state<RendererKind>('2d');
-	let courseWrap: HTMLDivElement;
+	let courseWrap = $state<HTMLDivElement>();
 
 	const SPEEDS = [0.5, 1, 2, 4, 8];
 
@@ -265,6 +265,9 @@
 	async function setRenderer(kind: RendererKind) {
 		if (activeLoadId < 0) return;
 		if (kind === '3d' && !webglOk) return;
+		const canvas2d = canvas2dEl;
+		const host3d = canvas3dHost;
+		if (!canvas2d || !host3d) return;
 		rendererKind = kind;
 		saveRendererPref(kind);
 
@@ -283,7 +286,7 @@
 				// Clear any in-flight 3D loading flag — a pending 3D load's finally
 				// won't fire for this (superseded) myLoadId, so reset it here.
 				loading3d = false;
-				renderer = new CourseRenderer(canvas2dEl);
+				renderer = new CourseRenderer(canvas2d);
 				activeCanvas = '2d';
 				if (w) renderer.resize(w, h);
 				renderCurrent();
@@ -292,7 +295,7 @@
 
 			if (!Ctor3D) {
 				loading3d = true;
-				const temp2d = new CourseRenderer(canvas2dEl);
+				const temp2d = new CourseRenderer(canvas2d);
 				renderer = temp2d;
 				activeCanvas = '2d';
 				if (w) temp2d.resize(w, h);
@@ -313,7 +316,7 @@
 				renderer = null;
 			}
 			if (myLoadId !== activeLoadId) return;
-			renderer = new Ctor3D!(canvas3dHost, quality, detail.sport);
+			renderer = new Ctor3D!(host3d, quality, detail.sport);
 			activeCanvas = '3d';
 			if (w) renderer.resize(w, h);
 			renderCurrent();
@@ -326,7 +329,7 @@
 			// replacing to match the ownership pattern used elsewhere.
 			renderer?.destroy();
 			renderer = null;
-			renderer = new CourseRenderer(canvas2dEl);
+			renderer = new CourseRenderer(canvas2d);
 			activeCanvas = '2d';
 			if (w) renderer.resize(w, h);
 			renderCurrent();
@@ -502,7 +505,7 @@
 			renderCurrent();
 		};
 		const ro = new ResizeObserver(sizeIt);
-		ro.observe(courseWrap);
+		if (courseWrap) ro.observe(courseWrap);
 
 		const onKey = (e: KeyboardEvent) => {
 			const target = e.target as HTMLElement | null;

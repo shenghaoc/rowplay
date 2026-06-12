@@ -78,7 +78,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
   (or `.json`)
   - Add `drift` block: `toggle`, `toggleOn`, `baseline`, `fade`, `unit`,
     `summaryTitle`, `summaryHint`, `axisLabel`.
-  - Run `npm run validate:locales` after each locale file is updated; all must
+  - Run `pnpm run validate:locales` after each locale file is updated; all must
     pass before the task is closed.
   - _Requirements: 6.1–6.3_
 
@@ -91,9 +91,9 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
   - _Requirements: 5.1, 6.2, 7.4_
 
 - [x] **9. Full quality gate** — (no code; CI verification step)
-  - `npm run check` → 0 errors.
-  - `npm run build` → succeeds.
-  - `npm run test` → green (including new unit tests from task 2).
-  - `npm run validate:locales` → no missing keys.
-  - `npm run test:e2e` → passes (including task 8 smoke spec).
+  - `pnpm run check` → 0 errors.
+  - `pnpm run build` → succeeds.
+  - `pnpm run test` → green (including new unit tests from task 2).
+  - `pnpm run validate:locales` → no missing keys.
+  - `pnpm run test:e2e` → passes (including task 8 smoke spec).
   - _Requirements: 7.1–7.4_

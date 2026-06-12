@@ -19,49 +19,49 @@ const keyCache = new Map<string, Promise<CryptoKey>>();
 
 /** Derive (and memoise) a 256-bit AES-GCM key from the secret (SHA-256 of its UTF-8 bytes). */
 function deriveKey(secret: string): Promise<CryptoKey> {
-	let key = keyCache.get(secret);
-	if (!key) {
-		key = (async () => {
-			const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
-			return crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, [
-				'encrypt',
-				'decrypt'
-			]);
-		})();
-		keyCache.set(secret, key);
-	}
-	return key;
+  let key = keyCache.get(secret);
+  if (!key) {
+    key = (async () => {
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret));
+      return crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, [
+        "encrypt",
+        "decrypt",
+      ]);
+    })();
+    keyCache.set(secret, key);
+  }
+  return key;
 }
 
 function toBase64Url(bytes: Uint8Array): string {
-	let bin = '';
-	for (const b of bytes) bin += String.fromCharCode(b);
-	return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function fromBase64Url(text: string): Uint8Array {
-	// `toBase64Url` strips `=` padding; we don't restore it here because `atob`
-	// performs WHATWG "forgiving base64 decode" (padding optional). The Workers
-	// runtime (V8) implements this, so the unpadded round-trip is safe.
-	const bin = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
-	const bytes = new Uint8Array(bin.length);
-	for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-	return bytes;
+  // `toBase64Url` strips `=` padding; we don't restore it here because `atob`
+  // performs WHATWG "forgiving base64 decode" (padding optional). The Workers
+  // runtime (V8) implements this, so the unpadded round-trip is safe.
+  const bin = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 
 /** Encrypt `plaintext`, returning base64url(`iv || ciphertext`). */
 export async function sealToken(secret: string, plaintext: string): Promise<string> {
-	const key = await deriveKey(secret);
-	const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
-	const ct = await crypto.subtle.encrypt(
-		{ name: 'AES-GCM', iv },
-		key,
-		new TextEncoder().encode(plaintext)
-	);
-	const packed = new Uint8Array(iv.length + ct.byteLength);
-	packed.set(iv, 0);
-	packed.set(new Uint8Array(ct), iv.length);
-	return toBase64Url(packed);
+  const key = await deriveKey(secret);
+  const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
+  const ct = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    new TextEncoder().encode(plaintext),
+  );
+  const packed = new Uint8Array(iv.length + ct.byteLength);
+  packed.set(iv, 0);
+  packed.set(new Uint8Array(ct), iv.length);
+  return toBase64Url(packed);
 }
 
 /**
@@ -69,17 +69,17 @@ export async function sealToken(secret: string, plaintext: string): Promise<stri
  * any malformed / tampered / wrong-key input — never throws, never logs.
  */
 export async function openToken(secret: string, blob: string): Promise<string | null> {
-	try {
-		const packed = fromBase64Url(blob);
-		if (packed.length <= IV_BYTES) return null;
-		// Copy into fresh ArrayBuffer-backed views (subarray's ArrayBufferLike
-		// generic isn't assignable to WebCrypto's BufferSource).
-		const iv = new Uint8Array(packed.subarray(0, IV_BYTES));
-		const ct = new Uint8Array(packed.subarray(IV_BYTES));
-		const key = await deriveKey(secret);
-		const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
-		return new TextDecoder().decode(pt);
-	} catch {
-		return null;
-	}
+  try {
+    const packed = fromBase64Url(blob);
+    if (packed.length <= IV_BYTES) return null;
+    // Copy into fresh ArrayBuffer-backed views (subarray's ArrayBufferLike
+    // generic isn't assignable to WebCrypto's BufferSource).
+    const iv = new Uint8Array(packed.subarray(0, IV_BYTES));
+    const ct = new Uint8Array(packed.subarray(IV_BYTES));
+    const key = await deriveKey(secret);
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+    return new TextDecoder().decode(pt);
+  } catch {
+    return null;
+  }
 }

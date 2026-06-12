@@ -27,7 +27,7 @@ tenths). Avoid trivial or absurd values that would make assertions meaningless.
    `mapResult` / `mapStrokes` / `mapSplits`.
 4. Name the file `<case>.fixture.json` and add a matching `describe` block in
    `src/lib/server/concept2.golden.test.ts`.
-5. Run `npm run test`.
+5. Run `pnpm run test`.
 
 ## Provenance
 

@@ -57,7 +57,7 @@ checked as the work lands. Requirement references point at `requirements.md`.
 - [x] **9. i18n** — all six locales
   - Window label (`{months}`/`{date}`), "loading older history", backfilling
     progress, "full history synced", "load full history" action across `en`,
-    `zh`, `de`, `es`, `fr`, `ja`. `npm run validate:locales`.
+    `zh`, `de`, `es`, `fr`, `ja`. `pnpm run validate:locales`.
   - _Requirements: 4.3, 5.2_
 
 - [x] **10. E2E + full gate** — `tests/e2e/history-windowing.spec.ts`

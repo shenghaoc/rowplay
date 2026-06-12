@@ -126,6 +126,6 @@ that it ships without regressions.
    an email, raw user id, or other PII.
 3. EVERY user-visible string SHALL be added to BOTH the `en` and `zh` i18n
    dictionaries; sport names (RowErg/SkiErg/BikeErg) stay untranslated.
-4. THE feature SHALL pass the full gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, and `npm run test:e2e` (a smoke spec covers
+4. THE feature SHALL pass the full gate: `pnpm run check` (0 errors),
+   `pnpm run build`, `pnpm run test`, and `pnpm run test:e2e` (a smoke spec covers
    the board rendering and an entry's replay link in demo mode).

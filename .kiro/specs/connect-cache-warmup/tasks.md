@@ -7,7 +7,7 @@ Status: implemented on `claude/clever-rubin-wJ2kc` (PR #75). The automated gate
 was green when this spec landed (`check`, `test`, `build`, `validate:locales`).
 Historical verification notes in this file are landing snapshots, not the
 current whole-app suite size.
-Spec written retroactively after the code landed. The `npm run preview` manual
+Spec written retroactively after the code landed. The `pnpm run preview` manual
 walkthrough (Workers runtime + real token) is left to the maintainer.
 
 ## Tasks
@@ -42,10 +42,10 @@ walkthrough (Workers runtime + real token) is left to the maintainer.
   - _Requirements: 4.1, 4.2, 4.3_
 
 - [x] **5. Gate + docs**
-  - [x] 5.1 `npm run check` (0 errors) · `npm run test` green at the spec landing snapshot · `npm run build` · `validate:locales`
+  - [x] 5.1 `pnpm run check` (0 errors) · `pnpm run test` green at the spec landing snapshot · `pnpm run build` · `validate:locales`
   - [x] 5.2 Resolve the PR #75 P1 review thread (reply + mark resolved)
   - [x] 5.3 Add this spec to the `AGENTS.md` completed list
-  - [ ] 5.4 Maintainer: `npm run preview` walkthrough with a real token + `SESSION_SECRET`
+  - [ ] 5.4 Maintainer: `pnpm run preview` walkthrough with a real token + `SESSION_SECRET`
   - _Requirements: 5.1, 5.2_
 
 ## Follow-ups (not in this spec)

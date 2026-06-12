@@ -58,7 +58,7 @@ checked as the work lands. Requirement references point at `requirements.md`.
 
 - [x] **10. i18n** — all six locales
   - Keys for every new label (metadata fields, provenance, targets, HR
-    recovery, work:rest). `npm run validate:locales`.
+    recovery, work:rest). `pnpm run validate:locales`.
   - _Requirements: 4.4, 6.3_
 
 - [x] **11. E2E + full gate** — `tests/e2e/`

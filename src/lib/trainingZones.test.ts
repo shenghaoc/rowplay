@@ -6,7 +6,6 @@ import {
   medianTrainingPace,
   workoutsInPeriod,
   ZONES_5,
-  ZONES_3,
 } from "./trainingZones";
 import { intervalSplits, normalizedIntervalStrokes, workout } from "../../tests/unit/fixtures";
 import type { WorkoutForDistribution } from "./trainingZones";

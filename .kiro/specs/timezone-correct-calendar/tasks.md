@@ -89,14 +89,14 @@ timezone path only activates in production once #61 is merged.
     `settings.timezoneSaved`, `settings.timezoneUtcDefault`,
     `settings.timezoneGroupAmericas`, `settings.timezoneGroupEuropeAfrica`,
     `settings.timezoneGroupAsiaPacific` to `en`, `zh`, `de`, `es`, `fr`, `ja`.
-  - Run `npm run validate:locales`.
+  - Run `pnpm run validate:locales`.
   - _Requirements: 3.5, 5.2_
 
 - [x] **11. Quality gate**
-  - `npm run check` → 0 errors.
-  - `npm run build` → succeeds.
-  - `npm run test` → all green (including new unit tests from tasks 2 and 4).
-  - `npm run validate:locales` → passes.
-  - Manual smoke: `/dashboard` in `npm run dev` shows heatmap; change home
+  - `pnpm run check` → 0 errors.
+  - `pnpm run build` → succeeds.
+  - `pnpm run test` → all green (including new unit tests from tasks 2 and 4).
+  - `pnpm run validate:locales` → passes.
+  - Manual smoke: `/dashboard` in `pnpm run dev` shows heatmap; change home
     timezone in settings and confirm calendar re-renders with correct bucketing.
   - _Requirements: 5.3, 5.4_

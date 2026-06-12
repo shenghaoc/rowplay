@@ -133,7 +133,7 @@ fields without leaking PII on shared replays, so that it grows safely.
 1. `sampleIndexAt`, the as-logged reconstruction, and distance-per-stroke SHALL
    be pure and unit-tested.
 2. EVERY user-visible string SHALL be added to all six i18n dictionaries.
-3. THE feature SHALL pass the full gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, `npm run validate:locales`, and
-   `npm run test:e2e` (a smoke spec toggles the inspector in demo mode and
+3. THE feature SHALL pass the full gate: `pnpm run check` (0 errors),
+   `pnpm run build`, `pnpm run test`, `pnpm run validate:locales`, and
+   `pnpm run test:e2e` (a smoke spec toggles the inspector in demo mode and
    asserts a raw value holds between samples and updates across a boundary).

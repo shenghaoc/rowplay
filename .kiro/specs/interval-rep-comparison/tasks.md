@@ -45,11 +45,11 @@ Implementation plan. Requirement references point at `requirements.md`.
 
 - [x] **5. i18n keys** — `src/lib/locales/{en,zh,de,es,fr,ja}.ts`
   - Add all `replay.repComparison*` keys to all six locale files.
-  - `npm run validate:locales` passes.
+  - `pnpm run validate:locales` passes.
   - _Requirements: 4.2_
 
 - [x] **6. Quality gate**
-  - `npm run check` → 0 errors.
-  - `npm run build` → succeeds.
-  - `npm run test` → green, count ≥ previous.
+  - `pnpm run check` → 0 errors.
+  - `pnpm run build` → succeeds.
+  - `pnpm run test` → green, count ≥ previous.
   - _Requirements: 4.3, 4.4, 4.5_

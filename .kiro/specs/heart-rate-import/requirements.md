@@ -106,6 +106,6 @@ I don't re-upload every visit.
    with Vitest coverage (offset maths, interpolation boundaries, summary).
 2. EVERY user-visible string SHALL be added to BOTH `en` and `zh` in
    `src/lib/i18n.ts`.
-3. THE feature SHALL pass `npm run check`, `npm run build`, `npm run test`, and
-   `npm run test:e2e` (new smoke: demo no-HR workout → import fixture → HR
+3. THE feature SHALL pass `pnpm run check`, `pnpm run build`, `pnpm run test`, and
+   `pnpm run test:e2e` (new smoke: demo no-HR workout → import fixture → HR
    chart visible).

@@ -55,10 +55,10 @@ checked as the work lands. Requirement references point at `requirements.md`.
 - [x] **8. i18n** — all six locale files
   - Add `comparability` block (blockedTitle, guidance, noComparableCandidates,
     reason.crossSport, reason.crossAxis, reason.crossBand) to `en`, `zh`,
-    `de`, `es`, `fr`, `ja`. Run `npm run validate:locales`.
+    `de`, `es`, `fr`, `ja`. Run `pnpm run validate:locales`.
   - _Requirements: 8.1, 8.2, 8.3_
 
 - [x] **9. Quality gate**
-  - `npm run check` (0 errors) + `npm run build` + `npm run test` (all green,
-    including new comparability tests) + `npm run validate:locales`.
+  - `pnpm run check` (0 errors) + `pnpm run build` + `pnpm run test` (all green,
+    including new comparability tests) + `pnpm run validate:locales`.
   - _Requirements: 9.1, 9.2, 9.3, 9.4_

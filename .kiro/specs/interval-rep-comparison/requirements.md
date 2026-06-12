@@ -78,8 +78,8 @@ that it ships without regressions.
    zero-basing, empty-HR handling.
 2. Every user-visible string SHALL be added to all six locale files (en, zh, de,
    es, fr, ja) via `i18n.t()`.
-3. The feature SHALL pass the full quality gate: `npm run check` (0 errors),
-   `npm run build`, and `npm run test` (count must not decrease).
+3. The feature SHALL pass the full quality gate: `pnpm run check` (0 errors),
+   `pnpm run build`, and `pnpm run test` (count must not decrease).
 4. The feature SHALL work in demo mode; if no multi-rep mock workout exists the
    panel is simply absent (no error).
 5. No existing replay functionality SHALL be affected for single-piece workouts.

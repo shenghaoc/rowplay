@@ -39,7 +39,7 @@ checked as the work lands. Requirement references point at `requirements.md`.
 
 - [x] **7. i18n** — all six locales
   - `inspector` block (toggle, headings, column headers, field descriptions,
-    no-stroke-data note, "derived" tag). `npm run validate:locales`.
+    no-stroke-data note, "derived" tag). `pnpm run validate:locales`.
   - _Requirements: 4.3, 6.2_
 
 - [x] **8. E2E + full gate** — `tests/e2e/inspector.spec.ts`

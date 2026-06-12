@@ -157,7 +157,7 @@ GET /dashboard (after backfill): syncStateFor set → D1 (fast, complete)
 - The data layer has no isolated unit harness today (the only data-layer test mocks
   `loadWorkouts` wholesale); a faithful test of the gate/memo/`waitUntil` needs D1/KV/ctx
   mocks. Deferred — noted as a follow-up.
-- Manual on `npm run preview` (maintainer, needs a real token + `SESSION_SECRET`): connect →
+- Manual on `pnpm run preview` (maintainer, needs a real token + `SESSION_SECRET`): connect →
   dashboard shows a live page immediately → after a moment, navigations are D1-fast and span
   the full history; `rp_tok` stays HttpOnly and KV holds no token.
 
