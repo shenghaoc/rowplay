@@ -6,7 +6,7 @@ checked as the work lands. Requirement references point at `requirements.md`.
 Status: implemented on `claude/concept2-token-privacy-HvbAl`. The automated
 gate was green when this spec landed (`check`, `test`, `build`,
 `validate:locales`). Historical verification notes below are landing snapshots,
-not the current whole-app suite size. The `npm run preview` manual walkthrough
+not the current whole-app suite size. The `pnpm run preview` manual walkthrough
 in task 12 still needs the maintainer (it requires a real Concept2 token, which
 the agent does not have).
 
@@ -70,21 +70,21 @@ the agent does not have).
 
 - [x] **11. i18n** — all locale files
   - New keys (server-misconfig error, publish/withdraw copy, privacy statement)
-    in `en, zh, de, es, fr, ja`; `npm run validate:locales`.
+    in `en, zh, de, es, fr, ja`; `pnpm run validate:locales`.
   - _Requirements: 5.3_
 
 - [x] **12. Historical gate + verification snapshot**
-  - ✅ `npm run check` (0 errors), `npm run test` (green at the spec landing
-    snapshot), `npm run build` (succeeds), `npm run validate:locales` (green at
+  - ✅ `pnpm run check` (0 errors), `pnpm run test` (green at the spec landing
+    snapshot), `pnpm run build` (succeeds), `pnpm run validate:locales` (green at
     the locale snapshot).
   - ✅ Real Workers runtime (`wrangler dev`) demo smoke via curl: `/`, `/dashboard`,
     `/leaderboard`, `/replay/1001`, `/auth/token`, `/settings` all 200; publish →
     rank, **withdraw `DELETE` → `{ok:true}`**, bad id → 400, account-delete → demo.
-  - ⚠️ `npm run test:e2e` could not run in this sandbox — the WebKit browser binary
+  - ⚠️ `pnpm run test:e2e` could not run in this sandbox — the WebKit browser binary
     can't be downloaded here (only chromium is cached); every spec fails at
     `browserType.launch`, not on app behavior. Demo flows are untouched by this
     change, so the suite is expected to pass on a machine with WebKit installed.
-  - ⏳ Maintainer to run on `npm run preview` with a real token + `SESSION_SECRET`
+  - ⏳ Maintainer to run on `pnpm run preview` with a real token + `SESSION_SECRET`
     set in `.dev.vars`: connect → `rp_tok` is HttpOnly + KV has no token →
     dashboard from the D1 cache → publish appears → withdraw removes → logout
     clears both cookies **and** purges the D1 cache.

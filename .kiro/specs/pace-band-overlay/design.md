@@ -66,7 +66,7 @@ In `replay/[id]/+page.svelte` (Svelte 5 runes):
 
 ```ts
 let targetPaceSecs = $state<number | null>(null);
-let showBand       = $state(false);
+let showBand = $state(false);
 ```
 
 Both are local — no persistence, no server round-trip.
@@ -75,13 +75,13 @@ Both are local — no persistence, no server round-trip.
 
 New keys in `replay` block (all 6 locale files):
 
-| Key | EN value |
-|-----|----------|
-| `replay.targetPace` | Target pace |
-| `replay.targetPacePlaceholder` | M:SS |
-| `replay.targetPaceSet` | Set target pace |
-| `replay.targetPaceClear` | Clear |
-| `replay.targetPaceBand` | Show ±5 s band |
+| Key                            | EN value        |
+| ------------------------------ | --------------- |
+| `replay.targetPace`            | Target pace     |
+| `replay.targetPacePlaceholder` | M:SS            |
+| `replay.targetPaceSet`         | Set target pace |
+| `replay.targetPaceClear`       | Clear           |
+| `replay.targetPaceBand`        | Show ±5 s band  |
 
 ## Demo mode
 

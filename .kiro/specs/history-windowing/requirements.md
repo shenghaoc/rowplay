@@ -130,7 +130,7 @@ months or my whole history, so that I trust my PBs and trends.
    `syncStatus` loader path (dashboard + settings), not from client guesses.
 3. EVERY user-visible status string (window label, backfilling, complete,
    on-demand action) SHALL be added to **all six** locale dictionaries (`en`,
-   `zh`, `de`, `es`, `fr`, `ja`) and pass `npm run validate:locales`.
+   `zh`, `de`, `es`, `fr`, `ja`) and pass `pnpm run validate:locales`.
 4. THE window length shown to the user SHALL be derived from the same
    `HISTORY_WINDOW_MONTHS` constant (passed through the loader), never a separate
    hardcoded "12".
@@ -180,7 +180,7 @@ power users can pull everything now.
    **purged on disconnect/logout** by `purgePrivateCache` and on account delete
    by `deleteUserData` — consistent with the session-scoped cache lifecycle in
    the `concept2-token-privacy` spec (referenced, not re-specified).
-3. THE feature SHALL pass the full gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, `npm run validate:locales`, and
-   `npm run test:e2e` (a smoke spec asserts the sync-status affordance renders in
+3. THE feature SHALL pass the full gate: `pnpm run check` (0 errors),
+   `pnpm run build`, `pnpm run test`, `pnpm run validate:locales`, and
+   `pnpm run test:e2e` (a smoke spec asserts the sync-status affordance renders in
    demo mode).

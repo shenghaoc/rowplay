@@ -72,26 +72,26 @@ Types and functions, no server/DOM imports (mirrors `analytics.ts` /
 export const STANDARD_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
 
 export interface LeaderboardEntry {
-    sport: Sport;
-    distance: number;
-    displayName: string;
-    time: number;
-    pace: number;
-    date: string;
-    workoutId: number;
-    shareToken?: string;
-    isYou?: boolean;
+  sport: Sport;
+  distance: number;
+  displayName: string;
+  time: number;
+  pace: number;
+  date: string;
+  workoutId: number;
+  shareToken?: string;
+  isYou?: boolean;
 }
 
 export interface RankedEntry extends LeaderboardEntry {
-    rank: number;          // 1-based; ties share a rank
-    gapSeconds: number;    // time - leaderTime (0 for the leader)
+  rank: number; // 1-based; ties share a rank
+  gapSeconds: number; // time - leaderTime (0 for the leader)
 }
 
 export interface Board {
-    sport: Sport;
-    distance: number;
-    entries: RankedEntry[];
+  sport: Sport;
+  distance: number;
+  entries: RankedEntry[];
 }
 
 export function boardKey(sport: Sport, distance: number): string;
@@ -161,6 +161,7 @@ Both wrapped in the file's existing best-effort try/catch style.
 ## API — `POST /api/leaderboard/publish`
 
 `src/routes/api/leaderboard/publish/+server.ts`:
+
 - body `{ workoutId: number }`.
 - calls `publishWorkout(event, workoutId)`, returns the board + rank as JSON,
   `cache-control: private, no-store`.
@@ -219,6 +220,6 @@ Dashboard and Data, with `class:active` on `pathname.startsWith('/leaderboard')`
 
 - Storing rivals' full stroke data for a true stroke-accurate cross-user ghost
   (demo uses a pace ghost; live uses the rival's own public replay). A later
-  iteration can race the rival's *actual* shared strokes via `loadSharedWorkout`.
+  iteration can race the rival's _actual_ shared strokes via `loadSharedWorkout`.
 - Anti-cheat / verification of published times.
 - Pagination for very large boards (current scope: top-N per board).

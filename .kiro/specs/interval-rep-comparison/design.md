@@ -21,16 +21,16 @@ unit-tested without a DOM.
 ## Pure module — `src/lib/repComparison.ts`
 
 ```ts
-import type { WorkoutDetail, Split } from '$lib/types';
+import type { WorkoutDetail, Split } from "$lib/types";
 
 export interface RepSeries {
-  repIndex: number;       // 0-based position in the work-interval list
-  avgPace: number;        // seconds per 500 m (for legend + sort)
-  times: Float32Array;    // elapsed seconds within the rep (x-axis)
-  pace:  Float32Array;    // seconds per 500 m (y-axis)
-  rate:  Float32Array;    // strokes per minute
-  power: Float32Array;    // watts
-  hr:    Float32Array;    // bpm (may be all-zeros when HR unavailable)
+  repIndex: number; // 0-based position in the work-interval list
+  avgPace: number; // seconds per 500 m (for legend + sort)
+  times: Float32Array; // elapsed seconds within the rep (x-axis)
+  pace: Float32Array; // seconds per 500 m (y-axis)
+  rate: Float32Array; // strokes per minute
+  power: Float32Array; // watts
+  hr: Float32Array; // bpm (may be all-zeros when HR unavailable)
 }
 
 /**
@@ -43,7 +43,7 @@ export function detectReps(workout: WorkoutDetail): RepSeries[] | null;
 export function repAvgPace(series: RepSeries): number;
 ```
 
--   Stroke-level data (from `workout.strokes`, typed as `Stroke[]`) is the
+- Stroke-level data (from `workout.strokes`, typed as `Stroke[]`) is the
   preferred source. When only split data is available, each split's average
   values are repeated across `Math.round(split.time)` synthetic time steps.
 - `times` is always zero-based (starts at 0 for every rep regardless of when in
@@ -87,16 +87,16 @@ multi-rep mock workout.
 
 New keys in the `replay` block (all 6 locale files):
 
-| Key | EN value |
-|-----|----------|
-| `replay.repComparison` | Rep comparison |
-| `replay.repComparisonN` | Rep comparison ({n} reps) |
-| `replay.repComparisonRep` | Rep {n} |
-| `replay.repComparisonAvgPace` | avg {pace} |
-| `replay.repComparisonMetricPace` | Pace |
-| `replay.repComparisonMetricRate` | Stroke rate |
-| `replay.repComparisonMetricPower` | Power |
-| `replay.repComparisonMetricHr` | Heart rate |
+| Key                               | EN value                  |
+| --------------------------------- | ------------------------- |
+| `replay.repComparison`            | Rep comparison            |
+| `replay.repComparisonN`           | Rep comparison ({n} reps) |
+| `replay.repComparisonRep`         | Rep {n}                   |
+| `replay.repComparisonAvgPace`     | avg {pace}                |
+| `replay.repComparisonMetricPace`  | Pace                      |
+| `replay.repComparisonMetricRate`  | Stroke rate               |
+| `replay.repComparisonMetricPower` | Power                     |
+| `replay.repComparisonMetricHr`    | Heart rate                |
 
 ## Out of scope
 

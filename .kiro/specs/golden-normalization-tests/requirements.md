@@ -6,7 +6,7 @@ rowplay's normalization layer (`mapResult`, `mapStrokes`, `mapSplits` in
 `src/lib/server/concept2.ts`) converts raw Concept2 API wire values — time in
 tenths of a second, distance in decimetres, pace in tenths with BikeErg
 per-1000m — into the internal SI-like units the rest of the app consumes. Today
-nothing *proves* these conversions are correct end-to-end: the raw-field
+nothing _proves_ these conversions are correct end-to-end: the raw-field
 inspector shows raw-vs-normalized but both values derive from the same code path,
 so a systematic bug in `mapStrokes` would appear self-consistent in the UI while
 silently corrupting every replay, pace display, and watt calculation.
@@ -147,18 +147,28 @@ how to import it.
    ```jsonc
    {
      "description": "<human-readable case description>",
-     "rawResult": { /* RawResult shape as returned by GET /results/{id} */ },
-     "rawStrokes": [ /* RawStroke[] as returned by GET /results/{id}/strokes */ ],
+     "rawResult": {
+       /* RawResult shape as returned by GET /results/{id} */
+     },
+     "rawStrokes": [
+       /* RawStroke[] as returned by GET /results/{id}/strokes */
+     ],
      "expected": {
-       "result": { /* Partial<Workout> — the fields under test */ },
-       "strokes": [ /* selected Stroke objects (first, last, key reps) */ ],
-       "splits": [ /* Split[] or [] if not asserted */ ]
-     }
+       "result": {
+         /* Partial<Workout> — the fields under test */
+       },
+       "strokes": [
+         /* selected Stroke objects (first, last, key reps) */
+       ],
+       "splits": [
+         /* Split[] or [] if not asserted */
+       ],
+     },
    }
    ```
 3. THE test file SHALL import fixtures via static Vite/Vitest JSON imports
    (e.g. `import fixture from '../../fixtures/golden/rower-steady.fixture.json'
-   assert { type: 'json' }`) — no `fs.readFileSync`, no dynamic runtime I/O.
+assert { type: 'json' }`) — no `fs.readFileSync`, no dynamic runtime I/O.
 4. WHERE the fixture does not assert `mapStrokes` (e.g. splits-only fallback
    case), `rawStrokes` SHALL be an empty array `[]` and
    `expected.strokes` SHALL be `[]`.
@@ -197,22 +207,22 @@ anchor the wider capture as real data becomes available.
 ### Requirement 6 — Quality gate and CI integration
 
 **User story:** As a maintainer, I want the golden-file tests to run in the
-existing `npm run test` Vitest suite and fail CI on any normalization regression,
+existing `pnpm run test` Vitest suite and fail CI on any normalization regression,
 without requiring any new tooling or credentials.
 
 #### Acceptance criteria
 
 1. THE golden-file tests SHALL live in a single test file at
    `src/lib/server/concept2.golden.test.ts` (alongside the existing
-   `concept2.test.ts`) so that `npm run test` picks them up automatically
+   `concept2.test.ts`) so that `pnpm run test` picks them up automatically
    without config changes.
 2. THE tests SHALL be pure Vitest (`describe`/`it`/`expect`) with no DOM
    dependency, no network calls, and no environment variables required.
 3. THE tests SHALL NOT depend on the Cloudflare Workers runtime
    (`KVNamespace`, `D1Database`) — the normalization functions accept plain
    data and return plain objects.
-4. `npm run test` SHALL pass with the new tests present. `npm run check` and
-   `npm run build` SHALL also pass (no new TypeScript errors introduced by
+4. `pnpm run test` SHALL pass with the new tests present. `pnpm run check` and
+   `pnpm run build` SHALL also pass (no new TypeScript errors introduced by
    fixture types).
 5. THE tests SHALL run in under 500 ms total (they are pure data
    transformations with no I/O).

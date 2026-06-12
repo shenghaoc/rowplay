@@ -63,9 +63,9 @@ matches it; this is purely additive.
 
 ```ts
 export interface ReplayRenderer {
-	render(state: RenderState, playing: boolean, theme: 'light' | 'dark'): void;
-	resize(cssWidth: number, cssHeight: number): void;
-	destroy(): void;
+  render(state: RenderState, playing: boolean, theme: "light" | "dark"): void;
+  resize(cssWidth: number, cssHeight: number): void;
+  destroy(): void;
 }
 ```
 
@@ -81,13 +81,13 @@ Synchronous capability probe, SSR-safe:
 
 ```ts
 export function webglSupported(): boolean {
-	if (typeof document === 'undefined') return false;
-	try {
-		const c = document.createElement('canvas');
-		return !!(c.getContext('webgl2') || c.getContext('webgl'));
-	} catch {
-		return false;
-	}
+  if (typeof document === "undefined") return false;
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+  } catch {
+    return false;
+  }
 }
 ```
 
@@ -101,15 +101,15 @@ loader caches the resolved module so subsequent toggles don't re-import (Req 2.5
 ```ts
 let cached: Promise<Renderer3DCtor> | null = null;
 export function loadRenderer3D(): Promise<Renderer3DCtor> {
-	if (!cached) {
-		cached = import('./renderer3d')
-			.then((m) => m.CourseRenderer3D)
-			.catch((err) => {
-				cached = null;
-				throw err;
-			});
-	}
-	return cached;
+  if (!cached) {
+    cached = import("./renderer3d")
+      .then((m) => m.CourseRenderer3D)
+      .catch((err) => {
+        cached = null;
+        throw err;
+      });
+  }
+  return cached;
 }
 ```
 
@@ -130,14 +130,14 @@ reused (Req 5.1).
 **circular loop where one lap = 1 km** (matching ErgData); longer pieces wrap
 multiple laps.
 
-| RenderState field | 3D representation |
-|---|---|
-| `frame.d` (metres) | live boat angle on the lap circle = `(d / 1000) · 2π`; lap = `floor(d/1000)` |
-| `totalDistance` | lap count `ceil(totalDistance/1000)`, shown in the live label |
-| `frame.pace`, `frame.spm` | floating label above the boat; spm drives a subtle bob + roll |
-| `ghost?.distFrac` | ghost boat on a concentric inner lane (`ghostMeters = distFrac · totalDistance`) |
-| `ghost?.label` | floating label above the ghost |
-| start/finish | checkered strip across the lane at the lap crossing (angle 0) |
+| RenderState field         | 3D representation                                                                |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| `frame.d` (metres)        | live boat angle on the lap circle = `(d / 1000) · 2π`; lap = `floor(d/1000)`     |
+| `totalDistance`           | lap count `ceil(totalDistance/1000)`, shown in the live label                    |
+| `frame.pace`, `frame.spm` | floating label above the boat; spm drives a subtle bob + roll                    |
+| `ghost?.distFrac`         | ghost boat on a concentric inner lane (`ghostMeters = distFrac · totalDistance`) |
+| `ghost?.label`            | floating label above the ghost                                                   |
+| start/finish              | checkered strip across the lane at the lap crossing (angle 0)                    |
 
 Boats are low-poly **single sculls** — a capsule hull, a seated rower, and two
 oars with blades. The hull/deck/blades carry `userData.accent` so the per-boat
@@ -148,6 +148,7 @@ thereafter. Pace/label text is rendered as sprites (canvas-texture) to avoid
 pulling a font-geometry dependency.
 
 **`render(state, playing, theme)`:**
+
 1. On theme change, swap material colours to the matching `COLORS_*` palette (Req 4.6).
 2. Update avatar positions from `distFrac` (and ghost).
 3. Update pace/label sprite textures only when their text changes (not every frame).
@@ -155,7 +156,7 @@ pulling a font-geometry dependency.
    (reuse the same module-level `matchMedia` pattern as 2D) (Req 3.3, 3.4).
 5. Update the chase camera, then `renderer.render(scene, camera)`.
 
-Because the page already calls `render()` once per engine frame *and* on pause,
+Because the page already calls `render()` once per engine frame _and_ on pause,
 seek, and theme change, `CourseRenderer3D` does **not** own its own rAF loop — it
 draws one frame per `render()` call, exactly like the 2D renderer. This
 satisfies Req 5.3 (no idle loop when paused) for free.
@@ -173,8 +174,8 @@ active (`resize(w, ghostActive ? 190 : 150)`); 3D honours the same dimensions.
 Follows the `liveMode.ts` pattern — pure, testable, localStorage-backed:
 
 ```ts
-export type RendererKind = '2d' | '3d';
-export function loadRendererPref(): RendererKind;   // default '2d'
+export type RendererKind = "2d" | "3d";
+export function loadRendererPref(): RendererKind; // default '2d'
 export function saveRendererPref(k: RendererKind): void;
 ```
 
@@ -208,11 +209,11 @@ A small segmented control / button pair near the replay canvas:
 
 **Three.js**, lazy-loaded.
 
-| Option | Verdict |
-|---|---|
-| **Three.js** | Chosen. Mature, ergonomic, tree-shakeable; ~150 KB gzipped — acceptable *because it is in a lazy chunk only loaded on opt-in*. Fast path to a low-poly boat/course scene. |
-| Raw WebGL / WebGPU | Smallest bytes, but large hand-written effort for camera, lighting, text; WebGPU support uneven on the WebKit e2e target. Rejected for v1. |
-| Babylon.js | Heavier than Three for this scope. Rejected. |
+| Option             | Verdict                                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Three.js**       | Chosen. Mature, ergonomic, tree-shakeable; ~150 KB gzipped — acceptable _because it is in a lazy chunk only loaded on opt-in_. Fast path to a low-poly boat/course scene. |
+| Raw WebGL / WebGPU | Smallest bytes, but large hand-written effort for camera, lighting, text; WebGPU support uneven on the WebKit e2e target. Rejected for v1.                                |
+| Babylon.js         | Heavier than Three for this scope. Rejected.                                                                                                                              |
 
 Three is added as a dependency but **never statically imported** outside
 `renderer3d.ts`, so the bundle-size constraint (Req 2.2) is enforced structurally.
@@ -249,7 +250,7 @@ imports of `three` elsewhere.
   - `renderer3dLoader.test.ts` — `webglSupported()` returns false with no canvas/context (mock `document`); `loadRenderer3D()` caches.
   - Existing `renderer.test.ts` unchanged (2D still default) and the new
     `implements ReplayRenderer` keeps it type-checked (Req 7.3).
-- **Type:** `npm run check` verifies both renderers satisfy `ReplayRenderer`.
+- **Type:** `pnpm run check` verifies both renderers satisfy `ReplayRenderer`.
 - **E2E (WebKit):** existing replay flow stays on 2D and must pass unchanged. A
   new spec toggles to 3D, asserts the canvas is present and the toggle reflects
   state; pixel assertions are avoided (Req 7.2, 7.3). Where WebKit lacks WebGL in
@@ -261,7 +262,7 @@ imports of `three` elsewhere.
 ## i18n
 
 New keys added to **all** locale files in `src/lib/locales/` (`en`, `zh`, `de`,
-`es`, `fr`, `ja`) and validated by `npm run validate:locales`:
+`es`, `fr`, `ja`) and validated by `pnpm run validate:locales`:
 
 - `replay.view2d`, `replay.view3d` — toggle labels.
 - `replay.view3dUnsupported` — tooltip when WebGL is unavailable.
@@ -273,13 +274,13 @@ Sport names (RowErg, SkiErg, BikeErg) rendered in the scene remain untranslated
 
 ## File Manifest
 
-| File | Change |
-|---|---|
-| `src/lib/replay/renderer.ts` | Add `ReplayRenderer` interface; `CourseRenderer implements` it + no-op `destroy()` |
-| `src/lib/replay/renderer3dLoader.ts` | New — `webglSupported()`, `loadRenderer3D()` |
-| `src/lib/replay/renderer3d.ts` | New — `CourseRenderer3D` (only module importing `three`) |
-| `src/lib/replay/replayRenderer.ts` | New — preference type + load/save |
+| File                                  | Change                                                                                   |
+| ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `src/lib/replay/renderer.ts`          | Add `ReplayRenderer` interface; `CourseRenderer implements` it + no-op `destroy()`       |
+| `src/lib/replay/renderer3dLoader.ts`  | New — `webglSupported()`, `loadRenderer3D()`                                             |
+| `src/lib/replay/renderer3d.ts`        | New — `CourseRenderer3D` (only module importing `three`)                                 |
+| `src/lib/replay/replayRenderer.ts`    | New — preference type + load/save                                                        |
 | `src/routes/replay/[id]/+page.svelte` | Renderer becomes `ReplayRenderer`; toggle UI; `setRenderer`; mount/workout-change wiring |
-| `src/lib/locales/*.ts` | New `replay.view*` keys in all 6 locales |
-| `package.json` | Add `three` (+ `@types/three` dev) |
-| `*.test.ts` | New loader/preference unit tests; new optional e2e toggle spec |
+| `src/lib/locales/*.ts`                | New `replay.view*` keys in all 6 locales                                                 |
+| `package.json`                        | Add `three` (+ `@types/three` dev)                                                       |
+| `*.test.ts`                           | New loader/preference unit tests; new optional e2e toggle spec                           |

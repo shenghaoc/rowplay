@@ -32,8 +32,7 @@ guard, `reduceMotion` read, phase advance, `clearRect`), and the
         gradient (replaces flat `courseFill`).
   - [ ] 3.2 `drawGrid()` — 11 guides (minor/major), buoy `markerCap` cap at the
         primary waterline, bottom mono labels (keep current label maths).
-  - [ ] 3.3 `drawFinishGate()` — posts + checkered banner (reuse `cell` pattern)
-        + faint accent glow; replaces `drawFinishFlag`.
+  - [ ] 3.3 `drawFinishGate()` — posts + checkered banner (reuse `cell` pattern) + faint accent glow; replaces `drawFinishFlag`.
   - _Requirements: 1.1, 1.6_
 
 - [ ] 4. Lane scene — `drawLane(LaneOpts)`
@@ -80,9 +79,12 @@ guard, `reduceMotion` read, phase advance, `clearRect`), and the
   - [ ] 9.1 Keep `renderer.test.ts` green (palette mirror).
   - [ ] 9.2 (Optional) add a render smoke test (stub 2D ctx) covering solo, ghost,
         each sport, reduced-motion — no throw.
-  - [ ] 9.3 `npm run check` → 0 errors; `npm run build` → succeeds;
-        `npm run test` → green.
+  - [ ] 9.3 `pnpm run check` → 0 errors; `pnpm run build` → succeeds;
+        `pnpm run test` → green.
   - [ ] 9.4 Manual demo verification (light/dark, play, scrub, ghost, sports,
         reduced-motion, shared `/r/<token>`).
   - _Requirements: 2.3, 3.1, 3.2, 5.1_
+
+```
+
 ```

@@ -21,48 +21,48 @@ Audited against Context7 current documentation. Version pins are aggressive and 
 
 ### 1.1 Dependencies
 
-| Package | Version | Verdict | Usage / notes |
-|---------|---------|---------|---------------|
-| `@lucide/svelte` | ^1.17 | ✅ | Subpath imports `@lucide/svelte/icons/name` for max tree-shaking (P3#22); `{size}`, `{strokeWidth}` |
-| `@tailwindcss/vite` | ^4.3 | ✅ | Plugin in `vite.config.ts` before `sveltekit()` |
-| `@tanstack/svelte-virtual` | ^3.13 | ✅ | `createVirtualizer` in `WorkoutList.svelte`; intentional `get()` from `svelte/store` to avoid `effect_update_depth_exceeded` |
-| `bits-ui` | ^2.18 | ❌ | **Zero imports in `src/`** — dead dependency |
-| `clsx` | ^2.1 | ❌ | **Zero imports in `src/`** — dead dependency |
-| `svelte-sonner` | ^1.1 | ✅ | `<Toaster>` in `+layout.svelte`; `toast.*` across dashboard/replay/settings/PWA |
-| `tailwind-merge` | ^3.6 | ❌ | **Zero imports in `src/`** — dead dependency |
-| `tailwindcss` | ^4.3 | ✅ | `@import 'tailwindcss'` in `app.css`; no `tailwind.config.js` |
-| `temporal-polyfill` | ~0.3 | ✅ | Conditional load in `ensure-temporal.ts`; types via `app.d.ts` |
-| `three` | ^0.184 | ✅ | `import * as THREE`; `WebGLRenderer({ canvas })`; geometry/material disposal in `renderer3d.ts` |
-| `uplot` | ^1.6 | ✅ | `setData`, `setSize`, `destroy`, `ResizeObserver`, `hooks.draw`; accessible `role="img"` wrapper |
+| Package                    | Version | Verdict | Usage / notes                                                                                                                |
+| -------------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `@lucide/svelte`           | ^1.17   | ✅      | Subpath imports `@lucide/svelte/icons/name` for max tree-shaking (P3#22); `{size}`, `{strokeWidth}`                          |
+| `@tailwindcss/vite`        | ^4.3    | ✅      | Plugin in `vite.config.ts` before `sveltekit()`                                                                              |
+| `@tanstack/svelte-virtual` | ^3.13   | ✅      | `createVirtualizer` in `WorkoutList.svelte`; intentional `get()` from `svelte/store` to avoid `effect_update_depth_exceeded` |
+| `bits-ui`                  | ^2.18   | ❌      | **Zero imports in `src/`** — dead dependency                                                                                 |
+| `clsx`                     | ^2.1    | ❌      | **Zero imports in `src/`** — dead dependency                                                                                 |
+| `svelte-sonner`            | ^1.1    | ✅      | `<Toaster>` in `+layout.svelte`; `toast.*` across dashboard/replay/settings/PWA                                              |
+| `tailwind-merge`           | ^3.6    | ❌      | **Zero imports in `src/`** — dead dependency                                                                                 |
+| `tailwindcss`              | ^4.3    | ✅      | `@import 'tailwindcss'` in `app.css`; no `tailwind.config.js`                                                                |
+| `temporal-polyfill`        | ~0.3    | ✅      | Conditional load in `ensure-temporal.ts`; types via `app.d.ts`                                                               |
+| `three`                    | ^0.184  | ✅      | `import * as THREE`; `WebGLRenderer({ canvas })`; geometry/material disposal in `renderer3d.ts`                              |
+| `uplot`                    | ^1.6    | ✅      | `setData`, `setSize`, `destroy`, `ResizeObserver`, `hooks.draw`; accessible `role="img"` wrapper                             |
 
 ### 1.2 DevDependencies
 
-| Package | Version | Verdict | Usage / notes |
-|---------|---------|---------|---------------|
-| `@cloudflare/workers-types` | ^4.20260601 | ✅ | `app.d.ts` Platform.env bindings |
-| `@playwright/test` | ^1.60 | ✅ | `webServer` + `wrangler dev`; WebKit + iPhone 14 projects |
-| `@sveltejs/adapter-cloudflare` | ^7.2 | ✅ | Assets binding; `.svelte-kit/cloudflare` output |
-| `@sveltejs/kit` | ^2.61 | ⚠️ | Typed loads/handlers correct; **`$app/stores` still used in 3 files** |
-| `@sveltejs/vite-plugin-svelte` | ^7.1 | ✅ | `vitePreprocess()` |
-| `@types/node` | ^25.9 | ✅ | Scripts/tests |
-| `@types/three` | ^0.184 | ✅ | 3D renderer |
-| `daisyui` | ^5.5 | ✅ | `@plugin "daisyui"` + `@plugin "daisyui/theme"` in `app.css` |
-| `svelte` | ^5.56 | ✅ | Runes everywhere |
-| `svelte-check` | ^4.4 | ✅ | Quality gate |
-| `typescript` | ^6.0 | ✅ | Strict typing |
-| `vite` | ^8.0 | ✅ | ESM, Tailwind + SK plugins |
-| `vitest` | ^4.1 | ✅ | `defineConfig` from `vitest/config`; node environment |
-| `wrangler` | ^4.95 | ✅ | `compatibility_flags: ["nodejs_compat"]` (superset of `nodejs_als`) per Cloudflare auto-template (P3#28) |
+| Package                        | Version     | Verdict | Usage / notes                                                                                            |
+| ------------------------------ | ----------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| `@cloudflare/workers-types`    | ^4.20260601 | ✅      | `app.d.ts` Platform.env bindings                                                                         |
+| `@playwright/test`             | ^1.60       | ✅      | `webServer` + `wrangler dev`; WebKit + iPhone 14 projects                                                |
+| `@sveltejs/adapter-cloudflare` | ^7.2        | ✅      | Assets binding; `.svelte-kit/cloudflare` output                                                          |
+| `@sveltejs/kit`                | ^2.61       | ⚠️      | Typed loads/handlers correct; **`$app/stores` still used in 3 files**                                    |
+| `@sveltejs/vite-plugin-svelte` | ^7.1        | ✅      | `vitePreprocess()`                                                                                       |
+| `@types/node`                  | ^25.9       | ✅      | Scripts/tests                                                                                            |
+| `@types/three`                 | ^0.184      | ✅      | 3D renderer                                                                                              |
+| `daisyui`                      | ^5.5        | ✅      | `@plugin "daisyui"` + `@plugin "daisyui/theme"` in `app.css`                                             |
+| `svelte`                       | ^5.56       | ✅      | Runes everywhere                                                                                         |
+| `svelte-check`                 | ^4.4        | ✅      | Quality gate                                                                                             |
+| `typescript`                   | ^6.0        | ✅      | Strict typing                                                                                            |
+| `vite`                         | ^8.0        | ✅      | ESM, Tailwind + SK plugins                                                                               |
+| `vitest`                       | ^4.1        | ✅      | `defineConfig` from `vitest/config`; node environment                                                    |
+| `wrangler`                     | ^4.95       | ✅      | `compatibility_flags: ["nodejs_compat"]` (superset of `nodejs_als`) per Cloudflare auto-template (P3#28) |
 
 ### 1.3 Configuration files
 
-| File | Verdict |
-|------|---------|
-| `vite.config.ts` | ✅ `@tailwindcss/vite()` + `sveltekit()` |
-| `svelte.config.js` | ✅ `adapter-cloudflare`, `$components` alias, service worker registered |
-| `vitest.config.ts` | ✅ SvelteKit plugin, `setupFiles`, node env |
-| `playwright.config.ts` | ✅ Real Workers runtime on port 8787, not vite dev |
-| `wrangler.jsonc` | ✅ ASSETS + KV + D1 bindings; observability enabled |
+| File                   | Verdict                                                                 |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `vite.config.ts`       | ✅ `@tailwindcss/vite()` + `sveltekit()`                                |
+| `svelte.config.js`     | ✅ `adapter-cloudflare`, `$components` alias, service worker registered |
+| `vitest.config.ts`     | ✅ SvelteKit plugin, `setupFiles`, node env                             |
+| `playwright.config.ts` | ✅ Real Workers runtime on port 8787, not vite dev                      |
+| `wrangler.jsonc`       | ✅ ASSETS + KV + D1 bindings; observability enabled                     |
 
 ---
 
@@ -81,10 +81,10 @@ Audited against Context7 current documentation. Version pins are aggressive and 
 
 **Deprecated:** `$app/stores` → migrate to `$app/state` (since SK 2.12; removal planned for SK 3)
 
-| File | Usage |
-|------|-------|
-| `src/routes/+layout.svelte` | `$page.url.pathname` for nav active state |
-| `src/routes/replay/[id]/+page.svelte` | `$page.url.searchParams` for ghost params |
+| File                                  | Usage                                               |
+| ------------------------------------- | --------------------------------------------------- |
+| `src/routes/+layout.svelte`           | `$page.url.pathname` for nav active state           |
+| `src/routes/replay/[id]/+page.svelte` | `$page.url.searchParams` for ghost params           |
 | `src/routes/leaderboard/+page.svelte` | `$page.url.searchParams` for sport/distance filters |
 
 Migration: `import { page } from '$app/state'`; use `page.data` / `page.url` without `$` prefix.
@@ -116,23 +116,23 @@ Migration: `import { page } from '$app/state'`; use `page.data` / `page.url` wit
 
 ### 3.2 Gaps — native HTML not yet used
 
-| Feature | Current approach | Recommended |
-|---------|------------------|-------------|
-| Mobile nav drawer | Custom `menuOpen` + scrim + Escape listener in `+layout.svelte` | `<dialog closedby="any">` |
-| Filter expand/collapse | `expanded` state in `WorkoutListFilters.svelte` | `<details>` / `<summary>` |
-| Delete confirmation | `window.confirm()` in `AnnotationPanel.svelte` | `<dialog method="dialog">` |
-| Share replay | Clipboard only in `shareReplay()` | `navigator.share()` then clipboard fallback |
-| Search landmark | Plain `<form>` with `type="search"` | Wrap in `<search>` element |
-| Background inertness | Scrim button only | `inert` on `<main>` when menu open |
-| PWA meta | `apple-mobile-web-app-capable` only | Add `mobile-web-app-capable` |
-| Share previews | `twitter:card=summary_large_image` without image | Add `og:image` / `twitter:image` on `/r/[token]` |
+| Feature                | Current approach                                                | Recommended                                      |
+| ---------------------- | --------------------------------------------------------------- | ------------------------------------------------ |
+| Mobile nav drawer      | Custom `menuOpen` + scrim + Escape listener in `+layout.svelte` | `<dialog closedby="any">`                        |
+| Filter expand/collapse | `expanded` state in `WorkoutListFilters.svelte`                 | `<details>` / `<summary>`                        |
+| Delete confirmation    | `window.confirm()` in `AnnotationPanel.svelte`                  | `<dialog method="dialog">`                       |
+| Share replay           | Clipboard only in `shareReplay()`                               | `navigator.share()` then clipboard fallback      |
+| Search landmark        | Plain `<form>` with `type="search"`                             | Wrap in `<search>` element                       |
+| Background inertness   | Scrim button only                                               | `inert` on `<main>` when menu open               |
+| PWA meta               | `apple-mobile-web-app-capable` only                             | Add `mobile-web-app-capable`                     |
+| Share previews         | `twitter:card=summary_large_image` without image                | Add `og:image` / `twitter:image` on `/r/[token]` |
 
 ### 3.3 Input hints missing
 
-| Input | Location | Add |
-|-------|----------|-----|
-| `type="search"` | `WorkoutListFilters.svelte`, `replay/[id]/+page.svelte` | `inputmode="search"`, `enterkeyhint="search"` |
-| `type="number"` | `EngagementPanel.svelte`, `CriticalPowerPanel.svelte` (×2) | `enterkeyhint="done"` |
+| Input           | Location                                                   | Add                                           |
+| --------------- | ---------------------------------------------------------- | --------------------------------------------- |
+| `type="search"` | `WorkoutListFilters.svelte`, `replay/[id]/+page.svelte`    | `inputmode="search"`, `enterkeyhint="search"` |
+| `type="number"` | `EngagementPanel.svelte`, `CriticalPowerPanel.svelte` (×2) | `enterkeyhint="done"`                         |
 
 ---
 
@@ -155,22 +155,22 @@ Reference: [PR #223](https://github.com/shenghaoc/hdb-resale-visualizer/pull/223
 
 Status reflects the current tree (post-remediation); the audit found every ❌ below missing.
 
-| PR #223 feature | In rowplay? | Rowplay applicability |
-|-----------------|-------------|------------------------|
-| `light-dark()` token consolidation | ✅ | Custom `--paper`/`--ink`/… tokens consolidated; daisyUI `@plugin` themes kept separate (P1#7) |
-| Shadow token pattern | ⚠️ partial | `--stamp-*` exist; per-var overrides — `light-dark()` cannot wrap multi-value shadows (comma collision) |
-| `content-visibility: auto` | ✅ | `.cv-auto` on leaderboard rows, annotation list; `WorkoutList` stays virtualized (TanStack) (P2#17) |
-| `text-box-trim` | ✅ | `.btn` / `.badge`; `text-wrap: balance` on headings (P2#18) |
-| `text-wrap: balance` | ✅ | Headings (P2#18) |
-| `@property` | ✅ | `--r-ctrl` registered for typed/animatable custom property (P3#24) |
-| `@starting-style` | ✅ | Live-mode `.new-entry` rows (P2#19); Baseline 2024 — Firefox 129+ (Aug 2024), works in all current browsers |
-| `interpolate-size: allow-keywords` | ✅ | On `:root` (P3#25); Chromium-only as of June 2026 (Firefox/Safari pending) — progressive enhancement, `height:auto` simply snaps elsewhere |
-| `transition-behavior: allow-discrete` | ❌ | Not adopted — inert without an explicit `transition`, and `<details>` can't fade without hiding its summary; dialogs/details snap (reduced-motion-friendly) |
-| `prefers-contrast` | ✅ | `--hairline` adjusted under `prefers-contrast: more` (P1#10) |
-| `prefers-reduced-transparency` | N/A | No `backdrop-filter` in rowplay today |
-| `prefers-reduced-motion` on components | ✅ | Named-class suppression for `.row.new-entry`, `.vspin`, `.spin`, etc. (P1#9) |
-| `contain: layout paint` | ✅ | `.uplot-host` / `.canvas3d-host` (P2#21) |
-| View Transitions API | ✅ | `onNavigate` → `startViewTransition`, scoped to `<main>` via `view-transition-name: rp-main` (root suppressed); reduced-motion guarded (P3#23) |
+| PR #223 feature                        | In rowplay? | Rowplay applicability                                                                                                                                       |
+| -------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `light-dark()` token consolidation     | ✅          | Custom `--paper`/`--ink`/… tokens consolidated; daisyUI `@plugin` themes kept separate (P1#7)                                                               |
+| Shadow token pattern                   | ⚠️ partial  | `--stamp-*` exist; per-var overrides — `light-dark()` cannot wrap multi-value shadows (comma collision)                                                     |
+| `content-visibility: auto`             | ✅          | `.cv-auto` on leaderboard rows, annotation list; `WorkoutList` stays virtualized (TanStack) (P2#17)                                                         |
+| `text-box-trim`                        | ✅          | `.btn` / `.badge`; `text-wrap: balance` on headings (P2#18)                                                                                                 |
+| `text-wrap: balance`                   | ✅          | Headings (P2#18)                                                                                                                                            |
+| `@property`                            | ✅          | `--r-ctrl` registered for typed/animatable custom property (P3#24)                                                                                          |
+| `@starting-style`                      | ✅          | Live-mode `.new-entry` rows (P2#19); Baseline 2024 — Firefox 129+ (Aug 2024), works in all current browsers                                                 |
+| `interpolate-size: allow-keywords`     | ✅          | On `:root` (P3#25); Chromium-only as of June 2026 (Firefox/Safari pending) — progressive enhancement, `height:auto` simply snaps elsewhere                  |
+| `transition-behavior: allow-discrete`  | ❌          | Not adopted — inert without an explicit `transition`, and `<details>` can't fade without hiding its summary; dialogs/details snap (reduced-motion-friendly) |
+| `prefers-contrast`                     | ✅          | `--hairline` adjusted under `prefers-contrast: more` (P1#10)                                                                                                |
+| `prefers-reduced-transparency`         | N/A         | No `backdrop-filter` in rowplay today                                                                                                                       |
+| `prefers-reduced-motion` on components | ✅          | Named-class suppression for `.row.new-entry`, `.vspin`, `.spin`, etc. (P1#9)                                                                                |
+| `contain: layout paint`                | ✅          | `.uplot-host` / `.canvas3d-host` (P2#21)                                                                                                                    |
+| View Transitions API                   | ✅          | `onNavigate` → `startViewTransition`, scoped to `<main>` via `view-transition-name: rp-main` (root suppressed); reduced-motion guarded (P3#23)              |
 
 **PR #223 lessons to apply when implementing:**
 
@@ -209,20 +209,20 @@ flowchart LR
 
 ### 5.2 Modern APIs in use
 
-| API | Location |
-|-----|----------|
-| Top-level `await` | `hooks.server.ts`, `hooks.client.ts`, Vitest setup |
-| `fetch` + `AbortController` | Live mode, Concept2 API, API routes |
-| `URL` / `URLSearchParams` | OAuth, list queries, server loads |
-| `ResizeObserver` | uPlot, replay canvas, 3D host |
-| `matchMedia('prefers-reduced-motion')` | 2D/3D renderers |
-| `replaceAll` | i18n interpolation |
-| `Array.at()` | analytics |
-| `navigator.clipboard` | share replay |
-| `navigator.serviceWorker` | PWA update, cache clear, e2e tests |
-| `createContext()` | i18n, theme |
-| Dynamic `import()` | 3D renderer loader, Temporal polyfill |
-| `AudioContext` | Live mode notification sound |
+| API                                    | Location                                           |
+| -------------------------------------- | -------------------------------------------------- |
+| Top-level `await`                      | `hooks.server.ts`, `hooks.client.ts`, Vitest setup |
+| `fetch` + `AbortController`            | Live mode, Concept2 API, API routes                |
+| `URL` / `URLSearchParams`              | OAuth, list queries, server loads                  |
+| `ResizeObserver`                       | uPlot, replay canvas, 3D host                      |
+| `matchMedia('prefers-reduced-motion')` | 2D/3D renderers                                    |
+| `replaceAll`                           | i18n interpolation                                 |
+| `Array.at()`                           | analytics                                          |
+| `navigator.clipboard`                  | share replay                                       |
+| `navigator.serviceWorker`              | PWA update, cache clear, e2e tests                 |
+| `createContext()`                      | i18n, theme                                        |
+| Dynamic `import()`                     | 3D renderer loader, Temporal polyfill              |
+| `AudioContext`                         | Live mode notification sound                       |
 
 ### 5.3 Optional APIs not used
 
@@ -234,14 +234,14 @@ flowchart LR
 
 ### 5.4 Storage pattern
 
-| Data | Cookie | localStorage |
-|------|--------|--------------|
-| Language | ✅ SSR (`hooks.server.ts`) | ✅ client mirror (`i18n.ts`) |
-| Theme | ✅ SSR | ✅ via `document.documentElement.dataset.theme` |
-| Live mode prefs | ✅ cookie mirror | ✅ primary |
-| 2D/3D renderer choice | — | ✅ |
-| HR overlay | — | ✅ per workout |
-| Session/auth | ✅ httpOnly KV session | ❌ never token in LS — correct |
+| Data                  | Cookie                     | localStorage                                    |
+| --------------------- | -------------------------- | ----------------------------------------------- |
+| Language              | ✅ SSR (`hooks.server.ts`) | ✅ client mirror (`i18n.ts`)                    |
+| Theme                 | ✅ SSR                     | ✅ via `document.documentElement.dataset.theme` |
+| Live mode prefs       | ✅ cookie mirror           | ✅ primary                                      |
+| 2D/3D renderer choice | —                          | ✅                                              |
+| HR overlay            | —                          | ✅ per workout                                  |
+| Session/auth          | ✅ httpOnly KV session     | ❌ never token in LS — correct                  |
 
 ---
 
@@ -273,12 +273,12 @@ Missing: **Content-Security-Policy** (even report-only initially). BYOT app hand
 
 ## 7. Accessibility gaps
 
-| Gap | Severity |
-|-----|----------|
-| No skip link to `#main` | Low |
-| `<main>` lacks `id="main"` | Low |
-| Component animations not in reduced-motion block | Medium |
-| Canvas charts have `aria-label` via uPlot wrapper | ✅ Good |
+| Gap                                               | Severity |
+| ------------------------------------------------- | -------- |
+| No skip link to `#main`                           | Low      |
+| `<main>` lacks `id="main"`                        | Low      |
+| Component animations not in reduced-motion block  | Medium   |
+| Canvas charts have `aria-label` via uPlot wrapper | ✅ Good  |
 
 ---
 
@@ -310,15 +310,15 @@ flowchart TB
 
 ## 9. What NOT to change
 
-| Item | Reason |
-|------|--------|
-| Temporal polyfill | WebKit e2e + Workers SSR require it indefinitely |
+| Item                              | Reason                                              |
+| --------------------------------- | --------------------------------------------------- |
+| Temporal polyfill                 | WebKit e2e + Workers SSR require it indefinitely    |
 | TanStack Virtual for workout list | Better than `content-visibility` alone for 60+ rows |
-| Hand-rolled i18n | Appropriate for 6 locales |
-| BYOT httpOnly session model | Correct security architecture |
-| Demo mode / mock data | Product requirement |
-| daisyUI theme `@plugin` blocks | Separate from custom token `light-dark()` pass |
-| Playwright on WebKit | Validates polyfill and chunk-load edge cases |
+| Hand-rolled i18n                  | Appropriate for 6 locales                           |
+| BYOT httpOnly session model       | Correct security architecture                       |
+| Demo mode / mock data             | Product requirement                                 |
+| daisyUI theme `@plugin` blocks    | Separate from custom token `light-dark()` pass      |
+| Playwright on WebKit              | Validates polyfill and chunk-load edge cases        |
 
 ---
 
@@ -338,28 +338,28 @@ When starting a **new feature** via Kiro:
 
 ## 11. Idiomatic patterns already in use (do not “modernize” away)
 
-| Pattern | Example | Notes |
-|---------|---------|-------|
-| `untrack()` in effects | `UPlotChart.svelte`, `WorkoutListFilters.svelte` | Prevents effect loops / unnecessary chart rebuilds |
-| `$props.id()` for a11y | `UPlotChart.svelte` | Stable `aria-describedby` ids |
-| Callback props | `AnnotationPanel` `onsave` / `ondelete` | Svelte 5 replacement for `createEventDispatcher` |
-| Keyed `{#each}` | Throughout | Required for list correctness |
-| `style:prop` | Replay pages, sport colors | Preferred over inline `style="..."` strings |
-| `$effect` cleanup | Layout (removed after `<dialog>`), live mode | Return teardown functions |
-| `class:` directive | Replay toggles, compare deltas | **Project convention** — valid Svelte 5; do not add `clsx` unless merging many dynamic classes |
-| `get()` from `svelte/store` | `WorkoutList.svelte` virtualizer | Required TanStack Virtual workaround |
-| Top-level `await` in hooks | `hooks.server.ts`, `hooks.client.ts` | Modern ESM Workers pattern |
-| `transformPageChunk` for `%lang%` / `%theme%` | `hooks.server.ts` | SSR theme/lang without flash |
-| Cookie + `localStorage` dual persist | lang, theme, live prefs | SSR cookie + client mirror |
-| `fail()` / `throw redirect()` outside `try` | `auth/token/+page.server.ts` | SvelteKit idiom — redirect throws |
+| Pattern                                       | Example                                          | Notes                                                                                          |
+| --------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `untrack()` in effects                        | `UPlotChart.svelte`, `WorkoutListFilters.svelte` | Prevents effect loops / unnecessary chart rebuilds                                             |
+| `$props.id()` for a11y                        | `UPlotChart.svelte`                              | Stable `aria-describedby` ids                                                                  |
+| Callback props                                | `AnnotationPanel` `onsave` / `ondelete`          | Svelte 5 replacement for `createEventDispatcher`                                               |
+| Keyed `{#each}`                               | Throughout                                       | Required for list correctness                                                                  |
+| `style:prop`                                  | Replay pages, sport colors                       | Preferred over inline `style="..."` strings                                                    |
+| `$effect` cleanup                             | Layout (removed after `<dialog>`), live mode     | Return teardown functions                                                                      |
+| `class:` directive                            | Replay toggles, compare deltas                   | **Project convention** — valid Svelte 5; do not add `clsx` unless merging many dynamic classes |
+| `get()` from `svelte/store`                   | `WorkoutList.svelte` virtualizer                 | Required TanStack Virtual workaround                                                           |
+| Top-level `await` in hooks                    | `hooks.server.ts`, `hooks.client.ts`             | Modern ESM Workers pattern                                                                     |
+| `transformPageChunk` for `%lang%` / `%theme%` | `hooks.server.ts`                                | SSR theme/lang without flash                                                                   |
+| Cookie + `localStorage` dual persist          | lang, theme, live prefs                          | SSR cookie + client mirror                                                                     |
+| `fail()` / `throw redirect()` outside `try`   | `auth/token/+page.server.ts`                     | SvelteKit idiom — redirect throws                                                              |
 
 ### Documentation conflicts resolved
 
-| Doc | Issue | Resolution |
-|-----|-------|------------|
-| `.kiro/steering/tech.md` | Listed `bits-ui`, `clsx`, `tailwind-merge` as active | Removed; packages deleted from `package.json` |
-| `.kiro/skills/svelte-core-bestpractices/SKILL.md` | Recommends clsx over `class:` | Skill is generic; **this project uses `class:`** unless clsx is reintroduced |
-| `AGENTS.md` | No audit reference | Links this spec |
+| Doc                                               | Issue                                                | Resolution                                                                   |
+| ------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `.kiro/steering/tech.md`                          | Listed `bits-ui`, `clsx`, `tailwind-merge` as active | Removed; packages deleted from `package.json`                                |
+| `.kiro/skills/svelte-core-bestpractices/SKILL.md` | Recommends clsx over `class:`                        | Skill is generic; **this project uses `class:`** unless clsx is reintroduced |
+| `AGENTS.md`                                       | No audit reference                                   | Links this spec                                                              |
 
 ### P3 items — now implemented
 
@@ -371,10 +371,10 @@ analytics `Temporal.PlainDate` unification, Latin font self-hosting + preload,
 
 ### Still deferred (out of audit scope)
 
-| Item | Reason deferred |
-|------|-----------------|
-| `hreflang` URLs | i18n is cookie-based, not locale-prefixed routes |
-| `showPicker()` on file inputs | Progressive enhancement; low impact |
-| `theme_color` in manifest for dark | Non-standard; `app.html` `theme-color` media queries cover browser chrome |
-| Full CSP enforce mode | Report-only first; tighten after font/script audit |
-| CJK font self-hosting (Noto Sans JP/SC) | Too large to self-host; stays on Google Fonts |
+| Item                                    | Reason deferred                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------- |
+| `hreflang` URLs                         | i18n is cookie-based, not locale-prefixed routes                          |
+| `showPicker()` on file inputs           | Progressive enhancement; low impact                                       |
+| `theme_color` in manifest for dark      | Non-standard; `app.html` `theme-color` media queries cover browser chrome |
+| Full CSP enforce mode                   | Report-only first; tighten after font/script audit                        |
+| CJK font self-hosting (Noto Sans JP/SC) | Too large to self-host; stays on Google Fonts                             |

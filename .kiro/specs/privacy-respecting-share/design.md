@@ -4,7 +4,7 @@
 
 ```ts
 export function isPubliclyShareable(privacy?: string | null): boolean {
-	return privacy?.trim().toLowerCase() === 'everyone';
+  return privacy?.trim().toLowerCase() === "everyone";
 }
 ```
 

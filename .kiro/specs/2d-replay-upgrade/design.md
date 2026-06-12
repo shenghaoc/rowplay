@@ -19,10 +19,9 @@ the `resize()` body, the reduced-motion plumbing, and the
 
 ```ts
 class CourseRenderer {
-  constructor(canvas: HTMLCanvasElement)
-  resize(cssWidth: number, cssHeight: number): void          // keep as-is
-  render(state: RenderState, playing: boolean,
-         themeName?: 'light' | 'dark'): void                 // same signature
+  constructor(canvas: HTMLCanvasElement);
+  resize(cssWidth: number, cssHeight: number): void; // keep as-is
+  render(state: RenderState, playing: boolean, themeName?: "light" | "dark"): void; // same signature
 }
 ```
 
@@ -34,14 +33,14 @@ early-return when `w === 0`, `this.reduceMotion = prefersReducedMotion()`, the
 ## Type additions (additive, optional)
 
 ```ts
-import type { Sport } from '../types';
+import type { Sport } from "../types";
 
 export interface RenderState {
   frame: Frame;
   distFrac: number;
   totalDistance: number;
   ghost?: AvatarState;
-  sport?: Sport;          // NEW — optional; renderer degrades to neutral marker
+  sport?: Sport; // NEW — optional; renderer degrades to neutral marker
 }
 ```
 
@@ -82,7 +81,7 @@ and wake sit on it, ripples live just below it.
 1. **`drawBackground()`** — rounded-rect clip of the strip; fill a vertical
    gradient `skyTop → skyBottom`; this replaces the flat `courseFill`.
 2. **`drawGrid(startX, span, h, state.totalDistance)`** — 11 vertical guides
-   (minor `tickMinor`, every-5th `tickMajor`), each capped at the *primary*
+   (minor `tickMinor`, every-5th `tickMajor`), each capped at the _primary_
    waterline with a small **buoy** dot (`markerCap`); bottom numeric labels in
    `tickText`, 10px mono, as today.
 3. **`drawFinishGate(finishX, top, bottom)`** — two slim posts + a checkered
@@ -101,13 +100,15 @@ today's subordinate-ghost hierarchy.
 
 ```ts
 interface LaneOpts {
-  startX: number; span: number; y: number;
-  frac: number;            // clamp01 already applied by caller or inside
-  accent: string;          // C.live or C.ghost
-  phase: number;           // this.phase or this.ghostPhase
-  pace: number;            // for streak length; ghost uses ghost.pace
-  isYou: boolean;          // hierarchy: ghost gets globalAlpha 0.82, no extras
-  nameTab: string;         // 'YOU' | 'GHOST'
+  startX: number;
+  span: number;
+  y: number;
+  frac: number; // clamp01 already applied by caller or inside
+  accent: string; // C.live or C.ghost
+  phase: number; // this.phase or this.ghostPhase
+  pace: number; // for streak length; ghost uses ghost.pace
+  isYou: boolean; // hierarchy: ghost gets globalAlpha 0.82, no extras
+  nameTab: string; // 'YOU' | 'GHOST'
   padL: number;
 }
 ```
@@ -122,14 +123,14 @@ Steps:
    reference line, as today).
 3. **Ripples.** 2 faint horizontal sine polylines just below `y`
    (offsets ~`+5`, `+11`), `withAlpha(accent,0.25)`, amplitude `reduceMotion ? 0
-   : 1.5`, scrolled by `phase`. Skip when `reduceMotion` AND not needed — but a
+: 1.5`, scrolled by `phase`. Skip when `reduceMotion` AND not needed — but a
    flat ripple line at amp 0 is fine to keep structure.
 4. **Wake / progress trail.** From `startX` to `avX`:
    - Outer glow: same path stroked wide (`lineWidth 7`) in `accent` with
      `ctx.shadowColor = accent`, `ctx.shadowBlur = 8`; reset shadow after.
    - Core: `lineWidth 3` accent, the existing low sine displacement
      (`amp = reduceMotion ? 0 : 1.2`, `phase`).
-5. **Speed streaks.** 3–4 short horizontal dashes trailing *behind* `avX`
+5. **Speed streaks.** 3–4 short horizontal dashes trailing _behind_ `avX`
    (decreasing length/opacity), length `≈ clamp(streakLen(pace), 6, 22)` where
    faster pace ⇒ longer; `withAlpha(accent, 0.35)`. Static positions under
    reduced motion (no shimmer offset).
@@ -163,13 +164,14 @@ with a contrast `rim`; the ghost lane keeps `globalAlpha 0.82`.
 
 ```ts
 interface AvatarOpts {
-  x: number; y: number;    // x = avX, y = lane waterline
+  x: number;
+  y: number; // x = avX, y = lane waterline
   accent: string;
   phase: number;
   spm: number;
   isYou: boolean;
   sport?: Sport;
-  label: string;           // pace·% (YOU) or "<label> · NN%" (GHOST)
+  label: string; // pace·% (YOU) or "<label> · NN%" (GHOST)
 }
 ```
 
@@ -219,13 +221,13 @@ strips.
 Extend `CanvasColors` and **both** `COLORS_LIGHT`/`COLORS_DARK`. Do **not** touch
 existing fields (the test locks `live`/`ghost`). Suggested values:
 
-| Field      | Purpose                         | Light     | Dark      |
-|------------|---------------------------------|-----------|-----------|
-| `skyTop`   | strip background top            | `#f2f7f9` | `#0e1d26` |
-| `skyBottom`| strip background bottom         | `#e3edf1` | `#0a151c` |
-| `markerCap`| buoy dot at tick × waterline    | `#9fb8c2` | `#3d505a` |
-| `foam`     | bow wave / pod highlight        | `#ffffff` | `#bcd3dd` |
-| `shadow`   | pod cast shadow base (rgba mix) | `#0f2a36` | `#000000` |
+| Field       | Purpose                         | Light     | Dark      |
+| ----------- | ------------------------------- | --------- | --------- |
+| `skyTop`    | strip background top            | `#f2f7f9` | `#0e1d26` |
+| `skyBottom` | strip background bottom         | `#e3edf1` | `#0a151c` |
+| `markerCap` | buoy dot at tick × waterline    | `#9fb8c2` | `#3d505a` |
+| `foam`      | bow wave / pod highlight        | `#ffffff` | `#bcd3dd` |
+| `shadow`    | pod cast shadow base (rgba mix) | `#0f2a36` | `#000000` |
 
 `shadow` is used via `withAlpha(shadow, 0.18)`. All other tints derive from the
 lane `accent` via `withAlpha`, so no per-sport colour constants are needed.
@@ -251,6 +253,7 @@ lane `accent` via `withAlpha`, so no per-sport colour constants are needed.
 ## Reduced motion
 
 When `this.reduceMotion`:
+
 - ripple amplitude → 0, wake sine amp → 0, bob → 0, bow wave → minimal static
   crescent, streaks → fixed positions (no phase offset), no stroke-pulse.
 - All static geometry (water band, trail, pod, glyph, labels, markers, gate)
@@ -269,12 +272,12 @@ When `this.reduceMotion`:
 
 ## Testing strategy
 
-| Layer  | What |
-|--------|------|
+| Layer  | What                                                                                                                                                                                                                                       |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Unit   | `renderer.test.ts` stays green (palette mirror). Optionally add a smoke test that constructs `CourseRenderer` against a stubbed 2D context and calls `resize`+`render` for solo, ghost, each `sport`, and reduced-motion without throwing. |
-| Type   | `npm run check` → 0 errors. New `sport?` field type-checks at both call sites. |
-| Build  | `npm run build` succeeds (renderer is client-only; no SSR `window` access outside the existing guard). |
-| Manual | Demo: `/replay/1001` light+dark, play/pause, scrub, ghost on/off, each sport; `prefers-reduced-motion` shows static scene; shared `/r/<token>` still renders. |
+| Type   | `pnpm run check` → 0 errors. New `sport?` field type-checks at both call sites.                                                                                                                                                            |
+| Build  | `pnpm run build` succeeds (renderer is client-only; no SSR `window` access outside the existing guard).                                                                                                                                    |
+| Manual | Demo: `/replay/1001` light+dark, play/pause, scrub, ghost on/off, each sport; `prefers-reduced-motion` shows static scene; shared `/r/<token>` still renders.                                                                              |
 
 If a smoke test is added, the stubbed context must implement the methods the
 renderer calls (`createLinearGradient` returning an object with `addColorStop`,

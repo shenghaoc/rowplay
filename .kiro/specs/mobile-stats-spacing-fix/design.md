@@ -25,6 +25,7 @@ The bug manifests when the dashboard is viewed on a mobile viewport. Three break
 3. At ≤400px: the `.dash-stats` gap is further reduced to `0.6rem`, squeezing the cards together.
 
 **Formal Specification:**
+
 ```
 FUNCTION isBugCondition(viewport)
   INPUT: viewport of type { widthPx: number }
@@ -58,6 +59,7 @@ END FUNCTION
 ### Preservation Requirements
 
 **Unchanged Behaviors:**
+
 - Desktop layout (viewport > 720px) must continue to render the stats section as a 4-column grid with `gap: 1rem` and the global `.card` padding of `1.25rem 1.4rem`.
 - All four stat cards must continue to display their correct label and value content ("Sessions", "Total distance", "Total time", "Avg pace") at every viewport width.
 - The global `.card` base styles in `app.css` (background, border, border-radius, box-shadow, and the base `padding: 1.25rem 1.4rem`) must remain unmodified.
@@ -121,6 +123,7 @@ _For any_ viewport width where the bug condition does NOT hold (isBugCondition r
 No changes to `app.css` or any other component or route.
 
 **Before (relevant excerpt):**
+
 ```css
 @media (max-width: 720px) {
   .dash-stats {
@@ -140,6 +143,7 @@ No changes to `app.css` or any other component or route.
 ```
 
 **After (summary — see `+page.svelte` for full rules):**
+
 ```html
 <div class="dash-stats">
   <div class="card dash-stat">…</div>
@@ -197,12 +201,14 @@ The primary testing tools are CSS source-rule assertions (Vitest), a daisyUI col
 **Test Plan**: Write tests that render the dashboard stat cards at various mobile viewport widths and assert the computed `padding` and `gap` values. Run these tests on the UNFIXED code to observe failures and confirm the root cause.
 
 **Test Cases**:
+
 1. **375px viewport test**: Render `.dash-stat` at 375px width and assert `padding` — will fail on unfixed code (gets `0.95rem 1rem` from global `.card`, no stat override).
 2. **360px viewport test**: Render `.dash-stats` at 360px and assert `gap` — will fail on unfixed code (gets `0.6rem`).
 3. **500px viewport test**: Render `.dash-stat` at 500px (≤720px but >400px) and assert `padding` — will fail on unfixed code (no stat override at this breakpoint).
 4. **320px viewport test**: Render both `.dash-stat` padding and `.dash-stats` gap at 320px — both will fail on unfixed code.
 
 **Expected Counterexamples**:
+
 - `.dash-stat` computed padding is `0.95rem 1rem` (from global `.card`) at ≤560px with no stat-specific override.
 - `.dash-stats` computed gap is `0.6rem` at ≤400px.
 - Possible causes confirmed: missing `.dash-stat { padding }` in the 720px and 400px breakpoints; gap value too small in the 400px breakpoint.
@@ -212,6 +218,7 @@ The primary testing tools are CSS source-rule assertions (Vitest), a daisyUI col
 **Goal**: Verify that for all viewport widths where the bug condition holds, the fixed stat cards have adequate padding and gap.
 
 **Pseudocode:**
+
 ```
 FOR ALL viewport WHERE isBugCondition(viewport) DO
   render dashboard stat cards at viewport.widthPx
@@ -235,6 +242,7 @@ The Vitest suite parses the scoped CSS source instead of `getComputedStyle`, so 
 **Goal**: Verify that for all viewport widths where the bug condition does NOT hold (viewport > 720px), the fixed code produces the same computed styles as the original code.
 
 **Pseudocode:**
+
 ```
 FOR ALL viewport WHERE NOT isBugCondition(viewport) DO
   ASSERT computedStyle_original(.dash-stat, viewport) = computedStyle_fixed(.dash-stat, viewport)
@@ -243,6 +251,7 @@ END FOR
 ```
 
 **Testing Approach**: Property-based testing is well-suited here because:
+
 - It generates many viewport widths automatically across the desktop range (721px–2560px).
 - It catches any accidental cascade bleed from the new scoped rules into wider viewports.
 - It provides strong guarantees that the fix is truly additive and does not regress desktop layout.
@@ -250,6 +259,7 @@ END FOR
 **Test Plan**: Observe computed styles on UNFIXED code at desktop widths first to establish the baseline, then write property-based tests that assert the same values hold after the fix.
 
 **Test Cases**:
+
 1. **Desktop padding preservation**: For viewports 721px–1440px, verify `.dash-stat` computed padding equals the global `.card` value (`1.25rem 1.4rem`).
 2. **Desktop gap preservation**: For viewports 721px–1440px, verify `.dash-stats` gap remains `1rem`.
 3. **Desktop grid preservation**: For viewports 721px–1440px, verify `.dash-stats` grid-template-columns is `repeat(4, minmax(0, 1fr))`.

@@ -104,7 +104,7 @@ async function client(event): Promise<Concept2Client | null> {
     const sealed = event.cookies.get(TOKEN_COOKIE);
     const secret = env.SESSION_SECRET;
     const token = sealed && secret ? await openToken(secret, sealed) : null;
-    if (!token) return null;                 // missing/rotated/tampered ⇒ reconnect
+    if (!token) return null; // missing/rotated/tampered ⇒ reconnect
     session.tokens = { ...session.tokens, accessToken: token };
   }
   return new Concept2Client(getConfig(event), env.SESSIONS, event.locals.sessionId, session);
@@ -176,7 +176,7 @@ A.6/C.2 extend it to also clear the token cookie and leaderboard entries.
 ### B.5 Annotations & goals (app-authored data)
 
 Unchanged and unaffected: coaching **annotations** and **annual goals** are
-content the athlete creates *in rowplay*, not a copy of their Concept2 logbook.
+content the athlete creates _in rowplay_, not a copy of their Concept2 logbook.
 They live in D1 keyed by user and are purged by the same `deleteUserData` path on
 disconnect/account-delete.
 
@@ -189,10 +189,10 @@ upserts the minimal entry + a share token). Two adjustments:
 
 `publishWorkout` resolves the workout via `loadWorkouts(event)` (served from the
 D1 cache), then `createWorkoutShare` + `upsertLeaderboardEntry`. The share token +
-public leaderboard entry are the **only** artifacts exposed to *other* athletes,
+public leaderboard entry are the **only** artifacts exposed to _other_ athletes,
 and they are written **only** because the athlete chose to publish. No code change
 needed; add a test. Note the lifecycle distinction: disconnect purges the
-*private cache* (Part B.2) but **not** published entries/share tokens — those are
+_private cache_ (Part B.2) but **not** published entries/share tokens — those are
 governed solely by the explicit publish/withdraw controls (Part C.2).
 
 ### C.2 Withdraw — the symmetric opt-out (new)
@@ -221,8 +221,8 @@ governed solely by the explicit publish/withdraw controls (Part C.2).
 ## Settings / connect status (small UX)
 
 `/settings` (and/or the connect screen) gains an i18n'd privacy statement
-reflecting the new model: *your token stays in your browser (encrypted), your
-workouts are read live and not stored, and only results you publish are shared.*
+reflecting the new model: _your token stays in your browser (encrypted), your
+workouts are read live and not stored, and only results you publish are shared._
 The existing account-delete control keeps working and now also clears the token
 cookie and leaderboard entries.
 
@@ -246,7 +246,7 @@ cookie and leaderboard entries.
 - **No D1 schema change.** (`leaderboard_entry` and `workout_detail` already
   exist.) `SessionData.tokens.accessToken` becomes optional — backward compatible
   for reads.
-- **Existing personal sessions** (token in KV) keep working for *identity* but
+- **Existing personal sessions** (token in KV) keep working for _identity_ but
   `client()` finds no `rp_tok` cookie → 401 → reconnect. On reconnect the new
   sealed-cookie path takes over.
 - **Legacy KV records** that still hold a plaintext token are cleared
@@ -264,7 +264,7 @@ cookie and leaderboard entries.
   delete clears entries.
 - **E2E (demo)**: unchanged smoke — demo mode persists/needs nothing, so existing
   specs must stay green (guards Req 2.6).
-- **Manual on `npm run preview`** (recorded in tasks): paste token → connect →
+- **Manual on `pnpm run preview`** (recorded in tasks): paste token → connect →
   confirm `rp_tok` cookie is `HttpOnly` and KV holds **no** token → dashboard
   reads from the D1 cache → publish → entry appears → withdraw → entry gone →
   logout → both cookies cleared **and** the D1 cache purged.

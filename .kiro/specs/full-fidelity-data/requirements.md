@@ -4,8 +4,8 @@
 
 rowplay reads the Concept2 Logbook result model server-side (`mapResult` /
 `mapSplits` in `src/lib/server/concept2.ts`) but keeps only a **subset** of the
-fields Concept2 carries. The athlete wants to *deeply* analyze performance and
-*see everything Concept2 provides* — and today the data layer silently drops
+fields Concept2 carries. The athlete wants to _deeply_ analyze performance and
+_see everything Concept2 provides_ — and today the data layer silently drops
 fields the API returns, so the analysis and the UI literally cannot reference
 data that exists.
 
@@ -153,9 +153,9 @@ sensitive provenance, so that it ships safely.
    `mockData.ts` SHALL be extended so demo mode exercises every new field
    (including an interval piece with rest + targets + metadata).
 3. EVERY user-visible string SHALL be added to all six i18n dictionaries.
-4. THE feature SHALL pass the full gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, `npm run validate:locales`, and
-   `npm run test:e2e`.
+4. THE feature SHALL pass the full gate: `pnpm run check` (0 errors),
+   `pnpm run build`, `pnpm run test`, `pnpm run validate:locales`, and
+   `pnpm run test:e2e`.
 
 ## Open verification
 

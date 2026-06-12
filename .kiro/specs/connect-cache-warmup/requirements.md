@@ -6,7 +6,7 @@ Two issues surfaced after the token-privacy work (see `concept2-token-privacy`).
 First, submitting a personal token at `/auth/token` gave no UI feedback while the
 server validated it against the Concept2 API, so the connect button felt dead for
 several seconds. Second, every Dashboard / workout-list navigation paid a ~1s live
-Concept2 round-trip: the privacy spec's *purge-on-disconnect* empties the D1 cache
+Concept2 round-trip: the privacy spec's _purge-on-disconnect_ empties the D1 cache
 on reconnect, and the cold-start data path re-fetched (and discarded) a live page
 on every load instead of reading a cache.
 
@@ -18,7 +18,7 @@ as the athlete's complete history.
 
 - **Cold start** — An authenticated session whose D1 workout cache has not yet been
   filled by a completed sync (e.g. right after connect, or after a disconnect-purge).
-- **Sync state** — The `sync_state` row written by `runSync` only at the *end* of a
+- **Sync state** — The `sync_state` row written by `runSync` only at the _end_ of a
   full page-through; its presence means "a sync has completed, D1 is authoritative."
 - **Warm cache** — D1 holds the athlete's full history and sync state exists, so
   reads are served locally with no live API call.
@@ -56,7 +56,7 @@ on its own, so I don't have to find and press a Sync button first.
 2. The background sync SHALL build its Concept2 client directly from the
    just-validated token (no KV read), so it is not subject to KV read-after-write lag
    and never touches the post-response request event.
-3. The background sync SHALL force a *full* backfill, so a reconnect after a
+3. The background sync SHALL force a _full_ backfill, so a reconnect after a
    disconnect-purge re-pages the whole history rather than trusting stale sync state.
 4. WHEN the Workers runtime is unavailable (e.g. `vite dev`, no `waitUntil`/D1), THEN
    `scheduleConnectSync` SHALL be a no-op (no error).
@@ -67,7 +67,7 @@ on its own, so I don't have to find and press a Sync button first.
 ### Requirement 3: Never serve a partial cache as the full history
 
 **User Story:** As an athlete, I want my PBs, aggregates, and exports to reflect my
-*entire* logbook, so a cache that is still filling never silently omits older
+_entire_ logbook, so a cache that is still filling never silently omits older
 workouts.
 
 #### Acceptance Criteria
@@ -82,8 +82,8 @@ workouts.
    path), as before.
 4. The sync-state check SHALL be memoised per request so a single dashboard load
    incurs at most one `getSyncState` read across all loaders.
-5. The gate SHALL also cover the window *during* an initial backfill (rows present,
-   sync state not yet written) and a *failed/partial* backfill (rows present, sync
+5. The gate SHALL also cover the window _during_ an initial backfill (rows present,
+   sync state not yet written) and a _failed/partial_ backfill (rows present, sync
    state never written).
 
 ### Requirement 4: One live fetch per request
@@ -108,15 +108,15 @@ the work is traceable.
 
 #### Acceptance Criteria
 
-1. `npm run check` SHALL report 0 errors; `npm run test` SHALL pass; `npm run build`
-   SHALL succeed; `npm run validate:locales` SHALL pass.
+1. `pnpm run check` SHALL report 0 errors; `pnpm run test` SHALL pass; `pnpm run build`
+   SHALL succeed; `pnpm run validate:locales` SHALL pass.
 2. WHEN the spec is complete, THEN it SHALL be listed in `AGENTS.md`.
 
 ## Non-functional requirements
 
 - Demo mode is unchanged (no auth, no D1, deterministic mocks).
 - Items in Requirements 2–4 take effect only on the Workers runtime
-  (`npm run preview` / production) with D1 migrations applied; they are inert under
+  (`pnpm run preview` / production) with D1 migrations applied; they are inert under
   plain `vite dev`.
 - No new D1 migration (`sync_state` already exists).
 - Cache writes remain best-effort: D1 errors are swallowed and fall through to a live

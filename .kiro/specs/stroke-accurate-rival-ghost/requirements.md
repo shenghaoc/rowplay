@@ -10,7 +10,7 @@ holds one flat split for the whole piece. You never feel a rival surge off the
 start, fade on the third 500, or sprint the last 250 — the three moments that
 make a head-to-head feel real and make you pull harder.
 
-Meanwhile, racing your **own** past session already replays the rival's *real*
+Meanwhile, racing your **own** past session already replays the rival's _real_
 stroke-by-stroke trace (`loadSessionGhost` → `/api/workouts/<id>` →
 `WorkoutDetail.strokes`). Cross-athlete racing is the only ghost path still
 faked, even though every published board entry already carries a public
@@ -19,9 +19,9 @@ faked, even though every published board entry already carries a public
 
 This feature closes that gap: a leaderboard "Race" link arms the rival's
 **actual recorded strokes** via their existing public share token. It is the
-explicit follow-up flagged in `leaderboards/design.md` → *"Out of scope: storing
+explicit follow-up flagged in `leaderboards/design.md` → _"Out of scope: storing
 rivals' full stroke data for a true stroke-accurate cross-user ghost … A later
-iteration can race the rival's actual shared strokes via `loadSharedWorkout`."*
+iteration can race the rival's actual shared strokes via `loadSharedWorkout`."_
 
 It obeys every project rule in `AGENTS.md`: it works in **demo mode** (falling
 back to the pace ghost where no real strokes exist), every string goes through
@@ -144,8 +144,8 @@ that it ships without regressions.
    strokes — never PII (Req 2.3).
 3. EVERY new user-visible string SHALL be added to **all six** i18n
    dictionaries (en, zh, de, es, fr, ja); sport names stay untranslated.
-4. THE feature SHALL pass the full gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, and `npm run test:e2e` (see Req 6.3).
+4. THE feature SHALL pass the full gate: `pnpm run check` (0 errors),
+   `pnpm run build`, `pnpm run test`, and `pnpm run test:e2e` (see Req 6.3).
 
 ### Requirement 5 — Async rival-ghost arming
 

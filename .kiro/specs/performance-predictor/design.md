@@ -27,14 +27,14 @@ aerobic cost at longer distances.
 /** Standard Concept2 race distances in metres. */
 export const PREDICTOR_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097] as const;
 
-export type PredictorDistance = typeof PREDICTOR_DISTANCES[number];
+export type PredictorDistance = (typeof PREDICTOR_DISTANCES)[number];
 
-export type PredictionStatus = 'beaten' | 'behind' | 'untried';
+export type PredictionStatus = "beaten" | "behind" | "untried";
 
 export interface PredictionRow {
   distance: PredictorDistance;
   predictedSeconds: number;
-  actualBestSeconds: number | null;   // from the athlete's personal bests
+  actualBestSeconds: number | null; // from the athlete's personal bests
   status: PredictionStatus;
 }
 
@@ -96,21 +96,21 @@ No DOM, no Svelte, no network. Pure maths.
 All 6 locale files (`en`, `zh`, `de`, `es`, `fr`, `ja`) in
 `src/lib/locales/`. New keys under `dashboard.predictor`:
 
-| Key | EN value |
-|-----|----------|
-| `dashboard.predictor.title` | Performance predictor |
-| `dashboard.predictor.distance` | Known distance |
-| `dashboard.predictor.time` | Known time |
-| `dashboard.predictor.predict` | Predict |
-| `dashboard.predictor.colDistance` | Distance |
-| `dashboard.predictor.colPredicted` | Predicted |
-| `dashboard.predictor.colBest` | Your best |
-| `dashboard.predictor.colStatus` | Status |
-| `dashboard.predictor.beaten` | Beaten |
-| `dashboard.predictor.behind` | Behind |
-| `dashboard.predictor.untried` | Untried |
-| `dashboard.predictor.noTime` | — |
-| `dashboard.predictor.inputError` | Enter a valid time (e.g. 7:04) |
+| Key                                | EN value                       |
+| ---------------------------------- | ------------------------------ |
+| `dashboard.predictor.title`        | Performance predictor          |
+| `dashboard.predictor.distance`     | Known distance                 |
+| `dashboard.predictor.time`         | Known time                     |
+| `dashboard.predictor.predict`      | Predict                        |
+| `dashboard.predictor.colDistance`  | Distance                       |
+| `dashboard.predictor.colPredicted` | Predicted                      |
+| `dashboard.predictor.colBest`      | Your best                      |
+| `dashboard.predictor.colStatus`    | Status                         |
+| `dashboard.predictor.beaten`       | Beaten                         |
+| `dashboard.predictor.behind`       | Behind                         |
+| `dashboard.predictor.untried`      | Untried                        |
+| `dashboard.predictor.noTime`       | —                              |
+| `dashboard.predictor.inputError`   | Enter a valid time (e.g. 7:04) |
 
 ## Demo mode
 

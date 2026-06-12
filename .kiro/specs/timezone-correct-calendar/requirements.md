@@ -30,7 +30,7 @@ quality gate (`check` + `build` + `test` + `validate:locales`).
 - **Day key** — a `YYYY-MM-DD` string identifying a calendar day; the atomic
   unit of the heatmap, streak, and goal-progress logic.
 - **Workout timezone** — the IANA timezone identifier on the Concept2 result
-  (`workout.timezone`); the most authoritative source of *where* the piece was
+  (`workout.timezone`); the most authoritative source of _where_ the piece was
   rowed.
 - **Home timezone** — a user-configurable IANA timezone stored in user
   preferences (settings page); the fallback when a workout carries no
@@ -68,7 +68,7 @@ streak data reflect my real training pattern.
    is set then interpret in that timezone; else interpret as UTC.
 2. THE day-key function SHALL be a pure, DOM-free helper in `src/lib/datetime.ts`
    with the signature `workoutLocalDayKey(date: string, workoutTz?: string,
-   homeTz?: string): string`, returning a `YYYY-MM-DD` day key.
+homeTz?: string): string`, returning a `YYYY-MM-DD` day key.
 3. THE function SHALL use the Temporal polyfill already present in the project
    (`Temporal.ZonedDateTime` / `Temporal.PlainDateTime.toZonedDateTime`) for
    all timezone conversions; no `Date`-object arithmetic or manual offset math
@@ -168,9 +168,9 @@ account, so that I can verify correctness locally.
    present and passing.
 2. EVERY user-visible string introduced by this feature SHALL appear in all six
    locale files (`en`, `zh`, `de`, `es`, `fr`, `ja`) and pass
-   `npm run validate:locales`.
-3. THE feature SHALL pass the full quality gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, `npm run validate:locales`.
+   `pnpm run validate:locales`.
+3. THE feature SHALL pass the full quality gate: `pnpm run check` (0 errors),
+   `pnpm run build`, `pnpm run test`, `pnpm run validate:locales`.
 4. THE dashboard and calendar views SHALL produce correct output in both
-   `npm run dev` (vite, demo mode) and `npm run preview` (Workers runtime,
+   `pnpm run dev` (vite, demo mode) and `pnpm run preview` (Workers runtime,
    real session KV).

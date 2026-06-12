@@ -2,7 +2,7 @@
 
 ## Runtime & Build
 
-- **Node.js** toolchain with **npm** as the package manager (lockfile: `package-lock.json`)
+- **Node.js** toolchain with **pnpm 11** as the package manager (lockfile: `pnpm-lock.yaml`, pinned via the `packageManager` field; use `pnpm ci` for clean CI installs)
 - **TypeScript** in strict mode (`tsconfig.json` extends SvelteKit's generated config)
 - **Vite** for dev server and build
 - **Cloudflare Workers** as the production runtime via `@sveltejs/adapter-cloudflare`
@@ -165,34 +165,40 @@ function fakeKv() {
 
 ## Development Commands
 
-| Task              | Command                 |
-| ----------------- | ----------------------- |
-| Install deps      | `pnpm install`          |
-| Dev server        | `pnpm dev`              |
-| Type check        | `pnpm check`            |
-| Unit tests        | `pnpm test`             |
-| Unit tests watch  | `pnpm test:watch`       |
-| Build             | `pnpm build`            |
-| Preview (Workers) | `pnpm preview`          |
-| Preview CI        | `pnpm preview:ci`       |
-| Deploy            | `pnpm deploy`           |
-| D1 migrate local  | `pnpm db:migrate:local` |
-| D1 migrate remote | `pnpm db:migrate`       |
-| E2E (full)        | `pnpm test:e2e`         |
-| E2E (PR smoke)    | `pnpm test:e2e:smoke`   |
+| Task               | Command                 |
+| ------------------ | ----------------------- |
+| Install deps (dev) | `pnpm install`          |
+| Install deps (CI)  | `pnpm ci`               |
+| Dev server         | `pnpm dev`              |
+| Format (write)     | `pnpm run format`       |
+| Format (check)     | `pnpm run format:check` |
+| Lint               | `pnpm run lint`         |
+| Type check         | `pnpm run typecheck`    |
+| Unit tests         | `pnpm run test`         |
+| Unit tests watch   | `pnpm test:watch`       |
+| Build              | `pnpm run build`        |
+| Full quality gate  | `pnpm run check`        |
+| Preview (Workers)  | `pnpm preview`          |
+| Preview (wrangler) | `pnpm preview:wrangler` |
+| Deploy             | `pnpm deploy`           |
+| D1 migrate local   | `pnpm db:migrate:local` |
+| D1 migrate remote  | `pnpm db:migrate`       |
+| E2E (full)         | `pnpm test:e2e`         |
+| E2E (PR smoke)     | `pnpm test:e2e:smoke`   |
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`). All quality jobs run in parallel:
+GitHub Actions:
 
-- **typecheck** — `pnpm check`
-- **unit-tests** — `pnpm test`
-- **build** — `pnpm build`; uploads `.svelte-kit/cloudflare` as a 1-day artifact
-- **locale-validation** — `pnpm validate:locales`
-
-E2E jobs download the build artifact and set `E2E_SKIP_BUILD=1` so wrangler dev starts without rebuilding:
-
-- **e2e-pr** — `test:e2e:smoke` (smoke.spec.ts, WebKit desktop). PR merge gate when e2e paths change.
-- **e2e-full** — `test:e2e` (all specs, WebKit desktop + iPhone 14). Runs on `workflow_dispatch` and nightly (`schedule: 0 3 * * *`).
+- **CI** (`.github/workflows/ci.yml`) — the universal base gate: `pnpm ci` then
+  `pnpm run check` (format:check + lint + typecheck + test + build) on every PR
+  and push to main. No path filters; lint failures fail the build.
+- **Locales** (`.github/workflows/locales.yml`) — `pnpm run validate:locales`
+  (repo-specific, kept out of the base CI contract).
+- **E2E** (`.github/workflows/e2e.yml`) — Playwright on the real Workers runtime
+  (builds in-job, then `E2E_SKIP_BUILD=1` so wrangler dev starts without
+  rebuilding):
+  - **e2e-smoke** — `test:e2e:smoke` (smoke.spec.ts, WebKit desktop). PR merge gate when e2e paths change.
+  - **e2e-full** — `test:e2e` (all specs, WebKit desktop + iPhone 14). Runs on `workflow_dispatch` and nightly (`schedule: 0 3 * * *`).
 
 Dependabot handles automated dependency updates.

@@ -13,28 +13,28 @@ dashboard workout list.
 
 ```ts
 export const WORKOUT_TAGS = [
-  'steady-state',
-  'interval',
-  'race-piece',
-  'time-trial',
-  'warmup-cooldown',
-  'unknown',
+  "steady-state",
+  "interval",
+  "race-piece",
+  "time-trial",
+  "warmup-cooldown",
+  "unknown",
 ] as const;
-export type WorkoutTag = typeof WORKOUT_TAGS[number];
+export type WorkoutTag = (typeof WORKOUT_TAGS)[number];
 ```
 
 ## Auto-detection logic (pure, deterministic)
 
 Detection rules applied in priority order:
 
-| Tag | Conditions |
-|-----|-----------|
-| `interval` | ≥ 2 work intervals with distinct rest periods in the split list (rest detected by `interval.type === 'rest'` or a pace gap > 30 s/500m between consecutive splits). |
-| `warmup-cooldown` | Single piece; duration < 8 min AND average pace > athlete median pace × 1.25. |
-| `race-piece` | Single piece; duration < 12 min OR distance ≤ 2 000 m; average pace ≤ athlete median pace × 1.25 (excludes easy-paced warmups). |
-| `time-trial` | Single piece; 12 min ≤ duration ≤ 35 min; pace variance (stddev) < 3 s/500m across splits. |
-| `steady-state` | Single piece; duration > 35 min; pace variance < 6 s/500m. |
-| `unknown` | None of the above matched. |
+| Tag               | Conditions                                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interval`        | ≥ 2 work intervals with distinct rest periods in the split list (rest detected by `interval.type === 'rest'` or a pace gap > 30 s/500m between consecutive splits). |
+| `warmup-cooldown` | Single piece; duration < 8 min AND average pace > athlete median pace × 1.25.                                                                                       |
+| `race-piece`      | Single piece; duration < 12 min OR distance ≤ 2 000 m; average pace ≤ athlete median pace × 1.25 (excludes easy-paced warmups).                                     |
+| `time-trial`      | Single piece; 12 min ≤ duration ≤ 35 min; pace variance (stddev) < 3 s/500m across splits.                                                                          |
+| `steady-state`    | Single piece; duration > 35 min; pace variance < 6 s/500m.                                                                                                          |
+| `unknown`         | None of the above matched.                                                                                                                                          |
 
 The athlete median pace is passed in as a parameter (already available from
 dashboard data); if unavailable, rules that reference it are skipped.
@@ -45,7 +45,7 @@ dashboard data); if unavailable, rules that reference it are skipped.
 export { WORKOUT_TAGS, WorkoutTag };
 
 export interface TagContext {
-  medianPaceSecs?: number;   // athlete's median pace sec/500m; undefined OK
+  medianPaceSecs?: number; // athlete's median pace sec/500m; undefined OK
 }
 
 /**
@@ -116,7 +116,7 @@ label. Clicking the badge opens an inline `<select>` (or a daisyUI `dropdown`)
 with the 6 tag options plus a "— Auto-detect —" option (sets `userTag = null`).
 
 - On selection: optimistic UI — update local state immediately; `PATCH
-  /api/workout/{id}/tag` in the background; revert on error + toast.
+/api/workout/{id}/tag` in the background; revert on error + toast.
 - The badge style reflects the effective tag:
   - `badge-ghost` for `unknown` / auto-detected
   - `badge-info` for `steady-state`
@@ -140,18 +140,18 @@ values plus "All". Filtering is client-side (no new server call).
 
 New keys under `workout.tag` (all 6 locale files):
 
-| Key | EN value |
-|-----|----------|
-| `workout.tag.label` | Type |
-| `workout.tag.auto` | Auto-detect |
-| `workout.tag.steady-state` | Steady state |
-| `workout.tag.interval` | Interval |
-| `workout.tag.race-piece` | Race piece |
-| `workout.tag.time-trial` | Time trial |
-| `workout.tag.warmup-cooldown` | Warm-up / cool-down |
-| `workout.tag.unknown` | Other |
-| `workout.tag.filter.all` | All types |
-| `workout.tag.saveError` | Couldn't save tag — please try again |
+| Key                           | EN value                             |
+| ----------------------------- | ------------------------------------ |
+| `workout.tag.label`           | Type                                 |
+| `workout.tag.auto`            | Auto-detect                          |
+| `workout.tag.steady-state`    | Steady state                         |
+| `workout.tag.interval`        | Interval                             |
+| `workout.tag.race-piece`      | Race piece                           |
+| `workout.tag.time-trial`      | Time trial                           |
+| `workout.tag.warmup-cooldown` | Warm-up / cool-down                  |
+| `workout.tag.unknown`         | Other                                |
+| `workout.tag.filter.all`      | All types                            |
+| `workout.tag.saveError`       | Couldn't save tag — please try again |
 
 ## Demo mode
 

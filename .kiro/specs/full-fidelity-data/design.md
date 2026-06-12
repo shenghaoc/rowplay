@@ -31,33 +31,33 @@ From the Logbook result model versus today's `RawResult` / `RawSplit` /
 
 ### Result level
 
-| Field | Today | Action |
-|---|---|---|
-| `timezone` | dropped | capture |
-| `weight_class` (`H`/`L`) | dropped | capture |
-| `privacy` | dropped | capture (drives owner-only display) |
-| `verified` | dropped | capture |
-| `rest_time` (tenths) | dropped | capture → seconds |
-| `rest_distance` (m) | dropped | capture |
-| `heart_rate.ending` | dropped | capture |
-| `heart_rate.recovery` | dropped | capture |
-| `heart_rate.{average,min,max}` | kept | keep |
-| `workout.targets {stroke_rate, heart_rate_zone, pace, watts, calories}` | dropped | capture (pace tenths→sec) |
-| `metadata {pm_version, firmware_version, serial_number, device, device_os, device_os_version, erg_model_type, hr_type, other}` | dropped | capture |
-| `stroke_rate, stroke_count, calories_total, wattminutes_total, drag_factor, workout_type, comments` | kept | keep |
+| Field                                                                                                                          | Today   | Action                              |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------- | ----------------------------------- |
+| `timezone`                                                                                                                     | dropped | capture                             |
+| `weight_class` (`H`/`L`)                                                                                                       | dropped | capture                             |
+| `privacy`                                                                                                                      | dropped | capture (drives owner-only display) |
+| `verified`                                                                                                                     | dropped | capture                             |
+| `rest_time` (tenths)                                                                                                           | dropped | capture → seconds                   |
+| `rest_distance` (m)                                                                                                            | dropped | capture                             |
+| `heart_rate.ending`                                                                                                            | dropped | capture                             |
+| `heart_rate.recovery`                                                                                                          | dropped | capture                             |
+| `heart_rate.{average,min,max}`                                                                                                 | kept    | keep                                |
+| `workout.targets {stroke_rate, heart_rate_zone, pace, watts, calories}`                                                        | dropped | capture (pace tenths→sec)           |
+| `metadata {pm_version, firmware_version, serial_number, device, device_os, device_os_version, erg_model_type, hr_type, other}` | dropped | capture                             |
+| `stroke_rate, stroke_count, calories_total, wattminutes_total, drag_factor, workout_type, comments`                            | kept    | keep                                |
 
 ### Split / interval level
 
-| Field | Today | Action |
-|---|---|---|
-| `calories_total` | dropped | capture |
-| `wattminutes_total` | dropped | capture |
-| `heart_rate {average,min,max,ending,rest,recovery}` | only a scalar avg | capture full object |
-| interval `type` (`time`/`distance`/`calorie`/`wattminute`) | dropped | capture |
-| interval `rest_time` (tenths) | dropped | capture → seconds |
-| interval `rest_distance` (m) | dropped | capture |
-| interval `machine` (MultiErg) | dropped | capture |
-| `distance, time, stroke_rate` | kept | keep |
+| Field                                                      | Today             | Action              |
+| ---------------------------------------------------------- | ----------------- | ------------------- |
+| `calories_total`                                           | dropped           | capture             |
+| `wattminutes_total`                                        | dropped           | capture             |
+| `heart_rate {average,min,max,ending,rest,recovery}`        | only a scalar avg | capture full object |
+| interval `type` (`time`/`distance`/`calorie`/`wattminute`) | dropped           | capture             |
+| interval `rest_time` (tenths)                              | dropped           | capture → seconds   |
+| interval `rest_distance` (m)                               | dropped           | capture             |
+| interval `machine` (MultiErg)                              | dropped           | capture             |
+| `distance, time, stroke_rate`                              | kept              | keep                |
 
 ### Stroke level
 
@@ -72,31 +72,31 @@ All additions **optional** (Req 3.3). New shared shapes:
 
 ```ts
 export interface HeartRateDetail {
-    average?: number;
-    min?: number;
-    max?: number;
-    ending?: number;   // bpm at the end of the effort
-    rest?: number;     // bpm during rest (split-level)
-    recovery?: number; // bpm after recovery window
+  average?: number;
+  min?: number;
+  max?: number;
+  ending?: number; // bpm at the end of the effort
+  rest?: number; // bpm during rest (split-level)
+  recovery?: number; // bpm after recovery window
 }
 
 export interface WorkoutTargets {
-    strokeRate?: number;
-    heartRateZone?: number; // 0–5
-    pace?: number;          // sec / 500m (normalised from tenths)
-    watts?: number;
-    calories?: number;
+  strokeRate?: number;
+  heartRateZone?: number; // 0–5
+  pace?: number; // sec / 500m (normalised from tenths)
+  watts?: number;
+  calories?: number;
 }
 
 export interface LoggingMetadata {
-    pmVersion?: number;
-    firmwareVersion?: string;
-    serialNumber?: string;   // sensitive — never on public /r view (Req 6.1)
-    device?: string;         // sensitive — owner-only
-    deviceOs?: string;
-    deviceOsVersion?: string;
-    ergModelType?: number;   // 0=D/E/RowErg/Dynamic, 1=C/B, 2=A
-    hrType?: 'BT' | 'ANT' | 'Apple' | string;
+  pmVersion?: number;
+  firmwareVersion?: string;
+  serialNumber?: string; // sensitive — never on public /r view (Req 6.1)
+  device?: string; // sensitive — owner-only
+  deviceOs?: string;
+  deviceOsVersion?: string;
+  ergModelType?: number; // 0=D/E/RowErg/Dynamic, 1=C/B, 2=A
+  hrType?: "BT" | "ANT" | "Apple" | string;
 }
 ```
 
@@ -130,7 +130,7 @@ flat properties populated alongside `heartRate` for back-compat),
 - Bump `DETAIL_PAYLOAD_VERSION` (Req 3.1). The existing
   `getCachedDetail` version-guard already re-hydrates on mismatch; confirm it
   fails closed (re-fetch) rather than rendering a partial old payload (Req 3.2).
-- No D1 *schema* migration needed — detail payloads are stored as a versioned
+- No D1 _schema_ migration needed — detail payloads are stored as a versioned
   JSON blob, so the bump is the migration.
 
 ## Analysis — `src/lib/analytics.ts` (pure, tested)
@@ -216,13 +216,13 @@ with zero credentials.
 
 Verified against the [Concept2 Logbook API documentation](https://log.concept2.com/developers/documentation/) (June 2026). A live token read was not available in this environment; findings below match the published create/read model and the `GET …/results/{id}?include=metadata` contract.
 
-| Item | On read? | rowplay handling |
-| --- | --- | --- |
-| `workout.targets` (`stroke_rate`, `heart_rate_zone`, `pace`, `watts`, `calories`) | **Yes** — documented under workout details on list and detail responses | Capture when present; target-vs-actual is best-effort |
-| Result `metadata` (`pm_version`, `firmware_version`, `serial_number`, `device`, …) | **Opt-in** — returned when `?include=metadata` is passed on `GET /api/users/me/results/{id}` | `getWorkout` requests `include=metadata`; absent → `undefined` |
-| Rest in `intervals[]` | **Mixed** — validator examples show zero-distance rest rows; some pieces only expose `rest_time` on work rows | `isRest` when `distance === 0 && time > 0`; else use result-level rest fields |
-| `erg_model_type` | **Yes** when metadata included | Numeric codes per Concept2 HTTP headers / BLE `OBJ_ERGMODELTYPE_T` (0=D/E/RowErg/Dynamic, 1=C/B, 2=A) — stored as-is |
-| Stroke `stroke_data` | **Yes** (separate `/strokes` endpoint) | Unchanged — already complete |
+| Item                                                                               | On read?                                                                                                      | rowplay handling                                                                                                     |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `workout.targets` (`stroke_rate`, `heart_rate_zone`, `pace`, `watts`, `calories`)  | **Yes** — documented under workout details on list and detail responses                                       | Capture when present; target-vs-actual is best-effort                                                                |
+| Result `metadata` (`pm_version`, `firmware_version`, `serial_number`, `device`, …) | **Opt-in** — returned when `?include=metadata` is passed on `GET /api/users/me/results/{id}`                  | `getWorkout` requests `include=metadata`; absent → `undefined`                                                       |
+| Rest in `intervals[]`                                                              | **Mixed** — validator examples show zero-distance rest rows; some pieces only expose `rest_time` on work rows | `isRest` when `distance === 0 && time > 0`; else use result-level rest fields                                        |
+| `erg_model_type`                                                                   | **Yes** when metadata included                                                                                | Numeric codes per Concept2 HTTP headers / BLE `OBJ_ERGMODELTYPE_T` (0=D/E/RowErg/Dynamic, 1=C/B, 2=A) — stored as-is |
+| Stroke `stroke_data`                                                               | **Yes** (separate `/strokes` endpoint)                                                                        | Unchanged — already complete                                                                                         |
 
 **Downgrade:** Any field still missing on a given response remains `undefined` (Req 1.4); UI and analysis omit those rows.
 

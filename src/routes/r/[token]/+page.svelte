@@ -41,8 +41,8 @@
 	let speed = $state(1);
 	let engine = $state<ReplayEngine | null>(null);
 	let renderer: CourseRenderer | null = null;
-	let canvasEl: HTMLCanvasElement;
-	let courseWrap: HTMLDivElement;
+	let canvasEl = $state<HTMLCanvasElement>();
+	let courseWrap = $state<HTMLDivElement>();
 
 	const SPEEDS = [0.5, 1, 2, 4, 8];
 
@@ -65,7 +65,10 @@
 	});
 
 	onMount(() => {
-		renderer = new CourseRenderer(canvasEl);
+		const canvas = canvasEl;
+		const wrap = courseWrap;
+		if (!canvas || !wrap) return;
+		renderer = new CourseRenderer(canvas);
 		engine = new ReplayEngine(strokes, (f, p) => {
 			frame = f;
 			playing = p;
@@ -73,13 +76,13 @@
 		});
 
 		const sizeIt = () => {
-			const w = courseWrap.clientWidth;
+			const w = wrap.clientWidth;
 			renderer?.resize(w, 150);
 			renderCurrent();
 		};
 		sizeIt();
 		const ro = new ResizeObserver(sizeIt);
-		ro.observe(courseWrap);
+		ro.observe(wrap);
 
 		const onKey = (e: KeyboardEvent) => {
 			if (e.code === 'Space' && !(e.target as HTMLElement)?.matches?.('select, input, button')) {

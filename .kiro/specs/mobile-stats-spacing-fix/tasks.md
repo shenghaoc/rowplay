@@ -31,7 +31,7 @@ Fix cramped dashboard stat cards on mobile: rename classes to `.dash-stats` / `.
   - Test assertions (expected behavior after fix):
     - For viewports in [401, 720]: `.dash-stat` computed padding SHALL be `1rem 1.1rem`
     - For viewports in [320, 400]: `.dash-stat` computed padding SHALL be `0.9rem 1rem` and `.dash-stats` gap SHALL be `0.75rem`
-  - Run test on UNFIXED code: `npm run test -- --run`
+  - Run test on UNFIXED code: `pnpm run test -- --run`
   - **EXPECTED OUTCOME**: Test FAILS (confirms the bug — no `.dash-stat` padding override exists and gap is `0.6rem` at ≤400px)
   - Document counterexamples found, e.g.:
     - "At 375px: `.dash-stat` padding is `0.95rem 1rem` (global `.card` value), expected `0.9rem 1rem` (≤400px block overrides ≤720px)"
@@ -50,13 +50,12 @@ Fix cramped dashboard stat cards on mobile: rename classes to `.dash-stats` / `.
     - For all viewport widths in [721, 1440]: `.dash-stat` padding SHALL equal `1.25rem 1.4rem` (global `.card` value, no stat override)
     - For all viewport widths in [721, 1440]: `.dash-stats` gap SHALL equal `1rem`
     - For all viewport widths in [721, 1440]: `.dash-stats` grid-template-columns SHALL equal `repeat(4, minmax(0, 1fr))`
-  - Run tests on UNFIXED code: `npm run test -- --run`
+  - Run tests on UNFIXED code: `pnpm run test -- --run`
   - **EXPECTED OUTCOME**: Tests PASS (confirms baseline desktop behavior to preserve)
   - Mark task complete when tests are written, run, and passing on unfixed code
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
 - [x] 3. Apply the CSS fix to `src/routes/dashboard/+page.svelte`
-
   - [x] 3.1 Add `.dash-stat { padding: 1rem 1.1rem; }` inside the `@media (max-width: 720px)` block
     - Open `src/routes/dashboard/+page.svelte` and locate the scoped `<style>` block
     - Find the existing `@media (max-width: 720px)` rule that sets `.dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }`
@@ -81,19 +80,19 @@ Fix cramped dashboard stat cards on mobile: rename classes to `.dash-stats` / `.
     - **Property 1: Expected Behavior** - Mobile Stat Cards Cramped Padding and Gap
     - **IMPORTANT**: Re-run the SAME test from task 1 — do NOT write a new test
     - The test from task 1 encodes the expected behavior (padding ≥ thresholds, gap = 0.75rem)
-    - Run: `npm run test -- --run`
+    - Run: `pnpm run test -- --run`
     - **EXPECTED OUTCOME**: Test PASSES (confirms the fix satisfies the expected behavior for all bug-condition viewports)
     - _Requirements: 2.1, 2.2, 2.3_
 
   - [x] 3.4 Verify preservation tests still pass
     - **Property 2: Preservation** - Desktop Stat Styles Are Unchanged
     - **IMPORTANT**: Re-run the SAME tests from task 2 — do NOT write new tests
-    - Run: `npm run test -- --run`
+    - Run: `pnpm run test -- --run`
     - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions — desktop layout, global `.card` styles, and all other dashboard sections are unchanged)
     - Confirm all tests still pass after fix (no regressions)
 
   - [x] 3.5 Visual verification at mobile breakpoints
-    - Start the dev server: `npm run dev`
+    - Start the dev server: `pnpm run dev`
     - Open the dashboard at `http://localhost:5173/dashboard` in a browser
     - Use DevTools device emulation to verify at the following widths:
       - **375px** (iPhone SE): stat cards should have comfortable padding (`0.9rem 1rem` from ≤400px block overriding ≤720px), 2-column grid, gap `0.75rem`
@@ -109,8 +108,8 @@ Fix cramped dashboard stat cards on mobile: rename classes to `.dash-stats` / `.
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
 - [x] 4. Checkpoint — Ensure all tests pass
-  - Run the full unit test suite: `npm run test`
-  - Run the type checker: `npm run check`
+  - Run the full unit test suite: `pnpm run test`
+  - Run the type checker: `pnpm run check`
   - Confirm both pass with 0 errors before marking this task complete
   - Ask the user if any questions arise about visual results or test failures
 
@@ -119,4 +118,4 @@ Fix cramped dashboard stat cards on mobile: rename classes to `.dash-stats` / `.
 - This is a CSS-only fix. No HTML changes, no changes to `app.css`, no changes to any other component or route.
 - The scoped `<style>` block in `src/routes/dashboard/+page.svelte` is the only file that needs to be modified.
 - Because CSS computed-style assertions in a jsdom/happy-dom environment may not fully simulate media query cascade, the visual verification steps (3.5, 3.6) are the primary confirmation of the fix. The unit tests (tasks 1 and 2) validate the structural intent of the CSS changes.
-- Run `npm run test` (Vitest) for unit tests and `npm run check` for type checking. E2E tests (`npm run test:e2e`) require `wrangler dev` and are not required for this CSS-only fix.
+- Run `pnpm run test` (Vitest) for unit tests and `pnpm run check` for type checking. E2E tests (`pnpm run test:e2e`) require `wrangler dev` and are not required for this CSS-only fix.

@@ -22,26 +22,26 @@ ReplayEngine(strokes')  →  gauges / uPlot / hrZones (unchanged)
 
 ```ts
 export interface HrSample {
-	t: number; // seconds on import timeline
-	hr: number; // bpm
+  t: number; // seconds on import timeline
+  hr: number; // bpm
 }
 
 export function extractHrSeries(strokes: Stroke[]): HrSample[];
 export function interpolateHr(samples: HrSample[], fileTime: number): number | undefined;
 export function mergeHrIntoStrokes(
-	strokes: Stroke[],
-	samples: HrSample[],
-	offsetSec: number
+  strokes: Stroke[],
+  samples: HrSample[],
+  offsetSec: number,
 ): Stroke[];
 export function summarizeHr(strokes: Stroke[]): {
-	avg?: number;
-	min?: number;
-	max?: number;
+  avg?: number;
+  min?: number;
+  max?: number;
 };
 export function applyHrImport(
-	detail: WorkoutDetail,
-	samples: HrSample[],
-	offsetSec: number
+  detail: WorkoutDetail,
+  samples: HrSample[],
+  offsetSec: number,
 ): WorkoutDetail;
 ```
 
@@ -73,10 +73,10 @@ other demo pieces with HR for existing smoke tests.
 
 Handlers in `src/routes/api/workouts/[id]/hr-import/+server.ts`:
 
-| Method | Body | Action |
-|--------|------|--------|
-| `POST` | `{ samples: HrSample[], offset: number }` | `loadWorkoutDetail`, strip any prior imported HR from logbook base (reload from API if needed — **simpler: always merge onto current cached strokes without HR fields**), `applyHrImport`, `putCachedDetail`, return JSON detail |
-| `DELETE` | — | Reload fresh detail from Concept2 (or cache miss → API) **without** overlay; if only overlay existed, re-fetch API detail and replace cache |
+| Method   | Body                                      | Action                                                                                                                                                                                                                           |
+| -------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST`   | `{ samples: HrSample[], offset: number }` | `loadWorkoutDetail`, strip any prior imported HR from logbook base (reload from API if needed — **simpler: always merge onto current cached strokes without HR fields**), `applyHrImport`, `putCachedDetail`, return JSON detail |
+| `DELETE` | —                                         | Reload fresh detail from Concept2 (or cache miss → API) **without** overlay; if only overlay existed, re-fetch API detail and replace cache                                                                                      |
 
 **Simpler live strategy (chosen):** On `POST`, load current detail. If strokes
 already have logbook HR, return 409. Else `applyHrImport` and `putCachedDetail`.
@@ -86,6 +86,7 @@ store nothing extra; **DELETE** re-fetches from Concept2 API and overwrites cach
 strokes in cache (strip `hr` fields, clear summary HR columns).
 
 Actually even simpler for v1:
+
 - POST: merge + putCachedDetail (full merged detail in payload)
 - DELETE: getWorkout from API again and putCachedDetail (true reset) OR strip hr from cached
 
@@ -118,7 +119,7 @@ Derived:
 ```ts
 const baseDetail = $derived(data.detail as WorkoutDetail);
 const effectiveDetail = $derived(
-	overlay ? applyHrImport(baseDetail, overlay.samples, overlay.offset) : baseDetail
+  overlay ? applyHrImport(baseDetail, overlay.samples, overlay.offset) : baseDetail,
 );
 const strokes = $derived(effectiveDetail.strokes);
 const hasHr = $derived(strokes.some((s) => s.hr != null && s.hr > 0));

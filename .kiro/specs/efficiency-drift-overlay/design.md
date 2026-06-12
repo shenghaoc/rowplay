@@ -68,8 +68,8 @@ export function efficiencyDrift(strokes: Stroke[]): EfficiencyDriftResult;
    - Short pieces (total distance < 5000 m): `total * 0.10`.
    - Minimum: 5 valid strokes regardless of distance, so a 200 m sprint still
      gets a baseline.
-   `baselineEndD` is set to `s.d` of the last stroke included. `baseline` is the
-   mean DPS over these strokes.
+     `baselineEndD` is set to `s.d` of the last stroke included. `baseline` is the
+     mean DPS over these strokes.
 
 3. **Closing segment**: the mirror — strokes from the last valid stroke working
    backwards until the cumulative distance spanned reaches the same threshold
@@ -138,9 +138,7 @@ switches from single-series to two-series mode:
 
 ```ts
 const paceData = $derived<uPlot.AlignedData>(
-  dpsAligned
-    ? [xs, strokes.map((s) => s.pace), dpsAligned]
-    : [xs, strokes.map((s) => s.pace)]
+  dpsAligned ? [xs, strokes.map((s) => s.pace), dpsAligned] : [xs, strokes.map((s) => s.pace)],
 );
 ```
 
@@ -209,19 +207,19 @@ roles.
 
 ## i18n — new `drift` block in all six locales
 
-| Key | en value |
-|-----|----------|
-| `drift.toggle` | `Show efficiency drift` |
-| `drift.toggleOn` | `Hide efficiency drift` |
-| `drift.baseline` | `Opening baseline` |
-| `drift.fade` | `Efficiency fade` |
-| `drift.unit` | ` m/st` |
-| `drift.summaryTitle` | `Distance-per-stroke drift` |
-| `drift.summaryHint` | `DPS change from opening segment to close` |
-| `drift.axisLabel` | `DPS` |
+| Key                  | en value                                   |
+| -------------------- | ------------------------------------------ |
+| `drift.toggle`       | `Show efficiency drift`                    |
+| `drift.toggleOn`     | `Hide efficiency drift`                    |
+| `drift.baseline`     | `Opening baseline`                         |
+| `drift.fade`         | `Efficiency fade`                          |
+| `drift.unit`         | ` m/st`                                    |
+| `drift.summaryTitle` | `Distance-per-stroke drift`                |
+| `drift.summaryHint`  | `DPS change from opening segment to close` |
+| `drift.axisLabel`    | `DPS`                                      |
 
 All six locale files receive the same keys (translated appropriately).
-`npm run validate:locales` enforces completeness.
+`pnpm run validate:locales` enforces completeness.
 
 ## Testing
 

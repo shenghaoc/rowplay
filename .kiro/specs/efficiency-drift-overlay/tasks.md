@@ -10,7 +10,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
 ---
 
 - [x] **1. `EfficiencyDriftResult` type + `efficiencyDrift` function** —
-  `src/lib/analytics.ts`
+      `src/lib/analytics.ts`
   - Export `EfficiencyDriftResult` interface (`series`, `baseline`,
     `baselineEndD`, `fadeDelta`, `fadePercent`).
   - Implement `efficiencyDrift(strokes)`: filter valid DPS points via existing
@@ -23,7 +23,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
   - _Requirements: 1.1–1.9_
 
 - [x] **2. Unit tests for `efficiencyDrift`** — `src/lib/analytics.test.ts`
-  (or `src/lib/efficiencyDrift.test.ts`)
+      (or `src/lib/efficiencyDrift.test.ts`)
   - Steady fixture: constant pace/spm → flat series, `|fadeDelta| < 0.01`.
   - Fading fixture: pace degrades → `fadeDelta < 0`, series non-increasing.
   - Short fixture (< 5 valid strokes) → zero result with empty series.
@@ -41,7 +41,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
   - _Requirements: 3.4_
 
 - [x] **4. Page `$derived` wiring + null-padded overlay data** —
-  `src/routes/replay/[id]/+page.svelte`
+      `src/routes/replay/[id]/+page.svelte`
   - `import { efficiencyDrift, type EfficiencyDriftResult } from '$lib/analytics'`.
   - `const drift = $derived(efficiencyDrift(strokes))` — recomputes only when
     `strokes` changes, not per frame.
@@ -62,7 +62,7 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
   - _Requirements: 3.1, 3.2, 3.4, 3.5_
 
 - [x] **6. Toggle button and fade summary badge** —
-  `src/routes/replay/[id]/+page.svelte`
+      `src/routes/replay/[id]/+page.svelte`
   - Render the toggle button inside the pace chart card only when
     `drift.series.length >= 5`.
   - `aria-pressed={driftOverlayOn}`, keyboard-operable, visible focus ring.
@@ -75,10 +75,10 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
   - _Requirements: 4.1–4.3, 6.2_
 
 - [x] **7. i18n — all six locales** — `src/lib/locales/{en,zh,de,es,fr,ja}.ts`
-  (or `.json`)
+      (or `.json`)
   - Add `drift` block: `toggle`, `toggleOn`, `baseline`, `fade`, `unit`,
     `summaryTitle`, `summaryHint`, `axisLabel`.
-  - Run `npm run validate:locales` after each locale file is updated; all must
+  - Run `pnpm run validate:locales` after each locale file is updated; all must
     pass before the task is closed.
   - _Requirements: 6.1–6.3_
 
@@ -91,9 +91,9 @@ begins. That PR provides `distancePerStroke` in `src/lib/analytics.ts` and
   - _Requirements: 5.1, 6.2, 7.4_
 
 - [x] **9. Full quality gate** — (no code; CI verification step)
-  - `npm run check` → 0 errors.
-  - `npm run build` → succeeds.
-  - `npm run test` → green (including new unit tests from task 2).
-  - `npm run validate:locales` → no missing keys.
-  - `npm run test:e2e` → passes (including task 8 smoke spec).
+  - `pnpm run check` → 0 errors.
+  - `pnpm run build` → succeeds.
+  - `pnpm run test` → green (including new unit tests from task 2).
+  - `pnpm run validate:locales` → no missing keys.
+  - `pnpm run test:e2e` → passes (including task 8 smoke spec).
   - _Requirements: 7.1–7.4_

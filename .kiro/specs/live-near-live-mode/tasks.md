@@ -47,6 +47,6 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.7, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 7.2, 9.5_
 
 - [x] 10. Verification
-  - Run `npm run check` and `npm run test`
+  - Run `pnpm run check` and `pnpm run test`
   - Update PR test plan checklist
   - _Requirements: all_

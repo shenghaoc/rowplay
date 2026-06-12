@@ -13,13 +13,13 @@ zone" or following an appropriate aerobic base.
 A **5-zone pace-based model** relative to the athlete's 2k RowErg personal best
 pace (`P₂k` in seconds per 500 m):
 
-| Zone | Label | Pace range | Effort character |
-|------|-------|-----------|-----------------|
-| 1 | UT2 | pace > P₂k × 1.20 | Recovery / easy |
-| 2 | UT1 | P₂k × 1.10 < pace ≤ P₂k × 1.20 | Aerobic base |
-| 3 | AT | P₂k × 1.02 < pace ≤ P₂k × 1.10 | Threshold |
-| 4 | TR | P₂k × 0.97 < pace ≤ P₂k × 1.02 | Race / interval |
-| 5 | AN | pace ≤ P₂k × 0.97 | Anaerobic / sprint |
+| Zone | Label | Pace range                     | Effort character   |
+| ---- | ----- | ------------------------------ | ------------------ |
+| 1    | UT2   | pace > P₂k × 1.20              | Recovery / easy    |
+| 2    | UT1   | P₂k × 1.10 < pace ≤ P₂k × 1.20 | Aerobic base       |
+| 3    | AT    | P₂k × 1.02 < pace ≤ P₂k × 1.10 | Threshold          |
+| 4    | TR    | P₂k × 0.97 < pace ≤ P₂k × 1.02 | Race / interval    |
+| 5    | AN    | pace ≤ P₂k × 0.97              | Anaerobic / sprint |
 
 These boundaries are the community-standard Concept2 training zones expressed
 relative to 2k pace (erg coaches routinely present them this way).
@@ -46,11 +46,11 @@ boundaries to drift between views, making it impossible to compare a workout's
 classification across different period selections. The static reference keeps
 zone boundaries stable.
 
-| Zone | Label | Pace range |
-|------|-------|-----------|
-| L1 | Easy | pace > P̃ × 1.10 |
-| L2 | Moderate | P̃ × 0.95 < pace ≤ P̃ × 1.10 |
-| L3 | Hard | pace ≤ P̃ × 0.95 |
+| Zone | Label    | Pace range                 |
+| ---- | -------- | -------------------------- |
+| L1   | Easy     | pace > P̃ × 1.10            |
+| L2   | Moderate | P̃ × 0.95 < pace ≤ P̃ × 1.10 |
+| L3   | Hard     | pace ≤ P̃ × 0.95            |
 
 ## Data source
 
@@ -78,13 +78,13 @@ zone boundaries stable.
 ## Pure module — `src/lib/trainingZones.ts`
 
 ```ts
-export const ZONES_5 = ['UT2', 'UT1', 'AT', 'TR', 'AN'] as const;
-export const ZONES_3 = ['Easy', 'Moderate', 'Hard'] as const;
-export type ZoneLabel = typeof ZONES_5[number] | typeof ZONES_3[number];
+export const ZONES_5 = ["UT2", "UT1", "AT", "TR", "AN"] as const;
+export const ZONES_3 = ["Easy", "Moderate", "Hard"] as const;
+export type ZoneLabel = (typeof ZONES_5)[number] | (typeof ZONES_3)[number];
 
 export type ZoneConfig =
-  | { basePace: number; medianPace?: number }   // 5-zone model: 2k PB pace available
-  | { basePace: null; medianPace: number };      // 3-zone fallback: median pace required
+  | { basePace: number; medianPace?: number } // 5-zone model: 2k PB pace available
+  | { basePace: null; medianPace: number }; // 3-zone fallback: median pace required
 
 export interface ZoneSlice {
   zone: ZoneLabel;
@@ -108,10 +108,7 @@ export function classifyPace(pace: number, config: ZoneConfig): ZoneLabel;
  * Aggregate workouts into a zone distribution for the given config.
  * Uses stroke data when present; falls back to split then summary average.
  */
-export function buildDistribution(
-  workouts: WorkoutSummary[],
-  config: ZoneConfig,
-): ZoneDistribution;
+export function buildDistribution(workouts: WorkoutSummary[], config: ZoneConfig): ZoneDistribution;
 ```
 
 No DOM, no Svelte, no server imports.
@@ -144,23 +141,23 @@ pace-duration trend chart.
 
 New keys under `dashboard.tid` (all 6 locale files):
 
-| Key | EN value |
-|-----|----------|
-| `dashboard.tid.title` | Training intensity |
-| `dashboard.tid.time` | Time |
-| `dashboard.tid.distance` | Distance |
-| `dashboard.tid.period4w` | Last 4 weeks |
-| `dashboard.tid.period3m` | Last 3 months |
-| `dashboard.tid.period12m` | Last 12 months |
-| `dashboard.tid.empty` | No workouts in this period |
-| `dashboard.tid.zone.UT2` | UT2 — Recovery |
-| `dashboard.tid.zone.UT1` | UT1 — Aerobic |
-| `dashboard.tid.zone.AT` | AT — Threshold |
-| `dashboard.tid.zone.TR` | TR — Race pace |
-| `dashboard.tid.zone.AN` | AN — Anaerobic |
-| `dashboard.tid.zone.Easy` | Easy |
-| `dashboard.tid.zone.Moderate` | Moderate |
-| `dashboard.tid.zone.Hard` | Hard |
+| Key                           | EN value                   |
+| ----------------------------- | -------------------------- |
+| `dashboard.tid.title`         | Training intensity         |
+| `dashboard.tid.time`          | Time                       |
+| `dashboard.tid.distance`      | Distance                   |
+| `dashboard.tid.period4w`      | Last 4 weeks               |
+| `dashboard.tid.period3m`      | Last 3 months              |
+| `dashboard.tid.period12m`     | Last 12 months             |
+| `dashboard.tid.empty`         | No workouts in this period |
+| `dashboard.tid.zone.UT2`      | UT2 — Recovery             |
+| `dashboard.tid.zone.UT1`      | UT1 — Aerobic              |
+| `dashboard.tid.zone.AT`       | AT — Threshold             |
+| `dashboard.tid.zone.TR`       | TR — Race pace             |
+| `dashboard.tid.zone.AN`       | AN — Anaerobic             |
+| `dashboard.tid.zone.Easy`     | Easy                       |
+| `dashboard.tid.zone.Moderate` | Moderate                   |
+| `dashboard.tid.zone.Hard`     | Hard                       |
 
 ## Demo mode
 

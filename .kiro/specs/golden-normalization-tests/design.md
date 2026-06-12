@@ -83,17 +83,17 @@ or relies on structural assignability.
 
 A typical 2000 m test piece from a RowErg. Representative values:
 
-| Wire field | Example value | Expected normalized |
-|---|---|---|
-| `time` | `4500` (tenths) | `450` s |
-| `distance` | `2000` m | `2000` m (pass-through) |
-| `type` | `"rower"` | `sport = 'rower'` |
-| Stroke `t` | `12` (tenths) | `1.2` s |
-| Stroke `d` | `85` (decimetres) | `8.5` m |
-| Stroke `p` | `1080` (tenths, per-500m) | `108` s/500m |
-| Split `time` | `1125` (tenths) | `112.5` s |
-| Split `distance` | `500` m | `500` m |
-| Split `pace` | computed | `112.5 / (500/500) = 112.5` s/500m |
+| Wire field       | Example value             | Expected normalized                |
+| ---------------- | ------------------------- | ---------------------------------- |
+| `time`           | `4500` (tenths)           | `450` s                            |
+| `distance`       | `2000` m                  | `2000` m (pass-through)            |
+| `type`           | `"rower"`                 | `sport = 'rower'`                  |
+| Stroke `t`       | `12` (tenths)             | `1.2` s                            |
+| Stroke `d`       | `85` (decimetres)         | `8.5` m                            |
+| Stroke `p`       | `1080` (tenths, per-500m) | `108` s/500m                       |
+| Split `time`     | `1125` (tenths)           | `112.5` s                          |
+| Split `distance` | `500` m                   | `500` m                            |
+| Split `pace`     | computed                  | `112.5 / (500/500) = 112.5` s/500m |
 
 `rawStrokes` contains 4–8 strokes representing the piece. `expected.strokes`
 asserts stroke 0 (first) and the last stroke. `expected.splits` asserts the
@@ -103,11 +103,11 @@ first 500 m split.
 
 The critical test for `paceDiv = 2`. A BikeErg 4000 m piece.
 
-| Wire field | Example value | Expected normalized |
-|---|---|---|
-| `type` | `"bike"` | `sport = 'bike'` |
+| Wire field | Example value              | Expected normalized        |
+| ---------- | -------------------------- | -------------------------- |
+| `type`     | `"bike"`                   | `sport = 'bike'`           |
 | Stroke `p` | `2000` (tenths, per-1000m) | `100` s/500m (`2000/10/2`) |
-| Stroke `p` | `1800` (tenths, per-1000m) | `90` s/500m (`1800/10/2`) |
+| Stroke `p` | `1800` (tenths, per-1000m) | `90` s/500m (`1800/10/2`)  |
 
 `mapResult.pace` also uses `paceDiv` indirectly — verified via the computed
 overall pace from `time` and `distance`. The `expected.result` asserts `sport =
@@ -119,9 +119,9 @@ the stroke pace conversion).
 
 Confirms `paceDiv = 1` for SkiErg — pace should **not** be halved.
 
-| Wire field | Example value | Expected normalized |
-|---|---|---|
-| `type` | `"ski"` | `sport = 'skierg'` |
+| Wire field | Example value             | Expected normalized        |
+| ---------- | ------------------------- | -------------------------- |
+| `type`     | `"ski"`                   | `sport = 'skierg'`         |
 | Stroke `p` | `1440` (tenths, per-500m) | `144` s/500m (`1440/10/1`) |
 
 `expected.strokes` asserts the first and last stroke. No splits assertion.
@@ -139,6 +139,7 @@ Rep 2 strokes: t = [0, 8, 16, 24, 32]  (tenths), d = [0, 40, 80, 120, 160] (dm)
 ```
 
 After normalization:
+
 ```
 Rep 1: t = [0.0, 0.8, 1.6, 2.4, 3.2] s, d = [0.0, 4.0, 8.0, 12.0, 16.0] m
 Rep 2: t = [3.2, 4.0, 4.8, 5.6, 6.4] s, d = [16.0, 20.0, 24.0, 28.0, 32.0] m
@@ -146,6 +147,7 @@ Rep 2: t = [3.2, 4.0, 4.8, 5.6, 6.4] s, d = [16.0, 20.0, 24.0, 28.0, 32.0] m
 ```
 
 `expected.strokes` asserts:
+
 - Stroke 0 (rep 1, first): `t = 0.0`, `d = 0.0`.
 - Stroke 4 (rep 1, last): `t = 3.2`, `d = 16.0`.
 - Stroke 5 (rep 2, first): `t = 3.2` (offset applied), `d = 16.0` (offset applied).
@@ -216,6 +218,7 @@ describe('golden: rower-interval') → mapStrokes rep1 last t/d, rep2 first t/d 
 ## Assertion strategy
 
 **`mapResult` assertions** (Req 1.1–1.3, 2.1–2.2):
+
 ```ts
 const result = mapResult(fixture.rawResult);
 expect(result.sport).toBe(fixture.expected.result.sport);
@@ -225,10 +228,11 @@ expect(result.pace).toBeCloseTo(fixture.expected.result.pace, 3);
 ```
 
 **`mapStrokes` assertions** (Req 1.1–1.4, 2.3–2.4):
+
 ```ts
 const strokes = mapStrokes(fixture.rawStrokes, result.sport);
 for (const expected of fixture.expected.strokes) {
-    assertStroke(strokes[expected._index], expected);
+  assertStroke(strokes[expected._index], expected);
 }
 ```
 
@@ -238,23 +242,25 @@ validates. This makes assertions stable if strokes are added to the fixture
 without changing existing entries.
 
 **`mapSplits` assertions** (Req 1.6):
+
 ```ts
 const splits = mapSplits(fixture.rawResult);
 for (const expected of fixture.expected.splits) {
-    assertSplit(splits[expected._index], expected);
+  assertSplit(splits[expected._index], expected);
 }
 ```
 
 Same `_index` pattern as strokes.
 
 **Interval offset assertion** (Req 2.3):
+
 ```ts
 // Rep 2 first stroke: t = rawT + tOffset where tOffset = rep1 final t.
 // These `_`-prefixed annotations live at the fixture top level (they describe
 // fixture structure, not normalized output), so they are read off `fixture`.
 const rep2First = strokes[fixture._rep2FirstIndex];
-expect(rep2First.rawT).toBeCloseTo(0.0, 3);           // wire resets to 0
-expect(rep2First.rawD).toBeCloseTo(0.0, 3);           // wire resets to 0
+expect(rep2First.rawT).toBeCloseTo(0.0, 3); // wire resets to 0
+expect(rep2First.rawD).toBeCloseTo(0.0, 3); // wire resets to 0
 expect(rep2First.t).toBeCloseTo(fixture._rep1FinalT, 3); // offset applied
 expect(rep2First.d).toBeCloseTo(fixture._rep1FinalD, 3); // offset applied
 ```
@@ -277,7 +283,7 @@ When `mapStrokes` or `mapResult` changes a conversion factor:
 1. Recompute the affected expected values independently (do not copy from the
    function output).
 2. Update `expected` in the fixture JSON.
-3. `npm run test` must pass.
+3. `pnpm run test` must pass.
 
 When a fixture needs to be replaced (e.g. the original source data is lost and
 a fresh capture is taken):

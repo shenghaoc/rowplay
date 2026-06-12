@@ -56,15 +56,15 @@ Stateless helpers shared by client and tests:
 
 `LiveMode` class (context on dashboard, not global singleton):
 
-| State | Purpose |
-|-------|---------|
-| `enabled` | User toggle |
-| `intervalSec` | Polling interval preset |
-| `polling` | In-progress indicator |
-| `lastPollAt` | Last successful poll timestamp |
-| `nextPollAt` | Scheduled next poll |
-| `failures` | Consecutive error count (warning at ≥3) |
-| `soundEnabled` | Optional notification chime |
+| State          | Purpose                                 |
+| -------------- | --------------------------------------- |
+| `enabled`      | User toggle                             |
+| `intervalSec`  | Polling interval preset                 |
+| `polling`      | In-progress indicator                   |
+| `lastPollAt`   | Last successful poll timestamp          |
+| `nextPollAt`   | Scheduled next poll                     |
+| `failures`     | Consecutive error count (warning at ≥3) |
+| `soundEnabled` | Optional notification chime             |
 
 **Lifecycle:**
 
@@ -142,13 +142,13 @@ sequenceDiagram
 
 ## Error handling
 
-| Condition | Behaviour |
-|-----------|-----------|
-| HTTP 401 | Stop polling, toast re-auth |
-| HTTP 429 / rate limit | Warning toast, backoff to 300s |
-| Network error | Error toast with retry hint, exponential backoff |
-| D1 unavailable (503) | Toast error, continue polling |
-| 3+ consecutive failures | Warning icon on live mode panel |
+| Condition               | Behaviour                                        |
+| ----------------------- | ------------------------------------------------ |
+| HTTP 401                | Stop polling, toast re-auth                      |
+| HTTP 429 / rate limit   | Warning toast, backoff to 300s                   |
+| Network error           | Error toast with retry hint, exponential backoff |
+| D1 unavailable (503)    | Toast error, continue polling                    |
+| 3+ consecutive failures | Warning icon on live mode panel                  |
 
 ## Testing strategy
 
@@ -164,15 +164,15 @@ sequenceDiagram
 
 ## Requirements traceability
 
-| Req | Design section |
-|-----|----------------|
-| R1 Automatic polling | LiveMode service + `/api/live/poll` |
-| R2 User controls | LiveModePanel + prefs persistence |
-| R3 Notifications | Sonner toasts + optional sound |
-| R4 Demo mode | Client mock poller + generateMockWorkout |
-| R5 Optimistic UI | extraWorkouts merge + CSS animation |
-| R6 Webhook support | Data source abstraction + stub endpoint |
-| R7 State management | visibility, manual sync reset, dedup via upsert |
-| R8 Performance | single timer, abort on blur, debounce toasts |
-| R9 Error handling | backoff table + failure counter |
-| R10 i18n | `liveMode.*` dictionary keys |
+| Req                  | Design section                                  |
+| -------------------- | ----------------------------------------------- |
+| R1 Automatic polling | LiveMode service + `/api/live/poll`             |
+| R2 User controls     | LiveModePanel + prefs persistence               |
+| R3 Notifications     | Sonner toasts + optional sound                  |
+| R4 Demo mode         | Client mock poller + generateMockWorkout        |
+| R5 Optimistic UI     | extraWorkouts merge + CSS animation             |
+| R6 Webhook support   | Data source abstraction + stub endpoint         |
+| R7 State management  | visibility, manual sync reset, dedup via upsert |
+| R8 Performance       | single timer, abort on blur, debounce toasts    |
+| R9 Error handling    | backoff table + failure counter                 |
+| R10 i18n             | `liveMode.*` dictionary keys                    |

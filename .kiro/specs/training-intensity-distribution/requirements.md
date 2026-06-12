@@ -5,7 +5,7 @@
 Most Concept2 athletes train by perceived effort or split targets without a
 clear picture of where their training volume actually lands across intensity
 zones. rowplay already computes a Performance Management Chart (PMC) showing
-fitness/fatigue, but it gives no insight into the *composition* of the training
+fitness/fatigue, but it gives no insight into the _composition_ of the training
 load — is the athlete spending 80% at easy pace (polarised model) or grinding
 in the grey zone?
 
@@ -72,6 +72,6 @@ period, so that I can see how my training composition has changed.
    maths, empty-workout handling.
 2. Every user-visible string SHALL be added to all six locale files (en, zh, de,
    es, fr, ja) via `i18n.t()`.
-3. The feature SHALL pass the full quality gate: `npm run check` (0 errors),
-   `npm run build`, and `npm run test` (count must not decrease).
+3. The feature SHALL pass the full quality gate: `pnpm run check` (0 errors),
+   `pnpm run build`, and `pnpm run test` (count must not decrease).
 4. The feature SHALL work in demo mode.

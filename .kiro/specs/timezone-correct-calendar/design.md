@@ -2,7 +2,7 @@
 
 ## Overview
 
-Every workout in rowplay's calendar must land on the day it *actually happened*
+Every workout in rowplay's calendar must land on the day it _actually happened_
 for the athlete. The current code slices `workout.date` at position 10 to get a
 `YYYY-MM-DD` key; because `date` is a wall-clock string with no offset, this is
 implicitly UTC. A resolution chain fixes this: per-workout timezone → user home
@@ -36,11 +36,7 @@ workout.date  +  workout.timezone?  +  homeTz?
  *
  * Returns a `YYYY-MM-DD` string. Never throws.
  */
-export function workoutLocalDayKey(
-  date: string,
-  workoutTz?: string,
-  homeTz?: string
-): string
+export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: string): string;
 ```
 
 Implementation:
@@ -66,7 +62,7 @@ not crash the calendar.
  * absent or invalid).  Use at streak/grid end-day so "today" is consistent with
  * workout bucketing.
  */
-export function todayKeyForTz(tz?: string): string
+export function todayKeyForTz(tz?: string): string;
 ```
 
 - `tz` present and valid → `Temporal.Now.plainDateISO(tz).toString()`
@@ -80,11 +76,7 @@ The existing `workoutDayKey(date: string): string` is widened to accept the two
 optional timezone arguments and delegate:
 
 ```ts
-export function workoutDayKey(
-  date: string,
-  workoutTz?: string,
-  homeTz?: string
-): string {
+export function workoutDayKey(date: string, workoutTz?: string, homeTz?: string): string {
   return workoutLocalDayKey(date, workoutTz, homeTz);
 }
 ```
@@ -99,15 +91,15 @@ behave identically to before.
 The following functions receive a new final optional parameter and thread it to
 `workoutDayKey` / `workoutLocalDayKey`:
 
-| Function | Change |
-|---|---|
-| `aggregateDailyVolume(workouts, homeTz?)` | passes `w.timezone` + `homeTz` to `workoutDayKey` |
-| `buildTrainingCalendar(workouts, options?)` | `options.homeTz?` → forwarded to `aggregateDailyVolume`; `todayKeyForTz(options.homeTz)` replaces bare `todayKeyUtc()` |
-| `trainingStreaks(activeDayKeys, endDay)` | no change needed (operates on already-resolved keys) |
-| `trainingStreakStats(workouts, endDay?, homeTz?)` | uses `todayKeyForTz(homeTz)` for default `endDay`; passes `homeTz` into `aggregateDailyVolume` |
-| `annualGoalProgress(workouts, goal, endDay?, homeTz?)` | uses `todayKeyForTz(homeTz)` for default `endDay`; `workoutDayKey` call picks up `homeTz` |
-| `hasEverySportWeek(workouts, homeTz?)` | passes `w.timezone` + `homeTz` to `workoutDayKey` |
-| `weeklyConsistency(workouts, endDay, lookbackWeeks, homeTz?)` | passes `homeTz` into `aggregateDailyVolume` |
+| Function                                                      | Change                                                                                                                 |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `aggregateDailyVolume(workouts, homeTz?)`                     | passes `w.timezone` + `homeTz` to `workoutDayKey`                                                                      |
+| `buildTrainingCalendar(workouts, options?)`                   | `options.homeTz?` → forwarded to `aggregateDailyVolume`; `todayKeyForTz(options.homeTz)` replaces bare `todayKeyUtc()` |
+| `trainingStreaks(activeDayKeys, endDay)`                      | no change needed (operates on already-resolved keys)                                                                   |
+| `trainingStreakStats(workouts, endDay?, homeTz?)`             | uses `todayKeyForTz(homeTz)` for default `endDay`; passes `homeTz` into `aggregateDailyVolume`                         |
+| `annualGoalProgress(workouts, goal, endDay?, homeTz?)`        | uses `todayKeyForTz(homeTz)` for default `endDay`; `workoutDayKey` call picks up `homeTz`                              |
+| `hasEverySportWeek(workouts, homeTz?)`                        | passes `w.timezone` + `homeTz` to `workoutDayKey`                                                                      |
+| `weeklyConsistency(workouts, endDay, lookbackWeeks, homeTz?)` | passes `homeTz` into `aggregateDailyVolume`                                                                            |
 
 All changes are backward-compatible: callers that omit `homeTz` get UTC
 behaviour as before.
@@ -199,32 +191,32 @@ heatmap and streak so both paths can be verified without a real account.
 
 New `settings.timezone*` keys in all six locale files:
 
-| Key | English value |
-|---|---|
-| `settings.timezoneTitle` | `'Home timezone'` |
-| `settings.timezoneNote` | `'Choose your local timezone so workouts rowed near midnight appear on the right calendar day.'` |
-| `settings.timezoneLabel` | `'Home timezone'` |
-| `settings.timezoneSaved` | `'Timezone saved'` |
-| `settings.timezoneUtcDefault` | `'UTC (default)'` |
-| `settings.timezoneGroupAmericas` | `'Americas'` |
-| `settings.timezoneGroupEuropeAfrica` | `'Europe / Africa'` |
-| `settings.timezoneGroupAsiaPacific` | `'Asia / Pacific'` |
+| Key                                  | English value                                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `settings.timezoneTitle`             | `'Home timezone'`                                                                                |
+| `settings.timezoneNote`              | `'Choose your local timezone so workouts rowed near midnight appear on the right calendar day.'` |
+| `settings.timezoneLabel`             | `'Home timezone'`                                                                                |
+| `settings.timezoneSaved`             | `'Timezone saved'`                                                                               |
+| `settings.timezoneUtcDefault`        | `'UTC (default)'`                                                                                |
+| `settings.timezoneGroupAmericas`     | `'Americas'`                                                                                     |
+| `settings.timezoneGroupEuropeAfrica` | `'Europe / Africa'`                                                                              |
+| `settings.timezoneGroupAsiaPacific`  | `'Asia / Pacific'`                                                                               |
 
 ## Testing
 
 ### Unit tests — `src/lib/datetime.test.ts` (or new `datetime.timezone.test.ts`)
 
-| Test | Input | Expected |
-|---|---|---|
-| UTC fallback | `"2024-01-15 01:00:00"`, no tz | `"2024-01-15"` |
-| Cross-timezone, late-night | `"2024-01-14 23:30:00"`, `workoutTz: "America/New_York"` | `"2024-01-14"` |
-| Cross-timezone, early morning | `"2024-01-15 00:30:00"`, `workoutTz: "America/New_York"` | `"2024-01-14"` |
-| Home timezone wins when no workout tz | `"2024-01-14 23:30:00"`, no workoutTz, `homeTz: "America/New_York"` | `"2024-01-14"` |
-| Workout tz wins over home tz | `"2024-01-14 23:30:00"`, `workoutTz: "Pacific/Auckland"` (UTC+13), `homeTz: "America/New_York"` | `"2024-01-15"` (already next day in Auckland) |
-| Invalid workout tz falls through to home tz | `"2024-01-14 23:30:00"`, `workoutTz: "Not/Real"`, `homeTz: "America/New_York"` | `"2024-01-14"` |
-| Invalid workout tz and invalid home tz fall through to UTC | `"2024-01-14 23:30:00"`, `workoutTz: "Bad"`, `homeTz: "Also/Bad"` | `"2024-01-14"` (UTC midnight is still Jan 14) |
-| `todayKeyForTz` with valid tz | deterministic Temporal mock | matches expected local date |
-| `todayKeyForTz` with no tz | — | same as `todayKeyUtc()` |
+| Test                                                       | Input                                                                                           | Expected                                      |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| UTC fallback                                               | `"2024-01-15 01:00:00"`, no tz                                                                  | `"2024-01-15"`                                |
+| Cross-timezone, late-night                                 | `"2024-01-14 23:30:00"`, `workoutTz: "America/New_York"`                                        | `"2024-01-14"`                                |
+| Cross-timezone, early morning                              | `"2024-01-15 00:30:00"`, `workoutTz: "America/New_York"`                                        | `"2024-01-14"`                                |
+| Home timezone wins when no workout tz                      | `"2024-01-14 23:30:00"`, no workoutTz, `homeTz: "America/New_York"`                             | `"2024-01-14"`                                |
+| Workout tz wins over home tz                               | `"2024-01-14 23:30:00"`, `workoutTz: "Pacific/Auckland"` (UTC+13), `homeTz: "America/New_York"` | `"2024-01-15"` (already next day in Auckland) |
+| Invalid workout tz falls through to home tz                | `"2024-01-14 23:30:00"`, `workoutTz: "Not/Real"`, `homeTz: "America/New_York"`                  | `"2024-01-14"`                                |
+| Invalid workout tz and invalid home tz fall through to UTC | `"2024-01-14 23:30:00"`, `workoutTz: "Bad"`, `homeTz: "Also/Bad"`                               | `"2024-01-14"` (UTC midnight is still Jan 14) |
+| `todayKeyForTz` with valid tz                              | deterministic Temporal mock                                                                     | matches expected local date                   |
+| `todayKeyForTz` with no tz                                 | —                                                                                               | same as `todayKeyUtc()`                       |
 
 ### Regression — `src/lib/analytics.test.ts`
 

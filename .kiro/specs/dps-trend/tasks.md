@@ -19,7 +19,7 @@ Implementation plan. Requirement references point at `requirements.md`.
 - [ ] **2. Unit tests** — `src/lib/dpsTrend.test.ts`
   - DPS formula: `distance=10000`, `strokeCount=500` → `rawDps=20`.
   - Normalisation identity: when `avgPaceSecs === referencePace`, `normDps ===
-    rawDps`.
+rawDps`.
   - Exclusion: workout with undefined `strokeCount` not in output.
   - Moving average: 5 points, window 3 days → known mean for middle point.
   - Empty input → empty output array.
@@ -40,11 +40,11 @@ Implementation plan. Requirement references point at `requirements.md`.
 
 - [ ] **4. i18n keys** — `src/lib/locales/{en,zh,de,es,fr,ja}.ts`
   - Add all `dashboard.dpsTrend.*` keys to all six locale files.
-  - `npm run validate:locales` passes.
+  - `pnpm run validate:locales` passes.
   - _Requirements: 3.2_
 
 - [ ] **5. Quality gate**
-  - `npm run check` → 0 errors.
-  - `npm run build` → succeeds.
-  - `npm run test` → green; count ≥ previous.
+  - `pnpm run check` → 0 errors.
+  - `pnpm run build` → succeeds.
+  - `pnpm run test` → green; count ≥ previous.
   - _Requirements: 3.3, 3.4_

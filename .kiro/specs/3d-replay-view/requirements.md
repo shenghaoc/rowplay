@@ -129,4 +129,4 @@ seam (`renderer.render(...)` in `src/routes/replay/[id]/+page.svelte`).
 1. THE Renderer_Toggle labels, tooltips, loading text, and error messages SHALL use `i18n.t()`.
 2. THE new strings SHALL be added to all locale files in `src/lib/locales/` (`en`, `zh`, `de`, `es`, `fr`, `ja`).
 3. THE sport names (RowErg, SkiErg, BikeErg) rendered in the Scene SHALL remain untranslated.
-4. THE new keys SHALL pass `npm run validate:locales`.
+4. THE new keys SHALL pass `pnpm run validate:locales`.

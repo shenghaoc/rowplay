@@ -15,7 +15,7 @@ D. De-dup             loadWorkouts memoised per request (one live page on cold l
 ```
 
 The ordering matters: A/B make the common path fast, while C ensures the fast path is
-never *wrong* — a half-filled cache (mid-backfill, failed backfill, or `waitUntil`
+never _wrong_ — a half-filled cache (mid-backfill, failed backfill, or `waitUntil`
 unavailable) must not masquerade as the complete logbook.
 
 ## A. Connect submit feedback — `auth/token/+page.svelte`
@@ -51,9 +51,16 @@ The paging loop is extracted from `syncWorkouts` into a reusable core so it can 
 without a `RequestEvent`:
 
 ```ts
-async function runSync(db: D1Database, userId: number, c: Concept2Client, full: boolean): Promise<SyncResult>
-export async function syncWorkouts(event, full=false) {           // /api/sync path
-  const c = await client(event); /* …guards… */ return runSync(db, userId, c, full);
+async function runSync(
+  db: D1Database,
+  userId: number,
+  c: Concept2Client,
+  full: boolean,
+): Promise<SyncResult>;
+export async function syncWorkouts(event, full = false) {
+  // /api/sync path
+  const c = await client(event);
+  /* …guards… */ return runSync(db, userId, c, full);
 }
 ```
 
@@ -62,9 +69,11 @@ set, before the redirect:
 
 ```ts
 export function scheduleConnectSync(event, sid, user, token): void {
-  const env = event.platform?.env; const ctx = event.platform?.context; const db = env?.DB;
-  if (!db || !env?.SESSIONS || typeof ctx?.waitUntil !== 'function') return;   // dev no-op
-  const session = { user, personal: true, tokens: { accessToken: token, /* … */ } };
+  const env = event.platform?.env;
+  const ctx = event.platform?.context;
+  const db = env?.DB;
+  if (!db || !env?.SESSIONS || typeof ctx?.waitUntil !== "function") return; // dev no-op
+  const session = { user, personal: true, tokens: { accessToken: token /* … */ } };
   const c = new Concept2Client(getConfig(event), env.SESSIONS, sid, session);
   ctx.waitUntil(runSync(db, user.id, c, /* full */ true).catch(() => {}));
 }
@@ -72,7 +81,7 @@ export function scheduleConnectSync(event, sid, user, token): void {
 
 Why build the client directly instead of `syncWorkouts(event)`:
 
-- On connect, `event.locals.sessionId` is `null` (the session cookie was just *set*,
+- On connect, `event.locals.sessionId` is `null` (the session cookie was just _set_,
   not read by hooks), so `client(event)` would return `null`.
 - Re-reading the just-written KV session risks read-after-write lag → a background read
   could miss and 401.
@@ -93,7 +102,9 @@ full page-through. A per-request memo avoids redundant reads:
 
 ```ts
 const syncStateByEvent = new WeakMap<RequestEvent, Promise<SyncState | null>>();
-function syncStateFor(event): Promise<SyncState | null> { /* memoise getSyncState */ }
+function syncStateFor(event): Promise<SyncState | null> {
+  /* memoise getSyncState */
+}
 ```
 
 Applied to every reader that could otherwise expose a partial cache:
@@ -108,7 +119,7 @@ Applied to every reader that could otherwise expose a partial cache:
 - `syncStatus` — now just returns `syncStateFor(event)` (dedups the dashboard's existing
   status read with the gate).
 
-This also closes a latent pre-existing window: a first *manual* sync filling an empty D1
+This also closes a latent pre-existing window: a first _manual_ sync filling an empty D1
 incrementally could previously be read as complete mid-flight.
 
 ### Why not keep the lazy-fill?
@@ -124,7 +135,9 @@ never read anyway, so the lazy-fill is pointless and was removed. Speed is resto
 
 ```ts
 const workoutsByEvent = new WeakMap<RequestEvent, Promise<Workout[]>>();
-export function loadWorkouts(event): Promise<Workout[]> { /* memoise loadWorkoutsFresh */ }
+export function loadWorkouts(event): Promise<Workout[]> {
+  /* memoise loadWorkoutsFresh */
+}
 ```
 
 A single dashboard load calls `loadWorkouts` directly **and** via `loadWorkoutList`'s cold
@@ -147,7 +160,7 @@ GET /dashboard (after backfill): syncStateFor set → D1 (fast, complete)
   fresh live page (~1s) rather than a cached one — correctness over a few seconds of
   cold-window latency. A possible follow-up: when the whole history fits one page
   (`totalPages === 1`), persist **and** write sync state in the cold path — safe because
-  that page genuinely *is* the complete history — to make small logbooks instant.
+  that page genuinely _is_ the complete history — to make small logbooks instant.
 - `vite dev` has no `waitUntil`/D1, so connect doesn't warm and every load is live; this is
   acceptable (dev defaults to demo mode).
 
@@ -157,7 +170,7 @@ GET /dashboard (after backfill): syncStateFor set → D1 (fast, complete)
 - The data layer has no isolated unit harness today (the only data-layer test mocks
   `loadWorkouts` wholesale); a faithful test of the gate/memo/`waitUntil` needs D1/KV/ctx
   mocks. Deferred — noted as a follow-up.
-- Manual on `npm run preview` (maintainer, needs a real token + `SESSION_SECRET`): connect →
+- Manual on `pnpm run preview` (maintainer, needs a real token + `SESSION_SECRET`): connect →
   dashboard shows a live page immediately → after a moment, navigations are D1-fast and span
   the full history; `rp_tok` stays HttpOnly and KV holds no token.
 

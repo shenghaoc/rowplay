@@ -60,7 +60,7 @@ my achievement in the moment.
    progress clamping to [0, 1], `nextMilestones` ordering.
 2. Every milestone label and toast string SHALL be added to all six locale files
    (en, zh, de, es, fr, ja) via `i18n.t()`.
-3. The feature SHALL pass the full quality gate: `npm run check` (0 errors),
-   `npm run build`, and `npm run test` (count must not decrease).
+3. The feature SHALL pass the full quality gate: `pnpm run check` (0 errors),
+   `pnpm run build`, and `pnpm run test` (count must not decrease).
 4. The feature SHALL work in demo mode with the mock athlete having at least
    one achieved milestone visible in the panel.

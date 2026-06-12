@@ -41,9 +41,8 @@ function fakeEvent(
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function passthroughResolve() {
-  return async (event: any) => {
+  return async () => {
     return new Response("<html></html>", {
       headers: { "content-type": "text/html" },
     });

@@ -1,7 +1,7 @@
 // Concept2 logbook `privacy` levels (the result's `privacy` field): only
 // `everyone` makes a workout publicly visible; `logged_in`, `partners`, and
 // `private` are progressively narrower.
-const PUBLIC_PRIVACY = 'everyone';
+const PUBLIC_PRIVACY = "everyone";
 
 /**
  * Whether a workout may be exposed through a public rowplay share link.
@@ -12,5 +12,5 @@ const PUBLIC_PRIVACY = 'everyone';
  * never silently overrides the athlete's stated privacy preference.
  */
 export function isPubliclyShareable(privacy?: string | null): boolean {
-	return privacy?.trim().toLowerCase() === PUBLIC_PRIVACY;
+  return privacy?.trim().toLowerCase() === PUBLIC_PRIVACY;
 }

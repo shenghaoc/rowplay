@@ -55,7 +55,7 @@ Pure, DOM-free, no Svelte imports. Importable on server or client.
 ### `classifyAxis`
 
 ```ts
-export type ComparabilityAxis = 'distance' | 'time';
+export type ComparabilityAxis = "distance" | "time";
 
 /**
  * Map a Concept2 workout_type string to its comparability axis.
@@ -67,14 +67,14 @@ export function classifyAxis(workoutType: string | undefined): ComparabilityAxis
 
 The known Concept2 `workout_type` values that indicate a fixed-time target are:
 
-| workout_type | Axis |
-|---|---|
-| `"JustRow"` | time |
-| `"JustSki"` | time |
-| `"JustBike"` | time |
-| `"FixedTimePace"` | time |
-| any string containing `"JustRow"`, `"JustSki"`, `"JustBike"`, or `"FixedTime"` | time |
-| `undefined`, `""`, or any other string | distance |
+| workout_type                                                                   | Axis     |
+| ------------------------------------------------------------------------------ | -------- |
+| `"JustRow"`                                                                    | time     |
+| `"JustSki"`                                                                    | time     |
+| `"JustBike"`                                                                   | time     |
+| `"FixedTimePace"`                                                              | time     |
+| any string containing `"JustRow"`, `"JustSki"`, `"JustBike"`, or `"FixedTime"` | time     |
+| `undefined`, `""`, or any other string                                         | distance |
 
 **Rationale for substring match:** the Concept2 API is loosely typed; observed
 values in the wild include variant casing and suffixes. A substring check is
@@ -105,10 +105,10 @@ analytics layer as the single source of bucketing logic.
 
 Standard targets and their ±10% snap windows:
 
-| Target | Key | Window |
-|---|---|---|
-| 60 s (1 min) | `"60"` | 54 – 66 s |
-| 240 s (4 min) | `"240"` | 216 – 264 s |
+| Target          | Key      | Window        |
+| --------------- | -------- | ------------- |
+| 60 s (1 min)    | `"60"`   | 54 – 66 s     |
+| 240 s (4 min)   | `"240"`  | 216 – 264 s   |
 | 1200 s (20 min) | `"1200"` | 1080 – 1320 s |
 | 1800 s (30 min) | `"1800"` | 1620 – 1980 s |
 | 3600 s (60 min) | `"3600"` | 3240 – 3960 s |
@@ -116,14 +116,14 @@ Standard targets and their ±10% snap windows:
 Coarse fallback ranges for non-standard durations (analogous to
 `distanceBand`'s coarse ranges):
 
-| Range | Key |
-|---|---|
-| 0 – 90 s | `"r0"` |
-| 90 – 360 s | `"r90"` |
-| 360 – 900 s | `"r360"` |
-| 900 – 2400 s | `"r900"` |
+| Range         | Key       |
+| ------------- | --------- |
+| 0 – 90 s      | `"r0"`    |
+| 90 – 360 s    | `"r90"`   |
+| 360 – 900 s   | `"r360"`  |
+| 900 – 2400 s  | `"r900"`  |
 | 2400 – 4800 s | `"r2400"` |
-| 4800 s + | `"r4800"` |
+| 4800 s +      | `"r4800"` |
 
 ### `areComparable`
 
@@ -153,7 +153,7 @@ export function areComparable(a: ComparableContext, b: ComparableContext): boole
   const axisA = classifyAxis(a.workoutType);
   const axisB = classifyAxis(b.workoutType);
   if (axisA !== axisB) return false;
-  if (axisA === 'distance') {
+  if (axisA === "distance") {
     return distanceBand(a.distance).key === distanceBand(b.distance).key;
   }
   return durationBand(a.time).key === durationBand(b.time).key;
@@ -174,8 +174,8 @@ export interface GhostPickContext {
   id: number;
   distance: number;
   sport: Sport;
-  time?: number;           // total elapsed seconds
-  workoutType?: string;    // Concept2 workout_type
+  time?: number; // total elapsed seconds
+  workoutType?: string; // Concept2 workout_type
 }
 ```
 
@@ -183,9 +183,7 @@ export interface GhostPickContext {
 `areComparable(current, c)`:
 
 ```ts
-const pool = candidates.filter(
-  (c) => c.id !== current.id && areComparable(current, c)
-);
+const pool = candidates.filter((c) => c.id !== current.id && areComparable(current, c));
 ```
 
 The distance-band ranking that follows is unchanged — it still prefers the
@@ -223,7 +221,7 @@ const pick = pickDefaultGhostCandidate(candidates, {
   distance: detail.distance,
   sport: detail.sport,
   time: detail.time,
-  workoutType: detail.workoutType
+  workoutType: detail.workoutType,
 });
 ```
 
@@ -234,18 +232,19 @@ const pick = pickDefaultGhostCandidate(candidates, {
 After both details are loaded, a `$derived` value detects the reason:
 
 ```ts
-type IncomparableReason = 'crossSport' | 'crossAxis' | 'crossBand' | null;
+type IncomparableReason = "crossSport" | "crossAxis" | "crossBand" | null;
 
 const incomparableReason = $derived<IncomparableReason>(() => {
   if (!detailA || !detailB) return null;
-  if (detailA.sport !== detailB.sport) return 'crossSport';
+  if (detailA.sport !== detailB.sport) return "crossSport";
   const axA = classifyAxis(detailA.workoutType);
   const axB = classifyAxis(detailB.workoutType);
-  if (axA !== axB) return 'crossAxis';
-  const bandOk = axA === 'distance'
-    ? distanceBand(detailA.distance).key === distanceBand(detailB.distance).key
-    : durationBand(detailA.time).key === durationBand(detailB.time).key;
-  return bandOk ? null : 'crossBand';
+  if (axA !== axB) return "crossAxis";
+  const bandOk =
+    axA === "distance"
+      ? distanceBand(detailA.distance).key === distanceBand(detailB.distance).key
+      : durationBand(detailA.time).key === durationBand(detailB.time).key;
+  return bandOk ? null : "crossBand";
 });
 ```
 
@@ -281,10 +280,10 @@ dashboard.
 comparability guard expresses the same invariant at a finer granularity and with
 explicit axis separation:
 
-| Layer | Invariant |
-|---|---|
-| Leaderboard | same `(sport, STANDARD_DISTANCES[i])` |
-| Comparability guard | same `(sport, axis, axis-band)` |
+| Layer               | Invariant                             |
+| ------------------- | ------------------------------------- |
+| Leaderboard         | same `(sport, STANDARD_DISTANCES[i])` |
+| Comparability guard | same `(sport, axis, axis-band)`       |
 
 The leaderboard already refuses timed pieces entirely (they have no
 `matchStandardDistance`). The guard generalises this to the ghost/compare
@@ -308,6 +307,7 @@ fixed-distance. No migration is required.
 `src/lib/mockData.ts` gains one fixed-time workout in the WORKOUT_SPECS table
 (e.g. id `1012`, 30-minute piece, `workoutType: 'JustRow'`). This is sufficient
 to demonstrate the block in demo mode:
+
 - Ghost picker on replay/1001 (2k): excludes 1012 (JustRow).
 - `/compare?a=1001&b=1012`: shows the incomparability card.
 
@@ -317,13 +317,13 @@ New `comparability` block in all six locale files:
 
 ```ts
 comparability: {
-  blockedTitle: string;         // "Incomparable workouts"
-  guidance: string;             // "Choose two workouts of the same type and distance."
+  blockedTitle: string; // "Incomparable workouts"
+  guidance: string; // "Choose two workouts of the same type and distance."
   noComparableCandidates: string; // "No comparable sessions found."
   reason: {
-    crossSport: string;         // "These workouts are on different machines."
-    crossAxis: string;          // "One is a fixed-distance piece; the other is a fixed-time piece."
-    crossBand: string;          // "These workouts are in different distance/duration bands."
+    crossSport: string; // "These workouts are on different machines."
+    crossAxis: string; // "One is a fixed-distance piece; the other is a fixed-time piece."
+    crossBand: string; // "These workouts are in different distance/duration bands."
   }
 }
 ```
@@ -334,18 +334,18 @@ comparability: {
 
 Five mandatory cases (Req 7.1):
 
-| Case | Expected |
-|---|---|
-| 2k rower vs 500m rower (same axis, different band) | `false` |
-| 2k rower vs 2k rower (same axis, same band) | `true` |
-| 30min rower vs 30min rower (time axis, same band) | `true` |
-| 2k rower vs 30min rower (distance vs time axis) | `false` |
-| 2k rower vs 2k skierg (different sport) | `false` |
+| Case                                               | Expected |
+| -------------------------------------------------- | -------- |
+| 2k rower vs 500m rower (same axis, different band) | `false`  |
+| 2k rower vs 2k rower (same axis, same band)        | `true`   |
+| 30min rower vs 30min rower (time axis, same band)  | `true`   |
+| 2k rower vs 30min rower (distance vs time axis)    | `false`  |
+| 2k rower vs 2k skierg (different sport)            | `false`  |
 
 Additional `durationBand` and `classifyAxis` cases (Req 7.2, 7.3).
 
 ### Quality gate
 
-`npm run check` + `npm run build` + `npm run test` + `npm run validate:locales`
+`pnpm run check` + `pnpm run build` + `pnpm run test` + `pnpm run validate:locales`
 (Req 9). E2E is not required for this spec: the guard is pure logic tested at
 the unit level; the UI integration is visible in demo mode via manual smoke.

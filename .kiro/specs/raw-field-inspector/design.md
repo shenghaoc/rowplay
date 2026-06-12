@@ -41,11 +41,11 @@ export function sampleIndexAt(strokes: Stroke[], t: number): number;
 
 ```ts
 export interface LoggedStroke {
-    t: number;    // tenths of a second
-    d: number;    // decimetres
-    p: number;    // pace tenths; per-500m row/ski, per-1000m bike
-    spm: number;
-    hr?: number;
+  t: number; // tenths of a second
+  d: number; // decimetres
+  p: number; // pace tenths; per-500m row/ski, per-1000m bike
+  spm: number;
+  hr?: number;
 }
 export function asLoggedStroke(s: Stroke, sport: Sport): LoggedStroke;
 ```
@@ -53,13 +53,13 @@ export function asLoggedStroke(s: Stroke, sport: Sport): LoggedStroke;
 Reconstructs the Concept2 wire representation from the normalized `Stroke` by
 **inverting** the transforms `concept2.ts > mapStrokes` applies on read:
 
-| Normalized (`Stroke`) | As-logged | Inverse |
-|---|---|---|
-| `t` seconds | tenths | `round(t * 10)` |
-| `d` metres | decimetres | `round(d * 10)` |
-| `pace` sec/500m | pace tenths | row/ski `round(pace*10)`; **bike `round(pace*2*10)`** (per-1000m) |
-| `spm` | spm | identity |
-| `hr` bpm | hr | identity |
+| Normalized (`Stroke`) | As-logged   | Inverse                                                           |
+| --------------------- | ----------- | ----------------------------------------------------------------- |
+| `t` seconds           | tenths      | `round(t * 10)`                                                   |
+| `d` metres            | decimetres  | `round(d * 10)`                                                   |
+| `pace` sec/500m       | pace tenths | row/ski `round(pace*10)`; **bike `round(pace*2*10)`** (per-1000m) |
+| `spm`                 | spm         | identity                                                          |
+| `hr` bpm              | hr          | identity                                                          |
 
 **Interval reset:** for interval workouts the API resets `t`/`d` to 0 each rep,
 and `mapStrokes` adds a cumulative offset to keep the timeline monotonic — so the
@@ -107,8 +107,8 @@ export function distancePerStroke(s: Stroke): number | undefined;
   (PM/firmware/erg model/HR type/**source app**). An `isPublic` boolean prop
   (from `/r/<token>`) omits `serialNumber`/`device` on public shares (Req 5.2,
   5.3).
-- **Per-sample table**: one row per field with columns *field · as-logged ·
-  normalized*, plus derived rows (`progress`, split index, distance-per-stroke).
+- **Per-sample table**: one row per field with columns _field · as-logged ·
+  normalized_, plus derived rows (`progress`, split index, distance-per-stroke).
 - **Presentation**: monospace, `font-variant-numeric: tabular-nums`, fixed
   column widths so digits don't reflow as values change (Req 4.2). Field tokens
   (`t`,`d`,`p`,`spm`,`hr`) verbatim; descriptions + headers via i18n.
@@ -148,7 +148,7 @@ the "derived" tag. Sport/machine names and protocol tokens stay untranslated.
 - The **efficiency-drift** overlay (Q14) — this spec only exposes
   `distancePerStroke` as an inspector row; trending it across the piece is its
   own spec.
-- **EXR source-aware** handling — this spec *displays* the source app (once
+- **EXR source-aware** handling — this spec _displays_ the source app (once
   full-fidelity provides it); quarantining EXR data from PBs/leaderboard is a
   separate behavioural spec.
 - A pinnable / multi-field timeline (oscilloscope-style traces) — v1 is a

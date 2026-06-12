@@ -7,7 +7,7 @@ a pure-function-focused baseline to broad coverage of the production surface:
 pure utilities, server data/DB layer, route handlers, page load functions,
 Svelte reactive state classes, and the Three.js 3D renderer. The exact counts in
 this spec describe the landing point for this work, not the current project test
-count; use `npm run test` for current health.
+count; use `pnpm run test` for current health.
 
 Coverage infrastructure was also added: `@vitest/coverage-v8` with `text` +
 `lcov` reporters, scoped to `src/**/*.ts`, excluding test files and generated
@@ -36,31 +36,52 @@ syncStatus, annotations), `server/session.ts` (KV-backed session lifecycle),
 loadRivalGhostTrace).
 
 **Fake D1 pattern:**
+
 ```ts
 function fakeDb(opts: { firstRow?: unknown; allRows?: unknown[] } = {}) {
   const executed: { sql: string; args: unknown[] }[] = [];
   const make = (sql: string) => {
     let bound: unknown[] = [];
     const stmt = {
-      bind: (...args) => { bound = args; return stmt; },
-      run: async () => { executed.push({ sql, args: bound }); return { meta: { changes: 1, last_row_id: 99 } }; },
-      first: async <T>() => { executed.push({ sql, args: bound }); return (opts.firstRow ?? null) as T; },
-      all: async <T>() => { executed.push({ sql, args: bound }); return { results: (opts.allRows ?? []) as T[] }; }
+      bind: (...args) => {
+        bound = args;
+        return stmt;
+      },
+      run: async () => {
+        executed.push({ sql, args: bound });
+        return { meta: { changes: 1, last_row_id: 99 } };
+      },
+      first: async <T>() => {
+        executed.push({ sql, args: bound });
+        return (opts.firstRow ?? null) as T;
+      },
+      all: async <T>() => {
+        executed.push({ sql, args: bound });
+        return { results: (opts.allRows ?? []) as T[] };
+      },
     };
     return stmt;
   };
-  return { executed, db: { prepare: make, batch: async (stmts) => Promise.all(stmts.map(s => s.run())) } };
+  return {
+    executed,
+    db: { prepare: make, batch: async (stmts) => Promise.all(stmts.map((s) => s.run())) },
+  };
 }
 ```
 
 **Fake KV pattern:**
+
 ```ts
 function fakeKv() {
   const store = new Map<string, string>();
   return {
     get: async (key: string) => store.get(key) ?? null,
-    put: async (key: string, value: string) => { store.set(key, value); },
-    delete: async (key: string) => { store.delete(key); }
+    put: async (key: string, value: string) => {
+      store.set(key, value);
+    },
+    delete: async (key: string) => {
+      store.delete(key);
+    },
   };
 }
 ```
@@ -78,7 +99,7 @@ function fakeEvent(opts) {
     params: { id: opts.id },
     request: { json: async () => opts.body, url: opts.url },
     cookies: { get: () => null, set: vi.fn(), delete: vi.fn() },
-    platform: { env: { DB: {}, SESSIONS: {} } }
+    platform: { env: { DB: {}, SESSIONS: {} } },
   };
 }
 
@@ -99,6 +120,7 @@ rune transforms, so these classes are importable and testable in Node.js without
 a DOM.
 
 **Key stubs:**
+
 - `persistLanguage` mocked to avoid `localStorage` writes.
 - `document` stub (minimal `{ documentElement: { dataset: {} } }`) for `Theme`.
 - `vi.useFakeTimers()` + minimal `document.addEventListener/removeEventListener`
@@ -112,15 +134,17 @@ context. Only `THREE.WebGLRenderer` is mocked — all other Three.js classes
 implementations:
 
 ```ts
-vi.mock('three', async (importOriginal) => {
+vi.mock("three", async (importOriginal) => {
   const THREE = await importOriginal();
   class FakeWebGLRenderer {
-    outputColorSpace = '';
+    outputColorSpace = "";
     shadowMap = { enabled: false, type: 0 };
     setPixelRatio = vi.fn();
     setSize = vi.fn();
     render = vi.fn();
-    getContext = vi.fn().mockReturnValue({ getExtension: vi.fn().mockReturnValue({ loseContext: vi.fn() }) });
+    getContext = vi
+      .fn()
+      .mockReturnValue({ getExtension: vi.fn().mockReturnValue({ loseContext: vi.fn() }) });
     dispose = vi.fn();
   }
   return { ...THREE, WebGLRenderer: FakeWebGLRenderer };

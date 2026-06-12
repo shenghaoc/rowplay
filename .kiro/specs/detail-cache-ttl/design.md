@@ -56,11 +56,11 @@ sequenceDiagram
 
 ## Components
 
-| Module | Responsibility |
-|--------|----------------|
-| `detailCache.ts` | `DETAIL_CACHE_TTL_MS`, `detailCacheTtlMs(env?)`, `isDetailCacheFresh(cachedAt, nowMs, ttlMs?)` |
-| `db.ts` | `getCachedDetail` selects `cached_at`, applies freshness; `getCachedDetailByShareToken` unchanged |
-| `data.ts` | No change (miss triggers existing re-hydration) |
+| Module           | Responsibility                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| `detailCache.ts` | `DETAIL_CACHE_TTL_MS`, `detailCacheTtlMs(env?)`, `isDetailCacheFresh(cachedAt, nowMs, ttlMs?)`    |
+| `db.ts`          | `getCachedDetail` selects `cached_at`, applies freshness; `getCachedDetailByShareToken` unchanged |
+| `data.ts`        | No change (miss triggers existing re-hydration)                                                   |
 
 ## Configuration
 
@@ -90,11 +90,11 @@ Stale rows may remain in D1 until overwritten on next load or user data purge; T
 
 ## Testing strategy
 
-| Layer | What |
-|-------|------|
-| Unit | `detailCache.test.ts` — freshness boundaries, env override parsing |
-| Integration | Existing `loadWorkoutDetail` path covered indirectly; no D1 in Vitest |
-| Manual | With D1 + auth: set `cached_at` in past in local DB, confirm replay re-fetches |
+| Layer       | What                                                                           |
+| ----------- | ------------------------------------------------------------------------------ |
+| Unit        | `detailCache.test.ts` — freshness boundaries, env override parsing             |
+| Integration | Existing `loadWorkoutDetail` path covered indirectly; no D1 in Vitest          |
+| Manual      | With D1 + auth: set `cached_at` in past in local DB, confirm replay re-fetches |
 
 ## Correctness properties
 

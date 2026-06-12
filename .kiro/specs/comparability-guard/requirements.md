@@ -80,8 +80,8 @@ bucket consistently without ad-hoc logic scattered across the codebase.
 #### Acceptance criteria
 
 1. THE system SHALL add a pure function `durationBand(seconds: number):
-   DurationBand` to `src/lib/analytics.ts`, returning `{ key: string; label:
-   string; nominal: number }`.
+DurationBand` to `src/lib/analytics.ts`, returning `{ key: string; label:
+string; nominal: number }`.
 2. `durationBand` SHALL snap standard fixed-time targets to a stable key using
    a ±10% window:
    - 1 minute (60 s) → `"60"`
@@ -104,7 +104,7 @@ classification is not duplicated across the codebase.
 #### Acceptance criteria
 
 1. THE system SHALL provide a pure function `classifyAxis(workoutType: string |
-   undefined): 'distance' | 'time'` in `src/lib/replay/comparabilityGuard.ts`.
+undefined): 'distance' | 'time'` in `src/lib/replay/comparabilityGuard.ts`.
 2. The function SHALL classify as `'time'` any `workout_type` value whose
    semantics indicate a fixed-time target (e.g. strings containing `"FixedTime"`,
    `"JustRow"`, or the equivalent Concept2 canonical names for timed pieces).
@@ -205,14 +205,14 @@ message to appear in my language, so I understand why the comparison is blocked.
 2. THE strings SHALL include at minimum: a general "incomparable pairing" title,
    reason strings for each block type (cross-sport, cross-axis, cross-band), and
    a guidance string ("Choose two workouts of the same type and distance").
-3. `npm run validate:locales` SHALL pass with no missing keys.
+3. `pnpm run validate:locales` SHALL pass with no missing keys.
 
 ### Requirement 9 — Quality gate
 
 #### Acceptance criteria
 
-1. `npm run check` SHALL complete with 0 errors (existing `state_referenced_locally`
+1. `pnpm run check` SHALL complete with 0 errors (existing `state_referenced_locally`
    warnings are acceptable).
-2. `npm run build` SHALL succeed.
-3. `npm run test` SHALL be green, including the new comparability unit tests.
-4. `npm run validate:locales` SHALL pass.
+2. `pnpm run build` SHALL succeed.
+3. `pnpm run test` SHALL be green, including the new comparability unit tests.
+4. `pnpm run validate:locales` SHALL pass.

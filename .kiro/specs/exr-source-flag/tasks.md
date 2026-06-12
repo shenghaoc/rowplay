@@ -15,14 +15,8 @@ depend on #61 being live.
         The function returns `true` iff `workout?.source?.toUpperCase() === 'EXR'`
         (observed EXR token; Concept2 docs do not enumerate `source` values).
         No DOM access; safe in server, client, and test contexts.
-  - [x] 1.2 Create `src/lib/exrSource.test.ts` with Vitest unit tests covering:
-        - `source: 'EXR'` → `true`
-        - `source: 'exr'` (lowercase) → `true`
-        - `source: 'ErgData'` → `false`
-        - `source: 'Web'` → `false`
-        - `source` absent (`{}`) → `false`
-        - `workout` null / undefined → `false`
-  - [x] 1.3 Run `npm run test` locally to confirm the new tests pass before
+  - [x] 1.2 Create `src/lib/exrSource.test.ts` with Vitest unit tests covering: - `source: 'EXR'` → `true` - `source: 'exr'` (lowercase) → `true` - `source: 'ErgData'` → `false` - `source: 'Web'` → `false` - `source` absent (`{}`) → `false` - `workout` null / undefined → `false`
+  - [x] 1.3 Run `pnpm run test` locally to confirm the new tests pass before
         proceeding.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
@@ -33,7 +27,7 @@ depend on #61 being live.
         for readability.
   - [x] 2.2 Add the same three keys (with appropriate translations or placeholders)
         to `zh.ts`, `de.ts`, `es.ts`, `fr.ts`, and `ja.ts`.
-  - [x] 2.3 Run `npm run validate:locales` and confirm zero missing-key errors.
+  - [x] 2.3 Run `pnpm run validate:locales` and confirm zero missing-key errors.
   - _Requirements: 6.1, 6.2, 6.3_
 
 - [x] 3. Demo mode — EXR-sourced mock workout
@@ -53,24 +47,24 @@ depend on #61 being live.
   - [x] 4.2 Add a `$derived` reactive variable:
         `const exrFlagged = $derived(isExrSource(detail));`
   - [x] 4.3 In the `.summary` row (after the `lowRes` badge), add:
-        ```svelte
-        {#if exrFlagged}
-          <span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
-        {/if}
-        ```
+        `svelte
+{#if exrFlagged}
+  <span class="badge" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
+{/if}
+`
   - [x] 4.4 In the "Logging provenance" `<dl>` block (currently after
-        `provenanceTitle`), add the `mSource` row at the top:
-        ```svelte
-        {#if detail.source}
-          <div>
-            <dt>{t('replay.mSource')}</dt>
-            <dd>
-              {detail.source}
-              {#if exrFlagged}<span class="badge">{t('replay.exrBadge')}</span>{/if}
-            </dd>
-          </div>
-        {/if}
-        ```
+      `provenanceTitle`), add the `mSource` row at the top:
+      `svelte
+      {#if detail.source}
+    <div>
+      <dt>{t('replay.mSource')}</dt>
+      <dd>
+        {detail.source}
+        {#if exrFlagged}<span class="badge">{t('replay.exrBadge')}</span>{/if}
+      </dd>
+    </div>
+  {/if}
+  `
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4_
 
 - [x] 5. EXR badge on the public share page
@@ -84,11 +78,9 @@ depend on #61 being live.
   - _Requirements: 4.1, 4.2, 4.3_
 
 - [x] 6. Quality gate
-  - [x] 6.1 `npm run check` → zero type errors.
-  - [x] 6.2 `npm run build` → succeeds.
-  - [x] 6.3 `npm run test` → green (includes the new `exrSource.test.ts`).
-  - [x] 6.4 Manual demo verification:
-        - `/replay/1004` shows the EXR badge in the header `.summary` row and in
-          the provenance panel.
-        - `/replay/1001` (non-EXR) shows no EXR badge.
+  - [x] 6.1 `pnpm run check` → zero type errors.
+  - [x] 6.2 `pnpm run build` → succeeds.
+  - [x] 6.3 `pnpm run test` → green (includes the new `exrSource.test.ts`).
+  - [x] 6.4 Manual demo verification: - `/replay/1004` shows the EXR badge in the header `.summary` row and in
+        the provenance panel. - `/replay/1001` (non-EXR) shows no EXR badge.
   - _Requirements: 7.1, 7.2, 7.3, 7.4_

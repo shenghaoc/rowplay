@@ -35,7 +35,7 @@ This spec makes BYOT **private by default**: the token lives only in the
 athlete's browser (sealed, httpOnly — never in client JS, never in shared server
 storage); the athlete's workout data is **cached in D1 only for the life of a
 session** and purged when they disconnect; and the **only** way any of the
-athlete's data is exposed to *other* athletes is an **explicit, reversible**
+athlete's data is exposed to _other_ athletes is an **explicit, reversible**
 choice to publish to the leaderboard.
 
 It must obey every project rule in `AGENTS.md`: it works in **demo mode**
@@ -67,7 +67,7 @@ quality gate (`check` + `build` + `test` + `test:e2e`).
 - **Session-scoped cache** — the D1 `workout` rows and cached `workout_detail`
   for an athlete, treated as a cache whose lifecycle is bound to an active
   session: lazily populated, refreshable, and purged on disconnect. (As opposed
-  to a *durable mirror* that lives on indefinitely by default.)
+  to a _durable mirror_ that lives on indefinitely by default.)
 
 ## Requirements
 
@@ -187,9 +187,9 @@ that it ships without regressions and the privacy properties are tested.
 2. NO test, log line, error message, or response body SHALL print the raw token;
    existing tests asserting a token in KV SHALL be updated to the new model.
 3. EVERY new user-visible string SHALL be added to ALL locale files
-   (`en`, `zh`, `de`, `es`, `fr`, `ja`) and pass `npm run validate:locales`;
+   (`en`, `zh`, `de`, `es`, `fr`, `ja`) and pass `pnpm run validate:locales`;
    sport names (RowErg/SkiErg/BikeErg) stay untranslated.
-4. THE feature SHALL pass the full gate: `npm run check` (0 errors),
-   `npm run build`, `npm run test`, and `npm run test:e2e` (demo-mode smoke
+4. THE feature SHALL pass the full gate: `pnpm run check` (0 errors),
+   `pnpm run build`, `pnpm run test`, and `pnpm run test:e2e` (demo-mode smoke
    unaffected). Token-cookie + live-read behavior SHALL be verified on
-   `npm run preview` (Workers runtime) and the steps recorded in the spec.
+   `pnpm run preview` (Workers runtime) and the steps recorded in the spec.

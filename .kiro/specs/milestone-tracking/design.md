@@ -13,15 +13,15 @@ celebration toast via the existing svelte-sonner infrastructure.
 
 Thresholds in metres:
 
-| Threshold | Label |
-|-----------|-------|
-| 100 000 | 100k |
-| 250 000 | 250k |
-| 500 000 | 500k |
-| 1 000 000 | 1M |
-| 2 000 000 | 2M |
-| 5 000 000 | 5M |
-| 10 000 000 | 10M |
+| Threshold  | Label |
+| ---------- | ----- |
+| 100 000    | 100k  |
+| 250 000    | 250k  |
+| 500 000    | 500k  |
+| 1 000 000  | 1M    |
+| 2 000 000  | 2M    |
+| 5 000 000  | 5M    |
+| 10 000 000 | 10M   |
 
 One milestone ID per `(sport | 'combined', threshold)` pair, e.g.
 `lifetime_distance_rower_500k`, `lifetime_distance_combined_1M`.
@@ -45,12 +45,12 @@ the project).
 Milestone achieved the first time the athlete rows (RowErg) faster than the
 listed pace:
 
-| Milestone | Target time (2000 m) |
-|-----------|---------------------|
-| `pb_2k_sub8` | < 8:00 |
-| `pb_2k_sub730` | < 7:30 |
-| `pb_2k_sub7` | < 7:00 |
-| `pb_2k_sub630` | < 6:30 |
+| Milestone      | Target time (2000 m) |
+| -------------- | -------------------- |
+| `pb_2k_sub8`   | < 8:00               |
+| `pb_2k_sub730` | < 7:30               |
+| `pb_2k_sub7`   | < 7:00               |
+| `pb_2k_sub630` | < 6:30               |
 
 These are detected from the `personalBests[2000]` already loaded for the
 dashboard. Additional distances can be added later.
@@ -118,17 +118,17 @@ The comparison is a pure diff; no new server calls.
 
 New keys in `milestone` block (all 6 locale files). Representative sample:
 
-| Key | EN value |
-|-----|----------|
-| `milestone.title` | Milestones |
-| `milestone.next` | Up next |
-| `milestone.lifetime_distance_rower_500k` | 500k metres rowed |
-| `milestone.lifetime_distance_combined_1M` | 1 million metres total |
-| `milestone.session_count_100` | 100 workouts |
-| `milestone.streak_30d` | 30-day streak |
-| `milestone.pb_2k_sub7` | Sub-7 minute 2k |
-| `milestone.lifetime_distance_rower_500k.toast` | 🎉 500k metres rowed! |
-| … | … |
+| Key                                            | EN value               |
+| ---------------------------------------------- | ---------------------- |
+| `milestone.title`                              | Milestones             |
+| `milestone.next`                               | Up next                |
+| `milestone.lifetime_distance_rower_500k`       | 500k metres rowed      |
+| `milestone.lifetime_distance_combined_1M`      | 1 million metres total |
+| `milestone.session_count_100`                  | 100 workouts           |
+| `milestone.streak_30d`                         | 30-day streak          |
+| `milestone.pb_2k_sub7`                         | Sub-7 minute 2k        |
+| `milestone.lifetime_distance_rower_500k.toast` | 🎉 500k metres rowed!  |
+| …                                              | …                      |
 
 Each milestone has a base key (dashboard display) and a `.toast` variant.
 

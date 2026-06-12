@@ -85,6 +85,6 @@ I can review all my interval sessions or all my race pieces in sequence.
    unrecognised tag string.
 3. Every user-visible string SHALL be added to all six locale files (en, zh, de,
    es, fr, ja) via `i18n.t()`.
-4. The feature SHALL pass the full quality gate: `npm run check` (0 errors),
-   `npm run build`, and `npm run test` (count must not decrease).
+4. The feature SHALL pass the full quality gate: `pnpm run check` (0 errors),
+   `pnpm run build`, and `pnpm run test` (count must not decrease).
 5. The feature SHALL work in demo mode without D1 writes.

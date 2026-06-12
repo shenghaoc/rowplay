@@ -4,7 +4,7 @@ Implementation plan. Each task is committed and pushed on its own. Boxes are
 checked as the work lands. Requirement references point at `requirements.md`.
 
 - [x] **1. Fixture directory scaffold and `REDACTION.md`**
-  — `tests/fixtures/golden/REDACTION.md`
+      — `tests/fixtures/golden/REDACTION.md`
   - Create `tests/fixtures/golden/` directory.
   - Write `REDACTION.md` documenting: which fields are removed (`id`, PII names,
     `serial_number`, `device`), which are replaced (`id` → stand-in integer,
@@ -40,7 +40,7 @@ checked as the work lands. Requirement references point at `requirements.md`.
     4–8 `rawStrokes` with `p` values in per-500m tenths (no halving).
   - Apply redaction policy (Req 3).
   - Populate `expected.result` (`sport = 'skierg'`), `expected.strokes` (first
-    + last). `expected.splits = []`.
+    - last). `expected.splits = []`.
   - _Requirements: 1.3, 1.5, 2.1, 2.2, 3.1–3.5, 4.1–4.2_
 
 - [x] **5. Interval RowErg fixture** — `tests/fixtures/golden/rower-interval.fixture.json`
@@ -69,9 +69,9 @@ checked as the work lands. Requirement references point at `requirements.md`.
   - _Requirements: 1.1–1.6, 2.1–2.4, 4.3–4.5, 6.1–6.5_
 
 - [x] **7. Full quality gate pass**
-  - `npm run check` → 0 errors.
-  - `npm run build` → succeeds.
-  - `npm run test` → all tests green including the new golden suite, in under
+  - `pnpm run check` → 0 errors.
+  - `pnpm run build` → succeeds.
+  - `pnpm run test` → all tests green including the new golden suite, in under
     500 ms for the new tests.
   - Confirm no new TypeScript errors from fixture import types.
   - _Requirements: 6.1–6.5_

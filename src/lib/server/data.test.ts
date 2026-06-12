@@ -94,7 +94,7 @@ function authedEvent(extras: Record<string, unknown> = {}): any {
   return {
     ...base,
     ...extras,
-    locals: { ...base.locals, ...((extras.locals as Record<string, unknown> | undefined) ?? {}) },
+    locals: { ...base.locals, ...(extras.locals as Record<string, unknown> | undefined) },
     platform: {
       ...base.platform,
       ...platform,
@@ -102,7 +102,7 @@ function authedEvent(extras: Record<string, unknown> = {}): any {
     },
     cookies: {
       ...base.cookies,
-      ...((extras.cookies as Record<string, unknown> | undefined) ?? {}),
+      ...(extras.cookies as Record<string, unknown> | undefined),
     },
   };
 }

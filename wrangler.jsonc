@@ -1,47 +1,47 @@
 {
-	"$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
-	"name": "rowplay",
-	"main": ".svelte-kit/cloudflare/_worker.js",
-	"compatibility_date": "2025-05-24",
-	"compatibility_flags": ["nodejs_compat"],
-	// Static assets (client bundle, favicon) served by the Worker's built-in
-	// asset server. The SvelteKit adapter emits the worker and assets into the
-	// same directory and excludes _worker.js via .assetsignore.
-	"assets": {
-		"binding": "ASSETS",
-		"directory": ".svelte-kit/cloudflare"
-	},
-	// KV: short-lived sessions (OAuth tokens, login state).
-	// Create with: wrangler kv namespace create SESSIONS
-	"kv_namespaces": [
-		{
-			"binding": "SESSIONS",
-			"id": "1ca113ac3c1b468aae36d0967f39a340"
-		}
-	],
-	// D1: cached workouts + per-stroke detail so replays are instant.
-	// Create with: wrangler d1 create rowplay
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "rowplay",
-			"database_id": "aa147782-70a5-46bb-a5fe-e286c7ea851e"
-		}
-	],
-	// Non-secret config. Secrets: SESSION_SECRET (required for token sessions).
-	// CONCEPT2_CLIENT_SECRET only if OAuth is enabled. Production uses BYOT
-	// (personal read-only API token at /auth/token); leave CONCEPT2_CLIENT_ID
-	// empty unless you register a Concept2 developer app.
-	"vars": {
-		"CONCEPT2_CLIENT_ID": "",
-		// "https://log.concept2.com" for production, "https://log-dev.concept2.com" for the dev sandbox.
-		"CONCEPT2_BASE_URL": "https://log.concept2.com",
-		// Public origin, used to build the OAuth redirect URI. Concept2's allowed
-		// redirect URI must therefore be:
-		//   https://rowplay.shenghaoc.workers.dev/auth/callback
-		"PUBLIC_APP_URL": "https://rowplay.shenghaoc.workers.dev"
-	},
-	"observability": {
-		"enabled": true
-	}
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "rowplay",
+  "main": ".svelte-kit/cloudflare/_worker.js",
+  "compatibility_date": "2025-05-24",
+  "compatibility_flags": ["nodejs_compat"],
+  // Static assets (client bundle, favicon) served by the Worker's built-in
+  // asset server. The SvelteKit adapter emits the worker and assets into the
+  // same directory and excludes _worker.js via .assetsignore.
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".svelte-kit/cloudflare",
+  },
+  // KV: short-lived sessions (OAuth tokens, login state).
+  // Create with: wrangler kv namespace create SESSIONS
+  "kv_namespaces": [
+    {
+      "binding": "SESSIONS",
+      "id": "1ca113ac3c1b468aae36d0967f39a340",
+    },
+  ],
+  // D1: cached workouts + per-stroke detail so replays are instant.
+  // Create with: wrangler d1 create rowplay
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "rowplay",
+      "database_id": "aa147782-70a5-46bb-a5fe-e286c7ea851e",
+    },
+  ],
+  // Non-secret config. Secrets: SESSION_SECRET (required for token sessions).
+  // CONCEPT2_CLIENT_SECRET only if OAuth is enabled. Production uses BYOT
+  // (personal read-only API token at /auth/token); leave CONCEPT2_CLIENT_ID
+  // empty unless you register a Concept2 developer app.
+  "vars": {
+    "CONCEPT2_CLIENT_ID": "",
+    // "https://log.concept2.com" for production, "https://log-dev.concept2.com" for the dev sandbox.
+    "CONCEPT2_BASE_URL": "https://log.concept2.com",
+    // Public origin, used to build the OAuth redirect URI. Concept2's allowed
+    // redirect URI must therefore be:
+    //   https://rowplay.shenghaoc.workers.dev/auth/callback
+    "PUBLIC_APP_URL": "https://rowplay.shenghaoc.workers.dev",
+  },
+  "observability": {
+    "enabled": true,
+  },
 }

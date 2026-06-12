@@ -27,7 +27,7 @@
 	const uiTheme = getThemeContext();
 	const chart = $derived(chartTheme(uiTheme.value));
 
-	let el: HTMLDivElement;
+	let el = $state<HTMLDivElement>();
 	let plot: uPlot | null = null;
 	let width = 600;
 	let ro: ResizeObserver | null = null;
@@ -89,21 +89,24 @@
 	}
 
 	function build() {
-		if (!el) return;
+		const host = el;
+		if (!host) return;
 		plot?.destroy();
-		plot = new uPlot({ ...buildOptions(), width, height: 220 }, alignedData, el);
+		plot = new uPlot({ ...buildOptions(), width, height: 220 }, alignedData, host);
 	}
 
 	onMount(() => {
-		width = el.clientWidth || 600;
+		const host = el;
+		if (!host) return;
+		width = host.clientWidth || 600;
 		ro = new ResizeObserver(() => {
-			const w = el.clientWidth;
+			const w = host.clientWidth;
 			if (w && plot) {
 				width = w;
 				plot.setSize({ width: w, height: 220 });
 			}
 		});
-		ro.observe(el);
+		ro.observe(host);
 		build();
 	});
 
@@ -113,8 +116,8 @@
 	});
 
 	$effect(() => {
-		alignedData;
-		highlight;
+		void alignedData;
+		void highlight;
 		if (plot) build();
 	});
 </script>

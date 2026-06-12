@@ -1,43 +1,43 @@
-import type { Sport, Workout } from './types';
+import type { Sport, Workout } from "./types";
 
 /** Seconds -> "M:SS.t" or "H:MM:SS". */
 export function fmtTime(seconds: number, tenths = false): string {
-	if (!isFinite(seconds) || seconds < 0) return '--:--';
-	const h = Math.floor(seconds / 3600);
-	const m = Math.floor((seconds % 3600) / 60);
-	const s = seconds % 60;
-	if (h > 0) {
-		return `${h}:${String(m).padStart(2, '0')}:${String(Math.floor(s)).padStart(2, '0')}`;
-	}
-	const sStr = tenths ? s.toFixed(1).padStart(4, '0') : String(Math.floor(s)).padStart(2, '0');
-	return `${m}:${sStr}`;
+  if (!isFinite(seconds) || seconds < 0) return "--:--";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(Math.floor(s)).padStart(2, "0")}`;
+  }
+  const sStr = tenths ? s.toFixed(1).padStart(4, "0") : String(Math.floor(s)).padStart(2, "0");
+  return `${m}:${sStr}`;
 }
 
 /** Pace (sec/500m) -> "M:SS.t /500m". */
 export function fmtPace(pace: number): string {
-	if (!isFinite(pace) || pace <= 0) return '--:--';
-	return `${fmtTime(pace, true)}/500m`;
+  if (!isFinite(pace) || pace <= 0) return "--:--";
+  return `${fmtTime(pace, true)}/500m`;
 }
 
 /** Pace without the "/500m" suffix (for gauges, charts, and split labels).
  * Zero is treated as invalid (--:--) unless `allowZero` is true, which is
  * useful for formatting pace deltas (no change = 0:00.0). */
 export function fmtPaceBare(pace: number, allowZero = false): string {
-	if (!isFinite(pace) || (allowZero ? pace < 0 : pace <= 0)) return '--:--';
-	return fmtTime(pace, true);
+  if (!isFinite(pace) || (allowZero ? pace < 0 : pace <= 0)) return "--:--";
+  return fmtTime(pace, true);
 }
 
 export function fmtDistance(metres: number): string {
-	if (metres >= 1000) return `${(metres / 1000).toFixed(2)} km`;
-	return `${Math.round(metres)} m`;
+  if (metres >= 1000) return `${(metres / 1000).toFixed(2)} km`;
+  return `${Math.round(metres)} m`;
 }
 
-export { fmtDate, fmtDateFromEpochMillis, fmtLogbookDateTime } from './datetime';
+export { fmtDate, fmtDateFromEpochMillis, fmtLogbookDateTime } from "./datetime";
 
 export const SPORT_LABEL: Record<Sport, string> = {
-	rower: 'RowErg',
-	skierg: 'SkiErg',
-	bike: 'BikeErg'
+  rower: "RowErg",
+  skierg: "SkiErg",
+  bike: "BikeErg",
 };
 
 /**
@@ -45,9 +45,9 @@ export const SPORT_LABEL: Record<Sport, string> = {
  * (pace-per-metre = pace/500).
  */
 export function paceToWatts(pacePer500: number): number {
-	if (!isFinite(pacePer500) || pacePer500 <= 0) return 0;
-	const perMetre = pacePer500 / 500;
-	return 2.8 / Math.pow(perMetre, 3);
+  if (!isFinite(pacePer500) || pacePer500 <= 0) return 0;
+  const perMetre = pacePer500 / 500;
+  return 2.8 / Math.pow(perMetre, 3);
 }
 
 /**
@@ -59,34 +59,34 @@ export const BIKE_WATTS_FROM_NORMALIZED_PACE_DIVISOR = 8;
 
 /** Watts from stored sec/500m pace, accounting for sport-specific PM math. */
 export function paceToWattsForSport(sport: Sport | undefined, pacePer500: number): number {
-	const watts = paceToWatts(pacePer500);
-	return sport === 'bike' ? watts / BIKE_WATTS_FROM_NORMALIZED_PACE_DIVISOR : watts;
+  const watts = paceToWatts(pacePer500);
+  return sport === "bike" ? watts / BIKE_WATTS_FROM_NORMALIZED_PACE_DIVISOR : watts;
 }
 
 /** Metres credited toward Concept2 logbook challenges (BikeErg counts at half). */
-export function challengeDistanceMetres(w: Pick<Workout, 'sport' | 'distance'>): number {
-	return w.sport === 'bike' ? w.distance / 2 : w.distance;
+export function challengeDistanceMetres(w: Pick<Workout, "sport" | "distance">): number {
+  return w.sport === "bike" ? w.distance / 2 : w.distance;
 }
 
 /** Inverse of {@link paceToWatts}: watts → sec/500m (RowErg/SkiErg PM basis). */
 export function wattsToPace(watts: number): number {
-	if (!isFinite(watts) || watts <= 0) return 0;
-	const perMetre = Math.pow(2.8 / watts, 1 / 3);
-	return perMetre * 500;
+  if (!isFinite(watts) || watts <= 0) return 0;
+  const perMetre = Math.pow(2.8 / watts, 1 / 3);
+  return perMetre * 500;
 }
 
 /** Inverse of {@link paceToWattsForSport}: normalised sec/500m from watts. */
 export function wattsToPaceForSport(sport: Sport | undefined, watts: number): number {
-	if (!isFinite(watts) || watts <= 0) return 0;
-	return sport === 'bike'
-		? wattsToPace(watts * BIKE_WATTS_FROM_NORMALIZED_PACE_DIVISOR)
-		: wattsToPace(watts);
+  if (!isFinite(watts) || watts <= 0) return 0;
+  return sport === "bike"
+    ? wattsToPace(watts * BIKE_WATTS_FROM_NORMALIZED_PACE_DIVISOR)
+    : wattsToPace(watts);
 }
 
 /** Average watts from cached watt-minutes when present, else Concept2 pace model. */
-export function avgWatts(w: Pick<Workout, 'wattMinutes' | 'time' | 'pace' | 'sport'>): number {
-	if (w.wattMinutes && w.time > 0) {
-		return Math.round(w.wattMinutes / (w.time / 60));
-	}
-	return Math.round(paceToWattsForSport(w.sport, w.pace));
+export function avgWatts(w: Pick<Workout, "wattMinutes" | "time" | "pace" | "sport">): number {
+  if (w.wattMinutes && w.time > 0) {
+    return Math.round(w.wattMinutes / (w.time / 60));
+  }
+  return Math.round(paceToWattsForSport(w.sport, w.pace));
 }

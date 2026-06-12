@@ -32,8 +32,8 @@ no CSS or structural changes are required.
   - _Requirements: 1, 2_
 
 - [x] 2. Verify quality gate
-  - Run `npm run check` → 0 errors
-  - Run `npm run build` → succeeds
+  - Run `pnpm run check` → 0 errors
+  - Run `pnpm run build` → succeeds
   - _Requirements: 4_
 
 - [x] 3. Manual verification

@@ -1,3 +1,3 @@
-import { ensureTemporal } from '$lib/ensure-temporal';
+import { ensureTemporal } from "$lib/ensure-temporal";
 
 await ensureTemporal();

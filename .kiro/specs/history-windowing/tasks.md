@@ -18,7 +18,7 @@ checked as the work lands. Requirement references point at `requirements.md`.
 
 - [x] **3. D1 watermark** — `migrations/0006_history_window.sql` + `db.ts`
   - `ALTER TABLE sync_state ADD oldest_date TEXT`, `ADD backfill_done INTEGER
-    NOT NULL DEFAULT 0`. Extend `SyncState`, `getSyncState`, and
+NOT NULL DEFAULT 0`. Extend `SyncState`, `getSyncState`, and
     `setSyncState`/`setBackfillState`. Verify `purgePrivateCache` /
     `deleteUserData` still clear it (no change expected).
   - _Requirements: 1.4, 2.2, 7.2_
@@ -57,7 +57,7 @@ checked as the work lands. Requirement references point at `requirements.md`.
 - [x] **9. i18n** — all six locales
   - Window label (`{months}`/`{date}`), "loading older history", backfilling
     progress, "full history synced", "load full history" action across `en`,
-    `zh`, `de`, `es`, `fr`, `ja`. `npm run validate:locales`.
+    `zh`, `de`, `es`, `fr`, `ja`. `pnpm run validate:locales`.
   - _Requirements: 4.3, 5.2_
 
 - [x] **10. E2E + full gate** — `tests/e2e/history-windowing.spec.ts`

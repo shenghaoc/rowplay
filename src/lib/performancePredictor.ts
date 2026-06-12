@@ -6,13 +6,13 @@ export const PREDICTOR_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097] a
 
 export type PredictorDistance = (typeof PREDICTOR_DISTANCES)[number];
 
-export type PredictionStatus = 'beaten' | 'behind' | 'untried';
+export type PredictionStatus = "beaten" | "behind" | "untried";
 
 export interface PredictionRow {
-	distance: PredictorDistance;
-	predictedSeconds: number;
-	actualBestSeconds: number | null;
-	status: PredictionStatus;
+  distance: PredictorDistance;
+  predictedSeconds: number;
+  actualBestSeconds: number | null;
+  status: PredictionStatus;
 }
 
 /**
@@ -21,27 +21,30 @@ export interface PredictionRow {
  * maps to `knownSeconds` exactly.
  */
 export function predictTimes(
-	knownDistance: number,
-	knownSeconds: number
+  knownDistance: number,
+  knownSeconds: number,
 ): Map<PredictorDistance, number> {
-	if (knownDistance <= 0 || knownSeconds <= 0) {
-		return new Map<PredictorDistance, number>();
-	}
-	const out = new Map<PredictorDistance, number>();
-	for (const d of PREDICTOR_DISTANCES) {
-		if (d === knownDistance) {
-			out.set(d, knownSeconds);
-		} else {
-			out.set(d, knownSeconds * Math.pow(d / knownDistance, PAUL_EXPONENT));
-		}
-	}
-	return out;
+  if (knownDistance <= 0 || knownSeconds <= 0) {
+    return new Map<PredictorDistance, number>();
+  }
+  const out = new Map<PredictorDistance, number>();
+  for (const d of PREDICTOR_DISTANCES) {
+    if (d === knownDistance) {
+      out.set(d, knownSeconds);
+    } else {
+      out.set(d, knownSeconds * Math.pow(d / knownDistance, PAUL_EXPONENT));
+    }
+  }
+  return out;
 }
 
-function classifyStatus(predictedSeconds: number, actualBestSeconds: number | null): PredictionStatus {
-	if (actualBestSeconds == null) return 'untried';
-	if (actualBestSeconds < predictedSeconds) return 'beaten';
-	return 'behind';
+function classifyStatus(
+  predictedSeconds: number,
+  actualBestSeconds: number | null,
+): PredictionStatus {
+  if (actualBestSeconds == null) return "untried";
+  if (actualBestSeconds < predictedSeconds) return "beaten";
+  return "behind";
 }
 
 /**
@@ -49,25 +52,25 @@ function classifyStatus(predictedSeconds: number, actualBestSeconds: number | nu
  * against the athlete's personal bests (fastest time per distance wins).
  */
 export function buildPredictionTable(
-	knownDistance: number,
-	knownSeconds: number,
-	personalBests: Array<{ distance: number; time: number }>
+  knownDistance: number,
+  knownSeconds: number,
+  personalBests: Array<{ distance: number; time: number }>,
 ): PredictionRow[] {
-	const pbByDist = new Map<number, number>();
-	for (const pb of personalBests) {
-		const cur = pbByDist.get(pb.distance);
-		if (cur == null || pb.time < cur) pbByDist.set(pb.distance, pb.time);
-	}
+  const pbByDist = new Map<number, number>();
+  for (const pb of personalBests) {
+    const cur = pbByDist.get(pb.distance);
+    if (cur == null || pb.time < cur) pbByDist.set(pb.distance, pb.time);
+  }
 
-	const predicted = predictTimes(knownDistance, knownSeconds);
-	return PREDICTOR_DISTANCES.map((distance) => {
-		const predictedSeconds = predicted.get(distance)!;
-		const actualBestSeconds = pbByDist.get(distance) ?? null;
-		return {
-			distance,
-			predictedSeconds,
-			actualBestSeconds,
-			status: classifyStatus(predictedSeconds, actualBestSeconds)
-		};
-	});
+  const predicted = predictTimes(knownDistance, knownSeconds);
+  return PREDICTOR_DISTANCES.map((distance) => {
+    const predictedSeconds = predicted.get(distance)!;
+    const actualBestSeconds = pbByDist.get(distance) ?? null;
+    return {
+      distance,
+      predictedSeconds,
+      actualBestSeconds,
+      status: classifyStatus(predictedSeconds, actualBestSeconds),
+    };
+  });
 }
