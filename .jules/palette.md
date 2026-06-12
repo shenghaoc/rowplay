@@ -6,3 +6,6 @@
 ## 2025-06-10 - Missing ARIA pressed state on custom button toggles
 **Learning:** This app extensively uses Tailwind/DaisyUI utility classes like `btn-active` or custom toggles like `class:on` to indicate selected state visually. However, this is frequently not paired with `aria-pressed` or `aria-selected`, meaning screen readers miss the active state.
 **Action:** When working on UI components, actively look for visual state toggles (`class:btn-active={cond}`) and ensure they are always paired with the corresponding semantic ARIA attribute. Use `aria-pressed={cond}` for pure state toggles (e.g. compare-mode pickers). Use `aria-current={cond ? 'true' : undefined}` when the button triggers URL navigation (e.g. sport/distance filter selectors that call `goto`).
+## 2026-06-10 - Added aria-hidden to loading spinners
+**Learning:** When using visual loading spinners in DaisyUI like `loading loading-spinner`, we must ensure they are properly hidden from screen readers.
+**Action:** When adding visual loading indicators, always add `aria-hidden="true"` to prevent screen readers from announcing them redundantly if the text already conveys the state.
