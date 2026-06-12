@@ -4,6 +4,16 @@ import { COLORS_DARK, COLORS_LIGHT } from "./renderer";
 import type { RenderQuality } from "./replayRenderer";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
+import {
+  METERS_PER_CYCLE,
+  ParticlePool,
+  PerfGovernor,
+  catchEvents,
+  clampDt,
+  dampFactor,
+  strokeSurge,
+  warpStrokePhase,
+} from "./motion";
 
 const reducedMotionQuery =
   typeof window !== "undefined" && typeof window.matchMedia === "function"
@@ -31,6 +41,10 @@ interface QualityConfig {
   shadows: boolean;
   /** Number of wake segments trailing each boat (0 = no wake). */
   wake: number;
+  /** Buoy lines marking the lane edges (one InstancedMesh, static). */
+  buoys: boolean;
+  /** Catch spray droplets on the live lane (one InstancedMesh draw). */
+  spray: boolean;
 }
 
 const QUALITY: Record<RenderQuality, QualityConfig> = {
@@ -41,6 +55,8 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     displacement: false,
     shadows: false,
     wake: 0,
+    buoys: false,
+    spray: false,
   },
   medium: {
     dprCap: 2,
@@ -49,6 +65,8 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     displacement: true,
     shadows: false,
     wake: 16,
+    buoys: true,
+    spray: true,
   },
   high: {
     dprCap: 2,
@@ -57,6 +75,8 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     displacement: true,
     shadows: true,
     wake: 28,
+    buoys: true,
+    spray: true,
   },
 };
 
@@ -143,6 +163,10 @@ interface SportProfile {
   bobAmp: number;
   /** Distance (m) per full animation cycle — drives stroke/pedal cadence. */
   metersPerCycle: number;
+  /** Stroke surge amplitude (m): the hull checks at the catch and runs on. */
+  surgeAmp: number;
+  /** Lateral offset (m) of the catch-spray spawn pair, or null for no spray. */
+  sprayOffset: number | null;
   /** Ground opacity (water is translucent; snow/asphalt solid). */
   groundOpacity: number;
   /** Trailing-spray colour, or `null` for sports that leave no wake. */
@@ -194,7 +218,8 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   deck.userData.accent = true;
   group.add(deck);
 
-  // Rower (torso + head) in its own group so it can slide + lean per stroke.
+  // Rower (torso + head + arms) in its own group so it can slide + lean per
+  // stroke. The arms hang off the torso and swing with the oar handles.
   const rower = new THREE.Group();
   const torso = new THREE.Mesh(
     new THREE.BoxGeometry(0.34, 0.5, 0.3),
@@ -207,6 +232,19 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   );
   head.position.y = 0.82;
   rower.add(torso, head);
+  const arms: THREE.Group[] = [];
+  for (const side of [-1, 1]) {
+    const arm = new THREE.Group();
+    const limb = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.08, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0xd8b48a, roughness: 0.7 }),
+    );
+    limb.position.z = 0.25; // pivot at the shoulder, reach along +Z
+    arm.add(limb);
+    arm.position.set(side * 0.19, 0.66, 0.05);
+    rower.add(arm);
+    arms.push(arm);
+  }
   rower.position.z = -0.1;
   group.add(rower);
 
@@ -225,7 +263,8 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     blade.position.set(side * 2.4, -0.05, 0);
     blade.userData.accent = true;
     oar.add(blade);
-    oar.position.y = 0.28;
+    // Low pivot so the buried-blade dip in animate() reaches the waterline.
+    oar.position.y = 0.24;
     oar.userData.side = side;
     group.add(oar);
     oars.push(oar);
@@ -235,17 +274,27 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     if (reduce) {
       rower.position.z = -0.1;
       rower.rotation.x = -0.1;
+      for (const arm of arms) arm.rotation.x = -0.2;
       for (const oar of oars) oar.rotation.set(0, 0, 0);
       return;
     }
-    const drive = Math.cos(phase); // +1 catch (forward) … -1 finish
-    const recovery = Math.max(0, -Math.sin(phase)); // lift blades on return
-    rower.position.z = -0.1 + drive * 0.18;
+    // Warped phase: the drive is quick, the slide back up is unhurried.
+    const w = warpStrokePhase(phase);
+    const drive = Math.cos(w); // +1 catch … -1 finish
+    const recovery = Math.max(0, -Math.sin(w)); // lift blades on return
+    // At the catch the rower is compressed toward the stern, leaning into the
+    // slide; through the drive both slide and layback move toward the bow.
+    rower.position.z = -0.1 - drive * 0.18;
     rower.rotation.x = -0.1 - drive * 0.22;
+    // Arms reach near-horizontal at the catch and draw down through the finish.
+    for (const arm of arms) arm.rotation.x = -0.2 + (1 - drive) * 0.27;
     for (const oar of oars) {
       const side = (oar.userData.side as number) ?? 1;
-      oar.rotation.y = side * drive * 0.5; // sweep fore/aft
-      oar.rotation.z = side * recovery * 0.22; // feather/lift on recovery
+      // Blades enter ahead of the rigger at the catch and sweep toward the
+      // stern through the drive (opposing the hull's travel, like the 2D view).
+      oar.rotation.y = -side * drive * 0.5;
+      // Buried through the drive (slight dip), feathered clear on the recovery.
+      oar.rotation.z = side * (recovery * 0.26 - 0.06);
     }
   };
 
@@ -286,6 +335,17 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), neutralMat(0xd8b48a));
   head.position.y = 0.7;
   upper.add(torso, head);
+  // Arms pivot at the shoulders and swing with the poles.
+  const arms: THREE.Group[] = [];
+  for (const side of [-1, 1]) {
+    const arm = new THREE.Group();
+    const limb = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.42), neutralMat(0xd8b48a));
+    limb.position.z = 0.21;
+    arm.add(limb);
+    arm.position.set(side * 0.24, 0.42, 0.05);
+    upper.add(arm);
+    arms.push(arm);
+  }
   group.add(upper);
 
   // Poles: pivot at the hands (shoulder height), basket near the snow.
@@ -310,13 +370,20 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const animate = (phase: number, reduce: boolean): void => {
     if (reduce) {
       upper.rotation.x = 0.25;
+      for (const arm of arms) arm.rotation.x = -0.4;
       for (const p of poles) p.rotation.x = -0.2;
       return;
     }
-    const swing = Math.sin(phase); // +1 forward (plant) … -1 back (drive)
+    // Warped phase: a sharp pole plant + pull, then a slow recoil upright.
+    const w = warpStrokePhase(phase);
+    const swing = Math.cos(w); // +1 plant (tips forward) … -1 end of pull
     const crunch = Math.max(0, -swing); // bend forward through the drive
     upper.rotation.x = 0.2 + crunch * 0.5;
-    for (const p of poles) p.rotation.x = swing * 0.9 - 0.1;
+    // Hands reach high and forward at the plant, then press down and back
+    // through the pull; pole tips plant ahead of the feet and sweep behind
+    // (negative rotation.x moves the below-hand basket toward +Z/forward).
+    for (const arm of arms) arm.rotation.x = -0.25 - swing * 0.35;
+    for (const p of poles) p.rotation.x = -swing * 0.9 - 0.1;
   };
 
   finalizeAvatar(group, castShadow, opacity);
@@ -345,10 +412,14 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     );
     tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
     wheel.add(tyre);
-    // A bright cross-spoke makes the spin legible at low poly.
+    // Crossed bright spokes make the spin legible at low poly.
     const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.04, wheelR * 1.8, 0.04), accentMat());
     spoke.userData.accent = true;
     wheel.add(spoke);
+    const spoke2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, wheelR * 1.8, 0.04), accentMat());
+    spoke2.rotation.x = Math.PI / 2;
+    spoke2.userData.accent = true;
+    wheel.add(spoke2);
     wheel.position.set(0, wheelR, z);
     group.add(wheel);
     wheels.push(wheel);
@@ -389,6 +460,13 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     rider.add(thigh);
     thighs.push(thigh);
   }
+  // Arms from the shoulders down to the bars, fixed in the tuck.
+  for (const side of [-1, 1]) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.5), neutralMat(0xd8b48a));
+    arm.position.set(side * 0.15, 0.32, 0.45);
+    arm.rotation.x = -0.7;
+    rider.add(arm);
+  }
   rider.add(torso, head);
   group.add(rider);
 
@@ -397,6 +475,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
       for (const w of wheels) w.rotation.x = 0;
       cranks.rotation.x = 0;
       for (const t of thighs) t.rotation.x = 0;
+      rider.rotation.z = 0;
       return;
     }
     // Positive rotation about +X rolls the top of the wheel toward +Z (forward).
@@ -404,6 +483,8 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     cranks.rotation.x = phase; // pedals turn
     thighs[0].rotation.x = Math.sin(phase) * 0.5;
     thighs[1].rotation.x = Math.sin(phase + Math.PI) * 0.5;
+    // Subtle alternating upper-body sway with the pedal stroke.
+    rider.rotation.z = Math.sin(phase) * 0.05;
   };
 
   finalizeAvatar(group, castShadow, opacity);
@@ -415,7 +496,9 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     waves: true,
     roll: true,
     bobAmp: 0.06,
-    metersPerCycle: 11,
+    metersPerCycle: METERS_PER_CYCLE.rower,
+    surgeAmp: 0.22,
+    sprayOffset: 2.2, // off the blade tips
     groundOpacity: 0.4,
     trailColor: 0xffffff,
     groundColor: (t) => hex((t === "dark" ? COLORS_DARK : COLORS_LIGHT).laneLine),
@@ -425,7 +508,9 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     waves: false,
     roll: false,
     bobAmp: 0.03,
-    metersPerCycle: 8,
+    metersPerCycle: METERS_PER_CYCLE.skierg,
+    surgeAmp: 0.08,
+    sprayOffset: 0.4, // at the pole baskets
     groundOpacity: 1,
     trailColor: 0xffffff,
     groundColor: (t) => (t === "dark" ? 0xb8c4cc : 0xeef4f7),
@@ -435,7 +520,9 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     waves: false,
     roll: false,
     bobAmp: 0.02,
-    metersPerCycle: 5,
+    metersPerCycle: METERS_PER_CYCLE.bike,
+    surgeAmp: 0,
+    sprayOffset: null,
     groundOpacity: 1,
     trailColor: null,
     groundColor: (t) => (t === "dark" ? 0x2a333a : 0x9aa4ac),
@@ -474,9 +561,13 @@ class WakeTrail {
   update(x: number, z: number): void {
     const n = this.segs.length;
     // Recycle the tail vector once at capacity — no per-frame allocation.
-    const h = this.hist.length >= n ? this.hist.pop()! : new THREE.Vector3();
-    h.set(x, 0.02, z);
-    this.hist.unshift(h);
+    const entry = this.hist.length >= n ? this.hist.pop()! : new THREE.Vector3();
+    entry.set(x, 0.02, z);
+    this.hist.unshift(entry);
+    // Travel direction, refreshed per segment from its older neighbour and
+    // reused when a neighbour is missing.
+    let dx = 0;
+    let dz = 0;
     for (let i = 0; i < n; i++) {
       const seg = this.segs[i];
       const h = this.hist[i];
@@ -484,11 +575,24 @@ class WakeTrail {
         seg.visible = false;
         continue;
       }
-      seg.visible = true;
-      seg.position.set(h.x, 0.02, h.z);
+      const older = this.hist[i + 1];
+      if (older) {
+        const ddx = h.x - older.x;
+        const ddz = h.z - older.z;
+        const len = Math.hypot(ddx, ddz);
+        if (len > 1e-4) {
+          dx = ddx / len;
+          dz = ddz / len;
+        }
+      }
       const f = 1 - i / n; // 1 at boat, 0 at tail
-      this.mats[i].opacity = f * 0.5;
-      const s = 0.5 + f * 1.1;
+      // Diverging V: alternate segments drift port/starboard as they age.
+      const spread = (1 - f) * 0.6 * (i % 2 === 0 ? 1 : -1);
+      seg.visible = true;
+      seg.position.set(h.x - dz * spread, 0.02, h.z + dx * spread);
+      // Foam disperses: it spreads and grows while it fades.
+      this.mats[i].opacity = Math.sqrt(f) * f * 0.45;
+      const s = 0.55 + (1 - f) * 1.2;
       seg.scale.set(s, s, s);
     }
   }
@@ -528,6 +632,15 @@ export class CourseRenderer3D implements ReplayRenderer {
   private strokePhase = 0;
   private lastLiveMeters = 0;
   private lastGhostMeters = 0;
+  private lastNowMs = NaN;
+  /** Replay-space speed (m/s), smoothed; breathes the chase-camera FOV. */
+  private smoothedSpeed = 0;
+  private fovCurrent = 46;
+  /** Steps effects down when frames run persistently over budget. */
+  private governor = new PerfGovernor({ maxLevel: 3 });
+  /** Set once the governor flattens the water (level 3). */
+  private waterFlat = false;
+  private sprayOff = false;
   private reduceMotion = false;
   private lastReduceMotion = false;
   private theme: "light" | "dark" = "light";
@@ -542,6 +655,12 @@ export class CourseRenderer3D implements ReplayRenderer {
   private ghostAvatar: Avatar;
   private liveWake: WakeTrail | null = null;
   private ghostWake: WakeTrail | null = null;
+  private sprayPool: ParticlePool | null = null;
+  private sprayMesh: THREE.InstancedMesh | null = null;
+  private sprayMat: THREE.MeshBasicMaterial | null = null;
+  private buoyMesh: THREE.InstancedMesh | null = null;
+  private buoyMat: THREE.MeshStandardMaterial | null = null;
+  private tmpMat4 = new THREE.Matrix4();
   private liveLabel: THREE.Sprite;
   private liveLabelTex: THREE.CanvasTexture;
   private ghostLabel: THREE.Sprite | null = null;
@@ -622,6 +741,18 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.liveWake = new WakeTrail(this.scene, this.cfg.wake, wakeGeo, c);
       this.ghostWake = new WakeTrail(this.scene, this.cfg.wake, wakeGeo, c);
     }
+
+    // Catch spray for the live lane: one InstancedMesh, one draw call. The
+    // droplets shrink as they die, so no per-particle materials are needed.
+    if (this.cfg.spray && this.profile.sprayOffset !== null) {
+      this.sprayPool = new ParticlePool(40);
+      const sprayGeo = this.track(new THREE.IcosahedronGeometry(0.05, 0));
+      this.sprayMat = this.mat(new THREE.MeshBasicMaterial({ color: hex(COLORS_LIGHT.foam) }));
+      this.sprayMesh = new THREE.InstancedMesh(sprayGeo, this.sprayMat, this.sprayPool.capacity);
+      this.sprayMesh.count = 0;
+      this.sprayMesh.frustumCulled = false;
+      this.scene.add(this.sprayMesh);
+    }
   }
 
   private track<T extends THREE.BufferGeometry>(g: T): T {
@@ -641,13 +772,15 @@ export class CourseRenderer3D implements ReplayRenderer {
   private buildStaticScene(): void {
     const seg = this.profile.waves ? this.cfg.groundSegments : 1;
     const groundGeo = this.track(new THREE.PlaneGeometry(140, 140, seg, seg));
+    // Water is glossier than snow/asphalt so the sun glints off the moving
+    // wave normals; the displacement loop recomputes them each frame.
     const groundMat = this.mat(
       new THREE.MeshStandardMaterial({
         color: this.profile.groundColor("light"),
         transparent: this.profile.groundOpacity < 1,
         opacity: this.profile.groundOpacity,
-        roughness: 0.85,
-        metalness: 0.05,
+        roughness: this.profile.waves ? 0.45 : 0.85,
+        metalness: this.profile.waves ? 0.12 : 0.05,
       }),
     );
     groundMat.name = "ground";
@@ -691,6 +824,33 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.scene.add(post);
     }
 
+    // Buoy lines marking the lane edges — static, one InstancedMesh draw call.
+    if (this.cfg.buoys) {
+      const buoyGeo = this.track(new THREE.SphereGeometry(0.11, 6, 4));
+      this.buoyMat = this.mat(
+        new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.markerCap), roughness: 0.6 }),
+      );
+      const rings = [
+        this.ghostRadius - 2.5,
+        (this.ghostRadius + this.loopRadius) / 2,
+        this.loopRadius + 2.5,
+      ];
+      const perRing = 48;
+      const inst = new THREE.InstancedMesh(buoyGeo, this.buoyMat, rings.length * perRing);
+      const m = new THREE.Matrix4();
+      let bi = 0;
+      for (const r of rings) {
+        for (let k = 0; k < perRing; k++) {
+          const a = (k / perRing) * Math.PI * 2;
+          m.setPosition(r * Math.sin(a), 0.06, r * Math.cos(a));
+          inst.setMatrixAt(bi++, m);
+        }
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      this.buoyMesh = inst;
+      this.scene.add(inst);
+    }
+
     // Start/finish line — flat checker across the lane at the lap crossing.
     this.cellMatDark = this.mat(
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.finishDark) }),
@@ -732,6 +892,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.postMatMinor.color.setHex(hex(C.tickMinor));
     this.cellMatDark.color.setHex(hex(C.finishDark));
     this.cellMatLight.color.setHex(hex(C.finishLight));
+    this.buoyMat?.color.setHex(hex(C.markerCap));
+    this.sprayMat?.color.setHex(hex(C.foam));
 
     this.recolorAccent(this.liveAvatar.group, C.live);
     this.recolorAccent(this.ghostAvatar.group, C.ghost);
@@ -753,14 +915,47 @@ export class CourseRenderer3D implements ReplayRenderer {
   resize(cssWidth: number, cssHeight: number): void {
     this.w = cssWidth;
     this.h = cssHeight;
-    const dpr = Math.min(
-      typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
-      this.cfg.dprCap,
-    );
+    // The governor tightens the dpr cap when the GPU can't hold the budget —
+    // resolution is the cheapest visual to sacrifice on weak hardware.
+    const cap =
+      this.governor.level >= 2
+        ? 1
+        : this.governor.level === 1
+          ? Math.min(this.cfg.dprCap, 1.5)
+          : this.cfg.dprCap;
+    const dpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, cap);
     this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(cssWidth, cssHeight);
     this.camera.aspect = cssWidth / Math.max(cssHeight, 1);
     this.camera.updateProjectionMatrix();
+  }
+
+  /**
+   * Map governor levels to concrete savings. Levels 1–2 lower the pixel
+   * ratio; level 3 flattens the water and stops the spray. Geometry,
+   * lighting and avatars are untouched, so the scene degrades gracefully.
+   */
+  private applyPerfLevel(): void {
+    if (this.governor.level >= 1) this.resize(this.w, this.h);
+    if (this.governor.level >= 3) {
+      this.sprayOff = true;
+      this.sprayPool?.clear();
+      if (this.sprayMesh) this.sprayMesh.count = 0;
+      this.flattenWater();
+    }
+  }
+
+  private flattenWater(): void {
+    if (this.waterFlat) return;
+    this.waterFlat = true;
+    const water = this.groundMesh;
+    if (this.profile.waves && water?.geometry instanceof THREE.PlaneGeometry) {
+      const pos = water.geometry.attributes.position;
+      const arr = pos.array as Float32Array;
+      for (let i = 0; i < pos.count; i++) arr[i * 3 + 2] = 0;
+      pos.needsUpdate = true;
+      water.geometry.computeVertexNormals();
+    }
   }
 
   /** Place an avatar on its lap circle and animate bob/roll + the stroke. */
@@ -786,6 +981,12 @@ export class CourseRenderer3D implements ReplayRenderer {
     outer.position.set(x, 0, z);
     outer.rotation.y = Math.atan2(tx, tz); // local +Z (travel) -> tangent
     avatar.group.position.y = bob;
+    // Stroke surge: the hull checks at the catch and runs out through the
+    // drive — a local +Z (travel) offset synced to the shared stroke phase.
+    avatar.group.position.z =
+      reduce || this.profile.surgeAmp === 0
+        ? 0
+        : strokeSurge(warpStrokePhase(this.strokePhase)) * this.profile.surgeAmp;
     avatar.group.rotation.z =
       reduce || !this.profile.roll ? 0 : Math.sin(this.animPhase + cadence * 0.05) * 0.05;
     avatar.animate(this.strokePhase, reduce);
@@ -798,36 +999,57 @@ export class CourseRenderer3D implements ReplayRenderer {
     const C = themeName === "dark" ? COLORS_DARK : COLORS_LIGHT;
     this.reduceMotion = prefersReducedMotion();
 
-    if (playing && !this.reduceMotion) this.animPhase += 0.04 + state.frame.spm / 800;
+    // Wall-clock dt (clamped) keeps water, camera and FOV motion identical on
+    // 30/60/120 Hz displays — phases advance by time, not by frame count.
+    const nowMs = performance.now();
+    const rawDtMs = playing && Number.isFinite(this.lastNowMs) ? nowMs - this.lastNowMs : 0;
+    const dt = playing ? clampDt(rawDtMs) : 0;
+    this.lastNowMs = playing ? nowMs : NaN;
 
-    // Stroke phase is driven by distance travelled (~11 m/stroke), so it speeds
-    // up with playback rate and freezes when paused — and stays in sync with the
-    // boat's motion around the loop regardless of replay speed.
+    // Adaptive degradation: a sustained run of over-budget frames steps the
+    // governor, shedding resolution first and effects last.
+    if (playing && this.governor.sample(rawDtMs) !== null) this.applyPerfLevel();
+
+    if (playing && !this.reduceMotion) this.animPhase += (2.4 + state.frame.spm / 13) * dt;
+
+    // Stroke phase advances by time at the recorded stroke rate (spm), so the
+    // figures stroke at the workout's true cadence — a 20 spm interval animates
+    // slower than a 36 spm sprint, matching the real erg rhythm.
     const liveMeters = state.frame.d;
     const dLive = liveMeters - this.lastLiveMeters;
     this.lastLiveMeters = liveMeters;
-    if (!this.reduceMotion && dLive > 0)
-      this.strokePhase += (dLive / this.profile.metersPerCycle) * Math.PI * 2;
+    const prevStroke = this.strokePhase;
+    if (!this.reduceMotion && dt > 0 && state.frame.spm > 0)
+      this.strokePhase += (state.frame.spm / 60) * dt * Math.PI * 2;
 
-    // Water displacement (rowing only; skipped when flat/low quality or phase unchanged).
+    // Water displacement (rowing only; skipped when flat/low quality, governor
+    //-flattened, or phase unchanged). Three interfering wave trains read as a
+    // living surface where one sine reads as a conveyor belt.
     const water = this.groundMesh;
     const reduceMotionChanged = this.reduceMotion !== this.lastReduceMotion;
     if (
       this.cfg.displacement &&
       this.profile.waves &&
+      !this.waterFlat &&
       (this.animPhase !== this.lastAnimPhase || reduceMotionChanged) &&
       water?.geometry instanceof THREE.PlaneGeometry
     ) {
       const pos = water.geometry.attributes.position;
       const arr = pos.array as Float32Array;
       const count = pos.count;
+      const t = this.animPhase;
       for (let i = 0; i < count; i++) {
         const idx = i * 3;
         // local y (arr[idx+1]) maps to world Z after the -90° X rotation, so
-        // ripples run along the course rather than as uniform cross-lane bands.
+        // the primary ripple runs along the course rather than as uniform
+        // cross-lane bands; the two faster trains break up the pattern.
+        const lx = arr[idx];
+        const ly = arr[idx + 1];
         arr[idx + 2] = this.reduceMotion
           ? 0
-          : Math.sin(arr[idx + 1] * 0.25 + this.animPhase) * 0.08;
+          : Math.sin(ly * 0.25 + t) * 0.05 +
+            Math.sin(lx * 0.31 + t * 1.7) * 0.03 +
+            Math.sin((lx + ly) * 0.13 - t * 0.6) * 0.025;
       }
       pos.needsUpdate = true;
       water.geometry.computeVertexNormals();
@@ -843,9 +1065,44 @@ export class CourseRenderer3D implements ReplayRenderer {
       state.frame.spm,
     );
 
-    if (this.liveWake) {
-      if (this.reduceMotion) this.liveWake.reset();
-      else this.liveWake.update(p.x - p.tx * 1.6, p.z - p.tz * 1.6);
+    this.advanceWake(this.liveWake, dLive, p.x - p.tx * 1.6, p.z - p.tz * 1.6);
+
+    // Catch spray on the live lane: spawn a burst as each stroke catches,
+    // integrate, and write the survivors into the InstancedMesh.
+    if (this.sprayPool && this.sprayMesh && !this.sprayOff) {
+      const pool = this.sprayPool;
+      if (this.reduceMotion) {
+        pool.clear();
+      } else {
+        if (dt > 0) pool.update(dt, 0, -5.5, 0);
+        if (playing && catchEvents(prevStroke, this.strokePhase) > 0) {
+          const off = this.profile.sprayOffset ?? 0;
+          const rx = p.x / this.loopRadius;
+          const rz = p.z / this.loopRadius;
+          for (const side of [-1, 1]) {
+            for (let k = 0; k < 4; k++) {
+              pool.spawn(
+                p.x + rx * off * side + (Math.random() - 0.5) * 0.3,
+                0.12,
+                p.z + rz * off * side + (Math.random() - 0.5) * 0.3,
+                rx * side * (0.3 + Math.random() * 0.5) - p.tx * (0.3 + Math.random() * 0.5),
+                1.1 + Math.random() * 1.2,
+                rz * side * (0.3 + Math.random() * 0.5) - p.tz * (0.3 + Math.random() * 0.5),
+                0.4 + Math.random() * 0.3,
+                0.5 + Math.random(),
+              );
+            }
+          }
+        }
+      }
+      for (let i = 0; i < pool.alive; i++) {
+        const sc = pool.size[i] * (0.4 + 0.6 * pool.fade(i));
+        this.tmpMat4.makeScale(sc, sc, sc);
+        this.tmpMat4.setPosition(pool.x[i], pool.y[i], pool.z[i]);
+        this.sprayMesh.setMatrixAt(i, this.tmpMat4);
+      }
+      this.sprayMesh.count = pool.alive;
+      this.sprayMesh.instanceMatrix.needsUpdate = true;
     }
 
     const laps = Math.max(1, Math.ceil(state.totalDistance / CourseRenderer3D.LOOP_METERS));
@@ -880,11 +1137,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         ghostMeters,
         state.ghost.spm,
       );
-      if (this.ghostWake) {
-        if (this.reduceMotion || dGhost <= 0) {
-          if (this.reduceMotion) this.ghostWake.reset();
-        } else this.ghostWake.update(gp.x - gp.tx * 1.6, gp.z - gp.tz * 1.6);
-      }
+      this.advanceWake(this.ghostWake, dGhost, gp.x - gp.tx * 1.6, gp.z - gp.tz * 1.6);
       const ghostText = `${state.ghost.label || "PB"} · ${Math.round(state.ghost.distFrac * 100)}%`;
       if (ghostText !== this.lastGhostLabel && this.ghostLabel && this.ghostLabelTex) {
         updateTextSprite(this.ghostLabel, this.ghostLabelTex, ghostText, C.labelBg, C.ghost);
@@ -896,23 +1149,69 @@ export class CourseRenderer3D implements ReplayRenderer {
       if (this.ghostLabel) this.ghostLabel.visible = false;
       this.ghostWake?.reset();
       this.lastGhostLabel = "";
+      this.lastGhostMeters = NaN;
     }
 
-    // Chase camera: behind the live boat along its tangent, raised, looking ahead.
+    // Speed-aware FOV: the lens breathes out gently as the boat runs faster
+    // (or the playback rate rises), selling the sense of speed. A zoom is a
+    // vestibular trigger, so it is pinned flat under reduced motion; seek-
+    // sized distance jumps are excluded from the speed estimate so a scrub
+    // doesn't pulse the lens.
+    if (this.reduceMotion) {
+      this.smoothedSpeed = 0;
+      this.fovCurrent = 46;
+    } else {
+      if (dt > 0 && dLive >= 0 && dLive < dt * 120) {
+        const inst = dLive > 0 ? Math.min(dLive / dt, 40) : 0;
+        this.smoothedSpeed += (inst - this.smoothedSpeed) * dampFactor(3, dt);
+      }
+      const fovTarget = 46 + Math.max(0, Math.min(1, (this.smoothedSpeed - 3) / 6)) * 5;
+      this.fovCurrent +=
+        (fovTarget - this.fovCurrent) * (this.cameraInit ? dampFactor(2.5, dt) : 1);
+    }
+    if (Math.abs(this.camera.fov - this.fovCurrent) > 0.01) {
+      this.camera.fov = this.fovCurrent;
+      this.camera.updateProjectionMatrix();
+    }
+
+    // Chase camera: behind the live boat along its tangent, raised, looking
+    // ahead, with a slight outward offset so the athlete reads three-quarter
+    // rather than dead astern.
     const back = 9.5;
     const height = 5.5;
     const ahead = 7;
-    this.chase.set(p.x - p.tx * back, height, p.z - p.tz * back);
+    const lateral = 1.8;
+    const rx = p.x / this.loopRadius;
+    const rz = p.z / this.loopRadius;
+    this.chase.set(p.x - p.tx * back + rx * lateral, height, p.z - p.tz * back + rz * lateral);
     this.lookAt.set(p.x + p.tx * ahead, 1.1, p.z + p.tz * ahead);
-    if (this.cameraInit) {
-      this.camera.position.lerp(this.chase, 0.12);
-    } else {
+    if (!this.cameraInit) {
       this.camera.position.copy(this.chase);
       this.cameraInit = true;
+    } else if (playing) {
+      // Exponential damping is frame-rate independent.
+      this.camera.position.lerp(this.chase, dampFactor(7.5, dt));
+    } else if (dLive !== 0 || this.camera.position.distanceToSquared(this.chase) > 9) {
+      // Paused renders are on-demand, so nothing would drive a gradual
+      // convergence: snap only when the target actually jumped (seek,
+      // workout change). The sub-metre trailing lag left at the pause
+      // boundary is kept, avoiding a visible pop.
+      this.camera.position.copy(this.chase);
     }
     this.camera.lookAt(this.lookAt);
 
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /**
+   * Advance a wake trail for a frame's travel `d` (m). Backward seeks and
+   * teleport-sized jumps restart the trail instead of painting quads along
+   * the scrub chord; paused renders (d = 0) leave it untouched.
+   */
+  private advanceWake(wake: WakeTrail | null, d: number, x: number, z: number): void {
+    if (!wake) return;
+    if (this.reduceMotion || d < 0 || d > 30) wake.reset();
+    else if (d > 0) wake.update(x, z);
   }
 
   private disposeObject3D(root: THREE.Object3D): void {
@@ -930,6 +1229,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.disposeObject3D(this.ghostGroup);
     this.liveWake?.dispose();
     this.ghostWake?.dispose();
+    // Instance buffers are owned by the InstancedMesh, not the tracked
+    // geometry/material, so they need their own dispose.
+    this.buoyMesh?.dispose();
+    this.sprayMesh?.dispose();
     if (this.liveLabel.material instanceof THREE.Material) this.liveLabel.material.dispose();
     if (this.ghostLabel?.material instanceof THREE.Material) this.ghostLabel.material.dispose();
     this.liveLabelTex.dispose();

@@ -226,6 +226,12 @@ Die erste Synchronisation lädt aktuelle Workouts sofort und füllt ältere Hist
 
 Neu beim Indoor-Rudern — oder nur bei seinem Vokabular? Das sind die Begriffe, die rowplay verwendet.
 
+Die Figur bewegt sich im echten Schlagrhythmus des Workouts — ein Zug (bzw. Stockeinsatz oder Kurbelumdrehung) pro aufgezeichnetem Schlag, mit Spritzern bei jedem Einsatz — und wird mit der Wiedergabegeschwindigkeit schneller. Die 3D-Verfolgerkamera öffnet den Bildwinkel leicht, wenn das Boot schneller läuft.
+
+In 3D wählt der **Qualität**-Selektor zwischen niedriger, mittlerer und hoher Grafik. Hält das Gerät keine flüssige Bildrate, senkt der Renderer automatisch zuerst die Auflösung und dann die Effekte — hohe Qualität ist also auf jeder Hardware gefahrlos. Das Replay respektiert die Systemeinstellung für reduzierte Bewegung.
+
+Schlagdaten werden verwendet, wenn Concept2 sie liefert. Workouts ohne Schlagdaten fallen auf Split-basiertes Replay zurück, sodass die Strecke weiter abspielt.
+
 ## Die Geräte
 
 - **RowErg** — das Rudergerät von Concept2 („Erg" ist kurz für Ergometer, ein Gerät, das Arbeit misst).

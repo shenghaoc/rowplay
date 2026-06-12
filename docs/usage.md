@@ -104,6 +104,21 @@ Concept2 logbook is never modified.
 
 - **Replay a workout** — play/pause, scrub, 0.5×–8× speed, 2D/3D course views
   (3D needs WebGL), and an optional target-pace reference line.
+
+The athlete animates at the workout's real cadence: the figure takes one stroke
+(or pole plant, or pedal revolution) per recorded stroke, with splash and spray
+on each catch, and speeds up in step with the playback rate. The 3D chase
+camera widens its lens slightly as the boat runs faster.
+
+In 3D, the **Quality** selector picks low, medium, or high graphics. If the
+device can't hold a smooth frame rate at the selected tier, the renderer
+automatically lowers resolution first and effects (water motion, spray) second
+for the rest of the session, so high quality is safe to try on any hardware.
+Replay animation honours the operating system's reduced-motion setting.
+
+Per-stroke data is used when Concept2 provides it. Workouts without stroke data
+fall back to a split-based replay, so the course still plays back.
+
 - **Coaching notes** — pin notes to moments on the replay timeline.
 - **Race a ghost** — from `/leaderboard`, press **Race** next to an entry to
   pre-arm a rival on your own replay of that piece.

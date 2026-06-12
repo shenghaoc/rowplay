@@ -1,6 +1,7 @@
 import type { Frame } from "./engine";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
+import { ParticlePool, catchEvents, clampDt, strokeSurge, warpStrokePhase } from "./motion";
 
 // The replay playback itself is essential, user-initiated motion (the user
 // presses play), so it is preserved under `prefers-reduced-motion`. What we do
@@ -129,6 +130,12 @@ const PAD_R = 30;
 const WATER_H = 34;
 const POD_R = 9;
 const BOB_AMP = 2.2;
+/** Forward/back hull surge per stroke (px), per sport. Bike pedals smoothly. */
+const SURGE_PX: Record<Sport, number> = { rower: 2.6, skierg: 1.2, bike: 0 };
+/** Splash droplets per lane; small and brief, so a tiny pool suffices. */
+const SPLASH_CAP = 12;
+/** Canvas y grows downward, so droplet gravity is positive (px/s²). */
+const SPLASH_GRAVITY = 230;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -198,10 +205,13 @@ function streakLen(pace: number): number {
 
 // ── Sport avatars ─────────────────────────────────────────────────────────────
 // Each draws a side-profile athlete (facing the finish, +x) animated by the
-// stroke `phase`, so the marker both identifies the machine and conveys cadence.
-// `y` is the waterline; `bobY` is the bobbing centre; figures are drawn in the
-// lane `accent` with a contrast `rim` and `foam` highlights. `s = sin(phase)`
-// drives the stroke; under reduced motion the caller passes a frozen pose.
+// stroke phase, so the marker both identifies the machine and conveys cadence.
+// The phase is distance-driven (one cycle per stroke at the workout's true
+// cadence) and warped so the drive is quick and the recovery slow. `y` is the
+// waterline; `bobY` is the bobbing centre; figures are drawn in the lane
+// `accent` with a contrast `rim` and `foam` highlights. `s` is the stroke
+// position (+1 catch … −1 finish); under reduced motion the caller passes a
+// frozen pose.
 
 /** Rounded limb / strut segment. */
 function limb(
@@ -236,8 +246,10 @@ interface AvatarDrawCtx {
   y: number;
   /** Bobbing centre for floating parts. */
   bobY: number;
-  /** sin(phase): stroke driver, −1..1 (frozen pose under reduced motion). */
+  /** Stroke position, +1 catch … −1 finish (frozen pose under reduced motion). */
   s: number;
+  /** True during the drive half of the stroke (blade buried, poles loaded). */
+  drive: boolean;
   /** Raw phase for continuous rotation (wheels). */
   phase: number;
   accent: string;
@@ -248,7 +260,7 @@ interface AvatarDrawCtx {
 
 /** Rowing shell with a rower whose torso + oar sweep through the stroke. */
 function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
-  const { x, bobY, s, accent, rim, foam, reduce } = a;
+  const { x, bobY, s, drive, accent, rim, foam, reduce } = a;
   const HL = 16;
   const HH = 2.6;
 
@@ -275,9 +287,10 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
   limb(ctx, seatX, seatY, shX, shY, 2.4, accent); // torso
   disc(ctx, shX, shY - 3, 2.3, accent); // head
 
-  // Oar — sweeps fore/aft; blade dips and splashes on the drive.
+  // Oar — sweeps fore/aft; the blade is buried through the drive and carried
+  // clear of the water on the recovery.
   const bladeX = x + s * 13;
-  const inWater = s > -0.15;
+  const inWater = reduce ? s > -0.15 : drive;
   const bladeY = bobY + (inWater ? 4.5 : 1.5);
   const handX = shX + 2.5;
   const handY = shY + 2;
@@ -407,11 +420,14 @@ interface AvatarOpts {
   x: number;
   y: number;
   accent: string;
+  /** Distance-driven stroke phase (radians; one cycle per stroke). */
   phase: number;
   spm: number;
   isYou: boolean;
   sport?: Sport;
   label: string;
+  /** Splash droplets for this lane (drawn in foam, frozen while paused). */
+  splash: ParticlePool;
 }
 
 /**
@@ -424,8 +440,16 @@ export class CourseRenderer implements ReplayRenderer {
   private dpr = 1;
   private w = 0;
   private h = 0;
-  private phase = 0;
-  private ghostPhase = 0;
+  /** Decorative water phase (ripples, wake undulation) — wall-clock driven. */
+  private wavePhase = 0;
+  private ghostWavePhase = 0;
+  /** Stroke phase — distance driven, so figures row at the true cadence. */
+  private strokePhase = 0;
+  private ghostStrokePhase = 0;
+
+  private lastNow = NaN;
+  private liveSplash = new ParticlePool(SPLASH_CAP);
+  private ghostSplash = new ParticlePool(SPLASH_CAP);
   private colors: CanvasColors = COLORS_LIGHT;
   // Refreshed each render() from the OS setting; flattens the avatar wake.
   private reduceMotion = false;
@@ -454,11 +478,35 @@ export class CourseRenderer implements ReplayRenderer {
     this.colors = C;
     if (w === 0) return;
     this.reduceMotion = prefersReducedMotion();
-    // Advance the wake phase only while playing and only when motion is
-    // allowed; otherwise the trail is drawn flat (amplitude 0 in drawLane).
-    if (playing && !this.reduceMotion) {
-      this.phase += 0.15 + state.frame.spm / 600;
-      if (state.ghost) this.ghostPhase += 0.15 + state.ghost.spm / 600;
+
+    // Wall-clock dt (clamped) keeps decorative motion at the same speed on
+    // 30/60/120 Hz displays — phases advance by time, not by frame count.
+    const now = performance.now();
+    const rawDt = playing && Number.isFinite(this.lastNow) ? now - this.lastNow : 0;
+    const dt = playing ? clampDt(rawDt) : 0;
+    this.lastNow = playing ? now : NaN;
+    const animate = playing && !this.reduceMotion;
+    if (animate) {
+      this.wavePhase += (9 + state.frame.spm / 10) * dt;
+      if (state.ghost) this.ghostWavePhase += (9 + state.ghost.spm / 10) * dt;
+    }
+
+    // Stroke phases advance by time at the recorded stroke rate (spm), so the
+    // figures stroke at the workout's true cadence — a 20 spm interval animates
+    // slower than a 36 spm sprint, matching the real erg rhythm.
+    const prevStroke = this.strokePhase;
+    if (animate && state.frame.spm > 0)
+      this.strokePhase += (state.frame.spm / 60) * dt * Math.PI * 2;
+    const prevGhostStroke = this.ghostStrokePhase;
+    if (animate && state.ghost && state.ghost.spm > 0)
+      this.ghostStrokePhase += (state.ghost.spm / 60) * dt * Math.PI * 2;
+
+    if (this.reduceMotion) {
+      this.liveSplash.clear();
+      this.ghostSplash.clear();
+    } else if (dt > 0) {
+      this.liveSplash.update(dt, 0, SPLASH_GRAVITY, 0);
+      this.ghostSplash.update(dt, 0, SPLASH_GRAVITY, 0);
     }
 
     ctx.clearRect(0, 0, w, h);
@@ -481,13 +529,16 @@ export class CourseRenderer implements ReplayRenderer {
     if (hasGhost && state.ghost) {
       const ghostFrac = clamp01(state.ghost.distFrac);
       const ghostAvX = startX + span * ghostFrac;
+      if (animate && catchEvents(prevGhostStroke, this.ghostStrokePhase) > 0) {
+        this.spawnSplash(this.ghostSplash, ghostAvX, ghostY, state.sport);
+      }
       this.drawLane({
         startX,
         span,
         y: ghostY,
         frac: ghostFrac,
         accent: C.ghost,
-        phase: this.ghostPhase,
+        phase: this.ghostWavePhase,
         pace: state.ghost.pace,
         isYou: false,
         nameTab: "GHOST",
@@ -497,23 +548,27 @@ export class CourseRenderer implements ReplayRenderer {
         x: ghostAvX,
         y: ghostY,
         accent: C.ghost,
-        phase: this.ghostPhase,
+        phase: this.ghostStrokePhase,
         spm: state.ghost.spm,
         isYou: false,
         sport: state.sport,
         label: `${state.ghost.label || "PB"} · ${Math.round(ghostFrac * 100)}%`,
+        splash: this.ghostSplash,
       });
     }
 
     const playerFrac = clamp01(state.distFrac);
     const playerAvX = startX + span * playerFrac;
+    if (animate && catchEvents(prevStroke, this.strokePhase) > 0) {
+      this.spawnSplash(this.liveSplash, playerAvX, playerY, state.sport);
+    }
     this.drawLane({
       startX,
       span,
       y: playerY,
       frac: playerFrac,
       accent: C.live,
-      phase: this.phase,
+      phase: this.wavePhase,
       pace: state.frame.pace,
       isYou: true,
       nameTab: "YOU",
@@ -523,12 +578,36 @@ export class CourseRenderer implements ReplayRenderer {
       x: playerAvX,
       y: playerY,
       accent: C.live,
-      phase: this.phase,
+      phase: this.strokePhase,
       spm: state.frame.spm,
       isYou: true,
       sport: state.sport,
       label: `${fmtPace(state.frame.pace)} · ${Math.round(playerFrac * 100)}%`,
+      splash: this.liveSplash,
     });
+  }
+
+  /**
+   * Burst of droplets at the catch — water off the blade for the rower, snow
+   * kicked from the pole baskets for the skier. The bike rolls smoothly and
+   * spawns nothing.
+   */
+  private spawnSplash(pool: ParticlePool, avX: number, y: number, sport?: Sport) {
+    const count = sport === "rower" ? 4 : sport === "skierg" ? 3 : 0;
+    if (count === 0) return;
+    const ox = sport === "rower" ? 12 : 2; // blade vs pole-basket offset
+    for (let i = 0; i < count; i++) {
+      pool.spawn(
+        avX + ox + (Math.random() - 0.5) * 4,
+        y + 2,
+        0,
+        Math.random() * 34 - 10,
+        -(26 + Math.random() * 38),
+        0,
+        0.32 + Math.random() * 0.22,
+        0.8 + Math.random() * 0.8,
+      );
+    }
   }
 
   destroy() {
@@ -619,18 +698,24 @@ export class CourseRenderer implements ReplayRenderer {
       ctx.fillRect(x + 1, yy, 3, Math.min(cell, y1 - yy));
     }
 
-    // Faint accent glow on the left post. The gate is shared across lanes, so
-    // it always uses the live accent (`C.live`) rather than a per-lane colour.
-    ctx.shadowColor = C.live;
-    ctx.shadowBlur = 6;
-    ctx.strokeStyle = withAlpha(C.live, 0.35);
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x - 1, y0);
-    ctx.lineTo(x - 1, y1);
-    ctx.stroke();
+    // Faint accent glow on the left post, layered wide-to-narrow instead of
+    // shadowBlur (same read, no per-frame blur pass). The gate is shared
+    // across lanes, so it always uses the live accent (`C.live`).
+    ctx.lineCap = "butt";
+    for (const [width, alpha] of [
+      [6, 0.08],
+      [3, 0.18],
+      [1.5, 0.35],
+    ]) {
+      ctx.strokeStyle = withAlpha(C.live, alpha);
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(x - 1, y0);
+      ctx.lineTo(x - 1, y1);
+      ctx.stroke();
+    }
 
-    ctx.restore(); // restore() resets shadowBlur with the saved state
+    ctx.restore();
   }
 
   // ── Lane scene ────────────────────────────────────────────────────────────
@@ -664,26 +749,30 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.lineTo(startX + span, y);
     ctx.stroke();
 
-    // 3. Ripples (2 polylines just below the waterline). Under reduced motion
-    // the amplitude is 0, so draw a straight line directly and skip the trig.
-    for (let ri = 0; ri < 2; ri++) {
-      const offsetY = y + 5 + ri * 6;
-      ctx.strokeStyle = withAlpha(accent, 0.25);
+    // 3. Ripples (3 polylines just below the waterline). Each layer drifts at
+    // its own speed for a cheap parallax read. Under reduced motion the
+    // amplitude is 0, so draw a straight line directly and skip the trig.
+    for (let ri = 0; ri < 3; ri++) {
+      const offsetY = y + 5 + ri * 5;
+      ctx.strokeStyle = withAlpha(accent, 0.25 - ri * 0.06);
       ctx.lineWidth = 0.8;
       ctx.beginPath();
       ctx.moveTo(startX, offsetY);
       if (this.reduceMotion) {
         ctx.lineTo(startX + span, offsetY);
       } else {
-        const phaseOff = ri * 1.1;
+        const layerPhase = phase * (0.7 + ri * 0.45) + ri * 1.1;
         for (let rx = startX; rx <= startX + span; rx += 6) {
-          ctx.lineTo(rx, offsetY + Math.sin(rx * 0.12 + phase + phaseOff) * 1.5);
+          ctx.lineTo(rx, offsetY + Math.sin(rx * 0.12 + layerPhase) * 1.5);
         }
       }
       ctx.stroke();
     }
 
-    // 4. Wake trail: outer glow + core. Reduced motion → a flat line (no trig).
+    // 4. Wake trail: layered glow + core. The glow is built from widening,
+    // fading strokes of the same path — visually close to a blur but far
+    // cheaper than canvas shadowBlur, which forces a full intermediate
+    // surface blur per frame. Reduced motion → a flat line (no trig).
     if (avX > startX) {
       const traceWake = () => {
         ctx.beginPath();
@@ -697,15 +786,15 @@ export class CourseRenderer implements ReplayRenderer {
         }
       };
 
-      // Outer glow
-      ctx.save();
-      ctx.shadowColor = accent;
-      ctx.shadowBlur = 8;
-      ctx.strokeStyle = withAlpha(accent, 0.45);
-      ctx.lineWidth = 7;
+      // Outer + inner glow layers
+      ctx.strokeStyle = withAlpha(accent, 0.12);
+      ctx.lineWidth = 11;
       traceWake();
       ctx.stroke();
-      ctx.restore(); // restore() resets shadowBlur with the saved state
+      ctx.strokeStyle = withAlpha(accent, 0.3);
+      ctx.lineWidth = 6;
+      traceWake();
+      ctx.stroke();
 
       // Core stroke
       ctx.strokeStyle = accent;
@@ -755,16 +844,26 @@ export class CourseRenderer implements ReplayRenderer {
   private drawAvatar(o: AvatarOpts) {
     const { ctx } = this;
     const C = this.colors;
-    const { x, y, accent, phase, isYou, sport, label } = o;
+    const { x, y, accent, phase, isYou, sport, label, splash } = o;
+    const reduce = this.reduceMotion;
 
     ctx.save();
     if (!isYou) {
       ctx.globalAlpha = 0.82;
     }
 
-    // Bob the floating/upper parts; figures stay rooted to the waterline.
-    const s = this.reduceMotion ? -0.2 : Math.sin(phase);
-    const bobY = y + (this.reduceMotion ? 0 : Math.sin(phase) * BOB_AMP);
+    // Asymmetric stroke: quick drive, slow recovery. The bike pedals at a
+    // constant rate, so its phase is left unwarped.
+    const warped = sport === "bike" ? phase : warpStrokePhase(phase);
+    // Stroke position +1 (catch) … −1 (finish); frozen pose under reduced motion.
+    const s = reduce ? -0.2 : Math.cos(warped);
+    const drive = !reduce && warped % (Math.PI * 2) < Math.PI;
+    // The hull surges through the drive and checks at the catch; the HUD pill
+    // and caret stay anchored to the un-surged x so they read steady.
+    const surge = reduce ? 0 : strokeSurge(warped) * SURGE_PX[sport ?? "rower"];
+    const figX = x + surge;
+    // Bob once per stroke, in step with the figure's effort.
+    const bobY = y + (reduce ? 0 : Math.sin(warped) * BOB_AMP);
     // Contrast rim that reads on the accent fill in both themes.
     const rim = C.labelText;
 
@@ -772,22 +871,23 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.save();
     ctx.fillStyle = withAlpha(C.shadow, 0.18);
     ctx.beginPath();
-    ctx.ellipse(x, y + 5, POD_R * 1.9, POD_R * 0.45, 0, 0, Math.PI * 2);
+    ctx.ellipse(figX, y + 5, POD_R * 1.9, POD_R * 0.45, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
     // Sport-specific animated athlete (or neutral pod fallback).
     ctx.save();
     const a: AvatarDrawCtx = {
-      x,
+      x: figX,
       y,
       bobY,
       s,
+      drive,
       phase,
       accent,
       rim,
       foam: C.foam,
-      reduce: this.reduceMotion,
+      reduce,
     };
     switch (sport) {
       case "rower":
@@ -800,10 +900,22 @@ export class CourseRenderer implements ReplayRenderer {
         drawCyclist(ctx, a);
         break;
       default:
-        drawNeutralPod(ctx, x, bobY, accent, rim, C.foam);
+        drawNeutralPod(ctx, figX, bobY, accent, rim, C.foam);
         break;
     }
     ctx.restore();
+
+    // Splash droplets (catch spray). Alpha is quantised so the memoised
+    // withAlpha cache stays bounded.
+    if (!reduce && splash.alive > 0) {
+      for (let i = 0; i < splash.alive; i++) {
+        const f = splash.fade(i);
+        ctx.fillStyle = withAlpha(C.foam, Math.round(f * 8) / 10);
+        ctx.beginPath();
+        ctx.arc(splash.x[i], splash.y[i], splash.size[i] * (0.6 + 0.4 * f), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
     // HUD pill — anchored to the waterline (not the bob) so it stays steady.
     ctx.save();

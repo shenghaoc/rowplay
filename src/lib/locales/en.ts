@@ -333,6 +333,12 @@ Open any workout from the dashboard and press **Replay**.
 - Switch between **2D and 3D** course views (3D needs a reasonably modern browser).
 - Set a **target pace** to draw a reference line on the pace chart.
 
+The athlete animates at the workout's real cadence — one stroke (or pole plant, or pedal turn) per recorded stroke, with splash and spray at each catch — and speeds up in step with the playback rate. The 3D chase camera widens its lens slightly as the boat runs faster.
+
+In 3D, the **Quality** selector picks low, medium, or high graphics. If the device can't hold a smooth frame rate, the renderer automatically lowers resolution first and effects second, so high quality is safe to try on any hardware. Replay animation honours the operating system's reduced-motion setting.
+
+Per-stroke data is used when Concept2 provides it. Workouts without stroke data fall back to split-based replay, so the course still plays back.
+
 ## Add coaching notes
 
 While paused at a moment in a replay, add a note ("rushing the slide here"). Notes pin to the timeline, so you — or anyone you share the replay with — can jump straight to them.

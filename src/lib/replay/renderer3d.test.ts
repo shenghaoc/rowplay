@@ -180,4 +180,85 @@ describe("CourseRenderer3D", () => {
       expect(() => r.destroy()).not.toThrow();
     });
   });
+
+  describe("medium quality (default tier: spray, buoys, wake, displacement)", () => {
+    it("renders sequential playing frames across a stroke catch, with ghost, then destroys", () => {
+      const host = makeHost();
+      const r = new CourseRenderer3D(host, "medium", "rower");
+      r.resize(800, 600);
+      // METERS_PER_CYCLE.rower = 11, so 0 → 6 → 12 crosses one catch
+      // boundary (spray spawn) while staying under the seek-suppression cap.
+      for (const d of [0, 6, 12]) {
+        const state = makeRenderState({
+          frame: { t: d, d, pace: 120, spm: 28, watts: 100, hr: 0, progress: d / 2000 },
+          distFrac: d / 2000,
+          ghost: { distFrac: d / 2200, pace: 118, spm: 24, label: "PB" },
+        });
+        expect(() => r.render(state, true)).not.toThrow();
+      }
+      expect(() => r.destroy()).not.toThrow();
+    });
+
+    it("renders each sport at medium without throwing", () => {
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        const host = makeHost();
+        const r = new CourseRenderer3D(host, "medium", sport);
+        r.resize(800, 600);
+        for (const d of [0, 6, 12]) {
+          expect(() =>
+            r.render(
+              makeRenderState({
+                frame: { t: d, d, pace: 120, spm: 28, watts: 100, hr: 0, progress: d / 2000 },
+              }),
+              true,
+            ),
+          ).not.toThrow();
+        }
+        r.destroy();
+      }
+    });
+  });
+
+  describe("adaptive degradation (PerfGovernor mapping)", () => {
+    it("steps the pixel ratio down to 1.5 then 1 under sustained slow frames", () => {
+      globalThis.window.devicePixelRatio = 2;
+      let t = 0;
+      const nowSpy = vi.spyOn(globalThis.performance, "now").mockImplementation(() => t);
+      try {
+        const host = makeHost();
+        const r = new CourseRenderer3D(host, "medium", "rower");
+        r.resize(800, 600);
+        const gl = (r as unknown as { renderer: { setPixelRatio: ReturnType<typeof vi.fn> } })
+          .renderer;
+        // Calibration sees healthy 60 Hz frames, then frames run at 40 ms —
+        // persistently over the calibrated budget — until the governor walks
+        // the ladder: level 1 caps dpr at 1.5, level 2 at 1.
+        let d = 0;
+        const frame = () => {
+          d += 1;
+          r.render(
+            makeRenderState({
+              frame: { t: d, d, pace: 120, spm: 28, watts: 100, hr: 0, progress: d / 2000 },
+            }),
+            true,
+          );
+        };
+        for (let i = 0; i < 32; i++) {
+          t += 16;
+          frame();
+        }
+        for (let i = 0; i < 600; i++) {
+          t += 40;
+          frame();
+        }
+        const ratios = gl.setPixelRatio.mock.calls.map((c: number[]) => c[0]);
+        expect(ratios).toContain(1.5);
+        expect(ratios[ratios.length - 1]).toBe(1);
+        r.destroy();
+      } finally {
+        nowSpy.mockRestore();
+        globalThis.window.devicePixelRatio = 1;
+      }
+    });
+  });
 });

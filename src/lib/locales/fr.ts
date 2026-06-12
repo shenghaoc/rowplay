@@ -338,6 +338,12 @@ Ouvrez n'importe quelle séance depuis le tableau de bord et appuyez sur **Relec
 - Basculez entre les vues du parcours en **2D et 3D** (la 3D demande un navigateur raisonnablement récent).
 - Définissez une **allure cible** pour tracer une ligne de référence sur le graphique d'allure.
 
+L'athlète s'anime à la cadence réelle de la séance — un coup d'aviron (ou une poussée de bâtons, ou un tour de pédale) par coup enregistré, avec des éclaboussures à chaque attaque — et accélère avec la vitesse de lecture. La caméra de poursuite 3D élargit légèrement son objectif quand le bateau va plus vite.
+
+En 3D, le sélecteur **Qualité** propose des graphismes bas, moyens ou élevés. Si l'appareil ne tient pas une cadence d'images fluide, le rendu réduit automatiquement d'abord la résolution puis les effets : la qualité élevée peut donc être essayée sans risque sur tout matériel. L'animation du replay respecte le réglage système de réduction des animations.
+
+Les données coup par coup sont utilisées quand Concept2 les fournit. Les séances sans données de coups basculent vers un replay basé sur les splits, donc le parcours reste lisible.
+
 ## Ajouter des notes de coach
 
 En pause à un instant de la relecture, ajoutez une note (« coulisse précipitée ici »). Les notes s'épinglent à la frise, si bien que vous — ou la personne à qui vous partagez la relecture — pouvez y sauter directement.
