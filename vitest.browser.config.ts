@@ -12,6 +12,7 @@ import { playwright } from "vite-plus/test/browser-playwright";
 export default defineConfig({
   plugins: [sveltekit()],
   test: {
+    name: "browser",
     include: ["src/**/*.browser.test.ts"],
     browser: {
       enabled: true,

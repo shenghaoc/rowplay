@@ -6,7 +6,7 @@
  * which use a mocked document.
  */
 import { describe, it, expect, afterEach } from "vite-plus/test";
-import { Theme, daisyThemeName } from "./theme.svelte";
+import { Theme } from "./theme.svelte";
 
 afterEach(() => {
   // Clean up any cookie set during the test
@@ -48,10 +48,5 @@ describe("Theme — browser DOM persistence", () => {
     expect(theme.value).toBe("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(document.cookie).toContain("theme=dark");
-  });
-
-  it("daisyThemeName maps correctly", () => {
-    expect(daisyThemeName("dark")).toBe("dark");
-    expect(daisyThemeName("light")).toBe("rowplay");
   });
 });

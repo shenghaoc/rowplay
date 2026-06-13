@@ -15,7 +15,7 @@ function renderButton(props: {
   ariaPressed?: boolean;
   onclick?: (e: MouseEvent) => void;
   label?: string;
-}) {
+}): void {
   container = document.createElement("div");
   document.body.appendChild(container);
 

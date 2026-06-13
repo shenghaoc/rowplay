@@ -331,9 +331,9 @@ Browser tests live alongside their source: `src/lib/theme.svelte.browser.test.ts
 default `pnpm test` gate (that stays fast and node-only); run them explicitly
 with `pnpm test:browser`.
 
-**Prerequisite:** Browser Mode needs Chromium installed via Playwright. If you
-already ran `pnpm test:e2e` (which installs WebKit), Chromium may be present;
-otherwise install it once:
+**Prerequisite:** Browser Mode needs Chromium installed via Playwright (E2E
+uses WebKit, not Chromium, so the E2E install does not cover it). Install once
+on a fresh checkout:
 
 ```bash
 pnpm exec playwright install --with-deps chromium
