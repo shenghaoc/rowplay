@@ -57,6 +57,8 @@ Follow-up to: `.kiro/specs/replay-animation-upgrade/` (PR #114)
   - Add `ultra` to replay quality persistence and controls
   - Use higher DPR, shadows, denser geometry, wake samples, buoys, and spray on
     WebGPU-capable devices
+  - Add richer sport-specific course surfaces: RowErg water lanes, SkiErg
+    groomed snow, and BikeErg velodrome/asphalt markings
   - Demote `ultra` to `high` on WebGL fallback
   - Increase the 3D replay stage height, including ghost replay layouts
   - Replace toy-like 3D marker bodies with segmented human-scale athletes and a

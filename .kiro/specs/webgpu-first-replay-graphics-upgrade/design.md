@@ -101,10 +101,13 @@ reduced motion is active.
 The upgrade extends the existing sport-aware renderer rather than creating
 separate renderers:
 
-- **RowErg**: richer water surface, lane texture, blade puddles, wake, and buoys.
-- **SkiErg**: snow-colored ground, pole plant accents, and plume-style spray.
-- **BikeErg**: velodrome/asphalt treatment, pedal-cycle body motion, speed lines,
-  and distance-scaled camera treatment.
+- **RowErg**: richer water surface, layered lane lines, buoy/distance markers,
+  blade puddles, wake, and buoys.
+- **SkiErg**: snow-colored ground, groomed course grooves, blue gate markers,
+  pole plant accents, and plume-style spray.
+- **BikeErg**: velodrome/asphalt treatment with red/white curbs, dashed lane
+  marks, speed bars, pedal-cycle body motion, and distance-scaled camera
+  treatment.
 
 ## Athlete realism pass
 

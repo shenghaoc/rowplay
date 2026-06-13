@@ -117,6 +117,11 @@ sport-specific kit so the scene reads as a coached erg replay rather than a toy
 marker. The 3D chase camera stays close enough for body posture to matter and
 widens its lens slightly as the boat runs faster.
 
+The 3D course surface is sport-specific too: RowErg shows layered water lanes
+with buoy and waterline detail, SkiErg shows groomed snow grooves and blue gate
+markers, and BikeErg shows an asphalt/velodrome-style track with curbs, dashed
+lane marks, and speed bars.
+
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics.
 Ultra is intended for WebGPU-capable devices and uses a larger stage, denser
 environment geometry, stronger shadows, and richer wake/spray detail. If the
