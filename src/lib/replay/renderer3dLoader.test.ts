@@ -89,13 +89,19 @@ describe("loadRenderer3D", () => {
 });
 
 describe("createRenderer3D", () => {
-  function makeCtor(ready: () => Promise<unknown> = () => Promise.resolve()): Renderer3DCtor {
+  function makeCtor(
+    ready: () => Promise<unknown> = () => Promise.resolve(),
+    instances: Array<{ destroy: ReturnType<typeof vi.fn> }> = [],
+  ): Renderer3DCtor {
     const readyImpl = ready;
     class FakeRenderer {
       ready = readyImpl;
       render = vi.fn();
       resize = vi.fn();
       destroy = vi.fn();
+      constructor() {
+        instances.push(this);
+      }
     }
     return FakeRenderer as unknown as Renderer3DCtor;
   }
@@ -114,15 +120,34 @@ describe("createRenderer3D", () => {
   });
 
   it("falls back to WebGL when WebGPU init fails", async () => {
+    const failedWebGpuInstances: Array<{ destroy: ReturnType<typeof vi.fn> }> = [];
     const result = await createRenderer3D(host, "ultra", "rower", {
       detectWebGPU: async () => true,
       detectWebGL: () => true,
-      loadWebGPU: async () => makeCtor(() => Promise.reject(new Error("device lost"))),
+      loadWebGPU: async () =>
+        makeCtor(() => Promise.reject(new Error("device lost")), failedWebGpuInstances),
       loadWebGL: async () => makeCtor(),
     });
 
     expect(result.backend).toBe("webgl");
     expect(result.quality).toBe("high");
+    expect(failedWebGpuInstances).toHaveLength(1);
+    expect(failedWebGpuInstances[0]?.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("destroys a failed WebGL renderer before rethrowing init errors", async () => {
+    const failedWebGlInstances: Array<{ destroy: ReturnType<typeof vi.fn> }> = [];
+    await expect(
+      createRenderer3D(host, "medium", "rower", {
+        detectWebGPU: async () => false,
+        detectWebGL: () => true,
+        loadWebGL: async () =>
+          makeCtor(() => Promise.reject(new Error("context lost")), failedWebGlInstances),
+      }),
+    ).rejects.toThrow("context lost");
+
+    expect(failedWebGlInstances).toHaveLength(1);
+    expect(failedWebGlInstances[0]?.destroy).toHaveBeenCalledTimes(1);
   });
 
   it("uses WebGL directly when WebGPU is unavailable", async () => {

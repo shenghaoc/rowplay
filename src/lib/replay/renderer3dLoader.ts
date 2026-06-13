@@ -81,6 +81,14 @@ function loadRenderer3DWebGPU(): Promise<Renderer3DCtor> {
   return cachedWebGPU;
 }
 
+function destroyFailedRenderer(renderer: CourseRenderer3D | null): void {
+  try {
+    renderer?.destroy();
+  } catch {
+    // A failed backend should not prevent fallback or mask the init failure.
+  }
+}
+
 export async function createRenderer3D(
   host: HTMLElement,
   quality: RenderQuality,
@@ -89,12 +97,14 @@ export async function createRenderer3D(
 ): Promise<Renderer3DResult> {
   const canWebGPU = await (deps.detectWebGPU ?? webgpuSupported)();
   if (canWebGPU) {
+    let renderer: CourseRenderer3D | null = null;
     try {
       const Ctor = await (deps.loadWebGPU ?? loadRenderer3DWebGPU)();
-      const renderer = new Ctor(host, quality, sport);
+      renderer = new Ctor(host, quality, sport);
       await renderer.ready?.();
       return { renderer, backend: "webgpu", quality };
     } catch {
+      destroyFailedRenderer(renderer);
       // WebGPU can be exposed but fail adapter/device init. WebGL remains the
       // mandatory replay fallback, so continue below without surfacing a toast.
     }
@@ -105,9 +115,15 @@ export async function createRenderer3D(
   }
   const webglQuality: RenderQuality = quality === "ultra" ? "high" : quality;
   const Ctor = await (deps.loadWebGL ?? loadRenderer3D)();
-  const renderer = new Ctor(host, webglQuality, sport);
-  await renderer.ready?.();
-  return { renderer, backend: "webgl", quality: webglQuality };
+  let renderer: CourseRenderer3D | null = null;
+  try {
+    renderer = new Ctor(host, webglQuality, sport);
+    await renderer.ready?.();
+    return { renderer, backend: "webgl", quality: webglQuality };
+  } catch (err) {
+    destroyFailedRenderer(renderer);
+    throw err;
+  }
 }
 
 /** Reset module cache (tests only). */
