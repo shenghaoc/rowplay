@@ -21,7 +21,7 @@
     "test:browser": "vp test run --config vitest.browser.config.ts --browser=chromium",
     "test:browser:watch": "vp test --config vitest.browser.config.ts --browser=chromium",
     "test:e2e": "playwright test",
-    "test:e2e:smoke": "playwright test tests/e2e/smoke.spec.ts --project webkit",
+    "test:e2e:smoke": "playwright test tests/e2e/smoke.spec.ts --project chromium",
     "test:e2e:reuse": "E2E_REUSE_SERVER=1 playwright test",
     "db:migrate:local": "wrangler d1 migrations apply rowplay --local",
     "db:migrate": "wrangler d1 migrations apply rowplay --remote",

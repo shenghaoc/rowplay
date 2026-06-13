@@ -84,8 +84,8 @@ All commands use **vp** (Vite+ CLI). `vp install` for clean CI installs.
 | Deploy             | `vp run deploy` (build + `wrangler deploy`)                        |
 | D1 migrate         | `vp run db:migrate` (remote) / `vp run db:migrate:local`           |
 | Locales            | `vp run validate:locales` (after adding i18n keys)                 |
-| E2E (full)         | `vp run test:e2e` (all specs, WebKit desktop + mobile)             |
-| E2E (smoke)        | `vp run test:e2e:smoke` (smoke.spec.ts, WebKit desktop only)       |
+| E2E (full)         | `vp run test:e2e` (all specs, Chromium desktop + mobile)           |
+| E2E (smoke)        | `vp run test:e2e:smoke` (smoke.spec.ts, Chromium desktop only)     |
 
 ## Architecture (short)
 
@@ -147,7 +147,7 @@ P1 (must fix before merge):
 - **Demo mode is the default** — no `.dev.vars` needed for dashboard/replay/e2e.
 - **Two local URLs**: `vp dev` → `http://localhost:5173` (fast UI);
   `vp run preview` → `http://127.0.0.1:8787` (Workers-faithful).
-- **E2E smoke** (PR gate): `vp run test:e2e:smoke`; first run needs `vpx playwright install --with-deps webkit`.
+- **E2E smoke** (PR gate): `vp run test:e2e:smoke`; first run needs `vpx playwright install --with-deps chromium`.
 - **E2E full** (all specs): `vp run test:e2e` — runs on `workflow_dispatch` and nightly in CI.
 - **Token auth / sync / KV / D1**: test on `vp run preview`, not `vite dev` alone.
 - **Hello-world**: `/dashboard` → `/replay/1001` → Play — canvas and gauges update.

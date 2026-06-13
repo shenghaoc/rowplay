@@ -51,9 +51,8 @@ jobs:
               - '.github/workflows/e2e.yml'
 
   e2e-smoke:
-    # PR smoke: smoke.spec.ts only on WebKit desktop. Runs when relevant paths
-    # change on a PR or push to main. Keeps the gate under ~2 min for the
-    # common case without dropping Workers-runtime fidelity.
+    # PR smoke: smoke.spec.ts only on Chromium desktop. Runs when relevant
+    # paths change on a PR or push to main.
     runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.run_e2e == 'true'
@@ -77,9 +76,9 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
-      - name: Install WebKit + system deps
-        run: vpx playwright install --with-deps webkit
-      - name: PR smoke (WebKit desktop)
+      - name: Install Chromium
+        run: vpx playwright install --with-deps chromium
+      - name: PR smoke (Chromium desktop)
         run: vp run test:e2e:smoke
         env:
           WRANGLER_SEND_METRICS: "false"
@@ -93,7 +92,7 @@ jobs:
           retention-days: 7
 
   e2e-full:
-    # Full suite: all specs on WebKit desktop + iPhone 14. Runs on manual
+    # Full suite: all specs on Chromium desktop + mobile. Runs on manual
     # dispatch or the nightly schedule. Not a PR merge gate — use for deep
     # verification before a release or after a large refactor.
     runs-on: ubuntu-latest
@@ -118,9 +117,9 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
-      - name: Install WebKit + system deps
-        run: vpx playwright install --with-deps webkit
-      - name: End-to-end (WebKit desktop + mobile)
+      - name: Install Chromium
+        run: vpx playwright install --with-deps chromium
+      - name: End-to-end (Chromium desktop + mobile)
         run: vp run test:e2e
         env:
           WRANGLER_SEND_METRICS: "false"

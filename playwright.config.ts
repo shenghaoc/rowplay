@@ -1,20 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * E2E smoke runs against the production build on the real Workers runtime via
+ * E2E runs against the production build on the real Workers runtime via
  * `wrangler dev`, never `vite dev`: SvelteKit's server endpoints only run under
- * the Workers runtime, and WebKit/bundling issues only surface after the adapter
- * build. Demo mode (no CONCEPT2_CLIENT_ID) serves deterministic mock data, so
- * no auth/secrets needed.
+ * the Workers runtime. Demo mode (no CONCEPT2_CLIENT_ID) serves deterministic
+ * mock data, so no auth/secrets needed.
  *
  * In CI the build is done by a separate job and the artifact is downloaded
  * before Playwright runs. Set E2E_SKIP_BUILD=1 to use a pre-built artifact so
  * the webServer only starts `wrangler dev` without rebuilding.
- *
- * WebKit on Linux needs system libraries — `pnpm exec playwright install
- * --with-deps webkit` on Debian/Ubuntu (CI). Other distros (e.g. RHEL) must install the
- * equivalent libs (libwoff1, libharfbuzz-icu0, libavif, libmanette, libhyphen,
- * libflite1, libjpeg-turbo) by hand before WebKit will launch.
  */
 const HOST = "127.0.0.1";
 const PORT = 8787; // wrangler dev's default port
@@ -33,13 +27,13 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: process.env.E2E_SKIP_BUILD === "1" ? "pnpm run preview:wrangler" : "pnpm run preview",
+    command: process.env.E2E_SKIP_BUILD === "1" ? "vp run preview:wrangler" : "vp run preview",
     url: BASE_URL,
     reuseExistingServer: process.env.E2E_REUSE_SERVER === "1",
     timeout: 180_000,
   },
   projects: [
-    { name: "webkit", use: { ...devices["Desktop Safari"] } },
-    { name: "webkit-mobile", use: { ...devices["iPhone 14"] } },
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "chromium-mobile", use: { ...devices["Pixel 7"] } },
   ],
 });

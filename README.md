@@ -304,8 +304,8 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 | `vp test`                   | Vitest unit tests (node environment)                              |
 | `vp run test:browser`       | Vitest Browser Mode — real-browser component/integration tests    |
 | `vp run test:browser:watch` | Vitest Browser Mode in watch mode (opens Chromium)                |
-| `vp run test:e2e`           | Playwright E2E — all specs, WebKit desktop + iPhone 14            |
-| `vp run test:e2e:smoke`     | Playwright PR smoke — `smoke.spec.ts` on WebKit desktop only      |
+| `vp run test:e2e`           | Playwright E2E — all specs, Chromium desktop + mobile             |
+| `vp run test:e2e:smoke`     | Playwright PR smoke — `smoke.spec.ts` on Chromium desktop only    |
 | `vp run validate:locales`   | Verify locale dictionary key parity across all languages          |
 | `vp run deploy`             | Build + `wrangler deploy`                                         |
 | `vp run db:migrate`         | Apply D1 migrations (remote)                                      |
@@ -315,11 +315,11 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 
 rowplay has three test layers — each serves a different purpose:
 
-| Command               | What runs                                | When to use                                       |
-| --------------------- | ---------------------------------------- | ------------------------------------------------- |
-| `vp test`             | Vitest unit tests (node env, ~95 files)  | CI gate; pure logic, helpers, server              |
-| `vp run test:browser` | Vitest Browser Mode (real Chromium)      | Component/DOM behaviour that needs a real browser |
-| `vp run test:e2e`     | Playwright E2E (full user flows, WebKit) | End-to-end: auth, sync, replay, share             |
+| Command               | What runs                                  | When to use                                       |
+| --------------------- | ------------------------------------------ | ------------------------------------------------- |
+| `vp test`             | Vitest unit tests (node env, ~95 files)    | CI gate; pure logic, helpers, server              |
+| `vp run test:browser` | Vitest Browser Mode (real Chromium)        | Component/DOM behaviour that needs a real browser |
+| `vp run test:e2e`     | Playwright E2E (full user flows, Chromium) | End-to-end: auth, sync, replay, share             |
 
 **Browser Mode** runs `*.browser.test.ts` files in a real Chromium browser via
 Vitest + Playwright. Use it for tests that exercise real DOM APIs, Svelte
@@ -331,9 +331,8 @@ Browser tests live alongside their source: `src/lib/theme.svelte.browser.test.ts
 default `vp test` gate (that stays fast and node-only); run them explicitly
 with `vp run test:browser`.
 
-**Prerequisite:** Browser Mode needs Chromium installed via Playwright (E2E
-uses WebKit, not Chromium, so the E2E install does not cover it). Install once
-on a fresh checkout:
+**Prerequisite:** Both Browser Mode and E2E use Chromium via Playwright.
+Install once on a fresh checkout:
 
 ```bash
 vpx playwright install --with-deps chromium
