@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from "vite-plus/test";
-import { loadRendererPref, saveRendererPref } from "./replayRenderer";
+import {
+  loadQualityPref,
+  loadRendererPref,
+  saveQualityPref,
+  saveRendererPref,
+} from "./replayRenderer";
 
 function stubLocalStorage() {
   const store = new Map<string, string>();
@@ -35,5 +40,13 @@ describe("replayRenderer preference", () => {
     expect(loadRendererPref()).toBe("3d");
     saveRendererPref("2d");
     expect(loadRendererPref()).toBe("2d");
+  });
+
+  it("round-trips ultra quality and ignores unknown values", () => {
+    store = stubLocalStorage();
+    saveQualityPref("ultra");
+    expect(loadQualityPref()).toBe("ultra");
+    store.set("replay_quality", "cinematic");
+    expect(loadQualityPref()).toBe("medium");
   });
 });

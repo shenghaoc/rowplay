@@ -335,7 +335,7 @@ Open any workout from the dashboard and press **Replay**.
 
 The athlete animates at the workout's real cadence — one stroke (or pole plant, or pedal turn) per recorded stroke, with splash and spray at each catch — and speeds up in step with the playback rate. The 3D chase camera widens its lens slightly as the boat runs faster.
 
-In 3D, the **Quality** selector picks low, medium, or high graphics. If the device can't hold a smooth frame rate, the renderer automatically lowers resolution first and effects second, so high quality is safe to try on any hardware. Replay animation honours the operating system's reduced-motion setting.
+In 3D, the **Quality** selector picks low, medium, high, or ultra graphics. WebGPU-capable devices try the richer Ultra path first; WebGL remains the fallback. If the device can't hold a smooth frame rate, the renderer automatically lowers resolution first and effects second. Replay animation honours the operating system's reduced-motion setting.
 
 Per-stroke data is used when Concept2 provides it. Workouts without stroke data fall back to split-based replay, so the course still plays back.
 
@@ -445,7 +445,7 @@ First confirm the workout reached your Concept2 logbook (it must upload from the
 
 ## Display issues
 
-- **3D replay will not start** — the browser needs WebGL; the 2D view always works.
+- **3D replay will not start** — the browser needs WebGPU or WebGL; the 2D view always works.
 - **Charts look cramped on a phone** — rotate to landscape for wider charts; panels reflow on small screens.
 - **Wrong theme or language** — both switches live in the header (behind the menu button on mobile) and are remembered per browser.
 
@@ -938,13 +938,16 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     viewToggle: "Course view",
     view2d: "2D",
     view3d: "3D",
-    view3dUnsupported: "3D view requires WebGL on this device",
+    view3dUnsupported: "3D view requires WebGPU or WebGL on this device",
     view3dLoading: "Loading 3D…",
     view3dError: "Could not load 3D view",
     quality: "Quality",
     qualityLow: "Low",
     qualityMedium: "Medium",
     qualityHigh: "High",
+    qualityUltra: "Ultra",
+    backendWebgpu: "WebGPU",
+    backendWebgl: "WebGL",
     gPace: "Pace",
     gRate: "Rate",
     gPower: "Power",

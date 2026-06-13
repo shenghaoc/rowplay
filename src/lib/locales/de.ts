@@ -449,7 +449,7 @@ Prüfe zuerst, ob das Workout dein Concept2-Logbuch erreicht hat (es muss vom Ge
 
 ## Darstellungsprobleme
 
-- **3D-Replay startet nicht** — der Browser braucht WebGL; die 2D-Ansicht funktioniert immer.
+- **3D-Replay startet nicht** — der Browser braucht WebGPU oder WebGL; die 2D-Ansicht funktioniert immer.
 - **Diagramme wirken auf dem Handy gequetscht** — drehe ins Querformat für breitere Diagramme; Panels ordnen sich auf kleinen Bildschirmen neu an.
 - **Falsches Theme oder falsche Sprache** — beide Schalter sitzen in der Kopfzeile (auf dem Handy hinter dem Menü-Knopf) und werden pro Browser gemerkt.
 
@@ -939,13 +939,16 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     viewToggle: "Kursansicht",
     view2d: "2D",
     view3d: "3D",
-    view3dUnsupported: "3D-Ansicht benötigt WebGL auf diesem Gerät",
+    view3dUnsupported: "3D-Ansicht benötigt WebGPU oder WebGL auf diesem Gerät",
     view3dLoading: "3D wird geladen…",
     view3dError: "3D-Ansicht konnte nicht geladen werden",
     quality: "Qualität",
     qualityLow: "Niedrig",
     qualityMedium: "Mittel",
     qualityHigh: "Hoch",
+    qualityUltra: "Ultra",
+    backendWebgpu: "WebGPU",
+    backendWebgl: "WebGL",
     gPace: "Pace",
     gRate: "Rate",
     gPower: "Power",
