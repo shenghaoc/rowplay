@@ -37,8 +37,6 @@
 	async function executeDelete() {
 		if (deleteId == null) return;
 		const id = deleteId;
-		deleteId = null;
-		deleteDialog?.close();
 		saving = true;
 		saveError = '';
 		try {
@@ -46,7 +44,9 @@
 		} catch {
 			saveError = t('annotations.deleteError');
 		} finally {
+			deleteId = null;
 			saving = false;
+			deleteDialog?.close();
 		}
 	}
 	function startAdd() {
@@ -133,14 +133,17 @@
 				class="textarea textarea-bordered anno-input"
 			></textarea>
 			<div class="anno-actions">
-				<button class="btn save-btn" onclick={save} disabled={!draftText.trim()}>{t('annotations.saveNote')}</button>
-				<button class="btn cancel-btn" onclick={cancel}>{t('annotations.cancelNote')}</button>
+				<button class="btn save-btn" onclick={save} disabled={saving || !draftText.trim()} aria-busy={saving}>
+					{#if saving}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
+					{t('annotations.saveNote')}
+				</button>
+				<button class="btn cancel-btn" onclick={cancel} disabled={saving}>{t('annotations.cancelNote')}</button>
 			</div>
 		</div>
 	{/if}
 
 	{#if saveError}
-		<p class="anno-error">{saveError}</p>
+		<p class="anno-error" role="alert">{saveError}</p>
 	{/if}
 	{#if annotations.length === 0 && !adding}
 		<p class="anno-empty muted">{t('annotations.noNotes')}</p>
@@ -159,8 +162,11 @@
 								class="textarea textarea-bordered anno-input"
 							></textarea>
 							<div class="anno-actions">
-								<button class="btn save-btn" onclick={save} disabled={!draftText.trim()}>{t('annotations.saveNote')}</button>
-								<button class="btn cancel-btn" onclick={cancel}>{t('annotations.cancelNote')}</button>
+								<button class="btn save-btn" onclick={save} disabled={saving || !draftText.trim()} aria-busy={saving}>
+									{#if saving}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
+									{t('annotations.saveNote')}
+								</button>
+								<button class="btn cancel-btn" onclick={cancel} disabled={saving}>{t('annotations.cancelNote')}</button>
 							</div>
 						</div>
 					{:else}
@@ -189,10 +195,11 @@
 <dialog class="anno-delete-dialog" bind:this={deleteDialog} closedby="any" aria-label={t('annotations.confirmDelete')}>
 	<p>{t('annotations.confirmDelete')}</p>
 	<div class="anno-delete-actions">
-		<button type="button" class="btn btn-ghost btn-sm" onclick={() => deleteDialog?.close()}>
+		<button type="button" class="btn btn-ghost btn-sm" onclick={() => deleteDialog?.close()} disabled={saving}>
 			{t('annotations.cancelNote')}
 		</button>
-		<button type="button" class="btn btn-error btn-sm" onclick={executeDelete}>
+		<button type="button" class="btn btn-error btn-sm" onclick={executeDelete} disabled={saving} aria-busy={saving}>
+			{#if saving}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 			{t('annotations.deleteNote')}
 		</button>
 	</div>
