@@ -59,5 +59,3 @@ jobs:
         run: vpx playwright install --with-deps chromium
       - name: Run browser tests
         run: vp run test:browser
-        env:
-          VITEST_BROWSER: "1"
