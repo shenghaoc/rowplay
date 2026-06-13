@@ -102,11 +102,33 @@ function makeRenderState(overrides: Partial<Parameters<CourseRenderer3D["render"
   } as Parameters<CourseRenderer3D["render"]>[0];
 }
 
+function getScene(renderer: CourseRenderer3D) {
+  return (renderer as unknown as { scene: { getObjectByName(name: string): unknown } }).scene;
+}
+
 describe("CourseRenderer3D", () => {
   it("constructs without throwing for each sport", () => {
     for (const sport of ["rower", "skierg", "bike"] as const) {
       const host = makeHost();
       expect(() => new CourseRenderer3D(host, "low", sport)).not.toThrow();
+    }
+  });
+
+  it("builds sport-specific course groups and track details", () => {
+    const detailName = {
+      rower: "course:rower:water-streak",
+      skierg: "course:skierg:groomed-groove",
+      bike: "course:bike:curb",
+    } as const;
+
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const host = makeHost();
+      const renderer = new CourseRenderer3D(host, "low", sport);
+      const scene = getScene(renderer);
+      expect(scene.getObjectByName(`course:${sport}`)).toBeDefined();
+      expect(scene.getObjectByName("course:edge-inner")).toBeDefined();
+      expect(scene.getObjectByName(detailName[sport])).toBeDefined();
+      renderer.destroy();
     }
   });
 
@@ -166,6 +188,18 @@ describe("CourseRenderer3D", () => {
       const r = new CourseRenderer3D(host, "low", "rower");
       r.resize(800, 600);
       expect(() => r.render(makeRenderState(), false, "dark")).not.toThrow();
+    });
+
+    it("recolors the sport-specific course surface on dark theme", () => {
+      const host = makeHost();
+      const r = new CourseRenderer3D(host, "low", "bike");
+      r.resize(800, 600);
+      r.render(makeRenderState({ sport: "bike" }), false, "dark");
+      const lane = getScene(r).getObjectByName("lane") as {
+        material: { color: { getHex(): number } };
+      };
+      expect(lane.material.color.getHex()).toBe(0x262c32);
+      r.destroy();
     });
 
     it("handles playing=true (animation phase advances)", () => {
