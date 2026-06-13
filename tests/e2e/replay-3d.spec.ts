@@ -33,7 +33,7 @@ test.describe("replay 3D view toggle", () => {
 
     if (await supports3d(btn3d)) {
       await btn3d.click();
-      // Lazy Three.js chunk can take several seconds on CI WebKit.
+      // Lazy Three.js chunk can take several seconds on CI.
       await expect(btn3d).toHaveAttribute("aria-pressed", "true", { timeout: 30_000 });
       // 3D renders into its own canvas inside the host; the 2D canvas is hidden.
       await expect(page.locator(".canvas3d-host canvas")).toBeVisible();

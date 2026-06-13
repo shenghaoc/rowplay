@@ -6,7 +6,7 @@ const fixture = path.join(path.dirname(fileURLToPath(import.meta.url)), "../fixt
 
 test.describe("heart-rate import", () => {
   // Applies HR then mounts several uPlot charts at once — keep off the parallel
-  // worker grid so WebKit + wrangler are not fighting other specs for chunks.
+  // worker grid so wrangler is not fighting other specs for chunks.
   test.describe.configure({ mode: "serial" });
 
   test("demo workout without logbook HR can import watch file", async ({ page }) => {
@@ -18,7 +18,7 @@ test.describe("heart-rate import", () => {
 
     await page.goto("/replay/1002");
     await page.evaluate(() => localStorage.removeItem("rowplay:hr-import:1002"));
-    // Navigate fresh instead of reload() — WebKit module-import flake on reload.
+    // Navigate fresh instead of reload() to avoid module-import flake on reload.
     await page.goto("/replay/1002");
     await expect(page.getByText(/Import heart rate|导入心率/)).toBeVisible();
 
