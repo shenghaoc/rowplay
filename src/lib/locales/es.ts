@@ -337,9 +337,9 @@ Abre cualquier entrenamiento desde el panel y pulsa **Reproducir**.
 - Cambia entre vistas del recorrido en **2D y 3D** (la 3D necesita un navegador razonablemente moderno).
 - Define un **ritmo objetivo** para dibujar una línea de referencia en el gráfico de ritmo.
 
-El atleta se anima a la cadencia real del entrenamiento — una palada (o impulso de bastones, o pedalada) por cada palada registrada, con salpicaduras en cada ataque — y se acelera junto con la velocidad de reproducción. La cámara 3D de seguimiento abre ligeramente el objetivo cuando el bote va más rápido.
+El atleta se anima a la cadencia real del entrenamiento — una palada (o impulso de bastones, o pedalada) por cada palada registrada, con salpicaduras en cada ataque — y se acelera junto con la velocidad de reproducción. En 3D, el atleta usa un cuerpo segmentado a escala humana con equipación específica del deporte, de modo que la postura se lee como la de un deportista en un ergómetro y no como un marcador de juguete. La cámara de seguimiento se mantiene lo bastante cerca para que la posición del cuerpo importe y abre ligeramente el objetivo cuando el bote va más rápido.
 
-En 3D, el selector de **Calidad** elige gráficos bajos, medios o altos. Si el dispositivo no mantiene una tasa de cuadros fluida, el renderizador baja automáticamente primero la resolución y después los efectos, así que probar la calidad alta es seguro en cualquier hardware. La animación del replay respeta el ajuste de movimiento reducido del sistema operativo.
+En 3D, el selector de **Calidad** elige gráficos bajos, medios, altos o ultra. Los dispositivos con WebGPU intentan primero la ruta Ultra más rica; WebGL sigue siendo la alternativa. Si el dispositivo no mantiene una tasa de cuadros fluida, el renderizador baja automáticamente primero la resolución y después los efectos. La animación del replay respeta el ajuste de movimiento reducido del sistema operativo.
 
 Se usan datos por palada cuando Concept2 los proporciona. Los entrenamientos sin paladas vuelven a un replay basado en splits, así que el recorrido se sigue reproduciendo.
 

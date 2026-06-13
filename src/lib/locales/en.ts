@@ -333,7 +333,7 @@ Open any workout from the dashboard and press **Replay**.
 - Switch between **2D and 3D** course views (3D needs a reasonably modern browser).
 - Set a **target pace** to draw a reference line on the pace chart.
 
-The athlete animates at the workout's real cadence — one stroke (or pole plant, or pedal turn) per recorded stroke, with splash and spray at each catch — and speeds up in step with the playback rate. The 3D chase camera widens its lens slightly as the boat runs faster.
+The athlete animates at the workout's real cadence — one stroke (or pole plant, or pedal turn) per recorded stroke, with splash and spray at each catch — and speeds up in step with the playback rate. In 3D, the athlete uses a segmented human-scale body with sport-specific kit, so posture reads like an erg athlete rather than a toy marker. The chase camera stays close enough for body position to matter and widens its lens slightly as the boat runs faster.
 
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics. WebGPU-capable devices try the richer Ultra path first; WebGL remains the fallback. If the device can't hold a smooth frame rate, the renderer automatically lowers resolution first and effects second. Replay animation honours the operating system's reduced-motion setting.
 

@@ -70,10 +70,10 @@ all controls work in demo mode with zero configuration.
 
 ### Replay
 
-- **Real-time race replay** — an avatar races a virtual course with synchronized pace, stroke-rate, power, and heart-rate gauges.
+- **Real-time race replay** — a sport-specific athlete races a virtual course with synchronized pace, stroke-rate, power, and heart-rate gauges.
 - **Per-stroke resolution** — when Concept2 per-stroke data is available the replay maps one visible cycle to one stroke row; workouts without it fall back to a lower-resolution replay synthesized from splits.
 - **Play / pause / scrub / speed** — drag the timeline, jump to any point, adjust speed from 0.5× to 8×.
-- **2D & 3D views** — Canvas-based 2D course and an optional Three.js 3D renderer that tries WebGPU first and falls back to WebGL.
+- **2D & 3D views** — Canvas-based 2D course and an optional Three.js 3D renderer with more realistic segmented athletes; it tries WebGPU first and falls back to WebGL.
 - **Telemetry charts** — uPlot charts for pace, stroke rate, power, and heart rate synchronized to the replay clock.
 - **Ghost racing** — race a past session as a ghost alongside the current replay for side-by-side comparison.
 

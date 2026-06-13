@@ -111,8 +111,11 @@ The athlete animates from Concept2 stroke rows: the figure takes one stroke
 on each catch, and speeds up in step with the playback rate. The public
 Concept2 stroke payload does not include force curves or handle position, so
 the replay infers only timing, amplitude, and intensity from time, distance,
-pace, rate, heart rate, and watts. The 3D chase camera widens its lens slightly
-as the boat runs faster.
+pace, rate, heart rate, and watts. In 3D, athletes use segmented human-scale
+models with separate torso, head, shoulders, arms, legs, hands, feet, and
+sport-specific kit so the scene reads as a coached erg replay rather than a toy
+marker. The 3D chase camera stays close enough for body posture to matter and
+widens its lens slightly as the boat runs faster.
 
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics.
 Ultra is intended for WebGPU-capable devices and uses a larger stage, denser
