@@ -319,6 +319,31 @@ function limbSegment(
   return mesh;
 }
 
+type Point3 = readonly [number, number, number];
+
+const SEGMENT_FORWARD = new THREE.Vector3(0, 0, 1);
+const SEGMENT_DIR = new THREE.Vector3();
+
+function dynamicLimbSegment(radius: number, material: THREE.Material): THREE.Mesh {
+  return capsulePart(radius, 1, material, "z");
+}
+
+function placeSegmentBetween(segment: THREE.Mesh, start: Point3, end: Point3): void {
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  const dz = end[2] - start[2];
+  const length = Math.hypot(dx, dy, dz);
+  if (length < 0.001) {
+    segment.visible = false;
+    return;
+  }
+  segment.visible = true;
+  segment.position.set((start[0] + end[0]) / 2, (start[1] + end[1]) / 2, (start[2] + end[2]) / 2);
+  segment.scale.set(1, 1, length);
+  SEGMENT_DIR.set(dx / length, dy / length, dz / length);
+  segment.quaternion.setFromUnitVectors(SEGMENT_FORWARD, SEGMENT_DIR);
+}
+
 /**
  * Low-poly single scull: long thin hull (capsule), a seated rower, and two oars
  * with blades. The hull, deck and oar blades carry `userData.accent`; the rower
@@ -367,7 +392,16 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   hair.position.set(0, 1.16, 0.025);
   rower.add(hips, torso, bib, shoulderLine, neck, head, hair);
 
-  const arms: Array<{ root: THREE.Group; forearm: THREE.Group }> = [];
+  const handle = capsulePart(0.026, 0.44, humanMat(0x262c31), "x");
+  handle.position.set(0, 0.72, 0.58);
+  rower.add(handle);
+
+  const arms: Array<{
+    side: number;
+    upper: THREE.Mesh;
+    forearm: THREE.Mesh;
+    hand: THREE.Mesh;
+  }> = [];
   const legs: Array<{ thigh: THREE.Group; shin: THREE.Group; foot: THREE.Group }> = [];
   for (const side of [-1, 1]) {
     const thigh = new THREE.Group();
@@ -387,18 +421,11 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     rower.add(thigh, shin, foot);
     legs.push({ thigh, shin, foot });
 
-    const upperArm = new THREE.Group();
-    upperArm.position.set(side * 0.24, 0.78, 0.03);
-    upperArm.add(limbSegment(0.28, 0.04, humanMat(HUMAN_SKIN), "z"));
-    const forearm = new THREE.Group();
-    forearm.position.set(0, -0.02, 0.26);
-    forearm.add(limbSegment(0.3, 0.035, humanMat(HUMAN_SKIN), "z"));
+    const upperArm = dynamicLimbSegment(0.04, humanMat(HUMAN_SKIN));
+    const forearm = dynamicLimbSegment(0.035, humanMat(HUMAN_SKIN));
     const hand = ellipsoid([0.045, 0.04, 0.045], humanMat(HUMAN_SKIN), 10);
-    hand.position.z = 0.31;
-    forearm.add(hand);
-    upperArm.add(forearm);
-    rower.add(upperArm);
-    arms.push({ root: upperArm, forearm });
+    rower.add(upperArm, forearm, hand);
+    arms.push({ side, upper: upperArm, forearm, hand });
   }
   rower.position.z = -0.1;
   group.add(rower);
@@ -425,14 +452,28 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     oars.push(oar);
   }
 
+  const placeArms = (handleY: number, handleZ: number, amp: number): void => {
+    handle.position.set(0, handleY, handleZ);
+    for (const arm of arms) {
+      const shoulder: Point3 = [arm.side * 0.26, 0.8, 0.02];
+      const handTarget: Point3 = [arm.side * 0.18, handleY, handleZ];
+      const elbow: Point3 = [
+        arm.side * 0.24,
+        (shoulder[1] + handTarget[1]) / 2 - 0.08 * amp,
+        (shoulder[2] + handTarget[2]) / 2 - 0.04,
+      ];
+      placeSegmentBetween(arm.upper, shoulder, elbow);
+      placeSegmentBetween(arm.forearm, elbow, handTarget);
+      arm.hand.position.set(handTarget[0], handTarget[1], handTarget[2]);
+    }
+  };
+
   const animate = (phase: number, reduce: boolean, pose?: StrokePose): void => {
     if (reduce) {
       rower.position.z = -0.1;
       rower.rotation.x = -0.1;
-      for (const arm of arms) {
-        arm.root.rotation.x = -0.45;
-        arm.forearm.rotation.x = 0.1;
-      }
+      handle.rotation.x = 0;
+      placeArms(0.72, 0.58, 1);
       for (const leg of legs) {
         leg.thigh.rotation.x = 0.25;
         leg.shin.rotation.x = -0.12;
@@ -453,10 +494,10 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     // Arms and legs now articulate separately: compact at catch, extended with
     // drawn hands at the finish. This keeps the motion athletic rather than
     // puppet-like even though the model stays lightweight.
-    for (const arm of arms) {
-      arm.root.rotation.x = -0.55 + (1 - drive) * 0.22 * amp;
-      arm.forearm.rotation.x = 0.08 + (1 - drive) * 0.16 * amp;
-    }
+    const handleY = 0.7 + recovery * 0.04;
+    const handleZ = 0.58 - drive * 0.08 * amp;
+    handle.rotation.x = recovery * 0.16;
+    placeArms(handleY, handleZ, amp);
     for (const leg of legs) {
       leg.thigh.rotation.x = 0.52 + drive * 0.28 * amp;
       leg.shin.rotation.x = -0.42 - drive * 0.26 * amp;
@@ -527,21 +568,20 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const hair = ellipsoid([0.115, 0.055, 0.105], neutralMat(HUMAN_HAIR), 12);
   hair.position.set(0, 0.9, 0.02);
   upper.add(hips, torso, vest, shoulderLine, neck, head, hair);
-  // Arms pivot at the shoulders and swing with the poles.
-  const arms: Array<{ root: THREE.Group; forearm: THREE.Group }> = [];
+  // Arms are placed from shoulders to pole grips, so the hands stay on the
+  // handles while the pole groups pivot from the same point.
+  const arms: Array<{
+    side: number;
+    upper: THREE.Mesh;
+    forearm: THREE.Mesh;
+    hand: THREE.Mesh;
+  }> = [];
   for (const side of [-1, 1]) {
-    const arm = new THREE.Group();
-    arm.position.set(side * 0.28, 0.52, 0.05);
-    arm.add(limbSegment(0.27, 0.04, neutralMat(HUMAN_SKIN), "z"));
-    const forearm = new THREE.Group();
-    forearm.position.z = 0.25;
-    forearm.add(limbSegment(0.3, 0.035, neutralMat(HUMAN_SKIN), "z"));
+    const upperArm = dynamicLimbSegment(0.04, neutralMat(HUMAN_SKIN));
+    const forearm = dynamicLimbSegment(0.035, neutralMat(HUMAN_SKIN));
     const hand = ellipsoid([0.045, 0.04, 0.045], neutralMat(HUMAN_SKIN), 10);
-    hand.position.z = 0.31;
-    forearm.add(hand);
-    arm.add(forearm);
-    upper.add(arm);
-    arms.push({ root: arm, forearm });
+    upper.add(upperArm, forearm, hand);
+    arms.push({ side, upper: upperArm, forearm, hand });
   }
   group.add(upper);
 
@@ -559,18 +599,33 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     basket.position.y = -1.15;
     basket.userData.accent = true;
     pole.add(basket);
-    pole.position.set(side * 0.3, 1.1, 0.1);
-    group.add(pole);
+    pole.position.set(side * 0.3, 0.4, 0.1);
+    upper.add(pole);
     poles.push(pole);
   }
+
+  const placePoleArms = (handY: number, handZ: number, amp: number): void => {
+    for (let i = 0; i < arms.length; i++) {
+      const arm = arms[i];
+      const shoulder: Point3 = [arm.side * 0.28, 0.53, 0.05];
+      const handTarget: Point3 = [arm.side * 0.3, handY, handZ];
+      const elbow: Point3 = [
+        arm.side * 0.32,
+        (shoulder[1] + handTarget[1]) / 2 - 0.06 * amp,
+        (shoulder[2] + handTarget[2]) / 2 + 0.03,
+      ];
+      placeSegmentBetween(arm.upper, shoulder, elbow);
+      placeSegmentBetween(arm.forearm, elbow, handTarget);
+      arm.hand.position.set(handTarget[0], handTarget[1], handTarget[2]);
+      const pole = poles[i];
+      if (pole) pole.position.set(handTarget[0], handTarget[1], handTarget[2]);
+    }
+  };
 
   const animate = (phase: number, reduce: boolean, pose?: StrokePose): void => {
     if (reduce) {
       upper.rotation.x = 0.25;
-      for (const arm of arms) {
-        arm.root.rotation.x = -0.4;
-        arm.forearm.rotation.x = -0.05;
-      }
+      placePoleArms(0.42, 0.16, 1);
       for (const leg of legParts) {
         leg.thigh.rotation.x = 0.08;
         leg.shin.rotation.x = -0.05;
@@ -591,10 +646,9 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     // Hands reach high and forward at the plant, then press down and back
     // through the pull; pole tips plant ahead of the feet and sweep behind
     // (negative rotation.x moves the below-hand basket toward +Z/forward).
-    for (const arm of arms) {
-      arm.root.rotation.x = -0.25 - swing * 0.34 * amp;
-      arm.forearm.rotation.x = -0.05 - swing * 0.18 * amp;
-    }
+    const handY = 0.42 + swing * 0.16 * amp - crunch * 0.16 * amp;
+    const handZ = 0.16 + swing * 0.25 * amp;
+    placePoleArms(handY, handZ, amp);
     for (const p of poles) p.rotation.x = -swing * 0.9 * amp - 0.1;
   };
 
@@ -647,10 +701,13 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   // Cranks: spin about the bottom bracket (X axis) with two pedals.
   const cranks = new THREE.Group();
   cranks.position.set(0, wheelR, -0.05);
-  for (const dir of [1, -1]) {
+  const pedals: Array<{ side: number; crankY: number }> = [];
+  for (const side of [-1, 1]) {
     const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), neutralMat(0x20242a));
-    pedal.position.set(0, dir * 0.18, 0);
+    const crankY = side * 0.18;
+    pedal.position.set(side * 0.1, crankY, 0);
     cranks.add(pedal);
+    pedals.push({ side, crankY });
   }
   group.add(cranks);
 
@@ -673,19 +730,26 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   head.position.set(0, 0.66, 0.33);
   const helmet = accentPart(ellipsoid([0.108, 0.055, 0.1], accentMat(), 12));
   helmet.position.set(0, 0.74, 0.31);
-  const thighs: Array<{ thigh: THREE.Group; shin: THREE.Group; shoe: THREE.Group }> = [];
+  const legs: Array<{
+    side: number;
+    crankY: number;
+    thigh: THREE.Mesh;
+    shin: THREE.Mesh;
+    shoe: THREE.Group;
+  }> = [];
   for (const side of [-1, 1]) {
-    const thigh = new THREE.Group();
-    thigh.position.set(side * 0.1, -0.04, 0.08);
-    thigh.add(limbSegment(0.36, 0.052, neutralMat(HUMAN_KIT_DARK), "y"));
-    const shin = new THREE.Group();
-    shin.position.set(side * 0.1, -0.26, 0.05);
-    shin.add(limbSegment(0.34, 0.042, neutralMat(HUMAN_SKIN), "y"));
+    const thigh = dynamicLimbSegment(0.052, neutralMat(HUMAN_KIT_DARK));
+    const shin = dynamicLimbSegment(0.042, neutralMat(HUMAN_SKIN));
     const shoe = new THREE.Group();
-    shoe.position.set(side * 0.1, -0.47, 0.03);
     shoe.add(limbSegment(0.18, 0.035, neutralMat(HUMAN_SHOE), "z"));
     rider.add(thigh, shin, shoe);
-    thighs.push({ thigh, shin, shoe });
+    legs.push({
+      side,
+      crankY: pedals.find((p) => p.side === side)?.crankY ?? side * 0.18,
+      thigh,
+      shin,
+      shoe,
+    });
   }
   // Arms from the shoulders down to the bars, fixed in the tuck.
   for (const side of [-1, 1]) {
@@ -706,29 +770,41 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   rider.add(torso, jerseyPanel, shoulderLine, neck, head, helmet);
   group.add(rider);
 
+  const placePedalLegs = (phase: number): void => {
+    for (const leg of legs) {
+      const pedalY = leg.crankY * Math.cos(phase);
+      const pedalZ = leg.crankY * Math.sin(phase);
+      const foot: Point3 = [
+        leg.side * 0.1,
+        cranks.position.y + pedalY - rider.position.y,
+        cranks.position.z + pedalZ - rider.position.z,
+      ];
+      const hip: Point3 = [leg.side * 0.1, -0.02, 0.08];
+      const extension = Math.sin(phase) * leg.side;
+      const knee: Point3 = [
+        leg.side * 0.12,
+        (hip[1] + foot[1]) / 2 + 0.15,
+        (hip[2] + foot[2]) / 2 - 0.08 * extension,
+      ];
+      placeSegmentBetween(leg.thigh, hip, knee);
+      placeSegmentBetween(leg.shin, knee, foot);
+      leg.shoe.position.set(foot[0], foot[1], foot[2]);
+      leg.shoe.rotation.x = phase;
+    }
+  };
+
   const animate = (phase: number, reduce: boolean): void => {
     if (reduce) {
       for (const w of wheels) w.rotation.x = 0;
       cranks.rotation.x = 0;
-      for (const leg of thighs) {
-        leg.thigh.rotation.x = 0;
-        leg.shin.rotation.x = -0.35;
-        leg.shoe.rotation.x = 0;
-      }
+      placePedalLegs(0);
       rider.rotation.z = 0;
       return;
     }
     // Positive rotation about +X rolls the top of the wheel toward +Z (forward).
     for (const w of wheels) w.rotation.x = phase * 2.4; // wheels roll fast
     cranks.rotation.x = phase; // pedals turn
-    const p0 = Math.sin(phase);
-    const p1 = Math.sin(phase + Math.PI);
-    thighs[0].thigh.rotation.x = p0 * 0.45;
-    thighs[0].shin.rotation.x = -0.35 - p0 * 0.25;
-    thighs[0].shoe.rotation.x = p0 * 0.2;
-    thighs[1].thigh.rotation.x = p1 * 0.45;
-    thighs[1].shin.rotation.x = -0.35 - p1 * 0.25;
-    thighs[1].shoe.rotation.x = p1 * 0.2;
+    placePedalLegs(phase);
     // Subtle alternating upper-body sway with the pedal stroke.
     rider.rotation.z = Math.sin(phase) * 0.05;
   };

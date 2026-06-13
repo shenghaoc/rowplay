@@ -22,6 +22,7 @@ describe("toRivalGhostTrace", () => {
     expect(trace.strokes.length).toBeGreaterThan(0);
     expect(trace.sport).toBe("rower");
     expect(trace.distance).toBe(2000);
+    expect(trace.hasStrokeData).toBe(true);
     expect(trace).not.toHaveProperty("id");
     expect(trace).not.toHaveProperty("comments");
   });
