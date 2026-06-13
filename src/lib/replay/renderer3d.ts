@@ -1133,6 +1133,12 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.canvas = document.createElement("canvas");
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
+    // NOTE: If the constructor throws after this point, the caller's
+    // destroyFailedRenderer() cannot clean up this canvas because the renderer
+    // instance will not yet have been assigned.  In the current code paths
+    // (CourseRenderer3DWebGPU always supplies WebGPURenderer) this cannot
+    // happen, but subclasses that add early-throw guards should remove the
+    // canvas themselves before re-throwing.
     host.appendChild(this.canvas);
     if (this.backend === "webgpu") {
       if (!options.WebGPURenderer) throw new Error("WebGPU renderer unavailable");

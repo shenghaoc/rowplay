@@ -99,6 +99,8 @@ function normalizeEntry(
   if (!(endT > startT)) endT = startT + secondsFromRate(stroke.spm, sport);
   let endD = finite(stroke.d, startD);
   if (!(endD >= startD)) endD = startD + metersFromPace(endT - startT, stroke.pace, sport);
+  // Second pass: zero-distance real rows (e.g. rest strokes with d unchanged).
+  // pace is re-checked because it may be valid even when d has not advanced.
   if (endD === startD) endD += metersFromPace(endT - startT, stroke.pace, sport);
   return {
     index,

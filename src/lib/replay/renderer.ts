@@ -500,8 +500,7 @@ export class CourseRenderer implements ReplayRenderer {
   /** Decorative water phase (ripples, wake undulation) — wall-clock driven. */
   private wavePhase = 0;
   private ghostWavePhase = 0;
-  /** Stroke phase — distance driven, so figures row at the true cadence. */
-  private strokePhase = 0;
+  /** Ghost stroke phase — only needed when ghostStrokePose is absent (ghost without stroke data). */
   private ghostStrokePhase = 0;
   private lastLivePose: StrokePose | null = null;
   private lastGhostPose: StrokePose | null = null;
@@ -550,16 +549,12 @@ export class CourseRenderer implements ReplayRenderer {
       if (state.ghost) this.ghostWavePhase += (9 + state.ghost.spm / 10) * dt;
     }
 
-    // Fallback phases only advance when the page has not supplied stroke poses.
-    // Real Concept2 strokes arrive as RenderState.strokePose and drive catch
-    // effects by row-index transitions below.
-    if (!state.strokePose && animate && state.frame.spm > 0)
-      this.strokePhase += (state.frame.spm / 60) * dt * Math.PI * 2;
+    // Fallback phase only advances when the page has not supplied ghost stroke
+    // poses.  (Live strokePose is always present — it is a required RenderState
+    // field — so no fallback is needed for the live avatar.)
     if (!state.ghostStrokePose && animate && state.ghost && state.ghost.spm > 0)
       this.ghostStrokePhase += (state.ghost.spm / 60) * dt * Math.PI * 2;
-    const livePose =
-      state.strokePose ??
-      fallbackStrokePose(state.sport ?? "rower", this.strokePhase, state.frame.spm);
+    const livePose = state.strokePose;
     const ghostPose =
       state.ghost &&
       (state.ghostStrokePose ??
