@@ -322,6 +322,7 @@
 						type="button"
 						disabled={syncing || deleting || !!data.sync?.inProgress}
 						onclick={() => runSync(false)}
+						aria-busy={syncing}
 					>
 						{#if syncMode === 'incremental'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 						{syncMode === 'incremental' ? t('sync.loading') : t('settings.syncIncremental')}
@@ -331,6 +332,7 @@
 						type="button"
 						disabled={syncing || deleting || !!data.sync?.inProgress}
 						onclick={() => runSync(true)}
+						aria-busy={syncing}
 					>
 						{#if syncMode === 'full'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 						{syncMode === 'full' ? t('sync.loading') : t('settings.syncFull')}
@@ -341,6 +343,7 @@
 							type="button"
 							disabled={syncing || deleting}
 							onclick={() => runSync(false)}
+							aria-busy={syncing}
 						>
 							{#if syncMode === 'incremental'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 							{syncMode === 'incremental' ? t('sync.loading') : t('sync.retry')}
@@ -352,6 +355,7 @@
 							type="button"
 							disabled={syncing || deleting}
 							onclick={loadFullHistory}
+							aria-busy={syncing}
 						>
 							{#if syncMode === 'history'}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 							{syncMode === 'history' ? t('sync.loading') : t('settings.loadFullHistory')}
@@ -375,6 +379,7 @@
 					type="button"
 					disabled={deleting || syncing}
 					onclick={deleteData}
+					aria-busy={deleting}
 				>
 					{#if deleting}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 					{deleting ? t('common.loading') : t('settings.deleteAction')}

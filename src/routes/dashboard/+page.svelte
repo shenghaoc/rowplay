@@ -723,7 +723,7 @@
 				{/each}
 			</div>
 			{#if !data.demo}
-				<button class="btn btn-ghost btn-sm sync" onclick={sync} disabled={syncing}>
+				<button class="btn btn-ghost btn-sm sync" onclick={sync} disabled={syncing} aria-busy={syncing}>
 					<span class="syncicon" class:spin={syncing}><RefreshCw size={14} /></span>
 					{syncing ? t('dashboard.syncing') : t('dashboard.sync')}
 				</button>
