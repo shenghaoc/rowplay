@@ -1204,25 +1204,26 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
   const reps: IntervalRep[] = splits.map((sp, i) => {
     const bucket = buckets[i] ?? [];
 
-    // Bolt: Single-pass loops avoid array allocations for spm, hr, and pace fades
+    // Bolt: Single-pass loops avoid array allocations for spm, hr, and pace fades.
+    // Only run the loop when sp.spm or sp.hr is missing to preserve short-circuiting.
     let computedSpm = 0;
     let computedHr: number | undefined;
 
-    if (bucket.length > 0) {
+    if (bucket.length > 0 && (sp.spm == null || sp.hr == null)) {
       let spmSum = 0;
       let hrSum = 0;
       let hrCount = 0;
 
       for (let j = 0; j < bucket.length; j++) {
-        spmSum += bucket[j].spm;
-        if (bucket[j].hr != null) {
+        if (sp.spm == null) spmSum += bucket[j].spm;
+        if (sp.hr == null && bucket[j].hr != null) {
           hrSum += bucket[j].hr!;
           hrCount++;
         }
       }
 
-      computedSpm = spmSum / bucket.length;
-      if (hrCount > 0) computedHr = Math.round(hrSum / hrCount);
+      if (sp.spm == null) computedSpm = spmSum / bucket.length;
+      if (sp.hr == null && hrCount > 0) computedHr = Math.round(hrSum / hrCount);
     }
 
     const spm = sp.spm ?? computedSpm;
