@@ -5,6 +5,7 @@
 	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '$lib/replay/engine';
 	import { splitIndexAt } from '$lib/replay/inspector';
 	import { CourseRenderer, type RenderState } from '$lib/replay/renderer';
+	import { buildStrokeTimeline, strokePoseAt } from '$lib/replay/strokeModel';
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import { fmtDistance, fmtPace, fmtTime, paceToWatts, SPORT_LABEL } from '$lib/format';
 	import type { WorkoutDetail } from '$lib/types';
@@ -29,6 +30,7 @@
 	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
 	const strokes = $derived(detail.strokes);
+	const strokeTimeline = $derived(buildStrokeTimeline(strokes, detail.sport, detail.hasStrokeData));
 
 	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
 	const sampleIdx = $derived(sampleIndexAt(strokes, frame.t));
@@ -51,7 +53,8 @@
 			frame: f,
 			distFrac: total ? f.d / total : 0,
 			totalDistance: total,
-			sport: detail.sport
+			sport: detail.sport,
+			strokePose: strokePoseAt(strokeTimeline, f.t)
 		};
 	}
 

@@ -151,6 +151,7 @@
 		distance?: number;
 		name?: string;
 		paceLabel?: string;
+		hasStrokeData?: boolean;
 	};
 	let compareMode = $state<CompareMode>('none');
 	// `$state.raw` so reassigning the whole array is reactive (verdict/raceWon
@@ -161,7 +162,7 @@
 	let ghostFrame = $state<Frame | null>(null);
 	let ghostRival = $state<GhostRival | null>(null);
 	const ghostStrokeTimeline = $derived(
-		ghostStrokes ? buildStrokeTimeline(ghostStrokes, detail.sport, ghostStrokes.length > 3) : null
+		ghostStrokes ? buildStrokeTimeline(ghostStrokes, detail.sport, ghostRival?.hasStrokeData === true) : null
 	);
 	let loadingGhost = $state(false);
 	let ghostError = $state('');
@@ -451,7 +452,11 @@
 		const paceLabel = `${fmtPaceBare(secs)}/500m`;
 		compareMode = 'pace';
 		paceInput = fmtPaceBare(secs);
-		setGhost(constantPaceGhost(secs, total), name || paceLabel, { kind: 'pace', paceLabel });
+		setGhost(constantPaceGhost(secs, total), name || paceLabel, {
+			kind: 'pace',
+			paceLabel,
+			hasStrokeData: false
+		});
 		return true;
 	}
 
@@ -478,7 +483,7 @@
 				if (!data.strokes?.length) throw new Error('empty trace');
 				const label = name || data.workoutType || t('leaderboard.race');
 				if (gen !== ghostLoadGen) return;
-				setGhost(data.strokes, label, { kind: 'rival', name: label });
+				setGhost(data.strokes, label, { kind: 'rival', name: label, hasStrokeData: data.hasStrokeData });
 				compareMode = 'none';
 			} catch {
 				if (gen !== ghostLoadGen) return;
@@ -648,7 +653,8 @@
 			setGhost(d.strokes, t('replay.ghostYour', { date: fmtDate(d.date) }), {
 				kind: 'session',
 				date: d.date,
-				distance: d.distance
+				distance: d.distance,
+				hasStrokeData: d.hasStrokeData
 			});
 			toast.success(t('replay.racingSession', { date: fmtDate(d.date) }), {
 				description: `${fmtDistance(d.distance)} · ${fmtPace(d.pace)}`
@@ -701,7 +707,11 @@
 		}
 		ghostError = '';
 		const paceLabel = `${fmtPaceBare(secs)}/500m`;
-		setGhost(constantPaceGhost(secs, total), paceLabel, { kind: 'pace', paceLabel });
+		setGhost(constantPaceGhost(secs, total), paceLabel, {
+			kind: 'pace',
+			paceLabel,
+			hasStrokeData: false
+		});
 		toast.success(t('replay.pacingAt', { pace: fmtPace(secs) }));
 	}
 
@@ -715,7 +725,7 @@
 			const { strokes, name } = await parseWorkoutFile(file);
 			if (!strokes.length) throw new Error(t('replay.noSamples'));
 			fileName = name;
-			setGhost(strokes, name, { kind: 'file', name });
+			setGhost(strokes, name, { kind: 'file', name, hasStrokeData: false });
 			toast.success(t('replay.racingFile', { name }), {
 				description: `${strokes.length} ${t('replay.samples')}`
 			});

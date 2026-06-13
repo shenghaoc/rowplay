@@ -8,6 +8,7 @@ export interface RivalGhostTrace {
   pace: number;
   date: string;
   workoutType?: string;
+  hasStrokeData: boolean;
   strokes: Stroke[];
 }
 
@@ -26,6 +27,7 @@ export function toRivalGhostTrace(detail: WorkoutDetail): RivalGhostTrace {
     pace: detail.pace,
     date: detail.date,
     workoutType: detail.workoutType,
+    hasStrokeData: detail.hasStrokeData,
     strokes: detail.strokes,
   };
 }
