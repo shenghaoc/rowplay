@@ -112,8 +112,8 @@ export interface RenderState {
   frame: Frame;
   distFrac: number;
   totalDistance: number;
-  /** Data-derived live stroke pose; one cycle per Concept2 stroke row when available. */
-  strokePose?: StrokePose;
+  /** Data-derived live stroke pose; replay views must build this for every frame. */
+  strokePose: StrokePose;
   /** Optional ghost (a past session being raced), drawn in its own lane. */
   ghost?: AvatarState;
   /** Data-derived ghost stroke pose, when the ghost has stroke data. */
