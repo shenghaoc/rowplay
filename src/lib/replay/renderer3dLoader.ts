@@ -105,6 +105,7 @@ export async function createRenderer3D(
       return { renderer, backend: "webgpu", quality };
     } catch {
       destroyFailedRenderer(renderer);
+      renderer = null;
       // WebGPU can be exposed but fail adapter/device init. WebGL remains the
       // mandatory replay fallback, so continue below without surfacing a toast.
     }
@@ -122,6 +123,7 @@ export async function createRenderer3D(
     return { renderer, backend: "webgl", quality: webglQuality };
   } catch (err) {
     destroyFailedRenderer(renderer);
+    renderer = null;
     throw err;
   }
 }
