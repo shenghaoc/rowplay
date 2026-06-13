@@ -114,8 +114,11 @@ the replay infers only timing, amplitude, and intensity from time, distance,
 pace, rate, heart rate, and watts. In 3D, athletes use segmented human-scale
 models with separate torso, head, shoulders, arms, legs, hands, feet, and
 sport-specific kit so the scene reads as a coached erg replay rather than a toy
-marker. The 3D chase camera stays close enough for body posture to matter and
-widens its lens slightly as the boat runs faster.
+marker. Hands and feet are posed against the relevant equipment — oar handles
+and foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals — so
+the motion does not drift away from the machine. The 3D chase camera stays close
+enough for body posture to matter and widens its lens slightly as the boat runs
+faster.
 
 The 3D course surface is sport-specific too: RowErg shows layered water lanes
 with buoy and waterline detail, SkiErg shows groomed snow grooves and blue gate

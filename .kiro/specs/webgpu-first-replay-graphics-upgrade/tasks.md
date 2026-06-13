@@ -63,6 +63,8 @@ Follow-up to: `.kiro/specs/replay-animation-upgrade/` (PR #114)
   - Increase the 3D replay stage height, including ghost replay layouts
   - Replace toy-like 3D marker bodies with segmented human-scale athletes and a
     closer chase camera for legible posture
+  - Keep hands and feet visually attached to sport equipment, and add low-cost
+    equipment details without changing replay timing
 
 - [x] **9. Documentation, locales, and steering**
   - Update `README.md`

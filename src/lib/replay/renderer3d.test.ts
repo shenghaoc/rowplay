@@ -120,6 +120,11 @@ describe("CourseRenderer3D", () => {
       skierg: "course:skierg:groomed-groove",
       bike: "course:bike:curb",
     } as const;
+    const equipmentNames = {
+      rower: ["rower-deck-stripe", "rower-oar-collar"],
+      skierg: ["skierg-ski-tip"],
+      bike: ["bike-top-tube", "bike-chain-ring"],
+    } as const;
 
     for (const sport of ["rower", "skierg", "bike"] as const) {
       const host = makeHost();
@@ -128,6 +133,9 @@ describe("CourseRenderer3D", () => {
       expect(scene.getObjectByName(`course:${sport}`)).toBeDefined();
       expect(scene.getObjectByName("course:edge-inner")).toBeDefined();
       expect(scene.getObjectByName(detailName[sport])).toBeDefined();
+      for (const equipmentName of equipmentNames[sport]) {
+        expect(scene.getObjectByName(equipmentName)).toBeDefined();
+      }
       renderer.destroy();
     }
   });
