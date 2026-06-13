@@ -197,25 +197,42 @@ export function distancePBs(
 ): { distance: number; time: number; pace: number; date: string; sport: Sport }[] {
   const out: { distance: number; time: number; pace: number; date: string; sport: Sport }[] = [];
   const bySport = new Map<string, Workout[]>();
-  for (const w of workouts) {
-    const arr = bySport.get(w.sport) ?? [];
-    arr.push(w);
-    bySport.set(w.sport, arr);
+  for (let i = 0, len = workouts.length; i < len; i++) {
+    const w = workouts[i];
+    const arr = bySport.get(w.sport);
+    if (arr) {
+      arr.push(w);
+    } else {
+      bySport.set(w.sport, [w]);
+    }
   }
+
   for (const sportWorkouts of bySport.values()) {
-    for (const target of STANDARD_DISTANCES) {
-      const matches = sportWorkouts.filter(
-        (w) => Math.abs(w.distance - target) <= target * 0.02 && w.time > 0,
-      );
-      if (!matches.length) continue;
-      const best = matches.reduce((a, b) => (a.time <= b.time ? a : b));
-      out.push({
-        distance: target,
-        time: best.time,
-        pace: best.pace,
-        date: best.date,
-        sport: best.sport,
-      });
+    for (let i = 0, dlen = STANDARD_DISTANCES.length; i < dlen; i++) {
+      const target = STANDARD_DISTANCES[i];
+      let best = null;
+      let minTime = Infinity;
+      const t02 = target * 0.02;
+
+      for (let j = 0, slen = sportWorkouts.length; j < slen; j++) {
+        const w = sportWorkouts[j];
+        if (w.time > 0 && Math.abs(w.distance - target) <= t02) {
+          if (w.time < minTime) {
+            best = w;
+            minTime = w.time;
+          }
+        }
+      }
+
+      if (best !== null) {
+        out.push({
+          distance: target,
+          time: best.time,
+          pace: best.pace,
+          date: best.date,
+          sport: best.sport,
+        });
+      }
     }
   }
   return out;
@@ -1996,19 +2013,36 @@ export function athleteBadges(
 export function pbWorkoutIds(workouts: Workout[]): Set<number> {
   const ids = new Set<number>();
   const bySport = new Map<string, Workout[]>();
-  for (const w of workouts) {
-    const arr = bySport.get(w.sport) ?? [];
-    arr.push(w);
-    bySport.set(w.sport, arr);
+  for (let i = 0, len = workouts.length; i < len; i++) {
+    const w = workouts[i];
+    const arr = bySport.get(w.sport);
+    if (arr) {
+      arr.push(w);
+    } else {
+      bySport.set(w.sport, [w]);
+    }
   }
+
   for (const sportWorkouts of bySport.values()) {
-    for (const target of STANDARD_DISTANCES) {
-      const matches = sportWorkouts.filter(
-        (w) => Math.abs(w.distance - target) <= target * 0.02 && w.time > 0,
-      );
-      if (!matches.length) continue;
-      const best = matches.reduce((a, b) => (a.time <= b.time ? a : b));
-      ids.add(best.id);
+    for (let i = 0, dlen = STANDARD_DISTANCES.length; i < dlen; i++) {
+      const target = STANDARD_DISTANCES[i];
+      let best = null;
+      let minTime = Infinity;
+      const t02 = target * 0.02;
+
+      for (let j = 0, slen = sportWorkouts.length; j < slen; j++) {
+        const w = sportWorkouts[j];
+        if (w.time > 0 && Math.abs(w.distance - target) <= t02) {
+          if (w.time < minTime) {
+            best = w;
+            minTime = w.time;
+          }
+        }
+      }
+
+      if (best !== null) {
+        ids.add(best.id);
+      }
     }
   }
   return ids;
