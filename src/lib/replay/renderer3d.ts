@@ -376,10 +376,17 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   hull.userData.accent = true;
   group.add(hull);
 
+  // Deck with a thin racing stripe for visual interest.
   const deck = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 2.6), accentMat());
   deck.position.y = 0.3;
   deck.userData.accent = true;
   group.add(deck);
+  const stripe = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.015, 2.2),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.1 }),
+  );
+  stripe.position.y = 0.335;
+  group.add(stripe);
 
   const footPlate = new THREE.Mesh(
     new THREE.BoxGeometry(0.48, 0.05, 0.12),
@@ -418,24 +425,21 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     forearm: THREE.Mesh;
     hand: THREE.Mesh;
   }> = [];
-  const legs: Array<{ thigh: THREE.Group; shin: THREE.Group; foot: THREE.Group }> = [];
+  const legs: Array<{
+    side: number;
+    thigh: THREE.Mesh;
+    shin: THREE.Mesh;
+    foot: THREE.Mesh;
+    knee: THREE.Mesh;
+  }> = [];
   for (const side of [-1, 1]) {
-    const thigh = new THREE.Group();
-    thigh.position.set(side * 0.12, 0.38, -0.14);
-    thigh.add(limbSegment(0.44, 0.055, humanMat(HUMAN_KIT_DARK), "z"));
+    // Dynamic leg segments — positioned per-frame by IK from hip to foot.
+    const thigh = dynamicLimbSegment(0.055, humanMat(HUMAN_KIT_DARK));
+    const shin = dynamicLimbSegment(0.045, humanMat(HUMAN_KIT_DARK));
+    const foot = dynamicLimbSegment(0.04, humanMat(HUMAN_SHOE));
     const knee = ellipsoid([0.065, 0.055, 0.065], humanMat(HUMAN_KIT_DARK), 10);
-    knee.position.z = 0.45;
-    thigh.add(knee);
-
-    const shin = new THREE.Group();
-    shin.position.set(side * 0.12, 0.32, 0.25);
-    shin.add(limbSegment(0.46, 0.045, humanMat(HUMAN_KIT_DARK), "z"));
-
-    const foot = new THREE.Group();
-    foot.position.set(side * 0.12, 0.28, 0.7);
-    foot.add(limbSegment(0.2, 0.04, humanMat(HUMAN_SHOE), "z"));
-    rower.add(thigh, shin, foot);
-    legs.push({ thigh, shin, foot });
+    rower.add(thigh, shin, foot, knee);
+    legs.push({ side, thigh, shin, foot, knee });
 
     const upperArm = dynamicLimbSegment(0.04, humanMat(HUMAN_SKIN));
     const forearm = dynamicLimbSegment(0.035, humanMat(HUMAN_SKIN));
@@ -457,6 +461,14 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
     shaft.position.x = side * 1.2;
     oar.add(shaft);
+    // Oar collar — a small ring near the blade end for visual detail.
+    const collar = new THREE.Mesh(
+      new THREE.TorusGeometry(0.05, 0.015, 6, 10),
+      humanMat(0x888888, 0.5),
+    );
+    collar.position.set(side * 1.9, 0, 0);
+    collar.rotation.y = Math.PI / 2;
+    oar.add(collar);
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.26), accentMat());
     blade.position.set(side * 2.4, -0.05, 0);
     blade.userData.accent = true;
@@ -484,17 +496,44 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     }
   };
 
+  const placeLegs = (drive: number, amp: number): void => {
+    for (const leg of legs) {
+      // Hip is fixed relative to the rower group.
+      const hip: Point3 = [leg.side * 0.12, 0.38, -0.14];
+      // Foot target: pinned to the foot plate, with a small stroke-driven
+      // offset. At the catch (drive → +1) feet push against the stretcher;
+      // at the finish (drive → −1) feet release slightly forward.
+      const footTarget: Point3 = [
+        leg.side * 0.12,
+        0.28 + drive * 0.02 * amp,
+        0.7 - drive * 0.04 * amp,
+      ];
+      // Knee kinks forward at the catch (compressed) and drops at the finish
+      // (extended), computed as the midpoint with a perpendicular offset.
+      const extension = -drive; // +1 at finish, -1 at catch
+      const knee: Point3 = [
+        leg.side * 0.14,
+        (hip[1] + footTarget[1]) / 2 + 0.08 + extension * 0.06,
+        (hip[2] + footTarget[2]) / 2 - 0.06 * amp - drive * 0.08 * amp,
+      ];
+      placeSegmentBetween(leg.thigh, hip, knee);
+      placeSegmentBetween(leg.shin, knee, footTarget);
+      placeSegmentBetween(leg.foot, footTarget, [
+        footTarget[0],
+        footTarget[1] - 0.02,
+        footTarget[2] + 0.08,
+      ]);
+      leg.knee.position.set(knee[0], knee[1], knee[2]);
+    }
+  };
+
   const animate = (phase: number, reduce: boolean, pose?: StrokePose): void => {
     if (reduce) {
       rower.position.z = -0.1;
       rower.rotation.x = -0.1;
       handle.rotation.x = 0;
       placeArms(0.72, 0.58, 1);
-      for (const leg of legs) {
-        leg.thigh.rotation.x = 0.25;
-        leg.shin.rotation.x = -0.12;
-        leg.foot.rotation.x = 0.05;
-      }
+      placeLegs(0, 1);
       for (const oar of oars) oar.rotation.set(0, 0, 0);
       return;
     }
@@ -514,11 +553,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     const handleZ = 0.58 - drive * 0.08 * amp;
     handle.rotation.x = recovery * 0.16;
     placeArms(handleY, handleZ, amp);
-    for (const leg of legs) {
-      leg.thigh.rotation.x = 0.52 + drive * 0.28 * amp;
-      leg.shin.rotation.x = -0.42 - drive * 0.26 * amp;
-      leg.foot.rotation.x = 0.08 - drive * 0.08 * amp;
-    }
+    placeLegs(drive, amp);
     for (const oar of oars) {
       const side = (oar.userData.side as number) ?? 1;
       // Blades enter ahead of the rigger at the catch and sweep toward the
@@ -543,12 +578,18 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const accentMat = () => accentMaterial(accent);
   const neutralMat = (c: number) => humanMat(c);
 
-  // Skis: two thin planks along travel (+Z).
+  // Skis: two thin planks along travel (+Z), with a slightly upturned tip.
   for (const side of [-1, 1]) {
     const ski = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 2.4), accentMat());
     ski.position.set(side * 0.18, 0.03, 0.2);
     ski.userData.accent = true;
     group.add(ski);
+    // Ski tip — a small wedge at the front for a more realistic profile.
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.3), accentMat());
+    tip.position.set(side * 0.18, 0.06, 1.45);
+    tip.rotation.x = -0.25;
+    tip.userData.accent = true;
+    group.add(tip);
   }
 
   // Legs are planted; the upper body pivots from the hips for the crunch.
@@ -705,18 +746,36 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     wheels.push(wheel);
   }
 
-  // Frame: down tube + seat tube.
+  // Frame: down tube, seat tube, top tube, and chain stays for a proper
+  // diamond-frame silhouette.
   const downTube = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.6), accentMat());
   downTube.position.set(0, wheelR + 0.15, 0);
   downTube.userData.accent = true;
   const seatTube = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.08), accentMat());
   seatTube.position.set(0, wheelR + 0.45, -0.4);
   seatTube.userData.accent = true;
-  group.add(downTube, seatTube);
+  const topTube = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1.1), accentMat());
+  topTube.position.set(0, wheelR + 0.75, -0.15);
+  topTube.userData.accent = true;
+  // Chain stays: two thin tubes from BB to rear axle.
+  for (const side of [-1, 1]) {
+    const stay = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.85), accentMat());
+    stay.position.set(side * 0.06, wheelR + 0.05, 0.4);
+    stay.userData.accent = true;
+    group.add(stay);
+  }
+  group.add(downTube, seatTube, topTube);
 
   // Cranks: spin about the bottom bracket (X axis) with two pedals.
   const cranks = new THREE.Group();
   cranks.position.set(0, wheelR, -0.05);
+  // Chain ring — a toroidal disc at the bottom bracket.
+  const chainRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.16, 0.018, 6, 18),
+    neutralMat(0x555555, 0.4),
+  );
+  chainRing.rotation.y = Math.PI / 2;
+  cranks.add(chainRing);
   const pedals: Array<{ side: number; crankY: number }> = [];
   for (const side of [-1, 1]) {
     const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), neutralMat(0x20242a));
@@ -1094,10 +1153,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 500);
 
-    // Sky/ground hemisphere fill + a key sun give boats nicer shading than a
-    // flat ambient. The sun casts shadows only at high quality.
-    this.scene.add(new THREE.HemisphereLight(0xddeaf2, 0x4a5560, 0.85));
-    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    // Three-point lighting: hemisphere sky/ground fill, a key sun with
+    // optional shadows, and a warm accent fill for depth and richness.
+    this.scene.add(new THREE.HemisphereLight(0xddeaf2, 0x4a5560, 0.9));
+    const sun = new THREE.DirectionalLight(0xfff5e8, 0.85);
     sun.position.set(14, 26, 10);
     if (this.cfg.shadows) {
       sun.castShadow = true;
@@ -1109,6 +1168,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       c.right = c.top = 42;
     }
     this.scene.add(sun);
+    // Warm fill from the opposite side — prevents the shadow side from going
+    // dead-black and gives athletes a richer, more dimensional read.
+    const fill = new THREE.DirectionalLight(0xffd4a0, 0.25);
+    fill.position.set(-10, 8, -6);
+    this.scene.add(fill);
 
     this.liveAvatar = this.profile.make(hex(COLORS_LIGHT.live), this.cfg.shadows, 1);
     this.liveBoat = new THREE.Group();
@@ -1467,14 +1531,21 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.postMatMinor = this.mat(
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.tickMinor) }),
     );
-    const postGeo = this.track(new THREE.BoxGeometry(0.16, 1.3, 0.16));
+    // Taller, more elegant distance posts with a spherical finial cap.
+    const postGeo = this.track(new THREE.BoxGeometry(0.14, 1.6, 0.14));
+    const capGeo = this.track(new THREE.SphereGeometry(0.1, 8, 6));
     const postR = outerR + 1.4;
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * Math.PI * 2;
-      const post = new THREE.Mesh(postGeo, i % 5 === 0 ? this.postMatMajor : this.postMatMinor);
-      post.position.set(postR * Math.sin(a), 0.65, postR * Math.cos(a));
+      const isMajor = i % 5 === 0;
+      const post = new THREE.Mesh(postGeo, isMajor ? this.postMatMajor : this.postMatMinor);
+      post.position.set(postR * Math.sin(a), 0.8, postR * Math.cos(a));
       post.castShadow = this.cfg.shadows;
       this.scene.add(post);
+      // Finial cap — a small sphere on top of each post.
+      const cap = new THREE.Mesh(capGeo, isMajor ? this.postMatMajor : this.postMatMinor);
+      cap.position.set(postR * Math.sin(a), 1.62, postR * Math.cos(a));
+      this.scene.add(cap);
     }
 
     // Buoy lines marking the lane edges — static, one InstancedMesh draw call.
@@ -1503,7 +1574,8 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.scene.add(inst);
     }
 
-    // Start/finish line — flat checker across the lane at the lap crossing.
+    // Start/finish line — flat checker across the lane at the lap crossing,
+    // flanked by two tall gate posts for a grand, stadium-like entrance.
     this.cellMatDark = this.mat(
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.finishDark) }),
     );
@@ -1521,13 +1593,26 @@ export class CourseRenderer3D implements ReplayRenderer {
         this.scene.add(cell);
       }
     }
+    // Gate posts flanking the finish line.
+    const gatePostGeo = this.track(new THREE.BoxGeometry(0.22, 2.8, 0.22));
+    for (const gx of [-1.4, 1.4]) {
+      const gatePost = new THREE.Mesh(gatePostGeo, this.postMatMajor);
+      gatePost.position.set(gx, 1.4, innerR + 4.6);
+      gatePost.castShadow = this.cfg.shadows;
+      this.scene.add(gatePost);
+      const gateCap = new THREE.Mesh(capGeo, this.postMatMajor);
+      gateCap.position.set(gx, 2.82, innerR + 4.6);
+      this.scene.add(gateCap);
+    }
   }
 
   private applyTheme(themeName: "light" | "dark"): void {
     const C = themeName === "dark" ? COLORS_DARK : COLORS_LIGHT;
     this.theme = themeName;
     this.scene.background = new THREE.Color(C.courseFill);
-    this.scene.fog = new THREE.Fog(C.courseFill, 55, 170);
+    // Softer fog — start closer and end tighter for a more cinematic depth
+    // that fades distant buoys/posts into the atmosphere.
+    this.scene.fog = new THREE.Fog(C.courseFill, 40, 130);
 
     for (const themed of this.courseThemeMats) {
       themed.material.color.setHex(themed.color(themeName));
@@ -1705,9 +1790,10 @@ export class CourseRenderer3D implements ReplayRenderer {
         const ly = arr[idx + 1];
         arr[idx + 2] = this.reduceMotion
           ? 0
-          : Math.sin(ly * 0.25 + t) * 0.05 +
-            Math.sin(lx * 0.31 + t * 1.7) * 0.03 +
-            Math.sin((lx + ly) * 0.13 - t * 0.6) * 0.025;
+          : Math.sin(ly * 0.25 + t) * 0.07 +
+            Math.sin(lx * 0.31 + t * 1.7) * 0.04 +
+            Math.sin((lx + ly) * 0.13 - t * 0.6) * 0.03 +
+            Math.sin(ly * 0.6 + t * 2.3) * 0.012; // fine ripples
       }
       pos.needsUpdate = true;
       water.geometry.computeVertexNormals();
