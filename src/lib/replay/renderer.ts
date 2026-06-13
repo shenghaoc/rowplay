@@ -1,7 +1,8 @@
 import type { Frame } from "./engine";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
-import { ParticlePool, catchEvents, clampDt, strokeSurge, warpStrokePhase } from "./motion";
+import { ParticlePool, clampDt, strokeSurge, warpStrokePhase } from "./motion";
+import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
 
 // The replay playback itself is essential, user-initiated motion (the user
 // presses play), so it is preserved under `prefers-reduced-motion`. What we do
@@ -111,8 +112,12 @@ export interface RenderState {
   frame: Frame;
   distFrac: number;
   totalDistance: number;
+  /** Data-derived live stroke pose; replay views must build this for every frame. */
+  strokePose: StrokePose;
   /** Optional ghost (a past session being raced), drawn in its own lane. */
   ghost?: AvatarState;
+  /** Data-derived ghost stroke pose, when the ghost has stroke data. */
+  ghostStrokePose?: StrokePose;
   /** Optional sport, used for the avatar pod glyph. Renderer degrades to a neutral marker when absent. */
   sport?: Sport;
 }
@@ -283,18 +288,42 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
   const seatY = bobY - 2;
   const shX = seatX + s * 3.5;
   const shY = bobY - 9;
-  limb(ctx, seatX, seatY, x + 7, bobY - 1, 2, accent); // legs to stretcher
+  const hipX = seatX;
+  const hipY = seatY;
+
+  // Legs — thigh from hip to knee, shin from knee to foot on the stretcher.
+  // At the catch (s → +1) legs are compressed (knees forward); at the finish
+  // (s → −1) legs are extended (knees lower, shins more vertical).
+  const footX = x + 7;
+  const footY = bobY - 1;
+  const legComp = Math.max(0, s); // 1 at catch, 0 at finish
+  const kneeX = (hipX + footX) / 2 + legComp * 3;
+  const kneeY = (hipY + footY) / 2 - 2 + legComp * 2;
+  limb(ctx, hipX, hipY, kneeX, kneeY, 2, accent); // thigh
+  limb(ctx, kneeX, kneeY, footX, footY, 1.8, accent); // shin
+  disc(ctx, footX, footY, 1.2, rim); // foot on stretcher
+
+  // Torso + head.
   limb(ctx, seatX, seatY, shX, shY, 2.4, accent); // torso
   disc(ctx, shX, shY - 3, 2.3, accent); // head
 
   // Oar — sweeps fore/aft; the blade is buried through the drive and carried
-  // clear of the water on the recovery.
+  // clear of the water on the recovery. Hands grip the inboard end of the
+  // handle, which follows the shoulder + a small offset.
   const bladeX = x + s * 13;
   const inWater = reduce ? s > -0.15 : drive;
   const bladeY = bobY + (inWater ? 4.5 : 1.5);
-  const handX = shX + 2.5;
+  // Handle is pinned between the hands and the oar shaft. The hands sit at
+  // the inboard end of the oar, near the rower's torso.
+  const handX = shX + 2.5 + s * 1.5;
   const handY = shY + 2;
-  limb(ctx, handX, handY, bladeX, bladeY, 1.6, rim); // shaft
+  // Elbow kinks outward between shoulder and hand for a natural arm bend.
+  const elbowX = (shX + handX) / 2 + 1.8;
+  const elbowY = (shY + handY) / 2 - 0.5;
+  limb(ctx, shX, shY + 1, elbowX, elbowY, 1.6, accent); // upper arm
+  limb(ctx, elbowX, elbowY, handX, handY, 1.4, accent); // forearm
+  disc(ctx, handX, handY, 0.9, accent); // hand on handle
+  limb(ctx, handX, handY, bladeX, bladeY, 1.6, rim); // oar shaft
   limb(ctx, bladeX - 1.6, bladeY - 1.6, bladeX + 1.6, bladeY + 1.6, 2.4, accent); // blade
   if (!reduce && inWater) {
     disc(ctx, bladeX, bobY + 2, 1, foam);
@@ -314,13 +343,22 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
   // Legs planted on the snow (the waterline).
   limb(ctx, hipX, hipY + crouch, x + 4, y, 2.2, accent);
   limb(ctx, hipX, hipY + crouch, x - 3, y, 2.2, accent);
+  disc(ctx, x + 4, y, 1.1, rim); // right boot
+  disc(ctx, x - 3, y, 1.1, rim); // left boot
   // Torso + head.
   limb(ctx, hipX, hipY + crouch, shX, shY, 2.6, accent);
   disc(ctx, shX, shY - 3, 2.3, accent);
-  // Arm + pole: hands high & forward on the reach (s → +1), low & back on pull.
+  // Arms with elbow bend: hands high & forward on the reach (s → +1),
+  // low & back on pull (s → −1). Each arm has an upper arm + forearm with
+  // a visible elbow kink, and the pole pivots from the hand grip.
   const handX = shX + 4 + s * 2;
   const handY = shY + 4 - s * 4;
-  limb(ctx, shX, shY + 1, handX, handY, 2, accent);
+  const elbowX = (shX + handX) / 2 + 1.5;
+  const elbowY = (shY + handY) / 2 + 0.5;
+  limb(ctx, shX, shY + 1, elbowX, elbowY, 1.8, accent); // upper arm
+  limb(ctx, elbowX, elbowY, handX, handY, 1.6, accent); // forearm
+  disc(ctx, handX, handY, 0.9, accent); // hand on grip
+  // Pole: from hand grip down to the snow, sweeps with the stroke.
   limb(ctx, handX, handY, handX - 6 + s * 2, y, 1.2, rim); // pole to snow
 }
 
@@ -361,15 +399,33 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
   limb(ctx, bbX, bbY, barX, barY, 1.6, accent);
   limb(ctx, frontX, wheelY, barX, barY, 1.6, accent);
 
-  // Rider: torso → bars, head, arm, and a pedalling leg on the crank.
+  // Rider: torso → bars, head, arms on bars, and two pedalling legs.
   const rShX = x + 1;
   const rShY = wheelY - 12 + lift;
   limb(ctx, seatX, seatY, rShX, rShY, 2.4, accent);
-  disc(ctx, rShX + 1, rShY - 2.5, 2.3, accent);
-  limb(ctx, rShX, rShY, barX, barY, 1.8, accent);
-  const crankX = bbX + Math.cos(spin) * 2.4;
-  const crankY = bbY + Math.sin(spin) * 2.4;
-  limb(ctx, seatX + 1, seatY + 1, crankX, crankY, 1.8, accent);
+  disc(ctx, rShX + 1, rShY - 2.5, 2.3, accent); // head
+
+  // Arms: from shoulders to handlebars with an elbow bend.
+  const armElbX = (rShX + barX) / 2 + 0.8;
+  const armElbY = (rShY + barY) / 2 - 0.5;
+  limb(ctx, rShX, rShY, armElbX, armElbY, 1.6, accent); // upper arm
+  limb(ctx, armElbX, armElbY, barX, barY, 1.4, accent); // forearm
+  disc(ctx, barX, barY, 0.9, accent); // hand on bars
+
+  // Two legs pedalling in opposition: each follows its crank position
+  // (180° apart). The knee kinks outward for a natural look.
+  for (let leg = 0; leg < 2; leg++) {
+    const legSpin = spin + leg * Math.PI;
+    const crankX = bbX + Math.cos(legSpin) * 2.4;
+    const crankY = bbY + Math.sin(legSpin) * 2.4;
+    // Knee kinks outward on the downstroke, inward on the upstroke.
+    const extension = Math.sin(legSpin);
+    const kneeX = (seatX + crankX) / 2 + (leg === 0 ? 1.2 : -1.2) + extension * 0.5;
+    const kneeY = (seatY + crankY) / 2 - 0.5;
+    limb(ctx, seatX + 0.5, seatY + 0.5, kneeX, kneeY, 1.6, accent); // thigh
+    limb(ctx, kneeX, kneeY, crankX, crankY, 1.4, accent); // shin
+    disc(ctx, crankX, crankY, 0.8, rim); // foot on pedal
+  }
 }
 
 /** Glossy neutral pod — fallback when `sport` is absent. */
@@ -422,6 +478,7 @@ interface AvatarOpts {
   accent: string;
   /** Distance-driven stroke phase (radians; one cycle per stroke). */
   phase: number;
+  pose?: StrokePose;
   spm: number;
   isYou: boolean;
   sport?: Sport;
@@ -443,9 +500,10 @@ export class CourseRenderer implements ReplayRenderer {
   /** Decorative water phase (ripples, wake undulation) — wall-clock driven. */
   private wavePhase = 0;
   private ghostWavePhase = 0;
-  /** Stroke phase — distance driven, so figures row at the true cadence. */
-  private strokePhase = 0;
+  /** Ghost stroke phase — only needed when ghostStrokePose is absent (ghost without stroke data). */
   private ghostStrokePhase = 0;
+  private lastLivePose: StrokePose | null = null;
+  private lastGhostPose: StrokePose | null = null;
 
   private lastNow = NaN;
   private liveSplash = new ParticlePool(SPLASH_CAP);
@@ -491,15 +549,16 @@ export class CourseRenderer implements ReplayRenderer {
       if (state.ghost) this.ghostWavePhase += (9 + state.ghost.spm / 10) * dt;
     }
 
-    // Stroke phases advance by time at the recorded stroke rate (spm), so the
-    // figures stroke at the workout's true cadence — a 20 spm interval animates
-    // slower than a 36 spm sprint, matching the real erg rhythm.
-    const prevStroke = this.strokePhase;
-    if (animate && state.frame.spm > 0)
-      this.strokePhase += (state.frame.spm / 60) * dt * Math.PI * 2;
-    const prevGhostStroke = this.ghostStrokePhase;
-    if (animate && state.ghost && state.ghost.spm > 0)
+    // Fallback phase only advances when the page has not supplied ghost stroke
+    // poses.  (Live strokePose is always present — it is a required RenderState
+    // field — so no fallback is needed for the live avatar.)
+    if (!state.ghostStrokePose && animate && state.ghost && state.ghost.spm > 0)
       this.ghostStrokePhase += (state.ghost.spm / 60) * dt * Math.PI * 2;
+    const livePose = state.strokePose;
+    const ghostPose =
+      state.ghost &&
+      (state.ghostStrokePose ??
+        fallbackStrokePose(state.sport ?? "rower", this.ghostStrokePhase, state.ghost.spm));
 
     if (this.reduceMotion) {
       this.liveSplash.clear();
@@ -529,7 +588,7 @@ export class CourseRenderer implements ReplayRenderer {
     if (hasGhost && state.ghost) {
       const ghostFrac = clamp01(state.ghost.distFrac);
       const ghostAvX = startX + span * ghostFrac;
-      if (animate && catchEvents(prevGhostStroke, this.ghostStrokePhase) > 0) {
+      if (animate && catchTransitions(this.lastGhostPose, ghostPose) > 0) {
         this.spawnSplash(this.ghostSplash, ghostAvX, ghostY, state.sport);
       }
       this.drawLane({
@@ -548,18 +607,22 @@ export class CourseRenderer implements ReplayRenderer {
         x: ghostAvX,
         y: ghostY,
         accent: C.ghost,
-        phase: this.ghostStrokePhase,
+        phase: ghostPose?.phase ?? this.ghostStrokePhase,
+        pose: ghostPose,
         spm: state.ghost.spm,
         isYou: false,
         sport: state.sport,
         label: `${state.ghost.label || "PB"} · ${Math.round(ghostFrac * 100)}%`,
         splash: this.ghostSplash,
       });
+      this.lastGhostPose = ghostPose ?? null;
+    } else {
+      this.lastGhostPose = null;
     }
 
     const playerFrac = clamp01(state.distFrac);
     const playerAvX = startX + span * playerFrac;
-    if (animate && catchEvents(prevStroke, this.strokePhase) > 0) {
+    if (animate && catchTransitions(this.lastLivePose, livePose) > 0) {
       this.spawnSplash(this.liveSplash, playerAvX, playerY, state.sport);
     }
     this.drawLane({
@@ -578,13 +641,15 @@ export class CourseRenderer implements ReplayRenderer {
       x: playerAvX,
       y: playerY,
       accent: C.live,
-      phase: this.strokePhase,
+      phase: livePose.phase,
+      pose: livePose,
       spm: state.frame.spm,
       isYou: true,
       sport: state.sport,
       label: `${fmtPace(state.frame.pace)} · ${Math.round(playerFrac * 100)}%`,
       splash: this.liveSplash,
     });
+    this.lastLivePose = livePose;
   }
 
   /**
@@ -622,9 +687,11 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.save();
     roundRect(ctx, 0, 0, w, h, 3);
     ctx.clip();
+    // Richer gradient with a warm horizon band for a luxurious feel.
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, C.skyTop);
-    grad.addColorStop(1, C.skyBottom);
+    grad.addColorStop(0.55, C.skyBottom);
+    grad.addColorStop(1, C.courseFill);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
@@ -731,12 +798,14 @@ export class CourseRenderer implements ReplayRenderer {
       ctx.globalAlpha = 0.82;
     }
 
-    // 1. Water band
+    // 1. Water band — a rich gradient with a highlight stripe for depth.
     const waterTop = y - WATER_H * 0.3;
     const waterBottom = y + WATER_H * 0.7;
     const waterGrad = ctx.createLinearGradient(0, waterTop, 0, waterBottom);
-    waterGrad.addColorStop(0, withAlpha(accent, 0.05));
-    waterGrad.addColorStop(1, withAlpha(accent, 0.2));
+    waterGrad.addColorStop(0, withAlpha(accent, 0.04));
+    waterGrad.addColorStop(0.35, withAlpha(accent, 0.12));
+    waterGrad.addColorStop(0.5, withAlpha(accent, 0.18));
+    waterGrad.addColorStop(1, withAlpha(accent, 0.22));
     ctx.fillStyle = waterGrad;
     roundRect(ctx, startX, waterTop, span, waterBottom - waterTop, 4);
     ctx.fill();
@@ -844,7 +913,7 @@ export class CourseRenderer implements ReplayRenderer {
   private drawAvatar(o: AvatarOpts) {
     const { ctx } = this;
     const C = this.colors;
-    const { x, y, accent, phase, isYou, sport, label, splash } = o;
+    const { x, y, accent, phase, pose, isYou, sport, label, splash } = o;
     const reduce = this.reduceMotion;
 
     ctx.save();
@@ -854,16 +923,18 @@ export class CourseRenderer implements ReplayRenderer {
 
     // Asymmetric stroke: quick drive, slow recovery. The bike pedals at a
     // constant rate, so its phase is left unwarped.
-    const warped = sport === "bike" ? phase : warpStrokePhase(phase);
+    const warped = sport === "bike" ? phase : (pose?.warpedPhase ?? warpStrokePhase(phase));
     // Stroke position +1 (catch) … −1 (finish); frozen pose under reduced motion.
     const s = reduce ? -0.2 : Math.cos(warped);
-    const drive = !reduce && warped % (Math.PI * 2) < Math.PI;
+    const drive = !reduce && (pose?.drive ?? warped % (Math.PI * 2) < Math.PI);
     // The hull surges through the drive and checks at the catch; the HUD pill
     // and caret stay anchored to the un-surged x so they read steady.
-    const surge = reduce ? 0 : strokeSurge(warped) * SURGE_PX[sport ?? "rower"];
+    const amplitude = pose?.amplitude ?? 1;
+    const surge = reduce ? 0 : strokeSurge(warped) * SURGE_PX[sport ?? "rower"] * amplitude;
     const figX = x + surge;
     // Bob once per stroke, in step with the figure's effort.
-    const bobY = y + (reduce ? 0 : Math.sin(warped) * BOB_AMP);
+    const fatigueDrop = (pose?.fatigue ?? 0) * 0.8;
+    const bobY = y + fatigueDrop + (reduce ? 0 : Math.sin(warped) * BOB_AMP * amplitude);
     // Contrast rim that reads on the accent fill in both themes.
     const rim = C.labelText;
 

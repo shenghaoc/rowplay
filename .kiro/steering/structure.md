@@ -97,9 +97,10 @@ src/
       raceCard.ts            Race card PNG export via OffscreenCanvas
       renderer.ts            2D canvas course + ghost lane rendering
       renderer.test.ts       Vitest unit tests for renderer
-      renderer3d.ts          Three.js 3D course renderer (WebGLRenderer + scene graph)
+      renderer3d.ts          Three.js 3D course renderer (shared WebGL/WebGPU scene graph)
       renderer3d.test.ts     Vitest unit tests for renderer3d (partial THREE mock — WebGLRenderer only)
-      renderer3dLoader.ts    Dynamic-import cache + webglSupported() detection
+      renderer3dLoader.ts    WebGPU-first/WebGL-fallback dynamic import factory
+      renderer3dWebGPU.ts    Lazy WebGPURenderer entry point
       renderer3dLoader.test.ts  Vitest unit tests for renderer3dLoader
       replayRenderer.ts      Renderer preference persistence (2D/3D, quality)
       replayRenderer.test.ts Vitest unit tests for replayRenderer

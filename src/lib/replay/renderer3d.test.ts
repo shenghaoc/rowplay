@@ -22,6 +22,7 @@ vi.mock("three", async (importOriginal) => {
 });
 
 import { CourseRenderer3D } from "./renderer3d";
+import { buildStrokeTimeline, strokePoseAt } from "./strokeModel";
 
 /** Minimal 2D context stub for text sprite canvas creation. */
 function make2dCtx() {
@@ -83,13 +84,26 @@ function makeHost() {
 }
 
 function makeRenderState(overrides: Partial<Parameters<CourseRenderer3D["render"]>[0]> = {}) {
+  const timeline = buildStrokeTimeline(
+    [
+      { t: 2, d: 10, pace: 120, spm: 28, watts: 160 },
+      { t: 4, d: 21, pace: 118, spm: 30, watts: 190 },
+    ],
+    "rower",
+    true,
+  );
   return {
-    frame: { d: 100, pace: 120, spm: 28, watts: 100, hr: 0 },
+    frame: { t: 2.1, d: 100, pace: 120, spm: 28, watts: 100, hr: 0 },
     ghost: null,
+    strokePose: strokePoseAt(timeline, 2.1),
     distFrac: 0.5,
     totalDistance: 2000,
     ...overrides,
   } as Parameters<CourseRenderer3D["render"]>[0];
+}
+
+function getScene(renderer: CourseRenderer3D) {
+  return (renderer as unknown as { scene: { getObjectByName(name: string): unknown } }).scene;
 }
 
 describe("CourseRenderer3D", () => {
@@ -100,8 +114,34 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  it("builds sport-specific course groups and track details", () => {
+    const detailName = {
+      rower: "course:rower:water-streak",
+      skierg: "course:skierg:groomed-groove",
+      bike: "course:bike:curb",
+    } as const;
+    const equipmentNames = {
+      rower: ["rower-deck-stripe", "rower-oar-collar"],
+      skierg: ["skierg-ski-tip"],
+      bike: ["bike-top-tube", "bike-chain-ring"],
+    } as const;
+
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const host = makeHost();
+      const renderer = new CourseRenderer3D(host, "low", sport);
+      const scene = getScene(renderer);
+      expect(scene.getObjectByName(`course:${sport}`)).toBeDefined();
+      expect(scene.getObjectByName("course:edge-inner")).toBeDefined();
+      expect(scene.getObjectByName(detailName[sport])).toBeDefined();
+      for (const equipmentName of equipmentNames[sport]) {
+        expect(scene.getObjectByName(equipmentName)).toBeDefined();
+      }
+      renderer.destroy();
+    }
+  });
+
   it("constructs at each quality level", () => {
-    for (const quality of ["low", "medium", "high"] as const) {
+    for (const quality of ["low", "medium", "high", "ultra"] as const) {
       const host = makeHost();
       expect(() => new CourseRenderer3D(host, quality, "rower")).not.toThrow();
     }
@@ -146,6 +186,7 @@ describe("CourseRenderer3D", () => {
       r.resize(800, 600);
       const stateWithGhost = makeRenderState({
         ghost: { distFrac: 0.4, pace: 118, spm: 24, label: "PB" },
+        ghostStrokePose: makeRenderState().strokePose,
       });
       expect(() => r.render(stateWithGhost, false)).not.toThrow();
     });
@@ -155,6 +196,18 @@ describe("CourseRenderer3D", () => {
       const r = new CourseRenderer3D(host, "low", "rower");
       r.resize(800, 600);
       expect(() => r.render(makeRenderState(), false, "dark")).not.toThrow();
+    });
+
+    it("recolors the sport-specific course surface on dark theme", () => {
+      const host = makeHost();
+      const r = new CourseRenderer3D(host, "low", "bike");
+      r.resize(800, 600);
+      r.render(makeRenderState({ sport: "bike" }), false, "dark");
+      const lane = getScene(r).getObjectByName("lane") as {
+        material: { color: { getHex(): number } };
+      };
+      expect(lane.material.color.getHex()).toBe(0x262c32);
+      r.destroy();
     });
 
     it("handles playing=true (animation phase advances)", () => {

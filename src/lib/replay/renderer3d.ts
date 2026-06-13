@@ -2,13 +2,13 @@ import * as THREE from "three";
 import type { ReplayRenderer, RenderState } from "./renderer";
 import { COLORS_DARK, COLORS_LIGHT } from "./renderer";
 import type { RenderQuality } from "./replayRenderer";
+import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import {
   METERS_PER_CYCLE,
   ParticlePool,
   PerfGovernor,
-  catchEvents,
   clampDt,
   dampFactor,
   strokeSurge,
@@ -35,50 +35,113 @@ function clamp01(v: number): number {
 interface QualityConfig {
   dprCap: number;
   antialias: boolean;
+  laneSegments: number;
   /** Plane segments per side (1 = flat, no displacement). */
   groundSegments: number;
   displacement: boolean;
   shadows: boolean;
+  shadowMapSize: number;
   /** Number of wake segments trailing each boat (0 = no wake). */
   wake: number;
   /** Buoy lines marking the lane edges (one InstancedMesh, static). */
   buoys: boolean;
+  buoysPerRing: number;
+  buoyRings: number;
   /** Catch spray droplets on the live lane (one InstancedMesh draw). */
   spray: boolean;
+  sprayParticles: number;
+  sprayPerCatch: number;
 }
 
 const QUALITY: Record<RenderQuality, QualityConfig> = {
   low: {
     dprCap: 1,
     antialias: false,
+    laneSegments: 48,
     groundSegments: 1,
     displacement: false,
     shadows: false,
+    shadowMapSize: 0,
     wake: 0,
     buoys: false,
+    buoysPerRing: 0,
+    buoyRings: 0,
     spray: false,
+    sprayParticles: 0,
+    sprayPerCatch: 0,
   },
   medium: {
     dprCap: 2,
     antialias: true,
+    laneSegments: 72,
     groundSegments: 16,
     displacement: true,
     shadows: false,
+    shadowMapSize: 0,
     wake: 16,
     buoys: true,
+    buoysPerRing: 48,
+    buoyRings: 3,
     spray: true,
+    sprayParticles: 40,
+    sprayPerCatch: 4,
   },
   high: {
     dprCap: 2,
     antialias: true,
+    laneSegments: 96,
     groundSegments: 28,
     displacement: true,
     shadows: true,
+    shadowMapSize: 1024,
     wake: 28,
     buoys: true,
+    buoysPerRing: 64,
+    buoyRings: 3,
     spray: true,
+    sprayParticles: 48,
+    sprayPerCatch: 4,
+  },
+  ultra: {
+    dprCap: 3,
+    antialias: true,
+    laneSegments: 144,
+    groundSegments: 56,
+    displacement: true,
+    shadows: true,
+    shadowMapSize: 2048,
+    wake: 44,
+    buoys: true,
+    buoysPerRing: 96,
+    buoyRings: 5,
+    spray: true,
+    sprayParticles: 72,
+    sprayPerCatch: 6,
   },
 };
+
+export type Renderer3DBackend = "webgl" | "webgpu";
+
+type RendererLike = {
+  outputColorSpace?: string;
+  shadowMap?: { enabled: boolean; type: unknown };
+  setPixelRatio(dpr: number): void;
+  setSize(width: number, height: number): void;
+  render(scene: THREE.Scene, camera: THREE.Camera): void;
+  dispose(): void;
+  getContext?: () => unknown;
+};
+
+export type WebGPURendererCtor = new (opts: {
+  canvas: HTMLCanvasElement;
+  antialias: boolean;
+  alpha: boolean;
+}) => RendererLike & { init?: () => Promise<unknown> };
+
+export interface Renderer3DOptions {
+  backend?: Renderer3DBackend;
+  WebGPURenderer?: WebGPURendererCtor;
+}
 
 function makeTextSprite(
   text: string,
@@ -150,7 +213,7 @@ function updateTextSprite(
  */
 interface Avatar {
   group: THREE.Group;
-  animate(phase: number, reduceMotion: boolean): void;
+  animate(phase: number, reduceMotion: boolean, pose?: StrokePose): void;
 }
 
 /** Per-sport scene + animation tuning. */
@@ -173,8 +236,24 @@ interface SportProfile {
   trailColor: number | null;
   /** Ground base colour for the active theme. */
   groundColor(theme: "light" | "dark"): number;
+  /** Static course surface, lane line, and sport-specific marking colours. */
+  course: CourseStyle;
   /** Build the lane avatar (athlete + machine). */
   make(accent: number, castShadow: boolean, opacity: number): Avatar;
+}
+
+type ThemeName = "light" | "dark";
+type CourseColor = (theme: ThemeName) => number;
+
+interface CourseStyle {
+  surface: CourseColor;
+  edge: CourseColor;
+  laneLine: CourseColor;
+  detail: CourseColor;
+  secondary: CourseColor;
+  surfaceOpacity: number;
+  roughness: number;
+  metalness: number;
 }
 
 /**
@@ -196,6 +275,91 @@ function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number
   });
 }
 
+const HUMAN_SKIN = 0xc99973;
+const HUMAN_HAIR = 0x241c18;
+const HUMAN_KIT = 0x202831;
+const HUMAN_KIT_DARK = 0x111820;
+const HUMAN_SHOE = 0x151719;
+
+function humanMat(color: number, roughness = 0.74, metalness = 0.03): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+}
+
+function accentMaterial(accent: number): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: accent, roughness: 0.56, metalness: 0.04 });
+}
+
+function accentPart(mesh: THREE.Mesh): THREE.Mesh {
+  mesh.userData.accent = true;
+  return mesh;
+}
+
+function ellipsoid(
+  scale: [number, number, number],
+  material: THREE.Material,
+  segments = 16,
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1, segments, Math.max(8, segments / 2)),
+    material,
+  );
+  mesh.scale.set(scale[0], scale[1], scale[2]);
+  return mesh;
+}
+
+function capsulePart(
+  radius: number,
+  length: number,
+  material: THREE.Material,
+  axis: "x" | "y" | "z" = "y",
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.CapsuleGeometry(radius, Math.max(0.01, length - radius * 2), 5, 10),
+    material,
+  );
+  if (axis === "x") mesh.rotation.z = Math.PI / 2;
+  if (axis === "z") mesh.rotation.x = Math.PI / 2;
+  return mesh;
+}
+
+function limbSegment(
+  length: number,
+  radius: number,
+  material: THREE.Material,
+  axis: "x" | "y" | "z" = "z",
+): THREE.Mesh {
+  const mesh = capsulePart(radius, length, material, axis);
+  if (axis === "x") mesh.position.x = length / 2;
+  else if (axis === "z") mesh.position.z = length / 2;
+  else mesh.position.y = -length / 2;
+  return mesh;
+}
+
+type Point3 = readonly [number, number, number];
+
+const SEGMENT_FORWARD = new THREE.Vector3(0, 0, 1);
+const SEGMENT_DIR = new THREE.Vector3();
+
+function dynamicLimbSegment(radius: number, material: THREE.Material): THREE.Mesh {
+  return capsulePart(radius, 1, material, "z");
+}
+
+function placeSegmentBetween(segment: THREE.Mesh, start: Point3, end: Point3): void {
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  const dz = end[2] - start[2];
+  const length = Math.hypot(dx, dy, dz);
+  if (length < 0.001) {
+    segment.visible = false;
+    return;
+  }
+  segment.visible = true;
+  segment.position.set((start[0] + end[0]) / 2, (start[1] + end[1]) / 2, (start[2] + end[2]) / 2);
+  segment.scale.set(1, 1, length);
+  SEGMENT_DIR.set(dx / length, dy / length, dz / length);
+  segment.quaternion.setFromUnitVectors(SEGMENT_FORWARD, SEGMENT_DIR);
+}
+
 /**
  * Low-poly single scull: long thin hull (capsule), a seated rower, and two oars
  * with blades. The hull, deck and oar blades carry `userData.accent`; the rower
@@ -203,8 +367,7 @@ function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number
  */
 function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const accentMat = () =>
-    new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.1 });
+  const accentMat = () => accentMaterial(accent);
 
   const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 3.0, 4, 8), accentMat());
   hull.rotation.x = Math.PI / 2; // capsule axis Y -> Z (travel)
@@ -213,37 +376,77 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   hull.userData.accent = true;
   group.add(hull);
 
+  // Deck with a thin racing stripe for visual interest.
   const deck = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 2.6), accentMat());
   deck.position.y = 0.3;
   deck.userData.accent = true;
   group.add(deck);
+  const stripe = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.015, 2.2),
+    humanMat(0xf8fafc, 0.4, 0.08),
+  );
+  stripe.name = "rower-deck-stripe";
+  stripe.position.y = 0.335;
+  group.add(stripe);
 
-  // Rower (torso + head + arms) in its own group so it can slide + lean per
-  // stroke. The arms hang off the torso and swing with the oar handles.
+  const footPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.48, 0.05, 0.12),
+    humanMat(HUMAN_KIT_DARK),
+  );
+  footPlate.position.set(0, 0.34, 0.72);
+  group.add(footPlate);
+
+  // Rower in its own group so slide, layback, legs and arms all move from the
+  // recorded stroke pose rather than as one rigid toy block.
   const rower = new THREE.Group();
-  const torso = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.5, 0.3),
-    new THREE.MeshStandardMaterial({ color: 0x2a2f36, roughness: 0.8 }),
-  );
-  torso.position.y = 0.5;
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.13, 8, 6),
-    new THREE.MeshStandardMaterial({ color: 0xd8b48a, roughness: 0.7 }),
-  );
-  head.position.y = 0.82;
-  rower.add(torso, head);
-  const arms: THREE.Group[] = [];
+  const hips = ellipsoid([0.24, 0.11, 0.16], humanMat(HUMAN_KIT_DARK));
+  hips.position.y = 0.38;
+  const torso = ellipsoid([0.25, 0.36, 0.16], humanMat(HUMAN_KIT));
+  torso.position.set(0, 0.64, -0.02);
+  torso.rotation.x = -0.12;
+  const bib = accentPart(ellipsoid([0.17, 0.24, 0.024], accentMat(), 12));
+  bib.position.set(0, 0.65, 0.15);
+  const shoulderLine = capsulePart(0.035, 0.58, humanMat(HUMAN_KIT_DARK), "x");
+  shoulderLine.position.set(0, 0.82, 0.02);
+  const neck = capsulePart(0.045, 0.13, humanMat(HUMAN_SKIN), "y");
+  neck.position.y = 0.94;
+  const head = ellipsoid([0.105, 0.13, 0.1], humanMat(HUMAN_SKIN), 16);
+  head.position.set(0, 1.07, 0.04);
+  const hair = ellipsoid([0.11, 0.055, 0.105], humanMat(HUMAN_HAIR), 12);
+  hair.position.set(0, 1.16, 0.025);
+  rower.add(hips, torso, bib, shoulderLine, neck, head, hair);
+
+  const handle = capsulePart(0.026, 0.44, humanMat(0x262c31), "x");
+  handle.position.set(0, 0.72, 0.58);
+  rower.add(handle);
+
+  const arms: Array<{
+    side: number;
+    upper: THREE.Mesh;
+    forearm: THREE.Mesh;
+    hand: THREE.Mesh;
+  }> = [];
+  const legs: Array<{
+    side: number;
+    thigh: THREE.Mesh;
+    shin: THREE.Mesh;
+    foot: THREE.Mesh;
+    knee: THREE.Mesh;
+  }> = [];
   for (const side of [-1, 1]) {
-    const arm = new THREE.Group();
-    const limb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.08, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0xd8b48a, roughness: 0.7 }),
-    );
-    limb.position.z = 0.25; // pivot at the shoulder, reach along +Z
-    arm.add(limb);
-    arm.position.set(side * 0.19, 0.66, 0.05);
-    rower.add(arm);
-    arms.push(arm);
+    // Dynamic leg segments — positioned per-frame by IK from hip to foot.
+    const thigh = dynamicLimbSegment(0.055, humanMat(HUMAN_KIT_DARK));
+    const shin = dynamicLimbSegment(0.045, humanMat(HUMAN_KIT_DARK));
+    const foot = dynamicLimbSegment(0.04, humanMat(HUMAN_SHOE));
+    const knee = ellipsoid([0.065, 0.055, 0.065], humanMat(HUMAN_KIT_DARK), 10);
+    rower.add(thigh, shin, foot, knee);
+    legs.push({ side, thigh, shin, foot, knee });
+
+    const upperArm = dynamicLimbSegment(0.04, humanMat(HUMAN_SKIN));
+    const forearm = dynamicLimbSegment(0.035, humanMat(HUMAN_SKIN));
+    const hand = ellipsoid([0.045, 0.04, 0.045], humanMat(HUMAN_SKIN), 10);
+    rower.add(upperArm, forearm, hand);
+    arms.push({ side, upper: upperArm, forearm, hand });
   }
   rower.position.z = -0.1;
   group.add(rower);
@@ -259,6 +462,15 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
     shaft.position.x = side * 1.2;
     oar.add(shaft);
+    // Oar collar — a small ring near the blade end for visual detail.
+    const collar = new THREE.Mesh(
+      new THREE.TorusGeometry(0.05, 0.015, 6, 10),
+      humanMat(0x8a9097, 0.5),
+    );
+    collar.name = "rower-oar-collar";
+    collar.position.set(side * 1.9, 0, 0);
+    collar.rotation.y = Math.PI / 2;
+    oar.add(collar);
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.26), accentMat());
     blade.position.set(side * 2.4, -0.05, 0);
     blade.userData.accent = true;
@@ -270,29 +482,85 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     oars.push(oar);
   }
 
-  const animate = (phase: number, reduce: boolean): void => {
+  const placeArms = (handleY: number, handleZ: number, amp: number): void => {
+    handle.position.set(0, handleY, handleZ);
+    for (const arm of arms) {
+      const shoulder: Point3 = [arm.side * 0.26, 0.8, 0.02];
+      const handTarget: Point3 = [arm.side * 0.18, handleY, handleZ];
+      const elbow: Point3 = [
+        arm.side * 0.24,
+        (shoulder[1] + handTarget[1]) / 2 - 0.08 * amp,
+        (shoulder[2] + handTarget[2]) / 2 - 0.04,
+      ];
+      placeSegmentBetween(arm.upper, shoulder, elbow);
+      placeSegmentBetween(arm.forearm, elbow, handTarget);
+      arm.hand.position.set(handTarget[0], handTarget[1], handTarget[2]);
+    }
+  };
+
+  const placeLegs = (drive: number, amp: number): void => {
+    for (const leg of legs) {
+      // Hip is fixed relative to the rower group.
+      const hip: Point3 = [leg.side * 0.12, 0.38, -0.14];
+      // Foot target: pinned to the foot plate, with a small stroke-driven
+      // offset. At the catch (drive → +1) feet push against the stretcher;
+      // at the finish (drive → −1) feet release slightly forward.
+      const footTarget: Point3 = [
+        leg.side * 0.12,
+        0.28 + drive * 0.02 * amp,
+        0.7 - drive * 0.04 * amp,
+      ];
+      // Knee kinks forward at the catch (compressed) and drops at the finish
+      // (extended), computed as the midpoint with a perpendicular offset.
+      const extension = -drive; // +1 at finish, -1 at catch
+      const knee: Point3 = [
+        leg.side * 0.14,
+        (hip[1] + footTarget[1]) / 2 + 0.08 + extension * 0.06,
+        (hip[2] + footTarget[2]) / 2 - 0.06 * amp - drive * 0.08 * amp,
+      ];
+      placeSegmentBetween(leg.thigh, hip, knee);
+      placeSegmentBetween(leg.shin, knee, footTarget);
+      placeSegmentBetween(leg.foot, footTarget, [
+        footTarget[0],
+        footTarget[1] - 0.02,
+        footTarget[2] + 0.08,
+      ]);
+      leg.knee.position.set(knee[0], knee[1], knee[2]);
+    }
+  };
+
+  const animate = (phase: number, reduce: boolean, pose?: StrokePose): void => {
     if (reduce) {
       rower.position.z = -0.1;
       rower.rotation.x = -0.1;
-      for (const arm of arms) arm.rotation.x = -0.2;
+      handle.rotation.x = 0;
+      placeArms(0.72, 0.58, 1);
+      placeLegs(0, 1);
       for (const oar of oars) oar.rotation.set(0, 0, 0);
       return;
     }
     // Warped phase: the drive is quick, the slide back up is unhurried.
-    const w = warpStrokePhase(phase);
+    const w = pose?.warpedPhase ?? warpStrokePhase(phase);
     const drive = Math.cos(w); // +1 catch … -1 finish
     const recovery = Math.max(0, -Math.sin(w)); // lift blades on return
+    const amp = pose?.amplitude ?? 1;
     // At the catch the rower is compressed toward the stern, leaning into the
     // slide; through the drive both slide and layback move toward the bow.
-    rower.position.z = -0.1 - drive * 0.18;
-    rower.rotation.x = -0.1 - drive * 0.22;
-    // Arms reach near-horizontal at the catch and draw down through the finish.
-    for (const arm of arms) arm.rotation.x = -0.2 + (1 - drive) * 0.27;
+    rower.position.z = -0.1 - drive * 0.22 * amp;
+    rower.rotation.x = -0.08 - drive * 0.2 * amp;
+    // Arms and legs now articulate separately: compact at catch, extended with
+    // drawn hands at the finish. This keeps the motion athletic rather than
+    // puppet-like even though the model stays lightweight.
+    const handleY = 0.7 + recovery * 0.04;
+    const handleZ = 0.58 - drive * 0.08 * amp;
+    handle.rotation.x = recovery * 0.16;
+    placeArms(handleY, handleZ, amp);
+    placeLegs(drive, amp);
     for (const oar of oars) {
       const side = (oar.userData.side as number) ?? 1;
       // Blades enter ahead of the rigger at the catch and sweep toward the
       // stern through the drive (opposing the hull's travel, like the 2D view).
-      oar.rotation.y = -side * drive * 0.5;
+      oar.rotation.y = -side * drive * 0.5 * amp;
       // Buried through the drive (slight dip), feathered clear on the recovery.
       oar.rotation.z = side * (recovery * 0.26 - 0.06);
     }
@@ -309,42 +577,71 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
  */
 function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const accentMat = () =>
-    new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.1 });
-  const neutralMat = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 });
+  const accentMat = () => accentMaterial(accent);
+  const neutralMat = (c: number) => humanMat(c);
 
-  // Skis: two thin planks along travel (+Z).
+  // Skis: two thin planks along travel (+Z), with a slightly upturned tip.
   for (const side of [-1, 1]) {
     const ski = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 2.4), accentMat());
     ski.position.set(side * 0.18, 0.03, 0.2);
     ski.userData.accent = true;
     group.add(ski);
+    // Ski tip — a small wedge at the front for a more realistic profile.
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.3), accentMat());
+    tip.name = "skierg-ski-tip";
+    tip.position.set(side * 0.18, 0.06, 1.45);
+    tip.rotation.x = -0.25;
+    tip.userData.accent = true;
+    group.add(tip);
   }
 
   // Legs are planted; the upper body pivots from the hips for the crunch.
+  const legParts: Array<{ thigh: THREE.Group; shin: THREE.Group }> = [];
   for (const side of [-1, 1]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.6, 0.18), neutralMat(0x2a2f36));
-    leg.position.set(side * 0.16, 0.4, 0);
-    group.add(leg);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.34), neutralMat(HUMAN_SHOE));
+    boot.position.set(side * 0.18, 0.11, 0.18);
+    group.add(boot);
+
+    const thigh = new THREE.Group();
+    thigh.position.set(side * 0.15, 0.72, 0.02);
+    thigh.add(limbSegment(0.46, 0.06, neutralMat(HUMAN_KIT_DARK), "y"));
+    const shin = new THREE.Group();
+    shin.position.set(side * 0.16, 0.38, 0.08);
+    shin.add(limbSegment(0.48, 0.052, neutralMat(HUMAN_KIT_DARK), "y"));
+    group.add(thigh, shin);
+    legParts.push({ thigh, shin });
   }
   const upper = new THREE.Group();
   upper.position.y = 0.7;
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.55, 0.28), accentMat());
-  torso.position.y = 0.28;
-  torso.userData.accent = true;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), neutralMat(0xd8b48a));
-  head.position.y = 0.7;
-  upper.add(torso, head);
-  // Arms pivot at the shoulders and swing with the poles.
-  const arms: THREE.Group[] = [];
+  const hips = ellipsoid([0.24, 0.11, 0.16], neutralMat(HUMAN_KIT_DARK), 12);
+  hips.position.y = -0.02;
+  const torso = ellipsoid([0.25, 0.38, 0.16], neutralMat(HUMAN_KIT), 16);
+  torso.position.y = 0.31;
+  const vest = accentPart(ellipsoid([0.17, 0.25, 0.024], accentMat(), 12));
+  vest.position.set(0, 0.33, 0.15);
+  const shoulderLine = capsulePart(0.035, 0.62, neutralMat(HUMAN_KIT_DARK), "x");
+  shoulderLine.position.y = 0.56;
+  const neck = capsulePart(0.045, 0.13, neutralMat(HUMAN_SKIN), "y");
+  neck.position.y = 0.67;
+  const head = ellipsoid([0.11, 0.13, 0.1], neutralMat(HUMAN_SKIN), 16);
+  head.position.set(0, 0.81, 0.03);
+  const hair = ellipsoid([0.115, 0.055, 0.105], neutralMat(HUMAN_HAIR), 12);
+  hair.position.set(0, 0.9, 0.02);
+  upper.add(hips, torso, vest, shoulderLine, neck, head, hair);
+  // Arms are placed from shoulders to pole grips, so the hands stay on the
+  // handles while the pole groups pivot from the same point.
+  const arms: Array<{
+    side: number;
+    upper: THREE.Mesh;
+    forearm: THREE.Mesh;
+    hand: THREE.Mesh;
+  }> = [];
   for (const side of [-1, 1]) {
-    const arm = new THREE.Group();
-    const limb = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.42), neutralMat(0xd8b48a));
-    limb.position.z = 0.21;
-    arm.add(limb);
-    arm.position.set(side * 0.24, 0.42, 0.05);
-    upper.add(arm);
-    arms.push(arm);
+    const upperArm = dynamicLimbSegment(0.04, neutralMat(HUMAN_SKIN));
+    const forearm = dynamicLimbSegment(0.035, neutralMat(HUMAN_SKIN));
+    const hand = ellipsoid([0.045, 0.04, 0.045], neutralMat(HUMAN_SKIN), 10);
+    upper.add(upperArm, forearm, hand);
+    arms.push({ side, upper: upperArm, forearm, hand });
   }
   group.add(upper);
 
@@ -362,28 +659,57 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     basket.position.y = -1.15;
     basket.userData.accent = true;
     pole.add(basket);
-    pole.position.set(side * 0.3, 1.1, 0.1);
-    group.add(pole);
+    pole.position.set(side * 0.3, 0.4, 0.1);
+    upper.add(pole);
     poles.push(pole);
   }
 
-  const animate = (phase: number, reduce: boolean): void => {
+  const placePoleArms = (handY: number, handZ: number, amp: number): void => {
+    for (let i = 0; i < arms.length; i++) {
+      const arm = arms[i];
+      const shoulder: Point3 = [arm.side * 0.28, 0.53, 0.05];
+      const handTarget: Point3 = [arm.side * 0.3, handY, handZ];
+      const elbow: Point3 = [
+        arm.side * 0.32,
+        (shoulder[1] + handTarget[1]) / 2 - 0.06 * amp,
+        (shoulder[2] + handTarget[2]) / 2 + 0.03,
+      ];
+      placeSegmentBetween(arm.upper, shoulder, elbow);
+      placeSegmentBetween(arm.forearm, elbow, handTarget);
+      arm.hand.position.set(handTarget[0], handTarget[1], handTarget[2]);
+      const pole = poles[i];
+      if (pole) pole.position.set(handTarget[0], handTarget[1], handTarget[2]);
+    }
+  };
+
+  const animate = (phase: number, reduce: boolean, pose?: StrokePose): void => {
     if (reduce) {
       upper.rotation.x = 0.25;
-      for (const arm of arms) arm.rotation.x = -0.4;
+      placePoleArms(0.42, 0.16, 1);
+      for (const leg of legParts) {
+        leg.thigh.rotation.x = 0.08;
+        leg.shin.rotation.x = -0.05;
+      }
       for (const p of poles) p.rotation.x = -0.2;
       return;
     }
     // Warped phase: a sharp pole plant + pull, then a slow recoil upright.
-    const w = warpStrokePhase(phase);
+    const w = pose?.warpedPhase ?? warpStrokePhase(phase);
     const swing = Math.cos(w); // +1 plant (tips forward) … -1 end of pull
     const crunch = Math.max(0, -swing); // bend forward through the drive
-    upper.rotation.x = 0.2 + crunch * 0.5;
+    const amp = pose?.amplitude ?? 1;
+    upper.rotation.x = 0.2 + crunch * 0.5 * amp;
+    for (const leg of legParts) {
+      leg.thigh.rotation.x = 0.08 + crunch * 0.16 * amp;
+      leg.shin.rotation.x = -0.08 - crunch * 0.12 * amp;
+    }
     // Hands reach high and forward at the plant, then press down and back
     // through the pull; pole tips plant ahead of the feet and sweep behind
     // (negative rotation.x moves the below-hand basket toward +Z/forward).
-    for (const arm of arms) arm.rotation.x = -0.25 - swing * 0.35;
-    for (const p of poles) p.rotation.x = -swing * 0.9 - 0.1;
+    const handY = 0.42 + swing * 0.16 * amp - crunch * 0.16 * amp;
+    const handZ = 0.16 + swing * 0.25 * amp;
+    placePoleArms(handY, handZ, amp);
+    for (const p of poles) p.rotation.x = -swing * 0.9 * amp - 0.1;
   };
 
   finalizeAvatar(group, castShadow, opacity);
@@ -397,10 +723,8 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
  */
 function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const accentMat = () =>
-    new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.2 });
-  const neutralMat = (c: number, rough = 0.7) =>
-    new THREE.MeshStandardMaterial({ color: c, roughness: rough });
+  const accentMat = () => accentMaterial(accent);
+  const neutralMat = (c: number, rough = 0.7) => humanMat(c, rough);
 
   const wheelR = 0.45;
   const wheels: THREE.Group[] = [];
@@ -425,64 +749,142 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     wheels.push(wheel);
   }
 
-  // Frame: down tube + seat tube.
+  // Frame: down tube, seat tube, top tube, and chain stays for a proper
+  // diamond-frame silhouette.
   const downTube = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.6), accentMat());
   downTube.position.set(0, wheelR + 0.15, 0);
   downTube.userData.accent = true;
   const seatTube = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.08), accentMat());
   seatTube.position.set(0, wheelR + 0.45, -0.4);
   seatTube.userData.accent = true;
-  group.add(downTube, seatTube);
+  const topTube = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1.1), accentMat());
+  topTube.name = "bike-top-tube";
+  topTube.position.set(0, wheelR + 0.75, -0.15);
+  topTube.userData.accent = true;
+  // Chain stays: two thin tubes from BB to rear axle.
+  for (const side of [-1, 1]) {
+    const stay = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.85), accentMat());
+    stay.position.set(side * 0.06, wheelR + 0.05, 0.4);
+    stay.userData.accent = true;
+    group.add(stay);
+  }
+  group.add(downTube, seatTube, topTube);
 
   // Cranks: spin about the bottom bracket (X axis) with two pedals.
   const cranks = new THREE.Group();
   cranks.position.set(0, wheelR, -0.05);
-  for (const dir of [1, -1]) {
+  // Chain ring — a toroidal disc at the bottom bracket.
+  const chainRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.16, 0.018, 6, 18),
+    neutralMat(0x555555, 0.4),
+  );
+  chainRing.name = "bike-chain-ring";
+  chainRing.rotation.y = Math.PI / 2;
+  cranks.add(chainRing);
+  const pedals: Array<{ side: number; crankY: number }> = [];
+  for (const side of [-1, 1]) {
     const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), neutralMat(0x20242a));
-    pedal.position.set(0, dir * 0.18, 0);
+    const crankY = side * 0.18;
+    pedal.position.set(side * 0.1, crankY, 0);
     cranks.add(pedal);
+    pedals.push({ side, crankY });
   }
   group.add(cranks);
 
-  // Rider: jersey torso in an aero lean + head + thighs that pedal.
+  // Rider: compact human proportions in an aero lean. The jersey/helmet carry
+  // the lane accent, while limbs stay skin/kit coloured so the athlete does not
+  // read as a single bright toy shape.
   const rider = new THREE.Group();
   rider.position.set(0, wheelR + 0.5, -0.35);
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.6, 0.26), accentMat());
-  torso.rotation.x = 0.6; // aero tuck
-  torso.position.y = 0.3;
-  torso.userData.accent = true;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), neutralMat(0xd8b48a));
-  head.position.set(0, 0.62, 0.35);
-  const thighs: THREE.Mesh[] = [];
+  const torso = ellipsoid([0.23, 0.34, 0.14], neutralMat(HUMAN_KIT), 16);
+  torso.rotation.x = 0.74; // aero tuck
+  torso.position.set(0, 0.28, 0.1);
+  const jerseyPanel = accentPart(ellipsoid([0.15, 0.22, 0.022], accentMat(), 12));
+  jerseyPanel.rotation.x = 0.74;
+  jerseyPanel.position.set(0, 0.31, 0.23);
+  const shoulderLine = capsulePart(0.032, 0.52, neutralMat(HUMAN_KIT_DARK), "x");
+  shoulderLine.position.set(0, 0.47, 0.18);
+  const neck = capsulePart(0.04, 0.11, neutralMat(HUMAN_SKIN), "y");
+  neck.position.set(0, 0.54, 0.26);
+  const head = ellipsoid([0.1, 0.12, 0.095], neutralMat(HUMAN_SKIN), 16);
+  head.position.set(0, 0.66, 0.33);
+  const helmet = accentPart(ellipsoid([0.108, 0.055, 0.1], accentMat(), 12));
+  helmet.position.set(0, 0.74, 0.31);
+  const legs: Array<{
+    side: number;
+    crankY: number;
+    thigh: THREE.Mesh;
+    shin: THREE.Mesh;
+    shoe: THREE.Group;
+  }> = [];
   for (const side of [-1, 1]) {
-    const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.14), neutralMat(0x2a2f36));
-    thigh.position.set(side * 0.1, -0.1, 0.2);
-    rider.add(thigh);
-    thighs.push(thigh);
+    const thigh = dynamicLimbSegment(0.052, neutralMat(HUMAN_KIT_DARK));
+    const shin = dynamicLimbSegment(0.042, neutralMat(HUMAN_SKIN));
+    const shoe = new THREE.Group();
+    shoe.add(limbSegment(0.18, 0.035, neutralMat(HUMAN_SHOE), "z"));
+    rider.add(thigh, shin, shoe);
+    legs.push({
+      side,
+      crankY: pedals.find((p) => p.side === side)?.crankY ?? side * 0.18,
+      thigh,
+      shin,
+      shoe,
+    });
   }
   // Arms from the shoulders down to the bars, fixed in the tuck.
   for (const side of [-1, 1]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.5), neutralMat(0xd8b48a));
-    arm.position.set(side * 0.15, 0.32, 0.45);
-    arm.rotation.x = -0.7;
-    rider.add(arm);
+    const upperArm = new THREE.Group();
+    upperArm.position.set(side * 0.2, 0.42, 0.2);
+    upperArm.rotation.x = -0.78;
+    upperArm.add(limbSegment(0.24, 0.035, neutralMat(HUMAN_SKIN), "z"));
+    const forearm = new THREE.Group();
+    forearm.position.z = 0.22;
+    forearm.rotation.x = -0.28;
+    forearm.add(limbSegment(0.31, 0.032, neutralMat(HUMAN_SKIN), "z"));
+    const hand = ellipsoid([0.042, 0.035, 0.042], neutralMat(HUMAN_SKIN), 10);
+    hand.position.z = 0.32;
+    forearm.add(hand);
+    upperArm.add(forearm);
+    rider.add(upperArm);
   }
-  rider.add(torso, head);
+  rider.add(torso, jerseyPanel, shoulderLine, neck, head, helmet);
   group.add(rider);
+
+  const placePedalLegs = (phase: number): void => {
+    for (const leg of legs) {
+      const pedalY = leg.crankY * Math.cos(phase);
+      const pedalZ = leg.crankY * Math.sin(phase);
+      const foot: Point3 = [
+        leg.side * 0.1,
+        cranks.position.y + pedalY - rider.position.y,
+        cranks.position.z + pedalZ - rider.position.z,
+      ];
+      const hip: Point3 = [leg.side * 0.1, -0.02, 0.08];
+      const extension = Math.sin(phase) * leg.side;
+      const knee: Point3 = [
+        leg.side * 0.12,
+        (hip[1] + foot[1]) / 2 + 0.15,
+        (hip[2] + foot[2]) / 2 - 0.08 * extension,
+      ];
+      placeSegmentBetween(leg.thigh, hip, knee);
+      placeSegmentBetween(leg.shin, knee, foot);
+      leg.shoe.position.set(foot[0], foot[1], foot[2]);
+      leg.shoe.rotation.x = phase;
+    }
+  };
 
   const animate = (phase: number, reduce: boolean): void => {
     if (reduce) {
       for (const w of wheels) w.rotation.x = 0;
       cranks.rotation.x = 0;
-      for (const t of thighs) t.rotation.x = 0;
+      placePedalLegs(0);
       rider.rotation.z = 0;
       return;
     }
     // Positive rotation about +X rolls the top of the wheel toward +Z (forward).
     for (const w of wheels) w.rotation.x = phase * 2.4; // wheels roll fast
     cranks.rotation.x = phase; // pedals turn
-    thighs[0].rotation.x = Math.sin(phase) * 0.5;
-    thighs[1].rotation.x = Math.sin(phase + Math.PI) * 0.5;
+    placePedalLegs(phase);
     // Subtle alternating upper-body sway with the pedal stroke.
     rider.rotation.z = Math.sin(phase) * 0.05;
   };
@@ -502,6 +904,16 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     groundOpacity: 0.4,
     trailColor: 0xffffff,
     groundColor: (t) => hex((t === "dark" ? COLORS_DARK : COLORS_LIGHT).laneLine),
+    course: {
+      surface: (t) => (t === "dark" ? 0x123b47 : 0x7fc4d6),
+      edge: (t) => (t === "dark" ? 0x8fe3f1 : 0xf8fbff),
+      laneLine: (t) => (t === "dark" ? 0x4fb3c8 : 0xd9f7ff),
+      detail: (t) => (t === "dark" ? 0xfbbf24 : 0xf59e0b),
+      secondary: (t) => (t === "dark" ? 0xc8f7ff : 0xffffff),
+      surfaceOpacity: 0.56,
+      roughness: 0.52,
+      metalness: 0.1,
+    },
     make: makeRowerAvatar,
   },
   skierg: {
@@ -514,6 +926,16 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     groundOpacity: 1,
     trailColor: 0xffffff,
     groundColor: (t) => (t === "dark" ? 0xb8c4cc : 0xeef4f7),
+    course: {
+      surface: (t) => (t === "dark" ? 0xd8e2e8 : 0xf7fafc),
+      edge: (t) => (t === "dark" ? 0x94a3b8 : 0xb9c8d2),
+      laneLine: (t) => (t === "dark" ? 0xb7c9d6 : 0xd7e2e8),
+      detail: (t) => (t === "dark" ? 0x60a5fa : 0x2563eb),
+      secondary: (t) => (t === "dark" ? 0x7c8c98 : 0xcbd5dd),
+      surfaceOpacity: 1,
+      roughness: 0.92,
+      metalness: 0.02,
+    },
     make: makeSkierAvatar,
   },
   bike: {
@@ -526,6 +948,16 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     groundOpacity: 1,
     trailColor: null,
     groundColor: (t) => (t === "dark" ? 0x2a333a : 0x9aa4ac),
+    course: {
+      surface: (t) => (t === "dark" ? 0x262c32 : 0x3f464d),
+      edge: (t) => (t === "dark" ? 0xe5e7eb : 0xf8fafc),
+      laneLine: (t) => (t === "dark" ? 0xfbbf24 : 0xf59e0b),
+      detail: (t) => (t === "dark" ? 0xef4444 : 0xb91c1c),
+      secondary: (t) => (t === "dark" ? 0x94a3b8 : 0x6b7280),
+      surfaceOpacity: 1,
+      roughness: 0.78,
+      metalness: 0.04,
+    },
     make: makeBikeAvatar,
   },
 };
@@ -621,7 +1053,9 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly ghostRadius = 26;
 
   private cfg: QualityConfig;
-  private renderer: THREE.WebGLRenderer;
+  private renderer: RendererLike;
+  private readonly backend: Renderer3DBackend;
+  private initPromise: Promise<unknown> = Promise.resolve();
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private cameraInit = false;
@@ -630,6 +1064,9 @@ export class CourseRenderer3D implements ReplayRenderer {
   private animPhase = 0;
   private lastAnimPhase = NaN;
   private strokePhase = 0;
+  private ghostStrokePhase = 0;
+  private lastLivePose: StrokePose | null = null;
+  private lastGhostPose: StrokePose | null = null;
   private lastLiveMeters = 0;
   private lastGhostMeters = 0;
   private lastNowMs = NaN;
@@ -647,6 +1084,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 
   private host: HTMLElement;
   private canvas: HTMLCanvasElement;
+  private readonly sport: Sport;
   private readonly profile: SportProfile;
   private groundMesh!: THREE.Mesh;
   private liveBoat: THREE.Group; // outer: position + heading
@@ -671,14 +1109,22 @@ export class CourseRenderer3D implements ReplayRenderer {
   private lookAt = new THREE.Vector3();
   private disposables: THREE.Material[] = [];
   private geometries: THREE.BufferGeometry[] = [];
+  private courseThemeMats: Array<{ material: THREE.MeshStandardMaterial; color: CourseColor }> = [];
   private postMatMajor!: THREE.MeshStandardMaterial;
   private postMatMinor!: THREE.MeshStandardMaterial;
   private cellMatDark!: THREE.MeshStandardMaterial;
   private cellMatLight!: THREE.MeshStandardMaterial;
 
-  constructor(host: HTMLElement, quality: RenderQuality = "medium", sport: Sport = "rower") {
+  constructor(
+    host: HTMLElement,
+    quality: RenderQuality = "medium",
+    sport: Sport = "rower",
+    options: Renderer3DOptions = {},
+  ) {
     this.cfg = QUALITY[quality];
+    this.sport = sport;
     this.profile = SPORT_PROFILES[sport];
+    this.backend = options.backend ?? "webgl";
     // A canvas can only ever hold ONE context type for its lifetime, and the 2D
     // renderer locks the shared page canvas to '2d'. So the 3D renderer creates
     // and owns its own canvas (and removes it on destroy) — this also means a
@@ -687,14 +1133,31 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.canvas = document.createElement("canvas");
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
+    // NOTE: If the constructor throws after this point, the caller's
+    // destroyFailedRenderer() cannot clean up this canvas because the renderer
+    // instance will not yet have been assigned.  In the current code paths
+    // (CourseRenderer3DWebGPU always supplies WebGPURenderer) this cannot
+    // happen, but subclasses that add early-throw guards should remove the
+    // canvas themselves before re-throwing.
     host.appendChild(this.canvas);
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: this.canvas,
-      antialias: this.cfg.antialias,
-      alpha: true,
-    });
+    if (this.backend === "webgpu") {
+      if (!options.WebGPURenderer) throw new Error("WebGPU renderer unavailable");
+      const renderer = new options.WebGPURenderer({
+        canvas: this.canvas,
+        antialias: this.cfg.antialias,
+        alpha: true,
+      });
+      this.renderer = renderer;
+      this.initPromise = renderer.init?.() ?? Promise.resolve();
+    } else {
+      this.renderer = new THREE.WebGLRenderer({
+        canvas: this.canvas,
+        antialias: this.cfg.antialias,
+        alpha: true,
+      });
+    }
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    if (this.cfg.shadows) {
+    if (this.cfg.shadows && this.renderer.shadowMap) {
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     }
@@ -703,12 +1166,12 @@ export class CourseRenderer3D implements ReplayRenderer {
 
     // Sky/ground hemisphere fill + a key sun give boats nicer shading than a
     // flat ambient. The sun casts shadows only at high quality.
-    this.scene.add(new THREE.HemisphereLight(0xddeaf2, 0x4a5560, 0.85));
-    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    this.scene.add(new THREE.HemisphereLight(0xddeaf2, 0x4a5560, 0.9));
+    const sun = new THREE.DirectionalLight(0xfff7ed, 0.85);
     sun.position.set(14, 26, 10);
     if (this.cfg.shadows) {
       sun.castShadow = true;
-      sun.shadow.mapSize.set(1024, 1024);
+      sun.shadow.mapSize.set(this.cfg.shadowMapSize, this.cfg.shadowMapSize);
       const c = sun.shadow.camera;
       c.near = 1;
       c.far = 90;
@@ -716,6 +1179,9 @@ export class CourseRenderer3D implements ReplayRenderer {
       c.right = c.top = 42;
     }
     this.scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xffd6a3, 0.18);
+    fill.position.set(-10, 8, -6);
+    this.scene.add(fill);
 
     this.liveAvatar = this.profile.make(hex(COLORS_LIGHT.live), this.cfg.shadows, 1);
     this.liveBoat = new THREE.Group();
@@ -745,7 +1211,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Catch spray for the live lane: one InstancedMesh, one draw call. The
     // droplets shrink as they die, so no per-particle materials are needed.
     if (this.cfg.spray && this.profile.sprayOffset !== null) {
-      this.sprayPool = new ParticlePool(40);
+      this.sprayPool = new ParticlePool(this.cfg.sprayParticles);
       const sprayGeo = this.track(new THREE.IcosahedronGeometry(0.05, 0));
       this.sprayMat = this.mat(new THREE.MeshBasicMaterial({ color: hex(COLORS_LIGHT.foam) }));
       this.sprayMesh = new THREE.InstancedMesh(sprayGeo, this.sprayMat, this.sprayPool.capacity);
@@ -765,8 +1231,255 @@ export class CourseRenderer3D implements ReplayRenderer {
     return m;
   }
 
+  private courseMat(
+    name: string,
+    color: CourseColor,
+    opts: Omit<THREE.MeshStandardMaterialParameters, "color"> = {},
+  ): THREE.MeshStandardMaterial {
+    const material = this.mat(
+      new THREE.MeshStandardMaterial({
+        ...opts,
+        color: color("light"),
+      }),
+    );
+    material.name = name;
+    this.courseThemeMats.push({ material, color });
+    return material;
+  }
+
+  ready(): Promise<unknown> {
+    return this.initPromise;
+  }
+
+  get backendKind(): Renderer3DBackend {
+    return this.backend;
+  }
+
   private loopAngle(meters: number): number {
     return (meters / CourseRenderer3D.LOOP_METERS) * Math.PI * 2;
+  }
+
+  private addCourseRing(
+    group: THREE.Group,
+    radius: number,
+    tube: number,
+    material: THREE.Material,
+    name: string,
+    y = 0.045,
+  ): THREE.Mesh {
+    const ring = new THREE.Mesh(
+      this.track(new THREE.TorusGeometry(radius, tube, 6, this.cfg.laneSegments)),
+      material,
+    );
+    ring.name = name;
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = y;
+    ring.receiveShadow = this.cfg.shadows;
+    group.add(ring);
+    return ring;
+  }
+
+  private addCourseBlock(
+    group: THREE.Group,
+    geometry: THREE.BufferGeometry,
+    material: THREE.Material,
+    radius: number,
+    angle: number,
+    name: string,
+    y = 0.055,
+  ): THREE.Mesh {
+    const block = new THREE.Mesh(geometry, material);
+    const tx = Math.cos(angle);
+    const tz = -Math.sin(angle);
+    block.name = name;
+    block.position.set(radius * Math.sin(angle), y, radius * Math.cos(angle));
+    block.rotation.y = Math.atan2(tx, tz);
+    block.receiveShadow = this.cfg.shadows;
+    group.add(block);
+    return block;
+  }
+
+  private addRowerCourseDetails(group: THREE.Group, innerR: number, outerR: number): void {
+    const style = this.profile.course;
+    const laneMat = this.courseMat("course:rower:lane-line", style.laneLine, {
+      roughness: 0.46,
+      metalness: 0.08,
+    });
+    for (const r of [innerR + 0.75, this.ghostRadius, this.loopRadius, outerR - 0.75]) {
+      this.addCourseRing(group, r, 0.018, laneMat, "course:rower:lane-line", 0.055);
+    }
+
+    const streakMat = this.courseMat("course:rower:water-streak", style.secondary, {
+      transparent: true,
+      opacity: 0.3,
+      depthWrite: false,
+      roughness: 0.38,
+      metalness: 0.08,
+    });
+    const streakGeo = this.track(new THREE.BoxGeometry(0.045, 0.025, 1.65));
+    const streaks = this.cfg.laneSegments >= 120 ? 72 : this.cfg.laneSegments >= 90 ? 54 : 36;
+    for (let i = 0; i < streaks; i++) {
+      const band = (i % 5) / 4;
+      const radius = innerR + 1.4 + (outerR - innerR - 2.8) * band;
+      const angle = (i / streaks) * Math.PI * 2 + (i % 2) * 0.04;
+      this.addCourseBlock(group, streakGeo, streakMat, radius, angle, "course:rower:water-streak");
+    }
+
+    const buoyTickMat = this.courseMat("course:rower:distance-buoy", style.detail, {
+      roughness: 0.52,
+      metalness: 0.03,
+    });
+    const buoyTickGeo = this.track(new THREE.BoxGeometry(0.12, 0.05, 0.5));
+    for (let i = 0; i < 20; i++) {
+      const angle = (i / 20) * Math.PI * 2;
+      this.addCourseBlock(
+        group,
+        buoyTickGeo,
+        buoyTickMat,
+        outerR - 0.35,
+        angle,
+        "course:rower:distance-buoy",
+        0.075,
+      );
+    }
+  }
+
+  private addSkierCourseDetails(group: THREE.Group, innerR: number, outerR: number): void {
+    const style = this.profile.course;
+    const grooveMat = this.courseMat("course:skierg:groomed-groove", style.laneLine, {
+      roughness: 0.94,
+      metalness: 0.01,
+    });
+    const grooveCount = 7;
+    for (let i = 0; i < grooveCount; i++) {
+      const t = i / (grooveCount - 1);
+      this.addCourseRing(
+        group,
+        innerR + 1.1 + (outerR - innerR - 2.2) * t,
+        0.014,
+        grooveMat,
+        "course:skierg:groomed-groove",
+        0.052,
+      );
+    }
+
+    const combMat = this.courseMat("course:skierg:snow-comb", style.secondary, {
+      transparent: true,
+      opacity: 0.36,
+      roughness: 0.96,
+      metalness: 0,
+    });
+    const combGeo = this.track(new THREE.BoxGeometry(outerR - innerR - 2.2, 0.018, 0.035));
+    const combs = this.cfg.laneSegments >= 120 ? 60 : 36;
+    for (let i = 0; i < combs; i++) {
+      this.addCourseBlock(
+        group,
+        combGeo,
+        combMat,
+        (innerR + outerR) / 2,
+        (i / combs) * Math.PI * 2,
+        "course:skierg:snow-comb",
+        0.064,
+      );
+    }
+
+    const gateMat = this.courseMat("course:skierg:gate", style.detail, {
+      roughness: 0.45,
+      metalness: 0.04,
+    });
+    const gateGeo = this.track(new THREE.BoxGeometry(0.22, 0.06, 0.82));
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      this.addCourseBlock(
+        group,
+        gateGeo,
+        gateMat,
+        innerR + 0.55,
+        angle,
+        "course:skierg:gate",
+        0.08,
+      );
+      this.addCourseBlock(
+        group,
+        gateGeo,
+        gateMat,
+        outerR - 0.55,
+        angle,
+        "course:skierg:gate",
+        0.08,
+      );
+    }
+  }
+
+  private addBikeCourseDetails(group: THREE.Group, innerR: number, outerR: number): void {
+    const style = this.profile.course;
+    const seamMat = this.courseMat("course:bike:seam", style.secondary, {
+      roughness: 0.82,
+      metalness: 0.03,
+    });
+    this.addCourseRing(group, this.ghostRadius, 0.018, seamMat, "course:bike:seam", 0.058);
+    this.addCourseRing(group, this.loopRadius, 0.018, seamMat, "course:bike:seam", 0.058);
+
+    const dashMat = this.courseMat("course:bike:dash", style.laneLine, {
+      roughness: 0.55,
+      metalness: 0.04,
+    });
+    const dashGeo = this.track(new THREE.BoxGeometry(0.16, 0.05, 1.45));
+    const dashCount = this.cfg.laneSegments >= 120 ? 56 : 40;
+    for (let i = 0; i < dashCount; i++) {
+      this.addCourseBlock(
+        group,
+        dashGeo,
+        dashMat,
+        (this.ghostRadius + this.loopRadius) / 2,
+        (i / dashCount) * Math.PI * 2,
+        "course:bike:dash",
+        0.085,
+      );
+    }
+
+    const curbRed = this.courseMat("course:bike:curb-red", style.detail, {
+      roughness: 0.48,
+      metalness: 0.04,
+    });
+    const curbWhite = this.courseMat("course:bike:curb-white", style.edge, {
+      roughness: 0.5,
+      metalness: 0.03,
+    });
+    const curbGeo = this.track(new THREE.BoxGeometry(0.34, 0.065, 0.86));
+    const curbCount = this.cfg.laneSegments >= 120 ? 72 : 48;
+    for (let i = 0; i < curbCount; i++) {
+      const angle = (i / curbCount) * Math.PI * 2;
+      const mat = i % 2 === 0 ? curbRed : curbWhite;
+      this.addCourseBlock(group, curbGeo, mat, innerR + 0.3, angle, "course:bike:curb", 0.09);
+      this.addCourseBlock(group, curbGeo, mat, outerR - 0.3, angle, "course:bike:curb", 0.09);
+    }
+
+    const speedMat = this.courseMat("course:bike:speed-bars", style.edge, {
+      transparent: true,
+      opacity: 0.44,
+      roughness: 0.52,
+      metalness: 0.02,
+    });
+    const speedGeo = this.track(new THREE.BoxGeometry(1.1, 0.035, 0.14));
+    for (let i = 0; i < 28; i++) {
+      const angle = (i / 28) * Math.PI * 2 + 0.03;
+      this.addCourseBlock(
+        group,
+        speedGeo,
+        speedMat,
+        outerR - 1.6,
+        angle,
+        "course:bike:speed-bars",
+        0.074,
+      );
+    }
+  }
+
+  private addSportCourseDetails(group: THREE.Group, innerR: number, outerR: number): void {
+    if (this.sport === "rower") this.addRowerCourseDetails(group, innerR, outerR);
+    else if (this.sport === "skierg") this.addSkierCourseDetails(group, innerR, outerR);
+    else this.addBikeCourseDetails(group, innerR, outerR);
   }
 
   private buildStaticScene(): void {
@@ -794,19 +1507,32 @@ export class CourseRenderer3D implements ReplayRenderer {
 
     const innerR = this.ghostRadius - 4;
     const outerR = this.loopRadius + 4;
-    const laneGeo = this.track(new THREE.RingGeometry(innerR, outerR, 72));
-    const laneMat = this.mat(
-      new THREE.MeshStandardMaterial({
-        color: hex(COLORS_LIGHT.courseFill),
-        roughness: 0.85,
-      }),
-    );
+    const course = new THREE.Group();
+    course.name = `course:${this.sport}`;
+    this.scene.add(course);
+
+    const laneGeo = this.track(new THREE.RingGeometry(innerR, outerR, this.cfg.laneSegments));
+    const laneMat = this.courseMat("lane", this.profile.course.surface, {
+      transparent: this.profile.course.surfaceOpacity < 1,
+      opacity: this.profile.course.surfaceOpacity,
+      depthWrite: this.profile.course.surfaceOpacity >= 1,
+      roughness: this.profile.course.roughness,
+      metalness: this.profile.course.metalness,
+    });
     laneMat.name = "lane";
     const lane = new THREE.Mesh(laneGeo, laneMat);
     lane.name = "lane";
     lane.rotation.x = -Math.PI / 2;
     lane.receiveShadow = this.cfg.shadows;
-    this.scene.add(lane);
+    course.add(lane);
+
+    const edgeMat = this.courseMat("course:edge", this.profile.course.edge, {
+      roughness: 0.52,
+      metalness: 0.04,
+    });
+    this.addCourseRing(course, innerR, 0.035, edgeMat, "course:edge-inner", 0.06);
+    this.addCourseRing(course, outerR, 0.035, edgeMat, "course:edge-outer", 0.06);
+    this.addSportCourseDetails(course, innerR, outerR);
 
     this.postMatMajor = this.mat(
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.tickMajor) }),
@@ -814,14 +1540,21 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.postMatMinor = this.mat(
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.tickMinor) }),
     );
-    const postGeo = this.track(new THREE.BoxGeometry(0.16, 1.3, 0.16));
+    const postGeo = this.track(new THREE.BoxGeometry(0.14, 1.55, 0.14));
+    const postCapGeo = this.track(new THREE.SphereGeometry(0.09, 8, 6));
     const postR = outerR + 1.4;
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * Math.PI * 2;
-      const post = new THREE.Mesh(postGeo, i % 5 === 0 ? this.postMatMajor : this.postMatMinor);
-      post.position.set(postR * Math.sin(a), 0.65, postR * Math.cos(a));
+      const isMajor = i % 5 === 0;
+      const postMat = isMajor ? this.postMatMajor : this.postMatMinor;
+      const post = new THREE.Mesh(postGeo, postMat);
+      post.position.set(postR * Math.sin(a), 0.78, postR * Math.cos(a));
       post.castShadow = this.cfg.shadows;
       this.scene.add(post);
+      const cap = new THREE.Mesh(postCapGeo, postMat);
+      cap.position.set(postR * Math.sin(a), 1.58, postR * Math.cos(a));
+      cap.castShadow = this.cfg.shadows;
+      this.scene.add(cap);
     }
 
     // Buoy lines marking the lane edges — static, one InstancedMesh draw call.
@@ -830,12 +1563,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.buoyMat = this.mat(
         new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.markerCap), roughness: 0.6 }),
       );
-      const rings = [
-        this.ghostRadius - 2.5,
-        (this.ghostRadius + this.loopRadius) / 2,
-        this.loopRadius + 2.5,
-      ];
-      const perRing = 48;
+      const rings = Array.from({ length: this.cfg.buoyRings }, (_, i) => {
+        const t = this.cfg.buoyRings === 1 ? 0.5 : i / (this.cfg.buoyRings - 1);
+        return this.ghostRadius - 2.5 + (this.loopRadius + 5 - this.ghostRadius) * t;
+      });
+      const perRing = this.cfg.buoysPerRing;
       const inst = new THREE.InstancedMesh(buoyGeo, this.buoyMat, rings.length * perRing);
       const m = new THREE.Matrix4();
       let bi = 0;
@@ -877,13 +1609,9 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.scene.background = new THREE.Color(C.courseFill);
     this.scene.fog = new THREE.Fog(C.courseFill, 55, 170);
 
-    const recolor = (name: string, color: string) => {
-      const obj = this.scene.getObjectByName(name);
-      if (obj && obj instanceof THREE.Mesh && obj.material instanceof THREE.MeshStandardMaterial) {
-        obj.material.color.setHex(hex(color));
-      }
-    };
-    recolor("lane", C.courseFill);
+    for (const themed of this.courseThemeMats) {
+      themed.material.color.setHex(themed.color(themeName));
+    }
     if (this.groundMesh.material instanceof THREE.MeshStandardMaterial) {
       this.groundMesh.material.color.setHex(this.profile.groundColor(themeName));
     }
@@ -965,6 +1693,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     radius: number,
     meters: number,
     cadence: number,
+    pose: StrokePose,
   ): { x: number; z: number; tx: number; tz: number; y: number } {
     const a = this.loopAngle(meters);
     const sin = Math.sin(a);
@@ -977,7 +1706,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     const bob =
       reduce || this.profile.bobAmp === 0
         ? 0
-        : Math.sin(this.animPhase * 2 + cadence * 0.1) * this.profile.bobAmp;
+        : Math.sin(pose.warpedPhase + cadence * 0.1) * this.profile.bobAmp * pose.amplitude -
+          pose.fatigue * 0.025;
     outer.position.set(x, 0, z);
     outer.rotation.y = Math.atan2(tx, tz); // local +Z (travel) -> tangent
     avatar.group.position.y = bob;
@@ -986,10 +1716,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     avatar.group.position.z =
       reduce || this.profile.surgeAmp === 0
         ? 0
-        : strokeSurge(warpStrokePhase(this.strokePhase)) * this.profile.surgeAmp;
+        : strokeSurge(pose.warpedPhase) * this.profile.surgeAmp * pose.amplitude;
     avatar.group.rotation.z =
       reduce || !this.profile.roll ? 0 : Math.sin(this.animPhase + cadence * 0.05) * 0.05;
-    avatar.animate(this.strokePhase, reduce);
+    avatar.animate(pose.phase, reduce, pose);
     return { x, z, tx, tz, y: bob };
   }
 
@@ -1012,15 +1742,23 @@ export class CourseRenderer3D implements ReplayRenderer {
 
     if (playing && !this.reduceMotion) this.animPhase += (2.4 + state.frame.spm / 13) * dt;
 
-    // Stroke phase advances by time at the recorded stroke rate (spm), so the
-    // figures stroke at the workout's true cadence — a 20 spm interval animates
-    // slower than a 36 spm sprint, matching the real erg rhythm.
+    // Fallback phases are only for callers that have not supplied a stroke
+    // model. The replay page passes Concept2-derived poses so one visible cycle
+    // maps to one stroke row and catch effects cannot drift from the data.
     const liveMeters = state.frame.d;
     const dLive = liveMeters - this.lastLiveMeters;
     this.lastLiveMeters = liveMeters;
-    const prevStroke = this.strokePhase;
-    if (!this.reduceMotion && dt > 0 && state.frame.spm > 0)
+    if (!state.strokePose && !this.reduceMotion && dt > 0 && state.frame.spm > 0)
       this.strokePhase += (state.frame.spm / 60) * dt * Math.PI * 2;
+    if (!state.ghostStrokePose && !this.reduceMotion && dt > 0 && state.ghost?.spm)
+      this.ghostStrokePhase += (state.ghost.spm / 60) * dt * Math.PI * 2;
+    const livePose =
+      state.strokePose ??
+      fallbackStrokePose(state.sport ?? "rower", this.strokePhase, state.frame.spm);
+    const ghostPose =
+      state.ghost &&
+      (state.ghostStrokePose ??
+        fallbackStrokePose(state.sport ?? "rower", this.ghostStrokePhase, state.ghost.spm));
 
     // Water displacement (rowing only; skipped when flat/low quality, governor
     //-flattened, or phase unchanged). Three interfering wave trains read as a
@@ -1047,9 +1785,10 @@ export class CourseRenderer3D implements ReplayRenderer {
         const ly = arr[idx + 1];
         arr[idx + 2] = this.reduceMotion
           ? 0
-          : Math.sin(ly * 0.25 + t) * 0.05 +
-            Math.sin(lx * 0.31 + t * 1.7) * 0.03 +
-            Math.sin((lx + ly) * 0.13 - t * 0.6) * 0.025;
+          : Math.sin(ly * 0.25 + t) * 0.055 +
+            Math.sin(lx * 0.31 + t * 1.7) * 0.033 +
+            Math.sin((lx + ly) * 0.13 - t * 0.6) * 0.026 +
+            Math.sin(ly * 0.6 + t * 2.3) * 0.009;
       }
       pos.needsUpdate = true;
       water.geometry.computeVertexNormals();
@@ -1063,6 +1802,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.loopRadius,
       liveMeters,
       state.frame.spm,
+      livePose,
     );
 
     this.advanceWake(this.liveWake, dLive, p.x - p.tx * 1.6, p.z - p.tz * 1.6);
@@ -1075,12 +1815,12 @@ export class CourseRenderer3D implements ReplayRenderer {
         pool.clear();
       } else {
         if (dt > 0) pool.update(dt, 0, -5.5, 0);
-        if (playing && catchEvents(prevStroke, this.strokePhase) > 0) {
+        if (playing && catchTransitions(this.lastLivePose, livePose) > 0) {
           const off = this.profile.sprayOffset ?? 0;
           const rx = p.x / this.loopRadius;
           const rz = p.z / this.loopRadius;
           for (const side of [-1, 1]) {
-            for (let k = 0; k < 4; k++) {
+            for (let k = 0; k < this.cfg.sprayPerCatch; k++) {
               pool.spawn(
                 p.x + rx * off * side + (Math.random() - 0.5) * 0.3,
                 0.12,
@@ -1129,13 +1869,15 @@ export class CourseRenderer3D implements ReplayRenderer {
       const ghostMeters = clamp01(state.ghost.distFrac) * state.totalDistance;
       const dGhost = ghostMeters - this.lastGhostMeters;
       this.lastGhostMeters = ghostMeters;
-      // Ghost shares the stroke phase visually; only its placement differs.
+      // Ghost uses its own stroke pose when it has stroke rows; constant-pace
+      // ghosts synthesize a smooth fallback.
       const gp = this.placeAvatar(
         this.ghostGroup,
         this.ghostAvatar,
         this.ghostRadius,
         ghostMeters,
         state.ghost.spm,
+        ghostPose as StrokePose,
       );
       this.advanceWake(this.ghostWake, dGhost, gp.x - gp.tx * 1.6, gp.z - gp.tz * 1.6);
       const ghostText = `${state.ghost.label || "PB"} · ${Math.round(state.ghost.distFrac * 100)}%`;
@@ -1150,7 +1892,10 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.ghostWake?.reset();
       this.lastGhostLabel = "";
       this.lastGhostMeters = NaN;
+      this.lastGhostPose = null;
     }
+    this.lastLivePose = livePose;
+    this.lastGhostPose = ghostPose || null;
 
     // Speed-aware FOV: the lens breathes out gently as the boat runs faster
     // (or the playback rate rises), selling the sense of speed. A zoom is a
@@ -1177,14 +1922,14 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Chase camera: behind the live boat along its tangent, raised, looking
     // ahead, with a slight outward offset so the athlete reads three-quarter
     // rather than dead astern.
-    const back = 9.5;
-    const height = 5.5;
-    const ahead = 7;
-    const lateral = 1.8;
+    const back = 5.8;
+    const height = 3.6;
+    const ahead = 4.4;
+    const lateral = 1.1;
     const rx = p.x / this.loopRadius;
     const rz = p.z / this.loopRadius;
     this.chase.set(p.x - p.tx * back + rx * lateral, height, p.z - p.tz * back + rz * lateral);
-    this.lookAt.set(p.x + p.tx * ahead, 1.1, p.z + p.tz * ahead);
+    this.lookAt.set(p.x + p.tx * ahead, 0.85, p.z + p.tz * ahead);
     if (!this.cameraInit) {
       this.camera.position.copy(this.chase);
       this.cameraInit = true;
@@ -1241,8 +1986,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     for (const g of this.geometries) g.dispose();
     // Lose the context *before* dispose(): once disposed, getContext() may
     // return a stale/null reference in some three versions.
-    const gl = this.renderer.getContext();
-    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    const gl = this.renderer.getContext?.();
+    if (gl && typeof (gl as WebGLRenderingContext).getExtension === "function") {
+      (gl as WebGLRenderingContext).getExtension("WEBGL_lose_context")?.loseContext();
+    }
     this.renderer.dispose();
     // Remove the owned canvas so the next 3D activation builds a fresh one.
     this.canvas.remove();
