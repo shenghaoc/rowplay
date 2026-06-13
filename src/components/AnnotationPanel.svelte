@@ -41,10 +41,10 @@
 		saveError = '';
 		try {
 			await ondelete?.(id);
-			deleteId = null;
 		} catch {
 			saveError = t('annotations.deleteError');
 		} finally {
+			deleteId = null;
 			saving = false;
 			deleteDialog?.close();
 		}
@@ -143,7 +143,7 @@
 	{/if}
 
 	{#if saveError}
-		<p class="anno-error">{saveError}</p>
+		<p class="anno-error" role="alert">{saveError}</p>
 	{/if}
 	{#if annotations.length === 0 && !adding}
 		<p class="anno-empty muted">{t('annotations.noNotes')}</p>
