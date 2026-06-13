@@ -35,8 +35,8 @@ function renderButton(props: {
   });
 }
 
-afterEach(() => {
-  if (component) unmount(component);
+afterEach(async () => {
+  if (component) await unmount(component);
   if (container?.isConnected) container.remove();
 });
 
