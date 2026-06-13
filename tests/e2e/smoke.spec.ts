@@ -7,7 +7,7 @@ import { expect, test, type Page } from "@playwright/test";
  * The console-error guard is deliberate: a runtime effect loop in the workout
  * list once passed `svelte-check` clean yet threw effect_update_depth_exceeded
  * only in a browser. This catches that whole class of regression. Runs on both
- * the `webkit` (desktop Safari) and `webkit-mobile` (iPhone 14) projects.
+ * the `chromium` (desktop) and `chromium-mobile` (Pixel 7) projects.
  */
 
 /** Attach error collectors before navigation; returns the accumulated list. */
@@ -28,7 +28,7 @@ test.describe("smoke", () => {
     // LanguagePicker appears twice (desktop masthead + mobile dialog); count one.
     await expect(page.locator(".lang-picker").first().locator("select option")).toHaveCount(6);
     const langSelect = page.locator(".lang-picker select").first();
-    // WebKit can miss Playwright's selectOption before hydration; dispatch change explicitly.
+    // Dispatch change explicitly to avoid selectOption races before hydration.
     await langSelect.evaluate((el) => {
       const select = el as HTMLSelectElement;
       select.value = "de";
