@@ -47,8 +47,8 @@ Or run locally in under a minute:
 
 ```bash
 git clone https://github.com/shenghaoc/rowplay.git && cd rowplay
-pnpm install
-pnpm dev          # → http://localhost:5173/dashboard
+vp install
+vp dev            # → http://localhost:5173/dashboard
 ```
 
 Click any workout in the list to watch the replay — canvas, gauges, charts, and
@@ -178,7 +178,7 @@ control in plaintext** and cached data stays scoped to your session.
 
 ### Which server to use?
 
-|                       | `pnpm dev`                  | `pnpm preview`                |
+|                       | `vp dev`                    | `vp run preview`              |
 | --------------------- | --------------------------- | ----------------------------- |
 | **URL**               | `http://localhost:5173`     | `http://127.0.0.1:8787`       |
 | **Runtime**           | Vite dev server             | `wrangler dev` (Workers)      |
@@ -188,15 +188,15 @@ control in plaintext** and cached data stays scoped to your session.
 | **Hot reload**        | ✅ instant                  | ⚠️ rebuild on change          |
 | **Use for**           | UI, styling, component work | Auth, sync, KV/D1, full-stack |
 
-**Rule of thumb:** use `pnpm dev` for UI and component work; switch to
-`pnpm preview` when touching auth, API routes, KV/D1, or anything that
+**Rule of thumb:** use `vp dev` for UI and component work; switch to
+`vp run preview` when touching auth, API routes, KV/D1, or anything that
 hits the Concept2 API server-side.
 
 ### Demo mode (zero config)
 
 ```bash
-pnpm install
-pnpm dev          # → http://localhost:5173/dashboard
+vp install
+vp dev            # → http://localhost:5173/dashboard
 ```
 
 Open `/dashboard`, click any workout, watch the replay. No `.dev.vars`,
@@ -207,8 +207,8 @@ no Concept2 account, no Cloudflare account needed.
 ```bash
 cp .dev.vars.example .dev.vars
 # edit .dev.vars — set SESSION_SECRET to a random string
-pnpm db:migrate:local
-pnpm preview      # → http://127.0.0.1:8787
+vp run db:migrate:local
+vp run preview    # → http://127.0.0.1:8787
 ```
 
 Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
@@ -234,7 +234,7 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 2. **Install dependencies:**
 
    ```bash
-   pnpm install
+   vp install
    ```
 
 3. **Create Cloudflare resources** (one-time):
@@ -268,20 +268,20 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 6. **Apply database migrations:**
 
    ```bash
-   pnpm db:migrate        # remote D1 (production)
-   # or: pnpm db:migrate:local   (local wrangler dev)
+   vp run db:migrate        # remote D1 (production)
+   # or: vp run db:migrate:local   (local wrangler dev)
    ```
 
 7. **Verify the build:**
 
    ```bash
-   pnpm run check         # full gate: format:check + lint + typecheck + test + build
+   vp check              # full gate: format:check + lint + typecheck + test + build
    ```
 
 8. **Deploy:**
 
    ```bash
-   pnpm deploy            # build + wrangler deploy
+   vp run deploy          # build + wrangler deploy
    ```
 
 9. **Optional — configure a custom domain** in the Cloudflare dashboard
@@ -291,35 +291,35 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 
 ## Scripts
 
-| Script                    | Does                                                              |
-| ------------------------- | ----------------------------------------------------------------- |
-| `pnpm dev`                | Local dev server (Vite; fast UI iteration, no KV/D1)              |
-| `pnpm build`              | Production build → `.svelte-kit/cloudflare`                       |
-| `pnpm preview`            | Build + `wrangler dev` (Workers runtime with local KV/D1)         |
-| `pnpm preview:wrangler`   | `wrangler dev` only — needs a prior `pnpm run build`              |
-| `pnpm run format`         | Format the repo (`vp fmt`); `format:check` verifies only          |
-| `pnpm run lint`           | Lint (`vp lint`); fails on findings                               |
-| `pnpm run typecheck`      | `svelte-check` type checking                                      |
-| `pnpm run check`          | Full quality gate: format:check + lint + typecheck + test + build |
-| `pnpm test`               | Vitest unit tests (node environment)                              |
-| `pnpm test:browser`       | Vitest Browser Mode — real-browser component/integration tests    |
-| `pnpm test:browser:watch` | Vitest Browser Mode in watch mode (opens Chromium)                |
-| `pnpm test:e2e`           | Playwright E2E — all specs, WebKit desktop + iPhone 14            |
-| `pnpm test:e2e:smoke`     | Playwright PR smoke — `smoke.spec.ts` on WebKit desktop only      |
-| `pnpm validate:locales`   | Verify locale dictionary key parity across all languages          |
-| `pnpm deploy`             | Build + `wrangler deploy`                                         |
-| `pnpm db:migrate`         | Apply D1 migrations (remote)                                      |
-| `pnpm db:migrate:local`   | Apply D1 migrations (local preview)                               |
+| Script                      | Does                                                              |
+| --------------------------- | ----------------------------------------------------------------- |
+| `vp dev`                    | Local dev server (Vite; fast UI iteration, no KV/D1)              |
+| `vp build`                  | Production build → `.svelte-kit/cloudflare`                       |
+| `vp run preview`            | Build + `wrangler dev` (Workers runtime with local KV/D1)         |
+| `vp run preview:wrangler`   | `wrangler dev` only — needs a prior `vp build`                    |
+| `vp run format`             | Format the repo; `vp run format:check` verifies only              |
+| `vp lint`                   | Lint; fails on findings                                           |
+| `vp run typecheck`          | `svelte-check` type checking                                      |
+| `vp check`                  | Full quality gate: format:check + lint + typecheck + test + build |
+| `vp test`                   | Vitest unit tests (node environment)                              |
+| `vp run test:browser`       | Vitest Browser Mode — real-browser component/integration tests    |
+| `vp run test:browser:watch` | Vitest Browser Mode in watch mode (opens Chromium)                |
+| `vp run test:e2e`           | Playwright E2E — all specs, WebKit desktop + iPhone 14            |
+| `vp run test:e2e:smoke`     | Playwright PR smoke — `smoke.spec.ts` on WebKit desktop only      |
+| `vp run validate:locales`   | Verify locale dictionary key parity across all languages          |
+| `vp run deploy`             | Build + `wrangler deploy`                                         |
+| `vp run db:migrate`         | Apply D1 migrations (remote)                                      |
+| `vp run db:migrate:local`   | Apply D1 migrations (local preview)                               |
 
 ### Testing tiers
 
 rowplay has three test layers — each serves a different purpose:
 
-| Command             | What runs                                | When to use                                       |
-| ------------------- | ---------------------------------------- | ------------------------------------------------- |
-| `pnpm test`         | Vitest unit tests (node env, ~95 files)  | CI gate; pure logic, helpers, server              |
-| `pnpm test:browser` | Vitest Browser Mode (real Chromium)      | Component/DOM behaviour that needs a real browser |
-| `pnpm test:e2e`     | Playwright E2E (full user flows, WebKit) | End-to-end: auth, sync, replay, share             |
+| Command               | What runs                                | When to use                                       |
+| --------------------- | ---------------------------------------- | ------------------------------------------------- |
+| `vp test`             | Vitest unit tests (node env, ~95 files)  | CI gate; pure logic, helpers, server              |
+| `vp run test:browser` | Vitest Browser Mode (real Chromium)      | Component/DOM behaviour that needs a real browser |
+| `vp run test:e2e`     | Playwright E2E (full user flows, WebKit) | End-to-end: auth, sync, replay, share             |
 
 **Browser Mode** runs `*.browser.test.ts` files in a real Chromium browser via
 Vitest + Playwright. Use it for tests that exercise real DOM APIs, Svelte
@@ -328,15 +328,15 @@ that are awkward to stub in a node environment.
 
 Browser tests live alongside their source: `src/lib/theme.svelte.browser.test.ts`,
 `src/components/ChipButton.browser.test.ts`, etc. They are _not_ part of the
-default `pnpm test` gate (that stays fast and node-only); run them explicitly
-with `pnpm test:browser`.
+default `vp test` gate (that stays fast and node-only); run them explicitly
+with `vp run test:browser`.
 
 **Prerequisite:** Browser Mode needs Chromium installed via Playwright (E2E
 uses WebKit, not Chromium, so the E2E install does not cover it). Install once
 on a fresh checkout:
 
 ```bash
-pnpm exec playwright install --with-deps chromium
+vpx playwright install --with-deps chromium
 ```
 
 ---
@@ -395,20 +395,20 @@ src/
 
 ## Stack
 
-| Concern       | Choice                                                                               |
-| ------------- | ------------------------------------------------------------------------------------ |
-| App framework | SvelteKit (Svelte 5, runes mode) + Vite                                              |
-| Hosting       | Cloudflare **Workers** + static assets (`@sveltejs/adapter-cloudflare`)              |
-| Server        | SvelteKit endpoints on the Workers runtime                                           |
-| Auth          | **Bring-your-own-token** (personal Concept2 API token)                               |
-| Sessions      | Cloudflare **KV** (`SESSIONS`)                                                       |
-| Cache         | Cloudflare **D1** (`DB`) — cached workouts + strokes                                 |
-| Charts        | [uPlot](https://github.com/leeoniya/uPlot)                                           |
-| 3D            | [Three.js](https://threejs.org/)                                                     |
-| UI            | [daisyUI 5](https://daisyui.com/) + Tailwind CSS v4                                  |
-| Icons         | [Lucide](https://lucide.dev/)                                                        |
-| I18n          | Hand-rolled; 6 languages                                                             |
-| CI            | GitHub Actions (`pnpm ci` + `pnpm run check`; separate locale + E2E smoke workflows) |
+| Concern       | Choice                                                                            |
+| ------------- | --------------------------------------------------------------------------------- |
+| App framework | SvelteKit (Svelte 5, runes mode) + Vite                                           |
+| Hosting       | Cloudflare **Workers** + static assets (`@sveltejs/adapter-cloudflare`)           |
+| Server        | SvelteKit endpoints on the Workers runtime                                        |
+| Auth          | **Bring-your-own-token** (personal Concept2 API token)                            |
+| Sessions      | Cloudflare **KV** (`SESSIONS`)                                                    |
+| Cache         | Cloudflare **D1** (`DB`) — cached workouts + strokes                              |
+| Charts        | [uPlot](https://github.com/leeoniya/uPlot)                                        |
+| 3D            | [Three.js](https://threejs.org/)                                                  |
+| UI            | [daisyUI 5](https://daisyui.com/) + Tailwind CSS v4                               |
+| Icons         | [Lucide](https://lucide.dev/)                                                     |
+| I18n          | Hand-rolled; 6 languages                                                          |
+| CI            | GitHub Actions (`vp install` + `vp check`; separate locale + E2E smoke workflows) |
 
 ---
 

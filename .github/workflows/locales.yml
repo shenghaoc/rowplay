@@ -19,13 +19,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - name: Setup
+        uses: voidzero-dev/setup-vp@v1
         with:
           node-version-file: .node-version
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache: true
       - name: Install dependencies
-        run: pnpm ci
+        run: vp install
       - name: Locale validation
-        run: pnpm run validate:locales
+        run: vp run validate:locales
