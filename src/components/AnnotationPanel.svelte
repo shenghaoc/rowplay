@@ -42,11 +42,11 @@
 		try {
 			await ondelete?.(id);
 			deleteId = null;
-			deleteDialog?.close();
 		} catch {
 			saveError = t('annotations.deleteError');
 		} finally {
 			saving = false;
+			deleteDialog?.close();
 		}
 	}
 	function startAdd() {
