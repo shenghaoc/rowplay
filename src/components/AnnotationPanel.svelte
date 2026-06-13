@@ -37,12 +37,12 @@
 	async function executeDelete() {
 		if (deleteId == null) return;
 		const id = deleteId;
-		deleteId = null;
-		deleteDialog?.close();
 		saving = true;
 		saveError = '';
 		try {
 			await ondelete?.(id);
+			deleteId = null;
+			deleteDialog?.close();
 		} catch {
 			saveError = t('annotations.deleteError');
 		} finally {
@@ -133,7 +133,7 @@
 				class="textarea textarea-bordered anno-input"
 			></textarea>
 			<div class="anno-actions">
-				<button class="btn save-btn" onclick={save} disabled={saving || !draftText.trim()}>
+				<button class="btn save-btn" onclick={save} disabled={saving || !draftText.trim()} aria-busy={saving}>
 					{#if saving}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 					{t('annotations.saveNote')}
 				</button>
@@ -162,7 +162,7 @@
 								class="textarea textarea-bordered anno-input"
 							></textarea>
 							<div class="anno-actions">
-								<button class="btn save-btn" onclick={save} disabled={saving || !draftText.trim()}>
+								<button class="btn save-btn" onclick={save} disabled={saving || !draftText.trim()} aria-busy={saving}>
 									{#if saving}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 									{t('annotations.saveNote')}
 								</button>
@@ -198,7 +198,7 @@
 		<button type="button" class="btn btn-ghost btn-sm" onclick={() => deleteDialog?.close()} disabled={saving}>
 			{t('annotations.cancelNote')}
 		</button>
-		<button type="button" class="btn btn-error btn-sm" onclick={executeDelete} disabled={saving}>
+		<button type="button" class="btn btn-error btn-sm" onclick={executeDelete} disabled={saving} aria-busy={saving}>
 			{#if saving}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 			{t('annotations.deleteNote')}
 		</button>
