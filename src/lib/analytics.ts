@@ -1203,14 +1203,48 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
 
   const reps: IntervalRep[] = splits.map((sp, i) => {
     const bucket = buckets[i] ?? [];
-    const spm = sp.spm ?? (bucket.length ? mean(bucket.map((s) => s.spm)) : 0);
+
+    // Bolt: Single-pass loops avoid array allocations for spm, hr, and pace fades.
+    // Only run the loop when sp.spm or sp.hr is missing to preserve short-circuiting.
+    let computedSpm = 0;
+    let computedHr: number | undefined;
+
+    if (bucket.length > 0 && (sp.spm == null || sp.hr == null)) {
+      let spmSum = 0;
+      let hrSum = 0;
+      let hrCount = 0;
+
+      for (let j = 0; j < bucket.length; j++) {
+        if (sp.spm == null) spmSum += bucket[j].spm;
+        if (sp.hr == null && bucket[j].hr != null) {
+          hrSum += bucket[j].hr!;
+          hrCount++;
+        }
+      }
+
+      if (sp.spm == null) computedSpm = spmSum / bucket.length;
+      if (sp.hr == null && hrCount > 0) computedHr = Math.round(hrSum / hrCount);
+    }
+
+    const spm = sp.spm ?? computedSpm;
     const dps = sp.pace > 0 && spm > 0 ? distancePerStroke(sp.pace, spm) : 0;
 
     let internalFade = 0;
     if (bucket.length >= 6) {
       const third = Math.floor(bucket.length / 3);
-      const first = mean(bucket.slice(0, third).map((s) => s.pace));
-      const last = mean(bucket.slice(-third).map((s) => s.pace));
+      let firstSum = 0;
+      for (let j = 0; j < third; j++) {
+        firstSum += bucket[j].pace;
+      }
+      const first = firstSum / third;
+
+      let lastSum = 0;
+      const lastStart = bucket.length - third;
+      for (let j = lastStart; j < bucket.length; j++) {
+        lastSum += bucket[j].pace;
+      }
+      const last = lastSum / third;
+
       internalFade = first > 0 ? ((last - first) / first) * 100 : 0;
     }
 
@@ -1220,11 +1254,7 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
       time: sp.time,
       pace: sp.pace,
       spm: Math.round(spm),
-      hr:
-        sp.hr ??
-        (bucket.some((s) => s.hr != null)
-          ? Math.round(mean(bucket.map((s) => s.hr ?? 0)))
-          : undefined),
+      hr: sp.hr ?? computedHr,
       dps,
       internalFade,
       vsAverage: sp.pace > 0 ? sp.pace - avgPace : 0,
