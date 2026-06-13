@@ -31,3 +31,7 @@
 ## 2026-06-25 - Avoid map/slice chains in analytics interval processing
 **Learning:** Using multiple intermediate array operations like `.slice(0, third).map(...)` or `mean(bucket.map(...))` inside a `.map()` loop (like `intervalBreakdown`'s splits processing) causes significant allocation overhead and multiple loop iterations over the same data.
 **Action:** Replace `.map()` and `.slice().map()` chains with single-pass `for` loops inside outer mapping loops to avoid allocating intermediate arrays and reduce GC pressure.
+## 2024-06-13 - Avoid filter and reduce in hot paths
+
+**Learning:** `Array.prototype.filter` followed by `Array.prototype.reduce` in inner loops (e.g., iterating through multiple targets for grouped sets) creates significant garbage collection overhead by allocating intermediate arrays.
+**Action:** Replace `filter` + `reduce` chains inside hot loops with a single loop tracking the optimal value, avoiding any intermediate object/array allocations.
