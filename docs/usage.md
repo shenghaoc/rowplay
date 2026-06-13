@@ -103,17 +103,23 @@ Concept2 logbook is never modified.
 ## Common workflows
 
 - **Replay a workout** — play/pause, scrub, 0.5×–8× speed, 2D/3D course views
-  (3D needs WebGL), and an optional target-pace reference line.
+  (3D uses WebGPU when available, with WebGL fallback), and an optional
+  target-pace reference line.
 
-The athlete animates at the workout's real cadence: the figure takes one stroke
+The athlete animates from Concept2 stroke rows: the figure takes one stroke
 (or pole plant, or pedal revolution) per recorded stroke, with splash and spray
-on each catch, and speeds up in step with the playback rate. The 3D chase
-camera widens its lens slightly as the boat runs faster.
+on each catch, and speeds up in step with the playback rate. The public
+Concept2 stroke payload does not include force curves or handle position, so
+the replay infers only timing, amplitude, and intensity from time, distance,
+pace, rate, heart rate, and watts. The 3D chase camera widens its lens slightly
+as the boat runs faster.
 
-In 3D, the **Quality** selector picks low, medium, or high graphics. If the
+In 3D, the **Quality** selector picks low, medium, high, or ultra graphics.
+Ultra is intended for WebGPU-capable devices and uses a larger stage, denser
+environment geometry, stronger shadows, and richer wake/spray detail. If the
 device can't hold a smooth frame rate at the selected tier, the renderer
 automatically lowers resolution first and effects (water motion, spray) second
-for the rest of the session, so high quality is safe to try on any hardware.
+for the rest of the session.
 Replay animation honours the operating system's reduced-motion setting.
 
 Per-stroke data is used when Concept2 provides it. Workouts without stroke data
@@ -161,8 +167,8 @@ fall back to a split-based replay, so the course still plays back.
   token; brief rate limits resolve on retry.
 - **New workout missing** — confirm it reached the Concept2 logbook, then Sync
   or enable live mode.
-- **Display issues** — 3D needs WebGL (2D always works); rotate phones to
-  landscape for wide charts; theme/language switches live in the header.
+- **Display issues** — 3D needs WebGPU or WebGL (2D always works); rotate
+  phones to landscape for wide charts; theme/language switches live in the header.
 
 ## Local development notes
 

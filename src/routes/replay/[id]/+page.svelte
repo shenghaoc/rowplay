@@ -15,8 +15,14 @@
 		type RendererKind,
 		type RenderQuality
 	} from '$lib/replay/replayRenderer';
-	import { webglSupported, loadRenderer3D, type Renderer3DCtor } from '$lib/replay/renderer3dLoader';
+	import {
+		createRenderer3D,
+		renderer3dSupported,
+		webglSupported,
+		type Renderer3DBackend
+	} from '$lib/replay/renderer3dLoader';
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
+	import { buildStrokeTimeline, strokePoseAt } from '$lib/replay/strokeModel';
 	import {
 		hrZones,
 		powerCurve,
@@ -123,6 +129,7 @@
 	const sportTheme = $derived(themeFor(detail.sport));
 	const total = $derived(detail.distance);
 	const strokes = $derived(detail.strokes);
+	const strokeTimeline = $derived(buildStrokeTimeline(strokes, detail.sport, detail.hasStrokeData));
 
 	let frame = $state<Frame>(untrack(() => sampleAt(strokes, 0)));
 	const sampleIdx = $derived(sampleIndexAt(strokes, frame.t));
@@ -153,6 +160,9 @@
 	let ghostLabel = $state('');
 	let ghostFrame = $state<Frame | null>(null);
 	let ghostRival = $state<GhostRival | null>(null);
+	const ghostStrokeTimeline = $derived(
+		ghostStrokes ? buildStrokeTimeline(ghostStrokes, detail.sport, ghostStrokes.length > 3) : null
+	);
 	let loadingGhost = $state(false);
 	let ghostError = $state('');
 	let ghostLoadGen = $state(0);
@@ -209,8 +219,8 @@
 	let targetPaceInvalid = $state(false);
 	const TARGET_BAND_SECS = 5;
 	let loading3d = $state(false);
-	let webglOk = $state(false);
-	let Ctor3D: Renderer3DCtor | null = null;
+	let renderer3dOk = $state(false);
+	let rendererBackend = $state<Renderer3DBackend | null>(null);
 	let activeLoadId = 0;
 	// 2D and 3D must NOT share a <canvas>: a canvas is locked to one context type
 	// for life, so the 2D renderer's getContext('2d') would make WebGL creation
@@ -231,9 +241,11 @@
 			distFrac: total ? f.d / total : 0,
 			totalDistance: total,
 			sport: detail.sport,
+			strokePose: strokePoseAt(strokeTimeline, f.t),
 			ghost: g
 				? { distFrac: total ? g.d / total : 0, pace: g.pace, spm: g.spm, label: ghostLabel }
-				: undefined
+				: undefined,
+			ghostStrokePose: g && ghostStrokeTimeline ? strokePoseAt(ghostStrokeTimeline, f.t) : undefined
 		};
 	}
 
@@ -255,6 +267,7 @@
 	}
 
 	function courseHeight() {
+		if (rendererKind === '3d') return ghostActive ? 380 : 340;
 		return ghostActive ? 190 : 150;
 	}
 
@@ -265,7 +278,7 @@
 
 	async function setRenderer(kind: RendererKind) {
 		if (activeLoadId < 0) return;
-		if (kind === '3d' && !webglOk) return;
+		if (kind === '3d' && !renderer3dOk) return;
 		const canvas2d = canvas2dEl;
 		const host3d = canvas3dHost;
 		if (!canvas2d || !host3d) return;
@@ -288,36 +301,38 @@
 				// won't fire for this (superseded) myLoadId, so reset it here.
 				loading3d = false;
 				renderer = new CourseRenderer(canvas2d);
+				rendererBackend = null;
 				activeCanvas = '2d';
 				if (w) renderer.resize(w, h);
 				renderCurrent();
 				return;
 			}
 
-			if (!Ctor3D) {
-				loading3d = true;
-				const temp2d = new CourseRenderer(canvas2d);
-				renderer = temp2d;
-				activeCanvas = '2d';
-				if (w) temp2d.resize(w, h);
-				renderCurrent();
-				try {
-					Ctor3D = await loadRenderer3D();
-				} finally {
-					if (myLoadId === activeLoadId) loading3d = false;
-				}
-				if (myLoadId !== activeLoadId) {
-					// Superseded: a newer setRenderer() already ran renderer?.destroy()
-					// (which was temp2d) and took over. Only destroy here if we still
-					// own it, to avoid double-destroying the same instance.
-					if (renderer === temp2d) temp2d.destroy();
-					return;
-				}
-				temp2d.destroy();
-				renderer = null;
+			loading3d = true;
+			rendererBackend = null;
+			const temp2d = new CourseRenderer(canvas2d);
+			renderer = temp2d;
+			activeCanvas = '2d';
+			if (w) temp2d.resize(w, h);
+			renderCurrent();
+			let next3d: Awaited<ReturnType<typeof createRenderer3D>> | null = null;
+			try {
+				next3d = await createRenderer3D(host3d, quality, detail.sport);
+			} finally {
+				if (myLoadId === activeLoadId) loading3d = false;
 			}
-			if (myLoadId !== activeLoadId) return;
-			renderer = new Ctor3D!(host3d, quality, detail.sport);
+			if (myLoadId !== activeLoadId) {
+				next3d?.renderer.destroy();
+				if (renderer === temp2d) temp2d.destroy();
+				return;
+			}
+			temp2d.destroy();
+			renderer = next3d.renderer;
+			rendererBackend = next3d.backend;
+			if (next3d.quality !== quality) {
+				quality = next3d.quality;
+				saveQualityPref(quality);
+			}
 			activeCanvas = '3d';
 			if (w) renderer.resize(w, h);
 			renderCurrent();
@@ -331,6 +346,7 @@
 			renderer?.destroy();
 			renderer = null;
 			renderer = new CourseRenderer(canvas2d);
+			rendererBackend = null;
 			activeCanvas = '2d';
 			if (w) renderer.resize(w, h);
 			renderCurrent();
@@ -481,15 +497,22 @@
 	}
 
 	onMount(() => {
-		webglOk = webglSupported();
+		renderer3dOk = webglSupported();
 		quality = loadQualityPref();
 		const pref = loadRendererPref();
-		if (pref === '3d' && webglOk) {
+		if (pref === '3d' && renderer3dOk) {
 			void setRenderer('3d');
 		} else if (pref === '3d') {
 			rendererKind = '2d';
-			saveRendererPref('2d');
 		}
+		void renderer3dSupported().then((ok) => {
+			renderer3dOk = ok;
+			if (pref === '3d' && ok && rendererKind === '2d' && activeLoadId >= 0) {
+				void setRenderer('3d');
+			} else if (pref === '3d' && !ok) {
+				saveRendererPref('2d');
+			}
+		});
 
 		void armGhostFromUrl();
 		const tp = page.url.searchParams.get('targetPace');
@@ -1567,8 +1590,8 @@
 				class="vbtn"
 				class:on={rendererKind === '3d'}
 				aria-pressed={rendererKind === '3d'}
-				disabled={!webglOk || loading3d}
-				title={!webglOk ? t('replay.view3dUnsupported') : undefined}
+				disabled={!renderer3dOk || loading3d}
+				title={!renderer3dOk ? t('replay.view3dUnsupported') : undefined}
 				onclick={() => onRendererToggle('3d')}
 			>
 				{#if loading3d}
@@ -1604,7 +1627,13 @@
 					<option value="low">{t('replay.qualityLow')}</option>
 					<option value="medium">{t('replay.qualityMedium')}</option>
 					<option value="high">{t('replay.qualityHigh')}</option>
+					<option value="ultra">{t('replay.qualityUltra')}</option>
 				</select>
+				{#if rendererBackend}
+					<span class="backend-label">
+						{rendererBackend === 'webgpu' ? t('replay.backendWebgpu') : t('replay.backendWebgl')}
+					</span>
+				{/if}
 			</label>
 		{/if}
 		<canvas bind:this={canvas2dEl} class:hidden={activeCanvas !== '2d'}></canvas>
@@ -2452,10 +2481,19 @@
 	.quality-select {
 		display: flex;
 		align-items: center;
+		flex-wrap: wrap;
 		gap: 0.4rem;
 		margin-bottom: 0.5rem;
 		font-size: 0.78rem;
 		color: var(--muted-ink, var(--ink));
+	}
+	.backend-label {
+		font-family: var(--display);
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		opacity: 0.65;
 	}
 	.quality-select select {
 		cursor: pointer;

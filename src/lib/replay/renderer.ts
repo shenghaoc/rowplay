@@ -1,7 +1,8 @@
 import type { Frame } from "./engine";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
-import { ParticlePool, catchEvents, clampDt, strokeSurge, warpStrokePhase } from "./motion";
+import { ParticlePool, clampDt, strokeSurge, warpStrokePhase } from "./motion";
+import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
 
 // The replay playback itself is essential, user-initiated motion (the user
 // presses play), so it is preserved under `prefers-reduced-motion`. What we do
@@ -111,8 +112,12 @@ export interface RenderState {
   frame: Frame;
   distFrac: number;
   totalDistance: number;
+  /** Data-derived live stroke pose; one cycle per Concept2 stroke row when available. */
+  strokePose?: StrokePose;
   /** Optional ghost (a past session being raced), drawn in its own lane. */
   ghost?: AvatarState;
+  /** Data-derived ghost stroke pose, when the ghost has stroke data. */
+  ghostStrokePose?: StrokePose;
   /** Optional sport, used for the avatar pod glyph. Renderer degrades to a neutral marker when absent. */
   sport?: Sport;
 }
@@ -422,6 +427,7 @@ interface AvatarOpts {
   accent: string;
   /** Distance-driven stroke phase (radians; one cycle per stroke). */
   phase: number;
+  pose?: StrokePose;
   spm: number;
   isYou: boolean;
   sport?: Sport;
@@ -446,6 +452,8 @@ export class CourseRenderer implements ReplayRenderer {
   /** Stroke phase — distance driven, so figures row at the true cadence. */
   private strokePhase = 0;
   private ghostStrokePhase = 0;
+  private lastLivePose: StrokePose | null = null;
+  private lastGhostPose: StrokePose | null = null;
 
   private lastNow = NaN;
   private liveSplash = new ParticlePool(SPLASH_CAP);
@@ -491,15 +499,20 @@ export class CourseRenderer implements ReplayRenderer {
       if (state.ghost) this.ghostWavePhase += (9 + state.ghost.spm / 10) * dt;
     }
 
-    // Stroke phases advance by time at the recorded stroke rate (spm), so the
-    // figures stroke at the workout's true cadence — a 20 spm interval animates
-    // slower than a 36 spm sprint, matching the real erg rhythm.
-    const prevStroke = this.strokePhase;
-    if (animate && state.frame.spm > 0)
+    // Fallback phases only advance when the page has not supplied stroke poses.
+    // Real Concept2 strokes arrive as RenderState.strokePose and drive catch
+    // effects by row-index transitions below.
+    if (!state.strokePose && animate && state.frame.spm > 0)
       this.strokePhase += (state.frame.spm / 60) * dt * Math.PI * 2;
-    const prevGhostStroke = this.ghostStrokePhase;
-    if (animate && state.ghost && state.ghost.spm > 0)
+    if (!state.ghostStrokePose && animate && state.ghost && state.ghost.spm > 0)
       this.ghostStrokePhase += (state.ghost.spm / 60) * dt * Math.PI * 2;
+    const livePose =
+      state.strokePose ??
+      fallbackStrokePose(state.sport ?? "rower", this.strokePhase, state.frame.spm);
+    const ghostPose =
+      state.ghost &&
+      (state.ghostStrokePose ??
+        fallbackStrokePose(state.sport ?? "rower", this.ghostStrokePhase, state.ghost.spm));
 
     if (this.reduceMotion) {
       this.liveSplash.clear();
@@ -529,7 +542,7 @@ export class CourseRenderer implements ReplayRenderer {
     if (hasGhost && state.ghost) {
       const ghostFrac = clamp01(state.ghost.distFrac);
       const ghostAvX = startX + span * ghostFrac;
-      if (animate && catchEvents(prevGhostStroke, this.ghostStrokePhase) > 0) {
+      if (animate && catchTransitions(this.lastGhostPose, ghostPose) > 0) {
         this.spawnSplash(this.ghostSplash, ghostAvX, ghostY, state.sport);
       }
       this.drawLane({
@@ -548,18 +561,22 @@ export class CourseRenderer implements ReplayRenderer {
         x: ghostAvX,
         y: ghostY,
         accent: C.ghost,
-        phase: this.ghostStrokePhase,
+        phase: ghostPose?.phase ?? this.ghostStrokePhase,
+        pose: ghostPose,
         spm: state.ghost.spm,
         isYou: false,
         sport: state.sport,
         label: `${state.ghost.label || "PB"} · ${Math.round(ghostFrac * 100)}%`,
         splash: this.ghostSplash,
       });
+      this.lastGhostPose = ghostPose ?? null;
+    } else {
+      this.lastGhostPose = null;
     }
 
     const playerFrac = clamp01(state.distFrac);
     const playerAvX = startX + span * playerFrac;
-    if (animate && catchEvents(prevStroke, this.strokePhase) > 0) {
+    if (animate && catchTransitions(this.lastLivePose, livePose) > 0) {
       this.spawnSplash(this.liveSplash, playerAvX, playerY, state.sport);
     }
     this.drawLane({
@@ -578,13 +595,15 @@ export class CourseRenderer implements ReplayRenderer {
       x: playerAvX,
       y: playerY,
       accent: C.live,
-      phase: this.strokePhase,
+      phase: livePose.phase,
+      pose: livePose,
       spm: state.frame.spm,
       isYou: true,
       sport: state.sport,
       label: `${fmtPace(state.frame.pace)} · ${Math.round(playerFrac * 100)}%`,
       splash: this.liveSplash,
     });
+    this.lastLivePose = livePose;
   }
 
   /**
@@ -844,7 +863,7 @@ export class CourseRenderer implements ReplayRenderer {
   private drawAvatar(o: AvatarOpts) {
     const { ctx } = this;
     const C = this.colors;
-    const { x, y, accent, phase, isYou, sport, label, splash } = o;
+    const { x, y, accent, phase, pose, isYou, sport, label, splash } = o;
     const reduce = this.reduceMotion;
 
     ctx.save();
@@ -854,16 +873,18 @@ export class CourseRenderer implements ReplayRenderer {
 
     // Asymmetric stroke: quick drive, slow recovery. The bike pedals at a
     // constant rate, so its phase is left unwarped.
-    const warped = sport === "bike" ? phase : warpStrokePhase(phase);
+    const warped = sport === "bike" ? phase : (pose?.warpedPhase ?? warpStrokePhase(phase));
     // Stroke position +1 (catch) … −1 (finish); frozen pose under reduced motion.
     const s = reduce ? -0.2 : Math.cos(warped);
-    const drive = !reduce && warped % (Math.PI * 2) < Math.PI;
+    const drive = !reduce && (pose?.drive ?? warped % (Math.PI * 2) < Math.PI);
     // The hull surges through the drive and checks at the catch; the HUD pill
     // and caret stay anchored to the un-surged x so they read steady.
-    const surge = reduce ? 0 : strokeSurge(warped) * SURGE_PX[sport ?? "rower"];
+    const amplitude = pose?.amplitude ?? 1;
+    const surge = reduce ? 0 : strokeSurge(warped) * SURGE_PX[sport ?? "rower"] * amplitude;
     const figX = x + surge;
     // Bob once per stroke, in step with the figure's effort.
-    const bobY = y + (reduce ? 0 : Math.sin(warped) * BOB_AMP);
+    const fatigueDrop = (pose?.fatigue ?? 0) * 0.8;
+    const bobY = y + fatigueDrop + (reduce ? 0 : Math.sin(warped) * BOB_AMP * amplitude);
     // Contrast rim that reads on the accent fill in both themes.
     const rim = C.labelText;
 

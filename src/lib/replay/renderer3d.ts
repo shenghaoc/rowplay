@@ -2,13 +2,13 @@ import * as THREE from "three";
 import type { ReplayRenderer, RenderState } from "./renderer";
 import { COLORS_DARK, COLORS_LIGHT } from "./renderer";
 import type { RenderQuality } from "./replayRenderer";
+import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import {
   METERS_PER_CYCLE,
   ParticlePool,
   PerfGovernor,
-  catchEvents,
   clampDt,
   dampFactor,
   strokeSurge,
@@ -35,50 +35,113 @@ function clamp01(v: number): number {
 interface QualityConfig {
   dprCap: number;
   antialias: boolean;
+  laneSegments: number;
   /** Plane segments per side (1 = flat, no displacement). */
   groundSegments: number;
   displacement: boolean;
   shadows: boolean;
+  shadowMapSize: number;
   /** Number of wake segments trailing each boat (0 = no wake). */
   wake: number;
   /** Buoy lines marking the lane edges (one InstancedMesh, static). */
   buoys: boolean;
+  buoysPerRing: number;
+  buoyRings: number;
   /** Catch spray droplets on the live lane (one InstancedMesh draw). */
   spray: boolean;
+  sprayParticles: number;
+  sprayPerCatch: number;
 }
 
 const QUALITY: Record<RenderQuality, QualityConfig> = {
   low: {
     dprCap: 1,
     antialias: false,
+    laneSegments: 48,
     groundSegments: 1,
     displacement: false,
     shadows: false,
+    shadowMapSize: 0,
     wake: 0,
     buoys: false,
+    buoysPerRing: 0,
+    buoyRings: 0,
     spray: false,
+    sprayParticles: 0,
+    sprayPerCatch: 0,
   },
   medium: {
     dprCap: 2,
     antialias: true,
+    laneSegments: 72,
     groundSegments: 16,
     displacement: true,
     shadows: false,
+    shadowMapSize: 0,
     wake: 16,
     buoys: true,
+    buoysPerRing: 48,
+    buoyRings: 3,
     spray: true,
+    sprayParticles: 40,
+    sprayPerCatch: 4,
   },
   high: {
     dprCap: 2,
     antialias: true,
+    laneSegments: 96,
     groundSegments: 28,
     displacement: true,
     shadows: true,
+    shadowMapSize: 1024,
     wake: 28,
     buoys: true,
+    buoysPerRing: 64,
+    buoyRings: 3,
     spray: true,
+    sprayParticles: 48,
+    sprayPerCatch: 4,
+  },
+  ultra: {
+    dprCap: 3,
+    antialias: true,
+    laneSegments: 144,
+    groundSegments: 56,
+    displacement: true,
+    shadows: true,
+    shadowMapSize: 2048,
+    wake: 44,
+    buoys: true,
+    buoysPerRing: 96,
+    buoyRings: 5,
+    spray: true,
+    sprayParticles: 72,
+    sprayPerCatch: 6,
   },
 };
+
+export type Renderer3DBackend = "webgl" | "webgpu";
+
+type RendererLike = {
+  outputColorSpace?: string;
+  shadowMap?: { enabled: boolean; type: unknown };
+  setPixelRatio(dpr: number): void;
+  setSize(width: number, height: number): void;
+  render(scene: THREE.Scene, camera: THREE.Camera): void;
+  dispose(): void;
+  getContext?: () => unknown;
+};
+
+export type WebGPURendererCtor = new (opts: {
+  canvas: HTMLCanvasElement;
+  antialias: boolean;
+  alpha: boolean;
+}) => RendererLike & { init?: () => Promise<unknown> };
+
+export interface Renderer3DOptions {
+  backend?: Renderer3DBackend;
+  WebGPURenderer?: WebGPURendererCtor;
+}
 
 function makeTextSprite(
   text: string,
@@ -150,7 +213,7 @@ function updateTextSprite(
  */
 interface Avatar {
   group: THREE.Group;
-  animate(phase: number, reduceMotion: boolean): void;
+  animate(phase: number, reduceMotion: boolean, pose?: StrokePose): void;
 }
 
 /** Per-sport scene + animation tuning. */
@@ -270,7 +333,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     oars.push(oar);
   }
 
-  const animate = (phase: number, reduce: boolean): void => {
+  const animate = (phase: number, reduce: boolean, pose?: StrokePose): void => {
     if (reduce) {
       rower.position.z = -0.1;
       rower.rotation.x = -0.1;
@@ -279,20 +342,21 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       return;
     }
     // Warped phase: the drive is quick, the slide back up is unhurried.
-    const w = warpStrokePhase(phase);
+    const w = pose?.warpedPhase ?? warpStrokePhase(phase);
     const drive = Math.cos(w); // +1 catch … -1 finish
     const recovery = Math.max(0, -Math.sin(w)); // lift blades on return
+    const amp = pose?.amplitude ?? 1;
     // At the catch the rower is compressed toward the stern, leaning into the
     // slide; through the drive both slide and layback move toward the bow.
-    rower.position.z = -0.1 - drive * 0.18;
-    rower.rotation.x = -0.1 - drive * 0.22;
+    rower.position.z = -0.1 - drive * 0.18 * amp;
+    rower.rotation.x = -0.1 - drive * 0.22 * amp;
     // Arms reach near-horizontal at the catch and draw down through the finish.
-    for (const arm of arms) arm.rotation.x = -0.2 + (1 - drive) * 0.27;
+    for (const arm of arms) arm.rotation.x = -0.2 + (1 - drive) * 0.27 * amp;
     for (const oar of oars) {
       const side = (oar.userData.side as number) ?? 1;
       // Blades enter ahead of the rigger at the catch and sweep toward the
       // stern through the drive (opposing the hull's travel, like the 2D view).
-      oar.rotation.y = -side * drive * 0.5;
+      oar.rotation.y = -side * drive * 0.5 * amp;
       // Buried through the drive (slight dip), feathered clear on the recovery.
       oar.rotation.z = side * (recovery * 0.26 - 0.06);
     }
@@ -367,7 +431,7 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     poles.push(pole);
   }
 
-  const animate = (phase: number, reduce: boolean): void => {
+  const animate = (phase: number, reduce: boolean, pose?: StrokePose): void => {
     if (reduce) {
       upper.rotation.x = 0.25;
       for (const arm of arms) arm.rotation.x = -0.4;
@@ -375,15 +439,16 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       return;
     }
     // Warped phase: a sharp pole plant + pull, then a slow recoil upright.
-    const w = warpStrokePhase(phase);
+    const w = pose?.warpedPhase ?? warpStrokePhase(phase);
     const swing = Math.cos(w); // +1 plant (tips forward) … -1 end of pull
     const crunch = Math.max(0, -swing); // bend forward through the drive
-    upper.rotation.x = 0.2 + crunch * 0.5;
+    const amp = pose?.amplitude ?? 1;
+    upper.rotation.x = 0.2 + crunch * 0.5 * amp;
     // Hands reach high and forward at the plant, then press down and back
     // through the pull; pole tips plant ahead of the feet and sweep behind
     // (negative rotation.x moves the below-hand basket toward +Z/forward).
-    for (const arm of arms) arm.rotation.x = -0.25 - swing * 0.35;
-    for (const p of poles) p.rotation.x = -swing * 0.9 - 0.1;
+    for (const arm of arms) arm.rotation.x = -0.25 - swing * 0.35 * amp;
+    for (const p of poles) p.rotation.x = -swing * 0.9 * amp - 0.1;
   };
 
   finalizeAvatar(group, castShadow, opacity);
@@ -621,7 +686,9 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly ghostRadius = 26;
 
   private cfg: QualityConfig;
-  private renderer: THREE.WebGLRenderer;
+  private renderer: RendererLike;
+  private readonly backend: Renderer3DBackend;
+  private initPromise: Promise<unknown> = Promise.resolve();
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private cameraInit = false;
@@ -630,6 +697,9 @@ export class CourseRenderer3D implements ReplayRenderer {
   private animPhase = 0;
   private lastAnimPhase = NaN;
   private strokePhase = 0;
+  private ghostStrokePhase = 0;
+  private lastLivePose: StrokePose | null = null;
+  private lastGhostPose: StrokePose | null = null;
   private lastLiveMeters = 0;
   private lastGhostMeters = 0;
   private lastNowMs = NaN;
@@ -676,9 +746,15 @@ export class CourseRenderer3D implements ReplayRenderer {
   private cellMatDark!: THREE.MeshStandardMaterial;
   private cellMatLight!: THREE.MeshStandardMaterial;
 
-  constructor(host: HTMLElement, quality: RenderQuality = "medium", sport: Sport = "rower") {
+  constructor(
+    host: HTMLElement,
+    quality: RenderQuality = "medium",
+    sport: Sport = "rower",
+    options: Renderer3DOptions = {},
+  ) {
     this.cfg = QUALITY[quality];
     this.profile = SPORT_PROFILES[sport];
+    this.backend = options.backend ?? "webgl";
     // A canvas can only ever hold ONE context type for its lifetime, and the 2D
     // renderer locks the shared page canvas to '2d'. So the 3D renderer creates
     // and owns its own canvas (and removes it on destroy) — this also means a
@@ -688,13 +764,24 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
     host.appendChild(this.canvas);
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: this.canvas,
-      antialias: this.cfg.antialias,
-      alpha: true,
-    });
+    if (this.backend === "webgpu") {
+      if (!options.WebGPURenderer) throw new Error("WebGPU renderer unavailable");
+      const renderer = new options.WebGPURenderer({
+        canvas: this.canvas,
+        antialias: this.cfg.antialias,
+        alpha: true,
+      });
+      this.renderer = renderer;
+      this.initPromise = renderer.init?.() ?? Promise.resolve();
+    } else {
+      this.renderer = new THREE.WebGLRenderer({
+        canvas: this.canvas,
+        antialias: this.cfg.antialias,
+        alpha: true,
+      });
+    }
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    if (this.cfg.shadows) {
+    if (this.cfg.shadows && this.renderer.shadowMap) {
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     }
@@ -708,7 +795,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     sun.position.set(14, 26, 10);
     if (this.cfg.shadows) {
       sun.castShadow = true;
-      sun.shadow.mapSize.set(1024, 1024);
+      sun.shadow.mapSize.set(this.cfg.shadowMapSize, this.cfg.shadowMapSize);
       const c = sun.shadow.camera;
       c.near = 1;
       c.far = 90;
@@ -745,7 +832,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Catch spray for the live lane: one InstancedMesh, one draw call. The
     // droplets shrink as they die, so no per-particle materials are needed.
     if (this.cfg.spray && this.profile.sprayOffset !== null) {
-      this.sprayPool = new ParticlePool(40);
+      this.sprayPool = new ParticlePool(this.cfg.sprayParticles);
       const sprayGeo = this.track(new THREE.IcosahedronGeometry(0.05, 0));
       this.sprayMat = this.mat(new THREE.MeshBasicMaterial({ color: hex(COLORS_LIGHT.foam) }));
       this.sprayMesh = new THREE.InstancedMesh(sprayGeo, this.sprayMat, this.sprayPool.capacity);
@@ -763,6 +850,14 @@ export class CourseRenderer3D implements ReplayRenderer {
   private mat<T extends THREE.Material>(m: T): T {
     this.disposables.push(m);
     return m;
+  }
+
+  ready(): Promise<unknown> {
+    return this.initPromise;
+  }
+
+  get backendKind(): Renderer3DBackend {
+    return this.backend;
   }
 
   private loopAngle(meters: number): number {
@@ -794,7 +889,7 @@ export class CourseRenderer3D implements ReplayRenderer {
 
     const innerR = this.ghostRadius - 4;
     const outerR = this.loopRadius + 4;
-    const laneGeo = this.track(new THREE.RingGeometry(innerR, outerR, 72));
+    const laneGeo = this.track(new THREE.RingGeometry(innerR, outerR, this.cfg.laneSegments));
     const laneMat = this.mat(
       new THREE.MeshStandardMaterial({
         color: hex(COLORS_LIGHT.courseFill),
@@ -830,12 +925,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.buoyMat = this.mat(
         new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.markerCap), roughness: 0.6 }),
       );
-      const rings = [
-        this.ghostRadius - 2.5,
-        (this.ghostRadius + this.loopRadius) / 2,
-        this.loopRadius + 2.5,
-      ];
-      const perRing = 48;
+      const rings = Array.from({ length: this.cfg.buoyRings }, (_, i) => {
+        const t = this.cfg.buoyRings === 1 ? 0.5 : i / (this.cfg.buoyRings - 1);
+        return this.ghostRadius - 2.5 + (this.loopRadius + 5 - this.ghostRadius) * t;
+      });
+      const perRing = this.cfg.buoysPerRing;
       const inst = new THREE.InstancedMesh(buoyGeo, this.buoyMat, rings.length * perRing);
       const m = new THREE.Matrix4();
       let bi = 0;
@@ -965,6 +1059,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     radius: number,
     meters: number,
     cadence: number,
+    pose: StrokePose,
   ): { x: number; z: number; tx: number; tz: number; y: number } {
     const a = this.loopAngle(meters);
     const sin = Math.sin(a);
@@ -977,7 +1072,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     const bob =
       reduce || this.profile.bobAmp === 0
         ? 0
-        : Math.sin(this.animPhase * 2 + cadence * 0.1) * this.profile.bobAmp;
+        : Math.sin(pose.warpedPhase + cadence * 0.1) * this.profile.bobAmp * pose.amplitude -
+          pose.fatigue * 0.025;
     outer.position.set(x, 0, z);
     outer.rotation.y = Math.atan2(tx, tz); // local +Z (travel) -> tangent
     avatar.group.position.y = bob;
@@ -986,10 +1082,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     avatar.group.position.z =
       reduce || this.profile.surgeAmp === 0
         ? 0
-        : strokeSurge(warpStrokePhase(this.strokePhase)) * this.profile.surgeAmp;
+        : strokeSurge(pose.warpedPhase) * this.profile.surgeAmp * pose.amplitude;
     avatar.group.rotation.z =
       reduce || !this.profile.roll ? 0 : Math.sin(this.animPhase + cadence * 0.05) * 0.05;
-    avatar.animate(this.strokePhase, reduce);
+    avatar.animate(pose.phase, reduce, pose);
     return { x, z, tx, tz, y: bob };
   }
 
@@ -1012,15 +1108,23 @@ export class CourseRenderer3D implements ReplayRenderer {
 
     if (playing && !this.reduceMotion) this.animPhase += (2.4 + state.frame.spm / 13) * dt;
 
-    // Stroke phase advances by time at the recorded stroke rate (spm), so the
-    // figures stroke at the workout's true cadence — a 20 spm interval animates
-    // slower than a 36 spm sprint, matching the real erg rhythm.
+    // Fallback phases are only for callers that have not supplied a stroke
+    // model. The replay page passes Concept2-derived poses so one visible cycle
+    // maps to one stroke row and catch effects cannot drift from the data.
     const liveMeters = state.frame.d;
     const dLive = liveMeters - this.lastLiveMeters;
     this.lastLiveMeters = liveMeters;
-    const prevStroke = this.strokePhase;
-    if (!this.reduceMotion && dt > 0 && state.frame.spm > 0)
+    if (!state.strokePose && !this.reduceMotion && dt > 0 && state.frame.spm > 0)
       this.strokePhase += (state.frame.spm / 60) * dt * Math.PI * 2;
+    if (!state.ghostStrokePose && !this.reduceMotion && dt > 0 && state.ghost?.spm)
+      this.ghostStrokePhase += (state.ghost.spm / 60) * dt * Math.PI * 2;
+    const livePose =
+      state.strokePose ??
+      fallbackStrokePose(state.sport ?? "rower", this.strokePhase, state.frame.spm);
+    const ghostPose =
+      state.ghost &&
+      (state.ghostStrokePose ??
+        fallbackStrokePose(state.sport ?? "rower", this.ghostStrokePhase, state.ghost.spm));
 
     // Water displacement (rowing only; skipped when flat/low quality, governor
     //-flattened, or phase unchanged). Three interfering wave trains read as a
@@ -1063,6 +1167,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.loopRadius,
       liveMeters,
       state.frame.spm,
+      livePose,
     );
 
     this.advanceWake(this.liveWake, dLive, p.x - p.tx * 1.6, p.z - p.tz * 1.6);
@@ -1075,12 +1180,12 @@ export class CourseRenderer3D implements ReplayRenderer {
         pool.clear();
       } else {
         if (dt > 0) pool.update(dt, 0, -5.5, 0);
-        if (playing && catchEvents(prevStroke, this.strokePhase) > 0) {
+        if (playing && catchTransitions(this.lastLivePose, livePose) > 0) {
           const off = this.profile.sprayOffset ?? 0;
           const rx = p.x / this.loopRadius;
           const rz = p.z / this.loopRadius;
           for (const side of [-1, 1]) {
-            for (let k = 0; k < 4; k++) {
+            for (let k = 0; k < this.cfg.sprayPerCatch; k++) {
               pool.spawn(
                 p.x + rx * off * side + (Math.random() - 0.5) * 0.3,
                 0.12,
@@ -1129,13 +1234,15 @@ export class CourseRenderer3D implements ReplayRenderer {
       const ghostMeters = clamp01(state.ghost.distFrac) * state.totalDistance;
       const dGhost = ghostMeters - this.lastGhostMeters;
       this.lastGhostMeters = ghostMeters;
-      // Ghost shares the stroke phase visually; only its placement differs.
+      // Ghost uses its own stroke pose when it has stroke rows; constant-pace
+      // ghosts synthesize a smooth fallback.
       const gp = this.placeAvatar(
         this.ghostGroup,
         this.ghostAvatar,
         this.ghostRadius,
         ghostMeters,
         state.ghost.spm,
+        ghostPose as StrokePose,
       );
       this.advanceWake(this.ghostWake, dGhost, gp.x - gp.tx * 1.6, gp.z - gp.tz * 1.6);
       const ghostText = `${state.ghost.label || "PB"} · ${Math.round(state.ghost.distFrac * 100)}%`;
@@ -1150,7 +1257,10 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.ghostWake?.reset();
       this.lastGhostLabel = "";
       this.lastGhostMeters = NaN;
+      this.lastGhostPose = null;
     }
+    this.lastLivePose = livePose;
+    this.lastGhostPose = ghostPose || null;
 
     // Speed-aware FOV: the lens breathes out gently as the boat runs faster
     // (or the playback rate rises), selling the sense of speed. A zoom is a
@@ -1241,8 +1351,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     for (const g of this.geometries) g.dispose();
     // Lose the context *before* dispose(): once disposed, getContext() may
     // return a stale/null reference in some three versions.
-    const gl = this.renderer.getContext();
-    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    const gl = this.renderer.getContext?.();
+    if (gl && typeof (gl as WebGLRenderingContext).getExtension === "function") {
+      (gl as WebGLRenderingContext).getExtension("WEBGL_lose_context")?.loseContext();
+    }
     this.renderer.dispose();
     // Remove the owned canvas so the next 3D activation builds a fresh one.
     this.canvas.remove();

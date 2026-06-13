@@ -450,7 +450,7 @@ Vérifiez d'abord que la séance a bien atteint votre logbook Concept2 (elle doi
 
 ## Problèmes d'affichage
 
-- **La relecture 3D ne démarre pas** — le navigateur a besoin de WebGL ; la vue 2D fonctionne toujours.
+- **La relecture 3D ne démarre pas** — le navigateur a besoin de WebGPU ou WebGL ; la vue 2D fonctionne toujours.
 - **Les graphiques sont à l'étroit sur téléphone** — passez en paysage pour des graphiques plus larges ; les panneaux se réorganisent sur petits écrans.
 - **Mauvais thème ou mauvaise langue** — les deux interrupteurs sont dans l'en-tête (derrière le bouton de menu sur mobile) et sont mémorisés par navigateur.
 
@@ -950,13 +950,16 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     viewToggle: "Vue du parcours",
     view2d: "2D",
     view3d: "3D",
-    view3dUnsupported: "La vue 3D nécessite WebGL sur cet appareil",
+    view3dUnsupported: "La vue 3D nécessite WebGPU ou WebGL sur cet appareil",
     view3dLoading: "Chargement 3D…",
     view3dError: "Impossible de charger la vue 3D",
     quality: "Qualité",
     qualityLow: "Basse",
     qualityMedium: "Moyenne",
     qualityHigh: "Haute",
+    qualityUltra: "Ultra",
+    backendWebgpu: "WebGPU",
+    backendWebgl: "WebGL",
     gPace: "Allure",
     gRate: "Cadence",
     gPower: "Puiss.",

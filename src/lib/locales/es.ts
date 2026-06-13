@@ -449,7 +449,7 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
 
 ## Problemas de pantalla
 
-- **La reproducción 3D no arranca** — el navegador necesita WebGL; la vista 2D funciona siempre.
+- **La reproducción 3D no arranca** — el navegador necesita WebGPU o WebGL; la vista 2D funciona siempre.
 - **Los gráficos se ven apretados en el móvil** — gira a horizontal para gráficos más anchos; los paneles se reorganizan en pantallas pequeñas.
 - **Tema o idioma equivocados** — ambos conmutadores están en la cabecera (tras el botón de menú en el móvil) y se recuerdan por navegador.
 
@@ -939,13 +939,16 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     viewToggle: "Vista del recorrido",
     view2d: "2D",
     view3d: "3D",
-    view3dUnsupported: "La vista 3D requiere WebGL en este dispositivo",
+    view3dUnsupported: "La vista 3D requiere WebGPU o WebGL en este dispositivo",
     view3dLoading: "Cargando 3D…",
     view3dError: "No se pudo cargar la vista 3D",
     quality: "Calidad",
     qualityLow: "Baja",
     qualityMedium: "Media",
     qualityHigh: "Alta",
+    qualityUltra: "Ultra",
+    backendWebgpu: "WebGPU",
+    backendWebgl: "WebGL",
     gPace: "Ritmo",
     gRate: "Cadencia",
     gPower: "Potencia",

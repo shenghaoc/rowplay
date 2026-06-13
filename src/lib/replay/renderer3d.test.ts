@@ -22,6 +22,7 @@ vi.mock("three", async (importOriginal) => {
 });
 
 import { CourseRenderer3D } from "./renderer3d";
+import { buildStrokeTimeline, strokePoseAt } from "./strokeModel";
 
 /** Minimal 2D context stub for text sprite canvas creation. */
 function make2dCtx() {
@@ -83,9 +84,18 @@ function makeHost() {
 }
 
 function makeRenderState(overrides: Partial<Parameters<CourseRenderer3D["render"]>[0]> = {}) {
+  const timeline = buildStrokeTimeline(
+    [
+      { t: 2, d: 10, pace: 120, spm: 28, watts: 160 },
+      { t: 4, d: 21, pace: 118, spm: 30, watts: 190 },
+    ],
+    "rower",
+    true,
+  );
   return {
-    frame: { d: 100, pace: 120, spm: 28, watts: 100, hr: 0 },
+    frame: { t: 2.1, d: 100, pace: 120, spm: 28, watts: 100, hr: 0 },
     ghost: null,
+    strokePose: strokePoseAt(timeline, 2.1),
     distFrac: 0.5,
     totalDistance: 2000,
     ...overrides,
@@ -101,7 +111,7 @@ describe("CourseRenderer3D", () => {
   });
 
   it("constructs at each quality level", () => {
-    for (const quality of ["low", "medium", "high"] as const) {
+    for (const quality of ["low", "medium", "high", "ultra"] as const) {
       const host = makeHost();
       expect(() => new CourseRenderer3D(host, quality, "rower")).not.toThrow();
     }
@@ -146,6 +156,7 @@ describe("CourseRenderer3D", () => {
       r.resize(800, 600);
       const stateWithGhost = makeRenderState({
         ghost: { distFrac: 0.4, pace: 118, spm: 24, label: "PB" },
+        ghostStrokePose: makeRenderState().strokePose,
       });
       expect(() => r.render(stateWithGhost, false)).not.toThrow();
     });
