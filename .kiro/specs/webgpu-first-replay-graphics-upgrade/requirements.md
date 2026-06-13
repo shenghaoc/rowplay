@@ -122,6 +122,11 @@ a premium visualization instead of a small widget.
 4. WHEN different sports are rendered THEN the scene SHALL retain sport-specific
    environmental treatment: RowErg water and lane texture, SkiErg snow/plume
    treatment, and BikeErg track/asphalt speed treatment.
+5. WHEN 3D athletes are rendered THEN they SHALL use human-scale segmented bodies
+   with separate torso, head, shoulders, limbs, hands/feet, and sport-specific
+   kit so the avatar reads as an athlete rather than a toy marker.
+6. WHEN the chase camera frames the live athlete THEN it SHALL remain close
+   enough for body posture to be legible on desktop and mobile viewports.
 
 ### Requirement 6: Documentation, Tests, and Visual QA
 

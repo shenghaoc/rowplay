@@ -106,6 +106,19 @@ separate renderers:
 - **BikeErg**: velodrome/asphalt treatment, pedal-cycle body motion, speed lines,
   and distance-scaled camera treatment.
 
+## Athlete realism pass
+
+The 3D avatar should no longer read as a toy-like marker. RowErg, SkiErg, and
+BikeErg now share a lightweight human modelling language:
+
+- Segmented bodies with separate torso, hips, shoulders, neck, head, hair/helmet,
+  upper/lower limbs, hands, feet, and sport-specific kit.
+- Capsule and ellipsoid geometry instead of boxy torso/limb blocks.
+- Neutral skin/kit materials with the lane accent used as equipment and jersey
+  detail, not as a single solid-colour body.
+- A closer, lower chase camera so body posture and stroke mechanics are legible
+  in the replay stage and mobile viewport.
+
 ## Diagnostics and UI
 
 The replay controls keep the same mental model:

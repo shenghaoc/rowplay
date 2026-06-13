@@ -259,6 +259,66 @@ function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number
   });
 }
 
+const HUMAN_SKIN = 0xc99973;
+const HUMAN_HAIR = 0x241c18;
+const HUMAN_KIT = 0x202831;
+const HUMAN_KIT_DARK = 0x111820;
+const HUMAN_SHOE = 0x151719;
+
+function humanMat(color: number, roughness = 0.74, metalness = 0.03): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+}
+
+function accentMaterial(accent: number): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: accent, roughness: 0.56, metalness: 0.04 });
+}
+
+function accentPart(mesh: THREE.Mesh): THREE.Mesh {
+  mesh.userData.accent = true;
+  return mesh;
+}
+
+function ellipsoid(
+  scale: [number, number, number],
+  material: THREE.Material,
+  segments = 16,
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1, segments, Math.max(8, segments / 2)),
+    material,
+  );
+  mesh.scale.set(scale[0], scale[1], scale[2]);
+  return mesh;
+}
+
+function capsulePart(
+  radius: number,
+  length: number,
+  material: THREE.Material,
+  axis: "x" | "y" | "z" = "y",
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.CapsuleGeometry(radius, Math.max(0.01, length - radius * 2), 5, 10),
+    material,
+  );
+  if (axis === "x") mesh.rotation.z = Math.PI / 2;
+  if (axis === "z") mesh.rotation.x = Math.PI / 2;
+  return mesh;
+}
+
+function limbSegment(
+  length: number,
+  radius: number,
+  material: THREE.Material,
+  axis: "x" | "y" | "z" = "z",
+): THREE.Mesh {
+  const mesh = capsulePart(radius, length, material, axis);
+  if (axis === "x") mesh.position.x = length / 2;
+  else if (axis === "z") mesh.position.z = length / 2;
+  else mesh.position.y = -length / 2;
+  return mesh;
+}
+
 /**
  * Low-poly single scull: long thin hull (capsule), a seated rower, and two oars
  * with blades. The hull, deck and oar blades carry `userData.accent`; the rower
@@ -266,8 +326,7 @@ function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number
  */
 function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const accentMat = () =>
-    new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.1 });
+  const accentMat = () => accentMaterial(accent);
 
   const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 3.0, 4, 8), accentMat());
   hull.rotation.x = Math.PI / 2; // capsule axis Y -> Z (travel)
@@ -281,32 +340,65 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   deck.userData.accent = true;
   group.add(deck);
 
-  // Rower (torso + head + arms) in its own group so it can slide + lean per
-  // stroke. The arms hang off the torso and swing with the oar handles.
+  const footPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.48, 0.05, 0.12),
+    humanMat(HUMAN_KIT_DARK),
+  );
+  footPlate.position.set(0, 0.34, 0.72);
+  group.add(footPlate);
+
+  // Rower in its own group so slide, layback, legs and arms all move from the
+  // recorded stroke pose rather than as one rigid toy block.
   const rower = new THREE.Group();
-  const torso = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.5, 0.3),
-    new THREE.MeshStandardMaterial({ color: 0x2a2f36, roughness: 0.8 }),
-  );
-  torso.position.y = 0.5;
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.13, 8, 6),
-    new THREE.MeshStandardMaterial({ color: 0xd8b48a, roughness: 0.7 }),
-  );
-  head.position.y = 0.82;
-  rower.add(torso, head);
-  const arms: THREE.Group[] = [];
+  const hips = ellipsoid([0.24, 0.11, 0.16], humanMat(HUMAN_KIT_DARK));
+  hips.position.y = 0.38;
+  const torso = ellipsoid([0.25, 0.36, 0.16], humanMat(HUMAN_KIT));
+  torso.position.set(0, 0.64, -0.02);
+  torso.rotation.x = -0.12;
+  const bib = accentPart(ellipsoid([0.17, 0.24, 0.024], accentMat(), 12));
+  bib.position.set(0, 0.65, 0.15);
+  const shoulderLine = capsulePart(0.035, 0.58, humanMat(HUMAN_KIT_DARK), "x");
+  shoulderLine.position.set(0, 0.82, 0.02);
+  const neck = capsulePart(0.045, 0.13, humanMat(HUMAN_SKIN), "y");
+  neck.position.y = 0.94;
+  const head = ellipsoid([0.105, 0.13, 0.1], humanMat(HUMAN_SKIN), 16);
+  head.position.set(0, 1.07, 0.04);
+  const hair = ellipsoid([0.11, 0.055, 0.105], humanMat(HUMAN_HAIR), 12);
+  hair.position.set(0, 1.16, 0.025);
+  rower.add(hips, torso, bib, shoulderLine, neck, head, hair);
+
+  const arms: Array<{ root: THREE.Group; forearm: THREE.Group }> = [];
+  const legs: Array<{ thigh: THREE.Group; shin: THREE.Group; foot: THREE.Group }> = [];
   for (const side of [-1, 1]) {
-    const arm = new THREE.Group();
-    const limb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.08, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0xd8b48a, roughness: 0.7 }),
-    );
-    limb.position.z = 0.25; // pivot at the shoulder, reach along +Z
-    arm.add(limb);
-    arm.position.set(side * 0.19, 0.66, 0.05);
-    rower.add(arm);
-    arms.push(arm);
+    const thigh = new THREE.Group();
+    thigh.position.set(side * 0.12, 0.38, -0.14);
+    thigh.add(limbSegment(0.44, 0.055, humanMat(HUMAN_KIT_DARK), "z"));
+    const knee = ellipsoid([0.065, 0.055, 0.065], humanMat(HUMAN_KIT_DARK), 10);
+    knee.position.z = 0.45;
+    thigh.add(knee);
+
+    const shin = new THREE.Group();
+    shin.position.set(side * 0.12, 0.32, 0.25);
+    shin.add(limbSegment(0.46, 0.045, humanMat(HUMAN_KIT_DARK), "z"));
+
+    const foot = new THREE.Group();
+    foot.position.set(side * 0.12, 0.28, 0.7);
+    foot.add(limbSegment(0.2, 0.04, humanMat(HUMAN_SHOE), "z"));
+    rower.add(thigh, shin, foot);
+    legs.push({ thigh, shin, foot });
+
+    const upperArm = new THREE.Group();
+    upperArm.position.set(side * 0.24, 0.78, 0.03);
+    upperArm.add(limbSegment(0.28, 0.04, humanMat(HUMAN_SKIN), "z"));
+    const forearm = new THREE.Group();
+    forearm.position.set(0, -0.02, 0.26);
+    forearm.add(limbSegment(0.3, 0.035, humanMat(HUMAN_SKIN), "z"));
+    const hand = ellipsoid([0.045, 0.04, 0.045], humanMat(HUMAN_SKIN), 10);
+    hand.position.z = 0.31;
+    forearm.add(hand);
+    upperArm.add(forearm);
+    rower.add(upperArm);
+    arms.push({ root: upperArm, forearm });
   }
   rower.position.z = -0.1;
   group.add(rower);
@@ -337,7 +429,15 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     if (reduce) {
       rower.position.z = -0.1;
       rower.rotation.x = -0.1;
-      for (const arm of arms) arm.rotation.x = -0.2;
+      for (const arm of arms) {
+        arm.root.rotation.x = -0.45;
+        arm.forearm.rotation.x = 0.1;
+      }
+      for (const leg of legs) {
+        leg.thigh.rotation.x = 0.25;
+        leg.shin.rotation.x = -0.12;
+        leg.foot.rotation.x = 0.05;
+      }
       for (const oar of oars) oar.rotation.set(0, 0, 0);
       return;
     }
@@ -348,10 +448,20 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     const amp = pose?.amplitude ?? 1;
     // At the catch the rower is compressed toward the stern, leaning into the
     // slide; through the drive both slide and layback move toward the bow.
-    rower.position.z = -0.1 - drive * 0.18 * amp;
-    rower.rotation.x = -0.1 - drive * 0.22 * amp;
-    // Arms reach near-horizontal at the catch and draw down through the finish.
-    for (const arm of arms) arm.rotation.x = -0.2 + (1 - drive) * 0.27 * amp;
+    rower.position.z = -0.1 - drive * 0.22 * amp;
+    rower.rotation.x = -0.08 - drive * 0.2 * amp;
+    // Arms and legs now articulate separately: compact at catch, extended with
+    // drawn hands at the finish. This keeps the motion athletic rather than
+    // puppet-like even though the model stays lightweight.
+    for (const arm of arms) {
+      arm.root.rotation.x = -0.55 + (1 - drive) * 0.22 * amp;
+      arm.forearm.rotation.x = 0.08 + (1 - drive) * 0.16 * amp;
+    }
+    for (const leg of legs) {
+      leg.thigh.rotation.x = 0.52 + drive * 0.28 * amp;
+      leg.shin.rotation.x = -0.42 - drive * 0.26 * amp;
+      leg.foot.rotation.x = 0.08 - drive * 0.08 * amp;
+    }
     for (const oar of oars) {
       const side = (oar.userData.side as number) ?? 1;
       // Blades enter ahead of the rigger at the catch and sweep toward the
@@ -373,9 +483,8 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
  */
 function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const accentMat = () =>
-    new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.1 });
-  const neutralMat = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 });
+  const accentMat = () => accentMaterial(accent);
+  const neutralMat = (c: number) => humanMat(c);
 
   // Skis: two thin planks along travel (+Z).
   for (const side of [-1, 1]) {
@@ -386,29 +495,53 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   }
 
   // Legs are planted; the upper body pivots from the hips for the crunch.
+  const legParts: Array<{ thigh: THREE.Group; shin: THREE.Group }> = [];
   for (const side of [-1, 1]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.6, 0.18), neutralMat(0x2a2f36));
-    leg.position.set(side * 0.16, 0.4, 0);
-    group.add(leg);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.34), neutralMat(HUMAN_SHOE));
+    boot.position.set(side * 0.18, 0.11, 0.18);
+    group.add(boot);
+
+    const thigh = new THREE.Group();
+    thigh.position.set(side * 0.15, 0.72, 0.02);
+    thigh.add(limbSegment(0.46, 0.06, neutralMat(HUMAN_KIT_DARK), "y"));
+    const shin = new THREE.Group();
+    shin.position.set(side * 0.16, 0.38, 0.08);
+    shin.add(limbSegment(0.48, 0.052, neutralMat(HUMAN_KIT_DARK), "y"));
+    group.add(thigh, shin);
+    legParts.push({ thigh, shin });
   }
   const upper = new THREE.Group();
   upper.position.y = 0.7;
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.55, 0.28), accentMat());
-  torso.position.y = 0.28;
-  torso.userData.accent = true;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), neutralMat(0xd8b48a));
-  head.position.y = 0.7;
-  upper.add(torso, head);
+  const hips = ellipsoid([0.24, 0.11, 0.16], neutralMat(HUMAN_KIT_DARK), 12);
+  hips.position.y = -0.02;
+  const torso = ellipsoid([0.25, 0.38, 0.16], neutralMat(HUMAN_KIT), 16);
+  torso.position.y = 0.31;
+  const vest = accentPart(ellipsoid([0.17, 0.25, 0.024], accentMat(), 12));
+  vest.position.set(0, 0.33, 0.15);
+  const shoulderLine = capsulePart(0.035, 0.62, neutralMat(HUMAN_KIT_DARK), "x");
+  shoulderLine.position.y = 0.56;
+  const neck = capsulePart(0.045, 0.13, neutralMat(HUMAN_SKIN), "y");
+  neck.position.y = 0.67;
+  const head = ellipsoid([0.11, 0.13, 0.1], neutralMat(HUMAN_SKIN), 16);
+  head.position.set(0, 0.81, 0.03);
+  const hair = ellipsoid([0.115, 0.055, 0.105], neutralMat(HUMAN_HAIR), 12);
+  hair.position.set(0, 0.9, 0.02);
+  upper.add(hips, torso, vest, shoulderLine, neck, head, hair);
   // Arms pivot at the shoulders and swing with the poles.
-  const arms: THREE.Group[] = [];
+  const arms: Array<{ root: THREE.Group; forearm: THREE.Group }> = [];
   for (const side of [-1, 1]) {
     const arm = new THREE.Group();
-    const limb = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.42), neutralMat(0xd8b48a));
-    limb.position.z = 0.21;
-    arm.add(limb);
-    arm.position.set(side * 0.24, 0.42, 0.05);
+    arm.position.set(side * 0.28, 0.52, 0.05);
+    arm.add(limbSegment(0.27, 0.04, neutralMat(HUMAN_SKIN), "z"));
+    const forearm = new THREE.Group();
+    forearm.position.z = 0.25;
+    forearm.add(limbSegment(0.3, 0.035, neutralMat(HUMAN_SKIN), "z"));
+    const hand = ellipsoid([0.045, 0.04, 0.045], neutralMat(HUMAN_SKIN), 10);
+    hand.position.z = 0.31;
+    forearm.add(hand);
+    arm.add(forearm);
     upper.add(arm);
-    arms.push(arm);
+    arms.push({ root: arm, forearm });
   }
   group.add(upper);
 
@@ -434,7 +567,14 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const animate = (phase: number, reduce: boolean, pose?: StrokePose): void => {
     if (reduce) {
       upper.rotation.x = 0.25;
-      for (const arm of arms) arm.rotation.x = -0.4;
+      for (const arm of arms) {
+        arm.root.rotation.x = -0.4;
+        arm.forearm.rotation.x = -0.05;
+      }
+      for (const leg of legParts) {
+        leg.thigh.rotation.x = 0.08;
+        leg.shin.rotation.x = -0.05;
+      }
       for (const p of poles) p.rotation.x = -0.2;
       return;
     }
@@ -444,10 +584,17 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     const crunch = Math.max(0, -swing); // bend forward through the drive
     const amp = pose?.amplitude ?? 1;
     upper.rotation.x = 0.2 + crunch * 0.5 * amp;
+    for (const leg of legParts) {
+      leg.thigh.rotation.x = 0.08 + crunch * 0.16 * amp;
+      leg.shin.rotation.x = -0.08 - crunch * 0.12 * amp;
+    }
     // Hands reach high and forward at the plant, then press down and back
     // through the pull; pole tips plant ahead of the feet and sweep behind
     // (negative rotation.x moves the below-hand basket toward +Z/forward).
-    for (const arm of arms) arm.rotation.x = -0.25 - swing * 0.35 * amp;
+    for (const arm of arms) {
+      arm.root.rotation.x = -0.25 - swing * 0.34 * amp;
+      arm.forearm.rotation.x = -0.05 - swing * 0.18 * amp;
+    }
     for (const p of poles) p.rotation.x = -swing * 0.9 * amp - 0.1;
   };
 
@@ -462,10 +609,8 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
  */
 function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const accentMat = () =>
-    new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.2 });
-  const neutralMat = (c: number, rough = 0.7) =>
-    new THREE.MeshStandardMaterial({ color: c, roughness: rough });
+  const accentMat = () => accentMaterial(accent);
+  const neutralMat = (c: number, rough = 0.7) => humanMat(c, rough);
 
   const wheelR = 0.45;
   const wheels: THREE.Group[] = [];
@@ -509,45 +654,81 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   }
   group.add(cranks);
 
-  // Rider: jersey torso in an aero lean + head + thighs that pedal.
+  // Rider: compact human proportions in an aero lean. The jersey/helmet carry
+  // the lane accent, while limbs stay skin/kit coloured so the athlete does not
+  // read as a single bright toy shape.
   const rider = new THREE.Group();
   rider.position.set(0, wheelR + 0.5, -0.35);
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.6, 0.26), accentMat());
-  torso.rotation.x = 0.6; // aero tuck
-  torso.position.y = 0.3;
-  torso.userData.accent = true;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), neutralMat(0xd8b48a));
-  head.position.set(0, 0.62, 0.35);
-  const thighs: THREE.Mesh[] = [];
+  const torso = ellipsoid([0.23, 0.34, 0.14], neutralMat(HUMAN_KIT), 16);
+  torso.rotation.x = 0.74; // aero tuck
+  torso.position.set(0, 0.28, 0.1);
+  const jerseyPanel = accentPart(ellipsoid([0.15, 0.22, 0.022], accentMat(), 12));
+  jerseyPanel.rotation.x = 0.74;
+  jerseyPanel.position.set(0, 0.31, 0.23);
+  const shoulderLine = capsulePart(0.032, 0.52, neutralMat(HUMAN_KIT_DARK), "x");
+  shoulderLine.position.set(0, 0.47, 0.18);
+  const neck = capsulePart(0.04, 0.11, neutralMat(HUMAN_SKIN), "y");
+  neck.position.set(0, 0.54, 0.26);
+  const head = ellipsoid([0.1, 0.12, 0.095], neutralMat(HUMAN_SKIN), 16);
+  head.position.set(0, 0.66, 0.33);
+  const helmet = accentPart(ellipsoid([0.108, 0.055, 0.1], accentMat(), 12));
+  helmet.position.set(0, 0.74, 0.31);
+  const thighs: Array<{ thigh: THREE.Group; shin: THREE.Group; shoe: THREE.Group }> = [];
   for (const side of [-1, 1]) {
-    const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.14), neutralMat(0x2a2f36));
-    thigh.position.set(side * 0.1, -0.1, 0.2);
-    rider.add(thigh);
-    thighs.push(thigh);
+    const thigh = new THREE.Group();
+    thigh.position.set(side * 0.1, -0.04, 0.08);
+    thigh.add(limbSegment(0.36, 0.052, neutralMat(HUMAN_KIT_DARK), "y"));
+    const shin = new THREE.Group();
+    shin.position.set(side * 0.1, -0.26, 0.05);
+    shin.add(limbSegment(0.34, 0.042, neutralMat(HUMAN_SKIN), "y"));
+    const shoe = new THREE.Group();
+    shoe.position.set(side * 0.1, -0.47, 0.03);
+    shoe.add(limbSegment(0.18, 0.035, neutralMat(HUMAN_SHOE), "z"));
+    rider.add(thigh, shin, shoe);
+    thighs.push({ thigh, shin, shoe });
   }
   // Arms from the shoulders down to the bars, fixed in the tuck.
   for (const side of [-1, 1]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.5), neutralMat(0xd8b48a));
-    arm.position.set(side * 0.15, 0.32, 0.45);
-    arm.rotation.x = -0.7;
-    rider.add(arm);
+    const upperArm = new THREE.Group();
+    upperArm.position.set(side * 0.2, 0.42, 0.2);
+    upperArm.rotation.x = -0.78;
+    upperArm.add(limbSegment(0.24, 0.035, neutralMat(HUMAN_SKIN), "z"));
+    const forearm = new THREE.Group();
+    forearm.position.z = 0.22;
+    forearm.rotation.x = -0.28;
+    forearm.add(limbSegment(0.31, 0.032, neutralMat(HUMAN_SKIN), "z"));
+    const hand = ellipsoid([0.042, 0.035, 0.042], neutralMat(HUMAN_SKIN), 10);
+    hand.position.z = 0.32;
+    forearm.add(hand);
+    upperArm.add(forearm);
+    rider.add(upperArm);
   }
-  rider.add(torso, head);
+  rider.add(torso, jerseyPanel, shoulderLine, neck, head, helmet);
   group.add(rider);
 
   const animate = (phase: number, reduce: boolean): void => {
     if (reduce) {
       for (const w of wheels) w.rotation.x = 0;
       cranks.rotation.x = 0;
-      for (const t of thighs) t.rotation.x = 0;
+      for (const leg of thighs) {
+        leg.thigh.rotation.x = 0;
+        leg.shin.rotation.x = -0.35;
+        leg.shoe.rotation.x = 0;
+      }
       rider.rotation.z = 0;
       return;
     }
     // Positive rotation about +X rolls the top of the wheel toward +Z (forward).
     for (const w of wheels) w.rotation.x = phase * 2.4; // wheels roll fast
     cranks.rotation.x = phase; // pedals turn
-    thighs[0].rotation.x = Math.sin(phase) * 0.5;
-    thighs[1].rotation.x = Math.sin(phase + Math.PI) * 0.5;
+    const p0 = Math.sin(phase);
+    const p1 = Math.sin(phase + Math.PI);
+    thighs[0].thigh.rotation.x = p0 * 0.45;
+    thighs[0].shin.rotation.x = -0.35 - p0 * 0.25;
+    thighs[0].shoe.rotation.x = p0 * 0.2;
+    thighs[1].thigh.rotation.x = p1 * 0.45;
+    thighs[1].shin.rotation.x = -0.35 - p1 * 0.25;
+    thighs[1].shoe.rotation.x = p1 * 0.2;
     // Subtle alternating upper-body sway with the pedal stroke.
     rider.rotation.z = Math.sin(phase) * 0.05;
   };
@@ -1287,14 +1468,14 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Chase camera: behind the live boat along its tangent, raised, looking
     // ahead, with a slight outward offset so the athlete reads three-quarter
     // rather than dead astern.
-    const back = 9.5;
-    const height = 5.5;
-    const ahead = 7;
-    const lateral = 1.8;
+    const back = 5.8;
+    const height = 3.6;
+    const ahead = 4.4;
+    const lateral = 1.1;
     const rx = p.x / this.loopRadius;
     const rz = p.z / this.loopRadius;
     this.chase.set(p.x - p.tx * back + rx * lateral, height, p.z - p.tz * back + rz * lateral);
-    this.lookAt.set(p.x + p.tx * ahead, 1.1, p.z + p.tz * ahead);
+    this.lookAt.set(p.x + p.tx * ahead, 0.85, p.z + p.tz * ahead);
     if (!this.cameraInit) {
       this.camera.position.copy(this.chase);
       this.cameraInit = true;

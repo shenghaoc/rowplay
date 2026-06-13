@@ -343,6 +343,12 @@ Das DPS-Diagramm verfolgt die Meter pro Schlag. Der Pace-normalisierte Schalter 
 - Wechsle zwischen **2D- und 3D-Ansicht** der Strecke (3D braucht einen halbwegs modernen Browser).
 - Setze eine **Ziel-Pace**, um eine Referenzlinie im Pace-Diagramm zu zeichnen.
 
+Der Athlet bewegt sich mit der echten Kadenz des Workouts — ein Schlag (oder Stockeinsatz bzw. eine Pedalumdrehung) pro aufgezeichnetem Schlag, mit Spritzern bei jedem Catch — und beschleunigt mit der Wiedergabegeschwindigkeit. In 3D nutzt die Figur einen gegliederten Körper in realistischeren Proportionen mit sportartspezifischem Kit, damit Haltung und Bewegung wie ein Erg-Athlet wirken und nicht wie ein Spielzeugmarker. Die Verfolgungskamera bleibt nah genug, dass die Körperposition sichtbar bleibt, und weitet den Blickwinkel leicht, wenn das Boot schneller läuft.
+
+In 3D wählt der **Qualität**-Selektor niedrige, mittlere, hohe oder Ultra-Grafik. WebGPU-fähige Geräte versuchen zuerst den reicheren Ultra-Pfad; WebGL bleibt der Fallback. Wenn das Gerät keine flüssige Bildrate halten kann, senkt der Renderer automatisch zuerst die Auflösung und danach Effekte. Die Replay-Animation respektiert die Systemeinstellung für reduzierte Bewegung.
+
+Per-Schlag-Daten werden verwendet, wenn Concept2 sie bereitstellt. Workouts ohne Schlagdaten fallen auf ein Split-basiertes Replay zurück, sodass die Strecke trotzdem abgespielt wird.
+
 ## Coaching-Notizen hinzufügen
 
 Halte das Replay an einem Moment an und füge eine Notiz hinzu („hier den Rollsitz überhastet"). Notizen heften sich an die Zeitleiste, sodass du — oder wer auch immer das Replay erhält — direkt dorthin springen kann.
