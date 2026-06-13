@@ -119,6 +119,8 @@ BikeErg now share a lightweight human modelling language:
 - Capsule and ellipsoid geometry instead of boxy torso/limb blocks.
 - Neutral skin/kit materials with the lane accent used as equipment and jersey
   detail, not as a single solid-colour body.
+- Contact-locked hands and feet: RowErg hands/feet stay on the oar handle and
+  foot plate, SkiErg hands stay on pole grips, and BikeErg feet stay on pedals.
 - A closer, lower chase camera so body posture and stroke mechanics are legible
   in the replay stage and mobile viewport.
 

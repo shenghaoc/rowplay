@@ -383,8 +383,9 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   group.add(deck);
   const stripe = new THREE.Mesh(
     new THREE.BoxGeometry(0.04, 0.015, 2.2),
-    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.1 }),
+    humanMat(0xf8fafc, 0.4, 0.08),
   );
+  stripe.name = "rower-deck-stripe";
   stripe.position.y = 0.335;
   group.add(stripe);
 
@@ -464,8 +465,9 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
       new THREE.TorusGeometry(0.05, 0.015, 6, 10),
-      humanMat(0x888888, 0.5),
+      humanMat(0x8a9097, 0.5),
     );
+    collar.name = "rower-oar-collar";
     collar.position.set(side * 1.9, 0, 0);
     collar.rotation.y = Math.PI / 2;
     oar.add(collar);
@@ -586,6 +588,7 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     group.add(ski);
     // Ski tip — a small wedge at the front for a more realistic profile.
     const tip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.3), accentMat());
+    tip.name = "skierg-ski-tip";
     tip.position.set(side * 0.18, 0.06, 1.45);
     tip.rotation.x = -0.25;
     tip.userData.accent = true;
@@ -755,6 +758,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   seatTube.position.set(0, wheelR + 0.45, -0.4);
   seatTube.userData.accent = true;
   const topTube = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1.1), accentMat());
+  topTube.name = "bike-top-tube";
   topTube.position.set(0, wheelR + 0.75, -0.15);
   topTube.userData.accent = true;
   // Chain stays: two thin tubes from BB to rear axle.
@@ -774,6 +778,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     new THREE.TorusGeometry(0.16, 0.018, 6, 18),
     neutralMat(0x555555, 0.4),
   );
+  chainRing.name = "bike-chain-ring";
   chainRing.rotation.y = Math.PI / 2;
   cranks.add(chainRing);
   const pedals: Array<{ side: number; crankY: number }> = [];
@@ -1153,10 +1158,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 500);
 
-    // Three-point lighting: hemisphere sky/ground fill, a key sun with
-    // optional shadows, and a warm accent fill for depth and richness.
+    // Sky/ground hemisphere fill + a key sun give boats nicer shading than a
+    // flat ambient. The sun casts shadows only at high quality.
     this.scene.add(new THREE.HemisphereLight(0xddeaf2, 0x4a5560, 0.9));
-    const sun = new THREE.DirectionalLight(0xfff5e8, 0.85);
+    const sun = new THREE.DirectionalLight(0xfff7ed, 0.85);
     sun.position.set(14, 26, 10);
     if (this.cfg.shadows) {
       sun.castShadow = true;
@@ -1168,9 +1173,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       c.right = c.top = 42;
     }
     this.scene.add(sun);
-    // Warm fill from the opposite side — prevents the shadow side from going
-    // dead-black and gives athletes a richer, more dimensional read.
-    const fill = new THREE.DirectionalLight(0xffd4a0, 0.25);
+    const fill = new THREE.DirectionalLight(0xffd6a3, 0.18);
     fill.position.set(-10, 8, -6);
     this.scene.add(fill);
 
@@ -1531,20 +1534,20 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.postMatMinor = this.mat(
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.tickMinor) }),
     );
-    // Taller, more elegant distance posts with a spherical finial cap.
-    const postGeo = this.track(new THREE.BoxGeometry(0.14, 1.6, 0.14));
-    const capGeo = this.track(new THREE.SphereGeometry(0.1, 8, 6));
+    const postGeo = this.track(new THREE.BoxGeometry(0.14, 1.55, 0.14));
+    const postCapGeo = this.track(new THREE.SphereGeometry(0.09, 8, 6));
     const postR = outerR + 1.4;
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * Math.PI * 2;
       const isMajor = i % 5 === 0;
-      const post = new THREE.Mesh(postGeo, isMajor ? this.postMatMajor : this.postMatMinor);
-      post.position.set(postR * Math.sin(a), 0.8, postR * Math.cos(a));
+      const postMat = isMajor ? this.postMatMajor : this.postMatMinor;
+      const post = new THREE.Mesh(postGeo, postMat);
+      post.position.set(postR * Math.sin(a), 0.78, postR * Math.cos(a));
       post.castShadow = this.cfg.shadows;
       this.scene.add(post);
-      // Finial cap — a small sphere on top of each post.
-      const cap = new THREE.Mesh(capGeo, isMajor ? this.postMatMajor : this.postMatMinor);
-      cap.position.set(postR * Math.sin(a), 1.62, postR * Math.cos(a));
+      const cap = new THREE.Mesh(postCapGeo, postMat);
+      cap.position.set(postR * Math.sin(a), 1.58, postR * Math.cos(a));
+      cap.castShadow = this.cfg.shadows;
       this.scene.add(cap);
     }
 
@@ -1574,8 +1577,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.scene.add(inst);
     }
 
-    // Start/finish line — flat checker across the lane at the lap crossing,
-    // flanked by two tall gate posts for a grand, stadium-like entrance.
+    // Start/finish line — flat checker across the lane at the lap crossing.
     this.cellMatDark = this.mat(
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.finishDark) }),
     );
@@ -1593,26 +1595,13 @@ export class CourseRenderer3D implements ReplayRenderer {
         this.scene.add(cell);
       }
     }
-    // Gate posts flanking the finish line.
-    const gatePostGeo = this.track(new THREE.BoxGeometry(0.22, 2.8, 0.22));
-    for (const gx of [-1.4, 1.4]) {
-      const gatePost = new THREE.Mesh(gatePostGeo, this.postMatMajor);
-      gatePost.position.set(gx, 1.4, innerR + 4.6);
-      gatePost.castShadow = this.cfg.shadows;
-      this.scene.add(gatePost);
-      const gateCap = new THREE.Mesh(capGeo, this.postMatMajor);
-      gateCap.position.set(gx, 2.82, innerR + 4.6);
-      this.scene.add(gateCap);
-    }
   }
 
   private applyTheme(themeName: "light" | "dark"): void {
     const C = themeName === "dark" ? COLORS_DARK : COLORS_LIGHT;
     this.theme = themeName;
     this.scene.background = new THREE.Color(C.courseFill);
-    // Softer fog — start closer and end tighter for a more cinematic depth
-    // that fades distant buoys/posts into the atmosphere.
-    this.scene.fog = new THREE.Fog(C.courseFill, 40, 130);
+    this.scene.fog = new THREE.Fog(C.courseFill, 55, 170);
 
     for (const themed of this.courseThemeMats) {
       themed.material.color.setHex(themed.color(themeName));
@@ -1790,10 +1779,10 @@ export class CourseRenderer3D implements ReplayRenderer {
         const ly = arr[idx + 1];
         arr[idx + 2] = this.reduceMotion
           ? 0
-          : Math.sin(ly * 0.25 + t) * 0.07 +
-            Math.sin(lx * 0.31 + t * 1.7) * 0.04 +
-            Math.sin((lx + ly) * 0.13 - t * 0.6) * 0.03 +
-            Math.sin(ly * 0.6 + t * 2.3) * 0.012; // fine ripples
+          : Math.sin(ly * 0.25 + t) * 0.055 +
+            Math.sin(lx * 0.31 + t * 1.7) * 0.033 +
+            Math.sin((lx + ly) * 0.13 - t * 0.6) * 0.026 +
+            Math.sin(ly * 0.6 + t * 2.3) * 0.009;
       }
       pos.needsUpdate = true;
       water.geometry.computeVertexNormals();
