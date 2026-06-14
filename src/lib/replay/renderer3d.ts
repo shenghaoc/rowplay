@@ -344,7 +344,7 @@ function dynamicLimbSegment(radius: number, material: THREE.Material): THREE.Mes
   return capsulePart(radius, 1, material, "z");
 }
 
-function placeSegmentBetween(segment: THREE.Mesh, start: Point3, end: Point3): void {
+function placeSegmentBetween(segment: THREE.Object3D, start: Point3, end: Point3): void {
   const dx = end[0] - start[0];
   const dy = end[1] - start[1];
   const dz = end[2] - start[2];
@@ -358,6 +358,104 @@ function placeSegmentBetween(segment: THREE.Mesh, start: Point3, end: Point3): v
   segment.scale.set(1, 1, length);
   SEGMENT_DIR.set(dx / length, dy / length, dz / length);
   segment.quaternion.setFromUnitVectors(SEGMENT_FORWARD, SEGMENT_DIR);
+}
+
+// ── Upgraded avatar body helpers ─────────────────────────────────────────────
+// These replace uniform-radius capsules and plain ellipsoids with shaped body
+// parts that give visible muscle definition, hands/feet, and facial features.
+
+/**
+ * A muscle-shaped limb: a lathe geometry that tapers from proximal to distal
+ * radius with a slight belly, giving visible bicep/quadricep shape.
+ * Returns a unit-length mesh along +Z (same contract as dynamicLimbSegment).
+ */
+function taperedLimb(
+  proximalRadius: number,
+  distalRadius: number,
+  material: THREE.Material,
+  segments = 8,
+): THREE.Mesh {
+  const pts: THREE.Vector2[] = [];
+  const steps = 6;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    // Smooth taper with a slight belly at 30%
+    const belly = Math.sin(t * Math.PI) * 0.06 * proximalRadius;
+    const r = proximalRadius + (distalRadius - proximalRadius) * t + belly;
+    pts.push(new THREE.Vector2(r, t));
+  }
+  const geo = new THREE.LatheGeometry(pts, segments);
+  geo.computeVertexNormals();
+  // Rotate so the axis is +Z (lathe defaults to Y)
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.rotation.x = -Math.PI / 2;
+  return mesh;
+}
+
+/**
+ * A hand mesh: palm ellipsoid with four fingers and a thumb.
+ */
+function makeHand(material: THREE.Material, segments = 8): THREE.Group {
+  const hand = new THREE.Group();
+  const palm = ellipsoid([0.04, 0.025, 0.05], material, segments);
+  hand.add(palm);
+  for (let i = 0; i < 4; i++) {
+    const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.03, 2, 4), material);
+    finger.position.set((i - 1.5) * 0.012, 0, 0.04);
+    hand.add(finger);
+  }
+  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.01, 0.025, 2, 4), material);
+  thumb.position.set(-0.03, 0.005, 0.02);
+  thumb.rotation.z = 0.5;
+  hand.add(thumb);
+  return hand;
+}
+
+/**
+ * A foot mesh: shoe-shaped sole with toe box and heel.
+ */
+function makeFoot(material: THREE.Material, segments = 8): THREE.Group {
+  const foot = new THREE.Group();
+  const sole = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.035, 0.16, segments, 1, segments),
+    material,
+  );
+  sole.position.z = 0.04;
+  foot.add(sole);
+  const toe = ellipsoid([0.04, 0.024, 0.048], material, segments);
+  toe.position.set(0, -0.005, 0.12);
+  foot.add(toe);
+  const heel = ellipsoid([0.035, 0.028, 0.028], material, segments);
+  heel.position.set(0, 0, -0.04);
+  foot.add(heel);
+  return foot;
+}
+
+/**
+ * A head with jaw/chin, ears, and hair cap — instead of a single ellipsoid.
+ */
+function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 16): THREE.Group {
+  const head = new THREE.Group();
+  // Cranium
+  const cranium = ellipsoid([0.105, 0.13, 0.1], skinMat, segments);
+  cranium.position.y = 0;
+  head.add(cranium);
+  // Jaw — smaller sphere below for chin/jawline
+  const jaw = ellipsoid([0.08, 0.05, 0.07], skinMat, Math.max(8, segments / 2));
+  jaw.position.set(0, -0.07, 0.02);
+  head.add(jaw);
+  // Ears
+  for (const side of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.022, 4, 4), skinMat);
+    ear.scale.set(0.5, 1, 1);
+    ear.position.set(side * 0.1, -0.01, -0.01);
+    head.add(ear);
+  }
+  // Hair cap
+  const hair = ellipsoid([0.11, 0.055, 0.105], hairMat, Math.max(8, segments / 2));
+  hair.position.y = 0.09;
+  head.add(hair);
+  return head;
 }
 
 /**
@@ -410,11 +508,9 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   shoulderLine.position.set(0, 0.82, 0.02);
   const neck = capsulePart(0.045, 0.13, humanMat(HUMAN_SKIN), "y");
   neck.position.y = 0.94;
-  const head = ellipsoid([0.105, 0.13, 0.1], humanMat(HUMAN_SKIN), 16);
-  head.position.set(0, 1.07, 0.04);
-  const hair = ellipsoid([0.11, 0.055, 0.105], humanMat(HUMAN_HAIR), 12);
-  hair.position.set(0, 1.16, 0.025);
-  rower.add(hips, torso, bib, shoulderLine, neck, head, hair);
+  const headGroup = makeHead(humanMat(HUMAN_SKIN), humanMat(HUMAN_HAIR));
+  headGroup.position.set(0, 1.07, 0.04);
+  rower.add(hips, torso, bib, shoulderLine, neck, headGroup);
 
   const handle = capsulePart(0.026, 0.44, humanMat(0x262c31), "x");
   handle.position.set(0, 0.72, 0.58);
@@ -424,27 +520,27 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     side: number;
     upper: THREE.Mesh;
     forearm: THREE.Mesh;
-    hand: THREE.Mesh;
+    hand: THREE.Group;
   }> = [];
   const legs: Array<{
     side: number;
     thigh: THREE.Mesh;
     shin: THREE.Mesh;
-    foot: THREE.Mesh;
+    foot: THREE.Group;
     knee: THREE.Mesh;
   }> = [];
   for (const side of [-1, 1]) {
-    // Dynamic leg segments — positioned per-frame by IK from hip to foot.
-    const thigh = dynamicLimbSegment(0.055, humanMat(HUMAN_KIT_DARK));
-    const shin = dynamicLimbSegment(0.045, humanMat(HUMAN_KIT_DARK));
-    const foot = dynamicLimbSegment(0.04, humanMat(HUMAN_SHOE));
+    // Tapered leg segments — positioned per-frame by IK from hip to foot.
+    const thigh = taperedLimb(0.055, 0.042, humanMat(HUMAN_KIT_DARK));
+    const shin = taperedLimb(0.042, 0.032, humanMat(HUMAN_KIT_DARK));
+    const foot = makeFoot(humanMat(HUMAN_SHOE));
     const knee = ellipsoid([0.065, 0.055, 0.065], humanMat(HUMAN_KIT_DARK), 10);
     rower.add(thigh, shin, foot, knee);
     legs.push({ side, thigh, shin, foot, knee });
 
-    const upperArm = dynamicLimbSegment(0.04, humanMat(HUMAN_SKIN));
-    const forearm = dynamicLimbSegment(0.035, humanMat(HUMAN_SKIN));
-    const hand = ellipsoid([0.045, 0.04, 0.045], humanMat(HUMAN_SKIN), 10);
+    const upperArm = taperedLimb(0.04, 0.03, humanMat(HUMAN_SKIN));
+    const forearm = taperedLimb(0.03, 0.022, humanMat(HUMAN_SKIN));
+    const hand = makeHand(humanMat(HUMAN_SKIN));
     rower.add(upperArm, forearm, hand);
     arms.push({ side, upper: upperArm, forearm, hand });
   }
@@ -623,23 +719,21 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   shoulderLine.position.y = 0.56;
   const neck = capsulePart(0.045, 0.13, neutralMat(HUMAN_SKIN), "y");
   neck.position.y = 0.67;
-  const head = ellipsoid([0.11, 0.13, 0.1], neutralMat(HUMAN_SKIN), 16);
-  head.position.set(0, 0.81, 0.03);
-  const hair = ellipsoid([0.115, 0.055, 0.105], neutralMat(HUMAN_HAIR), 12);
-  hair.position.set(0, 0.9, 0.02);
-  upper.add(hips, torso, vest, shoulderLine, neck, head, hair);
+  const headGroup = makeHead(neutralMat(HUMAN_SKIN), neutralMat(HUMAN_HAIR));
+  headGroup.position.set(0, 0.81, 0.03);
+  upper.add(hips, torso, vest, shoulderLine, neck, headGroup);
   // Arms are placed from shoulders to pole grips, so the hands stay on the
   // handles while the pole groups pivot from the same point.
   const arms: Array<{
     side: number;
     upper: THREE.Mesh;
     forearm: THREE.Mesh;
-    hand: THREE.Mesh;
+    hand: THREE.Group;
   }> = [];
   for (const side of [-1, 1]) {
-    const upperArm = dynamicLimbSegment(0.04, neutralMat(HUMAN_SKIN));
-    const forearm = dynamicLimbSegment(0.035, neutralMat(HUMAN_SKIN));
-    const hand = ellipsoid([0.045, 0.04, 0.045], neutralMat(HUMAN_SKIN), 10);
+    const upperArm = taperedLimb(0.04, 0.03, neutralMat(HUMAN_SKIN));
+    const forearm = taperedLimb(0.03, 0.022, neutralMat(HUMAN_SKIN));
+    const hand = makeHand(neutralMat(HUMAN_SKIN));
     upper.add(upperArm, forearm, hand);
     arms.push({ side, upper: upperArm, forearm, hand });
   }
@@ -806,8 +900,8 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   shoulderLine.position.set(0, 0.47, 0.18);
   const neck = capsulePart(0.04, 0.11, neutralMat(HUMAN_SKIN), "y");
   neck.position.set(0, 0.54, 0.26);
-  const head = ellipsoid([0.1, 0.12, 0.095], neutralMat(HUMAN_SKIN), 16);
-  head.position.set(0, 0.66, 0.33);
+  const headGroup = makeHead(neutralMat(HUMAN_SKIN), neutralMat(HUMAN_HAIR));
+  headGroup.position.set(0, 0.66, 0.33);
   const helmet = accentPart(ellipsoid([0.108, 0.055, 0.1], accentMat(), 12));
   helmet.position.set(0, 0.74, 0.31);
   const legs: Array<{
@@ -818,10 +912,9 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     shoe: THREE.Group;
   }> = [];
   for (const side of [-1, 1]) {
-    const thigh = dynamicLimbSegment(0.052, neutralMat(HUMAN_KIT_DARK));
-    const shin = dynamicLimbSegment(0.042, neutralMat(HUMAN_SKIN));
-    const shoe = new THREE.Group();
-    shoe.add(limbSegment(0.18, 0.035, neutralMat(HUMAN_SHOE), "z"));
+    const thigh = taperedLimb(0.052, 0.04, neutralMat(HUMAN_KIT_DARK));
+    const shin = taperedLimb(0.04, 0.03, neutralMat(HUMAN_SKIN));
+    const shoe = makeFoot(neutralMat(HUMAN_SHOE));
     rider.add(thigh, shin, shoe);
     legs.push({
       side,
@@ -841,13 +934,13 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     forearm.position.z = 0.22;
     forearm.rotation.x = -0.28;
     forearm.add(limbSegment(0.31, 0.032, neutralMat(HUMAN_SKIN), "z"));
-    const hand = ellipsoid([0.042, 0.035, 0.042], neutralMat(HUMAN_SKIN), 10);
+    const hand = makeHand(neutralMat(HUMAN_SKIN));
     hand.position.z = 0.32;
     forearm.add(hand);
     upperArm.add(forearm);
     rider.add(upperArm);
   }
-  rider.add(torso, jerseyPanel, shoulderLine, neck, head, helmet);
+  rider.add(torso, jerseyPanel, shoulderLine, neck, headGroup, helmet);
   group.add(rider);
 
   const placePedalLegs = (phase: number): void => {
