@@ -101,22 +101,27 @@ describe("analyzeWorkoutMoments", () => {
       { index: 2, distance: 500, time: 116, pace: 116, spm: 27, restTime: 60 },
       { index: 3, distance: 500, time: 108, pace: 108, spm: 29, restTime: 0 },
     ];
-    const report = analyzeWorkoutMoments(
-      detail({
-        isInterval: true,
-        splits,
-        strokes: strokesFromPaces([110, 110, 116, 116, 108, 108], 55),
-      }),
-    );
+    // Per-stroke data: strokes are normalised to work-only time (rest excluded).
+    const strokes = strokesFromPaces([110, 110, 116, 116, 108, 108], 55);
+    const report = analyzeWorkoutMoments(detail({ isInterval: true, splits, strokes }));
+
+    // Work splits (rest split filtered): [110, 116, 108].
+    // strokes: t=[0, 55, 110, 165, 220, 275]
+    // Work-only cumTime:
+    //   split 0 (time=110): cumTime 0→110 → edges[0]={t:0, t:110}
+    //   split 1 (rest): skipped for per-stroke data
+    //   split 2 (time=116): cumTime 110→226 → edges[1]={t:110, t:220}
+    //   split 3 (time=108): cumTime 226→334 → edges[2]={t:275, t:275}
+
+    const slowest = report.moments.find((m) => m.kind === "slowest-rep");
+    expect(slowest).toBeDefined();
+    expect(slowest!.avgPace).toBe(116);
+    expect(slowest!.startTime).toBe(110);
+    expect(slowest!.endTime).toBe(220);
+
     const best = report.moments.find((m) => m.kind === "best-rep");
     expect(best).toBeDefined();
-    // Rep 2 (index 2 in workSplits) = pace 108, fastest.
-    // Edges built from stroke timestamps using work-only cumulative time:
-    //   strokes: t=[0, 55, 110, 165, 220, 275]
-    //   edges[0]: t=0→110 (work split 0, cumWorkTime=0)
-    //   edges[1]: t=110→220 (work split 2, cumWorkTime=110)
-    //   edges[2]: t=275→275 (work split 3, cumWorkTime=226, clamped to last stroke)
-    // Seek times use the replay clock (stroke timestamps), not split cumulative time.
+    expect(best!.avgPace).toBe(108);
     expect(best!.startTime).toBe(275);
     expect(best!.endTime).toBe(275);
   });

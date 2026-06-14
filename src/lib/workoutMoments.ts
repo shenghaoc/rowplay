@@ -198,11 +198,10 @@ function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
   const moments: WorkoutMoment[] = [];
 
   // Build edges from stroke timestamps so seek times match the replay clock.
-  // For per-stroke data the replay is work-only; for synth strokes it includes
-  // rest — either way, using the actual stroke t/d keeps edges in the right
-  // time base. We use work-only cumulative time (excluding rest) to find the
-  // stroke range for each work split, matching how mapStrokes normalises
-  // per-stroke intervals.
+  // Per-stroke data is normalised to work-only time (mapStrokes offsets each
+  // rep from the previous end, skipping rest). Synth strokes include rest in
+  // their timeline. Accumulate time in the matching base so we find the right
+  // stroke range for each work split.
   const edges: {
     startTime: number;
     endTime: number;
@@ -210,18 +209,16 @@ function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
     endDistance: number;
   }[] = [];
   let strokeIdx = 0;
-  let cumWorkTime = 0;
+  let cumTime = 0;
   let cumDist = 0;
   const last = detail.strokes.length - 1;
   for (const s of detail.splits) {
     const isWork = !s.isRest && s.time > 0 && s.distance > 0 && s.pace > 0;
     if (isWork) {
-      // Find the first stroke at or after this work split's cumulative time.
-      while (strokeIdx < detail.strokes.length && detail.strokes[strokeIdx].t < cumWorkTime)
+      while (strokeIdx < detail.strokes.length && detail.strokes[strokeIdx].t < cumTime)
         strokeIdx++;
       const startIdx = Math.min(strokeIdx, last);
-      const splitEndTime = cumWorkTime + s.time;
-      // Find the last stroke at or before the split's end time.
+      const splitEndTime = cumTime + s.time;
       let endIdx = startIdx;
       for (let j = startIdx; j < detail.strokes.length; j++) {
         if (detail.strokes[j].t <= splitEndTime) endIdx = j;
@@ -233,9 +230,12 @@ function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
         startDistance: cumDist,
         endDistance: cumDist + s.distance,
       });
+      cumTime += s.time;
+    } else if (!detail.hasStrokeData) {
+      // Synth strokes include rest in their timeline
+      cumTime += s.time;
     }
-    cumWorkTime += s.time;
-    cumDist += s.distance + (s.restDistance ?? 0);
+    cumDist += s.distance;
   }
 
   for (const rep of set.reps) {
