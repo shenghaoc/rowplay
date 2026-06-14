@@ -69,7 +69,8 @@ export function loadRenderer3D(): Promise<Renderer3DCtor> {
   return cached;
 }
 
-function loadRenderer3DWebGPU(): Promise<Renderer3DCtor> {
+/** Lazy-load the WebGPU 3D renderer module once per session (mirrors `loadRenderer3D`). */
+export function loadRenderer3DWebGPU(): Promise<Renderer3DCtor> {
   if (!cachedWebGPU) {
     cachedWebGPU = import("./renderer3dWebGPU")
       .then((m) => m.CourseRenderer3DWebGPU)

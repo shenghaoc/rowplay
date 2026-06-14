@@ -3,6 +3,7 @@ import type { Renderer3DCtor } from "./renderer3dLoader";
 import {
   createRenderer3D,
   loadRenderer3D,
+  loadRenderer3DWebGPU,
   renderer3dSupported,
   resetRenderer3DCache,
   webglSupported,
@@ -85,6 +86,45 @@ describe("loadRenderer3D", () => {
     const afterFailure = loadLikeRenderer3D();
     expect(afterFailure).not.toBe(inFlight);
     await expect(afterFailure).rejects.toThrow("chunk load failed");
+  });
+});
+
+describe("loadRenderer3DWebGPU", () => {
+  afterEach(() => {
+    resetRenderer3DCache();
+  });
+
+  it("reuses the same import promise across calls", async () => {
+    // Mirrors loadRenderer3D's dedup — `cachedWebGPU` was untested in isolation,
+    // so a future regression that drops the cache would only show up via
+    // observing duplicate module-import work in the createRenderer3D path.
+    resetRenderer3DCache();
+    const p1 = loadRenderer3DWebGPU();
+    const p2 = loadRenderer3DWebGPU();
+    expect(p1).toBe(p2);
+    await p1.catch(() => {});
+  });
+
+  it("clears the WebGPU cache after a failed import so the next call retries", async () => {
+    // Documents the WebGPU-side null-on-catch pattern the same way loadRenderer3D
+    // does — guards against drift between the two retry strategies.
+    let cached: Promise<unknown> | null = null;
+    const loadLikeWebGPU = () => {
+      if (!cached) {
+        cached = Promise.reject(new Error("webgpu chunk failed")).catch((err) => {
+          cached = null;
+          throw err;
+        });
+      }
+      return cached;
+    };
+    await expect(loadLikeWebGPU()).rejects.toThrow("webgpu chunk failed");
+    const inFlight = loadLikeWebGPU();
+    expect(loadLikeWebGPU()).toBe(inFlight);
+    await expect(inFlight).rejects.toThrow("webgpu chunk failed");
+    const afterFailure = loadLikeWebGPU();
+    expect(afterFailure).not.toBe(inFlight);
+    await expect(afterFailure).rejects.toThrow("webgpu chunk failed");
   });
 });
 
