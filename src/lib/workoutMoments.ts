@@ -170,6 +170,8 @@ function segmentPace(samples: Stroke[], startTime: number, endTime: number): Win
     }
   }
   if (firstIdx < 0 || lastIdx <= firstIdx) return null;
+  const distance = samples[lastIdx].d - samples[firstIdx].d;
+  if (distance <= 0) return null;
   return windowStats(samples, firstIdx, lastIdx);
 }
 
@@ -181,7 +183,29 @@ function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
   const set = intervalBreakdown(workSplits, detail.strokes);
   if (!set) return [];
   const moments: WorkoutMoment[] = [];
-  const edges = splitEdges(workSplits);
+
+  const edges: {
+    startTime: number;
+    endTime: number;
+    startDistance: number;
+    endDistance: number;
+  }[] = [];
+  let t = 0;
+  let d = 0;
+  for (const s of detail.splits) {
+    const isWork = !s.isRest && s.time > 0 && s.distance > 0 && s.pace > 0;
+    if (isWork) {
+      edges.push({
+        startTime: t,
+        endTime: t + s.time,
+        startDistance: d,
+        endDistance: d + s.distance,
+      });
+    }
+    t += s.time + (s.restTime ?? 0);
+    d += s.distance + (s.restDistance ?? 0);
+  }
+
   for (const rep of set.reps) {
     if (!rep.isFastest && !rep.isSlowest) continue;
     const split = workSplits[rep.index];
@@ -204,22 +228,6 @@ function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
     });
   }
   return moments;
-}
-
-function splitEdges(splits: Split[]) {
-  let t = 0;
-  let d = 0;
-  return splits.map((s) => {
-    const edge = {
-      startTime: t,
-      endTime: t + s.time,
-      startDistance: d,
-      endDistance: d + s.distance,
-    };
-    t += s.time + (s.restTime ?? 0);
-    d += s.distance + (s.restDistance ?? 0);
-    return edge;
-  });
 }
 
 function toMoment(

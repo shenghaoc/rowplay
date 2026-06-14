@@ -94,6 +94,31 @@ describe("analyzeWorkoutMoments", () => {
     expect(slowest?.avgPace).toBe(116);
   });
 
+  it("accounts for rest splits between work splits when computing seek edges", () => {
+    const splits: Split[] = [
+      { index: 0, distance: 500, time: 110, pace: 110, spm: 28, restTime: 60 },
+      { index: 1, distance: 0, time: 90, pace: 0, isRest: true },
+      { index: 2, distance: 500, time: 116, pace: 116, spm: 27, restTime: 60 },
+      { index: 3, distance: 500, time: 108, pace: 108, spm: 29, restTime: 0 },
+    ];
+    const report = analyzeWorkoutMoments(
+      detail({
+        isInterval: true,
+        splits,
+        strokes: strokesFromPaces([110, 110, 116, 116, 108, 108], 55),
+      }),
+    );
+    const best = report.moments.find((m) => m.kind === "best-rep");
+    expect(best).toBeDefined();
+    // Rep 2 (index 2 in workSplits) = pace 108, fastest.
+    // Edges built from full detail.splits (skipping rest split 1):
+    //   edges[0]: t=0 (work split 0, time=110, restTime=60)
+    //   edges[1]: t=110+60+90=260 (work split 2, time=116, restTime=60)
+    //   edges[2]: t=260+116+60=436 (work split 3, time=108)
+    expect(best!.startTime).toBe(436);
+    expect(best!.endTime).toBe(436 + 108);
+  });
+
   it("returns an empty safe report for insufficient samples", () => {
     const report = analyzeWorkoutMoments(
       detail({ strokes: [strokesFromPaces([120])[0]], splits: [] }),
