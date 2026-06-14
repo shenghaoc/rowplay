@@ -38,4 +38,3 @@ yarn-error.log*
 
 # Claude Code agent worktrees
 .claude/worktrees/
-.superpowers/
