@@ -686,7 +686,11 @@ export async function saveAnnotation(
       stored[idx] = { ...annotation, createdAt: stored[idx].createdAt };
       result = stored[idx];
     } else {
-      const newId = stored.length ? Math.max(...stored.map((a) => a.id)) + 1 : 1;
+      let maxId = 0;
+      for (let i = 0; i < stored.length; i++) {
+        if (stored[i].id > maxId) maxId = stored[i].id;
+      }
+      const newId = maxId + 1;
       result = {
         id: newId,
         timestamp: annotation.timestamp,

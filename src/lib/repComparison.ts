@@ -203,7 +203,15 @@ function sampleAt(times: Float32Array, values: Float32Array, t: number): number 
 
 /** Align rep series onto a shared second grid for uPlot (null past rep end). */
 export function alignRepsForChart(reps: RepSeries[], metric: RepMetric): uPlot.AlignedData {
-  const maxT = Math.max(0, ...reps.map((r) => (r.times.length ? r.times[r.times.length - 1] : 0)));
+  // Bolt: Single-pass loop to find maxT, avoiding .map() allocation and Math.max spread risk.
+  let maxT = 0;
+  for (let i = 0; i < reps.length; i++) {
+    const r = reps[i];
+    if (r.times.length > 0) {
+      const t = r.times[r.times.length - 1];
+      if (t > maxT) maxT = t;
+    }
+  }
   const steps = Math.max(2, Math.ceil(maxT) + 1);
   const xs: number[] = [];
   for (let i = 0; i < steps; i++) xs.push(i);

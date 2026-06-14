@@ -26,7 +26,13 @@ export interface TrendFit {
 export function linearTrend(points: { x: number; y: number }[]): TrendFit | null {
   const n = points.length;
   if (n < 2) return null;
-  const xMin = Math.min(...points.map((p) => p.x));
+  // Bolt: Single-pass loop to find min, avoiding map and Math.min spread risk.
+  let xMin = points[0].x;
+  for (let i = 1; i < n; i++) {
+    if (points[i].x < xMin) {
+      xMin = points[i].x;
+    }
+  }
   // Work in days from the first point to keep the slope human-readable.
   const xs = points.map((p) => (p.x - xMin) / 86_400_000);
   const ys = points.map((p) => p.y);
