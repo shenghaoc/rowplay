@@ -340,10 +340,6 @@ type Point3 = readonly [number, number, number];
 const SEGMENT_FORWARD = new THREE.Vector3(0, 0, 1);
 const SEGMENT_DIR = new THREE.Vector3();
 
-function dynamicLimbSegment(radius: number, material: THREE.Material): THREE.Mesh {
-  return capsulePart(radius, 1, material, "z");
-}
-
 function placeSegmentBetween(segment: THREE.Object3D, start: Point3, end: Point3): void {
   const dx = end[0] - start[0];
   const dy = end[1] - start[1];
@@ -367,7 +363,7 @@ function placeSegmentBetween(segment: THREE.Object3D, start: Point3, end: Point3
 /**
  * A muscle-shaped limb: a lathe geometry that tapers from proximal to distal
  * radius with a slight belly, giving visible bicep/quadricep shape.
- * Returns a unit-length mesh along +Z (same contract as dynamicLimbSegment).
+ * Returns a unit-length mesh along +Z (same contract as taperedLimb).
  */
 function taperedLimb(
   proximalRadius: number,
