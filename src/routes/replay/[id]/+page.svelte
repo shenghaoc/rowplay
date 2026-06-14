@@ -84,8 +84,10 @@
 	import AnnotationPanel from '$components/AnnotationPanel.svelte';
 	import InspectorPanel from '$components/InspectorPanel.svelte';
 	import RepComparisonChart from '$components/RepComparisonChart.svelte';
+	import WorkoutMomentCards from '$components/WorkoutMomentCards.svelte';
 	import { detectReps, repColor, repsHaveHr, type RepMetric } from '$lib/repComparison';
 	import type { Annotation } from '$lib/types';
+	import { analyzeWorkoutMoments } from '$lib/workoutMoments';
 
 	let { data } = $props();
 	const i18n = getI18nContext();
@@ -1018,6 +1020,7 @@
 	});
 
 	// ---- Interval / rep breakdown (null for single-segment pieces) ----
+	const momentReport = $derived(analyzeWorkoutMoments(detail));
 	const intervals = $derived(intervalBreakdown(detail.splits, strokes));
 	// "Interval breakdown" (reps with rest) vs "Splits" (even splits of a
 	// continuous piece) — same comparison, honest label.
@@ -1387,6 +1390,8 @@
 			<p class="muted small publish-note">{t('leaderboard.publishNote')}</p>
 		{/if}
 	</div>
+
+	<WorkoutMomentCards report={momentReport} onseek={(seconds) => engine?.seek(seconds)} />
 
 	{#if !logbookHasHr}
 		<div class="card card-border bg-base-100 shadow-md p-5 hrimport">
