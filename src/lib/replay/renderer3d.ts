@@ -3,9 +3,6 @@ import type { ReplayRenderer, RenderState } from "./renderer";
 import { COLORS_DARK, COLORS_LIGHT } from "./renderer";
 import type { RenderQuality } from "./replayRenderer";
 import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
-import { createRiggedAvatar, BoneIdx } from "./avatarMesh";
-
-type Point3 = readonly [number, number, number];
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import {
@@ -278,6 +275,8 @@ function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number
   });
 }
 
+const HUMAN_SKIN = 0xc99973;
+const HUMAN_HAIR = 0x241c18;
 const HUMAN_KIT = 0x202831;
 const HUMAN_KIT_DARK = 0x111820;
 const HUMAN_SHOE = 0x151719;
@@ -288,6 +287,24 @@ function humanMat(color: number, roughness = 0.74, metalness = 0.03): THREE.Mesh
 
 function accentMaterial(accent: number): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color: accent, roughness: 0.56, metalness: 0.04 });
+}
+
+function accentPart(mesh: THREE.Mesh): THREE.Mesh {
+  mesh.userData.accent = true;
+  return mesh;
+}
+
+function ellipsoid(
+  scale: [number, number, number],
+  material: THREE.Material,
+  segments = 16,
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1, segments, Math.max(8, segments / 2)),
+    material,
+  );
+  mesh.scale.set(scale[0], scale[1], scale[2]);
+  return mesh;
 }
 
 function capsulePart(
@@ -303,6 +320,143 @@ function capsulePart(
   if (axis === "x") mesh.rotation.z = Math.PI / 2;
   if (axis === "z") mesh.rotation.x = Math.PI / 2;
   return mesh;
+}
+
+function limbSegment(
+  length: number,
+  radius: number,
+  material: THREE.Material,
+  axis: "x" | "y" | "z" = "z",
+): THREE.Mesh {
+  const mesh = capsulePart(radius, length, material, axis);
+  if (axis === "x") mesh.position.x = length / 2;
+  else if (axis === "z") mesh.position.z = length / 2;
+  else mesh.position.y = -length / 2;
+  return mesh;
+}
+
+type Point3 = readonly [number, number, number];
+
+const SEGMENT_FORWARD = new THREE.Vector3(0, 0, 1);
+const SEGMENT_DIR = new THREE.Vector3();
+
+function placeSegmentBetween(segment: THREE.Object3D, start: Point3, end: Point3): void {
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  const dz = end[2] - start[2];
+  const length = Math.hypot(dx, dy, dz);
+  if (length < 0.001) {
+    segment.visible = false;
+    return;
+  }
+  segment.visible = true;
+  segment.position.set((start[0] + end[0]) / 2, (start[1] + end[1]) / 2, (start[2] + end[2]) / 2);
+  segment.scale.set(1, 1, length);
+  SEGMENT_DIR.set(dx / length, dy / length, dz / length);
+  segment.quaternion.setFromUnitVectors(SEGMENT_FORWARD, SEGMENT_DIR);
+}
+
+// ── Upgraded avatar body helpers ─────────────────────────────────────────────
+// These replace uniform-radius capsules and plain ellipsoids with shaped body
+// parts that give visible muscle definition, hands/feet, and facial features.
+
+/**
+ * A muscle-shaped limb: a lathe geometry that tapers from proximal to distal
+ * radius with a slight belly, giving visible bicep/quadricep shape.
+ * Returns a unit-length mesh along +Z for placement by placeSegmentBetween().
+ */
+function taperedLimb(
+  proximalRadius: number,
+  distalRadius: number,
+  material: THREE.Material,
+  segments = 8,
+): THREE.Mesh {
+  const pts: THREE.Vector2[] = [];
+  const steps = 6;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    // Smooth taper with a slight belly at 30%
+    const belly = Math.sin(t * Math.PI) * 0.06 * proximalRadius;
+    const r = proximalRadius + (distalRadius - proximalRadius) * t + belly;
+    pts.push(new THREE.Vector2(r, t));
+  }
+  const geo = new THREE.LatheGeometry(pts, segments);
+  geo.computeVertexNormals();
+  // Rotate so the axis is +Z (lathe defaults to Y)
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.rotation.x = -Math.PI / 2;
+  return mesh;
+}
+
+/**
+ * A hand mesh: palm ellipsoid with four fingers and a thumb.
+ */
+function makeHand(material: THREE.Material, segments = 8): THREE.Group {
+  const hand = new THREE.Group();
+  hand.name = "athlete:hand";
+  const palm = ellipsoid([0.04, 0.025, 0.05], material, segments);
+  palm.name = "athlete:hand:palm";
+  hand.add(palm);
+  for (let i = 0; i < 4; i++) {
+    const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.03, 2, 4), material);
+    finger.position.set((i - 1.5) * 0.012, 0, 0.04);
+    hand.add(finger);
+  }
+  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.01, 0.025, 2, 4), material);
+  thumb.position.set(-0.03, 0.005, 0.02);
+  thumb.rotation.z = 0.5;
+  hand.add(thumb);
+  return hand;
+}
+
+/**
+ * A foot mesh: shoe-shaped sole with toe box and heel.
+ */
+function makeFoot(material: THREE.Material, segments = 8): THREE.Group {
+  const foot = new THREE.Group();
+  foot.name = "athlete:foot";
+  const sole = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.035, 0.16, segments, 1, segments),
+    material,
+  );
+  sole.position.z = 0.04;
+  foot.add(sole);
+  const toe = ellipsoid([0.04, 0.024, 0.048], material, segments);
+  toe.position.set(0, -0.005, 0.12);
+  foot.add(toe);
+  const heel = ellipsoid([0.035, 0.028, 0.028], material, segments);
+  heel.position.set(0, 0, -0.04);
+  foot.add(heel);
+  return foot;
+}
+
+/**
+ * A head with jaw/chin, ears, and hair cap — instead of a single ellipsoid.
+ */
+function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 16): THREE.Group {
+  const head = new THREE.Group();
+  head.name = "athlete:head";
+  // Cranium
+  const cranium = ellipsoid([0.105, 0.13, 0.1], skinMat, segments);
+  cranium.name = "athlete:head:cranium";
+  cranium.position.y = 0;
+  head.add(cranium);
+  // Jaw — smaller sphere below for chin/jawline
+  const jaw = ellipsoid([0.08, 0.05, 0.07], skinMat, Math.max(8, segments / 2));
+  jaw.position.set(0, -0.07, 0.02);
+  head.add(jaw);
+  // Ears
+  for (const side of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.022, 4, 4), skinMat);
+    ear.scale.set(0.5, 1, 1);
+    ear.position.set(side * 0.1, -0.01, -0.01);
+    head.add(ear);
+  }
+  // Hair cap
+  const hair = ellipsoid([0.11, 0.055, 0.105], hairMat, Math.max(8, segments / 2));
+  hair.position.y = 0.09;
+  head.add(hair);
+  return head;
 }
 
 /**
@@ -338,18 +492,61 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     new THREE.BoxGeometry(0.48, 0.05, 0.12),
     humanMat(HUMAN_KIT_DARK),
   );
+  footPlate.name = "rower-footplate";
   footPlate.position.set(0, 0.34, 0.72);
   group.add(footPlate);
 
+  // Rower in its own group so slide, layback, legs and arms all move from the
+  // recorded stroke pose rather than as one rigid toy block.
   const rower = new THREE.Group();
-  const avatar = createRiggedAvatar(humanMat(HUMAN_KIT));
-  avatar.position.z = -0.1;
-  rower.add(avatar);
+  const hips = ellipsoid([0.24, 0.11, 0.16], humanMat(HUMAN_KIT_DARK));
+  hips.position.y = 0.38;
+  const torso = ellipsoid([0.25, 0.36, 0.16], humanMat(HUMAN_KIT));
+  torso.position.set(0, 0.64, -0.02);
+  torso.rotation.x = -0.12;
+  const bib = accentPart(ellipsoid([0.17, 0.24, 0.024], accentMat(), 12));
+  bib.position.set(0, 0.65, 0.15);
+  const shoulderLine = capsulePart(0.035, 0.58, humanMat(HUMAN_KIT_DARK), "x");
+  shoulderLine.position.set(0, 0.82, 0.02);
+  const neck = capsulePart(0.045, 0.13, humanMat(HUMAN_SKIN), "y");
+  neck.position.y = 0.94;
+  const headGroup = makeHead(humanMat(HUMAN_SKIN), humanMat(HUMAN_HAIR));
+  headGroup.position.set(0, 1.07, 0.04);
+  rower.add(hips, torso, bib, shoulderLine, neck, headGroup);
 
   const handle = capsulePart(0.026, 0.44, humanMat(0x262c31), "x");
+  handle.name = "rower-handle";
   handle.position.set(0, 0.72, 0.58);
   rower.add(handle);
 
+  const arms: Array<{
+    side: number;
+    upper: THREE.Mesh;
+    forearm: THREE.Mesh;
+    hand: THREE.Group;
+  }> = [];
+  const legs: Array<{
+    side: number;
+    thigh: THREE.Mesh;
+    shin: THREE.Mesh;
+    foot: THREE.Group;
+    knee: THREE.Mesh;
+  }> = [];
+  for (const side of [-1, 1]) {
+    // Tapered leg segments — positioned per-frame by IK from hip to foot.
+    const thigh = taperedLimb(0.055, 0.042, humanMat(HUMAN_KIT_DARK));
+    const shin = taperedLimb(0.042, 0.032, humanMat(HUMAN_KIT_DARK));
+    const foot = makeFoot(humanMat(HUMAN_SHOE));
+    const knee = ellipsoid([0.065, 0.055, 0.065], humanMat(HUMAN_KIT_DARK), 10);
+    rower.add(thigh, shin, foot, knee);
+    legs.push({ side, thigh, shin, foot, knee });
+
+    const upperArm = taperedLimb(0.04, 0.03, humanMat(HUMAN_SKIN));
+    const forearm = taperedLimb(0.03, 0.022, humanMat(HUMAN_SKIN));
+    const hand = makeHand(humanMat(HUMAN_SKIN));
+    rower.add(upperArm, forearm, hand);
+    arms.push({ side, upper: upperArm, forearm, hand });
+  }
   rower.position.z = -0.1;
   group.add(rower);
 
@@ -384,107 +581,86 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     oars.push(oar);
   }
 
-  const bones = avatar.skeleton.bones;
-  const getBone = (idx: number) => bones[idx];
-
-  const _dir = new THREE.Vector3();
-  const _defaultDir = new THREE.Vector3(0, -1, 0);
-  const _worldPos = new THREE.Vector3();
-  const _parentWorldQuat = new THREE.Quaternion();
-
-  const aimBone = (bone: THREE.Bone, target: Point3): void => {
-    bone.getWorldPosition(_worldPos);
-    _dir.set(target[0] - _worldPos.x, target[1] - _worldPos.y, target[2] - _worldPos.z);
-    if (_dir.lengthSq() < 0.0001) return;
-    _dir.normalize();
-    if (bone.parent) {
-      bone.parent.getWorldQuaternion(_parentWorldQuat);
-      _dir.applyQuaternion(_parentWorldQuat.clone().invert());
+  const placeArms = (handleY: number, handleZ: number, amp: number): void => {
+    handle.position.set(0, handleY, handleZ);
+    for (const arm of arms) {
+      const shoulder: Point3 = [arm.side * 0.26, 0.8, 0.02];
+      const handTarget: Point3 = [arm.side * 0.18, handleY, handleZ];
+      const elbow: Point3 = [
+        arm.side * 0.24,
+        (shoulder[1] + handTarget[1]) / 2 - 0.08 * amp,
+        (shoulder[2] + handTarget[2]) / 2 - 0.04,
+      ];
+      placeSegmentBetween(arm.upper, shoulder, elbow);
+      placeSegmentBetween(arm.forearm, elbow, handTarget);
+      arm.hand.position.set(handTarget[0], handTarget[1], handTarget[2]);
     }
-    bone.quaternion.setFromUnitVectors(_defaultDir, _dir);
+  };
+
+  const placeLegs = (drive: number, amp: number): void => {
+    for (const leg of legs) {
+      // Hip is fixed relative to the rower group.
+      const hip: Point3 = [leg.side * 0.12, 0.38, -0.14];
+      // Foot target: pinned to the foot plate, with a small stroke-driven
+      // offset. At the catch (drive → +1) feet push against the stretcher;
+      // at the finish (drive → −1) feet release slightly forward.
+      const footTarget: Point3 = [
+        leg.side * 0.12,
+        0.28 + drive * 0.02 * amp,
+        0.7 - drive * 0.04 * amp,
+      ];
+      // Knee kinks forward at the catch (compressed) and drops at the finish
+      // (extended), computed as the midpoint with a perpendicular offset.
+      const extension = -drive; // +1 at finish, -1 at catch
+      const knee: Point3 = [
+        leg.side * 0.14,
+        (hip[1] + footTarget[1]) / 2 + 0.08 + extension * 0.06,
+        (hip[2] + footTarget[2]) / 2 - 0.06 * amp - drive * 0.08 * amp,
+      ];
+      placeSegmentBetween(leg.thigh, hip, knee);
+      placeSegmentBetween(leg.shin, knee, footTarget);
+      placeSegmentBetween(leg.foot, footTarget, [
+        footTarget[0],
+        footTarget[1] - 0.02,
+        footTarget[2] + 0.08,
+      ]);
+      leg.knee.position.set(knee[0], knee[1], knee[2]);
+    }
   };
 
   const animate = (phase: number, reduce: boolean, pose?: StrokePose): void => {
     if (reduce) {
-      const Hips = getBone(0);
-      Hips.position.set(0, 0.68, -0.1);
-      Hips.rotation.set(-0.1, 0, 0);
-      const Spine = getBone(1);
-      Spine.rotation.set(0, 0, 0);
-      const Chest = getBone(2);
-      Chest.rotation.set(0, 0, 0);
+      rower.position.z = -0.1;
+      rower.rotation.x = -0.1;
       handle.rotation.x = 0;
-      handle.position.set(0, 0.72, 0.58);
-      aimBone(getBone(5), [0.12, 0.26, -0.06]);
-      aimBone(getBone(6), [0.12, 0.1, 0.5]);
-      aimBone(getBone(8), [-0.12, 0.26, -0.06]);
-      aimBone(getBone(9), [-0.12, 0.1, 0.5]);
-      aimBone(getBone(11), [0.18, 0.72, 0.58]);
-      aimBone(getBone(12), [0.18, 0.72, 0.58]);
-      aimBone(getBone(14), [-0.18, 0.72, 0.58]);
-      aimBone(getBone(15), [-0.18, 0.72, 0.58]);
-      avatar.skeleton.update();
+      placeArms(0.72, 0.58, 1);
+      placeLegs(0, 1);
       for (const oar of oars) oar.rotation.set(0, 0, 0);
       return;
     }
+    // Warped phase: the drive is quick, the slide back up is unhurried.
     const w = pose?.warpedPhase ?? warpStrokePhase(phase);
-    const drive = Math.cos(w);
-    const recovery = Math.max(0, -Math.sin(w));
+    const drive = Math.cos(w); // +1 catch … -1 finish
+    const recovery = Math.max(0, -Math.sin(w)); // lift blades on return
     const amp = pose?.amplitude ?? 1;
-
-    const Hips = getBone(0);
-    Hips.position.set(0, 0.68, -0.1 - drive * 0.22 * amp);
-    Hips.rotation.set(-drive * 0.2 * amp, 0, 0);
-    const Spine = getBone(1);
-    Spine.rotation.set(-0.08, 0, 0);
-    const Chest = getBone(2);
-    Chest.rotation.set(-0.04, 0, 0);
-    const Head = getBone(4);
-    Head.rotation.set(0.12, 0, 0);
-
+    // At the catch the rower is compressed toward the stern, leaning into the
+    // slide; through the drive both slide and layback move toward the bow.
+    rower.position.z = -0.1 - drive * 0.22 * amp;
+    rower.rotation.x = -0.08 - drive * 0.2 * amp;
+    // Arms and legs now articulate separately: compact at catch, extended with
+    // drawn hands at the finish. This keeps the motion athletic rather than
+    // puppet-like even though the model stays lightweight.
     const handleY = 0.7 + recovery * 0.04;
     const handleZ = 0.58 - drive * 0.08 * amp;
     handle.rotation.x = recovery * 0.16;
-    handle.position.set(0, handleY, handleZ);
-
-    const legDrive = -drive;
-    for (const side of [-1, 1]) {
-      const hipTarget: Point3 = [
-        side * 0.12,
-        0.26 - drive * 0.02 * amp,
-        -0.14 - drive * 0.04 * amp,
-      ];
-      const footTarget: Point3 = [side * 0.12, 0.28 + drive * 0.02 * amp, 0.7 - drive * 0.04 * amp];
-      const kneeTarget: Point3 = [
-        side * 0.14,
-        (hipTarget[1] + footTarget[1]) / 2 + 0.08 + legDrive * 0.06,
-        (hipTarget[2] + footTarget[2]) / 2 - 0.06 * amp - drive * 0.08 * amp,
-      ];
-      const upperLegBone = side === -1 ? getBone(5) : getBone(8);
-      const lowerLegBone = side === -1 ? getBone(6) : getBone(9);
-      aimBone(upperLegBone, kneeTarget);
-      aimBone(lowerLegBone, footTarget);
-    }
-
-    for (const side of [-1, 1]) {
-      const shoulderPos: Point3 = [side * 0.26, 0.8, 0.02];
-      const handTarget: Point3 = [side * 0.18, handleY, handleZ];
-      const elbowPos: Point3 = [
-        side * 0.24,
-        (shoulderPos[1] + handTarget[1]) / 2 - 0.08 * amp,
-        (shoulderPos[2] + handTarget[2]) / 2 - 0.04,
-      ];
-      const upperArmBone = side === -1 ? getBone(11) : getBone(14);
-      const foreArmBone = side === -1 ? getBone(12) : getBone(15);
-      aimBone(upperArmBone, elbowPos);
-      aimBone(foreArmBone, handTarget);
-    }
-
-    avatar.skeleton.update();
-
+    placeArms(handleY, handleZ, amp);
+    placeLegs(drive, amp);
     for (const oar of oars) {
       const side = (oar.userData.side as number) ?? 1;
+      // Blades enter ahead of the rigger at the catch and sweep toward the
+      // stern through the drive (opposing the hull's travel, like the 2D view).
       oar.rotation.y = -side * drive * 0.5 * amp;
+      // Buried through the drive (slight dip), feathered clear on the recovery.
       oar.rotation.z = side * (recovery * 0.26 - 0.06);
     }
   };
@@ -518,16 +694,54 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     group.add(tip);
   }
 
-  const avatar = createRiggedAvatar(neutralMat(HUMAN_KIT));
-  avatar.position.y = 0;
-  group.add(avatar);
-
-  // Boots (procedural).
+  // Legs are planted; the upper body pivots from the hips for the crunch.
+  const legParts: Array<{ thigh: THREE.Group; shin: THREE.Group }> = [];
   for (const side of [-1, 1]) {
     const boot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.34), neutralMat(HUMAN_SHOE));
     boot.position.set(side * 0.18, 0.11, 0.18);
     group.add(boot);
+
+    const thigh = new THREE.Group();
+    thigh.position.set(side * 0.15, 0.72, 0.02);
+    thigh.add(limbSegment(0.46, 0.06, neutralMat(HUMAN_KIT_DARK), "y"));
+    const shin = new THREE.Group();
+    shin.position.set(side * 0.16, 0.38, 0.08);
+    shin.add(limbSegment(0.48, 0.052, neutralMat(HUMAN_KIT_DARK), "y"));
+    group.add(thigh, shin);
+    legParts.push({ thigh, shin });
   }
+  const upper = new THREE.Group();
+  upper.position.y = 0.7;
+  const hips = ellipsoid([0.24, 0.11, 0.16], neutralMat(HUMAN_KIT_DARK), 12);
+  hips.position.y = -0.02;
+  const torso = ellipsoid([0.25, 0.38, 0.16], neutralMat(HUMAN_KIT), 16);
+  torso.position.y = 0.31;
+  const vest = accentPart(ellipsoid([0.17, 0.25, 0.024], accentMat(), 12));
+  vest.position.set(0, 0.33, 0.15);
+  const shoulderLine = capsulePart(0.035, 0.62, neutralMat(HUMAN_KIT_DARK), "x");
+  shoulderLine.position.y = 0.56;
+  const neck = capsulePart(0.045, 0.13, neutralMat(HUMAN_SKIN), "y");
+  neck.position.y = 0.67;
+  const headGroup = makeHead(neutralMat(HUMAN_SKIN), neutralMat(HUMAN_HAIR));
+  headGroup.position.set(0, 0.81, 0.03);
+  upper.add(hips, torso, vest, shoulderLine, neck, headGroup);
+  // Arms are placed from shoulders to pole grips, so the hands stay on the
+  // handles while the pole groups pivot from the same point.
+  const arms: Array<{
+    side: number;
+    upper: THREE.Mesh;
+    forearm: THREE.Mesh;
+    hand: THREE.Group;
+  }> = [];
+  for (const side of [-1, 1]) {
+    const upperArm = taperedLimb(0.04, 0.03, neutralMat(HUMAN_SKIN));
+    const forearm = taperedLimb(0.03, 0.022, neutralMat(HUMAN_SKIN));
+    const hand = makeHand(neutralMat(HUMAN_SKIN));
+    upper.add(upperArm, forearm, hand);
+    arms.push({ side, upper: upperArm, forearm, hand });
+  }
+  group.add(upper);
+
   // Poles: pivot at the hands (shoulder height), basket near the snow.
   const poles: THREE.Group[] = [];
   for (const side of [-1, 1]) {
@@ -538,83 +752,64 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     );
     shaft.position.y = -0.6;
     pole.add(shaft);
+    const grip = capsulePart(0.022, 0.16, neutralMat(0x20242a), "x");
+    grip.name = "skierg-pole-grip";
+    pole.add(grip);
     const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.03, 8), accentMat());
     basket.position.y = -1.15;
     basket.userData.accent = true;
     pole.add(basket);
-    pole.position.set(side * 0.3, 0.4 + 0.7, 0.1);
-    group.add(pole);
+    pole.position.set(side * 0.3, 0.4, 0.1);
+    upper.add(pole);
     poles.push(pole);
   }
 
-  const bones = avatar.skeleton.bones;
-  const _dir = new THREE.Vector3();
-  const _defaultDir = new THREE.Vector3(0, -1, 0);
-  const _worldPos = new THREE.Vector3();
-  const _parentWorldQuat = new THREE.Quaternion();
-
-  const aimBone = (bone: THREE.Bone, target: Point3): void => {
-    bone.getWorldPosition(_worldPos);
-    _dir.set(target[0] - _worldPos.x, target[1] - _worldPos.y, target[2] - _worldPos.z);
-    if (_dir.lengthSq() < 0.0001) return;
-    _dir.normalize();
-    if (bone.parent) {
-      bone.parent.getWorldQuaternion(_parentWorldQuat);
-      _dir.applyQuaternion(_parentWorldQuat.clone().invert());
+  const placePoleArms = (handY: number, handZ: number, amp: number): void => {
+    for (let i = 0; i < arms.length; i++) {
+      const arm = arms[i];
+      const shoulder: Point3 = [arm.side * 0.28, 0.53, 0.05];
+      const handTarget: Point3 = [arm.side * 0.3, handY, handZ];
+      const elbow: Point3 = [
+        arm.side * 0.32,
+        (shoulder[1] + handTarget[1]) / 2 - 0.06 * amp,
+        (shoulder[2] + handTarget[2]) / 2 + 0.03,
+      ];
+      placeSegmentBetween(arm.upper, shoulder, elbow);
+      placeSegmentBetween(arm.forearm, elbow, handTarget);
+      arm.hand.position.set(handTarget[0], handTarget[1], handTarget[2]);
+      const pole = poles[i];
+      if (pole) pole.position.set(handTarget[0], handTarget[1], handTarget[2]);
     }
-    bone.quaternion.setFromUnitVectors(_defaultDir, _dir);
   };
 
   const animate = (phase: number, reduce: boolean, pose?: StrokePose): void => {
     if (reduce) {
-      const Hips = bones[0];
-      Hips.rotation.set(0.25, 0, 0);
-      Hips.position.set(0, 0.95, 0);
-      aimBone(bones[5], [-0.12, 0.13, 0]);
-      aimBone(bones[6], [-0.12, 0.13, 0]);
-      aimBone(bones[8], [0.12, 0.13, 0]);
-      aimBone(bones[9], [0.12, 0.13, 0]);
-      const handY = 0.42 + 0.7;
-      const handZ = 0.16;
-      aimBone(bones[11], [0.28, handY - 0.3, handZ]);
-      aimBone(bones[12], [0.3, handY, handZ]);
-      aimBone(bones[14], [-0.28, handY - 0.3, handZ]);
-      aimBone(bones[15], [-0.3, handY, handZ]);
-      avatar.skeleton.update();
-      for (const [i, pole] of poles.entries()) {
-        const side = i === 0 ? -1 : 1;
-        pole.position.set(side * 0.3, handY, handZ);
-        pole.rotation.x = -0.2;
+      upper.rotation.x = 0.25;
+      placePoleArms(0.42, 0.16, 1);
+      for (const leg of legParts) {
+        leg.thigh.rotation.x = 0.08;
+        leg.shin.rotation.x = -0.05;
       }
+      for (const p of poles) p.rotation.x = -0.2;
       return;
     }
+    // Warped phase: a sharp pole plant + pull, then a slow recoil upright.
     const w = pose?.warpedPhase ?? warpStrokePhase(phase);
-    const swing = Math.cos(w);
-    const crunch = Math.max(0, -swing);
+    const swing = Math.cos(w); // +1 plant (tips forward) … -1 end of pull
+    const crunch = Math.max(0, -swing); // bend forward through the drive
     const amp = pose?.amplitude ?? 1;
-
-    const Hips = bones[0];
-    Hips.position.set(0, 0.95, 0);
-    Hips.rotation.set(0.2 + crunch * 0.5 * amp, 0, 0);
-    aimBone(bones[5], [-0.12, 0.13 - crunch * 0.08 * amp, 0]);
-    aimBone(bones[6], [-0.12, 0.13 + crunch * 0.06 * amp, 0]);
-    aimBone(bones[8], [0.12, 0.13 - crunch * 0.08 * amp, 0]);
-    aimBone(bones[9], [0.12, 0.13 + crunch * 0.06 * amp, 0]);
-
-    const handY = 0.42 + swing * 0.16 * amp - crunch * 0.16 * amp + 0.7;
-    const handZ = 0.16 + swing * 0.25 * amp;
-    aimBone(bones[11], [0.28, handY - 0.3, handZ]);
-    aimBone(bones[12], [0.3, handY, handZ]);
-    aimBone(bones[14], [-0.28, handY - 0.3, handZ]);
-    aimBone(bones[15], [-0.3, handY, handZ]);
-
-    avatar.skeleton.update();
-
-    for (const [i, pole] of poles.entries()) {
-      const side = i === 0 ? -1 : 1;
-      pole.position.set(side * 0.3, handY, handZ);
-      pole.rotation.x = -swing * 0.9 * amp - 0.1;
+    upper.rotation.x = 0.2 + crunch * 0.5 * amp;
+    for (const leg of legParts) {
+      leg.thigh.rotation.x = 0.08 + crunch * 0.16 * amp;
+      leg.shin.rotation.x = -0.08 - crunch * 0.12 * amp;
     }
+    // Hands reach high and forward at the plant, then press down and back
+    // through the pull; pole tips plant ahead of the feet and sweep behind
+    // (negative rotation.x moves the below-hand basket toward +Z/forward).
+    const handY = 0.42 + swing * 0.16 * amp - crunch * 0.16 * amp;
+    const handZ = 0.16 + swing * 0.25 * amp;
+    placePoleArms(handY, handZ, amp);
+    for (const p of poles) p.rotation.x = -swing * 0.9 * amp - 0.1;
   };
 
   finalizeAvatar(group, castShadow, opacity);
@@ -689,6 +884,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   const pedals: Array<{ side: number; crankY: number }> = [];
   for (const side of [-1, 1]) {
     const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), neutralMat(0x20242a));
+    pedal.name = "bike-pedal";
     const crankY = side * 0.18;
     pedal.position.set(side * 0.1, crankY, 0);
     cranks.add(pedal);
@@ -696,70 +892,127 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   }
   group.add(cranks);
 
-  const avatar = createRiggedAvatar(neutralMat(HUMAN_KIT));
-  avatar.position.set(0, wheelR + 0.5, -0.35);
-  group.add(avatar);
+  const handlebar = new THREE.Group();
+  handlebar.name = "bike-handlebar";
+  const crossbar = capsulePart(0.026, 0.64, neutralMat(0x20242a), "x");
+  handlebar.add(crossbar);
+  for (const side of [-1, 1]) {
+    const grip = capsulePart(0.024, 0.22, neutralMat(0x20242a), "z");
+    grip.position.set(side * 0.28, -0.02, 0.04);
+    grip.rotation.x = -0.3;
+    handlebar.add(grip);
+  }
+  handlebar.position.set(0, wheelR + 0.8, 0.35);
+  group.add(handlebar);
 
-  const bones = avatar.skeleton.bones;
-  const _dir = new THREE.Vector3();
-  const _defaultDir = new THREE.Vector3(0, -1, 0);
-  const _worldPos = new THREE.Vector3();
-  const _parentWorldQuat = new THREE.Quaternion();
+  // Rider: compact human proportions in an aero lean. The jersey/helmet carry
+  // the lane accent, while limbs stay skin/kit coloured so the athlete does not
+  // read as a single bright toy shape.
+  const rider = new THREE.Group();
+  rider.position.set(0, wheelR + 0.5, -0.35);
+  const torso = ellipsoid([0.23, 0.34, 0.14], neutralMat(HUMAN_KIT), 16);
+  torso.rotation.x = 0.74; // aero tuck
+  torso.position.set(0, 0.28, 0.1);
+  const jerseyPanel = accentPart(ellipsoid([0.15, 0.22, 0.022], accentMat(), 12));
+  jerseyPanel.rotation.x = 0.74;
+  jerseyPanel.position.set(0, 0.31, 0.23);
+  const shoulderLine = capsulePart(0.032, 0.52, neutralMat(HUMAN_KIT_DARK), "x");
+  shoulderLine.position.set(0, 0.47, 0.18);
+  const neck = capsulePart(0.04, 0.11, neutralMat(HUMAN_SKIN), "y");
+  neck.position.set(0, 0.54, 0.26);
+  const headGroup = makeHead(neutralMat(HUMAN_SKIN), neutralMat(HUMAN_HAIR));
+  headGroup.position.set(0, 0.66, 0.33);
+  const helmet = accentPart(ellipsoid([0.108, 0.055, 0.1], accentMat(), 12));
+  helmet.position.set(0, 0.74, 0.31);
+  const legs: Array<{
+    side: number;
+    crankY: number;
+    thigh: THREE.Mesh;
+    shin: THREE.Mesh;
+    shoe: THREE.Group;
+  }> = [];
+  for (const side of [-1, 1]) {
+    const thigh = taperedLimb(0.052, 0.04, neutralMat(HUMAN_KIT_DARK));
+    const shin = taperedLimb(0.04, 0.03, neutralMat(HUMAN_SKIN));
+    const shoe = makeFoot(neutralMat(HUMAN_SHOE));
+    rider.add(thigh, shin, shoe);
+    legs.push({
+      side,
+      crankY: pedals.find((p) => p.side === side)?.crankY ?? side * 0.18,
+      thigh,
+      shin,
+      shoe,
+    });
+  }
+  // Arms from the shoulders down to the bars, fixed in the tuck.
+  const arms: Array<{
+    side: number;
+    upper: THREE.Mesh;
+    forearm: THREE.Mesh;
+    hand: THREE.Group;
+  }> = [];
+  for (const side of [-1, 1]) {
+    const upperArm = taperedLimb(0.038, 0.03, neutralMat(HUMAN_SKIN));
+    const forearm = taperedLimb(0.03, 0.022, neutralMat(HUMAN_SKIN));
+    const hand = makeHand(neutralMat(HUMAN_SKIN));
+    rider.add(upperArm, forearm, hand);
+    arms.push({ side, upper: upperArm, forearm, hand });
+  }
+  rider.add(torso, jerseyPanel, shoulderLine, neck, headGroup, helmet);
+  group.add(rider);
 
-  const aimBone = (bone: THREE.Bone, target: Point3): void => {
-    bone.getWorldPosition(_worldPos);
-    _dir.set(target[0] - _worldPos.x, target[1] - _worldPos.y, target[2] - _worldPos.z);
-    if (_dir.lengthSq() < 0.0001) return;
-    _dir.normalize();
-    if (bone.parent) {
-      bone.parent.getWorldQuaternion(_parentWorldQuat);
-      _dir.applyQuaternion(_parentWorldQuat.clone().invert());
+  const placeBarArms = (): void => {
+    for (const arm of arms) {
+      const shoulder: Point3 = [arm.side * 0.22, 0.47, 0.18];
+      const handTarget: Point3 = [arm.side * 0.28, 0.3, 0.7];
+      const elbow: Point3 = [arm.side * 0.26, 0.38, 0.45];
+      placeSegmentBetween(arm.upper, shoulder, elbow);
+      placeSegmentBetween(arm.forearm, elbow, handTarget);
+      arm.hand.position.set(handTarget[0], handTarget[1], handTarget[2]);
+      arm.hand.rotation.set(-0.28, 0, arm.side * 0.08);
     }
-    bone.quaternion.setFromUnitVectors(_defaultDir, _dir);
+  };
+  placeBarArms();
+
+  const placePedalLegs = (phase: number): void => {
+    for (const leg of legs) {
+      const pedalY = leg.crankY * Math.cos(phase);
+      const pedalZ = leg.crankY * Math.sin(phase);
+      const foot: Point3 = [
+        leg.side * 0.1,
+        cranks.position.y + pedalY - rider.position.y,
+        cranks.position.z + pedalZ - rider.position.z,
+      ];
+      const hip: Point3 = [leg.side * 0.1, -0.02, 0.08];
+      const extension = Math.sin(phase) * leg.side;
+      const knee: Point3 = [
+        leg.side * 0.12,
+        (hip[1] + foot[1]) / 2 + 0.15,
+        (hip[2] + foot[2]) / 2 - 0.08 * extension,
+      ];
+      placeSegmentBetween(leg.thigh, hip, knee);
+      placeSegmentBetween(leg.shin, knee, foot);
+      leg.shoe.position.set(foot[0], foot[1], foot[2]);
+      leg.shoe.rotation.x = phase;
+    }
   };
 
-  const Spine = bones[1];
-  const Chest = bones[2];
-  const Head = bones[4];
-  Spine.rotation.set(0.4, 0, 0);
-  Chest.rotation.set(0.34, 0, 0);
-  Head.rotation.set(-0.3, 0, 0);
-  bones[11].rotation.set(-0.78, 0, 0);
-  bones[12].rotation.set(-0.28, 0, 0);
-  bones[14].rotation.set(-0.78, 0, 0);
-  bones[15].rotation.set(-0.28, 0, 0);
-
-  const animate = (phase: number, reduce: boolean, _pose?: StrokePose): void => {
+  const animate = (phase: number, reduce: boolean): void => {
     if (reduce) {
       for (const w of wheels) w.rotation.x = 0;
       cranks.rotation.x = 0;
-      avatar.skeleton.update();
+      placePedalLegs(0);
+      placeBarArms();
+      rider.rotation.z = 0;
       return;
     }
-    for (const w of wheels) w.rotation.x = phase * 2.4;
-    cranks.rotation.x = phase;
-
-    for (const side of [-1, 1]) {
-      const crankY = side * 0.18;
-      const pedalY = crankY * Math.cos(phase);
-      const pedalZ = crankY * Math.sin(phase);
-      const foot: Point3 = [
-        side * 0.1,
-        cranks.position.y + pedalY - avatar.position.y,
-        cranks.position.z + pedalZ - avatar.position.z,
-      ];
-      const knee: Point3 = [
-        side * 0.12,
-        (0 + foot[1]) / 2 + 0.15,
-        (0 + foot[2]) / 2 - 0.08 * Math.sin(phase) * side,
-      ];
-      const upperLegBone = side === -1 ? bones[5] : bones[8];
-      const lowerLegBone = side === -1 ? bones[6] : bones[9];
-      aimBone(upperLegBone, knee);
-      aimBone(lowerLegBone, foot);
-    }
-
-    avatar.skeleton.update();
+    // Positive rotation about +X rolls the top of the wheel toward +Z (forward).
+    for (const w of wheels) w.rotation.x = phase * 2.4; // wheels roll fast
+    cranks.rotation.x = phase; // pedals turn
+    placePedalLegs(phase);
+    placeBarArms();
+    // Subtle alternating upper-body sway with the pedal stroke.
+    rider.rotation.z = Math.sin(phase) * 0.05;
   };
 
   finalizeAvatar(group, castShadow, opacity);

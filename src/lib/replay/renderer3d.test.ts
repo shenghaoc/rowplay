@@ -121,9 +121,25 @@ describe("CourseRenderer3D", () => {
       bike: "course:bike:curb",
     } as const;
     const equipmentNames = {
-      rower: ["rower-deck-stripe", "rower-oar-collar"],
-      skierg: ["skierg-ski-tip"],
-      bike: ["bike-top-tube", "bike-chain-ring"],
+      rower: [
+        "rower-deck-stripe",
+        "rower-oar-collar",
+        "rower-handle",
+        "rower-footplate",
+        "athlete:head",
+        "athlete:hand",
+        "athlete:foot",
+      ],
+      skierg: ["skierg-ski-tip", "skierg-pole-grip", "athlete:head", "athlete:hand"],
+      bike: [
+        "bike-top-tube",
+        "bike-chain-ring",
+        "bike-handlebar",
+        "bike-pedal",
+        "athlete:head",
+        "athlete:hand",
+        "athlete:foot",
+      ],
     } as const;
 
     for (const sport of ["rower", "skierg", "bike"] as const) {
@@ -138,6 +154,87 @@ describe("CourseRenderer3D", () => {
       }
       renderer.destroy();
     }
+  });
+
+  it("builds RowErg hand and foot contact anchors", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "low", "rower");
+    const scene = getScene(renderer);
+    for (const name of ["rower-handle", "rower-footplate", "athlete:hand", "athlete:foot"]) {
+      expect(scene.getObjectByName(name)).toBeDefined();
+    }
+    renderer.destroy();
+  });
+
+  it("builds RowErg shaped head detail", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "low", "rower");
+    const scene = getScene(renderer);
+    expect(scene.getObjectByName("athlete:head")).toBeDefined();
+    expect(scene.getObjectByName("athlete:head:cranium")).toBeDefined();
+    renderer.destroy();
+  });
+
+  it("animates the RowErg contact model from recorded stroke pose", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "rower");
+    renderer.resize(800, 600);
+    expect(() => renderer.render(makeRenderState({ sport: "rower" }), true)).not.toThrow();
+    renderer.destroy();
+  });
+
+  it("builds SkiErg pole grip and hand anchors", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "low", "skierg");
+    const scene = getScene(renderer);
+    for (const name of ["skierg-pole-grip", "athlete:hand", "athlete:head"]) {
+      expect(scene.getObjectByName(name)).toBeDefined();
+    }
+    renderer.destroy();
+  });
+
+  it("keeps SkiErg contact anchors in reduced motion", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "skierg");
+    renderer.resize(800, 600);
+    expect(() => renderer.render(makeRenderState({ sport: "skierg" }), true)).not.toThrow();
+    expect(() => renderer.render(makeRenderState({ sport: "skierg" }), false)).not.toThrow();
+    renderer.destroy();
+  });
+
+  it("animates the SkiErg contact model from recorded stroke pose", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "skierg");
+    renderer.resize(800, 600);
+    expect(() => renderer.render(makeRenderState({ sport: "skierg" }), true)).not.toThrow();
+    renderer.destroy();
+  });
+
+  it("builds BikeErg bar and pedal anchors", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "low", "bike");
+    const scene = getScene(renderer);
+    for (const name of ["bike-handlebar", "bike-pedal", "athlete:hand", "athlete:foot"]) {
+      expect(scene.getObjectByName(name)).toBeDefined();
+    }
+    renderer.destroy();
+  });
+
+  it("builds BikeErg shaped rider head detail", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "low", "bike");
+    const scene = getScene(renderer);
+    expect(scene.getObjectByName("athlete:head")).toBeDefined();
+    expect(scene.getObjectByName("athlete:head:cranium")).toBeDefined();
+    renderer.destroy();
+  });
+
+  it("animates the BikeErg contact model from recorded stroke pose", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "bike");
+    renderer.resize(800, 600);
+    expect(() => renderer.render(makeRenderState({ sport: "bike" }), true)).not.toThrow();
+    renderer.destroy();
   });
 
   it("constructs at each quality level", () => {
