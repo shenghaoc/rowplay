@@ -114,6 +114,25 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  it("removes the canvas from the host when renderer instantiation throws", () => {
+    // backend=webgpu with no WebGPURenderer option forces the early-throw guard
+    // inside the constructor. The canvas was appended to host before that
+    // throw — the constructor must remove it before rethrowing so the host
+    // doesn't end up with a stub canvas that no instance owns.
+    const host = makeHost();
+    const removeSpy = vi.spyOn(makeCanvas(), "remove");
+    // Re-seed createElement to return a canvas whose remove is the spied one.
+    const stubCanvas = makeCanvas();
+    globalThis.document = {
+      createElement: (tag: string) => (tag === "canvas" ? stubCanvas : {}),
+    } as unknown as Document;
+    expect(() => new CourseRenderer3D(host, "low", "rower", { backend: "webgpu" })).toThrow(
+      "WebGPU renderer unavailable",
+    );
+    expect(stubCanvas.remove).toHaveBeenCalledTimes(1);
+    removeSpy.mockRestore();
+  });
+
   it("builds sport-specific course groups and track details", () => {
     const detailName = {
       rower: "course:rower:water-streak",

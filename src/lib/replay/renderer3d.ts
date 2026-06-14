@@ -1285,28 +1285,33 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.canvas = document.createElement("canvas");
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
-    // NOTE: If the constructor throws after this point, the caller's
-    // destroyFailedRenderer() cannot clean up this canvas because the renderer
-    // instance will not yet have been assigned.  In the current code paths
-    // (CourseRenderer3DWebGPU always supplies WebGPURenderer) this cannot
-    // happen, but subclasses that add early-throw guards should remove the
-    // canvas themselves before re-throwing.
+    // Append the canvas first so the WebGL/WebGPU context is bound to a node
+    // that's actually in the DOM. If renderer construction throws (missing
+    // WebGPURenderer ctor, GL context-create failure), remove the canvas
+    // before rethrowing so the caller's destroyFailedRenderer() — which can't
+    // run because `this` was never returned — doesn't leak a stub canvas
+    // under `host`.
     host.appendChild(this.canvas);
-    if (this.backend === "webgpu") {
-      if (!options.WebGPURenderer) throw new Error("WebGPU renderer unavailable");
-      const renderer = new options.WebGPURenderer({
-        canvas: this.canvas,
-        antialias: this.cfg.antialias,
-        alpha: true,
-      });
-      this.renderer = renderer;
-      this.initPromise = renderer.init?.() ?? Promise.resolve();
-    } else {
-      this.renderer = new THREE.WebGLRenderer({
-        canvas: this.canvas,
-        antialias: this.cfg.antialias,
-        alpha: true,
-      });
+    try {
+      if (this.backend === "webgpu") {
+        if (!options.WebGPURenderer) throw new Error("WebGPU renderer unavailable");
+        const renderer = new options.WebGPURenderer({
+          canvas: this.canvas,
+          antialias: this.cfg.antialias,
+          alpha: true,
+        });
+        this.renderer = renderer;
+        this.initPromise = renderer.init?.() ?? Promise.resolve();
+      } else {
+        this.renderer = new THREE.WebGLRenderer({
+          canvas: this.canvas,
+          antialias: this.cfg.antialias,
+          alpha: true,
+        });
+      }
+    } catch (err) {
+      this.canvas.remove();
+      throw err;
     }
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     if (this.cfg.shadows && this.renderer.shadowMap) {
@@ -2119,23 +2124,25 @@ export class CourseRenderer3D implements ReplayRenderer {
     else if (d > 0) wake.update(x, z);
   }
 
-  private disposeObject3D(root: THREE.Object3D): void {
-    root.traverse((o) => {
+  destroy(): void {
+    // Walk the whole scene — avatar helper geometries (taperedLimb, makeHand,
+    // makeFoot, makeHead) are created inline by makeRowerAvatar / makeSkier /
+    // makeBike and never tracked in `this.geometries`. Disposing through
+    // traversal catches them and is a no-op for the geometries/materials
+    // already tracked below (Three's dispose() is idempotent).
+    this.scene.traverse((o) => {
       if (o instanceof THREE.Mesh) {
         o.geometry.dispose();
         const mats = Array.isArray(o.material) ? o.material : [o.material];
-        for (const m of mats) m.dispose();
+        for (const m of mats) {
+          if (m instanceof THREE.Material) m.dispose();
+        }
       }
     });
-  }
-
-  destroy(): void {
-    this.disposeObject3D(this.liveBoat);
-    this.disposeObject3D(this.ghostGroup);
     this.liveWake?.dispose();
     this.ghostWake?.dispose();
-    // Instance buffers are owned by the InstancedMesh, not the tracked
-    // geometry/material, so they need their own dispose.
+    // Instance buffers are owned by the InstancedMesh, not its geometry or
+    // material, so they still need their own dispose() after the traversal.
     this.buoyMesh?.dispose();
     this.sprayMesh?.dispose();
     if (this.liveLabel.material instanceof THREE.Material) this.liveLabel.material.dispose();
