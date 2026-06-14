@@ -29,9 +29,12 @@ export interface StrokeTimeline {
 }
 
 export interface StrokePose {
-  /** Stroke-row index used for exact catch transition detection. */
+  /**
+   * Stroke-row index, used both as the cycle counter and the catch-transition
+   * key — `catchTransitions` triggers on each index increment, so seek
+   * scrubs that re-enter the same row don't double-fire splash effects.
+   */
   index: number;
-  catchIndex: number;
   /** Continuous phase in radians; one full cycle per modeled stroke. */
   phase: number;
   /** Phase warped with an inferred drive/recovery split. */
@@ -196,7 +199,6 @@ function makePose(input: {
   const recoveryProgress = drive ? 0 : (cycleFrac - input.driveFrac) / (1 - input.driveFrac);
   return {
     index: input.index,
-    catchIndex: input.index,
     phase,
     warpedPhase: warpStrokePhase(phase, input.driveFrac),
     cycleFrac,
@@ -305,7 +307,7 @@ export function catchTransitions(
   maxCatches = 3,
 ): number {
   if (!prev || !next) return 0;
-  if (!(next.catchIndex > prev.catchIndex)) return 0;
-  const diff = next.catchIndex - prev.catchIndex;
+  if (!(next.index > prev.index)) return 0;
+  const diff = next.index - prev.index;
   return diff <= maxCatches ? diff : 0;
 }
