@@ -136,6 +136,8 @@ Replay animation honours the operating system's reduced-motion setting.
 Per-stroke data is used when Concept2 provides it. Workouts without stroke data
 fall back to a split-based replay, so the course still plays back.
 
+The replay page also highlights **Workout moments**: best sustained push, slower patch, efficient rhythm, finish trend, and interval best/slowest reps. These cards are post-workout analysis from already-synced Logbook detail; they do not start live capture or write anything back to Concept2. Use **Jump to moment** to seek the replay straight to that section. When per-stroke rows are unavailable, rowplay labels the moments as split-based so you know the resolution is lower.
+
 - **Coaching notes** — pin notes to moments on the replay timeline.
 - **Race a ghost** — from `/leaderboard`, press **Race** next to an entry to
   pre-arm a rival on your own replay of that piece.
