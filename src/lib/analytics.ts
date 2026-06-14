@@ -210,7 +210,7 @@ export function distancePBs(
   for (const sportWorkouts of bySport.values()) {
     for (let i = 0, dlen = STANDARD_DISTANCES.length; i < dlen; i++) {
       const target = STANDARD_DISTANCES[i];
-      let best = null;
+      let best: Workout | null = null;
       let minTime = Infinity;
       const t02 = target * 0.02;
 
@@ -2026,7 +2026,7 @@ export function pbWorkoutIds(workouts: Workout[]): Set<number> {
   for (const sportWorkouts of bySport.values()) {
     for (let i = 0, dlen = STANDARD_DISTANCES.length; i < dlen; i++) {
       const target = STANDARD_DISTANCES[i];
-      let best = null;
+      let best: Workout | null = null;
       let minTime = Infinity;
       const t02 = target * 0.02;
 
