@@ -261,7 +261,11 @@ export function strokePoseAt(timeline: StrokeTimeline, t: number): StrokePose {
         ? entry.watts / timeline.medianWatts
         : 0.35;
   const dpsNorm = timeline.medianDps > 0 ? meters / timeline.medianDps : 1;
-  const rateNorm = entry.spm / (timeline.sport === "bike" ? 120 : 42);
+  // Rate ceilings tuned to elite-sprint peaks: bike sprints reach ~120 rpm,
+  // rowing 2K sprints peak around 36-38 spm. Cap rowers/skiers at 36 so a
+  // 36 spm finish maps to rateNorm ≈ 1 rather than 0.86 against a 42 spm
+  // ceiling.
+  const rateNorm = entry.spm / (timeline.sport === "bike" ? 120 : 36);
   const intensity = clamp(
     wattsNorm * 0.55 + clamp(dpsNorm / 1.45, 0, 1) * 0.3 + rateNorm * 0.15,
     0,

@@ -97,4 +97,48 @@ describe("strokeModel", () => {
     expect(pose.driveFrac).toBe(0.5);
     expect(pose.rate).toBe(90);
   });
+
+  it("aggregates watts, distance-per-stroke and HR across the timeline", () => {
+    // intensity/fatigue inside strokePoseAt are normalised against these
+    // aggregates — assert them directly so a future regression in
+    // buildStrokeTimeline's reducers can't silently distort animation
+    // intensity without breaking a unit test.
+    const timeline = buildStrokeTimeline(
+      [
+        stroke(2, 11, 28, 160, 140),
+        stroke(4, 23, 30, 220, 160),
+        stroke(6, 36, 32, 280, 178),
+      ],
+      "rower",
+      true,
+    );
+
+    // median of [160,220,280] = 220; peak = 280.
+    expect(timeline.medianWatts).toBe(220);
+    expect(timeline.peakWatts).toBe(280);
+    // median DPS of [11,12,13] = 12.
+    expect(timeline.medianDps).toBe(12);
+    // median HR of [140,160,178] = 160; max = 178.
+    expect(timeline.medianHr).toBe(160);
+    expect(timeline.maxHr).toBe(178);
+  });
+
+  it("falls back to defaults when strokes carry no watts or heart rate", () => {
+    const timeline = buildStrokeTimeline(
+      [
+        { t: 2, d: 11, pace: 120, spm: 28, watts: 0 },
+        { t: 4, d: 22, pace: 120, spm: 28, watts: 0 },
+      ],
+      "rower",
+      true,
+    );
+
+    expect(timeline.medianWatts).toBe(0);
+    expect(timeline.peakWatts).toBe(0);
+    // No HR → medianHr/maxHr stay at the 0 baseline.
+    expect(timeline.medianHr).toBe(0);
+    expect(timeline.maxHr).toBe(0);
+    // medianDps is still computable from per-stroke distance deltas (both 11).
+    expect(timeline.medianDps).toBe(11);
+  });
 });
