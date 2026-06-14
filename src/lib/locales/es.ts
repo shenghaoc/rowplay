@@ -337,9 +337,9 @@ Abre cualquier entrenamiento desde el panel y pulsa **Reproducir**.
 - Cambia entre vistas del recorrido en **2D y 3D** (la 3D necesita un navegador razonablemente moderno).
 - Define un **ritmo objetivo** para dibujar una línea de referencia en el gráfico de ritmo.
 
-El atleta se anima a la cadencia real del entrenamiento — una palada (o impulso de bastones, o pedalada) por cada palada registrada, con salpicaduras en cada ataque — y se acelera junto con la velocidad de reproducción. La cámara 3D de seguimiento abre ligeramente el objetivo cuando el bote va más rápido.
+El atleta se anima a la cadencia real del entrenamiento — una palada (o impulso de bastones, o pedalada) por cada palada registrada, con salpicaduras en cada ataque — y se acelera junto con la velocidad de reproducción. En 3D, el atleta usa un cuerpo segmentado a escala humana con equipación específica del deporte, de modo que la postura se lee como la de un deportista en un ergómetro y no como un marcador de juguete. Las manos y los pies quedan apoyados en el equipo correcto: mangos y reposapiés de remo, empuñaduras y botas de SkiErg, o manillar y pedales de BikeErg. La superficie del recorrido también cambia por deporte: RowErg muestra calles de agua en capas, SkiErg muestra surcos de nieve pisada y BikeErg muestra una pista de asfalto/velódromo con bordillos, marcas de carril y barras de velocidad. La cámara de seguimiento se mantiene lo bastante cerca para que la posición del cuerpo importe y abre ligeramente el objetivo cuando el bote va más rápido.
 
-En 3D, el selector de **Calidad** elige gráficos bajos, medios o altos. Si el dispositivo no mantiene una tasa de cuadros fluida, el renderizador baja automáticamente primero la resolución y después los efectos, así que probar la calidad alta es seguro en cualquier hardware. La animación del replay respeta el ajuste de movimiento reducido del sistema operativo.
+En 3D, el selector de **Calidad** elige gráficos bajos, medios, altos o ultra. Ultra requiere WebGPU; en dispositivos solo con WebGL se queda en alto. Si el dispositivo no mantiene una tasa de cuadros fluida, el renderizador baja automáticamente primero la resolución y después los efectos. La animación del replay respeta el ajuste de movimiento reducido del sistema operativo.
 
 Se usan datos por palada cuando Concept2 los proporciona. Los entrenamientos sin paladas vuelven a un replay basado en splits, así que el recorrido se sigue reproduciendo.
 
@@ -449,7 +449,7 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
 
 ## Problemas de pantalla
 
-- **La reproducción 3D no arranca** — el navegador necesita WebGL; la vista 2D funciona siempre.
+- **La reproducción 3D no arranca** — el navegador necesita WebGPU o WebGL; la vista 2D funciona siempre.
 - **Los gráficos se ven apretados en el móvil** — gira a horizontal para gráficos más anchos; los paneles se reorganizan en pantallas pequeñas.
 - **Tema o idioma equivocados** — ambos conmutadores están en la cabecera (tras el botón de menú en el móvil) y se recuerdan por navegador.
 
@@ -939,13 +939,16 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     viewToggle: "Vista del recorrido",
     view2d: "2D",
     view3d: "3D",
-    view3dUnsupported: "La vista 3D requiere WebGL en este dispositivo",
+    view3dUnsupported: "La vista 3D requiere WebGPU o WebGL en este dispositivo",
     view3dLoading: "Cargando 3D…",
     view3dError: "No se pudo cargar la vista 3D",
     quality: "Calidad",
     qualityLow: "Baja",
     qualityMedium: "Media",
     qualityHigh: "Alta",
+    qualityUltra: "Ultra",
+    backendWebgpu: "WebGPU",
+    backendWebgl: "WebGL",
     gPace: "Ritmo",
     gRate: "Cadencia",
     gPower: "Potencia",

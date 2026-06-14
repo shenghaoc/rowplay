@@ -1,7 +1,7 @@
 import { safeStorage } from "$lib/safeStorage";
 
 export type RendererKind = "2d" | "3d";
-export type RenderQuality = "low" | "medium" | "high";
+export type RenderQuality = "low" | "medium" | "high" | "ultra";
 
 const STORAGE_KEY = "replay_renderer";
 const QUALITY_KEY = "replay_quality";
@@ -20,7 +20,7 @@ export function saveRendererPref(kind: RendererKind): void {
 /** Read persisted 3D quality tier (client-only). Defaults to medium. */
 export function loadQualityPref(): RenderQuality {
   const raw = safeStorage.getItem(QUALITY_KEY);
-  return raw === "low" || raw === "high" ? raw : "medium";
+  return raw === "low" || raw === "high" || raw === "ultra" ? raw : "medium";
 }
 
 /** Persist 3D quality tier for the next visit. */

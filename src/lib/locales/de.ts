@@ -343,6 +343,12 @@ Das DPS-Diagramm verfolgt die Meter pro Schlag. Der Pace-normalisierte Schalter 
 - Wechsle zwischen **2D- und 3D-Ansicht** der Strecke (3D braucht einen halbwegs modernen Browser).
 - Setze eine **Ziel-Pace**, um eine Referenzlinie im Pace-Diagramm zu zeichnen.
 
+Der Athlet bewegt sich mit der echten Kadenz des Workouts — ein Schlag (oder Stockeinsatz bzw. eine Pedalumdrehung) pro aufgezeichnetem Schlag, mit Spritzern bei jedem Catch — und beschleunigt mit der Wiedergabegeschwindigkeit. In 3D nutzt die Figur einen gegliederten Körper in realistischeren Proportionen mit sportartspezifischem Kit, damit Haltung und Bewegung wie ein Erg-Athlet wirken und nicht wie ein Spielzeugmarker. Hände und Füße bleiben an der passenden Ausrüstung: Rudergriff und Fußplatte, SkiErg-Griffe und Schuhe oder BikeErg-Lenker und Pedale. Auch die Strecke ist sportartspezifisch: RowErg zeigt geschichtete Wasserbahnen, SkiErg präparierte Schneerillen und BikeErg eine Asphalt-/Velodrombahn mit Curbs, Spurlinien und Geschwindigkeitsmarken. Die Verfolgungskamera bleibt nah genug, dass die Körperposition sichtbar bleibt, und weitet den Blickwinkel leicht, wenn das Boot schneller läuft.
+
+In 3D wählt der **Qualität**-Selektor niedrige, mittlere, hohe oder Ultra-Grafik. Ultra setzt WebGPU voraus; auf reinen WebGL-Geräten wird stattdessen Hoch verwendet. Wenn das Gerät keine flüssige Bildrate halten kann, senkt der Renderer automatisch zuerst die Auflösung und danach Effekte. Die Replay-Animation respektiert die Systemeinstellung für reduzierte Bewegung.
+
+Per-Schlag-Daten werden verwendet, wenn Concept2 sie bereitstellt. Workouts ohne Schlagdaten fallen auf ein Split-basiertes Replay zurück, sodass die Strecke trotzdem abgespielt wird.
+
 ## Coaching-Notizen hinzufügen
 
 Halte das Replay an einem Moment an und füge eine Notiz hinzu („hier den Rollsitz überhastet"). Notizen heften sich an die Zeitleiste, sodass du — oder wer auch immer das Replay erhält — direkt dorthin springen kann.
@@ -449,7 +455,7 @@ Prüfe zuerst, ob das Workout dein Concept2-Logbuch erreicht hat (es muss vom Ge
 
 ## Darstellungsprobleme
 
-- **3D-Replay startet nicht** — der Browser braucht WebGL; die 2D-Ansicht funktioniert immer.
+- **3D-Replay startet nicht** — der Browser braucht WebGPU oder WebGL; die 2D-Ansicht funktioniert immer.
 - **Diagramme wirken auf dem Handy gequetscht** — drehe ins Querformat für breitere Diagramme; Panels ordnen sich auf kleinen Bildschirmen neu an.
 - **Falsches Theme oder falsche Sprache** — beide Schalter sitzen in der Kopfzeile (auf dem Handy hinter dem Menü-Knopf) und werden pro Browser gemerkt.
 
@@ -939,13 +945,16 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     viewToggle: "Kursansicht",
     view2d: "2D",
     view3d: "3D",
-    view3dUnsupported: "3D-Ansicht benötigt WebGL auf diesem Gerät",
+    view3dUnsupported: "3D-Ansicht benötigt WebGPU oder WebGL auf diesem Gerät",
     view3dLoading: "3D wird geladen…",
     view3dError: "3D-Ansicht konnte nicht geladen werden",
     quality: "Qualität",
     qualityLow: "Niedrig",
     qualityMedium: "Mittel",
     qualityHigh: "Hoch",
+    qualityUltra: "Ultra",
+    backendWebgpu: "WebGPU",
+    backendWebgl: "WebGL",
     gPace: "Pace",
     gRate: "Rate",
     gPower: "Power",

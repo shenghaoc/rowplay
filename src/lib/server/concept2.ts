@@ -200,8 +200,20 @@ export class Concept2Client {
     const splits = mapSplits(detail.data);
     // `intervals` in the API means work reps with rest between them.
     const isInterval = !!detail.data.workout?.intervals?.length;
-    if (strokes.length === 0) strokes = synthStrokes(base, splits);
-    return { ...base, strokes, splits, isInterval };
+    // If we end up synthesising strokes from splits (either Concept2 didn't
+    // expose per-stroke rows, or /strokes failed), clear hasStrokeData so the
+    // pose model treats this workout as split-derived. Otherwise strokeModel
+    // would render one full row/pole/pedal cycle per synthesised point — e.g.
+    // four catches across a 2K instead of ~221.
+    const synthesised = strokes.length === 0;
+    if (synthesised) strokes = synthStrokes(base, splits);
+    return {
+      ...base,
+      hasStrokeData: base.hasStrokeData && !synthesised,
+      strokes,
+      splits,
+      isInterval,
+    };
   }
 }
 

@@ -338,9 +338,9 @@ Ouvrez n'importe quelle séance depuis le tableau de bord et appuyez sur **Relec
 - Basculez entre les vues du parcours en **2D et 3D** (la 3D demande un navigateur raisonnablement récent).
 - Définissez une **allure cible** pour tracer une ligne de référence sur le graphique d'allure.
 
-L'athlète s'anime à la cadence réelle de la séance — un coup d'aviron (ou une poussée de bâtons, ou un tour de pédale) par coup enregistré, avec des éclaboussures à chaque attaque — et accélère avec la vitesse de lecture. La caméra de poursuite 3D élargit légèrement son objectif quand le bateau va plus vite.
+L'athlète s'anime à la cadence réelle de la séance — un coup d'aviron (ou une poussée de bâtons, ou un tour de pédale) par coup enregistré, avec des éclaboussures à chaque attaque — et accélère avec la vitesse de lecture. En 3D, l'athlète utilise un corps segmenté à l'échelle humaine avec une tenue propre au sport, afin que la posture ressemble à celle d'un athlète sur ergomètre plutôt qu'à un marqueur jouet. Les mains et les pieds restent posés sur le bon équipement : poignées et cale-pieds d'aviron, poignées et chaussures de SkiErg, ou cintre et pédales de BikeErg. La surface du parcours devient elle aussi propre au sport : RowErg affiche des couloirs d'eau superposés, SkiErg des rainures de neige damée, et BikeErg une piste asphaltée/de vélodrome avec bordures, marques de voie et barres de vitesse. La caméra de poursuite reste assez proche pour rendre la posture lisible et élargit légèrement son objectif quand le bateau va plus vite.
 
-En 3D, le sélecteur **Qualité** propose des graphismes bas, moyens ou élevés. Si l'appareil ne tient pas une cadence d'images fluide, le rendu réduit automatiquement d'abord la résolution puis les effets : la qualité élevée peut donc être essayée sans risque sur tout matériel. L'animation du replay respecte le réglage système de réduction des animations.
+En 3D, le sélecteur **Qualité** propose des graphismes bas, moyens, élevés ou ultra. Ultra exige WebGPU ; sur les appareils WebGL seulement, ça reste sur élevé. Si l'appareil ne tient pas une cadence d'images fluide, le rendu réduit automatiquement d'abord la résolution puis les effets. L'animation du replay respecte le réglage système de réduction des animations.
 
 Les données coup par coup sont utilisées quand Concept2 les fournit. Les séances sans données de coups basculent vers un replay basé sur les splits, donc le parcours reste lisible.
 
@@ -450,7 +450,7 @@ Vérifiez d'abord que la séance a bien atteint votre logbook Concept2 (elle doi
 
 ## Problèmes d'affichage
 
-- **La relecture 3D ne démarre pas** — le navigateur a besoin de WebGL ; la vue 2D fonctionne toujours.
+- **La relecture 3D ne démarre pas** — le navigateur a besoin de WebGPU ou WebGL ; la vue 2D fonctionne toujours.
 - **Les graphiques sont à l'étroit sur téléphone** — passez en paysage pour des graphiques plus larges ; les panneaux se réorganisent sur petits écrans.
 - **Mauvais thème ou mauvaise langue** — les deux interrupteurs sont dans l'en-tête (derrière le bouton de menu sur mobile) et sont mémorisés par navigateur.
 
@@ -950,13 +950,16 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     viewToggle: "Vue du parcours",
     view2d: "2D",
     view3d: "3D",
-    view3dUnsupported: "La vue 3D nécessite WebGL sur cet appareil",
+    view3dUnsupported: "La vue 3D nécessite WebGPU ou WebGL sur cet appareil",
     view3dLoading: "Chargement 3D…",
     view3dError: "Impossible de charger la vue 3D",
     quality: "Qualité",
     qualityLow: "Basse",
     qualityMedium: "Moyenne",
     qualityHigh: "Haute",
+    qualityUltra: "Ultra",
+    backendWebgpu: "WebGPU",
+    backendWebgl: "WebGL",
     gPace: "Allure",
     gRate: "Cadence",
     gPower: "Puiss.",

@@ -22,6 +22,7 @@ vi.mock("three", async (importOriginal) => {
 });
 
 import { CourseRenderer3D } from "./renderer3d";
+import { buildStrokeTimeline, strokePoseAt } from "./strokeModel";
 
 /** Minimal 2D context stub for text sprite canvas creation. */
 function make2dCtx() {
@@ -83,13 +84,26 @@ function makeHost() {
 }
 
 function makeRenderState(overrides: Partial<Parameters<CourseRenderer3D["render"]>[0]> = {}) {
+  const timeline = buildStrokeTimeline(
+    [
+      { t: 2, d: 10, pace: 120, spm: 28, watts: 160 },
+      { t: 4, d: 21, pace: 118, spm: 30, watts: 190 },
+    ],
+    "rower",
+    true,
+  );
   return {
-    frame: { d: 100, pace: 120, spm: 28, watts: 100, hr: 0 },
+    frame: { t: 2.1, d: 100, pace: 120, spm: 28, watts: 100, hr: 0 },
     ghost: null,
+    strokePose: strokePoseAt(timeline, 2.1),
     distFrac: 0.5,
     totalDistance: 2000,
     ...overrides,
   } as Parameters<CourseRenderer3D["render"]>[0];
+}
+
+function getScene(renderer: CourseRenderer3D) {
+  return (renderer as unknown as { scene: { getObjectByName(name: string): unknown } }).scene;
 }
 
 describe("CourseRenderer3D", () => {
@@ -100,8 +114,150 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  it("removes the canvas from the host when renderer instantiation throws", () => {
+    // backend=webgpu with no WebGPURenderer option forces the early-throw guard
+    // inside the constructor. The canvas was appended to host before that
+    // throw — the constructor must remove it before rethrowing so the host
+    // doesn't end up with a stub canvas that no instance owns.
+    const host = makeHost();
+    const removeSpy = vi.spyOn(makeCanvas(), "remove");
+    // Re-seed createElement to return a canvas whose remove is the spied one.
+    const stubCanvas = makeCanvas();
+    globalThis.document = {
+      createElement: (tag: string) => (tag === "canvas" ? stubCanvas : {}),
+    } as unknown as Document;
+    expect(() => new CourseRenderer3D(host, "low", "rower", { backend: "webgpu" })).toThrow(
+      "WebGPU renderer unavailable",
+    );
+    expect(stubCanvas.remove).toHaveBeenCalledTimes(1);
+    removeSpy.mockRestore();
+  });
+
+  it("builds sport-specific course groups and track details", () => {
+    const detailName = {
+      rower: "course:rower:water-streak",
+      skierg: "course:skierg:groomed-groove",
+      bike: "course:bike:curb",
+    } as const;
+    const equipmentNames = {
+      rower: [
+        "rower-deck-stripe",
+        "rower-oar-collar",
+        "rower-handle",
+        "rower-footplate",
+        "athlete:head",
+        "athlete:hand",
+        "athlete:foot",
+      ],
+      skierg: ["skierg-ski-tip", "skierg-pole-grip", "athlete:head", "athlete:hand"],
+      bike: [
+        "bike-top-tube",
+        "bike-chain-ring",
+        "bike-handlebar",
+        "bike-pedal",
+        "athlete:head",
+        "athlete:hand",
+        "athlete:foot",
+      ],
+    } as const;
+
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const host = makeHost();
+      const renderer = new CourseRenderer3D(host, "low", sport);
+      const scene = getScene(renderer);
+      expect(scene.getObjectByName(`course:${sport}`)).toBeDefined();
+      expect(scene.getObjectByName("course:edge-inner")).toBeDefined();
+      expect(scene.getObjectByName(detailName[sport])).toBeDefined();
+      for (const equipmentName of equipmentNames[sport]) {
+        expect(scene.getObjectByName(equipmentName)).toBeDefined();
+      }
+      renderer.destroy();
+    }
+  });
+
+  it("builds RowErg hand and foot contact anchors", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "low", "rower");
+    const scene = getScene(renderer);
+    for (const name of ["rower-handle", "rower-footplate", "athlete:hand", "athlete:foot"]) {
+      expect(scene.getObjectByName(name)).toBeDefined();
+    }
+    renderer.destroy();
+  });
+
+  it("builds RowErg shaped head detail", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "low", "rower");
+    const scene = getScene(renderer);
+    expect(scene.getObjectByName("athlete:head")).toBeDefined();
+    expect(scene.getObjectByName("athlete:head:cranium")).toBeDefined();
+    renderer.destroy();
+  });
+
+  it("animates the RowErg contact model from recorded stroke pose", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "rower");
+    renderer.resize(800, 600);
+    expect(() => renderer.render(makeRenderState({ sport: "rower" }), true)).not.toThrow();
+    renderer.destroy();
+  });
+
+  it("builds SkiErg pole grip and hand anchors", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "low", "skierg");
+    const scene = getScene(renderer);
+    for (const name of ["skierg-pole-grip", "athlete:hand", "athlete:head"]) {
+      expect(scene.getObjectByName(name)).toBeDefined();
+    }
+    renderer.destroy();
+  });
+
+  it("keeps SkiErg contact anchors in reduced motion", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "skierg");
+    renderer.resize(800, 600);
+    expect(() => renderer.render(makeRenderState({ sport: "skierg" }), true)).not.toThrow();
+    expect(() => renderer.render(makeRenderState({ sport: "skierg" }), false)).not.toThrow();
+    renderer.destroy();
+  });
+
+  it("animates the SkiErg contact model from recorded stroke pose", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "skierg");
+    renderer.resize(800, 600);
+    expect(() => renderer.render(makeRenderState({ sport: "skierg" }), true)).not.toThrow();
+    renderer.destroy();
+  });
+
+  it("builds BikeErg bar and pedal anchors", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "low", "bike");
+    const scene = getScene(renderer);
+    for (const name of ["bike-handlebar", "bike-pedal", "athlete:hand", "athlete:foot"]) {
+      expect(scene.getObjectByName(name)).toBeDefined();
+    }
+    renderer.destroy();
+  });
+
+  it("builds BikeErg shaped rider head detail", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "low", "bike");
+    const scene = getScene(renderer);
+    expect(scene.getObjectByName("athlete:head")).toBeDefined();
+    expect(scene.getObjectByName("athlete:head:cranium")).toBeDefined();
+    renderer.destroy();
+  });
+
+  it("animates the BikeErg contact model from recorded stroke pose", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "bike");
+    renderer.resize(800, 600);
+    expect(() => renderer.render(makeRenderState({ sport: "bike" }), true)).not.toThrow();
+    renderer.destroy();
+  });
+
   it("constructs at each quality level", () => {
-    for (const quality of ["low", "medium", "high"] as const) {
+    for (const quality of ["low", "medium", "high", "ultra"] as const) {
       const host = makeHost();
       expect(() => new CourseRenderer3D(host, quality, "rower")).not.toThrow();
     }
@@ -146,6 +302,7 @@ describe("CourseRenderer3D", () => {
       r.resize(800, 600);
       const stateWithGhost = makeRenderState({
         ghost: { distFrac: 0.4, pace: 118, spm: 24, label: "PB" },
+        ghostStrokePose: makeRenderState().strokePose,
       });
       expect(() => r.render(stateWithGhost, false)).not.toThrow();
     });
@@ -155,6 +312,18 @@ describe("CourseRenderer3D", () => {
       const r = new CourseRenderer3D(host, "low", "rower");
       r.resize(800, 600);
       expect(() => r.render(makeRenderState(), false, "dark")).not.toThrow();
+    });
+
+    it("recolors the sport-specific course surface on dark theme", () => {
+      const host = makeHost();
+      const r = new CourseRenderer3D(host, "low", "bike");
+      r.resize(800, 600);
+      r.render(makeRenderState({ sport: "bike" }), false, "dark");
+      const lane = getScene(r).getObjectByName("lane") as {
+        material: { color: { getHex(): number } };
+      };
+      expect(lane.material.color.getHex()).toBe(0x262c32);
+      r.destroy();
     });
 
     it("handles playing=true (animation phase advances)", () => {

@@ -70,10 +70,10 @@ all controls work in demo mode with zero configuration.
 
 ### Replay
 
-- **Real-time race replay** — an avatar races a virtual course with synchronized pace, stroke-rate, power, and heart-rate gauges.
-- **Per-stroke resolution** — when per-stroke data is available the replay uses it; workouts without it fall back to a lower-resolution replay synthesized from splits.
+- **Real-time race replay** — a sport-specific athlete races a virtual course with synchronized pace, stroke-rate, power, and heart-rate gauges.
+- **Per-stroke resolution** — when Concept2 per-stroke data is available the replay maps one visible cycle to one stroke row; workouts without it fall back to a lower-resolution replay synthesized from splits.
 - **Play / pause / scrub / speed** — drag the timeline, jump to any point, adjust speed from 0.5× to 8×.
-- **2D & 3D views** — Canvas-based 2D course and an optional Three.js 3D renderer (WebGL required).
+- **2D & 3D views** — Canvas-based 2D course and an optional Three.js 3D renderer with realistic segmented athletes, equipment contact points, and sport-specific water, snow, and track surfaces; it tries WebGPU first and falls back to WebGL.
 - **Telemetry charts** — uPlot charts for pace, stroke rate, power, and heart rate synchronized to the replay clock.
 - **Ghost racing** — race a past session as a ghost alongside the current replay for side-by-side comparison.
 
@@ -371,8 +371,9 @@ src/
 - **Per-stroke data depends on Concept2.** Not all workouts include per-stroke
   data (e.g. older logbook entries or workouts recorded without ErgData). These
   fall back to split-level replay.
-- **3D replay requires WebGL.** The 3D view uses Three.js; devices without
-  WebGL support fall back to the 2D canvas renderer automatically.
+- **3D replay requires WebGPU or WebGL.** The 3D view uses Three.js, tries
+  WebGPU first for the richest scene, then falls back to WebGL. Devices without
+  either backend fall back to the 2D canvas renderer automatically.
 - **Live mode polls.** There is no real-time push from Concept2 — live/near-live
   mode uses periodic polling at a configurable interval (60s default, 30s minimum)
   and only reflects workouts recorded with ErgData.
