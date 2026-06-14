@@ -9,3 +9,6 @@
 ## 2026-06-10 - Added aria-hidden to loading spinners
 **Learning:** When using visual loading spinners in DaisyUI like `loading loading-spinner`, we must ensure they are properly hidden from screen readers.
 **Action:** When adding visual loading indicators, always add `aria-hidden="true"` to prevent screen readers from announcing them redundantly if the text already conveys the state.
+## 2026-06-10 - Added aria-busy to async buttons
+**Learning:** While buttons disabled during an async action (e.g. `disabled={saving}`) often have visual loading spinners hidden from screen readers (`aria-hidden="true"`), the button itself still needs to broadcast its busy state semantically.
+**Action:** When adding or verifying visual loading states on buttons during async actions, always pair them with `aria-busy={stateVariable}` so screen readers know the operation is in progress.
