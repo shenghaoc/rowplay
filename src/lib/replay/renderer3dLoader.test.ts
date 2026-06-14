@@ -92,6 +92,7 @@ describe("createRenderer3D", () => {
   function makeCtor(
     ready: () => Promise<unknown> = () => Promise.resolve(),
     instances: Array<{ destroy: ReturnType<typeof vi.fn> }> = [],
+    backendKind: "webgpu" | "webgl" = "webgpu",
   ): Renderer3DCtor {
     const readyImpl = ready;
     class FakeRenderer {
@@ -99,6 +100,9 @@ describe("createRenderer3D", () => {
       render = vi.fn();
       resize = vi.fn();
       destroy = vi.fn();
+      // Mirrors CourseRenderer3D's `backendKind` getter so the loader can
+      // detect Three's internal WebGL2 fallback after ready() resolves.
+      backendKind = backendKind;
       constructor() {
         instances.push(this);
       }
@@ -126,6 +130,25 @@ describe("createRenderer3D", () => {
       detectWebGL: () => true,
       loadWebGPU: async () =>
         makeCtor(() => Promise.reject(new Error("device lost")), failedWebGpuInstances),
+      loadWebGL: async () => makeCtor(),
+    });
+
+    expect(result.backend).toBe("webgl");
+    expect(result.quality).toBe("high");
+    expect(failedWebGpuInstances).toHaveLength(1);
+    expect(failedWebGpuInstances[0]?.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to WebGL when WebGPURenderer silently installs its WebGL2 backend", async () => {
+    // navigator.gpu reports an adapter and renderer.init() resolves OK, but
+    // backendKind flips to "webgl" because Three couldn't bring up a device.
+    // The factory must treat that as a WebGPU failure: destroy the renderer,
+    // re-enter through the explicit WebGL branch, and report the WebGL tier.
+    const failedWebGpuInstances: Array<{ destroy: ReturnType<typeof vi.fn> }> = [];
+    const result = await createRenderer3D(host, "ultra", "rower", {
+      detectWebGPU: async () => true,
+      detectWebGL: () => true,
+      loadWebGPU: async () => makeCtor(() => Promise.resolve(), failedWebGpuInstances, "webgl"),
       loadWebGL: async () => makeCtor(),
     });
 

@@ -102,7 +102,17 @@ export async function createRenderer3D(
       const Ctor = await (deps.loadWebGPU ?? loadRenderer3DWebGPU)();
       renderer = new Ctor(host, quality, sport);
       await renderer.ready?.();
-      return { renderer, backend: "webgpu", quality };
+      // Honour the renderer's effective backend rather than the requested one:
+      // Three's WebGPURenderer can install its own WebGL2 fallback inside
+      // init() and still report success, in which case backendKind flips to
+      // "webgl" here. Treat that as a WebGPU init failure so the explicit
+      // WebGL branch below re-applies the WebGL quality tier (Ultra → high)
+      // and the diagnostic chip shows the right backend.
+      if (renderer.backendKind === "webgpu") {
+        return { renderer, backend: "webgpu", quality };
+      }
+      destroyFailedRenderer(renderer);
+      renderer = null;
     } catch {
       destroyFailedRenderer(renderer);
       renderer = null;

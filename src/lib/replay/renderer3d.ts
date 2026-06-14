@@ -132,6 +132,17 @@ type RendererLike = {
   getContext?: () => unknown;
 };
 
+/**
+ * Shape we duck-type onto Three's `Backend` after `WebGPURenderer.init()`:
+ * the WebGPU backend sets `isWebGPUBackend = true`, the internal WebGL2
+ * fallback sets `isWebGLBackend = true`. We read these in `ready()` to
+ * detect a silent downgrade. Kept off `RendererLike` because Three's typed
+ * `Backend` class doesn't expose these flag fields in its TypeScript shape.
+ */
+type ThreeBackendFlags = {
+  backend?: { isWebGPUBackend?: boolean; isWebGLBackend?: boolean };
+};
+
 export type WebGPURendererCtor = new (opts: {
   canvas: HTMLCanvasElement;
   antialias: boolean;
@@ -1190,7 +1201,12 @@ export class CourseRenderer3D implements ReplayRenderer {
 
   private cfg: QualityConfig;
   private renderer: RendererLike;
-  private readonly backend: Renderer3DBackend;
+  /**
+   * Intent backend at construction. May be re-pointed to "webgl" by `ready()`
+   * if Three's WebGPURenderer silently fell back to its internal WebGL2 path
+   * after adapter/device init. Read via `backendKind`.
+   */
+  private backend: Renderer3DBackend;
   private initPromise: Promise<unknown> = Promise.resolve();
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
@@ -1199,7 +1215,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private h = 0;
   private animPhase = 0;
   private lastAnimPhase = NaN;
-  private strokePhase = 0;
+  /** Ghost fallback phase — only needed when `ghostStrokePose` is absent. */
   private ghostStrokePhase = 0;
   private lastLivePose: StrokePose | null = null;
   private lastGhostPose: StrokePose | null = null;
@@ -1383,8 +1399,19 @@ export class CourseRenderer3D implements ReplayRenderer {
     return material;
   }
 
-  ready(): Promise<unknown> {
-    return this.initPromise;
+  async ready(): Promise<unknown> {
+    const result = await this.initPromise;
+    // Three's WebGPURenderer can survive `requestAdapter()` returning an
+    // adapter and `init()` resolving while still being unable to bring up a
+    // WebGPU device — in that case it installs its own WebGL2 backend and
+    // keeps rendering. Detect that here so the factory in renderer3dLoader
+    // can downgrade quality (Ultra is WebGPU-only) and report the correct
+    // backend, instead of mislabelling a WebGL fallback as WebGPU.
+    if (this.backend === "webgpu") {
+      const probed = this.renderer as ThreeBackendFlags;
+      if (probed.backend?.isWebGLBackend) this.backend = "webgl";
+    }
+    return result;
   }
 
   get backendKind(): Renderer3DBackend {
@@ -1878,19 +1905,16 @@ export class CourseRenderer3D implements ReplayRenderer {
 
     if (playing && !this.reduceMotion) this.animPhase += (2.4 + state.frame.spm / 13) * dt;
 
-    // Fallback phases are only for callers that have not supplied a stroke
-    // model. The replay page passes Concept2-derived poses so one visible cycle
-    // maps to one stroke row and catch effects cannot drift from the data.
+    // RenderState.strokePose is required, so the live lane always has a
+    // Concept2-derived pose — one visible cycle per stroke row, no drift from
+    // the data. The ghost fallback stays because non-data ghosts (constant
+    // pace, uploaded file, session without strokes) don't supply a pose.
     const liveMeters = state.frame.d;
     const dLive = liveMeters - this.lastLiveMeters;
     this.lastLiveMeters = liveMeters;
-    if (!state.strokePose && !this.reduceMotion && dt > 0 && state.frame.spm > 0)
-      this.strokePhase += (state.frame.spm / 60) * dt * Math.PI * 2;
     if (!state.ghostStrokePose && !this.reduceMotion && dt > 0 && state.ghost?.spm)
       this.ghostStrokePhase += (state.ghost.spm / 60) * dt * Math.PI * 2;
-    const livePose =
-      state.strokePose ??
-      fallbackStrokePose(state.sport ?? "rower", this.strokePhase, state.frame.spm);
+    const livePose = state.strokePose;
     const ghostPose =
       state.ghost &&
       (state.ghostStrokePose ??
