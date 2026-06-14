@@ -381,11 +381,18 @@ function taperedLimb(
     pts.push(new THREE.Vector2(r, t));
   }
   const geo = new THREE.LatheGeometry(pts, segments);
+  // Bake the limb's long axis onto +Z and centre it at the origin so
+  // placeSegmentBetween()'s `scale.z = length, position = midpoint,
+  // quaternion = (+Z → start→end)` contract aligns the proximal end at
+  // `start` and the distal end at `end`. Without baking, the runtime
+  // `mesh.rotation.x` was being wiped out by placeSegmentBetween's
+  // quaternion assignment, leaving every lathe-limb welded to its native
+  // Y axis — i.e. arms and legs pointing straight up regardless of where
+  // the IK targets sent them. That's the Frankenstein silhouette.
+  geo.translate(0, -0.5, 0);
+  geo.rotateX(Math.PI / 2);
   geo.computeVertexNormals();
-  // Rotate so the axis is +Z (lathe defaults to Y)
-  const mesh = new THREE.Mesh(geo, material);
-  mesh.rotation.x = -Math.PI / 2;
-  return mesh;
+  return new THREE.Mesh(geo, material);
 }
 
 /**
@@ -609,21 +616,24 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
         0.28 + drive * 0.02 * amp,
         0.7 - drive * 0.04 * amp,
       ];
-      // Knee kinks forward at the catch (compressed) and drops at the finish
-      // (extended), computed as the midpoint with a perpendicular offset.
-      const extension = -drive; // +1 at finish, -1 at catch
+      // Knee kinks UP at the catch (legs folded against the chest) and drops
+      // toward the hip/foot line at the finish (legs nearly straight). The
+      // forward offset shifts the knee over the seat at the catch and behind
+      // at the finish.
       const knee: Point3 = [
         leg.side * 0.14,
-        (hip[1] + footTarget[1]) / 2 + 0.08 + extension * 0.06,
+        (hip[1] + footTarget[1]) / 2 + 0.06 + drive * 0.08 * amp,
         (hip[2] + footTarget[2]) / 2 - 0.06 * amp - drive * 0.08 * amp,
       ];
       placeSegmentBetween(leg.thigh, hip, knee);
       placeSegmentBetween(leg.shin, knee, footTarget);
-      placeSegmentBetween(leg.foot, footTarget, [
-        footTarget[0],
-        footTarget[1] - 0.02,
-        footTarget[2] + 0.08,
-      ]);
+      // makeFoot() is a fixed-size shoe, not a unit-length segment — running
+      // it through placeSegmentBetween()'s 1×1×length scale would crush it to
+      // a sliver. Place it directly at the heel/ankle with the shoe sole
+      // pitched slightly downward into the stretcher.
+      leg.foot.position.set(footTarget[0], footTarget[1], footTarget[2]);
+      leg.foot.rotation.set(-0.22, 0, 0);
+      leg.foot.scale.set(1, 1, 1);
       leg.knee.position.set(knee[0], knee[1], knee[2]);
     }
   };
