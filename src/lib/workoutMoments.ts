@@ -194,7 +194,7 @@ function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
   );
   if (!detail.isInterval || workSplits.length < 2) return [];
   const set = intervalBreakdown(workSplits, detail.strokes);
-  if (!set) return [];
+  if (!set || detail.strokes.length === 0) return [];
   const moments: WorkoutMoment[] = [];
 
   // Build edges from stroke timestamps so seek times match the replay clock.

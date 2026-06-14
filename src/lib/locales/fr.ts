@@ -919,7 +919,6 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
       subtitle: "Passages à revoir en priorité dans cette relecture.",
       lowResolution: "basé sur les partiels",
       jump: "Aller au moment",
-      spm: "spm",
       bpm: "bpm",
       "best-sustained": "Meilleur effort soutenu",
       "slower-patch": "Passage plus lent",

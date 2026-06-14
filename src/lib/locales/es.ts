@@ -910,7 +910,6 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
       subtitle: "Fragmentos que vale la pena revisar primero en esta repetición.",
       lowResolution: "basado en parciales",
       jump: "Ir al momento",
-      spm: "spm",
       bpm: "lpm",
       "best-sustained": "Mejor tramo sostenido",
       "slower-patch": "Tramo más lento",

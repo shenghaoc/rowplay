@@ -916,7 +916,6 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
       subtitle: "Stellen, die sich im Replay zuerst ansehen lohnen.",
       lowResolution: "basiert auf Splits",
       jump: "Zu Moment springen",
-      spm: "spm",
       bpm: "bpm",
       "best-sustained": "Bester Dauer-Abschnitt",
       "slower-patch": "Langsamerer Abschnitt",

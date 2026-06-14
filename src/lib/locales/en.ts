@@ -911,7 +911,6 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
       subtitle: "Places worth reviewing first in this replay.",
       lowResolution: "based on splits",
       jump: "Jump to moment",
-      spm: "spm",
       bpm: "bpm",
       "best-sustained": "Best sustained push",
       "slower-patch": "Slower patch",
