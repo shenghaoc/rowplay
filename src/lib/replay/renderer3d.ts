@@ -3,7 +3,9 @@ import type { ReplayRenderer, RenderState } from "./renderer";
 import { COLORS_DARK, COLORS_LIGHT } from "./renderer";
 import type { RenderQuality } from "./replayRenderer";
 import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
-import { createRiggedAvatar, type BoneIdx } from "./avatarMesh";
+import { createRiggedAvatar, BoneIdx } from "./avatarMesh";
+
+type Point3 = readonly [number, number, number];
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import {
@@ -276,8 +278,6 @@ function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number
   });
 }
 
-const HUMAN_SKIN = 0xc99973;
-const HUMAN_HAIR = 0x241c18;
 const HUMAN_KIT = 0x202831;
 const HUMAN_KIT_DARK = 0x111820;
 const HUMAN_SHOE = 0x151719;
@@ -288,24 +288,6 @@ function humanMat(color: number, roughness = 0.74, metalness = 0.03): THREE.Mesh
 
 function accentMaterial(accent: number): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color: accent, roughness: 0.56, metalness: 0.04 });
-}
-
-function accentPart(mesh: THREE.Mesh): THREE.Mesh {
-  mesh.userData.accent = true;
-  return mesh;
-}
-
-function ellipsoid(
-  scale: [number, number, number],
-  material: THREE.Material,
-  segments = 16,
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(1, segments, Math.max(8, segments / 2)),
-    material,
-  );
-  mesh.scale.set(scale[0], scale[1], scale[2]);
-  return mesh;
 }
 
 function capsulePart(
@@ -321,138 +303,6 @@ function capsulePart(
   if (axis === "x") mesh.rotation.z = Math.PI / 2;
   if (axis === "z") mesh.rotation.x = Math.PI / 2;
   return mesh;
-}
-
-function limbSegment(
-  length: number,
-  radius: number,
-  material: THREE.Material,
-  axis: "x" | "y" | "z" = "z",
-): THREE.Mesh {
-  const mesh = capsulePart(radius, length, material, axis);
-  if (axis === "x") mesh.position.x = length / 2;
-  else if (axis === "z") mesh.position.z = length / 2;
-  else mesh.position.y = -length / 2;
-  return mesh;
-}
-
-type Point3 = readonly [number, number, number];
-
-const SEGMENT_FORWARD = new THREE.Vector3(0, 0, 1);
-const SEGMENT_DIR = new THREE.Vector3();
-
-function placeSegmentBetween(segment: THREE.Object3D, start: Point3, end: Point3): void {
-  const dx = end[0] - start[0];
-  const dy = end[1] - start[1];
-  const dz = end[2] - start[2];
-  const length = Math.hypot(dx, dy, dz);
-  if (length < 0.001) {
-    segment.visible = false;
-    return;
-  }
-  segment.visible = true;
-  segment.position.set((start[0] + end[0]) / 2, (start[1] + end[1]) / 2, (start[2] + end[2]) / 2);
-  segment.scale.set(1, 1, length);
-  SEGMENT_DIR.set(dx / length, dy / length, dz / length);
-  segment.quaternion.setFromUnitVectors(SEGMENT_FORWARD, SEGMENT_DIR);
-}
-
-// ── Upgraded avatar body helpers ─────────────────────────────────────────────
-// These replace uniform-radius capsules and plain ellipsoids with shaped body
-// parts that give visible muscle definition, hands/feet, and facial features.
-
-/**
- * A muscle-shaped limb: a lathe geometry that tapers from proximal to distal
- * radius with a slight belly, giving visible bicep/quadricep shape.
- * Returns a unit-length mesh along +Z (same contract as taperedLimb).
- */
-function taperedLimb(
-  proximalRadius: number,
-  distalRadius: number,
-  material: THREE.Material,
-  segments = 8,
-): THREE.Mesh {
-  const pts: THREE.Vector2[] = [];
-  const steps = 6;
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    // Smooth taper with a slight belly at 30%
-    const belly = Math.sin(t * Math.PI) * 0.06 * proximalRadius;
-    const r = proximalRadius + (distalRadius - proximalRadius) * t + belly;
-    pts.push(new THREE.Vector2(r, t));
-  }
-  const geo = new THREE.LatheGeometry(pts, segments);
-  geo.computeVertexNormals();
-  // Rotate so the axis is +Z (lathe defaults to Y)
-  const mesh = new THREE.Mesh(geo, material);
-  mesh.rotation.x = -Math.PI / 2;
-  return mesh;
-}
-
-/**
- * A hand mesh: palm ellipsoid with four fingers and a thumb.
- */
-function makeHand(material: THREE.Material, segments = 8): THREE.Group {
-  const hand = new THREE.Group();
-  const palm = ellipsoid([0.04, 0.025, 0.05], material, segments);
-  hand.add(palm);
-  for (let i = 0; i < 4; i++) {
-    const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.03, 2, 4), material);
-    finger.position.set((i - 1.5) * 0.012, 0, 0.04);
-    hand.add(finger);
-  }
-  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.01, 0.025, 2, 4), material);
-  thumb.position.set(-0.03, 0.005, 0.02);
-  thumb.rotation.z = 0.5;
-  hand.add(thumb);
-  return hand;
-}
-
-/**
- * A foot mesh: shoe-shaped sole with toe box and heel.
- */
-function makeFoot(material: THREE.Material, segments = 8): THREE.Group {
-  const foot = new THREE.Group();
-  const sole = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.035, 0.16, segments, 1, segments),
-    material,
-  );
-  sole.position.z = 0.04;
-  foot.add(sole);
-  const toe = ellipsoid([0.04, 0.024, 0.048], material, segments);
-  toe.position.set(0, -0.005, 0.12);
-  foot.add(toe);
-  const heel = ellipsoid([0.035, 0.028, 0.028], material, segments);
-  heel.position.set(0, 0, -0.04);
-  foot.add(heel);
-  return foot;
-}
-
-/**
- * A head with jaw/chin, ears, and hair cap — instead of a single ellipsoid.
- */
-function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 16): THREE.Group {
-  const head = new THREE.Group();
-  // Cranium
-  const cranium = ellipsoid([0.105, 0.13, 0.1], skinMat, segments);
-  cranium.position.y = 0;
-  head.add(cranium);
-  // Jaw — smaller sphere below for chin/jawline
-  const jaw = ellipsoid([0.08, 0.05, 0.07], skinMat, Math.max(8, segments / 2));
-  jaw.position.set(0, -0.07, 0.02);
-  head.add(jaw);
-  // Ears
-  for (const side of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.022, 4, 4), skinMat);
-    ear.scale.set(0.5, 1, 1);
-    ear.position.set(side * 0.1, -0.01, -0.01);
-    head.add(ear);
-  }
-  // Hair cap
-  const hair = ellipsoid([0.11, 0.055, 0.105], hairMat, Math.max(8, segments / 2));
-  hair.position.y = 0.09;
-  head.add(hair);
-  return head;
 }
 
 /**
