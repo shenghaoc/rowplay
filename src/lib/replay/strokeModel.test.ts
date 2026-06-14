@@ -104,11 +104,7 @@ describe("strokeModel", () => {
     // buildStrokeTimeline's reducers can't silently distort animation
     // intensity without breaking a unit test.
     const timeline = buildStrokeTimeline(
-      [
-        stroke(2, 11, 28, 160, 140),
-        stroke(4, 23, 30, 220, 160),
-        stroke(6, 36, 32, 280, 178),
-      ],
+      [stroke(2, 11, 28, 160, 140), stroke(4, 23, 30, 220, 160), stroke(6, 36, 32, 280, 178)],
       "rower",
       true,
     );
