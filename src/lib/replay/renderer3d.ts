@@ -45,6 +45,8 @@ interface QualityConfig {
   buoys: boolean;
   /** Catch spray droplets on the live lane (one InstancedMesh draw). */
   spray: boolean;
+  /** Avatar detail level: "low" uses fewer segments, "high" adds muscle definition. */
+  avatarDetail: "low" | "high";
 }
 
 const QUALITY: Record<RenderQuality, QualityConfig> = {
@@ -57,6 +59,7 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     wake: 0,
     buoys: false,
     spray: false,
+    avatarDetail: "low",
   },
   medium: {
     dprCap: 2,
@@ -67,6 +70,7 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     wake: 16,
     buoys: true,
     spray: true,
+    avatarDetail: "low",
   },
   high: {
     dprCap: 2,
@@ -77,6 +81,18 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     wake: 28,
     buoys: true,
     spray: true,
+    avatarDetail: "high",
+  },
+  ultra: {
+    dprCap: 2,
+    antialias: true,
+    groundSegments: 40,
+    displacement: true,
+    shadows: true,
+    wake: 36,
+    buoys: true,
+    spray: true,
+    avatarDetail: "high",
   },
 };
 
@@ -174,7 +190,7 @@ interface SportProfile {
   /** Ground base colour for the active theme. */
   groundColor(theme: "light" | "dark"): number;
   /** Build the lane avatar (athlete + machine). */
-  make(accent: number, castShadow: boolean, opacity: number): Avatar;
+  make(accent: number, castShadow: boolean, opacity: number, detail?: "low" | "high"): Avatar;
 }
 
 /**
@@ -196,19 +212,241 @@ function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number
   });
 }
 
+// ── Upgraded avatar geometry helpers ─────────────────────────────────────────
+// These build more realistic body parts than plain boxes/spheres.
+
+/** Skin and kit colours shared across all sport avatars. */
+const SKIN = 0xd8b48a;
+const SKIN_SHADOW = 0xc49a6e;
+const KIT_DARK = 0x2a2f36;
+const SHOE = 0x1a1c1e;
+
+function skinMat(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.7 });
+}
+
+function kitMat(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: KIT_DARK, roughness: 0.8 });
+}
+
+function shoeMat(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: SHOE, roughness: 0.6 });
+}
+
+/**
+ * A muscle-shaped upper arm or thigh: a capsule that tapers slightly toward
+ * the distal end, giving visible bicep/quadricep shape.
+ */
+function taperedCapsule(
+  proximalRadius: number,
+  distalRadius: number,
+  length: number,
+  material: THREE.Material,
+  segments: number,
+): THREE.Mesh {
+  // Build a lathe profile: two radii connected by a smooth curve
+  const pts: THREE.Vector2[] = [];
+  const steps = 8;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    // Smooth taper with a slight belly at 30%
+    const belly = Math.sin(t * Math.PI) * 0.08 * proximalRadius;
+    const r = proximalRadius + (distalRadius - proximalRadius) * t + belly;
+    pts.push(new THREE.Vector2(r, t * length));
+  }
+  const geo = new THREE.LatheGeometry(pts, segments);
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, material);
+}
+
+/**
+ * Build a hand mesh: a palm ellipsoid with four fingers and a thumb.
+ */
+function makeHand(material: THREE.Material, segs: number): THREE.Group {
+  const hand = new THREE.Group();
+  // Palm
+  const palm = new THREE.Mesh(new THREE.SphereGeometry(1, segs, Math.max(4, segs / 2)), material);
+  palm.scale.set(0.04, 0.025, 0.05);
+  hand.add(palm);
+  // Fingers
+  for (let i = 0; i < 4; i++) {
+    const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.03, 2, 4), material);
+    finger.position.set((i - 1.5) * 0.012, 0, 0.04);
+    hand.add(finger);
+  }
+  // Thumb
+  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.01, 0.025, 2, 4), material);
+  thumb.position.set(-0.03, 0.005, 0.02);
+  thumb.rotation.z = 0.5;
+  hand.add(thumb);
+  return hand;
+}
+
+/**
+ * Build a foot with shoe shape: a tapered box with a slight toe box bulge.
+ */
+function makeFoot(material: THREE.Material, segs: number): THREE.Group {
+  const foot = new THREE.Group();
+  // Sole + upper
+  const sole = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.035, 0.16, segs, 1, segs), material);
+  sole.position.z = 0.04;
+  foot.add(sole);
+  // Toe box (slightly wider)
+  const toe = new THREE.Mesh(new THREE.SphereGeometry(0.04, segs, Math.max(4, segs / 2)), material);
+  toe.scale.set(1, 0.6, 1.2);
+  toe.position.set(0, -0.005, 0.12);
+  foot.add(toe);
+  // Heel
+  const heel = new THREE.Mesh(
+    new THREE.SphereGeometry(0.035, segs, Math.max(4, segs / 2)),
+    material,
+  );
+  heel.scale.set(1, 0.8, 0.8);
+  heel.position.set(0, 0, -0.04);
+  foot.add(heel);
+  return foot;
+}
+
+/**
+ * Build an athletic torso: shaped ellipsoid with shoulder caps and chest
+ * definition. Returns a group with torso, shoulders, and neck base.
+ */
+function makeTorso(
+  kitMaterial: THREE.Material,
+  skinMaterial: THREE.Material,
+  accentMaterial: THREE.Material,
+  segs: number,
+): THREE.Group {
+  const torso = new THREE.Group();
+  // Main chest/torso body — wider at shoulders, narrower at waist
+  const chest = new THREE.Mesh(
+    new THREE.SphereGeometry(1, segs, Math.max(6, segs / 2)),
+    kitMaterial,
+  );
+  chest.scale.set(0.2, 0.3, 0.14);
+  chest.position.y = 0.55;
+  torso.add(chest);
+  // Shoulder caps — small spheres at each shoulder for visible deltoids
+  for (const side of [-1, 1]) {
+    const shoulder = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, segs, Math.max(4, segs / 2)),
+      kitMaterial,
+    );
+    shoulder.position.set(side * 0.22, 0.72, 0);
+    torso.add(shoulder);
+  }
+  // Upper back plate — subtle back definition
+  const back = new THREE.Mesh(
+    new THREE.SphereGeometry(1, segs, Math.max(4, segs / 2)),
+    kitMaterial,
+  );
+  back.scale.set(0.18, 0.25, 0.1);
+  back.position.set(0, 0.55, -0.06);
+  torso.add(back);
+  // Jersey accent stripe across the chest
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.01), accentMaterial);
+  stripe.position.set(0, 0.6, 0.145);
+  stripe.userData.accent = true;
+  torso.add(stripe);
+  // Neck — visible cylinder connecting torso to head
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.1, segs), skinMaterial);
+  neck.position.y = 0.85;
+  torso.add(neck);
+  return torso;
+}
+
+/**
+ * Build a head with jaw definition, ears, and hair cap.
+ */
+function makeHead(
+  skinMaterial: THREE.Material,
+  hairMaterial: THREE.Material,
+  segs: number,
+): THREE.Group {
+  const head = new THREE.Group();
+  // Cranium — slightly elongated sphere
+  const cranium = new THREE.Mesh(
+    new THREE.SphereGeometry(1, segs, Math.max(6, segs / 2)),
+    skinMaterial,
+  );
+  cranium.scale.set(0.1, 0.12, 0.1);
+  cranium.position.y = 0.97;
+  head.add(cranium);
+  // Jaw — smaller sphere below for chin/jawline definition
+  const jaw = new THREE.Mesh(
+    new THREE.SphereGeometry(1, segs, Math.max(4, segs / 2)),
+    skinMaterial,
+  );
+  jaw.scale.set(0.08, 0.05, 0.07);
+  jaw.position.set(0, 0.9, 0.02);
+  head.add(jaw);
+  // Ears
+  for (const side of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.022, 4, 4), skinMaterial);
+    ear.scale.set(0.5, 1, 1);
+    ear.position.set(side * 0.1, 0.96, -0.01);
+    head.add(ear);
+  }
+  // Hair cap — sits on top of the cranium
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(1, segs, Math.max(4, segs / 2)),
+    hairMaterial,
+  );
+  hair.scale.set(0.105, 0.055, 0.105);
+  hair.position.y = 1.05;
+  head.add(hair);
+  return head;
+}
+
+/**
+ * Build hips/bib area: a shaped ellipsoid for the pelvic region.
+ */
+function makeHips(
+  kitMaterial: THREE.Material,
+  accentMaterial: THREE.Material,
+  segs: number,
+): THREE.Group {
+  const hips = new THREE.Group();
+  const pelvis = new THREE.Mesh(
+    new THREE.SphereGeometry(1, segs, Math.max(6, segs / 2)),
+    kitMaterial,
+  );
+  pelvis.scale.set(0.18, 0.1, 0.13);
+  pelvis.position.y = 0.38;
+  hips.add(pelvis);
+  // Accent bib/shorts band
+  const bib = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.05, 0.01), accentMaterial);
+  bib.position.set(0, 0.38, 0.135);
+  bib.userData.accent = true;
+  hips.add(bib);
+  return hips;
+}
+
+// ── Body part counts for quality gating ──────────────────────────────────────
+function avatarSegs(detail: "low" | "high"): number {
+  return detail === "high" ? 12 : 8;
+}
+
 /**
  * Low-poly single scull: long thin hull (capsule), a seated rower, and two oars
  * with blades. The hull, deck and oar blades carry `userData.accent`; the rower
  * slides + leans and the oars sweep/feather per stroke.
  */
-function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
+function makeRowerAvatar(
+  accent: number,
+  castShadow: boolean,
+  opacity = 1,
+  detail: "low" | "high" = "low",
+): Avatar {
   const group = new THREE.Group();
   const accentMat = () =>
     new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.1 });
+  const segs = avatarSegs(detail);
 
+  // ── Boat (procedural, unchanged) ──────────────────────────────────────
   const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 3.0, 4, 8), accentMat());
-  hull.rotation.x = Math.PI / 2; // capsule axis Y -> Z (travel)
-  hull.scale.set(0.5, 0.42, 1); // narrow + low profile
+  hull.rotation.x = Math.PI / 2;
+  hull.scale.set(0.5, 0.42, 1);
   hull.position.y = 0.16;
   hull.userData.accent = true;
   group.add(hull);
@@ -218,37 +456,49 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   deck.userData.accent = true;
   group.add(deck);
 
-  // Rower (torso + head + arms) in its own group so it can slide + lean per
-  // stroke. The arms hang off the torso and swing with the oar handles.
+  // ── Rower body (upgraded geometry) ────────────────────────────────────
   const rower = new THREE.Group();
-  const torso = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.5, 0.3),
-    new THREE.MeshStandardMaterial({ color: 0x2a2f36, roughness: 0.8 }),
+
+  // Hips / pelvic region
+  const hips = makeHips(kitMat(), accentMat(), segs);
+  rower.add(hips);
+
+  // Torso with shoulders, chest, back, neck, accent stripe
+  const torso = makeTorso(kitMat(), skinMat(), accentMat(), segs);
+  rower.add(torso);
+
+  // Head with jaw, ears, hair
+  const head = makeHead(
+    skinMat(),
+    new THREE.MeshStandardMaterial({ color: 0x241c18, roughness: 0.8 }),
+    segs,
   );
-  torso.position.y = 0.5;
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.13, 8, 6),
-    new THREE.MeshStandardMaterial({ color: 0xd8b48a, roughness: 0.7 }),
-  );
-  head.position.y = 0.82;
-  rower.add(torso, head);
+  rower.add(head);
+
+  // Arms: upper arm + forearm + hand, pivoting at shoulder
   const arms: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const arm = new THREE.Group();
-    const limb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.08, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0xd8b48a, roughness: 0.7 }),
-    );
-    limb.position.z = 0.25; // pivot at the shoulder, reach along +Z
-    arm.add(limb);
-    arm.position.set(side * 0.19, 0.66, 0.05);
+    // Upper arm — tapered capsule for visible bicep
+    const upperArm = taperedCapsule(0.038, 0.032, 0.26, skinMat(), segs);
+    upperArm.position.set(0, -0.13, 0);
+    arm.add(upperArm);
+    // Forearm
+    const forearm = taperedCapsule(0.03, 0.025, 0.24, skinMat(), segs);
+    forearm.position.set(0, -0.38, 0.08);
+    arm.add(forearm);
+    // Hand
+    const hand = makeHand(skinMat(), segs);
+    hand.position.set(0, -0.5, 0.16);
+    arm.add(hand);
+    arm.position.set(side * 0.24, 0.72, 0.05);
     rower.add(arm);
     arms.push(arm);
   }
   rower.position.z = -0.1;
   group.add(rower);
 
-  // Oars: each a group pivoting about the boat centreline (rigger pin).
+  // ── Oars (procedural, unchanged) ─────────────────────────────────────
   const oars: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const oar = new THREE.Group();
@@ -256,14 +506,13 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       new THREE.CylinderGeometry(0.035, 0.035, 2.4, 6),
       new THREE.MeshStandardMaterial({ color: 0xe7eef0, roughness: 0.6 }),
     );
-    shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
+    shaft.rotation.z = Math.PI / 2;
     shaft.position.x = side * 1.2;
     oar.add(shaft);
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.26), accentMat());
     blade.position.set(side * 2.4, -0.05, 0);
     blade.userData.accent = true;
     oar.add(blade);
-    // Low pivot so the buried-blade dip in animate() reaches the waterline.
     oar.position.y = 0.24;
     oar.userData.side = side;
     group.add(oar);
@@ -278,22 +527,15 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       for (const oar of oars) oar.rotation.set(0, 0, 0);
       return;
     }
-    // Warped phase: the drive is quick, the slide back up is unhurried.
     const w = warpStrokePhase(phase);
-    const drive = Math.cos(w); // +1 catch … -1 finish
-    const recovery = Math.max(0, -Math.sin(w)); // lift blades on return
-    // At the catch the rower is compressed toward the stern, leaning into the
-    // slide; through the drive both slide and layback move toward the bow.
+    const drive = Math.cos(w);
+    const recovery = Math.max(0, -Math.sin(w));
     rower.position.z = -0.1 - drive * 0.18;
     rower.rotation.x = -0.1 - drive * 0.22;
-    // Arms reach near-horizontal at the catch and draw down through the finish.
     for (const arm of arms) arm.rotation.x = -0.2 + (1 - drive) * 0.27;
     for (const oar of oars) {
       const side = (oar.userData.side as number) ?? 1;
-      // Blades enter ahead of the rigger at the catch and sweep toward the
-      // stern through the drive (opposing the hull's travel, like the 2D view).
       oar.rotation.y = -side * drive * 0.5;
-      // Buried through the drive (slight dip), feathered clear on the recovery.
       oar.rotation.z = side * (recovery * 0.26 - 0.06);
     }
   };
@@ -307,11 +549,16 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
  * and pole baskets carry `userData.accent`; the upper body crunches forward and
  * both poles swing fore/aft together on each pull.
  */
-function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
+function makeSkierAvatar(
+  accent: number,
+  castShadow: boolean,
+  opacity = 1,
+  detail: "low" | "high" = "low",
+): Avatar {
   const group = new THREE.Group();
   const accentMat = () =>
     new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.1 });
-  const neutralMat = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 });
+  const segs = avatarSegs(detail);
 
   // Skis: two thin planks along travel (+Z).
   for (const side of [-1, 1]) {
@@ -321,40 +568,68 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     group.add(ski);
   }
 
-  // Legs are planted; the upper body pivots from the hips for the crunch.
+  // Legs: planted on skis — tapered thigh + shin + foot
   for (const side of [-1, 1]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.6, 0.18), neutralMat(0x2a2f36));
-    leg.position.set(side * 0.16, 0.4, 0);
-    group.add(leg);
+    const thigh = taperedCapsule(0.055, 0.045, 0.35, kitMat(), segs);
+    thigh.position.set(side * 0.16, 0.55, 0);
+    group.add(thigh);
+    const shin = taperedCapsule(0.04, 0.032, 0.35, kitMat(), segs);
+    shin.position.set(side * 0.16, 0.22, 0);
+    group.add(shin);
+    const foot = makeFoot(shoeMat(), segs);
+    foot.position.set(side * 0.16, 0.04, 0.04);
+    group.add(foot);
   }
+
+  // Upper body pivots from hips for the double-pole crunch
   const upper = new THREE.Group();
   upper.position.y = 0.7;
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.55, 0.28), accentMat());
-  torso.position.y = 0.28;
-  torso.userData.accent = true;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), neutralMat(0xd8b48a));
-  head.position.y = 0.7;
-  upper.add(torso, head);
-  // Arms pivot at the shoulders and swing with the poles.
+
+  // Hips
+  const hips = makeHips(kitMat(), accentMat(), segs);
+  hips.position.y = -0.32; // relative to upper group
+  upper.add(hips);
+
+  // Torso with shoulders, chest, accent stripe
+  const torso = makeTorso(kitMat(), skinMat(), accentMat(), segs);
+  torso.position.y = -0.32;
+  upper.add(torso);
+
+  // Head
+  const head = makeHead(
+    skinMat(),
+    new THREE.MeshStandardMaterial({ color: 0x241c18, roughness: 0.8 }),
+    segs,
+  );
+  head.position.y = -0.32;
+  upper.add(head);
+
+  // Arms: pivot at shoulders, swing with poles
   const arms: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const arm = new THREE.Group();
-    const limb = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.42), neutralMat(0xd8b48a));
-    limb.position.z = 0.21;
-    arm.add(limb);
-    arm.position.set(side * 0.24, 0.42, 0.05);
+    const upperArm = taperedCapsule(0.035, 0.028, 0.28, skinMat(), segs);
+    upperArm.position.set(0, -0.14, 0);
+    arm.add(upperArm);
+    const forearm = taperedCapsule(0.028, 0.022, 0.26, skinMat(), segs);
+    forearm.position.set(0, -0.38, 0.1);
+    arm.add(forearm);
+    const hand = makeHand(skinMat(), segs);
+    hand.position.set(0, -0.52, 0.18);
+    arm.add(hand);
+    arm.position.set(side * 0.26, 0.38, 0.05);
     upper.add(arm);
     arms.push(arm);
   }
   group.add(upper);
 
-  // Poles: pivot at the hands (shoulder height), basket near the snow.
+  // Poles: pivot at the hands, basket near the snow
   const poles: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const pole = new THREE.Group();
     const shaft = new THREE.Mesh(
       new THREE.CylinderGeometry(0.02, 0.02, 1.2, 6),
-      neutralMat(0xe7eef0),
+      new THREE.MeshStandardMaterial({ color: 0xe7eef0, roughness: 0.6 }),
     );
     shaft.position.y = -0.6;
     pole.add(shaft);
@@ -374,14 +649,10 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       for (const p of poles) p.rotation.x = -0.2;
       return;
     }
-    // Warped phase: a sharp pole plant + pull, then a slow recoil upright.
     const w = warpStrokePhase(phase);
-    const swing = Math.cos(w); // +1 plant (tips forward) … -1 end of pull
-    const crunch = Math.max(0, -swing); // bend forward through the drive
+    const swing = Math.cos(w);
+    const crunch = Math.max(0, -swing);
     upper.rotation.x = 0.2 + crunch * 0.5;
-    // Hands reach high and forward at the plant, then press down and back
-    // through the pull; pole tips plant ahead of the feet and sweep behind
-    // (negative rotation.x moves the below-hand basket toward +Z/forward).
     for (const arm of arms) arm.rotation.x = -0.25 - swing * 0.35;
     for (const p of poles) p.rotation.x = -swing * 0.9 - 0.1;
   };
@@ -395,12 +666,16 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
  * Frame, wheel spokes and jersey carry `userData.accent`; the wheels roll, the
  * cranks turn and the rider's thighs pedal in opposition.
  */
-function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
+function makeBikeAvatar(
+  accent: number,
+  castShadow: boolean,
+  opacity = 1,
+  detail: "low" | "high" = "low",
+): Avatar {
   const group = new THREE.Group();
   const accentMat = () =>
     new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, metalness: 0.2 });
-  const neutralMat = (c: number, rough = 0.7) =>
-    new THREE.MeshStandardMaterial({ color: c, roughness: rough });
+  const segs = avatarSegs(detail);
 
   const wheelR = 0.45;
   const wheels: THREE.Group[] = [];
@@ -408,11 +683,10 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     const wheel = new THREE.Group();
     const tyre = new THREE.Mesh(
       new THREE.TorusGeometry(wheelR, 0.06, 8, 16),
-      neutralMat(0x20242a, 0.6),
+      new THREE.MeshStandardMaterial({ color: 0x20242a, roughness: 0.6 }),
     );
-    tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
+    tyre.rotation.y = Math.PI / 2;
     wheel.add(tyre);
-    // Crossed bright spokes make the spin legible at low poly.
     const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.04, wheelR * 1.8, 0.04), accentMat());
     spoke.userData.accent = true;
     wheel.add(spoke);
@@ -425,7 +699,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     wheels.push(wheel);
   }
 
-  // Frame: down tube + seat tube.
+  // Frame: down tube + seat tube
   const downTube = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.6), accentMat());
   downTube.position.set(0, wheelR + 0.15, 0);
   downTube.userData.accent = true;
@@ -434,40 +708,102 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   seatTube.userData.accent = true;
   group.add(downTube, seatTube);
 
-  // Cranks: spin about the bottom bracket (X axis) with two pedals.
+  // Cranks
   const cranks = new THREE.Group();
   cranks.position.set(0, wheelR, -0.05);
   for (const dir of [1, -1]) {
-    const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), neutralMat(0x20242a));
+    const pedal = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.05, 0.1),
+      new THREE.MeshStandardMaterial({ color: 0x20242a, roughness: 0.7 }),
+    );
     pedal.position.set(0, dir * 0.18, 0);
     cranks.add(pedal);
   }
   group.add(cranks);
 
-  // Rider: jersey torso in an aero lean + head + thighs that pedal.
+  // Rider: upgraded body in aero tuck
   const rider = new THREE.Group();
   rider.position.set(0, wheelR + 0.5, -0.35);
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.6, 0.26), accentMat());
-  torso.rotation.x = 0.6; // aero tuck
-  torso.position.y = 0.3;
-  torso.userData.accent = true;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), neutralMat(0xd8b48a));
-  head.position.set(0, 0.62, 0.35);
+
+  // Torso — aero tuck (rotated forward ~35°)
+  const torsoGrp = new THREE.Group();
+  torsoGrp.rotation.x = 0.6;
+  torsoGrp.position.y = 0.3;
+
+  const chest = new THREE.Mesh(
+    new THREE.SphereGeometry(1, segs, Math.max(6, segs / 2)),
+    accentMat(),
+  );
+  chest.scale.set(0.18, 0.28, 0.13);
+  chest.userData.accent = true;
+  torsoGrp.add(chest);
+
+  // Shoulder caps
+  for (const side of [-1, 1]) {
+    const shoulder = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05, segs, Math.max(4, segs / 2)),
+      accentMat(),
+    );
+    shoulder.position.set(side * 0.2, 0.18, 0);
+    shoulder.userData.accent = true;
+    torsoGrp.add(shoulder);
+  }
+
+  // Jersey accent stripe
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.01), accentMat());
+  stripe.position.set(0, 0.05, 0.135);
+  stripe.userData.accent = true;
+  torsoGrp.add(stripe);
+
+  // Neck
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.1, segs), skinMat());
+  neck.position.y = 0.32;
+  torsoGrp.add(neck);
+
+  rider.add(torsoGrp);
+
+  // Head — slightly forward of torso
+  const headGrp = new THREE.Group();
+  headGrp.position.set(0, 0.62, 0.35);
+  const cranium = new THREE.Mesh(
+    new THREE.SphereGeometry(0.11, segs, Math.max(6, segs / 2)),
+    skinMat(),
+  );
+  headGrp.add(cranium);
+  // Helmet (accent)
+  const helmet = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, segs, Math.max(4, segs / 2)),
+    accentMat(),
+  );
+  helmet.scale.set(1, 0.7, 1.1);
+  helmet.position.y = 0.03;
+  helmet.userData.accent = true;
+  headGrp.add(helmet);
+  rider.add(headGrp);
+
+  // Thighs that pedal
   const thighs: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
-    const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.14), neutralMat(0x2a2f36));
+    const thigh = taperedCapsule(0.05, 0.04, 0.35, kitMat(), segs);
     thigh.position.set(side * 0.1, -0.1, 0.2);
     rider.add(thigh);
     thighs.push(thigh);
   }
-  // Arms from the shoulders down to the bars, fixed in the tuck.
+
+  // Arms from shoulders down to bars, fixed in tuck
   for (const side of [-1, 1]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.5), neutralMat(0xd8b48a));
-    arm.position.set(side * 0.15, 0.32, 0.45);
+    const arm = new THREE.Group();
+    const upperArm = taperedCapsule(0.032, 0.026, 0.26, skinMat(), segs);
+    upperArm.rotation.x = -0.7;
+    arm.add(upperArm);
+    const forearm = taperedCapsule(0.026, 0.02, 0.24, skinMat(), segs);
+    forearm.position.set(0, -0.08, 0.2);
+    forearm.rotation.x = -0.5;
+    arm.add(forearm);
+    arm.position.set(side * 0.17, 0.2, 0.3);
     arm.rotation.x = -0.7;
     rider.add(arm);
   }
-  rider.add(torso, head);
   group.add(rider);
 
   const animate = (phase: number, reduce: boolean): void => {
@@ -478,12 +814,10 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
       rider.rotation.z = 0;
       return;
     }
-    // Positive rotation about +X rolls the top of the wheel toward +Z (forward).
-    for (const w of wheels) w.rotation.x = phase * 2.4; // wheels roll fast
-    cranks.rotation.x = phase; // pedals turn
+    for (const w of wheels) w.rotation.x = phase * 2.4;
+    cranks.rotation.x = phase;
     thighs[0].rotation.x = Math.sin(phase) * 0.5;
     thighs[1].rotation.x = Math.sin(phase + Math.PI) * 0.5;
-    // Subtle alternating upper-body sway with the pedal stroke.
     rider.rotation.z = Math.sin(phase) * 0.05;
   };
 
@@ -717,12 +1051,22 @@ export class CourseRenderer3D implements ReplayRenderer {
     }
     this.scene.add(sun);
 
-    this.liveAvatar = this.profile.make(hex(COLORS_LIGHT.live), this.cfg.shadows, 1);
+    this.liveAvatar = this.profile.make(
+      hex(COLORS_LIGHT.live),
+      this.cfg.shadows,
+      1,
+      this.cfg.avatarDetail,
+    );
     this.liveBoat = new THREE.Group();
     this.liveBoat.add(this.liveAvatar.group);
     // Ghost: translucent + no shadow so it reads as a phantom, clearly distinct
     // from the solid live avatar.
-    this.ghostAvatar = this.profile.make(hex(COLORS_LIGHT.ghost), false, 0.45);
+    this.ghostAvatar = this.profile.make(
+      hex(COLORS_LIGHT.ghost),
+      false,
+      0.45,
+      this.cfg.avatarDetail,
+    );
     this.ghostGroup = new THREE.Group();
     this.ghostGroup.visible = false;
     this.ghostGroup.add(this.ghostAvatar.group);
