@@ -111,12 +111,14 @@ describe("analyzeWorkoutMoments", () => {
     const best = report.moments.find((m) => m.kind === "best-rep");
     expect(best).toBeDefined();
     // Rep 2 (index 2 in workSplits) = pace 108, fastest.
-    // Edges built from full detail.splits (skipping rest split 1):
-    //   edges[0]: t=0 (work split 0, time=110, restTime=60)
-    //   edges[1]: t=110+60+90=260 (work split 2, time=116, restTime=60)
-    //   edges[2]: t=260+116+60=436 (work split 3, time=108)
-    expect(best!.startTime).toBe(436);
-    expect(best!.endTime).toBe(436 + 108);
+    // Edges built from stroke timestamps using work-only cumulative time:
+    //   strokes: t=[0, 55, 110, 165, 220, 275]
+    //   edges[0]: t=0→110 (work split 0, cumWorkTime=0)
+    //   edges[1]: t=110→220 (work split 2, cumWorkTime=110)
+    //   edges[2]: t=275→275 (work split 3, cumWorkTime=226, clamped to last stroke)
+    // Seek times use the replay clock (stroke timestamps), not split cumulative time.
+    expect(best!.startTime).toBe(275);
+    expect(best!.endTime).toBe(275);
   });
 
   it("returns an empty safe report for insufficient samples", () => {

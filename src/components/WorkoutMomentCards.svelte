@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { fmtPace, fmtTime } from '$lib/format';
 	import { getI18nContext } from '$lib/i18n.svelte';
+	import { themeFor } from '$lib/replay/sports';
+	import type { Sport } from '$lib/types';
 	import type { WorkoutMoment, WorkoutMomentReport } from '$lib/workoutMoments';
 
-	let { report, onseek }: { report: WorkoutMomentReport; onseek: (seconds: number) => void } = $props();
+	let { report, sport, onseek }: { report: WorkoutMomentReport; sport: Sport; onseek: (seconds: number) => void } = $props();
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);
+	const cadenceUnit = $derived(themeFor(sport).cadenceUnit);
 
 	function title(moment: WorkoutMoment): string {
 		return t(`replay.moments.${moment.kind}`);
@@ -30,7 +33,7 @@
 					<div class="moment-main mono">{fmtTime(moment.startTime, true)}–{fmtTime(moment.endTime, true)} · {fmtPace(moment.avgPace)}</div>
 					<div class="moment-meta muted small">
 						<span>{Math.round(moment.avgWatts)}w</span>
-						<span>{Math.round(moment.avgSpm)} {t('replay.moments.spm')}</span>
+						<span>{Math.round(moment.avgSpm)} {cadenceUnit}</span>
 						{#if moment.avgHr}<span>{Math.round(moment.avgHr)} {t('replay.moments.bpm')}</span>{/if}
 					</div>
 					<p class="moment-reason muted small">{t(moment.reasonKey, moment.reasonParams)}</p>

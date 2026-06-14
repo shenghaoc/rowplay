@@ -1,5 +1,6 @@
 import { intervalBreakdown } from "$lib/analytics";
-import type { Split, Stroke, WorkoutDetail } from "$lib/types";
+import { paceToWattsForSport } from "$lib/format";
+import type { Split, Sport, Stroke, WorkoutDetail } from "$lib/types";
 
 export type WorkoutMomentKind =
   | "best-sustained"
@@ -45,6 +46,8 @@ interface WindowStats {
 const MIN_WINDOW_SECONDS = 20;
 const SLOWER_THRESHOLD_PCT = 2;
 const EFFICIENT_PACE_ALLOWANCE_PCT = 1.5;
+/** Gap (s) between consecutive valid samples that signals a rest period. */
+const REST_GAP_SECONDS = 30;
 
 export function analyzeWorkoutMoments(detail: WorkoutDetail): WorkoutMomentReport {
   const lowResolution = detail.hasStrokeData === false;
@@ -112,13 +115,23 @@ function validWorkSamples(strokes: Stroke[]): Stroke[] {
 function buildRollingWindows(samples: Stroke[], targetSeconds: number): WindowStats[] {
   const out: WindowStats[] = [];
   let end = 0;
+  const fullLength =
+    samples.length > 0 && samples[samples.length - 1].t - samples[0].t >= targetSeconds;
   for (let start = 0; start < samples.length; start++) {
-    while (end + 1 < samples.length && samples[end].t - samples[start].t < targetSeconds) end++;
+    // Reset end when a time gap (rest period) is detected between consecutive samples.
+    if (end < start) end = start;
+    while (
+      end + 1 < samples.length &&
+      samples[end].t - samples[start].t < targetSeconds &&
+      samples[end + 1].t - samples[end].t <= REST_GAP_SECONDS
+    )
+      end++;
     const a = samples[start];
     const b = samples[end];
     const elapsed = b.t - a.t;
     const distance = b.d - a.d;
-    if (elapsed >= MIN_WINDOW_SECONDS && distance > 0) out.push(windowStats(samples, start, end));
+    if (distance > 0 && (fullLength ? elapsed >= targetSeconds : elapsed >= MIN_WINDOW_SECONDS))
+      out.push(windowStats(samples, start, end));
   }
   return out;
 }
@@ -184,32 +197,52 @@ function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
   if (!set) return [];
   const moments: WorkoutMoment[] = [];
 
+  // Build edges from stroke timestamps so seek times match the replay clock.
+  // For per-stroke data the replay is work-only; for synth strokes it includes
+  // rest — either way, using the actual stroke t/d keeps edges in the right
+  // time base. We use work-only cumulative time (excluding rest) to find the
+  // stroke range for each work split, matching how mapStrokes normalises
+  // per-stroke intervals.
   const edges: {
     startTime: number;
     endTime: number;
     startDistance: number;
     endDistance: number;
   }[] = [];
-  let t = 0;
-  let d = 0;
+  let strokeIdx = 0;
+  let cumWorkTime = 0;
+  let cumDist = 0;
+  const last = detail.strokes.length - 1;
   for (const s of detail.splits) {
     const isWork = !s.isRest && s.time > 0 && s.distance > 0 && s.pace > 0;
     if (isWork) {
+      // Find the first stroke at or after this work split's cumulative time.
+      while (strokeIdx < detail.strokes.length && detail.strokes[strokeIdx].t < cumWorkTime)
+        strokeIdx++;
+      const startIdx = Math.min(strokeIdx, last);
+      const splitEndTime = cumWorkTime + s.time;
+      // Find the last stroke at or before the split's end time.
+      let endIdx = startIdx;
+      for (let j = startIdx; j < detail.strokes.length; j++) {
+        if (detail.strokes[j].t <= splitEndTime) endIdx = j;
+        else break;
+      }
       edges.push({
-        startTime: t,
-        endTime: t + s.time,
-        startDistance: d,
-        endDistance: d + s.distance,
+        startTime: detail.strokes[startIdx].t,
+        endTime: detail.strokes[endIdx].t,
+        startDistance: cumDist,
+        endDistance: cumDist + s.distance,
       });
     }
-    t += s.time + (s.restTime ?? 0);
-    d += s.distance + (s.restDistance ?? 0);
+    cumWorkTime += s.time;
+    cumDist += s.distance + (s.restDistance ?? 0);
   }
 
   for (const rep of set.reps) {
     if (!rep.isFastest && !rep.isSlowest) continue;
     const split = workSplits[rep.index];
     const edge = edges[rep.index];
+    if (!edge) continue;
     moments.push({
       id: rep.isFastest ? "best-rep" : "slowest-rep",
       kind: rep.isFastest ? "best-rep" : "slowest-rep",
@@ -218,7 +251,7 @@ function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
       startDistance: edge.startDistance,
       endDistance: edge.endDistance,
       avgPace: rep.pace,
-      avgWatts: splitWatts(split),
+      avgWatts: splitWatts(split, detail.sport),
       avgSpm: rep.spm,
       avgHr: rep.hr,
       dps: rep.dps,
@@ -265,8 +298,8 @@ function dedupeMoments(moments: WorkoutMoment[]): WorkoutMoment[] {
   });
 }
 
-function splitWatts(split: Split): number {
-  return split.pace > 0 ? 2.8 / Math.pow(split.pace / 500, 3) : 0;
+function splitWatts(split: Split, sport: Sport): number {
+  return split.pace > 0 ? paceToWattsForSport(sport, split.pace) : 0;
 }
 
 function average(values: number[]): number {

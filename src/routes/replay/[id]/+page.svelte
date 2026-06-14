@@ -1391,7 +1391,7 @@
 		{/if}
 	</div>
 
-	<WorkoutMomentCards report={momentReport} onseek={(seconds) => engine?.seek(seconds)} />
+	<WorkoutMomentCards report={momentReport} sport={detail.sport} onseek={(seconds) => engine?.seek(seconds)} />
 
 	{#if !logbookHasHr}
 		<div class="card card-border bg-base-100 shadow-md p-5 hrimport">
