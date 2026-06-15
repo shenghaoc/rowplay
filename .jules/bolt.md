@@ -35,3 +35,6 @@
 
 **Learning:** `Array.prototype.filter` followed by `Array.prototype.reduce` in inner loops (e.g., iterating through multiple targets for grouped sets) creates significant garbage collection overhead by allocating intermediate arrays.
 **Action:** Replace `filter` + `reduce` chains inside hot loops with a single loop tracking the optimal value, avoiding any intermediate object/array allocations.
+## 2026-06-14 - Replace spread Math.max on array map with explicit loop
+**Learning:** Spread syntax `Math.max(...array.map())` allocates an intermediate array using `.map` and places all of its elements onto the call stack via the spread operator `...`, which risks `Maximum call stack size exceeded` for large datasets and incurs unneeded allocation overhead.
+**Action:** Replace map chains and array spreading `Math.max(...array.map())` or `Math.max(...array)` with explicit single-pass `for` loops tracking the maximum value. Ensure to add comments explaining the optimization.

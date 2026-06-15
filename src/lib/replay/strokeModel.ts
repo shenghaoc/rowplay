@@ -129,9 +129,27 @@ export function buildStrokeTimeline(strokes: Stroke[], sport: Sport, real = true
     startD = entry.endD;
   });
 
-  const watts = entries.map((e) => e.watts).filter((w) => w > 0);
-  const dps = entries.map((e) => e.endD - e.startD).filter((d) => d > 0);
-  const hrs = entries.map((e) => e.hr ?? 0).filter((h) => h > 0);
+  // Bolt: Single-pass loops for aggregates to avoid map/filter chains and spread Math.max
+  const watts: number[] = [];
+  const dps: number[] = [];
+  const hrs: number[] = [];
+  let peakWatts = 0;
+  let maxHr = 0;
+
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.watts > 0) {
+      watts.push(e.watts);
+      if (e.watts > peakWatts) peakWatts = e.watts;
+    }
+    const d = e.endD - e.startD;
+    if (d > 0) dps.push(d);
+    const h = e.hr ?? 0;
+    if (h > 0) {
+      hrs.push(h);
+      if (h > maxHr) maxHr = h;
+    }
+  }
 
   return {
     sport,
@@ -140,10 +158,10 @@ export function buildStrokeTimeline(strokes: Stroke[], sport: Sport, real = true
     duration: entries.at(-1)?.endT ?? 0,
     distance: entries.at(-1)?.endD ?? 0,
     medianWatts: median(watts, 0),
-    peakWatts: Math.max(0, ...watts),
+    peakWatts,
     medianDps: median(dps, sport === "bike" ? 5 : sport === "skierg" ? 8 : 11),
     medianHr: median(hrs, 0),
-    maxHr: Math.max(0, ...hrs),
+    maxHr,
   };
 }
 
