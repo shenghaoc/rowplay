@@ -1849,16 +1849,18 @@ export function annualGoalProgress(
   // work for the bulk of a multi-year history.
   const prevYearStr = String(year - 1);
   const nextYearStr = String(year + 1);
-  const inYear = workouts
-    .filter((w) => {
-      const wYear = w.date.slice(0, 4);
-      return wYear === String(year) || wYear === prevYearStr || wYear === nextYearStr;
-    })
-    .filter((w) => workoutDayKey(w.date, w.timezone, homeTz).startsWith(yearPrefix));
-  const current =
-    goal.kind === "meters"
-      ? inYear.reduce((s, w) => s + challengeDistanceMetres(w), 0)
-      : inYear.reduce((s, w) => s + w.time, 0);
+
+  const isMeterGoal = goal.kind === "meters";
+  let current = 0;
+  for (let i = 0, len = workouts.length; i < len; i++) {
+    const w = workouts[i];
+    const wYear = w.date.slice(0, 4);
+    if (wYear === String(year) || wYear === prevYearStr || wYear === nextYearStr) {
+      if (workoutDayKey(w.date, w.timezone, homeTz).startsWith(yearPrefix)) {
+        current += isMeterGoal ? challengeDistanceMetres(w) : w.time;
+      }
+    }
+  }
 
   const daysInYear = daysInCalendarYear(year);
   const yearEnd = `${year}-12-31`;
@@ -1996,7 +1998,10 @@ export function athleteBadges(
   pbs: ReturnType<typeof distancePBs>,
   homeTz?: string,
 ): AthleteBadge[] {
-  const totalMeters = workouts.reduce((s, w) => s + challengeDistanceMetres(w), 0);
+  let totalMeters = 0;
+  for (let i = 0, len = workouts.length; i < len; i++) {
+    totalMeters += challengeDistanceMetres(workouts[i]);
+  }
   const pbDistances = new Set(pbs.map((p) => p.distance));
   const badges: AthleteBadge[] = [];
 
