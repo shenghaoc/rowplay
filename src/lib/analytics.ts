@@ -1850,14 +1850,14 @@ export function annualGoalProgress(
   const prevYearStr = String(year - 1);
   const nextYearStr = String(year + 1);
 
-  // Bolt: Single-pass for loop avoiding intermediate array allocations from filter/reduce chains
+  const isMeterGoal = goal.kind === "meters";
   let current = 0;
-  for (let i = 0; i < workouts.length; i++) {
+  for (let i = 0, len = workouts.length; i < len; i++) {
     const w = workouts[i];
     const wYear = w.date.slice(0, 4);
     if (wYear === String(year) || wYear === prevYearStr || wYear === nextYearStr) {
       if (workoutDayKey(w.date, w.timezone, homeTz).startsWith(yearPrefix)) {
-        current += goal.kind === "meters" ? challengeDistanceMetres(w) : w.time;
+        current += isMeterGoal ? challengeDistanceMetres(w) : w.time;
       }
     }
   }
@@ -1998,9 +1998,8 @@ export function athleteBadges(
   pbs: ReturnType<typeof distancePBs>,
   homeTz?: string,
 ): AthleteBadge[] {
-  // Bolt: Single-pass loop avoiding intermediate array allocations
   let totalMeters = 0;
-  for (let i = 0; i < workouts.length; i++) {
+  for (let i = 0, len = workouts.length; i < len; i++) {
     totalMeters += challengeDistanceMetres(workouts[i]);
   }
   const pbDistances = new Set(pbs.map((p) => p.distance));
