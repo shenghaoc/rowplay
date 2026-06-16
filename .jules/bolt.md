@@ -38,3 +38,7 @@
 ## 2026-06-14 - Replace spread Math.max on array map with explicit loop
 **Learning:** Spread syntax `Math.max(...array.map())` allocates an intermediate array using `.map` and places all of its elements onto the call stack via the spread operator `...`, which risks `Maximum call stack size exceeded` for large datasets and incurs unneeded allocation overhead.
 **Action:** Replace map chains and array spreading `Math.max(...array.map())` or `Math.max(...array)` with explicit single-pass `for` loops tracking the maximum value. Ensure to add comments explaining the optimization.
+
+## 2024-08-01 - Avoid array method chains in hot loops
+**Learning:** Using chained array methods like `.slice().map().filter()` inside sliding window calculations over large time-series data generates many intermediate arrays and causes high garbage collection pressure.
+**Action:** Replace map/filter chains with single-pass `for` loops to directly accumulate values without creating temporary arrays.
