@@ -137,20 +137,42 @@ function buildRollingWindows(samples: Stroke[], targetSeconds: number): WindowSt
 }
 
 function windowStats(samples: Stroke[], startIdx: number, endIdx: number): WindowStats {
-  const bucket = samples.slice(startIdx, endIdx + 1);
-  const start = bucket[0];
-  const end = bucket[bucket.length - 1];
+  const start = samples[startIdx];
+  const end = samples[endIdx];
   const elapsed = end.t - start.t;
   const distance = end.d - start.d;
-  const hr = bucket.map((s) => s.hr).filter((v): v is number => v != null && v > 0);
+
+  let sumWatts = 0,
+    countWatts = 0;
+  let sumSpm = 0,
+    countSpm = 0;
+  let sumHr = 0,
+    countHr = 0;
+
+  for (let i = startIdx; i <= endIdx; i++) {
+    const s = samples[i];
+    if (s.watts > 0) {
+      sumWatts += s.watts;
+      countWatts++;
+    }
+    if (s.spm > 0) {
+      sumSpm += s.spm;
+      countSpm++;
+    }
+    if (s.hr != null && s.hr > 0) {
+      sumHr += s.hr;
+      countHr++;
+    }
+  }
+
   return {
     start,
     end,
     avgPace: (elapsed / distance) * 500,
-    avgWatts: average(bucket.map((s) => s.watts).filter((v) => v > 0)),
-    avgSpm: average(bucket.map((s) => s.spm).filter((v) => v > 0)),
-    avgHr: hr.length ? Math.round(average(hr)) : undefined,
-    dps: distance / Math.max(1, bucket.length - 1),
+    avgWatts: countWatts > 0 ? sumWatts / countWatts : 0,
+    avgSpm: countSpm > 0 ? sumSpm / countSpm : 0,
+    avgHr: countHr > 0 ? Math.round(sumHr / countHr) : undefined,
+    dps: distance / Math.max(1, endIdx - startIdx),
   };
 }
 
