@@ -25,6 +25,7 @@
 	let editing = $state(false);
 	let saving = $state(false);
 	let selectEl = $state<HTMLSelectElement | null>(null);
+	let buttonEl = $state<HTMLButtonElement | null>(null);
 	let overrideForId = $state<number | null>(null);
 	let localUserTag = $state<string | null>(null);
 
@@ -38,8 +39,16 @@
 
 	const badgeClass = $derived(`badge badge-sm badge-soft ${tagBadgeClass(effective)}`);
 
+	let wasEditing = false;
+
 	$effect(() => {
-		if (editing) selectEl?.focus();
+		if (editing) {
+			selectEl?.focus();
+			wasEditing = true;
+		} else if (wasEditing) {
+			buttonEl?.focus();
+			wasEditing = false;
+		}
 	});
 
 	function tagLabel(tag: WorkoutTag): string {
@@ -82,6 +91,7 @@
 		class="select select-bordered select-xs w-full max-w-40"
 		disabled={saving}
 		value={effectiveTag ?? ''}
+		aria-label={t('workout.tag.label')}
 		onchange={onSelectChange}
 		onblur={() => (editing = false)}
 	>
@@ -92,9 +102,11 @@
 	</select>
 {:else}
 	<button
+		bind:this={buttonEl}
 		type="button"
 		class={badgeClass}
 		disabled={saving}
+		aria-busy={saving}
 		title={t('workout.tag.label')}
 		onclick={(e) => {
 			e.preventDefault();
@@ -102,6 +114,7 @@
 			editing = true;
 		}}
 	>
+		{#if saving}<span class="loading loading-spinner loading-xs me-1" aria-hidden="true"></span>{/if}
 		{tagLabel(effective)}
 	</button>
 {/if}
