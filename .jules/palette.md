@@ -15,3 +15,6 @@
 ## 2026-06-16 - Added aria-label to missing form select elements and restored focus on edit close
 **Learning:** In Svelte components like `WorkoutTagBadge`, inline editing mode using a `<select>` drop-down lacked semantic meaning for screen readers without an explicit `aria-label`. Additionally, unmounting the `<select>` and replacing it with the `<button>` caused focus to reset to `document.body`, forcing keyboard/screen reader users to re-navigate.
 **Action:** Always ensure dynamically rendered `<select>` elements used for inline editing have an explicit `aria-label`. Use a `wasEditing` guard inside a `$effect` to restore focus to the trigger button when editing ends, keeping keyboard navigation continuous.
+## 2024-06-18 - [Ensure buttons have type="button"]
+**Learning:** By default, HTML buttons are `type="submit"`. Adding `type="button"` to non-submit buttons is an important micro-UX pattern to prevent unexpected form submissions/page reloads if the buttons are ever nested within a form.
+**Action:** Always add `type="button"` to buttons that only trigger JS click handlers and aren't meant to submit forms.
