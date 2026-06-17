@@ -142,7 +142,6 @@ function windowStats(samples: Stroke[], startIdx: number, endIdx: number): Windo
   const elapsed = end.t - start.t;
   const distance = end.d - start.d;
 
-  // Bolt: Single-pass for loop avoiding map/filter chains and intermediate bucket allocation
   let sumWatts = 0,
     countWatts = 0;
   let sumSpm = 0,
