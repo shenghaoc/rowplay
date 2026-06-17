@@ -12,6 +12,6 @@
 ## 2026-06-10 - Added aria-busy to async buttons
 **Learning:** While buttons disabled during an async action (e.g. `disabled={saving}`) often have visual loading spinners hidden from screen readers (`aria-hidden="true"`), the button itself still needs to broadcast its busy state semantically.
 **Action:** When adding or verifying visual loading states on buttons during async actions, always pair them with `aria-busy={stateVariable}` so screen readers know the operation is in progress.
-## 2026-06-16 - Added aria-label to missing form select elements
-**Learning:** In Svelte components like `WorkoutTagBadge`, inline editing mode using a `<select>` drop-down lacked semantic meaning for screen readers without an explicit `aria-label`.
-**Action:** Always ensure that dynamically rendered `<select>` elements used for inline editing are provided an explicit `aria-label` matching their button-equivalent title.
+## 2026-06-16 - Added aria-label to missing form select elements and restored focus on edit close
+**Learning:** In Svelte components like `WorkoutTagBadge`, inline editing mode using a `<select>` drop-down lacked semantic meaning for screen readers without an explicit `aria-label`. Additionally, unmounting the `<select>` and replacing it with the `<button>` caused focus to reset to `document.body`, forcing keyboard/screen reader users to re-navigate.
+**Action:** Always ensure dynamically rendered `<select>` elements used for inline editing have an explicit `aria-label`. Use a `wasEditing` guard inside a `$effect` to restore focus to the trigger button when editing ends, keeping keyboard navigation continuous.
