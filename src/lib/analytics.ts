@@ -34,24 +34,27 @@ export function linearTrend(points: { x: number; y: number }[]): TrendFit | null
     }
   }
   // Work in days from the first point to keep the slope human-readable.
-  const xs = points.map((p) => (p.x - xMin) / 86_400_000);
-  const ys = points.map((p) => p.y);
-  const mx = xs.reduce((a, b) => a + b, 0) / n;
-  const my = ys.reduce((a, b) => a + b, 0) / n;
+  let sumX = 0;
+  let sumY = 0;
+  let xLast = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const xDays = (points[i].x - xMin) / 86_400_000;
+    sumX += xDays;
+    sumY += points[i].y;
+    if (xDays > xLast) xLast = xDays;
+  }
+  const mx = sumX / n;
+  const my = sumY / n;
   let num = 0;
   let den = 0;
   for (let i = 0; i < n; i++) {
-    num += (xs[i] - mx) * (ys[i] - my);
-    den += (xs[i] - mx) ** 2;
+    const xDays = (points[i].x - xMin) / 86_400_000;
+    num += (xDays - mx) * (points[i].y - my);
+    den += (xDays - mx) ** 2;
   }
   if (den === 0) return null; // all on the same day
   const slope = num / den;
   const intercept = my - slope * mx;
-  // Bolt: Single-pass for loop avoiding array allocations and Max Call Stack size exceeded risk of Math.max(...array)
-  let xLast = -Infinity;
-  for (let i = 0; i < xs.length; i++) {
-    if (xs[i] > xLast) xLast = xs[i];
-  }
   const y0 = intercept;
   const y1 = intercept + slope * xLast;
   return { slopePerDay: slope, y0, y1, delta: y1 - y0, n };
@@ -763,9 +766,17 @@ export function estimateCriticalPower(
     extraWarnings: CriticalPowerWarning[] = [],
   ): CriticalPower | null => {
     // Sprints (< 2 min) sit far above threshold, so never let one set FTP.
-    const valid = pool.filter((q) => q.t >= 120);
-    if (!valid.length) return null;
-    const best = valid.reduce((a, b) => (a.p >= b.p ? a : b));
+    const valid: CriticalPowerEffort[] = [];
+    let best: CriticalPowerEffort | null = null;
+    for (let i = 0; i < pool.length; i++) {
+      if (pool[i].t >= 120) {
+        valid.push(pool[i]);
+        if (!best || pool[i].p > best.p) {
+          best = pool[i];
+        }
+      }
+    }
+    if (!best) return null;
     // Duration-based scaling factor to estimate FTP/CP from a single best effort:
     // - 20+ min: 95%
     // - 10-20 min: 90%
@@ -818,23 +829,34 @@ export function estimateCriticalPower(
   const env = [...bins.values()];
   if (env.length < 3) return fallback(pts);
 
-  const xs = env.map((q) => 1 / q.t);
-  const ys = env.map((q) => q.p);
-  const n = xs.length;
-  const mx = xs.reduce((a, b) => a + b, 0) / n;
-  const my = ys.reduce((a, b) => a + b, 0) / n;
+  const n = env.length;
+  let sumX = 0;
+  let sumY = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += 1 / env[i].t;
+    sumY += env[i].p;
+  }
+  const mx = sumX / n;
+  const my = sumY / n;
   let num = 0;
   let den = 0;
   for (let i = 0; i < n; i++) {
-    num += (xs[i] - mx) * (ys[i] - my);
-    den += (xs[i] - mx) ** 2;
+    const x = 1 / env[i].t;
+    num += (x - mx) * (env[i].p - my);
+    den += (x - mx) ** 2;
   }
   if (den > 0) {
     const wPrime = num / den; // slope, joules
     const cp = my - wPrime * mx; // intercept, watts
-    const fitted = xs.map((x) => cp + wPrime * x);
-    const ssRes = fitted.reduce((s, y, i) => s + (ys[i]! - y) ** 2, 0);
-    const ssTot = ys.reduce((s, y) => s + (y - my) ** 2, 0);
+    let ssRes = 0;
+    let ssTot = 0;
+    for (let i = 0; i < n; i++) {
+      const x = 1 / env[i].t;
+      const fitted = cp + wPrime * x;
+      const y = env[i].p;
+      ssRes += (y - fitted) ** 2;
+      ssTot += (y - my) ** 2;
+    }
     const r2 = ssTot > 0 ? Math.max(0, 1 - ssRes / ssTot) : 1;
     const residualPct = my > 0 ? (Math.sqrt(ssRes / n) / my) * 100 : Infinity;
     const fitQuality = { r2, residualPct };

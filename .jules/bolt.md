@@ -57,3 +57,7 @@
 
 **Learning:** Using chained array methods like `.slice().map().filter()` inside sliding window calculations over large time-series data generates many intermediate arrays and causes high garbage collection pressure.
 **Action:** Replace map/filter chains with single-pass `for` loops to directly accumulate values without creating temporary arrays.
+
+## 2024-06-25 - Avoid chained array methods in statistical functions
+**Learning:** Using `.map()` chained with `.reduce()` for mathematical accumulations (like calculating sums or slopes) creates redundant array allocations and multiple passes over the same dataset. This wastes memory and increases GC pressure, especially on large analytic calculations like linear trends or critical power estimation.
+**Action:** Replace `xs.map().reduce()` logic inside analytic or statistical routines with single-pass `for` loops directly calculating the accumulated sum (e.g. `sumX`, `sumY`).
