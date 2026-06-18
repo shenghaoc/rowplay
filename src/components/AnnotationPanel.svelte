@@ -115,7 +115,7 @@
 	<div class="anno-head">
 		<h2 class="anno-title"><MessageSquareText size={16} /> {t('annotations.title')}</h2>
 		{#if !readOnly}
-			<button class="btn add-btn" onclick={startAdd} aria-label={t('annotations.addNote')} disabled={saving}>
+			<button type="button" class="btn add-btn" onclick={startAdd} aria-label={t('annotations.addNote')} disabled={saving}>
 				<Plus size={14} /> {t('annotations.addNote')}
 			</button>
 		{/if}
@@ -133,11 +133,11 @@
 				class="textarea textarea-bordered anno-input"
 			></textarea>
 			<div class="anno-actions">
-				<button class="btn save-btn" onclick={save} disabled={saving || !draftText.trim()} aria-busy={saving}>
+				<button type="button" class="btn save-btn" onclick={save} disabled={saving || !draftText.trim()} aria-busy={saving}>
 					{#if saving}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 					{t('annotations.saveNote')}
 				</button>
-				<button class="btn cancel-btn" onclick={cancel} disabled={saving}>{t('annotations.cancelNote')}</button>
+				<button type="button" class="btn cancel-btn" onclick={cancel} disabled={saving}>{t('annotations.cancelNote')}</button>
 			</div>
 		</div>
 	{/if}
@@ -162,25 +162,25 @@
 								class="textarea textarea-bordered anno-input"
 							></textarea>
 							<div class="anno-actions">
-								<button class="btn save-btn" onclick={save} disabled={saving || !draftText.trim()} aria-busy={saving}>
+								<button type="button" class="btn save-btn" onclick={save} disabled={saving || !draftText.trim()} aria-busy={saving}>
 									{#if saving}<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{/if}
 									{t('annotations.saveNote')}
 								</button>
-								<button class="btn cancel-btn" onclick={cancel} disabled={saving}>{t('annotations.cancelNote')}</button>
+								<button type="button" class="btn cancel-btn" onclick={cancel} disabled={saving}>{t('annotations.cancelNote')}</button>
 							</div>
 						</div>
 					{:else}
-						<button class="anno-seek" onclick={() => seekTo(a.timestamp)} aria-label={t('annotations.seekTo', { time: fmtTime(a.timestamp, true) })}>
+						<button type="button" class="anno-seek" onclick={() => seekTo(a.timestamp)} aria-label={t('annotations.seekTo', { time: fmtTime(a.timestamp, true) })}>
 							<span class="anno-marker"></span>
 							<span class="anno-ts mono">{fmtTime(a.timestamp, true)}</span>
 						</button>
 						<span class="anno-text">{a.text}</span>
 						{#if !readOnly}
 							<div class="anno-item-actions">
-								<button class="btn-icon" onclick={() => startEdit(a)} aria-label={t('annotations.editNote')}>
+								<button type="button" class="btn-icon" onclick={() => startEdit(a)} aria-label={t('annotations.editNote')}>
 									<Pencil size={13} />
 								</button>
-								<button class="btn-icon danger" onclick={() => requestDelete(a.id)} aria-label={t('annotations.deleteNote')}>
+								<button type="button" class="btn-icon danger" onclick={() => requestDelete(a.id)} aria-label={t('annotations.deleteNote')}>
 									<Trash2 size={13} />
 								</button>
 							</div>

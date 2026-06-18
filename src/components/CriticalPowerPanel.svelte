@@ -130,6 +130,7 @@
 			<div role="tablist" class="tabs tabs-box tabs-sm cpscopes" aria-label={t('dashboard.cpScopeLabel')}>
 				{#each scopes as s}
 					<button
+						type="button"
 						role="tab"
 						class="tab"
 						class:tab-active={scope === s}
@@ -190,12 +191,14 @@
 			{#if canPredictPace}
 				<div class="predmodes" role="group" aria-label={t('dashboard.cpPredictTitle')}>
 					<button
+						type="button"
 						class="pchip"
 						class:on={predictMode === 'duration'}
 						aria-pressed={predictMode === 'duration'}
 						onclick={() => (predictMode = 'duration')}
 					>{t('dashboard.cpModeDuration')}</button>
 					<button
+						type="button"
 						class="pchip"
 						class:on={predictMode === 'distance'}
 						aria-pressed={predictMode === 'distance'}
@@ -213,7 +216,7 @@
 					</div>
 					<div class="presets">
 						{#each durationPresets as p}
-							<button class="pchip small" onclick={() => (durationMin = p.min)}>{t(p.labelKey)}</button>
+							<button type="button" class="pchip small" onclick={() => (durationMin = p.min)}>{t(p.labelKey)}</button>
 						{/each}
 					</div>
 					{#if predictedPace}
@@ -232,7 +235,7 @@
 					</div>
 					<div class="presets">
 						{#each distancePresets as p}
-							<button class="pchip small" onclick={() => (distanceM = p.m)}>{t(p.labelKey)}</button>
+							<button type="button" class="pchip small" onclick={() => (distanceM = p.m)}>{t(p.labelKey)}</button>
 						{/each}
 					</div>
 					{#if predictedTime}
