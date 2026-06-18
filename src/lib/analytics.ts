@@ -771,7 +771,7 @@ export function estimateCriticalPower(
     for (let i = 0; i < pool.length; i++) {
       if (pool[i].t >= 120) {
         valid.push(pool[i]);
-        if (!best || pool[i].p >= best.p) {
+        if (!best || pool[i].p > best.p) {
           best = pool[i];
         }
       }
