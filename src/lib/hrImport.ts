@@ -59,12 +59,28 @@ export function summarizeHr(strokes: Stroke[]): {
   min?: number;
   max?: number;
 } {
-  const hrs = strokes.map((s) => s.hr).filter((h): h is number => h != null && h > 0);
-  if (!hrs.length) return {};
+  // Bolt: Single-pass loop to avoid multiple intermediate arrays and closures from .map(), .filter() and .reduce() chains.
+  let sum = 0;
+  let count = 0;
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (let i = 0; i < strokes.length; i++) {
+    const h = strokes[i].hr;
+    if (h != null && h > 0) {
+      sum += h;
+      count++;
+      if (h < min) min = h;
+      if (h > max) max = h;
+    }
+  }
+
+  if (count === 0) return {};
+
   return {
-    avg: Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length),
-    min: hrs.reduce((a, b) => (b < a ? b : a), hrs[0]),
-    max: hrs.reduce((a, b) => (b > a ? b : a), hrs[0]),
+    avg: Math.round(sum / count),
+    min,
+    max,
   };
 }
 
@@ -80,18 +96,39 @@ export function applyHrImport(
 ): WorkoutDetail {
   const strokes = mergeHrIntoStrokes(detail.strokes, samples, offsetSec);
   const { avg, min, max } = summarizeHr(strokes);
+
   let cumulativeDistance = 0;
+  let strokeIdx = 0; // Sliding window pointer for strokes
+
+  // Bolt: Use sliding window over sequential strokes to prevent intermediate .filter().map().filter().reduce() array allocations.
   const splits = detail.splits.map((split) => {
     const startD = cumulativeDistance;
     cumulativeDistance += split.distance;
     const endD = cumulativeDistance;
-    const hrs = strokes
-      .filter((s) => s.d > startD && s.d <= endD)
-      .map((s) => s.hr)
-      .filter((h): h is number => h != null && h > 0);
-    if (!hrs.length) return split;
-    return { ...split, hr: Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) };
+
+    let sumHr = 0;
+    let countHr = 0;
+
+    // Advance strokeIdx to start of this split
+    while (strokeIdx < strokes.length && strokes[strokeIdx].d <= startD) {
+      strokeIdx++;
+    }
+
+    // Process strokes within this split
+    let j = strokeIdx;
+    while (j < strokes.length && strokes[j].d <= endD) {
+      const hr = strokes[j].hr;
+      if (hr != null && hr > 0) {
+        sumHr += hr;
+        countHr++;
+      }
+      j++;
+    }
+
+    if (countHr === 0) return split;
+    return { ...split, hr: Math.round(sumHr / countHr) };
   });
+
   return {
     ...detail,
     strokes,
