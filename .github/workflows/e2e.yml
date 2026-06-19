@@ -53,36 +53,54 @@ jobs:
   e2e-smoke:
     # PR smoke: smoke.spec.ts only on Chromium desktop. Runs when relevant
     # paths change on a PR or push to main.
-    runs-on: ubuntu-latest
+    # ARM64 hosted runner (GA on free tier for public repos, Aug 2025).
+    # Required because the container image below is `-arm64`-suffixed,
+    # which forces the linux/arm64 manifest — pulling it on x64 would
+    # fail with "no matching manifest".
+    runs-on: ubuntu-24.04-arm
     needs: changes
     if: needs.changes.outputs.run_e2e == 'true'
     timeout-minutes: 20
+    # Run inside Playwright's official prebuilt image so browsers AND all
+    # system dependencies are baked in — bypasses `playwright install
+    # --with-deps` that was hanging on GitHub-hosted runners' apt mirror.
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.0-resolute-arm64
+      options: --ipc=host
     steps:
       - uses: actions/checkout@v6
-      - name: Setup
-        uses: voidzero-dev/setup-vp@v1
+      # The Playwright image ships Node 24 but this repo pins Node >=26.
+      # Install the pinned version so engine checks and Node 26 features
+      # are available.
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: true
-      - name: Install dependencies
-        run: vp install
-      - name: Production build
-        run: vp run build
-      - name: Get Playwright version
-        id: playwright-version
-        run: echo "version=$(vpx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright browsers
+      - name: Install pnpm
+        run: |
+          PNPM_VERSION=$(node -p "require('./package.json').packageManager.split('@')[1].split('+')[0]")
+          echo "Installing pnpm@${PNPM_VERSION}"
+          npm install -g "pnpm@${PNPM_VERSION}"
+          pnpm config set store-dir /github/home/.pnpm-store
+      - name: Cache pnpm store
         uses: actions/cache@v5
         with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
-      - name: Install Chromium
-        run: vpx playwright install --with-deps chromium
+          path: /github/home/.pnpm-store
+          key: ${{ runner.os }}-${{ runner.arch }}-e2e-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-e2e-pnpm-
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+      - name: Production build
+        run: pnpm exec vp run build
       - name: PR smoke (Chromium desktop)
-        run: vp run test:e2e:smoke
+        run: pnpm exec vp run test:e2e:smoke
         env:
           WRANGLER_SEND_METRICS: "false"
           E2E_SKIP_BUILD: "1"
+          # Browsers are already in the Docker image; skip the post-install
+          # download that @playwright/test would otherwise trigger.
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v7
@@ -95,35 +113,42 @@ jobs:
     # Full suite: all specs on Chromium desktop + mobile. Runs on manual
     # dispatch or the nightly schedule. Not a PR merge gate — use for deep
     # verification before a release or after a large refactor.
-    runs-on: ubuntu-latest
+    # ARM64 hosted runner — same image-swap rationale as e2e-smoke.
+    runs-on: ubuntu-24.04-arm
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     timeout-minutes: 40
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.0-resolute-arm64
+      options: --ipc=host
     steps:
       - uses: actions/checkout@v6
-      - name: Setup
-        uses: voidzero-dev/setup-vp@v1
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: true
-      - name: Install dependencies
-        run: vp install
-      - name: Production build
-        run: vp run build
-      - name: Get Playwright version
-        id: playwright-version
-        run: echo "version=$(vpx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright browsers
+      - name: Install pnpm
+        run: |
+          PNPM_VERSION=$(node -p "require('./package.json').packageManager.split('@')[1].split('+')[0]")
+          echo "Installing pnpm@${PNPM_VERSION}"
+          npm install -g "pnpm@${PNPM_VERSION}"
+          pnpm config set store-dir /github/home/.pnpm-store
+      - name: Cache pnpm store
         uses: actions/cache@v5
         with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
-      - name: Install Chromium
-        run: vpx playwright install --with-deps chromium
+          path: /github/home/.pnpm-store
+          key: ${{ runner.os }}-${{ runner.arch }}-e2e-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-e2e-pnpm-
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+      - name: Production build
+        run: pnpm exec vp run build
       - name: End-to-end (Chromium desktop + mobile)
-        run: vp run test:e2e
+        run: pnpm exec vp run test:e2e
         env:
           WRANGLER_SEND_METRICS: "false"
           E2E_SKIP_BUILD: "1"
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v7

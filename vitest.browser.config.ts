@@ -20,5 +20,11 @@ export default defineConfig({
       headless: true,
       instances: [{ browser: "chromium" }],
     },
+    // JUnit XML for any GitHub Actions test reporter (see vitest.config.ts comment).
+    reporters: process.env.CI && process.env.CI !== "false" ? ["default", "junit"] : "default",
+    outputFile:
+      process.env.CI && process.env.CI !== "false"
+        ? { junit: "test-results/junit-browser.xml" }
+        : undefined,
   },
 });
