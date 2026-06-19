@@ -17,7 +17,13 @@ const BASE_URL = `http://${HOST}:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  reporter: [["html", { open: "never" }]],
+  // In CI, emit `list` for log readability plus `github` for PR-inline
+  // annotations and `junit` so failures show up in any test-report
+  // uploader (e.g. dorny/test-reporter).
+  reporter:
+    process.env.CI && process.env.CI !== "false"
+      ? [["list"], ["github"], ["junit", { outputFile: "test-results/junit-e2e.xml" }]]
+      : [["html", { open: "never" }]],
   fullyParallel: true,
   // Two workers in CI keeps e2e under ~2 min while avoiding the parallel
   // dynamic-chunk flake that was common with more workers on older wrangler.
