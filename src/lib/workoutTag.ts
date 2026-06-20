@@ -76,19 +76,53 @@ function isSinglePiece(workout: TaggableWorkout): boolean {
 
 function averagePace(workout: TaggableWorkout): number {
   if (workout.pace > 0) return workout.pace;
-  const paces =
-    workout.splits?.filter((s) => !isRestSplit(s) && s.pace > 0).map((s) => s.pace) ?? [];
-  if (!paces.length) return 0;
-  return paces.reduce((a, p) => a + p, 0) / paces.length;
+  const splits = workout.splits;
+  if (!splits || !splits.length) return 0;
+
+  let sum = 0;
+  let count = 0;
+  // Bolt: Single-pass for loop avoiding intermediate array allocations from .filter().map().reduce()
+  for (let i = 0; i < splits.length; i++) {
+    const s = splits[i];
+    if (!isRestSplit(s) && s.pace > 0) {
+      sum += s.pace;
+      count++;
+    }
+  }
+
+  if (count === 0) return 0;
+  return sum / count;
 }
 
 function paceStdDev(workout: TaggableWorkout): number {
-  const paces =
-    workout.splits?.filter((s) => !isRestSplit(s) && s.pace > 0).map((s) => s.pace) ?? [];
-  if (paces.length < 2) return 0;
-  const mean = paces.reduce((a, p) => a + p, 0) / paces.length;
-  const variance = paces.reduce((a, p) => a + (p - mean) ** 2, 0) / paces.length;
-  return Math.sqrt(variance);
+  const splits = workout.splits;
+  if (!splits || !splits.length) return 0;
+
+  let sum = 0;
+  let count = 0;
+  // Bolt: First pass to get sum (for mean), avoiding array allocations.
+  for (let i = 0; i < splits.length; i++) {
+    const s = splits[i];
+    if (!isRestSplit(s) && s.pace > 0) {
+      sum += s.pace;
+      count++;
+    }
+  }
+
+  if (count < 2) return 0;
+
+  const mean = sum / count;
+  let varianceSum = 0;
+
+  // Bolt: Second pass to get variance sum.
+  for (let i = 0; i < splits.length; i++) {
+    const s = splits[i];
+    if (!isRestSplit(s) && s.pace > 0) {
+      varianceSum += (s.pace - mean) ** 2;
+    }
+  }
+
+  return Math.sqrt(varianceSum / count);
 }
 
 /**
