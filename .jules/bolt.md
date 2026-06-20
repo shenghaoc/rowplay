@@ -66,6 +66,3 @@
 
 **Learning:** Using chained array operations like `.filter().map().filter()` combined with `.reduce()` within a loop over sequential boundaries (e.g. splits mapping to strokes) leads to O(N*M) time complexity and massive intermediate array allocation overhead.
 **Action:** When aggregating sequential, monotonically increasing time-series data (like strokes and distance boundaries), replace nested array methods with a single-pass sliding window (two-pointer) `for` loop to entirely prevent array allocations and maintain O(N+M) complexity.
-## 2024-06-25 - Avoid chained array methods in statistical functions
-**Learning:** Using `.map()` chained with `.reduce()` for mathematical accumulations (like calculating sums or slopes) creates redundant array allocations and multiple passes over the same dataset. This wastes memory and increases GC pressure, especially on large analytic calculations like linear trends or critical power estimation.
-**Action:** Replace `xs.map().reduce()` logic inside analytic or statistical routines with single-pass `for` loops directly calculating the accumulated sum (e.g. `sumX`, `sumY`).
