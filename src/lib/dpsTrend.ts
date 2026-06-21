@@ -29,27 +29,37 @@ function median(values: number[]): number {
  * Workouts without strokeCount are excluded (not imputed).
  */
 export function computeDpsTrend(workouts: Workout[], sport?: Sport): DpsPoint[] {
-  let pool = workouts.filter(
-    (w) => w.strokeCount != null && w.strokeCount > 0 && w.distance > 0 && w.pace > 0,
-  );
-  if (sport) pool = pool.filter((w) => w.sport === sport);
+  const points: DpsPoint[] = [];
+  const paces: number[] = [];
 
-  const preliminary = pool.map((w) => ({
-    date: w.date,
-    workoutId: w.id,
-    sport: w.sport,
-    rawDps: w.distance / w.strokeCount!,
-    avgPaceSecs: w.pace,
-    strokeCount: w.strokeCount!,
-  }));
+  for (let i = 0; i < workouts.length; i++) {
+    const w = workouts[i];
+    if (
+      w.strokeCount != null &&
+      w.strokeCount > 0 &&
+      w.distance > 0 &&
+      w.pace > 0 &&
+      (!sport || w.sport === sport)
+    ) {
+      points.push({
+        date: w.date,
+        workoutId: w.id,
+        sport: w.sport,
+        rawDps: w.distance / w.strokeCount,
+        avgPaceSecs: w.pace,
+        strokeCount: w.strokeCount,
+        normDps: 0,
+      });
+      paces.push(w.pace);
+    }
+  }
 
-  const paces = preliminary.map((p) => p.avgPaceSecs);
   const referencePace = paces.length >= 3 ? median(paces) : DEFAULT_REFERENCE_PACE;
 
-  const points: DpsPoint[] = preliminary.map((p) => ({
-    ...p,
-    normDps: p.rawDps * Math.sqrt(referencePace / p.avgPaceSecs),
-  }));
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    p.normDps = p.rawDps * Math.sqrt(referencePace / p.avgPaceSecs);
+  }
 
   return points.sort((a, b) => a.date.localeCompare(b.date));
 }
