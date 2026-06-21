@@ -29,7 +29,6 @@ function median(values: number[]): number {
  * Workouts without strokeCount are excluded (not imputed).
  */
 export function computeDpsTrend(workouts: Workout[], sport?: Sport): DpsPoint[] {
-  // Bolt: Single-pass for loops avoiding multiple intermediate map/filter array allocations.
   const points: DpsPoint[] = [];
   const paces: number[] = [];
 
