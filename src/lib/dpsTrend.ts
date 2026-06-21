@@ -30,7 +30,7 @@ function median(values: number[]): number {
  */
 export function computeDpsTrend(workouts: Workout[], sport?: Sport): DpsPoint[] {
   // Bolt: Single-pass for loops avoiding multiple intermediate map/filter array allocations.
-  const preliminary: Omit<DpsPoint, "normDps">[] = [];
+  const points: DpsPoint[] = [];
   const paces: number[] = [];
 
   for (let i = 0; i < workouts.length; i++) {
@@ -42,13 +42,14 @@ export function computeDpsTrend(workouts: Workout[], sport?: Sport): DpsPoint[] 
       w.pace > 0 &&
       (!sport || w.sport === sport)
     ) {
-      preliminary.push({
+      points.push({
         date: w.date,
         workoutId: w.id,
         sport: w.sport,
         rawDps: w.distance / w.strokeCount,
         avgPaceSecs: w.pace,
         strokeCount: w.strokeCount,
+        normDps: 0,
       });
       paces.push(w.pace);
     }
@@ -56,13 +57,9 @@ export function computeDpsTrend(workouts: Workout[], sport?: Sport): DpsPoint[] 
 
   const referencePace = paces.length >= 3 ? median(paces) : DEFAULT_REFERENCE_PACE;
 
-  const points: DpsPoint[] = [];
-  for (let i = 0; i < preliminary.length; i++) {
-    const p = preliminary[i];
-    points.push({
-      ...p,
-      normDps: p.rawDps * Math.sqrt(referencePace / p.avgPaceSecs),
-    });
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    p.normDps = p.rawDps * Math.sqrt(referencePace / p.avgPaceSecs);
   }
 
   return points.sort((a, b) => a.date.localeCompare(b.date));
