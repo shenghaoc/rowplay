@@ -54,7 +54,12 @@ export function analyzeWorkoutMoments(detail: WorkoutDetail): WorkoutMomentRepor
   const samples = validWorkSamples(detail.strokes);
   const windows = buildRollingWindows(samples, detail.time >= 75 ? 60 : 30);
   const fallbackWindows = windows.length ? windows : buildRollingWindows(samples, 30);
-  const baselinePace = median(fallbackWindows.map((w) => w.avgPace)) || detail.pace || 0;
+
+  // Bolt: Extract array directly without creating intermediate closure from .map()
+  const windowPaces: number[] = new Array(fallbackWindows.length);
+  for (let i = 0; i < fallbackWindows.length; i++) windowPaces[i] = fallbackWindows[i].avgPace;
+  const baselinePace = median(windowPaces) || detail.pace || 0;
+
   const moments: WorkoutMoment[] = [];
 
   const best = minBy(fallbackWindows, (w) => w.avgPace);
@@ -75,7 +80,18 @@ export function analyzeWorkoutMoments(detail: WorkoutDetail): WorkoutMomentRepor
     );
   }
 
-  const avgSpm = average(samples.map((s) => s.spm).filter((v) => v > 0));
+  // Bolt: Single-pass for loop avoiding intermediate array allocations from .map().filter()
+  let sumSpm = 0;
+  let countSpm = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const spm = samples[i].spm;
+    if (spm > 0) {
+      sumSpm += spm;
+      countSpm++;
+    }
+  }
+  const avgSpm = countSpm > 0 ? sumSpm / countSpm : 0;
+
   const efficient = minBy(
     fallbackWindows.filter(
       (w) =>

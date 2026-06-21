@@ -72,3 +72,8 @@
 
 **Learning:** Using chained `.filter()` and `.map()` calls on large time-series data (like calculating DPS trends for all workouts) creates multiple intermediate arrays, causing significant garbage collection overhead and memory pressure.
 **Action:** Replace map/filter chains with explicit `for` loops that filter and accumulate values in one traversal, avoiding extra intermediate arrays and object copies.
+
+## 2024-06-21 - Optimize chained array allocations for medians and averages
+
+**Learning:** Using chained array operations like `.map().filter()` or array extractions inside `median(array.map(...))` results in unnecessary memory allocations when processing arrays of arbitrary sizes.
+**Action:** Replace map/filter chains with explicit single-pass `for` loops avoiding intermediate array creation to reduce garbage collection pressure.
