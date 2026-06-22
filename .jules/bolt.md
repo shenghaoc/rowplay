@@ -77,3 +77,8 @@
 
 **Learning:** Using chained array operations like `.map().filter()` or array extractions inside `median(array.map(...))` results in unnecessary memory allocations when processing arrays of arbitrary sizes.
 **Action:** Replace map/filter chains with explicit single-pass `for` loops avoiding intermediate array creation to reduce garbage collection pressure.
+
+## 2024-07-25 - Avoid chained array methods when iterating over large datasets
+
+**Learning:** Using chained `.filter()` and `.map()` calls when iterating over large datasets, such as a user's entire `workouts` history, creates intermediate arrays that increase garbage collection overhead.
+**Action:** Replace map/filter chains with explicit `for` loops that filter and accumulate values in a single pass to reduce memory allocations and improve iteration performance.

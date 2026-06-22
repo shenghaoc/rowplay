@@ -56,9 +56,14 @@ function medianOfPaces(paces: number[]): number {
  * Median per-workout average pace. Optional `sport` scopes to one machine family.
  */
 export function medianTrainingPace(workouts: Workout[], sport?: Sport): number {
-  const paces = workouts
-    .filter((w) => w.pace > 0 && w.distance > 0 && (!sport || w.sport === sport))
-    .map((w) => w.pace);
+  // Bolt: Single-pass loop to avoid intermediate array allocations from .filter().map() chains.
+  const paces: number[] = [];
+  for (let i = 0; i < workouts.length; i++) {
+    const w = workouts[i];
+    if (w.pace > 0 && w.distance > 0 && (!sport || w.sport === sport)) {
+      paces.push(w.pace);
+    }
+  }
   return medianOfPaces(paces);
 }
 
