@@ -54,11 +54,16 @@ export function analyzeWorkoutMoments(detail: WorkoutDetail): WorkoutMomentRepor
   const samples = validWorkSamples(detail.strokes);
   const windows = buildRollingWindows(samples, detail.time >= 75 ? 60 : 30);
   const fallbackWindows = windows.length ? windows : buildRollingWindows(samples, 30);
-
-  // Bolt: Extract array directly without creating intermediate closure from .map()
-  const windowPaces: number[] = new Array(fallbackWindows.length);
+  const windowPaces: number[] = Array.from({ length: fallbackWindows.length }, () => 0);
   for (let i = 0; i < fallbackWindows.length; i++) windowPaces[i] = fallbackWindows[i].avgPace;
-  const baselinePace = median(windowPaces) || detail.pace || 0;
+  windowPaces.sort((a, b) => a - b);
+  const mid = Math.floor(windowPaces.length / 2);
+  const medianPace = windowPaces.length
+    ? windowPaces.length % 2
+      ? windowPaces[mid]
+      : (windowPaces[mid - 1] + windowPaces[mid]) / 2
+    : 0;
+  const baselinePace = medianPace || detail.pace || 0;
 
   const moments: WorkoutMoment[] = [];
 
@@ -338,17 +343,6 @@ function dedupeMoments(moments: WorkoutMoment[]): WorkoutMoment[] {
 
 function splitWatts(split: Split, sport: Sport): number {
   return split.pace > 0 ? paceToWattsForSport(sport, split.pace) : 0;
-}
-
-function average(values: number[]): number {
-  return values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : 0;
-}
-
-function median(values: number[]): number {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 function minBy<T>(items: T[], score: (item: T) => number): T | null {
