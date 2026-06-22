@@ -25,7 +25,6 @@ export function isValidWorkoutTag(tag: string | null | undefined): tag is Workou
 
 /** Median pace across a workout list — used as the athlete baseline for tag rules. */
 export function athleteMedianPace(workouts: Workout[]): number | undefined {
-  // Bolt: Single-pass for loop avoiding intermediate array allocations from .map().filter()
   const paces: number[] = [];
   for (let i = 0; i < workouts.length; i++) {
     const p = workouts[i].pace;
