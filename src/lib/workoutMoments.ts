@@ -54,7 +54,18 @@ export function analyzeWorkoutMoments(detail: WorkoutDetail): WorkoutMomentRepor
   const samples = validWorkSamples(detail.strokes);
   const windows = buildRollingWindows(samples, detail.time >= 75 ? 60 : 30);
   const fallbackWindows = windows.length ? windows : buildRollingWindows(samples, 30);
-  const baselinePace = median(fallbackWindows.map((w) => w.avgPace)) || detail.pace || 0;
+  // eslint-disable-next-line unicorn/no-new-array -- pre-sized for fill loop; length is unambiguous here
+  const windowPaces: number[] = new Array(fallbackWindows.length);
+  for (let i = 0; i < fallbackWindows.length; i++) windowPaces[i] = fallbackWindows[i].avgPace;
+  windowPaces.sort((a, b) => a - b);
+  const mid = Math.floor(windowPaces.length / 2);
+  const medianPace = windowPaces.length
+    ? windowPaces.length % 2
+      ? windowPaces[mid]
+      : (windowPaces[mid - 1] + windowPaces[mid]) / 2
+    : 0;
+  const baselinePace = medianPace || detail.pace || 0;
+
   const moments: WorkoutMoment[] = [];
 
   const best = minBy(fallbackWindows, (w) => w.avgPace);
@@ -75,7 +86,17 @@ export function analyzeWorkoutMoments(detail: WorkoutDetail): WorkoutMomentRepor
     );
   }
 
-  const avgSpm = average(samples.map((s) => s.spm).filter((v) => v > 0));
+  let sumSpm = 0;
+  let countSpm = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const spm = samples[i].spm;
+    if (spm > 0) {
+      sumSpm += spm;
+      countSpm++;
+    }
+  }
+  const avgSpm = countSpm > 0 ? sumSpm / countSpm : 0;
+
   const efficient = minBy(
     fallbackWindows.filter(
       (w) =>
@@ -322,17 +343,6 @@ function dedupeMoments(moments: WorkoutMoment[]): WorkoutMoment[] {
 
 function splitWatts(split: Split, sport: Sport): number {
   return split.pace > 0 ? paceToWattsForSport(sport, split.pace) : 0;
-}
-
-function average(values: number[]): number {
-  return values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : 0;
-}
-
-function median(values: number[]): number {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 function minBy<T>(items: T[], score: (item: T) => number): T | null {

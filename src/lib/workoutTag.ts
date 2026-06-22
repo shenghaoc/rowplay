@@ -25,7 +25,11 @@ export function isValidWorkoutTag(tag: string | null | undefined): tag is Workou
 
 /** Median pace across a workout list — used as the athlete baseline for tag rules. */
 export function athleteMedianPace(workouts: Workout[]): number | undefined {
-  const paces = workouts.map((w) => w.pace).filter((p) => p > 0);
+  const paces: number[] = [];
+  for (let i = 0; i < workouts.length; i++) {
+    const p = workouts[i].pace;
+    if (p > 0) paces.push(p);
+  }
   if (!paces.length) return undefined;
   const sorted = paces.sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
