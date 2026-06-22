@@ -127,6 +127,7 @@
 			<textarea
 				bind:value={draftText}
 				placeholder={t('annotations.addPlaceholder')}
+				aria-label={t('annotations.addNote')}
 				rows="2"
 				maxlength="1000"
 				onkeydown={onKeydown}
@@ -156,6 +157,7 @@
 							<div class="anno-ts mono">{t('annotations.timestampLabel')} <strong>{fmtTime(a.timestamp, true)}</strong></div>
 							<textarea
 								bind:value={draftText}
+								aria-label={t('annotations.editNote')}
 								rows="2"
 								maxlength="1000"
 								onkeydown={onKeydown}
