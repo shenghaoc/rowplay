@@ -1,3 +1,7 @@
+## 2026-06-23 - Add missing ARIA labels to Textareas
+**Learning:** Textareas used for user input (like adding/editing notes in the `AnnotationPanel.svelte`) require `aria-label` attributes for accessibility when they are visually identified only by surrounding context or placeholders. Without them, screen readers fail to communicate their purpose.
+**Action:** Always ensure that form inputs (`<input>`, `<textarea>`, `<select>`) have an associated label or `aria-label` populated with a translated string.
+
 ## 2026-05-30 - Added aria-pressed to active toggle buttons\n**Learning:** This app extensively relies on toggle buttons styled with 'class:on' for selections (filters, metrics, bands, speed), but screen readers weren't aware of the active state. Svelte's reactive bindings make adding 'aria-pressed' directly tied to the condition extremely clean.\n**Action:** Whenever identifying 'class:on' or similar active visual state toggles, immediately verify and add 'aria-pressed' to synchronize the semantic state with the visual state.
 
 ## 2026-05-30 - Added loading spinners to async buttons
