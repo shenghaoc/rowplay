@@ -82,3 +82,8 @@
 
 **Learning:** Using chained `.filter()` and `.map()` calls when iterating over large datasets, such as a user's entire `workouts` history, creates intermediate arrays that increase garbage collection overhead.
 **Action:** Replace map/filter chains with explicit `for` loops that filter and accumulate values in a single pass to reduce memory allocations and improve iteration performance.
+
+## 2024-10-24 - Avoid map/filter/reduce chains in reactive derivations
+
+**Learning:** Using chained array methods (like `.map().filter()` or `.filter().reduce()`) or multiple parallel `.map()` calls over the same array inside Svelte `$derived` blocks causes unnecessary array allocations and garbage collection pressure, which can slow down reactive updates on large dashboards.
+**Action:** Replace map/filter/reduce chains and parallel map calls with single-pass `for` loops within `$derived.by()` blocks when processing large lists (like workout histories or time-series data points).

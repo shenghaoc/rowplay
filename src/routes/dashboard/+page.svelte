@@ -115,9 +115,15 @@
 
 	const sportFilter = $derived<Sport | 'all'>(listQuery.sport ?? 'all');
 
-	const workoutTypes = $derived(
-		[...new Set(workouts.map((w) => w.workoutType).filter((t): t is string => !!t))].sort()
-	);
+	const workoutTypes = $derived.by(() => {
+		// Bolt: Single-pass loop to avoid array allocations from map and filter chains
+		const types = new Set<string>();
+		for (let i = 0; i < workouts.length; i++) {
+			const t = workouts[i].workoutType;
+			if (t) types.add(t);
+		}
+		return [...types].sort();
+	});
 
 	function applyListQuery(q: WorkoutListQuery) {
 		const params = serializeWorkoutListQuery(q);
@@ -401,9 +407,18 @@
 	// is faster, so a negative delta is an improvement).
 	const paceDelta = $derived.by(() => {
 		if (!latest) return null;
-		const prior = filtered.filter((w) => w.sport === latest.sport && w.id !== latest.id);
-		if (!prior.length) return null;
-		const avg = prior.reduce((s, w) => s + w.pace, 0) / prior.length;
+		// Bolt: Single-pass loop to avoid intermediate array allocations over potentially large filtered list
+		let count = 0;
+		let sum = 0;
+		for (let i = 0; i < filtered.length; i++) {
+			const w = filtered[i];
+			if (w.sport === latest.sport && w.id !== latest.id) {
+				count++;
+				sum += w.pace;
+			}
+		}
+		if (count === 0) return null;
+		const avg = sum / count;
 		return latest.pace - avg; // seconds/500m; negative = faster than usual
 	});
 
@@ -457,12 +472,19 @@
 		// Match the series count in formOptions (x + 3) so uPlot never sees a
 		// shape it can't render, even in the empty state.
 		if (!load) return [[], [], [], []];
-		return [
-			load.series.map((p) => p.day / 1000),
-			load.series.map((p) => p.ctl),
-			load.series.map((p) => p.atl),
-			load.series.map((p) => p.tsb)
-		];
+		// Bolt: Single-pass loop replaces four parallel .map() iterations reducing redundant traversals and GC pressure
+		const xs: number[] = new Array(load.series.length);
+		const ctl: number[] = new Array(load.series.length);
+		const atl: number[] = new Array(load.series.length);
+		const tsb: number[] = new Array(load.series.length);
+		for (let i = 0; i < load.series.length; i++) {
+			const p = load.series[i];
+			xs[i] = p.day / 1000;
+			ctl[i] = p.ctl;
+			atl[i] = p.atl;
+			tsb[i] = p.tsb;
+		}
+		return [xs, ctl, atl, tsb];
 	});
 	// Single palette source for every chart on this page; recomputes on theme
 	// toggle and reads the live design tokens (see chartTheme).
