@@ -116,7 +116,6 @@
 	const sportFilter = $derived<Sport | 'all'>(listQuery.sport ?? 'all');
 
 	const workoutTypes = $derived.by(() => {
-		// Bolt: Single-pass loop to avoid array allocations from map and filter chains
 		const types = new Set<string>();
 		for (let i = 0; i < workouts.length; i++) {
 			const t = workouts[i].workoutType;
@@ -407,7 +406,6 @@
 	// is faster, so a negative delta is an improvement).
 	const paceDelta = $derived.by(() => {
 		if (!latest) return null;
-		// Bolt: Single-pass loop to avoid intermediate array allocations over potentially large filtered list
 		let count = 0;
 		let sum = 0;
 		for (let i = 0; i < filtered.length; i++) {
@@ -472,7 +470,6 @@
 		// Match the series count in formOptions (x + 3) so uPlot never sees a
 		// shape it can't render, even in the empty state.
 		if (!load) return [[], [], [], []];
-		// Bolt: Single-pass loop replaces four parallel .map() iterations reducing redundant traversals and GC pressure
 		const xs: number[] = new Array(load.series.length);
 		const ctl: number[] = new Array(load.series.length);
 		const atl: number[] = new Array(load.series.length);

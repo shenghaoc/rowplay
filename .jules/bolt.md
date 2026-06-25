@@ -83,7 +83,7 @@
 **Learning:** Using chained `.filter()` and `.map()` calls when iterating over large datasets, such as a user's entire `workouts` history, creates intermediate arrays that increase garbage collection overhead.
 **Action:** Replace map/filter chains with explicit `for` loops that filter and accumulate values in a single pass to reduce memory allocations and improve iteration performance.
 
-## 2024-10-24 - Avoid map/filter/reduce chains in reactive derivations
+## 2026-06-25 - Single-pass loops inside Svelte `$derived.by()` reactive blocks
 
-**Learning:** Using chained array methods (like `.map().filter()` or `.filter().reduce()`) or multiple parallel `.map()` calls over the same array inside Svelte `$derived` blocks causes unnecessary array allocations and garbage collection pressure, which can slow down reactive updates on large dashboards.
-**Action:** Replace map/filter/reduce chains and parallel map calls with single-pass `for` loops within `$derived.by()` blocks when processing large lists (like workout histories or time-series data points).
+**Learning:** Beyond the general map/filter chain cost noted above, the allocation overhead is amplified inside Svelte 5 `$derived.by()` blocks because they re-run on every dependency change. Two patterns specific to this context are worth calling out: (1) multiple *parallel* `.map()` calls over the same source array (e.g. building four uPlot series) traverse the list once per series and allocate one array each; (2) `.filter().reduce()` for an average allocates a throwaway filtered array just to sum it.
+**Action:** Inside `$derived.by()` blocks, collapse parallel `.map()` calls into one loop that pre-allocates each output with `new Array(n)` and fills all of them in a single traversal, and replace `.filter().reduce()` averages with a single loop that accumulates `count` and `sum` directly.
