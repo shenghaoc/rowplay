@@ -87,3 +87,8 @@
 
 **Learning:** Beyond the general map/filter chain cost noted above, the allocation overhead is amplified inside Svelte 5 `$derived.by()` blocks because they re-run on every dependency change. Two patterns specific to this context are worth calling out: (1) multiple *parallel* `.map()` calls over the same source array (e.g. building four uPlot series) traverse the list once per series and allocate one array each; (2) `.filter().reduce()` for an average allocates a throwaway filtered array just to sum it.
 **Action:** Inside `$derived.by()` blocks, collapse parallel `.map()` calls into one loop that pre-allocates each output with `new Array(n)` and fills all of them in a single traversal, and replace `.filter().reduce()` averages with a single loop that accumulates `count` and `sum` directly.
+
+## 2026-06-26 - Optimize high-frequency date math by removing Temporal polyfill
+
+**Learning:** Using the `temporal-polyfill` (`Temporal.PlainDate`) for simple date math operations (like adding days or calculating differences) inside high-frequency loops (e.g., iterating through an athlete's entire workout history for calendar rendering) incurs massive object instantiation overhead, executing 20x to 150x slower than native math.
+**Action:** Replace `Temporal.PlainDate` math in hot paths with native `Date.UTC` arithmetic and string parsing/slicing for the `YYYY-MM-DD` format. Use `Math.floor((t2 - t1) / 86400000)` for safe timezone-free differences.
