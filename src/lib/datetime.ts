@@ -230,5 +230,7 @@ export function fmtTimeFromEpochMillis(
 }
 
 export function monthShortName(month: number, locale?: string): string {
-  return Temporal.PlainMonthDay.from({ month, day: 1 }).toLocaleString(locale, { month: "short" });
+  // PlainMonthDay.toLocaleString triggers "Mismatching Calendars" in the
+  // temporal-polyfill; use a synthetic Date for locale-aware month formatting.
+  return new Date(2000, month - 1, 1).toLocaleDateString(locale, { month: "short" });
 }
