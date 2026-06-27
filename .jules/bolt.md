@@ -92,3 +92,8 @@
 
 **Learning:** Using the `temporal-polyfill` (`Temporal.PlainDate`) for simple date math operations (like adding days or calculating differences) inside high-frequency loops (e.g., iterating through an athlete's entire workout history for calendar rendering) incurs massive object instantiation overhead, executing 20x to 150x slower than native math.
 **Action:** Replace `Temporal.PlainDate` math in hot paths with native `Date` arithmetic and string parsing/slicing for the `YYYY-MM-DD` format. Use `setUTCFullYear` instead of `Date.UTC` to avoid the 2-digit year quirk (years 0–99 map to 1900–1999). Use `Math.floor((t2 - t1) / 86400000)` for safe timezone-free differences.
+
+## 2024-07-26 - Use TypedArrays for numerical time-series algorithms
+
+**Learning:** When generating mathematical sequences (like prefix sums) across large arrays of time-series data (like thousands of strokes), using standard `Array.from()` creates a regular JavaScript array that incurs object boxing overhead and fragmented memory layout.
+**Action:** Replace `Array.from()` with TypedArrays like `new Float64Array()` for internal calculations (e.g. prefix sums, numeric intermediate buffers) inside hot-path mathematical routines to ensure contiguous memory layout and reduce GC pressure.
