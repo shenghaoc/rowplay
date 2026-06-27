@@ -1,6 +1,7 @@
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import type { AnnualGoalKind } from "$lib/analytics";
+import { currentUtcYear } from "$lib/datetime";
 import { loadAnnualGoal, saveAnnualGoal } from "$lib/server/data";
 
 export const GET: RequestHandler = async (event) => {
@@ -15,7 +16,7 @@ export const PUT: RequestHandler = async (event) => {
     kind?: AnnualGoalKind;
     target?: number;
   };
-  const year = typeof body.year === "number" ? body.year : new Date().getUTCFullYear();
+  const year = typeof body.year === "number" ? body.year : currentUtcYear();
   if (body.kind !== "meters" && body.kind !== "hours") throw error(400, "Invalid goal kind.");
   if (typeof body.target !== "number" || body.target <= 0) throw error(400, "Invalid target.");
   const goal = { year, kind: body.kind, target: body.target };
@@ -24,7 +25,7 @@ export const PUT: RequestHandler = async (event) => {
 };
 
 function parseYear(raw: string | null): number {
-  if (raw == null) return new Date().getUTCFullYear();
+  if (raw == null) return currentUtcYear();
   const y = parseInt(raw, 10);
-  return Number.isFinite(y) ? y : new Date().getUTCFullYear();
+  return Number.isFinite(y) ? y : currentUtcYear();
 }

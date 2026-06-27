@@ -1,3 +1,4 @@
+import { logbookDatePlusSecondsIso, nowIsoString, todayKeyUtc } from "../datetime";
 import type { Sport, Stroke, Workout, WorkoutDetail } from "../types";
 
 /** Escape a CSV field (RFC 4180). Prefixes formula-triggering characters to prevent injection. */
@@ -89,7 +90,7 @@ export function workoutsToJson(workouts: Workout[]): string {
     {
       schema: "rowplay-logbook-export",
       version: EXPORT_SCHEMA_VERSION,
-      exportedAt: new Date().toISOString(),
+      exportedAt: nowIsoString(),
       workoutCount: workouts.length,
       workouts: workouts.map((w) => ({
         id: w.id,
@@ -126,11 +127,7 @@ function xmlEscape(s: string): string {
 
 /** ISO-8601 UTC timestamp for TCX Time elements from logbook date + elapsed seconds. */
 function tcxTime(date: string, elapsedSec: number): string {
-  const base = date.trim().replace(" ", "T");
-  const withTz = base.includes("Z") || /[+-]\d{2}:\d{2}$/.test(base) ? base : `${base}Z`;
-  const ms = Date.parse(withTz);
-  if (!isFinite(ms)) return new Date().toISOString();
-  return new Date(ms + elapsedSec * 1000).toISOString();
+  return logbookDatePlusSecondsIso(date, elapsedSec);
 }
 
 const SPORT_TCX: Record<Sport, string> = {
@@ -215,8 +212,7 @@ function strokeTrackpoints(date: string, strokes: Stroke[]): string {
 }
 
 export function exportFilename(ext: string): string {
-  const day = new Date().toISOString().slice(0, 10);
-  return `rowplay-logbook-${day}.${ext}`;
+  return `rowplay-logbook-${todayKeyUtc()}.${ext}`;
 }
 
 export function workoutExportFilename(id: number, ext: string): string {

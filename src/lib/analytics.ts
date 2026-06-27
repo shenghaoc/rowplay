@@ -619,7 +619,7 @@ interface CriticalPowerEffort {
 }
 
 interface CriticalPowerOptions {
-  /** Date key used for stale-effort diagnostics; defaults to today UTC. */
+  /** Day key used for stale-effort diagnostics; defaults to today UTC. */
   asOf?: string;
 }
 
@@ -1388,27 +1388,14 @@ export interface TrainingCalendar {
 }
 
 /** Add calendar days to a `YYYY-MM-DD` key. PlainDate is timezone-free, so DST
- *  can never shift streak/grid math.
- *  Bolt: Optimized using Date.UTC and string slicing instead of Temporal.PlainDate
- *  to avoid massive object instantiation overhead in hot loops (~60x faster). */
+ *  can never shift streak/grid math. */
 export function addDaysToKey(key: string, days: number): string {
-  const y = parseInt(key.slice(0, 4), 10);
-  const m = parseInt(key.slice(5, 7), 10) - 1;
-  const d = parseInt(key.slice(8, 10), 10);
-  const date = new Date(0);
-  date.setUTCFullYear(y, m, d + days);
-  return date.toISOString().slice(0, 10);
+  return Temporal.PlainDate.from(key).add({ days }).toString();
 }
 
-/** Day of week, 0 = Sunday … 6 = Saturday (matches the old `getUTCDay`).
- *  Bolt: Optimized using Date.UTC instead of Temporal (~15x faster). */
+/** Day of week, 0 = Sunday … 6 = Saturday. */
 function dayOfWeekUtc(key: string): number {
-  const y = parseInt(key.slice(0, 4), 10);
-  const m = parseInt(key.slice(5, 7), 10) - 1;
-  const d = parseInt(key.slice(8, 10), 10);
-  const date = new Date(0);
-  date.setUTCFullYear(y, m, d);
-  return date.getUTCDay();
+  return Temporal.PlainDate.from(key).dayOfWeek % 7;
 }
 
 function isConsecutiveDay(prev: string, next: string): boolean {
@@ -1856,36 +1843,13 @@ function daysInCalendarYear(year: number): number {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 366 : 365;
 }
 
-// Bolt: Optimized using Date.UTC math instead of Temporal (~20x faster).
 function dayOfYearUtc(dayKey: string): number {
-  const y = parseInt(dayKey.slice(0, 4), 10);
-  const m = parseInt(dayKey.slice(5, 7), 10) - 1;
-  const d = parseInt(dayKey.slice(8, 10), 10);
-
-  const current = new Date(0);
-  current.setUTCFullYear(y, m, d);
-  const start = new Date(0);
-  start.setUTCFullYear(y, 0, 0); // Dec 31 of previous year
-
-  return Math.floor((current.getTime() - start.getTime()) / 86400000);
+  return Temporal.PlainDate.from(dayKey).dayOfYear;
 }
 
-// Bolt: Optimized using Date.UTC math instead of Temporal (~150x faster).
 function daysBetweenUtc(from: string, to: string): number {
-  const y1 = parseInt(from.slice(0, 4), 10);
-  const m1 = parseInt(from.slice(5, 7), 10) - 1;
-  const d1 = parseInt(from.slice(8, 10), 10);
-
-  const y2 = parseInt(to.slice(0, 4), 10);
-  const m2 = parseInt(to.slice(5, 7), 10) - 1;
-  const d2 = parseInt(to.slice(8, 10), 10);
-
-  const t1 = new Date(0);
-  t1.setUTCFullYear(y1, m1, d1);
-  const t2 = new Date(0);
-  t2.setUTCFullYear(y2, m2, d2);
-
-  return Math.max(0, Math.floor((t2.getTime() - t1.getTime()) / 86400000));
+  const days = Temporal.PlainDate.from(from).until(Temporal.PlainDate.from(to)).days;
+  return Math.max(0, days);
 }
 
 /** Year-to-date progress toward an annual distance or time goal. */
@@ -1899,8 +1863,8 @@ export function annualGoalProgress(
   const year = goal.year;
   const yearPrefix = `${year}-`;
   // Pre-filter on the raw date's year (a cheap string slice) before the
-  // Temporal-backed workoutDayKey: a tz shift moves a workout by at most one
-  // day, so only the adjacent years can cross into `year`. This skips Temporal
+  // workoutDayKey: a tz shift moves a workout by at most one
+  // day, so only the adjacent years can cross into `year`. This skips zone conversion
   // work for the bulk of a multi-year history.
   const prevYearStr = String(year - 1);
   const nextYearStr = String(year + 1);

@@ -1,3 +1,4 @@
+import { nowEpochMillis } from "$lib/datetime";
 import type { RequestEvent } from "@sveltejs/kit";
 import { error } from "@sveltejs/kit";
 import type { D1Database } from "@cloudflare/workers-types";
@@ -14,7 +15,6 @@ import {
   type SessionUser,
 } from "./session";
 import { openToken } from "./tokenCrypto";
-import { nowEpochMillis } from "$lib/datetime";
 import { detectNewPBs, distancePBs, type DistancePB } from "$lib/analytics";
 import {
   filterAndSortWorkouts,
@@ -677,7 +677,7 @@ export async function saveAnnotation(
 ): Promise<Annotation> {
   if (event.locals.demo) {
     const stored = demoAnnotationStore.get(workoutId) ?? mockAnnotations(workoutId);
-    const now = Date.now();
+    const now = nowEpochMillis();
     let result: Annotation;
     if (annotation.id > 0) {
       const idx = stored.findIndex((a) => a.id === annotation.id);
