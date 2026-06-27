@@ -126,7 +126,7 @@ describe("datetime formatters", () => {
   });
 
   it("formats epoch millis in UTC", () => {
-    const ms = Date.parse("2026-05-27T00:00:00Z");
+    const ms = Temporal.Instant.from("2026-05-27T00:00:00Z").epochMilliseconds;
     expect(fmtDateFromEpochMillis(ms, "en-US")).toMatch(/May/);
   });
 });

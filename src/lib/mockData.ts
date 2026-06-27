@@ -1,4 +1,5 @@
 import { paceToWattsForSport } from "./format";
+import { nowIsoString, parseInstantMillis } from "./datetime";
 import type { Annotation, Split, Sport, Stroke, Workout, WorkoutDetail } from "./types";
 
 /**
@@ -464,10 +465,10 @@ export function generateMockWorkout(existingIds: Iterable<number>): Workout {
   let id = 2000 + Math.floor(Math.random() * 8000);
   while (used.has(id)) id++;
   const tpl = MOCK_TEMPLATES[Math.floor(Math.random() * MOCK_TEMPLATES.length)];
-  const now = new Date();
+  const now = nowIsoString();
   const spec: Spec = {
     id,
-    date: now.toISOString().slice(0, 19).replace("T", " "),
+    date: now.slice(0, 19).replace("T", " "),
     ...tpl,
   };
   generatedSpecs.set(id, spec);
@@ -486,19 +487,19 @@ const MOCK_ANNOTATIONS: Record<number, Annotation[]> = {
       id: 1,
       timestamp: 30,
       text: "Strong start — keep the rate at 30",
-      createdAt: Date.parse("2026-05-27T06:15:00Z"),
+      createdAt: parseInstantMillis("2026-05-27T06:15:00Z"),
     },
     {
       id: 2,
       timestamp: 90,
       text: "Settle into 1:48 pace through the middle 1000",
-      createdAt: Date.parse("2026-05-27T06:20:00Z"),
+      createdAt: parseInstantMillis("2026-05-27T06:20:00Z"),
     },
     {
       id: 3,
       timestamp: 160,
       text: "Sprint! Empty the tank in the last 250",
-      createdAt: Date.parse("2026-05-27T06:25:00Z"),
+      createdAt: parseInstantMillis("2026-05-27T06:25:00Z"),
     },
   ],
   1007: [
@@ -506,13 +507,13 @@ const MOCK_ANNOTATIONS: Record<number, Annotation[]> = {
       id: 5,
       timestamp: 45,
       text: "Good rhythm, body over at the finish",
-      createdAt: Date.parse("2026-05-10T06:20:00Z"),
+      createdAt: parseInstantMillis("2026-05-10T06:20:00Z"),
     },
     {
       id: 6,
       timestamp: 120,
       text: "Watch the catch — no pause at the back",
-      createdAt: Date.parse("2026-05-10T06:25:00Z"),
+      createdAt: parseInstantMillis("2026-05-10T06:25:00Z"),
     },
   ],
   1005: [
@@ -520,13 +521,13 @@ const MOCK_ANNOTATIONS: Record<number, Annotation[]> = {
       id: 7,
       timestamp: 15,
       text: "Interval 1 start — controlled effort",
-      createdAt: Date.parse("2026-05-16T06:22:00Z"),
+      createdAt: parseInstantMillis("2026-05-16T06:22:00Z"),
     },
     {
       id: 8,
       timestamp: 150,
       text: "Interval 2 — hold steady through the rest",
-      createdAt: Date.parse("2026-05-16T06:25:00Z"),
+      createdAt: parseInstantMillis("2026-05-16T06:25:00Z"),
     },
   ],
 };

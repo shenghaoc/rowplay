@@ -1,5 +1,5 @@
 import { distancePBs } from "./analytics";
-import { logbookEpochMillis } from "./datetime";
+import { logbookEpochMillis, nowEpochMillis } from "./datetime";
 import type { Split, Sport, Stroke, Workout } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ export function rower2kBasePace(workouts: Workout[]): number | null {
 }
 
 /** Stable reference window for zone boundaries (not the TID period filter). */
-export function referenceWorkouts(workouts: Workout[], nowMs = Date.now()): Workout[] {
+export function referenceWorkouts(workouts: Workout[], nowMs = nowEpochMillis()): Workout[] {
   const cutoff = nowMs - REFERENCE_DAYS * 86_400_000;
   return workouts.filter((w) => {
     const ms = logbookEpochMillis(w.date);
@@ -87,7 +87,7 @@ export function referenceWorkouts(workouts: Workout[], nowMs = Date.now()): Work
  * from a static median. Sport-specific medians power 3-zone fallback for SkiErg/BikeErg
  * when mixing sports under a 5-zone RowErg anchor.
  */
-export function buildZoneConfig(workouts: Workout[], nowMs = Date.now()): ZoneConfig {
+export function buildZoneConfig(workouts: Workout[], nowMs = nowEpochMillis()): ZoneConfig {
   const ref = referenceWorkouts(workouts, nowMs);
   const sportMedians: Partial<Record<Sport, number>> = {
     rower: medianTrainingPace(ref, "rower"),
@@ -218,7 +218,7 @@ const PERIOD_DAYS: Record<TidPeriod, number> = {
 export function workoutsInPeriod(
   workouts: Workout[],
   period: TidPeriod,
-  nowMs = Date.now(),
+  nowMs = nowEpochMillis(),
 ): Workout[] {
   const days = PERIOD_DAYS[period];
   const cutoff = nowMs - days * 86_400_000;

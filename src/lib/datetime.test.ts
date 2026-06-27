@@ -200,8 +200,7 @@ describe("fmtDateFromEpochMillis", () => {
 
 describe("todayKeyUtc", () => {
   beforeEach(() => {
-    // todayKeyUtc() reads the clock via Temporal.Now, which vi.setSystemTime
-    // (fake Date) does not control. Freeze Temporal.Now directly so the
+    // todayKeyUtc() reads the clock via Temporal.Now. Freeze Temporal.Now directly so the
     // assertion can't ride the real wall clock and flip at UTC midnight.
     vi.spyOn(Temporal.Now, "plainDateISO").mockReturnValue(Temporal.PlainDate.from("2026-06-03"));
   });
@@ -230,7 +229,10 @@ describe("dayKeyEpochMillis", () => {
     expect(result).toBeGreaterThan(0);
     expect(Number.isFinite(result)).toBe(true);
     // Verify it round-trips: converting back to date key should give the same string
-    const back = new Date(result).toISOString().slice(0, 10);
+    const back = Temporal.Instant.fromEpochMilliseconds(result)
+      .toZonedDateTimeISO("UTC")
+      .toPlainDate()
+      .toString();
     expect(back).toBe("2026-06-03");
   });
 

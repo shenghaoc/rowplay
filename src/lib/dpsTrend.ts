@@ -1,3 +1,4 @@
+import { dayKeyEpochMillis } from "./datetime";
 import type { Sport, Workout } from "./types";
 
 export interface DpsPoint {
@@ -75,7 +76,7 @@ export function movingAverage(
 ): MovingAvgPoint[] {
   if (points.length === 0) return [];
   const halfMs = (windowDays / 2) * 86_400_000;
-  const epochs = points.map((p) => Date.parse(p.date.slice(0, 10) + "T00:00:00Z"));
+  const epochs = points.map((p) => dayKeyEpochMillis(p.date.slice(0, 10)));
 
   let left = 0;
   let right = 0;

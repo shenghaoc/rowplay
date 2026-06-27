@@ -49,7 +49,10 @@ describe("linearTrend", () => {
     const twoKs = workouts
       .filter((w) => w.sport === "rower" && Math.abs(w.distance - 2000) < 50)
       .sort((a, b) => a.date.localeCompare(b.date));
-    const points = twoKs.map((w) => ({ x: Date.parse(w.date.replace(" ", "T") + "Z"), y: w.pace }));
+    const points = twoKs.map((w) => ({
+      x: Temporal.Instant.from(w.date.replace(" ", "T") + "Z").epochMilliseconds,
+      y: w.pace,
+    }));
     const fit = linearTrend(points);
     expect(fit).not.toBeNull();
     expect(fit!.n).toBeGreaterThanOrEqual(2);

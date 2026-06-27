@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Workout } from '$lib/types';
 	import { buildTrainingCalendar, type VolumeMetric } from '$lib/analytics';
+	import { monthShortName } from '$lib/datetime';
 	import { fmtDate, fmtDistance, fmtTime } from '$lib/format';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
 	import { getI18nContext } from '$lib/i18n.svelte';
@@ -20,9 +21,7 @@
 	const i18n = getI18nContext();
 
 	function monthLabel(month: number): string {
-		// Use a synthetic date (year 2000, 1st of month) to get the short month name
-		// in the current locale. Works for both en (Jan) and zh (1月).
-		return new Date(2000, month - 1, 1).toLocaleDateString(i18n.lang, { month: 'short' });
+		return monthShortName(month, i18n.lang);
 	}
 	let metric = $state<VolumeMetric>('distance');
 

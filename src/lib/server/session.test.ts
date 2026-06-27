@@ -31,7 +31,7 @@ const sampleSession: SessionData = {
   tokens: {
     accessToken: "access-token",
     refreshToken: "refresh-token",
-    expiresAt: Date.now() + 3600_000,
+    expiresAt: Temporal.Now.instant().epochMilliseconds + 3600_000,
     scope: "user:read,results:read",
   },
 };

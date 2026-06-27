@@ -35,7 +35,6 @@
     "@tanstack/svelte-virtual": "^3.13.26",
     "svelte-sonner": "^1.1.1",
     "tailwindcss": "^4.3.0",
-    "temporal-polyfill": "~0.3.2",
     "three": "^0.184.0",
     "uplot": "^1.6.31"
   },

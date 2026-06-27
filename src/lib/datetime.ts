@@ -1,6 +1,6 @@
 /**
  * Calendar/date-time helpers built on the Temporal API.
- * Call `ensureTemporal()` from hooks before SSR or client render.
+ * Requires a runtime with native Temporal support.
  */
 
 /** Fixed zone for logbook wall-clock → epoch (SSR/client must agree). */
@@ -153,7 +153,7 @@ export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: st
   if (!pdt) return date.slice(0, 10);
 
   if (cleanWtz) {
-    // Date IS in workoutTz (monitor-local). Bucket in homeTz when it differs.
+    // The timestamp is in workoutTz (monitor-local). Bucket in homeTz when it differs.
     const day = dayKeyInZone(pdt, cleanWtz, cleanHtz !== cleanWtz ? cleanHtz : undefined);
     if (day) return day;
   }
@@ -179,4 +179,56 @@ export function dayKeyEpochMillis(key: string): number {
   } catch {
     return NaN;
   }
+}
+
+/** Current instant as an ISO-8601 string. */
+export function nowIsoString(): string {
+  return Temporal.Now.instant().toString();
+}
+
+/** Parse an ISO instant / RFC 3339 timestamp to an Instant, or null. */
+export function parseInstant(text: string): Temporal.Instant | null {
+  try {
+    return Temporal.Instant.from(text);
+  } catch {
+    return null;
+  }
+}
+
+/** ISO-8601 timestamp from logbook date + elapsed seconds, with invalid inputs falling back to now. */
+export function logbookDatePlusSecondsIso(date: string, elapsedSec: number): string {
+  const base = date.trim().replace(" ", "T");
+  const withTz = base.includes("Z") || /[+-]\d{2}:\d{2}$/.test(base) ? base : `${base}Z`;
+  const instant = parseInstant(withTz);
+  if (!instant) return nowIsoString();
+  return instant.add({ milliseconds: Math.round(elapsedSec * 1000) }).toString();
+}
+
+/** Current UTC calendar year. */
+export function currentUtcYear(): number {
+  return Temporal.Now.plainDateISO("UTC").year;
+}
+
+const TIME_FMT: Intl.DateTimeFormatOptions = {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+};
+
+export function instantIsoFromEpochMillis(epochMs: number): string {
+  return Temporal.Instant.fromEpochMilliseconds(epochMs).toString();
+}
+
+export function fmtTimeFromEpochMillis(
+  epochMs: number,
+  locale?: string,
+  timeZone?: string,
+): string {
+  return Temporal.Instant.fromEpochMilliseconds(epochMs)
+    .toZonedDateTimeISO(timeZone ?? Temporal.Now.timeZoneId())
+    .toLocaleString(locale, TIME_FMT);
+}
+
+export function monthShortName(month: number, locale?: string): string {
+  return Temporal.PlainMonthDay.from({ month, day: 1 }).toLocaleString(locale, { month: "short" });
 }

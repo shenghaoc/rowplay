@@ -1,3 +1,4 @@
+import { nowEpochMillis } from "./datetime";
 import { createContext } from "svelte";
 import type { DistancePB } from "$lib/analytics";
 import type { Workout } from "$lib/types";
@@ -148,7 +149,7 @@ export class LiveMode {
   private scheduleNext(delayMs: number) {
     this.clearTimer();
     if (!this.enabled) return;
-    const at = Date.now() + delayMs;
+    const at = nowEpochMillis() + delayMs;
     this.nextPollAt = at;
     this.timer = setTimeout(() => void this.poll(), delayMs);
   }
@@ -179,7 +180,7 @@ export class LiveMode {
       for (const w of result.workouts) this.knownIds.add(w.id);
 
       this.failures = 0;
-      this.lastPollAt = Date.now();
+      this.lastPollAt = nowEpochMillis();
       this.status = "idle";
 
       if (fresh.length) {

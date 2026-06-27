@@ -4,6 +4,7 @@
 	import ChipButton from '$components/ChipButton.svelte';
 	import ChipGroup from '$components/ChipGroup.svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
+	import { fmtTimeFromEpochMillis, instantIsoFromEpochMillis } from '$lib/datetime';
 	import { LIVE_INTERVALS, type LiveIntervalSec, type LiveMode } from '$lib/liveMode.svelte';
 
 	interface Props {
@@ -20,7 +21,7 @@
 
 	function fmtWallTime(ts: number | null): string {
 		if (ts == null) return '—';
-		return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+		return fmtTimeFromEpochMillis(ts);
 	}
 </script>
 
@@ -72,13 +73,13 @@
 			{:else}
 				<div class="status-row">
 					<span class="status-label muted">{t('liveMode.lastPollLabel')}</span>
-					<time class="status-time mono" datetime={live.lastPollAt ? new Date(live.lastPollAt).toISOString() : undefined}>
+					<time class="status-time mono" datetime={live.lastPollAt ? instantIsoFromEpochMillis(live.lastPollAt) : undefined}>
 						{fmtWallTime(live.lastPollAt)}
 					</time>
 				</div>
 				<div class="status-row">
 					<span class="status-label muted">{t('liveMode.nextPollLabel')}</span>
-					<time class="status-time mono" datetime={live.nextPollAt ? new Date(live.nextPollAt).toISOString() : undefined}>
+					<time class="status-time mono" datetime={live.nextPollAt ? instantIsoFromEpochMillis(live.nextPollAt) : undefined}>
 						{fmtWallTime(live.nextPollAt)}
 					</time>
 				</div>
