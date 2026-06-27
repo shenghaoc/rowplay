@@ -85,7 +85,7 @@
 
 ## 2026-06-25 - Single-pass loops inside Svelte `$derived.by()` reactive blocks
 
-**Learning:** Beyond the general map/filter chain cost noted above, the allocation overhead is amplified inside Svelte 5 `$derived.by()` blocks because they re-run on every dependency change. Two patterns specific to this context are worth calling out: (1) multiple _parallel_ `.map()` calls over the same source array (e.g. building four uPlot series) traverse the list once per series and allocate one array each; (2) `.filter().reduce()` for an average allocates a throwaway filtered array just to sum it.
+**Learning:** Beyond the general map/filter chain cost noted above, the allocation overhead is amplified inside Svelte 5 `$derived.by()` blocks because they re-run on every dependency change. Two patterns specific to this context are worth calling out: (1) multiple *parallel* `.map()` calls over the same source array (e.g. building four uPlot series) traverse the list once per series and allocate one array each; (2) `.filter().reduce()` for an average allocates a throwaway filtered array just to sum it.
 **Action:** Inside `$derived.by()` blocks, collapse parallel `.map()` calls into one loop that pre-allocates each output with `new Array(n)` and fills all of them in a single traversal, and replace `.filter().reduce()` averages with a single loop that accumulates `count` and `sum` directly.
 
 ## 2026-06-26 - Optimize high-frequency date math by removing Temporal polyfill
