@@ -1844,9 +1844,7 @@ function daysInCalendarYear(year: number): number {
 }
 
 function dayOfYearUtc(dayKey: string): number {
-  const current = Temporal.PlainDate.from(dayKey);
-  const start = Temporal.PlainDate.from({ year: current.year, month: 1, day: 1 });
-  return start.until(current).days + 1;
+  return Temporal.PlainDate.from(dayKey).dayOfYear;
 }
 
 function daysBetweenUtc(from: string, to: string): number {

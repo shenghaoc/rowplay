@@ -1,3 +1,5 @@
+/// <reference types="temporal-polyfill/global" />
+
 import type { KVNamespace, D1Database, Fetcher, ExecutionContext } from "@cloudflare/workers-types";
 import type { SessionUser } from "$lib/server/session";
 import type { Language } from "$lib/i18n";

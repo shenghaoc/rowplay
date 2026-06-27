@@ -1,6 +1,6 @@
 /**
  * Calendar/date-time helpers built on the Temporal API.
- * Requires a runtime with native Temporal support.
+ * Call `ensureTemporal()` from hooks before SSR or client render.
  */
 
 /** Fixed zone for logbook wall-clock → epoch (SSR/client must agree). */
@@ -225,7 +225,7 @@ export function fmtTimeFromEpochMillis(
   timeZone?: string,
 ): string {
   return Temporal.Instant.fromEpochMilliseconds(epochMs)
-    .toZonedDateTimeISO(timeZone ?? Temporal.Now.timeZoneId())
+    .toZonedDateTimeISO(timeZone || Temporal.Now.timeZoneId())
     .toLocaleString(locale, TIME_FMT);
 }
 

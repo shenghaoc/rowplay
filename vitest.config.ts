@@ -7,6 +7,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "tests/unit/**/*.test.ts"],
     exclude: ["src/**/*.browser.test.ts"],
     environment: "node",
+    setupFiles: ["tests/unit/setup.ts"],
     // JUnit XML is emitted alongside the default reporter in CI so that
     // any GitHub Actions test reporter (e.g. dorny/test-reporter) can
     // surface failures inline on the PR.

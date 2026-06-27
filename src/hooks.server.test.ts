@@ -8,7 +8,8 @@ import { describe, expect, it } from "vite-plus/test";
  * Response so we can inspect which headers were applied.
  */
 
-// We import the module directly to test the exported SvelteKit hook.
+// We import the module directly — the top-level `await ensureTemporal()` runs
+// once at import time, which is fine in Vitest (it's a no-op on second call).
 import { handle } from "./hooks.server";
 
 /** Build a minimal RequestEvent for the hook. */
