@@ -91,4 +91,4 @@
 ## 2026-06-26 - Optimize high-frequency date math by removing Temporal polyfill
 
 **Learning:** Using the `temporal-polyfill` (`Temporal.PlainDate`) for simple date math operations (like adding days or calculating differences) inside high-frequency loops (e.g., iterating through an athlete's entire workout history for calendar rendering) incurs massive object instantiation overhead, executing 20x to 150x slower than native math.
-**Action:** Replace `Temporal.PlainDate` math in hot paths with native `Date.UTC` arithmetic and string parsing/slicing for the `YYYY-MM-DD` format. Use `Math.floor((t2 - t1) / 86400000)` for safe timezone-free differences.
+**Action:** Replace `Temporal.PlainDate` math in hot paths with native `Date` arithmetic and string parsing/slicing for the `YYYY-MM-DD` format. Use `setUTCFullYear` instead of `Date.UTC` to avoid the 2-digit year quirk (years 0–99 map to 1900–1999). Use `Math.floor((t2 - t1) / 86400000)` for safe timezone-free differences.

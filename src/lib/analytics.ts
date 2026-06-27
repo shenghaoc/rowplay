@@ -1395,7 +1395,8 @@ export function addDaysToKey(key: string, days: number): string {
   const y = parseInt(key.slice(0, 4), 10);
   const m = parseInt(key.slice(5, 7), 10) - 1;
   const d = parseInt(key.slice(8, 10), 10);
-  const date = new Date(Date.UTC(y, m, d + days));
+  const date = new Date(0);
+  date.setUTCFullYear(y, m, d + days);
   return date.toISOString().slice(0, 10);
 }
 
@@ -1405,7 +1406,9 @@ function dayOfWeekUtc(key: string): number {
   const y = parseInt(key.slice(0, 4), 10);
   const m = parseInt(key.slice(5, 7), 10) - 1;
   const d = parseInt(key.slice(8, 10), 10);
-  return new Date(Date.UTC(y, m, d)).getUTCDay();
+  const date = new Date(0);
+  date.setUTCFullYear(y, m, d);
+  return date.getUTCDay();
 }
 
 function isConsecutiveDay(prev: string, next: string): boolean {
@@ -1859,10 +1862,12 @@ function dayOfYearUtc(dayKey: string): number {
   const m = parseInt(dayKey.slice(5, 7), 10) - 1;
   const d = parseInt(dayKey.slice(8, 10), 10);
 
-  const current = Date.UTC(y, m, d);
-  const start = Date.UTC(y, 0, 0); // Dec 31 of previous year
+  const current = new Date(0);
+  current.setUTCFullYear(y, m, d);
+  const start = new Date(0);
+  start.setUTCFullYear(y, 0, 0); // Dec 31 of previous year
 
-  return Math.floor((current - start) / 86400000);
+  return Math.floor((current.getTime() - start.getTime()) / 86400000);
 }
 
 // Bolt: Optimized using Date.UTC math instead of Temporal (~150x faster).
@@ -1875,10 +1880,12 @@ function daysBetweenUtc(from: string, to: string): number {
   const m2 = parseInt(to.slice(5, 7), 10) - 1;
   const d2 = parseInt(to.slice(8, 10), 10);
 
-  const t1 = Date.UTC(y1, m1, d1);
-  const t2 = Date.UTC(y2, m2, d2);
+  const t1 = new Date(0);
+  t1.setUTCFullYear(y1, m1, d1);
+  const t2 = new Date(0);
+  t2.setUTCFullYear(y2, m2, d2);
 
-  return Math.max(0, Math.floor((t2 - t1) / 86400000));
+  return Math.max(0, Math.floor((t2.getTime() - t1.getTime()) / 86400000));
 }
 
 /** Year-to-date progress toward an annual distance or time goal. */
