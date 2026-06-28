@@ -89,6 +89,7 @@
 				type="button"
 				class="btn btn-ghost btn-sm"
 				aria-expanded={expanded}
+				aria-controls="lq-details-panel"
 				onclick={() => (expanded = !expanded)}
 			>
 				{expanded ? t('workoutList.collapse') : t('workoutList.expand')}
@@ -96,7 +97,7 @@
 		</div>
 	</div>
 
-	<details class="lq-details" bind:open={expanded}>
+	<details id="lq-details-panel" class="lq-details" bind:open={expanded}>
 		<summary class="lq-summary">{t('workoutList.expand')}</summary>
 		<div class="lqgrid">
 			<label class="flex flex-col gap-1 w-full">
