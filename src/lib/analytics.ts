@@ -1123,10 +1123,11 @@ export function powerCurve(strokes: Stroke[], durations?: number[]): PowerPoint[
   // Prefix energy E[i] = ∫ watts dt up to strokes[i].t (trapezoidal).
   // Bolt: Avoid mapping redundant arrays and use a typed array for prefix sums to reduce GC pressure
   const E = new Float64Array(strokes.length);
+  let prev = strokes[0]!;
   for (let i = 1; i < strokes.length; i++) {
-    E[i] =
-      E[i - 1] +
-      ((strokes[i]!.watts + strokes[i - 1]!.watts) / 2) * (strokes[i]!.t - strokes[i - 1]!.t);
+    const curr = strokes[i]!;
+    E[i] = E[i - 1] + ((curr.watts + prev.watts) / 2) * (curr.t - prev.t);
+    prev = curr;
   }
 
   return windows.map((dur) => {
