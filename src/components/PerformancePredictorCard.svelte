@@ -70,7 +70,7 @@
 </script>
 
 <div class="card card-border bg-base-100 shadow-md p-5 predictor-card">
-	<button type="button" class="predictor-head" onclick={toggleOpen} aria-expanded={open} aria-controls="predictor-body">
+	<button type="button" class="predictor-head" onclick={toggleOpen} aria-expanded={open} aria-controls={open ? 'predictor-body' : undefined}>
 		<span class="label">{t('dashboard.predictor.title')}</span>
 		<span class="predictor-chevron" aria-hidden="true">
 			{#if open}<ChevronDown size={18} />{:else}<ChevronRight size={18} />{/if}
