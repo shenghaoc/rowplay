@@ -593,16 +593,33 @@
 	});
 
 	const trend = $derived.by((): uPlot.AlignedData => {
-		const xs = trendPoints.map((p) => p.x / 1000); // uPlot time scale wants seconds
-		const ys = trendPoints.map((p) => p.y);
-		// Second series = the fit line (same x, linearly interpolated y endpoints).
-		let fitY: (number | null)[] = ys.map(() => null);
-		if (fit && trendPoints.length >= 2) {
+		// Bolt: Collapse multiple parallel .map() calls into a single-pass loop
+		// over pre-allocated arrays to avoid redundant iterations and GC overhead
+		// inside a reactive $derived.by() block.
+		const n = trendPoints.length;
+		const xs = new Array(n);
+		const ys = new Array(n);
+		const fitY: (number | null)[] = new Array(n);
+
+		if (fit && n >= 2) {
 			const x0 = trendPoints[0].x;
-			const x1 = trendPoints[trendPoints.length - 1].x;
+			const x1 = trendPoints[n - 1].x;
 			const span = x1 - x0 || 1;
-			fitY = trendPoints.map((p) => fit.y0 + ((fit.y1 - fit.y0) * (p.x - x0)) / span);
+			for (let i = 0; i < n; i++) {
+				const p = trendPoints[i];
+				xs[i] = p.x / 1000;
+				ys[i] = p.y;
+				fitY[i] = fit.y0 + ((fit.y1 - fit.y0) * (p.x - x0)) / span;
+			}
+		} else {
+			for (let i = 0; i < n; i++) {
+				const p = trendPoints[i];
+				xs[i] = p.x / 1000;
+				ys[i] = p.y;
+				fitY[i] = null;
+			}
 		}
+
 		return [xs, ys, fitY];
 	});
 
@@ -670,9 +687,18 @@
 	const dpsHover = $derived(dpsHoverIdx != null ? (dpsPoints[dpsHoverIdx] ?? null) : null);
 
 	const dpsChartData = $derived.by((): uPlot.AlignedData => {
-		const xs = dpsPoints.map((p) => logbookEpochMillis(p.date) / 1000);
-		const ys = dpsPoints.map((p) => p[dpsMetric]);
-		const ma = dpsMa.map((m) => m.value);
+		// Bolt: Collapse multiple parallel .map() calls into a single-pass loop
+		// over pre-allocated arrays to avoid redundant array allocations and
+		// garbage collection overhead inside a reactive $derived block.
+		const n = dpsPoints.length;
+		const xs = new Array(n);
+		const ys = new Array(n);
+		const ma = new Array(n); // dpsMa has same length as dpsPoints
+		for (let i = 0; i < n; i++) {
+			xs[i] = logbookEpochMillis(dpsPoints[i].date) / 1000;
+			ys[i] = dpsPoints[i][dpsMetric];
+			ma[i] = dpsMa[i].value;
+		}
 		return [xs, ys, ma];
 	});
 
