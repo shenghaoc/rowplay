@@ -1146,10 +1146,10 @@ export function powerCurve(strokes: Stroke[], durations?: number[]): PowerPoint[
       const eTb =
         j === strokes.length - 1
           ? E[j]
-          : E[j]! +
-            ((E[j + 1]! - E[j]!) * (tb - strokes[j]!.t)) / (strokes[j + 1]!.t - strokes[j]!.t || 1);
+          : E[j] +
+            ((E[j + 1] - E[j]) * (tb - strokes[j]!.t)) / (strokes[j + 1]!.t - strokes[j]!.t || 1);
 
-      const avg = (eTb - E[i]!) / dur;
+      const avg = (eTb - E[i]) / dur;
       if (avg > best) best = avg;
     }
     return { duration: dur, watts: best };
