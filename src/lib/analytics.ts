@@ -1121,30 +1121,33 @@ export function powerCurve(strokes: Stroke[], durations?: number[]): PowerPoint[
   );
 
   // Prefix energy E[i] = ∫ watts dt up to strokes[i].t (trapezoidal).
-  const t = strokes.map((s) => s.t);
-  const w = strokes.map((s) => s.watts);
-  const E = Array.from({ length: strokes.length }, () => 0);
+  // Bolt: Avoid mapping redundant arrays and use a typed array for prefix sums to reduce GC pressure
+  const E = new Float64Array(strokes.length);
+  let prev = strokes[0]!;
   for (let i = 1; i < strokes.length; i++) {
-    E[i] = E[i - 1] + ((w[i] + w[i - 1]) / 2) * (t[i] - t[i - 1]);
+    const curr = strokes[i]!;
+    E[i] = E[i - 1] + ((curr.watts + prev.watts) / 2) * (curr.t - prev.t);
+    prev = curr;
   }
 
   return windows.map((dur) => {
     let best = 0;
     let j = 0;
     for (let i = 0; i < strokes.length; i++) {
-      const ta = t[i];
+      const ta = strokes[i]!.t;
       const tb = ta + dur;
       if (tb > total) break;
 
-      // Sliding window: advance j until t[j+1] is past tb
-      while (j < t.length - 1 && t[j + 1] <= tb) {
+      // Sliding window: advance j until strokes[j+1].t is past tb
+      while (j < strokes.length - 1 && strokes[j + 1]!.t <= tb) {
         j++;
       }
 
       const eTb =
-        j === t.length - 1
+        j === strokes.length - 1
           ? E[j]
-          : E[j] + ((E[j + 1] - E[j]) * (tb - t[j])) / (t[j + 1] - t[j] || 1);
+          : E[j] +
+            ((E[j + 1] - E[j]) * (tb - strokes[j]!.t)) / (strokes[j + 1]!.t - strokes[j]!.t || 1);
 
       const avg = (eTb - E[i]) / dur;
       if (avg > best) best = avg;
