@@ -871,6 +871,7 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     comparePick: "Pick first workout to compare",
     compareWith: "Compare with this workout",
     compareCancel: "Cancel",
+    openReplay: "Open replay",
   },
   share: {
     shareReplay: "Share replay",

@@ -876,6 +876,7 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     comparePick: "Erstes Workout zum Vergleich wählen",
     compareWith: "Mit diesem Workout vergleichen",
     compareCancel: "Abbrechen",
+    openReplay: "Replay öffnen",
   },
   share: {
     shareReplay: "Replay teilen",

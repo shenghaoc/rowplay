@@ -879,6 +879,7 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     comparePick: "Choisir la première séance à comparer",
     compareWith: "Comparer avec cette séance",
     compareCancel: "Annuler",
+    openReplay: "Ouvrir le replay",
   },
   share: {
     shareReplay: "Partager le replay",
