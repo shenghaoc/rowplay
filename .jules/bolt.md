@@ -97,3 +97,8 @@
 
 **Learning:** When generating mathematical sequences (like prefix sums) across large arrays of time-series data (like thousands of strokes), using standard `Array.from()` creates a regular JavaScript array that incurs object boxing overhead and fragmented memory layout.
 **Action:** Replace `Array.from()` with TypedArrays like `new Float64Array()` for internal calculations (e.g. prefix sums, numeric intermediate buffers) inside hot-path mathematical routines to ensure contiguous memory layout and reduce GC pressure.
+
+## 2026-06-28 - Optimize reactive chart derivations
+
+**Learning:** Svelte 5 `$derived.by()` blocks re-run on every dependency change. Inside these blocks, using multiple parallel `.map()` calls over the same source array (e.g. to generate multiple series for uPlot data) results in redundant passes and allocates a temporary array for each mapping operation, amplifying garbage collection pressure.
+**Action:** Consolidate parallel `.map()` calls into a single-pass loop that pre-allocates each output series with `new Array(n)` and fills all of them in a single traversal.
