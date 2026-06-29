@@ -102,6 +102,7 @@
 				type="button"
 				class="cmpbtn"
 				class:active={compareAnchor === w.id}
+				aria-pressed={compareAnchor === w.id}
 				title={compareAnchor == null ? t('workoutList.comparePick') : t('workoutList.compareWith')}
 				aria-label={t('workoutList.compare')}
 				onclick={(e) => {
