@@ -470,10 +470,10 @@
 		// Match the series count in formOptions (x + 3) so uPlot never sees a
 		// shape it can't render, even in the empty state.
 		if (!load) return [[], [], [], []];
-		const xs: number[] = new Array(load.series.length);
-		const ctl: number[] = new Array(load.series.length);
-		const atl: number[] = new Array(load.series.length);
-		const tsb: number[] = new Array(load.series.length);
+		const xs = Array.from<number>({ length: load.series.length });
+		const ctl = Array.from<number>({ length: load.series.length });
+		const atl = Array.from<number>({ length: load.series.length });
+		const tsb = Array.from<number>({ length: load.series.length });
 		for (let i = 0; i < load.series.length; i++) {
 			const p = load.series[i];
 			xs[i] = p.day / 1000;
@@ -597,9 +597,9 @@
 		// over pre-allocated arrays to avoid redundant iterations and GC overhead
 		// inside a reactive $derived.by() block.
 		const n = trendPoints.length;
-		const xs = new Array(n);
-		const ys = new Array(n);
-		const fitY: (number | null)[] = new Array(n);
+		const xs = Array.from<number>({ length: n });
+		const ys = Array.from<number>({ length: n });
+		const fitY = Array.from<number | null>({ length: n });
 
 		const hasFit = !!(fit && n >= 2);
 		const x0 = hasFit ? trendPoints[0].x : 0;
@@ -684,9 +684,9 @@
 		// over pre-allocated arrays to avoid redundant array allocations and
 		// garbage collection overhead inside a reactive $derived block.
 		const n = dpsPoints.length;
-		const xs = new Array(n);
-		const ys = new Array(n);
-		const ma = new Array(n); // dpsMa has same length as dpsPoints
+		const xs = Array.from<number>({ length: n });
+		const ys = Array.from<number>({ length: n });
+		const ma = Array.from<number | null>({ length: n }); // dpsMa has same length as dpsPoints
 		for (let i = 0; i < n; i++) {
 			xs[i] = logbookEpochMillis(dpsPoints[i].date) / 1000;
 			ys[i] = dpsPoints[i][dpsMetric];
