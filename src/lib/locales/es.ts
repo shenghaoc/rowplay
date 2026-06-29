@@ -870,6 +870,7 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     comparePick: "Elige el primer entrenamiento a comparar",
     compareWith: "Comparar con este entrenamiento",
     compareCancel: "Cancelar",
+    openReplay: "Abrir replay",
   },
   share: {
     shareReplay: "Compartir replay",

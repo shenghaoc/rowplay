@@ -80,6 +80,11 @@
 </script>
 
 {#snippet row(w: Workout)}
+	<a
+		class="rowhit"
+		href="/replay/{w.id}"
+		aria-label="{t('workoutList.openReplay')}: {w.workoutType || SPORT_LABEL[w.sport]} {fmtDate(w.date)}"
+	></a>
 	<div class="sport" style:color={MACHINE_COLOR[w.sport]}><SportIcon sport={w.sport} size={22} /></div>
 	<div class="rowmain">
 		<div class="rowtop">
@@ -114,7 +119,7 @@
 				<GitCompare size={16} />
 			</button>
 		{/if}
-		<span class="play"><ChevronRight size={18} /></span>
+		<span class="play" aria-hidden="true"><ChevronRight size={18} /></span>
 	</div>
 {/snippet}
 
@@ -130,15 +135,14 @@
 		<div class="vinner" style:height="{$rowVirtualizer.getTotalSize()}px">
 			{#each items as item (item.key)}
 				{@const w = workouts[item.index]}
-				<a
+				<div
 					class="card card-border bg-base-100 shadow-md p-5 row vrow"
 					class:new-entry={newEntryIds.has(w.id)}
-					href="/replay/{w.id}"
 					style:height="{item.size}px"
 					style:transform="translateY({item.start}px)"
 				>
 					{@render row(w)}
-				</a>
+				</div>
 			{/each}
 		</div>
 	</div>
@@ -147,7 +151,7 @@
 	<!-- Small list: plain flow layout. -->
 	<div class="wlist">
 		{#each workouts as w (w.id)}
-			<a class="card card-border bg-base-100 shadow-md p-5 row" class:new-entry={newEntryIds.has(w.id)} href="/replay/{w.id}">{@render row(w)}</a>
+			<div class="card card-border bg-base-100 shadow-md p-5 row" class:new-entry={newEntryIds.has(w.id)}>{@render row(w)}</div>
 		{/each}
 	</div>
 {/if}
@@ -171,6 +175,7 @@
 		width: 100%;
 	}
 	.row {
+		position: relative;
 		display: flex;
 		flex-direction: row;
 		align-items: center;
@@ -181,8 +186,17 @@
 		transition: background 0.1s ease;
 	}
 	.row:hover {
-		text-decoration: none;
 		background: var(--paper-inset);
+	}
+	.rowhit {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		border-radius: inherit;
+	}
+	.rowhit:focus-visible {
+		outline: 2px solid var(--live);
+		outline-offset: 2px;
 	}
 	.row.new-entry {
 		@starting-style {
@@ -211,13 +225,23 @@
 		text-align: right;
 	}
 	.sport {
+		position: relative;
+		z-index: 2;
 		display: flex;
 		align-items: center;
 		flex-shrink: 0;
+		pointer-events: none;
 	}
 	.rowmain {
+		position: relative;
+		z-index: 2;
 		flex: 1;
 		min-width: 0;
+		pointer-events: none;
+	}
+	.rowmain :global(button),
+	.rowmain :global(select) {
+		pointer-events: auto;
 	}
 	.rowtop {
 		display: flex;
@@ -249,10 +273,13 @@
 		text-overflow: ellipsis;
 	}
 	.actions {
+		position: relative;
+		z-index: 2;
 		display: flex;
 		align-items: center;
 		gap: 0.35rem;
 		flex-shrink: 0;
+		pointer-events: none;
 	}
 	.play {
 		display: flex;
@@ -260,6 +287,7 @@
 		color: var(--text-dim);
 	}
 	.cmpbtn {
+		pointer-events: auto;
 		display: flex;
 		align-items: center;
 		justify-content: center;
