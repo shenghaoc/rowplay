@@ -443,8 +443,20 @@
 	// active sport tab.
 	const allPbs = $derived(data.aggregates?.pbs ?? distancePBs(workouts));
 
-	const totalMeters = $derived(bySport.reduce((s, r) => s + r.distance, 0));
-	const totalTime = $derived(bySport.reduce((s, r) => s + r.time, 0));
+	// Bolt: Consolidate reductions over bySport into a single pass loop
+	const totals = $derived.by(() => {
+		let totalMeters = 0;
+		let totalTime = 0;
+		let totalSessions = 0;
+		for (let i = 0; i < bySport.length; i++) {
+			totalMeters += bySport[i].distance;
+			totalTime += bySport[i].time;
+			totalSessions += bySport[i].sessions;
+		}
+		return { totalMeters, totalTime, totalSessions };
+	});
+	const totalMeters = $derived(totals.totalMeters);
+	const totalTime = $derived(totals.totalTime);
 	const avgPace = $derived(totalMeters > 0 ? totalTime / (totalMeters / 500) : 0);
 
 	// ---- Fitness & Freshness (Performance Management Chart) ----
@@ -877,7 +889,7 @@
 		<div class="dash-stats">
 		<div class="card statcard">
 			<div class="statlabel eyebrow">{t('dashboard.sessions')}</div>
-			<div class="statval mono">{bySport.reduce((s, r) => s + r.sessions, 0)}</div>
+			<div class="statval mono">{totals.totalSessions}</div>
 		</div>
 		<div class="card statcard">
 			<div class="statlabel eyebrow">{t('dashboard.totalDistance')}</div>

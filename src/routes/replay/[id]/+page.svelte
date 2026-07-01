@@ -791,7 +791,25 @@
 	});
 
 	// ---- Telemetry charts ----
-	const xs = $derived(strokes.map((s) => s.t));
+	// Bolt: Consolidate parallel mapping over strokes into a single pass loop
+	const chartData = $derived.by(() => {
+		const n = strokes.length;
+		const t = Array.from<number>({ length: n });
+		const pace = Array.from<number>({ length: n });
+		const spm = Array.from<number>({ length: n });
+		const watts = Array.from<number>({ length: n });
+		const hr = Array.from<number | null>({ length: n });
+		for (let i = 0; i < n; i++) {
+			const s = strokes[i];
+			t[i] = s.t;
+			pace[i] = s.pace;
+			spm[i] = s.spm;
+			watts[i] = s.watts;
+			hr[i] = s.hr ?? null;
+		}
+		return { t, pace, spm, watts, hr };
+	});
+	const xs = $derived(chartData.t);
 	const hasHr = $derived(strokesHaveHr(strokes));
 
 	const hrPreviewLabel = $derived.by(() => {
@@ -840,7 +858,7 @@
 		return aligned;
 	});
 
-	const paceSeries = $derived(strokes.map((s) => s.pace));
+	const paceSeries = $derived(chartData.pace);
 	const paceData = $derived.by((): uPlot.AlignedData => {
 		const rows: (number | null)[][] = [xs, paceSeries];
 		if (dpsAligned) rows.push(dpsAligned);
@@ -857,9 +875,9 @@
 		}
 		return rows as uPlot.AlignedData;
 	});
-	const rateData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.spm)]);
-	const powerData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.watts)]);
-	const hrData = $derived<uPlot.AlignedData>([xs, strokes.map((s) => s.hr ?? null)]);
+	const rateData = $derived<uPlot.AlignedData>([xs, chartData.spm]);
+	const powerData = $derived<uPlot.AlignedData>([xs, chartData.watts]);
+	const hrData = $derived<uPlot.AlignedData>([xs, chartData.hr]);
 
 	const paceOpts = $derived.by(() => {
 		const paceFmt = (v: number) => fmtPace(v).replace('/500m', '');
@@ -972,17 +990,48 @@
 	// ---- Analysis ----
 	const zones = $derived(hasHr ? hrZones(strokes) : []);
 	const pc = $derived(powerCurve(strokes));
-	const pcData = $derived<uPlot.AlignedData>([pc.map((p) => p.duration), pc.map((p) => p.watts)]);
+	// Bolt: Single-pass loop pre-allocating arrays instead of parallel map() calls
+	const pcData = $derived.by((): uPlot.AlignedData => {
+		const n = pc.length;
+		const duration = Array.from<number>({ length: n });
+		const watts = Array.from<number>({ length: n });
+		for (let i = 0; i < n; i++) {
+			duration[i] = pc[i].duration;
+			watts[i] = pc[i].watts;
+		}
+		return [duration, watts];
+	});
 	const pcOpts = $derived(metricOpts('best avg power', 'power', false, (v) => `${Math.round(v)}w`));
 
 	// ---- Technique (stroke quality from logged pace/rate) ----
 	const tech = $derived(techniqueSummary(strokes));
-	const dpsData = $derived<uPlot.AlignedData>([tech.dps.map((d) => d.t), tech.dps.map((d) => d.v)]);
+	// Bolt: Single-pass loop pre-allocating arrays instead of parallel map() calls
+	const dpsData = $derived.by((): uPlot.AlignedData => {
+		const dps = tech.dps;
+		const n = dps.length;
+		const t = Array.from<number>({ length: n });
+		const v = Array.from<number>({ length: n });
+		for (let i = 0; i < n; i++) {
+			t[i] = dps[i].t;
+			v[i] = dps[i].v;
+		}
+		return [t, v];
+	});
 	const dpsOpts = $derived(metricOpts('dist/stroke', 'dps', false, (v) => `${v.toFixed(1)}m`));
 
 	const eff = $derived(efficiencyByRate(strokes));
 	// Scatter: pace (y, inverted) vs rate (x); a uPlot line over rate-sorted medians.
-	const effData = $derived<uPlot.AlignedData>([eff.map((e) => e.spm), eff.map((e) => e.pace)]);
+	// Bolt: Single-pass loop pre-allocating arrays instead of parallel map() calls
+	const effData = $derived.by((): uPlot.AlignedData => {
+		const n = eff.length;
+		const spm = Array.from<number>({ length: n });
+		const pace = Array.from<number>({ length: n });
+		for (let i = 0; i < n; i++) {
+			spm[i] = eff[i].spm;
+			pace[i] = eff[i].pace;
+		}
+		return [spm, pace];
+	});
 	const effOpts = $derived(
 		baseOptions({
 			theme: chart,
