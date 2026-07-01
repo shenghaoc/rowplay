@@ -73,7 +73,7 @@ jobs:
       # Install the pinned version so engine checks and Node 26 features
       # are available.
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
       - name: Install pnpm
@@ -123,7 +123,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
       - name: Install pnpm
