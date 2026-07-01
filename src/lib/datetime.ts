@@ -73,7 +73,15 @@ export function fmtDate(value: string, locale?: string, timeZone?: string): stri
       result = pdt.toLocaleString(locale, DATE_FMT);
     } else {
       try {
-        result = Temporal.PlainDate.from(value).toLocaleString(locale, DATE_FMT);
+        if (value.length === 10 && value[4] === "-" && value[7] === "-") {
+          const parts = value.split("-");
+          const date = new Date(
+            Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)),
+          );
+          result = date.toLocaleDateString(locale, { ...DATE_FMT, timeZone: "UTC" });
+        } else {
+          result = Temporal.PlainDate.from(value).toLocaleString(locale, DATE_FMT);
+        }
       } catch {
         result = value;
       }
@@ -174,6 +182,12 @@ export function todayKeyForTz(tz?: string): string {
 
 /** `YYYY-MM-DD` day key → UTC-midnight epoch milliseconds; NaN if unparseable. */
 export function dayKeyEpochMillis(key: string): number {
+  if (typeof key === "string" && key.length === 10 && key[4] === "-" && key[7] === "-") {
+    const y = parseInt(key.slice(0, 4), 10);
+    const m = parseInt(key.slice(5, 7), 10) - 1;
+    const d = parseInt(key.slice(8, 10), 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return Date.UTC(y, m, d);
+  }
   try {
     return Temporal.PlainDate.from(key).toZonedDateTime("UTC").epochMilliseconds;
   } catch {

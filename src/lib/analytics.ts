@@ -1393,12 +1393,19 @@ export interface TrainingCalendar {
 /** Add calendar days to a `YYYY-MM-DD` key. PlainDate is timezone-free, so DST
  *  can never shift streak/grid math. */
 export function addDaysToKey(key: string, days: number): string {
-  return Temporal.PlainDate.from(key).add({ days }).toString();
+  const y = parseInt(key.slice(0, 4), 10);
+  const m = parseInt(key.slice(5, 7), 10) - 1;
+  const d = parseInt(key.slice(8, 10), 10);
+  const date = new Date(Date.UTC(y, m, d + days));
+  return date.toISOString().slice(0, 10);
 }
 
 /** Day of week, 0 = Sunday … 6 = Saturday. */
 function dayOfWeekUtc(key: string): number {
-  return Temporal.PlainDate.from(key).dayOfWeek % 7;
+  const y = parseInt(key.slice(0, 4), 10);
+  const m = parseInt(key.slice(5, 7), 10) - 1;
+  const d = parseInt(key.slice(8, 10), 10);
+  return new Date(Date.UTC(y, m, d)).getUTCDay();
 }
 
 function isConsecutiveDay(prev: string, next: string): boolean {
@@ -1847,12 +1854,23 @@ function daysInCalendarYear(year: number): number {
 }
 
 function dayOfYearUtc(dayKey: string): number {
-  return Temporal.PlainDate.from(dayKey).dayOfYear;
+  const y = parseInt(dayKey.slice(0, 4), 10);
+  const m = parseInt(dayKey.slice(5, 7), 10) - 1;
+  const d = parseInt(dayKey.slice(8, 10), 10);
+  const date = new Date(Date.UTC(y, m, d));
+  const start = new Date(Date.UTC(y, 0, 1));
+  return Math.floor((date.getTime() - start.getTime()) / 86400000) + 1;
 }
 
 function daysBetweenUtc(from: string, to: string): number {
-  const days = Temporal.PlainDate.from(from).until(Temporal.PlainDate.from(to)).days;
-  return Math.max(0, days);
+  const y1 = parseInt(from.slice(0, 4), 10);
+  const m1 = parseInt(from.slice(5, 7), 10) - 1;
+  const d1 = parseInt(from.slice(8, 10), 10);
+  const y2 = parseInt(to.slice(0, 4), 10);
+  const m2 = parseInt(to.slice(5, 7), 10) - 1;
+  const d2 = parseInt(to.slice(8, 10), 10);
+  const ms = Date.UTC(y2, m2, d2) - Date.UTC(y1, m1, d1);
+  return Math.max(0, Math.round(ms / 86400000));
 }
 
 /** Year-to-date progress toward an annual distance or time goal. */
