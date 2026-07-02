@@ -107,3 +107,7 @@
 
 **Learning:** Svelte 5 `$derived.by()` blocks re-run on every dependency change. Inside these blocks, using multiple parallel `.map()` calls over the same source array (e.g. to generate multiple series for uPlot data) results in redundant passes and allocates a temporary array for each mapping operation, amplifying garbage collection pressure. Additionally, using multiple `.reduce()` calls to accumulate metrics from the same array incurs identical overhead.
 **Action:** Inside `$derived.by()` blocks, consolidate parallel `.map()` calls into a single-pass loop that pre-allocates each output series with `Array.from<T>({ length: n })` and fills all of them in a single traversal. Similarly, consolidate multiple `.reduce()` operations over the same dataset into one loop that directly accumulates values.
+
+## 2026-07-01 - [Replace Temporal.PlainDate with Date.UTC causes timezone regressions]
+**Learning:** When replacing `Temporal.PlainDate` with native `Date` objects constructed via `Date.UTC`, failing to include `{ timeZone: 'UTC' }` in the options passed to `toLocaleDateString()` or `toLocaleString()` causes critical timezone regressions by rendering the UTC midnight date in the local timezone, often shifting the visible date backward by one day.
+**Action:** Always include `{ timeZone: 'UTC' }` in the options passed to `toLocaleDateString()` or `toLocaleString()` when replacing `Temporal.PlainDate` with native `Date` objects constructed via `Date.UTC`.
