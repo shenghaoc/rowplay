@@ -115,7 +115,7 @@ describe("getCachedDetail", () => {
   });
 
   it("returns parsed detail when the row is fresh", async () => {
-    const now = Temporal.Now.instant().epochMilliseconds;
+    const now = Date.now();
     const payload = JSON.stringify(sampleDetail);
     const { db } = fakeDb({ firstRow: { payload, cached_at: now - 1000 } });
     const result = await getCachedDetail(db as never, 1, 1001, undefined);

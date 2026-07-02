@@ -37,8 +37,7 @@ Thresholds: 7, 14, 30, 60, 100 days.
 IDs: `streak_7d`, `streak_30d`, …
 
 A streak resets if there is a gap of >= 1 calendar day (i.e. any skipped day;
-in the athlete's local timezone — use the Temporal API already polyfilled in
-the project).
+in the athlete's local timezone — use the shared `datetime.ts` day-key helpers).
 
 ### 4. Personal-best speed gates
 

@@ -1,6 +1,7 @@
 import type { Stroke } from "../types";
 import { paceToWatts } from "../format";
 import { parsePaceInput } from "../paceInput";
+import { parseInstantMillis } from "../datetime";
 
 export { parsePaceInput };
 
@@ -155,16 +156,10 @@ function parseTcx(text: string): RawSample[] {
   let t0: number | null = null;
   for (const tp of tps) {
     const timeText = text1(tp, "Time") ?? "";
-    let ms = NaN;
-    try {
-      ms = Temporal.Instant.from(timeText).epochMilliseconds;
-    } catch {
-      try {
-        // Fallback for timezone-less ISO strings, interpreting them as UTC
-        ms = Temporal.PlainDateTime.from(timeText).toZonedDateTime("UTC").epochMilliseconds;
-      } catch {
-        /* invalid TCX timestamp */
-      }
+    let ms = parseInstantMillis(timeText);
+    if (!isFinite(ms) && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(timeText)) {
+      // Fallback for timezone-less ISO strings, interpreting them as UTC.
+      ms = parseInstantMillis(`${timeText.replace(/\.\d+$/, "")}Z`);
     }
     if (isFinite(ms) && t0 == null) t0 = ms;
     const t = isFinite(ms) && t0 != null ? (ms - t0) / 1000 : NaN;

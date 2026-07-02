@@ -9,22 +9,22 @@ import {
 
 describe("historyWindowStart", () => {
   it("subtracts HISTORY_WINDOW_MONTHS in UTC", () => {
-    const now = Temporal.PlainDate.from("2026-06-02");
+    const now = "2026-06-02";
     expect(historyWindowStart(now)).toBe("2025-06-02");
   });
 
   it("rolls over year boundary", () => {
-    const now = Temporal.PlainDate.from("2026-02-15");
+    const now = "2026-02-15";
     expect(historyWindowStart(now)).toBe("2025-02-15");
   });
 
   it("handles end-of-month (Jan 31 − 1 month)", () => {
-    const now = Temporal.PlainDate.from("2026-01-31");
+    const now = "2026-01-31";
     expect(historyWindowStart(now)).toBe("2025-01-31");
   });
 
   it("handles leap February", () => {
-    const now = Temporal.PlainDate.from("2024-03-01");
+    const now = "2024-03-01";
     expect(historyWindowStart(now)).toBe("2023-03-01");
   });
 
@@ -66,7 +66,7 @@ describe("mergeWatermark", () => {
 });
 
 describe("planSync", () => {
-  const now = Temporal.PlainDate.from("2026-06-02");
+  const now = "2026-06-02";
   const state = {
     lastDate: "2026-05-20 08:00:00",
     oldestDate: "2025-06-02",

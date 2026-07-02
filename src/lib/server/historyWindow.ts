@@ -1,4 +1,4 @@
-import { overlapDate } from "$lib/datetime";
+import { addMonthsToKey, overlapDate, todayKeyUtc } from "$lib/datetime";
 import type { SyncState } from "./db";
 
 /** Eager first-connect window length. The single source of truth. */
@@ -22,16 +22,14 @@ type Watermark = {
 };
 
 /** `YYYY-MM-DD` window start: today − HISTORY_WINDOW_MONTHS, in UTC. */
-export function historyWindowStart(
-  now: Temporal.PlainDate = Temporal.Now.plainDateISO("UTC"),
-): string {
-  return now.subtract({ months: HISTORY_WINDOW_MONTHS }).toString();
+export function historyWindowStart(now: string = todayKeyUtc()): string {
+  return addMonthsToKey(now, -HISTORY_WINDOW_MONTHS);
 }
 
 /** Pure decision: what the next sync run should do, given persisted state. */
 export function planSync(
   state: Pick<SyncState, "lastDate" | "oldestDate" | "backfillDone"> | null,
-  now: Temporal.PlainDate,
+  now: string,
   mode: SyncMode,
 ): SyncPlan {
   if (mode === "full") {

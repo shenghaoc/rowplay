@@ -8,8 +8,7 @@ import { describe, expect, it } from "vite-plus/test";
  * Response so we can inspect which headers were applied.
  */
 
-// We import the module directly — the top-level `await ensureTemporal()` runs
-// once at import time, which is fine in Vitest (it's a no-op on second call).
+// Import the module directly so these tests exercise the real hook defaults.
 import { handle } from "./hooks.server";
 
 /** Build a minimal RequestEvent for the hook. */

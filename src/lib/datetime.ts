@@ -1,46 +1,137 @@
 /**
- * Calendar/date-time helpers built on the Temporal API.
- * Call `ensureTemporal()` from hooks before SSR or client render.
+ * Calendar/date-time helpers for runtimes without Temporal.
+ *
+ * Keep parsing strict and route timezone work through Intl.DateTimeFormat so
+ * Workers, browsers, and tests all share the same behavior without a polyfill.
  */
 
-/** Fixed zone for logbook wall-clock → epoch (SSR/client must agree). */
+/** Fixed zone for logbook wall-clock -> epoch (SSR/client must agree). */
 const LOGBOOK_ZONE = "UTC";
 
-/** Concept2 logbook timestamps: `YYYY-MM-DD HH:MM:SS` (no offset). */
-export function parseLogbookDateTime(text: string): Temporal.PlainDateTime | null {
-  try {
-    return Temporal.PlainDateTime.from(text.trim().replace(" ", "T"));
-  } catch {
-    return null;
+export interface LogbookDateTime {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+}
+
+const LOGBOOK_RE = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/;
+const DAY_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function utcEpochMillis(parts: {
+  year: number;
+  month: number;
+  day: number;
+  hour?: number;
+  minute?: number;
+  second?: number;
+}): number {
+  const date = new Date(0);
+  date.setUTCFullYear(parts.year, parts.month - 1, parts.day);
+  date.setUTCHours(parts.hour ?? 0, parts.minute ?? 0, parts.second ?? 0, 0);
+  return date.getTime();
+}
+
+function dateFromUtcParts(parts: {
+  year: number;
+  month: number;
+  day: number;
+  hour?: number;
+  minute?: number;
+  second?: number;
+}): Date {
+  return new Date(utcEpochMillis(parts));
+}
+
+function validParts(parts: LogbookDateTime): boolean {
+  if (
+    parts.month < 1 ||
+    parts.month > 12 ||
+    parts.day < 1 ||
+    parts.day > 31 ||
+    parts.hour < 0 ||
+    parts.hour > 23 ||
+    parts.minute < 0 ||
+    parts.minute > 59 ||
+    parts.second < 0 ||
+    parts.second > 59
+  ) {
+    return false;
   }
+  const date = dateFromUtcParts(parts);
+  return (
+    date.getUTCFullYear() === parts.year &&
+    date.getUTCMonth() === parts.month - 1 &&
+    date.getUTCDate() === parts.day &&
+    date.getUTCHours() === parts.hour &&
+    date.getUTCMinutes() === parts.minute &&
+    date.getUTCSeconds() === parts.second
+  );
+}
+
+function parseDayKey(key: string): Pick<LogbookDateTime, "year" | "month" | "day"> | null {
+  const match = DAY_KEY_RE.exec(key.trim());
+  if (!match) return null;
+  const parts = {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+  };
+  const full = { ...parts, hour: 0, minute: 0, second: 0 };
+  return validParts(full) ? parts : null;
+}
+
+/** Concept2 logbook timestamps: `YYYY-MM-DD HH:MM:SS` (no offset). */
+export function parseLogbookDateTime(text: string): LogbookDateTime | null {
+  const match = LOGBOOK_RE.exec(text.trim());
+  if (!match) return null;
+  const parts = {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4]),
+    minute: Number(match[5]),
+    second: Number(match[6]),
+  };
+  return validParts(parts) ? parts : null;
 }
 
 /** Epoch milliseconds for sorting; logbook wall times interpreted as UTC. */
 export function logbookEpochMillis(text: string): number {
   const pdt = parseLogbookDateTime(text);
   if (!pdt) return NaN;
-  return pdt.toZonedDateTime(LOGBOOK_ZONE).epochMilliseconds;
+  return utcEpochMillis(pdt);
 }
 
-/** ISO-8601 instant or RFC 3339 string → epoch milliseconds. */
+/** ISO-8601 instant or RFC 3339 string -> epoch milliseconds. */
 export function parseInstantMillis(text: string): number {
-  try {
-    return Temporal.Instant.from(text).epochMilliseconds;
-  } catch {
-    return NaN;
-  }
+  const trimmed = text.trim();
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed)) return NaN;
+  const ms = Date.parse(trimmed);
+  return Number.isFinite(ms) ? ms : NaN;
 }
 
 export function nowEpochMillis(): number {
-  return Temporal.Now.instant().epochMilliseconds;
+  return Date.now();
+}
+
+function isoDayFromEpoch(epochMs: number): string {
+  return new Date(epochMs).toISOString().slice(0, 10);
+}
+
+function addDaysToParts(parts: Pick<LogbookDateTime, "year" | "month" | "day">, days: number) {
+  return isoDayFromEpoch(utcEpochMillis({ ...parts }) + days * 86_400_000);
 }
 
 /** `YYYY-MM-DD` one calendar day before a logbook date-time string.
  *  Returns null when the input cannot be parsed as a logbook date. */
 export function overlapDate(date: string): string | null {
   const pdt = parseLogbookDateTime(date);
-  if (!pdt) return null;
-  return pdt.toPlainDate().subtract({ days: 1 }).toString();
+  if (pdt) return addDaysToParts(pdt, -1);
+  const day = parseDayKey(date);
+  return day ? addDaysToParts(day, -1) : null;
 }
 
 const DATE_FMT: Intl.DateTimeFormatOptions = {
@@ -51,6 +142,10 @@ const DATE_FMT: Intl.DateTimeFormatOptions = {
 
 const fmtDateCache = new Map<string, string>();
 
+function formatDate(epochMs: number, locale?: string, timeZone = "UTC"): string {
+  return new Date(epochMs).toLocaleDateString(locale, { ...DATE_FMT, timeZone });
+}
+
 /** Short locale date from a logbook string or ISO instant.
  * Accepts optional locale and timeZone for SSR-safe formatting;
  * defaults to the system timezone and locale when omitted. */
@@ -59,24 +154,17 @@ export function fmtDate(value: string, locale?: string, timeZone?: string): stri
   const cached = fmtDateCache.get(cacheKey);
   if (cached !== undefined) return cached;
 
-  // ISO instants have embedded timezone info — check them first so the
-  // timezone offset is respected. parseLogbookDateTime uses PlainDateTime
-  // which silently discards the offset.
   let result: string;
-  try {
-    result = Temporal.Instant.from(value)
-      .toZonedDateTimeISO(timeZone ?? Temporal.Now.timeZoneId())
-      .toLocaleString(locale, DATE_FMT);
-  } catch {
+  const instantMs = parseInstantMillis(value);
+  if (Number.isFinite(instantMs)) {
+    result = new Date(instantMs).toLocaleDateString(locale, { ...DATE_FMT, timeZone });
+  } else {
     const pdt = parseLogbookDateTime(value);
     if (pdt) {
-      result = pdt.toLocaleString(locale, DATE_FMT);
+      result = formatDate(utcEpochMillis(pdt), locale, LOGBOOK_ZONE);
     } else {
-      try {
-        result = Temporal.PlainDate.from(value).toLocaleString(locale, DATE_FMT);
-      } catch {
-        result = value;
-      }
+      const day = parseDayKey(value);
+      result = day ? formatDate(utcEpochMillis(day), locale, "UTC") : value;
     }
   }
 
@@ -91,49 +179,75 @@ export function fmtDate(value: string, locale?: string, timeZone?: string): stri
 export function fmtLogbookDateTime(value: string, locale?: string): string {
   const pdt = parseLogbookDateTime(value);
   if (!pdt) return value;
-  return pdt.toLocaleString(locale);
+  return new Date(utcEpochMillis(pdt)).toLocaleString(locale, { timeZone: LOGBOOK_ZONE });
 }
 
 export function fmtDateFromEpochMillis(epochMs: number, locale?: string): string {
-  try {
-    return Temporal.Instant.fromEpochMilliseconds(epochMs)
-      .toZonedDateTimeISO("UTC")
-      .toLocaleString(locale, DATE_FMT);
-  } catch {
-    return "--";
-  }
+  if (!Number.isFinite(epochMs)) return "--";
+  return formatDate(epochMs, locale, "UTC");
 }
 
 /** Today as a `YYYY-MM-DD` key in UTC (SSR and client agree on the boundary). */
 export function todayKeyUtc(): string {
-  return Temporal.Now.plainDateISO("UTC").toString();
+  return new Date(Date.now()).toISOString().slice(0, 10);
 }
 
-/**
- * Convert a logbook PlainDateTime from `fromZone` into the calendar day in
- * `toZone` (or the same zone when `toZone` is omitted / identical).
- * The Concept2 `date` is monitor-local (confirmed in C2 API docs), so when
- * `fromZone` matches the workout's actual timezone the plain-date portion
- * *is* the workout's local day — no conversion needed for same-zone bucketing.
- */
-function dayKeyInZone(
-  pdt: Temporal.PlainDateTime,
-  fromZone: string,
-  toZone?: string,
-): string | null {
+function formatParts(epochMs: number, timeZone: string): LogbookDateTime {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  const values: Record<string, number> = {};
+  for (const part of formatter.formatToParts(new Date(epochMs))) {
+    if (part.type !== "literal") values[part.type] = Number(part.value);
+  }
+  return {
+    year: values.year,
+    month: values.month,
+    day: values.day,
+    hour: values.hour,
+    minute: values.minute,
+    second: values.second,
+  };
+}
+
+function offsetMillisForZone(epochMs: number, timeZone: string): number {
+  const parts = formatParts(epochMs, timeZone);
+  return utcEpochMillis(parts) - epochMs;
+}
+
+function zonedWallTimeToEpochMillis(parts: LogbookDateTime, timeZone: string): number | null {
   try {
-    if (!toZone || toZone === fromZone) {
-      return pdt.toPlainDate().toString();
+    let epoch = utcEpochMillis(parts);
+    for (let i = 0; i < 3; i++) {
+      const next = utcEpochMillis(parts) - offsetMillisForZone(epoch, timeZone);
+      if (next === epoch) return epoch;
+      epoch = next;
     }
-    return pdt.toZonedDateTime(fromZone).withTimeZone(toZone).toPlainDate().toString();
+    return epoch;
+  } catch {
+    return null;
+  }
+}
+
+function dayKeyForEpochInZone(epochMs: number, timeZone: string): string | null {
+  try {
+    const parts = formatParts(epochMs, timeZone);
+    return `${String(parts.year).padStart(4, "0")}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
   } catch {
     return null;
   }
 }
 
 /**
- * Calendar day key for a workout using the resolution chain: workout tz → home
- * tz → plain-date fallback. The Concept2 `date` is monitor-local (confirmed in
+ * Calendar day key for a workout using the resolution chain: workout tz -> home
+ * tz -> plain-date fallback. The Concept2 `date` is monitor-local (confirmed in
  * the C2 API docs), so when `workoutTz` is known the date string is taken as
  * being in that zone — its plain-date portion *is* the workout's local day.
  * Cross-zone conversion is only applied when `homeTz` differs from `workoutTz`.
@@ -144,69 +258,96 @@ export function workoutLocalDayKey(date: string, workoutTz?: string, homeTz?: st
   if (typeof date !== "string") return "";
   const cleanWtz = workoutTz?.trim();
   const cleanHtz = homeTz?.trim();
-  // Fast path: with no zone to convert into, the plain date part of the
-  // offset-less timestamp is the best we can do — skip Temporal parsing and
-  // allocation entirely (the overwhelming common case).
   if (!cleanWtz && !cleanHtz) return date.slice(0, 10);
 
   const pdt = parseLogbookDateTime(date);
   if (!pdt) return date.slice(0, 10);
 
   if (cleanWtz) {
-    // The timestamp is in workoutTz (monitor-local). Bucket in homeTz when it differs.
-    const day = dayKeyInZone(pdt, cleanWtz, cleanHtz !== cleanWtz ? cleanHtz : undefined);
-    if (day) return day;
+    if (!cleanHtz || cleanHtz === cleanWtz) {
+      return date.slice(0, 10);
+    }
+    const epoch = zonedWallTimeToEpochMillis(pdt, cleanWtz);
+    if (epoch != null) {
+      const day = dayKeyForEpochInZone(epoch, cleanHtz);
+      if (day) return day;
+    }
   }
-  // Fall back to the plain date part — either only homeTz was given (no source
-  // zone to convert from) or workoutTz was invalid.
-  return pdt.toPlainDate().toString();
+  return date.slice(0, 10);
 }
 
 /** Today as `YYYY-MM-DD` in the given IANA zone, or UTC when absent/invalid. */
 export function todayKeyForTz(tz?: string): string {
   if (!tz?.trim()) return todayKeyUtc();
-  try {
-    return Temporal.Now.plainDateISO(tz.trim()).toString();
-  } catch {
-    return todayKeyUtc();
-  }
+  return dayKeyForEpochInZone(Date.now(), tz.trim()) ?? todayKeyUtc();
 }
 
-/** `YYYY-MM-DD` day key → UTC-midnight epoch milliseconds; NaN if unparseable. */
+/** `YYYY-MM-DD` day key -> UTC-midnight epoch milliseconds; NaN if unparseable. */
 export function dayKeyEpochMillis(key: string): number {
-  try {
-    return Temporal.PlainDate.from(key).toZonedDateTime("UTC").epochMilliseconds;
-  } catch {
-    return NaN;
-  }
+  const parts = parseDayKey(key);
+  return parts ? utcEpochMillis(parts) : NaN;
+}
+
+export function addDaysToKey(key: string, days: number): string {
+  const parts = parseDayKey(key);
+  return parts ? addDaysToParts(parts, days) : key;
+}
+
+export function dayOfWeekUtc(key: string): number {
+  const ms = dayKeyEpochMillis(key);
+  return Number.isFinite(ms) ? new Date(ms).getUTCDay() : 0;
+}
+
+export function dayOfYearUtc(key: string): number {
+  const parts = parseDayKey(key);
+  if (!parts) return 0;
+  const current = utcEpochMillis(parts);
+  const start = utcEpochMillis({ year: parts.year, month: 1, day: 1 });
+  return Math.floor((current - start) / 86_400_000) + 1;
+}
+
+export function daysBetweenUtc(from: string, to: string): number {
+  const fromMs = dayKeyEpochMillis(from);
+  const toMs = dayKeyEpochMillis(to);
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return 0;
+  return Math.max(0, Math.round((toMs - fromMs) / 86_400_000));
+}
+
+export function addMonthsToKey(key: string, months: number): string {
+  const parts = parseDayKey(key);
+  if (!parts) return key;
+  const monthIndex = parts.year * 12 + (parts.month - 1) + months;
+  const year = Math.floor(monthIndex / 12);
+  const month = (((monthIndex % 12) + 12) % 12) + 1;
+  const nextMonth = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
+  const lastDay = new Date(utcEpochMillis({ ...nextMonth, day: 1 }) - 86_400_000).getUTCDate();
+  const day = Math.min(parts.day, lastDay);
+  return isoDayFromEpoch(utcEpochMillis({ year, month, day }));
 }
 
 /** Current instant as an ISO-8601 string. */
 export function nowIsoString(): string {
-  return Temporal.Now.instant().toString();
+  return new Date(Date.now()).toISOString();
 }
 
-/** Parse an ISO instant / RFC 3339 timestamp to an Instant, or null. */
-export function parseInstant(text: string): Temporal.Instant | null {
-  try {
-    return Temporal.Instant.from(text);
-  } catch {
-    return null;
-  }
+/** Parse an ISO instant / RFC 3339 timestamp to a Date, or null. */
+export function parseInstant(text: string): Date | null {
+  const ms = parseInstantMillis(text);
+  return Number.isFinite(ms) ? new Date(ms) : null;
 }
 
 /** ISO-8601 timestamp from logbook date + elapsed seconds, with invalid inputs falling back to now. */
 export function logbookDatePlusSecondsIso(date: string, elapsedSec: number): string {
   const base = date.trim().replace(" ", "T");
   const withTz = base.includes("Z") || /[+-]\d{2}:\d{2}$/.test(base) ? base : `${base}Z`;
-  const instant = parseInstant(withTz);
-  if (!instant) return nowIsoString();
-  return instant.add({ milliseconds: Math.round(elapsedSec * 1000) }).toString();
+  const ms = parseInstantMillis(withTz);
+  const baseMs = Number.isFinite(ms) ? ms : Date.now();
+  return new Date(baseMs + Math.round(elapsedSec * 1000)).toISOString();
 }
 
 /** Current UTC calendar year. */
 export function currentUtcYear(): number {
-  return Temporal.Now.plainDateISO("UTC").year;
+  return new Date(Date.now()).getUTCFullYear();
 }
 
 const TIME_FMT: Intl.DateTimeFormatOptions = {
@@ -216,7 +357,7 @@ const TIME_FMT: Intl.DateTimeFormatOptions = {
 };
 
 export function instantIsoFromEpochMillis(epochMs: number): string {
-  return Temporal.Instant.fromEpochMilliseconds(epochMs).toString();
+  return new Date(epochMs).toISOString();
 }
 
 export function fmtTimeFromEpochMillis(
@@ -224,13 +365,15 @@ export function fmtTimeFromEpochMillis(
   locale?: string,
   timeZone?: string,
 ): string {
-  return Temporal.Instant.fromEpochMilliseconds(epochMs)
-    .toZonedDateTimeISO(timeZone || Temporal.Now.timeZoneId())
-    .toLocaleString(locale, TIME_FMT);
+  return new Date(epochMs).toLocaleTimeString(locale, {
+    ...TIME_FMT,
+    ...(timeZone ? { timeZone } : {}),
+  });
 }
 
 export function monthShortName(month: number, locale?: string): string {
-  // PlainMonthDay.toLocaleString triggers "Mismatching Calendars" in the
-  // temporal-polyfill; use a synthetic Date for locale-aware month formatting.
-  return new Date(2000, month - 1, 1).toLocaleDateString(locale, { month: "short" });
+  return new Date(utcEpochMillis({ year: 2000, month, day: 1 })).toLocaleDateString(locale, {
+    month: "short",
+    timeZone: "UTC",
+  });
 }

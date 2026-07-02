@@ -50,9 +50,8 @@ src/
                               includes baseOptions() builder and withAlpha() helper
     chartTheme.test.ts        Vitest unit tests for chartTheme
     daisyui-collision.ts      daisyUI v5 class collision guard (token validator + layout-hook set)
-    datetime.ts               Temporal API helpers for logbook date parsing and formatting
+    datetime.ts               Date/Intl helpers for logbook date parsing and formatting
     datetime.test.ts          Vitest unit tests for datetime
-    ensure-temporal.ts        Temporal polyfill bootstrap (call before SSR or client render)
     exrSource.ts              EXR (third-party rowing app) source-flag detection
     exrSource.test.ts         Vitest unit tests for exrSource
     format.ts                 Display formatting helpers (pace, distance, time, watts)

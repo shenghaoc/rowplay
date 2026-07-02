@@ -69,10 +69,9 @@ streak data reflect my real training pattern.
 2. THE day-key function SHALL be a pure, DOM-free helper in `src/lib/datetime.ts`
    with the signature `workoutLocalDayKey(date: string, workoutTz?: string,
    homeTz?: string): string`, returning a `YYYY-MM-DD` day key.
-3. THE function SHALL use the Temporal polyfill already present in the project
-   (`Temporal.ZonedDateTime` / `Temporal.PlainDateTime.toZonedDateTime`) for
-   all timezone conversions; no `Date`-object arithmetic or manual offset math
-   is permitted.
+3. THE function SHALL use the shared `Date`/`Intl.DateTimeFormat` helpers in
+   `src/lib/datetime.ts` for timezone conversion, with no Temporal runtime
+   dependency or manual fixed-offset table.
 4. THE function SHALL be unit-tested with Vitest, including: a piece at
    `"2024-01-14 23:30:00"` with `workoutTz: "America/New_York"` (UTC−5 in
    January) which resolves to `"2024-01-14"` where a naive UTC slice would give
