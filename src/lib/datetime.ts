@@ -19,6 +19,8 @@ export interface LogbookDateTime {
 
 const LOGBOOK_RE = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/;
 const DAY_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const INSTANT_RE =
+  /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|[+-]\d{2}:?\d{2})$/;
 const MS_PER_SECOND = 1000;
 const MS_PER_DAY = 86_400_000;
 
@@ -110,7 +112,21 @@ export function logbookEpochMillis(text: string): number {
 /** ISO-8601 instant or RFC 3339 string -> epoch milliseconds. */
 export function parseInstantMillis(text: string): number {
   const trimmed = text.trim();
-  if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed)) return NaN;
+  const match = INSTANT_RE.exec(trimmed);
+  if (!match) return NaN;
+  if (
+    !validParts({
+      year: Number(match[1]),
+      month: Number(match[2]),
+      day: Number(match[3]),
+      hour: Number(match[4]),
+      minute: Number(match[5]),
+      second: Number(match[6]),
+    })
+  ) {
+    return NaN;
+  }
+
   const ms = Date.parse(trimmed);
   return Number.isFinite(ms) ? ms : NaN;
 }
@@ -150,6 +166,7 @@ const TIME_FMT: Intl.DateTimeFormatOptions = {
 
 const fmtDateCache = new Map<string, string>();
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
+const validTimeZoneCache = new Map<string, boolean>();
 
 function getFormatter(
   locale: string | undefined,
@@ -163,16 +180,48 @@ function getFormatter(
   if (formatterCache.size > 100) {
     formatterCache.clear();
   }
-  const formatter = new Intl.DateTimeFormat(locale, {
-    ...options,
-    ...(timeZone ? { timeZone } : {}),
-  });
+  const candidates: Array<{
+    locale: string | undefined;
+    timeZone: string | undefined;
+  }> = [
+    { locale, timeZone },
+    ...(timeZone
+      ? [
+          { locale, timeZone: "UTC" },
+          { locale: undefined, timeZone },
+          { locale: undefined, timeZone: "UTC" },
+        ]
+      : []),
+    { locale, timeZone: undefined },
+    { locale: undefined, timeZone: undefined },
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const formatter = new Intl.DateTimeFormat(candidate.locale, {
+        ...options,
+        ...(candidate.timeZone ? { timeZone: candidate.timeZone } : {}),
+      });
+      formatterCache.set(cacheKey, formatter);
+      return formatter;
+    } catch {
+      // Try the next fallback candidate.
+    }
+  }
+
+  const formatter = new Intl.DateTimeFormat();
   formatterCache.set(cacheKey, formatter);
   return formatter;
 }
 
-function formatDate(epochMs: number, locale?: string, timeZone = "UTC"): string {
-  return getFormatter(locale, timeZone, DATE_FMT).format(new Date(epochMs));
+function dateFromEpochMillis(epochMs: number): Date | null {
+  const date = new Date(epochMs);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function formatDate(epochMs: number, locale?: string, timeZone?: string): string | null {
+  const date = dateFromEpochMillis(epochMs);
+  return date ? getFormatter(locale, timeZone, DATE_FMT).format(date) : null;
 }
 
 /** Short locale date from a logbook string or ISO instant.
@@ -186,14 +235,14 @@ export function fmtDate(value: string, locale?: string, timeZone?: string): stri
   let result: string;
   const instantMs = parseInstantMillis(value);
   if (Number.isFinite(instantMs)) {
-    result = formatDate(instantMs, locale, timeZone);
+    result = formatDate(instantMs, locale, timeZone) ?? value;
   } else {
     const pdt = parseLogbookDateTime(value);
     if (pdt) {
-      result = formatDate(utcEpochMillis(pdt), locale, LOGBOOK_ZONE);
+      result = formatDate(utcEpochMillis(pdt), locale, LOGBOOK_ZONE) ?? value;
     } else {
       const day = parseDayKey(value);
-      result = day ? formatDate(utcEpochMillis(day), locale, "UTC") : value;
+      result = day ? (formatDate(utcEpochMillis(day), locale, "UTC") ?? value) : value;
     }
   }
 
@@ -220,7 +269,7 @@ export function fmtLogbookDateTime(value: string, locale?: string): string {
 
 export function fmtDateFromEpochMillis(epochMs: number, locale?: string): string {
   if (!Number.isFinite(epochMs)) return "--";
-  return formatDate(epochMs, locale, "UTC");
+  return formatDate(epochMs, locale, "UTC") ?? "--";
 }
 
 /** Today as a `YYYY-MM-DD` key in UTC (SSR and client agree on the boundary). */
@@ -229,6 +278,9 @@ export function todayKeyUtc(): string {
 }
 
 function formatParts(epochMs: number, timeZone: string): LogbookDateTime {
+  if (!isValidTimeZone(timeZone)) {
+    throw new RangeError(`Invalid time zone: ${timeZone}`);
+  }
   const formatter = getFormatter("en-US", timeZone, {
     year: "numeric",
     month: "2-digit",
@@ -250,6 +302,20 @@ function formatParts(epochMs: number, timeZone: string): LogbookDateTime {
     minute: values.minute,
     second: values.second,
   };
+}
+
+function isValidTimeZone(timeZone: string): boolean {
+  const cached = validTimeZoneCache.get(timeZone);
+  if (cached !== undefined) return cached;
+
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    validTimeZoneCache.set(timeZone, true);
+    return true;
+  } catch {
+    validTimeZoneCache.set(timeZone, false);
+    return false;
+  }
 }
 
 function offsetMillisForZone(epochMs: number, timeZone: string): number {
