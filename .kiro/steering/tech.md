@@ -16,7 +16,7 @@
 - **@lucide/svelte** — icon library
 - **@tanstack/svelte-virtual** — virtualized lists for the workout list
 - **svelte-sonner** — toast notifications
-- **Date/Intl date helpers** — `src/lib/datetime.ts` provides strict UTC and IANA-zone helpers without a Temporal runtime dependency
+- **Temporal time helpers** — `src/lib/datetime.ts` uses the native Temporal API for strict UTC and IANA-zone calendar work, with no bundled polyfill
 
 > **Stack audit (June 2026):** See `.kiro/specs/platform-modernization-audit/` for the full dependency, HTML/CSS/JS, and PR #223 modernization review. `bits-ui`, `clsx`, and `tailwind-merge` are listed in `package.json` but unused in `src/` — remove or wire up per audit `tasks.md`.
 

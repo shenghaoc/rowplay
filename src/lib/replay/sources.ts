@@ -159,7 +159,7 @@ function parseTcx(text: string): RawSample[] {
     let ms = parseInstantMillis(timeText);
     if (!isFinite(ms) && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(timeText)) {
       // Fallback for timezone-less ISO strings, interpreting them as UTC.
-      ms = parseInstantMillis(`${timeText.replace(/\.\d+$/, "")}Z`);
+      ms = parseInstantMillis(`${timeText}Z`);
     }
     if (isFinite(ms) && t0 == null) t0 = ms;
     const t = isFinite(ms) && t0 != null ? (ms - t0) / 1000 : NaN;

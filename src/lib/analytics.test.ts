@@ -36,6 +36,7 @@ import {
   twoRepSplits,
   workout,
 } from "../../tests/unit/fixtures";
+import { parseInstantMillis } from "./datetime";
 
 const workouts = mockWorkouts();
 
@@ -50,7 +51,7 @@ describe("linearTrend", () => {
       .filter((w) => w.sport === "rower" && Math.abs(w.distance - 2000) < 50)
       .sort((a, b) => a.date.localeCompare(b.date));
     const points = twoKs.map((w) => ({
-      x: Date.parse(w.date.replace(" ", "T") + "Z"),
+      x: parseInstantMillis(`${w.date.replace(" ", "T")}Z`),
       y: w.pace,
     }));
     const fit = linearTrend(points);

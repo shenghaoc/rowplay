@@ -7,6 +7,7 @@ import {
   workoutsInPeriod,
   ZONES_5,
 } from "./trainingZones";
+import { parseInstantMillis } from "./datetime";
 import { intervalSplits, normalizedIntervalStrokes, workout } from "../../tests/unit/fixtures";
 import type { WorkoutForDistribution } from "./trainingZones";
 
@@ -105,7 +106,7 @@ describe("buildZoneConfig", () => {
       workout({ id: 1, distance: 2000, time: 480, pace: 120, sport: "rower" }),
       workout({ id: 2, distance: 5000, time: 1200, pace: 130, sport: "rower" }),
     ];
-    const cfg = buildZoneConfig(ws, Date.parse("2026-06-01T00:00:00Z"));
+    const cfg = buildZoneConfig(ws, parseInstantMillis("2026-06-01T00:00:00Z"));
     expect(cfg.basePace).toBe(120);
   });
 
@@ -128,13 +129,13 @@ describe("buildZoneConfig", () => {
         date: "2026-05-01 06:00:00",
       }),
     ];
-    const cfg = buildZoneConfig(ws, Date.parse("2026-06-01T00:00:00Z"));
+    const cfg = buildZoneConfig(ws, parseInstantMillis("2026-06-01T00:00:00Z"));
     expect(cfg.basePace).toBe(120);
   });
 
   it("falls back to 3-zone without a 2k piece", () => {
     const ws = [workout({ id: 1, distance: 5000, time: 1200, pace: 130 })];
-    const cfg = buildZoneConfig(ws, Date.parse("2026-06-01T00:00:00Z"));
+    const cfg = buildZoneConfig(ws, parseInstantMillis("2026-06-01T00:00:00Z"));
     expect(cfg.basePace).toBeNull();
     expect(cfg.medianPace).toBe(130);
   });
@@ -152,7 +153,7 @@ describe("medianTrainingPace", () => {
 });
 
 describe("workoutsInPeriod", () => {
-  const now = Date.parse("2026-06-04T12:00:00Z");
+  const now = parseInstantMillis("2026-06-04T12:00:00Z");
 
   it("includes recent workouts only", () => {
     const recent = workout({ id: 1, date: "2026-06-01 06:00:00" });

@@ -30,6 +30,7 @@ import {
   upsertLeaderboardEntry,
   upsertWorkouts,
 } from "./db";
+import { nowEpochMillis } from "../datetime";
 import type { Workout, WorkoutDetail } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -115,7 +116,7 @@ describe("getCachedDetail", () => {
   });
 
   it("returns parsed detail when the row is fresh", async () => {
-    const now = Date.now();
+    const now = nowEpochMillis();
     const payload = JSON.stringify(sampleDetail);
     const { db } = fakeDb({ firstRow: { payload, cached_at: now - 1000 } });
     const result = await getCachedDetail(db as never, 1, 1001, undefined);
