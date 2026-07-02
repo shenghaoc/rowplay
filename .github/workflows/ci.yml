@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup
         uses: voidzero-dev/setup-vp@v1
         with:
@@ -63,7 +63,7 @@ jobs:
       options: --ipc=host
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       # The Playwright image ships Node 24, but this repo pins Node >=26.
       # Install the pinned version from .node-version so engine checks
       # and Node 26 features are available.

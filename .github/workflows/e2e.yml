@@ -26,7 +26,7 @@ jobs:
       run_e2e: ${{ steps.filter.outputs.e2e }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - id: filter
         uses: dorny/paths-filter@v4
@@ -68,7 +68,7 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.61.0-resolute-arm64
       options: --ipc=host
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # The Playwright image ships Node 24 but this repo pins Node >=26.
       # Install the pinned version so engine checks and Node 26 features
       # are available.
@@ -121,7 +121,7 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.61.0-resolute-arm64
       options: --ipc=host
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
