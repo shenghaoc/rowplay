@@ -185,19 +185,19 @@ Status reflects the current tree (post-remediation); the audit found every ❌ b
 
 ## 5. JavaScript / TypeScript audit
 
-### 5.1 Time strategy — native Temporal, no bundled polyfill
+### 5.1 Time strategy — Date/Intl, no bundled polyfill
 
 ```mermaid
 flowchart LR
-  temporal["Native Temporal"] --> dt["datetime.ts / concept2.ts"]
-  N26["Node 26 local/CI"] --> temporal
-  Chr["Modern browser client"] --> temporal
-  CF["Cloudflare Workers SSR"] --> temporal
+  intl["Date + Intl.DateTimeFormat"] --> dt["datetime.ts / concept2.ts"]
+  N26["Node local/CI"] --> intl
+  Chr["Browser client"] --> intl
+  CF["Cloudflare Workers SSR"] --> intl
 ```
 
-- Rowplay requires native `globalThis.Temporal` and uses `src/lib/datetime.ts` as the single helper surface for parsing, arithmetic, and formatting.
+- Rowplay uses strict `Date` parsing plus `Intl.DateTimeFormat` timezone data because Cloudflare Workers does not expose native `globalThis.Temporal`.
 - Removed `temporal-polyfill`, `ensure-temporal.ts`, hook bootstrap, test setup bootstrap, and ambient polyfill types.
-- Node 26 enables Temporal by default; Workers/browser runtime validation must run against targets that expose native Temporal.
+- Workers preview and e2e smoke validate that SSR works without a Temporal runtime or polyfill.
 
 **Resolved (P3#26/P3#30):** `analytics.ts` calendar bucketing now routes through `datetime.ts` helpers (`addDaysToKey`/`dayOfWeekUtc`/`dayOfYearUtc`/`daysBetweenUtc` + `todayKeyUtc`/`dayKeyEpochMillis`). `FormPoint.day` keeps its epoch-ms contract.
 
@@ -305,7 +305,7 @@ flowchart TB
 
 | Item | Reason |
 |------|--------|
-| Native Temporal helpers | Required to keep time logic on the modern platform API without a bundled polyfill |
+| Date/Intl time helpers | Required because Workers preview does not provide native `globalThis.Temporal` |
 | TanStack Virtual for workout list | Better than `content-visibility` alone for 60+ rows |
 | Hand-rolled i18n | Appropriate for 6 locales |
 | BYOT httpOnly session model | Correct security architecture |
@@ -325,7 +325,7 @@ When starting a **new feature** via Kiro:
 4. Prefer native HTML (`dialog`, `search`, input hints) over custom overlay JS
 5. New list UIs: virtualize (TanStack) OR `content-visibility`, not neither
 6. New animations MUST include `prefers-reduced-motion` suppression in CSS classes (not inline)
-7. New time logic SHOULD use `datetime.ts` helpers, which are backed by native Temporal
+7. New time logic SHOULD use `datetime.ts` helpers instead of Temporal or ad hoc parsing
 
 ---
 

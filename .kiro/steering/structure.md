@@ -50,7 +50,7 @@ src/
                               includes baseOptions() builder and withAlpha() helper
     chartTheme.test.ts        Vitest unit tests for chartTheme
     daisyui-collision.ts      daisyUI v5 class collision guard (token validator + layout-hook set)
-    datetime.ts               Temporal helpers for logbook time parsing and formatting
+    datetime.ts               Date/Intl helpers for logbook time parsing and formatting
     datetime.test.ts          Vitest unit tests for datetime
     exrSource.ts              EXR (third-party rowing app) source-flag detection
     exrSource.test.ts         Vitest unit tests for exrSource

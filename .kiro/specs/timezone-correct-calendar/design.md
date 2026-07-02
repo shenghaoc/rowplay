@@ -6,14 +6,14 @@ Every workout in rowplay's calendar must land on the day it *actually happened*
 for the athlete. The current code slices `workout.date` at position 10 to get a
 `YYYY-MM-DD` key; because `date` is a wall-clock string with no offset, this is
 implicitly UTC. A resolution chain fixes this: per-workout timezone → user home
-timezone → UTC, using native Temporal timezone data so DST boundaries are
-handled correctly without a bundled polyfill.
+timezone → UTC, using `Intl.DateTimeFormat` timezone data so DST boundaries are
+handled correctly without a Temporal runtime dependency or bundled polyfill.
 
 ```
 workout.date  +  workout.timezone?  +  homeTz?
          │
          ▼
-  workoutLocalDayKey(date, workoutTz?, homeTz?)   ← datetime.ts (Temporal)
+  workoutLocalDayKey(date, workoutTz?, homeTz?)   ← datetime.ts (pure)
          │
          ├─ workoutTz present & valid?  → parse as monitor-local wall time in workoutTz
          ├─ homeTz present & valid?     → format converted instant in homeTz
@@ -45,10 +45,10 @@ export function workoutLocalDayKey(
 
 Implementation:
 
-1. Parse `date` with `parseLogbookDateTime` into a strict Temporal plain date-time.
+1. Parse `date` with `parseLogbookDateTime` into strict numeric wall-clock parts.
 2. If `workoutTz` and a different `homeTz` are present, convert the monitor-local
-   wall time through `Temporal.PlainDateTime.toZonedDateTime()` and
-   `Temporal.ZonedDateTime.withTimeZone()`.
+   wall time to an instant by deriving the IANA offset through cached
+   `Intl.DateTimeFormat.formatToParts()`, then format that instant in `homeTz`.
 3. If `workoutTz` is present without a different `homeTz`, return the plain date
    slice because the monitor-local wall date is already the workout day.
 4. Return `date.slice(0, 10)` when timezone conversion is absent or invalid.
@@ -67,7 +67,7 @@ Rationale for try/catch: the IANA timezone list is not exhaustive. A corrupt
 export function todayKeyForTz(tz?: string): string
 ```
 
-- `tz` present and valid → `Temporal.Now.plainDateISO(tz)`
+- `tz` present and valid → current `Date.now()` formatted through cached `Intl.DateTimeFormat`
 - absent or invalid → `todayKeyUtc()` (existing helper, no regression)
 
 ## Analytics changes — `src/lib/analytics.ts`
@@ -221,7 +221,7 @@ New `settings.timezone*` keys in all six locale files:
 | Workout tz wins over home tz | `"2024-01-14 23:30:00"`, `workoutTz: "Pacific/Auckland"` (UTC+13), `homeTz: "America/New_York"` | `"2024-01-15"` (already next day in Auckland) |
 | Invalid workout tz falls through to home tz | `"2024-01-14 23:30:00"`, `workoutTz: "Not/Real"`, `homeTz: "America/New_York"` | `"2024-01-14"` |
 | Invalid workout tz and invalid home tz fall through to UTC | `"2024-01-14 23:30:00"`, `workoutTz: "Bad"`, `homeTz: "Also/Bad"` | `"2024-01-14"` (UTC midnight is still Jan 14) |
-| `todayKeyForTz` with valid tz | deterministic Temporal clock | matches expected local date |
+| `todayKeyForTz` with valid tz | deterministic Date clock | matches expected local date |
 | `todayKeyForTz` with no tz | — | same as `todayKeyUtc()` |
 
 ### Regression — `src/lib/analytics.test.ts`
@@ -248,7 +248,7 @@ mis-bucketing explicit and prevents regression.
   needed.
 - Timezone-aware streak display in the replay view (workout-detail page) — the
   replay date shown in the header uses `fmtDate`, which already respects ISO
-  timestamp offsets through Temporal; no change needed there.
+  timestamp offsets through `Date.parse`; no change needed there.
 - The PMC (`trainingLoad`) date accumulation — intentionally deferred (see
   above).
 - Automatic timezone detection from the browser's `Intl.DateTimeFormat` — the

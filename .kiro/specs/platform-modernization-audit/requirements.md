@@ -15,7 +15,7 @@ This document records the June 2026 audit of rowplay against current library doc
 - **PR_223**: hdb-resale-visualizer pull request adopting `light-dark()`, `content-visibility`, `text-box-trim`, `@property`, `@starting-style`, `prefers-contrast`, input UX hints, and related 2026 CSS
 - **Runes_Mode**: Svelte 5 `$props`, `$state`, `$derived`, `$effect`, snippets — required project-wide
 - **Workers_Runtime**: Cloudflare Workers via `@sveltejs/adapter-cloudflare`; distinct from `vite dev`
-- **Temporal_Time**: Native Temporal helpers used by rowplay without a bundled polyfill
+- **Date_Intl_Time**: Strict `Date` parsing plus `Intl.DateTimeFormat` timezone helpers used by rowplay without a bundled polyfill
 
 ## Requirements
 
@@ -94,7 +94,7 @@ This document records the June 2026 audit of rowplay against current library doc
 | Unused npm packages | ❌ 3 dead dependencies |
 | HTML semantics | ✅ Good; native overlay primitives missing |
 | 2026 CSS (PR_223 set) | ❌ Not adopted in rowplay |
-| Time strategy | ✅ No bundled polyfill; native Temporal covers runtime targets |
+| Time strategy | ✅ No bundled polyfill; Date/Intl helpers cover runtime targets |
 | Security | ⚠️ No CSP |
 | E2E target (WebKit) | ✅ Appropriate for runtime compatibility coverage |
 

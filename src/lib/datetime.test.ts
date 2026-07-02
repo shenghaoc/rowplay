@@ -204,11 +204,12 @@ describe("fmtDateFromEpochMillis", () => {
 
 describe("todayKeyUtc", () => {
   beforeEach(() => {
-    vi.spyOn(Temporal.Now, "plainDateISO").mockReturnValue(Temporal.PlainDate.from("2026-06-03"));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-03T12:00:00Z"));
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it("returns a YYYY-MM-DD string", () => {
@@ -231,10 +232,7 @@ describe("dayKeyEpochMillis", () => {
     expect(result).toBeGreaterThan(0);
     expect(Number.isFinite(result)).toBe(true);
     // Verify it round-trips: converting back to a day key should give the same string
-    const back = Temporal.Instant.fromEpochMilliseconds(result)
-      .toZonedDateTimeISO("UTC")
-      .toPlainDate()
-      .toString();
+    const back = new Date(result).toISOString().slice(0, 10);
     expect(back).toBe("2026-06-03");
   });
 
