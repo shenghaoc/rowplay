@@ -1,4 +1,4 @@
-import { nowEpochMillis } from "$lib/datetime";
+import { nowEpochMillis, todayKeyUtc } from "$lib/datetime";
 import type { RequestEvent } from "@sveltejs/kit";
 import { error } from "@sveltejs/kit";
 import type { D1Database } from "@cloudflare/workers-types";
@@ -245,7 +245,7 @@ async function runSync(
   });
 
   try {
-    const now = Temporal.Now.plainDateISO("UTC");
+    const now = todayKeyUtc();
     const plan = planSync(state, now, full ? "full" : "forward");
     const from =
       plan.kind === "window" ? plan.from : plan.kind === "incremental" ? plan.from : undefined;
@@ -366,7 +366,7 @@ export async function backfillWorkouts(event: RequestEvent): Promise<BackfillRes
   });
 
   try {
-    const now = Temporal.Now.plainDateISO("UTC");
+    const now = todayKeyUtc();
     const plan = planSync(state, now, "backfill");
     if (plan.kind !== "backfill") {
       // Latch backfill_done so already-synced users stop re-triggering the loop.

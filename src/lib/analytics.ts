@@ -1,6 +1,15 @@
 import type { Split, Sport, Stroke, Workout, WorkoutDetail } from "./types";
 import { challengeDistanceMetres, paceToWattsForSport, wattsToPaceForSport } from "./format";
-import { dayKeyEpochMillis, todayKeyForTz, todayKeyUtc, workoutLocalDayKey } from "./datetime";
+import {
+  addDaysToKey as addDateDaysToKey,
+  dayKeyEpochMillis,
+  dayOfWeekUtc as dateDayOfWeekUtc,
+  dayOfYearUtc as dateDayOfYearUtc,
+  daysBetweenUtc as dateDaysBetweenUtc,
+  todayKeyForTz,
+  todayKeyUtc,
+  workoutLocalDayKey,
+} from "./datetime";
 
 // ---------------------------------------------------------------------------
 // Pure analysis helpers. No DOM, no Svelte — safe to use on server or client,
@@ -1393,12 +1402,12 @@ export interface TrainingCalendar {
 /** Add calendar days to a `YYYY-MM-DD` key. PlainDate is timezone-free, so DST
  *  can never shift streak/grid math. */
 export function addDaysToKey(key: string, days: number): string {
-  return Temporal.PlainDate.from(key).add({ days }).toString();
+  return addDateDaysToKey(key, days);
 }
 
 /** Day of week, 0 = Sunday … 6 = Saturday. */
 function dayOfWeekUtc(key: string): number {
-  return Temporal.PlainDate.from(key).dayOfWeek % 7;
+  return dateDayOfWeekUtc(key);
 }
 
 function isConsecutiveDay(prev: string, next: string): boolean {
@@ -1847,12 +1856,11 @@ function daysInCalendarYear(year: number): number {
 }
 
 function dayOfYearUtc(dayKey: string): number {
-  return Temporal.PlainDate.from(dayKey).dayOfYear;
+  return dateDayOfYearUtc(dayKey);
 }
 
 function daysBetweenUtc(from: string, to: string): number {
-  const days = Temporal.PlainDate.from(from).until(Temporal.PlainDate.from(to)).days;
-  return Math.max(0, days);
+  return dateDaysBetweenUtc(from, to);
 }
 
 /** Year-to-date progress toward an annual distance or time goal. */

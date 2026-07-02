@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document records the June 2026 audit of rowplay against current library documentation (Context7 MCP), the [WHATWG HTML living standard](https://html.spec.whatwg.org/multipage/), 2026 platform capabilities (Node 26+ native Temporal, WebKit gaps), and the modernization checklist from [hdb-resale-visualizer PR #223](https://github.com/shenghaoc/hdb-resale-visualizer/pull/223). Findings live in `design.md`; remediation is tracked in `tasks.md` and implemented in the same PR.
+This document records the June 2026 audit of rowplay against current library documentation (Context7 MCP), the [WHATWG HTML living standard](https://html.spec.whatwg.org/multipage/), 2026 platform capabilities, and the modernization checklist from [hdb-resale-visualizer PR #223](https://github.com/shenghaoc/hdb-resale-visualizer/pull/223). Findings live in `design.md`; remediation is tracked in `tasks.md` and implemented in the same PR.
 
 **Scope:** `package.json` dependencies and devDependencies; configuration (`vite.config.ts`, `svelte.config.js`, `wrangler.jsonc`, Vitest/Playwright); HTML (`app.html`); CSS (`app.css` + component styles); JavaScript/TypeScript patterns in `src/`; PWA/service worker; security headers; accessibility; i18n/storage patterns.
 
@@ -15,7 +15,7 @@ This document records the June 2026 audit of rowplay against current library doc
 - **PR_223**: hdb-resale-visualizer pull request adopting `light-dark()`, `content-visibility`, `text-box-trim`, `@property`, `@starting-style`, `prefers-contrast`, input UX hints, and related 2026 CSS
 - **Runes_Mode**: Svelte 5 `$props`, `$state`, `$derived`, `$effect`, snippets — required project-wide
 - **Workers_Runtime**: Cloudflare Workers via `@sveltejs/adapter-cloudflare`; distinct from `vite dev`
-- **Temporal_Polyfill**: Conditional `temporal-polyfill/global` load when `globalThis.Temporal` is absent
+- **Date_Intl_Time**: Strict `Date` parsing plus `Intl.DateTimeFormat` timezone helpers used by rowplay without a bundled polyfill
 
 ## Requirements
 
@@ -54,11 +54,11 @@ This document records the June 2026 audit of rowplay against current library doc
 
 ### Requirement 4: JavaScript Platform Usage Must Be Current
 
-**User Story:** As a maintainer, I want JS/TS patterns checked against 2026 APIs, so polyfills are kept only where runtimes require them.
+**User Story:** As a maintainer, I want JS/TS patterns checked against 2026 APIs, so obsolete runtime polyfills are removed when rowplay targets native platform support.
 
 #### Acceptance Criteria
 
-1. THE Audit SHALL document the Temporal native vs polyfill split (Node 26+, Chromium/Firefox vs WebKit + Workers SSR)
+1. THE Audit SHALL document the date/time strategy for Node, browser, and Workers runtime targets
 2. THE Audit SHALL list modern APIs already in use (`fetch`, `AbortController`, `ResizeObserver`, `URLSearchParams`, `replaceAll`, `Array.at`, top-level `await`)
 3. THE Audit SHALL note optional APIs not yet used (`navigator.share`, `Intl.DurationFormat`, View Transitions API scoped)
 4. THE Audit SHALL document cookie + localStorage dual-persistence pattern for SSR vs client prefs
@@ -94,9 +94,9 @@ This document records the June 2026 audit of rowplay against current library doc
 | Unused npm packages | ❌ 3 dead dependencies |
 | HTML semantics | ✅ Good; native overlay primitives missing |
 | 2026 CSS (PR_223 set) | ❌ Not adopted in rowplay |
-| Temporal strategy | ✅ Correct polyfill gating |
+| Time strategy | ✅ No bundled polyfill; Date/Intl helpers cover runtime targets |
 | Security | ⚠️ No CSP |
-| E2E target (WebKit) | ✅ Appropriate for polyfill coverage |
+| E2E target (WebKit) | ✅ Appropriate for runtime compatibility coverage |
 
 ## References
 

@@ -46,6 +46,10 @@ describe("workoutLocalDayKey", () => {
     expect(workoutLocalDayKey("2024-01-14 23:30:00", "Not/Real")).toBe("2024-01-14");
   });
 
+  it("does not shift the date through home tz when workout tz is invalid", () => {
+    expect(workoutLocalDayKey("2024-01-15 01:00:00", "Bad", "America/New_York")).toBe("2024-01-15");
+  });
+
   it("uses plain date when only homeTz is known (no source zone info)", () => {
     // Without knowing the source zone, plain date is best effort.
     expect(workoutLocalDayKey("2024-01-14 23:30:00", undefined, "America/New_York")).toBe(
@@ -126,6 +130,16 @@ describe("parseInstantMillis", () => {
     expect(parseInstantMillis("not a timestamp")).toBeNaN();
     expect(parseInstantMillis("")).toBeNaN();
   });
+
+  it("rejects offset-less timestamps so logbook parsing stays timezone-stable", () => {
+    expect(parseInstantMillis("2000-01-01T00:00:00")).toBeNaN();
+  });
+
+  it("rejects calendar dates that Date.parse would normalize", () => {
+    expect(parseInstantMillis("2026-02-29T12:00:00Z")).toBeNaN();
+    expect(parseInstantMillis("2026-04-31T00:00:00Z")).toBeNaN();
+    expect(parseInstantMillis("2024-02-29T12:00:00Z")).toBe(1709208000000);
+  });
 });
 
 describe("overlapDate", () => {
@@ -152,6 +166,25 @@ describe("fmtDate", () => {
     const result = fmtDate("2026-06-03T12:00:00Z", "en-US", "UTC");
     expect(result).toMatch(/Jun/);
     expect(result).toMatch(/2026/);
+  });
+
+  it("uses the system timezone for instants when timezone is omitted", () => {
+    const value = "2026-06-03T23:30:00Z";
+    const ms = parseInstantMillis(value);
+    const expected = new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(ms));
+
+    expect(fmtDate(value, "en-US")).toBe(expected);
+  });
+
+  it("falls back gracefully for invalid locale or timezone", () => {
+    expect(() => fmtDate("2026-06-03T12:00:00Z", "en-US", "Not/AZone")).not.toThrow();
+    expect(fmtDate("2026-06-03T12:00:00Z", "en-US", "Not/AZone")).toMatch(/2026/);
+    expect(() => fmtDate("2026-06-03T12:00:00Z", "no_such_locale", "UTC")).not.toThrow();
+    expect(fmtDate("2026-06-03T12:00:00Z", "no_such_locale", "UTC")).toMatch(/2026/);
   });
 
   it("formats a logbook datetime string", () => {
@@ -196,17 +229,20 @@ describe("fmtDateFromEpochMillis", () => {
   it("returns -- for Infinity", () => {
     expect(fmtDateFromEpochMillis(Infinity)).toBe("--");
   });
+
+  it("returns -- for finite epoch values outside the Date range", () => {
+    expect(fmtDateFromEpochMillis(9_000_000_000_000_000, "en-US")).toBe("--");
+  });
 });
 
 describe("todayKeyUtc", () => {
   beforeEach(() => {
-    // todayKeyUtc() reads the clock via Temporal.Now. Freeze Temporal.Now directly so the
-    // assertion can't ride the real wall clock and flip at UTC midnight.
-    vi.spyOn(Temporal.Now, "plainDateISO").mockReturnValue(Temporal.PlainDate.from("2026-06-03"));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-03T12:00:00Z"));
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it("returns a YYYY-MM-DD string", () => {
@@ -228,11 +264,8 @@ describe("dayKeyEpochMillis", () => {
     const result = dayKeyEpochMillis("2026-06-03");
     expect(result).toBeGreaterThan(0);
     expect(Number.isFinite(result)).toBe(true);
-    // Verify it round-trips: converting back to date key should give the same string
-    const back = Temporal.Instant.fromEpochMilliseconds(result)
-      .toZonedDateTimeISO("UTC")
-      .toPlainDate()
-      .toString();
+    // Verify it round-trips: converting back to a day key should give the same string
+    const back = new Date(result).toISOString().slice(0, 10);
     expect(back).toBe("2026-06-03");
   });
 

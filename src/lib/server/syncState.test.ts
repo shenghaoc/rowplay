@@ -3,14 +3,14 @@ import { planSync, mergeWatermark } from "./historyWindow";
 
 describe("planSync", () => {
   it("first connect (no state) returns window plan with from date", () => {
-    const now = Temporal.PlainDate.from("2026-06-07");
+    const now = "2026-06-07";
     const plan = planSync(null, now, "forward");
     expect(plan.kind).toBe("window");
     expect((plan as { from: string }).from).toBeDefined();
   });
 
   it("incremental after initial window sync uses lastDate as from", () => {
-    const now = Temporal.PlainDate.from("2026-06-07");
+    const now = "2026-06-07";
     const state = {
       lastDate: "2026-06-01",
       oldestDate: "2025-06-01",
@@ -21,7 +21,7 @@ describe("planSync", () => {
   });
 
   it("full mode forces re-sync with undefined from (pages from newest page backward)", () => {
-    const now = Temporal.PlainDate.from("2026-06-07");
+    const now = "2026-06-07";
     const state = {
       lastDate: "2026-06-01",
       oldestDate: "2025-06-01",
@@ -33,7 +33,7 @@ describe("planSync", () => {
   });
 
   it("backfill mode when not done returns backfill plan with to date", () => {
-    const now = Temporal.PlainDate.from("2026-06-07");
+    const now = "2026-06-07";
     const state = {
       lastDate: "2026-06-01",
       oldestDate: "2025-06-01",
@@ -44,7 +44,7 @@ describe("planSync", () => {
   });
 
   it("backfill mode when already done returns done plan", () => {
-    const now = Temporal.PlainDate.from("2026-06-07");
+    const now = "2026-06-07";
     const state = {
       lastDate: "2026-06-01",
       oldestDate: "2025-06-01",
@@ -55,7 +55,7 @@ describe("planSync", () => {
   });
 
   it("backfill mode with null oldestDate returns done", () => {
-    const now = Temporal.PlainDate.from("2026-06-07");
+    const now = "2026-06-07";
     const state = {
       lastDate: "2026-06-01",
       oldestDate: null,

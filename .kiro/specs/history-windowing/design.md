@@ -44,8 +44,8 @@ export const HISTORY_WINDOW_MONTHS = 12;
 /** Max 250-result pages drained per backfill request (API politeness). */
 export const BACKFILL_PAGES_PER_RUN = 4;
 
-/** `YYYY-MM-DD` window start: today − HISTORY_WINDOW_MONTHS, in UTC. */
-export function historyWindowStart(now?: Temporal.PlainDate): string;
+/** `YYYY-MM-DD` window start: today - HISTORY_WINDOW_MONTHS, in UTC. */
+export function historyWindowStart(now?: string): string;
 
 /** Pure decision: what the next sync run should do, given persisted state. */
 export type SyncPlan =
@@ -53,7 +53,7 @@ export type SyncPlan =
   | { kind: 'incremental'; from: string | undefined } // forward catch-up
   | { kind: 'backfill'; to: string }                 // older than watermark
   | { kind: 'done' };                                // fully backfilled
-export function planSync(state: SyncState | null, now: Temporal.PlainDate, mode: SyncMode): SyncPlan;
+export function planSync(state: SyncState | null, now: string, mode: SyncMode): SyncPlan;
 
 /** Fold a fetched chunk into the watermark; only ever moves outward. */
 export function mergeWatermark(
@@ -63,10 +63,10 @@ export function mergeWatermark(
 ): { lastDate: string | null; oldestDate: string | null; backfillDone: boolean };
 ```
 
-- `historyWindowStart` uses `Temporal.Now.plainDateISO('UTC')` (matching
-  `todayKeyUtc` in `datetime.ts`) and `.subtract({ months: HISTORY_WINDOW_MONTHS })`,
-  so it is SSR/client-agnostic and rolls over months/years/leap days correctly.
-  Unit-tested with a frozen `now`.
+- `historyWindowStart` uses `todayKeyUtc` in `datetime.ts` by default and
+  `addMonthsToKey(..., -HISTORY_WINDOW_MONTHS)`, so it is SSR/client-agnostic
+  and rolls over months/years/leap days correctly. Unit-tested with an explicit
+  `now` day key.
 - `overlapDate(oldest)` (existing, `datetime.ts:40`) gives the day **before** the
   watermark for the backfill `to` bound — reused, not re-implemented.
 - `mergeWatermark` is the only place the cursor advances: `lastDate = max`,

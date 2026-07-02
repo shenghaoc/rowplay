@@ -11,7 +11,7 @@ Implementation plan. Requirement references point at `requirements.md`.
     - Lifetime distance: sum metres per sport from `workouts`; compare each
       threshold.
     - Session count: count workouts total.
-    - Streak: sort workouts by date; walk the list using Temporal PlainDate to
+    - Streak: sort workouts by date; walk the list using `datetime.ts` day keys to
       count the current/longest streak; mark the relevant threshold milestones.
     - 2k speed gates: compare `personalBests` for distance=2000, sport='rower'
       against each time threshold.

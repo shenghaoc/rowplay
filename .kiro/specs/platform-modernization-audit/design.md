@@ -31,7 +31,6 @@ Audited against Context7 current documentation. Version pins are aggressive and 
 | `svelte-sonner` | ^1.1 | ✅ | `<Toaster>` in `+layout.svelte`; `toast.*` across dashboard/replay/settings/PWA |
 | `tailwind-merge` | ^3.6 | ❌ | **Zero imports in `src/`** — dead dependency |
 | `tailwindcss` | ^4.3 | ✅ | `@import 'tailwindcss'` in `app.css`; no `tailwind.config.js` |
-| `temporal-polyfill` | ~0.3 | ✅ | Conditional load in `ensure-temporal.ts`; types via `app.d.ts` |
 | `three` | ^0.184 | ✅ | `import * as THREE`; `WebGLRenderer({ canvas })`; geometry/material disposal in `renderer3d.ts` |
 | `uplot` | ^1.6 | ✅ | `setData`, `setSize`, `destroy`, `ResizeObserver`, `hooks.draw`; accessible `role="img"` wrapper |
 
@@ -60,7 +59,7 @@ Audited against Context7 current documentation. Version pins are aggressive and 
 |------|---------|
 | `vite.config.ts` | ✅ `@tailwindcss/vite()` + `sveltekit()` |
 | `svelte.config.js` | ✅ `adapter-cloudflare`, `$components` alias, service worker registered |
-| `vitest.config.ts` | ✅ SvelteKit plugin, `setupFiles`, node env |
+| `vitest.config.ts` | ✅ SvelteKit plugin, node env |
 | `playwright.config.ts` | ✅ Real Workers runtime on port 8787, not vite dev |
 | `wrangler.jsonc` | ✅ ASSETS + KV + D1 bindings; observability enabled |
 
@@ -186,32 +185,26 @@ Status reflects the current tree (post-remediation); the audit found every ❌ b
 
 ## 5. JavaScript / TypeScript audit
 
-### 5.1 Temporal — runtime matrix (2026)
+### 5.1 Time strategy — Date/Intl, no bundled polyfill
 
 ```mermaid
 flowchart LR
-  ensure["ensureTemporal()"]
-  ensure -->|"globalThis.Temporal"| native["Native Temporal"]
-  ensure -->|"missing"| poly["temporal-polyfill/global"]
-  native --> dt["datetime.ts / concept2.ts"]
-  poly --> dt
-  N26["Node 26+ local/CI"] --> native
-  Chr["Chromium / Firefox client"] --> native
-  WK["WebKit Safari"] --> poly
-  CF["Cloudflare Workers SSR"] --> poly
+  intl["Date + Intl.DateTimeFormat"] --> dt["datetime.ts / concept2.ts"]
+  N26["Node local/CI"] --> intl
+  Chr["Browser client"] --> intl
+  CF["Cloudflare Workers SSR"] --> intl
 ```
 
-- Loaded from: `hooks.server.ts`, `hooks.client.ts`, `tests/unit/setup.ts`
-- WebKit retry with exponential backoff in `ensure-temporal.ts` (chunk load failures)
-- **Keep polyfill permanently** — e2e targets WebKit; Workers lack native Temporal
+- Rowplay uses strict `Date` parsing plus `Intl.DateTimeFormat` timezone data because Cloudflare Workers does not expose native `globalThis.Temporal`.
+- Removed `temporal-polyfill`, `ensure-temporal.ts`, hook bootstrap, test setup bootstrap, and ambient polyfill types.
+- Workers preview and e2e smoke validate that SSR works without a Temporal runtime or polyfill.
 
-**Resolved (P3#26):** `analytics.ts` calendar bucketing now uses `Temporal.PlainDate` throughout — no `Date` / `Date.parse` remain in the calendar math. Shared helpers `todayKeyUtc()` and `dayKeyEpochMillis()` live in `datetime.ts`; `FormPoint.day` keeps its epoch-ms contract.
+**Resolved (P3#26/P3#30):** `analytics.ts` calendar bucketing now routes through `datetime.ts` helpers (`addDaysToKey`/`dayOfWeekUtc`/`dayOfYearUtc`/`daysBetweenUtc` + `todayKeyUtc`/`dayKeyEpochMillis`). `FormPoint.day` keeps its epoch-ms contract.
 
 ### 5.2 Modern APIs in use
 
 | API | Location |
 |-----|----------|
-| Top-level `await` | `hooks.server.ts`, `hooks.client.ts`, Vitest setup |
 | `fetch` + `AbortController` | Live mode, Concept2 API, API routes |
 | `URL` / `URLSearchParams` | OAuth, list queries, server loads |
 | `ResizeObserver` | uPlot, replay canvas, 3D host |
@@ -221,7 +214,7 @@ flowchart LR
 | `navigator.clipboard` | share replay |
 | `navigator.serviceWorker` | PWA update, cache clear, e2e tests |
 | `createContext()` | i18n, theme |
-| Dynamic `import()` | 3D renderer loader, Temporal polyfill |
+| Dynamic `import()` | 3D renderer loader |
 | `AudioContext` | Live mode notification sound |
 
 ### 5.3 Optional APIs not used
@@ -298,7 +291,7 @@ flowchart TB
     C7[Context7 MCP docs]
     WHATWG[WHATWG HTML]
     PR223[hdb-resale PR 223]
-    NODE26[Node 26 Temporal]
+    NODE[Node runtime]
   end
 
   refs --> audited
@@ -312,13 +305,13 @@ flowchart TB
 
 | Item | Reason |
 |------|--------|
-| Temporal polyfill | WebKit e2e + Workers SSR require it indefinitely |
+| Date/Intl time helpers | Required because Workers preview does not provide native `globalThis.Temporal` |
 | TanStack Virtual for workout list | Better than `content-visibility` alone for 60+ rows |
 | Hand-rolled i18n | Appropriate for 6 locales |
 | BYOT httpOnly session model | Correct security architecture |
 | Demo mode / mock data | Product requirement |
 | daisyUI theme `@plugin` blocks | Separate from custom token `light-dark()` pass |
-| Playwright on WebKit | Validates polyfill and chunk-load edge cases |
+| Playwright on WebKit | Validates browser runtime compatibility |
 
 ---
 
@@ -332,7 +325,7 @@ When starting a **new feature** via Kiro:
 4. Prefer native HTML (`dialog`, `search`, input hints) over custom overlay JS
 5. New list UIs: virtualize (TanStack) OR `content-visibility`, not neither
 6. New animations MUST include `prefers-reduced-motion` suppression in CSS classes (not inline)
-7. New date logic SHOULD use Temporal via `datetime.ts` helpers after `ensureTemporal()`
+7. New time logic SHOULD use `datetime.ts` helpers instead of Temporal or ad hoc parsing
 
 ---
 
@@ -348,7 +341,6 @@ When starting a **new feature** via Kiro:
 | `$effect` cleanup | Layout (removed after `<dialog>`), live mode | Return teardown functions |
 | `class:` directive | Replay toggles, compare deltas | **Project convention** — valid Svelte 5; do not add `clsx` unless merging many dynamic classes |
 | `get()` from `svelte/store` | `WorkoutList.svelte` virtualizer | Required TanStack Virtual workaround |
-| Top-level `await` in hooks | `hooks.server.ts`, `hooks.client.ts` | Modern ESM Workers pattern |
 | `transformPageChunk` for `%lang%` / `%theme%` | `hooks.server.ts` | SSR theme/lang without flash |
 | Cookie + `localStorage` dual persist | lang, theme, live prefs | SSR cookie + client mirror |
 | `fail()` / `throw redirect()` outside `try` | `auth/token/+page.server.ts` | SvelteKit idiom — redirect throws |
@@ -366,7 +358,7 @@ When starting a **new feature** via Kiro:
 The optional P3 batch (22–29 in `tasks.md`) was subsequently completed: Lucide
 subpath imports, scoped View Transitions (`onNavigate` → `startViewTransition`,
 `view-transition-name: rp-main` on `<main>`), `@property` / `interpolate-size`,
-analytics `Temporal.PlainDate` unification, Latin font self-hosting + preload,
+analytics date-helper unification, Latin font self-hosting + preload,
 `nodejs_compat`, and Three.js `outputColorSpace`.
 
 ### Still deferred (out of audit scope)

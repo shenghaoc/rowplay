@@ -16,7 +16,7 @@
 - **@lucide/svelte** — icon library
 - **@tanstack/svelte-virtual** — virtualized lists for the workout list
 - **svelte-sonner** — toast notifications
-- **temporal-polyfill** — Temporal API polyfill when `globalThis.Temporal` is missing (WebKit, Workers SSR); skipped on Node 26+ / Chromium when native
+- **Date/Intl time helpers** — `src/lib/datetime.ts` uses strict UTC parsing plus `Intl.DateTimeFormat` timezone projection without Temporal or a bundled polyfill
 
 > **Stack audit (June 2026):** See `.kiro/specs/platform-modernization-audit/` for the full dependency, HTML/CSS/JS, and PR #223 modernization review. `bits-ui`, `clsx`, and `tailwind-merge` are listed in `package.json` but unused in `src/` — remove or wire up per audit `tasks.md`.
 

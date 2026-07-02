@@ -14,6 +14,7 @@ import {
   SPORT_LABEL,
   wattsToPaceForSport,
 } from "./format";
+import { parseInstantMillis } from "./datetime";
 import { bikePaceSecPer500, workout } from "../../tests/unit/fixtures";
 
 describe("fmtTime", () => {
@@ -126,7 +127,7 @@ describe("datetime formatters", () => {
   });
 
   it("formats epoch millis in UTC", () => {
-    const ms = Temporal.Instant.from("2026-05-27T00:00:00Z").epochMilliseconds;
+    const ms = parseInstantMillis("2026-05-27T00:00:00Z");
     expect(fmtDateFromEpochMillis(ms, "en-US")).toMatch(/May/);
   });
 });

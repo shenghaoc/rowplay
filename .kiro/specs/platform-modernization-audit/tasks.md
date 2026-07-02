@@ -58,10 +58,11 @@ Priority key: **P0** = correctness · **P1** = high value · **P2** = polish · 
 - [x] 23. Scoped View Transitions API (`onNavigate` → `startViewTransition`, scoped to `<main>` via `view-transition-name: rp-main`; reduced-motion guarded)
 - [x] 24. `@property` registrations
 - [x] 25. `interpolate-size: allow-keywords`
-- [x] 26. Analytics calendar math → `Temporal.PlainDate` (`addDaysToKey`/`dayOfWeekUtc`/`dayOfYearUtc`/`daysBetweenUtc` + new `datetime.ts` `todayKeyUtc`/`dayKeyEpochMillis`)
+- [x] 26. Analytics calendar math → shared `datetime.ts` day helpers (`addDaysToKey`/`dayOfWeekUtc`/`dayOfYearUtc`/`daysBetweenUtc` + `todayKeyUtc`/`dayKeyEpochMillis`)
 - [x] 27. Font self-hosting + preload (Source Sans 3 / Source Code Pro via `@fontsource`; `?url` preload of the 400 body weight injected through `%fontPreload%`)
 - [x] 28. `wrangler.jsonc` `nodejs_compat` review
 - [x] 29. Three.js `outputColorSpace = SRGBColorSpace`
+- [x] 30. Remove Temporal polyfill runtime dependency and bootstrap
 
 ---
 
@@ -81,7 +82,6 @@ not the current whole-app test counts; use `pnpm run check`, `pnpm run test`,
 
 ## Explicit non-tasks
 
-- Remove Temporal polyfill
 - Replace TanStack Virtual with `content-visibility` on workout list
 - Re-add bits-ui / clsx / tailwind-merge without usage
 - Rebuild completed feature specs

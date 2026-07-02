@@ -8,6 +8,7 @@ import {
   TOKEN_COOKIE,
   OAUTH_STATE_COOKIE,
 } from "./session";
+import { nowEpochMillis } from "../datetime";
 import type { SessionData } from "./session";
 
 /** Minimal in-memory KV stub. */
@@ -31,7 +32,7 @@ const sampleSession: SessionData = {
   tokens: {
     accessToken: "access-token",
     refreshToken: "refresh-token",
-    expiresAt: Temporal.Now.instant().epochMilliseconds + 3600_000,
+    expiresAt: nowEpochMillis() + 3600_000,
     scope: "user:read,results:read",
   },
 };

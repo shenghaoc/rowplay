@@ -15,8 +15,7 @@ timezone path only activates in production once #61 is merged.
   - Add `workoutLocalDayKey(date, workoutTz?, homeTz?): string` implementing the
     resolution chain: workout tz → home tz → UTC; each timezone attempt wrapped
     in try/catch so an invalid IANA string falls through silently.
-  - Add `todayKeyForTz(tz?): string` delegating to `Temporal.Now.plainDateISO(tz)`
-    with UTC fallback.
+  - Add `todayKeyForTz(tz?): string` using `Intl.DateTimeFormat` with UTC fallback.
   - Both functions pure, DOM-free, exported.
   - _Requirements: 1.1, 1.2, 1.3, 1.5_
 
