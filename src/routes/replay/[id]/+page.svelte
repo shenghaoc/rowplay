@@ -794,10 +794,10 @@
 	// Bolt: Consolidate parallel mapping over strokes into a single pass loop
 	const chartData = $derived.by(() => {
 		const n = strokes.length;
-		const t = Array.from<number>({ length: n });
-		const pace = Array.from<number>({ length: n });
-		const spm = Array.from<number>({ length: n });
-		const watts = Array.from<number>({ length: n });
+		const t = new Float64Array(n);
+		const pace = new Float64Array(n);
+		const spm = new Float64Array(n);
+		const watts = new Float64Array(n);
 		const hr = Array.from<number | null>({ length: n });
 		for (let i = 0; i < n; i++) {
 			const s = strokes[i];
@@ -860,7 +860,7 @@
 
 	const paceSeries = $derived(chartData.pace);
 	const paceData = $derived.by((): uPlot.AlignedData => {
-		const rows: (number | null)[][] = [xs, paceSeries];
+		const rows: any[] = [xs, paceSeries];
 		if (dpsAligned) rows.push(dpsAligned);
 		if (targetPaceSecs != null && !targetPaceInvalid) {
 			const t = targetPaceSecs;
@@ -873,7 +873,7 @@
 			}
 			rows.push(line);
 		}
-		return rows as uPlot.AlignedData;
+		return rows as unknown as uPlot.AlignedData;
 	});
 	const rateData = $derived<uPlot.AlignedData>([xs, chartData.spm]);
 	const powerData = $derived<uPlot.AlignedData>([xs, chartData.watts]);
@@ -993,8 +993,8 @@
 	// Bolt: Single-pass loop pre-allocating arrays instead of parallel map() calls
 	const pcData = $derived.by((): uPlot.AlignedData => {
 		const n = pc.length;
-		const duration = Array.from<number>({ length: n });
-		const watts = Array.from<number>({ length: n });
+		const duration = new Float64Array(n);
+		const watts = new Float64Array(n);
 		for (let i = 0; i < n; i++) {
 			duration[i] = pc[i].duration;
 			watts[i] = pc[i].watts;
@@ -1009,8 +1009,8 @@
 	const dpsData = $derived.by((): uPlot.AlignedData => {
 		const dps = tech.dps;
 		const n = dps.length;
-		const t = Array.from<number>({ length: n });
-		const v = Array.from<number>({ length: n });
+		const t = new Float64Array(n);
+		const v = new Float64Array(n);
 		for (let i = 0; i < n; i++) {
 			t[i] = dps[i].t;
 			v[i] = dps[i].v;
@@ -1024,8 +1024,8 @@
 	// Bolt: Single-pass loop pre-allocating arrays instead of parallel map() calls
 	const effData = $derived.by((): uPlot.AlignedData => {
 		const n = eff.length;
-		const spm = Array.from<number>({ length: n });
-		const pace = Array.from<number>({ length: n });
+		const spm = new Float64Array(n);
+		const pace = new Float64Array(n);
 		for (let i = 0; i < n; i++) {
 			spm[i] = eff[i].spm;
 			pace[i] = eff[i].pace;
