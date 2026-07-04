@@ -1156,7 +1156,11 @@
 	let withdrawing = $state(false);
 	// Whether this piece is currently on the board. Seeded from the server (which
 	// knows about entries published in a past session) and flipped on publish/withdraw.
+	// Re-seed on client-side navigation so a different workout's published state is shown.
 	let published = $state(data.published ?? false);
+	$effect(() => {
+		published = data.published ?? false;
+	});
 
 	// Publishing to a board only applies to a signed-in athlete's own
 	// standard-distance piece — demo athletes and off-board distances can't rank.

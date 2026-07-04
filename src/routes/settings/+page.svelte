@@ -28,6 +28,15 @@
 	// Seed from server data so SSR renders the selected option (no flash of the
 	// default "UTC" option before hydration). Demo mode reads localStorage on mount.
 	let selectedTz = $state(data.homeTimezone ?? '');
+	// Re-seed when server data changes after a save completes (invalidateAll
+	// reloads page data). Track local edits so a background sync/backfill
+	// invalidateAll() doesn't clobber an unsaved timezone selection.
+	let tzDirty = false;
+	$effect(() => {
+		if (!tzDirty && data.homeTimezone && data.homeTimezone !== selectedTz) {
+			selectedTz = data.homeTimezone;
+		}
+	});
 	let savingTz = $state(false);
 
 	onMount(() => {
@@ -136,6 +145,7 @@
 
 	async function saveTimezone() {
 		if (savingTz) return;
+		tzDirty = true;
 		savingTz = true;
 		const tz = selectedTz.trim() || undefined;
 		try {
@@ -151,6 +161,7 @@
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			}
 			await invalidateAll();
+			tzDirty = false;
 			toast.success(t('settings.timezoneSaved'));
 		} catch (e) {
 			toast.error(t('common.tryAgain'), {

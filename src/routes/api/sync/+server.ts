@@ -7,7 +7,7 @@ export const POST: RequestHandler = async (event) => {
   const full = new URL(event.request.url).searchParams.get("full") === "1";
   try {
     const result = await syncWorkouts(event, full);
-    const sync = event.locals.demo ? null : await syncStatus(event).catch(() => null);
+    const sync = await syncStatus(event).catch(() => null);
     return json({ ...result, sync }, { headers: { "cache-control": "private, no-store" } });
   } catch (e) {
     if (isHttpError(e)) throw e; // already a clean status + message
