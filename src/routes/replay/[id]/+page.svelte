@@ -1156,7 +1156,9 @@
 	let withdrawing = $state(false);
 	// Whether this piece is currently on the board. Seeded from the server (which
 	// knows about entries published in a past session) and flipped on publish/withdraw.
-	let published = $state(data.published ?? false);
+	// Writable derived state re-seeds on client-side navigation while still allowing
+	// publish/withdraw handlers to update immediately after their requests complete.
+	let published = $derived(data.published ?? false);
 
 	// Publishing to a board only applies to a signed-in athlete's own
 	// standard-distance piece — demo athletes and off-board distances can't rank.

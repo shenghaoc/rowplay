@@ -25,13 +25,14 @@
 	let syncing = $state(false);
 	let syncMode = $state<'incremental' | 'full' | 'history' | null>(null);
 	let deleting = $state(false);
-	// Seed from server data so SSR renders the selected option (no flash of the
-	// default "UTC" option before hydration). Demo mode reads localStorage on mount.
-	let selectedTz = $state(data.homeTimezone ?? '');
 	let savingTz = $state(false);
+	let demoHomeTimezone = $state('');
+	let pendingTz = $state<string | null>(null);
+	const persistedTz = $derived(data.demo ? demoHomeTimezone : (data.homeTimezone ?? ''));
+	const selectedTz = $derived(pendingTz ?? persistedTz);
 
 	onMount(() => {
-		if (data.demo) selectedTz = readHomeTimezoneClient() ?? '';
+		if (data.demo) demoHomeTimezone = readHomeTimezoneClient() ?? '';
 	});
 
 	const syncHistoryNote = $derived.by(() => {
@@ -134,14 +135,17 @@
 		}
 	}
 
-	async function saveTimezone() {
+	async function saveTimezone(e: Event) {
 		if (savingTz) return;
 		savingTz = true;
-		const tz = selectedTz.trim() || undefined;
+		const nextTz = (e.currentTarget as HTMLSelectElement).value.trim();
+		pendingTz = nextTz;
+		const tz = nextTz || undefined;
 		try {
 			if (data.demo) {
 				if (tz) writeHomeTimezoneClient(tz);
 				else clearHomeTimezoneClient();
+				demoHomeTimezone = nextTz;
 			} else {
 				const res = await fetch('/api/settings/timezone', {
 					method: 'PUT',
@@ -157,6 +161,7 @@
 				description: e instanceof Error ? e.message : undefined
 			});
 		} finally {
+			pendingTz = null;
 			savingTz = false;
 		}
 	}
@@ -229,7 +234,7 @@
 				id="tz-select"
 				name="timezone"
 				class="select select-bordered w-full max-w-md"
-				bind:value={selectedTz}
+				value={selectedTz}
 				disabled={savingTz}
 				onchange={saveTimezone}
 			>
