@@ -155,14 +155,13 @@
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			}
 			await invalidateAll();
-			pendingTz = null;
 			toast.success(t('settings.timezoneSaved'));
 		} catch (e) {
-			pendingTz = null;
 			toast.error(t('common.tryAgain'), {
 				description: e instanceof Error ? e.message : undefined
 			});
 		} finally {
+			pendingTz = null;
 			savingTz = false;
 		}
 	}
