@@ -35,6 +35,7 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [Mobile nav backdrop dismiss](.kiro/specs/mobile-nav-backdrop-dismiss/tasks.md) — cross-browser backdrop tap to close the hamburger menu; bounding-rect `onclick` fallback for iOS Safari.
 - [Snappy connect & dashboard cache warm-up](.kiro/specs/connect-cache-warmup/tasks.md) — connect pending-state; background warm-cache sync on connect (`waitUntil`); D1 read as the full history only after a sync completes (no partial cache); per-request load de-dup.
 - [Test coverage](.kiro/specs/test-coverage/tasks.md) — broad Vitest coverage across pure helpers, server/DB layer, route handlers, Svelte reactive classes, and the Three.js 3D renderer; `@vitest/coverage-v8` with `text` + `lcov` reporters. The spec records its landing snapshot; use `vp test` for current health.
+- [State re-seed and dead-code cleanup](.kiro/specs/state-reseed-and-dead-code-cleanup/tasks.md) — PR #161 bugfix for unreachable sync branching, Svelte page-data re-seeding, timezone clearing, and a workout-moment lint suppression.
 
 **Platform audit (read before new features or modernization work):**
 

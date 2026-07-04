@@ -54,8 +54,7 @@ export function analyzeWorkoutMoments(detail: WorkoutDetail): WorkoutMomentRepor
   const samples = validWorkSamples(detail.strokes);
   const windows = buildRollingWindows(samples, detail.time >= 75 ? 60 : 30);
   const fallbackWindows = windows.length ? windows : buildRollingWindows(samples, 30);
-  // eslint-disable-next-line unicorn/no-new-array -- pre-sized for fill loop; length is unambiguous here
-  const windowPaces: number[] = new Array(fallbackWindows.length);
+  const windowPaces: number[] = Array.from({ length: fallbackWindows.length });
   for (let i = 0; i < fallbackWindows.length; i++) windowPaces[i] = fallbackWindows[i].avgPace;
   windowPaces.sort((a, b) => a - b);
   const mid = Math.floor(windowPaces.length / 2);

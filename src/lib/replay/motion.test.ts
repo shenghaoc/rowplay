@@ -137,7 +137,7 @@ describe("ParticlePool", () => {
     p.update(0.2, 0, 0, 0);
     expect(p.alive).toBe(2);
     // The dead slot 0 was backfilled by the last particle.
-    const xs = [p.x[0], p.x[1]].sort();
+    const xs = [p.x[0], p.x[1]].sort((a, b) => a - b);
     expect(xs).toEqual([2, 3]);
   });
 
