@@ -860,9 +860,9 @@
 
 	const paceSeries = $derived(chartData.pace);
 	const paceData = $derived.by((): uPlot.AlignedData => {
-		const rows: any[] = [xs, paceSeries];
+		const rows: (Float64Array | (number | null)[])[] = [xs, paceSeries];
 		if (dpsAligned) rows.push(dpsAligned);
-		if (targetPaceSecs != null && !targetPaceInvalid) {
+		if (targetPaceSecs != null && xs.length > 0 && !targetPaceInvalid) {
 			const t = targetPaceSecs;
 			const line = Array(xs.length).fill(t);
 			if (showBand) {

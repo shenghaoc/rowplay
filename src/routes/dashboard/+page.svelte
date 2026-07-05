@@ -481,7 +481,7 @@
 	const formData = $derived.by((): uPlot.AlignedData => {
 		// Match the series count in formOptions (x + 3) so uPlot never sees a
 		// shape it can't render, even in the empty state.
-		if (!load) return [[], [], [], []];
+		if (!load) return [new Float64Array(0), new Float64Array(0), new Float64Array(0), new Float64Array(0)];
 		const xs = new Float64Array(load.series.length);
 		const ctl = new Float64Array(load.series.length);
 		const atl = new Float64Array(load.series.length);
