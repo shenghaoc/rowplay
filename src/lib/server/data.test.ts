@@ -12,19 +12,24 @@ vi.mock("./session", () => ({
   getHomeTimezone: vi.fn(),
 }));
 vi.mock("./tokenCrypto", () => ({ openToken: vi.fn() }));
+vi.mock("./logger", () => ({
+  createLogger: () => ({ error: vi.fn(), warn: vi.fn() }),
+}));
 
 import {
   loadAnnualGoal,
   loadDashboardAggregates,
+  loadHomeTimezone,
   loadWorkoutDetail,
   loadWorkoutList,
   loadWorkouts,
   resetDemoWorkoutTagStore,
   saveAnnualGoal,
+  saveHomeTimezone,
   syncWorkouts,
 } from "./data";
 import { Concept2Client } from "./concept2";
-import { openSession } from "./session";
+import { openSession, getHomeTimezone, setHomeTimezone } from "./session";
 import { openToken } from "./tokenCrypto";
 import { mockWorkouts } from "../mockData";
 import type { Workout } from "../types";
@@ -80,6 +85,8 @@ beforeEach(() => {
   (Concept2Client as unknown as Mock).mockReset();
   (openSession as unknown as Mock).mockReset();
   (openToken as unknown as Mock).mockReset();
+  (getHomeTimezone as unknown as Mock).mockReset();
+  (setHomeTimezone as unknown as Mock).mockReset();
   resetDemoWorkoutTagStore();
   (openSession as unknown as Mock).mockResolvedValue({
     user: { id: 7, username: "athlete" },
@@ -192,6 +199,12 @@ describe("loadWorkoutDetail — authenticated", () => {
     await expect(loadWorkoutDetail(authedEvent(), 6001)).resolves.toEqual(detail);
     expect(getWorkout).toHaveBeenCalledWith(6001);
   });
+
+  it("throws 401 when session cannot be opened", async () => {
+    (openSession as unknown as Mock).mockResolvedValue(null);
+
+    await expect(loadWorkoutDetail(authedEvent(), 6001)).rejects.toMatchObject({ status: 401 });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -212,10 +225,208 @@ describe("loadDashboardAggregates — no user", () => {
 });
 
 // ---------------------------------------------------------------------------
-// loadAnnualGoal — demo mode
+// loadDashboardAggregates — authenticated (live API + JS aggregation)
 // ---------------------------------------------------------------------------
 
-describe("loadAnnualGoal — demo mode", () => {
+describe("loadDashboardAggregates — authenticated", () => {
+  const rowerWorkout: Workout = {
+    id: 6001,
+    date: "2026-06-04 06:00:00",
+    sport: "rower",
+    distance: 2000,
+    time: 480,
+    pace: 120,
+    hasStrokeData: false,
+  };
+  const rowerWorkout2: Workout = {
+    id: 6002,
+    date: "2026-06-05 06:00:00",
+    sport: "rower",
+    distance: 5000,
+    time: 1250,
+    pace: 125,
+    hasStrokeData: false,
+  };
+  const bikeWorkout: Workout = {
+    id: 6003,
+    date: "2026-06-06 06:00:00",
+    sport: "bike",
+    distance: 10000,
+    time: 1800,
+    pace: 90,
+    hasStrokeData: false,
+  };
+
+  it("computes per-sport aggregates from live workout data", async () => {
+    const listWorkouts = vi.fn().mockResolvedValue([rowerWorkout, rowerWorkout2, bikeWorkout]);
+    mockConcept2Client({ listWorkouts });
+
+    const result = await loadDashboardAggregates(authedEvent());
+    expect(result).not.toBeNull();
+    const { bySport } = result!;
+    expect(bySport).toHaveLength(2);
+
+    const rower = bySport.find((s) => s.sport === "rower")!;
+    expect(rower.sessions).toBe(2);
+    expect(rower.distance).toBe(7000);
+    expect(rower.time).toBe(1730);
+    expect(rower.bestPace).toBe(120);
+    expect(rower.longest).toBe(5000);
+
+    const bike = bySport.find((s) => s.sport === "bike")!;
+    expect(bike.sessions).toBe(1);
+    expect(bike.distance).toBe(10000);
+  });
+
+  it("computes PBs per standard distance", async () => {
+    const pbWorkout: Workout = {
+      id: 7001,
+      date: "2026-06-01 06:00:00",
+      sport: "rower",
+      distance: 2000,
+      time: 400, // faster
+      pace: 100,
+      hasStrokeData: false,
+    };
+    const slowerWorkout: Workout = {
+      id: 7002,
+      date: "2026-06-02 06:00:00",
+      sport: "rower",
+      distance: 2000,
+      time: 480, // slower
+      pace: 120,
+      hasStrokeData: false,
+    };
+    const listWorkouts = vi.fn().mockResolvedValue([pbWorkout, slowerWorkout]);
+    mockConcept2Client({ listWorkouts });
+
+    const result = await loadDashboardAggregates(authedEvent());
+    expect(result).not.toBeNull();
+    expect(result!.pbs).toHaveLength(1);
+    expect(result!.pbs[0]).toMatchObject({
+      distance: 2000,
+      time: 400,
+      sport: "rower",
+    });
+  });
+
+  it("returns null when API returns empty list", async () => {
+    const listWorkouts = vi.fn().mockResolvedValue([]);
+    mockConcept2Client({ listWorkouts });
+
+    expect(await loadDashboardAggregates(authedEvent())).toBeNull();
+  });
+
+  it("returns null when API call fails (graceful degradation)", async () => {
+    const listWorkouts = vi.fn().mockRejectedValue(new Error("API down"));
+    mockConcept2Client({ listWorkouts });
+
+    expect(await loadDashboardAggregates(authedEvent())).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// loadHomeTimezone
+// ---------------------------------------------------------------------------
+
+describe("loadHomeTimezone", () => {
+  it("returns undefined in demo mode", async () => {
+    expect(await loadHomeTimezone(demoEvent())).toBeUndefined();
+  });
+
+  it("returns undefined when SESSION_SECRET is missing", async () => {
+    const event = authedEvent({ platform: { env: { SESSION_SECRET: undefined } } });
+    expect(await loadHomeTimezone(event)).toBeUndefined();
+  });
+
+  it("returns undefined when session cookie is missing", async () => {
+    const event = authedEvent({ cookies: { get: () => undefined } });
+    expect(await loadHomeTimezone(event)).toBeUndefined();
+  });
+
+  it("returns undefined when session cannot be opened", async () => {
+    (openSession as unknown as Mock).mockResolvedValue(null);
+    expect(await loadHomeTimezone(authedEvent())).toBeUndefined();
+  });
+
+  it("returns timezone from session when available", async () => {
+    (getHomeTimezone as unknown as Mock).mockReturnValue("Asia/Tokyo");
+    expect(await loadHomeTimezone(authedEvent())).toBe("Asia/Tokyo");
+  });
+
+  it("returns undefined when session has no timezone set", async () => {
+    (getHomeTimezone as unknown as Mock).mockReturnValue(undefined);
+    expect(await loadHomeTimezone(authedEvent())).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// saveHomeTimezone
+// ---------------------------------------------------------------------------
+
+describe("saveHomeTimezone", () => {
+  it("is a no-op in demo mode", async () => {
+    await saveHomeTimezone(demoEvent(), "Asia/Tokyo");
+    expect(setHomeTimezone).not.toHaveBeenCalled();
+  });
+
+  it("throws 401 when SESSION_SECRET is missing", async () => {
+    const event = authedEvent({ platform: { env: { SESSION_SECRET: undefined } } });
+    await expect(saveHomeTimezone(event, "Asia/Tokyo")).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("throws 401 when session cookie is missing", async () => {
+    const event = authedEvent({ cookies: { get: () => undefined } });
+    await expect(saveHomeTimezone(event, "Asia/Tokyo")).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("throws 401 when session cannot be opened", async () => {
+    (openSession as unknown as Mock).mockResolvedValue(null);
+    await expect(saveHomeTimezone(authedEvent(), "Asia/Tokyo")).rejects.toMatchObject({
+      status: 401,
+    });
+  });
+
+  it("calls setHomeTimezone with the session data", async () => {
+    const session = {
+      user: { id: 7, username: "athlete" },
+      personal: true,
+      tokens: { accessToken: "", refreshToken: "", expiresAt: 0, scope: "" },
+    };
+    (openSession as unknown as Mock).mockResolvedValue(session);
+    await saveHomeTimezone(authedEvent(), "Asia/Tokyo");
+    expect(setHomeTimezone).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      "test-secret-that-is-32-chars!!",
+      session,
+      "Asia/Tokyo",
+    );
+  });
+
+  it("passes undefined to clear the timezone", async () => {
+    const session = {
+      user: { id: 7, username: "athlete" },
+      personal: true,
+      tokens: { accessToken: "", refreshToken: "", expiresAt: 0, scope: "" },
+    };
+    (openSession as unknown as Mock).mockResolvedValue(session);
+    await saveHomeTimezone(authedEvent(), undefined);
+    expect(setHomeTimezone).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.any(String),
+      session,
+      undefined,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// loadAnnualGoal
+// ---------------------------------------------------------------------------
+
+describe("loadAnnualGoal", () => {
   it("returns the default goal when no cookie is set", async () => {
     const goal = await loadAnnualGoal(demoEvent(), 2026);
     expect(goal.year).toBe(2026);
@@ -237,13 +448,21 @@ describe("loadAnnualGoal — demo mode", () => {
     expect(goal.year).toBe(2026);
     expect(goal.kind).toBe("meters");
   });
+
+  it("reads from cookie for authenticated users (same as demo)", async () => {
+    const cookieVal = JSON.stringify({ year: 2026, kind: "hours", target: 300 });
+    const event = authedEvent({ cookies: { get: () => cookieVal, set: vi.fn() } });
+    const goal = await loadAnnualGoal(event, 2026);
+    expect(goal.kind).toBe("hours");
+    expect(goal.target).toBe(300);
+  });
 });
 
 // ---------------------------------------------------------------------------
-// saveAnnualGoal — demo mode
+// saveAnnualGoal
 // ---------------------------------------------------------------------------
 
-describe("saveAnnualGoal — demo mode", () => {
+describe("saveAnnualGoal", () => {
   it("serializes the goal to a cookie", async () => {
     const setCookie = vi.fn();
     const event = demoEvent({ cookies: { get: () => undefined, set: setCookie } });

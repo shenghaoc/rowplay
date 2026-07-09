@@ -1235,6 +1235,8 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     connect: "Connect with token",
     connecting: "Connecting…",
     rejected: "Concept2 rejected that token. Check it and try again.",
+    serverUnavailable:
+      "Could not reach Concept2. Their servers may be temporarily unavailable. Please try again later.",
     serverMisconfigured:
       "This deployment isn’t set up for token sign-in (missing SESSION_SECRET). Contact the site owner.",
     empty: "Paste your Concept2 API token.",

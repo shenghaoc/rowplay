@@ -23,22 +23,30 @@ const sampleSession: SessionData = {
   },
 };
 
-/** Minimal cookie jar stub that satisfies the Cookies interface. */
+interface CookieEntry {
+  value: string;
+  opts: Record<string, unknown>;
+}
+
+/** Cookie jar stub that captures options for assertion. */
 function fakeCookies() {
-  const store = new Map<string, string>();
+  const store = new Map<string, CookieEntry>();
   return {
-    set: (name: string, value: string) => store.set(name, value),
-    get: (name: string) => store.get(name),
-    delete: (name: string) => {
+    set: (name: string, value: string, opts: Record<string, unknown>) =>
+      store.set(name, { value, opts }),
+    get: (name: string) => store.get(name)?.value,
+    delete: (name: string, _opts?: Record<string, unknown>) => {
       store.delete(name);
     },
-    getAll: () => [...store.entries()].map(([name, value]) => ({ name, value })),
+    getAll: () => [...store.entries()].map(([name, entry]) => ({ name, value: entry.value })),
     serialize: (name: string, value: string) => `${name}=${value}`,
     _store: store,
-  };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
 }
 
 const fakeEvent = { url: new URL("https://example.com/") };
+const fakeEventHttp = { url: new URL("http://localhost/") };
 
 describe("sealSession / openSession", () => {
   it("round-trips a session through seal and open", async () => {
@@ -79,18 +87,39 @@ describe("writeSession", () => {
     await writeSession(cookies, fakeEvent, TEST_SECRET, sampleSession);
     expect(cookies._store.has(SESSION_COOKIE)).toBe(true);
     // The cookie value should be encrypted (not plaintext JSON)
-    const value = cookies._store.get(SESSION_COOKIE)!;
-    expect(value).not.toContain('"user"');
+    const entry = cookies._store.get(SESSION_COOKIE)!;
+    expect(entry.value).not.toContain('"user"');
     // But should be openable
-    const opened = await openSession(TEST_SECRET, value);
+    const opened = await openSession(TEST_SECRET, entry.value);
     expect(opened?.user.id).toBe(42);
+  });
+
+  it("sets httpOnly, secure, sameSite, and path on HTTPS", async () => {
+    const cookies = fakeCookies();
+    await writeSession(cookies, fakeEvent, TEST_SECRET, sampleSession);
+    const entry = cookies._store.get(SESSION_COOKIE)!;
+    expect(entry.opts).toMatchObject({
+      path: "/",
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+    });
+    expect(typeof entry.opts.maxAge).toBe("number");
+    expect(entry.opts.maxAge).toBeGreaterThan(0);
+  });
+
+  it("sets secure=false on HTTP (localhost)", async () => {
+    const cookies = fakeCookies();
+    await writeSession(cookies, fakeEventHttp, TEST_SECRET, sampleSession);
+    const entry = cookies._store.get(SESSION_COOKIE)!;
+    expect(entry.opts.secure).toBe(false);
   });
 });
 
 describe("destroySession", () => {
   it("clears the session cookie", () => {
     const cookies = fakeCookies();
-    cookies.set(SESSION_COOKIE, "some-value");
+    cookies.set(SESSION_COOKIE, "some-value", {});
     destroySession(cookies, fakeEvent);
     expect(cookies._store.has(SESSION_COOKIE)).toBe(false);
   });

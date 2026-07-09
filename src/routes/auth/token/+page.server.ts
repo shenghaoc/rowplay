@@ -31,7 +31,13 @@ export const actions: Actions = {
     let user: SessionUser;
     try {
       user = await fetchMe(cfg, token);
-    } catch {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      // Distinguish Concept2 API failures from invalid tokens so the user
+      // gets actionable feedback instead of "token rejected" for every error.
+      if (/50[023]/.test(msg) || /timeout|abort/i.test(msg)) {
+        return fail(502, { error: tr("token.serverUnavailable") });
+      }
       return fail(400, { error: tr("token.rejected") });
     }
 

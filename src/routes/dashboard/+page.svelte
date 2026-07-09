@@ -49,7 +49,6 @@
 	import { chartTheme, baseOptions } from '$lib/chartTheme';
 	import LiveModePanel from '$components/LiveModePanel.svelte';
 	import { LiveMode } from '$lib/liveMode.svelte';
-	import { runHistoryBackfillLoop } from '$lib/historyBackfill';
 	import { computeMilestones, newlyAchievedMilestones } from '$lib/milestones';
 	import {
 		dismissDashboardHint,
@@ -149,20 +148,6 @@
 	let newPbIds = $state<Set<number>>(new Set());
 	const pbIds = $derived(pbWorkoutIds(workouts));
 	const milestonePBs = $derived(distancePBs(workouts));
-
-	const syncHistoryNote = $derived('');
-
-	const shouldBackfill = $derived(false);
-
-	$effect(() => {
-		if (!shouldBackfill) return;
-		const ac = new AbortController();
-		void runHistoryBackfillLoop({ signal: ac.signal }).catch((e) => {
-			if (e instanceof DOMException && e.name === 'AbortError') return;
-			console.error('[historyBackfill]', e);
-		});
-		return () => ac.abort();
-	});
 
 	function onCompareWorkout(w: Workout) {
 		if (compareAnchor == null) {

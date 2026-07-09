@@ -81,12 +81,10 @@
 	import { athleteMedianPace } from '$lib/workoutTag';
 	import type { WorkoutTag } from '$lib/workoutTag';
 	import { page } from '$app/state';
-	import AnnotationPanel from '$components/AnnotationPanel.svelte';
 	import InspectorPanel from '$components/InspectorPanel.svelte';
 	import RepComparisonChart from '$components/RepComparisonChart.svelte';
 	import WorkoutMomentCards from '$components/WorkoutMomentCards.svelte';
 	import { detectReps, repColor, repsHaveHr, type RepMetric } from '$lib/repComparison';
-	import type { Annotation } from '$lib/types';
 	import { analyzeWorkoutMoments } from '$lib/workoutMoments';
 
 	let { data } = $props();
@@ -97,13 +95,6 @@
 	const candidates = $derived(data.candidates as Workout[]);
 	const medianPaceSecs = $derived(athleteMedianPace(candidates));
 	let tagUserOverride = $state<{ id: number; tag: WorkoutTag | null } | null>(null);
-	// Local, mutable copy (save/delete edit it in place). Re-seed from `data`
-	// whenever it changes so navigating between replays shows the right notes
-	// rather than the first workout's, since the component instance is reused.
-	let annotations = $state([] as Annotation[]);
-	$effect(() => {
-		annotations = ((data as Record<string, unknown>).annotations ?? []) as Annotation[];
-	});
 	const isDemo = $derived(!!data.demo);
 	let hrOverlay = $state<HrOverlay | null>(null);
 	// Workout id the current overlay belongs to. On client-side navigation
@@ -1350,31 +1341,6 @@
 			});
 		}
 	}
-
-	// --- Coaching annotations ---
-	async function saveAnnotation(a: { id: number; timestamp: number; text: string }) {
-		const res = await fetch(`/api/workouts/${detail.id}/annotations`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(a)
-		});
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		const { annotation } = (await res.json()) as { annotation: Annotation };
-		if (a.id > 0) {
-			const idx = annotations.findIndex((x) => x.id === a.id);
-			if (idx >= 0) annotations[idx] = annotation;
-		} else {
-			annotations = [...annotations, annotation];
-		}
-	}
-
-	async function deleteAnnotation(id: number) {
-		const res = await fetch(`/api/workouts/${detail.id}/annotations?annotationId=${id}`, {
-			method: 'DELETE'
-		});
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		annotations = annotations.filter((a) => a.id !== id);
-	}
 </script>
 
 <svelte:head><title>{t('common.replay')} · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
@@ -1808,15 +1774,6 @@
 			{#if ghostActive}<span class="legend-item"><Ghost size={11} aria-hidden="true" />{t('replay.legendGhost')}</span>{/if}
 		</div>
 	</div>
-
-	<!-- Coaching annotations -->
-	<AnnotationPanel
-		{annotations}
-		currentTime={frame.t}
-		onsave={saveAnnotation}
-		ondelete={deleteAnnotation}
-		onseek={(ts) => engine?.seek(ts)}
-	/>
 
 	<!-- Telemetry traces -->
 	<div class="charts">

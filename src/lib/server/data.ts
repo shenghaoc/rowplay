@@ -22,19 +22,31 @@ import {
 import type { SportSummary, AnnualGoal } from "$lib/analytics";
 import { defaultAnnualGoal, parseGoalsCookie } from "$lib/goals";
 import { type WorkoutTag } from "../workoutTag";
+import { createLogger } from "./logger";
+
+const logger = createLogger(console);
 
 async function client(event: RequestEvent): Promise<Concept2Client | null> {
   const env = event.platform?.env;
   const secret = env?.SESSION_SECRET;
   const sealedSession = event.cookies.get(SESSION_COOKIE);
-  if (!secret || !sealedSession) return null;
+  if (!secret || !sealedSession) {
+    if (!secret) logger.warn("[session] SESSION_SECRET not configured");
+    return null;
+  }
   const session = await openSession(secret, sealedSession);
-  if (!session) return null;
+  if (!session) {
+    logger.warn("[session] openSession failed (tampered/expired cookie or rotated secret)");
+    return null;
+  }
   if (session.personal) {
     // BYOT: the credential isn't in the session — it's sealed in its own cookie.
     const sealed = event.cookies.get(TOKEN_COOKIE);
     const token = sealed ? await openToken(secret, sealed) : null;
-    if (!token) return null;
+    if (!token) {
+      logger.warn("[session] token open failed (tampered/missing rp_tok cookie)");
+      return null;
+    }
     session.tokens = { ...session.tokens, accessToken: token };
   }
   return new Concept2Client(getConfig(event), session);
@@ -107,12 +119,7 @@ export async function syncWorkouts(event: RequestEvent): Promise<SyncResult> {
 }
 
 export async function loadAnnualGoal(event: RequestEvent, year: number): Promise<AnnualGoal> {
-  if (event.locals.demo) {
-    const fromCookie = parseGoalsCookie(event.cookies.get("annual_goal") ?? undefined);
-    if (fromCookie?.year === year) return fromCookie;
-    return defaultAnnualGoal(year);
-  }
-  // In live mode, goals are stored in a cookie (no server-side storage).
+  // Goals are stored in a cookie for all modes (demo and live).
   const fromCookie = parseGoalsCookie(event.cookies.get("annual_goal") ?? undefined);
   if (fromCookie?.year === year) return fromCookie;
   return defaultAnnualGoal(year);
@@ -123,9 +130,16 @@ export async function loadHomeTimezone(event: RequestEvent): Promise<string | un
   const env = event.platform?.env;
   const secret = env?.SESSION_SECRET;
   const sealedSession = event.cookies.get(SESSION_COOKIE);
-  if (!secret || !sealedSession) return undefined;
+  if (!secret || !sealedSession) {
+    if (!secret) logger.warn("[tz] SESSION_SECRET not configured for home timezone");
+    return undefined;
+  }
   const session = await openSession(secret, sealedSession);
-  return session ? getHomeTimezone(session) : undefined;
+  if (!session) {
+    logger.warn("[tz] session open failed for home timezone (tampered/expired cookie)");
+    return undefined;
+  }
+  return getHomeTimezone(session);
 }
 
 export async function saveHomeTimezone(
@@ -165,7 +179,13 @@ export async function loadDashboardAggregates(
   event: RequestEvent,
 ): Promise<DashboardAggregates | null> {
   if (event.locals.demo) return null;
-  const workouts = await loadWorkouts(event).catch(() => []);
+  const workouts = await loadWorkouts(event).catch((e) => {
+    logger.error(
+      "[dashboard] loadDashboardAggregates: workout fetch failed:",
+      e instanceof Error ? e.message : String(e),
+    );
+    return [] as Workout[];
+  });
   if (!workouts.length) return null;
 
   // Compute per-sport aggregates
@@ -267,19 +287,6 @@ const demoWorkoutTagStore = new Map<number, WorkoutTag | null>();
 
 export function resetDemoWorkoutTagStore(): void {
   demoWorkoutTagStore.clear();
-}
-
-export function saveWorkoutTag(
-  event: RequestEvent,
-  workoutId: number,
-  tag: WorkoutTag | null,
-): WorkoutTag | null {
-  if (event.locals.demo) {
-    demoWorkoutTagStore.set(workoutId, tag);
-    return tag;
-  }
-  // Without D1, tags are demo-only. In live mode this is a no-op.
-  return tag;
 }
 
 /** Apply demo tag overrides to workout rows returned in demo mode. */

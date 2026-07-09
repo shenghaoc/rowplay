@@ -1244,6 +1244,8 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     connect: "Mit Token verbinden",
     connecting: "Verbinden…",
     rejected: "Concept2 hat dieses Token abgelehnt. Prüfe es und versuche es erneut.",
+    serverUnavailable:
+      "Concept2 ist nicht erreichbar. Die Server sind möglicherweise vorübergehend nicht verfügbar. Bitte versuche es später erneut.",
     serverMisconfigured:
       "Diese Installation ist nicht für die Token-Anmeldung eingerichtet (SESSION_SECRET fehlt). Wende dich an den Betreiber.",
     empty: "Füge dein Concept2-API-Token ein.",

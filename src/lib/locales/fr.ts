@@ -1250,6 +1250,8 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     connect: "Connecter avec le jeton",
     connecting: "Connexion…",
     rejected: "Concept2 a refusé ce jeton. Vérifiez-le et réessayez.",
+    serverUnavailable:
+      "Impossible de contacter Concept2. Les serveurs sont temporairement indisponibles. Veuillez réessayer plus tard.",
     serverMisconfigured:
       "Ce déploiement n’est pas configuré pour la connexion par jeton (SESSION_SECRET manquant). Contactez le propriétaire du site.",
     empty: "Collez votre jeton API Concept2.",

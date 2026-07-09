@@ -1238,6 +1238,8 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     connect: "Conectar con token",
     connecting: "Conectando…",
     rejected: "Concept2 rechazó ese token. Compruébalo e inténtalo de nuevo.",
+    serverUnavailable:
+      "No se pudo conectar con Concept2. Los servidores pueden no estar disponibles temporalmente. Inténtalo de nuevo más tarde.",
     serverMisconfigured:
       "Esta instalación no está configurada para iniciar sesión con token (falta SESSION_SECRET). Contacta con el propietario del sitio.",
     empty: "Pega tu token API de Concept2.",
