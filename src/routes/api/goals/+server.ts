@@ -11,10 +11,18 @@ export const GET: RequestHandler = async (event) => {
 export const POST: RequestHandler = async (event) => {
   if (event.locals.demo) throw error(401, "Not authenticated.");
   const body = (await event.request.json()) as { year?: number; kind?: string; target?: number };
-  if (!body.year || !body.kind || !body.target) throw error(400, "Missing fields.");
+  if (typeof body.year !== "number" || !Number.isInteger(body.year)) {
+    throw error(400, "Invalid or missing year.");
+  }
+  if (body.kind !== "meters" && body.kind !== "hours") {
+    throw error(400, 'Invalid goal kind. Must be "meters" or "hours".');
+  }
+  if (typeof body.target !== "number" || body.target <= 0) {
+    throw error(400, "Invalid or missing target. Must be a positive number.");
+  }
   await saveAnnualGoal(event, {
     year: body.year,
-    kind: body.kind as "meters" | "hours",
+    kind: body.kind,
     target: body.target,
   });
   return json({ ok: true });

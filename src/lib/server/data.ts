@@ -9,6 +9,7 @@ import {
   getHomeTimezone,
   openSession,
   setHomeTimezone,
+  writeSession,
   SESSION_COOKIE,
   TOKEN_COOKIE,
 } from "./session";
@@ -49,7 +50,13 @@ async function client(event: RequestEvent): Promise<Concept2Client | null> {
     }
     session.tokens = { ...session.tokens, accessToken: token };
   }
-  return new Concept2Client(getConfig(event), session);
+  // For OAuth sessions, persist refreshed tokens back to the session cookie so
+  // subsequent requests don't trigger redundant refresh round-trips.
+  return new Concept2Client(getConfig(event), session, async (freshSession) => {
+    if (!session.personal) {
+      await writeSession(event.cookies, event, secret, freshSession);
+    }
+  });
 }
 
 /** Per-request memo: a single dashboard load calls loadWorkouts directly *and*
@@ -227,20 +234,22 @@ export async function loadDashboardAggregates(
     longest: v.longest,
   }));
 
-  // Compute PBs per standard distance per sport
+  // Compute PBs per standard distance per sport. Compare pace (sec/500m) not
+  // raw time, so a shorter workout within the 2% tolerance doesn't beat a
+  // faster-paced longer one.
   const STANDARD_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
   const pbMap = new Map<
     string,
     { distance: number; time: number; pace: number; date: string; sport: Sport }
   >();
   for (const w of workouts) {
-    if (w.time <= 0) continue;
+    if (w.time <= 0 || w.pace <= 0) continue;
     for (const target of STANDARD_DISTANCES) {
       const tol = target * 0.02;
       if (Math.abs(w.distance - target) <= tol) {
         const key = `${w.sport}:${target}`;
         const existing = pbMap.get(key);
-        if (!existing || w.time < existing.time) {
+        if (!existing || w.pace < existing.pace) {
           pbMap.set(key, {
             distance: target,
             time: w.time,

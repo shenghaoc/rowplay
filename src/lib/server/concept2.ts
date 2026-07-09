@@ -120,13 +120,15 @@ function authHeader(token: string) {
 
 /**
  * Client bound to a session. Transparently refreshes the access token when it
- * is within 60s of expiry. Refreshed tokens are used in-memory for the
- * duration of this request only (no server-side persistence).
+ * is within 60s of expiry. For OAuth sessions, refreshed tokens are persisted
+ * back to the session cookie via the optional `onTokenRefresh` callback so
+ * subsequent requests don't trigger redundant refresh round-trips.
  */
 export class Concept2Client {
   constructor(
     private cfg: Concept2Config,
     private session: SessionData,
+    private onTokenRefresh?: (session: SessionData) => Promise<void> | void,
   ) {}
 
   private async accessToken(): Promise<string> {
@@ -136,6 +138,9 @@ export class Concept2Client {
     if (nowEpochMillis() < tokens.expiresAt - 60_000) return tokens.accessToken;
     const fresh = await refreshTokens(this.cfg, tokens.refreshToken);
     this.session = { ...this.session, tokens: fresh };
+    if (this.onTokenRefresh) {
+      await this.onTokenRefresh(this.session);
+    }
     return fresh.accessToken;
   }
 
