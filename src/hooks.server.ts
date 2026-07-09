@@ -1,6 +1,6 @@
 import type { Handle } from "@sveltejs/kit";
 import { daisyThemeName } from "$lib/theme.svelte";
-import { readSession, SESSION_COOKIE } from "$lib/server/session";
+import { openSession, SESSION_COOKIE } from "$lib/server/session";
 import { isLanguage, type Language } from "$lib/i18n";
 // Vite resolves this to the hashed, self-hosted asset URL at build time so the
 // preload href always matches the emitted woff2.
@@ -19,14 +19,13 @@ export const handle: Handle = async ({ event, resolve }) => {
   // pasted personal token — flips us to that user's real data.
   event.locals.demo = true;
   event.locals.user = null;
-  event.locals.sessionId = null;
   event.locals.personal = false;
 
-  const sid = event.cookies.get(SESSION_COOKIE) ?? null;
-  if (sid && env?.SESSIONS) {
-    const session = await readSession(env.SESSIONS, sid);
+  const secret = env?.SESSION_SECRET;
+  const sealedSession = event.cookies.get(SESSION_COOKIE);
+  if (sealedSession && secret) {
+    const session = await openSession(secret, sealedSession);
     if (session) {
-      event.locals.sessionId = sid;
       event.locals.user = session.user;
       event.locals.demo = false;
       event.locals.personal = session.personal === true;

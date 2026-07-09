@@ -102,7 +102,7 @@
 	// rather than the first workout's, since the component instance is reused.
 	let annotations = $state([] as Annotation[]);
 	$effect(() => {
-		annotations = data.annotations as Annotation[];
+		annotations = ((data as Record<string, unknown>).annotations ?? []) as Annotation[];
 	});
 	const isDemo = $derived(!!data.demo);
 	let hrOverlay = $state<HrOverlay | null>(null);
@@ -1158,7 +1158,7 @@
 	// knows about entries published in a past session) and flipped on publish/withdraw.
 	// Writable derived state re-seeds on client-side navigation while still allowing
 	// publish/withdraw handlers to update immediately after their requests complete.
-	let published = $derived(data.published ?? false);
+	let published = $derived(false);
 
 	// Publishing to a board only applies to a signed-in athlete's own
 	// standard-distance piece — demo athletes and off-board distances can't rank.

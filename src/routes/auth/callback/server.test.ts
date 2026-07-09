@@ -6,7 +6,6 @@ vi.mock("$lib/server/config", () => ({
     clientSecret: "csecret",
     redirectUri: "http://localhost/auth/callback",
   }),
-  requireSessions: vi.fn().mockReturnValue({ put: vi.fn(), get: vi.fn(), delete: vi.fn() }),
 }));
 vi.mock("$lib/server/concept2", () => ({
   exchangeCode: vi.fn().mockResolvedValue({
@@ -18,10 +17,9 @@ vi.mock("$lib/server/concept2", () => ({
   fetchMe: vi.fn().mockResolvedValue({ id: 7, username: "athlete" }),
 }));
 vi.mock("$lib/server/session", () => ({
-  newSessionId: vi.fn().mockReturnValue("new-session-id"),
   writeSession: vi.fn().mockResolvedValue(undefined),
-  SESSION_COOKIE: "c2_session",
-  OAUTH_STATE_COOKIE: "c2_oauth_state",
+  SESSION_COOKIE: "rp_session",
+  OAUTH_STATE_COOKIE: "rp_oauth_state",
 }));
 
 import { GET } from "./+server";
@@ -31,6 +29,7 @@ function fakeEvent(opts: {
   state?: string | null;
   storedState?: string | null;
   errorParam?: string | null;
+  secret?: string;
 }) {
   const params = new URLSearchParams();
   if (opts.code) params.set("code", opts.code);
@@ -43,13 +42,14 @@ function fakeEvent(opts: {
     event: {
       url: new URL(`http://localhost/auth/callback?${params.toString()}`),
       cookies: {
-        get: (name: string) => (name === "c2_oauth_state" ? opts.storedState : null),
+        get: (name: string) => (name === "rp_oauth_state" ? opts.storedState : null),
         set: (name: string, val: string) => {
           cookiesSet[name] = val;
         },
         delete: (name: string) => cookiesDeleted.push(name),
       },
       locals: {},
+      platform: { env: { SESSION_SECRET: opts.secret ?? "test-secret-32-chars-long!!!!" } },
     },
     cookiesSet,
     cookiesDeleted,

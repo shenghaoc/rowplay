@@ -11,23 +11,6 @@
     "binding": "ASSETS",
     "directory": ".svelte-kit/cloudflare",
   },
-  // KV: short-lived sessions (OAuth tokens, login state).
-  // Create with: wrangler kv namespace create SESSIONS
-  "kv_namespaces": [
-    {
-      "binding": "SESSIONS",
-      "id": "1ca113ac3c1b468aae36d0967f39a340",
-    },
-  ],
-  // D1: cached workouts + per-stroke detail so replays are instant.
-  // Create with: wrangler d1 create rowplay
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "rowplay",
-      "database_id": "aa147782-70a5-46bb-a5fe-e286c7ea851e",
-    },
-  ],
   // Non-secret config. Secrets: SESSION_SECRET (required for token sessions).
   // CONCEPT2_CLIENT_SECRET only if OAuth is enabled. Production uses BYOT
   // (personal read-only API token at /auth/token); leave CONCEPT2_CLIENT_ID

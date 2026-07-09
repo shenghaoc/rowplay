@@ -150,26 +150,9 @@
 	const pbIds = $derived(pbWorkoutIds(workouts));
 	const milestonePBs = $derived(distancePBs(workouts));
 
-	const syncHistoryNote = $derived.by(() => {
-		const sync = data.sync;
-		if (!sync) return '';
-		if (sync.backfillDone) return t('sync.historyComplete');
-		if (sync.oldestDate) {
-			return t('sync.historyBackfilling', {
-				total: sync.total,
-				date: fmtDate(sync.oldestDate)
-			});
-		}
-		return t('sync.historyWindow', { months: sync.historyWindowMonths });
-	});
+	const syncHistoryNote = $derived('');
 
-	// Start the backfill loop when the windowed sync is present and incomplete. We gate on
-	// a STABLE derived rather than raw data.sync: the loop's invalidateAll() replaces
-	// data.sync every chunk, but shouldBackfill stays `true` until backfillDone flips, so
-	// the effect body runs once and does not restart per chunk (which would bypass PACE_MS
-	// and hammer the API). $effect rather than onMount also covers first connect, where
-	// data.sync is still null at mount and only appears once the initial sync completes.
-	const shouldBackfill = $derived(!!data.sync && !data.sync.backfillDone && !data.demo);
+	const shouldBackfill = $derived(false);
 
 	$effect(() => {
 		if (!shouldBackfill) return;
@@ -782,12 +765,8 @@
 	</div>
 	{#if data.demo}
 		<p class="syncnote muted">
-			<span class="badge badge-soft badge-primary">{t('settings.syncDemo')}</span>
+			<span class="badge badge-soft badge-primary">{t('common.demoMode')}</span>
 		</p>
-	{:else if data.sync}
-		<p class="syncnote muted">{syncHistoryNote}</p>
-	{:else}
-		<p class="syncnote muted">{t('dashboard.recentNote')}</p>
 	{/if}
 
 	{#if showDashboardTour}

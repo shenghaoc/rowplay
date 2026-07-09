@@ -1,4 +1,3 @@
-import type { KVNamespace } from "@cloudflare/workers-types";
 import { nowEpochMillis } from "$lib/datetime";
 import { paceToWattsForSport } from "../format";
 import {
@@ -13,7 +12,7 @@ import {
   type WorkoutDetail,
   type WorkoutTargets,
 } from "../types";
-import { writeSession, type OAuthTokens, type SessionData, type SessionUser } from "./session";
+import type { OAuthTokens, SessionData, SessionUser } from "./session";
 
 /** Scopes we request from the Concept2 logbook. */
 export const OAUTH_SCOPE = "user:read,results:read";
@@ -120,14 +119,13 @@ function authHeader(token: string) {
 }
 
 /**
- * Client bound to a session. Transparently refreshes the access token (and
- * persists it back to KV) when it is within 60s of expiry.
+ * Client bound to a session. Transparently refreshes the access token when it
+ * is within 60s of expiry. Refreshed tokens are used in-memory for the
+ * duration of this request only (no server-side persistence).
  */
 export class Concept2Client {
   constructor(
     private cfg: Concept2Config,
-    private kv: KVNamespace,
-    private sessionId: string,
     private session: SessionData,
   ) {}
 
@@ -138,7 +136,6 @@ export class Concept2Client {
     if (nowEpochMillis() < tokens.expiresAt - 60_000) return tokens.accessToken;
     const fresh = await refreshTokens(this.cfg, tokens.refreshToken);
     this.session = { ...this.session, tokens: fresh };
-    await writeSession(this.kv, this.sessionId, this.session);
     return fresh.accessToken;
   }
 

@@ -1,22 +1,7 @@
-import { error, isHttpError } from "@sveltejs/kit";
+import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import { loadSharedWorkout, shareMeta } from "$lib/server/share";
-import { getConfig } from "$lib/server/config";
-import { getAnnotationsByShareToken } from "$lib/server/db";
 
-/** Public, read-only replay — no login; only explicitly shared workouts. */
-export const load: PageServerLoad = async (event) => {
-  const token = event.params.token;
-  try {
-    const detail = await loadSharedWorkout(event, token);
-    const db = event.platform?.env?.DB;
-    const annotations = await getAnnotationsByShareToken(db, token, detail.id);
-    const origin = getConfig(event).appUrl.replace(/\/$/, "");
-    const url = `${origin}/r/${token}`;
-    const meta = shareMeta(detail, url);
-    return { detail, meta, annotations, publicView: true as const };
-  } catch (e) {
-    if (isHttpError(e, 404)) throw error(404, "Share link not found.");
-    throw e;
-  }
+/** Share link feature removed — redirect to home. */
+export const load: PageServerLoad = async () => {
+  throw redirect(303, "/");
 };

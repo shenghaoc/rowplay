@@ -2,11 +2,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("$lib/server/data", () => ({
   loadWorkoutDetail: vi.fn(),
-  loadAnnotations: vi.fn().mockResolvedValue([]),
   loadWorkouts: vi.fn().mockResolvedValue([]),
-}));
-vi.mock("$lib/server/db", () => ({
-  isWorkoutPublished: vi.fn().mockResolvedValue(false),
 }));
 
 import { load } from "./+page.server";
@@ -29,7 +25,7 @@ function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null; id?: st
   return {
     params: { id: opts.id ?? "1001" },
     locals: { demo: opts.demo ?? false, user: opts.user ?? null },
-    platform: { env: { DB: {} } },
+    platform: { env: {} },
     setHeaders: vi.fn(),
   };
 }
@@ -48,7 +44,6 @@ describe("load /replay/[id]", () => {
     (loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
     const event = fakeEvent({ demo: true });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = (await load(event as any)) as any;
     expect(data.detail.id).toBe(1001);
     expect(data.demo).toBe(true);
@@ -63,18 +58,8 @@ describe("load /replay/[id]", () => {
     ]);
     const event = fakeEvent({ demo: true });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = (await load(event as any)) as any;
     expect(data.candidates).toHaveLength(1);
     expect(data.candidates[0].id).toBe(1002);
-  });
-
-  it("sets published=false in demo mode (no DB check)", async () => {
-    (loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
-    const event = fakeEvent({ demo: true });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (await load(event as any)) as any;
-    expect(data.published).toBe(false);
   });
 });

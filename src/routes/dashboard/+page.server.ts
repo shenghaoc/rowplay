@@ -8,7 +8,6 @@ import {
   loadHomeTimezone,
   loadWorkoutList,
   loadWorkouts,
-  syncStatus,
 } from "$lib/server/data";
 import { firstRunEligible } from "$lib/firstRun";
 
@@ -28,8 +27,6 @@ export const load: PageServerLoad = async (event) => {
     loadWorkoutList(event, listQuery),
     loadDashboardAggregates(event),
   ]);
-  const sync = event.locals.demo ? null : await syncStatus(event).catch(() => null);
-  const partialSync = !event.locals.demo && !!sync && !sync.backfillDone;
   // Resolve the home timezone first so the calendar's right edge ("today") is
   // the athlete's local day, not UTC — otherwise athletes east of UTC see the
   // grid end on yesterday after local midnight. (Demo mode has no server-side
@@ -43,13 +40,11 @@ export const load: PageServerLoad = async (event) => {
     listWorkouts,
     listQuery,
     aggregates,
-    sync,
     demo: event.locals.demo,
     firstRunEligible: firstRunEligible(event.locals.demo, event.locals.user),
     calendarEndDay,
     annualGoal,
     goalYear,
     homeTimezone,
-    partialSync,
   };
 };

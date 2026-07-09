@@ -8,7 +8,7 @@ import { POST } from "./+server";
 import { syncWorkouts } from "$lib/server/data";
 
 function fakeEvent(demo = false) {
-  return { locals: { demo }, platform: { env: { DB: {}, SESSIONS: {} } } };
+  return { locals: { demo }, platform: { env: {} } };
 }
 
 describe("POST /api/live/poll", () => {
@@ -34,15 +34,7 @@ describe("POST /api/live/poll", () => {
     expect(body.added).toBe(2);
   });
 
-  it("throws 503 on D1 migration error", async () => {
-    (syncWorkouts as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error("D1_ERROR: no such table"),
-    );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await expect(POST(fakeEvent() as any)).rejects.toMatchObject({ status: 503 });
-  });
-
-  it("throws 502 on generic sync error", async () => {
+  it("throws 502 on sync error", async () => {
     (syncWorkouts as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Connection refused"));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect(POST(fakeEvent() as any)).rejects.toMatchObject({ status: 502 });

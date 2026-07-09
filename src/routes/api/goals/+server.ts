@@ -1,31 +1,21 @@
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import type { AnnualGoalKind } from "$lib/analytics";
-import { currentUtcYear } from "$lib/datetime";
 import { loadAnnualGoal, saveAnnualGoal } from "$lib/server/data";
 
 export const GET: RequestHandler = async (event) => {
-  const year = parseYear(event.url.searchParams.get("year"));
+  const year = Number(event.url.searchParams.get("year")) || new Date().getFullYear();
   const goal = await loadAnnualGoal(event, year);
-  return json({ goal }, { headers: { "cache-control": "private, no-store" } });
+  return json(goal);
 };
 
-export const PUT: RequestHandler = async (event) => {
-  const body = (await event.request.json()) as {
-    year?: number;
-    kind?: AnnualGoalKind;
-    target?: number;
-  };
-  const year = typeof body.year === "number" ? body.year : currentUtcYear();
-  if (body.kind !== "meters" && body.kind !== "hours") throw error(400, "Invalid goal kind.");
-  if (typeof body.target !== "number" || body.target <= 0) throw error(400, "Invalid target.");
-  const goal = { year, kind: body.kind, target: body.target };
-  await saveAnnualGoal(event, goal);
-  return json({ goal }, { headers: { "cache-control": "private, no-store" } });
+export const POST: RequestHandler = async (event) => {
+  if (event.locals.demo) throw error(401, "Not authenticated.");
+  const body = (await event.request.json()) as { year?: number; kind?: string; target?: number };
+  if (!body.year || !body.kind || !body.target) throw error(400, "Missing fields.");
+  await saveAnnualGoal(event, {
+    year: body.year,
+    kind: body.kind as "meters" | "hours",
+    target: body.target,
+  });
+  return json({ ok: true });
 };
-
-function parseYear(raw: string | null): number {
-  if (raw == null) return currentUtcYear();
-  const y = parseInt(raw, 10);
-  return Number.isFinite(y) ? y : currentUtcYear();
-}

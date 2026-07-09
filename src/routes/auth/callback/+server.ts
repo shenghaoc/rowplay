@@ -1,13 +1,8 @@
 import { error, redirect } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { getConfig, requireSessions } from "$lib/server/config";
+import { getConfig } from "$lib/server/config";
 import { exchangeCode, fetchMe } from "$lib/server/concept2";
-import {
-  newSessionId,
-  OAUTH_STATE_COOKIE,
-  SESSION_COOKIE,
-  writeSession,
-} from "$lib/server/session";
+import { OAUTH_STATE_COOKIE, writeSession } from "$lib/server/session";
 
 export const GET: RequestHandler = async (event) => {
   const cfg = getConfig(event);
@@ -38,19 +33,12 @@ export const GET: RequestHandler = async (event) => {
     throw error(400, "Invalid OAuth state. Please try logging in again.");
   }
 
-  const kv = requireSessions(event);
+  const secret = event.platform?.env?.SESSION_SECRET;
+  if (!secret) throw error(500, "Server misconfigured.");
+
   const tokens = await exchangeCode(cfg, code);
   const user = await fetchMe(cfg, tokens.accessToken);
 
-  const sid = newSessionId();
-  await writeSession(kv, sid, { user, tokens });
-  event.cookies.set(SESSION_COOKIE, sid, {
-    path: "/",
-    httpOnly: true,
-    secure: event.url.protocol === "https:",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30,
-  });
-
+  await writeSession(event.cookies, event, secret, { user, tokens });
   throw redirect(303, "/dashboard");
 };

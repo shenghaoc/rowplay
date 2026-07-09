@@ -2,13 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("$lib/server/config", () => ({
   getConfig: vi.fn().mockReturnValue({ clientId: null, appUrl: "http://localhost" }),
-  requireSessions: vi.fn().mockReturnValue({ put: vi.fn(), get: vi.fn() }),
 }));
 vi.mock("$lib/server/concept2", () => ({
   fetchMe: vi.fn(),
 }));
 vi.mock("$lib/server/session", () => ({
-  newSessionId: vi.fn().mockReturnValue("new-sid"),
   writeSession: vi.fn().mockResolvedValue(undefined),
   SESSION_COOKIE: "rp_session",
   TOKEN_COOKIE: "rp_tok",
@@ -16,17 +14,13 @@ vi.mock("$lib/server/session", () => ({
 vi.mock("$lib/server/tokenCrypto", () => ({
   sealToken: vi.fn().mockResolvedValue("sealed-token"),
 }));
-vi.mock("$lib/server/data", () => ({
-  scheduleConnectSync: vi.fn(),
-}));
 vi.mock("$lib/datetime", () => ({
   nowEpochMillis: vi.fn().mockReturnValue(1_000_000_000),
 }));
 
 import { actions, load } from "./+page.server";
 import { fetchMe } from "$lib/server/concept2";
-import { scheduleConnectSync } from "$lib/server/data";
-import { SESSION_COOKIE, TOKEN_COOKIE, writeSession } from "$lib/server/session";
+import { TOKEN_COOKIE, writeSession } from "$lib/server/session";
 import { sealToken } from "$lib/server/tokenCrypto";
 
 type Mock = ReturnType<typeof vi.fn>;
@@ -75,7 +69,6 @@ describe("load /auth/token", () => {
   it("returns oauthEnabled:false when no clientId", async () => {
     const event = fakeLoadEvent(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = (await load(event as any)) as any;
     expect(data.oauthEnabled).toBe(false);
   });
@@ -107,7 +100,7 @@ describe("actions /auth/token", () => {
     expect(writeSession).not.toHaveBeenCalled();
   });
 
-  it("writes identity-only personal session and sealed httpOnly cookies on successful token auth", async () => {
+  it("writes encrypted session cookie and sealed token cookie on successful auth", async () => {
     (fetchMe as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 7, username: "athlete" });
     const { event, cookiesSet } = fakeActionEvent({
       token: "valid-personal-token",
@@ -121,25 +114,16 @@ describe("actions /auth/token", () => {
 
     expect(sealToken).toHaveBeenCalledWith("mysecret", "valid-personal-token");
     expect(writeSession).toHaveBeenCalledOnce();
-    const [, sid, session] = (writeSession as Mock).mock.calls[0];
-    expect(sid).toBe("new-sid");
+    // writeSession is now called with (cookies, event, secret, sessionData)
+    const [, , secret, session] = (writeSession as Mock).mock.calls[0];
+    expect(secret).toBe("mysecret");
     expect(session).toMatchObject({
       user: { id: 7, username: "athlete" },
       personal: true,
       tokens: { accessToken: "", refreshToken: "", scope: "" },
     });
     expect(JSON.stringify(session)).not.toContain("valid-personal-token");
-    expect(scheduleConnectSync).toHaveBeenCalledWith(
-      event,
-      "new-sid",
-      { id: 7, username: "athlete" },
-      "valid-personal-token",
-    );
 
-    expect(cookiesSet[SESSION_COOKIE]).toMatchObject({
-      value: "new-sid",
-      options: { path: "/", httpOnly: true, secure: false, sameSite: "lax", maxAge: 2_592_000 },
-    });
     expect(cookiesSet[TOKEN_COOKIE]).toMatchObject({
       value: "sealed-token",
       options: { path: "/", httpOnly: true, secure: false, sameSite: "lax", maxAge: 2_592_000 },
