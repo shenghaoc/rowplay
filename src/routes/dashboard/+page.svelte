@@ -143,7 +143,6 @@
 	let dpsMetric = $state<'rawDps' | 'normDps'>('rawDps');
 	let dpsMaWindow = $state<7 | 28>(28);
 	let dpsHoverIdx = $state<number | null>(null);
-	let syncing = $state(false);
 	let compareAnchor = $state<number | null>(null);
 	let newPbIds = $state<Set<number>>(new Set());
 	const pbIds = $derived(pbWorkoutIds(workouts));
@@ -261,64 +260,6 @@
 	function dismissDashboardTour() {
 		dismissFirstRunSurface('dashboard');
 		dashboardHintIds = [];
-	}
-
-	async function sync() {
-		if (syncing) return;
-		syncing = true;
-		const toastId = toast.loading(t('sync.loading'));
-		const pbsBefore = distancePBs(workouts);
-		const milestonesBefore = computeMilestones(workouts, pbsBefore, milestoneOpts());
-		try {
-			const res = await fetch('/api/sync', { method: 'POST' });
-			if (!res.ok) {
-				let message = `HTTP ${res.status}`;
-				try {
-					const body = (await res.json()) as { message?: string };
-					if (body?.message) message = body.message;
-				} catch {
-					/* non-JSON error body */
-				}
-				throw new Error(message);
-			}
-			const body = (await res.json()) as {
-				added: number;
-				total: number;
-				newPbs?: ReturnType<typeof distancePBs>;
-			};
-			await invalidateAll();
-			toast.success(t('sync.done', { added: body.added, total: body.total }), { id: toastId });
-			toastNewMilestones(milestonesBefore, workouts);
-			const newPbs =
-				body.newPbs?.length ? body.newPbs : detectNewPBs(pbsBefore, distancePBs(workouts));
-			if (newPbs.length === 1) {
-				const pb = newPbs[0];
-				const dist = pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`;
-				toast.success(t('dashboard.pbCelebrate', { distance: dist, time: fmtTime(pb.time, true) }));
-			} else if (newPbs.length > 1) {
-				toast.success(t('dashboard.pbCelebrateMore', { count: newPbs.length }));
-			}
-			newPbIds = new Set(
-				newPbs
-					.map((pb) =>
-						workouts.find(
-							(w) =>
-								w.sport === pb.sport &&
-								Math.abs(w.distance - pb.distance) <= pb.distance * 0.02 &&
-								w.time === pb.time
-						)?.id
-					)
-					.filter((id): id is number => id != null)
-			);
-			liveMode?.resetTimer();
-		} catch (e) {
-			toast.error(t('sync.failed'), {
-				id: toastId,
-				description: e instanceof Error ? e.message : t('common.tryAgain')
-			});
-		} finally {
-			syncing = false;
-		}
 	}
 
 	/** Whether the current metric only makes sense within one distance band. */
@@ -740,12 +681,6 @@
 					</button>
 				{/each}
 			</div>
-			{#if !data.demo}
-				<button class="btn btn-ghost btn-sm sync" onclick={sync} disabled={syncing} aria-busy={syncing}>
-					<span class="syncicon" class:spin={syncing}><RefreshCw size={14} /></span>
-					{syncing ? t('dashboard.syncing') : t('dashboard.sync')}
-				</button>
-			{/if}
 		</div>
 	</div>
 	{#if data.demo}

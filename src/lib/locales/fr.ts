@@ -1178,12 +1178,13 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     eyebrow: "Confidentialité et contrôle",
     dataTitle: "Ce que nous stockons",
     dataNote:
-      "rowplay lit vos séances Concept2 à la demande et les met en cache sur Cloudflare pour des replays instantanés. Votre jeton API est scellé dans le cookie httpOnly rp_tok avec SESSION_SECRET. KV ne stocke que l’identité/l’état de session ; D1 met en cache les séances et replays, jamais le jeton. La déconnexion ou la suppression des données efface les données utilisateur en cache et l’état de session.",
+      "rowplay lit vos séances Concept2 à la demande via l’API Concept2 et les récupère en direct pour des replays instantanés. Votre jeton API est scellé dans le cookie httpOnly rp_tok avec SESSION_SECRET. Les sessions sont stockées dans des cookies chiffrés ; aucune base de données côté serveur n’est utilisée. La déconnexion ou la suppression des données efface votre session.",
     factWorkouts: "{n} séances disponibles à l’export",
     factDemo: "Mode démo — données d’exemple uniquement, rien n’est persisté.",
-    factCache: "D1 stocke les données séance/replay en cache — jamais le jeton.",
+    factCache:
+      "Les données de séance sont récupérées en direct depuis l’API Concept2 — pas de cache côté serveur.",
     factSession:
-      "KV stocke l’identité/l’état de session ; le jeton est scellé dans httpOnly rp_tok.",
+      "Les sessions sont stockées dans des cookies chiffrés ; le jeton est scellé dans httpOnly rp_tok.",
     exportTitle: "Exporter le logbook",
     exportNote:
       "Téléchargez tout votre historique en CSV ou JSON. L’export TCX par séance (données de coups) s’ouvre dans Garmin, Strava ou TrainingPeaks.",
@@ -1231,20 +1232,20 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     introBefore: "Collez un jeton API personnel depuis votre logbook Concept2 (",
     introLink: "Modifier le profil → Applications",
     introAfter:
-      "). Collez-le ici une fois — rowplay l’envoie au Worker en HTTPS, le valide, le scelle dans le cookie httpOnly rp_tok et l’utilise uniquement pour les lectures côté serveur. Le jeton n’est jamais stocké dans KV ni D1.",
+      "). Collez-le ici une fois — rowplay l’envoie au Worker en HTTPS, le valide, le scelle dans le cookie httpOnly rp_tok et l’utilise uniquement pour les lectures côté serveur. Le jeton n’est jamais stocké dans aucune base de données.",
     trustTitle: "Comment rowplay gère le jeton",
     trustAccessTitle: "Accès :",
     trustAccessBody:
       "un jeton Concept2 personnel vous authentifie ; rowplay l’utilise uniquement côté serveur pour lire profil, séances et données de coups.",
     trustStoredTitle: "Stockage :",
     trustStoredBody:
-      "le jeton validé est scellé dans le cookie httpOnly rp_tok, pas dans localStorage, KV ni D1.",
+      "le jeton validé est scellé dans le cookie httpOnly rp_tok, pas dans localStorage ni dans un stockage côté serveur.",
     trustDisconnectTitle: "Déconnexion :",
     trustDisconnectBody:
       "se déconnecter ou supprimer les données du compte depuis Données efface le cookie de jeton, la session et le cache privé.",
     trustCacheTitle: "Cache :",
     trustCacheBody:
-      "D1 cache les résumés de séances et détails de replay pendant la connexion ; les partages publics ou entrées leaderboard ne sont créés que si vous publiez.",
+      "Les données de séance sont récupérées en direct depuis l'API Concept2 ; les partages publics ou entrées leaderboard ne sont créés que si vous publiez.",
     apiToken: "Jeton API",
     placeholder: "Collez votre jeton",
     connect: "Connecter avec le jeton",

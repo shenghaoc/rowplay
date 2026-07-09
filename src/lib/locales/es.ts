@@ -1167,11 +1167,13 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     eyebrow: "Privacidad y control",
     dataTitle: "Qué almacenamos",
     dataNote:
-      "rowplay lee tus entrenamientos de Concept2 a demanda y los almacena en caché en Cloudflare para que los replays carguen al instante. Tu token API se sella en la cookie httpOnly rp_tok con SESSION_SECRET. KV solo guarda identidad/estado de sesión; D1 almacena en caché entrenamientos y replays, nunca el token. Desconectar o borrar datos elimina los datos de usuario en caché y el estado de sesión.",
+      "rowplay lee tus entrenamientos de Concept2 a demanda desde la API de Concept2 y los obtiene en vivo para que los replays carguen al instante. Tu token API se sella en la cookie httpOnly rp_tok con SESSION_SECRET. Las sesiones se almacenan en cookies cifradas; no se utiliza ninguna base de datos en el servidor. Desconectar o borrar datos elimina tu sesión.",
     factWorkouts: "{n} entrenamientos disponibles para exportar",
     factDemo: "Modo demo — solo datos de ejemplo, no se persiste nada.",
-    factCache: "D1 guarda datos de entrenamiento/replay en caché — nunca el token.",
-    factSession: "KV guarda identidad/estado de sesión; el token va sellado en httpOnly rp_tok.",
+    factCache:
+      "Los datos de entrenamiento se obtienen en vivo desde la API de Concept2 — sin caché en el servidor.",
+    factSession:
+      "Las sesiones se almacenan en cookies cifradas; el token va sellado en httpOnly rp_tok.",
     exportTitle: "Exportar diario",
     exportNote:
       "Descarga todo tu historial en CSV o JSON. El TCX por entrenamiento (datos de palada) se abre en Garmin, Strava o TrainingPeaks.",
@@ -1219,20 +1221,20 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     introBefore: "Pega un token API personal de tu diario Concept2 (",
     introLink: "Editar perfil → Aplicaciones",
     introAfter:
-      "). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo valida, lo sella en la cookie httpOnly rp_tok y lo usa solo para lecturas del diario en el servidor. El token nunca se guarda en KV ni D1.",
+      "). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo valida, lo sella en la cookie httpOnly rp_tok y lo usa solo para lecturas del diario en el servidor. El token nunca se guarda en ninguna base de datos.",
     trustTitle: "Cómo gestiona rowplay el token",
     trustAccessTitle: "Acceso:",
     trustAccessBody:
       "un token personal de Concept2 autentica como tú; rowplay solo lo usa en el servidor para leer perfil, entrenamientos y datos de palada.",
     trustStoredTitle: "Almacenamiento:",
     trustStoredBody:
-      "el token validado se sella en la cookie httpOnly rp_tok, no en localStorage, KV ni D1.",
+      "el token validado se sella en la cookie httpOnly rp_tok, no en localStorage ni en ningún almacenamiento del servidor.",
     trustDisconnectTitle: "Desconectar:",
     trustDisconnectBody:
       "cerrar sesión o borrar datos de cuenta desde Datos limpia la cookie del token, la sesión y la caché privada.",
     trustCacheTitle: "Caché:",
     trustCacheBody:
-      "D1 guarda resúmenes y detalles de replay mientras estés conectado; los enlaces públicos o entradas del leaderboard solo se crean si publicas.",
+      "Los datos de entrenamiento se obtienen en vivo desde la API de Concept2; los enlaces públicos o entradas del leaderboard solo se crean si publicas.",
     apiToken: "Token API",
     placeholder: "Pega tu token",
     connect: "Conectar con token",

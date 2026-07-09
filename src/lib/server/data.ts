@@ -284,7 +284,12 @@ export async function loadWorkoutDetail(event: RequestEvent, id: number): Promis
 export async function clearUserCachedData(event: RequestEvent): Promise<void> {
   if (event.locals.demo) return;
   destroySession(event.cookies, event);
-  event.cookies.delete(TOKEN_COOKIE, { path: "/" });
+  event.cookies.delete(TOKEN_COOKIE, {
+    path: "/",
+    httpOnly: true,
+    secure: event.url.protocol === "https:",
+    sameSite: "lax",
+  });
 }
 
 // ---------------------------------------------------------------------------

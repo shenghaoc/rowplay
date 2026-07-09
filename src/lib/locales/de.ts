@@ -1172,12 +1172,13 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     eyebrow: "Datenschutz & Kontrolle",
     dataTitle: "Was wir speichern",
     dataNote:
-      "rowplay liest deine Concept2-Workouts bei Bedarf und cacht sie auf Cloudflare, damit Replays sofort laden. Dein API-Token wird mit SESSION_SECRET im httpOnly-Cookie rp_tok versiegelt. KV speichert nur Session-Identität/-Status; D1 cacht Workout- und Replay-Daten, niemals das Token. Trennen oder Datenlöschen entfernt gecachte Nutzerdaten und Session-Status.",
+      "rowplay liest deine Concept2-Workouts bei Bedarf über die Concept2-API und holt sie live, damit Replays sofort laden. Dein API-Token wird mit SESSION_SECRET im httpOnly-Cookie rp_tok versiegelt. Sitzungen werden in verschlüsselten Cookies gespeichert; es wird keine serverseitige Datenbank verwendet. Trennen oder Datenlöschen entfernt deine Sitzung.",
     factWorkouts: "{n} Workouts zum Export verfügbar",
     factDemo: "Demo-Modus — nur Beispieldaten, nichts wird persistiert.",
-    factCache: "D1 speichert gecachte Workout-/Replay-Daten — niemals das Token.",
+    factCache:
+      "Workout-Daten werden live von der Concept2-API abgerufen — kein serverseitiger Cache.",
     factSession:
-      "KV speichert Session-Identität/-Status; das Token ist in httpOnly rp_tok versiegelt.",
+      "Sitzungen werden in verschlüsselten Cookies gespeichert; das Token ist in httpOnly rp_tok versiegelt.",
     exportTitle: "Logbuch exportieren",
     exportNote:
       "Lade deinen vollständigen Verlauf als CSV oder JSON herunter. TCX pro Workout (Schlagdaten) öffnet sich in Garmin, Strava oder TrainingPeaks.",
@@ -1225,20 +1226,20 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     introBefore: "Füge ein persönliches API-Token aus deinem Concept2-Logbuch ein (",
     introLink: "Profil bearbeiten → Anwendungen",
     introAfter:
-      "). Füge es hier einmal ein — rowplay sendet es per HTTPS an den Worker, validiert es, versiegelt es im httpOnly-Cookie rp_tok und nutzt es nur für serverseitige Logbuch-Abfragen. Das Token wird nie in KV oder D1 gespeichert.",
+      "). Füge es hier einmal ein — rowplay sendet es per HTTPS an den Worker, validiert es, versiegelt es im httpOnly-Cookie rp_tok und nutzt es nur für serverseitige Logbuch-Abfragen. Das Token wird nie in einer Datenbank gespeichert.",
     trustTitle: "Wie rowplay das Token behandelt",
     trustAccessTitle: "Zugriff:",
     trustAccessBody:
       "ein persönliches Concept2-Token authentifiziert dich; rowplay nutzt es nur serverseitig zum Lesen von Profil, Workouts und Schlagdaten.",
     trustStoredTitle: "Speicherung:",
     trustStoredBody:
-      "das validierte Token wird im httpOnly-Cookie rp_tok versiegelt, nicht in localStorage, KV oder D1.",
+      "das validierte Token wird im httpOnly-Cookie rp_tok versiegelt, nicht in localStorage oder einem serverseitigen Speicher.",
     trustDisconnectTitle: "Trennen:",
     trustDisconnectBody:
       "Abmelden oder Kontodaten unter Daten löschen entfernt Token-Cookie, Sitzung und privaten Cache.",
     trustCacheTitle: "Cache:",
     trustCacheBody:
-      "D1 speichert Workout-Zusammenfassungen und Replay-Details während der Verbindung; öffentliche Shares oder Leaderboard-Einträge entstehen nur durch Veröffentlichung.",
+      "Workout-Daten werden live von der Concept2-API abgerufen; öffentliche Shares oder Leaderboard-Einträge entstehen nur durch Veröffentlichung.",
     apiToken: "API-Token",
     placeholder: "Token einfügen",
     connect: "Mit Token verbinden",

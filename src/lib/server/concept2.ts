@@ -154,35 +154,11 @@ export class Concept2Client {
     return (await res.json()) as T;
   }
 
-  async listWorkouts(page = 1, number = 50): Promise<Workout[]> {
+  async listWorkouts(page = 1, number = 250): Promise<Workout[]> {
     const json = await this.api<{ data: RawResult[] }>(
       `/users/me/results?page=${page}&number=${number}`,
     );
     return json.data.map((r) => mapResult(r));
-  }
-
-  /**
-   * One page of results with pagination metadata, optionally filtered to
-   * workouts on/after `from` ("YYYY-MM-DD"). Used by the D1 sync to page
-   * through the full history (250 = the API max per page).
-   */
-  async listWorkoutsPage(
-    page: number,
-    from?: string,
-    to?: string,
-    number = 250,
-  ): Promise<{ workouts: Workout[]; totalPages: number }> {
-    const qs = new URLSearchParams({ page: String(page), number: String(number) });
-    if (from) qs.set("from", from);
-    if (to) qs.set("to", to);
-    const json = await this.api<{
-      data: RawResult[];
-      meta?: { pagination?: { total_pages?: number } };
-    }>(`/users/me/results?${qs}`);
-    return {
-      workouts: json.data.map((r) => mapResult(r)),
-      totalPages: json.meta?.pagination?.total_pages ?? 1,
-    };
   }
 
   async getWorkout(id: number): Promise<WorkoutDetail> {

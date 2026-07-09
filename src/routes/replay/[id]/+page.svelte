@@ -1142,78 +1142,6 @@
 		}
 	}
 
-	let sharing = $state(false);
-	let publishing = $state(false);
-	let withdrawing = $state(false);
-	// Whether this piece is currently on the board. Seeded from the server (which
-	// knows about entries published in a past session) and flipped on publish/withdraw.
-	// Writable derived state re-seeds on client-side navigation while still allowing
-	// publish/withdraw handlers to update immediately after their requests complete.
-	let published = $derived(false);
-
-	// Publishing to a board only applies to a signed-in athlete's own
-	// standard-distance piece — demo athletes and off-board distances can't rank.
-	const canPublish = $derived(
-		!data.demo && !!data.user && matchStandardDistance(detail.distance) != null
-	);
-
-	async function publishToLeaderboard() {
-		publishing = true;
-		try {
-			const res = await fetch('/api/leaderboard/publish', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ workoutId: detail.id })
-			});
-			if (res.status === 422) {
-				toast.info(t('leaderboard.publishOffBoard'));
-				return;
-			}
-			if (res.status === 403) {
-				toast.error(t('share.privacyBlocked'));
-				return;
-			}
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const result = (await res.json()) as {
-				board: { sport: Sport; distance: number };
-				rank: number;
-			};
-			published = true;
-			toast.success(
-				t('leaderboard.publishOk', {
-					rank: result.rank,
-					sport: SPORT_LABEL[result.board.sport],
-					distance: fmtDistance(result.board.distance)
-				})
-			);
-		} catch (err) {
-			toast.error(t('leaderboard.publishFailed'), {
-				description: err instanceof Error ? err.message : t('common.tryAgain')
-			});
-		} finally {
-			publishing = false;
-		}
-	}
-
-	async function withdrawFromLeaderboard() {
-		withdrawing = true;
-		try {
-			const res = await fetch('/api/leaderboard/publish', {
-				method: 'DELETE',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ workoutId: detail.id })
-			});
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			published = false;
-			toast.success(t('leaderboard.withdrawOk'));
-		} catch (err) {
-			toast.error(t('leaderboard.withdrawFailed'), {
-				description: err instanceof Error ? err.message : t('common.tryAgain')
-			});
-		} finally {
-			withdrawing = false;
-		}
-	}
 
 	async function onHrFile(e: Event) {
 		const input = e.target as HTMLInputElement;
@@ -1291,41 +1219,6 @@
 		}
 	}
 
-	async function shareReplay() {
-		sharing = true;
-		try {
-			const res = await fetch(`/api/workouts/${detail.id}/share`, { method: 'POST' });
-			if (res.status === 403) {
-				toast.error(t('share.privacyBlocked'));
-				return;
-			}
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const body = (await res.json()) as { url: string };
-			const title = detail.workoutType || detail.sport;
-			if (typeof navigator.share === 'function') {
-				try {
-					await navigator.share({ url: body.url, title });
-					toast.success(t('share.linkReady'));
-					return;
-				} catch (e) {
-					if (e instanceof Error && e.name === 'AbortError') return;
-					throw e;
-				}
-			}
-			if (navigator.clipboard?.writeText) {
-				await navigator.clipboard.writeText(body.url);
-				toast.success(t('share.linkCopied'), { description: t('share.linkReady') });
-			} else {
-				toast.success(body.url, { description: t('share.linkReady') });
-			}
-		} catch (err) {
-			toast.error(t('share.shareFailed'), {
-				description: err instanceof Error ? err.message : t('common.tryAgain')
-			});
-		} finally {
-			sharing = false;
-		}
-	}
 
 	async function downloadRaceCard() {
 		try {
@@ -1369,48 +1262,16 @@
 			{/if}
 		</div>
 		<div class="sharebar">
-			<a class="btn btn-ghost btn-sm" href="/compare?a={detail.id}">
-				<GitCompare size={14} />
-				{t('replay.compareAction')}
-			</a>
-			<button class="btn btn-ghost btn-sm" type="button" disabled={sharing} onclick={shareReplay}>
-				<Share2 size={14} />
-				{sharing ? t('common.loading') : t('share.shareReplay')}
-			</button>
 			<button class="btn btn-ghost btn-sm" type="button" onclick={downloadRaceCard}>
 				<ImageDown size={14} />
 				{t('share.downloadImage')}
 			</button>
-			{#if canPublish}
-				<button
-					class="btn btn-ghost btn-sm"
-					type="button"
-					disabled={publishing}
-					onclick={publishToLeaderboard}
-				>
-					<Trophy size={14} />
-					{publishing ? t('leaderboard.publishing') : t('leaderboard.publish')}
-				</button>
-				{#if published}
-					<button
-						class="btn btn-ghost btn-sm"
-						type="button"
-						disabled={withdrawing}
-						onclick={withdrawFromLeaderboard}
-					>
-						{withdrawing ? t('leaderboard.withdrawing') : t('leaderboard.withdraw')}
-					</button>
-				{/if}
-			{/if}
 		</div>
-		{#if canPublish}
-			<p class="muted small publish-note">{t('leaderboard.publishNote')}</p>
-		{/if}
 	</div>
 
 	<WorkoutMomentCards report={momentReport} sport={detail.sport} onseek={(seconds) => engine?.seek(seconds)} />
 
-	{#if !logbookHasHr}
+	{#if !logbookHasHr && isDemo}
 		<div class="card card-border bg-base-100 shadow-md p-5 hrimport">
 			<div class="hrimport-head">
 				<Heart size={15} />
