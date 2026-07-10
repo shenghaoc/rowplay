@@ -28,8 +28,8 @@ export const POST: RequestHandler = async (event) => {
     throw error(400, "Missing workoutId.");
   }
 
-  // Future: fetch workout detail via Concept2 API and upsert into D1.
-  return json({ ok: true, queued: payload.workoutId });
+  // The stateless Worker deliberately does not queue or persist webhook data.
+  return json({ ok: true, received: payload.workoutId });
 };
 
 async function validHmac(secret: string, body: string, provided: string): Promise<boolean> {

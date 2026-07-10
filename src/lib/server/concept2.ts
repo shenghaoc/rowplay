@@ -1,4 +1,3 @@
-import type { KVNamespace } from "@cloudflare/workers-types";
 import { nowEpochMillis } from "$lib/datetime";
 import { paceToWattsForSport } from "../format";
 import {
@@ -13,7 +12,7 @@ import {
   type WorkoutDetail,
   type WorkoutTargets,
 } from "../types";
-import { writeSession, type OAuthTokens, type SessionData, type SessionUser } from "./session";
+import type { OAuthTokens, SessionData, SessionUser } from "./session";
 
 /** Scopes we request from the Concept2 logbook. */
 export const OAUTH_SCOPE = "user:read,results:read";
@@ -120,15 +119,16 @@ function authHeader(token: string) {
 }
 
 /**
- * Client bound to a session. Transparently refreshes the access token (and
- * persists it back to KV) when it is within 60s of expiry.
+ * Client bound to a session. Transparently refreshes the access token when it
+ * is within 60s of expiry. For OAuth sessions, refreshed tokens are persisted
+ * back to the session cookie via the optional `onTokenRefresh` callback so
+ * subsequent requests don't trigger redundant refresh round-trips.
  */
 export class Concept2Client {
   constructor(
     private cfg: Concept2Config,
-    private kv: KVNamespace,
-    private sessionId: string,
     private session: SessionData,
+    private onTokenRefresh?: (session: SessionData) => Promise<void> | void,
   ) {}
 
   private async accessToken(): Promise<string> {
@@ -138,7 +138,9 @@ export class Concept2Client {
     if (nowEpochMillis() < tokens.expiresAt - 60_000) return tokens.accessToken;
     const fresh = await refreshTokens(this.cfg, tokens.refreshToken);
     this.session = { ...this.session, tokens: fresh };
-    await writeSession(this.kv, this.sessionId, this.session);
+    if (this.onTokenRefresh) {
+      await this.onTokenRefresh(this.session);
+    }
     return fresh.accessToken;
   }
 
@@ -152,34 +154,45 @@ export class Concept2Client {
     return (await res.json()) as T;
   }
 
-  async listWorkouts(page = 1, number = 50): Promise<Workout[]> {
-    const json = await this.api<{ data: RawResult[] }>(
-      `/users/me/results?page=${page}&number=${number}`,
-    );
-    return json.data.map((r) => mapResult(r));
+  /**
+   * Fetch the complete logbook. The results API caps each response at 250 rows,
+   * so a single request would silently drop older workouts for established
+   * athletes and corrupt all-history dashboard metrics.
+   */
+  async listWorkouts(page = 1, number = 250): Promise<Workout[]> {
+    const workouts: Workout[] = [];
+    let currentPage = page;
+    let totalPages = page;
+
+    do {
+      const result = await this.listWorkoutsPage(currentPage, number);
+      workouts.push(...result.workouts);
+      totalPages = Math.max(totalPages, result.totalPages);
+      currentPage++;
+    } while (currentPage <= totalPages);
+
+    return workouts;
   }
 
   /**
-   * One page of results with pagination metadata, optionally filtered to
-   * workouts on/after `from` ("YYYY-MM-DD"). Used by the D1 sync to page
-   * through the full history (250 = the API max per page).
+   * Read only the newest results for near-live polling. Fetching the complete
+   * logbook here would turn each 30-second poll into N paginated API calls.
    */
-  async listWorkoutsPage(
+  async listRecentWorkouts(number = 25): Promise<Workout[]> {
+    return (await this.listWorkoutsPage(1, number)).workouts;
+  }
+
+  private async listWorkoutsPage(
     page: number,
-    from?: string,
-    to?: string,
-    number = 250,
+    number: number,
   ): Promise<{ workouts: Workout[]; totalPages: number }> {
-    const qs = new URLSearchParams({ page: String(page), number: String(number) });
-    if (from) qs.set("from", from);
-    if (to) qs.set("to", to);
     const json = await this.api<{
       data: RawResult[];
       meta?: { pagination?: { total_pages?: number } };
-    }>(`/users/me/results?${qs}`);
+    }>(`/users/me/results?page=${page}&number=${number}`);
     return {
       workouts: json.data.map((r) => mapResult(r)),
-      totalPages: json.meta?.pagination?.total_pages ?? 1,
+      totalPages: json.meta?.pagination?.total_pages ?? page,
     };
   }
 

@@ -1,27 +1,32 @@
 import type { PageServerLoad } from "./$types";
 import { redirect } from "@sveltejs/kit";
-import { loadHomeTimezone, loadWorkouts, syncStatus } from "$lib/server/data";
+import { loadHomeTimezone, loadWorkouts } from "$lib/server/data";
 
+/**
+ * Export and home-timezone preferences are stateless: both remain available
+ * without server-side storage. Sync status and account deletion were intentionally removed
+ * with the persistence layer.
+ */
 export const load: PageServerLoad = async (event) => {
   if (!event.locals.demo && !event.locals.user) {
     throw redirect(303, "/auth/login");
   }
-  // Prevent the service worker from caching authenticated settings pages.
-  // Demo-mode pages (no personal data) remain cacheable for offline use.
   if (!event.locals.demo) {
     event.setHeaders({ "cache-control": "private, no-store" });
   }
 
-  const workouts = await loadWorkouts(event);
-  const sync = event.locals.demo ? null : await syncStatus(event).catch(() => null);
+  const [workouts, homeTimezone] = await Promise.all([
+    // Export remains reachable even when Concept2 is transiently unavailable.
+    loadWorkouts(event).catch(() => []),
+    loadHomeTimezone(event),
+  ]);
   const tcxWorkouts = workouts
-    .filter((w) => w.hasStrokeData)
-    .map((w) => ({ id: w.id, date: w.date }));
-  const homeTimezone = await loadHomeTimezone(event);
+    .filter((workout) => workout.hasStrokeData)
+    .map((workout) => ({ id: workout.id, date: workout.date }));
+
   return {
     demo: event.locals.demo,
     workoutCount: workouts.length,
-    sync,
     tcxWorkouts,
     homeTimezone,
   };

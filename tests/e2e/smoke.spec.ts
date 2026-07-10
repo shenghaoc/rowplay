@@ -74,7 +74,7 @@ test.describe("smoke", () => {
     await expect(tour.locator('a[href^="/replay/"]').first()).toBeVisible();
     await expect(tour.locator('a[href="/dashboard#critical-power"]')).toBeVisible();
     await expect(tour.locator('a[href="/dashboard#workout-filters"]')).toBeVisible();
-    await expect(tour.locator('a[href^="/leaderboard"]')).toBeVisible();
+    await expect(tour.locator('a[href^="/leaderboard"]')).toHaveCount(0);
 
     const order = await page
       .locator(
@@ -252,17 +252,16 @@ test.describe("smoke", () => {
     expect(errors, `unexpected page errors:\n${errors.join("\n")}`).toEqual([]);
   });
 
-  test("compare page loads two workouts with overlay charts", async ({ page }) => {
+  test("removed compare route redirects to the dashboard", async ({ page }) => {
     const errors = collectPageErrors(page);
 
     const res = await page.goto("/compare?a=1001&b=1007");
     expect(res?.ok(), "GET /compare should be 2xx").toBeTruthy();
 
-    await expect(page.getByRole("heading", { name: /Compare workouts|训练对比/ })).toBeVisible();
-    await expect(page.getByText(/Head-to-head stats|逐项对比/)).toBeVisible();
-    await expect(page.locator("canvas").first()).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("heading", { name: /Results & replays|成绩与回放/ })).toBeVisible();
 
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     expect(errors, `unexpected page errors:\n${errors.join("\n")}`).toEqual([]);
   });
 

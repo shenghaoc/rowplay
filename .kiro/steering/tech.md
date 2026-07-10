@@ -1,204 +1,67 @@
 # Technology Stack
 
-## Runtime & Build
+## Runtime and build
 
-- **Node.js** toolchain with **pnpm 11** as the package manager (lockfile: `pnpm-lock.yaml`, pinned via the `packageManager` field; use `pnpm ci` for clean CI installs)
-- **TypeScript** in strict mode (`tsconfig.json` extends SvelteKit's generated config)
-- **Vite** for dev server and build
-- **Cloudflare Workers** as the production runtime via `@sveltejs/adapter-cloudflare`
+- TypeScript in strict mode, SvelteKit/Svelte 5 runes mode, Vite, and pnpm 11.
+- Cloudflare Workers through `@sveltejs/adapter-cloudflare`; `wrangler.jsonc`
+  declares only `ASSETS` plus observability configuration.
+- Use the repository `vp` wrapper for install, lint, test, build, and preview.
 
 ## Frontend
 
-- **SvelteKit** (Svelte 5, runes mode) — the app framework for both SSR and client-side routing
-- **Tailwind CSS v4** via `@tailwindcss/vite` — utility-first styling
-- **daisyUI 5** (`daisyui` devDependency) — component classes via the Tailwind CSS v4 CSS plugin (no `tailwind.config.js`). Official install: [SvelteKit](https://daisyui.com/docs/install/sveltekit/), [general](https://daisyui.com/docs/install/). Agent skill: [`.kiro/skills/daisyui/SKILL.md`](../skills/daisyui/SKILL.md)
-- **uPlot** — lightweight charting for telemetry (pace, stroke-rate, power, heart-rate)
-- **@lucide/svelte** — icon library
-- **@tanstack/svelte-virtual** — virtualized lists for the workout list
-- **svelte-sonner** — toast notifications
-- **Date/Intl time helpers** — `src/lib/datetime.ts` uses strict UTC parsing plus `Intl.DateTimeFormat` timezone projection without Temporal or a bundled polyfill
+- Tailwind CSS v4 and daisyUI 5 via the Vite CSS plugin; do not add a legacy
+  `tailwind.config.js`.
+- uPlot for charts, `@tanstack/svelte-virtual` for long workout lists,
+  `@lucide/svelte` for icons, and `svelte-sonner` for feedback.
+- Use Svelte 5 runes (`$state`, `$derived`, `$effect`), keyed each blocks, and
+  `onclick` handlers. All visible copy belongs in `src/lib/locales/`.
+- `src/lib/datetime.ts` uses strict UTC parsing and `Intl.DateTimeFormat` for
+  timezone projection; do not add a Temporal polyfill without a product need.
 
-> **Stack audit (June 2026):** See `.kiro/specs/platform-modernization-audit/` for the full dependency, HTML/CSS/JS, and PR #223 modernization review. `bits-ui`, `clsx`, and `tailwind-merge` are listed in `package.json` but unused in `src/` — remove or wire up per audit `tasks.md`.
+## Stateless server model
 
-## daisyUI (Tailwind CSS v4 plugin)
+- The Worker has **no KV or D1 binding** and no server-side workout database.
+- `src/lib/server/concept2.ts` is the server-only Concept2 API client.
+  Dashboard/replay/export reads are live; full-history views follow API
+  pagination, while near-live polling asks only for the newest page.
+- `src/lib/server/session.ts` AES-GCM seals `rp_session` with `SESSION_SECRET`.
+  It holds the identity, optional OAuth tokens, and home timezone. BYOT raw
+  tokens use the separate sealed httpOnly `rp_tok` cookie.
+- Cookie preferences are server-readable only: goals use `annual_goal` and the
+  timezone stays within `rp_session`. Scope an authenticated goal to its user.
+- Optional OAuth is enabled only when `CONCEPT2_CLIENT_ID` is configured.
 
-rowplay follows the official **SvelteKit + Tailwind v4** install path. Do not add `tailwind.config.js` or `plugins: [require('daisyui')]` — that is the old Tailwind 3 setup.
+## Server observability and privacy
 
-### Baseline (matches upstream docs)
+- Use `createLogger(console)` from `src/lib/server/logger.ts`, never bare
+  server-side `console.error`.
+- Do not log cookies, personal tokens, full workouts, or sensitive profile data.
+- Authenticated page/API responses must use `private, no-store` when they
+  contain personal data.
 
-| Piece      | Location                                                           |
-| ---------- | ------------------------------------------------------------------ |
-| Packages   | `tailwindcss`, `@tailwindcss/vite`, `daisyui` in `package.json`    |
-| Vite       | `tailwindcss()` then `sveltekit()` in `vite.config.ts`             |
-| Plugin     | `@import 'tailwindcss';` and `@plugin "daisyui";` in `src/app.css` |
-| Global CSS | `import '../app.css'` in `src/routes/+layout.svelte`               |
+## Testing and verification
 
-### rowplay extensions (intentional)
+- Vitest covers pure helpers, server data/session behavior, endpoints, Svelte
+  reactive classes, and replay renderers. New server routes or library modules
+  require a co-located test.
+- Playwright smoke tests run against the built Workers preview runtime using
+  Chromium. Run full E2E only when the task requires it.
+- The normal gate is `vp run check` (format, lint, typecheck, Vitest, build).
+  Run `vp run validate:locales` after changing i18n keys and
+  `vp run test:e2e:smoke` for changed user flows.
 
-Configured in `src/app.css`:
+## Configuration and commands
 
-- **`themes: rowplay --default, dark`** plus `@plugin "daisyui/theme"` blocks for Jet Set Blue palettes.
-- **Brand polish** — global rules on `.btn`, `.badge`, `.card` in `app.css` (fonts, shadows, soft badges).
-- **Custom tokens** — `--paper`, `--ink`, `--live`, etc. alongside daisyUI semantic colors (`primary`, `base-100`, …).
-
-### Markup conventions
-
-- Use **prefixed** daisyUI component + modifier classes: `btn btn-primary`, `input input-bordered`, `stat-title`, `toggle toggle-primary`.
-- Use **rowplay-specific layout hooks** only where daisyUI has no equivalent: `dash-stats` (not `stats`), replay canvas, charts, sport metric colors (`--pace`, `--hr`).
-- Avoid the daisyUI **`stats` container** on the dashboard summary grid — it forces `inline-grid` columns. Use a custom `dash-stats` CSS grid with `stat` cells and `stat-title` / `stat-value` parts instead.
-- Do not put `toggle` on a `<label>`; put `toggle` on the `<input type="checkbox">`. Use `label` on the label wrapper when following daisyUI’s toggle pattern.
-
-### Tooling and tests
-
-- - `src/lib/daisyui-collision.ts` + `daisyui-collision-guard.test.ts` — CI fails if markup uses the daisyUI **`stats` container** as a custom layout hook (`btn`, `card`, `badge`, …).
-- `src/lib/mobile-stats-spacing.test.ts` — dashboard stat grid spacing regression tests (uses `stat-*` parts).
-
-## I18n & Theming
-
-- Hand-rolled i18n — no library. Pure dictionaries and helpers in `i18n.ts`; reactive `I18n` class (Svelte 5 `$state`) in `i18n.svelte.ts`; plural helpers in `i18nPlural.ts`
-- Languages: `en`, `zh`, `de`, `es`, `fr`, `ja` (bundled under `src/lib/locales/`), with `{param}` interpolation
-- Light/dark theme via `Theme` class in `theme.svelte.ts`; CSS custom properties in `app.css`
-- Both are SSR-safe: state seeded from cookies (`lang`, `theme`) so server and client agree; shared via `createContext`, not module singletons
-
-## Backend (SvelteKit Endpoints on Workers)
-
-- **Cloudflare KV** (`SESSIONS` binding) — session identity/state; personal BYOT sessions keep an empty `accessToken` because the token is sealed in `rp_tok`
-- **Cloudflare D1** (`DB` binding) — SQLite database caching hydrated workouts and per-stroke detail so replays are instant; never stores the personal token
-- **Concept2 Logbook API** — read server-side only. **Primary auth:** user pastes a personal Concept2 API token at `/auth/token`; it is submitted once over HTTPS and sealed into the httpOnly `rp_tok` cookie with `SESSION_SECRET`. **Optional:** OAuth2 if `CONCEPT2_CLIENT_ID` is configured
-
-### Server Observability (Privacy-Safe)
-
-- Use `createLogger(console)` from `src/lib/server/logger.ts` instead of raw `console.error` / `console.warn` in server code.
-- Errors **worth logging** (non-exhaustive):
-  - Concept2 API failure
-  - Sync failure
-  - D1/KV failure
-  - Invalid sealed token (BYOT cookie)
-  - Replay detail cache miss
-- Logs **must never** include:
-  - Personal Concept2 tokens (sealed or plaintext)
-  - Raw `rp_tok` or session cookie values
-  - Full workout payloads (JSON with strokes/splits)
-  - Personally sensitive fields (names, emails)
-- `redact()` runs a regex allow/deny list before `console.error` receives the message; the underlying `console` object is injected so tests can assert redaction.
-
-## Testing
-
-- **Vitest** — unit tests (`pnpm test` / `pnpm test:watch`) across pure helpers, server/DB code, route handlers, Svelte reactive classes, and replay renderers. Use the command output for the current test count.
-- **@vitest/coverage-v8** — coverage reporter; `provider: 'v8'`, `reporter: ['text', 'lcov']`, scoped to `src/**/*.ts` (excludes `*.test.ts`, `*.svelte.ts`, generated `*.d.ts`)
-- **Playwright** — E2E smoke tests run against the production build on the real Workers runtime (`wrangler dev`), not `vite dev`
-- **svelte-check** — TypeScript type checking for `.svelte` and `.ts` files
-
-### Test scope
-
-| Layer                   | Files tested                                                                                                                                                                                                          | Pattern                                                                                                         |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Pure library            | `datetime.ts`, `goals.ts`, `workoutQuery.ts`, `i18n.ts`, `i18nPlural.ts`, `mockData.ts`, `analytics-newpbs.ts`, `replay/sports.ts`, `replay/sources.ts`                                                               | Direct import, minimal mocking                                                                                  |
-| Server data/DB          | `server/db.ts`, `server/data.ts`, `server/session.ts`, `server/export.ts`, `server/concept2-strokes.ts`, `server/share.ts`, `server/config.ts`, `server/leaderboard.ts`, `server/hrImport.ts`, `server/rivalGhost.ts` | Fake D1/KV (see below)                                                                                          |
-| Route handlers          | SvelteKit `+server.ts` and `+page.server.ts` files                                                                                                                                                                    | Fake `RequestEvent`; service layer mocked via `vi.mock`                                                         |
-| Svelte reactive classes | `i18n.svelte.ts`, `theme.svelte.ts`, `liveMode.svelte.ts`                                                                                                                                                             | Node-only stubs; no jsdom required                                                                              |
-| Three.js renderer       | `replay/renderer3d.ts`                                                                                                                                                                                                | Partial mock — only `THREE.WebGLRenderer`; all other Three.js classes run as real headless Node implementations |
-
-### Fake D1 pattern
-
-```ts
-function fakeDb(opts: { firstRow?: unknown; allRows?: unknown[] } = {}) {
-  const executed: { sql: string; args: unknown[] }[] = [];
-  const make = (sql: string) => {
-    let bound: unknown[] = [];
-    const stmt = {
-      bind: (...args) => {
-        bound = args;
-        return stmt;
-      },
-      run: async () => {
-        executed.push({ sql, args: bound });
-        return { meta: { changes: 1, last_row_id: 99 } };
-      },
-      first: async <T>() => {
-        executed.push({ sql, args: bound });
-        return (opts.firstRow ?? null) as T;
-      },
-      all: async <T>() => {
-        executed.push({ sql, args: bound });
-        return { results: (opts.allRows ?? []) as T[] };
-      },
-    };
-    return stmt;
-  };
-  return {
-    executed,
-    db: { prepare: make, batch: async (stmts) => Promise.all(stmts.map((s) => s.run())) },
-  };
-}
-```
-
-### Fake KV pattern
-
-```ts
-function fakeKv() {
-  const store = new Map<string, string>();
-  return {
-    get: async (key: string) => store.get(key) ?? null,
-    put: async (key: string, value: string) => {
-      store.set(key, value);
-    },
-    delete: async (key: string) => {
-      store.delete(key);
-    },
-  };
-}
-```
-
-### What is NOT covered by unit tests
-
-- **Svelte components (`.svelte`)** — require jsdom or a real browser; covered by Playwright E2E.
-- **`liveMode.svelte.ts` poll/fetch loop** — `fetch`, `AudioContext`, and tab-visibility wiring require a real browser event model.
-- **`renderer3d.ts` rendering fidelity** — actual WebGL pixel output cannot be verified in Node; unit tests validate construction, state transitions, and invocation only.
-- **`hooks.server.ts`** — SvelteKit hook wiring requires a real SvelteKit request cycle; covered by E2E.
-
-## Configuration
-
-- `wrangler.jsonc` (JSONC, not TOML) — Cloudflare Worker configuration including KV/D1 bindings and environment vars
-- `.dev.vars` (git-ignored) — local development secrets
-- `wrangler secret put SESSION_SECRET` — required for production sessions. `CONCEPT2_CLIENT_SECRET` only if OAuth is enabled
-
-## Development Commands
-
-| Task               | Command                 |
-| ------------------ | ----------------------- |
-| Install deps (dev) | `pnpm install`          |
-| Install deps (CI)  | `pnpm ci`               |
-| Dev server         | `pnpm dev`              |
-| Format (write)     | `pnpm run format`       |
-| Format (check)     | `pnpm run format:check` |
-| Lint               | `pnpm run lint`         |
-| Type check         | `pnpm run typecheck`    |
-| Unit tests         | `pnpm run test`         |
-| Unit tests watch   | `pnpm test:watch`       |
-| Build              | `pnpm run build`        |
-| Full quality gate  | `pnpm run check`        |
-| Preview (Workers)  | `pnpm preview`          |
-| Preview (wrangler) | `pnpm preview:wrangler` |
-| Deploy             | `pnpm deploy`           |
-| D1 migrate local   | `pnpm db:migrate:local` |
-| D1 migrate remote  | `pnpm db:migrate`       |
-| E2E (full)         | `pnpm test:e2e`         |
-| E2E (PR smoke)     | `pnpm test:e2e:smoke`   |
+- Set `SESSION_SECRET` with `wrangler secret put`; set
+  `CONCEPT2_CLIENT_SECRET` only for optional OAuth. `.dev.vars` is ignored.
+- `vp dev` is quick UI development only. Use `vp run preview` for Workers
+  runtime, authenticated cookies, and live-mode behavior.
+- Common commands: `vp install`, `vp lint`, `vp run typecheck`, `vp test`,
+  `vp build`, `vp run check`, `vp run validate:locales`, and
+  `vp run test:e2e:smoke`.
 
 ## CI
 
-GitHub Actions:
-
-- **CI** (`.github/workflows/ci.yml`) — the universal base gate: `pnpm ci` then
-  `pnpm run check` (format:check + lint + typecheck + test + build) on every PR
-  and push to main. No path filters; lint failures fail the build.
-- **Locales** (`.github/workflows/locales.yml`) — `pnpm run validate:locales`
-  (repo-specific, kept out of the base CI contract).
-- **E2E** (`.github/workflows/e2e.yml`) — Playwright on the real Workers runtime
-  (builds in-job, then `E2E_SKIP_BUILD=1` so wrangler dev starts without
-  rebuilding):
-  - **e2e-smoke** — `test:e2e:smoke` (smoke.spec.ts, WebKit desktop). PR merge gate when e2e paths change.
-  - **e2e-full** — `test:e2e` (all specs, WebKit desktop + iPhone 14). Runs on `workflow_dispatch` and nightly (`schedule: 0 3 * * *`).
-
-Dependabot handles automated dependency updates.
+- CI runs the `vp run check` equivalent on pull requests.
+- Locale validation and the Chromium smoke suite run as dedicated checks.
+- Full E2E runs on manual dispatch and nightly scheduling.

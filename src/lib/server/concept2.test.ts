@@ -1,6 +1,87 @@
-import { describe, expect, it } from "vite-plus/test";
-import { mapHeartRate, mapMetadata, mapResult, mapSplits, mapTargets } from "./concept2";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  Concept2Client,
+  mapHeartRate,
+  mapMetadata,
+  mapResult,
+  mapSplits,
+  mapTargets,
+} from "./concept2";
 import { bikePaceSecPer500 } from "../../../tests/unit/fixtures";
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("Concept2Client.listWorkouts", () => {
+  it("follows the Concept2 pagination metadata to return the full logbook", async () => {
+    const result = (id: number) => ({
+      id,
+      date: "2026-05-01 06:00:00",
+      type: "rower",
+      distance: 2000,
+      time: 4800,
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ data: [result(1)], meta: { pagination: { total_pages: 2 } } }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ data: [result(2)], meta: { pagination: { total_pages: 2 } } }),
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new Concept2Client(
+      {
+        clientId: "",
+        clientSecret: "",
+        baseUrl: "https://log.concept2.com",
+        appUrl: "https://rowplay.test",
+      },
+      {
+        user: { id: 1, username: "athlete" },
+        personal: true,
+        tokens: { accessToken: "token", refreshToken: "", expiresAt: 0, scope: "" },
+      },
+    );
+
+    await expect(client.listWorkouts()).resolves.toMatchObject([{ id: 1 }, { id: 2 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toContain("page=1&number=250");
+    expect(fetchMock.mock.calls[1][0]).toContain("page=2&number=250");
+  });
+
+  it("fetches only the newest page for live polling", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [{ id: 3, date: "2026-05-03 06:00:00", type: "rower", distance: 2000, time: 4800 }],
+          meta: { pagination: { total_pages: 4 } },
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new Concept2Client(
+      {
+        clientId: "",
+        clientSecret: "",
+        baseUrl: "https://log.concept2.com",
+        appUrl: "https://rowplay.test",
+      },
+      {
+        user: { id: 1, username: "athlete" },
+        personal: true,
+        tokens: { accessToken: "token", refreshToken: "", expiresAt: 0, scope: "" },
+      },
+    );
+
+    await expect(client.listRecentWorkouts()).resolves.toMatchObject([{ id: 3 }]);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toContain("page=1&number=25");
+  });
+});
 
 describe("mapHeartRate", () => {
   it("maps a scalar to average only", () => {

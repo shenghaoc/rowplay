@@ -92,8 +92,6 @@ export interface Workout {
   metadata?: LoggingMetadata;
   /** Whether per-stroke detail is available for a real-time replay. */
   hasStrokeData: boolean;
-  /** Athlete override for auto-detected workout type tag (D1 `user_tag`; null = auto). */
-  userTag?: string | null;
   /** Present on detail payloads and some summaries when interval structure is known. */
   isInterval?: boolean;
 }
@@ -143,20 +141,7 @@ export interface Split {
   isRest?: boolean;
 }
 
-/** A coach/self timestamped note attached to a workout. */
-export interface Annotation {
-  /** Opaque id (auto-increment in D1; local counter in demo). */
-  id: number;
-  /** Seconds since workout start — snaps to the nearest stroke. */
-  timestamp: number;
-  /** Free-text coaching note. */
-  text: string;
-  /** Epoch milliseconds when the annotation was created. */
-  createdAt: number;
-}
-
 /** Full detail needed to drive a replay. */
-/** If you change this type, bump DETAIL_PAYLOAD_VERSION in src/lib/server/db.ts. */
 export interface WorkoutDetail extends Workout {
   strokes: Stroke[];
   splits: Split[];

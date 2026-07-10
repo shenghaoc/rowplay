@@ -1,18 +1,11 @@
 import { fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { nowEpochMillis } from "$lib/datetime";
-import { getConfig, requireSessions } from "$lib/server/config";
+import { getConfig } from "$lib/server/config";
 import { getValue } from "$lib/i18n";
 import { fetchMe } from "$lib/server/concept2";
-import {
-  newSessionId,
-  SESSION_COOKIE,
-  TOKEN_COOKIE,
-  writeSession,
-  type SessionUser,
-} from "$lib/server/session";
+import { TOKEN_COOKIE, writeSession, type SessionUser } from "$lib/server/session";
 import { sealToken } from "$lib/server/tokenCrypto";
-import { scheduleConnectSync } from "$lib/server/data";
 
 export const load: PageServerLoad = async (event) => {
   // Already authenticated — nothing to enter.
@@ -31,27 +24,26 @@ export const actions: Actions = {
     if (!token) return fail(400, { error: tr("token.empty") });
 
     const cfg = getConfig(event);
-    const kv = requireSessions(event);
-    // The token is sealed into an httpOnly cookie, never stored in KV. Without a
-    // secret we can't seal it — fail clearly rather than fall back to plaintext.
     const secret = event.platform?.env?.SESSION_SECRET;
     if (!secret) return fail(500, { error: tr("token.serverMisconfigured") });
 
-    // Validate by fetching the owner; a bad token is rejected here. Note: the
-    // redirect below must stay OUTSIDE this try — redirect() throws, and a
-    // catch would swallow it.
+    // Validate by fetching the owner; a bad token is rejected here.
     let user: SessionUser;
     try {
       user = await fetchMe(cfg, token);
-    } catch {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      // Distinguish Concept2 API failures from invalid tokens so the user
+      // gets actionable feedback instead of "token rejected" for every error.
+      if (/50[023]/.test(msg) || /timeout|abort/i.test(msg)) {
+        return fail(502, { error: tr("token.serverUnavailable") });
+      }
       return fail(400, { error: tr("token.rejected") });
     }
 
     const sealed = await sealToken(secret, token);
-    const sid = newSessionId();
-    // KV holds identity only — the access token stays empty here and lives
-    // sealed in the cookie below.
-    await writeSession(kv, sid, {
+    // Session data stored in an encrypted cookie — no server-side storage.
+    await writeSession(event.cookies, event, secret, {
       user,
       personal: true,
       tokens: {
@@ -61,19 +53,13 @@ export const actions: Actions = {
         scope: "",
       },
     });
-    const cookieOpts = {
+    event.cookies.set(TOKEN_COOKIE, sealed, {
       path: "/",
       httpOnly: true,
       secure: event.url.protocol === "https:",
       sameSite: "lax" as const,
       maxAge: 60 * 60 * 24 * 30,
-    };
-    event.cookies.set(SESSION_COOKIE, sid, cookieOpts);
-    event.cookies.set(TOKEN_COOKIE, sealed, cookieOpts);
-
-    // Warm the D1 cache with a full backfill in the background so the first
-    // dashboard load reads locally instead of paying live API round-trips.
-    scheduleConnectSync(event, sid, user, token);
+    });
 
     throw redirect(303, "/dashboard");
   },

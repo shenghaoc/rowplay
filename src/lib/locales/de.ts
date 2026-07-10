@@ -133,15 +133,16 @@ export const de = {
     feat2Title: "Split-Analysen",
     feat2Body: "Pace, Schlagfrequenz, Power und HF über die Zeit — auf allen drei Geräten.",
     feat3Title: "Am Edge",
-    feat3Body: "Über Cloudflare ausgeliefert, mit gecachten Schlagdaten für sofortige Replays.",
+    feat3Body:
+      "Über Cloudflare ausgeliefert, mit Live-Daten von Concept2 für detaillierte Replays.",
     tourEyebrow: "Erster Start",
     tourTitle: "Vier Dinge zum Ausprobieren",
     tourBody:
-      "Starte im Dashboard, öffne ein Replay, fahre gegen einen Leaderboard-Geist und exportiere dann die Daten, die du extern prüfen willst.",
+      "Starte im Dashboard, öffne ein Replay, fahre gegen eine frühere eigene Leistung und exportiere dann die Daten, die du extern prüfen willst.",
     tourDashboard: "Dashboard: Summen, Trends und PBs",
     tourReplay: "Replay: synchrone Strecke und Anzeigen",
-    tourGhost: "Ghost-Racing: jage eine frühere oder fremde Leistung",
-    tourExport: "Export: CSV, JSON oder Replay-Dateien",
+    tourGhost: "Ghost-Racing: jage eine frühere Leistung oder Zielpace",
+    tourExport: "Export: CSV, JSON oder TCX",
     tourDismiss: "Erststart-Tour ausblenden",
   },
   docs: {
@@ -157,14 +158,14 @@ export const de = {
       metrics: "Was bedeuten Pace, Watt und Schlagzahl?",
       charts: "So liest du dieses Diagramm",
       troubleshooting: "Daten fehlen oder wirken seltsam? Siehe Problemlösung",
-      workflows: "So funktionieren Leaderboards und Geisterrennen",
+      workflows: "So funktionieren Replays, Geister und Exporte",
     },
     sections: {
       overview: {
         navTitle: "Überblick",
         markdown: `# rowplay User Guide
 
-rowplay macht aus deinen Indoor-Ruder-, Ski- und Rad-Workouts etwas zum Erkunden: ein Dashboard mit Summen und Trends, ein Replay Schlag für Schlag, Vergleiche nebeneinander und freundschaftliche Leaderboards.
+rowplay macht aus deinen Indoor-Ruder-, Ski- und Rad-Workouts etwas zum Erkunden: ein Dashboard mit Summen und Trends und ein Replay Schlag für Schlag.
 
 Es funktioniert mit Workouts von Concept2-Geräten — dem RowErg (Rudergerät), SkiErg und BikeErg — und liest sie aus dem kostenlosen Concept2-Online-Logbuch. Du musst kein Ruder-Fachvokabular kennen: Dieser Guide erklärt jeden Begriff, den er verwendet.
 
@@ -172,16 +173,14 @@ Es funktioniert mit Workouts von Concept2-Geräten — dem RowErg (Rudergerät),
 
 - **Dashboard** — Summen, Trends, persönliche Bestzeiten und Trainingslast auf einen Blick.
 - **Replay** — sieh jedem Workout Schlag für Schlag zu, mit synchronen Diagrammen für Pace, Schlagzahl, Leistung und Herzfrequenz.
-- **Vergleichen** — zwei Workouts nebeneinander, Split für Split.
-- **Leaderboards** — veröffentliche ein Ergebnis und tritt gegen andere Athleten als „Geister" auf dem Bildschirm an.
 
 ## Abschnitte des Guide
 
-- [Erste Schritte](/docs/getting-started) — Demo-Modus, Logbuch verbinden, erste Synchronisation.
+- [Erste Schritte](/docs/getting-started) — Demo-Modus und Logbuch verbinden.
 - [Rudern-Grundlagen](/docs/rowing-metrics) — Schläge, Splits und die anderen Begriffe, die dir begegnen.
 - [Pace, Splits & Watt](/docs/pace-splits-watts) — was die Zahlen bedeuten und wie sie zusammenhängen.
 - [Diagramme & Fortschritt](/docs/charts-and-progress) — so liest du die Dashboard-Panels.
-- [Typische Abläufe](/docs/workflows) — Replay, Geisterrennen, Vergleichen, Teilen, Exportieren.
+- [Typische Abläufe](/docs/workflows) — Replay, frühere Einheiten als Geist und Exportieren.
 - [FAQ](/docs/faq) — kurze Antworten zu Konten, Privatsphäre und Daten.
 - [Problemlösung](/docs/troubleshooting) — fehlende Daten, seltsame Zahlen, Darstellungsprobleme.
 
@@ -198,7 +197,7 @@ rowplay startet im Demo-Modus: Ohne verbundenes Konto sind alle Seiten mit reali
 1. Öffne das [Dashboard](/dashboard).
 2. Wähle ein beliebiges Workout aus der Liste.
 3. Drücke **Replay** und probiere Wiedergabe, Pause, Scrubben und die Geschwindigkeitsregler.
-4. Öffne die [Leaderboards](/leaderboard) und fahre ein Geisterrennen.
+4. Nutze die Filter im Dashboard und öffne ein weiteres Replay.
 
 ## Eigene Workouts verbinden
 
@@ -208,17 +207,13 @@ Deine Workouts liegen im Concept2-Logbuch — dem kostenlosen Online-Tagebuch, i
 2. Öffne **Edit Profile → Applications** und kopiere deinen persönlichen API-Token.
 3. Zurück in rowplay öffnest du [Token verwenden](/auth/token).
 4. Füge den Token ein und sende ihn ab.
-5. Drücke im Dashboard auf **Sync**, um deine Workout-Historie zu laden.
+5. Öffne das Dashboard. rowplay lädt deine vollständige Historie direkt über die Concept2-API.
 
-Der Token wird einmal über eine verschlüsselte Verbindung gesendet und nur in einem geschützten Browser-Cookie gehalten. rowplays Server cachen Workout-Daten, damit Seiten schnell laden — den Token selbst speichern sie nie.
-
-## Deine erste Synchronisation
-
-Die erste Synchronisation lädt aktuelle Workouts sofort und füllt ältere Historie im Hintergrund nach. Bis sie fertig ist, können Langzeit-Summen und Bestzeiten unvollständig wirken — das ist normal. Sieht später noch etwas falsch aus, hilft die [Problemlösung](/docs/troubleshooting).
+Der Token wird einmal über eine verschlüsselte Verbindung gesendet und nur in einem geschützten Browser-Cookie gehalten. rowplay speichert weder Workouts noch Tokens auf seinen Servern.
 
 ## Trennen
 
-Öffne jederzeit [Daten](/settings), um die Verbindung zu trennen. Das löscht deine Sitzung und entfernt deine gecachten Workout-Daten aus rowplay. Dein Concept2-Logbuch wird nie verändert.`,
+Nutze zum Trennen den **Abmelden**-Knopf in der Kopfzeile. [Daten](/settings) enthält weiterhin Export und Heimat-Zeitzone. Dein Concept2-Logbuch wird nie verändert.`,
       },
       rowingMetrics: {
         navTitle: "Rudern-Grundlagen",
@@ -311,7 +306,7 @@ Das Trend-Diagramm verfolgt eine Metrik — Pace, Distanz, Schlagzahl oder Dista
 
 ## Persönliche Bestzeiten
 
-Das PB-Panel verfolgt deine schnellsten Ergebnisse über Standarddistanzen (500m, 1k, 2k, 5k, 6k, 10k und länger). Vertraue Allzeit-Bestzeiten erst, wenn eine vollständige Synchronisation abgeschlossen ist — siehe [Problemlösung](/docs/troubleshooting).
+Das PB-Panel verfolgt deine schnellsten Ergebnisse über Standarddistanzen (500m, 1k, 2k, 5k, 6k, 10k und länger) aus deiner live geladenen Concept2-Historie.
 
 ## Trainingskalender & Intensität
 
@@ -349,40 +344,23 @@ In 3D wählt der **Qualität**-Selektor niedrige, mittlere, hohe oder Ultra-Graf
 
 Per-Schlag-Daten werden verwendet, wenn Concept2 sie bereitstellt. Workouts ohne Schlagdaten fallen auf ein Split-basiertes Replay zurück, sodass die Strecke trotzdem abgespielt wird.
 
-## Coaching-Notizen hinzufügen
-
-Halte das Replay an einem Moment an und füge eine Notiz hinzu („hier den Rollsitz überhastet"). Notizen heften sich an die Zeitleiste, sodass du — oder wer auch immer das Replay erhält — direkt dorthin springen kann.
-
 ## Ein Geisterrennen fahren
 
 Ein Geist ist eine frühere Leistung, die auf dem Bildschirm gegen dich antritt.
 
-1. Öffne die [Leaderboards](/leaderboard) und wähle Sport und Distanz.
-2. Drücke **Rennen** neben einem Eintrag.
-3. Dein eigenes Replay dieses Stücks zeigt den Rivalen nun als zweites Boot zum Jagen.
+1. Öffne eines deiner Workouts im Replay.
+2. Wähle in den Geist-Steuerelementen eine passende frühere Einheit.
+3. Die frühere Leistung erscheint als zweites Boot zum Jagen.
 
 Du kannst auch gegen deine eigenen früheren Ergebnisse antreten und genau sehen, wo ein Bestzeit-Versuch Zeit gewonnen oder verloren hat.
 
-## Zwei Workouts vergleichen
+## Exportieren
 
-Nutze in der Workout-Liste des Dashboards den Vergleichen-Knopf an einem Workout und wähle dann ein zweites. Die Vergleichsansicht stellt beide Leistungen Split für Split nebeneinander.
-
-## Auf ein Leaderboard veröffentlichen
-
-Ergebnisse über Standarddistanzen (500m, 1k, 2k, 5k, 6k, 10k, Halbmarathon) lassen sich von der Replay-Seite aus auf das rowplay-Leaderboard stellen. Die Veröffentlichung ist freiwillig, widerrufbar und ändert nie etwas in deinem Concept2-Logbuch.
-
-## Teilen und exportieren
-
-- **Teilen** auf einem Replay erzeugt einen öffentlichen, schreibgeschützten Link — praktisch für Trainer.
-- **Export** auf der [Daten](/settings)-Seite lädt dein Logbuch als CSV oder JSON herunter, dazu TCX-Dateien pro Workout mit Schlagdaten.
+[Daten](/settings) lädt dein Live-Logbuch als CSV oder JSON herunter, dazu TCX-Dateien pro Workout mit Schlagdaten.
 
 ## Daten frisch halten
 
-**Sync** im Dashboard holt neue Ergebnisse auf Abruf. Der **Live-Modus** (ebenfalls im Dashboard) fragt das Logbuch nach Zeitplan ab und meldet sich, wenn ein neues Workout eintrifft — praktisch direkt nach einer Einheit.
-
-## Herzfrequenz importieren
-
-Hat ein Workout keine Herzfrequenzdaten, deine Uhr aber schon, öffne das Replay und nutze **Herzfrequenz importieren**, um einen CSV-, TCX- oder FIT-Export der Uhr in das Workout zu übernehmen.`,
+Dashboard- und Replay-Daten werden live von Concept2 geladen. Der **Live-Modus** kann das Logbuch zusätzlich abfragen und neue Workouts melden.`,
       },
       faq: {
         navTitle: "FAQ",
@@ -398,11 +376,11 @@ Der Token wird einmal über HTTPS übertragen und in einem geschützten, httpOnl
 
 ## Können andere meine Workouts sehen?
 
-Nein — dein Dashboard und deine Replays sind standardmäßig privat. Andere sehen ein Workout nur, wenn du es auf ein Leaderboard veröffentlichst oder seinen öffentlichen Link teilst — beides ist widerrufbar.
+Nein — dein Dashboard und deine Replays sind privat. rowplay hat keine öffentliche Freigabe oder Leaderboards.
 
 ## Verändert rowplay mein Concept2-Logbuch?
 
-Nie. rowplay liest nur. Auf ein rowplay-Leaderboard zu veröffentlichen oder hier gecachte Daten zu löschen verändert den Logbuch-Eintrag nicht.
+Nie. rowplay liest nur und verändert keinen Logbuch-Eintrag.
 
 ## Welche Geräte werden unterstützt?
 
@@ -426,7 +404,7 @@ English, Deutsch, Español, Français, 日本語 und 中文 — umschaltbar in d
 
 ## Meine Summen oder Bestzeiten wirken falsch
 
-Meistens ist die vollständige Historie noch nicht fertig synchronisiert. Die erste Synchronisation füllt ältere Workouts im Hintergrund nach; bis sie abgeschlossen ist, kann alles, was „über die gesamte Zeit" berechnet wird, unvollständig sein. Prüfe den Sync-Status unter [Daten](/settings) und starte bei Bedarf eine vollständige Synchronisation.
+Lade das Dashboard neu, um die aktuelle Concept2-Historie abzurufen, und prüfe dann, ob das Workout im Concept2-Logbuch vorhanden ist.
 
 ## Eine Pace wirkt völlig daneben
 
@@ -443,7 +421,7 @@ Dieser Logbuch-Eintrag enthält keine Daten pro Schlag — häufig bei älteren 
 
 ## Herzfrequenz fehlt
 
-Das Logbuch hat nur dann Herzfrequenz, wenn während des Workouts ein Gurt oder eine Uhr verbunden war. Hat eine Uhr sie separat aufgezeichnet, nutze **Herzfrequenz importieren** auf der Replay-Seite, um einen CSV-, TCX- oder FIT-Export zu übernehmen.
+Das Logbuch hat nur dann Herzfrequenz, wenn während des Workouts ein Gurt oder eine Uhr verbunden war. Prüfe, ob das Quell-Workout sie in Concept2 enthält.
 
 ## Die Synchronisation schlägt fehl oder die Sitzung läuft ab
 
@@ -451,7 +429,7 @@ Persönliche Tokens können ablaufen oder widerrufen werden. Verbinde dich unter
 
 ## Ein neues Workout erscheint nicht
 
-Prüfe zuerst, ob das Workout dein Concept2-Logbuch erreicht hat (es muss vom Gerät oder der ErgData-App hochgeladen werden). Drücke dann **Sync** im Dashboard oder aktiviere den Live-Modus für automatische Abfragen.
+Prüfe zuerst, ob das Workout dein Concept2-Logbuch erreicht hat (es muss vom Gerät oder der ErgData-App hochgeladen werden). Lade dann das Dashboard neu oder aktiviere den Live-Modus für automatische Abfragen.
 
 ## Darstellungsprobleme
 
@@ -488,7 +466,7 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     sectionWorkoutsEyebrow: "Workouts",
     sectionWorkouts: "Replay finden",
     sectionWorkoutsBody:
-      "Filtere, tagge, vergleiche und öffne Workouts, ohne zuerst durch tiefere Analysebereiche zu gehen.",
+      "Filtere und öffne Workouts, ohne zuerst durch tiefere Analysebereiche zu gehen.",
     sectionRecordsEyebrow: "Ziele",
     sectionRecords: "Ziele, Abzeichen & PBs",
     sectionRecordsBody:
@@ -1172,12 +1150,13 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     eyebrow: "Datenschutz & Kontrolle",
     dataTitle: "Was wir speichern",
     dataNote:
-      "rowplay liest deine Concept2-Workouts bei Bedarf und cacht sie auf Cloudflare, damit Replays sofort laden. Dein API-Token wird mit SESSION_SECRET im httpOnly-Cookie rp_tok versiegelt. KV speichert nur Session-Identität/-Status; D1 cacht Workout- und Replay-Daten, niemals das Token. Trennen oder Datenlöschen entfernt gecachte Nutzerdaten und Session-Status.",
+      "rowplay liest deine Concept2-Workouts bei Bedarf über die Concept2-API. Dein API-Token wird mit SESSION_SECRET im httpOnly-Cookie rp_tok versiegelt. Sitzungen werden in verschlüsselten Cookies gespeichert; es wird keine serverseitige Datenbank verwendet. Abmelden entfernt deine Sitzung.",
     factWorkouts: "{n} Workouts zum Export verfügbar",
     factDemo: "Demo-Modus — nur Beispieldaten, nichts wird persistiert.",
-    factCache: "D1 speichert gecachte Workout-/Replay-Daten — niemals das Token.",
+    factCache:
+      "Workout-Daten werden live von der Concept2-API abgerufen — kein serverseitiger Cache.",
     factSession:
-      "KV speichert Session-Identität/-Status; das Token ist in httpOnly rp_tok versiegelt.",
+      "Sitzungen werden in verschlüsselten Cookies gespeichert; das Token ist in httpOnly rp_tok versiegelt.",
     exportTitle: "Logbuch exportieren",
     exportNote:
       "Lade deinen vollständigen Verlauf als CSV oder JSON herunter. TCX pro Workout (Schlagdaten) öffnet sich in Garmin, Strava oder TrainingPeaks.",
@@ -1225,25 +1204,26 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     introBefore: "Füge ein persönliches API-Token aus deinem Concept2-Logbuch ein (",
     introLink: "Profil bearbeiten → Anwendungen",
     introAfter:
-      "). Füge es hier einmal ein — rowplay sendet es per HTTPS an den Worker, validiert es, versiegelt es im httpOnly-Cookie rp_tok und nutzt es nur für serverseitige Logbuch-Abfragen. Das Token wird nie in KV oder D1 gespeichert.",
+      "). Füge es hier einmal ein — rowplay sendet es per HTTPS an den Worker, validiert es, versiegelt es im httpOnly-Cookie rp_tok und nutzt es nur für serverseitige Logbuch-Abfragen. Das Token wird nie in einer Datenbank gespeichert.",
     trustTitle: "Wie rowplay das Token behandelt",
     trustAccessTitle: "Zugriff:",
     trustAccessBody:
       "ein persönliches Concept2-Token authentifiziert dich; rowplay nutzt es nur serverseitig zum Lesen von Profil, Workouts und Schlagdaten.",
     trustStoredTitle: "Speicherung:",
     trustStoredBody:
-      "das validierte Token wird im httpOnly-Cookie rp_tok versiegelt, nicht in localStorage, KV oder D1.",
+      "das validierte Token wird im httpOnly-Cookie rp_tok versiegelt, nicht in localStorage oder einem serverseitigen Speicher.",
     trustDisconnectTitle: "Trennen:",
-    trustDisconnectBody:
-      "Abmelden oder Kontodaten unter Daten löschen entfernt Token-Cookie, Sitzung und privaten Cache.",
+    trustDisconnectBody: "Der Abmelden-Knopf in der Kopfzeile entfernt Token-Cookie und Sitzung.",
     trustCacheTitle: "Cache:",
     trustCacheBody:
-      "D1 speichert Workout-Zusammenfassungen und Replay-Details während der Verbindung; öffentliche Shares oder Leaderboard-Einträge entstehen nur durch Veröffentlichung.",
+      "Workout-Daten werden live von der Concept2-API abgerufen; rowplay erstellt keine öffentlichen Shares oder Leaderboard-Einträge.",
     apiToken: "API-Token",
     placeholder: "Token einfügen",
     connect: "Mit Token verbinden",
     connecting: "Verbinden…",
     rejected: "Concept2 hat dieses Token abgelehnt. Prüfe es und versuche es erneut.",
+    serverUnavailable:
+      "Concept2 ist nicht erreichbar. Die Server sind möglicherweise vorübergehend nicht verfügbar. Bitte versuche es später erneut.",
     serverMisconfigured:
       "Diese Installation ist nicht für die Token-Anmeldung eingerichtet (SESSION_SECRET fehlt). Wende dich an den Betreiber.",
     empty: "Füge dein Concept2-API-Token ein.",

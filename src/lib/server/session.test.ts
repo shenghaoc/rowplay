@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   destroySession,
-  newSessionId,
-  readSession,
+  openSession,
+  sealSession,
   writeSession,
   SESSION_COOKIE,
   TOKEN_COOKIE,
@@ -11,21 +11,7 @@ import {
 import { nowEpochMillis } from "../datetime";
 import type { SessionData } from "./session";
 
-/** Minimal in-memory KV stub. */
-function fakeKv() {
-  const store = new Map<string, string>();
-  return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    get: async (key: string) => store.get(key) ?? null,
-    put: async (key: string, value: string, _opts?: unknown) => {
-      store.set(key, value);
-    },
-    delete: async (key: string) => {
-      store.delete(key);
-    },
-    _store: store,
-  };
-}
+const TEST_SECRET = "test-secret-for-session-tests-32chars!";
 
 const sampleSession: SessionData = {
   user: { id: 42, username: "alice", firstName: "Alice" },
@@ -37,69 +23,105 @@ const sampleSession: SessionData = {
   },
 };
 
-describe("newSessionId", () => {
-  it("returns a non-empty string", () => {
-    expect(typeof newSessionId()).toBe("string");
-    expect(newSessionId().length).toBeGreaterThan(0);
+interface CookieEntry {
+  value: string;
+  opts: Record<string, unknown>;
+}
+
+/** Cookie jar stub that captures options for assertion. */
+function fakeCookies() {
+  const store = new Map<string, CookieEntry>();
+  return {
+    set: (name: string, value: string, opts: Record<string, unknown>) =>
+      store.set(name, { value, opts }),
+    get: (name: string) => store.get(name)?.value,
+    delete: (name: string, _opts?: Record<string, unknown>) => {
+      store.delete(name);
+    },
+    getAll: () => [...store.entries()].map(([name, entry]) => ({ name, value: entry.value })),
+    serialize: (name: string, value: string) => `${name}=${value}`,
+    _store: store,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
+}
+
+const fakeEvent = { url: new URL("https://example.com/") };
+const fakeEventHttp = { url: new URL("http://localhost/") };
+
+describe("sealSession / openSession", () => {
+  it("round-trips a session through seal and open", async () => {
+    const sealed = await sealSession(TEST_SECRET, sampleSession);
+    const opened = await openSession(TEST_SECRET, sealed);
+    expect(opened).toEqual(sampleSession);
   });
 
-  it("produces unique IDs on repeated calls", () => {
-    const a = newSessionId();
-    const b = newSessionId();
-    expect(a).not.toBe(b);
+  it("returns null for a tampered blob", async () => {
+    const sealed = await sealSession(TEST_SECRET, sampleSession);
+    const tampered = sealed.slice(0, -4) + "xxxx";
+    expect(await openSession(TEST_SECRET, tampered)).toBeNull();
   });
 
-  it("contains only hex characters and hyphens", () => {
-    expect(newSessionId()).toMatch(/^[0-9a-f-]+$/);
-  });
-});
-
-describe("writeSession / readSession", () => {
-  it("stores and retrieves a session", async () => {
-    const kv = fakeKv();
-    await writeSession(kv as never, "sid-1", sampleSession);
-    const result = await readSession(kv as never, "sid-1");
-    expect(result).toEqual(sampleSession);
-  });
-
-  it("returns null for a non-existent session id", async () => {
-    const kv = fakeKv();
-    expect(await readSession(kv as never, "no-such-id")).toBeNull();
-  });
-
-  it('stores the session under the "sess:" prefix', async () => {
-    const kv = fakeKv();
-    await writeSession(kv as never, "abc", sampleSession);
-    expect(kv._store.has("sess:abc")).toBe(true);
-    expect(kv._store.has("abc")).toBe(false);
+  it("returns null for a wrong secret", async () => {
+    const sealed = await sealSession(TEST_SECRET, sampleSession);
+    expect(await openSession("wrong-secret-that-is-long-enough!!", sealed)).toBeNull();
   });
 
   it("round-trips a personal (BYOT) session", async () => {
-    const kv = fakeKv();
     const personal: SessionData = { ...sampleSession, personal: true };
-    await writeSession(kv as never, "sid-byot", personal);
-    const result = await readSession(kv as never, "sid-byot");
-    expect(result?.personal).toBe(true);
+    const sealed = await sealSession(TEST_SECRET, personal);
+    const opened = await openSession(TEST_SECRET, sealed);
+    expect(opened?.personal).toBe(true);
   });
 
-  it("returns null when the stored value is corrupt JSON", async () => {
-    const kv = fakeKv();
-    kv._store.set("sess:bad", "not-json{");
-    expect(await readSession(kv as never, "bad")).toBeNull();
+  it("round-trips a session with homeTimezone", async () => {
+    const withTz: SessionData = { ...sampleSession, homeTimezone: "Asia/Tokyo" };
+    const sealed = await sealSession(TEST_SECRET, withTz);
+    const opened = await openSession(TEST_SECRET, sealed);
+    expect(opened?.homeTimezone).toBe("Asia/Tokyo");
+  });
+});
+
+describe("writeSession", () => {
+  it("writes an encrypted session cookie", async () => {
+    const cookies = fakeCookies();
+    await writeSession(cookies, fakeEvent, TEST_SECRET, sampleSession);
+    expect(cookies._store.has(SESSION_COOKIE)).toBe(true);
+    // The cookie value should be encrypted (not plaintext JSON)
+    const entry = cookies._store.get(SESSION_COOKIE)!;
+    expect(entry.value).not.toContain('"user"');
+    // But should be openable
+    const opened = await openSession(TEST_SECRET, entry.value);
+    expect(opened?.user.id).toBe(42);
+  });
+
+  it("sets httpOnly, secure, sameSite, and path on HTTPS", async () => {
+    const cookies = fakeCookies();
+    await writeSession(cookies, fakeEvent, TEST_SECRET, sampleSession);
+    const entry = cookies._store.get(SESSION_COOKIE)!;
+    expect(entry.opts).toMatchObject({
+      path: "/",
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+    });
+    expect(typeof entry.opts.maxAge).toBe("number");
+    expect(entry.opts.maxAge).toBeGreaterThan(0);
+  });
+
+  it("sets secure=false on HTTP (localhost)", async () => {
+    const cookies = fakeCookies();
+    await writeSession(cookies, fakeEventHttp, TEST_SECRET, sampleSession);
+    const entry = cookies._store.get(SESSION_COOKIE)!;
+    expect(entry.opts.secure).toBe(false);
   });
 });
 
 describe("destroySession", () => {
-  it("removes the session so a subsequent read returns null", async () => {
-    const kv = fakeKv();
-    await writeSession(kv as never, "sid-del", sampleSession);
-    await destroySession(kv as never, "sid-del");
-    expect(await readSession(kv as never, "sid-del")).toBeNull();
-  });
-
-  it("is idempotent — does not throw for a non-existent session", async () => {
-    const kv = fakeKv();
-    await expect(destroySession(kv as never, "missing-id")).resolves.toBeUndefined();
+  it("clears the session cookie", () => {
+    const cookies = fakeCookies();
+    cookies.set(SESSION_COOKIE, "some-value", {});
+    destroySession(cookies, fakeEvent);
+    expect(cookies._store.has(SESSION_COOKIE)).toBe(false);
   });
 });
 

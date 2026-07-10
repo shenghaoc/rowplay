@@ -33,7 +33,7 @@ export interface ComparableContext {
   distance: number;
   /** Total elapsed time in seconds. */
   time: number;
-  /** Concept2 workout_type string (may be absent; D1 columns are string | null). */
+  /** Concept2 workout_type string (may be absent from a list payload). */
   workoutType?: string | null;
 }
 

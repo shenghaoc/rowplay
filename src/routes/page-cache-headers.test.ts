@@ -11,19 +11,9 @@ vi.mock("$lib/server/data", () => ({
   loadWorkoutList: vi.fn().mockResolvedValue([]),
   loadDashboardAggregates: vi.fn().mockResolvedValue({}),
   loadWorkoutDetail: vi.fn().mockResolvedValue({ strokes: [] }),
-  loadAnnotations: vi.fn().mockResolvedValue([]),
   loadHomeTimezone: vi.fn().mockResolvedValue("UTC"),
   loadAnnualGoal: vi.fn().mockResolvedValue(null),
-  syncStatus: vi.fn().mockResolvedValue(null),
   listQueryFromEvent: vi.fn().mockReturnValue({}),
-}));
-
-vi.mock("$lib/server/db", () => ({
-  isWorkoutPublished: vi.fn().mockResolvedValue(false),
-}));
-
-vi.mock("$lib/server/leaderboard", () => ({
-  loadBoards: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("$lib/firstRun", () => ({
@@ -40,8 +30,6 @@ vi.mock("$lib/workoutQuery", () => ({
 
 import { load as dashboardLoad } from "../routes/dashboard/+page.server";
 import { load as replayLoad } from "../routes/replay/[id]/+page.server";
-import { load as settingsLoad } from "../routes/settings/+page.server";
-import { load as leaderboardLoad } from "../routes/leaderboard/+page.server";
 
 /** Build a minimal RequestEvent with header tracking. */
 function fakeEvent(opts: { demo?: boolean; user?: object | null } = {}) {
@@ -92,27 +80,6 @@ describe("page route cache-control headers", () => {
     const event = fakeEvent({ demo: true, user: null }) as any;
     event.params = { id: "1001" };
     await replayLoad(event);
-    expect(event._setHeaders["cache-control"]).toBeUndefined();
-  });
-
-  it("settings sets cache-control: private, no-store for authenticated users", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const event = fakeEvent() as any;
-    await settingsLoad(event);
-    expect(event._setHeaders["cache-control"]).toBe("private, no-store");
-  });
-
-  it("leaderboard sets cache-control: private, no-store for authenticated users", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const event = fakeEvent() as any;
-    await leaderboardLoad(event);
-    expect(event._setHeaders["cache-control"]).toBe("private, no-store");
-  });
-
-  it("leaderboard does NOT set cache-control in demo mode (cacheable)", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const event = fakeEvent({ demo: true, user: null }) as any;
-    await leaderboardLoad(event);
     expect(event._setHeaders["cache-control"]).toBeUndefined();
   });
 

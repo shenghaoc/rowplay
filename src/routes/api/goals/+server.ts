@@ -1,31 +1,51 @@
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import type { AnnualGoalKind } from "$lib/analytics";
-import { currentUtcYear } from "$lib/datetime";
 import { loadAnnualGoal, saveAnnualGoal } from "$lib/server/data";
+import type { AnnualGoalKind } from "$lib/analytics";
 
 export const GET: RequestHandler = async (event) => {
-  const year = parseYear(event.url.searchParams.get("year"));
+  const raw = event.url.searchParams.get("year");
+  const parsed = raw == null ? NaN : Number(raw);
+  const year = Number.isInteger(parsed) && parsed > 0 ? parsed : new Date().getFullYear();
   const goal = await loadAnnualGoal(event, year);
-  return json({ goal }, { headers: { "cache-control": "private, no-store" } });
+  return json(goal);
 };
 
 export const PUT: RequestHandler = async (event) => {
-  const body = (await event.request.json()) as {
+  let body: unknown;
+  try {
+    body = await event.request.json();
+  } catch {
+    throw error(400, "Invalid JSON body.");
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw error(400, "Expected a JSON object.");
+  }
+  const {
+    year: requestedYear,
+    kind: requestedKind,
+    target: requestedTarget,
+  } = body as {
     year?: number;
-    kind?: AnnualGoalKind;
+    kind?: string;
     target?: number;
   };
-  const year = typeof body.year === "number" ? body.year : currentUtcYear();
-  if (body.kind !== "meters" && body.kind !== "hours") throw error(400, "Invalid goal kind.");
-  if (typeof body.target !== "number" || body.target <= 0) throw error(400, "Invalid target.");
-  const goal = { year, kind: body.kind, target: body.target };
+  const year =
+    typeof requestedYear === "number" && Number.isInteger(requestedYear) && requestedYear > 0
+      ? requestedYear
+      : new Date().getFullYear();
+  if (requestedKind !== "meters" && requestedKind !== "hours") {
+    throw error(400, 'Invalid goal kind. Must be "meters" or "hours".');
+  }
+  if (
+    typeof requestedTarget !== "number" ||
+    !Number.isFinite(requestedTarget) ||
+    requestedTarget <= 0
+  ) {
+    throw error(400, "Invalid or missing target. Must be a positive number.");
+  }
+  const kind = requestedKind as AnnualGoalKind;
+  const goal = { year, kind, target: requestedTarget };
   await saveAnnualGoal(event, goal);
-  return json({ goal }, { headers: { "cache-control": "private, no-store" } });
+  return json({ goal });
 };
-
-function parseYear(raw: string | null): number {
-  if (raw == null) return currentUtcYear();
-  const y = parseInt(raw, 10);
-  return Number.isFinite(y) ? y : currentUtcYear();
-}

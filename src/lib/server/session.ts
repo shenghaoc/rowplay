@@ -1,4 +1,5 @@
-import type { KVNamespace } from "@cloudflare/workers-types";
+import type { Cookies } from "@sveltejs/kit";
+import { sealToken, openToken } from "./tokenCrypto";
 
 export interface SessionUser {
   id: number;
@@ -24,7 +25,7 @@ export interface SessionData {
   tokens: OAuthTokens;
   /**
    * "Bring your own token" sessions: `tokens.accessToken` is intentionally
-   * empty in KV. The personal token lives sealed in `rp_tok` and is opened only
+   * empty. The personal token lives sealed in `rp_tok` and is opened only
    * in memory for server-side Concept2 reads.
    */
   personal?: boolean;
@@ -37,48 +38,80 @@ export function getHomeTimezone(session: SessionData): string | undefined {
   return tz || undefined;
 }
 
+export const SESSION_COOKIE = "rp_session";
+export const OAUTH_STATE_COOKIE = "rp_oauth_state";
+/**
+ * Holds the athlete's personal token, sealed with `SESSION_SECRET`. httpOnly, so
+ * it is never readable by client JS (BYOT privacy).
+ */
+export const TOKEN_COOKIE = "rp_tok";
+
+/** Cookie options shared across session cookies. */
+function cookieOpts(event: { url: URL }) {
+  return {
+    path: "/",
+    httpOnly: true,
+    secure: event.url.protocol === "https:",
+    sameSite: "lax" as const,
+    maxAge: 60 * 60 * 24 * 30,
+  };
+}
+
+/**
+ * Seal session data into an encrypted cookie value using SESSION_SECRET.
+ * The cookie is self-contained — no server-side storage needed.
+ */
+export async function sealSession(secret: string, data: SessionData): Promise<string> {
+  return sealToken(secret, JSON.stringify(data));
+}
+
+/**
+ * Open a session from an encrypted cookie value. Returns null if the cookie
+ * is missing, tampered, or encrypted with a different secret.
+ */
+export async function openSession(secret: string, sealed: string): Promise<SessionData | null> {
+  const json = await openToken(secret, sealed);
+  if (!json) return null;
+  try {
+    return JSON.parse(json) as SessionData;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write session data to the encrypted cookie. Replaces any existing session.
+ */
+export async function writeSession(
+  cookies: Cookies,
+  event: { url: URL },
+  secret: string,
+  data: SessionData,
+): Promise<string> {
+  const sealed = await sealSession(secret, data);
+  cookies.set(SESSION_COOKIE, sealed, cookieOpts(event));
+  return sealed;
+}
+
+/**
+ * Destroy the session by clearing the cookie.
+ */
+export function destroySession(cookies: Cookies, event: { url: URL }): void {
+  cookies.delete(SESSION_COOKIE, cookieOpts(event));
+}
+
+/**
+ * Set or clear the home timezone in the session cookie.
+ */
 export async function setHomeTimezone(
-  kv: KVNamespace,
-  sessionId: string,
+  cookies: Cookies,
+  event: { url: URL },
+  secret: string,
   session: SessionData,
   tz: string | undefined,
 ): Promise<void> {
   const next: SessionData = { ...session };
   if (tz?.trim()) next.homeTimezone = tz.trim();
   else delete next.homeTimezone;
-  await writeSession(kv, sessionId, next);
-}
-
-const PREFIX = "sess:";
-/** Sessions live 30 days; refreshed on each use. */
-const TTL_SECONDS = 60 * 60 * 24 * 30;
-
-export const SESSION_COOKIE = "rp_session";
-export const OAUTH_STATE_COOKIE = "rp_oauth_state";
-/**
- * Holds the athlete's personal token, sealed with `SESSION_SECRET`. httpOnly, so
- * it is never readable by client JS and never stored in KV/D1 (BYOT privacy).
- */
-export const TOKEN_COOKIE = "rp_tok";
-
-export function newSessionId(): string {
-  return crypto.randomUUID() + crypto.randomUUID().replace(/-/g, "");
-}
-
-export async function readSession(kv: KVNamespace, id: string): Promise<SessionData | null> {
-  const raw = await kv.get(PREFIX + id);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as SessionData;
-  } catch {
-    return null;
-  }
-}
-
-export async function writeSession(kv: KVNamespace, id: string, data: SessionData): Promise<void> {
-  await kv.put(PREFIX + id, JSON.stringify(data), { expirationTtl: TTL_SECONDS });
-}
-
-export async function destroySession(kv: KVNamespace, id: string): Promise<void> {
-  await kv.delete(PREFIX + id);
+  await writeSession(cookies, event, secret, next);
 }

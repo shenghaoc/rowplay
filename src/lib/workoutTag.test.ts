@@ -146,18 +146,8 @@ describe("autoDetectTag", () => {
 });
 
 describe("resolveTag", () => {
-  it("prefers a valid userTag override", () => {
-    const w = base({ userTag: "interval", distance: 500, time: 100, pace: 100 });
-    expect(resolveTag(w)).toBe("interval");
-  });
-
-  it("falls back to auto when userTag is invalid", () => {
-    const w = base({ userTag: "not-a-tag", distance: 500, time: 100, pace: 100 });
-    expect(resolveTag(w, { medianPaceSecs: 120 })).toBe("race-piece");
-  });
-
-  it("falls back to auto when userTag is null", () => {
-    const w = base({ userTag: null, distance: 500, time: 100, pace: 100 });
+  it("uses automatic classification from the live workout payload", () => {
+    const w = base({ distance: 500, time: 100, pace: 100 });
     expect(resolveTag(w, { medianPaceSecs: 120 })).toBe("race-piece");
   });
 });

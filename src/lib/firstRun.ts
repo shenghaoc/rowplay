@@ -4,12 +4,7 @@ type StorageLike = Pick<typeof safeStorage, "getItem" | "setItem" | "removeItem"
 
 export type FirstRunSurface = "landing" | "dashboard";
 
-export const DASHBOARD_HINT_IDS = [
-  "latestReplay",
-  "criticalPower",
-  "workoutFilters",
-  "leaderboardGhost",
-] as const;
+export const DASHBOARD_HINT_IDS = ["latestReplay", "criticalPower", "workoutFilters"] as const;
 
 export type DashboardHintId = (typeof DASHBOARD_HINT_IDS)[number];
 

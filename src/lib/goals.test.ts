@@ -59,6 +59,18 @@ describe("parseGoalsCookie", () => {
     expect(parseGoalsCookie(raw)).toBeNull();
   });
 
+  it("returns null for non-finite targets and invalid years", () => {
+    expect(
+      parseGoalsCookie(JSON.stringify({ year: 2026, kind: "meters", target: null })),
+    ).toBeNull();
+    expect(
+      parseGoalsCookie(JSON.stringify({ year: 2026.5, kind: "meters", target: 500000 })),
+    ).toBeNull();
+    expect(
+      parseGoalsCookie(JSON.stringify({ year: 0, kind: "meters", target: 500000 })),
+    ).toBeNull();
+  });
+
   it("returns null for non-numeric year", () => {
     const raw = JSON.stringify({ year: "2026", kind: "meters", target: 500000 });
     expect(parseGoalsCookie(raw)).toBeNull();
@@ -79,5 +91,13 @@ describe("serializeGoalsCookie", () => {
   it("round-trips through parseGoalsCookie for hours", () => {
     const goal = { year: 2027, kind: "hours" as const, target: 200 };
     expect(parseGoalsCookie(serializeGoalsCookie(goal))).toEqual(goal);
+  });
+
+  it("scopes authenticated goals to their owner", () => {
+    const goal = { year: 2027, kind: "hours" as const, target: 200 };
+    const raw = serializeGoalsCookie(goal, 7);
+    expect(parseGoalsCookie(raw, 7)).toEqual(goal);
+    expect(parseGoalsCookie(raw, 8)).toBeNull();
+    expect(parseGoalsCookie(raw)).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import type { PageServerLoad } from "./$types";
-import { redirect } from "@sveltejs/kit";
+import { isHttpError, redirect } from "@sveltejs/kit";
 import { todayKeyForTz } from "$lib/datetime";
 import {
   listQueryFromEvent,
@@ -8,9 +8,11 @@ import {
   loadHomeTimezone,
   loadWorkoutList,
   loadWorkouts,
-  syncStatus,
 } from "$lib/server/data";
+import { createLogger } from "$lib/server/logger";
 import { firstRunEligible } from "$lib/firstRun";
+
+const logger = createLogger(console);
 
 export const load: PageServerLoad = async (event) => {
   if (!event.locals.demo && !event.locals.user) {
@@ -23,13 +25,24 @@ export const load: PageServerLoad = async (event) => {
   }
 
   const listQuery = listQueryFromEvent(event);
-  const [workouts, listWorkouts, aggregates] = await Promise.all([
-    loadWorkouts(event),
-    loadWorkoutList(event, listQuery),
-    loadDashboardAggregates(event),
-  ]);
-  const sync = event.locals.demo ? null : await syncStatus(event).catch(() => null);
-  const partialSync = !event.locals.demo && !!sync && !sync.backfillDone;
+
+  let workouts: Awaited<ReturnType<typeof loadWorkouts>> = [];
+  let listWorkouts: Awaited<ReturnType<typeof loadWorkoutList>> = [];
+  let aggregates: Awaited<ReturnType<typeof loadDashboardAggregates>> = null;
+
+  try {
+    [workouts, listWorkouts, aggregates] = await Promise.all([
+      loadWorkouts(event),
+      loadWorkoutList(event, listQuery),
+      loadDashboardAggregates(event),
+    ]);
+  } catch (e) {
+    if (isHttpError(e)) throw e;
+    // Concept2 API failure — return empty data so the dashboard renders
+    // instead of crashing with a 500 page.
+    logger.error("[dashboard] workout fetch failed:", e instanceof Error ? e.message : String(e));
+  }
+
   // Resolve the home timezone first so the calendar's right edge ("today") is
   // the athlete's local day, not UTC — otherwise athletes east of UTC see the
   // grid end on yesterday after local midnight. (Demo mode has no server-side
@@ -43,13 +56,11 @@ export const load: PageServerLoad = async (event) => {
     listWorkouts,
     listQuery,
     aggregates,
-    sync,
     demo: event.locals.demo,
     firstRunEligible: firstRunEligible(event.locals.demo, event.locals.user),
     calendarEndDay,
     annualGoal,
     goalYear,
     homeTimezone,
-    partialSync,
   };
 };

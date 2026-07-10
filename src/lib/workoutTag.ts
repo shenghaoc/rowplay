@@ -158,24 +158,7 @@ export function autoDetectTag(workout: TaggableWorkout, ctx?: TagContext): Worko
   return "unknown";
 }
 
-/** Effective tag: valid user override, otherwise auto-detected. */
+/** Tag derived from the live Concept2 workout payload. */
 export function resolveTag(workout: TaggableWorkout, ctx?: TagContext): WorkoutTag {
-  if (isValidWorkoutTag(workout.userTag)) return workout.userTag;
   return autoDetectTag(workout, ctx);
-}
-
-export function tagBadgeClass(tag: WorkoutTag): string {
-  switch (tag) {
-    case "steady-state":
-      return "badge-info";
-    case "race-piece":
-    case "time-trial":
-      return "badge-success";
-    case "interval":
-      return "badge-warning";
-    case "warmup-cooldown":
-      return "badge-neutral";
-    default:
-      return "badge-ghost";
-  }
 }

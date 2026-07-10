@@ -4,10 +4,7 @@
 	import SportIcon from '$components/SportIcon.svelte';
 	import { base } from '$app/paths';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import GitCompare from '@lucide/svelte/icons/git-compare';
 	import type { Workout } from '$lib/types';
-	import WorkoutTagBadge from '$components/WorkoutTagBadge.svelte';
-	import type { WorkoutTag } from '$lib/workoutTag';
 	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
 	import { get } from 'svelte/store';
 	import { getI18nContext } from '$lib/i18n.svelte';
@@ -19,31 +16,20 @@
 		workouts: Workout[];
 		/** Above this many rows, switch to windowed (virtual) rendering. */
 		threshold?: number;
-		/** First workout selected for head-to-head compare (dashboard). */
-		compareAnchor?: number | null;
-		/** Called when the compare control on a row is activated. */
-		onCompare?: (w: Workout) => void;
 		/** Workout ids that hold a standard-distance PB. */
 		pbIds?: Set<number>;
 		/** Subset of pbIds newly earned since the last sync. */
 		newPbIds?: Set<number>;
 		/** Rows recently added by live mode (fade-in animation). */
 		newEntryIds?: Set<number>;
-		/** Athlete median pace for tag auto-detection rules. */
-		medianPaceSecs?: number;
-		onTagSaved?: (workoutId: number, userTag: WorkoutTag | null) => void;
 	}
 
 	let {
 		workouts,
 		threshold = 60,
-		compareAnchor = null,
-		onCompare,
 		pbIds = new Set(),
 		newPbIds = new Set(),
-		newEntryIds = new Set(),
-		medianPaceSecs,
-		onTagSaved
+		newEntryIds = new Set()
 	}: Props = $props();
 
 	const ROW = 64; // px, must match .row min-height below
@@ -89,7 +75,6 @@
 	<div class="rowmain">
 		<div class="rowtop">
 			<strong>{w.workoutType || SPORT_LABEL[w.sport]}</strong>
-			<WorkoutTagBadge workout={w} {medianPaceSecs} {onTagSaved} />
 			{#if pbIds.has(w.id)}
 				<span class="pbchip" class:new={newPbIds.has(w.id)}>{newPbIds.has(w.id) ? t('dashboard.pbNew') : t('dashboard.pbTag')}</span>
 			{/if}
@@ -102,23 +87,6 @@
 		</div>
 	</div>
 	<div class="actions">
-		{#if onCompare}
-			<button
-				type="button"
-				class="cmpbtn"
-				class:active={compareAnchor === w.id}
-				aria-pressed={compareAnchor === w.id}
-				title={compareAnchor == null ? t('workoutList.comparePick') : t('workoutList.compareWith')}
-				aria-label={t('workoutList.compare')}
-				onclick={(e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					onCompare(w);
-				}}
-			>
-				<GitCompare size={16} />
-			</button>
-		{/if}
 		<span class="play" aria-hidden="true"><ChevronRight size={18} /></span>
 	</div>
 {/snippet}
@@ -285,24 +253,6 @@
 		display: flex;
 		align-items: center;
 		color: var(--text-dim);
-	}
-	.cmpbtn {
-		pointer-events: auto;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0.35rem;
-		border: var(--bd);
-		border-radius: var(--r-ctrl);
-		background: var(--paper);
-		color: var(--ink-2);
-		cursor: pointer;
-	}
-	.cmpbtn:hover,
-	.cmpbtn.active {
-		color: var(--live);
-		border-color: var(--live);
-		background: color-mix(in srgb, var(--live) 10%, var(--paper));
 	}
 	@media (max-width: 720px) {
 		.vscroll {

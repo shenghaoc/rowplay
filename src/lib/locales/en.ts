@@ -129,15 +129,15 @@ export const en = {
     feat2Title: "Split analytics",
     feat2Body: "Pace, stroke rate, power and HR over time — across all three machines.",
     feat3Title: "On the edge",
-    feat3Body: "Served from Cloudflare with cached stroke data for instant replays.",
+    feat3Body: "Served from Cloudflare with live Concept2 data and instant replays.",
     tourEyebrow: "First run",
     tourTitle: "Four things to try",
     tourBody:
-      "Start with the dashboard, open a replay, race a ghost from the leaderboard, then export the data you want to inspect elsewhere.",
+      "Start with the dashboard, open a replay, explore a past-session ghost, then export the data you want to inspect elsewhere.",
     tourDashboard: "Dashboard: totals, trends and PBs",
     tourReplay: "Replay: synchronized course and gauges",
-    tourGhost: "Ghost racing: chase a past or rival effort",
-    tourExport: "Export: CSV, JSON or replay files",
+    tourGhost: "Ghost racing: chase a past effort or target pace",
+    tourExport: "Export: CSV, JSON or TCX",
     tourDismiss: "Dismiss first-run tour",
   },
   docs: {
@@ -153,14 +153,14 @@ export const en = {
       metrics: "What do pace, watts, and stroke rate mean?",
       charts: "How to read this chart",
       troubleshooting: "Missing or confusing data? See troubleshooting",
-      workflows: "Learn how leaderboards and ghost racing work",
+      workflows: "Learn replay, ghost-racing, and export workflows",
     },
     sections: {
       overview: {
         navTitle: "Overview",
         markdown: `# rowplay user guide
 
-rowplay turns your indoor rowing, skiing, and riding workouts into something you can explore: a dashboard of totals and trends, a stroke-by-stroke replay, side-by-side comparisons, and friendly leaderboards.
+rowplay turns your indoor rowing, skiing, and riding workouts into something you can explore: a dashboard of totals and trends and a stroke-by-stroke replay.
 
 It works with workouts recorded on Concept2 machines — the RowErg (rowing machine), SkiErg, and BikeErg — and reads them from the free Concept2 online logbook. You do not need to know any rowing jargon to start: this guide explains every term it uses.
 
@@ -168,16 +168,14 @@ It works with workouts recorded on Concept2 machines — the RowErg (rowing mach
 
 - **Dashboard** — totals, trends, personal bests, and training load at a glance.
 - **Replay** — watch any workout play back stroke by stroke, with pace, stroke rate, power, and heart-rate charts in sync.
-- **Compare** — put two workouts side by side, split by split.
-- **Leaderboards** — publish a result and race other athletes as on-screen "ghosts".
 
 ## Guide sections
 
-- [Getting started](/docs/getting-started) — demo mode, connecting your logbook, your first sync.
+- [Getting started](/docs/getting-started) — demo mode and connecting your logbook.
 - [Rowing basics](/docs/rowing-metrics) — strokes, splits, and the other terms you will meet.
 - [Pace, splits & watts](/docs/pace-splits-watts) — what the numbers mean and how they relate.
 - [Charts & progress](/docs/charts-and-progress) — how to read the dashboard panels.
-- [Common workflows](/docs/workflows) — replaying, ghost racing, comparing, sharing, exporting.
+- [Common workflows](/docs/workflows) — replaying, racing a past session, and exporting.
 - [FAQ](/docs/faq) — quick answers about accounts, privacy, and data.
 - [Troubleshooting](/docs/troubleshooting) — missing data, odd numbers, display issues.
 
@@ -194,7 +192,7 @@ rowplay starts in demo mode: with no account connected, every page is filled wit
 1. Open the [dashboard](/dashboard).
 2. Pick any workout from the list.
 3. Press **Replay** and try the play, pause, scrub, and speed controls.
-4. Open the [leaderboards](/leaderboard) and try racing a ghost.
+4. Use the dashboard filters, then open another replay to explore a different workout.
 
 ## Connect your own workouts
 
@@ -204,17 +202,13 @@ Your workouts live in the Concept2 logbook — the free online diary that Concep
 2. Open **Edit Profile → Applications** and copy your personal API token.
 3. Back in rowplay, open [Use a token](/auth/token).
 4. Paste the token and submit.
-5. On the dashboard, press **Sync** to load your workout history.
+5. Open the dashboard. rowplay fetches your full workout history directly from the Concept2 API.
 
-The token is sent once over an encrypted connection and kept only in a protected browser cookie. rowplay's servers cache workout data so pages load fast, but never store the token itself.
-
-## Your first sync
-
-The first sync loads recent workouts right away and keeps filling in older history in the background. Until it finishes, long-term totals and personal bests may look incomplete — that is normal. If something still looks off later, see [Troubleshooting](/docs/troubleshooting).
+The token is sent once over an encrypted connection and kept only in a protected browser cookie. rowplay does not store workout data or tokens on its servers.
 
 ## Disconnecting
 
-Open [Data](/settings) at any time to disconnect. This clears your session and removes your cached workout data from rowplay. Your Concept2 logbook is never modified.`,
+Use the **Log out** button in the header to disconnect. [Data](/settings) keeps export and home-timezone controls. Your Concept2 logbook is never modified.`,
       },
       rowingMetrics: {
         navTitle: "Rowing basics",
@@ -301,7 +295,7 @@ The trend chart follows one metric — pace, distance, stroke rate, or distance 
 
 ## Personal bests
 
-The PB panel tracks your fastest results at standard distances (500m, 1k, 2k, 5k, 6k, 10k, and longer). Make sure a full sync has finished before trusting all-time bests — see [Troubleshooting](/docs/troubleshooting).
+The PB panel tracks your fastest results at standard distances (500m, 1k, 2k, 5k, 6k, 10k, and longer) from your live Concept2 history.
 
 ## Training calendar & intensity
 
@@ -339,40 +333,23 @@ In 3D, the **Quality** selector picks low, medium, high, or ultra graphics. Ultr
 
 Per-stroke data is used when Concept2 provides it. Workouts without stroke data fall back to split-based replay, so the course still plays back.
 
-## Add coaching notes
-
-While paused at a moment in a replay, add a note ("rushing the slide here"). Notes pin to the timeline, so you — or anyone you share the replay with — can jump straight to them.
-
 ## Race a ghost
 
 A ghost is a past effort that races alongside you on screen.
 
-1. Open the [leaderboards](/leaderboard) and pick a sport and distance.
-2. Press **Race** next to an entry.
-3. Your own replay of that piece now shows the rival as a second boat to chase.
+1. Open one of your workouts in Replay.
+2. Choose a comparable earlier session in the ghost controls.
+3. The earlier effort appears as a second boat to chase.
 
 You can also race your own earlier results to see exactly where a personal-best attempt won or lost time.
 
-## Compare two workouts
+## Export
 
-In the dashboard workout list, use the compare button on one workout, then pick a second. The compare view lines both efforts up split by split.
-
-## Publish to a leaderboard
-
-Standard-distance results (500m, 1k, 2k, 5k, 6k, 10k, half marathon) can be published to the rowplay leaderboard from the replay page. Publishing is opt-in, reversible, and never changes anything in your Concept2 logbook.
-
-## Share and export
-
-- **Share** on a replay creates a public, read-only link — handy for coaches.
-- **Export** on the [Data](/settings) page downloads your logbook as CSV or JSON, plus per-workout TCX files for workouts with stroke data.
+[Data](/settings) downloads your live logbook as CSV or JSON, plus per-workout TCX files for workouts with stroke data.
 
 ## Keep data fresh
 
-**Sync** on the dashboard pulls new results on demand. **Live mode** (also on the dashboard) polls the logbook on a schedule and notifies you when a new workout lands — handy right after a session.
-
-## Import heart rate
-
-If a workout has no heart-rate data but your watch recorded it, open the replay and use **Import heart rate** to merge a CSV, TCX, or FIT export from the watch into the workout.`,
+Dashboard and replay data are fetched live from Concept2. **Live mode** can also poll the logbook and notify you when a new workout lands — handy right after a session.`,
       },
       faq: {
         navTitle: "FAQ",
@@ -388,11 +365,11 @@ The token is transmitted once over HTTPS and sealed into a protected, httpOnly b
 
 ## Can other people see my workouts?
 
-No — your dashboard and replays are private by default. Others can only see a workout if you publish it to a leaderboard or share its public link, and both are reversible.
+No — your dashboard and replays are private. rowplay has no public sharing or leaderboard feature.
 
 ## Does rowplay change my Concept2 logbook?
 
-Never. rowplay only reads. Publishing to a rowplay leaderboard or deleting cached data here does not modify the source logbook entry.
+Never. rowplay only reads and does not modify the source logbook entry.
 
 ## Which machines are supported?
 
@@ -416,7 +393,7 @@ English, Deutsch, Español, Français, 日本語, and 中文 — switch from the
 
 ## My totals or personal bests look wrong
 
-Most often the full history has not finished syncing. The first sync backfills older workouts in the background; until it completes, anything computed "across all time" can be incomplete. Check [Data](/settings) for sync status and run a full sync if needed.
+Reload the dashboard to fetch the latest Concept2 history, then confirm the workout appears in your Concept2 logbook.
 
 ## A pace looks way off
 
@@ -433,7 +410,7 @@ That logbook entry has no per-stroke data — common for older results and some 
 
 ## Heart rate is missing
 
-The logbook only has heart rate when a belt or watch was connected during the workout. If a watch recorded it separately, use **Import heart rate** on the replay page to merge a CSV, TCX, or FIT export into the workout.
+The logbook only has heart rate when a belt or watch was connected during the workout. Confirm that the source workout includes it in Concept2.
 
 ## Sync fails or the session expires
 
@@ -441,7 +418,7 @@ Personal tokens can expire or be revoked. Reconnect at [Use a token](/auth/token
 
 ## A new workout does not appear
 
-First confirm the workout reached your Concept2 logbook (it must upload from the machine or the ErgData app). Then press **Sync** on the dashboard, or enable live mode to poll automatically.
+First confirm the workout reached your Concept2 logbook (it must upload from the machine or the ErgData app). Then reload the dashboard, or enable live mode to poll automatically.
 
 ## Display issues
 
@@ -478,7 +455,7 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     sectionWorkoutsEyebrow: "Workouts",
     sectionWorkouts: "Find a replay",
     sectionWorkoutsBody:
-      "Filter, tag, compare and open workouts without digging through the deeper analysis panels.",
+      "Filter and open workouts without digging through the deeper analysis panels.",
     sectionRecordsEyebrow: "Goals",
     sectionRecords: "Goals, badges & PBs",
     sectionRecordsBody:
@@ -1165,11 +1142,12 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     eyebrow: "Privacy & control",
     dataTitle: "What we store",
     dataNote:
-      "rowplay reads your Concept2 workouts on demand and caches them on Cloudflare so replays load instantly. Your API token is sealed into the httpOnly rp_tok cookie with SESSION_SECRET. KV stores session identity/state only; D1 caches workout and replay data, never the token. Disconnecting or deleting data clears cached user data and session state.",
+      "rowplay reads your Concept2 workouts on demand from the Concept2 API. Your API token is sealed into the httpOnly rp_tok cookie with SESSION_SECRET. Sessions are stored in encrypted cookies; no server-side database is used. Log out to clear your session.",
     factWorkouts: "{n} workouts available to export",
     factDemo: "Demo mode — sample data only, nothing is persisted.",
-    factCache: "D1 stores cached workout/replay data — never the token.",
-    factSession: "KV stores session identity/state; the token is sealed in httpOnly rp_tok.",
+    factCache: "Workout data is fetched live from the Concept2 API — no server-side cache.",
+    factSession:
+      "Sessions are stored in encrypted cookies; the token is sealed in httpOnly rp_tok.",
     exportTitle: "Export logbook",
     exportNote:
       "Download your full history as CSV or JSON. Per-workout TCX (stroke data) opens in Garmin, Strava, or TrainingPeaks.",
@@ -1216,25 +1194,26 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     introBefore: "Paste a personal API token from your Concept2 logbook (",
     introLink: "Edit Profile → Applications",
     introAfter:
-      "). Paste it here once — rowplay sends it to the Worker over HTTPS, validates it, seals it into the httpOnly rp_tok cookie, and uses it only for server-side logbook reads. The token is never stored in KV or D1.",
+      "). Paste it here once — rowplay sends it to the Worker over HTTPS, validates it, seals it into the httpOnly rp_tok cookie, and uses it only for server-side logbook reads. The token is never stored in any database.",
     trustTitle: "How rowplay handles the token",
     trustAccessTitle: "Access:",
     trustAccessBody:
       "a personal Concept2 token authenticates as you; rowplay uses it only to read your profile, workouts and stroke data server-side.",
     trustStoredTitle: "Storage:",
     trustStoredBody:
-      "the validated token is sealed into the httpOnly rp_tok cookie, not localStorage, KV or D1.",
+      "the validated token is sealed into the httpOnly rp_tok cookie, not localStorage or any server-side store.",
     trustDisconnectTitle: "Disconnect:",
-    trustDisconnectBody:
-      "log out or delete account data from Data to clear the token cookie, session and private cache.",
+    trustDisconnectBody: "use the header's Log out button to clear the token cookie and session.",
     trustCacheTitle: "Cache:",
     trustCacheBody:
-      "D1 caches workout summaries and replay detail while connected; public shares or leaderboard entries are created only when you publish.",
+      "Workout data is fetched live from the Concept2 API; rowplay does not create public shares or leaderboard entries.",
     apiToken: "API token",
     placeholder: "Paste your token",
     connect: "Connect with token",
     connecting: "Connecting…",
     rejected: "Concept2 rejected that token. Check it and try again.",
+    serverUnavailable:
+      "Could not reach Concept2. Their servers may be temporarily unavailable. Please try again later.",
     serverMisconfigured:
       "This deployment isn’t set up for token sign-in (missing SESSION_SECRET). Contact the site owner.",
     empty: "Paste your Concept2 API token.",

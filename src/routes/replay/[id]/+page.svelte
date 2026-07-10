@@ -36,11 +36,9 @@
 	} from '$lib/analytics';
 	import { avgWatts, fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, SPORT_LABEL } from '$lib/format';
 	import type { Sport, Stroke, Workout, WorkoutDetail } from '$lib/types';
-	import { matchStandardDistance } from '$lib/leaderboard';
 	import { isExrSource } from '$lib/exrSource';
 	import { untrack } from 'svelte';
 	import { constantPaceGhost, parseWorkoutFile } from '$lib/replay/sources';
-	import { isShareToken, type RivalGhostTrace } from '$lib/replay/rivalGhost';
 	import {
 		raceGapMetres,
 		raceGapSeconds,
@@ -64,11 +62,8 @@
 	import Play from '@lucide/svelte/icons/play';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Ghost from '@lucide/svelte/icons/ghost';
-	import GitCompare from '@lucide/svelte/icons/git-compare';
 	import X from '@lucide/svelte/icons/x';
-	import Share2 from '@lucide/svelte/icons/share-2';
 	import ImageDown from '@lucide/svelte/icons/image-down';
-	import Trophy from '@lucide/svelte/icons/trophy';
 	import Heart from '@lucide/svelte/icons/heart';
 	import Binary from '@lucide/svelte/icons/binary';
 	import { downloadRaceCardPng } from '$lib/replay/raceCard';
@@ -77,16 +72,11 @@
 	import { chartTheme, baseOptions, type SeriesConfig, type SeriesRole } from '$lib/chartTheme';
 	import { formatPaceInput, parsePaceInput } from '$lib/paceInput';
 	import SportIcon from '$components/SportIcon.svelte';
-	import WorkoutTagBadge from '$components/WorkoutTagBadge.svelte';
-	import { athleteMedianPace } from '$lib/workoutTag';
-	import type { WorkoutTag } from '$lib/workoutTag';
 	import { page } from '$app/state';
-	import AnnotationPanel from '$components/AnnotationPanel.svelte';
 	import InspectorPanel from '$components/InspectorPanel.svelte';
 	import RepComparisonChart from '$components/RepComparisonChart.svelte';
 	import WorkoutMomentCards from '$components/WorkoutMomentCards.svelte';
 	import { detectReps, repColor, repsHaveHr, type RepMetric } from '$lib/repComparison';
-	import type { Annotation } from '$lib/types';
 	import { analyzeWorkoutMoments } from '$lib/workoutMoments';
 
 	let { data } = $props();
@@ -95,15 +85,6 @@
 	const uiTheme = getThemeContext();
 	const baseDetail = $derived(data.detail as WorkoutDetail);
 	const candidates = $derived(data.candidates as Workout[]);
-	const medianPaceSecs = $derived(athleteMedianPace(candidates));
-	let tagUserOverride = $state<{ id: number; tag: WorkoutTag | null } | null>(null);
-	// Local, mutable copy (save/delete edit it in place). Re-seed from `data`
-	// whenever it changes so navigating between replays shows the right notes
-	// rather than the first workout's, since the component instance is reused.
-	let annotations = $state([] as Annotation[]);
-	$effect(() => {
-		annotations = data.annotations as Annotation[];
-	});
 	const isDemo = $derived(!!data.demo);
 	let hrOverlay = $state<HrOverlay | null>(null);
 	// Workout id the current overlay belongs to. On client-side navigation
@@ -121,9 +102,6 @@
 			hrOverlay && hrOverlayId === baseDetail.id
 				? applyHrImport(baseDetail, hrOverlay.samples, hrOverlay.offset)
 				: baseDetail;
-		if (tagUserOverride && tagUserOverride.id === baseDetail.id) {
-			return { ...base, userTag: tagUserOverride.tag };
-		}
 		return base;
 	});
 	const exrFlagged = $derived(isExrSource(detail));
@@ -148,7 +126,7 @@
 	// uploaded CSV/TCX/FIT file. All three resolve to a ghost stroke array.
 	type CompareMode = 'none' | 'session' | 'pace' | 'file';
 	type GhostRival = {
-		kind: 'session' | 'pace' | 'file' | 'rival';
+		kind: 'session' | 'pace' | 'file';
 		date?: string;
 		distance?: number;
 		name?: string;
@@ -444,10 +422,7 @@
 		};
 	});
 
-	/**
-	 * Leaderboard deep-link: ghostToken (stroke trace) and/or ghostPace (pace ghost).
-	 * With both params, arms pace immediately then upgrades when the trace loads.
-	 */
+	/** Restore a target-pace ghost from a locally-created replay link. */
 	function armPaceGhostFromParams(paceRaw: string, name: string | undefined) {
 		const secs = parsePaceInput(paceRaw);
 		if (secs == null || total <= 0) return false;
@@ -462,44 +437,9 @@
 		return true;
 	}
 
-	async function armGhostFromUrl() {
-		const token = page.url.searchParams.get('ghostToken')?.trim() ?? '';
+	function armGhostFromUrl() {
 		const gp = page.url.searchParams.get('ghostPace');
 		const name = page.url.searchParams.get('ghostName')?.trim();
-		const hasToken = isShareToken(token);
-		const hasPace = !!gp && parsePaceInput(gp) != null && total > 0;
-
-		if (!hasToken && !hasPace) return;
-
-		if (hasToken) {
-			if (hasPace && gp) armPaceGhostFromParams(gp, name);
-			loadingGhost = true;
-			ghostError = '';
-			const gen = ++ghostLoadGen;
-			try {
-				const res = await fetch(`/api/ghost/${token}`);
-				if (gen !== ghostLoadGen) return;
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				const data = (await res.json()) as RivalGhostTrace;
-				if (gen !== ghostLoadGen) return;
-				if (!data.strokes?.length) throw new Error('empty trace');
-				const label = name || data.workoutType || t('leaderboard.race');
-				if (gen !== ghostLoadGen) return;
-				setGhost(data.strokes, label, { kind: 'rival', name: label, hasStrokeData: data.hasStrokeData });
-				compareMode = 'none';
-			} catch {
-				if (gen !== ghostLoadGen) return;
-				if (!hasPace) {
-					setGhost(null, '', null);
-				} else {
-					toast.warning(t('leaderboard.ghostFallbackToast'));
-				}
-			} finally {
-				if (gen === ghostLoadGen) loadingGhost = false;
-			}
-			return;
-		}
-
 		if (gp) armPaceGhostFromParams(gp, name);
 	}
 
@@ -780,10 +720,6 @@
 			return t(key, { ...base, pace: ghostRival.paceLabel });
 		}
 		if (ghostRival.kind === 'file' && ghostRival.name) {
-			const key = won ? 'replay.raceVerdictWinFile' : 'replay.raceVerdictLoseFile';
-			return t(key, { ...base, name: ghostRival.name });
-		}
-		if (ghostRival.kind === 'rival' && ghostRival.name) {
 			const key = won ? 'replay.raceVerdictWinFile' : 'replay.raceVerdictLoseFile';
 			return t(key, { ...base, name: ghostRival.name });
 		}
@@ -1151,78 +1087,6 @@
 		}
 	}
 
-	let sharing = $state(false);
-	let publishing = $state(false);
-	let withdrawing = $state(false);
-	// Whether this piece is currently on the board. Seeded from the server (which
-	// knows about entries published in a past session) and flipped on publish/withdraw.
-	// Writable derived state re-seeds on client-side navigation while still allowing
-	// publish/withdraw handlers to update immediately after their requests complete.
-	let published = $derived(data.published ?? false);
-
-	// Publishing to a board only applies to a signed-in athlete's own
-	// standard-distance piece — demo athletes and off-board distances can't rank.
-	const canPublish = $derived(
-		!data.demo && !!data.user && matchStandardDistance(detail.distance) != null
-	);
-
-	async function publishToLeaderboard() {
-		publishing = true;
-		try {
-			const res = await fetch('/api/leaderboard/publish', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ workoutId: detail.id })
-			});
-			if (res.status === 422) {
-				toast.info(t('leaderboard.publishOffBoard'));
-				return;
-			}
-			if (res.status === 403) {
-				toast.error(t('share.privacyBlocked'));
-				return;
-			}
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const result = (await res.json()) as {
-				board: { sport: Sport; distance: number };
-				rank: number;
-			};
-			published = true;
-			toast.success(
-				t('leaderboard.publishOk', {
-					rank: result.rank,
-					sport: SPORT_LABEL[result.board.sport],
-					distance: fmtDistance(result.board.distance)
-				})
-			);
-		} catch (err) {
-			toast.error(t('leaderboard.publishFailed'), {
-				description: err instanceof Error ? err.message : t('common.tryAgain')
-			});
-		} finally {
-			publishing = false;
-		}
-	}
-
-	async function withdrawFromLeaderboard() {
-		withdrawing = true;
-		try {
-			const res = await fetch('/api/leaderboard/publish', {
-				method: 'DELETE',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ workoutId: detail.id })
-			});
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			published = false;
-			toast.success(t('leaderboard.withdrawOk'));
-		} catch (err) {
-			toast.error(t('leaderboard.withdrawFailed'), {
-				description: err instanceof Error ? err.message : t('common.tryAgain')
-			});
-		} finally {
-			withdrawing = false;
-		}
-	}
 
 	async function onHrFile(e: Event) {
 		const input = e.target as HTMLInputElement;
@@ -1300,41 +1164,6 @@
 		}
 	}
 
-	async function shareReplay() {
-		sharing = true;
-		try {
-			const res = await fetch(`/api/workouts/${detail.id}/share`, { method: 'POST' });
-			if (res.status === 403) {
-				toast.error(t('share.privacyBlocked'));
-				return;
-			}
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const body = (await res.json()) as { url: string };
-			const title = detail.workoutType || detail.sport;
-			if (typeof navigator.share === 'function') {
-				try {
-					await navigator.share({ url: body.url, title });
-					toast.success(t('share.linkReady'));
-					return;
-				} catch (e) {
-					if (e instanceof Error && e.name === 'AbortError') return;
-					throw e;
-				}
-			}
-			if (navigator.clipboard?.writeText) {
-				await navigator.clipboard.writeText(body.url);
-				toast.success(t('share.linkCopied'), { description: t('share.linkReady') });
-			} else {
-				toast.success(body.url, { description: t('share.linkReady') });
-			}
-		} catch (err) {
-			toast.error(t('share.shareFailed'), {
-				description: err instanceof Error ? err.message : t('common.tryAgain')
-			});
-		} finally {
-			sharing = false;
-		}
-	}
 
 	async function downloadRaceCard() {
 		try {
@@ -1349,31 +1178,6 @@
 				description: err instanceof Error ? err.message : t('common.tryAgain')
 			});
 		}
-	}
-
-	// --- Coaching annotations ---
-	async function saveAnnotation(a: { id: number; timestamp: number; text: string }) {
-		const res = await fetch(`/api/workouts/${detail.id}/annotations`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(a)
-		});
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		const { annotation } = (await res.json()) as { annotation: Annotation };
-		if (a.id > 0) {
-			const idx = annotations.findIndex((x) => x.id === a.id);
-			if (idx >= 0) annotations[idx] = annotation;
-		} else {
-			annotations = [...annotations, annotation];
-		}
-	}
-
-	async function deleteAnnotation(id: number) {
-		const res = await fetch(`/api/workouts/${detail.id}/annotations?annotationId=${id}`, {
-			method: 'DELETE'
-		});
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		annotations = annotations.filter((a) => a.id !== id);
 	}
 </script>
 
@@ -1390,61 +1194,22 @@
 		>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
-			<WorkoutTagBadge
-				workout={detail}
-				{medianPaceSecs}
-				onTagSaved={(_id, userTag) => {
-					tagUserOverride = { id: baseDetail.id, tag: userTag };
-				}}
-			/>
 			{#if !detail.hasStrokeData}<span class="badge badge-soft badge-warning">{t('replay.lowRes')}</span>{/if}
 			{#if exrFlagged}
 				<span class="badge badge-soft badge-info" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>
 			{/if}
 		</div>
 		<div class="sharebar">
-			<a class="btn btn-ghost btn-sm" href="/compare?a={detail.id}">
-				<GitCompare size={14} />
-				{t('replay.compareAction')}
-			</a>
-			<button class="btn btn-ghost btn-sm" type="button" disabled={sharing} onclick={shareReplay}>
-				<Share2 size={14} />
-				{sharing ? t('common.loading') : t('share.shareReplay')}
-			</button>
 			<button class="btn btn-ghost btn-sm" type="button" onclick={downloadRaceCard}>
 				<ImageDown size={14} />
 				{t('share.downloadImage')}
 			</button>
-			{#if canPublish}
-				<button
-					class="btn btn-ghost btn-sm"
-					type="button"
-					disabled={publishing}
-					onclick={publishToLeaderboard}
-				>
-					<Trophy size={14} />
-					{publishing ? t('leaderboard.publishing') : t('leaderboard.publish')}
-				</button>
-				{#if published}
-					<button
-						class="btn btn-ghost btn-sm"
-						type="button"
-						disabled={withdrawing}
-						onclick={withdrawFromLeaderboard}
-					>
-						{withdrawing ? t('leaderboard.withdrawing') : t('leaderboard.withdraw')}
-					</button>
-				{/if}
-			{/if}
 		</div>
-		{#if canPublish}
-			<p class="muted small publish-note">{t('leaderboard.publishNote')}</p>
-		{/if}
 	</div>
 
 	<WorkoutMomentCards report={momentReport} sport={detail.sport} onseek={(seconds) => engine?.seek(seconds)} />
 
-	{#if !logbookHasHr}
+	{#if !logbookHasHr && isDemo}
 		<div class="card card-border bg-base-100 shadow-md p-5 hrimport">
 			<div class="hrimport-head">
 				<Heart size={15} />
@@ -1808,15 +1573,6 @@
 			{#if ghostActive}<span class="legend-item"><Ghost size={11} aria-hidden="true" />{t('replay.legendGhost')}</span>{/if}
 		</div>
 	</div>
-
-	<!-- Coaching annotations -->
-	<AnnotationPanel
-		{annotations}
-		currentTime={frame.t}
-		onsave={saveAnnotation}
-		ondelete={deleteAnnotation}
-		onseek={(ts) => engine?.seek(ts)}
-	/>
 
 	<!-- Telemetry traces -->
 	<div class="charts">

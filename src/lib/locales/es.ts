@@ -133,15 +133,15 @@ export const es = {
     feat2Title: "Análisis de parciales",
     feat2Body: "Ritmo, cadencia, potencia y HR a lo largo del tiempo — en las tres máquinas.",
     feat3Title: "En el edge",
-    feat3Body: "Servido desde Cloudflare con datos de palada en caché para replays instantáneos.",
+    feat3Body: "Servido desde Cloudflare con datos en directo de Concept2 para replays detallados.",
     tourEyebrow: "Primer uso",
     tourTitle: "Cuatro cosas que probar",
     tourBody:
-      "Empieza por el panel, abre un replay, compite contra un ghost del leaderboard y exporta los datos que quieras revisar fuera.",
+      "Empieza por el panel, abre un replay, compite contra un esfuerzo anterior y exporta los datos que quieras revisar fuera.",
     tourDashboard: "Panel: totales, tendencias y PBs",
     tourReplay: "Replay: recorrido e indicadores sincronizados",
-    tourGhost: "Ghost racing: persigue un esfuerzo pasado o rival",
-    tourExport: "Exportar: CSV, JSON o archivos de replay",
+    tourGhost: "Ghost racing: persigue un esfuerzo pasado o un ritmo objetivo",
+    tourExport: "Exportar: CSV, JSON o TCX",
     tourDismiss: "Cerrar tour inicial",
   },
   docs: {
@@ -157,14 +157,14 @@ export const es = {
       metrics: "¿Qué significan el ritmo, los vatios y la cadencia?",
       charts: "Cómo leer este gráfico",
       troubleshooting: "¿Datos ausentes o confusos? Consulta la solución de problemas",
-      workflows: "Descubre cómo funcionan las clasificaciones y las carreras fantasma",
+      workflows: "Descubre cómo funcionan las repeticiones, fantasmas y exportaciones",
     },
     sections: {
       overview: {
         navTitle: "Visión general",
         markdown: `# Guía de uso de rowplay
 
-rowplay convierte tus entrenamientos de remo, esquí y bici indoor en algo que puedes explorar: un panel con totales y tendencias, una reproducción palada a palada, comparaciones lado a lado y clasificaciones amistosas.
+rowplay convierte tus entrenamientos de remo, esquí y bici indoor en algo que puedes explorar: un panel con totales y tendencias y una reproducción palada a palada.
 
 Funciona con entrenamientos registrados en máquinas Concept2 — el RowErg (remoergómetro), el SkiErg y el BikeErg — y los lee del cuaderno en línea gratuito de Concept2. No necesitas conocer la jerga del remo para empezar: esta guía explica cada término que usa.
 
@@ -172,16 +172,14 @@ Funciona con entrenamientos registrados en máquinas Concept2 — el RowErg (rem
 
 - **Panel** — totales, tendencias, marcas personales y carga de entrenamiento de un vistazo.
 - **Reproducción** — mira cualquier entrenamiento palada a palada, con gráficos sincronizados de ritmo, cadencia, potencia y frecuencia cardiaca.
-- **Comparar** — pon dos entrenamientos lado a lado, parcial a parcial.
-- **Clasificaciones** — publica un resultado y compite contra otros atletas como «fantasmas» en pantalla.
 
 ## Secciones de la guía
 
-- [Primeros pasos](/docs/getting-started) — modo demo, conectar tu cuaderno, primera sincronización.
+- [Primeros pasos](/docs/getting-started) — modo demo y conectar tu cuaderno.
 - [Conceptos de remo](/docs/rowing-metrics) — paladas, parciales y los demás términos que encontrarás.
 - [Ritmo, parciales y vatios](/docs/pace-splits-watts) — qué significan los números y cómo se relacionan.
 - [Gráficos y progreso](/docs/charts-and-progress) — cómo leer los paneles del panel principal.
-- [Flujos habituales](/docs/workflows) — reproducir, carreras fantasma, comparar, compartir, exportar.
+- [Flujos habituales](/docs/workflows) — reproducir, competir contra una sesión anterior y exportar.
 - [FAQ](/docs/faq) — respuestas rápidas sobre cuentas, privacidad y datos.
 - [Solución de problemas](/docs/troubleshooting) — datos ausentes, números raros, problemas de pantalla.
 
@@ -198,7 +196,7 @@ rowplay arranca en modo demo: sin ninguna cuenta conectada, todas las páginas s
 1. Abre el [panel](/dashboard).
 2. Elige cualquier entrenamiento de la lista.
 3. Pulsa **Reproducir** y prueba los controles de reproducción, pausa, desplazamiento y velocidad.
-4. Abre las [clasificaciones](/leaderboard) y prueba una carrera fantasma.
+4. Usa los filtros del panel y abre otra reproducción.
 
 ## Conecta tus propios entrenamientos
 
@@ -208,17 +206,13 @@ Tus entrenamientos viven en el cuaderno de Concept2 — el diario en línea grat
 2. Abre **Edit Profile → Applications** y copia tu token de API personal.
 3. De vuelta en rowplay, abre [Usar un token](/auth/token).
 4. Pega el token y envíalo.
-5. En el panel, pulsa **Sincronizar** para cargar tu historial de entrenamientos.
+5. Abre el panel. rowplay obtiene todo tu historial directamente de la API de Concept2.
 
-El token se envía una sola vez por una conexión cifrada y se guarda solo en una cookie protegida del navegador. Los servidores de rowplay cachean datos de entrenamientos para que las páginas carguen rápido, pero nunca almacenan el token.
-
-## Tu primera sincronización
-
-La primera sincronización carga los entrenamientos recientes de inmediato y sigue rellenando el historial antiguo en segundo plano. Hasta que termina, los totales de largo plazo y las marcas personales pueden parecer incompletos — es normal. Si algo sigue raro después, consulta la [solución de problemas](/docs/troubleshooting).
+El token se envía una sola vez por una conexión cifrada y se guarda solo en una cookie protegida del navegador. rowplay no guarda entrenamientos ni tokens en sus servidores.
 
 ## Desconectar
 
-Abre [Datos](/settings) en cualquier momento para desconectar. Esto borra tu sesión y elimina tus datos de entrenamiento cacheados de rowplay. Tu cuaderno de Concept2 nunca se modifica.`,
+Usa el botón **Cerrar sesión** de la cabecera para desconectar. [Datos](/settings) conserva las opciones de exportación y zona horaria. Tu cuaderno de Concept2 nunca se modifica.`,
       },
       rowingMetrics: {
         navTitle: "Conceptos de remo",
@@ -343,40 +337,23 @@ En 3D, el selector de **Calidad** elige gráficos bajos, medios, altos o ultra. 
 
 Se usan datos por palada cuando Concept2 los proporciona. Los entrenamientos sin paladas vuelven a un replay basado en splits, así que el recorrido se sigue reproduciendo.
 
-## Añadir notas de entrenador
-
-Con la reproducción pausada en un momento, añade una nota («aquí apresuras el carro»). Las notas se fijan a la línea de tiempo, de modo que tú — o quien reciba la reproducción — puede saltar directamente a ellas.
-
 ## Correr contra un fantasma
 
 Un fantasma es un esfuerzo pasado que rema a tu lado en pantalla.
 
-1. Abre las [clasificaciones](/leaderboard) y elige deporte y distancia.
-2. Pulsa **Competir** junto a una entrada.
-3. Tu propia reproducción de esa pieza muestra ahora al rival como un segundo bote al que perseguir.
+1. Abre uno de tus entrenamientos en Reproducción.
+2. Elige una sesión anterior comparable en los controles de fantasma.
+3. El esfuerzo anterior aparece como una segunda embarcación a perseguir.
 
 También puedes competir contra tus propios resultados anteriores para ver exactamente dónde un intento de marca personal ganó o perdió tiempo.
 
-## Comparar dos entrenamientos
+## Exportar
 
-En la lista de entrenamientos del panel, usa el botón de comparar en un entrenamiento y luego elige un segundo. La vista de comparación alinea ambos esfuerzos parcial a parcial.
-
-## Publicar en una clasificación
-
-Los resultados de distancias estándar (500m, 1k, 2k, 5k, 6k, 10k, medio maratón) pueden publicarse en la clasificación de rowplay desde la página de reproducción. Publicar es opcional, reversible y nunca cambia nada en tu cuaderno de Concept2.
-
-## Compartir y exportar
-
-- **Compartir** en una reproducción crea un enlace público de solo lectura — práctico para entrenadores.
-- **Exportar** en la página de [Datos](/settings) descarga tu cuaderno como CSV o JSON, además de archivos TCX por entrenamiento con datos de paladas.
+[Datos](/settings) descarga tu cuaderno en directo como CSV o JSON, además de TCX por entrenamiento con datos de paladas.
 
 ## Mantener los datos al día
 
-**Sincronizar** en el panel trae los resultados nuevos bajo demanda. El **modo en vivo** (también en el panel) consulta el cuaderno según un horario y te avisa cuando llega un entrenamiento nuevo — práctico justo después de una sesión.
-
-## Importar frecuencia cardiaca
-
-Si un entrenamiento no tiene datos de pulso pero tu reloj sí los registró, abre la reproducción y usa **Importar frecuencia cardiaca** para fusionar una exportación CSV, TCX o FIT del reloj con el entrenamiento.`,
+Los datos del panel y de reproducción se obtienen en directo de Concept2. **Modo en vivo** también puede consultar el cuaderno y avisar de un entrenamiento nuevo.`,
       },
       faq: {
         navTitle: "FAQ",
@@ -392,11 +369,11 @@ El token se transmite una sola vez por HTTPS y se sella en una cookie httpOnly p
 
 ## ¿Pueden otras personas ver mis entrenamientos?
 
-No — tu panel y tus reproducciones son privados por defecto. Otros solo pueden ver un entrenamiento si lo publicas en una clasificación o compartes su enlace público, y ambas cosas son reversibles.
+No — tu panel y tus reproducciones son privados. rowplay no tiene compartición pública ni clasificaciones.
 
 ## ¿rowplay cambia mi cuaderno de Concept2?
 
-Nunca. rowplay solo lee. Publicar en una clasificación de rowplay o borrar datos cacheados aquí no modifica la entrada original del cuaderno.
+Nunca. rowplay solo lee y no modifica la entrada original del cuaderno.
 
 ## ¿Qué máquinas están soportadas?
 
@@ -420,7 +397,7 @@ English, Deutsch, Español, Français, 日本語 y 中文 — se cambian desde l
 
 ## Mis totales o marcas personales parecen incorrectos
 
-Lo más habitual es que el historial completo no haya terminado de sincronizarse. La primera sincronización rellena los entrenamientos antiguos en segundo plano; hasta que termina, todo lo calculado «sobre todo el historial» puede estar incompleto. Revisa el estado de sincronización en [Datos](/settings) y lanza una sincronización completa si hace falta.
+Recarga el panel para obtener el historial más reciente de Concept2 y confirma que el entrenamiento aparece en tu cuaderno de Concept2.
 
 ## Un ritmo parece muy desviado
 
@@ -437,7 +414,7 @@ Esa entrada del cuaderno no tiene datos por palada — algo común en resultados
 
 ## Falta la frecuencia cardiaca
 
-El cuaderno solo tiene pulso cuando había una banda o un reloj conectados durante el entrenamiento. Si un reloj lo registró por separado, usa **Importar frecuencia cardiaca** en la página de reproducción para fusionar una exportación CSV, TCX o FIT con el entrenamiento.
+El cuaderno solo tiene pulso cuando había una banda o un reloj conectados durante el entrenamiento. Confirma que el entrenamiento de origen lo incluye en Concept2.
 
 ## La sincronización falla o la sesión caduca
 
@@ -445,7 +422,7 @@ Los tokens personales pueden caducar o revocarse. Vuelve a conectarte en [Usar u
 
 ## Un entrenamiento nuevo no aparece
 
-Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe subirse desde la máquina o la app ErgData). Después pulsa **Sincronizar** en el panel, o activa el modo en vivo para consultar automáticamente.
+Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe subirse desde la máquina o la app ErgData). Después recarga el panel o activa el modo en vivo para consultar automáticamente.
 
 ## Problemas de pantalla
 
@@ -482,7 +459,7 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     sectionWorkoutsEyebrow: "Entrenamientos",
     sectionWorkouts: "Buscar un replay",
     sectionWorkoutsBody:
-      "Filtra, etiqueta, compara y abre entrenamientos sin pasar antes por los paneles de análisis profundo.",
+      "Filtra y abre entrenamientos sin pasar antes por los paneles de análisis profundo.",
     sectionRecordsEyebrow: "Objetivos",
     sectionRecords: "Objetivos, insignias y PBs",
     sectionRecordsBody:
@@ -1167,11 +1144,13 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     eyebrow: "Privacidad y control",
     dataTitle: "Qué almacenamos",
     dataNote:
-      "rowplay lee tus entrenamientos de Concept2 a demanda y los almacena en caché en Cloudflare para que los replays carguen al instante. Tu token API se sella en la cookie httpOnly rp_tok con SESSION_SECRET. KV solo guarda identidad/estado de sesión; D1 almacena en caché entrenamientos y replays, nunca el token. Desconectar o borrar datos elimina los datos de usuario en caché y el estado de sesión.",
+      "rowplay lee tus entrenamientos de Concept2 a demanda desde la API de Concept2. Tu token API se sella en la cookie httpOnly rp_tok con SESSION_SECRET. Las sesiones se almacenan en cookies cifradas; no se utiliza ninguna base de datos en el servidor. Cerrar sesión elimina tu sesión.",
     factWorkouts: "{n} entrenamientos disponibles para exportar",
     factDemo: "Modo demo — solo datos de ejemplo, no se persiste nada.",
-    factCache: "D1 guarda datos de entrenamiento/replay en caché — nunca el token.",
-    factSession: "KV guarda identidad/estado de sesión; el token va sellado en httpOnly rp_tok.",
+    factCache:
+      "Los datos de entrenamiento se obtienen en vivo desde la API de Concept2 — sin caché en el servidor.",
+    factSession:
+      "Las sesiones se almacenan en cookies cifradas; el token va sellado en httpOnly rp_tok.",
     exportTitle: "Exportar diario",
     exportNote:
       "Descarga todo tu historial en CSV o JSON. El TCX por entrenamiento (datos de palada) se abre en Garmin, Strava o TrainingPeaks.",
@@ -1219,25 +1198,27 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     introBefore: "Pega un token API personal de tu diario Concept2 (",
     introLink: "Editar perfil → Aplicaciones",
     introAfter:
-      "). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo valida, lo sella en la cookie httpOnly rp_tok y lo usa solo para lecturas del diario en el servidor. El token nunca se guarda en KV ni D1.",
+      "). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo valida, lo sella en la cookie httpOnly rp_tok y lo usa solo para lecturas del diario en el servidor. El token nunca se guarda en ninguna base de datos.",
     trustTitle: "Cómo gestiona rowplay el token",
     trustAccessTitle: "Acceso:",
     trustAccessBody:
       "un token personal de Concept2 autentica como tú; rowplay solo lo usa en el servidor para leer perfil, entrenamientos y datos de palada.",
     trustStoredTitle: "Almacenamiento:",
     trustStoredBody:
-      "el token validado se sella en la cookie httpOnly rp_tok, no en localStorage, KV ni D1.",
+      "el token validado se sella en la cookie httpOnly rp_tok, no en localStorage ni en ningún almacenamiento del servidor.",
     trustDisconnectTitle: "Desconectar:",
     trustDisconnectBody:
-      "cerrar sesión o borrar datos de cuenta desde Datos limpia la cookie del token, la sesión y la caché privada.",
+      "el botón Cerrar sesión de la cabecera limpia la cookie del token y la sesión.",
     trustCacheTitle: "Caché:",
     trustCacheBody:
-      "D1 guarda resúmenes y detalles de replay mientras estés conectado; los enlaces públicos o entradas del leaderboard solo se crean si publicas.",
+      "Los datos de entrenamiento se obtienen en vivo desde la API de Concept2; rowplay no crea enlaces públicos ni entradas de clasificaciones.",
     apiToken: "Token API",
     placeholder: "Pega tu token",
     connect: "Conectar con token",
     connecting: "Conectando…",
     rejected: "Concept2 rechazó ese token. Compruébalo e inténtalo de nuevo.",
+    serverUnavailable:
+      "No se pudo conectar con Concept2. Los servidores pueden no estar disponibles temporalmente. Inténtalo de nuevo más tarde.",
     serverMisconfigured:
       "Esta instalación no está configurada para iniciar sesión con token (falta SESSION_SECRET). Contacta con el propietario del sitio.",
     empty: "Pega tu token API de Concept2.",

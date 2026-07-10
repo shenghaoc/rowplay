@@ -54,11 +54,7 @@ describe("firstRun", () => {
 
     expect(storage.store.get(dashboardHintKey("criticalPower"))).toBe("1");
     expect(isDashboardHintDismissed("criticalPower", storage)).toBe(true);
-    expect(visibleDashboardHints(storage)).toEqual([
-      "latestReplay",
-      "workoutFilters",
-      "leaderboardGhost",
-    ]);
+    expect(visibleDashboardHints(storage)).toEqual(["latestReplay", "workoutFilters"]);
   });
 
   it("hides every dashboard hint when the dashboard surface is dismissed", () => {

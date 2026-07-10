@@ -2117,7 +2117,7 @@ export interface HrRecoveryPoint {
 
 /**
  * HR recovery trend across sessions. `ending` / `recovery` are only populated
- * from the detail endpoint (or D1 detail cache), not the workout list.
+ * from the live detail endpoint, not the workout list.
  */
 export function hrRecoveryTrend(details: WorkoutDetail[]): HrRecoveryPoint[] {
   const points: HrRecoveryPoint[] = [];
