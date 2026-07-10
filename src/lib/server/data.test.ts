@@ -308,6 +308,35 @@ describe("loadDashboardAggregates — authenticated", () => {
     });
   });
 
+  it("chooses the faster pace when near-standard distances differ", async () => {
+    const slowerShortWorkout: Workout = {
+      id: 7003,
+      date: "2026-06-03 06:00:00",
+      sport: "rower",
+      distance: 1960,
+      time: 410,
+      pace: 105,
+      hasStrokeData: false,
+    };
+    const fasterFullWorkout: Workout = {
+      id: 7004,
+      date: "2026-06-04 06:00:00",
+      sport: "rower",
+      distance: 2000,
+      time: 400,
+      pace: 100,
+      hasStrokeData: false,
+    };
+    mockConcept2Client({
+      listWorkouts: vi.fn().mockResolvedValue([slowerShortWorkout, fasterFullWorkout]),
+    });
+
+    const result = await loadDashboardAggregates(authedEvent());
+    expect(result!.pbs).toEqual([
+      expect.objectContaining({ distance: 2000, time: 400, pace: 100, sport: "rower" }),
+    ]);
+  });
+
   it("returns null when API returns empty list", async () => {
     const listWorkouts = vi.fn().mockResolvedValue([]);
     mockConcept2Client({ listWorkouts });
