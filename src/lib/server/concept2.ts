@@ -154,11 +154,27 @@ export class Concept2Client {
     return (await res.json()) as T;
   }
 
+  /**
+   * Fetch the complete logbook. The results API caps each response at 250 rows,
+   * so a single request would silently drop older workouts for established
+   * athletes and corrupt all-history dashboard metrics.
+   */
   async listWorkouts(page = 1, number = 250): Promise<Workout[]> {
-    const json = await this.api<{ data: RawResult[] }>(
-      `/users/me/results?page=${page}&number=${number}`,
-    );
-    return json.data.map((r) => mapResult(r));
+    const workouts: Workout[] = [];
+    let currentPage = page;
+    let totalPages = page;
+
+    do {
+      const json = await this.api<{
+        data: RawResult[];
+        meta?: { pagination?: { total_pages?: number } };
+      }>(`/users/me/results?page=${currentPage}&number=${number}`);
+      workouts.push(...json.data.map((r) => mapResult(r)));
+      totalPages = Math.max(totalPages, json.meta?.pagination?.total_pages ?? currentPage);
+      currentPage++;
+    } while (currentPage <= totalPages);
+
+    return workouts;
   }
 
   async getWorkout(id: number): Promise<WorkoutDetail> {

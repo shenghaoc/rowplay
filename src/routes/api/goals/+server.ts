@@ -5,13 +5,13 @@ import type { AnnualGoalKind } from "$lib/analytics";
 
 export const GET: RequestHandler = async (event) => {
   const raw = event.url.searchParams.get("year");
-  const year = raw != null ? Number(raw) : new Date().getFullYear();
-  const goal = await loadAnnualGoal(event, Number.isFinite(year) ? year : new Date().getFullYear());
+  const parsed = raw == null ? NaN : Number(raw);
+  const year = Number.isInteger(parsed) && parsed > 0 ? parsed : new Date().getFullYear();
+  const goal = await loadAnnualGoal(event, year);
   return json(goal);
 };
 
 export const PUT: RequestHandler = async (event) => {
-  if (event.locals.demo) throw error(401, "Not authenticated.");
   let body: { year?: number; kind?: string; target?: number };
   try {
     body = (await event.request.json()) as { year?: number; kind?: string; target?: number };
@@ -19,13 +19,13 @@ export const PUT: RequestHandler = async (event) => {
     throw error(400, "Invalid JSON body.");
   }
   const year =
-    typeof body.year === "number" && Number.isInteger(body.year)
+    typeof body.year === "number" && Number.isInteger(body.year) && body.year > 0
       ? body.year
       : new Date().getFullYear();
   if (body.kind !== "meters" && body.kind !== "hours") {
     throw error(400, 'Invalid goal kind. Must be "meters" or "hours".');
   }
-  if (typeof body.target !== "number" || body.target <= 0) {
+  if (typeof body.target !== "number" || !Number.isFinite(body.target) || body.target <= 0) {
     throw error(400, "Invalid or missing target. Must be a positive number.");
   }
   const kind = body.kind as AnnualGoalKind;

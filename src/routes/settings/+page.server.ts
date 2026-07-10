@@ -1,7 +1,32 @@
-import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
+import { redirect } from "@sveltejs/kit";
+import { loadHomeTimezone, loadWorkouts } from "$lib/server/data";
 
-/** Settings feature removed — redirect to dashboard. */
-export const load: PageServerLoad = async () => {
-  throw redirect(303, "/dashboard");
+/**
+ * Export and home-timezone preferences are stateless: both remain available
+ * without D1/KV. Sync status and account deletion were intentionally removed
+ * with the server-side cache.
+ */
+export const load: PageServerLoad = async (event) => {
+  if (!event.locals.demo && !event.locals.user) {
+    throw redirect(303, "/auth/login");
+  }
+  if (!event.locals.demo) {
+    event.setHeaders({ "cache-control": "private, no-store" });
+  }
+
+  const [workouts, homeTimezone] = await Promise.all([
+    loadWorkouts(event),
+    loadHomeTimezone(event),
+  ]);
+  const tcxWorkouts = workouts
+    .filter((workout) => workout.hasStrokeData)
+    .map((workout) => ({ id: workout.id, date: workout.date }));
+
+  return {
+    demo: event.locals.demo,
+    workoutCount: workouts.length,
+    tcxWorkouts,
+    homeTimezone,
+  };
 };

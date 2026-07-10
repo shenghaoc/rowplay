@@ -1,8 +1,7 @@
 # rowplay user guide
 
 rowplay turns your indoor rowing, skiing, and riding workouts into something you
-can explore: a dashboard of totals and trends, a stroke-by-stroke replay,
-side-by-side comparisons, and friendly leaderboards.
+can explore: a dashboard of totals and trends and a stroke-by-stroke replay.
 
 It works with workouts recorded on Concept2 machines — the RowErg (rowing
 machine), SkiErg, and BikeErg — and reads them from the free Concept2 online
@@ -35,7 +34,8 @@ account.
 1. Open `/dashboard`.
 2. Pick any workout from the list.
 3. Press **Replay** and try the play, pause, scrub, and speed controls.
-4. Open `/leaderboard` and try racing a ghost.
+4. Use the dashboard filters, then open another replay to explore a different
+   workout.
 
 ### Connect your own workouts
 
@@ -43,19 +43,19 @@ Your workouts live in the Concept2 logbook — the free online diary that
 Concept2 machines (and the ErgData phone app) upload results to. rowplay reads
 from that logbook using a personal access token. The token is sent once over
 HTTPS, validated by the Worker, and sealed into the httpOnly `rp_tok` cookie.
-KV stores session identity, and D1 stores cached workouts and replay data. The
-token is not stored in KV or D1.
+The encrypted session cookie stays in the browser; rowplay does not store the
+token or workout data on its servers.
 
 1. Sign in to your logbook at log.concept2.com.
 2. Open **Edit Profile → Applications** and copy your personal API token.
 3. Back in rowplay, open `/auth/token`.
 4. Paste the token and submit.
-5. On the dashboard, press **Sync** to load your workout history.
+5. Open the dashboard. rowplay fetches your full workout history directly from
+   the Concept2 API.
 
-The first sync loads recent workouts right away and backfills older history in
-the background; long-term totals and personal bests may look incomplete until
-it finishes. Use `/settings` to disconnect or delete cached account data — the
-Concept2 logbook is never modified.
+Use the **Log out** button in the header to end the connection. `/settings`
+keeps export and home-timezone controls; the Concept2 logbook is never
+modified.
 
 ## Rowing basics
 
@@ -89,8 +89,8 @@ Concept2 logbook is never modified.
 
 - **Trend over time** — follows one metric across weeks; pace trends compare
   like-for-like distance bands and need at least two sessions in a band.
-- **Personal bests** — fastest results at standard distances; trust all-time
-  bests only after a full sync has finished.
+- **Personal bests** — fastest results at standard distances from the live
+  Concept2 history.
 - **Training calendar & intensity** — daily volume shading plus the easy/hard
   distribution of training.
 - **Fitness, fatigue & form** — modelled from training load; form (fitness
@@ -136,29 +136,22 @@ Replay animation honours the operating system's reduced-motion setting.
 Per-stroke data is used when Concept2 provides it. Workouts without stroke data
 fall back to a split-based replay, so the course still plays back.
 
-The replay page also highlights **Workout moments**: best sustained push, slower patch, efficient rhythm, finish trend, and interval best/slowest reps. These cards are post-workout analysis from already-synced Logbook detail; they do not start live capture or write anything back to Concept2. Use **Jump to moment** to seek the replay straight to that section. When per-stroke rows are unavailable, rowplay labels the moments as split-based so you know the resolution is lower.
+The replay page also highlights **Workout moments**: best sustained push, slower patch, efficient rhythm, finish trend, and interval best/slowest reps. These cards are post-workout analysis from live Logbook detail; they do not start live capture or write anything back to Concept2. Use **Jump to moment** to seek the replay straight to that section. When per-stroke rows are unavailable, rowplay labels the moments as split-based so you know the resolution is lower.
 
-- **Coaching notes** — pin notes to moments on the replay timeline.
-- **Race a ghost** — from `/leaderboard`, press **Race** next to an entry to
-  pre-arm a rival on your own replay of that piece.
-- **Compare two workouts** — pick two from the dashboard list for a
-  split-by-split side-by-side at `/compare`.
-- **Publish to a leaderboard** — standard-distance results only; opt-in,
-  reversible, never changes the source logbook entry.
-- **Share & export** — public read-only replay links; CSV/JSON logbook export
-  plus per-workout TCX from `/settings`.
-- **Keep data fresh** — **Sync** on demand, or **live mode** to poll the
-  logbook and get notified about new workouts.
-- **Import heart rate** — merge a CSV/TCX/FIT watch export into a workout from
-  the replay page.
+- **Race an earlier workout** — choose one of your own comparable sessions in
+  a replay to show it as a ghost alongside the current workout.
+- **Export** — `/settings` downloads the current live logbook as CSV or JSON,
+  plus per-workout TCX where stroke data is available.
+- **Keep data fresh** — dashboard and replay data are fetched live from
+  Concept2. **Live mode** can still poll for a newly logged workout.
 
 ## FAQ
 
 - **Do I need a Concept2 account?** Not for demo mode; yes for your own data.
-- **Is my token safe?** Sent once over HTTPS, sealed in an httpOnly cookie,
-  never stored server-side; disconnecting clears it.
-- **Can others see my workouts?** Only if you publish to a leaderboard or
-  share a public link — both reversible.
+- **Is my token safe?** Sent once over HTTPS and sealed in an httpOnly cookie;
+  it is never stored server-side. Logging out clears it.
+- **Can others see my workouts?** No. rowplay has no public sharing or
+  leaderboard feature.
 - **Does rowplay change my logbook?** Never; it only reads.
 - **Why no stroke-by-stroke replay on some workouts?** Not every logbook entry
   has per-stroke data; those replay from splits.
@@ -167,33 +160,33 @@ The replay page also highlights **Workout moments**: best sustained push, slower
 
 ## Troubleshooting
 
-- **Totals/PBs look wrong** — the history backfill probably has not finished;
-  check sync status at `/settings`.
+- **Totals/PBs look wrong** — reload the dashboard to fetch the latest
+  Concept2 history, then check that the workout appears in your logbook.
 - **A pace looks way off** — remember BikeErg pace is per 1000m, and interval
   workouts report work-interval pace only.
 - **Trend chart wants more sessions** — a distance band needs at least two
   like-for-like sessions.
 - **No stroke charts** — the entry has no per-stroke data; stroke-dependent
   panels say so explicitly.
-- **Missing heart rate** — use heart-rate import on the replay page.
-- **Sync fails / session expired** — reconnect at `/auth/token` with a fresh
+- **Missing heart rate** — confirm that the source workout includes it in
+  Concept2.
+- **Live data fails / session expired** — reconnect at `/auth/token` with a fresh
   token; brief rate limits resolve on retry.
-- **New workout missing** — confirm it reached the Concept2 logbook, then Sync
-  or enable live mode.
+- **New workout missing** — confirm it reached the Concept2 logbook, then
+  reload the dashboard or enable live mode.
 - **Display issues** — 3D needs WebGPU or WebGL (2D always works); rotate
   phones to landscape for wide charts; theme/language switches live in the header.
 
 ## Local development notes
 
-Use the Workers preview runtime for local auth, sync, live mode, and KV/D1
-testing:
+Use the Workers preview runtime for local auth and live-mode testing:
 
 ```bash
 pnpm preview
 ```
 
 Plain `pnpm dev` is faster for UI work, but it is not the Workers runtime and
-does not provide the production KV/D1 bindings.
+does not provide cookie/session behavior identical to production.
 
 ## Contributor documentation policy
 

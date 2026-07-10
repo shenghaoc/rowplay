@@ -449,12 +449,22 @@ describe("loadAnnualGoal", () => {
     expect(goal.kind).toBe("meters");
   });
 
-  it("reads from cookie for authenticated users (same as demo)", async () => {
-    const cookieVal = JSON.stringify({ year: 2026, kind: "hours", target: 300 });
+  it("reads a cookie scoped to the authenticated user", async () => {
+    const cookieVal = JSON.stringify({ year: 2026, kind: "hours", target: 300, userId: 7 });
     const event = authedEvent({ cookies: { get: () => cookieVal, set: vi.fn() } });
     const goal = await loadAnnualGoal(event, 2026);
     expect(goal.kind).toBe("hours");
     expect(goal.target).toBe(300);
+  });
+
+  it("does not reuse another athlete's cookie", async () => {
+    const cookieVal = JSON.stringify({ year: 2026, kind: "hours", target: 300, userId: 8 });
+    const event = authedEvent({ cookies: { get: () => cookieVal, set: vi.fn() } });
+    await expect(loadAnnualGoal(event, 2026)).resolves.toEqual({
+      year: 2026,
+      kind: "meters",
+      target: 1_000_000,
+    });
   });
 });
 
@@ -472,6 +482,15 @@ describe("saveAnnualGoal", () => {
     expect(cookieName).toBe("annual_goal");
     const parsed = JSON.parse(cookieValue);
     expect(parsed.target).toBe(500_000);
+  });
+
+  it("records the authenticated athlete as the cookie owner", async () => {
+    const setCookie = vi.fn();
+    const event = authedEvent({ cookies: { get: () => undefined, set: setCookie } });
+    await saveAnnualGoal(event, { year: 2026, kind: "meters", target: 500_000 });
+    const [, cookieValue, options] = setCookie.mock.calls[0];
+    expect(JSON.parse(cookieValue).userId).toBe(7);
+    expect(options.httpOnly).toBe(true);
   });
 });
 

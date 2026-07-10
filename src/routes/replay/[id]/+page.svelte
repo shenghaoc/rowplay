@@ -36,7 +36,6 @@
 	} from '$lib/analytics';
 	import { avgWatts, fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, SPORT_LABEL } from '$lib/format';
 	import type { Sport, Stroke, Workout, WorkoutDetail } from '$lib/types';
-	import { matchStandardDistance } from '$lib/leaderboard';
 	import { isExrSource } from '$lib/exrSource';
 	import { untrack } from 'svelte';
 	import { constantPaceGhost, parseWorkoutFile } from '$lib/replay/sources';
@@ -64,11 +63,8 @@
 	import Play from '@lucide/svelte/icons/play';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Ghost from '@lucide/svelte/icons/ghost';
-	import GitCompare from '@lucide/svelte/icons/git-compare';
 	import X from '@lucide/svelte/icons/x';
-	import Share2 from '@lucide/svelte/icons/share-2';
 	import ImageDown from '@lucide/svelte/icons/image-down';
-	import Trophy from '@lucide/svelte/icons/trophy';
 	import Heart from '@lucide/svelte/icons/heart';
 	import Binary from '@lucide/svelte/icons/binary';
 	import { downloadRaceCardPng } from '$lib/replay/raceCard';
@@ -77,9 +73,6 @@
 	import { chartTheme, baseOptions, type SeriesConfig, type SeriesRole } from '$lib/chartTheme';
 	import { formatPaceInput, parsePaceInput } from '$lib/paceInput';
 	import SportIcon from '$components/SportIcon.svelte';
-	import WorkoutTagBadge from '$components/WorkoutTagBadge.svelte';
-	import { athleteMedianPace } from '$lib/workoutTag';
-	import type { WorkoutTag } from '$lib/workoutTag';
 	import { page } from '$app/state';
 	import InspectorPanel from '$components/InspectorPanel.svelte';
 	import RepComparisonChart from '$components/RepComparisonChart.svelte';
@@ -93,8 +86,6 @@
 	const uiTheme = getThemeContext();
 	const baseDetail = $derived(data.detail as WorkoutDetail);
 	const candidates = $derived(data.candidates as Workout[]);
-	const medianPaceSecs = $derived(athleteMedianPace(candidates));
-	let tagUserOverride = $state<{ id: number; tag: WorkoutTag | null } | null>(null);
 	const isDemo = $derived(!!data.demo);
 	let hrOverlay = $state<HrOverlay | null>(null);
 	// Workout id the current overlay belongs to. On client-side navigation
@@ -112,9 +103,6 @@
 			hrOverlay && hrOverlayId === baseDetail.id
 				? applyHrImport(baseDetail, hrOverlay.samples, hrOverlay.offset)
 				: baseDetail;
-		if (tagUserOverride && tagUserOverride.id === baseDetail.id) {
-			return { ...base, userTag: tagUserOverride.tag };
-		}
 		return base;
 	});
 	const exrFlagged = $derived(isExrSource(detail));
@@ -1249,13 +1237,6 @@
 		>
 		<div class="summary mono muted">
 			{fmtDistance(detail.distance)} · {fmtTime(detail.time, true)} · {fmtPace(detail.pace)}
-			<WorkoutTagBadge
-				workout={detail}
-				{medianPaceSecs}
-				onTagSaved={(_id, userTag) => {
-					tagUserOverride = { id: baseDetail.id, tag: userTag };
-				}}
-			/>
 			{#if !detail.hasStrokeData}<span class="badge badge-soft badge-warning">{t('replay.lowRes')}</span>{/if}
 			{#if exrFlagged}
 				<span class="badge badge-soft badge-info" title={t('replay.exrBadgeTitle')}>{t('replay.exrBadge')}</span>

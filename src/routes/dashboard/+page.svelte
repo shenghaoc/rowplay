@@ -15,7 +15,6 @@
 	import {
 		distanceBand,
 		distancePBs,
-		detectNewPBs,
 		distancePerStroke,
 		pbWorkoutIds,
 		linearTrend,
@@ -29,15 +28,10 @@
 	import { onMount } from 'svelte';
 	import { readHomeTimezoneClient } from '$lib/homeTimezone';
 	import { serializeWorkoutListQuery, filterAndSortWorkouts, type WorkoutListQuery } from '$lib/workoutQuery';
-	import {
-		athleteMedianPace,
-		WORKOUT_TAGS,
-		type WorkoutTag
-	} from '$lib/workoutTag';
+	import { WORKOUT_TAGS } from '$lib/workoutTag';
 	import ChipButton from '$components/ChipButton.svelte';
 	import ChipGroup from '$components/ChipGroup.svelte';
 	import { toast } from 'svelte-sonner';
-	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import TrendingUp from '@lucide/svelte/icons/trending-up';
 	import TrendingDown from '@lucide/svelte/icons/trending-down';
 	import MoveRight from '@lucide/svelte/icons/move-right';
@@ -75,30 +69,19 @@
 	const uiTheme = getThemeContext();
 	let extraWorkouts = $state<Workout[]>([]);
 	let newEntryIds = $state<Set<number>>(new Set());
-	let tagOverrides = $state<Map<number, WorkoutTag | null>>(new Map());
 	const listQuery = $derived(data.listQuery);
 	const workouts = $derived.by(() => {
 		const byId = new Map<number, Workout>();
 		for (const w of [...extraWorkouts, ...data.workouts]) byId.set(w.id, w);
 		return [...byId.values()].sort((a, b) => b.date.localeCompare(a.date));
 	});
-	const medianPaceSecs = $derived(athleteMedianPace(workouts));
-	const workoutsWithTags = $derived(
-		workouts.map((w) =>
-			tagOverrides.has(w.id) ? { ...w, userTag: tagOverrides.get(w.id) ?? null } : w
-		)
-	);
 	const listWorkouts = $derived.by(() => {
 		return filterAndSortWorkouts(
-			workoutsWithTags,
+			workouts,
 			listQuery,
-			listQuery.pbsOnly ? pbWorkoutIds(workoutsWithTags) : undefined
+			listQuery.pbsOnly ? pbWorkoutIds(workouts) : undefined
 		);
 	});
-
-	function onWorkoutTagSaved(workoutId: number, userTag: WorkoutTag | null) {
-		tagOverrides = new Map(tagOverrides).set(workoutId, userTag);
-	}
 
 	let liveMode = $state<LiveMode | null>(null);
 	let demoHomeTz = $state<string | undefined>(undefined);
@@ -143,26 +126,10 @@
 	let dpsMetric = $state<'rawDps' | 'normDps'>('rawDps');
 	let dpsMaWindow = $state<7 | 28>(28);
 	let dpsHoverIdx = $state<number | null>(null);
-	let compareAnchor = $state<number | null>(null);
 	let newPbIds = $state<Set<number>>(new Set());
 	const pbIds = $derived(pbWorkoutIds(workouts));
 	const milestonePBs = $derived(distancePBs(workouts));
 
-	function onCompareWorkout(w: Workout) {
-		if (compareAnchor == null) {
-			compareAnchor = w.id;
-			toast.message(t('workoutList.comparePick'));
-			return;
-		}
-		if (compareAnchor === w.id) {
-			compareAnchor = null;
-			return;
-		}
-		const a = compareAnchor;
-		const b = w.id;
-		compareAnchor = null;
-		goto(`/compare?a=${a}&b=${b}`);
-	}
 	function milestoneOpts() {
 		return { endDay: calendarEndDay, homeTz };
 	}
@@ -294,8 +261,7 @@
 		const hrefs: Record<DashboardHintId, string> = {
 			latestReplay: latest ? `/replay/${latest.id}` : '/dashboard#workouts',
 			criticalPower: '/dashboard#critical-power',
-			workoutFilters: '/dashboard#workout-filters',
-			leaderboardGhost: '/leaderboard?sport=rower&distance=2000'
+			workoutFilters: '/dashboard#workout-filters'
 		};
 		return dashboardHintIds.map((id) => ({
 			id,
@@ -833,21 +799,11 @@
 				{/each}
 			</ChipGroup>
 		</div>
-		{#if compareAnchor != null}
-			<div class="compare-hint card card-border bg-base-100 shadow-md p-5 muted" role="status">
-				{t('workoutList.comparePick')}
-				<button type="button" class="linkish" onclick={() => (compareAnchor = null)}>{t('workoutList.compareCancel')}</button>
-			</div>
-		{/if}
 		<WorkoutList
 			workouts={listWorkouts}
-			{compareAnchor}
-			onCompare={onCompareWorkout}
 			pbIds={pbIds}
 			{newPbIds}
 			{newEntryIds}
-			{medianPaceSecs}
-			onTagSaved={onWorkoutTagSaved}
 		/>
 	</section>
 
@@ -1485,8 +1441,6 @@
 	.pbtime { font-size: 1.2rem; font-weight: 700; margin-top: 0.4rem; line-height: 1; }
 	.pbsub { font-size: 0.72rem; margin-top: 0.3rem; display: flex; align-items: center; gap: 0.25rem; }
 
-	.compare-hint { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
-	.linkish { background: none; border: none; color: var(--ghost); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; font: inherit; padding: 0; }
 
 	/* ---- Responsive --------------------------------------------------------- */
 	@media (max-width: 1100px) {

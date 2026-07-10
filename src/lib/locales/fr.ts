@@ -158,14 +158,14 @@ export const fr = {
       metrics: "Que signifient l'allure, les watts et la cadence ?",
       charts: "Comment lire ce graphique",
       troubleshooting: "Données manquantes ou étranges ? Consultez le dépannage",
-      workflows: "Découvrez les classements et les courses fantômes",
+      workflows: "Découvrez les relectures, les fantômes et les exports",
     },
     sections: {
       overview: {
         navTitle: "Vue d'ensemble",
         markdown: `# Guide utilisateur rowplay
 
-rowplay transforme vos séances d'aviron, de ski et de vélo indoor en quelque chose à explorer : un tableau de bord avec totaux et tendances, une relecture coup par coup, des comparaisons côte à côte et des classements amicaux.
+rowplay transforme vos séances d'aviron, de ski et de vélo indoor en quelque chose à explorer : un tableau de bord avec totaux et tendances et une relecture coup par coup.
 
 Il fonctionne avec les séances enregistrées sur les machines Concept2 — le RowErg (rameur), le SkiErg et le BikeErg — et les lit depuis le logbook en ligne gratuit de Concept2. Inutile de connaître le jargon de l'aviron pour commencer : ce guide explique chaque terme qu'il emploie.
 
@@ -173,16 +173,14 @@ Il fonctionne avec les séances enregistrées sur les machines Concept2 — le R
 
 - **Tableau de bord** — totaux, tendances, records personnels et charge d'entraînement en un coup d'œil.
 - **Relecture** — regardez n'importe quelle séance se rejouer coup par coup, avec des graphiques synchronisés d'allure, de cadence, de puissance et de fréquence cardiaque.
-- **Comparer** — placez deux séances côte à côte, split par split.
-- **Classements** — publiez un résultat et affrontez d'autres athlètes sous forme de « fantômes » à l'écran.
 
 ## Sections du guide
 
-- [Premiers pas](/docs/getting-started) — mode démo, connexion du logbook, première synchronisation.
+- [Premiers pas](/docs/getting-started) — mode démo et connexion du logbook.
 - [Bases de l'aviron](/docs/rowing-metrics) — coups, splits et les autres termes que vous croiserez.
 - [Allure, splits & watts](/docs/pace-splits-watts) — ce que signifient les chiffres et comment ils se relient.
 - [Graphiques & progression](/docs/charts-and-progress) — comment lire les panneaux du tableau de bord.
-- [Usages courants](/docs/workflows) — relecture, courses fantômes, comparaison, partage, export.
+- [Usages courants](/docs/workflows) — relecture, séance passée comme fantôme et export.
 - [FAQ](/docs/faq) — réponses rapides sur les comptes, la confidentialité et les données.
 - [Dépannage](/docs/troubleshooting) — données manquantes, chiffres bizarres, soucis d'affichage.
 
@@ -199,7 +197,7 @@ rowplay démarre en mode démo : sans compte connecté, chaque page se remplit d
 1. Ouvrez le [tableau de bord](/dashboard).
 2. Choisissez n'importe quelle séance dans la liste.
 3. Appuyez sur **Relecture** et essayez la lecture, la pause, le défilement et les vitesses.
-4. Ouvrez les [classements](/leaderboard) et tentez une course fantôme.
+4. Utilisez les filtres du tableau de bord, puis ouvrez une autre relecture.
 
 ## Connecter vos propres séances
 
@@ -209,17 +207,13 @@ Vos séances vivent dans le logbook Concept2 — le journal en ligne gratuit ver
 2. Ouvrez **Edit Profile → Applications** et copiez votre jeton d'API personnel.
 3. De retour dans rowplay, ouvrez [Utiliser un jeton](/auth/token).
 4. Collez le jeton et validez.
-5. Sur le tableau de bord, appuyez sur **Synchroniser** pour charger votre historique.
+5. Ouvrez le tableau de bord. rowplay récupère tout votre historique directement depuis l'API Concept2.
 
-Le jeton est envoyé une seule fois via une connexion chiffrée et conservé uniquement dans un cookie protégé du navigateur. Les serveurs de rowplay mettent en cache les données de séances pour des pages rapides, mais ne stockent jamais le jeton lui-même.
-
-## Votre première synchronisation
-
-La première synchronisation charge immédiatement les séances récentes et complète l'historique plus ancien en arrière-plan. Tant qu'elle n'est pas terminée, les totaux de long terme et les records personnels peuvent sembler incomplets — c'est normal. Si quelque chose cloche encore ensuite, voyez le [dépannage](/docs/troubleshooting).
+Le jeton est envoyé une seule fois via une connexion chiffrée et conservé uniquement dans un cookie protégé du navigateur. rowplay ne stocke ni séances ni jetons sur ses serveurs.
 
 ## Se déconnecter
 
-Ouvrez [Données](/settings) à tout moment pour vous déconnecter. Cela efface votre session et supprime vos données de séances mises en cache de rowplay. Votre logbook Concept2 n'est jamais modifié.`,
+Utilisez le bouton **Se déconnecter** de l'en-tête pour couper la connexion. [Données](/settings) conserve l'export et le fuseau horaire principal. Votre logbook Concept2 n'est jamais modifié.`,
       },
       rowingMetrics: {
         navTitle: "Bases de l'aviron",
@@ -306,7 +300,7 @@ Le graphique de tendance suit une métrique — allure, distance, cadence ou dis
 
 ## Records personnels
 
-Le panneau des records suit vos meilleurs résultats sur les distances standard (500m, 1k, 2k, 5k, 6k, 10k et plus). Assurez-vous qu'une synchronisation complète est terminée avant de vous fier aux records absolus — voir le [dépannage](/docs/troubleshooting).
+Le panneau des records suit vos meilleurs résultats sur les distances standard (500m, 1k, 2k, 5k, 6k, 10k et plus) depuis votre historique Concept2 chargé en direct.
 
 ## Calendrier d'entraînement & intensité
 
@@ -344,40 +338,23 @@ En 3D, le sélecteur **Qualité** propose des graphismes bas, moyens, élevés o
 
 Les données coup par coup sont utilisées quand Concept2 les fournit. Les séances sans données de coups basculent vers un replay basé sur les splits, donc le parcours reste lisible.
 
-## Ajouter des notes de coach
-
-En pause à un instant de la relecture, ajoutez une note (« coulisse précipitée ici »). Les notes s'épinglent à la frise, si bien que vous — ou la personne à qui vous partagez la relecture — pouvez y sauter directement.
-
 ## Courir contre un fantôme
 
 Un fantôme est un effort passé qui rame à vos côtés à l'écran.
 
-1. Ouvrez les [classements](/leaderboard) et choisissez un sport et une distance.
-2. Appuyez sur **Course** à côté d'une entrée.
-3. Votre propre relecture de cette épreuve montre désormais le rival comme un second bateau à chasser.
+1. Ouvrez une de vos séances dans Relecture.
+2. Choisissez une séance passée comparable dans les commandes de fantôme.
+3. L'effort passé apparaît comme un second bateau à chasser.
 
 Vous pouvez aussi affronter vos propres résultats passés pour voir exactement où une tentative de record a gagné ou perdu du temps.
 
-## Comparer deux séances
+## Exporter
 
-Dans la liste des séances du tableau de bord, utilisez le bouton de comparaison sur une séance, puis choisissez-en une seconde. La vue de comparaison aligne les deux efforts split par split.
-
-## Publier sur un classement
-
-Les résultats sur distances standard (500m, 1k, 2k, 5k, 6k, 10k, semi-marathon) peuvent être publiés sur le classement rowplay depuis la page de relecture. La publication est volontaire, réversible, et ne change jamais rien dans votre logbook Concept2.
-
-## Partager et exporter
-
-- **Partager** sur une relecture crée un lien public en lecture seule — pratique pour les entraîneurs.
-- **Exporter** sur la page [Données](/settings) télécharge votre logbook en CSV ou JSON, plus des fichiers TCX par séance pour celles qui ont des données de coups.
+[Données](/settings) télécharge votre logbook en direct en CSV ou JSON, plus des fichiers TCX par séance avec données de coups.
 
 ## Garder les données à jour
 
-**Synchroniser** sur le tableau de bord récupère les nouveaux résultats à la demande. Le **mode direct** (aussi sur le tableau de bord) interroge le logbook à intervalle régulier et vous prévient quand une nouvelle séance arrive — pratique juste après l'entraînement.
-
-## Importer la fréquence cardiaque
-
-Si une séance n'a pas de données cardio mais que votre montre les a enregistrées, ouvrez la relecture et utilisez **Importer la fréquence cardiaque** pour fusionner un export CSV, TCX ou FIT de la montre avec la séance.`,
+Les données du tableau de bord et des relectures sont récupérées en direct depuis Concept2. Le **mode direct** peut aussi interroger le logbook et signaler une nouvelle séance.`,
       },
       faq: {
         navTitle: "FAQ",
@@ -393,11 +370,11 @@ Le jeton est transmis une seule fois en HTTPS et scellé dans un cookie httpOnly
 
 ## D'autres personnes peuvent-elles voir mes séances ?
 
-Non — votre tableau de bord et vos relectures sont privés par défaut. Les autres ne voient une séance que si vous la publiez sur un classement ou partagez son lien public, et les deux sont réversibles.
+Non — votre tableau de bord et vos relectures sont privés. rowplay ne propose ni partage public ni classement.
 
 ## rowplay modifie-t-il mon logbook Concept2 ?
 
-Jamais. rowplay ne fait que lire. Publier sur un classement rowplay ou supprimer des données en cache ici ne modifie pas l'entrée d'origine du logbook.
+Jamais. rowplay ne fait que lire et ne modifie pas l'entrée d'origine du logbook.
 
 ## Quelles machines sont prises en charge ?
 
@@ -421,7 +398,7 @@ English, Deutsch, Español, Français, 日本語 et 中文 — à changer depuis
 
 ## Mes totaux ou records semblent faux
 
-Le plus souvent, l'historique complet n'a pas fini de se synchroniser. La première synchronisation complète les anciennes séances en arrière-plan ; tant qu'elle n'est pas terminée, tout ce qui est calculé « sur l'ensemble du temps » peut être incomplet. Vérifiez l'état de synchronisation dans [Données](/settings) et lancez une synchronisation complète si nécessaire.
+Rechargez le tableau de bord pour récupérer l'historique Concept2 actuel, puis vérifiez que la séance figure dans votre logbook Concept2.
 
 ## Une allure semble complètement fausse
 
@@ -438,7 +415,7 @@ Cette entrée du logbook n'a pas de données par coup — courant pour les ancie
 
 ## La fréquence cardiaque manque
 
-Le logbook n'a la fréquence cardiaque que si une ceinture ou une montre était connectée pendant la séance. Si une montre l'a enregistrée à part, utilisez **Importer la fréquence cardiaque** sur la page de relecture pour fusionner un export CSV, TCX ou FIT avec la séance.
+Le logbook n'a la fréquence cardiaque que si une ceinture ou une montre était connectée pendant la séance. Vérifiez que la séance source l'inclut dans Concept2.
 
 ## La synchronisation échoue ou la session expire
 
@@ -446,7 +423,7 @@ Les jetons personnels peuvent expirer ou être révoqués. Reconnectez-vous via 
 
 ## Une nouvelle séance n'apparaît pas
 
-Vérifiez d'abord que la séance a bien atteint votre logbook Concept2 (elle doit être téléversée depuis la machine ou l'app ErgData). Appuyez ensuite sur **Synchroniser** dans le tableau de bord, ou activez le mode direct pour interroger automatiquement.
+Vérifiez d'abord que la séance a bien atteint votre logbook Concept2 (elle doit être téléversée depuis la machine ou l'app ErgData). Rechargez ensuite le tableau de bord, ou activez le mode direct pour interroger automatiquement.
 
 ## Problèmes d'affichage
 
@@ -483,7 +460,7 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     sectionWorkoutsEyebrow: "Séances",
     sectionWorkouts: "Trouver un replay",
     sectionWorkoutsBody:
-      "Filtrez, taguez, comparez et ouvrez les séances sans passer d’abord par les panneaux d’analyse avancée.",
+      "Filtrez et ouvrez les séances sans passer d’abord par les panneaux d’analyse avancée.",
     sectionRecordsEyebrow: "Objectifs",
     sectionRecords: "Objectifs, badges et PB",
     sectionRecordsBody:
@@ -1178,7 +1155,7 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     eyebrow: "Confidentialité et contrôle",
     dataTitle: "Ce que nous stockons",
     dataNote:
-      "rowplay lit vos séances Concept2 à la demande via l’API Concept2 et les récupère en direct pour des replays instantanés. Votre jeton API est scellé dans le cookie httpOnly rp_tok avec SESSION_SECRET. Les sessions sont stockées dans des cookies chiffrés ; aucune base de données côté serveur n’est utilisée. La déconnexion ou la suppression des données efface votre session.",
+      "rowplay lit vos séances Concept2 à la demande via l’API Concept2. Votre jeton API est scellé dans le cookie httpOnly rp_tok avec SESSION_SECRET. Les sessions sont stockées dans des cookies chiffrés ; aucune base de données côté serveur n’est utilisée. Se déconnecter efface votre session.",
     factWorkouts: "{n} séances disponibles à l’export",
     factDemo: "Mode démo — données d’exemple uniquement, rien n’est persisté.",
     factCache:
@@ -1242,10 +1219,10 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
       "le jeton validé est scellé dans le cookie httpOnly rp_tok, pas dans localStorage ni dans un stockage côté serveur.",
     trustDisconnectTitle: "Déconnexion :",
     trustDisconnectBody:
-      "se déconnecter ou supprimer les données du compte depuis Données efface le cookie de jeton, la session et le cache privé.",
+      "le bouton Se déconnecter de l’en-tête efface le cookie de jeton et la session.",
     trustCacheTitle: "Cache :",
     trustCacheBody:
-      "Les données de séance sont récupérées en direct depuis l'API Concept2 ; les partages publics ou entrées leaderboard ne sont créés que si vous publiez.",
+      "Les données de séance sont récupérées en direct depuis l'API Concept2 ; rowplay ne crée ni partage public ni entrée de classement.",
     apiToken: "Jeton API",
     placeholder: "Collez votre jeton",
     connect: "Connecter avec le jeton",

@@ -21,7 +21,7 @@ import {
   type WorkoutListQuery,
 } from "$lib/workoutQuery";
 import type { SportSummary, AnnualGoal } from "$lib/analytics";
-import { defaultAnnualGoal, parseGoalsCookie } from "$lib/goals";
+import { defaultAnnualGoal, parseGoalsCookie, serializeGoalsCookie } from "$lib/goals";
 import { type WorkoutTag } from "../workoutTag";
 import { createLogger } from "./logger";
 
@@ -127,7 +127,8 @@ export async function syncWorkouts(event: RequestEvent): Promise<SyncResult> {
 
 export async function loadAnnualGoal(event: RequestEvent, year: number): Promise<AnnualGoal> {
   // Goals are stored in a cookie for all modes (demo and live).
-  const fromCookie = parseGoalsCookie(event.cookies.get("annual_goal") ?? undefined);
+  const userId = event.locals.demo ? undefined : event.locals.user?.id;
+  const fromCookie = parseGoalsCookie(event.cookies.get("annual_goal") ?? undefined, userId);
   if (fromCookie?.year === year) return fromCookie;
   return defaultAnnualGoal(year);
 }
@@ -165,12 +166,14 @@ export async function saveHomeTimezone(
 }
 
 export async function saveAnnualGoal(event: RequestEvent, goal: AnnualGoal): Promise<void> {
-  // Goals are stored in a cookie for all modes.
-  event.cookies.set("annual_goal", JSON.stringify(goal), {
+  // Goals are stored in a cookie for all modes, scoped to the authenticated
+  // athlete when one is present so they cannot follow a logout/login change.
+  const userId = event.locals.demo ? undefined : event.locals.user?.id;
+  event.cookies.set("annual_goal", serializeGoalsCookie(goal, userId), {
     path: "/",
     maxAge: 60 * 60 * 24 * 400,
     sameSite: "lax",
-    httpOnly: false,
+    httpOnly: true,
   });
 }
 
