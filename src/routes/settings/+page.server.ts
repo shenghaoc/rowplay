@@ -16,7 +16,8 @@ export const load: PageServerLoad = async (event) => {
   }
 
   const [workouts, homeTimezone] = await Promise.all([
-    loadWorkouts(event),
+    // Export remains reachable even when Concept2 is transiently unavailable.
+    loadWorkouts(event).catch(() => []),
     loadHomeTimezone(event),
   ]);
   const tcxWorkouts = workouts

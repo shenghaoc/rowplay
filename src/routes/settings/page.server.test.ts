@@ -9,6 +9,7 @@ vi.mock("$lib/server/data", () => ({
 }));
 
 import { load } from "./+page.server";
+import { loadWorkouts } from "$lib/server/data";
 
 function event(opts: { demo?: boolean; user?: { id: number } | null } = {}) {
   return {
@@ -38,5 +39,13 @@ describe("load /settings", () => {
     const data = (await load(event({ demo: true, user: null }) as any)) as any;
     expect(data.demo).toBe(true);
     expect(data.workoutCount).toBe(2);
+  });
+
+  it("keeps Settings available when the live workout request fails", async () => {
+    (loadWorkouts as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("rate limited"));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (await load(event() as any)) as any;
+    expect(data).toMatchObject({ workoutCount: 0, homeTimezone: "Asia/Singapore" });
+    expect(data.tcxWorkouts).toEqual([]);
   });
 });

@@ -17,6 +17,12 @@ function event(search = "", demo = false, body?: unknown) {
 }
 
 describe("/api/goals", () => {
+  it("rejects a null JSON body", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(PUT(event("", false, null) as any)).rejects.toMatchObject({ status: 400 });
+    expect(saveAnnualGoal).not.toHaveBeenCalled();
+  });
+
   it("falls back to the current year for empty, fractional, or non-positive years", async () => {
     const now = new Date().getFullYear();
     for (const search of ["?year=", "?year=2026.5", "?year=0"]) {

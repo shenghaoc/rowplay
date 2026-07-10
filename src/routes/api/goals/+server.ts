@@ -12,24 +12,40 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const PUT: RequestHandler = async (event) => {
-  let body: { year?: number; kind?: string; target?: number };
+  let body: unknown;
   try {
-    body = (await event.request.json()) as { year?: number; kind?: string; target?: number };
+    body = await event.request.json();
   } catch {
     throw error(400, "Invalid JSON body.");
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw error(400, "Expected a JSON object.");
+  }
+  const {
+    year: requestedYear,
+    kind: requestedKind,
+    target: requestedTarget,
+  } = body as {
+    year?: number;
+    kind?: string;
+    target?: number;
+  };
   const year =
-    typeof body.year === "number" && Number.isInteger(body.year) && body.year > 0
-      ? body.year
+    typeof requestedYear === "number" && Number.isInteger(requestedYear) && requestedYear > 0
+      ? requestedYear
       : new Date().getFullYear();
-  if (body.kind !== "meters" && body.kind !== "hours") {
+  if (requestedKind !== "meters" && requestedKind !== "hours") {
     throw error(400, 'Invalid goal kind. Must be "meters" or "hours".');
   }
-  if (typeof body.target !== "number" || !Number.isFinite(body.target) || body.target <= 0) {
+  if (
+    typeof requestedTarget !== "number" ||
+    !Number.isFinite(requestedTarget) ||
+    requestedTarget <= 0
+  ) {
     throw error(400, "Invalid or missing target. Must be a positive number.");
   }
-  const kind = body.kind as AnnualGoalKind;
-  const goal = { year, kind, target: body.target };
+  const kind = requestedKind as AnnualGoalKind;
+  const goal = { year, kind, target: requestedTarget };
   await saveAnnualGoal(event, goal);
   return json({ goal });
 };

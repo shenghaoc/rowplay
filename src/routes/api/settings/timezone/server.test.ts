@@ -16,6 +16,12 @@ function event(body: unknown, demo = false) {
 }
 
 describe("POST /api/settings/timezone", () => {
+  it("rejects a null JSON body", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(POST(event(null) as any)).rejects.toMatchObject({ status: 400 });
+    expect(saveHomeTimezone).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid IANA timezones before persisting them", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect(POST(event({ timezone: "not/a-timezone" }) as any)).rejects.toMatchObject({
