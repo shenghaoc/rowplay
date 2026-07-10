@@ -39,7 +39,6 @@
 	import { isExrSource } from '$lib/exrSource';
 	import { untrack } from 'svelte';
 	import { constantPaceGhost, parseWorkoutFile } from '$lib/replay/sources';
-	import { isShareToken, type RivalGhostTrace } from '$lib/replay/rivalGhost';
 	import {
 		raceGapMetres,
 		raceGapSeconds,
@@ -127,7 +126,7 @@
 	// uploaded CSV/TCX/FIT file. All three resolve to a ghost stroke array.
 	type CompareMode = 'none' | 'session' | 'pace' | 'file';
 	type GhostRival = {
-		kind: 'session' | 'pace' | 'file' | 'rival';
+		kind: 'session' | 'pace' | 'file';
 		date?: string;
 		distance?: number;
 		name?: string;
@@ -423,10 +422,7 @@
 		};
 	});
 
-	/**
-	 * Leaderboard deep-link: ghostToken (stroke trace) and/or ghostPace (pace ghost).
-	 * With both params, arms pace immediately then upgrades when the trace loads.
-	 */
+	/** Restore a target-pace ghost from a locally-created replay link. */
 	function armPaceGhostFromParams(paceRaw: string, name: string | undefined) {
 		const secs = parsePaceInput(paceRaw);
 		if (secs == null || total <= 0) return false;
@@ -441,44 +437,9 @@
 		return true;
 	}
 
-	async function armGhostFromUrl() {
-		const token = page.url.searchParams.get('ghostToken')?.trim() ?? '';
+	function armGhostFromUrl() {
 		const gp = page.url.searchParams.get('ghostPace');
 		const name = page.url.searchParams.get('ghostName')?.trim();
-		const hasToken = isShareToken(token);
-		const hasPace = !!gp && parsePaceInput(gp) != null && total > 0;
-
-		if (!hasToken && !hasPace) return;
-
-		if (hasToken) {
-			if (hasPace && gp) armPaceGhostFromParams(gp, name);
-			loadingGhost = true;
-			ghostError = '';
-			const gen = ++ghostLoadGen;
-			try {
-				const res = await fetch(`/api/ghost/${token}`);
-				if (gen !== ghostLoadGen) return;
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				const data = (await res.json()) as RivalGhostTrace;
-				if (gen !== ghostLoadGen) return;
-				if (!data.strokes?.length) throw new Error('empty trace');
-				const label = name || data.workoutType || t('leaderboard.race');
-				if (gen !== ghostLoadGen) return;
-				setGhost(data.strokes, label, { kind: 'rival', name: label, hasStrokeData: data.hasStrokeData });
-				compareMode = 'none';
-			} catch {
-				if (gen !== ghostLoadGen) return;
-				if (!hasPace) {
-					setGhost(null, '', null);
-				} else {
-					toast.warning(t('leaderboard.ghostFallbackToast'));
-				}
-			} finally {
-				if (gen === ghostLoadGen) loadingGhost = false;
-			}
-			return;
-		}
-
 		if (gp) armPaceGhostFromParams(gp, name);
 	}
 
@@ -759,10 +720,6 @@
 			return t(key, { ...base, pace: ghostRival.paceLabel });
 		}
 		if (ghostRival.kind === 'file' && ghostRival.name) {
-			const key = won ? 'replay.raceVerdictWinFile' : 'replay.raceVerdictLoseFile';
-			return t(key, { ...base, name: ghostRival.name });
-		}
-		if (ghostRival.kind === 'rival' && ghostRival.name) {
 			const key = won ? 'replay.raceVerdictWinFile' : 'replay.raceVerdictLoseFile';
 			return t(key, { ...base, name: ghostRival.name });
 		}

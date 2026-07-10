@@ -1,6 +1,6 @@
 import { error, isHttpError, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { syncWorkouts } from "$lib/server/data";
+import { pollRecentWorkouts } from "$lib/server/data";
 
 /** Live-mode polling — returns workouts from the Concept2 API. */
 export const POST: RequestHandler = async (event) => {
@@ -11,7 +11,7 @@ export const POST: RequestHandler = async (event) => {
     );
   }
   try {
-    const result = await syncWorkouts(event);
+    const result = await pollRecentWorkouts(event);
     return json(result, { headers: { "cache-control": "private, no-store" } });
   } catch (e) {
     if (isHttpError(e)) throw e;

@@ -52,6 +52,35 @@ describe("Concept2Client.listWorkouts", () => {
     expect(fetchMock.mock.calls[0][0]).toContain("page=1&number=250");
     expect(fetchMock.mock.calls[1][0]).toContain("page=2&number=250");
   });
+
+  it("fetches only the newest page for live polling", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [{ id: 3, date: "2026-05-03 06:00:00", type: "rower", distance: 2000, time: 4800 }],
+          meta: { pagination: { total_pages: 4 } },
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new Concept2Client(
+      {
+        clientId: "",
+        clientSecret: "",
+        baseUrl: "https://log.concept2.com",
+        appUrl: "https://rowplay.test",
+      },
+      {
+        user: { id: 1, username: "athlete" },
+        personal: true,
+        tokens: { accessToken: "token", refreshToken: "", expiresAt: 0, scope: "" },
+      },
+    );
+
+    await expect(client.listRecentWorkouts()).resolves.toMatchObject([{ id: 3 }]);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toContain("page=1&number=25");
+  });
 });
 
 describe("mapHeartRate", () => {

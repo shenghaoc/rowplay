@@ -6,7 +6,7 @@ live under `.kiro/specs/`.
 ## Read steering first
 
 - [Product vision](.kiro/steering/product.md) — replay-first; BYOT auth; demo mode.
-- [Technical constraints](.kiro/steering/tech.md) — SvelteKit on Cloudflare Workers, KV + D1.
+- [Technical constraints](.kiro/steering/tech.md) — SvelteKit on Cloudflare Workers with encrypted, cookie-backed sessions; no KV or D1 bindings.
 - [Repository structure](.kiro/steering/structure.md) — layout, naming, conventions.
 
 ## Skills
@@ -23,6 +23,7 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 
 **Completed (do not rebuild):**
 
+- [Stateless storage removal](.kiro/specs/remove-kv-d1/tasks.md) — removes KV/D1 and their migrations; fetches live Concept2 history; keeps encrypted cookie sessions, annual goals, timezone preferences, and export; removes storage-dependent features.
 - [Leaderboards](.kiro/specs/leaderboards/tasks.md)
 - [Live / near-live mode](.kiro/specs/live-near-live-mode/tasks.md)
 - [Heart-rate import](.kiro/specs/heart-rate-import/tasks.md)
@@ -31,10 +32,10 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [Sport-aware 3D replay](.kiro/specs/3d-replay-sports/tasks.md)
 - [Replay animation upgrade](.kiro/specs/replay-animation-upgrade/tasks.md) — wall-clock motion (`motion.ts`), stroke-synced hull surge, splash/ripples/waves, corrected oar/pole mechanics, instanced spray & buoys, chase camera with speed-aware FOV, `PerfGovernor` adaptive degradation; both renderers, all 3 sports, reduced-motion compliant.
 - [WebGPU-first replay graphics upgrade](.kiro/specs/webgpu-first-replay-graphics-upgrade/tasks.md) — WebGPU-first 3D factory with WebGL fallback; Concept2-derived stroke poses for live and ghost rows; segmented human-scale 3D athletes; Ultra quality tier; larger 3D stage; backend diagnostics; docs/tests/visual QA.
-- [Concept2 token privacy](.kiro/specs/concept2-token-privacy/tasks.md) — BYOT token sealed in an httpOnly cookie (never in KV); session-scoped D1 cache purged on disconnect; reversible leaderboard opt-in.
+- [Concept2 token privacy](.kiro/specs/concept2-token-privacy/tasks.md) — historical BYOT privacy work; its KV/D1 cache design is superseded by the stateless storage-removal spec.
 - [Mobile nav backdrop dismiss](.kiro/specs/mobile-nav-backdrop-dismiss/tasks.md) — cross-browser backdrop tap to close the hamburger menu; bounding-rect `onclick` fallback for iOS Safari.
-- [Snappy connect & dashboard cache warm-up](.kiro/specs/connect-cache-warmup/tasks.md) — connect pending-state; background warm-cache sync on connect (`waitUntil`); D1 read as the full history only after a sync completes (no partial cache); per-request load de-dup.
-- [Test coverage](.kiro/specs/test-coverage/tasks.md) — broad Vitest coverage across pure helpers, server/DB layer, route handlers, Svelte reactive classes, and the Three.js 3D renderer; `@vitest/coverage-v8` with `text` + `lcov` reporters. The spec records its landing snapshot; use `vp test` for current health.
+- [Snappy connect & dashboard cache warm-up](.kiro/specs/connect-cache-warmup/tasks.md) — historical cache warm-up work; superseded by live all-history reads and per-request de-duplication.
+- [Test coverage](.kiro/specs/test-coverage/tasks.md) — broad Vitest coverage across pure helpers, server data routes, Svelte reactive classes, and the Three.js 3D renderer; `@vitest/coverage-v8` with `text` + `lcov` reporters. The spec records its landing snapshot; use `vp test` for current health.
 - [State re-seed and dead-code cleanup](.kiro/specs/state-reseed-and-dead-code-cleanup/tasks.md) — PR #161 bugfix for unreachable sync branching, Svelte page-data re-seeding, timezone clearing, and a workout-moment lint suppression.
 
 **Platform audit (read before new features or modernization work):**
@@ -48,17 +49,18 @@ real-time workout replay, deployed to **Cloudflare Workers** (static assets +
 Worker via `@sveltejs/adapter-cloudflare`).
 
 All server logic runs in SvelteKit endpoints on the Workers runtime. There is no
-separate backend: the app reads the Concept2 Logbook API **server-side** and
-caches hydrated workouts in Cloudflare D1.
+separate backend: the app reads the Concept2 Logbook API **server-side** on
+each authenticated data request and does not persist workouts server-side.
 
 ### Authentication (BYOT-first)
 
 Production uses **bring-your-own-token**: the athlete pastes a **personal
 Concept2 API token** from their Concept2 profile (`/auth/token`). The token is
 submitted once over HTTPS, validated on the Worker, and sealed into the
-**httpOnly `rp_tok` cookie** using `SESSION_SECRET`. KV stores session
-identity/state, not the personal token; D1 stores cached workout/replay data,
-not the token. Disconnect/delete clears cached user data and session state.
+**httpOnly `rp_tok` cookie** using `SESSION_SECRET`. The encrypted
+**httpOnly `rp_session` cookie** holds identity, optional OAuth refresh tokens,
+and the home timezone. The Worker has no KV or D1 binding and stores neither
+workouts nor tokens server-side. Logging out clears both auth cookies.
 
 **Demo mode** (default): with no session, the app serves deterministic mock data
 (`src/lib/mockData.ts`). No Concept2 credentials required for dev or e2e.
@@ -84,14 +86,13 @@ All commands use **vp** (Vite+ CLI). `vp install` for clean CI installs.
 | Preview            | `vp run preview` (build + `wrangler dev`, real runtime)            |
 | Preview (wrangler) | `vp run preview:wrangler` (`wrangler dev` only, needs prior build) |
 | Deploy             | `vp run deploy` (build + `wrangler deploy`)                        |
-| D1 migrate         | `vp run db:migrate` (remote) / `vp run db:migrate:local`           |
 | Locales            | `vp run validate:locales` (after adding i18n keys)                 |
 | E2E (full)         | `vp run test:e2e` (all specs, Chromium desktop + mobile)           |
 | E2E (smoke)        | `vp run test:e2e:smoke` (smoke.spec.ts, Chromium desktop only)     |
 
 ## Architecture (short)
 
-- `src/lib/server/` — `concept2.ts`, `session.ts` (KV), `db.ts` (D1), `data.ts`.
+- `src/lib/server/` — `concept2.ts` (live API client), `session.ts` (encrypted cookie), `data.ts` (demo/live data loader), `export.ts`.
 - `src/lib/replay/` — `engine.ts`, `renderer.ts`, `sports.ts`.
 - `src/lib/analytics.ts` — pure analysis; no DOM.
 - `src/routes/` — `auth/token/` (BYOT), `dashboard/`, `replay/[id]/`, `api/`.
@@ -99,14 +100,14 @@ All commands use **vp** (Vite+ CLI). `vp install` for clean CI installs.
 
 ## Non-obvious caveats
 
-- **Config is `wrangler.jsonc`**. Bindings: `ASSETS`, `SESSIONS` (KV), `DB` (D1).
-  Production deploy at `https://rowplay.shenghaoc.workers.dev` uses real KV/D1 ids.
+- **Config is `wrangler.jsonc`**. The only runtime binding is `ASSETS`; set
+  `SESSION_SECRET` with `wrangler secret put` for encrypted sessions.
 - **`CONCEPT2_CLIENT_ID` empty is intentional** for BYOT production. Set
   `SESSION_SECRET` via `wrangler secret put` (and `CONCEPT2_CLIENT_SECRET` only
   if OAuth is enabled).
-- **`vite dev` is not the Workers runtime** — no KV/D1/asset bindings. Use
-  `vp run preview` (`wrangler dev` on `http://127.0.0.1:8787`) for auth, sync,
-  and binding tests.
+- **`vite dev` is not the Workers runtime** — it does not provide Workers
+  platform bindings or production cookie behavior. Use `vp run preview`
+  (`wrangler dev` on `http://127.0.0.1:8787`) for auth and live-mode testing.
 - **Stroke-data units** (`concept2.ts > mapStrokes`): bike pace is per-1000m;
   interval `t`/`d` restart per rep — both normalised on read.
 - `vp build` runs `scripts/postbuild.mjs` (patches `.assetsignore`).
@@ -151,5 +152,5 @@ P1 (must fix before merge):
   `vp run preview` → `http://127.0.0.1:8787` (Workers-faithful).
 - **E2E smoke** (PR gate): `vp run test:e2e:smoke`; first run needs `vpx playwright install --with-deps chromium`.
 - **E2E full** (all specs): `vp run test:e2e` — runs on `workflow_dispatch` and nightly in CI.
-- **Token auth / sync / KV / D1**: test on `vp run preview`, not `vite dev` alone.
+- **Token auth / live mode**: test on `vp run preview`, not `vite dev` alone.
 - **Hello-world**: `/dashboard` → `/replay/1001` → Play — canvas and gauges update.

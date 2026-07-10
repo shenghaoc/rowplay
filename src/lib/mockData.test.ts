@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { mockAnnotations, mockWorkoutDetail, mockWorkouts } from "./mockData";
+import { mockWorkoutDetail, mockWorkouts } from "./mockData";
 
 describe("mockWorkouts", () => {
   it("returns a non-empty array of workouts", () => {
@@ -77,33 +77,5 @@ describe("mockWorkoutDetail", () => {
     const detail = mockWorkoutDetail(1001)!;
     expect(detail.distance).toBeGreaterThan(0);
     expect(detail.time).toBeGreaterThan(0);
-  });
-});
-
-describe("mockAnnotations", () => {
-  it("returns an array for a known workout id", () => {
-    const annotations = mockAnnotations(1001);
-    expect(Array.isArray(annotations)).toBe(true);
-  });
-
-  it("returns an empty array for an unknown workout id", () => {
-    expect(mockAnnotations(99999)).toEqual([]);
-  });
-
-  it("each annotation has required fields", () => {
-    const annotations = mockAnnotations(1001);
-    for (const a of annotations) {
-      expect(typeof a.id).toBe("number");
-      expect(typeof a.timestamp).toBe("number");
-      expect(typeof a.text).toBe("string");
-      expect(typeof a.createdAt).toBe("number");
-      expect(a.text.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("returns the same annotations on repeated calls (deterministic)", () => {
-    const a = mockAnnotations(1001);
-    const b = mockAnnotations(1001);
-    expect(a).toEqual(b);
   });
 });

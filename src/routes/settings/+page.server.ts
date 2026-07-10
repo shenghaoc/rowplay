@@ -4,8 +4,8 @@ import { loadHomeTimezone, loadWorkouts } from "$lib/server/data";
 
 /**
  * Export and home-timezone preferences are stateless: both remain available
- * without D1/KV. Sync status and account deletion were intentionally removed
- * with the server-side cache.
+ * without server-side storage. Sync status and account deletion were intentionally removed
+ * with the persistence layer.
  */
 export const load: PageServerLoad = async (event) => {
   if (!event.locals.demo && !event.locals.user) {

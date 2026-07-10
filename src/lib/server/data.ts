@@ -5,7 +5,6 @@ import { mockWorkoutDetail, mockWorkouts } from "../mockData";
 import { Concept2Client } from "./concept2";
 import { getConfig } from "./config";
 import {
-  destroySession,
   getHomeTimezone,
   openSession,
   setHomeTimezone,
@@ -22,7 +21,6 @@ import {
 } from "$lib/workoutQuery";
 import type { SportSummary, AnnualGoal } from "$lib/analytics";
 import { defaultAnnualGoal, parseGoalsCookie, serializeGoalsCookie } from "$lib/goals";
-import { type WorkoutTag } from "../workoutTag";
 import { createLogger } from "./logger";
 
 const logger = createLogger(console);
@@ -79,7 +77,7 @@ export function loadWorkouts(event: RequestEvent): Promise<Workout[]> {
 }
 
 async function loadWorkoutsFresh(event: RequestEvent): Promise<Workout[]> {
-  if (event.locals.demo) return applyDemoWorkoutTags(mockWorkouts());
+  if (event.locals.demo) return mockWorkouts();
   const c = await client(event);
   if (!c) throw error(401, "Not authenticated.");
   return c.listWorkouts();
@@ -107,21 +105,22 @@ export function listQueryFromEvent(event: RequestEvent): WorkoutListQuery {
   return parseWorkoutListQuery(event.url.searchParams);
 }
 
-export interface SyncResult {
+export interface LivePollResult {
   added: number;
   total: number;
   workouts: Workout[];
-  /** Always empty — PB detection requires persistent storage. */
+  /** Always empty — the poll is intentionally limited to recent workouts. */
   newPbs: never[];
 }
 
 /**
- * Fetch workouts live from the Concept2 API. No server-side sync or caching.
+ * Fetch a small, newest-first window for near-live polling. The dashboard and
+ * analytics use `loadWorkouts`, which deliberately reads the full history.
  */
-export async function syncWorkouts(event: RequestEvent): Promise<SyncResult> {
+export async function pollRecentWorkouts(event: RequestEvent): Promise<LivePollResult> {
   const c = await client(event);
   if (!c) throw error(401, "Not authenticated.");
-  const workouts = await c.listWorkouts();
+  const workouts = await c.listRecentWorkouts();
   return { added: workouts.length, total: workouts.length, workouts, newPbs: [] };
 }
 
@@ -273,44 +272,9 @@ export async function loadWorkoutDetail(event: RequestEvent, id: number): Promis
   if (event.locals.demo) {
     const d = mockWorkoutDetail(id);
     if (!d) throw error(404, "Workout not found.");
-    if (demoWorkoutTagStore.has(id)) {
-      return { ...d, userTag: demoWorkoutTagStore.get(id) ?? null };
-    }
     return d;
   }
   const c = await client(event);
   if (!c) throw error(401, "Not authenticated.");
   return c.getWorkout(id);
-}
-
-/** Clear the session cookie (no server-side data to purge). */
-export async function clearUserCachedData(event: RequestEvent): Promise<void> {
-  if (event.locals.demo) return;
-  destroySession(event.cookies, event);
-  event.cookies.delete(TOKEN_COOKIE, {
-    path: "/",
-    httpOnly: true,
-    secure: event.url.protocol === "https:",
-    sameSite: "lax",
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Demo-mode stores (in-memory, lost on server restart — acceptable for demo).
-// ---------------------------------------------------------------------------
-
-/** Demo-mode workout type tag overrides (workout id → tag or null for auto). */
-const demoWorkoutTagStore = new Map<number, WorkoutTag | null>();
-
-export function resetDemoWorkoutTagStore(): void {
-  demoWorkoutTagStore.clear();
-}
-
-/** Apply demo tag overrides to workout rows returned in demo mode. */
-export function applyDemoWorkoutTags(workouts: Workout[]): Workout[] {
-  if (!demoWorkoutTagStore.size) return workouts;
-  return workouts.map((w) => {
-    if (!demoWorkoutTagStore.has(w.id)) return w;
-    return { ...w, userTag: demoWorkoutTagStore.get(w.id) ?? null };
-  });
 }

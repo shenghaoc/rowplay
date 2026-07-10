@@ -8,7 +8,7 @@ export interface GhostPickContext {
   sport: Sport;
   /** Total elapsed seconds (for time-axis comparability). */
   time?: number;
-  /** Concept2 workout_type (for axis classification; D1 columns are string | null). */
+  /** Concept2 workout_type for axis classification (may be absent). */
   workoutType?: string | null;
 }
 

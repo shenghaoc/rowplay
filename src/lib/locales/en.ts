@@ -136,8 +136,8 @@ export const en = {
       "Start with the dashboard, open a replay, explore a past-session ghost, then export the data you want to inspect elsewhere.",
     tourDashboard: "Dashboard: totals, trends and PBs",
     tourReplay: "Replay: synchronized course and gauges",
-    tourGhost: "Ghost racing: chase a past or rival effort",
-    tourExport: "Export: CSV, JSON or replay files",
+    tourGhost: "Ghost racing: chase a past effort or target pace",
+    tourExport: "Export: CSV, JSON or TCX",
     tourDismiss: "Dismiss first-run tour",
   },
   docs: {
@@ -153,7 +153,7 @@ export const en = {
       metrics: "What do pace, watts, and stroke rate mean?",
       charts: "How to read this chart",
       troubleshooting: "Missing or confusing data? See troubleshooting",
-      workflows: "Learn how leaderboards and ghost racing work",
+      workflows: "Learn replay, ghost-racing, and export workflows",
     },
     sections: {
       overview: {

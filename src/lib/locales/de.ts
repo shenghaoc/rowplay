@@ -133,15 +133,16 @@ export const de = {
     feat2Title: "Split-Analysen",
     feat2Body: "Pace, Schlagfrequenz, Power und HF über die Zeit — auf allen drei Geräten.",
     feat3Title: "Am Edge",
-    feat3Body: "Über Cloudflare ausgeliefert, mit gecachten Schlagdaten für sofortige Replays.",
+    feat3Body:
+      "Über Cloudflare ausgeliefert, mit Live-Daten von Concept2 für detaillierte Replays.",
     tourEyebrow: "Erster Start",
     tourTitle: "Vier Dinge zum Ausprobieren",
     tourBody:
-      "Starte im Dashboard, öffne ein Replay, fahre gegen einen Leaderboard-Geist und exportiere dann die Daten, die du extern prüfen willst.",
+      "Starte im Dashboard, öffne ein Replay, fahre gegen eine frühere eigene Leistung und exportiere dann die Daten, die du extern prüfen willst.",
     tourDashboard: "Dashboard: Summen, Trends und PBs",
     tourReplay: "Replay: synchrone Strecke und Anzeigen",
-    tourGhost: "Ghost-Racing: jage eine frühere oder fremde Leistung",
-    tourExport: "Export: CSV, JSON oder Replay-Dateien",
+    tourGhost: "Ghost-Racing: jage eine frühere Leistung oder Zielpace",
+    tourExport: "Export: CSV, JSON oder TCX",
     tourDismiss: "Erststart-Tour ausblenden",
   },
   docs: {

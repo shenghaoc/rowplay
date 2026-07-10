@@ -85,6 +85,6 @@ describe("POST /api/webhooks/ergdata", () => {
     const res = await POST(fakeEvent({ secret, sig, body }) as any);
     const json = await res.json();
     expect(json.ok).toBe(true);
-    expect(json.queued).toBe(42);
+    expect(json.received).toBe(42);
   });
 });

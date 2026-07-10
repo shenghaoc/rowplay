@@ -165,16 +165,35 @@ export class Concept2Client {
     let totalPages = page;
 
     do {
-      const json = await this.api<{
-        data: RawResult[];
-        meta?: { pagination?: { total_pages?: number } };
-      }>(`/users/me/results?page=${currentPage}&number=${number}`);
-      workouts.push(...json.data.map((r) => mapResult(r)));
-      totalPages = Math.max(totalPages, json.meta?.pagination?.total_pages ?? currentPage);
+      const result = await this.listWorkoutsPage(currentPage, number);
+      workouts.push(...result.workouts);
+      totalPages = Math.max(totalPages, result.totalPages);
       currentPage++;
     } while (currentPage <= totalPages);
 
     return workouts;
+  }
+
+  /**
+   * Read only the newest results for near-live polling. Fetching the complete
+   * logbook here would turn each 30-second poll into N paginated API calls.
+   */
+  async listRecentWorkouts(number = 25): Promise<Workout[]> {
+    return (await this.listWorkoutsPage(1, number)).workouts;
+  }
+
+  private async listWorkoutsPage(
+    page: number,
+    number: number,
+  ): Promise<{ workouts: Workout[]; totalPages: number }> {
+    const json = await this.api<{
+      data: RawResult[];
+      meta?: { pagination?: { total_pages?: number } };
+    }>(`/users/me/results?page=${page}&number=${number}`);
+    return {
+      workouts: json.data.map((r) => mapResult(r)),
+      totalPages: json.meta?.pagination?.total_pages ?? page,
+    };
   }
 
   async getWorkout(id: number): Promise<WorkoutDetail> {

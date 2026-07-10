@@ -134,15 +134,15 @@ export const fr = {
     feat2Body: "Allure, cadence, puissance et HR dans le temps — sur les trois machines.",
     feat3Title: "En périphérie",
     feat3Body:
-      "Servi depuis Cloudflare avec des données de coups en cache pour des replays instantanés.",
+      "Servi depuis Cloudflare avec des données Concept2 en direct pour des replays détaillés.",
     tourEyebrow: "Première visite",
     tourTitle: "Quatre choses à essayer",
     tourBody:
-      "Commencez par le tableau de bord, ouvrez un replay, affrontez un ghost du leaderboard, puis exportez les données à inspecter ailleurs.",
+      "Commencez par le tableau de bord, ouvrez un replay, affrontez un effort passé, puis exportez les données à inspecter ailleurs.",
     tourDashboard: "Tableau de bord : totaux, tendances et PB",
     tourReplay: "Replay : parcours et jauges synchronisés",
-    tourGhost: "Ghost racing : chassez un effort passé ou rival",
-    tourExport: "Export : CSV, JSON ou fichiers replay",
+    tourGhost: "Ghost racing : chassez un effort passé ou une allure cible",
+    tourExport: "Export : CSV, JSON ou TCX",
     tourDismiss: "Fermer la visite initiale",
   },
   docs: {

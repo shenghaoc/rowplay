@@ -265,9 +265,9 @@ describe("filterAndSortWorkouts", () => {
   });
 
   it("filters by resolved workout tag", () => {
-    const tagged = workout({ id: 6, userTag: "interval" });
-    const other = workout({ id: 7, userTag: "steady-state" });
-    const result = filterAndSortWorkouts([tagged, other], { ...base, tag: "interval" });
+    const tagged = workout({ id: 6, distance: 500, time: 100, pace: 100 });
+    const other = workout({ id: 7, distance: 30_000, time: 2400, pace: 120 });
+    const result = filterAndSortWorkouts([tagged, other], { ...base, tag: "race-piece" });
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(6);
   });

@@ -23,10 +23,9 @@ import {
   loadWorkoutDetail,
   loadWorkoutList,
   loadWorkouts,
-  resetDemoWorkoutTagStore,
+  pollRecentWorkouts,
   saveAnnualGoal,
   saveHomeTimezone,
-  syncWorkouts,
 } from "./data";
 import { Concept2Client } from "./concept2";
 import { openSession, getHomeTimezone, setHomeTimezone } from "./session";
@@ -87,7 +86,6 @@ beforeEach(() => {
   (openToken as unknown as Mock).mockReset();
   (getHomeTimezone as unknown as Mock).mockReset();
   (setHomeTimezone as unknown as Mock).mockReset();
-  resetDemoWorkoutTagStore();
   (openSession as unknown as Mock).mockResolvedValue({
     user: { id: 7, username: "athlete" },
     personal: true,
@@ -495,10 +493,10 @@ describe("saveAnnualGoal", () => {
 });
 
 // ---------------------------------------------------------------------------
-// syncWorkouts — authenticated (live API)
+// pollRecentWorkouts — authenticated live API
 // ---------------------------------------------------------------------------
 
-describe("syncWorkouts", () => {
+describe("pollRecentWorkouts", () => {
   const workout: Workout = {
     id: 6001,
     date: "2026-06-04 06:00:00",
@@ -509,18 +507,18 @@ describe("syncWorkouts", () => {
     hasStrokeData: false,
   };
 
-  it("fetches workouts from the API and returns them", async () => {
-    const listWorkouts = vi.fn().mockResolvedValue([workout]);
-    mockConcept2Client({ listWorkouts });
+  it("fetches only the recent API window and returns it", async () => {
+    const listRecentWorkouts = vi.fn().mockResolvedValue([workout]);
+    mockConcept2Client({ listRecentWorkouts });
 
-    const result = await syncWorkouts(authedEvent());
+    const result = await pollRecentWorkouts(authedEvent());
     expect(result).toMatchObject({ added: 1, total: 1, workouts: [workout] });
-    expect(listWorkouts).toHaveBeenCalledOnce();
+    expect(listRecentWorkouts).toHaveBeenCalledOnce();
   });
 
   it("throws 401 when not authenticated", async () => {
     (openSession as unknown as Mock).mockResolvedValue(null);
 
-    await expect(syncWorkouts(authedEvent())).rejects.toMatchObject({ status: 401 });
+    await expect(pollRecentWorkouts(authedEvent())).rejects.toMatchObject({ status: 401 });
   });
 });

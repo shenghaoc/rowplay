@@ -152,7 +152,7 @@
 			toastNewMilestones(milestonesBefore, [...byId.values()]);
 		}
 
-		// Global toasts/PB celebrations always fire on sync; the workout list's
+		// Global toasts/PB celebrations fire after each live poll; the workout list's
 		// own filtering (via listWorkouts) decides what's actually shown.
 		if (batch.length === 1) {
 			const w = batch[0];

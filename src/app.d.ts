@@ -1,4 +1,4 @@
-import type { Fetcher, ExecutionContext } from "@cloudflare/workers-types";
+import type { Fetcher } from "@cloudflare/workers-types";
 import type { SessionUser } from "$lib/server/session";
 import type { Language } from "$lib/i18n";
 
@@ -39,9 +39,6 @@ declare global {
         /** Optional — enables ErgData webhook signature validation. */
         ERGDATA_WEBHOOK_SECRET?: string;
       };
-      /** Cloudflare execution context — `waitUntil` keeps background work
-       *  alive past the response. */
-      context: ExecutionContext;
     }
   }
 }
