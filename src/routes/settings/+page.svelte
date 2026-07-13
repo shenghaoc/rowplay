@@ -61,7 +61,7 @@
 			<ul class="facts muted">
 				<li>{t('settings.factWorkouts', { n: data.workoutCount })}</li>
 				{#if data.demo}
-					<li>{t('settings.factDemo')}</li>
+					<li data-testid="settings-demo-fact">{t('settings.factDemo')}</li>
 				{:else}
 					<li>{t('settings.factCache')}</li>
 					<li>{t('settings.factSession')}</li>

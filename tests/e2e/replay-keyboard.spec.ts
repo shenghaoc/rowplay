@@ -167,5 +167,4 @@ test.describe("replay keyboard controls (demo mode)", () => {
     await page.waitForTimeout(300);
     expect(errors, `unexpected page errors:\n${errors.join("\n")}`).toEqual([]);
   });
-
 });

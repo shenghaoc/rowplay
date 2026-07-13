@@ -10,5 +10,4 @@ test.describe("full-fidelity data", () => {
     await expect(page.getByText(/hr at finish|结束时心率/i)).toBeVisible();
     await expect(page.getByText(/target vs actual|目标与实际/i)).toBeVisible();
   });
-
 });
