@@ -18,7 +18,7 @@ test.describe("history windowing", () => {
     await expect(page.locator(".syncnote .badge")).toBeVisible();
 
     await page.goto("/settings");
-    await expect(page.getByTestId("settings-sync-demo-badge")).toBeVisible();
+    await expect(page.locator(".facts li").filter({ hasText: /Demo mode|演示模式|Modo demo|Demo-Modus|Mode démo|デモモード/i })).toBeVisible();
 
     await page.waitForTimeout(300);
     expect(errors, `unexpected page errors:\n${errors.join("\n")}`).toEqual([]);
