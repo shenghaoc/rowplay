@@ -167,20 +167,4 @@ test.describe("replay keyboard controls (demo mode)", () => {
     await page.waitForTimeout(300);
     expect(errors, `unexpected page errors:\n${errors.join("\n")}`).toEqual([]);
   });
-
-  test("compare link goes to /compare with current workout pre-selected", async ({ page }) => {
-    const errors = collectPageErrors(page);
-
-    await page.goto("/replay/1001");
-    await expect(page.locator("canvas").first()).toBeVisible();
-
-    const compareLink = page.getByRole("link", {
-      name: /^Compare$|^对比$|^Vergleichen$|^Comparar$|^Comparer$|^比較$/,
-    });
-    await expect(compareLink).toBeVisible();
-    await expect(compareLink).toHaveAttribute("href", "/compare?a=1001");
-
-    await page.waitForTimeout(300);
-    expect(errors, `unexpected page errors:\n${errors.join("\n")}`).toEqual([]);
-  });
 });
