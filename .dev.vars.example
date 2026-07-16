@@ -1,12 +1,16 @@
-# Copy to `.dev.vars` for local development (git-ignored).
+# Demo mode needs no `.dev.vars`; use `vp dev` for normal UI development.
 #
-# Demo mode works with zero config (`npm run dev`). For token auth, sync, KV, and
-# D1 on the real Workers runtime, use `npm run preview` after filling SESSION_SECRET.
+# For local BYOT authentication and session testing, copy this file to the
+# git-ignored `.dev.vars`, set SESSION_SECRET, and run `vp run preview`. That
+# command builds the app and starts the Workers-faithful `wrangler dev` runtime.
+# There is no KV, D1, migration, persistent sync, or database setup.
 
-# Random string used to sign session cookies. Generate one, e.g.:
+# Random string used to encrypt and authenticate local session/token cookies.
+# Generate one, e.g.:
 #   node -e "console.log(crypto.randomUUID()+crypto.randomUUID())"
 SESSION_SECRET=""
 
+# Non-secret mirrors of the Worker configuration for local preview.
 PUBLIC_APP_URL="http://127.0.0.1:8787"
 CONCEPT2_BASE_URL="https://log.concept2.com"
 
