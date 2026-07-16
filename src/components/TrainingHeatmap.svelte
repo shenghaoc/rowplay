@@ -219,7 +219,7 @@
 	.cell {
 		width: var(--cell);
 		height: var(--cell);
-		border-radius: 2px;
+		border-radius: var(--r-ctrl);
 		background: var(--bg-elev-2);
 		border: 1px solid transparent;
 	}

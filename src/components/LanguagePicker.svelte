@@ -47,6 +47,6 @@
 	.lang-select:focus-visible {
 		outline: 2px solid var(--live);
 		outline-offset: 2px;
-		border-radius: 4px;
+		border-radius: var(--r-ctrl);
 	}
 </style>

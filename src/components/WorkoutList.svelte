@@ -223,7 +223,7 @@
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		padding: 0.1rem 0.4rem;
-		border-radius: 4px;
+		border-radius: var(--r-ctrl);
 		background: color-mix(in srgb, var(--accent) 15%, var(--paper-raised));
 		color: var(--accent);
 		border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--paper-raised));

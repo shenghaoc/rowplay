@@ -1861,7 +1861,7 @@
 	{:else if detail.splits.length}
 		<!-- Single-segment piece: plain split table -->
 		<div class="card card-border bg-base-100 shadow-md p-5 splits">
-			<h3>{t('replay.splitsTitle')}</h3>
+			<h2>{t('replay.splitsTitle')}</h2>
 			<table class="mono">
 				<thead>
 					<tr>

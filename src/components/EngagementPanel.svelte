@@ -174,7 +174,7 @@
 				<span class="muted">{t('dashboard.goalsPct', { pct: Math.round(progress.pct) })}</span>
 			</div>
 			<div class="progressbar" role="progressbar" aria-valuenow={progress.pct} aria-valuemin={0} aria-valuemax={100}>
-				<div class="progressfill" class:onpace={progress.onPace} style:width="{Math.min(100, progress.pct)}%"></div>
+				<div class="progressfill" class:onpace={progress.onPace} style:transform="scaleX({Math.min(100, progress.pct) / 100})"></div>
 				<div class="pacepin" style:left="{Math.min(100, (progress.expected / progress.target) * 100)}%"></div>
 			</div>
 			<p class="paceline" class:onpace={progress.onPace}>{paceLine}</p>
@@ -296,9 +296,11 @@
 	}
 	.progressfill {
 		height: 100%;
+		width: 100%;
 		border-radius: 999px;
 		background: var(--behind);
-		transition: width 0.2s ease;
+		transform-origin: left;
+		transition: transform 0.2s ease;
 	}
 	.progressfill.onpace {
 		background: var(--ahead);

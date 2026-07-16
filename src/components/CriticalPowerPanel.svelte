@@ -284,8 +284,8 @@
 		max-width: 100%;
 		overflow-x: clip;
 		margin-bottom: 1rem;
-		background: linear-gradient(135deg, rgba(158, 91, 45, 0.08), var(--bg-elev) 65%);
-		border-color: rgba(158, 91, 45, 0.28);
+		background: linear-gradient(135deg, color-mix(in srgb, var(--power) 8%, var(--bg-elev)), var(--bg-elev) 65%);
+		border-color: color-mix(in srgb, var(--power) 28%, var(--bg-elev));
 	}
 	.cphead {
 		display: flex;
@@ -343,7 +343,7 @@
 	.cpexplain {
 		font-size: 0.88rem;
 		padding: 0.55rem 0.75rem;
-		border-radius: 8px;
+		border-radius: var(--r-ctrl);
 		background: var(--bg-elev-2);
 		border-left: 3px solid var(--power);
 		margin-bottom: 1rem;
@@ -482,7 +482,7 @@
 	.curvelegend .line {
 		width: 14px;
 		height: 3px;
-		border-radius: 2px;
+		border-radius: var(--r-ctrl);
 		background: var(--dps);
 	}
 	@media (max-width: 720px) {

@@ -297,7 +297,7 @@
 	.tidswatch {
 		width: 0.65rem;
 		height: 0.65rem;
-		border-radius: 2px;
+		border-radius: var(--r-ctrl);
 	}
 	.tidlegpct {
 		font-weight: 700;
