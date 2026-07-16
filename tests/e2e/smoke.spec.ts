@@ -130,6 +130,9 @@ test.describe("smoke", () => {
     await page.goto("/replay/1005");
     await expect(page.locator("canvas").first()).toBeVisible();
 
+    // The constant-pace button lives inside a collapsible <details>; open it first
+    const moreOptions = page.locator("details.ghost-more summary");
+    await moreOptions.click();
     await page.getByRole("button", { name: /A constant pace|恒定配速/ }).click();
     await page.getByRole("button", { name: /Set pace|设定配速/ }).click();
 
