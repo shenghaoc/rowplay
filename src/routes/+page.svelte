@@ -139,6 +139,11 @@
 	}
 	.feat {
 		box-shadow: var(--stamp);
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
+	}
+	.feat:hover {
+		transform: translateY(-2px);
+		box-shadow: var(--stamp), 0 4px 12px color-mix(in srgb, var(--live) 10%, transparent);
 	}
 	.ficon {
 		color: var(--live);
