@@ -920,6 +920,8 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     pastSession: "Une séance passée",
     constantPace: "Une allure constante",
     uploadedFile: "Un fichier importé",
+    moreOptions: "Plus d'options",
+    moreCompareOptions: "Plus d'options de comparaison",
     chooseSession: "Choisir une séance {sport}…",
     setPace: "Définir l’allure",
     targetPace: "Allure cible",

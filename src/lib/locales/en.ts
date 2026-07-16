@@ -911,6 +911,8 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     pastSession: "A past session",
     constantPace: "A constant pace",
     uploadedFile: "An uploaded file",
+    moreOptions: "More options",
+    moreCompareOptions: "More compare options",
     chooseSession: "Choose a {sport} session…",
     setPace: "Set pace",
     targetPace: "Target pace",

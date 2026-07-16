@@ -773,7 +773,6 @@
 
 	<section id="workouts" class="dashboard-section workout-section" data-e2e="workout-section" aria-labelledby="workouts-title">
 		<div class="section-head">
-			<p class="eyebrow">{t('dashboard.sectionWorkoutsEyebrow')}</p>
 			<h2 id="workouts-title">{t('dashboard.sectionWorkouts')}</h2>
 			<p class="muted">{t('dashboard.sectionWorkoutsBody')}</p>
 		</div>
@@ -809,7 +808,6 @@
 
 	<section id="goals-records" class="dashboard-section" data-e2e="records-section" aria-labelledby="records-title">
 		<div class="section-head">
-			<p class="eyebrow">{t('dashboard.sectionRecordsEyebrow')}</p>
 			<h2 id="records-title">{t('dashboard.sectionRecords')}</h2>
 			<p class="muted">{t('dashboard.sectionRecordsBody')}</p>
 		</div>
@@ -845,7 +843,6 @@
 
 	<section id="advanced-analysis" class="dashboard-section" data-e2e="advanced-section" aria-labelledby="advanced-title">
 		<div class="section-head">
-			<p class="eyebrow">{t('dashboard.sectionAdvancedEyebrow')}</p>
 			<h2 id="advanced-title">{t('dashboard.sectionAdvanced')}</h2>
 			<p class="muted">{t('dashboard.sectionAdvancedBody')}</p>
 		</div>
@@ -1393,7 +1390,7 @@
 		margin-bottom: 0.85rem;
 	}
 	.formlegend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; font-size: 0.76rem; margin-top: 0.5rem; }
-	.formlegend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 2px; margin-right: 0.3rem; vertical-align: -1px; }
+	.formlegend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: var(--r-ctrl); margin-right: 0.3rem; vertical-align: -1px; }
 	.emptytrend { font-size: 0.85rem; padding: 0.5rem 0; }
 
 	/* Form-band semantic colours (formBandClass: info/good/neutral/accent/bad).

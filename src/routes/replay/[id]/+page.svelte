@@ -1290,23 +1290,28 @@
 					onclick={() => setCompareMode('session')}
 				>{t('replay.pastSession')}</button>
 			{/if}
-			<button
-				type="button"
-				class="btn btn-sm join-item"
-				class:btn-active={compareMode === 'pace'}
-				class:btn-neutral={compareMode === 'pace'}
-				aria-pressed={compareMode === 'pace'}
-				onclick={() => setCompareMode('pace')}
-			>{t('replay.constantPace')}</button>
-			<button
-				type="button"
-				class="btn btn-sm join-item"
-				class:btn-active={compareMode === 'file'}
-				class:btn-neutral={compareMode === 'file'}
-				aria-pressed={compareMode === 'file'}
-				onclick={() => setCompareMode('file')}
-			>{t('replay.uploadedFile')}</button>
 		</div>
+		<details class="ghost-more" open={compareMode === 'pace' || compareMode === 'file'}>
+			<summary class="muted small">{t('replay.moreOptions')}</summary>
+			<div class="join ghost-more-join" role="group" aria-label={t('replay.moreCompareOptions')}>
+				<button
+					type="button"
+					class="btn btn-sm join-item"
+					class:btn-active={compareMode === 'pace'}
+					class:btn-neutral={compareMode === 'pace'}
+					aria-pressed={compareMode === 'pace'}
+					onclick={() => setCompareMode('pace')}
+				>{t('replay.constantPace')}</button>
+				<button
+					type="button"
+					class="btn btn-sm join-item"
+					class:btn-active={compareMode === 'file'}
+					class:btn-neutral={compareMode === 'file'}
+					aria-pressed={compareMode === 'file'}
+					onclick={() => setCompareMode('file')}
+				>{t('replay.uploadedFile')}</button>
+			</div>
+		</details>
 
 		{#if compareMode === 'session' && comparableCandidates.length}
 			{#if comparableCandidates.length >= SEARCHABLE_MIN}
@@ -1502,6 +1507,7 @@
 			aria-label="Seek"
 		/>
 		<div class="dist mono">{fmtDistance(frame.d)}</div>
+		<p class="kb-inline muted small"><kbd>Space</kbd> {t('replay.kbSpaceHint')} · <kbd>←</kbd><kbd>→</kbd> {t('replay.kbArrowHint')}</p>
 		<div
 			class="join speeds"
 			role="radiogroup"
@@ -1837,7 +1843,7 @@
 					<div class="rep" class:fastest={r.isFastest} class:slowest={r.isSlowest}>
 						<div class="repno mono">#{r.index + 1}</div>
 						<div class="repbarwrap">
-						<div class="repbar" style:width="{repBarPct(r.pace)}%" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : MACHINE_COLOR[detail.sport]}></div>
+						<div class="repbar" style:transform="scaleX({repBarPct(r.pace) / 100})" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : MACHINE_COLOR[detail.sport]}></div>
 							<span class="repbarlabel mono">{fmtPace(r.pace).replace('/500m', '')}</span>
 						</div>
 						<div class="repmeta mono muted">
@@ -2174,6 +2180,27 @@
 		align-items: center;
 		gap: 0.35rem;
 	}
+	.ghost-more {
+		margin: 0;
+	}
+	.ghost-more summary {
+		cursor: pointer;
+		list-style: none;
+		user-select: none;
+	}
+	.ghost-more summary::marker,
+	.ghost-more summary::-webkit-details-marker {
+		display: none;
+	}
+	.ghost-more summary::before {
+		content: '+ ';
+	}
+	.ghost-more[open] summary::before {
+		content: '− ';
+	}
+	.ghost-more-join {
+		margin-top: 0.5rem;
+	}
 	.ghost-status {
 		display: flex;
 		align-items: center;
@@ -2416,6 +2443,17 @@
 	.kb-hints summary::-webkit-details-marker {
 		display: none;
 	}
+	.kb-inline {
+		margin: 0;
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		flex-wrap: wrap;
+	}
+	.kb-inline kbd {
+		font-size: 0.65rem;
+		padding: 0.05rem 0.25rem;
+	}
 	.kb-hints summary::before {
 		content: '▸ ';
 	}
@@ -2449,7 +2487,7 @@
 		padding: 0.1rem 0.35rem;
 		border: 1px solid var(--ink-2);
 		border-bottom-width: 2px;
-		border-radius: 3px;
+		border-radius: var(--r-ctrl);
 		background: var(--paper-raised);
 		color: var(--ink);
 	}
@@ -2646,7 +2684,7 @@
 	.zonebar {
 		display: flex;
 		height: 22px;
-		border-radius: 6px;
+		border-radius: var(--r-ctrl);
 		overflow: hidden;
 		background: var(--bg-elev-2);
 		margin: 0.4rem 0 0.75rem;
@@ -2670,7 +2708,7 @@
 	.dot {
 		width: 10px;
 		height: 10px;
-		border-radius: 3px;
+		border-radius: var(--r-ctrl);
 	}
 	.intervals {
 		margin-bottom: 0.75rem;
@@ -2711,7 +2749,7 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.4rem 0.5rem;
-		border-radius: 8px;
+		border-radius: var(--r-ctrl);
 		background: var(--bg-elev-2);
 	}
 	.rep.fastest {
@@ -2733,9 +2771,11 @@
 	}
 	.repbar {
 		height: 1.4rem;
-		border-radius: 4px;
+		border-radius: var(--r-ctrl);
 		min-width: 2px;
-		transition: width 0.3s ease;
+		width: 100%;
+		transform-origin: left;
+		transition: transform 0.3s ease;
 	}
 	.repbarlabel {
 		font-weight: 700;

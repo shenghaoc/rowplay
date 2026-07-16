@@ -917,6 +917,8 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     pastSession: "Eine vergangene Einheit",
     constantPace: "Eine konstante Pace",
     uploadedFile: "Eine hochgeladene Datei",
+    moreOptions: "Weitere Optionen",
+    moreCompareOptions: "Weitere Vergleichsoptionen",
     chooseSession: "Wähle eine {sport}-Einheit…",
     setPace: "Pace setzen",
     targetPace: "Zielpace",

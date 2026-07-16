@@ -911,6 +911,8 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     pastSession: "Una sesión anterior",
     constantPace: "Un ritmo constante",
     uploadedFile: "Un archivo subido",
+    moreOptions: "Más opciones",
+    moreCompareOptions: "Más opciones de comparación",
     chooseSession: "Elige una sesión de {sport}…",
     setPace: "Fijar ritmo",
     targetPace: "Ritmo objetivo",
