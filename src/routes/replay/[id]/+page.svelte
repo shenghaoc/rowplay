@@ -1843,7 +1843,9 @@
 					<div class="rep" class:fastest={r.isFastest} class:slowest={r.isSlowest}>
 						<div class="repno mono">#{r.index + 1}</div>
 						<div class="repbarwrap">
-						<div class="repbar" style:transform="scaleX({repBarPct(r.pace) / 100})" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : MACHINE_COLOR[detail.sport]}></div>
+							<div class="repbar-clipper" style:width="{repBarPct(r.pace)}%" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : MACHINE_COLOR[detail.sport]}>
+								<div class="repbar"></div>
+							</div>
 							<span class="repbarlabel mono">{fmtPace(r.pace).replace('/500m', '')}</span>
 						</div>
 						<div class="repmeta mono muted">
@@ -2445,10 +2447,11 @@
 	}
 	.kb-inline {
 		margin: 0;
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		flex-wrap: wrap;
+		line-height: 1.5;
+	}
+	.kb-inline kbd {
+		margin: 0 0.15rem;
+		vertical-align: middle;
 	}
 	.kb-inline kbd {
 		font-size: 0.65rem;
@@ -2769,13 +2772,16 @@
 		gap: 0.5rem;
 		min-width: 0;
 	}
-	.repbar {
+	.repbar-clipper {
 		height: 1.4rem;
 		border-radius: var(--r-ctrl);
+		overflow: hidden;
 		min-width: 2px;
+		transition: width 0.3s ease;
+	}
+	.repbar {
+		height: 100%;
 		width: 100%;
-		transform-origin: left;
-		transition: transform 0.3s ease;
 	}
 	.repbarlabel {
 		font-weight: 700;
@@ -2925,6 +2931,9 @@
 		}
 		.speeds {
 			justify-self: end;
+		}
+		.kb-inline {
+			display: none;
 		}
 		.head h1 {
 			font-size: 1.25rem;
