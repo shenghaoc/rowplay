@@ -32,10 +32,14 @@ function utcEpochMillis(parts: {
   minute?: number;
   second?: number;
 }): number {
-  const date = new Date(0);
-  date.setUTCFullYear(parts.year, parts.month - 1, parts.day);
-  date.setUTCHours(parts.hour ?? 0, parts.minute ?? 0, parts.second ?? 0, 0);
-  return date.getTime();
+  return Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour ?? 0,
+    parts.minute ?? 0,
+    parts.second ?? 0,
+  );
 }
 
 function dateFromUtcParts(parts: {

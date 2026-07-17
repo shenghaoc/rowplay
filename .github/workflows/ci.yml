@@ -64,9 +64,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-      # The Playwright image ships Node 24, but this repo pins Node >=26.
-      # Install the pinned version from .node-version so engine checks
-      # and Node 26 features are available.
+      # Install the pinned Node version from .node-version so engine
+      # checks and runtime behaviour match local development.
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
