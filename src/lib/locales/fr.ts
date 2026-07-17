@@ -1039,9 +1039,12 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     loadSessionFailed: "Impossible de charger cette séance",
     paceError: "Saisissez une allure du type 1:52",
     pacingAt: "Allure cible {pace}",
-    noSamples: "Aucun échantillon d'entraînement exploitable dans ce fichier. Essayez un autre fichier ou vérifiez le format.",
-    fileReadError: "Impossible de lire ce fichier. Vérifiez qu'il s'agit d'un export CSV, TCX ou FIT.",
-    importFailed: "Impossible d'importer ce fichier. Assurez-vous qu'il s'agit d'un export CSV, TCX ou FIT valide.",
+    noSamples:
+      "Aucun échantillon d'entraînement exploitable dans ce fichier. Essayez un autre fichier ou vérifiez le format.",
+    fileReadError:
+      "Impossible de lire ce fichier. Vérifiez qu'il s'agit d'un export CSV, TCX ou FIT.",
+    importFailed:
+      "Impossible d'importer ce fichier. Assurez-vous qu'il s'agit d'un export CSV, TCX ou FIT valide.",
     zone1: "Z1 Récupération",
     zone2: "Z2 Endurance",
     zone3: "Z3 Tempo",
@@ -1220,8 +1223,7 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     trustStoredBody:
       "le jeton validé est conservé dans un cookie de navigateur sécurisé — pas dans localStorage ni sur un serveur.",
     trustDisconnectTitle: "Déconnexion :",
-    trustDisconnectBody:
-      "le bouton Se déconnecter de l'en-tête efface le jeton et la session.",
+    trustDisconnectBody: "le bouton Se déconnecter de l'en-tête efface le jeton et la session.",
     trustCacheTitle: "Données :",
     trustCacheBody:
       "Les données de séance sont récupérées en direct depuis l'API Concept2 à chaque requête — rien n'est stocké côté serveur.",

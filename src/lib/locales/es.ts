@@ -133,7 +133,8 @@ export const es = {
     feat2Title: "Análisis de parciales",
     feat2Body: "Ritmo, cadencia, potencia y HR a lo largo del tiempo — en las tres máquinas.",
     feat3Title: "Rápido en todas partes",
-    feat3Body: "Servido globalmente desde la red edge de Cloudflare — replays instantáneos, sin esperas.",
+    feat3Body:
+      "Servido globalmente desde la red edge de Cloudflare — replays instantáneos, sin esperas.",
     tourEyebrow: "Primer uso",
     tourTitle: "Cuatro cosas que probar",
     tourBody:
@@ -1028,7 +1029,8 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     loadSessionFailed: "No se pudo cargar esa sesión",
     paceError: "Introduce un ritmo como 1:52",
     pacingAt: "Ritmo objetivo {pace}",
-    noSamples: "No hay muestras de entrenamiento utilizables en ese archivo. Prueba con otro archivo o revisa el formato.",
+    noSamples:
+      "No hay muestras de entrenamiento utilizables en ese archivo. Prueba con otro archivo o revisa el formato.",
     fileReadError: "No se pudo leer ese archivo. Comprueba que sea una exportación CSV, TCX o FIT.",
     importFailed: "No se pudo importar ese archivo. Asegúrate de que sea un CSV, TCX o FIT válido.",
     zone1: "Z1 Recuperación",
@@ -1209,8 +1211,7 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     trustStoredBody:
       "el token validado se guarda en una cookie segura del navegador — no en localStorage ni en un servidor.",
     trustDisconnectTitle: "Desconectar:",
-    trustDisconnectBody:
-      "el botón Cerrar sesión de la cabecera limpia el token y la sesión.",
+    trustDisconnectBody: "el botón Cerrar sesión de la cabecera limpia el token y la sesión.",
     trustCacheTitle: "Datos:",
     trustCacheBody:
       "Los datos de entrenamiento se obtienen en vivo desde la API de Concept2 en cada solicitud — nada se almacena en el servidor.",

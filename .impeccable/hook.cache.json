@@ -1,1 +1,135 @@
-{"version":1,"sessions":{"429fe3bd-a0dd-4ba6-9612-89f25d96d25d":{"updatedAt":1784249373505,"files":{"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/routes/dashboard/+page.svelte":{"editCount":6,"findings":["side-tab:1389","design-system-radius:1393:2px"]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/routes/replay/[id]/+page.svelte":{"editCount":26,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/en.ts":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/zh.ts":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/es.ts":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/fr.ts":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/ja.ts":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/de.ts":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/TrainingIntensityChart.svelte":{"editCount":2,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/WorkoutList.svelte":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/CriticalPowerPanel.svelte":{"editCount":6,"findings":["side-tab:348"]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/LanguagePicker.svelte":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/TrainingHeatmap.svelte":{"editCount":2,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/EngagementPanel.svelte":{"editCount":4,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/routes/+page.svelte":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/tests/e2e/smoke.spec.ts":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/tests/e2e/replay-keyboard.spec.ts":{"editCount":2,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/app.css":{"editCount":7,"findings":["design-system-color:371:#3b2d8c","design-system-color:374:#4a1f7a","design-system-color:377:#1a5c45","design-system-color:380:#7a4e00","design-system-color:383:#1a4a6e","design-system-color:386:#7a1a1a","design-system-color:488:#000","design-system-color:492:#000","design-system-color:372:#3b2d8c","design-system-color:375:#4a1f7a","design-system-color:378:#1a5c45","design-system-color:381:#7a4e00","design-system-color:384:#1a4a6e","design-system-color:387:#7a1a1a","design-system-color:489:#000","design-system-color:493:#000","design-system-color:378:#3b2d8c","design-system-color:381:#4a1f7a","design-system-color:384:#1a5c45","design-system-color:387:#7a4e00","design-system-color:390:#1a4a6e","design-system-color:393:#7a1a1a","design-system-color:495:#000","design-system-color:499:#000","design-system-color:379:#3b2d8c","design-system-color:382:#4a1f7a","design-system-color:385:#1a5c45","design-system-color:388:#7a4e00","design-system-color:391:#1a4a6e","design-system-color:394:#7a1a1a","design-system-color:496:#000","design-system-color:500:#000","design-system-color:385:#3b2d8c","design-system-color:388:#4a1f7a","design-system-color:391:#1a5c45","design-system-color:394:#7a4e00","design-system-color:397:#1a4a6e","design-system-color:400:#7a1a1a","design-system-color:502:#000","design-system-color:506:#000"]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/app.html":{"editCount":1,"findings":["single-font:1"]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/routes/+layout.svelte":{"editCount":1,"findings":[]},"/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/ChipGroup.svelte":{"editCount":1,"findings":[]}}}}}
+{
+  "version": 1,
+  "sessions": {
+    "429fe3bd-a0dd-4ba6-9612-89f25d96d25d": {
+      "updatedAt": 1784249373505,
+      "files": {
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/routes/dashboard/+page.svelte": {
+          "editCount": 6,
+          "findings": ["side-tab:1389", "design-system-radius:1393:2px"]
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/routes/replay/[id]/+page.svelte": {
+          "editCount": 26,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/en.ts": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/zh.ts": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/es.ts": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/fr.ts": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/ja.ts": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/lib/locales/de.ts": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/TrainingIntensityChart.svelte": {
+          "editCount": 2,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/WorkoutList.svelte": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/CriticalPowerPanel.svelte": {
+          "editCount": 6,
+          "findings": ["side-tab:348"]
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/LanguagePicker.svelte": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/TrainingHeatmap.svelte": {
+          "editCount": 2,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/EngagementPanel.svelte": {
+          "editCount": 4,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/routes/+page.svelte": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/tests/e2e/smoke.spec.ts": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/tests/e2e/replay-keyboard.spec.ts": {
+          "editCount": 2,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/app.css": {
+          "editCount": 7,
+          "findings": [
+            "design-system-color:371:#3b2d8c",
+            "design-system-color:374:#4a1f7a",
+            "design-system-color:377:#1a5c45",
+            "design-system-color:380:#7a4e00",
+            "design-system-color:383:#1a4a6e",
+            "design-system-color:386:#7a1a1a",
+            "design-system-color:488:#000",
+            "design-system-color:492:#000",
+            "design-system-color:372:#3b2d8c",
+            "design-system-color:375:#4a1f7a",
+            "design-system-color:378:#1a5c45",
+            "design-system-color:381:#7a4e00",
+            "design-system-color:384:#1a4a6e",
+            "design-system-color:387:#7a1a1a",
+            "design-system-color:489:#000",
+            "design-system-color:493:#000",
+            "design-system-color:378:#3b2d8c",
+            "design-system-color:381:#4a1f7a",
+            "design-system-color:384:#1a5c45",
+            "design-system-color:387:#7a4e00",
+            "design-system-color:390:#1a4a6e",
+            "design-system-color:393:#7a1a1a",
+            "design-system-color:495:#000",
+            "design-system-color:499:#000",
+            "design-system-color:379:#3b2d8c",
+            "design-system-color:382:#4a1f7a",
+            "design-system-color:385:#1a5c45",
+            "design-system-color:388:#7a4e00",
+            "design-system-color:391:#1a4a6e",
+            "design-system-color:394:#7a1a1a",
+            "design-system-color:496:#000",
+            "design-system-color:500:#000",
+            "design-system-color:385:#3b2d8c",
+            "design-system-color:388:#4a1f7a",
+            "design-system-color:391:#1a5c45",
+            "design-system-color:394:#7a4e00",
+            "design-system-color:397:#1a4a6e",
+            "design-system-color:400:#7a1a1a",
+            "design-system-color:502:#000",
+            "design-system-color:506:#000"
+          ]
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/app.html": {
+          "editCount": 1,
+          "findings": ["single-font:1"]
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/routes/+layout.svelte": {
+          "editCount": 1,
+          "findings": []
+        },
+        "/Users/shenghaochen/repos/copilot-worktrees/rowplay/shenghaoc-studious-guide/src/components/ChipGroup.svelte": {
+          "editCount": 1,
+          "findings": []
+        }
+      }
+    }
+  }
+}

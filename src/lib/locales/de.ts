@@ -1034,9 +1034,12 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     loadSessionFailed: "Diese Einheit konnte nicht geladen werden",
     paceError: "Gib eine Pace wie 1:52 ein",
     pacingAt: "Pace bei {pace}",
-    noSamples: "Keine verwertbaren Trainingsdaten in dieser Datei. Versuche eine andere Datei oder prüfe das Format.",
-    fileReadError: "Diese Datei konnte nicht gelesen werden. Prüfe, ob es ein CSV-, TCX- oder FIT-Export ist.",
-    importFailed: "Diese Datei konnte nicht importiert werden. Stelle sicher, dass es ein gültiger CSV-, TCX- oder FIT-Export ist.",
+    noSamples:
+      "Keine verwertbaren Trainingsdaten in dieser Datei. Versuche eine andere Datei oder prüfe das Format.",
+    fileReadError:
+      "Diese Datei konnte nicht gelesen werden. Prüfe, ob es ein CSV-, TCX- oder FIT-Export ist.",
+    importFailed:
+      "Diese Datei konnte nicht importiert werden. Stelle sicher, dass es ein gültiger CSV-, TCX- oder FIT-Export ist.",
     zone1: "Z1 Erholung",
     zone2: "Z2 Ausdauer",
     zone3: "Z3 Tempo",

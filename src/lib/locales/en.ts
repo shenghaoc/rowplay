@@ -437,8 +437,7 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     sync: "Sync",
     syncing: "Syncing…",
     syncedNote: "{total} workouts · last synced {date}",
-    recentNote:
-      "Showing recent workouts — load your full history for accurate PBs and trends.",
+    recentNote: "Showing recent workouts — load your full history for accurate PBs and trends.",
     latest: "Latest",
     distance: "distance",
     time: "time",
@@ -1148,8 +1147,7 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     factWorkouts: "{n} workouts available to export",
     factDemo: "Demo mode — sample data only, nothing is persisted.",
     factCache: "Workout data is fetched live from the Concept2 API — no server-side cache.",
-    factSession:
-      "Your login stays in a secure browser cookie. No data lives on our servers.",
+    factSession: "Your login stays in a secure browser cookie. No data lives on our servers.",
     exportTitle: "Export logbook",
     exportNote:
       "Download your full history as CSV or JSON. Per-workout TCX (stroke data) opens in Garmin, Strava, or TrainingPeaks.",
