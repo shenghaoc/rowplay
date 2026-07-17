@@ -2779,6 +2779,11 @@
 		min-width: 2px;
 		transition: width 0.3s ease;
 	}
+	@media (prefers-reduced-motion: reduce) {
+		.repbar-clipper {
+			transition: none;
+		}
+	}
 	.repbar {
 		height: 100%;
 		width: 100%;
@@ -2904,6 +2909,40 @@
 		.repmeta {
 			font-size: 0.72rem;
 		}
+		/* Tighten card padding on mobile for more content space */
+		.controls,
+		.ghostbar,
+		.course {
+			padding: 0.75rem;
+		}
+		/* Ghostbar stacks vertically earlier (not just at 390px) */
+		.ghostbar {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 0.5rem;
+		}
+		.ghostbar label {
+			width: 100%;
+		}
+		.ghostbar select,
+		.paceinput,
+		.file-input {
+			width: 100%;
+			max-width: none;
+		}
+		.gap {
+			margin-left: 0;
+			width: 100%;
+			text-align: center;
+		}
+		/* Compact course tools: stack vertically, reduce spacing */
+		.course-tools {
+			gap: 0.3rem;
+		}
+		.quality-select {
+			flex: 1;
+			min-width: 0;
+		}
 		/* Transport: play + clock on row 1, scrub full width on row 2,
 		   dist + speeds on row 3. */
 		.controls {
@@ -2946,27 +2985,35 @@
 		.gauges {
 			grid-template-columns: repeat(2, 1fr);
 		}
-	}
-	@media (max-width: 390px) {
-		.ghostbar {
-			flex-direction: column;
-			align-items: stretch;
+		/* Transport: stack vertically for phones.
+		   Row 1: play (full-width). Row 2: clock + dist inline.
+		   Row 3: scrub (full-width). Row 4: speeds (full-width). */
+		.controls {
+			grid-template-columns: 1fr;
 			gap: 0.5rem;
 		}
-		.ghostbar label {
+		.play {
+			min-width: 0;
+			width: 100%;
+			justify-content: center;
+		}
+		.clock {
+			justify-self: start;
+			font-size: 1rem;
+		}
+		.dist {
+			justify-self: end;
+			text-align: right;
+		}
+		.scrub {
+			grid-column: 1;
+		}
+		.speeds {
+			justify-self: stretch;
 			width: 100%;
 		}
-		.ghostbar select,
-		.paceinput,
-		.file-input {
-			width: 100%;
-			max-width: none;
-		}
-		.gap {
-			margin-left: 0;
-			width: 100%;
-			text-align: center;
-		}
+	}
+	@media (max-width: 390px) {
 		.head {
 			flex-direction: column;
 			align-items: flex-start;
