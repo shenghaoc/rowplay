@@ -32,7 +32,16 @@ function utcEpochMillis(parts: {
   minute?: number;
   second?: number;
 }): number {
-  const ts = Date.UTC(
+  // Date.UTC maps years 0-99 to 1900-1999, so year 0 Feb 29 would
+  // overflow (1900 is not a leap year).  Use the mutation path only
+  // for 0-99; the hot path (modern years) stays allocation-free.
+  if (parts.year >= 0 && parts.year <= 99) {
+    const date = new Date(0);
+    date.setUTCFullYear(parts.year, parts.month - 1, parts.day);
+    date.setUTCHours(parts.hour ?? 0, parts.minute ?? 0, parts.second ?? 0, 0);
+    return date.getTime();
+  }
+  return Date.UTC(
     parts.year,
     parts.month - 1,
     parts.day,
@@ -40,14 +49,6 @@ function utcEpochMillis(parts: {
     parts.minute ?? 0,
     parts.second ?? 0,
   );
-  // Date.UTC maps years 0-99 to 1900-1999 (legacy). Concept2 dates are
-  // always modern, but guard against the edge case for correctness.
-  if (parts.year >= 0 && parts.year <= 99) {
-    const date = new Date(ts);
-    date.setUTCFullYear(parts.year);
-    return date.getTime();
-  }
-  return ts;
 }
 
 function dateFromUtcParts(parts: {
