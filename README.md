@@ -220,7 +220,7 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 ### Prerequisites
 
 - A [Cloudflare account](https://dash.cloudflare.com/sign-up) (free tier works).
-- [Node.js](https://nodejs.org/) (see `.node-version` for the pinned version; currently 26).
+- [Node.js](https://nodejs.org/) (see `.node-version` for the pinned version; currently 24).
 - A Concept2 Logbook account (only needed to _use_ token auth; deployment works without one).
 
 ### Setup checklist
