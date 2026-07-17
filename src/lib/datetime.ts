@@ -32,7 +32,7 @@ function utcEpochMillis(parts: {
   minute?: number;
   second?: number;
 }): number {
-  return Date.UTC(
+  const ts = Date.UTC(
     parts.year,
     parts.month - 1,
     parts.day,
@@ -40,6 +40,14 @@ function utcEpochMillis(parts: {
     parts.minute ?? 0,
     parts.second ?? 0,
   );
+  // Date.UTC maps years 0-99 to 1900-1999 (legacy). Concept2 dates are
+  // always modern, but guard against the edge case for correctness.
+  if (parts.year >= 0 && parts.year <= 99) {
+    const date = new Date(ts);
+    date.setUTCFullYear(parts.year);
+    return date.getTime();
+  }
+  return ts;
 }
 
 function dateFromUtcParts(parts: {
