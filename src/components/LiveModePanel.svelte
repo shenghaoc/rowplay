@@ -97,7 +97,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 		min-height: 2.75rem; /* 44px touch target for the toggle row */
 	}
@@ -139,7 +139,7 @@
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		min-width: 0;
 	}
 	.status-label {

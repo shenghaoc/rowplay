@@ -247,7 +247,7 @@
 	}
 	.stitle {
 		font-family: var(--display);
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
@@ -256,7 +256,7 @@
 	.static-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-		gap: 0.35rem 1rem;
+		gap: var(--space-xs) var(--space-lg);
 		margin: 0;
 	}
 	.static-grid dt {

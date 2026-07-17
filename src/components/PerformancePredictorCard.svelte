@@ -178,11 +178,11 @@
 	.predictor-field {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: var(--space-2xs);
 		min-width: 0;
 	}
 	.field-label {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		font-weight: 600;
 	}
 	.predictor-error {
@@ -200,7 +200,7 @@
 	.predictor-table thead th {
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		color: var(--ink-2);
 	}
 	.predictor-source {

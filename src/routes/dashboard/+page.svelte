@@ -1123,7 +1123,7 @@
 		align-items: flex-end;
 		justify-content: space-between;
 		flex-wrap: wrap;
-		gap: 1rem;
+		gap: var(--space-lg);
 		margin-bottom: 1.25rem;
 		padding-bottom: 0.85rem;
 		border-bottom: 2px solid var(--ink);
@@ -1140,7 +1140,7 @@
 	.headright {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 		max-width: 100%;
 		min-width: 0;
@@ -1172,7 +1172,7 @@
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: var(--space-lg);
 	}
 	.tour-head h2 {
 		margin: 0.15rem 0 0;
@@ -1203,7 +1203,7 @@
 	}
 	.tour-link {
 		display: grid;
-		gap: 0.25rem;
+		gap: var(--space-2xs);
 		color: var(--ink);
 	}
 	.tour-link:hover {
@@ -1229,7 +1229,7 @@
 	.core-stack,
 	.dashboard-section {
 		display: grid;
-		gap: 1rem;
+		gap: var(--space-lg);
 		min-width: 0;
 		scroll-margin-top: 5rem;
 	}
@@ -1257,7 +1257,7 @@
 	.records-grid {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		gap: 1rem;
+		gap: var(--space-lg);
 		align-items: start;
 		min-width: 0;
 	}
@@ -1352,15 +1352,15 @@
 	.dash-grid {
 		display: grid;
 		grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-		gap: 1rem;
+		gap: var(--space-lg);
 		align-items: start;
 		width: 100%;
 		max-width: 100%;
 		min-width: 0;
 		overflow-x: clip;
 	}
-	.col-main { grid-column: 1; display: grid; gap: 1rem; align-content: start; max-width: 100%; min-width: 0; overflow-x: clip; }
-	.col-rail { grid-column: 2; grid-row: 1; display: grid; gap: 1rem; align-content: start; min-width: 0; }
+	.col-main { grid-column: 1; display: grid; gap: var(--space-lg); align-content: start; max-width: 100%; min-width: 0; overflow-x: clip; }
+	.col-rail { grid-column: 2; grid-row: 1; display: grid; gap: var(--space-lg); align-content: start; min-width: 0; }
 	.col-main > :global(*) {
 		max-width: 100%;
 		min-width: 0;
@@ -1373,14 +1373,14 @@
 		background: linear-gradient(135deg, color-mix(in srgb, var(--ghost) 8%, var(--paper-raised)), var(--paper-raised) 65%);
 		border-color: color-mix(in srgb, var(--ghost) 28%, var(--hairline));
 	}
-	.formhead { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
-	.formtitle { display: flex; align-items: center; gap: 0.5rem; }
+	.formhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; }
+	.formtitle { display: flex; align-items: center; gap: var(--space-sm); }
 	.formtitle .label { font-weight: 700; }
 	.formsub { font-size: 0.82rem; margin: 0.4rem 0 0.85rem; }
-	.formstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 0.85rem; }
+	.formstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-lg); margin-bottom: 0.85rem; }
 	.fsv { font-size: 1.6rem; font-weight: 700; line-height: 1; }
 	.fsl { font-size: 0.82rem; font-weight: 600; margin-top: 0.3rem; }
-	.fsh { font-size: 0.72rem; margin-top: 0.1rem; }
+	.fsh { font-size: var(--text-2xs); margin-top: 0.1rem; }
 	.unit { font-size: 0.9rem; margin-left: 0.1rem; }
 	.formread {
 		font-size: 0.9rem; line-height: 1.5;
@@ -1389,7 +1389,7 @@
 		border-left: 3px solid var(--ink-3);
 		margin-bottom: 0.85rem;
 	}
-	.formlegend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; font-size: 0.76rem; margin-top: 0.5rem; }
+	.formlegend { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-lg); font-size: 0.76rem; margin-top: 0.5rem; }
 	.formlegend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: var(--r-ctrl); margin-right: 0.3rem; vertical-align: -1px; }
 	.emptytrend { font-size: 0.85rem; padding: 0.5rem 0; }
 
@@ -1412,7 +1412,7 @@
 	.formread.band-info { border-left-color: var(--ghost); }
 
 	/* ---- Trend -------------------------------------------------------------- */
-	.trendhead { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+	.trendhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; margin-bottom: 0.75rem; }
 	.metrictabs { background: var(--paper-inset); font-family: var(--display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
 	.bands { margin-bottom: 0.75rem; }
 	.bands .bn { opacity: 0.6; margin-left: 0.25rem; }
@@ -1420,13 +1420,13 @@
 	.verdict-good { background: color-mix(in srgb, var(--ahead) 12%, var(--paper-raised)); border-color: color-mix(in srgb, var(--ahead) 30%, transparent); color: var(--ahead); }
 	.verdict-bad { background: color-mix(in srgb, var(--alarm) 12%, var(--paper-raised)); border-color: color-mix(in srgb, var(--alarm) 30%, transparent); color: var(--alarm); }
 
-	.dpscontrols { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+	.dpscontrols { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; }
 	.dpstip { font-size: 0.82rem; margin-bottom: 0.65rem; min-height: 1.25rem; }
 
 	/* ---- Breakdown table ---------------------------------------------------- */
 	.tablescroll { overflow-x: auto; }
 	.breakdowntable .num { text-align: right; }
-	.breakdowntable thead th { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; color: var(--ink-2); }
+	.breakdowntable thead th { text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--text-2xs); color: var(--ink-2); }
 	.sportcell { display: flex; align-items: center; gap: 0.45rem; font-family: var(--ui); font-weight: 600; }
 	.mdot { width: 0.55rem; height: 0.55rem; border-radius: 999px; flex-shrink: 0; }
 	.breakdowntable .best { color: var(--ahead); }
@@ -1434,9 +1434,9 @@
 	/* ---- Personal bests ----------------------------------------------------- */
 	.pbcard .pbgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.65rem; }
 	.pb { padding: 0.7rem 0.8rem; border-radius: var(--r-ctrl); background: var(--paper-inset); border: 1px solid var(--hairline); }
-	.pbdist { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; background: color-mix(in srgb, var(--ghost) 14%, var(--paper-raised)); color: var(--ghost); border: 1px solid color-mix(in srgb, var(--ghost) 30%, transparent); }
+	.pbdist { display: inline-block; font-size: var(--text-2xs); font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; background: color-mix(in srgb, var(--ghost) 14%, var(--paper-raised)); color: var(--ghost); border: 1px solid color-mix(in srgb, var(--ghost) 30%, transparent); }
 	.pbtime { font-size: 1.2rem; font-weight: 700; margin-top: 0.4rem; line-height: 1; }
-	.pbsub { font-size: 0.72rem; margin-top: 0.3rem; display: flex; align-items: center; gap: 0.25rem; }
+	.pbsub { font-size: var(--text-2xs); margin-top: 0.3rem; display: flex; align-items: center; gap: var(--space-2xs); }
 
 
 	/* ---- Responsive --------------------------------------------------------- */

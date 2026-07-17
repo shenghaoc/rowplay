@@ -111,7 +111,7 @@
 	.milestones-title {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		font-size: 0.95rem;
 		font-weight: 700;
 		margin: 0;
@@ -152,6 +152,6 @@
 	.milestone-next-head {
 		display: flex;
 		align-items: flex-start;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 	}
 </style>

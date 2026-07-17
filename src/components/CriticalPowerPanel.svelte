@@ -291,13 +291,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 	}
 	.cptitle {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		color: var(--power);
 	}
 	.cptitle .field-label {
@@ -315,7 +315,7 @@
 	.cpstats {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin-bottom: 0.75rem;
 	}
 	.cs {
@@ -351,7 +351,7 @@
 	.cptrust {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.4rem 0.75rem;
+		gap: 0.4rem var(--space-md);
 		font-size: 0.78rem;
 		color: var(--text-dim);
 		margin: -0.35rem 0 0.75rem;
@@ -364,7 +364,7 @@
 	.cpwarnings {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		margin: -0.25rem 0 0.9rem;
 	}
 	.cpconfidence {
@@ -397,7 +397,7 @@
 	.presets {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		margin-bottom: 0.65rem;
 	}
 	.pchip {
@@ -419,13 +419,13 @@
 		border-color: var(--ink);
 	}
 	.pchip.small {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		padding: 0.25rem 0.55rem;
 	}
 	.predrow {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 		margin-bottom: 0.5rem;
 	}
@@ -459,7 +459,7 @@
 	}
 	.curvelegend {
 		display: flex;
-		gap: 1rem;
+		gap: var(--space-lg);
 		flex-wrap: wrap;
 		font-size: 0.78rem;
 		margin-top: 0.45rem;
@@ -468,7 +468,7 @@
 	.curvelegend span {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.curvelegend i {
 		display: inline-block;

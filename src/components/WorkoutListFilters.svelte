@@ -175,7 +175,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 	}
 	.lqtitle {

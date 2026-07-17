@@ -25,7 +25,7 @@
 	.lang-picker {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.25rem;
+		gap: var(--space-2xs);
 		align-self: center;
 		color: var(--ink-2);
 		cursor: pointer;

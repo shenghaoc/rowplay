@@ -235,7 +235,7 @@
 	.engtitle {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		color: var(--accent);
 	}
 	.engtitle .label {
@@ -261,7 +261,7 @@
 		border-radius: var(--r-ctrl);
 		padding: 0.25rem 0.5rem;
 		font-family: var(--display);
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		font-weight: 700;
 		text-transform: uppercase;
 		cursor: pointer;
@@ -274,7 +274,7 @@
 	}
 	.presetrow {
 		display: flex;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		flex-wrap: wrap;
 	}
 	.progressmeta {
@@ -283,7 +283,7 @@
 		font-size: 0.85rem;
 		margin-bottom: 0.35rem;
 		flex-wrap: wrap;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.progressbar {
 		position: relative;
@@ -325,7 +325,7 @@
 	.streakrow {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.75rem 1.25rem;
+		gap: var(--space-md) 1.25rem;
 		padding-top: 0.75rem;
 		border-top: var(--bd);
 		margin-top: 0.75rem;
@@ -334,7 +334,7 @@
 	.streakstat {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.badges {
 		margin-top: 0.85rem;
@@ -344,7 +344,7 @@
 	.badgehead {
 		display: flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		font-size: 0.8rem;
 		margin-bottom: 0.5rem;
 	}
@@ -357,7 +357,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.3rem;
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;

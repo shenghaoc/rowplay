@@ -147,7 +147,7 @@
 		display: flex;
 		flex-direction: row;
 		align-items: center;
-		gap: 1rem;
+		gap: var(--space-lg);
 		color: var(--ink);
 		min-height: 64px;
 		padding: 0.55rem 0.95rem;
@@ -245,7 +245,7 @@
 		z-index: 2;
 		display: flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		flex-shrink: 0;
 		pointer-events: none;
 	}

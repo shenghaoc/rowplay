@@ -2082,7 +2082,7 @@
 	.back {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		font-family: var(--display);
 		font-size: 0.82rem;
 		font-weight: 700;
@@ -2100,7 +2100,7 @@
 		justify-content: space-between;
 		align-items: baseline;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-bottom: 1rem;
 		padding-bottom: 0.75rem;
 		border-bottom: var(--bd-heavy);
@@ -2112,7 +2112,7 @@
 		text-transform: uppercase;
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 	}
 	.h1icon {
 		display: inline-flex;
@@ -2120,26 +2120,26 @@
 	.summary {
 		font-size: 0.95rem;
 		display: flex;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		align-items: center;
 	}
 	.sharebar {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-top: 0.75rem;
 	}
 	.sharebar .btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.hrimport {
 		margin-bottom: 0.75rem;
 		padding: 0.75rem 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 	}
 	.hrimport-head {
 		display: inline-flex;
@@ -2154,12 +2154,12 @@
 	.hrimport-row {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 	}
 	.hrimport-actions {
 		display: flex;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		flex-wrap: wrap;
 	}
 	.offset-input {
@@ -2170,7 +2170,7 @@
 	.ghostbar {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 		margin-bottom: 0.75rem;
 		padding: 0.6rem 1rem;
@@ -2180,7 +2180,7 @@
 		font-weight: 600;
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.ghost-more {
 		margin: 0;
@@ -2284,7 +2284,7 @@
 	}
 	.verdict-kicker {
 		font-family: var(--display);
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		font-weight: 800;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
@@ -2314,12 +2314,12 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		margin-bottom: 0.5rem;
 	}
 	.view-toggle {
 		display: flex;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.inspector-btn {
 		display: inline-flex;
@@ -2367,7 +2367,7 @@
 		letter-spacing: 0.04em;
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.vbtn.on {
 		background: var(--live);
@@ -2405,7 +2405,7 @@
 	.controls {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: var(--space-lg);
 		margin-bottom: 0.75rem;
 		flex-wrap: wrap;
 	}
@@ -2466,7 +2466,7 @@
 	.kb-list {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.25rem 1.25rem;
+		gap: var(--space-2xs) 1.25rem;
 		margin: 0.4rem 0 0;
 		padding: 0;
 	}
@@ -2486,7 +2486,7 @@
 	}
 	kbd {
 		font-family: var(--mono);
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		padding: 0.1rem 0.35rem;
 		border: 1px solid var(--ink-2);
 		border-bottom-width: 2px;
@@ -2497,14 +2497,14 @@
 	.gauges {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-bottom: 0.75rem;
 	}
 	.gauge-legend {
 		grid-column: 1 / -1;
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.35rem 1rem;
+		gap: var(--space-xs) var(--space-lg);
 		border-top: var(--bd);
 		padding-top: 0.5rem;
 		margin-top: 0.15rem;
@@ -2525,7 +2525,7 @@
 	.charts {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin-bottom: 0.75rem;
 	}
 	.charts-help {
@@ -2535,7 +2535,7 @@
 	.analysis {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin-bottom: 0.75rem;
 	}
 	/* Rep comparison */
@@ -2553,7 +2553,7 @@
 	.rep-legend {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-top: 0.75rem;
 	}
 
@@ -2589,7 +2589,7 @@
 	.techstats {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin-top: 0.5rem;
 	}
 	.ts {
@@ -2616,7 +2616,7 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-bottom: 0.35rem;
 	}
 	.target-pace {
@@ -2626,7 +2626,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem 0.75rem;
+		gap: var(--space-sm) var(--space-md);
 	}
 	.target-pace-input {
 		width: 5.5rem;
@@ -2634,7 +2634,7 @@
 	.target-pace-band {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		cursor: pointer;
 	}
 	.target-pace-open {
@@ -2650,7 +2650,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: baseline;
-		gap: 0.35rem 0.6rem;
+		gap: var(--space-xs) 0.6rem;
 		margin-bottom: 0.5rem;
 		font-size: 0.85rem;
 	}
@@ -2702,7 +2702,7 @@
 	.zli {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		font-size: 0.82rem;
 	}
 	.zli .zname {
@@ -2719,7 +2719,7 @@
 	.setstats {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin: 0.5rem 0 1rem;
 	}
 	.ss {
@@ -2739,7 +2739,7 @@
 		color: var(--behind);
 	}
 	.ssl {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		margin-top: 0.15rem;
 	}
 	.reps {
@@ -2750,7 +2750,7 @@
 		display: grid;
 		grid-template-columns: 2.2rem 1fr auto;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		padding: 0.4rem 0.5rem;
 		border-radius: var(--r-ctrl);
 		background: var(--bg-elev-2);
@@ -2769,7 +2769,7 @@
 		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		min-width: 0;
 	}
 	.repbar-clipper {
@@ -2828,7 +2828,7 @@
 		grid-column: 1 / -1;
 	}
 	.metagrid dt {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		color: var(--ink-2);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
@@ -2859,13 +2859,13 @@
 		margin: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.target-rows li {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem 0.75rem;
+		gap: var(--space-sm) var(--space-md);
 		font-size: 0.88rem;
 	}
 	.splits {
@@ -2907,7 +2907,7 @@
 			grid-template-columns: 1.8rem 1fr auto;
 		}
 		.repmeta {
-			font-size: 0.72rem;
+			font-size: var(--text-2xs);
 		}
 		/* Tighten card padding on mobile for more content space */
 		.controls,
@@ -2919,7 +2919,7 @@
 		.ghostbar {
 			flex-direction: column;
 			align-items: stretch;
-			gap: 0.5rem;
+			gap: var(--space-sm);
 		}
 		.ghostbar label {
 			width: 100%;
@@ -2948,7 +2948,7 @@
 		.controls {
 			display: grid;
 			grid-template-columns: auto 1fr;
-			gap: 0.6rem 0.75rem;
+			gap: 0.6rem var(--space-md);
 			align-items: center;
 		}
 		.play {
@@ -2990,7 +2990,7 @@
 		   Row 3: scrub (full-width). Row 4: speeds (full-width). */
 		.controls {
 			grid-template-columns: 1fr;
-			gap: 0.5rem;
+			gap: var(--space-sm);
 		}
 		.play {
 			min-width: 0;

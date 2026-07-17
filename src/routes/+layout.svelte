@@ -228,7 +228,7 @@
 	.brand {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		border: var(--bd-heavy);
 		border-radius: var(--r-ctrl);
 		padding: 0.25rem 0.65rem 0.25rem 0.5rem;
@@ -279,7 +279,7 @@
 	.mast-actions {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-shrink: 0;
 	}
 	.spacer {
@@ -327,7 +327,7 @@
 		max-height: calc(100dvh - 54px);
 		overflow-y: auto;
 		background: var(--paper);
-		box-shadow: 0 12px 28px rgb(15 42 54 / 0.12);
+		box-shadow: var(--shadow-lg);
 	}
 	.mobile-drawer::backdrop {
 		background: rgb(15 42 54 / 0.35);
@@ -344,7 +344,7 @@
 	}
 	.mobile-drawer[open] {
 		display: grid;
-		gap: 1rem;
+		gap: var(--space-lg);
 		align-content: start;
 		opacity: 1;
 		translate: 0 0;
@@ -366,7 +366,7 @@
 	}
 	.drawer-nav {
 		display: grid;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		align-content: start;
 	}
 	.drawer-nav a {
@@ -412,7 +412,7 @@
 		display: flex;
 		justify-content: space-between;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		font-family: var(--mono);
 		font-size: 0.76rem;
 		padding-top: 1.25rem;
@@ -429,7 +429,7 @@
 			display: inline-flex;
 		}
 		.mast-inner {
-			gap: 0.75rem;
+			gap: var(--space-md);
 			padding: 0 1rem;
 			min-height: 54px;
 		}

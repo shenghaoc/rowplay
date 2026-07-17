@@ -138,7 +138,7 @@
 		justify-content: space-between;
 		align-items: center;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-bottom: 0.35rem;
 	}
 	.callabel {
@@ -152,7 +152,7 @@
 	}
 	.calmetrics {
 		display: flex;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.mchip {
 		background: var(--bg-elev);
@@ -175,7 +175,7 @@
 	}
 	.calwrap {
 		display: flex;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		overflow-x: auto;
 		padding-bottom: 0.5rem;
 		--cell: 11px;
@@ -245,8 +245,8 @@
 	.legend {
 		display: flex;
 		align-items: center;
-		gap: 0.35rem;
-		font-size: 0.72rem;
+		gap: var(--space-xs);
+		font-size: var(--text-2xs);
 		margin-top: 0.5rem;
 		justify-content: flex-end;
 	}

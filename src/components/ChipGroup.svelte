@@ -25,11 +25,11 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		margin-top: 0.65rem;
 	}
 	.chiplabel {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		margin-right: 0.25rem;

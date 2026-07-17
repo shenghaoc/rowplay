@@ -177,7 +177,7 @@
 		flex-wrap: wrap;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin-bottom: 0.85rem;
 	}
 	.tidlabel {
@@ -193,14 +193,14 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem 0.75rem;
+		gap: var(--space-sm) var(--space-md);
 	}
 	.tidmetrics {
 		display: flex;
-		gap: 0.25rem;
+		gap: var(--space-2xs);
 	}
 	.mchip {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		font-weight: 700;
 		padding: 0.2rem 0.55rem;
 		border-radius: 999px;
@@ -285,14 +285,14 @@
 		margin: 0.75rem 0 0;
 		padding: 0;
 		display: grid;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		font-size: 0.78rem;
 	}
 	.tidlegend li {
 		display: grid;
 		grid-template-columns: 0.65rem 1fr auto auto;
 		align-items: center;
-		gap: 0.35rem 0.5rem;
+		gap: var(--space-xs) var(--space-sm);
 	}
 	.tidswatch {
 		width: 0.65rem;
@@ -303,7 +303,7 @@
 		font-weight: 700;
 	}
 	.tidlegval {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 	}
 	.tidcard {
 		--tid-ut2: color-mix(in srgb, var(--dps) 85%, var(--paper-raised));

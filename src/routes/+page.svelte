@@ -126,7 +126,7 @@
 	.cta {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin: 1.5rem 0 0.75rem;
 	}
 	.small {
@@ -135,7 +135,7 @@
 	}
 	.features {
 		display: grid;
-		gap: 1rem;
+		gap: var(--space-lg);
 	}
 	.feat {
 		box-shadow: var(--stamp);
@@ -167,7 +167,7 @@
 	.tour-head {
 		display: flex;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: var(--space-lg);
 		align-items: flex-start;
 	}
 	.tour h2 {
