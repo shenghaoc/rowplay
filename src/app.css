@@ -219,6 +219,20 @@
   --stamp-live: 0 2px 6px rgba(82, 64, 206, 0.16), 0 14px 32px -12px rgba(82, 64, 206, 0.34);
   --stamp-ghost: 0 2px 6px rgba(23, 107, 140, 0.15), 0 14px 32px -12px rgba(23, 107, 140, 0.3);
 
+  /* Type scale — 1.15–1.2 product ratio (fixed rem) */
+  --text-xs: 0.75rem;     /* 12px — captions, fine print, eyebrow */
+  --text-sm: 0.875rem;    /* 14px — secondary UI, metadata */
+  --text-base: 1rem;      /* 16px — body text */
+  --text-md: 1.125rem;    /* 18px — subheadings, lead text */
+  --text-lg: 1.35rem;     /* ~22px — section headings */
+  --text-xl: 1.6rem;      /* ~26px — page headings */
+  --text-2xl: 1.9rem;     /* ~30px — display / hero */
+
+  /* Leading (line-height) tokens */
+  --leading-tight: 1.1;   /* Headings, display, dense labels */
+  --leading-normal: 1.5;  /* Body text, form fields */
+  --leading-relaxed: 1.65;/* Long-form reading, prose cards */
+
   --clock-size: clamp(2.6rem, 8vw, 4rem);
   --metric-size: 1.9rem;
 
@@ -282,6 +296,9 @@ body {
   color: var(--ink);
   font-family: var(--ui);
   font-size: 16px;
+  line-height: var(--leading-normal);
+  font-optical-sizing: auto;
+  font-kerning: normal;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -373,7 +390,7 @@ h3 {
 /* Eyebrow / micro-label: ruled, uppercased, letterspaced. */
 .eyebrow {
   font-family: var(--ui);
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -412,7 +429,7 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 select,
 textarea {
   font-family: var(--ui);
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   color: var(--ink);
   background: var(--paper-raised);
   border: var(--bd);
@@ -523,7 +540,7 @@ html {
 }
 .u-legend {
   font-family: var(--mono);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 
 /* ============================================================================
