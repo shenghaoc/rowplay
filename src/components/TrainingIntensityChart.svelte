@@ -204,7 +204,7 @@
 		font-weight: var(--fw-bold);
 		padding: 0.2rem 0.55rem;
 		border-radius: var(--r-pill);
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		background: var(--paper-inset);
 		color: var(--ink-2);
 		cursor: pointer;
@@ -222,7 +222,7 @@
 		width: 100%;
 		border-radius: var(--r-ctrl);
 		overflow: hidden;
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 	}
 	.tidbar-svg {
 		display: block;
@@ -277,7 +277,7 @@
 		margin-top: 0.45rem;
 		padding: 0.35rem 0.5rem;
 		background: var(--paper-inset);
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		border-radius: var(--r-ctrl);
 	}
 	.tidlegend {

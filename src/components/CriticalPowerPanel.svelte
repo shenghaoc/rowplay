@@ -320,7 +320,7 @@
 	}
 	.cs {
 		background: var(--bg-elev-2);
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		border-radius: var(--r-ctrl);
 		padding: 0.55rem 0.7rem;
 	}
@@ -442,7 +442,7 @@
 		margin-top: 0.5rem;
 		padding: 0.65rem 0.8rem;
 		background: var(--bg-elev-2);
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		border-radius: var(--r-ctrl);
 	}
 	.predval {

@@ -127,7 +127,7 @@
 	.milestone-card {
 		min-width: 0;
 		max-width: none;
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 	}
 	.milestone-card--earned {
 		border-color: color-mix(in srgb, var(--ahead) 35%, var(--hairline));

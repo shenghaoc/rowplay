@@ -192,7 +192,7 @@
 		gap: 0.45rem;
 		min-width: 0;
 		padding: 0.55rem 0.65rem;
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		border-radius: var(--r-ctrl);
 		background: var(--paper-inset);
 		font-size: 0.82rem;

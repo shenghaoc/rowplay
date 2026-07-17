@@ -1197,7 +1197,7 @@
 		gap: 0.4rem;
 		align-items: start;
 		padding: 0.7rem;
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		border-radius: var(--r-ctrl);
 		background: var(--paper-inset);
 	}
@@ -1335,7 +1335,7 @@
 		position: relative;
 		padding: 1rem 1.1rem;
 		background: var(--paper-raised);
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		box-shadow: var(--shadow-sm);
 		overflow: hidden;
 	}
@@ -1403,7 +1403,7 @@
 	.band-bad { color: color-mix(in srgb, var(--behind) 45%, var(--ink)); }
 	.badge.band-info { background: color-mix(in srgb, var(--ghost) 16%, var(--paper-raised)); color: var(--ghost); border: 1px solid color-mix(in srgb, var(--ghost) 35%, transparent); }
 	.badge.band-good { background: color-mix(in srgb, var(--ahead) 16%, var(--paper-raised)); color: var(--ahead); border: 1px solid color-mix(in srgb, var(--ahead) 35%, transparent); }
-	.badge.band-neutral { background: var(--paper-inset); color: var(--ink-2); border: 1px solid var(--hairline); }
+	.badge.band-neutral { background: var(--paper-inset); color: var(--ink-2); border: var(--bd); }
 	.badge.band-accent { background: color-mix(in srgb, var(--live) 16%, var(--paper-raised)); color: var(--live); border: 1px solid color-mix(in srgb, var(--live) 35%, transparent); }
 	.badge.band-bad { background: color-mix(in srgb, var(--behind) 16%, var(--paper-raised)); color: color-mix(in srgb, var(--behind) 45%, var(--ink)); border: 1px solid color-mix(in srgb, var(--behind) 40%, transparent); }
 	.formread.band-good { border-left-color: var(--ahead); }
@@ -1416,7 +1416,7 @@
 	.metrictabs { background: var(--paper-inset); font-family: var(--display); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: 0.02em; }
 	.bands { margin-bottom: 0.75rem; }
 	.bands .bn { opacity: 0.6; margin-left: 0.25rem; }
-	.verdict { font-size: 0.9rem; font-weight: var(--fw-semibold); padding: 0.6rem 0.85rem; margin-bottom: 0.85rem; background: var(--paper-inset); border: 1px solid var(--hairline); color: var(--ink-2); }
+	.verdict { font-size: 0.9rem; font-weight: var(--fw-semibold); padding: 0.6rem 0.85rem; margin-bottom: 0.85rem; background: var(--paper-inset); border: var(--bd); color: var(--ink-2); }
 	.verdict-good { background: color-mix(in srgb, var(--ahead) 12%, var(--paper-raised)); border-color: color-mix(in srgb, var(--ahead) 30%, transparent); color: var(--ahead); }
 	.verdict-bad { background: color-mix(in srgb, var(--alarm) 12%, var(--paper-raised)); border-color: color-mix(in srgb, var(--alarm) 30%, transparent); color: var(--alarm); }
 
@@ -1433,7 +1433,7 @@
 
 	/* ---- Personal bests ----------------------------------------------------- */
 	.pbcard .pbgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.65rem; }
-	.pb { padding: 0.7rem 0.8rem; border-radius: var(--r-ctrl); background: var(--paper-inset); border: 1px solid var(--hairline); }
+	.pb { padding: 0.7rem 0.8rem; border-radius: var(--r-ctrl); background: var(--paper-inset); border: var(--bd); }
 	.pbdist { display: inline-block; font-size: var(--text-2xs); font-weight: var(--fw-bold); padding: 0.1rem 0.45rem; border-radius: var(--r-pill); background: color-mix(in srgb, var(--ghost) 14%, var(--paper-raised)); color: var(--ghost); border: 1px solid color-mix(in srgb, var(--ghost) 30%, transparent); }
 	.pbtime { font-size: 1.2rem; font-weight: var(--fw-bold); margin-top: 0.4rem; line-height: 1; }
 	.pbsub { font-size: var(--text-2xs); margin-top: 0.3rem; display: flex; align-items: center; gap: var(--space-2xs); }
