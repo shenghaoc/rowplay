@@ -128,8 +128,8 @@ export const en = {
     feat1Body: "Watch your pace race the course while gauges and charts play back in sync.",
     feat2Title: "Split analytics",
     feat2Body: "Pace, stroke rate, power and HR over time — across all three machines.",
-    feat3Title: "On the edge",
-    feat3Body: "Served from Cloudflare with live Concept2 data and instant replays.",
+    feat3Title: "Fast everywhere",
+    feat3Body: "Served globally from Cloudflare's edge network — instant replays, no waiting.",
     tourEyebrow: "First run",
     tourTitle: "Four things to try",
     tourBody:
@@ -365,7 +365,7 @@ The token is transmitted once over HTTPS and sealed into a protected, httpOnly b
 
 ## Can other people see my workouts?
 
-No — your dashboard and replays are private. rowplay has no public sharing or leaderboard feature.
+By default, no — your dashboard and replays are private. You can optionally publish a result to a leaderboard or share a replay link, but nothing is public unless you choose to make it so.
 
 ## Does rowplay change my Concept2 logbook?
 
@@ -438,7 +438,7 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     syncing: "Syncing…",
     syncedNote: "{total} workouts · last synced {date}",
     recentNote:
-      "Showing recent workouts — hit Sync to load your full history for accurate PBs and trends.",
+      "Showing recent workouts — load your full history for accurate PBs and trends.",
     latest: "Latest",
     distance: "distance",
     time: "time",
@@ -451,7 +451,7 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     totalTime: "Total time",
     avgPace: "Avg pace",
     sectionCoreEyebrow: "Start here",
-    sectionCore: "Today’s readout",
+    sectionCore: "At a glance",
     sectionWorkoutsEyebrow: "Workouts",
     sectionWorkouts: "Find a replay",
     sectionWorkoutsBody:
@@ -817,7 +817,7 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
   },
   workoutList: {
     empty: "No workouts for this filter.",
-    windowed: "{n} workouts · windowed for performance",
+    windowed: "{n} workouts · showing most recent first",
     filtersTitle: "Find workouts",
     matching: "{n} matching",
     clearFilters: "Clear filters",
@@ -1026,9 +1026,9 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     loadSessionFailed: "Could not load that session",
     paceError: "Enter a pace like 1:52",
     pacingAt: "Pacing at {pace}",
-    noSamples: "No usable samples in that file.",
-    fileReadError: "Could not read that file.",
-    importFailed: "Could not import that file",
+    noSamples: "No usable workout samples in that file. Try a different file or check the format.",
+    fileReadError: "Could not read that file. Check that it's a CSV, TCX, or FIT export.",
+    importFailed: "Could not import that file. Make sure it's a valid CSV, TCX, or FIT export.",
     zone1: "Z1 Recovery",
     zone2: "Z2 Endurance",
     zone3: "Z3 Tempo",
@@ -1141,15 +1141,15 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
   },
   settings: {
     title: "Account & data",
-    eyebrow: "Privacy & control",
-    dataTitle: "What we store",
+    eyebrow: "Your data",
+    dataTitle: "How your data is handled",
     dataNote:
-      "rowplay reads your Concept2 workouts on demand from the Concept2 API. Your API token is sealed into the httpOnly rp_tok cookie with SESSION_SECRET. Sessions are stored in encrypted cookies; no server-side database is used. Log out to clear your session.",
+      "rowplay reads your Concept2 workouts live from the Concept2 API each time you visit. Your login token is kept in a secure browser cookie — not stored on any server. Logging out clears it.",
     factWorkouts: "{n} workouts available to export",
     factDemo: "Demo mode — sample data only, nothing is persisted.",
     factCache: "Workout data is fetched live from the Concept2 API — no server-side cache.",
     factSession:
-      "Sessions are stored in encrypted cookies; the token is sealed in httpOnly rp_tok.",
+      "Your login stays in a secure browser cookie. No data lives on our servers.",
     exportTitle: "Export logbook",
     exportNote:
       "Download your full history as CSV or JSON. Per-workout TCX (stroke data) opens in Garmin, Strava, or TrainingPeaks.",
@@ -1193,22 +1193,22 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
   },
   token: {
     title: "Use your Concept2 token",
-    introBefore: "Paste a personal API token from your Concept2 logbook (",
+    introBefore: "Paste your personal API token from the Concept2 logbook (",
     introLink: "Edit Profile → Applications",
     introAfter:
-      "). Paste it here once — rowplay sends it to the Worker over HTTPS, validates it, seals it into the httpOnly rp_tok cookie, and uses it only for server-side logbook reads. The token is never stored in any database.",
+      "). The token is sent over HTTPS, validated, and kept only in a secure browser cookie — never stored on any server.",
     trustTitle: "How rowplay handles the token",
     trustAccessTitle: "Access:",
     trustAccessBody:
-      "a personal Concept2 token authenticates as you; rowplay uses it only to read your profile, workouts and stroke data server-side.",
+      "a personal Concept2 token authenticates as you; rowplay uses it only to read your profile, workouts, and stroke data.",
     trustStoredTitle: "Storage:",
     trustStoredBody:
-      "the validated token is sealed into the httpOnly rp_tok cookie, not localStorage or any server-side store.",
+      "the validated token is kept in a secure browser cookie — not in localStorage or on any server.",
     trustDisconnectTitle: "Disconnect:",
-    trustDisconnectBody: "use the header's Log out button to clear the token cookie and session.",
-    trustCacheTitle: "Cache:",
+    trustDisconnectBody: "use the header's Log out button to clear the token and session.",
+    trustCacheTitle: "Data:",
     trustCacheBody:
-      "Workout data is fetched live from the Concept2 API; rowplay does not create public shares or leaderboard entries.",
+      "Workout data is fetched live from the Concept2 API on each request — nothing is stored server-side.",
     apiToken: "API token",
     placeholder: "Paste your token",
     connect: "Connect with token",

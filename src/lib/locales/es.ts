@@ -132,8 +132,8 @@ export const es = {
       "Mira tu ritmo en la pista mientras los indicadores y gráficos se reproducen en sincronía.",
     feat2Title: "Análisis de parciales",
     feat2Body: "Ritmo, cadencia, potencia y HR a lo largo del tiempo — en las tres máquinas.",
-    feat3Title: "En el edge",
-    feat3Body: "Servido desde Cloudflare con datos en directo de Concept2 para replays detallados.",
+    feat3Title: "Rápido en todas partes",
+    feat3Body: "Servido globalmente desde la red edge de Cloudflare — replays instantáneos, sin esperas.",
     tourEyebrow: "Primer uso",
     tourTitle: "Cuatro cosas que probar",
     tourBody:
@@ -369,7 +369,7 @@ El token se transmite una sola vez por HTTPS y se sella en una cookie httpOnly p
 
 ## ¿Pueden otras personas ver mis entrenamientos?
 
-No — tu panel y tus reproducciones son privados. rowplay no tiene compartición pública ni clasificaciones.
+No — tu panel y tus reproducciones son privados por defecto. Puedes publicar opcionalmente un resultado en una clasificación o compartir un enlace de replay, pero nada es público a menos que tú decidas hacerlo.
 
 ## ¿rowplay cambia mi cuaderno de Concept2?
 
@@ -442,7 +442,7 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     syncing: "Sincronizando…",
     syncedNote: "{total} entrenamientos · última sincronización {date}",
     recentNote:
-      "Mostrando entrenamientos recientes — pulsa Sincronizar para cargar todo el historial y obtener PBs y tendencias precisos.",
+      "Mostrando entrenamientos recientes — carga todo el historial para obtener PBs y tendencias precisos.",
     latest: "Más reciente",
     distance: "distancia",
     time: "tiempo",
@@ -455,7 +455,7 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     totalTime: "Tiempo total",
     avgPace: "Ritmo medio",
     sectionCoreEyebrow: "Empieza aquí",
-    sectionCore: "Lectura de hoy",
+    sectionCore: "De un vistazo",
     sectionWorkoutsEyebrow: "Entrenamientos",
     sectionWorkouts: "Buscar un replay",
     sectionWorkoutsBody:
@@ -816,7 +816,7 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
   },
   workoutList: {
     empty: "No hay entrenamientos con este filtro.",
-    windowed: "{n} entrenamientos · ventana por rendimiento",
+    windowed: "{n} entrenamientos · más recientes primero",
     filtersTitle: "Buscar entrenamientos",
     matching: "{n} coincidencias",
     clearFilters: "Limpiar filtros",
@@ -1028,9 +1028,9 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     loadSessionFailed: "No se pudo cargar esa sesión",
     paceError: "Introduce un ritmo como 1:52",
     pacingAt: "Ritmo objetivo {pace}",
-    noSamples: "No hay muestras utilizables en ese archivo.",
-    fileReadError: "No se pudo leer ese archivo.",
-    importFailed: "No se pudo importar ese archivo",
+    noSamples: "No hay muestras de entrenamiento utilizables en ese archivo. Prueba con otro archivo o revisa el formato.",
+    fileReadError: "No se pudo leer ese archivo. Comprueba que sea una exportación CSV, TCX o FIT.",
+    importFailed: "No se pudo importar ese archivo. Asegúrate de que sea un CSV, TCX o FIT válido.",
     zone1: "Z1 Recuperación",
     zone2: "Z2 Resistencia",
     zone3: "Z3 Tempo",
@@ -1143,16 +1143,16 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
   },
   settings: {
     title: "Cuenta y datos",
-    eyebrow: "Privacidad y control",
-    dataTitle: "Qué almacenamos",
+    eyebrow: "Tus datos",
+    dataTitle: "Cómo se manejan tus datos",
     dataNote:
-      "rowplay lee tus entrenamientos de Concept2 a demanda desde la API de Concept2. Tu token API se sella en la cookie httpOnly rp_tok con SESSION_SECRET. Las sesiones se almacenan en cookies cifradas; no se utiliza ninguna base de datos en el servidor. Cerrar sesión elimina tu sesión.",
+      "rowplay lee tus entrenamientos de Concept2 en vivo desde la API cada vez que visitas. Tu token de acceso se guarda en una cookie segura del navegador — sin almacenamiento en ningún servidor. Cerrar sesión lo elimina.",
     factWorkouts: "{n} entrenamientos disponibles para exportar",
     factDemo: "Modo demo — solo datos de ejemplo, no se persiste nada.",
     factCache:
       "Los datos de entrenamiento se obtienen en vivo desde la API de Concept2 — sin caché en el servidor.",
     factSession:
-      "Las sesiones se almacenan en cookies cifradas; el token va sellado en httpOnly rp_tok.",
+      "Tu inicio de sesión se guarda en una cookie segura del navegador. Ningún dato vive en nuestros servidores.",
     exportTitle: "Exportar diario",
     exportNote:
       "Descarga todo tu historial en CSV o JSON. El TCX por entrenamiento (datos de palada) se abre en Garmin, Strava o TrainingPeaks.",
@@ -1197,23 +1197,23 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
   },
   token: {
     title: "Usar tu token de Concept2",
-    introBefore: "Pega un token API personal de tu diario Concept2 (",
+    introBefore: "Pega tu token API personal del diario Concept2 (",
     introLink: "Editar perfil → Aplicaciones",
     introAfter:
-      "). Pégalo aquí una vez — rowplay lo envía al Worker por HTTPS, lo valida, lo sella en la cookie httpOnly rp_tok y lo usa solo para lecturas del diario en el servidor. El token nunca se guarda en ninguna base de datos.",
+      "). El token se envía por HTTPS, se valida y solo se guarda en una cookie segura del navegador — nunca en un servidor.",
     trustTitle: "Cómo gestiona rowplay el token",
     trustAccessTitle: "Acceso:",
     trustAccessBody:
-      "un token personal de Concept2 autentica como tú; rowplay solo lo usa en el servidor para leer perfil, entrenamientos y datos de palada.",
+      "un token personal de Concept2 te autentica; rowplay solo lo usa para leer perfil, entrenamientos y datos de palada.",
     trustStoredTitle: "Almacenamiento:",
     trustStoredBody:
-      "el token validado se sella en la cookie httpOnly rp_tok, no en localStorage ni en ningún almacenamiento del servidor.",
+      "el token validado se guarda en una cookie segura del navegador — no en localStorage ni en un servidor.",
     trustDisconnectTitle: "Desconectar:",
     trustDisconnectBody:
-      "el botón Cerrar sesión de la cabecera limpia la cookie del token y la sesión.",
-    trustCacheTitle: "Caché:",
+      "el botón Cerrar sesión de la cabecera limpia el token y la sesión.",
+    trustCacheTitle: "Datos:",
     trustCacheBody:
-      "Los datos de entrenamiento se obtienen en vivo desde la API de Concept2; rowplay no crea enlaces públicos ni entradas de clasificaciones.",
+      "Los datos de entrenamiento se obtienen en vivo desde la API de Concept2 en cada solicitud — nada se almacena en el servidor.",
     apiToken: "Token API",
     placeholder: "Pega tu token",
     connect: "Conectar con token",

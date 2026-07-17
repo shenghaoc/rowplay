@@ -132,9 +132,9 @@ export const de = {
       "Sieh zu, wie deine Pace die Strecke entlangfährt, während Anzeigen und Charts synchron ablaufen.",
     feat2Title: "Split-Analysen",
     feat2Body: "Pace, Schlagfrequenz, Power und HF über die Zeit — auf allen drei Geräten.",
-    feat3Title: "Am Edge",
+    feat3Title: "Überall schnell",
     feat3Body:
-      "Über Cloudflare ausgeliefert, mit Live-Daten von Concept2 für detaillierte Replays.",
+      "Global über Cloudflares Edge-Netzwerk bereitgestellt — sofortige Replays, ohne Wartezeit.",
     tourEyebrow: "Erster Start",
     tourTitle: "Vier Dinge zum Ausprobieren",
     tourBody:
@@ -376,7 +376,7 @@ Der Token wird einmal über HTTPS übertragen und in einem geschützten, httpOnl
 
 ## Können andere meine Workouts sehen?
 
-Nein — dein Dashboard und deine Replays sind privat. rowplay hat keine öffentliche Freigabe oder Leaderboards.
+Nein — dein Dashboard und deine Replays sind standardmäßig privat. Du kannst ein Ergebnis optional in einer Bestenliste veröffentlichen oder einen Replay-Link teilen, aber nichts ist öffentlich, solange du es nicht selbst freigibst.
 
 ## Verändert rowplay mein Concept2-Logbuch?
 
@@ -449,7 +449,7 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     syncing: "Synchronisiere…",
     syncedNote: "{total} Workouts · zuletzt synchronisiert {date}",
     recentNote:
-      "Zeigt aktuelle Workouts — tippe auf Sync, um deinen vollständigen Verlauf für genaue PBs und Trends zu laden.",
+      "Zeigt aktuelle Workouts — lade deinen vollständigen Verlauf für genaue PBs und Trends.",
     latest: "Neueste",
     distance: "Distanz",
     time: "Zeit",
@@ -462,7 +462,7 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     totalTime: "Gesamtzeit",
     avgPace: "Ø Pace",
     sectionCoreEyebrow: "Hier starten",
-    sectionCore: "Heutiger Überblick",
+    sectionCore: "Auf einen Blick",
     sectionWorkoutsEyebrow: "Workouts",
     sectionWorkouts: "Replay finden",
     sectionWorkoutsBody:
@@ -823,7 +823,7 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
   },
   workoutList: {
     empty: "Keine Workouts für diesen Filter.",
-    windowed: "{n} Workouts · für Performance begrenzt",
+    windowed: "{n} Workouts · aktuellste zuerst",
     filtersTitle: "Workouts finden",
     matching: "{n} Treffer",
     clearFilters: "Filter zurücksetzen",
@@ -1034,9 +1034,9 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     loadSessionFailed: "Diese Einheit konnte nicht geladen werden",
     paceError: "Gib eine Pace wie 1:52 ein",
     pacingAt: "Pace bei {pace}",
-    noSamples: "Keine verwertbaren Samples in dieser Datei.",
-    fileReadError: "Diese Datei konnte nicht gelesen werden.",
-    importFailed: "Diese Datei konnte nicht importiert werden",
+    noSamples: "Keine verwertbaren Trainingsdaten in dieser Datei. Versuche eine andere Datei oder prüfe das Format.",
+    fileReadError: "Diese Datei konnte nicht gelesen werden. Prüfe, ob es ein CSV-, TCX- oder FIT-Export ist.",
+    importFailed: "Diese Datei konnte nicht importiert werden. Stelle sicher, dass es ein gültiger CSV-, TCX- oder FIT-Export ist.",
     zone1: "Z1 Erholung",
     zone2: "Z2 Ausdauer",
     zone3: "Z3 Tempo",
@@ -1149,16 +1149,16 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
   },
   settings: {
     title: "Konto & Daten",
-    eyebrow: "Datenschutz & Kontrolle",
-    dataTitle: "Was wir speichern",
+    eyebrow: "Deine Daten",
+    dataTitle: "So werden deine Daten behandelt",
     dataNote:
-      "rowplay liest deine Concept2-Workouts bei Bedarf über die Concept2-API. Dein API-Token wird mit SESSION_SECRET im httpOnly-Cookie rp_tok versiegelt. Sitzungen werden in verschlüsselten Cookies gespeichert; es wird keine serverseitige Datenbank verwendet. Abmelden entfernt deine Sitzung.",
+      "rowplay liest deine Concept2-Workouts bei jedem Besuch live von der Concept2-API. Dein Anmelde-Token wird in einem sicheren Browser-Cookie gespeichert — nicht auf einem Server. Abmelden löscht ihn.",
     factWorkouts: "{n} Workouts zum Export verfügbar",
     factDemo: "Demo-Modus — nur Beispieldaten, nichts wird persistiert.",
     factCache:
       "Workout-Daten werden live von der Concept2-API abgerufen — kein serverseitiger Cache.",
     factSession:
-      "Sitzungen werden in verschlüsselten Cookies gespeichert; das Token ist in httpOnly rp_tok versiegelt.",
+      "Dein Login bleibt in einem sicheren Browser-Cookie. Keine Daten leben auf unseren Servern.",
     exportTitle: "Logbuch exportieren",
     exportNote:
       "Lade deinen vollständigen Verlauf als CSV oder JSON herunter. TCX pro Workout (Schlagdaten) öffnet sich in Garmin, Strava oder TrainingPeaks.",
@@ -1203,22 +1203,22 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
   },
   token: {
     title: "Dein Concept2-Token verwenden",
-    introBefore: "Füge ein persönliches API-Token aus deinem Concept2-Logbuch ein (",
+    introBefore: "Füge dein persönliches API-Token aus dem Concept2-Logbuch ein (",
     introLink: "Profil bearbeiten → Anwendungen",
     introAfter:
-      "). Füge es hier einmal ein — rowplay sendet es per HTTPS an den Worker, validiert es, versiegelt es im httpOnly-Cookie rp_tok und nutzt es nur für serverseitige Logbuch-Abfragen. Das Token wird nie in einer Datenbank gespeichert.",
+      "). Das Token wird über HTTPS gesendet, validiert und nur in einem sicheren Browser-Cookie gespeichert — nie auf einem Server.",
     trustTitle: "Wie rowplay das Token behandelt",
     trustAccessTitle: "Zugriff:",
     trustAccessBody:
-      "ein persönliches Concept2-Token authentifiziert dich; rowplay nutzt es nur serverseitig zum Lesen von Profil, Workouts und Schlagdaten.",
+      "ein persönliches Concept2-Token authentifiziert dich; rowplay nutzt es nur zum Lesen von Profil, Workouts und Schlagdaten.",
     trustStoredTitle: "Speicherung:",
     trustStoredBody:
-      "das validierte Token wird im httpOnly-Cookie rp_tok versiegelt, nicht in localStorage oder einem serverseitigen Speicher.",
+      "das validierte Token wird in einem sicheren Browser-Cookie gespeichert — nicht in localStorage oder auf einem Server.",
     trustDisconnectTitle: "Trennen:",
-    trustDisconnectBody: "Der Abmelden-Knopf in der Kopfzeile entfernt Token-Cookie und Sitzung.",
-    trustCacheTitle: "Cache:",
+    trustDisconnectBody: "Der Abmelden-Knopf in der Kopfzeile entfernt Token und Sitzung.",
+    trustCacheTitle: "Daten:",
     trustCacheBody:
-      "Workout-Daten werden live von der Concept2-API abgerufen; rowplay erstellt keine öffentlichen Shares oder Leaderboard-Einträge.",
+      "Workout-Daten werden bei jeder Anfrage live von der Concept2-API abgerufen — nichts wird serverseitig gespeichert.",
     apiToken: "API-Token",
     placeholder: "Token einfügen",
     connect: "Mit Token verbinden",
