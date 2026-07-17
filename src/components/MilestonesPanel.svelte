@@ -113,7 +113,7 @@
 		align-items: center;
 		gap: var(--space-sm);
 		font-size: 0.95rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		margin: 0;
 	}
 	.milestones-row {
@@ -140,7 +140,7 @@
 	}
 	.milestone-label {
 		font-size: 0.78rem;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		line-height: 1.25;
 		margin: 0;
 	}

@@ -248,7 +248,7 @@
 	.stitle {
 		font-family: var(--display);
 		font-size: var(--text-2xs);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
 		margin: 0 0 0.5rem;
@@ -293,11 +293,11 @@
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--ink-3);
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 	}
 	.readout th[scope='row'] {
 		width: 8rem;
-		font-weight: 500;
+		font-weight: var(--fw-medium);
 	}
 	.readout .as-logged {
 		width: 5.5rem;
@@ -307,7 +307,7 @@
 	}
 	.token {
 		display: block;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 	}
 	.desc {
 		display: block;

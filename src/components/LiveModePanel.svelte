@@ -105,7 +105,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.9rem;
 	}
 	.live-title .icon {
@@ -157,7 +157,7 @@
 		align-items: center;
 		gap: 0.4rem;
 		color: var(--live);
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 	}
 	@keyframes spin {
 		to {

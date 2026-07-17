@@ -201,9 +201,9 @@
 	}
 	.mchip {
 		font-size: var(--text-2xs);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		padding: 0.2rem 0.55rem;
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		border: 1px solid var(--hairline);
 		background: var(--paper-inset);
 		color: var(--ink-2);
@@ -300,7 +300,7 @@
 		border-radius: var(--r-ctrl);
 	}
 	.tidlegpct {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.tidlegval {
 		font-size: var(--text-2xs);

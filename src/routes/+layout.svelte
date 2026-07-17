@@ -235,7 +235,7 @@
 		background: var(--paper-raised);
 		color: var(--ink);
 		font-family: var(--display);
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		font-size: 1.35rem;
 		letter-spacing: 0.01em;
 		flex-shrink: 0;
@@ -260,7 +260,7 @@
 		display: inline-flex;
 		align-items: center;
 		font-family: var(--display);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		font-size: 0.92rem;
@@ -374,7 +374,7 @@
 		padding: 0.55rem 0.65rem;
 		border-radius: var(--r-ctrl);
 		font-family: var(--display);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		font-size: 0.92rem;

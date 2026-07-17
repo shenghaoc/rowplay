@@ -2085,7 +2085,7 @@
 		gap: var(--space-xs);
 		font-family: var(--display);
 		font-size: 0.82rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--ink-2);
@@ -2108,7 +2108,7 @@
 	.head h1 {
 		margin: 0;
 		font-size: clamp(1.4rem, 5vw, 1.75rem);
-		font-weight: 900;
+		font-weight: var(--fw-black);
 		text-transform: uppercase;
 		display: flex;
 		align-items: center;
@@ -2177,7 +2177,7 @@
 	}
 	.ghostbar label {
 		font-size: 0.9rem;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-xs);
@@ -2240,7 +2240,7 @@
 		display: flex;
 		align-items: baseline;
 		gap: 0.45rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		font-size: clamp(1.05rem, 3.5vw, 1.35rem);
 		padding: 0.4rem 0.85rem;
 		border-radius: var(--r-ctrl);
@@ -2252,7 +2252,7 @@
 	}
 	.gap-secs {
 		font-size: 0.82em;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		opacity: 0.92;
 	}
 	.gap.ahead {
@@ -2285,7 +2285,7 @@
 	.verdict-kicker {
 		font-family: var(--display);
 		font-size: var(--text-2xs);
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		color: var(--ink-2);
@@ -2294,7 +2294,7 @@
 	.verdict-body {
 		margin: 0;
 		font-size: clamp(1rem, 3.2vw, 1.2rem);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		line-height: 1.35;
 	}
 	.verdict.win .verdict-body {
@@ -2341,7 +2341,7 @@
 	.backend-label {
 		font-family: var(--display);
 		font-size: 0.68rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
 		opacity: 0.65;
@@ -2360,7 +2360,7 @@
 		border-radius: var(--r-ctrl);
 		padding: 0.28rem 0.65rem;
 		font-size: 0.78rem;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		cursor: pointer;
 		font-family: var(--display);
 		text-transform: uppercase;
@@ -2383,7 +2383,7 @@
 		height: 0.75rem;
 		border: 2px solid currentColor;
 		border-right-color: transparent;
-		border-radius: 50%;
+		border-radius: var(--r-round);
 		animation: vspin 0.7s linear infinite;
 	}
 	@keyframes vspin {
@@ -2414,7 +2414,7 @@
 	}
 	.clock {
 		font-size: 1.1rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		min-width: 130px;
 	}
 	.scrub {
@@ -2519,7 +2519,7 @@
 	.ldot {
 		width: 8px;
 		height: 8px;
-		border-radius: 50%;
+		border-radius: var(--r-round);
 		flex-shrink: 0;
 	}
 	.charts {
@@ -2562,7 +2562,7 @@
 		align-items: center;
 		gap: 0.375rem;
 		padding: 0.25rem 0.625rem;
-		border-radius: 9999px;
+		border-radius: var(--r-pill);
 		border: 1px solid oklch(var(--bc) / 0.2);
 		background: transparent;
 		cursor: pointer;
@@ -2579,7 +2579,7 @@
 	.rep-swatch {
 		width: 10px;
 		height: 10px;
-		border-radius: 50%;
+		border-radius: var(--r-round);
 		flex-shrink: 0;
 	}
 
@@ -2595,12 +2595,12 @@
 	.ts {
 		background: var(--paper-inset);
 		border: var(--bd);
-		border-radius: 10px;
+		border-radius: var(--r-ctrl);
 		padding: 0.6rem 0.8rem;
 	}
 	.tv {
 		font-size: 1.5rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.tv.good {
 		color: var(--ahead);
@@ -2662,7 +2662,7 @@
 	}
 	.tu {
 		font-size: 0.85rem;
-		font-weight: 500;
+		font-weight: var(--fw-medium);
 		color: var(--ink-2);
 		margin-left: 0.15rem;
 	}
@@ -2678,7 +2678,7 @@
 	}
 	.ctitle {
 		font-size: 0.74rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		margin-bottom: 0.4rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
@@ -2725,12 +2725,12 @@
 	.ss {
 		background: var(--paper-inset);
 		border: var(--bd);
-		border-radius: 10px;
+		border-radius: var(--r-ctrl);
 		padding: 0.5rem 0.7rem;
 	}
 	.ssv {
 		font-size: 1.15rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.ssv.good {
 		color: var(--ahead);
@@ -2762,7 +2762,7 @@
 		box-shadow: inset 0 0 0 1px var(--warn);
 	}
 	.repno {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		color: var(--ink-2);
 	}
 	.repbarwrap {
@@ -2789,7 +2789,7 @@
 		width: 100%;
 	}
 	.repbarlabel {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.9rem;
 		white-space: nowrap;
 	}
@@ -2798,7 +2798,7 @@
 		grid-column: 2;
 	}
 	.repdelta {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.85rem;
 		text-align: right;
 	}
@@ -2885,7 +2885,7 @@
 	.splits th {
 		text-align: left;
 		color: var(--ink-2);
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		padding: 0.3rem 0.5rem;
 		border-bottom: var(--bd);
 	}

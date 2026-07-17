@@ -158,10 +158,10 @@
 		background: var(--bg-elev);
 		border: 1px solid var(--hairline);
 		color: var(--text-dim);
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		padding: 0.3rem 0.75rem;
 		font-size: 0.8rem;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		cursor: pointer;
 	}
 	.mchip.on {

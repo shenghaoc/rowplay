@@ -90,7 +90,7 @@
 	.trust h2 {
 		margin: 0 0 0.65rem;
 		font-size: 0.95rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		text-transform: uppercase;
 	}
 	.trust ul {

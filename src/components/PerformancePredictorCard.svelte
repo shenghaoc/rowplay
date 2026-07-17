@@ -160,7 +160,7 @@
 	}
 	.predictor-head .label {
 		font-size: 0.8rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.predictor-chevron {
 		display: inline-flex;
@@ -183,7 +183,7 @@
 	}
 	.field-label {
 		font-size: var(--text-2xs);
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 	}
 	.predictor-error {
 		font-size: 0.82rem;

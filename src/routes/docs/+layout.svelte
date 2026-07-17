@@ -86,7 +86,7 @@
 	}
 	.docs-nav .menu a {
 		font-family: var(--display);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		letter-spacing: 0.02em;
 	}
 	.docs-nav .menu a[aria-current='page'] {

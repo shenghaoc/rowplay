@@ -112,7 +112,7 @@
 	}
 	h1 {
 		font-size: clamp(2rem, 6vw, 2.8rem);
-		font-weight: 900;
+		font-weight: var(--fw-black);
 		text-transform: uppercase;
 		line-height: 1.05;
 		margin: 1rem 0;
@@ -172,7 +172,7 @@
 	}
 	.tour h2 {
 		font-size: 1rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		margin: 0.15rem 0 0;
 		text-transform: uppercase;
 	}
@@ -196,7 +196,7 @@
 		border-radius: var(--r-ctrl);
 		background: var(--paper-inset);
 		font-size: 0.82rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.tour-step :global(svg) {
 		flex: 0 0 auto;

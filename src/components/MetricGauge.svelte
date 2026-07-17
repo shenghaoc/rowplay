@@ -71,7 +71,7 @@
 	.value {
 		font-family: var(--display);
 		font-size: 1.7rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		line-height: 1;
 	}
 	.field-label {

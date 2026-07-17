@@ -52,7 +52,7 @@
 	.moments-head p { margin: 0.15rem 0 0; }
 	.moment-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-md); }
 	.moment-card { border: 1px solid color-mix(in srgb, var(--color-base-content) 12%, transparent); border-radius: 1rem; padding: 0.9rem; background: color-mix(in srgb, var(--color-base-200) 62%, transparent); }
-	.moment-kicker { font-weight: 700; margin-bottom: 0.25rem; }
+	.moment-kicker { font-weight: var(--fw-bold); margin-bottom: 0.25rem; }
 	.moment-main { font-size: 0.92rem; }
 	.moment-meta { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.35rem; }
 	.moment-reason { margin: 0.55rem 0 0.75rem; }

@@ -219,7 +219,7 @@
 	}
 	.pbchip {
 		font-size: 0.65rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		padding: 0.1rem 0.4rem;

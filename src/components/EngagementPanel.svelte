@@ -239,7 +239,7 @@
 		color: var(--accent);
 	}
 	.engtitle .label {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.95rem;
 		color: var(--text);
 	}
@@ -262,7 +262,7 @@
 		padding: 0.25rem 0.5rem;
 		font-family: var(--display);
 		font-size: var(--text-2xs);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		cursor: pointer;
 	}
@@ -290,14 +290,14 @@
 		height: 10px;
 		background: var(--paper-inset);
 		border: var(--bd);
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		overflow: visible;
 		margin-bottom: 0.4rem;
 	}
 	.progressfill {
 		height: 100%;
 		width: 100%;
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		background: var(--behind);
 		transform-origin: left;
 		transition: transform 0.2s ease;
@@ -358,11 +358,11 @@
 		align-items: center;
 		gap: 0.3rem;
 		font-size: var(--text-2xs);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 		padding: 0.25rem 0.55rem;
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		background: color-mix(in srgb, var(--behind) 14%, var(--paper-raised));
 		color: color-mix(in srgb, var(--behind) 45%, var(--ink));
 		border: 1px solid color-mix(in srgb, var(--behind) 35%, var(--paper-raised));

@@ -126,7 +126,7 @@
 	.wrap { display: grid; gap: 1.25rem; max-width: 44rem; margin-inline: auto; padding-block: 2rem 3rem; }
 	.eyebrow { color: var(--ink-2); font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.08em; margin: 0; text-transform: uppercase; }
 	h1 { font-family: var(--display); margin: 0; }
-	.section-head { align-items: center; display: flex; font-size: 0.78rem; font-weight: 700; gap: var(--space-sm); letter-spacing: 0.08em; margin: 0; text-transform: uppercase; }
+	.section-head { align-items: center; display: flex; font-size: 0.78rem; font-weight: var(--fw-bold); gap: var(--space-sm); letter-spacing: 0.08em; margin: 0; text-transform: uppercase; }
 	.facts { font-size: 0.88rem; margin: 0; padding-left: 1.2rem; }
 	.row { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
 	.small, .tz-label { font-size: 0.85rem; margin: 0; }

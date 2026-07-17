@@ -302,7 +302,7 @@
 	}
 	.cptitle .field-label {
 		color: var(--text);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.95rem;
 	}
 	.cpsub {
@@ -321,23 +321,23 @@
 	.cs {
 		background: var(--bg-elev-2);
 		border: 1px solid var(--hairline);
-		border-radius: 10px;
+		border-radius: var(--r-ctrl);
 		padding: 0.55rem 0.7rem;
 	}
 	.csv {
 		font-size: 1.6rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		line-height: 1.05;
 	}
 	.csv .unit {
 		font-size: 0.85rem;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		color: var(--text-dim);
 		margin-left: 0.15rem;
 	}
 	.csl {
 		font-size: 0.78rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		margin-top: 0.12rem;
 	}
 	.cpexplain {
@@ -386,7 +386,7 @@
 		margin-bottom: 0.9rem;
 	}
 	.predhead {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.9rem;
 	}
 	.predsub {
@@ -408,7 +408,7 @@
 		padding: 0.3rem 0.7rem;
 		font-family: var(--display);
 		font-size: 0.78rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 		cursor: pointer;
@@ -443,11 +443,11 @@
 		padding: 0.65rem 0.8rem;
 		background: var(--bg-elev-2);
 		border: 1px solid var(--hairline);
-		border-radius: 10px;
+		border-radius: var(--r-ctrl);
 	}
 	.predval {
 		font-size: 1.5rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 	}
 	.predhint {
 		font-size: 0.78rem;
@@ -476,7 +476,7 @@
 	.curvelegend .dot {
 		width: 8px;
 		height: 8px;
-		border-radius: 50%;
+		border-radius: var(--r-round);
 		background: var(--power);
 	}
 	.curvelegend .line {
