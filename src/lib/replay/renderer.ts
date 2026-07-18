@@ -142,15 +142,15 @@ const PAD_L = 58;
 const PAD_R = 30;
 const WATER_H = 34;
 const POD_R = 9;
-const BOB_AMP = 2.2;
-/** Small legibility lift without changing the established course-strip layout. */
-const ATHLETE_SCALE = 1.12;
+const BOB_AMP = 3.4;
+/** Scale the stick figure so joint travel is legible on the course strip. */
+const ATHLETE_SCALE = 1.28;
 /** Forward/back hull surge per stroke (px), per sport. Bike pedals smoothly. */
-const SURGE_PX: Record<Sport, number> = { rower: 2.6, skierg: 1.2, bike: 0 };
+const SURGE_PX: Record<Sport, number> = { rower: 4.2, skierg: 2.2, bike: 0 };
 /** Splash droplets per lane; small and brief, so a tiny pool suffices. */
-const SPLASH_CAP = 12;
+const SPLASH_CAP = 16;
 /** Canvas y grows downward, so droplet gravity is positive (px/s²). */
-const SPLASH_GRAVITY = 230;
+const SPLASH_GRAVITY = 260;
 const STREAK_ALPHAS = [0.35, 0.28, 0.22, 0.16] as const;
 const STREAK_LENGTH_FACTORS = [1, 0.75, 0.55, 0.4] as const;
 const STREAK_Y_OFFSETS = [-3, 0, 3, -5] as const;
@@ -283,8 +283,8 @@ interface AvatarDrawCtx {
 /** Rowing shell with fixed feet and legs → body → arms drive sequencing. */
 function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKinematics) {
   const { x, bobY, accent, rim, foam, reduce } = a;
-  const HL = 16;
-  const HH = 2.6;
+  const HL = 17;
+  const HH = 2.8;
 
   // Hull — long, pointed racing shell on the water.
   ctx.fillStyle = accent;
@@ -298,95 +298,97 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // The seat slides away from a fixed stretcher as the legs extend. The knees
-  // lower on the drive and rise only after hands/body have recovered.
-  const seatX = x + 2 - k.legExtension * 5.2;
+  // Seat slides hard toward the bow as the legs drive. Catch is compressed over
+  // the stretcher; finish lays back with arms drawn to the body.
+  const seatX = x + 3.5 - k.legExtension * 9.2;
   const seatY = bobY - 2;
-  const shX = seatX + 3.1 - k.bodySwing * 6.4;
-  const shY = bobY - 9 + k.bodySwing * 0.6;
+  const shX = seatX + 4.2 - k.bodySwing * 9.5;
+  const shY = bobY - 9.5 + k.bodySwing * 1.4;
   const hipX = seatX;
   const hipY = seatY;
 
-  const footX = x + 8.2;
+  const footX = x + 9.2;
   const footY = bobY - 1;
-  const kneeX = footX - 1.5 - k.legExtension * 4.5;
-  const kneeY = bobY - 6.3 + k.legExtension * 4.4;
-  limb(ctx, hipX, hipY, kneeX, kneeY, 2, accent); // thigh
-  limb(ctx, kneeX, kneeY, footX, footY, 1.8, accent); // shin
-  disc(ctx, footX, footY, 1.2, rim); // foot on stretcher
+  // Catch: knee high and forward. Finish: knee drops as the leg straightens.
+  const kneeX = footX - 1.2 - k.legExtension * 6.5;
+  const kneeY = bobY - 8.2 + k.legExtension * 6.4;
+  limb(ctx, hipX, hipY, kneeX, kneeY, 2.1, accent); // thigh
+  limb(ctx, kneeX, kneeY, footX, footY, 1.9, accent); // shin
+  disc(ctx, footX, footY, 1.3, rim); // foot on stretcher
 
   // Torso + head.
-  limb(ctx, seatX, seatY, shX, shY, 2.4, accent); // torso
-  disc(ctx, shX, shY - 3, 2.3, accent); // head
+  limb(ctx, seatX, seatY, shX, shY, 2.6, accent); // torso
+  disc(ctx, shX, shY - 3.2, 2.5, accent); // head
 
-  // One continuous oar rotates around a fixed oarlock. The inboard handle and
-  // outboard blade move in opposition; depth and feather are independent,
-  // continuous channels instead of a drive/recovery visibility switch.
-  const strokeProgress = k.legExtension * 0.48 + k.bodySwing * 0.3 + k.armDraw * 0.22;
-  const oarAngle = Math.PI - 0.18 - strokeProgress * (Math.PI - 0.36);
+  // One continuous oar rotates around a fixed oarlock. Long inboard lever so
+  // hands travel with the seat; outboard blade sweeps a clear arc on the strip.
+  const strokeProgress = k.legExtension * 0.42 + k.bodySwing * 0.34 + k.armDraw * 0.24;
+  const oarAngle = Math.PI - 0.28 - strokeProgress * (Math.PI - 0.52);
   const oarCos = Math.cos(oarAngle);
   const oarSin = Math.sin(oarAngle);
-  const oarlockX = x + 0.5;
+  const oarlockX = x + 0.4;
   const oarlockY = bobY - 0.2;
-  const handX = oarlockX - oarCos * 4.6;
-  const handY = oarlockY - oarSin * 1.4 - k.bladeFeather * 0.5;
-  const bladeRootX = oarlockX + oarCos * 11.7;
-  const bladeRootY = oarlockY + oarSin * 3.6 + k.bladeDepth * 1.6 - k.bladeFeather * 4.8;
-  const bladeTipX = bladeRootX + oarCos * 3.2;
-  const bladeTipY = bladeRootY + oarSin * 0.9;
-  const elbowX = (shX + handX) / 2 + 1.5 - k.armDraw * 1.1;
-  const elbowY = (shY + handY) / 2 - 0.7;
-  limb(ctx, shX, shY + 1, elbowX, elbowY, 1.6, accent); // upper arm
-  limb(ctx, elbowX, elbowY, handX, handY, 1.4, accent); // forearm
-  disc(ctx, handX, handY, 0.9, accent); // hand on handle
-  limb(ctx, handX, handY, bladeRootX, bladeRootY, 1.3, rim); // oar shaft
-  limb(ctx, bladeRootX, bladeRootY, bladeTipX, bladeTipY, 2.5 - k.bladeFeather * 1.25, accent);
+  const handX = oarlockX - oarCos * 7.2;
+  const handY = oarlockY - oarSin * 2.1 - k.bladeFeather * 0.8;
+  const bladeRootX = oarlockX + oarCos * 13.5;
+  const bladeRootY = oarlockY + oarSin * 4.2 + k.bladeDepth * 2.4 - k.bladeFeather * 5.5;
+  const bladeTipX = bladeRootX + oarCos * 3.6;
+  const bladeTipY = bladeRootY + oarSin * 1.1;
+  const elbowX = (shX + handX) / 2 + 2.2 - k.armDraw * 1.6;
+  const elbowY = (shY + handY) / 2 - 1.1 + k.armDraw * 0.4;
+  limb(ctx, shX, shY + 1, elbowX, elbowY, 1.7, accent); // upper arm
+  limb(ctx, elbowX, elbowY, handX, handY, 1.5, accent); // forearm
+  disc(ctx, handX, handY, 1, accent); // hand on handle
+  limb(ctx, handX, handY, bladeRootX, bladeRootY, 1.4, rim); // oar shaft
+  limb(ctx, bladeRootX, bladeRootY, bladeTipX, bladeTipY, 2.8 - k.bladeFeather * 1.4, accent);
   if (!reduce && k.bladeDepth > 0.08) {
-    disc(ctx, bladeTipX, bobY + 2.2, 0.75 + k.bladeDepth * 0.35, foam);
-    disc(ctx, bladeTipX + 1.8, bobY + 1.2, 0.55 + k.bladeDepth * 0.25, foam);
+    disc(ctx, bladeTipX, bobY + 2.6, 1 + k.bladeDepth * 0.5, foam);
+    disc(ctx, bladeTipX + 2.2, bobY + 1.4, 0.7 + k.bladeDepth * 0.35, foam);
+    disc(ctx, bladeTipX - 1.2, bobY + 1.8, 0.55 + k.bladeDepth * 0.25, foam);
   }
 }
 
 /** Skier double-poling: arms/poles swing from a high reach to a low back-pull. */
 function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKinematics) {
   const { x, y, bobY, accent, rim, foam, reduce } = a;
-  const hipX = x + k.hipHinge * 1.1;
-  const hipY = bobY - 7 + k.kneeFlex * 1.8;
-  const shX = x + 0.5 + k.hipHinge * 3;
-  const shY = bobY - 13 + k.hipHinge * 3.4;
+  const hipX = x + k.hipHinge * 1.8;
+  const hipY = bobY - 7.2 + k.kneeFlex * 2.8;
+  const shX = x + 0.6 + k.hipHinge * 4.6;
+  const shY = bobY - 13.5 + k.hipHinge * 5.2;
 
   // Both boots remain planted while the knees and hip absorb the press.
-  limb(ctx, hipX, hipY, x + 4, y, 2.2, accent);
-  limb(ctx, hipX, hipY, x - 3, y, 2.2, accent);
-  disc(ctx, x + 4, y, 1.1, rim); // right boot
-  disc(ctx, x - 3, y, 1.1, rim); // left boot
-  limb(ctx, hipX, hipY, shX, shY, 2.6, accent);
-  disc(ctx, shX, shY - 3, 2.3, accent);
+  limb(ctx, hipX, hipY, x + 4.2, y, 2.3, accent);
+  limb(ctx, hipX, hipY, x - 3.2, y, 2.3, accent);
+  disc(ctx, x + 4.2, y, 1.2, rim); // right boot
+  disc(ctx, x - 3.2, y, 1.2, rim); // left boot
+  limb(ctx, hipX, hipY, shX, shY, 2.7, accent);
+  disc(ctx, shX, shY - 3.2, 2.5, accent);
 
   // Reach → plant → press → recovery. The pole tip touches the snow only
   // while poleContact is active; otherwise its full trajectory clears the deck.
-  const handX = shX + 5 - k.armPress * 6;
-  const handY = shY + 1.6 + k.armPress * 6.1;
-  const elbowX = (shX + handX) / 2 + 1.6 - k.armPress * 0.8;
-  const elbowY = (shY + handY) / 2 + 0.4;
-  limb(ctx, shX, shY + 1, elbowX, elbowY, 1.8, accent); // upper arm
-  limb(ctx, elbowX, elbowY, handX, handY, 1.6, accent); // forearm
-  disc(ctx, handX, handY, 0.9, accent); // hand on grip
-  const poleTipX = handX + 3.6 - k.poleSweep * 9;
-  const poleTipY = y - (1 - k.poleContact) * 4.5;
-  limb(ctx, handX, handY, poleTipX, poleTipY, 1.2, rim);
+  const handX = shX + 6.5 - k.armPress * 9.5;
+  const handY = shY + 0.8 + k.armPress * 8.5;
+  const elbowX = (shX + handX) / 2 + 2.2 - k.armPress * 1.2;
+  const elbowY = (shY + handY) / 2 + 0.6;
+  limb(ctx, shX, shY + 1, elbowX, elbowY, 1.9, accent); // upper arm
+  limb(ctx, elbowX, elbowY, handX, handY, 1.7, accent); // forearm
+  disc(ctx, handX, handY, 1, accent); // hand on grip
+  const poleTipX = handX + 5.2 - k.poleSweep * 13;
+  const poleTipY = y - (1 - k.poleContact) * 6.5;
+  limb(ctx, handX, handY, poleTipX, poleTipY, 1.3, rim);
   if (!reduce && k.poleContact > 0.12) {
-    disc(ctx, poleTipX, y, 0.65 + k.poleContact * 0.35, foam);
-    disc(ctx, poleTipX + 1.5, y - 0.8, 0.5 + k.poleContact * 0.2, foam);
+    disc(ctx, poleTipX, y, 0.85 + k.poleContact * 0.45, foam);
+    disc(ctx, poleTipX + 2, y - 1, 0.65 + k.poleContact * 0.3, foam);
+    disc(ctx, poleTipX - 1.4, y - 0.6, 0.5 + k.poleContact * 0.2, foam);
   }
 }
 
 /** Cyclist whose wheels spin and legs pedal with the phase. */
 function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKinematics) {
   const { x, y, accent, rim, meters, reduce } = a;
-  const wr = 5;
-  const rearX = x - 8;
-  const frontX = x + 8;
+  const wr = 5.4;
+  const rearX = x - 8.5;
+  const frontX = x + 8.5;
   const wheelY = y - wr;
   // Wheel rotation is tied to road distance, not cadence. A gearing change can
   // alter crank speed without making the tyres slide along the course.
@@ -396,64 +398,64 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
   for (let wheel = 0; wheel < 2; wheel++) {
     const wx = wheel === 0 ? rearX : frontX;
     ctx.strokeStyle = accent;
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(wx, wheelY, wr, 0, Math.PI * 2);
     ctx.stroke();
     for (let spoke = 0; spoke < 4; spoke++) {
       const ang = wheelSpin + (spoke * Math.PI) / 2;
-      limb(ctx, wx, wheelY, wx + Math.cos(ang) * wr, wheelY + Math.sin(ang) * wr, 0.8, rim);
+      limb(ctx, wx, wheelY, wx + Math.cos(ang) * wr, wheelY + Math.sin(ang) * wr, 0.85, rim);
     }
-    disc(ctx, wx, wheelY, 1, accent);
+    disc(ctx, wx, wheelY, 1.1, accent);
   }
 
   // Frame and wheels stay grounded; only the rider gets restrained secondary
   // movement from the kinematics solver.
   const bbX = x;
   const bbY = wheelY + 1;
-  const seatX = x - 3;
-  const seatY = wheelY - 7;
-  const barX = frontX - 1;
-  const barY = wheelY - 6;
-  limb(ctx, rearX, wheelY, bbX, bbY, 1.6, accent);
-  limb(ctx, bbX, bbY, seatX, seatY, 1.6, accent);
-  limb(ctx, seatX, seatY, barX, barY, 1.6, accent);
-  limb(ctx, bbX, bbY, barX, barY, 1.6, accent);
-  limb(ctx, frontX, wheelY, barX, barY, 1.6, accent);
+  const seatX = x - 3.2;
+  const seatY = wheelY - 7.4;
+  const barX = frontX - 1.2;
+  const barY = wheelY - 6.4;
+  limb(ctx, rearX, wheelY, bbX, bbY, 1.7, accent);
+  limb(ctx, bbX, bbY, seatX, seatY, 1.7, accent);
+  limb(ctx, seatX, seatY, barX, barY, 1.7, accent);
+  limb(ctx, bbX, bbY, barX, barY, 1.7, accent);
+  limb(ctx, frontX, wheelY, barX, barY, 1.7, accent);
 
   // Rider: torso → bars, head, arms on bars, and two pedalling legs.
-  const hipLift = reduce ? 0 : k.hipRock * 14;
-  const torsoShift = reduce ? 0 : k.torsoSway * 14;
-  const hipX = seatX + torsoShift * 0.2;
+  const hipLift = reduce ? 0 : k.hipRock * 18;
+  const torsoShift = reduce ? 0 : k.torsoSway * 18;
+  const hipX = seatX + torsoShift * 0.25;
   const hipY = seatY + hipLift;
-  const rShX = x + 1 + torsoShift;
-  const rShY = wheelY - 12 + hipLift * 0.35;
-  limb(ctx, hipX, hipY, rShX, rShY, 2.4, accent);
-  disc(ctx, rShX + 1, rShY - 2.5, 2.3, accent); // head
+  const rShX = x + 1.2 + torsoShift;
+  const rShY = wheelY - 12.5 + hipLift * 0.4;
+  limb(ctx, hipX, hipY, rShX, rShY, 2.5, accent);
+  disc(ctx, rShX + 1, rShY - 2.6, 2.4, accent); // head
 
   // Arms: from shoulders to handlebars with an elbow bend.
-  const armElbX = (rShX + barX) / 2 + 0.8;
-  const armElbY = (rShY + barY) / 2 - 0.5;
-  limb(ctx, rShX, rShY, armElbX, armElbY, 1.6, accent); // upper arm
-  limb(ctx, armElbX, armElbY, barX, barY, 1.4, accent); // forearm
-  disc(ctx, barX, barY, 0.9, accent); // hand on bars
+  const armElbX = (rShX + barX) / 2 + 1;
+  const armElbY = (rShY + barY) / 2 - 0.6;
+  limb(ctx, rShX, rShY, armElbX, armElbY, 1.7, accent); // upper arm
+  limb(ctx, armElbX, armElbY, barX, barY, 1.5, accent); // forearm
+  disc(ctx, barX, barY, 1, accent); // hand on bars
 
   // Two legs pedalling in opposition: each follows its crank position
   // (180° apart). The knee kinks outward for a natural look.
   for (let leg = 0; leg < 2; leg++) {
     const legSpin = k.crankAngle + leg * Math.PI;
-    const crankX = bbX + Math.cos(legSpin) * 2.4;
-    const crankY = bbY + Math.sin(legSpin) * 2.4;
+    const crankX = bbX + Math.cos(legSpin) * 3.1;
+    const crankY = bbY + Math.sin(legSpin) * 3.1;
     // Knee kinks outward on the downstroke, inward on the upstroke.
     const extension = Math.sin(legSpin);
-    const kneeX = (hipX + crankX) / 2 + (leg === 0 ? 1.2 : -1.2) + extension * 0.5;
-    const kneeY = (hipY + crankY) / 2 - 0.5;
-    limb(ctx, hipX + 0.5, hipY + 0.5, kneeX, kneeY, 1.6, accent); // thigh
-    limb(ctx, kneeX, kneeY, crankX, crankY, 1.4, accent); // shin
+    const kneeX = (hipX + crankX) / 2 + (leg === 0 ? 1.5 : -1.5) + extension * 0.7;
+    const kneeY = (hipY + crankY) / 2 - 0.8;
+    limb(ctx, hipX + 0.5, hipY + 0.5, kneeX, kneeY, 1.7, accent); // thigh
+    limb(ctx, kneeX, kneeY, crankX, crankY, 1.5, accent); // shin
     const anklePitch = leg === 0 ? k.anklePitchLeft : k.anklePitchRight;
-    const shoeX = crankX + Math.cos(anklePitch) * 1.5;
-    const shoeY = crankY + Math.sin(anklePitch) * 1.5;
-    limb(ctx, crankX, crankY, shoeX, shoeY, 1.5, rim); // foot on pedal
+    const shoeX = crankX + Math.cos(anklePitch) * 1.7;
+    const shoeY = crankY + Math.sin(anklePitch) * 1.7;
+    limb(ctx, crankX, crankY, shoeX, shoeY, 1.6, rim); // foot on pedal
   }
 }
 
@@ -728,28 +730,28 @@ export class CourseRenderer implements ReplayRenderer {
    * spawns nothing.
    */
   private spawnSplash(pool: ParticlePool, avX: number, y: number, sport?: Sport, intensity = 0.5) {
-    const effort = 0.75 + clamp01(intensity) * 0.65;
+    const effort = 0.85 + clamp01(intensity) * 0.75;
     const count =
       sport === "rower"
-        ? 3 + Math.round(clamp01(intensity) * 3)
+        ? 5 + Math.round(clamp01(intensity) * 4)
         : sport === "skierg"
-          ? 2 + Math.round(clamp01(intensity) * 2)
+          ? 4 + Math.round(clamp01(intensity) * 3)
           : 0;
     if (count === 0) return;
-    // Catch-time contact points after the avatar's 1.12× scale and small
-    // solver-driven surge: the row blade is aft/left of the hull, while the
-    // SkiErg basket plants forward/right of the boots.
-    const ox = sport === "rower" ? -18 : 9;
+    // Catch-time contact points after the avatar's scale and solver-driven
+    // surge: the row blade is aft/left of the hull, while the SkiErg basket
+    // plants forward/right of the boots.
+    const ox = sport === "rower" ? -22 : 11;
     for (let i = 0; i < count; i++) {
       pool.spawn(
-        avX + ox + (Math.random() - 0.5) * 4,
+        avX + ox + (Math.random() - 0.5) * 6,
         y + 2,
         0,
-        (Math.random() * 34 - 10) * effort,
-        -(26 + Math.random() * 38) * effort,
+        (Math.random() * 48 - 14) * effort,
+        -(32 + Math.random() * 48) * effort,
         0,
-        0.32 + Math.random() * 0.22,
-        (0.8 + Math.random() * 0.8) * effort,
+        0.36 + Math.random() * 0.28,
+        (1 + Math.random() * 1.1) * effort,
       );
     }
   }

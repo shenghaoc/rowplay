@@ -613,9 +613,10 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   rower.position.z = -0.1;
   group.add(rower);
 
-  // Oars pivot at their rigger pins. Each inboard grip has an explicit contact
-  // transform that arm IK consumes, so the hands cannot drift away from the
-  // equipment while the seat slides.
+  // Oars pivot at their rigger pins. The inboard lever is long enough that a
+  // full ~90° sweep moves the handle ~1 m — without that, arms barely travel
+  // and the stroke looks like a shoulder shrug. Arm IK consumes the explicit
+  // grip anchor so hands stay locked to the equipment while the seat slides.
   const oars: Array<{
     side: number;
     group: THREE.Group;
@@ -625,20 +626,21 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   for (const side of [-1, 1]) {
     const oar = new THREE.Group();
     oar.name = side < 0 ? "rower-oar-left" : "rower-oar-right";
+    // 3.1 m shaft: ~0.85 m inboard of the pin, ~2.25 m outboard to the blade.
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.035, 0.035, 2.8, 6),
+      new THREE.CylinderGeometry(0.035, 0.035, 3.1, 6),
       new THREE.MeshStandardMaterial({ color: 0xe7eef0, roughness: 0.6 }),
     );
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
-    shaft.position.x = side * 1.0;
+    shaft.position.x = side * 0.7;
     oar.add(shaft);
-    const grip = capsulePart(0.045, 0.3, humanMat(0x262c31), "x");
+    const grip = capsulePart(0.045, 0.34, humanMat(0x262c31), "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
-    grip.position.x = -side * 0.28;
+    grip.position.x = -side * 0.72;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    handleAnchor.position.x = -side * 0.38;
+    handleAnchor.position.x = -side * 0.82;
     oar.add(handleAnchor);
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
@@ -646,27 +648,37 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       humanMat(0x8a9097, 0.5),
     );
     collar.name = "rower-oar-collar";
-    collar.position.set(side * 1.9, 0, 0);
+    collar.position.set(side * 1.95, 0, 0);
     collar.rotation.y = Math.PI / 2;
     oar.add(collar);
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.26), accentMat());
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.025, 0.28), accentMat());
     blade.name = side < 0 ? "rower-blade-left" : "rower-blade-right";
-    blade.position.set(side * 2.4, -0.05, 0);
+    blade.position.set(side * 2.35, -0.06, 0);
     blade.userData.accent = true;
     oar.add(blade);
     // Rigger pin sits outside the hull; blade depth is animated continuously.
-    oar.position.set(side * 0.52, 0.34, 0);
+    oar.position.set(side * 0.52, 0.34, 0.05);
     oar.userData.side = side;
     group.add(oar);
     oars.push({ side, group: oar, blade, handleAnchor });
   }
 
+  // Authored visual ranges. Channels from the solver are 0..1; these scales
+  // turn them into a stroke that reads at a glance without leaving the hull.
+  const SEAT_TRAVEL = 0.62;
+  const BODY_PITCH_CATCH = -0.52;
+  const BODY_PITCH_FINISH = 0.22;
+  const OAR_YAW_CATCH = -0.92;
+  const OAR_YAW_SPAN = 1.65;
+  const BLADE_BURY = 0.16;
+  const BLADE_DIP = 0.12;
+
   const handlePoint = new THREE.Vector3();
-  const placeArms = (bodySwing: number): void => {
+  const placeArms = (bodySwing: number, armDraw: number): void => {
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       if (!arm) continue;
-      const shoulder: Point3 = [arm.side * 0.26, 0.79 - bodySwing * 0.025, 0.02 + bodySwing * 0.08];
+      const shoulder: Point3 = [arm.side * 0.26, 0.79 - bodySwing * 0.04, 0.02 + bodySwing * 0.14];
       const oar = oars[i];
       if (!oar) continue;
       // Convert the oar-local grip endpoint into rower-local coordinates. Both
@@ -675,10 +687,12 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       handlePoint.copy(oar.handleAnchor.position).applyQuaternion(oar.group.quaternion);
       handlePoint.add(oar.group.position).sub(rower.position);
       const handTarget: Point3 = [handlePoint.x, handlePoint.y, handlePoint.z];
+      // Elbow kicks out early in the drive and tucks as the arms finish.
+      const elbowKick = 0.1 - armDraw * 0.06;
       const elbow: Point3 = [
-        arm.side * 0.24,
-        (shoulder[1] + handTarget[1]) / 2 - 0.065,
-        (shoulder[2] + handTarget[2]) / 2 - 0.055 + bodySwing * 0.025,
+        arm.side * (0.28 + elbowKick),
+        (shoulder[1] + handTarget[1]) / 2 - 0.08 + armDraw * 0.03,
+        (shoulder[2] + handTarget[2]) / 2 - 0.08 + bodySwing * 0.04,
       ];
       placeSegmentBetween(arm.upper, shoulder, elbow);
       placeSegmentBetween(arm.forearm, elbow, handTarget);
@@ -697,11 +711,11 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
         0.34 - rower.position.y,
         0.72 - rower.position.z,
       ];
-      // The staged channel straightens the knee before body swing and arm draw.
+      // Catch: knees high and over the ankles. Finish: almost straight.
       const knee: Point3 = [
         leg.side * 0.14,
-        (hip[1] + footTarget[1]) / 2 + 0.14 - legExtension * 0.11,
-        (hip[2] + footTarget[2]) / 2 - 0.14 + legExtension * 0.11,
+        (hip[1] + footTarget[1]) / 2 + 0.22 - legExtension * 0.2,
+        (hip[2] + footTarget[2]) / 2 - 0.22 + legExtension * 0.2,
       ];
       placeSegmentBetween(leg.thigh, hip, knee);
       placeSegmentBetween(leg.shin, knee, footTarget);
@@ -719,14 +733,16 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const placeUpperBody = (bodySwing: number): void => {
     // Rotate and translate only the upper-body pieces around the hips. Rotating
     // the whole rower group would also rotate the contact-locked feet and hands.
-    const pitch = -0.24 + bodySwing * 0.38;
+    const pitch = BODY_PITCH_CATCH + bodySwing * (BODY_PITCH_FINISH - BODY_PITCH_CATCH);
     torso.rotation.x = pitch;
-    torso.position.z = -0.04 + bodySwing * 0.08;
+    torso.position.z = -0.08 + bodySwing * 0.16;
     bib.rotation.x = pitch;
-    bib.position.z = 0.13 + bodySwing * 0.08;
-    shoulderLine.position.z = 0.01 + bodySwing * 0.08;
-    neck.position.z = 0.02 + bodySwing * 0.1;
-    headGroup.position.z = 0.03 + bodySwing * 0.12;
+    bib.position.z = 0.1 + bodySwing * 0.16;
+    shoulderLine.position.z = -0.02 + bodySwing * 0.16;
+    neck.position.z = -0.01 + bodySwing * 0.18;
+    headGroup.position.z = bodySwing * 0.2;
+    // Slight head counter-tilt so the athlete looks down the course at catch.
+    headGroup.rotation.x = -0.08 + bodySwing * 0.12;
   };
 
   const placeOars = (
@@ -737,12 +753,12 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     bladeFeather: number,
   ): void => {
     // The handle path is staged by the same leg/body/arm order as the athlete.
-    const handleProgress = legExtension * 0.44 + bodySwing * 0.34 + armDraw * 0.22;
+    const handleProgress = legExtension * 0.42 + bodySwing * 0.34 + armDraw * 0.24;
     for (const oar of oars) {
-      oar.group.rotation.y = oar.side * (-0.5 + handleProgress);
+      oar.group.rotation.y = oar.side * (OAR_YAW_CATCH + handleProgress * OAR_YAW_SPAN);
       // Both blade tips dip into the water together despite opposite X signs.
-      oar.group.rotation.z = -oar.side * bladeDepth * 0.055;
-      oar.group.position.y = 0.34 - bladeDepth * 0.1;
+      oar.group.rotation.z = -oar.side * bladeDepth * BLADE_DIP;
+      oar.group.position.y = 0.34 - bladeDepth * BLADE_BURY;
       // The blade squares for catch/drive, feathers flat through recovery, then
       // squares again continuously before the next catch.
       oar.blade.rotation.x = (1 - bladeFeather) * (Math.PI / 2);
@@ -756,8 +772,8 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     const motion = solveRowerKinematics(resolvedPose, kinematics);
     // Seat motion follows leg extension only; body swing and arm draw happen on
     // their later staged channels, eliminating the old one-cosine puppet motion.
-    rower.position.z = 0.12 - motion.legExtension * 0.44;
-    rower.position.y = reduce ? 0 : motion.vertical * 0.012;
+    rower.position.z = 0.18 - motion.legExtension * SEAT_TRAVEL;
+    rower.position.y = reduce ? 0 : motion.vertical * 0.02;
     rower.rotation.set(0, 0, 0);
     placeUpperBody(motion.bodySwing);
     placeOars(
@@ -768,7 +784,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       motion.bladeFeather,
     );
     placeLegs(motion.legExtension);
-    placeArms(motion.bodySwing);
+    placeArms(motion.bodySwing, motion.armDraw);
     return reduce ? STATIC_AVATAR_MOTION : motion;
   };
 
@@ -894,16 +910,17 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     poleSweep: number,
     rebound: number,
   ): void => {
-    const handY = 0.58 - armPress * 0.46;
-    const handZ = 0.4 - armPress * 0.5;
+    // High reach at plant → deep press past the hips at the finish.
+    const handY = 0.68 - armPress * 0.62;
+    const handZ = 0.52 - armPress * 0.72;
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       const shoulder: Point3 = [arm.side * 0.28, 0.53, 0.05];
-      const handTarget: Point3 = [arm.side * 0.3, handY, handZ];
+      const handTarget: Point3 = [arm.side * 0.32, handY, handZ];
       const elbow: Point3 = [
-        arm.side * 0.32,
-        (shoulder[1] + handTarget[1]) / 2 - 0.06,
-        (shoulder[2] + handTarget[2]) / 2 + 0.03,
+        arm.side * 0.36,
+        (shoulder[1] + handTarget[1]) / 2 - 0.08,
+        (shoulder[2] + handTarget[2]) / 2 + 0.05 - armPress * 0.04,
       ];
       placeSegmentBetween(arm.upper, shoulder, elbow);
       placeSegmentBetween(arm.forearm, elbow, handTarget);
@@ -914,9 +931,9 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       // Author the tip in avatar/ground space, then convert to the rotating
       // upper-body local space used by the pole meshes. Contact reaches the
       // snow only during the solver's plant window; otherwise the basket lifts.
-      const liftedY = 0.19 + rebound * 0.12;
+      const liftedY = 0.28 + rebound * 0.16;
       const tipY = liftedY + (0.055 - liftedY) * poleContact;
-      tipGroupPoint.set(pole.side * 0.43, tipY, 0.92 - poleSweep * 1.36);
+      tipGroupPoint.set(pole.side * 0.48, tipY, 1.15 - poleSweep * 1.85);
       inverseUpper.copy(upper.quaternion).invert();
       tipLocalPoint.copy(tipGroupPoint).sub(upper.position).applyQuaternion(inverseUpper);
       const tipTarget: Point3 = [tipLocalPoint.x, tipLocalPoint.y, tipLocalPoint.z];
@@ -932,11 +949,12 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       ? REDUCED_REPLAY_POSES.skierg
       : (pose ?? fallbackStrokePose("skierg", phase));
     const motion = solveSkierKinematics(resolvedPose, kinematics);
-    upper.position.y = 0.7 + (reduce ? 0 : motion.rebound * 0.025);
-    upper.rotation.x = 0.12 + motion.hipHinge * 0.5;
+    upper.position.y = 0.7 + (reduce ? 0 : motion.rebound * 0.04);
+    // Deep crunch through the pull so the double-pole reads at a glance.
+    upper.rotation.x = 0.1 + motion.hipHinge * 0.72;
     for (const leg of legParts) {
-      leg.thigh.rotation.x = 0.06 + motion.kneeFlex * 0.18;
-      leg.shin.rotation.x = -0.05 - motion.kneeFlex * 0.15;
+      leg.thigh.rotation.x = 0.06 + motion.kneeFlex * 0.28;
+      leg.shin.rotation.x = -0.05 - motion.kneeFlex * 0.24;
     }
     placePoleArms(motion.armPress, motion.poleContact, motion.poleSweep, motion.rebound);
     return reduce ? STATIC_AVATAR_MOTION : motion;
@@ -1139,6 +1157,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
 
   const placePedalLegs = (phase: number, anklePitchLeft: number, anklePitchRight: number): void => {
     for (const leg of legs) {
+      // Foot stays exactly on the pedal mesh (crankY is the authored arm length).
       const pedalY = leg.crankY * Math.cos(phase);
       const pedalZ = leg.crankY * Math.sin(phase);
       const foot: Point3 = [
@@ -1148,10 +1167,11 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
       ];
       const hip: Point3 = [leg.side * 0.1, -0.02, 0.08];
       const extension = Math.sin(phase) * leg.side;
+      // Higher knee arc on the upstroke so the pedal circle reads clearly.
       const knee: Point3 = [
-        leg.side * 0.12,
-        (hip[1] + foot[1]) / 2 + 0.15,
-        (hip[2] + foot[2]) / 2 - 0.08 * extension,
+        leg.side * 0.13,
+        (hip[1] + foot[1]) / 2 + 0.18,
+        (hip[2] + foot[2]) / 2 - 0.12 * extension,
       ];
       placeSegmentBetween(leg.thigh, hip, knee);
       placeSegmentBetween(leg.shin, knee, foot);
@@ -1166,10 +1186,10 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     rider.rotation.set(0, 0, 0); // keep hands/feet in equipment space
     torso.rotation.set(0.74 + hipRock, 0, sway);
     jerseyPanel.rotation.set(0.74 + hipRock, 0, sway);
-    shoulderLine.rotation.z = sway * 0.55;
-    neck.position.x = sway * 0.24;
-    headGroup.position.x = sway * 0.34;
-    helmet.position.x = sway * 0.34;
+    shoulderLine.rotation.z = sway * 0.7;
+    neck.position.x = sway * 0.32;
+    headGroup.position.x = sway * 0.42;
+    helmet.position.x = sway * 0.42;
   };
 
   const animate = (
@@ -1209,9 +1229,9 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
   rower: {
     waves: true,
     roll: true,
-    bobAmp: 0.06,
+    bobAmp: 0.09,
     metersPerCycle: METERS_PER_CYCLE.rower,
-    surgeAmp: 0.22,
+    surgeAmp: 0.34,
     sprayOffset: 2.2, // off the blade tips
     groundOpacity: 0.4,
     trailColor: 0xffffff,
@@ -1231,9 +1251,9 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
   skierg: {
     waves: false,
     roll: false,
-    bobAmp: 0.03,
+    bobAmp: 0.05,
     metersPerCycle: METERS_PER_CYCLE.skierg,
-    surgeAmp: 0.08,
+    surgeAmp: 0.14,
     sprayOffset: 0.4, // at the pole baskets
     groundOpacity: 1,
     trailColor: 0xffffff,

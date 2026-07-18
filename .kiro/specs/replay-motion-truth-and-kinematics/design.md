@@ -43,8 +43,10 @@ Accordingly, the replay has two layers:
 
 ## Shared sport kinematics
 
-`src/lib/replay/sportKinematics.ts` is pure and DOM-/Three.js-free. Smooth
-quintic ramps sequence stable authored ranges of motion from `StrokePose`.
+`src/lib/replay/sportKinematics.ts` is pure and DOM-/Three.js-free. Drive
+segments use ease-out cubic so the catch punches; recovery uses ease-in-out so
+the slide returns controlled. Stage windows deliberately overlap so the stroke
+reads as one continuous athletic action rather than three queued puppets.
 
 - **RowErg**: legs drive first, then body swing, then arm draw. Recovery sends
   hands away, brings the body over, and only then rolls the seat forward. Blade
@@ -54,8 +56,11 @@ quintic ramps sequence stable authored ranges of motion from `StrokePose`.
 - **BikeErg**: crank angle follows the recorded cycle, pedals remain opposed,
   ankle pitch stays bounded, and upper-body motion is restrained.
 
-Intensity may influence small secondary cues such as surge or particle energy;
-it does not change the athlete's claimed measured range of motion or posture.
+Renderer mapping is intentionally large enough to read at a glance: seat travel
+≈ 0.6 m, oar yaw ≈ 95°, long inboard handle lever so hands move with the seat,
+and deep double-pole crunch on SkiErg. Intensity may influence small secondary
+cues such as surge or particle energy; it does not change the athlete's claimed
+measured range of motion or posture.
 
 ## 2D renderer
 

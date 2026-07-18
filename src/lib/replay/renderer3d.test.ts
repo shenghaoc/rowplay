@@ -365,9 +365,9 @@ describe("CourseRenderer3D", () => {
     const firstPose = sceneObject(renderer, "rower-athlete").position.clone();
     const expected = solveRowerKinematics(REDUCED_REPLAY_POSES.rower);
     expect(firstPose.y).toBe(0);
-    expect(firstPose.z).toBeCloseTo(0.12 - expected.legExtension * 0.44, 8);
+    expect(firstPose.z).toBeCloseTo(0.18 - expected.legExtension * 0.62, 8);
     expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(
-      0.34 - expected.bladeDepth * 0.1,
+      0.34 - expected.bladeDepth * 0.16,
       8,
     );
     expect(sceneObject(renderer, "rower-blade-left").rotation.x).toBeCloseTo(
@@ -400,7 +400,7 @@ describe("CourseRenderer3D", () => {
     skiRenderer.render(makeSportState("skierg", 0.8), true);
     const expectedSki = solveSkierKinematics(REDUCED_REPLAY_POSES.skierg);
     expect(sceneObject(skiRenderer, "skierg-upper").rotation.x).toBeCloseTo(
-      0.12 + expectedSki.hipHinge * 0.5,
+      0.1 + expectedSki.hipHinge * 0.72,
       8,
     );
     skiRenderer.destroy();
@@ -475,7 +475,7 @@ describe("CourseRenderer3D", () => {
         ).toBeLessThan(1e-6);
         expect(
           Math.abs(sceneObject(renderer, `bike-foot-contact-${side}`).rotation.x),
-        ).toBeLessThan(0.151);
+        ).toBeLessThan(0.22);
       }
     }
     renderer.destroy();

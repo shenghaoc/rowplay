@@ -71,12 +71,12 @@ describe("sportKinematics", () => {
       for (const value of Object.values(bike)) expect(Number.isFinite(value)).toBe(true);
       expect(bike.crankAngle).toBeGreaterThanOrEqual(0);
       expect(bike.crankAngle).toBeLessThan(TAU);
-      expect(Math.abs(bike.torsoSway)).toBeLessThanOrEqual(0.035);
-      expect(Math.abs(bike.hipRock)).toBeLessThanOrEqual(0.018);
-      expect(bike.anklePitchLeft).toBeGreaterThanOrEqual(-0.15);
-      expect(bike.anklePitchLeft).toBeLessThanOrEqual(0.07);
-      expect(bike.anklePitchRight).toBeGreaterThanOrEqual(-0.15);
-      expect(bike.anklePitchRight).toBeLessThanOrEqual(0.07);
+      expect(Math.abs(bike.torsoSway)).toBeLessThanOrEqual(0.06);
+      expect(Math.abs(bike.hipRock)).toBeLessThanOrEqual(0.03);
+      expect(bike.anklePitchLeft).toBeGreaterThanOrEqual(-0.22);
+      expect(bike.anklePitchLeft).toBeLessThanOrEqual(0.12);
+      expect(bike.anklePitchRight).toBeGreaterThanOrEqual(-0.22);
+      expect(bike.anklePitchRight).toBeLessThanOrEqual(0.12);
     }
   });
 
@@ -110,8 +110,8 @@ describe("sportKinematics", () => {
     expect(wrapped.crankAngle).toBeCloseTo(0, 10);
     expect(start.anklePitchLeft).toBeCloseTo(half.anklePitchRight, 10);
     expect(start.anklePitchRight).toBeCloseTo(half.anklePitchLeft, 10);
-    expect(Math.abs(start.torsoSway)).toBeLessThanOrEqual(0.035);
-    expect(Math.abs(half.hipRock)).toBeLessThanOrEqual(0.018);
+    expect(Math.abs(start.torsoSway)).toBeLessThanOrEqual(0.06);
+    expect(Math.abs(half.hipRock)).toBeLessThanOrEqual(0.03);
 
     const beforeWrap = solveBikeKinematics(poseAt("bike", 1 - 1e-7));
     const afterWrap = solveBikeKinematics(poseAt("bike", 1e-7));
@@ -127,10 +127,23 @@ describe("sportKinematics", () => {
     expect(Math.abs(beforeWrap.anklePitchRight - afterWrap.anklePitchRight)).toBeLessThan(1e-5);
   });
 
-  it("eases away from the rowing catch with a flat quintic boundary", () => {
+  it("starts the drive smoothly without a joint snap at the catch", () => {
     const driveFrac = poseAt("rower", 0).driveFrac;
     const atCatch = solveRowerKinematics(poseAt("rower", 0));
     const justAfter = solveRowerKinematics(poseAt("rower", driveFrac * 0.001));
-    expect(justAfter.legExtension - atCatch.legExtension).toBeLessThan(1e-6);
+    // Cubic ease-out is continuous at t=0; a single 0.1% step of the drive
+    // window must stay well under a percent of full extension.
+    expect(justAfter.legExtension - atCatch.legExtension).toBeLessThan(0.01);
+    expect(atCatch.legExtension).toBe(0);
+    expect(atCatch.bodySwing).toBe(0);
+    expect(atCatch.armDraw).toBe(0);
+  });
+
+  it("finishes the drive fully extended before recovery folds the joints", () => {
+    const driveFrac = poseAt("rower", 0).driveFrac;
+    const atFinish = solveRowerKinematics(poseAt("rower", driveFrac - 1e-7));
+    expect(atFinish.legExtension).toBeGreaterThan(0.98);
+    expect(atFinish.bodySwing).toBeGreaterThan(0.98);
+    expect(atFinish.armDraw).toBeGreaterThan(0.98);
   });
 });

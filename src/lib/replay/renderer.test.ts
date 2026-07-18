@@ -186,8 +186,8 @@ describe("CourseRenderer stroke pose input", () => {
     const avatarX = 58 + (640 - 30 - 58) * 0.1;
 
     for (const [sport, expectedOffset] of [
-      ["rower", -18],
-      ["skierg", 9],
+      ["rower", -22],
+      ["skierg", 11],
     ] as const) {
       const { ctx } = makeCtx();
       const canvas = {

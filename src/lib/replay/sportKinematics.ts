@@ -38,25 +38,49 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-/** Quintic smoothstep with zero velocity and acceleration at both ends. */
-function smootherstep(value: number): number {
+/**
+ * Smoothstep (cubic Hermite). Flatter at the ends than a pure linear ramp, but
+ * less "sticky" than quintic smootherstep — the drive still punches rather than
+ * hanging at the catch for a beat.
+ */
+function smoothstep(value: number): number {
   const x = clamp01(value);
-  return clamp01(x * x * x * (x * (x * 6 - 15) + 10));
+  return x * x * (3 - 2 * x);
 }
 
-function stage(progress: number, start: number, end: number): number {
-  return smootherstep((progress - start) / Math.max(0.0001, end - start));
+/** Ease-out cubic: fast commitment into the drive, soft finish. */
+function easeOutCubic(value: number): number {
+  const x = clamp01(value);
+  return 1 - (1 - x) ** 3;
+}
+
+/** Ease-in-out cubic for recovery: controlled, unhurried return. */
+function easeInOutCubic(value: number): number {
+  const x = clamp01(value);
+  return x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2;
+}
+
+function stage(
+  progress: number,
+  start: number,
+  end: number,
+  ease: (t: number) => number = smoothstep,
+): number {
+  return ease((progress - start) / Math.max(0.0001, end - start));
 }
 
 function secondaryScale(intensity: number): number {
   // Effort may make the athlete look a little more dynamic, but never changes
-  // the authored range of motion or the order of the joint sequence.
+  // the authored range of motion or the order of the joint sequence. Keep the
+  // scale ≤ 1 so surge/vertical channels stay inside the documented −1..1 band.
   return 0.9 + clamp01(intensity) * 0.1;
 }
 
 /**
  * Legs, then body, then arms on the drive; hands, body, then slide on recovery.
- * The ordering and range of motion remain stable when power or rate changes.
+ * Overlap is deliberate so the stroke reads as one continuous athletic action
+ * rather than three queued puppets. The ordering and range of motion remain
+ * stable when power or rate changes.
  */
 export function solveRowerKinematics(
   pose: StrokePose,
@@ -79,18 +103,22 @@ export function solveRowerKinematics(
 
   if (pose.drive) {
     const p = pose.driveProgress;
-    legExtension = stage(p, 0, 0.58);
-    bodySwing = stage(p, 0.28, 0.84);
-    armDraw = stage(p, 0.58, 1);
-    bladeDepth = stage(p, 0, 0.08) * (1 - stage(p, 0.9, 1));
+    // Legs commit first and hard; body opens through mid-drive; arms finish.
+    legExtension = stage(p, 0, 0.55, easeOutCubic);
+    bodySwing = stage(p, 0.18, 0.78, easeOutCubic);
+    armDraw = stage(p, 0.48, 1, easeOutCubic);
+    // Blade buries immediately at the catch and extracts late in the drive.
+    bladeDepth = stage(p, 0, 0.06, easeOutCubic) * (1 - stage(p, 0.82, 1, smoothstep));
     bladeFeather = 0;
   } else {
     const p = pose.recoveryProgress;
-    armDraw = 1 - stage(p, 0, 0.3);
-    bodySwing = 1 - stage(p, 0.16, 0.58);
-    legExtension = 1 - stage(p, 0.4, 1);
+    // Hands away first, body follows, legs fold last — classic recovery order.
+    armDraw = 1 - stage(p, 0, 0.34, easeInOutCubic);
+    bodySwing = 1 - stage(p, 0.12, 0.62, easeInOutCubic);
+    legExtension = 1 - stage(p, 0.32, 1, easeInOutCubic);
     bladeDepth = 0;
-    bladeFeather = stage(p, 0, 0.12) * (1 - stage(p, 0.78, 1));
+    // Feather early, stay flat through the slide, square just before the catch.
+    bladeFeather = stage(p, 0, 0.1, smoothstep) * (1 - stage(p, 0.72, 1, easeOutCubic));
   }
 
   output.legExtension = legExtension;
@@ -98,7 +126,9 @@ export function solveRowerKinematics(
   output.armDraw = armDraw;
   output.bladeDepth = bladeDepth;
   output.bladeFeather = bladeFeather;
+  // Surge peaks through mid-drive and checks hard at the catch.
   output.surge = strokeSurge(pose.warpedPhase) * effort;
+  // Small vertical bounce: compression at the catch, float at the finish.
   output.vertical = Math.sin(pose.warpedPhase) * effort;
   return output;
 }
@@ -126,19 +156,21 @@ export function solveSkierKinematics(
 
   if (pose.drive) {
     const p = pose.driveProgress;
-    armPress = stage(p, 0, 0.78);
-    hipHinge = stage(p, 0.08, 0.76);
-    kneeFlex = stage(p, 0.2, 0.84);
-    poleContact = stage(p, 0, 0.06) * (1 - stage(p, 0.84, 1));
-    poleSweep = stage(p, 0.04, 0.92);
+    armPress = stage(p, 0, 0.72, easeOutCubic);
+    hipHinge = stage(p, 0.04, 0.7, easeOutCubic);
+    kneeFlex = stage(p, 0.12, 0.8, easeOutCubic);
+    // Plant is brief and decisive; poles stay loaded through most of the pull.
+    poleContact = stage(p, 0, 0.05, easeOutCubic) * (1 - stage(p, 0.78, 1, smoothstep));
+    poleSweep = stage(p, 0.02, 0.95, easeOutCubic);
     rebound = 0;
   } else {
     const p = pose.recoveryProgress;
-    armPress = 1 - stage(p, 0, 0.42);
-    hipHinge = 1 - stage(p, 0.08, 0.62);
-    kneeFlex = 1 - stage(p, 0.16, 0.72);
+    armPress = 1 - stage(p, 0, 0.45, easeInOutCubic);
+    hipHinge = 1 - stage(p, 0.06, 0.58, easeInOutCubic);
+    kneeFlex = 1 - stage(p, 0.12, 0.68, easeInOutCubic);
     poleContact = 0;
-    poleSweep = 1 - stage(p, 0, 0.5);
+    poleSweep = 1 - stage(p, 0, 0.55, easeInOutCubic);
+    // Springy upright rebound peaks mid-recovery.
     rebound = Math.sin(Math.PI * clamp01(p)) * effort;
   }
 
@@ -166,9 +198,10 @@ export function solveBikeKinematics(
   const crankAngle = ((pose.phase % TAU) + TAU) % TAU;
   const effort = secondaryScale(pose.intensity);
   output.crankAngle = crankAngle;
-  output.torsoSway = Math.sin(crankAngle) * 0.035 * effort;
-  output.hipRock = Math.sin(crankAngle * 2) * 0.018 * effort;
-  output.anklePitchLeft = -0.04 + Math.sin(crankAngle) * 0.11;
-  output.anklePitchRight = -0.04 + Math.sin(crankAngle + Math.PI) * 0.11;
+  // Still restrained — bikes don't thrash — but readable at a glance.
+  output.torsoSway = Math.sin(crankAngle) * 0.055 * effort;
+  output.hipRock = Math.sin(crankAngle * 2) * 0.028 * effort;
+  output.anklePitchLeft = -0.05 + Math.sin(crankAngle) * 0.16;
+  output.anklePitchRight = -0.05 + Math.sin(crankAngle + Math.PI) * 0.16;
   return output;
 }
