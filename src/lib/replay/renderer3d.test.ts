@@ -419,8 +419,8 @@ describe("CourseRenderer3D", () => {
     const lowPines = lowScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
     const ultraPines = ultraScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
 
-    expect(lowPines.count).toBe(24);
-    expect(ultraPines.count).toBe(66);
+    expect(lowPines.count).toBe(28);
+    expect(ultraPines.count).toBe(76);
     for (const scene of [lowScene, ultraScene]) {
       expect(scene.getObjectByName("environment:rower:sky")).toBeDefined();
       expect(scene.getObjectByName("environment:rower:horizon-mid")).toBeDefined();
@@ -538,9 +538,9 @@ describe("CourseRenderer3D", () => {
 
   it("keeps procedural torso depth within human-scale silhouette bounds", () => {
     const expected = {
-      rower: ["rower-torso-shell", 0.27, 0.62, 0.165],
-      skierg: ["skierg-torso", 0.28, 0.66, 0.17],
-      bike: ["bike-torso", 0.26, 0.62, 0.16],
+      rower: ["rower-torso-shell", 0.29, 0.64, 0.175],
+      skierg: ["skierg-torso", 0.3, 0.68, 0.18],
+      bike: ["bike-torso", 0.28, 0.64, 0.17],
     } as const;
 
     for (const sport of ["rower", "skierg", "bike"] as const) {

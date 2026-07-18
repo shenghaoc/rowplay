@@ -166,9 +166,9 @@ export function applyReplayAssetLibrary(root: THREE.Object3D, library: ReplayAss
         const targetCenter = target.getCenter(new THREE.Vector3());
         const limbWidth =
           slot === "athlete:upper-arm" || slot === "athlete:forearm"
-            ? 1.3
+            ? 1.42
             : slot === "athlete:thigh" || slot === "athlete:shin"
-              ? 1.18
+              ? 1.28
               : 1;
         const sx = sourceSize.x > 1e-6 ? (targetSize.x / sourceSize.x) * limbWidth : 1;
         const sy = sourceSize.y > 1e-6 ? (targetSize.y / sourceSize.y) * limbWidth : 1;

@@ -90,52 +90,52 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
   medium: {
     dprCap: 2,
     antialias: true,
-    laneSegments: 72,
-    groundSegments: 16,
+    laneSegments: 80,
+    groundSegments: 20,
     displacement: true,
     shadows: false,
     shadowMapSize: 0,
-    wake: 16,
+    wake: 20,
     buoys: true,
-    buoysPerRing: 36,
-    buoyRings: 2,
+    buoysPerRing: 40,
+    buoyRings: 3,
     spray: true,
-    sprayParticles: 56,
-    sprayPerCatch: 6,
+    sprayParticles: 64,
+    sprayPerCatch: 7,
     environmentDetail: 1,
   },
   high: {
     dprCap: 2,
     antialias: true,
-    laneSegments: 96,
-    groundSegments: 28,
+    laneSegments: 112,
+    groundSegments: 32,
     displacement: true,
     shadows: true,
     shadowMapSize: 1024,
-    wake: 28,
+    wake: 32,
     buoys: true,
-    buoysPerRing: 48,
-    buoyRings: 2,
+    buoysPerRing: 52,
+    buoyRings: 3,
     spray: true,
-    sprayParticles: 72,
-    sprayPerCatch: 7,
+    sprayParticles: 80,
+    sprayPerCatch: 8,
     environmentDetail: 2,
   },
   ultra: {
     dprCap: 3,
     antialias: true,
-    laneSegments: 144,
-    groundSegments: 56,
+    laneSegments: 160,
+    groundSegments: 64,
     displacement: true,
     shadows: true,
     shadowMapSize: 2048,
-    wake: 44,
+    wake: 52,
     buoys: true,
-    buoysPerRing: 64,
-    buoyRings: 2,
+    buoysPerRing: 72,
+    buoyRings: 3,
     spray: true,
-    sprayParticles: 96,
-    sprayPerCatch: 9,
+    sprayParticles: 112,
+    sprayPerCatch: 10,
     environmentDetail: 3,
   },
 };
@@ -321,9 +321,11 @@ interface CameraRig {
 }
 
 const CAMERA_RIGS: Record<Sport, CameraRig> = {
-  rower: { back: 4, height: 2.42, ahead: 1.8, lateral: 1.34, aimY: 1.05 },
-  skierg: { back: 3.75, height: 2.5, ahead: 1.6, lateral: 1.08, aimY: 1.25 },
-  bike: { back: 3.38, height: 2.18, ahead: 0.82, lateral: 1.08, aimY: 0.92 },
+  // Closer chase framing so the figurine and equipment fill the stage the way
+  // the art-direction triptych does, while still leaving oar/pole/wheel air.
+  rower: { back: 3.85, height: 2.32, ahead: 1.6, lateral: 1.28, aimY: 1.02 },
+  skierg: { back: 3.25, height: 2.38, ahead: 1.4, lateral: 1.0, aimY: 1.2 },
+  bike: { back: 2.98, height: 2.02, ahead: 0.74, lateral: 0.98, aimY: 0.88 },
 };
 
 const BASE_CAMERA_FOV = 42;
@@ -549,70 +551,73 @@ const themed =
  */
 const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
   rower: {
-    skyZenith: themed(0x3f7894, 0x0c2334),
+    // Golden-hour regatta: warm horizon (locked by test), cool zenith, soft fog.
+    skyZenith: themed(0x3a7190, 0x0a1f30),
     skyHorizon: themed(0xf0c98e, 0x466d79),
-    skyNadir: themed(0x265b69, 0x0a2632),
-    fog: themed(0x9ebfc0, 0x24404b),
-    fogNear: 78,
-    fogFar: 205,
-    hemisphereSky: themed(0xd9eef3, 0x7ba5b2),
-    hemisphereGround: themed(0x315a54, 0x132d31),
-    hemisphereIntensity: 1.15,
-    sun: themed(0xffe0a3, 0xffc978),
-    sunIntensity: 2.0,
-    fill: themed(0xb7e5ee, 0x4b8090),
-    fillIntensity: 0.55,
-    exposure: 1.04,
-    farSilhouette: themed(0x365a4a, 0x102f31),
-    midSilhouette: themed(0x285840, 0x17483a),
-    venueStructure: themed(0xe5e1d4, 0x6f7f83),
-    venueAccent: themed(0xc46e3d, 0xe0a05d),
-    infield: themed(0x1e5d70, 0x174550),
-    apron: themed(0x286f80, 0x205865),
+    skyNadir: themed(0x1f5464, 0x081f2a),
+    fog: themed(0xb0ccc8, 0x24404b),
+    fogNear: 70,
+    fogFar: 195,
+    hemisphereSky: themed(0xffecd0, 0x7ba5b2),
+    hemisphereGround: themed(0x2d5852, 0x132d31),
+    hemisphereIntensity: 1.28,
+    sun: themed(0xffe4ad, 0xffc978),
+    sunIntensity: 2.35,
+    fill: themed(0xa8dfea, 0x4b8090),
+    fillIntensity: 0.62,
+    exposure: 1.1,
+    farSilhouette: themed(0x2f5244, 0x0e2a2c),
+    midSilhouette: themed(0x244f3a, 0x154033),
+    venueStructure: themed(0xede7d8, 0x6f7f83),
+    venueAccent: themed(0xd07a42, 0xe0a05d),
+    infield: themed(0x185668, 0x143f4c),
+    apron: themed(0x247384, 0x1c5462),
   },
   skierg: {
-    skyZenith: themed(0x4c82a8, 0x10243a),
-    skyHorizon: themed(0xe8f3f8, 0x6e8799),
-    skyNadir: themed(0xcadce6, 0x2a4354),
-    fog: themed(0xd7e5ea, 0x78909c),
-    fogNear: 72,
-    fogFar: 198,
-    hemisphereSky: themed(0xeaf7ff, 0x9db7c9),
-    hemisphereGround: themed(0x9fb3bd, 0x3e5664),
-    hemisphereIntensity: 1.22,
-    sun: themed(0xfff1d3, 0xddeeff),
-    sunIntensity: 1.8,
-    fill: themed(0xbcdfff, 0x759db8),
-    fillIntensity: 0.62,
-    exposure: 1.02,
-    farSilhouette: themed(0x9fb9c8, 0x4c6575),
-    midSilhouette: themed(0x68899a, 0x294958),
-    venueStructure: themed(0x314d5d, 0x172e3b),
-    venueAccent: themed(0xd94048, 0xff6670),
-    infield: themed(0xe4edf1, 0xafc0c8),
-    apron: themed(0xf4f7f8, 0xd1dde2),
+    // Clear alpine morning: high-key snow, cool fill, crisp mountain air.
+    skyZenith: themed(0x4a8ab5, 0x0e2136),
+    skyHorizon: themed(0xeef6fb, 0x6e8799),
+    skyNadir: themed(0xc5dae6, 0x2a4354),
+    fog: themed(0xdce9ee, 0x78909c),
+    fogNear: 68,
+    fogFar: 190,
+    hemisphereSky: themed(0xf2f9ff, 0x9db7c9),
+    hemisphereGround: themed(0xb0c2cc, 0x3e5664),
+    hemisphereIntensity: 1.35,
+    sun: themed(0xfff4db, 0xe8f4ff),
+    sunIntensity: 2.1,
+    fill: themed(0xc4e5ff, 0x759db8),
+    fillIntensity: 0.72,
+    exposure: 1.08,
+    farSilhouette: themed(0xa8c0ce, 0x4c6575),
+    midSilhouette: themed(0x6e90a2, 0x294958),
+    venueStructure: themed(0x2c4656, 0x172e3b),
+    venueAccent: themed(0xe04852, 0xff6670),
+    infield: themed(0xeaf2f6, 0xb4c5cd),
+    apron: themed(0xf7fafb, 0xd5e0e5),
   },
   bike: {
-    skyZenith: themed(0x172b44, 0x101b2f),
+    // Dusk velodrome: violet zenith, warm horizon glow, practical floodlights.
+    skyZenith: themed(0x1a2848, 0x0e1628),
     skyHorizon: themed(0xd27a57, 0x874e58),
-    skyNadir: themed(0x423f4b, 0x141a27),
-    fog: themed(0x5f5962, 0x242838),
-    fogNear: 70,
-    fogFar: 185,
-    hemisphereSky: themed(0xb3c9df, 0x61758e),
-    hemisphereGround: themed(0x3b302d, 0x141820),
-    hemisphereIntensity: 1.0,
-    sun: themed(0xffb36f, 0xff8f68),
-    sunIntensity: 1.85,
-    fill: themed(0x8eb8e7, 0x536f9e),
-    fillIntensity: 0.58,
-    exposure: 1.08,
-    farSilhouette: themed(0x333d4a, 0x111722),
-    midSilhouette: themed(0x343d4a, 0x252c3a),
-    venueStructure: themed(0x364250, 0x202837),
-    venueAccent: themed(0xf0a75f, 0xffb46b),
-    infield: themed(0x1f3633, 0x142622),
-    apron: themed(0x4a4644, 0x30353d),
+    skyNadir: themed(0x383544, 0x101622),
+    fog: themed(0x5c5562, 0x1e2230),
+    fogNear: 62,
+    fogFar: 175,
+    hemisphereSky: themed(0xb8cbe2, 0x5a6f8a),
+    hemisphereGround: themed(0x352c2a, 0x12161e),
+    hemisphereIntensity: 1.08,
+    sun: themed(0xffa866, 0xff8a62),
+    sunIntensity: 2.05,
+    fill: themed(0x96b8ea, 0x4d6796),
+    fillIntensity: 0.68,
+    exposure: 1.12,
+    farSilhouette: themed(0x2c3644, 0x0e131c),
+    midSilhouette: themed(0x303948, 0x1f2634),
+    venueStructure: themed(0x323e4e, 0x1c2432),
+    venueAccent: themed(0xf4a45a, 0xffb46b),
+    infield: themed(0x1a302e, 0x101e1c),
+    apron: themed(0x423e3c, 0x282d35),
   },
 };
 
@@ -851,19 +856,20 @@ function taperedLimb(
   proximalRadius: number,
   distalRadius: number,
   material: THREE.Material,
-  segments = 8,
+  segments = 10,
 ): THREE.Mesh {
-  const ringCount = 6;
+  const ringCount = 7;
   const positions: number[] = [];
   const indices: number[] = [];
   for (let ring = 0; ring < ringCount; ring++) {
     const t = ring / (ringCount - 1);
     const base = proximalRadius + (distalRadius - proximalRadius) * t;
-    const belly = Math.sin(t * Math.PI) * proximalRadius * 0.2;
+    const belly = Math.sin(t * Math.PI) * proximalRadius * 0.28;
     const radius = base + belly;
     for (let side = 0; side < segments; side++) {
       const angle = (side / segments) * Math.PI * 2;
-      positions.push(Math.cos(angle) * radius * 1.08, Math.sin(angle) * radius * 0.82, t - 0.5);
+      // Slightly elliptical cross-section reads as muscle from the chase view.
+      positions.push(Math.cos(angle) * radius * 1.14, Math.sin(angle) * radius * 0.86, t - 0.5);
     }
   }
   for (let ring = 0; ring < ringCount - 1; ring++) {
@@ -971,27 +977,38 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   };
 
   const hull = setReplayAssetSlot(
-    new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 3.0, 4, 8), accentMat()),
+    new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 3.15, 5, 10), accentMat()),
     "equipment:row:hull",
   );
   hull.rotation.x = Math.PI / 2; // capsule axis Y -> Z (travel)
-  hull.scale.set(0.5, 0.42, 1); // narrow + low profile
+  hull.scale.set(0.52, 0.44, 1); // narrow + low profile, still readable
   hull.position.y = 0.16;
   hull.userData.accent = true;
   group.add(hull);
 
-  // Deck with a thin racing stripe for visual interest.
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 2.6), accentMat());
+  // Deck with a bright racing stripe — the art-direction hull signature.
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.055, 2.75), accentMat());
   deck.position.y = 0.3;
   deck.userData.accent = true;
   group.add(deck);
   const stripe = new THREE.Mesh(
-    new THREE.BoxGeometry(0.04, 0.015, 2.2),
-    humanMat(0xf8fafc, 0.4, 0.08),
+    new THREE.BoxGeometry(0.055, 0.018, 2.35),
+    humanMat(0xf8fafc, 0.35, 0.1),
   );
   stripe.name = "rower-deck-stripe";
-  stripe.position.y = 0.335;
+  stripe.position.y = 0.338;
   group.add(stripe);
+  const gunwale = new THREE.Mesh(
+    new THREE.BoxGeometry(0.02, 0.04, 2.5),
+    humanMat(0xf1f5f9, 0.45, 0.08),
+  );
+  gunwale.name = "rower-gunwale-left";
+  gunwale.position.set(-0.1, 0.32, 0);
+  group.add(gunwale);
+  const gunwaleR = gunwale.clone();
+  gunwaleR.name = "rower-gunwale-right";
+  gunwaleR.position.x = 0.1;
+  group.add(gunwaleR);
 
   const footPlate = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.05, 0.12), kitDarkMaterial);
   footPlate.name = "rower-footplate";
@@ -1021,18 +1038,18 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const torso = new THREE.Group();
   torso.name = "rower-torso";
   torso.position.copy(hips.position);
-  const torsoShell = accentPart(shapedTorso(0.27, 0.62, 0.165, accentMat(), 10));
+  const torsoShell = accentPart(shapedTorso(0.29, 0.64, 0.175, accentMat(), 12));
   setReplayAssetSlot(torsoShell, "athlete:torso");
   torsoShell.name = "rower-torso-shell";
   torsoShell.position.y = 0.3;
-  const frontYoke = trapezoidPanel(0.42, 0.31, 0.14, 0.028, kitDarkMaterial);
+  const frontYoke = trapezoidPanel(0.48, 0.34, 0.16, 0.032, kitDarkMaterial);
   frontYoke.name = "rower-jersey-front";
-  frontYoke.position.set(0, 0.49, 0.158);
-  const backYoke = trapezoidPanel(0.42, 0.31, 0.14, 0.028, kitDarkMaterial);
+  frontYoke.position.set(0, 0.5, 0.168);
+  const backYoke = trapezoidPanel(0.48, 0.34, 0.16, 0.032, kitDarkMaterial);
   backYoke.name = "rower-jersey-back";
-  backYoke.position.set(0, 0.49, -0.158);
-  const shoulderLine = capsulePart(0.055, 0.5, kitDarkMaterial, "x");
-  shoulderLine.position.set(0, 0.51, 0.01);
+  backYoke.position.set(0, 0.5, -0.168);
+  const shoulderLine = capsulePart(0.062, 0.56, kitDarkMaterial, "x");
+  shoulderLine.position.set(0, 0.53, 0.01);
   const neck = capsulePart(0.053, 0.11, skinMaterial, "y");
   setReplayAssetSlot(neck, "athlete:neck");
   neck.position.set(0, 0.63, 0.015);
@@ -1139,8 +1156,8 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     oar.name = side < 0 ? "rower-oar-left" : "rower-oar-right";
     // 3.1 m shaft: ~0.85 m inboard of the pin, ~2.25 m outboard to the blade.
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.035, 0.035, 3.1, 6),
-      new THREE.MeshStandardMaterial({ color: 0xe7eef0, roughness: 0.6 }),
+      new THREE.CylinderGeometry(0.032, 0.038, 3.15, 8),
+      new THREE.MeshStandardMaterial({ color: 0xf0f5f7, roughness: 0.48, metalness: 0.08 }),
     );
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
     shaft.position.x = side * 0.7;
@@ -1162,10 +1179,10 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     collar.position.set(side * 1.95, 0, 0);
     collar.rotation.y = Math.PI / 2;
     oar.add(collar);
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.025, 0.28), accentMat());
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.022, 0.3), accentMat());
     setReplayAssetSlot(blade, "equipment:row:blade");
     blade.name = side < 0 ? "rower-blade-left" : "rower-blade-right";
-    blade.position.set(side * 2.35, -0.06, 0);
+    blade.position.set(side * 2.36, -0.06, 0);
     blade.userData.accent = true;
     oar.add(blade);
     // Rigger pin sits outside the hull; blade depth is animated continuously.
@@ -1342,17 +1359,22 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     surge: 0,
   };
 
-  // Neutral skis keep the accent on the athlete; oversized purple planks made
-  // the equipment read as a pair of giant legs from the chase view.
+  // Art-direction skis: dark base with a full accent top deck so the pair
+  // reads as equipment without swallowing the athlete's legs.
   for (const side of [-1, 1]) {
-    const ski = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.055, 1.95), kitDarkMaterial);
+    const ski = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.04, 2.05), kitDarkMaterial);
     setReplayAssetSlot(ski, "equipment:ski:ski");
-    ski.position.set(side * 0.21, 0.03, 0.14);
+    ski.position.set(side * 0.21, 0.028, 0.16);
     group.add(ski);
-    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.28), accentMat());
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.018, 1.85), accentMat());
+    deck.name = "skierg-ski-deck";
+    deck.position.set(side * 0.21, 0.055, 0.12);
+    deck.userData.accent = true;
+    group.add(deck);
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.32), accentMat());
     tip.name = "skierg-ski-tip";
-    tip.position.set(side * 0.21, 0.07, 1.2);
-    tip.rotation.x = -0.25;
+    tip.position.set(side * 0.21, 0.07, 1.28);
+    tip.rotation.x = -0.28;
     tip.userData.accent = true;
     group.add(tip);
   }
@@ -1405,23 +1427,33 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const hips = ellipsoid([0.18, 0.125, 0.16], kitDarkMaterial, 10);
   setReplayAssetSlot(hips, "athlete:pelvis");
   hips.position.y = 0;
-  const torso = accentPart(shapedTorso(0.28, 0.66, 0.17, accentMat(), 10));
+  const torso = accentPart(shapedTorso(0.3, 0.68, 0.18, accentMat(), 12));
   setReplayAssetSlot(torso, "athlete:torso");
   torso.name = "skierg-torso";
   torso.position.y = 0.31;
-  const frontYoke = trapezoidPanel(0.44, 0.32, 0.15, 0.03, kitDarkMaterial);
+  const frontYoke = trapezoidPanel(0.5, 0.35, 0.17, 0.034, kitDarkMaterial);
   frontYoke.name = "skierg-jersey-front";
-  frontYoke.position.set(0, 0.51, 0.163);
-  const backYoke = trapezoidPanel(0.44, 0.32, 0.15, 0.03, kitDarkMaterial);
+  frontYoke.position.set(0, 0.52, 0.172);
+  const backYoke = trapezoidPanel(0.5, 0.35, 0.17, 0.034, kitDarkMaterial);
   backYoke.name = "skierg-jersey-back";
-  backYoke.position.set(0, 0.51, -0.163);
-  const shoulderLine = capsulePart(0.058, 0.52, kitDarkMaterial, "x");
-  shoulderLine.position.y = 0.56;
+  backYoke.position.set(0, 0.52, -0.172);
+  const shoulderLine = capsulePart(0.064, 0.58, kitDarkMaterial, "x");
+  shoulderLine.position.y = 0.58;
   const neck = capsulePart(0.053, 0.11, skinMaterial, "y");
   setReplayAssetSlot(neck, "athlete:neck");
   neck.position.y = 0.68;
   const headGroup = makeHead(skinMaterial, hairMaterial);
   headGroup.position.set(0, 0.84, 0.03);
+  // Nordic headband from the art direction — a small silhouette cue that
+  // separates the skier from the rower without needing a new asset slot.
+  const headband = new THREE.Mesh(
+    new THREE.TorusGeometry(0.11, 0.018, 6, 14),
+    kitDarkMaterial,
+  );
+  headband.name = "skierg-headband";
+  headband.rotation.x = Math.PI / 2;
+  headband.position.set(0, 0.04, 0.01);
+  headGroup.add(headband);
   upper.add(hips, torso, frontYoke, backYoke, shoulderLine, neck, headGroup);
   // Arms are placed from shoulders to pole grips, so the hands stay on the
   // handles while the pole groups pivot from the same point.
@@ -1777,18 +1809,18 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   const torso = new THREE.Group();
   torso.name = "bike-spine";
   torso.position.set(0, 0.02, 0.01);
-  const torsoShell = accentPart(shapedTorso(0.26, 0.62, 0.16, accentMat(), 10));
+  const torsoShell = accentPart(shapedTorso(0.28, 0.64, 0.17, accentMat(), 12));
   setReplayAssetSlot(torsoShell, "athlete:torso");
   torsoShell.name = "bike-torso";
   torsoShell.position.set(0, 0.28, 0.04);
-  const frontYoke = trapezoidPanel(0.4, 0.29, 0.14, 0.028, kitDarkMaterial);
+  const frontYoke = trapezoidPanel(0.46, 0.32, 0.16, 0.032, kitDarkMaterial);
   frontYoke.name = "bike-jersey-front";
-  frontYoke.position.set(0, 0.48, 0.153);
-  const backYoke = trapezoidPanel(0.4, 0.29, 0.14, 0.028, kitDarkMaterial);
+  frontYoke.position.set(0, 0.49, 0.162);
+  const backYoke = trapezoidPanel(0.46, 0.32, 0.16, 0.032, kitDarkMaterial);
   backYoke.name = "bike-jersey-back";
-  backYoke.position.set(0, 0.48, -0.153);
-  const shoulderLine = capsulePart(0.054, 0.48, kitDarkMaterial, "x");
-  shoulderLine.position.set(0, 0.49, 0.025);
+  backYoke.position.set(0, 0.49, -0.162);
+  const shoulderLine = capsulePart(0.06, 0.54, kitDarkMaterial, "x");
+  shoulderLine.position.set(0, 0.51, 0.025);
   const neck = capsulePart(0.05, 0.1, skinMaterial, "y");
   setReplayAssetSlot(neck, "athlete:neck");
   neck.position.set(0, 0.6, 0.035);
@@ -2338,7 +2370,15 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.environment.sunIntensity,
     );
     this.sunLight.name = "environment:key-light";
-    this.sunLight.position.set(18, 30, 12);
+    // Low golden-hour key for row, higher alpine key for ski, dusk side-key
+    // for the velodrome — each venue's sun sits where the art direction places it.
+    const sunPose =
+      this.sport === "rower"
+        ? { x: -22, y: 18, z: 14 }
+        : this.sport === "skierg"
+          ? { x: 16, y: 28, z: 10 }
+          : { x: 10, y: 14, z: -16 };
+    this.sunLight.position.set(sunPose.x, sunPose.y, sunPose.z);
     if (this.cfg.shadows) {
       this.sunLight.castShadow = true;
       this.sunLight.shadow.mapSize.set(this.cfg.shadowMapSize, this.cfg.shadowMapSize);
@@ -2365,14 +2405,14 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Camera-relative lights keep the athlete's rear planes readable around
     // the whole loop. Fixed world lights alone left half the course as an
     // almost black silhouette, especially at Medium where shadows are off.
-    const cameraFill = new THREE.DirectionalLight(0xdbeafe, 0.48);
+    const cameraFill = new THREE.DirectionalLight(0xe8f2ff, 0.62);
     cameraFill.name = "camera-athlete-fill";
-    cameraFill.position.set(-3.5, 4.5, 2);
-    cameraFill.target.position.set(0, 0, -8);
-    const cameraRim = new THREE.DirectionalLight(0xf8fafc, 0.3);
+    cameraFill.position.set(-3.2, 4.8, 2.2);
+    cameraFill.target.position.set(0, 0.4, -8);
+    const cameraRim = new THREE.DirectionalLight(0xfff6e8, 0.42);
     cameraRim.name = "camera-athlete-rim";
-    cameraRim.position.set(4, 2.5, 1);
-    cameraRim.target.position.set(0, 0, -8);
+    cameraRim.position.set(4.2, 2.8, 1.2);
+    cameraRim.target.position.set(0, 0.5, -8);
     this.camera.add(cameraFill, cameraFill.target, cameraRim, cameraRim.target);
     this.scene.add(this.camera);
 
@@ -2727,6 +2767,29 @@ export class CourseRenderer3D implements ReplayRenderer {
         0.07,
       );
     }
+
+    // Purple course markers from the art direction — low balls that read as
+    // velodrome lane furniture without competing with the athlete silhouette.
+    const markerMat = this.courseMat("course:bike:lane-marker", themed(0x8b7cf5, 0x7c6cf0), {
+      roughness: 0.42,
+      metalness: 0.08,
+      emissive: 0x5b4fd1,
+      emissiveIntensity: 0.18,
+    });
+    const markerGeo = this.track(new THREE.SphereGeometry(0.11, 8, 6));
+    const markerCount = this.cfg.laneSegments >= 120 ? 40 : 28;
+    for (let i = 0; i < markerCount; i++) {
+      const angle = (i / markerCount) * Math.PI * 2;
+      this.addCourseBlock(
+        group,
+        markerGeo,
+        markerMat,
+        outerR - 0.95,
+        angle,
+        "course:bike:lane-marker",
+        0.12,
+      );
+    }
   }
 
   private addSportCourseDetails(group: THREE.Group, innerR: number, outerR: number): void {
@@ -2942,8 +3005,8 @@ export class CourseRenderer3D implements ReplayRenderer {
   private addAlpinePeaks(group: THREE.Group, count: number): void {
     // Keep the massif monumental without letting it consume the whole lens:
     // a visible sky band is essential to the valley read at replay height.
-    const peakGeo = this.track(new THREE.ConeGeometry(7.2, 18, 5, 1));
-    const capGeo = this.track(new THREE.ConeGeometry(3.25, 4.8, 5, 1));
+    const peakGeo = this.track(new THREE.ConeGeometry(7.6, 20, 6, 1));
+    const capGeo = this.track(new THREE.ConeGeometry(3.5, 5.4, 6, 1));
     const peakMat = this.environmentBasicMat(
       "environment:skierg:mountain-material",
       themed(0x7897a8, 0x4f6a7a),
@@ -3325,20 +3388,20 @@ export class CourseRenderer3D implements ReplayRenderer {
     if (this.sport === "rower") {
       this.addInstancedPines(
         this.environmentMidGroup,
-        24 + this.cfg.environmentDetail * 14,
-        66,
-        79,
+        28 + this.cfg.environmentDetail * 16,
+        64,
+        82,
         ROW_PINE_SECTORS,
       );
       this.addPavilions(this.environmentDetailGroup, ROW_LANDMARKS);
     } else if (this.sport === "skierg") {
-      this.addAlpinePeaks(this.environmentMidGroup, 14 + this.cfg.environmentDetail * 3);
-      this.addSnowBerms(this.environmentMidGroup, outerR, 18 + this.cfg.environmentDetail * 6);
+      this.addAlpinePeaks(this.environmentMidGroup, 16 + this.cfg.environmentDetail * 4);
+      this.addSnowBerms(this.environmentMidGroup, outerR, 22 + this.cfg.environmentDetail * 8);
       this.addInstancedPines(
         this.environmentMidGroup,
-        32 + this.cfg.environmentDetail * 18,
-        58,
-        78,
+        38 + this.cfg.environmentDetail * 20,
+        56,
+        80,
         SKI_PINE_SECTORS,
       );
       this.addFloodlights(
@@ -3904,8 +3967,14 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.liveContactFootprint.rotation.y = Math.atan2(p.tx, p.tz) - Math.PI / 2;
     // Keep the expensive high-tier shadow map concentrated around the live
     // athlete instead of spending texels across the entire 70 m arena.
-    this.sunLight.position.set(p.x + 18, 30, p.z + 12);
-    this.sunLight.target.position.set(p.x, 0.45, p.z);
+    const sunOffset =
+      this.sport === "rower"
+        ? { x: -22, y: 18, z: 14 }
+        : this.sport === "skierg"
+          ? { x: 16, y: 28, z: 10 }
+          : { x: 10, y: 14, z: -16 };
+    this.sunLight.position.set(p.x + sunOffset.x, sunOffset.y, p.z + sunOffset.z);
+    this.sunLight.target.position.set(p.x, 0.55, p.z);
     this.sunLight.target.updateMatrixWorld();
 
     this.advanceWake(this.liveWake, dLive, p.x - p.tx * 1.6, p.z - p.tz * 1.6);
@@ -4075,7 +4144,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Portrait RowErg needs substantially more room for the full oar span;
     // upright SkiErg and compact BikeErg can stay closer.
     const narrowScale =
-      this.sport === "rower" ? (state.ghost ? 1.94 : 1.76) : state.ghost ? 1.38 : 1.2;
+      this.sport === "rower" ? (state.ghost ? 2.02 : 1.9) : state.ghost ? 1.38 : 1.2;
     const baseBack = this.reduceMotion
       ? sportRig.back + 0.8 + ghostPullback
       : (sportRig.back + ghostPullback) * (narrow ? narrowScale : 1);

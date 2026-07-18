@@ -161,7 +161,7 @@ const WATER_H = 34;
 const POD_R = 9;
 const BOB_AMP = 4.6;
 /** Keep the athlete as the primary read inside the taller authored venue. */
-const ATHLETE_SCALE = 1.95;
+const ATHLETE_SCALE = 2.15;
 /** Forward/back hull surge per stroke (px), per sport. Bike pedals smoothly. */
 const SURGE_PX: Record<Sport, number> = { rower: 6.4, skierg: 3.4, bike: 0 };
 /** Splash droplets per lane; small and brief, so a tiny pool suffices. */
@@ -506,9 +506,9 @@ export function solveRigidOar2D(
 
 /** Approximate scaled silhouette height above the contact line for HUD clearance. */
 export const ATHLETE_TOP_CLEARANCE_2D: Readonly<Record<Sport, number>> = {
-  rower: 42,
-  skierg: 48,
-  bike: 52,
+  rower: 46,
+  skierg: 52,
+  bike: 56,
 };
 
 const jointScratchA: MutableFigurePoint2 = { x: 0, y: 0 };
@@ -648,32 +648,35 @@ function profileHead(
   hair: string,
   helmet: string | null = null,
 ) {
-  const headX = shoulderX + 0.75;
-  const headY = shoulderY - 3.35;
-  taperedLimb(ctx, shoulderX + 0.15, shoulderY - 0.35, headX - 0.25, headY + 1.7, 1.5, 1.25, skin);
+  const headX = shoulderX + 0.85;
+  const headY = shoulderY - 3.55;
+  taperedLimb(ctx, shoulderX + 0.15, shoulderY - 0.35, headX - 0.25, headY + 1.85, 1.65, 1.35, skin);
   ctx.fillStyle = skin;
   ctx.beginPath();
-  ctx.ellipse(headX, headY, 2.15, 2.55, -0.13, 0, Math.PI * 2);
+  ctx.ellipse(headX, headY, 2.35, 2.75, -0.12, 0, Math.PI * 2);
   ctx.fill();
-  // A small brow/nose wedge makes the direction of travel readable.
+  // Jaw and brow give the head a facing direction from the side profile.
   ctx.beginPath();
-  ctx.moveTo(headX + 1.65, headY - 0.55);
-  ctx.lineTo(headX + 2.75, headY + 0.05);
-  ctx.lineTo(headX + 1.55, headY + 0.48);
+  ctx.ellipse(headX + 0.15, headY + 1.1, 1.55, 1.05, -0.08, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(headX + 1.8, headY - 0.55);
+  ctx.lineTo(headX + 3.05, headY + 0.08);
+  ctx.lineTo(headX + 1.7, headY + 0.55);
   ctx.closePath();
   ctx.fill();
 
   ctx.fillStyle = helmet ?? hair;
   ctx.beginPath();
-  ctx.moveTo(headX - 1.95, headY - 0.15);
-  ctx.quadraticCurveTo(headX - 1.15, headY - 3.05, headX + 1.35, headY - 2.25);
-  ctx.quadraticCurveTo(headX + 2.15, headY - 1.75, headX + 1.8, headY - 1.1);
-  ctx.quadraticCurveTo(headX - 0.15, headY - 1.75, headX - 1.95, headY - 0.15);
+  ctx.moveTo(headX - 2.1, headY - 0.1);
+  ctx.quadraticCurveTo(headX - 1.2, headY - 3.25, headX + 1.45, headY - 2.4);
+  ctx.quadraticCurveTo(headX + 2.35, headY - 1.85, headX + 1.95, headY - 1.15);
+  ctx.quadraticCurveTo(headX - 0.1, headY - 1.85, headX - 2.1, headY - 0.1);
   ctx.closePath();
   ctx.fill();
   if (helmet) {
-    limb(ctx, headX + 0.3, headY + 1.3, headX + 1.65, headY + 1.55, 0.55, hair);
-    limb(ctx, headX + 1.15, headY - 1.15, headX + 2.65, headY - 0.9, 0.7, helmet);
+    limb(ctx, headX + 0.35, headY + 1.4, headX + 1.8, headY + 1.65, 0.6, hair);
+    limb(ctx, headX + 1.25, headY - 1.2, headX + 2.85, headY - 0.95, 0.75, helmet);
   }
 }
 
@@ -2251,23 +2254,30 @@ export class CourseRenderer implements ReplayRenderer {
 
     // Metre-driven wavelets reverse correctly when scrubbing. They never use
     // cadence, so the basin cannot appear to flow backwards at low stroke rate.
-    for (let row = 0; row < 4; row++) {
-      const offsetY = y + 3 + row * 5.5;
-      ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.27 - row * 0.04);
-      ctx.lineWidth = 0.8;
+    for (let row = 0; row < 5; row++) {
+      const offsetY = y + 2 + row * 4.8;
+      ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.3 - row * 0.04);
+      ctx.lineWidth = 0.85;
       ctx.beginPath();
       if (this.reduceMotion) {
         ctx.moveTo(startX, offsetY);
         ctx.lineTo(startX + span, offsetY);
       } else {
         const materialPhase = meters * (0.055 + row * 0.009) + row * 1.17;
-        for (let x = startX; x <= startX + span; x += 6) {
-          const yy = offsetY + Math.sin(x * 0.11 - materialPhase) * (1.15 - row * 0.08);
+        for (let x = startX; x <= startX + span; x += 5) {
+          const yy = offsetY + Math.sin(x * 0.12 - materialPhase) * (1.35 - row * 0.1);
           if (x === startX) ctx.moveTo(x, yy);
           else ctx.lineTo(x, yy);
         }
       }
       ctx.stroke();
+    }
+
+    // Sparse regatta buoy dots along the far rail — venue furniture, not HUD.
+    ctx.fillStyle = withAlpha(palette.marker, 0.72);
+    for (let i = 0; i < 10; i++) {
+      const bx = startX + ((i + 0.4) / 10) * span;
+      disc(ctx, bx, bandTop + 3.5, 1.35, withAlpha(i % 3 === 0 ? palette.marker : palette.safetyLight, 0.8));
     }
   }
 
