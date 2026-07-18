@@ -248,7 +248,10 @@
 	}
 
 	function courseHeight() {
-		if (rendererKind === '3d') return ghostActive ? 380 : 340;
+		if (rendererKind === '3d') {
+			const mobile = (courseWrap?.clientWidth ?? 0) < 640;
+			return mobile ? (ghostActive ? 390 : 360) : ghostActive ? 450 : 420;
+		}
 		return ghostActive ? 190 : 150;
 	}
 

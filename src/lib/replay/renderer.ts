@@ -295,6 +295,27 @@ export interface RigidOar2D {
   bladeTipY: number;
 }
 
+/**
+ * Resolve a point on a BikeErg wheel or crank in Canvas coordinates.
+ *
+ * Canvas y grows downward, so an increasing angle is visibly clockwise. That
+ * is the forward-rolling direction for the drive-side profile used here. Keep
+ * this signed convention shared by the wheels, cranks, and direction markers:
+ * reversing only one of them creates the familiar "pedalling backwards"
+ * illusion even when every individual pose still looks plausible.
+ */
+export function solveBikeRotationPoint2D(
+  centerX: number,
+  centerY: number,
+  radius: number,
+  clockwiseAngle: number,
+  out: MutableFigurePoint2,
+): MutableFigurePoint2 {
+  out.x = centerX + Math.cos(clockwiseAngle) * radius;
+  out.y = centerY + Math.sin(clockwiseAngle) * radius;
+  return out;
+}
+
 /** Resolve one straight oar from handle through oarlock to blade tip. */
 export function solveRigidOar2D(
   lockX: number,
@@ -501,6 +522,144 @@ function drawShoe(
   disc(ctx, toeX, toeY, 0.85, color);
 }
 
+/** Compact shoulder mass that keeps the upper arm attached at replay scale. */
+function drawShoulderCap(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  radius = 1.28,
+) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(x, y, radius, radius * 0.82, -0.16, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Ski shaft finishing hardware: a grip collar at the hand and a real basket. */
+function drawSkiPoleHardware(
+  ctx: CanvasRenderingContext2D,
+  handX: number,
+  handY: number,
+  tipX: number,
+  tipY: number,
+  shaftColor: string,
+  detailColor: string,
+) {
+  const dx = tipX - handX;
+  const dy = tipY - handY;
+  const length = Math.max(1e-5, Math.hypot(dx, dy));
+  const ux = dx / length;
+  const uy = dy / length;
+  const nx = -uy;
+  const ny = ux;
+
+  // The grip follows the rigid shaft; the hand is painted over its root later.
+  limb(ctx, handX, handY, handX + ux * 1.8, handY + uy * 1.8, 1.6, detailColor);
+  // A perpendicular basket makes the planted end legible even without spray.
+  limb(
+    ctx,
+    tipX - nx * 1.05,
+    tipY - ny * 1.05,
+    tipX + nx * 1.05,
+    tipY + ny * 1.05,
+    0.62,
+    shaftColor,
+  );
+  disc(ctx, tipX, tipY, 0.48, detailColor);
+}
+
+/** Short neutral ski with a restrained upturned tip beneath one planted boot. */
+function drawSki(
+  ctx: CanvasRenderingContext2D,
+  footX: number,
+  groundY: number,
+  bodyColor: string,
+  tipColor: string,
+) {
+  limb(ctx, footX - 3.1, groundY + 0.35, footX + 2.65, groundY + 0.35, 1.18, bodyColor);
+  limb(ctx, footX + 2.65, groundY + 0.35, footX + 3.45, groundY - 0.3, 1.05, tipColor);
+}
+
+/** A level pedal platform keeps foot contact readable through the full cycle. */
+function drawBikePedal(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  width = 0.9,
+) {
+  limb(ctx, x - 1.25, y + 0.12, x + 1.25, y - 0.12, width, color);
+  disc(ctx, x, y, Math.max(0.36, width * 0.42), color);
+}
+
+/**
+ * Paint one wheel with a single tracked valve/chevron.
+ *
+ * Symmetric spokes repeat every quarter turn and can alias into reverse motion
+ * at some cadences (the wagon-wheel effect). The asymmetric valve and tangent
+ * chevron preserve an unambiguous clockwise cue without falsifying wheel roll.
+ */
+function drawBikeWheel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  clockwiseAngle: number,
+  markerOffset: number,
+  accent: string,
+  rim: string,
+  shoe: string,
+) {
+  ctx.strokeStyle = withAlpha(shoe, 0.72);
+  ctx.lineWidth = 2.15;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.arc(x, y, radius - 0.55, 0, Math.PI * 2);
+  ctx.stroke();
+
+  for (let spoke = 0; spoke < 4; spoke++) {
+    const angle = clockwiseAngle + (spoke * Math.PI) / 2;
+    solveBikeRotationPoint2D(x, y, radius, angle, jointScratchB);
+    limb(ctx, x, y, jointScratchB.x, jointScratchB.y, 0.78, withAlpha(rim, 0.76));
+  }
+
+  const markerAngle = clockwiseAngle + markerOffset;
+  const cosine = Math.cos(markerAngle);
+  const sine = Math.sin(markerAngle);
+  const radialX = cosine;
+  const radialY = sine;
+  // Positive-angle tangent in a y-down canvas: this points clockwise.
+  const tangentX = -sine;
+  const tangentY = cosine;
+  const markerX = x + radialX * radius * 0.82;
+  const markerY = y + radialY * radius * 0.82;
+  limb(
+    ctx,
+    markerX - tangentX * 1.15 + radialX * 0.48,
+    markerY - tangentY * 1.15 + radialY * 0.48,
+    markerX + tangentX * 0.62,
+    markerY + tangentY * 0.62,
+    0.72,
+    shoe,
+  );
+  limb(
+    ctx,
+    markerX - tangentX * 1.15 - radialX * 0.48,
+    markerY - tangentY * 1.15 - radialY * 0.48,
+    markerX + tangentX * 0.62,
+    markerY + tangentY * 0.62,
+    0.72,
+    shoe,
+  );
+  disc(ctx, markerX, markerY, 0.58, accent);
+  disc(ctx, x, y, 1.1, accent);
+}
+
 /** Blend a fixed pole toward a ground-contact angle without changing its length. */
 export function poleAngleAtContact(
   handY: number,
@@ -592,6 +751,17 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  // The seat rail and foot stretcher keep the lower body visibly supported.
+  // Both solved ankles terminate at this fixed plate rather than floating in
+  // the hull colour.
+  limb(ctx, seatX - 1.4, seatY + 0.65, footX - 0.4, footY + 0.45, 0.72, withAlpha(rim, 0.7));
+  limb(ctx, footX, footY - 2.15, footX, footY + 1.15, 1.15, rim);
+  limb(ctx, footX - 0.65, footY - 1.35, footX + 0.65, footY - 1.35, 0.72, withAlpha(foam, 0.78));
+
+  // Oarlock collars survive feathering and make the lever pivots explicit.
+  disc(ctx, oarlockX, oarlockY - 0.65, 0.86, withAlpha(rim, 0.72));
+  disc(ctx, oarlockX, oarlockY - 0.65, 0.36, farKit);
+
   // Far leg and arm establish depth behind the near-side anatomy.
   solveTwoBoneJoint2D(
     seatX - 0.45,
@@ -617,9 +787,9 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   disc(ctx, jointScratchA.x, jointScratchA.y, 1.05, skinShade);
   drawShoe(
     ctx,
-    jointEndScratch.x - 0.7,
+    jointEndScratch.x,
     jointEndScratch.y,
-    jointEndScratch.x + 0.8,
+    jointEndScratch.x + 1.65,
     jointEndScratch.y + 0.05,
     shoe,
   );
@@ -634,6 +804,7 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
     -1,
     jointScratchA,
   );
+  drawShoulderCap(ctx, shX - 0.4, shY - 0.4, farKit, 1.16);
   taperedLimb(ctx, shX - 0.4, shY - 0.4, jointScratchA.x, jointScratchA.y, 2.2, 1.65, farKit);
   taperedLimb(
     ctx,
@@ -646,6 +817,7 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
     skinShade,
   );
   disc(ctx, jointScratchA.x, jointScratchA.y, 0.9, skinShade);
+  disc(ctx, jointEndScratch.x, jointEndScratch.y, 0.96, skinShade);
 
   // Constant femur/tibia lengths remove the old telescoping knee.
   solveTwoBoneJoint2D(seatX, seatY, footX, footY, 7.85, 7.65, -1, jointScratchA);
@@ -663,9 +835,9 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   disc(ctx, jointScratchA.x, jointScratchA.y, 1.12, skin);
   drawShoe(
     ctx,
-    jointEndScratch.x - 0.7,
+    jointEndScratch.x,
     jointEndScratch.y,
-    jointEndScratch.x + 1,
+    jointEndScratch.x + 1.75,
     jointEndScratch.y + 0.05,
     shoe,
   );
@@ -695,6 +867,8 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
     3.45 - k.bladeFeather * 1.65,
     accent,
   );
+  disc(ctx, oarlockX, oarlockY + 0.4, 0.96, rim);
+  disc(ctx, oarlockX, oarlockY + 0.4, 0.4, foam);
   solveTwoBoneJoint2D(
     shX,
     shY + 0.2,
@@ -705,6 +879,7 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
     -1,
     jointScratchA,
   );
+  drawShoulderCap(ctx, shX, shY + 0.2, accent, 1.38);
   taperedLimb(ctx, shX, shY + 0.2, jointScratchA.x, jointScratchA.y, 2.35, 1.75, accent);
   taperedLimb(
     ctx,
@@ -756,7 +931,17 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   // Far pole, arm, and leg establish depth. Both poles stay the same length
   // throughout reach, plant, press, and recovery.
   limb(ctx, farHandX, farHandY, farPoleTipX, farPoleTipY, 1.05, withAlpha(rim, 0.55));
+  drawSkiPoleHardware(
+    ctx,
+    farHandX,
+    farHandY,
+    farPoleTipX,
+    farPoleTipY,
+    withAlpha(rim, 0.55),
+    withAlpha(shoe, 0.62),
+  );
   solveTwoBoneJoint2D(shX - 0.45, shY - 0.4, farHandX, farHandY, 5.2, 5, -1, jointScratchA);
+  drawShoulderCap(ctx, shX - 0.45, shY - 0.4, farKit, 1.18);
   taperedLimb(ctx, shX - 0.45, shY - 0.4, jointScratchA.x, jointScratchA.y, 2.15, 1.6, farKit);
   taperedLimb(
     ctx,
@@ -769,6 +954,12 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
     skinShade,
   );
   disc(ctx, jointScratchA.x, jointScratchA.y, 0.88, skinShade);
+  disc(ctx, jointEndScratch.x, jointEndScratch.y, 0.96, skinShade);
+
+  // Skis paint behind both legs and boots. They are intentionally short and
+  // neutral so equipment support reads without dominating the athlete.
+  drawSki(ctx, x - 3.3, y, withAlpha(shoe, 0.56), withAlpha(accent, 0.62));
+  drawSki(ctx, x + 4.3, y, shoe, accent);
 
   solveTwoBoneJoint2D(hipX - 0.45, hipY - 0.3, x - 3.3, y - 0.15, 5.25, 5.05, -1, jointScratchA);
   taperedLimb(ctx, hipX - 0.45, hipY - 0.3, jointScratchA.x, jointScratchA.y, 2.8, 2.05, farKit);
@@ -785,9 +976,9 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   disc(ctx, jointScratchA.x, jointScratchA.y, 1, skinShade);
   drawShoe(
     ctx,
-    jointEndScratch.x - 0.5,
+    jointEndScratch.x,
     jointEndScratch.y - 0.3,
-    jointEndScratch.x + 1.6,
+    jointEndScratch.x + 2.1,
     jointEndScratch.y - 0.2,
     shoe,
   );
@@ -808,9 +999,9 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   disc(ctx, jointScratchA.x, jointScratchA.y, 1.08, skin);
   drawShoe(
     ctx,
-    jointEndScratch.x - 0.7,
+    jointEndScratch.x,
     jointEndScratch.y - 0.25,
-    jointEndScratch.x + 1.5,
+    jointEndScratch.x + 2.2,
     jointEndScratch.y - 0.2,
     shoe,
   );
@@ -822,7 +1013,9 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   // Reach → plant → press → recovery. Contact intensity controls the snow
   // burst, while the rigid visual pole keeps a stable length throughout.
   limb(ctx, nearHandX, nearHandY, nearPoleTipX, nearPoleTipY, 1.3, rim);
+  drawSkiPoleHardware(ctx, nearHandX, nearHandY, nearPoleTipX, nearPoleTipY, rim, shoe);
   solveTwoBoneJoint2D(shX, shY + 0.2, nearHandX, nearHandY, 5.2, 5, -1, jointScratchA);
+  drawShoulderCap(ctx, shX, shY + 0.2, accent, 1.4);
   taperedLimb(ctx, shX, shY + 0.2, jointScratchA.x, jointScratchA.y, 2.35, 1.75, accent);
   taperedLimb(
     ctx,
@@ -854,20 +1047,10 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
   // alter crank speed without making the tyres slide along the course.
   const wheelSpin = reduce ? 0.3 : meters / 0.34;
 
-  // Wheels: rim + rotating spokes + hub.
-  for (let wheel = 0; wheel < 2; wheel++) {
-    const wx = wheel === 0 ? rearX : frontX;
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(wx, wheelY, wr, 0, Math.PI * 2);
-    ctx.stroke();
-    for (let spoke = 0; spoke < 4; spoke++) {
-      const ang = wheelSpin + (spoke * Math.PI) / 2;
-      limb(ctx, wx, wheelY, wx + Math.cos(ang) * wr, wheelY + Math.sin(ang) * wr, 0.85, rim);
-    }
-    disc(ctx, wx, wheelY, 1.1, accent);
-  }
+  // Symmetric spokes alone can alias into reverse motion. Each wheel therefore
+  // carries a unique valve/chevron phase while preserving true distance roll.
+  drawBikeWheel(ctx, rearX, wheelY, wr, wheelSpin, 0.28, accent, rim, shoe);
+  drawBikeWheel(ctx, frontX, wheelY, wr, wheelSpin, 1.12, accent, rim, shoe);
 
   // Frame and wheels stay grounded; only the rider gets restrained secondary
   // movement from the kinematics solver.
@@ -886,11 +1069,23 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
   const rShX = x + 1.2 + torsoShift;
   const rShY = wheelY - 12.5 + hipLift * 0.4;
   const farKit = withAlpha(accent, 0.5);
+  const farDrive = withAlpha(shoe, 0.48);
 
-  // Far leg and exact pedal contact, followed by the bicycle frame.
-  const farSpin = k.crankAngle + Math.PI;
-  const farCrankX = bbX + Math.cos(farSpin) * 3.1;
-  const farCrankY = bbY + Math.sin(farSpin) * 3.1;
+  // Both crank endpoints come from one signed clockwise angle. Computing the
+  // opposite pedal by adding PI (rather than independent animation channels)
+  // guarantees a rigid 180-degree crankset at every cadence.
+  solveBikeRotationPoint2D(bbX, bbY, 3.1, k.crankAngle, jointScratchA);
+  const nearCrankX = jointScratchA.x;
+  const nearCrankY = jointScratchA.y;
+  solveBikeRotationPoint2D(bbX, bbY, 3.1, k.crankAngle + Math.PI, jointScratchA);
+  const farCrankX = jointScratchA.x;
+  const farCrankY = jointScratchA.y;
+
+  // The recessed crank/pedal sits behind the far shoe and far leg.
+  limb(ctx, bbX, bbY, farCrankX, farCrankY, 1.15, farDrive);
+  drawBikePedal(ctx, farCrankX, farCrankY, farDrive, 0.72);
+
+  // Far leg and exact pedal contact, followed by the bicycle drivetrain/frame.
   solveTwoBoneJoint2D(
     hipX - 0.45,
     hipY - 0.25,
@@ -917,12 +1112,47 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
   const farShoeY = jointEndScratch.y + Math.sin(k.anklePitchRight) * 1.8;
   drawShoe(ctx, jointEndScratch.x, jointEndScratch.y, farShoeX, farShoeY, withAlpha(shoe, 0.65));
 
+  // Chain and sprockets sit behind the frame triangle. Two strands make the
+  // transmission direction legible without pretending cadence drives wheels.
+  limb(ctx, rearX + 0.65, wheelY - 0.65, bbX - 1.15, bbY - 1.85, 0.62, farDrive);
+  limb(ctx, rearX + 0.65, wheelY + 0.65, bbX - 1.15, bbY + 1.85, 0.62, farDrive);
+  ctx.strokeStyle = farDrive;
+  ctx.lineWidth = 0.72;
+  ctx.beginPath();
+  ctx.arc(rearX, wheelY, 1.32, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(bbX, bbY, 2.38, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Frame tubes receive a dark under-stroke so joints remain crisp over wheel
+  // spokes and the rider rather than collapsing into one flat accent colour.
+  limb(ctx, rearX, wheelY, bbX, bbY, 2.5, withAlpha(shoe, 0.34));
+  limb(ctx, bbX, bbY, seatX, seatY, 2.5, withAlpha(shoe, 0.34));
+  limb(ctx, seatX, seatY, barX, barY, 2.5, withAlpha(shoe, 0.34));
+  limb(ctx, bbX, bbY, barX, barY, 2.5, withAlpha(shoe, 0.34));
+  limb(ctx, frontX, wheelY, barX, barY, 2.5, withAlpha(shoe, 0.34));
   limb(ctx, rearX, wheelY, bbX, bbY, 1.7, accent);
   limb(ctx, bbX, bbY, seatX, seatY, 1.7, accent);
   limb(ctx, seatX, seatY, barX, barY, 1.7, accent);
   limb(ctx, bbX, bbY, barX, barY, 1.7, accent);
   limb(ctx, frontX, wheelY, barX, barY, 1.7, accent);
   limb(ctx, seatX - 2.2, seatY + 0.2, seatX + 1.2, seatY + 0.2, 1.35, rim);
+  // Separate far/near grips make both hand contacts readable on the compact
+  // side-profile handlebar instead of ending on an invisible frame point.
+  limb(ctx, barX - 1.2, barY - 0.35, barX + 0.72, barY - 0.35, 1.02, farDrive);
+  limb(ctx, barX - 0.8, barY, barX + 1.08, barY, 1.18, rim);
+
+  // The drive-side chainring and near crank sit above the frame but below the
+  // near leg. A final cleat cap is painted after the shoe to lock the contact.
+  ctx.strokeStyle = rim;
+  ctx.lineWidth = 1.05;
+  ctx.beginPath();
+  ctx.arc(bbX, bbY, 2.38, 0, Math.PI * 2);
+  ctx.stroke();
+  disc(ctx, bbX, bbY, 0.68, shoe);
+  limb(ctx, bbX, bbY, nearCrankX, nearCrankY, 1.45, rim);
+  drawBikePedal(ctx, nearCrankX, nearCrankY, rim, 1.02);
 
   // Far arm precedes every near-side limb so it cannot paint across the near
   // leg. The near anatomy then finishes the silhouette over the bicycle.
@@ -936,6 +1166,7 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
     1,
     jointScratchB,
   );
+  drawShoulderCap(ctx, rShX - 0.4, rShY - 0.35, farKit, 1.16);
   taperedLimb(ctx, rShX - 0.4, rShY - 0.35, jointScratchB.x, jointScratchB.y, 2.1, 1.55, farKit);
   taperedLimb(
     ctx,
@@ -948,10 +1179,9 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
     skinShade,
   );
   disc(ctx, jointScratchB.x, jointScratchB.y, 0.88, skinShade);
+  disc(ctx, jointEndScratch.x, jointEndScratch.y, 0.94, skinShade);
 
   // Near leg uses the same fixed femur/tibia lengths at every crank angle.
-  const nearCrankX = bbX + Math.cos(k.crankAngle) * 3.1;
-  const nearCrankY = bbY + Math.sin(k.crankAngle) * 3.1;
   solveTwoBoneJoint2D(hipX, hipY, nearCrankX, nearCrankY, 7.35, 7.05, -1, jointScratchA);
   taperedLimb(ctx, hipX, hipY, jointScratchA.x, jointScratchA.y, 3.2, 2.25, accent);
   taperedLimb(
@@ -968,6 +1198,10 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
   const nearShoeX = jointEndScratch.x + Math.cos(k.anklePitchLeft) * 1.9;
   const nearShoeY = jointEndScratch.y + Math.sin(k.anklePitchLeft) * 1.9;
   drawShoe(ctx, jointEndScratch.x, jointEndScratch.y, nearShoeX, nearShoeY, shoe);
+  // Bright cleat/spindle cap: the shoe visibly terminates on the exact pedal
+  // anchor instead of appearing to orbit a hidden crank.
+  drawBikePedal(ctx, nearCrankX, nearCrankY, shoe, 0.62);
+  disc(ctx, nearCrankX, nearCrankY, 0.48, rim);
 
   // Shorts/pelvis bridge the rider to the saddle instead of floating above it.
   disc(ctx, hipX, hipY, 2, withAlpha(rim, 0.82));
@@ -975,6 +1209,7 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
   limb(ctx, hipX + 0.2, hipY - 1, rShX + 0.3, rShY + 0.15, 0.7, withAlpha(foam, 0.7));
 
   solveTwoBoneJoint2D(rShX, rShY + 0.2, barX, barY, 4.92, 4.62, 1, jointScratchB);
+  drawShoulderCap(ctx, rShX, rShY + 0.2, accent, 1.4);
   taperedLimb(ctx, rShX, rShY + 0.2, jointScratchB.x, jointScratchB.y, 2.3, 1.7, accent);
   taperedLimb(
     ctx,

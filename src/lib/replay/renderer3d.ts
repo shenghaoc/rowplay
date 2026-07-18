@@ -162,6 +162,34 @@ export interface Renderer3DOptions {
   WebGPURenderer?: WebGPURendererCtor;
 }
 
+const LABEL_SPRITE_SCALE = 0.0064;
+
+function paintTextSprite(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  text: string,
+  bg: string,
+  fg: string,
+  fontSize: number,
+): void {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath();
+  ctx.roundRect(1, 1, canvas.width - 2, canvas.height - 2, canvas.height / 2);
+  ctx.globalAlpha = 0.82;
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.globalAlpha = 0.86;
+  ctx.strokeStyle = fg;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.font = `600 ${fontSize}px "Source Code Pro", ui-monospace, monospace`;
+  ctx.fillStyle = fg;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+}
+
 function makeTextSprite(
   text: string,
   bg: string,
@@ -175,19 +203,17 @@ function makeTextSprite(
   const tw = ctx.measureText(text).width;
   canvas.width = Math.ceil(tw + pad * 2);
   canvas.height = fontSize + pad * 2;
-  ctx.font = `600 ${fontSize}px "Source Code Pro", ui-monospace, monospace`;
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = fg;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  paintTextSprite(ctx, canvas, text, bg, fg, fontSize);
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
-  const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
   const sprite = new THREE.Sprite(material);
-  const scale = 0.012;
-  sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
+  sprite.scale.set(canvas.width * LABEL_SPRITE_SCALE, canvas.height * LABEL_SPRITE_SCALE, 1);
   return { sprite, texture };
 }
 
@@ -210,16 +236,9 @@ function updateTextSprite(
     canvas.width = targetWidth;
     canvas.height = targetHeight;
   }
-  ctx.font = `600 ${fontSize}px "Source Code Pro", ui-monospace, monospace`;
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = fg;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  paintTextSprite(ctx, canvas, text, bg, fg, fontSize);
   texture.needsUpdate = true;
-  const scale = 0.012;
-  sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
+  sprite.scale.set(canvas.width * LABEL_SPRITE_SCALE, canvas.height * LABEL_SPRITE_SCALE, 1);
 }
 
 /**
@@ -287,10 +306,13 @@ interface CameraRig {
 }
 
 const CAMERA_RIGS: Record<Sport, CameraRig> = {
-  rower: { back: 5.55, height: 3.25, ahead: 3.1, lateral: 0.95, aimY: 0.8 },
-  skierg: { back: 4.65, height: 3.35, ahead: 2.65, lateral: 0.72, aimY: 1.0 },
-  bike: { back: 5.15, height: 2.9, ahead: 3.4, lateral: 0.78, aimY: 0.92 },
+  rower: { back: 4.4, height: 2.58, ahead: 1.0, lateral: 1.48, aimY: 0.78 },
+  skierg: { back: 3.9, height: 2.7, ahead: 0.9, lateral: 1.42, aimY: 1.0 },
+  bike: { back: 4.08, height: 2.36, ahead: 1.0, lateral: 1.32, aimY: 0.94 },
 };
+
+const BASE_CAMERA_FOV = 42;
+const SPEED_CAMERA_FOV_GAIN = 2;
 
 type ThemeName = "light" | "dark";
 type CourseColor = (theme: ThemeName) => number;
@@ -320,23 +342,32 @@ function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number
       if (opacity < 1 && mat instanceof THREE.Material) {
         mat.transparent = true;
         mat.opacity = opacity;
+        mat.depthWrite = false;
       }
     }
   });
 }
 
-const HUMAN_SKIN = 0xc99973;
-const HUMAN_HAIR = 0x241c18;
-const HUMAN_KIT = 0x202831;
-const HUMAN_KIT_DARK = 0x111820;
-const HUMAN_SHOE = 0x151719;
+const HUMAN_SKIN = 0xe0aa82;
+const HUMAN_HAIR = 0x4a3a31;
+const HUMAN_KIT = 0x667786;
+const HUMAN_KIT_DARK = 0x26343d;
+const HUMAN_SHOE = 0xd6e0e4;
+const HUMAN_SNOW_SHOE = 0x26343d;
 
-function humanMat(color: number, roughness = 0.74, metalness = 0.03): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+function humanMat(color: number, roughness = 0.82, metalness = 0): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness, flatShading: true });
 }
 
 function accentMaterial(accent: number): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color: accent, roughness: 0.56, metalness: 0.04 });
+  return new THREE.MeshStandardMaterial({
+    color: accent,
+    roughness: 0.68,
+    metalness: 0.01,
+    flatShading: true,
+    emissive: accent,
+    emissiveIntensity: 0.05,
+  });
 }
 
 function accentPart(mesh: THREE.Mesh): THREE.Mesh {
@@ -358,31 +389,90 @@ function ellipsoid(
 }
 
 /**
- * A compact procedural torso with a visible waist, rib cage and shoulder taper.
- * The old scaled sphere read as a featureless egg from the chase camera.  The
- * lathed profile keeps the low-poly budget while producing a recognisably
- * human silhouette from front, side and rear views.
+ * A watertight procedural torso with a visible waist, rib cage and shoulder
+ * taper. Elliptical rings preserve authored width and depth while producing a
+ * recognisably human silhouette from front, side and rear views.
  */
 function shapedTorso(
   halfWidth: number,
   height: number,
   halfDepth: number,
   material: THREE.Material,
-  segments = 12,
+  segments = 10,
 ): THREE.Mesh {
-  const profile = [
-    new THREE.Vector2(0.66, -0.5),
-    new THREE.Vector2(0.76, -0.42),
-    new THREE.Vector2(0.68, -0.18),
-    new THREE.Vector2(0.82, 0.08),
-    new THREE.Vector2(1, 0.34),
-    new THREE.Vector2(0.78, 0.5),
+  // Explicit elliptical rings make the chest, waist and back planes part of
+  // one watertight body. A lathed circle squashed in Z produced a vase-like
+  // torso; the ring depths below preserve a broad athletic back and a narrow
+  // waist from the actual rear three-quarter replay camera.
+  const rings = [
+    { y: -0.5, width: 0.68, depth: 0.74 },
+    { y: -0.4, width: 0.78, depth: 0.82 },
+    { y: -0.18, width: 0.7, depth: 0.84 },
+    { y: 0.08, width: 0.84, depth: 0.94 },
+    { y: 0.34, width: 1, depth: 1 },
+    { y: 0.5, width: 0.72, depth: 0.74 },
   ];
-  const geometry = new THREE.LatheGeometry(profile, segments);
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (const ring of rings) {
+    for (let side = 0; side < segments; side++) {
+      const angle = (side / segments) * Math.PI * 2;
+      positions.push(Math.cos(angle) * ring.width, ring.y, Math.sin(angle) * ring.depth);
+    }
+  }
+  for (let ring = 0; ring < rings.length - 1; ring++) {
+    for (let side = 0; side < segments; side++) {
+      const next = (side + 1) % segments;
+      const a = ring * segments + side;
+      const b = ring * segments + next;
+      const c = (ring + 1) * segments + side;
+      const d = (ring + 1) * segments + next;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+  const bottomCenter = positions.length / 3;
+  positions.push(0, rings[0]?.y ?? -0.5, 0);
+  const topCenter = positions.length / 3;
+  positions.push(0, rings.at(-1)?.y ?? 0.5, 0);
+  for (let side = 0; side < segments; side++) {
+    const next = (side + 1) % segments;
+    // Outward cap normals: bottom points -Y, top points +Y. Reversing these
+    // windings makes the supposedly watertight torso disappear at its neck
+    // and waist when the default FrontSide material culls back faces.
+    indices.push(bottomCenter, side, next);
+    const top = (rings.length - 1) * segments;
+    indices.push(topCenter, top + next, top + side);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
   geometry.computeVertexNormals();
   const torso = new THREE.Mesh(geometry, material);
   torso.scale.set(halfWidth, height, halfDepth);
   return torso;
+}
+
+function trapezoidPanel(
+  topWidth: number,
+  bottomWidth: number,
+  height: number,
+  depth: number,
+  material: THREE.Material,
+): THREE.Mesh {
+  const shape = new THREE.Shape();
+  shape.moveTo(-bottomWidth / 2, -height / 2);
+  shape.lineTo(bottomWidth / 2, -height / 2);
+  shape.lineTo(topWidth / 2, height / 2);
+  shape.lineTo(-topWidth / 2, height / 2);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    steps: 1,
+    bevelEnabled: false,
+  });
+  geometry.translate(0, 0, -depth / 2);
+  geometry.computeVertexNormals();
+  return new THREE.Mesh(geometry, material);
 }
 
 function jointCap(radius: number, material: THREE.Material, segments = 8): THREE.Mesh {
@@ -402,6 +492,21 @@ function capsulePart(
   if (axis === "x") mesh.rotation.z = Math.PI / 2;
   if (axis === "z") mesh.rotation.x = Math.PI / 2;
   return mesh;
+}
+
+function tubeBetween(
+  name: string,
+  start: FigurePoint3,
+  end: FigurePoint3,
+  radius: number,
+  material: THREE.Material,
+): THREE.Mesh {
+  const geometry = new THREE.CylinderGeometry(radius, radius, 1, 8);
+  geometry.rotateX(Math.PI / 2);
+  const tube = new THREE.Mesh(geometry, material);
+  tube.name = name;
+  placeSegmentCoordinates(tube, start.x, start.y, start.z, end.x, end.y, end.z);
+  return tube;
 }
 
 const SEGMENT_FORWARD = new THREE.Vector3(0, 0, 1);
@@ -440,13 +545,12 @@ function placeFigureSegmentBetween(
 }
 
 // ── Upgraded avatar body helpers ─────────────────────────────────────────────
-// These replace uniform-radius capsules and plain ellipsoids with shaped body
-// parts that give visible muscle definition, hands/feet, and facial features.
+// These replace uniform-radius capsules and plain ellipsoids with replay-scale
+// faceted masses that preserve body planes, grip contacts and footwear.
 
 /**
- * A muscle-shaped limb: a lathe geometry that tapers from proximal to distal
- * radius with a slight belly, giving visible bicep/quadricep shape.
- * Returns a unit-length mesh along +Z for placement by placeSegmentBetween().
+ * A faceted limb that tapers from proximal to distal radius with a slight
+ * belly. Returns a unit-length mesh along +Z for segment placement.
  */
 function taperedLimb(
   proximalRadius: number,
@@ -454,99 +558,81 @@ function taperedLimb(
   material: THREE.Material,
   segments = 8,
 ): THREE.Mesh {
-  const pts: THREE.Vector2[] = [];
-  const steps = 6;
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    // Smooth taper with a slight belly at 30%
-    const belly = Math.sin(t * Math.PI) * 0.06 * proximalRadius;
-    const r = proximalRadius + (distalRadius - proximalRadius) * t + belly;
-    pts.push(new THREE.Vector2(r, t));
+  const ringCount = 6;
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (let ring = 0; ring < ringCount; ring++) {
+    const t = ring / (ringCount - 1);
+    const base = proximalRadius + (distalRadius - proximalRadius) * t;
+    const belly = Math.sin(t * Math.PI) * proximalRadius * 0.2;
+    const radius = base + belly;
+    for (let side = 0; side < segments; side++) {
+      const angle = (side / segments) * Math.PI * 2;
+      positions.push(Math.cos(angle) * radius * 1.08, Math.sin(angle) * radius * 0.82, t - 0.5);
+    }
   }
-  const geo = new THREE.LatheGeometry(pts, segments);
-  // Bake the limb's long axis onto +Z and centre it at the origin so
-  // placeSegmentBetween()'s `scale.z = length, position = midpoint,
-  // quaternion = (+Z → start→end)` contract aligns the proximal end at
-  // `start` and the distal end at `end`. Without baking, the runtime
-  // `mesh.rotation.x` was being wiped out by placeSegmentBetween's
-  // quaternion assignment, leaving every lathe-limb welded to its native
-  // Y axis — i.e. arms and legs pointing straight up regardless of where
-  // the IK targets sent them. That's the Frankenstein silhouette.
-  geo.translate(0, -0.5, 0);
-  geo.rotateX(Math.PI / 2);
-  geo.computeVertexNormals();
-  return new THREE.Mesh(geo, material);
+  for (let ring = 0; ring < ringCount - 1; ring++) {
+    for (let side = 0; side < segments; side++) {
+      const next = (side + 1) % segments;
+      const a = ring * segments + side;
+      const b = ring * segments + next;
+      const c = (ring + 1) * segments + side;
+      const d = (ring + 1) * segments + next;
+      indices.push(a, b, c, b, d, c);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return new THREE.Mesh(geometry, material);
 }
 
-/**
- * A hand mesh shaped around a grip.  One finger roll reads more clearly than
- * four sub-pixel fingers and saves three meshes per hand.  The thumb is
- * mirrored so paired hands no longer look cloned.
- */
+/** One replay-scale mitten mass; sub-pixel fingers would only add noise. */
 function makeHand(material: THREE.Material, side = 1, segments = 8): THREE.Group {
   const hand = new THREE.Group();
   hand.name = "athlete:hand";
-  const palm = ellipsoid([0.04, 0.025, 0.05], material, segments);
+  const palm = ellipsoid([0.06, 0.04, 0.075], material, segments);
   palm.name = "athlete:hand:palm";
+  palm.rotation.z = side * 0.08;
   hand.add(palm);
-  const fingerRoll = capsulePart(0.013, 0.07, material, "x");
-  fingerRoll.name = "athlete:hand:fingers";
-  fingerRoll.position.set(0, -0.01, 0.035);
-  hand.add(fingerRoll);
-  const thumb = capsulePart(0.011, 0.04, material, "z");
-  thumb.name = "athlete:hand:thumb";
-  thumb.position.set(side * 0.034, 0.004, 0.006);
-  thumb.rotation.y = side * 0.42;
-  hand.add(thumb);
   return hand;
 }
 
 /**
  * A foot mesh: shoe-shaped sole with toe box and heel.
  */
-function makeFoot(material: THREE.Material, segments = 8): THREE.Group {
+function makeFoot(material: THREE.Material): THREE.Group {
   const foot = new THREE.Group();
   foot.name = "athlete:foot";
-  const sole = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.035, 0.16, segments, 1, segments),
-    material,
-  );
-  sole.position.z = 0.04;
-  foot.add(sole);
-  const toe = ellipsoid([0.04, 0.024, 0.048], material, segments);
-  toe.position.set(0, -0.005, 0.12);
-  foot.add(toe);
-  const heel = ellipsoid([0.035, 0.028, 0.028], material, segments);
-  heel.position.set(0, 0, -0.04);
-  foot.add(heel);
+  const geometry = new THREE.BoxGeometry(0.12, 0.065, 0.23, 1, 1, 1);
+  const positions = geometry.getAttribute("position");
+  for (let i = 0; i < positions.count; i++) {
+    const z = positions.getZ(i);
+    const x = positions.getX(i);
+    positions.setX(i, x * (z > 0 ? 1.08 : 0.82));
+    if (z > 0 && positions.getY(i) > 0) positions.setY(i, positions.getY(i) + 0.018);
+  }
+  positions.needsUpdate = true;
+  geometry.computeVertexNormals();
+  const shoe = new THREE.Mesh(geometry, material);
+  shoe.position.z = 0.055;
+  shoe.name = "athlete:foot:shoe";
+  foot.add(shoe);
   return foot;
 }
 
 /**
- * A head with jaw/chin, ears, and hair cap — instead of a single ellipsoid.
+ * A bold faceted head and hair mass sized for the replay camera.
  */
 function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 16): THREE.Group {
   const head = new THREE.Group();
   head.name = "athlete:head";
-  // Cranium
-  const cranium = ellipsoid([0.105, 0.13, 0.1], skinMat, segments);
+  const cranium = ellipsoid([0.115, 0.125, 0.108], skinMat, segments);
   cranium.name = "athlete:head:cranium";
-  cranium.position.y = 0;
   head.add(cranium);
-  // Jaw — smaller sphere below for chin/jawline
-  const jaw = ellipsoid([0.08, 0.05, 0.07], skinMat, Math.max(8, segments / 2));
-  jaw.position.set(0, -0.07, 0.02);
-  head.add(jaw);
-  // Ears
-  for (const side of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.022, 4, 4), skinMat);
-    ear.scale.set(0.5, 1, 1);
-    ear.position.set(side * 0.1, -0.01, -0.01);
-    head.add(ear);
-  }
-  // Hair cap
-  const hair = ellipsoid([0.11, 0.055, 0.105], hairMat, Math.max(8, segments / 2));
-  hair.position.y = 0.09;
+  const hair = ellipsoid([0.119, 0.055, 0.114], hairMat, Math.max(8, segments / 2));
+  hair.position.y = 0.087;
   head.add(hair);
   return head;
 }
@@ -610,7 +696,10 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   // recorded stroke pose rather than as one rigid toy block.
   const rower = new THREE.Group();
   rower.name = "rower-athlete";
-  const hips = ellipsoid([0.24, 0.12, 0.17], kitDarkMaterial);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.055, 0.29), shoeMaterial);
+  seat.name = "rower-seat";
+  seat.position.set(0, 0.29, -0.14);
+  const hips = ellipsoid([0.18, 0.125, 0.16], kitDarkMaterial, 10);
   hips.name = "rower-hips";
   hips.position.set(0, 0.38, -0.14);
 
@@ -619,23 +708,23 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const torso = new THREE.Group();
   torso.name = "rower-torso";
   torso.position.copy(hips.position);
-  const torsoShell = shapedTorso(0.25, 0.62, 0.16, kitMaterial, 14);
+  const torsoShell = accentPart(shapedTorso(0.27, 0.62, 0.165, accentMat(), 10));
   torsoShell.name = "rower-torso-shell";
   torsoShell.position.y = 0.3;
-  const bib = accentPart(ellipsoid([0.17, 0.24, 0.024], accentMat(), 12));
-  bib.name = "rower-jersey-front";
-  bib.position.set(0, 0.31, 0.155);
-  const backBib = accentPart(ellipsoid([0.18, 0.25, 0.022], accentMat(), 12));
-  backBib.name = "rower-jersey-back";
-  backBib.position.set(0, 0.31, -0.155);
-  const shoulderLine = capsulePart(0.04, 0.58, kitDarkMaterial, "x");
-  shoulderLine.position.set(0, 0.51, 0.015);
-  const neck = capsulePart(0.047, 0.13, skinMaterial, "y");
-  neck.position.set(0, 0.61, 0.015);
+  const frontYoke = trapezoidPanel(0.42, 0.31, 0.14, 0.028, kitDarkMaterial);
+  frontYoke.name = "rower-jersey-front";
+  frontYoke.position.set(0, 0.49, 0.158);
+  const backYoke = trapezoidPanel(0.42, 0.31, 0.14, 0.028, kitDarkMaterial);
+  backYoke.name = "rower-jersey-back";
+  backYoke.position.set(0, 0.49, -0.158);
+  const shoulderLine = capsulePart(0.055, 0.5, kitDarkMaterial, "x");
+  shoulderLine.position.set(0, 0.51, 0.01);
+  const neck = capsulePart(0.053, 0.11, skinMaterial, "y");
+  neck.position.set(0, 0.63, 0.015);
   const headGroup = makeHead(skinMaterial, hairMaterial);
-  headGroup.position.set(0, 0.76, 0.025);
-  torso.add(torsoShell, bib, backBib, shoulderLine, neck, headGroup);
-  rower.add(hips, torso);
+  headGroup.position.set(0, 0.79, 0.025);
+  torso.add(torsoShell, frontYoke, backYoke, shoulderLine, neck, headGroup);
+  rower.add(seat, hips, torso);
 
   const arms: Array<{
     side: number;
@@ -664,13 +753,13 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   }> = [];
   for (const side of [-1, 1]) {
     // Tapered leg segments — positioned per-frame by IK from hip to foot.
-    const thigh = taperedLimb(0.06, 0.044, kitDarkMaterial);
+    const thigh = taperedLimb(0.08, 0.058, kitMaterial);
     thigh.name = side < 0 ? "rower-thigh-left" : "rower-thigh-right";
-    const shin = taperedLimb(0.044, 0.032, kitDarkMaterial);
+    const shin = taperedLimb(0.058, 0.042, skinMaterial);
     shin.name = side < 0 ? "rower-shin-left" : "rower-shin-right";
     const foot = makeFoot(shoeMaterial);
     foot.name = side < 0 ? "rower-foot-contact-left" : "rower-foot-contact-right";
-    const knee = jointCap(0.062, kitDarkMaterial, 10);
+    const knee = jointCap(0.075, skinMaterial, 8);
     knee.name = side < 0 ? "rower-knee-left" : "rower-knee-right";
     rower.add(thigh, shin, foot, knee);
     legs.push({
@@ -683,18 +772,18 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       kneePoint: new THREE.Vector3(),
       footTarget: new THREE.Vector3(),
       footPoint: new THREE.Vector3(),
-      bendHint: new THREE.Vector3(side * 0.08, 0.72, -0.34),
+      bendHint: new THREE.Vector3(side * 0.46, 0.7, -0.28),
     });
 
-    const upperArm = taperedLimb(0.045, 0.034, skinMaterial);
+    const upperArm = taperedLimb(0.064, 0.047, skinMaterial);
     upperArm.name = side < 0 ? "rower-upper-arm-left" : "rower-upper-arm-right";
-    const forearm = taperedLimb(0.034, 0.025, skinMaterial);
+    const forearm = taperedLimb(0.05, 0.036, skinMaterial);
     forearm.name = side < 0 ? "rower-forearm-left" : "rower-forearm-right";
     const hand = makeHand(skinMaterial, side);
     hand.name = side < 0 ? "rower-hand-left" : "rower-hand-right";
-    const shoulder = jointCap(0.05, skinMaterial);
+    const shoulder = jointCap(0.07, kitMaterial);
     shoulder.name = side < 0 ? "rower-shoulder-left" : "rower-shoulder-right";
-    const elbow = jointCap(0.046, skinMaterial);
+    const elbow = jointCap(0.055, skinMaterial);
     elbow.name = side < 0 ? "rower-elbow-left" : "rower-elbow-right";
     rower.add(upperArm, forearm, hand, shoulder, elbow);
     arms.push({
@@ -708,7 +797,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       elbowPoint: new THREE.Vector3(),
       handTarget: new THREE.Vector3(),
       handPoint: new THREE.Vector3(),
-      bendHint: new THREE.Vector3(side * 0.7, -0.3, -0.24),
+      bendHint: new THREE.Vector3(side * 0.56, -0.48, -0.18),
     });
   }
   rower.position.z = -0.1;
@@ -735,13 +824,13 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
     shaft.position.x = side * 0.7;
     oar.add(shaft);
-    const grip = capsulePart(0.045, 0.34, humanMat(0x262c31), "x");
+    const grip = capsulePart(0.045, 0.28, humanMat(0x26343d), "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
-    grip.position.x = -side * 0.64;
+    grip.position.x = -side * 0.49;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    handleAnchor.position.x = -side * 0.72;
+    handleAnchor.position.x = -side * 0.56;
     oar.add(handleAnchor);
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
@@ -767,10 +856,10 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   // Authored visual ranges. Channels from the solver are 0..1; these scales
   // turn them into a stroke that reads at a glance without leaving the hull.
   const SEAT_TRAVEL = 0.42;
-  const THIGH_LENGTH = 0.56;
-  const SHIN_LENGTH = 0.56;
-  const UPPER_ARM_LENGTH = 0.49;
-  const FOREARM_LENGTH = 0.48;
+  const THIGH_LENGTH = 0.552;
+  const SHIN_LENGTH = 0.552;
+  const UPPER_ARM_LENGTH = 0.445;
+  const FOREARM_LENGTH = 0.44;
   const BODY_PITCH_CATCH = -0.52;
   const BODY_PITCH_FINISH = 0.22;
   const OAR_YAW_CATCH = -0.92;
@@ -784,7 +873,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       const arm = arms[i];
       if (!arm) continue;
       arm.shoulderPoint
-        .set(arm.side * 0.27, 0.5, 0.015)
+        .set(arm.side * 0.25, 0.5, 0.015)
         .applyQuaternion(torso.quaternion)
         .add(torso.position);
       const oar = oars[i];
@@ -795,7 +884,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       handlePoint.copy(oar.handleAnchor.position).applyQuaternion(oar.group.quaternion);
       handlePoint.add(oar.group.position).sub(rower.position);
       arm.handTarget.copy(handlePoint);
-      arm.bendHint.set(arm.side * (0.7 - armDraw * 0.18), -0.3, -0.24 + bodySwing * 0.12);
+      arm.bendHint.set(arm.side * (0.56 - armDraw * 0.12), -0.48, -0.18 + bodySwing * 0.12);
       solveTwoBone3D(
         arm.shoulderPoint,
         arm.handTarget,
@@ -821,7 +910,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       // The plate is in BOAT space, while these limbs live in the translating
       // rower group. Subtract the slide so the world foot contact stays fixed.
       leg.footTarget.set(leg.side * 0.12, 0.34 - rower.position.y, 0.72 - rower.position.z);
-      leg.bendHint.set(leg.side * 0.08, 0.72 - legExtension * 0.1, -0.34);
+      leg.bendHint.set(leg.side * 0.46, 0.7 - legExtension * 0.1, -0.28);
       solveTwoBone3D(
         leg.hipPoint,
         leg.footTarget,
@@ -913,8 +1002,9 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const hairMaterial = humanMat(HUMAN_HAIR);
   const kitMaterial = humanMat(HUMAN_KIT);
   const kitDarkMaterial = humanMat(HUMAN_KIT_DARK);
-  const shoeMaterial = humanMat(HUMAN_SHOE);
-  const poleMaterial = humanMat(0xe7eef0);
+  const shoeMaterial = humanMat(HUMAN_SNOW_SHOE);
+  const poleMaterial = humanMat(0x486775, 0.58);
+  const farPoleMaterial = humanMat(0x2f5362, 0.7);
   const gripMaterial = humanMat(0x20242a);
   const kinematics: SkierKinematics = {
     armPress: 0,
@@ -926,16 +1016,15 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     surge: 0,
   };
 
-  // Skis: two thin planks along travel (+Z), with a slightly upturned tip.
+  // Neutral skis keep the accent on the athlete; oversized purple planks made
+  // the equipment read as a pair of giant legs from the chase view.
   for (const side of [-1, 1]) {
-    const ski = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 2.4), accentMat());
-    ski.position.set(side * 0.18, 0.03, 0.2);
-    ski.userData.accent = true;
+    const ski = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.055, 1.95), kitDarkMaterial);
+    ski.position.set(side * 0.21, 0.03, 0.14);
     group.add(ski);
-    // Ski tip — a small wedge at the front for a more realistic profile.
-    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.3), accentMat());
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.28), accentMat());
     tip.name = "skierg-ski-tip";
-    tip.position.set(side * 0.18, 0.06, 1.45);
+    tip.position.set(side * 0.21, 0.07, 1.2);
     tip.rotation.x = -0.25;
     tip.userData.accent = true;
     group.add(tip);
@@ -956,16 +1045,16 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     bendHint: THREE.Vector3;
   }> = [];
   for (const side of [-1, 1]) {
-    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.34), shoeMaterial);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.34), shoeMaterial);
     boot.name = side < 0 ? "skierg-foot-contact-left" : "skierg-foot-contact-right";
-    boot.position.set(side * 0.18, 0.11, 0.18);
+    boot.position.set(side * 0.21, 0.12, 0.18);
     group.add(boot);
 
-    const thigh = taperedLimb(0.062, 0.046, kitDarkMaterial);
+    const thigh = taperedLimb(0.08, 0.058, kitDarkMaterial);
     thigh.name = side < 0 ? "skierg-thigh-left" : "skierg-thigh-right";
-    const shin = taperedLimb(0.046, 0.034, kitDarkMaterial);
+    const shin = taperedLimb(0.058, 0.042, skinMaterial);
     shin.name = side < 0 ? "skierg-shin-left" : "skierg-shin-right";
-    const knee = jointCap(0.063, kitDarkMaterial, 10);
+    const knee = jointCap(0.074, kitDarkMaterial, 8);
     knee.name = side < 0 ? "skierg-knee-left" : "skierg-knee-right";
     group.add(thigh, shin, knee);
     legParts.push({
@@ -975,32 +1064,32 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       knee,
       hipPoint: new THREE.Vector3(),
       kneePoint: new THREE.Vector3(),
-      anklePoint: new THREE.Vector3(side * 0.18, 0.15, 0.18),
+      anklePoint: new THREE.Vector3(side * 0.21, 0.16, 0.18),
       solvedAnkle: new THREE.Vector3(),
-      bendHint: new THREE.Vector3(side * 0.06, 0.08, 0.72),
+      bendHint: new THREE.Vector3(side * 0.12, 0.08, 0.72),
     });
   }
   const upper = new THREE.Group();
   upper.name = "skierg-upper";
   upper.position.y = 0.72;
-  const hips = ellipsoid([0.24, 0.12, 0.17], kitDarkMaterial, 12);
+  const hips = ellipsoid([0.18, 0.125, 0.16], kitDarkMaterial, 10);
   hips.position.y = 0;
-  const torso = shapedTorso(0.25, 0.66, 0.16, kitMaterial, 14);
+  const torso = accentPart(shapedTorso(0.28, 0.66, 0.17, accentMat(), 10));
   torso.name = "skierg-torso";
   torso.position.y = 0.31;
-  const vest = accentPart(ellipsoid([0.17, 0.25, 0.024], accentMat(), 12));
-  vest.name = "skierg-jersey-front";
-  vest.position.set(0, 0.33, 0.15);
-  const backVest = accentPart(ellipsoid([0.18, 0.25, 0.022], accentMat(), 12));
-  backVest.name = "skierg-jersey-back";
-  backVest.position.set(0, 0.33, -0.155);
-  const shoulderLine = capsulePart(0.04, 0.6, kitDarkMaterial, "x");
+  const frontYoke = trapezoidPanel(0.44, 0.32, 0.15, 0.03, kitDarkMaterial);
+  frontYoke.name = "skierg-jersey-front";
+  frontYoke.position.set(0, 0.51, 0.163);
+  const backYoke = trapezoidPanel(0.44, 0.32, 0.15, 0.03, kitDarkMaterial);
+  backYoke.name = "skierg-jersey-back";
+  backYoke.position.set(0, 0.51, -0.163);
+  const shoulderLine = capsulePart(0.058, 0.52, kitDarkMaterial, "x");
   shoulderLine.position.y = 0.56;
-  const neck = capsulePart(0.047, 0.13, skinMaterial, "y");
-  neck.position.y = 0.67;
+  const neck = capsulePart(0.053, 0.11, skinMaterial, "y");
+  neck.position.y = 0.68;
   const headGroup = makeHead(skinMaterial, hairMaterial);
-  headGroup.position.set(0, 0.81, 0.03);
-  upper.add(hips, torso, vest, backVest, shoulderLine, neck, headGroup);
+  headGroup.position.set(0, 0.84, 0.03);
+  upper.add(hips, torso, frontYoke, backYoke, shoulderLine, neck, headGroup);
   // Arms are placed from shoulders to pole grips, so the hands stay on the
   // handles while the pole groups pivot from the same point.
   const arms: Array<{
@@ -1016,26 +1105,29 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     bendHint: THREE.Vector3;
   }> = [];
   for (const side of [-1, 1]) {
-    const upperArm = taperedLimb(0.044, 0.033, skinMaterial);
+    const upperArm = taperedLimb(0.062, 0.046, skinMaterial);
     upperArm.name = side < 0 ? "skierg-upper-arm-left" : "skierg-upper-arm-right";
-    const forearm = taperedLimb(0.033, 0.024, skinMaterial);
+    const forearm = taperedLimb(0.048, 0.035, skinMaterial);
     forearm.name = side < 0 ? "skierg-forearm-left" : "skierg-forearm-right";
     const hand = makeHand(skinMaterial, side);
     hand.name = side < 0 ? "skierg-hand-left" : "skierg-hand-right";
-    const elbow = jointCap(0.044, skinMaterial);
+    const elbow = jointCap(0.054, skinMaterial);
     elbow.name = side < 0 ? "skierg-elbow-left" : "skierg-elbow-right";
-    upper.add(upperArm, forearm, hand, elbow);
+    const shoulder = jointCap(0.068, kitMaterial);
+    shoulder.name = side < 0 ? "skierg-shoulder-left" : "skierg-shoulder-right";
+    shoulder.position.set(side * 0.25, 0.54, 0.05);
+    upper.add(upperArm, forearm, hand, elbow, shoulder);
     arms.push({
       side,
       upper: upperArm,
       forearm,
       hand,
       elbow,
-      shoulderPoint: new THREE.Vector3(side * 0.28, 0.53, 0.05),
+      shoulderPoint: new THREE.Vector3(side * 0.25, 0.54, 0.05),
       elbowPoint: new THREE.Vector3(),
       handTarget: new THREE.Vector3(),
       handPoint: new THREE.Vector3(),
-      bendHint: new THREE.Vector3(side * 0.78, -0.22, 0.16),
+      bendHint: new THREE.Vector3(side * 0.38, -0.55, 0.2),
     });
   }
   group.add(upper);
@@ -1051,11 +1143,11 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     tipAnchor: THREE.Object3D;
   }> = [];
   for (const side of [-1, 1]) {
-    const shaftGeo = new THREE.CylinderGeometry(0.02, 0.02, 1, 6);
+    const shaftGeo = new THREE.CylinderGeometry(0.028, 0.028, 1, 6);
     shaftGeo.rotateX(Math.PI / 2); // bake the unit pole onto +Z for endpoint placement
-    const shaft = new THREE.Mesh(shaftGeo, poleMaterial);
+    const shaft = new THREE.Mesh(shaftGeo, side < 0 ? farPoleMaterial : poleMaterial);
     shaft.name = side < 0 ? "skierg-pole-shaft-left" : "skierg-pole-shaft-right";
-    const grip = capsulePart(0.022, 0.16, gripMaterial, "x");
+    const grip = capsulePart(0.025, 0.18, gripMaterial, "x");
     grip.name = side < 0 ? "skierg-pole-grip-left" : "skierg-pole-grip-right";
     const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.03, 8), accentMat());
     basket.name = side < 0 ? "skierg-pole-tip-left" : "skierg-pole-tip-right";
@@ -1077,7 +1169,7 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
 
   const placeSkiLegs = (): void => {
     for (const leg of legParts) {
-      leg.hipPoint.set(leg.side * 0.15, upper.position.y, 0.02);
+      leg.hipPoint.set(leg.side * 0.12, upper.position.y, 0.02);
       solveTwoBone3D(
         leg.hipPoint,
         leg.anklePoint,
@@ -1100,13 +1192,18 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     rebound: number,
   ): void => {
     // High reach at plant → deep press past the hips at the finish.
-    const handY = 0.68 - armPress * 0.62;
-    const handZ = 0.52 - armPress * 0.72;
+    const handY = 0.72 - armPress * 0.64;
+    const handZ = 0.52 - armPress * 0.68;
     inverseUpper.copy(upper.quaternion).invert();
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
-      arm.handTarget.set(arm.side * 0.32, handY, handZ);
-      arm.bendHint.set(arm.side * (0.78 - armPress * 0.14), -0.22, 0.16);
+      // The far arm gets a small silhouette correction: five centimetres of
+      // extra reach keeps its hand and pole clear of the torso from the chase
+      // side without changing either authored bone length.
+      const handBaseX = arm.side < 0 ? 0.42 : 0.37;
+      const elbowBaseX = arm.side < 0 ? 0.43 : 0.38;
+      arm.handTarget.set(arm.side * (handBaseX + armPress * 0.04), handY, handZ);
+      arm.bendHint.set(arm.side * (elbowBaseX + armPress * 0.08), -0.55, 0.2);
       solveTwoBone3D(
         arm.shoulderPoint,
         arm.handTarget,
@@ -1139,10 +1236,26 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       );
       const horizontal = Math.sqrt(Math.max(0, POLE_LENGTH * POLE_LENGTH - vertical * vertical));
       const freeAngle = 0.25 + poleSweep * (Math.PI - 0.5);
-      const freeX = pole.side * Math.sin(freeAngle) * 0.18;
+      // Retain an outward component through the whole recovery. Letting freeX
+      // approach zero points the pole nearly down the camera axis, shortening
+      // it to a hidden stub and making double-pole skiing read as one-pole.
+      // The camera-side pole needs a wider authored lateral component than the
+      // far pole. With a symmetric path it points almost directly into the
+      // three-quarter chase lens and visually collapses even though its world
+      // length remains exact. This silhouette correction keeps both shafts
+      // readable without changing their grip, basket, or 1.38 m solve.
+      const freeBase = pole.side < 0 ? 0.18 : 1;
+      const freeX = pole.side * (freeBase + Math.sin(freeAngle) * 0.18);
       const freeZ = Math.cos(freeAngle);
-      let directionX = freeX + (pole.side * 0.12 - freeX) * poleContact;
-      let directionZ = freeZ + (1 - freeZ) * poleContact;
+      // After the basket releases, route the shaft around the outside of the
+      // skier instead of cutting the shortest chord through the body. Besides
+      // being a more credible recovery, the bowed path avoids briefly aiming
+      // the camera-side pole straight down the rear three-quarter chase lens.
+      const releaseBlend = 1 - poleContact;
+      const plantedX = pole.side * (pole.side < 0 ? 0.27 : 1);
+      const outsideArc = Math.sin(Math.sqrt(releaseBlend) * Math.PI) * (pole.side < 0 ? 0.65 : 0.9);
+      let directionX = plantedX + (freeX - plantedX) * releaseBlend + pole.side * outsideArc;
+      let directionZ = 1 + (freeZ - 1) * releaseBlend;
       const directionLength = Math.max(1e-6, Math.hypot(directionX, directionZ));
       directionX /= directionLength;
       directionZ /= directionLength;
@@ -1191,7 +1304,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   const kitMaterial = humanMat(HUMAN_KIT);
   const kitDarkMaterial = humanMat(HUMAN_KIT_DARK);
   const shoeMaterial = humanMat(HUMAN_SHOE);
-  const equipmentMaterial = humanMat(0x20242a, 0.62);
+  const equipmentMaterial = humanMat(0x82949d, 0.62);
   const kinematics: BikeKinematics = {
     crankAngle: 0,
     torsoSway: 0,
@@ -1221,26 +1334,36 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     wheels.push(wheel);
   }
 
-  // Frame: down tube, seat tube, top tube, and chain stays for a proper
-  // diamond-frame silhouette.
-  const downTube = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.6), accentMat());
-  downTube.position.set(0, wheelR + 0.15, 0);
-  downTube.userData.accent = true;
-  const seatTube = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.08), accentMat());
-  seatTube.position.set(0, wheelR + 0.45, -0.4);
-  seatTube.userData.accent = true;
-  const topTube = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1.1), accentMat());
-  topTube.name = "bike-top-tube";
-  topTube.position.set(0, wheelR + 0.75, -0.15);
-  topTube.userData.accent = true;
-  // Chain stays: two thin tubes from BB to rear axle.
+  // Endpoint-built tubes form a real diamond frame. The previous horizontal
+  // boxes never met at frame nodes, so the rear wheel swallowed the machine.
+  const bottomBracket = { x: 0, y: wheelR, z: -0.05 };
+  const seatCluster = { x: 0, y: wheelR + 0.76, z: -0.4 };
+  const headBottom = { x: 0, y: wheelR + 0.55, z: 0.42 };
+  const headTop = { x: 0, y: wheelR + 0.8, z: 0.5 };
+  const downTube = accentPart(
+    tubeBetween("bike-down-tube", bottomBracket, headBottom, 0.055, accentMat()),
+  );
+  const seatTube = accentPart(
+    tubeBetween("bike-seat-tube", bottomBracket, seatCluster, 0.052, accentMat()),
+  );
+  const topTube = accentPart(
+    tubeBetween("bike-top-tube", seatCluster, headTop, 0.048, accentMat()),
+  );
+  const headTube = accentPart(
+    tubeBetween("bike-head-tube", headBottom, headTop, 0.06, accentMat()),
+  );
+  group.add(downTube, seatTube, topTube, headTube);
+  // Paired chain and seat stays expose the frame triangle from the new
+  // three-quarter chase angle.
   for (const side of [-1, 1]) {
-    const stay = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.85), accentMat());
-    stay.position.set(side * 0.06, wheelR + 0.05, 0.4);
-    stay.userData.accent = true;
-    group.add(stay);
+    const rearAxle = { x: side * 0.07, y: wheelR, z: -0.85 };
+    const bbSide = { ...bottomBracket, x: side * 0.055 };
+    const seatSide = { ...seatCluster, x: side * 0.055 };
+    group.add(
+      accentPart(tubeBetween("bike-chain-stay", rearAxle, bbSide, 0.028, accentMat())),
+      accentPart(tubeBetween("bike-seat-stay", rearAxle, seatSide, 0.028, accentMat())),
+    );
   }
-  group.add(downTube, seatTube, topTube);
 
   // Cranks: spin about the bottom bracket (X axis) with two pedals.
   const cranks = new THREE.Group();
@@ -1258,7 +1381,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   for (const side of [-1, 1]) {
     const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), equipmentMaterial);
     pedal.name = side < 0 ? "bike-pedal-left" : "bike-pedal-right";
-    const crankY = side * 0.18;
+    const crankY = side * 0.21;
     pedal.position.set(side * 0.1, crankY, 0);
     cranks.add(pedal);
     pedals.push({ side, crankY });
@@ -1267,20 +1390,20 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
 
   // The saddle closes the previously visible gap between the frame and the
   // rider's pelvis, which was especially obvious from the chase camera.
-  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.34), equipmentMaterial);
+  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.055, 0.3), equipmentMaterial);
   saddle.name = "bike-saddle";
   saddle.position.set(0, wheelR + 0.77, -0.4);
   group.add(saddle);
 
   const handlebar = new THREE.Group();
   handlebar.name = "bike-handlebar";
-  const crossbar = capsulePart(0.026, 0.64, equipmentMaterial, "x");
+  const crossbar = capsulePart(0.03, 0.72, equipmentMaterial, "x");
   handlebar.add(crossbar);
   const barContacts: Array<{ side: number; anchor: THREE.Object3D }> = [];
   for (const side of [-1, 1]) {
     const grip = capsulePart(0.024, 0.22, equipmentMaterial, "z");
     grip.name = side < 0 ? "bike-handlebar-grip-left" : "bike-handlebar-grip-right";
-    grip.position.set(side * 0.28, -0.02, 0.04);
+    grip.position.set(side * 0.32, -0.02, 0.04);
     grip.rotation.x = -0.3;
     const anchor = new THREE.Object3D();
     anchor.name = side < 0 ? "bike-hand-contact-left" : "bike-hand-contact-right";
@@ -1296,40 +1419,38 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   // read as a single bright toy shape.
   const rider = new THREE.Group();
   rider.position.set(0, wheelR + 0.76, -0.38);
-  const pelvis = ellipsoid([0.22, 0.13, 0.17], kitDarkMaterial, 12);
+  const pelvis = ellipsoid([0.175, 0.125, 0.16], kitDarkMaterial, 10);
   pelvis.name = "bike-pelvis";
   pelvis.position.set(0, 0.02, -0.01);
   const torso = new THREE.Group();
   torso.name = "bike-spine";
   torso.position.set(0, 0.02, 0.01);
-  const torsoShell = shapedTorso(0.23, 0.6, 0.145, kitMaterial, 14);
+  const torsoShell = accentPart(shapedTorso(0.26, 0.62, 0.16, accentMat(), 10));
   torsoShell.name = "bike-torso";
   torsoShell.position.set(0, 0.28, 0.04);
-  const jerseyPanel = accentPart(ellipsoid([0.15, 0.22, 0.022], accentMat(), 12));
-  jerseyPanel.name = "bike-jersey-front";
-  jerseyPanel.position.set(0, 0.3, 0.145);
-  const backPanel = accentPart(ellipsoid([0.16, 0.22, 0.02], accentMat(), 12));
-  backPanel.name = "bike-jersey-back";
-  backPanel.position.set(0, 0.3, -0.14);
-  const shoulderLine = capsulePart(0.037, 0.54, kitDarkMaterial, "x");
-  shoulderLine.position.set(0, 0.48, 0.025);
-  const neck = capsulePart(0.043, 0.11, skinMaterial, "y");
-  neck.position.set(0, 0.58, 0.035);
+  const frontYoke = trapezoidPanel(0.4, 0.29, 0.14, 0.028, kitDarkMaterial);
+  frontYoke.name = "bike-jersey-front";
+  frontYoke.position.set(0, 0.48, 0.153);
+  const backYoke = trapezoidPanel(0.4, 0.29, 0.14, 0.028, kitDarkMaterial);
+  backYoke.name = "bike-jersey-back";
+  backYoke.position.set(0, 0.48, -0.153);
+  const shoulderLine = capsulePart(0.054, 0.48, kitDarkMaterial, "x");
+  shoulderLine.position.set(0, 0.49, 0.025);
+  const neck = capsulePart(0.05, 0.1, skinMaterial, "y");
+  neck.position.set(0, 0.6, 0.035);
   const headGroup = makeHead(skinMaterial, hairMaterial);
-  headGroup.position.set(0, 0.71, 0.07);
+  headGroup.position.set(0, 0.75, 0.07);
   // Parent the helmet to the head so sway and counter-rotation can never leave
   // it floating above the rider.
   const helmetGroup = new THREE.Group();
   helmetGroup.name = "bike-helmet";
-  const helmetShell = accentPart(ellipsoid([0.108, 0.055, 0.1], accentMat(), 12));
+  const helmetShell = accentPart(ellipsoid([0.132, 0.075, 0.135], accentMat(), 10));
   helmetShell.name = "bike-helmet-shell";
-  helmetShell.position.set(0, 0.09, -0.005);
-  const helmetTail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.12), accentMat());
-  helmetTail.name = "bike-helmet-tail";
-  helmetTail.position.set(0, 0.075, -0.08);
-  helmetGroup.add(helmetShell, helmetTail);
+  helmetShell.position.set(0, 0.1, -0.018);
+  helmetShell.rotation.x = -0.16;
+  helmetGroup.add(helmetShell);
   headGroup.add(helmetGroup);
-  torso.add(torsoShell, jerseyPanel, backPanel, shoulderLine, neck, headGroup);
+  torso.add(torsoShell, frontYoke, backYoke, shoulderLine, neck, headGroup);
   const legs: Array<{
     side: number;
     crankY: number;
@@ -1344,13 +1465,13 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     bendHint: THREE.Vector3;
   }> = [];
   for (const side of [-1, 1]) {
-    const thigh = taperedLimb(0.058, 0.043, kitDarkMaterial);
+    const thigh = taperedLimb(0.078, 0.057, kitDarkMaterial);
     thigh.name = side < 0 ? "bike-thigh-left" : "bike-thigh-right";
-    const shin = taperedLimb(0.043, 0.032, skinMaterial);
+    const shin = taperedLimb(0.056, 0.041, skinMaterial);
     shin.name = side < 0 ? "bike-shin-left" : "bike-shin-right";
     const shoe = makeFoot(shoeMaterial);
     shoe.name = side < 0 ? "bike-foot-contact-left" : "bike-foot-contact-right";
-    const knee = jointCap(0.06, kitDarkMaterial, 10);
+    const knee = jointCap(0.072, kitDarkMaterial, 8);
     knee.name = side < 0 ? "bike-knee-left" : "bike-knee-right";
     rider.add(thigh, shin, shoe, knee);
     legs.push({
@@ -1364,7 +1485,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
       kneePoint: new THREE.Vector3(),
       pedalTarget: new THREE.Vector3(),
       pedalPoint: new THREE.Vector3(),
-      bendHint: new THREE.Vector3(side * 0.08, 0.18, 0.72),
+      bendHint: new THREE.Vector3(side * 0.13, 0.18, 0.72),
     });
   }
   // Arms from the shoulders down to the bars, fixed in the tuck.
@@ -1381,14 +1502,18 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     bendHint: THREE.Vector3;
   }> = [];
   for (const side of [-1, 1]) {
-    const upperArm = taperedLimb(0.042, 0.032, skinMaterial);
+    const upperArm = taperedLimb(0.06, 0.045, skinMaterial);
     upperArm.name = side < 0 ? "bike-upper-arm-left" : "bike-upper-arm-right";
-    const forearm = taperedLimb(0.032, 0.024, skinMaterial);
+    const forearm = taperedLimb(0.047, 0.034, skinMaterial);
     forearm.name = side < 0 ? "bike-forearm-left" : "bike-forearm-right";
     const hand = makeHand(skinMaterial, side);
     hand.name = side < 0 ? "bike-hand-left" : "bike-hand-right";
-    const elbow = jointCap(0.043, skinMaterial);
+    const elbow = jointCap(0.053, skinMaterial);
     elbow.name = side < 0 ? "bike-elbow-left" : "bike-elbow-right";
+    const shoulder = jointCap(0.066, kitMaterial);
+    shoulder.name = side < 0 ? "bike-shoulder-left" : "bike-shoulder-right";
+    shoulder.position.set(side * 0.24, 0.49, 0.025);
+    torso.add(shoulder);
     rider.add(upperArm, forearm, hand, elbow);
     arms.push({
       side,
@@ -1400,7 +1525,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
       elbowPoint: new THREE.Vector3(),
       handTarget: new THREE.Vector3(),
       handPoint: new THREE.Vector3(),
-      bendHint: new THREE.Vector3(side * 0.72, -0.34, -0.2),
+      bendHint: new THREE.Vector3(side * 0.38, -0.52, -0.12),
     });
   }
   rider.add(pelvis, torso);
@@ -1416,7 +1541,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
       const arm = arms[i];
       if (!arm) continue;
       arm.shoulderPoint
-        .set(arm.side * 0.22, 0.48, 0.025)
+        .set(arm.side * 0.24, 0.49, 0.025)
         .applyQuaternion(torso.quaternion)
         .add(torso.position);
       const contact = barContacts[i];
@@ -1456,7 +1581,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
         cranks.position.y + pedalY - rider.position.y,
         cranks.position.z + pedalZ - rider.position.z,
       );
-      leg.hipPoint.set(leg.side * 0.11, 0.02, -0.01);
+      leg.hipPoint.set(leg.side * 0.12, 0.02, -0.01);
       const extension = Math.sin(phase) * leg.side;
       leg.bendHint.set(leg.side * 0.08, 0.18, 0.72 - extension * 0.1);
       solveTwoBone3D(
@@ -1598,18 +1723,22 @@ class WakeTrail {
   private segs: THREE.Mesh[] = [];
   private mats: THREE.MeshBasicMaterial[] = [];
   private hist: THREE.Vector3[] = [];
+  private lastX = NaN;
+  private lastZ = NaN;
 
-  constructor(scene: THREE.Scene, n: number, geo: THREE.PlaneGeometry, color = 0xffffff) {
+  constructor(scene: THREE.Scene, n: number, geo: THREE.BufferGeometry, color = 0xffffff) {
     for (let i = 0; i < n; i++) {
       const mat = new THREE.MeshBasicMaterial({
         color,
         transparent: true,
         opacity: 0,
         depthWrite: false,
+        depthTest: true,
       });
       const seg = new THREE.Mesh(geo, mat);
       seg.rotation.x = -Math.PI / 2;
       seg.position.y = 0.02;
+      seg.renderOrder = -1;
       seg.visible = false;
       scene.add(seg);
       this.segs.push(seg);
@@ -1618,6 +1747,12 @@ class WakeTrail {
   }
 
   update(x: number, z: number): void {
+    // Distance-sample instead of stamping once per display frame. The former
+    // dense square stack changed length with refresh rate and merged into a
+    // giant opaque card at 4×/8× playback.
+    if (Number.isFinite(this.lastX) && Math.hypot(x - this.lastX, z - this.lastZ) < 0.18) return;
+    this.lastX = x;
+    this.lastZ = z;
     const n = this.segs.length;
     // Recycle the tail vector once at capacity — no per-frame allocation.
     const entry = this.hist.length >= n ? this.hist.pop()! : new THREE.Vector3();
@@ -1650,14 +1785,16 @@ class WakeTrail {
       seg.visible = true;
       seg.position.set(h.x - dz * spread, 0.02, h.z + dx * spread);
       // Foam disperses: it spreads and grows while it fades.
-      this.mats[i].opacity = Math.sqrt(f) * f * 0.45;
-      const s = 0.55 + (1 - f) * 1.2;
+      this.mats[i].opacity = Math.sqrt(f) * f * 0.22;
+      const s = 0.42 + (1 - f) * 0.48;
       seg.scale.set(s, s, s);
     }
   }
 
   reset(): void {
     this.hist.length = 0;
+    this.lastX = NaN;
+    this.lastZ = NaN;
     for (const seg of this.segs) seg.visible = false;
   }
 
@@ -1706,7 +1843,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private lastNowMs = NaN;
   /** Replay-space speed (m/s), smoothed; breathes the chase-camera FOV. */
   private smoothedSpeed = 0;
-  private fovCurrent = 46;
+  private fovCurrent = BASE_CAMERA_FOV;
   /** Steps effects down when frames run persistently over budget. */
   private governor = new PerfGovernor({ maxLevel: 3 });
   /** Set once the governor flattens the water (level 3). */
@@ -1807,12 +1944,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     }
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 500);
+    this.camera = new THREE.PerspectiveCamera(BASE_CAMERA_FOV, 1, 0.1, 500);
 
     // Sky/ground hemisphere fill + a key sun give boats nicer shading than a
     // flat ambient. The sun casts shadows only at high quality.
-    this.scene.add(new THREE.HemisphereLight(0xddeaf2, 0x4a5560, 0.9));
-    const sun = new THREE.DirectionalLight(0xfff7ed, 0.85);
+    this.scene.add(new THREE.HemisphereLight(0xddeaf2, 0x4a5560, 0.95));
+    const sun = new THREE.DirectionalLight(0xfff7ed, 1.0);
     sun.position.set(14, 26, 10);
     if (this.cfg.shadows) {
       sun.castShadow = true;
@@ -1824,9 +1961,23 @@ export class CourseRenderer3D implements ReplayRenderer {
       c.right = c.top = 42;
     }
     this.scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xffd6a3, 0.18);
+    const fill = new THREE.DirectionalLight(0xffe4c7, 0.28);
     fill.position.set(-10, 8, -6);
     this.scene.add(fill);
+
+    // Camera-relative lights keep the athlete's rear planes readable around
+    // the whole loop. Fixed world lights alone left half the course as an
+    // almost black silhouette, especially at Medium where shadows are off.
+    const cameraFill = new THREE.DirectionalLight(0xdbeafe, 0.48);
+    cameraFill.name = "camera-athlete-fill";
+    cameraFill.position.set(-3.5, 4.5, 2);
+    cameraFill.target.position.set(0, 0, -8);
+    const cameraRim = new THREE.DirectionalLight(0xf8fafc, 0.3);
+    cameraRim.name = "camera-athlete-rim";
+    cameraRim.position.set(4, 2.5, 1);
+    cameraRim.target.position.set(0, 0, -8);
+    this.camera.add(cameraFill, cameraFill.target, cameraRim, cameraRim.target);
+    this.scene.add(this.camera);
 
     this.liveAvatar = this.profile.make(hex(COLORS_LIGHT.live), this.cfg.shadows, 1);
     this.liveBoat = new THREE.Group();
@@ -1847,7 +1998,9 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.buildStaticScene();
 
     if (this.cfg.wake > 0 && this.profile.trailColor !== null) {
-      const wakeGeo = this.track(new THREE.PlaneGeometry(0.9, 0.9));
+      // A bounded faceted disc has no square texture corners; low-opacity
+      // overlap becomes broken foam/snow instead of a white trapezoid.
+      const wakeGeo = this.track(new THREE.CircleGeometry(0.44, 10));
       const c = this.profile.trailColor;
       this.liveWake = new WakeTrail(this.scene, this.cfg.wake, wakeGeo, c);
       this.ghostWake = new WakeTrail(this.scene, this.cfg.wake, wakeGeo, c);
@@ -2262,6 +2415,12 @@ export class CourseRenderer3D implements ReplayRenderer {
   private applyTheme(themeName: "light" | "dark"): void {
     const C = themeName === "dark" ? COLORS_DARK : COLORS_LIGHT;
     this.theme = themeName;
+    // Text is not the only input to the telemetry sprites: both the pill
+    // background and its live/ghost accent come from the active theme. Force
+    // the next render to repaint them even when pace/progress did not change
+    // (the common paused-theme-toggle case).
+    this.lastLiveLabel = "";
+    this.lastGhostLabel = "";
     this.scene.background = new THREE.Color(C.courseFill);
     this.scene.fog = new THREE.Fog(C.courseFill, 55, 170);
 
@@ -2292,6 +2451,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         o.material instanceof THREE.MeshStandardMaterial
       ) {
         o.material.color.setHex(c);
+        o.material.emissive.setHex(c);
       }
     });
   }
@@ -2564,13 +2724,15 @@ export class CourseRenderer3D implements ReplayRenderer {
     // doesn't pulse the lens.
     if (this.reduceMotion) {
       this.smoothedSpeed = 0;
-      this.fovCurrent = 46;
+      this.fovCurrent = BASE_CAMERA_FOV;
     } else {
       if (dt > 0 && dLive >= 0 && dLive < dt * 120) {
         const inst = dLive > 0 ? Math.min(dLive / dt, 40) : 0;
         this.smoothedSpeed += (inst - this.smoothedSpeed) * dampFactor(3, dt);
       }
-      const fovTarget = 46 + Math.max(0, Math.min(1, (this.smoothedSpeed - 3) / 6)) * 5;
+      const fovTarget =
+        BASE_CAMERA_FOV +
+        Math.max(0, Math.min(1, (this.smoothedSpeed - 3) / 6)) * SPEED_CAMERA_FOV_GAIN;
       this.fovCurrent +=
         (fovTarget - this.fovCurrent) * (this.cameraInit ? dampFactor(2.5, dt) : 1);
     }
@@ -2583,29 +2745,77 @@ export class CourseRenderer3D implements ReplayRenderer {
     // SkiErg benefits from a slightly taller view of the full body, and the
     // bike reads best from a lower pursuit angle. Narrow canvases and a ghost
     // lane pull back rather than cropping the athlete/equipment. Reduced motion
-    // uses a centred, higher, slower-damped rig with no lateral orbit or FOV
-    // breathing, keeping the horizon substantially steadier.
+    // keeps the static three-quarter composition while disabling FOV breathing
+    // and using slower damping, keeping the horizon substantially steadier.
     const narrow = this.camera.aspect < 1.25;
     const sportRig = CAMERA_RIGS[this.sport];
-    const ghostPullback = state.ghost ? 0.9 : 0;
+    const ghostPullback = state.ghost ? 1.05 : 0;
     // Portrait RowErg needs substantially more room for the full oar span;
     // upright SkiErg and compact BikeErg can stay closer.
-    const narrowScale = this.sport === "rower" ? 1.8 : this.sport === "skierg" ? 1.28 : 1.32;
-    const back = this.reduceMotion
-      ? sportRig.back + 2.2 + ghostPullback
+    const narrowScale =
+      this.sport === "rower" ? (state.ghost ? 1.7 : 1.5) : state.ghost ? 1.38 : 1.2;
+    const baseBack = this.reduceMotion
+      ? sportRig.back + 0.8 + ghostPullback
       : (sportRig.back + ghostPullback) * (narrow ? narrowScale : 1);
-    const height = this.reduceMotion
-      ? sportRig.height + 2.1
-      : sportRig.height + (narrow ? 0.45 : 0);
-    const ahead = this.reduceMotion ? 1.8 : sportRig.ahead;
-    const lateral = this.reduceMotion ? 0 : sportRig.lateral;
-    const rx = p.x / this.loopRadius;
-    const rz = p.z / this.loopRadius;
+    const ahead = sportRig.ahead;
+    // A static lateral offset is not an animation trigger. Preserving it keeps
+    // paired limbs and equipment from collapsing into a direct-rear silhouette.
+    const lateral = sportRig.lateral;
+    // A comparison occupies the inner lane, four metres inside the live
+    // athlete and may also be hundreds of metres ahead or behind. Frame the
+    // actual midpoint, orient the chase to the average tangent, and derive the
+    // pullback from the current horizontal lens. This treats the comparison as
+    // a bounded pair instead of assuming a small lane-only offset. Scalars keep
+    // this render-hot path allocation-free.
+    const focusX = state.ghost ? (p.x + this.ghostPlacement.x) * 0.5 : p.x;
+    const focusZ = state.ghost ? (p.z + this.ghostPlacement.z) * 0.5 : p.z;
+    const comparisonSpan = state.ghost
+      ? Math.hypot(p.x - this.ghostPlacement.x, p.z - this.ghostPlacement.z)
+      : 0;
+    const verticalHalfFov = THREE.MathUtils.degToRad(this.camera.fov * 0.5);
+    const horizontalHalfFov = Math.atan(
+      Math.tan(verticalHalfFov) * Math.max(0.01, this.camera.aspect),
+    );
+    // Preserve a little screen-space air around the pair (and the RowErg oar
+    // envelope). Unlike a fixed cap, this remains valid all the way to the
+    // largest possible 500 m chord on the one-kilometre visual loop.
+    const comparisonMargin = this.sport === "rower" ? 1.6 : 1.1;
+    const requiredComparisonBack = state.ghost
+      ? (comparisonSpan * 0.5 + comparisonMargin) /
+        Math.max(0.05, Math.tan(horizontalHalfFov) * 0.9)
+      : baseBack;
+    const comparisonPullback = Math.max(0, requiredComparisonBack - baseBack);
+    const back = baseBack + comparisonPullback;
+    const baseHeight = this.reduceMotion
+      ? sportRig.height + 0.7
+      : sportRig.height + (narrow ? 0.3 : 0);
+    const height = baseHeight + Math.min(2.5, comparisonSpan * 0.16);
+    // A small live-lane bias keeps the vector non-zero when the two course
+    // tangents cancel at half a lap. Adding it before normalization makes the
+    // heading continuous as the gap crosses that point; a binary fallback
+    // would introduce a visible quarter-turn camera orbit near 500 m.
+    const comparisonTangentBias = state.ghost ? 0.22 : 0;
+    const tangentX = state.ghost
+      ? p.tx + this.ghostPlacement.tx + p.tx * comparisonTangentBias
+      : p.tx;
+    const tangentZ = state.ghost
+      ? p.tz + this.ghostPlacement.tz + p.tz * comparisonTangentBias
+      : p.tz;
+    const tangentLength = Math.hypot(tangentX, tangentZ);
+    const focusTx = tangentX / Math.max(1e-6, tangentLength);
+    const focusTz = tangentZ / Math.max(1e-6, tangentLength);
+    const focusRadius = Math.max(1e-6, Math.hypot(focusX, focusZ));
+    const rx = focusX / focusRadius;
+    const rz = focusZ / focusRadius;
     const cameraLayoutMode = (narrow ? 1 : 0) | (state.ghost ? 2 : 0) | (this.reduceMotion ? 4 : 0);
     const cameraLayoutChanged = cameraLayoutMode !== this.cameraLayoutMode;
     this.cameraLayoutMode = cameraLayoutMode;
-    this.chase.set(p.x - p.tx * back + rx * lateral, height, p.z - p.tz * back + rz * lateral);
-    this.lookAt.set(p.x + p.tx * ahead, sportRig.aimY, p.z + p.tz * ahead);
+    this.chase.set(
+      focusX - focusTx * back + rx * lateral,
+      height,
+      focusZ - focusTz * back + rz * lateral,
+    );
+    this.lookAt.set(focusX + focusTx * ahead, sportRig.aimY, focusZ + focusTz * ahead);
     if (!this.cameraInit) {
       this.camera.position.copy(this.chase);
       this.cameraAim.copy(this.lookAt);
@@ -2613,8 +2823,9 @@ export class CourseRenderer3D implements ReplayRenderer {
     } else if (playing) {
       // Exponential damping is frame-rate independent. Aim is deliberately
       // softer than translation so course curvature cannot snap the horizon.
-      const positionRate = this.reduceMotion ? 3.2 : 7.5;
-      const aimRate = this.reduceMotion ? 2.2 : 5.5;
+      const speedFollow = Math.min(18, this.smoothedSpeed * 0.55);
+      const positionRate = this.reduceMotion ? 3.2 : 8 + speedFollow;
+      const aimRate = this.reduceMotion ? 2.2 : 6 + speedFollow * 0.65;
       this.camera.position.lerp(this.chase, dampFactor(positionRate, dt));
       this.cameraAim.lerp(this.lookAt, dampFactor(aimRate, dt));
     } else if (

@@ -129,14 +129,24 @@ elbows and knees, while shaped torsos, pelvises, joints, kit, and near/far-side
 contrast keep each pose readable at replay scale. Hands and feet remain aligned
 with the relevant equipment throughout the cycle. The figure is a generic
 illustration; it does not reproduce the athlete's body, clothing, or likeness.
+The 3D figure deliberately uses broad faceted body masses and kit blocks instead
+of sub-pixel facial or finger detail, so the silhouette survives the chase view.
 
 Both views use sport-specific surfaces: RowErg has layered water and blade
 puddles, SkiErg has groomed snow and pole-plant plume, and BikeErg has an
 asphalt/velodrome band with curb and lane markings. In 3D, segmented human-scale
 athletes keep feet and hands on the relevant equipment targets — oar handles
 and foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals. The
-chase camera uses closer sport- and viewport-aware framing, with both its
-position and look target smoothed independently.
+larger 3D stage and rear three-quarter chase camera keep paired limbs visible;
+sport- and viewport-aware framing, speed-aware follow, and camera-relative fill
+light keep the athlete readable around the full course.
+
+The 2D BikeErg uses the same mechanically forward clockwise convention for its
+wheels and cranks. Explicit opposing crank arms, pedals, chainring, sprocket,
+chain strands, and asymmetric wheel markers prevent the wagon-wheel effect from
+making fast 4×/8× playback appear to run backwards. In 3D, distance-sampled
+transparent wakes stay behind the athlete without merging into opaque cards,
+and the compact telemetry pill leaves the figure as the visual focus.
 
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics.
 Ultra is intended for WebGPU-capable devices and uses a larger stage, denser

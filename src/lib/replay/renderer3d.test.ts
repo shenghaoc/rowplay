@@ -22,7 +22,7 @@ vi.mock("three", async (importOriginal) => {
 });
 
 import { CourseRenderer3D } from "./renderer3d";
-import { REDUCED_REPLAY_POSES } from "./renderer";
+import { COLORS_DARK, REDUCED_REPLAY_POSES } from "./renderer";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
 import * as THREE from "three";
@@ -36,6 +36,11 @@ function make2dCtx() {
     textBaseline: "",
     fillRect: vi.fn(),
     fillText: vi.fn(),
+    clearRect: vi.fn(),
+    beginPath: vi.fn(),
+    roundRect: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
     measureText: vi.fn().mockReturnValue({ width: 60 }),
   };
 }
@@ -153,6 +158,41 @@ function worldPosition(renderer: CourseRenderer3D, name: string): THREE.Vector3 
   return sceneObject(renderer, name).getWorldPosition(new THREE.Vector3());
 }
 
+function projectToPixels(
+  renderer: CourseRenderer3D,
+  name: string,
+  camera: THREE.PerspectiveCamera,
+  width: number,
+  height: number,
+): THREE.Vector2 {
+  const point = worldPosition(renderer, name).project(camera);
+  return new THREE.Vector2(((point.x + 1) * width) / 2, ((1 - point.y) * height) / 2);
+}
+
+function relativeLuminance(color: THREE.Color): number {
+  const hex = color.getHex();
+  const channel = (shift: number) => {
+    const value = ((hex >> shift) & 0xff) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  return channel(16) * 0.2126 + channel(8) * 0.7152 + channel(0) * 0.0722;
+}
+
+function firstStandardMaterial(object: THREE.Object3D): THREE.MeshStandardMaterial {
+  let material: THREE.MeshStandardMaterial | null = null;
+  object.traverse((child) => {
+    if (
+      !material &&
+      child instanceof THREE.Mesh &&
+      child.material instanceof THREE.MeshStandardMaterial
+    ) {
+      material = child.material;
+    }
+  });
+  expect(material, `missing standard material below ${object.name}`).not.toBeNull();
+  return material!;
+}
+
 function getCameraRig(renderer: CourseRenderer3D) {
   return renderer as unknown as {
     camera: THREE.PerspectiveCamera;
@@ -219,6 +259,7 @@ describe("CourseRenderer3D", () => {
         "athlete:head",
         "skierg-torso",
         "skierg-jersey-back",
+        "skierg-shoulder-left",
         "skierg-elbow-left",
         "skierg-knee-left",
         "skierg-hand-left",
@@ -232,6 +273,7 @@ describe("CourseRenderer3D", () => {
         "bike-saddle",
         "bike-pelvis",
         "bike-jersey-back",
+        "bike-shoulder-left",
         "bike-elbow-left",
         "bike-knee-left",
         "bike-helmet",
@@ -256,11 +298,32 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  it("joins the BikeErg diamond-frame tubes at their authored endpoints", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "low", "bike");
+    const expected = {
+      "bike-down-tube": [new THREE.Vector3(0, 0.45, -0.05), new THREE.Vector3(0, 1, 0.42)],
+      "bike-seat-tube": [new THREE.Vector3(0, 0.45, -0.05), new THREE.Vector3(0, 1.21, -0.4)],
+      "bike-top-tube": [new THREE.Vector3(0, 1.21, -0.4), new THREE.Vector3(0, 1.25, 0.5)],
+      "bike-head-tube": [new THREE.Vector3(0, 1, 0.42), new THREE.Vector3(0, 1.25, 0.5)],
+    } as const;
+
+    for (const [name, [expectedStart, expectedEnd]] of Object.entries(expected)) {
+      const tube = sceneObject(renderer, name);
+      const half = new THREE.Vector3(0, 0, tube.scale.z * 0.5).applyQuaternion(tube.quaternion);
+      const actualStart = tube.position.clone().sub(half);
+      const actualEnd = tube.position.clone().add(half);
+      const direct = actualStart.distanceTo(expectedStart) + actualEnd.distanceTo(expectedEnd);
+      const reversed = actualStart.distanceTo(expectedEnd) + actualEnd.distanceTo(expectedStart);
+      expect(Math.min(direct, reversed), name).toBeLessThan(1e-6);
+    }
+    renderer.destroy();
+  });
+
   it("keeps procedural torso depth within human-scale silhouette bounds", () => {
     const expected = {
-      rower: ["rower-torso-shell", 0.25, 0.62, 0.16],
-      skierg: ["skierg-torso", 0.25, 0.66, 0.16],
-      bike: ["bike-torso", 0.23, 0.6, 0.145],
+      rower: ["rower-torso-shell", 0.27, 0.62, 0.165],
+      skierg: ["skierg-torso", 0.28, 0.66, 0.17],
+      bike: ["bike-torso", 0.26, 0.62, 0.16],
     } as const;
 
     for (const sport of ["rower", "skierg", "bike"] as const) {
@@ -272,6 +335,12 @@ describe("CourseRenderer3D", () => {
 
       expect(torso.scale.toArray()).toEqual([width, height, depth]);
       expect(bounds).toBeDefined();
+      const normals = torso.geometry.getAttribute("normal");
+      // The two final vertices are the authored bottom/top cap centres. Their
+      // normals prove the torso closes outward rather than being back-face
+      // culled at its waist and neck.
+      expect(normals.getY(normals.count - 2)).toBeLessThan(-0.99);
+      expect(normals.getY(normals.count - 1)).toBeGreaterThan(0.99);
       if (bounds) {
         bounds.multiply(torso.scale);
         expect(bounds.z).toBeLessThan(bounds.x * 0.8);
@@ -279,6 +348,108 @@ describe("CourseRenderer3D", () => {
       }
       renderer.destroy();
     }
+  });
+
+  it("uses faceted high-contrast body masses instead of black sticker figures", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
+    const torso = sceneObject(renderer, "rower-torso-shell") as THREE.Mesh<
+      THREE.BufferGeometry,
+      THREE.MeshStandardMaterial
+    >;
+    const yoke = sceneObject(renderer, "rower-jersey-back") as THREE.Mesh<
+      THREE.BufferGeometry,
+      THREE.MeshStandardMaterial
+    >;
+    const shoulder = sceneObject(renderer, "rower-shoulder-left") as THREE.Mesh<
+      THREE.BufferGeometry,
+      THREE.MeshStandardMaterial
+    >;
+
+    expect(torso.material.flatShading).toBe(true);
+    expect(torso.material.emissiveIntensity).toBeGreaterThan(0);
+    expect(relativeLuminance(yoke.material.color)).toBeLessThan(
+      relativeLuminance(torso.material.color),
+    );
+    expect(relativeLuminance(shoulder.material.color)).toBeGreaterThan(
+      relativeLuminance(yoke.material.color),
+    );
+    renderer.destroy();
+  });
+
+  it("keeps semantic body and equipment values separated in both themes", () => {
+    const names = {
+      rower: {
+        torso: "rower-torso-shell",
+        yoke: "rower-jersey-back",
+        skin: "rower-upper-arm-left",
+        shoe: "rower-foot-contact-left",
+        equipment: "rower-deck-stripe",
+      },
+      skierg: {
+        torso: "skierg-torso",
+        yoke: "skierg-jersey-back",
+        skin: "skierg-upper-arm-left",
+        shoe: "skierg-foot-contact-left",
+        equipment: "skierg-pole-shaft-right",
+      },
+      bike: {
+        torso: "bike-torso",
+        yoke: "bike-jersey-back",
+        skin: "bike-upper-arm-left",
+        shoe: "bike-foot-contact-left",
+        equipment: "bike-saddle",
+      },
+    } as const;
+
+    for (const theme of ["light", "dark"] as const) {
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        const renderer = new CourseRenderer3D(makeHost(), "low", sport);
+        renderer.resize(800, 600);
+        renderer.render(makeSportState(sport, 0.2), false, theme);
+        const semantic = names[sport];
+        const value = (name: string) =>
+          relativeLuminance(firstStandardMaterial(sceneObject(renderer, name)).color);
+        const torso = value(semantic.torso);
+        const yoke = value(semantic.yoke);
+        const skin = value(semantic.skin);
+        const shoe = value(semantic.shoe);
+        const equipment = value(semantic.equipment);
+        const surface = relativeLuminance(
+          firstStandardMaterial(sceneObject(renderer, "lane")).color,
+        );
+
+        expect(Math.abs(torso - yoke), `${sport} ${theme} torso/yoke`).toBeGreaterThan(0.05);
+        expect(Math.abs(torso - skin), `${sport} ${theme} torso/skin`).toBeGreaterThan(0.08);
+        expect(Math.abs(shoe - surface), `${sport} ${theme} shoe/surface`).toBeGreaterThan(0.1);
+        expect(
+          Math.abs(equipment - surface),
+          `${sport} ${theme} equipment/surface`,
+        ).toBeGreaterThan(0.1);
+        renderer.destroy();
+      }
+    }
+  });
+
+  it("repaints both telemetry pills when only the theme changes", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "low", "rower");
+    renderer.resize(800, 600);
+    const state = makeSportState("rower", 0.2, 100, {
+      ghost: { distFrac: 0.08, pace: 121, spm: 28, label: "PB" },
+    });
+    renderer.render(state, false, "light");
+
+    const labels = renderer as unknown as {
+      liveLabelTex: THREE.CanvasTexture;
+      ghostLabelTex: THREE.CanvasTexture;
+    };
+    const liveVersion = labels.liveLabelTex.version;
+    const ghostVersion = labels.ghostLabelTex.version;
+
+    renderer.render(state, false, "dark");
+
+    expect(labels.liveLabelTex.version).toBeGreaterThan(liveVersion);
+    expect(labels.ghostLabelTex.version).toBeGreaterThan(ghostVersion);
+    renderer.destroy();
   });
 
   it("locks RowErg hands to the oar grips and feet to the boat through the full stroke", () => {
@@ -303,6 +474,77 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
+  it("keeps the RowErg shoulder-to-grip reach within a human arm envelope", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
+    renderer.resize(1140, 420);
+    let maximumReach = 0;
+
+    for (let step = 0; step < 64; step++) {
+      renderer.render(makeSportState("rower", step / 64), false);
+      for (const side of ["left", "right"] as const) {
+        maximumReach = Math.max(
+          maximumReach,
+          worldPosition(renderer, `rower-shoulder-${side}`).distanceTo(
+            worldPosition(renderer, `rower-hand-contact-${side}`),
+          ),
+        );
+      }
+    }
+
+    expect(maximumReach).toBeLessThan(0.9);
+    renderer.destroy();
+  });
+
+  it("keeps RowErg knees visually separated from the hull through the stroke", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
+    renderer.resize(1140, 420);
+    for (const cycle of [0.02, 0.2, 0.38, 0.7]) {
+      renderer.render(makeSportState("rower", cycle), false);
+      const { camera } = getCameraRig(renderer);
+      camera.updateMatrixWorld(true);
+      const left = projectToPixels(renderer, "rower-knee-left", camera, 1140, 420);
+      const right = projectToPixels(renderer, "rower-knee-right", camera, 1140, 420);
+      expect(left.distanceTo(right), `knee span at cycle ${cycle}`).toBeGreaterThan(14);
+    }
+    renderer.destroy();
+  });
+
+  it("keeps both SkiErg poles visibly separated through plant, press and recovery", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "skierg");
+    renderer.resize(1140, 420);
+    let minimumShaftSeparation = Number.POSITIVE_INFINITY;
+    let minimumFarPoleLength = Number.POSITIVE_INFINITY;
+    let minimumNearPoleLength = Number.POSITIVE_INFINITY;
+    let minimumFarShoulderGap = Number.POSITIVE_INFINITY;
+    for (let step = 0; step < 128; step++) {
+      const cycle = step / 128;
+      renderer.render(makeSportState("skierg", cycle), false);
+      const { camera } = getCameraRig(renderer);
+      camera.updateMatrixWorld(true);
+      const left = projectToPixels(renderer, "skierg-pole-shaft-left", camera, 1140, 420);
+      const right = projectToPixels(renderer, "skierg-pole-shaft-right", camera, 1140, 420);
+      const farShoulder = projectToPixels(renderer, "skierg-shoulder-left", camera, 1140, 420);
+      const leftGrip = projectToPixels(renderer, "skierg-pole-grip-left", camera, 1140, 420);
+      const leftTip = projectToPixels(renderer, "skierg-pole-contact-left", camera, 1140, 420);
+      const rightGrip = projectToPixels(renderer, "skierg-pole-grip-right", camera, 1140, 420);
+      const rightTip = projectToPixels(renderer, "skierg-pole-contact-right", camera, 1140, 420);
+
+      minimumShaftSeparation = Math.min(minimumShaftSeparation, left.distanceTo(right));
+      minimumFarPoleLength = Math.min(minimumFarPoleLength, leftGrip.distanceTo(leftTip));
+      minimumNearPoleLength = Math.min(minimumNearPoleLength, rightGrip.distanceTo(rightTip));
+      minimumFarShoulderGap = Math.min(minimumFarShoulderGap, Math.abs(left.x - farShoulder.x));
+    }
+
+    // The far pole needs the stronger silhouette guarantee because it crosses
+    // behind the athlete from this chase side. The camera-side pole is allowed
+    // more foreshortening, but never enough to collapse into a hidden stub.
+    expect(minimumShaftSeparation).toBeGreaterThan(64);
+    expect(minimumFarPoleLength).toBeGreaterThan(48);
+    expect(minimumNearPoleLength).toBeGreaterThan(40);
+    expect(minimumFarShoulderGap).toBeGreaterThan(6);
+    renderer.destroy();
+  });
+
   it("increases RowErg hip-to-foot separation through the leg drive", () => {
     const host = makeHost();
     const renderer = new CourseRenderer3D(host, "medium", "rower");
@@ -324,14 +566,14 @@ describe("CourseRenderer3D", () => {
   it("keeps every authored arm and leg segment fixed through 128 poses per sport", () => {
     const expectedBones = {
       rower: [
-        ["rower-upper-arm-left", 0.49],
-        ["rower-upper-arm-right", 0.49],
-        ["rower-forearm-left", 0.48],
-        ["rower-forearm-right", 0.48],
-        ["rower-thigh-left", 0.56],
-        ["rower-thigh-right", 0.56],
-        ["rower-shin-left", 0.56],
-        ["rower-shin-right", 0.56],
+        ["rower-upper-arm-left", 0.445],
+        ["rower-upper-arm-right", 0.445],
+        ["rower-forearm-left", 0.44],
+        ["rower-forearm-right", 0.44],
+        ["rower-thigh-left", 0.552],
+        ["rower-thigh-right", 0.552],
+        ["rower-shin-left", 0.552],
+        ["rower-shin-right", 0.552],
       ],
       skierg: [
         ["skierg-pole-shaft-left", 1.38],
@@ -514,7 +756,7 @@ describe("CourseRenderer3D", () => {
     );
     renderer.render(makeSportState("rower", 0.8), true);
     expect(sceneObject(renderer, "rower-athlete").position).toEqual(firstPose);
-    expect(getCameraRig(renderer).camera.fov).toBe(46);
+    expect(getCameraRig(renderer).camera.fov).toBe(42);
     for (const side of ["left", "right"]) {
       expect(
         worldPosition(renderer, `rower-hand-${side}`).distanceTo(
@@ -701,11 +943,50 @@ describe("CourseRenderer3D", () => {
       expect(() => r.render(stateWithGhost, false)).not.toThrow();
     });
 
+    it("disables depth writes on every translucent ghost body part", () => {
+      const renderer = new CourseRenderer3D(makeHost(), "medium", "skierg");
+      const ghost = (renderer as unknown as { ghostGroup: THREE.Group }).ghostGroup;
+      let transparentMeshes = 0;
+      ghost.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if (!(material instanceof THREE.Material)) continue;
+          transparentMeshes++;
+          expect(material.transparent).toBe(true);
+          expect(material.depthWrite).toBe(false);
+          expect(material.opacity).toBeCloseTo(0.45, 8);
+        }
+      });
+      expect(transparentMeshes).toBeGreaterThan(0);
+
+      const live = (renderer as unknown as { liveBoat: THREE.Group }).liveBoat;
+      let liveMeshes = 0;
+      live.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if (!(material instanceof THREE.Material)) continue;
+          liveMeshes++;
+          expect(material.depthWrite).toBe(true);
+        }
+      });
+      expect(liveMeshes).toBeGreaterThan(0);
+      renderer.destroy();
+    });
+
     it("renders with dark theme without throwing", () => {
       const host = makeHost();
       const r = new CourseRenderer3D(host, "low", "rower");
       r.resize(800, 600);
       expect(() => r.render(makeRenderState(), false, "dark")).not.toThrow();
+      const torso = sceneObject(r, "rower-torso-shell") as THREE.Mesh<
+        THREE.BufferGeometry,
+        THREE.MeshStandardMaterial
+      >;
+      expect(torso.material.color.getHex()).toBe(Number.parseInt(COLORS_DARK.live.slice(1), 16));
+      expect(torso.material.emissive.getHex()).toBe(torso.material.color.getHex());
+      r.destroy();
     });
 
     it("recolors the sport-specific course surface on dark theme", () => {
@@ -749,6 +1030,110 @@ describe("CourseRenderer3D", () => {
       expect(Math.max(...distances.values())).toBeLessThan(6.65);
     });
 
+    it("parents non-shadowing athlete fill and rim lights to the chase camera", () => {
+      const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
+      const scene = getScene(renderer);
+      const { camera } = getCameraRig(renderer);
+      for (const name of ["camera-athlete-fill", "camera-athlete-rim"]) {
+        const light = scene.getObjectByName(name) as THREE.DirectionalLight;
+        expect(light).toBeInstanceOf(THREE.DirectionalLight);
+        expect(light.parent).toBe(camera);
+        expect(light.target.parent).toBe(camera);
+        expect(light.castShadow).toBe(false);
+      }
+      renderer.destroy();
+    });
+
+    it("bounds speed-aware lens breathing to the authored 42–44 degree range", () => {
+      let now = 0;
+      const nowSpy = vi.spyOn(globalThis.performance, "now").mockImplementation(() => now);
+      try {
+        const renderer = new CourseRenderer3D(makeHost(), "low", "bike");
+        renderer.resize(1140, 420);
+        renderer.render(makeSportState("bike", 0, 0), true);
+        for (let frame = 1; frame <= 40; frame++) {
+          now += 16;
+          renderer.render(makeSportState("bike", frame / 40, frame * 0.5), true);
+        }
+        const { camera } = getCameraRig(renderer);
+        expect(camera.fov).toBeGreaterThan(42);
+        expect(camera.fov).toBeLessThanOrEqual(44);
+        renderer.destroy();
+      } finally {
+        nowSpy.mockRestore();
+      }
+    });
+
+    it("keeps every athlete legible at the real desktop and mobile stage sizes", () => {
+      const feet = {
+        rower: "rower-foot-contact-left",
+        skierg: "skierg-foot-contact-left",
+        bike: "bike-foot-contact-left",
+      } as const;
+      const shoulders = {
+        rower: ["rower-shoulder-left", "rower-shoulder-right"],
+        skierg: ["skierg-shoulder-left", "skierg-shoulder-right"],
+        bike: ["bike-shoulder-left", "bike-shoulder-right"],
+      } as const;
+      const minimumDesktopHeight = { rower: 50, skierg: 120, bike: 95 } as const;
+      const minimumMobileHeight = { rower: 35, skierg: 82, bike: 70 } as const;
+
+      for (const [width, height] of [
+        [1140, 420],
+        [390, 360],
+      ] as const) {
+        for (const sport of ["rower", "skierg", "bike"] as const) {
+          const renderer = new CourseRenderer3D(makeHost(), "low", sport);
+          renderer.resize(width, height);
+          renderer.render(makeSportState(sport, 0.2, 0), false);
+          const { camera } = getCameraRig(renderer);
+          camera.updateMatrixWorld(true);
+          camera.updateProjectionMatrix();
+          const head = projectToPixels(renderer, "athlete:head", camera, width, height);
+          const foot = projectToPixels(renderer, feet[sport], camera, width, height);
+          const leftShoulder = projectToPixels(
+            renderer,
+            shoulders[sport][0],
+            camera,
+            width,
+            height,
+          );
+          const rightShoulder = projectToPixels(
+            renderer,
+            shoulders[sport][1],
+            camera,
+            width,
+            height,
+          );
+          const minimumHeight =
+            width >= 640 ? minimumDesktopHeight[sport] : minimumMobileHeight[sport];
+
+          for (const name of [feet[sport], shoulders[sport][0], shoulders[sport][1]]) {
+            const ndc = worldPosition(renderer, name).project(camera);
+            expect(Math.abs(ndc.x), `${sport} ${name} x at ${width}×${height}`).toBeLessThan(0.98);
+            expect(Math.abs(ndc.y), `${sport} ${name} y at ${width}×${height}`).toBeLessThan(0.98);
+            expect(ndc.z, `${sport} ${name} near at ${width}×${height}`).toBeGreaterThan(-1);
+            expect(ndc.z, `${sport} ${name} far at ${width}×${height}`).toBeLessThan(1);
+          }
+          const headNdc = worldPosition(renderer, "athlete:head").project(camera);
+          expect(Math.abs(headNdc.x), `${sport} head x at ${width}×${height}`).toBeLessThan(0.98);
+          expect(Math.abs(headNdc.y), `${sport} head y at ${width}×${height}`).toBeLessThan(0.98);
+          expect(headNdc.z, `${sport} head near at ${width}×${height}`).toBeGreaterThan(-1);
+          expect(headNdc.z, `${sport} head far at ${width}×${height}`).toBeLessThan(1);
+
+          expect(
+            Math.abs(head.y - foot.y),
+            `${sport} athlete height at ${width}×${height}`,
+          ).toBeGreaterThan(minimumHeight);
+          expect(
+            leftShoulder.distanceTo(rightShoulder),
+            `${sport} shoulder span at ${width}×${height}`,
+          ).toBeGreaterThan(width >= 640 ? 24 : 18);
+          renderer.destroy();
+        }
+      }
+    });
+
     it("pulls the camera back on narrow canvases", () => {
       const distances: number[] = [];
       for (const [width, height] of [
@@ -766,20 +1151,158 @@ describe("CourseRenderer3D", () => {
       expect(distances[1]).toBeGreaterThan(distances[0]);
     });
 
-    it("keeps the full RowErg oar span inside a portrait viewport", () => {
+    it("prioritizes the RowErg athlete and grip span in a portrait viewport", () => {
       const host = makeHost();
       const renderer = new CourseRenderer3D(host, "low", "rower");
-      renderer.resize(600, 800);
+      renderer.resize(390, 360);
       renderer.render(makeSportState("rower", 0.2, 0), false);
       const { camera } = getCameraRig(renderer);
       camera.updateMatrixWorld(true);
       camera.updateProjectionMatrix();
 
       for (const side of ["left", "right"]) {
-        const projected = worldPosition(renderer, `rower-blade-${side}`).project(camera);
-        expect(Math.abs(projected.x)).toBeLessThan(0.95);
+        for (const part of [`rower-hand-contact-${side}`, `rower-blade-${side}`]) {
+          const projected = worldPosition(renderer, part).project(camera);
+          expect(Math.abs(projected.x), `${part} horizontal clip`).toBeLessThan(0.98);
+          expect(Math.abs(projected.y), `${part} vertical clip`).toBeLessThan(0.98);
+          expect(projected.z, `${part} near clip`).toBeGreaterThan(-1);
+          expect(projected.z, `${part} far clip`).toBeLessThan(1);
+        }
       }
       renderer.destroy();
+    });
+
+    it("keeps both live and ghost athletes inside the real mobile comparison stage", () => {
+      const feet = {
+        rower: "rower-foot-contact-left",
+        skierg: "skierg-foot-contact-left",
+        bike: "bike-foot-contact-left",
+      } as const;
+
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        for (const progressGap of [60, 490, 500]) {
+          const renderer = new CourseRenderer3D(makeHost(), "low", sport);
+          renderer.resize(390, 390);
+          const state = makeSportState(sport, 0.2, 100);
+          renderer.render(
+            {
+              ...state,
+              // Exercise the ordinary comparison case plus near-opposite and
+              // exactly opposite positions, where average course tangents
+              // approach or reach zero on the one-kilometre visual loop.
+              ghost: {
+                distFrac: (100 + progressGap) / state.totalDistance,
+                pace: 121,
+                spm: state.frame.spm,
+                label: "PB",
+              },
+              ghostStrokePose: state.strokePose,
+            },
+            false,
+          );
+          const { camera } = getCameraRig(renderer);
+          const groups = renderer as unknown as {
+            liveBoat: THREE.Group;
+            ghostGroup: THREE.Group;
+          };
+          getScene(renderer).updateMatrixWorld(true);
+          camera.updateMatrixWorld(true);
+          camera.updateProjectionMatrix();
+
+          for (const [lane, group] of [
+            ["live", groups.liveBoat],
+            ["ghost", groups.ghostGroup],
+          ] as const) {
+            for (const name of ["athlete:head", feet[sport]]) {
+              const object = group.getObjectByName(name);
+              expect(object, `${sport} ${lane} ${name} at ${progressGap} m`).toBeDefined();
+              const projected = object!.getWorldPosition(new THREE.Vector3()).project(camera);
+              expect(
+                Math.abs(projected.x),
+                `${sport} ${lane} ${name} x at ${progressGap} m`,
+              ).toBeLessThan(0.98);
+              expect(
+                Math.abs(projected.y),
+                `${sport} ${lane} ${name} y at ${progressGap} m`,
+              ).toBeLessThan(0.98);
+              expect(
+                projected.z,
+                `${sport} ${lane} ${name} near at ${progressGap} m`,
+              ).toBeGreaterThan(-1);
+              expect(projected.z, `${sport} ${lane} ${name} far at ${progressGap} m`).toBeLessThan(
+                1,
+              );
+            }
+          }
+          renderer.destroy();
+        }
+      }
+    });
+
+    it("keeps the comparison camera heading continuous through half-lap tangent cancellation", () => {
+      const renderer = new CourseRenderer3D(makeHost(), "low", "rower");
+      renderer.resize(390, 390);
+      const state = makeSportState("rower", 0.2, 100);
+      const groups = renderer as unknown as {
+        liveBoat: THREE.Group;
+        ghostGroup: THREE.Group;
+      };
+      const heading = new THREE.Vector2();
+      const previousHeading = new THREE.Vector2();
+      let hasPrevious = false;
+      let maximumStep = 0;
+
+      for (let progressGap = 470; progressGap <= 530; progressGap++) {
+        renderer.render(
+          {
+            ...state,
+            ghost: {
+              distFrac: (100 + progressGap) / state.totalDistance,
+              pace: 121,
+              spm: state.frame.spm,
+              label: "PB",
+            },
+            ghostStrokePose: state.strokePose,
+          },
+          false,
+        );
+        const { chase } = getCameraRig(renderer);
+        const focusX = (groups.liveBoat.position.x + groups.ghostGroup.position.x) * 0.5;
+        const focusZ = (groups.liveBoat.position.z + groups.ghostGroup.position.z) * 0.5;
+        heading.set(chase.x - focusX, chase.z - focusZ).normalize();
+        if (hasPrevious) {
+          maximumStep = Math.max(
+            maximumStep,
+            Math.acos(THREE.MathUtils.clamp(previousHeading.dot(heading), -1, 1)),
+          );
+        }
+        previousHeading.copy(heading);
+        hasPrevious = true;
+      }
+
+      expect(maximumStep).toBeLessThan(THREE.MathUtils.degToRad(5));
+      renderer.destroy();
+    });
+
+    it("retains readable three-quarter shoulder separation under reduced motion", () => {
+      reducedMotion = true;
+      const shoulders = {
+        rower: ["rower-shoulder-left", "rower-shoulder-right"],
+        skierg: ["skierg-shoulder-left", "skierg-shoulder-right"],
+        bike: ["bike-shoulder-left", "bike-shoulder-right"],
+      } as const;
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        const renderer = new CourseRenderer3D(makeHost(), "low", sport);
+        renderer.resize(390, 360);
+        renderer.render(makeSportState(sport, 0.2), true);
+        const { camera } = getCameraRig(renderer);
+        camera.updateMatrixWorld(true);
+        const left = projectToPixels(renderer, shoulders[sport][0], camera, 390, 360);
+        const right = projectToPixels(renderer, shoulders[sport][1], camera, 390, 360);
+        expect(left.distanceTo(right), `${sport} reduced-motion shoulders`).toBeGreaterThan(18);
+        expect(camera.fov).toBe(42);
+        renderer.destroy();
+      }
     });
 
     it("updates paused camera framing when viewport and ghost layout change", () => {
@@ -849,6 +1372,34 @@ describe("CourseRenderer3D", () => {
   });
 
   describe("medium quality (default tier: spray, buoys, wake, displacement)", () => {
+    it("distance-samples a bounded transparent wake without opaque square cards", () => {
+      const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
+      renderer.resize(800, 600);
+      renderer.render(makeSportState("rower", 0.1, 10), true);
+      renderer.render(makeSportState("rower", 0.12, 10.05), true);
+      renderer.render(makeSportState("rower", 0.14, 11.2), true);
+      const wake = (
+        renderer as unknown as {
+          liveWake: {
+            segs: THREE.Mesh[];
+            mats: THREE.MeshBasicMaterial[];
+          };
+        }
+      ).liveWake;
+      const visible = wake.segs.filter((segment) => segment.visible);
+
+      expect(visible).toHaveLength(2);
+      expect(visible[0]?.geometry).toBeInstanceOf(THREE.CircleGeometry);
+      expect(Math.max(...visible.map((segment) => segment.scale.x))).toBeLessThanOrEqual(0.9);
+      for (const segment of visible) expect(segment.renderOrder).toBe(-1);
+      for (const material of wake.mats) {
+        expect(material.transparent).toBe(true);
+        expect(material.depthWrite).toBe(false);
+        expect(material.opacity).toBeLessThanOrEqual(0.22);
+      }
+      renderer.destroy();
+    });
+
     it("renders sequential playing frames across a stroke catch, with ghost, then destroys", () => {
       const host = makeHost();
       const r = new CourseRenderer3D(host, "medium", "rower");
