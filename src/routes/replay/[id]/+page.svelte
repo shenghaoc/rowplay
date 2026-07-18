@@ -1840,13 +1840,16 @@
 
 			<div class="reps">
 				{#each intervals.reps as r}
+					{@const barScale = repBarPct(r.pace) / 100}
 					<div class="rep" class:fastest={r.isFastest} class:slowest={r.isSlowest}>
 						<div class="repno mono">#{r.index + 1}</div>
 						<div class="repbarwrap">
-							<div class="repbar-clipper" style:width="{repBarPct(r.pace)}%" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : MACHINE_COLOR[detail.sport]}>
-								<div class="repbar"></div>
+							<div class="repbar-track">
+								<div class="repbar-clipper">
+									<div class="repbar" style:transform="scaleX({barScale})" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : MACHINE_COLOR[detail.sport]}></div>
+								</div>
+								<span class="repbarlabel mono" style:left="{repBarPct(r.pace)}%">{fmtPace(r.pace).replace('/500m', '')}</span>
 							</div>
-							<span class="repbarlabel mono">{fmtPace(r.pace).replace('/500m', '')}</span>
 						</div>
 						<div class="repmeta mono muted">
 							{fmtDistance(r.distance)} · {fmtTime(r.time, true)} · {r.spm} {sportTheme.cadenceUnit}
@@ -2767,31 +2770,37 @@
 	}
 	.repbarwrap {
 		position: relative;
-		display: flex;
-		align-items: center;
-		gap: var(--space-sm);
 		min-width: 0;
+	}
+	.repbar-track {
+		position: relative;
+		width: calc(100% - 5rem);
 	}
 	.repbar-clipper {
 		height: 1.4rem;
 		border-radius: var(--r-ctrl);
 		overflow: hidden;
-		min-width: 2px;
-		transition: width 0.3s ease;
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.repbar-clipper {
-			transition: none;
-		}
 	}
 	.repbar {
 		height: 100%;
 		width: 100%;
+		min-width: 2px;
+		transform-origin: left;
+		transition: transform 0.3s ease;
 	}
 	.repbarlabel {
+		position: absolute;
+		top: 50%;
+		margin-left: var(--space-sm);
+		transform: translateY(-50%);
 		font-weight: var(--fw-bold);
 		font-size: 0.9rem;
 		white-space: nowrap;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.repbar {
+			transition: none;
+		}
 	}
 	.repmeta {
 		font-size: 0.78rem;

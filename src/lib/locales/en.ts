@@ -365,7 +365,7 @@ The token is transmitted once over HTTPS and sealed into a protected, httpOnly b
 
 ## Can other people see my workouts?
 
-By default, no — your dashboard and replays are private. You can optionally publish a result to a leaderboard or share a replay link, but nothing is public unless you choose to make it so.
+No. Your dashboard and replays are private, and rowplay does not offer public sharing or leaderboards.
 
 ## Does rowplay change my Concept2 logbook?
 
@@ -816,7 +816,7 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
   },
   workoutList: {
     empty: "No workouts for this filter.",
-    windowed: "{n} workouts · showing most recent first",
+    windowed: "{n} workouts · virtualized for performance",
     filtersTitle: "Find workouts",
     matching: "{n} matching",
     clearFilters: "Clear filters",

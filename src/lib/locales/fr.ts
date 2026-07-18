@@ -825,7 +825,7 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
   },
   workoutList: {
     empty: "Aucune séance pour ce filtre.",
-    windowed: "{n} séances · plus récentes en premier",
+    windowed: "{n} séances · virtualisées pour les performances",
     filtersTitle: "Trouver des séances",
     matching: "{n} correspondance(s)",
     clearFilters: "Effacer les filtres",

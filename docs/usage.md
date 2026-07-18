@@ -104,7 +104,7 @@ modified.
 
 - **Replay a workout** — play/pause, scrub, 0.5×–8× speed, 2D/3D course views
   (3D uses WebGPU when available, with WebGL fallback), and keyboard shortcuts
-  (<kbd>Space</kbd> to play/pause, <kbd>←</kbd><kbd>→</kbd> to seek by ±2s)
+  (<kbd>Space</kbd> to play/pause, <kbd>←</kbd><kbd>→</kbd> to seek by ±10s)
   shown in the transport bar.
 
 The athlete animates from Concept2 stroke rows: the figure takes one stroke

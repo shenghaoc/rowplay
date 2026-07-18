@@ -817,7 +817,7 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
   },
   workoutList: {
     empty: "No hay entrenamientos con este filtro.",
-    windowed: "{n} entrenamientos · más recientes primero",
+    windowed: "{n} entrenamientos · virtualizados para mejorar el rendimiento",
     filtersTitle: "Buscar entrenamientos",
     matching: "{n} coincidencias",
     clearFilters: "Limpiar filtros",

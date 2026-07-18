@@ -823,7 +823,7 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
   },
   workoutList: {
     empty: "Keine Workouts für diesen Filter.",
-    windowed: "{n} Workouts · aktuellste zuerst",
+    windowed: "{n} Workouts · für bessere Leistung virtualisiert",
     filtersTitle: "Workouts finden",
     matching: "{n} Treffer",
     clearFilters: "Filter zurücksetzen",
