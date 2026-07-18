@@ -73,22 +73,22 @@ developer app and is not needed for the public BYOT deployment.
 
 All commands use **vp** (Vite+ CLI). `vp install` for clean CI installs.
 
-| Task               | Command                                                            |
-| ------------------ | ------------------------------------------------------------------ |
-| Install deps       | `vp install`                                                       |
-| Dev server         | `vp dev` (serves at `http://localhost:5173`)                       |
-| Format             | `vp run format` (write) / `vp run format:check` (check only)       |
-| Lint               | `vp lint` (fails on findings)                                      |
-| Type check         | `vp run typecheck` (`svelte-kit sync` + `svelte-check`)            |
-| Unit tests         | `vp test` (Vitest)                                                 |
-| Build              | `vp build` (outputs `.svelte-kit/cloudflare`)                      |
-| Full quality gate  | `vp check` (format:check + lint + typecheck + test + build)        |
-| Preview            | `vp run preview` (build + `wrangler dev`, real runtime)            |
-| Preview (wrangler) | `vp run preview:wrangler` (`wrangler dev` only, needs prior build) |
-| Deploy             | `vp run deploy` (build + `wrangler deploy`)                        |
-| Locales            | `vp run validate:locales` (after adding i18n keys)                 |
-| E2E (full)         | `vp run test:e2e` (all specs, Chromium desktop + mobile)           |
-| E2E (smoke)        | `vp run test:e2e:smoke` (smoke.spec.ts, Chromium desktop only)     |
+| Task               | Command                                                                      |
+| ------------------ | ---------------------------------------------------------------------------- |
+| Install deps       | `vp install`                                                                 |
+| Dev server         | `vp dev` (serves at `http://localhost:5173`)                                 |
+| Format             | `vp run format` (write) / `vp run format:check` (check only)                 |
+| Lint               | `vp lint` (fails on findings)                                                |
+| Type check         | `vp run typecheck` (`svelte-kit sync` + `svelte-check` + TS7 `tsc --noEmit`) |
+| Unit tests         | `vp test` (Vitest)                                                           |
+| Build              | `vp build` (outputs `.svelte-kit/cloudflare`)                                |
+| Full quality gate  | `vp check` (format:check + lint + typecheck + test + build)                  |
+| Preview            | `vp run preview` (build + `wrangler dev`, real runtime)                      |
+| Preview (wrangler) | `vp run preview:wrangler` (`wrangler dev` only, needs prior build)           |
+| Deploy             | `vp run deploy` (build + `wrangler deploy`)                                  |
+| Locales            | `vp run validate:locales` (after adding i18n keys)                           |
+| E2E (full)         | `vp run test:e2e` (all specs, Chromium desktop + mobile)                     |
+| E2E (smoke)        | `vp run test:e2e:smoke` (smoke.spec.ts, Chromium desktop only)               |
 
 ## Architecture (short)
 

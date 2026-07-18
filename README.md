@@ -299,7 +299,7 @@ Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
 | `vp run preview:wrangler`   | `wrangler dev` only — needs a prior `vp build`                    |
 | `vp run format`             | Format the repo; `vp run format:check` verifies only              |
 | `vp lint`                   | Lint; fails on findings                                           |
-| `vp run typecheck`          | `svelte-check` type checking                                      |
+| `vp run typecheck`          | `svelte-check` (TS 6 API) + `tsc --noEmit` (TS 7)                 |
 | `vp check`                  | Full quality gate: format:check + lint + typecheck + test + build |
 | `vp test`                   | Vitest unit tests (node environment)                              |
 | `vp run test:browser`       | Vitest Browser Mode — real-browser component/integration tests    |
