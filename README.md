@@ -68,6 +68,8 @@ account.
 - Canvas 2D and optional Three.js 3D renderers that share staged RowErg,
   SkiErg, and BikeErg kinematics, equipment contact targets, and sport-specific
   water, snow, and track surfaces
+- Lightweight procedural athletes with fixed-proportion articulated limbs,
+  shaped silhouettes, sport kit, and readable equipment contacts in both views
 - Progressive 3D fallback from WebGPU to WebGL, then to the stable 2D renderer
 - Live pace, rate, power, heart-rate, and synchronized telemetry charts
 - Personal ghost racing against a comparable past session or target pace

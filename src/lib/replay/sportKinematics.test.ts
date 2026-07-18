@@ -128,12 +128,17 @@ describe("sportKinematics", () => {
   });
 
   it("starts the drive smoothly without a joint snap at the catch", () => {
-    const driveFrac = poseAt("rower", 0).driveFrac;
+    const epsilon = 1e-5;
     const atCatch = solveRowerKinematics(poseAt("rower", 0));
-    const justAfter = solveRowerKinematics(poseAt("rower", driveFrac * 0.001));
-    // Cubic ease-out is continuous at t=0; a single 0.1% step of the drive
-    // window must stay well under a percent of full extension.
-    expect(justAfter.legExtension - atCatch.legExtension).toBeLessThan(0.01);
+    const justBefore = solveRowerKinematics(poseAt("rower", 1 - epsilon));
+    const justAfter = solveRowerKinematics(poseAt("rower", epsilon));
+    const incomingVelocity = (atCatch.legExtension - justBefore.legExtension) / epsilon;
+    const outgoingVelocity = (justAfter.legExtension - atCatch.legExtension) / epsilon;
+    // Both sides approach rest at the catch. This guards velocity continuity,
+    // not merely the positional continuity that a hard ease-out also passes.
+    expect(Math.abs(incomingVelocity)).toBeLessThan(0.02);
+    expect(Math.abs(outgoingVelocity)).toBeLessThan(0.02);
+    expect(Math.abs(outgoingVelocity - incomingVelocity)).toBeLessThan(0.02);
     expect(atCatch.legExtension).toBe(0);
     expect(atCatch.bodySwing).toBe(0);
     expect(atCatch.armDraw).toBe(0);
@@ -145,5 +150,23 @@ describe("sportKinematics", () => {
     expect(atFinish.legExtension).toBeGreaterThan(0.98);
     expect(atFinish.bodySwing).toBeGreaterThan(0.98);
     expect(atFinish.armDraw).toBeGreaterThan(0.98);
+  });
+
+  it("keeps articulated joint velocity continuous across the drive finish", () => {
+    const driveFrac = poseAt("rower", 0).driveFrac;
+    const epsilon = 1e-5;
+    const before = solveRowerKinematics(poseAt("rower", driveFrac - epsilon));
+    const atFinish = solveRowerKinematics(poseAt("rower", driveFrac));
+    const after = solveRowerKinematics(poseAt("rower", driveFrac + epsilon));
+
+    for (const joint of ["legExtension", "bodySwing", "armDraw"] as const) {
+      const incomingVelocity = (atFinish[joint] - before[joint]) / epsilon;
+      const outgoingVelocity = (after[joint] - atFinish[joint]) / epsilon;
+      expect(Math.abs(incomingVelocity), `${joint} incoming`).toBeLessThan(0.05);
+      expect(Math.abs(outgoingVelocity), `${joint} outgoing`).toBeLessThan(0.05);
+      expect(Math.abs(outgoingVelocity - incomingVelocity), `${joint} continuity`).toBeLessThan(
+        0.05,
+      );
+    }
   });
 });

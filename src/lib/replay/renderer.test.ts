@@ -2,7 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Sport } from "../types";
-import { COLORS_LIGHT, COLORS_DARK, CourseRenderer, type RenderState } from "./renderer";
+import {
+  ATHLETE_TOP_CLEARANCE_2D,
+  COLORS_DARK,
+  COLORS_LIGHT,
+  CourseRenderer,
+  poleAngleAtContact,
+  solveRigidOar2D,
+  type RenderState,
+  type RigidOar2D,
+} from "./renderer";
 import { MACHINE_HEX } from "./sports";
 import { buildStrokeTimeline, strokePoseAt } from "./strokeModel";
 
@@ -60,6 +69,53 @@ describe("race-card machine palette mirrors app.css", () => {
   });
 });
 
+describe("2D procedural athlete geometry", () => {
+  it("keeps the row handle, oarlock, shaft, and blade collinear", () => {
+    const oar: RigidOar2D = {
+      handleX: 0,
+      handleY: 0,
+      bladeRootX: 0,
+      bladeRootY: 0,
+      bladeTipX: 0,
+      bladeTipY: 0,
+    };
+    const lockX = 12;
+    const lockY = 7;
+    solveRigidOar2D(lockX, lockY, 1.17, 6.7, 13.3, 3.8, oar);
+
+    expect(Math.hypot(oar.handleX - lockX, oar.handleY - lockY)).toBeCloseTo(6.7, 8);
+    expect(Math.hypot(oar.bladeRootX - lockX, oar.bladeRootY - lockY)).toBeCloseTo(13.3, 8);
+    expect(Math.hypot(oar.bladeTipX - oar.bladeRootX, oar.bladeTipY - oar.bladeRootY)).toBeCloseTo(
+      3.8,
+      8,
+    );
+    const shaftX = oar.bladeRootX - oar.handleX;
+    const shaftY = oar.bladeRootY - oar.handleY;
+    const bladeX = oar.bladeTipX - oar.bladeRootX;
+    const bladeY = oar.bladeTipY - oar.bladeRootY;
+    expect(shaftX * bladeY - shaftY * bladeX).toBeCloseTo(0, 8);
+  });
+
+  it("reserves extra HUD clearance for the helmeted BikeErg silhouette", () => {
+    expect(ATHLETE_TOP_CLEARANCE_2D.bike).toBeGreaterThan(ATHLETE_TOP_CLEARANCE_2D.skierg);
+    expect(ATHLETE_TOP_CLEARANCE_2D.skierg).toBeGreaterThan(ATHLETE_TOP_CLEARANCE_2D.rower);
+    expect(ATHLETE_TOP_CLEARANCE_2D.bike).toBeGreaterThanOrEqual(35);
+  });
+
+  it("keeps a planted SkiErg pole on one continuous ground-contact branch", () => {
+    const handY = 94.6;
+    const groundY = 100;
+    const poleLength = 13.2;
+    const before = poleAngleAtContact(handY, groundY, poleLength, Math.PI / 2 - 1e-5, 1);
+    const after = poleAngleAtContact(handY, groundY, poleLength, Math.PI / 2 + 1e-5, 1);
+
+    expect(after - before).toBeCloseTo(0, 8);
+    expect(Math.cos(before)).toBeGreaterThan(0);
+    expect(handY + Math.sin(before) * poleLength).toBeCloseTo(groundY, 8);
+    expect(poleAngleAtContact(handY, groundY, poleLength, 2.1, 0)).toBe(2.1);
+  });
+});
+
 describe("CourseRenderer stroke pose input", () => {
   const origWindow = globalThis.window;
 
@@ -79,9 +135,11 @@ describe("CourseRenderer stroke pose input", () => {
   function makeCtx(): {
     ctx: CanvasRenderingContext2D;
     setLineDash: ReturnType<typeof vi.fn>;
+    styles: string[];
   } {
     const gradient = { addColorStop: vi.fn() };
     const setLineDash = vi.fn();
+    const styles: string[] = [];
     const target: Record<string, unknown> = {
       canvas: { width: 0, height: 0, style: {} },
       createLinearGradient: vi.fn().mockReturnValue(gradient),
@@ -95,8 +153,16 @@ describe("CourseRenderer stroke pose input", () => {
           if (!(prop in obj)) obj[prop] = vi.fn();
           return obj[prop];
         },
+        set(obj, prop: string, value) {
+          if ((prop === "fillStyle" || prop === "strokeStyle") && typeof value === "string") {
+            styles.push(value);
+          }
+          obj[prop] = value;
+          return true;
+        },
       }) as unknown as CanvasRenderingContext2D,
       setLineDash,
+      styles,
     };
   }
 
@@ -181,6 +247,52 @@ describe("CourseRenderer stroke pose input", () => {
     },
   );
 
+  it.each(["rower", "skierg", "bike"] as const)(
+    "models %s with near/far anatomy and semantic kit colours",
+    (sport) => {
+      const { ctx, styles } = makeCtx();
+      const canvas = {
+        getContext: (kind: string) => (kind === "2d" ? ctx : null),
+      } as unknown as HTMLCanvasElement;
+      const renderer = new CourseRenderer(canvas);
+      renderer.resize(640, 180);
+      const testRenderer = renderer as unknown as {
+        drawAvatar(options: Record<string, unknown>): void;
+        liveSplash: unknown;
+      };
+      const state = makeState(sport, false);
+
+      testRenderer.drawAvatar({
+        x: 200,
+        y: 100,
+        accent: COLORS_LIGHT.live,
+        phase: state.strokePose.phase,
+        meters: state.frame.d,
+        pose: state.strokePose,
+        spm: state.frame.spm,
+        isYou: true,
+        sport,
+        label: sport,
+        splash: testRenderer.liveSplash,
+      });
+
+      expect(styles.filter((style) => style === COLORS_LIGHT.skin).length).toBeGreaterThanOrEqual(
+        2,
+      );
+      expect(
+        styles.filter((style) => style === COLORS_LIGHT.skinShade).length,
+      ).toBeGreaterThanOrEqual(2);
+      expect(styles).toContain(COLORS_LIGHT.hair);
+      expect(styles).toContain(COLORS_LIGHT.shoe);
+      expect(
+        (ctx.ellipse as unknown as ReturnType<typeof vi.fn>).mock.calls.length,
+      ).toBeGreaterThan(1);
+      expect(
+        (ctx.quadraticCurveTo as unknown as ReturnType<typeof vi.fn>).mock.calls.length,
+      ).toBeGreaterThanOrEqual(6);
+    },
+  );
+
   it("emits catch particles at the solved row blade and ski basket sides", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.5);
     const avatarX = 58 + (640 - 30 - 58) * 0.1;
@@ -256,17 +368,32 @@ describe("CourseRenderer stroke pose input", () => {
       label: "bike",
       splash: testRenderer.liveSplash,
     };
+    const wheelCenters = [
+      [191.5, 94.6],
+      [208.5, 94.6],
+    ] as const;
+    const spokeEndpoints = () =>
+      copiedCalls(ctx, "lineTo")
+        .filter((call) => {
+          const px = call[0] as number;
+          const py = call[1] as number;
+          return wheelCenters.some(
+            ([cx, cy]) => Math.abs(Math.hypot(px - cx, py - cy) - 5.4) < 1e-6,
+          );
+        })
+        .map((call) => [call[0], call[1]]);
 
     testRenderer.drawAvatar(base);
-    const sameDistanceA = copiedCalls(ctx, "lineTo").slice(0, 8);
+    const sameDistanceA = spokeEndpoints();
+    expect(sameDistanceA).toHaveLength(8);
     (ctx.lineTo as unknown as ReturnType<typeof vi.fn>).mockClear();
     testRenderer.drawAvatar({ ...base, phase: poseB.phase, pose: poseB, spm: 95 });
-    const sameDistanceB = copiedCalls(ctx, "lineTo").slice(0, 8);
+    const sameDistanceB = spokeEndpoints();
     expect(sameDistanceB).toEqual(sameDistanceA);
 
     (ctx.lineTo as unknown as ReturnType<typeof vi.fn>).mockClear();
     testRenderer.drawAvatar({ ...base, meters: 18 });
-    const fartherDistance = copiedCalls(ctx, "lineTo").slice(0, 8);
+    const fartherDistance = spokeEndpoints();
     expect(fartherDistance).not.toEqual(sameDistanceA);
   });
 

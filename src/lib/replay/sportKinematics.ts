@@ -48,10 +48,21 @@ function smoothstep(value: number): number {
   return x * x * (3 - 2 * x);
 }
 
-/** Ease-out cubic: fast commitment into the drive, soft finish. */
+/** Ease-out cubic for contact accents that may commit sharply. */
 function easeOutCubic(value: number): number {
   const x = clamp01(value);
   return 1 - (1 - x) ** 3;
+}
+
+/**
+ * Front-loaded but C1-continuous drive curve for articulated joints.  Feeding
+ * an ease-out quadratic through smoothstep gives the stroke early intent while
+ * retaining zero velocity at both ends; a plain ease-out cubic snapped from a
+ * stationary recovery into non-zero joint velocity at the catch.
+ */
+function athleticDrive(value: number): number {
+  const x = clamp01(value);
+  return smoothstep(x * (2 - x));
 }
 
 /** Ease-in-out cubic for recovery: controlled, unhurried return. */
@@ -104,9 +115,9 @@ export function solveRowerKinematics(
   if (pose.drive) {
     const p = pose.driveProgress;
     // Legs commit first and hard; body opens through mid-drive; arms finish.
-    legExtension = stage(p, 0, 0.55, easeOutCubic);
-    bodySwing = stage(p, 0.18, 0.78, easeOutCubic);
-    armDraw = stage(p, 0.48, 1, easeOutCubic);
+    legExtension = stage(p, 0, 0.55, athleticDrive);
+    bodySwing = stage(p, 0.18, 0.78, athleticDrive);
+    armDraw = stage(p, 0.48, 1, athleticDrive);
     // Blade buries immediately at the catch and extracts late in the drive.
     bladeDepth = stage(p, 0, 0.06, easeOutCubic) * (1 - stage(p, 0.82, 1, smoothstep));
     bladeFeather = 0;
@@ -156,9 +167,9 @@ export function solveSkierKinematics(
 
   if (pose.drive) {
     const p = pose.driveProgress;
-    armPress = stage(p, 0, 0.72, easeOutCubic);
-    hipHinge = stage(p, 0.04, 0.7, easeOutCubic);
-    kneeFlex = stage(p, 0.12, 0.8, easeOutCubic);
+    armPress = stage(p, 0, 0.72, athleticDrive);
+    hipHinge = stage(p, 0.04, 0.7, athleticDrive);
+    kneeFlex = stage(p, 0.12, 0.8, athleticDrive);
     // Plant is brief and decisive; poles stay loaded through most of the pull.
     poleContact = stage(p, 0, 0.05, easeOutCubic) * (1 - stage(p, 0.78, 1, smoothstep));
     poleSweep = stage(p, 0.02, 0.95, easeOutCubic);

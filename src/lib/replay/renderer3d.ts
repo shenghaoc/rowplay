@@ -14,6 +14,7 @@ import {
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import { METERS_PER_CYCLE, ParticlePool, PerfGovernor, clampDt, dampFactor } from "./motion";
+import { solveTwoBone3D, type FigurePoint3 } from "./figurePose";
 
 // Resolve lazily because this module is also imported during SSR. The returned
 // MediaQueryList stays live as the OS preference changes, while avoiding a new
@@ -243,6 +244,14 @@ interface Avatar {
   ): AvatarMotionCues;
 }
 
+interface AvatarPlacement {
+  x: number;
+  z: number;
+  tx: number;
+  tz: number;
+  y: number;
+}
+
 /** Per-sport scene + animation tuning. */
 interface SportProfile {
   /** Displace the ground plane into rolling water. */
@@ -348,6 +357,38 @@ function ellipsoid(
   return mesh;
 }
 
+/**
+ * A compact procedural torso with a visible waist, rib cage and shoulder taper.
+ * The old scaled sphere read as a featureless egg from the chase camera.  The
+ * lathed profile keeps the low-poly budget while producing a recognisably
+ * human silhouette from front, side and rear views.
+ */
+function shapedTorso(
+  halfWidth: number,
+  height: number,
+  halfDepth: number,
+  material: THREE.Material,
+  segments = 12,
+): THREE.Mesh {
+  const profile = [
+    new THREE.Vector2(0.66, -0.5),
+    new THREE.Vector2(0.76, -0.42),
+    new THREE.Vector2(0.68, -0.18),
+    new THREE.Vector2(0.82, 0.08),
+    new THREE.Vector2(1, 0.34),
+    new THREE.Vector2(0.78, 0.5),
+  ];
+  const geometry = new THREE.LatheGeometry(profile, segments);
+  geometry.computeVertexNormals();
+  const torso = new THREE.Mesh(geometry, material);
+  torso.scale.set(halfWidth, height, halfDepth);
+  return torso;
+}
+
+function jointCap(radius: number, material: THREE.Material, segments = 8): THREE.Mesh {
+  return ellipsoid([radius * 1.06, radius, radius], material, segments);
+}
+
 function capsulePart(
   radius: number,
   length: number,
@@ -363,38 +404,39 @@ function capsulePart(
   return mesh;
 }
 
-function limbSegment(
-  length: number,
-  radius: number,
-  material: THREE.Material,
-  axis: "x" | "y" | "z" = "z",
-): THREE.Mesh {
-  const mesh = capsulePart(radius, length, material, axis);
-  if (axis === "x") mesh.position.x = length / 2;
-  else if (axis === "z") mesh.position.z = length / 2;
-  else mesh.position.y = -length / 2;
-  return mesh;
-}
-
-type Point3 = readonly [number, number, number];
-
 const SEGMENT_FORWARD = new THREE.Vector3(0, 0, 1);
 const SEGMENT_DIR = new THREE.Vector3();
 
-function placeSegmentBetween(segment: THREE.Object3D, start: Point3, end: Point3): void {
-  const dx = end[0] - start[0];
-  const dy = end[1] - start[1];
-  const dz = end[2] - start[2];
+function placeSegmentCoordinates(
+  segment: THREE.Object3D,
+  startX: number,
+  startY: number,
+  startZ: number,
+  endX: number,
+  endY: number,
+  endZ: number,
+): void {
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const dz = endZ - startZ;
   const length = Math.hypot(dx, dy, dz);
   if (length < 0.001) {
     segment.visible = false;
     return;
   }
   segment.visible = true;
-  segment.position.set((start[0] + end[0]) / 2, (start[1] + end[1]) / 2, (start[2] + end[2]) / 2);
+  segment.position.set((startX + endX) / 2, (startY + endY) / 2, (startZ + endZ) / 2);
   segment.scale.set(1, 1, length);
   SEGMENT_DIR.set(dx / length, dy / length, dz / length);
   segment.quaternion.setFromUnitVectors(SEGMENT_FORWARD, SEGMENT_DIR);
+}
+
+function placeFigureSegmentBetween(
+  segment: THREE.Object3D,
+  start: FigurePoint3,
+  end: FigurePoint3,
+): void {
+  placeSegmentCoordinates(segment, start.x, start.y, start.z, end.x, end.y, end.z);
 }
 
 // ── Upgraded avatar body helpers ─────────────────────────────────────────────
@@ -437,22 +479,24 @@ function taperedLimb(
 }
 
 /**
- * A hand mesh: palm ellipsoid with four fingers and a thumb.
+ * A hand mesh shaped around a grip.  One finger roll reads more clearly than
+ * four sub-pixel fingers and saves three meshes per hand.  The thumb is
+ * mirrored so paired hands no longer look cloned.
  */
-function makeHand(material: THREE.Material, segments = 8): THREE.Group {
+function makeHand(material: THREE.Material, side = 1, segments = 8): THREE.Group {
   const hand = new THREE.Group();
   hand.name = "athlete:hand";
   const palm = ellipsoid([0.04, 0.025, 0.05], material, segments);
   palm.name = "athlete:hand:palm";
   hand.add(palm);
-  for (let i = 0; i < 4; i++) {
-    const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.03, 2, 4), material);
-    finger.position.set((i - 1.5) * 0.012, 0, 0.04);
-    hand.add(finger);
-  }
-  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.01, 0.025, 2, 4), material);
-  thumb.position.set(-0.03, 0.005, 0.02);
-  thumb.rotation.z = 0.5;
+  const fingerRoll = capsulePart(0.013, 0.07, material, "x");
+  fingerRoll.name = "athlete:hand:fingers";
+  fingerRoll.position.set(0, -0.01, 0.035);
+  hand.add(fingerRoll);
+  const thumb = capsulePart(0.011, 0.04, material, "z");
+  thumb.name = "athlete:hand:thumb";
+  thumb.position.set(side * 0.034, 0.004, 0.006);
+  thumb.rotation.y = side * 0.42;
   hand.add(thumb);
   return hand;
 }
@@ -514,7 +558,13 @@ function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 1
  */
 function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const accentMat = () => accentMaterial(accent);
+  const laneMaterial = accentMaterial(accent);
+  const accentMat = () => laneMaterial;
+  const skinMaterial = humanMat(HUMAN_SKIN);
+  const hairMaterial = humanMat(HUMAN_HAIR);
+  const kitMaterial = humanMat(HUMAN_KIT);
+  const kitDarkMaterial = humanMat(HUMAN_KIT_DARK);
+  const shoeMaterial = humanMat(HUMAN_SHOE);
   const kinematics: RowerKinematics = {
     legExtension: 0,
     bodySwing: 0,
@@ -545,10 +595,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   stripe.position.y = 0.335;
   group.add(stripe);
 
-  const footPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.48, 0.05, 0.12),
-    humanMat(HUMAN_KIT_DARK),
-  );
+  const footPlate = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.05, 0.12), kitDarkMaterial);
   footPlate.name = "rower-footplate";
   footPlate.position.set(0, 0.34, 0.72);
   group.add(footPlate);
@@ -563,28 +610,45 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   // recorded stroke pose rather than as one rigid toy block.
   const rower = new THREE.Group();
   rower.name = "rower-athlete";
-  const hips = ellipsoid([0.24, 0.11, 0.16], humanMat(HUMAN_KIT_DARK));
+  const hips = ellipsoid([0.24, 0.12, 0.17], kitDarkMaterial);
   hips.name = "rower-hips";
-  hips.position.y = 0.38;
-  const torso = ellipsoid([0.25, 0.36, 0.16], humanMat(HUMAN_KIT));
+  hips.position.set(0, 0.38, -0.14);
+
+  // Pelvis-pivoted spine: torso, shoulders, neck and head now swing as one
+  // articulated chain instead of being translated as disconnected pieces.
+  const torso = new THREE.Group();
   torso.name = "rower-torso";
-  torso.position.set(0, 0.64, -0.02);
-  torso.rotation.x = -0.12;
+  torso.position.copy(hips.position);
+  const torsoShell = shapedTorso(0.25, 0.62, 0.16, kitMaterial, 14);
+  torsoShell.name = "rower-torso-shell";
+  torsoShell.position.y = 0.3;
   const bib = accentPart(ellipsoid([0.17, 0.24, 0.024], accentMat(), 12));
-  bib.position.set(0, 0.65, 0.15);
-  const shoulderLine = capsulePart(0.035, 0.58, humanMat(HUMAN_KIT_DARK), "x");
-  shoulderLine.position.set(0, 0.82, 0.02);
-  const neck = capsulePart(0.045, 0.13, humanMat(HUMAN_SKIN), "y");
-  neck.position.y = 0.94;
-  const headGroup = makeHead(humanMat(HUMAN_SKIN), humanMat(HUMAN_HAIR));
-  headGroup.position.set(0, 1.07, 0.04);
-  rower.add(hips, torso, bib, shoulderLine, neck, headGroup);
+  bib.name = "rower-jersey-front";
+  bib.position.set(0, 0.31, 0.155);
+  const backBib = accentPart(ellipsoid([0.18, 0.25, 0.022], accentMat(), 12));
+  backBib.name = "rower-jersey-back";
+  backBib.position.set(0, 0.31, -0.155);
+  const shoulderLine = capsulePart(0.04, 0.58, kitDarkMaterial, "x");
+  shoulderLine.position.set(0, 0.51, 0.015);
+  const neck = capsulePart(0.047, 0.13, skinMaterial, "y");
+  neck.position.set(0, 0.61, 0.015);
+  const headGroup = makeHead(skinMaterial, hairMaterial);
+  headGroup.position.set(0, 0.76, 0.025);
+  torso.add(torsoShell, bib, backBib, shoulderLine, neck, headGroup);
+  rower.add(hips, torso);
 
   const arms: Array<{
     side: number;
     upper: THREE.Mesh;
     forearm: THREE.Mesh;
     hand: THREE.Group;
+    shoulder: THREE.Mesh;
+    elbow: THREE.Mesh;
+    shoulderPoint: THREE.Vector3;
+    elbowPoint: THREE.Vector3;
+    handTarget: THREE.Vector3;
+    handPoint: THREE.Vector3;
+    bendHint: THREE.Vector3;
   }> = [];
   const legs: Array<{
     side: number;
@@ -592,23 +656,60 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     shin: THREE.Mesh;
     foot: THREE.Group;
     knee: THREE.Mesh;
+    hipPoint: THREE.Vector3;
+    kneePoint: THREE.Vector3;
+    footTarget: THREE.Vector3;
+    footPoint: THREE.Vector3;
+    bendHint: THREE.Vector3;
   }> = [];
   for (const side of [-1, 1]) {
     // Tapered leg segments — positioned per-frame by IK from hip to foot.
-    const thigh = taperedLimb(0.055, 0.042, humanMat(HUMAN_KIT_DARK));
-    const shin = taperedLimb(0.042, 0.032, humanMat(HUMAN_KIT_DARK));
-    const foot = makeFoot(humanMat(HUMAN_SHOE));
+    const thigh = taperedLimb(0.06, 0.044, kitDarkMaterial);
+    thigh.name = side < 0 ? "rower-thigh-left" : "rower-thigh-right";
+    const shin = taperedLimb(0.044, 0.032, kitDarkMaterial);
+    shin.name = side < 0 ? "rower-shin-left" : "rower-shin-right";
+    const foot = makeFoot(shoeMaterial);
     foot.name = side < 0 ? "rower-foot-contact-left" : "rower-foot-contact-right";
-    const knee = ellipsoid([0.065, 0.055, 0.065], humanMat(HUMAN_KIT_DARK), 10);
+    const knee = jointCap(0.062, kitDarkMaterial, 10);
+    knee.name = side < 0 ? "rower-knee-left" : "rower-knee-right";
     rower.add(thigh, shin, foot, knee);
-    legs.push({ side, thigh, shin, foot, knee });
+    legs.push({
+      side,
+      thigh,
+      shin,
+      foot,
+      knee,
+      hipPoint: new THREE.Vector3(),
+      kneePoint: new THREE.Vector3(),
+      footTarget: new THREE.Vector3(),
+      footPoint: new THREE.Vector3(),
+      bendHint: new THREE.Vector3(side * 0.08, 0.72, -0.34),
+    });
 
-    const upperArm = taperedLimb(0.04, 0.03, humanMat(HUMAN_SKIN));
-    const forearm = taperedLimb(0.03, 0.022, humanMat(HUMAN_SKIN));
-    const hand = makeHand(humanMat(HUMAN_SKIN));
+    const upperArm = taperedLimb(0.045, 0.034, skinMaterial);
+    upperArm.name = side < 0 ? "rower-upper-arm-left" : "rower-upper-arm-right";
+    const forearm = taperedLimb(0.034, 0.025, skinMaterial);
+    forearm.name = side < 0 ? "rower-forearm-left" : "rower-forearm-right";
+    const hand = makeHand(skinMaterial, side);
     hand.name = side < 0 ? "rower-hand-left" : "rower-hand-right";
-    rower.add(upperArm, forearm, hand);
-    arms.push({ side, upper: upperArm, forearm, hand });
+    const shoulder = jointCap(0.05, skinMaterial);
+    shoulder.name = side < 0 ? "rower-shoulder-left" : "rower-shoulder-right";
+    const elbow = jointCap(0.046, skinMaterial);
+    elbow.name = side < 0 ? "rower-elbow-left" : "rower-elbow-right";
+    rower.add(upperArm, forearm, hand, shoulder, elbow);
+    arms.push({
+      side,
+      upper: upperArm,
+      forearm,
+      hand,
+      shoulder,
+      elbow,
+      shoulderPoint: new THREE.Vector3(),
+      elbowPoint: new THREE.Vector3(),
+      handTarget: new THREE.Vector3(),
+      handPoint: new THREE.Vector3(),
+      bendHint: new THREE.Vector3(side * 0.7, -0.3, -0.24),
+    });
   }
   rower.position.z = -0.1;
   group.add(rower);
@@ -636,11 +737,11 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     oar.add(shaft);
     const grip = capsulePart(0.045, 0.34, humanMat(0x262c31), "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
-    grip.position.x = -side * 0.72;
+    grip.position.x = -side * 0.64;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    handleAnchor.position.x = -side * 0.82;
+    handleAnchor.position.x = -side * 0.72;
     oar.add(handleAnchor);
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
@@ -665,11 +766,15 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
 
   // Authored visual ranges. Channels from the solver are 0..1; these scales
   // turn them into a stroke that reads at a glance without leaving the hull.
-  const SEAT_TRAVEL = 0.62;
+  const SEAT_TRAVEL = 0.42;
+  const THIGH_LENGTH = 0.56;
+  const SHIN_LENGTH = 0.56;
+  const UPPER_ARM_LENGTH = 0.49;
+  const FOREARM_LENGTH = 0.48;
   const BODY_PITCH_CATCH = -0.52;
   const BODY_PITCH_FINISH = 0.22;
   const OAR_YAW_CATCH = -0.92;
-  const OAR_YAW_SPAN = 1.65;
+  const OAR_YAW_SPAN = 1.42;
   const BLADE_BURY = 0.16;
   const BLADE_DIP = 0.12;
 
@@ -678,7 +783,10 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       if (!arm) continue;
-      const shoulder: Point3 = [arm.side * 0.26, 0.79 - bodySwing * 0.04, 0.02 + bodySwing * 0.14];
+      arm.shoulderPoint
+        .set(arm.side * 0.27, 0.5, 0.015)
+        .applyQuaternion(torso.quaternion)
+        .add(torso.position);
       const oar = oars[i];
       if (!oar) continue;
       // Convert the oar-local grip endpoint into rower-local coordinates. Both
@@ -686,47 +794,53 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       // Three updates matrixWorld for the draw.
       handlePoint.copy(oar.handleAnchor.position).applyQuaternion(oar.group.quaternion);
       handlePoint.add(oar.group.position).sub(rower.position);
-      const handTarget: Point3 = [handlePoint.x, handlePoint.y, handlePoint.z];
-      // Elbow kicks out early in the drive and tucks as the arms finish.
-      const elbowKick = 0.1 - armDraw * 0.06;
-      const elbow: Point3 = [
-        arm.side * (0.28 + elbowKick),
-        (shoulder[1] + handTarget[1]) / 2 - 0.08 + armDraw * 0.03,
-        (shoulder[2] + handTarget[2]) / 2 - 0.08 + bodySwing * 0.04,
-      ];
-      placeSegmentBetween(arm.upper, shoulder, elbow);
-      placeSegmentBetween(arm.forearm, elbow, handTarget);
-      arm.hand.position.set(handTarget[0], handTarget[1], handTarget[2]);
+      arm.handTarget.copy(handlePoint);
+      arm.bendHint.set(arm.side * (0.7 - armDraw * 0.18), -0.3, -0.24 + bodySwing * 0.12);
+      solveTwoBone3D(
+        arm.shoulderPoint,
+        arm.handTarget,
+        UPPER_ARM_LENGTH,
+        FOREARM_LENGTH,
+        arm.bendHint,
+        arm.elbowPoint,
+        arm.handPoint,
+      );
+      arm.shoulder.position.copy(arm.shoulderPoint);
+      placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
+      placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
+      arm.elbow.position.copy(arm.elbowPoint);
+      arm.hand.position.copy(arm.handPoint);
+      arm.hand.quaternion.copy(oar.group.quaternion);
     }
   };
 
   const placeLegs = (legExtension: number): void => {
     for (const leg of legs) {
       // Hip is fixed relative to the rower group.
-      const hip: Point3 = [leg.side * 0.12, 0.38, -0.14];
+      leg.hipPoint.set(leg.side * 0.13, hips.position.y, hips.position.z);
       // The plate is in BOAT space, while these limbs live in the translating
       // rower group. Subtract the slide so the world foot contact stays fixed.
-      const footTarget: Point3 = [
-        leg.side * 0.12,
-        0.34 - rower.position.y,
-        0.72 - rower.position.z,
-      ];
-      // Catch: knees high and over the ankles. Finish: almost straight.
-      const knee: Point3 = [
-        leg.side * 0.14,
-        (hip[1] + footTarget[1]) / 2 + 0.22 - legExtension * 0.2,
-        (hip[2] + footTarget[2]) / 2 - 0.22 + legExtension * 0.2,
-      ];
-      placeSegmentBetween(leg.thigh, hip, knee);
-      placeSegmentBetween(leg.shin, knee, footTarget);
+      leg.footTarget.set(leg.side * 0.12, 0.34 - rower.position.y, 0.72 - rower.position.z);
+      leg.bendHint.set(leg.side * 0.08, 0.72 - legExtension * 0.1, -0.34);
+      solveTwoBone3D(
+        leg.hipPoint,
+        leg.footTarget,
+        THIGH_LENGTH,
+        SHIN_LENGTH,
+        leg.bendHint,
+        leg.kneePoint,
+        leg.footPoint,
+      );
+      placeFigureSegmentBetween(leg.thigh, leg.hipPoint, leg.kneePoint);
+      placeFigureSegmentBetween(leg.shin, leg.kneePoint, leg.footPoint);
       // makeFoot() is a fixed-size shoe, not a unit-length segment — running
       // it through placeSegmentBetween()'s 1×1×length scale would crush it to
       // a sliver. Place it directly at the heel/ankle with the shoe sole
       // pitched slightly downward into the stretcher.
-      leg.foot.position.set(footTarget[0], footTarget[1], footTarget[2]);
+      leg.foot.position.copy(leg.footPoint);
       leg.foot.rotation.set(-0.22, 0, 0);
       leg.foot.scale.set(1, 1, 1);
-      leg.knee.position.set(knee[0], knee[1], knee[2]);
+      leg.knee.position.copy(leg.kneePoint);
     }
   };
 
@@ -735,14 +849,8 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     // the whole rower group would also rotate the contact-locked feet and hands.
     const pitch = BODY_PITCH_CATCH + bodySwing * (BODY_PITCH_FINISH - BODY_PITCH_CATCH);
     torso.rotation.x = pitch;
-    torso.position.z = -0.08 + bodySwing * 0.16;
-    bib.rotation.x = pitch;
-    bib.position.z = 0.1 + bodySwing * 0.16;
-    shoulderLine.position.z = -0.02 + bodySwing * 0.16;
-    neck.position.z = -0.01 + bodySwing * 0.18;
-    headGroup.position.z = bodySwing * 0.2;
     // Slight head counter-tilt so the athlete looks down the course at catch.
-    headGroup.rotation.x = -0.08 + bodySwing * 0.12;
+    headGroup.rotation.x = -pitch * 0.18 - 0.03;
   };
 
   const placeOars = (
@@ -799,8 +907,15 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
  */
 function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const accentMat = () => accentMaterial(accent);
-  const neutralMat = (c: number) => humanMat(c);
+  const laneMaterial = accentMaterial(accent);
+  const accentMat = () => laneMaterial;
+  const skinMaterial = humanMat(HUMAN_SKIN);
+  const hairMaterial = humanMat(HUMAN_HAIR);
+  const kitMaterial = humanMat(HUMAN_KIT);
+  const kitDarkMaterial = humanMat(HUMAN_KIT_DARK);
+  const shoeMaterial = humanMat(HUMAN_SHOE);
+  const poleMaterial = humanMat(0xe7eef0);
+  const gripMaterial = humanMat(0x20242a);
   const kinematics: SkierKinematics = {
     armPress: 0,
     hipHinge: 0,
@@ -826,38 +941,66 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     group.add(tip);
   }
 
-  // Legs are planted; the upper body pivots from the hips for the crunch.
-  const legParts: Array<{ thigh: THREE.Group; shin: THREE.Group }> = [];
+  // Planted fixed-length legs solve from the moving pelvis to the boots.  The
+  // previous independently rotated capsules separated at the knee and changed
+  // length through the crunch.
+  const legParts: Array<{
+    side: number;
+    thigh: THREE.Mesh;
+    shin: THREE.Mesh;
+    knee: THREE.Mesh;
+    hipPoint: THREE.Vector3;
+    kneePoint: THREE.Vector3;
+    anklePoint: THREE.Vector3;
+    solvedAnkle: THREE.Vector3;
+    bendHint: THREE.Vector3;
+  }> = [];
   for (const side of [-1, 1]) {
-    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.34), neutralMat(HUMAN_SHOE));
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.34), shoeMaterial);
+    boot.name = side < 0 ? "skierg-foot-contact-left" : "skierg-foot-contact-right";
     boot.position.set(side * 0.18, 0.11, 0.18);
     group.add(boot);
 
-    const thigh = new THREE.Group();
-    thigh.position.set(side * 0.15, 0.72, 0.02);
-    thigh.add(limbSegment(0.46, 0.06, neutralMat(HUMAN_KIT_DARK), "y"));
-    const shin = new THREE.Group();
-    shin.position.set(side * 0.16, 0.38, 0.08);
-    shin.add(limbSegment(0.48, 0.052, neutralMat(HUMAN_KIT_DARK), "y"));
-    group.add(thigh, shin);
-    legParts.push({ thigh, shin });
+    const thigh = taperedLimb(0.062, 0.046, kitDarkMaterial);
+    thigh.name = side < 0 ? "skierg-thigh-left" : "skierg-thigh-right";
+    const shin = taperedLimb(0.046, 0.034, kitDarkMaterial);
+    shin.name = side < 0 ? "skierg-shin-left" : "skierg-shin-right";
+    const knee = jointCap(0.063, kitDarkMaterial, 10);
+    knee.name = side < 0 ? "skierg-knee-left" : "skierg-knee-right";
+    group.add(thigh, shin, knee);
+    legParts.push({
+      side,
+      thigh,
+      shin,
+      knee,
+      hipPoint: new THREE.Vector3(),
+      kneePoint: new THREE.Vector3(),
+      anklePoint: new THREE.Vector3(side * 0.18, 0.15, 0.18),
+      solvedAnkle: new THREE.Vector3(),
+      bendHint: new THREE.Vector3(side * 0.06, 0.08, 0.72),
+    });
   }
   const upper = new THREE.Group();
   upper.name = "skierg-upper";
-  upper.position.y = 0.7;
-  const hips = ellipsoid([0.24, 0.11, 0.16], neutralMat(HUMAN_KIT_DARK), 12);
-  hips.position.y = -0.02;
-  const torso = ellipsoid([0.25, 0.38, 0.16], neutralMat(HUMAN_KIT), 16);
+  upper.position.y = 0.72;
+  const hips = ellipsoid([0.24, 0.12, 0.17], kitDarkMaterial, 12);
+  hips.position.y = 0;
+  const torso = shapedTorso(0.25, 0.66, 0.16, kitMaterial, 14);
+  torso.name = "skierg-torso";
   torso.position.y = 0.31;
   const vest = accentPart(ellipsoid([0.17, 0.25, 0.024], accentMat(), 12));
+  vest.name = "skierg-jersey-front";
   vest.position.set(0, 0.33, 0.15);
-  const shoulderLine = capsulePart(0.035, 0.62, neutralMat(HUMAN_KIT_DARK), "x");
+  const backVest = accentPart(ellipsoid([0.18, 0.25, 0.022], accentMat(), 12));
+  backVest.name = "skierg-jersey-back";
+  backVest.position.set(0, 0.33, -0.155);
+  const shoulderLine = capsulePart(0.04, 0.6, kitDarkMaterial, "x");
   shoulderLine.position.y = 0.56;
-  const neck = capsulePart(0.045, 0.13, neutralMat(HUMAN_SKIN), "y");
+  const neck = capsulePart(0.047, 0.13, skinMaterial, "y");
   neck.position.y = 0.67;
-  const headGroup = makeHead(neutralMat(HUMAN_SKIN), neutralMat(HUMAN_HAIR));
+  const headGroup = makeHead(skinMaterial, hairMaterial);
   headGroup.position.set(0, 0.81, 0.03);
-  upper.add(hips, torso, vest, shoulderLine, neck, headGroup);
+  upper.add(hips, torso, vest, backVest, shoulderLine, neck, headGroup);
   // Arms are placed from shoulders to pole grips, so the hands stay on the
   // handles while the pole groups pivot from the same point.
   const arms: Array<{
@@ -865,14 +1008,35 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     upper: THREE.Mesh;
     forearm: THREE.Mesh;
     hand: THREE.Group;
+    elbow: THREE.Mesh;
+    shoulderPoint: THREE.Vector3;
+    elbowPoint: THREE.Vector3;
+    handTarget: THREE.Vector3;
+    handPoint: THREE.Vector3;
+    bendHint: THREE.Vector3;
   }> = [];
   for (const side of [-1, 1]) {
-    const upperArm = taperedLimb(0.04, 0.03, neutralMat(HUMAN_SKIN));
-    const forearm = taperedLimb(0.03, 0.022, neutralMat(HUMAN_SKIN));
-    const hand = makeHand(neutralMat(HUMAN_SKIN));
+    const upperArm = taperedLimb(0.044, 0.033, skinMaterial);
+    upperArm.name = side < 0 ? "skierg-upper-arm-left" : "skierg-upper-arm-right";
+    const forearm = taperedLimb(0.033, 0.024, skinMaterial);
+    forearm.name = side < 0 ? "skierg-forearm-left" : "skierg-forearm-right";
+    const hand = makeHand(skinMaterial, side);
     hand.name = side < 0 ? "skierg-hand-left" : "skierg-hand-right";
-    upper.add(upperArm, forearm, hand);
-    arms.push({ side, upper: upperArm, forearm, hand });
+    const elbow = jointCap(0.044, skinMaterial);
+    elbow.name = side < 0 ? "skierg-elbow-left" : "skierg-elbow-right";
+    upper.add(upperArm, forearm, hand, elbow);
+    arms.push({
+      side,
+      upper: upperArm,
+      forearm,
+      hand,
+      elbow,
+      shoulderPoint: new THREE.Vector3(side * 0.28, 0.53, 0.05),
+      elbowPoint: new THREE.Vector3(),
+      handTarget: new THREE.Vector3(),
+      handPoint: new THREE.Vector3(),
+      bendHint: new THREE.Vector3(side * 0.78, -0.22, 0.16),
+    });
   }
   group.add(upper);
 
@@ -889,8 +1053,9 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   for (const side of [-1, 1]) {
     const shaftGeo = new THREE.CylinderGeometry(0.02, 0.02, 1, 6);
     shaftGeo.rotateX(Math.PI / 2); // bake the unit pole onto +Z for endpoint placement
-    const shaft = new THREE.Mesh(shaftGeo, neutralMat(0xe7eef0));
-    const grip = capsulePart(0.022, 0.16, neutralMat(0x20242a), "x");
+    const shaft = new THREE.Mesh(shaftGeo, poleMaterial);
+    shaft.name = side < 0 ? "skierg-pole-shaft-left" : "skierg-pole-shaft-right";
+    const grip = capsulePart(0.022, 0.16, gripMaterial, "x");
     grip.name = side < 0 ? "skierg-pole-grip-left" : "skierg-pole-grip-right";
     const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.03, 8), accentMat());
     basket.name = side < 0 ? "skierg-pole-tip-left" : "skierg-pole-tip-right";
@@ -904,6 +1069,30 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const tipGroupPoint = new THREE.Vector3();
   const tipLocalPoint = new THREE.Vector3();
   const inverseUpper = new THREE.Quaternion();
+  const UPPER_ARM_LENGTH = 0.36;
+  const FOREARM_LENGTH = 0.34;
+  const THIGH_LENGTH = 0.4;
+  const SHIN_LENGTH = 0.39;
+  const POLE_LENGTH = 1.38;
+
+  const placeSkiLegs = (): void => {
+    for (const leg of legParts) {
+      leg.hipPoint.set(leg.side * 0.15, upper.position.y, 0.02);
+      solveTwoBone3D(
+        leg.hipPoint,
+        leg.anklePoint,
+        THIGH_LENGTH,
+        SHIN_LENGTH,
+        leg.bendHint,
+        leg.kneePoint,
+        leg.solvedAnkle,
+      );
+      placeFigureSegmentBetween(leg.thigh, leg.hipPoint, leg.kneePoint);
+      placeFigureSegmentBetween(leg.shin, leg.kneePoint, leg.solvedAnkle);
+      leg.knee.position.copy(leg.kneePoint);
+    }
+  };
+
   const placePoleArms = (
     armPress: number,
     poleContact: number,
@@ -913,34 +1102,61 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     // High reach at plant → deep press past the hips at the finish.
     const handY = 0.68 - armPress * 0.62;
     const handZ = 0.52 - armPress * 0.72;
+    inverseUpper.copy(upper.quaternion).invert();
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
-      const shoulder: Point3 = [arm.side * 0.28, 0.53, 0.05];
-      const handTarget: Point3 = [arm.side * 0.32, handY, handZ];
-      const elbow: Point3 = [
-        arm.side * 0.36,
-        (shoulder[1] + handTarget[1]) / 2 - 0.08,
-        (shoulder[2] + handTarget[2]) / 2 + 0.05 - armPress * 0.04,
-      ];
-      placeSegmentBetween(arm.upper, shoulder, elbow);
-      placeSegmentBetween(arm.forearm, elbow, handTarget);
-      arm.hand.position.set(handTarget[0], handTarget[1], handTarget[2]);
+      arm.handTarget.set(arm.side * 0.32, handY, handZ);
+      arm.bendHint.set(arm.side * (0.78 - armPress * 0.14), -0.22, 0.16);
+      solveTwoBone3D(
+        arm.shoulderPoint,
+        arm.handTarget,
+        UPPER_ARM_LENGTH,
+        FOREARM_LENGTH,
+        arm.bendHint,
+        arm.elbowPoint,
+        arm.handPoint,
+      );
+      placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
+      placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
+      arm.elbow.position.copy(arm.elbowPoint);
+      arm.hand.position.copy(arm.handPoint);
       const pole = poles[i];
       if (!pole) continue;
 
-      // Author the tip in avatar/ground space, then convert to the rotating
-      // upper-body local space used by the pole meshes. Contact reaches the
-      // snow only during the solver's plant window; otherwise the basket lifts.
+      // Resolve a rigid pole in avatar/ground space, then convert its tip to
+      // the rotating upper-body local space used by the meshes. The planted
+      // branch stays forward while loaded; after release it travels around the
+      // outside of the skier instead of flipping through the body.
+      tipGroupPoint.copy(arm.handPoint).applyQuaternion(upper.quaternion).add(upper.position);
+      const handGroupX = tipGroupPoint.x;
+      const handGroupY = tipGroupPoint.y;
+      const handGroupZ = tipGroupPoint.z;
       const liftedY = 0.28 + rebound * 0.16;
       const tipY = liftedY + (0.055 - liftedY) * poleContact;
-      tipGroupPoint.set(pole.side * 0.48, tipY, 1.15 - poleSweep * 1.85);
-      inverseUpper.copy(upper.quaternion).invert();
+      const vertical = Math.max(
+        -POLE_LENGTH * 0.999,
+        Math.min(POLE_LENGTH * 0.999, tipY - handGroupY),
+      );
+      const horizontal = Math.sqrt(Math.max(0, POLE_LENGTH * POLE_LENGTH - vertical * vertical));
+      const freeAngle = 0.25 + poleSweep * (Math.PI - 0.5);
+      const freeX = pole.side * Math.sin(freeAngle) * 0.18;
+      const freeZ = Math.cos(freeAngle);
+      let directionX = freeX + (pole.side * 0.12 - freeX) * poleContact;
+      let directionZ = freeZ + (1 - freeZ) * poleContact;
+      const directionLength = Math.max(1e-6, Math.hypot(directionX, directionZ));
+      directionX /= directionLength;
+      directionZ /= directionLength;
+      tipGroupPoint.set(
+        handGroupX + directionX * horizontal,
+        handGroupY + vertical,
+        handGroupZ + directionZ * horizontal,
+      );
       tipLocalPoint.copy(tipGroupPoint).sub(upper.position).applyQuaternion(inverseUpper);
-      const tipTarget: Point3 = [tipLocalPoint.x, tipLocalPoint.y, tipLocalPoint.z];
-      placeSegmentBetween(pole.shaft, handTarget, tipTarget);
-      pole.grip.position.set(handTarget[0], handTarget[1], handTarget[2]);
-      pole.basket.position.set(tipTarget[0], tipTarget[1], tipTarget[2]);
+      placeFigureSegmentBetween(pole.shaft, arm.handPoint, tipLocalPoint);
+      pole.grip.position.copy(arm.handPoint);
+      pole.basket.position.copy(tipLocalPoint);
       pole.tipAnchor.position.copy(pole.basket.position);
+      arm.hand.quaternion.copy(pole.shaft.quaternion);
     }
   };
 
@@ -949,13 +1165,10 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       ? REDUCED_REPLAY_POSES.skierg
       : (pose ?? fallbackStrokePose("skierg", phase));
     const motion = solveSkierKinematics(resolvedPose, kinematics);
-    upper.position.y = 0.7 + (reduce ? 0 : motion.rebound * 0.04);
+    upper.position.y = 0.72 - motion.kneeFlex * 0.12 + (reduce ? 0 : motion.rebound * 0.04);
     // Deep crunch through the pull so the double-pole reads at a glance.
     upper.rotation.x = 0.1 + motion.hipHinge * 0.72;
-    for (const leg of legParts) {
-      leg.thigh.rotation.x = 0.06 + motion.kneeFlex * 0.28;
-      leg.shin.rotation.x = -0.05 - motion.kneeFlex * 0.24;
-    }
+    placeSkiLegs();
     placePoleArms(motion.armPress, motion.poleContact, motion.poleSweep, motion.rebound);
     return reduce ? STATIC_AVATAR_MOTION : motion;
   };
@@ -971,8 +1184,14 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
  */
 function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const accentMat = () => accentMaterial(accent);
-  const neutralMat = (c: number, rough = 0.7) => humanMat(c, rough);
+  const laneMaterial = accentMaterial(accent);
+  const accentMat = () => laneMaterial;
+  const skinMaterial = humanMat(HUMAN_SKIN);
+  const hairMaterial = humanMat(HUMAN_HAIR);
+  const kitMaterial = humanMat(HUMAN_KIT);
+  const kitDarkMaterial = humanMat(HUMAN_KIT_DARK);
+  const shoeMaterial = humanMat(HUMAN_SHOE);
+  const equipmentMaterial = humanMat(0x20242a, 0.62);
   const kinematics: BikeKinematics = {
     crankAngle: 0,
     torsoSway: 0,
@@ -986,10 +1205,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   for (const z of [0.85, -0.85]) {
     const wheel = new THREE.Group();
     wheel.name = z > 0 ? "bike-wheel-front" : "bike-wheel-rear";
-    const tyre = new THREE.Mesh(
-      new THREE.TorusGeometry(wheelR, 0.06, 8, 16),
-      neutralMat(0x20242a, 0.6),
-    );
+    const tyre = new THREE.Mesh(new THREE.TorusGeometry(wheelR, 0.06, 8, 16), equipmentMaterial);
     tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
     wheel.add(tyre);
     // Crossed bright spokes make the spin legible at low poly.
@@ -1033,14 +1249,14 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   // Chain ring — a toroidal disc at the bottom bracket.
   const chainRing = new THREE.Mesh(
     new THREE.TorusGeometry(0.16, 0.018, 6, 18),
-    neutralMat(0x555555, 0.4),
+    humanMat(0x555555, 0.4),
   );
   chainRing.name = "bike-chain-ring";
   chainRing.rotation.y = Math.PI / 2;
   cranks.add(chainRing);
   const pedals: Array<{ side: number; crankY: number }> = [];
   for (const side of [-1, 1]) {
-    const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), neutralMat(0x20242a));
+    const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), equipmentMaterial);
     pedal.name = side < 0 ? "bike-pedal-left" : "bike-pedal-right";
     const crankY = side * 0.18;
     pedal.position.set(side * 0.1, crankY, 0);
@@ -1049,13 +1265,20 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   }
   group.add(cranks);
 
+  // The saddle closes the previously visible gap between the frame and the
+  // rider's pelvis, which was especially obvious from the chase camera.
+  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.34), equipmentMaterial);
+  saddle.name = "bike-saddle";
+  saddle.position.set(0, wheelR + 0.77, -0.4);
+  group.add(saddle);
+
   const handlebar = new THREE.Group();
   handlebar.name = "bike-handlebar";
-  const crossbar = capsulePart(0.026, 0.64, neutralMat(0x20242a), "x");
+  const crossbar = capsulePart(0.026, 0.64, equipmentMaterial, "x");
   handlebar.add(crossbar);
   const barContacts: Array<{ side: number; anchor: THREE.Object3D }> = [];
   for (const side of [-1, 1]) {
-    const grip = capsulePart(0.024, 0.22, neutralMat(0x20242a), "z");
+    const grip = capsulePart(0.024, 0.22, equipmentMaterial, "z");
     grip.name = side < 0 ? "bike-handlebar-grip-left" : "bike-handlebar-grip-right";
     grip.position.set(side * 0.28, -0.02, 0.04);
     grip.rotation.x = -0.3;
@@ -1072,40 +1295,76 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   // the lane accent, while limbs stay skin/kit coloured so the athlete does not
   // read as a single bright toy shape.
   const rider = new THREE.Group();
-  rider.position.set(0, wheelR + 0.5, -0.35);
-  const torso = ellipsoid([0.23, 0.34, 0.14], neutralMat(HUMAN_KIT), 16);
-  torso.rotation.x = 0.74; // aero tuck
-  torso.position.set(0, 0.28, 0.1);
+  rider.position.set(0, wheelR + 0.76, -0.38);
+  const pelvis = ellipsoid([0.22, 0.13, 0.17], kitDarkMaterial, 12);
+  pelvis.name = "bike-pelvis";
+  pelvis.position.set(0, 0.02, -0.01);
+  const torso = new THREE.Group();
+  torso.name = "bike-spine";
+  torso.position.set(0, 0.02, 0.01);
+  const torsoShell = shapedTorso(0.23, 0.6, 0.145, kitMaterial, 14);
+  torsoShell.name = "bike-torso";
+  torsoShell.position.set(0, 0.28, 0.04);
   const jerseyPanel = accentPart(ellipsoid([0.15, 0.22, 0.022], accentMat(), 12));
-  jerseyPanel.rotation.x = 0.74;
-  jerseyPanel.position.set(0, 0.31, 0.23);
-  const shoulderLine = capsulePart(0.032, 0.52, neutralMat(HUMAN_KIT_DARK), "x");
-  shoulderLine.position.set(0, 0.47, 0.18);
-  const neck = capsulePart(0.04, 0.11, neutralMat(HUMAN_SKIN), "y");
-  neck.position.set(0, 0.54, 0.26);
-  const headGroup = makeHead(neutralMat(HUMAN_SKIN), neutralMat(HUMAN_HAIR));
-  headGroup.position.set(0, 0.66, 0.33);
-  const helmet = accentPart(ellipsoid([0.108, 0.055, 0.1], accentMat(), 12));
-  helmet.position.set(0, 0.74, 0.31);
+  jerseyPanel.name = "bike-jersey-front";
+  jerseyPanel.position.set(0, 0.3, 0.145);
+  const backPanel = accentPart(ellipsoid([0.16, 0.22, 0.02], accentMat(), 12));
+  backPanel.name = "bike-jersey-back";
+  backPanel.position.set(0, 0.3, -0.14);
+  const shoulderLine = capsulePart(0.037, 0.54, kitDarkMaterial, "x");
+  shoulderLine.position.set(0, 0.48, 0.025);
+  const neck = capsulePart(0.043, 0.11, skinMaterial, "y");
+  neck.position.set(0, 0.58, 0.035);
+  const headGroup = makeHead(skinMaterial, hairMaterial);
+  headGroup.position.set(0, 0.71, 0.07);
+  // Parent the helmet to the head so sway and counter-rotation can never leave
+  // it floating above the rider.
+  const helmetGroup = new THREE.Group();
+  helmetGroup.name = "bike-helmet";
+  const helmetShell = accentPart(ellipsoid([0.108, 0.055, 0.1], accentMat(), 12));
+  helmetShell.name = "bike-helmet-shell";
+  helmetShell.position.set(0, 0.09, -0.005);
+  const helmetTail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.12), accentMat());
+  helmetTail.name = "bike-helmet-tail";
+  helmetTail.position.set(0, 0.075, -0.08);
+  helmetGroup.add(helmetShell, helmetTail);
+  headGroup.add(helmetGroup);
+  torso.add(torsoShell, jerseyPanel, backPanel, shoulderLine, neck, headGroup);
   const legs: Array<{
     side: number;
     crankY: number;
     thigh: THREE.Mesh;
     shin: THREE.Mesh;
     shoe: THREE.Group;
+    knee: THREE.Mesh;
+    hipPoint: THREE.Vector3;
+    kneePoint: THREE.Vector3;
+    pedalTarget: THREE.Vector3;
+    pedalPoint: THREE.Vector3;
+    bendHint: THREE.Vector3;
   }> = [];
   for (const side of [-1, 1]) {
-    const thigh = taperedLimb(0.052, 0.04, neutralMat(HUMAN_KIT_DARK));
-    const shin = taperedLimb(0.04, 0.03, neutralMat(HUMAN_SKIN));
-    const shoe = makeFoot(neutralMat(HUMAN_SHOE));
+    const thigh = taperedLimb(0.058, 0.043, kitDarkMaterial);
+    thigh.name = side < 0 ? "bike-thigh-left" : "bike-thigh-right";
+    const shin = taperedLimb(0.043, 0.032, skinMaterial);
+    shin.name = side < 0 ? "bike-shin-left" : "bike-shin-right";
+    const shoe = makeFoot(shoeMaterial);
     shoe.name = side < 0 ? "bike-foot-contact-left" : "bike-foot-contact-right";
-    rider.add(thigh, shin, shoe);
+    const knee = jointCap(0.06, kitDarkMaterial, 10);
+    knee.name = side < 0 ? "bike-knee-left" : "bike-knee-right";
+    rider.add(thigh, shin, shoe, knee);
     legs.push({
       side,
       crankY: pedals.find((p) => p.side === side)?.crankY ?? side * 0.18,
       thigh,
       shin,
       shoe,
+      knee,
+      hipPoint: new THREE.Vector3(),
+      kneePoint: new THREE.Vector3(),
+      pedalTarget: new THREE.Vector3(),
+      pedalPoint: new THREE.Vector3(),
+      bendHint: new THREE.Vector3(side * 0.08, 0.18, 0.72),
     });
   }
   // Arms from the shoulders down to the bars, fixed in the tuck.
@@ -1114,24 +1373,52 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     upper: THREE.Mesh;
     forearm: THREE.Mesh;
     hand: THREE.Group;
+    elbow: THREE.Mesh;
+    shoulderPoint: THREE.Vector3;
+    elbowPoint: THREE.Vector3;
+    handTarget: THREE.Vector3;
+    handPoint: THREE.Vector3;
+    bendHint: THREE.Vector3;
   }> = [];
   for (const side of [-1, 1]) {
-    const upperArm = taperedLimb(0.038, 0.03, neutralMat(HUMAN_SKIN));
-    const forearm = taperedLimb(0.03, 0.022, neutralMat(HUMAN_SKIN));
-    const hand = makeHand(neutralMat(HUMAN_SKIN));
+    const upperArm = taperedLimb(0.042, 0.032, skinMaterial);
+    upperArm.name = side < 0 ? "bike-upper-arm-left" : "bike-upper-arm-right";
+    const forearm = taperedLimb(0.032, 0.024, skinMaterial);
+    forearm.name = side < 0 ? "bike-forearm-left" : "bike-forearm-right";
+    const hand = makeHand(skinMaterial, side);
     hand.name = side < 0 ? "bike-hand-left" : "bike-hand-right";
-    rider.add(upperArm, forearm, hand);
-    arms.push({ side, upper: upperArm, forearm, hand });
+    const elbow = jointCap(0.043, skinMaterial);
+    elbow.name = side < 0 ? "bike-elbow-left" : "bike-elbow-right";
+    rider.add(upperArm, forearm, hand, elbow);
+    arms.push({
+      side,
+      upper: upperArm,
+      forearm,
+      hand,
+      elbow,
+      shoulderPoint: new THREE.Vector3(),
+      elbowPoint: new THREE.Vector3(),
+      handTarget: new THREE.Vector3(),
+      handPoint: new THREE.Vector3(),
+      bendHint: new THREE.Vector3(side * 0.72, -0.34, -0.2),
+    });
   }
-  rider.add(torso, jerseyPanel, shoulderLine, neck, headGroup, helmet);
+  rider.add(pelvis, torso);
   group.add(rider);
 
   const barPoint = new THREE.Vector3();
+  const UPPER_ARM_LENGTH = 0.37;
+  const FOREARM_LENGTH = 0.35;
+  const THIGH_LENGTH = 0.54;
+  const SHIN_LENGTH = 0.53;
   const placeBarArms = (): void => {
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       if (!arm) continue;
-      const shoulder: Point3 = [arm.side * 0.22, 0.47, 0.18];
+      arm.shoulderPoint
+        .set(arm.side * 0.22, 0.48, 0.025)
+        .applyQuaternion(torso.quaternion)
+        .add(torso.position);
       const contact = barContacts[i];
       if (!contact) continue;
       // Handlebar and rider share the avatar group. Convert the explicit grip
@@ -1141,41 +1428,50 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
         .applyQuaternion(handlebar.quaternion)
         .add(handlebar.position)
         .sub(rider.position);
-      const handTarget: Point3 = [barPoint.x, barPoint.y, barPoint.z];
-      const elbow: Point3 = [
-        arm.side * 0.26,
-        (shoulder[1] + handTarget[1]) / 2 - 0.02,
-        (shoulder[2] + handTarget[2]) / 2 - 0.02,
-      ];
-      placeSegmentBetween(arm.upper, shoulder, elbow);
-      placeSegmentBetween(arm.forearm, elbow, handTarget);
-      arm.hand.position.set(handTarget[0], handTarget[1], handTarget[2]);
+      arm.handTarget.copy(barPoint);
+      solveTwoBone3D(
+        arm.shoulderPoint,
+        arm.handTarget,
+        UPPER_ARM_LENGTH,
+        FOREARM_LENGTH,
+        arm.bendHint,
+        arm.elbowPoint,
+        arm.handPoint,
+      );
+      placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
+      placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
+      arm.elbow.position.copy(arm.elbowPoint);
+      arm.hand.position.copy(arm.handPoint);
       arm.hand.rotation.set(-0.28, 0, arm.side * 0.08);
     }
   };
-  placeBarArms();
 
   const placePedalLegs = (phase: number, anklePitchLeft: number, anklePitchRight: number): void => {
     for (const leg of legs) {
       // Foot stays exactly on the pedal mesh (crankY is the authored arm length).
       const pedalY = leg.crankY * Math.cos(phase);
       const pedalZ = leg.crankY * Math.sin(phase);
-      const foot: Point3 = [
+      leg.pedalTarget.set(
         leg.side * 0.1,
         cranks.position.y + pedalY - rider.position.y,
         cranks.position.z + pedalZ - rider.position.z,
-      ];
-      const hip: Point3 = [leg.side * 0.1, -0.02, 0.08];
+      );
+      leg.hipPoint.set(leg.side * 0.11, 0.02, -0.01);
       const extension = Math.sin(phase) * leg.side;
-      // Higher knee arc on the upstroke so the pedal circle reads clearly.
-      const knee: Point3 = [
-        leg.side * 0.13,
-        (hip[1] + foot[1]) / 2 + 0.18,
-        (hip[2] + foot[2]) / 2 - 0.12 * extension,
-      ];
-      placeSegmentBetween(leg.thigh, hip, knee);
-      placeSegmentBetween(leg.shin, knee, foot);
-      leg.shoe.position.set(foot[0], foot[1], foot[2]);
+      leg.bendHint.set(leg.side * 0.08, 0.18, 0.72 - extension * 0.1);
+      solveTwoBone3D(
+        leg.hipPoint,
+        leg.pedalTarget,
+        THIGH_LENGTH,
+        SHIN_LENGTH,
+        leg.bendHint,
+        leg.kneePoint,
+        leg.pedalPoint,
+      );
+      placeFigureSegmentBetween(leg.thigh, leg.hipPoint, leg.kneePoint);
+      placeFigureSegmentBetween(leg.shin, leg.kneePoint, leg.pedalPoint);
+      leg.knee.position.copy(leg.kneePoint);
+      leg.shoe.position.copy(leg.pedalPoint);
       // Ankling is deliberately restrained; feet stay planted on the pedals
       // instead of tumbling through a full revolution with the crank.
       leg.shoe.rotation.x = leg.side < 0 ? anklePitchLeft : anklePitchRight;
@@ -1185,12 +1481,11 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   const placeBikeTorso = (sway: number, hipRock: number): void => {
     rider.rotation.set(0, 0, 0); // keep hands/feet in equipment space
     torso.rotation.set(0.74 + hipRock, 0, sway);
-    jerseyPanel.rotation.set(0.74 + hipRock, 0, sway);
-    shoulderLine.rotation.z = sway * 0.7;
-    neck.position.x = sway * 0.32;
-    headGroup.position.x = sway * 0.42;
-    helmet.position.x = sway * 0.42;
+    headGroup.rotation.z = -sway * 0.22;
   };
+
+  placeBikeTorso(0, 0);
+  placeBarArms();
 
   const animate = (
     phase: number,
@@ -1206,8 +1501,8 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
       for (const w of wheels) w.rotation.x = 0;
       cranks.rotation.x = motion.crankAngle;
       placePedalLegs(motion.crankAngle, motion.anklePitchLeft, motion.anklePitchRight);
-      placeBarArms();
       placeBikeTorso(0, 0);
+      placeBarArms();
       return STATIC_AVATAR_MOTION;
     }
     // Wheel travel comes from distance, independent of cadence/gearing. Positive
@@ -1216,8 +1511,8 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     for (const w of wheels) w.rotation.x = wheelAngle;
     cranks.rotation.x = motion.crankAngle;
     placePedalLegs(motion.crankAngle, motion.anklePitchLeft, motion.anklePitchRight);
-    placeBarArms();
     placeBikeTorso(motion.torsoSway, motion.hipRock);
+    placeBarArms();
     return STATIC_AVATAR_MOTION;
   };
 
@@ -1406,6 +1701,8 @@ export class CourseRenderer3D implements ReplayRenderer {
   private lastGhostPose: StrokePose | null = null;
   private lastLiveMeters = 0;
   private lastGhostMeters = 0;
+  private readonly livePlacement: AvatarPlacement = { x: 0, z: 0, tx: 0, tz: 0, y: 0 };
+  private readonly ghostPlacement: AvatarPlacement = { x: 0, z: 0, tx: 0, tz: 0, y: 0 };
   private lastNowMs = NaN;
   /** Replay-space speed (m/s), smoothed; breathes the chase-camera FOV. */
   private smoothedSpeed = 0;
@@ -2053,7 +2350,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     meters: number,
     cadence: number,
     pose: StrokePose,
-  ): { x: number; z: number; tx: number; tz: number; y: number } {
+    output: AvatarPlacement,
+  ): AvatarPlacement {
     const a = this.loopAngle(meters);
     const sin = Math.sin(a);
     const cos = Math.cos(a);
@@ -2078,7 +2376,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       reduce || this.profile.surgeAmp === 0 ? 0 : motion.surge * this.profile.surgeAmp;
     avatar.group.rotation.z =
       reduce || !this.profile.roll ? 0 : Math.sin(this.animPhase + cadence * 0.05) * 0.05;
-    return { x, z, tx, tz, y: bob };
+    output.x = x;
+    output.z = z;
+    output.tx = tx;
+    output.tz = tz;
+    output.y = bob;
+    return output;
   }
 
   render(state: RenderState, playing: boolean, themeName: "light" | "dark" = "light"): void {
@@ -2158,6 +2461,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       liveMeters,
       state.frame.spm,
       livePose,
+      this.livePlacement,
     );
 
     this.advanceWake(this.liveWake, dLive, p.x - p.tx * 1.6, p.z - p.tz * 1.6);
@@ -2233,6 +2537,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         ghostMeters,
         state.ghost.spm,
         ghostPose as StrokePose,
+        this.ghostPlacement,
       );
       this.advanceWake(this.ghostWake, dGhost, gp.x - gp.tx * 1.6, gp.z - gp.tz * 1.6);
       const ghostText = `${state.ghost.label || "PB"} · ${Math.round(state.ghost.distFrac * 100)}%`;

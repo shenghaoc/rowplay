@@ -203,14 +203,24 @@ describe("CourseRenderer3D", () => {
         "rower-handle-right",
         "rower-footplate",
         "athlete:head",
+        "rower-torso-shell",
+        "rower-jersey-back",
+        "rower-shoulder-left",
+        "rower-elbow-left",
+        "rower-knee-left",
         "rower-hand-left",
         "rower-foot-contact-left",
       ],
       skierg: [
         "skierg-ski-tip",
         "skierg-pole-grip-left",
+        "skierg-pole-shaft-left",
         "skierg-pole-contact-left",
         "athlete:head",
+        "skierg-torso",
+        "skierg-jersey-back",
+        "skierg-elbow-left",
+        "skierg-knee-left",
         "skierg-hand-left",
       ],
       bike: [
@@ -219,6 +229,12 @@ describe("CourseRenderer3D", () => {
         "bike-handlebar",
         "bike-pedal-left",
         "bike-wheel-front",
+        "bike-saddle",
+        "bike-pelvis",
+        "bike-jersey-back",
+        "bike-elbow-left",
+        "bike-knee-left",
+        "bike-helmet",
         "athlete:head",
         "bike-hand-left",
         "bike-hand-contact-left",
@@ -240,6 +256,31 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  it("keeps procedural torso depth within human-scale silhouette bounds", () => {
+    const expected = {
+      rower: ["rower-torso-shell", 0.25, 0.62, 0.16],
+      skierg: ["skierg-torso", 0.25, 0.66, 0.16],
+      bike: ["bike-torso", 0.23, 0.6, 0.145],
+    } as const;
+
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const renderer = new CourseRenderer3D(makeHost(), "low", sport);
+      const [name, width, height, depth] = expected[sport];
+      const torso = sceneObject(renderer, name) as THREE.Mesh<THREE.BufferGeometry>;
+      torso.geometry.computeBoundingBox();
+      const bounds = torso.geometry.boundingBox?.getSize(new THREE.Vector3());
+
+      expect(torso.scale.toArray()).toEqual([width, height, depth]);
+      expect(bounds).toBeDefined();
+      if (bounds) {
+        bounds.multiply(torso.scale);
+        expect(bounds.z).toBeLessThan(bounds.x * 0.8);
+        expect(bounds.y).toBeGreaterThan(bounds.x);
+      }
+      renderer.destroy();
+    }
+  });
+
   it("locks RowErg hands to the oar grips and feet to the boat through the full stroke", () => {
     const host = makeHost();
     const renderer = new CourseRenderer3D(host, "medium", "rower");
@@ -248,11 +289,10 @@ describe("CourseRenderer3D", () => {
     for (const cycle of [0.01, 0.12, 0.19, 0.37, 0.5, 0.69, 0.9, 0.99]) {
       renderer.render(makeSportState("rower", cycle), false);
       for (const side of ["left", "right"]) {
-        expect(
-          worldPosition(renderer, `rower-hand-${side}`).distanceTo(
-            worldPosition(renderer, `rower-hand-contact-${side}`),
-          ),
-        ).toBeLessThan(1e-6);
+        const handError = worldPosition(renderer, `rower-hand-${side}`).distanceTo(
+          worldPosition(renderer, `rower-hand-contact-${side}`),
+        );
+        expect(handError).toBeLessThan(1e-6);
         expect(
           worldPosition(renderer, `rower-foot-contact-${side}`).distanceTo(
             worldPosition(renderer, `rower-footplate-contact-${side}`),
@@ -279,6 +319,104 @@ describe("CourseRenderer3D", () => {
 
     expect(finishSeparation - catchSeparation).toBeGreaterThan(0.35);
     renderer.destroy();
+  });
+
+  it("keeps every authored arm and leg segment fixed through 128 poses per sport", () => {
+    const expectedBones = {
+      rower: [
+        ["rower-upper-arm-left", 0.49],
+        ["rower-upper-arm-right", 0.49],
+        ["rower-forearm-left", 0.48],
+        ["rower-forearm-right", 0.48],
+        ["rower-thigh-left", 0.56],
+        ["rower-thigh-right", 0.56],
+        ["rower-shin-left", 0.56],
+        ["rower-shin-right", 0.56],
+      ],
+      skierg: [
+        ["skierg-pole-shaft-left", 1.38],
+        ["skierg-pole-shaft-right", 1.38],
+        ["skierg-upper-arm-left", 0.36],
+        ["skierg-upper-arm-right", 0.36],
+        ["skierg-forearm-left", 0.34],
+        ["skierg-forearm-right", 0.34],
+        ["skierg-thigh-left", 0.4],
+        ["skierg-thigh-right", 0.4],
+        ["skierg-shin-left", 0.39],
+        ["skierg-shin-right", 0.39],
+      ],
+      bike: [
+        ["bike-upper-arm-left", 0.37],
+        ["bike-upper-arm-right", 0.37],
+        ["bike-forearm-left", 0.35],
+        ["bike-forearm-right", 0.35],
+        ["bike-thigh-left", 0.54],
+        ["bike-thigh-right", 0.54],
+        ["bike-shin-left", 0.53],
+        ["bike-shin-right", 0.53],
+      ],
+    } as const;
+
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const renderer = new CourseRenderer3D(makeHost(), "low", sport);
+      renderer.resize(800, 600);
+      const sceneObjectsBefore: string[] = [];
+      getScene(renderer).traverse((object) => sceneObjectsBefore.push(object.uuid));
+      for (let step = 0; step < 128; step++) {
+        renderer.render(makeSportState(sport, step / 128), false);
+        for (const [name, expectedLength] of expectedBones[sport]) {
+          const bone = sceneObject(renderer, name);
+          expect(bone.scale.z, `${sport} ${name} at pose ${step}`).toBeCloseTo(expectedLength, 7);
+          for (const value of [
+            bone.position.x,
+            bone.position.y,
+            bone.position.z,
+            bone.quaternion.x,
+            bone.quaternion.y,
+            bone.quaternion.z,
+            bone.quaternion.w,
+          ]) {
+            expect(Number.isFinite(value)).toBe(true);
+          }
+        }
+        for (const side of ["left", "right"] as const) {
+          if (sport === "rower") {
+            expect(
+              worldPosition(renderer, `rower-hand-${side}`).distanceTo(
+                worldPosition(renderer, `rower-hand-contact-${side}`),
+              ),
+              `rower ${side} hand contact at pose ${step}`,
+            ).toBeLessThan(1e-6);
+            expect(
+              worldPosition(renderer, `rower-foot-contact-${side}`).distanceTo(
+                worldPosition(renderer, `rower-footplate-contact-${side}`),
+              ),
+            ).toBeLessThan(1e-6);
+          } else if (sport === "skierg") {
+            expect(
+              worldPosition(renderer, `skierg-hand-${side}`).distanceTo(
+                worldPosition(renderer, `skierg-pole-grip-${side}`),
+              ),
+            ).toBeLessThan(1e-6);
+          } else {
+            expect(
+              worldPosition(renderer, `bike-hand-${side}`).distanceTo(
+                worldPosition(renderer, `bike-hand-contact-${side}`),
+              ),
+            ).toBeLessThan(1e-6);
+            expect(
+              worldPosition(renderer, `bike-foot-contact-${side}`).distanceTo(
+                worldPosition(renderer, `bike-pedal-${side}`),
+              ),
+            ).toBeLessThan(1e-6);
+          }
+        }
+      }
+      const sceneObjectsAfter: string[] = [];
+      getScene(renderer).traverse((object) => sceneObjectsAfter.push(object.uuid));
+      expect(sceneObjectsAfter).toEqual(sceneObjectsBefore);
+      renderer.destroy();
+    }
   });
 
   it("buries, feathers, and re-squares RowErg blades continuously", () => {
@@ -365,7 +503,7 @@ describe("CourseRenderer3D", () => {
     const firstPose = sceneObject(renderer, "rower-athlete").position.clone();
     const expected = solveRowerKinematics(REDUCED_REPLAY_POSES.rower);
     expect(firstPose.y).toBe(0);
-    expect(firstPose.z).toBeCloseTo(0.18 - expected.legExtension * 0.62, 8);
+    expect(firstPose.z).toBeCloseTo(0.18 - expected.legExtension * 0.42, 8);
     expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(
       0.34 - expected.bladeDepth * 0.16,
       8,

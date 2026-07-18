@@ -2,6 +2,7 @@ import type { Frame } from "./engine";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import { ParticlePool, clampDt } from "./motion";
+import { solveTwoBone2D, type MutableFigurePoint2 } from "./figurePose";
 import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
 import {
   solveBikeKinematics,
@@ -55,6 +56,14 @@ interface CanvasColors {
   foam: string;
   /** Pod cast shadow base (rgba mix). */
   shadow: string;
+  /** Athlete skin, kept distinct from both live and ghost race-kit colours. */
+  skin: string;
+  /** Recessed/far-side skin used to preserve depth in the side silhouette. */
+  skinShade: string;
+  /** Hair and helmet-detail colour. */
+  hair: string;
+  /** Shoes, boots, and other contact-point footwear. */
+  shoe: string;
 }
 
 // Canvas can't read CSS custom properties, so these mirror app.css. The
@@ -81,6 +90,10 @@ export const COLORS_LIGHT: CanvasColors = {
   markerCap: "#9fb8c2",
   foam: "#ffffff",
   shadow: "#0f2a36",
+  skin: "#bb7053",
+  skinShade: "#8e4f3d",
+  hair: "#263840",
+  shoe: "#172a33",
 };
 
 export const COLORS_DARK: CanvasColors = {
@@ -103,6 +116,10 @@ export const COLORS_DARK: CanvasColors = {
   markerCap: "#3d505a",
   foam: "#bcd3dd",
   shadow: "#000000",
+  skin: "#e2a27f",
+  skinShade: "#ad6c54",
+  hair: "#78919c",
+  shoe: "#d9e4e8",
 };
 
 export interface AvatarState {
@@ -239,7 +256,93 @@ function streakLen(pace: number): number {
 // timing without collapsing the legs/body/arms order. `y` is the contact line;
 // `bobY` is the floating centre; reduced motion receives a representative pose.
 
-/** Rounded limb / strut segment. */
+const jointRootScratch: MutableFigurePoint2 = { x: 0, y: 0 };
+const jointTargetScratch: MutableFigurePoint2 = { x: 0, y: 0 };
+const jointEndScratch: MutableFigurePoint2 = { x: 0, y: 0 };
+
+/** Adapt scalar Canvas coordinates to the shared allocation-free figure solver. */
+function solveTwoBoneJoint2D(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  firstLength: number,
+  secondLength: number,
+  bendDirection: number,
+  out: MutableFigurePoint2,
+): MutableFigurePoint2 {
+  jointRootScratch.x = startX;
+  jointRootScratch.y = startY;
+  jointTargetScratch.x = endX;
+  jointTargetScratch.y = endY;
+  return solveTwoBone2D(
+    jointRootScratch,
+    jointTargetScratch,
+    firstLength,
+    secondLength,
+    bendDirection,
+    out,
+    jointEndScratch,
+  );
+}
+
+export interface RigidOar2D {
+  handleX: number;
+  handleY: number;
+  bladeRootX: number;
+  bladeRootY: number;
+  bladeTipX: number;
+  bladeTipY: number;
+}
+
+/** Resolve one straight oar from handle through oarlock to blade tip. */
+export function solveRigidOar2D(
+  lockX: number,
+  lockY: number,
+  angle: number,
+  inboardLength: number,
+  outboardLength: number,
+  bladeLength: number,
+  out: RigidOar2D,
+): RigidOar2D {
+  const ux = Math.cos(angle);
+  const uy = Math.sin(angle);
+  out.handleX = lockX - ux * inboardLength;
+  out.handleY = lockY - uy * inboardLength;
+  out.bladeRootX = lockX + ux * outboardLength;
+  out.bladeRootY = lockY + uy * outboardLength;
+  out.bladeTipX = out.bladeRootX + ux * bladeLength;
+  out.bladeTipY = out.bladeRootY + uy * bladeLength;
+  return out;
+}
+
+/** Approximate scaled silhouette height above the contact line for HUD clearance. */
+export const ATHLETE_TOP_CLEARANCE_2D: Readonly<Record<Sport, number>> = {
+  rower: 27,
+  skierg: 31,
+  bike: 35,
+};
+
+const jointScratchA: MutableFigurePoint2 = { x: 0, y: 0 };
+const jointScratchB: MutableFigurePoint2 = { x: 0, y: 0 };
+const rowOarNear: RigidOar2D = {
+  handleX: 0,
+  handleY: 0,
+  bladeRootX: 0,
+  bladeRootY: 0,
+  bladeTipX: 0,
+  bladeTipY: 0,
+};
+const rowOarFar: RigidOar2D = {
+  handleX: 0,
+  handleY: 0,
+  bladeRootX: 0,
+  bladeRootY: 0,
+  bladeTipX: 0,
+  bladeTipY: 0,
+};
+
+/** Rounded limb / machine strut segment. */
 function limb(
   ctx: CanvasRenderingContext2D,
   x1: number,
@@ -258,12 +361,161 @@ function limb(
   ctx.stroke();
 }
 
-/** Filled disc (head / hub / joint). */
+/** Filled tapered anatomical segment, wider at its proximal end. */
+function taperedLimb(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  proximalWidth: number,
+  distalWidth: number,
+  color: string,
+) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.hypot(dx, dy);
+  if (length < 1e-5) return;
+  const nx = -dy / length;
+  const ny = dx / length;
+  const p = proximalWidth * 0.5;
+  const d = distalWidth * 0.5;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x1 + nx * p, y1 + ny * p);
+  ctx.lineTo(x2 + nx * d, y2 + ny * d);
+  ctx.lineTo(x2 - nx * d, y2 - ny * d);
+  ctx.lineTo(x1 - nx * p, y1 - ny * p);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/** Filled disc (hub / anatomical joint). */
 function disc(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string) {
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
+}
+
+/** Shoulder-tapered jersey rather than a single stick through the torso. */
+function shapedTorso(
+  ctx: CanvasRenderingContext2D,
+  hipX: number,
+  hipY: number,
+  shoulderX: number,
+  shoulderY: number,
+  hipHalfWidth: number,
+  shoulderHalfWidth: number,
+  color: string,
+  seam: string,
+) {
+  const dx = shoulderX - hipX;
+  const dy = shoulderY - hipY;
+  const length = Math.max(1e-5, Math.hypot(dx, dy));
+  const nx = -dy / length;
+  const ny = dx / length;
+  const midX = (hipX + shoulderX) * 0.5;
+  const midY = (hipY + shoulderY) * 0.5;
+  const waistHalfWidth = Math.min(hipHalfWidth, shoulderHalfWidth) * 0.82;
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(hipX + nx * hipHalfWidth, hipY + ny * hipHalfWidth);
+  ctx.quadraticCurveTo(
+    midX + nx * waistHalfWidth,
+    midY + ny * waistHalfWidth,
+    shoulderX + nx * shoulderHalfWidth,
+    shoulderY + ny * shoulderHalfWidth,
+  );
+  ctx.quadraticCurveTo(
+    shoulderX + dx * 0.05,
+    shoulderY + dy * 0.05,
+    shoulderX - nx * shoulderHalfWidth,
+    shoulderY - ny * shoulderHalfWidth,
+  );
+  ctx.quadraticCurveTo(
+    midX - nx * waistHalfWidth,
+    midY - ny * waistHalfWidth,
+    hipX - nx * hipHalfWidth,
+    hipY - ny * hipHalfWidth,
+  );
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = seam;
+  ctx.lineWidth = 0.65;
+  ctx.beginPath();
+  ctx.moveTo(hipX, hipY);
+  ctx.lineTo(shoulderX, shoulderY);
+  ctx.stroke();
+}
+
+/** Side-profile head with a jaw, nose, neck, and either hair or a helmet. */
+function profileHead(
+  ctx: CanvasRenderingContext2D,
+  shoulderX: number,
+  shoulderY: number,
+  skin: string,
+  hair: string,
+  helmet: string | null = null,
+) {
+  const headX = shoulderX + 0.75;
+  const headY = shoulderY - 3.35;
+  taperedLimb(ctx, shoulderX + 0.15, shoulderY - 0.35, headX - 0.25, headY + 1.7, 1.5, 1.25, skin);
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.ellipse(headX, headY, 2.15, 2.55, -0.13, 0, Math.PI * 2);
+  ctx.fill();
+  // A small brow/nose wedge makes the direction of travel readable.
+  ctx.beginPath();
+  ctx.moveTo(headX + 1.65, headY - 0.55);
+  ctx.lineTo(headX + 2.75, headY + 0.05);
+  ctx.lineTo(headX + 1.55, headY + 0.48);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = helmet ?? hair;
+  ctx.beginPath();
+  ctx.moveTo(headX - 1.95, headY - 0.15);
+  ctx.quadraticCurveTo(headX - 1.15, headY - 3.05, headX + 1.35, headY - 2.25);
+  ctx.quadraticCurveTo(headX + 2.15, headY - 1.75, headX + 1.8, headY - 1.1);
+  ctx.quadraticCurveTo(headX - 0.15, headY - 1.75, headX - 1.95, headY - 0.15);
+  ctx.closePath();
+  ctx.fill();
+  if (helmet) {
+    limb(ctx, headX + 0.3, headY + 1.3, headX + 1.65, headY + 1.55, 0.55, hair);
+    limb(ctx, headX + 1.15, headY - 1.15, headX + 2.65, headY - 0.9, 0.7, helmet);
+  }
+}
+
+function drawShoe(
+  ctx: CanvasRenderingContext2D,
+  ankleX: number,
+  ankleY: number,
+  toeX: number,
+  toeY: number,
+  color: string,
+) {
+  taperedLimb(ctx, ankleX, ankleY, toeX, toeY, 1.55, 2.15, color);
+  disc(ctx, toeX, toeY, 0.85, color);
+}
+
+/** Blend a fixed pole toward a ground-contact angle without changing its length. */
+export function poleAngleAtContact(
+  handY: number,
+  groundY: number,
+  poleLength: number,
+  freeAngle: number,
+  contact: number,
+): number {
+  const vertical = Math.max(-0.999, Math.min(0.999, (groundY - handY) / poleLength));
+  // A ground line has two valid pole-tip intersections. Keep the planted
+  // basket on the forward branch selected at the catch; switching to the
+  // mirrored branch when freeAngle crosses PI / 2 makes the tip teleport from
+  // one side of the skier to the other during the loaded press.
+  const landingAngle = Math.asin(vertical);
+  return freeAngle + (landingAngle - freeAngle) * contact;
 }
 
 interface AvatarDrawCtx {
@@ -277,14 +529,56 @@ interface AvatarDrawCtx {
   accent: string;
   rim: string;
   foam: string;
+  skin: string;
+  skinShade: string;
+  hair: string;
+  shoe: string;
   reduce: boolean;
 }
 
 /** Rowing shell with fixed feet and legs → body → arms drive sequencing. */
 function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKinematics) {
-  const { x, bobY, accent, rim, foam, reduce } = a;
+  const { x, bobY, accent, rim, foam, skin, skinShade, hair, shoe, reduce } = a;
   const HL = 17;
   const HH = 2.8;
+
+  // Resolve the body and both sculling oars before painting so far-side parts
+  // sit behind the shell while near-side joints remain readable.
+  const seatX = x + 3.5 - k.legExtension * 9.2;
+  const seatY = bobY - 2;
+  const shX = seatX + 4.2 - k.bodySwing * 9.5;
+  const shY = bobY - 9.5 + k.bodySwing * 1.4;
+  const footX = x + 9.2;
+  const footY = bobY - 1;
+  const strokeProgress = k.legExtension * 0.42 + k.bodySwing * 0.34 + k.armDraw * 0.24;
+  const oarAngle = Math.PI - 0.3 - strokeProgress * (Math.PI - 0.62);
+  const oarlockX = x + 0.4;
+  const oarlockY = bobY - 0.2;
+  solveRigidOar2D(oarlockX, oarlockY - 0.65, oarAngle + 0.035, 6.7, 13.3, 3.8, rowOarFar);
+  solveRigidOar2D(oarlockX, oarlockY + 0.4, oarAngle, 6.7, 13.3, 3.8, rowOarNear);
+  const farKit = withAlpha(accent, 0.52);
+
+  // Feathering changes blade thickness only: the oar remains one straight,
+  // fixed-length lever from the far hand through the lock to the blade tip.
+  limb(
+    ctx,
+    rowOarFar.handleX,
+    rowOarFar.handleY,
+    rowOarFar.bladeRootX,
+    rowOarFar.bladeRootY,
+    1.05,
+    withAlpha(rim, 0.55),
+  );
+  taperedLimb(
+    ctx,
+    rowOarFar.bladeRootX,
+    rowOarFar.bladeRootY,
+    rowOarFar.bladeTipX,
+    rowOarFar.bladeTipY,
+    2.45 - k.bladeFeather * 1.15,
+    3.1 - k.bladeFeather * 1.45,
+    farKit,
+  );
 
   // Hull — long, pointed racing shell on the water.
   ctx.fillStyle = accent;
@@ -298,94 +592,260 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Seat slides hard toward the bow as the legs drive. Catch is compressed over
-  // the stretcher; finish lays back with arms drawn to the body.
-  const seatX = x + 3.5 - k.legExtension * 9.2;
-  const seatY = bobY - 2;
-  const shX = seatX + 4.2 - k.bodySwing * 9.5;
-  const shY = bobY - 9.5 + k.bodySwing * 1.4;
-  const hipX = seatX;
-  const hipY = seatY;
+  // Far leg and arm establish depth behind the near-side anatomy.
+  solveTwoBoneJoint2D(
+    seatX - 0.45,
+    seatY - 0.45,
+    footX,
+    footY - 0.5,
+    7.85,
+    7.65,
+    -1,
+    jointScratchA,
+  );
+  taperedLimb(ctx, seatX - 0.45, seatY - 0.45, jointScratchA.x, jointScratchA.y, 2.8, 2.1, farKit);
+  taperedLimb(
+    ctx,
+    jointScratchA.x,
+    jointScratchA.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    2.15,
+    1.5,
+    skinShade,
+  );
+  disc(ctx, jointScratchA.x, jointScratchA.y, 1.05, skinShade);
+  drawShoe(
+    ctx,
+    jointEndScratch.x - 0.7,
+    jointEndScratch.y,
+    jointEndScratch.x + 0.8,
+    jointEndScratch.y + 0.05,
+    shoe,
+  );
 
-  const footX = x + 9.2;
-  const footY = bobY - 1;
-  // Catch: knee high and forward. Finish: knee drops as the leg straightens.
-  const kneeX = footX - 1.2 - k.legExtension * 6.5;
-  const kneeY = bobY - 8.2 + k.legExtension * 6.4;
-  limb(ctx, hipX, hipY, kneeX, kneeY, 2.1, accent); // thigh
-  limb(ctx, kneeX, kneeY, footX, footY, 1.9, accent); // shin
-  disc(ctx, footX, footY, 1.3, rim); // foot on stretcher
+  solveTwoBoneJoint2D(
+    shX - 0.4,
+    shY - 0.4,
+    rowOarFar.handleX,
+    rowOarFar.handleY,
+    4.9,
+    4.7,
+    -1,
+    jointScratchA,
+  );
+  taperedLimb(ctx, shX - 0.4, shY - 0.4, jointScratchA.x, jointScratchA.y, 2.2, 1.65, farKit);
+  taperedLimb(
+    ctx,
+    jointScratchA.x,
+    jointScratchA.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    1.75,
+    1.25,
+    skinShade,
+  );
+  disc(ctx, jointScratchA.x, jointScratchA.y, 0.9, skinShade);
 
-  // Torso + head.
-  limb(ctx, seatX, seatY, shX, shY, 2.6, accent); // torso
-  disc(ctx, shX, shY - 3.2, 2.5, accent); // head
+  // Constant femur/tibia lengths remove the old telescoping knee.
+  solveTwoBoneJoint2D(seatX, seatY, footX, footY, 7.85, 7.65, -1, jointScratchA);
+  taperedLimb(ctx, seatX, seatY, jointScratchA.x, jointScratchA.y, 3, 2.2, accent);
+  taperedLimb(
+    ctx,
+    jointScratchA.x,
+    jointScratchA.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    2.25,
+    1.55,
+    skin,
+  );
+  disc(ctx, jointScratchA.x, jointScratchA.y, 1.12, skin);
+  drawShoe(
+    ctx,
+    jointEndScratch.x - 0.7,
+    jointEndScratch.y,
+    jointEndScratch.x + 1,
+    jointEndScratch.y + 0.05,
+    shoe,
+  );
+  disc(ctx, seatX, seatY, 1.65, withAlpha(rim, 0.8));
 
-  // One continuous oar rotates around a fixed oarlock. Long inboard lever so
-  // hands travel with the seat; outboard blade sweeps a clear arc on the strip.
-  const strokeProgress = k.legExtension * 0.42 + k.bodySwing * 0.34 + k.armDraw * 0.24;
-  const oarAngle = Math.PI - 0.28 - strokeProgress * (Math.PI - 0.52);
-  const oarCos = Math.cos(oarAngle);
-  const oarSin = Math.sin(oarAngle);
-  const oarlockX = x + 0.4;
-  const oarlockY = bobY - 0.2;
-  const handX = oarlockX - oarCos * 7.2;
-  const handY = oarlockY - oarSin * 2.1 - k.bladeFeather * 0.8;
-  const bladeRootX = oarlockX + oarCos * 13.5;
-  const bladeRootY = oarlockY + oarSin * 4.2 + k.bladeDepth * 2.4 - k.bladeFeather * 5.5;
-  const bladeTipX = bladeRootX + oarCos * 3.6;
-  const bladeTipY = bladeRootY + oarSin * 1.1;
-  const elbowX = (shX + handX) / 2 + 2.2 - k.armDraw * 1.6;
-  const elbowY = (shY + handY) / 2 - 1.1 + k.armDraw * 0.4;
-  limb(ctx, shX, shY + 1, elbowX, elbowY, 1.7, accent); // upper arm
-  limb(ctx, elbowX, elbowY, handX, handY, 1.5, accent); // forearm
-  disc(ctx, handX, handY, 1, accent); // hand on handle
-  limb(ctx, handX, handY, bladeRootX, bladeRootY, 1.4, rim); // oar shaft
-  limb(ctx, bladeRootX, bladeRootY, bladeTipX, bladeTipY, 2.8 - k.bladeFeather * 1.4, accent);
+  shapedTorso(ctx, seatX, seatY - 0.35, shX, shY, 1.75, 2.45, accent, withAlpha(foam, 0.72));
+  limb(ctx, seatX + 0.25, seatY - 1.1, shX + 0.35, shY + 0.2, 0.7, withAlpha(foam, 0.72));
+  profileHead(ctx, shX, shY, skin, hair);
+
+  // The visible oar is also rigid; the near hand terminates at its handle.
+  limb(
+    ctx,
+    rowOarNear.handleX,
+    rowOarNear.handleY,
+    rowOarNear.bladeRootX,
+    rowOarNear.bladeRootY,
+    1.25,
+    rim,
+  );
+  taperedLimb(
+    ctx,
+    rowOarNear.bladeRootX,
+    rowOarNear.bladeRootY,
+    rowOarNear.bladeTipX,
+    rowOarNear.bladeTipY,
+    2.75 - k.bladeFeather * 1.3,
+    3.45 - k.bladeFeather * 1.65,
+    accent,
+  );
+  solveTwoBoneJoint2D(
+    shX,
+    shY + 0.2,
+    rowOarNear.handleX,
+    rowOarNear.handleY,
+    4.9,
+    4.7,
+    -1,
+    jointScratchA,
+  );
+  taperedLimb(ctx, shX, shY + 0.2, jointScratchA.x, jointScratchA.y, 2.35, 1.75, accent);
+  taperedLimb(
+    ctx,
+    jointScratchA.x,
+    jointScratchA.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    1.8,
+    1.3,
+    skin,
+  );
+  disc(ctx, jointScratchA.x, jointScratchA.y, 0.95, skin);
+  disc(ctx, jointEndScratch.x, jointEndScratch.y, 1.05, skin);
   if (!reduce && k.bladeDepth > 0.08) {
-    disc(ctx, bladeTipX, bobY + 2.6, 1 + k.bladeDepth * 0.5, foam);
-    disc(ctx, bladeTipX + 2.2, bobY + 1.4, 0.7 + k.bladeDepth * 0.35, foam);
-    disc(ctx, bladeTipX - 1.2, bobY + 1.8, 0.55 + k.bladeDepth * 0.25, foam);
+    disc(ctx, rowOarNear.bladeTipX, bobY + 2.6, 1 + k.bladeDepth * 0.5, foam);
+    disc(ctx, rowOarNear.bladeTipX + 2.2, bobY + 1.4, 0.7 + k.bladeDepth * 0.35, foam);
+    disc(ctx, rowOarNear.bladeTipX - 1.2, bobY + 1.8, 0.55 + k.bladeDepth * 0.25, foam);
   }
 }
 
 /** Skier double-poling: arms/poles swing from a high reach to a low back-pull. */
 function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKinematics) {
-  const { x, y, bobY, accent, rim, foam, reduce } = a;
+  const { x, y, bobY, accent, rim, foam, skin, skinShade, hair, shoe, reduce } = a;
   const hipX = x + k.hipHinge * 1.8;
   const hipY = bobY - 7.2 + k.kneeFlex * 2.8;
   const shX = x + 0.6 + k.hipHinge * 4.6;
   const shY = bobY - 13.5 + k.hipHinge * 5.2;
+  const farKit = withAlpha(accent, 0.5);
+
+  const poleLength = 13.2;
+  const farHandX = shX + 5.9 - k.armPress * 8.7;
+  const farHandY = shY + 0.35 + k.armPress * 8.2;
+  const nearHandX = shX + 6.6 - k.armPress * 9.5;
+  const nearHandY = shY + 1 + k.armPress * 8.6;
+  const freePoleAngle = 0.72 + k.poleSweep * 1.62;
+  const farPoleAngle = poleAngleAtContact(
+    farHandY,
+    y - 0.15,
+    poleLength,
+    freePoleAngle + 0.04,
+    k.poleContact,
+  );
+  const nearPoleAngle = poleAngleAtContact(nearHandY, y, poleLength, freePoleAngle, k.poleContact);
+  const farPoleTipX = farHandX + Math.cos(farPoleAngle) * poleLength;
+  const farPoleTipY = farHandY + Math.sin(farPoleAngle) * poleLength;
+  const nearPoleTipX = nearHandX + Math.cos(nearPoleAngle) * poleLength;
+  const nearPoleTipY = nearHandY + Math.sin(nearPoleAngle) * poleLength;
+
+  // Far pole, arm, and leg establish depth. Both poles stay the same length
+  // throughout reach, plant, press, and recovery.
+  limb(ctx, farHandX, farHandY, farPoleTipX, farPoleTipY, 1.05, withAlpha(rim, 0.55));
+  solveTwoBoneJoint2D(shX - 0.45, shY - 0.4, farHandX, farHandY, 5.2, 5, -1, jointScratchA);
+  taperedLimb(ctx, shX - 0.45, shY - 0.4, jointScratchA.x, jointScratchA.y, 2.15, 1.6, farKit);
+  taperedLimb(
+    ctx,
+    jointScratchA.x,
+    jointScratchA.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    1.65,
+    1.2,
+    skinShade,
+  );
+  disc(ctx, jointScratchA.x, jointScratchA.y, 0.88, skinShade);
+
+  solveTwoBoneJoint2D(hipX - 0.45, hipY - 0.3, x - 3.3, y - 0.15, 5.25, 5.05, -1, jointScratchA);
+  taperedLimb(ctx, hipX - 0.45, hipY - 0.3, jointScratchA.x, jointScratchA.y, 2.8, 2.05, farKit);
+  taperedLimb(
+    ctx,
+    jointScratchA.x,
+    jointScratchA.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    2.1,
+    1.5,
+    skinShade,
+  );
+  disc(ctx, jointScratchA.x, jointScratchA.y, 1, skinShade);
+  drawShoe(
+    ctx,
+    jointEndScratch.x - 0.5,
+    jointEndScratch.y - 0.3,
+    jointEndScratch.x + 1.6,
+    jointEndScratch.y - 0.2,
+    shoe,
+  );
 
   // Both boots remain planted while the knees and hip absorb the press.
-  limb(ctx, hipX, hipY, x + 4.2, y, 2.3, accent);
-  limb(ctx, hipX, hipY, x - 3.2, y, 2.3, accent);
-  disc(ctx, x + 4.2, y, 1.2, rim); // right boot
-  disc(ctx, x - 3.2, y, 1.2, rim); // left boot
-  limb(ctx, hipX, hipY, shX, shY, 2.7, accent);
-  disc(ctx, shX, shY - 3.2, 2.5, accent);
+  solveTwoBoneJoint2D(hipX, hipY, x + 4.3, y, 5.25, 5.05, -1, jointScratchA);
+  taperedLimb(ctx, hipX, hipY, jointScratchA.x, jointScratchA.y, 3, 2.2, accent);
+  taperedLimb(
+    ctx,
+    jointScratchA.x,
+    jointScratchA.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    2.25,
+    1.55,
+    skin,
+  );
+  disc(ctx, jointScratchA.x, jointScratchA.y, 1.08, skin);
+  drawShoe(
+    ctx,
+    jointEndScratch.x - 0.7,
+    jointEndScratch.y - 0.25,
+    jointEndScratch.x + 1.5,
+    jointEndScratch.y - 0.2,
+    shoe,
+  );
+  disc(ctx, hipX, hipY, 1.5, withAlpha(rim, 0.7));
+  shapedTorso(ctx, hipX, hipY - 0.3, shX, shY, 1.85, 2.5, accent, withAlpha(foam, 0.72));
+  limb(ctx, hipX + 0.1, hipY - 1, shX + 0.25, shY + 0.15, 0.7, withAlpha(foam, 0.75));
+  profileHead(ctx, shX, shY, skin, hair);
 
-  // Reach → plant → press → recovery. The pole tip touches the snow only
-  // while poleContact is active; otherwise its full trajectory clears the deck.
-  const handX = shX + 6.5 - k.armPress * 9.5;
-  const handY = shY + 0.8 + k.armPress * 8.5;
-  const elbowX = (shX + handX) / 2 + 2.2 - k.armPress * 1.2;
-  const elbowY = (shY + handY) / 2 + 0.6;
-  limb(ctx, shX, shY + 1, elbowX, elbowY, 1.9, accent); // upper arm
-  limb(ctx, elbowX, elbowY, handX, handY, 1.7, accent); // forearm
-  disc(ctx, handX, handY, 1, accent); // hand on grip
-  const poleTipX = handX + 5.2 - k.poleSweep * 13;
-  const poleTipY = y - (1 - k.poleContact) * 6.5;
-  limb(ctx, handX, handY, poleTipX, poleTipY, 1.3, rim);
+  // Reach → plant → press → recovery. Contact intensity controls the snow
+  // burst, while the rigid visual pole keeps a stable length throughout.
+  limb(ctx, nearHandX, nearHandY, nearPoleTipX, nearPoleTipY, 1.3, rim);
+  solveTwoBoneJoint2D(shX, shY + 0.2, nearHandX, nearHandY, 5.2, 5, -1, jointScratchA);
+  taperedLimb(ctx, shX, shY + 0.2, jointScratchA.x, jointScratchA.y, 2.35, 1.75, accent);
+  taperedLimb(
+    ctx,
+    jointScratchA.x,
+    jointScratchA.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    1.85,
+    1.3,
+    skin,
+  );
+  disc(ctx, jointScratchA.x, jointScratchA.y, 0.95, skin);
+  disc(ctx, jointEndScratch.x, jointEndScratch.y, 1.02, skin);
   if (!reduce && k.poleContact > 0.12) {
-    disc(ctx, poleTipX, y, 0.85 + k.poleContact * 0.45, foam);
-    disc(ctx, poleTipX + 2, y - 1, 0.65 + k.poleContact * 0.3, foam);
-    disc(ctx, poleTipX - 1.4, y - 0.6, 0.5 + k.poleContact * 0.2, foam);
+    disc(ctx, nearPoleTipX, y, 0.85 + k.poleContact * 0.45, foam);
+    disc(ctx, nearPoleTipX + 2, y - 1, 0.65 + k.poleContact * 0.3, foam);
+    disc(ctx, nearPoleTipX - 1.4, y - 0.6, 0.5 + k.poleContact * 0.2, foam);
   }
 }
 
 /** Cyclist whose wheels spin and legs pedal with the phase. */
 function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKinematics) {
-  const { x, y, accent, rim, meters, reduce } = a;
+  const { x, y, accent, rim, foam, skin, skinShade, hair, shoe, meters, reduce } = a;
   const wr = 5.4;
   const rearX = x - 8.5;
   const frontX = x + 8.5;
@@ -417,46 +877,118 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
   const seatY = wheelY - 7.4;
   const barX = frontX - 1.2;
   const barY = wheelY - 6.4;
-  limb(ctx, rearX, wheelY, bbX, bbY, 1.7, accent);
-  limb(ctx, bbX, bbY, seatX, seatY, 1.7, accent);
-  limb(ctx, seatX, seatY, barX, barY, 1.7, accent);
-  limb(ctx, bbX, bbY, barX, barY, 1.7, accent);
-  limb(ctx, frontX, wheelY, barX, barY, 1.7, accent);
-
-  // Rider: torso → bars, head, arms on bars, and two pedalling legs.
+  // Rider anchors are known before the frame is painted so the far limbs can
+  // sit behind the bicycle and the near limbs can overlap it cleanly.
   const hipLift = reduce ? 0 : k.hipRock * 18;
   const torsoShift = reduce ? 0 : k.torsoSway * 18;
   const hipX = seatX + torsoShift * 0.25;
   const hipY = seatY + hipLift;
   const rShX = x + 1.2 + torsoShift;
   const rShY = wheelY - 12.5 + hipLift * 0.4;
-  limb(ctx, hipX, hipY, rShX, rShY, 2.5, accent);
-  disc(ctx, rShX + 1, rShY - 2.6, 2.4, accent); // head
+  const farKit = withAlpha(accent, 0.5);
 
-  // Arms: from shoulders to handlebars with an elbow bend.
-  const armElbX = (rShX + barX) / 2 + 1;
-  const armElbY = (rShY + barY) / 2 - 0.6;
-  limb(ctx, rShX, rShY, armElbX, armElbY, 1.7, accent); // upper arm
-  limb(ctx, armElbX, armElbY, barX, barY, 1.5, accent); // forearm
-  disc(ctx, barX, barY, 1, accent); // hand on bars
+  // Far leg and exact pedal contact, followed by the bicycle frame.
+  const farSpin = k.crankAngle + Math.PI;
+  const farCrankX = bbX + Math.cos(farSpin) * 3.1;
+  const farCrankY = bbY + Math.sin(farSpin) * 3.1;
+  solveTwoBoneJoint2D(
+    hipX - 0.45,
+    hipY - 0.25,
+    farCrankX,
+    farCrankY,
+    7.35,
+    7.05,
+    -1,
+    jointScratchA,
+  );
+  taperedLimb(ctx, hipX - 0.45, hipY - 0.25, jointScratchA.x, jointScratchA.y, 3, 2.1, farKit);
+  taperedLimb(
+    ctx,
+    jointScratchA.x,
+    jointScratchA.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    2.15,
+    1.45,
+    skinShade,
+  );
+  disc(ctx, jointScratchA.x, jointScratchA.y, 1.02, skinShade);
+  const farShoeX = jointEndScratch.x + Math.cos(k.anklePitchRight) * 1.8;
+  const farShoeY = jointEndScratch.y + Math.sin(k.anklePitchRight) * 1.8;
+  drawShoe(ctx, jointEndScratch.x, jointEndScratch.y, farShoeX, farShoeY, withAlpha(shoe, 0.65));
 
-  // Two legs pedalling in opposition: each follows its crank position
-  // (180° apart). The knee kinks outward for a natural look.
-  for (let leg = 0; leg < 2; leg++) {
-    const legSpin = k.crankAngle + leg * Math.PI;
-    const crankX = bbX + Math.cos(legSpin) * 3.1;
-    const crankY = bbY + Math.sin(legSpin) * 3.1;
-    // Knee kinks outward on the downstroke, inward on the upstroke.
-    const extension = Math.sin(legSpin);
-    const kneeX = (hipX + crankX) / 2 + (leg === 0 ? 1.5 : -1.5) + extension * 0.7;
-    const kneeY = (hipY + crankY) / 2 - 0.8;
-    limb(ctx, hipX + 0.5, hipY + 0.5, kneeX, kneeY, 1.7, accent); // thigh
-    limb(ctx, kneeX, kneeY, crankX, crankY, 1.5, accent); // shin
-    const anklePitch = leg === 0 ? k.anklePitchLeft : k.anklePitchRight;
-    const shoeX = crankX + Math.cos(anklePitch) * 1.7;
-    const shoeY = crankY + Math.sin(anklePitch) * 1.7;
-    limb(ctx, crankX, crankY, shoeX, shoeY, 1.6, rim); // foot on pedal
-  }
+  limb(ctx, rearX, wheelY, bbX, bbY, 1.7, accent);
+  limb(ctx, bbX, bbY, seatX, seatY, 1.7, accent);
+  limb(ctx, seatX, seatY, barX, barY, 1.7, accent);
+  limb(ctx, bbX, bbY, barX, barY, 1.7, accent);
+  limb(ctx, frontX, wheelY, barX, barY, 1.7, accent);
+  limb(ctx, seatX - 2.2, seatY + 0.2, seatX + 1.2, seatY + 0.2, 1.35, rim);
+
+  // Far arm precedes every near-side limb so it cannot paint across the near
+  // leg. The near anatomy then finishes the silhouette over the bicycle.
+  solveTwoBoneJoint2D(
+    rShX - 0.4,
+    rShY - 0.35,
+    barX - 0.45,
+    barY - 0.35,
+    4.92,
+    4.62,
+    1,
+    jointScratchB,
+  );
+  taperedLimb(ctx, rShX - 0.4, rShY - 0.35, jointScratchB.x, jointScratchB.y, 2.1, 1.55, farKit);
+  taperedLimb(
+    ctx,
+    jointScratchB.x,
+    jointScratchB.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    1.6,
+    1.15,
+    skinShade,
+  );
+  disc(ctx, jointScratchB.x, jointScratchB.y, 0.88, skinShade);
+
+  // Near leg uses the same fixed femur/tibia lengths at every crank angle.
+  const nearCrankX = bbX + Math.cos(k.crankAngle) * 3.1;
+  const nearCrankY = bbY + Math.sin(k.crankAngle) * 3.1;
+  solveTwoBoneJoint2D(hipX, hipY, nearCrankX, nearCrankY, 7.35, 7.05, -1, jointScratchA);
+  taperedLimb(ctx, hipX, hipY, jointScratchA.x, jointScratchA.y, 3.2, 2.25, accent);
+  taperedLimb(
+    ctx,
+    jointScratchA.x,
+    jointScratchA.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    2.3,
+    1.55,
+    skin,
+  );
+  disc(ctx, jointScratchA.x, jointScratchA.y, 1.12, skin);
+  const nearShoeX = jointEndScratch.x + Math.cos(k.anklePitchLeft) * 1.9;
+  const nearShoeY = jointEndScratch.y + Math.sin(k.anklePitchLeft) * 1.9;
+  drawShoe(ctx, jointEndScratch.x, jointEndScratch.y, nearShoeX, nearShoeY, shoe);
+
+  // Shorts/pelvis bridge the rider to the saddle instead of floating above it.
+  disc(ctx, hipX, hipY, 2, withAlpha(rim, 0.82));
+  shapedTorso(ctx, hipX, hipY - 0.35, rShX, rShY, 1.9, 2.55, accent, withAlpha(foam, 0.7));
+  limb(ctx, hipX + 0.2, hipY - 1, rShX + 0.3, rShY + 0.15, 0.7, withAlpha(foam, 0.7));
+
+  solveTwoBoneJoint2D(rShX, rShY + 0.2, barX, barY, 4.92, 4.62, 1, jointScratchB);
+  taperedLimb(ctx, rShX, rShY + 0.2, jointScratchB.x, jointScratchB.y, 2.3, 1.7, accent);
+  taperedLimb(
+    ctx,
+    jointScratchB.x,
+    jointScratchB.y,
+    jointEndScratch.x,
+    jointEndScratch.y,
+    1.75,
+    1.25,
+    skin,
+  );
+  disc(ctx, jointScratchB.x, jointScratchB.y, 0.95, skin);
+  disc(ctx, jointEndScratch.x, jointEndScratch.y, 1.02, skin);
+  profileHead(ctx, rShX, rShY, skin, hair, accent);
 }
 
 /** Glossy neutral pod — fallback when `sport` is absent. */
@@ -1162,6 +1694,10 @@ export class CourseRenderer implements ReplayRenderer {
       accent,
       rim,
       foam: C.foam,
+      skin: C.skin,
+      skinShade: C.skinShade,
+      hair: C.hair,
+      shoe: C.shoe,
       reduce,
     };
     if (sport) {
@@ -1208,7 +1744,8 @@ export class CourseRenderer implements ReplayRenderer {
     // Keep the pill on-canvas at the start/finish; the caret still points at x.
     const pillX = Math.max(4, Math.min(x - pillW / 2, this.w - pillW - 4));
     const caretSize = 4;
-    const caretY = y - 22; // tip sits just above the figure
+    const visualTopClearance = sport ? ATHLETE_TOP_CLEARANCE_2D[sport] : 22;
+    const caretY = y - visualTopClearance - 3; // a visible gap above the tallest figure
     const pillY = caretY - caretSize - pillH;
 
     // Pill background: YOU gets labelBg (light chip), GHOST gets accent.

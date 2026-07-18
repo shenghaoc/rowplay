@@ -123,6 +123,13 @@ envelope aligned to the logged cycles: RowErg sequences legs, body, then arms
 recovery, and BikeErg separates cadence-driven cranks from distance-driven
 wheel roll.
 
+Both views draw a lightweight procedural athlete rather than downloading or
+scanning an avatar. Fixed-proportion upper and lower limbs bend at explicit
+elbows and knees, while shaped torsos, pelvises, joints, kit, and near/far-side
+contrast keep each pose readable at replay scale. Hands and feet remain aligned
+with the relevant equipment throughout the cycle. The figure is a generic
+illustration; it does not reproduce the athlete's body, clothing, or likeness.
+
 Both views use sport-specific surfaces: RowErg has layered water and blade
 puddles, SkiErg has groomed snow and pole-plant plume, and BikeErg has an
 asphalt/velodrome band with curb and lane markings. In 3D, segmented human-scale
