@@ -79,7 +79,7 @@ All commands use **vp** (Vite+ CLI). `vp install` for clean CI installs.
 | Dev server         | `vp dev` (serves at `http://localhost:5173`)                       |
 | Format             | `vp run format` (write) / `vp run format:check` (check only)       |
 | Lint               | `vp lint` (fails on findings)                                      |
-| Type check         | `vp run typecheck` (`svelte-kit sync` + `svelte-check`)            |
+| Type check         | `vp run typecheck` (`svelte-kit sync` + `svelte-check` + TS7 `tsc --noEmit`) |
 | Unit tests         | `vp test` (Vitest)                                                 |
 | Build              | `vp build` (outputs `.svelte-kit/cloudflare`)                      |
 | Full quality gate  | `vp check` (format:check + lint + typecheck + test + build)        |

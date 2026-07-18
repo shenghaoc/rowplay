@@ -12,7 +12,11 @@ allowBuilds:
   sharp: true
   workerd: true
 
+# TS 7 platform packages + the TS 6 compatibility package used via npm alias.
+# See https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/
+# ("Running Side-by-Side with TypeScript 6.0").
 minimumReleaseAgeExclude:
+  - '@typescript/typescript6'
   - '@typescript/typescript-aix-ppc64@7.0.2'
   - '@typescript/typescript-darwin-arm64@7.0.2'
   - '@typescript/typescript-darwin-x64@7.0.2'
