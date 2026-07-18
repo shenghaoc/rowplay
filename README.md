@@ -62,10 +62,13 @@ account.
 ### Synchronized replay
 
 - Play, pause, scrub, and 0.5×–8× playback controls
-- Concept2 stroke-based animation when detail is available, with split- or
-  summary-based replay when it is not
-- A Canvas 2D view plus optional Three.js 3D rendering that tries WebGPU first,
-  falls back to WebGL, and returns to 2D if neither 3D backend is usable
+- Concept2 stroke-based animation that aligns one cycle to each valid moving
+  stroke row, with cadence-continuous split or summary timing when detail is
+  unavailable
+- Canvas 2D and optional Three.js 3D renderers that share staged RowErg,
+  SkiErg, and BikeErg kinematics, equipment contact targets, and sport-specific
+  water, snow, and track surfaces
+- Progressive 3D fallback from WebGPU to WebGL, then to the stable 2D renderer
 - Live pace, rate, power, heart-rate, and synchronized telemetry charts
 - Personal ghost racing against a comparable past session or target pace
 - Workout-moment analysis with direct jumps to meaningful sections

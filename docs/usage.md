@@ -107,24 +107,29 @@ modified.
   (<kbd>Space</kbd> to play/pause, <kbd>←</kbd><kbd>→</kbd> to seek by ±10s)
   shown in the transport bar.
 
-The athlete animates from Concept2 stroke rows: the figure takes one stroke
-(or pole plant, or pedal revolution) per recorded stroke, with splash and spray
-on each catch, and speeds up in step with the playback rate. The public
-Concept2 stroke payload does not include force curves or handle position, so
-the replay infers only timing, amplitude, and intensity from time, distance,
-pace, rate, heart rate, and watts. In 3D, athletes use segmented human-scale
-models with separate torso, head, shoulders, arms, legs, hands, feet, and
-sport-specific kit so the scene reads as a coached erg replay rather than a toy
-marker. Hands and feet are posed against the relevant equipment — oar handles
-and foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals — so
-the motion does not drift away from the machine. The 3D chase camera stays close
-enough for body posture to matter and widens its lens slightly as the boat runs
-faster.
+The athlete animates from Concept2 stroke rows: each valid row advances one
+authored stroke, pole cycle, or pedal revolution, and the modeled catch can emit
+water or snow contact effects. Non-moving interval anchor rows are ignored, and
+split-derived replays integrate changing cadence without jumping phase. Demo
+rows are generated from their declared cadence rather than from a fixed sample
+count, so the BikeErg route pedals at its displayed RPM.
 
-The 3D course surface is sport-specific too: RowErg shows layered water lanes
-with buoy and waterline detail, SkiErg shows groomed snow grooves and blue gate
-markers, and BikeErg shows an asphalt/velodrome-style track with curbs, dashed
-lane marks, and speed bars.
+The public Concept2 stroke payload provides cumulative time and distance, pace,
+rate, and optional heart rate; rowplay derives watts from pace. It does **not**
+contain a force curve, handle path, drive length, joint positions, or measured
+posture. The visible movement is therefore a deterministic illustrative
+envelope aligned to the logged cycles: RowErg sequences legs, body, then arms
+(and reverses that order on recovery), SkiErg separates reach, plant/pull, and
+recovery, and BikeErg separates cadence-driven cranks from distance-driven
+wheel roll.
+
+Both views use sport-specific surfaces: RowErg has layered water and blade
+puddles, SkiErg has groomed snow and pole-plant plume, and BikeErg has an
+asphalt/velodrome band with curb and lane markings. In 3D, segmented human-scale
+athletes keep feet and hands on the relevant equipment targets — oar handles
+and foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals. The
+chase camera uses closer sport- and viewport-aware framing, with both its
+position and look target smoothed independently.
 
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics.
 Ultra is intended for WebGPU-capable devices and uses a larger stage, denser

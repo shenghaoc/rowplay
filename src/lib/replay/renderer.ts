@@ -1,8 +1,16 @@
 import type { Frame } from "./engine";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
-import { ParticlePool, clampDt, strokeSurge, warpStrokePhase } from "./motion";
+import { ParticlePool, clampDt } from "./motion";
 import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
+import {
+  solveBikeKinematics,
+  solveRowerKinematics,
+  solveSkierKinematics,
+  type BikeKinematics,
+  type RowerKinematics,
+  type SkierKinematics,
+} from "./sportKinematics";
 
 // The replay playback itself is essential, user-initiated motion (the user
 // presses play), so it is preserved under `prefers-reduced-motion`. What we do
@@ -135,12 +143,29 @@ const PAD_R = 30;
 const WATER_H = 34;
 const POD_R = 9;
 const BOB_AMP = 2.2;
+/** Small legibility lift without changing the established course-strip layout. */
+const ATHLETE_SCALE = 1.12;
 /** Forward/back hull surge per stroke (px), per sport. Bike pedals smoothly. */
 const SURGE_PX: Record<Sport, number> = { rower: 2.6, skierg: 1.2, bike: 0 };
 /** Splash droplets per lane; small and brief, so a tiny pool suffices. */
 const SPLASH_CAP = 12;
 /** Canvas y grows downward, so droplet gravity is positive (px/s²). */
 const SPLASH_GRAVITY = 230;
+const STREAK_ALPHAS = [0.35, 0.28, 0.22, 0.16] as const;
+const STREAK_LENGTH_FACTORS = [1, 0.75, 0.55, 0.4] as const;
+const STREAK_Y_OFFSETS = [-3, 0, 3, -5] as const;
+const SKI_GROOVE_DASH = [6, 7];
+const BIKE_CURB_DASH = [8, 8];
+const BIKE_LANE_DASH = [12, 8];
+const SOLID_LINE: number[] = [];
+/** Stable mid-drive pose used when decorative athlete motion is reduced. */
+const REDUCED_POSE_PHASE = Math.PI * 0.5;
+/** One shared readable pose for 2D/3D when decorative motion is reduced. */
+export const REDUCED_REPLAY_POSES: Readonly<Record<Sport, StrokePose>> = {
+  rower: fallbackStrokePose("rower", REDUCED_POSE_PHASE, 30),
+  skierg: fallbackStrokePose("skierg", REDUCED_POSE_PHASE, 34),
+  bike: fallbackStrokePose("bike", REDUCED_POSE_PHASE, 85),
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -209,14 +234,10 @@ function streakLen(pace: number): number {
 }
 
 // ── Sport avatars ─────────────────────────────────────────────────────────────
-// Each draws a side-profile athlete (facing the finish, +x) animated by the
-// stroke phase, so the marker both identifies the machine and conveys cadence.
-// The phase is distance-driven (one cycle per stroke at the workout's true
-// cadence) and warped so the drive is quick and the recovery slow. `y` is the
-// waterline; `bobY` is the bobbing centre; figures are drawn in the lane
-// `accent` with a contrast `rim` and `foam` highlights. `s` is the stroke
-// position (+1 catch … −1 finish); under reduced motion the caller passes a
-// frozen pose.
+// Each draws a side-profile athlete (facing the finish, +x). The shared sport
+// solvers turn a StrokePose into sequenced joint channels, so cadence changes
+// timing without collapsing the legs/body/arms order. `y` is the contact line;
+// `bobY` is the floating centre; reduced motion receives a representative pose.
 
 /** Rounded limb / strut segment. */
 function limb(
@@ -251,21 +272,17 @@ interface AvatarDrawCtx {
   y: number;
   /** Bobbing centre for floating parts. */
   bobY: number;
-  /** Stroke position, +1 catch … −1 finish (frozen pose under reduced motion). */
-  s: number;
-  /** True during the drive half of the stroke (blade buried, poles loaded). */
-  drive: boolean;
-  /** Raw phase for continuous rotation (wheels). */
-  phase: number;
+  /** Cumulative course distance, used for distance-locked wheel rotation. */
+  meters: number;
   accent: string;
   rim: string;
   foam: string;
   reduce: boolean;
 }
 
-/** Rowing shell with a rower whose torso + oar sweep through the stroke. */
-function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
-  const { x, bobY, s, drive, accent, rim, foam, reduce } = a;
+/** Rowing shell with fixed feet and legs → body → arms drive sequencing. */
+function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKinematics) {
+  const { x, bobY, accent, rim, foam, reduce } = a;
   const HL = 16;
   const HH = 2.6;
 
@@ -281,24 +298,19 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Rower — seat at mid-hull; torso swings with the stroke. At the catch
-  // (s → +1) the body is forward over the stretcher; at the finish (s → −1)
-  // it lays back toward the bow — moving with the oar, not against it.
-  const seatX = x - 2;
+  // The seat slides away from a fixed stretcher as the legs extend. The knees
+  // lower on the drive and rise only after hands/body have recovered.
+  const seatX = x + 2 - k.legExtension * 5.2;
   const seatY = bobY - 2;
-  const shX = seatX + s * 3.5;
-  const shY = bobY - 9;
+  const shX = seatX + 3.1 - k.bodySwing * 6.4;
+  const shY = bobY - 9 + k.bodySwing * 0.6;
   const hipX = seatX;
   const hipY = seatY;
 
-  // Legs — thigh from hip to knee, shin from knee to foot on the stretcher.
-  // At the catch (s → +1) legs are compressed (knees forward); at the finish
-  // (s → −1) legs are extended (knees lower, shins more vertical).
-  const footX = x + 7;
+  const footX = x + 8.2;
   const footY = bobY - 1;
-  const legComp = Math.max(0, s); // 1 at catch, 0 at finish
-  const kneeX = (hipX + footX) / 2 + legComp * 3;
-  const kneeY = (hipY + footY) / 2 - 2 + legComp * 2;
+  const kneeX = footX - 1.5 - k.legExtension * 4.5;
+  const kneeY = bobY - 6.3 + k.legExtension * 4.4;
   limb(ctx, hipX, hipY, kneeX, kneeY, 2, accent); // thigh
   limb(ctx, kneeX, kneeY, footX, footY, 1.8, accent); // shin
   disc(ctx, footX, footY, 1.2, rim); // foot on stretcher
@@ -307,92 +319,102 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
   limb(ctx, seatX, seatY, shX, shY, 2.4, accent); // torso
   disc(ctx, shX, shY - 3, 2.3, accent); // head
 
-  // Oar — sweeps fore/aft; the blade is buried through the drive and carried
-  // clear of the water on the recovery. Hands grip the inboard end of the
-  // handle, which follows the shoulder + a small offset.
-  const bladeX = x + s * 13;
-  const inWater = reduce ? s > -0.15 : drive;
-  const bladeY = bobY + (inWater ? 4.5 : 1.5);
-  // Handle is pinned between the hands and the oar shaft. The hands sit at
-  // the inboard end of the oar, near the rower's torso.
-  const handX = shX + 2.5 + s * 1.5;
-  const handY = shY + 2;
-  // Elbow kinks outward between shoulder and hand for a natural arm bend.
-  const elbowX = (shX + handX) / 2 + 1.8;
-  const elbowY = (shY + handY) / 2 - 0.5;
+  // One continuous oar rotates around a fixed oarlock. The inboard handle and
+  // outboard blade move in opposition; depth and feather are independent,
+  // continuous channels instead of a drive/recovery visibility switch.
+  const strokeProgress = k.legExtension * 0.48 + k.bodySwing * 0.3 + k.armDraw * 0.22;
+  const oarAngle = Math.PI - 0.18 - strokeProgress * (Math.PI - 0.36);
+  const oarCos = Math.cos(oarAngle);
+  const oarSin = Math.sin(oarAngle);
+  const oarlockX = x + 0.5;
+  const oarlockY = bobY - 0.2;
+  const handX = oarlockX - oarCos * 4.6;
+  const handY = oarlockY - oarSin * 1.4 - k.bladeFeather * 0.5;
+  const bladeRootX = oarlockX + oarCos * 11.7;
+  const bladeRootY = oarlockY + oarSin * 3.6 + k.bladeDepth * 1.6 - k.bladeFeather * 4.8;
+  const bladeTipX = bladeRootX + oarCos * 3.2;
+  const bladeTipY = bladeRootY + oarSin * 0.9;
+  const elbowX = (shX + handX) / 2 + 1.5 - k.armDraw * 1.1;
+  const elbowY = (shY + handY) / 2 - 0.7;
   limb(ctx, shX, shY + 1, elbowX, elbowY, 1.6, accent); // upper arm
   limb(ctx, elbowX, elbowY, handX, handY, 1.4, accent); // forearm
   disc(ctx, handX, handY, 0.9, accent); // hand on handle
-  limb(ctx, handX, handY, bladeX, bladeY, 1.6, rim); // oar shaft
-  limb(ctx, bladeX - 1.6, bladeY - 1.6, bladeX + 1.6, bladeY + 1.6, 2.4, accent); // blade
-  if (!reduce && inWater) {
-    disc(ctx, bladeX, bobY + 2, 1, foam);
-    disc(ctx, bladeX + 2, bobY + 1, 0.8, foam);
+  limb(ctx, handX, handY, bladeRootX, bladeRootY, 1.3, rim); // oar shaft
+  limb(ctx, bladeRootX, bladeRootY, bladeTipX, bladeTipY, 2.5 - k.bladeFeather * 1.25, accent);
+  if (!reduce && k.bladeDepth > 0.08) {
+    disc(ctx, bladeTipX, bobY + 2.2, 0.75 + k.bladeDepth * 0.35, foam);
+    disc(ctx, bladeTipX + 1.8, bobY + 1.2, 0.55 + k.bladeDepth * 0.25, foam);
   }
 }
 
 /** Skier double-poling: arms/poles swing from a high reach to a low back-pull. */
-function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
-  const { x, y, bobY, s, accent, rim } = a;
-  const hipX = x;
-  const hipY = bobY - 7;
-  const crouch = (1 - s) * 0.6; // deeper crouch on the pull (s → −1)
-  const shX = x + 0.5 + (s < 0 ? 1.5 : 0);
-  const shY = bobY - 13 + crouch;
+function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKinematics) {
+  const { x, y, bobY, accent, rim, foam, reduce } = a;
+  const hipX = x + k.hipHinge * 1.1;
+  const hipY = bobY - 7 + k.kneeFlex * 1.8;
+  const shX = x + 0.5 + k.hipHinge * 3;
+  const shY = bobY - 13 + k.hipHinge * 3.4;
 
-  // Legs planted on the snow (the waterline).
-  limb(ctx, hipX, hipY + crouch, x + 4, y, 2.2, accent);
-  limb(ctx, hipX, hipY + crouch, x - 3, y, 2.2, accent);
+  // Both boots remain planted while the knees and hip absorb the press.
+  limb(ctx, hipX, hipY, x + 4, y, 2.2, accent);
+  limb(ctx, hipX, hipY, x - 3, y, 2.2, accent);
   disc(ctx, x + 4, y, 1.1, rim); // right boot
   disc(ctx, x - 3, y, 1.1, rim); // left boot
-  // Torso + head.
-  limb(ctx, hipX, hipY + crouch, shX, shY, 2.6, accent);
+  limb(ctx, hipX, hipY, shX, shY, 2.6, accent);
   disc(ctx, shX, shY - 3, 2.3, accent);
-  // Arms with elbow bend: hands high & forward on the reach (s → +1),
-  // low & back on pull (s → −1). Each arm has an upper arm + forearm with
-  // a visible elbow kink, and the pole pivots from the hand grip.
-  const handX = shX + 4 + s * 2;
-  const handY = shY + 4 - s * 4;
-  const elbowX = (shX + handX) / 2 + 1.5;
-  const elbowY = (shY + handY) / 2 + 0.5;
+
+  // Reach → plant → press → recovery. The pole tip touches the snow only
+  // while poleContact is active; otherwise its full trajectory clears the deck.
+  const handX = shX + 5 - k.armPress * 6;
+  const handY = shY + 1.6 + k.armPress * 6.1;
+  const elbowX = (shX + handX) / 2 + 1.6 - k.armPress * 0.8;
+  const elbowY = (shY + handY) / 2 + 0.4;
   limb(ctx, shX, shY + 1, elbowX, elbowY, 1.8, accent); // upper arm
   limb(ctx, elbowX, elbowY, handX, handY, 1.6, accent); // forearm
   disc(ctx, handX, handY, 0.9, accent); // hand on grip
-  // Pole: from hand grip down to the snow, sweeps with the stroke.
-  limb(ctx, handX, handY, handX - 6 + s * 2, y, 1.2, rim); // pole to snow
+  const poleTipX = handX + 3.6 - k.poleSweep * 9;
+  const poleTipY = y - (1 - k.poleContact) * 4.5;
+  limb(ctx, handX, handY, poleTipX, poleTipY, 1.2, rim);
+  if (!reduce && k.poleContact > 0.12) {
+    disc(ctx, poleTipX, y, 0.65 + k.poleContact * 0.35, foam);
+    disc(ctx, poleTipX + 1.5, y - 0.8, 0.5 + k.poleContact * 0.2, foam);
+  }
 }
 
 /** Cyclist whose wheels spin and legs pedal with the phase. */
-function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
-  const { x, y, accent, rim, phase, reduce } = a;
+function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKinematics) {
+  const { x, y, accent, rim, meters, reduce } = a;
   const wr = 5;
   const rearX = x - 8;
   const frontX = x + 8;
   const wheelY = y - wr;
-  const spin = reduce ? 0.3 : phase * 2;
+  // Wheel rotation is tied to road distance, not cadence. A gearing change can
+  // alter crank speed without making the tyres slide along the course.
+  const wheelSpin = reduce ? 0.3 : meters / 0.34;
 
   // Wheels: rim + rotating spokes + hub.
-  for (const wx of [rearX, frontX]) {
+  for (let wheel = 0; wheel < 2; wheel++) {
+    const wx = wheel === 0 ? rearX : frontX;
     ctx.strokeStyle = accent;
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.arc(wx, wheelY, wr, 0, Math.PI * 2);
     ctx.stroke();
-    for (let k = 0; k < 4; k++) {
-      const ang = spin + (k * Math.PI) / 2;
+    for (let spoke = 0; spoke < 4; spoke++) {
+      const ang = wheelSpin + (spoke * Math.PI) / 2;
       limb(ctx, wx, wheelY, wx + Math.cos(ang) * wr, wheelY + Math.sin(ang) * wr, 0.8, rim);
     }
     disc(ctx, wx, wheelY, 1, accent);
   }
 
-  // Frame + rider bob with the stroke; the wheels stay grounded on `y`.
-  const lift = a.bobY - y;
+  // Frame and wheels stay grounded; only the rider gets restrained secondary
+  // movement from the kinematics solver.
   const bbX = x;
-  const bbY = wheelY + 1 + lift;
+  const bbY = wheelY + 1;
   const seatX = x - 3;
-  const seatY = wheelY - 7 + lift;
+  const seatY = wheelY - 7;
   const barX = frontX - 1;
-  const barY = wheelY - 6 + lift;
+  const barY = wheelY - 6;
   limb(ctx, rearX, wheelY, bbX, bbY, 1.6, accent);
   limb(ctx, bbX, bbY, seatX, seatY, 1.6, accent);
   limb(ctx, seatX, seatY, barX, barY, 1.6, accent);
@@ -400,9 +422,13 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
   limb(ctx, frontX, wheelY, barX, barY, 1.6, accent);
 
   // Rider: torso → bars, head, arms on bars, and two pedalling legs.
-  const rShX = x + 1;
-  const rShY = wheelY - 12 + lift;
-  limb(ctx, seatX, seatY, rShX, rShY, 2.4, accent);
+  const hipLift = reduce ? 0 : k.hipRock * 14;
+  const torsoShift = reduce ? 0 : k.torsoSway * 14;
+  const hipX = seatX + torsoShift * 0.2;
+  const hipY = seatY + hipLift;
+  const rShX = x + 1 + torsoShift;
+  const rShY = wheelY - 12 + hipLift * 0.35;
+  limb(ctx, hipX, hipY, rShX, rShY, 2.4, accent);
   disc(ctx, rShX + 1, rShY - 2.5, 2.3, accent); // head
 
   // Arms: from shoulders to handlebars with an elbow bend.
@@ -415,16 +441,19 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx) {
   // Two legs pedalling in opposition: each follows its crank position
   // (180° apart). The knee kinks outward for a natural look.
   for (let leg = 0; leg < 2; leg++) {
-    const legSpin = spin + leg * Math.PI;
+    const legSpin = k.crankAngle + leg * Math.PI;
     const crankX = bbX + Math.cos(legSpin) * 2.4;
     const crankY = bbY + Math.sin(legSpin) * 2.4;
     // Knee kinks outward on the downstroke, inward on the upstroke.
     const extension = Math.sin(legSpin);
-    const kneeX = (seatX + crankX) / 2 + (leg === 0 ? 1.2 : -1.2) + extension * 0.5;
-    const kneeY = (seatY + crankY) / 2 - 0.5;
-    limb(ctx, seatX + 0.5, seatY + 0.5, kneeX, kneeY, 1.6, accent); // thigh
+    const kneeX = (hipX + crankX) / 2 + (leg === 0 ? 1.2 : -1.2) + extension * 0.5;
+    const kneeY = (hipY + crankY) / 2 - 0.5;
+    limb(ctx, hipX + 0.5, hipY + 0.5, kneeX, kneeY, 1.6, accent); // thigh
     limb(ctx, kneeX, kneeY, crankX, crankY, 1.4, accent); // shin
-    disc(ctx, crankX, crankY, 0.8, rim); // foot on pedal
+    const anklePitch = leg === 0 ? k.anklePitchLeft : k.anklePitchRight;
+    const shoeX = crankX + Math.cos(anklePitch) * 1.5;
+    const shoeY = crankY + Math.sin(anklePitch) * 1.5;
+    limb(ctx, crankX, crankY, shoeX, shoeY, 1.5, rim); // foot on pedal
   }
 }
 
@@ -470,6 +499,7 @@ interface LaneOpts {
   isYou: boolean;
   nameTab: string;
   padL: number;
+  sport?: Sport;
 }
 
 interface AvatarOpts {
@@ -478,6 +508,8 @@ interface AvatarOpts {
   accent: string;
   /** Distance-driven stroke phase (radians; one cycle per stroke). */
   phase: number;
+  /** Cumulative course distance in metres. */
+  meters: number;
   pose?: StrokePose;
   spm: number;
   isYou: boolean;
@@ -511,6 +543,32 @@ export class CourseRenderer implements ReplayRenderer {
   private colors: CanvasColors = COLORS_LIGHT;
   // Refreshed each render() from the OS setting; flattens the avatar wake.
   private reduceMotion = false;
+  /** Reused solver outputs keep the per-frame course draw allocation-free. */
+  private rowKinematics: RowerKinematics = {
+    legExtension: 0,
+    bodySwing: 0,
+    armDraw: 0,
+    bladeDepth: 0,
+    bladeFeather: 0,
+    surge: 0,
+    vertical: 0,
+  };
+  private skiKinematics: SkierKinematics = {
+    armPress: 0,
+    hipHinge: 0,
+    kneeFlex: 0,
+    poleContact: 0,
+    poleSweep: 0,
+    rebound: 0,
+    surge: 0,
+  };
+  private bikeKinematics: BikeKinematics = {
+    crankAngle: 0,
+    torsoSway: 0,
+    hipRock: 0,
+    anklePitchLeft: 0,
+    anklePitchRight: 0,
+  };
 
   constructor(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
@@ -581,7 +639,14 @@ export class CourseRenderer implements ReplayRenderer {
 
     // ── Scene layers ──────────────────────────────────────────────────────
     this.drawBackground(w, h);
-    this.drawGrid(startX, span, h, state.totalDistance, hasGhost ? [ghostY, playerY] : [playerY]);
+    this.drawGrid(
+      startX,
+      span,
+      h,
+      state.totalDistance,
+      hasGhost ? [ghostY, playerY] : [playerY],
+      state.sport,
+    );
     this.drawFinishGate(finishX, 10, h - 10);
 
     // Ghost first so YOU overlaps on top
@@ -589,7 +654,7 @@ export class CourseRenderer implements ReplayRenderer {
       const ghostFrac = clamp01(state.ghost.distFrac);
       const ghostAvX = startX + span * ghostFrac;
       if (animate && catchTransitions(this.lastGhostPose, ghostPose) > 0) {
-        this.spawnSplash(this.ghostSplash, ghostAvX, ghostY, state.sport);
+        this.spawnSplash(this.ghostSplash, ghostAvX, ghostY, state.sport, ghostPose?.intensity);
       }
       this.drawLane({
         startX,
@@ -602,12 +667,14 @@ export class CourseRenderer implements ReplayRenderer {
         isYou: false,
         nameTab: "GHOST",
         padL: PAD_L,
+        sport: state.sport,
       });
       this.drawAvatar({
         x: ghostAvX,
         y: ghostY,
         accent: C.ghost,
         phase: ghostPose?.phase ?? this.ghostStrokePhase,
+        meters: ghostFrac * state.totalDistance,
         pose: ghostPose,
         spm: state.ghost.spm,
         isYou: false,
@@ -618,12 +685,13 @@ export class CourseRenderer implements ReplayRenderer {
       this.lastGhostPose = ghostPose ?? null;
     } else {
       this.lastGhostPose = null;
+      this.ghostSplash.clear();
     }
 
     const playerFrac = clamp01(state.distFrac);
     const playerAvX = startX + span * playerFrac;
     if (animate && catchTransitions(this.lastLivePose, livePose) > 0) {
-      this.spawnSplash(this.liveSplash, playerAvX, playerY, state.sport);
+      this.spawnSplash(this.liveSplash, playerAvX, playerY, state.sport, livePose.intensity);
     }
     this.drawLane({
       startX,
@@ -636,12 +704,14 @@ export class CourseRenderer implements ReplayRenderer {
       isYou: true,
       nameTab: "YOU",
       padL: PAD_L,
+      sport: state.sport,
     });
     this.drawAvatar({
       x: playerAvX,
       y: playerY,
       accent: C.live,
       phase: livePose.phase,
+      meters: state.frame.d,
       pose: livePose,
       spm: state.frame.spm,
       isYou: true,
@@ -657,20 +727,29 @@ export class CourseRenderer implements ReplayRenderer {
    * kicked from the pole baskets for the skier. The bike rolls smoothly and
    * spawns nothing.
    */
-  private spawnSplash(pool: ParticlePool, avX: number, y: number, sport?: Sport) {
-    const count = sport === "rower" ? 4 : sport === "skierg" ? 3 : 0;
+  private spawnSplash(pool: ParticlePool, avX: number, y: number, sport?: Sport, intensity = 0.5) {
+    const effort = 0.75 + clamp01(intensity) * 0.65;
+    const count =
+      sport === "rower"
+        ? 3 + Math.round(clamp01(intensity) * 3)
+        : sport === "skierg"
+          ? 2 + Math.round(clamp01(intensity) * 2)
+          : 0;
     if (count === 0) return;
-    const ox = sport === "rower" ? 12 : 2; // blade vs pole-basket offset
+    // Catch-time contact points after the avatar's 1.12× scale and small
+    // solver-driven surge: the row blade is aft/left of the hull, while the
+    // SkiErg basket plants forward/right of the boots.
+    const ox = sport === "rower" ? -18 : 9;
     for (let i = 0; i < count; i++) {
       pool.spawn(
         avX + ox + (Math.random() - 0.5) * 4,
         y + 2,
         0,
-        Math.random() * 34 - 10,
-        -(26 + Math.random() * 38),
+        (Math.random() * 34 - 10) * effort,
+        -(26 + Math.random() * 38) * effort,
         0,
         0.32 + Math.random() * 0.22,
-        0.8 + Math.random() * 0.8,
+        (0.8 + Math.random() * 0.8) * effort,
       );
     }
   }
@@ -705,6 +784,7 @@ export class CourseRenderer implements ReplayRenderer {
     h: number,
     totalDistance: number,
     waterlines: number[],
+    sport?: Sport,
   ) {
     const { ctx } = this;
     const C = this.colors;
@@ -722,12 +802,26 @@ export class CourseRenderer implements ReplayRenderer {
       ctx.lineTo(x, h - 18);
       ctx.stroke();
 
-      // Buoy cap on every lane's waterline (so the ghost lane has parity).
+      // Sport-aware course markers on every lane (ghost keeps visual parity).
       ctx.fillStyle = C.markerCap;
       for (const ly of waterlines) {
-        ctx.beginPath();
-        ctx.arc(x, ly, isMajor ? 3.5 : 2.5, 0, Math.PI * 2);
-        ctx.fill();
+        if (sport === "bike") {
+          const markerW = isMajor ? 5 : 3;
+          ctx.fillRect(x - markerW / 2, ly - 1, markerW, 2);
+        } else if (sport === "skierg") {
+          const markerR = isMajor ? 3.5 : 2.5;
+          ctx.beginPath();
+          ctx.moveTo(x, ly - markerR);
+          ctx.lineTo(x + markerR, ly);
+          ctx.lineTo(x, ly + markerR);
+          ctx.lineTo(x - markerR, ly);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.arc(x, ly, isMajor ? 3.5 : 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
       if (isMajor) {
@@ -787,30 +881,21 @@ export class CourseRenderer implements ReplayRenderer {
 
   // ── Lane scene ────────────────────────────────────────────────────────────
 
-  private drawLane(o: LaneOpts) {
+  private drawRowSurface(o: LaneOpts, avX: number) {
     const { ctx } = this;
     const C = this.colors;
-    const { startX, span, y, frac, accent, phase, pace, isYou, nameTab, padL } = o;
-    const avX = startX + span * frac;
-
-    ctx.save();
-    if (!isYou) {
-      ctx.globalAlpha = 0.82;
-    }
-
-    // 1. Water band — a rich gradient with a highlight stripe for depth.
-    const waterTop = y - WATER_H * 0.3;
-    const waterBottom = y + WATER_H * 0.7;
-    const waterGrad = ctx.createLinearGradient(0, waterTop, 0, waterBottom);
-    waterGrad.addColorStop(0, withAlpha(accent, 0.04));
-    waterGrad.addColorStop(0.35, withAlpha(accent, 0.12));
-    waterGrad.addColorStop(0.5, withAlpha(accent, 0.18));
-    waterGrad.addColorStop(1, withAlpha(accent, 0.22));
-    ctx.fillStyle = waterGrad;
-    roundRect(ctx, startX, waterTop, span, waterBottom - waterTop, 4);
+    const { startX, span, y, accent, phase } = o;
+    const bandTop = y - WATER_H * 0.3;
+    const bandBottom = y + WATER_H * 0.7;
+    const band = ctx.createLinearGradient(0, bandTop, 0, bandBottom);
+    band.addColorStop(0, withAlpha(accent, 0.04));
+    band.addColorStop(0.35, withAlpha(accent, 0.12));
+    band.addColorStop(0.5, withAlpha(accent, 0.18));
+    band.addColorStop(1, withAlpha(accent, 0.22));
+    ctx.fillStyle = band;
+    roundRect(ctx, startX, bandTop, span, bandBottom - bandTop, 4);
     ctx.fill();
 
-    // 2. Waterline (1px laneLine)
     ctx.strokeStyle = C.laneLine;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -818,9 +903,8 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.lineTo(startX + span, y);
     ctx.stroke();
 
-    // 3. Ripples (3 polylines just below the waterline). Each layer drifts at
-    // its own speed for a cheap parallax read. Under reduced motion the
-    // amplitude is 0, so draw a straight line directly and skip the trig.
+    // Three wave trains make the RowErg lane read as water. Reduced motion
+    // keeps the same structure but flattens every train.
     for (let ri = 0; ri < 3; ri++) {
       const offsetY = y + 5 + ri * 5;
       ctx.strokeStyle = withAlpha(accent, 0.25 - ri * 0.06);
@@ -838,62 +922,168 @@ export class CourseRenderer implements ReplayRenderer {
       ctx.stroke();
     }
 
-    // 4. Wake trail: layered glow + core. The glow is built from widening,
-    // fading strokes of the same path — visually close to a blur but far
-    // cheaper than canvas shadowBlur, which forces a full intermediate
-    // surface blur per frame. Reduced motion → a flat line (no trig).
+    if (avX <= startX) return;
+    // Build the wake once, then restroke the retained path for glow + core.
+    ctx.beginPath();
+    ctx.moveTo(startX, y);
+    if (this.reduceMotion) {
+      ctx.lineTo(avX, y);
+    } else {
+      for (let x = startX; x <= avX; x += 6) {
+        ctx.lineTo(x, y + Math.sin((x - avX) * 0.18 + phase) * 1.2);
+      }
+    }
+    ctx.strokeStyle = withAlpha(accent, 0.12);
+    ctx.lineWidth = 11;
+    ctx.stroke();
+    ctx.strokeStyle = withAlpha(accent, 0.3);
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  private drawSkiSurface(o: LaneOpts, avX: number) {
+    const { ctx } = this;
+    const C = this.colors;
+    const { startX, span, y, accent, phase } = o;
+    const bandTop = y - 10;
+    const bandBottom = y + 22;
+    const band = ctx.createLinearGradient(0, bandTop, 0, bandBottom);
+    band.addColorStop(0, withAlpha(C.foam, 0.52));
+    band.addColorStop(0.45, withAlpha(accent, 0.08));
+    band.addColorStop(1, withAlpha(C.markerCap, 0.18));
+    ctx.fillStyle = band;
+    roundRect(ctx, startX, bandTop, span, bandBottom - bandTop, 4);
+    ctx.fill();
+
+    ctx.strokeStyle = withAlpha(C.markerCap, 0.7);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(startX, y);
+    ctx.lineTo(startX + span, y);
+    ctx.stroke();
+
+    // Groomed grooves drift very gently while playing; they are straight and
+    // stationary under reduced motion, unlike RowErg's wave trains.
+    ctx.setLineDash(SKI_GROOVE_DASH);
+    ctx.lineDashOffset = this.reduceMotion ? 0 : -phase * 2;
+    for (let groove = 0; groove < 3; groove++) {
+      const gy = y + 6 + groove * 5;
+      ctx.strokeStyle = withAlpha(accent, 0.18 - groove * 0.035);
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(startX, gy);
+      ctx.lineTo(startX + span, gy);
+      ctx.stroke();
+    }
+    ctx.setLineDash(SOLID_LINE);
+    ctx.lineDashOffset = 0;
+
     if (avX > startX) {
-      const traceWake = () => {
-        ctx.beginPath();
-        ctx.moveTo(startX, y);
-        if (this.reduceMotion) {
-          ctx.lineTo(avX, y);
-        } else {
-          for (let x = startX; x <= avX; x += 6) {
-            ctx.lineTo(x, y + Math.sin((x - avX) * 0.18 + phase) * 1.2);
-          }
-        }
-      };
-
-      // Outer + inner glow layers
-      ctx.strokeStyle = withAlpha(accent, 0.12);
-      ctx.lineWidth = 11;
-      traceWake();
+      ctx.beginPath();
+      ctx.moveTo(startX, y + 1);
+      ctx.lineTo(avX, y + 1);
+      ctx.strokeStyle = withAlpha(C.foam, 0.55);
+      ctx.lineWidth = 8;
       ctx.stroke();
-      ctx.strokeStyle = withAlpha(accent, 0.3);
-      ctx.lineWidth = 6;
-      traceWake();
+      ctx.strokeStyle = withAlpha(accent, 0.55);
+      ctx.lineWidth = 3;
       ctx.stroke();
+    }
+  }
 
-      // Core stroke
+  private drawBikeSurface(o: LaneOpts, avX: number) {
+    const { ctx } = this;
+    const C = this.colors;
+    const { startX, span, y, accent, phase } = o;
+    const bandTop = y - 10;
+    const bandBottom = y + 22;
+    const band = ctx.createLinearGradient(0, bandTop, 0, bandBottom);
+    band.addColorStop(0, withAlpha(C.shadow, 0.08));
+    band.addColorStop(0.45, withAlpha(C.markerCap, 0.24));
+    band.addColorStop(1, withAlpha(C.shadow, 0.18));
+    ctx.fillStyle = band;
+    roundRect(ctx, startX, bandTop, span, bandBottom - bandTop, 4);
+    ctx.fill();
+
+    // Alternating accent/foam curb strokes frame a compact velodrome lane.
+    const dashOffset = this.reduceMotion ? 0 : -phase * 3;
+    for (let edge = 0; edge < 2; edge++) {
+      const cy = edge === 0 ? bandTop + 1.5 : bandBottom - 1.5;
+      ctx.setLineDash(BIKE_CURB_DASH);
+      ctx.lineDashOffset = dashOffset;
       ctx.strokeStyle = accent;
       ctx.lineWidth = 3;
-      traceWake();
+      ctx.beginPath();
+      ctx.moveTo(startX, cy);
+      ctx.lineTo(startX + span, cy);
+      ctx.stroke();
+      ctx.lineDashOffset = dashOffset - 8;
+      ctx.strokeStyle = withAlpha(C.foam, 0.8);
       ctx.stroke();
     }
 
-    // 5. Speed streaks behind avX (streakLen already returns a 6..22 length)
+    ctx.setLineDash(BIKE_LANE_DASH);
+    ctx.lineDashOffset = this.reduceMotion ? 0 : -phase * 4;
+    ctx.strokeStyle = withAlpha(C.labelBg, 0.58);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(startX, y + 8);
+    ctx.lineTo(startX + span, y + 8);
+    ctx.stroke();
+    ctx.setLineDash(SOLID_LINE);
+    ctx.lineDashOffset = 0;
+
+    if (avX > startX) {
+      ctx.beginPath();
+      ctx.moveTo(startX, y);
+      ctx.lineTo(avX, y);
+      ctx.strokeStyle = withAlpha(accent, 0.2);
+      ctx.lineWidth = 9;
+      ctx.stroke();
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+  }
+
+  private drawLane(o: LaneOpts) {
+    const { ctx } = this;
+    const C = this.colors;
+    const { startX, span, y, frac, accent, phase, pace, isYou, nameTab, padL, sport } = o;
+    const avX = startX + span * frac;
+
+    ctx.save();
+    if (!isYou) {
+      ctx.globalAlpha = 0.82;
+    }
+
+    if (sport === "skierg") this.drawSkiSurface(o, avX);
+    else if (sport === "bike") this.drawBikeSurface(o, avX);
+    else this.drawRowSurface(o, avX);
+
+    // Pace-linked streaks are shared, but sit on three genuinely different
+    // surfaces rather than making every erg look like it races on water.
     const sLen = streakLen(pace);
-    const streakY = [y - 3, y, y + 3, y - 5];
-    const streakAlphas = [0.35, 0.28, 0.22, 0.16];
-    const streakLens = [sLen, sLen * 0.75, sLen * 0.55, sLen * 0.4];
     for (let si = 0; si < 4; si++) {
       const shimmerOffset = this.reduceMotion ? 0 : Math.sin(phase + si * 0.8) * 3;
       // Clamp the start to the gate so streaks shorten gradually near the
       // line rather than winking out the moment they cross it.
-      const sx = Math.max(avX - streakLens[si] - shimmerOffset, startX);
+      const sx = Math.max(avX - sLen * STREAK_LENGTH_FACTORS[si] - shimmerOffset, startX);
       const ex = avX - shimmerOffset;
       if (sx < ex) {
-        ctx.strokeStyle = withAlpha(accent, streakAlphas[si]);
+        ctx.strokeStyle = withAlpha(accent, STREAK_ALPHAS[si]);
         ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.moveTo(sx, streakY[si]);
-        ctx.lineTo(ex, streakY[si]);
+        ctx.moveTo(sx, y + STREAK_Y_OFFSETS[si]);
+        ctx.lineTo(ex, y + STREAK_Y_OFFSETS[si]);
         ctx.stroke();
       }
     }
 
-    // 6. Lane name tab (rounded rect in gutter)
+    // Lane name tab (rounded rect in gutter).
     const tabX = 6;
     const tabW = padL - 16;
     const tabH = 18;
@@ -913,7 +1103,7 @@ export class CourseRenderer implements ReplayRenderer {
   private drawAvatar(o: AvatarOpts) {
     const { ctx } = this;
     const C = this.colors;
-    const { x, y, accent, phase, pose, isYou, sport, label, splash } = o;
+    const { x, y, accent, phase, meters, pose, spm, isYou, sport, label, splash } = o;
     const reduce = this.reduceMotion;
 
     ctx.save();
@@ -921,20 +1111,34 @@ export class CourseRenderer implements ReplayRenderer {
       ctx.globalAlpha = 0.82;
     }
 
-    // Asymmetric stroke: quick drive, slow recovery. The bike pedals at a
-    // constant rate, so its phase is left unwarped.
-    const warped = sport === "bike" ? phase : (pose?.warpedPhase ?? warpStrokePhase(phase));
-    // Stroke position +1 (catch) … −1 (finish); frozen pose under reduced motion.
-    const s = reduce ? -0.2 : Math.cos(warped);
-    const drive = !reduce && (pose?.drive ?? warped % (Math.PI * 2) < Math.PI);
-    // The hull surges through the drive and checks at the catch; the HUD pill
-    // and caret stay anchored to the un-surged x so they read steady.
-    const amplitude = pose?.amplitude ?? 1;
-    const surge = reduce ? 0 : strokeSurge(warped) * SURGE_PX[sport ?? "rower"] * amplitude;
+    // Solvers own the choreography. Reduced motion swaps in one representative
+    // pose, while playback position and the steady HUD remain fully functional.
+    const resolvedSport = sport ?? "rower";
+    const kinematicPose = reduce
+      ? REDUCED_REPLAY_POSES[resolvedSport]
+      : (pose ?? fallbackStrokePose(resolvedSport, phase, spm));
+    let rowKinematics: RowerKinematics | null = null;
+    let skiKinematics: SkierKinematics | null = null;
+    let bikeKinematics: BikeKinematics | null = null;
+    let surgeChannel = 0;
+    let verticalChannel = 0;
+
+    if (resolvedSport === "rower") {
+      rowKinematics = solveRowerKinematics(kinematicPose, this.rowKinematics);
+      surgeChannel = rowKinematics.surge;
+      verticalChannel = rowKinematics.vertical;
+    } else if (resolvedSport === "skierg") {
+      skiKinematics = solveSkierKinematics(kinematicPose, this.skiKinematics);
+      surgeChannel = skiKinematics.surge;
+      verticalChannel = -skiKinematics.rebound * 0.7;
+    } else {
+      bikeKinematics = solveBikeKinematics(kinematicPose, this.bikeKinematics);
+    }
+
+    const amplitude = kinematicPose.amplitude;
+    const surge = reduce ? 0 : surgeChannel * SURGE_PX[resolvedSport] * amplitude;
     const figX = x + surge;
-    // Bob once per stroke, in step with the figure's effort.
-    const fatigueDrop = (pose?.fatigue ?? 0) * 0.8;
-    const bobY = y + fatigueDrop + (reduce ? 0 : Math.sin(warped) * BOB_AMP * amplitude);
+    const bobY = y + (reduce ? 0 : verticalChannel * BOB_AMP * amplitude);
     // Contrast rim that reads on the accent fill in both themes.
     const rim = C.labelText;
 
@@ -952,23 +1156,26 @@ export class CourseRenderer implements ReplayRenderer {
       x: figX,
       y,
       bobY,
-      s,
-      drive,
-      phase,
+      meters,
       accent,
       rim,
       foam: C.foam,
       reduce,
     };
+    if (sport) {
+      ctx.translate(figX, y);
+      ctx.scale(ATHLETE_SCALE, ATHLETE_SCALE);
+      ctx.translate(-figX, -y);
+    }
     switch (sport) {
       case "rower":
-        drawRower(ctx, a);
+        drawRower(ctx, a, rowKinematics!);
         break;
       case "skierg":
-        drawSkier(ctx, a);
+        drawSkier(ctx, a, skiKinematics!);
         break;
       case "bike":
-        drawCyclist(ctx, a);
+        drawCyclist(ctx, a, bikeKinematics!);
         break;
       default:
         drawNeutralPod(ctx, figX, bobY, accent, rim, C.foam);

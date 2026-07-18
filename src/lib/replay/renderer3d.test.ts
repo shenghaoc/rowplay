@@ -22,7 +22,10 @@ vi.mock("three", async (importOriginal) => {
 });
 
 import { CourseRenderer3D } from "./renderer3d";
-import { buildStrokeTimeline, strokePoseAt } from "./strokeModel";
+import { REDUCED_REPLAY_POSES } from "./renderer";
+import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
+import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
+import * as THREE from "three";
 
 /** Minimal 2D context stub for text sprite canvas creation. */
 function make2dCtx() {
@@ -51,8 +54,10 @@ function makeCanvas() {
 }
 
 const origDocument = globalThis.document;
+let reducedMotion = false;
 
 beforeEach(() => {
+  reducedMotion = false;
   // Stub document so canvas creation works without jsdom.
   globalThis.document = {
     createElement: (tag: string) => {
@@ -64,7 +69,11 @@ beforeEach(() => {
   // @ts-expect-error stub
   globalThis.window = {
     devicePixelRatio: 1,
-    matchMedia: vi.fn().mockReturnValue({ matches: false }),
+    matchMedia: vi.fn().mockImplementation(() => ({
+      get matches() {
+        return reducedMotion;
+      },
+    })),
   };
 });
 
@@ -103,7 +112,54 @@ function makeRenderState(overrides: Partial<Parameters<CourseRenderer3D["render"
 }
 
 function getScene(renderer: CourseRenderer3D) {
-  return (renderer as unknown as { scene: { getObjectByName(name: string): unknown } }).scene;
+  return (renderer as unknown as { scene: THREE.Scene }).scene;
+}
+
+const TAU = Math.PI * 2;
+
+function makeSportState(
+  sport: "rower" | "skierg" | "bike",
+  cycle: number,
+  meters = 100,
+  overrides: Partial<Parameters<CourseRenderer3D["render"]>[0]> = {},
+) {
+  const rate = sport === "bike" ? 86 : sport === "skierg" ? 32 : 28;
+  return makeRenderState({
+    sport,
+    frame: {
+      t: cycle,
+      d: meters,
+      pace: 120,
+      spm: rate,
+      watts: 180,
+      hr: 0,
+      progress: meters / 2000,
+    },
+    strokePose: fallbackStrokePose(sport, cycle * TAU, rate),
+    distFrac: meters / 2000,
+    ...overrides,
+  });
+}
+
+function sceneObject(renderer: CourseRenderer3D, name: string): THREE.Object3D {
+  const scene = getScene(renderer);
+  scene.updateMatrixWorld(true);
+  const object = scene.getObjectByName(name);
+  expect(object, `missing scene object ${name}`).toBeDefined();
+  return object as THREE.Object3D;
+}
+
+function worldPosition(renderer: CourseRenderer3D, name: string): THREE.Vector3 {
+  return sceneObject(renderer, name).getWorldPosition(new THREE.Vector3());
+}
+
+function getCameraRig(renderer: CourseRenderer3D) {
+  return renderer as unknown as {
+    camera: THREE.PerspectiveCamera;
+    chase: THREE.Vector3;
+    lookAt: THREE.Vector3;
+    cameraAim: THREE.Vector3;
+  };
 }
 
 describe("CourseRenderer3D", () => {
@@ -143,21 +199,30 @@ describe("CourseRenderer3D", () => {
       rower: [
         "rower-deck-stripe",
         "rower-oar-collar",
-        "rower-handle",
+        "rower-handle-left",
+        "rower-handle-right",
         "rower-footplate",
         "athlete:head",
-        "athlete:hand",
-        "athlete:foot",
+        "rower-hand-left",
+        "rower-foot-contact-left",
       ],
-      skierg: ["skierg-ski-tip", "skierg-pole-grip", "athlete:head", "athlete:hand"],
+      skierg: [
+        "skierg-ski-tip",
+        "skierg-pole-grip-left",
+        "skierg-pole-contact-left",
+        "athlete:head",
+        "skierg-hand-left",
+      ],
       bike: [
         "bike-top-tube",
         "bike-chain-ring",
         "bike-handlebar",
-        "bike-pedal",
+        "bike-pedal-left",
+        "bike-wheel-front",
         "athlete:head",
-        "athlete:hand",
-        "athlete:foot",
+        "bike-hand-left",
+        "bike-hand-contact-left",
+        "bike-foot-contact-left",
       ],
     } as const;
 
@@ -175,13 +240,70 @@ describe("CourseRenderer3D", () => {
     }
   });
 
-  it("builds RowErg hand and foot contact anchors", () => {
+  it("locks RowErg hands to the oar grips and feet to the boat through the full stroke", () => {
     const host = makeHost();
-    const renderer = new CourseRenderer3D(host, "low", "rower");
-    const scene = getScene(renderer);
-    for (const name of ["rower-handle", "rower-footplate", "athlete:hand", "athlete:foot"]) {
-      expect(scene.getObjectByName(name)).toBeDefined();
+    const renderer = new CourseRenderer3D(host, "medium", "rower");
+    renderer.resize(800, 600);
+
+    for (const cycle of [0.01, 0.12, 0.19, 0.37, 0.5, 0.69, 0.9, 0.99]) {
+      renderer.render(makeSportState("rower", cycle), false);
+      for (const side of ["left", "right"]) {
+        expect(
+          worldPosition(renderer, `rower-hand-${side}`).distanceTo(
+            worldPosition(renderer, `rower-hand-contact-${side}`),
+          ),
+        ).toBeLessThan(1e-6);
+        expect(
+          worldPosition(renderer, `rower-foot-contact-${side}`).distanceTo(
+            worldPosition(renderer, `rower-footplate-contact-${side}`),
+          ),
+        ).toBeLessThan(1e-6);
+      }
     }
+    renderer.destroy();
+  });
+
+  it("increases RowErg hip-to-foot separation through the leg drive", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "rower");
+    renderer.resize(800, 600);
+
+    renderer.render(makeSportState("rower", 0.01), false);
+    const catchSeparation = worldPosition(renderer, "rower-hips").distanceTo(
+      worldPosition(renderer, "rower-foot-contact-left"),
+    );
+    renderer.render(makeSportState("rower", 0.37), false);
+    const finishSeparation = worldPosition(renderer, "rower-hips").distanceTo(
+      worldPosition(renderer, "rower-foot-contact-left"),
+    );
+
+    expect(finishSeparation - catchSeparation).toBeGreaterThan(0.35);
+    renderer.destroy();
+  });
+
+  it("buries, feathers, and re-squares RowErg blades continuously", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "rower");
+    renderer.resize(800, 600);
+
+    renderer.render(makeSportState("rower", 0.19), false);
+    const driveOarY = sceneObject(renderer, "rower-oar-left").position.y;
+    const squaredDrive = sceneObject(renderer, "rower-blade-left").rotation.x;
+    expect(driveOarY).toBeLessThan(0.26);
+    expect(squaredDrive).toBeCloseTo(Math.PI / 2, 5);
+
+    renderer.render(makeSportState("rower", 0.69), false);
+    const feathered = sceneObject(renderer, "rower-blade-left").rotation.x;
+    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.34, 5);
+    expect(feathered).toBeCloseTo(0, 5);
+
+    renderer.render(makeSportState("rower", 0.9), false);
+    const squaring = sceneObject(renderer, "rower-blade-left").rotation.x;
+    expect(squaring).toBeGreaterThan(feathered);
+    expect(squaring).toBeLessThan(Math.PI / 2);
+
+    renderer.render(makeSportState("rower", 0.999), false);
+    expect(sceneObject(renderer, "rower-blade-left").rotation.x).toBeCloseTo(Math.PI / 2, 3);
     renderer.destroy();
   });
 
@@ -202,22 +324,126 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
-  it("builds SkiErg pole grip and hand anchors", () => {
+  it("does not turn inferred fatigue into a lower RowErg posture", () => {
     const host = makeHost();
-    const renderer = new CourseRenderer3D(host, "low", "skierg");
-    const scene = getScene(renderer);
-    for (const name of ["skierg-pole-grip", "athlete:hand", "athlete:head"]) {
-      expect(scene.getObjectByName(name)).toBeDefined();
+    const renderer = new CourseRenderer3D(host, "medium", "rower");
+    renderer.resize(800, 600);
+    const basePose = fallbackStrokePose("rower", 0.2 * TAU, 28);
+
+    renderer.render(
+      makeSportState("rower", 0.2, 100, {
+        strokePose: { ...basePose, fatigue: 0, amplitude: 0.72 },
+      }),
+      false,
+    );
+    const freshAthlete = sceneObject(renderer, "rower-athlete").position.clone();
+    const freshTorsoPitch = sceneObject(renderer, "rower-torso").rotation.x;
+    const freshHeadHeight = worldPosition(renderer, "athlete:head").y;
+
+    renderer.render(
+      makeSportState("rower", 0.2, 100, {
+        strokePose: { ...basePose, fatigue: 1, amplitude: 1.32 },
+      }),
+      false,
+    );
+    expect(sceneObject(renderer, "rower-athlete").position).toEqual(freshAthlete);
+    expect(sceneObject(renderer, "rower-torso").rotation.x).toBe(freshTorsoPitch);
+    expect(worldPosition(renderer, "athlete:head").y).toBe(freshHeadHeight);
+    renderer.destroy();
+  });
+
+  it("uses a contact-safe static RowErg pose and fixed lens in reduced motion", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "rower");
+    renderer.resize(800, 600);
+
+    // Exercise a live preference change after a non-static pose, not merely a
+    // renderer that happened to start with reduced motion already enabled.
+    renderer.render(makeSportState("rower", 0.1), true);
+    reducedMotion = true;
+    renderer.render(makeSportState("rower", 0.05), true);
+    const firstPose = sceneObject(renderer, "rower-athlete").position.clone();
+    const expected = solveRowerKinematics(REDUCED_REPLAY_POSES.rower);
+    expect(firstPose.y).toBe(0);
+    expect(firstPose.z).toBeCloseTo(0.12 - expected.legExtension * 0.44, 8);
+    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(
+      0.34 - expected.bladeDepth * 0.1,
+      8,
+    );
+    expect(sceneObject(renderer, "rower-blade-left").rotation.x).toBeCloseTo(
+      (1 - expected.bladeFeather) * (Math.PI / 2),
+      8,
+    );
+    renderer.render(makeSportState("rower", 0.8), true);
+    expect(sceneObject(renderer, "rower-athlete").position).toEqual(firstPose);
+    expect(getCameraRig(renderer).camera.fov).toBe(46);
+    for (const side of ["left", "right"]) {
+      expect(
+        worldPosition(renderer, `rower-hand-${side}`).distanceTo(
+          worldPosition(renderer, `rower-hand-contact-${side}`),
+        ),
+      ).toBeLessThan(1e-6);
+      expect(
+        worldPosition(renderer, `rower-foot-contact-${side}`).distanceTo(
+          worldPosition(renderer, `rower-footplate-contact-${side}`),
+        ),
+      ).toBeLessThan(1e-6);
     }
     renderer.destroy();
   });
 
-  it("keeps SkiErg contact anchors in reduced motion", () => {
+  it("uses shared representative reduced poses for SkiErg and BikeErg", () => {
+    reducedMotion = true;
+
+    const skiRenderer = new CourseRenderer3D(makeHost(), "medium", "skierg");
+    skiRenderer.resize(800, 600);
+    skiRenderer.render(makeSportState("skierg", 0.8), true);
+    const expectedSki = solveSkierKinematics(REDUCED_REPLAY_POSES.skierg);
+    expect(sceneObject(skiRenderer, "skierg-upper").rotation.x).toBeCloseTo(
+      0.12 + expectedSki.hipHinge * 0.5,
+      8,
+    );
+    skiRenderer.destroy();
+
+    const bikeRenderer = new CourseRenderer3D(makeHost(), "medium", "bike");
+    bikeRenderer.resize(800, 600);
+    bikeRenderer.render(makeSportState("bike", 0.8), true);
+    const expectedBike = solveBikeKinematics(REDUCED_REPLAY_POSES.bike);
+    expect(sceneObject(bikeRenderer, "bike-cranks").rotation.x).toBeCloseTo(
+      expectedBike.crankAngle,
+      8,
+    );
+    expect(sceneObject(bikeRenderer, "bike-foot-contact-left").rotation.x).toBeCloseTo(
+      expectedBike.anklePitchLeft,
+      8,
+    );
+    bikeRenderer.destroy();
+  });
+
+  it("keeps SkiErg hands on both grips and pole tips grounded only during contact", () => {
     const host = makeHost();
     const renderer = new CourseRenderer3D(host, "medium", "skierg");
     renderer.resize(800, 600);
-    expect(() => renderer.render(makeRenderState({ sport: "skierg" }), true)).not.toThrow();
-    expect(() => renderer.render(makeRenderState({ sport: "skierg" }), false)).not.toThrow();
+
+    renderer.render(makeSportState("skierg", 0.17), false);
+    for (const side of ["left", "right"]) {
+      expect(
+        worldPosition(renderer, `skierg-hand-${side}`).distanceTo(
+          worldPosition(renderer, `skierg-pole-grip-${side}`),
+        ),
+      ).toBeLessThan(1e-6);
+      expect(worldPosition(renderer, `skierg-pole-contact-${side}`).y).toBeCloseTo(0.055, 5);
+    }
+
+    renderer.render(makeSportState("skierg", 0.7), false);
+    for (const side of ["left", "right"]) {
+      expect(
+        worldPosition(renderer, `skierg-hand-${side}`).distanceTo(
+          worldPosition(renderer, `skierg-pole-grip-${side}`),
+        ),
+      ).toBeLessThan(1e-6);
+      expect(worldPosition(renderer, `skierg-pole-contact-${side}`).y).toBeGreaterThan(0.25);
+    }
     renderer.destroy();
   });
 
@@ -229,13 +455,43 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
-  it("builds BikeErg bar and pedal anchors", () => {
+  it("locks BikeErg shoes to both pedals with bounded ankle articulation", () => {
     const host = makeHost();
-    const renderer = new CourseRenderer3D(host, "low", "bike");
-    const scene = getScene(renderer);
-    for (const name of ["bike-handlebar", "bike-pedal", "athlete:hand", "athlete:foot"]) {
-      expect(scene.getObjectByName(name)).toBeDefined();
+    const renderer = new CourseRenderer3D(host, "medium", "bike");
+    renderer.resize(800, 600);
+
+    for (const cycle of [0, 0.125, 0.25, 0.5, 0.75, 0.999]) {
+      renderer.render(makeSportState("bike", cycle), false);
+      for (const side of ["left", "right"]) {
+        expect(
+          worldPosition(renderer, `bike-hand-${side}`).distanceTo(
+            worldPosition(renderer, `bike-hand-contact-${side}`),
+          ),
+        ).toBeLessThan(1e-6);
+        expect(
+          worldPosition(renderer, `bike-foot-contact-${side}`).distanceTo(
+            worldPosition(renderer, `bike-pedal-${side}`),
+          ),
+        ).toBeLessThan(1e-6);
+        expect(
+          Math.abs(sceneObject(renderer, `bike-foot-contact-${side}`).rotation.x),
+        ).toBeLessThan(0.151);
+      }
     }
+    renderer.destroy();
+  });
+
+  it("rolls BikeErg wheels from travelled meters independently of crank phase", () => {
+    const host = makeHost();
+    const renderer = new CourseRenderer3D(host, "medium", "bike");
+    renderer.resize(800, 600);
+
+    renderer.render(makeSportState("bike", 0.25, 0), false);
+    expect(sceneObject(renderer, "bike-wheel-front").rotation.x).toBe(0);
+    renderer.render(makeSportState("bike", 0.25, 9), false);
+    expect(sceneObject(renderer, "bike-wheel-front").rotation.x).toBeCloseTo(20, 8);
+    expect(sceneObject(renderer, "bike-wheel-rear").rotation.x).toBeCloseTo(20, 8);
+    expect(sceneObject(renderer, "bike-cranks").rotation.x).toBeCloseTo(Math.PI / 2, 8);
     renderer.destroy();
   });
 
@@ -319,7 +575,7 @@ describe("CourseRenderer3D", () => {
       const r = new CourseRenderer3D(host, "low", "bike");
       r.resize(800, 600);
       r.render(makeRenderState({ sport: "bike" }), false, "dark");
-      const lane = getScene(r).getObjectByName("lane") as {
+      const lane = getScene(r).getObjectByName("lane") as unknown as {
         material: { color: { getHex(): number } };
       };
       expect(lane.material.color.getHex()).toBe(0x262c32);
@@ -331,6 +587,110 @@ describe("CourseRenderer3D", () => {
       const r = new CourseRenderer3D(host, "low", "rower");
       r.resize(800, 600);
       expect(() => r.render(makeRenderState(), true)).not.toThrow();
+    });
+
+    it("frames each sport at an equipment-aware camera height", () => {
+      const heights = new Map<string, number>();
+      const distances = new Map<string, number>();
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        const host = makeHost();
+        const renderer = new CourseRenderer3D(host, "low", sport);
+        renderer.resize(800, 600);
+        renderer.render(makeSportState(sport, 0.2, 0), false);
+        heights.set(sport, getCameraRig(renderer).camera.position.y);
+        distances.set(
+          sport,
+          getCameraRig(renderer).camera.position.distanceTo(new THREE.Vector3(0, 0, 30)),
+        );
+        renderer.destroy();
+      }
+      expect(heights.get("skierg")).toBeGreaterThan(heights.get("rower") ?? 0);
+      expect(heights.get("rower")).toBeGreaterThan(heights.get("bike") ?? 0);
+      // The former one-size chase rig sat ~6.9 m from the athlete. Each wide-
+      // aspect sport rig now moves closer while retaining its own height.
+      expect(Math.max(...distances.values())).toBeLessThan(6.65);
+    });
+
+    it("pulls the camera back on narrow canvases", () => {
+      const distances: number[] = [];
+      for (const [width, height] of [
+        [1200, 600],
+        [600, 800],
+      ] as const) {
+        const host = makeHost();
+        const renderer = new CourseRenderer3D(host, "low", "rower");
+        renderer.resize(width, height);
+        renderer.render(makeSportState("rower", 0.2, 0), false);
+        const rig = getCameraRig(renderer);
+        distances.push(rig.camera.position.distanceTo(rig.lookAt));
+        renderer.destroy();
+      }
+      expect(distances[1]).toBeGreaterThan(distances[0]);
+    });
+
+    it("keeps the full RowErg oar span inside a portrait viewport", () => {
+      const host = makeHost();
+      const renderer = new CourseRenderer3D(host, "low", "rower");
+      renderer.resize(600, 800);
+      renderer.render(makeSportState("rower", 0.2, 0), false);
+      const { camera } = getCameraRig(renderer);
+      camera.updateMatrixWorld(true);
+      camera.updateProjectionMatrix();
+
+      for (const side of ["left", "right"]) {
+        const projected = worldPosition(renderer, `rower-blade-${side}`).project(camera);
+        expect(Math.abs(projected.x)).toBeLessThan(0.95);
+      }
+      renderer.destroy();
+    });
+
+    it("updates paused camera framing when viewport and ghost layout change", () => {
+      const host = makeHost();
+      const renderer = new CourseRenderer3D(host, "low", "rower");
+      const state = makeSportState("rower", 0.2, 0);
+      renderer.resize(1200, 600);
+      renderer.render(state, false);
+      const widePosition = getCameraRig(renderer).camera.position.clone();
+
+      renderer.resize(600, 800);
+      renderer.render(state, false);
+      const rig = getCameraRig(renderer);
+      const narrowPosition = rig.camera.position.clone();
+      expect(narrowPosition).toEqual(rig.chase);
+      expect(narrowPosition.distanceTo(widePosition)).toBeGreaterThan(1);
+
+      renderer.render(
+        makeSportState("rower", 0.2, 0, {
+          ghost: { distFrac: 0, pace: 125, spm: 28, label: "PB" },
+          ghostStrokePose: state.strokePose,
+        }),
+        false,
+      );
+      expect(rig.camera.position).toEqual(rig.chase);
+      expect(rig.camera.position.distanceTo(narrowPosition)).toBeGreaterThan(0.5);
+      renderer.destroy();
+    });
+
+    it("damps both chase position and aim across course curvature", () => {
+      let now = 0;
+      const nowSpy = vi.spyOn(globalThis.performance, "now").mockImplementation(() => now);
+      try {
+        const host = makeHost();
+        const renderer = new CourseRenderer3D(host, "low", "rower");
+        renderer.resize(800, 600);
+        renderer.render(makeSportState("rower", 0.2, 0), true);
+        const initialAim = getCameraRig(renderer).cameraAim.clone();
+
+        now = 16;
+        renderer.render(makeSportState("rower", 0.2, 1), true);
+        const rig = getCameraRig(renderer);
+        expect(rig.cameraAim.distanceTo(initialAim)).toBeGreaterThan(0);
+        expect(rig.cameraAim.distanceTo(rig.lookAt)).toBeGreaterThan(0);
+        expect(rig.camera.position.distanceTo(rig.chase)).toBeGreaterThan(0);
+        renderer.destroy();
+      } finally {
+        nowSpy.mockRestore();
+      }
     });
   });
 
@@ -355,16 +715,19 @@ describe("CourseRenderer3D", () => {
       const host = makeHost();
       const r = new CourseRenderer3D(host, "medium", "rower");
       r.resize(800, 600);
-      // METERS_PER_CYCLE.rower = 11, so 0 → 6 → 12 crosses one catch
-      // boundary (spray spawn) while staying under the seek-suppression cap.
-      for (const d of [0, 6, 12]) {
-        const state = makeRenderState({
-          frame: { t: d, d, pace: 120, spm: 28, watts: 100, hr: 0, progress: d / 2000 },
-          distFrac: d / 2000,
+      // Cross the modeled stroke-row boundary itself. Distance alone does not
+      // imply a catch now that the renderer follows recorded StrokePose rows.
+      for (const [cycle, d] of [
+        [0.98, 10],
+        [1.02, 11],
+      ] as const) {
+        const state = makeSportState("rower", cycle, d, {
           ghost: { distFrac: d / 2200, pace: 118, spm: 24, label: "PB" },
         });
         expect(() => r.render(state, true)).not.toThrow();
       }
+      const spray = r as unknown as { sprayPool: { alive: number } | null };
+      expect(spray.sprayPool?.alive).toBeGreaterThan(0);
       expect(() => r.destroy()).not.toThrow();
     });
 
