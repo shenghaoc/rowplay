@@ -650,7 +650,16 @@ function profileHead(
 ) {
   const headX = shoulderX + 0.85;
   const headY = shoulderY - 3.55;
-  taperedLimb(ctx, shoulderX + 0.15, shoulderY - 0.35, headX - 0.25, headY + 1.85, 1.65, 1.35, skin);
+  taperedLimb(
+    ctx,
+    shoulderX + 0.15,
+    shoulderY - 0.35,
+    headX - 0.25,
+    headY + 1.85,
+    1.65,
+    1.35,
+    skin,
+  );
   ctx.fillStyle = skin;
   ctx.beginPath();
   ctx.ellipse(headX, headY, 2.35, 2.75, -0.12, 0, Math.PI * 2);
@@ -2277,7 +2286,13 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.fillStyle = withAlpha(palette.marker, 0.72);
     for (let i = 0; i < 10; i++) {
       const bx = startX + ((i + 0.4) / 10) * span;
-      disc(ctx, bx, bandTop + 3.5, 1.35, withAlpha(i % 3 === 0 ? palette.marker : palette.safetyLight, 0.8));
+      disc(
+        ctx,
+        bx,
+        bandTop + 3.5,
+        1.35,
+        withAlpha(i % 3 === 0 ? palette.marker : palette.safetyLight, 0.8),
+      );
     }
   }
 

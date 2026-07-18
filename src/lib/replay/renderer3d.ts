@@ -276,6 +276,12 @@ interface Avatar {
     pose?: StrokePose,
     meters?: number,
   ): AvatarMotionCues;
+  /**
+   * Resolve contacts which need the avatar's final course-space transform.
+   * Ski poles use this second pass so planted tips are world anchors rather
+   * than followers of a moving torso.
+   */
+  resolveWorldContacts?(): void;
 }
 
 interface AvatarPlacement {
@@ -779,19 +785,31 @@ function jointCap(radius: number, material: THREE.Material, segments = 8): THREE
   );
 }
 
+/**
+ * Preserve a compact fallback elbow, but let the authored v2 flex cuff replace
+ * it when available. Other joint caps remain hidden under their overlapping
+ * shells; an elbow needs a visible transitional form at deep flex.
+ */
+function elbowCap(radius: number, material: THREE.Material, segments = 8): THREE.Mesh {
+  const elbow = jointCap(radius, material, segments);
+  elbow.userData.hideWithReplayAssets = false;
+  return setReplayAssetSlot(elbow, "athlete:elbow");
+}
+
 function capsulePart(
   radius: number,
   length: number,
   material: THREE.Material,
   axis: "x" | "y" | "z" = "y",
 ): THREE.Mesh {
-  const mesh = new THREE.Mesh(
-    new THREE.CapsuleGeometry(radius, Math.max(0.01, length - radius * 2), 5, 10),
-    material,
-  );
-  if (axis === "x") mesh.rotation.z = Math.PI / 2;
-  if (axis === "z") mesh.rotation.x = Math.PI / 2;
-  return mesh;
+  // Bake the axis into the geometry, rather than leaving it on the mesh
+  // transform. Authored-shell fitting intentionally compares local bounds, so
+  // a Z-long pole grip needs Z-long fallback bounds before its runtime
+  // quaternion is replaced by the pole-shaft contact solve.
+  const geometry = new THREE.CapsuleGeometry(radius, Math.max(0.01, length - radius * 2), 5, 10);
+  if (axis === "x") geometry.rotateZ(Math.PI / 2);
+  if (axis === "z") geometry.rotateX(Math.PI / 2);
+  return new THREE.Mesh(geometry, material);
 }
 
 function tubeBetween(
@@ -1121,7 +1139,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     shoulder.userData.hideWithReplayAssets = false;
     setReplayAssetSlot(shoulder, "athlete:shoulder");
     shoulder.name = side < 0 ? "rower-shoulder-left" : "rower-shoulder-right";
-    const elbow = jointCap(0.055, skinMaterial);
+    const elbow = elbowCap(0.055, skinMaterial);
     elbow.name = side < 0 ? "rower-elbow-left" : "rower-elbow-right";
     rower.add(upperArm, forearm, hand, shoulder, elbow);
     arms.push({
@@ -1226,7 +1244,13 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       handlePoint.copy(oar.handleAnchor.position).applyQuaternion(oar.group.quaternion);
       handlePoint.add(oar.group.position).sub(rower.position);
       arm.handTarget.copy(handlePoint);
-      arm.bendHint.set(arm.side * (0.56 - armDraw * 0.12), -0.48, -0.18 + bodySwing * 0.12);
+      // Keep the elbow plane attached to the torso as the rower pivots. A
+      // fixed world-ish hint makes the bent arm fold toward the hull at the
+      // finish, which is especially obvious once the authored flex cuff is
+      // visible. The hint stays lateral/rearward in torso coordinates instead.
+      arm.bendHint
+        .set(arm.side * (0.56 - armDraw * 0.12), -0.48, -0.18 + bodySwing * 0.12)
+        .applyQuaternion(torso.quaternion);
       solveTwoBone3D(
         arm.shoulderPoint,
         arm.handTarget,
@@ -1446,10 +1470,7 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   headGroup.position.set(0, 0.84, 0.03);
   // Nordic headband from the art direction — a small silhouette cue that
   // separates the skier from the rower without needing a new asset slot.
-  const headband = new THREE.Mesh(
-    new THREE.TorusGeometry(0.11, 0.018, 6, 14),
-    kitDarkMaterial,
-  );
+  const headband = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.018, 6, 14), kitDarkMaterial);
   headband.name = "skierg-headband";
   headband.rotation.x = Math.PI / 2;
   headband.position.set(0, 0.04, 0.01);
@@ -1478,7 +1499,7 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     forearm.name = side < 0 ? "skierg-forearm-left" : "skierg-forearm-right";
     const hand = makeHand(kitDarkMaterial, side);
     hand.name = side < 0 ? "skierg-hand-left" : "skierg-hand-right";
-    const elbow = jointCap(0.054, kitMaterial);
+    const elbow = elbowCap(0.054, kitMaterial);
     elbow.name = side < 0 ? "skierg-elbow-left" : "skierg-elbow-right";
     const shoulder = jointCap(0.068, kitMaterial);
     shoulder.userData.hideWithReplayAssets = false;
@@ -1501,24 +1522,33 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   }
   group.add(upper);
 
-  // Poles are solved between explicit grip and tip contacts. During the plant
-  // the tip target sits on the snow; during recovery it lifts clear instead of
-  // pivoting through the course surface.
+  // Poles are solved from a ground contact to a grip, not just drawn from a
+  // hand toward a guessed tip. The authored shells remain replaceable, while
+  // the rigid contact/length solve stays renderer-owned.
   const poles: Array<{
     side: number;
     shaft: THREE.Mesh;
-    grip: THREE.Object3D;
+    grip: THREE.Mesh;
     basket: THREE.Mesh;
     tipAnchor: THREE.Object3D;
   }> = [];
   for (const side of [-1, 1]) {
     const shaftGeo = new THREE.CylinderGeometry(0.028, 0.028, 1, 6);
-    shaftGeo.rotateX(Math.PI / 2); // bake the unit pole onto +Z for endpoint placement
-    const shaft = new THREE.Mesh(shaftGeo, side < 0 ? farPoleMaterial : poleMaterial);
+    shaftGeo.rotateX(Math.PI / 2); // unit shaft lives on +Z for endpoint placement
+    const shaft = setReplayAssetSlot(
+      new THREE.Mesh(shaftGeo, side < 0 ? farPoleMaterial : poleMaterial),
+      "equipment:ski:pole-shaft",
+    );
     shaft.name = side < 0 ? "skierg-pole-shaft-left" : "skierg-pole-shaft-right";
-    const grip = capsulePart(0.025, 0.18, gripMaterial, "x");
+    const grip = setReplayAssetSlot(
+      capsulePart(0.025, 0.18, gripMaterial, "z"),
+      "equipment:ski:pole-grip",
+    );
     grip.name = side < 0 ? "skierg-pole-grip-left" : "skierg-pole-grip-right";
-    const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.03, 8), accentMat());
+    const basket = setReplayAssetSlot(
+      new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.03, 8), accentMat()),
+      "equipment:ski:pole-basket",
+    );
     basket.name = side < 0 ? "skierg-pole-tip-left" : "skierg-pole-tip-right";
     basket.userData.accent = true;
     const tipAnchor = new THREE.Object3D();
@@ -1527,18 +1557,40 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     poles.push({ side, shaft, grip, basket, tipAnchor });
   }
 
-  const tipGroupPoint = new THREE.Vector3();
+  const tipWorld = new THREE.Vector3();
+  const freeTipWorld = new THREE.Vector3();
+  const plantTipWorld = new THREE.Vector3();
+  const desiredHandWorld = new THREE.Vector3();
   const tipLocalPoint = new THREE.Vector3();
-  const inverseUpper = new THREE.Quaternion();
+  const groundUpLocal = new THREE.Vector3();
+  const courseCenterAtPlant = new THREE.Vector3();
+  const poleAxis = new THREE.Vector3();
+  const poleBase = new THREE.Vector3();
+  const polePerpendicular = new THREE.Vector3();
+  const courseRightWorld = new THREE.Vector3();
+  const courseForwardWorld = new THREE.Vector3();
+  const inverseUpperWorld = new THREE.Quaternion();
   const UPPER_ARM_LENGTH = 0.36;
   const FOREARM_LENGTH = 0.34;
   const THIGH_LENGTH = 0.4;
   const SHIN_LENGTH = 0.39;
   const POLE_LENGTH = 1.38;
+  const POLE_CONTACT_Y = 0.055;
+  const POLE_PLANT_START = 0.01;
+
+  let pendingPose = fallbackStrokePose("skierg", 0);
+  let pendingMeters = 0;
+  let pendingMotion: SkierKinematics = kinematics;
 
   const placeSkiLegs = (): void => {
     for (const leg of legParts) {
-      leg.hipPoint.set(leg.side * 0.12, upper.position.y, 0.02);
+      // Legs are children of the avatar root while the pelvis rotates in
+      // `upper`. Convert that hip attachment back into root-local space so a
+      // torso crunch cannot leave the thighs detached from the pelvis.
+      leg.hipPoint
+        .set(leg.side * 0.12, 0, 0.02)
+        .applyQuaternion(upper.quaternion)
+        .add(upper.position);
       solveTwoBone3D(
         leg.hipPoint,
         leg.anklePoint,
@@ -1554,25 +1606,157 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     }
   };
 
+  /**
+   * Reconstruct the course-space pole plant at the catch. `StrokePose` keeps
+   * this deterministic across seeking: the current stroke index/cycle and its
+   * distance span identify the same ground point instead of relying on the
+   * last rendered frame.
+   */
+  const setPlantTipWorld = (
+    output: THREE.Vector3,
+    side: number,
+    pose: StrokePose,
+    meters: number,
+    outer: THREE.Object3D,
+  ): void => {
+    const plantCycle = pose.index + Math.min(pose.cycleFrac, pose.driveFrac * POLE_PLANT_START);
+    const currentCycle = pose.index + pose.cycleFrac;
+    const distanceSincePlant =
+      Math.max(0, currentCycle - plantCycle) * Math.max(0, pose.strokeMeters);
+    const courseTurn = (distanceSincePlant / CourseRenderer3D.LOOP_METERS) * Math.PI * 2;
+    const cos = Math.cos(courseTurn);
+    const sin = Math.sin(courseTurn);
+    // Move the current course centre back to the deterministic catch position.
+    courseCenterAtPlant.set(
+      outer.position.x * cos - outer.position.z * sin,
+      POLE_CONTACT_Y,
+      outer.position.x * sin + outer.position.z * cos,
+    );
+    const yaw = outer.rotation.y - courseTurn;
+    // Plant outside the ski tracks: a realistic double-pole stance keeps both
+    // shafts visible without the old camera-side asymmetry or crossing.
+    const localX = side * 0.56;
+    const localZ = 1.04;
+    output.set(
+      courseCenterAtPlant.x + localX * Math.cos(yaw) + localZ * Math.sin(yaw),
+      POLE_CONTACT_Y,
+      courseCenterAtPlant.z - localX * Math.sin(yaw) + localZ * Math.cos(yaw),
+    );
+  };
+
+  /**
+   * Select a grip point that satisfies both rigid systems exactly: the pole
+   * sphere around its basket and the two-bone arm reach annulus. The preferred
+   * hand path steers the intersection so the athlete still reads as a strong
+   * press rather than a mechanical compass.
+   */
+  const solvePoleGripTarget = (
+    shoulder: THREE.Vector3,
+    tip: THREE.Vector3,
+    preferred: THREE.Vector3,
+    side: number,
+    output: THREE.Vector3,
+  ): void => {
+    const separation = poleAxis.copy(shoulder).sub(tip).length();
+    const minArmReach = Math.abs(UPPER_ARM_LENGTH - FOREARM_LENGTH) + 0.004;
+    const maxArmReach = UPPER_ARM_LENGTH + FOREARM_LENGTH - 0.004;
+    const rawReach = shoulder.distanceTo(preferred);
+    const minReachAtTip = Math.max(minArmReach, Math.abs(POLE_LENGTH - separation) + 0.003);
+    const maxReachAtTip = Math.min(maxArmReach, POLE_LENGTH + separation - 0.003);
+
+    // The free path is already a valid pole sphere point. Preserve it exactly
+    // so touch-down begins without a visible target jump.
+    if (
+      Math.abs(preferred.distanceTo(tip) - POLE_LENGTH) < 1e-5 &&
+      rawReach >= minReachAtTip &&
+      rawReach <= maxReachAtTip
+    ) {
+      output.copy(preferred);
+      return;
+    }
+
+    if (separation < 1e-6 || minReachAtTip > maxReachAtTip) {
+      // Defensive finite fallback for malformed or degenerate source poses.
+      output.copy(preferred);
+      return;
+    }
+
+    const reach = Math.max(minReachAtTip, Math.min(maxReachAtTip, rawReach));
+    poleAxis.multiplyScalar(1 / separation); // tip -> shoulder
+    const along =
+      (POLE_LENGTH * POLE_LENGTH - reach * reach + separation * separation) / (2 * separation);
+    const perpendicularRadius = Math.sqrt(Math.max(0, POLE_LENGTH * POLE_LENGTH - along * along));
+    poleBase.copy(tip).addScaledVector(poleAxis, along);
+    polePerpendicular.copy(preferred).sub(poleBase);
+    polePerpendicular.addScaledVector(poleAxis, -polePerpendicular.dot(poleAxis));
+    if (polePerpendicular.lengthSq() < 1e-8) {
+      polePerpendicular.set(side, 0, 0);
+      polePerpendicular.addScaledVector(poleAxis, -polePerpendicular.dot(poleAxis));
+    }
+    polePerpendicular.normalize();
+    output.copy(poleBase).addScaledVector(polePerpendicular, perpendicularRadius);
+  };
+
   const placePoleArms = (
     armPress: number,
     poleContact: number,
     poleSweep: number,
     rebound: number,
+    pose: StrokePose,
+    meters: number,
   ): void => {
-    // High reach at plant → deep press past the hips at the finish.
+    const outer = group.parent;
+    if (!outer) return;
+    upper.getWorldQuaternion(inverseUpperWorld).invert();
+    groundUpLocal.set(0, 1, 0).applyQuaternion(inverseUpperWorld).normalize();
+    // Recovery is authored in the course frame. Moving it along global X/Z
+    // would counter-rotate the pole sweep as the skier rounds the lap.
+    courseRightWorld.set(1, 0, 0).transformDirection(outer.matrixWorld);
+    courseForwardWorld.set(0, 0, 1).transformDirection(outer.matrixWorld);
+    // High reach at the plant becomes a compact, forceful hand path by the
+    // finish. Both sides intentionally share the same physical path; camera
+    // framing, not asymmetric fake geometry, keeps their silhouettes clear.
     const handY = 0.78 - armPress * 0.74;
     const handZ = 0.58 - armPress * 0.8;
-    inverseUpper.copy(upper.quaternion).invert();
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
-      // The far arm gets a small silhouette correction: five centimetres of
-      // extra reach keeps its hand and pole clear of the torso from the chase
-      // side without changing either authored bone length.
-      const handBaseX = arm.side < 0 ? 0.42 : 0.37;
-      const elbowBaseX = arm.side < 0 ? 0.43 : 0.38;
-      arm.handTarget.set(arm.side * (handBaseX + armPress * 0.04), handY, handZ);
-      arm.bendHint.set(arm.side * (elbowBaseX + armPress * 0.08), -0.55, 0.2);
+      const pole = poles[i];
+      if (!arm || !pole) continue;
+      arm.handTarget.set(arm.side * (0.39 + armPress * 0.045), handY, handZ);
+      arm.bendHint.set(arm.side * (0.4 + armPress * 0.08), -0.55, 0.2);
+
+      // Free recovery tip: exact pole length, lifted clear of the snow, and
+      // a mirrored outward sweep so neither shaft cuts through the skier.
+      desiredHandWorld.copy(arm.handTarget);
+      upper.localToWorld(desiredHandWorld);
+      const liftedY = 0.28 + rebound * 0.16;
+      const vertical = Math.max(
+        -POLE_LENGTH * 0.985,
+        Math.min(POLE_LENGTH * 0.985, liftedY - desiredHandWorld.y),
+      );
+      const horizontal = Math.sqrt(Math.max(0, POLE_LENGTH * POLE_LENGTH - vertical * vertical));
+      let lateral = arm.side * (0.52 + Math.sin(poleSweep * Math.PI) * 0.14);
+      let forward = 0.82 - poleSweep * 0.42;
+      const horizontalDirection = Math.max(1e-6, Math.hypot(lateral, forward));
+      lateral /= horizontalDirection;
+      forward /= horizontalDirection;
+      freeTipWorld
+        .copy(desiredHandWorld)
+        .addScaledVector(courseRightWorld, lateral * horizontal)
+        .addScaledVector(courseForwardWorld, forward * horizontal);
+      freeTipWorld.y += vertical;
+
+      setPlantTipWorld(plantTipWorld, arm.side, pose, meters, outer);
+      tipWorld.lerpVectors(freeTipWorld, plantTipWorld, poleContact);
+      tipLocalPoint.copy(tipWorld);
+      upper.worldToLocal(tipLocalPoint);
+      solvePoleGripTarget(
+        arm.shoulderPoint,
+        tipLocalPoint,
+        arm.handTarget,
+        arm.side,
+        arm.handTarget,
+      );
       solveTwoBone3D(
         arm.shoulderPoint,
         arm.handTarget,
@@ -1586,77 +1770,52 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
       arm.elbow.position.copy(arm.elbowPoint);
       arm.hand.position.copy(arm.handPoint);
-      const pole = poles[i];
-      if (!pole) continue;
 
-      // Resolve a rigid pole in avatar/ground space, then convert its tip to
-      // the rotating upper-body local space used by the meshes. The planted
-      // branch stays forward while loaded; after release it travels around the
-      // outside of the skier instead of flipping through the body.
-      tipGroupPoint.copy(arm.handPoint).applyQuaternion(upper.quaternion).add(upper.position);
-      const handGroupX = tipGroupPoint.x;
-      const handGroupY = tipGroupPoint.y;
-      const handGroupZ = tipGroupPoint.z;
-      const liftedY = 0.28 + rebound * 0.16;
-      const tipY = liftedY + (0.055 - liftedY) * poleContact;
-      const vertical = Math.max(
-        -POLE_LENGTH * 0.999,
-        Math.min(POLE_LENGTH * 0.999, tipY - handGroupY),
-      );
-      const horizontal = Math.sqrt(Math.max(0, POLE_LENGTH * POLE_LENGTH - vertical * vertical));
-      const freeAngle = 0.25 + poleSweep * (Math.PI - 0.5);
-      // Retain an outward component through the whole recovery. Letting freeX
-      // approach zero points the pole nearly down the camera axis, shortening
-      // it to a hidden stub and making double-pole skiing read as one-pole.
-      // The camera-side pole needs a wider authored lateral component than the
-      // far pole. With a symmetric path it points almost directly into the
-      // three-quarter chase lens and visually collapses even though its world
-      // length remains exact. This silhouette correction keeps both shafts
-      // readable without changing their grip, basket, or 1.38 m solve.
-      const freeBase = pole.side < 0 ? 0.18 : 1;
-      const freeX = pole.side * (freeBase + Math.sin(freeAngle) * 0.18);
-      const freeZ = Math.cos(freeAngle);
-      // After the basket releases, route the shaft around the outside of the
-      // skier instead of cutting the shortest chord through the body. Besides
-      // being a more credible recovery, the bowed path avoids briefly aiming
-      // the camera-side pole straight down the rear three-quarter chase lens.
-      const releaseBlend = 1 - poleContact;
-      const plantedX = pole.side * (pole.side < 0 ? 0.27 : 1);
-      const outsideArc = Math.sin(Math.sqrt(releaseBlend) * Math.PI) * (pole.side < 0 ? 0.65 : 0.9);
-      let directionX = plantedX + (freeX - plantedX) * releaseBlend + pole.side * outsideArc;
-      let directionZ = 1 + (freeZ - 1) * releaseBlend;
-      const directionLength = Math.max(1e-6, Math.hypot(directionX, directionZ));
-      directionX /= directionLength;
-      directionZ /= directionLength;
-      tipGroupPoint.set(
-        handGroupX + directionX * horizontal,
-        handGroupY + vertical,
-        handGroupZ + directionZ * horizontal,
-      );
-      tipLocalPoint.copy(tipGroupPoint).sub(upper.position).applyQuaternion(inverseUpper);
       placeFigureSegmentBetween(pole.shaft, arm.handPoint, tipLocalPoint);
       pole.grip.position.copy(arm.handPoint);
-      pole.basket.position.copy(tipLocalPoint);
-      pole.tipAnchor.position.copy(pole.basket.position);
-      arm.hand.quaternion.copy(pole.shaft.quaternion);
+      pole.grip.quaternion.copy(pole.shaft.quaternion);
+      // The basket stays level with the snow while the shaft follows the arm.
+      // Its actual carbide point is the separate, exact contact anchor below.
+      pole.basket.position.copy(tipLocalPoint).addScaledVector(groundUpLocal, 0.026);
+      pole.basket.quaternion.copy(inverseUpperWorld);
+      pole.tipAnchor.position.copy(tipLocalPoint);
+      arm.hand.quaternion.copy(pole.grip.quaternion);
     }
   };
 
-  const animate = (phase: number, reduce: boolean, pose?: StrokePose): AvatarMotionCues => {
+  const animate = (
+    phase: number,
+    reduce: boolean,
+    pose?: StrokePose,
+    meters = 0,
+  ): AvatarMotionCues => {
     const resolvedPose = reduce
       ? REDUCED_REPLAY_POSES.skierg
       : (pose ?? fallbackStrokePose("skierg", phase));
     const motion = solveSkierKinematics(resolvedPose, kinematics);
+    pendingPose = resolvedPose;
+    pendingMeters = meters;
+    pendingMotion = motion;
     upper.position.y = 0.72 - motion.kneeFlex * 0.18 + (reduce ? 0 : motion.rebound * 0.07);
     // Deep crunch through the pull so the double-pole reads at a glance.
     upper.rotation.x = 0.08 + motion.hipHinge * 0.88;
     placeSkiLegs();
-    placePoleArms(motion.armPress, motion.poleContact, motion.poleSweep, motion.rebound);
     return reduce ? STATIC_AVATAR_MOTION : motion;
   };
 
+  const resolveWorldContacts = (): void => {
+    placePoleArms(
+      pendingMotion.armPress,
+      pendingMotion.poleContact,
+      pendingMotion.poleSweep,
+      pendingMotion.rebound,
+      pendingPose,
+      pendingMeters,
+    );
+  };
+
   finalizeAvatar(group, castShadow, opacity);
-  return { group, animate };
+  return { group, animate, resolveWorldContacts };
 }
 
 /**
@@ -1899,7 +2058,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     forearm.name = side < 0 ? "bike-forearm-left" : "bike-forearm-right";
     const hand = makeHand(skinMaterial, side);
     hand.name = side < 0 ? "bike-hand-left" : "bike-hand-right";
-    const elbow = jointCap(0.053, skinMaterial);
+    const elbow = elbowCap(0.053, skinMaterial);
     elbow.name = side < 0 ? "bike-elbow-left" : "bike-elbow-right";
     const shoulder = jointCap(0.066, kitMaterial);
     shoulder.userData.hideWithReplayAssets = false;
@@ -2664,8 +2823,22 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.loopRadius + 0.55,
     ];
     for (const center of trackCenters) {
-      this.addCourseRing(group, center - 0.09, 0.02, grooveMat, "course:skierg:groomed-groove", 0.05);
-      this.addCourseRing(group, center + 0.09, 0.02, grooveMat, "course:skierg:groomed-groove", 0.05);
+      this.addCourseRing(
+        group,
+        center - 0.09,
+        0.02,
+        grooveMat,
+        "course:skierg:groomed-groove",
+        0.05,
+      );
+      this.addCourseRing(
+        group,
+        center + 0.09,
+        0.02,
+        grooveMat,
+        "course:skierg:groomed-groove",
+        0.05,
+      );
     }
 
     // Soft corduroy comb reads as groomed snow rather than polished ice.
@@ -2697,8 +2870,24 @@ export class CourseRenderer3D implements ReplayRenderer {
     const gateGeo = this.track(new THREE.BoxGeometry(0.18, 0.07, 0.55));
     for (let i = 0; i < 16; i++) {
       const angle = (i / 16) * Math.PI * 2;
-      this.addCourseBlock(group, gateGeo, gateMat, innerR + 0.48, angle, "course:skierg:gate", 0.075);
-      this.addCourseBlock(group, gateGeo, gateMat, outerR - 0.48, angle, "course:skierg:gate", 0.075);
+      this.addCourseBlock(
+        group,
+        gateGeo,
+        gateMat,
+        innerR + 0.48,
+        angle,
+        "course:skierg:gate",
+        0.075,
+      );
+      this.addCourseBlock(
+        group,
+        gateGeo,
+        gateMat,
+        outerR - 0.48,
+        angle,
+        "course:skierg:gate",
+        0.075,
+      );
     }
   }
 
@@ -3859,14 +4048,19 @@ export class CourseRenderer3D implements ReplayRenderer {
     avatar.group.position.y = bob;
     // Stroke surge: the hull checks at the catch and runs out through the
     // drive — a local +Z (travel) offset synced to the shared stroke phase.
-    const surge =
-      reduce || this.profile.surgeAmp === 0 ? 0 : motion.surge * this.profile.surgeAmp;
+    const surge = reduce || this.profile.surgeAmp === 0 ? 0 : motion.surge * this.profile.surgeAmp;
     avatar.group.position.z = surge;
     // Hull roll mixes a slow ambient rock with a stroke-synced check so the
     // shell visibly loads at the catch instead of only drifting side to side.
     const ambientRoll = Math.sin(this.animPhase + cadence * 0.05) * 0.035;
     const strokeRoll = "surge" in motion ? motion.surge * 0.045 : 0;
     avatar.group.rotation.z = reduce || !this.profile.roll ? 0 : ambientRoll + strokeRoll;
+    // Most contacts are local to their equipment. Nordic poles are different:
+    // their basket has to stay fixed in the course while the skier advances and
+    // folds through the drive. Resolve that only after the outer course pose,
+    // bob and surge have all reached their final values for this frame.
+    outer.updateMatrixWorld(true);
+    avatar.resolveWorldContacts?.();
     output.x = x;
     output.z = z;
     output.tx = tx;

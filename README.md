@@ -81,6 +81,9 @@ account.
 - A compact repository-owned low-poly GLB supplies authored athlete and
   sport-equipment shells in 3D; the existing contact-driven rig owns motion,
   while Canvas 2D and procedural 3D geometry remain reliable fallbacks
+- The current 3D figure pack preserves proximal-to-distal limb taper with
+  visible elbow flex cuffs, and SkiErg poles stay rigid from grip to basket
+  while their planted tips hold a deterministic course contact
 - Generic replay figures only—no scan, athlete likeness, avatar-generator
   output, user image, or undocumented downloaded model
 - Local procedural scenery built from Canvas drawing and Three.js geometry;

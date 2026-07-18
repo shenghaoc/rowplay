@@ -134,6 +134,13 @@ the stable outer fallback. The figure remains generic; the asset contains no
 scan, avatar-generator output, user image, body profile, clothing profile, or
 athlete likeness.
 
+The current 3D package makes the anatomical and equipment contracts visible:
+limb shells taper from their proximal to distal end, fitted elbow cuffs bridge
+deep arm flex, and SkiErg shafts, grips, and baskets remain a rigid assembly.
+During the illustrated SkiErg plant, each basket holds a deterministic course
+anchor while the hands remain on the grips. These are deliberate illustrative
+motion constraints, not measured joint or force data from Concept2.
+
 Both views use complete sport-specific illustrative environments, not one
 generic floor with different colors. RowErg combines layered water with
 shoreline and regatta-scale cues; SkiErg uses groomed, blue-shadowed snow with

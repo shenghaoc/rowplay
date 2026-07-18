@@ -163,6 +163,29 @@ Accepted for final matrix capture: the three venues no longer expose one shared
 radial construction, Low/Ultra still change density rather than composition,
 and contact-locked motion remains authoritative.
 
+### Follow-up — v2 joint and pole-contact correction
+
+The first authored package still had a visible mechanical failure in two
+high-salience action poses: its limb profile widened toward the elbow because
+the authored local axis was reversed, and a planted SkiErg basket continued to
+follow the moving hand instead of the snow. Both faults were corrected in the
+repository-owned `rowplay-rigs-v2.glb` package and the same contact-driven rig.
+
+For RowErg, v2 defines local `-Z` as the proximal end and local `+Z` as the
+distal end, compacts the shell overlap, and adds an authored elbow flex cuff.
+The deepest pull therefore reads as a continuous upper arm, elbow, and forearm
+rather than a reversed bulb or a detached sphere. For SkiErg, the shaft, grip,
+and basket now share a true common axis; after course placement, a second solve
+holds each basket at its deterministic catch-course contact through the loaded
+press while preserving exact hand-to-grip and grip-to-tip lengths.
+
+Focused renderer evidence covers deep RowErg flex and multiple fully planted
+SkiErg poses with the loaded v2 package, including rigid hardware alignment,
+contact height, course-anchor stability, and live/ghost-safe asset fitting.
+The current in-app browser pass was captured on the real WebGPU stage at
+`/replay/1001` and `/replay/1003`; the broader screenshot matrix below remains
+the release-level visual record.
+
 ## Accepted capture matrix
 
 All files below are under `higher-ceiling/final/` and were captured from the

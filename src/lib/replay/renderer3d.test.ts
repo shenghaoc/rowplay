@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // Mock only WebGLRenderer — everything else in Three.js works headlessly in Node.
@@ -23,6 +24,7 @@ vi.mock("three", async (importOriginal) => {
 
 import { CourseRenderer3D } from "./renderer3d";
 import { COLORS_DARK, REDUCED_REPLAY_POSES } from "./renderer";
+import { fetchReplayAssetLibrary, type ReplayAssetLibrary } from "./renderer3dAssets";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
 import * as THREE from "three";
@@ -172,6 +174,23 @@ function sceneObject(renderer: CourseRenderer3D, name: string): THREE.Object3D {
 
 function worldPosition(renderer: CourseRenderer3D, name: string): THREE.Vector3 {
   return sceneObject(renderer, name).getWorldPosition(new THREE.Vector3());
+}
+
+async function loadCheckedInReplayAssetLibrary(): Promise<ReplayAssetLibrary> {
+  const bytes = await readFile(
+    new URL("../../../static/replay-assets/rowplay-rigs-v2.glb", import.meta.url),
+  );
+  return fetchReplayAssetLibrary(
+    async () =>
+      new Response(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength), {
+        status: 200,
+        headers: { "content-type": "model/gltf-binary" },
+      }),
+  );
+}
+
+function disposeReplayAssetLibrary(library: ReplayAssetLibrary): void {
+  for (const geometry of library.geometries.values()) geometry.dispose();
 }
 
 function projectToPixels(
@@ -715,6 +734,31 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
+  it("renders visible v2 elbow cuffs through the full RowErg pull", async () => {
+    const assets = await loadCheckedInReplayAssetLibrary();
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "rower", { assets });
+    renderer.resize(1140, 420);
+
+    for (const cycle of [0.01, 0.14, 0.28, 0.38, 0.62, 0.86]) {
+      renderer.render(makeSportState("rower", cycle), false);
+      for (const side of ["left", "right"] as const) {
+        const elbow = sceneObject(renderer, `rower-elbow-${side}`) as THREE.Mesh;
+        expect(elbow.visible, `${side} elbow cuff visible`).toBe(true);
+        expect(elbow.userData.authoredReplayAsset, `${side} authored cuff`).toBe(true);
+        expect(elbow.geometry.name).toBe("authored-instance:athlete:elbow");
+        expect(Number.isFinite(elbow.position.x + elbow.position.y + elbow.position.z)).toBe(true);
+        expect(
+          worldPosition(renderer, `rower-hand-${side}`).distanceTo(
+            worldPosition(renderer, `rower-hand-contact-${side}`),
+          ),
+        ).toBeLessThan(1e-6);
+      }
+    }
+
+    renderer.destroy();
+    disposeReplayAssetLibrary(assets);
+  });
+
   it("keeps RowErg knees visually separated from the hull through the stroke", () => {
     const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
     renderer.resize(1140, 420);
@@ -735,7 +779,7 @@ describe("CourseRenderer3D", () => {
     let minimumShaftSeparation = Number.POSITIVE_INFINITY;
     let minimumFarPoleLength = Number.POSITIVE_INFINITY;
     let minimumNearPoleLength = Number.POSITIVE_INFINITY;
-    let minimumFarShoulderGap = Number.POSITIVE_INFINITY;
+    let minimumTipSpan = Number.POSITIVE_INFINITY;
     for (let step = 0; step < 128; step++) {
       const cycle = step / 128;
       renderer.render(makeSportState("skierg", cycle), false);
@@ -743,7 +787,6 @@ describe("CourseRenderer3D", () => {
       camera.updateMatrixWorld(true);
       const left = projectToPixels(renderer, "skierg-pole-shaft-left", camera, 1140, 420);
       const right = projectToPixels(renderer, "skierg-pole-shaft-right", camera, 1140, 420);
-      const farShoulder = projectToPixels(renderer, "skierg-shoulder-left", camera, 1140, 420);
       const leftGrip = projectToPixels(renderer, "skierg-pole-grip-left", camera, 1140, 420);
       const leftTip = projectToPixels(renderer, "skierg-pole-contact-left", camera, 1140, 420);
       const rightGrip = projectToPixels(renderer, "skierg-pole-grip-right", camera, 1140, 420);
@@ -752,16 +795,20 @@ describe("CourseRenderer3D", () => {
       minimumShaftSeparation = Math.min(minimumShaftSeparation, left.distanceTo(right));
       minimumFarPoleLength = Math.min(minimumFarPoleLength, leftGrip.distanceTo(leftTip));
       minimumNearPoleLength = Math.min(minimumNearPoleLength, rightGrip.distanceTo(rightTip));
-      minimumFarShoulderGap = Math.min(minimumFarShoulderGap, Math.abs(left.x - farShoulder.x));
+      minimumTipSpan = Math.min(
+        minimumTipSpan,
+        worldPosition(renderer, "skierg-pole-contact-left").distanceTo(
+          worldPosition(renderer, "skierg-pole-contact-right"),
+        ),
+      );
     }
 
-    // The far pole needs the stronger silhouette guarantee because it crosses
-    // behind the athlete from this chase side. The camera-side pole is allowed
-    // more foreshortening, but never enough to collapse into a hidden stub.
-    expect(minimumShaftSeparation).toBeGreaterThan(64);
+    // A symmetric physical solve can legitimately foreshorten in the chase
+    // camera, but its shafts and actual course contacts must never merge.
+    expect(minimumShaftSeparation).toBeGreaterThan(40);
+    expect(minimumTipSpan).toBeGreaterThan(0.7);
     expect(minimumFarPoleLength).toBeGreaterThan(48);
     expect(minimumNearPoleLength).toBeGreaterThan(40);
-    expect(minimumFarShoulderGap).toBeGreaterThan(6);
     renderer.destroy();
   });
 
@@ -1047,6 +1094,103 @@ describe("CourseRenderer3D", () => {
       ).toBeLessThan(1e-6);
       expect(worldPosition(renderer, `skierg-pole-contact-${side}`).y).toBeGreaterThan(0.25);
     }
+    renderer.destroy();
+  });
+
+  it("anchors loaded SkiErg poles to the course with aligned, rigid hardware", async () => {
+    const assets = await loadCheckedInReplayAssetLibrary();
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "skierg", { assets });
+    renderer.resize(1140, 420);
+    const plantedCycles = [0.05, 0.11, 0.18, 0.22];
+    const plantedTips = new Map<string, THREE.Vector3>();
+
+    for (const cycle of plantedCycles) {
+      // Fallback SkiErg strokes advance 8 m per cycle. Advance course distance
+      // consistently so every sample describes one deterministic plant.
+      renderer.render(makeSportState("skierg", cycle, 200 + cycle * 8), false);
+      for (const side of ["left", "right"] as const) {
+        const hand = worldPosition(renderer, `skierg-hand-${side}`);
+        const grip = worldPosition(renderer, `skierg-pole-grip-${side}`);
+        const tip = worldPosition(renderer, `skierg-pole-contact-${side}`);
+        const shaft = sceneObject(renderer, `skierg-pole-shaft-${side}`);
+        const gripObject = sceneObject(renderer, `skierg-pole-grip-${side}`);
+        const basket = sceneObject(renderer, `skierg-pole-tip-${side}`);
+
+        expect(hand.distanceTo(grip), `${side} hand remains on grip`).toBeLessThan(1e-6);
+        expect(grip.distanceTo(tip), `${side} rigid pole length`).toBeCloseTo(1.38, 5);
+        expect(tip.y, `${side} carbide tip stays on snow`).toBeCloseTo(0.055, 5);
+        const prior = plantedTips.get(side);
+        if (prior) expect(tip.distanceTo(prior), `${side} planted tip drift`).toBeLessThan(0.025);
+        else plantedTips.set(side, tip.clone());
+
+        const shaftDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(
+          shaft.getWorldQuaternion(new THREE.Quaternion()),
+        );
+        const gripDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(
+          gripObject.getWorldQuaternion(new THREE.Quaternion()),
+        );
+        const basketUp = new THREE.Vector3(0, 1, 0).applyQuaternion(
+          basket.getWorldQuaternion(new THREE.Quaternion()),
+        );
+        expect(shaftDirection.dot(gripDirection), `${side} grip follows shaft`).toBeGreaterThan(
+          0.999,
+        );
+        expect(
+          basketUp.dot(new THREE.Vector3(0, 1, 0)),
+          `${side} basket stays level`,
+        ).toBeGreaterThan(0.999);
+        expect(gripObject.userData.authoredReplayAsset, `${side} authored grip installed`).toBe(
+          true,
+        );
+        const gripMesh = gripObject as THREE.Mesh;
+        gripMesh.geometry.computeBoundingBox();
+        const gripSize = gripMesh.geometry.boundingBox?.getSize(new THREE.Vector3());
+        expect(gripSize?.z, `${side} grip stays long along pole axis`).toBeGreaterThan(
+          (gripSize?.y ?? 0) * 2.5,
+        );
+      }
+    }
+
+    const leftPlant = plantedTips.get("left");
+    const rightPlant = plantedTips.get("right");
+    expect(leftPlant).toBeDefined();
+    expect(rightPlant).toBeDefined();
+    expect(leftPlant!.distanceTo(rightPlant!)).toBeGreaterThan(0.7);
+    renderer.destroy();
+    disposeReplayAssetLibrary(assets);
+  });
+
+  it("keeps SkiErg recovery pole sweeps in the course frame around the lap", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "skierg");
+    renderer.resize(1140, 420);
+
+    const recoveryDirection = (side: "left" | "right"): THREE.Vector3 => {
+      const upper = sceneObject(renderer, "skierg-upper");
+      const outer = upper.parent?.parent;
+      expect(outer, "SkiErg outer course group").toBeDefined();
+      const grip = worldPosition(renderer, `skierg-pole-grip-${side}`);
+      const tip = worldPosition(renderer, `skierg-pole-contact-${side}`);
+      return tip
+        .sub(grip)
+        .normalize()
+        .applyQuaternion(outer!.getWorldQuaternion(new THREE.Quaternion()).invert());
+    };
+
+    renderer.render(makeSportState("skierg", 0.94, 0), false);
+    const atStart = {
+      left: recoveryDirection("left"),
+      right: recoveryDirection("right"),
+    };
+    renderer.render(makeSportState("skierg", 0.94, CourseRenderer3D.LOOP_METERS / 4), false);
+    const quarterLap = {
+      left: recoveryDirection("left"),
+      right: recoveryDirection("right"),
+    };
+
+    expect(atStart.left.distanceTo(quarterLap.left)).toBeLessThan(1e-6);
+    expect(atStart.right.distanceTo(quarterLap.right)).toBeLessThan(1e-6);
+    expect(atStart.left.x).toBeLessThan(-0.1);
+    expect(atStart.right.x).toBeGreaterThan(0.1);
     renderer.destroy();
   });
 

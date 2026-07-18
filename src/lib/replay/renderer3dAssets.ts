@@ -2,7 +2,10 @@ import { base } from "$app/paths";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
-export const REPLAY_ASSET_PATH = "/replay-assets/rowplay-rigs-v1.glb";
+// v2 corrects the limb direction contract and adds authored elbow and Nordic
+// pole hardware shells. Keep this explicit rather than silently replacing v1:
+// the pack's slot vocabulary is a renderer/runtime contract.
+export const REPLAY_ASSET_PATH = "/replay-assets/rowplay-rigs-v2.glb";
 
 export const REQUIRED_REPLAY_ASSET_SLOTS = [
   "athlete:torso",
@@ -14,6 +17,7 @@ export const REQUIRED_REPLAY_ASSET_SLOTS = [
   "athlete:thigh",
   "athlete:shin",
   "athlete:hand",
+  "athlete:elbow",
   "athlete:shoe",
   "athlete:neck",
   "athlete:shoulder",
@@ -21,6 +25,9 @@ export const REQUIRED_REPLAY_ASSET_SLOTS = [
   "equipment:row:hull",
   "equipment:row:blade",
   "equipment:ski:ski",
+  "equipment:ski:pole-shaft",
+  "equipment:ski:pole-grip",
+  "equipment:ski:pole-basket",
   "equipment:bike:tyre",
   "equipment:bike:frame-tube",
   "equipment:bike:saddle",
@@ -144,16 +151,18 @@ export function applyReplayAssetLibrary(root: THREE.Object3D, library: ReplayAss
     if (!template) return;
     const previous = object.geometry;
     const geometry = template.clone();
-    // Equipment objects already encode exact contact dimensions in their old
-    // geometry and transforms. Fit the authored shell into those bounds so a
-    // visual upgrade cannot move a wheel, hull, ski, blade, tube or pedal.
-    const fitAllAxes =
-      slot.startsWith("equipment:") || slot === "athlete:shoe" || slot === "athlete:neck";
     const fitCrossSectionOnly =
       slot === "athlete:upper-arm" ||
       slot === "athlete:forearm" ||
       slot === "athlete:thigh" ||
       slot === "athlete:shin";
+    // The GLB authoring library uses normalized forms for generic athlete
+    // masses and exact local forms for equipment. Fit every fixed-size shell
+    // into the old geometry bounds so a richer head, hand, torso or elbow
+    // cannot silently become a giant imported mesh; limbs intentionally keep
+    // their normalized Z span because the runtime owns their bone length.
+    const fitAllAxes =
+      !fitCrossSectionOnly && (slot.startsWith("equipment:") || slot.startsWith("athlete:"));
     if (fitAllAxes || fitCrossSectionOnly) {
       previous.computeBoundingBox();
       geometry.computeBoundingBox();

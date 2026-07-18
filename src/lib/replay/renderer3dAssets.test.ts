@@ -19,7 +19,7 @@ let assetBytes: Uint8Array;
 
 beforeAll(async () => {
   const bytes = await readFile(
-    new URL("../../../static/replay-assets/rowplay-rigs-v1.glb", import.meta.url),
+    new URL("../../../static/replay-assets/rowplay-rigs-v2.glb", import.meta.url),
   );
   assetBytes = new Uint8Array(bytes.byteLength);
   assetBytes.set(bytes);
@@ -42,6 +42,24 @@ function disposeLibrary(library: ReplayAssetLibrary): void {
   for (const geometry of library.geometries.values()) geometry.dispose();
 }
 
+function radialExtentNearZ(
+  geometry: THREE.BufferGeometry,
+  z: number,
+  tolerance: number,
+  center: THREE.Vector3,
+): number {
+  const positions = geometry.getAttribute("position");
+  let extent = 0;
+  for (let index = 0; index < positions.count; index++) {
+    if (Math.abs(positions.getZ(index) - z) > tolerance) continue;
+    extent = Math.max(
+      extent,
+      Math.hypot(positions.getX(index) - center.x, positions.getY(index) - center.y),
+    );
+  }
+  return extent;
+}
+
 describe("replay asset pack", () => {
   it("loads the checked-in GLB with every required finite geometry slot", async () => {
     const fetchMock = vi.fn(async () => assetResponse());
@@ -59,6 +77,39 @@ describe("replay asset pack", () => {
       expect(size && Number.isFinite(size.x + size.y + size.z)).toBe(true);
     }
 
+    disposeLibrary(library);
+  });
+
+  it("keeps authored limbs compact and correctly tapered from proximal -Z", async () => {
+    const library = await fetchReplayAssetLibrary(async () => assetResponse());
+    for (const slot of [
+      "athlete:upper-arm",
+      "athlete:forearm",
+      "athlete:thigh",
+      "athlete:shin",
+    ] as const) {
+      const geometry = library.geometries.get(slot)!;
+      geometry.computeBoundingBox();
+      const bounds = geometry.boundingBox!;
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
+      const proximal = radialExtentNearZ(
+        geometry,
+        bounds.min.z + size.z * 0.12,
+        size.z * 0.07,
+        center,
+      );
+      const distal = radialExtentNearZ(
+        geometry,
+        bounds.max.z - size.z * 0.12,
+        size.z * 0.07,
+        center,
+      );
+
+      expect(size.z, `${slot} compact limb span`).toBeGreaterThanOrEqual(1);
+      expect(size.z, `${slot} compact limb span`).toBeLessThanOrEqual(1.05);
+      expect(proximal, `${slot} proximal radius`).toBeGreaterThan(distal * 1.15);
+    }
     disposeLibrary(library);
   });
 
@@ -155,5 +206,47 @@ describe("applyReplayAssetLibrary", () => {
 
     target.geometry.dispose();
     template.dispose();
+  });
+
+  it("fits fixed-size athlete forms while preserving a visible authored elbow", () => {
+    const hand = setReplayAssetSlot(
+      new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.15)),
+      "athlete:hand",
+    );
+    const elbow = setReplayAssetSlot(
+      new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.09, 0.1)),
+      "athlete:elbow",
+    );
+    elbow.userData.hideWithReplayAssets = false;
+    const root = new THREE.Group();
+    root.add(hand, elbow);
+    const handTemplate = new THREE.BoxGeometry(2, 2, 2);
+    const elbowTemplate = new THREE.BoxGeometry(2, 3, 4);
+    const library = {
+      byteLength: 64,
+      geometries: new Map<ReplayAssetSlot, THREE.BufferGeometry>([
+        ["athlete:hand", handTemplate],
+        ["athlete:elbow", elbowTemplate],
+      ]),
+    } as ReplayAssetLibrary;
+
+    expect(applyReplayAssetLibrary(root, library)).toBe(2);
+    for (const [mesh, expected] of [
+      [hand, new THREE.Vector3(0.12, 0.08, 0.15)],
+      [elbow, new THREE.Vector3(0.1, 0.09, 0.1)],
+    ] as const) {
+      mesh.geometry.computeBoundingBox();
+      const size = mesh.geometry.boundingBox?.getSize(new THREE.Vector3());
+      expect(size?.x).toBeCloseTo(expected.x, 6);
+      expect(size?.y).toBeCloseTo(expected.y, 6);
+      expect(size?.z).toBeCloseTo(expected.z, 6);
+    }
+    expect(elbow.visible).toBe(true);
+    expect(elbow.geometry.name).toBe("authored-instance:athlete:elbow");
+
+    hand.geometry.dispose();
+    elbow.geometry.dispose();
+    handTemplate.dispose();
+    elbowTemplate.dispose();
   });
 });

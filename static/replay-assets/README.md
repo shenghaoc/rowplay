@@ -4,7 +4,7 @@ This directory contains the compact, repository-owned 3D geometry package used
 to raise replay figure and equipment quality while retaining rowplay's existing
 contact-driven animation rig.
 
-## `rowplay-rigs-v1.glb`
+## `rowplay-rigs-v2.glb`
 
 - **Purpose:** texture-free athlete shells and selected RowErg, SkiErg, and
   BikeErg equipment shells for the optional WebGPU/WebGL replay.
@@ -15,12 +15,18 @@ contact-driven animation rig.
 - **Source of truth:** `scripts/build-replay-assets.mjs`.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed v1 artifact:** 125,844 bytes; SHA-256
-  `0406598f88bbfcd167b0310189d8deca6eb224e81f6fb7567e95954e9ab34bfd`.
-- **Inventory:** 20 named meshes/nodes: 13 generic athlete slots, two RowErg
-  slots, one SkiErg slot, and four BikeErg slots (1,552 triangles / 4,656
-  vertices). The package contains one placeholder authoring material, zero
-  textures/images, zero animations, and zero skins.
+- **Reviewed v2 artifact:** 299,708 bytes; SHA-256
+  `03487d7fb9a2987509a990da25549ebf27cfced8297a52d442d4e038cb49788e`.
+- **Inventory:** 24 named meshes/nodes: 14 generic athlete slots (including a
+  compact asymmetric elbow flex cuff), two RowErg slots, four SkiErg slots
+  (skis plus pole shaft, grip, and basket), and four BikeErg slots (3,932
+  triangles / 11,796 vertices). The package contains one placeholder authoring
+  material, zero textures/images, zero animations, and zero skins.
+- **Detail language:** deliberate lofted body planes, correctly tapered
+  proximal-to-distal limbs, compact cuff overlap, performance-shoe layers,
+  sculpted hands, an aerodynamic helmet ridge, and sport-equipment cross
+  sections. Raised geometry details are generated locally with Three.js core
+  geometry helpers; no image, texture, or downloaded model is involved.
 - **Runtime contract:** named `replayAssetSlot` meshes are validated and cloned
   onto the existing live/ghost rig. The GLB does not own timing, contacts,
   recorded animation, theme, or lane identity.
@@ -28,7 +34,7 @@ contact-driven animation rig.
 - **Textures, photographs, scans, and likeness data:** none.
 - **Avatar-generator or generated-person output:** none.
 
-The package is a deterministic build artifact. Rebuild it from the repository
+The package is a deterministic build artifact. Rebuild v2 from the repository
 root with:
 
 ```sh
@@ -36,8 +42,12 @@ node scripts/build-replay-assets.mjs
 ```
 
 Review the resulting binary diff and exact byte size before committing it. The
-`v1` filename identifies the required slot and coordinate contract; use a new
-versioned filename for an incompatible schema change.
+`v2` filename identifies the current required slot and coordinate contract;
+use a new versioned filename for an incompatible schema change.
+
+`rowplay-rigs-v1.glb` remains checked in only as a short-lived compatibility
+artifact for older branches. It is not rebuilt by the current generator and is
+not the primary replay asset package.
 
 ## Provenance policy
 

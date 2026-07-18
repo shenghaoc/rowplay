@@ -173,8 +173,11 @@ export function solveSkierKinematics(
     armPress = stage(p, 0, 0.72, athleticDrive);
     hipHinge = stage(p, 0.04, 0.7, athleticDrive);
     kneeFlex = stage(p, 0.12, 0.8, athleticDrive);
-    // Plant is brief and decisive; poles stay loaded through most of the pull.
-    poleContact = stage(p, 0, 0.05, easeOutCubic) * (1 - stage(p, 0.78, 1, smoothstep));
+    // Plant is brief and decisive, but its endpoint velocity must be zero: a
+    // hard ease-out makes a visible snap when the basket meets or leaves the
+    // snow. The pole stays loaded through the main press, then releases before
+    // recovery begins so the 3D contact solver can lift it continuously.
+    poleContact = stage(p, 0.01, 0.08, smoothstep) * (1 - stage(p, 0.72, 0.88, smoothstep));
     poleSweep = stage(p, 0.02, 0.95, easeOutCubic);
     rebound = 0;
   } else {

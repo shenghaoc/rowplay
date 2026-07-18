@@ -1,11 +1,17 @@
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 
-const DEFAULT_ASSET = "static/replay-assets/rowplay-rigs-v1.glb";
+const DEFAULT_ASSET = "static/replay-assets/rowplay-rigs-v2.glb";
 const MAX_FILE_BYTES = 512 * 1024;
-const MIN_TRIANGLES = 800;
+const MIN_TRIANGLES = 2_200;
 const MAX_TRIANGLES = 12_000;
 const MAX_VERTICES = 30_000;
+const LIMB_SLOTS = new Set([
+  "athlete:upper-arm",
+  "athlete:forearm",
+  "athlete:thigh",
+  "athlete:shin",
+]);
 
 const REQUIRED_SLOTS = [
   "athlete:torso",
@@ -17,6 +23,7 @@ const REQUIRED_SLOTS = [
   "athlete:thigh",
   "athlete:shin",
   "athlete:hand",
+  "athlete:elbow",
   "athlete:shoe",
   "athlete:neck",
   "athlete:shoulder",
@@ -24,6 +31,9 @@ const REQUIRED_SLOTS = [
   "equipment:row:hull",
   "equipment:row:blade",
   "equipment:ski:ski",
+  "equipment:ski:pole-shaft",
+  "equipment:ski:pole-grip",
+  "equipment:ski:pole-basket",
   "equipment:bike:tyre",
   "equipment:bike:frame-tube",
   "equipment:bike:saddle",
@@ -36,6 +46,60 @@ function invariant(condition, message) {
 
 function isFiniteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function readPositionVectors(document, binary, accessorIndex) {
+  const accessor = document.accessors[accessorIndex];
+  const view = document.bufferViews[accessor?.bufferView];
+  invariant(
+    accessor?.componentType === 5126 && accessor.type === "VEC3",
+    "invalid position accessor",
+  );
+  invariant(view, "position accessor is missing a buffer view");
+  const stride = view.byteStride ?? 12;
+  const start = (view.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
+  invariant(stride >= 12, "position accessor stride is too short");
+  invariant(
+    start + (accessor.count - 1) * stride + 12 <= binary.byteLength,
+    "position accessor exceeds binary data",
+  );
+  const values = [];
+  for (let index = 0; index < accessor.count; index++) {
+    const offset = start + index * stride;
+    values.push({
+      x: binary.readFloatLE(offset),
+      y: binary.readFloatLE(offset + 4),
+      z: binary.readFloatLE(offset + 8),
+    });
+  }
+  return values;
+}
+
+function validateLimbProfile(slot, positions) {
+  const minZ = Math.min(...positions.map((position) => position.z));
+  const maxZ = Math.max(...positions.map((position) => position.z));
+  // Runtime maps the rig start to local -Z and the end to local +Z. Limit
+  // authored extension to four percent beyond a unit segment, then require
+  // the proximal end to be wider than the distal cuff so elbows/knees do not
+  // invert into a bulbous end cap when the two-bone solver flexes.
+  invariant(
+    minZ >= -0.525 && minZ <= -0.515 && maxZ >= 0.515 && maxZ <= 0.525,
+    `${slot} must stay inside the compact ±0.52 limb envelope`,
+  );
+  const proximalRadius = Math.max(
+    ...positions
+      .filter((position) => position.z <= minZ + 0.035)
+      .map((position) => Math.hypot(position.x, position.y)),
+  );
+  const distalRadius = Math.max(
+    ...positions
+      .filter((position) => position.z >= maxZ - 0.035)
+      .map((position) => Math.hypot(position.x, position.y)),
+  );
+  invariant(
+    proximalRadius > distalRadius * 1.15,
+    `${slot} must taper from proximal -Z to distal +Z`,
+  );
 }
 
 function readGlb(bytes) {
@@ -73,8 +137,8 @@ function validateDocument(document, binary) {
   invariant(document.scene === 0, "asset must declare scene 0 as its default scene");
   invariant(document.scenes?.length === 1, "asset must contain exactly one scene");
   invariant(
-    document.scenes[0]?.name === "ROWPLAY_RIG_ASSET_LIBRARY_V1",
-    "asset scene name must match the v1 replay-rig contract",
+    document.scenes[0]?.name === "ROWPLAY_RIG_ASSET_LIBRARY_V2",
+    "asset scene name must match the v2 replay-rig contract",
   );
   invariant(!document.extensionsRequired?.length, "required glTF extensions are not supported");
   invariant(!document.extensionsUsed?.length, "the replay asset pack must use core glTF only");
@@ -201,7 +265,8 @@ function validateDocument(document, binary) {
       `slot ${slot} must contain only POSITION and NORMAL attributes`,
     );
 
-    const position = document.accessors[primitive.attributes.POSITION];
+    const positionAccessorIndex = primitive.attributes.POSITION;
+    const position = document.accessors[positionAccessorIndex];
     const normal = document.accessors[primitive.attributes.NORMAL];
     invariant(
       position?.componentType === 5126 && position.type === "VEC3",
@@ -225,6 +290,9 @@ function validateDocument(document, binary) {
       position.max.every((value, axis) => value - position.min[axis] > 1e-6),
       `slot ${slot} is degenerate on one or more axes`,
     );
+    if (LIMB_SLOTS.has(slot)) {
+      validateLimbProfile(slot, readPositionVectors(document, binary, positionAccessorIndex));
+    }
 
     let primitiveIndexCount = position.count;
     if (primitive.indices !== undefined) {

@@ -46,6 +46,39 @@ describe("sportKinematics", () => {
     expect(recovery.rebound).toBeGreaterThan(0);
   });
 
+  it("plants and releases SkiErg poles with C1 contact velocity", () => {
+    const driveFrac = poseAt("skierg", 0).driveFrac;
+    const epsilon = 1e-5;
+    const contactAtDriveProgress = (progress: number) =>
+      solveSkierKinematics(poseAt("skierg", driveFrac * progress)).poleContact;
+
+    // Each boundary has zero velocity on both sides: lift-off and touch-down
+    // are no longer eased with a nonzero-velocity curve that makes the stick
+    // visibly snap through the snow.
+    for (const boundary of [0.01, 0.08, 0.72, 0.88]) {
+      const before = contactAtDriveProgress(boundary - epsilon);
+      const atBoundary = contactAtDriveProgress(boundary);
+      const after = contactAtDriveProgress(boundary + epsilon);
+      const incomingVelocity = (atBoundary - before) / epsilon;
+      const outgoingVelocity = (after - atBoundary) / epsilon;
+
+      expect(Math.abs(incomingVelocity), `incoming contact velocity at ${boundary}`).toBeLessThan(
+        0.02,
+      );
+      expect(Math.abs(outgoingVelocity), `outgoing contact velocity at ${boundary}`).toBeLessThan(
+        0.02,
+      );
+      expect(
+        Math.abs(outgoingVelocity - incomingVelocity),
+        `contact velocity continuity at ${boundary}`,
+      ).toBeLessThan(0.02);
+    }
+
+    expect(contactAtDriveProgress(0)).toBe(0);
+    expect(contactAtDriveProgress(0.4)).toBe(1);
+    expect(contactAtDriveProgress(1)).toBe(0);
+  });
+
   it("keeps all normalized sport channels finite and bounded", () => {
     for (let step = 0; step < 100; step++) {
       const cycleFrac = step / 100;
