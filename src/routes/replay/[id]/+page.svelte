@@ -2191,6 +2191,7 @@
 	.ghost-more summary {
 		display: inline-flex;
 		align-items: center;
+		gap: var(--space-xs);
 		min-height: 2.75rem;
 		cursor: pointer;
 		list-style: none;
@@ -2201,10 +2202,10 @@
 		display: none;
 	}
 	.ghost-more summary::before {
-		content: '+ ';
+		content: '+';
 	}
 	.ghost-more[open] summary::before {
-		content: '− ';
+		content: '−';
 	}
 	.ghost-more-join {
 		margin-top: 0.5rem;
@@ -3008,35 +3009,44 @@
 		   Row 3: scrub (full-width). Row 4: speeds (full-width). */
 		.controls {
 			grid-template-columns: minmax(0, 1fr) auto;
+			grid-template-areas:
+				'play play'
+				'clock dist'
+				'scrub scrub'
+				'speeds speeds'
+				'hints hints';
 			gap: var(--space-sm);
 		}
 		.play {
-			grid-column: 1 / -1;
+			grid-area: play;
 			min-width: 0;
 			width: 100%;
 			justify-content: center;
 		}
 		.clock {
-			grid-column: 1;
+			grid-area: clock;
 			justify-self: start;
 			font-size: 1rem;
 		}
 		.dist {
-			grid-column: 2;
+			grid-area: dist;
 			justify-self: end;
 			text-align: right;
 		}
 		.scrub {
-			grid-column: 1 / -1;
+			grid-area: scrub;
 		}
 		.speeds {
-			grid-column: 1 / -1;
+			grid-area: speeds;
 			justify-self: stretch;
 			width: 100%;
 		}
 		.speeds .btn {
 			flex: 1;
 			min-width: 0;
+		}
+		.kb-hints {
+			grid-area: hints;
 		}
 	}
 	@media (max-width: 390px) {

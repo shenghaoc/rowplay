@@ -16,5 +16,5 @@
   six locales and update `docs/usage.md`.
 - [x] Align replay keyboard and smoke E2E flows with the advanced comparison
   disclosure.
-- [ ] Complete locale validation, full quality gate, focused replay E2E, smoke
+- [x] Complete locale validation, full quality gate, focused replay E2E, smoke
   E2E, and desktop/mobile visual verification.
