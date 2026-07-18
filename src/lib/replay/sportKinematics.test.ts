@@ -55,7 +55,7 @@ describe("sportKinematics", () => {
     // Each boundary has zero velocity on both sides: lift-off and touch-down
     // are no longer eased with a nonzero-velocity curve that makes the stick
     // visibly snap through the snow.
-    for (const boundary of [0.01, 0.08, 0.72, 0.88]) {
+    for (const boundary of [0.01, 0.075, 0.82, 0.94]) {
       const before = contactAtDriveProgress(boundary - epsilon);
       const atBoundary = contactAtDriveProgress(boundary);
       const after = contactAtDriveProgress(boundary + epsilon);
@@ -75,7 +75,14 @@ describe("sportKinematics", () => {
     }
 
     expect(contactAtDriveProgress(0)).toBe(0);
-    expect(contactAtDriveProgress(0.4)).toBe(1);
+    // The basket is fully braced against the snow while the press develops and
+    // peaks; this is the visual anchor that makes the skier's forward drive
+    // read as propulsion rather than a pair of swinging sticks.
+    for (const progress of [0.08, 0.18, 0.4, 0.62, 0.72, 0.8]) {
+      expect(contactAtDriveProgress(progress), `full plant at ${progress}`).toBe(1);
+    }
+    expect(contactAtDriveProgress(0.88)).toBeGreaterThan(0);
+    expect(contactAtDriveProgress(0.88)).toBeLessThan(1);
     expect(contactAtDriveProgress(1)).toBe(0);
   });
 

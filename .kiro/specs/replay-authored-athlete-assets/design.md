@@ -98,6 +98,13 @@ The work starts with immutable baseline captures, proves SkiErg as the exposed
 full-body vertical slice, adapts the language to RowErg/BikeErg and Canvas 2D,
 then tunes environment, lighting, and camera around final silhouettes.
 
+The authored forms retain indexed shared vertices and normalized smooth normals
+at export. Runtime athlete materials deliberately preserve that shading and use
+restrained fabric/skin roughness, while rounded kit trim avoids creating a
+separate planar backpack-like silhouette over the torso. This is a rendering
+choice, not athlete reconstruction: the generic illustration remains governed
+by the existing rig and source-policy boundary.
+
 At least three screenshot-and-critique iterations record visible defects and
 fixes. Final evidence covers the real 1140x420 and 390x360 stages, both themes,
 characteristic poses and motion, live/ghost, reduced motion, and Low/Ultra.

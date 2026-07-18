@@ -186,6 +186,25 @@ The current in-app browser pass was captured on the real WebGPU stage at
 `/replay/1001` and `/replay/1003`; the broader screenshot matrix below remains
 the release-level visual record.
 
+### Follow-up — stable shadows and smooth performance shells
+
+The next real-stage review found three remaining credibility defects: a noisy
+deprecated shadow path, two grounding systems visible at once, and a visible
+flat-shaded/planar treatment that made the rider read as a blocky figurine.
+High and Ultra now use a single VSM directional map with a compact,
+sport-specific frustum snapped in light-space texels. The visible sun uses the
+same key vector, decorative and transparent layers no longer receive the native
+map, and the live fallback contact mark hides whenever that map is active.
+
+The v2 pack was rebuilt with shared smooth normals, denser anatomical profiles,
+rounded kit trim, smoother BikeErg tyre/frame/saddle/pedal hardware, and more
+responsive fabric/skin material separation. The current motion review also
+tests a full RowErg stroke for hand-to-torso clearance and the SkiErg load phase
+for near-stationary planted baskets while the body advances. The focused
+regression suite covers those state-space constraints; the browser pass at
+`/replay/1001`, `/replay/1003`, and `/replay/1004` reviewed the resulting
+WebGPU/Ultra frames before this draft update.
+
 ## Accepted capture matrix
 
 All files below are under `higher-ceiling/final/` and were captured from the

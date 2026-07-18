@@ -78,12 +78,16 @@ account.
 - Premium sport-specific environments in both views: layered regatta water and
   shoreline, groomed Nordic snow and alpine venue cues, or a barrier-lined
   asphalt/velodrome training circuit
-- A compact repository-owned low-poly GLB supplies authored athlete and
+- A compact repository-owned authored GLB supplies smooth-normal athlete and
   sport-equipment shells in 3D; the existing contact-driven rig owns motion,
   while Canvas 2D and procedural 3D geometry remain reliable fallbacks
-- The current 3D figure pack preserves proximal-to-distal limb taper with
-  visible elbow flex cuffs, and SkiErg poles stay rigid from grip to basket
-  while their planted tips hold a deterministic course contact
+- The current 3D figure pack uses tapered, rounded anatomical shells and
+  tailored kit trim rather than flat-shaded figurines. RowErg grips remain
+  outside the torso through the full pull, while SkiErg poles stay rigid from
+  grip to basket and their planted tips hold a deterministic course contact
+- High and Ultra 3D quality use a single world-aligned, texel-stabilised native
+  shadow rig. The visible sun, athlete shadow, and ground contact agree rather
+  than layering a second simulated shadow over the same live athlete
 - Generic replay figures only—no scan, athlete likeness, avatar-generator
   output, user image, or undocumented downloaded model
 - Local procedural scenery built from Canvas drawing and Three.js geometry;

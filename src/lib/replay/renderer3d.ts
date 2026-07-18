@@ -337,6 +337,36 @@ const CAMERA_RIGS: Record<Sport, CameraRig> = {
 const BASE_CAMERA_FOV = 42;
 const SPEED_CAMERA_FOV_GAIN = 2;
 
+/**
+ * The directional key is an art-directed world vector, not a camera light.
+ * Keep this single source of truth for the light, its shadow camera, and the
+ * visible sun disc so the lighting direction always reads coherently.
+ */
+const SUN_OFFSETS: Record<Sport, readonly [number, number, number]> = {
+  rower: [-22, 18, 14],
+  skierg: [16, 28, 10],
+  bike: [10, 14, -16],
+};
+
+/**
+ * Compact per-sport orthographic envelopes give the moving athlete enough
+ * clearance for its equipment without wasting a high-tier map on the arena.
+ * They are centered on the athlete after light-space texel snapping.
+ */
+const SHADOW_FRAMES: Record<
+  Sport,
+  Readonly<{ left: number; right: number; bottom: number; top: number; near: number; far: number }>
+> = {
+  // A scull needs room for both blades at full reach; the other rigs can be
+  // tighter, which keeps the penumbra clean at High as well as Ultra.
+  rower: { left: -7, right: 7, bottom: -5, top: 7, near: 1, far: 48 },
+  skierg: { left: -5.5, right: 5.5, bottom: -5, top: 6, near: 1, far: 46 },
+  bike: { left: -5, right: 5, bottom: -4.5, top: 5.5, near: 1, far: 40 },
+};
+
+const SHADOW_TARGET_HEIGHT = 0.55;
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+
 type ThemeName = "light" | "dark";
 type CourseColor = (theme: ThemeName) => number;
 
@@ -656,18 +686,23 @@ const HUMAN_KIT_DARK = 0x1f2b36;
 const HUMAN_SHOE = 0xdde6ea;
 const HUMAN_SNOW_SHOE = 0x1f2b36;
 
-function humanMat(color: number, roughness = 0.78, metalness = 0): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color, roughness, metalness, flatShading: true });
+function humanMat(color: number, roughness = 0.64, metalness = 0): THREE.MeshStandardMaterial {
+  // Athlete shells are deliberately smooth-shaded. The authored rig carries
+  // controlled anatomical planes in its normals; forcing every material flat
+  // made even the higher-detail rider read like a blocky game figurine.
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
 }
 
 function accentMaterial(accent: number): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
     color: accent,
-    roughness: 0.62,
+    // A small amount of fabric sheen lets the authored torso curvature read
+    // under the moving key light. The former high roughness plus bright
+    // emissive wash made every jersey look like a flat, toy-plastic panel.
+    roughness: 0.5,
     metalness: 0.02,
-    flatShading: true,
     emissive: accent,
-    emissiveIntensity: 0.08,
+    emissiveIntensity: 0.025,
   });
 }
 
@@ -762,15 +797,32 @@ function trapezoidPanel(
   material: THREE.Material,
 ): THREE.Mesh {
   const shape = new THREE.Shape();
-  shape.moveTo(-bottomWidth / 2, -height / 2);
-  shape.lineTo(bottomWidth / 2, -height / 2);
-  shape.lineTo(topWidth / 2, height / 2);
-  shape.lineTo(-topWidth / 2, height / 2);
+  // A jersey yoke is cloth, not a four-cornered plate. Rounding and lightly
+  // beveling this contour prevents the dark trim from reading as a blocky
+  // backpack in the rear three-quarter camera while retaining its clear kit
+  // separation at replay scale.
+  const radius = Math.min(height * 0.18, topWidth * 0.11, bottomWidth * 0.11);
+  const top = topWidth / 2;
+  const bottom = bottomWidth / 2;
+  const halfHeight = height / 2;
+  shape.moveTo(-bottom + radius, -halfHeight);
+  shape.lineTo(bottom - radius, -halfHeight);
+  shape.quadraticCurveTo(bottom, -halfHeight, bottom - radius * 0.3, -halfHeight + radius);
+  shape.lineTo(top, halfHeight - radius);
+  shape.quadraticCurveTo(top, halfHeight, top - radius, halfHeight);
+  shape.lineTo(-top + radius, halfHeight);
+  shape.quadraticCurveTo(-top, halfHeight, -top, halfHeight - radius);
+  shape.lineTo(-bottom + radius * 0.3, -halfHeight + radius);
+  shape.quadraticCurveTo(-bottom, -halfHeight, -bottom + radius, -halfHeight);
   shape.closePath();
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth,
     steps: 1,
-    bevelEnabled: false,
+    curveSegments: 8,
+    bevelEnabled: true,
+    bevelThickness: Math.min(depth * 0.32, 0.012),
+    bevelSize: Math.min(radius * 0.42, 0.014),
+    bevelSegments: 2,
   });
   geometry.translate(0, 0, -depth / 2);
   geometry.computeVertexNormals();
@@ -979,11 +1031,11 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const group = new THREE.Group();
   const laneMaterial = accentMaterial(accent);
   const accentMat = () => laneMaterial;
-  const skinMaterial = humanMat(HUMAN_SKIN);
-  const hairMaterial = humanMat(HUMAN_HAIR);
-  const kitMaterial = humanMat(HUMAN_KIT);
-  const kitDarkMaterial = humanMat(HUMAN_KIT_DARK);
-  const shoeMaterial = humanMat(HUMAN_SHOE);
+  const skinMaterial = humanMat(HUMAN_SKIN, 0.54);
+  const hairMaterial = humanMat(HUMAN_HAIR, 0.78);
+  const kitMaterial = humanMat(HUMAN_KIT, 0.58);
+  const kitDarkMaterial = humanMat(HUMAN_KIT_DARK, 0.64);
+  const shoeMaterial = humanMat(HUMAN_SHOE, 0.46);
   const kinematics: RowerKinematics = {
     legExtension: 0,
     bodySwing: 0,
@@ -1056,17 +1108,18 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const torso = new THREE.Group();
   torso.name = "rower-torso";
   torso.position.copy(hips.position);
-  const torsoShell = accentPart(shapedTorso(0.29, 0.64, 0.175, accentMat(), 12));
+  const torsoShell = accentPart(shapedTorso(0.29, 0.64, 0.175, accentMat(), 16));
   setReplayAssetSlot(torsoShell, "athlete:torso");
   torsoShell.name = "rower-torso-shell";
   torsoShell.position.y = 0.3;
-  const frontYoke = trapezoidPanel(0.48, 0.34, 0.16, 0.032, kitDarkMaterial);
+  const frontYoke = hideWithReplayAssets(trapezoidPanel(0.48, 0.34, 0.16, 0.032, kitDarkMaterial));
   frontYoke.name = "rower-jersey-front";
   frontYoke.position.set(0, 0.5, 0.168);
-  const backYoke = trapezoidPanel(0.48, 0.34, 0.16, 0.032, kitDarkMaterial);
+  const backYoke = hideWithReplayAssets(trapezoidPanel(0.48, 0.34, 0.16, 0.032, kitDarkMaterial));
   backYoke.name = "rower-jersey-back";
   backYoke.position.set(0, 0.5, -0.168);
-  const shoulderLine = capsulePart(0.062, 0.56, kitDarkMaterial, "x");
+  const shoulderLine = hideWithReplayAssets(capsulePart(0.062, 0.56, kitDarkMaterial, "x"));
+  shoulderLine.name = "rower-shoulder-trim";
   shoulderLine.position.set(0, 0.53, 0.01);
   const neck = capsulePart(0.053, 0.11, skinMaterial, "y");
   setReplayAssetSlot(neck, "athlete:neck");
@@ -1222,8 +1275,11 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const FOREARM_LENGTH = 0.44;
   const BODY_PITCH_CATCH = -0.56;
   const BODY_PITCH_FINISH = 0.3;
-  const OAR_YAW_CATCH = -0.95;
-  const OAR_YAW_SPAN = 1.48;
+  // At the catch the handles are clearly in front of the rib cage; through
+  // the drive they travel back to the body. The old sign convention swept the
+  // inboard grips through the torso, making every pull look physically wrong.
+  const OAR_YAW_CATCH = 0.33;
+  const OAR_YAW_SPAN = -0.78;
   const BLADE_BURY = 0.2;
   const BLADE_DIP = 0.14;
 
@@ -1365,11 +1421,11 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const group = new THREE.Group();
   const laneMaterial = accentMaterial(accent);
   const accentMat = () => laneMaterial;
-  const skinMaterial = humanMat(HUMAN_SKIN);
-  const hairMaterial = humanMat(HUMAN_HAIR);
-  const kitMaterial = humanMat(HUMAN_KIT);
-  const kitDarkMaterial = humanMat(HUMAN_KIT_DARK);
-  const shoeMaterial = humanMat(HUMAN_SNOW_SHOE);
+  const skinMaterial = humanMat(HUMAN_SKIN, 0.54);
+  const hairMaterial = humanMat(HUMAN_HAIR, 0.78);
+  const kitMaterial = humanMat(HUMAN_KIT, 0.58);
+  const kitDarkMaterial = humanMat(HUMAN_KIT_DARK, 0.64);
+  const shoeMaterial = humanMat(HUMAN_SNOW_SHOE, 0.5);
   const poleMaterial = humanMat(0x486775, 0.58);
   const farPoleMaterial = humanMat(0x2f5362, 0.7);
   const gripMaterial = humanMat(0x20242a);
@@ -1451,17 +1507,18 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const hips = ellipsoid([0.18, 0.125, 0.16], kitDarkMaterial, 10);
   setReplayAssetSlot(hips, "athlete:pelvis");
   hips.position.y = 0;
-  const torso = accentPart(shapedTorso(0.3, 0.68, 0.18, accentMat(), 12));
+  const torso = accentPart(shapedTorso(0.3, 0.68, 0.18, accentMat(), 16));
   setReplayAssetSlot(torso, "athlete:torso");
   torso.name = "skierg-torso";
   torso.position.y = 0.31;
-  const frontYoke = trapezoidPanel(0.5, 0.35, 0.17, 0.034, kitDarkMaterial);
+  const frontYoke = hideWithReplayAssets(trapezoidPanel(0.5, 0.35, 0.17, 0.034, kitDarkMaterial));
   frontYoke.name = "skierg-jersey-front";
   frontYoke.position.set(0, 0.52, 0.172);
-  const backYoke = trapezoidPanel(0.5, 0.35, 0.17, 0.034, kitDarkMaterial);
+  const backYoke = hideWithReplayAssets(trapezoidPanel(0.5, 0.35, 0.17, 0.034, kitDarkMaterial));
   backYoke.name = "skierg-jersey-back";
   backYoke.position.set(0, 0.52, -0.172);
-  const shoulderLine = capsulePart(0.064, 0.58, kitDarkMaterial, "x");
+  const shoulderLine = hideWithReplayAssets(capsulePart(0.064, 0.58, kitDarkMaterial, "x"));
+  shoulderLine.name = "skierg-shoulder-trim";
   shoulderLine.position.y = 0.58;
   const neck = capsulePart(0.053, 0.11, skinMaterial, "y");
   setReplayAssetSlot(neck, "athlete:neck");
@@ -1827,12 +1884,17 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   const group = new THREE.Group();
   const laneMaterial = accentMaterial(accent);
   const accentMat = () => laneMaterial;
-  const skinMaterial = humanMat(HUMAN_SKIN);
-  const hairMaterial = humanMat(HUMAN_HAIR);
-  const kitMaterial = humanMat(HUMAN_KIT);
-  const kitDarkMaterial = humanMat(HUMAN_KIT_DARK);
-  const shoeMaterial = humanMat(HUMAN_SHOE);
-  const equipmentMaterial = humanMat(0x82949d, 0.62);
+  const skinMaterial = humanMat(HUMAN_SKIN, 0.54);
+  const hairMaterial = humanMat(HUMAN_HAIR, 0.78);
+  const kitMaterial = humanMat(HUMAN_KIT, 0.58);
+  const kitDarkMaterial = humanMat(HUMAN_KIT_DARK, 0.64);
+  const shoeMaterial = humanMat(HUMAN_SHOE, 0.46);
+  const equipmentMaterial = humanMat(0x82949d, 0.42, 0.22);
+  const tyreMaterial = humanMat(0x4d5b64, 0.4, 0.08);
+  const spokeMaterial = humanMat(0xc8d3da, 0.28, 0.62);
+  const hubMaterial = humanMat(0x33434e, 0.36, 0.48);
+  const saddleMaterial = humanMat(0xaab8c0, 0.48, 0.08);
+  const pedalMaterial = humanMat(0x61737d, 0.34, 0.46);
   const kinematics: BikeKinematics = {
     crankAngle: 0,
     torsoSway: 0,
@@ -1847,19 +1909,26 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     const wheel = new THREE.Group();
     wheel.name = z > 0 ? "bike-wheel-front" : "bike-wheel-rear";
     const tyre = setReplayAssetSlot(
-      new THREE.Mesh(new THREE.TorusGeometry(wheelR, 0.06, 8, 16), equipmentMaterial),
+      new THREE.Mesh(new THREE.TorusGeometry(wheelR, 0.06, 8, 16), tyreMaterial),
       "equipment:bike:tyre",
     );
     tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
     wheel.add(tyre);
-    // Crossed bright spokes make the spin legible at low poly.
-    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.04, wheelR * 1.8, 0.04), accentMat());
-    spoke.userData.accent = true;
-    wheel.add(spoke);
-    const spoke2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, wheelR * 1.8, 0.04), accentMat());
-    spoke2.rotation.x = Math.PI / 2;
-    spoke2.userData.accent = true;
-    wheel.add(spoke2);
+    // Three paired round spokes preserve visible cadence without the two thick
+    // box crosses that made the bicycle read as a toy diagram at rest.
+    for (const [index, angle] of [0, Math.PI / 3, (Math.PI * 2) / 3].entries()) {
+      const spoke = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.011, 0.011, wheelR * 1.72, 8),
+        spokeMaterial,
+      );
+      spoke.name = `${wheel.name}-spoke-${index}`;
+      spoke.rotation.x = angle;
+      wheel.add(spoke);
+    }
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.1, 12), hubMaterial);
+    hub.name = `${wheel.name}-hub`;
+    hub.rotation.z = Math.PI / 2;
+    wheel.add(hub);
     wheel.position.set(0, wheelR, z);
     group.add(wheel);
     wheels.push(wheel);
@@ -1919,7 +1988,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   cranks.add(chainRing);
   const pedals: Array<{ side: number; crankY: number }> = [];
   for (const side of [-1, 1]) {
-    const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), equipmentMaterial);
+    const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), pedalMaterial);
     setReplayAssetSlot(pedal, "equipment:bike:pedal");
     pedal.name = side < 0 ? "bike-pedal-left" : "bike-pedal-right";
     const crankY = side * 0.21;
@@ -1931,7 +2000,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
 
   // The saddle closes the previously visible gap between the frame and the
   // rider's pelvis, which was especially obvious from the chase camera.
-  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.055, 0.3), equipmentMaterial);
+  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.055, 0.3), saddleMaterial);
   setReplayAssetSlot(saddle, "equipment:bike:saddle");
   saddle.name = "bike-saddle";
   saddle.position.set(0, wheelR + 0.77, -0.4);
@@ -1968,17 +2037,18 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   const torso = new THREE.Group();
   torso.name = "bike-spine";
   torso.position.set(0, 0.02, 0.01);
-  const torsoShell = accentPart(shapedTorso(0.28, 0.64, 0.17, accentMat(), 12));
+  const torsoShell = accentPart(shapedTorso(0.28, 0.64, 0.17, accentMat(), 16));
   setReplayAssetSlot(torsoShell, "athlete:torso");
   torsoShell.name = "bike-torso";
   torsoShell.position.set(0, 0.28, 0.04);
-  const frontYoke = trapezoidPanel(0.46, 0.32, 0.16, 0.032, kitDarkMaterial);
+  const frontYoke = hideWithReplayAssets(trapezoidPanel(0.46, 0.32, 0.16, 0.032, kitDarkMaterial));
   frontYoke.name = "bike-jersey-front";
   frontYoke.position.set(0, 0.49, 0.162);
-  const backYoke = trapezoidPanel(0.46, 0.32, 0.16, 0.032, kitDarkMaterial);
+  const backYoke = hideWithReplayAssets(trapezoidPanel(0.46, 0.32, 0.16, 0.032, kitDarkMaterial));
   backYoke.name = "bike-jersey-back";
   backYoke.position.set(0, 0.49, -0.162);
-  const shoulderLine = capsulePart(0.06, 0.54, kitDarkMaterial, "x");
+  const shoulderLine = hideWithReplayAssets(capsulePart(0.06, 0.54, kitDarkMaterial, "x"));
+  shoulderLine.name = "bike-shoulder-trim";
   shoulderLine.position.set(0, 0.51, 0.025);
   const neck = capsulePart(0.05, 0.1, skinMaterial, "y");
   setReplayAssetSlot(neck, "athlete:neck");
@@ -2416,6 +2486,13 @@ export class CourseRenderer3D implements ReplayRenderer {
   private skyGeometry!: THREE.SphereGeometry;
   private hemisphereLight!: THREE.HemisphereLight;
   private sunLight!: THREE.DirectionalLight;
+  /** Fixed target-to-light direction for this venue's visible sun and key. */
+  private readonly sunOffset = new THREE.Vector3();
+  /** Reused vectors keep shadow-focus stabilization allocation-free per frame. */
+  private readonly shadowTarget = new THREE.Vector3();
+  private readonly shadowDirection = new THREE.Vector3();
+  private readonly shadowRight = new THREE.Vector3();
+  private readonly shadowUp = new THREE.Vector3();
   private worldFill!: THREE.DirectionalLight;
   private readonly environmentMidGroup = new THREE.Group();
   private readonly environmentDetailGroup = new THREE.Group();
@@ -2510,7 +2587,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.renderer.toneMappingExposure = this.environment.exposure;
     if (this.cfg.shadows && this.renderer.shadowMap) {
       this.renderer.shadowMap.enabled = true;
-      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      // PCFSoftShadowMap is deprecated by current Three WebGL and silently
+      // becomes a screen-space dithered PCF path. VSM is supported by both
+      // renderer backends here and gives the replay one stable soft penumbra.
+      this.renderer.shadowMap.type = THREE.VSMShadowMap;
     }
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(BASE_CAMERA_FOV, 1, 0.1, 500);
@@ -2531,27 +2611,29 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.sunLight.name = "environment:key-light";
     // Low golden-hour key for row, higher alpine key for ski, dusk side-key
     // for the velodrome — each venue's sun sits where the art direction places it.
-    const sunPose =
-      this.sport === "rower"
-        ? { x: -22, y: 18, z: 14 }
-        : this.sport === "skierg"
-          ? { x: 16, y: 28, z: 10 }
-          : { x: 10, y: 14, z: -16 };
-    this.sunLight.position.set(sunPose.x, sunPose.y, sunPose.z);
+    this.sunOffset.fromArray(SUN_OFFSETS[this.sport]);
+    this.sunLight.position.copy(this.sunOffset);
     if (this.cfg.shadows) {
       this.sunLight.castShadow = true;
       this.sunLight.shadow.mapSize.set(this.cfg.shadowMapSize, this.cfg.shadowMapSize);
-      const c = this.sunLight.shadow.camera;
-      c.near = 1;
-      c.far = 58;
-      c.left = -10;
-      c.right = 10;
-      c.bottom = -8;
-      c.top = 12;
-      this.sunLight.shadow.bias = -0.0002;
-      this.sunLight.shadow.normalBias = 0.035;
+      const c = this.sunLight.shadow.camera as THREE.OrthographicCamera;
+      const frame = SHADOW_FRAMES[this.sport];
+      c.near = frame.near;
+      c.far = frame.far;
+      c.left = frame.left;
+      c.right = frame.right;
+      c.bottom = frame.bottom;
+      c.top = frame.top;
+      // Keep thin oars, poles and shoe soles attached to their contact
+      // shadows. Larger normal offsets visibly detach these fine features.
+      this.sunLight.shadow.bias = -0.00008;
+      this.sunLight.shadow.normalBias = 0.012;
+      this.sunLight.shadow.radius = 1.35;
+      this.sunLight.shadow.blurSamples = 8;
+      this.sunLight.shadow.intensity = 0.58;
     }
     this.sunLight.target.name = "environment:key-light-target";
+    this.sunLight.target.position.set(0, SHADOW_TARGET_HEIGHT, 0);
     this.scene.add(this.sunLight, this.sunLight.target);
     this.worldFill = new THREE.DirectionalLight(
       this.environment.fill("light"),
@@ -2727,7 +2809,9 @@ export class CourseRenderer3D implements ReplayRenderer {
     ring.name = name;
     ring.rotation.x = Math.PI / 2;
     ring.position.y = y;
-    ring.receiveShadow = this.cfg.shadows;
+    // Fine lane dressing should not compete with the single matte course
+    // receiver in the tightly focused athlete shadow map.
+    ring.receiveShadow = false;
     group.add(ring);
     return ring;
   }
@@ -2747,7 +2831,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     block.name = name;
     block.position.set(radius * Math.sin(angle), y, radius * Math.cos(angle));
     block.rotation.y = Math.atan2(tx, tz);
-    block.receiveShadow = this.cfg.shadows;
+    block.receiveShadow = false;
     group.add(block);
     return block;
   }
@@ -3040,7 +3124,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     });
     const sun = new THREE.Mesh(this.track(new THREE.CircleGeometry(7.5, 32)), sunMat);
     sun.name = `environment:${this.sport}:sun-disc`;
-    sun.position.set(-104, 51, -104);
+    // The visible sun and the movable directional-light focus share the same
+    // world direction. The light follows the athlete only to retain a dense
+    // local map; it is never a second, contradictory camera light.
+    sun.position.copy(this.sunOffset).normalize().multiplyScalar(132);
     sun.lookAt(0, 8, 0);
     sun.renderOrder = -900;
     this.scene.add(sun);
@@ -3765,6 +3852,10 @@ export class CourseRenderer3D implements ReplayRenderer {
 
     this.liveContactFootprint = makeFootprint("live", liveMaterial);
     this.ghostContactFootprint = makeFootprint("ghost", ghostMaterial);
+    // Native High/Ultra shadows ground the solid live athlete. Leave the
+    // authored contact treatment available only where native shadows are off;
+    // the ghost remains decal-grounded because it deliberately does not cast.
+    this.liveContactFootprint.visible = !this.liveShadowsActive();
     this.ghostContactFootprint.visible = false;
     this.scene.add(this.liveContactFootprint, this.ghostContactFootprint);
   }
@@ -3825,7 +3916,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     const lane = new THREE.Mesh(laneGeo, laneMat);
     lane.name = "lane";
     lane.rotation.x = -Math.PI / 2;
-    lane.receiveShadow = this.cfg.shadows;
+    // Water already has the opaque physical ground receiver below it. Letting
+    // its translucent lane overlay receive as well fragments a single hull
+    // shadow into two offset layers as the waves animate.
+    lane.receiveShadow = this.cfg.shadows && this.sport !== "rower";
     course.add(lane);
 
     const edgeMat = this.courseMat("course:edge", this.profile.course.edge, {
@@ -3994,8 +4088,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.environmentDetailGroup.visible = false;
       this.resize(this.w, this.h);
     }
-    if (this.governor.level >= 2 && this.renderer.shadowMap) {
-      this.renderer.shadowMap.enabled = false;
+    if (this.renderer.shadowMap) {
+      // High and Ultra keep their authored shadows through the first two
+      // quality reductions. Only the emergency level that also removes spray
+      // and dynamic water swaps to the deterministic contact-mark fallback.
+      this.renderer.shadowMap.enabled = this.cfg.shadows && this.governor.level < 3;
+      this.updateLiveContactFootprintVisibility();
     }
     if (this.governor.level >= 3) {
       this.sprayOff = true;
@@ -4016,6 +4114,58 @@ export class CourseRenderer3D implements ReplayRenderer {
       pos.needsUpdate = true;
       water.geometry.computeVertexNormals();
     }
+  }
+
+  /** True while the live athlete has a native directional shadow receiver. */
+  private liveShadowsActive(): boolean {
+    return (
+      this.cfg.shadows && this.sunLight.castShadow && this.renderer.shadowMap?.enabled !== false
+    );
+  }
+
+  /**
+   * Contact marks are a no-shadow fallback, not a second fake shadow. Keeping
+   * the two systems mutually exclusive removes the dark double-images that
+   * otherwise slide apart when a rig bobs or surges through a stroke.
+   */
+  private updateLiveContactFootprintVisibility(): void {
+    if (this.liveContactFootprint) this.liveContactFootprint.visible = !this.liveShadowsActive();
+  }
+
+  /**
+   * Follow the live athlete with a directional-light shadow camera while
+   * snapping its origin in the camera's own X/Y plane. Raw world X/Z snapping
+   * fails on a curved course because it does not align with the shadow texels;
+   * light-space snapping prevents sub-texel shadow swimming without widening
+   * the map or changing the art-directed sun direction.
+   */
+  private updateStableShadowAnchor(x: number, z: number): void {
+    const target = this.shadowTarget.set(x, SHADOW_TARGET_HEIGHT, z);
+    if (this.cfg.shadows) {
+      const camera = this.sunLight.shadow.camera as THREE.OrthographicCamera;
+      const mapSize = this.sunLight.shadow.mapSize;
+      const texelX = (camera.right - camera.left) / Math.max(1, mapSize.x);
+      const texelY = (camera.top - camera.bottom) / Math.max(1, mapSize.y);
+
+      // DirectionalLightShadow uses a camera with world +X aligned to
+      // cross(worldUp, targetToLight), and world +Y completing that frame.
+      this.shadowDirection.copy(this.sunOffset).normalize();
+      this.shadowRight.crossVectors(WORLD_UP, this.shadowDirection).normalize();
+      this.shadowUp.crossVectors(this.shadowDirection, this.shadowRight).normalize();
+      const alongRight = target.dot(this.shadowRight);
+      const alongUp = target.dot(this.shadowUp);
+      if (texelX > 0)
+        target.addScaledVector(
+          this.shadowRight,
+          Math.round(alongRight / texelX) * texelX - alongRight,
+        );
+      if (texelY > 0)
+        target.addScaledVector(this.shadowUp, Math.round(alongUp / texelY) * texelY - alongUp);
+    }
+
+    this.sunLight.position.copy(target).add(this.sunOffset);
+    this.sunLight.target.position.copy(target);
+    this.sunLight.target.updateMatrixWorld();
   }
 
   /** Place an avatar on its lap circle and animate bob/roll + the stroke. */
@@ -4159,17 +4309,11 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Local X is equipment travel: align the hull strip, both skis, or the
     // separate tyre patches to the independently solved course tangent.
     this.liveContactFootprint.rotation.y = Math.atan2(p.tx, p.tz) - Math.PI / 2;
+    this.updateLiveContactFootprintVisibility();
     // Keep the expensive high-tier shadow map concentrated around the live
-    // athlete instead of spending texels across the entire 70 m arena.
-    const sunOffset =
-      this.sport === "rower"
-        ? { x: -22, y: 18, z: 14 }
-        : this.sport === "skierg"
-          ? { x: 16, y: 28, z: 10 }
-          : { x: 10, y: 14, z: -16 };
-    this.sunLight.position.set(p.x + sunOffset.x, sunOffset.y, p.z + sunOffset.z);
-    this.sunLight.target.position.set(p.x, 0.55, p.z);
-    this.sunLight.target.updateMatrixWorld();
+    // athlete, but stabilize its projection rather than letting it swim over
+    // fractional texels as the athlete rounds the 70 m arena.
+    this.updateStableShadowAnchor(p.x, p.z);
 
     this.advanceWake(this.liveWake, dLive, p.x - p.tx * 1.6, p.z - p.tz * 1.6);
 

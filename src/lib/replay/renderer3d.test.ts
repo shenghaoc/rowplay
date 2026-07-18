@@ -237,6 +237,22 @@ function getCameraRig(renderer: CourseRenderer3D) {
   };
 }
 
+function getShadowRig(renderer: CourseRenderer3D) {
+  return renderer as unknown as {
+    renderer: { shadowMap?: { enabled: boolean; type: unknown } };
+    sunLight: THREE.DirectionalLight;
+    liveBoat: THREE.Group;
+  };
+}
+
+function updateShadowMatrices(renderer: CourseRenderer3D): THREE.DirectionalLight {
+  const scene = getScene(renderer);
+  const { sunLight } = getShadowRig(renderer);
+  scene.updateMatrixWorld(true);
+  sunLight.shadow.updateMatrices(sunLight);
+  return sunLight;
+}
+
 describe("CourseRenderer3D", () => {
   it("constructs without throwing for each sport", () => {
     for (const sport of ["rower", "skierg", "bike"] as const) {
@@ -534,6 +550,105 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
+  it("uses one stable native shadow system at High and Ultra", () => {
+    for (const [quality, mapSize] of [
+      ["high", 1024],
+      ["ultra", 2048],
+    ] as const) {
+      const renderer = new CourseRenderer3D(makeHost(), quality, "rower");
+      renderer.resize(1140, 420);
+      renderer.render(makeSportState("rower", 0.18, 250), false);
+      const { renderer: rendererInternals, sunLight } = getShadowRig(renderer);
+      const camera = sunLight.shadow.camera as THREE.OrthographicCamera;
+
+      expect(rendererInternals.shadowMap?.enabled).toBe(true);
+      expect(rendererInternals.shadowMap?.type).toBe(THREE.VSMShadowMap);
+      expect(sunLight.castShadow).toBe(true);
+      expect(sunLight.shadow.mapSize.toArray()).toEqual([mapSize, mapSize]);
+      expect(sunLight.shadow.blurSamples).toBe(8);
+      expect(sunLight.shadow.normalBias).toBeLessThanOrEqual(0.012);
+      expect(sunLight.shadow.intensity).toBeCloseTo(0.58, 8);
+      expect(camera.right - camera.left).toBeLessThanOrEqual(14);
+      expect(sceneObject(renderer, "athlete:live:contact-footprint").visible).toBe(false);
+      expect(sceneObject(renderer, "ground").receiveShadow).toBe(true);
+      expect(sceneObject(renderer, "lane").receiveShadow).toBe(false);
+      expect(sceneObject(renderer, "course:edge-inner").receiveShadow).toBe(false);
+      renderer.destroy();
+    }
+
+    const fallback = new CourseRenderer3D(makeHost(), "medium", "bike");
+    expect(sceneObject(fallback, "athlete:live:contact-footprint").visible).toBe(true);
+    fallback.destroy();
+
+    const premiumWithGhost = new CourseRenderer3D(makeHost(), "ultra", "bike");
+    premiumWithGhost.resize(1140, 420);
+    premiumWithGhost.render(
+      makeSportState("bike", 0.2, 250, {
+        totalDistance: 1_000,
+        ghost: { distFrac: 0.18, pace: 125, spm: 82, label: "PB" },
+      }),
+      false,
+    );
+    expect(sceneObject(premiumWithGhost, "athlete:live:contact-footprint").visible).toBe(false);
+    expect(sceneObject(premiumWithGhost, "athlete:ghost:contact-footprint").visible).toBe(true);
+    premiumWithGhost.destroy();
+  });
+
+  it("texel-snaps the focused directional shadow without changing its visible sun direction", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "high", "rower");
+    renderer.resize(1140, 420);
+    let initialTarget: THREE.Vector3 | null = null;
+    let priorTarget: THREE.Vector3 | null = null;
+    let initialOffset: THREE.Vector3 | null = null;
+    let cameraRight: THREE.Vector3 | null = null;
+    let cameraUp: THREE.Vector3 | null = null;
+    let texelX = 0;
+    let texelY = 0;
+
+    for (const delta of [0, 0.003, 0.006, 0.009, 0.012, 0.015, 0.018, 0.021]) {
+      renderer.render(makeSportState("rower", 0.2, 250 + delta), false);
+      const sunLight = updateShadowMatrices(renderer);
+      const camera = sunLight.shadow.camera as THREE.OrthographicCamera;
+      const target = sunLight.target.position.clone();
+      const offset = sunLight.position.clone().sub(target);
+      const liveFocus = getShadowRig(renderer).liveBoat.position.clone().setY(0.55);
+
+      if (!initialTarget) {
+        initialTarget = target.clone();
+        priorTarget = target.clone();
+        initialOffset = offset.clone();
+        cameraRight = new THREE.Vector3(1, 0, 0).transformDirection(camera.matrixWorld);
+        cameraUp = new THREE.Vector3(0, 1, 0).transformDirection(camera.matrixWorld);
+        texelX = (camera.right - camera.left) / sunLight.shadow.mapSize.x;
+        texelY = (camera.top - camera.bottom) / sunLight.shadow.mapSize.y;
+      }
+
+      expect(offset.distanceTo(initialOffset!)).toBeLessThan(1e-9);
+      const moved = target.clone().sub(initialTarget!);
+      const xTexels = moved.dot(cameraRight!) / texelX;
+      const yTexels = moved.dot(cameraUp!) / texelY;
+      expect(Math.abs(xTexels - Math.round(xTexels))).toBeLessThan(1e-6);
+      expect(Math.abs(yTexels - Math.round(yTexels))).toBeLessThan(1e-6);
+      expect(
+        Math.abs(target.clone().sub(priorTarget!).dot(cameraRight!)) / texelX,
+      ).toBeLessThanOrEqual(1 + 1e-6);
+      expect(
+        Math.abs(target.clone().sub(priorTarget!).dot(cameraUp!)) / texelY,
+      ).toBeLessThanOrEqual(1 + 1e-6);
+      const focusError = target.clone().sub(liveFocus);
+      expect(Math.abs(focusError.dot(cameraRight!))).toBeLessThanOrEqual(texelX * 0.500001);
+      expect(Math.abs(focusError.dot(cameraUp!))).toBeLessThanOrEqual(texelY * 0.500001);
+      priorTarget = target;
+    }
+
+    const sun = sceneObject(renderer, "environment:rower:sun-disc");
+    const sunDirection = sun.position.clone().normalize();
+    const { sunLight } = getShadowRig(renderer);
+    const lightDirection = sunLight.position.clone().sub(sunLight.target.position).normalize();
+    expect(sunDirection.distanceTo(lightDirection)).toBeLessThan(1e-6);
+    renderer.destroy();
+  });
+
   it("joins the BikeErg diamond-frame tubes at their authored endpoints", () => {
     const renderer = new CourseRenderer3D(makeHost(), "low", "bike");
     const expected = {
@@ -586,7 +701,7 @@ describe("CourseRenderer3D", () => {
     }
   });
 
-  it("uses faceted high-contrast body masses instead of black sticker figures", () => {
+  it("uses smooth high-contrast body masses instead of blocky sticker figures", () => {
     const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
     const torso = sceneObject(renderer, "rower-torso-shell") as THREE.Mesh<
       THREE.BufferGeometry,
@@ -601,7 +716,7 @@ describe("CourseRenderer3D", () => {
       THREE.MeshStandardMaterial
     >;
 
-    expect(torso.material.flatShading).toBe(true);
+    expect(torso.material.flatShading).toBe(false);
     expect(torso.material.emissiveIntensity).toBeGreaterThan(0);
     expect(relativeLuminance(yoke.material.color)).toBeLessThan(
       relativeLuminance(torso.material.color),
@@ -713,6 +828,29 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
+  it("keeps RowErg grips out of the torso volume through every stroke phase", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
+    renderer.resize(1140, 420);
+    const torso = sceneObject(renderer, "rower-torso-shell") as THREE.Mesh;
+    torso.geometry.computeBoundingBox();
+    const body = torso.geometry.boundingBox?.clone();
+    expect(body).toBeDefined();
+
+    for (let step = 0; step < 64; step++) {
+      renderer.render(makeSportState("rower", step / 64), false);
+      for (const side of ["left", "right"] as const) {
+        const gripInTorsoSpace = torso.worldToLocal(
+          worldPosition(renderer, `rower-hand-contact-${side}`).clone(),
+        );
+        // A finish can bring the hands to the jersey, but never through its
+        // volume. Keep a small core margin so a grazing outer cuff stays valid.
+        const torsoCore = body!.clone().expandByScalar(-0.08);
+        expect(torsoCore.containsPoint(gripInTorsoSpace), `${side} grip at ${step}/64`).toBe(false);
+      }
+    }
+    renderer.destroy();
+  });
+
   it("keeps the RowErg shoulder-to-grip reach within a human arm envelope", () => {
     const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
     renderer.resize(1140, 420);
@@ -756,6 +894,44 @@ describe("CourseRenderer3D", () => {
     }
 
     renderer.destroy();
+    disposeReplayAssetLibrary(assets);
+  });
+
+  it("lets smooth authored shells replace fallback kit plates and toy wheel crosses", async () => {
+    const assets = await loadCheckedInReplayAssetLibrary();
+    const athleteTrim = {
+      rower: [
+        "rower-torso-shell",
+        "rower-jersey-front",
+        "rower-jersey-back",
+        "rower-shoulder-trim",
+      ],
+      skierg: ["skierg-torso", "skierg-jersey-front", "skierg-jersey-back", "skierg-shoulder-trim"],
+      bike: ["bike-torso", "bike-jersey-front", "bike-jersey-back", "bike-shoulder-trim"],
+    } as const;
+
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const renderer = new CourseRenderer3D(makeHost(), "ultra", sport, { assets });
+      renderer.resize(1140, 420);
+      renderer.render(makeSportState(sport, 0.3), false);
+      const [torsoName, ...fallbackTrim] = athleteTrim[sport];
+      const torso = sceneObject(renderer, torsoName) as THREE.Mesh;
+      expect(torso.userData.authoredReplayAsset, `${sport} authored torso`).toBe(true);
+      for (const name of fallbackTrim) {
+        expect(sceneObject(renderer, name).visible, `${sport} ${name} hidden with assets`).toBe(
+          false,
+        );
+      }
+
+      if (sport === "bike") {
+        for (const index of [0, 1, 2]) {
+          const spoke = sceneObject(renderer, `bike-wheel-front-spoke-${index}`) as THREE.Mesh;
+          expect(spoke.geometry).toBeInstanceOf(THREE.CylinderGeometry);
+          expect(firstStandardMaterial(spoke).metalness).toBeGreaterThan(0.5);
+        }
+      }
+      renderer.destroy();
+    }
     disposeReplayAssetLibrary(assets);
   });
 
@@ -1120,7 +1296,9 @@ describe("CourseRenderer3D", () => {
         expect(grip.distanceTo(tip), `${side} rigid pole length`).toBeCloseTo(1.38, 5);
         expect(tip.y, `${side} carbide tip stays on snow`).toBeCloseTo(0.055, 5);
         const prior = plantedTips.get(side);
-        if (prior) expect(tip.distanceTo(prior), `${side} planted tip drift`).toBeLessThan(0.025);
+        // The skier's torso advances through the press, but a loaded basket
+        // must read as planted rather than skating forward with the athlete.
+        if (prior) expect(tip.distanceTo(prior), `${side} planted tip drift`).toBeLessThan(0.004);
         else plantedTips.set(side, tip.clone());
 
         const shaftDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(

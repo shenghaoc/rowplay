@@ -15,18 +15,20 @@ contact-driven animation rig.
 - **Source of truth:** `scripts/build-replay-assets.mjs`.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed v2 artifact:** 299,708 bytes; SHA-256
-  `03487d7fb9a2987509a990da25549ebf27cfced8297a52d442d4e038cb49788e`.
+- **Reviewed v2 artifact:** 162,972 bytes; SHA-256
+  `72f4c14e679f7c88ad24dfb9411d5f02de93e43982ca4f886c788f03e98d88d7`.
 - **Inventory:** 24 named meshes/nodes: 14 generic athlete slots (including a
   compact asymmetric elbow flex cuff), two RowErg slots, four SkiErg slots
-  (skis plus pole shaft, grip, and basket), and four BikeErg slots (3,932
-  triangles / 11,796 vertices). The package contains one placeholder authoring
-  material, zero textures/images, zero animations, and zero skins.
-- **Detail language:** deliberate lofted body planes, correctly tapered
-  proximal-to-distal limbs, compact cuff overlap, performance-shoe layers,
-  sculpted hands, an aerodynamic helmet ridge, and sport-equipment cross
-  sections. Raised geometry details are generated locally with Three.js core
-  geometry helpers; no image, texture, or downloaded model is involved.
+  (skis plus pole shaft, grip, and basket), and four BikeErg slots (7,304
+  triangles / 4,099 indexed vertices). The package contains one placeholder
+  authoring material, zero textures/images, zero animations, and zero skins.
+- **Detail language:** shared-vertex smooth normals and denser lofted anatomy;
+  correctly tapered proximal-to-distal limbs; compact cuff overlap;
+  performance-shoe layers; sculpted hands and elbow; an aerodynamic helmet
+  ridge; and smooth BikeErg slick tyres, aero frame tubes, contoured saddle,
+  and clipless pedal shells. Raised geometry details are generated locally with
+  Three.js core geometry helpers; no image, texture, or downloaded model is
+  involved.
 - **Runtime contract:** named `replayAssetSlot` meshes are validated and cloned
   onto the existing live/ghost rig. The GLB does not own timing, contacts,
   recorded animation, theme, or lane identity.

@@ -249,4 +249,43 @@ describe("applyReplayAssetLibrary", () => {
     handTemplate.dispose();
     elbowTemplate.dispose();
   });
+
+  it("keeps authored limb shells proportional instead of inflating them into tubes", () => {
+    const arm = setReplayAssetSlot(
+      new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 1)),
+      "athlete:upper-arm",
+    );
+    const leg = setReplayAssetSlot(
+      new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 1)),
+      "athlete:thigh",
+    );
+    const armTemplate = new THREE.BoxGeometry(1, 1, 1);
+    const legTemplate = new THREE.BoxGeometry(1, 1, 1);
+    const root = new THREE.Group();
+    root.add(arm, leg);
+    const library = {
+      byteLength: 64,
+      geometries: new Map<ReplayAssetSlot, THREE.BufferGeometry>([
+        ["athlete:upper-arm", armTemplate],
+        ["athlete:thigh", legTemplate],
+      ]),
+    } as ReplayAssetLibrary;
+
+    expect(applyReplayAssetLibrary(root, library)).toBe(2);
+    for (const [mesh, expected] of [
+      [arm, new THREE.Vector3(0.118, 0.0944, 1)],
+      [leg, new THREE.Vector3(0.154, 0.132, 1)],
+    ] as const) {
+      mesh.geometry.computeBoundingBox();
+      const size = mesh.geometry.boundingBox?.getSize(new THREE.Vector3());
+      expect(size?.x).toBeCloseTo(expected.x, 6);
+      expect(size?.y).toBeCloseTo(expected.y, 6);
+      expect(size?.z).toBeCloseTo(expected.z, 6);
+    }
+
+    arm.geometry.dispose();
+    leg.geometry.dispose();
+    armTemplate.dispose();
+    legTemplate.dispose();
+  });
 });

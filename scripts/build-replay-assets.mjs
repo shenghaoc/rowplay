@@ -33,18 +33,28 @@ globalThis.FileReader ??= class FileReader {
 };
 
 function flatGeometry(geometry) {
-  const flat = geometry.index ? geometry.toNonIndexed() : geometry;
-  // The runtime contract deliberately permits only position + normal data. A
-  // few useful Three.js authoring geometries (notably TubeGeometry) also add
-  // UVs, which would turn a texture-free library into an accidental schema
-  // expansion at export time. Keep the package geometry-only at its boundary.
-  for (const attribute of Object.keys(flat.attributes)) {
-    if (attribute !== "position" && attribute !== "normal") flat.deleteAttribute(attribute);
+  // Keep shared vertices so the renderer can retain smooth anatomical normals
+  // across each shell. A few useful Three.js authoring geometries (notably
+  // TubeGeometry) also add UVs, which would turn a texture-free library into
+  // an accidental schema expansion at export time. Keep the package
+  // geometry-only at its boundary.
+  for (const attribute of Object.keys(geometry.attributes)) {
+    if (attribute !== "position" && attribute !== "normal") geometry.deleteAttribute(attribute);
   }
-  flat.computeVertexNormals();
-  flat.computeBoundingBox();
-  flat.computeBoundingSphere();
-  return flat;
+  geometry.computeVertexNormals();
+  const normals = geometry.getAttribute("normal");
+  for (let index = 0; index < normals.count; index++) {
+    const x = normals.getX(index);
+    const y = normals.getY(index);
+    const z = normals.getZ(index);
+    const length = Math.hypot(x, y, z);
+    if (length > 1e-8) normals.setXYZ(index, x / length, y / length, z / length);
+    else normals.setXYZ(index, 0, 1, 0);
+  }
+  normals.needsUpdate = true;
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
 }
 
 /**
@@ -54,15 +64,26 @@ function flatGeometry(geometry) {
  */
 function composeGeometry(...sources) {
   const positions = [];
+  const indices = [];
+  let vertexOffset = 0;
   for (const source of sources) {
     const geometry = flatGeometry(source);
     const position = geometry.getAttribute("position");
     for (let i = 0; i < position.count; i++) {
       positions.push(position.getX(i), position.getY(i), position.getZ(i));
     }
+    const sourceIndices = geometry.getIndex();
+    if (sourceIndices) {
+      for (let i = 0; i < sourceIndices.count; i++)
+        indices.push(sourceIndices.getX(i) + vertexOffset);
+    } else {
+      for (let i = 0; i < position.count; i++) indices.push(i + vertexOffset);
+    }
+    vertexOffset += position.count;
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
   return flatGeometry(geometry);
 }
 
@@ -77,7 +98,7 @@ function translatedGeometry(geometry, x = 0, y = 0, z = 0) {
  * a second runtime object.  The resulting geometry is stripped back to the
  * package's position/normal-only contract by `flatGeometry`.
  */
-function ridgeGeometry(points, radius, tubularSegments = 8, radialSegments = 6) {
+function ridgeGeometry(points, radius, tubularSegments = 10, radialSegments = 8) {
   const path = new THREE.CatmullRomCurve3(points, false, "centripetal");
   return new THREE.TubeGeometry(path, tubularSegments, radius, radialSegments, false);
 }
@@ -137,57 +158,19 @@ function loftGeometry(rings, sides = 8, axis = "y", angleOffset = Math.PI / 8) {
   return flatGeometry(geometry);
 }
 
-function wedgeGeometry({ width, height, depth, heel = 0.72, toeLift = 0 }) {
-  const hw = width / 2;
-  const hh = height / 2;
-  const hd = depth / 2;
-  const back = -hd;
-  const front = hd;
-  const positions = [
-    -hw * heel,
-    -hh,
-    back,
-    hw * heel,
-    -hh,
-    back,
-    -hw * heel,
-    hh * 0.72,
-    back,
-    hw * heel,
-    hh * 0.72,
-    back,
-    -hw,
-    -hh + toeLift * 0.28,
-    front,
-    hw,
-    -hh + toeLift * 0.28,
-    front,
-    -hw * 0.92,
-    hh + toeLift,
-    front,
-    hw * 0.92,
-    hh + toeLift,
-    front,
-  ];
-  const indices = [
-    0, 1, 2, 1, 3, 2, 4, 6, 5, 5, 6, 7, 0, 4, 1, 1, 4, 5, 2, 3, 6, 3, 7, 6, 0, 2, 4, 2, 6, 4, 1, 5,
-    3, 3, 5, 7,
-  ];
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setIndex(indices);
-  return flatGeometry(geometry);
-}
-
 function aeroRingGeometry(radius, depth, radialSegments = 16) {
   const positions = [];
   const indices = [];
   const radialProfile = [
-    { r: radius - depth * 0.42, z: 0 },
-    { r: radius - depth * 0.12, z: depth * 0.72 },
-    { r: radius + depth * 0.32, z: depth * 0.42 },
-    { r: radius + depth * 0.45, z: -depth * 0.18 },
-    { r: radius, z: -depth * 0.72 },
+    { r: radius - depth * 0.5, z: 0 },
+    { r: radius - depth * 0.34, z: depth * 0.42 },
+    { r: radius - depth * 0.08, z: depth * 0.7 },
+    { r: radius + depth * 0.2, z: depth * 0.62 },
+    { r: radius + depth * 0.42, z: depth * 0.28 },
+    { r: radius + depth * 0.47, z: -depth * 0.16 },
+    { r: radius + depth * 0.24, z: -depth * 0.58 },
+    { r: radius - depth * 0.1, z: -depth * 0.72 },
+    { r: radius - depth * 0.38, z: -depth * 0.4 },
   ];
   for (let radial = 0; radial < radialSegments; radial++) {
     const angle = (radial / radialSegments) * Math.PI * 2;
@@ -224,15 +207,18 @@ function anatomicalLimbGeometry({ proximalX, proximalY, distalX, distalY, belly 
   return loftGeometry(
     [
       { p: -0.52, rx: proximalX * 0.76, rz: proximalY * 0.78 },
-      { p: -0.42, rx: proximalX * 0.96, rz: proximalY * 0.96 },
-      { p: -0.18, rx: proximalX * belly, rz: proximalY * (belly + 0.02) },
-      { p: 0.04, rx: proximalX * 0.98, rz: proximalY * 1.0 },
-      { p: 0.24, rx: (proximalX + distalX) * 0.52, rz: (proximalY + distalY) * 0.52 },
-      { p: 0.4, rx: distalX * 0.94, rz: distalY * 0.94 },
-      { p: 0.49, rx: distalX * 0.7, rz: distalY * 0.72 },
+      { p: -0.46, rx: proximalX * 0.91, rz: proximalY * 0.92 },
+      { p: -0.34, rx: proximalX * 1.04, rz: proximalY * 1.05 },
+      { p: -0.2, rx: proximalX * belly, rz: proximalY * (belly + 0.025) },
+      { p: -0.06, rx: proximalX * 1.05, rz: proximalY * 1.06 },
+      { p: 0.08, rx: proximalX * 0.91, rz: proximalY * 0.93 },
+      { p: 0.2, rx: (proximalX + distalX) * 0.54, rz: (proximalY + distalY) * 0.54 },
+      { p: 0.32, rx: distalX * 1.03, rz: distalY * 1.04 },
+      { p: 0.42, rx: distalX * 0.9, rz: distalY * 0.91 },
+      { p: 0.49, rx: distalX * 0.68, rz: distalY * 0.7 },
       { p: 0.52, rx: distalX * 0.58, rz: distalY * 0.6 },
     ],
-    10,
+    14,
     "z",
     Math.PI / 10,
   );
@@ -248,7 +234,7 @@ function clenchedHandGeometry() {
       { p: 0.58, rx: 0.7, rz: 0.58, oz: -0.06 },
       { p: 0.78, rx: 0.5, rz: 0.42 },
     ],
-    8,
+    14,
     "z",
     Math.PI / 8,
   );
@@ -262,16 +248,20 @@ function clenchedHandGeometry() {
       new THREE.Vector3(0.5, 0.52, 0.48),
     ],
     0.1,
-    6,
-    5,
+    10,
+    8,
   );
-  const thumb = wedgeGeometry({
-    width: 0.62,
-    height: 0.42,
-    depth: 0.46,
-    heel: 0.7,
-    toeLift: 0.04,
-  });
+  const thumb = loftGeometry(
+    [
+      { p: -0.25, rx: 0.18, rz: 0.15 },
+      { p: -0.05, rx: 0.28, rz: 0.23, oz: -0.02 },
+      { p: 0.15, rx: 0.25, rz: 0.22, oz: -0.04 },
+      { p: 0.28, rx: 0.14, rz: 0.12 },
+    ],
+    10,
+    "z",
+    Math.PI / 10,
+  );
   thumb.rotateZ(-0.3);
   thumb.translate(0.5, -0.18, 0.14);
   return composeGeometry(palm, knuckleBridge, thumb);
@@ -294,30 +284,56 @@ function elbowFlexCuffGeometry() {
       { p: 0.74, rx: 0.5, rz: 0.5, ox: 0.04 },
       { p: 0.94, rx: 0.34, rz: 0.36, ox: 0.02 },
     ],
-    8,
+    14,
     "z",
     Math.PI / 8,
   );
-  const olecranon = translatedGeometry(new THREE.TetrahedronGeometry(0.24, 1), 0.06, -0.58, 0.25);
+  const olecranon = new THREE.SphereGeometry(0.23, 14, 10);
+  olecranon.scale(0.9, 0.62, 0.78);
+  olecranon.translate(0.06, -0.56, 0.23);
   return composeGeometry(cuff, olecranon);
 }
 
 function performanceShoeGeometry() {
-  const upper = wedgeGeometry({
-    width: 0.14,
-    height: 0.09,
-    depth: 0.25,
-    heel: 0.66,
-    toeLift: 0.027,
-  });
-  const sole = translatedGeometry(new THREE.BoxGeometry(0.15, 0.018, 0.258), 0, -0.054, 0.012);
-  const heelCounter = translatedGeometry(
-    new THREE.BoxGeometry(0.105, 0.055, 0.052),
-    0,
-    0.004,
-    -0.1,
+  const upper = loftGeometry(
+    [
+      { p: -0.125, rx: 0.045, rz: 0.03, oz: -0.006 },
+      { p: -0.09, rx: 0.055, rz: 0.047 },
+      { p: -0.035, rx: 0.068, rz: 0.058, oz: 0.006 },
+      { p: 0.035, rx: 0.072, rz: 0.064, oz: 0.012 },
+      { p: 0.095, rx: 0.07, rz: 0.055, oz: 0.016 },
+      { p: 0.125, rx: 0.052, rz: 0.038, oz: 0.023 },
+    ],
+    12,
+    "z",
+    Math.PI / 12,
   );
-  const toeCap = translatedGeometry(new THREE.BoxGeometry(0.13, 0.028, 0.05), 0, -0.006, 0.11);
+  const sole = loftGeometry(
+    [
+      { p: -0.13, rx: 0.048, rz: 0.012 },
+      { p: -0.085, rx: 0.06, rz: 0.016 },
+      { p: 0.04, rx: 0.078, rz: 0.017 },
+      { p: 0.13, rx: 0.07, rz: 0.014 },
+    ],
+    12,
+    "z",
+    Math.PI / 12,
+  );
+  sole.translate(0, -0.046, 0.004);
+  const heelCounter = loftGeometry(
+    [
+      { p: -0.042, rx: 0.048, rz: 0.027 },
+      { p: 0, rx: 0.057, rz: 0.039 },
+      { p: 0.042, rx: 0.046, rz: 0.028 },
+    ],
+    12,
+    "z",
+    Math.PI / 12,
+  );
+  heelCounter.translate(0, 0.002, -0.096);
+  const toeCap = new THREE.SphereGeometry(0.05, 12, 8);
+  toeCap.scale(1.28, 0.55, 0.52);
+  toeCap.translate(0, -0.008, 0.108);
   return composeGeometry(upper, sole, heelCounter, toeCap);
 }
 
@@ -419,20 +435,77 @@ function nordicPoleBasketGeometry() {
   return composeGeometry(basket, ferrule, cap);
 }
 
-function treadedAeroRingGeometry(radius, depth, radialSegments = 20) {
-  const parts = [aeroRingGeometry(radius, depth, radialSegments)];
-  for (let index = 0; index < radialSegments; index++) {
-    const angle = (index / radialSegments) * Math.PI * 2;
-    const tread = new THREE.BoxGeometry(depth * 0.72, depth * 0.46, depth * 0.9);
-    tread.rotateZ(angle);
-    tread.translate(
-      Math.cos(angle) * (radius + depth * 0.26),
-      Math.sin(angle) * (radius + depth * 0.26),
-      0,
-    );
-    parts.push(tread);
-  }
-  return composeGeometry(...parts);
+function slickAeroTyreGeometry(radius, depth) {
+  // BikeErg training tyres are smooth rolling surfaces. A continuous 40-side
+  // aerodynamic carcass looks premium at chase-camera distance, unlike the
+  // prior repeating box treads that made the wheel read as a toy gear.
+  return aeroRingGeometry(radius, depth, 40);
+}
+
+function performanceSaddleGeometry() {
+  const shell = loftGeometry(
+    [
+      { p: -0.16, rx: 0.052, rz: 0.025 },
+      { p: -0.11, rx: 0.085, rz: 0.042, oz: 0.004 },
+      { p: -0.035, rx: 0.12, rz: 0.056, oz: 0.012 },
+      { p: 0.045, rx: 0.116, rz: 0.052, oz: 0.016 },
+      { p: 0.115, rx: 0.09, rz: 0.04, oz: 0.012 },
+      { p: 0.16, rx: 0.055, rz: 0.025, oz: 0.006 },
+    ],
+    16,
+    "z",
+    Math.PI / 16,
+  );
+  const centralRelief = ridgeGeometry(
+    [
+      new THREE.Vector3(0, 0.044, -0.1),
+      new THREE.Vector3(0, 0.062, -0.015),
+      new THREE.Vector3(0, 0.054, 0.1),
+    ],
+    0.008,
+    10,
+    8,
+  );
+  const underside = loftGeometry(
+    [
+      { p: -0.11, rx: 0.062, rz: 0.012 },
+      { p: 0.08, rx: 0.07, rz: 0.014 },
+    ],
+    12,
+    "z",
+    Math.PI / 12,
+  );
+  underside.translate(0, -0.045, -0.015);
+  return composeGeometry(shell, centralRelief, underside);
+}
+
+function cliplessPedalGeometry() {
+  const body = loftGeometry(
+    [
+      { p: -0.11, rx: 0.018, rz: 0.028 },
+      { p: -0.075, rx: 0.032, rz: 0.046 },
+      { p: 0, rx: 0.038, rz: 0.052 },
+      { p: 0.075, rx: 0.032, rz: 0.046 },
+      { p: 0.11, rx: 0.018, rz: 0.028 },
+    ],
+    12,
+    "x",
+    Math.PI / 12,
+  );
+  const axle = new THREE.CylinderGeometry(0.015, 0.015, 0.24, 12);
+  axle.rotateZ(Math.PI / 2);
+  const toeHook = loftGeometry(
+    [
+      { p: -0.026, rx: 0.016, rz: 0.028 },
+      { p: 0, rx: 0.022, rz: 0.04 },
+      { p: 0.026, rx: 0.016, rz: 0.028 },
+    ],
+    10,
+    "z",
+    Math.PI / 10,
+  );
+  toeHook.translate(0, 0.03, 0.034);
+  return composeGeometry(body, axle, toeHook);
 }
 
 function addSlot(scene, slot, geometry) {
@@ -467,7 +540,7 @@ addSlot(
       { p: 0.53, rx: 0.78, rz: 0.66, oz: -0.025 },
       { p: 0.56, rx: 0.36, rz: 0.44, oz: 0.005 },
     ],
-    14,
+    18,
     "y",
     0,
   ),
@@ -485,7 +558,7 @@ addSlot(
       { p: 0.7, rx: 0.9, rz: 0.84, oz: -0.025 },
       { p: 1, rx: 0.7, rz: 0.68 },
     ],
-    12,
+    16,
     "y",
     0,
   ),
@@ -506,7 +579,7 @@ addSlot(
       { p: 0.9, rx: 0.46, rz: 0.52, oz: -0.025 },
       { p: 1, rx: 0.22, rz: 0.25 },
     ],
-    12,
+    18,
     "y",
     Math.PI / 10,
   ),
@@ -524,7 +597,7 @@ addSlot(
       { p: 0.84, rx: 0.56, rz: 0.62, oz: -0.06 },
       { p: 1.04, rx: 0.16, rz: 0.2 },
     ],
-    12,
+    18,
     "y",
     Math.PI / 10,
   ),
@@ -560,7 +633,7 @@ addSlot(
       { p: 0.052, rx: 0.048, rz: 0.047, oz: 0.007 },
       { p: 0.068, rx: 0.042, rz: 0.042, oz: 0.008 },
     ],
-    8,
+    12,
     "y",
     0,
   ),
@@ -578,7 +651,7 @@ addSlot(
       { p: 0.86, rx: 0.7, rz: 0.76 },
       { p: 1.12, rx: 0.46, rz: 0.58 },
     ],
-    10,
+    16,
     "x",
     Math.PI / 7,
   ),
@@ -596,7 +669,7 @@ addSlot(
         { p: 0.6, rx: 0.78, rz: 0.82, oz: -0.13 },
         { p: 0.76, rx: 0.3, rz: 0.36, oz: -0.1 },
       ],
-      12,
+      18,
       "y",
       Math.PI / 10,
     ),
@@ -607,8 +680,8 @@ addSlot(
         new THREE.Vector3(0, 0.64, 0.38),
       ],
       0.052,
+      12,
       8,
-      6,
     ),
   ),
 );
@@ -631,7 +704,7 @@ addSlot(
       { p: 1.72, rx: 0.1, rz: 0.078 },
       { p: 1.9, rx: 0.018, rz: 0.022 },
     ],
-    14,
+    20,
     "y",
     Math.PI / 9,
   ),
@@ -641,42 +714,29 @@ addSlot(scene, "equipment:ski:ski", nordicSkiGeometry());
 addSlot(scene, "equipment:ski:pole-shaft", nordicPoleShaftGeometry());
 addSlot(scene, "equipment:ski:pole-grip", nordicPoleGripGeometry());
 addSlot(scene, "equipment:ski:pole-basket", nordicPoleBasketGeometry());
-addSlot(scene, "equipment:bike:tyre", treadedAeroRingGeometry(0.45, 0.06, 20));
+addSlot(scene, "equipment:bike:tyre", slickAeroTyreGeometry(0.45, 0.06));
 addSlot(
   scene,
   "equipment:bike:frame-tube",
   loftGeometry(
     [
-      { p: -0.53, rx: 0.64, rz: 0.54 },
-      { p: -0.43, rx: 0.9, rz: 0.68 },
-      { p: -0.22, rx: 1.02, rz: 0.76 },
-      { p: 0.1, rx: 1.0, rz: 0.74 },
-      { p: 0.36, rx: 0.9, rz: 0.68 },
-      { p: 0.5, rx: 0.66, rz: 0.54 },
+      { p: -0.53, rx: 0.56, rz: 0.48 },
+      { p: -0.47, rx: 0.72, rz: 0.58 },
+      { p: -0.37, rx: 0.9, rz: 0.68 },
+      { p: -0.2, rx: 1.04, rz: 0.78 },
+      { p: 0.02, rx: 1.08, rz: 0.8 },
+      { p: 0.22, rx: 1.0, rz: 0.76 },
+      { p: 0.38, rx: 0.86, rz: 0.66 },
+      { p: 0.48, rx: 0.64, rz: 0.52 },
+      { p: 0.53, rx: 0.5, rz: 0.42 },
     ],
-    8,
+    16,
     "z",
     Math.PI / 6,
   ),
 );
-addSlot(
-  scene,
-  "equipment:bike:saddle",
-  composeGeometry(
-    wedgeGeometry({ width: 0.24, height: 0.07, depth: 0.32, heel: 0.7, toeLift: 0.014 }),
-    translatedGeometry(new THREE.BoxGeometry(0.14, 0.018, 0.22), 0, -0.046, -0.025),
-    translatedGeometry(new THREE.BoxGeometry(0.18, 0.024, 0.08), 0, 0.016, 0.09),
-  ),
-);
-addSlot(
-  scene,
-  "equipment:bike:pedal",
-  composeGeometry(
-    wedgeGeometry({ width: 0.22, height: 0.05, depth: 0.1, heel: 0.9, toeLift: 0 }),
-    translatedGeometry(new THREE.BoxGeometry(0.17, 0.022, 0.025), 0, 0.035, 0.035),
-    translatedGeometry(new THREE.BoxGeometry(0.17, 0.022, 0.025), 0, 0.035, -0.035),
-  ),
-);
+addSlot(scene, "equipment:bike:saddle", performanceSaddleGeometry());
+addSlot(scene, "equipment:bike:pedal", cliplessPedalGeometry());
 
 const exporter = new GLTFExporter();
 const result = await exporter.parseAsync(scene, {

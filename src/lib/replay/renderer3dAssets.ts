@@ -173,11 +173,14 @@ export function applyReplayAssetLibrary(root: THREE.Object3D, library: ReplayAss
         const targetSize = target.getSize(new THREE.Vector3());
         const sourceCenter = source.getCenter(new THREE.Vector3());
         const targetCenter = target.getCenter(new THREE.Vector3());
+        // The authored shells already carry a real muscle/garment profile.
+        // Keep them just wider than their contact-safe fallback bone instead
+        // of inflating them into tubes from the chase camera.
         const limbWidth =
           slot === "athlete:upper-arm" || slot === "athlete:forearm"
-            ? 1.42
+            ? 1.18
             : slot === "athlete:thigh" || slot === "athlete:shin"
-              ? 1.28
+              ? 1.1
               : 1;
         const sx = sourceSize.x > 1e-6 ? (targetSize.x / sourceSize.x) * limbWidth : 1;
         const sy = sourceSize.y > 1e-6 ? (targetSize.y / sourceSize.y) * limbWidth : 1;

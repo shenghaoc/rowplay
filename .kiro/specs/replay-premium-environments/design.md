@@ -89,11 +89,15 @@ and venue-detail colors for light and dark themes. Theme changes update the
 whole visual system, not only the page background or lane accent.
 
 The lighting stack keeps one stable world key plus soft ambient/fill support for
-the environment and the existing camera-relative athlete lights. Water uses
-cool depth and controlled highlights, snow uses high diffuse value with blue
-shadow separation, and asphalt remains dark enough for lane paint, equipment,
-and athlete footwear to survive. Fog and lower-contrast distant materials create
-depth without hiding the course.
+the environment and the existing camera-relative athlete lights. At High and
+Ultra, one VSM directional map follows the athlete in texel-snapped light-space
+increments within a sport-specific envelope; the same key vector positions the
+visible sun disc. Native shadows land only on the authoritative opaque ground
+receiver, while live contact marks are suppressed so they cannot double or
+contradict that shadow. Water uses cool depth and controlled highlights, snow
+uses high diffuse value with blue shadow separation, and asphalt remains dark
+enough for lane paint, equipment, and athlete footwear to survive. Fog and
+lower-contrast distant materials create depth without hiding the course.
 
 ## Quality and performance
 
