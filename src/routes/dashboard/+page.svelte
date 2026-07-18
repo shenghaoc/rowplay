@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import WorkoutList from '$components/WorkoutList.svelte';
 	import WorkoutListFilters from '$components/WorkoutListFilters.svelte';
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
@@ -109,7 +109,7 @@
 	function applyListQuery(q: WorkoutListQuery) {
 		const params = serializeWorkoutListQuery(q);
 		const qs = params.toString();
-		goto(qs ? `/dashboard?${qs}` : '/dashboard', {
+		goto(resolve(qs ? `/dashboard?${qs}` : '/dashboard'), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
@@ -156,14 +156,20 @@
 		// own filtering (via listWorkouts) decides what's actually shown.
 		if (batch.length === 1) {
 			const w = batch[0];
-			toast.success(t('liveMode.newWorkout', {
-				distance: fmtDistance(w.distance),
-				time: fmtTime(w.time, true),
-				sport: SPORT_LABEL[w.sport]
-			}), {
-				duration: 8000,
-				action: { label: t('liveMode.view'), onClick: () => goto(`/replay/${w.id}`) }
-			});
+			toast.success(
+				t('liveMode.newWorkout', {
+					distance: fmtDistance(w.distance),
+					time: fmtTime(w.time, true),
+					sport: SPORT_LABEL[w.sport]
+				}),
+				{
+					duration: 8000,
+					action: {
+						label: t('liveMode.view'),
+						onClick: () => goto(resolve('/replay/[id]', { id: String(w.id) }))
+					}
+				}
+			);
 		} else {
 			toast.success(t('liveMode.newWorkouts', { count: batch.length }), { duration: 8000 });
 		}
@@ -258,14 +264,8 @@
 	const latest = $derived<Workout | undefined>(filtered[0]);
 
 	const dashboardHints = $derived.by(() => {
-		const hrefs: Record<DashboardHintId, string> = {
-			latestReplay: latest ? `/replay/${latest.id}` : '/dashboard#workouts',
-			criticalPower: '/dashboard#critical-power',
-			workoutFilters: '/dashboard#workout-filters'
-		};
 		return dashboardHintIds.map((id) => ({
 			id,
-			href: hrefs[id],
 			title: t(`dashboard.tour.${id}.title`),
 			body: t(`dashboard.tour.${id}.body`),
 			action: t(`dashboard.tour.${id}.action`)
@@ -617,7 +617,9 @@
 						u.over.addEventListener('click', () => {
 							const idx = u.cursor.idx;
 							const pts = dpsPoints;
-							if (idx != null && idx >= 0 && pts[idx]) goto(`/replay/${pts[idx].workoutId}`);
+							if (idx != null && idx >= 0 && pts[idx]) {
+								goto(resolve('/replay/[id]', { id: String(pts[idx].workoutId) }));
+							}
 						});
 					}
 				]
@@ -635,7 +637,7 @@
 		</div>
 		<div class="headright">
 			<div role="tablist" class="tabs tabs-box tabs-sm filtertabs" aria-label="Sport filter">
-				{#each sports as s}
+				{#each sports as s (s)}
 					<button
 						role="tab"
 						class="tab"
@@ -671,7 +673,16 @@
 			<div class="tour-grid">
 				{#each dashboardHints as hint (hint.id)}
 					<div class="tour-hint">
-						<a class="tour-link" href={hint.href}>
+						<a
+							class="tour-link"
+							href={resolve(
+								hint.id === 'latestReplay'
+									? latest
+										? `/replay/${latest.id}`
+										: '/dashboard#workouts'
+									: `/dashboard#${hint.id === 'criticalPower' ? 'critical-power' : 'workout-filters'}`
+							)}
+						>
 							<span class="tour-title">{hint.title}</span>
 							<span class="muted">{hint.body}</span>
 							<span class="tour-action">{hint.action}</span>
@@ -698,7 +709,11 @@
 
 	<!-- ============ HERO — LATEST SESSION ============ -->
 	{#if latest}
-		<a class="card latest" href="/replay/{latest.id}" data-e2e="latest-replay">
+		<a
+			class="card latest"
+			href={resolve('/replay/[id]', { id: String(latest.id) })}
+			data-e2e="latest-replay"
+		>
 			<span class="latest-accent" aria-hidden="true"></span>
 			<div class="card-body latest-body">
 				<div class="latest-main">
@@ -747,8 +762,8 @@
 					<span class="btn btn-primary btn-lg latest-replay"><Play size={18} /> {t('common.replay')}</span>
 				</div>
 			</div>
-			</a>
-		{/if}
+		</a>
+	{/if}
 
 	<!-- ============ STAT STRIP ============ -->
 		<div class="dash-stats">
@@ -773,7 +788,6 @@
 
 	<section id="workouts" class="dashboard-section workout-section" data-e2e="workout-section" aria-labelledby="workouts-title">
 		<div class="section-head">
-			<p class="eyebrow">{t('dashboard.sectionWorkoutsEyebrow')}</p>
 			<h2 id="workouts-title">{t('dashboard.sectionWorkouts')}</h2>
 			<p class="muted">{t('dashboard.sectionWorkoutsBody')}</p>
 		</div>
@@ -792,7 +806,7 @@
 				<ChipButton active={!listQuery.tag} onclick={() => applyListQuery({ ...listQuery, tag: undefined })}>
 					{t('workout.tag.filter.all')}
 				</ChipButton>
-				{#each WORKOUT_TAGS as tag}
+				{#each WORKOUT_TAGS as tag (tag)}
 					<ChipButton active={listQuery.tag === tag} onclick={() => applyListQuery({ ...listQuery, tag })}>
 						{t(`workout.tag.${tag}`)}
 					</ChipButton>
@@ -809,7 +823,6 @@
 
 	<section id="goals-records" class="dashboard-section" data-e2e="records-section" aria-labelledby="records-title">
 		<div class="section-head">
-			<p class="eyebrow">{t('dashboard.sectionRecordsEyebrow')}</p>
 			<h2 id="records-title">{t('dashboard.sectionRecords')}</h2>
 			<p class="muted">{t('dashboard.sectionRecordsBody')}</p>
 		</div>
@@ -828,7 +841,7 @@
 				<div class="card card-border bg-base-100 shadow-md p-5 pbcard">
 					<div class="muted label">{t('dashboard.pbTitle')}</div>
 					<div class="pbgrid">
-						{#each pbs as pb}
+						{#each pbs as pb (`${pb.sport}-${pb.distance}`)}
 							<div class="pb">
 								<div class="pbdist mono">{pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`}</div>
 								<div class="pbtime mono">{fmtTime(pb.time, true)}</div>
@@ -845,7 +858,6 @@
 
 	<section id="advanced-analysis" class="dashboard-section" data-e2e="advanced-section" aria-labelledby="advanced-title">
 		<div class="section-head">
-			<p class="eyebrow">{t('dashboard.sectionAdvancedEyebrow')}</p>
 			<h2 id="advanced-title">{t('dashboard.sectionAdvanced')}</h2>
 			<p class="muted">{t('dashboard.sectionAdvancedBody')}</p>
 		</div>
@@ -946,7 +958,7 @@
 							{/if}
 						</div>
 						<div role="tablist" class="tabs tabs-box tabs-sm metrictabs" aria-label="Metric filter">
-							{#each metrics as m}
+							{#each metrics as m (m.id)}
 								<button role="tab" class="tab" class:tab-active={metric === m.id} aria-selected={metric === m.id} onclick={() => (metric = m.id)}>{t(m.labelKey)}</button>
 							{/each}
 						</div>
@@ -1086,7 +1098,7 @@
 								<tr><th>{t('dashboard.thSport')}</th><th class="num">{t('dashboard.thSessions')}</th><th class="num">{t('dashboard.thDistance')}</th><th class="num">{t('dashboard.thTime')}</th><th class="num">{t('dashboard.thAvgPace')}</th><th class="num">{t('dashboard.thBestPace')}</th></tr>
 							</thead>
 							<tbody>
-								{#each bySport as s}
+								{#each bySport as s (s.sport)}
 									<tr>
 										<td class="sportcell"><span class="mdot" style:background={MACHINE_COLOR[s.sport]}></span><SportIcon sport={s.sport} size={14} /> {SPORT_LABEL[s.sport]}</td>
 										<td class="num">{s.sessions}</td>
@@ -1126,7 +1138,7 @@
 		align-items: flex-end;
 		justify-content: space-between;
 		flex-wrap: wrap;
-		gap: 1rem;
+		gap: var(--space-lg);
 		margin-bottom: 1.25rem;
 		padding-bottom: 0.85rem;
 		border-bottom: 2px solid var(--ink);
@@ -1134,7 +1146,7 @@
 	.head-titles { min-width: 0; }
 	.race-head {
 		font-size: clamp(1.7rem, 6vw, 2.45rem);
-		font-weight: 900;
+		font-weight: var(--fw-black);
 		text-transform: uppercase;
 		letter-spacing: -0.02em;
 		line-height: 1;
@@ -1143,7 +1155,7 @@
 	.headright {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 		max-width: 100%;
 		min-width: 0;
@@ -1153,7 +1165,7 @@
 		overflow-x: auto;
 		background: var(--paper-inset);
 		font-family: var(--display);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
@@ -1175,12 +1187,12 @@
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: var(--space-lg);
 	}
 	.tour-head h2 {
 		margin: 0.15rem 0 0;
 		font-size: 1.05rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		text-transform: uppercase;
 	}
 	.tour-copy {
@@ -1200,13 +1212,13 @@
 		gap: 0.4rem;
 		align-items: start;
 		padding: 0.7rem;
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		border-radius: var(--r-ctrl);
 		background: var(--paper-inset);
 	}
 	.tour-link {
 		display: grid;
-		gap: 0.25rem;
+		gap: var(--space-2xs);
 		color: var(--ink);
 	}
 	.tour-link:hover {
@@ -1214,7 +1226,7 @@
 	}
 	.tour-title,
 	.tour-action {
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		font-size: 0.82rem;
 	}
 	.tour-title {
@@ -1232,7 +1244,7 @@
 	.core-stack,
 	.dashboard-section {
 		display: grid;
-		gap: 1rem;
+		gap: var(--space-lg);
 		min-width: 0;
 		scroll-margin-top: 5rem;
 	}
@@ -1249,7 +1261,7 @@
 	.section-head h2 {
 		margin: 0.1rem 0 0;
 		font-size: clamp(1.1rem, 3vw, 1.45rem);
-		font-weight: 900;
+		font-weight: var(--fw-black);
 		line-height: 1.05;
 		text-transform: uppercase;
 	}
@@ -1260,7 +1272,7 @@
 	.records-grid {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		gap: 1rem;
+		gap: var(--space-lg);
 		align-items: start;
 		min-width: 0;
 	}
@@ -1278,7 +1290,7 @@
 	.analysis-kicker h3 {
 		margin: 0;
 		font-size: 0.95rem;
-		font-weight: 900;
+		font-weight: var(--fw-black);
 		text-transform: uppercase;
 	}
 	.analysis-kicker p {
@@ -1312,17 +1324,17 @@
 	.heropace {
 		font-family: var(--display);
 		font-size: var(--clock-size);
-		font-weight: 900;
+		font-weight: var(--fw-black);
 		line-height: 0.92;
 		letter-spacing: -0.03em;
 		margin: 0.35rem 0 0.15rem;
 	}
-	.perunit { font-size: 1rem; font-weight: 500; color: var(--ink-2); margin-left: 0.35rem; }
-	.herodelta { font-size: 0.95rem; font-weight: 700; }
+	.perunit { font-size: 1rem; font-weight: var(--fw-medium); color: var(--ink-2); margin-left: 0.35rem; }
+	.herodelta { font-size: 0.95rem; font-weight: var(--fw-bold); }
 	.herodelta.faster { color: var(--ahead); }
 	.herodelta.slower { color: var(--behind); }
 	.herometrics { display: flex; gap: 1.75rem 2rem; flex-wrap: wrap; margin-top: 1.25rem; }
-	.hmv { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+	.hmv { font-size: 1.5rem; font-weight: var(--fw-bold); line-height: 1; }
 	.hml { margin-top: 0.4rem; }
 	.latest-cta { align-self: center; }
 	.latest-replay { pointer-events: none; }
@@ -1338,7 +1350,7 @@
 		position: relative;
 		padding: 1rem 1.1rem;
 		background: var(--paper-raised);
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		box-shadow: var(--shadow-sm);
 		overflow: hidden;
 	}
@@ -1349,41 +1361,41 @@
 	}
 	.statcard--pace::before { background: var(--pace); }
 	.statlabel { line-height: 1.2; }
-	.statval { font-size: 1.7rem; font-weight: 700; margin-top: 0.35rem; line-height: 1.1; }
+	.statval { font-size: 1.7rem; font-weight: var(--fw-bold); margin-top: 0.35rem; line-height: 1.1; }
 
 	/* ---- Main + rail grid --------------------------------------------------- */
 	.dash-grid {
 		display: grid;
 		grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-		gap: 1rem;
+		gap: var(--space-lg);
 		align-items: start;
 		width: 100%;
 		max-width: 100%;
 		min-width: 0;
 		overflow-x: clip;
 	}
-	.col-main { grid-column: 1; display: grid; gap: 1rem; align-content: start; max-width: 100%; min-width: 0; overflow-x: clip; }
-	.col-rail { grid-column: 2; grid-row: 1; display: grid; gap: 1rem; align-content: start; min-width: 0; }
+	.col-main { grid-column: 1; display: grid; gap: var(--space-lg); align-content: start; max-width: 100%; min-width: 0; overflow-x: clip; }
+	.col-rail { grid-column: 2; grid-row: 1; display: grid; gap: var(--space-lg); align-content: start; min-width: 0; }
 	.col-main > :global(*) {
 		max-width: 100%;
 		min-width: 0;
 	}
 
-	.label { font-size: 0.8rem; font-weight: 700; }
+	.label { font-size: 0.8rem; font-weight: var(--fw-bold); }
 
 	/* ---- Form / PMC card ---------------------------------------------------- */
 	.formcard {
 		background: linear-gradient(135deg, color-mix(in srgb, var(--ghost) 8%, var(--paper-raised)), var(--paper-raised) 65%);
 		border-color: color-mix(in srgb, var(--ghost) 28%, var(--hairline));
 	}
-	.formhead { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
-	.formtitle { display: flex; align-items: center; gap: 0.5rem; }
-	.formtitle .label { font-weight: 700; }
+	.formhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; }
+	.formtitle { display: flex; align-items: center; gap: var(--space-sm); }
+	.formtitle .label { font-weight: var(--fw-bold); }
 	.formsub { font-size: 0.82rem; margin: 0.4rem 0 0.85rem; }
-	.formstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 0.85rem; }
-	.fsv { font-size: 1.6rem; font-weight: 700; line-height: 1; }
-	.fsl { font-size: 0.82rem; font-weight: 600; margin-top: 0.3rem; }
-	.fsh { font-size: 0.72rem; margin-top: 0.1rem; }
+	.formstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-lg); margin-bottom: 0.85rem; }
+	.fsv { font-size: 1.6rem; font-weight: var(--fw-bold); line-height: 1; }
+	.fsl { font-size: 0.82rem; font-weight: var(--fw-semibold); margin-top: 0.3rem; }
+	.fsh { font-size: var(--text-2xs); margin-top: 0.1rem; }
 	.unit { font-size: 0.9rem; margin-left: 0.1rem; }
 	.formread {
 		font-size: 0.9rem; line-height: 1.5;
@@ -1392,8 +1404,8 @@
 		border-left: 3px solid var(--ink-3);
 		margin-bottom: 0.85rem;
 	}
-	.formlegend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; font-size: 0.76rem; margin-top: 0.5rem; }
-	.formlegend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 2px; margin-right: 0.3rem; vertical-align: -1px; }
+	.formlegend { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-lg); font-size: 0.76rem; margin-top: 0.5rem; }
+	.formlegend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: var(--r-data); margin-right: 0.3rem; vertical-align: -1px; }
 	.emptytrend { font-size: 0.85rem; padding: 0.5rem 0; }
 
 	/* Form-band semantic colours (formBandClass: info/good/neutral/accent/bad).
@@ -1406,7 +1418,7 @@
 	.band-bad { color: color-mix(in srgb, var(--behind) 45%, var(--ink)); }
 	.badge.band-info { background: color-mix(in srgb, var(--ghost) 16%, var(--paper-raised)); color: var(--ghost); border: 1px solid color-mix(in srgb, var(--ghost) 35%, transparent); }
 	.badge.band-good { background: color-mix(in srgb, var(--ahead) 16%, var(--paper-raised)); color: var(--ahead); border: 1px solid color-mix(in srgb, var(--ahead) 35%, transparent); }
-	.badge.band-neutral { background: var(--paper-inset); color: var(--ink-2); border: 1px solid var(--hairline); }
+	.badge.band-neutral { background: var(--paper-inset); color: var(--ink-2); border: var(--bd); }
 	.badge.band-accent { background: color-mix(in srgb, var(--live) 16%, var(--paper-raised)); color: var(--live); border: 1px solid color-mix(in srgb, var(--live) 35%, transparent); }
 	.badge.band-bad { background: color-mix(in srgb, var(--behind) 16%, var(--paper-raised)); color: color-mix(in srgb, var(--behind) 45%, var(--ink)); border: 1px solid color-mix(in srgb, var(--behind) 40%, transparent); }
 	.formread.band-good { border-left-color: var(--ahead); }
@@ -1415,31 +1427,31 @@
 	.formread.band-info { border-left-color: var(--ghost); }
 
 	/* ---- Trend -------------------------------------------------------------- */
-	.trendhead { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-	.metrictabs { background: var(--paper-inset); font-family: var(--display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+	.trendhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; margin-bottom: 0.75rem; }
+	.metrictabs { background: var(--paper-inset); font-family: var(--display); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: 0.02em; }
 	.bands { margin-bottom: 0.75rem; }
 	.bands .bn { opacity: 0.6; margin-left: 0.25rem; }
-	.verdict { font-size: 0.9rem; font-weight: 600; padding: 0.6rem 0.85rem; margin-bottom: 0.85rem; background: var(--paper-inset); border: 1px solid var(--hairline); color: var(--ink-2); }
+	.verdict { font-size: 0.9rem; font-weight: var(--fw-semibold); padding: 0.6rem 0.85rem; margin-bottom: 0.85rem; background: var(--paper-inset); border: var(--bd); color: var(--ink-2); }
 	.verdict-good { background: color-mix(in srgb, var(--ahead) 12%, var(--paper-raised)); border-color: color-mix(in srgb, var(--ahead) 30%, transparent); color: var(--ahead); }
 	.verdict-bad { background: color-mix(in srgb, var(--alarm) 12%, var(--paper-raised)); border-color: color-mix(in srgb, var(--alarm) 30%, transparent); color: var(--alarm); }
 
-	.dpscontrols { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+	.dpscontrols { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; }
 	.dpstip { font-size: 0.82rem; margin-bottom: 0.65rem; min-height: 1.25rem; }
 
 	/* ---- Breakdown table ---------------------------------------------------- */
 	.tablescroll { overflow-x: auto; }
 	.breakdowntable .num { text-align: right; }
-	.breakdowntable thead th { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; color: var(--ink-2); }
-	.sportcell { display: flex; align-items: center; gap: 0.45rem; font-family: var(--ui); font-weight: 600; }
-	.mdot { width: 0.55rem; height: 0.55rem; border-radius: 999px; flex-shrink: 0; }
+	.breakdowntable thead th { text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--text-2xs); color: var(--ink-2); }
+	.sportcell { display: flex; align-items: center; gap: 0.45rem; font-family: var(--ui); font-weight: var(--fw-semibold); }
+	.mdot { width: 0.55rem; height: 0.55rem; border-radius: var(--r-pill); flex-shrink: 0; }
 	.breakdowntable .best { color: var(--ahead); }
 
 	/* ---- Personal bests ----------------------------------------------------- */
 	.pbcard .pbgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.65rem; }
-	.pb { padding: 0.7rem 0.8rem; border-radius: var(--r-ctrl); background: var(--paper-inset); border: 1px solid var(--hairline); }
-	.pbdist { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; background: color-mix(in srgb, var(--ghost) 14%, var(--paper-raised)); color: var(--ghost); border: 1px solid color-mix(in srgb, var(--ghost) 30%, transparent); }
-	.pbtime { font-size: 1.2rem; font-weight: 700; margin-top: 0.4rem; line-height: 1; }
-	.pbsub { font-size: 0.72rem; margin-top: 0.3rem; display: flex; align-items: center; gap: 0.25rem; }
+	.pb { padding: 0.7rem 0.8rem; border-radius: var(--r-ctrl); background: var(--paper-inset); border: var(--bd); }
+	.pbdist { display: inline-block; font-size: var(--text-2xs); font-weight: var(--fw-bold); padding: 0.1rem 0.45rem; border-radius: var(--r-pill); background: color-mix(in srgb, var(--ghost) 14%, var(--paper-raised)); color: var(--ghost); border: 1px solid color-mix(in srgb, var(--ghost) 30%, transparent); }
+	.pbtime { font-size: 1.2rem; font-weight: var(--fw-bold); margin-top: 0.4rem; line-height: 1; }
+	.pbsub { font-size: var(--text-2xs); margin-top: 0.3rem; display: flex; align-items: center; gap: var(--space-2xs); }
 
 
 	/* ---- Responsive --------------------------------------------------------- */

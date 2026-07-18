@@ -66,7 +66,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: var(--space-lg);
 		margin-bottom: 1.5rem;
 	}
 	.docs-kicker .badge,
@@ -86,7 +86,7 @@
 	}
 	.docs-nav .menu a {
 		font-family: var(--display);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		letter-spacing: 0.02em;
 	}
 	.docs-nav .menu a[aria-current='page'] {
@@ -116,7 +116,7 @@
 		.docs-nav .menu {
 			flex-direction: row;
 			flex-wrap: wrap;
-			gap: 0.25rem;
+			gap: var(--space-2xs);
 		}
 	}
 </style>

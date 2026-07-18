@@ -160,7 +160,7 @@
 	}
 	.predictor-head .label {
 		font-size: 0.8rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.predictor-chevron {
 		display: inline-flex;
@@ -178,12 +178,12 @@
 	.predictor-field {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: var(--space-2xs);
 		min-width: 0;
 	}
 	.field-label {
-		font-size: 0.72rem;
-		font-weight: 600;
+		font-size: var(--text-2xs);
+		font-weight: var(--fw-semibold);
 	}
 	.predictor-error {
 		font-size: 0.82rem;
@@ -200,7 +200,7 @@
 	.predictor-table thead th {
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		color: var(--ink-2);
 	}
 	.predictor-source {

@@ -175,7 +175,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 	}
 	.lqtitle {
@@ -183,7 +183,7 @@
 		align-items: center;
 		gap: 0.45rem;
 		font-family: var(--display);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.9rem;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
@@ -191,7 +191,7 @@
 	.lqcount {
 		font-family: var(--mono);
 		font-size: 0.78rem;
-		font-weight: 500;
+		font-weight: var(--fw-medium);
 		text-transform: none;
 		letter-spacing: 0;
 	}

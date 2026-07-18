@@ -111,9 +111,9 @@
 	.milestones-title {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		font-size: 0.95rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		margin: 0;
 	}
 	.milestones-row {
@@ -127,7 +127,7 @@
 	.milestone-card {
 		min-width: 0;
 		max-width: none;
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 	}
 	.milestone-card--earned {
 		border-color: color-mix(in srgb, var(--ahead) 35%, var(--hairline));
@@ -140,7 +140,7 @@
 	}
 	.milestone-label {
 		font-size: 0.78rem;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		line-height: 1.25;
 		margin: 0;
 	}
@@ -152,6 +152,6 @@
 	.milestone-next-head {
 		display: flex;
 		align-items: flex-start;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 	}
 </style>

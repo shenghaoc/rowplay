@@ -86,7 +86,7 @@
 		</div>
 		<div class="tidcontrols">
 			<div class="join join-horizontal tidperiod" role="group" aria-label={i18n.t('dashboard.tid.title')}>
-				{#each periods as p}
+				{#each periods as p (p.id)}
 					<button
 						type="button"
 						class="btn btn-xs join-item"
@@ -153,7 +153,7 @@
 		{/if}
 
 		<ul class="tidlegend">
-			{#each zones as zone}
+			{#each zones as zone (zone)}
 				{@const slice = distribution.slices.find((s) => s.zone === zone)}
 				{@const pct = pctForZone(zone)}
 				{#if slice && pct > 0}
@@ -177,7 +177,7 @@
 		flex-wrap: wrap;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin-bottom: 0.85rem;
 	}
 	.tidlabel {
@@ -193,18 +193,18 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem 0.75rem;
+		gap: var(--space-sm) var(--space-md);
 	}
 	.tidmetrics {
 		display: flex;
-		gap: 0.25rem;
+		gap: var(--space-2xs);
 	}
 	.mchip {
-		font-size: 0.72rem;
-		font-weight: 700;
+		font-size: var(--text-2xs);
+		font-weight: var(--fw-bold);
 		padding: 0.2rem 0.55rem;
-		border-radius: 999px;
-		border: 1px solid var(--hairline);
+		border-radius: var(--r-pill);
+		border: var(--bd);
 		background: var(--paper-inset);
 		color: var(--ink-2);
 		cursor: pointer;
@@ -222,7 +222,7 @@
 		width: 100%;
 		border-radius: var(--r-ctrl);
 		overflow: hidden;
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 	}
 	.tidbar-svg {
 		display: block;
@@ -277,7 +277,7 @@
 		margin-top: 0.45rem;
 		padding: 0.35rem 0.5rem;
 		background: var(--paper-inset);
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		border-radius: var(--r-ctrl);
 	}
 	.tidlegend {
@@ -285,25 +285,25 @@
 		margin: 0.75rem 0 0;
 		padding: 0;
 		display: grid;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		font-size: 0.78rem;
 	}
 	.tidlegend li {
 		display: grid;
 		grid-template-columns: 0.65rem 1fr auto auto;
 		align-items: center;
-		gap: 0.35rem 0.5rem;
+		gap: var(--space-xs) var(--space-sm);
 	}
 	.tidswatch {
 		width: 0.65rem;
 		height: 0.65rem;
-		border-radius: 2px;
+		border-radius: var(--r-data);
 	}
 	.tidlegpct {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.tidlegval {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 	}
 	.tidcard {
 		--tid-ut2: color-mix(in srgb, var(--dps) 85%, var(--paper-raised));

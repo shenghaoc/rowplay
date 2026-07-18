@@ -25,7 +25,7 @@
 	.lang-picker {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.25rem;
+		gap: var(--space-2xs);
 		align-self: center;
 		color: var(--ink-2);
 		cursor: pointer;
@@ -47,6 +47,6 @@
 	.lang-select:focus-visible {
 		outline: 2px solid var(--live);
 		outline-offset: 2px;
-		border-radius: 4px;
+		border-radius: var(--r-ctrl);
 	}
 </style>

@@ -247,8 +247,8 @@
 	}
 	.stitle {
 		font-family: var(--display);
-		font-size: 0.72rem;
-		font-weight: 700;
+		font-size: var(--text-2xs);
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
 		margin: 0 0 0.5rem;
@@ -256,7 +256,7 @@
 	.static-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-		gap: 0.35rem 1rem;
+		gap: var(--space-xs) var(--space-lg);
 		margin: 0;
 	}
 	.static-grid dt {
@@ -293,11 +293,11 @@
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--ink-3);
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 	}
 	.readout th[scope='row'] {
 		width: 8rem;
-		font-weight: 500;
+		font-weight: var(--fw-medium);
 	}
 	.readout .as-logged {
 		width: 5.5rem;
@@ -307,7 +307,7 @@
 	}
 	.token {
 		display: block;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 	}
 	.desc {
 		display: block;

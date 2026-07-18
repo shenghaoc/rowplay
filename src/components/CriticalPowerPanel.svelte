@@ -284,25 +284,25 @@
 		max-width: 100%;
 		overflow-x: clip;
 		margin-bottom: 1rem;
-		background: linear-gradient(135deg, rgba(158, 91, 45, 0.08), var(--bg-elev) 65%);
-		border-color: rgba(158, 91, 45, 0.28);
+		background: linear-gradient(135deg, color-mix(in srgb, var(--power) 8%, var(--bg-elev)), var(--bg-elev) 65%);
+		border-color: color-mix(in srgb, var(--power) 28%, var(--bg-elev));
 	}
 	.cphead {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 	}
 	.cptitle {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		color: var(--power);
 	}
 	.cptitle .field-label {
 		color: var(--text);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.95rem;
 	}
 	.cpsub {
@@ -315,35 +315,35 @@
 	.cpstats {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin-bottom: 0.75rem;
 	}
 	.cs {
 		background: var(--bg-elev-2);
-		border: 1px solid var(--hairline);
-		border-radius: 10px;
+		border: var(--bd);
+		border-radius: var(--r-ctrl);
 		padding: 0.55rem 0.7rem;
 	}
 	.csv {
 		font-size: 1.6rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		line-height: 1.05;
 	}
 	.csv .unit {
 		font-size: 0.85rem;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		color: var(--text-dim);
 		margin-left: 0.15rem;
 	}
 	.csl {
 		font-size: 0.78rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		margin-top: 0.12rem;
 	}
 	.cpexplain {
 		font-size: 0.88rem;
 		padding: 0.55rem 0.75rem;
-		border-radius: 8px;
+		border-radius: var(--r-ctrl);
 		background: var(--bg-elev-2);
 		border-left: 3px solid var(--power);
 		margin-bottom: 1rem;
@@ -351,7 +351,7 @@
 	.cptrust {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.4rem 0.75rem;
+		gap: 0.4rem var(--space-md);
 		font-size: 0.78rem;
 		color: var(--text-dim);
 		margin: -0.35rem 0 0.75rem;
@@ -364,7 +364,7 @@
 	.cpwarnings {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		margin: -0.25rem 0 0.9rem;
 	}
 	.cpconfidence {
@@ -386,7 +386,7 @@
 		margin-bottom: 0.9rem;
 	}
 	.predhead {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.9rem;
 	}
 	.predsub {
@@ -397,7 +397,7 @@
 	.presets {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		margin-bottom: 0.65rem;
 	}
 	.pchip {
@@ -408,7 +408,7 @@
 		padding: 0.3rem 0.7rem;
 		font-family: var(--display);
 		font-size: 0.78rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 		cursor: pointer;
@@ -419,13 +419,13 @@
 		border-color: var(--ink);
 	}
 	.pchip.small {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		padding: 0.25rem 0.55rem;
 	}
 	.predrow {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 		margin-bottom: 0.5rem;
 	}
@@ -442,12 +442,12 @@
 		margin-top: 0.5rem;
 		padding: 0.65rem 0.8rem;
 		background: var(--bg-elev-2);
-		border: 1px solid var(--hairline);
-		border-radius: 10px;
+		border: var(--bd);
+		border-radius: var(--r-ctrl);
 	}
 	.predval {
 		font-size: 1.5rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 	}
 	.predhint {
 		font-size: 0.78rem;
@@ -459,7 +459,7 @@
 	}
 	.curvelegend {
 		display: flex;
-		gap: 1rem;
+		gap: var(--space-lg);
 		flex-wrap: wrap;
 		font-size: 0.78rem;
 		margin-top: 0.45rem;
@@ -468,7 +468,7 @@
 	.curvelegend span {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.curvelegend i {
 		display: inline-block;
@@ -476,13 +476,13 @@
 	.curvelegend .dot {
 		width: 8px;
 		height: 8px;
-		border-radius: 50%;
+		border-radius: var(--r-round);
 		background: var(--power);
 	}
 	.curvelegend .line {
 		width: 14px;
 		height: 3px;
-		border-radius: 2px;
+		border-radius: var(--r-ctrl);
 		background: var(--dps);
 	}
 	@media (max-width: 720px) {

@@ -174,7 +174,7 @@
 				<span class="muted">{t('dashboard.goalsPct', { pct: Math.round(progress.pct) })}</span>
 			</div>
 			<div class="progressbar" role="progressbar" aria-valuenow={progress.pct} aria-valuemin={0} aria-valuemax={100}>
-				<div class="progressfill" class:onpace={progress.onPace} style:width="{Math.min(100, progress.pct)}%"></div>
+				<div class="progressfill" class:onpace={progress.onPace} style:transform="scaleX({Math.min(100, progress.pct) / 100})"></div>
 				<div class="pacepin" style:left="{Math.min(100, (progress.expected / progress.target) * 100)}%"></div>
 			</div>
 			<p class="paceline" class:onpace={progress.onPace}>{paceLine}</p>
@@ -235,11 +235,11 @@
 	.engtitle {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		color: var(--accent);
 	}
 	.engtitle .label {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.95rem;
 		color: var(--text);
 	}
@@ -261,8 +261,8 @@
 		border-radius: var(--r-ctrl);
 		padding: 0.25rem 0.5rem;
 		font-family: var(--display);
-		font-size: 0.72rem;
-		font-weight: 700;
+		font-size: var(--text-2xs);
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		cursor: pointer;
 	}
@@ -274,7 +274,7 @@
 	}
 	.presetrow {
 		display: flex;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		flex-wrap: wrap;
 	}
 	.progressmeta {
@@ -283,22 +283,24 @@
 		font-size: 0.85rem;
 		margin-bottom: 0.35rem;
 		flex-wrap: wrap;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.progressbar {
 		position: relative;
 		height: 10px;
 		background: var(--paper-inset);
 		border: var(--bd);
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		overflow: visible;
 		margin-bottom: 0.4rem;
 	}
 	.progressfill {
 		height: 100%;
-		border-radius: 999px;
+		width: 100%;
+		border-radius: var(--r-pill);
 		background: var(--behind);
-		transition: width 0.2s ease;
+		transform-origin: left;
+		transition: transform 0.2s ease;
 	}
 	.progressfill.onpace {
 		background: var(--ahead);
@@ -323,7 +325,7 @@
 	.streakrow {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.75rem 1.25rem;
+		gap: var(--space-md) 1.25rem;
 		padding-top: 0.75rem;
 		border-top: var(--bd);
 		margin-top: 0.75rem;
@@ -332,7 +334,7 @@
 	.streakstat {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.badges {
 		margin-top: 0.85rem;
@@ -342,7 +344,7 @@
 	.badgehead {
 		display: flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		font-size: 0.8rem;
 		margin-bottom: 0.5rem;
 	}
@@ -355,12 +357,12 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.3rem;
-		font-size: 0.72rem;
-		font-weight: 700;
+		font-size: var(--text-2xs);
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 		padding: 0.25rem 0.55rem;
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		background: color-mix(in srgb, var(--behind) 14%, var(--paper-raised));
 		color: color-mix(in srgb, var(--behind) 45%, var(--ink));
 		border: 1px solid color-mix(in srgb, var(--behind) 35%, var(--paper-raised));

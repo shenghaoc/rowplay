@@ -1,0 +1,135 @@
+{
+  "slug": "src-routes",
+  "target": "All major pages (src/routes/)",
+  "timestamp": "2026-07-14T00:00:00.000Z",
+  "score": 33,
+  "maxScore": 40,
+  "p0": 0,
+  "p1": 2,
+  "p2": 2,
+  "p3": 1,
+  "pages": ["dashboard", "replay/[id]", "settings", "auth/token"],
+  "heuristics": {
+    "1-visibility": { "score": 4, "note": "Live mode indicators, ghost gap display, replay clock" },
+    "2-match-system": { "score": 4, "note": "Athletic terminology, sport-specific colors" },
+    "3-user-control": {
+      "score": 4,
+      "note": "Play/pause/scrub, back navigation, dismissable hints"
+    },
+    "4-consistency": {
+      "score": 3,
+      "note": "daisyUI consistent; radius values drift from token scale"
+    },
+    "5-error-prevention": {
+      "score": 3,
+      "note": "Token validation; no confirm on destructive actions"
+    },
+    "6-recognition": {
+      "score": 3,
+      "note": "KB shortcuts hidden in details; ghost concepts assume domain knowledge"
+    },
+    "7-flexibility": { "score": 3, "note": "KB shortcuts exist but hidden; sport filtering solid" },
+    "8-aesthetic": { "score": 3, "note": "Strong; eyebrow overuse feels formulaic" },
+    "9-error-recovery": { "score": 3, "note": "Toast feedback; no undo on ghost/HR import" },
+    "10-help": { "score": 3, "note": "Dashboard tour, keyboard hints, docs page" }
+  },
+  "detectorFindings": {
+    "warnings": [
+      {
+        "file": "src/routes/dashboard/+page.svelte",
+        "line": 1392,
+        "type": "side-tab",
+        "pattern": "border-left: 3px solid var(--ink-3)",
+        "verdict": "FUNCTIONALLY_JUSTIFIED",
+        "reason": "border-left color changes semantically per training-load band (band-good/band-bad/band-accent/band-info) — carries functional meaning"
+      },
+      {
+        "file": "src/routes/replay/[id]/+page.svelte",
+        "line": 2738,
+        "type": "layout-transition",
+        "pattern": "transition: width",
+        "verdict": "CONFIRMED",
+        "reason": "Animating width triggers layout recalc per frame; replace with transform: scaleX()"
+      }
+    ],
+    "advisories": [
+      {
+        "file": "src/routes/dashboard/+page.svelte",
+        "line": 1396,
+        "type": "design-system-radius",
+        "value": "2px"
+      },
+      {
+        "file": "src/routes/replay/[id]/+page.svelte",
+        "line": 2452,
+        "type": "design-system-radius",
+        "value": "3px"
+      },
+      {
+        "file": "src/routes/replay/[id]/+page.svelte",
+        "line": 2649,
+        "type": "design-system-radius",
+        "value": "6px"
+      },
+      {
+        "file": "src/routes/replay/[id]/+page.svelte",
+        "line": 2673,
+        "type": "design-system-radius",
+        "value": "3px"
+      },
+      {
+        "file": "src/routes/replay/[id]/+page.svelte",
+        "line": 2714,
+        "type": "design-system-radius",
+        "value": "8px"
+      },
+      {
+        "file": "src/routes/replay/[id]/+page.svelte",
+        "line": 2736,
+        "type": "design-system-radius",
+        "value": "4px"
+      }
+    ]
+  },
+  "issues": [
+    {
+      "priority": "P1",
+      "title": "Eyebrow overuse flattens hierarchy",
+      "description": "The `.eyebrow` class appears above 4+ sections on the dashboard ('CORE SUMMARY', 'WORKOUTS', 'RECORDS & GOALS', 'ADVANCED ANALYSIS'). Keep one — the rest should let h2 headings stand alone.",
+      "target": "dashboard",
+      "suggestedCommand": "/impeccable quieter dashboard"
+    },
+    {
+      "priority": "P1",
+      "title": "transition: width causes layout thrash in replay",
+      "description": "Animating width triggers layout recalculations per frame. Replace with transform: scaleX() or compositor-only approach.",
+      "target": "replay",
+      "suggestedCommand": "/impeccable optimize replay"
+    },
+    {
+      "priority": "P2",
+      "title": "Radius drift from design system",
+      "description": "Six hardcoded border-radius values (2px, 3px, 4px, 6px, 8px) fall outside the DESIGN.md scale (ctrl: 0.625rem, card: 1rem, pill: 999px).",
+      "target": "replay",
+      "suggestedCommand": "/impeccable polish replay"
+    },
+    {
+      "priority": "P2",
+      "title": "Keyboard shortcuts buried in <details>",
+      "description": "Space/arrow shortcuts are hidden behind a collapsible element. Surface top 2-3 shortcuts as an inline hint near the scrub bar.",
+      "target": "replay",
+      "suggestedCommand": "/impeccable harden replay"
+    },
+    {
+      "priority": "P3",
+      "title": "Ghost mode options overwhelm first-timers",
+      "description": "Four comparison modes presented simultaneously. Progressive disclosure: default 'None', surface 'Past Session' when candidates exist, tuck the rest.",
+      "target": "replay",
+      "suggestedCommand": "/impeccable distill replay"
+    }
+  ],
+  "browserVisualization": {
+    "available": false,
+    "reason": "Dev server failed to start (missing node_modules in worktree)"
+  }
+}

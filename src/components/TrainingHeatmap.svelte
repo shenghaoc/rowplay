@@ -79,7 +79,7 @@
 
 	<div class="calwrap">
 		<div class="dowlabels" aria-hidden="true">
-			{#each DOW_KEYS as key, i}
+			{#each DOW_KEYS as key, i (key)}
 				{#if i % 2 === 1}
 					<span class="dow muted">{i18n.t(key)}</span>
 				{:else}
@@ -118,7 +118,7 @@
 			<div class="legend muted">
 				<span>{i18n.t('dashboard.calLess')}</span>
 				<div class="legendcells">
-					{#each Array.from({ length: calendar.maxLevel + 1 }, (_, i) => i) as level}
+					{#each Array.from({ length: calendar.maxLevel + 1 }, (_, i) => i) as level (level)}
 						<div class="cell" data-level={level}></div>
 					{/each}
 				</div>
@@ -138,7 +138,7 @@
 		justify-content: space-between;
 		align-items: center;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-bottom: 0.35rem;
 	}
 	.callabel {
@@ -152,16 +152,16 @@
 	}
 	.calmetrics {
 		display: flex;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.mchip {
 		background: var(--bg-elev);
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		color: var(--text-dim);
-		border-radius: 999px;
+		border-radius: var(--r-pill);
 		padding: 0.3rem 0.75rem;
 		font-size: 0.8rem;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		cursor: pointer;
 	}
 	.mchip.on {
@@ -175,7 +175,7 @@
 	}
 	.calwrap {
 		display: flex;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		overflow-x: auto;
 		padding-bottom: 0.5rem;
 		--cell: 11px;
@@ -219,7 +219,7 @@
 	.cell {
 		width: var(--cell);
 		height: var(--cell);
-		border-radius: 2px;
+		border-radius: var(--r-data);
 		background: var(--bg-elev-2);
 		border: 1px solid transparent;
 	}
@@ -245,8 +245,8 @@
 	.legend {
 		display: flex;
 		align-items: center;
-		gap: 0.35rem;
-		font-size: 0.72rem;
+		gap: var(--space-xs);
+		font-size: var(--text-2xs);
 		margin-top: 0.5rem;
 		justify-content: flex-end;
 	}

@@ -132,9 +132,9 @@ export const fr = {
       "Regardez votre allure sur le parcours pendant que les jauges et graphiques défilent en synchronisation.",
     feat2Title: "Analyses par fraction",
     feat2Body: "Allure, cadence, puissance et HR dans le temps — sur les trois machines.",
-    feat3Title: "En périphérie",
+    feat3Title: "Rapide partout",
     feat3Body:
-      "Servi depuis Cloudflare avec des données Concept2 en direct pour des replays détaillés.",
+      "Distribué mondialement via Cloudflare, avec les données Concept2 en direct pour revoir vos séances.",
     tourEyebrow: "Première visite",
     tourTitle: "Quatre choses à essayer",
     tourBody:
@@ -370,7 +370,7 @@ Le jeton est transmis une seule fois en HTTPS et scellé dans un cookie httpOnly
 
 ## D'autres personnes peuvent-elles voir mes séances ?
 
-Non — votre tableau de bord et vos relectures sont privés. rowplay ne propose ni partage public ni classement.
+Non. Votre tableau de bord et vos replays sont privés ; rowplay ne propose ni partage public ni classement.
 
 ## rowplay modifie-t-il mon logbook Concept2 ?
 
@@ -443,7 +443,7 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     syncing: "Synchronisation…",
     syncedNote: "{total} séances · dernière sync {date}",
     recentNote:
-      "Séances récentes affichées — lancez Sync pour charger tout l’historique et des PB et tendances fiables.",
+      "Séances récentes affichées — chargez tout l'historique pour des PB et tendances fiables.",
     latest: "Dernière",
     distance: "distance",
     time: "temps",
@@ -456,7 +456,7 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     totalTime: "Temps total",
     avgPace: "Allure moy.",
     sectionCoreEyebrow: "Commencer ici",
-    sectionCore: "Lecture du jour",
+    sectionCore: "En un coup d'œil",
     sectionWorkoutsEyebrow: "Séances",
     sectionWorkouts: "Trouver un replay",
     sectionWorkoutsBody:
@@ -825,7 +825,7 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
   },
   workoutList: {
     empty: "Aucune séance pour ce filtre.",
-    windowed: "{n} séances · fenêtre limitée pour les performances",
+    windowed: "{n} séances · virtualisées pour les performances",
     filtersTitle: "Trouver des séances",
     matching: "{n} correspondance(s)",
     clearFilters: "Effacer les filtres",
@@ -920,6 +920,8 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     pastSession: "Une séance passée",
     constantPace: "Une allure constante",
     uploadedFile: "Un fichier importé",
+    moreOptions: "Plus d'options",
+    moreCompareOptions: "Plus d'options de comparaison",
     chooseSession: "Choisir une séance {sport}…",
     setPace: "Définir l’allure",
     targetPace: "Allure cible",
@@ -1037,9 +1039,12 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     loadSessionFailed: "Impossible de charger cette séance",
     paceError: "Saisissez une allure du type 1:52",
     pacingAt: "Allure cible {pace}",
-    noSamples: "Aucun échantillon exploitable dans ce fichier.",
-    fileReadError: "Impossible de lire ce fichier.",
-    importFailed: "Impossible d’importer ce fichier",
+    noSamples:
+      "Aucun échantillon d'entraînement exploitable dans ce fichier. Essayez un autre fichier ou vérifiez le format.",
+    fileReadError:
+      "Impossible de lire ce fichier. Vérifiez qu'il s'agit d'un export CSV, TCX ou FIT.",
+    importFailed:
+      "Impossible d'importer ce fichier. Assurez-vous qu'il s'agit d'un export CSV, TCX ou FIT valide.",
     zone1: "Z1 Récupération",
     zone2: "Z2 Endurance",
     zone3: "Z3 Tempo",
@@ -1152,16 +1157,16 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
   },
   settings: {
     title: "Compte et données",
-    eyebrow: "Confidentialité et contrôle",
-    dataTitle: "Ce que nous stockons",
+    eyebrow: "Vos données",
+    dataTitle: "Comment vos données sont traitées",
     dataNote:
-      "rowplay lit vos séances Concept2 à la demande via l’API Concept2. Votre jeton API est scellé dans le cookie httpOnly rp_tok avec SESSION_SECRET. Les sessions sont stockées dans des cookies chiffrés ; aucune base de données côté serveur n’est utilisée. Se déconnecter efface votre session.",
+      "rowplay lit vos séances Concept2 en direct depuis l'API à chaque visite. Votre jeton de connexion est conservé dans un cookie de navigateur sécurisé — sans stockage sur aucun serveur. Se déconnecter l'efface.",
     factWorkouts: "{n} séances disponibles à l’export",
     factDemo: "Mode démo — données d’exemple uniquement, rien n’est persisté.",
     factCache:
       "Les données de séance sont récupérées en direct depuis l’API Concept2 — pas de cache côté serveur.",
     factSession:
-      "Les sessions sont stockées dans des cookies chiffrés ; le jeton est scellé dans httpOnly rp_tok.",
+      "Votre connexion reste dans un cookie de navigateur sécurisé. Aucune donnée ne réside sur nos serveurs.",
     exportTitle: "Exporter le logbook",
     exportNote:
       "Téléchargez tout votre historique en CSV ou JSON. L’export TCX par séance (données de coups) s’ouvre dans Garmin, Strava ou TrainingPeaks.",
@@ -1206,23 +1211,22 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
   },
   token: {
     title: "Utiliser votre jeton Concept2",
-    introBefore: "Collez un jeton API personnel depuis votre logbook Concept2 (",
+    introBefore: "Collez votre jeton API personnel depuis le logbook Concept2 (",
     introLink: "Modifier le profil → Applications",
     introAfter:
-      "). Collez-le ici une fois — rowplay l’envoie au Worker en HTTPS, le valide, le scelle dans le cookie httpOnly rp_tok et l’utilise uniquement pour les lectures côté serveur. Le jeton n’est jamais stocké dans aucune base de données.",
+      "). Le jeton est envoyé en HTTPS, validé et conservé uniquement dans un cookie de navigateur sécurisé — jamais stocké sur un serveur.",
     trustTitle: "Comment rowplay gère le jeton",
     trustAccessTitle: "Accès :",
     trustAccessBody:
-      "un jeton Concept2 personnel vous authentifie ; rowplay l’utilise uniquement côté serveur pour lire profil, séances et données de coups.",
+      "un jeton Concept2 personnel vous authentifie ; rowplay l'utilise uniquement pour lire profil, séances et données de coups.",
     trustStoredTitle: "Stockage :",
     trustStoredBody:
-      "le jeton validé est scellé dans le cookie httpOnly rp_tok, pas dans localStorage ni dans un stockage côté serveur.",
+      "le jeton validé est conservé dans un cookie de navigateur sécurisé — pas dans localStorage ni sur un serveur.",
     trustDisconnectTitle: "Déconnexion :",
-    trustDisconnectBody:
-      "le bouton Se déconnecter de l’en-tête efface le cookie de jeton et la session.",
-    trustCacheTitle: "Cache :",
+    trustDisconnectBody: "le bouton Se déconnecter de l'en-tête efface le jeton et la session.",
+    trustCacheTitle: "Données :",
     trustCacheBody:
-      "Les données de séance sont récupérées en direct depuis l'API Concept2 ; rowplay ne crée ni partage public ni entrée de classement.",
+      "Les données de séance sont récupérées en direct depuis l'API Concept2 à chaque requête — rien n'est stocké côté serveur.",
     apiToken: "Jeton API",
     placeholder: "Collez votre jeton",
     connect: "Connecter avec le jeton",

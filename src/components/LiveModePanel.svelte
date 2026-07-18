@@ -97,7 +97,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 		min-height: 2.75rem; /* 44px touch target for the toggle row */
 	}
@@ -105,7 +105,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.9rem;
 	}
 	.live-title .icon {
@@ -139,7 +139,7 @@
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		min-width: 0;
 	}
 	.status-label {
@@ -157,7 +157,7 @@
 		align-items: center;
 		gap: 0.4rem;
 		color: var(--live);
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 	}
 	@keyframes spin {
 		to {

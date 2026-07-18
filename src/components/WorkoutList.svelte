@@ -147,7 +147,7 @@
 		display: flex;
 		flex-direction: row;
 		align-items: center;
-		gap: 1rem;
+		gap: var(--space-lg);
 		color: var(--ink);
 		min-height: 64px;
 		padding: 0.55rem 0.95rem;
@@ -219,11 +219,11 @@
 	}
 	.pbchip {
 		font-size: 0.65rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		padding: 0.1rem 0.4rem;
-		border-radius: 4px;
+		border-radius: var(--r-ctrl);
 		background: color-mix(in srgb, var(--accent) 15%, var(--paper-raised));
 		color: var(--accent);
 		border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--paper-raised));
@@ -245,7 +245,7 @@
 		z-index: 2;
 		display: flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		flex-shrink: 0;
 		pointer-events: none;
 	}

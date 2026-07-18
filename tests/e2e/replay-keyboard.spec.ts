@@ -121,7 +121,9 @@ test.describe("replay keyboard controls (demo mode)", () => {
     await page.goto("/replay/1001");
     await expect(page.locator("canvas").first()).toBeVisible();
 
-    // Activate constant-pace mode to expose the pace text input.
+    // Constant-pace lives inside a collapsible <details>; open it first
+    const moreOptions = page.locator("details.ghost-more summary");
+    await moreOptions.click();
     await page
       .getByRole("button", {
         name: /A constant pace|恒定配速|Marcha constante|A un rythme constant|Konstante Geschwindigkeit|一定のペース/,
@@ -150,7 +152,9 @@ test.describe("replay keyboard controls (demo mode)", () => {
     await page.goto("/replay/1001");
     await expect(page.locator("canvas").first()).toBeVisible();
 
-    // Arm a constant-pace ghost.
+    // Constant-pace lives inside a collapsible <details>; open it first
+    const moreOptions2 = page.locator("details.ghost-more summary");
+    await moreOptions2.click();
     await page.getByRole("button", { name: /A constant pace|恒定配速/ }).click();
     await page.getByRole("button", { name: /Set pace|设定配速/ }).click();
 

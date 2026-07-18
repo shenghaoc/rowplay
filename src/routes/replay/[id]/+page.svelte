@@ -3,7 +3,7 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '$lib/replay/engine';
 	import { splitIndexAt } from '$lib/replay/inspector';
 	import { CourseRenderer, type RenderState, type ReplayRenderer } from '$lib/replay/renderer';
@@ -1184,7 +1184,7 @@
 <svelte:head><title>{t('common.replay')} · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
 
 <div class="container">
-	<a href="/dashboard" class="back muted"><ArrowLeft size={14} /> {t('replay.back')}</a>
+	<a href={resolve('/dashboard')} class="back muted"><ArrowLeft size={14} /> {t('replay.back')}</a>
 	<div class="head">
 		<h1
 			><span class="h1icon" style:color={MACHINE_COLOR[detail.sport]}
@@ -1290,23 +1290,28 @@
 					onclick={() => setCompareMode('session')}
 				>{t('replay.pastSession')}</button>
 			{/if}
-			<button
-				type="button"
-				class="btn btn-sm join-item"
-				class:btn-active={compareMode === 'pace'}
-				class:btn-neutral={compareMode === 'pace'}
-				aria-pressed={compareMode === 'pace'}
-				onclick={() => setCompareMode('pace')}
-			>{t('replay.constantPace')}</button>
-			<button
-				type="button"
-				class="btn btn-sm join-item"
-				class:btn-active={compareMode === 'file'}
-				class:btn-neutral={compareMode === 'file'}
-				aria-pressed={compareMode === 'file'}
-				onclick={() => setCompareMode('file')}
-			>{t('replay.uploadedFile')}</button>
 		</div>
+		<details class="ghost-more" open={compareMode === 'pace' || compareMode === 'file'}>
+			<summary class="muted small">{t('replay.moreOptions')}</summary>
+			<div class="join ghost-more-join" role="group" aria-label={t('replay.moreCompareOptions')}>
+				<button
+					type="button"
+					class="btn btn-sm join-item"
+					class:btn-active={compareMode === 'pace'}
+					class:btn-neutral={compareMode === 'pace'}
+					aria-pressed={compareMode === 'pace'}
+					onclick={() => setCompareMode('pace')}
+				>{t('replay.constantPace')}</button>
+				<button
+					type="button"
+					class="btn btn-sm join-item"
+					class:btn-active={compareMode === 'file'}
+					class:btn-neutral={compareMode === 'file'}
+					aria-pressed={compareMode === 'file'}
+					onclick={() => setCompareMode('file')}
+				>{t('replay.uploadedFile')}</button>
+			</div>
+		</details>
 
 		{#if compareMode === 'session' && comparableCandidates.length}
 			{#if comparableCandidates.length >= SEARCHABLE_MIN}
@@ -1502,6 +1507,7 @@
 			aria-label="Seek"
 		/>
 		<div class="dist mono">{fmtDistance(frame.d)}</div>
+		<p class="kb-inline muted small"><kbd>Space</kbd> {t('replay.kbSpaceHint')} · <kbd>←</kbd><kbd>→</kbd> {t('replay.kbArrowHint')}</p>
 		<div
 			class="join speeds"
 			role="radiogroup"
@@ -1782,7 +1788,7 @@
 			<div class="card card-border bg-base-100 shadow-md p-5">
 				<div class="ctitle muted">{t('replay.hrZones')}</div>
 				<div class="zonebar">
-					{#each zones as z}
+					{#each zones as z (z.zone)}
 						{#if z.fraction > 0}
 							<div
 								class="zoneseg"
@@ -1794,7 +1800,7 @@
 					{/each}
 				</div>
 				<div class="zonelegend">
-					{#each zones as z}
+					{#each zones as z (z.zone)}
 						<div class="zli">
 							<span class="dot" style:background="var(--zone-{z.zone})"></span>
 							<span class="zname">{t('replay.zone' + z.zone)}</span>
@@ -1833,12 +1839,17 @@
 			</div>
 
 			<div class="reps">
-				{#each intervals.reps as r}
+				{#each intervals.reps as r (r.index)}
+					{@const barScale = repBarPct(r.pace) / 100}
 					<div class="rep" class:fastest={r.isFastest} class:slowest={r.isSlowest}>
 						<div class="repno mono">#{r.index + 1}</div>
 						<div class="repbarwrap">
-						<div class="repbar" style:width="{repBarPct(r.pace)}%" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : MACHINE_COLOR[detail.sport]}></div>
-							<span class="repbarlabel mono">{fmtPace(r.pace).replace('/500m', '')}</span>
+							<div class="repbar-track">
+								<div class="repbar-clipper">
+									<div class="repbar" style:transform="scaleX({barScale})" style:background={r.isFastest ? 'var(--accent-2)' : r.isSlowest ? 'var(--warn)' : MACHINE_COLOR[detail.sport]}></div>
+								</div>
+								<span class="repbarlabel mono" style:left="{repBarPct(r.pace)}%">{fmtPace(r.pace).replace('/500m', '')}</span>
+							</div>
 						</div>
 						<div class="repmeta mono muted">
 							{fmtDistance(r.distance)} · {fmtTime(r.time, true)} · {r.spm} {sportTheme.cadenceUnit}
@@ -1855,7 +1866,7 @@
 	{:else if detail.splits.length}
 		<!-- Single-segment piece: plain split table -->
 		<div class="card card-border bg-base-100 shadow-md p-5 splits">
-			<h3>{t('replay.splitsTitle')}</h3>
+			<h2>{t('replay.splitsTitle')}</h2>
 			<table class="mono">
 				<thead>
 					<tr>
@@ -1874,7 +1885,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each detail.splits as sp}
+					{#each detail.splits as sp (sp.index)}
 						<tr class:rest-row={sp.isRest}>
 							<td>{sp.index + 1}</td>
 							<td>{sp.isRest ? '—' : fmtDistance(sp.distance)}</td>
@@ -1999,7 +2010,7 @@
 			</dl>
 
 			{#if detail.targets}
-				<h4 class="subhead muted">{t('replay.targetsTitle')}</h4>
+				<h2 class="subhead muted">{t('replay.targetsTitle')}</h2>
 				<dl class="metagrid">
 					{#if detail.targets.pace != null}
 						<div><dt>{t('replay.mTargetPace')}</dt><dd class="mono">{fmtPace(detail.targets.pace)}</dd></div>
@@ -2020,9 +2031,9 @@
 			{/if}
 
 			{#if targetRows.length}
-				<h4 class="subhead muted">{t('replay.targetVsActualTitle')}</h4>
+				<h2 class="subhead muted">{t('replay.targetVsActualTitle')}</h2>
 				<ul class="target-rows">
-					{#each targetRows as row}
+					{#each targetRows as row (row.metric)}
 						<li>
 							<span>{targetMetricLabel(row)}</span>
 							<span class="mono">{formatTargetDelta(row)}</span>
@@ -2035,7 +2046,7 @@
 			{/if}
 
 			{#if detail.metadata || detail.source}
-				<h4 class="subhead muted">{t('replay.provenanceTitle')}</h4>
+				<h2 class="subhead muted">{t('replay.provenanceTitle')}</h2>
 				<dl class="metagrid">
 					{#if detail.source}
 						<div>
@@ -2074,10 +2085,10 @@
 	.back {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		font-family: var(--display);
 		font-size: 0.82rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--ink-2);
@@ -2092,7 +2103,7 @@
 		justify-content: space-between;
 		align-items: baseline;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-bottom: 1rem;
 		padding-bottom: 0.75rem;
 		border-bottom: var(--bd-heavy);
@@ -2100,11 +2111,11 @@
 	.head h1 {
 		margin: 0;
 		font-size: clamp(1.4rem, 5vw, 1.75rem);
-		font-weight: 900;
+		font-weight: var(--fw-black);
 		text-transform: uppercase;
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 	}
 	.h1icon {
 		display: inline-flex;
@@ -2112,26 +2123,26 @@
 	.summary {
 		font-size: 0.95rem;
 		display: flex;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		align-items: center;
 	}
 	.sharebar {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-top: 0.75rem;
 	}
 	.sharebar .btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.hrimport {
 		margin-bottom: 0.75rem;
 		padding: 0.75rem 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 	}
 	.hrimport-head {
 		display: inline-flex;
@@ -2146,12 +2157,12 @@
 	.hrimport-row {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 	}
 	.hrimport-actions {
 		display: flex;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		flex-wrap: wrap;
 	}
 	.offset-input {
@@ -2162,17 +2173,42 @@
 	.ghostbar {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		flex-wrap: wrap;
 		margin-bottom: 0.75rem;
 		padding: 0.6rem 1rem;
 	}
 	.ghostbar label {
 		font-size: 0.9rem;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
+	}
+	.ghost-more {
+		margin: 0;
+	}
+	.ghost-more summary {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
+		min-height: 2.75rem;
+		cursor: pointer;
+		list-style: none;
+		user-select: none;
+	}
+	.ghost-more summary::marker,
+	.ghost-more summary::-webkit-details-marker {
+		display: none;
+	}
+	.ghost-more summary::before {
+		content: '+';
+	}
+	.ghost-more[open] summary::before {
+		content: '−';
+	}
+	.ghost-more-join {
+		margin-top: 0.5rem;
 	}
 	.ghost-status {
 		display: flex;
@@ -2211,7 +2247,7 @@
 		display: flex;
 		align-items: baseline;
 		gap: 0.45rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		font-size: clamp(1.05rem, 3.5vw, 1.35rem);
 		padding: 0.4rem 0.85rem;
 		border-radius: var(--r-ctrl);
@@ -2223,7 +2259,7 @@
 	}
 	.gap-secs {
 		font-size: 0.82em;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		opacity: 0.92;
 	}
 	.gap.ahead {
@@ -2255,8 +2291,8 @@
 	}
 	.verdict-kicker {
 		font-family: var(--display);
-		font-size: 0.72rem;
-		font-weight: 800;
+		font-size: var(--text-2xs);
+		font-weight: var(--fw-extrabold);
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		color: var(--ink-2);
@@ -2265,7 +2301,7 @@
 	.verdict-body {
 		margin: 0;
 		font-size: clamp(1rem, 3.2vw, 1.2rem);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		line-height: 1.35;
 	}
 	.verdict.win .verdict-body {
@@ -2285,12 +2321,12 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		margin-bottom: 0.5rem;
 	}
 	.view-toggle {
 		display: flex;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.inspector-btn {
 		display: inline-flex;
@@ -2312,7 +2348,7 @@
 	.backend-label {
 		font-family: var(--display);
 		font-size: 0.68rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
 		opacity: 0.65;
@@ -2331,14 +2367,14 @@
 		border-radius: var(--r-ctrl);
 		padding: 0.28rem 0.65rem;
 		font-size: 0.78rem;
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		cursor: pointer;
 		font-family: var(--display);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.vbtn.on {
 		background: var(--live);
@@ -2354,7 +2390,7 @@
 		height: 0.75rem;
 		border: 2px solid currentColor;
 		border-right-color: transparent;
-		border-radius: 50%;
+		border-radius: var(--r-round);
 		animation: vspin 0.7s linear infinite;
 	}
 	@keyframes vspin {
@@ -2376,7 +2412,7 @@
 	.controls {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: var(--space-lg);
 		margin-bottom: 0.75rem;
 		flex-wrap: wrap;
 	}
@@ -2385,7 +2421,7 @@
 	}
 	.clock {
 		font-size: 1.1rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		min-width: 130px;
 	}
 	.scrub {
@@ -2416,6 +2452,18 @@
 	.kb-hints summary::-webkit-details-marker {
 		display: none;
 	}
+	.kb-inline {
+		margin: 0;
+		line-height: 1.5;
+	}
+	.kb-inline kbd {
+		margin: 0 0.15rem;
+		vertical-align: middle;
+	}
+	.kb-inline kbd {
+		font-size: 0.65rem;
+		padding: 0.05rem 0.25rem;
+	}
 	.kb-hints summary::before {
 		content: '▸ ';
 	}
@@ -2425,7 +2473,7 @@
 	.kb-list {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.25rem 1.25rem;
+		gap: var(--space-2xs) 1.25rem;
 		margin: 0.4rem 0 0;
 		padding: 0;
 	}
@@ -2445,25 +2493,25 @@
 	}
 	kbd {
 		font-family: var(--mono);
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		padding: 0.1rem 0.35rem;
 		border: 1px solid var(--ink-2);
 		border-bottom-width: 2px;
-		border-radius: 3px;
+		border-radius: var(--r-ctrl);
 		background: var(--paper-raised);
 		color: var(--ink);
 	}
 	.gauges {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-bottom: 0.75rem;
 	}
 	.gauge-legend {
 		grid-column: 1 / -1;
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.35rem 1rem;
+		gap: var(--space-xs) var(--space-lg);
 		border-top: var(--bd);
 		padding-top: 0.5rem;
 		margin-top: 0.15rem;
@@ -2478,13 +2526,13 @@
 	.ldot {
 		width: 8px;
 		height: 8px;
-		border-radius: 50%;
+		border-radius: var(--r-round);
 		flex-shrink: 0;
 	}
 	.charts {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin-bottom: 0.75rem;
 	}
 	.charts-help {
@@ -2494,7 +2542,7 @@
 	.analysis {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin-bottom: 0.75rem;
 	}
 	/* Rep comparison */
@@ -2512,7 +2560,7 @@
 	.rep-legend {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-top: 0.75rem;
 	}
 
@@ -2521,7 +2569,7 @@
 		align-items: center;
 		gap: 0.375rem;
 		padding: 0.25rem 0.625rem;
-		border-radius: 9999px;
+		border-radius: var(--r-pill);
 		border: 1px solid oklch(var(--bc) / 0.2);
 		background: transparent;
 		cursor: pointer;
@@ -2538,7 +2586,7 @@
 	.rep-swatch {
 		width: 10px;
 		height: 10px;
-		border-radius: 50%;
+		border-radius: var(--r-round);
 		flex-shrink: 0;
 	}
 
@@ -2548,18 +2596,18 @@
 	.techstats {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin-top: 0.5rem;
 	}
 	.ts {
 		background: var(--paper-inset);
 		border: var(--bd);
-		border-radius: 10px;
+		border-radius: var(--r-ctrl);
 		padding: 0.6rem 0.8rem;
 	}
 	.tv {
 		font-size: 1.5rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.tv.good {
 		color: var(--ahead);
@@ -2575,7 +2623,7 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin-bottom: 0.35rem;
 	}
 	.target-pace {
@@ -2585,7 +2633,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem 0.75rem;
+		gap: var(--space-sm) var(--space-md);
 	}
 	.target-pace-input {
 		width: 5.5rem;
@@ -2593,7 +2641,7 @@
 	.target-pace-band {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 		cursor: pointer;
 	}
 	.target-pace-open {
@@ -2609,7 +2657,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: baseline;
-		gap: 0.35rem 0.6rem;
+		gap: var(--space-xs) 0.6rem;
 		margin-bottom: 0.5rem;
 		font-size: 0.85rem;
 	}
@@ -2621,7 +2669,7 @@
 	}
 	.tu {
 		font-size: 0.85rem;
-		font-weight: 500;
+		font-weight: var(--fw-medium);
 		color: var(--ink-2);
 		margin-left: 0.15rem;
 	}
@@ -2630,14 +2678,14 @@
 		margin-top: 0.2rem;
 	}
 	.hint {
-		font-weight: 400;
+		font-weight: var(--fw-regular);
 		opacity: 0.7;
 		text-transform: none;
 		letter-spacing: 0;
 	}
 	.ctitle {
 		font-size: 0.74rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		margin-bottom: 0.4rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
@@ -2646,7 +2694,7 @@
 	.zonebar {
 		display: flex;
 		height: 22px;
-		border-radius: 6px;
+		border-radius: var(--r-ctrl);
 		overflow: hidden;
 		background: var(--bg-elev-2);
 		margin: 0.4rem 0 0.75rem;
@@ -2661,7 +2709,7 @@
 	.zli {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		font-size: 0.82rem;
 	}
 	.zli .zname {
@@ -2670,7 +2718,7 @@
 	.dot {
 		width: 10px;
 		height: 10px;
-		border-radius: 3px;
+		border-radius: var(--r-ctrl);
 	}
 	.intervals {
 		margin-bottom: 0.75rem;
@@ -2678,18 +2726,18 @@
 	.setstats {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		gap: 0.5rem;
+		gap: var(--space-sm);
 		margin: 0.5rem 0 1rem;
 	}
 	.ss {
 		background: var(--paper-inset);
 		border: var(--bd);
-		border-radius: 10px;
+		border-radius: var(--r-ctrl);
 		padding: 0.5rem 0.7rem;
 	}
 	.ssv {
 		font-size: 1.15rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.ssv.good {
 		color: var(--ahead);
@@ -2698,7 +2746,7 @@
 		color: var(--behind);
 	}
 	.ssl {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		margin-top: 0.15rem;
 	}
 	.reps {
@@ -2709,9 +2757,9 @@
 		display: grid;
 		grid-template-columns: 2.2rem 1fr auto;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		padding: 0.4rem 0.5rem;
-		border-radius: 8px;
+		border-radius: var(--r-ctrl);
 		background: var(--bg-elev-2);
 	}
 	.rep.fastest {
@@ -2721,33 +2769,49 @@
 		box-shadow: inset 0 0 0 1px var(--warn);
 	}
 	.repno {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		color: var(--ink-2);
 	}
 	.repbarwrap {
 		position: relative;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
 		min-width: 0;
 	}
-	.repbar {
+	.repbar-track {
+		position: relative;
+		width: calc(100% - 5rem);
+	}
+	.repbar-clipper {
 		height: 1.4rem;
-		border-radius: 4px;
+		border-radius: var(--r-ctrl);
+		overflow: hidden;
+	}
+	.repbar {
+		height: 100%;
+		width: 100%;
 		min-width: 2px;
-		transition: width 0.3s ease;
+		transform-origin: left;
+		transition: transform 0.3s ease;
 	}
 	.repbarlabel {
-		font-weight: 700;
+		position: absolute;
+		top: 50%;
+		margin-left: var(--space-sm);
+		transform: translateY(-50%);
+		font-weight: var(--fw-bold);
 		font-size: 0.9rem;
 		white-space: nowrap;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.repbar {
+			transition: none;
+		}
 	}
 	.repmeta {
 		font-size: 0.78rem;
 		grid-column: 2;
 	}
 	.repdelta {
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 		font-size: 0.85rem;
 		text-align: right;
 	}
@@ -2777,7 +2841,7 @@
 		grid-column: 1 / -1;
 	}
 	.metagrid dt {
-		font-size: 0.72rem;
+		font-size: var(--text-2xs);
 		color: var(--ink-2);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
@@ -2808,13 +2872,13 @@
 		margin: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.35rem;
+		gap: var(--space-xs);
 	}
 	.target-rows li {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem 0.75rem;
+		gap: var(--space-sm) var(--space-md);
 		font-size: 0.88rem;
 	}
 	.splits {
@@ -2834,7 +2898,7 @@
 	.splits th {
 		text-align: left;
 		color: var(--ink-2);
-		font-weight: 600;
+		font-weight: var(--fw-semibold);
 		padding: 0.3rem 0.5rem;
 		border-bottom: var(--bd);
 	}
@@ -2856,14 +2920,48 @@
 			grid-template-columns: 1.8rem 1fr auto;
 		}
 		.repmeta {
-			font-size: 0.72rem;
+			font-size: var(--text-2xs);
+		}
+		/* Tighten card padding on mobile for more content space */
+		.controls,
+		.ghostbar,
+		.course {
+			padding: 0.75rem;
+		}
+		/* Ghostbar stacks vertically earlier (not just at 390px) */
+		.ghostbar {
+			flex-direction: column;
+			align-items: stretch;
+			gap: var(--space-sm);
+		}
+		.ghostbar label {
+			width: 100%;
+		}
+		.ghostbar select,
+		.paceinput,
+		.file-input {
+			width: 100%;
+			max-width: none;
+		}
+		.gap {
+			margin-left: 0;
+			width: 100%;
+			text-align: center;
+		}
+		/* Compact course tools: stack vertically, reduce spacing */
+		.course-tools {
+			gap: 0.3rem;
+		}
+		.quality-select {
+			flex: 1;
+			min-width: 0;
 		}
 		/* Transport: play + clock on row 1, scrub full width on row 2,
 		   dist + speeds on row 3. */
 		.controls {
 			display: grid;
 			grid-template-columns: auto 1fr;
-			gap: 0.6rem 0.75rem;
+			gap: 0.6rem var(--space-md);
 			align-items: center;
 		}
 		.play {
@@ -2886,6 +2984,15 @@
 		.speeds {
 			justify-self: end;
 		}
+		.kb-inline {
+			display: none;
+		}
+		.kb-hints {
+			grid-column: 1 / -1;
+		}
+		.speeds .btn {
+			min-height: 2.75rem;
+		}
 		.head h1 {
 			font-size: 1.25rem;
 		}
@@ -2897,27 +3004,52 @@
 		.gauges {
 			grid-template-columns: repeat(2, 1fr);
 		}
+		/* Transport: stack vertically for phones.
+		   Row 1: play (full-width). Row 2: clock + dist inline.
+		   Row 3: scrub (full-width). Row 4: speeds (full-width). */
+		.controls {
+			grid-template-columns: minmax(0, 1fr) auto;
+			grid-template-areas:
+				'play play'
+				'clock dist'
+				'scrub scrub'
+				'speeds speeds'
+				'hints hints';
+			gap: var(--space-sm);
+		}
+		.play {
+			grid-area: play;
+			min-width: 0;
+			width: 100%;
+			justify-content: center;
+		}
+		.clock {
+			grid-area: clock;
+			justify-self: start;
+			font-size: 1rem;
+		}
+		.dist {
+			grid-area: dist;
+			justify-self: end;
+			text-align: right;
+		}
+		.scrub {
+			grid-area: scrub;
+		}
+		.speeds {
+			grid-area: speeds;
+			justify-self: stretch;
+			width: 100%;
+		}
+		.speeds .btn {
+			flex: 1;
+			min-width: 0;
+		}
+		.kb-hints {
+			grid-area: hints;
+		}
 	}
 	@media (max-width: 390px) {
-		.ghostbar {
-			flex-direction: column;
-			align-items: stretch;
-			gap: 0.5rem;
-		}
-		.ghostbar label {
-			width: 100%;
-		}
-		.ghostbar select,
-		.paceinput,
-		.file-input {
-			width: 100%;
-			max-width: none;
-		}
-		.gap {
-			margin-left: 0;
-			width: 100%;
-			text-align: center;
-		}
 		.head {
 			flex-direction: column;
 			align-items: flex-start;

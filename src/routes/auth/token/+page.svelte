@@ -78,7 +78,7 @@
 		margin: 3rem auto;
 		padding: 0 1.5rem;
 		display: grid;
-		gap: 1rem;
+		gap: var(--space-lg);
 	}
 	.small {
 		font-size: 0.85rem;
@@ -90,14 +90,14 @@
 	.trust h2 {
 		margin: 0 0 0.65rem;
 		font-size: 0.95rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		text-transform: uppercase;
 	}
 	.trust ul {
 		margin: 0;
 		padding-left: 1rem;
 		display: grid;
-		gap: 0.5rem;
+		gap: var(--space-sm);
 	}
 	.trust li {
 		line-height: 1.45;

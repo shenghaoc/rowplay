@@ -103,8 +103,9 @@ modified.
 ## Common workflows
 
 - **Replay a workout** — play/pause, scrub, 0.5×–8× speed, 2D/3D course views
-  (3D uses WebGPU when available, with WebGL fallback), and an optional
-  target-pace reference line.
+  (3D uses WebGPU when available, with WebGL fallback), and keyboard shortcuts
+  (<kbd>Space</kbd> to play/pause, <kbd>←</kbd><kbd>→</kbd> to seek by ±10s)
+  shown in the transport bar.
 
 The athlete animates from Concept2 stroke rows: the figure takes one stroke
 (or pole plant, or pedal revolution) per recorded stroke, with splash and spray
@@ -138,8 +139,9 @@ fall back to a split-based replay, so the course still plays back.
 
 The replay page also highlights **Workout moments**: best sustained push, slower patch, efficient rhythm, finish trend, and interval best/slowest reps. These cards are post-workout analysis from live Logbook detail; they do not start live capture or write anything back to Concept2. Use **Jump to moment** to seek the replay straight to that section. When per-stroke rows are unavailable, rowplay labels the moments as split-based so you know the resolution is lower.
 
-- **Race an earlier workout** — choose one of your own comparable sessions in
-  a replay to show it as a ghost alongside the current workout.
+- **Race a ghost** — open **More options** below the compare-mode buttons to
+  choose a constant pace or uploaded file, or select a past session to race
+  against your earlier self.
 - **Export** — `/settings` downloads the current live logbook as CSV or JSON,
   plus per-workout TCX where stroke data is available.
 - **Keep data fresh** — dashboard and replay data are fetched live from

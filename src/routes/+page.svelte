@@ -5,6 +5,7 @@
 	import Download from '@lucide/svelte/icons/download';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import X from '@lucide/svelte/icons/x';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import {
@@ -34,11 +35,11 @@
 		<p class="muted lead">{t('landing.lead')}</p>
 		<div class="cta">
 			{#if data.user || data.demo}
-				<a class="btn btn-primary" href="/dashboard">{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
+				<a class="btn btn-primary" href={resolve('/dashboard')}>{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
 			{:else}
-				<a class="btn btn-primary" href="/auth/login">{t('landing.connect')}</a>
+				<a class="btn btn-primary" href={resolve('/auth/login')}>{t('landing.connect')}</a>
 			{/if}
-			<a class="btn btn-ghost" href="/docs">{t('landing.readGuide')}</a>
+			<a class="btn btn-ghost" href={resolve('/docs')}>{t('landing.readGuide')}</a>
 		</div>
 		{#if data.demo}
 			<p class="muted small">{t('landing.demoNote')}</p>
@@ -112,7 +113,7 @@
 	}
 	h1 {
 		font-size: clamp(2rem, 6vw, 2.8rem);
-		font-weight: 900;
+		font-weight: var(--fw-black);
 		text-transform: uppercase;
 		line-height: 1.05;
 		margin: 1rem 0;
@@ -126,7 +127,7 @@
 	.cta {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.75rem;
+		gap: var(--space-md);
 		margin: 1.5rem 0 0.75rem;
 	}
 	.small {
@@ -135,7 +136,7 @@
 	}
 	.features {
 		display: grid;
-		gap: 1rem;
+		gap: var(--space-lg);
 	}
 	.feat {
 		box-shadow: var(--stamp);
@@ -162,12 +163,12 @@
 	.tour-head {
 		display: flex;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: var(--space-lg);
 		align-items: flex-start;
 	}
 	.tour h2 {
 		font-size: 1rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 		margin: 0.15rem 0 0;
 		text-transform: uppercase;
 	}
@@ -187,11 +188,11 @@
 		gap: 0.45rem;
 		min-width: 0;
 		padding: 0.55rem 0.65rem;
-		border: 1px solid var(--hairline);
+		border: var(--bd);
 		border-radius: var(--r-ctrl);
 		background: var(--paper-inset);
 		font-size: 0.82rem;
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.tour-step :global(svg) {
 		flex: 0 0 auto;

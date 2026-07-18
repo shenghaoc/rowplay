@@ -126,10 +126,10 @@
 	.wrap { display: grid; gap: 1.25rem; max-width: 44rem; margin-inline: auto; padding-block: 2rem 3rem; }
 	.eyebrow { color: var(--ink-2); font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.08em; margin: 0; text-transform: uppercase; }
 	h1 { font-family: var(--display); margin: 0; }
-	.section-head { align-items: center; display: flex; font-size: 0.78rem; font-weight: 700; gap: 0.5rem; letter-spacing: 0.08em; margin: 0; text-transform: uppercase; }
+	.section-head { align-items: center; display: flex; font-size: 0.78rem; font-weight: var(--fw-bold); gap: var(--space-sm); letter-spacing: 0.08em; margin: 0; text-transform: uppercase; }
 	.facts { font-size: 0.88rem; margin: 0; padding-left: 1.2rem; }
-	.row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+	.row { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
 	.small, .tz-label { font-size: 0.85rem; margin: 0; }
-	.tcx-list { display: grid; font-size: 0.88rem; gap: 0.35rem; list-style: none; margin: 0; max-height: 12rem; overflow-y: auto; padding: 0; }
-	.tcx-list li { display: flex; gap: 0.75rem; justify-content: space-between; }
+	.tcx-list { display: grid; font-size: 0.88rem; gap: var(--space-xs); list-style: none; margin: 0; max-height: 12rem; overflow-y: auto; padding: 0; }
+	.tcx-list li { display: flex; gap: var(--space-md); justify-content: space-between; }
 </style>

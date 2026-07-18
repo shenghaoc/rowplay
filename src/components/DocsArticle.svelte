@@ -80,7 +80,7 @@
 	}
 	.docs-article :global(a) {
 		color: var(--live);
-		font-weight: 700;
+		font-weight: var(--fw-bold);
 	}
 	.docs-article :global(a:hover) {
 		color: var(--ink);
@@ -89,7 +89,7 @@
 		margin: 0 0 1rem;
 		font-size: clamp(2rem, 6vw, 2.75rem);
 		line-height: 1.05;
-		font-weight: 900;
+		font-weight: var(--fw-black);
 		text-transform: uppercase;
 	}
 	.docs-article h2 {
@@ -98,13 +98,13 @@
 		border-top: var(--bd-heavy);
 		font-size: 1.25rem;
 		line-height: 1.2;
-		font-weight: 850;
+		font-weight: var(--fw-extrabold);
 		text-transform: uppercase;
 	}
 	.docs-article h3 {
 		margin: 1.5rem 0 0.5rem;
 		font-size: 1.05rem;
-		font-weight: 800;
+		font-weight: var(--fw-extrabold);
 	}
 	.docs-article p,
 	.docs-article li,

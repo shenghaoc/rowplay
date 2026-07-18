@@ -37,5 +37,8 @@ yarn-error.log*
 # Antigravity CLI local files
 .antigravitycli/
 
+# Impeccable local hook state
+.impeccable/hook.cache.json
+
 # Claude Code agent worktrees
 .claude/worktrees/
