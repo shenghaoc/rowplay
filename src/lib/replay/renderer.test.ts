@@ -162,11 +162,13 @@ describe("CourseRenderer stroke pose input", () => {
   function makeCtx(): {
     ctx: CanvasRenderingContext2D;
     setLineDash: ReturnType<typeof vi.fn>;
+    dashOffsets: number[];
     styles: string[];
     operations: { method: string; args: unknown[] }[];
   } {
     const gradient = { addColorStop: vi.fn() };
     const setLineDash = vi.fn();
+    const dashOffsets: number[] = [];
     const styles: string[] = [];
     const operations: { method: string; args: unknown[] }[] = [];
     const target: Record<string, unknown> = {
@@ -188,11 +190,13 @@ describe("CourseRenderer stroke pose input", () => {
           if ((prop === "fillStyle" || prop === "strokeStyle") && typeof value === "string") {
             styles.push(value);
           }
+          if (prop === "lineDashOffset" && typeof value === "number") dashOffsets.push(value);
           obj[prop] = value;
           return true;
         },
       }) as unknown as CanvasRenderingContext2D,
       setLineDash,
+      dashOffsets,
       styles,
       operations,
     };
@@ -278,6 +282,116 @@ describe("CourseRenderer stroke pose input", () => {
       else expect(setLineDash).toHaveBeenCalled();
     },
   );
+
+  it("keeps the course scale on a timing rail instead of a full-height graph grid", () => {
+    const { ctx, operations } = makeCtx();
+    const canvas = {
+      getContext: (kind: string) => (kind === "2d" ? ctx : null),
+    } as unknown as HTMLCanvasElement;
+    const renderer = new CourseRenderer(canvas);
+    renderer.resize(640, 300);
+    renderer.render(makeState("rower", false), false, "light");
+
+    const hasLegacyGridLine = operations.some((operation, index) => {
+      const next = operations[index + 1];
+      return (
+        operation.method === "moveTo" &&
+        next?.method === "lineTo" &&
+        operation.args[1] === 10 &&
+        next.args[1] === 282
+      );
+    });
+    expect(hasLegacyGridLine).toBe(false);
+  });
+
+  it("moves SkiErg and BikeErg dash materials backwards from metres rather than phase", () => {
+    for (const sport of ["skierg", "bike"] as const) {
+      const { ctx, dashOffsets } = makeCtx();
+      const canvas = {
+        getContext: (kind: string) => (kind === "2d" ? ctx : null),
+      } as unknown as HTMLCanvasElement;
+      const renderer = new CourseRenderer(canvas);
+      renderer.resize(640, 300);
+      const testRenderer = renderer as unknown as {
+        drawSkiSurface(options: Record<string, unknown>): void;
+        drawBikeSurface(options: Record<string, unknown>): void;
+      };
+      const drawSurface = (options: Record<string, unknown>) => {
+        if (sport === "skierg") testRenderer.drawSkiSurface(options);
+        else testRenderer.drawBikeSurface(options);
+      };
+      const base = {
+        startX: 58,
+        span: 552,
+        y: 200,
+        frac: 0.2,
+        accent: COLORS_LIGHT.live,
+        meters: 12,
+        phase: 0.2,
+        pace: 120,
+        isYou: true,
+        nameTab: "YOU",
+        padL: 58,
+        sport,
+      };
+
+      drawSurface(base);
+      const first = [...dashOffsets];
+      // Canvas lineDashOffset runs opposite to direct x translation. A
+      // positive offset here is the visual leftward road/snow motion that
+      // agrees with the cyclist's clockwise forward wheel roll.
+      expect(first[0]).toBeGreaterThan(0);
+      dashOffsets.length = 0;
+      drawSurface({ ...base, phase: 4.8 });
+      expect(dashOffsets).toEqual(first);
+
+      dashOffsets.length = 0;
+      drawSurface({ ...base, meters: 29 });
+      expect(dashOffsets).not.toEqual(first);
+    }
+  });
+
+  it("keeps unique venue landmarks stable across repeating parallax wrap distances", () => {
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const { ctx, operations } = makeCtx();
+      const canvas = {
+        getContext: (kind: string) => (kind === "2d" ? ctx : null),
+      } as unknown as HTMLCanvasElement;
+      const renderer = new CourseRenderer(canvas);
+      renderer.resize(640, 300);
+
+      const landmarkX = (meters: number) => {
+        operations.length = 0;
+        const state = makeState(sport, false);
+        state.frame = { ...state.frame, d: meters };
+        renderer.render(state, false, "light");
+        const landmark = operations.find((operation) => {
+          if (sport === "rower") {
+            return (
+              operation.method === "fillRect" &&
+              operation.args[2] === 84 &&
+              operation.args[3] === 20
+            );
+          }
+          if (sport === "bike") {
+            return (
+              operation.method === "fillRect" && operation.args[2] === 14 && operation.args[3] === 7
+            );
+          }
+          return (
+            operation.method === "lineTo" &&
+            typeof operation.args[1] === "number" &&
+            Math.abs(operation.args[1] - (300 * 0.445 - 62)) < 1e-6
+          );
+        });
+        expect(landmark, `${sport} landmark not drawn`).toBeDefined();
+        return landmark?.args[0];
+      };
+
+      const wrapDistance = sport === "rower" ? 1_000 : sport === "skierg" ? 1_200 : 1_100;
+      expect(landmarkX(wrapDistance)).toBe(landmarkX(0));
+    }
+  });
 
   it.each(["rower", "skierg", "bike"] as const)(
     "models %s with near/far anatomy and semantic kit colours",

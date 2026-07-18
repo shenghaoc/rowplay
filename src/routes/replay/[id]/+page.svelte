@@ -248,11 +248,14 @@
 	}
 
 	function courseHeight() {
+		const mobile = (courseWrap?.clientWidth ?? 0) < 640;
 		if (rendererKind === '3d') {
-			const mobile = (courseWrap?.clientWidth ?? 0) < 640;
 			return mobile ? (ghostActive ? 390 : 360) : ghostActive ? 450 : 420;
 		}
-		return ghostActive ? 190 : 150;
+		// The 2D replay is a full venue illustration, not a compressed chart strip.
+		// Preserve enough vertical room for a horizon, architecture, course material,
+		// athlete HUD and a second comparison lane on every supported viewport.
+		return mobile ? (ghostActive ? 320 : 260) : ghostActive ? 350 : 300;
 	}
 
 	function resizeCourse() {

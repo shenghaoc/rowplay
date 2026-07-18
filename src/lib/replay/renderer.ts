@@ -160,8 +160,8 @@ const PAD_R = 30;
 const WATER_H = 34;
 const POD_R = 9;
 const BOB_AMP = 3.4;
-/** Scale the stick figure so joint travel is legible on the course strip. */
-const ATHLETE_SCALE = 1.28;
+/** Keep the athlete as the primary read inside the taller authored venue. */
+const ATHLETE_SCALE = 1.8;
 /** Forward/back hull surge per stroke (px), per sport. Bike pedals smoothly. */
 const SURGE_PX: Record<Sport, number> = { rower: 4.2, skierg: 2.2, bike: 0 };
 /** Splash droplets per lane; small and brief, so a tiny pool suffices. */
@@ -182,6 +182,173 @@ export const REDUCED_REPLAY_POSES: Readonly<Record<Sport, StrokePose>> = {
   rower: fallbackStrokePose("rower", REDUCED_POSE_PHASE, 30),
   skierg: fallbackStrokePose("skierg", REDUCED_POSE_PHASE, 34),
   bike: fallbackStrokePose("bike", REDUCED_POSE_PHASE, 85),
+};
+
+/**
+ * Environment colours are deliberately independent of the two racer accents.
+ * Live/ghost colours identify athletes; these colours identify real materials
+ * and venue depth. Keeping those semantic jobs separate prevents the course
+ * from turning purple or cyan when a comparison lane is enabled.
+ */
+interface VenuePalette {
+  skyTop: string;
+  skyHorizon: string;
+  haze: string;
+  sun: string;
+  ridgeFar: string;
+  ridgeNear: string;
+  foliageFar: string;
+  foliageNear: string;
+  structure: string;
+  structureShade: string;
+  structureLight: string;
+  groundTop: string;
+  groundMid: string;
+  groundBottom: string;
+  surfaceLine: string;
+  surfaceHighlight: string;
+  surfaceShadow: string;
+  marker: string;
+  safety: string;
+  safetyLight: string;
+}
+
+const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
+  rower: {
+    skyTop: "#31769f",
+    skyHorizon: "#e7c68d",
+    haze: "#f8dfac",
+    sun: "#fff0bd",
+    ridgeFar: "#6f8d76",
+    ridgeNear: "#365f4f",
+    foliageFar: "#416d56",
+    foliageNear: "#1d493f",
+    structure: "#ece6d9",
+    structureShade: "#8c7b67",
+    structureLight: "#ffd68a",
+    groundTop: "#4b91a1",
+    groundMid: "#216474",
+    groundBottom: "#0e3c4d",
+    surfaceLine: "#82c6d1",
+    surfaceHighlight: "#d4eef0",
+    surfaceShadow: "#0b3241",
+    marker: "#ef5b42",
+    safety: "#d9e7e7",
+    safetyLight: "#ffffff",
+  },
+  skierg: {
+    skyTop: "#357db3",
+    skyHorizon: "#dcecf5",
+    haze: "#f6fbfd",
+    sun: "#fff5cf",
+    ridgeFar: "#b8cedb",
+    ridgeNear: "#66899e",
+    foliageFar: "#43675d",
+    foliageNear: "#244a42",
+    structure: "#e7edf1",
+    structureShade: "#607887",
+    structureLight: "#fff1b2",
+    groundTop: "#f5fafc",
+    groundMid: "#dbeaf2",
+    groundBottom: "#b9d2df",
+    surfaceLine: "#94bfd2",
+    surfaceHighlight: "#ffffff",
+    surfaceShadow: "#779fb4",
+    marker: "#e84b42",
+    safety: "#1e6292",
+    safetyLight: "#f5fbfd",
+  },
+  bike: {
+    skyTop: "#3b5877",
+    skyHorizon: "#e4a06f",
+    haze: "#f5c997",
+    sun: "#ffe0a1",
+    ridgeFar: "#65727c",
+    ridgeNear: "#3b474f",
+    foliageFar: "#46584f",
+    foliageNear: "#2a3935",
+    structure: "#d6d9da",
+    structureShade: "#565f66",
+    structureLight: "#ffd77f",
+    groundTop: "#596168",
+    groundMid: "#3b4248",
+    groundBottom: "#242a30",
+    surfaceLine: "#8e989e",
+    surfaceHighlight: "#c2c9cc",
+    surfaceShadow: "#171c21",
+    marker: "#e8483f",
+    safety: "#d6d2c9",
+    safetyLight: "#f5f0e7",
+  },
+};
+
+const VENUES_DARK: Readonly<Record<Sport, VenuePalette>> = {
+  rower: {
+    skyTop: "#071724",
+    skyHorizon: "#294f62",
+    haze: "#718c93",
+    sun: "#f0c67b",
+    ridgeFar: "#294b46",
+    ridgeNear: "#173832",
+    foliageFar: "#23483d",
+    foliageNear: "#102e29",
+    structure: "#8c908c",
+    structureShade: "#3b4648",
+    structureLight: "#f0b65c",
+    groundTop: "#275969",
+    groundMid: "#143c4a",
+    groundBottom: "#082531",
+    surfaceLine: "#4f91a1",
+    surfaceHighlight: "#a8d2d8",
+    surfaceShadow: "#041a23",
+    marker: "#ef6a4e",
+    safety: "#60777c",
+    safetyLight: "#c8d9db",
+  },
+  skierg: {
+    skyTop: "#061522",
+    skyHorizon: "#28516a",
+    haze: "#7795a5",
+    sun: "#e8d5a1",
+    ridgeFar: "#60798a",
+    ridgeNear: "#334f60",
+    foliageFar: "#28473f",
+    foliageNear: "#142f2b",
+    structure: "#71838c",
+    structureShade: "#293c47",
+    structureLight: "#ffe099",
+    groundTop: "#d6e7ee",
+    groundMid: "#aac7d5",
+    groundBottom: "#789cac",
+    surfaceLine: "#6f9eb3",
+    surfaceHighlight: "#f1f7f9",
+    surfaceShadow: "#4a7184",
+    marker: "#f06156",
+    safety: "#1f5f85",
+    safetyLight: "#d7e8ee",
+  },
+  bike: {
+    skyTop: "#070f1b",
+    skyHorizon: "#3a3546",
+    haze: "#86644f",
+    sun: "#d9a55f",
+    ridgeFar: "#303a43",
+    ridgeNear: "#1c252c",
+    foliageFar: "#26342e",
+    foliageNear: "#141f1d",
+    structure: "#777e82",
+    structureShade: "#293036",
+    structureLight: "#ffd16e",
+    groundTop: "#424a50",
+    groundMid: "#2c3338",
+    groundBottom: "#181e23",
+    surfaceLine: "#6e7b82",
+    surfaceHighlight: "#aab5ba",
+    surfaceShadow: "#0b1014",
+    marker: "#ef554a",
+    safety: "#9a9a94",
+    safetyLight: "#e5e2d9",
+  },
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -339,9 +506,9 @@ export function solveRigidOar2D(
 
 /** Approximate scaled silhouette height above the contact line for HUD clearance. */
 export const ATHLETE_TOP_CLEARANCE_2D: Readonly<Record<Sport, number>> = {
-  rower: 27,
-  skierg: 31,
-  bike: 35,
+  rower: 38,
+  skierg: 44,
+  bike: 49,
 };
 
 const jointScratchA: MutableFigurePoint2 = { x: 0, y: 0 };
@@ -1263,6 +1430,8 @@ interface LaneOpts {
   y: number;
   frac: number;
   accent: string;
+  /** Cumulative course distance; drives material parallax in both directions. */
+  meters: number;
   phase: number;
   pace: number;
   isYou: boolean;
@@ -1310,6 +1479,7 @@ export class CourseRenderer implements ReplayRenderer {
   private liveSplash = new ParticlePool(SPLASH_CAP);
   private ghostSplash = new ParticlePool(SPLASH_CAP);
   private colors: CanvasColors = COLORS_LIGHT;
+  private darkTheme = false;
   // Refreshed each render() from the OS setting; flattens the avatar wake.
   private reduceMotion = false;
   /** Reused solver outputs keep the per-frame course draw allocation-free. */
@@ -1361,6 +1531,7 @@ export class CourseRenderer implements ReplayRenderer {
     const { ctx, w, h } = this;
     const C = themeName === "dark" ? COLORS_DARK : COLORS_LIGHT;
     this.colors = C;
+    this.darkTheme = themeName === "dark";
     if (w === 0) return;
     this.reduceMotion = prefersReducedMotion();
 
@@ -1403,11 +1574,11 @@ export class CourseRenderer implements ReplayRenderer {
     const span = finishX - startX;
 
     const hasGhost = !!state.ghost;
-    const playerY = hasGhost ? h * 0.7 : h * 0.56;
-    const ghostY = h * 0.34;
+    const playerY = hasGhost ? h * 0.78 : h * 0.7;
+    const ghostY = h * 0.55;
 
     // ── Scene layers ──────────────────────────────────────────────────────
-    this.drawBackground(w, h);
+    this.drawBackground(w, h, state.sport ?? "rower", state.frame.d);
     this.drawGrid(
       startX,
       span,
@@ -1416,7 +1587,7 @@ export class CourseRenderer implements ReplayRenderer {
       hasGhost ? [ghostY, playerY] : [playerY],
       state.sport,
     );
-    this.drawFinishGate(finishX, 10, h - 10);
+    this.drawFinishGate(finishX, h * 0.34, h - 20, state.sport ?? "rower");
 
     // Ghost first so YOU overlaps on top
     if (hasGhost && state.ghost) {
@@ -1431,6 +1602,7 @@ export class CourseRenderer implements ReplayRenderer {
         y: ghostY,
         frac: ghostFrac,
         accent: C.ghost,
+        meters: ghostFrac * state.totalDistance,
         phase: this.ghostWavePhase,
         pace: state.ghost.pace,
         isYou: false,
@@ -1468,6 +1640,7 @@ export class CourseRenderer implements ReplayRenderer {
       y: playerY,
       frac: playerFrac,
       accent: C.live,
+      meters: state.frame.d,
       phase: this.wavePhase,
       pace: state.frame.pace,
       isYou: true,
@@ -1529,23 +1702,389 @@ export class CourseRenderer implements ReplayRenderer {
 
   // ── Background ────────────────────────────────────────────────────────────
 
-  private drawBackground(w: number, h: number) {
+  private drawBackground(w: number, h: number, sport: Sport, meters: number) {
     const { ctx } = this;
-    const C = this.colors;
+    const palette = (this.darkTheme ? VENUES_DARK : VENUES_LIGHT)[sport];
     ctx.save();
-    roundRect(ctx, 0, 0, w, h, 3);
+    roundRect(ctx, 0, 0, w, h, 5);
     ctx.clip();
-    // Richer gradient with a warm horizon band for a luxurious feel.
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, C.skyTop);
-    grad.addColorStop(0.55, C.skyBottom);
-    grad.addColorStop(1, C.courseFill);
-    ctx.fillStyle = grad;
+
+    this.drawSky(w, h, palette);
+    if (sport === "skierg") this.drawSkiVenue(w, h, meters, palette);
+    else if (sport === "bike") this.drawBikeVenue(w, h, meters, palette);
+    else this.drawRowVenue(w, h, meters, palette);
+
+    // A restrained frame vignette supplies depth without obscuring the race.
+    const vignette = ctx.createLinearGradient(0, 0, w, 0);
+    vignette.addColorStop(0, withAlpha(palette.surfaceShadow, 0.22));
+    vignette.addColorStop(0.08, withAlpha(palette.surfaceShadow, 0));
+    vignette.addColorStop(0.92, withAlpha(palette.surfaceShadow, 0));
+    vignette.addColorStop(1, withAlpha(palette.surfaceShadow, 0.18));
+    ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
   }
 
-  // ── Grid + buoys ──────────────────────────────────────────────────────────
+  private drawSky(w: number, h: number, palette: VenuePalette) {
+    const { ctx } = this;
+    const sky = ctx.createLinearGradient(0, 0, 0, h * 0.62);
+    sky.addColorStop(0, palette.skyTop);
+    sky.addColorStop(0.72, palette.skyHorizon);
+    sky.addColorStop(1, palette.haze);
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h);
+
+    const sunX = w * 0.77;
+    const sunY = h * 0.17;
+    const halo = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, h * 0.22);
+    halo.addColorStop(0, withAlpha(palette.sun, 0.5));
+    halo.addColorStop(0.2, withAlpha(palette.sun, 0.18));
+    halo.addColorStop(1, withAlpha(palette.sun, 0));
+    ctx.fillStyle = halo;
+    ctx.fillRect(sunX - h * 0.24, 0, h * 0.48, h * 0.42);
+    disc(ctx, sunX, sunY, Math.max(3, h * 0.021), withAlpha(palette.sun, 0.88));
+  }
+
+  /** A bounded, scrub-safe parallax offset. Reduced motion keeps scenery still. */
+  private materialOffset(meters: number, factor: number, period: number) {
+    if (this.reduceMotion || !Number.isFinite(meters)) return 0;
+    const distance = (((meters * factor) % period) + period) % period;
+    return -distance;
+  }
+
+  /**
+   * Canvas applies lineDashOffset opposite to direct x translation. Keep this
+   * adapter explicit so repeating road/snow marks travel backwards beneath a
+   * forward-moving athlete instead of contradicting the BikeErg wheel sign.
+   */
+  private dashMaterialOffset(meters: number, factor: number, period: number) {
+    return -this.materialOffset(meters, factor, period);
+  }
+
+  private drawRowVenue(w: number, h: number, meters: number, palette: VenuePalette) {
+    const { ctx } = this;
+    const horizon = h * 0.405;
+    const farShift = this.materialOffset(meters, 0.018, 18);
+
+    // Soft wooded shoreline, built as two depth-separated silhouettes.
+    ctx.fillStyle = palette.ridgeFar;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 5);
+    ctx.lineTo(0, horizon - 13);
+    ctx.quadraticCurveTo(w * 0.1, horizon - 33, w * 0.2, horizon - 19);
+    ctx.quadraticCurveTo(w * 0.34, horizon - 43, w * 0.49, horizon - 20);
+    ctx.quadraticCurveTo(w * 0.63, horizon - 38, w * 0.78, horizon - 16);
+    ctx.quadraticCurveTo(w * 0.9, horizon - 28, w, horizon - 12);
+    ctx.lineTo(w, horizon + 5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = palette.ridgeNear;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 8);
+    ctx.lineTo(0, horizon - 4);
+    for (let x = -24 + farShift; x <= w + 28; x += 22) {
+      const crown = horizon - 10 - ((Math.floor((x - farShift) / 22) & 1) === 0 ? 6 : 1);
+      ctx.quadraticCurveTo(x + 6, crown - 7, x + 13, crown);
+      ctx.quadraticCurveTo(x + 18, crown + 5, x + 24, horizon - 2);
+    }
+    ctx.lineTo(w, horizon + 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Regatta pavilion, dock and timing tower establish a credible venue.
+    // Unique architecture stays fixed. Only genuinely repeating shoreline and
+    // material bands use modulo parallax, so a long workout cannot teleport a
+    // landmark when its wrap period rolls over.
+    const pavilionX = Math.max(24, w * 0.105);
+    const pavilionY = horizon - 25;
+    ctx.fillStyle = palette.structureShade;
+    ctx.beginPath();
+    ctx.moveTo(pavilionX - 7, pavilionY + 5);
+    ctx.lineTo(pavilionX + 91, pavilionY + 5);
+    ctx.lineTo(pavilionX + 80, pavilionY - 5);
+    ctx.lineTo(pavilionX + 6, pavilionY - 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = palette.structure;
+    ctx.fillRect(pavilionX, pavilionY + 5, 84, 20);
+    ctx.fillStyle = withAlpha(palette.structureLight, 0.78);
+    for (let i = 0; i < 6; i++) ctx.fillRect(pavilionX + 6 + i * 13, pavilionY + 9, 8, 8);
+    ctx.fillStyle = palette.structureShade;
+    ctx.fillRect(pavilionX - 12, horizon + 1, 118, 3);
+    ctx.fillRect(pavilionX + 9, pavilionY + 18, 3, 10);
+    ctx.fillRect(pavilionX + 72, pavilionY + 18, 3, 10);
+
+    const towerX = w * 0.87;
+    ctx.fillStyle = palette.structureShade;
+    ctx.fillRect(towerX, horizon - 43, 3, 44);
+    ctx.fillRect(towerX + 20, horizon - 43, 3, 44);
+    ctx.fillStyle = palette.structure;
+    ctx.fillRect(towerX - 3, horizon - 45, 29, 14);
+    ctx.fillStyle = withAlpha(palette.structureLight, 0.8);
+    ctx.fillRect(towerX + 2, horizon - 42, 19, 6);
+
+    // The entire lower field is a deep competition basin, not a tinted lane.
+    const water = ctx.createLinearGradient(0, horizon, 0, h);
+    water.addColorStop(0, palette.groundTop);
+    water.addColorStop(0.46, palette.groundMid);
+    water.addColorStop(1, palette.groundBottom);
+    ctx.fillStyle = water;
+    ctx.fillRect(0, horizon, w, h - horizon);
+    ctx.fillStyle = withAlpha(palette.surfaceHighlight, 0.32);
+    ctx.fillRect(0, horizon, w, 1.5);
+
+    // Sun reflection and long shoreline reflections give the water real depth.
+    const reflection = ctx.createLinearGradient(0, horizon, 0, h);
+    reflection.addColorStop(0, withAlpha(palette.sun, 0.26));
+    reflection.addColorStop(0.55, withAlpha(palette.sun, 0.07));
+    reflection.addColorStop(1, withAlpha(palette.sun, 0));
+    ctx.fillStyle = reflection;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.745, horizon);
+    ctx.lineTo(w * 0.795, horizon);
+    ctx.lineTo(w * 0.86, h);
+    ctx.lineTo(w * 0.68, h);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.16);
+    ctx.lineWidth = 1;
+    for (let band = 0; band < 7; band++) {
+      const y = horizon + 18 + band * Math.max(13, h * 0.055);
+      const offset = this.materialOffset(meters, 0.12 + band * 0.018, 36);
+      ctx.beginPath();
+      for (let x = -36 + offset; x <= w + 36; x += 36) {
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(x + 9, y - 1.2, x + 19, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  private drawSkiVenue(w: number, h: number, meters: number, palette: VenuePalette) {
+    const { ctx } = this;
+    const horizon = h * 0.445;
+    const treeShift = this.materialOffset(meters, 0.055, 38);
+
+    // Two faceted alpine ranges create atmospheric scale behind the stadium.
+    ctx.fillStyle = palette.ridgeFar;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 10);
+    ctx.lineTo(0, horizon - 17);
+    ctx.lineTo(w * 0.12, horizon - 62);
+    ctx.lineTo(w * 0.22, horizon - 25);
+    ctx.lineTo(w * 0.38, horizon - 82);
+    ctx.lineTo(w * 0.5, horizon - 30);
+    ctx.lineTo(w * 0.68, horizon - 70);
+    ctx.lineTo(w * 0.82, horizon - 26);
+    ctx.lineTo(w, horizon - 55);
+    ctx.lineTo(w, horizon + 10);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = palette.ridgeNear;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 8);
+    ctx.lineTo(0, horizon - 8);
+    ctx.lineTo(w * 0.17, horizon - 45);
+    ctx.lineTo(w * 0.31, horizon - 12);
+    ctx.lineTo(w * 0.49, horizon - 52);
+    ctx.lineTo(w * 0.63, horizon - 10);
+    ctx.lineTo(w * 0.8, horizon - 39);
+    ctx.lineTo(w, horizon - 6);
+    ctx.lineTo(w, horizon + 8);
+    ctx.closePath();
+    ctx.fill();
+
+    const snow = ctx.createLinearGradient(0, horizon, 0, h);
+    snow.addColorStop(0, palette.groundTop);
+    snow.addColorStop(0.52, palette.groundMid);
+    snow.addColorStop(1, palette.groundBottom);
+    ctx.fillStyle = snow;
+    ctx.fillRect(0, horizon, w, h - horizon);
+
+    // Pine belt. Repeating scenery moves only with travelled distance.
+    for (let x = -42 + treeShift; x < w + 42; x += 38) {
+      const index = Math.floor((x - treeShift + 42) / 38);
+      const treeH = 20 + (Math.abs(index) % 3) * 5;
+      const trunkY = horizon + 3;
+      ctx.fillStyle = withAlpha(palette.structureShade, 0.68);
+      ctx.fillRect(x - 1, trunkY - treeH * 0.28, 2, treeH * 0.34);
+      ctx.fillStyle = index % 2 === 0 ? palette.foliageNear : palette.foliageFar;
+      for (let tier = 0; tier < 3; tier++) {
+        const top = trunkY - treeH + tier * treeH * 0.22;
+        const half = treeH * (0.26 - tier * 0.035);
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x - half, top + treeH * 0.48);
+        ctx.lineTo(x + half, top + treeH * 0.48);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // Nordic stadium timing cabin and paired floodlights.
+    const cabinX = w * 0.12;
+    ctx.fillStyle = palette.structureShade;
+    ctx.beginPath();
+    ctx.moveTo(cabinX - 7, horizon - 20);
+    ctx.lineTo(cabinX + 79, horizon - 20);
+    ctx.lineTo(cabinX + 68, horizon - 29);
+    ctx.lineTo(cabinX + 4, horizon - 29);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = palette.structure;
+    ctx.fillRect(cabinX, horizon - 20, 70, 22);
+    ctx.fillStyle = withAlpha(palette.structureLight, 0.82);
+    for (let i = 0; i < 5; i++) ctx.fillRect(cabinX + 5 + i * 13, horizon - 16, 8, 8);
+    this.drawFloodlight(w * 0.07, horizon + 2, h * 0.19, palette, -1);
+    this.drawFloodlight(w * 0.9, horizon + 2, h * 0.21, palette, 1);
+
+    // Sculpted snowbanks frame the groomed competition field.
+    ctx.fillStyle = withAlpha(palette.surfaceHighlight, 0.58);
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 15);
+    ctx.quadraticCurveTo(w * 0.2, horizon + 4, w * 0.42, horizon + 17);
+    ctx.quadraticCurveTo(w * 0.66, horizon + 28, w, horizon + 11);
+    ctx.lineTo(w, horizon + 24);
+    ctx.quadraticCurveTo(w * 0.72, horizon + 37, w * 0.44, horizon + 27);
+    ctx.quadraticCurveTo(w * 0.2, horizon + 15, 0, horizon + 29);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.18);
+    ctx.lineWidth = 1;
+    for (let y = horizon + 38; y < h; y += 18) {
+      const shift = this.materialOffset(meters, 0.24, 24);
+      ctx.beginPath();
+      for (let x = -24 + shift; x < w + 24; x += 24) {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 11, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  private drawBikeVenue(w: number, h: number, meters: number, palette: VenuePalette) {
+    const { ctx } = this;
+    const horizon = h * 0.43;
+    const barrierShift = this.materialOffset(meters, 0.11, 46);
+
+    // Low city/hills silhouette anchors the velodrome in a real place.
+    ctx.fillStyle = palette.ridgeFar;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 8);
+    ctx.lineTo(0, horizon - 8);
+    ctx.quadraticCurveTo(w * 0.18, horizon - 39, w * 0.36, horizon - 12);
+    ctx.quadraticCurveTo(w * 0.58, horizon - 45, w * 0.76, horizon - 10);
+    ctx.quadraticCurveTo(w * 0.9, horizon - 26, w, horizon - 7);
+    ctx.lineTo(w, horizon + 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Premium track pavilion with a floating roof and lit hospitality boxes.
+    const standX = Math.max(16, w * 0.12);
+    const standW = Math.min(w * 0.46, 390);
+    const standTop = horizon - 38;
+    ctx.fillStyle = palette.structureShade;
+    ctx.beginPath();
+    ctx.moveTo(standX - 15, standTop + 4);
+    ctx.lineTo(standX + standW + 13, standTop + 4);
+    ctx.lineTo(standX + standW - 4, standTop - 5);
+    ctx.lineTo(standX + 2, standTop - 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = palette.structure;
+    ctx.beginPath();
+    ctx.moveTo(standX, standTop + 5);
+    ctx.lineTo(standX + standW, standTop + 5);
+    ctx.lineTo(standX + standW - 16, horizon + 3);
+    ctx.lineTo(standX + 12, horizon + 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = withAlpha(palette.structureLight, 0.78);
+    for (let x = standX + 10; x < standX + standW - 16; x += 22) {
+      ctx.fillRect(x, standTop + 10, 14, 7);
+    }
+    ctx.strokeStyle = withAlpha(palette.structureShade, 0.5);
+    ctx.lineWidth = 1;
+    for (let row = 0; row < 3; row++) {
+      const y = standTop + 23 + row * 6;
+      ctx.beginPath();
+      ctx.moveTo(standX + 10 + row * 3, y);
+      ctx.lineTo(standX + standW - 12 - row * 3, y);
+      ctx.stroke();
+    }
+
+    this.drawFloodlight(w * 0.06, horizon + 4, h * 0.22, palette, -1);
+    this.drawFloodlight(w * 0.93, horizon + 4, h * 0.24, palette, 1);
+
+    const asphalt = ctx.createLinearGradient(0, horizon, 0, h);
+    asphalt.addColorStop(0, palette.groundTop);
+    asphalt.addColorStop(0.45, palette.groundMid);
+    asphalt.addColorStop(1, palette.groundBottom);
+    ctx.fillStyle = asphalt;
+    ctx.fillRect(0, horizon, w, h - horizon);
+
+    // Trackside safety barrier: disciplined repeating panels, not random dots.
+    ctx.fillStyle = palette.structureShade;
+    ctx.fillRect(0, horizon + 11, w, 5);
+    for (let x = -46 + barrierShift; x < w + 46; x += 46) {
+      ctx.fillStyle = palette.safety;
+      ctx.fillRect(x, horizon + 3, 42, 10);
+      ctx.fillStyle = palette.marker;
+      ctx.beginPath();
+      ctx.moveTo(x, horizon + 3);
+      ctx.lineTo(x + 11, horizon + 3);
+      ctx.lineTo(x + 20, horizon + 13);
+      ctx.lineTo(x + 9, horizon + 13);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.5);
+      ctx.lineWidth = 0.75;
+      ctx.strokeRect(x, horizon + 3, 42, 10);
+    }
+
+    // Fine aggregate lines are sparse and deterministic; distance scrubbing
+    // moves them backwards as the athlete advances, preserving forward read.
+    ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.1);
+    ctx.lineWidth = 1;
+    for (let y = horizon + 38; y < h; y += 23) {
+      const shift = this.materialOffset(meters, 0.31 + y * 0.0007, 31);
+      ctx.beginPath();
+      for (let x = -31 + shift; x < w + 31; x += 31) {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 7, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  private drawFloodlight(
+    x: number,
+    baseY: number,
+    height: number,
+    palette: VenuePalette,
+    lean: -1 | 1,
+  ) {
+    const { ctx } = this;
+    const headX = x + lean * 3;
+    const headY = baseY - height;
+    ctx.strokeStyle = palette.structureShade;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, baseY);
+    ctx.lineTo(headX, headY);
+    ctx.stroke();
+    ctx.fillStyle = palette.structureShade;
+    roundRect(ctx, headX - 10, headY - 4, 20, 7, 1.5);
+    ctx.fill();
+    ctx.fillStyle = withAlpha(palette.structureLight, 0.94);
+    for (let lamp = 0; lamp < 4; lamp++) ctx.fillRect(headX - 7.5 + lamp * 4.5, headY - 2, 3, 3);
+  }
+
+  // ── Course scale + sport markers ──────────────────────────────────────────
 
   private drawGrid(
     startX: number,
@@ -1557,39 +2096,65 @@ export class CourseRenderer implements ReplayRenderer {
   ) {
     const { ctx } = this;
     const C = this.colors;
+    const resolvedSport = sport ?? "rower";
+    const palette = (this.darkTheme ? VENUES_DARK : VENUES_LIGHT)[resolvedSport];
     ctx.save();
     ctx.font = '10px "Source Code Pro", ui-monospace, monospace';
     ctx.textAlign = "center";
 
+    // The old full-height graph grid made the scene look like a chart. A slim
+    // broadcast timing rail keeps exact distance legible without flattening
+    // the environment artwork behind it.
+    const railTop = h - 27;
+    const rail = ctx.createLinearGradient(0, railTop - 4, 0, h);
+    rail.addColorStop(0, withAlpha(palette.surfaceShadow, 0));
+    rail.addColorStop(1, withAlpha(palette.surfaceShadow, this.darkTheme ? 0.46 : 0.25));
+    ctx.fillStyle = rail;
+    ctx.fillRect(0, railTop - 4, this.w, h - railTop + 4);
+    ctx.strokeStyle = withAlpha(palette.surfaceLine, 0.62);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(startX, railTop);
+    ctx.lineTo(startX + span, railTop);
+    ctx.stroke();
+
     for (let i = 0; i <= 10; i++) {
       const x = startX + (span * i) / 10;
       const isMajor = i % 5 === 0;
-      ctx.strokeStyle = isMajor ? C.tickMajor : C.tickMinor;
+      ctx.strokeStyle = isMajor
+        ? withAlpha(palette.surfaceHighlight, 0.78)
+        : withAlpha(palette.surfaceLine, 0.52);
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(x, 10);
-      ctx.lineTo(x, h - 18);
+      ctx.moveTo(x, railTop - (isMajor ? 6 : 3));
+      ctx.lineTo(x, railTop + 3);
       ctx.stroke();
 
-      // Sport-aware course markers on every lane (ghost keeps visual parity).
-      ctx.fillStyle = C.markerCap;
+      // Real venue markers sit on the physical lane and do not inherit either
+      // racer colour. Ghost mode therefore never recolours the course.
       for (const ly of waterlines) {
-        if (sport === "bike") {
-          const markerW = isMajor ? 5 : 3;
-          ctx.fillRect(x - markerW / 2, ly - 1, markerW, 2);
-        } else if (sport === "skierg") {
+        if (resolvedSport === "bike") {
+          ctx.fillStyle = isMajor ? palette.safetyLight : palette.surfaceLine;
+          const markerW = isMajor ? 7 : 4;
+          ctx.fillRect(x - markerW / 2, ly + 15, markerW, isMajor ? 2 : 1);
+        } else if (resolvedSport === "skierg") {
+          ctx.fillStyle = isMajor ? palette.marker : palette.safety;
           const markerR = isMajor ? 3.5 : 2.5;
           ctx.beginPath();
-          ctx.moveTo(x, ly - markerR);
-          ctx.lineTo(x + markerR, ly);
-          ctx.lineTo(x, ly + markerR);
-          ctx.lineTo(x - markerR, ly);
+          ctx.moveTo(x, ly + 9 - markerR);
+          ctx.lineTo(x + markerR, ly + 9);
+          ctx.lineTo(x, ly + 9 + markerR);
+          ctx.lineTo(x - markerR, ly + 9);
           ctx.closePath();
           ctx.fill();
         } else {
+          ctx.fillStyle = isMajor ? palette.marker : palette.safetyLight;
           ctx.beginPath();
-          ctx.arc(x, ly, isMajor ? 3.5 : 2.5, 0, Math.PI * 2);
+          ctx.arc(x, ly + 13, isMajor ? 3.4 : 2.1, 0, Math.PI * 2);
           ctx.fill();
+          ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.46);
+          ctx.lineWidth = 0.75;
+          ctx.stroke();
         }
       }
 
@@ -1611,9 +2176,10 @@ export class CourseRenderer implements ReplayRenderer {
 
   // ── Finish gate ───────────────────────────────────────────────────────────
 
-  private drawFinishGate(x: number, y0: number, y1: number) {
+  private drawFinishGate(x: number, y0: number, y1: number, sport: Sport) {
     const { ctx } = this;
     const C = this.colors;
+    const palette = (this.darkTheme ? VENUES_DARK : VENUES_LIGHT)[sport];
     ctx.save();
 
     // Posts (slim, 2px wide)
@@ -1630,14 +2196,14 @@ export class CourseRenderer implements ReplayRenderer {
 
     // Faint accent glow on the left post, layered wide-to-narrow instead of
     // shadowBlur (same read, no per-frame blur pass). The gate is shared
-    // across lanes, so it always uses the live accent (`C.live`).
+    // across lanes, so it uses the venue's safety colour rather than a racer.
     ctx.lineCap = "butt";
     for (const [width, alpha] of [
       [6, 0.08],
       [3, 0.18],
       [1.5, 0.35],
     ]) {
-      ctx.strokeStyle = withAlpha(C.live, alpha);
+      ctx.strokeStyle = withAlpha(palette.marker, alpha);
       ctx.lineWidth = width;
       ctx.beginPath();
       ctx.moveTo(x - 1, y0);
@@ -1650,97 +2216,80 @@ export class CourseRenderer implements ReplayRenderer {
 
   // ── Lane scene ────────────────────────────────────────────────────────────
 
-  private drawRowSurface(o: LaneOpts, avX: number) {
+  private drawRowSurface(o: LaneOpts) {
     const { ctx } = this;
-    const C = this.colors;
-    const { startX, span, y, accent, phase } = o;
-    const bandTop = y - WATER_H * 0.3;
-    const bandBottom = y + WATER_H * 0.7;
+    const palette = (this.darkTheme ? VENUES_DARK : VENUES_LIGHT).rower;
+    const { startX, span, y, meters } = o;
+    const bandTop = y - WATER_H * 0.32;
+    const bandBottom = y + WATER_H * 0.82;
     const band = ctx.createLinearGradient(0, bandTop, 0, bandBottom);
-    band.addColorStop(0, withAlpha(accent, 0.04));
-    band.addColorStop(0.35, withAlpha(accent, 0.12));
-    band.addColorStop(0.5, withAlpha(accent, 0.18));
-    band.addColorStop(1, withAlpha(accent, 0.22));
+    band.addColorStop(0, withAlpha(palette.surfaceHighlight, 0.14));
+    band.addColorStop(0.18, withAlpha(palette.groundTop, 0.36));
+    band.addColorStop(0.6, withAlpha(palette.groundMid, 0.56));
+    band.addColorStop(1, withAlpha(palette.surfaceShadow, 0.42));
     ctx.fillStyle = band;
-    roundRect(ctx, startX, bandTop, span, bandBottom - bandTop, 4);
+    roundRect(ctx, startX, bandTop, span, bandBottom - bandTop, 5);
     ctx.fill();
 
-    ctx.strokeStyle = C.laneLine;
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = withAlpha(palette.surfaceLine, 0.76);
+    ctx.lineWidth = 0.9;
     ctx.beginPath();
-    ctx.moveTo(startX, y);
-    ctx.lineTo(startX + span, y);
+    ctx.moveTo(startX, bandTop + 1);
+    ctx.lineTo(startX + span, bandTop + 1);
+    ctx.moveTo(startX, bandBottom - 1);
+    ctx.lineTo(startX + span, bandBottom - 1);
     ctx.stroke();
 
-    // Three wave trains make the RowErg lane read as water. Reduced motion
-    // keeps the same structure but flattens every train.
-    for (let ri = 0; ri < 3; ri++) {
-      const offsetY = y + 5 + ri * 5;
-      ctx.strokeStyle = withAlpha(accent, 0.25 - ri * 0.06);
+    // Metre-driven wavelets reverse correctly when scrubbing. They never use
+    // cadence, so the basin cannot appear to flow backwards at low stroke rate.
+    for (let row = 0; row < 4; row++) {
+      const offsetY = y + 3 + row * 5.5;
+      ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.27 - row * 0.04);
       ctx.lineWidth = 0.8;
       ctx.beginPath();
-      ctx.moveTo(startX, offsetY);
       if (this.reduceMotion) {
+        ctx.moveTo(startX, offsetY);
         ctx.lineTo(startX + span, offsetY);
       } else {
-        const layerPhase = phase * (0.7 + ri * 0.45) + ri * 1.1;
-        for (let rx = startX; rx <= startX + span; rx += 6) {
-          ctx.lineTo(rx, offsetY + Math.sin(rx * 0.12 + layerPhase) * 1.5);
+        const materialPhase = meters * (0.055 + row * 0.009) + row * 1.17;
+        for (let x = startX; x <= startX + span; x += 6) {
+          const yy = offsetY + Math.sin(x * 0.11 - materialPhase) * (1.15 - row * 0.08);
+          if (x === startX) ctx.moveTo(x, yy);
+          else ctx.lineTo(x, yy);
         }
       }
       ctx.stroke();
     }
-
-    if (avX <= startX) return;
-    // Build the wake once, then restroke the retained path for glow + core.
-    ctx.beginPath();
-    ctx.moveTo(startX, y);
-    if (this.reduceMotion) {
-      ctx.lineTo(avX, y);
-    } else {
-      for (let x = startX; x <= avX; x += 6) {
-        ctx.lineTo(x, y + Math.sin((x - avX) * 0.18 + phase) * 1.2);
-      }
-    }
-    ctx.strokeStyle = withAlpha(accent, 0.12);
-    ctx.lineWidth = 11;
-    ctx.stroke();
-    ctx.strokeStyle = withAlpha(accent, 0.3);
-    ctx.lineWidth = 6;
-    ctx.stroke();
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 3;
-    ctx.stroke();
   }
 
-  private drawSkiSurface(o: LaneOpts, avX: number) {
+  private drawSkiSurface(o: LaneOpts) {
     const { ctx } = this;
-    const C = this.colors;
-    const { startX, span, y, accent, phase } = o;
-    const bandTop = y - 10;
-    const bandBottom = y + 22;
+    const palette = (this.darkTheme ? VENUES_DARK : VENUES_LIGHT).skierg;
+    const { startX, span, y, meters } = o;
+    const bandTop = y - 11;
+    const bandBottom = y + 27;
     const band = ctx.createLinearGradient(0, bandTop, 0, bandBottom);
-    band.addColorStop(0, withAlpha(C.foam, 0.52));
-    band.addColorStop(0.45, withAlpha(accent, 0.08));
-    band.addColorStop(1, withAlpha(C.markerCap, 0.18));
+    band.addColorStop(0, withAlpha(palette.surfaceHighlight, 0.92));
+    band.addColorStop(0.48, withAlpha(palette.groundTop, 0.82));
+    band.addColorStop(1, withAlpha(palette.surfaceShadow, 0.38));
     ctx.fillStyle = band;
-    roundRect(ctx, startX, bandTop, span, bandBottom - bandTop, 4);
+    roundRect(ctx, startX, bandTop, span, bandBottom - bandTop, 5);
     ctx.fill();
 
-    ctx.strokeStyle = withAlpha(C.markerCap, 0.7);
+    ctx.strokeStyle = withAlpha(palette.surfaceLine, 0.72);
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(startX, y);
-    ctx.lineTo(startX + span, y);
+    ctx.moveTo(startX, bandBottom - 1);
+    ctx.lineTo(startX + span, bandBottom - 1);
     ctx.stroke();
 
-    // Groomed grooves drift very gently while playing; they are straight and
-    // stationary under reduced motion, unlike RowErg's wave trains.
+    // Groomed grooves are locked to travelled metres and remain stationary for
+    // reduced motion. Canvas dash offsets use the inverse of direct scenery x.
     ctx.setLineDash(SKI_GROOVE_DASH);
-    ctx.lineDashOffset = this.reduceMotion ? 0 : -phase * 2;
+    ctx.lineDashOffset = this.dashMaterialOffset(meters, 0.34, 13);
     for (let groove = 0; groove < 3; groove++) {
       const gy = y + 6 + groove * 5;
-      ctx.strokeStyle = withAlpha(accent, 0.18 - groove * 0.035);
+      ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.32 - groove * 0.045);
       ctx.lineWidth = 0.8;
       ctx.beginPath();
       ctx.moveTo(startX, gy);
@@ -1749,54 +2298,43 @@ export class CourseRenderer implements ReplayRenderer {
     }
     ctx.setLineDash(SOLID_LINE);
     ctx.lineDashOffset = 0;
-
-    if (avX > startX) {
-      ctx.beginPath();
-      ctx.moveTo(startX, y + 1);
-      ctx.lineTo(avX, y + 1);
-      ctx.strokeStyle = withAlpha(C.foam, 0.55);
-      ctx.lineWidth = 8;
-      ctx.stroke();
-      ctx.strokeStyle = withAlpha(accent, 0.55);
-      ctx.lineWidth = 3;
-      ctx.stroke();
-    }
   }
 
-  private drawBikeSurface(o: LaneOpts, avX: number) {
+  private drawBikeSurface(o: LaneOpts) {
     const { ctx } = this;
-    const C = this.colors;
-    const { startX, span, y, accent, phase } = o;
-    const bandTop = y - 10;
-    const bandBottom = y + 22;
+    const palette = (this.darkTheme ? VENUES_DARK : VENUES_LIGHT).bike;
+    const { startX, span, y, meters } = o;
+    const bandTop = y - 11;
+    const bandBottom = y + 28;
     const band = ctx.createLinearGradient(0, bandTop, 0, bandBottom);
-    band.addColorStop(0, withAlpha(C.shadow, 0.08));
-    band.addColorStop(0.45, withAlpha(C.markerCap, 0.24));
-    band.addColorStop(1, withAlpha(C.shadow, 0.18));
+    band.addColorStop(0, withAlpha(palette.surfaceHighlight, 0.24));
+    band.addColorStop(0.36, withAlpha(palette.groundMid, 0.92));
+    band.addColorStop(1, withAlpha(palette.surfaceShadow, 0.72));
     ctx.fillStyle = band;
-    roundRect(ctx, startX, bandTop, span, bandBottom - bandTop, 4);
+    roundRect(ctx, startX, bandTop, span, bandBottom - bandTop, 5);
     ctx.fill();
 
-    // Alternating accent/foam curb strokes frame a compact velodrome lane.
-    const dashOffset = this.reduceMotion ? 0 : -phase * 3;
+    // Regulation red/ivory curbs belong to the venue, never the athlete. Their
+    // scrub-safe offset advances from distance, matching clockwise wheel roll.
+    const dashOffset = this.dashMaterialOffset(meters, 0.5, 16);
     for (let edge = 0; edge < 2; edge++) {
       const cy = edge === 0 ? bandTop + 1.5 : bandBottom - 1.5;
       ctx.setLineDash(BIKE_CURB_DASH);
       ctx.lineDashOffset = dashOffset;
-      ctx.strokeStyle = accent;
+      ctx.strokeStyle = palette.marker;
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(startX, cy);
       ctx.lineTo(startX + span, cy);
       ctx.stroke();
       ctx.lineDashOffset = dashOffset - 8;
-      ctx.strokeStyle = withAlpha(C.foam, 0.8);
+      ctx.strokeStyle = palette.safetyLight;
       ctx.stroke();
     }
 
     ctx.setLineDash(BIKE_LANE_DASH);
-    ctx.lineDashOffset = this.reduceMotion ? 0 : -phase * 4;
-    ctx.strokeStyle = withAlpha(C.labelBg, 0.58);
+    ctx.lineDashOffset = this.dashMaterialOffset(meters, 0.38, 20);
+    ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.66);
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(startX, y + 8);
@@ -1804,11 +2342,43 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.stroke();
     ctx.setLineDash(SOLID_LINE);
     ctx.lineDashOffset = 0;
+  }
 
-    if (avX > startX) {
-      ctx.beginPath();
-      ctx.moveTo(startX, y);
-      ctx.lineTo(avX, y);
+  private drawLaneTrail(o: LaneOpts, avX: number) {
+    const { ctx } = this;
+    const C = this.colors;
+    const { startX, y, accent, phase, sport } = o;
+    const resolvedSport = sport ?? "rower";
+    if (avX <= startX) return;
+
+    ctx.beginPath();
+    ctx.moveTo(startX, resolvedSport === "skierg" ? y + 1 : y);
+    if (resolvedSport === "rower" && !this.reduceMotion) {
+      for (let x = startX; x <= avX; x += 6) {
+        ctx.lineTo(x, y + Math.sin((x - avX) * 0.18 + phase) * 1.2);
+      }
+    } else {
+      ctx.lineTo(avX, resolvedSport === "skierg" ? y + 1 : y);
+    }
+
+    if (resolvedSport === "rower") {
+      ctx.strokeStyle = withAlpha(accent, 0.12);
+      ctx.lineWidth = 11;
+      ctx.stroke();
+      ctx.strokeStyle = withAlpha(accent, 0.3);
+      ctx.lineWidth = 6;
+      ctx.stroke();
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else if (resolvedSport === "skierg") {
+      ctx.strokeStyle = withAlpha(C.foam, 0.58);
+      ctx.lineWidth = 8;
+      ctx.stroke();
+      ctx.strokeStyle = withAlpha(accent, 0.58);
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else {
       ctx.strokeStyle = withAlpha(accent, 0.2);
       ctx.lineWidth = 9;
       ctx.stroke();
@@ -1824,14 +2394,15 @@ export class CourseRenderer implements ReplayRenderer {
     const { startX, span, y, frac, accent, phase, pace, isYou, nameTab, padL, sport } = o;
     const avX = startX + span * frac;
 
-    ctx.save();
-    if (!isYou) {
-      ctx.globalAlpha = 0.82;
-    }
+    // Paint the physical lane at full opacity. Only comparison-specific ink
+    // (wake, streaks and label) receives ghost transparency below.
+    if (sport === "skierg") this.drawSkiSurface(o);
+    else if (sport === "bike") this.drawBikeSurface(o);
+    else this.drawRowSurface(o);
 
-    if (sport === "skierg") this.drawSkiSurface(o, avX);
-    else if (sport === "bike") this.drawBikeSurface(o, avX);
-    else this.drawRowSurface(o, avX);
+    ctx.save();
+    if (!isYou) ctx.globalAlpha = 0.76;
+    this.drawLaneTrail(o, avX);
 
     // Pace-linked streaks are shared, but sit on three genuinely different
     // surfaces rather than making every erg look like it races on water.

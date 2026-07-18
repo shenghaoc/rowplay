@@ -59,6 +59,8 @@ interface QualityConfig {
   spray: boolean;
   sprayParticles: number;
   sprayPerCatch: number;
+  /** Density of optional venue dressing. The authored skyline remains at every tier. */
+  environmentDetail: 0 | 1 | 2 | 3;
 }
 
 const QUALITY: Record<RenderQuality, QualityConfig> = {
@@ -71,12 +73,13 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     shadows: false,
     shadowMapSize: 0,
     wake: 0,
-    buoys: false,
-    buoysPerRing: 0,
-    buoyRings: 0,
+    buoys: true,
+    buoysPerRing: 24,
+    buoyRings: 2,
     spray: false,
     sprayParticles: 0,
     sprayPerCatch: 0,
+    environmentDetail: 0,
   },
   medium: {
     dprCap: 2,
@@ -88,11 +91,12 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     shadowMapSize: 0,
     wake: 16,
     buoys: true,
-    buoysPerRing: 48,
-    buoyRings: 3,
+    buoysPerRing: 36,
+    buoyRings: 2,
     spray: true,
     sprayParticles: 40,
     sprayPerCatch: 4,
+    environmentDetail: 1,
   },
   high: {
     dprCap: 2,
@@ -104,11 +108,12 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     shadowMapSize: 1024,
     wake: 28,
     buoys: true,
-    buoysPerRing: 64,
-    buoyRings: 3,
+    buoysPerRing: 48,
+    buoyRings: 2,
     spray: true,
     sprayParticles: 48,
     sprayPerCatch: 4,
+    environmentDetail: 2,
   },
   ultra: {
     dprCap: 3,
@@ -120,11 +125,12 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     shadowMapSize: 2048,
     wake: 44,
     buoys: true,
-    buoysPerRing: 96,
-    buoyRings: 5,
+    buoysPerRing: 64,
+    buoyRings: 2,
     spray: true,
     sprayParticles: 72,
     sprayPerCatch: 6,
+    environmentDetail: 3,
   },
 };
 
@@ -132,6 +138,8 @@ export type Renderer3DBackend = "webgl" | "webgpu";
 
 type RendererLike = {
   outputColorSpace?: string;
+  toneMapping?: number;
+  toneMappingExposure?: number;
   shadowMap?: { enabled: boolean; type: unknown };
   setPixelRatio(dpr: number): void;
   setSize(width: number, height: number): void;
@@ -327,6 +335,110 @@ interface CourseStyle {
   roughness: number;
   metalness: number;
 }
+
+type ThemeColor = (theme: ThemeName) => number;
+
+interface EnvironmentStyle {
+  skyZenith: ThemeColor;
+  skyHorizon: ThemeColor;
+  skyNadir: ThemeColor;
+  fog: ThemeColor;
+  fogNear: number;
+  fogFar: number;
+  hemisphereSky: ThemeColor;
+  hemisphereGround: ThemeColor;
+  hemisphereIntensity: number;
+  sun: ThemeColor;
+  sunIntensity: number;
+  fill: ThemeColor;
+  fillIntensity: number;
+  exposure: number;
+  farSilhouette: ThemeColor;
+  midSilhouette: ThemeColor;
+  venueStructure: ThemeColor;
+  venueAccent: ThemeColor;
+  infield: ThemeColor;
+  apron: ThemeColor;
+}
+
+const themed =
+  (light: number, dark: number): ThemeColor =>
+  (theme) =>
+    theme === "dark" ? dark : light;
+
+/**
+ * Art-directed venue palettes. Athlete accents remain deliberately absent:
+ * physical scenery is shared by live and ghost competitors and never changes
+ * material identity with lane colour.
+ */
+const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
+  rower: {
+    skyZenith: themed(0x3f7894, 0x0c2334),
+    skyHorizon: themed(0xf0c98e, 0x466d79),
+    skyNadir: themed(0x265b69, 0x0a2632),
+    fog: themed(0x9ebfc0, 0x24404b),
+    fogNear: 78,
+    fogFar: 205,
+    hemisphereSky: themed(0xd9eef3, 0x7ba5b2),
+    hemisphereGround: themed(0x315a54, 0x132d31),
+    hemisphereIntensity: 1.15,
+    sun: themed(0xffe0a3, 0xffc978),
+    sunIntensity: 2.0,
+    fill: themed(0xb7e5ee, 0x4b8090),
+    fillIntensity: 0.55,
+    exposure: 1.04,
+    farSilhouette: themed(0x365a4a, 0x102f31),
+    midSilhouette: themed(0x285840, 0x17483a),
+    venueStructure: themed(0xe5e1d4, 0x6f7f83),
+    venueAccent: themed(0xc46e3d, 0xe0a05d),
+    infield: themed(0x1e5d70, 0x174550),
+    apron: themed(0x286f80, 0x205865),
+  },
+  skierg: {
+    skyZenith: themed(0x4c82a8, 0x10243a),
+    skyHorizon: themed(0xe8f3f8, 0x6e8799),
+    skyNadir: themed(0xcadce6, 0x2a4354),
+    fog: themed(0xd7e5ea, 0x78909c),
+    fogNear: 72,
+    fogFar: 198,
+    hemisphereSky: themed(0xeaf7ff, 0x9db7c9),
+    hemisphereGround: themed(0x9fb3bd, 0x3e5664),
+    hemisphereIntensity: 1.22,
+    sun: themed(0xfff1d3, 0xddeeff),
+    sunIntensity: 1.8,
+    fill: themed(0xbcdfff, 0x759db8),
+    fillIntensity: 0.62,
+    exposure: 1.02,
+    farSilhouette: themed(0x9fb9c8, 0x4c6575),
+    midSilhouette: themed(0x68899a, 0x294958),
+    venueStructure: themed(0x314d5d, 0x172e3b),
+    venueAccent: themed(0xd94048, 0xff6670),
+    infield: themed(0xe4edf1, 0xafc0c8),
+    apron: themed(0xf4f7f8, 0xd1dde2),
+  },
+  bike: {
+    skyZenith: themed(0x172b44, 0x101b2f),
+    skyHorizon: themed(0xd27a57, 0x874e58),
+    skyNadir: themed(0x423f4b, 0x141a27),
+    fog: themed(0x5f5962, 0x242838),
+    fogNear: 70,
+    fogFar: 185,
+    hemisphereSky: themed(0xb3c9df, 0x61758e),
+    hemisphereGround: themed(0x3b302d, 0x141820),
+    hemisphereIntensity: 1.0,
+    sun: themed(0xffb36f, 0xff8f68),
+    sunIntensity: 1.85,
+    fill: themed(0x8eb8e7, 0x536f9e),
+    fillIntensity: 0.58,
+    exposure: 1.08,
+    farSilhouette: themed(0x333d4a, 0x111722),
+    midSilhouette: themed(0x343d4a, 0x252c3a),
+    venueStructure: themed(0x364250, 0x202837),
+    venueAccent: themed(0xf0a75f, 0xffb46b),
+    infield: themed(0x1f3633, 0x142622),
+    apron: themed(0x4a4644, 0x30353d),
+  },
+};
 
 /**
  * Finalize an avatar group: cast shadows from every mesh (so heads, oars, poles,
@@ -1653,11 +1765,11 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     metersPerCycle: METERS_PER_CYCLE.rower,
     surgeAmp: 0.34,
     sprayOffset: 2.2, // off the blade tips
-    groundOpacity: 0.4,
+    groundOpacity: 1,
     trailColor: 0xffffff,
-    groundColor: (t) => hex((t === "dark" ? COLORS_DARK : COLORS_LIGHT).laneLine),
+    groundColor: (t) => (t === "dark" ? 0x165a68 : 0x155a70),
     course: {
-      surface: (t) => (t === "dark" ? 0x123b47 : 0x7fc4d6),
+      surface: (t) => (t === "dark" ? 0x1a5968 : 0x397f92),
       edge: (t) => (t === "dark" ? 0x8fe3f1 : 0xf8fbff),
       laneLine: (t) => (t === "dark" ? 0x4fb3c8 : 0xd9f7ff),
       detail: (t) => (t === "dark" ? 0xfbbf24 : 0xf59e0b),
@@ -1699,9 +1811,9 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     sprayOffset: null,
     groundOpacity: 1,
     trailColor: null,
-    groundColor: (t) => (t === "dark" ? 0x2a333a : 0x9aa4ac),
+    groundColor: (t) => (t === "dark" ? 0x242a31 : 0x7e898f),
     course: {
-      surface: (t) => (t === "dark" ? 0x262c32 : 0x3f464d),
+      surface: (t) => (t === "dark" ? 0x343942 : 0x474e54),
       edge: (t) => (t === "dark" ? 0xe5e7eb : 0xf8fafc),
       laneLine: (t) => (t === "dark" ? 0xfbbf24 : 0xf59e0b),
       detail: (t) => (t === "dark" ? 0xef4444 : 0xb91c1c),
@@ -1857,7 +1969,16 @@ export class CourseRenderer3D implements ReplayRenderer {
   private canvas: HTMLCanvasElement;
   private readonly sport: Sport;
   private readonly profile: SportProfile;
+  private readonly environment: EnvironmentStyle;
   private groundMesh!: THREE.Mesh;
+  private skyGeometry!: THREE.SphereGeometry;
+  private hemisphereLight!: THREE.HemisphereLight;
+  private sunLight!: THREE.DirectionalLight;
+  private worldFill!: THREE.DirectionalLight;
+  private readonly environmentMidGroup = new THREE.Group();
+  private readonly environmentDetailGroup = new THREE.Group();
+  private liveContactShadow!: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
+  private ghostContactShadow!: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
   private liveBoat: THREE.Group; // outer: position + heading
   private liveAvatar: Avatar; // inner: bob + roll + stroke
   private ghostGroup: THREE.Group; // outer: position + heading + visibility
@@ -1886,9 +2007,12 @@ export class CourseRenderer3D implements ReplayRenderer {
   private cameraLayoutMode = -1;
   private disposables: THREE.Material[] = [];
   private geometries: THREE.BufferGeometry[] = [];
+  private instancedMeshes: THREE.InstancedMesh[] = [];
   private courseThemeMats: Array<{ material: THREE.MeshStandardMaterial; color: CourseColor }> = [];
-  private postMatMajor!: THREE.MeshStandardMaterial;
-  private postMatMinor!: THREE.MeshStandardMaterial;
+  private environmentThemeMats: Array<{
+    material: THREE.MeshStandardMaterial | THREE.MeshBasicMaterial;
+    color: ThemeColor;
+  }> = [];
   private cellMatDark!: THREE.MeshStandardMaterial;
   private cellMatLight!: THREE.MeshStandardMaterial;
 
@@ -1901,6 +2025,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.cfg = QUALITY[quality];
     this.sport = sport;
     this.profile = SPORT_PROFILES[sport];
+    this.environment = ENVIRONMENTS[sport];
     this.backend = options.backend ?? "webgl";
     // A canvas can only ever hold ONE context type for its lifetime, and the 2D
     // renderer locks the shared page canvas to '2d'. So the 3D renderer creates
@@ -1939,6 +2064,8 @@ export class CourseRenderer3D implements ReplayRenderer {
       throw err;
     }
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = this.environment.exposure;
     if (this.cfg.shadows && this.renderer.shadowMap) {
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1946,24 +2073,43 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(BASE_CAMERA_FOV, 1, 0.1, 500);
 
-    // Sky/ground hemisphere fill + a key sun give boats nicer shading than a
-    // flat ambient. The sun casts shadows only at high quality.
-    this.scene.add(new THREE.HemisphereLight(0xddeaf2, 0x4a5560, 0.95));
-    const sun = new THREE.DirectionalLight(0xfff7ed, 1.0);
-    sun.position.set(14, 26, 10);
+    // Venue-specific sky/ground fill plus a warm key and cool bounce establish
+    // a deliberate broadcast-lighting rig instead of a flat ambient wash.
+    this.hemisphereLight = new THREE.HemisphereLight(
+      this.environment.hemisphereSky("light"),
+      this.environment.hemisphereGround("light"),
+      this.environment.hemisphereIntensity,
+    );
+    this.hemisphereLight.name = "environment:hemisphere";
+    this.scene.add(this.hemisphereLight);
+    this.sunLight = new THREE.DirectionalLight(
+      this.environment.sun("light"),
+      this.environment.sunIntensity,
+    );
+    this.sunLight.name = "environment:key-light";
+    this.sunLight.position.set(18, 30, 12);
     if (this.cfg.shadows) {
-      sun.castShadow = true;
-      sun.shadow.mapSize.set(this.cfg.shadowMapSize, this.cfg.shadowMapSize);
-      const c = sun.shadow.camera;
+      this.sunLight.castShadow = true;
+      this.sunLight.shadow.mapSize.set(this.cfg.shadowMapSize, this.cfg.shadowMapSize);
+      const c = this.sunLight.shadow.camera;
       c.near = 1;
-      c.far = 90;
-      c.left = c.bottom = -42;
-      c.right = c.top = 42;
+      c.far = 58;
+      c.left = -10;
+      c.right = 10;
+      c.bottom = -8;
+      c.top = 12;
+      this.sunLight.shadow.bias = -0.0002;
+      this.sunLight.shadow.normalBias = 0.035;
     }
-    this.scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xffe4c7, 0.28);
-    fill.position.set(-10, 8, -6);
-    this.scene.add(fill);
+    this.sunLight.target.name = "environment:key-light-target";
+    this.scene.add(this.sunLight, this.sunLight.target);
+    this.worldFill = new THREE.DirectionalLight(
+      this.environment.fill("light"),
+      this.environment.fillIntensity,
+    );
+    this.worldFill.name = "environment:world-fill";
+    this.worldFill.position.set(-12, 9, -8);
+    this.scene.add(this.worldFill);
 
     // Camera-relative lights keep the athlete's rear planes readable around
     // the whole loop. Fixed world lights alone left half the course as an
@@ -2017,6 +2163,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.sprayMesh.frustumCulled = false;
       this.scene.add(this.sprayMesh);
     }
+
+    // Apply the light theme immediately. Previously this happened only after
+    // a theme change, leaving the initial alpha canvas to reveal a black page
+    // behind an otherwise light scene.
+    this.applyTheme("light");
   }
 
   private track<T extends THREE.BufferGeometry>(g: T): T {
@@ -2027,6 +2178,11 @@ export class CourseRenderer3D implements ReplayRenderer {
   private mat<T extends THREE.Material>(m: T): T {
     this.disposables.push(m);
     return m;
+  }
+
+  private trackInstanced<T extends THREE.InstancedMesh>(mesh: T): T {
+    this.instancedMeshes.push(mesh);
+    return mesh;
   }
 
   private courseMat(
@@ -2042,6 +2198,38 @@ export class CourseRenderer3D implements ReplayRenderer {
     );
     material.name = name;
     this.courseThemeMats.push({ material, color });
+    return material;
+  }
+
+  private environmentStandardMat(
+    name: string,
+    color: ThemeColor,
+    opts: Omit<THREE.MeshStandardMaterialParameters, "color"> = {},
+  ): THREE.MeshStandardMaterial {
+    const material = this.mat(
+      new THREE.MeshStandardMaterial({
+        ...opts,
+        color: color("light"),
+      }),
+    );
+    material.name = name;
+    this.environmentThemeMats.push({ material, color });
+    return material;
+  }
+
+  private environmentBasicMat(
+    name: string,
+    color: ThemeColor,
+    opts: Omit<THREE.MeshBasicMaterialParameters, "color"> = {},
+  ): THREE.MeshBasicMaterial {
+    const material = this.mat(
+      new THREE.MeshBasicMaterial({
+        ...opts,
+        color: color("light"),
+      }),
+    );
+    material.name = name;
+    this.environmentThemeMats.push({ material, color });
     return material;
   }
 
@@ -2291,19 +2479,581 @@ export class CourseRenderer3D implements ReplayRenderer {
     else this.addBikeCourseDetails(group, innerR, outerR);
   }
 
-  private buildStaticScene(): void {
-    const seg = this.profile.waves ? this.cfg.groundSegments : 1;
-    const groundGeo = this.track(new THREE.PlaneGeometry(140, 140, seg, seg));
-    // Water is glossier than snow/asphalt so the sun glints off the moving
-    // wave normals; the displacement loop recomputes them each frame.
-    const groundMat = this.mat(
-      new THREE.MeshStandardMaterial({
-        color: this.profile.groundColor("light"),
-        transparent: this.profile.groundOpacity < 1,
-        opacity: this.profile.groundOpacity,
-        roughness: this.profile.waves ? 0.45 : 0.85,
-        metalness: this.profile.waves ? 0.12 : 0.05,
+  private updateSkyColors(themeName: ThemeName): void {
+    if (!this.skyGeometry) return;
+    const position = this.skyGeometry.getAttribute("position");
+    const color = this.skyGeometry.getAttribute("color") as THREE.BufferAttribute;
+    const zenith = new THREE.Color(this.environment.skyZenith(themeName));
+    const horizon = new THREE.Color(this.environment.skyHorizon(themeName));
+    const nadir = new THREE.Color(this.environment.skyNadir(themeName));
+    const sample = new THREE.Color();
+    for (let i = 0; i < position.count; i++) {
+      const normalizedY = THREE.MathUtils.clamp(position.getY(i) / 175, -1, 1);
+      if (normalizedY >= 0) {
+        sample.copy(horizon).lerp(zenith, Math.pow(normalizedY, 0.58));
+      } else {
+        sample.copy(horizon).lerp(nadir, Math.pow(-normalizedY, 0.72));
+      }
+      color.setXYZ(i, sample.r, sample.g, sample.b);
+    }
+    color.needsUpdate = true;
+  }
+
+  private buildSky(): void {
+    const widthSegments = this.cfg.environmentDetail >= 2 ? 48 : 32;
+    const heightSegments = this.cfg.environmentDetail >= 2 ? 24 : 16;
+    this.skyGeometry = this.track(new THREE.SphereGeometry(175, widthSegments, heightSegments));
+    const positions = this.skyGeometry.getAttribute("position");
+    this.skyGeometry.setAttribute(
+      "color",
+      new THREE.BufferAttribute(new Float32Array(positions.count * 3), 3),
+    );
+    const skyMat = this.mat(
+      new THREE.MeshBasicMaterial({
+        vertexColors: true,
+        side: THREE.BackSide,
+        depthWrite: false,
+        depthTest: false,
+        fog: false,
       }),
+    );
+    skyMat.name = "environment:sky-material";
+    const sky = new THREE.Mesh(this.skyGeometry, skyMat);
+    sky.name = `environment:${this.sport}:sky`;
+    sky.frustumCulled = false;
+    sky.renderOrder = -1000;
+    this.scene.add(sky);
+    this.updateSkyColors("light");
+
+    const sunMat = this.environmentBasicMat("environment:sun-disc-material", this.environment.sun, {
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      fog: false,
+    });
+    const sun = new THREE.Mesh(this.track(new THREE.CircleGeometry(7.5, 32)), sunMat);
+    sun.name = `environment:${this.sport}:sun-disc`;
+    sun.position.set(-104, 51, -104);
+    sun.lookAt(0, 8, 0);
+    sun.renderOrder = -900;
+    this.scene.add(sun);
+  }
+
+  private makeHorizonRing(
+    name: string,
+    radius: number,
+    baseY: number,
+    averageHeight: number,
+    variation: number,
+    segments: number,
+    color: ThemeColor,
+    phase: number,
+  ): THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> {
+    const positions = new Float32Array(segments * 18);
+    let cursor = 0;
+    const heightAt = (i: number): number => {
+      const a = (i / segments) * Math.PI * 2;
+      const broad = Math.sin(a * 3 + phase) * 0.46 + Math.sin(a * 7 - phase * 0.7) * 0.28;
+      const ridge = Math.abs(Math.sin(a * 11 + phase * 1.9)) * 0.34;
+      return averageHeight + variation * (broad + ridge);
+    };
+    const radiusAt = (i: number): number => {
+      const a = (i / segments) * Math.PI * 2;
+      return radius + Math.sin(a * 5 + phase) * 2.1 + Math.sin(a * 13) * 0.8;
+    };
+    for (let i = 0; i < segments; i++) {
+      const a0 = (i / segments) * Math.PI * 2;
+      const a1 = ((i + 1) / segments) * Math.PI * 2;
+      const r0 = radiusAt(i);
+      const r1 = radiusAt(i + 1);
+      const x0 = Math.sin(a0) * r0;
+      const z0 = Math.cos(a0) * r0;
+      const x1 = Math.sin(a1) * r1;
+      const z1 = Math.cos(a1) * r1;
+      const y0 = baseY + Math.max(0.4, heightAt(i));
+      const y1 = baseY + Math.max(0.4, heightAt(i + 1));
+      const quad = [
+        x0,
+        baseY,
+        z0,
+        x1,
+        y1,
+        z1,
+        x1,
+        baseY,
+        z1,
+        x0,
+        baseY,
+        z0,
+        x0,
+        y0,
+        z0,
+        x1,
+        y1,
+        z1,
+      ];
+      positions.set(quad, cursor);
+      cursor += quad.length;
+    }
+    const geometry = this.track(new THREE.BufferGeometry());
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.computeVertexNormals();
+    const material = this.environmentBasicMat(`${name}:material`, color, {
+      side: THREE.DoubleSide,
+      fog: true,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = name;
+    return mesh;
+  }
+
+  private addInstancedPines(
+    group: THREE.Group,
+    count: number,
+    radiusMin: number,
+    radiusMax: number,
+  ): void {
+    const canopyGeo = this.track(new THREE.ConeGeometry(1.45, 4.2, 7, 1));
+    const crownGeo = this.track(new THREE.ConeGeometry(1.02, 3.4, 7, 1));
+    const trunkGeo = this.track(new THREE.CylinderGeometry(0.1, 0.16, 1.35, 6));
+    const pineColor =
+      this.sport === "skierg" ? themed(0x335d51, 0x244d45) : themed(0x2d6548, 0x1c503c);
+    const crownColor =
+      this.sport === "skierg" ? themed(0x416f61, 0x2e5d52) : themed(0x397657, 0x276148);
+    // Distant foliage is intentionally unlit: it keeps readable colour in the
+    // dusk themes rather than collapsing into black spike silhouettes.
+    const canopyMat = this.environmentBasicMat(
+      `environment:${this.sport}:pine-canopy-material`,
+      pineColor,
+      { fog: true },
+    );
+    const crownMat = this.environmentBasicMat(
+      `environment:${this.sport}:pine-crown-material`,
+      crownColor,
+      { fog: true },
+    );
+    const trunkMat = this.environmentStandardMat(
+      `environment:${this.sport}:pine-trunk-material`,
+      themed(0x5a4635, 0x261f1b),
+      { roughness: 1, metalness: 0, flatShading: true },
+    );
+    const canopies = this.trackInstanced(new THREE.InstancedMesh(canopyGeo, canopyMat, count));
+    const crowns = this.trackInstanced(new THREE.InstancedMesh(crownGeo, crownMat, count));
+    const trunks = this.trackInstanced(new THREE.InstancedMesh(trunkGeo, trunkMat, count));
+    canopies.name = `environment:${this.sport}:pines`;
+    crowns.name = `environment:${this.sport}:pine-crowns`;
+    trunks.name = `environment:${this.sport}:pine-trunks`;
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const position = new THREE.Vector3();
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + Math.sin(i * 2.19) * 0.035;
+      const radius =
+        radiusMin + (radiusMax - radiusMin) * (0.18 + 0.82 * (0.5 + Math.sin(i * 12.9898) * 0.5));
+      const size = 0.75 + (0.5 + Math.sin(i * 7.31) * 0.5) * 0.8;
+      position.set(Math.sin(a) * radius, 2.05 * size, Math.cos(a) * radius);
+      scale.set(size, size, size);
+      matrix.compose(position, quaternion, scale);
+      canopies.setMatrixAt(i, matrix);
+      position.y = 3.85 * size;
+      scale.set(size, size, size);
+      matrix.compose(position, quaternion, scale);
+      crowns.setMatrixAt(i, matrix);
+      position.y = 0.55 * size;
+      scale.set(size, size, size);
+      matrix.compose(position, quaternion, scale);
+      trunks.setMatrixAt(i, matrix);
+    }
+    canopies.instanceMatrix.needsUpdate = true;
+    crowns.instanceMatrix.needsUpdate = true;
+    trunks.instanceMatrix.needsUpdate = true;
+    group.add(trunks, canopies, crowns);
+  }
+
+  private addAlpinePeaks(group: THREE.Group, count: number): void {
+    const peakGeo = this.track(new THREE.ConeGeometry(7.2, 24, 5, 1));
+    const capGeo = this.track(new THREE.ConeGeometry(3.25, 6.2, 5, 1));
+    const peakMat = this.environmentBasicMat(
+      "environment:skierg:mountain-material",
+      themed(0x7897a8, 0x4f6a7a),
+      { fog: true },
+    );
+    const capMat = this.environmentBasicMat(
+      "environment:skierg:snowcap-material",
+      themed(0xe8f2f5, 0xaec1ca),
+      { fog: true },
+    );
+    const peaks = this.trackInstanced(new THREE.InstancedMesh(peakGeo, peakMat, count));
+    const caps = this.trackInstanced(new THREE.InstancedMesh(capGeo, capMat, count));
+    peaks.name = "environment:skierg:mountain-peaks";
+    caps.name = "environment:skierg:snowcaps";
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const position = new THREE.Vector3();
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + Math.sin(i * 1.73) * 0.045;
+      const radius = 79 + (0.5 + Math.sin(i * 8.17) * 0.5) * 13;
+      const size = 0.72 + (0.5 + Math.sin(i * 4.91) * 0.5) * 0.62;
+      quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), a + (i % 3) * 0.31);
+      position.set(Math.sin(a) * radius, 9.5 * size, Math.cos(a) * radius);
+      scale.set(size * (0.9 + (i % 4) * 0.08), size, size);
+      matrix.compose(position, quaternion, scale);
+      peaks.setMatrixAt(i, matrix);
+      position.y = 19.7 * size;
+      scale.set(size, size, size);
+      matrix.compose(position, quaternion, scale);
+      caps.setMatrixAt(i, matrix);
+    }
+    peaks.instanceMatrix.needsUpdate = true;
+    caps.instanceMatrix.needsUpdate = true;
+    group.add(peaks, caps);
+  }
+
+  private addPavilions(group: THREE.Group, count: number, radius: number): void {
+    const bodyGeo = this.track(new THREE.BoxGeometry(9, 2.6, 3.6));
+    const roofGeo = this.track(new THREE.ConeGeometry(5.4, 1.8, 4));
+    const glassGeo = this.track(new THREE.BoxGeometry(7.4, 0.8, 0.08));
+    const bodyMat = this.environmentStandardMat(
+      `environment:${this.sport}:pavilion-body-material`,
+      this.environment.venueStructure,
+      { roughness: 0.82, metalness: 0.04, flatShading: true },
+    );
+    const roofMat = this.environmentStandardMat(
+      `environment:${this.sport}:pavilion-roof-material`,
+      this.environment.venueAccent,
+      { roughness: 0.68, metalness: 0.06, flatShading: true },
+    );
+    const glassMat = this.environmentBasicMat(
+      `environment:${this.sport}:pavilion-glass-material`,
+      themed(0x8ed4e5, 0x173a4d),
+      { transparent: true, opacity: 0.75, depthWrite: false },
+    );
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + 0.34;
+      const pavilion = new THREE.Group();
+      pavilion.name = `environment:${this.sport}:pavilion`;
+      pavilion.position.set(Math.sin(a) * radius, 0, Math.cos(a) * radius);
+      pavilion.rotation.y = a;
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 1.45;
+      const roof = new THREE.Mesh(roofGeo, roofMat);
+      roof.position.y = 3.45;
+      roof.rotation.y = Math.PI / 4;
+      roof.scale.z = 0.52;
+      const glass = new THREE.Mesh(glassGeo, glassMat);
+      glass.position.set(0, 1.8, -1.84);
+      pavilion.add(body, roof, glass);
+      group.add(pavilion);
+    }
+  }
+
+  private addFloodlights(group: THREE.Group, count: number, radius: number): void {
+    const poleGeo = this.track(new THREE.CylinderGeometry(0.1, 0.15, 8, 8));
+    const panelGeo = this.track(new THREE.BoxGeometry(2.2, 0.7, 0.22));
+    const poleMat = this.environmentStandardMat(
+      `environment:${this.sport}:floodlight-pole-material`,
+      this.environment.venueStructure,
+      { roughness: 0.48, metalness: 0.55 },
+    );
+    const panelMat = this.environmentBasicMat(
+      `environment:${this.sport}:floodlight-panel-material`,
+      themed(0xfff4d0, 0xffd89c),
+      { fog: true },
+    );
+    const poles = this.trackInstanced(new THREE.InstancedMesh(poleGeo, poleMat, count));
+    const panels = this.trackInstanced(new THREE.InstancedMesh(panelGeo, panelMat, count));
+    poles.name = `environment:${this.sport}:floodlight-poles`;
+    panels.name = `environment:${this.sport}:floodlight-panels`;
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3(1, 1, 1);
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      position.set(Math.sin(a) * radius, 4, Math.cos(a) * radius);
+      quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), a);
+      matrix.compose(position, quaternion, scale);
+      poles.setMatrixAt(i, matrix);
+      position.y = 8.15;
+      matrix.compose(position, quaternion, scale);
+      panels.setMatrixAt(i, matrix);
+    }
+    poles.instanceMatrix.needsUpdate = true;
+    panels.instanceMatrix.needsUpdate = true;
+    group.add(poles, panels);
+  }
+
+  private addArenaPanels(group: THREE.Group, count: number, radius: number): void {
+    const panelGeo = this.track(new THREE.BoxGeometry(5.1, 1.45, 0.16));
+    const ribGeo = this.track(new THREE.BoxGeometry(0.13, 4.4, 0.22));
+    const panelMat = this.mat(
+      new THREE.MeshBasicMaterial({ color: 0xffffff, fog: true, vertexColors: false }),
+    );
+    panelMat.name = "environment:bike:wall-panel-material";
+    const ribMat = this.environmentBasicMat(
+      "environment:bike:wall-rib-material",
+      themed(0x647181, 0x384458),
+      { fog: true },
+    );
+    const panels = this.trackInstanced(new THREE.InstancedMesh(panelGeo, panelMat, count));
+    const ribs = this.trackInstanced(new THREE.InstancedMesh(ribGeo, ribMat, count));
+    panels.name = "environment:bike:wall-panels";
+    ribs.name = "environment:bike:wall-ribs";
+    const panelColors = [
+      new THREE.Color(0x3c5074),
+      new THREE.Color(0x5a3e68),
+      new THREE.Color(0x32616a),
+    ];
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3(1, 1, 1);
+    const position = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      quaternion.setFromAxisAngle(up, a);
+      position.set(Math.sin(a) * radius, 2.15, Math.cos(a) * radius);
+      matrix.compose(position, quaternion, scale);
+      panels.setMatrixAt(i, matrix);
+      panels.setColorAt(i, panelColors[i % panelColors.length]);
+      position.y = 2.2;
+      matrix.compose(position, quaternion, scale);
+      ribs.setMatrixAt(i, matrix);
+    }
+    panels.instanceMatrix.needsUpdate = true;
+    if (panels.instanceColor) panels.instanceColor.needsUpdate = true;
+    ribs.instanceMatrix.needsUpdate = true;
+    group.add(panels, ribs);
+  }
+
+  private buildEnvironment(innerR: number, outerR: number): void {
+    this.buildSky();
+    this.environmentMidGroup.name = `environment:${this.sport}:midground`;
+    this.environmentDetailGroup.name = `environment:${this.sport}:detail`;
+    this.scene.add(this.environmentMidGroup, this.environmentDetailGroup);
+
+    const farHeight = this.sport === "skierg" ? 18 : this.sport === "bike" ? 11 : 5.5;
+    const farVariation = this.sport === "skierg" ? 9 : this.sport === "bike" ? 3 : 2.4;
+    const midHeight = this.sport === "skierg" ? 8 : this.sport === "bike" ? 7 : 4.2;
+    const midVariation = this.sport === "skierg" ? 5.5 : this.sport === "bike" ? 2 : 1.8;
+    this.environmentMidGroup.add(
+      this.makeHorizonRing(
+        `environment:${this.sport}:horizon-far`,
+        116,
+        -2.5,
+        farHeight,
+        farVariation,
+        72,
+        this.environment.farSilhouette,
+        0.7,
+      ),
+      this.makeHorizonRing(
+        `environment:${this.sport}:horizon-mid`,
+        84,
+        -1.4,
+        midHeight,
+        midVariation,
+        64,
+        this.environment.midSilhouette,
+        2.1,
+      ),
+    );
+
+    const infieldMat = this.environmentStandardMat(
+      `environment:${this.sport}:infield-material`,
+      this.environment.infield,
+      {
+        roughness: this.sport === "rower" ? 0.42 : 0.9,
+        metalness: this.sport === "rower" ? 0.1 : 0.01,
+      },
+    );
+    const infield = new THREE.Mesh(
+      this.track(new THREE.CircleGeometry(innerR - 0.8, this.cfg.laneSegments)),
+      infieldMat,
+    );
+    infield.name = `environment:${this.sport}:infield`;
+    infield.rotation.x = -Math.PI / 2;
+    infield.position.y = -0.015;
+    infield.receiveShadow = this.cfg.shadows;
+    this.scene.add(infield);
+
+    const apronMat = this.environmentStandardMat(
+      `environment:${this.sport}:apron-material`,
+      this.environment.apron,
+      {
+        roughness: this.sport === "rower" ? 0.45 : 0.9,
+        metalness: this.sport === "rower" ? 0.08 : 0.01,
+      },
+    );
+    const apron = new THREE.Mesh(
+      this.track(new THREE.RingGeometry(outerR + 0.2, 55, this.cfg.laneSegments)),
+      apronMat,
+    );
+    apron.name = `environment:${this.sport}:apron`;
+    apron.rotation.x = -Math.PI / 2;
+    apron.position.y = -0.005;
+    apron.receiveShadow = this.cfg.shadows;
+    this.scene.add(apron);
+
+    if (this.sport === "rower") {
+      this.addInstancedPines(
+        this.environmentMidGroup,
+        24 + this.cfg.environmentDetail * 14,
+        66,
+        79,
+      );
+      this.addPavilions(this.environmentDetailGroup, 4, 62);
+    } else if (this.sport === "skierg") {
+      this.addAlpinePeaks(this.environmentMidGroup, 14 + this.cfg.environmentDetail * 3);
+      const snowbankMat = this.environmentStandardMat(
+        "environment:skierg:snowbank-material",
+        this.environment.apron,
+        { roughness: 0.98, metalness: 0, flatShading: true },
+      );
+      const snowbank = new THREE.Mesh(
+        this.track(new THREE.TorusGeometry(outerR + 2.1, 1.1, 6, this.cfg.laneSegments)),
+        snowbankMat,
+      );
+      snowbank.name = "environment:skierg:snowbank";
+      snowbank.rotation.x = Math.PI / 2;
+      snowbank.position.y = 0.25;
+      snowbank.receiveShadow = this.cfg.shadows;
+      this.environmentMidGroup.add(snowbank);
+      this.addInstancedPines(
+        this.environmentMidGroup,
+        32 + this.cfg.environmentDetail * 18,
+        56,
+        76,
+      );
+      this.addFloodlights(this.environmentDetailGroup, 8 + this.cfg.environmentDetail * 2, 48);
+      if (this.cfg.environmentDetail >= 1) this.addPavilions(this.environmentDetailGroup, 3, 59);
+    } else {
+      const wallMat = this.environmentBasicMat(
+        "environment:bike:arena-wall-material",
+        this.environment.venueStructure,
+        { side: THREE.BackSide, fog: true },
+      );
+      const arenaWall = new THREE.Mesh(
+        this.track(new THREE.CylinderGeometry(52, 52, 5, 72, 1, true)),
+        wallMat,
+      );
+      arenaWall.name = "environment:bike:arena-wall";
+      arenaWall.position.y = 2.15;
+      this.environmentMidGroup.add(arenaWall);
+      this.addArenaPanels(this.environmentMidGroup, 28 + this.cfg.environmentDetail * 4, 51.75);
+      const canopyMat = this.environmentStandardMat(
+        "environment:bike:canopy-material",
+        this.environment.venueAccent,
+        { roughness: 0.52, metalness: 0.34 },
+      );
+      const canopy = new THREE.Mesh(
+        this.track(new THREE.TorusGeometry(51.5, 0.85, 8, 96)),
+        canopyMat,
+      );
+      canopy.name = "environment:bike:canopy";
+      canopy.rotation.x = Math.PI / 2;
+      canopy.position.y = 5.25;
+      this.environmentMidGroup.add(canopy);
+      const ledMat = this.environmentBasicMat(
+        "environment:bike:led-band-material",
+        this.environment.venueAccent,
+        { fog: true },
+      );
+      for (const y of [0.95, 4.05]) {
+        const led = new THREE.Mesh(this.track(new THREE.TorusGeometry(51, 0.075, 4, 112)), ledMat);
+        led.name = "environment:bike:led-band";
+        led.rotation.x = Math.PI / 2;
+        led.position.y = y;
+        this.environmentMidGroup.add(led);
+      }
+      const tierMat = this.environmentBasicMat(
+        "environment:bike:stands-material",
+        this.environment.midSilhouette,
+      );
+      for (const [radius, y] of [
+        [45.5, 0.8],
+        [47, 1.65],
+        [48.5, 2.55],
+      ] as const) {
+        const tier = new THREE.Mesh(
+          this.track(new THREE.TorusGeometry(radius, 0.48, 5, 96)),
+          tierMat,
+        );
+        tier.name = "environment:bike:stands-tier";
+        tier.rotation.x = Math.PI / 2;
+        tier.position.y = y;
+        this.environmentMidGroup.add(tier);
+      }
+      this.addFloodlights(this.environmentDetailGroup, 10 + this.cfg.environmentDetail * 2, 46);
+      if (this.cfg.environmentDetail >= 1) this.addPavilions(this.environmentDetailGroup, 4, 58);
+    }
+  }
+
+  private buildContactShadows(): void {
+    const geometry = this.track(new THREE.CircleGeometry(1, 28));
+    const liveMaterial = this.mat(
+      new THREE.MeshBasicMaterial({
+        color: this.sport === "rower" ? 0x071f2a : 0x101820,
+        transparent: true,
+        opacity: this.sport === "rower" ? 0.18 : 0.25,
+        depthWrite: false,
+      }),
+    );
+    const ghostMaterial = this.mat(liveMaterial.clone());
+    ghostMaterial.opacity *= 0.48;
+    this.liveContactShadow = new THREE.Mesh(geometry, liveMaterial);
+    this.ghostContactShadow = new THREE.Mesh(geometry, ghostMaterial);
+    this.liveContactShadow.name = "athlete:live:contact-shadow";
+    this.ghostContactShadow.name = "athlete:ghost:contact-shadow";
+    const shadowScale =
+      this.sport === "rower"
+        ? new THREE.Vector3(1.9, 0.52, 1)
+        : this.sport === "bike"
+          ? new THREE.Vector3(1.2, 0.42, 1)
+          : new THREE.Vector3(0.72, 0.42, 1);
+    for (const shadow of [this.liveContactShadow, this.ghostContactShadow]) {
+      // Yaw the flat ellipse around world-up before pitching its CircleGeometry
+      // into the ground plane. Default XYZ order would turn the long axis
+      // vertical at quarter laps when rotation.y reaches 90 degrees.
+      shadow.rotation.order = "YXZ";
+      shadow.rotation.x = -Math.PI / 2;
+      shadow.position.y = 0.08;
+      shadow.scale.copy(shadowScale);
+      shadow.renderOrder = 1;
+    }
+    this.ghostContactShadow.visible = false;
+    this.scene.add(this.liveContactShadow, this.ghostContactShadow);
+  }
+
+  private buildStaticScene(): void {
+    const innerR = this.ghostRadius - 4;
+    const outerR = this.loopRadius + 4;
+    const seg = this.profile.waves ? this.cfg.groundSegments : 1;
+    // The terrain extends behind the authored horizon/fog so its edge can
+    // never reveal the alpha canvas. Rowing uses a clear-coated opaque water
+    // body; snow and asphalt stay deliberately rough and grounded.
+    const groundGeo = this.track(new THREE.PlaneGeometry(260, 260, seg, seg));
+    const groundMat = this.mat(
+      this.profile.waves
+        ? new THREE.MeshPhysicalMaterial({
+            color: this.profile.groundColor("light"),
+            transparent: false,
+            opacity: 1,
+            roughness: 0.24,
+            metalness: 0.04,
+            clearcoat: 0.92,
+            clearcoatRoughness: 0.18,
+            emissive: 0x08232a,
+            emissiveIntensity: 0.34,
+          })
+        : new THREE.MeshStandardMaterial({
+            color: this.profile.groundColor("light"),
+            transparent: false,
+            opacity: 1,
+            roughness: this.sport === "skierg" ? 0.96 : 0.86,
+            metalness: 0.02,
+          }),
     );
     groundMat.name = "ground";
     const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -2314,8 +3064,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.groundMesh = ground;
     this.scene.add(ground);
 
-    const innerR = this.ghostRadius - 4;
-    const outerR = this.loopRadius + 4;
+    this.buildEnvironment(innerR, outerR);
+
     const course = new THREE.Group();
     course.name = `course:${this.sport}`;
     this.scene.add(course);
@@ -2343,32 +3093,13 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.addCourseRing(course, outerR, 0.035, edgeMat, "course:edge-outer", 0.06);
     this.addSportCourseDetails(course, innerR, outerR);
 
-    this.postMatMajor = this.mat(
-      new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.tickMajor) }),
-    );
-    this.postMatMinor = this.mat(
-      new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.tickMinor) }),
-    );
-    const postGeo = this.track(new THREE.BoxGeometry(0.14, 1.55, 0.14));
-    const postCapGeo = this.track(new THREE.SphereGeometry(0.09, 8, 6));
-    const postR = outerR + 1.4;
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 10) * Math.PI * 2;
-      const isMajor = i % 5 === 0;
-      const postMat = isMajor ? this.postMatMajor : this.postMatMinor;
-      const post = new THREE.Mesh(postGeo, postMat);
-      post.position.set(postR * Math.sin(a), 0.78, postR * Math.cos(a));
-      post.castShadow = this.cfg.shadows;
-      this.scene.add(post);
-      const cap = new THREE.Mesh(postCapGeo, postMat);
-      cap.position.set(postR * Math.sin(a), 1.58, postR * Math.cos(a));
-      cap.castShadow = this.cfg.shadows;
-      this.scene.add(cap);
-    }
-
-    // Buoy lines marking the lane edges — static, one InstancedMesh draw call.
-    if (this.cfg.buoys) {
-      const buoyGeo = this.track(new THREE.SphereGeometry(0.11, 6, 4));
+    // Only the regatta basin carries buoy strings. Ski/Bike previously shared
+    // this generic sphere field, which read as hundreds of black rocks. The
+    // former universal upright distance posts are gone too: their foreground
+    // silhouettes could eclipse the athlete, while each sport already carries
+    // authored low-profile course marks and a start/finish checker.
+    if (this.sport === "rower" && this.cfg.buoys) {
+      const buoyGeo = this.track(new THREE.SphereGeometry(0.085, 8, 5));
       this.buoyMat = this.mat(
         new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.markerCap), roughness: 0.6 }),
       );
@@ -2378,16 +3109,22 @@ export class CourseRenderer3D implements ReplayRenderer {
       });
       const perRing = this.cfg.buoysPerRing;
       const inst = new THREE.InstancedMesh(buoyGeo, this.buoyMat, rings.length * perRing);
+      inst.name = "environment:rower:buoy-strings";
       const m = new THREE.Matrix4();
+      const warm = new THREE.Color(0xf6c453);
+      const pale = new THREE.Color(0xf4fbff);
       let bi = 0;
       for (const r of rings) {
         for (let k = 0; k < perRing; k++) {
           const a = (k / perRing) * Math.PI * 2;
-          m.setPosition(r * Math.sin(a), 0.06, r * Math.cos(a));
+          m.makeScale(1, 0.56, 1);
+          m.setPosition(r * Math.sin(a), 0.045, r * Math.cos(a));
           inst.setMatrixAt(bi++, m);
+          inst.setColorAt(bi - 1, k % 12 === 0 ? warm : pale);
         }
       }
       inst.instanceMatrix.needsUpdate = true;
+      if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
       this.buoyMesh = inst;
       this.scene.add(inst);
     }
@@ -2410,6 +3147,8 @@ export class CourseRenderer3D implements ReplayRenderer {
         this.scene.add(cell);
       }
     }
+
+    this.buildContactShadows();
   }
 
   private applyTheme(themeName: "light" | "dark"): void {
@@ -2421,21 +3160,44 @@ export class CourseRenderer3D implements ReplayRenderer {
     // (the common paused-theme-toggle case).
     this.lastLiveLabel = "";
     this.lastGhostLabel = "";
-    this.scene.background = new THREE.Color(C.courseFill);
-    this.scene.fog = new THREE.Fog(C.courseFill, 55, 170);
+    // The sky dome is the visible background; this colour is a defensive
+    // fallback for context restore / the one frame before the dome is ready.
+    this.scene.background = new THREE.Color(this.environment.skyHorizon(themeName));
+    this.scene.fog = new THREE.Fog(
+      this.environment.fog(themeName),
+      this.environment.fogNear,
+      this.environment.fogFar,
+    );
+    this.updateSkyColors(themeName);
+    this.hemisphereLight.color.setHex(this.environment.hemisphereSky(themeName));
+    this.hemisphereLight.groundColor.setHex(this.environment.hemisphereGround(themeName));
+    this.sunLight.color.setHex(this.environment.sun(themeName));
+    this.worldFill.color.setHex(this.environment.fill(themeName));
+    this.renderer.toneMappingExposure =
+      this.environment.exposure * (themeName === "dark" ? 0.91 : 1);
 
     for (const themed of this.courseThemeMats) {
+      const color = themed.color(themeName);
+      themed.material.color.setHex(color);
+      if (this.profile.waves && themed.material.name === "lane") {
+        themed.material.emissive.setHex(color).multiplyScalar(themeName === "dark" ? 0.16 : 0.05);
+        themed.material.emissiveIntensity = 0.5;
+      }
+    }
+    for (const themed of this.environmentThemeMats) {
       themed.material.color.setHex(themed.color(themeName));
     }
     if (this.groundMesh.material instanceof THREE.MeshStandardMaterial) {
       this.groundMesh.material.color.setHex(this.profile.groundColor(themeName));
+      if (this.profile.waves) {
+        this.groundMesh.material.emissive
+          .setHex(this.profile.groundColor(themeName))
+          .multiplyScalar(themeName === "dark" ? 0.2 : 0.08);
+      }
     }
 
-    this.postMatMajor.color.setHex(hex(C.tickMajor));
-    this.postMatMinor.color.setHex(hex(C.tickMinor));
     this.cellMatDark.color.setHex(hex(C.finishDark));
     this.cellMatLight.color.setHex(hex(C.finishLight));
-    this.buoyMat?.color.setHex(hex(C.markerCap));
     this.sprayMat?.color.setHex(hex(C.foam));
 
     this.recolorAccent(this.liveAvatar.group, C.live);
@@ -2475,12 +3237,18 @@ export class CourseRenderer3D implements ReplayRenderer {
   }
 
   /**
-   * Map governor levels to concrete savings. Levels 1–2 lower the pixel
-   * ratio; level 3 flattens the water and stops the spray. Geometry,
-   * lighting and avatars are untouched, so the scene degrades gracefully.
+   * Map governor levels to concrete savings. Optional venue dressing leaves
+   * first, then dynamic shadows, then surface/particle animation. The sky,
+   * horizon, course, finish infrastructure, athletes and contact cues remain.
    */
   private applyPerfLevel(): void {
-    if (this.governor.level >= 1) this.resize(this.w, this.h);
+    if (this.governor.level >= 1) {
+      this.environmentDetailGroup.visible = false;
+      this.resize(this.w, this.h);
+    }
+    if (this.governor.level >= 2 && this.renderer.shadowMap) {
+      this.renderer.shadowMap.enabled = false;
+    }
     if (this.governor.level >= 3) {
       this.sprayOff = true;
       this.sprayPool?.clear();
@@ -2624,6 +3392,17 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.livePlacement,
     );
 
+    this.liveContactShadow.position.set(p.x, 0.08, p.z);
+    // The ellipse's local X axis is its long axis; rotate that axis onto the
+    // course tangent so the grounding cue follows the hull/skis/bike instead
+    // of turning sideways at quarter laps.
+    this.liveContactShadow.rotation.y = Math.atan2(p.tx, p.tz) - Math.PI / 2;
+    // Keep the expensive high-tier shadow map concentrated around the live
+    // athlete instead of spending texels across the entire 70 m arena.
+    this.sunLight.position.set(p.x + 18, 30, p.z + 12);
+    this.sunLight.target.position.set(p.x, 0.45, p.z);
+    this.sunLight.target.updateMatrixWorld();
+
     this.advanceWake(this.liveWake, dLive, p.x - p.tx * 1.6, p.z - p.tz * 1.6);
 
     // Catch spray on the live lane: spawn a burst as each stroke catches,
@@ -2699,6 +3478,9 @@ export class CourseRenderer3D implements ReplayRenderer {
         ghostPose as StrokePose,
         this.ghostPlacement,
       );
+      this.ghostContactShadow.visible = true;
+      this.ghostContactShadow.position.set(gp.x, 0.079, gp.z);
+      this.ghostContactShadow.rotation.y = Math.atan2(gp.tx, gp.tz) - Math.PI / 2;
       this.advanceWake(this.ghostWake, dGhost, gp.x - gp.tx * 1.6, gp.z - gp.tz * 1.6);
       const ghostText = `${state.ghost.label || "PB"} · ${Math.round(state.ghost.distFrac * 100)}%`;
       if (ghostText !== this.lastGhostLabel && this.ghostLabel && this.ghostLabelTex) {
@@ -2708,6 +3490,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.ghostLabel.position.set(gp.x, 2.2 + gp.y, gp.z);
     } else {
       this.ghostGroup.visible = false;
+      this.ghostContactShadow.visible = false;
       if (this.ghostLabel) this.ghostLabel.visible = false;
       this.ghostWake?.reset();
       this.lastGhostLabel = "";
@@ -2746,7 +3529,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // bike reads best from a lower pursuit angle. Narrow canvases and a ghost
     // lane pull back rather than cropping the athlete/equipment. Reduced motion
     // keeps the static three-quarter composition while disabling FOV breathing
-    // and using slower damping, keeping the horizon substantially steadier.
+    // and secondary chase easing, keeping the athlete locked in frame.
     const narrow = this.camera.aspect < 1.25;
     const sportRig = CAMERA_RIGS[this.sport];
     const ghostPullback = state.ghost ? 1.05 : 0;
@@ -2820,12 +3603,18 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.camera.position.copy(this.chase);
       this.cameraAim.copy(this.lookAt);
       this.cameraInit = true;
+    } else if (playing && this.reduceMotion) {
+      // Tracking the athlete is essential on a loop, but reduced motion should
+      // not add camera lag or spring-like easing on top. An exact relative rig
+      // keeps the athlete stable while the required course translation remains.
+      this.camera.position.copy(this.chase);
+      this.cameraAim.copy(this.lookAt);
     } else if (playing) {
       // Exponential damping is frame-rate independent. Aim is deliberately
       // softer than translation so course curvature cannot snap the horizon.
       const speedFollow = Math.min(18, this.smoothedSpeed * 0.55);
-      const positionRate = this.reduceMotion ? 3.2 : 8 + speedFollow;
-      const aimRate = this.reduceMotion ? 2.2 : 6 + speedFollow * 0.65;
+      const positionRate = 8 + speedFollow;
+      const aimRate = 6 + speedFollow * 0.65;
       this.camera.position.lerp(this.chase, dampFactor(positionRate, dt));
       this.cameraAim.lerp(this.lookAt, dampFactor(aimRate, dt));
     } else if (
@@ -2880,6 +3669,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // material, so they still need their own dispose() after the traversal.
     this.buoyMesh?.dispose();
     this.sprayMesh?.dispose();
+    for (const mesh of this.instancedMeshes) mesh.dispose();
     if (this.liveLabel.material instanceof THREE.Material) this.liveLabel.material.dispose();
     if (this.ghostLabel?.material instanceof THREE.Material) this.ghostLabel.material.dispose();
     this.liveLabelTex.dispose();

@@ -298,6 +298,118 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  it("builds a complete sport-authored world at every quality floor", () => {
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const renderer = new CourseRenderer3D(makeHost(), "low", sport);
+      const scene = getScene(renderer);
+      for (const layer of [
+        `environment:${sport}:sky`,
+        `environment:${sport}:horizon-far`,
+        `environment:${sport}:horizon-mid`,
+        `environment:${sport}:infield`,
+        `environment:${sport}:apron`,
+        "athlete:live:contact-shadow",
+      ]) {
+        expect(scene.getObjectByName(layer), `${sport} missing ${layer}`).toBeDefined();
+      }
+      expect(scene.background).toBeInstanceOf(THREE.Color);
+      expect(scene.fog).toBeInstanceOf(THREE.Fog);
+      renderer.destroy();
+    }
+  });
+
+  it("keeps regatta buoy strings out of SkiErg and BikeErg", () => {
+    for (const sport of ["skierg", "bike"] as const) {
+      const renderer = new CourseRenderer3D(makeHost(), "ultra", sport);
+      expect(getScene(renderer).getObjectByName("environment:rower:buoy-strings")).toBeUndefined();
+      renderer.destroy();
+    }
+    const rower = new CourseRenderer3D(makeHost(), "low", "rower");
+    const buoys = sceneObject(rower, "environment:rower:buoy-strings");
+    expect(buoys).toBeInstanceOf(THREE.InstancedMesh);
+    expect((buoys as THREE.InstancedMesh).count).toBe(48);
+    rower.destroy();
+  });
+
+  it("initializes the professional color pipeline before the first light render", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "low", "rower");
+    const internals = renderer as unknown as {
+      renderer: { toneMapping: number; toneMappingExposure: number };
+      scene: THREE.Scene;
+    };
+    expect(internals.renderer.toneMapping).toBe(THREE.ACESFilmicToneMapping);
+    expect(internals.renderer.toneMappingExposure).toBeGreaterThan(1);
+    expect((internals.scene.background as THREE.Color).getHex()).toBe(0xf0c98e);
+    expect(internals.scene.fog).toBeInstanceOf(THREE.Fog);
+    renderer.destroy();
+  });
+
+  it("bounds optional environment density by quality while preserving the core world", () => {
+    const low = new CourseRenderer3D(makeHost(), "low", "rower");
+    const ultra = new CourseRenderer3D(makeHost(), "ultra", "rower");
+    const lowScene = getScene(low);
+    const ultraScene = getScene(ultra);
+    const lowPines = lowScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
+    const ultraPines = ultraScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
+
+    expect(lowPines.count).toBe(24);
+    expect(ultraPines.count).toBe(66);
+    for (const scene of [lowScene, ultraScene]) {
+      expect(scene.getObjectByName("environment:rower:sky")).toBeDefined();
+      expect(scene.getObjectByName("environment:rower:horizon-mid")).toBeDefined();
+      expect(scene.getObjectByName("lane")).toBeDefined();
+    }
+    low.destroy();
+    ultra.destroy();
+  });
+
+  it("re-themes the complete environment rather than recoloring only the athlete", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
+    renderer.resize(800, 600);
+    const scene = getScene(renderer);
+    const lightBackground = (scene.background as THREE.Color).getHex();
+    const ground = scene.getObjectByName("ground") as THREE.Mesh<
+      THREE.BufferGeometry,
+      THREE.MeshStandardMaterial
+    >;
+    const lightGround = ground.material.color.getHex();
+
+    renderer.render(makeSportState("rower", 0.2), false, "dark");
+
+    expect((scene.background as THREE.Color).getHex()).not.toBe(lightBackground);
+    expect(ground.material.color.getHex()).not.toBe(lightGround);
+    expect(scene.fog).toBeInstanceOf(THREE.Fog);
+    renderer.destroy();
+  });
+
+  it("aligns live and ghost contact shadows with their independent course tangents", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "low", "bike");
+    renderer.resize(800, 600);
+    renderer.render(
+      makeSportState("bike", 0.25, 250, {
+        totalDistance: 1_000,
+        ghost: { distFrac: 0, pace: 125, spm: 82, label: "PB" },
+      }),
+      false,
+    );
+
+    const axes = (name: string) => {
+      const shadow = sceneObject(renderer, name);
+      const orientation = shadow.getWorldQuaternion(new THREE.Quaternion());
+      return {
+        long: new THREE.Vector3(1, 0, 0).applyQuaternion(orientation).normalize(),
+        normal: new THREE.Vector3(0, 0, 1).applyQuaternion(orientation).normalize(),
+      };
+    };
+    const live = axes("athlete:live:contact-shadow");
+    const ghost = axes("athlete:ghost:contact-shadow");
+    expect(live.long.dot(new THREE.Vector3(0, 0, -1))).toBeCloseTo(1, 8);
+    expect(ghost.long.dot(new THREE.Vector3(1, 0, 0))).toBeCloseTo(1, 8);
+    expect(live.normal.y).toBeCloseTo(1, 8);
+    expect(ghost.normal.y).toBeCloseTo(1, 8);
+    renderer.destroy();
+  });
+
   it("joins the BikeErg diamond-frame tubes at their authored endpoints", () => {
     const renderer = new CourseRenderer3D(makeHost(), "low", "bike");
     const expected = {
@@ -754,9 +866,12 @@ describe("CourseRenderer3D", () => {
       (1 - expected.bladeFeather) * (Math.PI / 2),
       8,
     );
-    renderer.render(makeSportState("rower", 0.8), true);
+    renderer.render(makeSportState("rower", 0.8, 260), true);
     expect(sceneObject(renderer, "rower-athlete").position).toEqual(firstPose);
-    expect(getCameraRig(renderer).camera.fov).toBe(42);
+    const reducedRig = getCameraRig(renderer);
+    expect(reducedRig.camera.fov).toBe(42);
+    expect(reducedRig.camera.position).toEqual(reducedRig.chase);
+    expect(reducedRig.cameraAim).toEqual(reducedRig.lookAt);
     for (const side of ["left", "right"]) {
       expect(
         worldPosition(renderer, `rower-hand-${side}`).distanceTo(
@@ -997,7 +1112,7 @@ describe("CourseRenderer3D", () => {
       const lane = getScene(r).getObjectByName("lane") as unknown as {
         material: { color: { getHex(): number } };
       };
-      expect(lane.material.color.getHex()).toBe(0x262c32);
+      expect(lane.material.color.getHex()).toBe(0x343942);
       r.destroy();
     });
 

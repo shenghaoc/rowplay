@@ -24,10 +24,17 @@ the app under `/docs`.
 
 ### Replay
 
-![rowplay replay using bundled demo data](docs/screenshots/replay-demo.png)
+#### 2D regatta venue
 
-Screenshots use bundled synthetic demo workouts; no private Concept2 data is
-shown.
+![rowplay 2D RowErg replay using bundled demo data](docs/screenshots/replay-demo.png)
+
+#### 3D regatta venue
+
+![rowplay 3D RowErg replay using bundled demo data](docs/screenshots/replay-3d-demo.png)
+
+The replay combines an illustrative sport venue with stroke-synchronised
+athletes and telemetry. Screenshots use bundled synthetic demo workouts; no
+private Concept2 data or real-world route imagery is shown.
 
 ## Try the demo
 
@@ -67,9 +74,15 @@ account.
   unavailable
 - Canvas 2D and optional Three.js 3D renderers that share staged RowErg,
   SkiErg, and BikeErg kinematics, equipment contact targets, and sport-specific
-  water, snow, and track surfaces
+  water, snow, and track materials
+- Premium sport-specific environments in both views: layered regatta water and
+  shoreline, groomed Nordic snow and alpine venue cues, or a barrier-lined
+  asphalt/velodrome training circuit
 - Silhouette-first procedural athletes with fixed-proportion articulated limbs,
   broad sport-kit planes, readable joints, and equipment contacts in both views
+- Local procedural scenery built from Canvas drawing and Three.js geometry;
+  no generated environment images, scanned venues, or downloaded location
+  models are shipped in the replay runtime
 - Alias-resistant 2D BikeErg drivetrain motion with explicit cranks, pedals,
   chain and directional wheel markers that remain readable through 8× playback
 - Progressive 3D fallback from WebGPU to WebGL, then to the stable 2D renderer

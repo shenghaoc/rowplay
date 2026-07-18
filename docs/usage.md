@@ -132,14 +132,31 @@ illustration; it does not reproduce the athlete's body, clothing, or likeness.
 The 3D figure deliberately uses broad faceted body masses and kit blocks instead
 of sub-pixel facial or finger detail, so the silhouette survives the chase view.
 
-Both views use sport-specific surfaces: RowErg has layered water and blade
-puddles, SkiErg has groomed snow and pole-plant plume, and BikeErg has an
-asphalt/velodrome band with curb and lane markings. In 3D, segmented human-scale
-athletes keep feet and hands on the relevant equipment targets — oar handles
-and foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals. The
-larger 3D stage and rear three-quarter chase camera keep paired limbs visible;
-sport- and viewport-aware framing, speed-aware follow, and camera-relative fill
-light keep the athlete readable around the full course.
+Both views use complete sport-specific illustrative environments, not one
+generic floor with different colors. RowErg combines layered water with
+shoreline and regatta-scale cues; SkiErg uses groomed, blue-shadowed snow with
+snowbank, evergreen, alpine, and Nordic-venue forms; BikeErg uses a deliberate
+asphalt or velodrome-style circuit with curbs, barriers, infield, and built-venue
+or floodlight cues. The 2D view composes sky, horizon, middle distance, course,
+and foreground layers. The 3D view adds atmospheric depth, a readable horizon,
+sport-specific materials, and low-poly surrounding scenery so the athlete is
+grounded in a venue rather than floating on a plane.
+
+The venue, weather, light, trees, mountains, shoreline, and structures are
+generic presentation art. Concept2 does not provide route geography, venue,
+weather, or camera data, so these scenes do not reconstruct where or under what
+conditions the workout happened. All shipped scenery is created locally from
+procedural Canvas drawing and Three.js geometry and materials. The replay does
+not ship or download generated environment images, photographs, scanned venues,
+or imported location models.
+
+In 3D, segmented human-scale athletes keep feet and hands on the relevant
+equipment targets — oar handles and foot plates, SkiErg pole grips and boots, or
+BikeErg bars and pedals. The larger 3D stage and rear three-quarter chase camera
+keep paired limbs visible; sport- and viewport-aware framing, speed-aware
+follow, and camera-relative fill light keep the athlete readable around the
+full course. Environment contrast and detail stay subordinate to the figure,
+equipment contacts, ghost comparison, and telemetry.
 
 The 2D BikeErg uses the same mechanically forward clockwise convention for its
 wheels and cranks. Explicit opposing crank arms, pedals, chainring, sprocket,
@@ -149,12 +166,17 @@ transparent wakes stay behind the athlete without merging into opaque cards,
 and the compact telemetry pill leaves the figure as the visual focus.
 
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics.
-Ultra is intended for WebGPU-capable devices and uses a larger stage, denser
-environment geometry, stronger shadows, and richer wake/spray detail. If the
-device can't hold a smooth frame rate at the selected tier, the renderer
-automatically lowers resolution first and effects (water motion, spray) second
-for the rest of the session.
-Replay animation honours the operating system's reduced-motion setting.
+Every tier keeps the sky, horizon, course material, core venue silhouette, and
+athlete readable. Higher tiers add denser scenery, stronger shadows, richer
+material detail, and more wake or spray; Ultra is intended for WebGPU-capable
+devices. If the device can't hold a smooth frame rate at the selected tier, the
+renderer automatically lowers resolution first and then decorative effects such
+as water motion and spray for the rest of the session. This never changes
+recorded timing, distance, or equipment contacts. Replay animation honours the
+operating system's reduced-motion setting by freezing or suppressing decorative
+parallax, waves, spray, speed-responsive FOV breathing, and secondary chase
+easing while retaining the complete static scene and the essential
+athlete-locked follow camera.
 
 Per-stroke data is used when Concept2 provides it. Workouts without stroke data
 fall back to a split-based replay, so the course still plays back.
