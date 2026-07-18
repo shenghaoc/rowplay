@@ -1,429 +1,315 @@
-> **Note for AI Agents:** Please read `AGENTS.md` before proposing or making any changes to this repository to ensure architecture and quality invariants are strictly preserved.
-
 # rowplay
 
-Concept2 logbook analytics **and a real-time workout replay**, deployed on Cloudflare.
+Post-workout Concept2 logbook analytics and synchronized 2D/3D replay for
+RowErg, SkiErg, and BikeErg sessions.
 
 [![CI](https://github.com/shenghaoc/rowplay/actions/workflows/ci.yml/badge.svg)](https://github.com/shenghaoc/rowplay/actions/workflows/ci.yml)
 
-rowplay connects to your [Concept2 Logbook](https://log.concept2.com) and turns
-every RowErg / SkiErg / BikeErg result into interactive visualizations.
+rowplay turns workouts already uploaded to the Concept2 Logbook into a
+full-history training dashboard and an interactive replay. It reads the
+Logbook rather than connecting directly to a PM5, and it does not keep a
+server-side copy of workout history.
 
----
+**[Launch the production demo](https://rowplay.shenghaoc.workers.dev/dashboard)**
+— no account or credentials required.
 
-## User guide
+The canonical user guide is [docs/usage.md](docs/usage.md) and is rendered in
+the app under `/docs`.
 
-The canonical user guide lives in **[docs/usage.md](docs/usage.md)** and is
-rendered directly on the website at `/docs` from the same markdown source.
-
----
-
-## Screenshots
-
-<!--
-  TODO: replace these placeholders with real screenshots or animated GIFs.
-  Suggested capture:
-    dashboard.png  — dark theme, full dashboard with pace chart + workout list
-    replay.png     — mid-race replay with avatar, gauges, and telemetry charts
-    leaderboard.png — leaderboard page with a few entries
-  Place images in static/ or a top-level assets/ folder, then link:
-    ![Dashboard](assets/dashboard.png)
--->
-
-|                                           Dashboard                                            |                                          Replay                                          |                                            Leaderboard                                             |
-| :--------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------: |
-| ![Dashboard placeholder](https://placehold.co/600x340/1e293b/94a3b8?text=Dashboard+screenshot) | ![Replay placeholder](https://placehold.co/600x340/1e293b/94a3b8?text=Replay+screenshot) | ![Leaderboard placeholder](https://placehold.co/600x340/1e293b/94a3b8?text=Leaderboard+screenshot) |
-
----
-
-## Try it now — no account needed
-
-**Demo mode is on by default.** Open the app without signing in and rowplay
-serves realistic sample data so you can explore every feature immediately.
-
-👉 **[Launch demo](https://rowplay.shenghaoc.workers.dev/dashboard)**
-
-Or run locally in under a minute:
-
-```bash
-git clone https://github.com/shenghaoc/rowplay.git && cd rowplay
-vp install
-vp dev            # → http://localhost:5173/dashboard
-```
-
-Click any workout in the list to watch the replay — canvas, gauges, charts, and
-all controls work in demo mode with zero configuration.
-
----
-
-## Features
+## Demo screenshots
 
 ### Dashboard
 
-- **Totals & aggregates** — lifetime meters, workout count, time-in-motion across all three erg types.
-- **Pace trend chart** — uPlot-powered line chart showing pace progression over time.
-- **Per-sport filtering** — toggle between RowErg, SkiErg, BikeErg, or view all.
-- **Performance Management Chart (PMC)** — Fitness / Fatigue / Form (CTL / ATL / TSB) over a configurable window.
-- **Training calendar heatmap** — year-at-a-glance volume visualization.
-- **Annual goal tracking** — set a distance or time goal and see progress on the dashboard.
-- **Personal-best detection** — new PBs surfaced automatically in the workout list.
+![rowplay dashboard using bundled demo data](docs/screenshots/dashboard-demo.png)
 
 ### Replay
 
-- **Real-time race replay** — a sport-specific athlete races a virtual course with synchronized pace, stroke-rate, power, and heart-rate gauges.
-- **Per-stroke resolution** — when Concept2 per-stroke data is available the replay maps one visible cycle to one stroke row; workouts without it fall back to a lower-resolution replay synthesized from splits.
-- **Play / pause / scrub / speed** — drag the timeline, jump to any point, adjust speed from 0.5× to 8×.
-- **2D & 3D views** — Canvas-based 2D course and an optional Three.js 3D renderer with realistic segmented athletes, equipment contact points, and sport-specific water, snow, and track surfaces; it tries WebGPU first and falls back to WebGL.
-- **Telemetry charts** — uPlot charts for pace, stroke rate, power, and heart rate synchronized to the replay clock.
-- **Ghost racing** — race a past session as a ghost alongside the current replay for side-by-side comparison.
+![rowplay replay using bundled demo data](docs/screenshots/replay-demo.png)
 
-### Workout tools
+Screenshots use bundled synthetic demo workouts; no private Concept2 data is
+shown.
 
-- **Side-by-side comparison** — compare any two workouts across all metrics.
-- **Workout export** — download individual or bulk workouts as CSV, JSON, or TCX.
-- **Shareable replays** — generate a public share link (`/r/[token]`) for any workout replay.
-- **Heart-rate import** — merge external HR data (CSV, TCX, FIT) into a workout.
-- **Coaching annotations** — add private notes to workouts.
+## Try the demo
 
-### Leaderboards
+The hosted demo opens with deterministic sample history and exercises the
+dashboard and replay without contacting a real account:
 
-- **Standard-distance boards** — publish verified workouts to public leaderboards for standard Concept2 distances.
-- **Opt-in model** — nothing is published without explicit user action.
-- **Demo leaderboard** — sample data available without authentication.
+**[Open rowplay demo](https://rowplay.shenghaoc.workers.dev/dashboard)**
 
-### Live / near-live mode
+To run the same demo locally:
 
-- **Live polling** — poll for in-progress ErgData workouts (requires connected Concept2 account).
-- **Demo live generator** — simulated live workout feed for testing.
+```bash
+git clone https://github.com/shenghaoc/rowplay.git
+cd rowplay
+vp install
+vp dev
+```
 
-### Platform
+Open `http://localhost:5173/dashboard`, choose a bundled workout, and start its
+replay. Demo mode needs no `.dev.vars`, Concept2 account, or Cloudflare
+account.
 
-- **Bring-your-own-token auth** — paste your personal Concept2 API token once; it's sealed in an httpOnly cookie. No shared client secret needed.
-- **Internationalization** — English, 中文, Deutsch, Español, Français, 日本語. Language toggles instantly with no page reload.
-- **Light / dark theme** — defaults to dark; preference persists across sessions.
-- **PWA** — installable on mobile and desktop with offline-ready service worker.
-- **Responsive** — works on mobile, tablet, and desktop.
+## Current highlights
 
----
+### Training dashboard
 
-## Connecting your Concept2 account (BYOT)
+- Complete paginated Logbook history for authenticated athletes
+- RowErg, SkiErg, and BikeErg filters, totals, pace trends, and progress views
+- Personal bests, annual goals, and a year-at-a-glance training calendar
+- Fitness, fatigue, form, critical-power, and stroke-efficiency analysis
+- Responsive workout lists and charts for desktop and mobile
 
-rowplay does not require an OAuth flow or a registered developer application —
-it uses Concept2's **Personal API Tokens**.
+### Synchronized replay
 
-1. Generate a token on your [Concept2 Logbook Applications](https://log.concept2.com/profile/applications) page.
-2. Paste it into rowplay (at `/auth/token`).
-3. rowplay's Cloudflare Worker syncs your logbook from the Concept2 API
-   server-side and caches it for fast dashboards and replays.
+- Play, pause, scrub, and 0.5×–8× playback controls
+- Concept2 stroke-based animation when detail is available, with split- or
+  summary-based replay when it is not
+- A Canvas 2D view plus optional Three.js 3D rendering that tries WebGPU first,
+  falls back to WebGL, and returns to 2D if neither 3D backend is usable
+- Live pace, rate, power, heart-rate, and synchronized telemetry charts
+- Personal ghost racing against a comparable past session or target pace
+- Workout-moment analysis with direct jumps to meaningful sections
 
-rowplay only calls read endpoints with your token (your profile and workout
-results) and never stores it in a database — see [Privacy model](#privacy-model)
-for exactly where it lives.
+### Athlete tools and platform
 
----
+- Full-history CSV and JSON export, plus per-workout TCX where supported
+- Near-live polling for newly logged Concept2 results
+- English, Deutsch, Español, Français, 日本語, and 中文
+- Installable PWA, responsive layouts, dark/light themes, and a credential-free
+  demo backed by deterministic bundled history
+
+### Current scope
+
+rowplay is private and read-only by design. It does not offer public replay
+links, leaderboards, the retired side-by-side `/compare` workflow, persistent
+coaching annotations or manual tags, server-side heart-rate merging,
+sync/backfill, account-data deletion, or write-back to Concept2.
+
+## Architecture
+
+```text
+Browser
+  ├── receives rendered SvelteKit pages and client assets
+  ├── keeps theme and language preferences
+  ├── sends sealed cookies automatically
+  └── holds no JavaScript-readable Concept2 token
+             │
+             ▼
+Cloudflare Worker / SvelteKit server
+  ├── validates and encrypts session cookies
+  ├── reads Concept2 data live for authenticated requests
+  ├── memoizes duplicate full-history loads within one request
+  ├── serves bundled demo history without credentials
+  └── has no KV, D1, or server-side workout database
+             │
+             ▼
+Concept2 Logbook API
+  └── remains the source of truth for workout history and detail
+```
+
+The Worker temporarily processes workout data while answering a request but
+does not persist it. The personal token is sealed into an httpOnly `rp_tok`
+cookie, so browser JavaScript cannot read the raw credential. Authenticated
+workout and export responses containing personal data are served as private,
+non-cacheable responses. Logging out clears both authentication cookies, and
+demo mode never contacts a real athlete account.
+
+### Engineering decisions
+
+- A stateless Worker reduces cross-user persistence risk and removes database
+  migrations, persistent user-data bindings, and server workout-cache
+  invalidation from operations.
+- Full-history views follow Concept2 pagination; concurrent loaders in the same
+  request share one live read.
+- Near-live polling asks only for the newest results page instead of reloading
+  an athlete's entire history.
+- Replay uses detailed stroke rows when possible and degrades to split or
+  summary timing when Concept2 has less detail.
+- 3D rendering progressively falls back from WebGPU to WebGL to the stable 2D
+  renderer.
+- Bundled synthetic history makes development and evaluation reproducible
+  without credentials.
+
+## Connecting a Concept2 account
+
+Production is bring-your-own-token (BYOT) first:
+
+1. Get a personal Concept2 API token from the
+   [Logbook Applications page](https://log.concept2.com/profile/applications).
+2. Submit it to rowplay at `/auth/token`.
+3. The Worker validates it against Concept2 and seals it into the httpOnly
+   `rp_tok` cookie.
+4. Authenticated pages use that credential only for server-side, read-only
+   Concept2 API requests.
+
+The app fetches authenticated history and replay detail live; there is no
+persistent server-side sync, warm-up, backfill, or authenticated workout cache.
+Optional OAuth support remains available for self-hosters with a registered
+Concept2 developer application, but it is not required for BYOT.
 
 ## Privacy model
 
-rowplay is designed so that **your personal Concept2 token never leaves your
-control in plaintext** and cached data stays scoped to your session.
-
-```
-┌──────────────────────────────────────────────────┐
-│                    Browser                        │
-│  ┌─────────────┐    ┌──────────────────────────┐ │
-│  │ concept2.com │    │        rowplay           │ │
-│  │  (you copy  │    │                            │ │
-│  │   token)    │    │  token → /auth/token       │ │
-│  └─────────────┘    │    (HTTPS POST, once)      │ │
-│                      │                            │ │
-│                      │  ← httpOnly rp_tok cookie  │ │
-│                      │    (sealed, not readable   │ │
-│                      │     by JavaScript)         │ │
-│                      └──────────────────────────┘ │
-└──────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌──────────────────────────────────────────────────┐
-│              Cloudflare Worker                    │
-│                                                   │
-│  ┌──────────┐   ┌──────────┐   ┌──────────────┐ │
-│  │   KV     │   │    D1    │   │  rp_tok       │ │
-│  │ session  │   │  cached  │   │  (httpOnly    │ │
-│  │ identity │   │ workouts │   │   cookie,     │ │
-│  │ & state  │   │ + strokes│   │   sealed with │ │
-│  │          │   │          │   │   SESSION_    │ │
-│  │ NO token │   │ NO token │   │   SECRET)     │ │
-│  └──────────┘   └──────────┘   └──────────────┘ │
-│                                                   │
-│  Server logs: personal tokens, cookie values,     │
-│  and full workout payloads are redacted before    │
-│  emission to Workers logs.                        │
-└──────────────────────────────────────────────────┘
-```
-
-- **Token** — submitted once over HTTPS, sealed into the httpOnly `rp_tok`
-  cookie with `SESSION_SECRET`. Never stored in KV, D1, or localStorage.
-- **KV** — holds session identity and state (e.g. leaderboard opt-in). No
-  personal token, no workout data.
-- **D1** — holds cached workout metadata and per-stroke detail for instant
-  replays. No personal token.
-- **Disconnect** — clearing your account data removes all cached workouts and
-  session state from KV and D1.
-- **Leaderboard opt-in** — publishing to leaderboards is an explicit,
-  reversible action per workout.
-
----
+- **`rp_tok`** — the personal BYOT credential, AES-GCM sealed with
+  `SESSION_SECRET` in an httpOnly cookie. It is not placed in localStorage or a
+  Worker database.
+- **`rp_session`** — a separate sealed httpOnly cookie containing identity,
+  optional OAuth credentials, and the selected home timezone.
+- **`annual_goal`** — an httpOnly preference cookie; authenticated goals are
+  scoped to the athlete ID so they do not follow a logout/login transition to
+  another account.
+- **Workout data** — read live from Concept2 and held only while the Worker
+  handles a request. Concept2 remains the persistent source of truth.
+- **Demo data** — bundled synthetic history is served locally without a
+  Concept2 credential or real account request.
+- **Logout** — clears both `rp_tok` and `rp_session`.
+- **Logging** — server code uses a redacting logger and avoids intentionally
+  emitting personal tokens, cookie values, sensitive profile data, or full
+  workout payloads.
 
 ## Local development
 
-### Which server to use?
+|                      | `vp dev`                        | `vp run preview`                         |
+| -------------------- | ------------------------------- | ---------------------------------------- |
+| URL                  | `http://localhost:5173`         | `http://127.0.0.1:8787`                  |
+| Runtime              | Fast Vite/SvelteKit development | Build plus `wrangler dev`                |
+| Workers fidelity     | No                              | Yes                                      |
+| Demo UI              | Yes                             | Yes                                      |
+| BYOT/session testing | Not production-faithful         | Correct local runtime shape              |
+| Use for              | UI, charts, demo, components    | Auth, cookies, server routes, live reads |
 
-|                       | `vp dev`                    | `vp run preview`              |
-| --------------------- | --------------------------- | ----------------------------- |
-| **URL**               | `http://localhost:5173`     | `http://127.0.0.1:8787`       |
-| **Runtime**           | Vite dev server             | `wrangler dev` (Workers)      |
-| **KV / D1**           | ❌ not available            | ✅ local bindings             |
-| **Token auth / sync** | ❌                          | ✅                            |
-| **Demo mode**         | ✅                          | ✅                            |
-| **Hot reload**        | ✅ instant                  | ⚠️ rebuild on change          |
-| **Use for**           | UI, styling, component work | Auth, sync, KV/D1, full-stack |
+`vp run preview` does not require a KV namespace, D1 database, migration, or
+seed step.
 
-**Rule of thumb:** use `vp dev` for UI and component work; switch to
-`vp run preview` when touching auth, API routes, KV/D1, or anything that
-hits the Concept2 API server-side.
-
-### Demo mode (zero config)
-
-```bash
-vp install
-vp dev            # → http://localhost:5173/dashboard
-```
-
-Open `/dashboard`, click any workout, watch the replay. No `.dev.vars`,
-no Concept2 account, no Cloudflare account needed.
-
-### Full local stack (BYOT + D1 cache)
+For local token authentication:
 
 ```bash
 cp .dev.vars.example .dev.vars
-# edit .dev.vars — set SESSION_SECRET to a random string
-vp run db:migrate:local
-vp run preview    # → http://127.0.0.1:8787
+# Set SESSION_SECRET in .dev.vars
+vp run preview
 ```
 
-Then visit `/auth/token` on the preview URL and paste your Concept2 API token.
+Then open `http://127.0.0.1:8787/auth/token`. Never commit `.dev.vars` or a
+personal token.
 
----
+## Self-hosting
 
-## Deploying your own instance
-
-### Prerequisites
-
-- A [Cloudflare account](https://dash.cloudflare.com/sign-up) (free tier works).
-- [Node.js](https://nodejs.org/) (see `.node-version` for the pinned version; currently 24).
-- A Concept2 Logbook account (only needed to _use_ token auth; deployment works without one).
-
-### Setup checklist
-
-1. **Fork the repo** and clone your fork:
+1. Create a Cloudflare account, then fork and clone the repository.
+2. Install dependencies with `vp install`.
+3. Set `vars.PUBLIC_APP_URL` in `wrangler.jsonc` to the deployed origin.
+4. Configure the cookie-encryption secret:
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/rowplay.git && cd rowplay
-   ```
-
-2. **Install dependencies:**
-
-   ```bash
-   vp install
-   ```
-
-3. **Create Cloudflare resources** (one-time):
-
-   ```bash
-   # KV namespace for sessions
-   wrangler kv namespace create SESSIONS
-   # → copy the id into wrangler.jsonc → kv_namespaces[0].id
-
-   # D1 database for workout cache
-   wrangler d1 create rowplay
-   # → copy the database_id into wrangler.jsonc → d1_databases[0].database_id
-   ```
-
-4. **Set secrets:**
-
-   ```bash
-   # Required for BYOT token sessions
    wrangler secret put SESSION_SECRET
-   # (generate a random string, e.g.: openssl rand -hex 32)
-
-   # Only if enabling OAuth (optional — BYOT works without it):
-   wrangler secret put CONCEPT2_CLIENT_SECRET
    ```
 
-5. **Update `wrangler.jsonc`:**
-   - Set `vars.PUBLIC_APP_URL` to your deployment URL (e.g. `https://rowplay.YOUR_SUBDOMAIN.workers.dev`).
-   - If enabling OAuth, set `vars.CONCEPT2_CLIENT_ID` to your Concept2 developer app client ID.
-   - Leave `CONCEPT2_CLIENT_ID` empty for BYOT-only mode (recommended).
-
-6. **Apply database migrations:**
+5. For optional OAuth, set `vars.CONCEPT2_CLIENT_ID` and configure
+   `CONCEPT2_CLIENT_SECRET` with `wrangler secret put`. Leave both unset for
+   the recommended BYOT-only deployment.
+6. Verify the checkout:
 
    ```bash
-   vp run db:migrate        # remote D1 (production)
-   # or: vp run db:migrate:local   (local wrangler dev)
+   vp run check
+   vp run validate:locales
+   vp run test:e2e:smoke
    ```
 
-7. **Verify the build:**
+7. Deploy the Worker and its static assets:
 
    ```bash
-   vp check              # full gate: format:check + lint + typecheck + test + build
+   vp run deploy
    ```
 
-8. **Deploy:**
+The Worker needs no persistent storage resource or database provisioning.
 
-   ```bash
-   vp run deploy          # build + wrangler deploy
-   ```
+## Commands
 
-9. **Optional — configure a custom domain** in the Cloudflare dashboard
-   (Workers & Pages → rowplay → Custom Domains).
+| Command                   | Purpose                                                            |
+| ------------------------- | ------------------------------------------------------------------ |
+| `vp install`              | Install the locked dependency set                                  |
+| `vp dev`                  | Fast local Vite/SvelteKit development on port 5173                 |
+| `vp build`                | Build the Cloudflare Worker and static assets                      |
+| `vp run preview`          | Build and run the Workers-faithful local preview                   |
+| `vp run preview:wrangler` | Run `wrangler dev` after an existing build                         |
+| `vp run format`           | Format the repository                                              |
+| `vp run format:check`     | Check formatting without writing                                   |
+| `vp lint`                 | Run lint and fail on findings                                      |
+| `vp run typecheck`        | Run SvelteKit sync, `svelte-check` (TS 6), and TS 7 `tsc --noEmit` |
+| `vp test`                 | Run the Node-environment Vitest suite                              |
+| `vp run test:browser`     | Run Vitest Browser Mode in Chromium                                |
+| `vp run test:e2e`         | Run all Playwright desktop and mobile scenarios                    |
+| `vp run test:e2e:smoke`   | Run the Chromium desktop pull-request smoke suite                  |
+| `vp run validate:locales` | Verify key parity across all six locale dictionaries               |
+| `vp run check`            | Format check, lint, typecheck, Vitest, and production build        |
+| `vp run deploy`           | Build and deploy to Cloudflare Workers                             |
 
----
-
-## Scripts
-
-| Script                      | Does                                                              |
-| --------------------------- | ----------------------------------------------------------------- |
-| `vp dev`                    | Local dev server (Vite; fast UI iteration, no KV/D1)              |
-| `vp build`                  | Production build → `.svelte-kit/cloudflare`                       |
-| `vp run preview`            | Build + `wrangler dev` (Workers runtime with local KV/D1)         |
-| `vp run preview:wrangler`   | `wrangler dev` only — needs a prior `vp build`                    |
-| `vp run format`             | Format the repo; `vp run format:check` verifies only              |
-| `vp lint`                   | Lint; fails on findings                                           |
-| `vp run typecheck`          | `svelte-check` (TS 6 API) + `tsc --noEmit` (TS 7)                 |
-| `vp check`                  | Full quality gate: format:check + lint + typecheck + test + build |
-| `vp test`                   | Vitest unit tests (node environment)                              |
-| `vp run test:browser`       | Vitest Browser Mode — real-browser component/integration tests    |
-| `vp run test:browser:watch` | Vitest Browser Mode in watch mode (opens Chromium)                |
-| `vp run test:e2e`           | Playwright E2E — all specs, Chromium desktop + mobile             |
-| `vp run test:e2e:smoke`     | Playwright PR smoke — `smoke.spec.ts` on Chromium desktop only    |
-| `vp run validate:locales`   | Verify locale dictionary key parity across all languages          |
-| `vp run deploy`             | Build + `wrangler deploy`                                         |
-| `vp run db:migrate`         | Apply D1 migrations (remote)                                      |
-| `vp run db:migrate:local`   | Apply D1 migrations (local preview)                               |
-
-### Testing tiers
-
-rowplay has three test layers — each serves a different purpose:
-
-| Command               | What runs                                  | When to use                                       |
-| --------------------- | ------------------------------------------ | ------------------------------------------------- |
-| `vp test`             | Vitest unit tests (node env, ~95 files)    | CI gate; pure logic, helpers, server              |
-| `vp run test:browser` | Vitest Browser Mode (real Chromium)        | Component/DOM behaviour that needs a real browser |
-| `vp run test:e2e`     | Playwright E2E (full user flows, Chromium) | End-to-end: auth, sync, replay, share             |
-
-**Browser Mode** runs `*.browser.test.ts` files in a real Chromium browser via
-Vitest + Playwright. Use it for tests that exercise real DOM APIs, Svelte
-component mounting, cookie behaviour, or CSS-dependent interactions — things
-that are awkward to stub in a node environment.
-
-Browser tests live alongside their source: `src/lib/theme.svelte.browser.test.ts`,
-`src/components/ChipButton.browser.test.ts`, etc. They are _not_ part of the
-default `vp test` gate (that stays fast and node-only); run them explicitly
-with `vp run test:browser`.
-
-**Prerequisite:** Both Browser Mode and E2E use Chromium via Playwright.
-Install once on a fresh checkout:
+For Browser Mode and E2E on a fresh machine, install Chromium once:
 
 ```bash
 vpx playwright install --with-deps chromium
 ```
 
----
-
 ## Project layout
 
-```
+```text
 src/
+  components/       reusable charts, gauges, panels, and controls
   lib/
-    replay/          engine, renderer, 2D/3D course, sports theming
-    server/          concept2 API client, session (KV), db (D1), data loader
-    analytics.ts     pure analysis functions (CP/W′, PMC, HR zones, …)
-    mockData.ts      demo-mode sample workouts
+    analytics.ts    pure dashboard and training analysis
+    mockData.ts     bundled synthetic demo history
+    replay/         engine, 2D/3D renderers, sources, and ghost helpers
+    server/         live Concept2, cookie session, export, data, and logging
   routes/
-    auth/token/      bring-your-own-token connect
-    dashboard/       summary, pace trend, workout list, PMC
-    replay/[id]/     real-time replay (canvas + gauges + charts)
-    compare/         side-by-side workout comparison
-    leaderboard/     standard-distance leaderboards
-    settings/        language, theme, annual goal, account management
-    r/[token]/       shared replay (public link)
-  components/        charts, gauges, panels, heatmap, workout list
+    auth/           BYOT entry and optional OAuth callbacks
+    api/            live reads, export, goals, timezone, and recent polling
+    dashboard/      full-history analytics and workout list
+    replay/[id]/    synchronized workout replay
+    settings/       export and home-timezone controls
+    docs/           localized user guide
 ```
 
----
+Historical compatibility handlers for removed features are intentionally
+omitted from this active-product map.
 
 ## Known limitations
 
-- **OAuth requires a Concept2 developer app.** If you want OAuth login (instead
-  of BYOT token paste), you must register an app with Concept2 and configure
-  `CONCEPT2_CLIENT_ID` / `CONCEPT2_CLIENT_SECRET`. The public deployment at
-  `rowplay.shenghaoc.workers.dev` is BYOT-only.
-- **Per-stroke data depends on Concept2.** Not all workouts include per-stroke
-  data (e.g. older logbook entries or workouts recorded without ErgData). These
-  fall back to split-level replay.
-- **3D replay requires WebGPU or WebGL.** The 3D view uses Three.js, tries
-  WebGPU first for the richest scene, then falls back to WebGL. Devices without
-  either backend fall back to the 2D canvas renderer automatically.
-- **Live mode polls.** There is no real-time push from Concept2 — live/near-live
-  mode uses periodic polling at a configurable interval (60s default, 30s minimum)
-  and only reflects workouts recorded with ErgData.
-- **Single account per session.** BYOT tokens are personal read-only tokens tied
-  to one Concept2 profile. Multi-account dashboards are not supported.
-- **Workers free tier limits.** Cloudflare's free tier includes 100k requests/day
-  and 10ms CPU-time per request. Large logbook syncs (thousands of workouts with
-  per-stroke data) may hit these limits. Upgrading to the paid Workers plan
-  resolves this.
-- **KV is eventually consistent.** Session reads may briefly return stale data
-  after a write. This is inherent to Cloudflare KV's global distribution model.
-- **D1 storage.** Very large logbooks (10k+ workouts with full stroke data) may
-  approach D1's per-database storage limits. Most users will never hit this.
-- **No Concept2 PM5 direct connection.** rowplay reads from the Concept2 Logbook
-  API, not directly from the Performance Monitor. Workouts appear after they sync
-  to the Concept2 cloud.
-
----
+- Authenticated pages depend on the Concept2 API and network availability.
+- Very large histories can take longer because the Worker reads live,
+  paginated data rather than a persistent local cache; Concept2 rate limits can
+  also delay refreshes.
+- Not every Logbook result includes per-stroke data, so some replays use splits
+  or summary timing.
+- 3D replay needs WebGPU or WebGL; devices without either use the 2D renderer.
+- Live mode polls for newly logged results rather than receiving push updates.
+- One BYOT session represents one Concept2 athlete.
+- rowplay reads the Concept2 Logbook after upload and does not connect directly
+  to a PM5.
+- Public sharing, leaderboards, persistent annotations, and server-side
+  heart-rate merging are not part of the stateless product.
 
 ## Stack
 
-| Concern       | Choice                                                                            |
-| ------------- | --------------------------------------------------------------------------------- |
-| App framework | SvelteKit (Svelte 5, runes mode) + Vite                                           |
-| Hosting       | Cloudflare **Workers** + static assets (`@sveltejs/adapter-cloudflare`)           |
-| Server        | SvelteKit endpoints on the Workers runtime                                        |
-| Auth          | **Bring-your-own-token** (personal Concept2 API token)                            |
-| Sessions      | Cloudflare **KV** (`SESSIONS`)                                                    |
-| Cache         | Cloudflare **D1** (`DB`) — cached workouts + strokes                              |
-| Charts        | [uPlot](https://github.com/leeoniya/uPlot)                                        |
-| 3D            | [Three.js](https://threejs.org/)                                                  |
-| UI            | [daisyUI 5](https://daisyui.com/) + Tailwind CSS v4                               |
-| Icons         | [Lucide](https://lucide.dev/)                                                     |
-| I18n          | Hand-rolled; 6 languages                                                          |
-| CI            | GitHub Actions (`vp install` + `vp check`; separate locale + E2E smoke workflows) |
-
----
+| Concern                   | Choice                                                  |
+| ------------------------- | ------------------------------------------------------- |
+| App framework             | SvelteKit / Svelte 5 with Vite                          |
+| Hosting                   | Cloudflare Workers with static assets                   |
+| Authentication            | BYOT and AES-GCM sealed httpOnly cookies                |
+| Workout data              | Live Concept2 Logbook API reads                         |
+| Persistent Worker storage | None                                                    |
+| Charts                    | [uPlot](https://github.com/leeoniya/uPlot)              |
+| 3D                        | Three.js, WebGPU first with WebGL fallback              |
+| UI                        | daisyUI 5 / Tailwind CSS 4                              |
+| Internationalization      | Repository dictionaries for six languages               |
+| Testing                   | Vitest, Vitest Browser Mode, and Playwright             |
+| CI                        | GitHub Actions with repository, locale, and smoke gates |
 
 ## Contributing
 
-See **[AGENTS.md](AGENTS.md)** for the contributor entry point — it routes to
-steering docs, skills, and specs.
-
-For bugs, features, and security disclosures, see:
+See [AGENTS.md](AGENTS.md) for the contributor entry point and links to the
+repository's steering documents, skills, and implementation specifications.
 
 - [Bug report template](.github/ISSUE_TEMPLATE/bug_report.md)
 - [Feature request template](.github/ISSUE_TEMPLATE/feature_request.md)
 - [Security policy](SECURITY.md)
 
----
-
-Not affiliated with Concept2. "Concept2", "RowErg", "SkiErg", and "BikeErg" are
-trademarks of Concept2.
+Not affiliated with Concept2. "Concept2", "RowErg", "SkiErg", and "BikeErg"
+are trademarks of Concept2.

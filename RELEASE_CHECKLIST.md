@@ -5,14 +5,13 @@ elaborate branching, no version milestones. Tag, push, deploy.
 
 ## Before tagging
 
-- [ ] `pnpm check` — zero type errors
-- [ ] `pnpm test` — all tests green, count has not decreased
-- [ ] `pnpm build` — production build succeeds
-- [ ] `pnpm test:e2e` — Playwright smoke passes (requires `wrangler dev`)
-- [ ] `pnpm validate:locales` — all i18n keys consistent across languages
+- [ ] `vp run check` — formatting, lint, typecheck, Vitest, and production build pass
+- [ ] `vp run validate:locales` — all i18n keys are consistent across languages
+- [ ] `vp run test:e2e:smoke` — Chromium smoke passes against Workers preview
+- [ ] Run `vp run test:e2e` when the release affects broad browser flows
 - [ ] Manual smoke in demo mode: `/dashboard` → click a workout → replay plays
-- [ ] If auth/sync touched, manual smoke with a real token on `pnpm preview`
-- [ ] If new DB migrations added, `pnpm db:migrate:local` succeeds
+- [ ] If auth, sessions, or live Concept2 reads changed, smoke BYOT on `vp run preview`
+- [ ] If user-facing behavior changed, confirm README screenshots and feature claims remain accurate
 
 ## Tag and release
 
@@ -35,18 +34,16 @@ Then create a **GitHub Release** from the tag:
 ## Deploy
 
 ```bash
-# Apply any pending remote DB migrations first
-pnpm db:migrate
-
 # Build + deploy to Cloudflare Workers
-pnpm deploy
+vp run deploy
 ```
 
 ## After deploy
 
 - [ ] Visit the production URL — confirm the new version loads
-- [ ] Quick demo-mode smoke: dashboard loads, replay plays
-- [ ] If auth/sync changed: connect with a real token, force a sync
+- [ ] Demo dashboard loads and a bundled workout replay plays
+- [ ] If auth or session handling changed, verify the authenticated BYOT flow
+- [ ] If Concept2 data loading changed, verify that authenticated pages read live data
 
 ## Rollback
 
@@ -54,9 +51,9 @@ If something goes wrong:
 
 ```bash
 # Roll back to the previous deploy (Workers keeps the last deployable version)
-pnpm exec wrangler rollback
+vp exec wrangler rollback
 
 # Or deploy a specific tag:
 git checkout <tag>
-pnpm deploy
+vp run deploy
 ```

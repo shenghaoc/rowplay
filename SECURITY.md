@@ -19,21 +19,32 @@ disclosure. If you can't use GitHub Advisories, email the maintainer directly
 
 Issues of particular interest:
 
-- **Token exposure** — any path that leaks the Concept2 API token (plaintext in
-  logs, client-side JS access, KV/D1 storage, URL query params, error messages).
-- **Session hijacking** — cookie theft, missing httpOnly/Secure/SameSite flags,
-  session fixation.
-- **Data leakage** — one user accessing another user's cached workouts or
-  personal data.
-- **Injection** — SQL injection via D1, XSS via user-controlled content.
-- **CSRF** — state-changing endpoints missing origin validation.
+- **Token exposure** — any path that exposes a personal Concept2 API token in
+  client-side JavaScript, URLs, errors, logs, or other readable output.
+- **Cookie and session security** — broken cookie encryption or authentication,
+  missing httpOnly/Secure/SameSite protections, session fixation, or cross-user
+  session confusion.
+- **Response data leakage** — authenticated data sent with public caching
+  headers, request-state leakage that returns one user's live Concept2 response
+  to another user, or other cross-user disclosure.
+- **Sensitive logging** — cookies, tokens, profile data, or full workout
+  payloads appearing in Workers logs.
+- **CSRF** — state-changing cookie-backed endpoints missing appropriate
+  request validation.
+- **XSS** — unsafe rendering of workout comments, upstream/imported text, or
+  other user-controlled content.
+- **Unsafe redirects** — redirect handling that can disclose authorization
+  credentials or send users to an attacker-controlled destination.
+- **Resource exhaustion** — malformed or malicious input that causes avoidable,
+  disproportionate Worker CPU, memory, or upstream-request use.
 
 ## Out of scope
 
 - Issues that require physical access to the user's device.
 - Social engineering attacks against Concept2 or Cloudflare.
-- Denial-of-service against the public demo deployment (it's on a free tier;
-  rate limiting is handled by Cloudflare).
+- Ordinary volumetric denial-of-service or traffic floods handled by Cloudflare.
+  Application bugs that amplify a small request into disproportionate Worker
+  resource use remain in scope.
 - Vulnerabilities in third-party dependencies that don't meaningfully affect
   rowplay's attack surface (report those upstream instead).
 
