@@ -1,5 +1,10 @@
 # Requirements Document: Replay Figure and Motion Readability
 
+> Historical scope note (July 2026): These completed visual and contact
+> requirements remain authoritative. The ban on repository-owned authored 3D
+> athlete and equipment shells is superseded only by
+> [Replay authored athlete assets](../replay-authored-athlete-assets/requirements.md).
+
 ## Introduction
 
 The replay already has correct staged sport kinematics and equipment-locked

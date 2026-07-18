@@ -60,7 +60,10 @@
 		});
 	});
 
-	onMount(() => initPwaUpdate(i18n));
+	onMount(() => {
+		document.documentElement.dataset.appHydrated = 'true';
+		initPwaUpdate(i18n);
+	});
 </script>
 
 <a class="skip-link" href="#main">{t('nav.skipToContent')}</a>

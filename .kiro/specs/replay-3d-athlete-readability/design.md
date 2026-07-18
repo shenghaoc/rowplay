@@ -1,5 +1,11 @@
 # Design Document: Replay Figure and Motion Readability
 
+> Historical scope note (July 2026): This completed silhouette, contact,
+> camera, and readability baseline remains authoritative. Its procedural-only
+> source restriction for current 3D athlete and equipment shells is narrowly
+> superseded by
+> [Replay authored athlete assets](../replay-authored-athlete-assets/design.md).
+
 ## Overview
 
 This pass preserves the existing replay engine, shared sport-kinematics poses,

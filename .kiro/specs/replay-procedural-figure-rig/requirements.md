@@ -1,5 +1,10 @@
 # Requirements Document: Replay Procedural Figure Rig
 
+> Historical scope note (July 2026): These completed requirements remain the
+> articulation, equipment-contact, and fallback baseline. Their procedural-only
+> restriction for 3D athlete and equipment geometry is superseded by
+> [Replay authored athlete assets](../replay-authored-athlete-assets/requirements.md).
+
 ## Introduction
 
 The replay already shares sport-specific staged motion across 2D and 3D, keeps

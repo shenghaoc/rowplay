@@ -21,6 +21,10 @@ Reusable packs in [`.kiro/skills/`](.kiro/skills/):
 
 Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 
+**Active:**
+
+- [Replay authored athlete assets](.kiro/specs/replay-authored-athlete-assets/tasks.md) — one compact repository-owned low-poly GLB supplies authored 3D athlete and sport-equipment shells while the existing contact-driven rig, WebGPU/WebGL behavior, procedural 3D fallback, and Canvas 2D fallback remain authoritative; provenance is required, with no scan, likeness, avatar generator, or undocumented download.
+
 **Completed (do not rebuild):**
 
 - [Stateless storage removal](.kiro/specs/remove-kv-d1/tasks.md) — removes KV/D1 and their migrations; fetches live Concept2 history; keeps encrypted cookie sessions, annual goals, timezone preferences, and export; removes storage-dependent features.
@@ -33,9 +37,9 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 - [Replay animation upgrade](.kiro/specs/replay-animation-upgrade/tasks.md) — wall-clock motion (`motion.ts`), stroke-synced hull surge, splash/ripples/waves, corrected oar/pole mechanics, instanced spray & buoys, chase camera with speed-aware FOV, `PerfGovernor` adaptive degradation; both renderers, all 3 sports, reduced-motion compliant.
 - [WebGPU-first replay graphics upgrade](.kiro/specs/webgpu-first-replay-graphics-upgrade/tasks.md) — WebGPU-first 3D factory with WebGL fallback; Concept2-derived stroke poses for live and ghost rows; segmented human-scale 3D athletes; Ultra quality tier; larger 3D stage; backend diagnostics; docs/tests/visual QA.
 - [Replay motion truth and sport kinematics](.kiro/specs/replay-motion-truth-and-kinematics/tasks.md) — shared staged Row/Ski/Bike movement, cadence-correct anchors/fallback/demo data, sport-specific 2D surfaces, equipment-locked 3D contacts, and sport-/aspect-aware camera framing.
-- [Replay procedural figure rig](.kiro/specs/replay-procedural-figure-rig/tasks.md) — fixed-proportion articulated 2D/3D athletes with clearer anatomy, kit, silhouette, and equipment-contact readability; generic procedural figures with no external avatar assets or likeness claim.
-- [Replay figure and motion readability](.kiro/specs/replay-3d-athlete-readability/tasks.md) — silhouette-first ring-built 3D athletes, alias-resistant 2D BikeErg drivetrain motion, sport-specific equipment modelling, three-quarter cameras, bounded wakes, semantic contrast, real-stage projection tests, and ghost framing/depth hardening.
-- [Replay premium environments](.kiro/specs/replay-premium-environments/tasks.md) — layered sport-specific 2D venue art and procedural 3D sky, horizon, ground, atmosphere, lighting, and scenery; coherent low-through-ultra quality, reduced-motion behavior, and no generated external runtime assets.
+- [Replay procedural figure rig](.kiro/specs/replay-procedural-figure-rig/tasks.md) — historical fixed-proportion articulation and fallback baseline for 2D/3D athletes; its procedural-only 3D asset-source restriction is superseded by the authored-athlete-assets spec.
+- [Replay figure and motion readability](.kiro/specs/replay-3d-athlete-readability/tasks.md) — historical silhouette, equipment, camera, contrast, and projection baseline; superseded only for the source of current 3D athlete and equipment shells.
+- [Replay premium environments](.kiro/specs/replay-premium-environments/tasks.md) — layered sport-specific 2D venue art and procedural 3D sky, horizon, ground, atmosphere, lighting, and scenery; its procedural environment-asset policy remains authoritative.
 - [Concept2 token privacy](.kiro/specs/concept2-token-privacy/tasks.md) — historical BYOT privacy work; its KV/D1 cache design is superseded by the stateless storage-removal spec.
 - [Mobile nav backdrop dismiss](.kiro/specs/mobile-nav-backdrop-dismiss/tasks.md) — cross-browser backdrop tap to close the hamburger menu; bounding-rect `onclick` fallback for iOS Safari.
 - [Snappy connect & dashboard cache warm-up](.kiro/specs/connect-cache-warmup/tasks.md) — historical cache warm-up work; superseded by live all-history reads and per-request de-duplication.
@@ -86,7 +90,7 @@ All commands use **vp** (Vite+ CLI). `vp install` for clean CI installs.
 | Type check         | `vp run typecheck` (`svelte-kit sync` + `svelte-check` + TS7 `tsc --noEmit`) |
 | Unit tests         | `vp test` (Vitest)                                                           |
 | Build              | `vp build` (outputs `.svelte-kit/cloudflare`)                                |
-| Full quality gate  | `vp check` (format:check + lint + typecheck + test + build)                  |
+| Full quality gate  | `vp run check` (format:check + lint + typecheck + test + build)              |
 | Preview            | `vp run preview` (build + `wrangler dev`, real runtime)                      |
 | Preview (wrangler) | `vp run preview:wrangler` (`wrangler dev` only, needs prior build)           |
 | Deploy             | `vp run deploy` (build + `wrangler deploy`)                                  |
@@ -129,7 +133,7 @@ All commands use **vp** (Vite+ CLI). `vp install` for clean CI installs.
 
 ## Quality gate
 
-1. `vp check` → passes. It runs `format:check`, `lint`, `typecheck`
+1. `vp run check` → passes. It runs `format:check`, `lint`, `typecheck`
    (`state_referenced_locally` warnings are known), `test`, and `build` —
    the same gate base CI runs after `vp install`.
 2. `vp test` → green, and the test count must not decrease.

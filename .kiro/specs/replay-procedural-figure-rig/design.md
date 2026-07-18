@@ -1,5 +1,11 @@
 # Design Document: Replay Procedural Figure Rig
 
+> Historical scope note (July 2026): This completed procedural baseline remains
+> authoritative for articulation, equipment contacts, and the Canvas and 3D
+> fallbacks. Its prohibition on repository-owned authored 3D athlete and
+> equipment assets is superseded by
+> [Replay authored athlete assets](../replay-authored-athlete-assets/design.md).
+
 ## Overview
 
 This pass refines the existing procedural athletes instead of replacing the

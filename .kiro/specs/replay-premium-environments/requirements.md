@@ -1,5 +1,10 @@
 # Requirements Document: Replay Premium Environments
 
+> Scope clarification (July 2026):
+> [Replay authored athlete assets](../replay-authored-athlete-assets/requirements.md)
+> does not permit imported, generated, scanned, or downloaded environment art.
+> These procedural-environment requirements remain authoritative.
+
 ## Introduction
 
 The replay's articulated athletes and sport kinematics can only read as a

@@ -1,5 +1,11 @@
 # Design Document: Replay Motion Truth and Sport Kinematics
 
+> Historical scope note (July 2026): This completed timing, kinematics, and
+> equipment-contact design remains authoritative. Its procedural production-path
+> and no-new-asset-pipeline boundary is superseded only for repository-owned 3D
+> athlete and equipment shells by
+> [Replay authored athlete assets](../replay-authored-athlete-assets/design.md).
+
 ## Overview
 
 This follow-up keeps the existing wall-clock render loop, Concept2 stroke

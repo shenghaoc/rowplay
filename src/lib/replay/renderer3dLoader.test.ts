@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import type { ReplayAssetLibrary } from "./renderer3dAssets";
 import type { Renderer3DCtor } from "./renderer3dLoader";
 import {
   createRenderer3D,
@@ -129,9 +130,16 @@ describe("loadRenderer3DWebGPU", () => {
 });
 
 describe("createRenderer3D", () => {
+  type FakeRendererInstance = {
+    ctorArgs: unknown[];
+    destroy: ReturnType<typeof vi.fn>;
+  };
+
+  const assets = { byteLength: 128, geometries: new Map() } as ReplayAssetLibrary;
+
   function makeCtor(
     ready: () => Promise<unknown> = () => Promise.resolve(),
-    instances: Array<{ destroy: ReturnType<typeof vi.fn> }> = [],
+    instances: FakeRendererInstance[] = [],
     backendKind: "webgpu" | "webgl" = "webgpu",
   ): Renderer3DCtor {
     const readyImpl = ready;
@@ -143,7 +151,9 @@ describe("createRenderer3D", () => {
       // Mirrors CourseRenderer3D's `backendKind` getter so the loader can
       // detect Three's internal WebGL2 fallback after ready() resolves.
       backendKind = backendKind;
-      constructor() {
+      ctorArgs: unknown[];
+      constructor(...args: unknown[]) {
+        this.ctorArgs = args;
         instances.push(this);
       }
     }
@@ -157,6 +167,7 @@ describe("createRenderer3D", () => {
       detectWebGPU: async () => true,
       detectWebGL: () => false,
       loadWebGPU: async () => makeCtor(),
+      loadAssets: async () => assets,
     });
 
     expect(result.backend).toBe("webgpu");
@@ -164,13 +175,14 @@ describe("createRenderer3D", () => {
   });
 
   it("falls back to WebGL when WebGPU init fails", async () => {
-    const failedWebGpuInstances: Array<{ destroy: ReturnType<typeof vi.fn> }> = [];
+    const failedWebGpuInstances: FakeRendererInstance[] = [];
     const result = await createRenderer3D(host, "ultra", "rower", {
       detectWebGPU: async () => true,
       detectWebGL: () => true,
       loadWebGPU: async () =>
         makeCtor(() => Promise.reject(new Error("device lost")), failedWebGpuInstances),
       loadWebGL: async () => makeCtor(),
+      loadAssets: async () => assets,
     });
 
     expect(result.backend).toBe("webgl");
@@ -184,28 +196,36 @@ describe("createRenderer3D", () => {
     // backendKind flips to "webgl" because Three couldn't bring up a device.
     // The factory must treat that as a WebGPU failure: destroy the renderer,
     // re-enter through the explicit WebGL branch, and report the WebGL tier.
-    const failedWebGpuInstances: Array<{ destroy: ReturnType<typeof vi.fn> }> = [];
+    const failedWebGpuInstances: FakeRendererInstance[] = [];
+    const webGlInstances: FakeRendererInstance[] = [];
+    const loadAssets = vi.fn(async () => assets);
     const result = await createRenderer3D(host, "ultra", "rower", {
       detectWebGPU: async () => true,
       detectWebGL: () => true,
       loadWebGPU: async () => makeCtor(() => Promise.resolve(), failedWebGpuInstances, "webgl"),
-      loadWebGL: async () => makeCtor(),
+      loadWebGL: async () => makeCtor(() => Promise.resolve(), webGlInstances, "webgl"),
+      loadAssets,
     });
 
     expect(result.backend).toBe("webgl");
     expect(result.quality).toBe("high");
     expect(failedWebGpuInstances).toHaveLength(1);
     expect(failedWebGpuInstances[0]?.destroy).toHaveBeenCalledTimes(1);
+    expect(webGlInstances).toHaveLength(1);
+    expect(loadAssets).toHaveBeenCalledTimes(1);
+    expect(failedWebGpuInstances[0]?.ctorArgs[3]).toEqual({ assets });
+    expect(webGlInstances[0]?.ctorArgs[3]).toEqual({ assets });
   });
 
   it("destroys a failed WebGL renderer before rethrowing init errors", async () => {
-    const failedWebGlInstances: Array<{ destroy: ReturnType<typeof vi.fn> }> = [];
+    const failedWebGlInstances: FakeRendererInstance[] = [];
     await expect(
       createRenderer3D(host, "medium", "rower", {
         detectWebGPU: async () => false,
         detectWebGL: () => true,
         loadWebGL: async () =>
           makeCtor(() => Promise.reject(new Error("context lost")), failedWebGlInstances),
+        loadAssets: async () => assets,
       }),
     ).rejects.toThrow("context lost");
 
@@ -218,6 +238,7 @@ describe("createRenderer3D", () => {
       detectWebGPU: async () => false,
       detectWebGL: () => true,
       loadWebGL: async () => makeCtor(),
+      loadAssets: async () => assets,
     });
 
     expect(result.backend).toBe("webgl");
@@ -225,12 +246,33 @@ describe("createRenderer3D", () => {
   });
 
   it("throws when neither backend is available", async () => {
+    const loadAssets = vi.fn(async () => assets);
     await expect(
       createRenderer3D(host, "medium", "bike", {
         detectWebGPU: async () => false,
         detectWebGL: () => false,
+        loadAssets,
       }),
     ).rejects.toThrow("3D renderer unavailable");
+    expect(loadAssets).not.toHaveBeenCalled();
+  });
+
+  it("keeps procedural WebGL available when the authored asset load fails", async () => {
+    const webGlInstances: FakeRendererInstance[] = [];
+    const loadAssets = vi.fn(async () => {
+      throw new Error("asset parse failed");
+    });
+
+    const result = await createRenderer3D(host, "high", "bike", {
+      detectWebGPU: async () => false,
+      detectWebGL: () => true,
+      loadWebGL: async () => makeCtor(() => Promise.resolve(), webGlInstances, "webgl"),
+      loadAssets,
+    });
+
+    expect(result.backend).toBe("webgl");
+    expect(loadAssets).toHaveBeenCalledTimes(1);
+    expect(webGlInstances[0]?.ctorArgs[3]).toEqual({ assets: null });
   });
 
   it("is SSR-safe when neither document nor navigator can provide a backend", async () => {

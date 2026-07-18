@@ -123,14 +123,16 @@ envelope aligned to the logged cycles: RowErg sequences legs, body, then arms
 recovery, and BikeErg separates cadence-driven cranks from distance-driven
 wheel roll.
 
-Both views draw a lightweight procedural athlete rather than downloading or
-scanning an avatar. Fixed-proportion upper and lower limbs bend at explicit
-elbows and knees, while shaped torsos, pelvises, joints, kit, and near/far-side
-contrast keep each pose readable at replay scale. Hands and feet remain aligned
-with the relevant equipment throughout the cycle. The figure is a generic
-illustration; it does not reproduce the athlete's body, clothing, or likeness.
-The 3D figure deliberately uses broad faceted body masses and kit blocks instead
-of sub-pixel facial or finger detail, so the silhouette survives the chase view.
+The 2D view draws a lightweight procedural athlete. The 3D view can load a
+compact repository-owned low-poly geometry pack created specifically for
+rowplay and fit its authored athlete and sport-equipment shells onto the same
+contact-driven rig. The asset changes visible form, not timing or kinematics:
+hands and feet remain at equipment contacts, live and ghost athletes use
+independent instances, and runtime materials retain theme and lane identity. If
+the local asset cannot load, procedural 3D remains available, and Canvas 2D is
+the stable outer fallback. The figure remains generic; the asset contains no
+scan, avatar-generator output, user image, body profile, clothing profile, or
+athlete likeness.
 
 Both views use complete sport-specific illustrative environments, not one
 generic floor with different colors. RowErg combines layered water with
@@ -150,13 +152,14 @@ procedural Canvas drawing and Three.js geometry and materials. The replay does
 not ship or download generated environment images, photographs, scanned venues,
 or imported location models.
 
-In 3D, segmented human-scale athletes keep feet and hands on the relevant
-equipment targets — oar handles and foot plates, SkiErg pole grips and boots, or
-BikeErg bars and pedals. The larger 3D stage and rear three-quarter chase camera
-keep paired limbs visible; sport- and viewport-aware framing, speed-aware
-follow, and camera-relative fill light keep the athlete readable around the
-full course. Environment contrast and detail stay subordinate to the figure,
-equipment contacts, ghost comparison, and telemetry.
+In 3D, authored human-scale athlete shells keep feet and hands on the relevant
+equipment targets through the existing rig — oar handles and foot plates,
+SkiErg pole grips and boots, or BikeErg bars and pedals. The larger 3D stage and
+rear three-quarter chase camera keep paired limbs visible; sport- and
+viewport-aware framing, speed-aware follow, and camera-relative fill light keep
+the athlete readable around the full course. Environment contrast and detail
+stay subordinate to the figure, equipment contacts, ghost comparison, and
+telemetry.
 
 The 2D BikeErg uses the same mechanically forward clockwise convention for its
 wheels and cranks. Explicit opposing crank arms, pedals, chainring, sprocket,

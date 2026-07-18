@@ -3,6 +3,7 @@ import type { RenderQuality } from "./replayRenderer";
 import type { ReplayRenderer } from "./renderer";
 import type { Renderer3DBackend } from "./renderer3d";
 import type { Sport } from "../types";
+import type { ReplayAssetLibrary } from "./renderer3dAssets";
 
 export type Renderer3DCtor = typeof CourseRenderer3D;
 export type { Renderer3DBackend } from "./renderer3d";
@@ -23,6 +24,7 @@ export interface Renderer3DFactoryDeps {
   detectWebGL?: () => boolean;
   loadWebGPU?: () => Promise<Renderer3DCtor>;
   loadWebGL?: () => Promise<Renderer3DCtor>;
+  loadAssets?: () => Promise<ReplayAssetLibrary>;
 }
 
 let cached: Promise<Renderer3DCtor> | null = null;
@@ -90,18 +92,36 @@ function destroyFailedRenderer(renderer: CourseRenderer3D | null): void {
   }
 }
 
+/** Keep Three.js and GLTFLoader behind the same user-triggered 3D boundary. */
+async function loadDefaultReplayAssets(): Promise<ReplayAssetLibrary> {
+  const { loadReplayAssetLibrary } = await import("./renderer3dAssets");
+  return loadReplayAssetLibrary();
+}
+
 export async function createRenderer3D(
   host: HTMLElement,
   quality: RenderQuality,
   sport: Sport,
   deps: Renderer3DFactoryDeps = {},
 ): Promise<Renderer3DResult> {
+  // The authored mesh pack raises visual fidelity but must never turn a local
+  // asset or parser failure into a blank replay. The existing procedural 3D
+  // rig remains a hard fallback and Canvas 2D remains the outer fallback.
+  // Defer the model request until a usable backend is about to be constructed;
+  // devices with no 3D support should not download a 3D-only asset. Retain one
+  // promise so WebGPU failure and the WebGL fallback share the parsed library.
+  let assetLibrary: Promise<ReplayAssetLibrary | null> | null = null;
+  const getAssets = () => {
+    assetLibrary ??= (deps.loadAssets ?? loadDefaultReplayAssets)().catch(() => null);
+    return assetLibrary;
+  };
   const canWebGPU = await (deps.detectWebGPU ?? webgpuSupported)();
   if (canWebGPU) {
     let renderer: CourseRenderer3D | null = null;
     try {
       const Ctor = await (deps.loadWebGPU ?? loadRenderer3DWebGPU)();
-      renderer = new Ctor(host, quality, sport);
+      const assets = await getAssets();
+      renderer = new Ctor(host, quality, sport, { assets });
       await renderer.ready?.();
       // Honour the renderer's effective backend rather than the requested one:
       // Three's WebGPURenderer can install its own WebGL2 fallback inside
@@ -127,9 +147,10 @@ export async function createRenderer3D(
   }
   const webglQuality: RenderQuality = quality === "ultra" ? "high" : quality;
   const Ctor = await (deps.loadWebGL ?? loadRenderer3D)();
+  const assets = await getAssets();
   let renderer: CourseRenderer3D | null = null;
   try {
-    renderer = new Ctor(host, webglQuality, sport);
+    renderer = new Ctor(host, webglQuality, sport, { assets });
     await renderer.ready?.();
     return { renderer, backend: "webgl", quality: webglQuality };
   } catch (err) {

@@ -1,5 +1,9 @@
 # Implementation Tasks: Replay Procedural Figure Rig
 
+> Historical scope note (July 2026): These completed tasks remain the rig and
+> fallback baseline. The current authored 3D shell work is tracked in
+> [Replay authored athlete assets](../replay-authored-athlete-assets/tasks.md).
+
 Spec: `.kiro/specs/replay-procedural-figure-rig/`
 Requirements: Req 1-6
 Follow-up to: `.kiro/specs/replay-motion-truth-and-kinematics/`

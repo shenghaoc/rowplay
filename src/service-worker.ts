@@ -2,7 +2,13 @@
 /// <reference no-default-lib="true"/>
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
-import { build, files, version } from "$service-worker";
+import { base, build, files, version } from "$service-worker";
+import {
+  isManagedServiceWorkerCache,
+  REPLAY_MODEL_CACHE_PREFIX,
+  replayAssetCacheStrategy,
+  shouldCacheResponse,
+} from "./serviceWorkerPolicy";
 
 // `self` is typed as Window in the default lib; inside a service worker it is
 // a ServiceWorkerGlobalScope. This is the cast SvelteKit's docs prescribe.
@@ -12,6 +18,8 @@ const sw = self as unknown as ServiceWorkerGlobalScope;
 const SHELL_CACHE = `shell-${version}`;
 const PAGES_CACHE = `pages-${version}`;
 const API_CACHE = `api-${version}`;
+const REPLAY_MODEL_CACHE = `${REPLAY_MODEL_CACHE_PREFIX}${version}`;
+const CURRENT_CACHES = new Set([SHELL_CACHE, PAGES_CACHE, API_CACHE, REPLAY_MODEL_CACHE]);
 
 const SHELL_ASSETS = [...build, ...files];
 
@@ -41,13 +49,7 @@ sw.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter(
-            (key) =>
-              (key.startsWith("shell-") || key.startsWith("pages-") || key.startsWith("api-")) &&
-              key !== SHELL_CACHE &&
-              key !== PAGES_CACHE &&
-              key !== API_CACHE,
-          )
+          .filter((key) => isManagedServiceWorkerCache(key) && !CURRENT_CACHES.has(key))
           .map((key) => caches.delete(key)),
       );
       await sw.clients.claim();
@@ -70,6 +72,17 @@ sw.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== sw.location.origin) return;
+
+  // Authored 3D meshes are deliberately omitted from the install-time shell.
+  // Network-first lets a healthy response replace a malformed cached HTTP-200
+  // payload; the versioned runtime cache remains the offline fallback.
+  if (
+    request.mode !== "navigate" &&
+    replayAssetCacheStrategy(url.pathname, base) === "network-first"
+  ) {
+    event.respondWith(networkFirst(request, REPLAY_MODEL_CACHE));
+    return;
+  }
 
   // App shell + static files: cache-first.
   if (request.mode !== "navigate" && SHELL_ASSETS.includes(url.pathname)) {
@@ -119,8 +132,7 @@ async function networkFirst(
     // Respect cache-control: private / no-store headers so authenticated data
     // is never persisted in the origin-wide Cache API. Normalized to
     // lowercase for case-insensitive matching.
-    const cc = (response.headers.get("cache-control") ?? "").toLowerCase();
-    if (response.ok && !cc.includes("no-store") && !cc.includes("private")) {
+    if (response.ok && shouldCacheResponse(response.headers.get("cache-control"))) {
       await cache.put(request, response.clone());
     }
     return response;

@@ -121,6 +121,22 @@ function getScene(renderer: CourseRenderer3D) {
 }
 
 const TAU = Math.PI * 2;
+const deg = (value: number) => (value * Math.PI) / 180;
+
+function angleInSector(angle: number, start: number, span: number): boolean {
+  const delta = (((angle - start) % TAU) + TAU) % TAU;
+  return delta <= span + 1e-6;
+}
+
+function instanceAngles(mesh: THREE.InstancedMesh): number[] {
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  return Array.from({ length: mesh.count }, (_, index) => {
+    mesh.getMatrixAt(index, matrix);
+    position.setFromMatrixPosition(matrix);
+    return Math.atan2(position.x, position.z);
+  });
+}
 
 function makeSportState(
   sport: "rower" | "skierg" | "bike",
@@ -308,7 +324,7 @@ describe("CourseRenderer3D", () => {
         `environment:${sport}:horizon-mid`,
         `environment:${sport}:infield`,
         `environment:${sport}:apron`,
-        "athlete:live:contact-shadow",
+        "athlete:live:contact-footprint",
       ]) {
         expect(scene.getObjectByName(layer), `${sport} missing ${layer}`).toBeDefined();
       }
@@ -316,6 +332,57 @@ describe("CourseRenderer3D", () => {
       expect(scene.fog).toBeInstanceOf(THREE.Fog);
       renderer.destroy();
     }
+  });
+
+  it("places venue dressing in authored sectors with deliberate open vistas", () => {
+    const rower = new CourseRenderer3D(makeHost(), "low", "rower");
+    const rowPines = sceneObject(rower, "environment:rower:pines") as THREE.InstancedMesh;
+    expect(
+      instanceAngles(rowPines).every(
+        (angle) =>
+          angleInSector(angle, deg(-25), deg(95)) || angleInSector(angle, deg(185), deg(70)),
+      ),
+    ).toBe(true);
+    for (const landmark of [
+      "environment:rower:regatta-pavilion",
+      "environment:rower:boathouse",
+      "environment:rower:timing-tower",
+    ]) {
+      expect(getScene(rower).getObjectByName(landmark)).toBeDefined();
+    }
+
+    const skier = new CourseRenderer3D(makeHost(), "low", "skierg");
+    const peaks = sceneObject(skier, "environment:skierg:mountain-peaks") as THREE.InstancedMesh;
+    expect(
+      instanceAngles(peaks).every(
+        (angle) =>
+          angleInSector(angle, deg(-150), deg(65)) || angleInSector(angle, deg(35), deg(60)),
+      ),
+    ).toBe(true);
+    expect(getScene(skier).getObjectByName("environment:skierg:timing-lodge")).toBeDefined();
+
+    const bike = new CourseRenderer3D(makeHost(), "low", "bike");
+    const wallPanels = sceneObject(bike, "environment:bike:wall-panels") as THREE.InstancedMesh;
+    expect(
+      instanceAngles(wallPanels).every(
+        (angle) =>
+          angleInSector(angle, deg(55), deg(85)) || angleInSector(angle, deg(220), deg(60)),
+      ),
+    ).toBe(true);
+    const arenaWall = sceneObject(bike, "environment:bike:arena-wall");
+    expect(arenaWall.children).toHaveLength(2);
+    expect(
+      arenaWall.children.reduce(
+        (span, sector) =>
+          span + ((sector.userData.authoredSector as { span?: number } | undefined)?.span ?? 0),
+        0,
+      ),
+    ).toBeLessThan(TAU * 0.5);
+    expect(getScene(bike).getObjectByName("environment:bike:scoreboard")).toBeDefined();
+
+    rower.destroy();
+    skier.destroy();
+    bike.destroy();
   });
 
   it("keeps regatta buoy strings out of SkiErg and BikeErg", () => {
@@ -382,7 +449,45 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
-  it("aligns live and ghost contact shadows with their independent course tangents", () => {
+  it("uses equipment-specific contact footprints and carries staged surge into their placement", () => {
+    const expectedPatches = {
+      rower: ["hull-reflection"],
+      skierg: ["ski-left", "ski-right"],
+      bike: ["tyre-rear", "tyre-front"],
+    } as const;
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const renderer = new CourseRenderer3D(makeHost(), "low", sport);
+      const footprint = sceneObject(renderer, "athlete:live:contact-footprint");
+      expect(footprint.children.map((child) => child.name)).toEqual(
+        expectedPatches[sport].map((patch) => `athlete:live:contact-${patch}`),
+      );
+      renderer.destroy();
+    }
+
+    const rower = new CourseRenderer3D(makeHost(), "low", "rower");
+    rower.resize(800, 600);
+    rower.render(makeSportState("rower", 0, 250), false);
+    const internals = rower as unknown as {
+      liveBoat: THREE.Group;
+      liveAvatar: { group: THREE.Group };
+      liveContactFootprint: THREE.Group;
+    };
+    expect(Math.abs(internals.liveAvatar.group.position.z)).toBeGreaterThan(0.1);
+    const expected = internals.liveBoat.position
+      .clone()
+      .add(
+        new THREE.Vector3(0, 0, internals.liveAvatar.group.position.z).applyQuaternion(
+          internals.liveBoat.quaternion,
+        ),
+      );
+    const actual = internals.liveContactFootprint.position;
+    expect(
+      new THREE.Vector2(actual.x, actual.z).distanceTo(new THREE.Vector2(expected.x, expected.z)),
+    ).toBeLessThan(1e-8);
+    rower.destroy();
+  });
+
+  it("aligns live and ghost contact footprints with their independent course tangents", () => {
     const renderer = new CourseRenderer3D(makeHost(), "low", "bike");
     renderer.resize(800, 600);
     renderer.render(
@@ -401,8 +506,8 @@ describe("CourseRenderer3D", () => {
         normal: new THREE.Vector3(0, 0, 1).applyQuaternion(orientation).normalize(),
       };
     };
-    const live = axes("athlete:live:contact-shadow");
-    const ghost = axes("athlete:ghost:contact-shadow");
+    const live = axes("athlete:live:contact-footprint");
+    const ghost = axes("athlete:ghost:contact-footprint");
     expect(live.long.dot(new THREE.Vector3(0, 0, -1))).toBeCloseTo(1, 8);
     expect(ghost.long.dot(new THREE.Vector3(1, 0, 0))).toBeCloseTo(1, 8);
     expect(live.normal.y).toBeCloseTo(1, 8);
@@ -500,7 +605,10 @@ describe("CourseRenderer3D", () => {
       skierg: {
         torso: "skierg-torso",
         yoke: "skierg-jersey-back",
-        skin: "skierg-upper-arm-left",
+        // SkiErg intentionally uses a full-sleeve Nordic kit. Compare the
+        // jersey with the actual visible skin mass rather than misclassifying
+        // the authored sleeve as bare skin.
+        skin: "athlete:head:cranium",
         shoe: "skierg-foot-contact-left",
         equipment: "skierg-pole-shaft-right",
       },

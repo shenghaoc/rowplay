@@ -1,5 +1,10 @@
 # Design Document: Replay Premium Environments
 
+> Scope clarification (July 2026):
+> [Replay authored athlete assets](../replay-authored-athlete-assets/design.md)
+> applies only to 3D athlete and sport-equipment shells. This specification's
+> procedural, repository-local environment policy remains authoritative.
+
 ## Overview
 
 This pass treats environment art as part of the replay product rather than as a

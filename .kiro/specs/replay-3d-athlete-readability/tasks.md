@@ -1,5 +1,9 @@
 # Implementation Tasks: Replay Figure and Motion Readability
 
+> Historical scope note (July 2026): These completed tasks remain the
+> readability baseline. The current authored 3D shell work is tracked in
+> [Replay authored athlete assets](../replay-authored-athlete-assets/tasks.md).
+
 Spec: `.kiro/specs/replay-3d-athlete-readability/`
 Follow-up to: `.kiro/specs/replay-procedural-figure-rig/`
 

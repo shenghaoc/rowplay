@@ -78,8 +78,11 @@ account.
 - Premium sport-specific environments in both views: layered regatta water and
   shoreline, groomed Nordic snow and alpine venue cues, or a barrier-lined
   asphalt/velodrome training circuit
-- Silhouette-first procedural athletes with fixed-proportion articulated limbs,
-  broad sport-kit planes, readable joints, and equipment contacts in both views
+- A compact repository-owned low-poly GLB supplies authored athlete and
+  sport-equipment shells in 3D; the existing contact-driven rig owns motion,
+  while Canvas 2D and procedural 3D geometry remain reliable fallbacks
+- Generic replay figures only—no scan, athlete likeness, avatar-generator
+  output, user image, or undocumented downloaded model
 - Local procedural scenery built from Canvas drawing and Three.js geometry;
   no generated environment images, scanned venues, or downloaded location
   models are shipped in the replay runtime
