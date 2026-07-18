@@ -134,7 +134,7 @@ export const de = {
     feat2Body: "Pace, Schlagfrequenz, Power und HF über die Zeit — auf allen drei Geräten.",
     feat3Title: "Überall schnell",
     feat3Body:
-      "Global über Cloudflares Edge-Netzwerk bereitgestellt — sofortige Replays, ohne Wartezeit.",
+      "Global über Cloudflare bereitgestellt, mit Live-Daten von Concept2 für Replays nach dem Training.",
     tourEyebrow: "Erster Start",
     tourTitle: "Vier Dinge zum Ausprobieren",
     tourBody:
@@ -376,7 +376,7 @@ Der Token wird einmal über HTTPS übertragen und in einem geschützten, httpOnl
 
 ## Können andere meine Workouts sehen?
 
-Nein — dein Dashboard und deine Replays sind standardmäßig privat. Du kannst ein Ergebnis optional in einer Bestenliste veröffentlichen oder einen Replay-Link teilen, aber nichts ist öffentlich, solange du es nicht selbst freigibst.
+Nein. Dein Dashboard und deine Replays sind privat; rowplay bietet keine öffentliche Freigabe und keine Bestenlisten.
 
 ## Verändert rowplay mein Concept2-Logbuch?
 

@@ -134,7 +134,7 @@ export const es = {
     feat2Body: "Ritmo, cadencia, potencia y HR a lo largo del tiempo — en las tres máquinas.",
     feat3Title: "Rápido en todas partes",
     feat3Body:
-      "Servido globalmente desde la red edge de Cloudflare — replays instantáneos, sin esperas.",
+      "Distribuido globalmente mediante Cloudflare, con datos en vivo de Concept2 para replays después del entrenamiento.",
     tourEyebrow: "Primer uso",
     tourTitle: "Cuatro cosas que probar",
     tourBody:
@@ -370,7 +370,7 @@ El token se transmite una sola vez por HTTPS y se sella en una cookie httpOnly p
 
 ## ¿Pueden otras personas ver mis entrenamientos?
 
-No — tu panel y tus reproducciones son privados por defecto. Puedes publicar opcionalmente un resultado en una clasificación o compartir un enlace de replay, pero nada es público a menos que tú decidas hacerlo.
+No. Tu panel y tus replays son privados; rowplay no ofrece enlaces públicos ni clasificaciones.
 
 ## ¿rowplay cambia mi cuaderno de Concept2?
 

@@ -205,10 +205,12 @@
 
   --r-card: 1rem;
   --r-ctrl: 0.625rem;
+  --r-data: 0.125rem;
   --r-pill: 999px;
   --r-round: 50%;
   --radius: var(--r-card);
 
+  --fw-regular: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
   --fw-bold: 700;
@@ -469,7 +471,7 @@ input[type="range"] {
 ::-webkit-scrollbar-thumb {
   background: var(--ink-3);
   border: 3px solid var(--paper);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--ink-2);

@@ -98,7 +98,7 @@
 		border-top: var(--bd-heavy);
 		font-size: 1.25rem;
 		line-height: 1.2;
-		font-weight: 850;
+		font-weight: var(--fw-extrabold);
 		text-transform: uppercase;
 	}
 	.docs-article h3 {

@@ -5,6 +5,7 @@
 	import Download from '@lucide/svelte/icons/download';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import X from '@lucide/svelte/icons/x';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { getI18nContext } from '$lib/i18n.svelte';
 	import {
@@ -34,11 +35,11 @@
 		<p class="muted lead">{t('landing.lead')}</p>
 		<div class="cta">
 			{#if data.user || data.demo}
-				<a class="btn btn-primary" href="/dashboard">{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
+				<a class="btn btn-primary" href={resolve('/dashboard')}>{data.demo ? t('landing.exploreDemo') : t('landing.openDashboard')}</a>
 			{:else}
-				<a class="btn btn-primary" href="/auth/login">{t('landing.connect')}</a>
+				<a class="btn btn-primary" href={resolve('/auth/login')}>{t('landing.connect')}</a>
 			{/if}
-			<a class="btn btn-ghost" href="/docs">{t('landing.readGuide')}</a>
+			<a class="btn btn-ghost" href={resolve('/docs')}>{t('landing.readGuide')}</a>
 		</div>
 		{#if data.demo}
 			<p class="muted small">{t('landing.demoNote')}</p>
@@ -139,11 +140,6 @@
 	}
 	.feat {
 		box-shadow: var(--stamp);
-		transition: transform 0.2s ease, box-shadow 0.2s ease;
-	}
-	.feat:hover {
-		transform: translateY(-2px);
-		box-shadow: var(--stamp), 0 4px 12px color-mix(in srgb, var(--live) 10%, transparent);
 	}
 	.ficon {
 		color: var(--live);

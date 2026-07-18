@@ -79,7 +79,7 @@
 
 	<div class="calwrap">
 		<div class="dowlabels" aria-hidden="true">
-			{#each DOW_KEYS as key, i}
+			{#each DOW_KEYS as key, i (key)}
 				{#if i % 2 === 1}
 					<span class="dow muted">{i18n.t(key)}</span>
 				{:else}
@@ -118,7 +118,7 @@
 			<div class="legend muted">
 				<span>{i18n.t('dashboard.calLess')}</span>
 				<div class="legendcells">
-					{#each Array.from({ length: calendar.maxLevel + 1 }, (_, i) => i) as level}
+					{#each Array.from({ length: calendar.maxLevel + 1 }, (_, i) => i) as level (level)}
 						<div class="cell" data-level={level}></div>
 					{/each}
 				</div>
@@ -219,7 +219,7 @@
 	.cell {
 		width: var(--cell);
 		height: var(--cell);
-		border-radius: var(--r-ctrl);
+		border-radius: var(--r-data);
 		background: var(--bg-elev-2);
 		border: 1px solid transparent;
 	}

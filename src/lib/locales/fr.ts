@@ -134,7 +134,7 @@ export const fr = {
     feat2Body: "Allure, cadence, puissance et HR dans le temps — sur les trois machines.",
     feat3Title: "Rapide partout",
     feat3Body:
-      "Distribué mondialement depuis le réseau edge de Cloudflare — replays instantanés, sans attente.",
+      "Distribué mondialement via Cloudflare, avec les données Concept2 en direct pour revoir vos séances.",
     tourEyebrow: "Première visite",
     tourTitle: "Quatre choses à essayer",
     tourBody:
@@ -370,7 +370,7 @@ Le jeton est transmis une seule fois en HTTPS et scellé dans un cookie httpOnly
 
 ## D'autres personnes peuvent-elles voir mes séances ?
 
-Non — votre tableau de bord et vos relectures sont privés par défaut. Vous pouvez, si vous le souhaitez, publier un résultat dans un classement ou partager un lien de replay, mais rien n'est public sans votre accord.
+Non. Votre tableau de bord et vos replays sont privés ; rowplay ne propose ni partage public ni classement.
 
 ## rowplay modifie-t-il mon logbook Concept2 ?
 

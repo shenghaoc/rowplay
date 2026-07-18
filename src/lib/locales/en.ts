@@ -129,7 +129,8 @@ export const en = {
     feat2Title: "Split analytics",
     feat2Body: "Pace, stroke rate, power and HR over time — across all three machines.",
     feat3Title: "Fast everywhere",
-    feat3Body: "Served globally from Cloudflare's edge network — instant replays, no waiting.",
+    feat3Body:
+      "Delivered globally through Cloudflare, with live Concept2 data for post-workout replay.",
     tourEyebrow: "First run",
     tourTitle: "Four things to try",
     tourBody:

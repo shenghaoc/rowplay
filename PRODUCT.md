@@ -17,8 +17,8 @@ to understand what happened — not during the workout itself.
 Turn Concept2 Logbook data into interactive analytics and stroke-synchronized
 workout replays. rowplay is the tool an athlete opens after a session: the
 dashboard surfaces trends and personal records, the replay lets them re-live the
-session stroke by stroke, and the ghost-racing feature turns every past workout
-into a target to chase.
+session stroke by stroke, and the ghost-racing feature turns a comparable past
+workout into a target to chase.
 
 Success means an athlete opens rowplay after every workout without thinking
 about it — because it shows them something the stock logbook doesn't.
@@ -51,9 +51,10 @@ loud.
 3. **Live energy, ghost chase** — The "you vs. past you" dynamic is the
    emotional core. Electric violet marks the live athlete; Jet Set Blue marks
    the ghost they're chasing. This color language runs through the entire app.
-4. **Stateless trust** — Privacy is inherent, not bolted on. No server-side
-   workout storage means the athlete's data never leaves their Concept2 account.
-   The app feels ephemeral and personal.
+4. **Stateless trust** — Privacy is inherent, not bolted on. Workout data flows
+   from Concept2 through the Worker to the athlete's browser for each request,
+   but rowplay does not retain workouts or tokens in server-side storage. The
+   app feels ephemeral and personal.
 5. **AAA ambition** — Accessibility is part of the craft. Reduced motion, high
    contrast, and clear focus indicators aren't checkboxes; they're how the app
    is built from the start.

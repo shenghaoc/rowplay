@@ -32,6 +32,7 @@ typography:
     fontWeight: 400
     fontFeature: '"tnum" 1'
 rounded:
+  data: "0.125rem"
   ctrl: "0.625rem"
   card: "1rem"
   pill: "999px"
@@ -194,7 +195,7 @@ making it feel layered or heavy.
 - **Corner Style:** `--r-card` (1rem) — softly rounded, not pill-shaped.
 - **Background:** Paper-raised (`#ffffff`) with hairline border (`1px solid var(--hairline)`).
 - **Shadow:** `--stamp` (md shadow) as default elevation.
-- **Internal Padding:** ~1.25rem (varies by context). Collapses to 0.95rem on mobile.
+- **Internal Padding:** ~1.25rem (varies by context). Collapses to 0.75–0.95rem on mobile.
 
 ### Inputs / Fields
 
@@ -234,7 +235,7 @@ making it feel layered or heavy.
 
 - **Don't** use the clinical erg-app aesthetic: dense raw-data tables, sport-utility visual language, un-styled form controls (the ErgData/ErgZone/EXR anti-reference).
 - **Don't** use gradient text, glassmorphism, or neon-on-dark fitness-app tropes. The palette is deliberate and restrained.
-- **Don't** use `border-left` or `border-right` greater than 1px as a colored accent stripe on cards, list items, or callouts.
+- **Don't** use `border-left` or `border-right` greater than 1px as a decorative accent stripe on cards, list items, or callouts. A named semantic status band may use a thicker edge when the color conveys state rather than decoration.
 - **Don't** use the hero-metric template (big number, small label, supporting stats, gradient accent). The dashboard is a training log, not a SaaS landing page.
 - **Don't** use arbitrary z-index values (999, 9999). The scale is: drawer backdrop → sticky masthead → modal → toast.
 - **Don't** animate CSS layout properties (width, height, top, left). Use `transform` and `opacity` for all motion. Every animation must have a `prefers-reduced-motion: reduce` fallback.

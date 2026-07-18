@@ -3,7 +3,7 @@
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
 	import MetricGauge from '$components/MetricGauge.svelte';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '$lib/replay/engine';
 	import { splitIndexAt } from '$lib/replay/inspector';
 	import { CourseRenderer, type RenderState, type ReplayRenderer } from '$lib/replay/renderer';
@@ -1184,7 +1184,7 @@
 <svelte:head><title>{t('common.replay')} · {detail.workoutType || SPORT_LABEL[detail.sport]} · rowplay</title></svelte:head>
 
 <div class="container">
-	<a href="/dashboard" class="back muted"><ArrowLeft size={14} /> {t('replay.back')}</a>
+	<a href={resolve('/dashboard')} class="back muted"><ArrowLeft size={14} /> {t('replay.back')}</a>
 	<div class="head">
 		<h1
 			><span class="h1icon" style:color={MACHINE_COLOR[detail.sport]}
@@ -1788,7 +1788,7 @@
 			<div class="card card-border bg-base-100 shadow-md p-5">
 				<div class="ctitle muted">{t('replay.hrZones')}</div>
 				<div class="zonebar">
-					{#each zones as z}
+					{#each zones as z (z.zone)}
 						{#if z.fraction > 0}
 							<div
 								class="zoneseg"
@@ -1800,7 +1800,7 @@
 					{/each}
 				</div>
 				<div class="zonelegend">
-					{#each zones as z}
+					{#each zones as z (z.zone)}
 						<div class="zli">
 							<span class="dot" style:background="var(--zone-{z.zone})"></span>
 							<span class="zname">{t('replay.zone' + z.zone)}</span>
@@ -1839,7 +1839,7 @@
 			</div>
 
 			<div class="reps">
-				{#each intervals.reps as r}
+				{#each intervals.reps as r (r.index)}
 					{@const barScale = repBarPct(r.pace) / 100}
 					<div class="rep" class:fastest={r.isFastest} class:slowest={r.isSlowest}>
 						<div class="repno mono">#{r.index + 1}</div>
@@ -1885,7 +1885,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each detail.splits as sp}
+					{#each detail.splits as sp (sp.index)}
 						<tr class:rest-row={sp.isRest}>
 							<td>{sp.index + 1}</td>
 							<td>{sp.isRest ? '—' : fmtDistance(sp.distance)}</td>
@@ -2010,7 +2010,7 @@
 			</dl>
 
 			{#if detail.targets}
-				<h4 class="subhead muted">{t('replay.targetsTitle')}</h4>
+				<h2 class="subhead muted">{t('replay.targetsTitle')}</h2>
 				<dl class="metagrid">
 					{#if detail.targets.pace != null}
 						<div><dt>{t('replay.mTargetPace')}</dt><dd class="mono">{fmtPace(detail.targets.pace)}</dd></div>
@@ -2031,9 +2031,9 @@
 			{/if}
 
 			{#if targetRows.length}
-				<h4 class="subhead muted">{t('replay.targetVsActualTitle')}</h4>
+				<h2 class="subhead muted">{t('replay.targetVsActualTitle')}</h2>
 				<ul class="target-rows">
-					{#each targetRows as row}
+					{#each targetRows as row (row.metric)}
 						<li>
 							<span>{targetMetricLabel(row)}</span>
 							<span class="mono">{formatTargetDelta(row)}</span>
@@ -2046,7 +2046,7 @@
 			{/if}
 
 			{#if detail.metadata || detail.source}
-				<h4 class="subhead muted">{t('replay.provenanceTitle')}</h4>
+				<h2 class="subhead muted">{t('replay.provenanceTitle')}</h2>
 				<dl class="metagrid">
 					{#if detail.source}
 						<div>
@@ -2189,6 +2189,9 @@
 		margin: 0;
 	}
 	.ghost-more summary {
+		display: inline-flex;
+		align-items: center;
+		min-height: 2.75rem;
 		cursor: pointer;
 		list-style: none;
 		user-select: none;
@@ -2674,7 +2677,7 @@
 		margin-top: 0.2rem;
 	}
 	.hint {
-		font-weight: 400;
+		font-weight: var(--fw-regular);
 		opacity: 0.7;
 		text-transform: none;
 		letter-spacing: 0;
@@ -2983,6 +2986,12 @@
 		.kb-inline {
 			display: none;
 		}
+		.kb-hints {
+			grid-column: 1 / -1;
+		}
+		.speeds .btn {
+			min-height: 2.75rem;
+		}
 		.head h1 {
 			font-size: 1.25rem;
 		}
@@ -2998,28 +3007,36 @@
 		   Row 1: play (full-width). Row 2: clock + dist inline.
 		   Row 3: scrub (full-width). Row 4: speeds (full-width). */
 		.controls {
-			grid-template-columns: 1fr;
+			grid-template-columns: minmax(0, 1fr) auto;
 			gap: var(--space-sm);
 		}
 		.play {
+			grid-column: 1 / -1;
 			min-width: 0;
 			width: 100%;
 			justify-content: center;
 		}
 		.clock {
+			grid-column: 1;
 			justify-self: start;
 			font-size: 1rem;
 		}
 		.dist {
+			grid-column: 2;
 			justify-self: end;
 			text-align: right;
 		}
 		.scrub {
-			grid-column: 1;
+			grid-column: 1 / -1;
 		}
 		.speeds {
+			grid-column: 1 / -1;
 			justify-self: stretch;
 			width: 100%;
+		}
+		.speeds .btn {
+			flex: 1;
+			min-width: 0;
 		}
 	}
 	@media (max-width: 390px) {

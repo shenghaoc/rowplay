@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type uPlot from 'uplot';
 	import UPlotChart from '$components/UPlotChart.svelte';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import WorkoutList from '$components/WorkoutList.svelte';
 	import WorkoutListFilters from '$components/WorkoutListFilters.svelte';
 	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
@@ -109,7 +109,7 @@
 	function applyListQuery(q: WorkoutListQuery) {
 		const params = serializeWorkoutListQuery(q);
 		const qs = params.toString();
-		goto(qs ? `/dashboard?${qs}` : '/dashboard', {
+		goto(resolve(qs ? `/dashboard?${qs}` : '/dashboard'), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
@@ -156,14 +156,20 @@
 		// own filtering (via listWorkouts) decides what's actually shown.
 		if (batch.length === 1) {
 			const w = batch[0];
-			toast.success(t('liveMode.newWorkout', {
-				distance: fmtDistance(w.distance),
-				time: fmtTime(w.time, true),
-				sport: SPORT_LABEL[w.sport]
-			}), {
-				duration: 8000,
-				action: { label: t('liveMode.view'), onClick: () => goto(`/replay/${w.id}`) }
-			});
+			toast.success(
+				t('liveMode.newWorkout', {
+					distance: fmtDistance(w.distance),
+					time: fmtTime(w.time, true),
+					sport: SPORT_LABEL[w.sport]
+				}),
+				{
+					duration: 8000,
+					action: {
+						label: t('liveMode.view'),
+						onClick: () => goto(resolve('/replay/[id]', { id: String(w.id) }))
+					}
+				}
+			);
 		} else {
 			toast.success(t('liveMode.newWorkouts', { count: batch.length }), { duration: 8000 });
 		}
@@ -258,14 +264,8 @@
 	const latest = $derived<Workout | undefined>(filtered[0]);
 
 	const dashboardHints = $derived.by(() => {
-		const hrefs: Record<DashboardHintId, string> = {
-			latestReplay: latest ? `/replay/${latest.id}` : '/dashboard#workouts',
-			criticalPower: '/dashboard#critical-power',
-			workoutFilters: '/dashboard#workout-filters'
-		};
 		return dashboardHintIds.map((id) => ({
 			id,
-			href: hrefs[id],
 			title: t(`dashboard.tour.${id}.title`),
 			body: t(`dashboard.tour.${id}.body`),
 			action: t(`dashboard.tour.${id}.action`)
@@ -617,7 +617,9 @@
 						u.over.addEventListener('click', () => {
 							const idx = u.cursor.idx;
 							const pts = dpsPoints;
-							if (idx != null && idx >= 0 && pts[idx]) goto(`/replay/${pts[idx].workoutId}`);
+							if (idx != null && idx >= 0 && pts[idx]) {
+								goto(resolve('/replay/[id]', { id: String(pts[idx].workoutId) }));
+							}
 						});
 					}
 				]
@@ -635,7 +637,7 @@
 		</div>
 		<div class="headright">
 			<div role="tablist" class="tabs tabs-box tabs-sm filtertabs" aria-label="Sport filter">
-				{#each sports as s}
+				{#each sports as s (s)}
 					<button
 						role="tab"
 						class="tab"
@@ -671,7 +673,16 @@
 			<div class="tour-grid">
 				{#each dashboardHints as hint (hint.id)}
 					<div class="tour-hint">
-						<a class="tour-link" href={hint.href}>
+						<a
+							class="tour-link"
+							href={resolve(
+								hint.id === 'latestReplay'
+									? latest
+										? `/replay/${latest.id}`
+										: '/dashboard#workouts'
+									: `/dashboard#${hint.id === 'criticalPower' ? 'critical-power' : 'workout-filters'}`
+							)}
+						>
 							<span class="tour-title">{hint.title}</span>
 							<span class="muted">{hint.body}</span>
 							<span class="tour-action">{hint.action}</span>
@@ -698,7 +709,11 @@
 
 	<!-- ============ HERO — LATEST SESSION ============ -->
 	{#if latest}
-		<a class="card latest" href="/replay/{latest.id}" data-e2e="latest-replay">
+		<a
+			class="card latest"
+			href={resolve('/replay/[id]', { id: String(latest.id) })}
+			data-e2e="latest-replay"
+		>
 			<span class="latest-accent" aria-hidden="true"></span>
 			<div class="card-body latest-body">
 				<div class="latest-main">
@@ -747,8 +762,8 @@
 					<span class="btn btn-primary btn-lg latest-replay"><Play size={18} /> {t('common.replay')}</span>
 				</div>
 			</div>
-			</a>
-		{/if}
+		</a>
+	{/if}
 
 	<!-- ============ STAT STRIP ============ -->
 		<div class="dash-stats">
@@ -791,7 +806,7 @@
 				<ChipButton active={!listQuery.tag} onclick={() => applyListQuery({ ...listQuery, tag: undefined })}>
 					{t('workout.tag.filter.all')}
 				</ChipButton>
-				{#each WORKOUT_TAGS as tag}
+				{#each WORKOUT_TAGS as tag (tag)}
 					<ChipButton active={listQuery.tag === tag} onclick={() => applyListQuery({ ...listQuery, tag })}>
 						{t(`workout.tag.${tag}`)}
 					</ChipButton>
@@ -826,7 +841,7 @@
 				<div class="card card-border bg-base-100 shadow-md p-5 pbcard">
 					<div class="muted label">{t('dashboard.pbTitle')}</div>
 					<div class="pbgrid">
-						{#each pbs as pb}
+						{#each pbs as pb (`${pb.sport}-${pb.distance}`)}
 							<div class="pb">
 								<div class="pbdist mono">{pb.distance >= 1000 ? `${pb.distance / 1000}k` : `${pb.distance}m`}</div>
 								<div class="pbtime mono">{fmtTime(pb.time, true)}</div>
@@ -943,7 +958,7 @@
 							{/if}
 						</div>
 						<div role="tablist" class="tabs tabs-box tabs-sm metrictabs" aria-label="Metric filter">
-							{#each metrics as m}
+							{#each metrics as m (m.id)}
 								<button role="tab" class="tab" class:tab-active={metric === m.id} aria-selected={metric === m.id} onclick={() => (metric = m.id)}>{t(m.labelKey)}</button>
 							{/each}
 						</div>
@@ -1083,7 +1098,7 @@
 								<tr><th>{t('dashboard.thSport')}</th><th class="num">{t('dashboard.thSessions')}</th><th class="num">{t('dashboard.thDistance')}</th><th class="num">{t('dashboard.thTime')}</th><th class="num">{t('dashboard.thAvgPace')}</th><th class="num">{t('dashboard.thBestPace')}</th></tr>
 							</thead>
 							<tbody>
-								{#each bySport as s}
+								{#each bySport as s (s.sport)}
 									<tr>
 										<td class="sportcell"><span class="mdot" style:background={MACHINE_COLOR[s.sport]}></span><SportIcon sport={s.sport} size={14} /> {SPORT_LABEL[s.sport]}</td>
 										<td class="num">{s.sessions}</td>
@@ -1390,7 +1405,7 @@
 		margin-bottom: 0.85rem;
 	}
 	.formlegend { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-lg); font-size: 0.76rem; margin-top: 0.5rem; }
-	.formlegend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: var(--r-ctrl); margin-right: 0.3rem; vertical-align: -1px; }
+	.formlegend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: var(--r-data); margin-right: 0.3rem; vertical-align: -1px; }
 	.emptytrend { font-size: 0.85rem; padding: 0.5rem 0; }
 
 	/* Form-band semantic colours (formBandClass: info/good/neutral/accent/bad).

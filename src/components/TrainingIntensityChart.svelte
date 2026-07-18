@@ -86,7 +86,7 @@
 		</div>
 		<div class="tidcontrols">
 			<div class="join join-horizontal tidperiod" role="group" aria-label={i18n.t('dashboard.tid.title')}>
-				{#each periods as p}
+				{#each periods as p (p.id)}
 					<button
 						type="button"
 						class="btn btn-xs join-item"
@@ -153,7 +153,7 @@
 		{/if}
 
 		<ul class="tidlegend">
-			{#each zones as zone}
+			{#each zones as zone (zone)}
 				{@const slice = distribution.slices.find((s) => s.zone === zone)}
 				{@const pct = pctForZone(zone)}
 				{#if slice && pct > 0}
@@ -297,7 +297,7 @@
 	.tidswatch {
 		width: 0.65rem;
 		height: 0.65rem;
-		border-radius: var(--r-ctrl);
+		border-radius: var(--r-data);
 	}
 	.tidlegpct {
 		font-weight: var(--fw-bold);
