@@ -965,9 +965,9 @@ describe("CourseRenderer3D", () => {
     const firstPose = sceneObject(renderer, "rower-athlete").position.clone();
     const expected = solveRowerKinematics(REDUCED_REPLAY_POSES.rower);
     expect(firstPose.y).toBe(0);
-    expect(firstPose.z).toBeCloseTo(0.18 - expected.legExtension * 0.42, 8);
+    expect(firstPose.z).toBeCloseTo(0.26 - expected.legExtension * 0.5, 8);
     expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(
-      0.34 - expected.bladeDepth * 0.16,
+      0.34 - expected.bladeDepth * 0.2,
       8,
     );
     expect(sceneObject(renderer, "rower-blade-left").rotation.x).toBeCloseTo(
@@ -1003,7 +1003,7 @@ describe("CourseRenderer3D", () => {
     skiRenderer.render(makeSportState("skierg", 0.8), true);
     const expectedSki = solveSkierKinematics(REDUCED_REPLAY_POSES.skierg);
     expect(sceneObject(skiRenderer, "skierg-upper").rotation.x).toBeCloseTo(
-      0.1 + expectedSki.hipHinge * 0.72,
+      0.08 + expectedSki.hipHinge * 0.88,
       8,
     );
     skiRenderer.destroy();
@@ -1078,7 +1078,7 @@ describe("CourseRenderer3D", () => {
         ).toBeLessThan(1e-6);
         expect(
           Math.abs(sceneObject(renderer, `bike-foot-contact-${side}`).rotation.x),
-        ).toBeLessThan(0.22);
+        ).toBeLessThan(0.24);
       }
     }
     renderer.destroy();
@@ -1220,7 +1220,7 @@ describe("CourseRenderer3D", () => {
       const lane = getScene(r).getObjectByName("lane") as unknown as {
         material: { color: { getHex(): number } };
       };
-      expect(lane.material.color.getHex()).toBe(0x343942);
+      expect(lane.material.color.getHex()).toBe(0x2a3038);
       r.destroy();
     });
 

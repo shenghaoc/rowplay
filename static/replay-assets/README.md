@@ -15,12 +15,12 @@ contact-driven animation rig.
 - **Source of truth:** `scripts/build-replay-assets.mjs`.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed v1 artifact:** 103,364 bytes; SHA-256
-  `81dcfe35b4e4790244da037097d98fd51a926cc6f22776c2b2e261147514a10f`.
-- **Inventory:** 20 named meshes/nodes and 40 accessors: 13 generic athlete
-  slots, two RowErg slots, one SkiErg slot, and four BikeErg slots. The package
-  contains one placeholder authoring material, zero textures/images, zero
-  animations, and zero skins.
+- **Reviewed v1 artifact:** 125,844 bytes; SHA-256
+  `0406598f88bbfcd167b0310189d8deca6eb224e81f6fb7567e95954e9ab34bfd`.
+- **Inventory:** 20 named meshes/nodes: 13 generic athlete slots, two RowErg
+  slots, one SkiErg slot, and four BikeErg slots (1,552 triangles / 4,656
+  vertices). The package contains one placeholder authoring material, zero
+  textures/images, zero animations, and zero skins.
 - **Runtime contract:** named `replayAssetSlot` meshes are validated and cloned
   onto the existing live/ghost rig. The GLB does not own timing, contacts,
   recorded animation, theme, or lane identity.

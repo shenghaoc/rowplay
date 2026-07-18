@@ -100,8 +100,8 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     buoysPerRing: 36,
     buoyRings: 2,
     spray: true,
-    sprayParticles: 40,
-    sprayPerCatch: 4,
+    sprayParticles: 56,
+    sprayPerCatch: 6,
     environmentDetail: 1,
   },
   high: {
@@ -117,8 +117,8 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     buoysPerRing: 48,
     buoyRings: 2,
     spray: true,
-    sprayParticles: 48,
-    sprayPerCatch: 4,
+    sprayParticles: 72,
+    sprayPerCatch: 7,
     environmentDetail: 2,
   },
   ultra: {
@@ -134,8 +134,8 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     buoysPerRing: 64,
     buoyRings: 2,
     spray: true,
-    sprayParticles: 72,
-    sprayPerCatch: 6,
+    sprayParticles: 96,
+    sprayPerCatch: 9,
     environmentDetail: 3,
   },
 };
@@ -636,25 +636,27 @@ function finalizeAvatar(group: THREE.Group, castShadow: boolean, opacity: number
   });
 }
 
-const HUMAN_SKIN = 0xe0aa82;
-const HUMAN_HAIR = 0x4a3a31;
-const HUMAN_KIT = 0x667786;
-const HUMAN_KIT_DARK = 0x26343d;
-const HUMAN_SHOE = 0xd6e0e4;
-const HUMAN_SNOW_SHOE = 0x26343d;
+// Semantic body values stay independent of lane accents so live purple and
+// ghost cyan never collapse skin, kit, or footwear into one value family.
+const HUMAN_SKIN = 0xe8b48c;
+const HUMAN_HAIR = 0x3d322c;
+const HUMAN_KIT = 0x5e7386;
+const HUMAN_KIT_DARK = 0x1f2b36;
+const HUMAN_SHOE = 0xdde6ea;
+const HUMAN_SNOW_SHOE = 0x1f2b36;
 
-function humanMat(color: number, roughness = 0.82, metalness = 0): THREE.MeshStandardMaterial {
+function humanMat(color: number, roughness = 0.78, metalness = 0): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, roughness, metalness, flatShading: true });
 }
 
 function accentMaterial(accent: number): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
     color: accent,
-    roughness: 0.68,
-    metalness: 0.01,
+    roughness: 0.62,
+    metalness: 0.02,
     flatShading: true,
     emissive: accent,
-    emissiveIntensity: 0.05,
+    emissiveIntensity: 0.08,
   });
 }
 
@@ -689,16 +691,17 @@ function shapedTorso(
   segments = 10,
 ): THREE.Mesh {
   // Explicit elliptical rings make the chest, waist and back planes part of
-  // one watertight body. A lathed circle squashed in Z produced a vase-like
-  // torso; the ring depths below preserve a broad athletic back and a narrow
-  // waist from the actual rear three-quarter replay camera.
+  // one watertight body. Bias toward a broadcast sports illustration: broad
+  // scapular shelf, athletic waist, and enough rear depth that the chase
+  // camera never flattens the jersey into a cardboard panel.
   const rings = [
-    { y: -0.5, width: 0.68, depth: 0.74 },
-    { y: -0.4, width: 0.78, depth: 0.82 },
-    { y: -0.18, width: 0.7, depth: 0.84 },
-    { y: 0.08, width: 0.84, depth: 0.94 },
-    { y: 0.34, width: 1, depth: 1 },
-    { y: 0.5, width: 0.72, depth: 0.74 },
+    { y: -0.5, width: 0.72, depth: 0.78 },
+    { y: -0.38, width: 0.82, depth: 0.88 },
+    { y: -0.16, width: 0.74, depth: 0.9 },
+    { y: 0.06, width: 0.9, depth: 0.98 },
+    { y: 0.3, width: 1.06, depth: 1.04 },
+    { y: 0.44, width: 1.02, depth: 0.9 },
+    { y: 0.52, width: 0.68, depth: 0.72 },
   ];
   const positions: number[] = [];
   const indices: number[] = [];
@@ -764,7 +767,11 @@ function trapezoidPanel(
 }
 
 function jointCap(radius: number, material: THREE.Material, segments = 8): THREE.Mesh {
-  return hideWithReplayAssets(ellipsoid([radius * 1.06, radius, radius], material, segments));
+  // Keep fallback joint masses small and soft so procedural limbs read as
+  // continuous tubes; authored shells hide these completely when the GLB loads.
+  return hideWithReplayAssets(
+    ellipsoid([radius * 0.92, radius * 0.86, radius * 0.92], material, segments),
+  );
 }
 
 function capsulePart(
@@ -914,22 +921,27 @@ function makeFoot(material: THREE.Material): THREE.Group {
 }
 
 /**
- * A bold faceted head and hair mass sized for the replay camera.
+ * A bold faceted head and hair mass sized for the replay camera. Jaw and hair
+ * planes give the silhouette a facing direction from the rear three-quarter.
  */
 function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 16): THREE.Group {
   const head = new THREE.Group();
   head.name = "athlete:head";
   const cranium = setReplayAssetSlot(
-    ellipsoid([0.115, 0.125, 0.108], skinMat, segments),
+    ellipsoid([0.118, 0.132, 0.112], skinMat, segments),
     "athlete:head",
   );
   cranium.name = "athlete:head:cranium";
   head.add(cranium);
+  const jaw = ellipsoid([0.078, 0.042, 0.07], skinMat, Math.max(8, segments / 2));
+  jaw.name = "athlete:head:jaw";
+  jaw.position.set(0, -0.07, 0.028);
+  head.add(jaw);
   const hair = setReplayAssetSlot(
-    ellipsoid([0.119, 0.055, 0.114], hairMat, Math.max(8, segments / 2)),
+    ellipsoid([0.122, 0.058, 0.118], hairMat, Math.max(8, segments / 2)),
     "athlete:hair",
   );
-  hair.position.y = 0.087;
+  hair.position.set(0, 0.09, -0.012);
   head.add(hair);
   return head;
 }
@@ -1165,17 +1177,20 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
 
   // Authored visual ranges. Channels from the solver are 0..1; these scales
   // turn them into a stroke that reads at a glance without leaving the hull.
-  const SEAT_TRAVEL = 0.42;
+  // Seat start is biased forward so travel can grow without pulling the hips
+  // past the fixed footplate reach of the thigh+shin chain (~1.10 m).
+  const SEAT_TRAVEL = 0.5;
+  const SEAT_CATCH_Z = 0.26;
   const THIGH_LENGTH = 0.552;
   const SHIN_LENGTH = 0.552;
   const UPPER_ARM_LENGTH = 0.445;
   const FOREARM_LENGTH = 0.44;
-  const BODY_PITCH_CATCH = -0.52;
-  const BODY_PITCH_FINISH = 0.22;
-  const OAR_YAW_CATCH = -0.92;
-  const OAR_YAW_SPAN = 1.42;
-  const BLADE_BURY = 0.16;
-  const BLADE_DIP = 0.12;
+  const BODY_PITCH_CATCH = -0.56;
+  const BODY_PITCH_FINISH = 0.3;
+  const OAR_YAW_CATCH = -0.95;
+  const OAR_YAW_SPAN = 1.48;
+  const BLADE_BURY = 0.2;
+  const BLADE_DIP = 0.14;
 
   const handlePoint = new THREE.Vector3();
   const placeArms = (bodySwing: number, armDraw: number): void => {
@@ -1248,8 +1263,9 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     // the whole rower group would also rotate the contact-locked feet and hands.
     const pitch = BODY_PITCH_CATCH + bodySwing * (BODY_PITCH_FINISH - BODY_PITCH_CATCH);
     torso.rotation.x = pitch;
-    // Slight head counter-tilt so the athlete looks down the course at catch.
-    headGroup.rotation.x = -pitch * 0.18 - 0.03;
+    // Slight head counter-tilt so the athlete looks down the course at catch
+    // and opens toward the finish without decoupling from the torso chain.
+    headGroup.rotation.x = -pitch * 0.24 - 0.04;
   };
 
   const placeOars = (
@@ -1279,8 +1295,8 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     const motion = solveRowerKinematics(resolvedPose, kinematics);
     // Seat motion follows leg extension only; body swing and arm draw happen on
     // their later staged channels, eliminating the old one-cosine puppet motion.
-    rower.position.z = 0.18 - motion.legExtension * SEAT_TRAVEL;
-    rower.position.y = reduce ? 0 : motion.vertical * 0.02;
+    rower.position.z = SEAT_CATCH_Z - motion.legExtension * SEAT_TRAVEL;
+    rower.position.y = reduce ? 0 : motion.vertical * 0.03;
     rower.rotation.set(0, 0, 0);
     placeUpperBody(motion.bodySwing);
     placeOars(
@@ -1513,8 +1529,8 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     rebound: number,
   ): void => {
     // High reach at plant → deep press past the hips at the finish.
-    const handY = 0.72 - armPress * 0.64;
-    const handZ = 0.52 - armPress * 0.68;
+    const handY = 0.78 - armPress * 0.74;
+    const handZ = 0.58 - armPress * 0.8;
     inverseUpper.copy(upper.quaternion).invert();
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
@@ -1599,9 +1615,9 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       ? REDUCED_REPLAY_POSES.skierg
       : (pose ?? fallbackStrokePose("skierg", phase));
     const motion = solveSkierKinematics(resolvedPose, kinematics);
-    upper.position.y = 0.72 - motion.kneeFlex * 0.12 + (reduce ? 0 : motion.rebound * 0.04);
+    upper.position.y = 0.72 - motion.kneeFlex * 0.18 + (reduce ? 0 : motion.rebound * 0.07);
     // Deep crunch through the pull so the double-pole reads at a glance.
-    upper.rotation.x = 0.1 + motion.hipHinge * 0.72;
+    upper.rotation.x = 0.08 + motion.hipHinge * 0.88;
     placeSkiLegs();
     placePoleArms(motion.armPress, motion.poleContact, motion.poleSweep, motion.rebound);
     return reduce ? STATIC_AVATAR_MOTION : motion;
@@ -1994,66 +2010,68 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
   rower: {
     waves: true,
     roll: true,
-    bobAmp: 0.09,
+    bobAmp: 0.13,
     metersPerCycle: METERS_PER_CYCLE.rower,
-    surgeAmp: 0.34,
+    surgeAmp: 0.48,
     sprayOffset: 2.2, // off the blade tips
     groundOpacity: 1,
     trailColor: 0xffffff,
-    groundColor: (t) => (t === "dark" ? 0x165a68 : 0x155a70),
+    // Deep regatta basin rather than a teal race-track ribbon.
+    groundColor: (t) => (t === "dark" ? 0x0d3f4c : 0x0f4f63),
     course: {
-      surface: (t) => (t === "dark" ? 0x1a5968 : 0x397f92),
-      edge: (t) => (t === "dark" ? 0x8fe3f1 : 0xf8fbff),
-      laneLine: (t) => (t === "dark" ? 0x4fb3c8 : 0xd9f7ff),
-      detail: (t) => (t === "dark" ? 0xfbbf24 : 0xf59e0b),
-      secondary: (t) => (t === "dark" ? 0xc8f7ff : 0xffffff),
-      surfaceOpacity: 0.56,
-      roughness: 0.52,
-      metalness: 0.1,
+      surface: (t) => (t === "dark" ? 0x146a7c : 0x1f7d96),
+      edge: (t) => (t === "dark" ? 0xb8f0fb : 0xf5fcff),
+      laneLine: (t) => (t === "dark" ? 0x7ad4e8 : 0xe8f9ff),
+      detail: (t) => (t === "dark" ? 0xf6c453 : 0xf59e0b),
+      secondary: (t) => (t === "dark" ? 0xe8fbff : 0xffffff),
+      surfaceOpacity: 0.42,
+      roughness: 0.28,
+      metalness: 0.12,
     },
     make: makeRowerAvatar,
   },
   skierg: {
     waves: false,
     roll: false,
-    bobAmp: 0.05,
+    bobAmp: 0.08,
     metersPerCycle: METERS_PER_CYCLE.skierg,
-    surgeAmp: 0.14,
+    surgeAmp: 0.22,
     sprayOffset: 0.4, // at the pole baskets
     groundOpacity: 1,
     trailColor: 0xffffff,
-    groundColor: (t) => (t === "dark" ? 0xb8c4cc : 0xeef4f7),
+    // Cool alpine snowfield: not pure white, so tracks and kit separate.
+    groundColor: (t) => (t === "dark" ? 0xa8b7c2 : 0xe6eef3),
     course: {
-      surface: (t) => (t === "dark" ? 0xd8e2e8 : 0xf7fafc),
-      edge: (t) => (t === "dark" ? 0x94a3b8 : 0xb9c8d2),
-      laneLine: (t) => (t === "dark" ? 0xb7c9d6 : 0xd7e2e8),
-      detail: (t) => (t === "dark" ? 0x60a5fa : 0x2563eb),
-      secondary: (t) => (t === "dark" ? 0x7c8c98 : 0xcbd5dd),
+      surface: (t) => (t === "dark" ? 0xd0dce4 : 0xf4f8fb),
+      edge: (t) => (t === "dark" ? 0x8fa3b4 : 0xc5d4de),
+      laneLine: (t) => (t === "dark" ? 0x9bb0c0 : 0xd5e2ea),
+      detail: (t) => (t === "dark" ? 0x7c6cf0 : 0x6d5ef5),
+      secondary: (t) => (t === "dark" ? 0x6b7d8c : 0xb8c8d2),
       surfaceOpacity: 1,
-      roughness: 0.92,
-      metalness: 0.02,
+      roughness: 0.94,
+      metalness: 0.01,
     },
     make: makeSkierAvatar,
   },
   bike: {
     waves: false,
     roll: false,
-    bobAmp: 0.02,
+    bobAmp: 0.03,
     metersPerCycle: METERS_PER_CYCLE.bike,
     surgeAmp: 0,
     sprayOffset: null,
     groundOpacity: 1,
     trailColor: null,
-    groundColor: (t) => (t === "dark" ? 0x242a31 : 0x7e898f),
+    groundColor: (t) => (t === "dark" ? 0x1a1f26 : 0x5f6a72),
     course: {
-      surface: (t) => (t === "dark" ? 0x343942 : 0x474e54),
-      edge: (t) => (t === "dark" ? 0xe5e7eb : 0xf8fafc),
+      surface: (t) => (t === "dark" ? 0x2a3038 : 0x3f464e),
+      edge: (t) => (t === "dark" ? 0xf1f5f9 : 0xfafcfe),
       laneLine: (t) => (t === "dark" ? 0xfbbf24 : 0xf59e0b),
-      detail: (t) => (t === "dark" ? 0xef4444 : 0xb91c1c),
-      secondary: (t) => (t === "dark" ? 0x94a3b8 : 0x6b7280),
+      detail: (t) => (t === "dark" ? 0xef4444 : 0xdc2626),
+      secondary: (t) => (t === "dark" ? 0x9aa8b8 : 0x74808c),
       surfaceOpacity: 1,
-      roughness: 0.78,
-      metalness: 0.04,
+      roughness: 0.84,
+      metalness: 0.05,
     },
     make: makeBikeAvatar,
   },
@@ -2537,47 +2555,56 @@ export class CourseRenderer3D implements ReplayRenderer {
 
   private addRowerCourseDetails(group: THREE.Group, innerR: number, outerR: number): void {
     const style = this.profile.course;
-    const laneMat = this.courseMat("course:rower:lane-line", style.laneLine, {
-      roughness: 0.46,
-      metalness: 0.08,
+    // Parallel regatta lane cables — thin continuous rings, not sparse ticks.
+    const cableMat = this.courseMat("course:rower:lane-line", style.laneLine, {
+      roughness: 0.34,
+      metalness: 0.12,
     });
-    for (const r of [innerR + 0.75, this.ghostRadius, this.loopRadius, outerR - 0.75]) {
-      this.addCourseRing(group, r, 0.018, laneMat, "course:rower:lane-line", 0.055);
+    const laneRadii = [
+      innerR + 0.55,
+      innerR + 1.65,
+      this.ghostRadius,
+      this.loopRadius,
+      outerR - 1.65,
+      outerR - 0.55,
+    ];
+    for (const r of laneRadii) {
+      this.addCourseRing(group, r, 0.012, cableMat, "course:rower:lane-line", 0.048);
     }
 
+    // Specular water streaks give the basin a living surface without textures.
     const streakMat = this.courseMat("course:rower:water-streak", style.secondary, {
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.38,
       depthWrite: false,
-      roughness: 0.38,
-      metalness: 0.08,
+      roughness: 0.22,
+      metalness: 0.14,
     });
-    const streakGeo = this.track(new THREE.BoxGeometry(0.045, 0.025, 1.65));
-    const streaks = this.cfg.laneSegments >= 120 ? 72 : this.cfg.laneSegments >= 90 ? 54 : 36;
+    const streakGeo = this.track(new THREE.BoxGeometry(0.05, 0.02, 2.1));
+    const streaks = this.cfg.laneSegments >= 120 ? 96 : this.cfg.laneSegments >= 90 ? 68 : 44;
     for (let i = 0; i < streaks; i++) {
-      const band = (i % 5) / 4;
-      const radius = innerR + 1.4 + (outerR - innerR - 2.8) * band;
-      // Golden-angle sampling prevents the five water bands from lining up as
-      // repeated radial spokes while remaining deterministic at every tier.
-      const angle = ((i * 0.61803398875 + (i % 5) * 0.073) % 1) * FULL_CIRCLE;
+      const band = (i % 6) / 5;
+      const radius = innerR + 1.1 + (outerR - innerR - 2.2) * band;
+      const angle = ((i * 0.61803398875 + (i % 6) * 0.061) % 1) * FULL_CIRCLE;
       this.addCourseBlock(group, streakGeo, streakMat, radius, angle, "course:rower:water-streak");
     }
 
+    // Distance buoy clusters at cardinals — warm markers against cool water.
     const buoyTickMat = this.courseMat("course:rower:distance-buoy", style.detail, {
-      roughness: 0.52,
-      metalness: 0.03,
+      roughness: 0.48,
+      metalness: 0.04,
     });
-    const buoyTickGeo = this.track(new THREE.BoxGeometry(0.12, 0.05, 0.5));
+    const buoyTickGeo = this.track(new THREE.BoxGeometry(0.14, 0.055, 0.55));
     for (const marker of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
-      for (const offset of [-degrees(1.3), 0, degrees(1.3)]) {
+      for (const offset of [-degrees(1.1), 0, degrees(1.1)]) {
         this.addCourseBlock(
           group,
           buoyTickGeo,
           buoyTickMat,
-          outerR - 0.35,
+          outerR - 0.32,
           marker + offset,
           "course:rower:distance-buoy",
-          0.075,
+          0.078,
         );
       }
     }
@@ -2585,31 +2612,31 @@ export class CourseRenderer3D implements ReplayRenderer {
 
   private addSkierCourseDetails(group: THREE.Group, innerR: number, outerR: number): void {
     const style = this.profile.course;
+    // Paired ski tracks (two grooves per lane) instead of evenly spaced combs.
     const grooveMat = this.courseMat("course:skierg:groomed-groove", style.laneLine, {
-      roughness: 0.94,
+      roughness: 0.96,
       metalness: 0.01,
     });
-    const grooveCount = 7;
-    for (let i = 0; i < grooveCount; i++) {
-      const t = i / (grooveCount - 1);
-      this.addCourseRing(
-        group,
-        innerR + 1.1 + (outerR - innerR - 2.2) * t,
-        0.014,
-        grooveMat,
-        "course:skierg:groomed-groove",
-        0.052,
-      );
+    const trackCenters = [
+      this.ghostRadius - 0.55,
+      this.ghostRadius + 0.55,
+      this.loopRadius - 0.55,
+      this.loopRadius + 0.55,
+    ];
+    for (const center of trackCenters) {
+      this.addCourseRing(group, center - 0.09, 0.02, grooveMat, "course:skierg:groomed-groove", 0.05);
+      this.addCourseRing(group, center + 0.09, 0.02, grooveMat, "course:skierg:groomed-groove", 0.05);
     }
 
+    // Soft corduroy comb reads as groomed snow rather than polished ice.
     const combMat = this.courseMat("course:skierg:snow-comb", style.secondary, {
       transparent: true,
-      opacity: 0.36,
-      roughness: 0.96,
+      opacity: 0.28,
+      roughness: 0.98,
       metalness: 0,
     });
-    const combGeo = this.track(new THREE.BoxGeometry(outerR - innerR - 2.2, 0.018, 0.035));
-    const combs = this.cfg.laneSegments >= 120 ? 60 : 36;
+    const combGeo = this.track(new THREE.BoxGeometry(outerR - innerR - 1.8, 0.014, 0.028));
+    const combs = this.cfg.laneSegments >= 120 ? 72 : 42;
     for (let i = 0; i < combs; i++) {
       this.addCourseBlock(
         group,
@@ -2618,53 +2645,39 @@ export class CourseRenderer3D implements ReplayRenderer {
         (innerR + outerR) / 2,
         (i / combs) * Math.PI * 2,
         "course:skierg:snow-comb",
-        0.064,
+        0.06,
       );
     }
 
+    // Low purple course gates — match the art-direction marker language.
     const gateMat = this.courseMat("course:skierg:gate", style.detail, {
-      roughness: 0.45,
-      metalness: 0.04,
+      roughness: 0.42,
+      metalness: 0.05,
     });
-    const gateGeo = this.track(new THREE.BoxGeometry(0.22, 0.06, 0.82));
-    for (let i = 0; i < 12; i++) {
-      const angle = (i / 12) * Math.PI * 2;
-      this.addCourseBlock(
-        group,
-        gateGeo,
-        gateMat,
-        innerR + 0.55,
-        angle,
-        "course:skierg:gate",
-        0.08,
-      );
-      this.addCourseBlock(
-        group,
-        gateGeo,
-        gateMat,
-        outerR - 0.55,
-        angle,
-        "course:skierg:gate",
-        0.08,
-      );
+    const gateGeo = this.track(new THREE.BoxGeometry(0.18, 0.07, 0.55));
+    for (let i = 0; i < 16; i++) {
+      const angle = (i / 16) * Math.PI * 2;
+      this.addCourseBlock(group, gateGeo, gateMat, innerR + 0.48, angle, "course:skierg:gate", 0.075);
+      this.addCourseBlock(group, gateGeo, gateMat, outerR - 0.48, angle, "course:skierg:gate", 0.075);
     }
   }
 
   private addBikeCourseDetails(group: THREE.Group, innerR: number, outerR: number): void {
     const style = this.profile.course;
     const seamMat = this.courseMat("course:bike:seam", style.secondary, {
-      roughness: 0.82,
+      roughness: 0.86,
       metalness: 0.03,
     });
-    this.addCourseRing(group, this.ghostRadius, 0.018, seamMat, "course:bike:seam", 0.058);
-    this.addCourseRing(group, this.loopRadius, 0.018, seamMat, "course:bike:seam", 0.058);
+    this.addCourseRing(group, this.ghostRadius, 0.016, seamMat, "course:bike:seam", 0.056);
+    this.addCourseRing(group, this.loopRadius, 0.016, seamMat, "course:bike:seam", 0.056);
 
+    // Continuous yellow centre dashes — velodrome lane grammar.
     const dashMat = this.courseMat("course:bike:dash", style.laneLine, {
-      roughness: 0.55,
-      metalness: 0.04,
+      roughness: 0.5,
+      metalness: 0.05,
     });
-    const dashGeo = this.track(new THREE.BoxGeometry(0.16, 0.05, 1.45));
-    const dashCount = this.cfg.laneSegments >= 120 ? 56 : 40;
+    const dashGeo = this.track(new THREE.BoxGeometry(0.14, 0.045, 1.7));
+    const dashCount = this.cfg.laneSegments >= 120 ? 64 : 46;
     for (let i = 0; i < dashCount; i++) {
       this.addCourseBlock(
         group,
@@ -2673,44 +2686,45 @@ export class CourseRenderer3D implements ReplayRenderer {
         (this.ghostRadius + this.loopRadius) / 2,
         (i / dashCount) * Math.PI * 2,
         "course:bike:dash",
-        0.085,
+        0.082,
       );
     }
 
     const curbRed = this.courseMat("course:bike:curb-red", style.detail, {
-      roughness: 0.48,
+      roughness: 0.46,
       metalness: 0.04,
     });
     const curbWhite = this.courseMat("course:bike:curb-white", style.edge, {
-      roughness: 0.5,
+      roughness: 0.48,
       metalness: 0.03,
     });
-    const curbGeo = this.track(new THREE.BoxGeometry(0.34, 0.065, 0.86));
-    const curbCount = this.cfg.laneSegments >= 120 ? 72 : 48;
+    const curbGeo = this.track(new THREE.BoxGeometry(0.38, 0.07, 0.92));
+    const curbCount = this.cfg.laneSegments >= 120 ? 80 : 54;
     for (let i = 0; i < curbCount; i++) {
       const angle = (i / curbCount) * Math.PI * 2;
       const mat = i % 2 === 0 ? curbRed : curbWhite;
-      this.addCourseBlock(group, curbGeo, mat, innerR + 0.3, angle, "course:bike:curb", 0.09);
-      this.addCourseBlock(group, curbGeo, mat, outerR - 0.3, angle, "course:bike:curb", 0.09);
+      this.addCourseBlock(group, curbGeo, mat, innerR + 0.28, angle, "course:bike:curb", 0.092);
+      this.addCourseBlock(group, curbGeo, mat, outerR - 0.28, angle, "course:bike:curb", 0.092);
     }
 
+    // Soft outer speed marks for dusk track depth.
     const speedMat = this.courseMat("course:bike:speed-bars", style.edge, {
       transparent: true,
-      opacity: 0.44,
-      roughness: 0.52,
+      opacity: 0.36,
+      roughness: 0.55,
       metalness: 0.02,
     });
-    const speedGeo = this.track(new THREE.BoxGeometry(1.1, 0.035, 0.14));
-    for (let i = 0; i < 28; i++) {
-      const angle = (i / 28) * Math.PI * 2 + 0.03;
+    const speedGeo = this.track(new THREE.BoxGeometry(1.2, 0.03, 0.12));
+    for (let i = 0; i < 32; i++) {
+      const angle = (i / 32) * Math.PI * 2 + 0.03;
       this.addCourseBlock(
         group,
         speedGeo,
         speedMat,
-        outerR - 1.6,
+        outerR - 1.45,
         angle,
         "course:bike:speed-bars",
-        0.074,
+        0.07,
       );
     }
   }
@@ -3517,19 +3531,19 @@ export class CourseRenderer3D implements ReplayRenderer {
             color: this.profile.groundColor("light"),
             transparent: false,
             opacity: 1,
-            roughness: 0.24,
-            metalness: 0.04,
-            clearcoat: 0.92,
-            clearcoatRoughness: 0.18,
-            emissive: 0x08232a,
-            emissiveIntensity: 0.34,
+            roughness: 0.16,
+            metalness: 0.06,
+            clearcoat: 1,
+            clearcoatRoughness: 0.1,
+            emissive: 0x061c24,
+            emissiveIntensity: 0.42,
           })
         : new THREE.MeshStandardMaterial({
             color: this.profile.groundColor("light"),
             transparent: false,
             opacity: 1,
-            roughness: this.sport === "skierg" ? 0.96 : 0.86,
-            metalness: 0.02,
+            roughness: this.sport === "skierg" ? 0.97 : 0.88,
+            metalness: this.sport === "bike" ? 0.04 : 0.01,
           }),
     );
     groundMat.name = "ground";
@@ -3576,29 +3590,33 @@ export class CourseRenderer3D implements ReplayRenderer {
     // silhouettes could eclipse the athlete, while each sport already carries
     // authored low-profile course marks and a start/finish checker.
     if (this.sport === "rower" && this.cfg.buoys) {
-      const buoyGeo = this.track(new THREE.SphereGeometry(0.085, 8, 5));
+      // Classic regatta buoy necklace: dense alternating warm/cool spheres on
+      // the lane cables so the course reads as water lanes, not a toy ring.
+      const buoyGeo = this.track(new THREE.SphereGeometry(0.095, 8, 5));
       this.buoyMat = this.mat(
-        new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.markerCap), roughness: 0.6 }),
+        new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.markerCap), roughness: 0.52 }),
       );
-      const rings = Array.from({ length: this.cfg.buoyRings }, (_, i) => {
-        const t = this.cfg.buoyRings === 1 ? 0.5 : i / (this.cfg.buoyRings - 1);
-        return this.ghostRadius - 2.5 + (this.loopRadius + 5 - this.ghostRadius) * t;
+      const rings = Array.from({ length: Math.max(2, this.cfg.buoyRings) }, (_, i) => {
+        const t = this.cfg.buoyRings <= 1 ? 0.5 : i / (this.cfg.buoyRings - 1);
+        return this.ghostRadius - 2.2 + (this.loopRadius + 4.6 - this.ghostRadius) * t;
       });
       const perRing = this.cfg.buoysPerRing;
       const inst = new THREE.InstancedMesh(buoyGeo, this.buoyMat, rings.length * perRing);
       inst.name = "environment:rower:buoy-strings";
       const m = new THREE.Matrix4();
       const warm = new THREE.Color(0xf6c453);
+      const coral = new THREE.Color(0xf07167);
       const pale = new THREE.Color(0xf4fbff);
-      const finishGap = degrees(18);
+      const finishGap = degrees(14);
       let bi = 0;
       for (const r of rings) {
         for (let k = 0; k < perRing; k++) {
           const a = finishGap * 0.5 + ((k + 0.5) / perRing) * (FULL_CIRCLE - finishGap);
-          m.makeScale(1, 0.56, 1);
-          m.setPosition(r * Math.sin(a), 0.045, r * Math.cos(a));
+          m.makeScale(1, 0.58, 1);
+          m.setPosition(r * Math.sin(a), 0.05, r * Math.cos(a));
           inst.setMatrixAt(bi++, m);
-          inst.setColorAt(bi - 1, k % 12 === 0 ? warm : pale);
+          const hue = k % 8 === 0 ? warm : k % 2 === 0 ? coral : pale;
+          inst.setColorAt(bi - 1, hue);
         }
       }
       inst.instanceMatrix.needsUpdate = true;
@@ -3778,10 +3796,14 @@ export class CourseRenderer3D implements ReplayRenderer {
     avatar.group.position.y = bob;
     // Stroke surge: the hull checks at the catch and runs out through the
     // drive — a local +Z (travel) offset synced to the shared stroke phase.
-    avatar.group.position.z =
+    const surge =
       reduce || this.profile.surgeAmp === 0 ? 0 : motion.surge * this.profile.surgeAmp;
-    avatar.group.rotation.z =
-      reduce || !this.profile.roll ? 0 : Math.sin(this.animPhase + cadence * 0.05) * 0.05;
+    avatar.group.position.z = surge;
+    // Hull roll mixes a slow ambient rock with a stroke-synced check so the
+    // shell visibly loads at the catch instead of only drifting side to side.
+    const ambientRoll = Math.sin(this.animPhase + cadence * 0.05) * 0.035;
+    const strokeRoll = "surge" in motion ? motion.surge * 0.045 : 0;
+    avatar.group.rotation.z = reduce || !this.profile.roll ? 0 : ambientRoll + strokeRoll;
     output.x = x;
     output.z = z;
     output.tx = tx;
@@ -3849,10 +3871,11 @@ export class CourseRenderer3D implements ReplayRenderer {
         const ly = arr[idx + 1];
         arr[idx + 2] = this.reduceMotion
           ? 0
-          : Math.sin(ly * 0.25 + t) * 0.055 +
-            Math.sin(lx * 0.31 + t * 1.7) * 0.033 +
-            Math.sin((lx + ly) * 0.13 - t * 0.6) * 0.026 +
-            Math.sin(ly * 0.6 + t * 2.3) * 0.009;
+          : Math.sin(ly * 0.25 + t) * 0.072 +
+            Math.sin(lx * 0.31 + t * 1.7) * 0.042 +
+            Math.sin((lx + ly) * 0.13 - t * 0.6) * 0.032 +
+            Math.sin(ly * 0.6 + t * 2.3) * 0.014 +
+            Math.sin(lx * 0.9 - t * 3.1) * 0.01;
       }
       pos.needsUpdate = true;
       water.geometry.computeVertexNormals();
@@ -3899,19 +3922,48 @@ export class CourseRenderer3D implements ReplayRenderer {
           const off = this.profile.sprayOffset ?? 0;
           const rx = p.x / this.loopRadius;
           const rz = p.z / this.loopRadius;
+          const effort = 0.85 + clamp01(livePose.intensity) * 0.85;
           for (const side of [-1, 1]) {
             for (let k = 0; k < this.cfg.sprayPerCatch; k++) {
               pool.spawn(
-                p.x + rx * off * side + (Math.random() - 0.5) * 0.3,
-                0.12,
-                p.z + rz * off * side + (Math.random() - 0.5) * 0.3,
-                rx * side * (0.3 + Math.random() * 0.5) - p.tx * (0.3 + Math.random() * 0.5),
-                1.1 + Math.random() * 1.2,
-                rz * side * (0.3 + Math.random() * 0.5) - p.tz * (0.3 + Math.random() * 0.5),
-                0.4 + Math.random() * 0.3,
-                0.5 + Math.random(),
+                p.x + rx * off * side + (Math.random() - 0.5) * 0.42,
+                0.1 + Math.random() * 0.08,
+                p.z + rz * off * side + (Math.random() - 0.5) * 0.42,
+                (rx * side * (0.35 + Math.random() * 0.7) - p.tx * (0.45 + Math.random() * 0.7)) *
+                  effort,
+                (1.35 + Math.random() * 1.55) * effort,
+                (rz * side * (0.35 + Math.random() * 0.7) - p.tz * (0.45 + Math.random() * 0.7)) *
+                  effort,
+                0.45 + Math.random() * 0.38,
+                (0.55 + Math.random() * 1.15) * effort,
               );
             }
+          }
+        } else if (
+          playing &&
+          this.sport === "rower" &&
+          livePose.drive &&
+          livePose.driveProgress > 0.08 &&
+          livePose.driveProgress < 0.78 &&
+          pool.alive < pool.capacity * 0.55
+        ) {
+          // A thin mid-drive mist keeps the blade contact readable between
+          // catch bursts without filling the pool on every frame.
+          const off = this.profile.sprayOffset ?? 0;
+          const rx = p.x / this.loopRadius;
+          const rz = p.z / this.loopRadius;
+          for (const side of [-1, 1]) {
+            if (Math.random() > 0.35) continue;
+            pool.spawn(
+              p.x + rx * off * side + (Math.random() - 0.5) * 0.25,
+              0.08,
+              p.z + rz * off * side + (Math.random() - 0.5) * 0.25,
+              rx * side * 0.2 - p.tx * (0.4 + Math.random() * 0.4),
+              0.35 + Math.random() * 0.55,
+              rz * side * 0.2 - p.tz * (0.4 + Math.random() * 0.4),
+              0.22 + Math.random() * 0.18,
+              0.28 + Math.random() * 0.35,
+            );
           }
         }
       }

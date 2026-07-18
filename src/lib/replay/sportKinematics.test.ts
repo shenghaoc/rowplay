@@ -71,12 +71,12 @@ describe("sportKinematics", () => {
       for (const value of Object.values(bike)) expect(Number.isFinite(value)).toBe(true);
       expect(bike.crankAngle).toBeGreaterThanOrEqual(0);
       expect(bike.crankAngle).toBeLessThan(TAU);
-      expect(Math.abs(bike.torsoSway)).toBeLessThanOrEqual(0.06);
-      expect(Math.abs(bike.hipRock)).toBeLessThanOrEqual(0.03);
-      expect(bike.anklePitchLeft).toBeGreaterThanOrEqual(-0.22);
-      expect(bike.anklePitchLeft).toBeLessThanOrEqual(0.12);
-      expect(bike.anklePitchRight).toBeGreaterThanOrEqual(-0.22);
-      expect(bike.anklePitchRight).toBeLessThanOrEqual(0.12);
+      expect(Math.abs(bike.torsoSway)).toBeLessThanOrEqual(0.08);
+      expect(Math.abs(bike.hipRock)).toBeLessThanOrEqual(0.05);
+      expect(bike.anklePitchLeft).toBeGreaterThanOrEqual(-0.24);
+      expect(bike.anklePitchLeft).toBeLessThanOrEqual(0.14);
+      expect(bike.anklePitchRight).toBeGreaterThanOrEqual(-0.24);
+      expect(bike.anklePitchRight).toBeLessThanOrEqual(0.14);
     }
   });
 
@@ -110,8 +110,8 @@ describe("sportKinematics", () => {
     expect(wrapped.crankAngle).toBeCloseTo(0, 10);
     expect(start.anklePitchLeft).toBeCloseTo(half.anklePitchRight, 10);
     expect(start.anklePitchRight).toBeCloseTo(half.anklePitchLeft, 10);
-    expect(Math.abs(start.torsoSway)).toBeLessThanOrEqual(0.06);
-    expect(Math.abs(half.hipRock)).toBeLessThanOrEqual(0.03);
+    expect(Math.abs(start.torsoSway)).toBeLessThanOrEqual(0.08);
+    expect(Math.abs(half.hipRock)).toBeLessThanOrEqual(0.05);
 
     const beforeWrap = solveBikeKinematics(poseAt("bike", 1 - 1e-7));
     const afterWrap = solveBikeKinematics(poseAt("bike", 1e-7));

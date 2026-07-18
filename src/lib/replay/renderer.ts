@@ -159,15 +159,15 @@ const PAD_L = 58;
 const PAD_R = 30;
 const WATER_H = 34;
 const POD_R = 9;
-const BOB_AMP = 3.4;
+const BOB_AMP = 4.6;
 /** Keep the athlete as the primary read inside the taller authored venue. */
-const ATHLETE_SCALE = 1.8;
+const ATHLETE_SCALE = 1.95;
 /** Forward/back hull surge per stroke (px), per sport. Bike pedals smoothly. */
-const SURGE_PX: Record<Sport, number> = { rower: 4.2, skierg: 2.2, bike: 0 };
+const SURGE_PX: Record<Sport, number> = { rower: 6.4, skierg: 3.4, bike: 0 };
 /** Splash droplets per lane; small and brief, so a tiny pool suffices. */
-const SPLASH_CAP = 16;
+const SPLASH_CAP = 28;
 /** Canvas y grows downward, so droplet gravity is positive (px/s²). */
-const SPLASH_GRAVITY = 260;
+const SPLASH_GRAVITY = 300;
 const STREAK_ALPHAS = [0.35, 0.28, 0.22, 0.16] as const;
 const STREAK_LENGTH_FACTORS = [1, 0.75, 0.55, 0.4] as const;
 const STREAK_Y_OFFSETS = [-3, 0, 3, -5] as const;
@@ -226,12 +226,12 @@ const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
     structure: "#ece6d9",
     structureShade: "#8c7b67",
     structureLight: "#ffd68a",
-    groundTop: "#4b91a1",
-    groundMid: "#216474",
-    groundBottom: "#0e3c4d",
-    surfaceLine: "#82c6d1",
-    surfaceHighlight: "#d4eef0",
-    surfaceShadow: "#0b3241",
+    groundTop: "#3d879b",
+    groundMid: "#185a6c",
+    groundBottom: "#0a3544",
+    surfaceLine: "#8fd0db",
+    surfaceHighlight: "#e0f5f7",
+    surfaceShadow: "#082a37",
     marker: "#ef5b42",
     safety: "#d9e7e7",
     safetyLight: "#ffffff",
@@ -248,13 +248,13 @@ const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
     structure: "#e7edf1",
     structureShade: "#607887",
     structureLight: "#fff1b2",
-    groundTop: "#f5fafc",
-    groundMid: "#dbeaf2",
-    groundBottom: "#b9d2df",
-    surfaceLine: "#94bfd2",
+    groundTop: "#f2f7fa",
+    groundMid: "#d5e4ee",
+    groundBottom: "#b0c9d8",
+    surfaceLine: "#8eb5c8",
     surfaceHighlight: "#ffffff",
-    surfaceShadow: "#779fb4",
-    marker: "#e84b42",
+    surfaceShadow: "#6f96ab",
+    marker: "#6d5ef5",
     safety: "#1e6292",
     safetyLight: "#f5fbfd",
   },
@@ -270,12 +270,12 @@ const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
     structure: "#d6d9da",
     structureShade: "#565f66",
     structureLight: "#ffd77f",
-    groundTop: "#596168",
-    groundMid: "#3b4248",
-    groundBottom: "#242a30",
+    groundTop: "#4f575f",
+    groundMid: "#343b42",
+    groundBottom: "#1d2329",
     surfaceLine: "#8e989e",
     surfaceHighlight: "#c2c9cc",
-    surfaceShadow: "#171c21",
+    surfaceShadow: "#12171c",
     marker: "#e8483f",
     safety: "#d6d2c9",
     safetyLight: "#f5f0e7",
@@ -295,12 +295,12 @@ const VENUES_DARK: Readonly<Record<Sport, VenuePalette>> = {
     structure: "#8c908c",
     structureShade: "#3b4648",
     structureLight: "#f0b65c",
-    groundTop: "#275969",
-    groundMid: "#143c4a",
-    groundBottom: "#082531",
-    surfaceLine: "#4f91a1",
-    surfaceHighlight: "#a8d2d8",
-    surfaceShadow: "#041a23",
+    groundTop: "#1f5a6c",
+    groundMid: "#0f3644",
+    groundBottom: "#061c26",
+    surfaceLine: "#5aa3b4",
+    surfaceHighlight: "#b6dce2",
+    surfaceShadow: "#03141c",
     marker: "#ef6a4e",
     safety: "#60777c",
     safetyLight: "#c8d9db",
@@ -317,13 +317,13 @@ const VENUES_DARK: Readonly<Record<Sport, VenuePalette>> = {
     structure: "#71838c",
     structureShade: "#293c47",
     structureLight: "#ffe099",
-    groundTop: "#d6e7ee",
-    groundMid: "#aac7d5",
-    groundBottom: "#789cac",
+    groundTop: "#cfe3ec",
+    groundMid: "#9fbfd0",
+    groundBottom: "#6e93a6",
     surfaceLine: "#6f9eb3",
     surfaceHighlight: "#f1f7f9",
-    surfaceShadow: "#4a7184",
-    marker: "#f06156",
+    surfaceShadow: "#456c80",
+    marker: "#8b7cf5",
     safety: "#1f5f85",
     safetyLight: "#d7e8ee",
   },
@@ -339,12 +339,12 @@ const VENUES_DARK: Readonly<Record<Sport, VenuePalette>> = {
     structure: "#777e82",
     structureShade: "#293036",
     structureLight: "#ffd16e",
-    groundTop: "#424a50",
-    groundMid: "#2c3338",
-    groundBottom: "#181e23",
+    groundTop: "#3a4249",
+    groundMid: "#262d33",
+    groundBottom: "#13181d",
     surfaceLine: "#6e7b82",
     surfaceHighlight: "#aab5ba",
-    surfaceShadow: "#0b1014",
+    surfaceShadow: "#080c10",
     marker: "#ef554a",
     safety: "#9a9a94",
     safetyLight: "#e5e2d9",
@@ -506,9 +506,9 @@ export function solveRigidOar2D(
 
 /** Approximate scaled silhouette height above the contact line for HUD clearance. */
 export const ATHLETE_TOP_CLEARANCE_2D: Readonly<Record<Sport, number>> = {
-  rower: 38,
-  skierg: 44,
-  bike: 49,
+  rower: 42,
+  skierg: 48,
+  bike: 52,
 };
 
 const jointScratchA: MutableFigurePoint2 = { x: 0, y: 0 };
@@ -605,7 +605,7 @@ function shapedTorso(
   const ny = dx / length;
   const midX = (hipX + shoulderX) * 0.5;
   const midY = (hipY + shoulderY) * 0.5;
-  const waistHalfWidth = Math.min(hipHalfWidth, shoulderHalfWidth) * 0.82;
+  const waistHalfWidth = Math.min(hipHalfWidth, shoulderHalfWidth) * 0.74;
 
   ctx.fillStyle = color;
   ctx.beginPath();
@@ -870,18 +870,18 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
 
   // Resolve the body and both sculling oars before painting so far-side parts
   // sit behind the shell while near-side joints remain readable.
-  const seatX = x + 3.5 - k.legExtension * 9.2;
+  const seatX = x + 4.2 - k.legExtension * 11.4;
   const seatY = bobY - 2;
-  const shX = seatX + 4.2 - k.bodySwing * 9.5;
-  const shY = bobY - 9.5 + k.bodySwing * 1.4;
-  const footX = x + 9.2;
+  const shX = seatX + 4.6 - k.bodySwing * 11.2;
+  const shY = bobY - 9.8 + k.bodySwing * 2.1;
+  const footX = x + 10.4;
   const footY = bobY - 1;
   const strokeProgress = k.legExtension * 0.42 + k.bodySwing * 0.34 + k.armDraw * 0.24;
-  const oarAngle = Math.PI - 0.3 - strokeProgress * (Math.PI - 0.62);
+  const oarAngle = Math.PI - 0.22 - strokeProgress * (Math.PI - 0.48);
   const oarlockX = x + 0.4;
   const oarlockY = bobY - 0.2;
-  solveRigidOar2D(oarlockX, oarlockY - 0.65, oarAngle + 0.035, 6.7, 13.3, 3.8, rowOarFar);
-  solveRigidOar2D(oarlockX, oarlockY + 0.4, oarAngle, 6.7, 13.3, 3.8, rowOarNear);
+  solveRigidOar2D(oarlockX, oarlockY - 0.65, oarAngle + 0.035, 7.1, 13.8, 4.0, rowOarFar);
+  solveRigidOar2D(oarlockX, oarlockY + 0.4, oarAngle, 7.1, 13.8, 4.0, rowOarNear);
   const farKit = withAlpha(accent, 0.52);
 
   // Feathering changes blade thickness only: the oar remains one straight,
@@ -1010,8 +1010,8 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   );
   disc(ctx, seatX, seatY, 1.65, withAlpha(rim, 0.8));
 
-  shapedTorso(ctx, seatX, seatY - 0.35, shX, shY, 1.75, 2.45, accent, withAlpha(foam, 0.72));
-  limb(ctx, seatX + 0.25, seatY - 1.1, shX + 0.35, shY + 0.2, 0.7, withAlpha(foam, 0.72));
+  shapedTorso(ctx, seatX, seatY - 0.35, shX, shY, 1.95, 2.75, accent, withAlpha(foam, 0.72));
+  limb(ctx, seatX + 0.25, seatY - 1.1, shX + 0.35, shY + 0.2, 0.78, withAlpha(foam, 0.78));
   profileHead(ctx, shX, shY, skin, hair);
 
   // The visible oar is also rigid; the near hand terminates at its handle.
@@ -1060,28 +1060,32 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   );
   disc(ctx, jointScratchA.x, jointScratchA.y, 0.95, skin);
   disc(ctx, jointEndScratch.x, jointEndScratch.y, 1.05, skin);
-  if (!reduce && k.bladeDepth > 0.08) {
-    disc(ctx, rowOarNear.bladeTipX, bobY + 2.6, 1 + k.bladeDepth * 0.5, foam);
-    disc(ctx, rowOarNear.bladeTipX + 2.2, bobY + 1.4, 0.7 + k.bladeDepth * 0.35, foam);
-    disc(ctx, rowOarNear.bladeTipX - 1.2, bobY + 1.8, 0.55 + k.bladeDepth * 0.25, foam);
+  if (!reduce && k.bladeDepth > 0.06) {
+    // Catch foam plus a lighter mid-drive mist keep the buried blade readable.
+    const depth = k.bladeDepth;
+    disc(ctx, rowOarNear.bladeTipX, bobY + 2.8, 1.15 + depth * 0.85, foam);
+    disc(ctx, rowOarNear.bladeTipX + 2.6, bobY + 1.5, 0.85 + depth * 0.55, foam);
+    disc(ctx, rowOarNear.bladeTipX - 1.6, bobY + 1.9, 0.7 + depth * 0.4, foam);
+    disc(ctx, rowOarNear.bladeTipX + 0.8, bobY + 3.4, 0.55 + depth * 0.35, withAlpha(foam, 0.55));
+    disc(ctx, rowOarFar.bladeTipX, bobY + 1.8, 0.7 + depth * 0.4, withAlpha(foam, 0.4));
   }
 }
 
 /** Skier double-poling: arms/poles swing from a high reach to a low back-pull. */
 function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKinematics) {
   const { x, y, bobY, accent, rim, foam, skin, skinShade, hair, shoe, reduce } = a;
-  const hipX = x + k.hipHinge * 1.8;
-  const hipY = bobY - 7.2 + k.kneeFlex * 2.8;
-  const shX = x + 0.6 + k.hipHinge * 4.6;
-  const shY = bobY - 13.5 + k.hipHinge * 5.2;
+  const hipX = x + k.hipHinge * 2.4;
+  const hipY = bobY - 7.4 + k.kneeFlex * 3.6;
+  const shX = x + 0.6 + k.hipHinge * 5.8;
+  const shY = bobY - 14 + k.hipHinge * 6.4;
   const farKit = withAlpha(accent, 0.5);
 
-  const poleLength = 13.2;
-  const farHandX = shX + 5.9 - k.armPress * 8.7;
-  const farHandY = shY + 0.35 + k.armPress * 8.2;
-  const nearHandX = shX + 6.6 - k.armPress * 9.5;
-  const nearHandY = shY + 1 + k.armPress * 8.6;
-  const freePoleAngle = 0.72 + k.poleSweep * 1.62;
+  const poleLength = 13.8;
+  const farHandX = shX + 6.4 - k.armPress * 10.2;
+  const farHandY = shY + 0.2 + k.armPress * 9.4;
+  const nearHandX = shX + 7.1 - k.armPress * 11;
+  const nearHandY = shY + 0.9 + k.armPress * 9.8;
+  const freePoleAngle = 0.62 + k.poleSweep * 1.78;
   const farPoleAngle = poleAngleAtContact(
     farHandY,
     y - 0.15,
@@ -1173,8 +1177,8 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
     shoe,
   );
   disc(ctx, hipX, hipY, 1.5, withAlpha(rim, 0.7));
-  shapedTorso(ctx, hipX, hipY - 0.3, shX, shY, 1.85, 2.5, accent, withAlpha(foam, 0.72));
-  limb(ctx, hipX + 0.1, hipY - 1, shX + 0.25, shY + 0.15, 0.7, withAlpha(foam, 0.75));
+  shapedTorso(ctx, hipX, hipY - 0.3, shX, shY, 2.05, 2.85, accent, withAlpha(foam, 0.72));
+  limb(ctx, hipX + 0.1, hipY - 1, shX + 0.25, shY + 0.15, 0.8, withAlpha(foam, 0.78));
   profileHead(ctx, shX, shY, skin, hair);
 
   // Reach → plant → press → recovery. Contact intensity controls the snow
@@ -1196,10 +1200,13 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   );
   disc(ctx, jointScratchA.x, jointScratchA.y, 0.95, skin);
   disc(ctx, jointEndScratch.x, jointEndScratch.y, 1.02, skin);
-  if (!reduce && k.poleContact > 0.12) {
-    disc(ctx, nearPoleTipX, y, 0.85 + k.poleContact * 0.45, foam);
-    disc(ctx, nearPoleTipX + 2, y - 1, 0.65 + k.poleContact * 0.3, foam);
-    disc(ctx, nearPoleTipX - 1.4, y - 0.6, 0.5 + k.poleContact * 0.2, foam);
+  if (!reduce && k.poleContact > 0.08) {
+    const plant = k.poleContact;
+    disc(ctx, nearPoleTipX, y, 1 + plant * 0.7, foam);
+    disc(ctx, nearPoleTipX + 2.4, y - 1.2, 0.8 + plant * 0.45, foam);
+    disc(ctx, nearPoleTipX - 1.8, y - 0.8, 0.65 + plant * 0.35, foam);
+    disc(ctx, farPoleTipX, y - 0.4, 0.7 + plant * 0.35, withAlpha(foam, 0.45));
+    disc(ctx, nearPoleTipX + 0.6, y - 2.1, 0.45 + plant * 0.25, withAlpha(foam, 0.4));
   }
 }
 
@@ -1229,8 +1236,8 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
   const barY = wheelY - 6.4;
   // Rider anchors are known before the frame is painted so the far limbs can
   // sit behind the bicycle and the near limbs can overlap it cleanly.
-  const hipLift = reduce ? 0 : k.hipRock * 18;
-  const torsoShift = reduce ? 0 : k.torsoSway * 18;
+  const hipLift = reduce ? 0 : k.hipRock * 28;
+  const torsoShift = reduce ? 0 : k.torsoSway * 26;
   const hipX = seatX + torsoShift * 0.25;
   const hipY = seatY + hipLift;
   const rShX = x + 1.2 + torsoShift;
@@ -1372,7 +1379,7 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
 
   // Shorts/pelvis bridge the rider to the saddle instead of floating above it.
   disc(ctx, hipX, hipY, 2, withAlpha(rim, 0.82));
-  shapedTorso(ctx, hipX, hipY - 0.35, rShX, rShY, 1.9, 2.55, accent, withAlpha(foam, 0.7));
+  shapedTorso(ctx, hipX, hipY - 0.35, rShX, rShY, 2.05, 2.8, accent, withAlpha(foam, 0.72));
   limb(ctx, hipX + 0.2, hipY - 1, rShX + 0.3, rShY + 0.15, 0.7, withAlpha(foam, 0.7));
 
   solveTwoBoneJoint2D(rShX, rShY + 0.2, barX, barY, 4.92, 4.62, 1, jointScratchB);
@@ -1670,28 +1677,30 @@ export class CourseRenderer implements ReplayRenderer {
    * spawns nothing.
    */
   private spawnSplash(pool: ParticlePool, avX: number, y: number, sport?: Sport, intensity = 0.5) {
-    const effort = 0.85 + clamp01(intensity) * 0.75;
+    const effort = 0.95 + clamp01(intensity) * 0.95;
     const count =
       sport === "rower"
-        ? 5 + Math.round(clamp01(intensity) * 4)
+        ? 8 + Math.round(clamp01(intensity) * 6)
         : sport === "skierg"
-          ? 4 + Math.round(clamp01(intensity) * 3)
+          ? 7 + Math.round(clamp01(intensity) * 5)
           : 0;
     if (count === 0) return;
     // Catch-time contact points after the avatar's scale and solver-driven
     // surge: the row blade is aft/left of the hull, while the SkiErg basket
-    // plants forward/right of the boots.
+    // plants forward/right of the boots. The first droplet stays on that
+    // solved offset so tests and visual QA can pin the contact side.
     const ox = sport === "rower" ? -22 : 11;
     for (let i = 0; i < count; i++) {
+      const scatter = i === 0 ? 0 : (Math.random() - 0.5) * 8;
       pool.spawn(
-        avX + ox + (Math.random() - 0.5) * 6,
-        y + 2,
+        avX + ox + scatter,
+        y + 1 + (i === 0 ? 1 : Math.random() * 3),
         0,
-        (Math.random() * 48 - 14) * effort,
-        -(32 + Math.random() * 48) * effort,
+        (Math.random() * 68 - 18) * effort,
+        -(48 + Math.random() * 72) * effort,
         0,
-        0.36 + Math.random() * 0.28,
-        (1 + Math.random() * 1.1) * effort,
+        0.42 + Math.random() * 0.36,
+        (1.2 + Math.random() * 1.5) * effort,
       );
     }
   }
@@ -2283,21 +2292,31 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.lineTo(startX + span, bandBottom - 1);
     ctx.stroke();
 
-    // Groomed grooves are locked to travelled metres and remain stationary for
-    // reduced motion. Canvas dash offsets use the inverse of direct scenery x.
+    // Paired ski tracks (art-direction corduroy) locked to travelled metres.
+    // Canvas dash offsets use the inverse of direct scenery x.
     ctx.setLineDash(SKI_GROOVE_DASH);
     ctx.lineDashOffset = this.dashMaterialOffset(meters, 0.34, 13);
-    for (let groove = 0; groove < 3; groove++) {
-      const gy = y + 6 + groove * 5;
-      ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.32 - groove * 0.045);
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(startX, gy);
-      ctx.lineTo(startX + span, gy);
-      ctx.stroke();
+    for (const pair of [0, 1]) {
+      const base = y + 5 + pair * 9;
+      for (const offset of [-1.1, 1.1]) {
+        const gy = base + offset;
+        ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.34 - pair * 0.05);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(startX, gy);
+        ctx.lineTo(startX + span, gy);
+        ctx.stroke();
+      }
     }
     ctx.setLineDash(SOLID_LINE);
     ctx.lineDashOffset = 0;
+    // Soft purple course ticks match the 3D marker language.
+    ctx.fillStyle = withAlpha(palette.marker, 0.55);
+    for (let i = 0; i < 8; i++) {
+      const tx = startX + ((i + 0.5) / 8) * span;
+      ctx.fillRect(tx - 1.2, bandTop + 2, 2.4, 3.2);
+      ctx.fillRect(tx - 1.2, bandBottom - 5.2, 2.4, 3.2);
+    }
   }
 
   private drawBikeSurface(o: LaneOpts) {

@@ -139,8 +139,11 @@ export function solveRowerKinematics(
   output.bladeFeather = bladeFeather;
   // Surge peaks through mid-drive and checks hard at the catch.
   output.surge = strokeSurge(pose.warpedPhase) * effort;
-  // Small vertical bounce: compression at the catch, float at the finish.
-  output.vertical = Math.sin(pose.warpedPhase) * effort;
+  // Catch compression is front-loaded so the shell visibly loads, then lifts
+  // through the finish rather than bobbing as a pure sine.
+  const verticalWave = Math.sin(pose.warpedPhase);
+  const catchLoad = pose.drive ? 1 - athleticDrive(pose.driveProgress) : 0;
+  output.vertical = Math.max(-1, Math.min(1, (verticalWave * 0.72 - catchLoad * 0.45) * effort));
   return output;
 }
 
@@ -190,7 +193,9 @@ export function solveSkierKinematics(
   output.kneeFlex = kneeFlex;
   output.poleContact = poleContact;
   output.poleSweep = poleSweep;
-  output.rebound = rebound;
+  // Recovery rebound is the only vertical cue; keep it in 0..1 after effort.
+  output.rebound = clamp01(rebound);
+  // Check at plant, then run through the double-pole press.
   output.surge = strokeSurge(pose.warpedPhase) * effort;
   return output;
 }
@@ -209,10 +214,12 @@ export function solveBikeKinematics(
   const crankAngle = ((pose.phase % TAU) + TAU) % TAU;
   const effort = secondaryScale(pose.intensity);
   output.crankAngle = crankAngle;
-  // Still restrained — bikes don't thrash — but readable at a glance.
-  output.torsoSway = Math.sin(crankAngle) * 0.055 * effort;
-  output.hipRock = Math.sin(crankAngle * 2) * 0.028 * effort;
-  output.anklePitchLeft = -0.05 + Math.sin(crankAngle) * 0.16;
-  output.anklePitchRight = -0.05 + Math.sin(crankAngle + Math.PI) * 0.16;
+  // Still restrained — bikes don't thrash — but readable at a glance from the
+  // overview and chase cameras without looking like a rodeo. Ankle amplitude
+  // stays under the contact-lock envelope used by the 3D pedal solve.
+  output.torsoSway = Math.sin(crankAngle) * 0.068 * effort;
+  output.hipRock = Math.sin(crankAngle * 2) * 0.036 * effort;
+  output.anklePitchLeft = -0.05 + Math.sin(crankAngle) * 0.175;
+  output.anklePitchRight = -0.05 + Math.sin(crankAngle + Math.PI) * 0.175;
   return output;
 }

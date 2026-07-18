@@ -183,20 +183,24 @@ scene.name = "ROWPLAY_RIG_ASSET_LIBRARY_V1";
 
 // Coherent athlete shells. Normalized parts are fitted to the existing rig
 // transforms at runtime; the shoe/neck/equipment slots use authored metre sizes.
+// Rings bias toward a broadcast sports-illustration silhouette: broad back,
+// clear waist, directional head, and soft joint-overlap on limbs so the
+// chase camera never reads ball-joint mannequin seams.
 addSlot(
   scene,
   "athlete:torso",
   loftGeometry(
     [
-      { p: -0.76, rx: 0.46, rz: 0.58, oz: -0.04 },
-      { p: -0.52, rx: 0.67, rz: 0.75, oz: -0.02 },
-      { p: -0.18, rx: 0.67, rz: 0.82 },
-      { p: 0.08, rx: 0.83, rz: 0.94, oz: 0.02 },
-      { p: 0.3, rx: 1.02, rz: 0.98, oz: -0.02 },
-      { p: 0.43, rx: 1.12, rz: 0.8, oz: -0.04 },
-      { p: 0.52, rx: 0.42, rz: 0.52, oz: 0.01 },
+      { p: -0.78, rx: 0.52, rz: 0.64, oz: -0.05 },
+      { p: -0.54, rx: 0.74, rz: 0.82, oz: -0.03 },
+      { p: -0.22, rx: 0.7, rz: 0.88, oz: -0.01 },
+      { p: 0.04, rx: 0.88, rz: 0.98, oz: 0.02 },
+      { p: 0.28, rx: 1.08, rz: 1.02, oz: -0.01 },
+      { p: 0.42, rx: 1.18, rz: 0.86, oz: -0.05 },
+      { p: 0.5, rx: 0.9, rz: 0.72, oz: -0.04 },
+      { p: 0.56, rx: 0.38, rz: 0.48, oz: 0.01 },
     ],
-    10,
+    12,
     "y",
     0,
   ),
@@ -206,13 +210,13 @@ addSlot(
   "athlete:pelvis",
   loftGeometry(
     [
-      { p: -1, rx: 0.62, rz: 0.66, oz: -0.03 },
-      { p: -0.72, rx: 0.9, rz: 0.82 },
-      { p: 0.08, rx: 1.04, rz: 0.94, oz: -0.04 },
-      { p: 0.68, rx: 0.93, rz: 0.86, oz: -0.02 },
-      { p: 1, rx: 0.7, rz: 0.68 },
+      { p: -1, rx: 0.7, rz: 0.72, oz: -0.04 },
+      { p: -0.68, rx: 0.98, rz: 0.9, oz: -0.02 },
+      { p: 0.04, rx: 1.1, rz: 1, oz: -0.05 },
+      { p: 0.62, rx: 0.98, rz: 0.9, oz: -0.03 },
+      { p: 1, rx: 0.74, rz: 0.72 },
     ],
-    8,
+    10,
     "y",
     0,
   ),
@@ -222,16 +226,17 @@ addSlot(
   "athlete:head",
   loftGeometry(
     [
-      { p: -0.78, rx: 0.48, rz: 0.42, oz: 0.18 },
-      { p: -0.66, rx: 0.78, rz: 0.7, oz: 0.2 },
-      { p: -0.12, rx: 1.02, rz: 0.98, oz: 0.05 },
-      { p: 0.48, rx: 0.96, rz: 1.04, oz: -0.08 },
-      { p: 0.86, rx: 0.66, rz: 0.72, oz: -0.04 },
-      { p: 1, rx: 0.28, rz: 0.32 },
+      { p: -0.82, rx: 0.42, rz: 0.38, oz: 0.22 },
+      { p: -0.62, rx: 0.72, rz: 0.66, oz: 0.24 },
+      { p: -0.28, rx: 0.96, rz: 0.9, oz: 0.12 },
+      { p: 0.08, rx: 1.04, rz: 1, oz: 0.02 },
+      { p: 0.46, rx: 0.94, rz: 1.02, oz: -0.06 },
+      { p: 0.82, rx: 0.62, rz: 0.7, oz: -0.04 },
+      { p: 1, rx: 0.26, rz: 0.3 },
     ],
-    8,
+    10,
     "y",
-    Math.PI / 8,
+    Math.PI / 10,
   ),
 );
 addSlot(
@@ -239,23 +244,23 @@ addSlot(
   "athlete:hair",
   loftGeometry(
     [
-      { p: -0.72, rx: 0.76, rz: 0.82, oz: -0.08 },
-      { p: -0.1, rx: 1.02, rz: 1.02, oz: -0.1 },
-      { p: 0.56, rx: 0.92, rz: 1, oz: -0.09 },
-      { p: 0.94, rx: 0.52, rz: 0.6, oz: -0.04 },
-      { p: 1.04, rx: 0.18, rz: 0.22 },
+      { p: -0.7, rx: 0.8, rz: 0.86, oz: -0.1 },
+      { p: -0.08, rx: 1.06, rz: 1.06, oz: -0.12 },
+      { p: 0.52, rx: 0.94, rz: 1.02, oz: -0.1 },
+      { p: 0.9, rx: 0.5, rz: 0.58, oz: -0.05 },
+      { p: 1.04, rx: 0.16, rz: 0.2 },
     ],
-    8,
+    10,
     "y",
-    Math.PI / 8,
+    Math.PI / 10,
   ),
 );
 
 const limbSlots = [
-  ["athlete:upper-arm", 0.82, 0.62, 0.68, 0.52],
-  ["athlete:forearm", 0.68, 0.5, 0.56, 0.4],
-  ["athlete:thigh", 1, 0.72, 0.84, 0.62],
-  ["athlete:shin", 0.78, 0.52, 0.65, 0.43],
+  ["athlete:upper-arm", 0.88, 0.64, 0.74, 0.54],
+  ["athlete:forearm", 0.72, 0.52, 0.6, 0.42],
+  ["athlete:thigh", 1.06, 0.76, 0.9, 0.66],
+  ["athlete:shin", 0.82, 0.54, 0.7, 0.44],
 ];
 for (const [slot, upperX, lowerX, upperY, lowerY] of limbSlots) {
   addSlot(
@@ -263,16 +268,16 @@ for (const [slot, upperX, lowerX, upperY, lowerY] of limbSlots) {
     slot,
     loftGeometry(
       [
-        { p: -0.57, rx: lowerX * 0.88, rz: lowerY * 0.84 },
-        { p: -0.42, rx: lowerX, rz: lowerY },
-        { p: -0.12, rx: (upperX + lowerX) * 0.54, rz: (upperY + lowerY) * 0.54 },
-        { p: 0.28, rx: upperX * 1.05, rz: upperY * 1.02 },
-        { p: 0.48, rx: upperX, rz: upperY },
-        { p: 0.57, rx: upperX * 0.86, rz: upperY * 0.84 },
+        { p: -0.58, rx: lowerX * 0.92, rz: lowerY * 0.88 },
+        { p: -0.4, rx: lowerX, rz: lowerY },
+        { p: -0.08, rx: (upperX + lowerX) * 0.56, rz: (upperY + lowerY) * 0.56 },
+        { p: 0.22, rx: upperX * 1.08, rz: upperY * 1.04 },
+        { p: 0.44, rx: upperX, rz: upperY },
+        { p: 0.58, rx: upperX * 0.9, rz: upperY * 0.88 },
       ],
-      6,
+      8,
       "z",
-      Math.PI / 6,
+      Math.PI / 7,
     ),
   );
 }
@@ -306,15 +311,15 @@ addSlot(
   "athlete:shoulder",
   loftGeometry(
     [
-      { p: -1.08, rx: 0.54, rz: 0.64 },
-      { p: -0.62, rx: 0.92, rz: 0.86, oz: -0.04 },
-      { p: 0, rx: 1, rz: 0.9, oz: -0.06 },
-      { p: 0.62, rx: 0.92, rz: 0.86, oz: -0.04 },
-      { p: 1.08, rx: 0.54, rz: 0.64 },
+      { p: -1.12, rx: 0.58, rz: 0.7 },
+      { p: -0.58, rx: 0.98, rz: 0.92, oz: -0.05 },
+      { p: 0, rx: 1.06, rz: 0.96, oz: -0.07 },
+      { p: 0.58, rx: 0.98, rz: 0.92, oz: -0.05 },
+      { p: 1.12, rx: 0.58, rz: 0.7 },
     ],
-    6,
+    8,
     "x",
-    Math.PI / 6,
+    Math.PI / 7,
   ),
 );
 addSlot(
@@ -322,14 +327,14 @@ addSlot(
   "athlete:helmet",
   loftGeometry(
     [
-      { p: -0.18, rx: 0.88, rz: 0.92, oz: -0.08 },
-      { p: 0.14, rx: 1.05, rz: 1.06, oz: -0.06 },
-      { p: 0.58, rx: 0.8, rz: 0.88, oz: -0.14 },
-      { p: 0.78, rx: 0.28, rz: 0.38, oz: -0.1 },
+      { p: -0.2, rx: 0.9, rz: 0.94, oz: -0.1 },
+      { p: 0.12, rx: 1.08, rz: 1.08, oz: -0.08 },
+      { p: 0.52, rx: 0.86, rz: 0.92, oz: -0.14 },
+      { p: 0.76, rx: 0.32, rz: 0.4, oz: -0.1 },
     ],
-    8,
+    10,
     "y",
-    Math.PI / 8,
+    Math.PI / 10,
   ),
 );
 
@@ -340,27 +345,28 @@ addSlot(
   "equipment:row:hull",
   loftGeometry(
     [
-      { p: -1.82, rx: 0.06, rz: 0.05 },
-      { p: -1.38, rx: 0.24, rz: 0.18 },
-      { p: -0.42, rx: 0.34, rz: 0.24 },
-      { p: 0.58, rx: 0.3, rz: 0.21 },
-      { p: 1.42, rx: 0.18, rz: 0.14 },
-      { p: 1.82, rx: 0.025, rz: 0.035 },
+      { p: -1.86, rx: 0.05, rz: 0.045 },
+      { p: -1.42, rx: 0.22, rz: 0.17 },
+      { p: -0.48, rx: 0.36, rz: 0.25 },
+      { p: 0.42, rx: 0.34, rz: 0.23 },
+      { p: 1.28, rx: 0.22, rz: 0.16 },
+      { p: 1.68, rx: 0.12, rz: 0.1 },
+      { p: 1.88, rx: 0.02, rz: 0.03 },
     ],
-    8,
+    10,
     "y",
-    Math.PI / 8,
+    Math.PI / 9,
   ),
 );
 addSlot(
   scene,
   "equipment:row:blade",
-  wedgeGeometry({ width: 0.16, height: 0.035, depth: 0.5, heel: 0.48, toeLift: 0.012 }),
+  wedgeGeometry({ width: 0.18, height: 0.032, depth: 0.54, heel: 0.42, toeLift: 0.014 }),
 );
 addSlot(
   scene,
   "equipment:ski:ski",
-  wedgeGeometry({ width: 0.13, height: 0.045, depth: 1.8, heel: 0.45, toeLift: 0.06 }),
+  wedgeGeometry({ width: 0.12, height: 0.04, depth: 1.92, heel: 0.42, toeLift: 0.07 }),
 );
 addSlot(scene, "equipment:bike:tyre", aeroRingGeometry(0.45, 0.06, 18));
 addSlot(
