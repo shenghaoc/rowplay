@@ -3530,12 +3530,21 @@ export class CourseRenderer3D implements ReplayRenderer {
     const horizon = new THREE.Color(this.environment.skyHorizon(themeName));
     const nadir = new THREE.Color(this.environment.skyNadir(themeName));
     const sample = new THREE.Color();
+    // Three-tier interpolation: zenith → high-mid (preserves blue depth),
+    // high-mid → horizon (warms toward the sun), horizon → nadir (fades
+    // into the fog colour so it meets the fog plane without a seam).
+    const aboveMid = new THREE.Color().copy(zenith).lerp(horizon, 0.35);
+    const belowMid = new THREE.Color().copy(horizon).lerp(nadir, 0.55);
     for (let i = 0; i < position.count; i++) {
       const normalizedY = THREE.MathUtils.clamp(position.getY(i) / 175, -1, 1);
-      if (normalizedY >= 0) {
-        sample.copy(horizon).lerp(zenith, Math.pow(normalizedY, 0.58));
+      if (normalizedY >= 0.55) {
+        sample.copy(aboveMid).lerp(zenith, (normalizedY - 0.55) / 0.45);
+      } else if (normalizedY >= 0) {
+        sample.copy(horizon).lerp(aboveMid, Math.pow(normalizedY / 0.55, 0.62));
+      } else if (normalizedY >= -0.45) {
+        sample.copy(horizon).lerp(belowMid, Math.pow(-normalizedY / 0.45, 0.68));
       } else {
-        sample.copy(horizon).lerp(nadir, Math.pow(-normalizedY, 0.72));
+        sample.copy(belowMid).lerp(nadir, Math.pow((-normalizedY - 0.45) / 0.55, 0.72));
       }
       color.setXYZ(i, sample.r, sample.g, sample.b);
     }
@@ -4478,12 +4487,12 @@ export class CourseRenderer3D implements ReplayRenderer {
             color: this.profile.groundColor("light"),
             transparent: false,
             opacity: 1,
-            roughness: 0.16,
-            metalness: 0.06,
-            clearcoat: 1,
-            clearcoatRoughness: 0.1,
-            emissive: 0x061c24,
-            emissiveIntensity: 0.42,
+            roughness: 0.12,
+            metalness: 0.04,
+            clearcoat: 0.95,
+            clearcoatRoughness: 0.08,
+            emissive: this.profile.groundColor("light"),
+            emissiveIntensity: 0.55,
           })
         : new THREE.MeshStandardMaterial({
             color: this.profile.groundColor("light"),
@@ -4883,11 +4892,14 @@ export class CourseRenderer3D implements ReplayRenderer {
         const ly = arr[idx + 1];
         arr[idx + 2] = this.reduceMotion
           ? 0
-          : Math.sin(ly * 0.25 + t) * 0.072 +
-            Math.sin(lx * 0.31 + t * 1.7) * 0.042 +
-            Math.sin((lx + ly) * 0.13 - t * 0.6) * 0.032 +
-            Math.sin(ly * 0.6 + t * 2.3) * 0.014 +
-            Math.sin(lx * 0.9 - t * 3.1) * 0.01;
+          : Math.sin(ly * 0.22 + t) * 0.065 +
+            Math.sin(ly * 0.38 + t * 0.74) * 0.028 +
+            Math.sin(lx * 0.28 + t * 1.58) * 0.038 +
+            Math.sin((lx + ly) * 0.11 - t * 0.55) * 0.034 +
+            Math.sin(ly * 0.55 + t * 2.12) * 0.016 +
+            Math.sin(lx * 0.82 - t * 2.95) * 0.012 +
+            Math.sin(lx * 1.3 + ly * 0.45 + t * 1.23) * 0.008 +
+            Math.sin(lx * 0.17 - ly * 0.62 + t * 3.4) * 0.006;
       }
       pos.needsUpdate = true;
       water.geometry.computeVertexNormals();
