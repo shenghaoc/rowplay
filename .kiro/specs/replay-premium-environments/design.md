@@ -72,10 +72,14 @@ composition has four layers:
   structures arranged to establish scale without entering the athlete's lane.
 
 Standard Three.js geometries and materials keep the shared scene compatible
-with WebGPU and WebGL. Vertex color, flat shading, roughness, opacity, and
+with WebGPU and WebGL. Smooth compound silhouettes, shallow vertex-colour
+terrain variation, roughness, opacity, clearcoat, fabric sheen, and restrained
 emissive accents provide material character without a custom shader dependency.
-Static geometry and materials are allocated during scene construction, tracked
-for disposal, and only transformed or recolored when state actually changes.
+High-resolution viewing must not merely expose enlarged cubes, faceted trees, or
+pyramid mountains: close-enough venue forms use rounded, lathed, or bevelled
+geometry while the most distant forms remain deliberately simple. Static
+geometry and materials are allocated during scene construction, tracked for
+disposal, and only transformed or recolored when state actually changes.
 
 Generic spherical markers are not a universal detail system. RowErg may use
 disciplined lane or distance buoys; SkiErg and BikeErg receive their own course

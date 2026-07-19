@@ -19,7 +19,10 @@ import {
   applyReplayAssetLibrary,
   hideWithReplayAssets,
   setReplayAssetSlot,
+  setReplayAssetTemplateAnchor,
   type ReplayAssetLibrary,
+  type ReplayAssetMaterialResolver,
+  type ReplayAssetMaterialRole,
 } from "./renderer3dAssets";
 
 // Resolve lazily because this module is also imported during SSR. The returned
@@ -270,6 +273,8 @@ const STATIC_AVATAR_MOTION: AvatarMotionCues = { vertical: 0, surge: 0 };
 
 interface Avatar {
   group: THREE.Group;
+  /** Maps V3's neutral geometry roles to this live/ghost rig's materials. */
+  assetMaterialResolver: ReplayAssetMaterialResolver;
   animate(
     phase: number,
     reduceMotion: boolean,
@@ -282,6 +287,14 @@ interface Avatar {
    * than followers of a moving torso.
    */
   resolveWorldContacts?(): void;
+}
+
+type ReplayAssetMaterialPalette = Readonly<Record<ReplayAssetMaterialRole, THREE.Material>>;
+
+function makeAssetMaterialResolver(
+  palette: ReplayAssetMaterialPalette,
+): ReplayAssetMaterialResolver {
+  return (role) => palette[role];
 }
 
 interface AvatarPlacement {
@@ -327,11 +340,13 @@ interface CameraRig {
 }
 
 const CAMERA_RIGS: Record<Sport, CameraRig> = {
-  // Closer chase framing so the figurine and equipment fill the stage the way
-  // the art-direction triptych does, while still leaving oar/pole/wheel air.
-  rower: { back: 3.85, height: 2.32, ahead: 1.6, lateral: 1.28, aimY: 1.02 },
-  skierg: { back: 3.25, height: 2.38, ahead: 1.4, lateral: 1.0, aimY: 1.2 },
-  bike: { back: 2.98, height: 2.02, ahead: 0.74, lateral: 0.98, aimY: 0.88 },
+  // A deliberate rear-three-quarter line reveals the hand/equipment contacts,
+  // elbow silhouette and the bicycle frame instead of flattening the athlete
+  // into a rear-facing toy. The pullback logic below still owns narrow and
+  // comparison framing, so this is a static composition choice, not an orbit.
+  rower: { back: 3.85, height: 2.32, ahead: 1.6, lateral: 1.56, aimY: 1.02 },
+  skierg: { back: 3.25, height: 2.38, ahead: 1.4, lateral: 1.3, aimY: 1.2 },
+  bike: { back: 2.98, height: 2.02, ahead: 0.74, lateral: 1.24, aimY: 0.88 },
 };
 
 const BASE_CAMERA_FOV = 42;
@@ -693,16 +708,34 @@ function humanMat(color: number, roughness = 0.64, metalness = 0): THREE.MeshSta
   return new THREE.MeshStandardMaterial({ color, roughness, metalness });
 }
 
-function accentMaterial(accent: number): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+/**
+ * Fabric gets its own physically based response.  Keeping jersey, hull, pole
+ * blade, and bicycle frame on one purple material was the biggest remaining
+ * reason the premium shell still read like a painted toy.
+ */
+function accentMaterial(accent: number): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
     color: accent,
-    // A small amount of fabric sheen lets the authored torso curvature read
-    // under the moving key light. The former high roughness plus bright
-    // emissive wash made every jersey look like a flat, toy-plastic panel.
-    roughness: 0.5,
-    metalness: 0.02,
+    roughness: 0.62,
+    metalness: 0,
+    sheen: 0.28,
+    sheenColor: new THREE.Color(0xdde9ff),
+    sheenRoughness: 0.72,
     emissive: accent,
-    emissiveIntensity: 0.025,
+    emissiveIntensity: 0.012,
+  });
+}
+
+/** Painted composite equipment carries a restrained clearcoat, never fabric. */
+function accentEquipmentMaterial(accent: number): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color: accent,
+    roughness: 0.34,
+    metalness: 0.08,
+    clearcoat: 0.32,
+    clearcoatRoughness: 0.26,
+    emissive: accent,
+    emissiveIntensity: 0.008,
   });
 }
 
@@ -864,6 +897,238 @@ function capsulePart(
   return new THREE.Mesh(geometry, material);
 }
 
+/**
+ * Build one shared-vertex radial surface from an authored vertical profile.
+ *
+ * `LatheGeometry` gives every mountain the same circular contour, which can
+ * still read as a large low-poly cone even at a high segment count.  This
+ * variation is baked into the geometry, needs no texture or shader feature,
+ * and remains safe for both WebGL and WebGPU.  Adjacent rings share vertices
+ * so the normal field stays continuous instead of exposing triangle bands.
+ */
+function organicRadialSurfaceGeometry(
+  profile: readonly THREE.Vector2[],
+  radialSegments: number,
+  phase: number,
+  name: string,
+  irregularity = 1,
+): THREE.BufferGeometry {
+  const ringCount = profile.length;
+  const maxRadius = Math.max(0.001, ...profile.map((point) => point.x));
+  const positions = new Float32Array((ringCount * radialSegments + 2) * 3);
+  const indices: number[] = [];
+  let cursor = 0;
+
+  for (let ring = 0; ring < ringCount; ring++) {
+    const point = profile[ring];
+    if (!point) continue;
+    const radiusWeight = point.x / maxRadius;
+    for (let segment = 0; segment < radialSegments; segment++) {
+      const angle = (segment / radialSegments) * Math.PI * 2;
+      // Three long-frequency lobes establish asymmetric shoulders; smaller
+      // frequencies break the repetitive "lathed" highlight without becoming
+      // noisy enough to sparkle when the camera moves around the course.
+      const radialNoise =
+        Math.sin(angle * 3 + phase) * 0.082 +
+        Math.sin(angle * 7 - phase * 1.7 + ring * 0.31) * 0.037 +
+        Math.sin(angle * 11 + ring * 0.67) * 0.015;
+      const radius = Math.max(
+        0.012,
+        point.x * (1 + radialNoise * irregularity * (0.3 + radiusWeight * 0.7)),
+      );
+      const verticalNoise =
+        (Math.sin(angle * 2 + phase * 0.73) * 0.105 +
+          Math.sin(angle * 5 - phase + ring * 0.41) * 0.045) *
+        radiusWeight *
+        irregularity;
+      positions[cursor++] = Math.cos(angle) * radius;
+      positions[cursor++] = point.y + verticalNoise;
+      positions[cursor++] = Math.sin(angle) * radius;
+    }
+  }
+
+  for (let ring = 0; ring < ringCount - 1; ring++) {
+    for (let segment = 0; segment < radialSegments; segment++) {
+      const next = (segment + 1) % radialSegments;
+      const a = ring * radialSegments + segment;
+      const b = ring * radialSegments + next;
+      const c = (ring + 1) * radialSegments + segment;
+      const d = (ring + 1) * radialSegments + next;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+
+  // Cap the tiny first/last rings.  They remain almost point-like in the
+  // silhouette, but closed geometry prevents sky leaks through a near peak.
+  const bottomCenter = ringCount * radialSegments;
+  const topCenter = bottomCenter + 1;
+  const bottom = profile[0];
+  const top = profile.at(-1);
+  positions.set([0, bottom?.y ?? 0, 0], bottomCenter * 3);
+  positions.set([0, top?.y ?? 0, 0], topCenter * 3);
+  const topRing = (ringCount - 1) * radialSegments;
+  for (let segment = 0; segment < radialSegments; segment++) {
+    const next = (segment + 1) % radialSegments;
+    indices.push(bottomCenter, next, segment);
+    indices.push(topCenter, topRing + segment, topRing + next);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.name = name;
+  geometry.userData.organicRadialSurface = true;
+  return geometry;
+}
+
+/**
+ * A single tapered evergreen volume with varied bough tiers and a real needle
+ * tip.  Keeping the crown inside this shared contour avoids the old floating
+ * sphere that made the distant forest read as a row of green balls.
+ */
+function sculptedPineGeometry(): THREE.BufferGeometry {
+  return organicRadialSurfaceGeometry(
+    [
+      new THREE.Vector2(0.035, -2.12),
+      new THREE.Vector2(0.3, -2.06),
+      new THREE.Vector2(0.78, -1.84),
+      new THREE.Vector2(1.13, -1.55),
+      new THREE.Vector2(0.99, -1.28),
+      new THREE.Vector2(1.3, -0.94),
+      new THREE.Vector2(1.08, -0.62),
+      new THREE.Vector2(1.16, -0.28),
+      new THREE.Vector2(0.9, 0.04),
+      new THREE.Vector2(0.96, 0.35),
+      new THREE.Vector2(0.72, 0.71),
+      new THREE.Vector2(0.56, 1.08),
+      new THREE.Vector2(0.39, 1.46),
+      new THREE.Vector2(0.23, 1.78),
+      new THREE.Vector2(0.11, 2.06),
+      new THREE.Vector2(0.018, 2.34),
+    ],
+    40,
+    0.91,
+    "environment:evergreen-canopy",
+    0.82,
+  );
+}
+
+/** A broad, asymmetric alpine massif rather than a rotational volcano. */
+function alpinePeakGeometry(): THREE.BufferGeometry {
+  return organicRadialSurfaceGeometry(
+    [
+      new THREE.Vector2(0.025, -10),
+      new THREE.Vector2(3.3, -9.96),
+      new THREE.Vector2(5.85, -9.72),
+      new THREE.Vector2(7.6, -9.28),
+      new THREE.Vector2(7.52, -8.22),
+      new THREE.Vector2(7.25, -6.72),
+      new THREE.Vector2(6.88, -5.18),
+      new THREE.Vector2(6.4, -3.82),
+      new THREE.Vector2(5.88, -2.42),
+      new THREE.Vector2(5.35, -1.12),
+      new THREE.Vector2(4.86, 0.18),
+      new THREE.Vector2(4.4, 1.52),
+      new THREE.Vector2(3.72, 2.92),
+      new THREE.Vector2(3.05, 4.32),
+      new THREE.Vector2(2.3, 5.76),
+      new THREE.Vector2(1.52, 7.26),
+      new THREE.Vector2(0.9, 8.4),
+      new THREE.Vector2(0.48, 9.16),
+      new THREE.Vector2(0.018, 10),
+    ],
+    64,
+    0.43,
+    "environment:alpine-massif",
+    1,
+  );
+}
+
+/** Snow mantle follows the massif's uneven shoulders instead of a smooth cone. */
+function alpineSnowcapGeometry(): THREE.BufferGeometry {
+  return organicRadialSurfaceGeometry(
+    [
+      new THREE.Vector2(3.72, 3.56),
+      new THREE.Vector2(3.28, 4.16),
+      new THREE.Vector2(2.92, 4.9),
+      new THREE.Vector2(2.57, 5.68),
+      new THREE.Vector2(2.2, 6.5),
+      new THREE.Vector2(1.8, 7.28),
+      new THREE.Vector2(1.15, 8.35),
+      new THREE.Vector2(0.6, 9.17),
+      new THREE.Vector2(0.018, 10.08),
+    ],
+    64,
+    0.43,
+    "environment:alpine-snow-mantle",
+    0.92,
+  );
+}
+
+/** Low, elongated foreground terrain adds a parallax layer beneath the massif. */
+function alpineFoothillGeometry(): THREE.BufferGeometry {
+  return organicRadialSurfaceGeometry(
+    [
+      new THREE.Vector2(0.025, -2.5),
+      new THREE.Vector2(0.96, -2.4),
+      new THREE.Vector2(2.08, -2.05),
+      new THREE.Vector2(2.86, -1.48),
+      new THREE.Vector2(3.14, -0.72),
+      new THREE.Vector2(2.9, 0.14),
+      new THREE.Vector2(2.34, 1.02),
+      new THREE.Vector2(1.64, 1.86),
+      new THREE.Vector2(0.92, 2.68),
+      new THREE.Vector2(0.36, 3.36),
+      new THREE.Vector2(0.018, 3.72),
+    ],
+    48,
+    1.37,
+    "environment:alpine-foothill",
+    0.88,
+  );
+}
+
+/**
+ * A beveled architectural panel used for close-enough venue forms.  This keeps
+ * a pavilion, light bank, or scoreboard from exposing hard CG cube corners in
+ * the same large pixels as the athlete.
+ */
+function roundedVenueBlockGeometry(
+  width: number,
+  height: number,
+  depth: number,
+  corner = Math.min(width, height) * 0.12,
+): THREE.ExtrudeGeometry {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const radius = Math.min(corner, halfWidth * 0.45, halfHeight * 0.45);
+  const shape = new THREE.Shape();
+  shape.moveTo(-halfWidth + radius, -halfHeight);
+  shape.lineTo(halfWidth - radius, -halfHeight);
+  shape.quadraticCurveTo(halfWidth, -halfHeight, halfWidth, -halfHeight + radius);
+  shape.lineTo(halfWidth, halfHeight - radius);
+  shape.quadraticCurveTo(halfWidth, halfHeight, halfWidth - radius, halfHeight);
+  shape.lineTo(-halfWidth + radius, halfHeight);
+  shape.quadraticCurveTo(-halfWidth, halfHeight, -halfWidth, halfHeight - radius);
+  shape.lineTo(-halfWidth, -halfHeight + radius);
+  shape.quadraticCurveTo(-halfWidth, -halfHeight, -halfWidth + radius, -halfHeight);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    curveSegments: 10,
+    bevelEnabled: true,
+    bevelThickness: Math.min(depth * 0.2, radius * 0.45),
+    bevelSize: Math.min(depth * 0.16, radius * 0.38),
+    bevelSegments: 3,
+  });
+  geometry.translate(0, 0, -depth / 2);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function tubeBetween(
   name: string,
   start: FigurePoint3,
@@ -881,6 +1146,10 @@ function tubeBetween(
 
 const SEGMENT_FORWARD = new THREE.Vector3(0, 0, 1);
 const SEGMENT_DIR = new THREE.Vector3();
+const ELBOW_AXIS = new THREE.Vector3();
+const ELBOW_INSIDE = new THREE.Vector3();
+const ELBOW_SIDE = new THREE.Vector3();
+const ELBOW_FRAME = new THREE.Matrix4();
 
 function placeSegmentCoordinates(
   segment: THREE.Object3D,
@@ -912,6 +1181,56 @@ function placeFigureSegmentBetween(
   end: FigurePoint3,
 ): void {
   placeSegmentCoordinates(segment, start.x, start.y, start.z, end.x, end.y, end.z);
+}
+
+/**
+ * Aim the authored elbow cuff from the actual arm bend rather than leaving its
+ * asymmetric flex groove in a fixed local orientation. Local +Z follows the
+ * shoulder-to-wrist chord; local -Y exposes the olecranon to the outside of
+ * the bend. The near-straight fallback is side-stable, so the shell cannot
+ * suddenly roll 180 degrees while an arm reaches its longest pose.
+ *
+ * All scratch objects are module-owned and this function writes only to the
+ * existing cuff transform, keeping the per-frame avatar path allocation-free.
+ */
+function orientElbowCuff(
+  cuff: THREE.Object3D,
+  shoulder: FigurePoint3,
+  elbow: FigurePoint3,
+  wrist: FigurePoint3,
+  side: number,
+): void {
+  ELBOW_AXIS.set(wrist.x - shoulder.x, wrist.y - shoulder.y, wrist.z - shoulder.z);
+  if (ELBOW_AXIS.lengthSq() < 1e-8) ELBOW_AXIS.set(0, 0, 1);
+  else ELBOW_AXIS.normalize();
+
+  // The vector from the shoulder/wrist midpoint to the joint points out of
+  // the elbow. The authored shell's olecranon sits on local -Y, so its local
+  // +Y basis must face into the bend.
+  ELBOW_INSIDE.set(
+    shoulder.x + wrist.x - elbow.x * 2,
+    shoulder.y + wrist.y - elbow.y * 2,
+    shoulder.z + wrist.z - elbow.z * 2,
+  );
+  ELBOW_INSIDE.addScaledVector(ELBOW_AXIS, -ELBOW_INSIDE.dot(ELBOW_AXIS));
+  if (ELBOW_INSIDE.lengthSq() < 1e-8) {
+    // A fully extended arm has no bend-plane normal. Project a mirrored
+    // lateral reference into the plane so left/right cuffs retain a stable,
+    // readable roll instead of taking the solver's arbitrary fallback axis.
+    ELBOW_INSIDE.set(side < 0 ? -1 : 1, 0, 0);
+    ELBOW_INSIDE.addScaledVector(ELBOW_AXIS, -ELBOW_INSIDE.dot(ELBOW_AXIS));
+  }
+  if (ELBOW_INSIDE.lengthSq() < 1e-8) {
+    ELBOW_INSIDE.set(0, 1, 0);
+    ELBOW_INSIDE.addScaledVector(ELBOW_AXIS, -ELBOW_INSIDE.dot(ELBOW_AXIS));
+  }
+  ELBOW_INSIDE.normalize();
+  ELBOW_SIDE.crossVectors(ELBOW_INSIDE, ELBOW_AXIS).normalize();
+  // Rebuild the inside axis from the other two basis vectors to remove small
+  // numerical skew before handing it to the authored shell quaternion.
+  ELBOW_INSIDE.crossVectors(ELBOW_AXIS, ELBOW_SIDE).normalize();
+  ELBOW_FRAME.makeBasis(ELBOW_SIDE, ELBOW_INSIDE, ELBOW_AXIS);
+  cuff.quaternion.setFromRotationMatrix(ELBOW_FRAME);
 }
 
 // ── Upgraded avatar body helpers ─────────────────────────────────────────────
@@ -1029,13 +1348,30 @@ function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 1
  */
 function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const laneMaterial = accentMaterial(accent);
+  const laneMaterial = accentEquipmentMaterial(accent);
+  const jerseyMaterial = accentMaterial(accent);
   const accentMat = () => laneMaterial;
   const skinMaterial = humanMat(HUMAN_SKIN, 0.54);
   const hairMaterial = humanMat(HUMAN_HAIR, 0.78);
   const kitMaterial = humanMat(HUMAN_KIT, 0.58);
   const kitDarkMaterial = humanMat(HUMAN_KIT_DARK, 0.64);
   const shoeMaterial = humanMat(HUMAN_SHOE, 0.46);
+  const equipmentLightMaterial = humanMat(0xf1f5f9, 0.42, 0.12);
+  const equipmentMetalMaterial = humanMat(0x8a9097, 0.38, 0.58);
+  const equipmentGripMaterial = humanMat(0x26343d, 0.56, 0.04);
+  const resolveAssetMaterial = makeAssetMaterialResolver({
+    "athlete-skin": skinMaterial,
+    "athlete-fabric": jerseyMaterial,
+    "athlete-hair": hairMaterial,
+    "athlete-footwear": shoeMaterial,
+    "equipment-painted": laneMaterial,
+    "equipment-dark": kitDarkMaterial,
+    "equipment-light": equipmentLightMaterial,
+    "equipment-metal": equipmentMetalMaterial,
+    "equipment-rubber": equipmentGripMaterial,
+    "equipment-grip": equipmentGripMaterial,
+    "equipment-trim": kitMaterial,
+  });
   const kinematics: RowerKinematics = {
     legExtension: 0,
     bodySwing: 0,
@@ -1057,20 +1393,20 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   group.add(hull);
 
   // Deck with a bright racing stripe — the art-direction hull signature.
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.055, 2.75), accentMat());
+  const deck = new THREE.Mesh(roundedVenueBlockGeometry(0.16, 0.055, 2.75, 0.025), accentMat());
   deck.position.y = 0.3;
   deck.userData.accent = true;
   group.add(deck);
   const stripe = new THREE.Mesh(
-    new THREE.BoxGeometry(0.055, 0.018, 2.35),
-    humanMat(0xf8fafc, 0.35, 0.1),
+    roundedVenueBlockGeometry(0.055, 0.018, 2.35, 0.01),
+    equipmentLightMaterial,
   );
   stripe.name = "rower-deck-stripe";
   stripe.position.y = 0.338;
   group.add(stripe);
   const gunwale = new THREE.Mesh(
-    new THREE.BoxGeometry(0.02, 0.04, 2.5),
-    humanMat(0xf1f5f9, 0.45, 0.08),
+    roundedVenueBlockGeometry(0.02, 0.04, 2.5, 0.009),
+    equipmentLightMaterial,
   );
   gunwale.name = "rower-gunwale-left";
   gunwale.position.set(-0.1, 0.32, 0);
@@ -1080,7 +1416,10 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   gunwaleR.position.x = 0.1;
   group.add(gunwaleR);
 
-  const footPlate = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.05, 0.12), kitDarkMaterial);
+  const footPlate = new THREE.Mesh(
+    roundedVenueBlockGeometry(0.48, 0.05, 0.12, 0.022),
+    kitDarkMaterial,
+  );
   footPlate.name = "rower-footplate";
   footPlate.position.set(0, 0.34, 0.72);
   group.add(footPlate);
@@ -1090,12 +1429,20 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     anchor.position.set(side * 0.12, 0.34, 0.72);
     group.add(anchor);
   }
+  // V3 keeps the entire scull as one designed assembly while the existing
+  // footplate contact nodes remain parented to the rig and authoritative.
+  const boatVisual = new THREE.Group();
+  boatVisual.name = "rower-boat-visual";
+  group.add(boatVisual);
+  setReplayAssetTemplateAnchor(boatVisual, "equipment:row:boat-assembly", {
+    fallback: [hull, deck, stripe, gunwale, gunwaleR, footPlate],
+  });
 
   // Rower in its own group so slide, layback, legs and arms all move from the
   // recorded stroke pose rather than as one rigid toy block.
   const rower = new THREE.Group();
   rower.name = "rower-athlete";
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.055, 0.29), shoeMaterial);
+  const seat = new THREE.Mesh(roundedVenueBlockGeometry(0.34, 0.055, 0.29, 0.045), shoeMaterial);
   seat.name = "rower-seat";
   seat.position.set(0, 0.29, -0.14);
   const hips = ellipsoid([0.18, 0.125, 0.16], kitDarkMaterial, 10);
@@ -1108,7 +1455,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const torso = new THREE.Group();
   torso.name = "rower-torso";
   torso.position.copy(hips.position);
-  const torsoShell = accentPart(shapedTorso(0.29, 0.64, 0.175, accentMat(), 16));
+  const torsoShell = accentPart(shapedTorso(0.29, 0.64, 0.175, jerseyMaterial, 16));
   setReplayAssetSlot(torsoShell, "athlete:torso");
   torsoShell.name = "rower-torso-shell";
   torsoShell.position.y = 0.3;
@@ -1228,12 +1575,12 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     // 3.1 m shaft: ~0.85 m inboard of the pin, ~2.25 m outboard to the blade.
     const shaft = new THREE.Mesh(
       new THREE.CylinderGeometry(0.032, 0.038, 3.15, 8),
-      new THREE.MeshStandardMaterial({ color: 0xf0f5f7, roughness: 0.48, metalness: 0.08 }),
+      equipmentLightMaterial,
     );
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
     shaft.position.x = side * 0.7;
     oar.add(shaft);
-    const grip = capsulePart(0.045, 0.28, humanMat(0x26343d), "x");
+    const grip = capsulePart(0.045, 0.28, equipmentGripMaterial, "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
     grip.position.x = -side * 0.49;
     oar.add(grip);
@@ -1244,7 +1591,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
       new THREE.TorusGeometry(0.05, 0.015, 6, 10),
-      humanMat(0x8a9097, 0.5),
+      equipmentMetalMaterial,
     );
     collar.name = "rower-oar-collar";
     collar.position.set(side * 1.95, 0, 0);
@@ -1256,6 +1603,16 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
     blade.position.set(side * 2.36, -0.06, 0);
     blade.userData.accent = true;
     oar.add(blade);
+    // The authored oar has one canonical +X outboard direction. Mirror the
+    // left visual only; the solver still owns this parent group's sweep/depth
+    // and the separate blade continues to feather per stroke.
+    const oarVisual = new THREE.Group();
+    oarVisual.name = side < 0 ? "rower-oar-visual-left" : "rower-oar-visual-right";
+    if (side < 0) oarVisual.rotation.y = Math.PI;
+    oar.add(oarVisual);
+    setReplayAssetTemplateAnchor(oarVisual, "equipment:row:oar-rig", {
+      fallback: [shaft, grip, collar],
+    });
     // Rigger pin sits outside the hull; blade depth is animated continuously.
     oar.position.set(side * 0.52, 0.34, 0.05);
     oar.userData.side = side;
@@ -1280,7 +1637,6 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   // inboard grips through the torso, making every pull look physically wrong.
   const OAR_YAW_CATCH = 0.33;
   const OAR_YAW_SPAN = -0.78;
-  const BLADE_BURY = 0.2;
   const BLADE_DIP = 0.14;
 
   const handlePoint = new THREE.Vector3();
@@ -1300,12 +1656,12 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       handlePoint.copy(oar.handleAnchor.position).applyQuaternion(oar.group.quaternion);
       handlePoint.add(oar.group.position).sub(rower.position);
       arm.handTarget.copy(handlePoint);
-      // Keep the elbow plane attached to the torso as the rower pivots. A
-      // fixed world-ish hint makes the bent arm fold toward the hull at the
-      // finish, which is especially obvious once the authored flex cuff is
-      // visible. The hint stays lateral/rearward in torso coordinates instead.
+      // Keep the elbow plane attached to the torso as the rower pivots. The
+      // flare is deliberately lateral and a little higher than the former
+      // down-fold: it keeps a pulled elbow outside the rib cage rather than
+      // making the hand/forearm appear to cut through the jersey at the finish.
       arm.bendHint
-        .set(arm.side * (0.56 - armDraw * 0.12), -0.48, -0.18 + bodySwing * 0.12)
+        .set(arm.side * (0.92 - armDraw * 0.06), -0.22, -0.03 + bodySwing * 0.14)
         .applyQuaternion(torso.quaternion);
       solveTwoBone3D(
         arm.shoulderPoint,
@@ -1320,6 +1676,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
       placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
       arm.elbow.position.copy(arm.elbowPoint);
+      orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
       arm.hand.quaternion.copy(oar.group.quaternion);
     }
@@ -1378,7 +1735,10 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       oar.group.rotation.y = oar.side * (OAR_YAW_CATCH + handleProgress * OAR_YAW_SPAN);
       // Both blade tips dip into the water together despite opposite X signs.
       oar.group.rotation.z = -oar.side * bladeDepth * BLADE_DIP;
-      oar.group.position.y = 0.34 - bladeDepth * BLADE_BURY;
+      // The oarlock is a hull-fixed fulcrum. Moving this parent to bury the
+      // blade made every drive visibly detach the shaft from its rigger; the
+      // existing rotation supplies immersion while the real pivot stays put.
+      oar.group.position.y = 0.34;
       // The blade squares for catch/drive, feathers flat through recovery, then
       // squares again continuously before the next catch.
       oar.blade.rotation.x = (1 - bladeFeather) * (Math.PI / 2);
@@ -1409,7 +1769,7 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   };
 
   finalizeAvatar(group, castShadow, opacity);
-  return { group, animate };
+  return { group, animate, assetMaterialResolver: resolveAssetMaterial };
 }
 
 /**
@@ -1419,7 +1779,8 @@ function makeRowerAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
  */
 function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const laneMaterial = accentMaterial(accent);
+  const laneMaterial = accentEquipmentMaterial(accent);
+  const jerseyMaterial = accentMaterial(accent);
   const accentMat = () => laneMaterial;
   const skinMaterial = humanMat(HUMAN_SKIN, 0.54);
   const hairMaterial = humanMat(HUMAN_HAIR, 0.78);
@@ -1429,6 +1790,20 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const poleMaterial = humanMat(0x486775, 0.58);
   const farPoleMaterial = humanMat(0x2f5362, 0.7);
   const gripMaterial = humanMat(0x20242a);
+  const equipmentMetalMaterial = humanMat(0x6d8490, 0.32, 0.62);
+  const resolveAssetMaterial = makeAssetMaterialResolver({
+    "athlete-skin": skinMaterial,
+    "athlete-fabric": jerseyMaterial,
+    "athlete-hair": hairMaterial,
+    "athlete-footwear": shoeMaterial,
+    "equipment-painted": laneMaterial,
+    "equipment-dark": kitDarkMaterial,
+    "equipment-light": poleMaterial,
+    "equipment-metal": equipmentMetalMaterial,
+    "equipment-rubber": shoeMaterial,
+    "equipment-grip": gripMaterial,
+    "equipment-trim": kitMaterial,
+  });
   const kinematics: SkierKinematics = {
     armPress: 0,
     hipHinge: 0,
@@ -1442,21 +1817,30 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   // Art-direction skis: dark base with a full accent top deck so the pair
   // reads as equipment without swallowing the athlete's legs.
   for (const side of [-1, 1]) {
-    const ski = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.04, 2.05), kitDarkMaterial);
+    const ski = new THREE.Mesh(roundedVenueBlockGeometry(0.13, 0.04, 2.05, 0.035), kitDarkMaterial);
     setReplayAssetSlot(ski, "equipment:ski:ski");
     ski.position.set(side * 0.21, 0.028, 0.16);
     group.add(ski);
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.018, 1.85), accentMat());
+    const deck = new THREE.Mesh(roundedVenueBlockGeometry(0.11, 0.018, 1.85, 0.018), accentMat());
     deck.name = "skierg-ski-deck";
     deck.position.set(side * 0.21, 0.055, 0.12);
     deck.userData.accent = true;
     group.add(deck);
-    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.32), accentMat());
+    const tip = new THREE.Mesh(roundedVenueBlockGeometry(0.12, 0.035, 0.32, 0.025), accentMat());
     tip.name = "skierg-ski-tip";
     tip.position.set(side * 0.21, 0.07, 1.28);
     tip.rotation.x = -0.28;
     tip.userData.accent = true;
     group.add(tip);
+    // The V3 ski is a coherent deck/binding/tip shell rooted at the same
+    // planted location. Boots remain separate contact targets for the leg IK.
+    const skiVisual = new THREE.Group();
+    skiVisual.name = side < 0 ? "skierg-ski-visual-left" : "skierg-ski-visual-right";
+    skiVisual.position.set(side * 0.21, 0, 0.16);
+    group.add(skiVisual);
+    setReplayAssetTemplateAnchor(skiVisual, "equipment:ski:ski-assembly", {
+      fallback: [ski, deck, tip],
+    });
   }
 
   // Planted fixed-length legs solve from the moving pelvis to the boots.  The
@@ -1507,7 +1891,7 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   const hips = ellipsoid([0.18, 0.125, 0.16], kitDarkMaterial, 10);
   setReplayAssetSlot(hips, "athlete:pelvis");
   hips.position.y = 0;
-  const torso = accentPart(shapedTorso(0.3, 0.68, 0.18, accentMat(), 16));
+  const torso = accentPart(shapedTorso(0.3, 0.68, 0.18, jerseyMaterial, 16));
   setReplayAssetSlot(torso, "athlete:torso");
   torso.name = "skierg-torso";
   torso.position.y = 0.31;
@@ -1826,6 +2210,7 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
       placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
       placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
       arm.elbow.position.copy(arm.elbowPoint);
+      orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
 
       placeFigureSegmentBetween(pole.shaft, arm.handPoint, tipLocalPoint);
@@ -1872,7 +2257,12 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
   };
 
   finalizeAvatar(group, castShadow, opacity);
-  return { group, animate, resolveWorldContacts };
+  return {
+    group,
+    animate,
+    resolveWorldContacts,
+    assetMaterialResolver: resolveAssetMaterial,
+  };
 }
 
 /**
@@ -1882,7 +2272,8 @@ function makeSkierAvatar(accent: number, castShadow: boolean, opacity = 1): Avat
  */
 function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avatar {
   const group = new THREE.Group();
-  const laneMaterial = accentMaterial(accent);
+  const laneMaterial = accentEquipmentMaterial(accent);
+  const jerseyMaterial = accentMaterial(accent);
   const accentMat = () => laneMaterial;
   const skinMaterial = humanMat(HUMAN_SKIN, 0.54);
   const hairMaterial = humanMat(HUMAN_HAIR, 0.78);
@@ -1895,6 +2286,19 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   const hubMaterial = humanMat(0x33434e, 0.36, 0.48);
   const saddleMaterial = humanMat(0xaab8c0, 0.48, 0.08);
   const pedalMaterial = humanMat(0x61737d, 0.34, 0.46);
+  const resolveAssetMaterial = makeAssetMaterialResolver({
+    "athlete-skin": skinMaterial,
+    "athlete-fabric": jerseyMaterial,
+    "athlete-hair": hairMaterial,
+    "athlete-footwear": shoeMaterial,
+    "equipment-painted": laneMaterial,
+    "equipment-dark": hubMaterial,
+    "equipment-light": equipmentMaterial,
+    "equipment-metal": spokeMaterial,
+    "equipment-rubber": tyreMaterial,
+    "equipment-grip": equipmentMaterial,
+    "equipment-trim": saddleMaterial,
+  });
   const kinematics: BikeKinematics = {
     crankAngle: 0,
     torsoSway: 0,
@@ -1914,6 +2318,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     );
     tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
     wheel.add(tyre);
+    const wheelFallback: THREE.Object3D[] = [tyre];
     // Three paired round spokes preserve visible cadence without the two thick
     // box crosses that made the bicycle read as a toy diagram at rest.
     for (const [index, angle] of [0, Math.PI / 3, (Math.PI * 2) / 3].entries()) {
@@ -1924,11 +2329,19 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
       spoke.name = `${wheel.name}-spoke-${index}`;
       spoke.rotation.x = angle;
       wheel.add(spoke);
+      wheelFallback.push(spoke);
     }
     const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.1, 12), hubMaterial);
     hub.name = `${wheel.name}-hub`;
     hub.rotation.z = Math.PI / 2;
     wheel.add(hub);
+    wheelFallback.push(hub);
+    const wheelVisual = new THREE.Group();
+    wheelVisual.name = z > 0 ? "bike-wheel-visual-front" : "bike-wheel-visual-rear";
+    wheel.add(wheelVisual);
+    setReplayAssetTemplateAnchor(wheelVisual, "equipment:bike:wheel-assembly", {
+      fallback: wheelFallback,
+    });
     wheel.position.set(0, wheelR, z);
     group.add(wheel);
     wheels.push(wheel);
@@ -1940,6 +2353,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   const seatCluster = { x: 0, y: wheelR + 0.76, z: -0.4 };
   const headBottom = { x: 0, y: wheelR + 0.55, z: 0.42 };
   const headTop = { x: 0, y: wheelR + 0.8, z: 0.5 };
+  const frameFallback: THREE.Object3D[] = [];
   const downTube = accentPart(
     tubeBetween("bike-down-tube", bottomBracket, headBottom, 0.055, accentMat()),
   );
@@ -1957,6 +2371,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   );
   setReplayAssetSlot(headTube, "equipment:bike:frame-tube");
   group.add(downTube, seatTube, topTube, headTube);
+  frameFallback.push(downTube, seatTube, topTube, headTube);
   // Paired chain and seat stays expose the frame triangle from the new
   // three-quarter chase angle.
   for (const side of [-1, 1]) {
@@ -1972,6 +2387,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     setReplayAssetSlot(chainStay, "equipment:bike:frame-tube");
     setReplayAssetSlot(seatStay, "equipment:bike:frame-tube");
     group.add(chainStay, seatStay);
+    frameFallback.push(chainStay, seatStay);
   }
 
   // Cranks: spin about the bottom bracket (X axis) with two pedals.
@@ -1986,6 +2402,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   chainRing.name = "bike-chain-ring";
   chainRing.rotation.y = Math.PI / 2;
   cranks.add(chainRing);
+  const drivetrainFallback: THREE.Object3D[] = [chainRing];
   const pedals: Array<{ side: number; crankY: number }> = [];
   for (const side of [-1, 1]) {
     const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), pedalMaterial);
@@ -1994,8 +2411,15 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     const crankY = side * 0.21;
     pedal.position.set(side * 0.1, crankY, 0);
     cranks.add(pedal);
+    drivetrainFallback.push(pedal);
     pedals.push({ side, crankY });
   }
+  const drivetrainVisual = new THREE.Group();
+  drivetrainVisual.name = "bike-drivetrain-visual";
+  cranks.add(drivetrainVisual);
+  setReplayAssetTemplateAnchor(drivetrainVisual, "equipment:bike:drivetrain-assembly", {
+    fallback: drivetrainFallback,
+  });
   group.add(cranks);
 
   // The saddle closes the previously visible gap between the frame and the
@@ -2005,11 +2429,13 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   saddle.name = "bike-saddle";
   saddle.position.set(0, wheelR + 0.77, -0.4);
   group.add(saddle);
+  frameFallback.push(saddle);
 
   const handlebar = new THREE.Group();
   handlebar.name = "bike-handlebar";
   const crossbar = capsulePart(0.03, 0.72, equipmentMaterial, "x");
   handlebar.add(crossbar);
+  frameFallback.push(crossbar);
   const barContacts: Array<{ side: number; anchor: THREE.Object3D }> = [];
   for (const side of [-1, 1]) {
     const grip = capsulePart(0.024, 0.22, equipmentMaterial, "z");
@@ -2020,10 +2446,19 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
     anchor.name = side < 0 ? "bike-hand-contact-left" : "bike-hand-contact-right";
     anchor.position.copy(grip.position);
     handlebar.add(grip, anchor);
+    frameFallback.push(grip);
     barContacts.push({ side, anchor });
   }
   handlebar.position.set(0, wheelR + 0.8, 0.35);
   group.add(handlebar);
+  // The frame template leaves the explicit hand contacts in this original
+  // group alone, so bar IK keeps targeting the same moving-free anchors.
+  const frameVisual = new THREE.Group();
+  frameVisual.name = "bike-frame-visual";
+  group.add(frameVisual);
+  setReplayAssetTemplateAnchor(frameVisual, "equipment:bike:frame-assembly", {
+    fallback: frameFallback,
+  });
 
   // Rider: compact human proportions in an aero lean. The jersey/helmet carry
   // the lane accent, while limbs stay skin/kit coloured so the athlete does not
@@ -2037,7 +2472,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   const torso = new THREE.Group();
   torso.name = "bike-spine";
   torso.position.set(0, 0.02, 0.01);
-  const torsoShell = accentPart(shapedTorso(0.28, 0.64, 0.17, accentMat(), 16));
+  const torsoShell = accentPart(shapedTorso(0.28, 0.64, 0.17, jerseyMaterial, 16));
   setReplayAssetSlot(torsoShell, "athlete:torso");
   torsoShell.name = "bike-torso";
   torsoShell.position.set(0, 0.28, 0.04);
@@ -2188,6 +2623,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
       placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
       placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
       arm.elbow.position.copy(arm.elbowPoint);
+      orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
       arm.hand.rotation.set(-0.28, 0, arm.side * 0.08);
     }
@@ -2264,7 +2700,7 @@ function makeBikeAvatar(accent: number, castShadow: boolean, opacity = 1): Avata
   };
 
   finalizeAvatar(group, castShadow, opacity);
-  return { group, animate };
+  return { group, animate, assetMaterialResolver: resolveAssetMaterial };
 }
 
 const SPORT_PROFILES: Record<Sport, SportProfile> = {
@@ -2667,10 +3103,23 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.ghostGroup.visible = false;
     this.ghostGroup.add(this.ghostAvatar.group);
     if (options.assets) {
-      const liveCount = applyReplayAssetLibrary(this.liveAvatar.group, options.assets);
-      const ghostCount = applyReplayAssetLibrary(this.ghostAvatar.group, options.assets);
+      const liveCount = applyReplayAssetLibrary(
+        this.liveAvatar.group,
+        options.assets,
+        this.liveAvatar.assetMaterialResolver,
+      );
+      const ghostCount = applyReplayAssetLibrary(
+        this.ghostAvatar.group,
+        options.assets,
+        this.ghostAvatar.assetMaterialResolver,
+      );
       this.liveAvatar.group.userData.authoredReplayAsset = liveCount > 0;
       this.ghostAvatar.group.userData.authoredReplayAsset = ghostCount > 0;
+      // V3 composites attach after each maker's initial finalization. Walk the
+      // completed rig once so every cloned detail participates in the same
+      // live shadow / ghost-opacity contract as the fallback equipment.
+      finalizeAvatar(this.liveAvatar.group, this.cfg.shadows, 1);
+      finalizeAvatar(this.ghostAvatar.group, false, 0.45);
     }
     this.scene.add(this.liveBoat, this.ghostGroup);
 
@@ -2863,7 +3312,8 @@ export class CourseRenderer3D implements ReplayRenderer {
       roughness: 0.22,
       metalness: 0.14,
     });
-    const streakGeo = this.track(new THREE.BoxGeometry(0.05, 0.02, 2.1));
+    const streakGeo = this.track(new THREE.CapsuleGeometry(0.022, 2.02, 4, 10));
+    streakGeo.rotateX(Math.PI / 2);
     const streaks = this.cfg.laneSegments >= 120 ? 96 : this.cfg.laneSegments >= 90 ? 68 : 44;
     for (let i = 0; i < streaks; i++) {
       const band = (i % 6) / 5;
@@ -2877,7 +3327,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       roughness: 0.48,
       metalness: 0.04,
     });
-    const buoyTickGeo = this.track(new THREE.BoxGeometry(0.14, 0.055, 0.55));
+    const buoyTickGeo = this.track(roundedVenueBlockGeometry(0.14, 0.055, 0.55, 0.025));
     for (const marker of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
       for (const offset of [-degrees(1.1), 0, degrees(1.1)]) {
         this.addCourseBlock(
@@ -2932,7 +3382,8 @@ export class CourseRenderer3D implements ReplayRenderer {
       roughness: 0.98,
       metalness: 0,
     });
-    const combGeo = this.track(new THREE.BoxGeometry(outerR - innerR - 1.8, 0.014, 0.028));
+    const combGeo = this.track(new THREE.CapsuleGeometry(0.014, outerR - innerR - 1.88, 4, 10));
+    combGeo.rotateZ(Math.PI / 2);
     const combs = this.cfg.laneSegments >= 120 ? 72 : 42;
     for (let i = 0; i < combs; i++) {
       this.addCourseBlock(
@@ -2951,7 +3402,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       roughness: 0.42,
       metalness: 0.05,
     });
-    const gateGeo = this.track(new THREE.BoxGeometry(0.18, 0.07, 0.55));
+    const gateGeo = this.track(roundedVenueBlockGeometry(0.18, 0.07, 0.55, 0.035));
     for (let i = 0; i < 16; i++) {
       const angle = (i / 16) * Math.PI * 2;
       this.addCourseBlock(
@@ -2989,7 +3440,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       roughness: 0.5,
       metalness: 0.05,
     });
-    const dashGeo = this.track(new THREE.BoxGeometry(0.14, 0.045, 1.7));
+    const dashGeo = this.track(roundedVenueBlockGeometry(0.14, 0.045, 1.7, 0.035));
     const dashCount = this.cfg.laneSegments >= 120 ? 64 : 46;
     for (let i = 0; i < dashCount; i++) {
       this.addCourseBlock(
@@ -3011,7 +3462,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       roughness: 0.48,
       metalness: 0.03,
     });
-    const curbGeo = this.track(new THREE.BoxGeometry(0.38, 0.07, 0.92));
+    const curbGeo = this.track(roundedVenueBlockGeometry(0.38, 0.07, 0.92, 0.045));
     const curbCount = this.cfg.laneSegments >= 120 ? 80 : 54;
     for (let i = 0; i < curbCount; i++) {
       const angle = (i / curbCount) * Math.PI * 2;
@@ -3027,7 +3478,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       roughness: 0.55,
       metalness: 0.02,
     });
-    const speedGeo = this.track(new THREE.BoxGeometry(1.2, 0.03, 0.12));
+    const speedGeo = this.track(roundedVenueBlockGeometry(1.2, 0.03, 0.12, 0.025));
     for (let i = 0; i < 32; i++) {
       const angle = (i / 32) * Math.PI * 2 + 0.03;
       this.addCourseBlock(
@@ -3220,35 +3671,26 @@ export class CourseRenderer3D implements ReplayRenderer {
     radiusMax: number,
     sectors: readonly EnvironmentSector[],
   ): void {
-    const canopyGeo = this.track(new THREE.ConeGeometry(1.45, 4.2, 7, 1));
-    const crownGeo = this.track(new THREE.ConeGeometry(1.02, 3.4, 7, 1));
-    const trunkGeo = this.track(new THREE.CylinderGeometry(0.1, 0.16, 1.35, 6));
+    const canopyGeo = this.track(sculptedPineGeometry());
+    const trunkGeo = this.track(new THREE.CylinderGeometry(0.11, 0.17, 1.38, 16));
     const pineColor =
       this.sport === "skierg" ? themed(0x335d51, 0x244d45) : themed(0x2d6548, 0x1c503c);
-    const crownColor =
-      this.sport === "skierg" ? themed(0x416f61, 0x2e5d52) : themed(0x397657, 0x276148);
-    // Distant foliage is intentionally unlit: it keeps readable colour in the
-    // dusk themes rather than collapsing into black spike silhouettes.
-    const canopyMat = this.environmentBasicMat(
+    // A single continuous canopy keeps the silhouette coniferous at replay
+    // distance. The separate spherical crown still read as a row of green
+    // balls above the SkiErg tree line against the bright snow.
+    const canopyMat = this.environmentStandardMat(
       `environment:${this.sport}:pine-canopy-material`,
       pineColor,
-      { fog: true },
-    );
-    const crownMat = this.environmentBasicMat(
-      `environment:${this.sport}:pine-crown-material`,
-      crownColor,
-      { fog: true },
+      { fog: true, roughness: 0.82, metalness: 0.005 },
     );
     const trunkMat = this.environmentStandardMat(
       `environment:${this.sport}:pine-trunk-material`,
       themed(0x5a4635, 0x261f1b),
-      { roughness: 1, metalness: 0, flatShading: true },
+      { roughness: 0.96, metalness: 0 },
     );
     const canopies = this.trackInstanced(new THREE.InstancedMesh(canopyGeo, canopyMat, count));
-    const crowns = this.trackInstanced(new THREE.InstancedMesh(crownGeo, crownMat, count));
     const trunks = this.trackInstanced(new THREE.InstancedMesh(trunkGeo, trunkMat, count));
     canopies.name = `environment:${this.sport}:pines`;
-    crowns.name = `environment:${this.sport}:pine-crowns`;
     trunks.name = `environment:${this.sport}:pine-trunks`;
     const matrix = new THREE.Matrix4();
     const quaternion = new THREE.Quaternion();
@@ -3259,39 +3701,38 @@ export class CourseRenderer3D implements ReplayRenderer {
       const radius =
         radiusMin + (radiusMax - radiusMin) * (0.18 + 0.82 * (0.5 + Math.sin(i * 12.9898) * 0.5));
       const size = 0.75 + (0.5 + Math.sin(i * 7.31) * 0.5) * 0.8;
-      position.set(Math.sin(a) * radius, 2.05 * size, Math.cos(a) * radius);
-      scale.set(size, size, size);
+      // The canopy deliberately has asymmetric boughs, so rotate every
+      // instance independently rather than exposing the same silhouette at
+      // every point on the ridge.
+      quaternion.setFromAxisAngle(WORLD_UP, (i * 2.399963229728653) % FULL_CIRCLE);
+      position.set(Math.sin(a) * radius, 2.02 * size, Math.cos(a) * radius);
+      scale.set(size * 1.04, size * 1.04, size * 1.04);
       matrix.compose(position, quaternion, scale);
       canopies.setMatrixAt(i, matrix);
-      position.y = 3.85 * size;
-      scale.set(size, size, size);
-      matrix.compose(position, quaternion, scale);
-      crowns.setMatrixAt(i, matrix);
       position.y = 0.55 * size;
       scale.set(size, size, size);
       matrix.compose(position, quaternion, scale);
       trunks.setMatrixAt(i, matrix);
     }
     canopies.instanceMatrix.needsUpdate = true;
-    crowns.instanceMatrix.needsUpdate = true;
     trunks.instanceMatrix.needsUpdate = true;
-    group.add(trunks, canopies, crowns);
+    group.add(trunks, canopies);
   }
 
   private addAlpinePeaks(group: THREE.Group, count: number): void {
     // Keep the massif monumental without letting it consume the whole lens:
     // a visible sky band is essential to the valley read at replay height.
-    const peakGeo = this.track(new THREE.ConeGeometry(7.6, 20, 6, 1));
-    const capGeo = this.track(new THREE.ConeGeometry(3.5, 5.4, 6, 1));
-    const peakMat = this.environmentBasicMat(
+    const peakGeo = this.track(alpinePeakGeometry());
+    const capGeo = this.track(alpineSnowcapGeometry());
+    const peakMat = this.environmentStandardMat(
       "environment:skierg:mountain-material",
       themed(0x7897a8, 0x4f6a7a),
-      { fog: true },
+      { fog: true, roughness: 0.92, metalness: 0 },
     );
-    const capMat = this.environmentBasicMat(
+    const capMat = this.environmentStandardMat(
       "environment:skierg:snowcap-material",
       themed(0xe8f2f5, 0xaec1ca),
-      { fog: true },
+      { fog: true, roughness: 0.9, metalness: 0 },
     );
     const peaks = this.trackInstanced(new THREE.InstancedMesh(peakGeo, peakMat, count));
     const caps = this.trackInstanced(new THREE.InstancedMesh(capGeo, capMat, count));
@@ -3310,7 +3751,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       scale.set(size * (0.9 + (i % 4) * 0.08), size, size);
       matrix.compose(position, quaternion, scale);
       peaks.setMatrixAt(i, matrix);
-      position.y = 15.3 * size;
+      position.y = 7.2 * size;
       scale.set(size, size, size);
       matrix.compose(position, quaternion, scale);
       caps.setMatrixAt(i, matrix);
@@ -3320,25 +3761,68 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(peaks, caps);
   }
 
+  /**
+   * A nearer terrain band beneath the distant massif. It stays outside the
+   * snow berms and below the tree line, creating a valley-floor parallax cue
+   * without turning the athlete's chase frame into a wall of scenery.
+   */
+  private addAlpineFoothills(group: THREE.Group, count: number): void {
+    const geometry = this.track(alpineFoothillGeometry());
+    const material = this.environmentStandardMat(
+      "environment:skierg:foothill-material",
+      themed(0x638794, 0x3a5968),
+      { fog: true, roughness: 0.96, metalness: 0 },
+    );
+    const foothills = this.trackInstanced(new THREE.InstancedMesh(geometry, material, count));
+    foothills.name = "environment:skierg:foothills";
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const position = new THREE.Vector3();
+    for (let i = 0; i < count; i++) {
+      const { angle: a } = sectorSample(i, count, SKI_PEAK_SECTORS);
+      const size = 0.76 + (0.5 + Math.sin(i * 6.13) * 0.5) * 0.52;
+      const verticalScale = size * 0.84;
+      const radius = 48.5 + Math.sin(i * 4.41) * 2.1;
+      quaternion.setFromAxisAngle(WORLD_UP, a + 0.36 + (i % 4) * 0.29);
+      position.set(Math.sin(a) * radius, 2.5 * verticalScale, Math.cos(a) * radius);
+      scale.set(size * 1.5, verticalScale, size * 0.88);
+      matrix.compose(position, quaternion, scale);
+      foothills.setMatrixAt(i, matrix);
+    }
+    foothills.instanceMatrix.needsUpdate = true;
+    group.add(foothills);
+  }
+
   private addPavilions(group: THREE.Group, placements: readonly EnvironmentPlacement[]): void {
-    const bodyGeo = this.track(new THREE.BoxGeometry(9, 2.6, 3.6));
-    const roofGeo = this.track(new THREE.ConeGeometry(5.4, 1.8, 4));
-    const glassGeo = this.track(new THREE.BoxGeometry(7.4, 0.8, 0.08));
+    const bodyGeo = this.track(roundedVenueBlockGeometry(9, 2.6, 3.6, 0.36));
+    const roofGeo = this.track(new THREE.CylinderGeometry(5.35, 4.35, 1.25, 24, 2));
+    const glassGeo = this.track(roundedVenueBlockGeometry(7.4, 0.8, 0.08, 0.1));
+    const mullionGeo = this.track(roundedVenueBlockGeometry(0.09, 1.16, 0.11, 0.025));
     const bodyMat = this.environmentStandardMat(
       `environment:${this.sport}:pavilion-body-material`,
       this.environment.venueStructure,
-      { roughness: 0.82, metalness: 0.04, flatShading: true },
+      { roughness: 0.76, metalness: 0.06 },
     );
     const roofMat = this.environmentStandardMat(
       `environment:${this.sport}:pavilion-roof-material`,
       this.environment.venueAccent,
-      { roughness: 0.68, metalness: 0.06, flatShading: true },
+      { roughness: 0.5, metalness: 0.16 },
     );
-    const glassMat = this.environmentBasicMat(
-      `environment:${this.sport}:pavilion-glass-material`,
-      themed(0x8ed4e5, 0x173a4d),
-      { transparent: true, opacity: 0.75, depthWrite: false },
+    const glassMat = this.mat(
+      new THREE.MeshPhysicalMaterial({
+        color: themed(0x8ed4e5, 0x173a4d)("light"),
+        roughness: 0.18,
+        metalness: 0.12,
+        transparent: true,
+        opacity: 0.72,
+        clearcoat: 0.42,
+        clearcoatRoughness: 0.16,
+        depthWrite: false,
+      }),
     );
+    glassMat.name = `environment:${this.sport}:pavilion-glass-material`;
+    this.environmentThemeMats.push({ material: glassMat, color: themed(0x8ed4e5, 0x173a4d) });
     for (const placement of placements) {
       const a = placement.angle;
       const pavilion = new THREE.Group();
@@ -3350,11 +3834,15 @@ export class CourseRenderer3D implements ReplayRenderer {
       body.position.y = 1.45;
       const roof = new THREE.Mesh(roofGeo, roofMat);
       roof.position.y = 3.45;
-      roof.rotation.y = Math.PI / 4;
       roof.scale.z = 0.52;
       const glass = new THREE.Mesh(glassGeo, glassMat);
       glass.position.set(0, 1.8, -1.84);
       pavilion.add(body, roof, glass);
+      for (const x of [-2.45, 0, 2.45]) {
+        const mullion = new THREE.Mesh(mullionGeo, bodyMat);
+        mullion.position.set(x, 1.8, -1.91);
+        pavilion.add(mullion);
+      }
       group.add(pavilion);
     }
   }
@@ -3365,8 +3853,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     count: number,
   ): void {
     const authored = placements.slice(0, count);
-    const poleGeo = this.track(new THREE.CylinderGeometry(0.1, 0.15, 8, 8));
-    const panelGeo = this.track(new THREE.BoxGeometry(2.2, 0.7, 0.22));
+    const poleGeo = this.track(new THREE.CylinderGeometry(0.1, 0.15, 8, 12));
+    const panelGeo = this.track(roundedVenueBlockGeometry(2.2, 0.7, 0.22, 0.1));
     const poleMat = this.environmentStandardMat(
       `environment:${this.sport}:floodlight-pole-material`,
       this.environment.venueStructure,
@@ -3411,10 +3899,16 @@ export class CourseRenderer3D implements ReplayRenderer {
     radius: number,
     sectors: readonly EnvironmentSector[],
   ): void {
-    const panelGeo = this.track(new THREE.BoxGeometry(5.1, 1.45, 0.16));
-    const ribGeo = this.track(new THREE.BoxGeometry(0.13, 4.4, 0.22));
+    const panelGeo = this.track(roundedVenueBlockGeometry(5.1, 1.45, 0.16, 0.12));
+    const ribGeo = this.track(roundedVenueBlockGeometry(0.13, 4.4, 0.22, 0.04));
     const panelMat = this.mat(
-      new THREE.MeshBasicMaterial({ color: 0xffffff, fog: true, vertexColors: false }),
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        fog: true,
+        vertexColors: false,
+        roughness: 0.58,
+        metalness: 0.18,
+      }),
     );
     panelMat.name = "environment:bike:wall-panel-material";
     const ribMat = this.environmentBasicMat(
@@ -3520,11 +4014,11 @@ export class CourseRenderer3D implements ReplayRenderer {
   }
 
   private addSnowBerms(group: THREE.Group, outerR: number, count: number): void {
-    const geometry = this.track(new THREE.SphereGeometry(1, 9, 5));
+    const geometry = this.track(new THREE.SphereGeometry(1, 18, 12));
     const material = this.environmentStandardMat(
       "environment:skierg:snowbank-material",
       this.environment.apron,
-      { roughness: 0.98, metalness: 0, flatShading: true },
+      { roughness: 0.98, metalness: 0 },
     );
     const berms = this.trackInstanced(new THREE.InstancedMesh(geometry, material, count));
     berms.name = "environment:skierg:snowbank";
@@ -3547,6 +4041,49 @@ export class CourseRenderer3D implements ReplayRenderer {
     berms.instanceMatrix.needsUpdate = true;
     berms.receiveShadow = this.cfg.shadows;
     group.add(berms);
+  }
+
+  /**
+   * Low-opacity, rounded cloud banks add aerial depth without a panorama or
+   * image texture. They remain outside the course silhouette and are static,
+   * so they cost one instanced draw rather than a post-processing pass.
+   */
+  private addAtmosphericClouds(
+    group: THREE.Group,
+    count: number,
+    sectors: readonly EnvironmentSector[],
+  ): void {
+    const geometry = this.track(new THREE.SphereGeometry(1, 20, 12));
+    const color = this.sport === "skierg" ? themed(0xf8fcff, 0x2a4d65) : themed(0xfff1df, 0x193947);
+    const material = this.environmentBasicMat(`environment:${this.sport}:cloud-material`, color, {
+      transparent: true,
+      opacity: this.sport === "skierg" ? 0.13 : 0.1,
+      depthWrite: false,
+      fog: true,
+    });
+    const clouds = this.trackInstanced(new THREE.InstancedMesh(geometry, material, count));
+    clouds.name = `environment:${this.sport}:cloud-banks`;
+    clouds.renderOrder = -700;
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    for (let index = 0; index < count; index++) {
+      const { angle } = sectorSample(index, count, sectors);
+      const size = 2.6 + (0.5 + Math.sin(index * 4.91) * 0.5) * 2.1;
+      const radius = 98 + Math.sin(index * 9.37) * 11;
+      position.set(
+        Math.sin(angle) * radius,
+        12 + Math.sin(index * 2.73) * 2.6,
+        Math.cos(angle) * radius,
+      );
+      quaternion.setFromAxisAngle(WORLD_UP, angle + index * 0.37);
+      scale.set(size * 2.7, size * 0.38, size * 1.12);
+      matrix.compose(position, quaternion, scale);
+      clouds.setMatrixAt(index, matrix);
+    }
+    clouds.instanceMatrix.needsUpdate = true;
+    group.add(clouds);
   }
 
   private addScoreboard(group: THREE.Group, placement: EnvironmentPlacement): void {
@@ -3573,20 +4110,32 @@ export class CourseRenderer3D implements ReplayRenderer {
       Math.cos(placement.angle) * placement.radius,
     );
     scoreboard.rotation.y = placement.angle;
-    const supports = this.track(new THREE.CylinderGeometry(0.16, 0.2, 4.8, 8));
+    const supports = this.track(new THREE.CylinderGeometry(0.16, 0.2, 4.8, 12));
     for (const x of [-3.35, 3.35]) {
       const support = new THREE.Mesh(supports, structureMat);
       support.position.set(x, 2.4, 0);
       scoreboard.add(support);
     }
-    const frame = new THREE.Mesh(this.track(new THREE.BoxGeometry(9.4, 3.6, 0.42)), structureMat);
+    const frame = new THREE.Mesh(
+      this.track(roundedVenueBlockGeometry(9.4, 3.6, 0.42, 0.2)),
+      structureMat,
+    );
     frame.position.y = 5.25;
-    const screen = new THREE.Mesh(this.track(new THREE.BoxGeometry(8.65, 2.78, 0.08)), screenMat);
+    const screen = new THREE.Mesh(
+      this.track(roundedVenueBlockGeometry(8.65, 2.78, 0.08, 0.12)),
+      screenMat,
+    );
     screen.name = "environment:bike:scoreboard-screen";
     screen.position.set(0, 5.25, -0.25);
-    const header = new THREE.Mesh(this.track(new THREE.BoxGeometry(8.65, 0.18, 0.1)), accentMat);
+    const header = new THREE.Mesh(
+      this.track(roundedVenueBlockGeometry(8.65, 0.18, 0.1, 0.04)),
+      accentMat,
+    );
     header.position.set(0, 6.35, -0.31);
-    const split = new THREE.Mesh(this.track(new THREE.BoxGeometry(0.1, 2.15, 0.1)), accentMat);
+    const split = new THREE.Mesh(
+      this.track(roundedVenueBlockGeometry(0.1, 2.15, 0.1, 0.035)),
+      accentMat,
+    );
     split.position.set(0, 5.08, -0.31);
     scoreboard.add(frame, screen, header, split);
     group.add(scoreboard);
@@ -3662,6 +4211,11 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.scene.add(apron);
 
     if (this.sport === "rower") {
+      this.addAtmosphericClouds(
+        this.environmentMidGroup,
+        4 + this.cfg.environmentDetail,
+        ROW_PINE_SECTORS,
+      );
       this.addInstancedPines(
         this.environmentMidGroup,
         28 + this.cfg.environmentDetail * 16,
@@ -3671,6 +4225,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       );
       this.addPavilions(this.environmentDetailGroup, ROW_LANDMARKS);
     } else if (this.sport === "skierg") {
+      this.addAtmosphericClouds(
+        this.environmentMidGroup,
+        5 + this.cfg.environmentDetail,
+        SKI_PEAK_SECTORS,
+      );
+      this.addAlpineFoothills(this.environmentMidGroup, 7 + this.cfg.environmentDetail * 3);
       this.addAlpinePeaks(this.environmentMidGroup, 16 + this.cfg.environmentDetail * 4);
       this.addSnowBerms(this.environmentMidGroup, outerR, 22 + this.cfg.environmentDetail * 8);
       this.addInstancedPines(
@@ -3860,14 +4420,58 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.scene.add(this.liveContactFootprint, this.ghostContactFootprint);
   }
 
+  /**
+   * Give snow and asphalt a restrained, geometry-owned material grain.  It is
+   * deterministic and static (so no frame cost), works identically in WebGPU
+   * and WebGL, and keeps the course free of an external bitmap dependency.
+   */
+  private makeGroundGeometry(): THREE.PlaneGeometry {
+    const subdivision = this.profile.waves
+      ? this.cfg.groundSegments
+      : Math.max(12, Math.round(this.cfg.groundSegments * 0.7));
+    const geometry = this.track(new THREE.PlaneGeometry(260, 260, subdivision, subdivision));
+    if (this.profile.waves) return geometry;
+
+    const positions = geometry.getAttribute("position");
+    const colors = new Float32Array(positions.count * 3);
+    for (let index = 0; index < positions.count; index++) {
+      const x = positions.getX(index);
+      const y = positions.getY(index);
+      const broad = Math.sin(x * 0.17 + y * 0.11) * 0.5 + Math.sin(x * 0.067 - y * 0.13) * 0.5;
+      const fine = Math.sin(x * 0.91 + y * 1.17) * 0.5 + Math.sin(x * 1.73 - y * 0.61) * 0.5;
+      if (this.sport === "skierg") {
+        // Snow gets very shallow wind-packed undulations and a cool/bright
+        // variation. Keep it below the course profile so poles and skis remain
+        // visually and physically contact-locked.
+        positions.setZ(index, broad * 0.012 + fine * 0.0035);
+        const value = 0.92 + broad * 0.055 + fine * 0.015;
+        colors[index * 3] = value * 0.97;
+        colors[index * 3 + 1] = value;
+        colors[index * 3 + 2] = Math.min(1, value * 1.025);
+      } else {
+        // Asphalt reads from a fine charcoal aggregate rather than a single
+        // flat slab. The relief is intentionally near-zero so tyre shadows do
+        // not shimmer or lift from the lane.
+        positions.setZ(index, broad * 0.0025 + fine * 0.0012);
+        const value = 0.79 + broad * 0.055 + fine * 0.028;
+        colors[index * 3] = value * 0.94;
+        colors[index * 3 + 1] = value * 0.97;
+        colors[index * 3 + 2] = value;
+      }
+    }
+    positions.needsUpdate = true;
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    geometry.computeVertexNormals();
+    return geometry;
+  }
+
   private buildStaticScene(): void {
     const innerR = this.ghostRadius - 4;
     const outerR = this.loopRadius + 4;
-    const seg = this.profile.waves ? this.cfg.groundSegments : 1;
     // The terrain extends behind the authored horizon/fog so its edge can
     // never reveal the alpha canvas. Rowing uses a clear-coated opaque water
     // body; snow and asphalt stay deliberately rough and grounded.
-    const groundGeo = this.track(new THREE.PlaneGeometry(260, 260, seg, seg));
+    const groundGeo = this.makeGroundGeometry();
     const groundMat = this.mat(
       this.profile.waves
         ? new THREE.MeshPhysicalMaterial({
@@ -3887,6 +4491,7 @@ export class CourseRenderer3D implements ReplayRenderer {
             opacity: 1,
             roughness: this.sport === "skierg" ? 0.97 : 0.88,
             metalness: this.sport === "bike" ? 0.04 : 0.01,
+            vertexColors: true,
           }),
     );
     groundMat.name = "ground";

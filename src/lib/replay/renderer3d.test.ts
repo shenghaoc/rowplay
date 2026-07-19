@@ -24,7 +24,11 @@ vi.mock("three", async (importOriginal) => {
 
 import { CourseRenderer3D } from "./renderer3d";
 import { COLORS_DARK, REDUCED_REPLAY_POSES } from "./renderer";
-import { fetchReplayAssetLibrary, type ReplayAssetLibrary } from "./renderer3dAssets";
+import {
+  disposeReplayAssetTemplateLibrary,
+  fetchReplayAssetTemplateLibrary,
+  type ReplayAssetTemplateLibrary,
+} from "./renderer3dAssets";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
 import * as THREE from "three";
@@ -172,25 +176,42 @@ function sceneObject(renderer: CourseRenderer3D, name: string): THREE.Object3D {
   return object as THREE.Object3D;
 }
 
+function sceneObjectWithAssetSlot(renderer: CourseRenderer3D, slot: string): THREE.Object3D {
+  let target: THREE.Object3D | null = null;
+  getScene(renderer).traverse((object) => {
+    if (!target && object.userData.replayAssetSlot === slot) target = object;
+  });
+  expect(target, `missing asset slot ${slot}`).toBeDefined();
+  return target!;
+}
+
 function worldPosition(renderer: CourseRenderer3D, name: string): THREE.Vector3 {
   return sceneObject(renderer, name).getWorldPosition(new THREE.Vector3());
 }
 
-async function loadCheckedInReplayAssetLibrary(): Promise<ReplayAssetLibrary> {
+function nearestWorldVertexDistance(mesh: THREE.Mesh, point: THREE.Vector3): number {
+  const positions = mesh.geometry.getAttribute("position");
+  expect(positions, `missing position attribute on ${mesh.name}`).toBeDefined();
+  const vertex = new THREE.Vector3();
+  let nearest = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < positions.count; index++) {
+    vertex.set(positions.getX(index), positions.getY(index), positions.getZ(index));
+    nearest = Math.min(nearest, vertex.applyMatrix4(mesh.matrixWorld).distanceTo(point));
+  }
+  return nearest;
+}
+
+async function loadCheckedInReplayAssetTemplateLibrary(): Promise<ReplayAssetTemplateLibrary> {
   const bytes = await readFile(
-    new URL("../../../static/replay-assets/rowplay-rigs-v2.glb", import.meta.url),
+    new URL("../../../static/replay-assets/rowplay-rigs-v3.glb", import.meta.url),
   );
-  return fetchReplayAssetLibrary(
+  return fetchReplayAssetTemplateLibrary(
     async () =>
       new Response(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength), {
         status: 200,
         headers: { "content-type": "model/gltf-binary" },
       }),
   );
-}
-
-function disposeReplayAssetLibrary(library: ReplayAssetLibrary): void {
-  for (const geometry of library.geometries.values()) geometry.dispose();
 }
 
 function projectToPixels(
@@ -226,6 +247,29 @@ function firstStandardMaterial(object: THREE.Object3D): THREE.MeshStandardMateri
   });
   expect(material, `missing standard material below ${object.name}`).not.toBeNull();
   return material!;
+}
+
+function attachedTemplate(
+  renderer: CourseRenderer3D,
+  anchorName: string,
+  expectedTemplate: string,
+): THREE.Object3D {
+  const anchor = sceneObject(renderer, anchorName);
+  const instance = anchor.children.find(
+    (child) => child.userData.authoredReplayAssetTemplate === expectedTemplate,
+  );
+  expect(instance, `${anchorName} attached ${expectedTemplate}`).toBeDefined();
+  expect(instance?.name).toBe(`authored-template:${expectedTemplate}`);
+  return instance!;
+}
+
+function templatePart(instance: THREE.Object3D, suffix: string): THREE.Mesh {
+  let part: THREE.Mesh | null = null;
+  instance.traverse((object) => {
+    if (!part && object instanceof THREE.Mesh && object.name.endsWith(suffix)) part = object;
+  });
+  expect(part, `missing ${suffix} in ${instance.name}`).not.toBeNull();
+  return part!;
 }
 
 function getCameraRig(renderer: CourseRenderer3D) {
@@ -727,6 +771,50 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
+  it("builds an organic, layered high-detail world instead of lathed low-poly props", () => {
+    const ski = new CourseRenderer3D(makeHost(), "ultra", "skierg");
+    const pines = sceneObject(ski, "environment:skierg:pines") as THREE.InstancedMesh;
+    const peaks = sceneObject(ski, "environment:skierg:mountain-peaks") as THREE.InstancedMesh;
+    const snowcaps = sceneObject(ski, "environment:skierg:snowcaps") as THREE.InstancedMesh;
+    const foothills = sceneObject(ski, "environment:skierg:foothills") as THREE.InstancedMesh;
+    const berms = sceneObject(ski, "environment:skierg:snowbank") as THREE.InstancedMesh;
+    const ground = sceneObject(ski, "ground") as THREE.Mesh<THREE.BufferGeometry>;
+    const skiTorso = sceneObject(ski, "skierg-torso") as THREE.Mesh<
+      THREE.BufferGeometry,
+      THREE.Material
+    >;
+
+    expect(pines.geometry).not.toBeInstanceOf(THREE.LatheGeometry);
+    expect(pines.geometry.userData.organicRadialSurface).toBe(true);
+    expect(pines.geometry.name).toBe("environment:evergreen-canopy");
+    expect(pines.geometry.getIndex()?.count).toBeGreaterThan(3_000);
+    expect(peaks.geometry).not.toBeInstanceOf(THREE.LatheGeometry);
+    expect(peaks.geometry.userData.organicRadialSurface).toBe(true);
+    expect(peaks.geometry.name).toBe("environment:alpine-massif");
+    expect(peaks.geometry.getIndex()?.count).toBeGreaterThan(7_000);
+    expect(snowcaps.geometry.userData.organicRadialSurface).toBe(true);
+    expect(snowcaps.geometry.name).toBe("environment:alpine-snow-mantle");
+    expect(foothills.geometry.userData.organicRadialSurface).toBe(true);
+    expect(foothills.count).toBeGreaterThan(7);
+    expect(berms.geometry.getAttribute("position").count).toBeGreaterThan(200);
+    expect(ground.geometry.getAttribute("color")).toBeDefined();
+    expect(skiTorso.material).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+    expect((skiTorso.material as THREE.MeshPhysicalMaterial).sheen).toBeGreaterThan(0);
+    ski.destroy();
+
+    const bike = new CourseRenderer3D(makeHost(), "ultra", "bike");
+    const topTube = sceneObject(bike, "bike-top-tube") as THREE.Mesh<
+      THREE.BufferGeometry,
+      THREE.Material
+    >;
+    expect(topTube.material).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+    expect((topTube.material as THREE.MeshPhysicalMaterial).clearcoat).toBeGreaterThan(0);
+    expect(
+      (sceneObject(bike, "ground") as THREE.Mesh).geometry.getAttribute("color"),
+    ).toBeDefined();
+    bike.destroy();
+  });
+
   it("keeps semantic body and equipment values separated in both themes", () => {
     const names = {
       rower: {
@@ -872,8 +960,8 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
-  it("renders visible v2 elbow cuffs through the full RowErg pull", async () => {
-    const assets = await loadCheckedInReplayAssetLibrary();
+  it("renders visible V3 elbow cuffs through the full RowErg pull", async () => {
+    const assets = await loadCheckedInReplayAssetTemplateLibrary();
     const renderer = new CourseRenderer3D(makeHost(), "medium", "rower", { assets });
     renderer.resize(1140, 420);
 
@@ -894,11 +982,72 @@ describe("CourseRenderer3D", () => {
     }
 
     renderer.destroy();
-    disposeReplayAssetLibrary(assets);
+    disposeReplayAssetTemplateLibrary(assets);
   });
 
-  it("lets smooth authored shells replace fallback kit plates and toy wheel crosses", async () => {
-    const assets = await loadCheckedInReplayAssetLibrary();
+  it("orients each authored elbow cuff from a stable arm bend without losing contacts", async () => {
+    const assets = await loadCheckedInReplayAssetTemplateLibrary();
+    const contactPrefix = {
+      rower: "rower-hand-contact",
+      skierg: "skierg-pole-grip",
+      bike: "bike-hand-contact",
+    } as const;
+
+    try {
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        const renderer = new CourseRenderer3D(makeHost(), "medium", sport, { assets });
+        renderer.resize(1140, 420);
+        const previousAxis = new Map<string, THREE.Vector3>();
+
+        for (let step = 0; step < 96; step++) {
+          const cycle = step / 96;
+          renderer.render(makeSportState(sport, cycle, 120 + cycle * 8), false);
+          for (const side of ["left", "right"] as const) {
+            const shoulder = worldPosition(renderer, `${sport}-shoulder-${side}`);
+            const elbow = worldPosition(renderer, `${sport}-elbow-${side}`);
+            const hand = worldPosition(renderer, `${sport}-hand-${side}`);
+            const cuff = sceneObject(renderer, `${sport}-elbow-${side}`) as THREE.Mesh;
+            const chord = hand.clone().sub(shoulder).normalize();
+            const cuffAxis = new THREE.Vector3(0, 0, 1).transformDirection(cuff.matrixWorld);
+            const outside = elbow.multiplyScalar(2).sub(shoulder).sub(hand);
+            outside.addScaledVector(chord, -outside.dot(chord));
+
+            expect(cuff.userData.authoredReplayAsset, `${sport} ${side} authored cuff`).toBe(true);
+            expect(cuffAxis.dot(chord), `${sport} ${side} cuff follows arm chord`).toBeGreaterThan(
+              0.995,
+            );
+            if (outside.lengthSq() > 1e-5) {
+              outside.normalize();
+              const olecranon = new THREE.Vector3(0, -1, 0).transformDirection(cuff.matrixWorld);
+              expect(
+                olecranon.dot(outside),
+                `${sport} ${side} cuff exposes the outer elbow`,
+              ).toBeGreaterThan(0.995);
+            }
+            const previous = previousAxis.get(side);
+            if (previous) {
+              expect(
+                cuffAxis.dot(previous),
+                `${sport} ${side} cuff does not roll-flip at ${step}/96`,
+              ).toBeGreaterThan(0.35);
+            }
+            previousAxis.set(side, cuffAxis);
+            expect(
+              hand.distanceTo(worldPosition(renderer, `${contactPrefix[sport]}-${side}`)),
+              `${sport} ${side} hand contact`,
+            ).toBeLessThan(1e-6);
+          }
+        }
+
+        renderer.destroy();
+      }
+    } finally {
+      disposeReplayAssetTemplateLibrary(assets);
+    }
+  });
+
+  it("installs V3 equipment assemblies in place of toy fallback blocks", async () => {
+    const assets = await loadCheckedInReplayAssetTemplateLibrary();
     const athleteTrim = {
       rower: [
         "rower-torso-shell",
@@ -923,16 +1072,129 @@ describe("CourseRenderer3D", () => {
         );
       }
 
-      if (sport === "bike") {
+      if (sport === "rower") {
+        attachedTemplate(renderer, "rower-boat-visual", "equipment:row:boat-assembly");
+        expect(sceneObjectWithAssetSlot(renderer, "equipment:row:hull").visible).toBe(false);
+        for (const side of ["left", "right"] as const) {
+          attachedTemplate(renderer, `rower-oar-visual-${side}`, "equipment:row:oar-rig");
+          // The hand target and feathering blade remain their original dynamic
+          // rig nodes while V3 replaces only the static shaft/grip/collar.
+          expect(sceneObject(renderer, `rower-blade-${side}`).visible).toBe(true);
+        }
+      } else if (sport === "skierg") {
+        for (const side of ["left", "right"] as const) {
+          attachedTemplate(renderer, `skierg-ski-visual-${side}`, "equipment:ski:ski-assembly");
+        }
+        expect(sceneObject(renderer, "skierg-ski-deck").visible).toBe(false);
+        expect(sceneObject(renderer, "skierg-ski-tip").visible).toBe(false);
+      } else {
+        const wheel = attachedTemplate(
+          renderer,
+          "bike-wheel-visual-front",
+          "equipment:bike:wheel-assembly",
+        );
+        attachedTemplate(renderer, "bike-wheel-visual-rear", "equipment:bike:wheel-assembly");
+        attachedTemplate(renderer, "bike-frame-visual", "equipment:bike:frame-assembly");
+        attachedTemplate(renderer, "bike-drivetrain-visual", "equipment:bike:drivetrain-assembly");
+        const wheelMeshes: THREE.Mesh[] = [];
+        wheel.traverse((object) => {
+          if (object instanceof THREE.Mesh) wheelMeshes.push(object);
+        });
+        // The named source nodes are intentionally not a runtime contract;
+        // the meaningful visual guarantee is a rim, hub, rotor and a dense
+        // spoke field rather than three visible cylinder crosses.
+        expect(wheelMeshes).toHaveLength(5);
+        expect(
+          wheelMeshes.every((mesh) => !(mesh.geometry instanceof THREE.CylinderGeometry)),
+        ).toBe(true);
+        expect(
+          Math.max(...wheelMeshes.map((mesh) => mesh.geometry.getAttribute("position").count)),
+        ).toBeGreaterThan(500);
+        expect(wheelMeshes.some((mesh) => firstStandardMaterial(mesh).metalness > 0.5)).toBe(true);
         for (const index of [0, 1, 2]) {
-          const spoke = sceneObject(renderer, `bike-wheel-front-spoke-${index}`) as THREE.Mesh;
-          expect(spoke.geometry).toBeInstanceOf(THREE.CylinderGeometry);
-          expect(firstStandardMaterial(spoke).metalness).toBeGreaterThan(0.5);
+          expect(sceneObject(renderer, `bike-wheel-front-spoke-${index}`).visible).toBe(false);
         }
       }
       renderer.destroy();
     }
-    disposeReplayAssetLibrary(assets);
+    disposeReplayAssetTemplateLibrary(assets);
+  });
+
+  it("connects V3 RowErg riggers and oarlocks to the animated oar pivots", async () => {
+    const assets = await loadCheckedInReplayAssetTemplateLibrary();
+    const renderer = new CourseRenderer3D(makeHost(), "ultra", "rower", { assets });
+    try {
+      renderer.resize(1140, 420);
+      const boat = attachedTemplate(renderer, "rower-boat-visual", "equipment:row:boat-assembly");
+      const riggers = templatePart(boat, "riggers");
+      const oarlocks = templatePart(boat, "oarlocks");
+
+      for (const cycle of [0.05, 0.3, 0.58, 0.86]) {
+        renderer.render(makeSportState("rower", cycle), false);
+        for (const side of ["left", "right"] as const) {
+          const pivot = worldPosition(renderer, `rower-oar-${side}`);
+          expect(
+            nearestWorldVertexDistance(riggers, pivot),
+            `${side} rigger reaches oar pivot at ${cycle}`,
+          ).toBeLessThan(0.025);
+          expect(
+            nearestWorldVertexDistance(oarlocks, pivot),
+            `${side} oarlock reaches oar pivot at ${cycle}`,
+          ).toBeLessThan(0.025);
+        }
+      }
+    } finally {
+      renderer.destroy();
+      disposeReplayAssetTemplateLibrary(assets);
+    }
+  });
+
+  it("keeps the authored BikeErg cockpit on the authoritative hand contacts", async () => {
+    const assets = await loadCheckedInReplayAssetTemplateLibrary();
+    const renderer = new CourseRenderer3D(makeHost(), "ultra", "bike", { assets });
+    try {
+      renderer.resize(1140, 420);
+      renderer.render(makeSportState("bike", 0.3), false);
+      const cockpit = sceneObject(renderer, "equipmentbikeframe-assemblycockpit") as THREE.Mesh;
+      expect(cockpit.userData.authoredReplayAssetTemplate).toBe("equipment:bike:frame-assembly");
+
+      for (const side of ["left", "right"] as const) {
+        expect(
+          nearestWorldVertexDistance(cockpit, worldPosition(renderer, `bike-hand-contact-${side}`)),
+          `${side} cockpit grip reaches hand contact`,
+        ).toBeLessThan(0.035);
+      }
+    } finally {
+      renderer.destroy();
+      disposeReplayAssetTemplateLibrary(assets);
+    }
+  });
+
+  it("keeps V3 BikeErg clipless pedals on the authoritative foot contacts", async () => {
+    const assets = await loadCheckedInReplayAssetTemplateLibrary();
+    const renderer = new CourseRenderer3D(makeHost(), "ultra", "bike", { assets });
+    try {
+      renderer.resize(1140, 420);
+      for (const cycle of [0.05, 0.3, 0.58, 0.86]) {
+        renderer.render(makeSportState("bike", cycle), false);
+        const pedals = sceneObject(
+          renderer,
+          "equipmentbikedrivetrain-assemblyclipless-pedals",
+        ) as THREE.Mesh;
+        for (const side of ["left", "right"] as const) {
+          expect(
+            nearestWorldVertexDistance(
+              pedals,
+              worldPosition(renderer, `bike-foot-contact-${side}`),
+            ),
+            `${side} pedal reaches foot contact at ${cycle}`,
+          ).toBeLessThan(0.01);
+        }
+      }
+    } finally {
+      renderer.destroy();
+      disposeReplayAssetTemplateLibrary(assets);
+    }
   });
 
   it("keeps RowErg knees visually separated from the hull through the stroke", () => {
@@ -1110,14 +1372,19 @@ describe("CourseRenderer3D", () => {
     renderer.resize(800, 600);
 
     renderer.render(makeSportState("rower", 0.19), false);
-    const driveOarY = sceneObject(renderer, "rower-oar-left").position.y;
+    const driveBladeY = worldPosition(renderer, "rower-blade-left").y;
     const squaredDrive = sceneObject(renderer, "rower-blade-left").rotation.x;
-    expect(driveOarY).toBeLessThan(0.26);
+    // The shaft fulcrum remains locked at its oarlock; immersion is supplied
+    // by the blade's rotation rather than dropping the whole pivot through
+    // the rigger during the drive.
+    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.34, 5);
     expect(squaredDrive).toBeCloseTo(Math.PI / 2, 5);
 
     renderer.render(makeSportState("rower", 0.69), false);
+    const recoveryBladeY = worldPosition(renderer, "rower-blade-left").y;
     const feathered = sceneObject(renderer, "rower-blade-left").rotation.x;
     expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.34, 5);
+    expect(driveBladeY).toBeLessThan(recoveryBladeY - 0.08);
     expect(feathered).toBeCloseTo(0, 5);
 
     renderer.render(makeSportState("rower", 0.9), false);
@@ -1189,10 +1456,7 @@ describe("CourseRenderer3D", () => {
     const expected = solveRowerKinematics(REDUCED_REPLAY_POSES.rower);
     expect(firstPose.y).toBe(0);
     expect(firstPose.z).toBeCloseTo(0.26 - expected.legExtension * 0.5, 8);
-    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(
-      0.34 - expected.bladeDepth * 0.2,
-      8,
-    );
+    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.34, 8);
     expect(sceneObject(renderer, "rower-blade-left").rotation.x).toBeCloseTo(
       (1 - expected.bladeFeather) * (Math.PI / 2),
       8,
@@ -1274,7 +1538,7 @@ describe("CourseRenderer3D", () => {
   });
 
   it("anchors loaded SkiErg poles to the course with aligned, rigid hardware", async () => {
-    const assets = await loadCheckedInReplayAssetLibrary();
+    const assets = await loadCheckedInReplayAssetTemplateLibrary();
     const renderer = new CourseRenderer3D(makeHost(), "medium", "skierg", { assets });
     renderer.resize(1140, 420);
     const plantedCycles = [0.05, 0.11, 0.18, 0.22];
@@ -1335,7 +1599,7 @@ describe("CourseRenderer3D", () => {
     expect(rightPlant).toBeDefined();
     expect(leftPlant!.distanceTo(rightPlant!)).toBeGreaterThan(0.7);
     renderer.destroy();
-    disposeReplayAssetLibrary(assets);
+    disposeReplayAssetTemplateLibrary(assets);
   });
 
   it("keeps SkiErg recovery pole sweeps in the course frame around the lap", () => {
@@ -1573,6 +1837,45 @@ describe("CourseRenderer3D", () => {
       // The former one-size chase rig sat ~6.9 m from the athlete. Each wide-
       // aspect sport rig now moves closer while retaining its own height.
       expect(Math.max(...distances.values())).toBeLessThan(6.65);
+    });
+
+    it("holds a clear rear-three-quarter camera line across static and narrow layouts", () => {
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        const renderer = new CourseRenderer3D(makeHost(), "low", sport);
+        const liveBoat = (renderer as unknown as { liveBoat: THREE.Group }).liveBoat;
+        const measures = (): { lateral: number; retreat: number } => {
+          const { chase } = getCameraRig(renderer);
+          const radial = liveBoat.position.clone().setY(0).normalize();
+          const tangent = new THREE.Vector3(radial.z, 0, -radial.x);
+          const offset = chase.clone().sub(liveBoat.position);
+          return { lateral: offset.dot(radial), retreat: -offset.dot(tangent) };
+        };
+
+        renderer.resize(1140, 420);
+        renderer.render(makeSportState(sport, 0.2, 0), false);
+        const desktop = measures();
+        expect(desktop.lateral, `${sport} desktop lateral reveal`).toBeGreaterThan(1.2);
+        expect(
+          desktop.lateral / desktop.retreat,
+          `${sport} desktop three-quarter ratio`,
+        ).toBeGreaterThan(0.38);
+
+        renderer.resize(390, 360);
+        renderer.render(makeSportState(sport, 0.2, 0), false);
+        const narrow = measures();
+        expect(narrow.lateral, `${sport} narrow lateral reveal`).toBeGreaterThan(1.2);
+        expect(narrow.retreat, `${sport} narrow pullback`).toBeGreaterThan(desktop.retreat);
+
+        reducedMotion = true;
+        renderer.render(makeSportState(sport, 0.2, 0), true);
+        const reduced = measures();
+        expect(reduced.lateral, `${sport} reduced-motion lateral reveal`).toBeGreaterThan(1.2);
+        expect(reduced.retreat, `${sport} reduced-motion static pullback`).toBeGreaterThan(
+          desktop.retreat,
+        );
+        reducedMotion = false;
+        renderer.destroy();
+      }
     });
 
     it("parents non-shadowing athlete fill and rim lights to the chase camera", () => {

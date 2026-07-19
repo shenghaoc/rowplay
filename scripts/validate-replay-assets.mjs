@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 
-const DEFAULT_ASSET = "static/replay-assets/rowplay-rigs-v2.glb";
-const MAX_FILE_BYTES = 512 * 1024;
-const MIN_TRIANGLES = 2_200;
-const MAX_TRIANGLES = 12_000;
-const MAX_VERTICES = 30_000;
+const DEFAULT_ASSET = "static/replay-assets/rowplay-rigs-v3.glb";
+const MAX_FILE_BYTES = 640 * 1024;
+const MIN_TRIANGLES = 10_000;
+const MAX_TRIANGLES = 32_000;
+const MAX_VERTICES = 64_000;
 const LIMB_SLOTS = new Set([
   "athlete:upper-arm",
   "athlete:forearm",
@@ -13,7 +13,28 @@ const LIMB_SLOTS = new Set([
   "athlete:shin",
 ]);
 
-const REQUIRED_SLOTS = [
+const LEAF_SLOTS = [
+  "athlete:torso",
+  "athlete:pelvis",
+  "athlete:head",
+  "athlete:hair",
+  "athlete:upper-arm",
+  "athlete:forearm",
+  "athlete:thigh",
+  "athlete:shin",
+  "athlete:hand",
+  "athlete:elbow",
+  "athlete:shoe",
+  "athlete:neck",
+  "athlete:shoulder",
+  "athlete:helmet",
+  "equipment:row:blade",
+  "equipment:ski:pole-shaft",
+  "equipment:ski:pole-grip",
+  "equipment:ski:pole-basket",
+];
+
+const LEGACY_V2_SLOTS = [
   "athlete:torso",
   "athlete:pelvis",
   "athlete:head",
@@ -39,6 +60,82 @@ const REQUIRED_SLOTS = [
   "equipment:bike:saddle",
   "equipment:bike:pedal",
 ];
+const LEGACY_V2_MIN_TRIANGLES = 2_200;
+
+const TEMPLATE_PARTS = new Map([
+  [
+    "equipment:row:boat-assembly",
+    new Set([
+      "hull",
+      "deck",
+      "deck-stripe",
+      "cockpit-rim",
+      "riggers",
+      "oarlocks",
+      "gunwales",
+      "footwell",
+    ]),
+  ],
+  ["equipment:row:oar-rig", new Set(["shaft", "grip", "handle-cap", "collar", "blade-sleeve"])],
+  ["equipment:ski:ski-assembly", new Set(["base", "top-deck", "binding", "tip-ridge"])],
+  ["equipment:bike:wheel-assembly", new Set(["tyre", "aero-rim", "hub", "brake-rotor", "spokes"])],
+  [
+    "equipment:bike:frame-assembly",
+    new Set([
+      "main-triangle",
+      "stays-and-fork",
+      "cockpit",
+      "brake-hoods",
+      "brake-levers",
+      "brake-calipers",
+      "chain-and-cassette",
+      "saddle",
+      "seat-post",
+      "fork-crown",
+      "rear-axle",
+      "front-axle",
+    ]),
+  ],
+  [
+    "equipment:bike:drivetrain-assembly",
+    new Set(["chainring", "spider", "crank-arms", "clipless-pedals", "bottom-bracket"]),
+  ],
+]);
+
+const MATERIAL_ROLES = new Set([
+  "athlete-skin",
+  "athlete-fabric",
+  "athlete-hair",
+  "athlete-footwear",
+  "equipment-painted",
+  "equipment-dark",
+  "equipment-light",
+  "equipment-metal",
+  "equipment-rubber",
+  "equipment-grip",
+  "equipment-trim",
+]);
+
+const LEAF_MATERIAL_ROLES = new Map([
+  ["athlete:torso", "athlete-fabric"],
+  ["athlete:pelvis", "athlete-fabric"],
+  ["athlete:head", "athlete-skin"],
+  ["athlete:hair", "athlete-hair"],
+  ["athlete:upper-arm", "athlete-skin"],
+  ["athlete:forearm", "athlete-skin"],
+  ["athlete:thigh", "athlete-fabric"],
+  ["athlete:shin", "athlete-fabric"],
+  ["athlete:hand", "athlete-skin"],
+  ["athlete:elbow", "athlete-skin"],
+  ["athlete:shoe", "athlete-footwear"],
+  ["athlete:neck", "athlete-skin"],
+  ["athlete:shoulder", "athlete-fabric"],
+  ["athlete:helmet", "athlete-fabric"],
+  ["equipment:row:blade", "equipment-painted"],
+  ["equipment:ski:pole-shaft", "equipment-light"],
+  ["equipment:ski:pole-grip", "equipment-grip"],
+  ["equipment:ski:pole-basket", "equipment-painted"],
+]);
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message);
@@ -132,7 +229,8 @@ function readGlb(bytes) {
   return { document: JSON.parse(jsonText), binary: chunks[1].bytes };
 }
 
-function validateDocument(document, binary) {
+// Keep the fallback package auditable while the default command validates V3.
+function validateLegacyV2Document(document, binary) {
   invariant(document.asset?.version === "2.0", "JSON asset.version must be 2.0");
   invariant(document.scene === 0, "asset must declare scene 0 as its default scene");
   invariant(document.scenes?.length === 1, "asset must contain exactly one scene");
@@ -201,10 +299,10 @@ function validateDocument(document, binary) {
   );
 
   invariant(
-    document.nodes?.length === REQUIRED_SLOTS.length,
+    document.nodes?.length === LEGACY_V2_SLOTS.length,
     "asset contains unexpected scene nodes",
   );
-  invariant(document.meshes?.length === REQUIRED_SLOTS.length, "asset contains unexpected meshes");
+  invariant(document.meshes?.length === LEGACY_V2_SLOTS.length, "asset contains unexpected meshes");
 
   const reachableNodes = new Set();
   const visitingNodes = new Set();
@@ -226,7 +324,7 @@ function validateDocument(document, binary) {
     "asset contains nodes outside the default scene",
   );
 
-  const required = new Set(REQUIRED_SLOTS);
+  const required = new Set(LEGACY_V2_SLOTS);
   const slots = new Map();
   let vertexCount = 0;
   let triangleCount = 0;
@@ -310,16 +408,343 @@ function validateDocument(document, binary) {
     triangleCount += primitiveIndexCount / 3;
   });
 
-  const missing = REQUIRED_SLOTS.filter((slot) => !slots.has(slot));
+  const missing = LEGACY_V2_SLOTS.filter((slot) => !slots.has(slot));
   invariant(missing.length === 0, `asset is missing replay slots: ${missing.join(", ")}`);
+  invariant(
+    triangleCount >= LEGACY_V2_MIN_TRIANGLES,
+    `asset is below the ${LEGACY_V2_MIN_TRIANGLES}-triangle fidelity floor`,
+  );
+  invariant(triangleCount <= MAX_TRIANGLES, `asset exceeds the ${MAX_TRIANGLES}-triangle budget`);
+  invariant(vertexCount <= MAX_VERTICES, `asset exceeds the ${MAX_VERTICES}-vertex budget`);
+
+  return {
+    leafCount: slots.size,
+    templateCount: 0,
+    partCount: 0,
+    vertexCount,
+    triangleCount,
+  };
+}
+
+function validateDocument(document, binary) {
+  if (document.scenes?.[0]?.name === "ROWPLAY_RIG_ASSET_LIBRARY_V2") {
+    return validateLegacyV2Document(document, binary);
+  }
+  invariant(document.asset?.version === "2.0", "JSON asset.version must be 2.0");
+  invariant(document.scene === 0, "asset must declare scene 0 as its default scene");
+  invariant(document.scenes?.length === 1, "asset must contain exactly one scene");
+  invariant(
+    document.scenes[0]?.name === "ROWPLAY_RIG_ASSET_LIBRARY_V3",
+    "asset scene name must match the v3 replay-rig contract",
+  );
+  invariant(!document.extensionsRequired?.length, "required glTF extensions are not supported");
+  invariant(!document.extensionsUsed?.length, "the replay asset pack must use core glTF only");
+  for (const collection of ["animations", "cameras", "images", "samplers", "skins", "textures"]) {
+    invariant(!document[collection]?.length, `${collection} are outside the replay asset contract`);
+  }
+
+  invariant(document.buffers?.length === 1, "asset must contain one embedded buffer");
+  const buffer = document.buffers[0];
+  invariant(buffer.uri === undefined, "external or data-URI buffers are not allowed");
+  invariant(Number.isInteger(buffer.byteLength) && buffer.byteLength > 0, "invalid buffer length");
+  invariant(buffer.byteLength <= binary.byteLength, "binary chunk is shorter than buffers[0]");
+  invariant(
+    binary.byteLength - buffer.byteLength < 4,
+    "binary chunk contains unexpected trailing data",
+  );
+
+  invariant(
+    Array.isArray(document.bufferViews) && document.bufferViews.length > 0,
+    "missing buffer views",
+  );
+  document.bufferViews.forEach((view, index) => {
+    const offset = view.byteOffset ?? 0;
+    invariant(view.buffer === 0, `bufferView ${index} must use the embedded buffer`);
+    invariant(Number.isInteger(offset) && offset >= 0, `bufferView ${index} has an invalid offset`);
+    invariant(
+      Number.isInteger(view.byteLength) && view.byteLength > 0,
+      `bufferView ${index} has an invalid length`,
+    );
+    invariant(
+      offset + view.byteLength <= buffer.byteLength,
+      `bufferView ${index} extends beyond the embedded buffer`,
+    );
+  });
+  invariant(
+    Array.isArray(document.accessors) && document.accessors.length > 0,
+    "missing accessors",
+  );
+  document.accessors.forEach((accessor, index) => {
+    invariant(
+      Number.isInteger(accessor.bufferView) && document.bufferViews[accessor.bufferView],
+      `accessor ${index} references an invalid buffer view`,
+    );
+    invariant(Number.isInteger(accessor.count) && accessor.count > 0, `accessor ${index} is empty`);
+    invariant(accessor.sparse === undefined, `accessor ${index} must not be sparse`);
+    invariant(accessor.normalized !== true, `accessor ${index} must not be normalized`);
+  });
+
+  invariant(document.materials?.length === 1, "asset must use one neutral placeholder material");
+  const material = document.materials[0];
+  invariant(material.extensions === undefined, "material extensions are not allowed");
+  invariant(material.normalTexture === undefined, "normal textures are not allowed");
+  invariant(material.occlusionTexture === undefined, "occlusion textures are not allowed");
+  invariant(material.emissiveTexture === undefined, "emissive textures are not allowed");
+  invariant(
+    material.pbrMetallicRoughness?.baseColorTexture === undefined,
+    "base-color textures are not allowed",
+  );
+
+  const totalParts = [...TEMPLATE_PARTS.values()].reduce((count, parts) => count + parts.size, 0);
+  const topLevelCount = LEAF_SLOTS.length + TEMPLATE_PARTS.size;
+  invariant(Array.isArray(document.nodes), "asset is missing nodes");
+  invariant(
+    document.scenes[0].nodes?.length === topLevelCount,
+    "asset must expose exactly 18 leaves and six composite roots at scene level",
+  );
+  invariant(
+    document.nodes.length === topLevelCount + totalParts,
+    "asset contains unexpected nodes outside the strict v3 hierarchy",
+  );
+  invariant(
+    document.meshes?.length === LEAF_SLOTS.length + totalParts,
+    "asset contains unexpected meshes outside the v3 leaf/composite contract",
+  );
+
+  const reachableNodes = new Set();
+  const visitingNodes = new Set();
+  function visitNode(index) {
+    invariant(
+      Number.isInteger(index) && document.nodes[index],
+      `scene references invalid node ${index}`,
+    );
+    invariant(!visitingNodes.has(index), `node hierarchy contains a cycle at node ${index}`);
+    if (reachableNodes.has(index)) return;
+    visitingNodes.add(index);
+    reachableNodes.add(index);
+    for (const child of document.nodes[index].children ?? []) visitNode(child);
+    visitingNodes.delete(index);
+  }
+  for (const nodeIndex of document.scenes[0].nodes ?? []) visitNode(nodeIndex);
+  invariant(
+    reachableNodes.size === document.nodes.length,
+    "asset contains nodes outside the default scene",
+  );
+
+  const leaves = new Map();
+  const templates = new Map();
+  const classifiedNodes = new Set();
+  const usedMeshes = new Set();
+  let vertexCount = 0;
+  let triangleCount = 0;
+
+  function assertIdentityTransform(node, label) {
+    invariant(
+      node.matrix === undefined &&
+        node.translation === undefined &&
+        node.rotation === undefined &&
+        node.scale === undefined,
+      `${label} must be authored at its local origin`,
+    );
+  }
+
+  function validateMesh(node, label, limbSlot) {
+    invariant(
+      Number.isInteger(node.mesh) && document.meshes[node.mesh],
+      `${label} has no valid mesh`,
+    );
+    invariant(!usedMeshes.has(node.mesh), `${label} reuses an authored mesh instance`);
+    usedMeshes.add(node.mesh);
+    const mesh = document.meshes[node.mesh];
+    invariant(mesh.primitives?.length === 1, `${label} must contain exactly one primitive`);
+    const primitive = mesh.primitives[0];
+    invariant(primitive.mode === undefined || primitive.mode === 4, `${label} must use triangles`);
+    invariant(primitive.material === 0, `${label} must use the placeholder material`);
+    invariant(primitive.targets === undefined, `${label} must not contain morph targets`);
+    const semantics = Object.keys(primitive.attributes ?? {}).sort();
+    invariant(
+      semantics.length === 2 && semantics[0] === "NORMAL" && semantics[1] === "POSITION",
+      `${label} must contain only POSITION and NORMAL attributes`,
+    );
+    const positionAccessorIndex = primitive.attributes.POSITION;
+    const position = document.accessors[positionAccessorIndex];
+    const normal = document.accessors[primitive.attributes.NORMAL];
+    invariant(
+      position?.componentType === 5126 && position.type === "VEC3",
+      `${label} has invalid positions`,
+    );
+    invariant(
+      normal?.componentType === 5126 && normal.type === "VEC3",
+      `${label} has invalid normals`,
+    );
+    invariant(normal.count === position.count, `${label} position/normal counts differ`);
+    invariant(
+      Array.isArray(position.min) &&
+        Array.isArray(position.max) &&
+        position.min.length === 3 &&
+        position.max.length === 3 &&
+        position.min.every(isFiniteNumber) &&
+        position.max.every(isFiniteNumber),
+      `${label} has invalid bounds`,
+    );
+    invariant(
+      position.max.every((value, axis) => value - position.min[axis] > 1e-6),
+      `${label} is degenerate on one or more axes`,
+    );
+    if (limbSlot && LIMB_SLOTS.has(limbSlot)) {
+      validateLimbProfile(limbSlot, readPositionVectors(document, binary, positionAccessorIndex));
+    }
+    let indexCount = position.count;
+    if (primitive.indices !== undefined) {
+      const indices = document.accessors[primitive.indices];
+      invariant(indices?.type === "SCALAR", `${label} has a non-scalar index accessor`);
+      invariant([5121, 5123, 5125].includes(indices.componentType), `${label} has invalid indices`);
+      indexCount = indices.count;
+    }
+    invariant(indexCount % 3 === 0, `${label} has an incomplete triangle`);
+    invariant(indexCount / 3 >= 12, `${label} is below the authored-detail floor`);
+    vertexCount += position.count;
+    triangleCount += indexCount / 3;
+  }
+
+  for (const nodeIndex of document.scenes[0].nodes ?? []) {
+    const node = document.nodes[nodeIndex];
+    assertIdentityTransform(node, `top-level node ${nodeIndex}`);
+    invariant(!classifiedNodes.has(nodeIndex), `scene duplicates top-level node ${nodeIndex}`);
+    classifiedNodes.add(nodeIndex);
+    const leaf = node.extras?.replayAssetSlot;
+    if (typeof leaf === "string") {
+      invariant(
+        LEAF_SLOTS.includes(leaf),
+        `node ${nodeIndex} declares unknown replay leaf ${leaf}`,
+      );
+      invariant(!leaves.has(leaf), `replay leaf ${leaf} is duplicated`);
+      invariant(node.name === leaf, `node ${nodeIndex} name must equal its replay leaf`);
+      invariant(node.children === undefined, `replay leaf ${leaf} must not own child nodes`);
+      invariant(
+        node.extras?.replayAssetKind === "leaf",
+        `replay leaf ${leaf} must declare leaf kind`,
+      );
+      const role = node.extras?.replayMaterialRole;
+      invariant(MATERIAL_ROLES.has(role), `replay leaf ${leaf} has an unknown material role`);
+      invariant(
+        role === LEAF_MATERIAL_ROLES.get(leaf),
+        `replay leaf ${leaf} must retain its canonical material role`,
+      );
+      validateMesh(node, `replay leaf ${leaf}`, leaf);
+      leaves.set(leaf, nodeIndex);
+      continue;
+    }
+
+    const template = node.extras?.replayAssetTemplateSlot;
+    invariant(
+      typeof template === "string",
+      `node ${nodeIndex} is missing a v3 leaf/template contract`,
+    );
+    const expectedParts = TEMPLATE_PARTS.get(template);
+    invariant(expectedParts, `node ${nodeIndex} declares unknown replay template ${template}`);
+    invariant(!templates.has(template), `replay template ${template} is duplicated`);
+    invariant(node.name === template, `template ${template} node name must match its slot`);
+    invariant(node.mesh === undefined, `template ${template} root must not own mesh geometry`);
+    invariant(
+      node.extras?.replayAssetKind === "composite",
+      `template ${template} must declare composite kind`,
+    );
+    invariant(
+      node.extras?.replayAssetVersion === 3,
+      `template ${template} must declare asset version 3`,
+    );
+    invariant(
+      node.extras?.replayAssetPartCount === expectedParts.size,
+      `template ${template} has an invalid part-count contract`,
+    );
+    invariant(
+      Array.isArray(node.children) && node.children.length === expectedParts.size,
+      `template ${template} must own its complete direct part list`,
+    );
+    const seenParts = new Set();
+    const seenRoles = new Set();
+    for (const childIndex of node.children) {
+      const child = document.nodes[childIndex];
+      invariant(child, `template ${template} references invalid part node ${childIndex}`);
+      invariant(
+        !classifiedNodes.has(childIndex),
+        `template ${template} reuses part node ${childIndex}`,
+      );
+      classifiedNodes.add(childIndex);
+      assertIdentityTransform(child, `template part ${template}:${childIndex}`);
+      invariant(
+        child.children === undefined,
+        `template part ${template}:${childIndex} must not own children`,
+      );
+      invariant(
+        child.extras?.replayAssetTemplateSlot === template,
+        `template part ${template}:${childIndex} is assigned to the wrong root`,
+      );
+      const part = child.extras?.replayAssetPart;
+      invariant(
+        typeof part === "string" && expectedParts.has(part),
+        `template ${template} has unknown part`,
+      );
+      invariant(!seenParts.has(part), `template ${template} duplicates part ${part}`);
+      invariant(
+        child.name === `${template}:${part}`,
+        `template ${template} part ${part} has an invalid name`,
+      );
+      const role = child.extras?.replayMaterialRole;
+      invariant(
+        MATERIAL_ROLES.has(role),
+        `template ${template} part ${part} has an unknown material role`,
+      );
+      seenParts.add(part);
+      seenRoles.add(role);
+      validateMesh(child, `template ${template} part ${part}`);
+    }
+    invariant(
+      seenParts.size === expectedParts.size,
+      `template ${template} is missing a required part`,
+    );
+    const declaredRoles = node.extras?.replayMaterialRoles;
+    const canonicalRoles = [...seenRoles].sort((left, right) => left.localeCompare(right));
+    invariant(Array.isArray(declaredRoles), `template ${template} must declare its material roles`);
+    invariant(
+      declaredRoles.length === canonicalRoles.length &&
+        declaredRoles.every((role, index) => role === canonicalRoles[index]),
+      `template ${template} material role metadata does not match its parts`,
+    );
+    templates.set(template, nodeIndex);
+  }
+
+  invariant(
+    classifiedNodes.size === document.nodes.length,
+    "asset contains nodes outside the strict v3 root/part hierarchy",
+  );
+  invariant(usedMeshes.size === document.meshes.length, "asset contains an unused or shared mesh");
+  const missingLeaves = LEAF_SLOTS.filter((slot) => !leaves.has(slot));
+  invariant(
+    missingLeaves.length === 0,
+    `asset is missing replay leaves: ${missingLeaves.join(", ")}`,
+  );
+  const missingTemplates = [...TEMPLATE_PARTS.keys()].filter(
+    (template) => !templates.has(template),
+  );
+  invariant(
+    missingTemplates.length === 0,
+    `asset is missing replay templates: ${missingTemplates.join(", ")}`,
+  );
   invariant(
     triangleCount >= MIN_TRIANGLES,
     `asset is below the ${MIN_TRIANGLES}-triangle fidelity floor`,
   );
   invariant(triangleCount <= MAX_TRIANGLES, `asset exceeds the ${MAX_TRIANGLES}-triangle budget`);
   invariant(vertexCount <= MAX_VERTICES, `asset exceeds the ${MAX_VERTICES}-vertex budget`);
-
-  return { slotCount: slots.size, vertexCount, triangleCount };
+  return {
+    leafCount: leaves.size,
+    templateCount: templates.size,
+    partCount: totalParts,
+    vertexCount,
+    triangleCount,
+  };
 }
 
 async function main() {
@@ -330,7 +755,7 @@ async function main() {
   const result = validateDocument(document, binary);
   const displayPath = relative(process.cwd(), assetPath) || assetPath;
   console.log(
-    `validated ${displayPath}: ${result.slotCount} slots, ${result.triangleCount} triangles, ${result.vertexCount} vertices, ${bytes.byteLength} bytes`,
+    `validated ${displayPath}: ${result.leafCount} leaves, ${result.templateCount} composite templates, ${result.partCount} composite parts, ${result.triangleCount} triangles, ${result.vertexCount} vertices, ${bytes.byteLength} bytes`,
   );
 }
 

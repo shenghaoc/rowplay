@@ -1,55 +1,83 @@
 # rowplay replay assets
 
-This directory contains the compact, repository-owned 3D geometry package used
-to raise replay figure and equipment quality while retaining rowplay's existing
-contact-driven animation rig.
+This directory contains compact, repository-owned 3D geometry for the optional
+WebGPU/WebGL replay. It improves visible athlete and equipment form without
+changing rowplay's contact-driven animation rig, sport timing, live/ghost
+identity, or Canvas 2D fallback.
 
-## `rowplay-rigs-v2.glb`
+## `rowplay-rigs-v3.glb`
 
-- **Purpose:** texture-free athlete shells and selected RowErg, SkiErg, and
-  BikeErg equipment shells for the optional WebGPU/WebGL replay.
-- **Ownership:** created specifically for rowplay from source in this repository;
-  no third-party model or user data is included.
+- **Purpose:** a texture-free authored athlete library plus six nested,
+  reusable equipment templates for RowErg, SkiErg, and BikeErg.
+- **Ownership:** created specifically for rowplay from source in this
+  repository. No third-party model, stock asset, or user data is included.
 - **Copyright and licence:** Copyright (c) 2026 shenghaoc and rowplay
   contributors; distributed under the repository's MIT `LICENSE`.
 - **Source of truth:** `scripts/build-replay-assets.mjs`.
+- **Validator:** `scripts/validate-replay-assets.mjs` verifies the binary,
+  exact V3 hierarchy, slot/template names, material-role metadata, geometry
+  bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed v2 artifact:** 162,972 bytes; SHA-256
-  `72f4c14e679f7c88ad24dfb9411d5f02de93e43982ca4f886c788f03e98d88d7`.
-- **Inventory:** 24 named meshes/nodes: 14 generic athlete slots (including a
-  compact asymmetric elbow flex cuff), two RowErg slots, four SkiErg slots
-  (skis plus pole shaft, grip, and basket), and four BikeErg slots (7,304
-  triangles / 4,099 indexed vertices). The package contains one placeholder
-  authoring material, zero textures/images, zero animations, and zero skins.
-- **Detail language:** shared-vertex smooth normals and denser lofted anatomy;
-  correctly tapered proximal-to-distal limbs; compact cuff overlap;
-  performance-shoe layers; sculpted hands and elbow; an aerodynamic helmet
-  ridge; and smooth BikeErg slick tyres, aero frame tubes, contoured saddle,
-  and clipless pedal shells. Raised geometry details are generated locally with
-  Three.js core geometry helpers; no image, texture, or downloaded model is
-  involved.
-- **Runtime contract:** named `replayAssetSlot` meshes are validated and cloned
-  onto the existing live/ghost rig. The GLB does not own timing, contacts,
-  recorded animation, theme, or lane identity.
-- **External sources:** none.
-- **Textures, photographs, scans, and likeness data:** none.
-- **Avatar-generator or generated-person output:** none.
+- **Reviewed V3 artifact:** 535,216 bytes; SHA-256
+  `77cc32fd30a504dad79295f263c2db278090233a2761e8f6702fa74bc5de8a8a`.
+- **Inventory:** 18 compatibility leaf meshes, six composite roots, and 39
+  direct composite parts (24 top-level logical entities; 63 nodes / 57 mesh
+  nodes total). The package has 20,636 indexed triangles and 14,787 indexed
+  vertices, one neutral placeholder material, zero textures/images, zero
+  animations, and zero skins.
+- **Detail language:** shared-vertex smooth normals, anatomical lofts, tapered
+  limbs, grip/sole/elbow details, an aero shell helmet, a sculpted scull,
+  oarlocks and oar, raised ski deck and binding, aero-rim wheels with 14 fine
+  spokes and six-spoke disc rotors, a proper diamond-frame bicycle with
+  chain/cassette, calipers, and contact-aligned brake hoods/levers, plus a
+  rotating crank assembly. All detail is generated from local Three.js core
+  geometry; there is no image, texture, downloaded model, scan, or
+  avatar-generator output.
 
-The package is a deterministic build artifact. Rebuild v2 from the repository
-root with:
+### V3 schema and coordinate contracts
+
+The 18 leaf slots preserve the generic athlete plus contact-sensitive Row blade
+and Ski pole pieces. Each leaf has `replayAssetSlot`, `replayAssetKind: "leaf"`,
+and a `replayMaterialRole` in its glTF extras.
+
+The six root templates are intentionally transform-free. Their direct child
+geometry bakes placement into the mesh, carries `replayAssetTemplateSlot`,
+`replayAssetPart`, and `replayMaterialRole`, and remains static until the
+existing renderer clones it onto its known rig anchor. Each root records
+`replayAssetTemplateSlot`, `replayAssetKind: "composite"`, version 3, the
+strict part count, and its material-role list.
+
+| Template root                        | Canonical anchor contract                                                                                                                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `equipment:row:boat-assembly`        | Row avatar root coordinates: hull, deck, cockpit rim, riggers, oarlocks, gunwales, and footwell align with the existing boat group; rigger ends meet the animated oar pivots.       |
+| `equipment:row:oar-rig`              | One oar at its pin, with `+X` outboard: attach identity on the right and yaw π on the left. The animated blade remains the leaf slot.                                               |
+| `equipment:ski:ski-assembly`         | One ski at the existing per-side anchor `(side × 0.21, 0, 0.16)`; clone it once per ski.                                                                                            |
+| `equipment:bike:wheel-assembly`      | One wheel at the existing wheel-group centre with its axle along local X; the carrier, rotor spokes, and bolt heads remain wheel-local.                                             |
+| `equipment:bike:frame-assembly`      | Bike avatar-root coordinates for the frame, stays, fork, cockpit, calipers, chain/cassette, saddle, and axles. Brake hoods and levers end at the rig's authoritative hand contacts. |
+| `equipment:bike:drivetrain-assembly` | Crank-group-local coordinates; the existing renderer rotates the complete root about X and its clipless pedals meet the authoritative foot contacts.                                |
+
+Runtime materials remain outside the GLB. The neutral placeholder is never a
+product colour source: `replayMaterialRole` lets the renderer preserve lane
+paint, equipment metal/rubber/grip, athlete fabric/skin/hair/footwear,
+light/dark themes, and ghost transparency.
+
+Rebuild and validate V3 from the repository root with:
 
 ```sh
 node scripts/build-replay-assets.mjs
+node scripts/validate-replay-assets.mjs
 ```
 
-Review the resulting binary diff and exact byte size before committing it. The
-`v2` filename identifies the current required slot and coordinate contract;
-use a new versioned filename for an incompatible schema change.
+Review the resulting binary diff, exact size, and SHA-256 before committing it.
+The `v3` filename identifies this composite hierarchy and coordinate contract;
+an incompatible change requires a new versioned filename rather than silently
+changing V3 meaning.
 
-`rowplay-rigs-v1.glb` remains checked in only as a short-lived compatibility
-artifact for older branches. It is not rebuilt by the current generator and is
-not the primary replay asset package.
+`rowplay-rigs-v1.glb` and `rowplay-rigs-v2.glb` remain checked in as
+compatibility artifacts for older renderer builds. They are not rebuilt by the
+current generator. V2's leaf-only package remains the stable fallback while a
+renderer adopts V3's template roots.
 
 ## Provenance policy
 

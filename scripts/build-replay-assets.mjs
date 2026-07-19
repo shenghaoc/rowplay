@@ -3,7 +3,11 @@ import { dirname, resolve } from "node:path";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 
-const OUTPUT = resolve("static/replay-assets/rowplay-rigs-v2.glb");
+// v3 deliberately widens the asset contract from isolated replacement shells
+// to a small set of authored equipment assemblies.  Keeping this a new file
+// makes the v2 leaf-only fallback available to older renderer builds while the
+// v3 loader can opt into the higher-detail hierarchy explicitly.
+const OUTPUT = resolve("static/replay-assets/rowplay-rigs-v3.glb");
 const PLACEHOLDER = new THREE.MeshStandardMaterial({
   color: 0x9aa6b2,
   roughness: 0.78,
@@ -100,7 +104,7 @@ function translatedGeometry(geometry, x = 0, y = 0, z = 0) {
  */
 function ridgeGeometry(points, radius, tubularSegments = 10, radialSegments = 8) {
   const path = new THREE.CatmullRomCurve3(points, false, "centripetal");
-  return new THREE.TubeGeometry(path, tubularSegments, radius, radialSegments, false);
+  return flatGeometry(new THREE.TubeGeometry(path, tubularSegments, radius, radialSegments, false));
 }
 
 /**
@@ -363,34 +367,6 @@ function scullBladeGeometry() {
   return composeGeometry(spoon, spine);
 }
 
-function nordicSkiGeometry() {
-  const ski = loftGeometry(
-    [
-      { p: -0.98, rx: 0.035, rz: 0.012 },
-      { p: -0.72, rx: 0.052, rz: 0.02 },
-      { p: -0.22, rx: 0.06, rz: 0.028 },
-      { p: 0.36, rx: 0.058, rz: 0.028 },
-      { p: 0.76, rx: 0.05, rz: 0.025 },
-      { p: 0.98, rx: 0.032, rz: 0.02, oz: 0.03 },
-    ],
-    8,
-    "z",
-    Math.PI / 8,
-  );
-  const binding = translatedGeometry(new THREE.BoxGeometry(0.1, 0.028, 0.25), 0, 0.028, -0.04);
-  const tipRidge = ridgeGeometry(
-    [
-      new THREE.Vector3(0, 0.026, 0.38),
-      new THREE.Vector3(0, 0.036, 0.74),
-      new THREE.Vector3(0, 0.085, 0.98),
-    ],
-    0.009,
-    6,
-    5,
-  );
-  return composeGeometry(ski, binding, tipRidge);
-}
-
 function nordicPoleShaftGeometry() {
   const shaft = loftGeometry(
     [
@@ -433,13 +409,6 @@ function nordicPoleBasketGeometry() {
   const ferrule = translatedGeometry(new THREE.ConeGeometry(0.36, 0.52, 8), 0, -0.38, 0);
   const cap = translatedGeometry(new THREE.CylinderGeometry(0.58, 0.58, 0.08, 10), 0, 0.18, 0);
   return composeGeometry(basket, ferrule, cap);
-}
-
-function slickAeroTyreGeometry(radius, depth) {
-  // BikeErg training tyres are smooth rolling surfaces. A continuous 40-side
-  // aerodynamic carcass looks premium at chase-camera distance, unlike the
-  // prior repeating box treads that made the wheel read as a toy gear.
-  return aeroRingGeometry(radius, depth, 40);
 }
 
 function performanceSaddleGeometry() {
@@ -508,22 +477,566 @@ function cliplessPedalGeometry() {
   return composeGeometry(body, axle, toeHook);
 }
 
-function addSlot(scene, slot, geometry) {
+/**
+ * V3 equipment is authored as canonical assemblies rather than asking the
+ * runtime to make a polished object out of unrelated tubes and blocks.  Every
+ * transform is baked into the part geometry; only the existing rig anchors
+ * animate the cloned root.
+ */
+function rowBoatAssemblyParts() {
+  const hull = loftGeometry(
+    [
+      { p: -1.98, rx: 0.012, rz: 0.016 },
+      { p: -1.83, rx: 0.075, rz: 0.07 },
+      { p: -1.5, rx: 0.142, rz: 0.115 },
+      { p: -1.02, rx: 0.19, rz: 0.145 },
+      { p: -0.36, rx: 0.215, rz: 0.155 },
+      { p: 0.34, rx: 0.21, rz: 0.152 },
+      { p: 0.98, rx: 0.18, rz: 0.13 },
+      { p: 1.47, rx: 0.13, rz: 0.095 },
+      { p: 1.82, rx: 0.066, rz: 0.055 },
+      { p: 1.98, rx: 0.012, rz: 0.014 },
+    ],
+    28,
+    "z",
+    Math.PI / 28,
+  );
+  hull.translate(0, 0.155, 0);
+  const deck = loftGeometry(
+    [
+      { p: -1.52, rx: 0.045, rz: 0.018 },
+      { p: -1.05, rx: 0.11, rz: 0.023 },
+      { p: -0.38, rx: 0.145, rz: 0.026 },
+      { p: 0.34, rx: 0.14, rz: 0.026 },
+      { p: 1.02, rx: 0.108, rz: 0.022 },
+      { p: 1.52, rx: 0.045, rz: 0.017 },
+    ],
+    22,
+    "z",
+    Math.PI / 22,
+  );
+  deck.translate(0, 0.292, 0);
+  const cockpit = bakeGeometry(new THREE.TorusGeometry(1, 0.013, 8, 26), {
+    scale: [0.125, 0.44, 1],
+    rotation: [Math.PI / 2, 0, 0],
+    position: [0, 0.325, -0.17],
+  });
+  const stripe = loftGeometry(
+    [
+      { p: -1.24, rx: 0.022, rz: 0.008 },
+      { p: -0.62, rx: 0.031, rz: 0.009 },
+      { p: 0.24, rx: 0.03, rz: 0.009 },
+      { p: 1.08, rx: 0.021, rz: 0.008 },
+    ],
+    12,
+    "z",
+    Math.PI / 12,
+  );
+  stripe.translate(0, 0.33, 0.04);
+  // The visible rigger has to terminate at the motion rig's exact oar pivot:
+  // a near miss makes the shaft look suspended once it sweeps through the
+  // drive. These anchors match `rower-oar-{left,right}` in renderer3d.ts.
+  const leftOarPivot = [-0.52, 0.34, 0.05];
+  const rightOarPivot = [0.52, 0.34, 0.05];
+  const riggers = composeGeometry(
+    tubeGeometryBetween([-0.12, 0.285, -0.08], leftOarPivot, 0.018, 12),
+    tubeGeometryBetween([0.12, 0.285, -0.08], rightOarPivot, 0.018, 12),
+    tubeGeometryBetween([-0.35, 0.33, -0.19], leftOarPivot, 0.013, 10),
+    tubeGeometryBetween([0.35, 0.33, -0.19], rightOarPivot, 0.013, 10),
+  );
+  // Small vertical posts and collars make the physical hand-off from boat to
+  // moving oar explicit without taking ownership of the animated yaw pivot.
+  const oarlocks = composeGeometry(
+    bakeGeometry(new THREE.CylinderGeometry(0.028, 0.034, 0.1, 12), {
+      position: [leftOarPivot[0], 0.29, leftOarPivot[2]],
+    }),
+    bakeGeometry(new THREE.CylinderGeometry(0.028, 0.034, 0.1, 12), {
+      position: [rightOarPivot[0], 0.29, rightOarPivot[2]],
+    }),
+    bakeGeometry(new THREE.TorusGeometry(0.04, 0.008, 8, 16), {
+      rotation: [Math.PI / 2, 0, 0],
+      position: [leftOarPivot[0], leftOarPivot[1], leftOarPivot[2]],
+    }),
+    bakeGeometry(new THREE.TorusGeometry(0.04, 0.008, 8, 16), {
+      rotation: [Math.PI / 2, 0, 0],
+      position: [rightOarPivot[0], rightOarPivot[1], rightOarPivot[2]],
+    }),
+  );
+  const gunwales = composeGeometry(
+    tubeGeometryBetween([-0.145, 0.286, -1.28], [-0.145, 0.286, 1.3], 0.012, 12),
+    tubeGeometryBetween([0.145, 0.286, -1.28], [0.145, 0.286, 1.3], 0.012, 12),
+  );
+  const footwell = loftGeometry(
+    [
+      { p: -0.16, rx: 0.19, rz: 0.028 },
+      { p: -0.07, rx: 0.23, rz: 0.034 },
+      { p: 0.08, rx: 0.23, rz: 0.034 },
+      { p: 0.16, rx: 0.18, rz: 0.026 },
+    ],
+    16,
+    "z",
+    Math.PI / 16,
+  );
+  footwell.translate(0, 0.323, 0.72);
+  return [
+    { name: "hull", geometry: hull, materialRole: "equipment-painted" },
+    { name: "deck", geometry: deck, materialRole: "equipment-painted" },
+    { name: "deck-stripe", geometry: stripe, materialRole: "equipment-light" },
+    { name: "cockpit-rim", geometry: cockpit, materialRole: "equipment-dark" },
+    { name: "riggers", geometry: riggers, materialRole: "equipment-metal" },
+    { name: "oarlocks", geometry: oarlocks, materialRole: "equipment-metal" },
+    { name: "gunwales", geometry: gunwales, materialRole: "equipment-light" },
+    { name: "footwell", geometry: footwell, materialRole: "equipment-dark" },
+  ];
+}
+
+function rowOarRigParts() {
+  const shaft = tubeGeometryBetween([-0.61, 0, 0], [2.14, 0, 0], 0.032, 16, 0.82);
+  const grip = loftGeometry(
+    [
+      { p: -0.78, rx: 0.031, rz: 0.031 },
+      { p: -0.68, rx: 0.045, rz: 0.042 },
+      { p: -0.5, rx: 0.047, rz: 0.043 },
+      { p: -0.42, rx: 0.034, rz: 0.033 },
+    ],
+    14,
+    "x",
+    Math.PI / 14,
+  );
+  const collar = bakeGeometry(new THREE.TorusGeometry(0.052, 0.012, 8, 18), {
+    rotation: [0, Math.PI / 2, 0],
+    position: [1.82, 0, 0],
+  });
+  const sleeve = bakeGeometry(new THREE.CylinderGeometry(0.043, 0.036, 0.19, 16), {
+    rotation: [0, 0, Math.PI / 2],
+    position: [1.57, 0, 0],
+  });
+  const handleCap = ellipsoidGeometry([0.04, 0.04, 0.04], 14, 10, [-0.79, 0, 0]);
+  return [
+    { name: "shaft", geometry: shaft, materialRole: "equipment-light" },
+    { name: "grip", geometry: grip, materialRole: "equipment-grip" },
+    { name: "handle-cap", geometry: handleCap, materialRole: "equipment-dark" },
+    { name: "collar", geometry: collar, materialRole: "equipment-metal" },
+    { name: "blade-sleeve", geometry: sleeve, materialRole: "equipment-painted" },
+  ];
+}
+
+/** One local ski, rooted at its existing per-side anchor: (side × .21, 0, .16). */
+function skiAssemblyParts() {
+  const base = loftGeometry(
+    [
+      { p: -1.05, rx: 0.028, rz: 0.012 },
+      { p: -0.88, rx: 0.048, rz: 0.018 },
+      { p: -0.43, rx: 0.065, rz: 0.024 },
+      { p: 0.16, rx: 0.067, rz: 0.026 },
+      { p: 0.66, rx: 0.059, rz: 0.024 },
+      { p: 1.0, rx: 0.044, rz: 0.018, oz: 0.016 },
+      { p: 1.16, rx: 0.018, rz: 0.01, oz: 0.07 },
+    ],
+    18,
+    "z",
+    Math.PI / 18,
+  );
+  base.translate(0, 0.028, 0);
+  const topDeck = loftGeometry(
+    [
+      { p: -0.89, rx: 0.033, rz: 0.008 },
+      { p: -0.46, rx: 0.052, rz: 0.011 },
+      { p: 0.08, rx: 0.055, rz: 0.012 },
+      { p: 0.67, rx: 0.046, rz: 0.01 },
+      { p: 0.97, rx: 0.026, rz: 0.008, oz: 0.014 },
+    ],
+    16,
+    "z",
+    Math.PI / 16,
+  );
+  topDeck.translate(0, 0.058, -0.04);
+  const binding = composeGeometry(
+    loftGeometry(
+      [
+        { p: -0.18, rx: 0.062, rz: 0.028 },
+        { p: -0.04, rx: 0.08, rz: 0.042 },
+        { p: 0.16, rx: 0.074, rz: 0.034 },
+      ],
+      14,
+      "z",
+      Math.PI / 14,
+    ),
+    tubeGeometryBetween([-0.055, 0.105, -0.11], [-0.055, 0.105, 0.12], 0.008, 10),
+    tubeGeometryBetween([0.055, 0.105, -0.11], [0.055, 0.105, 0.12], 0.008, 10),
+  );
+  binding.translate(0, 0.075, 0.02);
+  const kick = ridgeGeometry(
+    [
+      new THREE.Vector3(0, 0.054, 0.74),
+      new THREE.Vector3(0, 0.08, 1.0),
+      new THREE.Vector3(0, 0.145, 1.16),
+    ],
+    0.009,
+    8,
+    7,
+  );
+  return [
+    { name: "base", geometry: base, materialRole: "equipment-dark" },
+    { name: "top-deck", geometry: topDeck, materialRole: "equipment-painted" },
+    { name: "binding", geometry: binding, materialRole: "equipment-dark" },
+    { name: "tip-ridge", geometry: kick, materialRole: "equipment-light" },
+  ];
+}
+
+/** One wheel, rooted at the existing wheel-group centre with an axle along X. */
+function bikeWheelAssemblyParts() {
+  const tyre = bakeGeometry(aeroRingGeometry(0.45, 0.065, 56), { rotation: [0, Math.PI / 2, 0] });
+  const rim = bakeGeometry(aeroRingGeometry(0.385, 0.031, 56), {
+    rotation: [0, Math.PI / 2, 0],
+  });
+  const hub = bakeGeometry(new THREE.CylinderGeometry(0.052, 0.052, 0.128, 18), {
+    rotation: [0, 0, Math.PI / 2],
+  });
+  // A rotor is a thin structural object, not a floating torus. The carrier,
+  // six lightening spokes and bolt heads keep the detail readable when the
+  // chase camera catches a spinning wheel, without introducing a texture or
+  // a dense per-tooth mesh.
+  const rotorOffsetX = 0.068;
+  const rotorParts = [
+    bakeGeometry(new THREE.TorusGeometry(0.105, 0.007, 7, 30), {
+      rotation: [0, Math.PI / 2, 0],
+      position: [rotorOffsetX, 0, 0],
+    }),
+    bakeGeometry(new THREE.TorusGeometry(0.036, 0.006, 6, 18), {
+      rotation: [0, Math.PI / 2, 0],
+      position: [rotorOffsetX, 0, 0],
+    }),
+  ];
+  for (let index = 0; index < 6; index++) {
+    const angle = (index / 6) * Math.PI * 2 + Math.PI / 6;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    rotorParts.push(
+      tubeGeometryBetween(
+        [rotorOffsetX, cos * 0.03, sin * 0.03],
+        [rotorOffsetX, cos * 0.096, sin * 0.096],
+        0.005,
+        8,
+        0.78,
+      ),
+      bakeGeometry(new THREE.CylinderGeometry(0.006, 0.006, 0.012, 8), {
+        rotation: [0, 0, Math.PI / 2],
+        position: [rotorOffsetX + 0.007, cos * 0.046, sin * 0.046],
+      }),
+    );
+  }
+  const rotor = composeGeometry(...rotorParts);
+  const spokes = [];
+  for (let index = 0; index < 14; index++) {
+    const angle = (index / 14) * Math.PI * 2 + Math.PI / 14;
+    const end = [0, Math.cos(angle) * 0.382, Math.sin(angle) * 0.382];
+    spokes.push(tubeGeometryBetween([0, 0, 0], end, 0.006, 8, 0.72));
+  }
+  return [
+    { name: "tyre", geometry: tyre, materialRole: "equipment-rubber" },
+    { name: "aero-rim", geometry: rim, materialRole: "equipment-metal" },
+    { name: "hub", geometry: hub, materialRole: "equipment-dark" },
+    { name: "brake-rotor", geometry: rotor, materialRole: "equipment-metal" },
+    { name: "spokes", geometry: composeGeometry(...spokes), materialRole: "equipment-metal" },
+  ];
+}
+
+/** Bike-root coordinates match the current avatar group exactly. */
+function bikeFrameAssemblyParts() {
+  const bottomBracket = [0, 0.45, -0.05];
+  const seatCluster = [0, 1.21, -0.4];
+  const headBottom = [0, 1.0, 0.42];
+  const headTop = [0, 1.25, 0.5];
+  const rearAxle = [0, 0.45, -0.85];
+  const frontAxle = [0, 0.45, 0.85];
+  const mainFrame = composeGeometry(
+    tubeGeometryBetween(bottomBracket, headBottom, 0.055, 16, 0.85),
+    tubeGeometryBetween(bottomBracket, seatCluster, 0.052, 16, 0.88),
+    tubeGeometryBetween(seatCluster, headTop, 0.048, 16, 0.9),
+    tubeGeometryBetween(headBottom, headTop, 0.06, 16),
+  );
+  const stays = [];
+  for (const side of [-1, 1]) {
+    stays.push(
+      tubeGeometryBetween([side * 0.065, 0.45, -0.85], [side * 0.055, 0.45, -0.05], 0.027, 12),
+      tubeGeometryBetween([side * 0.065, 0.45, -0.85], [side * 0.055, 1.21, -0.4], 0.026, 12, 0.82),
+      tubeGeometryBetween([side * 0.043, 1.0, 0.42], [side * 0.046, 0.45, 0.85], 0.031, 14, 0.82),
+    );
+  }
+  // These endpoints intentionally match the runtime's explicit grip-contact
+  // anchors. The procedural anchors remain the authoritative hand-IK targets;
+  // the authored cockpit must meet them rather than creating a prettier bar a
+  // few decimetres ahead of the rider's hands.
+  const barCentre = [0, 1.25, 0.35];
+  const leftGripContact = [-0.32, 1.23, 0.39];
+  const rightGripContact = [0.32, 1.23, 0.39];
+  const cockpit = composeGeometry(
+    tubeGeometryBetween(headTop, barCentre, 0.028, 12),
+    tubeGeometryBetween([-0.36, 1.25, 0.35], [0.36, 1.25, 0.35], 0.03, 16),
+    tubeGeometryBetween([-0.34, 1.25, 0.35], leftGripContact, 0.022, 12),
+    tubeGeometryBetween([0.34, 1.25, 0.35], rightGripContact, 0.022, 12),
+  );
+  // The sculpted hoods and their lever blades meet the existing hand anchors
+  // exactly. They enrich the visible control hardware without becoming a new
+  // source of hand targets: the procedural contact nodes still drive arms.
+  const brakeHoodForms = [];
+  const brakeLeverForms = [];
+  for (const [side, contact] of [
+    [-1, leftGripContact],
+    [1, rightGripContact],
+  ]) {
+    const barEnd = [side * 0.34, 1.25, 0.35];
+    brakeHoodForms.push(
+      tubeGeometryBetween(barEnd, contact, 0.031, 14, 0.82),
+      ellipsoidGeometry([0.043, 0.052, 0.06], 18, 12, contact),
+    );
+    brakeLeverForms.push(
+      ridgeGeometry(
+        [
+          new THREE.Vector3(side * 0.365, 1.15, 0.49),
+          new THREE.Vector3(side * 0.362, 1.18, 0.45),
+          new THREE.Vector3(...contact),
+        ],
+        0.008,
+        10,
+        8,
+      ),
+    );
+  }
+  const brakeHoods = composeGeometry(...brakeHoodForms);
+  const brakeLevers = composeGeometry(...brakeLeverForms);
+
+  // Disc calipers sit at the actual rotor plane on the fork and rear stay.
+  // Keeping them in the static frame assembly preserves the wheel and crank
+  // animation groups while still making the braking system read as assembled.
+  const brakeCalipers = composeGeometry(
+    ellipsoidGeometry([0.052, 0.067, 0.042], 16, 11, [0.09, 0.67, 0.78]),
+    ellipsoidGeometry([0.042, 0.058, 0.038], 16, 11, [0.09, 0.59, -0.79]),
+    tubeGeometryBetween([0.077, 0.67, 0.78], [0.043, 0.9, 0.59], 0.014, 10, 0.8),
+    tubeGeometryBetween([0.077, 0.59, -0.79], [0.048, 1.0, -0.54], 0.014, 10, 0.8),
+    bakeGeometry(new THREE.CylinderGeometry(0.016, 0.016, 0.025, 10), {
+      rotation: [0, 0, Math.PI / 2],
+      position: [0.112, 0.67, 0.78],
+    }),
+    bakeGeometry(new THREE.CylinderGeometry(0.014, 0.014, 0.025, 10), {
+      rotation: [0, 0, Math.PI / 2],
+      position: [0.112, 0.59, -0.79],
+    }),
+  );
+
+  // A single visible-side chain line and compact stepped cassette establish
+  // the BikeErg's mechanical connection without a dense, noisy link mesh.
+  // The chain lives in frame-root coordinates; pedal rotation remains entirely
+  // owned by the separate drivetrain root.
+  const driveSideX = -0.078;
+  const chainAndCassetteForms = [
+    ridgeGeometry(
+      [
+        new THREE.Vector3(driveSideX, 0.585, -0.08),
+        new THREE.Vector3(driveSideX, 0.55, -0.43),
+        new THREE.Vector3(driveSideX, 0.515, -0.83),
+      ],
+      0.008,
+      12,
+      7,
+    ),
+    ridgeGeometry(
+      [
+        new THREE.Vector3(driveSideX, 0.315, -0.08),
+        new THREE.Vector3(driveSideX, 0.34, -0.43),
+        new THREE.Vector3(driveSideX, 0.37, -0.83),
+      ],
+      0.008,
+      12,
+      7,
+    ),
+    ellipsoidGeometry([0.03, 0.062, 0.048], 14, 10, [driveSideX - 0.012, 0.36, -0.77]),
+    tubeGeometryBetween([driveSideX - 0.012, 0.39, -0.77], [driveSideX, 0.43, -0.84], 0.012, 10),
+  ];
+  for (const [index, radius] of [0.052, 0.066, 0.081, 0.096].entries()) {
+    chainAndCassetteForms.push(
+      bakeGeometry(new THREE.TorusGeometry(radius, 0.006, 6, 24), {
+        rotation: [0, Math.PI / 2, 0],
+        position: [driveSideX - index * 0.009, rearAxle[1], rearAxle[2]],
+      }),
+    );
+  }
+  const chainAndCassette = composeGeometry(...chainAndCassetteForms);
+  const saddle = performanceSaddleGeometry();
+  saddle.translate(0, 1.24, -0.4);
+  const seatPost = tubeGeometryBetween([0, 1.18, -0.4], [0, 1.3, -0.4], 0.024, 12);
+  const forkCrown = ellipsoidGeometry([0.07, 0.07, 0.055], 16, 10, headBottom);
+  return [
+    { name: "main-triangle", geometry: mainFrame, materialRole: "equipment-painted" },
+    {
+      name: "stays-and-fork",
+      geometry: composeGeometry(...stays),
+      materialRole: "equipment-painted",
+    },
+    { name: "cockpit", geometry: cockpit, materialRole: "equipment-metal" },
+    { name: "brake-hoods", geometry: brakeHoods, materialRole: "equipment-dark" },
+    { name: "brake-levers", geometry: brakeLevers, materialRole: "equipment-metal" },
+    { name: "brake-calipers", geometry: brakeCalipers, materialRole: "equipment-dark" },
+    {
+      name: "chain-and-cassette",
+      geometry: chainAndCassette,
+      materialRole: "equipment-metal",
+    },
+    { name: "saddle", geometry: saddle, materialRole: "equipment-dark" },
+    { name: "seat-post", geometry: seatPost, materialRole: "equipment-metal" },
+    { name: "fork-crown", geometry: forkCrown, materialRole: "equipment-painted" },
+    {
+      name: "rear-axle",
+      geometry: ellipsoidGeometry([0.06, 0.035, 0.035], 14, 9, rearAxle),
+      materialRole: "equipment-metal",
+    },
+    {
+      name: "front-axle",
+      geometry: ellipsoidGeometry([0.06, 0.035, 0.035], 14, 9, frontAxle),
+      materialRole: "equipment-metal",
+    },
+  ];
+}
+
+/** Bike crank-root coordinates: the runtime still rotates this assembly about X. */
+function bikeDrivetrainAssemblyParts() {
+  const chainring = bakeGeometry(new THREE.TorusGeometry(0.16, 0.016, 8, 36), {
+    rotation: [0, Math.PI / 2, 0],
+  });
+  const spider = composeGeometry(
+    tubeGeometryBetween([0, -0.14, 0], [0, 0.14, 0], 0.012, 10),
+    tubeGeometryBetween([0, 0, -0.14], [0, 0, 0.14], 0.012, 10),
+  );
+  const crankArms = composeGeometry(
+    tubeGeometryBetween([0, 0, 0], [0, -0.215, 0], 0.018, 12, 0.82),
+    tubeGeometryBetween([0, 0, 0], [0, 0.215, 0], 0.018, 12, 0.82),
+  );
+  const pedals = [];
+  for (const side of [-1, 1]) {
+    const pedal = cliplessPedalGeometry();
+    // Match the procedural pedal/foot-contact radius exactly. The runtime
+    // still owns that contact solve even after this visible assembly replaces
+    // its fallback pedal meshes.
+    pedal.translate(side * 0.1, side * 0.21, 0);
+    pedals.push(pedal);
+  }
+  const spindle = bakeGeometry(new THREE.CylinderGeometry(0.04, 0.04, 0.22, 16), {
+    rotation: [0, 0, Math.PI / 2],
+  });
+  return [
+    { name: "chainring", geometry: chainring, materialRole: "equipment-metal" },
+    { name: "spider", geometry: spider, materialRole: "equipment-dark" },
+    { name: "crank-arms", geometry: crankArms, materialRole: "equipment-metal" },
+    {
+      name: "clipless-pedals",
+      geometry: composeGeometry(...pedals),
+      materialRole: "equipment-dark",
+    },
+    { name: "bottom-bracket", geometry: spindle, materialRole: "equipment-metal" },
+  ];
+}
+
+const MATERIAL_ROLES = new Set([
+  "athlete-skin",
+  "athlete-fabric",
+  "athlete-hair",
+  "athlete-footwear",
+  "equipment-painted",
+  "equipment-dark",
+  "equipment-light",
+  "equipment-metal",
+  "equipment-rubber",
+  "equipment-grip",
+  "equipment-trim",
+]);
+
+/**
+ * Add one v3-compatible legacy leaf.  The material itself remains deliberately
+ * neutral: the runtime selects theme, team/ghost identity and physical finish
+ * from the metadata role rather than importing baked colours from this GLB.
+ */
+function addLeafSlot(scene, slot, geometry, materialRole) {
+  if (!MATERIAL_ROLES.has(materialRole)) throw new Error(`Unknown material role: ${materialRole}`);
   const mesh = new THREE.Mesh(geometry, PLACEHOLDER);
   mesh.name = slot;
   mesh.userData.replayAssetSlot = slot;
+  mesh.userData.replayAssetKind = "leaf";
+  mesh.userData.replayMaterialRole = materialRole;
   scene.add(mesh);
 }
 
+/**
+ * V3 composite roots are stable, transform-free local templates. Each child
+ * bakes its placement into geometry, so a renderer can clone the whole root
+ * into an existing equipment group without introducing a second animation
+ * hierarchy or per-frame asset work.
+ */
+function addCompositeTemplate(scene, template, parts) {
+  const root = new THREE.Group();
+  root.name = template;
+  root.userData.replayAssetTemplateSlot = template;
+  root.userData.replayAssetKind = "composite";
+  root.userData.replayAssetVersion = 3;
+  root.userData.replayAssetPartCount = parts.length;
+  root.userData.replayMaterialRoles = [...new Set(parts.map((part) => part.materialRole))].sort(
+    (left, right) => left.localeCompare(right),
+  );
+  for (const part of parts) {
+    if (!MATERIAL_ROLES.has(part.materialRole)) {
+      throw new Error(`Unknown material role: ${part.materialRole}`);
+    }
+    const mesh = new THREE.Mesh(part.geometry, PLACEHOLDER);
+    mesh.name = `${template}:${part.name}`;
+    mesh.userData.replayAssetTemplateSlot = template;
+    mesh.userData.replayAssetPart = part.name;
+    mesh.userData.replayMaterialRole = part.materialRole;
+    root.add(mesh);
+  }
+  scene.add(root);
+}
+
+/** Bake an authoring transform into a geometry; v3 nodes retain identity TRS. */
+function bakeGeometry(geometry, { position, rotation, scale } = {}) {
+  if (scale) geometry.scale(scale[0], scale[1], scale[2]);
+  if (rotation?.[0]) geometry.rotateX(rotation[0]);
+  if (rotation?.[1]) geometry.rotateY(rotation[1]);
+  if (rotation?.[2]) geometry.rotateZ(rotation[2]);
+  if (position) geometry.translate(position[0], position[1], position[2]);
+  return flatGeometry(geometry);
+}
+
+/** A smooth tube constructed between two locally authored points. */
+function tubeGeometryBetween(start, end, radius, radialSegments = 14, taper = 1) {
+  const from = new THREE.Vector3(...start);
+  const to = new THREE.Vector3(...end);
+  const direction = to.clone().sub(from);
+  const length = direction.length();
+  if (length < 1e-5) throw new Error("tube endpoints must be distinct");
+  const geometry = new THREE.CylinderGeometry(radius * taper, radius, length, radialSegments, 2);
+  geometry.applyQuaternion(
+    new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()),
+  );
+  geometry.translate((from.x + to.x) * 0.5, (from.y + to.y) * 0.5, (from.z + to.z) * 0.5);
+  return flatGeometry(geometry);
+}
+
+function ellipsoidGeometry(radius, segments = 18, rings = 12, position = [0, 0, 0]) {
+  return bakeGeometry(new THREE.SphereGeometry(1, segments, rings), {
+    scale: radius,
+    position,
+  });
+}
+
 const scene = new THREE.Scene();
-scene.name = "ROWPLAY_RIG_ASSET_LIBRARY_V2";
+scene.name = "ROWPLAY_RIG_ASSET_LIBRARY_V3";
 
 // Coherent athlete shells. Normalized parts are fitted to the existing rig
 // transforms at runtime; the shoe/neck/equipment slots use authored metre sizes.
 // Rings bias toward a broadcast sports-illustration silhouette: broad back,
 // clear waist, directional head, and soft joint-overlap on limbs so the
 // chase camera never reads ball-joint mannequin seams.
-addSlot(
+addLeafSlot(
   scene,
   "athlete:torso",
   loftGeometry(
@@ -544,8 +1057,9 @@ addSlot(
     "y",
     0,
   ),
+  "athlete-fabric",
 );
-addSlot(
+addLeafSlot(
   scene,
   "athlete:pelvis",
   loftGeometry(
@@ -562,8 +1076,9 @@ addSlot(
     "y",
     0,
   ),
+  "athlete-fabric",
 );
-addSlot(
+addLeafSlot(
   scene,
   "athlete:head",
   loftGeometry(
@@ -583,8 +1098,9 @@ addSlot(
     "y",
     Math.PI / 10,
   ),
+  "athlete-skin",
 );
-addSlot(
+addLeafSlot(
   scene,
   "athlete:hair",
   loftGeometry(
@@ -601,6 +1117,7 @@ addSlot(
     "y",
     Math.PI / 10,
   ),
+  "athlete-hair",
 );
 
 const limbSlots = [
@@ -616,13 +1133,18 @@ const limbSlots = [
   ["athlete:shin", { proximalX: 0.74, proximalY: 0.64, distalX: 0.42, distalY: 0.36, belly: 1.1 }],
 ];
 for (const [slot, proportions] of limbSlots) {
-  addSlot(scene, slot, anatomicalLimbGeometry(proportions));
+  addLeafSlot(
+    scene,
+    slot,
+    anatomicalLimbGeometry(proportions),
+    slot === "athlete:upper-arm" || slot === "athlete:forearm" ? "athlete-skin" : "athlete-fabric",
+  );
 }
 
-addSlot(scene, "athlete:hand", clenchedHandGeometry());
-addSlot(scene, "athlete:elbow", elbowFlexCuffGeometry());
-addSlot(scene, "athlete:shoe", performanceShoeGeometry());
-addSlot(
+addLeafSlot(scene, "athlete:hand", clenchedHandGeometry(), "athlete-skin");
+addLeafSlot(scene, "athlete:elbow", elbowFlexCuffGeometry(), "athlete-skin");
+addLeafSlot(scene, "athlete:shoe", performanceShoeGeometry(), "athlete-footwear");
+addLeafSlot(
   scene,
   "athlete:neck",
   loftGeometry(
@@ -637,8 +1159,9 @@ addSlot(
     "y",
     0,
   ),
+  "athlete-skin",
 );
-addSlot(
+addLeafSlot(
   scene,
   "athlete:shoulder",
   loftGeometry(
@@ -655,8 +1178,9 @@ addSlot(
     "x",
     Math.PI / 7,
   ),
+  "athlete-fabric",
 );
-addSlot(
+addLeafSlot(
   scene,
   "athlete:helmet",
   composeGeometry(
@@ -684,59 +1208,24 @@ addSlot(
       8,
     ),
   ),
+  "athlete-fabric",
 );
 
-// Sport equipment templates. They are deliberately texture-free and reuse the
-// existing contact/motion nodes; only their visible shells are replaced.
-addSlot(
-  scene,
-  "equipment:row:hull",
-  loftGeometry(
-    [
-      { p: -1.9, rx: 0.03, rz: 0.026 },
-      { p: -1.7, rx: 0.11, rz: 0.09 },
-      { p: -1.38, rx: 0.23, rz: 0.17 },
-      { p: -0.9, rx: 0.32, rz: 0.23 },
-      { p: -0.32, rx: 0.37, rz: 0.26 },
-      { p: 0.36, rx: 0.35, rz: 0.245 },
-      { p: 0.96, rx: 0.28, rz: 0.2 },
-      { p: 1.42, rx: 0.19, rz: 0.14 },
-      { p: 1.72, rx: 0.1, rz: 0.078 },
-      { p: 1.9, rx: 0.018, rz: 0.022 },
-    ],
-    20,
-    "y",
-    Math.PI / 9,
-  ),
-);
-addSlot(scene, "equipment:row:blade", scullBladeGeometry());
-addSlot(scene, "equipment:ski:ski", nordicSkiGeometry());
-addSlot(scene, "equipment:ski:pole-shaft", nordicPoleShaftGeometry());
-addSlot(scene, "equipment:ski:pole-grip", nordicPoleGripGeometry());
-addSlot(scene, "equipment:ski:pole-basket", nordicPoleBasketGeometry());
-addSlot(scene, "equipment:bike:tyre", slickAeroTyreGeometry(0.45, 0.06));
-addSlot(
-  scene,
-  "equipment:bike:frame-tube",
-  loftGeometry(
-    [
-      { p: -0.53, rx: 0.56, rz: 0.48 },
-      { p: -0.47, rx: 0.72, rz: 0.58 },
-      { p: -0.37, rx: 0.9, rz: 0.68 },
-      { p: -0.2, rx: 1.04, rz: 0.78 },
-      { p: 0.02, rx: 1.08, rz: 0.8 },
-      { p: 0.22, rx: 1.0, rz: 0.76 },
-      { p: 0.38, rx: 0.86, rz: 0.66 },
-      { p: 0.48, rx: 0.64, rz: 0.52 },
-      { p: 0.53, rx: 0.5, rz: 0.42 },
-    ],
-    16,
-    "z",
-    Math.PI / 6,
-  ),
-);
-addSlot(scene, "equipment:bike:saddle", performanceSaddleGeometry());
-addSlot(scene, "equipment:bike:pedal", cliplessPedalGeometry());
+// Eighteen compatibility leaves retain the exact athlete and contact-bound
+// part contract. The high-visibility equipment now uses six canonical roots
+// so its nested structure survives authoring instead of being crushed into a
+// single fallback AABB at runtime.
+addLeafSlot(scene, "equipment:row:blade", scullBladeGeometry(), "equipment-painted");
+addLeafSlot(scene, "equipment:ski:pole-shaft", nordicPoleShaftGeometry(), "equipment-light");
+addLeafSlot(scene, "equipment:ski:pole-grip", nordicPoleGripGeometry(), "equipment-grip");
+addLeafSlot(scene, "equipment:ski:pole-basket", nordicPoleBasketGeometry(), "equipment-painted");
+
+addCompositeTemplate(scene, "equipment:row:boat-assembly", rowBoatAssemblyParts());
+addCompositeTemplate(scene, "equipment:row:oar-rig", rowOarRigParts());
+addCompositeTemplate(scene, "equipment:ski:ski-assembly", skiAssemblyParts());
+addCompositeTemplate(scene, "equipment:bike:wheel-assembly", bikeWheelAssemblyParts());
+addCompositeTemplate(scene, "equipment:bike:frame-assembly", bikeFrameAssemblyParts());
+addCompositeTemplate(scene, "equipment:bike:drivetrain-assembly", bikeDrivetrainAssemblyParts());
 
 const exporter = new GLTFExporter();
 const result = await exporter.parseAsync(scene, {

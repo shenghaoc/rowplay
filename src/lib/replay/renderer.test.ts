@@ -369,8 +369,8 @@ describe("CourseRenderer stroke pose input", () => {
           if (sport === "rower") {
             return (
               operation.method === "fillRect" &&
-              operation.args[2] === 84 &&
-              operation.args[3] === 20
+              operation.args[2] === 29 &&
+              operation.args[3] === 14
             );
           }
           if (sport === "bike") {
@@ -378,10 +378,10 @@ describe("CourseRenderer stroke pose input", () => {
               operation.method === "fillRect" && operation.args[2] === 14 && operation.args[3] === 7
             );
           }
+          // The alpine ridgeline is intentionally smooth rather than a
+          // faceted triangle, so use the fixed timing cabin as the landmark.
           return (
-            operation.method === "lineTo" &&
-            typeof operation.args[1] === "number" &&
-            Math.abs(operation.args[1] - (300 * 0.445 - 62)) < 1e-6
+            operation.method === "fillRect" && operation.args[2] === 70 && operation.args[3] === 22
           );
         });
         expect(landmark, `${sport} landmark not drawn`).toBeDefined();
@@ -438,6 +438,49 @@ describe("CourseRenderer stroke pose input", () => {
       ).toBeGreaterThanOrEqual(6);
     },
   );
+
+  it("grounds each sport with its own contact footprint instead of one generic pod shadow", () => {
+    const expectedContact: Record<Sport, readonly [number, number]> = {
+      rower: [31, 3.2],
+      skierg: [8.3, 1.35],
+      bike: [7.2, 1.2],
+    };
+    const close = (actual: unknown, expected: number) =>
+      typeof actual === "number" && Math.abs(actual - expected) < 1e-8;
+
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const { ctx } = makeCtx();
+      const canvas = {
+        getContext: (kind: string) => (kind === "2d" ? ctx : null),
+      } as unknown as HTMLCanvasElement;
+      const renderer = new CourseRenderer(canvas);
+      renderer.resize(640, 180);
+      const testRenderer = renderer as unknown as {
+        drawAvatar(options: Record<string, unknown>): void;
+        liveSplash: unknown;
+      };
+      const state = makeState(sport, false);
+      testRenderer.drawAvatar({
+        x: 200,
+        y: 100,
+        accent: COLORS_LIGHT.live,
+        phase: state.strokePose.phase,
+        meters: state.frame.d,
+        pose: state.strokePose,
+        spm: state.frame.spm,
+        isYou: true,
+        sport,
+        label: sport,
+        splash: testRenderer.liveSplash,
+      });
+
+      const [radiusX, radiusY] = expectedContact[sport];
+      const contactEllipses = copiedCalls(ctx, "ellipse").filter(
+        ([, , actualX, actualY]) => close(actualX, radiusX) && close(actualY, radiusY),
+      );
+      expect(contactEllipses.length).toBeGreaterThanOrEqual(sport === "rower" ? 1 : 2);
+    }
+  });
 
   it("emits catch particles at the solved row blade and ski basket sides", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.5);
@@ -567,13 +610,14 @@ describe("CourseRenderer stroke pose input", () => {
       operations.some((operation, index) => {
         const next = operations[index + 1];
         return (
-          operation.method === "lineTo" &&
+          operation.method === "quadraticCurveTo" &&
           next?.method === "lineTo" &&
-          close(((operation.args[0] as number) + (next.args[0] as number)) * 0.5, point.x) &&
-          close(((operation.args[1] as number) + (next.args[1] as number)) * 0.5, point.y)
+          close(((operation.args[2] as number) + (next.args[0] as number)) * 0.5, point.x) &&
+          close(((operation.args[3] as number) + (next.args[1] as number)) * 0.5, point.y)
         );
       });
-    // The distal edges of both tapered shins average to the exact pedal anchor.
+    // The curved distal edge of both tapered shins still averages to the
+    // exact pedal anchor; the softened limb silhouette must not loosen contact.
     expect(hasLimbEndpointAt(far)).toBe(true);
     expect(hasLimbEndpointAt(near)).toBe(true);
 
@@ -582,6 +626,7 @@ describe("CourseRenderer stroke pose input", () => {
     const handContacts = operations.filter(
       ({ method, args }) =>
         method === "arc" &&
+        (close(args[2], 0.94) || close(args[2], 1.02)) &&
         ((close(args[0], barX - 0.45) && close(args[1], barY - 0.35)) ||
           (close(args[0], barX) && close(args[1], barY))),
     );
@@ -639,7 +684,7 @@ describe("CourseRenderer stroke pose input", () => {
 
     testRenderer.drawAvatar(base);
     const sameDistanceA = spokeEndpoints();
-    expect(sameDistanceA).toHaveLength(8);
+    expect(sameDistanceA).toHaveLength(12);
     (ctx.lineTo as unknown as ReturnType<typeof vi.fn>).mockClear();
     testRenderer.drawAvatar({ ...base, phase: poseB.phase, pose: poseB, spm: 95 });
     const sameDistanceB = spokeEndpoints();
@@ -740,7 +785,7 @@ describe("CourseRenderer stroke pose input", () => {
     drawAt(meters + (Math.PI / 2) * 0.34);
     const quarterTurnMarkers = markerCenters();
     expect(quarterTurnMarkers).toHaveLength(2);
-    // Four identical spokes repeat after PI / 2; one tracked marker does not.
+    // Six identical spokes repeat after PI / 3; one tracked marker does not.
     expect(quarterTurnMarkers).not.toEqual(initialMarkers);
   });
 

@@ -256,3 +256,20 @@ claimed as aesthetic evidence.
 - The accepted frames have only P3 visual constraints. The missing release
   evidence above remains an open P1 documentation/acceptance item while the PR
   is a draft; the project-root `design-qa.md` records that distinction.
+
+## Current draft verification — 2026-07-19
+
+The current V3 draft was checked in the in-app browser against the real demo
+replay route. The Canvas BikeErg at `/replay/1004` was observed paused and in
+motion: the athlete, handlebar, face profile, and front wheel all point toward
+the right-side finish, while the signed clockwise wheel/crank convention and
+oppositely travelling road marks preserve rightward forward motion. No direction
+flip was made because it would make the physical roll incorrect.
+
+The associated V3 3D review covered the RowErg pull, SkiErg planted-pole phase,
+and BikeErg assembly: hands remain at their contact anchors, RowErg grips remain
+clear of the torso, SkiErg baskets remain course-anchored while the athlete
+advances, and the bicycle reads as a continuous wheel/frame/drivetrain rather
+than a stack of primitives. The final replay-console check reported no warnings
+or errors. This is draft visual evidence, not a claim of photorealism or a
+substitute for the still-open complete release capture matrix above.

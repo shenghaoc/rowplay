@@ -4,25 +4,37 @@ import * as THREE from "three";
 import {
   applyReplayAssetLibrary,
   collectReplayAssetLibrary,
+  collectReplayAssetTemplateLibrary,
+  disposeReplayAssetTemplateLibrary,
   fetchReplayAssetLibrary,
+  fetchReplayAssetTemplateLibrary,
   hideWithReplayAssets,
   loadReplayAssetLibrary,
   REPLAY_ASSET_PATH,
+  REPLAY_ASSET_V3_PATH,
   REQUIRED_REPLAY_ASSET_SLOTS,
+  REQUIRED_REPLAY_ASSET_V3_LEAF_SLOTS,
   resetReplayAssetLibraryCache,
   setReplayAssetSlot,
+  setReplayAssetTemplateAnchor,
   type ReplayAssetLibrary,
+  type ReplayAssetMaterialRole,
   type ReplayAssetSlot,
+  type ReplayAssetTemplateLibrary,
 } from "./renderer3dAssets";
 
 let assetBytes: Uint8Array;
+let v3AssetBytes: Uint8Array;
 
 beforeAll(async () => {
-  const bytes = await readFile(
-    new URL("../../../static/replay-assets/rowplay-rigs-v2.glb", import.meta.url),
-  );
-  assetBytes = new Uint8Array(bytes.byteLength);
-  assetBytes.set(bytes);
+  const [v2Bytes, v3Bytes] = await Promise.all([
+    readFile(new URL("../../../static/replay-assets/rowplay-rigs-v2.glb", import.meta.url)),
+    readFile(new URL("../../../static/replay-assets/rowplay-rigs-v3.glb", import.meta.url)),
+  ]);
+  assetBytes = new Uint8Array(v2Bytes.byteLength);
+  assetBytes.set(v2Bytes);
+  v3AssetBytes = new Uint8Array(v3Bytes.byteLength);
+  v3AssetBytes.set(v3Bytes);
 });
 
 afterEach(() => {
@@ -32,6 +44,15 @@ afterEach(() => {
 function assetResponse(): Response {
   const body = new Uint8Array(assetBytes.byteLength);
   body.set(assetBytes);
+  return new Response(body, {
+    status: 200,
+    headers: { "content-type": "model/gltf-binary" },
+  });
+}
+
+function v3AssetResponse(): Response {
+  const body = new Uint8Array(v3AssetBytes.byteLength);
+  body.set(v3AssetBytes);
   return new Response(body, {
     status: 200,
     headers: { "content-type": "model/gltf-binary" },
@@ -58,6 +79,79 @@ function radialExtentNearZ(
     );
   }
   return extent;
+}
+
+interface TemplatePart {
+  name: string;
+  role: ReplayAssetMaterialRole;
+  geometry?: THREE.BufferGeometry;
+}
+
+function compositeScene(
+  templates: ReadonlyArray<{ slot: string; parts: readonly TemplatePart[] }>,
+  sourceMaterial = new THREE.MeshStandardMaterial({ color: 0x6d7482 }),
+): THREE.Scene {
+  const scene = new THREE.Scene();
+  for (const { slot, parts } of templates) {
+    const root = new THREE.Group();
+    root.name = slot;
+    root.userData.replayAssetTemplateSlot = slot;
+    root.userData.replayAssetKind = "composite";
+    root.userData.replayAssetVersion = 3;
+    root.userData.replayAssetPartCount = parts.length;
+    root.userData.replayMaterialRoles = [...new Set(parts.map((part) => part.role))].sort();
+    for (const part of parts) {
+      const mesh = new THREE.Mesh(part.geometry ?? new THREE.BoxGeometry(1, 1, 1), sourceMaterial);
+      mesh.name = `${slot}:${part.name}`;
+      mesh.userData.replayAssetTemplateSlot = slot;
+      mesh.userData.replayAssetPart = part.name;
+      mesh.userData.replayMaterialRole = part.role;
+      root.add(mesh);
+    }
+    scene.add(root);
+  }
+  for (const slot of REQUIRED_REPLAY_ASSET_V3_LEAF_SLOTS) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), sourceMaterial);
+    mesh.name = slot;
+    mesh.userData.replayAssetSlot = slot;
+    scene.add(mesh);
+  }
+  return scene;
+}
+
+function templateInstance(anchor: THREE.Object3D): THREE.Object3D {
+  const instance = anchor.children.find(
+    (child) => typeof child.userData.authoredReplayAssetTemplate === "string",
+  );
+  if (!instance) throw new Error("Expected an attached replay asset template");
+  return instance;
+}
+
+function templateMeshes(root: THREE.Object3D): THREE.Mesh[] {
+  const meshes: THREE.Mesh[] = [];
+  root.traverse((object) => {
+    if (object instanceof THREE.Mesh) meshes.push(object);
+  });
+  return meshes;
+}
+
+function disposeTemplateInstance(root: THREE.Object3D): void {
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    object.geometry.dispose();
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) material.dispose();
+  });
+  root.removeFromParent();
+}
+
+function disposeScene(scene: THREE.Object3D): void {
+  scene.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    object.geometry.dispose();
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) material.dispose();
+  });
 }
 
 describe("replay asset pack", () => {
@@ -287,5 +381,212 @@ describe("applyReplayAssetLibrary", () => {
     leg.geometry.dispose();
     armTemplate.dispose();
     legTemplate.dispose();
+  });
+});
+
+describe("V3 composite replay templates", () => {
+  it("loads the checked-in V3 manifest, compatibility leaves, and composite roots", async () => {
+    const fetchMock = vi.fn(async () => v3AssetResponse());
+    const library = await fetchReplayAssetTemplateLibrary(fetchMock);
+
+    expect(fetchMock).toHaveBeenCalledWith(REPLAY_ASSET_V3_PATH);
+    expect(library.byteLength).toBe(v3AssetBytes.byteLength);
+    expect([...library.geometries.keys()]).toEqual(REQUIRED_REPLAY_ASSET_V3_LEAF_SLOTS);
+    expect(library.v3LeafSlotsComplete).toBe(true);
+    expect(library.manifest.templates.map((template) => template.template)).toEqual([
+      "equipment:bike:drivetrain-assembly",
+      "equipment:bike:frame-assembly",
+      "equipment:bike:wheel-assembly",
+      "equipment:row:boat-assembly",
+      "equipment:row:oar-rig",
+      "equipment:ski:ski-assembly",
+    ]);
+    for (const template of library.templates.values()) {
+      expect(template.manifest.partCount).toBeGreaterThan(0);
+      expect(template.manifest.materialRoles.length).toBeGreaterThan(0);
+      expect(template.root.position).toEqual([0, 0, 0]);
+      expect(template.root.quaternion).toEqual([0, 0, 0, 1]);
+      expect(template.root.scale).toEqual([1, 1, 1]);
+    }
+
+    disposeReplayAssetTemplateLibrary(library);
+  });
+
+  it("collects a validated manifest from composite roots without retaining source materials", () => {
+    const sourceMaterial = new THREE.MeshStandardMaterial({ color: 0x9f8464 });
+    const scene = compositeScene(
+      [
+        {
+          slot: "equipment:row:boat",
+          parts: [
+            { name: "hull", role: "equipment-painted" },
+            { name: "rigger", role: "equipment-metal" },
+          ],
+        },
+      ],
+      sourceMaterial,
+    );
+
+    const library = collectReplayAssetTemplateLibrary(scene, 123);
+    expect(library.version).toBe(3);
+    expect(library.byteLength).toBe(123);
+    expect([...library.geometries.keys()]).toEqual(REQUIRED_REPLAY_ASSET_V3_LEAF_SLOTS);
+    expect(library.manifest).toEqual({
+      version: 3,
+      templates: [
+        {
+          template: "equipment:row:boat",
+          partCount: 2,
+          materialRoles: ["equipment-metal", "equipment-painted"],
+        },
+      ],
+    });
+    const template = library.templates.get("equipment:row:boat");
+    expect(template?.root.children).toHaveLength(2);
+    expect(template?.root.children[0]).not.toHaveProperty("material");
+    expect(template?.root.children[0].geometry).not.toBe(
+      (scene.children[0].children[0] as THREE.Mesh).geometry,
+    );
+
+    disposeReplayAssetTemplateLibrary(library);
+    disposeScene(scene);
+  });
+
+  it("fails closed when the V3 articulation leaf contract is incomplete", () => {
+    const scene = compositeScene([
+      {
+        slot: "equipment:row:boat",
+        parts: [{ name: "hull", role: "equipment-painted" }],
+      },
+    ]);
+    const missing = scene.children.find(
+      (child) => child.userData.replayAssetSlot === "athlete:helmet",
+    );
+    missing?.removeFromParent();
+
+    expect(() => collectReplayAssetTemplateLibrary(scene)).toThrow(
+      "Replay asset pack is missing slots: athlete:helmet",
+    );
+
+    disposeScene(scene);
+    if (missing instanceof THREE.Mesh) missing.geometry.dispose();
+  });
+
+  it("clones v3 template geometry and resolver materials independently for live and ghost anchors", () => {
+    const sourceMaterial = new THREE.MeshStandardMaterial({ color: 0x9f8464 });
+    const scene = compositeScene(
+      [
+        {
+          slot: "equipment:row:boat",
+          parts: [
+            { name: "hull", role: "equipment-painted" },
+            { name: "rigger", role: "equipment-metal" },
+          ],
+        },
+      ],
+      sourceMaterial,
+    );
+    const library = collectReplayAssetTemplateLibrary(scene);
+    const root = new THREE.Group();
+    const liveAnchor = new THREE.Group();
+    const ghostAnchor = new THREE.Group();
+    const liveFallback = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+    const ghostFallback = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+    liveAnchor.add(liveFallback);
+    ghostAnchor.add(ghostFallback);
+    root.add(liveAnchor, ghostAnchor);
+    setReplayAssetTemplateAnchor(liveAnchor, "equipment:row:boat", { fallback: [liveFallback] });
+    setReplayAssetTemplateAnchor(ghostAnchor, "equipment:row:boat", {
+      fallback: [ghostFallback],
+    });
+    const runtimeMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x1b8cc7,
+      roughness: 0.28,
+      clearcoat: 0.38,
+    });
+    const resolver = vi.fn((role: ReplayAssetMaterialRole, target: THREE.Object3D) => {
+      expect(target === liveAnchor || target === ghostAnchor).toBe(true);
+      return role === "equipment-painted" || role === "equipment-metal" ? runtimeMaterial : null;
+    });
+
+    expect(applyReplayAssetLibrary(root, library, resolver)).toBe(4);
+    expect(liveFallback.visible).toBe(false);
+    expect(ghostFallback.visible).toBe(false);
+    const liveInstance = templateInstance(liveAnchor);
+    const ghostInstance = templateInstance(ghostAnchor);
+    const liveMeshes = templateMeshes(liveInstance);
+    const ghostMeshes = templateMeshes(ghostInstance);
+    expect(liveMeshes).toHaveLength(2);
+    expect(ghostMeshes).toHaveLength(2);
+    expect(liveMeshes[0].geometry).not.toBe(ghostMeshes[0].geometry);
+    expect(liveMeshes[0].geometry).not.toBe(
+      library.templates.get("equipment:row:boat")?.root.children[0].geometry,
+    );
+    expect(liveMeshes[0].material).not.toBe(runtimeMaterial);
+    expect(liveMeshes[0].material).not.toBe(sourceMaterial);
+    expect((liveMeshes[0].material as THREE.MeshPhysicalMaterial).clearcoat).toBeCloseTo(0.38);
+    const ghostGeometryDisposed = vi.fn();
+    ghostMeshes[0].geometry.addEventListener("dispose", ghostGeometryDisposed);
+    liveMeshes[0].geometry.dispose();
+    expect(ghostGeometryDisposed).not.toHaveBeenCalled();
+    expect(resolver).toHaveBeenCalledWith(
+      "equipment-painted",
+      liveAnchor,
+      expect.objectContaining({ template: "equipment:row:boat" }),
+    );
+
+    disposeTemplateInstance(liveInstance);
+    disposeTemplateInstance(ghostInstance);
+    liveFallback.geometry.dispose();
+    ghostFallback.geometry.dispose();
+    runtimeMaterial.dispose();
+    disposeReplayAssetTemplateLibrary(library);
+    disposeScene(scene);
+  });
+
+  it("only hides the exact fallback whose v3 template resolves, leaving partial fallback intact", () => {
+    const scene = compositeScene([
+      {
+        slot: "equipment:row:boat",
+        parts: [{ name: "hull", role: "equipment-painted" }],
+      },
+      {
+        slot: "equipment:bike:frame",
+        parts: [{ name: "frame", role: "equipment-metal" }],
+      },
+    ]);
+    const library = collectReplayAssetTemplateLibrary(scene) as ReplayAssetTemplateLibrary;
+    const root = new THREE.Group();
+    const boatAnchor = new THREE.Group();
+    const bikeAnchor = new THREE.Group();
+    const boatFallback = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+    const bikeFallback = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+    boatAnchor.add(boatFallback);
+    bikeAnchor.add(bikeFallback);
+    root.add(boatAnchor, bikeAnchor);
+    setReplayAssetTemplateAnchor(boatAnchor, "equipment:row:boat", { fallback: [boatFallback] });
+    setReplayAssetTemplateAnchor(bikeAnchor, "equipment:bike:frame", { fallback: [bikeFallback] });
+    const runtimeMaterial = new THREE.MeshStandardMaterial({ color: 0x296f9f });
+
+    expect(
+      applyReplayAssetLibrary(root, library, (role) =>
+        role === "equipment-painted" ? runtimeMaterial : null,
+      ),
+    ).toBe(1);
+    expect(boatFallback.visible).toBe(false);
+    expect(bikeFallback.visible).toBe(true);
+    expect(() => templateInstance(bikeAnchor)).toThrow(
+      "Expected an attached replay asset template",
+    );
+    expect(String(bikeAnchor.userData.authoredReplayAssetTemplateError)).toContain(
+      "material resolver failed",
+    );
+
+    disposeTemplateInstance(templateInstance(boatAnchor));
+    boatFallback.geometry.dispose();
+    bikeFallback.geometry.dispose();
+    runtimeMaterial.dispose();
+    disposeReplayAssetTemplateLibrary(library);
+    disposeScene(scene);
   });
 });

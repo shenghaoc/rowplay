@@ -124,19 +124,22 @@ recovery, and BikeErg separates cadence-driven cranks from distance-driven
 wheel roll.
 
 The 2D view draws a lightweight procedural athlete. The 3D view can load a
-compact repository-owned low-poly geometry pack created specifically for
-rowplay and fit its authored athlete and sport-equipment shells onto the same
-contact-driven rig. The asset changes visible form, not timing or kinematics:
-hands and feet remain at equipment contacts, live and ghost athletes use
-independent instances, and runtime materials retain theme and lane identity. If
-the local asset cannot load, procedural 3D remains available, and Canvas 2D is
-the stable outer fallback. The figure remains generic; the asset contains no
-scan, avatar-generator output, user image, body profile, clothing profile, or
-athlete likeness.
+compact repository-owned geometry pack created specifically for rowplay and fit
+its authored athlete shells and multi-part sport-equipment assemblies onto the
+same contact-driven rig. The asset changes visible form, not timing or
+kinematics: hands and feet remain at equipment contacts, live and ghost athletes
+use independent instances, and runtime materials retain theme and lane identity.
+Fabric, painted composite, metal, rubber, grips, and trim keep their own visual
+response rather than being recolored as one plastic block. If the local asset
+cannot load, procedural 3D remains available, and Canvas 2D is the stable outer
+fallback. The figure remains generic; the asset contains no scan,
+avatar-generator output, user image, body profile, clothing profile, or athlete
+likeness.
 
 The current 3D package makes the anatomical and equipment contracts visible:
-limb shells taper from their proximal to distal end, fitted elbow cuffs bridge
-deep arm flex, and SkiErg shafts, grips, and baskets remain a rigid assembly.
+limb shells taper from their proximal to distal end, orientable fitted elbow
+cuffs bridge deep arm flex, and the equipment builds as coherent assemblies—a
+boat and oar rig, Nordic skis, and a continuous bicycle wheel/frame/drivetrain.
 During the illustrated SkiErg plant, each basket holds a deterministic course
 anchor while the hands remain on the grips. These are deliberate illustrative
 motion constraints, not measured joint or force data from Concept2.
@@ -148,8 +151,8 @@ snowbank, evergreen, alpine, and Nordic-venue forms; BikeErg uses a deliberate
 asphalt or velodrome-style circuit with curbs, barriers, infield, and built-venue
 or floodlight cues. The 2D view composes sky, horizon, middle distance, course,
 and foreground layers. The 3D view adds atmospheric depth, a readable horizon,
-sport-specific materials, and low-poly surrounding scenery so the athlete is
-grounded in a venue rather than floating on a plane.
+smooth compound scenery, material-specific terrain variation, and sport-specific
+surfaces so the athlete is grounded in a venue rather than floating on a plane.
 
 The venue, weather, light, trees, mountains, shoreline, and structures are
 generic presentation art. Concept2 does not provide route geography, venue,

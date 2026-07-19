@@ -94,8 +94,17 @@ function destroyFailedRenderer(renderer: CourseRenderer3D | null): void {
 
 /** Keep Three.js and GLTFLoader behind the same user-triggered 3D boundary. */
 async function loadDefaultReplayAssets(): Promise<ReplayAssetLibrary> {
-  const { loadReplayAssetLibrary } = await import("./renderer3dAssets");
-  return loadReplayAssetLibrary();
+  const { loadReplayAssetLibrary, loadReplayAssetTemplateLibrary } =
+    await import("./renderer3dAssets");
+  try {
+    // V3 is the current high-detail contract: it preserves the dynamic leaf
+    // shells while adding anchored composite equipment. If an interrupted
+    // deploy leaves that optional file unavailable, the validated v2 library
+    // still improves the athlete rather than forcing a visible regression.
+    return await loadReplayAssetTemplateLibrary();
+  } catch {
+    return loadReplayAssetLibrary();
+  }
 }
 
 export async function createRenderer3D(

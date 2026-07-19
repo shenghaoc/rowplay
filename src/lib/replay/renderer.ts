@@ -161,7 +161,11 @@ const WATER_H = 34;
 const POD_R = 9;
 const BOB_AMP = 4.6;
 /** Keep the athlete as the primary read inside the taller authored venue. */
-const ATHLETE_SCALE = 2.15;
+// Canvas is the overview renderer, but it still needs enough visual mass for
+// anatomy, contact hardware, and material separation to survive a high-DPI
+// desktop or a narrow phone. This is deliberately modest: the course remains
+// an overview rather than becoming a second chase camera.
+const ATHLETE_SCALE = 2.32;
 /** Forward/back hull surge per stroke (px), per sport. Bike pedals smoothly. */
 const SURGE_PX: Record<Sport, number> = { rower: 6.4, skierg: 3.4, bike: 0 };
 /** Splash droplets per lane; small and brief, so a tiny pool suffices. */
@@ -175,6 +179,7 @@ const SKI_GROOVE_DASH = [6, 7];
 const BIKE_CURB_DASH = [8, 8];
 const BIKE_LANE_DASH = [12, 8];
 const SOLID_LINE: number[] = [];
+const BIKE_WHEEL_SPOKE_COUNT = 6;
 /** Stable mid-drive pose used when decorative athlete motion is reduced. */
 const REDUCED_POSE_PHASE = Math.PI * 0.5;
 /** One shared readable pose for 2D/3D when decorative motion is reduced. */
@@ -506,9 +511,9 @@ export function solveRigidOar2D(
 
 /** Approximate scaled silhouette height above the contact line for HUD clearance. */
 export const ATHLETE_TOP_CLEARANCE_2D: Readonly<Record<Sport, number>> = {
-  rower: 46,
-  skierg: 52,
-  bike: 56,
+  rower: 50,
+  skierg: 57,
+  bike: 62,
 };
 
 const jointScratchA: MutableFigurePoint2 = { x: 0, y: 0 };
@@ -543,13 +548,22 @@ function limb(
   ctx.strokeStyle = color;
   ctx.lineWidth = w;
   ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
 }
 
-/** Filled tapered anatomical segment, wider at its proximal end. */
+/**
+ * Filled tapered anatomical segment, wider at its proximal end.
+ *
+ * The prior four-edge trapezoid was technically concise but its perfectly
+ * straight shoulders read as a cardboard limb once the replay was rendered at
+ * Retina scale. Keep the exact distal edge (the geometry tests use it to pin
+ * pedal/foot contacts), then curve the long sides and proximal transition so
+ * each segment reads as connected anatomy rather than a block.
+ */
 function taperedLimb(
   ctx: CanvasRenderingContext2D,
   x1: number,
@@ -568,12 +582,27 @@ function taperedLimb(
   const ny = dx / length;
   const p = proximalWidth * 0.5;
   const d = distalWidth * 0.5;
+  const curveX = dx * 0.26;
+  const curveY = dy * 0.26;
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(x1 + nx * p, y1 + ny * p);
-  ctx.lineTo(x2 + nx * d, y2 + ny * d);
+  // Retain paired straight distal edges so the visual segment terminates on
+  // its solved contact point, while the main shaft remains softly contoured.
+  ctx.quadraticCurveTo(
+    x1 + curveX + nx * (p * 0.92 + d * 0.08),
+    y1 + curveY + ny * (p * 0.92 + d * 0.08),
+    x2 + nx * d,
+    y2 + ny * d,
+  );
   ctx.lineTo(x2 - nx * d, y2 - ny * d);
-  ctx.lineTo(x1 - nx * p, y1 - ny * p);
+  ctx.quadraticCurveTo(
+    x1 + curveX - nx * (p * 0.92 + d * 0.08),
+    y1 + curveY - ny * (p * 0.92 + d * 0.08),
+    x1 - nx * p,
+    y1 - ny * p,
+  );
+  ctx.quadraticCurveTo(x1 - dx * 0.075, y1 - dy * 0.075, x1 + nx * p, y1 + ny * p);
   ctx.closePath();
   ctx.fill();
 }
@@ -631,8 +660,25 @@ function shapedTorso(
   ctx.closePath();
   ctx.fill();
 
+  // A tiny shoulder-to-waist panel is enough to establish fabric direction at
+  // this scale. It deliberately follows the torso axis, so it reads in every
+  // stroke pose instead of becoming a static stripe painted across a body.
+  ctx.strokeStyle = withAlpha(seam, 0.7);
+  ctx.lineWidth = 0.52;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(hipX + nx * waistHalfWidth * 0.55, hipY + ny * waistHalfWidth * 0.55);
+  ctx.quadraticCurveTo(
+    midX + nx * waistHalfWidth * 0.72,
+    midY + ny * waistHalfWidth * 0.72,
+    shoulderX + nx * shoulderHalfWidth * 0.57,
+    shoulderY + ny * shoulderHalfWidth * 0.57,
+  );
+  ctx.stroke();
+
   ctx.strokeStyle = seam;
   ctx.lineWidth = 0.65;
+  ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(hipX, hipY);
   ctx.lineTo(shoulderX, shoulderY);
@@ -664,6 +710,16 @@ function profileHead(
   ctx.beginPath();
   ctx.ellipse(headX, headY, 2.35, 2.75, -0.12, 0, Math.PI * 2);
   ctx.fill();
+
+  // One cheek shade, ear, and facing eye prevent the high-resolution head
+  // from resolving into a featureless circle. These marks stay intentionally
+  // tiny so the athlete remains a generic illustration, not a likeness.
+  ctx.fillStyle = withAlpha(hair, 0.32);
+  ctx.beginPath();
+  ctx.ellipse(headX + 0.72, headY + 0.72, 1.05, 0.78, -0.08, 0, Math.PI * 2);
+  ctx.fill();
+  disc(ctx, headX - 1.72, headY + 0.28, 0.42, withAlpha(skin, 0.76));
+  disc(ctx, headX + 1.36, headY - 0.34, 0.28, hair);
   // Jaw and brow give the head a facing direction from the side profile.
   ctx.beginPath();
   ctx.ellipse(headX + 0.15, headY + 1.1, 1.55, 1.05, -0.08, 0, Math.PI * 2);
@@ -686,6 +742,7 @@ function profileHead(
   if (helmet) {
     limb(ctx, headX + 0.35, headY + 1.4, headX + 1.8, headY + 1.65, 0.6, hair);
     limb(ctx, headX + 1.25, headY - 1.2, headX + 2.85, headY - 0.95, 0.75, helmet);
+    limb(ctx, headX - 0.7, headY - 2.05, headX + 0.8, headY - 2.5, 0.45, withAlpha(skin, 0.55));
   }
 }
 
@@ -746,6 +803,11 @@ function drawSkiPoleHardware(
     shaftColor,
   );
   disc(ctx, tipX, tipY, 0.48, detailColor);
+  ctx.strokeStyle = withAlpha(shaftColor, 0.82);
+  ctx.lineWidth = 0.46;
+  ctx.beginPath();
+  ctx.ellipse(tipX, tipY, 1.18, 0.52, Math.atan2(uy, ux), 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 /** Short neutral ski with a restrained upturned tip beneath one planted boot. */
@@ -757,7 +819,19 @@ function drawSki(
   tipColor: string,
 ) {
   limb(ctx, footX - 3.1, groundY + 0.35, footX + 2.65, groundY + 0.35, 1.18, bodyColor);
+  limb(
+    ctx,
+    footX - 2.25,
+    groundY + 0.08,
+    footX + 1.95,
+    groundY + 0.08,
+    0.34,
+    withAlpha(tipColor, 0.72),
+  );
   limb(ctx, footX + 2.65, groundY + 0.35, footX + 3.45, groundY - 0.3, 1.05, tipColor);
+  roundRect(ctx, footX - 0.82, groundY - 0.55, 1.65, 0.78, 0.28);
+  ctx.fillStyle = withAlpha(bodyColor, 0.78);
+  ctx.fill();
 }
 
 /** A level pedal platform keeps foot contact readable through the full cycle. */
@@ -800,11 +874,25 @@ function drawBikeWheel(
   ctx.beginPath();
   ctx.arc(x, y, radius - 0.55, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.strokeStyle = withAlpha(rim, 0.52);
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.arc(x, y, radius - 1.2, 0, Math.PI * 2);
+  ctx.stroke();
 
-  for (let spoke = 0; spoke < 4; spoke++) {
-    const angle = clockwiseAngle + (spoke * Math.PI) / 2;
+  for (let spoke = 0; spoke < BIKE_WHEEL_SPOKE_COUNT; spoke++) {
+    const angle = clockwiseAngle + (spoke * Math.PI * 2) / BIKE_WHEEL_SPOKE_COUNT;
     solveBikeRotationPoint2D(x, y, radius, angle, jointScratchB);
-    limb(ctx, x, y, jointScratchB.x, jointScratchB.y, 0.78, withAlpha(rim, 0.76));
+    limb(ctx, x, y, jointScratchB.x, jointScratchB.y, 0.62, withAlpha(rim, 0.74));
+    limb(
+      ctx,
+      x + (jointScratchB.x - x) * 0.18,
+      y + (jointScratchB.y - y) * 0.18,
+      x + (jointScratchB.x - x) * 0.92,
+      y + (jointScratchB.y - y) * 0.92,
+      0.22,
+      withAlpha(shoe, 0.5),
+    );
   }
 
   const markerAngle = clockwiseAngle + markerOffset;
@@ -837,6 +925,64 @@ function drawBikeWheel(
   );
   disc(ctx, markerX, markerY, 0.58, accent);
   disc(ctx, x, y, 1.1, accent);
+}
+
+/** A soft, asymmetric evergreen silhouette rather than a repeated triangle. */
+function drawEvergreen(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  baseY: number,
+  height: number,
+  body: string,
+  light: string,
+) {
+  const half = height * 0.21;
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.moveTo(x, baseY - height);
+  ctx.quadraticCurveTo(
+    x - half * 0.36,
+    baseY - height * 0.72,
+    x - half * 0.58,
+    baseY - height * 0.61,
+  );
+  ctx.quadraticCurveTo(
+    x - half * 1.08,
+    baseY - height * 0.39,
+    x - half * 0.82,
+    baseY - height * 0.31,
+  );
+  ctx.quadraticCurveTo(x - half * 1.3, baseY - height * 0.12, x - half, baseY);
+  ctx.lineTo(x + half, baseY);
+  ctx.quadraticCurveTo(
+    x + half * 1.2,
+    baseY - height * 0.12,
+    x + half * 0.72,
+    baseY - height * 0.31,
+  );
+  ctx.quadraticCurveTo(x + half, baseY - height * 0.43, x + half * 0.42, baseY - height * 0.6);
+  ctx.quadraticCurveTo(x + half * 0.22, baseY - height * 0.79, x, baseY - height);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = withAlpha(light, 0.36);
+  ctx.beginPath();
+  ctx.moveTo(x - height * 0.025, baseY - height * 0.87);
+  ctx.quadraticCurveTo(
+    x - half * 0.52,
+    baseY - height * 0.49,
+    x - half * 0.36,
+    baseY - height * 0.16,
+  );
+  ctx.lineTo(x - half * 0.05, baseY - height * 0.12);
+  ctx.quadraticCurveTo(
+    x + half * 0.07,
+    baseY - height * 0.52,
+    x - height * 0.025,
+    baseY - height * 0.87,
+  );
+  ctx.closePath();
+  ctx.fill();
 }
 
 /** Blend a fixed pole toward a ground-contact angle without changing its length. */
@@ -917,6 +1063,15 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
     3.1 - k.bladeFeather * 1.45,
     farKit,
   );
+  limb(
+    ctx,
+    rowOarFar.bladeRootX,
+    rowOarFar.bladeRootY,
+    rowOarFar.bladeTipX,
+    rowOarFar.bladeTipY,
+    0.4,
+    withAlpha(foam, 0.34),
+  );
 
   // Hull — long, pointed racing shell on the water.
   ctx.fillStyle = accent;
@@ -929,6 +1084,22 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   ctx.strokeStyle = rim;
   ctx.lineWidth = 1;
   ctx.stroke();
+
+  // A recessed cockpit, gunwale highlight, and bow deck line turn the shell
+  // into a lightweight racing boat rather than a flat colour capsule.
+  ctx.fillStyle = withAlpha(rim, 0.26);
+  ctx.beginPath();
+  ctx.ellipse(x - 0.55, bobY + 0.05, HL * 0.46, HH * 0.47, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = withAlpha(foam, 0.78);
+  ctx.lineWidth = 0.48;
+  ctx.beginPath();
+  ctx.moveTo(x - HL * 0.64, bobY - HH * 0.43);
+  ctx.quadraticCurveTo(x + HL * 0.22, bobY - HH * 0.9, x + HL * 0.75, bobY - HH * 0.2);
+  ctx.stroke();
+  ctx.fillStyle = withAlpha(foam, 0.64);
+  roundRect(ctx, x + HL * 0.38, bobY - 0.48, HL * 0.23, 0.84, 0.36);
+  ctx.fill();
 
   // The seat rail and foot stretcher keep the lower body visibly supported.
   // Both solved ankles terminate at this fixed plate rather than floating in
@@ -1045,6 +1216,15 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
     2.75 - k.bladeFeather * 1.3,
     3.45 - k.bladeFeather * 1.65,
     accent,
+  );
+  limb(
+    ctx,
+    rowOarNear.bladeRootX,
+    rowOarNear.bladeRootY,
+    rowOarNear.bladeTipX,
+    rowOarNear.bladeTipY,
+    0.48,
+    withAlpha(foam, 0.62),
   );
   disc(ctx, oarlockX, oarlockY + 0.4, 0.96, rim);
   disc(ctx, oarlockX, oarlockY + 0.4, 0.4, foam);
@@ -1324,10 +1504,22 @@ function drawCyclist(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: BikeKin
   limb(ctx, bbX, bbY, barX, barY, 1.7, accent);
   limb(ctx, frontX, wheelY, barX, barY, 1.7, accent);
   limb(ctx, seatX - 2.2, seatY + 0.2, seatX + 1.2, seatY + 0.2, 1.35, rim);
+  ctx.fillStyle = withAlpha(shoe, 0.42);
+  roundRect(ctx, seatX - 2.35, seatY - 0.25, 3.7, 0.72, 0.34);
+  ctx.fill();
+  disc(ctx, seatX, seatY, 0.72, withAlpha(rim, 0.72));
+  disc(ctx, barX, barY, 0.62, withAlpha(rim, 0.72));
   // Separate far/near grips make both hand contacts readable on the compact
   // side-profile handlebar instead of ending on an invisible frame point.
   limb(ctx, barX - 1.2, barY - 0.35, barX + 0.72, barY - 0.35, 1.02, farDrive);
   limb(ctx, barX - 0.8, barY, barX + 1.08, barY, 1.18, rim);
+  ctx.strokeStyle = withAlpha(rim, 0.82);
+  ctx.lineWidth = 0.58;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(barX + 0.95, barY);
+  ctx.quadraticCurveTo(barX + 1.9, barY + 0.8, barX + 1.18, barY + 2.05);
+  ctx.stroke();
 
   // The drive-side chainring and near crank sit above the frame but below the
   // near leg. A final cleat cap is painted after the shoe to lock the contact.
@@ -1755,6 +1947,17 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, w, h);
 
+    // Thin, diffuse cloud bands break up the large gradient without becoming a
+    // bitmap texture or a distracting weather effect. Their low contrast keeps
+    // the athlete/course value hierarchy intact in both themes.
+    ctx.fillStyle = withAlpha(palette.haze, this.darkTheme ? 0.075 : 0.16);
+    ctx.beginPath();
+    ctx.ellipse(w * 0.16, h * 0.13, w * 0.15, h * 0.023, -0.04, 0, Math.PI * 2);
+    ctx.ellipse(w * 0.3, h * 0.15, w * 0.11, h * 0.018, 0.03, 0, Math.PI * 2);
+    ctx.ellipse(w * 0.53, h * 0.09, w * 0.18, h * 0.021, -0.025, 0, Math.PI * 2);
+    ctx.ellipse(w * 0.67, h * 0.115, w * 0.12, h * 0.017, 0.02, 0, Math.PI * 2);
+    ctx.fill();
+
     const sunX = w * 0.77;
     const sunY = h * 0.17;
     const halo = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, h * 0.22);
@@ -1828,9 +2031,13 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = palette.structure;
-    ctx.fillRect(pavilionX, pavilionY + 5, 84, 20);
+    roundRect(ctx, pavilionX, pavilionY + 5, 84, 20, 1.8);
+    ctx.fill();
     ctx.fillStyle = withAlpha(palette.structureLight, 0.78);
-    for (let i = 0; i < 6; i++) ctx.fillRect(pavilionX + 6 + i * 13, pavilionY + 9, 8, 8);
+    for (let i = 0; i < 6; i++) {
+      roundRect(ctx, pavilionX + 6 + i * 13, pavilionY + 9, 8, 8, 1);
+      ctx.fill();
+    }
     ctx.fillStyle = palette.structureShade;
     ctx.fillRect(pavilionX - 12, horizon + 1, 118, 3);
     ctx.fillRect(pavilionX + 9, pavilionY + 18, 3, 10);
@@ -1869,6 +2076,21 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.closePath();
     ctx.fill();
 
+    // Broken pavilion/tower reflections sit on top of the water gradient, not
+    // below it, so the venue has material depth without a costly blur pass.
+    ctx.strokeStyle = withAlpha(palette.structureLight, 0.18);
+    ctx.lineWidth = 1;
+    for (let reflectionBand = 0; reflectionBand < 4; reflectionBand++) {
+      const yy = horizon + 8 + reflectionBand * 7;
+      const spread = 8 + reflectionBand * 3;
+      ctx.beginPath();
+      ctx.moveTo(pavilionX + 35 - spread, yy);
+      ctx.lineTo(pavilionX + 35 + spread, yy);
+      ctx.moveTo(towerX + 11 - spread * 0.34, yy + 2);
+      ctx.lineTo(towerX + 11 + spread * 0.34, yy + 2);
+      ctx.stroke();
+    }
+
     ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.16);
     ctx.lineWidth = 1;
     for (let band = 0; band < 7; band++) {
@@ -1888,18 +2110,19 @@ export class CourseRenderer implements ReplayRenderer {
     const horizon = h * 0.445;
     const treeShift = this.materialOffset(meters, 0.055, 38);
 
-    // Two faceted alpine ranges create atmospheric scale behind the stadium.
+    // Two soft alpine ranges create atmospheric scale without turning the
+    // valley into a row of low-resolution triangles.
     ctx.fillStyle = palette.ridgeFar;
     ctx.beginPath();
     ctx.moveTo(0, horizon + 10);
-    ctx.lineTo(0, horizon - 17);
-    ctx.lineTo(w * 0.12, horizon - 62);
-    ctx.lineTo(w * 0.22, horizon - 25);
-    ctx.lineTo(w * 0.38, horizon - 82);
-    ctx.lineTo(w * 0.5, horizon - 30);
-    ctx.lineTo(w * 0.68, horizon - 70);
-    ctx.lineTo(w * 0.82, horizon - 26);
-    ctx.lineTo(w, horizon - 55);
+    ctx.lineTo(0, horizon - 16);
+    ctx.quadraticCurveTo(w * 0.06, horizon - 49, w * 0.12, horizon - 62);
+    ctx.quadraticCurveTo(w * 0.17, horizon - 51, w * 0.22, horizon - 25);
+    ctx.quadraticCurveTo(w * 0.3, horizon - 66, w * 0.38, horizon - 82);
+    ctx.quadraticCurveTo(w * 0.44, horizon - 61, w * 0.5, horizon - 30);
+    ctx.quadraticCurveTo(w * 0.59, horizon - 62, w * 0.68, horizon - 70);
+    ctx.quadraticCurveTo(w * 0.75, horizon - 52, w * 0.82, horizon - 26);
+    ctx.quadraticCurveTo(w * 0.93, horizon - 46, w, horizon - 55);
     ctx.lineTo(w, horizon + 10);
     ctx.closePath();
     ctx.fill();
@@ -1908,15 +2131,32 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.beginPath();
     ctx.moveTo(0, horizon + 8);
     ctx.lineTo(0, horizon - 8);
-    ctx.lineTo(w * 0.17, horizon - 45);
-    ctx.lineTo(w * 0.31, horizon - 12);
-    ctx.lineTo(w * 0.49, horizon - 52);
-    ctx.lineTo(w * 0.63, horizon - 10);
-    ctx.lineTo(w * 0.8, horizon - 39);
-    ctx.lineTo(w, horizon - 6);
+    ctx.quadraticCurveTo(w * 0.09, horizon - 33, w * 0.17, horizon - 45);
+    ctx.quadraticCurveTo(w * 0.24, horizon - 27, w * 0.31, horizon - 12);
+    ctx.quadraticCurveTo(w * 0.39, horizon - 44, w * 0.49, horizon - 52);
+    ctx.quadraticCurveTo(w * 0.57, horizon - 29, w * 0.63, horizon - 10);
+    ctx.quadraticCurveTo(w * 0.72, horizon - 30, w * 0.8, horizon - 39);
+    ctx.quadraticCurveTo(w * 0.91, horizon - 23, w, horizon - 6);
     ctx.lineTo(w, horizon + 8);
     ctx.closePath();
     ctx.fill();
+
+    // Selective snow caps catch the same horizon light as the course. They
+    // follow the ridge contours rather than adding a second jagged mountain.
+    ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.52);
+    ctx.lineWidth = 1.15;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(w * 0.055, horizon - 47);
+    ctx.quadraticCurveTo(w * 0.09, horizon - 57, w * 0.125, horizon - 60);
+    ctx.quadraticCurveTo(w * 0.155, horizon - 54, w * 0.18, horizon - 42);
+    ctx.moveTo(w * 0.31, horizon - 64);
+    ctx.quadraticCurveTo(w * 0.35, horizon - 77, w * 0.385, horizon - 79);
+    ctx.quadraticCurveTo(w * 0.42, horizon - 66, w * 0.45, horizon - 51);
+    ctx.moveTo(w * 0.61, horizon - 58);
+    ctx.quadraticCurveTo(w * 0.65, horizon - 67, w * 0.685, horizon - 67);
+    ctx.quadraticCurveTo(w * 0.72, horizon - 57, w * 0.75, horizon - 46);
+    ctx.stroke();
 
     const snow = ctx.createLinearGradient(0, horizon, 0, h);
     snow.addColorStop(0, palette.groundTop);
@@ -1932,17 +2172,14 @@ export class CourseRenderer implements ReplayRenderer {
       const trunkY = horizon + 3;
       ctx.fillStyle = withAlpha(palette.structureShade, 0.68);
       ctx.fillRect(x - 1, trunkY - treeH * 0.28, 2, treeH * 0.34);
-      ctx.fillStyle = index % 2 === 0 ? palette.foliageNear : palette.foliageFar;
-      for (let tier = 0; tier < 3; tier++) {
-        const top = trunkY - treeH + tier * treeH * 0.22;
-        const half = treeH * (0.26 - tier * 0.035);
-        ctx.beginPath();
-        ctx.moveTo(x, top);
-        ctx.lineTo(x - half, top + treeH * 0.48);
-        ctx.lineTo(x + half, top + treeH * 0.48);
-        ctx.closePath();
-        ctx.fill();
-      }
+      drawEvergreen(
+        ctx,
+        x,
+        trunkY + 1,
+        treeH,
+        index % 2 === 0 ? palette.foliageNear : palette.foliageFar,
+        palette.surfaceHighlight,
+      );
     }
 
     // Nordic stadium timing cabin and paired floodlights.
@@ -2012,8 +2249,8 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.beginPath();
     ctx.moveTo(standX - 15, standTop + 4);
     ctx.lineTo(standX + standW + 13, standTop + 4);
-    ctx.lineTo(standX + standW - 4, standTop - 5);
-    ctx.lineTo(standX + 2, standTop - 5);
+    ctx.quadraticCurveTo(standX + standW + 3, standTop - 4, standX + standW - 4, standTop - 5);
+    ctx.quadraticCurveTo(standX + standW * 0.5, standTop - 8, standX + 2, standTop - 5);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = palette.structure;
@@ -2034,9 +2271,15 @@ export class CourseRenderer implements ReplayRenderer {
       const y = standTop + 23 + row * 6;
       ctx.beginPath();
       ctx.moveTo(standX + 10 + row * 3, y);
-      ctx.lineTo(standX + standW - 12 - row * 3, y);
+      ctx.quadraticCurveTo(standX + standW * 0.5, y + 1.6, standX + standW - 12 - row * 3, y);
       ctx.stroke();
     }
+    ctx.strokeStyle = withAlpha(palette.safetyLight, 0.26);
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(standX + 12, standTop + 8);
+    ctx.quadraticCurveTo(standX + standW * 0.5, standTop + 4.5, standX + standW - 14, standTop + 8);
+    ctx.stroke();
 
     this.drawFloodlight(w * 0.06, horizon + 4, h * 0.22, palette, -1);
     this.drawFloodlight(w * 0.93, horizon + 4, h * 0.24, palette, 1);
@@ -2273,10 +2516,13 @@ export class CourseRenderer implements ReplayRenderer {
         ctx.lineTo(startX + span, offsetY);
       } else {
         const materialPhase = meters * (0.055 + row * 0.009) + row * 1.17;
-        for (let x = startX; x <= startX + span; x += 5) {
-          const yy = offsetY + Math.sin(x * 0.12 - materialPhase) * (1.35 - row * 0.1);
+        const amplitude = 1.35 - row * 0.1;
+        for (let x = startX; x <= startX + span; x += 12) {
+          const nextX = Math.min(startX + span, x + 12);
+          const yy = offsetY + Math.sin(x * 0.12 - materialPhase) * amplitude;
+          const nextY = offsetY + Math.sin(nextX * 0.12 - materialPhase) * amplitude;
           if (x === startX) ctx.moveTo(x, yy);
-          else ctx.lineTo(x, yy);
+          ctx.quadraticCurveTo(x + (nextX - x) * 0.5, (yy + nextY) * 0.5, nextX, nextY);
         }
       }
       ctx.stroke();
@@ -2484,6 +2730,72 @@ export class CourseRenderer implements ReplayRenderer {
 
   // ── Avatar pod ────────────────────────────────────────────────────────────
 
+  /**
+   * The three sports share a course, not a generic floating-dot shadow. Paint
+   * the actual point of support: a hull reflection, two ski impressions, or
+   * two tyre patches. This gives the enlarged figures physical weight without
+   * blurring the whole canvas or allocating a filter pass every frame.
+   */
+  private drawAvatarContact(figX: number, y: number, sport: Sport, accent: string) {
+    const { ctx } = this;
+    const palette = (this.darkTheme ? VENUES_DARK : VENUES_LIGHT)[sport];
+    ctx.save();
+
+    if (sport === "rower") {
+      const reflection = ctx.createRadialGradient(figX, y + 3.4, 0, figX, y + 3.4, 32);
+      reflection.addColorStop(0, withAlpha(this.colors.shadow, 0.3));
+      reflection.addColorStop(0.48, withAlpha(this.colors.shadow, 0.12));
+      reflection.addColorStop(1, withAlpha(this.colors.shadow, 0));
+      ctx.fillStyle = reflection;
+      ctx.beginPath();
+      ctx.ellipse(figX + 2, y + 3.7, 31, 3.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.24);
+      ctx.lineWidth = 0.75;
+      ctx.beginPath();
+      ctx.moveTo(figX - 23, y + 4.2);
+      ctx.quadraticCurveTo(figX - 3, y + 6, figX + 22, y + 4.3);
+      ctx.stroke();
+    } else if (sport === "skierg") {
+      const left = figX - 3.3 * ATHLETE_SCALE;
+      const right = figX + 4.3 * ATHLETE_SCALE;
+      for (let foot = 0; foot < 2; foot++) {
+        const footX = foot === 0 ? left : right;
+        ctx.fillStyle = withAlpha(this.colors.shadow, 0.2);
+        ctx.beginPath();
+        ctx.ellipse(footX, y + 1.15, 8.3, 1.35, -0.025, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.26);
+        ctx.lineWidth = 0.55;
+        ctx.beginPath();
+        ctx.moveTo(footX - 5.5, y + 0.72);
+        ctx.quadraticCurveTo(footX, y + 1.75, footX + 5.5, y + 0.72);
+        ctx.stroke();
+      }
+    } else {
+      const rearX = figX - 8.5 * ATHLETE_SCALE;
+      const frontX = figX + 8.5 * ATHLETE_SCALE;
+      for (let tyre = 0; tyre < 2; tyre++) {
+        const tyreX = tyre === 0 ? rearX : frontX;
+        const contact = ctx.createRadialGradient(tyreX, y + 0.8, 0, tyreX, y + 0.8, 8);
+        contact.addColorStop(0, withAlpha(this.colors.shadow, 0.34));
+        contact.addColorStop(1, withAlpha(this.colors.shadow, 0));
+        ctx.fillStyle = contact;
+        ctx.beginPath();
+        ctx.ellipse(tyreX, y + 0.85, 7.2, 1.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = withAlpha(accent, 0.24);
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(tyreX - 3.6, y + 0.18);
+        ctx.lineTo(tyreX + 3.6, y + 0.18);
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
+  }
+
   private drawAvatar(o: AvatarOpts) {
     const { ctx } = this;
     const C = this.colors;
@@ -2526,13 +2838,10 @@ export class CourseRenderer implements ReplayRenderer {
     // Contrast rim that reads on the accent fill in both themes.
     const rim = C.labelText;
 
-    // Cast shadow on the water (anchored to the waterline, so the avatar lifts).
-    ctx.save();
-    ctx.fillStyle = withAlpha(C.shadow, 0.18);
-    ctx.beginPath();
-    ctx.ellipse(figX, y + 5, POD_R * 1.9, POD_R * 0.45, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    // Contact art is sport-specific and anchored to the course, not to the
+    // animated torso, so a live pull or pedal stroke never makes the athlete
+    // look as if it is hovering above the surface.
+    if (sport) this.drawAvatarContact(figX, y, sport, accent);
 
     // Sport-specific animated athlete (or neutral pod fallback).
     ctx.save();
