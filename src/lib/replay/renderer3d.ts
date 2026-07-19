@@ -3,14 +3,14 @@ import type { ReplayRenderer, RenderState } from "./renderer";
 import { COLORS_DARK, COLORS_LIGHT, REDUCED_REPLAY_POSES } from "./renderer";
 import type { RenderQuality } from "./replayRenderer";
 import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
+import { solveSkierKinematics, type SkierKinematics } from "./sportKinematics";
 import {
-  solveBikeKinematics,
-  solveRowerKinematics,
-  solveSkierKinematics,
-  type BikeKinematics,
-  type RowerKinematics,
-  type SkierKinematics,
-} from "./sportKinematics";
+  createBikeMotionGraphScratch,
+  createRowerMotionGraphScratch,
+  sampleBikeMotionGraphInto,
+  sampleRowerMotionGraphInto,
+  type BikeMotionGraph,
+} from "./motionGraph";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import { METERS_PER_CYCLE, ParticlePool, PerfGovernor, clampDt, dampFactor } from "./motion";
@@ -350,7 +350,12 @@ const CAMERA_RIGS: Record<Sport, CameraRig> = {
   // elbow silhouette and the bicycle frame instead of flattening the athlete
   // into a rear-facing toy. The pullback logic below still owns narrow and
   // comparison framing, so this is a static composition choice, not an orbit.
-  rower: { back: 3.85, height: 2.32, ahead: 1.6, lateral: 1.56, aimY: 1.02 },
+  // Subject-first framing: RowErg needs its broad scull envelope, but the
+  // former distant/high line made the athlete too small for the additional
+  // anatomical detail to register. This stays wide enough for the grips and
+  // blades while lowering the horizon and putting the seated body in the
+  // composition's visual centre.
+  rower: { back: 3.55, height: 2.15, ahead: 1.36, lateral: 1.48, aimY: 0.84 },
   skierg: { back: 3.25, height: 2.38, ahead: 1.4, lateral: 1.3, aimY: 1.2 },
   bike: { back: 2.98, height: 2.02, ahead: 0.74, lateral: 1.24, aimY: 0.88 },
 };
@@ -1395,6 +1400,9 @@ function makeRowerAvatar(
   const eqCylSegs = Math.max(12, Math.round(segs * 0.7));
   const eqTorSegs = Math.max(10, Math.round(segs * 0.6));
   const group = new THREE.Group();
+  // Each avatar owns its sampled graph so live and ghost athletes never share
+  // mutable frame state. This keeps the motion path allocation-free in 3D.
+  const rowMotionGraph = createRowerMotionGraphScratch();
   const laneMaterial = accentEquipmentMaterial(accent);
   const jerseyMaterial = accentMaterial(accent);
   const accentMat = () => laneMaterial;
@@ -1419,16 +1427,6 @@ function makeRowerAvatar(
     "equipment-grip": equipmentGripMaterial,
     "equipment-trim": kitMaterial,
   });
-  const kinematics: RowerKinematics = {
-    legExtension: 0,
-    bodySwing: 0,
-    armDraw: 0,
-    bladeDepth: 0,
-    bladeFeather: 0,
-    surge: 0,
-    vertical: 0,
-  };
-
   const hull = setReplayAssetSlot(
     new THREE.Mesh(
       new THREE.CapsuleGeometry(0.34, 3.15, eqCylSegs, Math.round(eqCylSegs * 1.4)),
@@ -1682,6 +1680,8 @@ function makeRowerAvatar(
   const FOREARM_LENGTH = 0.44;
   const BODY_PITCH_CATCH = -0.56;
   const BODY_PITCH_FINISH = 0.3;
+  const PELVIS_PITCH_CATCH = -0.07;
+  const PELVIS_PITCH_FINISH = 0.105;
   // At the catch the handles are clearly in front of the rib cage; through
   // the drive they travel back to the body. The old sign convention swept the
   // inboard grips through the torso, making every pull look physically wrong.
@@ -1690,12 +1690,24 @@ function makeRowerAvatar(
   const BLADE_DIP = 0.14;
 
   const handlePoint = new THREE.Vector3();
-  const placeArms = (bodySwing: number, armDraw: number): void => {
+  const placeArms = (
+    bodySwing: number,
+    armDraw: number,
+    shoulderSet: number,
+    handleTravel: number,
+  ): void => {
+    // The shoulders lead the late draw but never detach from the torso. A
+    // small catch protraction shortens the reach to a long handle; the finish
+    // reverses it into a relaxed scapular set rather than folding the hands
+    // through the jersey.
+    const shoulderSpread = 0.25 + shoulderSet * 0.014;
+    const shoulderHeight = 0.5 + (1 - shoulderSet) * 0.006 - shoulderSet * 0.008;
+    const shoulderReach = 0.015 + (1 - handleTravel) * 0.028 - shoulderSet * 0.018;
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       if (!arm) continue;
       arm.shoulderPoint
-        .set(arm.side * 0.25, 0.5, 0.015)
+        .set(arm.side * shoulderSpread, shoulderHeight, shoulderReach)
         .applyQuaternion(torso.quaternion)
         .add(torso.position);
       const oar = oars[i];
@@ -1707,11 +1719,15 @@ function makeRowerAvatar(
       handlePoint.add(oar.group.position).sub(rower.position);
       arm.handTarget.copy(handlePoint);
       // Keep the elbow plane attached to the torso as the rower pivots. The
-      // flare is deliberately lateral and a little higher than the former
-      // down-fold: it keeps a pulled elbow outside the rib cage rather than
-      // making the hand/forearm appear to cut through the jersey at the finish.
+      // cue lifts and widens the elbow only as the shoulder completes its
+      // follow-through: a long catch stays soft, while the finish reads as a
+      // compact lateral draw instead of a dropped, inside-out forearm.
       arm.bendHint
-        .set(arm.side * (0.92 - armDraw * 0.06), -0.22, -0.03 + bodySwing * 0.14)
+        .set(
+          arm.side * (0.68 + shoulderSet * 0.18 + armDraw * 0.05),
+          -0.05 + shoulderSet * 0.17,
+          -0.04 + bodySwing * 0.06,
+        )
         .applyQuaternion(torso.quaternion);
       solveTwoBone3D(
         arm.shoulderPoint,
@@ -1728,7 +1744,11 @@ function makeRowerAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
+      // Grip orientation follows the oar exactly, with only a small local
+      // pronation about its axis. This keeps the palm planted on the handle
+      // while allowing the wrist to join the outward elbow finish.
       arm.hand.quaternion.copy(oar.group.quaternion);
+      arm.hand.rotateX(arm.side * (0.04 + shoulderSet * 0.1 - handleTravel * 0.025));
     }
   };
 
@@ -1762,25 +1782,50 @@ function makeRowerAvatar(
     }
   };
 
-  const placeUpperBody = (bodySwing: number): void => {
+  const placeUpperBody = (
+    bodySwing: number,
+    shoulderSet: number,
+    handleTravel: number,
+    headBob: number,
+  ): void => {
     // Rotate and translate only the upper-body pieces around the hips. Rotating
     // the whole rower group would also rotate the contact-locked feet and hands.
+    // The pelvis, spine, clavicles, and head read from the same graph, so the
+    // final arm draw no longer makes a rigid torso appear to leave its rider.
     const pitch = BODY_PITCH_CATCH + bodySwing * (BODY_PITCH_FINISH - BODY_PITCH_CATCH);
-    torso.rotation.x = pitch;
-    // Slight head counter-tilt so the athlete looks down the course at catch
-    // and opens toward the finish without decoupling from the torso chain.
-    headGroup.rotation.x = -pitch * 0.24 - 0.04;
+    const pelvisPitch =
+      PELVIS_PITCH_CATCH +
+      bodySwing * (PELVIS_PITCH_FINISH - PELVIS_PITCH_CATCH) +
+      (shoulderSet - bodySwing) * 0.025;
+    hips.rotation.x = pelvisPitch;
+    // A restrained rearward settle gives the spine a living handoff at the
+    // finish while increasing, rather than reducing, the jersey/handle margin.
+    torso.position.set(
+      0,
+      hips.position.y + shoulderSet * 0.008,
+      hips.position.z - shoulderSet * 0.014,
+    );
+    torso.rotation.x = pitch + (shoulderSet - bodySwing) * 0.025;
+    shoulderLine.position.set(0, 0.53 - shoulderSet * 0.008, 0.01 - shoulderSet * 0.014);
+    shoulderLine.rotation.x = shoulderSet * 0.07;
+    neck.position.set(0, 0.67 - shoulderSet * 0.004, 0.015 - shoulderSet * 0.006);
+    neck.rotation.x = -pitch * 0.08;
+    // Counter-pitch preserves a down-course gaze through the catch and the
+    // finish. `headBob` is an expressive local cue, not an invented change to
+    // the athlete's recorded body position.
+    headGroup.position.set(
+      0,
+      0.79 + headBob * 0.038 - shoulderSet * 0.004,
+      0.025 + (1 - handleTravel) * 0.009 - shoulderSet * 0.008,
+    );
+    headGroup.rotation.x = -pitch * 0.32 - 0.02 + headBob * 0.12;
   };
 
-  const placeOars = (
-    legExtension: number,
-    bodySwing: number,
-    armDraw: number,
-    bladeDepth: number,
-    bladeFeather: number,
-  ): void => {
-    // The handle path is staged by the same leg/body/arm order as the athlete.
-    const handleProgress = legExtension * 0.42 + bodySwing * 0.34 + armDraw * 0.24;
+  const placeOars = (handleTravel: number, bladeDepth: number, bladeFeather: number): void => {
+    // The graph carries the staged leg → body → arm handle path directly.
+    // Keeping the oar sweep on this cue makes the equipment and athlete reach
+    // agree without reconstructing another, subtly different sequence here.
+    const handleProgress = handleTravel;
     for (const oar of oars) {
       oar.group.rotation.y = oar.side * (OAR_YAW_CATCH + handleProgress * OAR_YAW_SPAN);
       // Both blade tips dip into the water together despite opposite X signs.
@@ -1799,23 +1844,33 @@ function makeRowerAvatar(
     const resolvedPose = reduce
       ? REDUCED_REPLAY_POSES.rower
       : (pose ?? fallbackStrokePose("rower", phase));
-    const motion = solveRowerKinematics(resolvedPose, kinematics);
+    const graph = sampleRowerMotionGraphInto(resolvedPose, rowMotionGraph);
     // Seat motion follows leg extension only; body swing and arm draw happen on
     // their later staged channels, eliminating the old one-cosine puppet motion.
-    rower.position.z = SEAT_CATCH_Z - motion.legExtension * SEAT_TRAVEL;
-    rower.position.y = reduce ? 0 : motion.vertical * 0.03;
+    rower.position.z = SEAT_CATCH_Z - graph.body.pelvisTravel.value * SEAT_TRAVEL;
+    rower.position.y = reduce ? 0 : graph.accents.vertical.value * 0.03;
     rower.rotation.set(0, 0, 0);
-    placeUpperBody(motion.bodySwing);
-    placeOars(
-      motion.legExtension,
-      motion.bodySwing,
-      motion.armDraw,
-      motion.bladeDepth,
-      motion.bladeFeather,
+    placeUpperBody(
+      graph.body.spineHinge.value,
+      graph.body.shoulderSet.value,
+      graph.body.handleTravel.value,
+      graph.body.headBob.value,
     );
-    placeLegs(motion.legExtension);
-    placeArms(motion.bodySwing, motion.armDraw);
-    return reduce ? STATIC_AVATAR_MOTION : motion;
+    placeOars(
+      graph.body.handleTravel.value,
+      graph.contacts.bladeWater.value,
+      graph.contacts.bladeFeather.value,
+    );
+    placeLegs(graph.body.legExtension.value);
+    placeArms(
+      graph.body.spineHinge.value,
+      graph.body.armDraw.value,
+      graph.body.shoulderSet.value,
+      graph.body.handleTravel.value,
+    );
+    return reduce
+      ? STATIC_AVATAR_MOTION
+      : { vertical: graph.accents.vertical.value, surge: graph.accents.surge.value };
   };
 
   finalizeAvatar(group, castShadow, opacity);
@@ -2079,7 +2134,26 @@ function makeSkierAvatar(
   const SHIN_LENGTH = 0.39;
   const POLE_LENGTH = 1.38;
   const POLE_CONTACT_Y = 0.055;
-  const POLE_PLANT_START = 0.01;
+  // Match the shared technique graph's first C2 plant sample so the
+  // deterministic contact anchor and pole-contact envelope start together.
+  const POLE_PLANT_START = 0.005;
+  // The SkiErg action is a compact double-pole press, not a deep squat. Keep
+  // the pelvis high enough for the legs to read as springy, then make the
+  // force come from a moderate hip hinge and a long hand path. These values
+  // deliberately describe a canonical technique rather than inferring an
+  // athlete's individual biomechanics from stroke telemetry.
+  const SKI_STANDING_PELVIS_Y = 0.735;
+  const SKI_PELVIS_KNEE_DROP = 0.11;
+  const SKI_PELVIS_FORWARD_TRAVEL = 0.055;
+  const SKI_RECOVERY_REBOUND_LIFT = 0.045;
+  const SKI_NEUTRAL_TORSO_PITCH = 0.055;
+  const SKI_TORSO_HINGE_RANGE = 0.56;
+  const SKI_PELVIS_COUNTER_TILT = 0.14;
+  const SKI_HEAD_GAZE_COUNTER_TILT = 0.38;
+  const SKI_HAND_CATCH_Y = 0.8;
+  const SKI_HAND_FINISH_Y = 0.12;
+  const SKI_HAND_CATCH_Z = 0.56;
+  const SKI_HAND_FINISH_Z = -0.1;
 
   let pendingPose = fallbackStrokePose("skierg", 0);
   let pendingMeters = 0;
@@ -2216,11 +2290,12 @@ function makeSkierAvatar(
     // would counter-rotate the pole sweep as the skier rounds the lap.
     courseRightWorld.set(1, 0, 0).transformDirection(outer.matrixWorld);
     courseForwardWorld.set(0, 0, 1).transformDirection(outer.matrixWorld);
-    // High reach at the plant becomes a compact, forceful hand path by the
-    // finish. Both sides intentionally share the same physical path; camera
-    // framing, not asymmetric fake geometry, keeps their silhouettes clear.
-    const handY = 0.78 - armPress * 0.74;
-    const handZ = 0.58 - armPress * 0.8;
+    // High reach at the plant becomes a compact, forceful hand path beside
+    // the hips at the finish. Keeping the finish just in front of the pelvis
+    // avoids the old over-pulled, shoulders-behind-the-body silhouette while
+    // the physical grip solver remains the final authority.
+    const handY = THREE.MathUtils.lerp(SKI_HAND_CATCH_Y, SKI_HAND_FINISH_Y, armPress);
+    const handZ = THREE.MathUtils.lerp(SKI_HAND_CATCH_Z, SKI_HAND_FINISH_Z, armPress);
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       const pole = poles[i];
@@ -2300,9 +2375,25 @@ function makeSkierAvatar(
     pendingPose = resolvedPose;
     pendingMeters = meters;
     pendingMotion = motion;
-    upper.position.y = 0.72 - motion.kneeFlex * 0.18 + (reduce ? 0 : motion.rebound * 0.07);
-    // Deep crunch through the pull so the double-pole reads at a glance.
-    upper.rotation.x = 0.08 + motion.hipHinge * 0.88;
+    // Carry the pelvis through a restrained spring rather than lowering the
+    // whole upper body into a broken-looking crouch. The small forward travel
+    // lets the fixed-length legs share the load instead of making the torso
+    // compensate with an extreme rotation.
+    upper.position.set(
+      0,
+      SKI_STANDING_PELVIS_Y -
+        motion.kneeFlex * SKI_PELVIS_KNEE_DROP +
+        (reduce ? 0 : motion.rebound * SKI_RECOVERY_REBOUND_LIFT),
+      motion.hipHinge * SKI_PELVIS_FORWARD_TRAVEL,
+    );
+    // A strong double-pole is a pronounced but still athletic hip hinge
+    // (~35° at full press), not the former ~55° mannequin crunch. Counterpose
+    // the pelvis and head locally: the body reads as a connected spine and the
+    // skier keeps their gaze down-course while all pole and hand contacts stay
+    // solved from their authoritative end points.
+    upper.rotation.x = SKI_NEUTRAL_TORSO_PITCH + motion.hipHinge * SKI_TORSO_HINGE_RANGE;
+    hips.rotation.x = -motion.hipHinge * SKI_PELVIS_COUNTER_TILT;
+    headGroup.rotation.x = -motion.hipHinge * SKI_HEAD_GAZE_COUNTER_TILT;
     placeSkiLegs();
     return reduce ? STATIC_AVATAR_MOTION : motion;
   };
@@ -2343,6 +2434,8 @@ function makeBikeAvatar(
   const headSegs = Math.max(14, segs + 2);
   const eqCylSegs = Math.max(12, Math.round(segs * 0.7));
   const group = new THREE.Group();
+  // Retained by this avatar only; sampling must not couple live and ghost rigs.
+  const bikeMotionGraph = createBikeMotionGraphScratch();
   const laneMaterial = accentEquipmentMaterial(accent);
   const jerseyMaterial = accentMaterial(accent);
   const accentMat = () => laneMaterial;
@@ -2370,14 +2463,6 @@ function makeBikeAvatar(
     "equipment-grip": equipmentMaterial,
     "equipment-trim": saddleMaterial,
   });
-  const kinematics: BikeKinematics = {
-    crankAngle: 0,
-    torsoSway: 0,
-    hipRock: 0,
-    anklePitchLeft: 0,
-    anklePitchRight: 0,
-  };
-
   const wheelR = 0.45;
   const wheels: THREE.Group[] = [];
   for (const z of [0.85, -0.85]) {
@@ -2547,20 +2632,30 @@ function makeBikeAvatar(
   setReplayAssetSlot(torsoShell, "athlete:torso");
   torsoShell.name = "bike-torso";
   torsoShell.position.set(0, 0.28, 0.04);
+  // The shoulder girdle is a distinct, high-chest pivot rather than a visual
+  // decal on the torso. Its small counter-rotation gives the rider a connected
+  // pelvis → spine → shoulders rhythm while the arm solver still owns the
+  // exact bar contacts.
+  const shoulderGirdle = new THREE.Group();
+  shoulderGirdle.name = "bike-shoulder-girdle";
+  shoulderGirdle.position.set(0, 0.49, 0.025);
   const frontYoke = hideWithReplayAssets(trapezoidPanel(0.46, 0.32, 0.16, 0.032, kitDarkMaterial));
   frontYoke.name = "bike-jersey-front";
-  frontYoke.position.set(0, 0.49, 0.162);
+  frontYoke.position.set(0, 0, 0.137);
   const backYoke = hideWithReplayAssets(trapezoidPanel(0.46, 0.32, 0.16, 0.032, kitDarkMaterial));
   backYoke.name = "bike-jersey-back";
-  backYoke.position.set(0, 0.49, -0.162);
+  backYoke.position.set(0, 0, -0.187);
   const shoulderLine = hideWithReplayAssets(capsulePart(0.06, 0.54, kitDarkMaterial, "x"));
   shoulderLine.name = "bike-shoulder-trim";
-  shoulderLine.position.set(0, 0.51, 0.025);
+  shoulderLine.position.set(0, 0.02, 0);
   const neck = capsulePart(0.05, 0.1, skinMaterial, "y");
   setReplayAssetSlot(neck, "athlete:neck");
-  neck.position.set(0, 0.6, 0.035);
+  neck.position.set(0, 0.11, 0.01);
   const headGroup = makeHead(skinMaterial, hairMaterial, headSegs);
-  headGroup.position.set(0, 0.75, 0.07);
+  const headStabilizer = new THREE.Group();
+  headStabilizer.name = "bike-head-stabilizer";
+  headStabilizer.position.set(0, 0.11, 0.01);
+  headGroup.position.set(0, 0.15, 0.035);
   // Parent the helmet to the head so sway and counter-rotation can never leave
   // it floating above the rider.
   const helmetGroup = new THREE.Group();
@@ -2572,7 +2667,9 @@ function makeBikeAvatar(
   helmetShell.rotation.x = -0.16;
   helmetGroup.add(helmetShell);
   headGroup.add(helmetGroup);
-  torso.add(torsoShell, frontYoke, backYoke, shoulderLine, neck, headGroup);
+  headStabilizer.add(headGroup);
+  shoulderGirdle.add(frontYoke, backYoke, shoulderLine, neck, headStabilizer);
+  torso.add(torsoShell, shoulderGirdle);
   const legs: Array<{
     side: number;
     crankY: number;
@@ -2640,8 +2737,8 @@ function makeBikeAvatar(
     shoulder.userData.hideWithReplayAssets = false;
     setReplayAssetSlot(shoulder, "athlete:shoulder");
     shoulder.name = side < 0 ? "bike-shoulder-left" : "bike-shoulder-right";
-    shoulder.position.set(side * 0.24, 0.49, 0.025);
-    torso.add(shoulder);
+    shoulder.position.set(side * 0.24, 0, 0);
+    shoulderGirdle.add(shoulder);
     rider.add(upperArm, forearm, hand, elbow);
     arms.push({
       side,
@@ -2664,12 +2761,20 @@ function makeBikeAvatar(
   const FOREARM_LENGTH = 0.35;
   const THIGH_LENGTH = 0.54;
   const SHIN_LENGTH = 0.53;
+  const BIKE_AERO_SPINE_LEAN = 0.74;
+  const BIKE_HEAD_GAZE_COMPENSATION = -0.47;
+  const BIKE_PELVIS_BASE_Y = 0.02;
+  const BIKE_PELVIS_BASE_Z = -0.01;
+  const BIKE_ANKLE_MIN = -0.22;
+  const BIKE_ANKLE_MAX = 0.14;
   const placeBarArms = (): void => {
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       if (!arm) continue;
       arm.shoulderPoint
-        .set(arm.side * 0.24, 0.49, 0.025)
+        .set(arm.side * 0.24, 0, 0)
+        .applyQuaternion(shoulderGirdle.quaternion)
+        .add(shoulderGirdle.position)
         .applyQuaternion(torso.quaternion)
         .add(torso.position);
       const contact = barContacts[i];
@@ -2700,19 +2805,33 @@ function makeBikeAvatar(
     }
   };
 
-  const placePedalLegs = (phase: number, anklePitchLeft: number, anklePitchRight: number): void => {
+  const placePedalLegs = (motion: BikeMotionGraph): void => {
     for (const leg of legs) {
-      // Foot stays exactly on the pedal mesh (crankY is the authored arm length).
-      const pedalY = leg.crankY * Math.cos(phase);
-      const pedalZ = leg.crankY * Math.sin(phase);
+      const pedal = leg.side < 0 ? motion.leftPedal : motion.rightPedal;
+      // The graph owns one circular state per pedal. Deriving the target from
+      // that state (rather than a separate limb phase) keeps both shoes locked
+      // to their mechanically opposed pedals at the 0 / 2π wrap boundary.
+      const pedalRadius = Math.abs(leg.crankY);
+      const pedalY = -pedalRadius * pedal.rotation.cos;
+      const pedalZ = -pedalRadius * pedal.rotation.sin;
       leg.pedalTarget.set(
         leg.side * 0.1,
         cranks.position.y + pedalY - rider.position.y,
         cranks.position.z + pedalZ - rider.position.z,
       );
-      leg.hipPoint.set(leg.side * 0.12, 0.02, -0.01);
-      const extension = Math.sin(phase) * leg.side;
-      leg.bendHint.set(leg.side * 0.08, 0.18, 0.72 - extension * 0.1);
+      // Let the hips follow the saddle-bound pelvis before solving both rigid
+      // leg links. This makes each knee lead its upstroke without ever moving
+      // the shoe away from the graph's pedal contact.
+      leg.hipPoint
+        .set(leg.side * 0.12, 0, 0)
+        .applyQuaternion(pelvis.quaternion)
+        .add(pelvis.position);
+      const kneeLift = pedal.kneeLift.value;
+      leg.bendHint.set(
+        leg.side * (0.08 + kneeLift * 0.018),
+        0.16 + kneeLift * 0.05,
+        0.62 + kneeLift * 0.14,
+      );
       solveTwoBone3D(
         leg.hipPoint,
         leg.pedalTarget,
@@ -2728,17 +2847,73 @@ function makeBikeAvatar(
       leg.shoe.position.copy(leg.pedalPoint);
       // Ankling is deliberately restrained; feet stay planted on the pedals
       // instead of tumbling through a full revolution with the crank.
-      leg.shoe.rotation.x = leg.side < 0 ? anklePitchLeft : anklePitchRight;
+      leg.shoe.rotation.set(
+        THREE.MathUtils.clamp(-0.05 + pedal.ankleFlex.value * 0.3, BIKE_ANKLE_MIN, BIKE_ANKLE_MAX),
+        0,
+        0,
+      );
     }
   };
 
-  const placeBikeTorso = (sway: number, hipRock: number): void => {
+  const placeBikeTorso = (motion: BikeMotionGraph, staticPose = false): void => {
     rider.rotation.set(0, 0, 0); // keep hands/feet in equipment space
-    torso.rotation.set(0.74 + hipRock, 0, sway);
-    headGroup.rotation.z = -sway * 0.22;
+    const animationScale = staticPose ? 0 : 1;
+    const pedalLoadShift =
+      (motion.leftPedal.drive.value - motion.rightPedal.drive.value) * animationScale;
+    const pedalExtensionShift =
+      (motion.leftPedal.legExtension.value - motion.rightPedal.legExtension.value) * animationScale;
+    const averagePedalLoad =
+      ((motion.leftPedal.drive.value + motion.rightPedal.drive.value) * 0.5 - 0.25) *
+      animationScale;
+    const pelvisRock = motion.body.pelvisRock.value * animationScale;
+    const torsoSway = motion.body.torsoSway.value * animationScale;
+    const spineLean = motion.body.spineLean.value * animationScale;
+    const shoulderCounterRotation = motion.body.shoulderCounterRotation.value * animationScale;
+    const headStabilization = motion.body.headStabilization.value * animationScale;
+
+    // A seated rider shifts pressure across the saddle with each downstroke.
+    // These are compact root cues, not free translations: hips remain within
+    // the saddle shell while the contact solver preserves both pedal links.
+    pelvis.position.set(
+      pelvisRock * 0.16 + pedalLoadShift * 0.018,
+      BIKE_PELVIS_BASE_Y - averagePedalLoad * 0.01,
+      BIKE_PELVIS_BASE_Z + pedalExtensionShift * 0.018,
+    );
+    pelvis.rotation.set(
+      spineLean * 0.3 + pedalExtensionShift * 0.01,
+      pedalLoadShift * 0.024,
+      pelvisRock * 0.7 + pedalLoadShift * 0.018,
+    );
+
+    // Keep the torso attached to that moving pelvis, then counterpose the
+    // shoulder line instead of treating the rider as one rigid block.
+    torso.position.set(pelvis.position.x, pelvis.position.y, pelvis.position.z + 0.02);
+    torso.rotation.set(
+      BIKE_AERO_SPINE_LEAN + spineLean * 0.9 + pedalExtensionShift * 0.015,
+      pedalLoadShift * 0.018,
+      torsoSway * 0.58,
+    );
+    shoulderGirdle.rotation.set(
+      -spineLean * 0.28,
+      pedalLoadShift * 0.024,
+      shoulderCounterRotation * 0.7,
+    );
+    // The neck keeps a road-facing line of sight through the pedal cycle;
+    // it counteracts the torso's small phase motion without cancelling the
+    // intentional aero posture.
+    headStabilizer.rotation.set(
+      BIKE_HEAD_GAZE_COMPENSATION - spineLean * 0.78,
+      -pedalLoadShift * 0.018,
+      headStabilization * 0.55,
+    );
   };
 
-  placeBikeTorso(0, 0);
+  const neutralBikeMotion = sampleBikeMotionGraphInto(
+    fallbackStrokePose("bike", 0),
+    bikeMotionGraph,
+  );
+  placeBikeTorso(neutralBikeMotion, true);
+  placePedalLegs(neutralBikeMotion);
   placeBarArms();
 
   const animate = (
@@ -2750,12 +2925,12 @@ function makeBikeAvatar(
     const resolvedPose = reduce
       ? REDUCED_REPLAY_POSES.bike
       : (pose ?? fallbackStrokePose("bike", phase));
-    const motion = solveBikeKinematics(resolvedPose, kinematics);
+    const motion = sampleBikeMotionGraphInto(resolvedPose, bikeMotionGraph);
     if (reduce) {
       for (const w of wheels) w.rotation.x = 0;
-      cranks.rotation.x = motion.crankAngle;
-      placePedalLegs(motion.crankAngle, motion.anklePitchLeft, motion.anklePitchRight);
-      placeBikeTorso(0, 0);
+      cranks.rotation.x = motion.crank.angle;
+      placeBikeTorso(motion, true);
+      placePedalLegs(motion);
       placeBarArms();
       return STATIC_AVATAR_MOTION;
     }
@@ -2763,9 +2938,12 @@ function makeBikeAvatar(
     // rotation about +X moves the wheel top toward local +Z (forward).
     const wheelAngle = meters / wheelR;
     for (const w of wheels) w.rotation.x = wheelAngle;
-    cranks.rotation.x = motion.crankAngle;
-    placePedalLegs(motion.crankAngle, motion.anklePitchLeft, motion.anklePitchRight);
-    placeBikeTorso(motion.torsoSway, motion.hipRock);
+    cranks.rotation.x = motion.crank.angle;
+    placeBikeTorso(motion);
+    // Update the pelvis before its two-bone leg solve. Otherwise the knees
+    // target the previous frame's saddle shift and visibly lag behind a rider
+    // whose shoes are correctly locked to the current pedals.
+    placePedalLegs(motion);
     placeBarArms();
     return STATIC_AVATAR_MOTION;
   };
@@ -5180,7 +5358,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Portrait RowErg needs substantially more room for the full oar span;
     // upright SkiErg and compact BikeErg can stay closer.
     const narrowScale =
-      this.sport === "rower" ? (state.ghost ? 2.02 : 1.9) : state.ghost ? 1.38 : 1.2;
+      this.sport === "rower" ? (state.ghost ? 2.02 : 1.78) : state.ghost ? 1.38 : 1.2;
     const baseBack = this.reduceMotion
       ? sportRig.back + 0.8 + ghostPullback
       : (sportRig.back + ghostPullback) * (narrow ? narrowScale : 1);

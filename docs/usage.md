@@ -102,26 +102,31 @@ modified.
 
 ## Common workflows
 
-- **Replay a workout** — play/pause, scrub, 0.5×–8× speed, 2D/3D course views
-  (3D uses WebGPU when available, with WebGL fallback), and keyboard shortcuts
+- **Replay a workout** — play/pause, scrub, technique-first 1× playback by
+  default, 0.5×–8× speed for transport and review, 2D/3D course views (3D uses
+  WebGPU when available, with WebGL fallback), and keyboard shortcuts
   (<kbd>Space</kbd> to play/pause, <kbd>←</kbd><kbd>→</kbd> to seek by ±10s)
   shown in the transport bar.
 
 The athlete animates from Concept2 stroke rows: each valid row advances one
-authored stroke, pole cycle, or pedal revolution, and the modeled catch can emit
-water or snow contact effects. Non-moving interval anchor rows are ignored, and
-split-derived replays integrate changing cadence without jumping phase. Demo
-rows are generated from their declared cadence rather than from a fixed sample
-count, so the BikeErg route pedals at its displayed RPM.
+canonical stroke, pole cycle, or pedal revolution, and the modeled catch can
+emit water or snow contact effects. Playback opens at 1× so the technique is
+readable at a real-time reference speed; faster settings are transport controls
+for reviewing a workout, not the reference presentation. Non-moving interval
+anchor rows are ignored, and split-derived replays integrate changing cadence
+without jumping phase. Demo rows are generated from their declared cadence
+rather than from a fixed sample count, so the BikeErg route pedals at its
+displayed RPM.
 
 The public Concept2 stroke payload provides cumulative time and distance, pace,
 rate, and optional heart rate; rowplay derives watts from pace. It does **not**
 contain a force curve, handle path, drive length, joint positions, or measured
-posture. The visible movement is therefore a deterministic illustrative
-envelope aligned to the logged cycles: RowErg sequences legs, body, then arms
-(and reverses that order on recovery), SkiErg separates reach, plant/pull, and
-recovery, and BikeErg separates cadence-driven cranks from distance-driven
-wheel roll.
+posture. The visible movement is therefore a deterministic, generic technique
+model aligned to logged cycles, rather than a reconstruction of your individual
+biomechanics. Its shared technique phases stage RowErg legs, body, then arms
+(and reverse that order on recovery); SkiErg reach, plant/pull, and recovery;
+and BikeErg cadence-driven cranks separately from distance-driven wheel roll.
+Both 2D and 3D use those same timing and contact semantics.
 
 The 2D view draws a lightweight procedural athlete. The 3D view can load a
 compact repository-owned geometry pack created specifically for rowplay and fit
@@ -143,6 +148,14 @@ boat and oar rig, Nordic skis, and a continuous bicycle wheel/frame/drivetrain.
 During the illustrated SkiErg plant, each basket holds a deterministic course
 anchor while the hands remain on the grips. These are deliberate illustrative
 motion constraints, not measured joint or force data from Concept2.
+
+The shipped V3 geometry pack is a contact-driven figure rig, not a scanned or
+recorded performance. Three.js can support a future repository-owned skeletal
+hero with authored animation clips and post-clip inverse-kinematics contact
+correction, but that capability does not mean a skeletal V4 asset is currently
+installed or that rowplay can infer an athlete's real joints from a Logbook
+workout. Any such asset remains generic, authored in-repository, and subject to
+the same equipment-contact and fallback rules.
 
 Both views use complete sport-specific illustrative environments, not one
 generic floor with different colors. RowErg combines layered water with
@@ -214,6 +227,9 @@ The replay page also highlights **Workout moments**: best sustained push, slower
 - **Does rowplay change my logbook?** Never; it only reads.
 - **Why no stroke-by-stroke replay on some workouts?** Not every logbook entry
   has per-stroke data; those replay from splits.
+- **Does the replay recreate my real technique?** No. It presents a generic,
+  canonical technique model synchronised to the timing and cadence Concept2
+  records; the Logbook does not include motion-capture, joint, or force data.
 - **Phone support?** Yes, including home-screen install (PWA).
 - **Languages?** English, Deutsch, Español, Français, 日本語, 中文.
 

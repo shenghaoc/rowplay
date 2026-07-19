@@ -26,7 +26,7 @@ environment policy.
 planes, grip/foot wedges, and sport-equipment cross-sections, then exports one
 binary glTF package through Three.js `GLTFExporter`.
 
-The package is a named geometry library rather than a second animation graph.
+The V3 package is a named geometry library rather than a second animation graph.
 Eighteen dynamic leaf meshes expose stable `replayAssetSlot` values: fourteen
 athlete forms plus the RowErg blade and the SkiErg shaft, grip, and basket. Six
 `replayAssetTemplateSlot` roots provide static/composite equipment where a
@@ -138,7 +138,12 @@ gate and browser smoke path, and refresh the draft PR for its exact pushed SHA.
 ## Out of scope
 
 - Athlete scans, likenesses, avatar generators, user images, or customization.
-- Motion capture or replacing `sportKinematics.ts` as timing authority.
+- Motion capture, force-curve reconstruction, or athlete-specific biomechanics.
+  The former V3-only restriction on skins, clips, and replacing the scalar
+  choreography is superseded by
+  [`replay-motion-system-rebuild`](../replay-motion-system-rebuild/design.md):
+  any V4 path must remain generic, deterministic, contact-corrected, and
+  fallback-safe.
 - Force-curve or measured-biomechanics reconstruction not present in Concept2.
 - Third-party or generated environment imagery, imported location models, or
   changes to the procedural-environment policy.

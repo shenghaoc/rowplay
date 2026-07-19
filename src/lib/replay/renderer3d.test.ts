@@ -29,6 +29,7 @@ import {
   fetchReplayAssetTemplateLibrary,
   type ReplayAssetTemplateLibrary,
 } from "./renderer3dAssets";
+import { sampleRowerMotionGraph } from "./motionGraph";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
 import * as THREE from "three";
@@ -960,6 +961,57 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
+  it("stages RowErg pelvis, spine, shoulders, head, and elbows from the shared graph", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
+    renderer.resize(1140, 420);
+
+    const sample = (cycle: number) => {
+      const state = makeSportState("rower", cycle);
+      const graph = sampleRowerMotionGraph(state.strokePose!);
+      renderer.render(state, false);
+      const head = sceneObject(renderer, "athlete:head");
+      const headUp = new THREE.Vector3(0, 1, 0).applyQuaternion(
+        head.getWorldQuaternion(new THREE.Quaternion()),
+      );
+      return {
+        graph,
+        hipsPitch: sceneObject(renderer, "rower-hips").rotation.x,
+        torsoZ: sceneObject(renderer, "rower-torso").position.z,
+        shoulderTrimZ: sceneObject(renderer, "rower-shoulder-trim").position.z,
+        headUp,
+      };
+    };
+
+    const catchPose = sample(0.01);
+    const finishPose = sample(0.34);
+    expect(finishPose.graph.body.shoulderSet.value).toBeGreaterThan(0.8);
+    expect(finishPose.graph.body.handleTravel.value).toBeGreaterThan(0.8);
+    // The scaffold responds in the same order as the graph: pelvis and spine
+    // open, clavicles settle back, and the head remains an upright participant
+    // instead of a rigid ornament on the torso shell.
+    expect(finishPose.hipsPitch).toBeGreaterThan(catchPose.hipsPitch + 0.12);
+    expect(finishPose.torsoZ).toBeLessThan(catchPose.torsoZ - 0.008);
+    expect(finishPose.shoulderTrimZ).toBeLessThan(catchPose.shoulderTrimZ - 0.008);
+    expect(catchPose.headUp.y).toBeGreaterThan(0.88);
+    expect(finishPose.headUp.y).toBeGreaterThan(0.88);
+
+    for (const side of [-1, 1]) {
+      const label = side < 0 ? "left" : "right";
+      const torso = sceneObject(renderer, "rower-torso-shell");
+      const shoulder = torso.worldToLocal(
+        worldPosition(renderer, `rower-shoulder-${label}`).clone(),
+      );
+      const elbow = torso.worldToLocal(worldPosition(renderer, `rower-elbow-${label}`).clone());
+      // A completed draw keeps the elbow outside the shoulder line instead of
+      // folding through the chest to satisfy the locked hand contact.
+      expect(elbow.x * side, `${label} elbow lateral finish`).toBeGreaterThan(
+        shoulder.x * side + 0.025,
+      );
+    }
+
+    renderer.destroy();
+  });
+
   it("renders visible V3 elbow cuffs through the full RowErg pull", async () => {
     const assets = await loadCheckedInReplayAssetTemplateLibrary();
     const renderer = new CourseRenderer3D(makeHost(), "medium", "rower", { assets });
@@ -1490,7 +1542,19 @@ describe("CourseRenderer3D", () => {
     skiRenderer.render(makeSportState("skierg", 0.8), true);
     const expectedSki = solveSkierKinematics(REDUCED_REPLAY_POSES.skierg);
     expect(sceneObject(skiRenderer, "skierg-upper").rotation.x).toBeCloseTo(
-      0.08 + expectedSki.hipHinge * 0.88,
+      0.055 + expectedSki.hipHinge * 0.56,
+      8,
+    );
+    expect(sceneObject(skiRenderer, "skierg-upper").position.y).toBeCloseTo(
+      0.735 - expectedSki.kneeFlex * 0.11,
+      8,
+    );
+    expect(sceneObject(skiRenderer, "skierg-upper").position.z).toBeCloseTo(
+      expectedSki.hipHinge * 0.055,
+      8,
+    );
+    expect(sceneObject(skiRenderer, "athlete:head").rotation.x).toBeCloseTo(
+      -expectedSki.hipHinge * 0.38,
       8,
     );
     skiRenderer.destroy();
@@ -1508,6 +1572,37 @@ describe("CourseRenderer3D", () => {
       8,
     );
     bikeRenderer.destroy();
+  });
+
+  it("keeps the SkiErg press athletic instead of collapsing the torso and gaze", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "skierg");
+    renderer.resize(1140, 420);
+    let maximumTorsoPitch = Number.NEGATIVE_INFINITY;
+    let minimumPelvisHeight = Number.POSITIVE_INFINITY;
+    let minimumHeadHeight = Number.POSITIVE_INFINITY;
+    let minimumGazeUp = Number.POSITIVE_INFINITY;
+
+    for (let step = 0; step < 128; step++) {
+      renderer.render(makeSportState("skierg", step / 128), false);
+      const upper = sceneObject(renderer, "skierg-upper");
+      const head = sceneObject(renderer, "athlete:head");
+      maximumTorsoPitch = Math.max(maximumTorsoPitch, upper.rotation.x);
+      minimumPelvisHeight = Math.min(minimumPelvisHeight, upper.position.y);
+      minimumHeadHeight = Math.min(minimumHeadHeight, worldPosition(renderer, "athlete:head").y);
+      const headUp = new THREE.Vector3(0, 1, 0).applyQuaternion(
+        head.getWorldQuaternion(new THREE.Quaternion()),
+      );
+      minimumGazeUp = Math.min(minimumGazeUp, headUp.y);
+    }
+
+    // At peak press the skier stays tall enough to share load through the
+    // legs, keeps the torso inside an athletic hinge envelope, and counterposes
+    // the head so it continues looking down-course instead of at the snow.
+    expect(maximumTorsoPitch).toBeLessThan(0.63);
+    expect(minimumPelvisHeight).toBeGreaterThan(0.61);
+    expect(minimumHeadHeight).toBeGreaterThan(1.2);
+    expect(minimumGazeUp).toBeGreaterThan(0.95);
+    renderer.destroy();
   });
 
   it("keeps SkiErg hands on both grips and pole tips grounded only during contact", () => {
@@ -1666,6 +1761,49 @@ describe("CourseRenderer3D", () => {
           Math.abs(sceneObject(renderer, `bike-foot-contact-${side}`).rotation.x),
         ).toBeLessThan(0.24);
       }
+    }
+    renderer.destroy();
+  });
+
+  it("gives the BikeErg rider a connected pelvis, shoulder, and head counterpose", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "bike");
+    renderer.resize(800, 600);
+
+    renderer.render(makeSportState("bike", 0.25), false);
+    const downstroke = {
+      pelvisX: sceneObject(renderer, "bike-pelvis").position.x,
+      torsoRoll: sceneObject(renderer, "bike-spine").rotation.z,
+      shoulderRoll: sceneObject(renderer, "bike-shoulder-girdle").rotation.z,
+      headRoll: sceneObject(renderer, "bike-head-stabilizer").rotation.z,
+    };
+    renderer.render(makeSportState("bike", 0.75), false);
+    const oppositeDownstroke = {
+      pelvisX: sceneObject(renderer, "bike-pelvis").position.x,
+      torsoRoll: sceneObject(renderer, "bike-spine").rotation.z,
+      shoulderRoll: sceneObject(renderer, "bike-shoulder-girdle").rotation.z,
+      headRoll: sceneObject(renderer, "bike-head-stabilizer").rotation.z,
+    };
+
+    expect(downstroke.pelvisX).toBeGreaterThan(0.01);
+    expect(oppositeDownstroke.pelvisX).toBeLessThan(-0.01);
+    expect(downstroke.torsoRoll).toBeGreaterThan(0.1);
+    expect(oppositeDownstroke.torsoRoll).toBeLessThan(-0.1);
+    expect(downstroke.shoulderRoll).toBeLessThan(0);
+    expect(oppositeDownstroke.shoulderRoll).toBeGreaterThan(0);
+    expect(downstroke.headRoll).toBeLessThan(0);
+    expect(oppositeDownstroke.headRoll).toBeGreaterThan(0);
+
+    for (const side of ["left", "right"] as const) {
+      expect(
+        worldPosition(renderer, `bike-hand-${side}`).distanceTo(
+          worldPosition(renderer, `bike-hand-contact-${side}`),
+        ),
+      ).toBeLessThan(1e-6);
+      expect(
+        worldPosition(renderer, `bike-foot-contact-${side}`).distanceTo(
+          worldPosition(renderer, `bike-pedal-${side}`),
+        ),
+      ).toBeLessThan(1e-6);
     }
     renderer.destroy();
   });

@@ -14,9 +14,12 @@ fallbacks. The asset is a generic sports illustration: it is not an avatar
 generator output, scan, user image, or athlete likeness.
 
 This specification supersedes only the procedural-only 3D asset restrictions
-in the completed replay figure and motion specifications. It does not relax the
-procedural-environment, data-truth, privacy, accessibility, or performance
-contracts.
+in the completed replay figure and motion specifications. The later
+[`replay-motion-system-rebuild`](../replay-motion-system-rebuild/design.md)
+supersedes V3's static-only animation boundary while retaining this
+specification's provenance, privacy, contact, fallback, and performance
+contracts. Neither specification relaxes the procedural-environment,
+data-truth, accessibility, or performance requirements.
 
 ## Requirements
 

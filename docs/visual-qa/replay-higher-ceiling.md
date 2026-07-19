@@ -273,3 +273,33 @@ advances, and the bicycle reads as a continuous wheel/frame/drivetrain rather
 than a stack of primitives. The final replay-console check reported no warnings
 or errors. This is draft visual evidence, not a claim of photorealism or a
 substitute for the still-open complete release capture matrix above.
+
+## Motion-system rebuild review — 2026-07-19
+
+The follow-up in-app-browser pass used the live demo routes in the existing
+WebGPU/Ultra stage with the replay opened at **1×**. RowErg was observed through
+catch and draw, SkiErg through reach, plant, press, and release, and BikeErg
+through opposed pedal positions at 1× and 2× transport. The motion pass has
+one deliberate rule: the fast settings remain available to navigate a workout,
+but 1× is the presentation reference for judging human movement.
+
+- **RowErg:** the shared graph stages leg drive, body opening, then arm draw;
+  hands stay on the oar grips and the finish elbows travel outward of the torso
+  rather than folding the forearms through it.
+- **SkiErg:** the planted baskets hold their deterministic course point through
+  the loaded part of the press while the upper body and skis advance, then
+  release into the elevated recovery sweep.
+- **BikeErg:** one circular graph drives opposed pedal contacts, coordinated
+  knee/ankle response, pelvic rock, shoulder counter-rotation, and a stabilized
+  head while hands remain on the bars.
+- **RowErg framing:** the 3D chase line now favours the seated athlete and
+  grip-side action over excess empty horizon, while retaining the broad scull
+  envelope needed to read the oars.
+
+This review also makes the remaining quality boundary explicit: V3 is a
+contact-safe, stylized geometry pack, not the final high-detail character path.
+The repository now contains an isolated V4 `SkinnedMesh` / `AnimationMixer`
+proof, but it is intentionally **not** represented as runtime visual polish
+until every sport has a reviewed clip and a post-clip contact-to-bone adapter.
+That distinction keeps the draft honest while preserving the present renderer's
+proven 2D, V3, WebGL, WebGPU, and reduced-motion fallbacks.

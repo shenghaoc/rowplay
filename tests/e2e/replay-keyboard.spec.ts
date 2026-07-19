@@ -70,7 +70,9 @@ test.describe("replay keyboard controls (demo mode)", () => {
     expect(errors, `unexpected page errors:\n${errors.join("\n")}`).toEqual([]);
   });
 
-  test("[ and ] change playback speed", async ({ page }) => {
+  test("technique-first speed starts at 1× and keyboard controls retain fast review speeds", async ({
+    page,
+  }) => {
     const errors = collectPageErrors(page);
 
     await page.goto("/replay/1001");
@@ -78,15 +80,21 @@ test.describe("replay keyboard controls (demo mode)", () => {
 
     await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
 
-    // Default speed is 8×; [ should decrease it to 4×.
-    await page.keyboard.press("[");
-    // The active speed button should now be 4×.
-    const fourX = page.locator('.speeds button[aria-checked="true"]');
-    await expect(fourX).toContainText("4×", { timeout: 2000 });
+    const activeSpeed = page.locator('.speeds button[aria-checked="true"]');
 
-    // ] should restore to 8×.
-    await page.keyboard.press("]");
-    await expect(fourX).toContainText("8×", { timeout: 2000 });
+    // A replay opens at a cadence where motion and equipment contact can be
+    // inspected before opting into a faster review.
+    await expect(activeSpeed).toContainText("1×", { timeout: 2000 });
+
+    // [ still exposes the slow-motion option.
+    await page.keyboard.press("[");
+    await expect(activeSpeed).toContainText("0.5×", { timeout: 2000 });
+
+    // ] steps through every faster review speed, including 8×.
+    for (const expectedSpeed of ["1×", "2×", "4×", "8×"]) {
+      await page.keyboard.press("]");
+      await expect(activeSpeed).toContainText(expectedSpeed, { timeout: 2000 });
+    }
 
     await page.waitForTimeout(300);
     expect(errors, `unexpected page errors:\n${errors.join("\n")}`).toEqual([]);

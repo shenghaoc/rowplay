@@ -210,22 +210,268 @@ function aeroRingGeometry(radius, depth, radialSegments = 16) {
 function anatomicalLimbGeometry({ proximalX, proximalY, distalX, distalY, belly = 1.1 }) {
   return loftGeometry(
     [
-      { p: -0.52, rx: proximalX * 0.76, rz: proximalY * 0.78 },
-      { p: -0.46, rx: proximalX * 0.91, rz: proximalY * 0.92 },
-      { p: -0.34, rx: proximalX * 1.04, rz: proximalY * 1.05 },
-      { p: -0.2, rx: proximalX * belly, rz: proximalY * (belly + 0.025) },
-      { p: -0.06, rx: proximalX * 1.05, rz: proximalY * 1.06 },
-      { p: 0.08, rx: proximalX * 0.91, rz: proximalY * 0.93 },
-      { p: 0.2, rx: (proximalX + distalX) * 0.54, rz: (proximalY + distalY) * 0.54 },
-      { p: 0.32, rx: distalX * 1.03, rz: distalY * 1.04 },
-      { p: 0.42, rx: distalX * 0.9, rz: distalY * 0.91 },
-      { p: 0.49, rx: distalX * 0.68, rz: distalY * 0.7 },
-      { p: 0.52, rx: distalX * 0.58, rz: distalY * 0.6 },
+      // A small asymmetric drift through the cross-sections gives the limb a
+      // believable biceps/calf belly and tendon landing.  It is intentionally
+      // encoded in the authored shell rather than as extra runtime geometry:
+      // the contact-safe +Z bone contract remains exactly unchanged.
+      { p: -0.52, rx: proximalX * 0.76, rz: proximalY * 0.78, ox: -0.03, oz: -0.015 },
+      { p: -0.46, rx: proximalX * 0.91, rz: proximalY * 0.92, ox: -0.045, oz: -0.018 },
+      { p: -0.34, rx: proximalX * 1.04, rz: proximalY * 1.05, ox: -0.055, oz: -0.01 },
+      { p: -0.2, rx: proximalX * belly, rz: proximalY * (belly + 0.025), ox: -0.045 },
+      { p: -0.06, rx: proximalX * 1.05, rz: proximalY * 1.06, ox: -0.015, oz: 0.014 },
+      { p: 0.08, rx: proximalX * 0.91, rz: proximalY * 0.93, ox: 0.018, oz: 0.026 },
+      {
+        p: 0.2,
+        rx: (proximalX + distalX) * 0.54,
+        rz: (proximalY + distalY) * 0.54,
+        ox: 0.035,
+        oz: 0.022,
+      },
+      { p: 0.32, rx: distalX * 1.03, rz: distalY * 1.04, ox: 0.044, oz: 0.012 },
+      { p: 0.42, rx: distalX * 0.9, rz: distalY * 0.91, ox: 0.035, oz: 0.004 },
+      { p: 0.49, rx: distalX * 0.68, rz: distalY * 0.7, ox: 0.016 },
+      { p: 0.52, rx: distalX * 0.58, rz: distalY * 0.6, ox: 0.006 },
+    ],
+    16,
+    "z",
+    Math.PI / 10,
+  );
+}
+
+/**
+ * One directional, generic human head.  The replay camera is too distant for
+ * literal facial features, but a brow/nose plane, jaw taper and ears prevent
+ * the head from reading as a featureless bead.  +Z is the gaze direction used
+ * by the existing head group, so the profile stays coherent for row, ski and
+ * bike without adding a new runtime transform.
+ */
+function directionalHeadGeometry() {
+  const cranium = loftGeometry(
+    [
+      { p: -0.98, rx: 0.26, rz: 0.22, oz: 0.2 },
+      { p: -0.82, rx: 0.5, rz: 0.42, oz: 0.25 },
+      { p: -0.64, rx: 0.72, rz: 0.62, oz: 0.22 },
+      { p: -0.4, rx: 0.9, rz: 0.8, oz: 0.13 },
+      { p: -0.1, rx: 1.02, rz: 0.94, oz: 0.015 },
+      { p: 0.2, rx: 1.04, rz: 0.98, oz: -0.09 },
+      { p: 0.48, rx: 0.92, rz: 0.9, oz: -0.16 },
+      { p: 0.72, rx: 0.68, rz: 0.67, oz: -0.15 },
+      { p: 0.9, rx: 0.38, rz: 0.36, oz: -0.1 },
+      { p: 1, rx: 0.14, rz: 0.16, oz: -0.05 },
+    ],
+    20,
+    "y",
+    Math.PI / 12,
+  );
+  const brow = ridgeGeometry(
+    [
+      new THREE.Vector3(-0.56, 0.16, 0.74),
+      new THREE.Vector3(0, 0.25, 0.9),
+      new THREE.Vector3(0.56, 0.16, 0.74),
+    ],
+    0.04,
+    10,
+    7,
+  );
+  const nose = loftGeometry(
+    [
+      { p: 0.5, rx: 0.14, rz: 0.17, oz: 0.015 },
+      { p: 0.76, rx: 0.13, rz: 0.18, oz: -0.02 },
+      { p: 0.98, rx: 0.075, rz: 0.105, oz: -0.08 },
+      { p: 1.06, rx: 0.035, rz: 0.045, oz: -0.11 },
+    ],
+    10,
+    "z",
+    Math.PI / 10,
+  );
+  const ears = [-1, 1].map((side) =>
+    ellipsoidGeometry([0.15, 0.26, 0.075], 14, 10, [side * 1.01, -0.02, -0.01]),
+  );
+  return composeGeometry(cranium, brow, nose, ...ears);
+}
+
+/**
+ * A cap of hair rather than a second smooth sphere.  Its swept crown, nape and
+ * short temples give the otherwise generic athlete an authored silhouette
+ * without creating a hairstyle/likeness claim or a separate material slot.
+ */
+function sweptHairGeometry() {
+  const crown = loftGeometry(
+    [
+      { p: -0.42, rx: 0.62, rz: 0.5, oz: -0.32 },
+      { p: -0.18, rx: 0.86, rz: 0.73, oz: -0.31 },
+      { p: 0.14, rx: 1.03, rz: 0.9, oz: -0.28 },
+      { p: 0.45, rx: 1.05, rz: 0.95, oz: -0.24 },
+      { p: 0.7, rx: 0.84, rz: 0.72, oz: -0.2 },
+      { p: 0.9, rx: 0.48, rz: 0.42, oz: -0.16 },
+      { p: 1.04, rx: 0.16, rz: 0.18, oz: -0.11 },
+    ],
+    20,
+    "y",
+    Math.PI / 12,
+  );
+  const nape = loftGeometry(
+    [
+      { p: -0.72, rx: 0.42, rz: 0.18, oz: -0.8 },
+      { p: -0.48, rx: 0.62, rz: 0.23, oz: -0.72 },
+      { p: -0.2, rx: 0.54, rz: 0.19, oz: -0.6 },
+      { p: 0.02, rx: 0.32, rz: 0.12, oz: -0.48 },
+    ],
+    14,
+    "y",
+    Math.PI / 12,
+  );
+  const temples = [-1, 1].map((side) =>
+    ridgeGeometry(
+      [
+        new THREE.Vector3(side * 0.78, 0.34, 0.24),
+        new THREE.Vector3(side * 0.9, 0.08, 0.12),
+        new THREE.Vector3(side * 0.8, -0.16, -0.08),
+      ],
+      0.07,
+      8,
+      7,
+    ),
+  );
+  return composeGeometry(crown, nape, ...temples);
+}
+
+/**
+ * Preserve the old helmet bounds but make the shell legible as an aero helmet:
+ * rounded crown, rear tail, central ridge and a compact forward visor.  This
+ * is all one compatibility leaf, so BikeErg keeps the same head anchor.
+ */
+function aeroHelmetGeometry() {
+  const shell = loftGeometry(
+    [
+      { p: -0.48, rx: 0.52, rz: 0.42, oz: -0.28 },
+      { p: -0.22, rx: 0.82, rz: 0.68, oz: -0.26 },
+      { p: 0.08, rx: 1.02, rz: 0.88, oz: -0.22 },
+      { p: 0.36, rx: 1.1, rz: 0.96, oz: -0.18 },
+      { p: 0.6, rx: 0.94, rz: 0.8, oz: -0.16 },
+      { p: 0.8, rx: 0.62, rz: 0.52, oz: -0.13 },
+      { p: 0.92, rx: 0.24, rz: 0.22, oz: -0.1 },
+    ],
+    20,
+    "y",
+    Math.PI / 12,
+  );
+  const tail = loftGeometry(
+    [
+      { p: -1.12, rx: 0.08, rz: 0.09, oz: 0.12 },
+      { p: -0.88, rx: 0.22, rz: 0.18, oz: 0.1 },
+      { p: -0.6, rx: 0.42, rz: 0.3, oz: 0.06 },
+      { p: -0.3, rx: 0.56, rz: 0.35, oz: 0.01 },
     ],
     14,
     "z",
     Math.PI / 10,
   );
+  const ridge = ridgeGeometry(
+    [
+      new THREE.Vector3(0, 0.64, -0.86),
+      new THREE.Vector3(0, 0.88, -0.16),
+      new THREE.Vector3(0, 0.68, 0.42),
+    ],
+    0.052,
+    12,
+    8,
+  );
+  const visor = ridgeGeometry(
+    [
+      new THREE.Vector3(-0.56, 0.08, 0.76),
+      new THREE.Vector3(0, 0.02, 0.94),
+      new THREE.Vector3(0.56, 0.08, 0.76),
+    ],
+    0.038,
+    10,
+    7,
+  );
+  return composeGeometry(shell, tail, ridge, visor);
+}
+
+/**
+ * The single torso leaf replaces the fallback yokes at runtime, so its surface
+ * carries the visible garment construction: a soft collar, raglan seams and a
+ * rear scapular line. They are low relief rather than texture decals, retaining
+ * a clean sports-illustration read in both WebGL and WebGPU.
+ */
+function performanceJerseyGeometry() {
+  const shell = loftGeometry(
+    [
+      { p: -0.78, rx: 0.5, rz: 0.6, oz: -0.07 },
+      { p: -0.66, rx: 0.62, rz: 0.73, oz: -0.06 },
+      { p: -0.48, rx: 0.75, rz: 0.84, oz: -0.045 },
+      { p: -0.24, rx: 0.7, rz: 0.89, oz: -0.02 },
+      { p: -0.04, rx: 0.75, rz: 0.96, oz: 0.015 },
+      { p: 0.14, rx: 0.98, rz: 1.02, oz: 0.018 },
+      { p: 0.29, rx: 1.12, rz: 1.0, oz: -0.01 },
+      { p: 0.4, rx: 1.2, rz: 0.91, oz: -0.055 },
+      { p: 0.47, rx: 1.09, rz: 0.82, oz: -0.055 },
+      { p: 0.53, rx: 0.78, rz: 0.66, oz: -0.025 },
+      { p: 0.56, rx: 0.36, rz: 0.44, oz: 0.005 },
+    ],
+    20,
+    "y",
+    0,
+  );
+  const collar = bakeGeometry(new THREE.TorusGeometry(0.48, 0.04, 8, 24), {
+    scale: [1, 0.66, 1],
+    rotation: [Math.PI / 2, 0, 0],
+    position: [0, 0.49, 0.005],
+  });
+  const seams = [-1, 1].map((side) =>
+    ridgeGeometry(
+      [
+        new THREE.Vector3(side * 0.12, 0.46, 0.56),
+        new THREE.Vector3(side * 0.48, 0.32, 0.74),
+        new THREE.Vector3(side * 0.9, 0.17, 0.56),
+      ],
+      0.026,
+      10,
+      7,
+    ),
+  );
+  const backYoke = ridgeGeometry(
+    [
+      new THREE.Vector3(-0.86, 0.18, -0.62),
+      new THREE.Vector3(0, 0.4, -0.77),
+      new THREE.Vector3(0.86, 0.18, -0.62),
+    ],
+    0.023,
+    12,
+    7,
+  );
+  return composeGeometry(shell, collar, ...seams, backYoke);
+}
+
+/** A compact deltoid/collar form for the separate shoulder contact leaf. */
+function deltoidShoulderGeometry() {
+  const cap = loftGeometry(
+    [
+      { p: -1.04, rx: 0.36, rz: 0.42, oz: 0.06 },
+      { p: -0.72, rx: 0.7, rz: 0.72, oz: 0.1 },
+      { p: -0.28, rx: 0.98, rz: 0.96, oz: 0.08 },
+      { p: 0.18, rx: 1.02, rz: 0.98, oz: 0.04 },
+      { p: 0.58, rx: 0.82, rz: 0.8 },
+      { p: 0.9, rx: 0.5, rz: 0.52, oz: -0.02 },
+      { p: 1.08, rx: 0.26, rz: 0.32, oz: -0.04 },
+    ],
+    18,
+    "x",
+    Math.PI / 10,
+  );
+  const collarbone = ridgeGeometry(
+    [
+      new THREE.Vector3(-0.8, 0.34, 0.45),
+      new THREE.Vector3(0, 0.48, 0.56),
+      new THREE.Vector3(0.8, 0.34, 0.45),
+    ],
+    0.028,
+    10,
+    7,
+  );
+  return composeGeometry(cap, collarbone);
 }
 
 function clenchedHandGeometry() {
@@ -1036,29 +1282,7 @@ scene.name = "ROWPLAY_RIG_ASSET_LIBRARY_V3";
 // Rings bias toward a broadcast sports-illustration silhouette: broad back,
 // clear waist, directional head, and soft joint-overlap on limbs so the
 // chase camera never reads ball-joint mannequin seams.
-addLeafSlot(
-  scene,
-  "athlete:torso",
-  loftGeometry(
-    [
-      { p: -0.78, rx: 0.5, rz: 0.6, oz: -0.07 },
-      { p: -0.66, rx: 0.62, rz: 0.73, oz: -0.06 },
-      { p: -0.48, rx: 0.75, rz: 0.84, oz: -0.045 },
-      { p: -0.24, rx: 0.7, rz: 0.89, oz: -0.02 },
-      { p: -0.04, rx: 0.75, rz: 0.96, oz: 0.015 },
-      { p: 0.14, rx: 0.98, rz: 1.02, oz: 0.018 },
-      { p: 0.29, rx: 1.12, rz: 1.0, oz: -0.01 },
-      { p: 0.4, rx: 1.2, rz: 0.91, oz: -0.055 },
-      { p: 0.47, rx: 1.09, rz: 0.82, oz: -0.055 },
-      { p: 0.53, rx: 0.78, rz: 0.66, oz: -0.025 },
-      { p: 0.56, rx: 0.36, rz: 0.44, oz: 0.005 },
-    ],
-    18,
-    "y",
-    0,
-  ),
-  "athlete-fabric",
-);
+addLeafSlot(scene, "athlete:torso", performanceJerseyGeometry(), "athlete-fabric");
 addLeafSlot(
   scene,
   "athlete:pelvis",
@@ -1078,47 +1302,8 @@ addLeafSlot(
   ),
   "athlete-fabric",
 );
-addLeafSlot(
-  scene,
-  "athlete:head",
-  loftGeometry(
-    [
-      { p: -0.82, rx: 0.38, rz: 0.34, oz: 0.25 },
-      { p: -0.68, rx: 0.62, rz: 0.56, oz: 0.27 },
-      { p: -0.52, rx: 0.8, rz: 0.75, oz: 0.22 },
-      { p: -0.3, rx: 0.94, rz: 0.9, oz: 0.14 },
-      { p: -0.04, rx: 1.04, rz: 0.99, oz: 0.045 },
-      { p: 0.24, rx: 1.02, rz: 1.03, oz: -0.025 },
-      { p: 0.5, rx: 0.92, rz: 0.98, oz: -0.065 },
-      { p: 0.74, rx: 0.72, rz: 0.8, oz: -0.05 },
-      { p: 0.9, rx: 0.46, rz: 0.52, oz: -0.025 },
-      { p: 1, rx: 0.22, rz: 0.25 },
-    ],
-    18,
-    "y",
-    Math.PI / 10,
-  ),
-  "athlete-skin",
-);
-addLeafSlot(
-  scene,
-  "athlete:hair",
-  loftGeometry(
-    [
-      { p: -0.72, rx: 0.72, rz: 0.78, oz: -0.11 },
-      { p: -0.48, rx: 0.94, rz: 0.98, oz: -0.13 },
-      { p: -0.1, rx: 1.08, rz: 1.08, oz: -0.14 },
-      { p: 0.28, rx: 1.05, rz: 1.1, oz: -0.13 },
-      { p: 0.6, rx: 0.88, rz: 0.95, oz: -0.1 },
-      { p: 0.84, rx: 0.56, rz: 0.62, oz: -0.06 },
-      { p: 1.04, rx: 0.16, rz: 0.2 },
-    ],
-    18,
-    "y",
-    Math.PI / 10,
-  ),
-  "athlete-hair",
-);
+addLeafSlot(scene, "athlete:head", directionalHeadGeometry(), "athlete-skin");
+addLeafSlot(scene, "athlete:hair", sweptHairGeometry(), "athlete-hair");
 
 const limbSlots = [
   [
@@ -1161,55 +1346,8 @@ addLeafSlot(
   ),
   "athlete-skin",
 );
-addLeafSlot(
-  scene,
-  "athlete:shoulder",
-  loftGeometry(
-    [
-      { p: -1.12, rx: 0.5, rz: 0.62 },
-      { p: -0.78, rx: 0.78, rz: 0.82, oz: -0.035 },
-      { p: -0.32, rx: 1.0, rz: 0.95, oz: -0.065 },
-      { p: 0.1, rx: 1.08, rz: 0.98, oz: -0.075 },
-      { p: 0.5, rx: 0.92, rz: 0.9, oz: -0.045 },
-      { p: 0.86, rx: 0.7, rz: 0.76 },
-      { p: 1.12, rx: 0.46, rz: 0.58 },
-    ],
-    16,
-    "x",
-    Math.PI / 7,
-  ),
-  "athlete-fabric",
-);
-addLeafSlot(
-  scene,
-  "athlete:helmet",
-  composeGeometry(
-    loftGeometry(
-      [
-        { p: -0.24, rx: 0.78, rz: 0.82, oz: -0.12 },
-        { p: -0.08, rx: 1.0, rz: 1.02, oz: -0.11 },
-        { p: 0.16, rx: 1.1, rz: 1.1, oz: -0.09 },
-        { p: 0.4, rx: 1.0, rz: 1.02, oz: -0.11 },
-        { p: 0.6, rx: 0.78, rz: 0.82, oz: -0.13 },
-        { p: 0.76, rx: 0.3, rz: 0.36, oz: -0.1 },
-      ],
-      18,
-      "y",
-      Math.PI / 10,
-    ),
-    ridgeGeometry(
-      [
-        new THREE.Vector3(0, 0.42, -0.72),
-        new THREE.Vector3(0, 0.72, -0.12),
-        new THREE.Vector3(0, 0.64, 0.38),
-      ],
-      0.052,
-      12,
-      8,
-    ),
-  ),
-  "athlete-fabric",
-);
+addLeafSlot(scene, "athlete:shoulder", deltoidShoulderGeometry(), "athlete-fabric");
+addLeafSlot(scene, "athlete:helmet", aeroHelmetGeometry(), "athlete-fabric");
 
 // Eighteen compatibility leaves retain the exact athlete and contact-bound
 // part contract. The high-visibility equipment now uses six canonical roots

@@ -68,13 +68,14 @@ account.
 
 ### Synchronized replay
 
-- Play, pause, scrub, and 0.5×–8× playback controls
-- Concept2 stroke-based animation that aligns one cycle to each valid moving
-  stroke row, with cadence-continuous split or summary timing when detail is
-  unavailable
-- Canvas 2D and optional Three.js 3D renderers that share staged RowErg,
-  SkiErg, and BikeErg kinematics, equipment contact targets, and sport-specific
-  water, snow, and track materials
+- Technique-first 1× playback by default, with play, pause, scrub, and 0.5×–8×
+  transport controls retained for fast workout review
+- A shared, deterministic sport-technique graph that aligns one canonical cycle
+  to each valid moving Concept2 stroke row, with cadence-continuous split or
+  summary timing when detail is unavailable
+- Canvas 2D and optional Three.js 3D renderers that share the same technique
+  phases, equipment contact targets, and sport-specific water, snow, and track
+  materials for RowErg, SkiErg, and BikeErg
 - Premium sport-specific environments in both views: layered regatta water and
   shoreline, groomed Nordic snow and alpine venue cues, or a barrier-lined
   asphalt/velodrome training circuit
@@ -82,6 +83,10 @@ account.
   plus multi-part RowErg, SkiErg, and BikeErg equipment assemblies in 3D; the
   existing contact-driven rig owns motion, while Canvas 2D and procedural 3D
   geometry remain reliable fallbacks
+- The replay is a generic, data-synchronised technique presentation—not a
+  reconstruction of an athlete's biomechanics. Concept2 records timing,
+  distance, pace, rate, and optional heart rate, rather than joint trajectories,
+  force curves, or motion-capture data.
 - The current 3D figure pack separates fabric, painted composite, metal, rubber,
   grip, and trim response rather than rendering a single flat-shaded figurine.
   It gives the BikeErg a continuous frame/wheel/drivetrain, the RowErg a hull
@@ -159,6 +164,10 @@ demo mode never contacts a real athlete account.
   an athlete's entire history.
 - Replay uses detailed stroke rows when possible and degrades to split or
   summary timing when Concept2 has less detail.
+- Three.js leaves room for a future repository-owned skeletal hero with authored
+  animation clips and post-clip inverse-kinematics contact correction. That is
+  a rendering capability, not a claim that the currently shipped geometry pack
+  contains recorded motion, scans, or athlete-specific biomechanics.
 - 3D rendering progressively falls back from WebGPU to WebGL to the stable 2D
   renderer.
 - Bundled synthetic history makes development and evaluation reproducible

@@ -118,8 +118,10 @@
 		rawStroke && detail.splits.length ? splitIndexAt(detail.splits, rawStroke.d) : null
 	);
 	let playing = $state(false);
-	// Replays default to 8× — real-time is too slow to watch (a 2k is 8 min).
-	const DEFAULT_SPEED = 8;
+	// Start at a technique-readable, real-time cadence. Faster speeds remain
+	// available for a quick review, but 1× preserves the athlete's actual joint
+	// timing and equipment contact on first play.
+	const DEFAULT_SPEED = 1;
 	let speed = $state(DEFAULT_SPEED);
 
 	// Comparison ("ghost") state — race a past session, a constant pace, or an

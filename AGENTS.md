@@ -23,6 +23,7 @@ Each spec has `design.md`, `requirements.md`, and `tasks.md`.
 
 **Active:**
 
+- [Replay motion-system rebuild](.kiro/specs/replay-motion-system-rebuild/tasks.md) — supersedes the geometry-only / no-skin and no-animation portion of the authored-athlete policy: a shared deterministic technique graph, 1× technique-first playback, and a repository-owned V4 skeletal/clip hero path will sit above the existing contact authority while V3, procedural 3D, and Canvas remain fallbacks.
 - [Replay authored athlete assets](.kiro/specs/replay-authored-athlete-assets/tasks.md) — one compact repository-owned low-poly GLB supplies authored 3D athlete and sport-equipment shells while the existing contact-driven rig, WebGPU/WebGL behavior, procedural 3D fallback, and Canvas 2D fallback remain authoritative; provenance is required, with no scan, likeness, avatar generator, or undocumented download.
 
 **Completed (do not rebuild):**

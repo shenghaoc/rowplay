@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { Sport } from "../types";
 import { fallbackStrokePose, type StrokePose } from "./strokeModel";
+import {
+  sampleBikeMotionGraph,
+  sampleRowerMotionGraph,
+  sampleSkierMotionGraph,
+} from "./motionGraph";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
 
 const TAU = Math.PI * 2;
@@ -17,6 +22,35 @@ function expectUnit(value: number): void {
 }
 
 describe("sportKinematics", () => {
+  it("projects the shared motion graph instead of maintaining a second technique model", () => {
+    const rowPose = poseAt("rower", 0.23, 0.72);
+    const rowGraph = sampleRowerMotionGraph(rowPose);
+    const row = solveRowerKinematics(rowPose);
+    expect(row.legExtension).toBe(rowGraph.body.legExtension.value);
+    expect(row.bodySwing).toBe(rowGraph.body.spineHinge.value);
+    expect(row.armDraw).toBe(rowGraph.body.armDraw.value);
+    expect(row.bladeDepth).toBe(rowGraph.contacts.bladeWater.value);
+    expect(row.bladeFeather).toBe(rowGraph.contacts.bladeFeather.value);
+
+    const skiPose = poseAt("skierg", 0.2, 0.72);
+    const skiGraph = sampleSkierMotionGraph(skiPose);
+    const ski = solveSkierKinematics(skiPose);
+    expect(ski.armPress).toBe(skiGraph.body.armPress.value);
+    expect(ski.hipHinge).toBe(skiGraph.body.pelvisHinge.value);
+    expect(ski.kneeFlex).toBe(skiGraph.body.kneeFlex.value);
+    expect(ski.poleContact).toBe(skiGraph.contacts.polePlant.value);
+
+    const bikePose = poseAt("bike", 0.23, 0.72);
+    const bikeGraph = sampleBikeMotionGraph(bikePose);
+    const bike = solveBikeKinematics(bikePose);
+    expect(bike.crankAngle).toBe(bikeGraph.crank.angle);
+    expect(bike.anklePitchLeft).toBeCloseTo(-0.05 + bikeGraph.leftPedal.ankleFlex.value * 0.3, 12);
+    expect(bike.anklePitchRight).toBeCloseTo(
+      -0.05 + bikeGraph.rightPedal.ankleFlex.value * 0.3,
+      12,
+    );
+  });
+
   it("sequences rowing legs-body-arms on drive and hands-body-slide on recovery", () => {
     const driveFrac = poseAt("rower", 0).driveFrac;
     const drive = solveRowerKinematics(poseAt("rower", driveFrac * 0.5));
@@ -55,7 +89,10 @@ describe("sportKinematics", () => {
     // Each boundary has zero velocity on both sides: lift-off and touch-down
     // are no longer eased with a nonzero-velocity curve that makes the stick
     // visibly snap through the snow.
-    for (const boundary of [0.01, 0.075, 0.82, 0.94]) {
+    // The shared technique graph enters the plant at 0.5% of the drive,
+    // reaches a full brace at 7.5%, holds it throughout the loaded pull, then
+    // starts its C2 release at 84% and clears the snow at 97%.
+    for (const boundary of [0.005, 0.075, 0.84, 0.97]) {
       const before = contactAtDriveProgress(boundary - epsilon);
       const atBoundary = contactAtDriveProgress(boundary);
       const after = contactAtDriveProgress(boundary + epsilon);
@@ -81,8 +118,8 @@ describe("sportKinematics", () => {
     for (const progress of [0.08, 0.18, 0.4, 0.62, 0.72, 0.8]) {
       expect(contactAtDriveProgress(progress), `full plant at ${progress}`).toBe(1);
     }
-    expect(contactAtDriveProgress(0.88)).toBeGreaterThan(0);
-    expect(contactAtDriveProgress(0.88)).toBeLessThan(1);
+    expect(contactAtDriveProgress(0.9)).toBeGreaterThan(0);
+    expect(contactAtDriveProgress(0.9)).toBeLessThan(1);
     expect(contactAtDriveProgress(1)).toBe(0);
   });
 
