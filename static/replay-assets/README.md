@@ -19,8 +19,8 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 589,292 bytes; SHA-256
-  `b61bb644a82d75d192bde3d646bd63674e0469288a5da1e0292fc469a22d3fc6`.
+- **Reviewed V3 artifact:** 589,284 bytes; SHA-256
+  `0431c58c27f0669c1649408227f58a8eecebf51a5ed9ab8c04202326343739b2`.
 - **Inventory:** 18 compatibility leaf meshes, six composite roots, and 39
   direct composite parts (24 top-level logical entities; 63 nodes / 57 mesh
   nodes total). The package has 23,300 indexed triangles and 16,378 indexed
@@ -81,44 +81,64 @@ compatibility artifacts for older renderer builds. They are not rebuilt by the
 current generator. V2's leaf-only package remains the stable fallback while a
 renderer adopts V3's template roots.
 
-## `rowplay-rig-v4-prototype.glb` (non-runtime proof)
+## `rowplay-athlete-v4.glb`
 
-This is an intentionally isolated feasibility artifact, **not a product asset
-and not a renderer integration**. It is not requested by the replay loader,
-does not participate in `build:replay-assets` or the V3 validator, and does
-not alter WebGPU, WebGL, V3, procedural-3D, or Canvas behavior. It exists to
-prove a safe future path away from independently transformed limb shells.
+This is the production V4 hero athlete for WebGPU/WebGL replay. It replaces the
+visible segmented V3 human shell when its strict loader contract validates,
+while the hidden procedural rig continues to own equipment motion and exact
+hand, foot, oar, pedal, and planted-pole targets. V3, procedural 3D, and Canvas
+remain automatic fallbacks.
 
-- **Purpose:** a generic repository-authored athlete built as one skinned glTF
-  primitive, with a deterministic baseline row-cycle clip that can be sampled
-  by `AnimationMixer.setTime()`.
-- **Ownership and licence:** created from repository source, copyright (c)
-  2026 shenghaoc and rowplay contributors, and distributed under the
-  repository's MIT `LICENSE`. It contains no downloaded model, scan, likeness,
-  avatar-generator output, user data, texture, image, or external request.
-- **Source of truth:** `src/lib/replay/rigV4Prototype.ts`; export and
-  round-trip script: `scripts/build-replay-rig-v4.mjs`.
-- **Rebuild command:**
-  `node --experimental-strip-types scripts/build-replay-rig-v4.mjs`.
-  The script exports, reloads with `GLTFLoader`, and rejects a result that does
-  not return as one skinned mesh with its named clip preserved.
-- **Reviewed artifact:** 223,960 bytes; SHA-256
-  `07243050a98472b5712c4eda9fdde0e6e10b89a8ed6d0e17b4f7d4f609611635`.
-  Rebuilding twice produced byte-identical output.
-- **Exact inventory:** one `SkinnedMesh`, 19 named bones, 2,991 indexed
-  vertices, 5,040 indexed triangles, one vertex-colour `MeshPhysicalMaterial`,
-  zero textures/images, and one animation named `v4-row-cycle-prototype` with
-  13 `QuaternionKeyframeTrack`s (source duration 1.2 seconds; serialized float
-  duration 1.2000000476837158 seconds).
-- **Proof covered:** `src/lib/replay/rigV4Prototype.test.ts` verifies finite,
-  normalized skin weights; deterministic seek sampling; actual vertex movement
-  under skinning; and GLB → `GLTFLoader` → `AnimationMixer` round-trip.
+- **Purpose:** one generic repository-authored `SkinnedMesh` with a stable
+  19-bone skeleton and distinct deterministic RowErg, SkiErg, and BikeErg base
+  clips. Runtime samples normalized clip time from replay phase and applies the
+  analytic contact pass after the authored pose.
+- **Ownership and licence:** created specifically for rowplay from source in
+  this repository; copyright (c) 2026 shenghaoc and rowplay contributors and
+  distributed under the repository's MIT `LICENSE`. It contains no downloaded
+  model, scan, likeness, avatar-generator output, user data, image, texture, or
+  external request.
+- **Source of truth:** `src/lib/replay/rigV4.ts`. The module and artifact are
+  production contracts. Export: `scripts/build-replay-rig-v4.mjs`; strict
+  checked-binary validation: `scripts/validate-replay-rig-v4.mjs`.
+- **Rebuild and validate:** `vp run build:replay-rig-v4`, then
+  `vp run validate:replay-assets`. The build exports and reloads the GLB and
+  rejects skeleton, clip, drive-boundary, skin, or contact-metadata drift. The
+  normal repository quality gate validates both V3 and V4.
+- **Reviewed artifact:** 433,104 bytes; SHA-256
+  `4e658e31254539e00e60adc648a59eafcf033149cd89e641f85bf0391f3a6dba`.
+  Two independent builds must be byte-identical before the binary changes are
+  committed.
+- **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named bones,
+  5,373 vertices, 10,152 triangles, one opaque vertex-colour
+  `MeshPhysicalMaterial`, zero textures/images, and 14 connected topology
+  components. Five closed shared-ring lofts form the axial pelvis/torso/neck/
+  head, both complete shoulder-to-fingertip arms, and both complete
+  hip-to-shoe/toe legs. The remaining nine components are deliberate shallow
+  jersey-yoke, face, ear, neutral performance-cap/seam, and palm-thumb
+  details—not disconnected limb shells. Buried shoulder/hip roots, a flush
+  vertex-colour waistband, separate shorts value, and tapered hands keep those
+  closed lofts from reading as sockets, blocks, or mittens.
+- **Skinning:** elbow, wrist, knee, ankle, shoulder, and hip rings use spatial
+  parent-to-child weight gradients. Palm/sole marker nodes and terminal-bone
+  glTF extras encode exact local contact offsets: left/right hand
+  `[-0.08,-0.01,0.035]` / `[0.08,-0.01,0.035]`; both feet
+  `[0,-0.055,0.13]`.
+- **Animations:** three normalized one-second clips, each with one hips
+  translation and 19 quaternion tracks: `rowplay-v4-row-cycle` (authored drive
+  end `0.38`), `rowplay-v4-ski-cycle` (`0.34`), and
+  `rowplay-v4-bike-cycle` (`0.5`). Clip extras also preserve the canonical
+  phase schema and data-truth boundary.
+- **Verification:** source tests cover normalized finite weights, exact bone
+  and contact schemas, topology component count, joint-weight gradients,
+  deep-flex volume, distinct clip signatures, exact drive landmarks,
+  deterministic seeking, loop closure, and GLB → `GLTFLoader` →
+  `AnimationMixer` round-trip. The raw GLB validator independently checks the
+  same binary contract, embedded-only delivery, and absence of external URIs.
 
-The prototype proves that Three.js and glTF skinning are a viable rendering
-path. It does **not** prove professional motion quality on its own. Promotion
-requires a separate V4 loader/validator contract plus a contact-to-bone adapter
-that applies the existing RowErg, SkiErg, and BikeErg hand, foot, oar, pedal,
-and planted-pole constraints after the base clip has been sampled.
+The clips are polished generic technique, not measured athlete biomechanics.
+Concept2 cadence and replay timing determine when they are sampled; no user
+joint path, force curve, body shape, or technique is inferred.
 
 ## Provenance policy
 

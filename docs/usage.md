@@ -128,34 +128,37 @@ biomechanics. Its shared technique phases stage RowErg legs, body, then arms
 and BikeErg cadence-driven cranks separately from distance-driven wheel roll.
 Both 2D and 3D use those same timing and contact semantics.
 
-The 2D view draws a lightweight procedural athlete. The 3D view can load a
-compact repository-owned geometry pack created specifically for rowplay and fit
-its authored athlete shells and multi-part sport-equipment assemblies onto the
-same contact-driven rig. The asset changes visible form, not timing or
-kinematics: hands and feet remain at equipment contacts, live and ghost athletes
-use independent instances, and runtime materials retain theme and lane identity.
-Fabric, painted composite, metal, rubber, grips, and trim keep their own visual
-response rather than being recolored as one plastic block. If the local asset
-cannot load, procedural 3D remains available, and Canvas 2D is the stable outer
-fallback. The figure remains generic; the asset contains no scan,
-avatar-generator output, user image, body profile, clothing profile, or athlete
-likeness.
+The 2D view draws a lightweight procedural athlete. In 3D, rowplay loads a
+compact repository-owned V4 athlete as one skinned mesh. RowErg, SkiErg, and
+BikeErg each have an authored canonical technique clip, sampled deterministically
+from replay pose and time; after sampling, an analytic correction pass keeps the
+hands and feet on the existing authoritative equipment contacts. Live and ghost
+athletes use independent instances, and runtime materials retain theme and lane
+identity. The repository-owned V3 pack continues to supply the multi-part
+sport-equipment assemblies and acts as the first athlete fallback, followed by
+procedural 3D and the stable Canvas 2D renderer. Fabric, painted composite,
+metal, rubber, grips, and trim keep their own visual response rather than being
+recolored as one plastic block. The figure and clips remain generic presentation
+art; the assets contain no scan, avatar-generator output, user image, body
+profile, clothing profile, athlete likeness, recorded motion, or
+athlete-specific biomechanics.
 
-The current 3D package makes the anatomical and equipment contracts visible:
-limb shells taper from their proximal to distal end, orientable fitted elbow
-cuffs bridge deep arm flex, and the equipment builds as coherent assemblies—a
-boat and oar rig, Nordic skis, and a continuous bicycle wheel/frame/drivetrain.
-During the illustrated SkiErg plant, each basket holds a deterministic course
-anchor while the hands remain on the grips. These are deliberate illustrative
-motion constraints, not measured joint or force data from Concept2.
+The current 3D packages make the anatomical and equipment contracts visible:
+the V4 skin deforms around its authored skeleton, while the V3 equipment builds
+as coherent assemblies—a boat and oar rig, Nordic skis, and a continuous
+bicycle wheel/frame/drivetrain. During the illustrated SkiErg plant, each basket
+holds a deterministic course anchor while the hands remain on the grips. These
+are deliberate illustrative motion constraints, not measured joint or force
+data from Concept2.
 
-The shipped V3 geometry pack is a contact-driven figure rig, not a scanned or
-recorded performance. Three.js can support a future repository-owned skeletal
-hero with authored animation clips and post-clip inverse-kinematics contact
-correction, but that capability does not mean a skeletal V4 asset is currently
-installed or that rowplay can infer an athlete's real joints from a Logbook
-workout. Any such asset remains generic, authored in-repository, and subject to
-the same equipment-contact and fallback rules.
+The shipped V4 athlete is a local, repository-owned generic asset: one skinned
+mesh, an authored skeleton, and three canonical sport clips. Three.js samples
+the selected clip from deterministic replay pose and time, then rowplay applies
+analytic post-clip correction to the hands and feet. This improves deformation
+and contact fidelity without implying that rowplay can infer an athlete's real
+joints, posture, or biomechanics from a Logbook workout. V4 remains subject to
+the same equipment-contact authority and V3, procedural 3D, and Canvas fallback
+rules.
 
 Both views use complete sport-specific illustrative environments, not one
 generic floor with different colors. RowErg combines layered water with
@@ -175,14 +178,14 @@ procedural Canvas drawing and Three.js geometry and materials. The replay does
 not ship or download generated environment images, photographs, scanned venues,
 or imported location models.
 
-In 3D, authored human-scale athlete shells keep feet and hands on the relevant
-equipment targets through the existing rig — oar handles and foot plates,
-SkiErg pole grips and boots, or BikeErg bars and pedals. The larger 3D stage and
-rear three-quarter chase camera keep paired limbs visible; sport- and
-viewport-aware framing, speed-aware follow, and camera-relative fill light keep
-the athlete readable around the full course. Environment contrast and detail
-stay subordinate to the figure, equipment contacts, ghost comparison, and
-telemetry.
+In 3D, the authored human-scale skinned athlete keeps feet and hands on the
+relevant equipment targets through the post-clip contact pass — oar handles and
+foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals. The larger
+3D stage and rear three-quarter chase camera keep paired limbs visible; sport-
+and viewport-aware framing, speed-aware follow, and camera-relative fill light
+keep the athlete readable around the full course. Environment contrast and
+detail stay subordinate to the figure, equipment contacts, ghost comparison,
+and telemetry.
 
 The 2D BikeErg uses the same mechanically forward clockwise convention for its
 wheels and cranks. Explicit opposing crank arms, pedals, chainring, sprocket,

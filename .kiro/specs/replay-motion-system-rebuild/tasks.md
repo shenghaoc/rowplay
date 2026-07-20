@@ -16,15 +16,27 @@
   - Add deterministic continuity and contact-window tests
   - Integrate the graph into the existing 2D and 3D choreography
 
-- [ ] **4. Prototype and introduce V4 skeletal animation**
+- [x] **4. Prototype and introduce V4 skeletal animation**
   - [x] Produce an isolated repository-authored generic skinned athlete and a
     named deterministic clip; prove skinning, `AnimationMixer.setTime()` seek,
-    and GLB round-trip in source tests. This remains a non-runtime prototype.
-  - [ ] Change validation/loading only for the reviewed V4 contract
-  - [ ] Sample clips in the renderer and correct equipment contacts after sampling
-  - Keep V3/procedural/Canvas fallback proof
+    and GLB round-trip in source tests
+  - [x] Promote the reviewed local V4 contract to one production `SkinnedMesh`,
+    19 bones, and distinct deterministic RowErg/SkiErg/BikeErg clips
+  - [x] Validate and lazy-load V4 independently of V3, clone live/ghost skin,
+    skeleton, geometry, material, and mixer resources, and dispose them safely
+  - [x] Seek the selected clip from normalized replay phase, restore the sampled
+    authored pose before repeated seeks, and apply pelvis alignment, two-bone
+    IK, and palm/sole orientation only after clip sampling
+  - [x] Keep V3 equipment/contact motion authoritative and retain V3,
+    procedural 3D, WebGL, and Canvas fallback proof
 
-- [ ] **5. Complete temporal visual acceptance**
-  - Review every sport moving at 1×, 2×, and 8×
-  - Record paused catch/drive/finish/recovery and plant/release proof
-  - Run focused tests, full gate, Workers smoke, and update the draft PR
+- [x] **5. Complete temporal visual acceptance**
+  - [x] Review every sport moving at 1×, 2×, and 8× in the in-app browser on
+    the real WebGPU/Ultra stage
+  - [x] Record Row stroke, Ski plant/press/release, Bike pedal-cycle, same-state
+    baseline/V4, desktop-dark, desktop-light, and mobile evidence
+  - [x] Protect palm/sole tolerances, Row torso clearance, Ski course-anchored
+    plants, Bike opposed pedals, deterministic/reduced-motion seeks, live/ghost
+    independence, camera readability, and fallback/disposal in focused tests
+  - [x] Run focused tests, the full repository gate, asset/locales validation,
+    visual browser smoke, and update the draft PR

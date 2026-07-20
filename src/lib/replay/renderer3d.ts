@@ -24,6 +24,11 @@ import {
   type ReplayAssetMaterialResolver,
   type ReplayAssetMaterialRole,
 } from "./renderer3dAssets";
+import { tryCreateReplayV4AthleteInstance, type ReplayV4AssetTemplate } from "./renderer3dV4Assets";
+import {
+  installReplayV4MotionController,
+  type ReplayV4MotionController,
+} from "./renderer3dV4Motion";
 
 // Resolve lazily because this module is also imported during SSR. The returned
 // MediaQueryList stays live as the OS preference changes, while avoiding a new
@@ -184,6 +189,7 @@ export interface Renderer3DOptions {
   backend?: Renderer3DBackend;
   WebGPURenderer?: WebGPURendererCtor;
   assets?: ReplayAssetLibrary | null;
+  v4Assets?: ReplayV4AssetTemplate | null;
 }
 
 const LABEL_SPRITE_SCALE = 0.0064;
@@ -266,7 +272,7 @@ function updateTextSprite(
 }
 
 /**
- * A low-poly athlete + machine for one lane. `group` is placed on the lap
+ * One athlete + sport machine for a lane. `group` is placed on the lap
  * circle (and receives bob/roll); `animate` drives sport-specific motion from
  * the shared data-derived `StrokePose` and returns secondary outer-body cues
  * from that same solve. Distance is passed separately for BikeErg wheel roll.
@@ -281,6 +287,15 @@ interface Avatar {
   group: THREE.Group;
   /** Maps V3's neutral geometry roles to this live/ghost rig's materials. */
   assetMaterialResolver: ReplayAssetMaterialResolver;
+  /**
+   * Contact-safe procedural landmarks retained as the authoritative target
+   * rig when a skinned V4 athlete is installed over the visible body.
+   */
+  v4Targets: AvatarV4Targets;
+  /** Optional visible skinned hero; the procedural rig remains its contact oracle. */
+  v4Motion?: ReplayV4MotionController | null;
+  /** Lets SkiErg keep its pole-sphere solve inside the installed skin's reach. */
+  setV4ArmReach?(reach: number): void;
   animate(
     phase: number,
     reduceMotion: boolean,
@@ -293,6 +308,18 @@ interface Avatar {
    * than followers of a moving torso.
    */
   resolveWorldContacts?(): void;
+}
+
+interface AvatarV4Targets {
+  readonly pelvis: THREE.Object3D;
+  readonly leftHand: THREE.Object3D;
+  readonly rightHand: THREE.Object3D;
+  readonly leftElbow: THREE.Object3D;
+  readonly rightElbow: THREE.Object3D;
+  readonly leftFoot: THREE.Object3D;
+  readonly rightFoot: THREE.Object3D;
+  readonly leftKnee: THREE.Object3D;
+  readonly rightKnee: THREE.Object3D;
 }
 
 type ReplayAssetMaterialPalette = Readonly<Record<ReplayAssetMaterialRole, THREE.Material>>;
@@ -355,9 +382,9 @@ const CAMERA_RIGS: Record<Sport, CameraRig> = {
   // anatomical detail to register. This stays wide enough for the grips and
   // blades while lowering the horizon and putting the seated body in the
   // composition's visual centre.
-  rower: { back: 3.55, height: 2.15, ahead: 1.36, lateral: 1.48, aimY: 0.84 },
-  skierg: { back: 3.25, height: 2.38, ahead: 1.4, lateral: 1.3, aimY: 1.2 },
-  bike: { back: 2.98, height: 2.02, ahead: 0.74, lateral: 1.24, aimY: 0.88 },
+  rower: { back: 3.65, height: 2.02, ahead: 0.72, lateral: 2.25, aimY: 0.92 },
+  skierg: { back: 3.15, height: 2.3, ahead: 0.9, lateral: 1.86, aimY: 1.14 },
+  bike: { back: 3.12, height: 1.96, ahead: 0.58, lateral: 1.92, aimY: 0.92 },
 };
 
 const BASE_CAMERA_FOV = 42;
@@ -1662,7 +1689,12 @@ function makeRowerAvatar(
       fallback: [shaft, grip, collar],
     });
     // Rigger pin sits outside the hull; blade depth is animated continuously.
-    oar.position.set(side * 0.52, 0.34, 0.05);
+    // Keep the crossed inboard grips just forward of the pelvis shell. The
+    // former 0.05 m station put both palms through the athlete's hip volume at
+    // the catch even though the torso-only clearance test remained green.
+    // Moving the complete pin/shaft assembly preserves the rigid oarlock
+    // contract while giving a human hand a real body-clearance envelope.
+    oar.position.set(side * 0.52, 0.34, 0.095);
     oar.userData.side = side;
     group.add(oar);
     oars.push({ side, group: oar, blade, handleAnchor });
@@ -1873,8 +1905,28 @@ function makeRowerAvatar(
       : { vertical: graph.accents.vertical.value, surge: graph.accents.surge.value };
   };
 
+  const [leftArm, rightArm] = arms;
+  const [leftLeg, rightLeg] = legs;
+  if (!leftArm || !rightArm || !leftLeg || !rightLeg) {
+    throw new Error("RowErg V4 target rig is incomplete");
+  }
   finalizeAvatar(group, castShadow, opacity);
-  return { group, animate, assetMaterialResolver: resolveAssetMaterial };
+  return {
+    group,
+    animate,
+    assetMaterialResolver: resolveAssetMaterial,
+    v4Targets: {
+      pelvis: hips,
+      leftHand: leftArm.hand,
+      rightHand: rightArm.hand,
+      leftElbow: leftArm.elbow,
+      rightElbow: rightArm.elbow,
+      leftFoot: leftLeg.foot,
+      rightFoot: rightLeg.foot,
+      leftKnee: leftLeg.knee,
+      rightKnee: rightLeg.knee,
+    },
+  };
 }
 
 /**
@@ -1962,6 +2014,7 @@ function makeSkierAvatar(
   // length through the crunch.
   const legParts: Array<{
     side: number;
+    foot: THREE.Object3D;
     thigh: THREE.Mesh;
     shin: THREE.Mesh;
     knee: THREE.Mesh;
@@ -1989,6 +2042,7 @@ function makeSkierAvatar(
     group.add(thigh, shin, knee);
     legParts.push({
       side,
+      foot: boot,
       thigh,
       shin,
       knee,
@@ -2130,6 +2184,7 @@ function makeSkierAvatar(
   const inverseUpperWorld = new THREE.Quaternion();
   const UPPER_ARM_LENGTH = 0.36;
   const FOREARM_LENGTH = 0.34;
+  let contactArmReach = UPPER_ARM_LENGTH + FOREARM_LENGTH;
   const THIGH_LENGTH = 0.4;
   const SHIN_LENGTH = 0.39;
   const POLE_LENGTH = 1.38;
@@ -2236,7 +2291,9 @@ function makeSkierAvatar(
   ): void => {
     const separation = poleAxis.copy(shoulder).sub(tip).length();
     const minArmReach = Math.abs(UPPER_ARM_LENGTH - FOREARM_LENGTH) + 0.004;
-    const maxArmReach = UPPER_ARM_LENGTH + FOREARM_LENGTH - 0.004;
+    const maxArmReach =
+      Math.min(UPPER_ARM_LENGTH + FOREARM_LENGTH, Math.max(minArmReach + 0.008, contactArmReach)) -
+      0.004;
     const rawReach = shoulder.distanceTo(preferred);
     const minReachAtTip = Math.max(minArmReach, Math.abs(POLE_LENGTH - separation) + 0.003);
     const maxReachAtTip = Math.min(maxArmReach, POLE_LENGTH + separation - 0.003);
@@ -2409,12 +2466,31 @@ function makeSkierAvatar(
     );
   };
 
+  const [leftArm, rightArm] = arms;
+  const [leftLeg, rightLeg] = legParts;
+  if (!leftArm || !rightArm || !leftLeg || !rightLeg) {
+    throw new Error("SkiErg V4 target rig is incomplete");
+  }
   finalizeAvatar(group, castShadow, opacity);
   return {
     group,
     animate,
     resolveWorldContacts,
     assetMaterialResolver: resolveAssetMaterial,
+    v4Targets: {
+      pelvis: hips,
+      leftHand: leftArm.hand,
+      rightHand: rightArm.hand,
+      leftElbow: leftArm.elbow,
+      rightElbow: rightArm.elbow,
+      leftFoot: leftLeg.foot,
+      rightFoot: rightLeg.foot,
+      leftKnee: leftLeg.knee,
+      rightKnee: rightLeg.knee,
+    },
+    setV4ArmReach(reach) {
+      if (Number.isFinite(reach) && reach > 0) contactArmReach = reach;
+    },
   };
 }
 
@@ -2948,8 +3024,28 @@ function makeBikeAvatar(
     return STATIC_AVATAR_MOTION;
   };
 
+  const [leftArm, rightArm] = arms;
+  const [leftLeg, rightLeg] = legs;
+  if (!leftArm || !rightArm || !leftLeg || !rightLeg) {
+    throw new Error("BikeErg V4 target rig is incomplete");
+  }
   finalizeAvatar(group, castShadow, opacity);
-  return { group, animate, assetMaterialResolver: resolveAssetMaterial };
+  return {
+    group,
+    animate,
+    assetMaterialResolver: resolveAssetMaterial,
+    v4Targets: {
+      pelvis,
+      leftHand: leftArm.hand,
+      rightHand: rightArm.hand,
+      leftElbow: leftArm.elbow,
+      rightElbow: rightArm.elbow,
+      leftFoot: leftLeg.shoe,
+      rightFoot: rightLeg.shoe,
+      leftKnee: leftLeg.knee,
+      rightKnee: rightLeg.knee,
+    },
+  };
 }
 
 const SPORT_PROFILES: Record<Sport, SportProfile> = {
@@ -3331,11 +3427,11 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Camera-relative lights keep the athlete's rear planes readable around
     // the whole loop. Fixed world lights alone left half the course as an
     // almost black silhouette, especially at Medium where shadows are off.
-    const cameraFill = new THREE.DirectionalLight(0xe8f2ff, 0.62);
+    const cameraFill = new THREE.DirectionalLight(0xe8f2ff, 0.34);
     cameraFill.name = "camera-athlete-fill";
     cameraFill.position.set(-3.2, 4.8, 2.2);
     cameraFill.target.position.set(0, 0.4, -8);
-    const cameraRim = new THREE.DirectionalLight(0xfff6e8, 0.42);
+    const cameraRim = new THREE.DirectionalLight(0xfff6e8, 0.24);
     cameraRim.name = "camera-athlete-rim";
     cameraRim.position.set(4.2, 2.8, 1.2);
     cameraRim.target.position.set(0, 0.5, -8);
@@ -3379,6 +3475,36 @@ export class CourseRenderer3D implements ReplayRenderer {
       // live shadow / ghost-opacity contract as the fallback equipment.
       finalizeAvatar(this.liveAvatar.group, this.cfg.shadows, 1);
       finalizeAvatar(this.ghostAvatar.group, false, 0.45);
+    }
+    if (options.v4Assets) {
+      this.liveAvatar.v4Motion = installReplayV4MotionController({
+        sport: this.sport,
+        parent: this.liveAvatar.group,
+        fallbackRoot: this.liveAvatar.group,
+        instance: tryCreateReplayV4AthleteInstance(options.v4Assets),
+        targets: this.liveAvatar.v4Targets,
+        castShadow: this.cfg.shadows,
+        receiveShadow: this.cfg.shadows,
+      });
+      this.ghostAvatar.v4Motion = installReplayV4MotionController({
+        sport: this.sport,
+        parent: this.ghostAvatar.group,
+        fallbackRoot: this.ghostAvatar.group,
+        instance: tryCreateReplayV4AthleteInstance(options.v4Assets),
+        targets: this.ghostAvatar.v4Targets,
+        opacity: 0.45,
+        castShadow: false,
+        receiveShadow: false,
+        laneColor: COLORS_LIGHT.ghost,
+      });
+      this.liveAvatar.group.userData.authoredReplayV4 = !!this.liveAvatar.v4Motion;
+      this.ghostAvatar.group.userData.authoredReplayV4 = !!this.ghostAvatar.v4Motion;
+      const v4ArmReach = Math.min(
+        options.v4Assets.effectors.leftHand.totalReach,
+        options.v4Assets.effectors.rightHand.totalReach,
+      );
+      if (this.liveAvatar.v4Motion) this.liveAvatar.setV4ArmReach?.(v4ArmReach);
+      if (this.ghostAvatar.v4Motion) this.ghostAvatar.setV4ArmReach?.(v4ArmReach);
     }
     this.scene.add(this.liveBoat, this.ghostGroup);
 
@@ -5084,6 +5210,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // bob and surge have all reached their final values for this frame.
     outer.updateMatrixWorld(true);
     avatar.resolveWorldContacts?.();
+    avatar.v4Motion?.update(reduce ? REDUCED_REPLAY_POSES[this.sport] : pose);
     output.x = x;
     output.z = z;
     output.tx = tx;
@@ -5363,9 +5490,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       ? sportRig.back + 0.8 + ghostPullback
       : (sportRig.back + ghostPullback) * (narrow ? narrowScale : 1);
     const ahead = sportRig.ahead;
-    // A static lateral offset is not an animation trigger. Preserving it keeps
-    // paired limbs and equipment from collapsing into a direct-rear silhouette.
-    const lateral = sportRig.lateral;
+    // A static lateral offset is not an animation trigger. Preserve the full
+    // three-quarter line on desktop; on the narrow SkiErg stage, ease toward
+    // rear-three-quarter so both pole shafts survive the mobile pixel budget
+    // instead of one disappearing behind the torso.
+    const lateral = sportRig.lateral * (narrow && this.sport === "skierg" ? 0.68 : 1);
     // A comparison occupies the inner lane, four metres inside the live
     // athlete and may also be hundreds of metres ahead or behind. Frame the
     // actual midpoint, orient the chase to the average tangent, and derive the
@@ -5471,6 +5600,10 @@ export class CourseRenderer3D implements ReplayRenderer {
   }
 
   destroy(): void {
+    // V4 owns lane-local skeleton/mixer/geometry/material resources. Remove it
+    // before the generic scene walk so shared cache templates remain untouched.
+    this.liveAvatar.v4Motion?.dispose();
+    this.ghostAvatar.v4Motion?.dispose();
     // Walk the whole scene — avatar helper geometries (taperedLimb, makeHand,
     // makeFoot, makeHead) are created inline by makeRowerAvatar / makeSkier /
     // makeBike and never tracked in `this.geometries`. Disposing through

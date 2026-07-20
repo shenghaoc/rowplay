@@ -782,8 +782,8 @@ function rowBoatAssemblyParts() {
   // The visible rigger has to terminate at the motion rig's exact oar pivot:
   // a near miss makes the shaft look suspended once it sweeps through the
   // drive. These anchors match `rower-oar-{left,right}` in renderer3d.ts.
-  const leftOarPivot = [-0.52, 0.34, 0.05];
-  const rightOarPivot = [0.52, 0.34, 0.05];
+  const leftOarPivot = [-0.52, 0.34, 0.095];
+  const rightOarPivot = [0.52, 0.34, 0.095];
   const riggers = composeGeometry(
     tubeGeometryBetween([-0.12, 0.285, -0.08], leftOarPivot, 0.018, 12),
     tubeGeometryBetween([0.12, 0.285, -0.08], rightOarPivot, 0.018, 12),

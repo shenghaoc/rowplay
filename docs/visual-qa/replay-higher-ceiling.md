@@ -72,7 +72,7 @@ Captured in the in-app browser before editing the renderer.
 
 ## Highest-impact changes
 
-1. Replace the visible 3D body shells with one project-authored low-poly GLB:
+1. Replace the visible 3D body shells with one project-authored skinned GLB:
    coherent torso/pelvis/head planes, embedded joint transitions, grip wedges,
    and directional shoes. Drive independent live/ghost instances from the
    existing contact-locked kinematic targets.
@@ -205,10 +205,63 @@ regression suite covers those state-space constraints; the browser pass at
 `/replay/1001`, `/replay/1003`, and `/replay/1004` reviewed the resulting
 WebGPU/Ultra frames before this draft update.
 
-## Accepted capture matrix
+## V4 production athlete acceptance — 2026-07-20
+
+The production pass replaces the visible segmented athlete with the reviewed
+local `rowplay-athlete-v4.glb`: one skinned mesh, 19 bones, independent
+RowErg/SkiErg/BikeErg clips, and a deterministic post-clip contact solve. V3
+sport equipment remains visible and authoritative; a V4 load or validation
+failure still exposes V3/procedural 3D before the outer Canvas fallback.
+
+The first actual WebGPU frame caught a pale mannequin, shoulder sockets, an
+oversized head shell, flat rear lighting, and an almost direct-rear camera. The
+accepted pass corrects the glTF vertex-colour transfer to linear space, uses a
+matte brand-indigo kit, buries the closed shoulder/hip roots, tapers the torso,
+arms, wrists, palms, and head, adds a flush waistband/shorts value and thumb
+forms, removes the visor-like face trim, and uses sport-specific true
+three-quarter camera lines with restrained camera fill/rim.
+
+Same-viewport paired inputs—not screenshots judged in isolation—record the
+visible change:
+
+- [RowErg baseline / V4](higher-ceiling/v4/row-baseline-v4-comparison.jpg)
+- [SkiErg baseline / V4](higher-ceiling/v4/ski-baseline-v4-comparison.jpg)
+- [BikeErg baseline / V4](higher-ceiling/v4/bike-baseline-v4-comparison.jpg)
+
+Temporal contact sheets cover the real WebGPU/Ultra stage in motion:
+
+- [RowErg catch, drive, finish, and recovery](higher-ceiling/v4/row-v4-motion.jpg)
+- [SkiErg reach, plant, press, release, and recovery](higher-ceiling/v4/ski-v4-motion.jpg)
+- [BikeErg opposed pedal cycle](higher-ceiling/v4/bike-v4-motion.jpg)
+
+The in-app browser review also ran all three sports at 1×, 2×, and 8×. At 1×,
+Row hands remain on the crossed scull grips without entering the pelvis shell;
+Ski baskets hold their deterministic course point while the body advances
+through the loaded press; Bike hands remain on the bar while soles follow the
+same opposed crank graph that drives the drivetrain. The fast modes remain
+navigation controls, not claims of natural-speed biomechanics.
+
+Current V4 still evidence:
+
+| Sport   | Desktop dark Ultra                                     | Mobile light Ultra                                     |
+| ------- | ------------------------------------------------------ | ------------------------------------------------------ |
+| RowErg  | [frame](higher-ceiling/v4/row-desktop-dark-ultra.jpg)  | [frame](higher-ceiling/v4/row-mobile-light-ultra.jpg)  |
+| SkiErg  | [frame](higher-ceiling/v4/ski-desktop-dark-ultra.jpg)  | [frame](higher-ceiling/v4/ski-mobile-light-ultra.jpg)  |
+| BikeErg | [frame](higher-ceiling/v4/bike-desktop-dark-ultra.jpg) | [frame](higher-ceiling/v4/bike-mobile-light-ultra.jpg) |
+
+RowErg also has a current
+[desktop light Ultra frame](higher-ceiling/v4/row-desktop-light-ultra.jpg).
+The checked asset is 433,104 bytes, 5,373 vertices, 10,152 triangles, one
+primitive/material slot, and 14 topology components. Two independent exports
+were byte-identical to the committed GLB; the reviewed SHA-256 is
+`4e658e31254539e00e60adc648a59eafcf033149cd89e641f85bf0391f3a6dba`.
+
+## Earlier V3/fallback capture matrix
 
 All files below are under `higher-ceiling/final/` and were captured from the
-in-app browser against the real demo routes.
+in-app browser against the real demo routes before V4 promotion. They remain
+the broader V3/environment/fallback matrix; the V4 evidence above is the
+current production-athlete acceptance record.
 
 | Sport   | 2D desktop dark                                                | 3D desktop dark Ultra                                                | 3D desktop light Ultra                                                | 3D mobile light Low                                                |
 | ------- | -------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -251,55 +304,42 @@ claimed as aesthetic evidence.
   hierarchy, but not its photographic cloud, snow, water, or asphalt detail.
 - RowErg uses a wider equipment-safe chase frame than SkiErg/BikeErg so neither
   blade is cropped on a 390×360 stage.
-- The asset is a generic low-poly sports illustration. It deliberately does not
-  infer a recorded athlete's body, clothing, appearance, technique, or location.
+- The asset is a compact stylized skinned sports illustration, not a scanned or
+  photoreal person. It deliberately does not infer a recorded athlete's body,
+  clothing, appearance, technique, or location.
 - The accepted frames have only P3 visual constraints. The missing release
   evidence above remains an open P1 documentation/acceptance item while the PR
   is a draft; the project-root `design-qa.md` records that distinction.
 
-## Current draft verification — 2026-07-19
+## Current draft verification — 2026-07-20
 
-The current V3 draft was checked in the in-app browser against the real demo
-replay route. The Canvas BikeErg at `/replay/1004` was observed paused and in
-motion: the athlete, handlebar, face profile, and front wheel all point toward
-the right-side finish, while the signed clockwise wheel/crank convention and
-oppositely travelling road marks preserve rightward forward motion. No direction
-flip was made because it would make the physical roll incorrect.
+The current V4 draft was checked in the in-app browser against the real demo
+routes at 1440×1024 and 390×844. WebGPU/Ultra was reported for RowErg, SkiErg,
+and BikeErg in dark desktop, light Row desktop, and light mobile captures. Each
+sport was played at 1×, 2×, and 8×; route changes reset transport to 1×.
 
-The associated V3 3D review covered the RowErg pull, SkiErg planted-pole phase,
-and BikeErg assembly: hands remain at their contact anchors, RowErg grips remain
-clear of the torso, SkiErg baskets remain course-anchored while the athlete
-advances, and the bicycle reads as a continuous wheel/frame/drivetrain rather
-than a stack of primitives. The final replay-console check reported no warnings
-or errors. This is draft visual evidence, not a claim of photorealism or a
-substitute for the still-open complete release capture matrix above.
+- **RowErg:** the shared graph stages leg drive, body opening, late arm draw,
+  hands-away, and recovery. The V4 palms remain on the oar grips, the inboard
+  assembly stays forward of the pelvis, and the bent elbows remain outside the
+  torso silhouette through the reviewed stroke.
+- **SkiErg:** both pole assemblies remain rigid and phase-readable. Loaded
+  baskets are reconstructed from their deterministic course anchor after body
+  and course motion, so the athlete advances while the planted tips stay almost
+  stationary; mobile framing moves toward rear-three-quarter to preserve the
+  paired-pole pixel budget.
+- **BikeErg:** hands remain on the bar, feet remain on opposed pedals, and the
+  rider's knees, ankles, pelvis, shoulders, and head follow the shared circular
+  graph. Positive wheel rotation and the matching crank/road cues remain the
+  mechanically correct forward direction; reversing them would create the
+  backwards-cycling defect.
+- **Lighting and shadows:** the browser pass showed one stable world key and
+  contact shadow rather than the earlier random-looking dual grounding. Camera
+  fill/rim only model the skinned athlete and do not cast a competing map.
 
-## Motion-system rebuild review — 2026-07-19
-
-The follow-up in-app-browser pass used the live demo routes in the existing
-WebGPU/Ultra stage with the replay opened at **1×**. RowErg was observed through
-catch and draw, SkiErg through reach, plant, press, and release, and BikeErg
-through opposed pedal positions at 1× and 2× transport. The motion pass has
-one deliberate rule: the fast settings remain available to navigate a workout,
-but 1× is the presentation reference for judging human movement.
-
-- **RowErg:** the shared graph stages leg drive, body opening, then arm draw;
-  hands stay on the oar grips and the finish elbows travel outward of the torso
-  rather than folding the forearms through it.
-- **SkiErg:** the planted baskets hold their deterministic course point through
-  the loaded part of the press while the upper body and skis advance, then
-  release into the elevated recovery sweep.
-- **BikeErg:** one circular graph drives opposed pedal contacts, coordinated
-  knee/ankle response, pelvic rock, shoulder counter-rotation, and a stabilized
-  head while hands remain on the bars.
-- **RowErg framing:** the 3D chase line now favours the seated athlete and
-  grip-side action over excess empty horizon, while retaining the broad scull
-  envelope needed to read the oars.
-
-This review also makes the remaining quality boundary explicit: V3 is a
-contact-safe, stylized geometry pack, not the final high-detail character path.
-The repository now contains an isolated V4 `SkinnedMesh` / `AnimationMixer`
-proof, but it is intentionally **not** represented as runtime visual polish
-until every sport has a reviewed clip and a post-clip contact-to-bone adapter.
-That distinction keeps the draft honest while preserving the present renderer's
-proven 2D, V3, WebGL, WebGPU, and reduced-motion fallbacks.
+Automated evidence protects the parts a frame cannot prove: the exact 1.5 cm
+palm/sole tolerance and 0.5° terminal orientation tolerance, deterministic
+same-time seeks, fixed segment lengths, 128-phase pole readability, planted-tip
+course drift, live/ghost independence, reduced motion, WebGPU/WebGL selection,
+V4→V3→procedural→Canvas fallback, disposal, and asset provenance. This remains
+canonical generic technique synchronized to Concept2 timing—not measured
+athlete biomechanics or motion capture.

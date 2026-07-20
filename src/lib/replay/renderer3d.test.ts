@@ -1,5 +1,14 @@
 import { readFile } from "node:fs/promises";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 // Mock only WebGLRenderer — everything else in Three.js works headlessly in Node.
 vi.mock("three", async (importOriginal) => {
@@ -29,6 +38,13 @@ import {
   fetchReplayAssetTemplateLibrary,
   type ReplayAssetTemplateLibrary,
 } from "./renderer3dAssets";
+import {
+  disposeReplayV4AssetTemplate,
+  fetchReplayV4Asset,
+  type ReplayV4AssetTemplate,
+  type ReplayV4AthleteInstance,
+  type ReplayV4EffectorName,
+} from "./renderer3dV4Assets";
 import { sampleRowerMotionGraph } from "./motionGraph";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
@@ -213,6 +229,95 @@ async function loadCheckedInReplayAssetTemplateLibrary(): Promise<ReplayAssetTem
         headers: { "content-type": "model/gltf-binary" },
       }),
   );
+}
+
+async function loadCheckedInReplayV4AssetTemplate(): Promise<ReplayV4AssetTemplate> {
+  const bytes = await readFile(
+    new URL("../../../static/replay-assets/rowplay-athlete-v4.glb", import.meta.url),
+  );
+  return fetchReplayV4Asset(
+    async () =>
+      new Response(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength), {
+        status: 200,
+        headers: { "content-type": "model/gltf-binary" },
+      }),
+  );
+}
+
+type V4ContactTargets = Readonly<
+  Record<
+    | "pelvis"
+    | "leftHand"
+    | "rightHand"
+    | "leftElbow"
+    | "rightElbow"
+    | "leftFoot"
+    | "rightFoot"
+    | "leftKnee"
+    | "rightKnee",
+    THREE.Object3D
+  >
+>;
+
+interface V4MotionTestAccess {
+  readonly root: THREE.Group;
+  readonly mesh: THREE.SkinnedMesh;
+  readonly enabled: boolean;
+  readonly options: { readonly instance: ReplayV4AthleteInstance };
+}
+
+interface V4AvatarTestAccess {
+  readonly group: THREE.Group;
+  readonly v4Targets: V4ContactTargets;
+  readonly v4Motion?: V4MotionTestAccess | null;
+}
+
+function v4Lane(renderer: CourseRenderer3D, lane: "live" | "ghost" = "live") {
+  const avatars = renderer as unknown as {
+    liveAvatar: V4AvatarTestAccess;
+    ghostAvatar: V4AvatarTestAccess;
+  };
+  const avatar = lane === "live" ? avatars.liveAvatar : avatars.ghostAvatar;
+  const motion = avatar.v4Motion;
+  expect(motion, `${lane} V4 motion controller`).not.toBeNull();
+  expect(motion, `${lane} V4 motion controller`).toBeDefined();
+  if (!motion) throw new Error(`${lane} V4 motion controller is unavailable`);
+  return { avatar, motion, instance: motion.options.instance };
+}
+
+function v4EffectorWorld(
+  instance: ReplayV4AthleteInstance,
+  effector: ReplayV4EffectorName,
+): THREE.Vector3 {
+  const metric = instance.effectors[effector];
+  return instance.bones[metric.bone].localToWorld(
+    new THREE.Vector3(metric.contactOffset[0], metric.contactOffset[1], metric.contactOffset[2]),
+  );
+}
+
+function v4PoseSnapshot(instance: ReplayV4AthleteInstance): number[] {
+  const values = [
+    ...instance.root.position.toArray(),
+    ...instance.root.quaternion.toArray(),
+    ...instance.root.scale.toArray(),
+  ];
+  for (const bone of instance.skeleton.bones) {
+    values.push(...bone.position.toArray(), ...bone.quaternion.toArray(), ...bone.scale.toArray());
+  }
+  return values;
+}
+
+function expectNumericSnapshotClose(
+  actual: readonly number[],
+  expected: readonly number[],
+  tolerance = 1e-9,
+): void {
+  expect(actual).toHaveLength(expected.length);
+  const maximumDelta = actual.reduce(
+    (maximum, value, index) => Math.max(maximum, Math.abs(value - (expected[index] ?? 0))),
+    0,
+  );
+  expect(maximumDelta).toBeLessThan(tolerance);
 }
 
 function projectToPixels(
@@ -1247,6 +1352,315 @@ describe("CourseRenderer3D", () => {
       renderer.destroy();
       disposeReplayAssetTemplateLibrary(assets);
     }
+  });
+
+  describe("production V4 skinned athlete integration", () => {
+    let v3Assets: ReplayAssetTemplateLibrary | null = null;
+    let v4Assets: ReplayV4AssetTemplate | null = null;
+
+    beforeAll(async () => {
+      [v3Assets, v4Assets] = await Promise.all([
+        loadCheckedInReplayAssetTemplateLibrary(),
+        loadCheckedInReplayV4AssetTemplate(),
+      ]);
+    });
+
+    afterAll(() => {
+      if (v4Assets) disposeReplayV4AssetTemplate(v4Assets);
+      if (v3Assets) disposeReplayAssetTemplateLibrary(v3Assets);
+    });
+
+    function rendererFor(sport: "rower" | "skierg" | "bike") {
+      if (!v3Assets || !v4Assets) throw new Error("production replay assets did not load");
+      const renderer = new CourseRenderer3D(makeHost(), "ultra", sport, {
+        assets: v3Assets,
+        v4Assets,
+      });
+      renderer.resize(1140, 420);
+      return renderer;
+    }
+
+    function expectV4Contacts(renderer: CourseRenderer3D, label: string): void {
+      const { avatar, motion, instance } = v4Lane(renderer);
+      getScene(renderer).updateMatrixWorld(true);
+      expect(motion.enabled, `${label} V4 remains enabled`).toBe(true);
+      expect(motion.root.visible, `${label} V4 root visible`).toBe(true);
+      for (const [effector, targetName] of [
+        ["leftHand", "leftHand"],
+        ["rightHand", "rightHand"],
+        ["leftFoot", "leftFoot"],
+        ["rightFoot", "rightFoot"],
+      ] as const) {
+        const metric = instance.effectors[effector];
+        const target = avatar.v4Targets[targetName];
+        const contact = v4EffectorWorld(instance, effector);
+        const targetPosition = target.getWorldPosition(new THREE.Vector3());
+        expect(
+          contact.distanceTo(targetPosition),
+          `${label} ${effector} position contact`,
+        ).toBeLessThan(0.012);
+        const contactOrientation = instance.bones[metric.bone].getWorldQuaternion(
+          new THREE.Quaternion(),
+        );
+        const targetOrientation = target.getWorldQuaternion(new THREE.Quaternion());
+        expect(
+          contactOrientation.angleTo(targetOrientation),
+          `${label} ${effector} orientation contact`,
+        ).toBeLessThan(deg(0.51));
+      }
+      expect(
+        instance.bones.v4Hips
+          .getWorldPosition(new THREE.Vector3())
+          .distanceTo(avatar.v4Targets.pelvis.getWorldPosition(new THREE.Vector3())),
+        `${label} pelvis translation`,
+      ).toBeLessThan(1e-6);
+    }
+
+    it("shows one continuous V4 hero while retaining authored equipment for every sport", () => {
+      const fallbackTorso = {
+        rower: "rower-torso-shell",
+        skierg: "skierg-torso",
+        bike: "bike-torso",
+      } as const;
+      const equipment = {
+        rower: "rower-blade-left",
+        skierg: "skierg-pole-shaft-left",
+        bike: "bike-wheel-front",
+      } as const;
+
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        const renderer = rendererFor(sport);
+        try {
+          renderer.render(makeSportState(sport, 0.23), false);
+          const { avatar, motion, instance } = v4Lane(renderer);
+          const skinnedMeshes: THREE.SkinnedMesh[] = [];
+          avatar.group.traverse((object) => {
+            if (object instanceof THREE.SkinnedMesh) skinnedMeshes.push(object);
+          });
+
+          expect(motion.enabled).toBe(true);
+          expect(motion.root.visible).toBe(true);
+          expect(motion.root.userData).toMatchObject({
+            replayV4Athlete: true,
+            replayV4Sport: sport,
+          });
+          expect(instance.mesh.visible).toBe(true);
+          expect(instance.mesh.frustumCulled).toBe(false);
+          expect(skinnedMeshes).toEqual([instance.mesh]);
+
+          const hiddenTorso = sceneObject(renderer, fallbackTorso[sport]);
+          expect(hiddenTorso.userData.authoredReplayAsset).toBe(true);
+          expect(hiddenTorso.visible, `${sport} V3 athlete hidden`).toBe(false);
+          expect(
+            sceneObject(renderer, equipment[sport]).visible,
+            `${sport} equipment retained`,
+          ).toBe(true);
+        } finally {
+          renderer.destroy();
+        }
+      }
+    });
+
+    it("locks every V4 palm and sole after clip sampling while preserving authored hip motion", () => {
+      const phases = {
+        rower: [0.01, 0.18, 0.38, 0.54, 0.64, 0.73, 0.78, 0.98],
+        skierg: [0.02, 0.12, 0.24, 0.48, 0.7, 0.94],
+        bike: [0, 0.125, 0.25, 0.5, 0.75, 0.999],
+      } as const;
+
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        const renderer = rendererFor(sport);
+        try {
+          const hips: THREE.Quaternion[] = [];
+          for (const cycle of phases[sport]) {
+            renderer.render(makeSportState(sport, cycle), false);
+            expectV4Contacts(renderer, `${sport} ${cycle}`);
+            hips.push(v4Lane(renderer).instance.bones.v4Hips.quaternion.clone());
+          }
+          const authoredHipRange = Math.max(
+            ...hips.slice(1).map((quaternion) => quaternion.angleTo(hips[0]!)),
+          );
+          expect(authoredHipRange, `${sport} authored hip rotation survives IK`).toBeGreaterThan(
+            0.01,
+          );
+        } finally {
+          renderer.destroy();
+        }
+      }
+    });
+
+    it("repeats exact seeks and holds one calm contact-safe pose in reduced motion", () => {
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        const renderer = rendererFor(sport);
+        try {
+          renderer.render(makeSportState(sport, 0.17, 120), false);
+          const first = v4PoseSnapshot(v4Lane(renderer).instance);
+          renderer.render(makeSportState(sport, 0.73, 120), false);
+          renderer.render(makeSportState(sport, 0.17, 120), false);
+          expectNumericSnapshotClose(v4PoseSnapshot(v4Lane(renderer).instance), first);
+
+          reducedMotion = true;
+          renderer.render(makeSportState(sport, 0.09, 120), true);
+          const reduced = v4PoseSnapshot(v4Lane(renderer).instance);
+          expectV4Contacts(renderer, `${sport} reduced first`);
+          renderer.render(makeSportState(sport, 0.81, 120), true);
+          expectNumericSnapshotClose(v4PoseSnapshot(v4Lane(renderer).instance), reduced);
+          expectV4Contacts(renderer, `${sport} reduced second`);
+        } finally {
+          reducedMotion = false;
+          renderer.destroy();
+        }
+      }
+    });
+
+    it("keeps V4 RowErg palms and forearms outside the torso core through the stroke", () => {
+      const renderer = rendererFor("rower");
+      try {
+        for (let step = 0; step < 48; step++) {
+          renderer.render(makeSportState("rower", step / 48), false);
+          const { motion, instance } = v4Lane(renderer);
+          expect(motion.enabled, `rower V4 remains enabled at ${step}/48`).toBe(true);
+          const hips = instance.bones.v4Hips.getWorldPosition(new THREE.Vector3());
+          const chest = instance.bones.v4Chest.getWorldPosition(new THREE.Vector3());
+          const torsoAxis = chest.clone().sub(hips);
+          const torsoLengthSquared = torsoAxis.lengthSq();
+
+          for (const side of ["left", "right"] as const) {
+            const effector = `${side}Hand` as const;
+            const palm = v4EffectorWorld(instance, effector);
+            const elbow = instance.bones[
+              side === "left" ? "v4LeftForearm" : "v4RightForearm"
+            ].getWorldPosition(new THREE.Vector3());
+
+            for (const [part, point] of [
+              ["palm", palm],
+              ["forearm midpoint", elbow.clone().lerp(palm, 0.5)],
+            ] as const) {
+              const along = THREE.MathUtils.clamp(
+                point.clone().sub(hips).dot(torsoAxis) / torsoLengthSquared,
+                0,
+                1,
+              );
+              const torsoCenter = hips.clone().addScaledVector(torsoAxis, along);
+              expect(
+                point.distanceTo(torsoCenter),
+                `${side} ${part} torso clearance at ${step}/48`,
+              ).toBeGreaterThan(part === "palm" ? 0.14 : 0.11);
+            }
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
+    it("keeps planted SkiErg hardware fixed in the course while the V4 skier advances", () => {
+      const renderer = rendererFor("skierg");
+      const plantedTips = new Map<"left" | "right", THREE.Vector3>();
+      try {
+        for (const cycle of [0.05, 0.11, 0.18, 0.22]) {
+          renderer.render(makeSportState("skierg", cycle, 200 + cycle * 8), false);
+          expectV4Contacts(renderer, `skierg plant ${cycle}`);
+          const { instance } = v4Lane(renderer);
+          for (const side of ["left", "right"] as const) {
+            const tip = worldPosition(renderer, `skierg-pole-contact-${side}`);
+            const prior = plantedTips.get(side);
+            if (prior) {
+              expect(tip.distanceTo(prior), `${side} V4 planted-tip drift`).toBeLessThan(0.004);
+            } else {
+              plantedTips.set(side, tip.clone());
+            }
+            expect(tip.y, `${side} V4 planted-tip height`).toBeCloseTo(0.055, 5);
+            expect(
+              v4EffectorWorld(instance, `${side}Hand`).distanceTo(
+                worldPosition(renderer, `skierg-pole-grip-${side}`),
+              ),
+              `${side} V4 hand stays on planted grip`,
+            ).toBeLessThan(0.012);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
+    it("keeps V4 BikeErg palms on the bar and soles on opposed pedals", () => {
+      const renderer = rendererFor("bike");
+      try {
+        for (const cycle of [0, 0.125, 0.25, 0.5, 0.75, 0.999]) {
+          renderer.render(makeSportState("bike", cycle), false);
+          expectV4Contacts(renderer, `bike ${cycle}`);
+          const { instance } = v4Lane(renderer);
+          for (const side of ["left", "right"] as const) {
+            expect(
+              v4EffectorWorld(instance, `${side}Hand`).distanceTo(
+                worldPosition(renderer, `bike-hand-contact-${side}`),
+              ),
+              `${side} V4 palm-bar lock at ${cycle}`,
+            ).toBeLessThan(0.012);
+            expect(
+              v4EffectorWorld(instance, `${side}Foot`).distanceTo(
+                worldPosition(renderer, `bike-pedal-${side}`),
+              ),
+              `${side} V4 sole-pedal lock at ${cycle}`,
+            ).toBeLessThan(0.012);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
+    it("keeps live and ghost skins fully independent and releases both safely", () => {
+      const renderer = rendererFor("rower");
+      let destroyed = false;
+      try {
+        const state = makeSportState("rower", 0.22, 120, {
+          ghost: { distFrac: 0.07, pace: 118, spm: 30, label: "PB" },
+          ghostStrokePose: fallbackStrokePose("rower", 0.64 * TAU, 30),
+        });
+        renderer.render(state, false);
+        const live = v4Lane(renderer, "live").instance;
+        const ghost = v4Lane(renderer, "ghost").instance;
+
+        expect(live.root).not.toBe(ghost.root);
+        expect(live.mesh).not.toBe(ghost.mesh);
+        expect(live.mesh.geometry).not.toBe(ghost.mesh.geometry);
+        expect(live.mesh.material).not.toBe(ghost.mesh.material);
+        expect(live.skeleton).not.toBe(ghost.skeleton);
+        expect(live.bones.v4LeftForearm).not.toBe(ghost.bones.v4LeftForearm);
+        expect(live.mixer).not.toBe(ghost.mixer);
+        expect(v4Lane(renderer, "ghost").motion.root.visible).toBe(true);
+
+        const livePose = v4PoseSnapshot(live);
+        const ghostPose = v4PoseSnapshot(ghost);
+        renderer.render(
+          makeSportState("rower", 0.22, 120, {
+            ghost: { distFrac: 0.07, pace: 118, spm: 30, label: "PB" },
+            ghostStrokePose: fallbackStrokePose("rower", 0.86 * TAU, 30),
+          }),
+          false,
+        );
+        expectNumericSnapshotClose(v4PoseSnapshot(live), livePose);
+        const changedGhostPose = v4PoseSnapshot(ghost);
+        expect(
+          changedGhostPose.some((value, index) => Math.abs(value - (ghostPose[index] ?? 0)) > 1e-5),
+        ).toBe(true);
+
+        const liveGeometryDispose = vi.spyOn(live.mesh.geometry, "dispose");
+        const ghostGeometryDispose = vi.spyOn(ghost.mesh.geometry, "dispose");
+        const liveSkeletonDispose = vi.spyOn(live.skeleton, "dispose");
+        const ghostSkeletonDispose = vi.spyOn(ghost.skeleton, "dispose");
+        expect(() => renderer.destroy()).not.toThrow();
+        destroyed = true;
+        expect(liveGeometryDispose).toHaveBeenCalledTimes(1);
+        expect(ghostGeometryDispose).toHaveBeenCalledTimes(1);
+        expect(liveSkeletonDispose).toHaveBeenCalledTimes(1);
+        expect(ghostSkeletonDispose).toHaveBeenCalledTimes(1);
+      } finally {
+        if (!destroyed) renderer.destroy();
+      }
+    });
   });
 
   it("keeps RowErg knees visually separated from the hull through the stroke", () => {

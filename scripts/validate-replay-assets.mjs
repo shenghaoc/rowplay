@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
+import { validateV4Asset } from "./validate-replay-rig-v4.mjs";
 
 const DEFAULT_ASSET = "static/replay-assets/rowplay-rigs-v3.glb";
 const MAX_FILE_BYTES = 640 * 1024;
@@ -757,6 +758,13 @@ async function main() {
   console.log(
     `validated ${displayPath}: ${result.leafCount} leaves, ${result.templateCount} composite templates, ${result.partCount} composite parts, ${result.triangleCount} triangles, ${result.vertexCount} vertices, ${bytes.byteLength} bytes`,
   );
+  if (process.argv[2] === undefined) {
+    const v4 = await validateV4Asset();
+    const v4DisplayPath = relative(process.cwd(), v4.path) || v4.path;
+    console.log(
+      `validated ${v4DisplayPath}: ${v4.bones} bones, ${v4.clips} clips, ${v4.components} topology components, ${v4.triangles} triangles, ${v4.vertices} vertices, ${v4.bytes} bytes, sha256 ${v4.checksum}`,
+    );
+  }
 }
 
 try {

@@ -79,10 +79,13 @@ account.
 - Premium sport-specific environments in both views: layered regatta water and
   shoreline, groomed Nordic snow and alpine venue cues, or a barrier-lined
   asphalt/velodrome training circuit
-- A compact repository-owned authored GLB supplies smooth-normal athlete shells
-  plus multi-part RowErg, SkiErg, and BikeErg equipment assemblies in 3D; the
-  existing contact-driven rig owns motion, while Canvas 2D and procedural 3D
-  geometry remain reliable fallbacks
+- A compact repository-owned V4 GLB supplies one generic skinned athlete in 3D.
+  RowErg, SkiErg, and BikeErg each use an authored canonical technique clip,
+  sampled deterministically from replay pose and time; an analytic post-clip
+  pass keeps hands and feet on the authoritative equipment contacts
+- The repository-owned V3 geometry pack continues to supply the multi-part
+  RowErg, SkiErg, and BikeErg equipment assemblies and provides the first
+  athlete fallback, followed by procedural 3D and the stable Canvas 2D renderer
 - The replay is a generic, data-synchronised technique presentation—not a
   reconstruction of an athlete's biomechanics. Concept2 records timing,
   distance, pace, rate, and optional heart rate, rather than joint trajectories,
@@ -164,10 +167,11 @@ demo mode never contacts a real athlete account.
   an athlete's entire history.
 - Replay uses detailed stroke rows when possible and degrades to split or
   summary timing when Concept2 has less detail.
-- Three.js leaves room for a future repository-owned skeletal hero with authored
-  animation clips and post-clip inverse-kinematics contact correction. That is
-  a rendering capability, not a claim that the currently shipped geometry pack
-  contains recorded motion, scans, or athlete-specific biomechanics.
+- Three.js drives the repository-owned V4 athlete as one skinned mesh with
+  authored RowErg, SkiErg, and BikeErg technique clips. Replay pose and time
+  select each clip deterministically, then analytic hand and foot correction
+  preserves the existing equipment-contact authority. These canonical clips
+  are presentation art, not recorded motion or athlete-specific biomechanics.
 - 3D rendering progressively falls back from WebGPU to WebGL to the stable 2D
   renderer.
 - Bundled synthetic history makes development and evaluation reproducible

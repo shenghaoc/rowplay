@@ -67,8 +67,11 @@ remain at oarlocks, and SkiErg baskets pass through explicit free → plant →
 loaded → release contact states. IK adjusts only what it must; it no longer
 generates the complete human performance from end-effector positions.
 
-V3 static geometry and the existing procedural rig stay intact as validated
-fallbacks until V4 is ready. Canvas stays the stable outer fallback.
+The production replay now installs the reviewed V4 skin over the hidden
+contact-safe rig after the local asset validates. V3 static athlete/equipment
+geometry and the existing procedural rig stay intact as validated 3D fallbacks;
+Canvas stays the stable outer fallback. A failed request, parser, skeleton,
+clip, or contact-metadata check therefore cannot blank the replay.
 
 ## Non-goals
 
