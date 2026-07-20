@@ -40,3 +40,9 @@
     independence, camera readability, and fallback/disposal in focused tests
   - [x] Run focused tests, the full repository gate, asset/locales validation,
     visual browser smoke, and update the draft PR
+
+- [x] **6. Publish the V4 native handoff contract**
+  - [x] Keep GLB as the web runtime artifact and generate USDZ as a derivative
+  - [x] Generate the machine-readable V4 contract from source constants and
+    artifact metrics
+  - [x] Validate the USDZ through Three.js `USDLoader` as a portability gate

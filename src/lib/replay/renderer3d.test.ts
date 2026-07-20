@@ -2293,6 +2293,21 @@ describe("CourseRenderer3D", () => {
       expect(() => r.render(makeRenderState(), true)).not.toThrow();
     });
 
+    it("propagates repeated frame failures to the page fallback after the threshold", () => {
+      const host = makeHost();
+      const r = new CourseRenderer3D(host, "low", "rower");
+      const failure = new Error("persistent render failure");
+      r.resize(800, 600);
+      (r as unknown as { _renderImpl: () => void })._renderImpl = () => {
+        throw failure;
+      };
+
+      for (let attempt = 1; attempt < 5; attempt++) {
+        expect(() => r.render(makeRenderState(), true)).not.toThrow();
+      }
+      expect(() => r.render(makeRenderState(), true)).toThrow(failure);
+    });
+
     it("handles ghost state in render", () => {
       const host = makeHost();
       const r = new CourseRenderer3D(host, "low", "rower");

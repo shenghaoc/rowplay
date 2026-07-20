@@ -130,7 +130,7 @@ export interface V4AthleteAsset {
   readonly metrics: V4RigMetrics;
 }
 
-type BoneDefinition = {
+export type V4BoneDefinition = {
   readonly name: V4BoneName;
   readonly parent?: V4BoneName;
   readonly position: readonly [number, number, number];
@@ -140,7 +140,7 @@ type BoneDefinition = {
  * These are joint locations in a neutral, generic adult sports-illustration
  * pose. They are an art-direction baseline, not a claim about a user’s body.
  */
-const BONE_DEFINITIONS: readonly BoneDefinition[] = [
+export const V4_BONE_DEFINITIONS: readonly V4BoneDefinition[] = [
   { name: "v4Hips", position: [0, 1.02, 0] },
   { name: "v4Spine", parent: "v4Hips", position: [0, 0.19, 0] },
   { name: "v4Chest", parent: "v4Spine", position: [0, 0.235, 0.012] },
@@ -457,7 +457,7 @@ function buildBones(mesh: THREE.SkinnedMesh): {
 } {
   const mutableBones = {} as Record<V4BoneName, THREE.Bone>;
   const orderedBones: THREE.Bone[] = [];
-  for (const definition of BONE_DEFINITIONS) {
+  for (const definition of V4_BONE_DEFINITIONS) {
     const bone = new THREE.Bone();
     bone.name = definition.name;
     bone.position.fromArray(definition.position);

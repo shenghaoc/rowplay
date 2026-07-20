@@ -154,3 +154,25 @@ to describe the authored asset accurately.
    captures using synthetic data SHALL be published.
 5. WHEN release validation runs THEN the repository gate, focused replay tests,
    locale validation, browser/E2E smoke path, and `git diff --check` SHALL pass.
+
+### Requirement 7: Native handoff without a second athlete
+
+**User Story:** As a RowPlay Studio maintainer, I want a native-friendly V4
+derivative and a machine-readable contract, so Studio can consume the canonical
+rowplay athlete without remodelling it.
+
+#### Acceptance Criteria
+
+1. WHEN the V4 athlete ships THEN rowplay SHALL keep the GLB as the web
+   production runtime artifact.
+2. WHEN a native derivative is needed THEN it SHALL be generated from the exact
+   canonical GLB by Blender, with no alternative proportions or authoring
+   geometry in the conversion script.
+3. WHEN the handoff is published THEN a JSON contract SHALL record artifact
+   hashes, units/axes, skeleton order, hierarchy, rest transforms, clips, phase
+   landmarks, contacts, surface roles, provenance, and validation commands.
+4. WHEN RowPlay Studio consumes V4 THEN it SHALL pin this rowplay commit and
+   generated contract rather than independently remodelling the athlete.
+5. WHEN USDZ byte identity is unavailable THEN the limitation SHALL be
+   documented and a deterministic semantic validation SHALL protect the
+   skinning, skeleton, geometry, material, and clone-isolation contract.

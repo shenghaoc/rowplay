@@ -255,6 +255,14 @@ The checked asset is 433,104 bytes, 5,373 vertices, 10,152 triangles, one
 primitive/material slot, and 14 topology components. Two independent exports
 were byte-identical to the committed GLB; the reviewed SHA-256 is
 `4e658e31254539e00e60adc648a59eafcf033149cd89e641f85bf0391f3a6dba`.
+PR #171 also owns the native handoff contract: the web runtime remains this GLB,
+while `rowplay-athlete-v4.usdz` is a Blender-generated derivative for RowPlay
+Studio / PR #72. Contract version `1` is generated as
+`rowplay-athlete-v4.contract.json`; the USDZ SHA-256 is
+`8b7a716bb572c9ff3124a6099c1f12caf41e2f00e33c0c5fc8ef44ba39f3f819`.
+Blender 5.2 repeat exports were not byte-identical, so the accepted
+portability gate is semantic USDLoader validation rather than silent byte
+normalization.
 
 ## Earlier V3/fallback capture matrix
 

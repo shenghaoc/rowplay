@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { relative, resolve } from "node:path";
 import { validateV4Asset } from "./validate-replay-rig-v4.mjs";
+import { validateV4Usdz } from "./validate-replay-rig-v4-usdz.mjs";
 
 const DEFAULT_ASSET = "static/replay-assets/rowplay-rigs-v3.glb";
 const MAX_FILE_BYTES = 640 * 1024;
@@ -764,6 +766,25 @@ async function main() {
     console.log(
       `validated ${v4DisplayPath}: ${v4.bones} bones, ${v4.clips} clips, ${v4.components} topology components, ${v4.triangles} triangles, ${v4.vertices} vertices, ${v4.bytes} bytes, sha256 ${v4.checksum}`,
     );
+    const usdz = await validateV4Usdz();
+    const usdzDisplayPath = relative(process.cwd(), usdz.path) || usdz.path;
+    console.log(
+      `validated ${usdzDisplayPath}: ${usdz.skinnedMeshes} SkinnedMesh, ${usdz.bones} bones, ${usdz.triangles} triangles, ${usdz.bytes} bytes`,
+    );
+    const { buildV4Contract, V4_CONTRACT_FILENAME } =
+      await import("./build-replay-rig-v4-contract.mjs");
+    const existingPath = resolve(`static/replay-assets/${V4_CONTRACT_FILENAME}`);
+    const scratchPath = resolve(tmpdir(), "rowplay-athlete-v4.contract.validate.json");
+    await buildV4Contract(scratchPath);
+    const [existing, generated] = await Promise.all([
+      readFile(existingPath, "utf8"),
+      readFile(scratchPath, "utf8"),
+    ]);
+    invariant(
+      JSON.stringify(JSON.parse(existing)) === JSON.stringify(JSON.parse(generated)),
+      `${V4_CONTRACT_FILENAME} is not in sync with built assets`,
+    );
+    console.log(`validated ${V4_CONTRACT_FILENAME}: generated contract matches built artifacts`);
   }
 }
 

@@ -9,6 +9,7 @@ import {
   replayAssetCacheStrategy,
   shouldCacheResponse,
 } from "./serviceWorkerPolicy";
+import { attachRuntimeCacheWrite } from "./serviceWorkerRuntimeCache";
 
 // `self` is typed as Window in the default lib; inside a service worker it is
 // a ServiceWorkerGlobalScope. This is the cast SvelteKit's docs prescribe.
@@ -80,19 +81,19 @@ sw.addEventListener("fetch", (event) => {
     request.mode !== "navigate" &&
     replayAssetCacheStrategy(url.pathname, base) === "network-first"
   ) {
-    event.respondWith(networkFirst(request, REPLAY_MODEL_CACHE));
+    event.respondWith(networkFirst(request, REPLAY_MODEL_CACHE, undefined, event));
     return;
   }
 
   // App shell + static files: cache-first.
   if (request.mode !== "navigate" && SHELL_ASSETS.includes(url.pathname)) {
-    event.respondWith(cacheFirst(request, SHELL_CACHE));
+    event.respondWith(cacheFirst(request, SHELL_CACHE, event));
     return;
   }
 
   // Workout detail JSON: network-first, fall back to cache (ghost + offline replay data).
   if (url.pathname.startsWith("/api/workouts/")) {
-    event.respondWith(networkFirst(request, API_CACHE));
+    event.respondWith(networkFirst(request, API_CACHE, undefined, event));
     return;
   }
 
@@ -102,24 +103,28 @@ sw.addEventListener("fetch", (event) => {
   // so authenticated offline visits will receive a 503 — by design. Demo-mode
   // users (no session) still get full offline support.
   if (request.mode === "navigate" && isOfflinePage(url.pathname)) {
-    event.respondWith(networkFirst(request, PAGES_CACHE, { ignoreSearch: true }));
+    event.respondWith(networkFirst(request, PAGES_CACHE, { ignoreSearch: true }, event));
     return;
   }
 
   // SvelteKit data requests for offline routes (e.g. /replay/1005/__data.json).
   if (isOfflinePage(url.pathname) && url.pathname.endsWith("/__data.json")) {
-    event.respondWith(networkFirst(request, PAGES_CACHE));
+    event.respondWith(networkFirst(request, PAGES_CACHE, undefined, event));
   }
 });
 
-async function cacheFirst(request: Request, cacheName: string): Promise<Response> {
+async function cacheFirst(
+  request: Request,
+  cacheName: string,
+  event: FetchEvent,
+): Promise<Response> {
   try {
     const cache = await caches.open(cacheName);
     const hit = await cache.match(request);
     if (hit) return hit;
     const response = await fetch(request);
     if (response.ok) {
-      cache.put(request, response.clone()).catch((err: unknown) => {
+      attachRuntimeCacheWrite(event, cache.put(request, response.clone()), (err: unknown) => {
         console.warn("[sw] cache put failed in cacheFirst:", err);
       });
     }
@@ -133,6 +138,7 @@ async function networkFirst(
   request: Request,
   cacheName: string,
   options?: CacheQueryOptions,
+  event?: FetchEvent,
 ): Promise<Response> {
   const cache = await caches.open(cacheName);
   try {
@@ -141,12 +147,12 @@ async function networkFirst(
     // is never persisted in the origin-wide Cache API. Normalized to
     // lowercase for case-insensitive matching.
     if (response.ok && shouldCacheResponse(response.headers.get("cache-control"))) {
-      // Fire-and-forget cache write — if it fails, we still have the valid
-      // network response. Using event.waitUntil would be ideal but isn't
-      // available in this helper; the caught error is logged and dropped.
-      cache.put(request, response.clone()).catch((err: unknown) => {
+      const write = cache.put(request, response.clone());
+      const onError = (err: unknown) => {
         console.warn("[sw] cache put failed, serving fresh response anyway:", err);
-      });
+      };
+      if (event) attachRuntimeCacheWrite(event, write, onError);
+      else write.catch(onError);
     }
     return response;
   } catch {

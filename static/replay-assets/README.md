@@ -81,7 +81,7 @@ compatibility artifacts for older renderer builds. They are not rebuilt by the
 current generator. V2's leaf-only package remains the stable fallback while a
 renderer adopts V3's template roots.
 
-## `rowplay-athlete-v4.glb`
+## `rowplay-athlete-v4.glb`, USDZ derivative, and contract
 
 This is the production V4 hero athlete for WebGPU/WebGL replay. It replaces the
 visible segmented V3 human shell when its strict loader contract validates,
@@ -98,17 +98,37 @@ remain automatic fallbacks.
   distributed under the repository's MIT `LICENSE`. It contains no downloaded
   model, scan, likeness, avatar-generator output, user data, image, texture, or
   external request.
-- **Source of truth:** `src/lib/replay/rigV4.ts`. The module and artifact are
-  production contracts. Export: `scripts/build-replay-rig-v4.mjs`; strict
+- **Source of truth:** `src/lib/replay/rigV4.ts`. The module and GLB artifact
+  are production contracts. Export: `scripts/build-replay-rig-v4.mjs`; strict
   checked-binary validation: `scripts/validate-replay-rig-v4.mjs`.
-- **Rebuild and validate:** `vp run build:replay-rig-v4`, then
+- **Native handoff:** `rowplay-athlete-v4.usdz` is generated from the exact GLB
+  by Blender 5.2 via `scripts/build-replay-rig-v4-usdz.py`. It is for RowPlay
+  Studio / PR #72 and must not be independently remodelled. The web runtime
+  remains GLB through `GLTFLoader`.
+- **Machine-readable contract:** `rowplay-athlete-v4.contract.json`, generated
+  by `scripts/build-replay-rig-v4-contract.mjs`, records artifact hashes,
+  units/axes, skeleton order, rest transforms, clips, phase landmarks, contact
+  metadata, surface roles, provenance, and validation commands.
+- **Rebuild and validate:** `vp run build:replay-rig-v4`,
+  `vp run build:replay-rig-v4-usdz`,
+  `vp run build:replay-rig-v4-contract`, then
   `vp run validate:replay-assets`. The build exports and reloads the GLB and
   rejects skeleton, clip, drive-boundary, skin, or contact-metadata drift. The
-  normal repository quality gate validates both V3 and V4.
+  USDZ portability gate lives in `src/lib/replay/rigV4Usd.test.ts`.
 - **Reviewed artifact:** 433,104 bytes; SHA-256
   `4e658e31254539e00e60adc648a59eafcf033149cd89e641f85bf0391f3a6dba`.
   Two independent builds must be byte-identical before the binary changes are
   committed.
+- **Reviewed USDZ derivative:** 949,794 bytes; SHA-256
+  `8b7a716bb572c9ff3124a6099c1f12caf41e2f00e33c0c5fc8ef44ba39f3f819`.
+  Blender 5.2 does not produce byte-identical USDZ containers across repeat
+  exports, so repeat-export acceptance is semantic: Three.js `USDLoader` must
+  load one skinned athlete with the 19 bones in order, finite normalized skin
+  weights, finite bounds, matching triangle count, no external-looking
+  references, and clone-safe skeleton/material instances.
+- **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`;
+  SHA-256
+  `edea859484f5a5077eab9d99495a4640c442edae33c5e54f1f4d6f58d9af8f14`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named bones,
   5,373 vertices, 10,152 triangles, one opaque vertex-colour
   `MeshPhysicalMaterial`, zero textures/images, and 14 connected topology
@@ -139,6 +159,9 @@ remain automatic fallbacks.
 The clips are polished generic technique, not measured athlete biomechanics.
 Concept2 cadence and replay timing determine when they are sampled; no user
 joint path, force curve, body shape, or technique is inferred.
+
+See `docs/native-athlete-handoff.md` for the RowPlay Studio consumption
+boundary.
 
 ## Provenance policy
 

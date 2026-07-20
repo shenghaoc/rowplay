@@ -162,6 +162,30 @@ Before publication, update the two public replay captures only from accepted
 final demo frames, update the repository visual-QA note, run the full repository
 gate and browser smoke path, and refresh the draft PR for its exact pushed SHA.
 
+## Native handoff
+
+PR #171 is the canonical V4 athlete source for both rowplay and RowPlay Studio.
+The web app continues to ship and load `rowplay-athlete-v4.glb` through
+`GLTFLoader`. `rowplay-athlete-v4.usdz` is a generated derivative for the native
+handoff, exported by Blender 5.2 from that exact GLB with armature/skinning
+enabled. The conversion script contains no mesh authoring, no alternate
+proportions, and no downloaded or generated character content.
+
+`rowplay-athlete-v4.contract.json` is generated from `rigV4.ts` constants and
+the checked artifacts. It records the contract Studio must pin: schema version,
+hashes, bytes, units, axes, one-skinned-mesh inventory, exact 19-bone order,
+parent hierarchy, bind/rest local transforms, clip names, sport mapping, phase
+landmarks, palm/sole contact metadata, surface roles, provenance, licence, and
+validation commands.
+
+Blender 5.2 did not produce byte-identical USDZ containers across repeat
+exports. The accepted native gate therefore records the checked USDZ hash and
+validates semantic round-trip through Three.js `USDLoader`: one intended
+skinned athlete, exact bone order, normalized finite skin weights, finite
+bounds, no external-looking references, matching triangle count, and cloned
+instances with independent skeleton/material state. This remains a portability
+gate only; it does not migrate the web runtime to USDZ.
+
 ## Out of scope
 
 - Athlete scans, likenesses, avatar generators, user images, or customization.

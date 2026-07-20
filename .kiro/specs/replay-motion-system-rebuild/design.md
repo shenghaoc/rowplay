@@ -73,6 +73,11 @@ geometry and the existing procedural rig stay intact as validated 3D fallbacks;
 Canvas stays the stable outer fallback. A failed request, parser, skeleton,
 clip, or contact-metadata check therefore cannot blank the replay.
 
+The native handoff preserves this same ownership boundary. The GLB remains the
+web runtime artifact; USDZ is generated from the GLB for RowPlay Studio and is
+validated as a portable skinned derivative, not as a second animation runtime or
+a separate remodelled athlete.
+
 ## Non-goals
 
 - Reconstructing a user’s actual technique from Concept2 data.

@@ -392,6 +392,11 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     triangles: triangleCount,
     components: components.length,
     largestComponents: components.slice(0, 5),
+    materials: document.materials.length,
+    clipTracks: document.animations.reduce(
+      (count, animation) => count + animation.channels.length,
+      0,
+    ),
   };
 }
 

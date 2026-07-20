@@ -5229,10 +5229,10 @@ export class CourseRenderer3D implements ReplayRenderer {
       // chance to recover with fresh state.
       if (import.meta.env.DEV) console.warn("[renderer3d] frame skipped — render error:", err);
       this._renderErrorCount++;
-      // After 5 consecutive failures, disable 3D rendering to avoid an
-      // infinite error loop; the page-level safeRender will auto-fallback.
-      if (this._renderErrorCount >= 5 && this.renderer) {
-        this.renderer.render(this.scene, this.camera);
+      // After 5 consecutive failures, propagate the error so the page-level
+      // safeRender wrapper can swap to its established 2D/Canvas fallback.
+      if (this._renderErrorCount >= 5) {
+        throw err;
       }
       return;
     }

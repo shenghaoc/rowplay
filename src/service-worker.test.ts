@@ -6,6 +6,7 @@ import {
   replayAssetCacheStrategy,
   shouldCacheResponse,
 } from "./serviceWorkerPolicy";
+import { attachRuntimeCacheWrite } from "./serviceWorkerRuntimeCache";
 
 /**
  * Test the service worker's cache-control filter logic (extracted for
@@ -82,5 +83,22 @@ describe("CLEAR_USER_CACHES message format", () => {
   it("has the expected message type", () => {
     const message = { type: "CLEAR_USER_CACHES" };
     expect(message.type).toBe("CLEAR_USER_CACHES");
+  });
+});
+
+describe("runtime cache writes", () => {
+  it("attaches cache writes to the service-worker event lifetime", async () => {
+    const waits: Promise<unknown>[] = [];
+    const event = {
+      waitUntil: (promise: Promise<unknown>) => waits.push(promise),
+    };
+    const error = new Error("quota");
+    const seen: unknown[] = [];
+
+    attachRuntimeCacheWrite(event, Promise.reject(error), (err) => seen.push(err));
+
+    expect(waits).toHaveLength(1);
+    await expect(waits[0]).resolves.toBeUndefined();
+    expect(seen).toEqual([error]);
   });
 });

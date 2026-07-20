@@ -45,3 +45,13 @@ figure, readability, and motion specs.
   - [x] Replace public replay screenshots only with accepted final demo captures
   - [x] Run focused tests, `vp run check`, locale validation, browser/E2E smoke,
     and `git diff --check`
+
+- [x] **7. Add the canonical native handoff**
+  - [x] Generate `rowplay-athlete-v4.usdz` from the canonical GLB through
+    Blender 5.2 without remodelling the athlete
+  - [x] Generate `rowplay-athlete-v4.contract.json` from `rigV4.ts` constants
+    and built artifact metrics
+  - [x] Validate USDZ portability through Three.js `USDLoader` without changing
+    the web GLB runtime
+  - [x] Document the RowPlay Studio boundary, exact hashes, and Blender USDZ
+    repeat-export nondeterminism
