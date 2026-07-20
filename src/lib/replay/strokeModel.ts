@@ -90,9 +90,12 @@ function metersFromPace(seconds: number, pace: number): number {
 
 function driveFraction(sport: Sport, seconds: number, rate: number, intensity: number): number {
   if (sport === "bike") return 0.5;
+  // Guard against NaN from corrupt sensor data before it propagates into
+  // every derived field (driveProgress, cycleFrac, amplitude, warpStrokePhase).
+  const safeIntensity = Number.isFinite(intensity) ? intensity : 0.5;
   const base = sport === "skierg" ? 0.34 : 0.38;
   const rateBias = clamp((rate - (sport === "skierg" ? 32 : 28)) / 40, -0.12, 0.12);
-  const powerBias = (intensity - 0.5) * 0.08;
+  const powerBias = (safeIntensity - 0.5) * 0.08;
   const durationBias = clamp((2.0 - seconds) / 8, -0.06, 0.06);
   return clamp(base + rateBias + powerBias + durationBias, 0.28, 0.46);
 }
@@ -132,6 +135,19 @@ function isNonAdvancingAnchor(stroke: Stroke, startT: number, startD: number): b
 }
 
 export function buildStrokeTimeline(strokes: Stroke[], sport: Sport, real = true): StrokeTimeline {
+  if (!strokes?.length)
+    return {
+      sport,
+      entries: [],
+      real,
+      duration: 0,
+      distance: 0,
+      medianWatts: 0,
+      peakWatts: 0,
+      medianDps: 0,
+      medianHr: 0,
+      maxHr: 0,
+    };
   let startT = 0;
   let startD = 0;
   let startCycle = 0;
@@ -295,6 +311,7 @@ function syntheticPoseAt(timeline: StrokeTimeline, t: number): StrokePose {
 }
 
 export function strokePoseAt(timeline: StrokeTimeline, t: number): StrokePose {
+  if (!timeline) return fallbackStrokePose("rower", 0, 0);
   if (!timeline.real || timeline.entries.length === 0) return syntheticPoseAt(timeline, t);
   const entry = entryAt(timeline.entries, Math.max(0, t));
   if (!entry) return fallbackStrokePose(timeline.sport, 0, 0);

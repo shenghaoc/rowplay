@@ -156,7 +156,8 @@ export async function createRenderer3D(
       }
       destroyFailedRenderer(renderer);
       renderer = null;
-    } catch {
+    } catch (err) {
+      console.warn("[replay] WebGPU init failed, falling back to WebGL:", err);
       destroyFailedRenderer(renderer);
       renderer = null;
       // WebGPU can be exposed but fail adapter/device init. WebGL remains the
@@ -168,6 +169,9 @@ export async function createRenderer3D(
     throw new Error("3D renderer unavailable");
   }
   const webglQuality: RenderQuality = quality === "ultra" ? "high" : quality;
+  if (quality === "ultra") {
+    console.warn("[replay] WebGPU unavailable, quality downgraded from ultra to high");
+  }
   const Ctor = await (deps.loadWebGL ?? loadRenderer3D)();
   const [assets, v4Assets] = await Promise.all([getAssets(), getV4Assets()]);
   let renderer: CourseRenderer3D | null = null;

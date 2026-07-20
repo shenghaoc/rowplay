@@ -1746,6 +1746,11 @@ export class CourseRenderer implements ReplayRenderer {
     if (w === 0) return;
     this.reduceMotion = prefersReducedMotion();
 
+    // Reset transform at the start of every frame so a mid-frame exception
+    // in any sub-method's save/restore pair can't corrupt the next frame.
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.globalAlpha = 1;
+
     // Wall-clock dt (clamped) keeps decorative motion at the same speed on
     // 30/60/120 Hz displays — phases advance by time, not by frame count.
     const now = performance.now();

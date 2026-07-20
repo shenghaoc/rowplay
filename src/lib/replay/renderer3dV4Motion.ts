@@ -376,11 +376,27 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     if (this.disposed) return;
     this.disposed = true;
     this.active = false;
-    this.action.stop();
-    this.restoreFallback();
+    try {
+      this.action.stop();
+    } catch {
+      /* best-effort */
+    }
+    try {
+      this.restoreFallback();
+    } catch {
+      /* best-effort */
+    }
     this.root.visible = false;
-    this.root.removeFromParent();
-    disposeReplayV4AthleteInstance(this.options.instance);
+    try {
+      this.root.removeFromParent();
+    } catch {
+      /* best-effort */
+    }
+    try {
+      disposeReplayV4AthleteInstance(this.options.instance);
+    } catch {
+      /* best-effort */
+    }
   }
 
   private disable(): void {

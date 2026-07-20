@@ -23,11 +23,19 @@ export interface MutableFigurePoint3 extends MutableFigurePoint2 {
 const SOLVE_EPSILON = 1e-9;
 
 function finite(value: number): number {
-  return Number.isFinite(value) ? value : 0;
+  if (!Number.isFinite(value)) {
+    if (import.meta.env.DEV) console.warn("[figurePose] non-finite input sanitized to 0");
+    return 0;
+  }
+  return value;
 }
 
 function segmentLength(value: number): number {
-  return Number.isFinite(value) ? Math.max(0, Math.abs(value)) : 0;
+  if (!Number.isFinite(value)) {
+    if (import.meta.env.DEV) console.warn("[figurePose] non-finite segment length sanitized to 0");
+    return 0;
+  }
+  return Math.max(0, Math.abs(value));
 }
 
 function clampedReach(distance: number, firstLength: number, secondLength: number): number {
@@ -90,6 +98,17 @@ export function solveTwoBone2D(
 
   const directionX = distance > SOLVE_EPSILON ? deltaX / distance : 1;
   const directionY = distance > SOLVE_EPSILON ? deltaY / distance : 0;
+  if (!Number.isFinite(directionX) || !Number.isFinite(directionY)) {
+    // Overflow in the subtraction of large coordinate values can produce
+    // NaN through Infinity/Infinity; clamp to a safe default direction.
+    if (import.meta.env.DEV)
+      console.warn("[figurePose] NaN direction from overflow, using default");
+    jointOut.x = rootX;
+    jointOut.y = rootY + firstLength;
+    endOut.x = rootX;
+    endOut.y = rootY + firstLength + secondLength;
+    return jointOut;
+  }
   const solveDistance = clampedReach(distance, firstLength, secondLength);
   if (solveDistance === distance) {
     endOut.x = targetX;

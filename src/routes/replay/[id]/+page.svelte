@@ -236,14 +236,33 @@
 		if (!renderer) return;
 		try {
 			renderer.render(state, p, theme);
+			consecutiveRenderErrors = 0;
 		} catch (err) {
-			if (rendererKind !== '3d') throw err;
+			consecutiveRenderErrors++;
+			const msg = err instanceof Error ? err.message : String(err);
+			if (rendererKind !== '3d') {
+				// 2D renderer: log and skip the frame instead of re-throwing.
+				// Re-throwing would prevent the next requestAnimationFrame from
+				// being scheduled, permanently killing the animation loop.
+				if (import.meta.env.DEV) console.warn('[replay] 2D frame skipped:', err);
+				// After 8 consecutive errors, auto-fallback to a known-safe state.
+				if (consecutiveRenderErrors >= 8) {
+					toast.error(t('replay.view2dError'), {
+						description: msg
+					});
+					consecutiveRenderErrors = 0;
+				}
+				return;
+			}
+			// 3D renderer: toast once and fall back to 2D.
 			toast.error(t('replay.view3dError'), {
-				description: err instanceof Error ? err.message : t('common.tryAgain')
+				description: msg
 			});
 			void setRenderer('2d');
 		}
 	}
+
+	let consecutiveRenderErrors = 0;
 
 	function renderCurrent() {
 		safeRender(buildState(frame), playing, uiTheme.value);
@@ -1351,7 +1370,7 @@
 				type="text"
 				bind:value={paceInput}
 				placeholder="1:52"
-				aria-label="Pace per 500m"
+				aria-label={t('replay.pacePer500m')}
 				onkeydown={(e) => e.key === 'Enter' && applyPace()}
 			/>
 			<span class="muted small">/500m</span>
@@ -1362,7 +1381,7 @@
 				type="file"
 				accept=".csv,.tcx,.fit"
 				onchange={onFile}
-				aria-label="Upload CSV, TCX, or FIT file"
+				aria-label={t('replay.uploadCsvHint')}
 			/>
 			<span class="muted small">{t('replay.fileFormats')}</span>
 			{#if fileName}<span class="muted small">· {fileName}</span>{/if}
@@ -1512,14 +1531,14 @@
 			step="0.1"
 			value={frame.t}
 			oninput={onScrub}
-			aria-label="Seek"
+			aria-label={t('replay.seekSlider')}
 		/>
 		<div class="dist mono">{fmtDistance(frame.d)}</div>
 		<p class="kb-inline muted small"><kbd>Space</kbd> {t('replay.kbSpaceHint')} · <kbd>←</kbd><kbd>→</kbd> {t('replay.kbArrowHint')}</p>
 		<div
 			class="join speeds"
 			role="radiogroup"
-			aria-label="Playback speed"
+			aria-label={t('replay.playbackSpeed')}
 			tabindex="-1"
 			onkeydown={(e) => {
 				const btns = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('[role="radio"]')];
@@ -1650,7 +1669,7 @@
 							type="button"
 							class="btn btn-ghost btn-xs"
 							onclick={() => (targetPaceOpen = false)}
-							aria-label="Close"
+							aria-label={t('replay.closePanel')}
 						>✕</button>
 					</div>
 				{:else}

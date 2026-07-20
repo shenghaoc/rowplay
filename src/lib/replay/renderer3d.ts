@@ -5221,6 +5221,27 @@ export class CourseRenderer3D implements ReplayRenderer {
 
   render(state: RenderState, playing: boolean, themeName: "light" | "dark" = "light"): void {
     if (this.w === 0) return;
+    try {
+      this._renderImpl(state, playing, themeName);
+    } catch (err) {
+      // A single frame exception must not break the render loop permanently.
+      // Log once per unique error and skip the frame so the next frame has a
+      // chance to recover with fresh state.
+      if (import.meta.env.DEV) console.warn("[renderer3d] frame skipped — render error:", err);
+      this._renderErrorCount++;
+      // After 5 consecutive failures, disable 3D rendering to avoid an
+      // infinite error loop; the page-level safeRender will auto-fallback.
+      if (this._renderErrorCount >= 5 && this.renderer) {
+        this.renderer.render(this.scene, this.camera);
+      }
+      return;
+    }
+    this._renderErrorCount = 0;
+  }
+
+  private _renderErrorCount = 0;
+
+  private _renderImpl(state: RenderState, playing: boolean, themeName: "light" | "dark"): void {
     if (themeName !== this.theme) this.applyTheme(themeName);
     const C = themeName === "dark" ? COLORS_DARK : COLORS_LIGHT;
     this.reduceMotion = prefersReducedMotion();

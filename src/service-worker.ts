@@ -113,12 +113,20 @@ sw.addEventListener("fetch", (event) => {
 });
 
 async function cacheFirst(request: Request, cacheName: string): Promise<Response> {
-  const cache = await caches.open(cacheName);
-  const hit = await cache.match(request);
-  if (hit) return hit;
-  const response = await fetch(request);
-  if (response.ok) await cache.put(request, response.clone());
-  return response;
+  try {
+    const cache = await caches.open(cacheName);
+    const hit = await cache.match(request);
+    if (hit) return hit;
+    const response = await fetch(request);
+    if (response.ok) {
+      cache.put(request, response.clone()).catch((err: unknown) => {
+        console.warn("[sw] cache put failed in cacheFirst:", err);
+      });
+    }
+    return response;
+  } catch {
+    return new Response("Offline", { status: 503, statusText: "Offline" });
+  }
 }
 
 async function networkFirst(
@@ -133,7 +141,12 @@ async function networkFirst(
     // is never persisted in the origin-wide Cache API. Normalized to
     // lowercase for case-insensitive matching.
     if (response.ok && shouldCacheResponse(response.headers.get("cache-control"))) {
-      await cache.put(request, response.clone());
+      // Fire-and-forget cache write — if it fails, we still have the valid
+      // network response. Using event.waitUntil would be ideal but isn't
+      // available in this helper; the caught error is logged and dropped.
+      cache.put(request, response.clone()).catch((err: unknown) => {
+        console.warn("[sw] cache put failed, serving fresh response anyway:", err);
+      });
     }
     return response;
   } catch {

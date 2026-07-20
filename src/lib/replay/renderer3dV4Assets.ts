@@ -471,10 +471,34 @@ function disposeTemplateResources(template: ReplayV4AssetTemplate, state: Templa
     }
     if (object instanceof THREE.SkinnedMesh) skeletons.add(object.skeleton);
   });
-  for (const texture of textures) texture.dispose();
-  for (const material of materials) material.dispose();
-  for (const geometry of geometries) geometry.dispose();
-  for (const skeleton of skeletons) skeleton.dispose();
+  for (const texture of textures) {
+    try {
+      texture.dispose();
+    } catch (e) {
+      console.warn("[v4assets] texture dispose failed:", e);
+    }
+  }
+  for (const material of materials) {
+    try {
+      material.dispose();
+    } catch (e) {
+      console.warn("[v4assets] material dispose failed:", e);
+    }
+  }
+  for (const geometry of geometries) {
+    try {
+      geometry.dispose();
+    } catch (e) {
+      console.warn("[v4assets] geometry dispose failed:", e);
+    }
+  }
+  for (const skeleton of skeletons) {
+    try {
+      skeleton.dispose();
+    } catch (e) {
+      console.warn("[v4assets] skeleton dispose failed:", e);
+    }
+  }
   template.root.removeFromParent();
 }
 
@@ -504,10 +528,34 @@ function disposeParsedFailure(root: THREE.Object3D): void {
     }
     if (object instanceof THREE.SkinnedMesh) skeletons.add(object.skeleton);
   });
-  for (const texture of textures) texture.dispose();
-  for (const material of materials) material.dispose();
-  for (const geometry of geometries) geometry.dispose();
-  for (const skeleton of skeletons) skeleton.dispose();
+  for (const texture of textures) {
+    try {
+      texture.dispose();
+    } catch {
+      /* best-effort cleanup */
+    }
+  }
+  for (const material of materials) {
+    try {
+      material.dispose();
+    } catch {
+      /* best-effort cleanup */
+    }
+  }
+  for (const geometry of geometries) {
+    try {
+      geometry.dispose();
+    } catch {
+      /* best-effort cleanup */
+    }
+  }
+  for (const skeleton of skeletons) {
+    try {
+      skeleton.dispose();
+    } catch {
+      /* best-effort cleanup */
+    }
+  }
 }
 
 function createLocalV4Loader(): GLTFLoader {
@@ -609,6 +657,11 @@ export function createReplayV4AthleteInstance(
   } catch (error) {
     for (const material of materials) material.dispose();
     for (const geometry of geometries) geometry.dispose();
+    // If cloneInstanceResources already attached a cloned geometry to the
+    // mesh but failed before returning the geometries array, clean it up.
+    if (mesh && mesh.geometry !== template.mesh.geometry) {
+      mesh.geometry.dispose();
+    }
     mesh?.skeleton.dispose();
     root?.removeFromParent();
     throw error;
@@ -632,12 +685,40 @@ export function disposeReplayV4AthleteInstance(instance: ReplayV4AthleteInstance
   const state = instanceStates.get(instance);
   if (!state || state.disposed) return;
   state.disposed = true;
-  instance.mixer.stopAllAction();
-  instance.mixer.uncacheRoot(instance.root);
-  for (const material of state.materials) material.dispose();
-  for (const geometry of state.geometries) geometry.dispose();
-  instance.skeleton.dispose();
-  instance.root.removeFromParent();
+  try {
+    instance.mixer.stopAllAction();
+  } catch {
+    /* best-effort */
+  }
+  try {
+    instance.mixer.uncacheRoot(instance.root);
+  } catch {
+    /* best-effort */
+  }
+  for (const material of state.materials) {
+    try {
+      material.dispose();
+    } catch {
+      /* best-effort cleanup */
+    }
+  }
+  for (const geometry of state.geometries) {
+    try {
+      geometry.dispose();
+    } catch {
+      /* best-effort cleanup */
+    }
+  }
+  try {
+    instance.skeleton.dispose();
+  } catch {
+    /* best-effort cleanup */
+  }
+  try {
+    instance.root.removeFromParent();
+  } catch {
+    /* best-effort cleanup */
+  }
 
   const templateState = templateStates.get(state.template);
   if (!templateState) return;
