@@ -1222,10 +1222,21 @@ function placeSegmentCoordinates(
   const dz = endZ - startZ;
   const length = Math.hypot(dx, dy, dz);
   if (length < 0.001) {
+    // Remember that *this* path collapsed the segment so a later non-zero
+    // length can revive it. Do not stamp that flag when something else
+    // (notably the V4 skinned hero) already hid the mesh.
+    if (segment.visible) segment.userData.replaySegmentLengthCollapse = true;
     segment.visible = false;
     return;
   }
-  segment.visible = true;
+  // Never force-show a limb that V4 or the asset hide path intentionally
+  // suppressed. The old unconditional `visible = true` resurrected the
+  // procedural arm/leg tubes on every frame after V4's one-shot hide, so the
+  // athlete rendered with two sets of limbs.
+  if (segment.userData.replaySegmentLengthCollapse || segment.visible) {
+    segment.visible = true;
+    delete segment.userData.replaySegmentLengthCollapse;
+  }
   segment.position.set((startX + endX) / 2, (startY + endY) / 2, (startZ + endZ) / 2);
   segment.scale.set(1, 1, length);
   SEGMENT_DIR.set(dx / length, dy / length, dz / length);

@@ -1461,6 +1461,89 @@ describe("CourseRenderer3D", () => {
       }
     });
 
+    it("keeps V3 arm and leg tubes hidden across a full stroke so the athlete is not double-limbed", () => {
+      const limbNames = {
+        rower: [
+          "rower-thigh-left",
+          "rower-shin-left",
+          "rower-upper-arm-left",
+          "rower-forearm-left",
+          "rower-thigh-right",
+          "rower-shin-right",
+          "rower-upper-arm-right",
+          "rower-forearm-right",
+          "rower-elbow-left",
+          "rower-elbow-right",
+          "rower-torso-shell",
+        ],
+        skierg: [
+          "skierg-thigh-left",
+          "skierg-shin-left",
+          "skierg-upper-arm-left",
+          "skierg-forearm-left",
+          "skierg-thigh-right",
+          "skierg-shin-right",
+          "skierg-upper-arm-right",
+          "skierg-forearm-right",
+          "skierg-elbow-left",
+          "skierg-elbow-right",
+          "skierg-torso",
+        ],
+        bike: [
+          "bike-thigh-left",
+          "bike-shin-left",
+          "bike-upper-arm-left",
+          "bike-forearm-left",
+          "bike-thigh-right",
+          "bike-shin-right",
+          "bike-upper-arm-right",
+          "bike-forearm-right",
+          "bike-elbow-left",
+          "bike-elbow-right",
+          "bike-torso",
+        ],
+      } as const;
+      const equipment = {
+        rower: "rower-blade-left",
+        skierg: "skierg-pole-shaft-left",
+        bike: "bike-wheel-front",
+      } as const;
+
+      function chainVisible(object: THREE.Object3D): boolean {
+        let current: THREE.Object3D | null = object;
+        while (current) {
+          if (!current.visible) return false;
+          current = current.parent;
+        }
+        return true;
+      }
+
+      for (const sport of ["rower", "skierg", "bike"] as const) {
+        const renderer = rendererFor(sport);
+        try {
+          for (let step = 0; step <= 24; step++) {
+            const cycle = step / 24;
+            renderer.render(makeSportState(sport, cycle), false);
+            const { motion, instance } = v4Lane(renderer);
+            expect(motion.enabled, `${sport} @${cycle} V4 enabled`).toBe(true);
+            expect(motion.root.visible, `${sport} @${cycle} V4 visible`).toBe(true);
+            expect(instance.mesh.visible, `${sport} @${cycle} skinned mesh`).toBe(true);
+            for (const name of limbNames[sport]) {
+              const limb = sceneObject(renderer, name);
+              expect(limb.visible, `${sport} @${cycle} ${name} self-hidden`).toBe(false);
+              expect(chainVisible(limb), `${sport} @${cycle} ${name} chain-hidden`).toBe(false);
+            }
+            expect(
+              sceneObject(renderer, equipment[sport]).visible,
+              `${sport} @${cycle} equipment retained`,
+            ).toBe(true);
+          }
+        } finally {
+          renderer.destroy();
+        }
+      }
+    });
+
     it("locks every V4 palm and sole after clip sampling while preserving authored hip motion", () => {
       const phases = {
         rower: [0.01, 0.18, 0.38, 0.54, 0.64, 0.73, 0.78, 0.98],

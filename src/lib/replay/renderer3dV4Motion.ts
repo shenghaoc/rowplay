@@ -358,8 +358,11 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       this.root.updateMatrixWorld(true);
       this.assertPelvisAligned();
       this.options.instance.skeleton.update();
+      // Re-assert every frame: procedural limb placement runs earlier in the
+      // same tick and historically forced segment.visible = true, which would
+      // otherwise resurrect the V3 arm/leg tubes beside the skinned hero.
+      setFallbackVisibility(this.fallback, true);
       if (!this.revealed) {
-        setFallbackVisibility(this.fallback, true);
         this.root.visible = true;
         this.revealed = true;
       }
