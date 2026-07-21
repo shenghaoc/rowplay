@@ -1544,12 +1544,14 @@ describe("CourseRenderer3D", () => {
       }
     });
 
-    it("keeps RowErg hands uncrossed on their own lateral halves through the stroke", () => {
+    it("keeps RowErg hands uncrossed and elbows outside the grips without chicken wings", () => {
       const renderer = rendererFor("rower");
       try {
         const inv = new THREE.Matrix4();
         const leftLocal = new THREE.Vector3();
         const rightLocal = new THREE.Vector3();
+        const leftElbow = new THREE.Vector3();
+        const rightElbow = new THREE.Vector3();
         for (let step = 0; step <= 32; step++) {
           const cycle = step / 32;
           renderer.render(makeSportState("rower", cycle), false);
@@ -1558,9 +1560,33 @@ describe("CourseRenderer3D", () => {
           inv.copy(avatar.group.matrixWorld).invert();
           leftLocal.copy(v4EffectorWorld(instance, "leftHand")).applyMatrix4(inv);
           rightLocal.copy(v4EffectorWorld(instance, "rightHand")).applyMatrix4(inv);
-          expect(leftLocal.x, `left hand stays port at ${cycle}`).toBeLessThan(-0.02);
-          expect(rightLocal.x, `right hand stays starboard at ${cycle}`).toBeGreaterThan(0.02);
-          expect(rightLocal.x - leftLocal.x, `hands uncrossed at ${cycle}`).toBeGreaterThan(0.06);
+          leftElbow
+            .copy(instance.bones.v4LeftForearm.getWorldPosition(new THREE.Vector3()))
+            .applyMatrix4(inv);
+          rightElbow
+            .copy(instance.bones.v4RightForearm.getWorldPosition(new THREE.Vector3()))
+            .applyMatrix4(inv);
+          expect(leftLocal.x, `left hand stays port at ${cycle}`).toBeLessThan(-0.05);
+          expect(rightLocal.x, `right hand stays starboard at ${cycle}`).toBeGreaterThan(0.05);
+          expect(rightLocal.x - leftLocal.x, `hands uncrossed at ${cycle}`).toBeGreaterThan(0.12);
+          expect(leftElbow.x, `left elbow outside grip at ${cycle}`).toBeLessThan(leftLocal.x - 0.02);
+          expect(rightElbow.x, `right elbow outside grip at ${cycle}`).toBeGreaterThan(
+            rightLocal.x + 0.02,
+          );
+          expect(
+            Math.abs(leftElbow.x) - Math.abs(leftLocal.x),
+            `left elbow not a chicken wing at ${cycle}`,
+          ).toBeLessThan(0.32);
+          expect(
+            Math.abs(rightElbow.x) - Math.abs(rightLocal.x),
+            `right elbow not a chicken wing at ${cycle}`,
+          ).toBeLessThan(0.32);
+          expect(
+            v4EffectorWorld(instance, "leftHand").distanceTo(
+              worldPosition(renderer, "rower-hand-contact-left"),
+            ),
+            `left palm-handle at ${cycle}`,
+          ).toBeLessThan(0.012);
         }
       } finally {
         renderer.destroy();
@@ -1597,15 +1623,23 @@ describe("CourseRenderer3D", () => {
           minHandZ = Math.min(minHandZ, handLocal.z - hipsLocal.z);
           minElbowZ = Math.min(minElbowZ, elbowLocal.z - hipsLocal.z);
           if (cycle >= 0.18 && cycle <= 0.34) {
-            // Loaded press: hands must sit behind the hips, not drop in front.
             expect(handLocal.z, `hand aft of hips at ${cycle}`).toBeLessThan(hipsLocal.z - 0.08);
-            // Elbows travel with the press rather than staying in front of the chest.
-            expect(elbowLocal.z, `elbow not locked in front at ${cycle}`).toBeLessThan(
-              shoulderLocal.z + 0.12,
+            // Elbow stays on the arm chain — not parked above/in front of both
+            // shoulder and hand (the previous mid-drive failure mode).
+            expect(elbowLocal.z, `elbow not ahead of the hand chain at ${cycle}`).toBeLessThan(
+              Math.max(shoulderLocal.z, handLocal.z) + 0.08,
             );
+            expect(elbowLocal.y, `elbow not floating above the chain at ${cycle}`).toBeLessThan(
+              Math.max(shoulderLocal.y, handLocal.y) + 0.28,
+            );
+            expect(
+              v4EffectorWorld(instance, "leftHand").distanceTo(
+                worldPosition(renderer, "skierg-pole-grip-left"),
+              ),
+              `left palm-grip at ${cycle}`,
+            ).toBeLessThan(0.02);
           }
         }
-        // Clear fore-aft travel so the stroke is a back-press, not a shrug.
         expect(catchHandZ - minHandZ, "hand travels aft through the press").toBeGreaterThan(0.45);
         expect(minHandZ, "peak press is a true back-press past the hips").toBeLessThan(-0.18);
         expect(minElbowZ, "elbows follow the press aft").toBeLessThan(0.12);

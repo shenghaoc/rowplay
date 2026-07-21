@@ -283,13 +283,15 @@ def build_torso(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
         Ring(Vector((0, 1.175, 0.012)), (0.174, 0.132), {"v4Hips": 0.34, "v4Spine": 0.66}, FABRIC),
         Ring(spine + Vector((0, 0.005, 0.005)), (0.194, 0.145), {"v4Spine": 0.86, "v4Hips": 0.14}, FABRIC, 0.02),
         Ring(Vector((0, 1.29, 0.018)), (0.218, 0.16), {"v4Spine": 0.72, "v4Chest": 0.28}, FABRIC, 0.025),
-        Ring(Vector((0, 1.37, 0.025)), (0.242, 0.176), {"v4Spine": 0.44, "v4Chest": 0.56}, FABRIC, 0.025),
-        Ring(chest + Vector((0, -0.002, 0.016)), (0.258, 0.181), {"v4Chest": 0.82, "v4Spine": 0.18}, FABRIC, 0.02),
-        Ring(Vector((0, 1.505, 0.045)), (0.266, 0.173), {"v4Chest": 0.9, "v4Neck": 0.1}, FABRIC, 0.015),
-        Ring(Vector((0, 1.555, 0.052)), (0.225, 0.15), {"v4Chest": 0.84, "v4Neck": 0.16}, FABRIC),
-        Ring(Vector((0, 1.59, 0.054)), (0.15, 0.105), {"v4Chest": 0.62, "v4Neck": 0.38}, FABRIC),
+        Ring(Vector((0, 1.37, 0.025)), (0.236, 0.172), {"v4Spine": 0.44, "v4Chest": 0.56}, FABRIC, 0.03),
+        # Slightly narrower chest and sharper clavicle shelf so buried arm roots
+        # do not read as a continuous rubber torso-to-sleeve tube.
+        Ring(chest + Vector((0, -0.002, 0.016)), (0.248, 0.174), {"v4Chest": 0.82, "v4Spine": 0.18}, FABRIC, 0.025),
+        Ring(Vector((0, 1.505, 0.045)), (0.252, 0.165), {"v4Chest": 0.9, "v4Neck": 0.1}, FABRIC, 0.02),
+        Ring(Vector((0, 1.555, 0.052)), (0.21, 0.142), {"v4Chest": 0.84, "v4Neck": 0.16}, FABRIC),
+        Ring(Vector((0, 1.59, 0.054)), (0.138, 0.098), {"v4Chest": 0.62, "v4Neck": 0.38}, FABRIC),
     ]
-    builder.add_vertical_loft(rings, 52, torso_color)
+    builder.add_vertical_loft(rings, 54, torso_color)
 
     # A close front placket catches rim light without adding a floating collar
     # ring around a bending neck.
@@ -411,57 +413,66 @@ def build_arm(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: 
     ) -> Ring:
         return Ring(center, radii, weights, color, squash)
 
+    # Buried sleeve root → athletic deltoid → tapered forearm → slim wrist.
+    # The previous sleeve root was too thick and read as a sock joint under IK.
     rings = [
-        ring_at(chest.lerp(clavicle, 0.5), (0.035, 0.031), {"v4Chest": 0.72, clavicle_name: 0.28}, FABRIC),
-        ring_at(clavicle, (0.055, 0.048), {"v4Chest": 0.18, clavicle_name: 0.66, upper_name: 0.16}, FABRIC),
-        ring_at(shoulder, (0.079, 0.071), {clavicle_name: 0.32, upper_name: 0.68}, FABRIC, 0.04),
-        ring_at(shoulder.lerp(elbow, 0.12), (0.088, 0.078), {upper_name: 0.96, clavicle_name: 0.04}, FABRIC, 0.055),
-        ring_at(shoulder.lerp(elbow, 0.28), (0.084, 0.073), {upper_name: 1}, FABRIC, 0.045),
-        ring_at(shoulder.lerp(elbow, 0.4), (0.077, 0.067), {upper_name: 1}, TRIM, 0.035),
-        ring_at(shoulder.lerp(elbow, 0.48), (0.074, 0.064), {upper_name: 0.98, fore_name: 0.02}, SKIN_LIGHT, 0.03),
-        ring_at(shoulder.lerp(elbow, 0.64), (0.069, 0.059), {upper_name: 0.92, fore_name: 0.08}, SKIN, 0.025),
-        ring_at(shoulder.lerp(elbow, 0.8), (0.058, 0.05), {upper_name: 0.76, fore_name: 0.24}, SKIN),
-        ring_at(shoulder.lerp(elbow, 0.92), (0.052, 0.047), {upper_name: 0.6, fore_name: 0.4}, SKIN),
-        ring_at(elbow, (0.051, 0.046), {upper_name: 0.48, fore_name: 0.52}, SKIN),
-        ring_at(elbow.lerp(wrist, 0.12), (0.058, 0.049), {upper_name: 0.26, fore_name: 0.74}, SKIN, 0.025),
-        ring_at(elbow.lerp(wrist, 0.28), (0.063, 0.052), {upper_name: 0.08, fore_name: 0.92}, SKIN, 0.035),
-        ring_at(elbow.lerp(wrist, 0.48), (0.057, 0.047), {fore_name: 0.98, hand_name: 0.02}, SKIN, 0.03),
-        ring_at(elbow.lerp(wrist, 0.67), (0.049, 0.041), {fore_name: 0.9, hand_name: 0.1}, SKIN, 0.02),
-        ring_at(elbow.lerp(wrist, 0.84), (0.04, 0.034), {fore_name: 0.72, hand_name: 0.28}, SKIN),
-        ring_at(wrist, (0.033, 0.028), {fore_name: 0.32, hand_name: 0.68}, SKIN),
+        ring_at(chest.lerp(clavicle, 0.55), (0.028, 0.025), {"v4Chest": 0.78, clavicle_name: 0.22}, FABRIC),
+        ring_at(clavicle, (0.048, 0.042), {"v4Chest": 0.2, clavicle_name: 0.62, upper_name: 0.18}, FABRIC),
+        ring_at(shoulder, (0.072, 0.064), {clavicle_name: 0.28, upper_name: 0.72}, FABRIC, 0.05),
+        ring_at(shoulder.lerp(elbow, 0.1), (0.086, 0.076), {upper_name: 0.95, clavicle_name: 0.05}, FABRIC, 0.06),
+        ring_at(shoulder.lerp(elbow, 0.24), (0.08, 0.07), {upper_name: 1}, FABRIC, 0.05),
+        ring_at(shoulder.lerp(elbow, 0.38), (0.072, 0.063), {upper_name: 1}, TRIM, 0.04),
+        ring_at(shoulder.lerp(elbow, 0.5), (0.068, 0.059), {upper_name: 0.97, fore_name: 0.03}, SKIN_LIGHT, 0.03),
+        ring_at(shoulder.lerp(elbow, 0.66), (0.062, 0.054), {upper_name: 0.9, fore_name: 0.1}, SKIN, 0.025),
+        ring_at(shoulder.lerp(elbow, 0.82), (0.052, 0.046), {upper_name: 0.72, fore_name: 0.28}, SKIN),
+        # Pinch into a readable elbow before the forearm swells again.
+        ring_at(shoulder.lerp(elbow, 0.94), (0.044, 0.04), {upper_name: 0.55, fore_name: 0.45}, SKIN),
+        ring_at(elbow, (0.042, 0.039), {upper_name: 0.45, fore_name: 0.55}, SKIN),
+        ring_at(elbow.lerp(wrist, 0.1), (0.05, 0.043), {upper_name: 0.22, fore_name: 0.78}, SKIN, 0.03),
+        ring_at(elbow.lerp(wrist, 0.28), (0.056, 0.047), {fore_name: 0.94, upper_name: 0.06}, SKIN, 0.04),
+        ring_at(elbow.lerp(wrist, 0.48), (0.05, 0.042), {fore_name: 0.97, hand_name: 0.03}, SKIN, 0.03),
+        ring_at(elbow.lerp(wrist, 0.68), (0.042, 0.036), {fore_name: 0.88, hand_name: 0.12}, SKIN, 0.02),
+        ring_at(elbow.lerp(wrist, 0.86), (0.034, 0.03), {fore_name: 0.68, hand_name: 0.32}, SKIN),
+        ring_at(wrist, (0.028, 0.024), {fore_name: 0.28, hand_name: 0.72}, SKIN),
     ]
-    builder.add_loft(rings, 34, Vector((0, 0, 1)), cap_start=False)
+    builder.add_loft(rings, 36, Vector((0, 0, 1)), cap_start=False)
 
-    # The palm and closed finger mass form a flattened grip around the exact
-    # contact offset. A directional loft preserves a recognisable hand plane
-    # even when the terminal bone points almost straight at the replay camera;
-    # the old ellipsoid read as a round mitten in that view.
+    # Flattened palm + closed finger wedge around the exact contact offset.
+    # A longer finger loft and offset thumb keep the grip readable at chase
+    # camera distance without reading as a spherical mitten.
     hand_direction = (contact - wrist).normalized()
-    palm_center = wrist.lerp(contact, 0.55)
+    palm_center = wrist.lerp(contact, 0.48)
     builder.add_loft(
         [
-            Ring(wrist + hand_direction * 0.008, (0.031, 0.023), {hand_name: 1}, SKIN),
-            Ring(wrist.lerp(contact, 0.28), (0.041, 0.025), {hand_name: 1}, SKIN_LIGHT, 0.04),
-            Ring(palm_center, (0.046, 0.024), {hand_name: 1}, SKIN_LIGHT, 0.05),
-            Ring(wrist.lerp(contact, 0.82), (0.04, 0.022), {hand_name: 1}, SKIN_LIGHT, 0.04),
-            Ring(contact, (0.032, 0.019), {hand_name: 1}, SKIN, 0.02),
-            Ring(contact + hand_direction * 0.018, (0.021, 0.015), {hand_name: 1}, SKIN),
-            Ring(contact + hand_direction * 0.027, (0.009, 0.007), {hand_name: 1}, SKIN),
-            Ring(contact + hand_direction * 0.031, (0.002, 0.002), {hand_name: 1}, SKIN),
+            Ring(wrist + hand_direction * 0.006, (0.028, 0.02), {hand_name: 1}, SKIN),
+            Ring(wrist.lerp(contact, 0.22), (0.038, 0.022), {hand_name: 1}, SKIN_LIGHT, 0.05),
+            Ring(palm_center, (0.044, 0.021), {hand_name: 1}, SKIN_LIGHT, 0.06),
+            Ring(wrist.lerp(contact, 0.72), (0.038, 0.019), {hand_name: 1}, SKIN_LIGHT, 0.05),
+            Ring(contact, (0.03, 0.017), {hand_name: 1}, SKIN, 0.03),
+            Ring(contact + hand_direction * 0.022, (0.022, 0.014), {hand_name: 1}, SKIN, 0.02),
+            Ring(contact + hand_direction * 0.038, (0.014, 0.01), {hand_name: 1}, SKIN),
+            Ring(contact + hand_direction * 0.048, (0.006, 0.005), {hand_name: 1}, SKIN),
+            Ring(contact + hand_direction * 0.052, (0.002, 0.002), {hand_name: 1}, SKIN),
         ],
-        26,
+        28,
         Vector((0, 1, 0)),
         cap_start=False,
         cap_end=False,
     )
-    thumb_center = palm_center + Vector((-sign * 0.012, -0.017, 0.018))
-    builder.add_ellipsoid(
-        thumb_center,
-        (0.025, 0.017, 0.022),
-        {hand_name: 1},
-        SKIN,
-        18,
-        12,
+    # Thumb as a short opposing wedge rather than a floating ball.
+    thumb_base = palm_center + Vector((-sign * 0.018, -0.012, 0.01))
+    thumb_tip = palm_center + Vector((-sign * 0.034, -0.028, 0.028))
+    builder.add_loft(
+        [
+            Ring(thumb_base, (0.014, 0.012), {hand_name: 1}, SKIN),
+            Ring(thumb_base.lerp(thumb_tip, 0.55), (0.012, 0.01), {hand_name: 1}, SKIN_LIGHT),
+            Ring(thumb_tip, (0.008, 0.007), {hand_name: 1}, SKIN),
+            Ring(thumb_tip + (thumb_tip - thumb_base).normalized() * 0.012, (0.003, 0.003), {hand_name: 1}, SKIN),
+        ],
+        14,
+        Vector((0, 0, 1)),
+        cap_start=False,
+        cap_end=False,
     )
 
 
@@ -488,17 +499,18 @@ def build_leg(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: 
         Ring(hip.lerp(knee, 0.54), (0.112, 0.099), {upper_name: 0.98, lower_name: 0.02}, TRIM, 0.035),
         Ring(hip.lerp(knee, 0.68), (0.108, 0.096), {upper_name: 0.9, lower_name: 0.1}, FABRIC, 0.03),
         Ring(hip.lerp(knee, 0.82), (0.101, 0.091), {upper_name: 0.76, lower_name: 0.24}, FABRIC),
-        Ring(hip.lerp(knee, 0.93), (0.095, 0.087), {upper_name: 0.58, lower_name: 0.42}, FABRIC),
-        Ring(knee, (0.098, 0.09), {upper_name: 0.47, lower_name: 0.53}, FABRIC_LIGHT, 0.015),
-        Ring(knee.lerp(ankle, 0.1), (0.101, 0.091), {upper_name: 0.24, lower_name: 0.76}, FABRIC, 0.025),
-        Ring(knee.lerp(ankle, 0.24), (0.105, 0.094), {lower_name: 0.92, upper_name: 0.08}, FABRIC, 0.04),
-        Ring(knee.lerp(ankle, 0.4), (0.098, 0.087), {lower_name: 0.98, foot_name: 0.02}, FABRIC, 0.035),
-        Ring(knee.lerp(ankle, 0.57), (0.087, 0.079), {lower_name: 0.94, foot_name: 0.06}, FABRIC_SIDE, 0.025),
-        Ring(knee.lerp(ankle, 0.72), (0.075, 0.069), {lower_name: 0.85, foot_name: 0.15}, FABRIC_SIDE, 0.015),
-        Ring(knee.lerp(ankle, 0.86), (0.063, 0.058), {lower_name: 0.67, foot_name: 0.33}, FABRIC_SIDE),
-        Ring(ankle, (0.057, 0.053), {lower_name: 0.32, foot_name: 0.68}, SHOE_DARK),
+        Ring(hip.lerp(knee, 0.93), (0.088, 0.082), {upper_name: 0.58, lower_name: 0.42}, FABRIC),
+        # Knee pinch then calf swell — avoids a continuous sausage under flex.
+        Ring(knee, (0.084, 0.08), {upper_name: 0.47, lower_name: 0.53}, FABRIC_LIGHT, 0.02),
+        Ring(knee.lerp(ankle, 0.1), (0.092, 0.084), {upper_name: 0.24, lower_name: 0.76}, FABRIC, 0.03),
+        Ring(knee.lerp(ankle, 0.24), (0.098, 0.088), {lower_name: 0.92, upper_name: 0.08}, FABRIC, 0.045),
+        Ring(knee.lerp(ankle, 0.4), (0.092, 0.082), {lower_name: 0.98, foot_name: 0.02}, FABRIC, 0.035),
+        Ring(knee.lerp(ankle, 0.57), (0.08, 0.074), {lower_name: 0.94, foot_name: 0.06}, FABRIC_SIDE, 0.025),
+        Ring(knee.lerp(ankle, 0.72), (0.068, 0.064), {lower_name: 0.85, foot_name: 0.15}, FABRIC_SIDE, 0.015),
+        Ring(knee.lerp(ankle, 0.86), (0.058, 0.054), {lower_name: 0.67, foot_name: 0.33}, FABRIC_SIDE),
+        Ring(ankle, (0.052, 0.05), {lower_name: 0.32, foot_name: 0.68}, SHOE_DARK),
     ]
-    builder.add_loft(rings, 38, Vector((1, 0, 0)), cap_start=False)
+    builder.add_loft(rings, 40, Vector((1, 0, 0)), cap_start=False)
 
     # Separate, fully foot-weighted performance shoe: heel counter, shaped
     # upper, rocker toe, contrast sole, and laces. Its contact marker still

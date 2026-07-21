@@ -282,11 +282,14 @@ does not mislabel a Canvas fallback capture as current 3D proof.
 
 Studio review rejected three intermediate candidates: floating collar and
 joint rings, centreline thigh cones that spiked under hip flexion, and broad
-pelvis caps that emerged as a skirt. The accepted mesh instead uses continuous
-smooth arm and leg lofts, buried uncapped shoulder/hip roots, graduated
-parent-child weights, shaped torso and face planes, an open swept-hair shell,
-sealed grip forms, footwear uppers/soles/laces, vertex-colour kit construction,
-and one restrained physical material. The result remains stylized and generic
+pelvis caps that emerged as a skirt. A follow-up Blender pass (same day) then
+pinched elbows/knees, narrowed the clavicle shelf, and replaced mitten thumbs
+with short opposing wedges so deep flex no longer reads as a continuous
+sausage limb. The accepted mesh uses continuous smooth arm and leg lofts,
+buried uncapped shoulder/hip roots, graduated parent-child weights, shaped
+torso and face planes, an open swept-hair shell, sealed grip/thumb forms,
+footwear uppers/soles/laces, vertex-colour kit construction, and one restrained
+physical material. The result remains stylized and generic
 while removing the stacked-block and detached-joint language of the procedural
 fallback.
 

@@ -1207,6 +1207,39 @@ const ELBOW_AXIS = new THREE.Vector3();
 const ELBOW_INSIDE = new THREE.Vector3();
 const ELBOW_SIDE = new THREE.Vector3();
 const ELBOW_FRAME = new THREE.Matrix4();
+const ARM_BEND_SCRATCH = new THREE.Vector3();
+
+/**
+ * Stable two-bone arm bend direction for equipment-locked hands.
+ *
+ * A fixed world hint (pure lateral / pure aft) flips elbows through the body
+ * or into a chicken-wing when the grip path changes. Project a preferred
+ * out/up/aft cue onto the plane perpendicular to the shoulder→hand chord so
+ * the joint stays outside the torso and on the correct side of the arm.
+ */
+function setArmBendHint(
+  shoulder: THREE.Vector3,
+  hand: THREE.Vector3,
+  side: number,
+  out: THREE.Vector3,
+  options: { readonly lateral?: number; readonly up?: number; readonly aft?: number } = {},
+): void {
+  const lateral = options.lateral ?? 0.5;
+  const up = options.up ?? 0.2;
+  const aft = options.aft ?? 0;
+  out.set(side * lateral, up, aft);
+  ARM_BEND_SCRATCH.set(hand.x - shoulder.x, hand.y - shoulder.y, hand.z - shoulder.z);
+  const chordLen = ARM_BEND_SCRATCH.length();
+  if (chordLen > 1e-6) {
+    ARM_BEND_SCRATCH.multiplyScalar(1 / chordLen);
+    const along = out.dot(ARM_BEND_SCRATCH);
+    out.addScaledVector(ARM_BEND_SCRATCH, -along);
+  }
+  if (out.lengthSq() < 1e-6) {
+    // Degenerate: fall back to pure side-out so the solver still has a plane.
+    out.set(side, 0.25, 0);
+  }
+}
 
 function placeSegmentCoordinates(
   segment: THREE.Object3D,
@@ -1668,14 +1701,14 @@ function makeRowerAvatar(
     oar.add(shaft);
     const grip = capsulePart(0.045, 0.28, equipmentGripMaterial, "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
-    // Keep each grip on its own side of centre. The previous ~0.5 m inboard
-    // lever put left/right handles across the midline so the arms visually
-    // crossed through the catch and recovery.
-    grip.position.x = -side * 0.34;
+    // Keep each grip on its own side of centre with a human hand-width gap.
+    // Too much inboard cross makes arms fold; too little looks like a wide
+    // press-up. ~0.18 m residual from the pin keeps palms uncrossed at catch.
+    grip.position.x = -side * 0.3;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    handleAnchor.position.x = -side * 0.38;
+    handleAnchor.position.x = -side * 0.34;
     oar.add(handleAnchor);
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
@@ -1762,17 +1795,14 @@ function makeRowerAvatar(
       handlePoint.copy(oar.handleAnchor.position).applyQuaternion(oar.group.quaternion);
       handlePoint.add(oar.group.position).sub(rower.position);
       arm.handTarget.copy(handlePoint);
-      // Keep the elbow plane attached to the torso as the rower pivots. The
-      // cue lifts and widens the elbow only as the shoulder completes its
-      // follow-through: a long catch stays soft, while the finish reads as a
-      // compact lateral draw instead of a dropped, inside-out forearm.
-      arm.bendHint
-        .set(
-          arm.side * (0.72 + shoulderSet * 0.2 + armDraw * 0.06),
-          -0.02 + shoulderSet * 0.14,
-          -0.02 + bodySwing * 0.05,
-        )
-        .applyQuaternion(torso.quaternion);
+      // Chord-stable high elbows: out and up relative to the current grip line,
+      // never a pure world-lateral wing that puts the joint past the grip.
+      setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
+        lateral: 0.42 + armDraw * 0.08 + shoulderSet * 0.05,
+        up: 0.42 + armDraw * 0.12 + shoulderSet * 0.08,
+        aft: -0.08 + bodySwing * 0.1 + handleTravel * 0.04,
+      });
+      arm.bendHint.applyQuaternion(torso.quaternion);
       solveTwoBone3D(
         arm.shoulderPoint,
         arm.handTarget,
@@ -1788,11 +1818,12 @@ function makeRowerAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
-      // Grip orientation follows the oar exactly, with only a small local
-      // pronation about its axis. This keeps the palm planted on the handle
-      // while allowing the wrist to join the outward elbow finish.
+      // Palm faces the grip: local +Y up, local +Z along the oar shaft toward
+      // the pin so V4 contact offsets stay lateral to the handle, not flipped
+      // into a crossed-wrist pose by a raw oar yaw copy.
       arm.hand.quaternion.copy(oar.group.quaternion);
-      arm.hand.rotateX(arm.side * (0.04 + shoulderSet * 0.1 - handleTravel * 0.025));
+      arm.hand.rotateZ(arm.side * (Math.PI / 2));
+      arm.hand.rotateX(-0.35 - shoulderSet * 0.08);
     }
   };
 
@@ -2431,14 +2462,15 @@ function makeSkierAvatar(
       arm.shoulderPoint.set(arm.side * 0.25, 0.54, 0.05);
       // Authored double-pole: high plant → mid load → aft extension.
       skiPreferredHand(armPress, arm.side, arm.handTarget);
-      // Elbow plane swings wide and aft with the press so the upper arm reads
-      // as a back-press, not a curl that keeps the joint in front of the ribs.
-      const pressAft = THREE.MathUtils.smoothstep(armPress, 0.15, 0.95);
-      arm.bendHint.set(
-        arm.side * (0.5 + pressAft * 0.45),
-        -0.15 + pressAft * 0.7,
-        0.65 - pressAft * 1.55,
-      );
+      // Chord-stable elbow plane: out and slightly below the chord at plant,
+      // then swing aft through the press. A positive "up" bias here previously
+      // parked elbows above and in front of the hands mid-drive.
+      const pressAft = THREE.MathUtils.smoothstep(armPress, 0.1, 0.95);
+      setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
+        lateral: 0.55 + pressAft * 0.18,
+        up: -0.08 - pressAft * 0.12,
+        aft: 0.05 - pressAft * 1.05,
+      });
 
       desiredHandWorld.copy(arm.handTarget);
       upper.localToWorld(desiredHandWorld);

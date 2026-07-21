@@ -463,13 +463,15 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
     this.oracleBendHint.copy(this.bendWorld).sub(this.rootWorld);
     const sport = this.options.sport;
+    // Arms and bike legs are equipment-locked: trust the procedural oracle bend
+    // plane so clip elbows cannot chicken-wing or flip forward of the grips.
     const oracleWeight = chain.isLeg
       ? sport === "bike"
         ? 0.92
         : 0.55
       : sport === "skierg"
-        ? 0.78
-        : 0.4;
+        ? 0.88
+        : 0.82;
     const clipWeight = 1 - oracleWeight;
     if (this.oracleBendHint.lengthSq() > TRANSFORM_EPSILON) {
       this.oracleBendHint.normalize();
