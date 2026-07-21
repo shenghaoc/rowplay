@@ -53,6 +53,31 @@ to the next plant. BikeErg
 runs continuous opposed pedal loading with coordinated pelvis shift, shoulder
 counter-rotation, head stabilization, and ankle articulation.
 
+### Rowing sequence and elbow-branch reference contract
+
+The shared RowErg graph follows the public coaching sequence rather than an
+aesthetic arm loop. [Concept2's rowing-technique guidance](https://www.concept2.com/training/rowing-technique)
+defines a long-arm catch, a leg-led drive, body swing before the arm draw, a
+finish with the handle just below the ribs, and recovery in the reverse order
+with hands away before the knees rise. [British Rowing's indoor technique](https://www.britishrowing.org/knowledge/rower-development/british-rowing-technique/indoor-rowing-technique/)
+likewise delays the arm draw until the legs are extended and requires the
+elbows to follow the handle line with aligned wrists and forearms. A published
+[3D kinematic comparison of skilled and unskilled ergometer rowing](https://www.mdpi.com/2076-3417/14/19/9055)
+reports only about 7–13° of elbow flexion through the first half of the drive,
+followed by the substantial late flexion needed at the finish.
+
+Those constraints own both renderers. Canvas solves each fixed-length
+upper-arm/forearm chain analytically and always selects the rearward elbow
+intersection. The 3D fallback solves a full inboard scull circle for the
+long-arm reach, closes the last part of the handle path from the graph's late
+`armDraw`, and publishes a restrained-outward but strongly rearward elbow
+marker. V4 samples its authored clip first, then uses that shared marker to
+choose the anatomical IK branch while the rigid grip remains terminal
+authority. The RowErg wrist frame is preserved through parent-bone correction
+so its palm offset converges on the grip rather than making the forearm chase a
+moving contact point. Dense-cycle tests reject early flexion, forward-pointing or
+sideways elbows, grip separation, torso intersection, and branch snaps.
+
 ### Classic double-pole reference contract
 
 The shared SkiErg graph is constrained by public technique and biomechanics,

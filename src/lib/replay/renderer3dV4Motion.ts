@@ -15,10 +15,11 @@ const TRANSFORM_EPSILON = 1e-8;
  * every terminal contact. The post-clip pass may rotate the two links of a
  * limb through their full reachable envelope; it never moves an oar grip,
  * stretches a ski pole, or lets a shoe leave its pedal to preserve a clip.
- * RowErg/BikeErg elbow bend still comes from the authored clip. SkiErg uses
- * the shared technique rig's elbow marker because its planted-pole chain owns
- * a measured sagittal flex→extension sequence, while mechanically solved bike
- * knee targets choose the correct leg branch.
+ * RowErg and SkiErg use the shared technique rig's elbow markers because their
+ * rigid hand contacts admit two mathematically valid but anatomically opposite
+ * solutions. The markers keep a rowing draw rearward and a SkiErg pull in its
+ * sagittal plane; mechanically solved BikeErg knee targets choose the correct
+ * leg branch. The authored clips still own the unconstrained base performance.
  */
 const ARM_SOFT_ANGLE_RAD = THREE.MathUtils.degToRad(8);
 const LEG_SOFT_ANGLE_RAD = THREE.MathUtils.degToRad(18);
@@ -304,6 +305,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private readonly parentWorldQuaternion = new THREE.Quaternion();
   private readonly targetWorldQuaternion = new THREE.Quaternion();
   private readonly rootWorldQuaternion = new THREE.Quaternion();
+  private readonly preservedEffectorWorldQuaternion = new THREE.Quaternion();
   private readonly deltaWorldQuaternion = new THREE.Quaternion();
   private readonly desiredWorldQuaternion = new THREE.Quaternion();
   private readonly localQuaternion = new THREE.Quaternion();
@@ -323,8 +325,8 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     }
 
     this.fallback = collectFallbackVisibility(options.fallbackRoot ?? parent);
-    // Contact targets are always terminal authorities. SkiErg elbows and
-    // BikeErg knees additionally select the anatomical two-bone branch.
+    // Contact targets are always terminal authorities. RowErg/SkiErg elbows
+    // and BikeErg knees additionally select the anatomical two-bone branch.
     this.chains = [
       {
         upper: requireBone(instance, "v4LeftUpperArm"),
@@ -543,12 +545,17 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     return chain.isLeg ? LEG_SOFT_ANGLE_RAD : ARM_SOFT_ANGLE_RAD;
   }
 
+  private usesSharedJointTarget(chain: ChainBinding): boolean {
+    if (chain.isLeg) return this.options.sport === "bike";
+    return this.options.sport === "rower" || this.options.sport === "skierg";
+  }
+
   /**
    * Close one rigid contact chain on top of the authored clip pose.
    *
-   * Most bend planes come from the sampled clip. SkiErg is the deliberate
-   * exception: the clip formerly selected a sideways/backwards goalpost branch,
-   * so the reference-backed shared elbow marker owns its sagittal branch.
+   * Most bend planes come from the sampled clip. RowErg and SkiErg are the
+   * deliberate arm exceptions: a rigid grip can close on either elbow branch,
+   * so the reference-backed shared marker chooses the rearward/sagittal one.
    * Bike legs likewise use the mechanically solved knee target near dead centre.
    */
   private correctContactChain(chain: ChainBinding): void {
@@ -557,10 +564,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     chain.effector.getWorldPosition(this.effectorWorld);
     chain.target.getWorldPosition(this.targetWorld);
 
-    if (
-      (chain.isLeg && this.options.sport === "bike") ||
-      (!chain.isLeg && this.options.sport === "skierg")
-    ) {
+    if (this.usesSharedJointTarget(chain)) {
       chain.jointTarget.getWorldPosition(this.bendHint);
       this.bendHint.sub(this.rootWorld);
     } else {
@@ -630,6 +634,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // Use the effector's current world rotation for the contact offset so palm
     // placement stays consistent with soft orient (never assumes a forced quat).
     chain.effector.getWorldQuaternion(this.rootWorldQuaternion);
+    this.preservedEffectorWorldQuaternion.copy(this.rootWorldQuaternion);
     chain.effector.getWorldScale(this.effectorWorldScale);
     this.contactOffsetWorld
       .copy(chain.offset)
@@ -649,12 +654,9 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     }
 
     // Refresh the desired bend plane after every parent swing. Bike knees and
-    // SkiErg elbows follow their shared mechanical branch markers; other
-    // chains retain the current clip-led plane.
-    if (
-      (chain.isLeg && this.options.sport === "bike") ||
-      (!chain.isLeg && this.options.sport === "skierg")
-    ) {
+    // RowErg/SkiErg elbows follow their shared mechanical branch markers;
+    // other chains retain the current clip-led plane.
+    if (this.usesSharedJointTarget(chain)) {
       chain.jointTarget.getWorldPosition(this.bendHint);
       this.bendHint.sub(this.rootWorld);
     } else {
@@ -678,6 +680,16 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     chain.upper.getWorldPosition(this.rootWorld);
     chain.middle.getWorldPosition(this.middleWorld);
     this.swingBoneToward(chain.middle, chain.effector, this.solvedEnd);
+    if (!chain.isLeg && this.options.sport === "rower") {
+      // RowErg's long, centreline-bound reach needs the wrist frame chosen by
+      // softOrientEffector to survive its parent-bone swings. Counter-rotate
+      // the hand after the forearm solve so the palm offset remains stable;
+      // the next pass can then close the rigid grip instead of chasing a
+      // contact point that moves with every IK pass. SkiErg deliberately keeps
+      // its existing pole-led terminal rotation through the vertical press.
+      this.root.updateMatrixWorld(true);
+      this.setBoneWorldQuaternion(chain.effector, this.preservedEffectorWorldQuaternion);
+    }
   }
 
   /**

@@ -15,6 +15,7 @@ import {
 } from "./renderer";
 import { MACHINE_HEX } from "./sports";
 import { SKI_POLE_APPROACH_START_CYCLE } from "./motionGraph";
+import { solveRowerKinematics } from "./sportKinematics";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 
 // The course renderer paints to <canvas>, which can't resolve CSS custom
@@ -311,6 +312,106 @@ describe("CourseRenderer stroke pose input", () => {
         });
         expect(armTerminatesAtGrip, `row hand/grip closure at ${cycle}`).toBe(true);
       }
+    }
+  });
+
+  it("keeps the visible 2D RowErg elbow rearward and the early-drive arm long", () => {
+    const { ctx, operations } = makeCtx();
+    const canvas = {
+      getContext: (kind: string) => (kind === "2d" ? ctx : null),
+    } as unknown as HTMLCanvasElement;
+    const renderer = new CourseRenderer(canvas);
+    renderer.resize(640, 180);
+    const testRenderer = renderer as unknown as {
+      drawAvatar(options: Record<string, unknown>): void;
+      liveSplash: unknown;
+    };
+    let previousElbow: { x: number; y: number } | null = null;
+
+    for (let step = 0; step <= 256; step++) {
+      operations.length = 0;
+      const cycle = step / 256;
+      const pose = fallbackStrokePose("rower", cycle * Math.PI * 2, 28);
+      const kinematics = solveRowerKinematics(pose);
+      testRenderer.drawAvatar({
+        x: 220,
+        y: 120,
+        accent: "#123456",
+        phase: pose.phase,
+        meters: cycle * pose.strokeMeters,
+        pixelsPerMeter: 0.72,
+        pose,
+        spm: 28,
+        isYou: true,
+        sport: "rower",
+        label: "rower",
+        splash: testRenderer.liveSplash,
+      });
+
+      const shoulderCalls = operations.filter(
+        ({ method, args }) =>
+          method === "ellipse" &&
+          Math.abs((args[2] as number) - 1.38) < 1e-8 &&
+          Math.abs((args[3] as number) - 1.38 * 0.82) < 1e-8,
+      );
+      const elbowCalls = operations.filter(
+        ({ method, args }) => method === "arc" && Math.abs((args[2] as number) - 0.95) < 1e-8,
+      );
+      const oars: Array<{ x: number; y: number }> = [];
+      for (let index = 0; index < operations.length - 1; index++) {
+        const start = operations[index];
+        const end = operations[index + 1];
+        if (start?.method !== "moveTo" || end?.method !== "lineTo") continue;
+        const x1 = start.args[0] as number;
+        const y1 = start.args[1] as number;
+        const x2 = end.args[0] as number;
+        const y2 = end.args[1] as number;
+        if (Math.abs(Math.hypot(x2 - x1, y2 - y1) - 20.9) < 1e-7) {
+          oars.push({ x: x1, y: y1 });
+        }
+      }
+
+      expect(shoulderCalls, `near shoulder at ${cycle}`).toHaveLength(1);
+      expect(elbowCalls, `near elbow at ${cycle}`).toHaveLength(1);
+      expect(oars, `two oar grips at ${cycle}`).toHaveLength(2);
+      const shoulder = {
+        x: shoulderCalls[0].args[0] as number,
+        y: shoulderCalls[0].args[1] as number,
+      };
+      const elbow = {
+        x: elbowCalls[0].args[0] as number,
+        y: elbowCalls[0].args[1] as number,
+      };
+      const hand = oars[1];
+
+      // Canvas rowers face +x; an elbow at or below the shoulder's x value is
+      // therefore on the rearward branch. Near-straight poses may converge on
+      // the shoulder line, while a meaningful late draw must clear it aft.
+      const upperX = elbow.x - shoulder.x;
+      const upperY = elbow.y - shoulder.y;
+      const forearmX = hand.x - elbow.x;
+      const forearmY = hand.y - elbow.y;
+      const straightness =
+        (upperX * forearmX + upperY * forearmY) /
+        (Math.hypot(upperX, upperY) * Math.hypot(forearmX, forearmY));
+      if (kinematics.armDraw > 0.9) {
+        expect(elbow.x, `aft elbow during visible draw at ${cycle}`).toBeLessThan(
+          shoulder.x - 0.05,
+        );
+      }
+      expect(Math.hypot(upperX, upperY), `fixed upper arm at ${cycle}`).toBeCloseTo(4.3, 6);
+      expect(Math.hypot(forearmX, forearmY), `fixed forearm at ${cycle}`).toBeCloseTo(4.2, 6);
+      if (kinematics.armDraw < 0.03) {
+        expect(straightness, `long arm before/after draw at ${cycle}`).toBeGreaterThan(0.82);
+      }
+
+      if (previousElbow && step < 256) {
+        expect(
+          Math.hypot(elbow.x - previousElbow.x, elbow.y - previousElbow.y),
+          `continuous elbow at ${cycle}`,
+        ).toBeLessThan(0.8);
+      }
+      previousElbow = elbow;
     }
   });
 

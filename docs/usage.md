@@ -124,7 +124,9 @@ contain a force curve, handle path, drive length, joint positions, or measured
 posture. The visible movement is therefore a deterministic, generic technique
 model aligned to logged cycles, rather than a reconstruction of your individual
 biomechanics. Its shared technique phases stage RowErg legs, body, then arms
-(and reverse that order on recovery); SkiErg's classic double-pole high reach,
+(the arms stay long until the late draw, both elbows pull behind the torso as
+the handle approaches the lower ribs, then arms straighten first on recovery);
+SkiErg's classic double-pole high reach,
 steep plant, early elbow bend, core-led press, long-arm pole-off, and lifted
 recovery; and BikeErg cadence-driven cranks separately from distance-driven wheel roll.
 Both 2D and 3D use those same timing and contact semantics.
@@ -148,7 +150,9 @@ The current 3D packages make the anatomical and equipment contracts visible:
 the V4 skin deforms around its authored skeleton, while the V3 equipment builds
 as coherent assemblies—a boat and oar rig, Nordic skis, and a continuous
 bicycle wheel/frame/drivetrain. RowErg palms stay on separate rigid scull grips
-and outside the torso. During the illustrated SkiErg plant, each rigid 1.55 m
+and outside the torso; both 2D and 3D delay elbow flexion until the late draw
+and keep the bent elbows behind the shoulders rather than pointing toward the
+handle or flaring into a horizontal goalpost. During the illustrated SkiErg plant, each rigid 1.55 m
 pole holds a deterministic course anchor while its hand remains on the grip.
 The skier advances relative to that basket, releases it near the end of the
 short planted phase, lifts it through recovery, and approaches the next anchor
@@ -196,10 +200,12 @@ detail stay subordinate to the figure, equipment contacts, ghost comparison,
 and telemetry.
 
 The contact pass does not move or resize equipment to rescue an authored pose.
-It rotates each reachable two-link limb over its anatomical envelope, preserves
-the clip-authored elbow plane, and uses the equipment-derived knee branch for
-cycling. If input geometry is ever incompatible, the limb clamps at its real
-reach instead of stretching a skeleton, pole, oar, or crank.
+It rotates each reachable two-link limb over its anatomical envelope, uses the
+shared rearward RowErg and sagittal SkiErg elbow markers where rigid hand
+contacts admit two opposite solutions, and uses the equipment-derived knee
+branch for cycling. Other bend planes remain clip-authored. If input geometry
+is ever incompatible, the limb clamps at its real reach instead of stretching
+a skeleton, pole, oar, or crank.
 
 The 2D BikeErg uses the same mechanically forward clockwise convention for its
 wheels and cranks. Explicit opposing crank arms, pedals, chainring, sprocket,

@@ -470,7 +470,7 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
-  it("keeps the clip elbow plane while closing rigid hand contacts", () => {
+  it("uses the shared RowErg aft-elbow marker while closing rigid hand contacts", () => {
     const lane = createLane();
     const controller = installReplayV4MotionController({
       sport: "rower",
@@ -480,26 +480,51 @@ describe("V4 motion determinism and fallback safety", () => {
       diagnosticMode: "clip-pelvis",
     });
     try {
-      expect(controller?.update({ phase: 0, cycleFrac: 0.05, driveFrac: 0.38 })).toBe(true);
+      expect(controller?.update({ phase: 0, cycleFrac: 0.32, driveFrac: 0.38 })).toBe(true);
       placeTargetsNearClipEffectors(lane);
+      // In the RowErg parent frame the athlete faces +z, so both branch markers
+      // sit rearward (-z) of their shoulder. The test scene itself is rotated/
+      // scaled to prove the controller consumes this in world space.
+      for (const side of ["left", "right"] as const) {
+        const upper = side === "left" ? "v4LeftUpperArm" : "v4RightUpperArm";
+        const marker = side === "left" ? lane.targets.leftElbow : lane.targets.rightElbow;
+        const shoulder = lane.instance.bones[upper].getWorldPosition(new THREE.Vector3());
+        lane.parent.worldToLocal(shoulder);
+        marker.position
+          .copy(shoulder)
+          .add(new THREE.Vector3(side === "left" ? -0.04 : 0.04, 0, -0.24));
+      }
+      lane.scene.updateMatrixWorld(true);
       controller?.setDiagnosticMode("full");
-      expect(controller?.update({ phase: 0, cycleFrac: 0.05, driveFrac: 0.38 })).toBe(true);
-      const earlyElbow = lane.instance.bones.v4LeftForearm.getWorldPosition(new THREE.Vector3());
       expect(controller?.update({ phase: 0, cycleFrac: 0.32, driveFrac: 0.38 })).toBe(true);
-      placeTargetsNearClipEffectors(lane);
-      expect(controller?.update({ phase: 0, cycleFrac: 0.32, driveFrac: 0.38 })).toBe(true);
-      const lateElbow = lane.instance.bones.v4LeftForearm.getWorldPosition(new THREE.Vector3());
-      expect(earlyElbow.distanceTo(lateElbow)).toBeGreaterThan(0.02);
-      expect(
-        effectorWorld(lane.instance, "leftHand").distanceTo(
-          lane.targets.leftHand.getWorldPosition(new THREE.Vector3()),
-        ),
-      ).toBeLessThan(0.03);
-      expect(
-        effectorWorld(lane.instance, "rightHand").distanceTo(
-          lane.targets.rightHand.getWorldPosition(new THREE.Vector3()),
-        ),
-      ).toBeLessThan(0.03);
+      lane.scene.updateMatrixWorld(true);
+
+      for (const side of ["left", "right"] as const) {
+        const upper = side === "left" ? "v4LeftUpperArm" : "v4RightUpperArm";
+        const forearm = side === "left" ? "v4LeftForearm" : "v4RightForearm";
+        const handBone = side === "left" ? "v4LeftHand" : "v4RightHand";
+        const markerTarget = side === "left" ? lane.targets.leftElbow : lane.targets.rightElbow;
+        const handTarget = side === "left" ? lane.targets.leftHand : lane.targets.rightHand;
+        const shoulder = lane.instance.bones[upper].getWorldPosition(new THREE.Vector3());
+        const elbow = lane.instance.bones[forearm].getWorldPosition(new THREE.Vector3());
+        const hand = lane.instance.bones[handBone].getWorldPosition(new THREE.Vector3());
+        const marker = markerTarget.getWorldPosition(new THREE.Vector3());
+        const chord = hand.clone().sub(shoulder).normalize();
+        const solvedPlane = elbow.clone().sub(shoulder);
+        solvedPlane.addScaledVector(chord, -solvedPlane.dot(chord)).normalize();
+        const markerPlane = marker.clone().sub(shoulder);
+        markerPlane.addScaledVector(chord, -markerPlane.dot(chord)).normalize();
+        const shoulderLocal = lane.parent.worldToLocal(shoulder.clone());
+        const elbowLocal = lane.parent.worldToLocal(elbow.clone());
+
+        expect(solvedPlane.dot(markerPlane), `${side} follows aft marker`).toBeGreaterThan(0.8);
+        expect(elbowLocal.z, `${side} V4 elbow is rearward`).toBeLessThan(shoulderLocal.z - 0.01);
+        expect(
+          effectorWorld(lane.instance, side === "left" ? "leftHand" : "rightHand").distanceTo(
+            handTarget.getWorldPosition(new THREE.Vector3()),
+          ),
+        ).toBeLessThan(0.03);
+      }
       expect(controller?.root.userData.replayV4Architecture).toBe("clip-contact-constrained");
     } finally {
       disposeLane(lane, controller);

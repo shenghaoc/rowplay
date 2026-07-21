@@ -460,6 +460,84 @@ function solveTwoBoneJoint2D(
   );
 }
 
+const rowerElbowAlternateScratch: MutableFigurePoint2 = { x: 0, y: 0 };
+
+/**
+ * Solve a side-profile rowing arm on the rearward elbow branch.
+ *
+ * Rowers face +x in Canvas, so behind the torso / toward the bow is -x. A generic
+ * signed bend parameter is fragile here: as the shoulder-to-grip chord passes
+ * through vertical it can select the forward-pointing solution even though both
+ * solutions preserve identical segment lengths and hand contact. Resolve both
+ * branches and retain the one with the smaller x coordinate instead. At the
+ * near-straight catch the branches converge; once the late arm draw creates a
+ * visible elbow, it therefore travels behind the shoulder rather than into the
+ * chest or toward the handle.
+ */
+export function solveRowerElbow2D(
+  shoulderX: number,
+  shoulderY: number,
+  handX: number,
+  handY: number,
+  upperArmLength: number,
+  forearmLength: number,
+  out: MutableFigurePoint2,
+): MutableFigurePoint2 {
+  solveTwoBoneJoint2D(shoulderX, shoulderY, handX, handY, upperArmLength, forearmLength, 1, out);
+  solveTwoBoneJoint2D(
+    shoulderX,
+    shoulderY,
+    handX,
+    handY,
+    upperArmLength,
+    forearmLength,
+    -1,
+    rowerElbowAlternateScratch,
+  );
+  if (rowerElbowAlternateScratch.x < out.x) {
+    out.x = rowerElbowAlternateScratch.x;
+    out.y = rowerElbowAlternateScratch.y;
+  }
+  return out;
+}
+
+/** Resolve a continuous oar angle whose rigid inboard grip meets an arm reach. */
+function solveRowerOarAngle2D(
+  shoulderX: number,
+  shoulderY: number,
+  lockX: number,
+  lockY: number,
+  inboardLength: number,
+  requestedReach: number,
+  preferredAngle: number,
+): number {
+  const pinDeltaX = lockX - shoulderX;
+  const pinDeltaY = lockY - shoulderY;
+  const amplitude = Math.hypot(pinDeltaX, pinDeltaY);
+  if (amplitude < 1e-8 || inboardLength < 1e-8) return preferredAngle;
+  const signedInboard = -inboardLength;
+  const baseDistanceSquared =
+    pinDeltaX * pinDeltaX + pinDeltaY * pinDeltaY + signedInboard * signedInboard;
+  const cosine = Math.max(
+    -1,
+    Math.min(
+      1,
+      (requestedReach * requestedReach - baseDistanceSquared) / (2 * signedInboard * amplitude),
+    ),
+  );
+  const center = Math.atan2(pinDeltaY, pinDeltaX);
+  const offset = Math.acos(cosine);
+  // The +offset branch is the continuous rearward-elbow solution for the
+  // side-profile scull. Choosing whichever branch happened to be nearest the
+  // aesthetic sweep let the two valid circle intersections swap mid-draw,
+  // producing a one-frame elbow jump.
+  return center + offset;
+}
+
+function interpolateAngle(from: number, to: number, amount: number): number {
+  return from + Math.atan2(Math.sin(to - from), Math.cos(to - from)) * amount;
+}
+
 /** Scalar adapter for the allocation-free planar closed-chain solver. */
 function constrainRigidContact2D(
   rootX: number,
@@ -1069,57 +1147,67 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   // sit behind the shell while near-side joints remain readable.
   const seatX = x + 4.2 - k.legExtension * 11.4;
   const seatY = bobY - 2;
-  const shX = seatX + 4.6 - k.bodySwing * 11.2;
-  const shY = bobY - 9.8 + k.bodySwing * 2.1;
+  // A fixed-length torso rotates from a forward catch to a restrained finish
+  // layback. The former linear x/y interpolation put the shoulders far behind
+  // the seat, forcing a nominally correct arm solver to point the elbows at the
+  // bow simply to reach the grips.
+  const torsoAngle = -1.04 - k.bodySwing * 0.58;
+  const torsoLength = 8.9;
+  const shX = seatX + Math.cos(torsoAngle) * torsoLength;
+  const shY = seatY + Math.sin(torsoAngle) * torsoLength;
   const footX = x + 10.4;
   const footY = bobY - 1;
-  const strokeProgress = k.legExtension * 0.42 + k.bodySwing * 0.34 + k.armDraw * 0.24;
-  const oarAngle = Math.PI - 0.22 - strokeProgress * (Math.PI - 0.48);
+  // Mirror the shared graph's leg → body → arm handle weighting. A slightly
+  // higher finish angle brings the hands toward the lower ribs instead of
+  // leaving the arms stretched toward the knees after the body has opened.
+  const strokeProgress = k.legExtension * 0.42 + k.bodySwing * 0.32 + k.armDraw * 0.26;
+  const oarCatchAngle = Math.PI - 0.22;
+  const oarFinishAngle = 0.7;
+  const preferredOarAngle = oarCatchAngle - strokeProgress * (oarCatchAngle - oarFinishAngle);
   const oarlockX = x + 0.4;
   const oarlockY = bobY - 0.2;
-  const armMinimumReach = Math.abs(4.9 - 4.7) + 0.04;
-  const armMaximumReach = 4.9 + 4.7 - 0.04;
+  // Match the visible arm scale to the torso and grip path: nearly straight
+  // through the catch/leg drive, with enough late-draw flex to read clearly.
+  const upperArmLength = 4.3;
+  const forearmLength = 4.2;
+  const structuralMaximumReach = upperArmLength + forearmLength - 0.04;
+  // Technique keeps the reach long through legs/body, then blends the same
+  // rigid oar toward its lower-rib finish only on the late draw channel.
+  const armClosureT = clamp01((k.armDraw - 0.35) / 0.47);
+  const armClosure = armClosureT * armClosureT * (3 - 2 * armClosureT);
   const farLockY = oarlockY - 0.65;
-  solveRigidOar2D(oarlockX, farLockY, oarAngle + 0.035, 7.1, 13.8, 4.0, rowOarFar);
-  constrainRigidContact2D(
+  const farLongAngle = solveRowerOarAngle2D(
     shX - 0.4,
     shY - 0.4,
-    rowOarFar.handleX,
-    rowOarFar.handleY,
     oarlockX,
     farLockY,
     7.1,
-    armMinimumReach,
-    armMaximumReach,
-    jointScratchA,
+    structuralMaximumReach,
+    preferredOarAngle + 0.035,
   );
   solveRigidOar2D(
     oarlockX,
     farLockY,
-    Math.atan2(farLockY - jointScratchA.y, oarlockX - jointScratchA.x),
+    interpolateAngle(farLongAngle, oarFinishAngle + 0.035, armClosure),
     7.1,
     13.8,
     4.0,
     rowOarFar,
   );
   const nearLockY = oarlockY + 0.4;
-  solveRigidOar2D(oarlockX, nearLockY, oarAngle, 7.1, 13.8, 4.0, rowOarNear);
-  constrainRigidContact2D(
+  const nearLongAngle = solveRowerOarAngle2D(
     shX,
     shY + 0.2,
-    rowOarNear.handleX,
-    rowOarNear.handleY,
     oarlockX,
     nearLockY,
     7.1,
-    armMinimumReach,
-    armMaximumReach,
-    jointScratchA,
+    structuralMaximumReach,
+    preferredOarAngle,
   );
   solveRigidOar2D(
     oarlockX,
     nearLockY,
-    Math.atan2(nearLockY - jointScratchA.y, oarlockX - jointScratchA.x),
+    interpolateAngle(nearLongAngle, oarFinishAngle, armClosure),
     7.1,
     13.8,
     4.0,
@@ -1229,14 +1317,13 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
     shoe,
   );
 
-  solveTwoBoneJoint2D(
+  solveRowerElbow2D(
     shX - 0.4,
     shY - 0.4,
     rowOarFar.handleX,
     rowOarFar.handleY,
-    4.9,
-    4.7,
-    -1,
+    upperArmLength,
+    forearmLength,
     jointScratchA,
   );
   drawShoulderCap(ctx, shX - 0.4, shY - 0.4, farKit, 1.16);
@@ -1313,14 +1400,13 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   );
   disc(ctx, oarlockX, oarlockY + 0.4, 0.96, rim);
   disc(ctx, oarlockX, oarlockY + 0.4, 0.4, foam);
-  solveTwoBoneJoint2D(
+  solveRowerElbow2D(
     shX,
     shY + 0.2,
     rowOarNear.handleX,
     rowOarNear.handleY,
-    4.9,
-    4.7,
-    -1,
+    upperArmLength,
+    forearmLength,
     jointScratchA,
   );
   drawShoulderCap(ctx, shX, shY + 0.2, accent, 1.38);

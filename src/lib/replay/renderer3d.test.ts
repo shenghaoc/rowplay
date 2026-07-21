@@ -1100,18 +1100,73 @@ describe("CourseRenderer3D", () => {
     expect(catchPose.headUp.y).toBeGreaterThan(0.88);
     expect(finishPose.headUp.y).toBeGreaterThan(0.88);
 
+    const athlete = sceneObject(renderer, "rower-athlete");
     for (const side of [-1, 1]) {
       const label = side < 0 ? "left" : "right";
-      const torso = sceneObject(renderer, "rower-torso-shell");
-      const shoulder = torso.worldToLocal(
+      const shoulder = athlete.worldToLocal(
         worldPosition(renderer, `rower-shoulder-${label}`).clone(),
       );
-      const elbow = torso.worldToLocal(worldPosition(renderer, `rower-elbow-${label}`).clone());
-      // A completed draw keeps the elbow outside the shoulder line instead of
-      // folding through the chest to satisfy the locked hand contact.
-      expect(elbow.x * side, `${label} elbow lateral finish`).toBeGreaterThan(
-        shoulder.x * side + 0.025,
-      );
+      const elbow = athlete.worldToLocal(worldPosition(renderer, `rower-elbow-${label}`).clone());
+      // The RowErg athlete faces +z in its local frame. A completed draw
+      // therefore sends the elbow behind the torso (-z), with only restrained
+      // lateral clearance instead of a horizontal goalpost/chicken wing.
+      expect(elbow.z, `${label} elbow rearward at finish`).toBeLessThan(shoulder.z - 0.04);
+      expect((elbow.x - shoulder.x) * side, `${label} elbow outward restraint`).toBeLessThan(0.16);
+    }
+
+    renderer.destroy();
+  });
+
+  it("keeps both procedural RowErg elbows on the rearward branch through a dense stroke", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
+    renderer.resize(1140, 420);
+    const previous = new Map<string, THREE.Vector3>();
+
+    for (let step = 0; step <= 256; step++) {
+      const cycle = step / 256;
+      const state = makeSportState("rower", cycle);
+      const graph = sampleRowerMotionGraph(state.strokePose!);
+      renderer.render(state, false);
+      const athlete = sceneObject(renderer, "rower-athlete");
+
+      for (const side of ["left", "right"] as const) {
+        const shoulder = athlete.worldToLocal(
+          worldPosition(renderer, `rower-shoulder-${side}`).clone(),
+        );
+        const elbow = athlete.worldToLocal(worldPosition(renderer, `rower-elbow-${side}`).clone());
+        const hand = worldPosition(renderer, `rower-hand-${side}`);
+        const grip = worldPosition(renderer, `rower-hand-contact-${side}`);
+        const handLocal = athlete.worldToLocal(hand.clone());
+
+        expect(hand.distanceTo(grip), `${side} grip closure at ${cycle}`).toBeLessThan(1e-6);
+        const sideSign = side === "left" ? -1 : 1;
+        expect(
+          (elbow.x - shoulder.x) * sideSign,
+          `${side} avoids outward lateral wing at ${cycle}`,
+        ).toBeLessThan(0.16);
+        const upper = elbow.clone().sub(shoulder);
+        const forearm = handLocal.clone().sub(elbow);
+        const straightness = upper.dot(forearm) / (upper.length() * forearm.length());
+        if (graph.body.armDraw.value > 0.9) {
+          expect(
+            elbow.z,
+            `${side} elbow travels rearward during visible draw at ${cycle}`,
+          ).toBeLessThan(shoulder.z - 0.025);
+        }
+        if (graph.body.armDraw.value < 0.03) {
+          expect(straightness, `${side} long arm before/after draw at ${cycle}`).toBeGreaterThan(
+            0.82,
+          );
+        }
+
+        const prior = previous.get(side);
+        if (prior && step < 256) {
+          expect(elbow.distanceTo(prior), `${side} elbow continuity at ${cycle}`).toBeLessThan(
+            0.08,
+          );
+        }
+        previous.set(side, elbow.clone());
+      }
     }
 
     renderer.destroy();
@@ -2120,10 +2175,10 @@ describe("CourseRenderer3D", () => {
   it("keeps every authored arm and leg segment fixed through 128 poses per sport", () => {
     const expectedBones = {
       rower: [
-        ["rower-upper-arm-left", 0.445],
-        ["rower-upper-arm-right", 0.445],
-        ["rower-forearm-left", 0.44],
-        ["rower-forearm-right", 0.44],
+        ["rower-upper-arm-left", 0.39],
+        ["rower-upper-arm-right", 0.39],
+        ["rower-forearm-left", 0.38],
+        ["rower-forearm-right", 0.38],
         ["rower-thigh-left", 0.552],
         ["rower-thigh-right", 0.552],
         ["rower-shin-left", 0.552],

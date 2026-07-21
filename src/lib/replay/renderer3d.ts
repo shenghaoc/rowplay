@@ -1245,6 +1245,54 @@ function setArmBendHint(
   }
 }
 
+/**
+ * Choose the continuous yaw branch on a rigid oar's inboard circle that
+ * satisfies a requested shoulder-to-grip reach. The motion-graph yaw is used
+ * only for a degenerate fallback and the later late-draw blend.
+ *
+ * The oar's local x axis is transformed by yaw then blade-depth roll. Solving
+ * that circle analytically keeps the hot path allocation-free and prevents
+ * early elbow flexion from compensating for an underspecified handle sweep.
+ */
+function solveRowerOarYaw(
+  shoulder: THREE.Vector3,
+  pinX: number,
+  pinY: number,
+  pinZ: number,
+  signedInboard: number,
+  bladeRoll: number,
+  requestedReach: number,
+  preferredYaw: number,
+): number {
+  const pinDeltaX = pinX - shoulder.x;
+  const pinDeltaY = pinY - shoulder.y;
+  const pinDeltaZ = pinZ - shoulder.z;
+  const projectedX = pinDeltaX * Math.cos(bladeRoll) + pinDeltaY * Math.sin(bladeRoll);
+  const projectedZ = -pinDeltaZ;
+  const amplitude = Math.hypot(projectedX, projectedZ);
+  if (amplitude < 1e-8 || Math.abs(signedInboard) < 1e-8) return preferredYaw;
+
+  const baseDistanceSquared =
+    pinDeltaX * pinDeltaX +
+    pinDeltaY * pinDeltaY +
+    pinDeltaZ * pinDeltaZ +
+    signedInboard * signedInboard;
+  const cosine = THREE.MathUtils.clamp(
+    (requestedReach * requestedReach - baseDistanceSquared) / (2 * signedInboard * amplitude),
+    -1,
+    1,
+  );
+  const center = Math.atan2(projectedZ, projectedX);
+  const offset = Math.acos(cosine);
+  const first = center + offset;
+  // The signed inboard lever already mirrors the two sculls. Keep the same
+  // fixed circle intersection for both sides: choosing the opposite branch on
+  // the starboard oar sends its grip outside the shoulder instead of toward
+  // the centreline. A nearest-angle choice can also exchange intersections
+  // mid-stroke and snap the elbows even when every isolated pose is reachable.
+  return first;
+}
+
 function placeSegmentCoordinates(
   segment: THREE.Object3D,
   startX: number,
@@ -1705,14 +1753,18 @@ function makeRowerAvatar(
     oar.add(shaft);
     const grip = capsulePart(0.045, 0.28, equipmentGripMaterial, "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
-    // Scull-authentic inboard grips: each hand stays on its own lateral half
-    // with a natural hand-width gap (no artificial wide press, no cross).
-    // ~0.22 m residual from the pin ≈ palms ~0.44 m apart at catch.
-    grip.position.x = -side * 0.22;
+    // Scull-authentic inboard length: the grips travel from each rigger pin to
+    // adjacent palms near the centreline. The former 0.22 m lever left the
+    // hands implausibly wide and made a straight catch geometrically
+    // impossible even though the shared graph correctly delayed arm draw.
+    grip.position.x = -side * 0.46;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    handleAnchor.position.x = -side * 0.24;
+    // Put the palm on the centre of the authored grip. Keeping the solver's
+    // contact 2 cm beyond the grip centre narrowed the hands enough for the
+    // returning forearm to cut through the torso core.
+    handleAnchor.position.x = -side * 0.46;
     oar.add(handleAnchor);
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
@@ -1757,8 +1809,8 @@ function makeRowerAvatar(
   const SEAT_CATCH_Z = 0.26;
   const THIGH_LENGTH = 0.552;
   const SHIN_LENGTH = 0.552;
-  const UPPER_ARM_LENGTH = 0.445;
-  const FOREARM_LENGTH = 0.44;
+  const UPPER_ARM_LENGTH = 0.39;
+  const FOREARM_LENGTH = 0.38;
   const BODY_PITCH_CATCH = -0.56;
   const BODY_PITCH_FINISH = 0.3;
   const PELVIS_PITCH_CATCH = -0.07;
@@ -1781,7 +1833,7 @@ function makeRowerAvatar(
     // reverses it into a relaxed scapular set rather than folding the hands
     // through the jersey.
     const shoulderSpread = 0.25 + shoulderSet * 0.014;
-    const shoulderHeight = 0.5 + (1 - shoulderSet) * 0.006 - shoulderSet * 0.008;
+    const shoulderHeight = 0.58 + (1 - shoulderSet) * 0.006 - shoulderSet * 0.008;
     const shoulderReach = 0.015 + (1 - handleTravel) * 0.028 - shoulderSet * 0.018;
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
@@ -1792,23 +1844,47 @@ function makeRowerAvatar(
         .add(torso.position);
       const oar = oars[i];
       if (!oar) continue;
+      // Preserve the graph-authored sweep as the preferred solution, but make
+      // the rigid inboard lever meet a long arm until the late draw. This is
+      // the 3D equivalent of the Canvas closed-chain reach floor.
+      // `armDraw` is already the graph's late, eased channel. Using it
+      // directly spreads the handle close over the whole anatomical draw;
+      // re-smoothing a narrow sub-range made the oar jump by ~10 degrees in a
+      // single dense-sample frame and visibly snapped the elbow.
+      const draw = THREE.MathUtils.clamp(armDraw, 0, 1);
+      const longReachYaw = solveRowerOarYaw(
+        arm.shoulderPoint,
+        oar.group.position.x - rower.position.x,
+        oar.group.position.y - rower.position.y,
+        oar.group.position.z - rower.position.z,
+        oar.handleAnchor.position.x,
+        oar.group.rotation.z,
+        UPPER_ARM_LENGTH + FOREARM_LENGTH - 0.006,
+        oar.group.rotation.y,
+      );
+      const drawYaw = -oar.side * 0.88;
+      const yawDelta = Math.atan2(
+        Math.sin(drawYaw - longReachYaw),
+        Math.cos(drawYaw - longReachYaw),
+      );
+      oar.group.rotation.y = longReachYaw + yawDelta * draw;
       // Convert the oar-local grip endpoint into rower-local coordinates. Both
       // objects share the avatar group as parent, so this is exact even before
       // Three updates matrixWorld for the draw.
       handlePoint.copy(oar.handleAnchor.position).applyQuaternion(oar.group.quaternion);
       handlePoint.add(oar.group.position).sub(rower.position);
       arm.handTarget.copy(handlePoint);
-      // The fallback owns the exact grip target and a stable anatomical elbow
-      // plane. V4 keeps its clip-authored elbow plane but must still terminate
-      // each palm on this same rigid sculling handle.
-      // Late arm draw: keep elbows long while armDraw is low.
-      const draw = THREE.MathUtils.smoothstep(armDraw, 0.35, 0.95);
+      // The fallback owns the exact grip target and the RowErg anatomical
+      // branch marker consumed by V4. Arms remain long while armDraw is low;
+      // once the late draw creates visible flexion, the sagittal component is
+      // strongly rearward / bowward (-z) with only restrained lateral
+      // clearance. This is an elbow-to-bows pull, not a horizontal
+      // chicken-wing flare.
       setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
-        lateral: 0.38 + draw * 0.1 + shoulderSet * 0.04,
-        up: 0.28 + draw * 0.14 + shoulderSet * 0.06,
-        aft: -0.06 + bodySwing * 0.08 + handleTravel * 0.05 + draw * 0.12,
+        lateral: 0.18 + draw * 0.03 + shoulderSet * 0.012,
+        up: 0.04 + draw * 0.04,
+        aft: -0.52 - bodySwing * 0.22 - handleTravel * 0.12 - draw * 0.65,
       });
-      arm.bendHint.applyQuaternion(torso.quaternion);
       solveTwoBone3D(
         arm.shoulderPoint,
         arm.handTarget,
