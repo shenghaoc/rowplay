@@ -1946,9 +1946,14 @@ function createV4Material(): THREE.Material {
     clearcoat: 0,
     clearcoatRoughness: 1,
     flatShading: false,
+    transmission: 0,
+    thickness: 0,
     transparent: false,
     opacity: 1,
+    alphaTest: 0,
     depthWrite: true,
+    depthTest: true,
+    premultipliedAlpha: false,
   });
 }
 

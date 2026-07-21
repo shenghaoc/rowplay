@@ -63,3 +63,14 @@ figure, readability, and motion specs.
     live/ghost isolation, and V3/Canvas fallbacks
   - [x] Add reproducible Blender studio rendering and update GLB/USDZ/contract
     provenance, metrics, hashes, and semantic validation
+
+- [x] **9. Integrate the athlete with a credible rowing shell**
+  - [x] Replace the closed fake cockpit with a Blender-authored open U-shell,
+    split decks, cockpit tub, rails, stretcher, heel cups, rigger, and oarlocks
+  - [x] Add a separately animated but physically rail-aligned seat-carriage
+    template with a shaped pad, frame, guides, and four rollers
+  - [x] Keep V4 RowErg knees on the authoritative raised bend branch so both leg
+    chains remain above the cockpit through the complete stroke
+  - [x] Keep the live and ghost skin opaque/depth-writing, remove the
+    near-coplanar chest zip, and protect shell/seat/leg/material contracts with
+    checked-asset and dense-cycle tests

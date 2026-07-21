@@ -365,13 +365,18 @@ describe.each([
       expect(controller?.mesh.frustumCulled).toBe(false);
       expect(controller?.mesh.castShadow).toBe(false);
       expect(controller?.mesh.receiveShadow).toBe(false);
+      expect(controller?.mesh.userData).toMatchObject({
+        replayRequestedOpacity: 0.45,
+        replayBodyRenderMode: "opaque-depth-writing",
+      });
 
       const material = controller?.mesh.material as THREE.MeshStandardMaterial;
-      expect(material.opacity).toBeCloseTo(0.45, 6);
-      expect(material.transparent).toBe(true);
-      expect(material.depthWrite).toBe(false);
+      expect(material.opacity).toBe(1);
+      expect(material.transparent).toBe(false);
+      expect(material.depthWrite).toBe(true);
+      expect(material.depthTest).toBe(true);
       expect(material.color.getHex()).toBe(
-        new THREE.Color(0xffffff).lerp(new THREE.Color(0xd9f6ff), 0.26).getHex(),
+        new THREE.Color(0xffffff).lerp(new THREE.Color(0xd9f6ff), 0.34).getHex(),
       );
 
       expect(lane.athleteFallback.visible).toBe(false);

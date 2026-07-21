@@ -82,9 +82,12 @@ account.
 - A compact repository-owned V4 GLB supplies one generic skinned athlete in 3D.
   RowErg, SkiErg, and BikeErg each use an authored canonical technique clip,
   sampled deterministically from replay pose and time; an analytic post-clip
-  pass keeps hands and feet on the authoritative equipment contacts
+  pass keeps hands and feet on the authoritative equipment contacts. Live and
+  ghost bodies stay opaque/depth-writing; ghost identity uses tint rather than
+  transparent skinned-mesh sorting
 - The repository-owned V3 geometry pack continues to supply the multi-part
-  RowErg, SkiErg, and BikeErg equipment assemblies and provides the first
+  RowErg, SkiErg, and BikeErg equipment assemblies—including a Blender-authored
+  open racing shell, fixed rails/stretcher, and moving seat carriage—and provides the first
   athlete fallback, followed by procedural 3D and the stable Canvas 2D renderer
 - The replay is a generic, data-synchronised technique presentation—not a
   reconstruction of an athlete's biomechanics. Concept2 records timing,
@@ -170,7 +173,9 @@ demo mode never contacts a real athlete account.
 - Three.js drives the repository-owned V4 athlete as one skinned mesh with
   authored RowErg, SkiErg, and BikeErg technique clips. Replay pose and time
   select each clip deterministically, then analytic hand and foot correction
-  preserves the existing equipment-contact authority. These canonical clips
+  preserves the existing equipment-contact authority. RowErg knees use the
+  shared seated bend branch so the full leg chain stays above the open cockpit.
+  These canonical clips
   are presentation art, not recorded motion or athlete-specific biomechanics.
 - 3D rendering progressively falls back from WebGPU to WebGL to the stable 2D
   renderer.

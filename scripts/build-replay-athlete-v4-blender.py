@@ -64,13 +64,18 @@ def rgb(value: int) -> tuple[float, float, float, float]:
 
 # High-contrast but restrained performance kit. Vertex colour keeps the final
 # GLB to one primitive while preserving skin/kit/trim readability in both
-# replay themes and in translucent ghost lanes.
+# replay themes and in the opaque, cool-tinted ghost lane.
 FABRIC = rgb(0x343078)
 FABRIC_SIDE = rgb(0x222651)
 FABRIC_LIGHT = rgb(0x5D62AE)
 SHORTS = rgb(0x171C2E)
 SHORTS_PANEL = rgb(0x292E4B)
 TRIM = rgb(0x6258C9)
+# Slate performance tights keep both leg chains readable against the purple
+# shell and carbon cockpit without turning the athlete into colour blocks.
+LEG_FABRIC = rgb(0x3D6478)
+LEG_FABRIC_SIDE = rgb(0x263E50)
+LEG_FABRIC_LIGHT = rgb(0x7192A5)
 SKIN = rgb(0xB97455)
 SKIN_LIGHT = rgb(0xD69672)
 HAIR = rgb(0x161B24)
@@ -298,17 +303,8 @@ def build_torso(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
     ]
     builder.add_vertical_loft(rings, 54, torso_color)
 
-    # Slim front zip ends below the collar so it never forms a free-floating
-    # ridge around the throat under hard shadows.
-    builder.add_loft(
-        [
-            Ring(Vector((0, 1.2, 0.145)), (0.004, 0.0035), {"v4Spine": 0.8, "v4Chest": 0.2}, FABRIC_LIGHT),
-            Ring(Vector((0, 1.34, 0.182)), (0.004, 0.0035), {"v4Spine": 0.35, "v4Chest": 0.65}, FABRIC_LIGHT),
-            Ring(Vector((0, 1.48, 0.172)), (0.0035, 0.003), {"v4Chest": 0.95, "v4Neck": 0.05}, FABRIC_LIGHT),
-        ],
-        8,
-        Vector((1, 0, 0)),
-    )
+    # The front zip is vertex colour in `torso_color`, not a second near-
+    # coplanar tube. That avoids a moving depth seam across the chest.
     # Pure-skin neck continuation into the head. Starts inside the last torso
     # ring so there is no second silhouette edge.
     builder.add_vertical_loft(
@@ -501,17 +497,17 @@ def build_leg(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: 
         Ring(hip.lerp(knee, 0.24), (0.127, 0.112), {upper_name: 1}, SHORTS, 0.055),
         Ring(hip.lerp(knee, 0.4), (0.12, 0.105), {upper_name: 1}, SHORTS_PANEL, 0.045),
         Ring(hip.lerp(knee, 0.54), (0.112, 0.099), {upper_name: 0.98, lower_name: 0.02}, TRIM, 0.035),
-        Ring(hip.lerp(knee, 0.68), (0.108, 0.096), {upper_name: 0.9, lower_name: 0.1}, FABRIC, 0.03),
-        Ring(hip.lerp(knee, 0.82), (0.101, 0.091), {upper_name: 0.76, lower_name: 0.24}, FABRIC),
-        Ring(hip.lerp(knee, 0.93), (0.088, 0.082), {upper_name: 0.58, lower_name: 0.42}, FABRIC),
+        Ring(hip.lerp(knee, 0.68), (0.108, 0.096), {upper_name: 0.9, lower_name: 0.1}, LEG_FABRIC, 0.03),
+        Ring(hip.lerp(knee, 0.82), (0.101, 0.091), {upper_name: 0.76, lower_name: 0.24}, LEG_FABRIC),
+        Ring(hip.lerp(knee, 0.93), (0.088, 0.082), {upper_name: 0.58, lower_name: 0.42}, LEG_FABRIC),
         # Knee pinch then calf swell — avoids a continuous sausage under flex.
-        Ring(knee, (0.084, 0.08), {upper_name: 0.47, lower_name: 0.53}, FABRIC_LIGHT, 0.02),
-        Ring(knee.lerp(ankle, 0.1), (0.092, 0.084), {upper_name: 0.24, lower_name: 0.76}, FABRIC, 0.03),
-        Ring(knee.lerp(ankle, 0.24), (0.098, 0.088), {lower_name: 0.92, upper_name: 0.08}, FABRIC, 0.045),
-        Ring(knee.lerp(ankle, 0.4), (0.092, 0.082), {lower_name: 0.98, foot_name: 0.02}, FABRIC, 0.035),
-        Ring(knee.lerp(ankle, 0.57), (0.08, 0.074), {lower_name: 0.94, foot_name: 0.06}, FABRIC_SIDE, 0.025),
-        Ring(knee.lerp(ankle, 0.72), (0.068, 0.064), {lower_name: 0.85, foot_name: 0.15}, FABRIC_SIDE, 0.015),
-        Ring(knee.lerp(ankle, 0.86), (0.058, 0.054), {lower_name: 0.67, foot_name: 0.33}, FABRIC_SIDE),
+        Ring(knee, (0.084, 0.08), {upper_name: 0.47, lower_name: 0.53}, LEG_FABRIC_LIGHT, 0.02),
+        Ring(knee.lerp(ankle, 0.1), (0.092, 0.084), {upper_name: 0.24, lower_name: 0.76}, LEG_FABRIC, 0.03),
+        Ring(knee.lerp(ankle, 0.24), (0.098, 0.088), {lower_name: 0.92, upper_name: 0.08}, LEG_FABRIC, 0.045),
+        Ring(knee.lerp(ankle, 0.4), (0.092, 0.082), {lower_name: 0.98, foot_name: 0.02}, LEG_FABRIC, 0.035),
+        Ring(knee.lerp(ankle, 0.57), (0.08, 0.074), {lower_name: 0.94, foot_name: 0.06}, LEG_FABRIC_SIDE, 0.025),
+        Ring(knee.lerp(ankle, 0.72), (0.068, 0.064), {lower_name: 0.85, foot_name: 0.15}, LEG_FABRIC_SIDE, 0.015),
+        Ring(knee.lerp(ankle, 0.86), (0.058, 0.054), {lower_name: 0.67, foot_name: 0.33}, LEG_FABRIC_SIDE),
         Ring(ankle, (0.052, 0.05), {lower_name: 0.32, foot_name: 0.68}, SHOE_DARK),
     ]
     builder.add_loft(rings, 40, Vector((1, 0, 0)), cap_start=False)

@@ -399,6 +399,7 @@ describe("V3 composite replay templates", () => {
       "equipment:bike:wheel-assembly",
       "equipment:row:boat-assembly",
       "equipment:row:oar-rig",
+      "equipment:row:seat-carriage",
       "equipment:ski:ski-assembly",
     ]);
     for (const template of library.templates.values()) {

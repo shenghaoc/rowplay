@@ -176,3 +176,28 @@ rowplay athlete without remodelling it.
 5. WHEN USDZ byte identity is unavailable THEN the limitation SHALL be
    documented and a deterministic semantic validation SHALL protect the
    skinning, skeleton, geometry, material, and clone-isolation contract.
+
+### Requirement 8: Coherent rowing assembly and artifact-free skin
+
+**User Story:** As a rower, I want to see a complete athlete seated inside a
+credible racing shell, not a torso floating above a solid toy deck or a ghost
+whose limbs disappear through transparency sorting.
+
+#### Acceptance Criteria
+
+1. WHEN RowErg renders THEN the shell SHALL have an actual open cockpit with
+   split fore/aft decks, a recessed tub, visible rails, an angled fixed foot
+   stretcher, and a connected wing rigger; no opaque deck SHALL span the leg
+   volume.
+2. WHEN the athlete slides THEN a shaped seat pad, carriage, guides, and rollers
+   SHALL translate with the pelvis while remaining over the shell's fixed rails.
+3. WHEN V4 RowErg feet are contact-locked THEN both knees SHALL consume the
+   deterministic rowing-rig bend branch and remain above the cockpit throughout
+   the stroke instead of folding through the hull.
+4. WHEN live or ghost V4 athletes render THEN the skinned human mesh SHALL stay
+   fully opaque with depth test/write enabled; ghost identity SHALL use tint or
+   other opaque styling rather than per-triangle alpha sorting.
+5. WHEN the Blender surface is rebuilt THEN overlapping near-coplanar garment
+   decorations that cause moving depth seams SHALL be removed or represented by
+   vertex colour, and both leg chains SHALL remain distinguishable from shell
+   and cockpit materials.

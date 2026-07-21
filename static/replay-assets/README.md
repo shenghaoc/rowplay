@@ -7,34 +7,39 @@ identity, or Canvas 2D fallback.
 
 ## `rowplay-rigs-v3.glb`
 
-- **Purpose:** a texture-free authored athlete library plus six nested,
+- **Purpose:** a texture-free authored athlete library plus seven nested,
   reusable equipment templates for RowErg, SkiErg, and BikeErg.
 - **Ownership:** created specifically for rowplay from source in this
   repository. No third-party model, stock asset, or user data is included.
 - **Copyright and licence:** Copyright (c) 2026 shenghaoc and rowplay
   contributors; distributed under the repository's MIT `LICENSE`.
-- **Source of truth:** `scripts/build-replay-assets.mjs`.
+- **Source of truth:** `scripts/build-replay-assets.mjs`; the RowErg open shell
+  and moving seat carriage are hard-surface authored by
+  `scripts/build-replay-rowing-shell-blender.py` in Blender 5.2 and folded into
+  the same validated V3 template contract.
 - **Validator:** `scripts/validate-replay-assets.mjs` verifies the binary,
   exact V3 hierarchy, slot/template names, material-role metadata, geometry
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 589,284 bytes; SHA-256
-  `0431c58c27f0669c1649408227f58a8eecebf51a5ed9ab8c04202326343739b2`.
-- **Inventory:** 18 compatibility leaf meshes, six composite roots, and 39
-  direct composite parts (24 top-level logical entities; 63 nodes / 57 mesh
-  nodes total). The package has 23,300 indexed triangles and 16,378 indexed
+- **Reviewed V3 artifact:** 673,048 bytes; SHA-256
+  `b95addbba65912558c3ae1d0e006d423f1dd4dbbd8b20fe7d6b256df13b4f28b`.
+- **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
+  direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
+  nodes total). The package has 26,486 indexed triangles and 18,629 indexed
   vertices, one neutral placeholder material, zero textures/images, zero
   animations, and zero skins.
 - **Detail language:** shared-vertex smooth normals, directional brow/nose/ear
   head planes, a swept hair cap, an aero helmet with tail and visor, low-relief
   jersey collar/raglan/back-yoke construction, asymmetric muscle-to-tendon
   limbs, deltoid transitions, and grip/sole/elbow detail. Equipment includes a
-  sculpted scull, oarlocks and oar, raised ski deck and binding, aero-rim wheels
+  Blender-authored open-U racing shell with split decks, recessed cockpit,
+  slide rails, angled stretcher, heel cups, wing rigger, oarlocks, moving
+  four-roller seat carriage, and sculpted oar; raised ski deck and binding; aero-rim wheels
   with 14 fine spokes and six-spoke disc rotors, a proper diamond-frame bicycle
   with chain/cassette, calipers, contact-aligned brake hoods/levers, and a
-  rotating crank assembly. All detail is generated from local Three.js core
-  geometry; there is no image, texture, downloaded model, scan, or
+  rotating crank assembly. All detail is generated from reviewed local
+  Three.js or Blender Python source; there is no image, texture, downloaded model, scan, or
   avatar-generator output.
 
 ### V3 schema and coordinate contracts
@@ -43,21 +48,22 @@ The 18 leaf slots preserve the generic athlete plus contact-sensitive Row blade
 and Ski pole pieces. Each leaf has `replayAssetSlot`, `replayAssetKind: "leaf"`,
 and a `replayMaterialRole` in its glTF extras.
 
-The six root templates are intentionally transform-free. Their direct child
+The seven root templates are intentionally transform-free. Their direct child
 geometry bakes placement into the mesh, carries `replayAssetTemplateSlot`,
 `replayAssetPart`, and `replayMaterialRole`, and remains static until the
 existing renderer clones it onto its known rig anchor. Each root records
 `replayAssetTemplateSlot`, `replayAssetKind: "composite"`, version 3, the
 strict part count, and its material-role list.
 
-| Template root                        | Canonical anchor contract                                                                                                                                                           |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `equipment:row:boat-assembly`        | Row avatar root coordinates: hull, deck, cockpit rim, riggers, oarlocks, gunwales, and footwell align with the existing boat group; rigger ends meet the animated oar pivots.       |
-| `equipment:row:oar-rig`              | One oar at its pin, with `+X` outboard: attach identity on the right and yaw π on the left. The animated blade remains the leaf slot.                                               |
-| `equipment:ski:ski-assembly`         | One ski at the existing per-side anchor `(side × 0.21, 0, 0.16)`; clone it once per ski.                                                                                            |
-| `equipment:bike:wheel-assembly`      | One wheel at the existing wheel-group centre with its axle along local X; the carrier, rotor spokes, and bolt heads remain wheel-local.                                             |
-| `equipment:bike:frame-assembly`      | Bike avatar-root coordinates for the frame, stays, fork, cockpit, calipers, chain/cassette, saddle, and axles. Brake hoods and levers end at the rig's authoritative hand contacts. |
-| `equipment:bike:drivetrain-assembly` | Crank-group-local coordinates; the existing renderer rotates the complete root about X and its clipless pedals meet the authoritative foot contacts.                                |
+| Template root                        | Canonical anchor contract                                                                                                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `equipment:row:boat-assembly`        | Row avatar root coordinates: open hull, split fore/aft decks, recessed cockpit, rails, stretcher, rigger, and oarlocks align with the boat; rigger ends meet the animated oar pivots. |
+| `equipment:row:oar-rig`              | One oar at its pin, with `+X` outboard: attach identity on the right and yaw π on the left. The animated blade remains the leaf slot.                                                 |
+| `equipment:row:seat-carriage`        | Moving rower-group coordinates: the shaped pad, metal carriage, guides, and four rollers translate with the pelvis while remaining directly over the static slide rails.              |
+| `equipment:ski:ski-assembly`         | One ski at the existing per-side anchor `(side × 0.21, 0, 0.16)`; clone it once per ski.                                                                                              |
+| `equipment:bike:wheel-assembly`      | One wheel at the existing wheel-group centre with its axle along local X; the carrier, rotor spokes, and bolt heads remain wheel-local.                                               |
+| `equipment:bike:frame-assembly`      | Bike avatar-root coordinates for the frame, stays, fork, cockpit, calipers, chain/cassette, saddle, and axles. Brake hoods and levers end at the rig's authoritative hand contacts.   |
+| `equipment:bike:drivetrain-assembly` | Crank-group-local coordinates; the existing renderer rotates the complete root about X and its clipless pedals meet the authoritative foot contacts.                                  |
 
 Runtime materials remain outside the GLB. The neutral placeholder is never a
 product colour source: `replayMaterialRole` lets the renderer preserve lane
@@ -67,9 +73,13 @@ light/dark themes, and ghost transparency.
 Rebuild and validate V3 from the repository root with:
 
 ```sh
-node scripts/build-replay-assets.mjs
-node scripts/validate-replay-assets.mjs
+vp run build:replay-assets
+vp run validate:replay-assets
 ```
+
+The V3 build now invokes Blender at
+`/Applications/Blender.app/Contents/MacOS/blender`; set `BLENDER_BIN` to a
+different Blender 5 executable when necessary.
 
 Review the resulting binary diff, exact size, and SHA-256 before committing it.
 The `v3` filename identifies this composite hierarchy and coordinate contract;
@@ -119,12 +129,12 @@ remain automatic fallbacks.
   `vp run validate:replay-assets`. The build exports and reloads the GLB and
   rejects skeleton, clip, drive-boundary, skin, or contact-metadata drift. The
   USDZ portability gate lives in `src/lib/replay/rigV4Usd.test.ts`.
-- **Reviewed artifact:** 582,480 bytes; SHA-256
-  `5a4baa256d2632bc5c13a7694eeaf37bc76f01dab7860898d75be88a2aa5e207`.
+- **Reviewed artifact:** 584,792 bytes; SHA-256
+  `a9a215f07bd39d15daa5c45c5bfbbb1788656ad7916fc39f172c5dcc78129963`.
   Two independent builds must be byte-identical before the binary changes are
   committed.
-- **Reviewed USDZ derivative:** 1,322,729 bytes; SHA-256
-  `8648ffc8c586e59852fd8baf283add775be734fd2dc43bf1f2b92cc83403ed22`.
+- **Reviewed USDZ derivative:** 1,318,259 bytes; SHA-256
+  `5591b13c7d58bc4f44194728c1a2fc1c669086232d2f1bd97723672392c50723`.
   Blender 5.2 does not produce byte-identical USDZ containers across repeat
   exports, so repeat-export acceptance is semantic: Three.js `USDLoader` must
   load one skinned athlete with the 19 bones in order, finite normalized skin
@@ -132,18 +142,25 @@ remain automatic fallbacks.
   references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`;
   SHA-256
-  `b817a9747d37db2cca8eafe29cca6568f354045124ac1351289076f0299ad120`.
+  `96acec971c3247120e71af726388420dd89866437c76c3a417ea267481976dba`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named bones,
-  7,446 vertices, 14,288 triangles, one opaque vertex-colour
-  `MeshPhysicalMaterial`, zero textures/images, and 25 connected topology
+  7,420 vertices, 14,240 triangles, one opaque vertex-colour
+  `MeshPhysicalMaterial`, zero textures/images, and 24 connected topology
   components inside that single render primitive. The major forms are a shaped
   torso with a smooth fabric→skin neck transition, a clean skull + crown hair
   cap (no floating face tubes or open hair rims), two continuous
   shoulder-to-wrist arm lofts with pinched elbows and sealed grip/thumb
   wedges, and two continuous hip-to-ankle leg lofts with knee pinches.
-  Smaller components supply ears, jersey construction, and shoe uppers,
+  Slate leg panels separate both leg chains from the purple shell and dark
+  cockpit. The jersey zip is vertex colour rather than a near-coplanar tube,
+  eliminating the moving chest seam. Smaller components supply ears and shoe uppers,
   contrast soles, and laces. High/ultra lighting deliberately sees no black
   collar rings, face visors, or open-mesh rims.
+- **Depth contract:** both live and ghost V4 bodies render with `opacity: 1`,
+  `transparent: false`, and depth test/write enabled. Ghost identity uses a
+  cool material tint while ghost equipment/wakes may remain translucent; the
+  single deforming skin never enters Three.js's transparent triangle-sorting
+  path, so limbs and overlapping garment forms cannot disappear by draw order.
 - **Skinning:** elbow, wrist, knee, ankle, shoulder, and hip rings use spatial
   parent-to-child weight gradients. Palm/sole marker nodes and terminal-bone
   glTF extras encode exact local contact offsets: left/right hand

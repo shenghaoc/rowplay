@@ -1558,41 +1558,69 @@ function makeRowerAvatar(
     "equipment:row:hull",
   );
   hull.rotation.x = Math.PI / 2; // capsule axis Y -> Z (travel)
-  hull.scale.set(0.52, 0.44, 1); // narrow + low profile, still readable
-  hull.position.y = 0.16;
+  hull.scale.set(0.52, 0.3, 1); // keep the fallback below the visible leg chain
+  hull.position.y = 0.135;
   hull.userData.accent = true;
   group.add(hull);
 
-  // Deck with a bright racing stripe — the art-direction hull signature.
-  const deck = new THREE.Mesh(roundedVenueBlockGeometry(0.16, 0.055, 2.75, 0.025), accentMat());
-  deck.position.y = 0.3;
-  deck.userData.accent = true;
-  group.add(deck);
-  const stripe = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.055, 0.018, 2.35, 0.01),
+  // Two short decks leave a genuine cockpit opening around the athlete. The
+  // old full-length slab hid both legs and made the seat look glued on top.
+  const sternDeck = new THREE.Mesh(roundedVenueBlockGeometry(0.18, 0.045, 1.0, 0.022), accentMat());
+  sternDeck.name = "rower-stern-deck";
+  sternDeck.position.set(0, 0.275, -1.32);
+  sternDeck.userData.accent = true;
+  group.add(sternDeck);
+  const bowDeck = new THREE.Mesh(roundedVenueBlockGeometry(0.17, 0.043, 0.94, 0.021), accentMat());
+  bowDeck.name = "rower-bow-deck";
+  bowDeck.position.set(0, 0.273, 1.42);
+  bowDeck.userData.accent = true;
+  group.add(bowDeck);
+  const cockpitFloor = new THREE.Mesh(
+    roundedVenueBlockGeometry(0.27, 0.025, 1.48, 0.01),
+    kitDarkMaterial,
+  );
+  cockpitFloor.name = "rower-cockpit-floor";
+  cockpitFloor.position.set(0, 0.17, 0.05);
+  group.add(cockpitFloor);
+  const sternStripe = new THREE.Mesh(
+    roundedVenueBlockGeometry(0.04, 0.014, 0.74, 0.007),
     equipmentLightMaterial,
   );
-  stripe.name = "rower-deck-stripe";
-  stripe.position.y = 0.338;
-  group.add(stripe);
+  sternStripe.name = "rower-stern-deck-stripe";
+  sternStripe.position.set(0, 0.305, -1.34);
+  group.add(sternStripe);
+  const bowStripe = sternStripe.clone();
+  bowStripe.name = "rower-bow-deck-stripe";
+  bowStripe.position.set(0, 0.304, 1.4);
+  group.add(bowStripe);
   const gunwale = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.02, 0.04, 2.5, 0.009),
+    roundedVenueBlockGeometry(0.02, 0.032, 2.86, 0.009),
     equipmentLightMaterial,
   );
   gunwale.name = "rower-gunwale-left";
-  gunwale.position.set(-0.1, 0.32, 0);
+  gunwale.position.set(-0.15, 0.285, 0);
   group.add(gunwale);
   const gunwaleR = gunwale.clone();
   gunwaleR.name = "rower-gunwale-right";
-  gunwaleR.position.x = 0.1;
+  gunwaleR.position.x = 0.15;
   group.add(gunwaleR);
 
+  const slideRails: THREE.Mesh[] = [];
+  for (const side of [-1, 1]) {
+    const rail = capsulePart(0.012, 1, equipmentMetalMaterial, "z");
+    rail.name = side < 0 ? "rower-slide-rail-left" : "rower-slide-rail-right";
+    rail.position.set(side * 0.078, 0.267, -0.16);
+    slideRails.push(rail);
+    group.add(rail);
+  }
+
   const footPlate = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.48, 0.05, 0.12, 0.022),
+    roundedVenueBlockGeometry(0.38, 0.26, 0.04, 0.018),
     kitDarkMaterial,
   );
   footPlate.name = "rower-footplate";
-  footPlate.position.set(0, 0.34, 0.72);
+  footPlate.position.set(0, 0.405, 0.72);
+  footPlate.rotation.x = -0.24;
   group.add(footPlate);
   for (const side of [-1, 1]) {
     const anchor = new THREE.Object3D();
@@ -1606,16 +1634,53 @@ function makeRowerAvatar(
   boatVisual.name = "rower-boat-visual";
   group.add(boatVisual);
   setReplayAssetTemplateAnchor(boatVisual, "equipment:row:boat-assembly", {
-    fallback: [hull, deck, stripe, gunwale, gunwaleR, footPlate],
+    fallback: [
+      hull,
+      sternDeck,
+      bowDeck,
+      cockpitFloor,
+      sternStripe,
+      bowStripe,
+      gunwale,
+      gunwaleR,
+      ...slideRails,
+      footPlate,
+    ],
   });
 
   // Rower in its own group so slide, layback, legs and arms all move from the
   // recorded stroke pose rather than as one rigid toy block.
   const rower = new THREE.Group();
   rower.name = "rower-athlete";
-  const seat = new THREE.Mesh(roundedVenueBlockGeometry(0.34, 0.055, 0.29, 0.045), shoeMaterial);
+  const seatCarriage = new THREE.Group();
+  seatCarriage.name = "rower-seat-carriage";
+  seatCarriage.position.set(0, 0.29, -0.14);
+  const seat = new THREE.Mesh(roundedVenueBlockGeometry(0.31, 0.055, 0.24, 0.04), kitMaterial);
   seat.name = "rower-seat";
-  seat.position.set(0, 0.29, -0.14);
+  seat.position.y = 0.05;
+  const seatFrame = new THREE.Mesh(
+    roundedVenueBlockGeometry(0.28, 0.032, 0.2, 0.009),
+    equipmentMetalMaterial,
+  );
+  seatFrame.name = "rower-seat-frame";
+  seatFrame.position.y = 0.012;
+  const seatRollers: THREE.Mesh[] = [];
+  for (const side of [-1, 1]) {
+    for (const fore of [-1, 1]) {
+      const roller = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.022, 0.022, 0.055, Math.max(12, eqCylSegs)),
+        equipmentGripMaterial,
+      );
+      roller.name = `rower-seat-roller-${side < 0 ? "left" : "right"}-${fore < 0 ? "aft" : "fore"}`;
+      roller.rotation.z = Math.PI / 2;
+      roller.position.set(side * 0.078, -0.012, fore * 0.085);
+      seatRollers.push(roller);
+    }
+  }
+  seatCarriage.add(seat, seatFrame, ...seatRollers);
+  setReplayAssetTemplateAnchor(seatCarriage, "equipment:row:seat-carriage", {
+    fallback: [seat, seatFrame, ...seatRollers],
+  });
   const hips = ellipsoid([0.18, 0.125, 0.16], kitDarkMaterial, segs);
   setReplayAssetSlot(hips, "athlete:pelvis");
   hips.name = "rower-hips";
@@ -1645,7 +1710,7 @@ function makeRowerAvatar(
   const headGroup = makeHead(skinMaterial, hairMaterial, headSegs);
   headGroup.position.set(0, 0.79, 0.025);
   torso.add(torsoShell, frontYoke, backYoke, shoulderLine, neck, headGroup);
-  rower.add(seat, hips, torso);
+  rower.add(seatCarriage, hips, torso);
 
   const arms: Array<{
     side: number;

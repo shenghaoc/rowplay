@@ -196,23 +196,31 @@ function styleInstance(
   instance: ReplayV4AthleteInstance,
   options: ReplayV4MotionInstallOptions,
 ): void {
-  const opacity = THREE.MathUtils.clamp(finite(options.opacity ?? 1, 1), 0, 1);
+  const requestedOpacity = THREE.MathUtils.clamp(finite(options.opacity ?? 1, 1), 0, 1);
   const requestedLaneColor = new THREE.Color(options.laneColor ?? 0xffffff);
   // A saturated lane colour used as a direct multiplier destroys authored skin
-  // and kit separation. Keep identity legibility, then bias a translucent ghost
-  // just enough to distinguish it at a glance.
-  const laneColor = new THREE.Color(0xffffff).lerp(requestedLaneColor, opacity < 1 ? 0.26 : 0.14);
+  // and kit separation. Ghost identity therefore comes from a restrained cool
+  // tint, not alpha: one deforming mesh contains overlapping anatomical forms,
+  // and transparent triangle sorting produces disappearing limbs and torso
+  // seams. Keeping the skinned body in the opaque pass makes depth deterministic.
+  const ghostIntent = requestedOpacity < 0.98;
+  const laneColor = new THREE.Color(0xffffff).lerp(requestedLaneColor, ghostIntent ? 0.34 : 0.14);
   const materials = Array.isArray(instance.mesh.material)
     ? instance.mesh.material
     : [instance.mesh.material];
   for (const material of materials) {
-    material.opacity = opacity;
-    material.transparent = opacity < 1;
-    material.depthWrite = opacity >= 0.98;
+    material.opacity = 1;
+    material.transparent = false;
+    material.depthWrite = true;
+    material.depthTest = true;
+    material.alphaTest = 0;
+    material.premultipliedAlpha = false;
     const colored = material as THREE.Material & { color?: THREE.Color };
     if (colored.color instanceof THREE.Color) colored.color.copy(laneColor);
     material.needsUpdate = true;
   }
+  instance.mesh.userData.replayRequestedOpacity = requestedOpacity;
+  instance.mesh.userData.replayBodyRenderMode = "opaque-depth-writing";
   instance.mesh.castShadow = options.castShadow ?? true;
   instance.mesh.receiveShadow = options.receiveShadow ?? options.castShadow ?? true;
   // A moving SkinnedMesh needs either animated bounds or culling disabled. The
@@ -546,7 +554,12 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   }
 
   private usesSharedJointTarget(chain: ChainBinding): boolean {
-    if (chain.isLeg) return this.options.sport === "bike";
+    // RowErg starts from a seated rest skeleton whose knees point down. Once
+    // the feet are contact-locked to the stretcher, retaining that clip plane
+    // folds both legs through the hull. The hidden deterministic rig already
+    // solves the correct raised-knee branch, so V4 must consume it just as the
+    // BikeErg rider consumes its crank-led knee marker.
+    if (chain.isLeg) return this.options.sport === "bike" || this.options.sport === "rower";
     return this.options.sport === "rower" || this.options.sport === "skierg";
   }
 
@@ -556,7 +569,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
    * Most bend planes come from the sampled clip. RowErg and SkiErg are the
    * deliberate arm exceptions: a rigid grip can close on either elbow branch,
    * so the reference-backed shared marker chooses the rearward/sagittal one.
-   * Bike legs likewise use the mechanically solved knee target near dead centre.
+   * RowErg and BikeErg legs likewise use their mechanically solved knee target.
    */
   private correctContactChain(chain: ChainBinding): void {
     chain.upper.getWorldPosition(this.rootWorld);

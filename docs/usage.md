@@ -136,8 +136,10 @@ compact repository-owned V4 athlete as one skinned mesh. RowErg, SkiErg, and
 BikeErg each have an authored canonical technique clip, sampled deterministically
 from replay pose and time; after sampling, an analytic correction pass keeps the
 hands and feet on the existing authoritative equipment contacts. Live and ghost
-athletes use independent instances, and runtime materials retain theme and lane
-identity. The repository-owned V3 pack continues to supply the multi-part
+athletes use independent instances. Both skinned bodies remain fully opaque and
+depth-writing; the ghost uses a restrained cool tint instead of alpha-sorting a
+deforming mesh, while runtime materials retain theme and lane identity. The
+repository-owned V3 pack continues to supply the multi-part
 sport-equipment assemblies and acts as the first athlete fallback, followed by
 procedural 3D and the stable Canvas 2D renderer. Fabric, painted composite,
 metal, rubber, grips, and trim keep their own visual response rather than being
@@ -148,7 +150,9 @@ athlete-specific biomechanics.
 
 The current 3D packages make the anatomical and equipment contracts visible:
 the V4 skin deforms around its authored skeleton, while the V3 equipment builds
-as coherent assemblies—a boat and oar rig, Nordic skis, and a continuous
+as coherent assemblies—an open-cockpit racing shell with split decks, recessed
+leg well, fixed rails/stretcher and a moving four-roller seat carriage; an oar
+rig; Nordic skis; and a continuous
 bicycle wheel/frame/drivetrain. RowErg palms stay on separate rigid scull grips
 and outside the torso; both 2D and 3D delay elbow flexion until the late draw
 and keep the bent elbows behind the shoulders rather than pointing toward the
@@ -203,7 +207,9 @@ The contact pass does not move or resize equipment to rescue an authored pose.
 It rotates each reachable two-link limb over its anatomical envelope, uses the
 shared rearward RowErg and sagittal SkiErg elbow markers where rigid hand
 contacts admit two opposite solutions, and uses the equipment-derived knee
-branch for cycling. Other bend planes remain clip-authored. If input geometry
+branch for cycling. RowErg likewise uses the shared raised-knee branch after the
+feet close on the stretcher, preventing the standing rest skeleton from folding
+the legs through the hull. Other bend planes remain clip-authored. If input geometry
 is ever incompatible, the limb clamps at its real reach instead of stretching
 a skeleton, pole, oar, or crank.
 

@@ -438,7 +438,7 @@ describe("CourseRenderer3D", () => {
     } as const;
     const equipmentNames = {
       rower: [
-        "rower-deck-stripe",
+        "rower-bow-deck-stripe",
         "rower-oar-collar",
         "rower-handle-left",
         "rower-handle-right",
@@ -928,7 +928,7 @@ describe("CourseRenderer3D", () => {
         yoke: "rower-jersey-back",
         skin: "rower-upper-arm-left",
         shoe: "rower-foot-contact-left",
-        equipment: "rower-deck-stripe",
+        equipment: "rower-bow-deck-stripe",
       },
       skierg: {
         torso: "skierg-torso",
@@ -1285,8 +1285,17 @@ describe("CourseRenderer3D", () => {
       }
 
       if (sport === "rower") {
-        attachedTemplate(renderer, "rower-boat-visual", "equipment:row:boat-assembly");
+        const boat = attachedTemplate(renderer, "rower-boat-visual", "equipment:row:boat-assembly");
+        const seat = attachedTemplate(
+          renderer,
+          "rower-seat-carriage",
+          "equipment:row:seat-carriage",
+        );
         expect(sceneObjectWithAssetSlot(renderer, "equipment:row:hull").visible).toBe(false);
+        expect(sceneObject(renderer, "rower-seat").visible).toBe(false);
+        expect(templatePart(boat, "slide-rails")).toBeDefined();
+        expect(templatePart(boat, "cockpit-tub")).toBeDefined();
+        expect(templatePart(seat, "seat-rollers")).toBeDefined();
         for (const side of ["left", "right"] as const) {
           attachedTemplate(renderer, `rower-oar-visual-${side}`, "equipment:row:oar-rig");
           // The hand target and feathering blade remain their original dynamic
@@ -1355,6 +1364,47 @@ describe("CourseRenderer3D", () => {
           ).toBeLessThan(0.025);
         }
       }
+    } finally {
+      renderer.destroy();
+      disposeReplayAssetTemplateLibrary(assets);
+    }
+  });
+
+  it("keeps the Blender shell open and the moving seat carriage on its rails", async () => {
+    const assets = await loadCheckedInReplayAssetTemplateLibrary();
+    const renderer = new CourseRenderer3D(makeHost(), "ultra", "rower", { assets });
+    try {
+      renderer.resize(1140, 420);
+      const boat = attachedTemplate(renderer, "rower-boat-visual", "equipment:row:boat-assembly");
+      const seat = attachedTemplate(renderer, "rower-seat-carriage", "equipment:row:seat-carriage");
+      const sternDeck = templatePart(boat, "stern-deck");
+      const bowDeck = templatePart(boat, "bow-deck");
+      const cockpit = templatePart(boat, "cockpit-tub");
+      const rails = templatePart(boat, "slide-rails");
+      for (const mesh of [sternDeck, bowDeck, cockpit, rails]) mesh.geometry.computeBoundingBox();
+      expect(sternDeck.geometry.boundingBox?.max.z).toBeLessThan(-0.75);
+      expect(bowDeck.geometry.boundingBox?.min.z).toBeGreaterThan(0.88);
+      expect(cockpit.geometry.boundingBox?.max.y).toBeLessThan(0.28);
+      expect(rails.geometry.boundingBox?.min.z).toBeLessThanOrEqual(-0.65);
+      expect(rails.geometry.boundingBox?.max.z).toBeGreaterThanOrEqual(0.33);
+      expect(templatePart(seat, "seat-rollers")).toBeDefined();
+
+      const seatAnchor = sceneObject(renderer, "rower-seat-carriage");
+      const boatSpace = sceneObject(renderer, "rower-boat-visual").parent;
+      if (!boatSpace) throw new Error("rowing shell has no shared boat space");
+      const slidePositions: THREE.Vector3[] = [];
+      for (const cycle of [0, 0.4]) {
+        renderer.render(makeSportState("rower", cycle), false);
+        getScene(renderer).updateMatrixWorld(true);
+        const inverse = boatSpace.matrixWorld.clone().invert();
+        const localSeat = seatAnchor.getWorldPosition(new THREE.Vector3()).applyMatrix4(inverse);
+        expect(localSeat.z, `seat remains over rail at ${cycle}`).toBeGreaterThan(-0.66);
+        expect(localSeat.z, `seat remains over rail at ${cycle}`).toBeLessThan(0.34);
+        slidePositions.push(localSeat);
+      }
+      expect(
+        slidePositions[0]?.distanceTo(slidePositions[1] ?? new THREE.Vector3()),
+      ).toBeGreaterThan(0.35);
     } finally {
       renderer.destroy();
       disposeReplayAssetTemplateLibrary(assets);
@@ -1472,6 +1522,39 @@ describe("CourseRenderer3D", () => {
         `${label} pelvis translation`,
       ).toBeLessThan(1e-6);
     }
+
+    it("keeps both RowErg V4 leg chains above the open cockpit", () => {
+      const renderer = rendererFor("rower");
+      try {
+        const boat = attachedTemplate(renderer, "rower-boat-visual", "equipment:row:boat-assembly");
+        const cockpitTop = new THREE.Box3().setFromObject(templatePart(boat, "cockpit-tub")).max.y;
+        for (const cycle of [0, 0.2, 0.4, 0.6, 0.8]) {
+          renderer.render(makeSportState("rower", cycle), false);
+          const { avatar, instance } = v4Lane(renderer);
+          getScene(renderer).updateMatrixWorld(true);
+          const leftKnee = instance.bones.v4LeftLowerLeg.getWorldPosition(new THREE.Vector3());
+          const rightKnee = instance.bones.v4RightLowerLeg.getWorldPosition(new THREE.Vector3());
+          for (const [side, knee, target] of [
+            ["left", leftKnee, avatar.v4Targets.leftKnee],
+            ["right", rightKnee, avatar.v4Targets.rightKnee],
+          ] as const) {
+            expect(knee.y, `${side} knee clears cockpit at ${cycle}`).toBeGreaterThan(
+              cockpitTop + 0.08,
+            );
+            expect(
+              knee.distanceTo(target.getWorldPosition(new THREE.Vector3())),
+              `${side} knee follows deterministic rig at ${cycle}`,
+            ).toBeLessThan(0.1);
+          }
+          expect(
+            leftKnee.distanceTo(rightKnee),
+            `paired knees retain a readable silhouette at ${cycle}`,
+          ).toBeGreaterThan(0.18);
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
 
     it("shows one continuous V4 hero while retaining authored equipment for every sport", () => {
       const fallbackTorso = {
@@ -2069,6 +2152,20 @@ describe("CourseRenderer3D", () => {
         expect(live.bones.v4LeftForearm).not.toBe(ghost.bones.v4LeftForearm);
         expect(live.mixer).not.toBe(ghost.mixer);
         expect(v4Lane(renderer, "ghost").motion.root.visible).toBe(true);
+        for (const [lane, athlete, requestedOpacity] of [
+          ["live", live, 1],
+          ["ghost", ghost, 0.45],
+        ] as const) {
+          const material = athlete.mesh.material as THREE.Material;
+          expect(material.transparent, `${lane} skinned body stays in opaque pass`).toBe(false);
+          expect(material.opacity, `${lane} skinned body opacity`).toBe(1);
+          expect(material.depthWrite, `${lane} skinned body writes depth`).toBe(true);
+          expect(material.depthTest, `${lane} skinned body tests depth`).toBe(true);
+          expect(athlete.mesh.userData, `${lane} material diagnostic`).toMatchObject({
+            replayRequestedOpacity: requestedOpacity,
+            replayBodyRenderMode: "opaque-depth-writing",
+          });
+        }
 
         const livePose = v4PoseSnapshot(live);
         const ghostPose = v4PoseSnapshot(ghost);

@@ -5,7 +5,9 @@ import { validateV4Asset } from "./validate-replay-rig-v4.mjs";
 import { validateV4Usdz } from "./validate-replay-rig-v4-usdz.mjs";
 
 const DEFAULT_ASSET = "static/replay-assets/rowplay-rigs-v3.glb";
-const MAX_FILE_BYTES = 640 * 1024;
+// Blender-authored open hull, slide rails, and seat carriage add reviewed
+// hard-surface topology while remaining comfortably below one compressed MB.
+const MAX_FILE_BYTES = 704 * 1024;
 const MIN_TRIANGLES = 10_000;
 const MAX_TRIANGLES = 32_000;
 const MAX_VERTICES = 64_000;
@@ -70,14 +72,24 @@ const TEMPLATE_PARTS = new Map([
     "equipment:row:boat-assembly",
     new Set([
       "hull",
-      "deck",
-      "deck-stripe",
-      "cockpit-rim",
+      "stern-deck",
+      "bow-deck",
+      "cockpit-tub",
+      "bulkheads",
+      "gunwales",
+      "slide-rails",
+      "accent-strakes",
+      "foot-stretcher",
+      "heel-cups",
+      "stretcher-hardware",
       "riggers",
       "oarlocks",
-      "gunwales",
-      "footwell",
+      "keel-fin",
     ]),
+  ],
+  [
+    "equipment:row:seat-carriage",
+    new Set(["seat-pad", "seat-carriage", "seat-rollers", "seat-guides"]),
   ],
   ["equipment:row:oar-rig", new Set(["shaft", "grip", "handle-cap", "collar", "blade-sleeve"])],
   ["equipment:ski:ski-assembly", new Set(["base", "top-deck", "binding", "tip-ridge"])],

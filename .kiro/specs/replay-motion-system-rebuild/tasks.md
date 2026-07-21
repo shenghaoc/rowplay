@@ -77,3 +77,11 @@
   - [x] Protect the result with dense full-cycle 2D/3D sampling, V4 contact and
     clearance tests, repository gates, moving browser acceptance, and
     exact-head draft-PR CI
+
+- [x] **10. Restore the complete RowErg seated leg chain**
+  - [x] Make V4 consume the deterministic raised-knee target after foot-contact
+    closure instead of retaining the standing clip's downward leg plane
+  - [x] Keep both knees above the open cockpit, laterally separated, and within
+    tolerance of the procedural mechanical branch through dense full-cycle poses
+  - [x] Verify the moving seat/carriage stays over the static rails while the
+    fixed stretcher and oar pivots remain authoritative

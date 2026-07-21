@@ -1,13 +1,18 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 // v3 deliberately widens the asset contract from isolated replacement shells
 // to a small set of authored equipment assemblies.  Keeping this a new file
 // makes the v2 leaf-only fallback available to older renderer builds while the
 // v3 loader can opt into the higher-detail hierarchy explicitly.
 const OUTPUT = resolve("static/replay-assets/rowplay-rigs-v3.glb");
+const ROWING_SHELL_GENERATOR = resolve("scripts/build-replay-rowing-shell-blender.py");
+const DEFAULT_BLENDER = "/Applications/Blender.app/Contents/MacOS/blender";
 const PLACEHOLDER = new THREE.MeshStandardMaterial({
   color: 0x9aa6b2,
   roughness: 0.78,
@@ -723,117 +728,110 @@ function cliplessPedalGeometry() {
   return composeGeometry(body, axle, toeHook);
 }
 
-/**
- * V3 equipment is authored as canonical assemblies rather than asking the
- * runtime to make a polished object out of unrelated tubes and blocks.  Every
- * transform is baked into the part geometry; only the existing rig anchors
- * animate the cloned root.
- */
-function rowBoatAssemblyParts() {
-  const hull = loftGeometry(
-    [
-      { p: -1.98, rx: 0.012, rz: 0.016 },
-      { p: -1.83, rx: 0.075, rz: 0.07 },
-      { p: -1.5, rx: 0.142, rz: 0.115 },
-      { p: -1.02, rx: 0.19, rz: 0.145 },
-      { p: -0.36, rx: 0.215, rz: 0.155 },
-      { p: 0.34, rx: 0.21, rz: 0.152 },
-      { p: 0.98, rx: 0.18, rz: 0.13 },
-      { p: 1.47, rx: 0.13, rz: 0.095 },
-      { p: 1.82, rx: 0.066, rz: 0.055 },
-      { p: 1.98, rx: 0.012, rz: 0.014 },
-    ],
-    28,
-    "z",
-    Math.PI / 28,
-  );
-  hull.translate(0, 0.155, 0);
-  const deck = loftGeometry(
-    [
-      { p: -1.52, rx: 0.045, rz: 0.018 },
-      { p: -1.05, rx: 0.11, rz: 0.023 },
-      { p: -0.38, rx: 0.145, rz: 0.026 },
-      { p: 0.34, rx: 0.14, rz: 0.026 },
-      { p: 1.02, rx: 0.108, rz: 0.022 },
-      { p: 1.52, rx: 0.045, rz: 0.017 },
-    ],
-    22,
-    "z",
-    Math.PI / 22,
-  );
-  deck.translate(0, 0.292, 0);
-  const cockpit = bakeGeometry(new THREE.TorusGeometry(1, 0.013, 8, 26), {
-    scale: [0.125, 0.44, 1],
-    rotation: [Math.PI / 2, 0, 0],
-    position: [0, 0.325, -0.17],
+const ROWING_BOAT_PARTS = new Map([
+  ["hull", "equipment-painted"],
+  ["stern-deck", "equipment-painted"],
+  ["bow-deck", "equipment-painted"],
+  ["cockpit-tub", "equipment-dark"],
+  ["bulkheads", "equipment-trim"],
+  ["gunwales", "equipment-light"],
+  ["slide-rails", "equipment-metal"],
+  ["accent-strakes", "equipment-light"],
+  ["foot-stretcher", "equipment-dark"],
+  ["heel-cups", "equipment-rubber"],
+  ["stretcher-hardware", "equipment-metal"],
+  ["riggers", "equipment-metal"],
+  ["oarlocks", "equipment-metal"],
+  ["keel-fin", "equipment-dark"],
+]);
+
+const ROWING_SEAT_PARTS = new Map([
+  ["seat-pad", "equipment-trim"],
+  ["seat-carriage", "equipment-metal"],
+  ["seat-rollers", "equipment-rubber"],
+  ["seat-guides", "equipment-trim"],
+]);
+
+function parseGlb(bytes) {
+  const payload = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  return new Promise((accept, reject) => new GLTFLoader().parse(payload, "", accept, reject));
+}
+
+function disposeBlenderSource(root) {
+  const geometries = new Set();
+  const materials = new Set();
+  root.traverse((object) => {
+    if (!object.isMesh) return;
+    if (object.geometry) geometries.add(object.geometry);
+    const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of sourceMaterials) if (material) materials.add(material);
   });
-  const stripe = loftGeometry(
-    [
-      { p: -1.24, rx: 0.022, rz: 0.008 },
-      { p: -0.62, rx: 0.031, rz: 0.009 },
-      { p: 0.24, rx: 0.03, rz: 0.009 },
-      { p: 1.08, rx: 0.021, rz: 0.008 },
-    ],
-    12,
-    "z",
-    Math.PI / 12,
-  );
-  stripe.translate(0, 0.33, 0.04);
-  // The visible rigger has to terminate at the motion rig's exact oar pivot:
-  // a near miss makes the shaft look suspended once it sweeps through the
-  // drive. These anchors match `rower-oar-{left,right}` in renderer3d.ts.
-  const leftOarPivot = [-0.52, 0.34, 0.095];
-  const rightOarPivot = [0.52, 0.34, 0.095];
-  const riggers = composeGeometry(
-    tubeGeometryBetween([-0.12, 0.285, -0.08], leftOarPivot, 0.018, 12),
-    tubeGeometryBetween([0.12, 0.285, -0.08], rightOarPivot, 0.018, 12),
-    tubeGeometryBetween([-0.35, 0.33, -0.19], leftOarPivot, 0.013, 10),
-    tubeGeometryBetween([0.35, 0.33, -0.19], rightOarPivot, 0.013, 10),
-  );
-  // Small vertical posts and collars make the physical hand-off from boat to
-  // moving oar explicit without taking ownership of the animated yaw pivot.
-  const oarlocks = composeGeometry(
-    bakeGeometry(new THREE.CylinderGeometry(0.028, 0.034, 0.1, 12), {
-      position: [leftOarPivot[0], 0.29, leftOarPivot[2]],
-    }),
-    bakeGeometry(new THREE.CylinderGeometry(0.028, 0.034, 0.1, 12), {
-      position: [rightOarPivot[0], 0.29, rightOarPivot[2]],
-    }),
-    bakeGeometry(new THREE.TorusGeometry(0.04, 0.008, 8, 16), {
-      rotation: [Math.PI / 2, 0, 0],
-      position: [leftOarPivot[0], leftOarPivot[1], leftOarPivot[2]],
-    }),
-    bakeGeometry(new THREE.TorusGeometry(0.04, 0.008, 8, 16), {
-      rotation: [Math.PI / 2, 0, 0],
-      position: [rightOarPivot[0], rightOarPivot[1], rightOarPivot[2]],
-    }),
-  );
-  const gunwales = composeGeometry(
-    tubeGeometryBetween([-0.145, 0.286, -1.28], [-0.145, 0.286, 1.3], 0.012, 12),
-    tubeGeometryBetween([0.145, 0.286, -1.28], [0.145, 0.286, 1.3], 0.012, 12),
-  );
-  const footwell = loftGeometry(
-    [
-      { p: -0.16, rx: 0.19, rz: 0.028 },
-      { p: -0.07, rx: 0.23, rz: 0.034 },
-      { p: 0.08, rx: 0.23, rz: 0.034 },
-      { p: 0.16, rx: 0.18, rz: 0.026 },
-    ],
-    16,
-    "z",
-    Math.PI / 16,
-  );
-  footwell.translate(0, 0.323, 0.72);
-  return [
-    { name: "hull", geometry: hull, materialRole: "equipment-painted" },
-    { name: "deck", geometry: deck, materialRole: "equipment-painted" },
-    { name: "deck-stripe", geometry: stripe, materialRole: "equipment-light" },
-    { name: "cockpit-rim", geometry: cockpit, materialRole: "equipment-dark" },
-    { name: "riggers", geometry: riggers, materialRole: "equipment-metal" },
-    { name: "oarlocks", geometry: oarlocks, materialRole: "equipment-metal" },
-    { name: "gunwales", geometry: gunwales, materialRole: "equipment-light" },
-    { name: "footwell", geometry: footwell, materialRole: "equipment-dark" },
-  ];
+  for (const geometry of geometries) geometry.dispose();
+  for (const material of materials) material.dispose();
+}
+
+function collectBlenderParts(scene, expectedParts) {
+  const components = new Map([...expectedParts.keys()].map((name) => [name, []]));
+  scene.updateMatrixWorld(true);
+  scene.traverse((object) => {
+    if (!object.isMesh) return;
+    const part = object.userData.replayAssetPart;
+    const role = object.userData.replayMaterialRole;
+    if (!expectedParts.has(part)) return;
+    if (role !== expectedParts.get(part)) {
+      throw new Error(
+        `Blender rowing part ${part} has ${role}; expected ${expectedParts.get(part)}`,
+      );
+    }
+    const geometry = object.geometry.clone();
+    geometry.applyMatrix4(object.matrixWorld);
+    components.get(part).push(flatGeometry(geometry));
+  });
+
+  return [...expectedParts].map(([name, materialRole]) => {
+    const sources = components.get(name);
+    if (!sources || sources.length === 0) {
+      throw new Error(`Blender rowing source is missing required part: ${name}`);
+    }
+    const geometry = composeGeometry(...sources);
+    for (const source of sources) source.dispose();
+    return { name, geometry, materialRole };
+  });
+}
+
+/**
+ * Run Blender as the actual hard-surface authoring step, then collapse its
+ * named components into the stable V3 template roots. The boat and moving
+ * seat share one source file but remain separate runtime anchors because the
+ * deterministic motion rig owns seat travel.
+ */
+async function buildRowingAssemblyParts() {
+  const scratch = await mkdtemp(join(tmpdir(), "rowplay-rowing-shell-blender-"));
+  const sourcePath = join(scratch, "rowplay-rowing-shell-source.glb");
+  const blender = process.env.BLENDER_BIN || DEFAULT_BLENDER;
+  try {
+    const result = spawnSync(
+      blender,
+      ["--background", "--python", ROWING_SHELL_GENERATOR, "--", "--output", sourcePath],
+      { stdio: "inherit" },
+    );
+    if (result.error) throw result.error;
+    if (result.status !== 0) {
+      throw new Error(`Blender rowing-shell authoring failed with exit code ${result.status}`);
+    }
+    const sourceBytes = await readFile(sourcePath);
+    const source = await parseGlb(sourceBytes);
+    try {
+      return {
+        boat: collectBlenderParts(source.scene, ROWING_BOAT_PARTS),
+        seat: collectBlenderParts(source.scene, ROWING_SEAT_PARTS),
+      };
+    } finally {
+      disposeBlenderSource(source.scene);
+    }
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
 }
 
 function rowOarRigParts() {
@@ -1358,7 +1356,9 @@ addLeafSlot(scene, "equipment:ski:pole-shaft", nordicPoleShaftGeometry(), "equip
 addLeafSlot(scene, "equipment:ski:pole-grip", nordicPoleGripGeometry(), "equipment-grip");
 addLeafSlot(scene, "equipment:ski:pole-basket", nordicPoleBasketGeometry(), "equipment-painted");
 
-addCompositeTemplate(scene, "equipment:row:boat-assembly", rowBoatAssemblyParts());
+const rowingAssemblies = await buildRowingAssemblyParts();
+addCompositeTemplate(scene, "equipment:row:boat-assembly", rowingAssemblies.boat);
+addCompositeTemplate(scene, "equipment:row:seat-carriage", rowingAssemblies.seat);
 addCompositeTemplate(scene, "equipment:row:oar-rig", rowOarRigParts());
 addCompositeTemplate(scene, "equipment:ski:ski-assembly", skiAssemblyParts());
 addCompositeTemplate(scene, "equipment:bike:wheel-assembly", bikeWheelAssemblyParts());

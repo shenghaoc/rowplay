@@ -5,13 +5,13 @@
   "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 586612,
-    "sha256": "dbf0ad6dde97b5fc7e726ac8b492942a94344d684690f7cd90ce2bbfb5d23f40"
+    "byteCount": 584792,
+    "sha256": "a9a215f07bd39d15daa5c45c5bfbbb1788656ad7916fc39f172c5dcc78129963"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 1322660,
-    "sha256": "dff68c8593d28e0bb313471919e4be171ea91ebfba845ee4dcb3635725186ab0"
+    "byteCount": 1318259,
+    "sha256": "5591b13c7d58bc4f44194728c1a2fc1c669086232d2f1bd97723672392c50723"
   },
   "coordinateSystem": {
     "units": "metres",
@@ -29,9 +29,9 @@
     "meshName": "v4Athlete",
     "skinnedMeshes": 1,
     "primitives": 1,
-    "vertices": 7446,
-    "triangles": 14288,
-    "topologyComponents": 25,
+    "vertices": 7420,
+    "triangles": 14240,
+    "topologyComponents": 24,
     "skins": 1,
     "materials": 1,
     "materialSlots": 1

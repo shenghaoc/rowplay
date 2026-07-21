@@ -46,6 +46,52 @@ plant, load, finish beside the thighs, release, and recover without a backwards
 horizontal arm flip. A clean dev-server restart produced no runtime diagnostics
 during the final pass.
 
+## Open-shell, complete-leg, and opaque-body correction (2026-07-22)
+
+The previous rowing presentation combined four independent defects. A solid
+deck and fake torus cockpit covered most of the lower body, the moving seat was
+an unsupported pad, RowErg V4 legs retained the standing rest skeleton's
+downward knee plane instead of following the shared raised-knee target, and the
+ghost athlete used alpha blending on one self-occluding skinned mesh. The
+near-coplanar chest zip also created an avoidable surface seam.
+
+The corrected craft is repository-authored by
+`scripts/build-replay-rowing-shell-blender.py` in Blender 5.2. It has an open
+cockpit, separate bow and stern decks, bulkheads, gunwales, exposed twin slide
+rails, an angled foot stretcher with heel cups, a wing rigger, exact oarlock
+pivots, and a shaped seat pad on a metal carriage with four rollers. The seat
+remains attached to the athlete's authoritative moving seat group while its
+travel stays inside the rails. V3 still owns the asset install and procedural
+fallback contract.
+
+The V4 RowErg leg solve now consumes the shared deterministic knee target, just
+as BikeErg does, while retaining exact foot contact. Numeric inspection of the
+failed first open-shell pass found a skinned knee as low as -0.09 m while the
+mechanical target was as high as 0.73 m. After the solver correction, sampled
+knees remain between 0.42 m and 0.69 m, above the cockpit and within 0.10 m of
+their mechanical targets. The zip is now vertex colour rather than a separate
+surface, and slate leg panels keep both leg chains legible against the purple
+hull and dark cockpit.
+
+Live and ghost athletes now use an opaque, depth-tested, depth-writing body
+surface. Comparison identity comes from a cool lane tint rather than 45%
+transparency, so no internal or rear-facing body surface can sort through the
+front of the athlete.
+
+Browser acceptance used `/replay/1001` with Ultra/WebGPU at 0.5x and 1x in
+light and dark themes. The first post-shell pass was rejected because the legs
+were still absent; after correcting the knee branch, a nine-frame moving cycle
+showed both knee chains above the leg well, the seat travelling on its rails,
+and the feet, palms, oars, and oarlocks remaining connected. The live/ghost
+comparison pass showed two solid, complete athletes without translucent-body
+sorting artifacts. The focused regression gate passed 122 tests across the V4
+motion, asset, rig, and renderer suites.
+
+The rebuilt V3 library contains seven templates, 49 authored parts, 18 leaves,
+26,486 triangles, and 18,629 vertices. The V4 body contains 7,420 vertices,
+14,240 triangles, and 24 connected topology components after removal of the
+redundant zip surface.
+
 ## Historical — PROMPT 9 clip-primary arm architecture (superseded)
 
 The following section records the prior experiment and is retained only as

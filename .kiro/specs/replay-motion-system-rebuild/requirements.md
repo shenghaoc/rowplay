@@ -93,7 +93,10 @@ viewing speed.
    SHALL occur only in the late draw, and both elbows SHALL travel rearward as
    the handle approaches the lower ribs. Recovery SHALL straighten the arms
    before body-over and slide; neither renderer SHALL select a forward-pointing,
-   horizontal-wing, or through-torso elbow branch.
+   horizontal-wing, or through-torso elbow branch. V4 feet SHALL remain locked
+   to the stretcher while both knees follow the shared raised rowing branch;
+   neither leg may inherit the standing rest skeleton's downward branch or pass
+   through the cockpit.
 2. WHEN SkiErg is shown THEN reach, velocity-matched plant, loaded pull, and
    release SHALL read as distinct states; baskets SHALL remain course-anchored
    throughout the loaded phase while the athlete advances relative to them.
