@@ -34,6 +34,17 @@ palm–handle distance was millimetre-perfect.
 
 Architecture marker on the hero root: `userData.replayV4Architecture = "clip-primary-soft-contact"`.
 
+### Follow-up clip densification (PROMPT 9 carry-on)
+
+- **Row clip:** 14 keys; forearm stays near-straight through leg drive and body
+  open; elbow draw only after ~clip t=0.30 (finish deep flexion).
+- **Ski clip:** 14 keys; nearly straight arms at high reach; modest load flex;
+  continuous recovery without T-pose wings.
+- **Motion graph:** row `armDraw` pulse delayed to `drive * 0.62` (was 0.45);
+  handle blend reweighted legs/torso-first so equipment grips match late-draw
+  arms. Both pure and `*Into` sample paths updated.
+- Assets rebuilt: `rowplay-athlete-v4.glb` / `.usdz` / contract.
+
 ### Movement references (public technique, not third-party mocap files)
 
 - Concept2 technique library (indoor rowing stages; SkiErg double-pole).

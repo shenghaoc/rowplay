@@ -1139,105 +1139,146 @@ function createSportClip(
 
 /**
  * Concept2 / sculling-style row cycle authored from technique sequencing:
- * catch → leg drive (arms long) → body open → finish (late arm draw) →
- * hands-away → body-over → slide.
+ * catch → leg drive (arms DEAD STRAIGHT) → body open (arms still straight) →
+ * arm draw begins → finish (elbows aft, deep flexion) → hands-away →
+ * body-over → slide.
  *
- * Elbow bend is deliberately late. Early drive forearm keys stay near-neutral
- * so the runtime soft-contact path never needs a V3 elbow oracle.
+ * CRITICAL: Real rowing sequencing is legs → body → arms. The arms must stay
+ * completely straight (forearm near zero) through the entire leg drive AND the
+ * body swing. Elbow bend begins ONLY after the body has opened past ~80%.
+ * This eliminates the "premature draw" that makes the stroke look like a
+ * shoulder shrug.
+ *
+ * 14-key clip for smoother interpolation across transition points.
  *
  * Reference sequencing (public coaching material, not mocap clips):
  * - Concept2 technique library (indoor rowing stages)
  * - British Rowing / World Rowing sculling posture stills
  */
 function createRowCycleClip(): THREE.AnimationClip {
-  // catch, early-leg, mid-leg, body-open, finish, hands-away, body-over, slide, loop
-  const times = [0, 0.08, 0.16, 0.26, 0.38, 0.5, 0.62, 0.78, 0.9, 1] as const;
-  const leftClavicle = [
-    [0.05, -0.02, -0.1],
-    [0.05, -0.02, -0.1],
-    [0.04, -0.015, -0.09],
-    [0.02, 0.005, -0.07],
-    [-0.015, 0.025, -0.05],
-    [0.005, 0.01, -0.065],
-    [0.02, -0.005, -0.08],
-    [0.035, -0.015, -0.09],
-    [0.045, -0.02, -0.1],
-    [0.05, -0.02, -0.1],
+  // 14 keyframes: catch, early-leg, mid-leg, late-leg, body-open, arm-draw-begin,
+  // arm-draw-mid, finish, hands-away, arms-extend, body-over, mid-slide, late-slide, loop
+  const times = [
+    0, 0.06, 0.12, 0.2, 0.26, 0.3, 0.34, 0.38, 0.48, 0.56, 0.66, 0.78, 0.9, 1,
   ] as const;
-  // Upper arm: long reach at catch/early drive; draw only late into the finish.
+  // Clavicle: catch protraction → finish retraction (scapular squeeze at finish).
+  // More gradual transition with 14 keys for natural shoulder blade movement.
+  const leftClavicle = [
+    [0.04, -0.02, -0.1], // catch: protracted, slightly depressed
+    [0.04, -0.02, -0.1], // early leg: no change
+    [0.04, -0.018, -0.1], // mid leg: minimal
+    [0.035, -0.015, -0.095], // late leg: beginning
+    [0.02, -0.005, -0.08], // body open: shoulders starting to set
+    [0.005, 0.008, -0.065], // draw begin: scapulae engage
+    [-0.01, 0.02, -0.055], // draw mid: retracting
+    [-0.02, 0.028, -0.045], // finish: scapulae squeezed, not shrugged
+    [0.005, 0.01, -0.065], // hands away: releasing
+    [0.02, -0.005, -0.08], // arms extend: returning
+    [0.03, -0.012, -0.09], // body over
+    [0.035, -0.016, -0.095], // mid slide
+    [0.04, -0.019, -0.1], // late slide
+    [0.04, -0.02, -0.1], // loop
+  ] as const;
+  // Upper arm: catch at moderate elevation (not shrugged); arms stay long and
+  // level through the entire leg drive and body open. Draw only late.
   // Euler order XYZ after flipYaw — x=forward elevation, z=abduction-ish.
   const leftUpperArm = [
-    [0.55, -0.12, -0.52], // catch: long, slightly down to handle
-    [0.56, -0.12, -0.53], // early leg: arms stay long
-    [0.52, -0.11, -0.5], // mid leg
-    [0.28, -0.08, -0.42], // body open begins; slight draw
-    [-0.05, -0.04, -0.32], // finish: elbows travel aft
-    [0.18, -0.08, -0.4], // hands away
-    [0.36, -0.1, -0.46], // body over
-    [0.48, -0.12, -0.5], // slide
-    [0.53, -0.12, -0.52],
-    [0.55, -0.12, -0.52],
+    [0.42, -0.1, -0.44], // catch: moderate reach, not shrugged
+    [0.43, -0.1, -0.44], // early leg: arms completely still
+    [0.42, -0.1, -0.44], // mid leg: still straight, arms hang from shoulders
+    [0.4, -0.1, -0.43], // late leg: barely perceptible change
+    [0.34, -0.09, -0.42], // body open: arms still straight, moving with body
+    [0.18, -0.07, -0.38], // draw begin: upper arm starts traveling aft
+    [0.02, -0.05, -0.34], // draw mid: elbows moving behind ribcage
+    [-0.1, -0.03, -0.28], // finish: elbows fully aft, not winged out
+    [0.12, -0.07, -0.38], // hands away: rapid extension forward
+    [0.28, -0.09, -0.42], // arms extend: nearly straight again
+    [0.35, -0.1, -0.44], // body over: arms fully extended
+    [0.39, -0.1, -0.44], // mid slide: arms still straight
+    [0.41, -0.1, -0.44], // late slide: preparing for catch
+    [0.42, -0.1, -0.44], // loop
   ] as const;
-  // Forearm: near-straight early; deep flexion only at finish. No premature bend.
+  // Forearm: ABSOLUTELY STRAIGHT through leg drive and body open.
+  // Only begins flexing at arm-draw-begin (t=0.30). Deep flexion at finish only.
   const leftForearm = [
-    [-0.12, 0.04, -0.12], // catch soft, not locked
-    [-0.1, 0.04, -0.12], // early drive still long
-    [-0.14, 0.03, -0.14], // mid leg
-    [-0.42, 0.03, -0.2], // body open — elbows begin
-    [-1.15, 0.04, -0.28], // finish deep draw
-    [-0.55, 0.03, -0.2], // hands away extend
-    [-0.28, 0.03, -0.16], // body over
-    [-0.16, 0.03, -0.13], // slide
-    [-0.13, 0.04, -0.12],
-    [-0.12, 0.04, -0.12],
+    [-0.06, 0.03, -0.08], // catch: nearly straight, soft not locked
+    [-0.06, 0.03, -0.08], // early drive: straight
+    [-0.06, 0.03, -0.08], // mid leg: still straight
+    [-0.07, 0.03, -0.08], // late leg: STILL STRAIGHT
+    [-0.08, 0.03, -0.09], // body open: barely perceptible flex
+    [-0.28, 0.03, -0.14], // draw begin: elbows start bending
+    [-0.68, 0.035, -0.22], // draw mid: accelerating into draw
+    [-1.12, 0.04, -0.28], // finish: deep draw, elbows back
+    [-0.48, 0.03, -0.18], // hands away: rapid extension
+    [-0.18, 0.03, -0.12], // arms extend: nearly straight
+    [-0.1, 0.03, -0.09], // body over: arms fully extended
+    [-0.07, 0.03, -0.08], // mid slide: straight
+    [-0.06, 0.03, -0.08], // late slide: straight
+    [-0.06, 0.03, -0.08], // loop
   ] as const;
   const upperLeg = [
     [-0.95, 0, 0.025],
     [-0.98, 0, 0.025],
-    [-0.72, 0, 0.02],
-    [-0.28, 0, 0.015],
+    [-0.88, 0, 0.023],
+    [-0.62, 0, 0.02],
+    [-0.36, 0, 0.016],
+    [-0.16, 0, 0.013],
+    [0.02, 0, 0.011],
     [0.12, 0, 0.01],
-    [0.08, 0, 0.012],
-    [-0.12, 0, 0.016],
-    [-0.48, 0, 0.02],
-    [-0.82, 0, 0.024],
+    [0.1, 0, 0.011],
+    [0.06, 0, 0.012],
+    [-0.08, 0, 0.015],
+    [-0.42, 0, 0.02],
+    [-0.78, 0, 0.024],
     [-0.95, 0, 0.025],
   ] as const;
   const lowerLeg = [
     [1.58, 0, 0],
     [1.64, 0, 0],
-    [1.28, 0, 0],
-    [0.72, 0, 0],
-    [0.22, 0, 0],
+    [1.48, 0, 0],
+    [1.12, 0, 0],
+    [0.78, 0, 0],
+    [0.48, 0, 0],
     [0.28, 0, 0],
+    [0.22, 0, 0],
+    [0.26, 0, 0],
+    [0.35, 0, 0],
     [0.55, 0, 0],
-    [1.05, 0, 0],
-    [1.42, 0, 0],
+    [0.95, 0, 0],
+    [1.38, 0, 0],
     [1.58, 0, 0],
   ] as const;
   return createSportClip(
     "rower",
     times,
     [
-      [0, 0.96, -0.27],
-      [0, 0.95, -0.28],
-      [0, 0.98, -0.18],
-      [0, 1.015, 0.04],
-      [0, 1.035, 0.16],
-      [0, 1.03, 0.14],
-      [0, 1.015, 0.06],
-      [0, 0.99, -0.1],
-      [0, 0.97, -0.22],
-      [0, 0.96, -0.27],
+      [0, 0.96, -0.27], // catch: low, forward
+      [0, 0.955, -0.28], // early leg
+      [0, 0.965, -0.24], // mid leg
+      [0, 0.99, -0.12], // late leg
+      [0, 1.01, 0.0], // body open
+      [0, 1.025, 0.08], // draw begin
+      [0, 1.033, 0.13], // draw mid
+      [0, 1.038, 0.17], // finish
+      [0, 1.032, 0.14], // hands away
+      [0, 1.02, 0.08], // arms extend
+      [0, 1.005, 0.02], // body over
+      [0, 0.985, -0.1], // mid slide
+      [0, 0.965, -0.22], // late slide
+      [0, 0.96, -0.27], // loop
     ],
     {
       v4Hips: flipPitch([
         [-0.1, 0, 0],
         [-0.11, 0, 0],
-        [-0.07, 0, 0],
-        [0.04, 0, 0],
+        [-0.09, 0, 0],
+        [-0.04, 0, 0],
+        [0.02, 0, 0],
+        [0.1, 0, 0],
+        [0.15, 0, 0],
         [0.18, 0, 0],
-        [0.06, 0, 0],
+        [0.08, 0, 0],
+        [0.02, 0, 0],
         [-0.02, 0, 0],
         [-0.05, 0, 0],
         [-0.08, 0, 0],
@@ -1246,10 +1287,14 @@ function createRowCycleClip(): THREE.AnimationClip {
       v4Spine: flipPitch([
         [-0.28, 0, 0],
         [-0.29, 0, 0],
-        [-0.26, 0, 0],
+        [-0.27, 0, 0],
+        [-0.2, 0, 0],
         [-0.1, 0, 0],
+        [0.06, 0, 0],
+        [0.16, 0, 0],
         [0.24, 0, 0],
-        [0.02, 0, 0],
+        [0.06, 0, 0],
+        [-0.06, 0, 0],
         [-0.14, 0, 0],
         [-0.22, 0, 0],
         [-0.26, 0, 0],
@@ -1259,9 +1304,13 @@ function createRowCycleClip(): THREE.AnimationClip {
         [-0.09, 0, 0],
         [-0.1, 0, 0],
         [-0.09, 0, 0],
+        [-0.07, 0, 0],
         [-0.04, 0, 0],
+        [0.03, 0, 0],
+        [0.08, 0, 0],
         [0.12, 0, 0],
-        [0.02, 0, 0],
+        [0.04, 0, 0],
+        [-0.02, 0, 0],
         [-0.05, 0, 0],
         [-0.08, 0, 0],
         [-0.09, 0, 0],
@@ -1270,23 +1319,31 @@ function createRowCycleClip(): THREE.AnimationClip {
       v4Neck: flipPitch([
         [0.08, 0, 0],
         [0.08, 0, 0],
-        [0.07, 0, 0],
-        [0.03, 0, 0],
+        [0.08, 0, 0],
+        [0.06, 0, 0],
+        [0.04, 0, 0],
+        [0.0, 0, 0],
+        [-0.03, 0, 0],
         [-0.06, 0, 0],
-        [0, 0, 0],
+        [-0.01, 0, 0],
         [0.02, 0, 0],
-        [0.05, 0, 0],
+        [0.04, 0, 0],
+        [0.06, 0, 0],
         [0.07, 0, 0],
         [0.08, 0, 0],
       ]),
       v4Head: flipPitch([
         [0.08, 0, 0],
         [0.08, 0, 0],
-        [0.07, 0, 0],
-        [0.02, 0, 0],
+        [0.08, 0, 0],
+        [0.05, 0, 0],
+        [0.03, 0, 0],
+        [-0.02, 0, 0],
+        [-0.05, 0, 0],
         [-0.08, 0, 0],
-        [0, 0, 0],
-        [0.02, 0, 0],
+        [-0.02, 0, 0],
+        [0.01, 0, 0],
+        [0.03, 0, 0],
         [0.05, 0, 0],
         [0.07, 0, 0],
         [0.08, 0, 0],
@@ -1298,28 +1355,36 @@ function createRowCycleClip(): THREE.AnimationClip {
       v4LeftForearm: leftForearm,
       v4RightForearm: mirror(leftForearm),
       v4LeftHand: [
-        [0, 0.03, -0.06],
-        [0, 0.03, -0.06],
         [0, 0.025, -0.05],
-        [0, 0.01, -0.02],
+        [0, 0.025, -0.05],
+        [0, 0.025, -0.05],
+        [0, 0.02, -0.04],
+        [0, 0.015, -0.03],
+        [0, 0.005, -0.01],
+        [0, -0.01, 0.015],
         [0, -0.02, 0.03],
         [0, 0, -0.01],
-        [0, 0.015, -0.03],
+        [0, 0.01, -0.025],
+        [0, 0.02, -0.04],
         [0, 0.025, -0.05],
-        [0, 0.03, -0.06],
-        [0, 0.03, -0.06],
+        [0, 0.025, -0.05],
+        [0, 0.025, -0.05],
       ],
       v4RightHand: mirror([
-        [0, 0.03, -0.06],
-        [0, 0.03, -0.06],
         [0, 0.025, -0.05],
-        [0, 0.01, -0.02],
+        [0, 0.025, -0.05],
+        [0, 0.025, -0.05],
+        [0, 0.02, -0.04],
+        [0, 0.015, -0.03],
+        [0, 0.005, -0.01],
+        [0, -0.01, 0.015],
         [0, -0.02, 0.03],
         [0, 0, -0.01],
-        [0, 0.015, -0.03],
+        [0, 0.01, -0.025],
+        [0, 0.02, -0.04],
         [0, 0.025, -0.05],
-        [0, 0.03, -0.06],
-        [0, 0.03, -0.06],
+        [0, 0.025, -0.05],
+        [0, 0.025, -0.05],
       ]),
       v4LeftUpperLeg: upperLeg,
       v4RightUpperLeg: mirror(upperLeg),
@@ -1328,25 +1393,33 @@ function createRowCycleClip(): THREE.AnimationClip {
       v4LeftFoot: [
         [-0.14, 0, 0],
         [-0.16, 0, 0],
-        [-0.11, 0, 0],
-        [-0.04, 0, 0],
-        [0.04, 0, 0],
-        [0.02, 0, 0],
-        [-0.02, 0, 0],
+        [-0.13, 0, 0],
         [-0.08, 0, 0],
-        [-0.12, 0, 0],
+        [-0.04, 0, 0],
+        [-0.01, 0, 0],
+        [0.02, 0, 0],
+        [0.04, 0, 0],
+        [0.03, 0, 0],
+        [0.01, 0, 0],
+        [-0.02, 0, 0],
+        [-0.06, 0, 0],
+        [-0.11, 0, 0],
         [-0.14, 0, 0],
       ],
       v4RightFoot: [
         [-0.14, 0, 0],
         [-0.16, 0, 0],
-        [-0.11, 0, 0],
-        [-0.04, 0, 0],
-        [0.04, 0, 0],
-        [0.02, 0, 0],
-        [-0.02, 0, 0],
+        [-0.13, 0, 0],
         [-0.08, 0, 0],
-        [-0.12, 0, 0],
+        [-0.04, 0, 0],
+        [-0.01, 0, 0],
+        [0.02, 0, 0],
+        [0.04, 0, 0],
+        [0.03, 0, 0],
+        [0.01, 0, 0],
+        [-0.02, 0, 0],
+        [-0.06, 0, 0],
+        [-0.11, 0, 0],
         [-0.14, 0, 0],
       ],
     },
@@ -1358,74 +1431,101 @@ function createRowCycleClip(): THREE.AnimationClip {
  * release → recovery. Elbows are controlled by this authored arc, not by a
  * world-space lateral oracle or three-point hand spline at runtime.
  *
+ * Arms nearly straight at high reach (not T-pose, not deep early flex). Trunk
+ * and hip hinge load before the press; elbows flex modestly mid-press then
+ * re-extend at release. 14 keys for continuous recovery velocity.
+ *
  * Reference sequencing (public technique sources, not third-party mocap files):
  * - FIS / cross-country double-poling coaching stills
  * - Concept2 SkiErg technique library
  */
 function createSkiCycleClip(): THREE.AnimationClip {
-  // reach, high, plant, load, drive-end, deep-press, release, recover-mid, recover-high, loop
-  const times = [0, 0.06, 0.12, 0.2, 0.34, 0.46, 0.58, 0.72, 0.88, 1] as const;
-  // Upper arm: high forward reach → shoulder extension through press (not a T-pose).
-  const leftArm = [
-    [-0.95, -0.2, -0.38], // high reach
-    [-1.02, -0.22, -0.4], // peak reach
-    [-0.9, -0.18, -0.36], // plant — still high
-    [-0.55, -0.12, -0.3], // load
-    [0.08, -0.04, -0.2], // drive end — hands dropping
-    [0.48, 0, -0.14], // deep press — extension aft
-    [0.28, -0.03, -0.18], // release
-    [-0.2, -0.1, -0.28], // recover mid
-    [-0.7, -0.16, -0.34], // recover high
-    [-0.95, -0.2, -0.38],
+  // reach, peak, plant, load-start, load, drive-end, deep-press, release-start,
+  // release, recover-low, recover-mid, recover-high, pre-reach, loop
+  const times = [
+    0, 0.05, 0.1, 0.16, 0.22, 0.34, 0.44, 0.52, 0.58, 0.68, 0.78, 0.88, 0.95, 1,
   ] as const;
-  // Soft flex at reach; modest load flexion; near-extend at release — no flip.
+  // Upper arm: high forward (not lateral T-pose) → extension aft through press.
+  const leftArm = [
+    [-0.88, -0.16, -0.32], // high reach — soft elevation
+    [-0.98, -0.18, -0.34], // peak reach
+    [-0.92, -0.16, -0.32], // plant — still high, hands ahead of shoulders
+    [-0.72, -0.12, -0.28], // load-start: shoulders load
+    [-0.48, -0.1, -0.26], // load
+    [0.02, -0.04, -0.18], // drive end — hands dropping
+    [0.42, 0, -0.12], // deep press — extension aft (not wing)
+    [0.32, -0.02, -0.14], // release-start
+    [0.18, -0.04, -0.18], // release
+    [-0.05, -0.08, -0.24], // recover-low
+    [-0.35, -0.12, -0.28], // recover-mid
+    [-0.65, -0.14, -0.3], // recover-high
+    [-0.8, -0.15, -0.32], // pre-reach
+    [-0.88, -0.16, -0.32], // loop
+  ] as const;
+  // Near-straight at reach; modest load flex; no snap at release.
   const leftForearm = [
-    [-0.32, 0.02, -0.18],
-    [-0.28, 0.02, -0.16],
-    [-0.36, 0.02, -0.2],
-    [-0.78, 0.03, -0.26],
-    [-1.05, 0.03, -0.3],
-    [-0.85, 0.02, -0.26],
-    [-0.48, 0.02, -0.2],
-    [-0.38, 0.02, -0.18],
-    [-0.34, 0.02, -0.18],
-    [-0.32, 0.02, -0.18],
+    [-0.14, 0.02, -0.12], // reach: nearly straight
+    [-0.12, 0.02, -0.1], // peak
+    [-0.16, 0.02, -0.12], // plant
+    [-0.42, 0.025, -0.18], // load-start
+    [-0.72, 0.03, -0.24], // load
+    [-0.98, 0.03, -0.28], // drive end
+    [-0.78, 0.02, -0.24], // deep press: re-extending
+    [-0.52, 0.02, -0.2], // release-start
+    [-0.32, 0.02, -0.16], // release
+    [-0.28, 0.02, -0.14], // recover-low
+    [-0.22, 0.02, -0.13], // recover-mid
+    [-0.16, 0.02, -0.12], // recover-high
+    [-0.14, 0.02, -0.12], // pre-reach
+    [-0.14, 0.02, -0.12], // loop
   ] as const;
   const leftLeg = [
     [-0.28, 0, 0.04],
     [-0.3, 0, 0.04],
-    [-0.38, 0, 0.04],
-    [-0.5, 0, 0.035],
+    [-0.36, 0, 0.04],
+    [-0.44, 0, 0.038],
+    [-0.52, 0, 0.035],
     [-0.58, 0, 0.03],
-    [-0.48, 0, 0.028],
+    [-0.52, 0, 0.028],
+    [-0.4, 0, 0.028],
     [-0.28, 0, 0.028],
-    [-0.16, 0, 0.03],
-    [-0.22, 0, 0.035],
+    [-0.18, 0, 0.03],
+    [-0.14, 0, 0.032],
+    [-0.2, 0, 0.035],
+    [-0.25, 0, 0.038],
     [-0.28, 0, 0.04],
   ] as const;
   const lowerLeg = [
     [0.48, 0, 0],
-    [0.52, 0, 0],
-    [0.6, 0, 0],
-    [0.78, 0, 0],
+    [0.5, 0, 0],
+    [0.58, 0, 0],
+    [0.68, 0, 0],
+    [0.8, 0, 0],
     [0.88, 0, 0],
-    [0.76, 0, 0],
+    [0.8, 0, 0],
+    [0.68, 0, 0],
     [0.55, 0, 0],
+    [0.45, 0, 0],
     [0.4, 0, 0],
-    [0.44, 0, 0],
+    [0.42, 0, 0],
+    [0.46, 0, 0],
     [0.48, 0, 0],
   ] as const;
   const clavicleKeys = [
+    [-0.1, -0.035, -0.085],
     [-0.12, -0.04, -0.09],
-    [-0.14, -0.045, -0.1],
-    [-0.11, -0.035, -0.09],
-    [-0.04, -0.015, -0.07],
-    [0.05, 0.01, -0.055],
-    [0.1, 0.02, -0.045],
-    [0.05, 0.01, -0.055],
-    [-0.02, -0.015, -0.07],
-    [-0.08, -0.03, -0.08],
-    [-0.12, -0.04, -0.09],
+    [-0.1, -0.032, -0.085],
+    [-0.05, -0.02, -0.07],
+    [0.0, -0.005, -0.06],
+    [0.06, 0.012, -0.05],
+    [0.1, 0.02, -0.04],
+    [0.06, 0.01, -0.05],
+    [0.02, 0, -0.06],
+    [-0.02, -0.01, -0.07],
+    [-0.05, -0.02, -0.075],
+    [-0.08, -0.028, -0.08],
+    [-0.09, -0.032, -0.085],
+    [-0.1, -0.035, -0.085],
   ] as const;
   return createSportClip(
     "skier",
@@ -1433,73 +1533,97 @@ function createSkiCycleClip(): THREE.AnimationClip {
     [
       [0, 1.03, -0.04],
       [0, 1.035, -0.02],
-      [0, 1.03, 0],
-      [0, 0.995, 0.06],
-      [0, 0.945, 0.13],
+      [0, 1.032, 0],
+      [0, 1.01, 0.04],
+      [0, 0.99, 0.08],
+      [0, 0.95, 0.13],
       [0, 0.925, 0.17],
-      [0, 0.96, 0.14],
-      [0, 1.005, 0.06],
-      [0, 1.025, 0],
+      [0, 0.94, 0.15],
+      [0, 0.965, 0.12],
+      [0, 0.995, 0.07],
+      [0, 1.015, 0.03],
+      [0, 1.028, -0.01],
+      [0, 1.03, -0.03],
       [0, 1.03, -0.04],
     ],
     {
       v4Hips: flipPitch([
         [-0.05, 0, 0],
         [-0.04, 0, 0],
-        [-0.06, 0, 0],
-        [-0.14, 0, 0],
+        [-0.055, 0, 0],
+        [-0.1, 0, 0],
+        [-0.16, 0, 0],
         [-0.24, 0, 0],
         [-0.3, 0, 0],
-        [-0.18, 0, 0],
-        [-0.08, 0, 0],
+        [-0.24, 0, 0],
+        [-0.16, 0, 0],
+        [-0.1, 0, 0],
+        [-0.06, 0, 0],
+        [-0.05, 0, 0],
         [-0.05, 0, 0],
         [-0.05, 0, 0],
       ]),
       v4Spine: flipPitch([
         [-0.1, 0, 0],
         [-0.08, 0, 0],
-        [-0.12, 0, 0],
-        [-0.26, 0, 0],
-        [-0.42, 0, 0],
+        [-0.11, 0, 0],
+        [-0.18, 0, 0],
+        [-0.28, 0, 0],
+        [-0.4, 0, 0],
         [-0.48, 0, 0],
-        [-0.3, 0, 0],
-        [-0.16, 0, 0],
+        [-0.38, 0, 0],
+        [-0.28, 0, 0],
+        [-0.18, 0, 0],
+        [-0.12, 0, 0],
+        [-0.1, 0, 0],
         [-0.1, 0, 0],
         [-0.1, 0, 0],
       ]),
       v4Chest: flipPitch([
         [-0.03, 0, 0],
         [-0.02, 0, 0],
-        [-0.04, 0, 0],
-        [-0.12, 0, 0],
+        [-0.035, 0, 0],
+        [-0.08, 0, 0],
+        [-0.14, 0, 0],
         [-0.2, 0, 0],
         [-0.24, 0, 0],
-        [-0.14, 0, 0],
+        [-0.18, 0, 0],
+        [-0.12, 0, 0],
         [-0.07, 0, 0],
+        [-0.04, 0, 0],
+        [-0.03, 0, 0],
         [-0.03, 0, 0],
         [-0.03, 0, 0],
       ]),
       v4Neck: flipPitch([
         [0.06, 0, 0],
         [0.05, 0, 0],
-        [0.07, 0, 0],
-        [0.12, 0, 0],
+        [0.065, 0, 0],
+        [0.1, 0, 0],
+        [0.14, 0, 0],
         [0.18, 0, 0],
         [0.2, 0, 0],
-        [0.13, 0, 0],
+        [0.16, 0, 0],
+        [0.12, 0, 0],
         [0.08, 0, 0],
+        [0.06, 0, 0],
+        [0.06, 0, 0],
         [0.06, 0, 0],
         [0.06, 0, 0],
       ]),
       v4Head: flipPitch([
         [0.03, 0, 0],
         [0.02, 0, 0],
-        [0.04, 0, 0],
-        [0.08, 0, 0],
+        [0.035, 0, 0],
+        [0.06, 0, 0],
+        [0.09, 0, 0],
         [0.12, 0, 0],
         [0.14, 0, 0],
-        [0.09, 0, 0],
+        [0.11, 0, 0],
+        [0.08, 0, 0],
         [0.05, 0, 0],
+        [0.03, 0, 0],
+        [0.03, 0, 0],
         [0.03, 0, 0],
         [0.03, 0, 0],
       ]),
@@ -1510,28 +1634,36 @@ function createSkiCycleClip(): THREE.AnimationClip {
       v4LeftForearm: leftForearm,
       v4RightForearm: mirror(leftForearm),
       v4LeftHand: [
-        [0.04, 0.02, -0.05],
-        [0.03, 0.02, -0.04],
+        [0.03, 0.015, -0.04],
+        [0.025, 0.015, -0.035],
         [0.02, 0.01, -0.03],
-        [-0.02, 0, 0],
+        [0, 0.005, -0.01],
+        [-0.03, 0, 0.02],
         [-0.06, -0.01, 0.04],
         [-0.08, -0.015, 0.05],
-        [-0.04, 0, 0.02],
-        [0, 0.01, -0.02],
+        [-0.05, -0.005, 0.03],
+        [-0.02, 0, 0.01],
+        [0, 0.005, -0.01],
+        [0.015, 0.01, -0.025],
+        [0.025, 0.012, -0.035],
         [0.03, 0.015, -0.04],
-        [0.04, 0.02, -0.05],
+        [0.03, 0.015, -0.04],
       ],
       v4RightHand: mirror([
-        [0.04, 0.02, -0.05],
-        [0.03, 0.02, -0.04],
+        [0.03, 0.015, -0.04],
+        [0.025, 0.015, -0.035],
         [0.02, 0.01, -0.03],
-        [-0.02, 0, 0],
+        [0, 0.005, -0.01],
+        [-0.03, 0, 0.02],
         [-0.06, -0.01, 0.04],
         [-0.08, -0.015, 0.05],
-        [-0.04, 0, 0.02],
-        [0, 0.01, -0.02],
+        [-0.05, -0.005, 0.03],
+        [-0.02, 0, 0.01],
+        [0, 0.005, -0.01],
+        [0.015, 0.01, -0.025],
+        [0.025, 0.012, -0.035],
         [0.03, 0.015, -0.04],
-        [0.04, 0.02, -0.05],
+        [0.03, 0.015, -0.04],
       ]),
       v4LeftUpperLeg: leftLeg,
       v4RightUpperLeg: mirror(leftLeg),
@@ -1539,26 +1671,34 @@ function createSkiCycleClip(): THREE.AnimationClip {
       v4RightLowerLeg: mirror(lowerLeg),
       v4LeftFoot: [
         [-0.04, 0, 0],
-        [-0.05, 0, 0],
-        [-0.06, 0, 0],
-        [-0.08, 0, 0],
+        [-0.045, 0, 0],
+        [-0.055, 0, 0],
+        [-0.07, 0, 0],
+        [-0.085, 0, 0],
         [-0.1, 0, 0],
-        [-0.08, 0, 0],
+        [-0.09, 0, 0],
+        [-0.07, 0, 0],
         [-0.05, 0, 0],
+        [-0.04, 0, 0],
         [-0.03, 0, 0],
         [-0.035, 0, 0],
+        [-0.038, 0, 0],
         [-0.04, 0, 0],
       ],
       v4RightFoot: [
         [-0.04, 0, 0],
-        [-0.05, 0, 0],
-        [-0.06, 0, 0],
-        [-0.08, 0, 0],
+        [-0.045, 0, 0],
+        [-0.055, 0, 0],
+        [-0.07, 0, 0],
+        [-0.085, 0, 0],
         [-0.1, 0, 0],
-        [-0.08, 0, 0],
+        [-0.09, 0, 0],
+        [-0.07, 0, 0],
         [-0.05, 0, 0],
+        [-0.04, 0, 0],
         [-0.03, 0, 0],
         [-0.035, 0, 0],
+        [-0.038, 0, 0],
         [-0.04, 0, 0],
       ],
     },

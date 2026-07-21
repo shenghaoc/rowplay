@@ -391,9 +391,10 @@ function sampleRower(timing: MotionTiming, pose: StrokePose): RowerMotionGraph {
     drive + recovery * 0.13,
     drive + recovery * 0.66,
   );
-  const arms = pulse(cycle, drive * 0.45, drive * 0.98, drive, drive + recovery * 0.36);
-  const handle = add(scale(legs, 0.37), scale(torso, 0.28), scale(arms, 0.35));
-  const shoulders = add(scale(torso, 0.4), scale(arms, 0.6));
+  // Legs → body → arms: late arm draw keeps early-drive arms long (V4 clip).
+  const arms = pulse(cycle, drive * 0.62, drive * 0.98, drive, drive + recovery * 0.34);
+  const handle = add(scale(legs, 0.42), scale(torso, 0.32), scale(arms, 0.26));
+  const shoulders = add(scale(torso, 0.45), scale(arms, 0.55));
   const bladeWater = pulse(cycle, drive * 0.008, drive * 0.085, drive * 0.78, drive * 0.95);
   const bladeFeather = pulse(
     cycle,
@@ -1001,9 +1002,11 @@ function sampleRowerInto(pose: StrokePose, output: RowerMotionGraph): void {
     drive + recovery * 0.13,
     drive + recovery * 0.66,
   );
-  pulseInto(curves.rowArms, cycle, drive * 0.45, drive * 0.98, drive, drive + recovery * 0.36);
-  combine3Into(curves.rowHandle, curves.rowLegs, 0.37, curves.rowTorso, 0.28, curves.rowArms, 0.35);
-  combine2Into(curves.rowShoulders, curves.rowTorso, 0.4, curves.rowArms, 0.6);
+  // Legs → body → arms: keep arm draw late so equipment grips stay reachable
+  // with long early-drive arms (matches denser V4 row clip late-draw keys).
+  pulseInto(curves.rowArms, cycle, drive * 0.62, drive * 0.98, drive, drive + recovery * 0.34);
+  combine3Into(curves.rowHandle, curves.rowLegs, 0.42, curves.rowTorso, 0.32, curves.rowArms, 0.26);
+  combine2Into(curves.rowShoulders, curves.rowTorso, 0.45, curves.rowArms, 0.55);
   pulseInto(curves.rowBladeWater, cycle, drive * 0.008, drive * 0.085, drive * 0.78, drive * 0.95);
   pulseInto(
     curves.rowBladeFeather,
