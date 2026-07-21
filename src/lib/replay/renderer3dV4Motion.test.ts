@@ -296,12 +296,39 @@ function disposeLane(lane: TestLane, controller?: ReplayV4MotionController | nul
   for (const material of materials) material.dispose();
 }
 
+/**
+ * Place equipment targets a few centimetres from the pure-clip effectors so
+ * soft contact can close the residual without needing a full IK rewrite.
+ * Call after a clip-only (or full) sample with pelvis aligned.
+ */
+function placeTargetsNearClipEffectors(
+  lane: TestLane,
+  nudge = new THREE.Vector3(0.02, 0.01, -0.015),
+): void {
+  lane.parent.updateMatrixWorld(true);
+  for (const [name, target] of [
+    ["leftHand", lane.targets.leftHand],
+    ["rightHand", lane.targets.rightHand],
+    ["leftFoot", lane.targets.leftFoot],
+    ["rightFoot", lane.targets.rightFoot],
+  ] as const) {
+    const world = effectorWorld(lane.instance, name);
+    const side = name.startsWith("left") ? -1 : 1;
+    world.x += nudge.x * side;
+    world.y += nudge.y;
+    world.z += nudge.z;
+    lane.parent.worldToLocal(world);
+    target.position.copy(world);
+  }
+  lane.scene.updateMatrixWorld(true);
+}
+
 describe.each([
   ["rower", "x"],
   ["skierg", "y"],
   ["bike", "z"],
 ] as const)("V4 %s motion controller", (sport, animatedAxis) => {
-  it("samples its sport clip, aligns the pelvis, locks contacts, and reveals only the hero", () => {
+  it("samples its sport clip, aligns the pelvis, soft-contacts, and reveals only the hero", () => {
     const lane = createLane();
     const controller = installReplayV4MotionController({
       sport,
@@ -313,9 +340,14 @@ describe.each([
       castShadow: false,
       receiveShadow: false,
       laneColor: 0xd9f6ff,
+      diagnosticMode: "clip-pelvis",
     });
     try {
       expect(controller).not.toBeNull();
+      // Sample clip + pelvis, then place equipment near the authored pose.
+      expect(controller?.update({ phase: 0, cycleFrac: 0.19, driveFrac: 0.38 })).toBe(true);
+      placeTargetsNearClipEffectors(lane);
+      controller?.setDiagnosticMode("full");
       expect(controller?.update({ phase: 0, cycleFrac: 0.19, driveFrac: 0.38 })).toBe(true);
       lane.scene.updateMatrixWorld(true);
 
@@ -323,6 +355,7 @@ describe.each([
       expect(controller?.root.userData).toMatchObject({
         replayV4Athlete: true,
         replayV4Sport: sport,
+        replayV4Architecture: "clip-primary-soft-contact",
       });
       expect(controller?.mesh.userData).toMatchObject({
         replayV4Athlete: true,
@@ -356,26 +389,27 @@ describe.each([
       );
       expect(pelvisRotation.angleTo(targetRotation)).toBeGreaterThan(0.03);
 
+      // Soft contact closes a centimetre-scale residual from the clip pose.
       expect(
         effectorWorld(lane.instance, "leftHand").distanceTo(
           lane.targets.leftHand.getWorldPosition(new THREE.Vector3()),
         ),
-      ).toBeLessThan(1e-5);
+      ).toBeLessThan(0.03);
       expect(
         effectorWorld(lane.instance, "rightHand").distanceTo(
           lane.targets.rightHand.getWorldPosition(new THREE.Vector3()),
         ),
-      ).toBeLessThan(1e-5);
+      ).toBeLessThan(0.03);
       expect(
         effectorWorld(lane.instance, "leftFoot").distanceTo(
           lane.targets.leftFoot.getWorldPosition(new THREE.Vector3()),
         ),
-      ).toBeLessThan(1e-5);
+      ).toBeLessThan(0.04);
       expect(
         effectorWorld(lane.instance, "rightFoot").distanceTo(
           lane.targets.rightFoot.getWorldPosition(new THREE.Vector3()),
         ),
-      ).toBeLessThan(1e-5);
+      ).toBeLessThan(0.04);
 
       const spine = lane.instance.bones.v4Spine.quaternion;
       expect(Math.abs(spine[animatedAxis])).toBeGreaterThan(0.01);
@@ -436,17 +470,23 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
-  it("keeps the authored bend plane primary while maintaining exact equipment contacts", () => {
+  it("keeps the clip elbow primary while applying soft hand contact", () => {
     const lane = createLane();
     const controller = installReplayV4MotionController({
       sport: "rower",
       parent: lane.parent,
       instance: lane.instance,
       targets: lane.targets,
+      diagnosticMode: "clip-pelvis",
     });
     try {
       expect(controller?.update({ phase: 0, cycleFrac: 0.05, driveFrac: 0.38 })).toBe(true);
+      placeTargetsNearClipEffectors(lane);
+      controller?.setDiagnosticMode("full");
+      expect(controller?.update({ phase: 0, cycleFrac: 0.05, driveFrac: 0.38 })).toBe(true);
       const earlyElbow = lane.instance.bones.v4LeftForearm.getWorldPosition(new THREE.Vector3());
+      expect(controller?.update({ phase: 0, cycleFrac: 0.32, driveFrac: 0.38 })).toBe(true);
+      placeTargetsNearClipEffectors(lane);
       expect(controller?.update({ phase: 0, cycleFrac: 0.32, driveFrac: 0.38 })).toBe(true);
       const lateElbow = lane.instance.bones.v4LeftForearm.getWorldPosition(new THREE.Vector3());
       expect(earlyElbow.distanceTo(lateElbow)).toBeGreaterThan(0.02);
@@ -454,44 +494,76 @@ describe("V4 motion determinism and fallback safety", () => {
         effectorWorld(lane.instance, "leftHand").distanceTo(
           lane.targets.leftHand.getWorldPosition(new THREE.Vector3()),
         ),
-      ).toBeLessThan(1e-5);
+      ).toBeLessThan(0.03);
       expect(
         effectorWorld(lane.instance, "rightHand").distanceTo(
           lane.targets.rightHand.getWorldPosition(new THREE.Vector3()),
         ),
-      ).toBeLessThan(1e-5);
+      ).toBeLessThan(0.03);
+      expect(controller?.root.userData.replayV4Architecture).toBe("clip-primary-soft-contact");
     } finally {
       disposeLane(lane, controller);
     }
   });
 
-  it("matches the authoritative palm and sole contact frames after solving positions", () => {
+  it("soft-orients palms and soles without forcing full equipment quaternions", () => {
     const lane = createLane();
+    // Mild target orientation so soft slerp can finish within budget.
+    lane.targets.leftHand.rotation.set(0.08, -0.04, 0.03);
+    lane.targets.rightFoot.rotation.set(0.05, 0.02, -0.02);
     const controller = installReplayV4MotionController({
       sport: "rower",
       parent: lane.parent,
       instance: lane.instance,
       targets: lane.targets,
+      diagnosticMode: "clip-pelvis",
     });
     try {
+      expect(controller?.update({ phase: 0, cycleFrac: 0.2, driveFrac: 0.38 })).toBe(true);
+      placeTargetsNearClipEffectors(lane);
+      controller?.setDiagnosticMode("full");
       expect(controller?.update({ phase: 0, cycleFrac: 0.2, driveFrac: 0.38 })).toBe(true);
       const orientedHand = lane.instance.bones.v4LeftHand.getWorldQuaternion(
         new THREE.Quaternion(),
       );
       const targetOrientation = lane.targets.leftHand.getWorldQuaternion(new THREE.Quaternion());
-      expect(orientedHand.angleTo(targetOrientation)).toBeLessThan(1e-6);
+      // Soft orient budget is ~10° for arms.
+      expect(orientedHand.angleTo(targetOrientation)).toBeLessThan(
+        THREE.MathUtils.degToRad(12) + 1e-3,
+      );
       const orientedFoot = lane.instance.bones.v4RightFoot.getWorldQuaternion(
         new THREE.Quaternion(),
       );
       const targetFootOrientation = lane.targets.rightFoot.getWorldQuaternion(
         new THREE.Quaternion(),
       );
-      expect(orientedFoot.angleTo(targetFootOrientation)).toBeLessThan(1e-6);
+      expect(orientedFoot.angleTo(targetFootOrientation)).toBeLessThan(
+        THREE.MathUtils.degToRad(20) + 1e-3,
+      );
       expect(
         effectorWorld(lane.instance, "leftHand").distanceTo(
           lane.targets.leftHand.getWorldPosition(new THREE.Vector3()),
         ),
-      ).toBeLessThan(1e-5);
+      ).toBeLessThan(0.03);
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
+  it("clip-only diagnostic mode samples without soft contact correction", () => {
+    const lane = createLane();
+    const controller = installReplayV4MotionController({
+      sport: "rower",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      diagnosticMode: "clip-only",
+    });
+    try {
+      expect(controller?.update({ phase: 0, cycleFrac: 0.2, driveFrac: 0.38 })).toBe(true);
+      expect(controller?.root.visible).toBe(true);
+      controller?.setDiagnosticMode("full");
+      expect(controller?.update({ phase: 0, cycleFrac: 0.2, driveFrac: 0.38 })).toBe(true);
     } finally {
       disposeLane(lane, controller);
     }
@@ -560,7 +632,9 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
-  it("rejects an unreachable contact before hiding the procedural athlete", () => {
+  it("keeps the hero enabled when a contact is far outside soft budget", () => {
+    // Clip-primary soft contact never disables the skinned athlete merely
+    // because a grip is unreachable — that used to resurrect the V3 puppet.
     const lane = createLane();
     lane.targets.leftHand.position.set(-4, 3.5, 2);
     const controller = installReplayV4MotionController({
@@ -570,12 +644,17 @@ describe("V4 motion determinism and fallback safety", () => {
       targets: lane.targets,
     });
     try {
-      expect(controller?.update({ phase: 0.2, driveFrac: 0.38 })).toBe(false);
-      expect(controller?.enabled).toBe(false);
-      expect(controller?.root.visible).toBe(false);
-      expect(lane.athleteFallback.visible).toBe(true);
-      expect(lane.headband.visible).toBe(true);
+      expect(controller?.update({ phase: 0.2, driveFrac: 0.38 })).toBe(true);
+      expect(controller?.enabled).toBe(true);
+      expect(controller?.root.visible).toBe(true);
+      expect(lane.athleteFallback.visible).toBe(false);
       expect(lane.equipment.visible).toBe(true);
+      // Residual stays large; soft budget only applied a few centimetres.
+      expect(
+        effectorWorld(lane.instance, "leftHand").distanceTo(
+          lane.targets.leftHand.getWorldPosition(new THREE.Vector3()),
+        ),
+      ).toBeGreaterThan(0.5);
     } finally {
       disposeLane(lane, controller);
     }

@@ -4,6 +4,44 @@ This note records rendered-frame evidence for the authored-athlete and venue
 composition pass on draft PR #171. It is a visual acceptance record, not a
 substitute for the motion/contact regression suite.
 
+## PROMPT 9 — clip-primary arm architecture (2026-07)
+
+### Rejected hybrid (root cause of “ridiculous arms”)
+
+The skinned V4 hero previously:
+
+1. sampled a sparse 9-key technique clip;
+2. aligned the pelvis;
+3. rewrote every arm/leg chain with two-bone IK whose **bend plane was dominated
+   by hidden V3 procedural elbows** (oracle weight 0.82 rower / 0.88 ski);
+4. **forced the hand bone to the equipment world quaternion**, corkscrewing the
+   forearm when grip orientation changed.
+
+That made elbows chicken-wing, flip, or park ahead of the grip line even when
+palm–handle distance was millimetre-perfect.
+
+### Replacement
+
+| Layer | Behaviour |
+| --- | --- |
+| Clip | Denser biomechanical row/ski cycles in `rigV4.ts` (late arm draw; double-pole press arc). Baked into `static/replay-assets/rowplay-athlete-v4.glb`. |
+| Bend plane | **Clip elbow/knee only** — V3 elbow markers are never consulted by V4. |
+| Hand position | Contact IK within limb reach (standard equipment lock). |
+| Hand orientation | **Limited slerp** (~12°) — never a forced equipment quaternion. |
+| Feet | Full sole frame lock (no forearm twist chain). |
+| Ski poles | Hands own the arc; poles follow hands. Planted tips stay on snow with stretchable shafts — no tip-sphere hand projection. |
+| Diagnostics | `setDiagnosticMode`: `clip-only`, `clip-pelvis`, `clip-hands`, `full`, `wireframe`, `unlit`, … |
+
+Architecture marker on the hero root: `userData.replayV4Architecture = "clip-primary-soft-contact"`.
+
+### Movement references (public technique, not third-party mocap files)
+
+- Concept2 technique library (indoor rowing stages; SkiErg double-pole).
+- British Rowing / World Rowing sculling posture stills.
+- FIS / cross-country double-poling coaching stills.
+
+No third-party mesh, scan, or licensed mocap clip was imported.
+
 ## Source visual truth
 
 - Art direction:

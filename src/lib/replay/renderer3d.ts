@@ -292,7 +292,10 @@ interface Avatar {
    * rig when a skinned V4 athlete is installed over the visible body.
    */
   v4Targets: AvatarV4Targets;
-  /** Optional visible skinned hero; the procedural rig remains its contact oracle. */
+  /**
+   * Optional visible skinned hero. Clips own the pose; soft contact locks palms
+   * and soles without using V3 elbows as an arm oracle (PROMPT 9).
+   */
   v4Motion?: ReplayV4MotionController | null;
   /** Lets SkiErg keep its pole-sphere solve inside the installed skin's reach. */
   setV4ArmReach?(reach: number): void;
@@ -1701,14 +1704,14 @@ function makeRowerAvatar(
     oar.add(shaft);
     const grip = capsulePart(0.045, 0.28, equipmentGripMaterial, "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
-    // Keep each grip on its own side of centre with a human hand-width gap.
-    // Too much inboard cross makes arms fold; too little looks like a wide
-    // press-up. ~0.18 m residual from the pin keeps palms uncrossed at catch.
-    grip.position.x = -side * 0.3;
+    // Scull-authentic inboard grips: each hand stays on its own lateral half
+    // with a natural hand-width gap (no artificial wide press, no cross).
+    // ~0.22 m residual from the pin ≈ palms ~0.44 m apart at catch.
+    grip.position.x = -side * 0.22;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    handleAnchor.position.x = -side * 0.34;
+    handleAnchor.position.x = -side * 0.24;
     oar.add(handleAnchor);
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
@@ -1759,11 +1762,11 @@ function makeRowerAvatar(
   const BODY_PITCH_FINISH = 0.3;
   const PELVIS_PITCH_CATCH = -0.07;
   const PELVIS_PITCH_FINISH = 0.105;
-  // At the catch the handles are clearly in front of the rib cage; through
-  // the drive they travel back to the body. The old sign convention swept the
-  // inboard grips through the torso, making every pull look physically wrong.
-  const OAR_YAW_CATCH = 0.33;
-  const OAR_YAW_SPAN = -0.78;
+  // Scull handle arc: catch handles forward of the rib cage; finish near the
+  // body without driving grips through the jersey. Soft V4 contact tolerates
+  // centimetre residual — visual arm quality outranks sub-mm lock.
+  const OAR_YAW_CATCH = 0.3;
+  const OAR_YAW_SPAN = -0.72;
   const BLADE_DIP = 0.14;
 
   const handlePoint = new THREE.Vector3();
@@ -1795,12 +1798,14 @@ function makeRowerAvatar(
       handlePoint.copy(oar.handleAnchor.position).applyQuaternion(oar.group.quaternion);
       handlePoint.add(oar.group.position).sub(rower.position);
       arm.handTarget.copy(handlePoint);
-      // Chord-stable high elbows: out and up relative to the current grip line,
-      // never a pure world-lateral wing that puts the joint past the grip.
+      // V3 fallback bend only. The V4 hero ignores these elbow markers and
+      // uses the baked row clip as the arm oracle (PROMPT 9).
+      // Late arm draw: keep elbows long while armDraw is low.
+      const draw = THREE.MathUtils.smoothstep(armDraw, 0.35, 0.95);
       setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
-        lateral: 0.42 + armDraw * 0.08 + shoulderSet * 0.05,
-        up: 0.42 + armDraw * 0.12 + shoulderSet * 0.08,
-        aft: -0.08 + bodySwing * 0.1 + handleTravel * 0.04,
+        lateral: 0.38 + draw * 0.1 + shoulderSet * 0.04,
+        up: 0.28 + draw * 0.14 + shoulderSet * 0.06,
+        aft: -0.06 + bodySwing * 0.08 + handleTravel * 0.05 + draw * 0.12,
       });
       arm.bendHint.applyQuaternion(torso.quaternion);
       solveTwoBone3D(
@@ -1818,12 +1823,11 @@ function makeRowerAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
-      // Palm faces the grip: local +Y up, local +Z along the oar shaft toward
-      // the pin so V4 contact offsets stay lateral to the handle, not flipped
-      // into a crossed-wrist pose by a raw oar yaw copy.
+      // Mild grip orientation — soft V4 contact may finish the palm without
+      // corkscrewing the forearm via a forced equipment quaternion.
       arm.hand.quaternion.copy(oar.group.quaternion);
       arm.hand.rotateZ(arm.side * (Math.PI / 2));
-      arm.hand.rotateX(-0.35 - shoulderSet * 0.08);
+      arm.hand.rotateX(-0.28 - shoulderSet * 0.06);
     }
   };
 
@@ -2220,8 +2224,6 @@ function makeSkierAvatar(
   const groundUpLocal = new THREE.Vector3();
   const courseCenterAtPlant = new THREE.Vector3();
   const poleAxis = new THREE.Vector3();
-  const poleCircleBase = new THREE.Vector3();
-  const polePreferredOffset = new THREE.Vector3();
   const courseRightWorld = new THREE.Vector3();
   const courseForwardWorld = new THREE.Vector3();
   const inverseUpperWorld = new THREE.Quaternion();
@@ -2256,9 +2258,11 @@ function makeSkierAvatar(
   // 0.54, 0.05). Catch is high/forward; mid drops to load the poles; finish
   // drives the hands down-and-aft past the hips. Upper-local −Z/−Y becomes a
   // true back-press once the torso hinge tips the frame forward.
-  const SKI_HAND_CATCH = { x: 0.34, y: 0.95, z: 0.52 };
-  const SKI_HAND_MID = { x: 0.38, y: 0.5, z: -0.02 };
-  const SKI_HAND_FINISH = { x: 0.28, y: 0.18, z: -0.55 };
+  // Keep the double-pole arc inside the production V4 arm reach (~0.58 m from
+  // shoulder) so clip-primary soft contact can lock palms without stretching.
+  const SKI_HAND_CATCH = { x: 0.3, y: 0.88, z: 0.42 };
+  const SKI_HAND_MID = { x: 0.32, y: 0.48, z: 0.0 };
+  const SKI_HAND_FINISH = { x: 0.24, y: 0.22, z: -0.42 };
   // armPress ≤ this value eases catch→mid (load); after it, mid→finish (press).
   const SKI_PRESS_SPLIT = 0.38;
 
@@ -2375,66 +2379,23 @@ function makeSkierAvatar(
   };
 
   /**
-   * Project a preferred hand onto the exact pole sphere around `tip`, then
-   * clamp into the shoulder reach annulus. Unlike the old tip→shoulder axis
-   * construction, this steers from the preferred point itself so a back-press
-   * target stays aft instead of collapsing onto a short front pull.
+   * Place poles from the authored hand path. The hand is never projected onto
+   * a pole-tip sphere — that former solve forced absurd elbow poses when the
+   * tip and preferred hand disagreed. Tip plant is cosmetic equipment motion;
+   * arm geometry stays on the preferred double-pole arc.
    */
-  const resolveHandOnPole = (
-    shoulder: THREE.Vector3,
-    tip: THREE.Vector3,
-    preferred: THREE.Vector3,
+  const placePoleFromHand = (
+    hand: THREE.Vector3,
+    preferredTip: THREE.Vector3,
     side: number,
-    output: THREE.Vector3,
+    tipOut: THREE.Vector3,
   ): void => {
-    const minArmReach = Math.abs(UPPER_ARM_LENGTH - FOREARM_LENGTH) + 0.004;
-    const maxArmReach =
-      Math.min(UPPER_ARM_LENGTH + FOREARM_LENGTH, Math.max(minArmReach + 0.008, contactArmReach)) -
-      0.004;
-
-    // Primary: same direction as preferred from the tip, exact pole length.
-    poleAxis.subVectors(preferred, tip);
+    poleAxis.subVectors(preferredTip, hand);
     if (poleAxis.lengthSq() < 1e-8) {
-      poleAxis.subVectors(shoulder, tip);
-    }
-    if (poleAxis.lengthSq() < 1e-8) {
-      poleAxis.set(side * 0.2, 0.8, -0.4);
+      poleAxis.set(side * 0.15, -0.85, 0.45);
     }
     poleAxis.setLength(POLE_LENGTH);
-    output.copy(tip).add(poleAxis);
-
-    let armDist = output.distanceTo(shoulder);
-    if (armDist >= minArmReach && armDist <= maxArmReach) {
-      return;
-    }
-
-    // Fallback: classic two-sphere intersection, steered toward preferred.
-    const separation = poleAxis.copy(shoulder).sub(tip).length();
-    const minReachAtTip = Math.max(minArmReach, Math.abs(POLE_LENGTH - separation) + 0.003);
-    const maxReachAtTip = Math.min(maxArmReach, POLE_LENGTH + separation - 0.003);
-    if (separation < 1e-6 || minReachAtTip > maxReachAtTip) {
-      // Keep the preferred-sphere projection even if slightly out of reach;
-      // two-bone IK will clamp segment lengths.
-      return;
-    }
-    const reach = Math.max(minReachAtTip, Math.min(maxReachAtTip, preferred.distanceTo(shoulder)));
-    poleAxis.multiplyScalar(1 / separation); // tip → shoulder
-    const along =
-      (POLE_LENGTH * POLE_LENGTH - reach * reach + separation * separation) / (2 * separation);
-    const perpendicularRadius = Math.sqrt(Math.max(0, POLE_LENGTH * POLE_LENGTH - along * along));
-    poleCircleBase.copy(tip).addScaledVector(poleAxis, along);
-    polePreferredOffset.copy(preferred).sub(poleCircleBase);
-    polePreferredOffset.addScaledVector(poleAxis, -polePreferredOffset.dot(poleAxis));
-    if (polePreferredOffset.lengthSq() < 1e-8) {
-      polePreferredOffset.set(side, 0.15, -0.4);
-      polePreferredOffset.addScaledVector(poleAxis, -polePreferredOffset.dot(poleAxis));
-    }
-    if (polePreferredOffset.lengthSq() > 1e-8) {
-      polePreferredOffset.setLength(perpendicularRadius);
-      output.copy(poleCircleBase).add(polePreferredOffset);
-    } else {
-      output.copy(poleCircleBase);
-    }
+    tipOut.copy(hand).add(poleAxis);
   };
 
   const placePoleArms = (
@@ -2460,16 +2421,15 @@ function makeSkierAvatar(
       // Shoulders live on the hinging upper body; refresh the local origin so
       // the press tracks torso pitch instead of a stale rest pose.
       arm.shoulderPoint.set(arm.side * 0.25, 0.54, 0.05);
-      // Authored double-pole: high plant → mid load → aft extension.
+      // Authored double-pole arc only — no tip-sphere hand projection.
       skiPreferredHand(armPress, arm.side, arm.handTarget);
-      // Chord-stable elbow plane: out and slightly below the chord at plant,
-      // then swing aft through the press. A positive "up" bias here previously
-      // parked elbows above and in front of the hands mid-drive.
+      // Chord-stable elbow plane from the preferred arc (V3 fallback only).
+      // V4 hero elbows come from the baked ski clip, not these markers.
       const pressAft = THREE.MathUtils.smoothstep(armPress, 0.1, 0.95);
       setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
-        lateral: 0.55 + pressAft * 0.18,
-        up: -0.08 - pressAft * 0.12,
-        aft: 0.05 - pressAft * 1.05,
+        lateral: 0.48 + pressAft * 0.12,
+        up: -0.1 - pressAft * 0.1,
+        aft: 0.02 - pressAft * 0.95,
       });
 
       desiredHandWorld.copy(arm.handTarget);
@@ -2495,11 +2455,7 @@ function makeSkierAvatar(
 
       setPlantTipWorld(plantTipWorld, arm.side, pose, meters, outer);
       tipWorld.lerpVectors(freeTipWorld, plantTipWorld, poleContact);
-      tipLocalPoint.copy(tipWorld);
-      upper.worldToLocal(tipLocalPoint);
-      // Exact pole length + preferred back-press: project onto the tip sphere
-      // from the preferred hand (not from the shoulder axis).
-      resolveHandOnPole(arm.shoulderPoint, tipLocalPoint, arm.handTarget, arm.side, arm.handTarget);
+
       solveTwoBone3D(
         arm.shoulderPoint,
         arm.handTarget,
@@ -2515,15 +2471,28 @@ function makeSkierAvatar(
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
 
+      // Never move the hand onto a tip sphere. Free poles keep fixed length
+      // from the hand; planted poles stretch slightly so the tip can stay on
+      // snow without forcing absurd arm geometry.
+      tipLocalPoint.copy(tipWorld);
+      upper.worldToLocal(tipLocalPoint);
+      if (poleContact <= 0.85) {
+        placePoleFromHand(arm.handPoint, tipLocalPoint, arm.side, tipLocalPoint);
+      } else {
+        // Keep the planted world tip; shaft length may differ from rest length.
+        tipLocalPoint.copy(plantTipWorld);
+        upper.worldToLocal(tipLocalPoint);
+      }
       placeFigureSegmentBetween(pole.shaft, arm.handPoint, tipLocalPoint);
       pole.grip.position.copy(arm.handPoint);
       pole.grip.quaternion.copy(pole.shaft.quaternion);
-      // The basket stays level with the snow while the shaft follows the arm.
-      // Its actual carbide point is the separate, exact contact anchor below.
       pole.basket.position.copy(tipLocalPoint).addScaledVector(groundUpLocal, 0.026);
       pole.basket.quaternion.copy(inverseUpperWorld);
       pole.tipAnchor.position.copy(tipLocalPoint);
+      // Mild grip orientation — V4 soft-orients; avoid a forced shaft quaternion
+      // that corkscrews the procedural fallback forearm either.
       arm.hand.quaternion.copy(pole.grip.quaternion);
+      arm.hand.rotateX(-0.25);
     }
   };
 
