@@ -2,7 +2,8 @@ import type { Frame } from "./engine";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import { ParticlePool, clampDt } from "./motion";
-import { solveTwoBone2D, type MutableFigurePoint2 } from "./figurePose";
+import { solveRigidContactPoint2D, solveTwoBone2D, type MutableFigurePoint2 } from "./figurePose";
+import { SKI_POLE_PLANT_DRIVE_START } from "./motionGraph";
 import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
 import {
   solveBikeKinematics,
@@ -431,6 +432,7 @@ function streakLen(pace: number): number {
 const jointRootScratch: MutableFigurePoint2 = { x: 0, y: 0 };
 const jointTargetScratch: MutableFigurePoint2 = { x: 0, y: 0 };
 const jointEndScratch: MutableFigurePoint2 = { x: 0, y: 0 };
+const rigidCenterScratch: MutableFigurePoint2 = { x: 0, y: 0 };
 
 /** Adapt scalar Canvas coordinates to the shared allocation-free figure solver. */
 function solveTwoBoneJoint2D(
@@ -455,6 +457,36 @@ function solveTwoBoneJoint2D(
     bendDirection,
     out,
     jointEndScratch,
+  );
+}
+
+/** Scalar adapter for the allocation-free planar closed-chain solver. */
+function constrainRigidContact2D(
+  rootX: number,
+  rootY: number,
+  preferredX: number,
+  preferredY: number,
+  centerX: number,
+  centerY: number,
+  contactLength: number,
+  minimumReach: number,
+  maximumReach: number,
+  out: MutableFigurePoint2,
+): boolean {
+  jointRootScratch.x = rootX;
+  jointRootScratch.y = rootY;
+  jointTargetScratch.x = preferredX;
+  jointTargetScratch.y = preferredY;
+  rigidCenterScratch.x = centerX;
+  rigidCenterScratch.y = centerY;
+  return solveRigidContactPoint2D(
+    jointRootScratch,
+    jointTargetScratch,
+    rigidCenterScratch,
+    contactLength,
+    minimumReach,
+    maximumReach,
+    out,
   );
 }
 
@@ -507,6 +539,26 @@ export function solveRigidOar2D(
   out.bladeTipX = out.bladeRootX + ux * bladeLength;
   out.bladeTipY = out.bladeRootY + uy * bladeLength;
   return out;
+}
+
+/**
+ * Reconstruct the screen-space course point where a 2D SkiErg basket planted.
+ * The athlete advances with workout distance; subtracting the within-stroke
+ * travel keeps the loaded basket in world space instead of dragging it with
+ * the torso. This mirrors the 3D course-anchor reconstruction.
+ */
+export function skiPolePlantCourseX2D(
+  currentCourseX: number,
+  pixelsPerMeter: number,
+  pose: StrokePose,
+): number {
+  const plantCycle =
+    pose.index + Math.min(pose.cycleFrac, pose.driveFrac * SKI_POLE_PLANT_DRIVE_START);
+  const currentCycle = pose.index + pose.cycleFrac;
+  const distanceSincePlant =
+    Math.max(0, currentCycle - plantCycle) * Math.max(0, pose.strokeMeters);
+  const scale = Number.isFinite(pixelsPerMeter) ? Math.max(0, pixelsPerMeter) : 0;
+  return currentCourseX - distanceSincePlant * scale;
 }
 
 /** Approximate scaled silhouette height above the contact line for HUD clearance. */
@@ -985,25 +1037,10 @@ function drawEvergreen(
   ctx.fill();
 }
 
-/** Blend a fixed pole toward a ground-contact angle without changing its length. */
-export function poleAngleAtContact(
-  handY: number,
-  groundY: number,
-  poleLength: number,
-  freeAngle: number,
-  contact: number,
-): number {
-  const vertical = Math.max(-0.999, Math.min(0.999, (groundY - handY) / poleLength));
-  // A ground line has two valid pole-tip intersections. Keep the planted
-  // basket on the forward branch selected at the catch; switching to the
-  // mirrored branch when freeAngle crosses PI / 2 makes the tip teleport from
-  // one side of the skier to the other during the loaded press.
-  const landingAngle = Math.asin(vertical);
-  return freeAngle + (landingAngle - freeAngle) * contact;
-}
-
 interface AvatarDrawCtx {
   x: number;
+  /** Course-space athlete X at this stroke's SkiErg pole plant. */
+  polePlantCourseX: number;
   /** Waterline / ground. */
   y: number;
   /** Bobbing centre for floating parts. */
@@ -1038,8 +1075,54 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   const oarAngle = Math.PI - 0.22 - strokeProgress * (Math.PI - 0.48);
   const oarlockX = x + 0.4;
   const oarlockY = bobY - 0.2;
-  solveRigidOar2D(oarlockX, oarlockY - 0.65, oarAngle + 0.035, 7.1, 13.8, 4.0, rowOarFar);
-  solveRigidOar2D(oarlockX, oarlockY + 0.4, oarAngle, 7.1, 13.8, 4.0, rowOarNear);
+  const armMinimumReach = Math.abs(4.9 - 4.7) + 0.04;
+  const armMaximumReach = 4.9 + 4.7 - 0.04;
+  const farLockY = oarlockY - 0.65;
+  solveRigidOar2D(oarlockX, farLockY, oarAngle + 0.035, 7.1, 13.8, 4.0, rowOarFar);
+  constrainRigidContact2D(
+    shX - 0.4,
+    shY - 0.4,
+    rowOarFar.handleX,
+    rowOarFar.handleY,
+    oarlockX,
+    farLockY,
+    7.1,
+    armMinimumReach,
+    armMaximumReach,
+    jointScratchA,
+  );
+  solveRigidOar2D(
+    oarlockX,
+    farLockY,
+    Math.atan2(farLockY - jointScratchA.y, oarlockX - jointScratchA.x),
+    7.1,
+    13.8,
+    4.0,
+    rowOarFar,
+  );
+  const nearLockY = oarlockY + 0.4;
+  solveRigidOar2D(oarlockX, nearLockY, oarAngle, 7.1, 13.8, 4.0, rowOarNear);
+  constrainRigidContact2D(
+    shX,
+    shY + 0.2,
+    rowOarNear.handleX,
+    rowOarNear.handleY,
+    oarlockX,
+    nearLockY,
+    7.1,
+    armMinimumReach,
+    armMaximumReach,
+    jointScratchA,
+  );
+  solveRigidOar2D(
+    oarlockX,
+    nearLockY,
+    Math.atan2(nearLockY - jointScratchA.y, oarlockX - jointScratchA.x),
+    7.1,
+    13.8,
+    4.0,
+    rowOarNear,
+  );
   const farKit = withAlpha(accent, 0.52);
 
   // Feathering changes blade thickness only: the oar remains one straight,
@@ -1265,7 +1348,8 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
 
 /** Skier double-poling: arms/poles swing from a high reach to a low back-pull. */
 function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKinematics) {
-  const { x, y, bobY, accent, rim, foam, skin, skinShade, hair, shoe, reduce } = a;
+  const { x, y, bobY, polePlantCourseX, accent, rim, foam, skin, skinShade, hair, shoe, reduce } =
+    a;
   const hipX = x + k.hipHinge * 2.4;
   const hipY = bobY - 7.4 + k.kneeFlex * 3.6;
   const shX = x + 0.6 + k.hipHinge * 5.8;
@@ -1273,23 +1357,49 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   const farKit = withAlpha(accent, 0.5);
 
   const poleLength = 13.8;
-  const farHandX = shX + 6.4 - k.armPress * 10.2;
-  const farHandY = shY + 0.2 + k.armPress * 9.4;
-  const nearHandX = shX + 7.1 - k.armPress * 11;
-  const nearHandY = shY + 0.9 + k.armPress * 9.8;
+  const preferredFarHandX = shX + 6.4 - k.armPress * 10.2;
+  const preferredFarHandY = shY + 0.2 + k.armPress * 9.4;
+  const preferredNearHandX = shX + 7.1 - k.armPress * 11;
+  const preferredNearHandY = shY + 0.9 + k.armPress * 9.8;
   const freePoleAngle = 0.62 + k.poleSweep * 1.78;
-  const farPoleAngle = poleAngleAtContact(
-    farHandY,
-    y - 0.15,
+  const farFreeTipX = preferredFarHandX + Math.cos(freePoleAngle + 0.04) * poleLength;
+  const farFreeTipY = preferredFarHandY + Math.sin(freePoleAngle + 0.04) * poleLength;
+  const nearFreeTipX = preferredNearHandX + Math.cos(freePoleAngle) * poleLength;
+  const nearFreeTipY = preferredNearHandY + Math.sin(freePoleAngle) * poleLength;
+  const farPoleTipX = farFreeTipX + (polePlantCourseX + 9.1 - farFreeTipX) * k.poleContact;
+  const farPoleTipY = farFreeTipY + (y - 0.15 - farFreeTipY) * k.poleContact;
+  const nearPoleTipX = nearFreeTipX + (polePlantCourseX + 12.1 - nearFreeTipX) * k.poleContact;
+  const nearPoleTipY = nearFreeTipY + (y - nearFreeTipY) * k.poleContact;
+  const armMinimumReach = Math.abs(5.2 - 5) + 0.02;
+  const armMaximumReach = 5.2 + 5 - 0.02;
+  constrainRigidContact2D(
+    shX - 0.45,
+    shY - 0.4,
+    preferredFarHandX,
+    preferredFarHandY,
+    farPoleTipX,
+    farPoleTipY,
     poleLength,
-    freePoleAngle + 0.04,
-    k.poleContact,
+    armMinimumReach,
+    armMaximumReach,
+    jointScratchA,
   );
-  const nearPoleAngle = poleAngleAtContact(nearHandY, y, poleLength, freePoleAngle, k.poleContact);
-  const farPoleTipX = farHandX + Math.cos(farPoleAngle) * poleLength;
-  const farPoleTipY = farHandY + Math.sin(farPoleAngle) * poleLength;
-  const nearPoleTipX = nearHandX + Math.cos(nearPoleAngle) * poleLength;
-  const nearPoleTipY = nearHandY + Math.sin(nearPoleAngle) * poleLength;
+  const farHandX = jointScratchA.x;
+  const farHandY = jointScratchA.y;
+  constrainRigidContact2D(
+    shX,
+    shY,
+    preferredNearHandX,
+    preferredNearHandY,
+    nearPoleTipX,
+    nearPoleTipY,
+    poleLength,
+    armMinimumReach,
+    armMaximumReach,
+    jointScratchA,
+  );
+  const nearHandX = jointScratchA.x;
+  const nearHandY = jointScratchA.y;
 
   // Far pole, arm, and leg establish depth. Both poles stay the same length
   // throughout reach, plant, press, and recovery.
@@ -1659,6 +1769,8 @@ interface AvatarOpts {
   phase: number;
   /** Cumulative course distance in metres. */
   meters: number;
+  /** Screen-space course scale used to reconstruct planted SkiErg baskets. */
+  pixelsPerMeter?: number;
   pose?: StrokePose;
   spm: number;
   isYou: boolean;
@@ -1832,6 +1944,7 @@ export class CourseRenderer implements ReplayRenderer {
         accent: C.ghost,
         phase: ghostPose?.phase ?? this.ghostStrokePhase,
         meters: ghostFrac * state.totalDistance,
+        pixelsPerMeter: state.totalDistance > 0 ? span / state.totalDistance : 0,
         pose: ghostPose,
         spm: state.ghost.spm,
         isYou: false,
@@ -1870,6 +1983,7 @@ export class CourseRenderer implements ReplayRenderer {
       accent: C.live,
       phase: livePose.phase,
       meters: state.frame.d,
+      pixelsPerMeter: state.totalDistance > 0 ? span / state.totalDistance : 0,
       pose: livePose,
       spm: state.frame.spm,
       isYou: true,
@@ -3006,7 +3120,20 @@ export class CourseRenderer implements ReplayRenderer {
   private drawAvatar(o: AvatarOpts) {
     const { ctx } = this;
     const C = this.colors;
-    const { x, y, accent, phase, meters, pose, spm, isYou, sport, label, splash } = o;
+    const {
+      x,
+      y,
+      accent,
+      phase,
+      meters,
+      pixelsPerMeter = 0,
+      pose,
+      spm,
+      isYou,
+      sport,
+      label,
+      splash,
+    } = o;
     const reduce = this.reduceMotion;
 
     ctx.save();
@@ -3054,6 +3181,10 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.save();
     const a: AvatarDrawCtx = {
       x: figX,
+      polePlantCourseX:
+        resolvedSport === "skierg"
+          ? figX + (skiPolePlantCourseX2D(x, pixelsPerMeter, kinematicPose) - figX) / ATHLETE_SCALE
+          : x,
       y,
       bobY,
       meters,

@@ -4,6 +4,9 @@ import type { StrokePose } from "./strokeModel";
 /** One full turn in radians. Kept local so this module stays dependency-free. */
 const TAU = Math.PI * 2;
 
+/** First deterministic SkiErg basket-contact sample, as a fraction of drive. */
+export const SKI_POLE_PLANT_DRIVE_START = 0.005;
+
 /**
  * A scalar choreography channel sampled at one instant in a replay cycle.
  *
@@ -463,7 +466,17 @@ function sampleSkier(timing: MotionTiming, pose: StrokePose): SkierMotionGraph {
   const poleSweep = pulse(cycle, drive * 0.01, drive * 0.93, drive, drive + recovery * 0.55);
   // Pole tips should be held in course space while this is materially active;
   // the envelope itself never invents a sliding ground point.
-  const polePlant = pulse(cycle, drive * 0.005, drive * 0.075, drive * 0.84, drive * 0.97);
+  // Give the basket roughly 0.1 s at a canonical 32 spm to settle from its
+  // recovery arc onto the snow. The old 0.5%→7.5% drive window compressed the
+  // rigid pole/arm closure into a visible hand snap even though the scalar
+  // envelope itself was C2-continuous.
+  const polePlant = pulse(
+    cycle,
+    drive * SKI_POLE_PLANT_DRIVE_START,
+    drive * 0.18,
+    drive * 0.84,
+    drive + recovery * 0.08,
+  );
   const poleLoad = pulse(cycle, drive * 0.06, drive * 0.18, drive * 0.67, drive * 0.84);
   const footPressure = pulse(cycle, drive * 0.12, drive * 0.28, drive * 0.7, drive * 0.92);
   const torsoCompression = add(scale(hips, 0.66), scale(knees, 0.34));
@@ -1091,7 +1104,14 @@ function sampleSkierInto(pose: StrokePose, output: SkierMotionGraph): void {
     drive + recovery * 0.7,
   );
   pulseInto(curves.skiPoleSweep, cycle, drive * 0.01, drive * 0.93, drive, drive + recovery * 0.55);
-  pulseInto(curves.skiPolePlant, cycle, drive * 0.005, drive * 0.075, drive * 0.84, drive * 0.97);
+  pulseInto(
+    curves.skiPolePlant,
+    cycle,
+    drive * SKI_POLE_PLANT_DRIVE_START,
+    drive * 0.18,
+    drive * 0.84,
+    drive + recovery * 0.08,
+  );
   pulseInto(curves.skiPoleLoad, cycle, drive * 0.06, drive * 0.18, drive * 0.67, drive * 0.84);
   pulseInto(curves.skiFootPressure, cycle, drive * 0.12, drive * 0.28, drive * 0.7, drive * 0.92);
   combine2Into(curves.skiCompression, curves.skiHips, 0.66, curves.skiKnees, 0.34);

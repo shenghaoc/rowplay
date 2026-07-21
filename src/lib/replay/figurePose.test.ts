@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
-import { solveTwoBone2D, solveTwoBone3D } from "./figurePose";
+import {
+  solveRigidContactPoint2D,
+  solveRigidContactPoint3D,
+  solveTwoBone2D,
+  solveTwoBone3D,
+} from "./figurePose";
 
 const TAU = Math.PI * 2;
 const LENGTH_TOLERANCE = 1e-9;
@@ -211,5 +216,104 @@ describe("figurePose two-bone IK", () => {
     expect(zeroEnd).toEqual(parallelEnd);
     expect(distance3(root, parallelJoint)).toBeCloseTo(4, 9);
     expect(distance3(parallelJoint, target)).toBeCloseTo(4, 9);
+  });
+});
+
+describe("figurePose rigid-contact reach", () => {
+  it("keeps a planar equipment contact rigid while selecting a reachable branch", () => {
+    const root = { x: -14, y: -8 };
+    const preferred = { x: -6.46, y: -2.02 };
+    const lock = { x: 0.4, y: -0.2 };
+    const hand = { x: 0, y: 0 };
+
+    expect(solveRigidContactPoint2D(root, preferred, lock, 7.1, 0.24, 9.56, hand)).toBe(true);
+    expect(Math.hypot(hand.x - lock.x, hand.y - lock.y)).toBeCloseTo(7.1, 9);
+    expect(Math.hypot(hand.x - root.x, hand.y - root.y)).toBeCloseTo(9.56, 9);
+    expect(hand.x).toBeLessThan(lock.x);
+  });
+
+  it("keeps a planar rigid-contact solve continuous through a dense press", () => {
+    const root = { x: 0, y: -14 };
+    const preferred = { x: 0, y: 0 };
+    const tip = { x: 12, y: 0 };
+    const hand = { x: 0, y: 0 };
+    let previous: typeof hand | null = null;
+
+    for (let step = 0; step <= 256; step++) {
+      const t = step / 256;
+      root.x = 0.6 + t * 5.8;
+      root.y = -14 + t * 6.4;
+      preferred.x = root.x + 7.1 - t * 11;
+      preferred.y = root.y + 0.9 + t * 9.8;
+      expect(
+        solveRigidContactPoint2D(root, preferred, tip, 13.8, 0.2, 10.18, hand),
+        `compatible planar press at ${t}`,
+      ).toBe(true);
+      expect(Math.hypot(hand.x - tip.x, hand.y - tip.y)).toBeCloseTo(13.8, 8);
+      expect(Math.hypot(hand.x - root.x, hand.y - root.y)).toBeLessThanOrEqual(10.18 + 1e-8);
+      if (previous) {
+        expect(Math.hypot(hand.x - previous.x, hand.y - previous.y)).toBeLessThan(0.12);
+      }
+      previous = { ...hand };
+    }
+  });
+
+  it("keeps an already feasible preferred hand on an exact contact sphere", () => {
+    const root = { x: 0, y: 1.45, z: 0 };
+    const preferred = { x: -0.28, y: 1.1, z: 0.18 };
+    const tip = { x: -0.5, y: 0.05, z: 0.85 };
+    const hand = { x: 0, y: 0, z: 0 };
+
+    expect(solveRigidContactPoint3D(root, preferred, tip, 1.42, 0.03, 0.74, hand)).toBe(true);
+    expect(distance3(hand, tip)).toBeCloseTo(1.42, 9);
+    expect(distance3(hand, root)).toBeLessThanOrEqual(0.74 + LENGTH_TOLERANCE);
+  });
+
+  it("uses the nearest sphere intersection when the preferred hand exceeds reach", () => {
+    const root = { x: 0, y: 1.35, z: 0 };
+    const preferred = { x: -0.5, y: 1.6, z: -0.8 };
+    const tip = { x: -0.5, y: 0.05, z: 0.95 };
+    const hand = { x: 0, y: 0, z: 0 };
+
+    expect(solveRigidContactPoint3D(root, preferred, tip, 1.42, 0.03, 0.58, hand)).toBe(true);
+    expect(distance3(hand, tip)).toBeCloseTo(1.42, 9);
+    expect(distance3(hand, root)).toBeCloseTo(0.58, 9);
+    expect(hand.x).toBeLessThan(0);
+  });
+
+  it("holds pole length and arm reach through a dense moving plant", () => {
+    const root = { x: -0.24, y: 1.35, z: 0 };
+    const preferred = { x: -0.3, y: 0, z: 0 };
+    const tip = { x: -0.55, y: 0.055, z: 1.15 };
+    const hand = { x: 0, y: 0, z: 0 };
+    let previous: typeof hand | null = null;
+
+    for (let step = 0; step <= 256; step++) {
+      const t = step / 256;
+      root.y = 1.35 - t * 0.3;
+      root.z = t * 0.45;
+      preferred.y = 1.55 - t * 0.75;
+      preferred.z = 0.35 - t * 0.5;
+      expect(
+        solveRigidContactPoint3D(root, preferred, tip, 1.42, 0.03, 0.58, hand),
+        `compatible plant at ${t}`,
+      ).toBe(true);
+      expect(distance3(hand, tip), `pole length at ${t}`).toBeCloseTo(1.42, 8);
+      expect(distance3(hand, root), `arm reach at ${t}`).toBeLessThanOrEqual(0.58 + 1e-8);
+      if (previous) expect(distance3(hand, previous), `continuous hand at ${t}`).toBeLessThan(0.02);
+      previous = { ...hand };
+    }
+  });
+
+  it("reports incompatible constraints without stretching the contact", () => {
+    const root = { x: 0, y: 0, z: 0 };
+    const preferred = { x: 5, y: 1, z: 0 };
+    const tip = { x: 4, y: 0, z: 0 };
+    const hand = { x: 0, y: 0, z: 0 };
+
+    expect(solveRigidContactPoint3D(root, preferred, tip, 1, 0.1, 0.5, hand)).toBe(false);
+    expectFinite3(hand);
+    expect(distance3(hand, tip)).toBeCloseTo(1, 9);
+    expect(distance3(hand, root)).toBeCloseTo(3, 9);
   });
 });

@@ -125,7 +125,7 @@ describe("motionGraph", () => {
 
   it("publishes a planted SkiErg pole policy with stable loaded contacts", () => {
     const driveFraction = poseAt("skierg", 0).driveFrac;
-    for (const progress of [0.08, 0.2, 0.48, 0.72, 0.8]) {
+    for (const progress of [0.18, 0.2, 0.48, 0.72, 0.8]) {
       const graph = sampleSkierMotionGraph(poseAt("skierg", driveFraction * progress));
       expect(graph.contacts.polePlant.value, `plant at drive ${progress}`).toBe(1);
       expect(graph.contacts.poleGrip.value).toBe(1);
@@ -147,11 +147,16 @@ describe("motionGraph", () => {
 
   it("keeps SkiErg plant and release envelopes C2-flat at their exact boundaries", () => {
     const driveFraction = poseAt("skierg", 0).driveFrac;
-    for (const progress of [0.005, 0.075, 0.84, 0.97]) {
-      const channel = sampleSkierMotionGraph(poseAt("skierg", driveFraction * progress)).contacts
-        .polePlant;
-      expect(channel.velocity, `velocity at ${progress}`).toBeCloseTo(0, 9);
-      expect(channel.acceleration, `acceleration at ${progress}`).toBeCloseTo(0, 7);
+    const recoveryFraction = 1 - driveFraction;
+    for (const cycle of [
+      driveFraction * 0.005,
+      driveFraction * 0.18,
+      driveFraction * 0.84,
+      driveFraction + recoveryFraction * 0.08,
+    ]) {
+      const channel = sampleSkierMotionGraph(poseAt("skierg", cycle)).contacts.polePlant;
+      expect(channel.velocity, `velocity at ${cycle}`).toBeCloseTo(0, 9);
+      expect(channel.acceleration, `acceleration at ${cycle}`).toBeCloseTo(0, 7);
     }
   });
 

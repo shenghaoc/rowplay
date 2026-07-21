@@ -11,22 +11,17 @@ const TAU = Math.PI * 2;
 const TRANSFORM_EPSILON = 1e-8;
 
 /**
- * Clip-primary contact policy (PROMPT 9 — no hybrid reintroduction).
- *
- * Arms: the authored clip owns elbow/shoulder pose. Soft contact may close at
- * most a few centimetres / ~8° of wrist. Larger errors mean fix the clip or
- * make equipment follow the hero — never full-chain two-bone rewrite.
- *
- * Legs: firmer equipment lock (pedals/footplates) with clip bend plane only.
+ * The authored clip owns the base performance, but rigid sport equipment owns
+ * every terminal contact. The post-clip pass may rotate the two links of a
+ * limb through their full reachable envelope; it never moves an oar grip,
+ * stretches a ski pole, or lets a shoe leave its pedal to preserve a clip.
+ * Elbow bend still comes from the authored clip, while mechanically solved
+ * knee targets choose the correct leg branch.
  */
-const ARM_SOFT_TRANSLATE_M = 0.045;
-/** Feet/pedals stay equipment-locked; arms are the clip-primary limb. */
-const LEG_SOFT_TRANSLATE_M = 0.85;
-const BIKE_LEG_SOFT_TRANSLATE_M = 0.9;
 const ARM_SOFT_ANGLE_RAD = THREE.MathUtils.degToRad(8);
 const LEG_SOFT_ANGLE_RAD = THREE.MathUtils.degToRad(18);
-/** Below this residual the chain is left on the pure clip pose. */
-const SOFT_DEADZONE_M = 0.004;
+/** Below this residual only terminal orientation needs attention. */
+const CONTACT_DEADZONE_M = 0.000_05;
 const SOFT_ANGLE_DEADZONE = THREE.MathUtils.degToRad(1.5);
 
 /** Diagnostic overlay modes for isolation of defects (PROMPT 9). */
@@ -89,7 +84,7 @@ export interface ReplayV4MotionInstallOptions {
   readonly laneColor?: THREE.ColorRepresentation;
   /** Optional bone-local overrides for authored palm/sole contact extras. */
   readonly effectorOffsets?: ReplayV4EffectorOffsetOverrides;
-  /** Isolation mode for visual QA; default full soft-contact solve. */
+  /** Isolation mode for visual QA; default full contact-constrained solve. */
   readonly diagnosticMode?: ReplayV4DiagnosticMode;
 }
 
@@ -98,18 +93,15 @@ export interface ReplayV4MotionController {
   readonly mesh: THREE.SkinnedMesh;
   readonly enabled: boolean;
   /**
-   * Samples the authored clip, aligns the pelvis, then applies soft contact
-   * correction. Arm elbows are never driven by the hidden V3 procedural figure.
+   * Samples the authored clip, aligns the pelvis, then closes all four rigid
+   * equipment-contact chains. Arm bend planes remain clip-authored.
    */
   update(sample: ReplayV4MotionSample): boolean;
   /** Restores the exact fallback visibility snapshot and releases lane-owned resources. */
   dispose(): void;
   /** Switch diagnostic isolation mode without reinstalling the hero. */
   setDiagnosticMode(mode: ReplayV4DiagnosticMode): void;
-  /**
-   * World-space palm/sole contact point after the last update. Used so
-   * equipment can follow the hero (athlete-led grips) instead of generating pose.
-   */
+  /** World-space palm/sole contact point after the last constrained update. */
   getContactWorld(name: ReplayV4EffectorName, output?: THREE.Vector3): THREE.Vector3;
 }
 
@@ -123,6 +115,8 @@ interface ChainBinding {
   readonly middle: THREE.Bone;
   readonly effector: THREE.Bone;
   readonly target: THREE.Object3D;
+  /** Mechanically solved branch marker; used for knees, not clip-authored elbows. */
+  readonly jointTarget: THREE.Object3D;
   readonly offset: THREE.Vector3;
   /** True for hip→knee→foot chains; false for shoulder→elbow→hand. */
   readonly isLeg: boolean;
@@ -282,7 +276,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private readonly baseRootQuaternion = new THREE.Quaternion();
   private readonly baseRootScale = new THREE.Vector3();
   /**
-   * Last authored clip sample for every bone that soft contact may mutate.
+   * Last authored clip sample for every bone that contact correction may mutate.
    * Restoring these before seeking keeps PropertyMixer skip-writes safe.
    */
   private readonly sampledChainRotations: readonly BoneRotationSnapshot[];
@@ -333,6 +327,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         middle: requireBone(instance, "v4LeftForearm"),
         effector: requireBone(instance, instance.effectors.leftHand.bone),
         target: targets.leftHand,
+        jointTarget: targets.leftElbow,
         offset: offsetFor(instance, "leftHand", options.effectorOffsets),
         isLeg: false,
       },
@@ -341,6 +336,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         middle: requireBone(instance, "v4RightForearm"),
         effector: requireBone(instance, instance.effectors.rightHand.bone),
         target: targets.rightHand,
+        jointTarget: targets.rightElbow,
         offset: offsetFor(instance, "rightHand", options.effectorOffsets),
         isLeg: false,
       },
@@ -349,6 +345,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         middle: requireBone(instance, "v4LeftLowerLeg"),
         effector: requireBone(instance, instance.effectors.leftFoot.bone),
         target: targets.leftFoot,
+        jointTarget: targets.leftKnee,
         offset: offsetFor(instance, "leftFoot", options.effectorOffsets),
         isLeg: true,
       },
@@ -357,6 +354,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         middle: requireBone(instance, "v4RightLowerLeg"),
         effector: requireBone(instance, instance.effectors.rightFoot.bone),
         target: targets.rightFoot,
+        jointTarget: targets.rightKnee,
         offset: offsetFor(instance, "rightFoot", options.effectorOffsets),
         isLeg: true,
       },
@@ -374,7 +372,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     this.root.name = `v4-athlete-${sport}`;
     this.root.userData.replayV4Athlete = true;
     this.root.userData.replayV4Sport = sport;
-    this.root.userData.replayV4Architecture = "clip-primary-athlete-led";
+    this.root.userData.replayV4Architecture = "clip-contact-constrained";
     this.mesh.userData.replayV4Athlete = true;
     this.mesh.userData.replayV4Sport = sport;
     this.root.visible = false;
@@ -442,13 +440,13 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       }
 
       if (mode === "full" || mode === "clip-hands" || mode === "skeleton" || mode === "shadows") {
-        for (const chain of this.chains) this.softCorrectChain(chain);
+        for (const chain of this.chains) this.correctContactChain(chain);
       } else if (mode === "clip-pelvis" || mode === "clip-only") {
         // Pure clip (+ optional pelvis): no contact correction.
       } else {
-        // Visual isolation modes still keep soft contact so the hero reads as
+        // Visual isolation modes still keep rigid contact so the hero reads as
         // equipment-connected while materials change.
-        for (const chain of this.chains) this.softCorrectChain(chain);
+        for (const chain of this.chains) this.correctContactChain(chain);
       }
 
       this.root.updateMatrixWorld(true);
@@ -537,33 +535,30 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     }
   }
 
-  private softTranslateBudget(chain: ChainBinding): number {
-    if (!chain.isLeg) {
-      // Bike hands stay on the bar (full reach IK). Rower/ski: few-cm soft only.
-      return this.options.sport === "bike" ? 0.85 : ARM_SOFT_TRANSLATE_M;
-    }
-    return this.options.sport === "bike" ? BIKE_LEG_SOFT_TRANSLATE_M : LEG_SOFT_TRANSLATE_M;
-  }
-
   private softAngleBudget(chain: ChainBinding): number {
     return chain.isLeg ? LEG_SOFT_ANGLE_RAD : ARM_SOFT_ANGLE_RAD;
   }
 
   /**
-   * Soft contact on top of the authored clip pose.
+   * Close one rigid contact chain on top of the authored clip pose.
    *
-   * Arms: only apply a few-centimetre correction. If the residual is larger,
-   * leave the pure clip pose — equipment must follow the hero, not the reverse.
-   * Legs: firmer lock for pedals/footplates.
-   * Bend plane: clip middle joint only (never V3 elbows).
+   * Arm bend planes come from the sampled clip so the correction does not
+   * reinstate a procedural elbow performance. Leg bend planes come from the
+   * mechanically solved knee target, which is what prevents a cycling knee
+   * from selecting the rear sphere-intersection branch near dead centre.
    */
-  private softCorrectChain(chain: ChainBinding): void {
+  private correctContactChain(chain: ChainBinding): void {
     chain.upper.getWorldPosition(this.rootWorld);
     chain.middle.getWorldPosition(this.middleWorld);
     chain.effector.getWorldPosition(this.effectorWorld);
     chain.target.getWorldPosition(this.targetWorld);
 
-    this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
+    if (chain.isLeg && this.options.sport === "bike") {
+      chain.jointTarget.getWorldPosition(this.bendHint);
+      this.bendHint.sub(this.rootWorld);
+    } else {
+      this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
+    }
     if (this.bendHint.lengthSq() <= TRANSFORM_EPSILON) {
       this.bendHint.set(0, chain.isLeg ? 1 : -1, 0);
     }
@@ -574,18 +569,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       throw new Error("Replay V4 contact residual is invalid");
     }
 
-    // Rower/Ski arms beyond soft budget: keep pure clip. Grips snap to palms
-    // after update. Bike keeps a larger hand budget for bar lock.
-    if (
-      !chain.isLeg &&
-      this.options.sport !== "bike" &&
-      residual > this.softTranslateBudget(chain) * 1.15
-    ) {
-      this.softOrientEffector(chain);
-      return;
-    }
-
-    if (residual <= SOFT_DEADZONE_M) {
+    if (residual <= CONTACT_DEADZONE_M) {
       this.softOrientEffector(chain);
       return;
     }
@@ -602,17 +586,27 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     }
 
     if (chain.isLeg) {
+      // Feet need the equipment frame re-established between position passes;
+      // pedal/plate orientation changes the non-zero sole contact offset.
       this.softOrientEffector(chain);
       this.root.updateMatrixWorld(true);
-    }
-    this.solvePositionTowardTarget(chain, proximalLength, distalLength);
-    this.root.updateMatrixWorld(true);
-    this.softOrientEffector(chain);
-    this.root.updateMatrixWorld(true);
-    if (chain.isLeg) {
       this.solvePositionTowardTarget(chain, proximalLength, distalLength);
       this.root.updateMatrixWorld(true);
       this.softOrientEffector(chain);
+      this.root.updateMatrixWorld(true);
+      this.solvePositionTowardTarget(chain, proximalLength, distalLength);
+      this.root.updateMatrixWorld(true);
+      this.softOrientEffector(chain);
+      this.root.updateMatrixWorld(true);
+      return;
+    }
+
+    // Arms keep a restrained terminal frame, then repeatedly close the palm
+    // offset. No equipment is allowed to move or telescope to hide residual.
+    this.softOrientEffector(chain);
+    this.root.updateMatrixWorld(true);
+    for (let pass = 0; pass < 6; pass++) {
+      this.solvePositionTowardTarget(chain, proximalLength, distalLength);
       this.root.updateMatrixWorld(true);
     }
   }
@@ -636,13 +630,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       .applyQuaternion(this.rootWorldQuaternion);
     this.desiredEffectorWorld.copy(this.targetWorld).sub(this.contactOffsetWorld);
 
-    const budget = this.softTranslateBudget(chain);
-    this.softDesiredEffector.copy(this.desiredEffectorWorld).sub(this.effectorWorld);
-    const deltaLen = this.softDesiredEffector.length();
-    if (deltaLen > budget && deltaLen > TRANSFORM_EPSILON) {
-      this.softDesiredEffector.multiplyScalar(budget / deltaLen);
-    }
-    this.softDesiredEffector.add(this.effectorWorld);
+    this.softDesiredEffector.copy(this.desiredEffectorWorld);
 
     const maxReach = proximalLength + distalLength - 0.002;
     const minReach = Math.abs(proximalLength - distalLength) + 0.002;
@@ -653,8 +641,14 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       this.softDesiredEffector.sub(this.rootWorld).setLength(minReach).add(this.rootWorld);
     }
 
-    // Refresh bend from current middle (clip plane after prior swings).
-    this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
+    // Refresh the desired bend plane after every parent swing. Knees follow
+    // the mechanical branch marker; elbows retain the current clip-led plane.
+    if (chain.isLeg && this.options.sport === "bike") {
+      chain.jointTarget.getWorldPosition(this.bendHint);
+      this.bendHint.sub(this.rootWorld);
+    } else {
+      this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
+    }
     if (this.bendHint.lengthSq() <= TRANSFORM_EPSILON) {
       this.bendHint.set(0, chain.isLeg ? 1 : -1, 0);
     }

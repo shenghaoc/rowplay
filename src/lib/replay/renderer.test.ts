@@ -7,14 +7,14 @@ import {
   COLORS_DARK,
   COLORS_LIGHT,
   CourseRenderer,
-  poleAngleAtContact,
+  skiPolePlantCourseX2D,
   solveBikeRotationPoint2D,
   solveRigidOar2D,
   type RenderState,
   type RigidOar2D,
 } from "./renderer";
 import { MACHINE_HEX } from "./sports";
-import { buildStrokeTimeline, strokePoseAt } from "./strokeModel";
+import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 
 // The course renderer paints to <canvas>, which can't resolve CSS custom
 // properties, so it mirrors the live/ghost accent tokens as constants. app.css
@@ -71,7 +71,7 @@ describe("race-card machine palette mirrors app.css", () => {
 });
 
 describe("2D procedural athlete geometry", () => {
-  it("keeps the row handle, oarlock, shaft, and blade collinear", () => {
+  it("keeps the row handle, oarlock, shaft, and blade rigid through a dense sweep", () => {
     const oar: RigidOar2D = {
       handleX: 0,
       handleY: 0,
@@ -82,19 +82,21 @@ describe("2D procedural athlete geometry", () => {
     };
     const lockX = 12;
     const lockY = 7;
-    solveRigidOar2D(lockX, lockY, 1.17, 6.7, 13.3, 3.8, oar);
+    for (let step = 0; step <= 256; step++) {
+      const angle = (step / 256) * Math.PI * 2;
+      solveRigidOar2D(lockX, lockY, angle, 6.7, 13.3, 3.8, oar);
 
-    expect(Math.hypot(oar.handleX - lockX, oar.handleY - lockY)).toBeCloseTo(6.7, 8);
-    expect(Math.hypot(oar.bladeRootX - lockX, oar.bladeRootY - lockY)).toBeCloseTo(13.3, 8);
-    expect(Math.hypot(oar.bladeTipX - oar.bladeRootX, oar.bladeTipY - oar.bladeRootY)).toBeCloseTo(
-      3.8,
-      8,
-    );
-    const shaftX = oar.bladeRootX - oar.handleX;
-    const shaftY = oar.bladeRootY - oar.handleY;
-    const bladeX = oar.bladeTipX - oar.bladeRootX;
-    const bladeY = oar.bladeTipY - oar.bladeRootY;
-    expect(shaftX * bladeY - shaftY * bladeX).toBeCloseTo(0, 8);
+      expect(Math.hypot(oar.handleX - lockX, oar.handleY - lockY)).toBeCloseTo(6.7, 8);
+      expect(Math.hypot(oar.bladeRootX - lockX, oar.bladeRootY - lockY)).toBeCloseTo(13.3, 8);
+      expect(
+        Math.hypot(oar.bladeTipX - oar.bladeRootX, oar.bladeTipY - oar.bladeRootY),
+      ).toBeCloseTo(3.8, 8);
+      const shaftX = oar.bladeRootX - oar.handleX;
+      const shaftY = oar.bladeRootY - oar.handleY;
+      const bladeX = oar.bladeTipX - oar.bladeRootX;
+      const bladeY = oar.bladeTipY - oar.bladeRootY;
+      expect(shaftX * bladeY - shaftY * bladeX).toBeCloseTo(0, 8);
+    }
   });
 
   it("reserves extra HUD clearance for the helmeted BikeErg silhouette", () => {
@@ -114,32 +116,35 @@ describe("2D procedural athlete geometry", () => {
     expect(advanced.y).toBeGreaterThan(start.y);
   });
 
-  it("keeps BikeErg pedals rigidly opposed on one crankset", () => {
+  it("keeps BikeErg pedals rigidly opposed through a dense crank cycle", () => {
     const near = { x: 0, y: 0 };
     const far = { x: 0, y: 0 };
     const center = { x: 12.5, y: 7.25 };
     const radius = 3.1;
-    const angle = 1.17;
-    solveBikeRotationPoint2D(center.x, center.y, radius, angle, near);
-    solveBikeRotationPoint2D(center.x, center.y, radius, angle + Math.PI, far);
+    for (let step = 0; step <= 256; step++) {
+      const angle = (step / 256) * Math.PI * 2;
+      solveBikeRotationPoint2D(center.x, center.y, radius, angle, near);
+      solveBikeRotationPoint2D(center.x, center.y, radius, angle + Math.PI, far);
 
-    expect(Math.hypot(near.x - center.x, near.y - center.y)).toBeCloseTo(radius, 10);
-    expect(Math.hypot(far.x - center.x, far.y - center.y)).toBeCloseTo(radius, 10);
-    expect((near.x + far.x) * 0.5).toBeCloseTo(center.x, 10);
-    expect((near.y + far.y) * 0.5).toBeCloseTo(center.y, 10);
+      expect(Math.hypot(near.x - center.x, near.y - center.y)).toBeCloseTo(radius, 10);
+      expect(Math.hypot(far.x - center.x, far.y - center.y)).toBeCloseTo(radius, 10);
+      expect((near.x + far.x) * 0.5).toBeCloseTo(center.x, 10);
+      expect((near.y + far.y) * 0.5).toBeCloseTo(center.y, 10);
+    }
   });
 
-  it("keeps a planted SkiErg pole on one continuous ground-contact branch", () => {
-    const handY = 94.6;
-    const groundY = 100;
-    const poleLength = 13.2;
-    const before = poleAngleAtContact(handY, groundY, poleLength, Math.PI / 2 - 1e-5, 1);
-    const after = poleAngleAtContact(handY, groundY, poleLength, Math.PI / 2 + 1e-5, 1);
+  it("reconstructs one stationary SkiErg basket while the 2D athlete advances", () => {
+    const origin = 100;
+    const pixelsPerMeter = 0.72;
+    let plantedX: number | null = null;
 
-    expect(after - before).toBeCloseTo(0, 8);
-    expect(Math.cos(before)).toBeGreaterThan(0);
-    expect(handY + Math.sin(before) * poleLength).toBeCloseTo(groundY, 8);
-    expect(poleAngleAtContact(handY, groundY, poleLength, 2.1, 0)).toBe(2.1);
+    for (const cycle of [0.18, 0.3, 0.5, 0.8]) {
+      const pose = fallbackStrokePose("skierg", cycle * Math.PI * 2, 32);
+      const currentCourseX = origin + pose.cycleFrac * pose.strokeMeters * pixelsPerMeter;
+      const solved = skiPolePlantCourseX2D(currentCourseX, pixelsPerMeter, pose);
+      if (plantedX === null) plantedX = solved;
+      else expect(solved, `stationary course contact at ${cycle}`).toBeCloseTo(plantedX, 10);
+    }
   });
 });
 
@@ -235,6 +240,129 @@ describe("CourseRenderer stroke pose input", () => {
         : {}),
     };
   }
+
+  it("keeps both 2D RowErg hands on rigid oar grips through a dense stroke", () => {
+    const { ctx, operations } = makeCtx();
+    const canvas = {
+      getContext: (kind: string) => (kind === "2d" ? ctx : null),
+    } as unknown as HTMLCanvasElement;
+    const renderer = new CourseRenderer(canvas);
+    renderer.resize(640, 180);
+    const testRenderer = renderer as unknown as {
+      drawAvatar(options: Record<string, unknown>): void;
+      liveSplash: unknown;
+    };
+    const close = (actual: number, expected: number) => Math.abs(actual - expected) < 1e-7;
+
+    for (let step = 0; step <= 128; step++) {
+      operations.length = 0;
+      const cycle = step / 128;
+      const pose = fallbackStrokePose("rower", cycle * Math.PI * 2, 28);
+      testRenderer.drawAvatar({
+        x: 220,
+        y: 120,
+        accent: "#123456",
+        phase: pose.phase,
+        meters: cycle * pose.strokeMeters,
+        pixelsPerMeter: 0.72,
+        pose,
+        spm: 28,
+        isYou: true,
+        sport: "rower",
+        label: "rower",
+        splash: testRenderer.liveSplash,
+      });
+
+      const grips: Array<{ x: number; y: number }> = [];
+      for (let index = 0; index < operations.length - 1; index++) {
+        const move = operations[index];
+        const line = operations[index + 1];
+        if (move?.method !== "moveTo" || line?.method !== "lineTo") continue;
+        const x1 = move.args[0] as number;
+        const y1 = move.args[1] as number;
+        const x2 = line.args[0] as number;
+        const y2 = line.args[1] as number;
+        if (close(Math.hypot(x2 - x1, y2 - y1), 20.9)) grips.push({ x: x1, y: y1 });
+      }
+      expect(grips, `two rigid oars at ${cycle}`).toHaveLength(2);
+
+      for (const grip of grips) {
+        const armTerminatesAtGrip = operations.some((operation, index) => {
+          const edge = operations[index + 1];
+          return (
+            operation.method === "quadraticCurveTo" &&
+            edge?.method === "lineTo" &&
+            close(((operation.args[2] as number) + (edge.args[0] as number)) * 0.5, grip.x) &&
+            close(((operation.args[3] as number) + (edge.args[1] as number)) * 0.5, grip.y)
+          );
+        });
+        expect(armTerminatesAtGrip, `row hand/grip closure at ${cycle}`).toBe(true);
+      }
+    }
+  });
+
+  it("keeps both 2D SkiErg hands on rigid poles through plant and recovery", () => {
+    const { ctx, operations } = makeCtx();
+    const canvas = {
+      getContext: (kind: string) => (kind === "2d" ? ctx : null),
+    } as unknown as HTMLCanvasElement;
+    const renderer = new CourseRenderer(canvas);
+    renderer.resize(640, 180);
+    const testRenderer = renderer as unknown as {
+      drawAvatar(options: Record<string, unknown>): void;
+      liveSplash: unknown;
+    };
+    const close = (actual: number, expected: number) => Math.abs(actual - expected) < 1e-7;
+
+    for (let step = 0; step <= 256; step++) {
+      operations.length = 0;
+      const cycle = step / 256;
+      const pose = fallbackStrokePose("skierg", cycle * Math.PI * 2, 32);
+      const pixelsPerMeter = 0.72;
+      testRenderer.drawAvatar({
+        x: 200 + cycle * pose.strokeMeters * pixelsPerMeter,
+        y: 120,
+        accent: "#123456",
+        phase: pose.phase,
+        meters: cycle * pose.strokeMeters,
+        pixelsPerMeter,
+        pose,
+        spm: 32,
+        isYou: true,
+        sport: "skierg",
+        label: "skierg",
+        splash: testRenderer.liveSplash,
+      });
+
+      const poleHands: Array<{ x: number; y: number }> = [];
+      for (let index = 0; index < operations.length - 1; index++) {
+        const move = operations[index];
+        const line = operations[index + 1];
+        if (move?.method !== "moveTo" || line?.method !== "lineTo") continue;
+        const x1 = move.args[0] as number;
+        const y1 = move.args[1] as number;
+        const x2 = line.args[0] as number;
+        const y2 = line.args[1] as number;
+        if (close(Math.hypot(x2 - x1, y2 - y1), 13.8)) {
+          poleHands.push({ x: x1, y: y1 });
+        }
+      }
+      expect(poleHands, `two rigid poles at ${cycle}`).toHaveLength(2);
+
+      for (const hand of poleHands) {
+        const armTerminatesAtHand = operations.some((operation, index) => {
+          const edge = operations[index + 1];
+          return (
+            operation.method === "quadraticCurveTo" &&
+            edge?.method === "lineTo" &&
+            close(((operation.args[2] as number) + (edge.args[0] as number)) * 0.5, hand.x) &&
+            close(((operation.args[3] as number) + (edge.args[1] as number)) * 0.5, hand.y)
+          );
+        });
+        expect(armTerminatesAtHand, `ski hand/grip closure at ${cycle}`).toBe(true);
+      }
+    }
+  });
 
   function expectFiniteDrawing(ctx: CanvasRenderingContext2D) {
     const methods = [

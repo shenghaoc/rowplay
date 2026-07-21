@@ -46,3 +46,13 @@
   - [x] Generate the machine-readable V4 contract from source constants and
     artifact metrics
   - [x] Validate the USDZ through Three.js `USDLoader` as a portability gate
+
+- [x] **7. Enforce closed-chain sport mechanics**
+  - [x] Keep BikeErg shoes on opposed pedals and knees on a continuous
+    rider-forward bend branch through the full crank cycle
+  - [x] Keep RowErg palms on separate rigid scull grips without crossing the
+    torso
+  - [x] Keep SkiErg poles rigid, hands on their grips, and loaded baskets fixed
+    in course space while the athlete advances
+  - [x] Protect V4, procedural 3D, and Canvas 2D paths with dense full-cycle
+    regression tests, the repository gate, and live browser acceptance

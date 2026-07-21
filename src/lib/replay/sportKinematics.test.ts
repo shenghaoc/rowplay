@@ -82,20 +82,26 @@ describe("sportKinematics", () => {
 
   it("plants and releases SkiErg poles with C1 contact velocity", () => {
     const driveFrac = poseAt("skierg", 0).driveFrac;
+    const recoveryFrac = 1 - driveFrac;
     const epsilon = 1e-5;
-    const contactAtDriveProgress = (progress: number) =>
-      solveSkierKinematics(poseAt("skierg", driveFrac * progress)).poleContact;
+    const contactAtCycle = (cycle: number) =>
+      solveSkierKinematics(poseAt("skierg", cycle)).poleContact;
 
     // Each boundary has zero velocity on both sides: lift-off and touch-down
     // are no longer eased with a nonzero-velocity curve that makes the stick
     // visibly snap through the snow.
     // The shared technique graph enters the plant at 0.5% of the drive,
-    // reaches a full brace at 7.5%, holds it throughout the loaded pull, then
-    // starts its C2 release at 84% and clears the snow at 97%.
-    for (const boundary of [0.005, 0.075, 0.84, 0.97]) {
-      const before = contactAtDriveProgress(boundary - epsilon);
-      const atBoundary = contactAtDriveProgress(boundary);
-      const after = contactAtDriveProgress(boundary + epsilon);
+    // reaches a full brace at 18%, holds it throughout the loaded pull, then
+    // starts its C2 release at 84% and clears the snow 8% into recovery.
+    for (const boundary of [
+      driveFrac * 0.005,
+      driveFrac * 0.18,
+      driveFrac * 0.84,
+      driveFrac + recoveryFrac * 0.08,
+    ]) {
+      const before = contactAtCycle(boundary - epsilon);
+      const atBoundary = contactAtCycle(boundary);
+      const after = contactAtCycle(boundary + epsilon);
       const incomingVelocity = (atBoundary - before) / epsilon;
       const outgoingVelocity = (after - atBoundary) / epsilon;
 
@@ -111,16 +117,17 @@ describe("sportKinematics", () => {
       ).toBeLessThan(0.02);
     }
 
-    expect(contactAtDriveProgress(0)).toBe(0);
+    expect(contactAtCycle(0)).toBe(0);
     // The basket is fully braced against the snow while the press develops and
     // peaks; this is the visual anchor that makes the skier's forward drive
     // read as propulsion rather than a pair of swinging sticks.
-    for (const progress of [0.08, 0.18, 0.4, 0.62, 0.72, 0.8]) {
-      expect(contactAtDriveProgress(progress), `full plant at ${progress}`).toBe(1);
+    for (const progress of [0.18, 0.4, 0.62, 0.72, 0.8]) {
+      expect(contactAtCycle(driveFrac * progress), `full plant at ${progress}`).toBe(1);
     }
-    expect(contactAtDriveProgress(0.9)).toBeGreaterThan(0);
-    expect(contactAtDriveProgress(0.9)).toBeLessThan(1);
-    expect(contactAtDriveProgress(1)).toBe(0);
+    expect(contactAtCycle(driveFrac * 0.9)).toBeGreaterThan(0);
+    expect(contactAtCycle(driveFrac * 0.9)).toBeLessThan(1);
+    expect(contactAtCycle(driveFrac)).toBeGreaterThan(0);
+    expect(contactAtCycle(driveFrac + recoveryFrac * 0.08)).toBe(0);
   });
 
   it("keeps all normalized sport channels finite and bounded", () => {

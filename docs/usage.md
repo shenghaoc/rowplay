@@ -146,10 +146,13 @@ athlete-specific biomechanics.
 The current 3D packages make the anatomical and equipment contracts visible:
 the V4 skin deforms around its authored skeleton, while the V3 equipment builds
 as coherent assemblies—a boat and oar rig, Nordic skis, and a continuous
-bicycle wheel/frame/drivetrain. During the illustrated SkiErg plant, each basket
-holds a deterministic course anchor while the hands remain on the grips. These
-are deliberate illustrative motion constraints, not measured joint or force
-data from Concept2.
+bicycle wheel/frame/drivetrain. RowErg palms stay on separate rigid scull grips
+and outside the torso. During the illustrated SkiErg plant, each rigid 1.55 m
+pole holds a deterministic course anchor while its hand remains on the grip.
+BikeErg shoes stay on opposed pedals while each knee follows a continuous
+rider-forward branch and retains flexion through bottom dead centre. These are
+deliberate illustrative motion constraints, not measured joint or force data
+from Concept2.
 
 The shipped V4 athlete is a local, repository-owned generic asset: one skinned
 mesh, an authored skeleton, and three canonical sport clips. Three.js samples
@@ -186,6 +189,12 @@ and viewport-aware framing, speed-aware follow, and camera-relative fill light
 keep the athlete readable around the full course. Environment contrast and
 detail stay subordinate to the figure, equipment contacts, ghost comparison,
 and telemetry.
+
+The contact pass does not move or resize equipment to rescue an authored pose.
+It rotates each reachable two-link limb over its anatomical envelope, preserves
+the clip-authored elbow plane, and uses the equipment-derived knee branch for
+cycling. If input geometry is ever incompatible, the limb clamps at its real
+reach instead of stretching a skeleton, pole, oar, or crank.
 
 The 2D BikeErg uses the same mechanically forward clockwise convention for its
 wheels and cranks. Explicit opposing crank arms, pedals, chainring, sprocket,

@@ -1131,7 +1131,7 @@ function createSportClip(
     replaySport: sport,
     replayDriveEnd: V4_DRIVE_END[sport],
     replayPhaseSchema: V4_PHASE_SCHEMAS[sport],
-    role: "canonical technique clip; runtime applies soft contact only (no V3 arm oracle)",
+    role: "canonical technique clip; runtime contact-constrains palms and soles (no V3 arm oracle)",
   };
   if (!clip.validate()) throw new Error(`${sport} V4 clip failed Three.js validation`);
   return clip;

@@ -1395,15 +1395,13 @@ describe("CourseRenderer3D", () => {
         const target = avatar.v4Targets[targetName];
         const contact = v4EffectorWorld(instance, effector);
         const targetPosition = target.getWorldPosition(new THREE.Vector3());
-        // Clip-primary contact: position locks within limb reach using the clip
-        // bend plane. Orientation is deliberately soft — never forced to the
-        // equipment quaternion (that corkscrewed forearms in the rejected hybrid).
-        const isHand = effector === "leftHand" || effector === "rightHand";
+        // The clip supplies base performance and arm bend planes; rigid sport
+        // equipment remains the terminal contact authority. Orientation stays
+        // restrained so exact position never corkscrews a forearm.
         expect(
           contact.distanceTo(targetPosition),
           `${label} ${effector} position contact`,
-          // Hands: athlete-led / clip-primary (few-cm soft). Feet: firm equipment lock.
-        ).toBeLessThan(isHand ? 0.2 : 0.05);
+        ).toBeLessThan(0.015);
         const contactOrientation = instance.bones[metric.bone].getWorldQuaternion(
           new THREE.Quaternion(),
         );
@@ -1548,7 +1546,7 @@ describe("CourseRenderer3D", () => {
       }
     });
 
-    it("keeps RowErg hands uncrossed without chicken-wing elbows (clip-primary)", () => {
+    it("keeps RowErg hands on separate scull grips without chicken-wing elbows", () => {
       const renderer = rendererFor("rower");
       try {
         const inv = new THREE.Matrix4();
@@ -1570,7 +1568,7 @@ describe("CourseRenderer3D", () => {
           rightElbow
             .copy(instance.bones.v4RightForearm.getWorldPosition(new THREE.Vector3()))
             .applyMatrix4(inv);
-          // Concept2 single-handle: palms stay on their own halves.
+          // Each palm stays on its own inboard scull handle.
           expect(leftLocal.x, `left hand stays port at ${cycle}`).toBeLessThan(0.02);
           expect(rightLocal.x, `right hand stays starboard at ${cycle}`).toBeGreaterThan(-0.02);
           expect(rightLocal.x - leftLocal.x, `hands uncrossed at ${cycle}`).toBeGreaterThan(0.06);
@@ -1644,8 +1642,11 @@ describe("CourseRenderer3D", () => {
         const inv = new THREE.Matrix4();
         const kneeLocal = new THREE.Vector3();
         const hipLocal = new THREE.Vector3();
-        for (let step = 0; step <= 24; step++) {
-          const cycle = step / 24;
+        const ankleLocal = new THREE.Vector3();
+        const previousKnees = new Map<"Left" | "Right", THREE.Vector3>();
+        const firstKnees = new Map<"Left" | "Right", THREE.Vector3>();
+        for (let step = 0; step <= 256; step++) {
+          const cycle = step / 256;
           renderer.render(makeSportState("bike", cycle), false);
           const { avatar, instance } = v4Lane(renderer);
           getScene(renderer).updateMatrixWorld(true);
@@ -1653,18 +1654,43 @@ describe("CourseRenderer3D", () => {
           for (const side of ["Left", "Right"] as const) {
             const upper = instance.bones[`v4${side}UpperLeg`];
             const lower = instance.bones[`v4${side}LowerLeg`];
+            const foot = instance.bones[`v4${side}Foot`];
             hipLocal.copy(upper.getWorldPosition(new THREE.Vector3())).applyMatrix4(inv);
             kneeLocal.copy(lower.getWorldPosition(new THREE.Vector3())).applyMatrix4(inv);
-            // A healthy pedal stroke keeps the knee near or forward of the hip
-            // in rider space; a flip sends it far aft of the saddle.
-            expect(
-              kneeLocal.z,
-              `${side} knee stays near the crank plane at ${cycle}`,
-            ).toBeGreaterThan(hipLocal.z - 0.45);
+            ankleLocal.copy(foot.getWorldPosition(new THREE.Vector3())).applyMatrix4(inv);
+            // The selected sphere-intersection branch is always forward (+Z)
+            // and outside its hip. A rear branch is the characteristic
+            // backwards-snapping leg defect near crank dead centre.
+            expect(kneeLocal.z, `${side} knee forward at ${cycle}`).toBeGreaterThan(
+              hipLocal.z + 0.02,
+            );
             expect(kneeLocal.y, `${side} knee stays above the pedal at ${cycle}`).toBeGreaterThan(
               0.55,
             );
+            const interiorAngle = kneeLocal
+              .clone()
+              .sub(hipLocal)
+              .angleTo(ankleLocal.clone().sub(kneeLocal));
+            expect(interiorAngle, `${side} knee stays unlocked at ${cycle}`).toBeGreaterThan(0.35);
+            expect(interiorAngle, `${side} knee flexion bounded at ${cycle}`).toBeLessThan(2.4);
+
+            const prior = previousKnees.get(side);
+            if (prior) {
+              expect(
+                kneeLocal.distanceTo(prior),
+                `${side} knee trajectory continuous at ${cycle}`,
+              ).toBeLessThan(0.04);
+            } else {
+              firstKnees.set(side, kneeLocal.clone());
+            }
+            previousKnees.set(side, kneeLocal.clone());
           }
+        }
+        for (const side of ["Left", "Right"] as const) {
+          expect(
+            previousKnees.get(side)!.distanceTo(firstKnees.get(side)!),
+            `${side} knee closes continuously at 0 / 2π`,
+          ).toBeLessThan(1e-5);
         }
       } finally {
         renderer.destroy();
@@ -1726,10 +1752,13 @@ describe("CourseRenderer3D", () => {
     it("keeps V4 RowErg palms and forearms outside the torso core through the stroke", () => {
       const renderer = rendererFor("rower");
       try {
-        for (let step = 0; step < 48; step++) {
-          renderer.render(makeSportState("rower", step / 48), false);
+        const previousPalms = new Map<"left" | "right", THREE.Vector3>();
+        const firstPalms = new Map<"left" | "right", THREE.Vector3>();
+        for (let step = 0; step <= 128; step++) {
+          const cycle = step / 128;
+          renderer.render(makeSportState("rower", cycle), false);
           const { motion, instance } = v4Lane(renderer);
-          expect(motion.enabled, `rower V4 remains enabled at ${step}/48`).toBe(true);
+          expect(motion.enabled, `rower V4 remains enabled at ${cycle}`).toBe(true);
           const hips = instance.bones.v4Hips.getWorldPosition(new THREE.Vector3());
           const chest = instance.bones.v4Chest.getWorldPosition(new THREE.Vector3());
           const torsoAxis = chest.clone().sub(hips);
@@ -1738,6 +1767,10 @@ describe("CourseRenderer3D", () => {
           for (const side of ["left", "right"] as const) {
             const effector = `${side}Hand` as const;
             const palm = v4EffectorWorld(instance, effector);
+            expect(
+              palm.distanceTo(worldPosition(renderer, `rower-hand-contact-${side}`)),
+              `${side} palm stays on rigid scull grip at ${cycle}`,
+            ).toBeLessThan(0.015);
             const elbow = instance.bones[
               side === "left" ? "v4LeftForearm" : "v4RightForearm"
             ].getWorldPosition(new THREE.Vector3());
@@ -1754,10 +1787,22 @@ describe("CourseRenderer3D", () => {
               const torsoCenter = hips.clone().addScaledVector(torsoAxis, along);
               expect(
                 point.distanceTo(torsoCenter),
-                `${side} ${part} torso clearance at ${step}/48`,
+                `${side} ${part} torso clearance at ${cycle}`,
               ).toBeGreaterThan(part === "palm" ? 0.14 : 0.11);
             }
+            const prior = previousPalms.get(side);
+            if (prior) {
+              expect(palm.distanceTo(prior), `${side} palm continuity at ${cycle}`).toBeLessThan(
+                0.06,
+              );
+            } else {
+              firstPalms.set(side, palm.clone());
+            }
+            previousPalms.set(side, palm.clone());
           }
+        }
+        for (const side of ["left", "right"] as const) {
+          expect(previousPalms.get(side)!.distanceTo(firstPalms.get(side)!)).toBeLessThan(1e-5);
         }
       } finally {
         renderer.destroy();
@@ -1767,27 +1812,57 @@ describe("CourseRenderer3D", () => {
     it("keeps planted SkiErg hardware fixed in the course while the V4 skier advances", () => {
       const renderer = rendererFor("skierg");
       const plantedTips = new Map<"left" | "right", THREE.Vector3>();
+      const previousGrips = new Map<"left" | "right", THREE.Vector3>();
       try {
-        for (const cycle of [0.05, 0.11, 0.18, 0.22]) {
-          renderer.render(makeSportState("skierg", cycle, 200 + cycle * 8), false);
-          expectV4Contacts(renderer, `skierg plant ${cycle}`);
+        for (let step = 0; step <= 256; step++) {
+          const cycle = step / 256;
+          const state = makeSportState("skierg", cycle, 200 + cycle * 8);
+          const kinematics = solveSkierKinematics(state.strokePose!);
+          renderer.render(state, false);
+          expectV4Contacts(renderer, `skierg ${cycle}`);
           const { instance } = v4Lane(renderer);
           for (const side of ["left", "right"] as const) {
             const tip = worldPosition(renderer, `skierg-pole-contact-${side}`);
-            const prior = plantedTips.get(side);
-            if (prior) {
-              expect(tip.distanceTo(prior), `${side} V4 planted-tip drift`).toBeLessThan(0.004);
-            } else {
-              plantedTips.set(side, tip.clone());
-            }
-            expect(tip.y, `${side} V4 planted-tip height`).toBeCloseTo(0.055, 5);
+            const grip = worldPosition(renderer, `skierg-pole-grip-${side}`);
+            expect(grip.distanceTo(tip), `${side} rigid pole at ${cycle}`).toBeCloseTo(1.55, 5);
             expect(
-              v4EffectorWorld(instance, `${side}Hand`).distanceTo(
-                worldPosition(renderer, `skierg-pole-grip-${side}`),
-              ),
-              `${side} V4 hand stays on planted grip`,
-            ).toBeLessThan(0.22);
+              v4EffectorWorld(instance, `${side}Hand`).distanceTo(grip),
+              `${side} V4 hand stays on grip at ${cycle}`,
+            ).toBeLessThan(0.015);
+
+            if (kinematics.poleContact >= 1 - 1e-9) {
+              const priorPlant = plantedTips.get(side);
+              if (priorPlant) {
+                expect(tip.distanceTo(priorPlant), `${side} V4 planted-tip drift`).toBeLessThan(
+                  0.004,
+                );
+              } else {
+                plantedTips.set(side, tip.clone());
+              }
+              expect(tip.y, `${side} V4 planted-tip height`).toBeCloseTo(0.055, 5);
+            }
+
+            const priorGrip = previousGrips.get(side);
+            if (priorGrip) {
+              expect(
+                grip.distanceTo(priorGrip),
+                `${side} grip continuity at ${cycle}; contact=${kinematics.poleContact.toFixed(4)} prior=${priorGrip
+                  .toArray()
+                  .map((value) => value.toFixed(3))
+                  .join(",")} next=${grip
+                  .toArray()
+                  .map((value) => value.toFixed(3))
+                  .join(",")} tip=${tip
+                  .toArray()
+                  .map((value) => value.toFixed(3))
+                  .join(",")}`,
+              ).toBeLessThan(0.06);
+            }
+            previousGrips.set(side, grip.clone());
           }
+        }
+        for (const side of ["left", "right"] as const) {
+          expect(plantedTips.get(side), `${side} loaded plant sampled`).toBeDefined();
         }
       } finally {
         renderer.destroy();
@@ -1807,13 +1882,13 @@ describe("CourseRenderer3D", () => {
                 worldPosition(renderer, `bike-hand-contact-${side}`),
               ),
               `${side} V4 palm-bar contact at ${cycle}`,
-            ).toBeLessThan(0.22);
+            ).toBeLessThan(0.015);
             expect(
               v4EffectorWorld(instance, `${side}Foot`).distanceTo(
                 worldPosition(renderer, `bike-pedal-${side}`),
               ),
               `${side} V4 sole-pedal contact at ${cycle}`,
-            ).toBeLessThan(0.06);
+            ).toBeLessThan(0.015);
           }
         }
       } finally {
@@ -1922,7 +1997,7 @@ describe("CourseRenderer3D", () => {
     expect(minimumShaftSeparation).toBeGreaterThan(40);
     expect(minimumTipSpan).toBeGreaterThan(0.7);
     expect(minimumFarPoleLength).toBeGreaterThan(48);
-    expect(minimumNearPoleLength).toBeGreaterThan(36);
+    expect(minimumNearPoleLength).toBeGreaterThan(32);
     renderer.destroy();
   });
 
@@ -1957,8 +2032,6 @@ describe("CourseRenderer3D", () => {
         ["rower-shin-right", 0.552],
       ],
       skierg: [
-        // Pole shafts may stretch slightly when tips are planted so arms stay
-        // on the authored arc (PROMPT 9: no tip-sphere hand projection).
         ["skierg-upper-arm-left", 0.38],
         ["skierg-upper-arm-right", 0.38],
         ["skierg-forearm-left", 0.36],
@@ -2260,7 +2333,7 @@ describe("CourseRenderer3D", () => {
     const assets = await loadCheckedInReplayAssetTemplateLibrary();
     const renderer = new CourseRenderer3D(makeHost(), "medium", "skierg", { assets });
     renderer.resize(1140, 420);
-    const plantedCycles = [0.05, 0.11, 0.18, 0.22];
+    const plantedCycles = [0.07, 0.11, 0.18, 0.22];
     const plantedTips = new Map<string, THREE.Vector3>();
 
     for (const cycle of plantedCycles) {
@@ -2276,10 +2349,7 @@ describe("CourseRenderer3D", () => {
         const basket = sceneObject(renderer, `skierg-pole-tip-${side}`);
 
         expect(hand.distanceTo(grip), `${side} hand remains on grip`).toBeLessThan(1e-6);
-        // Planted poles may stretch so the hand stays on the authored arc
-        // rather than being projected onto a tip sphere (PROMPT 9).
-        expect(grip.distanceTo(tip), `${side} planted pole span`).toBeGreaterThan(1.0);
-        expect(grip.distanceTo(tip), `${side} planted pole span upper`).toBeLessThan(2.1);
+        expect(grip.distanceTo(tip), `${side} rigid planted pole span`).toBeCloseTo(1.55, 5);
         expect(tip.y, `${side} carbide tip stays on snow`).toBeCloseTo(0.055, 5);
         const prior = plantedTips.get(side);
         // The skier's torso advances through the press, but a loaded basket
@@ -2370,10 +2440,17 @@ describe("CourseRenderer3D", () => {
     const host = makeHost();
     const renderer = new CourseRenderer3D(host, "medium", "bike");
     renderer.resize(800, 600);
+    const previousKnees = new Map<"left" | "right", THREE.Vector3>();
+    const firstKnees = new Map<"left" | "right", THREE.Vector3>();
 
-    for (const cycle of [0, 0.125, 0.25, 0.5, 0.75, 0.999]) {
+    for (let step = 0; step <= 256; step++) {
+      const cycle = step / 256;
       renderer.render(makeSportState("bike", cycle), false);
-      for (const side of ["left", "right"]) {
+      const pelvisObject = sceneObject(renderer, "bike-pelvis");
+      const rider = pelvisObject.parent;
+      expect(rider, "bike rider root").toBeDefined();
+      const pelvis = rider!.worldToLocal(pelvisObject.getWorldPosition(new THREE.Vector3()));
+      for (const side of ["left", "right"] as const) {
         expect(
           worldPosition(renderer, `bike-hand-${side}`).distanceTo(
             worldPosition(renderer, `bike-hand-contact-${side}`),
@@ -2387,7 +2464,24 @@ describe("CourseRenderer3D", () => {
         expect(
           Math.abs(sceneObject(renderer, `bike-foot-contact-${side}`).rotation.x),
         ).toBeLessThan(0.24);
+        const knee = rider!.worldToLocal(worldPosition(renderer, `bike-knee-${side}`));
+        expect(knee.z, `${side} fallback knee stays forward at ${cycle}`).toBeGreaterThan(
+          pelvis.z + 0.02,
+        );
+        const prior = previousKnees.get(side);
+        if (prior) {
+          expect(
+            knee.distanceTo(prior),
+            `${side} fallback knee continuity at ${cycle}`,
+          ).toBeLessThan(0.04);
+        } else {
+          firstKnees.set(side, knee.clone());
+        }
+        previousKnees.set(side, knee);
       }
+    }
+    for (const side of ["left", "right"] as const) {
+      expect(previousKnees.get(side)!.distanceTo(firstKnees.get(side)!)).toBeLessThan(1e-5);
     }
     renderer.destroy();
   });

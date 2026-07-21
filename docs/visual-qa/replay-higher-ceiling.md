@@ -4,7 +4,32 @@ This note records rendered-frame evidence for the authored-athlete and venue
 composition pass on draft PR #171. It is a visual acceptance record, not a
 substitute for the motion/contact regression suite.
 
-## PROMPT 9 — clip-primary arm architecture (2026-07)
+## Current correctness pass — contact-constrained mechanics (2026-07-21)
+
+This pass supersedes the PROMPT 9 athlete-led contact policy below. Authored
+clips still supply the base performance and the RowErg/SkiErg elbow plane, but
+rigid sport equipment is again the terminal authority. The V4 hero root now
+reports `userData.replayV4Architecture = "clip-contact-constrained"`.
+
+| Sport   | Current mechanical contract                                                                                                                                                                                     |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BikeErg | Both shoes remain on mechanically opposed pedals. Each knee selects one continuous rider-forward branch of the hip/pedal sphere intersection; saddle height retains visible flexion through bottom dead centre. |
+| RowErg  | Each palm terminates on its own rigid inboard scull grip. The hands remain uncrossed and outside the torso; neither a synthetic wide bar nor palm-led oar motion is present.                                    |
+| SkiErg  | Each pole is a rigid 1.55 m link. During the loaded press its basket remains fixed in course space while the skier advances; the hand is solved on the pole-tip sphere and inside arm reach.                    |
+
+The correction is protected across dense full cycles: 256-step BikeErg knee
+branch/continuity sampling, 128-step RowErg palm/contact/torso-clearance
+sampling, and 256-step SkiErg rigid-pole/plant/contact/continuity sampling. V3
+procedural fallback contacts and the 2D shared timing path remain covered too.
+Live browser review confirmed the RowErg, SkiErg, and BikeErg corrections in
+both Canvas 2D and WebGPU 3D, with no browser warnings or errors.
+
+## Historical — PROMPT 9 clip-primary arm architecture (superseded)
+
+The following section records the prior experiment and is retained only as
+diagnostic history. Its athlete-led grips, synthetic RowErg bar, stretchable
+ski poles, and `clip-primary-athlete-led` marker are no longer the runtime
+policy.
 
 ### Rejected hybrid (root cause of “ridiculous arms”)
 
@@ -22,15 +47,15 @@ palm–handle distance was millimetre-perfect.
 
 ### Replacement
 
-| Layer | Behaviour |
-| --- | --- |
-| Clip | Denser biomechanical row/ski cycles in `rigV4.ts` (late arm draw; double-pole press arc). Baked into `static/replay-assets/rowplay-athlete-v4.glb`. |
-| Bend plane | **Clip elbow/knee only** — V3 elbow markers are never consulted by V4. |
-| Hand position | Contact IK within limb reach (standard equipment lock). |
-| Hand orientation | **Limited slerp** (~12°) — never a forced equipment quaternion. |
-| Feet | Full sole frame lock (no forearm twist chain). |
-| Ski poles | Hands own the arc; poles follow hands. Planted tips stay on snow with stretchable shafts — no tip-sphere hand projection. |
-| Diagnostics | `setDiagnosticMode`: `clip-only`, `clip-pelvis`, `clip-hands`, `full`, `wireframe`, `unlit`, … |
+| Layer            | Behaviour                                                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clip             | Denser biomechanical row/ski cycles in `rigV4.ts` (late arm draw; double-pole press arc). Baked into `static/replay-assets/rowplay-athlete-v4.glb`. |
+| Bend plane       | **Clip elbow/knee only** — V3 elbow markers are never consulted by V4.                                                                              |
+| Hand position    | Contact IK within limb reach (standard equipment lock).                                                                                             |
+| Hand orientation | **Limited slerp** (~12°) — never a forced equipment quaternion.                                                                                     |
+| Feet             | Full sole frame lock (no forearm twist chain).                                                                                                      |
+| Ski poles        | Hands own the arc; poles follow hands. Planted tips stay on snow with stretchable shafts — no tip-sphere hand projection.                           |
+| Diagnostics      | `setDiagnosticMode`: `clip-only`, `clip-pelvis`, `clip-hands`, `full`, `wireframe`, `unlit`, …                                                      |
 
 Architecture marker on the hero root: `userData.replayV4Architecture = "clip-primary-athlete-led"`.
 
@@ -41,12 +66,12 @@ equipment paths continued to generate arm pose via two-bone IK. That is rejected
 
 **Now:**
 
-| Limb | Policy |
-| --- | --- |
-| Arms (row/ski) | Pure clip when residual &gt; 4.5 cm; soft orient ≤8°. |
-| Arms (bike) | Firmer bar lock (reach IK, clip bend plane). |
-| Legs | Equipment lock with clip bend plane. |
-| Grips | **Follow** skinned palms after each V4 update (`syncEquipmentToHero`). |
+| Limb           | Policy                                                                 |
+| -------------- | ---------------------------------------------------------------------- |
+| Arms (row/ski) | Pure clip when residual &gt; 4.5 cm; soft orient ≤8°.                  |
+| Arms (bike)    | Firmer bar lock (reach IK, clip bend plane).                           |
+| Legs           | Equipment lock with clip bend plane.                                   |
+| Grips          | **Follow** skinned palms after each V4 update (`syncEquipmentToHero`). |
 
 RowErg **Option 1 Concept2**: single handle bar appears when V4 is active; dual
 oars hide so they cannot own the arm solve. Ski poles stretch from hero palms

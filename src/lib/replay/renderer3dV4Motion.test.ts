@@ -298,7 +298,7 @@ function disposeLane(lane: TestLane, controller?: ReplayV4MotionController | nul
 
 /**
  * Place equipment targets a few centimetres from the pure-clip effectors so
- * soft contact can close the residual without needing a full IK rewrite.
+ * the contact pass can close the residual from a known reachable setup.
  * Call after a clip-only (or full) sample with pelvis aligned.
  */
 function placeTargetsNearClipEffectors(
@@ -328,7 +328,7 @@ describe.each([
   ["skierg", "y"],
   ["bike", "z"],
 ] as const)("V4 %s motion controller", (sport, animatedAxis) => {
-  it("samples its sport clip, aligns the pelvis, soft-contacts, and reveals only the hero", () => {
+  it("samples its sport clip, aligns the pelvis, constrains contacts, and reveals only the hero", () => {
     const lane = createLane();
     const controller = installReplayV4MotionController({
       sport,
@@ -355,7 +355,7 @@ describe.each([
       expect(controller?.root.userData).toMatchObject({
         replayV4Athlete: true,
         replayV4Sport: sport,
-        replayV4Architecture: "clip-primary-athlete-led",
+        replayV4Architecture: "clip-contact-constrained",
       });
       expect(controller?.mesh.userData).toMatchObject({
         replayV4Athlete: true,
@@ -470,7 +470,7 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
-  it("keeps the clip elbow primary while applying soft hand contact", () => {
+  it("keeps the clip elbow plane while closing rigid hand contacts", () => {
     const lane = createLane();
     const controller = installReplayV4MotionController({
       sport: "rower",
@@ -500,7 +500,7 @@ describe("V4 motion determinism and fallback safety", () => {
           lane.targets.rightHand.getWorldPosition(new THREE.Vector3()),
         ),
       ).toBeLessThan(0.03);
-      expect(controller?.root.userData.replayV4Architecture).toBe("clip-primary-athlete-led");
+      expect(controller?.root.userData.replayV4Architecture).toBe("clip-contact-constrained");
     } finally {
       disposeLane(lane, controller);
     }
@@ -550,7 +550,7 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
-  it("clip-only diagnostic mode samples without soft contact correction", () => {
+  it("clip-only diagnostic mode samples without contact correction", () => {
     const lane = createLane();
     const controller = installReplayV4MotionController({
       sport: "rower",
@@ -632,9 +632,9 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
-  it("keeps the hero enabled when a contact is far outside soft budget", () => {
-    // Clip-primary soft contact never disables the skinned athlete merely
-    // because a grip is unreachable — that used to resurrect the V3 puppet.
+  it("keeps the hero enabled when a contact is outside anatomical reach", () => {
+    // An impossible target clamps at anatomical reach; it must never disable
+    // the skinned athlete or stretch the skeleton/equipment to fake closure.
     const lane = createLane();
     lane.targets.leftHand.position.set(-4, 3.5, 2);
     const controller = installReplayV4MotionController({
@@ -649,7 +649,7 @@ describe("V4 motion determinism and fallback safety", () => {
       expect(controller?.root.visible).toBe(true);
       expect(lane.athleteFallback.visible).toBe(false);
       expect(lane.equipment.visible).toBe(true);
-      // Residual stays large; soft budget only applied a few centimetres.
+      // Residual stays large because a rigid two-link arm cannot reach 4 m.
       expect(
         effectorWorld(lane.instance, "leftHand").distanceTo(
           lane.targets.leftHand.getWorldPosition(new THREE.Vector3()),
