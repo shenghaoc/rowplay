@@ -30,11 +30,9 @@ beforeAll(async () => {
   ]);
   assetBytes = bytes;
   contract = JSON.parse(contractText) as V4Contract;
-  const buffer = assetBytes.buffer.slice(
-    assetBytes.byteOffset,
-    assetBytes.byteOffset + assetBytes.byteLength,
-  );
-  group = new USDLoader().parse(buffer);
+  // Materialize a definite ArrayBuffer: Node Buffer.buffer may be SharedArrayBuffer.
+  const arrayBuffer = Uint8Array.from(assetBytes).buffer;
+  group = new USDLoader().parse(arrayBuffer);
   skinned = [];
   group.traverse((object) => {
     if ((object as THREE.SkinnedMesh).isSkinnedMesh) skinned.push(object as THREE.SkinnedMesh);
