@@ -1748,13 +1748,16 @@ function createV4Material(): THREE.Material {
     // multiplying every region by the jersey colour before lane styling.
     color: 0xffffff,
     vertexColors: true,
-    roughness: 0.68,
+    // Matte performance kit: high/ultra VSM rim light should soften seams, not
+    // polish every loft join into a shiny hard edge.
+    roughness: 0.78,
     metalness: 0,
-    sheen: 0.04,
-    sheenColor: new THREE.Color(0x7896aa),
-    sheenRoughness: 0.9,
-    clearcoat: 0.02,
+    sheen: 0.02,
+    sheenColor: new THREE.Color(0x6e8496),
+    sheenRoughness: 0.95,
+    clearcoat: 0,
     clearcoatRoughness: 1,
+    flatShading: false,
     transparent: false,
     opacity: 1,
     depthWrite: true,

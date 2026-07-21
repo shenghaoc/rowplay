@@ -262,10 +262,10 @@ def torso_color(_ring_index: int, _angle: float, point: Vector, ring: Ring):
     # front zip and upper yoke establish direction without a logo or likeness.
     if abs(point.x) > 0.78 * ring.radii[0]:
         return FABRIC_SIDE
-    if point.z > ring.center.z and abs(point.x) < 0.018:
+    if point.z > ring.center.z and abs(point.x) < 0.018 and point.y < 1.48:
         return TRIM
-    if point.y > 1.47 and point.z > ring.center.z + 0.04:
-        return FABRIC_LIGHT
+    # No light yoke band at the throat — that painted a white collar ring under
+    # high/ultra VSM that looked like a floating neck hoop.
     return FABRIC
 
 
@@ -287,107 +287,111 @@ def build_torso(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
         # Slightly narrower chest and sharper clavicle shelf so buried arm roots
         # do not read as a continuous rubber torso-to-sleeve tube.
         Ring(chest + Vector((0, -0.002, 0.016)), (0.248, 0.174), {"v4Chest": 0.82, "v4Spine": 0.18}, FABRIC, 0.025),
-        Ring(Vector((0, 1.505, 0.045)), (0.252, 0.165), {"v4Chest": 0.9, "v4Neck": 0.1}, FABRIC, 0.02),
-        Ring(Vector((0, 1.555, 0.052)), (0.21, 0.142), {"v4Chest": 0.84, "v4Neck": 0.16}, FABRIC),
-        Ring(Vector((0, 1.59, 0.054)), (0.138, 0.098), {"v4Chest": 0.62, "v4Neck": 0.38}, FABRIC),
+        # Jersey ends with a smooth radius ramp into the neck; no step that
+        # high/ultra VSM can pick up as a floating collar.
+        Ring(Vector((0, 1.5, 0.042)), (0.245, 0.16), {"v4Chest": 0.92, "v4Neck": 0.08}, FABRIC, 0.02),
+        Ring(Vector((0, 1.535, 0.048)), (0.2, 0.138), {"v4Chest": 0.7, "v4Neck": 0.3}, FABRIC),
+        Ring(Vector((0, 1.56, 0.05)), (0.145, 0.11), {"v4Chest": 0.35, "v4Neck": 0.65}, FABRIC),
+        # Last torso ring already skin-coloured and neck-sized so the jersey
+        # simply becomes the neck instead of ending on a dark fabric edge.
+        Ring(Vector((0, 1.58, 0.052)), (0.095, 0.082), {"v4Neck": 0.75, "v4Chest": 0.25}, SKIN),
     ]
     builder.add_vertical_loft(rings, 54, torso_color)
 
-    # A close front placket catches rim light without adding a floating collar
-    # ring around a bending neck.
+    # Slim front zip ends below the collar so it never forms a free-floating
+    # ridge around the throat under hard shadows.
     builder.add_loft(
         [
-            Ring(Vector((0, 1.19, 0.148)), (0.005, 0.004), {"v4Spine": 0.8, "v4Chest": 0.2}, FABRIC_LIGHT),
-            Ring(Vector((0, 1.36, 0.194)), (0.005, 0.004), {"v4Spine": 0.35, "v4Chest": 0.65}, FABRIC_LIGHT),
-            Ring(Vector((0, 1.53, 0.191)), (0.005, 0.004), {"v4Chest": 0.9, "v4Neck": 0.1}, FABRIC_LIGHT),
+            Ring(Vector((0, 1.2, 0.145)), (0.004, 0.0035), {"v4Spine": 0.8, "v4Chest": 0.2}, FABRIC_LIGHT),
+            Ring(Vector((0, 1.34, 0.182)), (0.004, 0.0035), {"v4Spine": 0.35, "v4Chest": 0.65}, FABRIC_LIGHT),
+            Ring(Vector((0, 1.48, 0.172)), (0.0035, 0.003), {"v4Chest": 0.95, "v4Neck": 0.05}, FABRIC_LIGHT),
         ],
-        10,
+        8,
         Vector((1, 0, 0)),
     )
-    # Neck has its own connected loft so head movement does not drag the broad
-    # jersey collar into a rubber cone.
+    # Pure-skin neck continuation into the head. Starts inside the last torso
+    # ring so there is no second silhouette edge.
     builder.add_vertical_loft(
         [
-            Ring(neck + Vector((0, -0.035, 0)), (0.076, 0.067), {"v4Chest": 0.35, "v4Neck": 0.65}, SKIN),
-            Ring(neck + Vector((0, 0.02, 0.004)), (0.072, 0.064), {"v4Neck": 0.85, "v4Head": 0.15}, SKIN),
-            Ring(neck + Vector((0, 0.075, 0.009)), (0.069, 0.061), {"v4Neck": 0.55, "v4Head": 0.45}, SKIN),
-            Ring(neck + Vector((0, 0.112, 0.012)), (0.073, 0.065), {"v4Head": 1}, SKIN),
+            Ring(neck + Vector((0, -0.03, 0.004)), (0.09, 0.078), {"v4Neck": 0.9, "v4Chest": 0.1}, SKIN),
+            Ring(neck + Vector((0, 0.02, 0.008)), (0.07, 0.063), {"v4Neck": 0.9, "v4Head": 0.1}, SKIN),
+            Ring(neck + Vector((0, 0.065, 0.012)), (0.068, 0.061), {"v4Neck": 0.55, "v4Head": 0.45}, SKIN),
+            Ring(neck + Vector((0, 0.105, 0.014)), (0.074, 0.068), {"v4Head": 1}, SKIN),
         ],
-        32,
+        36,
     )
 
 
 def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
-    center = bones["v4Head"] + Vector((0, 0.075, 0.02))
+    """Clean high/ultra head: one continuous cranium, soft features, tight hair.
 
-    def shape_face(point: Vector, _u: float, _v: float) -> Vector:
+    Previous passes stacked open hair lofts, floating brow/eye/mouth tubes, and
+    a hard jersey collar. Those read as black rings and smudges under high-tier
+    VSM lighting. Features now live in vertex colour + mild displacement on the
+    same ellipsoid so nothing floats off the skull.
+    """
+
+    center = bones["v4Head"] + Vector((0, 0.072, 0.018))
+
+    def shape_and_paint(point: Vector, _u: float, _v: float) -> Vector:
         local = point - center
-        # Taper jaw and chin while keeping cheek width; the exponentials build
-        # a directional brow/nose/chin profile without copying a real face.
-        if local.y < -0.025:
-            taper = 0.76 + max(0.0, min(1.0, (local.y + 0.14) / 0.115)) * 0.24
+        # Gentle jaw taper — avoid the old sharp chin spike that faceted under
+        # chase-camera lighting.
+        if local.y < -0.02:
+            taper = 0.84 + max(0.0, min(1.0, (local.y + 0.13) / 0.11)) * 0.16
             local.x *= taper
-        front = max(0.0, local.z / 0.11)
-        nose = math.exp(-((local.x / 0.028) ** 2 + ((local.y - 0.005) / 0.042) ** 2))
-        brow = math.exp(-((local.y - 0.062) / 0.025) ** 2) * math.exp(-(local.x / 0.09) ** 4)
-        chin = math.exp(-((local.y + 0.105) / 0.027) ** 2) * math.exp(-(local.x / 0.055) ** 2)
-        local.z += front * (0.031 * nose + 0.009 * brow + 0.012 * chin)
+        front = max(0.0, local.z / 0.105)
+        # Tiny nose/chin only. A continuous brow ridge previously cast a solid
+        # black shadow band across the eyes under high/ultra key light — the
+        # "visor" artefact. No brow extrusion, no painted features.
+        nose = math.exp(-((local.x / 0.028) ** 2 + ((local.y + 0.0) / 0.04) ** 2))
+        chin = math.exp(-((local.y + 0.09) / 0.03) ** 2) * math.exp(-(local.x / 0.055) ** 2)
+        local.z += front * (0.012 * nose + 0.006 * chin)
         return center + local
 
-    builder.add_ellipsoid(center, (0.116, 0.146, 0.108), {"v4Head": 1}, SKIN, 44, 30, shape_face)
+    # Clean skull only — no painted brows/eyes/mouth. Those vertex-colour marks
+    # read as a black visor or smudge under high/ultra lighting. Direction comes
+    # from mild geometry (jaw taper, soft nose plane) and the hair cap silhouette.
+    builder.add_ellipsoid(center, (0.112, 0.14, 0.104), {"v4Head": 1}, SKIN, 48, 32, shape_and_paint)
+
+    # Compact ears, buried into the skull so they never read as floating disks.
     for side in (-1, 1):
         builder.add_ellipsoid(
-            center + Vector((side * 0.114, 0.005, -0.004)),
-            (0.017, 0.034, 0.021),
+            center + Vector((side * 0.108, 0.0, -0.008)),
+            (0.014, 0.028, 0.018),
             {"v4Head": 1},
             SKIN_LIGHT,
-            18,
+            16,
             12,
         )
 
-    # A close swept hair cap and narrow headband produce clear head direction
-    # without a sport-specific helmet or facial identity.
-    builder.add_loft(
-        [
-            Ring(center + Vector((0, 0.055, -0.014)), (0.111, 0.104), {"v4Head": 1}, HAIR),
-            Ring(center + Vector((0, 0.095, -0.018)), (0.116, 0.108), {"v4Head": 1}, HAIR),
-            Ring(center + Vector((0, 0.135, -0.02)), (0.091, 0.086), {"v4Head": 1}, HAIR),
-            Ring(center + Vector((0, 0.158, -0.022)), (0.045, 0.043), {"v4Head": 1}, HAIR),
-            Ring(center + Vector((0, 0.169, -0.023)), (0.014, 0.013), {"v4Head": 1}, HAIR),
-            Ring(center + Vector((0, 0.172, -0.023)), (0.003, 0.003), {"v4Head": 1}, HAIR),
-        ],
-        38,
-        Vector((1, 0, 0)),
-        cap_start=False,
-        cap_end=False,
-    )
-    # Two subtle brow bars survive a side-lit replay frame and keep the face
-    # from becoming a blank sphere at desktop scale.
-    for side in (-1, 1):
-        builder.add_loft(
-            [
-                Ring(center + Vector((side * 0.064, 0.053, 0.106)), (0.006, 0.004), {"v4Head": 1}, HAIR),
-                Ring(center + Vector((side * 0.027, 0.058, 0.116)), (0.006, 0.004), {"v4Head": 1}, HAIR),
-            ],
-            10,
-            Vector((0, 1, 0)),
-        )
-        builder.add_ellipsoid(
-            center + Vector((side * 0.042, 0.025, 0.111)),
-            (0.011, 0.006, 0.004),
-            {"v4Head": 1},
-            HAIR,
-            14,
-            8,
-        )
-    builder.add_loft(
-        [
-            Ring(center + Vector((-0.028, -0.048, 0.107)), (0.0035, 0.0025), {"v4Head": 1}, HAIR),
-            Ring(center + Vector((0, -0.054, 0.112)), (0.0035, 0.0025), {"v4Head": 1}, HAIR),
-            Ring(center + Vector((0.028, -0.048, 0.107)), (0.0035, 0.0025), {"v4Head": 1}, HAIR),
-        ],
-        10,
-        Vector((0, 1, 0)),
+    # Low crown hair cap hugging the skull. Tall free-floating peeks and full
+    # ring lofts both produce high/ultra artefacts; keep a short rear-biased
+    # ellipsoid that never clears the head silhouette.
+    hair_center = center + Vector((0, 0.078, -0.018))
+
+    def shape_hair(point: Vector, _u: float, _v: float) -> Vector:
+        local = point - hair_center
+        # Flatten underside and front so the cap sits on the crown only.
+        if local.y < 0:
+            local.y *= 0.28
+            local.x *= 0.9
+        if local.z > 0:
+            local.z *= 0.35
+            local.y = max(local.y, 0.004)
+        # Soften the peak so it does not read as a floating sphere tip.
+        if local.y > 0.04:
+            local.y = 0.04 + (local.y - 0.04) * 0.45
+        return hair_center + local
+
+    builder.add_ellipsoid(
+        hair_center,
+        (0.1, 0.055, 0.092),
+        {"v4Head": 1},
+        HAIR,
+        32,
+        20,
+        shape_hair,
     )
 
 

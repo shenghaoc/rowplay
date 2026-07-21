@@ -8,7 +8,9 @@ const MIN_VERTICES = 4_500;
 const MAX_VERTICES = 12_000;
 const MIN_TRIANGLES = 8_500;
 const MAX_TRIANGLES = 24_000;
-const EXPECTED_COMPONENTS = 30;
+// Continuous skull + tight capped hair + ears + torso/limbs. Floating face
+// tubes and open hair rims were removed so high/ultra lighting stays clean.
+const EXPECTED_COMPONENTS = 25;
 const SOURCE_DESCRIPTION = "repository-authored Blender 5 parametric skinned athlete";
 
 const BONE_NAMES = [

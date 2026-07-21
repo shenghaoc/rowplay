@@ -119,12 +119,12 @@ remain automatic fallbacks.
   `vp run validate:replay-assets`. The build exports and reloads the GLB and
   rejects skeleton, clip, drive-boundary, skin, or contact-metadata drift. The
   USDZ portability gate lives in `src/lib/replay/rigV4Usd.test.ts`.
-- **Reviewed artifact:** 557,080 bytes; SHA-256
-  `a00f98574267f4725d93029a16fa0d6466dda4dad316a4286299b72ef9559cc8`.
+- **Reviewed artifact:** 582,480 bytes; SHA-256
+  `5a4baa256d2632bc5c13a7694eeaf37bc76f01dab7860898d75be88a2aa5e207`.
   Two independent builds must be byte-identical before the binary changes are
   committed.
-- **Reviewed USDZ derivative:** 1,253,410 bytes; SHA-256
-  `1874194458a3993f0cc18e8974de1d4cca43ced7c5d68d1f83a5fe03202571d7`.
+- **Reviewed USDZ derivative:** 1,322,729 bytes; SHA-256
+  `8648ffc8c586e59852fd8baf283add775be734fd2dc43bf1f2b92cc83403ed22`.
   Blender 5.2 does not produce byte-identical USDZ containers across repeat
   exports, so repeat-export acceptance is semantic: Three.js `USDLoader` must
   load one skinned athlete with the 19 bones in order, finite normalized skin
@@ -132,18 +132,18 @@ remain automatic fallbacks.
   references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`;
   SHA-256
-  `c2756241461b13d61c7a47f38cfa0ae45140ceb49765b3766c45d83dd53f7114`.
+  `b817a9747d37db2cca8eafe29cca6568f354045124ac1351289076f0299ad120`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named bones,
-  7,098 vertices, 13,512 triangles, one opaque vertex-colour
-  `MeshPhysicalMaterial`, zero textures/images, and 30 connected topology
+  7,446 vertices, 14,288 triangles, one opaque vertex-colour
+  `MeshPhysicalMaterial`, zero textures/images, and 25 connected topology
   components inside that single render primitive. The major forms are a shaped
-  torso, neck, directional head, two continuous shoulder-to-wrist arm lofts
-  with pinched elbows and sealed grip/thumb wedges, and two continuous
-  hip-to-ankle leg lofts with knee pinches. Smaller components supply ears,
-  swept hair, brow/eye/mouth and jersey construction, and shoe uppers,
-  contrast soles, and laces. Broad parent/child weight gradients, buried
-  uncapped shoulder/hip roots, anatomical muscle-to-tendon taper, and matte
-  smooth normals keep the model from reading as stacked blocks or joint balls.
+  torso with a smooth fabric→skin neck transition, a clean skull + crown hair
+  cap (no floating face tubes or open hair rims), two continuous
+  shoulder-to-wrist arm lofts with pinched elbows and sealed grip/thumb
+  wedges, and two continuous hip-to-ankle leg lofts with knee pinches.
+  Smaller components supply ears, jersey construction, and shoe uppers,
+  contrast soles, and laces. High/ultra lighting deliberately sees no black
+  collar rings, face visors, or open-mesh rims.
 - **Skinning:** elbow, wrist, knee, ankle, shoulder, and hip rings use spatial
   parent-to-child weight gradients. Palm/sole marker nodes and terminal-bone
   glTF extras encode exact local contact offsets: left/right hand
