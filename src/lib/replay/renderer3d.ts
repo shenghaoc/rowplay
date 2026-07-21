@@ -1668,11 +1668,14 @@ function makeRowerAvatar(
     oar.add(shaft);
     const grip = capsulePart(0.045, 0.28, equipmentGripMaterial, "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
-    grip.position.x = -side * 0.49;
+    // Keep each grip on its own side of centre. The previous ~0.5 m inboard
+    // lever put left/right handles across the midline so the arms visually
+    // crossed through the catch and recovery.
+    grip.position.x = -side * 0.34;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    handleAnchor.position.x = -side * 0.56;
+    handleAnchor.position.x = -side * 0.38;
     oar.add(handleAnchor);
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
@@ -1700,11 +1703,9 @@ function makeRowerAvatar(
       fallback: [shaft, grip, collar],
     });
     // Rigger pin sits outside the hull; blade depth is animated continuously.
-    // Keep the crossed inboard grips just forward of the pelvis shell. The
-    // former 0.05 m station put both palms through the athlete's hip volume at
-    // the catch even though the torso-only clearance test remained green.
-    // Moving the complete pin/shaft assembly preserves the rigid oarlock
-    // contract while giving a human hand a real body-clearance envelope.
+    // Inboard grips stay on their own lateral half so a scull stroke never
+    // reads as crossed arms, while the pin station keeps palms clear of the
+    // pelvis shell at the catch.
     oar.position.set(side * 0.52, 0.34, 0.095);
     oar.userData.side = side;
     group.add(oar);
@@ -1767,9 +1768,9 @@ function makeRowerAvatar(
       // compact lateral draw instead of a dropped, inside-out forearm.
       arm.bendHint
         .set(
-          arm.side * (0.68 + shoulderSet * 0.18 + armDraw * 0.05),
-          -0.05 + shoulderSet * 0.17,
-          -0.04 + bodySwing * 0.06,
+          arm.side * (0.72 + shoulderSet * 0.2 + armDraw * 0.06),
+          -0.02 + shoulderSet * 0.14,
+          -0.02 + bodySwing * 0.05,
         )
         .applyQuaternion(torso.quaternion);
       solveTwoBone3D(
@@ -2216,10 +2217,13 @@ function makeSkierAvatar(
   const SKI_TORSO_HINGE_RANGE = 0.56;
   const SKI_PELVIS_COUNTER_TILT = 0.14;
   const SKI_HEAD_GAZE_COUNTER_TILT = 0.38;
-  const SKI_HAND_CATCH_Y = 0.8;
-  const SKI_HAND_FINISH_Y = 0.12;
-  const SKI_HAND_CATCH_Z = 0.56;
-  const SKI_HAND_FINISH_Z = -0.1;
+  // High catch → long double-pole press that finishes with the hands behind
+  // the hips. The previous finish sat almost on the pelvis (Z ≈ -0.1) so the
+  // press never read as a backward arm twist.
+  const SKI_HAND_CATCH_Y = 0.88;
+  const SKI_HAND_FINISH_Y = 0.34;
+  const SKI_HAND_CATCH_Z = 0.64;
+  const SKI_HAND_FINISH_Z = -0.58;
 
   let pendingPose = fallbackStrokePose("skierg", 0);
   let pendingMeters = 0;
@@ -2276,10 +2280,10 @@ function makeSkierAvatar(
       outer.position.x * sin + outer.position.z * cos,
     );
     const yaw = outer.rotation.y - courseTurn;
-    // Plant outside the ski tracks: a realistic double-pole stance keeps both
-    // shafts visible without the old camera-side asymmetry or crossing.
-    const localX = side * 0.56;
-    const localZ = 1.04;
+    // Plant outside the ski tracks and well forward of the hips so a long
+    // back-press still keeps fixed-length poles rigid against the snow.
+    const localX = side * 0.6;
+    const localZ = 1.38;
     output.set(
       courseCenterAtPlant.x + localX * Math.cos(yaw) + localZ * Math.sin(yaw),
       POLE_CONTACT_Y,
@@ -2358,18 +2362,26 @@ function makeSkierAvatar(
     // would counter-rotate the pole sweep as the skier rounds the lap.
     courseRightWorld.set(1, 0, 0).transformDirection(outer.matrixWorld);
     courseForwardWorld.set(0, 0, 1).transformDirection(outer.matrixWorld);
-    // High reach at the plant becomes a compact, forceful hand path beside
-    // the hips at the finish. Keeping the finish just in front of the pelvis
-    // avoids the old over-pulled, shoulders-behind-the-body silhouette while
-    // the physical grip solver remains the final authority.
+    // High plant reach becomes a long double-pole press: hands drive back past
+    // the hips while elbows swing wide and aft. The grip solver still owns the
+    // rigid pole-length contact.
     const handY = THREE.MathUtils.lerp(SKI_HAND_CATCH_Y, SKI_HAND_FINISH_Y, armPress);
     const handZ = THREE.MathUtils.lerp(SKI_HAND_CATCH_Z, SKI_HAND_FINISH_Z, armPress);
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       const pole = poles[i];
       if (!arm || !pole) continue;
-      arm.handTarget.set(arm.side * (0.39 + armPress * 0.045), handY, handZ);
-      arm.bendHint.set(arm.side * (0.4 + armPress * 0.08), -0.55, 0.2);
+      // Shoulders live on the hinging upper body; refresh the local origin so
+      // the press tracks torso pitch instead of a stale rest pose.
+      arm.shoulderPoint.set(arm.side * 0.25, 0.54, 0.05);
+      arm.handTarget.set(arm.side * (0.44 + armPress * 0.08), handY, handZ);
+      // Elbow plane starts slightly below the shoulder line and rotates aft as
+      // the press loads — the silhouette of a Nordic double-pole finish.
+      arm.bendHint.set(
+        arm.side * (0.62 + armPress * 0.16),
+        -0.2 + armPress * 0.35,
+        0.42 - armPress * 1.2,
+      );
 
       // Free recovery tip: exact pole length, lifted clear of the snow, and
       // a mirrored outward sweep so neither shaft cuts through the skier.
@@ -2913,12 +2925,29 @@ function makeBikeAvatar(
         .set(leg.side * 0.12, 0, 0)
         .applyQuaternion(pelvis.quaternion)
         .add(pelvis.position);
-      const kneeLift = pedal.kneeLift.value;
-      leg.bendHint.set(
-        leg.side * (0.08 + kneeLift * 0.018),
-        0.16 + kneeLift * 0.05,
-        0.62 + kneeLift * 0.14,
-      );
+      // Stable bike knee plane: always prefer "up and slightly out" relative to
+      // the current hip→pedal chord. A fixed world hint flips the joint behind
+      // the crank once the pedal passes top/bottom dead centre under V4 IK.
+      const chordX = leg.pedalTarget.x - leg.hipPoint.x;
+      const chordY = leg.pedalTarget.y - leg.hipPoint.y;
+      const chordZ = leg.pedalTarget.z - leg.hipPoint.z;
+      // Perpendicular to the chord in the sagittal plane, forced upright, then
+      // biased outward so left/right knees never collapse through the frame.
+      let hintY = -chordZ;
+      let hintZ = chordY;
+      if (hintY < 0) {
+        hintY = -hintY;
+        hintZ = -hintZ;
+      }
+      const hintLen = Math.hypot(hintY, hintZ);
+      if (hintLen > 1e-6) {
+        hintY /= hintLen;
+        hintZ /= hintLen;
+      } else {
+        hintY = 1;
+        hintZ = 0.15;
+      }
+      leg.bendHint.set(leg.side * 0.28, hintY + 0.35, hintZ * 0.55 + 0.2);
       solveTwoBone3D(
         leg.hipPoint,
         leg.pedalTarget,

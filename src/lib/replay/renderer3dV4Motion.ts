@@ -82,6 +82,8 @@ interface ChainBinding {
   readonly target: THREE.Object3D;
   readonly bendTarget: THREE.Object3D;
   readonly offset: THREE.Vector3;
+  /** True for hip→knee→foot chains; false for shoulder→elbow→hand. */
+  readonly isLeg: boolean;
 }
 
 interface BoneRotationSnapshot {
@@ -273,6 +275,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         target: targets.leftHand,
         bendTarget: targets.leftElbow,
         offset: offsetFor(instance, "leftHand", options.effectorOffsets),
+        isLeg: false,
       },
       {
         upper: requireBone(instance, "v4RightUpperArm"),
@@ -281,6 +284,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         target: targets.rightHand,
         bendTarget: targets.rightElbow,
         offset: offsetFor(instance, "rightHand", options.effectorOffsets),
+        isLeg: false,
       },
       {
         upper: requireBone(instance, "v4LeftUpperLeg"),
@@ -289,6 +293,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         target: targets.leftFoot,
         bendTarget: targets.leftKnee,
         offset: offsetFor(instance, "leftFoot", options.effectorOffsets),
+        isLeg: true,
       },
       {
         upper: requireBone(instance, "v4RightUpperLeg"),
@@ -297,6 +302,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         target: targets.rightFoot,
         bendTarget: targets.rightKnee,
         offset: offsetFor(instance, "rightFoot", options.effectorOffsets),
+        isLeg: true,
       },
     ];
     this.baseRootPosition.copy(this.root.position);
@@ -450,19 +456,30 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     chain.target.getWorldPosition(this.targetWorld);
     chain.bendTarget.getWorldPosition(this.bendWorld);
 
-    // The sampled clip supplies the primary elbow/knee plane. A restrained
-    // procedural-oracle blend stabilizes anatomical side through near-straight
-    // poses without flattening every sport back onto the fallback choreography.
+    // Equipment contacts are procedural-authoritative. The clip still supplies
+    // a useful bend plane for free limbs, but crank-locked bike legs and the
+    // long SkiErg double-pole press must follow the procedural oracle closely
+    // or the joint flips / stalls in front of the body.
     this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
     this.oracleBendHint.copy(this.bendWorld).sub(this.rootWorld);
-    if (this.bendHint.lengthSq() > TRANSFORM_EPSILON) {
-      this.bendHint.normalize();
-      if (this.oracleBendHint.lengthSq() > TRANSFORM_EPSILON) {
-        this.oracleBendHint.normalize();
-        this.bendHint.multiplyScalar(0.8).addScaledVector(this.oracleBendHint, 0.2);
+    const sport = this.options.sport;
+    const oracleWeight = chain.isLeg
+      ? sport === "bike"
+        ? 0.92
+        : 0.55
+      : sport === "skierg"
+        ? 0.78
+        : 0.4;
+    const clipWeight = 1 - oracleWeight;
+    if (this.oracleBendHint.lengthSq() > TRANSFORM_EPSILON) {
+      this.oracleBendHint.normalize();
+      if (this.bendHint.lengthSq() > TRANSFORM_EPSILON) {
+        this.bendHint.normalize().multiplyScalar(clipWeight).addScaledVector(this.oracleBendHint, oracleWeight);
+      } else {
+        this.bendHint.copy(this.oracleBendHint);
       }
-    } else {
-      this.bendHint.copy(this.oracleBendHint);
+    } else if (this.bendHint.lengthSq() <= TRANSFORM_EPSILON) {
+      this.bendHint.set(0, chain.isLeg ? 1 : -1, 0);
     }
 
     // Procedural hand/shoe targets carry the equipment contact frame. Solve

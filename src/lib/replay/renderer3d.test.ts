@@ -1544,6 +1544,90 @@ describe("CourseRenderer3D", () => {
       }
     });
 
+    it("keeps RowErg hands uncrossed on their own lateral halves through the stroke", () => {
+      const renderer = rendererFor("rower");
+      try {
+        const inv = new THREE.Matrix4();
+        const leftLocal = new THREE.Vector3();
+        const rightLocal = new THREE.Vector3();
+        for (let step = 0; step <= 32; step++) {
+          const cycle = step / 32;
+          renderer.render(makeSportState("rower", cycle), false);
+          const { avatar, instance } = v4Lane(renderer);
+          getScene(renderer).updateMatrixWorld(true);
+          inv.copy(avatar.group.matrixWorld).invert();
+          leftLocal
+            .copy(v4EffectorWorld(instance, "leftHand"))
+            .applyMatrix4(inv);
+          rightLocal
+            .copy(v4EffectorWorld(instance, "rightHand"))
+            .applyMatrix4(inv);
+          expect(leftLocal.x, `left hand stays port at ${cycle}`).toBeLessThan(-0.02);
+          expect(rightLocal.x, `right hand stays starboard at ${cycle}`).toBeGreaterThan(0.02);
+          expect(rightLocal.x - leftLocal.x, `hands uncrossed at ${cycle}`).toBeGreaterThan(0.06);
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
+    it("presses SkiErg hands behind the hips through the loaded double-pole", () => {
+      const renderer = rendererFor("skierg");
+      try {
+        const inv = new THREE.Matrix4();
+        const handLocal = new THREE.Vector3();
+        const hipsLocal = new THREE.Vector3();
+        let sawBehind = false;
+        for (const cycle of [0.18, 0.24, 0.3, 0.34]) {
+          renderer.render(makeSportState("skierg", cycle), false);
+          const { avatar, instance } = v4Lane(renderer);
+          getScene(renderer).updateMatrixWorld(true);
+          inv.copy(avatar.group.matrixWorld).invert();
+          handLocal.copy(v4EffectorWorld(instance, "leftHand")).applyMatrix4(inv);
+          hipsLocal
+            .copy(instance.bones.v4Hips.getWorldPosition(new THREE.Vector3()))
+            .applyMatrix4(inv);
+          if (handLocal.z < hipsLocal.z - 0.12) sawBehind = true;
+        }
+        expect(sawBehind, "double-pole finish reaches behind the hips").toBe(true);
+      } finally {
+        renderer.destroy();
+      }
+    });
+
+    it("keeps BikeErg knees ahead of the hips without joint flips through a crank cycle", () => {
+      const renderer = rendererFor("bike");
+      try {
+        const inv = new THREE.Matrix4();
+        const kneeLocal = new THREE.Vector3();
+        const hipLocal = new THREE.Vector3();
+        for (let step = 0; step <= 24; step++) {
+          const cycle = step / 24;
+          renderer.render(makeSportState("bike", cycle), false);
+          const { avatar, instance } = v4Lane(renderer);
+          getScene(renderer).updateMatrixWorld(true);
+          inv.copy(avatar.group.matrixWorld).invert();
+          for (const side of ["Left", "Right"] as const) {
+            const upper = instance.bones[`v4${side}UpperLeg`];
+            const lower = instance.bones[`v4${side}LowerLeg`];
+            hipLocal.copy(upper.getWorldPosition(new THREE.Vector3())).applyMatrix4(inv);
+            kneeLocal.copy(lower.getWorldPosition(new THREE.Vector3())).applyMatrix4(inv);
+            // A healthy pedal stroke keeps the knee near or forward of the hip
+            // in rider space; a flip sends it far aft of the saddle.
+            expect(
+              kneeLocal.z,
+              `${side} knee stays near the crank plane at ${cycle}`,
+            ).toBeGreaterThan(hipLocal.z - 0.22);
+            expect(kneeLocal.y, `${side} knee stays above the pedal at ${cycle}`).toBeGreaterThan(
+              0.55,
+            );
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
     it("locks every V4 palm and sole after clip sampling while preserving authored hip motion", () => {
       const phases = {
         rower: [0.01, 0.18, 0.38, 0.54, 0.64, 0.73, 0.78, 0.98],
