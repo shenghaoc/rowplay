@@ -15,7 +15,9 @@ const TRANSFORM_EPSILON = 1e-8;
  * every terminal contact. The post-clip pass may rotate the two links of a
  * limb through their full reachable envelope; it never moves an oar grip,
  * stretches a ski pole, or lets a shoe leave its pedal to preserve a clip.
- * Elbow bend still comes from the authored clip, while mechanically solved
+ * RowErg/BikeErg elbow bend still comes from the authored clip. SkiErg uses
+ * the shared technique rig's elbow marker because its planted-pole chain owns
+ * a measured sagittal flex→extension sequence, while mechanically solved bike
  * knee targets choose the correct leg branch.
  */
 const ARM_SOFT_ANGLE_RAD = THREE.MathUtils.degToRad(8);
@@ -38,7 +40,7 @@ export type ReplayV4DiagnosticMode =
   | "shadows"
   | "wireframe";
 
-/** Optional equipment contacts. Elbow/knee targets are retained for diagnostics only. */
+/** Equipment contacts plus sport-specific anatomical branch targets. */
 export interface ReplayV4ContactTargets {
   readonly pelvis: THREE.Object3D;
   readonly leftHand: THREE.Object3D;
@@ -94,7 +96,8 @@ export interface ReplayV4MotionController {
   readonly enabled: boolean;
   /**
    * Samples the authored clip, aligns the pelvis, then closes all four rigid
-   * equipment-contact chains. Arm bend planes remain clip-authored.
+   * equipment-contact chains. SkiErg arms and BikeErg legs use their shared
+   * mechanical joint targets; other bend planes remain clip-authored.
    */
   update(sample: ReplayV4MotionSample): boolean;
   /** Restores the exact fallback visibility snapshot and releases lane-owned resources. */
@@ -115,7 +118,7 @@ interface ChainBinding {
   readonly middle: THREE.Bone;
   readonly effector: THREE.Bone;
   readonly target: THREE.Object3D;
-  /** Mechanically solved branch marker; used for knees, not clip-authored elbows. */
+  /** Mechanically solved branch marker; used for BikeErg knees and SkiErg elbows. */
   readonly jointTarget: THREE.Object3D;
   readonly offset: THREE.Vector3;
   /** True for hip→knee→foot chains; false for shoulder→elbow→hand. */
@@ -320,7 +323,8 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     }
 
     this.fallback = collectFallbackVisibility(options.fallbackRoot ?? parent);
-    // Elbow/knee Object3Ds are deliberately not bound as bend oracles.
+    // Contact targets are always terminal authorities. SkiErg elbows and
+    // BikeErg knees additionally select the anatomical two-bone branch.
     this.chains = [
       {
         upper: requireBone(instance, "v4LeftUpperArm"),
@@ -542,10 +546,10 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   /**
    * Close one rigid contact chain on top of the authored clip pose.
    *
-   * Arm bend planes come from the sampled clip so the correction does not
-   * reinstate a procedural elbow performance. Leg bend planes come from the
-   * mechanically solved knee target, which is what prevents a cycling knee
-   * from selecting the rear sphere-intersection branch near dead centre.
+   * Most bend planes come from the sampled clip. SkiErg is the deliberate
+   * exception: the clip formerly selected a sideways/backwards goalpost branch,
+   * so the reference-backed shared elbow marker owns its sagittal branch.
+   * Bike legs likewise use the mechanically solved knee target near dead centre.
    */
   private correctContactChain(chain: ChainBinding): void {
     chain.upper.getWorldPosition(this.rootWorld);
@@ -553,7 +557,10 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     chain.effector.getWorldPosition(this.effectorWorld);
     chain.target.getWorldPosition(this.targetWorld);
 
-    if (chain.isLeg && this.options.sport === "bike") {
+    if (
+      (chain.isLeg && this.options.sport === "bike") ||
+      (!chain.isLeg && this.options.sport === "skierg")
+    ) {
       chain.jointTarget.getWorldPosition(this.bendHint);
       this.bendHint.sub(this.rootWorld);
     } else {
@@ -641,9 +648,13 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       this.softDesiredEffector.sub(this.rootWorld).setLength(minReach).add(this.rootWorld);
     }
 
-    // Refresh the desired bend plane after every parent swing. Knees follow
-    // the mechanical branch marker; elbows retain the current clip-led plane.
-    if (chain.isLeg && this.options.sport === "bike") {
+    // Refresh the desired bend plane after every parent swing. Bike knees and
+    // SkiErg elbows follow their shared mechanical branch markers; other
+    // chains retain the current clip-led plane.
+    if (
+      (chain.isLeg && this.options.sport === "bike") ||
+      (!chain.isLeg && this.options.sport === "skierg")
+    ) {
       chain.jointTarget.getWorldPosition(this.bendHint);
       this.bendHint.sub(this.rootWorld);
     } else {

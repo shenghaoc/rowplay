@@ -38,7 +38,7 @@ high-speed review as a claim of natural biomechanics.
 ## Motion graph
 
 `motionGraph.ts` converts `StrokePose` into a sport-specific `ReplayMotionFrame`.
-It uses phase-native, C1-continuous curves and explicit contact-state windows
+It uses phase-native, C2-continuous curves and explicit contact-state windows
 rather than a sequence of independently settled scalar stages. The frame
 contains a common pelvis/spine/head/shoulder rhythm plus sport-specific body,
 limb, equipment, plant, and velocity cues. It is a shared input to both
@@ -46,10 +46,33 @@ renderers; Canvas retains its own art direction but not a separate technique
 interpretation.
 
 RowErg runs through catch compression, leg-led acceleration, delayed body open,
-late arm draw, hands-away, body-over, and slide. SkiErg runs reach, pre-load,
-velocity-matched plant, loaded press, release, and upright recovery. BikeErg
+late arm draw, hands-away, body-over, and slide. SkiErg uses a classic Nordic
+double-pole sequence: high reach, steep plant, early elbow load, core-led press,
+near-straight arms at pole-off, lifted recovery, and velocity-matched approach
+to the next plant. BikeErg
 runs continuous opposed pedal loading with coordinated pelvis shift, shoulder
 counter-rotation, head stabilization, and ankle articulation.
+
+### Classic double-pole reference contract
+
+The shared SkiErg graph is constrained by public technique and biomechanics,
+not by aesthetic interpolation. [Concept2 technique guidance](https://www.concept2.com/training/skierg-technique)
+starts tall with bent arms above eye level, initiates the pull from the core,
+finishes with long arms beside the thighs, and uses a controlled recovery.
+[Concept2's double-pole article](https://www.concept2.com/blog/skierg-technique)
+also calls for a slight backward pole angle at plant and explicitly warns
+against carrying the hands beyond the hips. Published on-snow measurements in
+[Stöggl and Holmberg](https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2018.00978/full)
+place pole contact in roughly the first 26–29% of the cycle, with about an 80°
+pole at plant, 23° at pole-off, early elbow flexion, and near-extension at
+release.
+
+Those landmarks own both renderers. The V4 clip supplies the skinned base pose,
+but the shared sagittal elbow marker owns the SkiErg two-bone branch; the rigid
+pole owns the terminal hand contact. At the C2-flat flight apex the renderer
+changes from the previous snow anchor to the next with zero visible weight,
+then lowers the basket continuously into pre-plant. This prevents horizontal
+elbow inversion, telescoping poles, and the late-recovery pole drop.
 
 ## V4 rigged asset
 

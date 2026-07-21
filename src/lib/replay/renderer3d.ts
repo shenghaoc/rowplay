@@ -9,7 +9,7 @@ import {
   createRowerMotionGraphScratch,
   sampleBikeMotionGraphInto,
   sampleRowerMotionGraphInto,
-  SKI_POLE_PLANT_DRIVE_START,
+  SKI_POLE_APPROACH_START_CYCLE,
   type BikeMotionGraph,
 } from "./motionGraph";
 import type { Sport } from "../types";
@@ -2021,11 +2021,16 @@ function makeSkierAvatar(
     "equipment-trim": kitMaterial,
   });
   const kinematics: SkierKinematics = {
+    cycle: 0,
     armPress: 0,
     hipHinge: 0,
     kneeFlex: 0,
     poleContact: 0,
     poleSweep: 0,
+    elbowLoad: 0,
+    armExtension: 0,
+    poleLift: 0,
+    poleFlight: 0,
     rebound: 0,
     surge: 0,
   };
@@ -2222,7 +2227,6 @@ function makeSkierAvatar(
   const tipWorld = new THREE.Vector3();
   const freeTipWorld = new THREE.Vector3();
   const plantTipWorld = new THREE.Vector3();
-  const plantApproachWorld = new THREE.Vector3();
   const desiredHandWorld = new THREE.Vector3();
   const solvedHandWorld = new THREE.Vector3();
   const shoulderWorld = new THREE.Vector3();
@@ -2235,8 +2239,8 @@ function makeSkierAvatar(
   // Fixed arm lengths must contain every authored hand keyframe. A finish
   // target outside this reach collapses to a short pull no matter how far
   // aft the preferred Z claims to go.
-  const UPPER_ARM_LENGTH = 0.38;
-  const FOREARM_LENGTH = 0.36;
+  const UPPER_ARM_LENGTH = 0.49;
+  const FOREARM_LENGTH = 0.47;
   const MAX_ARM_REACH = UPPER_ARM_LENGTH + FOREARM_LENGTH - 0.02;
   let contactArmReach = UPPER_ARM_LENGTH + FOREARM_LENGTH;
   const THIGH_LENGTH = 0.4;
@@ -2247,8 +2251,6 @@ function makeSkierAvatar(
   // forcing an impossible last-frame hand drop at the cycle seam.
   const POLE_LENGTH = 1.55;
   const POLE_CONTACT_Y = 0.055;
-  // Match the shared technique graph's first C2 plant sample so the
-  // deterministic contact anchor and pole-contact envelope start together.
   // The SkiErg action is a compact double-pole press, not a deep squat. Keep
   // the pelvis high enough for the legs to read as springy, then make the
   // force come from a moderate hip hinge and a long hand path. These values
@@ -2262,48 +2264,19 @@ function makeSkierAvatar(
   const SKI_TORSO_HINGE_RANGE = 0.56;
   const SKI_PELVIS_COUNTER_TILT = 0.14;
   const SKI_HEAD_GAZE_COUNTER_TILT = 0.38;
-  // Three reachable hand keyframes in upper-local space (shoulder ≈ side·0.25,
-  // 0.54, 0.05). Catch is high/forward; mid drops to load the poles; finish
-  // drives the hands down-and-aft past the hips. Upper-local −Z/−Y becomes a
-  // true back-press once the torso hinge tips the frame forward.
-  // Keep the authored preference inside the production V4 arm envelope. The
-  // rigid pole/arm intersection below performs the final closed-chain solve.
-  const SKI_HAND_CATCH = { x: 0.3, y: 0.77, z: 0.42 };
-  const SKI_HAND_MID = { x: 0.32, y: 0.48, z: 0.0 };
-  const SKI_HAND_FINISH = { x: 0.24, y: 0.22, z: -0.42 };
-  // armPress ≤ this value eases catch→mid (load); after it, mid→finish (press).
-  const SKI_PRESS_SPLIT = 0.38;
-
-  const skiHandKeyframe = (
-    from: { x: number; y: number; z: number },
-    to: { x: number; y: number; z: number },
-    t: number,
-    side: number,
-    out: THREE.Vector3,
-  ): void => {
-    const u = THREE.MathUtils.clamp(t, 0, 1);
-    out.set(
-      side * THREE.MathUtils.lerp(from.x, to.x, u),
-      THREE.MathUtils.lerp(from.y, to.y, u),
-      THREE.MathUtils.lerp(from.z, to.z, u),
-    );
-  };
-
-  /** Authored double-pole hand path that stays inside the two-bone arm reach. */
-  const skiPreferredHand = (armPress: number, side: number, out: THREE.Vector3): void => {
-    const press = THREE.MathUtils.clamp(armPress, 0, 1);
-    if (press <= SKI_PRESS_SPLIT) {
-      // Ease into the load so the poles plant before the big back-press.
-      const t = press / SKI_PRESS_SPLIT;
-      const eased = t * t * (3 - 2 * t);
-      skiHandKeyframe(SKI_HAND_CATCH, SKI_HAND_MID, eased, side, out);
-    } else {
-      // Accelerate the back-press so the finish reads as an arm extension
-      // behind the hips rather than a slow slide down the torso.
-      const t = (press - SKI_PRESS_SPLIT) / (1 - SKI_PRESS_SPLIT);
-      const eased = t * t;
-      skiHandKeyframe(SKI_HAND_MID, SKI_HAND_FINISH, eased, side, out);
-    }
+  /**
+   * Reference-backed sagittal hand arc.
+   *
+   * Radius encodes the observed early elbow flexion followed by near-extension
+   * at pole-off. Angle carries the hand from high/forward to beside the thigh.
+   * Unlike the former three-point line, this path never crosses close to the
+   * shoulder, so the IK sphere intersection cannot flip into a horizontal
+   * backwards elbow branch.
+   */
+  const skiPreferredHand = (motion: SkierKinematics, side: number, out: THREE.Vector3): void => {
+    const reach = 0.44 - motion.elbowLoad * 0.08 + motion.armExtension * 0.36;
+    const angle = 0.56 - motion.poleSweep * 2.56;
+    out.set(side * 0.3, 0.54 + Math.sin(angle) * reach, 0.05 + Math.cos(angle) * reach);
     // Hard clamp: if authoring ever drifts outside reach, pull the target
     // toward the shoulder so the arm IK stays rigid.
     const sx = side * 0.25;
@@ -2313,7 +2286,7 @@ function makeSkierAvatar(
     const dy = out.y - sy;
     const dz = out.z - sz;
     const dist = Math.hypot(dx, dy, dz);
-    const maxReach = Math.min(MAX_ARM_REACH, Math.max(0.4, contactArmReach - 0.02));
+    const maxReach = Math.min(MAX_ARM_REACH, Math.max(0.4, contactArmReach - 0.01));
     if (dist > maxReach && dist > 1e-6) {
       const scale = maxReach / dist;
       out.set(sx + dx * scale, sy + dy * scale, sz + dz * scale);
@@ -2361,25 +2334,26 @@ function makeSkierAvatar(
     meters: number,
     outer: THREE.Object3D,
   ): void => {
-    const plantCycle =
-      pose.index + Math.min(pose.cycleFrac, pose.driveFrac * SKI_POLE_PLANT_DRIVE_START);
+    const plantCycle = pose.index + (pose.cycleFrac >= SKI_POLE_APPROACH_START_CYCLE ? 1 : 0);
     const currentCycle = pose.index + pose.cycleFrac;
-    const distanceSincePlant =
-      Math.max(0, currentCycle - plantCycle) * Math.max(0, pose.strokeMeters);
+    const distanceSincePlant = (currentCycle - plantCycle) * Math.max(0, pose.strokeMeters);
     const courseTurn = (distanceSincePlant / CourseRenderer3D.LOOP_METERS) * Math.PI * 2;
     const cos = Math.cos(courseTurn);
     const sin = Math.sin(courseTurn);
-    // Move the current course centre back to the deterministic catch position.
+    // Move the current course centre to the deterministic catch position. At
+    // the C2-flat flight apex this switches invisibly to the next catch, then
+    // the recovery arc converges continuously instead of dropping at preplant.
     courseCenterAtPlant.set(
       outer.position.x * cos - outer.position.z * sin,
       POLE_CONTACT_Y,
       outer.position.x * sin + outer.position.z * cos,
     );
     const yaw = outer.rotation.y - courseTurn;
-    // Plant outside the ski tracks and well forward of the body so poles can
-    // angle steeply as the hands drive past the hips on the back-press.
-    const localX = side * 0.55;
-    const localZ = 1.15;
+    // Plant just outside the ski and behind the high handle. The previous
+    // 1.15 m forward offset reversed this relationship, so the shaft pointed
+    // forward at impact instead of slanting backward into the snow.
+    const localX = side * 0.49;
+    const localZ = 0.04;
     output.set(
       courseCenterAtPlant.x + localX * Math.cos(yaw) + localZ * Math.sin(yaw),
       POLE_CONTACT_Y,
@@ -2387,14 +2361,7 @@ function makeSkierAvatar(
     );
   };
 
-  const placePoleArms = (
-    armPress: number,
-    poleContact: number,
-    poleSweep: number,
-    rebound: number,
-    pose: StrokePose,
-    meters: number,
-  ): void => {
+  const placePoleArms = (motion: SkierKinematics, pose: StrokePose, meters: number): void => {
     const outer = group.parent;
     if (!outer) return;
     upper.getWorldQuaternion(inverseUpperWorld).invert();
@@ -2412,14 +2379,15 @@ function makeSkierAvatar(
       arm.shoulderPoint.set(arm.side * 0.25, 0.54, 0.05);
       // Start from the authored double-pole arc, then solve the exact rigid
       // pole/arm closure once the course-space basket position is known.
-      skiPreferredHand(armPress, arm.side, arm.handTarget);
-      // Chord-stable elbow plane from the preferred arc (V3 fallback only).
-      // V4 hero elbows come from the baked ski clip, not these markers.
-      const pressAft = THREE.MathUtils.smoothstep(armPress, 0.1, 0.95);
+      skiPreferredHand(motion, arm.side, arm.handTarget);
+      // Keep the elbow close to the sagittal plane with modest anatomical
+      // clearance. This target also drives the V4 post-clip arm correction;
+      // preserving the old clip plane is what produced the backwards goalpost.
+      const bendLateral = 0.08 + motion.elbowLoad * 0.04;
       setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
-        lateral: 0.48 + pressAft * 0.12,
-        up: -0.1 - pressAft * 0.1,
-        aft: 0.02 - pressAft * 0.95,
+        lateral: bendLateral,
+        up: -0.34,
+        aft: 0.12,
       });
 
       desiredHandWorld.copy(arm.handTarget);
@@ -2427,44 +2395,42 @@ function makeSkierAvatar(
 
       setPlantTipWorld(plantTipWorld, arm.side, pose, meters, outer);
 
-      // Free recovery tip: forward of the preferred hands, off the snow.
-      const liftedY = 0.2 + rebound * 0.22 + (1 - armPress) * 0.14;
-      const vertical = Math.max(
-        -POLE_LENGTH * 0.985,
-        Math.min(POLE_LENGTH * 0.985, liftedY - desiredHandWorld.y),
+      // The free basket trails the hand in the course frame. Its shaft rotates
+      // from the measured shallow pole-off attitude (~23°) toward a steep
+      // plant (~80°), while a clearance envelope keeps it above the snow.
+      const poleAngle = THREE.MathUtils.degToRad(80 - motion.poleSweep * 57);
+      const clearance = 0.08 + motion.poleLift * 0.3;
+      const desiredVertical = -Math.sin(poleAngle) * POLE_LENGTH;
+      const vertical = Math.min(
+        POLE_LENGTH * 0.985,
+        Math.max(
+          -POLE_LENGTH * 0.985,
+          desiredVertical,
+          POLE_CONTACT_Y + clearance - desiredHandWorld.y,
+        ),
       );
       const horizontal = Math.sqrt(Math.max(0, POLE_LENGTH * POLE_LENGTH - vertical * vertical));
-      let lateral = arm.side * (0.5 + Math.sin(poleSweep * Math.PI) * 0.12);
-      let forward = 1.05 - poleSweep * 0.2 - armPress * 0.35;
-      const horizontalDirection = Math.max(1e-6, Math.hypot(lateral, forward));
-      lateral /= horizontalDirection;
-      forward /= horizontalDirection;
+      const lateral = arm.side * 0.22;
+      const forward = -Math.sqrt(1 - lateral * lateral);
       freeTipWorld
         .copy(desiredHandWorld)
         .addScaledVector(courseRightWorld, lateral * horizontal)
         .addScaledVector(courseForwardWorld, forward * horizontal);
       freeTipWorld.y += vertical;
 
-      // At the catch the pole is already poised just above its deterministic
-      // basket anchor; load settles it vertically instead of sweeping a long
-      // diagonal in a few frames. Fade this pre-plant guide out only after the
-      // contact envelope is fully loaded, when its free endpoint is invisible.
-      const driveProgress =
-        pose.driveFrac > 1e-6 && pose.cycleFrac <= pose.driveFrac
-          ? pose.cycleFrac / pose.driveFrac
-          : 1;
-      const plantApproach = 1 - THREE.MathUtils.smootherstep(driveProgress, 0.04, 0.28);
-      plantApproachWorld.copy(plantTipWorld);
-      plantApproachWorld.y += 0.14;
-      freeTipWorld.lerp(plantApproachWorld, plantApproach);
-      tipWorld.lerpVectors(freeTipWorld, plantTipWorld, poleContact);
+      // Match basket velocity at both ends of flight. Contact can therefore
+      // switch from ground authority to the free arc without a one-frame tip
+      // or grip jump, and late recovery converges on the next plant instead of
+      // dropping vertically from an unrelated sweep.
+      freeTipWorld.lerp(plantTipWorld, 1 - motion.poleFlight);
+      tipWorld.lerpVectors(freeTipWorld, plantTipWorld, motion.poleContact);
 
       shoulderWorld.copy(arm.shoulderPoint);
       upper.localToWorld(shoulderWorld);
-      // The V4 metric ends at the hand bone; reserve the palm contact offset
-      // as well as a small flex margin so a visually straight arm never asks
-      // the terminal solver for an unreachable grip point.
-      const maximumReach = Math.min(MAX_ARM_REACH, Math.max(0.4, contactArmReach - 0.055));
+      // `contactArmReach` includes the palm offset beyond the terminal hand
+      // bone. Reserve only numerical headroom: subtracting the whole palm
+      // length kept the visible V4 elbow deeply flexed at pole-off.
+      const maximumReach = Math.min(MAX_ARM_REACH, Math.max(0.4, contactArmReach - 0.01));
       solveRigidContactPoint3D(
         shoulderWorld,
         desiredHandWorld,
@@ -2480,9 +2446,9 @@ function makeSkierAvatar(
       // on its anatomical outside/back branch instead of preserving a hint for
       // a preferred point the hand no longer occupies.
       setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
-        lateral: 0.48 + pressAft * 0.12,
-        up: -0.1 - pressAft * 0.1,
-        aft: 0.02 - pressAft * 0.95,
+        lateral: bendLateral,
+        up: -0.34,
+        aft: 0.12,
       });
 
       solveTwoBone3D(
@@ -2554,14 +2520,7 @@ function makeSkierAvatar(
   };
 
   const resolveWorldContacts = (): void => {
-    placePoleArms(
-      pendingMotion.armPress,
-      pendingMotion.poleContact,
-      pendingMotion.poleSweep,
-      pendingMotion.rebound,
-      pendingPose,
-      pendingMeters,
-    );
+    placePoleArms(pendingMotion, pendingPose, pendingMeters);
   };
 
   const [leftArm, rightArm] = arms;
@@ -3180,7 +3139,11 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     roll: false,
     bobAmp: 0.08,
     metersPerCycle: METERS_PER_CYCLE.skierg,
-    surgeAmp: 0.22,
+    // Preserve human-scale travel through the planted phase. The course loop
+    // is visually compressed (1 km around a 30 m stage), so this compensating
+    // 1.45 m travel restores the skier's forward motion relative to a
+    // course-locked basket and reaches the measured ~23° pole-off attitude.
+    surgeAmp: 1.45,
     sprayOffset: 0.4, // at the pole baskets
     groundOpacity: 1,
     trailColor: 0xffffff,
@@ -3602,10 +3565,18 @@ export class CourseRenderer3D implements ReplayRenderer {
       });
       this.liveAvatar.group.userData.authoredReplayV4 = !!this.liveAvatar.v4Motion;
       this.ghostAvatar.group.userData.authoredReplayV4 = !!this.ghostAvatar.v4Motion;
-      const v4ArmReach = Math.min(
-        options.v4Assets.effectors.leftHand.totalReach,
-        options.v4Assets.effectors.rightHand.totalReach,
-      );
+      const contactReach = (side: "leftHand" | "rightHand"): number => {
+        const effector = options.v4Assets!.effectors[side];
+        return (
+          effector.totalReach +
+          Math.hypot(
+            effector.contactOffset[0],
+            effector.contactOffset[1],
+            effector.contactOffset[2],
+          )
+        );
+      };
+      const v4ArmReach = Math.min(contactReach("leftHand"), contactReach("rightHand"));
       if (this.liveAvatar.v4Motion) this.liveAvatar.setV4ArmReach?.(v4ArmReach);
       if (this.ghostAvatar.v4Motion) this.ghostAvatar.setV4ArmReach?.(v4ArmReach);
     }

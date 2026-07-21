@@ -28,11 +28,21 @@ export interface RowerKinematics {
 
 /** Normalised SkiErg pose channels. Main joint channels are in the 0..1 range. */
 export interface SkierKinematics {
+  /** Canonical full-cycle phase in [0, 1). */
+  cycle: number;
   armPress: number;
   hipHinge: number;
   kneeFlex: number;
   poleContact: number;
   poleSweep: number;
+  /** Early flexion cue used to keep the elbow on its anatomical branch. */
+  elbowLoad: number;
+  /** Long-arm cue from late press through early recovery. */
+  armExtension: number;
+  /** Lifted basket recovery cue; zero at pole-off and the next plant. */
+  poleLift: number;
+  /** Free-flight weight, C2-eased away from and back to the snow anchor. */
+  poleFlight: number;
   rebound: number;
   surge: number;
 }
@@ -86,21 +96,31 @@ export function solveRowerKinematics(
 export function solveSkierKinematics(
   pose: StrokePose,
   output: SkierKinematics = {
+    cycle: 0,
     armPress: 0,
     hipHinge: 0,
     kneeFlex: 0,
     poleContact: 0,
     poleSweep: 0,
+    elbowLoad: 0,
+    armExtension: 0,
+    poleLift: 0,
+    poleFlight: 0,
     rebound: 0,
     surge: 0,
   },
 ): SkierKinematics {
   const graph = sampleSkierMotionGraphInto(pose, SKI_GRAPH_SCRATCH);
+  output.cycle = graph.timing.cycle;
   output.armPress = graph.body.armPress.value;
   output.hipHinge = graph.body.pelvisHinge.value;
   output.kneeFlex = graph.body.kneeFlex.value;
   output.poleContact = graph.contacts.polePlant.value;
   output.poleSweep = graph.body.poleSweep.value;
+  output.elbowLoad = graph.body.elbowLoad.value;
+  output.armExtension = graph.body.armExtension.value;
+  output.poleLift = graph.body.poleLift.value;
+  output.poleFlight = graph.body.poleFlight.value;
   output.rebound = graph.accents.rebound.value;
   output.surge = graph.accents.surge.value;
   return output;

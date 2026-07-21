@@ -14,6 +14,7 @@ import {
   type RigidOar2D,
 } from "./renderer";
 import { MACHINE_HEX } from "./sports";
+import { SKI_POLE_APPROACH_START_CYCLE } from "./motionGraph";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 
 // The course renderer paints to <canvas>, which can't resolve CSS custom
@@ -145,6 +146,18 @@ describe("2D procedural athlete geometry", () => {
       if (plantedX === null) plantedX = solved;
       else expect(solved, `stationary course contact at ${cycle}`).toBeCloseTo(plantedX, 10);
     }
+
+    const approachPose = fallbackStrokePose(
+      "skierg",
+      (SKI_POLE_APPROACH_START_CYCLE + 0.01) * Math.PI * 2,
+      32,
+    );
+    const approachCourseX =
+      origin + approachPose.cycleFrac * approachPose.strokeMeters * pixelsPerMeter;
+    expect(skiPolePlantCourseX2D(approachCourseX, pixelsPerMeter, approachPose)).toBeCloseTo(
+      origin + approachPose.strokeMeters * pixelsPerMeter,
+      10,
+    );
   });
 });
 
@@ -334,7 +347,7 @@ describe("CourseRenderer stroke pose input", () => {
         splash: testRenderer.liveSplash,
       });
 
-      const poleHands: Array<{ x: number; y: number }> = [];
+      const poles: Array<{ hand: { x: number; y: number }; tip: { x: number; y: number } }> = [];
       for (let index = 0; index < operations.length - 1; index++) {
         const move = operations[index];
         const line = operations[index + 1];
@@ -344,12 +357,13 @@ describe("CourseRenderer stroke pose input", () => {
         const x2 = line.args[0] as number;
         const y2 = line.args[1] as number;
         if (close(Math.hypot(x2 - x1, y2 - y1), 13.8)) {
-          poleHands.push({ x: x1, y: y1 });
+          poles.push({ hand: { x: x1, y: y1 }, tip: { x: x2, y: y2 } });
         }
       }
-      expect(poleHands, `two rigid poles at ${cycle}`).toHaveLength(2);
+      expect(poles, `two rigid poles at ${cycle}`).toHaveLength(2);
 
-      for (const hand of poleHands) {
+      for (const { hand, tip } of poles) {
+        expect(tip.y, `basket stays above the 2D snow at ${cycle}`).toBeLessThanOrEqual(120 + 1e-7);
         const armTerminatesAtHand = operations.some((operation, index) => {
           const edge = operations[index + 1];
           return (
@@ -360,6 +374,28 @@ describe("CourseRenderer stroke pose input", () => {
           );
         });
         expect(armTerminatesAtHand, `ski hand/grip closure at ${cycle}`).toBe(true);
+      }
+
+      if (step === 0) {
+        for (const pole of poles) {
+          const plantAngle =
+            (Math.atan2(Math.abs(pole.tip.y - pole.hand.y), Math.abs(pole.tip.x - pole.hand.x)) *
+              180) /
+            Math.PI;
+          expect(plantAngle, "2D pole is steep at plant").toBeGreaterThan(60);
+        }
+      }
+      if (step === 74) {
+        for (const pole of poles) {
+          const poleOffAngle =
+            (Math.atan2(Math.abs(pole.tip.y - pole.hand.y), Math.abs(pole.tip.x - pole.hand.x)) *
+              180) /
+            Math.PI;
+          expect(
+            poleOffAngle,
+            `2D pole is shallow at pole-off; hand=${pole.hand.x.toFixed(3)},${pole.hand.y.toFixed(3)} tip=${pole.tip.x.toFixed(3)},${pole.tip.y.toFixed(3)}`,
+          ).toBeLessThan(55);
+        }
       }
     }
   });

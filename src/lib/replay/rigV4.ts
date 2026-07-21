@@ -1428,8 +1428,9 @@ function createRowCycleClip(): THREE.AnimationClip {
 
 /**
  * Nordic double-pole / SkiErg cycle: high reach → plant → loaded press →
- * release → recovery. Elbows are controlled by this authored arc, not by a
- * world-space lateral oracle or three-point hand spline at runtime.
+ * release → recovery. This authored arc supplies the skinned base performance;
+ * the shared reference-backed elbow marker selects the final sagittal branch
+ * while the rigid pole contact closes the hand at runtime.
  *
  * Arms nearly straight at high reach (not T-pose, not deep early flex). Trunk
  * and hip hinge load before the press; elbows flex modestly mid-press then

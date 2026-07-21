@@ -1586,20 +1586,26 @@ describe("CourseRenderer3D", () => {
       }
     });
 
-    it("drives a SkiErg double-pole back-press with hands and elbows aft of the hips", () => {
+    it("matches classic double-pole elbow and shaft landmarks without horizontal arm flips", () => {
       const renderer = rendererFor("skierg");
       try {
         const inv = new THREE.Matrix4();
         const handLocal = new THREE.Vector3();
+        const handBoneLocal = new THREE.Vector3();
         const elbowLocal = new THREE.Vector3();
         const shoulderLocal = new THREE.Vector3();
-        const hipsLocal = new THREE.Vector3();
         let minHandY = Number.POSITIVE_INFINITY;
         let maxHandY = Number.NEGATIVE_INFINITY;
-        let minElbowY = Number.POSITIVE_INFINITY;
-        // Sample high reach through loaded press — hands must drop (double-pole).
-        for (const cycle of [0.02, 0.12, 0.24, 0.34, 0.44, 0.52]) {
-          renderer.render(makeSportState("skierg", cycle), false);
+        let maxElbowLateralDeviation = 0;
+        const landmarks = new Map<number, { elbowAngle: number; poleAngle: number }>();
+
+        // Published on-snow double-poling landmarks: steep plant, deepest
+        // elbow flexion near 11%, near-extension at ~29% pole-off, and maximum
+        // extension just after release. The renderer remains stylised, so use
+        // bounded technique envelopes rather than pretending to reproduce one
+        // athlete's measured joint path.
+        for (const cycle of [0.02, 0.11, 0.24, 0.29, 0.34, 0.44, 0.52]) {
+          renderer.render(makeSportState("skierg", cycle, 200 + cycle * 8), false);
           const { avatar, instance } = v4Lane(renderer);
           getScene(renderer).updateMatrixWorld(true);
           inv.copy(avatar.group.matrixWorld).invert();
@@ -1610,27 +1616,68 @@ describe("CourseRenderer3D", () => {
           shoulderLocal
             .copy(instance.bones.v4LeftUpperArm.getWorldPosition(new THREE.Vector3()))
             .applyMatrix4(inv);
-          hipsLocal
-            .copy(instance.bones.v4Hips.getWorldPosition(new THREE.Vector3()))
+          handBoneLocal
+            .copy(instance.bones.v4LeftHand.getWorldPosition(new THREE.Vector3()))
             .applyMatrix4(inv);
+          const elbowAngle = THREE.MathUtils.radToDeg(
+            Math.acos(
+              THREE.MathUtils.clamp(
+                shoulderLocal
+                  .clone()
+                  .sub(elbowLocal)
+                  .normalize()
+                  .dot(handBoneLocal.clone().sub(elbowLocal).normalize()),
+                -1,
+                1,
+              ),
+            ),
+          );
+          const poleVector = worldPosition(renderer, "skierg-pole-grip-left").sub(
+            worldPosition(renderer, "skierg-pole-contact-left"),
+          );
+          const poleAngle = THREE.MathUtils.radToDeg(
+            Math.atan2(Math.abs(poleVector.y), Math.hypot(poleVector.x, poleVector.z)),
+          );
+          landmarks.set(cycle, { elbowAngle, poleAngle });
           maxHandY = Math.max(maxHandY, handLocal.y);
           minHandY = Math.min(minHandY, handLocal.y);
-          minElbowY = Math.min(minElbowY, elbowLocal.y);
-          if (cycle >= 0.3 && cycle <= 0.52) {
-            expect(elbowLocal.y, `elbow not floating above the chain at ${cycle}`).toBeLessThan(
-              Math.max(shoulderLocal.y, handLocal.y) + 0.4,
-            );
-            // No horizontal T-pose wings at mid-press.
-            expect(Math.abs(elbowLocal.x), `elbow not a lateral wing at ${cycle}`).toBeLessThan(
-              0.85,
-            );
-          }
+          const armMidX = (shoulderLocal.x + handBoneLocal.x) * 0.5;
+          maxElbowLateralDeviation = Math.max(
+            maxElbowLateralDeviation,
+            Math.abs(elbowLocal.x - armMidX),
+          );
+          expect(
+            Math.abs(elbowLocal.x - armMidX),
+            `elbow remains near the sagittal arm plane at ${cycle}`,
+          ).toBeLessThan(0.13);
         }
+
+        const plant = landmarks.get(0.02)!;
+        const loaded = landmarks.get(0.11)!;
+        const poleOff = landmarks.get(0.29)!;
+        const postRelease = landmarks.get(0.34)!;
+        const techniqueMetrics = Array.from(
+          landmarks,
+          ([cycle, values]) =>
+            `${cycle.toFixed(2)}:${values.elbowAngle.toFixed(1)}°/${values.poleAngle.toFixed(1)}°`,
+        ).join(" ");
+        expect(plant.poleAngle, techniqueMetrics).toBeGreaterThan(70);
+        expect(plant.poleAngle).toBeLessThan(86);
+        expect(loaded.elbowAngle).toBeGreaterThan(48);
+        expect(loaded.elbowAngle).toBeLessThan(76);
+        expect(poleOff.elbowAngle).toBeGreaterThan(140);
+        expect(poleOff.elbowAngle).toBeLessThan(170);
+        expect(postRelease.elbowAngle).toBeGreaterThan(poleOff.elbowAngle);
+        expect(postRelease.elbowAngle).toBeLessThan(178);
+        expect(poleOff.poleAngle).toBeGreaterThan(15);
+        expect(poleOff.poleAngle).toBeLessThan(28);
         expect(maxHandY - minHandY, "hands drop through the double-pole press").toBeGreaterThan(
           0.12,
         );
         expect(minHandY, "press brings hands well below high reach").toBeLessThan(maxHandY - 0.1);
-        expect(minElbowY, "elbows lower with the press").toBeLessThan(1.4);
+        expect(maxElbowLateralDeviation, "elbows avoid a rear-view goalpost pose").toBeLessThan(
+          0.13,
+        );
       } finally {
         renderer.destroy();
       }
@@ -1811,8 +1858,10 @@ describe("CourseRenderer3D", () => {
 
     it("keeps planted SkiErg hardware fixed in the course while the V4 skier advances", () => {
       const renderer = rendererFor("skierg");
-      const plantedTips = new Map<"left" | "right", THREE.Vector3>();
+      const plantedTips = new Map<string, THREE.Vector3>();
       const previousGrips = new Map<"left" | "right", THREE.Vector3>();
+      const previousElbows = new Map<"left" | "right", THREE.Vector3>();
+      const avatarInverse = new THREE.Matrix4();
       try {
         for (let step = 0; step <= 256; step++) {
           const cycle = step / 256;
@@ -1820,24 +1869,57 @@ describe("CourseRenderer3D", () => {
           const kinematics = solveSkierKinematics(state.strokePose!);
           renderer.render(state, false);
           expectV4Contacts(renderer, `skierg ${cycle}`);
-          const { instance } = v4Lane(renderer);
+          const { avatar, instance } = v4Lane(renderer);
+          avatarInverse.copy(avatar.group.matrixWorld).invert();
           for (const side of ["left", "right"] as const) {
             const tip = worldPosition(renderer, `skierg-pole-contact-${side}`);
             const grip = worldPosition(renderer, `skierg-pole-grip-${side}`);
+            const shoulderWorld = instance.bones[
+              side === "left" ? "v4LeftUpperArm" : "v4RightUpperArm"
+            ].getWorldPosition(new THREE.Vector3());
+            const elbowWorld = instance.bones[
+              side === "left" ? "v4LeftForearm" : "v4RightForearm"
+            ].getWorldPosition(new THREE.Vector3());
+            const handBoneWorld = instance.bones[
+              side === "left" ? "v4LeftHand" : "v4RightHand"
+            ].getWorldPosition(new THREE.Vector3());
+            const markerWorld = avatar.v4Targets[
+              side === "left" ? "leftElbow" : "rightElbow"
+            ].getWorldPosition(new THREE.Vector3());
+            const armChord = handBoneWorld.clone().sub(shoulderWorld).normalize();
+            const solvedPlane = elbowWorld.clone().sub(shoulderWorld);
+            solvedPlane.addScaledVector(armChord, -solvedPlane.dot(armChord));
+            const markerPlane = markerWorld.clone().sub(shoulderWorld);
+            markerPlane.addScaledVector(armChord, -markerPlane.dot(armChord));
+            if (solvedPlane.lengthSq() > 1e-8 && markerPlane.lengthSq() > 1e-8) {
+              expect(
+                solvedPlane.normalize().dot(markerPlane.normalize()),
+                `${side} elbow keeps the shared sagittal branch at ${cycle}`,
+              ).toBeGreaterThan(0.72);
+            }
+            const elbow = elbowWorld.clone().applyMatrix4(avatarInverse);
             expect(grip.distanceTo(tip), `${side} rigid pole at ${cycle}`).toBeCloseTo(1.55, 5);
+            expect(
+              tip.y,
+              `${side} basket never passes through snow at ${cycle}`,
+            ).toBeGreaterThanOrEqual(0.055 - 1e-5);
+            if (kinematics.poleFlight >= 1 - 1e-9 && kinematics.poleLift > 0.15) {
+              expect(tip.y, `${side} basket visibly clears snow at ${cycle}`).toBeGreaterThan(0.1);
+            }
             expect(
               v4EffectorWorld(instance, `${side}Hand`).distanceTo(grip),
               `${side} V4 hand stays on grip at ${cycle}`,
             ).toBeLessThan(0.015);
 
             if (kinematics.poleContact >= 1 - 1e-9) {
-              const priorPlant = plantedTips.get(side);
+              const plantKey = `${state.strokePose!.index}:${side}`;
+              const priorPlant = plantedTips.get(plantKey);
               if (priorPlant) {
                 expect(tip.distanceTo(priorPlant), `${side} V4 planted-tip drift`).toBeLessThan(
                   0.004,
                 );
               } else {
-                plantedTips.set(side, tip.clone());
+                plantedTips.set(plantKey, tip.clone());
               }
               expect(tip.y, `${side} V4 planted-tip height`).toBeCloseTo(0.055, 5);
             }
@@ -1859,10 +1941,26 @@ describe("CourseRenderer3D", () => {
               ).toBeLessThan(0.06);
             }
             previousGrips.set(side, grip.clone());
+            const priorElbow = previousElbows.get(side);
+            if (priorElbow) {
+              expect(
+                elbow.distanceTo(priorElbow),
+                `${side} athlete-local elbow continuity at ${cycle}; prior=${priorElbow
+                  .toArray()
+                  .map((value) => value.toFixed(3))
+                  .join(",")} next=${elbow
+                  .toArray()
+                  .map((value) => value.toFixed(3))
+                  .join(
+                    ",",
+                  )} sweep=${kinematics.poleSweep.toFixed(4)} load=${kinematics.elbowLoad.toFixed(4)} extension=${kinematics.armExtension.toFixed(4)}`,
+              ).toBeLessThan(0.06);
+            }
+            previousElbows.set(side, elbow);
           }
         }
         for (const side of ["left", "right"] as const) {
-          expect(plantedTips.get(side), `${side} loaded plant sampled`).toBeDefined();
+          expect(plantedTips.get(`0:${side}`), `${side} loaded plant sampled`).toBeDefined();
         }
       } finally {
         renderer.destroy();
@@ -2032,10 +2130,10 @@ describe("CourseRenderer3D", () => {
         ["rower-shin-right", 0.552],
       ],
       skierg: [
-        ["skierg-upper-arm-left", 0.38],
-        ["skierg-upper-arm-right", 0.38],
-        ["skierg-forearm-left", 0.36],
-        ["skierg-forearm-right", 0.36],
+        ["skierg-upper-arm-left", 0.49],
+        ["skierg-upper-arm-right", 0.49],
+        ["skierg-forearm-left", 0.47],
+        ["skierg-forearm-right", 0.47],
         ["skierg-thigh-left", 0.4],
         ["skierg-thigh-right", 0.4],
         ["skierg-shin-left", 0.39],

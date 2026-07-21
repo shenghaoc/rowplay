@@ -56,3 +56,13 @@
     in course space while the athlete advances
   - [x] Protect V4, procedural 3D, and Canvas 2D paths with dense full-cycle
     regression tests, the repository gate, and live browser acceptance
+
+- [x] **8. Correct classic double-pole biomechanics in both renderers**
+  - [x] Replace the generic drive-fraction pole sweep with reference-backed
+    plant, elbow-load, pole-off, flight, approach, and pre-plant landmarks
+  - [x] Make the V4 SkiErg arm use the shared sagittal elbow marker so the
+    skinned arm cannot flip into the clip's horizontal backwards branch
+  - [x] Keep 2D and 3D baskets rigid, snow-safe, and continuous when authority
+    changes from the old plant to the next catch
+  - [x] Run focused/full tests, asset validation, moving browser acceptance,
+    and exact-head draft-PR CI

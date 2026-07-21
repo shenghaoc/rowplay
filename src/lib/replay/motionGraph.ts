@@ -3,9 +3,22 @@ import type { StrokePose } from "./strokeModel";
 
 /** One full turn in radians. Kept local so this module stays dependency-free. */
 const TAU = Math.PI * 2;
+/** Snap normalized curve landmarks through harmless phase round-trip noise. */
+const CURVE_BOUNDARY_EPSILON = 1e-12;
 
-/** First deterministic SkiErg basket-contact sample, as a fraction of drive. */
-export const SKI_POLE_PLANT_DRIVE_START = 0.005;
+/**
+ * Canonical classic double-pole landmarks as fractions of one complete cycle.
+ *
+ * The contact window follows published on-snow double-poling measurements:
+ * elbow flexion peaks early, then the arm extends into pole-off at about
+ * 26–29% of the cycle. The late pre-plant window velocity-matches the basket
+ * to the next snow anchor without keeping it loaded through recovery.
+ */
+export const SKI_ELBOW_LOAD_CYCLE = 0.11;
+export const SKI_POLE_RELEASE_START_CYCLE = 0.245;
+export const SKI_POLE_OFF_CYCLE = 0.29;
+export const SKI_POLE_APPROACH_START_CYCLE = 0.88;
+export const SKI_PREPLANT_START_CYCLE = 0.94;
 
 /**
  * A scalar choreography channel sampled at one instant in a replay cycle.
@@ -138,6 +151,14 @@ export interface SkierMotionGraph {
     readonly kneeFlex: MotionChannel;
     /** 0 = poles forward/up, 1 = poles swept back/down. */
     readonly poleSweep: MotionChannel;
+    /** 0..1 additional elbow flexion, peaking near 11% of the cycle. */
+    readonly elbowLoad: MotionChannel;
+    /** 0..1 long-arm cue: near maximum from pole-off through early recovery. */
+    readonly armExtension: MotionChannel;
+    /** 0 at snow contact, 1 at the apex of the lifted recovery arc. */
+    readonly poleLift: MotionChannel;
+    /** 0 at pole-off/plant, 1 while the basket is freely airborne. */
+    readonly poleFlight: MotionChannel;
     /** Inverse arm press for an explicit high-reach target. */
     readonly reach: MotionChannel;
     /** Weighted hip/knee compression suitable for a torso root. */
@@ -158,7 +179,7 @@ export interface SkierMotionGraph {
     readonly footPressure: MotionChannel;
   };
   readonly accents: {
-    /** Signed forward propulsion cue in approximately -1..1. */
+    /** 0..1 forward propulsion travel from plant to pole-off and back. */
     readonly surge: MotionChannel;
     /** 0..1 recovery rebound, with C2-flat endpoints. */
     readonly rebound: MotionChannel;
@@ -243,8 +264,8 @@ function defaultDriveFraction(sport: Sport): number {
  */
 function quinticRamp(cycle: number, start: number, end: number): CurveSample {
   const span = Math.max(1e-6, end - start);
-  if (cycle <= start) return { value: 0, dCycle: 0, ddCycle: 0 };
-  if (cycle >= end) return { value: 1, dCycle: 0, ddCycle: 0 };
+  if (cycle <= start + CURVE_BOUNDARY_EPSILON) return { value: 0, dCycle: 0, ddCycle: 0 };
+  if (cycle >= end - CURVE_BOUNDARY_EPSILON) return { value: 1, dCycle: 0, ddCycle: 0 };
   const u = (cycle - start) / span;
   const u2 = u * u;
   const u3 = u2 * u;
@@ -256,6 +277,57 @@ function quinticRamp(cycle: number, start: number, end: number): CurveSample {
     value: 6 * u5 - 15 * u4 + 10 * u3,
     dCycle: derivative / span,
     ddCycle: secondDerivative / (span * span),
+  };
+}
+
+/**
+ * C2-flat ramp with a near-constant middle velocity.
+ *
+ * This is used for visually compressed course compensation, where a regular
+ * smootherstep creates an exaggerated mid-drive speed peak. Velocity itself
+ * eases with smootherstep over short symmetric edge windows; integrating that profile
+ * preserves exact 0/1 positions plus zero velocity and acceleration at both
+ * ends without turning steady forward travel into a lunge.
+ */
+function cruiseRamp(cycle: number, start: number, end: number): CurveSample {
+  const span = Math.max(1e-6, end - start);
+  if (cycle <= start + CURVE_BOUNDARY_EPSILON) return { value: 0, dCycle: 0, ddCycle: 0 };
+  if (cycle >= end - CURVE_BOUNDARY_EPSILON) return { value: 1, dCycle: 0, ddCycle: 0 };
+  const easeSpan = span * 0.15;
+  const cruiseVelocity = 1 / (span - easeSpan);
+  const elapsed = cycle - start;
+  const sampleEdge = (u: number) => {
+    const u2 = u * u;
+    const u3 = u2 * u;
+    const u4 = u3 * u;
+    const u5 = u4 * u;
+    const u6 = u5 * u;
+    return {
+      velocity: 6 * u5 - 15 * u4 + 10 * u3,
+      acceleration: 30 * u2 * (u - 1) * (u - 1),
+      distance: u6 - 3 * u5 + 2.5 * u4,
+    };
+  };
+  if (elapsed < easeSpan) {
+    const edge = sampleEdge(elapsed / easeSpan);
+    return {
+      value: cruiseVelocity * easeSpan * edge.distance,
+      dCycle: cruiseVelocity * edge.velocity,
+      ddCycle: (cruiseVelocity * edge.acceleration) / easeSpan,
+    };
+  }
+  if (elapsed > span - easeSpan) {
+    const edge = sampleEdge((span - elapsed) / easeSpan);
+    return {
+      value: 1 - cruiseVelocity * easeSpan * edge.distance,
+      dCycle: cruiseVelocity * edge.velocity,
+      ddCycle: (-cruiseVelocity * edge.acceleration) / easeSpan,
+    };
+  }
+  return {
+    value: cruiseVelocity * (elapsed - easeSpan * 0.5),
+    dCycle: cruiseVelocity,
+    ddCycle: 0,
   };
 }
 
@@ -443,44 +515,42 @@ function sampleRower(timing: MotionTiming, pose: StrokePose): RowerMotionGraph {
 
 function sampleSkier(timing: MotionTiming, pose: StrokePose): SkierMotionGraph {
   const cycle = timing.cycle;
-  const drive = timing.driveFraction;
-  const recovery = 1 - drive;
 
-  // A deliberately staggered, overlapping double-pole press: arms initiate,
-  // hips follow, and knees absorb last. Recovery reverses this without snaps.
-  const arms = pulse(cycle, drive * 0.015, drive * 0.7, drive, drive + recovery * 0.42);
-  const hips = pulse(
-    cycle,
-    drive * 0.08,
-    drive * 0.77,
-    drive + recovery * 0.06,
-    drive + recovery * 0.6,
+  // Classic double-poling is a short planted impulse followed by a long
+  // recovery, not a generic full-drive pole sweep. The absolute landmarks are
+  // intentional: Concept2 stroke data contains cadence but no measured pole
+  // force or joint path, so a guessed drive fraction must not lengthen ground
+  // contact into half the cycle.
+  const arms = pulse(cycle, 0, SKI_POLE_OFF_CYCLE, 0.305, 0.8);
+  const hips = pulse(cycle, 0.025, 0.31, 0.325, 0.74);
+  const knees = pulse(cycle, 0.06, 0.32, 0.34, 0.69);
+  // During the planted phase the skier advances at a near-constant velocity,
+  // not the sharp mid-stroke lunge produced by a regular smootherstep. The
+  // same C2 cruise curve drives hand sweep and compressed-course compensation.
+  const poleSweep = add(
+    cruiseRamp(cycle, 0, SKI_POLE_OFF_CYCLE),
+    scale(quinticRamp(cycle, SKI_POLE_OFF_CYCLE, 1), -1),
   );
-  const knees = pulse(
-    cycle,
-    drive * 0.17,
-    drive * 0.86,
-    drive + recovery * 0.15,
-    drive + recovery * 0.7,
+  const elbowLoad = pulse(cycle, 0, SKI_ELBOW_LOAD_CYCLE, SKI_ELBOW_LOAD_CYCLE, SKI_POLE_OFF_CYCLE);
+  const armExtension = add(
+    cruiseRamp(cycle, SKI_ELBOW_LOAD_CYCLE, SKI_POLE_OFF_CYCLE),
+    scale(quinticRamp(cycle, 0.72, 1), -1),
   );
-  const poleSweep = pulse(cycle, drive * 0.01, drive * 0.93, drive, drive + recovery * 0.55);
-  // Pole tips should be held in course space while this is materially active;
-  // the envelope itself never invents a sliding ground point.
-  // Give the basket roughly 0.1 s at a canonical 32 spm to settle from its
-  // recovery arc onto the snow. The old 0.5%→7.5% drive window compressed the
-  // rigid pole/arm closure into a visible hand snap even though the scalar
-  // envelope itself was C2-continuous.
-  const polePlant = pulse(
-    cycle,
-    drive * SKI_POLE_PLANT_DRIVE_START,
-    drive * 0.18,
-    drive * 0.84,
-    drive + recovery * 0.08,
+  const poleLift = bump(cycle, SKI_POLE_OFF_CYCLE, 1);
+  const poleFlight = pulse(cycle, SKI_POLE_OFF_CYCLE, 0.42, SKI_POLE_APPROACH_START_CYCLE, 1);
+
+  // At the cycle seam the basket has already velocity-matched the next snow
+  // point. Adding the late C2 pre-plant ramp to the early hold keeps contact
+  // position and derivatives continuous without pretending the pole is loaded
+  // during the recovery arc.
+  const polePlant = add(
+    invert(quinticRamp(cycle, SKI_POLE_RELEASE_START_CYCLE, SKI_POLE_OFF_CYCLE)),
+    quinticRamp(cycle, SKI_PREPLANT_START_CYCLE, 1),
   );
-  const poleLoad = pulse(cycle, drive * 0.06, drive * 0.18, drive * 0.67, drive * 0.84);
-  const footPressure = pulse(cycle, drive * 0.12, drive * 0.28, drive * 0.7, drive * 0.92);
+  const poleLoad = pulse(cycle, 0.012, 0.095, 0.17, 0.275);
+  const footPressure = pulse(cycle, 0.025, 0.12, 0.19, 0.32);
   const torsoCompression = add(scale(hips, 0.66), scale(knees, 0.34));
-  const rebound = bump(cycle, drive + recovery * 0.18, drive + recovery * 0.85);
+  const rebound = bump(cycle, 0.32, 0.9);
   const headRise = scale(rebound, 0.16);
   const effort = intensityScale(pose);
 
@@ -494,6 +564,10 @@ function sampleSkier(timing: MotionTiming, pose: StrokePose): SkierMotionGraph {
       pelvisHinge: toChannel(hips, timing),
       kneeFlex: toChannel(knees, timing),
       poleSweep: toChannel(poleSweep, timing),
+      elbowLoad: toChannel(elbowLoad, timing),
+      armExtension: toChannel(armExtension, timing),
+      poleLift: toChannel(poleLift, timing),
+      poleFlight: toChannel(poleFlight, timing),
       reach: toChannel(invert(arms), timing),
       torsoCompression: toChannel(torsoCompression, timing),
       spineHinge: toChannel(torsoCompression, timing),
@@ -506,7 +580,7 @@ function sampleSkier(timing: MotionTiming, pose: StrokePose): SkierMotionGraph {
       footPressure: toChannel(footPressure, timing),
     },
     accents: {
-      surge: toChannel(scale(centered(poleSweep), effort), timing),
+      surge: toChannel(scale(poleSweep, effort), timing),
       rebound: toChannel(rebound, timing),
     },
   };
@@ -717,6 +791,10 @@ export function createSkierMotionGraphScratch(): SkierMotionGraph {
       pelvisHinge: emptyChannel(),
       kneeFlex: emptyChannel(),
       poleSweep: emptyChannel(),
+      elbowLoad: emptyChannel(),
+      armExtension: emptyChannel(),
+      poleLift: emptyChannel(),
+      poleFlight: emptyChannel(),
       reach: emptyChannel(),
       torsoCompression: emptyChannel(),
       spineHinge: emptyChannel(),
@@ -788,6 +866,13 @@ const INTO_CURVES = {
   skiHips: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   skiKnees: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   skiPoleSweep: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
+  skiSurge: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
+  skiElbowLoad: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
+  skiArmExtension: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
+  skiPoleLift: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
+  skiPoleFlight: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
+  skiPoleRelease: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
+  skiPreplant: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   skiPolePlant: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   skiPoleLoad: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   skiFootPressure: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
@@ -828,8 +913,8 @@ function quinticRampInto(
   end: number,
 ): IntoCurveScratch {
   const span = Math.max(1e-6, end - start);
-  if (cycle <= start) return writeCurve(output, 0, 0, 0);
-  if (cycle >= end) return writeCurve(output, 1, 0, 0);
+  if (cycle <= start + CURVE_BOUNDARY_EPSILON) return writeCurve(output, 0, 0, 0);
+  if (cycle >= end - CURVE_BOUNDARY_EPSILON) return writeCurve(output, 1, 0, 0);
   const u = (cycle - start) / span;
   const u2 = u * u;
   const u3 = u2 * u;
@@ -841,6 +926,38 @@ function quinticRampInto(
     (30 * u2 * (u - 1) * (u - 1)) / span,
     (120 * u3 - 180 * u2 + 60 * u) / (span * span),
   );
+}
+
+function cruiseRampInto(
+  output: IntoCurveScratch,
+  cycle: number,
+  start: number,
+  end: number,
+): IntoCurveScratch {
+  const span = Math.max(1e-6, end - start);
+  if (cycle <= start + CURVE_BOUNDARY_EPSILON) return writeCurve(output, 0, 0, 0);
+  if (cycle >= end - CURVE_BOUNDARY_EPSILON) return writeCurve(output, 1, 0, 0);
+  const easeSpan = span * 0.15;
+  const cruiseVelocity = 1 / (span - easeSpan);
+  const elapsed = cycle - start;
+  if (elapsed < easeSpan || elapsed > span - easeSpan) {
+    const falling = elapsed > span - easeSpan;
+    const u = falling ? (span - elapsed) / easeSpan : elapsed / easeSpan;
+    const u2 = u * u;
+    const u3 = u2 * u;
+    const u4 = u3 * u;
+    const u5 = u4 * u;
+    const velocity = 6 * u5 - 15 * u4 + 10 * u3;
+    const acceleration = 30 * u2 * (u - 1) * (u - 1);
+    const distance = u5 * u - 3 * u5 + 2.5 * u4;
+    return writeCurve(
+      output,
+      falling ? 1 - cruiseVelocity * easeSpan * distance : cruiseVelocity * easeSpan * distance,
+      cruiseVelocity * velocity,
+      ((falling ? -1 : 1) * cruiseVelocity * acceleration) / easeSpan,
+    );
+  }
+  return writeCurve(output, cruiseVelocity * (elapsed - easeSpan * 0.5), cruiseVelocity, 0);
 }
 
 function pulseInto(
@@ -1082,40 +1199,62 @@ function sampleSkierInto(pose: StrokePose, output: SkierMotionGraph): void {
   const timing = graph.timing;
   timingInto(timing, "skierg", pose);
   const cycle = timing.cycle;
-  const drive = timing.driveFraction;
-  const recovery = 1 - drive;
   const curves = INTO_CURVES;
 
-  pulseInto(curves.skiArms, cycle, drive * 0.015, drive * 0.7, drive, drive + recovery * 0.42);
-  pulseInto(
-    curves.skiHips,
-    cycle,
-    drive * 0.08,
-    drive * 0.77,
-    drive + recovery * 0.06,
-    drive + recovery * 0.6,
+  pulseInto(curves.skiArms, cycle, 0, SKI_POLE_OFF_CYCLE, 0.305, 0.8);
+  pulseInto(curves.skiHips, cycle, 0.025, 0.31, 0.325, 0.74);
+  pulseInto(curves.skiKnees, cycle, 0.06, 0.32, 0.34, 0.69);
+  cruiseRampInto(curves.skiPoleSweep, cycle, 0, SKI_POLE_OFF_CYCLE);
+  quinticRampInto(curves.fall, cycle, SKI_POLE_OFF_CYCLE, 1);
+  writeCurve(
+    curves.skiPoleSweep,
+    curves.skiPoleSweep.value - curves.fall.value,
+    curves.skiPoleSweep.dCycle - curves.fall.dCycle,
+    curves.skiPoleSweep.ddCycle - curves.fall.ddCycle,
+  );
+  writeCurve(
+    curves.skiSurge,
+    curves.skiPoleSweep.value,
+    curves.skiPoleSweep.dCycle,
+    curves.skiPoleSweep.ddCycle,
   );
   pulseInto(
-    curves.skiKnees,
+    curves.skiElbowLoad,
     cycle,
-    drive * 0.17,
-    drive * 0.86,
-    drive + recovery * 0.15,
-    drive + recovery * 0.7,
+    0,
+    SKI_ELBOW_LOAD_CYCLE,
+    SKI_ELBOW_LOAD_CYCLE,
+    SKI_POLE_OFF_CYCLE,
   );
-  pulseInto(curves.skiPoleSweep, cycle, drive * 0.01, drive * 0.93, drive, drive + recovery * 0.55);
+  cruiseRampInto(curves.skiArmExtension, cycle, SKI_ELBOW_LOAD_CYCLE, SKI_POLE_OFF_CYCLE);
+  quinticRampInto(curves.fall, cycle, 0.72, 1);
+  writeCurve(
+    curves.skiArmExtension,
+    curves.skiArmExtension.value - curves.fall.value,
+    curves.skiArmExtension.dCycle - curves.fall.dCycle,
+    curves.skiArmExtension.ddCycle - curves.fall.ddCycle,
+  );
+  bumpInto(curves.skiPoleLift, cycle, SKI_POLE_OFF_CYCLE, 1);
   pulseInto(
+    curves.skiPoleFlight,
+    cycle,
+    SKI_POLE_OFF_CYCLE,
+    0.42,
+    SKI_POLE_APPROACH_START_CYCLE,
+    1,
+  );
+  quinticRampInto(curves.skiPoleRelease, cycle, SKI_POLE_RELEASE_START_CYCLE, SKI_POLE_OFF_CYCLE);
+  quinticRampInto(curves.skiPreplant, cycle, SKI_PREPLANT_START_CYCLE, 1);
+  writeCurve(
     curves.skiPolePlant,
-    cycle,
-    drive * SKI_POLE_PLANT_DRIVE_START,
-    drive * 0.18,
-    drive * 0.84,
-    drive + recovery * 0.08,
+    1 - curves.skiPoleRelease.value + curves.skiPreplant.value,
+    -curves.skiPoleRelease.dCycle + curves.skiPreplant.dCycle,
+    -curves.skiPoleRelease.ddCycle + curves.skiPreplant.ddCycle,
   );
-  pulseInto(curves.skiPoleLoad, cycle, drive * 0.06, drive * 0.18, drive * 0.67, drive * 0.84);
-  pulseInto(curves.skiFootPressure, cycle, drive * 0.12, drive * 0.28, drive * 0.7, drive * 0.92);
+  pulseInto(curves.skiPoleLoad, cycle, 0.012, 0.095, 0.17, 0.275);
+  pulseInto(curves.skiFootPressure, cycle, 0.025, 0.12, 0.19, 0.32);
   combine2Into(curves.skiCompression, curves.skiHips, 0.66, curves.skiKnees, 0.34);
-  bumpInto(curves.skiRebound, cycle, drive + recovery * 0.18, drive + recovery * 0.85);
+  bumpInto(curves.skiRebound, cycle, 0.32, 0.9);
   scaleInto(curves.skiHeadRise, curves.skiRebound, 0.16);
 
   channelInto(graph.body.armPress, curves.skiArms, timing);
@@ -1124,6 +1263,10 @@ function sampleSkierInto(pose: StrokePose, output: SkierMotionGraph): void {
   copyChannelInto(graph.body.pelvisHinge, graph.body.hipHinge);
   channelInto(graph.body.kneeFlex, curves.skiKnees, timing);
   channelInto(graph.body.poleSweep, curves.skiPoleSweep, timing);
+  channelInto(graph.body.elbowLoad, curves.skiElbowLoad, timing);
+  channelInto(graph.body.armExtension, curves.skiArmExtension, timing);
+  channelInto(graph.body.poleLift, curves.skiPoleLift, timing);
+  channelInto(graph.body.poleFlight, curves.skiPoleFlight, timing);
   const reach = writable(graph.body.reach);
   reach.value = 1 - graph.body.armPress.value;
   reach.velocity = -graph.body.armPress.velocity;
@@ -1136,13 +1279,8 @@ function sampleSkierInto(pose: StrokePose, output: SkierMotionGraph): void {
   channelInto(graph.contacts.poleLoad, curves.skiPoleLoad, timing);
   channelInto(graph.contacts.footPressure, curves.skiFootPressure, timing);
   const effort = intensityScale(pose);
-  writeCurve(
-    curves.skiPoleSweep,
-    (curves.skiPoleSweep.value * 2 - 1) * effort,
-    curves.skiPoleSweep.dCycle * 2 * effort,
-    curves.skiPoleSweep.ddCycle * 2 * effort,
-  );
-  channelInto(graph.accents.surge, curves.skiPoleSweep, timing);
+  scaleInto(curves.skiSurge, curves.skiSurge, effort);
+  channelInto(graph.accents.surge, curves.skiSurge, timing);
   channelInto(graph.accents.rebound, curves.skiRebound, timing);
 }
 

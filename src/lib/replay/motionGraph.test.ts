@@ -11,6 +11,11 @@ import {
   sampleRowerMotionGraph,
   sampleSkierMotionGraphInto,
   sampleSkierMotionGraph,
+  SKI_ELBOW_LOAD_CYCLE,
+  SKI_POLE_APPROACH_START_CYCLE,
+  SKI_POLE_OFF_CYCLE,
+  SKI_POLE_RELEASE_START_CYCLE,
+  SKI_PREPLANT_START_CYCLE,
   type MotionChannel,
 } from "./motionGraph";
 import { fallbackStrokePose, type StrokePose } from "./strokeModel";
@@ -123,41 +128,60 @@ describe("motionGraph", () => {
     }
   });
 
-  it("publishes a planted SkiErg pole policy with stable loaded contacts", () => {
-    const driveFraction = poseAt("skierg", 0).driveFrac;
-    for (const progress of [0.18, 0.2, 0.48, 0.72, 0.8]) {
-      const graph = sampleSkierMotionGraph(poseAt("skierg", driveFraction * progress));
-      expect(graph.contacts.polePlant.value, `plant at drive ${progress}`).toBe(1);
+  it("publishes the measured short-plant and flex-to-extension double-pole sequence", () => {
+    for (const cycle of [0, 0.06, 0.14, SKI_POLE_RELEASE_START_CYCLE]) {
+      const graph = sampleSkierMotionGraph(poseAt("skierg", cycle));
+      expect(graph.contacts.polePlant.value, `plant at cycle ${cycle}`).toBe(1);
       expect(graph.contacts.poleGrip.value).toBe(1);
     }
 
-    const beforeRelease = sampleSkierMotionGraph(poseAt("skierg", driveFraction * 0.84));
-    const afterRelease = sampleSkierMotionGraph(poseAt("skierg", driveFraction * 0.9));
+    const beforeRelease = sampleSkierMotionGraph(poseAt("skierg", SKI_POLE_RELEASE_START_CYCLE));
+    const duringRelease = sampleSkierMotionGraph(
+      poseAt("skierg", (SKI_POLE_RELEASE_START_CYCLE + SKI_POLE_OFF_CYCLE) * 0.5),
+    );
+    const afterRelease = sampleSkierMotionGraph(poseAt("skierg", SKI_POLE_OFF_CYCLE));
     expect(beforeRelease.contacts.polePlant.velocity).toBeCloseTo(0, 9);
     expect(beforeRelease.contacts.polePlant.acceleration).toBeCloseTo(0, 7);
-    expect(afterRelease.contacts.polePlant.value).toBeGreaterThan(0);
-    expect(afterRelease.contacts.polePlant.value).toBeLessThan(1);
+    expect(duringRelease.contacts.polePlant.value).toBeGreaterThan(0);
+    expect(duringRelease.contacts.polePlant.value).toBeLessThan(1);
+    expect(afterRelease.contacts.polePlant.value).toBe(0);
 
-    const press = sampleSkierMotionGraph(poseAt("skierg", driveFraction * 0.35));
-    expect(press.body.armPress.value).toBeGreaterThan(press.body.pelvisHinge.value);
-    expect(press.body.pelvisHinge.value).toBeGreaterThan(press.body.kneeFlex.value);
-    expect(press.body.shoulderDrop.value).toBeCloseTo(press.body.armPress.value, 12);
-    expect(press.body.spineHinge.value).toBeCloseTo(press.body.torsoCompression.value, 12);
+    const loadedElbow = sampleSkierMotionGraph(poseAt("skierg", SKI_ELBOW_LOAD_CYCLE));
+    const poleOff = sampleSkierMotionGraph(poseAt("skierg", SKI_POLE_OFF_CYCLE));
+    const recovery = sampleSkierMotionGraph(poseAt("skierg", 0.58));
+    expect(loadedElbow.body.elbowLoad.value).toBeCloseTo(1, 12);
+    expect(poleOff.body.elbowLoad.value).toBe(0);
+    expect(poleOff.body.armExtension.value).toBe(1);
+    expect(poleOff.body.poleSweep.value).toBe(1);
+    expect(poleOff.body.poleFlight.value).toBe(0);
+    expect(recovery.body.poleFlight.value).toBe(1);
+    expect(recovery.body.poleLift.value).toBeGreaterThan(0.8);
+    expect(recovery.contacts.polePlant.value).toBe(0);
   });
 
-  it("keeps SkiErg plant and release envelopes C2-flat at their exact boundaries", () => {
-    const driveFraction = poseAt("skierg", 0).driveFrac;
-    const recoveryFraction = 1 - driveFraction;
+  it("keeps SkiErg plant, release, and cycle-seam envelopes C2-flat", () => {
     for (const cycle of [
-      driveFraction * 0.005,
-      driveFraction * 0.18,
-      driveFraction * 0.84,
-      driveFraction + recoveryFraction * 0.08,
+      SKI_POLE_RELEASE_START_CYCLE,
+      SKI_POLE_OFF_CYCLE,
+      SKI_PREPLANT_START_CYCLE,
+      0,
     ]) {
       const channel = sampleSkierMotionGraph(poseAt("skierg", cycle)).contacts.polePlant;
       expect(channel.velocity, `velocity at ${cycle}`).toBeCloseTo(0, 9);
       expect(channel.acceleration, `acceleration at ${cycle}`).toBeCloseTo(0, 7);
     }
+    const beforeSeam = sampleSkierMotionGraph(poseAt("skierg", 1 - 1e-9));
+    const atSeam = sampleSkierMotionGraph(poseAt("skierg", 0));
+    expect(beforeSeam.contacts.polePlant.value).toBeCloseTo(atSeam.contacts.polePlant.value, 9);
+    expect(beforeSeam.body.poleFlight.value).toBeCloseTo(atSeam.body.poleFlight.value, 9);
+
+    // The renderer switches from the previous to the next snow anchor here.
+    // Flight weight must be exactly one and C2-flat so the handoff contributes
+    // zero position, velocity, or acceleration to the visible basket.
+    const approach = sampleSkierMotionGraph(poseAt("skierg", SKI_POLE_APPROACH_START_CYCLE));
+    expect(approach.body.poleFlight.value).toBe(1);
+    expect(approach.body.poleFlight.velocity).toBe(0);
+    expect(approach.body.poleFlight.acceleration).toBe(0);
   });
 
   it("keeps BikeErg pedal endpoints opposed, circular, and mechanically locked", () => {

@@ -5,6 +5,10 @@ import {
   sampleBikeMotionGraph,
   sampleRowerMotionGraph,
   sampleSkierMotionGraph,
+  SKI_ELBOW_LOAD_CYCLE,
+  SKI_POLE_OFF_CYCLE,
+  SKI_POLE_RELEASE_START_CYCLE,
+  SKI_PREPLANT_START_CYCLE,
 } from "./motionGraph";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
 
@@ -62,27 +66,22 @@ describe("sportKinematics", () => {
     expect(recovery.bodySwing).toBeLessThan(recovery.legExtension);
   });
 
-  it("sequences the SkiErg press and rebound without joint snaps", () => {
-    const driveFrac = poseAt("skierg", 0).driveFrac;
-    const press = solveSkierKinematics(poseAt("skierg", driveFrac * 0.35));
-    expect(press.armPress).toBeGreaterThan(press.hipHinge);
-    expect(press.hipHinge).toBeGreaterThan(press.kneeFlex);
-
-    const beforeFinish = solveSkierKinematics(poseAt("skierg", driveFrac - 1e-7));
-    const afterFinish = solveSkierKinematics(poseAt("skierg", driveFrac + 1e-7));
-    expect(Math.abs(beforeFinish.armPress - afterFinish.armPress)).toBeLessThan(1e-6);
-    expect(Math.abs(beforeFinish.hipHinge - afterFinish.hipHinge)).toBeLessThan(1e-6);
-    expect(Math.abs(beforeFinish.kneeFlex - afterFinish.kneeFlex)).toBeLessThan(1e-6);
-
-    const recovery = solveSkierKinematics(poseAt("skierg", driveFrac + (1 - driveFrac) * 0.25));
-    expect(recovery.armPress).toBeLessThan(recovery.hipHinge);
-    expect(recovery.hipHinge).toBeLessThan(recovery.kneeFlex);
+  it("sequences SkiErg elbow load, pole-off extension, flight, and rebound", () => {
+    const loaded = solveSkierKinematics(poseAt("skierg", SKI_ELBOW_LOAD_CYCLE));
+    const poleOff = solveSkierKinematics(poseAt("skierg", SKI_POLE_OFF_CYCLE));
+    const recovery = solveSkierKinematics(poseAt("skierg", 0.58));
+    expect(loaded.elbowLoad).toBeCloseTo(1, 12);
+    expect(poleOff.elbowLoad).toBe(0);
+    expect(poleOff.armExtension).toBe(1);
+    expect(poleOff.poleSweep).toBe(1);
+    expect(poleOff.poleFlight).toBe(0);
+    expect(recovery.poleFlight).toBe(1);
+    expect(recovery.poleLift).toBeGreaterThan(0.8);
+    expect(recovery.poleContact).toBe(0);
     expect(recovery.rebound).toBeGreaterThan(0);
   });
 
   it("plants and releases SkiErg poles with C1 contact velocity", () => {
-    const driveFrac = poseAt("skierg", 0).driveFrac;
-    const recoveryFrac = 1 - driveFrac;
     const epsilon = 1e-5;
     const contactAtCycle = (cycle: number) =>
       solveSkierKinematics(poseAt("skierg", cycle)).poleContact;
@@ -90,14 +89,13 @@ describe("sportKinematics", () => {
     // Each boundary has zero velocity on both sides: lift-off and touch-down
     // are no longer eased with a nonzero-velocity curve that makes the stick
     // visibly snap through the snow.
-    // The shared technique graph enters the plant at 0.5% of the drive,
-    // reaches a full brace at 18%, holds it throughout the loaded pull, then
-    // starts its C2 release at 84% and clears the snow 8% into recovery.
+    // The basket is already planted at the cycle seam, releases by the
+    // measured pole-off landmark, and velocity-matches the next plant late in
+    // recovery. Every scalar transition is C2-flat.
     for (const boundary of [
-      driveFrac * 0.005,
-      driveFrac * 0.18,
-      driveFrac * 0.84,
-      driveFrac + recoveryFrac * 0.08,
+      SKI_POLE_RELEASE_START_CYCLE,
+      SKI_POLE_OFF_CYCLE,
+      SKI_PREPLANT_START_CYCLE,
     ]) {
       const before = contactAtCycle(boundary - epsilon);
       const atBoundary = contactAtCycle(boundary);
@@ -117,17 +115,16 @@ describe("sportKinematics", () => {
       ).toBeLessThan(0.02);
     }
 
-    expect(contactAtCycle(0)).toBe(0);
-    // The basket is fully braced against the snow while the press develops and
-    // peaks; this is the visual anchor that makes the skier's forward drive
-    // read as propulsion rather than a pair of swinging sticks.
-    for (const progress of [0.18, 0.4, 0.62, 0.72, 0.8]) {
-      expect(contactAtCycle(driveFrac * progress), `full plant at ${progress}`).toBe(1);
+    expect(contactAtCycle(0)).toBe(1);
+    for (const cycle of [0.04, 0.1, 0.18, SKI_POLE_RELEASE_START_CYCLE]) {
+      expect(contactAtCycle(cycle), `full plant at ${cycle}`).toBe(1);
     }
-    expect(contactAtCycle(driveFrac * 0.9)).toBeGreaterThan(0);
-    expect(contactAtCycle(driveFrac * 0.9)).toBeLessThan(1);
-    expect(contactAtCycle(driveFrac)).toBeGreaterThan(0);
-    expect(contactAtCycle(driveFrac + recoveryFrac * 0.08)).toBe(0);
+    const releasing = contactAtCycle((SKI_POLE_RELEASE_START_CYCLE + SKI_POLE_OFF_CYCLE) * 0.5);
+    expect(releasing).toBeGreaterThan(0);
+    expect(releasing).toBeLessThan(1);
+    expect(contactAtCycle(SKI_POLE_OFF_CYCLE)).toBe(0);
+    expect(contactAtCycle(0.58)).toBe(0);
+    expect(contactAtCycle(1 - 1e-9)).toBeCloseTo(contactAtCycle(0), 9);
   });
 
   it("keeps all normalized sport channels finite and bounded", () => {
@@ -148,7 +145,12 @@ describe("sportKinematics", () => {
       expectUnit(skier.kneeFlex);
       expectUnit(skier.poleContact);
       expectUnit(skier.poleSweep);
+      expectUnit(skier.elbowLoad);
+      expectUnit(skier.armExtension);
+      expectUnit(skier.poleLift);
+      expectUnit(skier.poleFlight);
       expectUnit(skier.rebound);
+      expectUnit(skier.cycle);
       expect(Math.abs(skier.surge)).toBeLessThanOrEqual(1);
 
       const bike = solveBikeKinematics(poseAt("bike", cycleFrac, step / 99));

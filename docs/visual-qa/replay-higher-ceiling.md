@@ -4,25 +4,40 @@ This note records rendered-frame evidence for the authored-athlete and venue
 composition pass on draft PR #171. It is a visual acceptance record, not a
 substitute for the motion/contact regression suite.
 
-## Current correctness pass — contact-constrained mechanics (2026-07-21)
+## Current correctness pass — contact-constrained mechanics (2026-07-22)
 
 This pass supersedes the PROMPT 9 athlete-led contact policy below. Authored
-clips still supply the base performance and the RowErg/SkiErg elbow plane, but
-rigid sport equipment is again the terminal authority. The V4 hero root now
+clips still supply the base performance and the RowErg elbow plane. SkiErg uses
+the shared reference-backed sagittal elbow marker, BikeErg uses the mechanical
+knee marker, and rigid sport equipment is the terminal authority. The V4 hero root now
 reports `userData.replayV4Architecture = "clip-contact-constrained"`.
 
-| Sport   | Current mechanical contract                                                                                                                                                                                     |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| BikeErg | Both shoes remain on mechanically opposed pedals. Each knee selects one continuous rider-forward branch of the hip/pedal sphere intersection; saddle height retains visible flexion through bottom dead centre. |
-| RowErg  | Each palm terminates on its own rigid inboard scull grip. The hands remain uncrossed and outside the torso; neither a synthetic wide bar nor palm-led oar motion is present.                                    |
-| SkiErg  | Each pole is a rigid 1.55 m link. During the loaded press its basket remains fixed in course space while the skier advances; the hand is solved on the pole-tip sphere and inside arm reach.                    |
+| Sport   | Current mechanical contract                                                                                                                                                                                                                                                                                  |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| BikeErg | Both shoes remain on mechanically opposed pedals. Each knee selects one continuous rider-forward branch of the hip/pedal sphere intersection; saddle height retains visible flexion through bottom dead centre.                                                                                              |
+| RowErg  | Each palm terminates on its own rigid inboard scull grip. The hands remain uncrossed and outside the torso; neither a synthetic wide bar nor palm-led oar motion is present.                                                                                                                                 |
+| SkiErg  | Each pole is a rigid 1.55 m link. The basket plants steeply, remains fixed while the skier advances, releases by 29% of the cycle, lifts through recovery, and converges continuously on the next catch. The hand stays on the pole-tip sphere and the elbow stays on its sagittal flex-to-extension branch. |
 
 The correction is protected across dense full cycles: 256-step BikeErg knee
 branch/continuity sampling, 128-step RowErg palm/contact/torso-clearance
 sampling, and 256-step SkiErg rigid-pole/plant/contact/continuity sampling. V3
 procedural fallback contacts and the 2D shared timing path remain covered too.
-Live browser review confirmed the RowErg, SkiErg, and BikeErg corrections in
-both Canvas 2D and WebGPU 3D, with no browser warnings or errors.
+The SkiErg suite additionally checks the 80°/23° plant-to-pole-off shaft
+envelope, early elbow flexion, near-extension at release, exact hand/grip
+closure, and a zero-weight previous-anchor → next-anchor handoff at the start
+of final approach.
+
+The technique landmarks come from [Concept2's SkiErg technique](https://www.concept2.com/training/skierg-technique),
+[Concept2's double-pole guidance](https://www.concept2.com/blog/skierg-technique),
+and the on-snow timing and joint-angle measurements in
+[Stöggl and Holmberg](https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2018.00978/full).
+
+Moving acceptance used the SkiErg demo at both 0.5× and 1×. Canvas 2D kept
+both baskets clear of the snow through the free-flight recovery and converged
+on the next plant without a vertical drop. WebGPU/Ultra showed the V4 athlete
+plant, load, finish beside the thighs, release, and recover without a backwards
+horizontal arm flip. A clean dev-server restart produced no runtime diagnostics
+during the final pass.
 
 ## Historical — PROMPT 9 clip-primary arm architecture (superseded)
 

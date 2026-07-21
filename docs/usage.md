@@ -124,8 +124,9 @@ contain a force curve, handle path, drive length, joint positions, or measured
 posture. The visible movement is therefore a deterministic, generic technique
 model aligned to logged cycles, rather than a reconstruction of your individual
 biomechanics. Its shared technique phases stage RowErg legs, body, then arms
-(and reverse that order on recovery); SkiErg reach, plant/pull, and recovery;
-and BikeErg cadence-driven cranks separately from distance-driven wheel roll.
+(and reverse that order on recovery); SkiErg's classic double-pole high reach,
+steep plant, early elbow bend, core-led press, long-arm pole-off, and lifted
+recovery; and BikeErg cadence-driven cranks separately from distance-driven wheel roll.
 Both 2D and 3D use those same timing and contact semantics.
 
 The 2D view draws a lightweight procedural athlete. In 3D, rowplay loads a
@@ -149,6 +150,10 @@ as coherent assemblies—a boat and oar rig, Nordic skis, and a continuous
 bicycle wheel/frame/drivetrain. RowErg palms stay on separate rigid scull grips
 and outside the torso. During the illustrated SkiErg plant, each rigid 1.55 m
 pole holds a deterministic course anchor while its hand remains on the grip.
+The skier advances relative to that basket, releases it near the end of the
+short planted phase, lifts it through recovery, and approaches the next anchor
+without a vertical drop. The 3D elbow is constrained to the shared sagittal
+technique branch rather than a sideways branch inherited from the base clip.
 BikeErg shoes stay on opposed pedals while each knee follows a continuous
 rider-forward branch and retains flexion through bottom dead centre. These are
 deliberate illustrative motion constraints, not measured joint or force data

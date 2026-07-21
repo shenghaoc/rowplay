@@ -3,7 +3,7 @@ import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import { ParticlePool, clampDt } from "./motion";
 import { solveRigidContactPoint2D, solveTwoBone2D, type MutableFigurePoint2 } from "./figurePose";
-import { SKI_POLE_PLANT_DRIVE_START } from "./motionGraph";
+import { SKI_POLE_APPROACH_START_CYCLE } from "./motionGraph";
 import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
 import {
   solveBikeKinematics,
@@ -168,7 +168,7 @@ const BOB_AMP = 4.6;
 // an overview rather than becoming a second chase camera.
 const ATHLETE_SCALE = 2.32;
 /** Forward/back hull surge per stroke (px), per sport. Bike pedals smoothly. */
-const SURGE_PX: Record<Sport, number> = { rower: 6.4, skierg: 3.4, bike: 0 };
+const SURGE_PX: Record<Sport, number> = { rower: 6.4, skierg: 8.2, bike: 0 };
 /** Splash droplets per lane; small and brief, so a tiny pool suffices. */
 const SPLASH_CAP = 28;
 /** Canvas y grows downward, so droplet gravity is positive (px/s²). */
@@ -552,11 +552,13 @@ export function skiPolePlantCourseX2D(
   pixelsPerMeter: number,
   pose: StrokePose,
 ): number {
-  const plantCycle =
-    pose.index + Math.min(pose.cycleFrac, pose.driveFrac * SKI_POLE_PLANT_DRIVE_START);
+  // As the airborne basket begins its final approach it is already targeting
+  // the *next* catch. The anchor changes exactly while poleFlight is one, so
+  // the handoff has zero visible weight; the subsequent C2 descent cannot
+  // drop or snap from the previous plant to the next one.
+  const plantCycle = pose.index + (pose.cycleFrac >= SKI_POLE_APPROACH_START_CYCLE ? 1 : 0);
   const currentCycle = pose.index + pose.cycleFrac;
-  const distanceSincePlant =
-    Math.max(0, currentCycle - plantCycle) * Math.max(0, pose.strokeMeters);
+  const distanceSincePlant = (currentCycle - plantCycle) * Math.max(0, pose.strokeMeters);
   const scale = Number.isFinite(pixelsPerMeter) ? Math.max(0, pixelsPerMeter) : 0;
   return currentCourseX - distanceSincePlant * scale;
 }
@@ -1351,25 +1353,62 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   const { x, y, bobY, polePlantCourseX, accent, rim, foam, skin, skinShade, hair, shoe, reduce } =
     a;
   const hipX = x + k.hipHinge * 2.4;
-  const hipY = bobY - 7.4 + k.kneeFlex * 3.6;
-  const shX = x + 0.6 + k.hipHinge * 5.8;
-  const shY = bobY - 14 + k.hipHinge * 6.4;
+  const hipY = bobY - 7.4 + k.kneeFlex * 2.4;
+  const shX = x + 0.6 + k.hipHinge * 6;
+  const shY = bobY - 14 + k.hipHinge * 2.8;
   const farKit = withAlpha(accent, 0.5);
 
   const poleLength = 13.8;
-  const preferredFarHandX = shX + 6.4 - k.armPress * 10.2;
-  const preferredFarHandY = shY + 0.2 + k.armPress * 9.4;
-  const preferredNearHandX = shX + 7.1 - k.armPress * 11;
-  const preferredNearHandY = shY + 0.9 + k.armPress * 9.8;
-  const freePoleAngle = 0.62 + k.poleSweep * 1.78;
-  const farFreeTipX = preferredFarHandX + Math.cos(freePoleAngle + 0.04) * poleLength;
-  const farFreeTipY = preferredFarHandY + Math.sin(freePoleAngle + 0.04) * poleLength;
-  const nearFreeTipX = preferredNearHandX + Math.cos(freePoleAngle) * poleLength;
-  const nearFreeTipY = preferredNearHandY + Math.sin(freePoleAngle) * poleLength;
-  const farPoleTipX = farFreeTipX + (polePlantCourseX + 9.1 - farFreeTipX) * k.poleContact;
-  const farPoleTipY = farFreeTipY + (y - 0.15 - farFreeTipY) * k.poleContact;
-  const nearPoleTipX = nearFreeTipX + (polePlantCourseX + 12.1 - nearFreeTipX) * k.poleContact;
-  const nearPoleTipY = nearFreeTipY + (y - nearFreeTipY) * k.poleContact;
+  // Keep the wrist on a radius-preserving sagittal arc around the shoulder.
+  // The old linear high→low interpolation crossed close to the shoulder,
+  // making the two-bone solver swap elbow branches. Published double-pole
+  // timing calls for early flexion followed by near-extension at pole-off.
+  const handReach = 6.6 - k.elbowLoad * 1.65 + k.armExtension * 3.3;
+  const handAngle = -0.56 + k.poleSweep * 2.56;
+  const preferredNearHandX = shX + Math.cos(handAngle) * handReach;
+  const preferredNearHandY = shY + Math.sin(handAngle) * handReach;
+  const farHandReach = handReach * 0.97;
+  const preferredFarHandX = shX - 0.45 + Math.cos(handAngle + 0.025) * farHandReach;
+  const preferredFarHandY = shY - 0.4 + Math.sin(handAngle + 0.025) * farHandReach;
+
+  // A recovering pole always trails the hand and stays above the snow. It
+  // rotates from the measured shallow pole-off attitude (~23°) back toward a
+  // steep plant (~80°); clearance, rather than a downward sweep scalar, caps
+  // the free basket so it cannot drop through the course.
+  const freePoleAngle = 1.745 + k.poleSweep * 0.995;
+  const nearClearance = 0.55 + k.poleLift * 2.8;
+  const nearRawDy = Math.sin(freePoleAngle) * poleLength;
+  const nearDy = Math.max(
+    -poleLength * 0.985,
+    Math.min(nearRawDy, y - nearClearance - preferredNearHandY),
+  );
+  const nearDx = -Math.sqrt(Math.max(0, poleLength * poleLength - nearDy * nearDy));
+  const nearFreeTipX = preferredNearHandX + nearDx;
+  const nearFreeTipY = preferredNearHandY + nearDy;
+  const farAngle = freePoleAngle + 0.025;
+  const farRawDy = Math.sin(farAngle) * poleLength;
+  const farDy = Math.max(
+    -poleLength * 0.985,
+    Math.min(farRawDy, y - 0.75 - k.poleLift * 2.55 - preferredFarHandY),
+  );
+  const farDx = -Math.sqrt(Math.max(0, poleLength * poleLength - farDy * farDy));
+  const farFreeTipX = preferredFarHandX + farDx;
+  const farFreeTipY = preferredFarHandY + farDy;
+  // Place the basket at the catch point, just behind the forward high grip.
+  // The old +4.4/+5 offsets put it ahead of the boots for the entire press;
+  // the closed-chain solve then had no choice but to leave the pole upright.
+  const farPlantX = polePlantCourseX + 0.2;
+  const farPlantY = y - 0.15;
+  const nearPlantX = polePlantCourseX + 0.8;
+  const nearPlantY = y;
+  const farFlightTipX = farPlantX + (farFreeTipX - farPlantX) * k.poleFlight;
+  const farFlightTipY = farPlantY + (farFreeTipY - farPlantY) * k.poleFlight;
+  const nearFlightTipX = nearPlantX + (nearFreeTipX - nearPlantX) * k.poleFlight;
+  const nearFlightTipY = nearPlantY + (nearFreeTipY - nearPlantY) * k.poleFlight;
+  const farPoleTipX = farFlightTipX + (farPlantX - farFlightTipX) * k.poleContact;
+  const farPoleTipY = farFlightTipY + (farPlantY - farFlightTipY) * k.poleContact;
+  const nearPoleTipX = nearFlightTipX + (nearPlantX - nearFlightTipX) * k.poleContact;
+  const nearPoleTipY = nearFlightTipY + (nearPlantY - nearFlightTipY) * k.poleContact;
   const armMinimumReach = Math.abs(5.2 - 5) + 0.02;
   const armMaximumReach = 5.2 + 5 - 0.02;
   constrainRigidContact2D(
@@ -1816,11 +1855,16 @@ export class CourseRenderer implements ReplayRenderer {
     vertical: 0,
   };
   private skiKinematics: SkierKinematics = {
+    cycle: 0,
     armPress: 0,
     hipHinge: 0,
     kneeFlex: 0,
     poleContact: 0,
     poleSweep: 0,
+    elbowLoad: 0,
+    armExtension: 0,
+    poleLift: 0,
+    poleFlight: 0,
     rebound: 0,
     surge: 0,
   };

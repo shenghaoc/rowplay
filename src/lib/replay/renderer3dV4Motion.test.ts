@@ -506,6 +506,48 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
+  it("uses the shared SkiErg elbow marker instead of the clip's sideways branch", () => {
+    const lane = createLane();
+    const controller = installReplayV4MotionController({
+      sport: "skierg",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      diagnosticMode: "clip-pelvis",
+    });
+    try {
+      expect(controller?.update({ phase: 0, cycleFrac: 0.11, driveFrac: 0.34 })).toBe(true);
+      // Nudge inward from the nearly straight high-reach pose so this test
+      // isolates elbow-branch selection rather than asking an arm to exceed
+      // its authored maximum reach.
+      placeTargetsNearClipEffectors(lane, new THREE.Vector3(-0.02, -0.015, 0.01));
+      lane.targets.leftElbow.position.set(-0.32, 1.14, 0.42);
+      lane.scene.updateMatrixWorld(true);
+      controller?.setDiagnosticMode("full");
+      expect(controller?.update({ phase: 0, cycleFrac: 0.11, driveFrac: 0.34 })).toBe(true);
+      lane.scene.updateMatrixWorld(true);
+
+      const shoulder = lane.instance.bones.v4LeftUpperArm.getWorldPosition(new THREE.Vector3());
+      const elbow = lane.instance.bones.v4LeftForearm.getWorldPosition(new THREE.Vector3());
+      const hand = lane.instance.bones.v4LeftHand.getWorldPosition(new THREE.Vector3());
+      const marker = lane.targets.leftElbow.getWorldPosition(new THREE.Vector3());
+      const chord = hand.clone().sub(shoulder).normalize();
+      const solvedPlane = elbow.clone().sub(shoulder);
+      solvedPlane.addScaledVector(chord, -solvedPlane.dot(chord)).normalize();
+      const markerPlane = marker.clone().sub(shoulder);
+      markerPlane.addScaledVector(chord, -markerPlane.dot(chord)).normalize();
+
+      expect(solvedPlane.dot(markerPlane)).toBeGreaterThan(0.8);
+      expect(
+        effectorWorld(lane.instance, "leftHand").distanceTo(
+          lane.targets.leftHand.getWorldPosition(new THREE.Vector3()),
+        ),
+      ).toBeLessThan(0.03);
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
   it("soft-orients palms and soles without forcing full equipment quaternions", () => {
     const lane = createLane();
     // Mild target orientation so soft slerp can finish within budget.
