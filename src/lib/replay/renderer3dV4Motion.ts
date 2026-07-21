@@ -11,23 +11,20 @@ const TAU = Math.PI * 2;
 const TRANSFORM_EPSILON = 1e-8;
 
 /**
- * Clip-primary contact policy (PROMPT 9).
+ * Clip-primary contact policy (PROMPT 9 — no hybrid reintroduction).
  *
- * The rejected hybrid drove elbows from hidden V3 landmarks and forced full
- * hand quaternions. The replacement:
- * - bend plane = clip elbow/knee only (never V3 oracle)
- * - hand/foot position may lock to equipment within limb reach (standard
- *   contact IK); the clip still owns the underlying pose and pole vector
- * - terminal orientation is a limited slerp so equipment never corkscrews
- *   the forearm
+ * Arms: the authored clip owns elbow/shoulder pose. Soft contact may close at
+ * most a few centimetres / ~8° of wrist. Larger errors mean fix the clip or
+ * make equipment follow the hero — never full-chain two-bone rewrite.
  *
- * Visual arm quality outranks sub-millimetre contact when reach fails.
+ * Legs: firmer equipment lock (pedals/footplates) with clip bend plane only.
  */
-const ARM_SOFT_TRANSLATE_M = 0.85;
+const ARM_SOFT_TRANSLATE_M = 0.045;
+/** Feet/pedals stay equipment-locked; arms are the clip-primary limb. */
 const LEG_SOFT_TRANSLATE_M = 0.85;
 const BIKE_LEG_SOFT_TRANSLATE_M = 0.9;
-const ARM_SOFT_ANGLE_RAD = THREE.MathUtils.degToRad(12);
-const LEG_SOFT_ANGLE_RAD = THREE.MathUtils.degToRad(20);
+const ARM_SOFT_ANGLE_RAD = THREE.MathUtils.degToRad(8);
+const LEG_SOFT_ANGLE_RAD = THREE.MathUtils.degToRad(18);
 /** Below this residual the chain is left on the pure clip pose. */
 const SOFT_DEADZONE_M = 0.004;
 const SOFT_ANGLE_DEADZONE = THREE.MathUtils.degToRad(1.5);
@@ -109,6 +106,11 @@ export interface ReplayV4MotionController {
   dispose(): void;
   /** Switch diagnostic isolation mode without reinstalling the hero. */
   setDiagnosticMode(mode: ReplayV4DiagnosticMode): void;
+  /**
+   * World-space palm/sole contact point after the last update. Used so
+   * equipment can follow the hero (athlete-led grips) instead of generating pose.
+   */
+  getContactWorld(name: ReplayV4EffectorName, output?: THREE.Vector3): THREE.Vector3;
 }
 
 interface FallbackVisibility {
@@ -372,7 +374,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     this.root.name = `v4-athlete-${sport}`;
     this.root.userData.replayV4Athlete = true;
     this.root.userData.replayV4Sport = sport;
-    this.root.userData.replayV4Architecture = "clip-primary-soft-contact";
+    this.root.userData.replayV4Architecture = "clip-primary-athlete-led";
     this.mesh.userData.replayV4Athlete = true;
     this.mesh.userData.replayV4Sport = sport;
     this.root.visible = false;
@@ -402,6 +404,14 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       }
       material.needsUpdate = true;
     }
+  }
+
+  getContactWorld(name: ReplayV4EffectorName, output = new THREE.Vector3()): THREE.Vector3 {
+    const metric = this.options.instance.effectors[name];
+    const bone = this.options.instance.bones[metric.bone];
+    output.set(metric.contactOffset[0], metric.contactOffset[1], metric.contactOffset[2]);
+    bone.localToWorld(output);
+    return output;
   }
 
   update(sample: ReplayV4MotionSample): boolean {
@@ -528,7 +538,10 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   }
 
   private softTranslateBudget(chain: ChainBinding): number {
-    if (!chain.isLeg) return ARM_SOFT_TRANSLATE_M;
+    if (!chain.isLeg) {
+      // Bike hands stay on the bar (full reach IK). Rower/ski: few-cm soft only.
+      return this.options.sport === "bike" ? 0.85 : ARM_SOFT_TRANSLATE_M;
+    }
     return this.options.sport === "bike" ? BIKE_LEG_SOFT_TRANSLATE_M : LEG_SOFT_TRANSLATE_M;
   }
 
@@ -537,13 +550,12 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   }
 
   /**
-   * Soft contact correction on top of the authored clip pose.
+   * Soft contact on top of the authored clip pose.
    *
-   * - Bend plane comes only from the clip elbow/knee (middle joint).
-   * - Hand/foot position locks within limb reach using clip pole vectors.
-   * - Terminal orientation is a limited slerp (never a forced equipment quaternion).
-   * - Two position passes reconcile contact offset with the soft-oriented palm.
-   * - Hidden V3 elbows/knees are never consulted.
+   * Arms: only apply a few-centimetre correction. If the residual is larger,
+   * leave the pure clip pose — equipment must follow the hero, not the reverse.
+   * Legs: firmer lock for pedals/footplates.
+   * Bend plane: clip middle joint only (never V3 elbows).
    */
   private softCorrectChain(chain: ChainBinding): void {
     chain.upper.getWorldPosition(this.rootWorld);
@@ -551,7 +563,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     chain.effector.getWorldPosition(this.effectorWorld);
     chain.target.getWorldPosition(this.targetWorld);
 
-    // Clip-authored bend plane only.
     this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
     if (this.bendHint.lengthSq() <= TRANSFORM_EPSILON) {
       this.bendHint.set(0, chain.isLeg ? 1 : -1, 0);
@@ -562,6 +573,18 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     if (!Number.isFinite(residual)) {
       throw new Error("Replay V4 contact residual is invalid");
     }
+
+    // Rower/Ski arms beyond soft budget: keep pure clip. Grips snap to palms
+    // after update. Bike keeps a larger hand budget for bar lock.
+    if (
+      !chain.isLeg &&
+      this.options.sport !== "bike" &&
+      residual > this.softTranslateBudget(chain) * 1.15
+    ) {
+      this.softOrientEffector(chain);
+      return;
+    }
+
     if (residual <= SOFT_DEADZONE_M) {
       this.softOrientEffector(chain);
       return;
@@ -578,22 +601,20 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       throw new Error("Replay V4 chain has invalid segment lengths");
     }
 
-    // For legs, orient first so the sole offset frame matches the equipment
-    // before the two-bone position solve (safe: no forearm twist chain).
     if (chain.isLeg) {
       this.softOrientEffector(chain);
       this.root.updateMatrixWorld(true);
     }
-    // Pass 1: position toward target using the current contact frame.
     this.solvePositionTowardTarget(chain, proximalLength, distalLength);
     this.root.updateMatrixWorld(true);
     this.softOrientEffector(chain);
     this.root.updateMatrixWorld(true);
-    // Pass 2: re-home after orient changed the offset frame.
-    this.solvePositionTowardTarget(chain, proximalLength, distalLength);
-    this.root.updateMatrixWorld(true);
-    if (chain.isLeg) this.softOrientEffector(chain);
-    this.root.updateMatrixWorld(true);
+    if (chain.isLeg) {
+      this.solvePositionTowardTarget(chain, proximalLength, distalLength);
+      this.root.updateMatrixWorld(true);
+      this.softOrientEffector(chain);
+      this.root.updateMatrixWorld(true);
+    }
   }
 
   private solvePositionTowardTarget(

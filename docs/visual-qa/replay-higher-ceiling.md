@@ -32,7 +32,25 @@ palm–handle distance was millimetre-perfect.
 | Ski poles | Hands own the arc; poles follow hands. Planted tips stay on snow with stretchable shafts — no tip-sphere hand projection. |
 | Diagnostics | `setDiagnosticMode`: `clip-only`, `clip-pelvis`, `clip-hands`, `full`, `wireframe`, `unlit`, … |
 
-Architecture marker on the hero root: `userData.replayV4Architecture = "clip-primary-soft-contact"`.
+Architecture marker on the hero root: `userData.replayV4Architecture = "clip-primary-athlete-led"`.
+
+### Athlete-led equipment (structural, not constant tuning)
+
+The previous soft-contact path still allowed **0.85 m** hand translation, so
+equipment paths continued to generate arm pose via two-bone IK. That is rejected.
+
+**Now:**
+
+| Limb | Policy |
+| --- | --- |
+| Arms (row/ski) | Pure clip when residual &gt; 4.5 cm; soft orient ≤8°. |
+| Arms (bike) | Firmer bar lock (reach IK, clip bend plane). |
+| Legs | Equipment lock with clip bend plane. |
+| Grips | **Follow** skinned palms after each V4 update (`syncEquipmentToHero`). |
+
+RowErg **Option 1 Concept2**: single handle bar appears when V4 is active; dual
+oars hide so they cannot own the arm solve. Ski poles stretch from hero palms
+to tips without re-solving arms.
 
 ### Follow-up clip densification (PROMPT 9 carry-on)
 

@@ -355,7 +355,7 @@ describe.each([
       expect(controller?.root.userData).toMatchObject({
         replayV4Athlete: true,
         replayV4Sport: sport,
-        replayV4Architecture: "clip-primary-soft-contact",
+        replayV4Architecture: "clip-primary-athlete-led",
       });
       expect(controller?.mesh.userData).toMatchObject({
         replayV4Athlete: true,
@@ -500,7 +500,7 @@ describe("V4 motion determinism and fallback safety", () => {
           lane.targets.rightHand.getWorldPosition(new THREE.Vector3()),
         ),
       ).toBeLessThan(0.03);
-      expect(controller?.root.userData.replayV4Architecture).toBe("clip-primary-soft-contact");
+      expect(controller?.root.userData.replayV4Architecture).toBe("clip-primary-athlete-led");
     } finally {
       disposeLane(lane, controller);
     }

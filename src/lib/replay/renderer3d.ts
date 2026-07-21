@@ -311,6 +311,11 @@ interface Avatar {
    * than followers of a moving torso.
    */
   resolveWorldContacts?(): void;
+  /**
+   * After the V4 hero samples its clip, snap grips/handles to the skinned
+   * palms so equipment follows the athlete (PROMPT 9 athlete-led contact).
+   */
+  syncEquipmentToHero?(): void;
 }
 
 interface AvatarV4Targets {
@@ -1748,6 +1753,28 @@ function makeRowerAvatar(
     oars.push({ side, group: oar, blade, handleAnchor });
   }
 
+  // Concept2 RowErg Option 1 — single handle + chain. Primary equipment when
+  // the V4 hero is active so both hands share one bar (no dual-oar IK hybrid).
+  const concept2 = new THREE.Group();
+  concept2.name = "rower-concept2-handle";
+  concept2.visible = false;
+  const handleBar = capsulePart(0.028, 0.46, equipmentGripMaterial, "x");
+  handleBar.name = "rower-concept2-bar";
+  const chainLink = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, 0.012, 0.55, Math.max(6, eqCylSegs)),
+    equipmentMetalMaterial,
+  );
+  chainLink.name = "rower-concept2-chain";
+  chainLink.rotation.x = Math.PI / 2;
+  chainLink.position.set(0, 0.02, 0.32);
+  concept2.add(handleBar, chainLink);
+  group.add(concept2);
+  const palmWorldL = new THREE.Vector3();
+  const palmWorldR = new THREE.Vector3();
+  const palmLocalL = new THREE.Vector3();
+  const palmLocalR = new THREE.Vector3();
+  const handleMid = new THREE.Vector3();
+
   // Authored visual ranges. Channels from the solver are 0..1; these scales
   // turn them into a stroke that reads at a glance without leaving the hull.
   // Seat start is biased forward so travel can grow without pulling the hips
@@ -1762,11 +1789,10 @@ function makeRowerAvatar(
   const BODY_PITCH_FINISH = 0.3;
   const PELVIS_PITCH_CATCH = -0.07;
   const PELVIS_PITCH_FINISH = 0.105;
-  // Scull handle arc: catch handles forward of the rib cage; finish near the
-  // body without driving grips through the jersey. Soft V4 contact tolerates
-  // centimetre residual — visual arm quality outranks sub-mm lock.
-  const OAR_YAW_CATCH = 0.3;
-  const OAR_YAW_SPAN = -0.72;
+  // Concept2 / scull handle path: early drive keeps grips forward so arms can
+  // stay long; late draw brings the bar to the body.
+  const OAR_YAW_CATCH = 0.28;
+  const OAR_YAW_SPAN = -0.68;
   const BLADE_DIP = 0.14;
 
   const handlePoint = new THREE.Vector3();
@@ -1958,7 +1984,7 @@ function makeRowerAvatar(
     throw new Error("RowErg V4 target rig is incomplete");
   }
   finalizeAvatar(group, castShadow, opacity);
-  return {
+  const rowerAvatar: Avatar = {
     group,
     animate,
     assetMaterialResolver: resolveAssetMaterial,
@@ -1973,7 +1999,38 @@ function makeRowerAvatar(
       leftKnee: leftLeg.knee,
       rightKnee: rightLeg.knee,
     },
+    /**
+     * Athlete-led Concept2 grips: palms from the skinned clip own the handle.
+     * Dual oars become decorative/hidden so they never generate arm pose.
+     */
+    syncEquipmentToHero() {
+      const motion = rowerAvatar.v4Motion;
+      if (!motion?.enabled) {
+        concept2.visible = false;
+        for (const oar of oars) oar.group.visible = true;
+        return;
+      }
+      motion.getContactWorld("leftHand", palmWorldL);
+      motion.getContactWorld("rightHand", palmWorldR);
+      palmLocalL.copy(palmWorldL);
+      palmLocalR.copy(palmWorldR);
+      group.worldToLocal(palmLocalL);
+      group.worldToLocal(palmLocalR);
+      // Hands and contact markers follow the hero palms.
+      leftArm.hand.position.copy(palmLocalL);
+      rightArm.hand.position.copy(palmLocalR);
+      leftArm.hand.position.sub(rower.position);
+      rightArm.hand.position.sub(rower.position);
+      // Concept2 single bar between palms (both hands on one handle).
+      handleMid.copy(palmLocalL).add(palmLocalR).multiplyScalar(0.5);
+      concept2.position.copy(handleMid);
+      const span = palmLocalR.x - palmLocalL.x;
+      handleBar.scale.set(Math.max(0.6, Math.abs(span) / 0.46), 1, 1);
+      concept2.visible = true;
+      for (const oar of oars) oar.group.visible = false;
+    },
   };
+  return rowerAvatar;
 }
 
 /**
@@ -2549,7 +2606,12 @@ function makeSkierAvatar(
     throw new Error("SkiErg V4 target rig is incomplete");
   }
   finalizeAvatar(group, castShadow, opacity);
-  return {
+  const skiPalmL = new THREE.Vector3();
+  const skiPalmR = new THREE.Vector3();
+  const skiLocalL = new THREE.Vector3();
+  const skiLocalR = new THREE.Vector3();
+  const skiTipLocal = new THREE.Vector3();
+  const skiAvatar: Avatar = {
     group,
     animate,
     resolveWorldContacts,
@@ -2568,7 +2630,34 @@ function makeSkierAvatar(
     setV4ArmReach(reach) {
       if (Number.isFinite(reach) && reach > 0) contactArmReach = reach;
     },
+    /**
+     * Athlete-led poles: grips follow skinned palms; shafts stretch to tips.
+     * Arms stay on the authored clip — poles never re-solve the arm chain.
+     */
+    syncEquipmentToHero() {
+      const motion = skiAvatar.v4Motion;
+      if (!motion?.enabled) return;
+      motion.getContactWorld("leftHand", skiPalmL);
+      motion.getContactWorld("rightHand", skiPalmR);
+      for (let i = 0; i < arms.length; i++) {
+        const arm = arms[i];
+        const pole = poles[i];
+        if (!arm || !pole) continue;
+        const palmWorld = i === 0 ? skiPalmL : skiPalmR;
+        const palmLocal = i === 0 ? skiLocalL : skiLocalR;
+        palmLocal.copy(palmWorld);
+        upper.worldToLocal(palmLocal);
+        arm.hand.position.copy(palmLocal);
+        // Keep existing tip anchor; stretch shaft from hero palm to tip.
+        skiTipLocal.copy(pole.tipAnchor.position);
+        placeFigureSegmentBetween(pole.shaft, palmLocal, skiTipLocal);
+        pole.grip.position.copy(palmLocal);
+        pole.grip.quaternion.copy(pole.shaft.quaternion);
+        pole.basket.position.copy(skiTipLocal);
+      }
+    },
   };
+  return skiAvatar;
 }
 
 /**
@@ -5304,6 +5393,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     outer.updateMatrixWorld(true);
     avatar.resolveWorldContacts?.();
     avatar.v4Motion?.update(reduce ? REDUCED_REPLAY_POSES[this.sport] : pose);
+    // Athlete-led grips: equipment follows the clip pose, never the reverse.
+    if (avatar.v4Motion?.enabled) avatar.syncEquipmentToHero?.();
     output.x = x;
     output.z = z;
     output.tx = tx;
