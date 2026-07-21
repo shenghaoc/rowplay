@@ -54,6 +54,8 @@ counter-rotation, head stabilization, and ankle articulation.
 ## V4 rigged asset
 
 V4 is a compact local glTF with a generic athletic skeleton and skin weights.
+Its production surface is authored by the reviewed Blender 5 Python generator,
+then sealed onto the canonical `rigV4.ts` skeleton and clips by the Node build.
 It has authored canonical clips, not a recording of an athlete. At runtime an
 `AnimationMixer` samples clip time from the motion graph / `StrokePose` instead
 of free-running from `requestAnimationFrame`; this makes replay time, seeking,

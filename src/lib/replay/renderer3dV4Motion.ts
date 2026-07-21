@@ -474,7 +474,10 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     if (this.oracleBendHint.lengthSq() > TRANSFORM_EPSILON) {
       this.oracleBendHint.normalize();
       if (this.bendHint.lengthSq() > TRANSFORM_EPSILON) {
-        this.bendHint.normalize().multiplyScalar(clipWeight).addScaledVector(this.oracleBendHint, oracleWeight);
+        this.bendHint
+          .normalize()
+          .multiplyScalar(clipWeight)
+          .addScaledVector(this.oracleBendHint, oracleWeight);
       } else {
         this.bendHint.copy(this.oracleBendHint);
       }

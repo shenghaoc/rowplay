@@ -73,7 +73,8 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
   const contract = {
     schema: V4_CONTRACT_SCHEMA,
     schemaVersion: V4_CONTRACT_VERSION,
-    canonicalSourceModule: "src/lib/replay/rigV4.ts",
+    canonicalSourceModule: "scripts/build-replay-athlete-v4-blender.py",
+    canonicalRigModule: "src/lib/replay/rigV4.ts",
     webRuntimeArtifact: await artifact(V4_ASSET_FILENAME, GLB_PATH),
     nativeDerivativeArtifact: await artifact(V4_USDZ_FILENAME, USDZ_PATH),
     coordinateSystem: {
@@ -115,13 +116,15 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
       { role: "athlete-shorts", source: "vertex-color pelvis/thigh kit regions" },
       { role: "athlete-footwear", source: "vertex-color shoe regions" },
       { role: "athlete-hair", source: "vertex-color hair regions" },
-      { role: "athlete-headwear", source: "vertex-color cap regions" },
-      { role: "athlete-trim", source: "vertex-color waistband/yoke/accent regions" },
+      { role: "athlete-trim", source: "vertex-color jersey/shoe accent regions" },
     ],
     provenance: {
       owner: "rowplay",
       licence: "MIT",
-      source: "repository-authored deterministic procedural skinned mesh",
+      source: "repository-authored Blender 5 parametric skinned athlete",
+      authoringTool: "Blender 5.2 LTS",
+      authoringScript: "scripts/build-replay-athlete-v4-blender.py",
+      rigAndClipSource: "src/lib/replay/rigV4.ts",
       forbiddenSources: [
         "downloaded model",
         "third-party character",

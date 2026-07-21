@@ -8,7 +8,8 @@ const MIN_VERTICES = 4_500;
 const MAX_VERTICES = 12_000;
 const MIN_TRIANGLES = 8_500;
 const MAX_TRIANGLES = 24_000;
-const EXPECTED_COMPONENTS = 14;
+const EXPECTED_COMPONENTS = 30;
+const SOURCE_DESCRIPTION = "repository-authored Blender 5 parametric skinned athlete";
 
 const BONE_NAMES = [
   "v4Hips",
@@ -201,10 +202,7 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     root.extras?.replayAssetRole === "production-skinned-athlete",
     "V4 is not product-marked",
   );
-  invariant(
-    root.extras?.source === "repository-authored procedural skinned mesh",
-    "V4 source metadata is invalid",
-  );
+  invariant(root.extras?.source === SOURCE_DESCRIPTION, "V4 source metadata is invalid");
   invariant(root.extras?.licence === "MIT", "V4 licence metadata is invalid");
 
   invariant(document.skins?.length === 1, "V4 must contain exactly one skin");
@@ -262,7 +260,7 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
   const components = connectedComponents(vertexCount, flatIndices);
   invariant(
     components.length === EXPECTED_COMPONENTS,
-    `V4 topology must remain ${EXPECTED_COMPONENTS} reviewed components`,
+    `V4 topology must remain ${EXPECTED_COMPONENTS} reviewed components; received ${components.length}`,
   );
   invariant(components.filter((size) => size >= 380).length >= 5, "V4 major lofts are missing");
 

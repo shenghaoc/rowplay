@@ -1,16 +1,17 @@
 {
   "schema": "rowplay.replay.athlete.v4",
   "schemaVersion": 1,
-  "canonicalSourceModule": "src/lib/replay/rigV4.ts",
+  "canonicalSourceModule": "scripts/build-replay-athlete-v4-blender.py",
+  "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 433104,
-    "sha256": "4e658e31254539e00e60adc648a59eafcf033149cd89e641f85bf0391f3a6dba"
+    "byteCount": 564712,
+    "sha256": "1cce28920c3735a3f8504d117af3cbbbbac7f9f4c072e7b8e0f662bc9817bbc2"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 949794,
-    "sha256": "8b7a716bb572c9ff3124a6099c1f12caf41e2f00e33c0c5fc8ef44ba39f3f819"
+    "byteCount": 1272704,
+    "sha256": "7a6b5701293b49bef5bd80a2c0fdc7d681303a49f7a243d816988f167142a932"
   },
   "coordinateSystem": {
     "units": "metres",
@@ -28,9 +29,9 @@
     "meshName": "v4Athlete",
     "skinnedMeshes": 1,
     "primitives": 1,
-    "vertices": 5373,
-    "triangles": 10152,
-    "topologyComponents": 14,
+    "vertices": 7204,
+    "triangles": 13724,
+    "topologyComponents": 30,
     "skins": 1,
     "materials": 1,
     "materialSlots": 1
@@ -325,18 +326,17 @@
       "source": "vertex-color hair regions"
     },
     {
-      "role": "athlete-headwear",
-      "source": "vertex-color cap regions"
-    },
-    {
       "role": "athlete-trim",
-      "source": "vertex-color waistband/yoke/accent regions"
+      "source": "vertex-color jersey/shoe accent regions"
     }
   ],
   "provenance": {
     "owner": "rowplay",
     "licence": "MIT",
-    "source": "repository-authored deterministic procedural skinned mesh",
+    "source": "repository-authored Blender 5 parametric skinned athlete",
+    "authoringTool": "Blender 5.2 LTS",
+    "authoringScript": "scripts/build-replay-athlete-v4-blender.py",
+    "rigAndClipSource": "src/lib/replay/rigV4.ts",
     "forbiddenSources": [
       "downloaded model",
       "third-party character",

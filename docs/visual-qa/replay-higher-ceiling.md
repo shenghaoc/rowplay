@@ -241,7 +241,7 @@ through the loaded press; Bike hands remain on the bar while soles follow the
 same opposed crank graph that drives the drivetrain. The fast modes remain
 navigation controls, not claims of natural-speed biomechanics.
 
-Current V4 still evidence:
+Pre-Blender real-stage V4 evidence:
 
 | Sport   | Desktop dark Ultra                                     | Mobile light Ultra                                     |
 | ------- | ------------------------------------------------------ | ------------------------------------------------------ |
@@ -249,20 +249,58 @@ Current V4 still evidence:
 | SkiErg  | [frame](higher-ceiling/v4/ski-desktop-dark-ultra.jpg)  | [frame](higher-ceiling/v4/ski-mobile-light-ultra.jpg)  |
 | BikeErg | [frame](higher-ceiling/v4/bike-desktop-dark-ultra.jpg) | [frame](higher-ceiling/v4/bike-mobile-light-ultra.jpg) |
 
-RowErg also has a current
+The pre-Blender RowErg record also has a
 [desktop light Ultra frame](higher-ceiling/v4/row-desktop-light-ultra.jpg).
-The checked asset is 433,104 bytes, 5,373 vertices, 10,152 triangles, one
-primitive/material slot, and 14 topology components. Two independent exports
-were byte-identical to the committed GLB; the reviewed SHA-256 is
-`4e658e31254539e00e60adc648a59eafcf033149cd89e641f85bf0391f3a6dba`.
-PR #171 also owns the native handoff contract: the web runtime remains this GLB,
-while `rowplay-athlete-v4.usdz` is a Blender-generated derivative for RowPlay
-Studio / PR #72. Contract version `1` is generated as
-`rowplay-athlete-v4.contract.json`; the USDZ SHA-256 is
-`8b7a716bb572c9ff3124a6099c1f12caf41e2f00e33c0c5fc8ef44ba39f3f819`.
-Blender 5.2 repeat exports were not byte-identical, so the accepted
-portability gate is semantic USDLoader validation rather than silent byte
-normalization.
+These WebGPU captures remain evidence for the stage, camera, sport equipment,
+and runtime contact system, but they predate the current Blender-authored skin
+and must not be used as visual proof of that newer surface.
+
+## Blender-authored V4 surface refresh — 2026-07-21
+
+The production V4 surface is now generated in Blender 5.2 from the reviewed
+repository script `scripts/build-replay-athlete-v4-blender.py`. It uses no
+downloaded model, scan, likeness, avatar generator, texture, or external
+request. The Node build remaps Blender's joint order onto the canonical 19-bone
+V4 skeleton, adds the three deterministic technique clips and contact metadata,
+and exports the final GLB.
+
+[Open the full nine-frame Blender deformation sheet](higher-ceiling/v4-blender/v4-blender-contact-sheet.jpg).
+
+| Sport   | Early phase                                                 | Drive / load                                                | Late phase                                                  |
+| ------- | ----------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
+| RowErg  | [frame 1](higher-ceiling/v4-blender/v4-blender-rower-1.jpg) | [frame 2](higher-ceiling/v4-blender/v4-blender-rower-2.jpg) | [frame 3](higher-ceiling/v4-blender/v4-blender-rower-3.jpg) |
+| SkiErg  | [frame 1](higher-ceiling/v4-blender/v4-blender-skier-1.jpg) | [frame 2](higher-ceiling/v4-blender/v4-blender-skier-2.jpg) | [frame 3](higher-ceiling/v4-blender/v4-blender-skier-3.jpg) |
+| BikeErg | [frame 1](higher-ceiling/v4-blender/v4-blender-bike-1.jpg)  | [frame 2](higher-ceiling/v4-blender/v4-blender-bike-2.jpg)  | [frame 3](higher-ceiling/v4-blender/v4-blender-bike-3.jpg)  |
+
+The studio sheet intentionally isolates mesh shape, skinning, and base-clip
+deformation. It does not apply the runtime analytic hand/foot solve or render
+sport equipment, so it is not presented as final handle, pole, or pedal contact
+evidence. The earlier real-stage WebGPU sheets above remain the product-context
+record, and automated renderer tests cover the post-clip contact constraints.
+The current in-app browser worker exposed no WebGL/WebGPU context, so this pass
+does not mislabel a Canvas fallback capture as current 3D proof.
+
+Studio review rejected three intermediate candidates: floating collar and
+joint rings, centreline thigh cones that spiked under hip flexion, and broad
+pelvis caps that emerged as a skirt. The accepted mesh instead uses continuous
+smooth arm and leg lofts, buried uncapped shoulder/hip roots, graduated
+parent-child weights, shaped torso and face planes, an open swept-hair shell,
+sealed grip forms, footwear uppers/soles/laces, vertex-colour kit construction,
+and one restrained physical material. The result remains stylized and generic
+while removing the stacked-block and detached-joint language of the procedural
+fallback.
+
+The checked GLB is 564,712 bytes: one indexed skinned primitive, 7,204 vertices,
+13,724 triangles, 19 bones, 30 reviewed topology components, one material, zero
+textures, and three clips / 60 tracks. Two clean Blender-to-GLB builds were
+byte-identical at SHA-256
+`1cce28920c3735a3f8504d117af3cbbbbac7f9f4c072e7b8e0f662bc9817bbc2`.
+The checked USDZ derivative is 1,272,704 bytes at SHA-256
+`7a6b5701293b49bef5bd80a2c0fdc7d681303a49f7a243d816988f167142a932`;
+the generated contract SHA-256 is
+`76f28df4ce1cba6768a553e41ffce26d6b79625b36f3110f1c3d35e834775262`.
+Blender 5.2 repeat USDZ containers are not byte-identical, so USDZ acceptance
+remains semantic `USDLoader` validation rather than silent byte normalization.
 
 ## Earlier V3/fallback capture matrix
 

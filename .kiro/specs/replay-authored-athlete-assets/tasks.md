@@ -55,3 +55,11 @@ figure, readability, and motion specs.
     the web GLB runtime
   - [x] Document the RowPlay Studio boundary, exact hashes, and Blender USDZ
     repeat-export nondeterminism
+
+- [x] **8. Raise the production skin ceiling in Blender 5**
+  - [x] Author a new generic athlete surface, vertex colours, smooth normals,
+    and broad deformation weights from a repository Blender Python script
+  - [x] Preserve the exact V4 skeleton, clips, contact offsets, runtime IK,
+    live/ghost isolation, and V3/Canvas fallbacks
+  - [x] Add reproducible Blender studio rendering and update GLB/USDZ/contract
+    provenance, metrics, hashes, and semantic validation

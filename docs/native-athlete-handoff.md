@@ -6,25 +6,28 @@ must not independently remodel, reproportion, reskin, or reanimate the athlete.
 
 ## Canonical source
 
-- Source module: `src/lib/replay/rigV4.ts`
+- Surface source: `scripts/build-replay-athlete-v4-blender.py`
+- Rig, contact, and clip source: `src/lib/replay/rigV4.ts`
 - Web runtime artifact: `static/replay-assets/rowplay-athlete-v4.glb`
 - Native derivative: `static/replay-assets/rowplay-athlete-v4.usdz`
 - Machine-readable contract:
   `static/replay-assets/rowplay-athlete-v4.contract.json`
 - Contract schema: `rowplay.replay.athlete.v4`, version `1`
 
-The GLB remains the production web runtime artifact. The USDZ is a derivative
-for RowPlay Studio / PR #72 and is built from the exact GLB through Blender
-5.2. The Blender script contains no authoring geometry or alternative
+The GLB remains the production web runtime artifact. Blender 5.2 authors its
+generic local surface from the repository Python script; the Node build remaps
+that surface to the canonical V4 skeleton and adds the reviewed clips and
+contact metadata. The USDZ conversion script then derives the Studio artifact
+from that exact checked GLB and contains no second model or alternative
 proportions.
 
 ## Artifact identity
 
 | Artifact                           |     Bytes | SHA-256                                                            |
 | ---------------------------------- | --------: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.glb`           |   433,104 | `4e658e31254539e00e60adc648a59eafcf033149cd89e641f85bf0391f3a6dba` |
-| `rowplay-athlete-v4.usdz`          |   949,794 | `8b7a716bb572c9ff3124a6099c1f12caf41e2f00e33c0c5fc8ef44ba39f3f819` |
-| `rowplay-athlete-v4.contract.json` | generated | `edea859484f5a5077eab9d99495a4640c442edae33c5e54f1f4d6f58d9af8f14` |
+| `rowplay-athlete-v4.glb`           |   564,712 | `1cce28920c3735a3f8504d117af3cbbbbac7f9f4c072e7b8e0f662bc9817bbc2` |
+| `rowplay-athlete-v4.usdz`          | 1,272,704 | `7a6b5701293b49bef5bd80a2c0fdc7d681303a49f7a243d816988f167142a932` |
+| `rowplay-athlete-v4.contract.json` | generated | `76f28df4ce1cba6768a553e41ffce26d6b79625b36f3110f1c3d35e834775262` |
 
 Blender 5.2 does not currently produce byte-identical USDZ containers across
 repeat exports. Two same-basename exports differed in the `.usdc` payload, so
@@ -58,11 +61,11 @@ Summary:
 Run from the rowplay repository root:
 
 ```sh
-pnpm run build:replay-rig-v4
-pnpm run build:replay-rig-v4-usdz
-pnpm run build:replay-rig-v4-contract
-pnpm run validate:replay-assets
-pnpm test src/lib/replay/rigV4Usd.test.ts --run
+vp run build:replay-rig-v4
+vp run build:replay-rig-v4-usdz
+vp run build:replay-rig-v4-contract
+vp run validate:replay-assets
+vp test run src/lib/replay/rigV4Usd.test.ts
 ```
 
 The USDZ validation is a native handoff and portability gate. It does not switch

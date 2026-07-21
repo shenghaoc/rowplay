@@ -1556,12 +1556,8 @@ describe("CourseRenderer3D", () => {
           const { avatar, instance } = v4Lane(renderer);
           getScene(renderer).updateMatrixWorld(true);
           inv.copy(avatar.group.matrixWorld).invert();
-          leftLocal
-            .copy(v4EffectorWorld(instance, "leftHand"))
-            .applyMatrix4(inv);
-          rightLocal
-            .copy(v4EffectorWorld(instance, "rightHand"))
-            .applyMatrix4(inv);
+          leftLocal.copy(v4EffectorWorld(instance, "leftHand")).applyMatrix4(inv);
+          rightLocal.copy(v4EffectorWorld(instance, "rightHand")).applyMatrix4(inv);
           expect(leftLocal.x, `left hand stays port at ${cycle}`).toBeLessThan(-0.02);
           expect(rightLocal.x, `right hand stays starboard at ${cycle}`).toBeGreaterThan(0.02);
           expect(rightLocal.x - leftLocal.x, `hands uncrossed at ${cycle}`).toBeGreaterThan(0.06);
@@ -1571,25 +1567,48 @@ describe("CourseRenderer3D", () => {
       }
     });
 
-    it("presses SkiErg hands behind the hips through the loaded double-pole", () => {
+    it("drives a SkiErg double-pole back-press with hands and elbows aft of the hips", () => {
       const renderer = rendererFor("skierg");
       try {
         const inv = new THREE.Matrix4();
         const handLocal = new THREE.Vector3();
+        const elbowLocal = new THREE.Vector3();
+        const shoulderLocal = new THREE.Vector3();
         const hipsLocal = new THREE.Vector3();
-        let sawBehind = false;
-        for (const cycle of [0.18, 0.24, 0.3, 0.34]) {
+        let minHandZ = Number.POSITIVE_INFINITY;
+        let minElbowZ = Number.POSITIVE_INFINITY;
+        let catchHandZ = 0;
+        for (const cycle of [0.02, 0.18, 0.24, 0.3, 0.34]) {
           renderer.render(makeSportState("skierg", cycle), false);
           const { avatar, instance } = v4Lane(renderer);
           getScene(renderer).updateMatrixWorld(true);
           inv.copy(avatar.group.matrixWorld).invert();
           handLocal.copy(v4EffectorWorld(instance, "leftHand")).applyMatrix4(inv);
+          elbowLocal
+            .copy(instance.bones.v4LeftForearm.getWorldPosition(new THREE.Vector3()))
+            .applyMatrix4(inv);
+          shoulderLocal
+            .copy(instance.bones.v4LeftUpperArm.getWorldPosition(new THREE.Vector3()))
+            .applyMatrix4(inv);
           hipsLocal
             .copy(instance.bones.v4Hips.getWorldPosition(new THREE.Vector3()))
             .applyMatrix4(inv);
-          if (handLocal.z < hipsLocal.z - 0.12) sawBehind = true;
+          if (cycle < 0.05) catchHandZ = handLocal.z - hipsLocal.z;
+          minHandZ = Math.min(minHandZ, handLocal.z - hipsLocal.z);
+          minElbowZ = Math.min(minElbowZ, elbowLocal.z - hipsLocal.z);
+          if (cycle >= 0.18 && cycle <= 0.34) {
+            // Loaded press: hands must sit behind the hips, not drop in front.
+            expect(handLocal.z, `hand aft of hips at ${cycle}`).toBeLessThan(hipsLocal.z - 0.08);
+            // Elbows travel with the press rather than staying in front of the chest.
+            expect(elbowLocal.z, `elbow not locked in front at ${cycle}`).toBeLessThan(
+              shoulderLocal.z + 0.12,
+            );
+          }
         }
-        expect(sawBehind, "double-pole finish reaches behind the hips").toBe(true);
+        // Clear fore-aft travel so the stroke is a back-press, not a shrug.
+        expect(catchHandZ - minHandZ, "hand travels aft through the press").toBeGreaterThan(0.45);
+        expect(minHandZ, "peak press is a true back-press past the hips").toBeLessThan(-0.18);
+        expect(minElbowZ, "elbows follow the press aft").toBeLessThan(0.12);
       } finally {
         renderer.destroy();
       }
@@ -1914,12 +1933,12 @@ describe("CourseRenderer3D", () => {
         ["rower-shin-right", 0.552],
       ],
       skierg: [
-        ["skierg-pole-shaft-left", 1.38],
-        ["skierg-pole-shaft-right", 1.38],
-        ["skierg-upper-arm-left", 0.36],
-        ["skierg-upper-arm-right", 0.36],
-        ["skierg-forearm-left", 0.34],
-        ["skierg-forearm-right", 0.34],
+        ["skierg-pole-shaft-left", 1.42],
+        ["skierg-pole-shaft-right", 1.42],
+        ["skierg-upper-arm-left", 0.38],
+        ["skierg-upper-arm-right", 0.38],
+        ["skierg-forearm-left", 0.36],
+        ["skierg-forearm-right", 0.36],
         ["skierg-thigh-left", 0.4],
         ["skierg-thigh-right", 0.4],
         ["skierg-shin-left", 0.39],
@@ -2233,7 +2252,7 @@ describe("CourseRenderer3D", () => {
         const basket = sceneObject(renderer, `skierg-pole-tip-${side}`);
 
         expect(hand.distanceTo(grip), `${side} hand remains on grip`).toBeLessThan(1e-6);
-        expect(grip.distanceTo(tip), `${side} rigid pole length`).toBeCloseTo(1.38, 5);
+        expect(grip.distanceTo(tip), `${side} rigid pole length`).toBeCloseTo(1.42, 5);
         expect(tip.y, `${side} carbide tip stays on snow`).toBeCloseTo(0.055, 5);
         const prior = plantedTips.get(side);
         // The skier's torso advances through the press, but a loaded basket

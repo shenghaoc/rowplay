@@ -8,8 +8,11 @@
  * An optional first argument replaces the output path. The default is a
  * versioned production artifact under `static/replay-assets/`.
  */
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import {
@@ -25,6 +28,9 @@ import {
 
 const DEFAULT_OUTPUT = `static/replay-assets/${V4_ASSET_FILENAME}`;
 const output = resolve(process.argv[2] ?? DEFAULT_OUTPUT);
+const BLENDER_GENERATOR = resolve("scripts/build-replay-athlete-v4-blender.py");
+const DEFAULT_BLENDER = "/Applications/Blender.app/Contents/MacOS/blender";
+const SOURCE_DESCRIPTION = "repository-authored Blender 5 parametric skinned athlete";
 
 // GLTFExporter has a browser FileReader dependency. Node's Blob has equivalent
 // byte access, so the adapter remains local, deterministic and dependency-free.
@@ -45,13 +51,121 @@ globalThis.FileReader ??= class FileReader {
 };
 
 function parseGlb(bytes) {
+  const payload = ArrayBuffer.isView(bytes)
+    ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+    : bytes;
   return new Promise((resolve, reject) => {
-    new GLTFLoader().parse(bytes, "", resolve, reject);
+    new GLTFLoader().parse(payload, "", resolve, reject);
   });
 }
 
+function onlySkinnedMesh(root) {
+  const meshes = [];
+  root.traverse((object) => {
+    if (object.isSkinnedMesh) meshes.push(object);
+    else if (object.isMesh)
+      throw new Error(`Blender source contains an unskinned mesh: ${object.name}`);
+  });
+  if (meshes.length !== 1) {
+    throw new Error(`Blender source must contain one SkinnedMesh, received ${meshes.length}`);
+  }
+  return meshes[0];
+}
+
+function remapBlenderGeometry(sourceMesh) {
+  const geometry = sourceMesh.geometry.clone();
+  if (!geometry.index) throw new Error("Blender V4 source must remain indexed");
+  const requiredAttributes = ["position", "normal", "color", "skinIndex", "skinWeight"];
+  for (const name of requiredAttributes) {
+    if (!geometry.getAttribute(name)) throw new Error(`Blender V4 source is missing ${name}`);
+  }
+  const unexpected = Object.keys(geometry.attributes).filter(
+    (name) => !requiredAttributes.includes(name),
+  );
+  if (unexpected.length > 0) {
+    throw new Error(`Blender V4 source has unreviewed attributes: ${unexpected.join(", ")}`);
+  }
+
+  const sourceBoneNames = sourceMesh.skeleton.bones.map((bone) => bone.name);
+  if (
+    sourceBoneNames.length !== V4_BONE_NAMES.length ||
+    new Set(sourceBoneNames).size !== V4_BONE_NAMES.length ||
+    V4_BONE_NAMES.some((name) => !sourceBoneNames.includes(name))
+  ) {
+    throw new Error(`Blender V4 source skeleton drifted: ${sourceBoneNames.join(", ")}`);
+  }
+  const canonicalIndex = new Map(V4_BONE_NAMES.map((name, index) => [name, index]));
+  const sourceToCanonical = sourceBoneNames.map((name) => canonicalIndex.get(name));
+  const skinIndex = geometry.getAttribute("skinIndex");
+  const remapped = new Uint16Array(skinIndex.count * 4);
+  for (let vertex = 0; vertex < skinIndex.count; vertex++) {
+    for (let influence = 0; influence < 4; influence++) {
+      const sourceIndex = skinIndex.getComponent(vertex, influence);
+      const targetIndex = sourceToCanonical[sourceIndex];
+      if (!Number.isInteger(targetIndex)) {
+        throw new Error(`Blender V4 source uses invalid joint ${sourceIndex} at vertex ${vertex}`);
+      }
+      remapped[vertex * 4 + influence] = targetIndex;
+    }
+  }
+  geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(remapped, 4));
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function disposeParsedSource(root) {
+  root.traverse((object) => {
+    if (!object.isMesh) return;
+    object.geometry?.dispose();
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) material?.dispose();
+    object.skeleton?.dispose();
+  });
+  root.removeFromParent();
+}
+
+async function buildBlenderGeometry() {
+  const scratch = await mkdtemp(join(tmpdir(), "rowplay-v4-blender-"));
+  const sourcePath = join(scratch, "rowplay-athlete-v4-blender-source.glb");
+  const blender = process.env.BLENDER_BIN || DEFAULT_BLENDER;
+  try {
+    const result = spawnSync(
+      blender,
+      ["--background", "--python", BLENDER_GENERATOR, "--", "--output", sourcePath],
+      { stdio: "inherit" },
+    );
+    if (result.error) throw result.error;
+    if (result.status !== 0) {
+      throw new Error(`Blender V4 authoring failed with exit code ${result.status}`);
+    }
+    const sourceBytes = await readFile(sourcePath);
+    const source = await parseGlb(sourceBytes);
+    const sourceMesh = onlySkinnedMesh(source.scene);
+    const geometry = remapBlenderGeometry(sourceMesh);
+    const sourceMetrics = {
+      blenderBytes: sourceBytes.byteLength,
+      vertices: geometry.getAttribute("position").count,
+      triangles: geometry.index.count / 3,
+      sourceBoneOrder: sourceMesh.skeleton.bones.map((bone) => bone.name),
+    };
+    disposeParsedSource(source.scene);
+    return { geometry, sourceMetrics };
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+}
+
+const { geometry: blenderGeometry, sourceMetrics } = await buildBlenderGeometry();
 const asset = createV4AthleteAsset();
 try {
+  asset.mesh.geometry.dispose();
+  asset.mesh.geometry = blenderGeometry;
+  asset.mesh.normalizeSkinWeights();
+  asset.root.userData.source = SOURCE_DESCRIPTION;
+  asset.root.userData.authoringTool = "Blender 5.2 LTS";
+  asset.root.userData.authoringScript = "scripts/build-replay-athlete-v4-blender.py";
+  asset.root.userData.generator = "scripts/build-replay-rig-v4.mjs";
   const glb = await new GLTFExporter().parseAsync(asset.root, {
     binary: true,
     animations: Object.values(asset.clips),
@@ -98,9 +212,19 @@ try {
       {
         output,
         bytes: glb.byteLength,
-        source: "repository-authored procedural skinned mesh",
+        source: SOURCE_DESCRIPTION,
         mesh: V4_RIG_NAME,
-        ...asset.metrics,
+        boneCount: asset.skeleton.bones.length,
+        vertices: asset.mesh.geometry.getAttribute("position").count,
+        triangles: asset.mesh.geometry.index.count / 3,
+        clips: Object.keys(asset.clips).length,
+        clipTracks: Object.values(asset.clips).reduce(
+          (count, clip) => count + clip.tracks.length,
+          0,
+        ),
+        contactEffectors: Object.keys(asset.effectors).length,
+        materialSlots: Array.isArray(asset.mesh.material) ? asset.mesh.material.length : 1,
+        blenderSource: sourceMetrics,
         loadedSkinnedMeshes: loadedSkins.length,
         bones: loadedBoneNames,
         contactOffsets: V4_CONTACT_OFFSETS,

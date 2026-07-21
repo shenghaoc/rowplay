@@ -98,9 +98,13 @@ remain automatic fallbacks.
   distributed under the repository's MIT `LICENSE`. It contains no downloaded
   model, scan, likeness, avatar-generator output, user data, image, texture, or
   external request.
-- **Source of truth:** `src/lib/replay/rigV4.ts`. The module and GLB artifact
-  are production contracts. Export: `scripts/build-replay-rig-v4.mjs`; strict
-  checked-binary validation: `scripts/validate-replay-rig-v4.mjs`.
+- **Source of truth:** `scripts/build-replay-athlete-v4-blender.py` authors the
+  visible surface, smooth normals, vertex colours, and deformation weights in
+  Blender 5.2. `src/lib/replay/rigV4.ts` owns the exact skeleton, contacts, and
+  clips; `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint
+  indices to that canonical order and seals the final GLB. The scripts and GLB
+  are production contracts. Set `BLENDER_BIN` when Blender is not installed at
+  the default macOS application path.
 - **Native handoff:** `rowplay-athlete-v4.usdz` is generated from the exact GLB
   by Blender 5.2 via `scripts/build-replay-rig-v4-usdz.py`. It is for RowPlay
   Studio / PR #72 and must not be independently remodelled. The web runtime
@@ -115,12 +119,12 @@ remain automatic fallbacks.
   `vp run validate:replay-assets`. The build exports and reloads the GLB and
   rejects skeleton, clip, drive-boundary, skin, or contact-metadata drift. The
   USDZ portability gate lives in `src/lib/replay/rigV4Usd.test.ts`.
-- **Reviewed artifact:** 433,104 bytes; SHA-256
-  `4e658e31254539e00e60adc648a59eafcf033149cd89e641f85bf0391f3a6dba`.
+- **Reviewed artifact:** 564,712 bytes; SHA-256
+  `1cce28920c3735a3f8504d117af3cbbbbac7f9f4c072e7b8e0f662bc9817bbc2`.
   Two independent builds must be byte-identical before the binary changes are
   committed.
-- **Reviewed USDZ derivative:** 949,794 bytes; SHA-256
-  `8b7a716bb572c9ff3124a6099c1f12caf41e2f00e33c0c5fc8ef44ba39f3f819`.
+- **Reviewed USDZ derivative:** 1,272,704 bytes; SHA-256
+  `7a6b5701293b49bef5bd80a2c0fdc7d681303a49f7a243d816988f167142a932`.
   Blender 5.2 does not produce byte-identical USDZ containers across repeat
   exports, so repeat-export acceptance is semantic: Three.js `USDLoader` must
   load one skinned athlete with the 19 bones in order, finite normalized skin
@@ -128,17 +132,18 @@ remain automatic fallbacks.
   references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`;
   SHA-256
-  `edea859484f5a5077eab9d99495a4640c442edae33c5e54f1f4d6f58d9af8f14`.
+  `76f28df4ce1cba6768a553e41ffce26d6b79625b36f3110f1c3d35e834775262`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named bones,
-  5,373 vertices, 10,152 triangles, one opaque vertex-colour
-  `MeshPhysicalMaterial`, zero textures/images, and 14 connected topology
-  components. Five closed shared-ring lofts form the axial pelvis/torso/neck/
-  head, both complete shoulder-to-fingertip arms, and both complete
-  hip-to-shoe/toe legs. The remaining nine components are deliberate shallow
-  jersey-yoke, face, ear, neutral performance-cap/seam, and palm-thumb
-  details—not disconnected limb shells. Buried shoulder/hip roots, a flush
-  vertex-colour waistband, separate shorts value, and tapered hands keep those
-  closed lofts from reading as sockets, blocks, or mittens.
+  7,204 vertices, 13,724 triangles, one opaque vertex-colour
+  `MeshPhysicalMaterial`, zero textures/images, and 30 connected topology
+  components inside that single render primitive. The major forms are a shaped
+  torso, neck, directional head, two continuous shoulder-to-wrist arm lofts,
+  and two continuous hip-to-ankle leg lofts. Smaller components supply ears,
+  swept hair, brow/eye/mouth and jersey construction, sealed grip/thumb forms,
+  and shoe uppers, contrast soles, and laces. Broad parent/child weight
+  gradients, buried uncapped shoulder/hip roots, anatomical muscle-to-tendon
+  taper, and matte smooth normals keep the model from reading as stacked blocks
+  or joint balls.
 - **Skinning:** elbow, wrist, knee, ankle, shoulder, and hip rings use spatial
   parent-to-child weight gradients. Palm/sole marker nodes and terminal-bone
   glTF extras encode exact local contact offsets: left/right hand
@@ -149,8 +154,10 @@ remain automatic fallbacks.
   end `0.38`), `rowplay-v4-ski-cycle` (`0.34`), and
   `rowplay-v4-bike-cycle` (`0.5`). Clip extras also preserve the canonical
   phase schema and data-truth boundary.
-- **Verification:** source tests cover normalized finite weights, exact bone
-  and contact schemas, topology component count, joint-weight gradients,
+- **Verification:** Blender studio renders can be reproduced with
+  `scripts/render-replay-rig-v4-qa.py`. Source tests cover normalized finite
+  weights, exact bone and contact schemas, topology component count,
+  joint-weight gradients,
   deep-flex volume, distinct clip signatures, exact drive landmarks,
   deterministic seeking, loop closure, and GLB → `GLTFLoader` →
   `AnimationMixer` round-trip. The raw GLB validator independently checks the
