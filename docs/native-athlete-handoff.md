@@ -23,19 +23,18 @@ proportions.
 
 ## Artifact identity
 
-| Artifact                           |     Bytes | SHA-256                                                            |
-| ---------------------------------- | --------: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.glb`           |   584,796 | `73e0ece3e6c6de5a7a020a5097b172ca3e0ed8315c27ff604159b144fa90547b` |
-| `rowplay-athlete-v4.usdz`          | 1,318,256 | `934b0d3af0454f60a84dde76f95b77121919f5ad7cfc366684a670ae5d99658e` |
-| `rowplay-athlete-v4.contract.json` |     9,290 | `e9fb56f372ac1ea44ee5ccaf1d00b5a975e1eb4a1a2ee7843ab9e53609fb189d` |
+Exact byte counts and SHA-256 digests are sealed in
+`static/replay-assets/rowplay-athlete-v4.contract.json` after each rebuild.
+Do not hard-code stale hashes here; regenerate the contract with
+`vp run build:replay-rig-v4-contract`.
 
 Blender 5.2 does not currently produce byte-identical USDZ containers across
 repeat exports. Two same-basename exports differed in the `.usdc` payload, so
 the release contract records the checked artifact SHA and validates portability
-semantically through Three.js `USDLoader`: one skinned athlete, the 19 bones in
-contract order, normalized finite skin weights, finite bounds, matching
-triangle count, no external-looking references, and clone-safe skeleton/material
-instances.
+semantically through Three.js `USDLoader`: one skinned athlete, the 19 semantic
+bones in contract order, normalized finite skin weights, finite bounds,
+matching triangle count, no external-looking references, and clone-safe
+skeleton/material instances.
 
 ## Coordinate and rig contract
 
@@ -50,11 +49,13 @@ Summary:
 - Up axis: `+Y`
 - Forward axis: `+Z`
 - Handedness: right-handed
-- Mesh: one intended skinned athlete
-- Bones: stable 19-bone V4 order
+- Mesh: one continuous production skinned athlete (Approach A surface overhaul)
+- Bones: stable 19-bone V4 semantic order (optional helper bones may exist for
+  deformation but are not required by this revision)
 - Clips: RowErg, SkiErg, BikeErg normalized one-second technique clips
 - Contacts: left/right palms and soles only; runtime equipment constraints
   remain authoritative
+- Visual QA: `docs/visual-qa/replay-athlete-v5.md`
 
 ## Build and validation
 

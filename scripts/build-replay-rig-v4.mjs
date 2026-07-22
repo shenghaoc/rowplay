@@ -30,7 +30,7 @@ const DEFAULT_OUTPUT = `static/replay-assets/${V4_ASSET_FILENAME}`;
 const output = resolve(process.argv[2] ?? DEFAULT_OUTPUT);
 const BLENDER_GENERATOR = resolve("scripts/build-replay-athlete-v4-blender.py");
 const DEFAULT_BLENDER = "/Applications/Blender.app/Contents/MacOS/blender";
-const SOURCE_DESCRIPTION = "repository-authored Blender 5 parametric skinned athlete";
+const SOURCE_DESCRIPTION = "repository-authored Blender 5 production skinned athlete";
 
 // GLTFExporter has a browser FileReader dependency. Node's Blob has equivalent
 // byte access, so the adapter remains local, deterministic and dependency-free.

@@ -99,17 +99,18 @@ while the hidden procedural rig continues to own equipment motion and exact
 hand, foot, oar, pedal, and planted-pole targets. V3, procedural 3D, and Canvas
 remain automatic fallbacks.
 
-- **Purpose:** one generic repository-authored `SkinnedMesh` with a stable
-  19-bone skeleton and distinct deterministic RowErg, SkiErg, and BikeErg base
-  clips. Runtime samples normalized clip time from replay phase and applies the
-  analytic contact pass after the authored pose.
+- **Purpose:** one generic repository-authored production `SkinnedMesh` with a
+  stable 19-bone semantic skeleton and distinct deterministic RowErg, SkiErg,
+  and BikeErg base clips. Runtime samples normalized clip time from replay
+  phase and applies the analytic contact pass after the authored pose.
 - **Ownership and licence:** created specifically for rowplay from source in
   this repository; copyright (c) 2026 shenghaoc and rowplay contributors and
   distributed under the repository's MIT `LICENSE`. It contains no downloaded
   model, scan, likeness, avatar-generator output, user data, image, texture, or
   external request.
-- **Source of truth:** `scripts/build-replay-athlete-v4-blender.py` authors the
-  visible surface, smooth normals, vertex colours, and deformation weights in
+- **Source of truth:** `scripts/build-replay-athlete-v4-blender.py` authors a
+  denser anatomical cage, voxel-remeshes it into one continuous surface,
+  transfers cage skin weights, and paints kit/skin/footwear vertex colours in
   Blender 5.2. `src/lib/replay/rigV4.ts` owns the exact skeleton, contacts, and
   clips; `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint
   indices to that canonical order and seals the final GLB. The scripts and GLB
@@ -130,33 +131,24 @@ remain automatic fallbacks.
   `vp run validate:replay-assets`. The build exports and reloads the GLB and
   rejects skeleton, clip, drive-boundary, skin, or contact-metadata drift. The
   USDZ portability gate lives in `src/lib/replay/rigV4Usd.test.ts`.
-- **Reviewed artifact:** 584,796 bytes; SHA-256
-  `73e0ece3e6c6de5a7a020a5097b172ca3e0ed8315c27ff604159b144fa90547b`.
-  Two independent builds must be byte-identical before the binary changes are
-  committed.
-- **Reviewed USDZ derivative:** 1,318,256 bytes; SHA-256
-  `934b0d3af0454f60a84dde76f95b77121919f5ad7cfc366684a670ae5d99658e`.
-  Blender 5.2 does not produce byte-identical USDZ containers across repeat
-  exports, so repeat-export acceptance is semantic: Three.js `USDLoader` must
-  load one skinned athlete with the 19 bones in order, finite normalized skin
-  weights, finite bounds, matching triangle count, no external-looking
-  references, and clone-safe skeleton/material instances.
-- **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`;
-  SHA-256
-  `e9fb56f372ac1ea44ee5ccaf1d00b5a975e1eb4a1a2ee7843ab9e53609fb189d`.
-- **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named bones,
-  7,420 vertices, 14,240 triangles, one opaque vertex-colour
-  `MeshPhysicalMaterial`, zero textures/images, and 24 connected topology
-  components inside that single render primitive. The major forms are a shaped
-  torso with a smooth fabric→skin neck transition, a clean skull + crown hair
-  cap (no floating face tubes or open hair rims), two continuous
-  shoulder-to-wrist arm lofts with pinched elbows and sealed grip/thumb
-  wedges, and two continuous hip-to-ankle leg lofts with knee pinches.
-  Slate leg panels separate both leg chains from the purple shell and dark
-  cockpit. The jersey zip is vertex colour rather than a near-coplanar tube,
-  eliminating the moving chest seam. Smaller components supply ears and shoe uppers,
-  contrast soles, and laces. High/ultra lighting deliberately sees no black
-  collar rings, face visors, or open-mesh rims.
+- **Reviewed artifact:** see `rowplay-athlete-v4.contract.json` for the sealed
+  byte count and SHA-256. Two independent Blender→Node builds should match
+  within normal float noise; commit the validator-checked binary.
+- **Reviewed USDZ derivative:** Blender 5.2 does not produce byte-identical
+  USDZ containers across repeat exports, so repeat-export acceptance is
+  semantic: Three.js `USDLoader` must load one skinned athlete with the 19
+  semantic bones in order, finite normalized skin weights, finite bounds,
+  matching triangle count, no external-looking references, and clone-safe
+  skeleton/material instances.
+- **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`.
+- **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named semantic
+  bones (optional helper bones are permitted by the runtime loader), one
+  continuous remeshed topology component, one opaque vertex-colour
+  `MeshPhysicalMaterial`, and zero textures/images. The surface is a coherent
+  sports character: ribcage-emergent shoulders, tapered limbs with volume at
+  elbows/knees, modelled palm mass, performance shoes, and deliberate kit
+  panels painted in vertex colour. Exact vertex/triangle counts are recorded
+  in the contract and are not frozen as an art-quality proxy.
 - **Depth contract:** both live and ghost V4 bodies render with `opacity: 1`,
   `transparent: false`, and depth test/write enabled. Ghost identity uses a
   cool material tint while ghost equipment/wakes may remain translucent; the

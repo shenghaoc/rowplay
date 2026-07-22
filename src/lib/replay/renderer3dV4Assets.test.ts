@@ -82,12 +82,13 @@ function materialAt(mesh: THREE.Mesh, index = 0): THREE.Material {
 afterEach(() => resetReplayV4AssetCache());
 
 describe("V4 runtime asset contract", () => {
-  it("validates one 19-bone skin and exposes all three named sport clips", () => {
+  it("validates semantic bones and exposes all three named sport clips", () => {
     const template = createTemplate();
     try {
       expect(REPLAY_V4_ASSET_PATH).toBe("/replay-assets/rowplay-athlete-v4.glb");
       expect(template.mesh).toBeInstanceOf(THREE.SkinnedMesh);
-      expect(template.skeleton.bones).toHaveLength(19);
+      // Semantic joints are required; helper bones may increase the total.
+      expect(template.skeleton.bones.length).toBeGreaterThanOrEqual(19);
       expect(Object.keys(template.bones)).toHaveLength(19);
       expect([...template.clips.keys()]).toEqual(Object.values(REPLAY_V4_CLIP_NAMES));
       expect(template.clipsBySport.rower.name).toBe(REPLAY_V4_CLIP_NAMES.rower);
@@ -143,7 +144,7 @@ describe("V4 runtime asset contract", () => {
       missingBone.bones.v4LeftHand.name = "renamedLeftHand";
       expect(() =>
         collectReplayV4AssetTemplate(missingBone.root, productionNamedClips(missingBone)),
-      ).toThrow("missing bone: v4LeftHand");
+      ).toThrow("missing semantic bone: v4LeftHand");
     } finally {
       disposeV4AthleteAsset(missingBone);
     }

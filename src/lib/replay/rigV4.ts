@@ -6,7 +6,7 @@ import * as THREE from "three";
  * This module owns the stable generic skeleton, reference skin, explicit
  * contact effectors, and deterministic canonical clips for RowErg, SkiErg and
  * BikeErg. The checked production GLB replaces the reference surface with the
- * higher-detail Blender-authored mesh from
+ * production Blender-authored surface from
  * `scripts/build-replay-athlete-v4-blender.py` before export. No downloaded
  * mesh, scan, likeness, avatar generator, texture, user image, or athlete
  * telemetry contributes to either path.
@@ -1936,15 +1936,16 @@ function createV4Material(): THREE.Material {
     // multiplying every region by the jersey colour before lane styling.
     color: 0xffffff,
     vertexColors: true,
-    // Matte performance kit: high/ultra VSM rim light should soften seams, not
-    // polish every loft join into a shiny hard edge.
-    roughness: 0.78,
+    // Soft fabric sheen with restrained skin response. High enough roughness
+    // to avoid plastic mannequin highlights, low enough for readable form under
+    // chase-camera key light in both light and dark venues.
+    roughness: 0.64,
     metalness: 0,
-    sheen: 0.02,
-    sheenColor: new THREE.Color(0x6e8496),
-    sheenRoughness: 0.95,
-    clearcoat: 0,
-    clearcoatRoughness: 1,
+    sheen: 0.16,
+    sheenColor: new THREE.Color(0x8a9bb0),
+    sheenRoughness: 0.72,
+    clearcoat: 0.03,
+    clearcoatRoughness: 0.85,
     flatShading: false,
     transmission: 0,
     thickness: 0,
@@ -1964,7 +1965,7 @@ export function createV4AthleteAsset(): V4AthleteAsset {
   root.userData = {
     replayRigVersion: 4,
     replayAssetRole: "production-skinned-athlete",
-    source: "repository-authored Blender 5 parametric skinned athlete",
+    source: "repository-authored Blender 5 production skinned athlete",
     licence: "MIT",
     genericCanonicalTechnique: true,
     replayClipNames: V4_CLIP_NAMES,

@@ -3,16 +3,21 @@ import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 
 const DEFAULT_ASSET = "static/replay-assets/rowplay-athlete-v4.glb";
-const MAX_FILE_BYTES = 700 * 1024;
+// Production athlete is deployable but no longer forced into a micro-budget
+// that preserved mannequin lofts. Keep a hard ceiling for Worker static assets.
+const MAX_FILE_BYTES = 4_500 * 1024;
 const MIN_VERTICES = 4_500;
-const MAX_VERTICES = 12_000;
+const MAX_VERTICES = 80_000;
 const MIN_TRIANGLES = 8_500;
-const MAX_TRIANGLES = 24_000;
-// Continuous skull + tight capped hair + ears + torso/limbs. Floating face
-// tubes, open hair rims, and the near-coplanar chest zip were removed so
-// high/ultra lighting and opaque ghost depth remain clean.
-const EXPECTED_COMPONENTS = 24;
-const SOURCE_DESCRIPTION = "repository-authored Blender 5 parametric skinned athlete";
+const MAX_TRIANGLES = 160_000;
+// A production surface may be one coherent remeshed body or a small set of
+// deliberate parts (body + hair + shoes). Exact component counts are no longer
+// an art-quality proxy.
+const MIN_COMPONENTS = 1;
+// Remeshed production surfaces may retain small deliberate islands (laces,
+// ears, sole pads). Exact counts are not an art-quality gate.
+const MAX_COMPONENTS = 256;
+const SOURCE_DESCRIPTION = "repository-authored Blender 5 production skinned athlete";
 
 const BONE_NAMES = [
   "v4Hips",
@@ -262,11 +267,19 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
   );
   const components = connectedComponents(vertexCount, flatIndices);
   invariant(
-    components.length === EXPECTED_COMPONENTS,
-    `V4 topology must remain ${EXPECTED_COMPONENTS} reviewed components; received ${components.length}`,
+    components.length >= MIN_COMPONENTS && components.length <= MAX_COMPONENTS,
+    `V4 topology component count ${components.length} is outside ${MIN_COMPONENTS}-${MAX_COMPONENTS}`,
   );
-  invariant(components.filter((size) => size >= 380).length >= 5, "V4 major lofts are missing");
+  // A production athlete must keep a substantial connected body mass. Exact
+  // loft counts are no longer frozen so remeshed coherent surfaces can ship.
+  const majorComponents = components.filter((size) => size >= 380);
+  invariant(majorComponents.length >= 1, "V4 surface is missing a major connected body mass");
+  invariant(
+    majorComponents.reduce((sum, size) => sum + size, 0) >= Math.floor(vertexCount * 0.55),
+    "V4 major body mass is too fragmented relative to total vertices",
+  );
 
+  const jointCount = BONE_NAMES.length;
   for (let vertex = 0; vertex < vertexCount; vertex++) {
     invariant(
       positions.values[vertex].every(Number.isFinite) &&
@@ -275,7 +288,9 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
       `V4 vertex ${vertex} has non-finite geometry`,
     );
     invariant(
-      joints.values[vertex].every((joint) => Number.isInteger(joint) && joint >= 0 && joint < 19),
+      joints.values[vertex].every(
+        (joint) => Number.isInteger(joint) && joint >= 0 && joint < jointCount,
+      ),
       `V4 vertex ${vertex} references an invalid joint`,
     );
     const weightSum = weights.values[vertex].reduce((sum, weight) => sum + weight, 0);

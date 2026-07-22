@@ -228,11 +228,16 @@ function meshMaterials(mesh: THREE.Mesh): readonly THREE.Material[] {
   return materials;
 }
 
+/**
+ * Require the canonical semantic bones used by motion/contact code. Additional
+ * helper / twist / corrective bones are allowed for deformation quality and are
+ * intentionally not exposed on the semantic bone map.
+ */
 function collectBones(mesh: THREE.SkinnedMesh): Readonly<Record<ReplayV4BoneName, THREE.Bone>> {
   const { bones } = mesh.skeleton;
-  if (bones.length !== REPLAY_V4_BONE_NAMES.length) {
+  if (bones.length < REPLAY_V4_BONE_NAMES.length) {
     throw new Error(
-      `Replay V4 skeleton must have ${REPLAY_V4_BONE_NAMES.length} bones, received ${bones.length}`,
+      `Replay V4 skeleton must include at least ${REPLAY_V4_BONE_NAMES.length} semantic bones, received ${bones.length}`,
     );
   }
   const names = new Set<string>();
@@ -245,7 +250,7 @@ function collectBones(mesh: THREE.SkinnedMesh): Readonly<Record<ReplayV4BoneName
   }
   for (const name of REPLAY_V4_BONE_NAMES) {
     const bone = mesh.skeleton.getBoneByName(name);
-    if (!bone) throw new Error(`Replay V4 skeleton is missing bone: ${name}`);
+    if (!bone) throw new Error(`Replay V4 skeleton is missing semantic bone: ${name}`);
     result[name] = bone;
   }
   if (mesh.skeleton.boneInverses.length !== bones.length) {

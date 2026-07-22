@@ -121,7 +121,7 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
     provenance: {
       owner: "rowplay",
       licence: "MIT",
-      source: "repository-authored Blender 5 parametric skinned athlete",
+      source: "repository-authored Blender 5 production skinned athlete",
       authoringTool: "Blender 5.2 LTS",
       authoringScript: "scripts/build-replay-athlete-v4-blender.py",
       rigAndClipSource: "src/lib/replay/rigV4.ts",

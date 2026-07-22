@@ -5,13 +5,13 @@
   "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 584796,
-    "sha256": "73e0ece3e6c6de5a7a020a5097b172ca3e0ed8315c27ff604159b144fa90547b"
+    "byteCount": 3680688,
+    "sha256": "90b350769792130673d0d926a45a96529a03a5ef1e7497eaa88d9e323851e212"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 1318256,
-    "sha256": "934b0d3af0454f60a84dde76f95b77121919f5ad7cfc366684a670ae5d99658e"
+    "byteCount": 10115765,
+    "sha256": "5c4140e8a38882a55329d1d06f7c05ab2fbff2fd6a4b0c75b85008f96db7e961"
   },
   "coordinateSystem": {
     "units": "metres",
@@ -29,9 +29,9 @@
     "meshName": "v4Athlete",
     "skinnedMeshes": 1,
     "primitives": 1,
-    "vertices": 7420,
-    "triangles": 14240,
-    "topologyComponents": 24,
+    "vertices": 50364,
+    "triangles": 100724,
+    "topologyComponents": 1,
     "skins": 1,
     "materials": 1,
     "materialSlots": 1
@@ -333,7 +333,7 @@
   "provenance": {
     "owner": "rowplay",
     "licence": "MIT",
-    "source": "repository-authored Blender 5 parametric skinned athlete",
+    "source": "repository-authored Blender 5 production skinned athlete",
     "authoringTool": "Blender 5.2 LTS",
     "authoringScript": "scripts/build-replay-athlete-v4-blender.py",
     "rigAndClipSource": "src/lib/replay/rigV4.ts",

@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 """Author the production RowPlay V4 athlete surface in Blender 5.
 
-The script deliberately builds a generic sports illustration from reviewed
-parametric source. It uses no downloaded model, scan, likeness, avatar
-generator, image, or texture. The resulting temporary GLB contributes the
-visible mesh, smooth normals, vertex colours, and skin weights; the Node build
-step seals it onto the canonical V4 skeleton and deterministic sport clips.
+Replaces the mannequin multi-loft assembly with a production sports character:
+
+* denser anatomical source volumes with deliberate kit silhouette
+* voxel remesh so the body reads as one continuous surface
+* weight transfer from a carefully ring-weighted cage (not bone-heat)
+* deliberate kit / skin / footwear / hair vertex colours
+
+No downloaded model, scan, likeness, avatar generator, image, or texture is
+used. The temporary GLB contributes the visible mesh, normals, vertex colours,
+and skin weights; the Node build seals it onto the canonical V4 skeleton and
+deterministic sport clips from ``src/lib/replay/rigV4.ts``.
 """
 
 from __future__ import annotations
@@ -15,8 +21,9 @@ import math
 import pathlib
 import sys
 from dataclasses import dataclass
-from typing import Callable, Iterable
+from typing import Callable, Sequence
 
+import bmesh
 import bpy
 from mathutils import Vector
 
@@ -52,49 +59,40 @@ CONTACT_OFFSETS = {
     "v4RightFoot": (0.0, -0.055, 0.13),
 }
 
+# sRGB vertex colours (written via Blender sRGB colour attributes).
+FABRIC = (0.20, 0.18, 0.45, 1.0)
+FABRIC_SIDE = (0.11, 0.12, 0.28, 1.0)
+FABRIC_LIGHT = (0.34, 0.36, 0.66, 1.0)
+SHORTS = (0.08, 0.09, 0.16, 1.0)
+SHORTS_PANEL = (0.14, 0.16, 0.28, 1.0)
+TRIM = (0.42, 0.38, 0.78, 1.0)
+LEG_FABRIC = (0.22, 0.36, 0.44, 1.0)
+LEG_FABRIC_SIDE = (0.14, 0.24, 0.30, 1.0)
+LEG_FABRIC_LIGHT = (0.38, 0.52, 0.60, 1.0)
+SKIN = (0.72, 0.48, 0.36, 1.0)
+SKIN_LIGHT = (0.82, 0.60, 0.48, 1.0)
+HAIR = (0.08, 0.09, 0.12, 1.0)
+SHOE = (0.88, 0.90, 0.93, 1.0)
+SHOE_DARK = (0.12, 0.15, 0.19, 1.0)
+SOLE = (0.06, 0.08, 0.10, 1.0)
 
-def rgb(value: int) -> tuple[float, float, float, float]:
-    return (
-        ((value >> 16) & 0xFF) / 255.0,
-        ((value >> 8) & 0xFF) / 255.0,
-        (value & 0xFF) / 255.0,
-        1.0,
-    )
-
-
-# High-contrast but restrained performance kit. Vertex colour keeps the final
-# GLB to one primitive while preserving skin/kit/trim readability in both
-# replay themes and in the opaque, cool-tinted ghost lane.
-FABRIC = rgb(0x343078)
-FABRIC_SIDE = rgb(0x222651)
-FABRIC_LIGHT = rgb(0x5D62AE)
-SHORTS = rgb(0x171C2E)
-SHORTS_PANEL = rgb(0x292E4B)
-TRIM = rgb(0x6258C9)
-# Slate performance tights keep both leg chains readable against the purple
-# shell and carbon cockpit without turning the athlete into colour blocks.
-LEG_FABRIC = rgb(0x3D6478)
-LEG_FABRIC_SIDE = rgb(0x263E50)
-LEG_FABRIC_LIGHT = rgb(0x7192A5)
-SKIN = rgb(0xB97455)
-SKIN_LIGHT = rgb(0xD69672)
-HAIR = rgb(0x161B24)
-SHOE = rgb(0xE0E7EC)
-SHOE_DARK = rgb(0x202A35)
-SOLE = rgb(0x111820)
+VOXEL_SIZE = 0.0092
+SMOOTH_ITERATIONS = 1
 
 
 def parse_args() -> argparse.Namespace:
     args = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else sys.argv[1:]
-    parser = argparse.ArgumentParser(description="Build the RowPlay V4 athlete surface in Blender")
+    parser = argparse.ArgumentParser(description="Build the RowPlay production athlete surface")
     parser.add_argument("--output", required=True, type=pathlib.Path)
     return parser.parse_args(args)
 
 
 def to_blender(value: Vector) -> Vector:
-    """Map Three/glTF X-right, Y-up, Z-forward into Blender Z-up space."""
-
     return Vector((value.x, -value.z, value.y))
+
+
+def from_blender(value: Vector) -> Vector:
+    return Vector((value.x, value.z, -value.y))
 
 
 def normalized(weights: dict[str, float]) -> dict[str, float]:
@@ -122,10 +120,7 @@ class Ring:
     weights: dict[str, float]
     color: tuple[float, float, float, float]
     squash: float = 0.0
-
-
-ColorFunction = Callable[[int, float, Vector, Ring], tuple[float, float, float, float]]
-DeformFunction = Callable[[Vector, float, float], Vector]
+    front_bias: float = 0.0
 
 
 class AthleteMeshBuilder:
@@ -150,10 +145,10 @@ class AthleteMeshBuilder:
 
     def add_loft(
         self,
-        rings: Iterable[Ring],
+        rings: Sequence[Ring],
         radial_segments: int,
         normal_hint: Vector = Vector((1.0, 0.0, 0.0)),
-        color_function: ColorFunction | None = None,
+        color_function: Callable | None = None,
         cap_start: bool = True,
         cap_end: bool = True,
     ) -> None:
@@ -176,15 +171,14 @@ class AthleteMeshBuilder:
             previous_normal = normal
             for side in range(radial_segments):
                 angle = side / radial_segments * math.tau
-                cos_angle = math.cos(angle)
-                sin_angle = math.sin(angle)
-                # Small second-order contour prevents mathematically perfect
-                # tubes while remaining calm under smooth shading.
+                cos_a = math.cos(angle)
+                sin_a = math.sin(angle)
                 contour = 1.0 + ring.squash * math.cos(angle * 2.0)
+                contour += ring.front_bias * max(0.0, sin_a)
                 point = (
                     ring.center
-                    + normal * (cos_angle * ring.radii[0] * contour)
-                    + bitangent * (sin_angle * ring.radii[1] / contour)
+                    + normal * (cos_a * ring.radii[0] * contour)
+                    + bitangent * (sin_a * ring.radii[1] / max(0.6, contour * 0.9 + 0.1))
                 )
                 color = (
                     color_function(ring_index, angle, point, ring)
@@ -212,23 +206,15 @@ class AthleteMeshBuilder:
                 following = (side + 1) % radial_segments
                 self.faces.append((center, ring_start + side, ring_start + following))
 
-    def add_vertical_loft(
-        self,
-        rings: Iterable[Ring],
-        radial_segments: int,
-        color_function: ColorFunction | None = None,
-    ) -> None:
-        self.add_loft(rings, radial_segments, Vector((1.0, 0.0, 0.0)), color_function)
-
     def add_ellipsoid(
         self,
         center: Vector,
         radii: tuple[float, float, float],
         weights: dict[str, float],
         color: tuple[float, float, float, float],
-        radial_segments: int = 28,
-        height_segments: int = 18,
-        deform: DeformFunction | None = None,
+        radial_segments: int = 32,
+        height_segments: int = 20,
+        deform: Callable | None = None,
     ) -> None:
         start = len(self.vertices)
         for latitude in range(height_segments + 1):
@@ -258,19 +244,18 @@ class AthleteMeshBuilder:
                     (row + longitude, next_row + longitude, next_row + following, row + following)
                 )
 
+
 def torso_color(_ring_index: int, _angle: float, point: Vector, ring: Ring):
     if point.y < 1.12:
         if abs(point.x) > 0.13:
             return SHORTS_PANEL
         return SHORTS
-    # Dark side panels narrow the waist and make torso twist visible. A slim
-    # front zip and upper yoke establish direction without a logo or likeness.
     if abs(point.x) > 0.78 * ring.radii[0]:
         return FABRIC_SIDE
-    if point.z > ring.center.z and abs(point.x) < 0.018 and point.y < 1.48:
+    if point.z > ring.center.z and abs(point.x) < 0.016 and point.y < 1.48:
         return TRIM
-    # No light yoke band at the throat — that painted a white collar ring under
-    # high/ultra VSM that looked like a floating neck hoop.
+    if point.y > 1.42 and abs(point.x) < 0.1:
+        return FABRIC_LIGHT
     return FABRIC
 
 
@@ -280,115 +265,77 @@ def build_torso(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
     chest = bones["v4Chest"]
     neck = bones["v4Neck"]
     rings = [
-        Ring(Vector((0, 0.865, -0.005)), (0.165, 0.125), {"v4Hips": 1}, SHORTS, 0.025),
-        Ring(Vector((0, 0.925, -0.004)), (0.195, 0.145), {"v4Hips": 1}, SHORTS, 0.03),
-        Ring(hips + Vector((0, 0.01, 0)), (0.215, 0.16), {"v4Hips": 1}, SHORTS, 0.035),
-        Ring(Vector((0, 1.095, 0.004)), (0.188, 0.142), {"v4Hips": 0.78, "v4Spine": 0.22}, SHORTS),
-        Ring(Vector((0, 1.135, 0.008)), (0.172, 0.13), {"v4Hips": 0.55, "v4Spine": 0.45}, TRIM),
-        Ring(Vector((0, 1.175, 0.012)), (0.174, 0.132), {"v4Hips": 0.34, "v4Spine": 0.66}, FABRIC),
-        Ring(spine + Vector((0, 0.005, 0.005)), (0.194, 0.145), {"v4Spine": 0.86, "v4Hips": 0.14}, FABRIC, 0.02),
-        Ring(Vector((0, 1.29, 0.018)), (0.218, 0.16), {"v4Spine": 0.72, "v4Chest": 0.28}, FABRIC, 0.025),
-        Ring(Vector((0, 1.37, 0.025)), (0.236, 0.172), {"v4Spine": 0.44, "v4Chest": 0.56}, FABRIC, 0.03),
-        # Slightly narrower chest and sharper clavicle shelf so buried arm roots
-        # do not read as a continuous rubber torso-to-sleeve tube.
-        Ring(chest + Vector((0, -0.002, 0.016)), (0.248, 0.174), {"v4Chest": 0.82, "v4Spine": 0.18}, FABRIC, 0.025),
-        # Jersey ends with a smooth radius ramp into the neck; no step that
-        # high/ultra VSM can pick up as a floating collar.
-        Ring(Vector((0, 1.5, 0.042)), (0.245, 0.16), {"v4Chest": 0.92, "v4Neck": 0.08}, FABRIC, 0.02),
-        Ring(Vector((0, 1.535, 0.048)), (0.2, 0.138), {"v4Chest": 0.7, "v4Neck": 0.3}, FABRIC),
-        Ring(Vector((0, 1.56, 0.05)), (0.145, 0.11), {"v4Chest": 0.35, "v4Neck": 0.65}, FABRIC),
-        # Last torso ring already skin-coloured and neck-sized so the jersey
-        # simply becomes the neck instead of ending on a dark fabric edge.
-        Ring(Vector((0, 1.58, 0.052)), (0.095, 0.082), {"v4Neck": 0.75, "v4Chest": 0.25}, SKIN),
+        Ring(Vector((0, 0.86, -0.008)), (0.155, 0.118), {"v4Hips": 1}, SHORTS, 0.03),
+        Ring(Vector((0, 0.92, -0.004)), (0.19, 0.142), {"v4Hips": 1}, SHORTS, 0.04),
+        Ring(hips + Vector((0, 0.0, 0.002)), (0.215, 0.16), {"v4Hips": 1}, SHORTS, 0.05, 0.04),
+        Ring(Vector((0, 1.09, 0.006)), (0.185, 0.14), {"v4Hips": 0.78, "v4Spine": 0.22}, SHORTS),
+        Ring(Vector((0, 1.14, 0.01)), (0.17, 0.13), {"v4Hips": 0.5, "v4Spine": 0.5}, TRIM),
+        Ring(Vector((0, 1.19, 0.014)), (0.172, 0.132), {"v4Hips": 0.28, "v4Spine": 0.72}, FABRIC),
+        Ring(spine + Vector((0, 0.01, 0.008)), (0.195, 0.148), {"v4Spine": 0.86, "v4Hips": 0.14}, FABRIC, 0.03, 0.04),
+        Ring(Vector((0, 1.30, 0.02)), (0.222, 0.162), {"v4Spine": 0.7, "v4Chest": 0.3}, FABRIC, 0.04, 0.05),
+        Ring(Vector((0, 1.38, 0.028)), (0.245, 0.172), {"v4Spine": 0.4, "v4Chest": 0.6}, FABRIC, 0.045, 0.08),
+        Ring(chest + Vector((0, -0.01, 0.02)), (0.255, 0.175), {"v4Chest": 0.82, "v4Spine": 0.18}, FABRIC, 0.04, 0.1),
+        Ring(chest + Vector((0, 0.03, 0.024)), (0.25, 0.165), {"v4Chest": 0.92, "v4Neck": 0.08}, FABRIC, 0.03, 0.08),
+        Ring(Vector((0, 1.52, 0.045)), (0.215, 0.14), {"v4Chest": 0.78, "v4Neck": 0.22}, FABRIC, 0.02),
+        Ring(Vector((0, 1.555, 0.05)), (0.14, 0.1), {"v4Chest": 0.4, "v4Neck": 0.6}, FABRIC),
+        Ring(Vector((0, 1.58, 0.052)), (0.09, 0.078), {"v4Neck": 0.78, "v4Chest": 0.22}, SKIN),
     ]
-    builder.add_vertical_loft(rings, 54, torso_color)
+    builder.add_loft(rings, 52, Vector((1, 0, 0)), torso_color)
 
-    # The front zip is vertex colour in `torso_color`, not a second near-
-    # coplanar tube. That avoids a moving depth seam across the chest.
-    # Pure-skin neck continuation into the head. Starts inside the last torso
-    # ring so there is no second silhouette edge.
-    builder.add_vertical_loft(
+    builder.add_loft(
         [
-            Ring(neck + Vector((0, -0.03, 0.004)), (0.09, 0.078), {"v4Neck": 0.9, "v4Chest": 0.1}, SKIN),
-            Ring(neck + Vector((0, 0.02, 0.008)), (0.07, 0.063), {"v4Neck": 0.9, "v4Head": 0.1}, SKIN),
-            Ring(neck + Vector((0, 0.065, 0.012)), (0.068, 0.061), {"v4Neck": 0.55, "v4Head": 0.45}, SKIN),
-            Ring(neck + Vector((0, 0.105, 0.014)), (0.074, 0.068), {"v4Head": 1}, SKIN),
+            Ring(neck + Vector((0, -0.025, 0.004)), (0.088, 0.076), {"v4Neck": 0.9, "v4Chest": 0.1}, SKIN),
+            Ring(neck + Vector((0, 0.025, 0.01)), (0.068, 0.06), {"v4Neck": 0.88, "v4Head": 0.12}, SKIN),
+            Ring(neck + Vector((0, 0.07, 0.014)), (0.07, 0.062), {"v4Neck": 0.5, "v4Head": 0.5}, SKIN),
+            Ring(neck + Vector((0, 0.11, 0.016)), (0.076, 0.068), {"v4Head": 1}, SKIN),
         ],
         36,
+        Vector((1, 0, 0)),
+        cap_start=False,
     )
 
 
 def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
-    """Clean high/ultra head: one continuous cranium, soft features, tight hair.
+    center = bones["v4Head"] + Vector((0, 0.07, 0.018))
 
-    Previous passes stacked open hair lofts, floating brow/eye/mouth tubes, and
-    a hard jersey collar. Those read as black rings and smudges under high-tier
-    VSM lighting. Features now live in vertex colour + mild displacement on the
-    same ellipsoid so nothing floats off the skull.
-    """
-
-    center = bones["v4Head"] + Vector((0, 0.072, 0.018))
-
-    def shape_and_paint(point: Vector, _u: float, _v: float) -> Vector:
+    def shape(point: Vector, _u: float, _v: float) -> Vector:
         local = point - center
-        # Gentle jaw taper — avoid the old sharp chin spike that faceted under
-        # chase-camera lighting.
-        if local.y < -0.02:
-            taper = 0.84 + max(0.0, min(1.0, (local.y + 0.13) / 0.11)) * 0.16
+        if local.y < -0.01:
+            taper = 0.86 + max(0.0, min(1.0, (local.y + 0.12) / 0.11)) * 0.14
             local.x *= taper
-        front = max(0.0, local.z / 0.105)
-        # Tiny nose/chin only. A continuous brow ridge previously cast a solid
-        # black shadow band across the eyes under high/ultra key light — the
-        # "visor" artefact. No brow extrusion, no painted features.
+        front = max(0.0, local.z / 0.1)
         nose = math.exp(-((local.x / 0.028) ** 2 + ((local.y + 0.0) / 0.04) ** 2))
-        chin = math.exp(-((local.y + 0.09) / 0.03) ** 2) * math.exp(-(local.x / 0.055) ** 2)
-        local.z += front * (0.012 * nose + 0.006 * chin)
+        chin = math.exp(-((local.y + 0.085) / 0.03) ** 2) * math.exp(-(local.x / 0.05) ** 2)
+        local.z += front * (0.013 * nose + 0.006 * chin)
         return center + local
 
-    # Clean skull only — no painted brows/eyes/mouth. Those vertex-colour marks
-    # read as a black visor or smudge under high/ultra lighting. Direction comes
-    # from mild geometry (jaw taper, soft nose plane) and the hair cap silhouette.
-    builder.add_ellipsoid(center, (0.112, 0.14, 0.104), {"v4Head": 1}, SKIN, 48, 32, shape_and_paint)
+    builder.add_ellipsoid(center, (0.105, 0.132, 0.098), {"v4Head": 1}, SKIN, 40, 28, shape)
 
-    # Compact ears, buried into the skull so they never read as floating disks.
-    for side in (-1, 1):
+    for side in (-1.0, 1.0):
         builder.add_ellipsoid(
-            center + Vector((side * 0.108, 0.0, -0.008)),
-            (0.014, 0.028, 0.018),
+            center + Vector((side * 0.102, -0.004, -0.01)),
+            (0.013, 0.026, 0.016),
             {"v4Head": 1},
             SKIN_LIGHT,
-            16,
-            12,
+            14,
+            10,
         )
 
-    # Low crown hair cap hugging the skull. Tall free-floating peeks and full
-    # ring lofts both produce high/ultra artefacts; keep a short rear-biased
-    # ellipsoid that never clears the head silhouette.
-    hair_center = center + Vector((0, 0.078, -0.018))
+    hair_center = center + Vector((0, 0.07, -0.018))
 
     def shape_hair(point: Vector, _u: float, _v: float) -> Vector:
         local = point - hair_center
-        # Flatten underside and front so the cap sits on the crown only.
         if local.y < 0:
-            local.y *= 0.28
+            local.y *= 0.24
             local.x *= 0.9
         if local.z > 0:
-            local.z *= 0.35
-            local.y = max(local.y, 0.004)
-        # Soften the peak so it does not read as a floating sphere tip.
-        if local.y > 0.04:
-            local.y = 0.04 + (local.y - 0.04) * 0.45
+            local.z *= 0.3
+            local.y = max(local.y, 0.002)
+        if local.y > 0.038:
+            local.y = 0.038 + (local.y - 0.038) * 0.4
         return hair_center + local
 
-    builder.add_ellipsoid(
-        hair_center,
-        (0.1, 0.055, 0.092),
-        {"v4Head": 1},
-        HAIR,
-        32,
-        20,
-        shape_hair,
-    )
+    builder.add_ellipsoid(hair_center, (0.096, 0.05, 0.088), {"v4Head": 1}, HAIR, 28, 18, shape_hair)
 
 
 def build_arm(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: str) -> None:
@@ -404,155 +351,120 @@ def build_arm(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: 
     wrist = bones[hand_name]
     contact = wrist + Vector(CONTACT_OFFSETS[hand_name])
 
-    def ring_at(
-        center: Vector,
-        radii: tuple[float, float],
-        weights: dict[str, float],
-        color,
-        squash: float = 0.0,
-    ) -> Ring:
-        return Ring(center, radii, weights, color, squash)
-
-    # Buried sleeve root → athletic deltoid → tapered forearm → slim wrist.
-    # The previous sleeve root was too thick and read as a sock joint under IK.
     rings = [
-        ring_at(chest.lerp(clavicle, 0.55), (0.028, 0.025), {"v4Chest": 0.78, clavicle_name: 0.22}, FABRIC),
-        ring_at(clavicle, (0.048, 0.042), {"v4Chest": 0.2, clavicle_name: 0.62, upper_name: 0.18}, FABRIC),
-        ring_at(shoulder, (0.072, 0.064), {clavicle_name: 0.28, upper_name: 0.72}, FABRIC, 0.05),
-        ring_at(shoulder.lerp(elbow, 0.1), (0.086, 0.076), {upper_name: 0.95, clavicle_name: 0.05}, FABRIC, 0.06),
-        ring_at(shoulder.lerp(elbow, 0.24), (0.08, 0.07), {upper_name: 1}, FABRIC, 0.05),
-        ring_at(shoulder.lerp(elbow, 0.38), (0.072, 0.063), {upper_name: 1}, TRIM, 0.04),
-        ring_at(shoulder.lerp(elbow, 0.5), (0.068, 0.059), {upper_name: 0.97, fore_name: 0.03}, SKIN_LIGHT, 0.03),
-        ring_at(shoulder.lerp(elbow, 0.66), (0.062, 0.054), {upper_name: 0.9, fore_name: 0.1}, SKIN, 0.025),
-        ring_at(shoulder.lerp(elbow, 0.82), (0.052, 0.046), {upper_name: 0.72, fore_name: 0.28}, SKIN),
-        # Pinch into a readable elbow before the forearm swells again.
-        ring_at(shoulder.lerp(elbow, 0.94), (0.044, 0.04), {upper_name: 0.55, fore_name: 0.45}, SKIN),
-        ring_at(elbow, (0.042, 0.039), {upper_name: 0.45, fore_name: 0.55}, SKIN),
-        ring_at(elbow.lerp(wrist, 0.1), (0.05, 0.043), {upper_name: 0.22, fore_name: 0.78}, SKIN, 0.03),
-        ring_at(elbow.lerp(wrist, 0.28), (0.056, 0.047), {fore_name: 0.94, upper_name: 0.06}, SKIN, 0.04),
-        ring_at(elbow.lerp(wrist, 0.48), (0.05, 0.042), {fore_name: 0.97, hand_name: 0.03}, SKIN, 0.03),
-        ring_at(elbow.lerp(wrist, 0.68), (0.042, 0.036), {fore_name: 0.88, hand_name: 0.12}, SKIN, 0.02),
-        ring_at(elbow.lerp(wrist, 0.86), (0.034, 0.03), {fore_name: 0.68, hand_name: 0.32}, SKIN),
-        ring_at(wrist, (0.028, 0.024), {fore_name: 0.28, hand_name: 0.72}, SKIN),
+        # Thick, deeply buried sleeve root so remesh cannot open an armpit hole.
+        Ring(chest.lerp(clavicle, 0.35), (0.055, 0.048), {"v4Chest": 0.88, clavicle_name: 0.12}, FABRIC),
+        Ring(chest.lerp(clavicle, 0.7), (0.07, 0.06), {"v4Chest": 0.55, clavicle_name: 0.35, upper_name: 0.1}, FABRIC),
+        Ring(clavicle, (0.08, 0.068), {"v4Chest": 0.3, clavicle_name: 0.5, upper_name: 0.2}, FABRIC, 0.04),
+        Ring(shoulder, (0.095, 0.082), {clavicle_name: 0.32, upper_name: 0.68, "v4Chest": 0.0}, FABRIC, 0.06, 0.05),
+        Ring(shoulder.lerp(elbow, 0.12), (0.098, 0.086), {upper_name: 0.92, clavicle_name: 0.08}, FABRIC, 0.07, 0.05),
+        Ring(shoulder.lerp(elbow, 0.28), (0.084, 0.074), {upper_name: 1}, FABRIC, 0.05, 0.04),
+        Ring(shoulder.lerp(elbow, 0.42), (0.076, 0.066), {upper_name: 1}, TRIM, 0.04),
+        Ring(shoulder.lerp(elbow, 0.55), (0.07, 0.06), {upper_name: 0.96, fore_name: 0.04}, SKIN_LIGHT, 0.03),
+        Ring(shoulder.lerp(elbow, 0.7), (0.062, 0.054), {upper_name: 0.88, fore_name: 0.12}, SKIN, 0.025),
+        Ring(shoulder.lerp(elbow, 0.85), (0.052, 0.046), {upper_name: 0.7, fore_name: 0.3}, SKIN),
+        Ring(shoulder.lerp(elbow, 0.95), (0.046, 0.042), {upper_name: 0.52, fore_name: 0.48}, SKIN),
+        Ring(elbow, (0.045, 0.042), {upper_name: 0.42, fore_name: 0.58}, SKIN, 0.02, 0.03),
+        Ring(elbow.lerp(wrist, 0.12), (0.054, 0.046), {upper_name: 0.2, fore_name: 0.8}, SKIN, 0.04, 0.04),
+        Ring(elbow.lerp(wrist, 0.32), (0.056, 0.048), {fore_name: 0.94, upper_name: 0.06}, SKIN, 0.05, 0.03),
+        Ring(elbow.lerp(wrist, 0.52), (0.05, 0.042), {fore_name: 0.96, hand_name: 0.04}, SKIN, 0.04),
+        Ring(elbow.lerp(wrist, 0.72), (0.04, 0.034), {fore_name: 0.86, hand_name: 0.14}, SKIN, 0.03),
+        Ring(elbow.lerp(wrist, 0.9), (0.032, 0.028), {fore_name: 0.62, hand_name: 0.38}, SKIN),
+        Ring(wrist, (0.028, 0.024), {fore_name: 0.28, hand_name: 0.72}, SKIN),
     ]
-    builder.add_loft(rings, 36, Vector((0, 0, 1)), cap_start=False)
+    builder.add_loft(rings, 40, Vector((0, 0, 1)), cap_start=False)
 
-    # Flattened palm + closed finger wedge around the exact contact offset.
-    # A longer finger loft and offset thumb keep the grip readable at chase
-    # camera distance without reading as a spherical mitten.
-    hand_direction = (contact - wrist).normalized()
-    palm_center = wrist.lerp(contact, 0.48)
+    hand_dir = (contact - wrist).normalized()
+    palm = wrist.lerp(contact, 0.5)
     builder.add_loft(
         [
-            Ring(wrist + hand_direction * 0.006, (0.028, 0.02), {hand_name: 1}, SKIN),
-            Ring(wrist.lerp(contact, 0.22), (0.038, 0.022), {hand_name: 1}, SKIN_LIGHT, 0.05),
-            Ring(palm_center, (0.044, 0.021), {hand_name: 1}, SKIN_LIGHT, 0.06),
-            Ring(wrist.lerp(contact, 0.72), (0.038, 0.019), {hand_name: 1}, SKIN_LIGHT, 0.05),
-            Ring(contact, (0.03, 0.017), {hand_name: 1}, SKIN, 0.03),
-            Ring(contact + hand_direction * 0.022, (0.022, 0.014), {hand_name: 1}, SKIN, 0.02),
-            Ring(contact + hand_direction * 0.038, (0.014, 0.01), {hand_name: 1}, SKIN),
-            Ring(contact + hand_direction * 0.048, (0.006, 0.005), {hand_name: 1}, SKIN),
-            Ring(contact + hand_direction * 0.052, (0.002, 0.002), {hand_name: 1}, SKIN),
+            Ring(wrist + hand_dir * 0.004, (0.028, 0.02), {hand_name: 1}, SKIN),
+            Ring(wrist.lerp(contact, 0.22), (0.04, 0.024), {hand_name: 1}, SKIN_LIGHT, 0.06),
+            Ring(palm, (0.046, 0.023), {hand_name: 1}, SKIN_LIGHT, 0.08),
+            Ring(wrist.lerp(contact, 0.72), (0.04, 0.02), {hand_name: 1}, SKIN_LIGHT, 0.05),
+            Ring(contact, (0.032, 0.018), {hand_name: 1}, SKIN, 0.03),
+            Ring(contact + hand_dir * 0.022, (0.022, 0.014), {hand_name: 1}, SKIN, 0.02),
+            Ring(contact + hand_dir * 0.04, (0.012, 0.009), {hand_name: 1}, SKIN),
+            Ring(contact + hand_dir * 0.05, (0.004, 0.004), {hand_name: 1}, SKIN),
         ],
         28,
         Vector((0, 1, 0)),
         cap_start=False,
-        cap_end=False,
+        cap_end=True,
     )
-    # Thumb as a short opposing wedge rather than a floating ball.
-    thumb_base = palm_center + Vector((-sign * 0.018, -0.012, 0.01))
-    thumb_tip = palm_center + Vector((-sign * 0.034, -0.028, 0.028))
+    thumb_base = palm + Vector((-sign * 0.02, -0.014, 0.012))
+    thumb_tip = palm + Vector((-sign * 0.038, -0.032, 0.032))
     builder.add_loft(
         [
-            Ring(thumb_base, (0.014, 0.012), {hand_name: 1}, SKIN),
+            Ring(thumb_base, (0.015, 0.013), {hand_name: 1}, SKIN),
             Ring(thumb_base.lerp(thumb_tip, 0.55), (0.012, 0.01), {hand_name: 1}, SKIN_LIGHT),
-            Ring(thumb_tip, (0.008, 0.007), {hand_name: 1}, SKIN),
-            Ring(thumb_tip + (thumb_tip - thumb_base).normalized() * 0.012, (0.003, 0.003), {hand_name: 1}, SKIN),
+            Ring(thumb_tip, (0.009, 0.008), {hand_name: 1}, SKIN),
+            Ring(thumb_tip + (thumb_tip - thumb_base).normalized() * 0.012, (0.004, 0.004), {hand_name: 1}, SKIN),
         ],
         14,
         Vector((0, 0, 1)),
         cap_start=False,
-        cap_end=False,
+        cap_end=True,
     )
 
 
 def build_leg(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: str) -> None:
-    sign = -1.0 if side_name == "Left" else 1.0
     upper_name = f"v4{side_name}UpperLeg"
     lower_name = f"v4{side_name}LowerLeg"
     foot_name = f"v4{side_name}Foot"
-    hips = bones["v4Hips"]
     hip = bones[upper_name]
     knee = bones[lower_name]
     ankle = bones[foot_name]
 
-    # Begin each thigh inside the continuous pelvis volume and leave its buried
-    # root uncapped. The original centreline cones and the first broad-root
-    # revision both exposed planar end caps under hip flexion; a short,
-    # co-axial weight transition produces a clean shorts-to-thigh silhouette.
     rings = [
-        Ring(hip + Vector((0, 0.025, 0)), (0.112, 0.101), {"v4Hips": 0.86, upper_name: 0.14}, SHORTS, 0.035),
-        Ring(hip + Vector((0, -0.018, 0.004)), (0.124, 0.109), {"v4Hips": 0.55, upper_name: 0.45}, SHORTS, 0.045),
-        Ring(hip.lerp(knee, 0.1), (0.125, 0.111), {upper_name: 0.86, "v4Hips": 0.14}, SHORTS, 0.05),
-        Ring(hip.lerp(knee, 0.24), (0.127, 0.112), {upper_name: 1}, SHORTS, 0.055),
-        Ring(hip.lerp(knee, 0.4), (0.12, 0.105), {upper_name: 1}, SHORTS_PANEL, 0.045),
-        Ring(hip.lerp(knee, 0.54), (0.112, 0.099), {upper_name: 0.98, lower_name: 0.02}, TRIM, 0.035),
-        Ring(hip.lerp(knee, 0.68), (0.108, 0.096), {upper_name: 0.9, lower_name: 0.1}, LEG_FABRIC, 0.03),
-        Ring(hip.lerp(knee, 0.82), (0.101, 0.091), {upper_name: 0.76, lower_name: 0.24}, LEG_FABRIC),
-        Ring(hip.lerp(knee, 0.93), (0.088, 0.082), {upper_name: 0.58, lower_name: 0.42}, LEG_FABRIC),
-        # Knee pinch then calf swell — avoids a continuous sausage under flex.
-        Ring(knee, (0.084, 0.08), {upper_name: 0.47, lower_name: 0.53}, LEG_FABRIC_LIGHT, 0.02),
-        Ring(knee.lerp(ankle, 0.1), (0.092, 0.084), {upper_name: 0.24, lower_name: 0.76}, LEG_FABRIC, 0.03),
-        Ring(knee.lerp(ankle, 0.24), (0.098, 0.088), {lower_name: 0.92, upper_name: 0.08}, LEG_FABRIC, 0.045),
-        Ring(knee.lerp(ankle, 0.4), (0.092, 0.082), {lower_name: 0.98, foot_name: 0.02}, LEG_FABRIC, 0.035),
-        Ring(knee.lerp(ankle, 0.57), (0.08, 0.074), {lower_name: 0.94, foot_name: 0.06}, LEG_FABRIC_SIDE, 0.025),
-        Ring(knee.lerp(ankle, 0.72), (0.068, 0.064), {lower_name: 0.85, foot_name: 0.15}, LEG_FABRIC_SIDE, 0.015),
-        Ring(knee.lerp(ankle, 0.86), (0.058, 0.054), {lower_name: 0.67, foot_name: 0.33}, LEG_FABRIC_SIDE),
-        Ring(ankle, (0.052, 0.05), {lower_name: 0.32, foot_name: 0.68}, SHOE_DARK),
+        Ring(hip + Vector((0, 0.03, 0.0)), (0.105, 0.095), {"v4Hips": 0.86, upper_name: 0.14}, SHORTS, 0.04, 0.03),
+        Ring(hip + Vector((0, -0.01, 0.004)), (0.122, 0.108), {"v4Hips": 0.52, upper_name: 0.48}, SHORTS, 0.05, 0.05),
+        Ring(hip.lerp(knee, 0.12), (0.126, 0.11), {upper_name: 0.88, "v4Hips": 0.12}, SHORTS, 0.06, 0.06),
+        Ring(hip.lerp(knee, 0.28), (0.128, 0.112), {upper_name: 1}, SHORTS, 0.06, 0.07),
+        Ring(hip.lerp(knee, 0.44), (0.12, 0.106), {upper_name: 1}, SHORTS_PANEL, 0.05, 0.05),
+        Ring(hip.lerp(knee, 0.58), (0.112, 0.1), {upper_name: 0.96, lower_name: 0.04}, TRIM, 0.04),
+        Ring(hip.lerp(knee, 0.72), (0.105, 0.094), {upper_name: 0.88, lower_name: 0.12}, LEG_FABRIC, 0.035),
+        Ring(hip.lerp(knee, 0.86), (0.095, 0.088), {upper_name: 0.72, lower_name: 0.28}, LEG_FABRIC),
+        Ring(hip.lerp(knee, 0.95), (0.088, 0.082), {upper_name: 0.55, lower_name: 0.45}, LEG_FABRIC),
+        Ring(knee, (0.086, 0.08), {upper_name: 0.45, lower_name: 0.55}, LEG_FABRIC_LIGHT, 0.025, 0.04),
+        Ring(knee.lerp(ankle, 0.12), (0.094, 0.086), {upper_name: 0.22, lower_name: 0.78}, LEG_FABRIC, 0.04, 0.04),
+        Ring(knee.lerp(ankle, 0.3), (0.098, 0.088), {lower_name: 0.94, upper_name: 0.06}, LEG_FABRIC, 0.05, 0.04),
+        Ring(knee.lerp(ankle, 0.5), (0.09, 0.08), {lower_name: 0.97, foot_name: 0.03}, LEG_FABRIC, 0.04),
+        Ring(knee.lerp(ankle, 0.68), (0.076, 0.07), {lower_name: 0.9, foot_name: 0.1}, LEG_FABRIC_SIDE, 0.03),
+        Ring(knee.lerp(ankle, 0.84), (0.062, 0.058), {lower_name: 0.72, foot_name: 0.28}, LEG_FABRIC_SIDE),
+        Ring(ankle, (0.05, 0.048), {lower_name: 0.32, foot_name: 0.68}, SHOE_DARK),
     ]
-    builder.add_loft(rings, 40, Vector((1, 0, 0)), cap_start=False)
+    builder.add_loft(rings, 42, Vector((1, 0, 0)), cap_start=False)
 
-    # Separate, fully foot-weighted performance shoe: heel counter, shaped
-    # upper, rocker toe, contrast sole, and laces. Its contact marker still
-    # comes from the canonical terminal bone offset.
-    heel = ankle + Vector((0, -0.035, -0.055))
-    rear = ankle + Vector((0, -0.02, -0.015))
-    mid = ankle + Vector((0, -0.045, 0.085))
+    heel = ankle + Vector((0, -0.032, -0.05))
+    rear = ankle + Vector((0, -0.018, -0.01))
+    mid = ankle + Vector((0, -0.042, 0.09))
     cleat = ankle + Vector(CONTACT_OFFSETS[foot_name])
-    toe = ankle + Vector((0, -0.038, 0.235))
+    toe = ankle + Vector((0, -0.034, 0.23))
     builder.add_loft(
         [
-            Ring(heel, (0.078, 0.054), {foot_name: 1}, SHOE_DARK, 0.03),
-            Ring(rear, (0.09, 0.063), {foot_name: 1}, SHOE, 0.04),
-            Ring(mid, (0.105, 0.061), {foot_name: 1}, SHOE, 0.045),
-            Ring(cleat, (0.108, 0.052), {foot_name: 1}, SHOE, 0.035),
-            Ring(toe, (0.086, 0.036), {foot_name: 1}, SHOE, 0.02),
+            Ring(heel, (0.076, 0.052), {foot_name: 1}, SHOE_DARK, 0.03),
+            Ring(rear, (0.09, 0.06), {foot_name: 1}, SHOE, 0.04),
+            Ring(mid, (0.106, 0.06), {foot_name: 1}, SHOE, 0.05),
+            Ring(cleat, (0.11, 0.05), {foot_name: 1}, SHOE, 0.04),
+            Ring(toe, (0.084, 0.034), {foot_name: 1}, SHOE, 0.02),
         ],
         30,
         Vector((1, 0, 0)),
     )
     builder.add_loft(
         [
-            Ring(heel + Vector((0, -0.035, 0.0)), (0.08, 0.012), {foot_name: 1}, SOLE),
-            Ring(mid + Vector((0, -0.038, 0.0)), (0.108, 0.013), {foot_name: 1}, SOLE),
-            Ring(cleat + Vector((0, -0.035, 0.0)), (0.112, 0.012), {foot_name: 1}, SOLE),
-            Ring(toe + Vector((0, -0.026, -0.004)), (0.09, 0.01), {foot_name: 1}, SOLE),
+            Ring(heel + Vector((0, -0.032, 0.0)), (0.078, 0.012), {foot_name: 1}, SOLE),
+            Ring(mid + Vector((0, -0.036, 0.0)), (0.108, 0.013), {foot_name: 1}, SOLE),
+            Ring(cleat + Vector((0, -0.032, 0.0)), (0.112, 0.012), {foot_name: 1}, SOLE),
+            Ring(toe + Vector((0, -0.024, -0.004)), (0.088, 0.01), {foot_name: 1}, SOLE),
         ],
-        28,
+        26,
         Vector((1, 0, 0)),
     )
-    for z_offset in (0.075, 0.115, 0.155):
-        builder.add_loft(
-            [
-                Ring(ankle + Vector((sign * -0.052, 0.018, z_offset)), (0.006, 0.004), {foot_name: 1}, TRIM),
-                Ring(ankle + Vector((sign * 0.052, 0.018, z_offset)), (0.006, 0.004), {foot_name: 1}, TRIM),
-            ],
-            8,
-            Vector((0, 1, 0)),
-        )
 
 
-def create_armature(bones: dict[str, Vector]):
+def create_armature(bones: dict[str, Vector]) -> bpy.types.Object:
     armature_data = bpy.data.armatures.new("RowPlayV4Armature")
     armature = bpy.data.objects.new("RowPlayV4Armature", armature_data)
     bpy.context.scene.collection.objects.link(armature)
@@ -560,7 +472,6 @@ def create_armature(bones: dict[str, Vector]):
     armature.select_set(True)
     bpy.ops.object.mode_set(mode="EDIT")
 
-    definitions = {name: (parent, Vector(local)) for name, parent, local in BONE_DEFINITIONS}
     children: dict[str, list[str]] = {name: [] for name in BONE_NAMES}
     for name, parent, _local in BONE_DEFINITIONS:
         if parent:
@@ -572,11 +483,11 @@ def create_armature(bones: dict[str, Vector]):
         bone.head = to_blender(bones[name])
         child_names = children[name]
         if child_names:
-            # Prefer the central child for torso; otherwise follow the first
-            # declared chain. Bone roll is irrelevant to the final canonical
-            # skeleton, but a sensible source armature keeps Blender inspection
-            # readable and ensures stable skin export.
             preferred = child_names[0]
+            for candidate in child_names:
+                if any(token in candidate for token in ("Spine", "Chest", "Neck", "Head")):
+                    preferred = candidate
+                    break
             bone.tail = to_blender(bones[preferred])
         elif parent is not None:
             direction = (bones[name] - bones[parent]).normalized()
@@ -594,48 +505,213 @@ def create_armature(bones: dict[str, Vector]):
     return armature
 
 
-def create_mesh_object(builder: AthleteMeshBuilder, armature):
-    mesh_data = bpy.data.meshes.new("RowPlayV4AthleteSurface")
-    mesh_data.from_pydata(builder.vertices, [], builder.faces)
-    mesh_data.update(calc_edges=True)
-    for polygon in mesh_data.polygons:
+def create_cage(builder: AthleteMeshBuilder) -> bpy.types.Object:
+    """Ring-weighted source cage used for production surface weight transfer."""
+
+    mesh = bpy.data.meshes.new("v4AthleteCage")
+    mesh.from_pydata(builder.vertices, [], list(builder.faces))
+    mesh.update(calc_edges=True)
+    for polygon in mesh.polygons:
         polygon.use_smooth = True
 
-    color_layer = mesh_data.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
+    color_layer = mesh.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
     for index, color in enumerate(builder.colors):
         color_layer.data[index].color_srgb = color
-    mesh_data.color_attributes.active_color = color_layer
-    mesh_data.color_attributes.render_color_index = mesh_data.color_attributes.active_color_index
+    mesh.color_attributes.active_color = color_layer
+    mesh.color_attributes.render_color_index = mesh.color_attributes.active_color_index
 
-    athlete = bpy.data.objects.new("v4AthleteBlenderSource", mesh_data)
-    bpy.context.scene.collection.objects.link(athlete)
+    cage = bpy.data.objects.new("v4AthleteCage", mesh)
+    bpy.context.scene.collection.objects.link(cage)
+    groups = {name: cage.vertex_groups.new(name=name) for name in BONE_NAMES}
+    for vertex_index, weights in enumerate(builder.weights):
+        for bone_name, weight in weights.items():
+            groups[bone_name].add([vertex_index], weight, "REPLACE")
+    return cage
 
-    material = bpy.data.materials.new("RowPlayV4VertexColorMaterial")
-    material.diffuse_color = (1.0, 1.0, 1.0, 1.0)
+
+def create_production_surface(cage: bpy.types.Object) -> bpy.types.Object:
+    """Remesh a visual copy, then transfer cage weights and vertex colours."""
+
+    bpy.ops.object.select_all(action="DESELECT")
+    cage.select_set(True)
+    bpy.context.view_layer.objects.active = cage
+    bpy.ops.object.duplicate()
+    surface = bpy.context.view_layer.objects.active
+    surface.name = "v4Athlete"
+    surface.data.name = "v4Athlete"
+
+    # Drop cage groups/colours after duplication; transfer restores them cleanly.
+    for group in list(surface.vertex_groups):
+        surface.vertex_groups.remove(group)
+
+    remesh = surface.modifiers.new(name="ProductionRemesh", type="REMESH")
+    remesh.mode = "VOXEL"
+    remesh.voxel_size = VOXEL_SIZE
+    remesh.use_smooth_shade = True
+    bpy.ops.object.modifier_apply(modifier=remesh.name)
+
+    smooth = surface.modifiers.new(name="ProductionSmooth", type="SMOOTH")
+    smooth.factor = 0.45
+    smooth.iterations = SMOOTH_ITERATIONS
+    bpy.ops.object.modifier_apply(modifier=smooth.name)
+
+    # Transfer weights from the authored cage. Vertex colours are repainted by
+    # region after remesh (Blender 5 colour-attribute transfer is fragile across
+    # domain changes).
+    transfer = surface.modifiers.new(name="TransferCage", type="DATA_TRANSFER")
+    transfer.object = cage
+    transfer.use_vert_data = True
+    transfer.data_types_verts = {"VGROUP_WEIGHTS"}
+    transfer.vert_mapping = "POLYINTERP_NEAREST"
+    transfer.mix_mode = "REPLACE"
+    bpy.ops.object.datalayout_transfer(modifier=transfer.name)
+    bpy.ops.object.modifier_apply(modifier=transfer.name)
+
+    # Ensure every semantic group exists and weights are finite four-influence sets.
+    for name in BONE_NAMES:
+        if name not in surface.vertex_groups:
+            surface.vertex_groups.new(name=name)
+    for group in list(surface.vertex_groups):
+        if group.name not in BONE_NAMES:
+            surface.vertex_groups.remove(group)
+
+    mesh = surface.data
+    for vertex in mesh.vertices:
+        p = from_blender(vertex.co)
+        weights: list[tuple[str, float]] = []
+        for group in surface.vertex_groups:
+            try:
+                value = group.weight(vertex.index)
+            except RuntimeError:
+                continue
+            if value > 1e-5:
+                weights.append((group.name, value))
+        # Keep ribcage influence in the armpit so raised arms cannot open a hole.
+        if 1.32 < p.y < 1.55 and 0.1 < abs(p.x) < 0.28:
+            weights.append(("v4Chest", 0.45))
+            weights.append(("v4Spine", 0.15))
+        weights.sort(key=lambda item: item[1], reverse=True)
+        # Merge duplicates after the armpit boost.
+        merged: dict[str, float] = {}
+        for name, value in weights:
+            merged[name] = merged.get(name, 0.0) + value
+        ranked = sorted(merged.items(), key=lambda item: item[1], reverse=True)[:4]
+        total = sum(value for _name, value in ranked)
+        if total <= 1e-8:
+            fallback = "v4Hips"
+            if p.y > 1.55:
+                fallback = "v4Head"
+            elif p.y > 1.35:
+                fallback = "v4Chest"
+            elif p.y > 1.15:
+                fallback = "v4Spine"
+            ranked = [(fallback, 1.0)]
+            total = 1.0
+        for group in surface.vertex_groups:
+            try:
+                group.remove([vertex.index])
+            except RuntimeError:
+                pass
+        for name, value in ranked:
+            surface.vertex_groups[name].add([vertex.index], value / total, "REPLACE")
+
+    # Remesh discards colour attributes; repaint deliberate kit/skin regions.
+    paint_vertex_colors(surface)
+
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.normals_make_consistent(inside=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    # Hide the cage; only the production surface is exported.
+    cage.hide_render = True
+    cage.hide_viewport = True
+    return surface
+
+
+def paint_vertex_colors(obj: bpy.types.Object) -> None:
+    """Region paint in bind-pose space (Three/glTF Y-up metres)."""
+
+    mesh = obj.data
+    # Replace any prior colour attribute from remesh leftovers.
+    while mesh.color_attributes:
+        mesh.color_attributes.remove(mesh.color_attributes[0])
+    color_layer = mesh.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
+    mesh.color_attributes.active_color = color_layer
+    mesh.color_attributes.render_color_index = mesh.color_attributes.active_color_index
+    for index, vertex in enumerate(mesh.vertices):
+        p = from_blender(vertex.co)
+        y = p.y
+        x = p.x
+        z = p.z
+        # Bind-pose landmarks: head ~1.72, chest ~1.45, hips ~1.02, knees ~0.53,
+        # ankles ~0.06. Shoe paint is restricted to the foot block only.
+        # Shoes live only in the foot block (ankle ~0.06, toe forward in +Z).
+        near_foot = y < 0.12 and abs(x) > 0.05 and z > -0.08
+        near_hand = y > 1.05 and abs(x) > 0.48
+        if y > 1.64 and z < 0.04:
+            color = HAIR
+        elif y > 1.55 or (y > 1.48 and abs(x) < 0.12 and z > -0.02):
+            color = SKIN
+        elif near_hand:
+            color = SKIN_LIGHT if abs(x) > 0.58 else SKIN
+        elif near_foot:
+            color = SOLE if y < 0.04 else (SHOE_DARK if z < 0.0 else SHOE)
+        elif y < 1.02 and abs(x) > 0.05:
+            # Full lower-leg performance tights — never shoe white on the shin.
+            if abs(y - 0.53) < 0.07:
+                color = LEG_FABRIC_LIGHT
+            elif abs(x) > 0.11:
+                color = LEG_FABRIC_SIDE
+            else:
+                color = LEG_FABRIC
+        elif y < 1.16:
+            color = SHORTS_PANEL if abs(x) > 0.12 else SHORTS
+        elif y < 1.28 and abs(x) > 0.22:
+            # Outer deltoid still kit.
+            color = FABRIC
+        elif abs(x) > 0.2 and y > 1.2:
+            color = FABRIC_SIDE if abs(x) > 0.24 else FABRIC
+        elif abs(x) < 0.016 and z > 0.02 and 1.18 < y < 1.48:
+            color = TRIM
+        elif y > 1.35 and abs(x) < 0.12:
+            color = FABRIC_LIGHT
+        else:
+            color = FABRIC
+        color_layer.data[index].color_srgb = color
+
+
+def bind_surface(surface: bpy.types.Object, armature: bpy.types.Object) -> None:
+    surface.parent = armature
+    modifier = surface.modifiers.new(name="RowPlayV4Skin", type="ARMATURE")
+    modifier.object = armature
+    modifier.use_deform_preserve_volume = True
+    modifier.use_vertex_groups = True
+
+
+def create_material(obj: bpy.types.Object) -> None:
+    material = bpy.data.materials.new("RowPlayV4ProductionMaterial")
     material.use_nodes = True
     principled = material.node_tree.nodes.get("Principled BSDF")
     if principled is not None:
         principled.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
-        principled.inputs["Roughness"].default_value = 0.58
+        principled.inputs["Roughness"].default_value = 0.62
+        principled.inputs["Metallic"].default_value = 0.0
         if "Coat Weight" in principled.inputs:
-            principled.inputs["Coat Weight"].default_value = 0.05
+            principled.inputs["Coat Weight"].default_value = 0.04
         if "Sheen Weight" in principled.inputs:
-            principled.inputs["Sheen Weight"].default_value = 0.12
+            principled.inputs["Sheen Weight"].default_value = 0.18
         vertex_color = material.node_tree.nodes.new("ShaderNodeVertexColor")
-        vertex_color.layer_name = "Color"
+        # Prefer transferred colour layer name.
+        layer_name = "Color"
+        if obj.data.color_attributes:
+            layer_name = obj.data.color_attributes[0].name
+        vertex_color.layer_name = layer_name
         material.node_tree.links.new(vertex_color.outputs["Color"], principled.inputs["Base Color"])
-    athlete.data.materials.append(material)
-
-    groups = {name: athlete.vertex_groups.new(name=name) for name in BONE_NAMES}
-    for vertex_index, weights in enumerate(builder.weights):
-        for bone_name, weight in weights.items():
-            groups[bone_name].add([vertex_index], weight, "REPLACE")
-
-    modifier = athlete.modifiers.new(name="RowPlayV4Skin", type="ARMATURE")
-    modifier.object = armature
-    modifier.use_deform_preserve_volume = True
-    athlete.parent = armature
-    return athlete
+    if obj.data.materials:
+        obj.data.materials[0] = material
+    else:
+        obj.data.materials.append(material)
 
 
 def main() -> None:
@@ -663,13 +739,16 @@ def main() -> None:
     build_leg(builder, bones, "Left")
     build_leg(builder, bones, "Right")
 
+    cage = create_cage(builder)
     armature = create_armature(bones)
-    athlete = create_mesh_object(builder, armature)
+    surface = create_production_surface(cage)
+    create_material(surface)
+    bind_surface(surface, armature)
 
     bpy.ops.object.select_all(action="DESELECT")
     armature.select_set(True)
-    athlete.select_set(True)
-    bpy.context.view_layer.objects.active = athlete
+    surface.select_set(True)
+    bpy.context.view_layer.objects.active = surface
 
     result = bpy.ops.export_scene.gltf(
         filepath=str(output),
@@ -689,10 +768,12 @@ def main() -> None:
         raise RuntimeError(f"Blender glTF export failed: {result}")
     if not output.is_file() or output.stat().st_size == 0:
         raise RuntimeError(f"Blender did not create a non-empty GLB: {output}")
+
+    vertex_count = len(surface.data.vertices)
+    triangle_count = sum(len(p.vertices) - 2 for p in surface.data.polygons)
     print(
-        f"wrote Blender athlete source {output}: {len(builder.vertices)} vertices, "
-        f"{sum(max(0, len(face) - 2) for face in builder.faces)} triangles, "
-        f"{output.stat().st_size} bytes"
+        f"wrote production athlete source {output}: {vertex_count} vertices, "
+        f"{triangle_count} triangles, {output.stat().st_size} bytes"
     )
 
 
