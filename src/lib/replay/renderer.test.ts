@@ -415,6 +415,122 @@ describe("CourseRenderer stroke pose input", () => {
     }
   });
 
+  it("keeps the 2D RowErg arms long until the handle clears the knees", () => {
+    const { ctx, operations } = makeCtx();
+    const canvas = {
+      getContext: (kind: string) => (kind === "2d" ? ctx : null),
+    } as unknown as HTMLCanvasElement;
+    const renderer = new CourseRenderer(canvas);
+    renderer.resize(640, 180);
+    const testRenderer = renderer as unknown as {
+      drawAvatar(options: Record<string, unknown>): void;
+      liveSplash: unknown;
+    };
+    const samples: Array<{
+      cycle: number;
+      handMinusKnee: number;
+      bendDegrees: number;
+      armDraw: number;
+      legExtension: number;
+    }> = [];
+
+    for (let step = 0; step <= 128; step++) {
+      const cycle = step / 128;
+      const pose = fallbackStrokePose("rower", cycle * Math.PI * 2, 28);
+      if (cycle > pose.driveFrac) break;
+      operations.length = 0;
+      const kinematics = solveRowerKinematics(pose);
+      testRenderer.drawAvatar({
+        x: 220,
+        y: 120,
+        accent: "#123456",
+        phase: pose.phase,
+        meters: cycle * pose.strokeMeters,
+        pixelsPerMeter: 0.72,
+        pose,
+        spm: 28,
+        isYou: true,
+        sport: "rower",
+        label: "rower",
+        splash: testRenderer.liveSplash,
+      });
+      const kneeCall = operations.find(
+        ({ method, args }) => method === "arc" && Math.abs((args[2] as number) - 1.12) < 1e-8,
+      );
+      const shoulderCall = operations.find(
+        ({ method, args }) => method === "ellipse" && Math.abs((args[2] as number) - 1.38) < 1e-8,
+      );
+      const elbowCall = operations.find(
+        ({ method, args }) => method === "arc" && Math.abs((args[2] as number) - 0.95) < 1e-8,
+      );
+      const oars: Array<{ x: number; y: number }> = [];
+      for (let index = 0; index < operations.length - 1; index++) {
+        const start = operations[index];
+        const end = operations[index + 1];
+        if (start?.method !== "moveTo" || end?.method !== "lineTo") continue;
+        const x1 = start.args[0] as number;
+        const y1 = start.args[1] as number;
+        const x2 = end.args[0] as number;
+        const y2 = end.args[1] as number;
+        if (Math.abs(Math.hypot(x2 - x1, y2 - y1) - 20.9) < 1e-7) {
+          oars.push({ x: x1, y: y1 });
+        }
+      }
+      if (!kneeCall || !shoulderCall || !elbowCall || !oars[1]) continue;
+      const kneeX = kneeCall.args[0] as number;
+      const shoulderX = shoulderCall.args[0] as number;
+      const shoulderY = shoulderCall.args[1] as number;
+      const elbowX = elbowCall.args[0] as number;
+      const elbowY = elbowCall.args[1] as number;
+      const handX = oars[1].x;
+      const handY = oars[1].y;
+      const upperX = elbowX - shoulderX;
+      const upperY = elbowY - shoulderY;
+      const lowerX = handX - elbowX;
+      const lowerY = handY - elbowY;
+      const straightness =
+        (upperX * lowerX + upperY * lowerY) /
+        (Math.hypot(upperX, upperY) * Math.hypot(lowerX, lowerY));
+      const bendDegrees = (Math.acos(Math.max(-1, Math.min(1, straightness))) * 180) / Math.PI;
+      samples.push({
+        cycle,
+        handMinusKnee: handX - kneeX,
+        bendDegrees,
+        armDraw: kinematics.armDraw,
+        legExtension: kinematics.legExtension,
+      });
+    }
+    renderer.destroy();
+
+    // The handle begins behind the knee centre at the compressed catch, moves
+    // clear as the knees drop, then crosses the knee envelope toward the body.
+    // Use the final positive→negative crossing so the catch-side overlap does
+    // not masquerade as the late-drive sequencing landmark.
+    const peakIndex = samples.reduce(
+      (best, sample, index) => (sample.handMinusKnee > samples[best]!.handMinusKnee ? index : best),
+      0,
+    );
+    const clearanceIndex = samples.findIndex(
+      (sample, index) => index > peakIndex && sample.handMinusKnee <= 0,
+    );
+    const visibleDrawIndex = samples.findIndex((sample) => sample.bendDegrees > 10);
+    if (clearanceIndex < 1 || visibleDrawIndex < 0) {
+      throw new Error("2D RowErg drive did not expose hand/knee clearance and arm draw");
+    }
+
+    expect(samples[clearanceIndex - 1]!.handMinusKnee).toBeGreaterThan(0);
+    expect(samples[clearanceIndex]!.legExtension).toBeGreaterThan(0.99);
+    expect(
+      Math.max(...samples.slice(peakIndex, clearanceIndex).map((sample) => sample.bendDegrees)),
+      "arms remain visually long before the handle clears the knees",
+    ).toBeLessThan(5);
+    expect(
+      visibleDrawIndex,
+      "visible elbow flexion starts at or after drive-side knee clearance",
+    ).toBeGreaterThanOrEqual(clearanceIndex);
+    expect(samples.at(-1)!.bendDegrees, "finish has a readable late arm draw").toBeGreaterThan(65);
+  });
+
   it("keeps both 2D SkiErg hands on rigid poles through plant and recovery", () => {
     const { ctx, operations } = makeCtx();
     const canvas = {

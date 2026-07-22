@@ -46,7 +46,8 @@ renderers; Canvas retains its own art direction but not a separate technique
 interpretation.
 
 RowErg runs through catch compression, leg-led acceleration, delayed body open,
-late arm draw, hands-away, body-over, and slide. SkiErg uses a classic Nordic
+late arm draw after drive-side hand/knee clearance, hands-away, body-over, and
+slide. SkiErg uses a classic Nordic
 double-pole sequence: high reach, steep plant, early elbow load, core-led press,
 near-straight arms at pole-off, lifted recovery, and velocity-matched approach
 to the next plant. BikeErg
@@ -59,24 +60,32 @@ The shared RowErg graph follows the public coaching sequence rather than an
 aesthetic arm loop. [Concept2's rowing-technique guidance](https://www.concept2.com/training/rowing-technique)
 defines a long-arm catch, a leg-led drive, body swing before the arm draw, a
 finish with the handle just below the ribs, and recovery in the reverse order
-with hands away before the knees rise. [British Rowing's indoor technique](https://www.britishrowing.org/knowledge/rower-development/british-rowing-technique/indoor-rowing-technique/)
+with hands away before the knees rise. [British Rowing's indoor technique](https://www.britishrowing.org/indoor-rowing/go-row-indoor/how-to-indoor-row/british-rowing-technique/)
 likewise delays the arm draw until the legs are extended and requires the
-elbows to follow the handle line with aligned wrists and forearms. A published
+elbows to follow the handle line with aligned wrists and forearms. In the
+animation, the hand passing the drive-side knee envelope is the observable
+geometric cue for that sequencing; it does not replace the legs → body → arms
+coaching rule. A published
 [3D kinematic comparison of skilled and unskilled ergometer rowing](https://www.mdpi.com/2076-3417/14/19/9055)
 reports only about 7–13° of elbow flexion through the first half of the drive,
 followed by the substantial late flexion needed at the finish.
 
-Those constraints own both renderers. Canvas solves each fixed-length
+Those constraints own both renderers. The shared graph keeps the arm draw at
+zero until the late drive, while dense pose tests verify the stronger spatial
+invariant: the arms remain softly long until the hands have actually cleared
+the knees and the legs are essentially extended. Canvas solves each fixed-length
 upper-arm/forearm chain analytically and always selects the rearward elbow
 intersection. The 3D fallback solves a full inboard scull circle for the
 long-arm reach, closes the last part of the handle path from the graph's late
 `armDraw`, and publishes a restrained-outward but strongly rearward elbow
-marker. V4 samples its authored clip first, then uses that shared marker to
-choose the anatomical IK branch while the rigid grip remains terminal
-authority. The RowErg wrist frame is preserved through parent-bone correction
-so its palm offset converges on the grip rather than making the forearm chase a
-moving contact point. Dense-cycle tests reject early flexion, forward-pointing or
-sideways elbows, grip separation, torso intersection, and branch snaps.
+marker. V4 first samples its authored clip and hand orientation, then the
+renderer re-solves each fixed oar circle from the visible skinned shoulder,
+structural shoulder-to-wrist reach, and sampled wrist-to-palm offset before the
+final contact pass chooses the shared anatomical elbow branch. The rigid grip
+remains terminal authority without asking IK to compensate for a hidden-rig
+shoulder mismatch. Dense-cycle tests reject elbow flexion before hand/knee
+clearance, forward-pointing or sideways elbows, grip separation, torso
+intersection, and branch snaps.
 
 ### Classic double-pole reference contract
 

@@ -89,14 +89,16 @@ viewing speed.
 1. WHEN RowErg is shown THEN legs, pelvis, spine, shoulders, arms, wrists, and
    feathered blades SHALL create a continuous catch → drive → finish →
    hands-away → slide sequence while grips stay clear of the torso. Arms SHALL
-   remain long through the leg drive and body opening, visible elbow flexion
-   SHALL occur only in the late draw, and both elbows SHALL travel rearward as
-   the handle approaches the lower ribs. Recovery SHALL straighten the arms
-   before body-over and slide; neither renderer SHALL select a forward-pointing,
-   horizontal-wing, or through-torso elbow branch. V4 feet SHALL remain locked
-   to the stretcher while both knees follow the shared raised rowing branch;
-   neither leg may inherit the standing rest skeleton's downward branch or pass
-   through the cockpit.
+   remain softly long through the leg drive and body opening. On the drive,
+   visible elbow flexion SHALL begin only after the hands have passed the knee
+   envelope and the legs are nearly extended; both elbows SHALL then travel
+   rearward as the handle approaches the lower ribs. Recovery SHALL straighten
+   the arms and move the hands back past the knees before body-over and slide;
+   neither renderer SHALL select a forward-pointing, horizontal-wing, or
+   through-torso elbow branch. V4 feet SHALL remain locked to the stretcher
+   while both knees follow the shared raised rowing branch; neither leg may
+   inherit the standing rest skeleton's downward branch or pass through the
+   cockpit.
 2. WHEN SkiErg is shown THEN reach, velocity-matched plant, loaded pull, and
    release SHALL read as distinct states; baskets SHALL remain course-anchored
    throughout the loaded phase while the athlete advances relative to them.

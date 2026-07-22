@@ -15,12 +15,13 @@ reports `userData.replayV4Architecture = "clip-contact-constrained"`.
 | Sport   | Current mechanical contract                                                                                                                                                                                                                                                                                                                                                                 |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | BikeErg | Both shoes remain on mechanically opposed pedals. Each knee selects one continuous rider-forward branch of the hip/pedal sphere intersection; saddle height retains visible flexion through bottom dead centre.                                                                                                                                                                             |
-| RowErg  | Each palm terminates on its own rigid inboard scull grip. Arms remain long through leg drive and body opening; both elbows travel behind the torso only in the late draw and arms clear first on recovery. Hands remain uncrossed and forearms remain outside the torso; neither a forward-pointing elbow nor a horizontal chicken wing is allowed.                                         |
+| RowErg  | Each palm terminates on its own rigid inboard scull grip. Arms remain softly long until the hands pass the knees and the legs are nearly extended; both elbows then travel behind the torso in the late draw and arms clear first on recovery. Hands remain uncrossed and forearms remain outside the torso; neither a forward-pointing elbow nor a horizontal chicken wing is allowed.     |
 | SkiErg  | Each pole is a rigid 1.55 m link. The basket plants steeply, remains fixed while the skier advances, releases by 29% of the cycle, lifts through recovery, and converges continuously on the next catch. The elbow points down at plant, rotates rearward during the loaded press, and returns underneath the forward-lifting arm before the next plant without changing two-bone branches. |
 
 The correction is protected across dense full cycles: 256-step BikeErg knee
 branch/continuity sampling, 257-pose Canvas and procedural-3D RowErg elbow
-branch/continuity/late-draw sampling, 128-step V4 RowErg
+branch/continuity/late-draw sampling, explicit drive-side hand/knee-clearance
+assertions in both renderers, 128-step V4 RowErg
 palm/contact/torso-clearance sampling, and 256-step SkiErg
 rigid-pole/plant/contact/continuity sampling. V3 procedural fallback contacts
 and the 2D shared timing path remain covered too.
@@ -40,9 +41,18 @@ and the on-snow timing and joint-angle measurements in
 [Stöggl and Holmberg](https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2018.00978/full).
 The RowErg sequence and late, rearward elbow draw come from
 [Concept2's rowing technique](https://www.concept2.com/training/rowing-technique),
-[British Rowing's indoor technique](https://www.britishrowing.org/knowledge/rower-development/british-rowing-technique/indoor-rowing-technique/),
+[British Rowing's indoor technique](https://www.britishrowing.org/indoor-rowing/go-row-indoor/how-to-indoor-row/british-rowing-technique/),
 and the elbow-angle timing in a published
 [3D ergometer-rowing kinematic comparison](https://www.mdpi.com/2076-3417/14/19/9055).
+
+The latest RowErg acceptance used `/replay/1001` at 0.5× and 1× in both Canvas
+2D and WebGPU/Ultra 3D. Paused catch, early-drive, hand/knee-clearance, late-draw,
+and finish poses confirmed that the hands and nearly straight arms move past
+the knees before visible elbow flexion begins. The 3D pass also confirmed that
+the skinned shoulders feed the rigid-oar refinement, each palm remains on its
+own grip, elbows pull behind the torso, and forearms do not pass through the
+body. The full-width Blender rigger stayed aligned with both fixed oarlocks, and
+the moving 1× pass produced no browser warnings or errors.
 
 Moving acceptance used the SkiErg demo at both 0.5× and 1×. Canvas 2D kept
 both baskets clear of the snow through the free-flight recovery and converged

@@ -305,6 +305,11 @@ interface Avatar {
   v4Motion?: ReplayV4MotionController | null;
   /** Lets rigid hand-contact paths stay inside the installed skin's reach. */
   setV4ArmReach?(reach: number): void;
+  /**
+   * Re-solves equipment targets from the just-sampled visible V4 shoulders.
+   * Only RowErg needs this because its rigid oars own a moving inboard arc.
+   */
+  refineV4Targets?(motion: ReplayV4MotionController): void;
   animate(
     phase: number,
     reduceMotion: boolean,
@@ -1272,8 +1277,15 @@ function solveRowerOarYaw(
   const pinDeltaX = pinX - shoulder.x;
   const pinDeltaY = pinY - shoulder.y;
   const pinDeltaZ = pinZ - shoulder.z;
-  const projectedX = pinDeltaX * Math.cos(bladeRoll) + pinDeltaY * Math.sin(bladeRoll);
-  const projectedZ = -pinDeltaZ;
+  // Three's XYZ Euler order sends an oar-local X vector to
+  // (cos(roll)cos(yaw), sin(roll), -cos(roll)sin(yaw)). Blade burial therefore
+  // contributes a yaw-independent vertical term; treating that Y offset as
+  // part of the yaw circle shortened the grip reach as soon as the blade
+  // squared and made both fallback elbows fold during the leg drive.
+  const rollCos = Math.cos(bladeRoll);
+  const rollSin = Math.sin(bladeRoll);
+  const projectedX = pinDeltaX * rollCos;
+  const projectedZ = -pinDeltaZ * rollCos;
   const amplitude = Math.hypot(projectedX, projectedZ);
   if (amplitude < 1e-8 || Math.abs(signedInboard) < 1e-8) return preferredYaw;
 
@@ -1283,18 +1295,21 @@ function solveRowerOarYaw(
     pinDeltaZ * pinDeltaZ +
     signedInboard * signedInboard;
   const cosine = THREE.MathUtils.clamp(
-    (requestedReach * requestedReach - baseDistanceSquared) / (2 * signedInboard * amplitude),
+    (requestedReach * requestedReach -
+      baseDistanceSquared -
+      2 * signedInboard * pinDeltaY * rollSin) /
+      (2 * signedInboard * amplitude),
     -1,
     1,
   );
   const center = Math.atan2(projectedZ, projectedX);
   const offset = Math.acos(cosine);
   const first = center + offset;
-  // The signed inboard lever already mirrors the two sculls. Keep the same
-  // fixed circle intersection for both sides: choosing the opposite branch on
-  // the starboard oar sends its grip outside the shoulder instead of toward
-  // the centreline. A nearest-angle choice can also exchange intersections
-  // mid-stroke and snap the elbows even when every isolated pose is reachable.
+  // With regulation-scale inboards and the full-width rigger, this fixed
+  // mirrored branch is the centreline/forward catch for both sculls. Never
+  // choose per-frame by nearest angle or lateral distance: those scores can
+  // exchange at a tangent and snap an otherwise continuous elbow across the
+  // boat.
   return first;
 }
 
@@ -1727,6 +1742,7 @@ function makeRowerAvatar(
     shoulderPoint: THREE.Vector3;
     elbowPoint: THREE.Vector3;
     handTarget: THREE.Vector3;
+    wristTarget: THREE.Vector3;
     handPoint: THREE.Vector3;
     bendHint: THREE.Vector3;
   }> = [];
@@ -1793,6 +1809,7 @@ function makeRowerAvatar(
       shoulderPoint: new THREE.Vector3(),
       elbowPoint: new THREE.Vector3(),
       handTarget: new THREE.Vector3(),
+      wristTarget: new THREE.Vector3(),
       handPoint: new THREE.Vector3(),
       bendHint: new THREE.Vector3(side * 0.56, -0.48, -0.18),
     });
@@ -1823,18 +1840,19 @@ function makeRowerAvatar(
     oar.add(shaft);
     const grip = capsulePart(0.045, 0.28, equipmentGripMaterial, "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
-    // Scull-authentic inboard length: the grips travel from each rigger pin to
-    // adjacent palms near the centreline. The former 0.22 m lever left the
-    // hands implausibly wide and made a straight catch geometrically
-    // impossible even though the shared graph correctly delayed arm draw.
-    grip.position.x = -side * 0.46;
+    // A regulation-scale scull has roughly 0.8–0.9 m of inboard leverage. The
+    // shorter placeholder forced a false choice between centreline hands and
+    // long arms; this reach lets both coexist while the fixed pin remains on
+    // the rigger.
+    grip.position.x = -side * 0.82;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    // Put the palm on the centre of the authored grip. Keeping the solver's
-    // contact 2 cm beyond the grip centre narrowed the hands enough for the
-    // returning forearm to cut through the torso core.
-    handleAnchor.position.x = -side * 0.46;
+    // Land each palm eight centimetres outboard of the grip centre. The point
+    // remains well inside the 28 cm rubber grip, while the resulting hand
+    // separation prevents real scull handles from reading as crossed wrists
+    // at the centreline.
+    handleAnchor.position.x = -side * 0.74;
     oar.add(handleAnchor);
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
@@ -1862,10 +1880,10 @@ function makeRowerAvatar(
       fallback: [shaft, grip, collar],
     });
     // Rigger pin sits outside the hull; blade depth is animated continuously.
-    // Inboard grips stay on their own lateral half so a scull stroke never
-    // reads as crossed arms, while the pin station keeps palms clear of the
-    // pelvis shell at the catch.
-    oar.position.set(side * 0.52, 0.34, 0.095);
+    // The 1.56 m span matches a full-width sculling rigger. Its pins sit beside
+    // the athlete rather than ahead of the knees, keeping the grips on their
+    // own lateral halves and the forearms clear of the torso.
+    oar.position.set(side * 0.78, 0.38, 0.095);
     oar.userData.side = side;
     group.add(oar);
     oars.push({ side, group: oar, blade, handleAnchor });
@@ -1881,22 +1899,46 @@ function makeRowerAvatar(
   const SHIN_LENGTH = 0.552;
   const UPPER_ARM_LENGTH = 0.39;
   const FOREARM_LENGTH = 0.38;
-  const BODY_PITCH_CATCH = -0.56;
-  const BODY_PITCH_FINISH = 0.3;
-  const PELVIS_PITCH_CATCH = -0.07;
-  const PELVIS_PITCH_FINISH = 0.105;
+  const BASE_ARM_REACH = UPPER_ARM_LENGTH + FOREARM_LENGTH;
+  const UPPER_ARM_SHARE = UPPER_ARM_LENGTH / BASE_ARM_REACH;
+  let contactArmReach = BASE_ARM_REACH;
+  // The athlete faces +Z: positive X rotation tips the spine toward the feet
+  // at the catch, while negative rotation opens it into the finish. Keep this
+  // hidden authority shoulder in the same frame as the V4 clip so its rigid
+  // grip targets do not manufacture an early elbow fold.
+  const BODY_PITCH_CATCH = 0.56;
+  const BODY_PITCH_FINISH = -0.3;
+  const PELVIS_PITCH_CATCH = 0.07;
+  const PELVIS_PITCH_FINISH = -0.105;
   // Concept2 / scull handle path: early drive keeps grips forward so arms can
   // stay long; late draw brings the bar to the body.
   const OAR_YAW_CATCH = 0.28;
   const OAR_YAW_SPAN = -0.68;
-  const BLADE_DIP = 0.14;
+  // A scull blade is buried only just below the surface. The former deep roll
+  // lifted the 0.82 m inboard handle by more than 11 cm during the first few
+  // drive frames, making the otherwise closed-chain grip surge forward.
+  const BLADE_DIP = 0.055;
 
   const handlePoint = new THREE.Vector3();
+  const sampledV4Shoulders = [new THREE.Vector3(), new THREE.Vector3()] as const;
+  const sampledV4ReachOrigins = [new THREE.Vector3(), new THREE.Vector3()] as const;
+  const sampledV4ContactOffsets = [new THREE.Vector3(), new THREE.Vector3()] as const;
+  const sampledV4ArmReaches: [number, number] = [BASE_ARM_REACH, BASE_ARM_REACH];
+  let pendingBodySwing = 0;
+  let pendingArmDraw = 0;
+  let pendingShoulderSet = 0;
+  let pendingHandleTravel = 0;
   const placeArms = (
     bodySwing: number,
     armDraw: number,
     shoulderSet: number,
     handleTravel: number,
+    v4Refinement?: {
+      readonly shoulders: readonly [THREE.Vector3, THREE.Vector3];
+      readonly reachOrigins: readonly [THREE.Vector3, THREE.Vector3];
+      readonly contactOffsets: readonly [THREE.Vector3, THREE.Vector3];
+      readonly armReaches: readonly [number, number];
+    },
   ): void => {
     // The shoulders lead the late draw but never detach from the torso. A
     // small catch protraction shortens the reach to a long handle; the finish
@@ -1908,10 +1950,15 @@ function makeRowerAvatar(
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       if (!arm) continue;
-      arm.shoulderPoint
-        .set(arm.side * shoulderSpread, shoulderHeight, shoulderReach)
-        .applyQuaternion(torso.quaternion)
-        .add(torso.position);
+      const shoulderOverride = v4Refinement?.shoulders[i];
+      if (shoulderOverride) {
+        arm.shoulderPoint.copy(shoulderOverride);
+      } else {
+        arm.shoulderPoint
+          .set(arm.side * shoulderSpread, shoulderHeight, shoulderReach)
+          .applyQuaternion(torso.quaternion)
+          .add(torso.position);
+      }
       const oar = oars[i];
       if (!oar) continue;
       // Preserve the graph-authored sweep as the preferred solution, but make
@@ -1922,17 +1969,28 @@ function makeRowerAvatar(
       // re-smoothing a narrow sub-range made the oar jump by ~10 degrees in a
       // single dense-sample frame and visibly snapped the elbow.
       const draw = THREE.MathUtils.clamp(armDraw, 0, 1);
+      // V4 refinement supplies the sampled shoulder and its structural
+      // shoulder-to-wrist reach. The sampled wrist-to-palm offset is applied
+      // separately below, so the solve neither double-counts the hand nor
+      // manufactures an early elbow fold.
+      const activeArmReach =
+        v4Refinement?.armReaches[i] ?? Math.max(BASE_ARM_REACH, contactArmReach);
+      const activeUpperArmLength = activeArmReach * UPPER_ARM_SHARE;
+      const activeForearmLength = activeArmReach - activeUpperArmLength;
       const longReachYaw = solveRowerOarYaw(
-        arm.shoulderPoint,
+        v4Refinement?.reachOrigins[i] ?? arm.shoulderPoint,
         oar.group.position.x - rower.position.x,
         oar.group.position.y - rower.position.y,
         oar.group.position.z - rower.position.z,
         oar.handleAnchor.position.x,
         oar.group.rotation.z,
-        UPPER_ARM_LENGTH + FOREARM_LENGTH - 0.006,
+        activeArmReach - 0.002,
         oar.group.rotation.y,
       );
-      const drawYaw = -oar.side * 0.88;
+      // Finish at a realistic lower-rib draw without sweeping the inboard
+      // handle through an exaggerated final arc. This keeps peak hand speed
+      // smooth while still producing a clear rearward elbow bend.
+      const drawYaw = -oar.side * 0.75;
       const yawDelta = Math.atan2(
         Math.sin(drawYaw - longReachYaw),
         Math.cos(drawYaw - longReachYaw),
@@ -1944,22 +2002,25 @@ function makeRowerAvatar(
       handlePoint.copy(oar.handleAnchor.position).applyQuaternion(oar.group.quaternion);
       handlePoint.add(oar.group.position).sub(rower.position);
       arm.handTarget.copy(handlePoint);
+      arm.wristTarget.copy(handlePoint);
+      const v4ContactOffset = v4Refinement?.contactOffsets[i];
+      if (v4ContactOffset) arm.wristTarget.sub(v4ContactOffset);
       // The fallback owns the exact grip target and the RowErg anatomical
       // branch marker consumed by V4. Arms remain long while armDraw is low;
       // once the late draw creates visible flexion, the sagittal component is
       // strongly rearward / bowward (-z) with only restrained lateral
       // clearance. This is an elbow-to-bows pull, not a horizontal
       // chicken-wing flare.
-      setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
-        lateral: 0.18 + draw * 0.03 + shoulderSet * 0.012,
+      setArmBendHint(arm.shoulderPoint, arm.wristTarget, arm.side, arm.bendHint, {
+        lateral: -0.08 + draw * 0.12 + shoulderSet * 0.006,
         up: 0.04 + draw * 0.04,
         aft: -0.52 - bodySwing * 0.22 - handleTravel * 0.12 - draw * 0.65,
       });
       solveTwoBone3D(
         arm.shoulderPoint,
-        arm.handTarget,
-        UPPER_ARM_LENGTH,
-        FOREARM_LENGTH,
+        arm.wristTarget,
+        activeUpperArmLength,
+        activeForearmLength,
         arm.bendHint,
         arm.elbowPoint,
         arm.handPoint,
@@ -1969,7 +2030,10 @@ function makeRowerAvatar(
       placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
-      arm.hand.position.copy(arm.handPoint);
+      // The visible V4 target is the palm contact, not its wrist bone. Keep the
+      // hidden anatomical solve at the wrist while the terminal hand marker
+      // remains exactly on the rigid grip.
+      arm.hand.position.copy(arm.handTarget);
       // Mild grip orientation — V4 closes the palm against the authoritative
       // contact while limiting terminal rotation so the forearm cannot be
       // corkscrewed by a forced equipment quaternion.
@@ -2060,7 +2124,7 @@ function makeRowerAvatar(
       // The oarlock is a hull-fixed fulcrum. Moving this parent to bury the
       // blade made every drive visibly detach the shaft from its rigger; the
       // existing rotation supplies immersion while the real pivot stays put.
-      oar.group.position.y = 0.34;
+      oar.group.position.y = 0.38;
       // The blade squares for catch/drive, feathers flat through recovery, then
       // squares again continuously before the next catch.
       oar.blade.rotation.x = (1 - bladeFeather) * (Math.PI / 2);
@@ -2089,12 +2153,11 @@ function makeRowerAvatar(
       graph.contacts.bladeFeather.value,
     );
     placeLegs(graph.body.legExtension.value);
-    placeArms(
-      graph.body.spineHinge.value,
-      graph.body.armDraw.value,
-      graph.body.shoulderSet.value,
-      graph.body.handleTravel.value,
-    );
+    pendingBodySwing = graph.body.spineHinge.value;
+    pendingArmDraw = graph.body.armDraw.value;
+    pendingShoulderSet = graph.body.shoulderSet.value;
+    pendingHandleTravel = graph.body.handleTravel.value;
+    placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel);
     return reduce
       ? STATIC_AVATAR_MOTION
       : { vertical: graph.accents.vertical.value, surge: graph.accents.surge.value };
@@ -2105,10 +2168,37 @@ function makeRowerAvatar(
   if (!leftArm || !rightArm || !leftLeg || !rightLeg) {
     throw new Error("RowErg V4 target rig is incomplete");
   }
+  const refineV4Targets = (motion: ReplayV4MotionController): void => {
+    motion.getShoulderWorld("left", sampledV4Shoulders[0]);
+    motion.getShoulderWorld("right", sampledV4Shoulders[1]);
+    motion.getHandContactOffsetWorld("left", sampledV4ContactOffsets[0]);
+    motion.getHandContactOffsetWorld("right", sampledV4ContactOffsets[1]);
+    sampledV4ReachOrigins[0].copy(sampledV4Shoulders[0]).add(sampledV4ContactOffsets[0]);
+    sampledV4ReachOrigins[1].copy(sampledV4Shoulders[1]).add(sampledV4ContactOffsets[1]);
+    sampledV4ArmReaches[0] = motion.getArmReach("left");
+    sampledV4ArmReaches[1] = motion.getArmReach("right");
+    // The sampled bones and procedural authority live below the same avatar
+    // parent, but RowErg limbs are authored in the translating seat frame.
+    // Convert the real V4 shoulders into that frame before solving the fixed
+    // oar-pin circles and shared elbow branch markers.
+    rower.worldToLocal(sampledV4Shoulders[0]);
+    rower.worldToLocal(sampledV4Shoulders[1]);
+    rower.worldToLocal(sampledV4ReachOrigins[0]);
+    rower.worldToLocal(sampledV4ReachOrigins[1]);
+    sampledV4ContactOffsets[0].copy(sampledV4ReachOrigins[0]).sub(sampledV4Shoulders[0]);
+    sampledV4ContactOffsets[1].copy(sampledV4ReachOrigins[1]).sub(sampledV4Shoulders[1]);
+    placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel, {
+      shoulders: sampledV4Shoulders,
+      reachOrigins: sampledV4ReachOrigins,
+      contactOffsets: sampledV4ContactOffsets,
+      armReaches: sampledV4ArmReaches,
+    });
+  };
   finalizeAvatar(group, castShadow, opacity);
   const rowerAvatar: Avatar = {
     group,
     animate,
+    refineV4Targets,
     assetMaterialResolver: resolveAssetMaterial,
     v4Targets: {
       pelvis: hips,
@@ -2120,6 +2210,9 @@ function makeRowerAvatar(
       rightFoot: rightLeg.foot,
       leftKnee: leftLeg.knee,
       rightKnee: rightLeg.knee,
+    },
+    setV4ArmReach(reach) {
+      if (Number.isFinite(reach) && reach > 0) contactArmReach = reach;
     },
   };
   return rowerAvatar;
@@ -3723,14 +3816,20 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.ghostAvatar.group.userData.authoredReplayV4 = !!this.ghostAvatar.v4Motion;
       const contactReach = (side: "leftHand" | "rightHand"): number => {
         const effector = options.v4Assets!.effectors[side];
-        return (
-          effector.totalReach +
-          Math.hypot(
-            effector.contactOffset[0],
-            effector.contactOffset[1],
-            effector.contactOffset[2],
-          )
-        );
+        // RowErg explicitly subtracts the sampled wrist-to-palm offset before
+        // its refined oar-circle solve, so it needs structural wrist reach.
+        // SkiErg and BikeErg keep the established palm-contact reach contract:
+        // their procedural target path and V4 terminal effector both include
+        // the hand offset, so changing that shared length here would alter
+        // already validated pole and handlebar closure.
+        return this.sport === "rower"
+          ? effector.proximalLength + effector.distalLength
+          : effector.totalReach +
+              Math.hypot(
+                effector.contactOffset[0],
+                effector.contactOffset[1],
+                effector.contactOffset[2],
+              );
       };
       const v4ArmReach = Math.min(contactReach("leftHand"), contactReach("rightHand"));
       if (this.liveAvatar.v4Motion) this.liveAvatar.setV4ArmReach?.(v4ArmReach);
@@ -5418,6 +5517,16 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Animate first and reuse its solved cues for the outer-body motion. This
     // avoids solving RowErg/SkiErg kinematics a second time per live/ghost lane.
     const motion = avatar.animate(pose.phase, reduce, pose, meters);
+    const v4Sample = reduce ? REDUCED_REPLAY_POSES[this.sport] : pose;
+    // Sample the visible skin before final equipment closure. RowErg can then
+    // solve each rigid inboard oar circle from the real shoulder for this exact
+    // pose instead of forcing IK to compensate for a hidden-rig mismatch.
+    const v4Motion = avatar.v4Motion;
+    let v4Prepared = v4Motion?.prepare(v4Sample) ?? false;
+    if (v4Prepared && this.sport === "rower") {
+      v4Prepared = v4Motion!.orientHandsToTargets();
+    }
+    if (v4Prepared && v4Motion) avatar.refineV4Targets?.(v4Motion);
     // SkiErg's vertical cue is recovery rebound only, so planted pole tips stay
     // on the course throughout the solver's contact stage.
     const vertical = "vertical" in motion ? motion.vertical : motion.rebound;
@@ -5440,7 +5549,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // bob and surge have all reached their final values for this frame.
     outer.updateMatrixWorld(true);
     avatar.resolveWorldContacts?.();
-    avatar.v4Motion?.update(reduce ? REDUCED_REPLAY_POSES[this.sport] : pose);
+    if (v4Prepared) v4Motion?.constrain();
     output.x = x;
     output.z = z;
     output.tx = tx;
@@ -5736,7 +5845,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Portrait RowErg needs substantially more room for the full oar span;
     // upright SkiErg and compact BikeErg can stay closer.
     const narrowScale =
-      this.sport === "rower" ? (state.ghost ? 2.02 : 1.78) : state.ghost ? 1.38 : 1.2;
+      this.sport === "rower" ? (state.ghost ? 2.12 : 1.96) : state.ghost ? 1.38 : 1.2;
     const baseBack = this.reduceMotion
       ? sportRig.back + 0.8 + ghostPullback
       : (sportRig.back + ghostPullback) * (narrow ? narrowScale : 1);

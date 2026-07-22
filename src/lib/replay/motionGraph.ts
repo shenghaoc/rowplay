@@ -466,11 +466,20 @@ function sampleRower(timing: MotionTiming, pose: StrokePose): RowerMotionGraph {
     drive + recovery * 0.13,
     drive + recovery * 0.66,
   );
-  // Legs → body → arms: late arm draw keeps early-drive arms long (V4 clip).
-  const arms = pulse(cycle, drive * 0.62, drive * 0.98, drive, drive + recovery * 0.34);
+  // Legs → body → arms: the hands first clear the knee envelope with
+  // softly long arms, then the late draw brings the handle into the finish.
+  const arms = add(
+    cruiseRamp(cycle, drive * 0.78, drive * 0.995),
+    scale(quinticRamp(cycle, drive, drive + recovery * 0.34), -1),
+  );
   const handle = add(scale(legs, 0.42), scale(torso, 0.32), scale(arms, 0.26));
   const shoulders = add(scale(torso, 0.45), scale(arms, 0.55));
-  const bladeWater = pulse(cycle, drive * 0.008, drive * 0.085, drive * 0.78, drive * 0.95);
+  // The blade is already squared and loaded at the catch. Preparing depth in
+  // late recovery keeps this cyclic contact C2-continuous and avoids using the
+  // long oar lever to kick the handle (and hands) forward after the catch.
+  const driveBladeWater = pulse(cycle, -drive * 0.1, 0, drive * 0.78, drive * 0.95);
+  const preCatchBladeWater = quinticRamp(cycle, drive + recovery * 0.82, 1);
+  const bladeWater = add(driveBladeWater, preCatchBladeWater);
   const bladeFeather = pulse(
     cycle,
     drive + recovery * 0.025,
@@ -854,8 +863,11 @@ const INTO_CURVES = {
   rowLegs: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   rowTorso: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   rowArms: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
+  rowArmRecovery: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   rowHandle: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   rowShoulders: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
+  rowBladeDrive: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
+  rowBladePreCatch: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   rowBladeWater: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   rowBladeFeather: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
   rowFootPressure: { value: 0, dCycle: 0, ddCycle: 0 } satisfies IntoCurveScratch,
@@ -1132,12 +1144,16 @@ function sampleRowerInto(pose: StrokePose, output: RowerMotionGraph): void {
     drive + recovery * 0.13,
     drive + recovery * 0.66,
   );
-  // Legs → body → arms: keep arm draw late so equipment grips stay reachable
-  // with long early-drive arms (matches denser V4 row clip late-draw keys).
-  pulseInto(curves.rowArms, cycle, drive * 0.62, drive * 0.98, drive, drive + recovery * 0.34);
+  // Legs → body → arms: keep the arms softly long until the hands clear
+  // the knee envelope, then expose the late draw in both fallback and V4 rigs.
+  cruiseRampInto(curves.rowArms, cycle, drive * 0.78, drive * 0.995);
+  quinticRampInto(curves.rowArmRecovery, cycle, drive, drive + recovery * 0.34);
+  combine2Into(curves.rowArms, curves.rowArms, 1, curves.rowArmRecovery, -1);
   combine3Into(curves.rowHandle, curves.rowLegs, 0.42, curves.rowTorso, 0.32, curves.rowArms, 0.26);
   combine2Into(curves.rowShoulders, curves.rowTorso, 0.45, curves.rowArms, 0.55);
-  pulseInto(curves.rowBladeWater, cycle, drive * 0.008, drive * 0.085, drive * 0.78, drive * 0.95);
+  pulseInto(curves.rowBladeDrive, cycle, -drive * 0.1, 0, drive * 0.78, drive * 0.95);
+  quinticRampInto(curves.rowBladePreCatch, cycle, drive + recovery * 0.82, 1);
+  combine2Into(curves.rowBladeWater, curves.rowBladeDrive, 1, curves.rowBladePreCatch, 1);
   pulseInto(
     curves.rowBladeFeather,
     cycle,

@@ -124,8 +124,9 @@ contain a force curve, handle path, drive length, joint positions, or measured
 posture. The visible movement is therefore a deterministic, generic technique
 model aligned to logged cycles, rather than a reconstruction of your individual
 biomechanics. Its shared technique phases stage RowErg legs, body, then arms
-(the arms stay long until the late draw, both elbows pull behind the torso as
-the handle approaches the lower ribs, then arms straighten first on recovery);
+(the arms stay softly long until the hands have passed the knees and the legs
+are nearly extended; both elbows then pull behind the torso as the handle
+approaches the lower ribs, and the arms straighten first on recovery);
 SkiErg's classic double-pole high reach,
 steep plant, down-pointing early elbow bend, core-led press with the elbow
 rotating rearward, long-arm pole-off, and lifted forward recovery that returns
@@ -156,9 +157,10 @@ as coherent assemblies—an open-cockpit racing shell with split decks, recessed
 leg well, fixed rails/stretcher and a moving four-roller seat carriage; an oar
 rig; Nordic skis; and a continuous
 bicycle wheel/frame/drivetrain. RowErg palms stay on separate rigid scull grips
-and outside the torso; both 2D and 3D delay elbow flexion until the late draw
-and keep the bent elbows behind the shoulders rather than pointing toward the
-handle or flaring into a horizontal goalpost. During the illustrated SkiErg plant, each rigid 1.55 m
+and outside the torso; both 2D and 3D keep the elbows softly open until the
+hands clear the knees, then keep the bent elbows behind the shoulders rather
+than pointing toward the handle or flaring into a horizontal goalpost. During
+the illustrated SkiErg plant, each rigid 1.55 m
 pole holds a deterministic course anchor while its hand remains on the grip.
 The skier advances relative to that basket, releases it near the end of the
 short planted phase, lifts it through recovery, and approaches the next anchor

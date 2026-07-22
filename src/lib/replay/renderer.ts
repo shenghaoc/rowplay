@@ -1200,11 +1200,13 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
   // through the catch/leg drive, with enough late-draw flex to read clearly.
   const upperArmLength = 4.3;
   const forearmLength = 4.2;
-  const structuralMaximumReach = upperArmLength + forearmLength - 0.04;
-  // Technique keeps the reach long through legs/body, then blends the same
-  // rigid oar toward its lower-rib finish only on the late draw channel.
-  const armClosureT = clamp01((k.armDraw - 0.35) / 0.47);
-  const armClosure = armClosureT * armClosureT * (3 - 2 * armClosureT);
+  // Keep the pre-draw elbow softly unlocked but visually straight. The shared
+  // armDraw channel is already a late, C2-eased curve whose onset coincides
+  // with the drive-side hand/knee crossover; applying another threshold here
+  // used to postpone visible flexion until well after the hand had cleared the
+  // knee. Consume that channel directly, matching the procedural/V4 3D path.
+  const structuralMaximumReach = upperArmLength + forearmLength - 0.006;
+  const armClosure = clamp01(k.armDraw);
   const farLockY = oarlockY - 0.65;
   const farLongAngle = solveRowerOarAngle2D(
     shX - 0.4,

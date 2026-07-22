@@ -68,15 +68,17 @@
     and exact-head draft-PR CI
 
 - [x] **9. Correct RowErg draw biomechanics in both renderers**
-  - [x] Keep both arms long through the leg drive and body opening, with elbow
-    flexion confined to the graph's late arm draw
+  - [x] Keep both arms softly long through the leg drive and body opening, with
+    visible elbow flexion starting only after drive-side hand/knee clearance
+    and near-complete leg extension
   - [x] Select the rearward elbow branch in Canvas, procedural 3D, and V4
     instead of a forward-pointing or horizontal chicken-wing branch
   - [x] Keep both palms on separate rigid inboard grips, preserve the RowErg
     wrist frame through V4 parent-bone IK, and keep forearms outside the torso
   - [x] Protect the result with dense full-cycle 2D/3D sampling, V4 contact and
-    clearance tests, repository gates, moving browser acceptance, and
-    exact-head draft-PR CI
+    torso-clearance tests, plus explicit 2D/procedural/V4 hand-over-knee timing
+    assertions, repository gates, moving browser acceptance, and exact-head
+    draft-PR CI
 
 - [x] **10. Restore the complete RowErg seated leg chain**
   - [x] Make V4 consume the deterministic raised-knee target after foot-contact

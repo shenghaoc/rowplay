@@ -23,7 +23,7 @@ identity, or Canvas 2D fallback.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
 - **Reviewed V3 artifact:** 673,048 bytes; SHA-256
-  `b95addbba65912558c3ae1d0e006d423f1dd4dbbd8b20fe7d6b256df13b4f28b`.
+  `dc33a4fd2ccb0906a360b56bb081345c33e47f9ca817a767082a4e5d76d482c1`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
   nodes total). The package has 26,486 indexed triangles and 18,629 indexed
@@ -57,7 +57,7 @@ strict part count, and its material-role list.
 
 | Template root                        | Canonical anchor contract                                                                                                                                                             |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `equipment:row:boat-assembly`        | Row avatar root coordinates: open hull, split fore/aft decks, recessed cockpit, rails, stretcher, rigger, and oarlocks align with the boat; rigger ends meet the animated oar pivots. |
+| `equipment:row:boat-assembly`        | Row avatar root coordinates: open hull, split fore/aft decks, recessed cockpit, rails, stretcher, and full-width rigger; oarlocks meet the animated pivots at `(±0.78, 0.38, 0.095)`. |
 | `equipment:row:oar-rig`              | One oar at its pin, with `+X` outboard: attach identity on the right and yaw π on the left. The animated blade remains the leaf slot.                                                 |
 | `equipment:row:seat-carriage`        | Moving rower-group coordinates: the shaped pad, metal carriage, guides, and four rollers translate with the pelvis while remaining directly over the static slide rails.              |
 | `equipment:ski:ski-assembly`         | One ski at the existing per-side anchor `(side × 0.21, 0, 0.16)`; clone it once per ski.                                                                                              |

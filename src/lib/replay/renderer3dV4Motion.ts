@@ -96,11 +96,27 @@ export interface ReplayV4MotionController {
   readonly mesh: THREE.SkinnedMesh;
   readonly enabled: boolean;
   /**
-   * Samples the authored clip, aligns the pelvis, then closes all four rigid
-   * equipment-contact chains. SkiErg arms and BikeErg legs use their shared
-   * mechanical joint targets; other bend planes remain clip-authored.
+   * Samples the authored clip and aligns its pelvis, but deliberately leaves
+   * terminal contacts open. The renderer can use the sampled shoulder roots
+   * to refine rigid RowErg grip geometry before the final contact pass.
+   */
+  prepare(sample: ReplayV4MotionSample): boolean;
+  /** Applies the restrained terminal hand rotation before grip-path refinement. */
+  orientHandsToTargets(): boolean;
+  /** Closes the prepared pose onto the latest equipment-contact targets. */
+  constrain(): boolean;
+  /**
+   * Convenience one-shot path retained for isolated controller consumers.
+   * The replay renderer uses prepare/refine/constrain so a rigid RowErg grip
+   * can be solved from the visible skinned shoulder rather than a fallback.
    */
   update(sample: ReplayV4MotionSample): boolean;
+  /** World-space shoulder joint after the latest successful prepare. */
+  getShoulderWorld(side: "left" | "right", output?: THREE.Vector3): THREE.Vector3;
+  /** World-space wrist→palm contact vector after the latest prepare. */
+  getHandContactOffsetWorld(side: "left" | "right", output?: THREE.Vector3): THREE.Vector3;
+  /** Structural shoulder→wrist reach, excluding the terminal palm offset. */
+  getArmReach(side: "left" | "right"): number;
   /** Restores the exact fallback visibility snapshot and releases lane-owned resources. */
   dispose(): void;
   /** Switch diagnostic isolation mode without reinstalling the hero. */
@@ -279,6 +295,8 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private active = true;
   private revealed = false;
   private disposed = false;
+  private prepared = false;
+  private handOrientationPrepared = false;
   private diagnosticMode: ReplayV4DiagnosticMode;
   private readonly action: THREE.AnimationAction;
   private readonly fallback: readonly FallbackVisibility[];
@@ -426,9 +444,33 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     return output;
   }
 
-  update(sample: ReplayV4MotionSample): boolean {
+  getShoulderWorld(side: "left" | "right", output = new THREE.Vector3()): THREE.Vector3 {
+    const bone =
+      side === "left"
+        ? this.options.instance.bones.v4LeftUpperArm
+        : this.options.instance.bones.v4RightUpperArm;
+    return bone.getWorldPosition(output);
+  }
+
+  getHandContactOffsetWorld(side: "left" | "right", output = new THREE.Vector3()): THREE.Vector3 {
+    const name = side === "left" ? "leftHand" : "rightHand";
+    const metric = this.options.instance.effectors[name];
+    const bone = this.options.instance.bones[metric.bone];
+    this.getContactWorld(name, output);
+    bone.getWorldPosition(this.currentWorld);
+    return output.sub(this.currentWorld);
+  }
+
+  getArmReach(side: "left" | "right"): number {
+    const metric = this.options.instance.effectors[side === "left" ? "leftHand" : "rightHand"];
+    return metric.proximalLength + metric.distalLength;
+  }
+
+  prepare(sample: ReplayV4MotionSample): boolean {
     if (!this.enabled) return false;
     try {
+      this.prepared = false;
+      this.handOrientationPrepared = false;
       if (this.root.parent !== this.options.parent) {
         throw new Error("Replay V4 athlete detached from its lane parent");
       }
@@ -453,6 +495,38 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         this.assertPelvisAligned();
       }
 
+      this.prepared = true;
+      return true;
+    } catch (error) {
+      this.root.userData.replayV4Failure =
+        error instanceof Error ? error.message : "Replay V4 motion prepare failed";
+      this.disable();
+      return false;
+    }
+  }
+
+  orientHandsToTargets(): boolean {
+    if (!this.enabled || !this.prepared) return false;
+    try {
+      for (const chain of this.chains) {
+        if (!chain.isLeg) this.softOrientEffector(chain);
+      }
+      this.root.updateMatrixWorld(true);
+      this.handOrientationPrepared = true;
+      return true;
+    } catch (error) {
+      this.root.userData.replayV4Failure =
+        error instanceof Error ? error.message : "Replay V4 hand orientation failed";
+      this.disable();
+      return false;
+    }
+  }
+
+  constrain(): boolean {
+    if (!this.enabled || !this.prepared) return false;
+    try {
+      const mode = this.diagnosticMode;
+
       if (mode === "full" || mode === "clip-hands" || mode === "skeleton" || mode === "shadows") {
         for (const chain of this.chains) this.correctContactChain(chain);
       } else if (mode === "clip-pelvis" || mode === "clip-only") {
@@ -473,13 +547,21 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         this.root.visible = true;
         this.revealed = true;
       }
+      this.prepared = false;
+      this.handOrientationPrepared = false;
       return true;
     } catch (error) {
+      this.prepared = false;
+      this.handOrientationPrepared = false;
       this.root.userData.replayV4Failure =
-        error instanceof Error ? error.message : "Replay V4 motion update failed";
+        error instanceof Error ? error.message : "Replay V4 motion constraint failed";
       this.disable();
       return false;
     }
+  }
+
+  update(sample: ReplayV4MotionSample): boolean {
+    return this.prepare(sample) && this.constrain();
   }
 
   dispose(): void {
@@ -512,6 +594,8 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private disable(): void {
     if (!this.active) return;
     this.active = false;
+    this.prepared = false;
+    this.handOrientationPrepared = false;
     this.action.stop();
     this.root.visible = false;
     this.restoreFallback();
@@ -627,8 +711,13 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
 
     // Arms keep a restrained terminal frame, then repeatedly close the palm
     // offset. No equipment is allowed to move or telescope to hide residual.
-    this.softOrientEffector(chain);
-    this.root.updateMatrixWorld(true);
+    // The renderer pre-orients RowErg hands before refining the rigid oar arc,
+    // so its wrist→palm vector is part of that exact solve. Re-orienting here
+    // would invalidate the refined target and reintroduce a visible grip gap.
+    if (!(this.options.sport === "rower" && this.handOrientationPrepared)) {
+      this.softOrientEffector(chain);
+      this.root.updateMatrixWorld(true);
+    }
     for (let pass = 0; pass < 6; pass++) {
       this.solvePositionTowardTarget(chain, proximalLength, distalLength);
       this.root.updateMatrixWorld(true);

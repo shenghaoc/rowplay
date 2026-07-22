@@ -362,7 +362,11 @@ def build_boat() -> None:
 
     # The wing rigger terminates at the exact runtime oar pivots. Diagonal
     # braces and collars make the load path from shell to blade unambiguous.
-    pivots = [(-0.52, 0.34, 0.095), (0.52, 0.34, 0.095)]
+    # Regulation-scale inboards need a full-width sculling span. Keeping the
+    # pins close to the narrow hull crossed the grips at the catch and forced
+    # both forearms through the torso; these wider pins keep
+    # each hand on its own grip while preserving the long lever and open shell.
+    pivots = [(-0.78, 0.38, 0.095), (0.78, 0.38, 0.095)]
     for index, pivot in enumerate(pivots):
         side_name = "port" if index == 0 else "starboard"
         sign = -1 if index == 0 else 1
