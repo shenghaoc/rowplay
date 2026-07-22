@@ -25,9 +25,10 @@ export default defineConfig({
       ? [["list"], ["github"], ["junit", { outputFile: "test-results/junit-e2e.xml" }]]
       : [["html", { open: "never" }]],
   fullyParallel: true,
-  // Two workers in CI keeps e2e under ~2 min while avoiding the parallel
-  // dynamic-chunk flake that was common with more workers on older wrangler.
-  workers: process.env.CI ? 2 : "75%",
+  // Two workers keeps e2e under ~2 min while avoiding dynamic-chunk and GPU
+  // startup starvation. Keep the same deterministic resource budget locally
+  // and in CI so the documented `vp run test:e2e` command is itself reliable.
+  workers: 2,
   retries: process.env.CI ? 2 : 0,
   use: {
     baseURL: BASE_URL,
