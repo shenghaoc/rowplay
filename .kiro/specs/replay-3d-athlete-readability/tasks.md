@@ -26,7 +26,8 @@ Follow-up to: `.kiro/specs/replay-procedural-figure-rig/`
   - Increase desktop/mobile 3D stage height without changing 2D
 
 - [x] **4. Harden ghost rendering and focused tests**
-  - Disable depth writes on translucent ghost materials
+  - Disable depth writes on translucent procedural/V3 ghost materials while
+    keeping the V4 skinned ghost opaque, tinted, and depth-writing
   - Cover semantic body contrast and explicit shoulders
   - Cover RowErg grip envelope and 128-pose contacts
   - Cover projected athlete size at real desktop/mobile stage dimensions

@@ -130,7 +130,10 @@ Its neutral pelvis sits close to full leg extension and the press adds only a
 controlled athletic compression: the authored thigh remains predominantly
 vertical, the pelvis stays clearly above the skis, and neither knee approaches
 the snow closely enough to read as kneeling. Torso length follows the corrected
-pelvis rather than being squashed by the taller stance.
+pelvis rather than being squashed by the taller stance. The complete Canvas
+figure has no recovery bob or vertical flight channel: its pelvis stays inside
+the tested 8.8–9.25 px standing-compression band with less than 0.4 px total
+excursion while the planted skis remain the ground authority.
 Procedural Three.js keeps every knee on the same side as its planted boot. V4
 must consume those shared SkiErg knee markers after clip sampling: contact-locking
 the feet while retaining the mirrored clip plane can otherwise select opposite

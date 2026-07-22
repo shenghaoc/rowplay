@@ -5,6 +5,9 @@
 > source restriction for current 3D athlete and equipment shells is narrowly
 > superseded by
 > [Replay authored athlete assets](../replay-authored-athlete-assets/design.md).
+> The same specification also narrowly supersedes translucent ghost rendering
+> for the V4 skinned human: V4 uses an opaque cool tint and depth writing, while
+> procedural/V3 ghost materials keep this design's alpha/depth-write contract.
 
 ## Overview
 
@@ -85,15 +88,20 @@ from water, snow, and asphalt in both themes.
 ## Ghost and performance
 
 Live and ghost athletes still construct once. All pose scratch vectors and
-quaternions remain reused. Transparent ghost materials disable depth writes,
-which prevents near and far limbs from incorrectly masking one another while
-preserving the existing opacity and no-shadow treatment.
+quaternions remain reused. Transparent procedural/V3 ghost materials disable
+depth writes, which prevents near and far fallback limbs from incorrectly
+masking one another while preserving the existing opacity and no-shadow
+treatment. The V4 skinned human instead remains opaque, depth-tested, and
+depth-writing with a cool identity tint; only its separate equipment/effects
+may retain alpha. This avoids triangle-order artifacts that made the continuous
+skin appear amputated while preserving live/ghost separation.
 
 ## Verification
 
 Three.js tests retain contact and fixed-length sweeps through 128 poses, and add
 checks for torso cap winding, semantic luminance separation, explicit shoulders,
-ghost depth writes and FOV-aware mobile comparison framing at ordinary,
+procedural/V3 transparent ghost depth writes, V4 opaque ghost depth writes, and
+FOV-aware mobile comparison framing at ordinary,
 near-half-lap, and half-lap progress separations, a human RowErg grip envelope,
 two-pole SkiErg projection, bounded wake marks, connected bike-frame endpoints,
 and clip-safe athlete size at the real 1140x420 desktop and 390x360 mobile

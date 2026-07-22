@@ -114,7 +114,9 @@ viewing speed.
    Canvas SHALL begin near leg extension and compress through a controlled
    standing knee bend: the pelvis and knees SHALL retain visible clearance from
    the snow throughout the cycle, with a predominantly vertical thigh rather
-   than a deep folded or kneeling silhouette.
+   than a deep folded or kneeling silhouette. Recovery SHALL come from opening
+   the hip and extending the knees while both boots remain supported by their
+   skis; Canvas SHALL NOT lift the whole athlete into a flight or jumping phase.
    Pole contact SHALL end in the first 26–29% of the cycle, and each airborne
    basket SHALL approach the next plant continuously without dropping or
    snapping between anchors.

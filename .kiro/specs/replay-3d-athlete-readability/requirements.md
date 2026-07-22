@@ -4,6 +4,10 @@
 > requirements remain authoritative. The ban on repository-owned authored 3D
 > athlete and equipment shells is superseded only by
 > [Replay authored athlete assets](../replay-authored-athlete-assets/requirements.md).
+> Requirement 4's translucent-ghost rule remains the procedural/V3 fallback
+> contract; the V4 skinned human is narrowly superseded by authored-athlete
+> Requirement 8.4 and uses opaque tint plus depth writing to avoid skinned-mesh
+> transparency sorting artifacts.
 
 ## Introduction
 
@@ -100,15 +104,18 @@ playback, ghost comparison, or fallback behavior.
 
 #### Acceptance Criteria
 
-1. WHEN ghost opacity is below one THEN ghost materials SHALL be transparent
-   with depth writes disabled to prevent self-occlusion artifacts.
-2. WHEN animation runs THEN no geometry, material, vector, or rig object SHALL
+1. WHEN a procedural/V3 ghost material uses opacity below one THEN it SHALL be
+   transparent with depth writes disabled to prevent self-occlusion artifacts.
+2. WHEN the V4 skinned ghost human renders THEN its body SHALL remain opaque,
+   tinted, depth-tested, and depth-writing; alpha MAY remain on separate ghost
+   equipment, effects, or labels.
+3. WHEN animation runs THEN no geometry, material, vector, or rig object SHALL
    be allocated per pose.
-3. WHEN quality changes THEN athlete readability SHALL remain independent of
+4. WHEN quality changes THEN athlete readability SHALL remain independent of
    optional shadows, particles, and environment density.
-4. WHEN WebGPU is unavailable THEN WebGL and 2D fallback behavior SHALL remain
+5. WHEN WebGPU is unavailable THEN WebGL and 2D fallback behavior SHALL remain
    unchanged.
-5. WHEN wake effects render THEN their size, opacity, spacing, depth writes,
+6. WHEN wake effects render THEN their size, opacity, spacing, depth writes,
    and render order SHALL remain bounded at 1× through 8×.
 
 ### Requirement 5: Regression proof and visual QA
