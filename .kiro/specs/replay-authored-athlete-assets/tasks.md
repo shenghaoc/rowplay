@@ -35,10 +35,10 @@ figure, readability, and motion specs.
   - Update `AGENTS.md`, `README.md`, `docs/usage.md`, and all six replay guides
   - Preserve environment provenance and no-likeness truthfulness
 
-- [ ] **6. Complete visual and release verification**
+- [x] **6. Complete visual and release verification**
   - [x] Capture representative 2D/3D, sport, stage-size, theme, pose/motion,
     ghost, and Low/Ultra states
-  - [ ] Complete Canvas light/mobile, 3D mobile dark, HUD-hidden silhouette,
+  - [x] Complete Canvas light/mobile, 3D mobile dark, HUD-hidden silhouette,
     and operating-system reduced-motion frames
   - [x] Publish linked baseline/final locations and remaining compromises in
     visual QA

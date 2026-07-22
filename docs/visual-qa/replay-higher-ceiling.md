@@ -519,11 +519,46 @@ fallback, reduced-motion static poses, and Canvas fallback are protected by the
 focused loader/renderer suites. The browser QA surface is intentionally
 read-only and was not modified to falsify a WebGL or reduced-motion screenshot.
 
-This remains a draft release record. Canvas light/mobile, 3D mobile dark,
-HUD-hidden grayscale/dark silhouette, and operating-system reduced-motion
-frames still need capture before the specification's complete release matrix
-can be checked off. Automated evidence protects those mechanics, but is not
-claimed as aesthetic evidence.
+### Final release-gate matrix — 2026-07-22
+
+The remaining matrix was captured by
+`scripts/capture-replay-release-matrix.mjs` from the real demo routes. The
+[machine-readable manifest](higher-ceiling/release-gate/manifest.json) records
+route, requested quality, selected backend, theme, viewport, measured canvas,
+media preference, seek time, and browser diagnostics for every frame. The
+measured stages are 1112×300 Canvas / 1112×420 3D on the 1440×1024 desktop
+viewport and 365×260 Canvas / 365×360 3D on the 390×844 mobile viewport.
+
+| Sport   | Canvas mobile light                                                   | 3D mobile dark High/WebGL                                                 | Canvas OS reduced motion                                                            | 3D OS reduced motion High/WebGL                                                            |
+| ------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| RowErg  | [paused](higher-ceiling/release-gate/row-2d-mobile-light-paused.jpg)  | [paused](higher-ceiling/release-gate/row-3d-mobile-dark-high-paused.jpg)  | [desktop dark](higher-ceiling/release-gate/row-2d-desktop-dark-reduced-motion.jpg)  | [desktop light](higher-ceiling/release-gate/row-3d-desktop-light-high-reduced-motion.jpg)  |
+| SkiErg  | [paused](higher-ceiling/release-gate/ski-2d-mobile-light-paused.jpg)  | [paused](higher-ceiling/release-gate/ski-3d-mobile-dark-high-paused.jpg)  | [desktop dark](higher-ceiling/release-gate/ski-2d-desktop-dark-reduced-motion.jpg)  | [desktop light](higher-ceiling/release-gate/ski-3d-desktop-light-high-reduced-motion.jpg)  |
+| BikeErg | [paused](higher-ceiling/release-gate/bike-2d-mobile-light-paused.jpg) | [paused](higher-ceiling/release-gate/bike-3d-mobile-dark-high-paused.jpg) | [desktop dark](higher-ceiling/release-gate/bike-2d-desktop-dark-reduced-motion.jpg) | [desktop light](higher-ceiling/release-gate/bike-3d-desktop-light-high-reduced-motion.jpg) |
+
+`prefers-reduced-motion: reduce` is established on each browser context before
+the replay module initializes, so these are operating-system media-query frames
+rather than a mocked renderer flag. The headless release browser exposes no
+WebGPU adapter and therefore records the supported WebGL High path; the earlier
+accepted WebGPU/Ultra and mobile Low frames remain the complementary backend and
+quality evidence.
+
+For silhouette review, the top 17% containing the world-space telemetry pill is
+cropped without scaling the remaining 1112 source pixels. Playwright's
+screenshot-only style transform produces grayscale and high-contrast dark
+variants without modifying application state, geometry, renderer selection, or
+the saved normal frame.
+
+| Sport   | HUD-hidden normal                                                   | Grayscale                                                                 | Dark silhouette                                                            |
+| ------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| RowErg  | [normal](higher-ceiling/release-gate/row-3d-hud-hidden-normal.jpg)  | [grayscale](higher-ceiling/release-gate/row-3d-hud-hidden-grayscale.jpg)  | [dark](higher-ceiling/release-gate/row-3d-hud-hidden-dark-silhouette.jpg)  |
+| SkiErg  | [normal](higher-ceiling/release-gate/ski-3d-hud-hidden-normal.jpg)  | [grayscale](higher-ceiling/release-gate/ski-3d-hud-hidden-grayscale.jpg)  | [dark](higher-ceiling/release-gate/ski-3d-hud-hidden-dark-silhouette.jpg)  |
+| BikeErg | [normal](higher-ceiling/release-gate/bike-3d-hud-hidden-normal.jpg) | [grayscale](higher-ceiling/release-gate/bike-3d-hud-hidden-grayscale.jpg) | [dark](higher-ceiling/release-gate/bike-3d-hud-hidden-dark-silhouette.jpg) |
+
+All three sports remain identifiable by direction, major limbs, and equipment
+in the HUD-hidden normal, grayscale, and dark frames. The browser passes emitted
+no application error, blank replay, or 3D-to-Canvas fallback. This completes the
+authored-athlete specification's release matrix; automated evidence continues
+to prove mechanics rather than aesthetics.
 
 ## Known compromises
 
@@ -531,13 +566,16 @@ claimed as aesthetic evidence.
   provenance contract. They now match the art direction's composition and value
   hierarchy, but not its photographic cloud, snow, water, or asphalt detail.
 - RowErg uses a wider equipment-safe chase frame than SkiErg/BikeErg so neither
-  blade is cropped on a 390×360 stage.
+  blade is cropped on a 365×360 stage.
 - The asset is a compact stylized skinned sports illustration, not a scanned or
   photoreal person. It deliberately does not infer a recorded athlete's body,
   clothing, appearance, technique, or location.
-- The accepted frames have only P3 visual constraints. The missing release
-  evidence above remains an open P1 documentation/acceptance item while the PR
-  is a draft; the project-root `design-qa.md` records that distinction.
+- Close contact-heavy poses can still expose mesh/body/equipment
+  interpenetration, and the athlete's anatomy, hands, face, and body-shape nuance
+  remain visibly below a photoreal production character. The requester accepted
+  both as explicit next-PR scope; they are not hidden by the release evidence.
+- The accepted frames have only the P3 visual constraints recorded in the
+  project-root `design-qa.md`; no release-evidence item remains open.
 
 ## Current draft verification — 2026-07-20
 

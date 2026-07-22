@@ -157,8 +157,10 @@ choice, not athlete reconstruction: the generic illustration remains governed
 by the existing rig and source-policy boundary.
 
 At least three screenshot-and-critique iterations record visible defects and
-fixes. Final evidence covers the real 1140x420 and 390x360 stages, both themes,
-characteristic poses and motion, live/ghost, reduced motion, and Low/Ultra.
+fixes. Final evidence covers the real 1112x300/420 desktop and 365x260/360
+mobile Canvas/3D stages inside 1440x1024 and 390x844 browser viewports, both
+themes, characteristic poses and motion, live/ghost, reduced motion, and
+Low/Ultra.
 HUD-hidden grayscale and dark-silhouette frames confirm that sport, direction,
 major limbs, and equipment relationships survive the real pixel budget.
 
