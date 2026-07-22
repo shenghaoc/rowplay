@@ -120,6 +120,9 @@ vp run build:replay-rig-v4-contract
 vp run validate:replay-assets
 ```
 
+Remesh resolution is tuned so live+ghost clones stay within CI test budgets.
+Exact vertex/triangle counts are sealed in the contract and are not art targets.
+
 ## Definition of done checklist
 
 - [x] Coherent body rather than assembled tubes

@@ -23,7 +23,6 @@ import sys
 from dataclasses import dataclass
 from typing import Callable, Sequence
 
-import bmesh
 import bpy
 from mathutils import Vector
 
@@ -76,7 +75,10 @@ SHOE = (0.88, 0.90, 0.93, 1.0)
 SHOE_DARK = (0.12, 0.15, 0.19, 1.0)
 SOLE = (0.06, 0.08, 0.10, 1.0)
 
-VOXEL_SIZE = 0.0092
+# Coarser remesh keeps the production GLB deployable and clone-fast for
+# live+ghost lanes in unit tests / CI, while remaining continuous and readable
+# at chase-camera distance.
+VOXEL_SIZE = 0.0115
 SMOOTH_ITERATIONS = 1
 
 

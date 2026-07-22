@@ -112,6 +112,27 @@ describe("V4 runtime asset contract", () => {
     }
   });
 
+  it("accepts optional helper bones while requiring the semantic joint set", () => {
+    const asset = createV4AthleteAsset();
+    const helper = new THREE.Bone();
+    helper.name = "v4LeftForearmTwist";
+    asset.bones.v4LeftForearm.add(helper);
+    asset.skeleton.bones.push(helper);
+    asset.skeleton.boneInverses.push(new THREE.Matrix4());
+    const clips = productionNamedClips(asset);
+    releaseAuthoringMixer(asset);
+    // collectReplayV4AssetTemplate takes ownership of the authoring root.
+    const template = collectReplayV4AssetTemplate(asset.root, clips, 223_960);
+    try {
+      expect(template.skeleton.bones.length).toBeGreaterThan(19);
+      expect(Object.keys(template.bones)).toHaveLength(19);
+      expect(template.bones.v4LeftForearm).toBeDefined();
+      expect(template.skeleton.getBoneByName("v4LeftForearmTwist")).toBe(helper);
+    } finally {
+      disposeReplayV4AssetTemplate(template);
+    }
+  });
+
   it("rejects partial, duplicate, and malformed rig contracts", () => {
     const missingClip = createV4AthleteAsset();
     try {

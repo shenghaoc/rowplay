@@ -1541,6 +1541,8 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  // Production V4 clones a full skinned mesh per lane; live+ghost paths need
+  // headroom on slower CI runners without weakening the independence contract.
   describe("production V4 skinned athlete integration", () => {
     let v3Assets: ReplayAssetTemplateLibrary | null = null;
     let v4Assets: ReplayV4AssetTemplate | null = null;
@@ -1550,7 +1552,7 @@ describe("CourseRenderer3D", () => {
         loadCheckedInReplayAssetTemplateLibrary(),
         loadCheckedInReplayV4AssetTemplate(),
       ]);
-    });
+    }, 30_000);
 
     afterAll(() => {
       if (v4Assets) disposeReplayV4AssetTemplate(v4Assets);
@@ -2454,7 +2456,7 @@ describe("CourseRenderer3D", () => {
       } finally {
         if (!destroyed) renderer.destroy();
       }
-    });
+    }, 20_000);
   });
 
   it("keeps RowErg knees visually separated from the hull through the stroke", () => {
