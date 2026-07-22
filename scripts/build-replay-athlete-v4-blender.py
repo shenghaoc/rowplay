@@ -4,7 +4,7 @@
 Replaces the mannequin multi-loft assembly with a production sports character:
 
 * denser anatomical source volumes with deliberate kit silhouette
-* voxel remesh so the body reads as one continuous surface
+* voxel remesh so the primary body mass reads as coherent rather than assembled
 * weight transfer from a carefully ring-weighted cage (not bone-heat)
 * deliberate kit / skin / footwear / hair vertex colours
 

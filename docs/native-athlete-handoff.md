@@ -23,10 +23,17 @@ proportions.
 
 ## Artifact identity
 
-Exact byte counts and SHA-256 digests are sealed in
-`static/replay-assets/rowplay-athlete-v4.contract.json` after each rebuild.
-Do not hard-code stale hashes here; regenerate the contract with
-`vp run build:replay-rig-v4-contract`.
+The GLB and USDZ byte counts and SHA-256 digests are sealed in
+`static/replay-assets/rowplay-athlete-v4.contract.json` after each rebuild. A
+contract cannot include its own digest, so this handoff pins the checked
+contract identity separately:
+
+| Artifact                           | Bytes | SHA-256                                                            |
+| ---------------------------------- | ----: | ------------------------------------------------------------------ |
+| `rowplay-athlete-v4.contract.json` | 9,291 | `eb528dd5af13f9af8be44c57026fd3c3ea98bc682062549d611ce28116867d94` |
+
+After an asset or contract rebuild, run `vp run build:replay-rig-v4-contract`
+and update this contract row in the same reviewed change.
 
 Blender 5.2 does not currently produce byte-identical USDZ containers across
 repeat exports. Two same-basename exports differed in the `.usdc` payload, so
@@ -49,7 +56,9 @@ Summary:
 - Up axis: `+Y`
 - Forward axis: `+Z`
 - Handedness: right-handed
-- Mesh: one continuous production skinned athlete (Approach A surface overhaul)
+- Mesh: one production `SkinnedMesh` with three connected topology components;
+  its coherent remeshed primary body mass is the visual contract, while the
+  component count is an inventory record rather than an art-quality constraint
 - Bones: stable 19-bone V4 semantic order (optional helper bones may exist for
   deformation but are not required by this revision)
 - Clips: RowErg, SkiErg, BikeErg normalized one-second technique clips

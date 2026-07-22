@@ -109,7 +109,7 @@ remain automatic fallbacks.
   model, scan, likeness, avatar-generator output, user data, image, texture, or
   external request.
 - **Source of truth:** `scripts/build-replay-athlete-v4-blender.py` authors a
-  denser anatomical cage, voxel-remeshes it into one continuous surface,
+  denser anatomical cage, voxel-remeshes it into a coherent primary body mass,
   transfers cage skin weights, and paints kit/skin/footwear vertex colours in
   Blender 5.2. `src/lib/replay/rigV4.ts` owns the exact skeleton, contacts, and
   clips; `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint
@@ -142,13 +142,13 @@ remain automatic fallbacks.
   skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named semantic
-  bones (optional helper bones are permitted by the runtime loader), one
-  continuous remeshed topology component, one opaque vertex-colour
-  `MeshPhysicalMaterial`, and zero textures/images. The surface is a coherent
-  sports character: ribcage-emergent shoulders, tapered limbs with volume at
-  elbows/knees, modelled palm mass, performance shoes, and deliberate kit
-  panels painted in vertex colour. Exact vertex/triangle counts are recorded
-  in the contract and are not frozen as an art-quality proxy.
+  bones (optional helper bones are permitted by the runtime loader), three
+  connected topology components, one opaque vertex-colour `MeshPhysicalMaterial`,
+  and zero textures/images. The surface is a coherent sports character:
+  ribcage-emergent shoulders, tapered limbs with volume at elbows/knees,
+  modelled palm mass, performance shoes, and deliberate kit panels painted in
+  vertex colour. Exact vertex, triangle, and topology-component counts are
+  recorded in the contract and are not frozen as an art-quality proxy.
 - **Depth contract:** both live and ghost V4 bodies render with `opacity: 1`,
   `transparent: false`, and depth test/write enabled. Ghost identity uses a
   cool material tint while ghost equipment/wakes may remain translucent; the

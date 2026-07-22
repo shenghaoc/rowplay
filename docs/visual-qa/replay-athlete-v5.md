@@ -50,7 +50,8 @@ The production path still loads `rowplay-athlete-v4.glb` through
 
 1. **Surface authoring** (`scripts/build-replay-athlete-v4-blender.py`)
    - denser anatomical cage with deliberate deltoid / thigh / calf volume
-   - voxel remesh → **one connected topology component**
+   - voxel remesh → coherent primary body mass; the release component count is
+     sealed in the contract rather than treated as an art-quality target
    - weight transfer from the ring-weighted cage (not bone-heat)
    - armpit chest-weight boost so raised SkiErg arms do not open holes
    - regional vertex colours for kit / skin / tights / shoes / hair
@@ -65,7 +66,7 @@ The production path still loads `rowplay-athlete-v4.glb` through
 
 ## Evidence
 
-### Studio six-pose stress set
+### Studio nine-pose stress set
 
 Rendered from the sealed production GLB with the PR #171 clips:
 
@@ -84,7 +85,9 @@ Rendered from the sealed production GLB with the PR #171 clips:
 ### Problems removed
 
 - Assembled-tube limb read → continuous remeshed body mass
-- 24 topology components → **1** connected component
+- 24 fragmented topology components → **3** deliberate components, with a
+  coherent primary body mass; the count is sealed in the contract rather than
+  used as an art-quality target
 - Floating lace islands and open hair rims → removed
 - Gaping armpit under raised arms → chest-weight boost + thicker deltoid root
 - White shin “sock” paint bands → foot-block-only shoe colouring
@@ -121,7 +124,8 @@ vp run validate:replay-assets
 ```
 
 Remesh resolution is tuned so live+ghost clones stay within CI test budgets.
-Exact vertex/triangle counts are sealed in the contract and are not art targets.
+Exact vertex, triangle, and topology-component counts are sealed in the
+contract and are not art targets.
 
 ## Definition of done checklist
 

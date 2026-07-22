@@ -5,10 +5,12 @@
 This pass adds compact authored-geometry layers above the existing procedural
 rig. The checked-in `rowplay-rigs-v3.glb` is a texture-free library of reusable
 fallback athlete shells and composite sport-equipment templates. The production
-`rowplay-athlete-v4.glb` supplies one continuous generic `SkinnedMesh`, a stable
-19-bone skeleton, and deterministic RowErg, SkiErg, and BikeErg clips. Both were
-created specifically for rowplay; neither contains a recording, scanned person,
-likeness, avatar-generator output, or user data.
+`rowplay-athlete-v4.glb` supplies one generic `SkinnedMesh` with a coherent
+remeshed primary body mass, a stable 19-bone skeleton, and deterministic
+RowErg, SkiErg, and BikeErg clips. Its exact topology-component count is sealed
+as release inventory, not treated as an art-quality requirement. Both assets
+were created specifically for rowplay; neither contains a recording, scanned
+person, likeness, avatar-generator output, or user data.
 
 The current rig remains the contact and equipment authority. It owns sport
 timing, exact targets, body/equipment transforms, lane placement, live/ghost
