@@ -616,3 +616,19 @@ depth offset, so double-poling no longer reads as an invented striding step.
 Paused catch/plant and moving 1× acceptance on `/replay/1003` confirmed separate
 knees and boots over their own skis in 2D and Ultra/WebGPU 3D without weakening
 the previously validated pole and elbow sequence.
+
+### Canvas SkiErg kneeling-silhouette correction — 2026-07-22
+
+Close inspection of the Canvas plant and loaded poses exposed a distinct
+proportion defect after the parallel-ski correction: 10.3 px of leg was folded
+under a pelvis with only 7.4 px neutral clearance, followed by another 2.4 px
+of vertical collapse. At peak compression the knees nearly touched the snow,
+making the athlete read as kneeling despite correct ski separation.
+
+The neutral pelvis now sits 9.7 px above the floating course origin and the
+press adds only 0.9 px of knee-driven vertical compression. Torso length follows
+the corrected pelvis. Dense Canvas sampling requires more than 8.5 px pelvis
+clearance, more than 3.5 px knee clearance, a predominantly vertical thigh,
+and the unchanged exact 5.25 px thigh length at every one of 129 cycle poses.
+Paused plant and compressed-load browser captures on `/replay/1003` confirm an
+upright start and standing athletic hinge instead of a kneeling silhouette.

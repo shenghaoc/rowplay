@@ -1470,10 +1470,19 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
 function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKinematics) {
   const { x, y, bobY, polePlantCourseX, accent, rim, foam, skin, skinShade, hair, shoe, reduce } =
     a;
+  const upperLegLength = 5.25;
+  const lowerLegLength = 5.05;
+  // Keep the neutral double-pole stance close to leg extension, then add only
+  // a controlled athletic compression during the press. The old 7.4 px hip
+  // clearance paired 10.3 px of leg with a further 2.4 px vertical collapse;
+  // at peak load that folded the knees almost onto the snow and read as
+  // kneeling rather than flexing over two planted skis.
   const hipX = x + k.hipHinge * 2.4;
-  const hipY = bobY - 7.4 + k.kneeFlex * 2.4;
+  const hipY = bobY - 9.7 + k.kneeFlex * 0.9;
   const shX = x + 0.6 + k.hipHinge * 6;
-  const shY = bobY - 14 + k.hipHinge * 2.8;
+  // Preserve the existing torso length while the corrected pelvis sits at a
+  // human-readable height; otherwise fixing the legs would squash the trunk.
+  const shY = hipY - 6.6 + k.hipHinge * 0.4;
   const farKit = withAlpha(accent, 0.5);
   // A double-pole cycle uses a narrow parallel stance. In this side-profile
   // projection the lateral lane cannot be drawn literally, so encode it as a
@@ -1601,7 +1610,16 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   drawSki(ctx, farFootX, y - 0.15, withAlpha(shoe, 0.56), withAlpha(accent, 0.62));
   drawSki(ctx, nearFootX, y, shoe, accent);
 
-  solveTwoBoneJoint2D(farHipX, hipY - 0.3, farFootX, y - 0.15, 5.25, 5.05, -1, jointScratchA);
+  solveTwoBoneJoint2D(
+    farHipX,
+    hipY - 0.3,
+    farFootX,
+    y - 0.15,
+    upperLegLength,
+    lowerLegLength,
+    -1,
+    jointScratchA,
+  );
   taperedLimb(ctx, farHipX, hipY - 0.3, jointScratchA.x, jointScratchA.y, 2.8, 2.05, farKit);
   taperedLimb(
     ctx,
@@ -1624,7 +1642,16 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   );
 
   // Both boots remain planted while the knees and hip absorb the press.
-  solveTwoBoneJoint2D(nearHipX, hipY, nearFootX, y, 5.25, 5.05, -1, jointScratchA);
+  solveTwoBoneJoint2D(
+    nearHipX,
+    hipY,
+    nearFootX,
+    y,
+    upperLegLength,
+    lowerLegLength,
+    -1,
+    jointScratchA,
+  );
   taperedLimb(ctx, nearHipX, hipY, jointScratchA.x, jointScratchA.y, 3, 2.2, accent);
   taperedLimb(
     ctx,

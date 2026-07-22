@@ -126,6 +126,11 @@ telescoping poles, and the late-recovery pole drop.
 The legs retain a narrow parallel double-pole stance throughout the same cycle.
 Canvas represents lateral depth with a small constant offset shared by each
 hip, knee, boot, and ski rather than inventing a fore/aft striding step.
+Its neutral pelvis sits close to full leg extension and the press adds only a
+controlled athletic compression: the authored thigh remains predominantly
+vertical, the pelvis stays clearly above the skis, and neither knee approaches
+the snow closely enough to read as kneeling. Torso length follows the corrected
+pelvis rather than being squashed by the taller stance.
 Procedural Three.js keeps every knee on the same side as its planted boot. V4
 must consume those shared SkiErg knee markers after clip sampling: contact-locking
 the feet while retaining the mirrored clip plane can otherwise select opposite

@@ -111,6 +111,10 @@ viewing speed.
    fore/aft striding split. Each hip, knee, and foot SHALL preserve left/right
    order for the entire cycle; V4 SHALL use the shared same-side knee targets
    after clip sampling rather than allowing its leg IK branches to cross.
+   Canvas SHALL begin near leg extension and compress through a controlled
+   standing knee bend: the pelvis and knees SHALL retain visible clearance from
+   the snow throughout the cycle, with a predominantly vertical thigh rather
+   than a deep folded or kneeling silhouette.
    Pole contact SHALL end in the first 26–29% of the cycle, and each airborne
    basket SHALL approach the next plant continuously without dropping or
    snapping between anchors.

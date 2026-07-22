@@ -132,8 +132,10 @@ steep plant, down-pointing early elbow bend, core-led press with the elbow
 rotating rearward, long-arm pole-off, and lifted forward recovery that returns
 the elbow underneath the arm before the next plant. Its hips, knees, boots, and
 skis retain left/right order in a narrow parallel stance rather than crossing
-or inventing a striding step. BikeErg stages cadence-driven cranks separately
-from distance-driven wheel roll.
+or inventing a striding step. In Canvas, the neutral stance stays close to leg
+extension and compresses into an athletic standing bend rather than folding the
+knees onto the snow like a kneeling figure. BikeErg stages cadence-driven cranks
+separately from distance-driven wheel roll.
 Both 2D and 3D use those same timing and contact semantics.
 
 The 2D view draws a lightweight procedural athlete. In 3D, rowplay loads a

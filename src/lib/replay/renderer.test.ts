@@ -588,11 +588,26 @@ describe("CourseRenderer stroke pose input", () => {
       const nearKnee = operations.find(
         ({ method, args }) => method === "arc" && Math.abs((args[2] as number) - 1.08) < 1e-8,
       );
+      const hip = operations.find(
+        ({ method, args }) => method === "arc" && Math.abs((args[2] as number) - 1.5) < 1e-8,
+      );
       expect(farKnee, `far knee at ${cycle}`).toBeDefined();
       expect(nearKnee, `near knee at ${cycle}`).toBeDefined();
+      expect(hip, `pelvis at ${cycle}`).toBeDefined();
       const kneeSpan = (nearKnee!.args[0] as number) - (farKnee!.args[0] as number);
       expect(kneeSpan, `left/right knee order at ${cycle}`).toBeGreaterThan(1);
       expect(kneeSpan, `parallel leg silhouette at ${cycle}`).toBeLessThan(3);
+
+      const hipX = hip!.args[0] as number;
+      const hipY = hip!.args[1] as number;
+      const nearKneeX = nearKnee!.args[0] as number;
+      const nearKneeY = nearKnee!.args[1] as number;
+      expect(120 - hipY, `pelvis never collapses into a kneel at ${cycle}`).toBeGreaterThan(8.5);
+      expect(120 - nearKneeY, `knee retains snow clearance at ${cycle}`).toBeGreaterThan(3.5);
+      expect(nearKneeY - hipY, `thigh remains predominantly vertical at ${cycle}`).toBeGreaterThan(
+        4.7,
+      );
+      expect(Math.hypot(nearKneeX - (hipX + 1.05), nearKneeY - hipY)).toBeCloseTo(5.25, 6);
     }
     renderer.destroy();
   });

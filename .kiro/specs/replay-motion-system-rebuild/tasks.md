@@ -105,3 +105,11 @@
     so contact-locked feet cannot choose crossed mirrored branches
   - [x] Protect left/right hip, knee, foot, and ski order through dense full-cycle
     Canvas, procedural 3D, and production V4 tests plus moving browser acceptance
+
+- [x] **13. Remove the kneeling silhouette from the Canvas SkiErg athlete**
+  - [x] Raise the neutral pelvis toward leg extension and limit press compression
+    while retaining the shared double-pole timing and planted skis
+  - [x] Preserve torso length above the corrected pelvis instead of shortening
+    the upper body
+  - [x] Protect pelvis height, knee snow clearance, vertical thigh readability,
+    exact segment length, and dense full-cycle continuity with browser acceptance
