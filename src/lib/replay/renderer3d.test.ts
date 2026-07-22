@@ -1626,6 +1626,62 @@ describe("CourseRenderer3D", () => {
       }
     });
 
+    it("keeps both SkiErg V4 legs on their own skis through the full cycle", () => {
+      const renderer = rendererFor("skierg");
+      try {
+        for (let step = 0; step <= 128; step++) {
+          const cycle = step / 128;
+          renderer.render(makeSportState("skierg", cycle), false);
+          const { avatar, instance } = v4Lane(renderer);
+          getScene(renderer).updateMatrixWorld(true);
+          const inverse = avatar.group.matrixWorld.clone().invert();
+          const leftHip = instance.bones.v4LeftUpperLeg
+            .getWorldPosition(new THREE.Vector3())
+            .applyMatrix4(inverse);
+          const rightHip = instance.bones.v4RightUpperLeg
+            .getWorldPosition(new THREE.Vector3())
+            .applyMatrix4(inverse);
+          const leftKnee = instance.bones.v4LeftLowerLeg
+            .getWorldPosition(new THREE.Vector3())
+            .applyMatrix4(inverse);
+          const rightKnee = instance.bones.v4RightLowerLeg
+            .getWorldPosition(new THREE.Vector3())
+            .applyMatrix4(inverse);
+          const leftFoot = v4EffectorWorld(instance, "leftFoot").applyMatrix4(inverse);
+          const rightFoot = v4EffectorWorld(instance, "rightFoot").applyMatrix4(inverse);
+          const leftMarker = avatar.v4Targets.leftKnee
+            .getWorldPosition(new THREE.Vector3())
+            .applyMatrix4(inverse);
+          const rightMarker = avatar.v4Targets.rightKnee
+            .getWorldPosition(new THREE.Vector3())
+            .applyMatrix4(inverse);
+
+          expect(leftKnee.x, `left knee remains left at ${cycle}`).toBeLessThan(-0.02);
+          expect(rightKnee.x, `right knee remains right at ${cycle}`).toBeGreaterThan(0.02);
+          for (const [level, left, right, minimum] of [
+            ["hips", leftHip, rightHip, 0.18],
+            ["knees", leftKnee, rightKnee, 0.12],
+            ["feet", leftFoot, rightFoot, 0.24],
+          ] as const) {
+            expect(
+              right.x - left.x,
+              `${level} preserve left/right order at ${cycle}`,
+            ).toBeGreaterThan(minimum);
+          }
+          expect(
+            leftKnee.distanceTo(leftMarker),
+            `left knee follows deterministic same-side target at ${cycle}`,
+          ).toBeLessThan(0.1);
+          expect(
+            rightKnee.distanceTo(rightMarker),
+            `right knee follows deterministic same-side target at ${cycle}`,
+          ).toBeLessThan(0.1);
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
     it("shows one continuous V4 hero while retaining authored equipment for every sport", () => {
       const fallbackTorso = {
         rower: "rower-torso-shell",
@@ -2394,6 +2450,28 @@ describe("CourseRenderer3D", () => {
       const left = projectToPixels(renderer, "rower-knee-left", camera, 1140, 420);
       const right = projectToPixels(renderer, "rower-knee-right", camera, 1140, 420);
       expect(left.distanceTo(right), `knee span at cycle ${cycle}`).toBeGreaterThan(14);
+    }
+    renderer.destroy();
+  });
+
+  it("keeps procedural SkiErg knees on the same side as their planted skis", () => {
+    const renderer = new CourseRenderer3D(makeHost(), "medium", "skierg");
+    renderer.resize(1140, 420);
+    for (let step = 0; step < 128; step++) {
+      const cycle = step / 128;
+      renderer.render(makeSportState("skierg", cycle), false);
+      const leftKnee = sceneObject(renderer, "skierg-knee-left").position;
+      const rightKnee = sceneObject(renderer, "skierg-knee-right").position;
+      const leftFoot = sceneObject(renderer, "skierg-foot-contact-left").position;
+      const rightFoot = sceneObject(renderer, "skierg-foot-contact-right").position;
+
+      expect(leftKnee.x, `left knee remains left at ${cycle}`).toBeLessThan(-0.02);
+      expect(rightKnee.x, `right knee remains right at ${cycle}`).toBeGreaterThan(0.02);
+      expect(rightKnee.x - leftKnee.x, `procedural knees never cross at ${cycle}`).toBeGreaterThan(
+        0.12,
+      );
+      expect(leftFoot.x, `left boot remains on left ski at ${cycle}`).toBeLessThan(0);
+      expect(rightFoot.x, `right boot remains on right ski at ${cycle}`).toBeGreaterThan(0);
     }
     renderer.destroy();
   });

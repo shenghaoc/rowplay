@@ -598,3 +598,21 @@ by the contact suite. No replay-renderer diagnostic was emitted. This
 directional sequence follows the public technique and elbow-phase references
 above; its exact 3D bend vector remains a generic art-direction inference, not
 measured athlete motion.
+
+### SkiErg parallel-stance correction recheck — 2026-07-22
+
+The production V4 replay exposed a separate lower-body branch defect: both
+boots remained on their correct skis, but the skinned knees inherited opposite
+mirrored clip planes after foot-contact closure, making the thighs form an X.
+V4 now consumes the procedural same-side SkiErg knee markers after clip
+sampling. Dense production-asset sampling requires left hip → left knee → left
+boot and right hip → right knee → right boot order at every one of 129 cycle
+poses, with at least 0.12 m knee separation and both sole contacts retained.
+The procedural fallback is protected by the same full-cycle side invariant.
+
+Canvas also drops the former 7.6 px fore/aft boot stagger. The side-profile
+projection now keeps both hip-to-knee-to-boot chains on a narrow 2.1 px parallel
+depth offset, so double-poling no longer reads as an invented striding step.
+Paused catch/plant and moving 1× acceptance on `/replay/1003` confirmed separate
+knees and boots over their own skis in 2D and Ultra/WebGPU 3D without weakening
+the previously validated pole and elbow sequence.

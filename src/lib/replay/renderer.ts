@@ -1475,6 +1475,16 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   const shX = x + 0.6 + k.hipHinge * 6;
   const shY = bobY - 14 + k.hipHinge * 2.8;
   const farKit = withAlpha(accent, 0.5);
+  // A double-pole cycle uses a narrow parallel stance. In this side-profile
+  // projection the lateral lane cannot be drawn literally, so encode it as a
+  // small, constant depth offset shared by hip, knee, boot and ski. The old
+  // -3.3/+4.3 boot stagger put one foot far ahead of the other and made the
+  // two leg chains form an X even though double-poling has no striding step.
+  const skiStanceHalfWidth = 1.05;
+  const farHipX = hipX - skiStanceHalfWidth;
+  const nearHipX = hipX + skiStanceHalfWidth;
+  const farFootX = x - skiStanceHalfWidth;
+  const nearFootX = x + skiStanceHalfWidth;
 
   const poleLength = 13.8;
   // Keep the wrist on a radius-preserving sagittal arc around the shoulder.
@@ -1588,11 +1598,11 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
 
   // Skis paint behind both legs and boots. They are intentionally short and
   // neutral so equipment support reads without dominating the athlete.
-  drawSki(ctx, x - 3.3, y, withAlpha(shoe, 0.56), withAlpha(accent, 0.62));
-  drawSki(ctx, x + 4.3, y, shoe, accent);
+  drawSki(ctx, farFootX, y - 0.15, withAlpha(shoe, 0.56), withAlpha(accent, 0.62));
+  drawSki(ctx, nearFootX, y, shoe, accent);
 
-  solveTwoBoneJoint2D(hipX - 0.45, hipY - 0.3, x - 3.3, y - 0.15, 5.25, 5.05, -1, jointScratchA);
-  taperedLimb(ctx, hipX - 0.45, hipY - 0.3, jointScratchA.x, jointScratchA.y, 2.8, 2.05, farKit);
+  solveTwoBoneJoint2D(farHipX, hipY - 0.3, farFootX, y - 0.15, 5.25, 5.05, -1, jointScratchA);
+  taperedLimb(ctx, farHipX, hipY - 0.3, jointScratchA.x, jointScratchA.y, 2.8, 2.05, farKit);
   taperedLimb(
     ctx,
     jointScratchA.x,
@@ -1614,8 +1624,8 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   );
 
   // Both boots remain planted while the knees and hip absorb the press.
-  solveTwoBoneJoint2D(hipX, hipY, x + 4.3, y, 5.25, 5.05, -1, jointScratchA);
-  taperedLimb(ctx, hipX, hipY, jointScratchA.x, jointScratchA.y, 3, 2.2, accent);
+  solveTwoBoneJoint2D(nearHipX, hipY, nearFootX, y, 5.25, 5.05, -1, jointScratchA);
+  taperedLimb(ctx, nearHipX, hipY, jointScratchA.x, jointScratchA.y, 3, 2.2, accent);
   taperedLimb(
     ctx,
     jointScratchA.x,

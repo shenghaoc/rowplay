@@ -578,6 +578,64 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
+  it("uses same-side SkiErg knee markers instead of crossed clip branches", () => {
+    const lane = createLane();
+    const controller = installReplayV4MotionController({
+      sport: "skierg",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      diagnosticMode: "clip-pelvis",
+    });
+    try {
+      expect(controller?.update({ phase: 0, cycleFrac: 0.18, driveFrac: 0.34 })).toBe(true);
+      placeTargetsNearClipEffectors(lane);
+      lane.targets.leftKnee.position.set(-0.26, 0.62, 0.28);
+      lane.targets.rightKnee.position.set(0.26, 0.62, 0.28);
+      lane.scene.updateMatrixWorld(true);
+      controller?.setDiagnosticMode("full");
+      expect(controller?.update({ phase: 0, cycleFrac: 0.18, driveFrac: 0.34 })).toBe(true);
+      lane.scene.updateMatrixWorld(true);
+
+      const solvedKnees = new Map<"left" | "right", THREE.Vector3>();
+      for (const side of ["left", "right"] as const) {
+        const upper = lane.instance.bones[
+          side === "left" ? "v4LeftUpperLeg" : "v4RightUpperLeg"
+        ].getWorldPosition(new THREE.Vector3());
+        const knee = lane.instance.bones[
+          side === "left" ? "v4LeftLowerLeg" : "v4RightLowerLeg"
+        ].getWorldPosition(new THREE.Vector3());
+        const foot = lane.instance.bones[
+          side === "left" ? "v4LeftFoot" : "v4RightFoot"
+        ].getWorldPosition(new THREE.Vector3());
+        const marker = lane.targets[side === "left" ? "leftKnee" : "rightKnee"].getWorldPosition(
+          new THREE.Vector3(),
+        );
+        const chord = foot.clone().sub(upper).normalize();
+        const solvedPlane = knee.clone().sub(upper);
+        solvedPlane.addScaledVector(chord, -solvedPlane.dot(chord)).normalize();
+        const markerPlane = marker.clone().sub(upper);
+        markerPlane.addScaledVector(chord, -markerPlane.dot(chord)).normalize();
+
+        expect(
+          solvedPlane.dot(markerPlane),
+          `${side} knee follows same-side marker`,
+        ).toBeGreaterThan(0.8);
+        solvedKnees.set(side, lane.parent.worldToLocal(knee.clone()));
+      }
+      expect(solvedKnees.get("left")!.x, "left knee remains left of centre").toBeLessThan(-0.02);
+      expect(solvedKnees.get("right")!.x, "right knee remains right of centre").toBeGreaterThan(
+        0.02,
+      );
+      expect(
+        solvedKnees.get("right")!.x - solvedKnees.get("left")!.x,
+        "SkiErg knees retain lateral separation",
+      ).toBeGreaterThan(0.12);
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
   it("soft-orients palms and soles without forcing full equipment quaternions", () => {
     const lane = createLane();
     // Mild target orientation so soft slerp can finish within budget.

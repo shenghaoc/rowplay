@@ -531,6 +531,72 @@ describe("CourseRenderer stroke pose input", () => {
     expect(samples.at(-1)!.bendDegrees, "finish has a readable late arm draw").toBeGreaterThan(65);
   });
 
+  it("keeps both 2D SkiErg legs in a narrow parallel double-pole stance", () => {
+    const { ctx, operations } = makeCtx();
+    const canvas = {
+      getContext: (kind: string) => (kind === "2d" ? ctx : null),
+    } as unknown as HTMLCanvasElement;
+    const renderer = new CourseRenderer(canvas);
+    renderer.resize(640, 180);
+    const testRenderer = renderer as unknown as {
+      drawAvatar(options: Record<string, unknown>): void;
+      liveSplash: unknown;
+    };
+
+    for (let step = 0; step <= 128; step++) {
+      operations.length = 0;
+      const cycle = step / 128;
+      const pose = fallbackStrokePose("skierg", cycle * Math.PI * 2, 32);
+      testRenderer.drawAvatar({
+        x: 200,
+        y: 120,
+        accent: "#123456",
+        phase: pose.phase,
+        meters: 0,
+        pixelsPerMeter: 0.72,
+        pose,
+        spm: 32,
+        isYou: true,
+        sport: "skierg",
+        label: "skierg",
+        splash: testRenderer.liveSplash,
+      });
+
+      const skiCenters: number[] = [];
+      for (let index = 0; index < operations.length - 1; index++) {
+        const start = operations[index];
+        const end = operations[index + 1];
+        if (start?.method !== "moveTo" || end?.method !== "lineTo") continue;
+        const x1 = start.args[0] as number;
+        const y1 = start.args[1] as number;
+        const x2 = end.args[0] as number;
+        const y2 = end.args[1] as number;
+        if (Math.abs(Math.hypot(x2 - x1, y2 - y1) - 5.75) < 1e-7) {
+          // drawSki's main rail spans footX-3.1 → footX+2.65.
+          skiCenters.push((x1 + x2) * 0.5 + 0.225);
+        }
+      }
+      expect(skiCenters, `paired parallel skis at ${cycle}`).toHaveLength(2);
+      expect(
+        Math.abs(skiCenters[1]! - skiCenters[0]!),
+        `no fore/aft split stance at ${cycle}`,
+      ).toBeCloseTo(2.1, 6);
+
+      const farKnee = operations.find(
+        ({ method, args }) => method === "arc" && Math.abs((args[2] as number) - 1) < 1e-8,
+      );
+      const nearKnee = operations.find(
+        ({ method, args }) => method === "arc" && Math.abs((args[2] as number) - 1.08) < 1e-8,
+      );
+      expect(farKnee, `far knee at ${cycle}`).toBeDefined();
+      expect(nearKnee, `near knee at ${cycle}`).toBeDefined();
+      const kneeSpan = (nearKnee!.args[0] as number) - (farKnee!.args[0] as number);
+      expect(kneeSpan, `left/right knee order at ${cycle}`).toBeGreaterThan(1);
+      expect(kneeSpan, `parallel leg silhouette at ${cycle}`).toBeLessThan(3);
+    }
+    renderer.destroy();
+  });
+
   it("keeps both 2D SkiErg hands on rigid poles through plant and recovery", () => {
     const { ctx, operations } = makeCtx();
     const canvas = {
@@ -1301,13 +1367,13 @@ describe("CourseRenderer stroke pose input", () => {
         typeof operation.args[1] === "number" &&
         typeof next.args[0] === "number" &&
         typeof next.args[1] === "number" &&
-        close(operation.args[1], 100.35) &&
-        close(next.args[1], 100.35) &&
+        (close(operation.args[1], 100.2) || close(operation.args[1], 100.35)) &&
+        close(next.args[1], operation.args[1] as number) &&
         Math.abs((next.args[0] as number) - (operation.args[0] as number) - 5.75) < 1e-8
       );
     });
     expect(skiRails).toHaveLength(2);
-    expect((skiRails[1].args[0] as number) - (skiRails[0].args[0] as number)).toBeCloseTo(7.6, 8);
+    expect((skiRails[1].args[0] as number) - (skiRails[0].args[0] as number)).toBeCloseTo(2.1, 8);
     const basketHubs = copiedCalls(ski.ctx, "arc").filter(([, , radius]) => close(radius, 0.48));
     expect(basketHubs).toHaveLength(2);
   });

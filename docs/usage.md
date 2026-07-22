@@ -130,8 +130,10 @@ approaches the lower ribs, and the arms straighten first on recovery);
 SkiErg's classic double-pole high reach,
 steep plant, down-pointing early elbow bend, core-led press with the elbow
 rotating rearward, long-arm pole-off, and lifted forward recovery that returns
-the elbow underneath the arm before the next plant; and BikeErg cadence-driven
-cranks separately from distance-driven wheel roll.
+the elbow underneath the arm before the next plant. Its hips, knees, boots, and
+skis retain left/right order in a narrow parallel stance rather than crossing
+or inventing a striding step. BikeErg stages cadence-driven cranks separately
+from distance-driven wheel roll.
 Both 2D and 3D use those same timing and contact semantics.
 
 The 2D view draws a lightweight procedural athlete. In 3D, rowplay loads a
@@ -166,6 +168,10 @@ The skier advances relative to that basket, releases it near the end of the
 short planted phase, lifts it through recovery, and approaches the next anchor
 without a vertical drop. The 3D elbow is constrained to the shared sagittal
 technique branch rather than a sideways branch inherited from the base clip.
+The same post-clip pass constrains each V4 knee to the same-side deterministic
+marker above its own planted ski; locking the boots may not push either thigh
+through the opposite leg. Canvas uses a small constant depth offset for the
+parallel skis instead of the former exaggerated fore/aft split.
 At the high plant both 2D and 3D put the flexed elbow below the shoulder; while
 the planted pole bears the press, that bend plane rotates behind the shoulder.
 The hand and rigid pole then lift and travel forward on recovery, and the elbow
@@ -218,9 +224,10 @@ shared rearward RowErg and sagittal SkiErg elbow markers where rigid hand
 contacts admit two opposite solutions, and uses the equipment-derived knee
 branch for cycling. RowErg likewise uses the shared raised-knee branch after the
 feet close on the stretcher, preventing the standing rest skeleton from folding
-the legs through the hull. Other bend planes remain clip-authored. If input geometry
-is ever incompatible, the limb clamps at its real reach instead of stretching
-a skeleton, pole, oar, or crank.
+the legs through the hull; SkiErg uses its shared same-side knee branch so the
+feet remain planted on parallel skis without crossed thighs. Remaining arm bend
+planes stay clip-authored. If input geometry is ever incompatible, the limb
+clamps at its real reach instead of stretching a skeleton, pole, oar, or crank.
 
 The 2D BikeErg uses the same mechanically forward clockwise convention for its
 wheels and cranks. Explicit opposing crank arms, pedals, chainring, sprocket,

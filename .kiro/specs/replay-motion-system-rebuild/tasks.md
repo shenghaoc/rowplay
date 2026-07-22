@@ -97,3 +97,11 @@
     while preserving rigid poles, planted baskets, and exact hand contacts
   - [x] Protect plant, load, pole-off, recovery, pre-plant, fixed segment
     lengths, and dense-cycle continuity with 2D/shared/3D regressions
+
+- [x] **12. Keep SkiErg legs on their own parallel skis**
+  - [x] Replace the Canvas fore/aft split stance with one narrow parallel
+    hip-to-knee-to-boot projection
+  - [x] Make V4 consume the procedural SkiErg knee markers after clip sampling
+    so contact-locked feet cannot choose crossed mirrored branches
+  - [x] Protect left/right hip, knee, foot, and ski order through dense full-cycle
+    Canvas, procedural 3D, and production V4 tests plus moving browser acceptance

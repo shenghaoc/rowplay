@@ -107,6 +107,10 @@ viewing speed.
    selecting a sideways or horizontally inverted branch. During recovery the
    hands and poles SHALL lift and travel forward while the elbow plane returns
    underneath the arm, so the elbows point down again before the next plant.
+   Both skis and boots SHALL retain a narrow parallel stance rather than a
+   fore/aft striding split. Each hip, knee, and foot SHALL preserve left/right
+   order for the entire cycle; V4 SHALL use the shared same-side knee targets
+   after clip sampling rather than allowing its leg IK branches to cross.
    Pole contact SHALL end in the first 26–29% of the cycle, and each airborne
    basket SHALL approach the next plant continuously without dropping or
    snapping between anchors.

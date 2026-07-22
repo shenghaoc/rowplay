@@ -123,6 +123,14 @@ snow anchor to the next with zero visible weight, then lowers the basket
 continuously into pre-plant. This prevents horizontal elbow inversion,
 telescoping poles, and the late-recovery pole drop.
 
+The legs retain a narrow parallel double-pole stance throughout the same cycle.
+Canvas represents lateral depth with a small constant offset shared by each
+hip, knee, boot, and ski rather than inventing a fore/aft striding step.
+Procedural Three.js keeps every knee on the same side as its planted boot. V4
+must consume those shared SkiErg knee markers after clip sampling: contact-locking
+the feet while retaining the mirrored clip plane can otherwise select opposite
+two-bone branches and make the thighs cross despite correctly separated skis.
+
 ## V4 rigged asset
 
 V4 is a compact local glTF with a generic athletic skeleton and skin weights.

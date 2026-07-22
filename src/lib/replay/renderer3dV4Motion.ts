@@ -638,12 +638,13 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   }
 
   private usesSharedJointTarget(chain: ChainBinding): boolean {
-    // RowErg starts from a seated rest skeleton whose knees point down. Once
-    // the feet are contact-locked to the stretcher, retaining that clip plane
-    // folds both legs through the hull. The hidden deterministic rig already
-    // solves the correct raised-knee branch, so V4 must consume it just as the
-    // BikeErg rider consumes its crank-led knee marker.
-    if (chain.isLeg) return this.options.sport === "bike" || this.options.sport === "rower";
+    // Every planted/contact-driven leg needs the deterministic rig's knee
+    // branch. RowErg raises both knees above the cockpit, BikeErg keeps them
+    // aligned with opposed pedals, and SkiErg keeps each knee over its own ski.
+    // Retaining the mirrored SkiErg clip plane after locking both feet allowed
+    // the left and right thighs to solve through one another even though the
+    // boots themselves remained correctly separated.
+    if (chain.isLeg) return true;
     return this.options.sport === "rower" || this.options.sport === "skierg";
   }
 
@@ -653,7 +654,8 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
    * Most bend planes come from the sampled clip. RowErg and SkiErg are the
    * deliberate arm exceptions: a rigid grip can close on either elbow branch,
    * so the reference-backed shared marker chooses the rearward/sagittal one.
-   * RowErg and BikeErg legs likewise use their mechanically solved knee target.
+   * All leg chains likewise use their mechanically solved knee target so a
+   * contact-locked foot can never select the opposite-side knee branch.
    */
   private correctContactChain(chain: ChainBinding): void {
     chain.upper.getWorldPosition(this.rootWorld);
