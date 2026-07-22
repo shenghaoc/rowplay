@@ -249,7 +249,7 @@ describe("V4 production skinned athlete", () => {
   it("provides distinct loop-safe sport clips with exact drive landmarks", () => {
     const asset = createV4AthleteAsset();
     try {
-      expect(Object.keys(asset.clips)).toEqual(["rower", "skier", "bike"]);
+      expect(Object.keys(asset.clips)).toEqual(["rower", "skierg", "bike"]);
       const driveSignatures = new Map<V4Sport, readonly number[]>();
       for (const sport of Object.keys(asset.clips) as V4Sport[]) {
         const clip = asset.clips[sport];
@@ -285,8 +285,8 @@ describe("V4 production skinned athlete", () => {
         sampleV4AthleteAsset(asset, sport, V4_DRIVE_END[sport]);
         expect(quaternionSnapshot(asset.bones.v4LeftForearm)).toEqual(drive);
       }
-      expect(driveSignatures.get("rower")).not.toEqual(driveSignatures.get("skier"));
-      expect(driveSignatures.get("skier")).not.toEqual(driveSignatures.get("bike"));
+      expect(driveSignatures.get("rower")).not.toEqual(driveSignatures.get("skierg"));
+      expect(driveSignatures.get("skierg")).not.toEqual(driveSignatures.get("bike"));
       expect(driveSignatures.get("bike")).not.toEqual(driveSignatures.get("rower"));
     } finally {
       disposeV4AthleteAsset(asset);

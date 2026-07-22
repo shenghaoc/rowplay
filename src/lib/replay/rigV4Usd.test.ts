@@ -10,7 +10,11 @@ type V4Contract = {
     readonly triangles: number;
   };
   readonly animation: {
-    readonly clips: readonly { readonly name: string; readonly durationSeconds: number }[];
+    readonly clips: readonly {
+      readonly sport: string;
+      readonly name: string;
+      readonly durationSeconds: number;
+    }[];
   };
 };
 
@@ -117,6 +121,11 @@ describe("RowPlay V4 USDZ native handoff", () => {
         "rowplay-v4-row-cycle",
         "rowplay-v4-ski-cycle",
         "rowplay-v4-bike-cycle",
+      ]);
+      expect(contract.animation.clips.map((clip) => clip.sport)).toEqual([
+        "rower",
+        "skierg",
+        "bike",
       ]);
     },
     USDZ_TEST_TIMEOUT_MS,

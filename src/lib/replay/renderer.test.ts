@@ -542,6 +542,7 @@ describe("CourseRenderer stroke pose input", () => {
       drawAvatar(options: Record<string, unknown>): void;
       liveSplash: unknown;
     };
+    const pelvisClearances: number[] = [];
 
     for (let step = 0; step <= 128; step++) {
       operations.length = 0;
@@ -602,13 +603,22 @@ describe("CourseRenderer stroke pose input", () => {
       const hipY = hip!.args[1] as number;
       const nearKneeX = nearKnee!.args[0] as number;
       const nearKneeY = nearKnee!.args[1] as number;
-      expect(120 - hipY, `pelvis never collapses into a kneel at ${cycle}`).toBeGreaterThan(8.5);
+      const pelvisClearance = 120 - hipY;
+      pelvisClearances.push(pelvisClearance);
+      expect(pelvisClearance, `pelvis never collapses into a kneel at ${cycle}`).toBeGreaterThan(
+        8.8,
+      );
+      expect(pelvisClearance, `pelvis never rises into a jump at ${cycle}`).toBeLessThan(9.25);
       expect(120 - nearKneeY, `knee retains snow clearance at ${cycle}`).toBeGreaterThan(3.5);
       expect(nearKneeY - hipY, `thigh remains predominantly vertical at ${cycle}`).toBeGreaterThan(
         4.7,
       );
       expect(Math.hypot(nearKneeX - (hipX + 1.05), nearKneeY - hipY)).toBeCloseTo(5.25, 6);
     }
+    expect(
+      Math.max(...pelvisClearances) - Math.min(...pelvisClearances),
+      "grounded double-poling has no whole-body flight phase",
+    ).toBeLessThan(0.4);
     renderer.destroy();
   });
 

@@ -116,9 +116,10 @@ remain automatic fallbacks.
   are production contracts. Set `BLENDER_BIN` when Blender is not installed at
   the default macOS application path.
 - **Native handoff:** `rowplay-athlete-v4.usdz` is generated from the exact GLB
-  by Blender 5.2 via `scripts/build-replay-rig-v4-usdz.py`. It is for RowPlay
-  Studio / PR #72 and must not be independently remodelled. The web runtime
-  remains GLB through `GLTFLoader`.
+  by Blender 5.2. `scripts/build-replay-rig-v4-usdz.ts` honours `BLENDER_BIN`
+  and launches the converter in `scripts/build-replay-rig-v4-usdz.py`. The
+  derivative is for RowPlay Studio / PR #72 and must not be independently
+  remodelled. The web runtime remains GLB through `GLTFLoader`.
 - **Machine-readable contract:** `rowplay-athlete-v4.contract.json`, generated
   by `scripts/build-replay-rig-v4-contract.mjs`, records artifact hashes,
   units/axes, skeleton order, rest transforms, clips, phase landmarks, contact
@@ -129,12 +130,12 @@ remain automatic fallbacks.
   `vp run validate:replay-assets`. The build exports and reloads the GLB and
   rejects skeleton, clip, drive-boundary, skin, or contact-metadata drift. The
   USDZ portability gate lives in `src/lib/replay/rigV4Usd.test.ts`.
-- **Reviewed artifact:** 584,792 bytes; SHA-256
-  `a9a215f07bd39d15daa5c45c5bfbbb1788656ad7916fc39f172c5dcc78129963`.
+- **Reviewed artifact:** 584,796 bytes; SHA-256
+  `73e0ece3e6c6de5a7a020a5097b172ca3e0ed8315c27ff604159b144fa90547b`.
   Two independent builds must be byte-identical before the binary changes are
   committed.
-- **Reviewed USDZ derivative:** 1,318,259 bytes; SHA-256
-  `5591b13c7d58bc4f44194728c1a2fc1c669086232d2f1bd97723672392c50723`.
+- **Reviewed USDZ derivative:** 1,318,256 bytes; SHA-256
+  `934b0d3af0454f60a84dde76f95b77121919f5ad7cfc366684a670ae5d99658e`.
   Blender 5.2 does not produce byte-identical USDZ containers across repeat
   exports, so repeat-export acceptance is semantic: Three.js `USDLoader` must
   load one skinned athlete with the 19 bones in order, finite normalized skin
@@ -142,7 +143,7 @@ remain automatic fallbacks.
   references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`;
   SHA-256
-  `96acec971c3247120e71af726388420dd89866437c76c3a417ea267481976dba`.
+  `e9fb56f372ac1ea44ee5ccaf1d00b5a975e1eb4a1a2ee7843ab9e53609fb189d`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named bones,
   7,420 vertices, 14,240 triangles, one opaque vertex-colour
   `MeshPhysicalMaterial`, zero textures/images, and 24 connected topology

@@ -30,7 +30,11 @@ import {
   type ReplayAssetMaterialResolver,
   type ReplayAssetMaterialRole,
 } from "./renderer3dAssets";
-import { tryCreateReplayV4AthleteInstance, type ReplayV4AssetTemplate } from "./renderer3dV4Assets";
+import {
+  tryCreateReplayV4AthleteInstance,
+  type ReplayV4AssetTemplate,
+  type ReplayV4EffectorMetric,
+} from "./renderer3dV4Assets";
 import {
   installReplayV4MotionController,
   type ReplayV4MotionController,
@@ -196,6 +200,19 @@ export interface Renderer3DOptions {
   WebGPURenderer?: WebGPURendererCtor;
   assets?: ReplayAssetLibrary | null;
   v4Assets?: ReplayV4AssetTemplate | null;
+}
+
+/**
+ * Convert a loaded V4 arm metric into the target reach owned by each sport rig.
+ * RowErg solves from the wrist before applying its sampled palm offset; SkiErg
+ * and BikeErg solve directly to palm contact, whose offset is already included
+ * exactly once in `totalReach` by the asset loader.
+ */
+export function replayV4ArmContactReach(
+  sport: Sport,
+  effector: Pick<ReplayV4EffectorMetric, "proximalLength" | "distalLength" | "totalReach">,
+): number {
+  return sport === "rower" ? effector.proximalLength + effector.distalLength : effector.totalReach;
 }
 
 const LABEL_SPRITE_SCALE = 0.0064;
@@ -2470,6 +2487,7 @@ function makeSkierAvatar(
   const desiredHandWorld = new THREE.Vector3();
   const solvedHandWorld = new THREE.Vector3();
   const shoulderWorld = new THREE.Vector3();
+  const sampledV4Shoulders = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const tipLocalPoint = new THREE.Vector3();
   const groundUpLocal = new THREE.Vector3();
   const courseCenterAtPlant = new THREE.Vector3();
@@ -2526,7 +2544,7 @@ function makeSkierAvatar(
     const dy = out.y - sy;
     const dz = out.z - sz;
     const dist = Math.hypot(dx, dy, dz);
-    const maxReach = Math.min(MAX_ARM_REACH, Math.max(0.4, contactArmReach - 0.01));
+    const maxReach = Math.min(MAX_ARM_REACH, Math.max(0.4, contactArmReach - 0.002));
     if (dist > maxReach && dist > 1e-6) {
       const scale = maxReach / dist;
       out.set(sx + dx * scale, sy + dy * scale, sz + dz * scale);
@@ -2536,6 +2554,7 @@ function makeSkierAvatar(
   let pendingPose = fallbackStrokePose("skierg", 0);
   let pendingMeters = 0;
   let pendingMotion: SkierKinematics = kinematics;
+  let hasSampledV4Shoulders = false;
 
   const placeSkiLegs = (): void => {
     for (const leg of legParts) {
@@ -2626,7 +2645,8 @@ function makeSkierAvatar(
       if (!arm || !pole) continue;
       // Shoulders live on the hinging upper body; refresh the local origin so
       // the press tracks torso pitch instead of a stale rest pose.
-      arm.shoulderPoint.set(arm.side * 0.25, 0.54, 0.05);
+      if (hasSampledV4Shoulders) arm.shoulderPoint.copy(sampledV4Shoulders[i]!);
+      else arm.shoulderPoint.set(arm.side * 0.25, 0.54, 0.05);
       // Start from the authored double-pole arc, then solve the exact rigid
       // pole/arm closure once the course-space basket position is known.
       skiPreferredHand(motion, arm.side, arm.handTarget);
@@ -2677,9 +2697,9 @@ function makeSkierAvatar(
       shoulderWorld.copy(arm.shoulderPoint);
       upper.localToWorld(shoulderWorld);
       // `contactArmReach` includes the palm offset beyond the terminal hand
-      // bone. Reserve only numerical headroom: subtracting the whole palm
-      // length kept the visible V4 elbow deeply flexed at pole-off.
-      const maximumReach = Math.min(MAX_ARM_REACH, Math.max(0.4, contactArmReach - 0.01));
+      // bone. Reserve only solver epsilon: subtracting the palm length—or
+      // counting it twice—breaks the visible V4 reach contract.
+      const maximumReach = Math.min(MAX_ARM_REACH, Math.max(0.4, contactArmReach - 0.002));
       solveRigidContactPoint3D(
         shoulderWorld,
         desiredHandWorld,
@@ -2745,6 +2765,7 @@ function makeSkierAvatar(
     pendingPose = resolvedPose;
     pendingMeters = meters;
     pendingMotion = motion;
+    hasSampledV4Shoulders = false;
     // Carry the pelvis through a restrained spring rather than lowering the
     // whole upper body into a broken-looking crouch. The small forward travel
     // lets the fixed-length legs share the load instead of making the torso
@@ -2772,6 +2793,17 @@ function makeSkierAvatar(
     placePoleArms(pendingMotion, pendingPose, pendingMeters);
   };
 
+  const refineV4Targets = (motion: ReplayV4MotionController): void => {
+    motion.getShoulderWorld("left", sampledV4Shoulders[0]);
+    motion.getShoulderWorld("right", sampledV4Shoulders[1]);
+    // The pole authority and the V4 skin share the avatar parent but not the
+    // same torso node. Convert the visible shoulder roots into the pole
+    // solver's frame before the final course-space contact pass.
+    upper.worldToLocal(sampledV4Shoulders[0]);
+    upper.worldToLocal(sampledV4Shoulders[1]);
+    hasSampledV4Shoulders = true;
+  };
+
   const [leftArm, rightArm] = arms;
   const [leftLeg, rightLeg] = legParts;
   if (!leftArm || !rightArm || !leftLeg || !rightLeg) {
@@ -2781,6 +2813,7 @@ function makeSkierAvatar(
   const skiAvatar: Avatar = {
     group,
     animate,
+    refineV4Targets,
     resolveWorldContacts,
     assetMaterialResolver: resolveAssetMaterial,
     v4Targets: {
@@ -3816,20 +3849,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.ghostAvatar.group.userData.authoredReplayV4 = !!this.ghostAvatar.v4Motion;
       const contactReach = (side: "leftHand" | "rightHand"): number => {
         const effector = options.v4Assets!.effectors[side];
-        // RowErg explicitly subtracts the sampled wrist-to-palm offset before
-        // its refined oar-circle solve, so it needs structural wrist reach.
-        // SkiErg and BikeErg keep the established palm-contact reach contract:
-        // their procedural target path and V4 terminal effector both include
-        // the hand offset, so changing that shared length here would alter
-        // already validated pole and handlebar closure.
-        return this.sport === "rower"
-          ? effector.proximalLength + effector.distalLength
-          : effector.totalReach +
-              Math.hypot(
-                effector.contactOffset[0],
-                effector.contactOffset[1],
-                effector.contactOffset[2],
-              );
+        return replayV4ArmContactReach(this.sport, effector);
       };
       const v4ArmReach = Math.min(contactReach("leftHand"), contactReach("rightHand"));
       if (this.liveAvatar.v4Motion) this.liveAvatar.setV4ArmReach?.(v4ArmReach);

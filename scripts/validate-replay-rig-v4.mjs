@@ -38,7 +38,7 @@ const BONE_NAMES = [
 
 const CLIPS = [
   { sport: "rower", name: "rowplay-v4-row-cycle", driveEnd: 0.38 },
-  { sport: "skier", name: "rowplay-v4-ski-cycle", driveEnd: 0.34 },
+  { sport: "skierg", name: "rowplay-v4-ski-cycle", driveEnd: 0.34 },
   { sport: "bike", name: "rowplay-v4-bike-cycle", driveEnd: 0.5 },
 ];
 

@@ -31,7 +31,7 @@ vi.mock("three", async (importOriginal) => {
   return { ...THREE, WebGLRenderer: FakeWebGLRenderer };
 });
 
-import { CourseRenderer3D } from "./renderer3d";
+import { CourseRenderer3D, replayV4ArmContactReach } from "./renderer3d";
 import { COLORS_DARK, REDUCED_REPLAY_POSES } from "./renderer";
 import {
   disposeReplayAssetTemplateLibrary,
@@ -404,6 +404,18 @@ function updateShadowMatrices(renderer: CourseRenderer3D): THREE.DirectionalLigh
 }
 
 describe("CourseRenderer3D", () => {
+  it("counts the V4 palm offset exactly once for SkiErg contact reach", () => {
+    const effector = {
+      proximalLength: 0.36,
+      distalLength: 0.29,
+      totalReach: 0.74,
+    };
+
+    expect(replayV4ArmContactReach("skierg", effector)).toBe(0.74);
+    expect(replayV4ArmContactReach("bike", effector)).toBe(0.74);
+    expect(replayV4ArmContactReach("rower", effector)).toBeCloseTo(0.65);
+  });
+
   it("constructs without throwing for each sport", () => {
     for (const sport of ["rower", "skierg", "bike"] as const) {
       const host = makeHost();
@@ -1870,6 +1882,7 @@ describe("CourseRenderer3D", () => {
             elbowForeAft: number;
             handVertical: number;
             handForeAft: number;
+            palmReach: number;
           }
         >();
 
@@ -1919,6 +1932,7 @@ describe("CourseRenderer3D", () => {
             elbowForeAft: elbowLocal.z - shoulderLocal.z,
             handVertical: handLocal.y - shoulderLocal.y,
             handForeAft: handLocal.z - shoulderLocal.z,
+            palmReach: handLocal.distanceTo(shoulderLocal),
           });
           maxHandY = Math.max(maxHandY, handLocal.y);
           minHandY = Math.min(minHandY, handLocal.y);
@@ -1942,13 +1956,13 @@ describe("CourseRenderer3D", () => {
         const techniqueMetrics = Array.from(
           landmarks,
           ([cycle, values]) =>
-            `${cycle.toFixed(2)}:${values.elbowAngle.toFixed(1)}°/${values.poleAngle.toFixed(1)}° elbow(y=${values.elbowVertical.toFixed(3)},z=${values.elbowForeAft.toFixed(3)}) hand(y=${values.handVertical.toFixed(3)},z=${values.handForeAft.toFixed(3)})`,
+            `${cycle.toFixed(2)}:${values.elbowAngle.toFixed(1)}°/${values.poleAngle.toFixed(1)}° reach=${values.palmReach.toFixed(3)} elbow(y=${values.elbowVertical.toFixed(3)},z=${values.elbowForeAft.toFixed(3)}) hand(y=${values.handVertical.toFixed(3)},z=${values.handForeAft.toFixed(3)})`,
         ).join(" ");
         expect(plant.poleAngle, techniqueMetrics).toBeGreaterThan(70);
         expect(plant.poleAngle).toBeLessThan(86);
-        expect(loaded.elbowAngle).toBeGreaterThan(48);
+        expect(loaded.elbowAngle, techniqueMetrics).toBeGreaterThan(48);
         expect(loaded.elbowAngle).toBeLessThan(76);
-        expect(poleOff.elbowAngle).toBeGreaterThan(140);
+        expect(poleOff.elbowAngle, techniqueMetrics).toBeGreaterThan(140);
         expect(poleOff.elbowAngle).toBeLessThan(170);
         expect(postRelease.elbowAngle).toBeGreaterThan(poleOff.elbowAngle);
         expect(postRelease.elbowAngle).toBeLessThan(178);
@@ -2308,13 +2322,16 @@ describe("CourseRenderer3D", () => {
             if (priorGrip) {
               expect(
                 grip.distanceTo(priorGrip),
-                `${side} grip continuity at ${cycle}; contact=${kinematics.poleContact.toFixed(4)} prior=${priorGrip
+                `${side} grip continuity at ${cycle}; contact=${kinematics.poleContact.toFixed(4)} flight=${kinematics.poleFlight.toFixed(4)} sweep=${kinematics.poleSweep.toFixed(4)} load=${kinematics.elbowLoad.toFixed(4)} extension=${kinematics.armExtension.toFixed(4)} prior=${priorGrip
                   .toArray()
                   .map((value) => value.toFixed(3))
                   .join(",")} next=${grip
                   .toArray()
                   .map((value) => value.toFixed(3))
-                  .join(",")} tip=${tip
+                  .join(",")} shoulder=${shoulderWorld
+                  .toArray()
+                  .map((value) => value.toFixed(3))
+                  .join(",")} reach=${grip.distanceTo(shoulderWorld).toFixed(3)} tip=${tip
                   .toArray()
                   .map((value) => value.toFixed(3))
                   .join(",")}`,

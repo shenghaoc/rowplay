@@ -25,9 +25,9 @@ proportions.
 
 | Artifact                           |     Bytes | SHA-256                                                            |
 | ---------------------------------- | --------: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.glb`           |   564,712 | `1cce28920c3735a3f8504d117af3cbbbbac7f9f4c072e7b8e0f662bc9817bbc2` |
-| `rowplay-athlete-v4.usdz`          | 1,272,704 | `7a6b5701293b49bef5bd80a2c0fdc7d681303a49f7a243d816988f167142a932` |
-| `rowplay-athlete-v4.contract.json` | generated | `76f28df4ce1cba6768a553e41ffce26d6b79625b36f3110f1c3d35e834775262` |
+| `rowplay-athlete-v4.glb`           |   584,796 | `73e0ece3e6c6de5a7a020a5097b172ca3e0ed8315c27ff604159b144fa90547b` |
+| `rowplay-athlete-v4.usdz`          | 1,318,256 | `934b0d3af0454f60a84dde76f95b77121919f5ad7cfc366684a670ae5d99658e` |
+| `rowplay-athlete-v4.contract.json` |     9,290 | `e9fb56f372ac1ea44ee5ccaf1d00b5a975e1eb4a1a2ee7843ab9e53609fb189d` |
 
 Blender 5.2 does not currently produce byte-identical USDZ containers across
 repeat exports. Two same-basename exports differed in the `.usdc` payload, so
@@ -67,6 +67,10 @@ vp run build:replay-rig-v4-contract
 vp run validate:replay-assets
 vp test run src/lib/replay/rigV4Usd.test.ts
 ```
+
+The USDZ launcher uses `/Applications/Blender.app/Contents/MacOS/blender` by
+default and honours `BLENDER_BIN` for another Blender 5 executable, including
+Linux and non-standard macOS installations.
 
 The USDZ validation is a native handoff and portability gate. It does not switch
 the production web loader from `GLTFLoader`/GLB to `USDLoader`/USDZ.

@@ -22,7 +22,7 @@ export const V4_CYCLE_SECONDS = 1;
 
 export const V4_CLIP_NAMES = Object.freeze({
   rower: "rowplay-v4-row-cycle",
-  skier: "rowplay-v4-ski-cycle",
+  skierg: "rowplay-v4-ski-cycle",
   bike: "rowplay-v4-bike-cycle",
 } as const);
 
@@ -30,7 +30,7 @@ export type V4Sport = keyof typeof V4_CLIP_NAMES;
 
 export const V4_DRIVE_END = Object.freeze({
   rower: 0.38,
-  skier: 0.34,
+  skierg: 0.34,
   bike: 0.5,
 } as const satisfies Readonly<Record<V4Sport, number>>);
 
@@ -45,11 +45,11 @@ export const V4_PHASE_SCHEMAS = Object.freeze({
     slide: 0.88,
     loop: 1,
   }),
-  skier: Object.freeze({
+  skierg: Object.freeze({
     reach: 0,
     plant: 0.12,
     loadedPull: 0.24,
-    driveEnd: V4_DRIVE_END.skier,
+    driveEnd: V4_DRIVE_END.skierg,
     release: 0.58,
     recover: 0.78,
     loop: 1,
@@ -1529,7 +1529,7 @@ function createSkiCycleClip(): THREE.AnimationClip {
     [-0.1, -0.035, -0.085],
   ] as const;
   return createSportClip(
-    "skier",
+    "skierg",
     times,
     [
       [0, 1.03, -0.04],
@@ -1925,7 +1925,7 @@ function createBikeCycleClip(): THREE.AnimationClip {
 function createV4Clips(): Readonly<Record<V4Sport, THREE.AnimationClip>> {
   return Object.freeze({
     rower: createRowCycleClip(),
-    skier: createSkiCycleClip(),
+    skierg: createSkiCycleClip(),
     bike: createBikeCycleClip(),
   });
 }

@@ -1468,20 +1468,16 @@ function drawRower(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: RowerKine
 
 /** Skier double-poling: arms/poles swing from a high reach to a low back-pull. */
 function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKinematics) {
-  const { x, y, bobY, polePlantCourseX, accent, rim, foam, skin, skinShade, hair, shoe, reduce } =
-    a;
+  const { x, y, polePlantCourseX, accent, rim, foam, skin, skinShade, hair, shoe, reduce } = a;
   const upperLegLength = 5.25;
   const lowerLegLength = 5.05;
-  // Keep the neutral double-pole stance close to leg extension, then add only
-  // a controlled athletic compression during the press. The old 7.4 px hip
-  // clearance paired 10.3 px of leg with a further 2.4 px vertical collapse;
-  // at peak load that folded the knees almost onto the snow and read as
-  // kneeling rather than flexing over two planted skis.
+  // Keep the pelvis in a narrow standing-compression band. It must neither
+  // collapse into the snow nor use whole-body recovery lift to fake extension:
+  // the fixed boots, flexed knees and hip hinge carry the complete cycle.
   const hipX = x + k.hipHinge * 2.4;
-  const hipY = bobY - 9.7 + k.kneeFlex * 0.9;
+  const hipY = y - 9.2 + k.kneeFlex * 0.35;
   const shX = x + 0.6 + k.hipHinge * 6;
-  // Preserve the existing torso length while the corrected pelvis sits at a
-  // human-readable height; otherwise fixing the legs would squash the trunk.
+  // Preserve torso length while the grounded pelvis folds at the hip.
   const shY = hipY - 6.6 + k.hipHinge * 0.4;
   const farKit = withAlpha(accent, 0.5);
   // A double-pole cycle uses a narrow parallel stance. In this side-profile
@@ -3359,7 +3355,10 @@ export class CourseRenderer implements ReplayRenderer {
     } else if (resolvedSport === "skierg") {
       skiKinematics = solveSkierKinematics(kinematicPose, this.skiKinematics);
       surgeChannel = skiKinematics.surge;
-      verticalChannel = -skiKinematics.rebound * 0.7;
+      // Classic double-poling never has a flight phase. Keep the planted skis
+      // and the athlete in one closed vertical chain; recovery comes from
+      // extending the knees and opening the hip, not lifting the whole figure.
+      verticalChannel = 0;
     } else {
       bikeKinematics = solveBikeKinematics(kinematicPose, this.bikeKinematics);
     }

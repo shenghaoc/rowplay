@@ -9,7 +9,7 @@
     "build": "vp build && node scripts/postbuild.mjs",
     "build:replay-assets": "node scripts/build-replay-assets.mjs",
     "build:replay-rig-v4": "node --experimental-strip-types scripts/build-replay-rig-v4.mjs",
-    "build:replay-rig-v4-usdz": "/Applications/Blender.app/Contents/MacOS/blender --background --python scripts/build-replay-rig-v4-usdz.py -- --input static/replay-assets/rowplay-athlete-v4.glb --output static/replay-assets/rowplay-athlete-v4.usdz",
+    "build:replay-rig-v4-usdz": "node --experimental-strip-types scripts/build-replay-rig-v4-usdz.ts",
     "build:replay-rig-v4-contract": "node --experimental-strip-types scripts/build-replay-rig-v4-contract.mjs && vp fmt static/replay-assets/rowplay-athlete-v4.contract.json",
     "capture:replay-release-matrix": "node scripts/capture-replay-release-matrix.mjs",
     "preview": "vp build && vp run preview:wrangler",

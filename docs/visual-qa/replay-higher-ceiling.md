@@ -452,8 +452,10 @@ deformation. It does not apply the runtime analytic hand/foot solve or render
 sport equipment, so it is not presented as final handle, pole, or pedal contact
 evidence. The earlier real-stage WebGPU sheets above remain the product-context
 record, and automated renderer tests cover the post-clip contact constraints.
-The current in-app browser worker exposed no WebGL/WebGPU context, so this pass
-does not mislabel a Canvas fallback capture as current 3D proof.
+Live in-app browser acceptance on 2026-07-22 loaded `/replay/1003` through
+WebGPU, exercised 2D and 3D at 1×, switched the 3D path to Ultra, and produced
+no runtime errors. The studio sheet remains isolated mesh/clip evidence rather
+than being relabelled as a runtime contact capture.
 
 Studio review rejected three intermediate candidates: floating collar and
 joint rings, centreline thigh cones that spiked under hip flexion, and broad
@@ -472,15 +474,15 @@ generic
 while removing the stacked-block and detached-joint language of the procedural
 fallback.
 
-The checked GLB is 564,712 bytes: one indexed skinned primitive, 7,204 vertices,
-13,724 triangles, 19 bones, 30 reviewed topology components, one material, zero
+The checked GLB is 584,796 bytes: one indexed skinned primitive, 7,420 vertices,
+14,240 triangles, 19 bones, 24 reviewed topology components, one material, zero
 textures, and three clips / 60 tracks. Two clean Blender-to-GLB builds were
 byte-identical at SHA-256
-`1cce28920c3735a3f8504d117af3cbbbbac7f9f4c072e7b8e0f662bc9817bbc2`.
-The checked USDZ derivative is 1,272,704 bytes at SHA-256
-`7a6b5701293b49bef5bd80a2c0fdc7d681303a49f7a243d816988f167142a932`;
+`73e0ece3e6c6de5a7a020a5097b172ca3e0ed8315c27ff604159b144fa90547b`.
+The checked USDZ derivative is 1,318,256 bytes at SHA-256
+`934b0d3af0454f60a84dde76f95b77121919f5ad7cfc366684a670ae5d99658e`;
 the generated contract SHA-256 is
-`76f28df4ce1cba6768a553e41ffce26d6b79625b36f3110f1c3d35e834775262`.
+`e9fb56f372ac1ea44ee5ccaf1d00b5a975e1eb4a1a2ee7843ab9e53609fb189d`.
 Blender 5.2 repeat USDZ containers are not byte-identical, so USDZ acceptance
 remains semantic `USDLoader` validation rather than silent byte normalization.
 
@@ -655,7 +657,7 @@ Paused catch/plant and moving 1× acceptance on `/replay/1003` confirmed separat
 knees and boots over their own skis in 2D and Ultra/WebGPU 3D without weakening
 the previously validated pole and elbow sequence.
 
-### Canvas SkiErg kneeling-silhouette correction — 2026-07-22
+### Canvas SkiErg grounded lower-body correction — 2026-07-22
 
 Close inspection of the Canvas plant and loaded poses exposed a distinct
 proportion defect after the parallel-ski correction: 10.3 px of leg was folded
@@ -663,10 +665,16 @@ under a pelvis with only 7.4 px neutral clearance, followed by another 2.4 px
 of vertical collapse. At peak compression the knees nearly touched the snow,
 making the athlete read as kneeling despite correct ski separation.
 
-The neutral pelvis now sits 9.7 px above the floating course origin and the
-press adds only 0.9 px of knee-driven vertical compression. Torso length follows
-the corrected pelvis. Dense Canvas sampling requires more than 8.5 px pelvis
-clearance, more than 3.5 px knee clearance, a predominantly vertical thigh,
-and the unchanged exact 5.25 px thigh length at every one of 129 cycle poses.
-Paused plant and compressed-load browser captures on `/replay/1003` confirm an
-upright start and standing athletic hinge instead of a kneeling silhouette.
+The first correction raised the pelvis but left the old recovery rebound on the
+whole Canvas figure. That overcorrection visibly lifted the athlete away from
+the planted skis, replacing the kneel with a jump. The final closed-chain pose
+keeps the pelvis in a narrow 8.8–9.25 px standing-compression band: 9.2 px at
+neutral and at most 0.35 px lower under knee load. Recovery now comes only from
+knee extension and hip opening; the Canvas path has no whole-body flight cue.
+
+Torso length follows the grounded pelvis. Dense Canvas sampling requires less
+than 0.4 px total pelvis excursion, more than 3.5 px knee clearance, a
+predominantly vertical thigh, and the unchanged exact 5.25 px thigh length at
+every one of 129 cycle poses. Paused plant/compression poses and moving 1×
+browser acceptance on `/replay/1003` confirm a stable athletic hinge—neither
+kneeling nor jumping.
