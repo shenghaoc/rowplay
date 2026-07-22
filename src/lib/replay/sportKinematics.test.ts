@@ -10,7 +10,12 @@ import {
   SKI_POLE_RELEASE_START_CYCLE,
   SKI_PREPLANT_START_CYCLE,
 } from "./motionGraph";
-import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
+import {
+  solveBikeKinematics,
+  solveRowerKinematics,
+  solveSkierElbowDirection,
+  solveSkierKinematics,
+} from "./sportKinematics";
 
 const TAU = Math.PI * 2;
 
@@ -79,6 +84,44 @@ describe("sportKinematics", () => {
     expect(recovery.poleLift).toBeGreaterThan(0.8);
     expect(recovery.poleContact).toBe(0);
     expect(recovery.rebound).toBeGreaterThan(0);
+  });
+
+  it("turns SkiErg elbows down at plant, rearward under load, then down for the next plant", () => {
+    const directionAt = (cycle: number) =>
+      solveSkierElbowDirection(solveSkierKinematics(poseAt("skierg", cycle)));
+    const plant = directionAt(0.02);
+    const loaded = directionAt(SKI_ELBOW_LOAD_CYCLE);
+    const latePress = directionAt(0.24);
+    const poleOff = directionAt(SKI_POLE_OFF_CYCLE);
+    const recovery = directionAt(0.72);
+    const preplant = directionAt(0.97);
+
+    expect(plant.vertical).toBeLessThan(-0.95);
+    expect(plant.foreAft).toBeLessThan(0);
+    expect(loaded.vertical).toBeLessThan(-0.65);
+    expect(loaded.foreAft).toBeLessThan(-0.35);
+    expect(latePress.foreAft).toBeLessThan(-0.9);
+    expect(Math.abs(poleOff.vertical)).toBeLessThan(1e-10);
+    expect(poleOff.foreAft).toBeCloseTo(-1, 12);
+    expect(recovery.vertical).toBeLessThan(-0.65);
+    expect(recovery.foreAft).toBeGreaterThan(poleOff.foreAft);
+    expect(preplant.vertical).toBeLessThan(-0.99);
+    expect(Math.abs(preplant.foreAft)).toBeLessThan(0.1);
+
+    let previous = directionAt(0);
+    for (let step = 1; step <= 256; step++) {
+      const next = directionAt(step / 256);
+      expect(
+        Math.hypot(next.vertical - previous.vertical, next.foreAft - previous.foreAft),
+        `continuous SkiErg elbow plane at ${step / 256}`,
+      ).toBeLessThan(0.035);
+      previous = next;
+    }
+
+    const reused = { vertical: 0, foreAft: 0 };
+    expect(solveSkierElbowDirection(solveSkierKinematics(poseAt("skierg", 0.24)), reused)).toBe(
+      reused,
+    );
   });
 
   it("plants and releases SkiErg poles with C1 contact velocity", () => {

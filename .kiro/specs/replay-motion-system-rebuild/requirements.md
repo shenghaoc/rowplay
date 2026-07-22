@@ -100,10 +100,14 @@ viewing speed.
 2. WHEN SkiErg is shown THEN reach, velocity-matched plant, loaded pull, and
    release SHALL read as distinct states; baskets SHALL remain course-anchored
    throughout the loaded phase while the athlete advances relative to them.
-   Elbows SHALL load early in the sagittal plane and re-extend into pole-off
-   without selecting a sideways or backwards branch. Pole contact SHALL end in
-   the first 26–29% of the cycle, and each airborne basket SHALL approach the
-   next plant continuously without dropping or snapping between anchors.
+   Flexed elbows SHALL point down at plant, rotate rearward in the sagittal
+   plane during the loaded core-led press, and re-extend into pole-off without
+   selecting a sideways or horizontally inverted branch. During recovery the
+   hands and poles SHALL lift and travel forward while the elbow plane returns
+   underneath the arm, so the elbows point down again before the next plant.
+   Pole contact SHALL end in the first 26–29% of the cycle, and each airborne
+   basket SHALL approach the next plant continuously without dropping or
+   snapping between anchors.
 3. WHEN BikeErg is shown THEN opposed pedal loading SHALL drive coordinated
    ankle, knee, hip, pelvic, shoulder, and head response instead of a crank
    loop plus small sine-wave torso motion.

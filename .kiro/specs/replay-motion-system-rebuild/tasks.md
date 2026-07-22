@@ -85,3 +85,13 @@
     tolerance of the procedural mechanical branch through dense full-cycle poses
   - [x] Verify the moving seat/carriage stays over the static rails while the
     fixed stretcher and oar pivots remain authoritative
+
+- [x] **11. Correct the SkiErg elbow bend plane through the complete cycle**
+  - [x] Encode down-at-plant → rearward-under-load → under-arm recovery →
+    down-at-next-plant as one continuous shared sagittal direction
+  - [x] Put both Canvas arms on the continuous outside branch instead of the
+    inverted high-plant intersection
+  - [x] Drive procedural 3D and V4 post-clip IK from the phase-varying marker
+    while preserving rigid poles, planted baskets, and exact hand contacts
+  - [x] Protect plant, load, pole-off, recovery, pre-plant, fixed segment
+    lengths, and dense-cycle continuity with 2D/shared/3D regressions

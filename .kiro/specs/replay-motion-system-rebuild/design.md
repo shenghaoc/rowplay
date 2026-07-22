@@ -86,18 +86,33 @@ starts tall with bent arms above eye level, initiates the pull from the core,
 finishes with long arms beside the thighs, and uses a controlled recovery.
 [Concept2's double-pole article](https://www.concept2.com/blog/skierg-technique)
 also calls for a slight backward pole angle at plant and explicitly warns
-against carrying the hands beyond the hips. Published on-snow measurements in
+against carrying the hands beyond the hips. Its
+[mid-summer technique check](https://www.concept2.com/blog/midsummer-ski-technique-check)
+keeps a healthy arm bend at the start and delays extension until the arm has
+passed the core. A 2024
+[field kinematics study](https://pmc.ncbi.nlm.nih.gov/articles/PMC10963750/)
+separately measures elbow angle at plant, minimum flexion, pole-off, and maximum
+recovery, with flexion after plant followed by extension toward pole-off.
+Published on-snow measurements in
 [Stöggl and Holmberg](https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2018.00978/full)
 place pole contact in roughly the first 26–29% of the cycle, with about an 80°
 pole at plant, 23° at pole-off, early elbow flexion, and near-extension at
-release.
+release. Those sources establish phase and flexion/extension landmarks rather
+than one universal 3D elbow vector; down-at-plant → rearward-under-load is the
+generic side-view animation contract inferred from those positions, not a
+claim about a recorded athlete's joint path.
 
-Those landmarks own both renderers. The V4 clip supplies the skinned base pose,
-but the shared sagittal elbow marker owns the SkiErg two-bone branch; the rigid
-pole owns the terminal hand contact. At the C2-flat flight apex the renderer
-changes from the previous snow anchor to the next with zero visible weight,
-then lowers the basket continuously into pre-plant. This prevents horizontal
-elbow inversion, telescoping poles, and the late-recovery pole drop.
+Those landmarks own both renderers. Canvas retains one outside two-bone
+intersection: the high forward grip places that branch below the shoulder at
+plant, and the same continuous branch becomes rearward as the hand passes the
+torso. Three.js rotates its shared sagittal bend vector from down to back during
+the loaded sweep and returns by the shortest sagittal arc underneath the
+recovering arm. The V4 clip supplies the skinned base pose, but that shared
+marker owns its post-clip SkiErg two-bone branch; the rigid pole owns terminal
+hand contact. At the C2-flat flight apex the renderer changes from the previous
+snow anchor to the next with zero visible weight, then lowers the basket
+continuously into pre-plant. This prevents horizontal elbow inversion,
+telescoping poles, and the late-recovery pole drop.
 
 ## V4 rigged asset
 

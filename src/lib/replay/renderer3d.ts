@@ -3,7 +3,12 @@ import type { ReplayRenderer, RenderState } from "./renderer";
 import { COLORS_DARK, COLORS_LIGHT, REDUCED_REPLAY_POSES } from "./renderer";
 import type { RenderQuality } from "./replayRenderer";
 import { catchTransitions, fallbackStrokePose, type StrokePose } from "./strokeModel";
-import { solveSkierKinematics, type SkierKinematics } from "./sportKinematics";
+import {
+  solveSkierElbowDirection,
+  solveSkierKinematics,
+  type SkierElbowDirection,
+  type SkierKinematics,
+} from "./sportKinematics";
 import {
   createBikeMotionGraphScratch,
   createRowerMotionGraphScratch,
@@ -2175,6 +2180,7 @@ function makeSkierAvatar(
     rebound: 0,
     surge: 0,
   };
+  const elbowDirection: SkierElbowDirection = { vertical: -1, foreAft: 0 };
 
   // Art-direction skis: dark base with a full accent top deck so the pair
   // reads as equipment without swallowing the athlete's legs.
@@ -2511,6 +2517,16 @@ function makeSkierAvatar(
     // does not counter-rotate the pole sweep.
     courseRightWorld.set(1, 0, 0).transformDirection(outer.matrixWorld);
     courseForwardWorld.set(0, 0, 1).transformDirection(outer.matrixWorld);
+    solveSkierElbowDirection(motion, elbowDirection);
+    // The bend plane follows the technique phase instead of holding one fixed
+    // down/forward vector for the whole cycle. Local -y points down, local -z
+    // is rearward. During recovery the hand/pole path itself lifts and travels
+    // forward while this hint takes the shortest sagittal route back underneath
+    // the arm. A small side-out component preserves anatomical clearance
+    // without creating the former horizontal goalpost silhouette.
+    const bendLateral = 0.08 + motion.elbowLoad * 0.04 + motion.poleFlight * 0.015;
+    const bendUp = elbowDirection.vertical * 0.78;
+    const bendAft = elbowDirection.foreAft * 0.78;
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       const pole = poles[i];
@@ -2524,11 +2540,10 @@ function makeSkierAvatar(
       // Keep the elbow close to the sagittal plane with modest anatomical
       // clearance. This target also drives the V4 post-clip arm correction;
       // preserving the old clip plane is what produced the backwards goalpost.
-      const bendLateral = 0.08 + motion.elbowLoad * 0.04;
       setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
         lateral: bendLateral,
-        up: -0.34,
-        aft: 0.12,
+        up: bendUp,
+        aft: bendAft,
       });
 
       desiredHandWorld.copy(arm.handTarget);
@@ -2588,8 +2603,8 @@ function makeSkierAvatar(
       // a preferred point the hand no longer occupies.
       setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
         lateral: bendLateral,
-        up: -0.34,
-        aft: 0.12,
+        up: bendUp,
+        aft: bendAft,
       });
 
       solveTwoBone3D(

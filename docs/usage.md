@@ -127,8 +127,10 @@ biomechanics. Its shared technique phases stage RowErg legs, body, then arms
 (the arms stay long until the late draw, both elbows pull behind the torso as
 the handle approaches the lower ribs, then arms straighten first on recovery);
 SkiErg's classic double-pole high reach,
-steep plant, early elbow bend, core-led press, long-arm pole-off, and lifted
-recovery; and BikeErg cadence-driven cranks separately from distance-driven wheel roll.
+steep plant, down-pointing early elbow bend, core-led press with the elbow
+rotating rearward, long-arm pole-off, and lifted forward recovery that returns
+the elbow underneath the arm before the next plant; and BikeErg cadence-driven
+cranks separately from distance-driven wheel roll.
 Both 2D and 3D use those same timing and contact semantics.
 
 The 2D view draws a lightweight procedural athlete. In 3D, rowplay loads a
@@ -162,6 +164,11 @@ The skier advances relative to that basket, releases it near the end of the
 short planted phase, lifts it through recovery, and approaches the next anchor
 without a vertical drop. The 3D elbow is constrained to the shared sagittal
 technique branch rather than a sideways branch inherited from the base clip.
+At the high plant both 2D and 3D put the flexed elbow below the shoulder; while
+the planted pole bears the press, that bend plane rotates behind the shoulder.
+The hand and rigid pole then lift and travel forward on recovery, and the elbow
+returns underneath the arm for the next plant without changing to the opposite
+two-bone intersection.
 BikeErg shoes stay on opposed pedals while each knee follows a continuous
 rider-forward branch and retains flexion through bottom dead centre. These are
 deliberate illustrative motion constraints, not measured joint or force data

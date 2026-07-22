@@ -12,11 +12,11 @@ rearward elbow marker, SkiErg uses the shared sagittal elbow marker, BikeErg
 uses the mechanical knee marker, and rigid sport equipment is the terminal authority. The V4 hero root now
 reports `userData.replayV4Architecture = "clip-contact-constrained"`.
 
-| Sport   | Current mechanical contract                                                                                                                                                                                                                                                                                                                         |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| BikeErg | Both shoes remain on mechanically opposed pedals. Each knee selects one continuous rider-forward branch of the hip/pedal sphere intersection; saddle height retains visible flexion through bottom dead centre.                                                                                                                                     |
-| RowErg  | Each palm terminates on its own rigid inboard scull grip. Arms remain long through leg drive and body opening; both elbows travel behind the torso only in the late draw and arms clear first on recovery. Hands remain uncrossed and forearms remain outside the torso; neither a forward-pointing elbow nor a horizontal chicken wing is allowed. |
-| SkiErg  | Each pole is a rigid 1.55 m link. The basket plants steeply, remains fixed while the skier advances, releases by 29% of the cycle, lifts through recovery, and converges continuously on the next catch. The hand stays on the pole-tip sphere and the elbow stays on its sagittal flex-to-extension branch.                                        |
+| Sport   | Current mechanical contract                                                                                                                                                                                                                                                                                                                                                                 |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BikeErg | Both shoes remain on mechanically opposed pedals. Each knee selects one continuous rider-forward branch of the hip/pedal sphere intersection; saddle height retains visible flexion through bottom dead centre.                                                                                                                                                                             |
+| RowErg  | Each palm terminates on its own rigid inboard scull grip. Arms remain long through leg drive and body opening; both elbows travel behind the torso only in the late draw and arms clear first on recovery. Hands remain uncrossed and forearms remain outside the torso; neither a forward-pointing elbow nor a horizontal chicken wing is allowed.                                         |
+| SkiErg  | Each pole is a rigid 1.55 m link. The basket plants steeply, remains fixed while the skier advances, releases by 29% of the cycle, lifts through recovery, and converges continuously on the next catch. The elbow points down at plant, rotates rearward during the loaded press, and returns underneath the forward-lifting arm before the next plant without changing two-bone branches. |
 
 The correction is protected across dense full cycles: 256-step BikeErg knee
 branch/continuity sampling, 257-pose Canvas and procedural-3D RowErg elbow
@@ -25,12 +25,17 @@ palm/contact/torso-clearance sampling, and 256-step SkiErg
 rigid-pole/plant/contact/continuity sampling. V3 procedural fallback contacts
 and the 2D shared timing path remain covered too.
 The SkiErg suite additionally checks the 80°/23° plant-to-pole-off shaft
-envelope, early elbow flexion, near-extension at release, exact hand/grip
-closure, and a zero-weight previous-anchor → next-anchor handoff at the start
-of final approach.
+envelope, down-at-plant and rearward-loaded elbow landmarks, early elbow
+flexion, near-extension at release, lifted/forward grip recovery,
+down-at-preplant return, fixed 2D arm lengths, dense elbow continuity, exact
+hand/grip closure, and a zero-weight previous-anchor → next-anchor handoff at
+the start of final approach.
 
 The technique landmarks come from [Concept2's SkiErg technique](https://www.concept2.com/training/skierg-technique),
 [Concept2's double-pole guidance](https://www.concept2.com/blog/skierg-technique),
+[Concept2's mid-summer technique check](https://www.concept2.com/blog/midsummer-ski-technique-check),
+the elbow-phase measurements in a 2024
+[field kinematics study](https://pmc.ncbi.nlm.nih.gov/articles/PMC10963750/),
 and the on-snow timing and joint-angle measurements in
 [Stöggl and Holmberg](https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2018.00978/full).
 The RowErg sequence and late, rearward elbow draw come from
@@ -565,3 +570,21 @@ course drift, live/ghost independence, reduced motion, WebGPU/WebGL selection,
 V4→V3→procedural→Canvas fallback, disposal, and asset provenance. This remains
 canonical generic technique synchronized to Concept2 timing—not measured
 athlete biomechanics or motion capture.
+
+### SkiErg elbow-plane correction recheck — 2026-07-22
+
+The SkiErg demo was rechecked at characteristic paused plant, loaded-press,
+recovery, and next-plant poses, then through multiple moving cycles at 1× in
+both Canvas 2D and WebGPU/Ultra 3D. Canvas keeps one exact-length outside arm
+branch: the elbow is below the shoulder at plant, migrates behind the shoulder
+under pole load, and returns underneath the forward-rising grip without an
+intersection swap. Three.js rotates the shared sagittal marker down → back →
+under-arm/down, and V4 consumes that marker after clip sampling instead of
+retaining a fixed or horizontally inverted clip plane.
+
+The moving pass retained paired hand/pole contact, rigid shafts, fixed loaded
+baskets, airborne clearance, and the pre-plant convergence already protected
+by the contact suite. No replay-renderer diagnostic was emitted. This
+directional sequence follows the public technique and elbow-phase references
+above; its exact 3D bend vector remains a generic art-direction inference, not
+measured athlete motion.

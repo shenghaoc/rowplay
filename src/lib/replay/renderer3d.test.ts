@@ -1735,14 +1735,24 @@ describe("CourseRenderer3D", () => {
         let minHandY = Number.POSITIVE_INFINITY;
         let maxHandY = Number.NEGATIVE_INFINITY;
         let maxElbowLateralDeviation = 0;
-        const landmarks = new Map<number, { elbowAngle: number; poleAngle: number }>();
+        const landmarks = new Map<
+          number,
+          {
+            elbowAngle: number;
+            poleAngle: number;
+            elbowVertical: number;
+            elbowForeAft: number;
+            handVertical: number;
+            handForeAft: number;
+          }
+        >();
 
         // Published on-snow double-poling landmarks: steep plant, deepest
         // elbow flexion near 11%, near-extension at ~29% pole-off, and maximum
         // extension just after release. The renderer remains stylised, so use
         // bounded technique envelopes rather than pretending to reproduce one
         // athlete's measured joint path.
-        for (const cycle of [0.02, 0.11, 0.24, 0.29, 0.34, 0.44, 0.52]) {
+        for (const cycle of [0.02, 0.11, 0.24, 0.29, 0.34, 0.44, 0.52, 0.8, 0.97]) {
           renderer.render(makeSportState("skierg", cycle, 200 + cycle * 8), false);
           const { avatar, instance } = v4Lane(renderer);
           getScene(renderer).updateMatrixWorld(true);
@@ -1776,7 +1786,14 @@ describe("CourseRenderer3D", () => {
           const poleAngle = THREE.MathUtils.radToDeg(
             Math.atan2(Math.abs(poleVector.y), Math.hypot(poleVector.x, poleVector.z)),
           );
-          landmarks.set(cycle, { elbowAngle, poleAngle });
+          landmarks.set(cycle, {
+            elbowAngle,
+            poleAngle,
+            elbowVertical: elbowLocal.y - shoulderLocal.y,
+            elbowForeAft: elbowLocal.z - shoulderLocal.z,
+            handVertical: handLocal.y - shoulderLocal.y,
+            handForeAft: handLocal.z - shoulderLocal.z,
+          });
           maxHandY = Math.max(maxHandY, handLocal.y);
           minHandY = Math.min(minHandY, handLocal.y);
           const armMidX = (shoulderLocal.x + handBoneLocal.x) * 0.5;
@@ -1794,10 +1811,12 @@ describe("CourseRenderer3D", () => {
         const loaded = landmarks.get(0.11)!;
         const poleOff = landmarks.get(0.29)!;
         const postRelease = landmarks.get(0.34)!;
+        const lateRecovery = landmarks.get(0.8)!;
+        const preplant = landmarks.get(0.97)!;
         const techniqueMetrics = Array.from(
           landmarks,
           ([cycle, values]) =>
-            `${cycle.toFixed(2)}:${values.elbowAngle.toFixed(1)}°/${values.poleAngle.toFixed(1)}°`,
+            `${cycle.toFixed(2)}:${values.elbowAngle.toFixed(1)}°/${values.poleAngle.toFixed(1)}° elbow(y=${values.elbowVertical.toFixed(3)},z=${values.elbowForeAft.toFixed(3)}) hand(y=${values.handVertical.toFixed(3)},z=${values.handForeAft.toFixed(3)})`,
         ).join(" ");
         expect(plant.poleAngle, techniqueMetrics).toBeGreaterThan(70);
         expect(plant.poleAngle).toBeLessThan(86);
@@ -1807,6 +1826,16 @@ describe("CourseRenderer3D", () => {
         expect(poleOff.elbowAngle).toBeLessThan(170);
         expect(postRelease.elbowAngle).toBeGreaterThan(poleOff.elbowAngle);
         expect(postRelease.elbowAngle).toBeLessThan(178);
+        expect(plant.elbowVertical, techniqueMetrics).toBeLessThan(0);
+        expect(loaded.elbowVertical, techniqueMetrics).toBeLessThan(0);
+        expect(landmarks.get(0.24)!.elbowForeAft, techniqueMetrics).toBeLessThan(0);
+        expect(lateRecovery.handVertical, techniqueMetrics).toBeGreaterThan(
+          landmarks.get(0.24)!.handVertical,
+        );
+        expect(lateRecovery.handForeAft, techniqueMetrics).toBeGreaterThan(
+          landmarks.get(0.24)!.handForeAft,
+        );
+        expect(preplant.elbowVertical, techniqueMetrics).toBeLessThan(0);
         expect(poleOff.poleAngle).toBeGreaterThan(15);
         expect(poleOff.poleAngle).toBeLessThan(28);
         expect(maxHandY - minHandY, "hands drop through the double-pole press").toBeGreaterThan(

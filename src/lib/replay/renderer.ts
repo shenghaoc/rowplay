@@ -501,6 +501,36 @@ export function solveRowerElbow2D(
   return out;
 }
 
+/**
+ * Solve the continuous side-profile SkiErg arm branch.
+ *
+ * Canvas y increases downward and the skier faces +x. On this outside branch,
+ * a high/forward hand puts the elbow below the shoulder at plant; as the same
+ * rigid hand arc passes the torso, that elbow naturally migrates rearward.
+ * Keeping one branch through recovery prevents the old horizontal inversion,
+ * and the arm returns to the down-pointing plant without a discrete swap.
+ */
+export function solveSkierElbow2D(
+  shoulderX: number,
+  shoulderY: number,
+  handX: number,
+  handY: number,
+  upperArmLength: number,
+  forearmLength: number,
+  out: MutableFigurePoint2,
+): MutableFigurePoint2 {
+  return solveTwoBoneJoint2D(
+    shoulderX,
+    shoulderY,
+    handX,
+    handY,
+    upperArmLength,
+    forearmLength,
+    1,
+    out,
+  );
+}
+
 /** Resolve a continuous oar angle whose rigid inboard grip meets an arm reach. */
 function solveRowerOarAngle2D(
   shoulderX: number,
@@ -1538,7 +1568,7 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
     withAlpha(rim, 0.55),
     withAlpha(shoe, 0.62),
   );
-  solveTwoBoneJoint2D(shX - 0.45, shY - 0.4, farHandX, farHandY, 5.2, 5, -1, jointScratchA);
+  solveSkierElbow2D(shX - 0.45, shY - 0.4, farHandX, farHandY, 5.2, 5, jointScratchA);
   drawShoulderCap(ctx, shX - 0.45, shY - 0.4, farKit, 1.18);
   taperedLimb(ctx, shX - 0.45, shY - 0.4, jointScratchA.x, jointScratchA.y, 2.15, 1.6, farKit);
   taperedLimb(
@@ -1612,7 +1642,7 @@ function drawSkier(ctx: CanvasRenderingContext2D, a: AvatarDrawCtx, k: SkierKine
   // burst, while the rigid visual pole keeps a stable length throughout.
   limb(ctx, nearHandX, nearHandY, nearPoleTipX, nearPoleTipY, 1.3, rim);
   drawSkiPoleHardware(ctx, nearHandX, nearHandY, nearPoleTipX, nearPoleTipY, rim, shoe);
-  solveTwoBoneJoint2D(shX, shY + 0.2, nearHandX, nearHandY, 5.2, 5, -1, jointScratchA);
+  solveSkierElbow2D(shX, shY + 0.2, nearHandX, nearHandY, 5.2, 5, jointScratchA);
   drawShoulderCap(ctx, shX, shY + 0.2, accent, 1.4);
   taperedLimb(ctx, shX, shY + 0.2, jointScratchA.x, jointScratchA.y, 2.35, 1.75, accent);
   taperedLimb(

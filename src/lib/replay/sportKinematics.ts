@@ -5,6 +5,7 @@ import {
   sampleBikeMotionGraphInto,
   sampleRowerMotionGraphInto,
   sampleSkierMotionGraphInto,
+  SKI_POLE_OFF_CYCLE,
 } from "./motionGraph";
 import type { StrokePose } from "./strokeModel";
 
@@ -47,6 +48,19 @@ export interface SkierKinematics {
   surge: number;
 }
 
+/**
+ * Phase-continuous SkiErg elbow-plane direction.
+ *
+ * These are semantic directions rather than measured joint angles: the elbow
+ * points down at the high plant, rotates behind the shoulder during the loaded
+ * press, then returns underneath the rising/forward-travelling arms before the
+ * next plant. Negative `vertical` points down, negative `foreAft` points back.
+ */
+export interface SkierElbowDirection {
+  vertical: number;
+  foreAft: number;
+}
+
 /** Bike crank angle and restrained secondary joint rotations, all in radians. */
 export interface BikeKinematics {
   crankAngle: number;
@@ -56,11 +70,38 @@ export interface BikeKinematics {
   anklePitchRight: number;
 }
 
+function clampUnit(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+}
+
 function secondaryScale(intensity: number): number {
-  const normalized = Number.isFinite(intensity) ? Math.max(0, Math.min(1, intensity)) : 0.5;
+  const normalized = Number.isFinite(intensity) ? clampUnit(intensity) : 0.5;
   // Logged effort may make secondary motion more legible, but must not change
   // the authored technique sequence, contact paths, or pose limits.
   return 0.9 + normalized * 0.1;
+}
+
+/**
+ * Resolve the shared down → back → recovery → down SkiErg elbow sequence.
+ *
+ * The bend vector follows one continuous arc in the sagittal plane. During
+ * contact, `poleSweep` turns it from down toward back. After pole-off, the same
+ * C2 channel takes the shortest sagittal arc back underneath the recovering
+ * arm. Following the circle avoids interpolating through a zero vector, which
+ * would make a two-bone solver choose a lateral fallback and flip.
+ */
+export function solveSkierElbowDirection(
+  kinematics: SkierKinematics,
+  output: SkierElbowDirection = { vertical: -1, foreAft: 0 },
+): SkierElbowDirection {
+  const sweep = clampUnit(kinematics.poleSweep);
+  const angle =
+    kinematics.cycle <= SKI_POLE_OFF_CYCLE
+      ? Math.PI + sweep * (Math.PI / 2)
+      : Math.PI * 1.5 - (1 - sweep) * (Math.PI / 2);
+  output.vertical = Math.cos(angle);
+  output.foreAft = Math.sin(angle);
+  return output;
 }
 
 /**

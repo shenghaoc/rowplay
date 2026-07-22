@@ -99,7 +99,9 @@ account.
   and oar assembly, and the SkiErg a complete ski assembly without taking over
   their contact targets. RowErg grips remain outside the torso through the full
   pull, while SkiErg poles stay rigid from grip to basket and their planted tips
-  hold a deterministic course contact
+  hold a deterministic course contact. SkiErg elbows point down at plant,
+  rotate rearward through the loaded press, and return underneath the
+  forward-lifting recovery without a horizontal branch flip
 - High and Ultra 3D quality use a single world-aligned, texel-stabilised native
   shadow rig. The visible sun, athlete shadow, and ground contact agree rather
   than layering a second simulated shadow over the same live athlete

@@ -427,6 +427,15 @@ describe("CourseRenderer stroke pose input", () => {
       liveSplash: unknown;
     };
     const close = (actual: number, expected: number) => Math.abs(actual - expected) < 1e-7;
+    const landmarks = new Map<
+      number,
+      {
+        shoulder: { x: number; y: number };
+        elbow: { x: number; y: number };
+        hand: { x: number; y: number };
+      }
+    >();
+    let previousElbow: { x: number; y: number } | null = null;
 
     for (let step = 0; step <= 256; step++) {
       operations.length = 0;
@@ -462,6 +471,39 @@ describe("CourseRenderer stroke pose input", () => {
         }
       }
       expect(poles, `two rigid poles at ${cycle}`).toHaveLength(2);
+
+      const shoulderCalls = operations.filter(
+        ({ method, args }) =>
+          method === "ellipse" &&
+          Math.abs((args[2] as number) - 1.4) < 1e-8 &&
+          Math.abs((args[3] as number) - 1.4 * 0.82) < 1e-8,
+      );
+      const elbowCalls = operations.filter(
+        ({ method, args }) => method === "arc" && Math.abs((args[2] as number) - 0.95) < 1e-8,
+      );
+      expect(shoulderCalls, `near SkiErg shoulder at ${cycle}`).toHaveLength(1);
+      expect(elbowCalls, `near SkiErg elbow at ${cycle}`).toHaveLength(1);
+      const shoulder = {
+        x: shoulderCalls[0].args[0] as number,
+        y: shoulderCalls[0].args[1] as number,
+      };
+      const elbow = {
+        x: elbowCalls[0].args[0] as number,
+        y: elbowCalls[0].args[1] as number,
+      };
+      const hand = poles[1].hand;
+      expect(Math.hypot(elbow.x - shoulder.x, elbow.y - shoulder.y)).toBeCloseTo(5.2, 6);
+      expect(Math.hypot(hand.x - elbow.x, hand.y - elbow.y)).toBeCloseTo(5, 6);
+      if (previousElbow && step < 256) {
+        expect(
+          Math.hypot(elbow.x - previousElbow.x, elbow.y - previousElbow.y),
+          `continuous 2D SkiErg elbow at ${cycle}`,
+        ).toBeLessThan(0.8);
+      }
+      previousElbow = elbow;
+      if ([5, 28, 61, 74, 205, 251].includes(step)) {
+        landmarks.set(step, { shoulder, elbow, hand });
+      }
 
       for (const { hand, tip } of poles) {
         expect(tip.y, `basket stays above the 2D snow at ${cycle}`).toBeLessThanOrEqual(120 + 1e-7);
@@ -499,6 +541,31 @@ describe("CourseRenderer stroke pose input", () => {
         }
       }
     }
+
+    const plant = landmarks.get(5)!;
+    const loaded = landmarks.get(28)!;
+    const latePress = landmarks.get(61)!;
+    const poleOff = landmarks.get(74)!;
+    const recovery = landmarks.get(205)!;
+    const preplant = landmarks.get(251)!;
+    expect(plant.elbow.y, "2D elbow points down at plant").toBeGreaterThan(plant.shoulder.y);
+    expect(loaded.elbow.y, "2D elbow remains down during early load").toBeGreaterThan(
+      loaded.shoulder.y,
+    );
+    expect(latePress.elbow.x, "2D elbow travels behind the shoulder under load").toBeLessThan(
+      latePress.shoulder.x,
+    );
+    expect(poleOff.elbow.x, "2D elbow remains rearward through pole-off").toBeLessThan(
+      poleOff.shoulder.x,
+    );
+    expect(recovery.hand.y, "2D pole grip lifts on recovery").toBeLessThan(latePress.hand.y);
+    expect(
+      recovery.hand.x - recovery.shoulder.x,
+      "2D pole grip travels forward relative to the recovering torso",
+    ).toBeGreaterThan(latePress.hand.x - latePress.shoulder.x);
+    expect(preplant.elbow.y, "2D elbow points down again before plant").toBeGreaterThan(
+      preplant.shoulder.y,
+    );
   });
 
   function expectFiniteDrawing(ctx: CanvasRenderingContext2D) {
