@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { waitForAppHydration } from "./helpers";
 
 /**
  * Smoke: every key page must load on the real Workers runtime (demo mode) with
@@ -25,10 +26,11 @@ test.describe("smoke", () => {
     const errors = collectPageErrors(page);
 
     await page.goto("/dashboard");
+    await waitForAppHydration(page);
     // LanguagePicker appears twice (desktop masthead + mobile dialog); count one.
     await expect(page.locator(".lang-picker").first().locator("select option")).toHaveCount(6);
     const langSelect = page.locator(".lang-picker select").first();
-    // Dispatch change explicitly to avoid selectOption races before hydration.
+    // Dispatch change explicitly after Svelte's cookie-backed handler is attached.
     await langSelect.evaluate((el) => {
       const select = el as HTMLSelectElement;
       select.value = "de";
@@ -129,6 +131,7 @@ test.describe("smoke", () => {
 
     await page.goto("/replay/1005");
     await expect(page.locator("canvas").first()).toBeVisible();
+    await waitForAppHydration(page);
 
     // The constant-pace button lives inside a collapsible <details>; open it first
     const moreOptions = page.locator("details.ghost-more summary");
@@ -163,6 +166,7 @@ test.describe("smoke", () => {
     const errors = collectPageErrors(page);
 
     await page.goto("/dashboard");
+    await waitForAppHydration(page);
     await page.getByRole("button", { name: /More filters|更多筛选/ }).click();
     await page.getByRole("button", { name: /^2k$/ }).click();
     await expect(page).toHaveURL(/[?&]dist=2000/);

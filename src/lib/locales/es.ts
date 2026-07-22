@@ -332,7 +332,9 @@ Abre cualquier entrenamiento desde el panel y pulsa **Reproducir**.
 - Cambia entre vistas del recorrido en **2D y 3D** (la 3D necesita un navegador razonablemente moderno).
 - Define un **ritmo objetivo** para dibujar una línea de referencia en el gráfico de ritmo.
 
-El atleta se anima a la cadencia real del entrenamiento — una palada (o impulso de bastones, o pedalada) por cada palada registrada, con salpicaduras en cada ataque — y se acelera junto con la velocidad de reproducción. En 3D, el atleta usa un cuerpo segmentado a escala humana con equipación específica del deporte, de modo que la postura se lee como la de un deportista en un ergómetro y no como un marcador de juguete. Las manos y los pies quedan apoyados en el equipo correcto: mangos y reposapiés de remo, empuñaduras y botas de SkiErg, o manillar y pedales de BikeErg. La superficie del recorrido también cambia por deporte: RowErg muestra calles de agua en capas, SkiErg muestra surcos de nieve pisada y BikeErg muestra una pista de asfalto/velódromo con bordillos, marcas de carril y barras de velocidad. La cámara de seguimiento se mantiene lo bastante cerca para que la posición del cuerpo importe y abre ligeramente el objetivo cuando el bote va más rápido.
+La animación sigue los ciclos válidos registrados del entrenamiento: cada fila de palada hace avanzar una palada, un ciclo de bastones o una vuelta de pedal creada para el replay, mientras que se ignoran los anclajes de intervalo sin avance de tiempo ni distancia. La cinemática visible es una ilustración determinista, no biomecánica medida: Concept2 no aporta curvas de fuerza, recorrido del mango, longitud de impulso, posiciones articulares ni postura, y rowplay deriva los vatios del ritmo. RowErg secuencia piernas, tronco y brazos y revierte el orden en la recuperación; SkiErg separa alcance, plantado/tirón y recuperación; BikeErg separa las bielas guiadas por la cadencia del giro de ruedas guiado por la distancia. Tanto 2D como 3D usan superficies específicas de agua, nieve y pista. En 3D, manos y pies permanecen en los puntos de contacto del equipo, y una cámara de seguimiento más cercana y específica del deporte suaviza tanto su posición como el punto de mira.
+
+La vista 2D sigue dibujando una figura atlética procedimental ligera. En 3D, rowplay carga un atleta genérico y compacto, propiedad del repositorio, como una sola malla con esqueleto. RowErg, SkiErg y BikeErg cuentan cada uno con un clip canónico de técnica creado expresamente, que se muestrea de forma determinista a partir de la pose y el tiempo del replay; después, una corrección analítica de manos y pies mantiene los contactos de referencia con el equipo. Si V4 no se puede cargar, la geometría diseñada V3 y la ruta 3D procedimental siguen disponibles, con Canvas 2D como fallback externo estable. La figura y los clips son una presentación genérica, no biomecánica propia del atleta: los recursos no contienen escaneos, resultados de generadores de avatares, imágenes del usuario, movimiento grabado ni la apariencia del atleta.
 
 En 3D, el selector de **Calidad** elige gráficos bajos, medios, altos o ultra. Ultra requiere WebGPU; en dispositivos solo con WebGL se queda en alto. Si el dispositivo no mantiene una tasa de cuadros fluida, el renderizador baja automáticamente primero la resolución y después los efectos. La animación del replay respeta el ajuste de movimiento reducido del sistema operativo.
 
@@ -945,6 +947,12 @@ Confirma primero que el entrenamiento llegó a tu cuaderno de Concept2 (debe sub
     view3dUnsupported: "La vista 3D requiere WebGPU o WebGL en este dispositivo",
     view3dLoading: "Cargando 3D…",
     view3dError: "No se pudo cargar la vista 3D",
+    view2dError: "Error del renderizador 2D — recargar podría ayudar",
+    seekSlider: "Buscar",
+    playbackSpeed: "Velocidad de reproducción",
+    pacePer500m: "Ritmo por 500 m",
+    uploadCsvHint: "Subir archivo CSV, TCX o FIT",
+    closePanel: "Cerrar",
     quality: "Calidad",
     qualityLow: "Baja",
     qualityMedium: "Media",

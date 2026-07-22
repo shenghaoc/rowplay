@@ -1,0 +1,5 @@
+{
+  "label": "rower",
+  "backend": "webgl",
+  "architecture": "clip-primary-athlete-led"
+}

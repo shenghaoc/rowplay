@@ -1,0 +1,680 @@
+# Replay higher-ceiling visual QA
+
+This note records rendered-frame evidence for the authored-athlete and venue
+composition pass on draft PR #171. It is a visual acceptance record, not a
+substitute for the motion/contact regression suite.
+
+## Current correctness pass — contact-constrained mechanics (2026-07-22)
+
+This pass supersedes the PROMPT 9 athlete-led contact policy below. Authored
+clips still supply the base performance. RowErg uses the shared reference-backed
+rearward elbow marker, SkiErg uses the shared sagittal elbow marker, BikeErg
+uses the mechanical knee marker, and rigid sport equipment is the terminal authority. The V4 hero root now
+reports `userData.replayV4Architecture = "clip-contact-constrained"`.
+
+| Sport   | Current mechanical contract                                                                                                                                                                                                                                                                                                                                                                 |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BikeErg | Both shoes remain on mechanically opposed pedals. Each knee selects one continuous rider-forward branch of the hip/pedal sphere intersection; saddle height retains visible flexion through bottom dead centre.                                                                                                                                                                             |
+| RowErg  | Each palm terminates on its own rigid inboard scull grip. Arms remain softly long until the hands pass the knees and the legs are nearly extended; both elbows then travel behind the torso in the late draw and arms clear first on recovery. Hands remain uncrossed and forearms remain outside the torso; neither a forward-pointing elbow nor a horizontal chicken wing is allowed.     |
+| SkiErg  | Each pole is a rigid 1.55 m link. The basket plants steeply, remains fixed while the skier advances, releases by 29% of the cycle, lifts through recovery, and converges continuously on the next catch. The elbow points down at plant, rotates rearward during the loaded press, and returns underneath the forward-lifting arm before the next plant without changing two-bone branches. |
+
+The correction is protected across dense full cycles: 256-step BikeErg knee
+branch/continuity sampling, 257-pose Canvas and procedural-3D RowErg elbow
+branch/continuity/late-draw sampling, explicit drive-side hand/knee-clearance
+assertions in both renderers, 128-step V4 RowErg
+palm/contact/torso-clearance sampling, and 256-step SkiErg
+rigid-pole/plant/contact/continuity sampling. V3 procedural fallback contacts
+and the 2D shared timing path remain covered too.
+The SkiErg suite additionally checks the 80°/23° plant-to-pole-off shaft
+envelope, down-at-plant and rearward-loaded elbow landmarks, early elbow
+flexion, near-extension at release, lifted/forward grip recovery,
+down-at-preplant return, fixed 2D arm lengths, dense elbow continuity, exact
+hand/grip closure, and a zero-weight previous-anchor → next-anchor handoff at
+the start of final approach.
+
+The technique landmarks come from [Concept2's SkiErg technique](https://www.concept2.com/training/skierg-technique),
+[Concept2's double-pole guidance](https://www.concept2.com/blog/skierg-technique),
+[Concept2's mid-summer technique check](https://www.concept2.com/blog/midsummer-ski-technique-check),
+the elbow-phase measurements in a 2024
+[field kinematics study](https://pmc.ncbi.nlm.nih.gov/articles/PMC10963750/),
+and the on-snow timing and joint-angle measurements in
+[Stöggl and Holmberg](https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2018.00978/full).
+The RowErg sequence and late, rearward elbow draw come from
+[Concept2's rowing technique](https://www.concept2.com/training/rowing-technique),
+[British Rowing's indoor technique](https://www.britishrowing.org/indoor-rowing/go-row-indoor/how-to-indoor-row/british-rowing-technique/),
+and the elbow-angle timing in a published
+[3D ergometer-rowing kinematic comparison](https://www.mdpi.com/2076-3417/14/19/9055).
+
+The latest RowErg acceptance used `/replay/1001` at 0.5× and 1× in both Canvas
+2D and WebGPU/Ultra 3D. Paused catch, early-drive, hand/knee-clearance, late-draw,
+and finish poses confirmed that the hands and nearly straight arms move past
+the knees before visible elbow flexion begins. The 3D pass also confirmed that
+the skinned shoulders feed the rigid-oar refinement, each palm remains on its
+own grip, elbows pull behind the torso, and forearms do not pass through the
+body. The full-width Blender rigger stayed aligned with both fixed oarlocks, and
+the moving 1× pass produced no browser warnings or errors.
+
+Moving acceptance used the SkiErg demo at both 0.5× and 1×. Canvas 2D kept
+both baskets clear of the snow through the free-flight recovery and converged
+on the next plant without a vertical drop. WebGPU/Ultra showed the V4 athlete
+plant, load, finish beside the thighs, release, and recover without a backwards
+horizontal arm flip. A clean dev-server restart produced no runtime diagnostics
+during the final pass.
+
+## Open-shell, complete-leg, and opaque-body correction (2026-07-22)
+
+The previous rowing presentation combined four independent defects. A solid
+deck and fake torus cockpit covered most of the lower body, the moving seat was
+an unsupported pad, RowErg V4 legs retained the standing rest skeleton's
+downward knee plane instead of following the shared raised-knee target, and the
+ghost athlete used alpha blending on one self-occluding skinned mesh. The
+near-coplanar chest zip also created an avoidable surface seam.
+
+The corrected craft is repository-authored by
+`scripts/build-replay-rowing-shell-blender.py` in Blender 5.2. It has an open
+cockpit, separate bow and stern decks, bulkheads, gunwales, exposed twin slide
+rails, an angled foot stretcher with heel cups, a wing rigger, exact oarlock
+pivots, and a shaped seat pad on a metal carriage with four rollers. The seat
+remains attached to the athlete's authoritative moving seat group while its
+travel stays inside the rails. V3 still owns the asset install and procedural
+fallback contract.
+
+The V4 RowErg leg solve now consumes the shared deterministic knee target, just
+as BikeErg does, while retaining exact foot contact. Numeric inspection of the
+failed first open-shell pass found a skinned knee as low as -0.09 m while the
+mechanical target was as high as 0.73 m. After the solver correction, sampled
+knees remain between 0.42 m and 0.69 m, above the cockpit and within 0.10 m of
+their mechanical targets. The zip is now vertex colour rather than a separate
+surface, and slate leg panels keep both leg chains legible against the purple
+hull and dark cockpit.
+
+Live and ghost athletes now use an opaque, depth-tested, depth-writing body
+surface. Comparison identity comes from a cool lane tint rather than 45%
+transparency, so no internal or rear-facing body surface can sort through the
+front of the athlete.
+
+Browser acceptance used `/replay/1001` with Ultra/WebGPU at 0.5x and 1x in
+light and dark themes. The first post-shell pass was rejected because the legs
+were still absent; after correcting the knee branch, a nine-frame moving cycle
+showed both knee chains above the leg well, the seat travelling on its rails,
+and the feet, palms, oars, and oarlocks remaining connected. The live/ghost
+comparison pass showed two solid, complete athletes without translucent-body
+sorting artifacts. The focused regression gate passed 122 tests across the V4
+motion, asset, rig, and renderer suites.
+
+The rebuilt V3 library contains seven templates, 49 authored parts, 18 leaves,
+26,486 triangles, and 18,629 vertices. The V4 body contains 7,420 vertices,
+14,240 triangles, and 24 connected topology components after removal of the
+redundant zip surface.
+
+## Historical — PROMPT 9 clip-primary arm architecture (superseded)
+
+The following section records the prior experiment and is retained only as
+diagnostic history. Its athlete-led grips, synthetic RowErg bar, stretchable
+ski poles, and `clip-primary-athlete-led` marker are no longer the runtime
+policy.
+
+### Rejected hybrid (root cause of “ridiculous arms”)
+
+The skinned V4 hero previously:
+
+1. sampled a sparse 9-key technique clip;
+2. aligned the pelvis;
+3. rewrote every arm/leg chain with two-bone IK whose **bend plane was dominated
+   by hidden V3 procedural elbows** (oracle weight 0.82 rower / 0.88 ski);
+4. **forced the hand bone to the equipment world quaternion**, corkscrewing the
+   forearm when grip orientation changed.
+
+That made elbows chicken-wing, flip, or park ahead of the grip line even when
+palm–handle distance was millimetre-perfect.
+
+### Replacement
+
+| Layer            | Behaviour                                                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clip             | Denser biomechanical row/ski cycles in `rigV4.ts` (late arm draw; double-pole press arc). Baked into `static/replay-assets/rowplay-athlete-v4.glb`. |
+| Bend plane       | **Clip elbow/knee only** — V3 elbow markers are never consulted by V4.                                                                              |
+| Hand position    | Contact IK within limb reach (standard equipment lock).                                                                                             |
+| Hand orientation | **Limited slerp** (~12°) — never a forced equipment quaternion.                                                                                     |
+| Feet             | Full sole frame lock (no forearm twist chain).                                                                                                      |
+| Ski poles        | Hands own the arc; poles follow hands. Planted tips stay on snow with stretchable shafts — no tip-sphere hand projection.                           |
+| Diagnostics      | `setDiagnosticMode`: `clip-only`, `clip-pelvis`, `clip-hands`, `full`, `wireframe`, `unlit`, …                                                      |
+
+Architecture marker on the hero root: `userData.replayV4Architecture = "clip-primary-athlete-led"`.
+
+### Athlete-led equipment (structural, not constant tuning)
+
+The previous soft-contact path still allowed **0.85 m** hand translation, so
+equipment paths continued to generate arm pose via two-bone IK. That is rejected.
+
+**Now:**
+
+| Limb           | Policy                                                                 |
+| -------------- | ---------------------------------------------------------------------- |
+| Arms (row/ski) | Pure clip when residual &gt; 4.5 cm; soft orient ≤8°.                  |
+| Arms (bike)    | Firmer bar lock (reach IK, clip bend plane).                           |
+| Legs           | Equipment lock with clip bend plane.                                   |
+| Grips          | **Follow** skinned palms after each V4 update (`syncEquipmentToHero`). |
+
+RowErg **Option 1 Concept2**: single handle bar appears when V4 is active; dual
+oars hide so they cannot own the arm solve. Ski poles stretch from hero palms
+to tips without re-solving arms.
+
+### Follow-up clip densification (PROMPT 9 carry-on)
+
+- **Row clip:** 14 keys; forearm stays near-straight through leg drive and body
+  open; elbow draw only after ~clip t=0.30 (finish deep flexion).
+- **Ski clip:** 14 keys; nearly straight arms at high reach; modest load flex;
+  continuous recovery without T-pose wings.
+- **Motion graph:** row `armDraw` pulse delayed to `drive * 0.62` (was 0.45);
+  handle blend reweighted legs/torso-first so equipment grips match late-draw
+  arms. Both pure and `*Into` sample paths updated.
+- Assets rebuilt: `rowplay-athlete-v4.glb` / `.usdz` / contract.
+
+### Movement references (public technique, not third-party mocap files)
+
+- Concept2 technique library (indoor rowing stages; SkiErg double-pole).
+- British Rowing / World Rowing sculling posture stills.
+- FIS / cross-country double-poling coaching stills.
+
+No third-party mesh, scan, or licensed mocap clip was imported.
+
+## Source visual truth
+
+- Art direction:
+  [replay art-direction triptych](higher-ceiling/reference/replay-art-direction.png)
+- Baseline head: `fcd5573ea565bcde21bf1eecd814e3b5109a3344`
+- Demo routes: `/replay/1001`, `/replay/1003`, `/replay/1004`
+- Baseline captures: [baseline](higher-ceiling/baseline/)
+- Iteration captures: [iteration 1](higher-ceiling/iteration-1/),
+  [iteration 2](higher-ceiling/iteration-2/), and
+  [iteration 3](higher-ceiling/iteration-3/)
+- Accepted final captures: [final](higher-ceiling/final/)
+
+The art direction is a stylized sports-broadcast presentation: a broad regatta
+basin at golden hour, a groomed Nordic stadium in an asymmetric alpine valley,
+and a dusk velodrome with selective practical lighting. It is intentionally
+illustrative and does not reconstruct a recorded location, weather, or athlete.
+
+## Baseline diagnosis
+
+Captured in the in-app browser before editing the renderer.
+
+### Athlete modelling
+
+1. **SkiErg exposes the core character problem most clearly.** The spherical
+   head and hair cap, bright cylindrical joints, isolated pelvis, and uniform
+   limb tubes read as a wooden mannequin. Shoulders do not emerge from the rib
+   cage, the waist does not carry into the pelvis, and the pole-side arm can
+   collapse into the torso from the rear three-quarter view.
+2. **RowErg has credible timing but an incoherent body-to-craft ratio.** The
+   athlete appears assembled on top of the shell instead of seated inside one
+   connected rig. Hands, knees, and the narrow torso are visually lost against
+   the oars and finish checker even though their contact solves are correct.
+3. **BikeErg reads as a rider hovering over a frame diagram.** The pelvis/saddle
+   support is weak, cylindrical arms merge with the bars, the spherical helmet
+   and head flatten direction, and the wheels/frame carry more silhouette weight
+   than the athlete.
+4. **At mobile scale the anatomy fails before the mechanics do.** Detached
+   joint caps and narrow tubes become dots and lines; paired limbs and wrist/
+   ankle transitions disappear.
+
+### Environment composition
+
+1. All three 3D environments disclose the same circular construction. Horizon,
+   trees, architecture, lights, wall panels, stands, and course marks are
+   concentric and evenly sampled, so the chase camera sees a toy-diorama ring
+   with nearly invariant parallax.
+2. RowErg's complete tree belt and buoy necklaces close the basin into a bowl;
+   SkiErg's mountain/tree ring removes the sense of a valley opening; BikeErg's
+   continuous wall/canopy/panel repetition makes the venue feel like a carousel.
+3. The one generic contact ellipse does not match a hull, two skis, or two tyre
+   patches. Equipment therefore appears pasted above the surface.
+4. Low-tier scenery is sparse without becoming composed. Ultra adds density,
+   but the repeated radial grammar remains visible and the subject is still
+   weaker than the background pattern.
+
+### Camera, light, and value hierarchy
+
+1. The rear three-quarter camera is directionally useful, but the athlete is
+   too small in the 2D overview and its 3D silhouette has insufficient plane and
+   value separation to justify moving the camera closer.
+2. Dark BikeErg kit, saddle, limbs, and track collapse into one value family;
+   light SkiErg snow, poles, and pale ground compress depth in the opposite
+   direction.
+3. Uniform venue lighting creates structure without composition. Light pools,
+   landmark emphasis, and authored negative space are missing.
+
+## Highest-impact changes
+
+1. Replace the visible 3D body shells with one project-authored skinned GLB:
+   coherent torso/pelvis/head planes, embedded joint transitions, grip wedges,
+   and directional shoes. Drive independent live/ghost instances from the
+   existing contact-locked kinematic targets.
+2. Recompose each venue into deterministic authored sectors, clusters, gaps,
+   and one unique landmark. Keep the circular course mechanically authoritative
+   while hiding its repetitive construction from the replay camera.
+3. Retune sport-specific grounding, subject values, and final chase framing
+   only after the new silhouette and venue composition are visible together.
+
+## Iteration history
+
+### Iteration 1 — SkiErg authored silhouette
+
+Compared the
+[baseline SkiErg frame](higher-ceiling/baseline/ski-3d-desktop-dark-paused.jpg)
+with the
+[SkiErg silhouette comparison](higher-ceiling/iteration-1/ski-reference-comparison.png),
+then refined the authored shells
+through the intermediate `authored-shells`, `v2`, `v3`, closer-camera, and
+characteristic-pose captures.
+
+The three largest defects were:
+
+1. First-fit limbs inherited the procedural segment scale twice and became
+   oversized. Runtime fitting now preserves the authored segment overlap while
+   fitting only the cross-section to each exact kinematic bone.
+2. Spherical elbow and knee caps still disclosed the mannequin construction.
+   Authored tapered shells now overlap across the solved joints; the old caps
+   are hidden only after the GLB validates and installs.
+3. The SkiErg athlete remained too small and pale against the snow. The chase
+   rig is closer, the full-sleeve Nordic kit and gloves establish a separate
+   value frame, and the torso extends into the pelvis instead of ending at a
+   floating cap.
+
+Accepted for sport adaptation: the frame reads as one skier with two planted
+skis, two visible poles, connected shoulders/hips, and unchanged contact-locked
+motion. Venue depth remained intentionally deferred to iteration 3.
+
+### Iteration 2 — RowErg/BikeErg adaptation and 2D parity
+
+Compared the SkiErg-approved shell contract against the
+[RowErg authored frame](higher-ceiling/iteration-2/row-3d-desktop-dark-authored.jpg),
+[BikeErg authored frame](higher-ceiling/iteration-2/bike-3d-desktop-dark-authored.jpg),
+and the existing Canvas view.
+
+The three largest defects were:
+
+1. RowErg still read as a body sitting on a generic purple capsule. The authored
+   hull and blade shells are now fitted into the old geometry bounds, retaining
+   oarlock, blade-depth, grip, seat, and footplate contact truth.
+2. BikeErg's rider and frame had competing primitive weights. Authored aero
+   tyres, tapered frame tubes, saddle, pedals, helmet, shoes, and athlete shells
+   now share one visual language while the crank and wheel signs remain
+   independent and mechanically correct.
+3. Symmetric wheel spokes could still create a backwards-cycling illusion in
+   Canvas even with correct crank math. The accepted 2D design keeps
+   distance-locked clockwise wheels, a rigid 180-degree crankset, asymmetric
+   valve/chevron direction cues, and oppositely travelling surface marks; the
+   focused 2D renderer suite protects that signed convention.
+
+Accepted for venue composition: both 3D adaptations preserve their exact
+contacts and read as sport-specific equipment rather than a shared pod.
+
+### Iteration 3 — Venue sectors, grounding, lighting, and camera
+
+Compared the
+[RowErg](higher-ceiling/iteration-3/row-reference-comparison.png),
+[SkiErg](higher-ceiling/iteration-3/ski-reference-comparison.png), and
+[BikeErg](higher-ceiling/iteration-3/bike-reference-comparison.png) paired
+inputs after capturing the real Ultra/WebGPU stage.
+
+The three largest defects were:
+
+1. Repeated complete rings made every venue a toy donut. Row now opens toward
+   water and clusters its regatta complex on one bank; Ski frames a clear valley
+   with two massifs; Bike uses two grandstand sectors, open tunnels, selective
+   panel banks, a scoreboard, and a service building.
+2. The universal black ellipse pasted every athlete onto the course. It is
+   replaced by a hull reflection strip, paired ski footprints, or paired tyre
+   contact patches, each following the live or ghost rig's staged surge.
+3. The chase view initially spent the whole vertical lens on the course. Final
+   sport rigs retain the athlete and all critical equipment while admitting the
+   asymmetric horizon, skyline, trees, venue landmark, and authored negative
+   space. Alpine peak height was reduced after the paired comparison showed the
+   first massif swallowing the sky.
+
+Accepted for final matrix capture: the three venues no longer expose one shared
+radial construction, Low/Ultra still change density rather than composition,
+and contact-locked motion remains authoritative.
+
+### Follow-up — v2 joint and pole-contact correction
+
+The first authored package still had a visible mechanical failure in two
+high-salience action poses: its limb profile widened toward the elbow because
+the authored local axis was reversed, and a planted SkiErg basket continued to
+follow the moving hand instead of the snow. Both faults were corrected in the
+repository-owned `rowplay-rigs-v2.glb` package and the same contact-driven rig.
+
+For RowErg, v2 defines local `-Z` as the proximal end and local `+Z` as the
+distal end, compacts the shell overlap, and adds an authored elbow flex cuff.
+The deepest pull therefore reads as a continuous upper arm, elbow, and forearm
+rather than a reversed bulb or a detached sphere. For SkiErg, the shaft, grip,
+and basket now share a true common axis; after course placement, a second solve
+holds each basket at its deterministic catch-course contact through the loaded
+press while preserving exact hand-to-grip and grip-to-tip lengths.
+
+Focused renderer evidence covers deep RowErg flex and multiple fully planted
+SkiErg poses with the loaded v2 package, including rigid hardware alignment,
+contact height, course-anchor stability, and live/ghost-safe asset fitting.
+The current in-app browser pass was captured on the real WebGPU stage at
+`/replay/1001` and `/replay/1003`; the broader screenshot matrix below remains
+the release-level visual record.
+
+### Follow-up — stable shadows and smooth performance shells
+
+The next real-stage review found three remaining credibility defects: a noisy
+deprecated shadow path, two grounding systems visible at once, and a visible
+flat-shaded/planar treatment that made the rider read as a blocky figurine.
+High and Ultra now use a single VSM directional map with a compact,
+sport-specific frustum snapped in light-space texels. The visible sun uses the
+same key vector, decorative and transparent layers no longer receive the native
+map, and the live fallback contact mark hides whenever that map is active.
+
+The v2 pack was rebuilt with shared smooth normals, denser anatomical profiles,
+rounded kit trim, smoother BikeErg tyre/frame/saddle/pedal hardware, and more
+responsive fabric/skin material separation. The current motion review also
+tests a full RowErg stroke for hand-to-torso clearance and the SkiErg load phase
+for near-stationary planted baskets while the body advances. The focused
+regression suite covers those state-space constraints; the browser pass at
+`/replay/1001`, `/replay/1003`, and `/replay/1004` reviewed the resulting
+WebGPU/Ultra frames before this draft update.
+
+## V4 production athlete acceptance — 2026-07-20
+
+The production pass replaces the visible segmented athlete with the reviewed
+local `rowplay-athlete-v4.glb`: one skinned mesh, 19 bones, independent
+RowErg/SkiErg/BikeErg clips, and a deterministic post-clip contact solve. V3
+sport equipment remains visible and authoritative; a V4 load or validation
+failure still exposes V3/procedural 3D before the outer Canvas fallback.
+
+The first actual WebGPU frame caught a pale mannequin, shoulder sockets, an
+oversized head shell, flat rear lighting, and an almost direct-rear camera. The
+accepted pass corrects the glTF vertex-colour transfer to linear space, uses a
+matte brand-indigo kit, buries the closed shoulder/hip roots, tapers the torso,
+arms, wrists, palms, and head, adds a flush waistband/shorts value and thumb
+forms, removes the visor-like face trim, and uses sport-specific true
+three-quarter camera lines with restrained camera fill/rim.
+
+Same-viewport paired inputs—not screenshots judged in isolation—record the
+visible change:
+
+- [RowErg baseline / V4](higher-ceiling/v4/row-baseline-v4-comparison.jpg)
+- [SkiErg baseline / V4](higher-ceiling/v4/ski-baseline-v4-comparison.jpg)
+- [BikeErg baseline / V4](higher-ceiling/v4/bike-baseline-v4-comparison.jpg)
+
+Temporal contact sheets cover the real WebGPU/Ultra stage in motion:
+
+- [RowErg catch, drive, finish, and recovery](higher-ceiling/v4/row-v4-motion.jpg)
+- [SkiErg reach, plant, press, release, and recovery](higher-ceiling/v4/ski-v4-motion.jpg)
+- [BikeErg opposed pedal cycle](higher-ceiling/v4/bike-v4-motion.jpg)
+
+The in-app browser review also ran all three sports at 1×, 2×, and 8×. At 1×,
+Row hands remain on the crossed scull grips without entering the pelvis shell;
+Ski baskets hold their deterministic course point while the body advances
+through the loaded press; Bike hands remain on the bar while soles follow the
+same opposed crank graph that drives the drivetrain. The fast modes remain
+navigation controls, not claims of natural-speed biomechanics.
+
+Pre-Blender real-stage V4 evidence:
+
+| Sport   | Desktop dark Ultra                                     | Mobile light Ultra                                     |
+| ------- | ------------------------------------------------------ | ------------------------------------------------------ |
+| RowErg  | [frame](higher-ceiling/v4/row-desktop-dark-ultra.jpg)  | [frame](higher-ceiling/v4/row-mobile-light-ultra.jpg)  |
+| SkiErg  | [frame](higher-ceiling/v4/ski-desktop-dark-ultra.jpg)  | [frame](higher-ceiling/v4/ski-mobile-light-ultra.jpg)  |
+| BikeErg | [frame](higher-ceiling/v4/bike-desktop-dark-ultra.jpg) | [frame](higher-ceiling/v4/bike-mobile-light-ultra.jpg) |
+
+The pre-Blender RowErg record also has a
+[desktop light Ultra frame](higher-ceiling/v4/row-desktop-light-ultra.jpg).
+These WebGPU captures remain evidence for the stage, camera, sport equipment,
+and runtime contact system, but they predate the current Blender-authored skin
+and must not be used as visual proof of that newer surface.
+
+## Blender-authored V4 surface refresh — 2026-07-21
+
+The production V4 surface is now generated in Blender 5.2 from the reviewed
+repository script `scripts/build-replay-athlete-v4-blender.py`. It uses no
+downloaded model, scan, likeness, avatar generator, texture, or external
+request. The Node build remaps Blender's joint order onto the canonical 19-bone
+V4 skeleton, adds the three deterministic technique clips and contact metadata,
+and exports the final GLB.
+
+[Open the full nine-frame Blender deformation sheet](higher-ceiling/v4-blender/v4-blender-contact-sheet.jpg).
+
+| Sport   | Early phase                                                 | Drive / load                                                | Late phase                                                  |
+| ------- | ----------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
+| RowErg  | [frame 1](higher-ceiling/v4-blender/v4-blender-rower-1.jpg) | [frame 2](higher-ceiling/v4-blender/v4-blender-rower-2.jpg) | [frame 3](higher-ceiling/v4-blender/v4-blender-rower-3.jpg) |
+| SkiErg  | [frame 1](higher-ceiling/v4-blender/v4-blender-skier-1.jpg) | [frame 2](higher-ceiling/v4-blender/v4-blender-skier-2.jpg) | [frame 3](higher-ceiling/v4-blender/v4-blender-skier-3.jpg) |
+| BikeErg | [frame 1](higher-ceiling/v4-blender/v4-blender-bike-1.jpg)  | [frame 2](higher-ceiling/v4-blender/v4-blender-bike-2.jpg)  | [frame 3](higher-ceiling/v4-blender/v4-blender-bike-3.jpg)  |
+
+The studio sheet intentionally isolates mesh shape, skinning, and base-clip
+deformation. It does not apply the runtime analytic hand/foot solve or render
+sport equipment, so it is not presented as final handle, pole, or pedal contact
+evidence. The earlier real-stage WebGPU sheets above remain the product-context
+record, and automated renderer tests cover the post-clip contact constraints.
+Live in-app browser acceptance on 2026-07-22 loaded `/replay/1003` through
+WebGPU, exercised 2D and 3D at 1×, switched the 3D path to Ultra, and produced
+no runtime errors. The studio sheet remains isolated mesh/clip evidence rather
+than being relabelled as a runtime contact capture.
+
+Studio review rejected three intermediate candidates: floating collar and
+joint rings, centreline thigh cones that spiked under hip flexion, and broad
+pelvis caps that emerged as a skirt. Follow-up Blender passes then pinched
+elbows/knees, narrowed the clavicle shelf, replaced mitten thumbs with grip
+wedges, and **cleaned the head for high/ultra tiers**: removed floating brow/
+eye/mouth tubes, eliminated the continuous brow ridge that cast a black
+"visor" shadow, replaced full-circumference hair lofts (which wrapped a dark
+band across the face) with a short crown ellipsoid, and soft-blended the
+jersey into the neck so VSM shadows no longer pick up a collar hoop. The
+accepted mesh uses continuous smooth arm and leg lofts, buried uncapped
+shoulder/hip roots, graduated parent-child weights, a clean skull + crown
+hair, sealed grip/thumb forms, footwear uppers/soles/laces, vertex-colour kit
+construction, and one matte physical material. The result remains stylized and
+generic
+while removing the stacked-block and detached-joint language of the procedural
+fallback.
+
+The checked GLB is 584,796 bytes: one indexed skinned primitive, 7,420 vertices,
+14,240 triangles, 19 bones, 24 reviewed topology components, one material, zero
+textures, and three clips / 60 tracks. Two clean Blender-to-GLB builds were
+byte-identical at SHA-256
+`73e0ece3e6c6de5a7a020a5097b172ca3e0ed8315c27ff604159b144fa90547b`.
+The checked USDZ derivative is 1,318,256 bytes at SHA-256
+`934b0d3af0454f60a84dde76f95b77121919f5ad7cfc366684a670ae5d99658e`;
+the generated contract SHA-256 is
+`e9fb56f372ac1ea44ee5ccaf1d00b5a975e1eb4a1a2ee7843ab9e53609fb189d`.
+Blender 5.2 repeat USDZ containers are not byte-identical, so USDZ acceptance
+remains semantic `USDLoader` validation rather than silent byte normalization.
+
+## Earlier V3/fallback capture matrix
+
+All files below are under `higher-ceiling/final/` and were captured from the
+in-app browser against the real demo routes before V4 promotion. They remain
+the broader V3/environment/fallback matrix; the V4 evidence above is the
+current production-athlete acceptance record.
+
+| Sport   | 2D desktop dark                                                | 3D desktop dark Ultra                                                | 3D desktop light Ultra                                                | 3D mobile light Low                                                |
+| ------- | -------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| RowErg  | [paused](higher-ceiling/final/row-2d-desktop-dark-paused.jpg)  | [paused](higher-ceiling/final/row-3d-desktop-dark-ultra-paused.jpg)  | [paused](higher-ceiling/final/row-3d-desktop-light-ultra-paused.jpg)  | [paused](higher-ceiling/final/row-3d-mobile-light-low-paused.jpg)  |
+| SkiErg  | [paused](higher-ceiling/final/ski-2d-desktop-dark-paused.jpg)  | [paused](higher-ceiling/final/ski-3d-desktop-dark-ultra-paused.jpg)  | [paused](higher-ceiling/final/ski-3d-desktop-light-ultra-paused.jpg)  | [paused](higher-ceiling/final/ski-3d-mobile-light-low-paused.jpg)  |
+| BikeErg | [paused](higher-ceiling/final/bike-2d-desktop-dark-paused.jpg) | [paused](higher-ceiling/final/bike-3d-desktop-dark-ultra-paused.jpg) | [paused](higher-ceiling/final/bike-3d-desktop-light-ultra-paused.jpg) | [paused](higher-ceiling/final/bike-3d-mobile-light-low-paused.jpg) |
+
+Additional state evidence:
+
+- Canvas motion and signed BikeErg direction:
+  [moving BikeErg](higher-ceiling/final/bike-2d-desktop-dark-moving.jpg).
+- Independent live/ghost rigs, labels, contact footprints, and comparison
+  framing:
+  [SkiErg ghost](higher-ceiling/final/ski-3d-desktop-dark-ultra-ghost.jpg).
+- Moving 3D comparison and characteristic pull/recovery change:
+  [moving SkiErg ghost](higher-ceiling/final/ski-3d-desktop-dark-ultra-moving-ghost.jpg).
+- Full-view design comparisons:
+  [RowErg](higher-ceiling/iteration-3/row-reference-comparison.png),
+  [SkiErg](higher-ceiling/iteration-3/ski-reference-comparison.png), and
+  [BikeErg](higher-ceiling/iteration-3/bike-reference-comparison.png).
+- Focused athlete comparison:
+  [SkiErg](higher-ceiling/iteration-1/ski-reference-comparison.png).
+
+The selected in-app browser reported WebGPU for the accepted matrix. Explicit
+WebGPU-to-WebGL downgrade, direct WebGL construction, missing/corrupt GLB
+fallback, reduced-motion static poses, and Canvas fallback are protected by the
+focused loader/renderer suites. The browser QA surface is intentionally
+read-only and was not modified to falsify a WebGL or reduced-motion screenshot.
+
+### Final release-gate matrix — 2026-07-22
+
+The remaining matrix was captured by
+`scripts/capture-replay-release-matrix.mjs` from the real demo routes. The
+[machine-readable manifest](higher-ceiling/release-gate/manifest.json) records
+route, requested quality, selected backend, theme, viewport, measured canvas,
+media preference, seek time, and browser diagnostics for every frame. The
+measured stages are 1112×300 Canvas / 1112×420 3D on the 1440×1024 desktop
+viewport and 365×260 Canvas / 365×360 3D on the 390×844 mobile viewport.
+
+| Sport   | Canvas mobile light                                                   | 3D mobile dark High/WebGL                                                 | Canvas OS reduced motion                                                            | 3D OS reduced motion High/WebGL                                                            |
+| ------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| RowErg  | [paused](higher-ceiling/release-gate/row-2d-mobile-light-paused.jpg)  | [paused](higher-ceiling/release-gate/row-3d-mobile-dark-high-paused.jpg)  | [desktop dark](higher-ceiling/release-gate/row-2d-desktop-dark-reduced-motion.jpg)  | [desktop light](higher-ceiling/release-gate/row-3d-desktop-light-high-reduced-motion.jpg)  |
+| SkiErg  | [paused](higher-ceiling/release-gate/ski-2d-mobile-light-paused.jpg)  | [paused](higher-ceiling/release-gate/ski-3d-mobile-dark-high-paused.jpg)  | [desktop dark](higher-ceiling/release-gate/ski-2d-desktop-dark-reduced-motion.jpg)  | [desktop light](higher-ceiling/release-gate/ski-3d-desktop-light-high-reduced-motion.jpg)  |
+| BikeErg | [paused](higher-ceiling/release-gate/bike-2d-mobile-light-paused.jpg) | [paused](higher-ceiling/release-gate/bike-3d-mobile-dark-high-paused.jpg) | [desktop dark](higher-ceiling/release-gate/bike-2d-desktop-dark-reduced-motion.jpg) | [desktop light](higher-ceiling/release-gate/bike-3d-desktop-light-high-reduced-motion.jpg) |
+
+`prefers-reduced-motion: reduce` is established on each browser context before
+the replay module initializes, so these are operating-system media-query frames
+rather than a mocked renderer flag. The headless release browser exposes no
+WebGPU adapter and therefore records the supported WebGL High path; the earlier
+accepted WebGPU/Ultra and mobile Low frames remain the complementary backend and
+quality evidence.
+
+For silhouette review, the top 17% containing the world-space telemetry pill is
+cropped without scaling the remaining 1112 source pixels. Playwright's
+screenshot-only style transform produces grayscale and high-contrast dark
+variants without modifying application state, geometry, renderer selection, or
+the saved normal frame.
+
+| Sport   | HUD-hidden normal                                                   | Grayscale                                                                 | Dark silhouette                                                            |
+| ------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| RowErg  | [normal](higher-ceiling/release-gate/row-3d-hud-hidden-normal.jpg)  | [grayscale](higher-ceiling/release-gate/row-3d-hud-hidden-grayscale.jpg)  | [dark](higher-ceiling/release-gate/row-3d-hud-hidden-dark-silhouette.jpg)  |
+| SkiErg  | [normal](higher-ceiling/release-gate/ski-3d-hud-hidden-normal.jpg)  | [grayscale](higher-ceiling/release-gate/ski-3d-hud-hidden-grayscale.jpg)  | [dark](higher-ceiling/release-gate/ski-3d-hud-hidden-dark-silhouette.jpg)  |
+| BikeErg | [normal](higher-ceiling/release-gate/bike-3d-hud-hidden-normal.jpg) | [grayscale](higher-ceiling/release-gate/bike-3d-hud-hidden-grayscale.jpg) | [dark](higher-ceiling/release-gate/bike-3d-hud-hidden-dark-silhouette.jpg) |
+
+All three sports remain identifiable by direction, major limbs, and equipment
+in the HUD-hidden normal, grayscale, and dark frames. The browser passes emitted
+no application error, blank replay, or 3D-to-Canvas fallback. This completes the
+authored-athlete specification's release matrix; automated evidence continues
+to prove mechanics rather than aesthetics.
+
+## Known compromises
+
+- Environments remain texture-free procedural geometry under the existing
+  provenance contract. They now match the art direction's composition and value
+  hierarchy, but not its photographic cloud, snow, water, or asphalt detail.
+- RowErg uses a wider equipment-safe chase frame than SkiErg/BikeErg so neither
+  blade is cropped on a 365×360 stage.
+- The asset is a compact stylized skinned sports illustration, not a scanned or
+  photoreal person. It deliberately does not infer a recorded athlete's body,
+  clothing, appearance, technique, or location.
+- Close contact-heavy poses can still expose mesh/body/equipment
+  interpenetration, and the athlete's anatomy, hands, face, and body-shape nuance
+  remain visibly below a photoreal production character. The requester accepted
+  both as explicit next-PR scope; they are not hidden by the release evidence.
+- The accepted frames have only the P3 visual constraints recorded in the
+  project-root `design-qa.md`; no release-evidence item remains open.
+
+## Current draft verification — 2026-07-20
+
+The current V4 draft was checked in the in-app browser against the real demo
+routes at 1440×1024 and 390×844. WebGPU/Ultra was reported for RowErg, SkiErg,
+and BikeErg in dark desktop, light Row desktop, and light mobile captures. Each
+sport was played at 1×, 2×, and 8×; route changes reset transport to 1×.
+
+- **RowErg:** the shared graph stages leg drive, body opening, late arm draw,
+  hands-away, and recovery. The V4 palms remain on the oar grips, the inboard
+  assembly stays forward of the pelvis, and both bent elbows travel rearward of the
+  shoulders without a sideways wing or forearm/torso intersection through the
+  reviewed stroke.
+- **SkiErg:** both pole assemblies remain rigid and phase-readable. Loaded
+  baskets are reconstructed from their deterministic course anchor after body
+  and course motion, so the athlete advances while the planted tips stay almost
+  stationary; mobile framing moves toward rear-three-quarter to preserve the
+  paired-pole pixel budget.
+- **BikeErg:** hands remain on the bar, feet remain on opposed pedals, and the
+  rider's knees, ankles, pelvis, shoulders, and head follow the shared circular
+  graph. Positive wheel rotation and the matching crank/road cues remain the
+  mechanically correct forward direction; reversing them would create the
+  backwards-cycling defect.
+- **Lighting and shadows:** the browser pass showed one stable world key and
+  contact shadow rather than the earlier random-looking dual grounding. Camera
+  fill/rim only model the skinned athlete and do not cast a competing map.
+
+### RowErg elbow correction recheck — 2026-07-22
+
+The corrected RowErg cycle was replayed in Canvas 2D and WebGPU/Ultra 3D at
+0.5× and 1×. Frame-by-frame review confirmed long arms through leg drive and
+body opening, rearward rather than forward or horizontal elbow flexion in the
+late draw, separate grip contact, hands clear of the torso, and a continuous
+hands-away recovery without an IK branch snap.
+
+Automated evidence protects the parts a frame cannot prove: the exact 1.5 cm
+palm/sole tolerance and 0.5° terminal orientation tolerance, deterministic
+same-time seeks, fixed segment lengths, 128-phase pole readability, planted-tip
+course drift, live/ghost independence, reduced motion, WebGPU/WebGL selection,
+V4→V3→procedural→Canvas fallback, disposal, and asset provenance. This remains
+canonical generic technique synchronized to Concept2 timing—not measured
+athlete biomechanics or motion capture.
+
+### SkiErg elbow-plane correction recheck — 2026-07-22
+
+The SkiErg demo was rechecked at characteristic paused plant, loaded-press,
+recovery, and next-plant poses, then through multiple moving cycles at 1× in
+both Canvas 2D and WebGPU/Ultra 3D. Canvas keeps one exact-length outside arm
+branch: the elbow is below the shoulder at plant, migrates behind the shoulder
+under pole load, and returns underneath the forward-rising grip without an
+intersection swap. Three.js rotates the shared sagittal marker down → back →
+under-arm/down, and V4 consumes that marker after clip sampling instead of
+retaining a fixed or horizontally inverted clip plane.
+
+The moving pass retained paired hand/pole contact, rigid shafts, fixed loaded
+baskets, airborne clearance, and the pre-plant convergence already protected
+by the contact suite. No replay-renderer diagnostic was emitted. This
+directional sequence follows the public technique and elbow-phase references
+above; its exact 3D bend vector remains a generic art-direction inference, not
+measured athlete motion.
+
+### SkiErg parallel-stance correction recheck — 2026-07-22
+
+The production V4 replay exposed a separate lower-body branch defect: both
+boots remained on their correct skis, but the skinned knees inherited opposite
+mirrored clip planes after foot-contact closure, making the thighs form an X.
+V4 now consumes the procedural same-side SkiErg knee markers after clip
+sampling. Dense production-asset sampling requires left hip → left knee → left
+boot and right hip → right knee → right boot order at every one of 129 cycle
+poses, with at least 0.12 m knee separation and both sole contacts retained.
+The procedural fallback is protected by the same full-cycle side invariant.
+
+Canvas also drops the former 7.6 px fore/aft boot stagger. The side-profile
+projection now keeps both hip-to-knee-to-boot chains on a narrow 2.1 px parallel
+depth offset, so double-poling no longer reads as an invented striding step.
+Paused catch/plant and moving 1× acceptance on `/replay/1003` confirmed separate
+knees and boots over their own skis in 2D and Ultra/WebGPU 3D without weakening
+the previously validated pole and elbow sequence.
+
+### Canvas SkiErg grounded lower-body correction — 2026-07-22
+
+Close inspection of the Canvas plant and loaded poses exposed a distinct
+proportion defect after the parallel-ski correction: 10.3 px of leg was folded
+under a pelvis with only 7.4 px neutral clearance, followed by another 2.4 px
+of vertical collapse. At peak compression the knees nearly touched the snow,
+making the athlete read as kneeling despite correct ski separation.
+
+The first correction raised the pelvis but left the old recovery rebound on the
+whole Canvas figure. That overcorrection visibly lifted the athlete away from
+the planted skis, replacing the kneel with a jump. The final closed-chain pose
+keeps the pelvis in a narrow 8.8–9.25 px standing-compression band: 9.2 px at
+neutral and at most 0.35 px lower under knee load. Recovery now comes only from
+knee extension and hip opening; the Canvas path has no whole-body flight cue.
+
+Torso length follows the grounded pelvis. Dense Canvas sampling requires less
+than 0.4 px total pelvis excursion, more than 3.5 px knee clearance, a
+predominantly vertical thigh, and the unchanged exact 5.25 px thigh length at
+every one of 129 cycle poses. Paused plant/compression poses and moving 1×
+browser acceptance on `/replay/1003` confirm a stable athletic hinge—neither
+kneeling nor jumping.

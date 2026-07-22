@@ -328,7 +328,9 @@ Open any workout from the dashboard and press **Replay**.
 - Switch between **2D and 3D** course views (3D needs a reasonably modern browser).
 - Set a **target pace** to draw a reference line on the pace chart.
 
-The athlete animates at the workout's real cadence — one stroke (or pole plant, or pedal turn) per recorded stroke, with splash and spray at each catch — and speeds up in step with the playback rate. In 3D, the athlete uses a segmented human-scale body with sport-specific kit, so posture reads like an erg athlete rather than a toy marker. Hands and feet stay posed against the relevant equipment: oar handles and foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals. The course surface is sport-specific too: RowErg gets layered water lanes, SkiErg gets groomed snow grooves, and BikeErg gets an asphalt/velodrome track with curbs, lane marks, and speed bars. The chase camera stays close enough for body position to matter and widens its lens slightly as the boat runs faster.
+The animation follows the workout's valid logged cycles: each stroke row advances one authored stroke, pole cycle, or pedal turn, while non-moving interval anchors are ignored. The visible kinematics are a deterministic illustration, not recorded biomechanics — Concept2 does not provide force curves, handle paths, drive length, joint positions, or measured posture, and rowplay derives watts from pace. RowErg now sequences legs, body, then arms and reverses that order on recovery; SkiErg separates reach, plant/pull, and recovery; BikeErg separates cadence-driven cranks from distance-driven wheel roll. Both 2D and 3D use sport-specific water, snow, and track surfaces. In 3D, hands and feet stay on the relevant equipment targets, and a closer sport-aware chase camera smooths both its position and look target.
+
+The 2D view draws a lightweight procedural athlete. In 3D, rowplay loads a compact, repository-owned generic athlete as one skinned mesh. RowErg, SkiErg, and BikeErg each have an authored canonical technique clip, sampled deterministically from replay pose and time; after each sample, analytic hand and foot correction preserves the authoritative equipment contacts. If V4 cannot load, the V3 authored geometry and procedural 3D paths remain available, with Canvas 2D as the stable outer fallback. The figure and clips are presentation art, not athlete-specific biomechanics: the assets contain no scan, avatar-generator output, user image, recorded motion, or athlete likeness.
 
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics. Ultra requires WebGPU; on WebGL-only devices it falls back to high. If the device can't hold a smooth frame rate, the renderer automatically lowers resolution first and effects second. Replay animation honours the operating system's reduced-motion setting.
 
@@ -942,6 +944,12 @@ Still stuck? The [FAQ](/docs/faq) covers more, and every page of this guide is r
     view3dUnsupported: "3D view requires WebGPU or WebGL on this device",
     view3dLoading: "Loading 3D…",
     view3dError: "Could not load 3D view",
+    view2dError: "2D renderer error — reloading page may help",
+    seekSlider: "Seek",
+    playbackSpeed: "Playback speed",
+    pacePer500m: "Pace per 500m",
+    uploadCsvHint: "Upload CSV, TCX, or FIT file",
+    closePanel: "Close",
     quality: "Quality",
     qualityLow: "Low",
     qualityMedium: "Medium",

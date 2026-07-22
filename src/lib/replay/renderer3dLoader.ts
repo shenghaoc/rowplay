@@ -3,6 +3,8 @@ import type { RenderQuality } from "./replayRenderer";
 import type { ReplayRenderer } from "./renderer";
 import type { Renderer3DBackend } from "./renderer3d";
 import type { Sport } from "../types";
+import type { ReplayAssetLibrary } from "./renderer3dAssets";
+import type { ReplayV4AssetTemplate } from "./renderer3dV4Assets";
 
 export type Renderer3DCtor = typeof CourseRenderer3D;
 export type { Renderer3DBackend } from "./renderer3d";
@@ -23,6 +25,8 @@ export interface Renderer3DFactoryDeps {
   detectWebGL?: () => boolean;
   loadWebGPU?: () => Promise<Renderer3DCtor>;
   loadWebGL?: () => Promise<Renderer3DCtor>;
+  loadAssets?: () => Promise<ReplayAssetLibrary>;
+  loadV4Assets?: () => Promise<ReplayV4AssetTemplate | null>;
 }
 
 let cached: Promise<Renderer3DCtor> | null = null;
@@ -90,18 +94,56 @@ function destroyFailedRenderer(renderer: CourseRenderer3D | null): void {
   }
 }
 
+/** Keep Three.js and GLTFLoader behind the same user-triggered 3D boundary. */
+async function loadDefaultReplayAssets(): Promise<ReplayAssetLibrary> {
+  const { loadReplayAssetLibrary, loadReplayAssetTemplateLibrary } =
+    await import("./renderer3dAssets");
+  try {
+    // V3 is the current high-detail contract: it preserves the dynamic leaf
+    // shells while adding anchored composite equipment. If an interrupted
+    // deploy leaves that optional file unavailable, the validated v2 library
+    // still improves the athlete rather than forcing a visible regression.
+    return await loadReplayAssetTemplateLibrary();
+  } catch {
+    return loadReplayAssetLibrary();
+  }
+}
+
+/** Keep the skinned V4 athlete behind the same user-triggered 3D boundary. */
+async function loadDefaultReplayV4Assets(): Promise<ReplayV4AssetTemplate> {
+  const { loadReplayV4Asset } = await import("./renderer3dV4Assets");
+  return loadReplayV4Asset();
+}
+
 export async function createRenderer3D(
   host: HTMLElement,
   quality: RenderQuality,
   sport: Sport,
   deps: Renderer3DFactoryDeps = {},
 ): Promise<Renderer3DResult> {
+  // The authored mesh pack raises visual fidelity but must never turn a local
+  // asset or parser failure into a blank replay. The existing procedural 3D
+  // rig remains a hard fallback and Canvas 2D remains the outer fallback.
+  // Defer the model request until a usable backend is about to be constructed;
+  // devices with no 3D support should not download a 3D-only asset. Retain one
+  // promise so WebGPU failure and the WebGL fallback share the parsed library.
+  let assetLibrary: Promise<ReplayAssetLibrary | null> | null = null;
+  let v4AssetTemplate: Promise<ReplayV4AssetTemplate | null> | null = null;
+  const getAssets = () => {
+    assetLibrary ??= (deps.loadAssets ?? loadDefaultReplayAssets)().catch(() => null);
+    return assetLibrary;
+  };
+  const getV4Assets = () => {
+    v4AssetTemplate ??= (deps.loadV4Assets ?? loadDefaultReplayV4Assets)().catch(() => null);
+    return v4AssetTemplate;
+  };
   const canWebGPU = await (deps.detectWebGPU ?? webgpuSupported)();
   if (canWebGPU) {
     let renderer: CourseRenderer3D | null = null;
     try {
       const Ctor = await (deps.loadWebGPU ?? loadRenderer3DWebGPU)();
-      renderer = new Ctor(host, quality, sport);
+      const [assets, v4Assets] = await Promise.all([getAssets(), getV4Assets()]);
+      renderer = new Ctor(host, quality, sport, { assets, v4Assets });
       await renderer.ready?.();
       // Honour the renderer's effective backend rather than the requested one:
       // Three's WebGPURenderer can install its own WebGL2 fallback inside
@@ -114,7 +156,8 @@ export async function createRenderer3D(
       }
       destroyFailedRenderer(renderer);
       renderer = null;
-    } catch {
+    } catch (err) {
+      console.warn("[replay] WebGPU init failed, falling back to WebGL:", err);
       destroyFailedRenderer(renderer);
       renderer = null;
       // WebGPU can be exposed but fail adapter/device init. WebGL remains the
@@ -126,10 +169,14 @@ export async function createRenderer3D(
     throw new Error("3D renderer unavailable");
   }
   const webglQuality: RenderQuality = quality === "ultra" ? "high" : quality;
+  if (quality === "ultra") {
+    console.warn("[replay] WebGPU unavailable, quality downgraded from ultra to high");
+  }
   const Ctor = await (deps.loadWebGL ?? loadRenderer3D)();
+  const [assets, v4Assets] = await Promise.all([getAssets(), getV4Assets()]);
   let renderer: CourseRenderer3D | null = null;
   try {
-    renderer = new Ctor(host, webglQuality, sport);
+    renderer = new Ctor(host, webglQuality, sport, { assets, v4Assets });
     await renderer.ready?.();
     return { renderer, backend: "webgl", quality: webglQuality };
   } catch (err) {

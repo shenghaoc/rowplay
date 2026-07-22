@@ -1,4 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
+import { shouldPrecacheStaticFile } from "../svelte.config.js";
+import {
+  isManagedServiceWorkerCache,
+  isReplayAssetPath,
+  replayAssetCacheStrategy,
+  shouldCacheResponse,
+} from "./serviceWorkerPolicy";
+import { attachRuntimeCacheWrite } from "./serviceWorkerRuntimeCache";
 
 /**
  * Test the service worker's cache-control filter logic (extracted for
@@ -8,12 +16,6 @@ import { describe, expect, it } from "vite-plus/test";
  * The actual service-worker.ts runs in a ServiceWorkerGlobalScope which
  * Vitest can't easily simulate, so we extract and test the filtering logic.
  */
-
-/** Mirror of the service worker's cache eligibility check (lowercase-normalized). */
-function shouldCacheResponse(ccHeader: string | null): boolean {
-  const cc = (ccHeader ?? "").toLowerCase();
-  return !cc.includes("no-store") && !cc.includes("private");
-}
 
 describe("service-worker cache eligibility", () => {
   it("caches responses with public cache-control", () => {
@@ -47,9 +49,56 @@ describe("service-worker cache eligibility", () => {
   });
 });
 
+describe("replay asset cache policy", () => {
+  it("omits 3D-only models from the install-time shell", () => {
+    expect(shouldPrecacheStaticFile("replay-assets/rowplay-rigs-v1.glb")).toBe(false);
+    expect(shouldPrecacheStaticFile("favicon.svg")).toBe(true);
+    expect(shouldPrecacheStaticFile(".DS_Store")).toBe(false);
+  });
+
+  it("recognizes replay models with and without a deployment base path", () => {
+    expect(isReplayAssetPath("/replay-assets/rowplay-rigs-v1.glb", "")).toBe(true);
+    expect(isReplayAssetPath("/rowplay/replay-assets/rowplay-rigs-v1.glb", "/rowplay")).toBe(true);
+    expect(isReplayAssetPath("/rowplay/replay/1001", "/rowplay")).toBe(false);
+  });
+
+  it("uses network-first so a healthy model can replace a malformed cached response", () => {
+    expect(replayAssetCacheStrategy("/replay-assets/rowplay-rigs-v1.glb", "")).toBe(
+      "network-first",
+    );
+    expect(replayAssetCacheStrategy("/rowplay/replay-assets/rowplay-rigs-v1.glb", "/rowplay")).toBe(
+      "network-first",
+    );
+    expect(replayAssetCacheStrategy("/rowplay/replay/1001", "/rowplay")).toBeNull();
+  });
+
+  it("owns versioned replay-model caches during activation cleanup", () => {
+    expect(isManagedServiceWorkerCache("replay-models-old-version")).toBe(true);
+    expect(isManagedServiceWorkerCache("shell-old-version")).toBe(true);
+    expect(isManagedServiceWorkerCache("third-party-cache")).toBe(false);
+  });
+});
+
 describe("CLEAR_USER_CACHES message format", () => {
   it("has the expected message type", () => {
     const message = { type: "CLEAR_USER_CACHES" };
     expect(message.type).toBe("CLEAR_USER_CACHES");
+  });
+});
+
+describe("runtime cache writes", () => {
+  it("attaches cache writes to the service-worker event lifetime", async () => {
+    const waits: Promise<unknown>[] = [];
+    const event = {
+      waitUntil: (promise: Promise<unknown>) => waits.push(promise),
+    };
+    const error = new Error("quota");
+    const seen: unknown[] = [];
+
+    attachRuntimeCacheWrite(event, Promise.reject(error), (err) => seen.push(err));
+
+    expect(waits).toHaveLength(1);
+    await expect(waits[0]).resolves.toBeUndefined();
+    expect(seen).toEqual([error]);
   });
 });

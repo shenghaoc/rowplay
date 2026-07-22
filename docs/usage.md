@@ -102,37 +102,154 @@ modified.
 
 ## Common workflows
 
-- **Replay a workout** — play/pause, scrub, 0.5×–8× speed, 2D/3D course views
-  (3D uses WebGPU when available, with WebGL fallback), and keyboard shortcuts
+- **Replay a workout** — play/pause, scrub, technique-first 1× playback by
+  default, 0.5×–8× speed for transport and review, 2D/3D course views (3D uses
+  WebGPU when available, with WebGL fallback), and keyboard shortcuts
   (<kbd>Space</kbd> to play/pause, <kbd>←</kbd><kbd>→</kbd> to seek by ±10s)
   shown in the transport bar.
 
-The athlete animates from Concept2 stroke rows: the figure takes one stroke
-(or pole plant, or pedal revolution) per recorded stroke, with splash and spray
-on each catch, and speeds up in step with the playback rate. The public
-Concept2 stroke payload does not include force curves or handle position, so
-the replay infers only timing, amplitude, and intensity from time, distance,
-pace, rate, heart rate, and watts. In 3D, athletes use segmented human-scale
-models with separate torso, head, shoulders, arms, legs, hands, feet, and
-sport-specific kit so the scene reads as a coached erg replay rather than a toy
-marker. Hands and feet are posed against the relevant equipment — oar handles
-and foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals — so
-the motion does not drift away from the machine. The 3D chase camera stays close
-enough for body posture to matter and widens its lens slightly as the boat runs
-faster.
+The athlete animates from Concept2 stroke rows: each valid row advances one
+canonical stroke, pole cycle, or pedal revolution, and the modeled catch can
+emit water or snow contact effects. Playback opens at 1× so the technique is
+readable at a real-time reference speed; faster settings are transport controls
+for reviewing a workout, not the reference presentation. Non-moving interval
+anchor rows are ignored, and split-derived replays integrate changing cadence
+without jumping phase. Demo rows are generated from their declared cadence
+rather than from a fixed sample count, so the BikeErg route pedals at its
+displayed RPM.
 
-The 3D course surface is sport-specific too: RowErg shows layered water lanes
-with buoy and waterline detail, SkiErg shows groomed snow grooves and blue gate
-markers, and BikeErg shows an asphalt/velodrome-style track with curbs, dashed
-lane marks, and speed bars.
+The public Concept2 stroke payload provides cumulative time and distance, pace,
+rate, and optional heart rate; rowplay derives watts from pace. It does **not**
+contain a force curve, handle path, drive length, joint positions, or measured
+posture. The visible movement is therefore a deterministic, generic technique
+model aligned to logged cycles, rather than a reconstruction of your individual
+biomechanics. Its shared technique phases stage RowErg legs, body, then arms
+(the arms stay softly long until the hands have passed the knees and the legs
+are nearly extended; both elbows then pull behind the torso as the handle
+approaches the lower ribs, and the arms straighten first on recovery);
+SkiErg's classic double-pole high reach,
+steep plant, down-pointing early elbow bend, core-led press with the elbow
+rotating rearward, long-arm pole-off, and lifted forward recovery that returns
+the elbow underneath the arm before the next plant. Its hips, knees, boots, and
+skis retain left/right order in a narrow parallel stance rather than crossing
+or inventing a striding step. In Canvas, the neutral stance stays close to leg
+extension and compresses into an athletic standing bend rather than folding the
+knees onto the snow like a kneeling figure. BikeErg stages cadence-driven cranks
+separately from distance-driven wheel roll.
+Both 2D and 3D use those same timing and contact semantics.
+
+The 2D view draws a lightweight procedural athlete. In 3D, rowplay loads a
+compact repository-owned V4 athlete as one skinned mesh. RowErg, SkiErg, and
+BikeErg each have an authored canonical technique clip, sampled deterministically
+from replay pose and time; after sampling, an analytic correction pass keeps the
+hands and feet on the existing authoritative equipment contacts. Live and ghost
+athletes use independent instances. Both skinned bodies remain fully opaque and
+depth-writing; the ghost uses a restrained cool tint instead of alpha-sorting a
+deforming mesh, while runtime materials retain theme and lane identity. The
+repository-owned V3 pack continues to supply the multi-part
+sport-equipment assemblies and acts as the first athlete fallback, followed by
+procedural 3D and the stable Canvas 2D renderer. Fabric, painted composite,
+metal, rubber, grips, and trim keep their own visual response rather than being
+recolored as one plastic block. The figure and clips remain generic presentation
+art; the assets contain no scan, avatar-generator output, user image, body
+profile, clothing profile, athlete likeness, recorded motion, or
+athlete-specific biomechanics.
+
+The current 3D packages make the anatomical and equipment contracts visible:
+the V4 skin deforms around its authored skeleton, while the V3 equipment builds
+as coherent assemblies—an open-cockpit racing shell with split decks, recessed
+leg well, fixed rails/stretcher and a moving four-roller seat carriage; an oar
+rig; Nordic skis; and a continuous
+bicycle wheel/frame/drivetrain. RowErg palms stay on separate rigid scull grips
+and outside the torso; both 2D and 3D keep the elbows softly open until the
+hands clear the knees, then keep the bent elbows behind the shoulders rather
+than pointing toward the handle or flaring into a horizontal goalpost. During
+the illustrated SkiErg plant, each rigid 1.55 m
+pole holds a deterministic course anchor while its hand remains on the grip.
+The skier advances relative to that basket, releases it near the end of the
+short planted phase, lifts it through recovery, and approaches the next anchor
+without a vertical drop. The 3D elbow is constrained to the shared sagittal
+technique branch rather than a sideways branch inherited from the base clip.
+The same post-clip pass constrains each V4 knee to the same-side deterministic
+marker above its own planted ski; locking the boots may not push either thigh
+through the opposite leg. Canvas uses a small constant depth offset for the
+parallel skis instead of the former exaggerated fore/aft split.
+At the high plant both 2D and 3D put the flexed elbow below the shoulder; while
+the planted pole bears the press, that bend plane rotates behind the shoulder.
+The hand and rigid pole then lift and travel forward on recovery, and the elbow
+returns underneath the arm for the next plant without changing to the opposite
+two-bone intersection.
+BikeErg shoes stay on opposed pedals while each knee follows a continuous
+rider-forward branch and retains flexion through bottom dead centre. These are
+deliberate illustrative motion constraints, not measured joint or force data
+from Concept2.
+
+The shipped V4 athlete is a local, repository-owned generic asset: one skinned
+mesh, an authored skeleton, and three canonical sport clips. Three.js samples
+the selected clip from deterministic replay pose and time, then rowplay applies
+analytic post-clip correction to the hands and feet. This improves deformation
+and contact fidelity without implying that rowplay can infer an athlete's real
+joints, posture, or biomechanics from a Logbook workout. V4 remains subject to
+the same equipment-contact authority and V3, procedural 3D, and Canvas fallback
+rules.
+
+Both views use complete sport-specific illustrative environments, not one
+generic floor with different colors. RowErg combines layered water with
+shoreline and regatta-scale cues; SkiErg uses groomed, blue-shadowed snow with
+snowbank, evergreen, alpine, and Nordic-venue forms; BikeErg uses a deliberate
+asphalt or velodrome-style circuit with curbs, barriers, infield, and built-venue
+or floodlight cues. The 2D view composes sky, horizon, middle distance, course,
+and foreground layers. The 3D view adds atmospheric depth, a readable horizon,
+smooth compound scenery, material-specific terrain variation, and sport-specific
+surfaces so the athlete is grounded in a venue rather than floating on a plane.
+
+The venue, weather, light, trees, mountains, shoreline, and structures are
+generic presentation art. Concept2 does not provide route geography, venue,
+weather, or camera data, so these scenes do not reconstruct where or under what
+conditions the workout happened. All shipped scenery is created locally from
+procedural Canvas drawing and Three.js geometry and materials. The replay does
+not ship or download generated environment images, photographs, scanned venues,
+or imported location models.
+
+In 3D, the authored human-scale skinned athlete keeps feet and hands on the
+relevant equipment targets through the post-clip contact pass — oar handles and
+foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals. The larger
+3D stage and rear three-quarter chase camera keep paired limbs visible; sport-
+and viewport-aware framing, speed-aware follow, and camera-relative fill light
+keep the athlete readable around the full course. Environment contrast and
+detail stay subordinate to the figure, equipment contacts, ghost comparison,
+and telemetry.
+
+The contact pass does not move or resize equipment to rescue an authored pose.
+It rotates each reachable two-link limb over its anatomical envelope, uses the
+shared rearward RowErg and sagittal SkiErg elbow markers where rigid hand
+contacts admit two opposite solutions, and uses the equipment-derived knee
+branch for cycling. RowErg likewise uses the shared raised-knee branch after the
+feet close on the stretcher, preventing the standing rest skeleton from folding
+the legs through the hull; SkiErg uses its shared same-side knee branch so the
+feet remain planted on parallel skis without crossed thighs. Remaining arm bend
+planes stay clip-authored. If input geometry is ever incompatible, the limb
+clamps at its real reach instead of stretching a skeleton, pole, oar, or crank.
+
+The 2D BikeErg uses the same mechanically forward clockwise convention for its
+wheels and cranks. Explicit opposing crank arms, pedals, chainring, sprocket,
+chain strands, and asymmetric wheel markers prevent the wagon-wheel effect from
+making fast 4×/8× playback appear to run backwards. In 3D, distance-sampled
+transparent wakes stay behind the athlete without merging into opaque cards,
+and the compact telemetry pill leaves the figure as the visual focus.
 
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics.
-Ultra is intended for WebGPU-capable devices and uses a larger stage, denser
-environment geometry, stronger shadows, and richer wake/spray detail. If the
-device can't hold a smooth frame rate at the selected tier, the renderer
-automatically lowers resolution first and effects (water motion, spray) second
-for the rest of the session.
-Replay animation honours the operating system's reduced-motion setting.
+Every tier keeps the sky, horizon, course material, core venue silhouette, and
+athlete readable. Higher tiers add denser scenery, stronger shadows, richer
+material detail, and more wake or spray; Ultra is intended for WebGPU-capable
+devices. If the device can't hold a smooth frame rate at the selected tier, the
+renderer automatically lowers resolution first and then decorative effects such
+as water motion and spray for the rest of the session. This never changes
+recorded timing, distance, or equipment contacts. Replay animation honours the
+operating system's reduced-motion setting by freezing or suppressing decorative
+parallax, waves, spray, speed-responsive FOV breathing, and secondary chase
+easing while retaining the complete static scene and the essential
+athlete-locked follow camera.
 
 Per-stroke data is used when Concept2 provides it. Workouts without stroke data
 fall back to a split-based replay, so the course still plays back.
@@ -157,6 +274,9 @@ The replay page also highlights **Workout moments**: best sustained push, slower
 - **Does rowplay change my logbook?** Never; it only reads.
 - **Why no stroke-by-stroke replay on some workouts?** Not every logbook entry
   has per-stroke data; those replay from splits.
+- **Does the replay recreate my real technique?** No. It presents a generic,
+  canonical technique model synchronised to the timing and cadence Concept2
+  records; the Logbook does not include motion-capture, joint, or force data.
 - **Phone support?** Yes, including home-screen install (PWA).
 - **Languages?** English, Deutsch, Español, Français, 日本語, 中文.
 

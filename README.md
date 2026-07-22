@@ -24,10 +24,17 @@ the app under `/docs`.
 
 ### Replay
 
-![rowplay replay using bundled demo data](docs/screenshots/replay-demo.png)
+#### 2D regatta venue
 
-Screenshots use bundled synthetic demo workouts; no private Concept2 data is
-shown.
+![rowplay 2D RowErg replay using bundled demo data](docs/screenshots/replay-demo.png)
+
+#### 3D regatta venue
+
+![rowplay 3D RowErg replay using bundled demo data](docs/screenshots/replay-3d-demo.png)
+
+The replay combines an illustrative sport venue with stroke-synchronised
+athletes and telemetry. Screenshots use bundled synthetic demo workouts; no
+private Concept2 data or real-world route imagery is shown.
 
 ## Try the demo
 
@@ -61,11 +68,51 @@ account.
 
 ### Synchronized replay
 
-- Play, pause, scrub, and 0.5×–8× playback controls
-- Concept2 stroke-based animation when detail is available, with split- or
-  summary-based replay when it is not
-- A Canvas 2D view plus optional Three.js 3D rendering that tries WebGPU first,
-  falls back to WebGL, and returns to 2D if neither 3D backend is usable
+- Technique-first 1× playback by default, with play, pause, scrub, and 0.5×–8×
+  transport controls retained for fast workout review
+- A shared, deterministic sport-technique graph that aligns one canonical cycle
+  to each valid moving Concept2 stroke row, with cadence-continuous split or
+  summary timing when detail is unavailable
+- Canvas 2D and optional Three.js 3D renderers that share the same technique
+  phases, equipment contact targets, and sport-specific water, snow, and track
+  materials for RowErg, SkiErg, and BikeErg
+- Premium sport-specific environments in both views: layered regatta water and
+  shoreline, groomed Nordic snow and alpine venue cues, or a barrier-lined
+  asphalt/velodrome training circuit
+- A compact repository-owned V4 GLB supplies one generic skinned athlete in 3D.
+  RowErg, SkiErg, and BikeErg each use an authored canonical technique clip,
+  sampled deterministically from replay pose and time; an analytic post-clip
+  pass keeps hands and feet on the authoritative equipment contacts. Live and
+  ghost bodies stay opaque/depth-writing; ghost identity uses tint rather than
+  transparent skinned-mesh sorting
+- The repository-owned V3 geometry pack continues to supply the multi-part
+  RowErg, SkiErg, and BikeErg equipment assemblies—including a Blender-authored
+  open racing shell, fixed rails/stretcher, and moving seat carriage—and provides the first
+  athlete fallback, followed by procedural 3D and the stable Canvas 2D renderer
+- The replay is a generic, data-synchronised technique presentation—not a
+  reconstruction of an athlete's biomechanics. Concept2 records timing,
+  distance, pace, rate, and optional heart rate, rather than joint trajectories,
+  force curves, or motion-capture data.
+- The current 3D figure pack separates fabric, painted composite, metal, rubber,
+  grip, and trim response rather than rendering a single flat-shaded figurine.
+  It gives the BikeErg a continuous frame/wheel/drivetrain, the RowErg a hull
+  and oar assembly, and the SkiErg a complete ski assembly without taking over
+  their contact targets. RowErg grips remain outside the torso through the full
+  pull, while SkiErg poles stay rigid from grip to basket and their planted tips
+  hold a deterministic course contact. SkiErg elbows point down at plant,
+  rotate rearward through the loaded press, and return underneath the
+  forward-lifting recovery without a horizontal branch flip
+- High and Ultra 3D quality use a single world-aligned, texel-stabilised native
+  shadow rig. The visible sun, athlete shadow, and ground contact agree rather
+  than layering a second simulated shadow over the same live athlete
+- Generic replay figures only—no scan, athlete likeness, avatar-generator
+  output, user image, or undocumented downloaded model
+- Local procedural scenery built from Canvas drawing and Three.js geometry;
+  no generated environment images, scanned venues, or downloaded location
+  models are shipped in the replay runtime
+- Alias-resistant 2D BikeErg drivetrain motion with explicit cranks, pedals,
+  chain and directional wheel markers that remain readable through 8× playback
+- Progressive 3D fallback from WebGPU to WebGL, then to the stable 2D renderer
 - Live pace, rate, power, heart-rate, and synchronized telemetry charts
 - Personal ghost racing against a comparable past session or target pace
 - Workout-moment analysis with direct jumps to meaningful sections
@@ -125,6 +172,13 @@ demo mode never contacts a real athlete account.
   an athlete's entire history.
 - Replay uses detailed stroke rows when possible and degrades to split or
   summary timing when Concept2 has less detail.
+- Three.js drives the repository-owned V4 athlete as one skinned mesh with
+  authored RowErg, SkiErg, and BikeErg technique clips. Replay pose and time
+  select each clip deterministically, then analytic hand and foot correction
+  preserves the existing equipment-contact authority. RowErg knees use the
+  shared seated bend branch so the full leg chain stays above the open cockpit.
+  These canonical clips
+  are presentation art, not recorded motion or athlete-specific biomechanics.
 - 3D rendering progressively falls back from WebGPU to WebGL to the stable 2D
   renderer.
 - Bundled synthetic history makes development and evaluation reproducible

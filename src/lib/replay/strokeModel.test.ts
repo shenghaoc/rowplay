@@ -44,6 +44,31 @@ describe("strokeModel", () => {
     expect(strokePoseAt(timeline, 10.5).index).toBe(2);
   });
 
+  it("skips leading and repeated non-advancing anchors instead of inventing cycles", () => {
+    const timeline = buildStrokeTimeline(
+      [stroke(0, 0, 30, 0), stroke(2, 10, 30, 180), stroke(2, 10, 30, 180), stroke(4, 21, 30, 190)],
+      "rower",
+      true,
+    );
+
+    expect(timeline.entries).toHaveLength(2);
+    expect(timeline.entries.map((entry) => entry.index)).toEqual([0, 1]);
+    expect(timeline.duration).toBe(4);
+    expect(timeline.distance).toBe(21);
+    expect(strokePoseAt(timeline, 2).index).toBe(1);
+  });
+
+  it("uses normalized sec/500m pace when inferring BikeErg distance", () => {
+    const timeline = buildStrokeTimeline(
+      [stroke(0, 0, 60, 0), { t: 2, d: 0, pace: 100, spm: 60, watts: 200 }],
+      "bike",
+      true,
+    );
+
+    expect(timeline.entries).toHaveLength(1);
+    expect(timeline.entries[0].endD - timeline.entries[0].startD).toBeCloseTo(10, 10);
+  });
+
   it("keeps split fallback synthetic and finite", () => {
     const timeline = buildStrokeTimeline(
       [stroke(60, 250, 0, 0), stroke(120, 500, 0, 0)],
@@ -57,7 +82,38 @@ describe("strokeModel", () => {
     expect(pose.rate).toBeGreaterThan(0);
   });
 
-  it("widens high-rate/high-power envelopes compared with low-rate rows", () => {
+  it("integrates synthetic phase continuously across changing rates", () => {
+    const timeline = buildStrokeTimeline(
+      [stroke(60, 250, 20, 100), stroke(120, 500, 30, 120)],
+      "rower",
+      false,
+    );
+    const before = strokePoseAt(timeline, 59.999);
+    const boundary = strokePoseAt(timeline, 60);
+    const after = strokePoseAt(timeline, 60.001);
+
+    expect(boundary.phase).toBeCloseTo(20 * Math.PI * 2, 8);
+    expect(boundary.phase - before.phase).toBeGreaterThan(0);
+    expect(boundary.phase - before.phase).toBeLessThan(0.01);
+    expect(after.phase - boundary.phase).toBeGreaterThan(0);
+    expect(after.phase - boundary.phase).toBeLessThan(0.01);
+  });
+
+  it("keeps one real cycle per API row for every sport", () => {
+    for (const sportName of ["rower", "skierg", "bike"] as const) {
+      const timeline = buildStrokeTimeline(
+        [stroke(0, 0, 30, 0), stroke(2, 10, 30, 180), stroke(4, 20, 30, 190)],
+        sportName,
+        true,
+      );
+
+      expect(strokePoseAt(timeline, 1).index).toBe(0);
+      expect(strokePoseAt(timeline, 2).index).toBe(1);
+      expect(strokePoseAt(timeline, 2).phase).toBeCloseTo(Math.PI * 2, 8);
+    }
+  });
+
+  it("changes timing and restrained secondary cues for harder late rows", () => {
     const timeline = buildStrokeTimeline(
       [stroke(3, 8, 18, 90, 120), stroke(5, 25, 42, 420, 178)],
       "rower",

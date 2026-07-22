@@ -233,21 +233,23 @@ function buildStrokes(spec: Spec): { strokes: Stroke[]; time: number } {
   const strokes: Stroke[] = [];
   let d = 0;
   let t = 0;
-  const dStep = spec.distance / 220; // ~220 samples
   while (d < spec.distance) {
     const frac = d / spec.distance;
     const noise = (rand() - 0.5) * 4;
     const pace = Math.max(70, spec.basePace * paceProfile(frac) + noise);
     const speed = 500 / pace; // m/s
-    const dt = dStep / speed;
+    const spm = Math.max(1, Math.round(spec.baseSpm + (frac > 0.9 ? 4 : 0) + (rand() - 0.5) * 2));
+    // Concept2 stroke rows represent completed cycles, not evenly spaced
+    // distance samples. This keeps the demo timeline truthful at both rowing
+    // cadence and BikeErg rpm.
+    const dt = 60 / spm;
     t += dt;
-    d += dStep;
-    const spm = spec.baseSpm + (frac > 0.9 ? 4 : 0) + (rand() - 0.5) * 2;
+    d += speed * dt;
     const stroke: Stroke = {
       t: round1(t),
       d: round1(Math.min(d, spec.distance)),
       pace: round1(pace),
-      spm: Math.round(spm),
+      spm,
       watts: Math.round(paceToWattsForSport(spec.sport, pace)),
     };
     if (!spec.omitHr) {

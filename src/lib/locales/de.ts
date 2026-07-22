@@ -338,7 +338,9 @@ Das DPS-Diagramm verfolgt die Meter pro Schlag. Der Pace-normalisierte Schalter 
 - Wechsle zwischen **2D- und 3D-Ansicht** der Strecke (3D braucht einen halbwegs modernen Browser).
 - Setze eine **Ziel-Pace**, um eine Referenzlinie im Pace-Diagramm zu zeichnen.
 
-Der Athlet bewegt sich mit der echten Kadenz des Workouts — ein Schlag (oder Stockeinsatz bzw. eine Pedalumdrehung) pro aufgezeichnetem Schlag, mit Spritzern bei jedem Catch — und beschleunigt mit der Wiedergabegeschwindigkeit. In 3D nutzt die Figur einen gegliederten Körper in realistischeren Proportionen mit sportartspezifischem Kit, damit Haltung und Bewegung wie ein Erg-Athlet wirken und nicht wie ein Spielzeugmarker. Hände und Füße bleiben an der passenden Ausrüstung: Rudergriff und Fußplatte, SkiErg-Griffe und Schuhe oder BikeErg-Lenker und Pedale. Auch die Strecke ist sportartspezifisch: RowErg zeigt geschichtete Wasserbahnen, SkiErg präparierte Schneerillen und BikeErg eine Asphalt-/Velodrombahn mit Curbs, Spurlinien und Geschwindigkeitsmarken. Die Verfolgungskamera bleibt nah genug, dass die Körperposition sichtbar bleibt, und weitet den Blickwinkel leicht, wenn das Boot schneller läuft.
+Die Animation folgt den gültigen aufgezeichneten Zyklen des Workouts: Jede Schlagzeile bewegt genau einen gestalteten Ruderzug, Stockzyklus oder eine Pedalumdrehung weiter; Intervallanker ohne Zeit- oder Distanzfortschritt werden ignoriert. Die sichtbare Kinematik ist eine deterministische Illustration und keine gemessene Biomechanik — Concept2 liefert weder Kraftkurven noch Griffwege, Zuglänge, Gelenkpositionen oder Körperhaltung; Watt leitet rowplay aus der Pace ab. Beim RowErg arbeiten zuerst Beine, dann Rumpf und Arme, in der Erholung in umgekehrter Reihenfolge; SkiErg trennt Reichweite, Einsatz/Zug und Erholung; BikeErg trennt kadenzgetriebene Kurbeln vom distanzgetriebenen Radlauf. 2D und 3D zeigen sportartspezifische Wasser-, Schnee- und Bahnoberflächen. In 3D bleiben Hände und Füße an den Ausrüstungszielen, während eine nähere sportartspezifische Verfolgungskamera Position und Blickziel weich nachführt.
+
+Die 2D-Ansicht zeichnet weiterhin eine leichtgewichtige prozedurale Athletenfigur. In 3D lädt rowplay einen kompakten, Repository-eigenen generischen Athleten als einzelnes Skinned Mesh. Für RowErg, SkiErg und BikeErg gibt es je einen gestalteten kanonischen Technik-Clip, der deterministisch aus Replay-Pose und -Zeit abgetastet wird; anschließend hält eine analytische Hand- und Fußkorrektur die maßgeblichen Ausrüstungskontakte ein. Kann V4 nicht geladen werden, bleiben die gestaltete V3-Geometrie und die prozedurale 3D-Darstellung verfügbar, Canvas 2D ist der stabile äußere Fallback. Figur und Clips sind allgemeine Präsentationsgrafik, keine athletenspezifische Biomechanik: Die Assets enthalten weder Scan noch Ausgabe eines Avatar-Generators, Nutzerbild, aufgezeichnete Bewegung oder Ähnlichkeit mit dem Athleten.
 
 In 3D wählt der **Qualität**-Selektor niedrige, mittlere, hohe oder Ultra-Grafik. Ultra setzt WebGPU voraus; auf reinen WebGL-Geräten wird stattdessen Hoch verwendet. Wenn das Gerät keine flüssige Bildrate halten kann, senkt der Renderer automatisch zuerst die Auflösung und danach Effekte. Die Replay-Animation respektiert die Systemeinstellung für reduzierte Bewegung.
 
@@ -950,6 +952,12 @@ Hängst du noch fest? Die [FAQ](/docs/faq) deckt mehr ab, und jede Seite dieses 
     view3dUnsupported: "3D-Ansicht benötigt WebGPU oder WebGL auf diesem Gerät",
     view3dLoading: "3D wird geladen…",
     view3dError: "3D-Ansicht konnte nicht geladen werden",
+    view2dError: "2D-Renderer-Fehler — Seite neu laden könnte helfen",
+    seekSlider: "Suchen",
+    playbackSpeed: "Wiedergabegeschwindigkeit",
+    pacePer500m: "Pace pro 500 m",
+    uploadCsvHint: "CSV-, TCX- oder FIT-Datei hochladen",
+    closePanel: "Schließen",
     quality: "Qualität",
     qualityLow: "Niedrig",
     qualityMedium: "Mittel",
