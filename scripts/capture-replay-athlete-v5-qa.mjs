@@ -124,6 +124,14 @@ async function openReplay({
   const stage = page.locator(".canvas3d-host:not(.hidden) canvas");
   await stage.waitFor({ state: "visible", timeout: 30_000 });
   await page.locator(".backend-label").waitFor({ state: "visible", timeout: 30_000 });
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector(".canvas3d-host:not(.hidden) canvas")
+        ?.getAttribute("data-replay-v4-athlete") === "ready",
+    undefined,
+    { timeout: 30_000 },
+  );
   const expectedQaCamera =
     camera === "front" ? "athlete-front" : camera === "close" ? "athlete-close" : "normal";
   const effectiveQaCamera = await stage.getAttribute("data-replay-qa-camera");

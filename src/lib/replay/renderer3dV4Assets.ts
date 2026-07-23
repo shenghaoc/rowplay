@@ -122,17 +122,25 @@ const SURFACE_PALETTES: readonly SurfacePalette[] = [
       [0.06, 0.08, 0.1],
     ],
   },
-  // Accept the prior cool-black swatch while cached/test V4 sources transition
-  // to the warmer, less helmet-like authored hair palette.
+  // Accept historical cool-black swatches while the production source uses a
+  // lighter warm-brown hair treatment that reads as hair rather than a helmet.
   {
     role: "hair",
     colors: [
+      [0.3, 0.17, 0.09],
+      [0.22, 0.13, 0.075],
       [0.13, 0.085, 0.055],
       [0.08, 0.09, 0.12],
     ],
   },
   { role: "trim", colors: [[0.42, 0.38, 0.78]] },
-  { role: "face-detail", colors: [[0.56, 0.33, 0.25]] },
+  {
+    role: "face-detail",
+    colors: [
+      [0.35, 0.2, 0.14],
+      [0.44, 0.24, 0.17],
+    ],
+  },
 ];
 
 function srgbToLinear(value: number): number {

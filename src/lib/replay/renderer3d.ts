@@ -3878,6 +3878,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       });
       this.liveAvatar.group.userData.authoredReplayV4 = !!this.liveAvatar.v4Motion;
       this.ghostAvatar.group.userData.authoredReplayV4 = !!this.ghostAvatar.v4Motion;
+      // The marker is intentionally QA-only. It lets the capture harness wait
+      // for the real skinned production athlete instead of racing the first
+      // empty renderer frame, while remaining inert for every normal replay.
+      if (this.canvas.dataset) {
+        this.canvas.dataset.replayV4Athlete = this.liveAvatar.v4Motion ? "ready" : "unavailable";
+      }
       const contactReach = (side: "leftHand" | "rightHand"): number => {
         const effector = options.v4Assets!.effectors[side];
         return replayV4ArmContactReach(this.sport, effector);
@@ -5947,14 +5953,23 @@ export class CourseRenderer3D implements ReplayRenderer {
     // preserves the production chase composition for every normal replay,
     // while letting evidence inspect the shoulder/elbow/hip surface directly.
     const qaClose = this.qaCamera !== "normal" && !state.ghost;
+    // `athlete-front` is a capture-only portrait, not a reversed chase view:
+    // it must make the actual head, shoulder mass, and face treatment legible
+    // enough to review. The normal and diagnostic-close cameras keep their
+    // broadcast framing unchanged.
     const qaFront = this.qaCamera === "athlete-front" && !state.ghost;
     const normalBack = baseBack + comparisonPullback;
-    const closeScale = qaClose ? 0.42 : 1;
+    const closeScale = qaFront ? 0.22 : qaClose ? 0.42 : 1;
     const back = normalBack * closeScale;
     const baseHeight = this.reduceMotion
       ? sportRig.height + 0.7
       : sportRig.height + (narrow ? 0.3 : 0);
-    const height = (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);
+    const portraitAimY = sportRig.aimY + 0.22;
+    const height = qaFront
+      ? portraitAimY + 0.12
+      : (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);
+    const qaLateral = qaFront ? Math.min(0.16, lateral * 0.13) : lateral;
+    const qaAhead = qaFront ? 0 : ahead;
     // A small live-lane bias keeps the vector non-zero when the two course
     // tangents cancel at half a lap. Adding it before normalization makes the
     // heading continuous as the gap crosses that point; a binary fallback
@@ -5981,14 +5996,14 @@ export class CourseRenderer3D implements ReplayRenderer {
     const cameraLayoutChanged = cameraLayoutMode !== this.cameraLayoutMode;
     this.cameraLayoutMode = cameraLayoutMode;
     this.chase.set(
-      focusX + (qaFront ? focusTx : -focusTx) * back + rx * (qaFront ? -lateral : lateral),
+      focusX + (qaFront ? focusTx : -focusTx) * back + rx * (qaFront ? -qaLateral : qaLateral),
       height,
-      focusZ + (qaFront ? focusTz : -focusTz) * back + rz * (qaFront ? -lateral : lateral),
+      focusZ + (qaFront ? focusTz : -focusTz) * back + rz * (qaFront ? -qaLateral : qaLateral),
     );
     this.lookAt.set(
-      focusX + focusTx * ahead,
-      sportRig.aimY + (qaClose ? 0.12 : 0),
-      focusZ + focusTz * ahead,
+      focusX + focusTx * qaAhead,
+      qaFront ? portraitAimY : sportRig.aimY + (qaClose ? 0.12 : 0),
+      focusZ + focusTz * qaAhead,
     );
     if (!this.cameraInit) {
       this.camera.position.copy(this.chase);

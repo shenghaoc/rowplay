@@ -23,6 +23,7 @@ import sys
 from dataclasses import dataclass
 from typing import Callable, Sequence
 
+import bmesh
 import bpy
 from mathutils import Vector
 
@@ -70,12 +71,12 @@ LEG_FABRIC_SIDE = (0.14, 0.24, 0.30, 1.0)
 LEG_FABRIC_LIGHT = (0.38, 0.52, 0.60, 1.0)
 SKIN = (0.72, 0.48, 0.36, 1.0)
 SKIN_LIGHT = (0.82, 0.60, 0.48, 1.0)
-HAIR = (0.13, 0.085, 0.055, 1.0)
-# Face accents remain deliberately close to the skin palette. At replay scale,
-# near-black painted eyes/brows become a visor or cartoon mask; this warmer
-# shadow gives the material partition a stable face-detail region without
-# drawing hard graphic marks across the head.
-EYE = (0.56, 0.33, 0.25, 1.0)
+HAIR = (0.30, 0.17, 0.09, 1.0)
+# Face accents stay chocolate-brown rather than black. They are applied only as
+# two compact eye regions; continuous painted brows or a mouth line become a
+# visor or cartoon mask at normal replay distance.
+EYE = (0.35, 0.20, 0.14, 1.0)
+MOUTH = (0.44, 0.24, 0.17, 1.0)
 SHOE = (0.88, 0.90, 0.93, 1.0)
 SHOE_DARK = (0.12, 0.15, 0.19, 1.0)
 SOLE = (0.06, 0.08, 0.10, 1.0)
@@ -84,8 +85,10 @@ SOLE = (0.06, 0.08, 0.10, 1.0)
 # live+ghost lanes in unit tests / CI, while remaining continuous and readable
 # at chase-camera distance.
 # A denser remesh keeps facial planes, garment seams, and the seated pelvis
-# readable at the replay camera without crossing the reviewed 4.5 MB GLB cap.
-VOXEL_SIZE = 0.0098
+# readable at the replay camera. The corresponding validator permits a measured
+# 5.5 MB shared static payload rather than flattening the athlete for an
+# arbitrary micro-budget.
+VOXEL_SIZE = 0.0088
 SMOOTH_ITERATIONS = 1
 
 
@@ -316,17 +319,19 @@ def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
         # Establish a recognisable generic cranium, brow, cheek and jaw before
         # adding small features. A rounded-only ellipsoid reads as a doll head
         # at the replay camera even when its material is otherwise polished.
-        if local.y < -0.01:
-            jaw_blend = max(0.0, min(1.0, (local.y + 0.13) / 0.12))
-            local.x *= 0.79 + jaw_blend * 0.2
-            local.z *= 0.9 + jaw_blend * 0.08
+        if local.y < -0.015:
+            # Taper from cheekbone into an actual jaw and chin, rather than
+            # carrying the cranium's roundness all the way to the neck.
+            jaw_blend = max(0.0, min(1.0, (local.y + 0.135) / 0.12))
+            local.x *= 0.76 + jaw_blend * 0.2
+            local.z *= 0.86 + jaw_blend * 0.1
         elif local.y > 0.055:
             # Slightly broader cranial mass prevents a pinched, toy-like cap.
             local.x *= 1.035
         front = max(0.0, local.z / 0.104)
         forehead = math.exp(-((local.x / 0.082) ** 2 + ((local.y - 0.055) / 0.05) ** 2))
-        nose_bridge = math.exp(-((local.x / 0.022) ** 2 + ((local.y - 0.012) / 0.06) ** 2))
-        nose_tip = math.exp(-((local.x / 0.03) ** 2 + ((local.y + 0.018) / 0.027) ** 2))
+        nose_bridge = math.exp(-((local.x / 0.02) ** 2 + ((local.y - 0.012) / 0.058) ** 2))
+        nose_tip = math.exp(-((local.x / 0.028) ** 2 + ((local.y + 0.02) / 0.025) ** 2))
         brow = math.exp(-((abs(local.x) - 0.046) / 0.026) ** 2) * math.exp(
             -((local.y - 0.024) / 0.021) ** 2
         )
@@ -337,22 +342,23 @@ def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
             -((local.y + 0.04) / 0.04) ** 2
         )
         chin = math.exp(-((local.y + 0.094) / 0.028) ** 2) * math.exp(-(local.x / 0.05) ** 2)
+        mouth_plane = math.exp(-((local.x / 0.046) ** 2 + ((local.y + 0.058) / 0.014) ** 2))
         # A readable generic face plane at replay distance: no likeness or
         # photoreal detail, but enough forehead/brow/eye/nose/chin structure
         # that the head does not read as a featureless egg.
         local.z += front * (
-            0.006 * forehead
-            + 0.019 * nose_bridge
-            + 0.012 * nose_tip
-            + 0.006 * brow
-            - 0.005 * eye_socket
-            + 0.004 * cheek
-            + 0.009 * chin
+            0.008 * forehead
+            + 0.014 * nose_bridge
+            + 0.009 * nose_tip
+            + 0.007 * brow
+            - 0.006 * eye_socket
+            + 0.005 * cheek
+            + 0.011 * chin
+            - 0.002 * mouth_plane
         )
         return center + local
 
-    builder.add_ellipsoid(center, (0.116, 0.144, 0.11), {"v4Head": 1}, SKIN, 48, 34, shape)
-
+    builder.add_ellipsoid(center, (0.112, 0.142, 0.108), {"v4Head": 1}, SKIN, 52, 36, shape)
     for side in (-1.0, 1.0):
         builder.add_ellipsoid(
             center + Vector((side * 0.102, -0.004, -0.01)),
@@ -362,32 +368,6 @@ def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
             14,
             10,
         )
-
-    hair_center = center + Vector((0, 0.078, -0.014))
-
-    def shape_hair(point: Vector, _u: float, _v: float) -> Vector:
-        local = point - hair_center
-        if local.y < 0:
-            local.y *= 0.24
-            local.x *= 0.9
-        if local.z > 0:
-            local.z *= 0.3
-            local.y = max(local.y, 0.002)
-        if local.y > 0.038:
-            local.y = 0.038 + (local.y - 0.038) * 0.48
-        return hair_center + local
-
-    builder.add_ellipsoid(hair_center, (0.11, 0.07, 0.102), {"v4Head": 1}, HAIR, 36, 24, shape_hair)
-    for side in (-1.0, 1.0):
-        builder.add_ellipsoid(
-            center + Vector((side * 0.087, 0.025, -0.004)),
-            (0.018, 0.06, 0.026),
-            {"v4Head": 1},
-            HAIR,
-            14,
-            12,
-        )
-
 
 def build_arm(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: str) -> None:
     sign = -1.0 if side_name == "Left" else 1.0
@@ -407,11 +387,14 @@ def build_arm(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: 
         Ring(chest.lerp(clavicle, 0.35), (0.055, 0.048), {"v4Chest": 0.88, clavicle_name: 0.12}, FABRIC),
         Ring(chest.lerp(clavicle, 0.7), (0.07, 0.06), {"v4Chest": 0.55, clavicle_name: 0.35, upper_name: 0.1}, FABRIC),
         Ring(clavicle, (0.08, 0.068), {"v4Chest": 0.3, clavicle_name: 0.5, upper_name: 0.2}, FABRIC, 0.04),
-        Ring(shoulder, (0.095, 0.082), {clavicle_name: 0.32, upper_name: 0.68, "v4Chest": 0.0}, FABRIC, 0.06, 0.05),
-        Ring(shoulder.lerp(elbow, 0.12), (0.098, 0.086), {upper_name: 0.92, clavicle_name: 0.08}, FABRIC, 0.07, 0.05),
-        Ring(shoulder.lerp(elbow, 0.28), (0.084, 0.074), {upper_name: 1}, FABRIC, 0.05, 0.04),
-        Ring(shoulder.lerp(elbow, 0.42), (0.076, 0.066), {upper_name: 1}, TRIM, 0.04),
-        Ring(shoulder.lerp(elbow, 0.55), (0.07, 0.06), {upper_name: 0.96, fore_name: 0.04}, SKIN_LIGHT, 0.03),
+        # Keep a human deltoid sweep rather than a spherical shoulder pad.
+        # The sleeve still overlaps the rib cage deeply enough for the raised
+        # SkiErg and RowErg poses, but it tapers immediately into the upper arm.
+        Ring(shoulder, (0.085, 0.074), {clavicle_name: 0.32, upper_name: 0.68, "v4Chest": 0.0}, FABRIC, 0.05, 0.045),
+        Ring(shoulder.lerp(elbow, 0.12), (0.088, 0.078), {upper_name: 0.92, clavicle_name: 0.08}, FABRIC, 0.055, 0.045),
+        Ring(shoulder.lerp(elbow, 0.28), (0.08, 0.07), {upper_name: 1}, FABRIC, 0.045, 0.035),
+        Ring(shoulder.lerp(elbow, 0.42), (0.072, 0.063), {upper_name: 1}, TRIM, 0.035),
+        Ring(shoulder.lerp(elbow, 0.55), (0.067, 0.057), {upper_name: 0.96, fore_name: 0.04}, SKIN_LIGHT, 0.025),
         Ring(shoulder.lerp(elbow, 0.7), (0.062, 0.054), {upper_name: 0.88, fore_name: 0.12}, SKIN, 0.025),
         Ring(shoulder.lerp(elbow, 0.85), (0.052, 0.046), {upper_name: 0.7, fore_name: 0.3}, SKIN),
         Ring(shoulder.lerp(elbow, 0.95), (0.046, 0.042), {upper_name: 0.52, fore_name: 0.48}, SKIN),
@@ -580,7 +563,140 @@ def create_cage(builder: AthleteMeshBuilder) -> bpy.types.Object:
     return cage
 
 
-def create_production_surface(cage: bpy.types.Object) -> bpy.types.Object:
+def add_flush_face_details(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
+    """Add nearly flush, smooth facial details to the exported skinned mesh.
+
+    The voxel surface is deliberately coarse enough for a stable sport silhouette,
+    so painting a few face vertices makes square, mask-like blocks. These small
+    forms join the same exported skinned mesh, remain almost flush with the
+    sculpted face, and keep the eye/nose/mouth read recognisably human at the
+    portrait QA distance without becoming a photoreal likeness.
+    """
+
+    center = bones["v4Head"] + Vector((0, 0.07, 0.018))
+    for side in (-1.0, 1.0):
+        bpy.ops.mesh.primitive_uv_sphere_add(
+            segments=18,
+            ring_count=10,
+            location=to_blender(center + Vector((side * 0.047, 0.005, 0.11))),
+        )
+        eye = bpy.context.active_object
+        eye.name = f"rowplay-v4-eye-{'left' if side < 0 else 'right'}"
+        # RowPlay uses +Y up / +Z forward; Blender uses +Z up / -Y forward.
+        # The tiny forward radius prevents a bead silhouette at portrait range.
+        eye.scale = (0.009, 0.0007, 0.0045)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        for polygon in eye.data.polygons:
+            polygon.use_smooth = True
+        color = eye.data.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
+        for value in color.data:
+            value.color_srgb = EYE
+        group = eye.vertex_groups.new(name="v4Head")
+        group.add(list(range(len(eye.data.vertices))), 1.0, "REPLACE")
+        bpy.ops.object.select_all(action="DESELECT")
+        surface.select_set(True)
+        eye.select_set(True)
+        bpy.context.view_layer.objects.active = surface
+        bpy.ops.object.join()
+
+    # A tall, shallow nose bridge gives the face an actual profile. Its front
+    # extent is only ~6 mm beyond the remeshed plane: enough to catch light,
+    # not enough to turn into the earlier bead-like button nose.
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        segments=18,
+        ring_count=12,
+        location=to_blender(center + Vector((0, -0.018, 0.127))),
+    )
+    nose = bpy.context.active_object
+    nose.name = "rowplay-v4-nose-ridge"
+    nose.scale = (0.012, 0.006, 0.022)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    for polygon in nose.data.polygons:
+        polygon.use_smooth = True
+    color = nose.data.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
+    for value in color.data:
+        value.color_srgb = SKIN
+    group = nose.vertex_groups.new(name="v4Head")
+    group.add(list(range(len(nose.data.vertices))), 1.0, "REPLACE")
+    bpy.ops.object.select_all(action="DESELECT")
+    surface.select_set(True)
+    nose.select_set(True)
+    bpy.context.view_layer.objects.active = surface
+    bpy.ops.object.join()
+
+    # A single warm, thin mouth plane is deliberately quieter than the eyes.
+    # It supplies a human lower-face landmark without drawing a cartoon smile.
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        segments=18,
+        ring_count=8,
+        location=to_blender(center + Vector((0, -0.057, 0.107))),
+    )
+    mouth = bpy.context.active_object
+    mouth.name = "rowplay-v4-mouth"
+    mouth.scale = (0.018, 0.00055, 0.002)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    for polygon in mouth.data.polygons:
+        polygon.use_smooth = True
+    color = mouth.data.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
+    for value in color.data:
+        value.color_srgb = MOUTH
+    group = mouth.vertex_groups.new(name="v4Head")
+    group.add(list(range(len(mouth.data.vertices))), 1.0, "REPLACE")
+    bpy.ops.object.select_all(action="DESELECT")
+    surface.select_set(True)
+    mouth.select_set(True)
+    bpy.context.view_layer.objects.active = surface
+    bpy.ops.object.join()
+
+
+def add_short_hair_cap(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
+    """Lay a smooth, close-fitting short-hair cap over the remeshed cranium."""
+
+    center = bones["v4Head"] + Vector((0, 0.10, 0.028))
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        segments=32,
+        ring_count=20,
+        location=to_blender(center),
+    )
+    hair = bpy.context.active_object
+    hair.name = "rowplay-v4-short-hair-cap"
+    # Blender axes map to RowPlay x / -z / y. This cap follows the cranium but
+    # sits only a few millimetres proud of it, so it reads as cut hair rather
+    # than a helmet or a separate doll accessory.
+    hair.scale = (0.116, 0.12, 0.112)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    mesh = hair.data
+    edit = bmesh.new()
+    edit.from_mesh(mesh)
+    # Retain only the upper dome. The lower rim rises through the centre of the
+    # forehead and sits lower at the temples, preventing the horizontal cap
+    # edge that makes a procedural athlete look like a helmeted figurine.
+    bmesh.ops.delete(
+        edit,
+        geom=[
+            vertex
+            for vertex in edit.verts
+            if vertex.co.z < 0.012 + 0.035 * math.exp(-((vertex.co.x / 0.06) ** 2))
+        ],
+        context="VERTS",
+    )
+    edit.to_mesh(mesh)
+    edit.free()
+    for polygon in mesh.polygons:
+        polygon.use_smooth = True
+    color = mesh.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
+    for value in color.data:
+        value.color_srgb = HAIR
+    group = hair.vertex_groups.new(name="v4Head")
+    group.add(list(range(len(mesh.vertices))), 1.0, "REPLACE")
+    bpy.ops.object.select_all(action="DESELECT")
+    surface.select_set(True)
+    hair.select_set(True)
+    bpy.context.view_layer.objects.active = surface
+    bpy.ops.object.join()
+
+
+def create_production_surface(cage: bpy.types.Object, bones: dict[str, Vector]) -> bpy.types.Object:
     """Remesh a visual copy, then transfer cage weights and vertex colours."""
 
     bpy.ops.object.select_all(action="DESELECT")
@@ -690,6 +806,9 @@ def create_production_surface(cage: bpy.types.Object) -> bpy.types.Object:
     # Remesh discards colour attributes; repaint deliberate kit/skin regions.
     paint_vertex_colors(surface)
 
+    add_flush_face_details(surface, bones)
+    add_short_hair_cap(surface, bones)
+
     # Preserve an authored texture-coordinate seam on the coherent remeshed
     # body. Runtime PBR detail maps use this single UV set for cloth weave,
     # skin micro-relief, footwear grain, and hair direction; the portable GLB
@@ -732,22 +851,11 @@ def paint_vertex_colors(obj: bpy.types.Object) -> None:
         # ankles ~0.06. Shoe paint is restricted to the foot block only.
         # Shoes live only in the foot block (ankle ~0.06, toe forward in +Z).
         near_foot = y < 0.12 and abs(x) > 0.05 and z > -0.08
-        near_hand = y > 1.05 and abs(x) > 0.48
-        # Keep a short, warm swept cap rather than a solid black helmet. The
-        # crown and rear hairline are clear at chase-camera distance while the
-        # forehead remains skin so the head still has a human face plane.
-        if y > 1.87 or (y > 1.815 and z < 0.018) or (1.71 < y < 1.79 and z < -0.045):
-            color = HAIR
-        # A single, warm eye-shadow strip keeps a calm human face at close
-        # range. Do not paint brows or a mouth: voxel-scale dark marks become
-        # a black visor/mask from the normal broadcast camera.
-        elif 1.762 < y < 1.775 and z > 0.104 and 0.042 < abs(x) < 0.062:
-            color = EYE
-        elif 1.748 < y < 1.79 and z > 0.104 and abs(x) < 0.019:
-            color = SKIN_LIGHT
-        elif y > 1.64 and z < -0.025:
-            color = HAIR
-        elif y > 1.55 or (y > 1.48 and abs(x) < 0.12 and z > -0.02):
+        # Keep short sleeves attached through the deltoid and upper arm; only
+        # the outer forearm/palm block becomes skin. A global outer-arm skin
+        # cut made the jersey look painted onto a toy shoulder.
+        near_hand = y > 1.05 and abs(x) > 0.68
+        if (y > 1.62 and abs(x) < 0.105) or (1.57 < y < 1.62 and abs(x) < 0.05 and z > 0.035):
             color = SKIN
         elif near_hand:
             color = SKIN_LIGHT if abs(x) > 0.58 else SKIN
@@ -837,7 +945,7 @@ def main() -> None:
 
     cage = create_cage(builder)
     armature = create_armature(bones)
-    surface = create_production_surface(cage)
+    surface = create_production_surface(cage, bones)
     create_material(surface)
     bind_surface(surface, armature)
 

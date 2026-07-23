@@ -5,7 +5,10 @@ import { relative, resolve } from "node:path";
 const DEFAULT_ASSET = "static/replay-assets/rowplay-athlete-v4.glb";
 // Production athlete is deployable but no longer forced into a micro-budget
 // that preserved mannequin lofts. Keep a hard ceiling for Worker static assets.
-const MAX_FILE_BYTES = 4_500 * 1024;
+// The shared athlete now reserves enough static payload for readable facial
+// planes and garment topology instead of flattening those forms to an
+// arbitrary micro-budget. It remains bounded for lazy Worker delivery.
+const MAX_FILE_BYTES = 5_500 * 1024;
 const MIN_VERTICES = 4_500;
 const MAX_VERTICES = 80_000;
 const MIN_TRIANGLES = 8_500;

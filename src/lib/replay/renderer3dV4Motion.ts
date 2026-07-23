@@ -369,14 +369,14 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       specularIntensity: 0.74,
     },
     "face-detail": {
-      roughness: 0.52,
+      roughness: 0.62,
       metalness: 0,
-      clearcoat: 0.02,
-      clearcoatRoughness: 0.55,
+      clearcoat: 0,
+      clearcoatRoughness: 0.65,
       sheen: 0,
       sheenRoughness: 1,
       sheenColor: 0xffffff,
-      specularIntensity: 0.68,
+      specularIntensity: 0.58,
     },
   },
   high: {
@@ -441,14 +441,14 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       specularIntensity: 0.92,
     },
     "face-detail": {
-      roughness: 0.4,
+      roughness: 0.58,
       metalness: 0,
-      clearcoat: 0.045,
-      clearcoatRoughness: 0.4,
+      clearcoat: 0.008,
+      clearcoatRoughness: 0.58,
       sheen: 0,
       sheenRoughness: 1,
       sheenColor: 0xffffff,
-      specularIntensity: 0.84,
+      specularIntensity: 0.66,
     },
   },
   ultra: {
@@ -513,14 +513,14 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       specularIntensity: 1,
     },
     "face-detail": {
-      roughness: 0.32,
+      roughness: 0.52,
       metalness: 0,
-      clearcoat: 0.075,
-      clearcoatRoughness: 0.32,
+      clearcoat: 0.015,
+      clearcoatRoughness: 0.5,
       sheen: 0,
       sheenRoughness: 1,
       sheenColor: 0xffffff,
-      specularIntensity: 0.96,
+      specularIntensity: 0.74,
     },
   },
 };
@@ -533,9 +533,13 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
  */
 const QUALITY_DETAIL_STRENGTH: Readonly<Record<RenderQuality, number>> = {
   low: 0,
-  medium: 0.022,
-  high: 0.052,
-  ultra: 0.085,
+  // Deliberate, progressive steps: Medium first reveals the weave and skin
+  // variation, High sharpens it, and Ultra raises both micro-contrast and
+  // texture resolution. No tier is merely the same flat athlete at a higher
+  // compute cost, and Ultra is not a single discontinuous visual jump.
+  medium: 0.038,
+  high: 0.068,
+  ultra: 0.1,
 };
 
 // Detail resolution rises with the selected tier as well as contrast. This
@@ -607,7 +611,7 @@ function normalSample(
   strength: number,
   size: number,
 ) {
-  const scale = THREE.MathUtils.clamp(strength / 0.085, 0, 1) * 1.45;
+  const scale = THREE.MathUtils.clamp(strength / 0.1, 0, 1) * 1.45;
   const current = detailSample(role, x, y);
   const dx = detailSample(role, (x + 1) % size, y) - current;
   const dy = detailSample(role, x, (y + 1) % size) - current;
@@ -622,8 +626,8 @@ function albedoSample(role: ReplayV4SurfaceRole, x: number, y: number, strength:
   // The vertex palette remains the source of athlete identity; this merely
   // adds progressively clearer fabric, hair, and skin variation at replay
   // distance. The restrained base prevents any tier reading as a decal.
-  const contrast = THREE.MathUtils.clamp(strength / 0.085, 0, 1) * 38;
-  return clampByte(244 + ((detailSample(role, x, y) - 126) / 42) * contrast);
+  const contrast = THREE.MathUtils.clamp(strength / 0.1, 0, 1) * 68;
+  return clampByte(238 + ((detailSample(role, x, y) - 126) / 42) * contrast);
 }
 
 function roughnessSample(
@@ -636,7 +640,7 @@ function roughnessSample(
   // profile rather than turning fabric into wet plastic. Its contrast grows
   // with the selected quality tier, so Medium, High and Ultra are visibly
   // distinct even when the camera is too far away to resolve every bump.
-  const contrast = THREE.MathUtils.clamp(strength / 0.085, 0, 1) * 34;
+  const contrast = THREE.MathUtils.clamp(strength / 0.1, 0, 1) * 46;
   return 232 + ((detailSample(role, x, y) - 126) / 42) * contrast;
 }
 
@@ -732,7 +736,7 @@ function applySurfaceQuality(
     material.bumpMap = bump;
     material.normalMap = normal;
     material.roughnessMap = roughness;
-    const normalScale = THREE.MathUtils.clamp(strength * 7.4, 0, 0.63);
+    const normalScale = THREE.MathUtils.clamp(strength * 8, 0, 0.72);
     material.normalScale.set(normalScale, normalScale);
     material.userData.replayV4GeneratedDetailMaps = [albedo, bump, normal, roughness];
   } else {
