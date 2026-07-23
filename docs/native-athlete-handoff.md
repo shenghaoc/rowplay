@@ -30,7 +30,7 @@ contract identity separately:
 
 | Artifact                           | Bytes | SHA-256                                                            |
 | ---------------------------------- | ----: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.contract.json` | 9,291 | `eb528dd5af13f9af8be44c57026fd3c3ea98bc682062549d611ce28116867d94` |
+| `rowplay-athlete-v4.contract.json` | 9,845 | `14c6cf7aa4900ff33145a88d44adbde339300383b6d2b86ca4b76ca973da31bd` |
 
 After an asset or contract rebuild, run `vp run build:replay-rig-v4-contract`
 and update this contract row in the same reviewed change.
@@ -59,8 +59,9 @@ Summary:
 - Mesh: one production `SkinnedMesh` with three connected topology components;
   its coherent remeshed primary body mass is the visual contract, while the
   component count is an inventory record rather than an art-quality constraint
-- Bones: stable 19-bone V4 semantic order (optional helper bones may exist for
-  deformation but are not required by this revision)
+- Bones: stable 19-bone V4 semantic order; the checked contract records any
+  optional visual helper bones and their rest transforms. Helpers may influence
+  deformation but inherit semantic motion and are never replay-motion targets.
 - Clips: RowErg, SkiErg, BikeErg normalized one-second technique clips
 - Contacts: left/right palms and soles only; runtime equipment constraints
   remain authoritative

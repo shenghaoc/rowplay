@@ -6,11 +6,12 @@ This pass adds compact authored-geometry layers above the existing procedural
 rig. The checked-in `rowplay-rigs-v3.glb` is a texture-free library of reusable
 fallback athlete shells and composite sport-equipment templates. The production
 `rowplay-athlete-v4.glb` supplies one generic `SkinnedMesh` with a coherent
-remeshed primary body mass, a stable 19-bone skeleton, and deterministic
-RowErg, SkiErg, and BikeErg clips. Its exact topology-component count is sealed
-as release inventory, not treated as an art-quality requirement. Both assets
-were created specifically for rowplay; neither contains a recording, scanned
-person, likeness, avatar-generator output, or user data.
+remeshed primary body mass, a stable 19-bone semantic skeleton, optional visual
+helper joints for deformation, and deterministic RowErg, SkiErg, and BikeErg
+clips. Its exact topology-component count is sealed as release inventory, not
+treated as an art-quality requirement. Both assets were created specifically for
+rowplay; neither contains a recording, scanned person, likeness,
+avatar-generator output, or user data.
 
 The current rig remains the contact and equipment authority. It owns sport
 timing, exact targets, body/equipment transforms, lane placement, live/ghost
@@ -187,19 +188,20 @@ enabled. The conversion script contains no mesh authoring, no alternate
 proportions, and no downloaded or generated character content.
 
 `rowplay-athlete-v4.contract.json` is generated from the Blender surface source,
-`rigV4.ts` constants, and the checked artifacts. It records the contract Studio must pin: schema version,
-hashes, bytes, units, axes, one-skinned-mesh inventory, exact 19-bone order,
-parent hierarchy, bind/rest local transforms, clip names, sport mapping, phase
-landmarks, palm/sole contact metadata, surface roles, provenance, licence, and
-validation commands.
+`rigV4.ts` constants, and the checked artifacts. It records the contract Studio
+must pin: schema version, hashes, bytes, units, axes, one-skinned-mesh inventory,
+the exact 19-bone semantic order, any visual helper names and rest transforms,
+parent hierarchy, clip names, sport mapping, phase landmarks, palm/sole contact
+metadata, surface roles, provenance, licence, and validation commands.
 
 Blender 5.2 did not produce byte-identical USDZ containers across repeat
 exports. The accepted native gate therefore records the checked USDZ hash and
 validates semantic round-trip through Three.js `USDLoader`: one intended
-skinned athlete, exact bone order, normalized finite skin weights, finite
-bounds, no external-looking references, matching triangle count, and cloned
-instances with independent skeleton/material state. This remains a portability
-gate only; it does not migrate the web runtime to USDZ.
+skinned athlete, exact semantic order plus any contract-recorded helpers,
+normalized finite skin weights, finite bounds, no external-looking references,
+matching triangle count, and cloned instances with independent skeleton/material
+state. This remains a portability gate only; it does not migrate the web runtime
+to USDZ.
 
 ## Out of scope
 

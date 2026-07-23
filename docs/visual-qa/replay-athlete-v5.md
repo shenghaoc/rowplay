@@ -59,7 +59,10 @@ The production path still loads `rowplay-athlete-v4.glb` through
    - slightly lower roughness, restrained sheen/clearcoat for fabric response
 3. **Runtime contract**
    - semantic 19 bones remain required
-   - helper bones are permitted by the loader (not required by this asset)
+   - build, GLB validation, runtime loading, and USDZ handoff preserve
+     contract-recorded helper bones when an authored surface needs them
+   - helpers remain visual-only: the three technique clips target semantic
+     joints, so helpers derive their pose from the hierarchy
    - topology component count and micro triangle budgets are no longer frozen
 4. **Motion**
    - clips, drive ends, contact offsets, and IK solve are unchanged

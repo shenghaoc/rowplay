@@ -9,6 +9,13 @@ type V4Contract = {
   readonly mesh: {
     readonly triangles: number;
   };
+  readonly bones: {
+    readonly semanticCount: number;
+    readonly semanticOrderedNames: readonly string[];
+    readonly totalCount: number;
+    readonly helperCount: number;
+    readonly helperNames: readonly string[];
+  };
   readonly animation: {
     readonly clips: readonly {
       readonly sport: string;
@@ -17,6 +24,12 @@ type V4Contract = {
     }[];
   };
 };
+
+const SEMANTIC_BONE_NAMES = new Set<string>(V4_BONE_NAMES);
+
+function sortedNames(names: readonly string[]): string[] {
+  return [...names].sort((left, right) => left.localeCompare(right));
+}
 
 // Blender USDZ parse + skin validation is multi-second on CI runners after the
 // production mesh density increase. Keep a single shared load and a wide budget.
@@ -68,7 +81,16 @@ describe("RowPlay V4 USDZ native handoff", () => {
       expect(skinned).toHaveLength(1);
 
       const mesh = skinned[0]!;
-      expect(mesh.skeleton.bones.map((bone) => bone.name)).toEqual([...V4_BONE_NAMES]);
+      const boneNames = mesh.skeleton.bones.map((bone) => bone.name);
+      expect(boneNames.filter((name) => SEMANTIC_BONE_NAMES.has(name))).toEqual([...V4_BONE_NAMES]);
+      expect(new Set(boneNames).size).toBe(boneNames.length);
+      expect(contract.bones.semanticCount).toBe(V4_BONE_NAMES.length);
+      expect(contract.bones.semanticOrderedNames).toEqual([...V4_BONE_NAMES]);
+      expect(contract.bones.totalCount).toBe(boneNames.length);
+      expect(contract.bones.helperCount).toBe(boneNames.length - V4_BONE_NAMES.length);
+      expect(sortedNames(contract.bones.helperNames)).toEqual(
+        sortedNames(boneNames.filter((name) => !SEMANTIC_BONE_NAMES.has(name))),
+      );
       const position = mesh.geometry.getAttribute("position");
       const skinIndex = mesh.geometry.getAttribute("skinIndex");
       const skinWeight = mesh.geometry.getAttribute("skinWeight");
@@ -94,7 +116,7 @@ describe("RowPlay V4 USDZ native handoff", () => {
         if (!Number.isFinite(sum) || Math.abs(sum - 1) >= 1e-5) weightError++;
         for (let component = 0; component < 4; component++) {
           const bone = skinIndex.getComponent(vertex, component);
-          if (bone < 0 || bone >= V4_BONE_NAMES.length) indexError++;
+          if (bone < 0 || bone >= boneNames.length) indexError++;
         }
       }
       expect(weightError, "vertices with non-unit skin weights").toBe(0);

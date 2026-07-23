@@ -59,6 +59,31 @@
       "v4RightLowerLeg",
       "v4RightFoot"
     ],
+    "semanticCount": 19,
+    "semanticOrderedNames": [
+      "v4Hips",
+      "v4Spine",
+      "v4Chest",
+      "v4Neck",
+      "v4Head",
+      "v4LeftClavicle",
+      "v4LeftUpperArm",
+      "v4LeftForearm",
+      "v4LeftHand",
+      "v4RightClavicle",
+      "v4RightUpperArm",
+      "v4RightForearm",
+      "v4RightHand",
+      "v4LeftUpperLeg",
+      "v4LeftLowerLeg",
+      "v4LeftFoot",
+      "v4RightUpperLeg",
+      "v4RightLowerLeg",
+      "v4RightFoot"
+    ],
+    "totalCount": 19,
+    "helperCount": 0,
+    "helperNames": [],
     "hierarchy": [
       {
         "name": "v4Hips",
@@ -231,7 +256,8 @@
           "scale": [1, 1, 1]
         }
       }
-    ]
+    ],
+    "helpers": []
   },
   "animation": {
     "clips": [

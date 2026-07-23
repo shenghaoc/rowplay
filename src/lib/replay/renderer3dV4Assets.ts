@@ -42,6 +42,7 @@ export const REPLAY_V4_BONE_NAMES = [
 ] as const;
 
 export type ReplayV4BoneName = (typeof REPLAY_V4_BONE_NAMES)[number];
+const REPLAY_V4_SEMANTIC_BONE_NAMES = new Set<string>(REPLAY_V4_BONE_NAMES);
 
 export const REPLAY_V4_EFFECTOR_BONES = Object.freeze({
   leftHand: "v4LeftHand",
@@ -323,11 +324,48 @@ function collectEffectorMetrics(
   });
 }
 
+function clipTrackTarget(track: THREE.KeyframeTrack): {
+  readonly boneName: string;
+  readonly propertyName: string;
+} {
+  let binding: ReturnType<typeof THREE.PropertyBinding.parseTrackName>;
+  try {
+    binding = THREE.PropertyBinding.parseTrackName(track.name);
+  } catch {
+    throw new Error(`Replay V4 clip has an unreadable track target: ${track.name}`);
+  }
+  const boneName = binding.objectName === "bones" ? binding.objectIndex : binding.nodeName;
+  if (typeof boneName !== "string" || typeof binding.propertyName !== "string") {
+    throw new Error(`Replay V4 clip has an invalid track target: ${track.name}`);
+  }
+  return { boneName, propertyName: binding.propertyName };
+}
+
 function validateClip(clip: THREE.AnimationClip): number {
-  if (!Number.isFinite(clip.duration) || clip.duration <= 0 || clip.tracks.length === 0) {
+  if (
+    !Number.isFinite(clip.duration) ||
+    clip.duration <= 0 ||
+    clip.tracks.length !== REPLAY_V4_BONE_NAMES.length + 1
+  ) {
     throw new Error(`Replay V4 clip has invalid timing or no tracks: ${clip.name}`);
   }
+  let hipsTranslations = 0;
+  const rotationTargets = new Set<string>();
   for (const track of clip.tracks) {
+    const { boneName, propertyName } = clipTrackTarget(track);
+    if (!REPLAY_V4_SEMANTIC_BONE_NAMES.has(boneName)) {
+      throw new Error(`Replay V4 clip directly targets a visual helper bone: ${boneName}`);
+    }
+    if (propertyName === "position") {
+      if (boneName !== "v4Hips") {
+        throw new Error(`Replay V4 clip translates a non-hips semantic bone: ${boneName}`);
+      }
+      hipsTranslations++;
+    } else if (propertyName === "quaternion") {
+      rotationTargets.add(boneName);
+    } else {
+      throw new Error(`Replay V4 clip has an unreviewed track property: ${track.name}`);
+    }
     if (track.times.length < 2 || track.values.length === 0) {
       throw new Error(`Replay V4 clip has an empty track: ${clip.name}/${track.name}`);
     }
@@ -343,6 +381,9 @@ function validateClip(clip: THREE.AnimationClip): number {
         throw new Error(`Replay V4 clip has non-finite values: ${clip.name}/${track.name}`);
       }
     }
+  }
+  if (hipsTranslations !== 1 || rotationTargets.size !== REPLAY_V4_BONE_NAMES.length) {
+    throw new Error(`Replay V4 clip must target every semantic bone exactly once: ${clip.name}`);
   }
   if (!clip.validate()) throw new Error(`Replay V4 clip failed Three.js validation: ${clip.name}`);
   const driveEnd: unknown = clip.userData.replayDriveEnd;

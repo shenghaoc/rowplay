@@ -30,10 +30,27 @@ function skinnedMeshes(group) {
   return meshes;
 }
 
+function sortedNames(names) {
+  return [...names].sort((left, right) => left.localeCompare(right));
+}
+
 function validateSkinnedMesh(mesh, contract) {
+  const boneNames = mesh.skeleton.bones.map((bone) => bone.name);
+  const semanticBoneNames = boneNames.filter((name) => V4_BONE_NAMES.includes(name));
+  const helperBoneNames = boneNames.filter((name) => !V4_BONE_NAMES.includes(name));
   invariant(
-    JSON.stringify(mesh.skeleton.bones.map((bone) => bone.name)) === JSON.stringify(V4_BONE_NAMES),
-    "V4 USDZ bone order drifted",
+    JSON.stringify(semanticBoneNames) === JSON.stringify(V4_BONE_NAMES),
+    "V4 USDZ semantic bone order drifted",
+  );
+  invariant(new Set(boneNames).size === boneNames.length, "V4 USDZ has duplicate bone names");
+  invariant(
+    contract.bones?.semanticCount === V4_BONE_NAMES.length &&
+      JSON.stringify(contract.bones?.semanticOrderedNames) === JSON.stringify(V4_BONE_NAMES) &&
+      contract.bones?.totalCount === boneNames.length &&
+      contract.bones?.helperCount === boneNames.length - V4_BONE_NAMES.length &&
+      JSON.stringify(sortedNames(contract.bones?.helperNames ?? [])) ===
+        JSON.stringify(sortedNames(helperBoneNames)),
+    "V4 USDZ bone inventory drifted from the contract",
   );
   const position = mesh.geometry.getAttribute("position");
   const skinIndex = mesh.geometry.getAttribute("skinIndex");
@@ -53,7 +70,7 @@ function validateSkinnedMesh(mesh, contract) {
     for (let component = 0; component < 4; component++) {
       const bone = skinIndex.getComponent(vertex, component);
       invariant(
-        Number.isInteger(bone) && bone >= 0 && bone < V4_BONE_NAMES.length,
+        Number.isInteger(bone) && bone >= 0 && bone < boneNames.length,
         "V4 USDZ skin index references an invalid bone",
       );
     }

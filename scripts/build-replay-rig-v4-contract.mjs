@@ -101,9 +101,18 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
       materialSlots: 1,
     },
     bones: {
+      // Keep the semantic interface stable for existing consumers. Visual
+      // helpers are documented separately and can grow without changing replay
+      // motion/contact vocabulary.
       count: V4_BONE_NAMES.length,
       orderedNames: V4_BONE_NAMES,
+      semanticCount: V4_BONE_NAMES.length,
+      semanticOrderedNames: V4_BONE_NAMES,
+      totalCount: glb.bones,
+      helperCount: glb.helperBones,
+      helperNames: glb.helperBoneNames,
       hierarchy: boneContracts(),
+      helpers: glb.helpers,
     },
     animation: {
       clips: clipContracts(),

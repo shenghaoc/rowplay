@@ -113,13 +113,28 @@ describe("V4 runtime asset contract", () => {
   });
 
   it("accepts optional helper bones while requiring the semantic joint set", () => {
-    const asset = createV4AthleteAsset();
-    const helper = new THREE.Bone();
-    helper.name = "v4LeftForearmTwist";
-    asset.bones.v4LeftForearm.add(helper);
-    asset.skeleton.bones.push(helper);
-    asset.skeleton.boneInverses.push(new THREE.Matrix4());
+    const asset = createV4AthleteAsset({
+      helperBones: [
+        {
+          name: "v4LeftForearmTwist",
+          parent: "v4LeftForearm",
+          position: [-0.18, -0.06, 0.03],
+        },
+      ],
+    });
+    const helper = asset.skeleton.getBoneByName("v4LeftForearmTwist");
+    if (!helper) throw new Error("V4 helper bone was not authored");
+    const helperIndex = asset.skeleton.bones.indexOf(helper);
+    const skinIndex = asset.mesh.geometry.getAttribute("skinIndex");
+    const skinWeight = asset.mesh.geometry.getAttribute("skinWeight");
+    skinIndex.setXYZW(0, helperIndex, 0, 0, 0);
+    skinWeight.setXYZW(0, 1, 0, 0, 0);
+    skinIndex.needsUpdate = true;
+    skinWeight.needsUpdate = true;
     const clips = productionNamedClips(asset);
+    expect(
+      clips.every((clip) => clip.tracks.every((track) => !track.name.includes(helper.name))),
+    ).toBe(true);
     releaseAuthoringMixer(asset);
     // collectReplayV4AssetTemplate takes ownership of the authoring root.
     const template = collectReplayV4AssetTemplate(asset.root, clips, 223_960);
@@ -130,6 +145,32 @@ describe("V4 runtime asset contract", () => {
       expect(template.skeleton.getBoneByName("v4LeftForearmTwist")).toBe(helper);
     } finally {
       disposeReplayV4AssetTemplate(template);
+    }
+  });
+
+  it("rejects clips that directly animate a visual helper bone", () => {
+    const asset = createV4AthleteAsset({
+      helperBones: [
+        {
+          name: "v4LeftForearmTwist",
+          parent: "v4LeftForearm",
+          position: [-0.18, -0.06, 0.03],
+        },
+      ],
+    });
+    try {
+      const clips = productionNamedClips(asset);
+      clips[0]!.tracks[clips[0]!.tracks.length - 1] = new THREE.QuaternionKeyframeTrack(
+        ".bones[v4LeftForearmTwist].quaternion",
+        [0, 1],
+        [0, 0, 0, 1, 0, 0, 0, 1],
+      );
+      releaseAuthoringMixer(asset);
+      expect(() => collectReplayV4AssetTemplate(asset.root, clips, 223_960)).toThrow(
+        "directly targets a visual helper bone",
+      );
+    } finally {
+      disposeV4AthleteAsset(asset);
     }
   });
 

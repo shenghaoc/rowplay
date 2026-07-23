@@ -100,9 +100,10 @@ hand, foot, oar, pedal, and planted-pole targets. V3, procedural 3D, and Canvas
 remain automatic fallbacks.
 
 - **Purpose:** one generic repository-authored production `SkinnedMesh` with a
-  stable 19-bone semantic skeleton and distinct deterministic RowErg, SkiErg,
-  and BikeErg base clips. Runtime samples normalized clip time from replay
-  phase and applies the analytic contact pass after the authored pose.
+  stable 19-bone semantic skeleton, optional visual deformation helpers, and
+  distinct deterministic RowErg, SkiErg, and BikeErg base clips. Runtime
+  samples normalized clip time from replay phase and applies the analytic
+  contact pass after the authored pose.
 - **Ownership and licence:** created specifically for rowplay from source in
   this repository; copyright (c) 2026 shenghaoc and rowplay contributors and
   distributed under the repository's MIT `LICENSE`. It contains no downloaded
@@ -111,11 +112,12 @@ remain automatic fallbacks.
 - **Source of truth:** `scripts/build-replay-athlete-v4-blender.py` authors a
   denser anatomical cage, voxel-remeshes it into a coherent primary body mass,
   transfers cage skin weights, and paints kit/skin/footwear vertex colours in
-  Blender 5.2. `src/lib/replay/rigV4.ts` owns the exact skeleton, contacts, and
-  clips; `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint
-  indices to that canonical order and seals the final GLB. The scripts and GLB
-  are production contracts. Set `BLENDER_BIN` when Blender is not installed at
-  the default macOS application path.
+  Blender 5.2. `src/lib/replay/rigV4.ts` owns the semantic skeleton, contacts,
+  and clips; `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint
+  indices to the canonical semantic order while preserving documented visual
+  helper joints and sealing the final GLB. The scripts and GLB are production
+  contracts. Set `BLENDER_BIN` when Blender is not installed at the default
+  macOS application path.
 - **Native handoff:** `rowplay-athlete-v4.usdz` is generated from the exact GLB
   by Blender 5.2. `scripts/build-replay-rig-v4-usdz.ts` honours `BLENDER_BIN`
   and launches the converter in `scripts/build-replay-rig-v4-usdz.py`. The
@@ -137,14 +139,16 @@ remain automatic fallbacks.
 - **Reviewed USDZ derivative:** Blender 5.2 does not produce byte-identical
   USDZ containers across repeat exports, so repeat-export acceptance is
   semantic: Three.js `USDLoader` must load one skinned athlete with the 19
-  semantic bones in order, finite normalized skin weights, finite bounds,
-  matching triangle count, no external-looking references, and clone-safe
-  skeleton/material instances.
+  semantic bones in order (plus any contract-recorded visual helpers), finite
+  normalized skin weights, finite bounds, matching triangle count, no
+  external-looking references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named semantic
-  bones (optional helper bones are permitted by the runtime loader), three
-  connected topology components, one opaque vertex-colour `MeshPhysicalMaterial`,
-  and zero textures/images. The surface is a coherent sports character:
+  bones plus any contract-recorded visual helpers, three connected topology
+  components, one opaque vertex-colour `MeshPhysicalMaterial`, and zero
+  textures/images. The semantic order is the only replay-motion interface;
+  helper joints may influence skinning but are not direct animation targets.
+  The surface is a coherent sports character:
   ribcage-emergent shoulders, tapered limbs with volume at elbows/knees,
   modelled palm mass, performance shoes, and deliberate kit panels painted in
   vertex colour. Exact vertex, triangle, and topology-component counts are
@@ -160,10 +164,11 @@ remain automatic fallbacks.
   `[-0.08,-0.01,0.035]` / `[0.08,-0.01,0.035]`; both feet
   `[0,-0.055,0.13]`.
 - **Animations:** three normalized one-second clips, each with one hips
-  translation and 19 quaternion tracks: `rowplay-v4-row-cycle` (authored drive
-  end `0.38`), `rowplay-v4-ski-cycle` (`0.34`), and
-  `rowplay-v4-bike-cycle` (`0.5`). Clip extras also preserve the canonical
-  phase schema and data-truth boundary.
+  translation and 19 semantic quaternion tracks: `rowplay-v4-row-cycle`
+  (authored drive end `0.38`), `rowplay-v4-ski-cycle` (`0.34`), and
+  `rowplay-v4-bike-cycle` (`0.5`). Helper joints derive their deformation pose
+  from that hierarchy and never receive replay animation tracks. Clip extras
+  also preserve the canonical phase schema and data-truth boundary.
 - **Verification:** Blender studio renders can be reproduced with
   `scripts/render-replay-rig-v4-qa.py`. Source tests cover normalized finite
   weights, exact bone and contact schemas, topology component count,

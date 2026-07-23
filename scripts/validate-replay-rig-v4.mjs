@@ -71,6 +71,28 @@ function sameNumberArray(actual, expected, epsilon = 1e-6) {
   );
 }
 
+function finiteNumberArray(value, components, description) {
+  invariant(
+    Array.isArray(value) &&
+      value.length === components &&
+      value.every((component) => typeof component === "number" && Number.isFinite(component)),
+    `V4 ${description} must contain ${components} finite components`,
+  );
+  return value;
+}
+
+function restLocalTransform(node, description) {
+  return {
+    translation: finiteNumberArray(node.translation ?? [0, 0, 0], 3, `${description} translation`),
+    rotationQuaternion: finiteNumberArray(
+      node.rotation ?? [0, 0, 0, 1],
+      4,
+      `${description} rotation`,
+    ),
+    scale: finiteNumberArray(node.scale ?? [1, 1, 1], 3, `${description} scale`),
+  };
+}
+
 function readGlb(bytes) {
   invariant(bytes.byteLength >= 20, "V4 file is too short to be a GLB");
   invariant(bytes.readUInt32LE(0) === 0x46546c67, "V4 GLB has invalid magic");
@@ -201,7 +223,6 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
   invariant(document.buffers[0].uri === undefined, "V4 external/data URI buffers are forbidden");
   invariant(document.buffers[0].byteLength <= binary.byteLength, "V4 embedded buffer is truncated");
 
-  invariant(document.nodes?.length === 25, "V4 must contain root, mesh, 19 bones and 4 markers");
   invariant(document.scenes[0].nodes?.length === 1, "V4 scene must expose one root");
   const root = document.nodes[document.scenes[0].nodes[0]];
   invariant(root?.name === "rowplay-v4-athlete-root", "V4 root name is invalid");
@@ -215,13 +236,58 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
 
   invariant(document.skins?.length === 1, "V4 must contain exactly one skin");
   const skin = document.skins[0];
-  invariant(skin.joints?.length === BONE_NAMES.length, "V4 skin must contain exactly 19 joints");
+  invariant(
+    Array.isArray(skin.joints) && skin.joints.length >= BONE_NAMES.length,
+    "V4 skin must include every semantic joint",
+  );
+  invariant(
+    document.nodes.length >= skin.joints.length + 6,
+    "V4 must contain root, mesh, skin joints, and contact markers",
+  );
   const loadedBoneNames = skin.joints.map((nodeIndex) => document.nodes[nodeIndex]?.name);
   invariant(
-    JSON.stringify(loadedBoneNames) === JSON.stringify(BONE_NAMES),
-    "V4 bone order drifted",
+    loadedBoneNames.every((name) => typeof name === "string" && name.length > 0),
+    "V4 skin has a missing joint name",
+  );
+  invariant(
+    new Set(loadedBoneNames).size === loadedBoneNames.length,
+    "V4 skin has duplicate joint names",
+  );
+  const semanticNames = new Set(BONE_NAMES);
+  const semanticBoneNames = loadedBoneNames.filter((name) => semanticNames.has(name));
+  invariant(
+    JSON.stringify(semanticBoneNames) === JSON.stringify(BONE_NAMES),
+    "V4 semantic bone order drifted",
   );
   invariant(document.nodes[skin.skeleton]?.name === "v4Hips", "V4 skeleton root must be v4Hips");
+
+  const parentByNode = new Map();
+  for (const [parentIndex, node] of document.nodes.entries()) {
+    for (const childIndex of node.children ?? []) {
+      invariant(
+        Number.isInteger(childIndex) && document.nodes[childIndex],
+        `V4 node ${parentIndex} references an invalid child`,
+      );
+      invariant(!parentByNode.has(childIndex), `V4 node ${childIndex} has multiple parents`);
+      parentByNode.set(childIndex, parentIndex);
+    }
+  }
+  const jointNodeIndexes = new Set(skin.joints);
+  const helpers = skin.joints
+    .filter((nodeIndex) => !semanticNames.has(document.nodes[nodeIndex].name))
+    .map((nodeIndex) => {
+      const node = document.nodes[nodeIndex];
+      const parentIndex = parentByNode.get(nodeIndex);
+      invariant(
+        jointNodeIndexes.has(parentIndex),
+        `V4 helper ${node.name} must be parented to a skin joint`,
+      );
+      return {
+        name: node.name,
+        parent: document.nodes[parentIndex].name,
+        restLocalTransform: restLocalTransform(node, `${node.name} helper`),
+      };
+    });
 
   invariant(document.meshes?.length === 1, "V4 must contain one mesh definition");
   const skinnedNodes = document.nodes.filter(
@@ -279,7 +345,7 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     "V4 major body mass is too fragmented relative to total vertices",
   );
 
-  const jointCount = BONE_NAMES.length;
+  const jointCount = skin.joints.length;
   for (let vertex = 0; vertex < vertexCount; vertex++) {
     invariant(
       positions.values[vertex].every(Number.isFinite) &&
@@ -359,9 +425,10 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     );
     invariant(
       animation.channels?.length === 20 && animation.samplers?.length === 20,
-      `${expected.name} must carry one hips position and 19 rotation tracks`,
+      `${expected.name} must carry one hips position and semantic rotation tracks`,
     );
     let translations = 0;
+    const rotationTargets = new Set();
     for (let channelIndex = 0; channelIndex < animation.channels.length; channelIndex++) {
       const channel = animation.channels[channelIndex];
       const sampler = animation.samplers[channel.sampler];
@@ -377,6 +444,13 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
           document.nodes[channel.target.node]?.name === "v4Hips",
           `${expected.name} moves a non-hips bone`,
         );
+      } else {
+        const targetName = document.nodes[channel.target.node]?.name;
+        invariant(
+          semanticNames.has(targetName),
+          `${expected.name} directly targets a visual helper bone`,
+        );
+        rotationTargets.add(targetName);
       }
       const times = readAccessor(document, binary, sampler.input).values.map(([time]) => time);
       invariant(times[0] === 0 && times.at(-1) === 1, `${expected.name} is not normalized 0..1`);
@@ -395,6 +469,10 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
       translations === 1,
       `${expected.name} must contain exactly one hips translation track`,
     );
+    invariant(
+      rotationTargets.size === BONE_NAMES.length,
+      `${expected.name} must rotate every semantic bone exactly once`,
+    );
   }
 
   const checksum = createHash("sha256").update(bytes).digest("hex");
@@ -402,7 +480,12 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     path: resolvedPath,
     bytes: bytes.byteLength,
     checksum,
-    bones: BONE_NAMES.length,
+    bones: skin.joints.length,
+    semanticBones: BONE_NAMES.length,
+    helperBones: helpers.length,
+    boneNames: loadedBoneNames,
+    helperBoneNames: helpers.map((helper) => helper.name),
+    helpers,
     clips: CLIPS.length,
     vertices: vertexCount,
     triangles: triangleCount,
@@ -420,7 +503,7 @@ async function main() {
   const result = await validateV4Asset(process.argv[2] ?? DEFAULT_ASSET);
   const displayPath = relative(process.cwd(), result.path) || result.path;
   console.log(
-    `validated ${displayPath}: ${result.bones} bones, ${result.clips} clips, ${result.components} topology components, ${result.triangles} triangles, ${result.vertices} vertices, ${result.bytes} bytes, sha256 ${result.checksum}`,
+    `validated ${displayPath}: ${result.bones} bones (${result.helperBones} helpers), ${result.clips} clips, ${result.components} topology components, ${result.triangles} triangles, ${result.vertices} vertices, ${result.bytes} bytes, sha256 ${result.checksum}`,
   );
 }
 
