@@ -124,9 +124,10 @@ face detail. Each live/ghost clone receives independent role materials while
 retaining one geometry, skeleton, clip set, and asset request. Low, Medium,
 High, and Ultra keep the same athlete and deterministic contact solve, but
 progressively refine those materials' roughness, specular response, cloth sheen,
-clearcoat, hair/face response, and deterministic per-instance UV relief. The
-GLB still embeds no image or texture: Medium begins the local relief treatment,
-then High and Ultra strengthen it instead of substituting a different athlete.
+clearcoat, hair/face response, and deterministic per-instance UV albedo,
+normal, roughness, and relief maps. Low has no generated maps; Medium uses
+32px maps, High uses 64px maps, and Ultra uses 96px maps rather than
+substituting a different athlete. The GLB still embeds no image or texture.
 This ensures quality changes visibly improve the athlete rather than only DPR
 or remote environment density.
 

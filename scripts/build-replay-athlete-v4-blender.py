@@ -71,7 +71,11 @@ LEG_FABRIC_LIGHT = (0.38, 0.52, 0.60, 1.0)
 SKIN = (0.72, 0.48, 0.36, 1.0)
 SKIN_LIGHT = (0.82, 0.60, 0.48, 1.0)
 HAIR = (0.13, 0.085, 0.055, 1.0)
-EYE = (0.055, 0.045, 0.04, 1.0)
+# Face accents remain deliberately close to the skin palette. At replay scale,
+# near-black painted eyes/brows become a visor or cartoon mask; this warmer
+# shadow gives the material partition a stable face-detail region without
+# drawing hard graphic marks across the head.
+EYE = (0.56, 0.33, 0.25, 1.0)
 SHOE = (0.88, 0.90, 0.93, 1.0)
 SHOE_DARK = (0.12, 0.15, 0.19, 1.0)
 SOLE = (0.06, 0.08, 0.10, 1.0)
@@ -337,45 +341,17 @@ def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
         # photoreal detail, but enough forehead/brow/eye/nose/chin structure
         # that the head does not read as a featureless egg.
         local.z += front * (
-            0.008 * forehead
-            + 0.032 * nose_bridge
-            + 0.022 * nose_tip
-            + 0.014 * brow
-            - 0.009 * eye_socket
-            + 0.008 * cheek
-            + 0.018 * chin
+            0.006 * forehead
+            + 0.019 * nose_bridge
+            + 0.012 * nose_tip
+            + 0.006 * brow
+            - 0.005 * eye_socket
+            + 0.004 * cheek
+            + 0.009 * chin
         )
         return center + local
 
     builder.add_ellipsoid(center, (0.116, 0.144, 0.11), {"v4Head": 1}, SKIN, 48, 34, shape)
-
-    # These overlapping planes survive voxel remesh as one coherent face
-    # rather than decals or separate toy parts.
-    builder.add_ellipsoid(
-        center + Vector((0, -0.006, 0.124)),
-        (0.026, 0.042, 0.026),
-        {"v4Head": 1},
-        SKIN_LIGHT,
-        20,
-        16,
-    )
-    builder.add_ellipsoid(
-        center + Vector((0, -0.094, 0.042)),
-        (0.07, 0.04, 0.06),
-        {"v4Head": 1},
-        SKIN,
-        24,
-        16,
-    )
-    for side in (-1.0, 1.0):
-        builder.add_ellipsoid(
-            center + Vector((side * 0.047, 0.024, 0.108)),
-            (0.032, 0.013, 0.017),
-            {"v4Head": 1},
-            SKIN_LIGHT,
-            18,
-            12,
-        )
 
     for side in (-1.0, 1.0):
         builder.add_ellipsoid(
@@ -762,17 +738,13 @@ def paint_vertex_colors(obj: bpy.types.Object) -> None:
         # forehead remains skin so the head still has a human face plane.
         if y > 1.87 or (y > 1.815 and z < 0.018) or (1.71 < y < 1.79 and z < -0.045):
             color = HAIR
-        # Brows, eyes, nose highlight and mouth are intentionally compact.
-        # They orient the generic head without turning it into a likeness,
-        # a visor, or a photoreal portrait.
-        elif 1.792 < y < 1.808 and z > 0.09 and 0.034 < abs(x) < 0.08:
+        # A single, warm eye-shadow strip keeps a calm human face at close
+        # range. Do not paint brows or a mouth: voxel-scale dark marks become
+        # a black visor/mask from the normal broadcast camera.
+        elif 1.762 < y < 1.775 and z > 0.104 and 0.042 < abs(x) < 0.062:
             color = EYE
-        elif 1.758 < y < 1.783 and z > 0.092 and 0.032 < abs(x) < 0.066:
-            color = EYE
-        elif 1.735 < y < 1.805 and z > 0.108 and abs(x) < 0.026:
+        elif 1.748 < y < 1.79 and z > 0.104 and abs(x) < 0.019:
             color = SKIN_LIGHT
-        elif 1.700 < y < 1.718 and z > 0.105 and abs(x) < 0.038:
-            color = EYE
         elif y > 1.64 and z < -0.025:
             color = HAIR
         elif y > 1.55 or (y > 1.48 and abs(x) < 0.12 and z > -0.02):

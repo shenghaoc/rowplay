@@ -5,13 +5,13 @@
   "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 4009192,
-    "sha256": "4fcb102d483196198e21a9ae56476d90872b6563dc7317056049ece785345075"
+    "byteCount": 4031096,
+    "sha256": "50c3327f4f87bcec96fdc9bbdf2d9caa511a772bcecde0bd1ede3529b1846bac"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 9613400,
-    "sha256": "9f5b4cae0b0d3ca8ca71b9fa838d72bdefbbe80f5c300d4d9d5ed1d8070ee718"
+    "byteCount": 9601246,
+    "sha256": "26297fa2c2b6499d493e868bf76a054c1a9a450a0833d71453ebe799aecb51f7"
   },
   "coordinateSystem": {
     "units": "metres",
@@ -29,8 +29,8 @@
     "meshName": "v4Athlete",
     "skinnedMeshes": 1,
     "primitives": 1,
-    "vertices": 50216,
-    "triangles": 89956,
+    "vertices": 50566,
+    "triangles": 89640,
     "topologyComponents": 1,
     "skins": 1,
     "materials": 1,
@@ -39,7 +39,7 @@
   "materialDetail": {
     "glbEmbeddedTextures": 0,
     "uvCoordinateSet": "TEXCOORD_0",
-    "webRuntime": "Per-instance deterministic procedural relief maps for Medium, High, and Ultra; no external image or texture request."
+    "webRuntime": "Per-instance deterministic UV albedo, normal, roughness, and relief maps: 32px Medium, 64px High, 96px Ultra; no external image or texture request."
   },
   "bones": {
     "count": 19,

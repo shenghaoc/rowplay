@@ -132,7 +132,7 @@ const SURFACE_PALETTES: readonly SurfacePalette[] = [
     ],
   },
   { role: "trim", colors: [[0.42, 0.38, 0.78]] },
-  { role: "face-detail", colors: [[0.055, 0.045, 0.04]] },
+  { role: "face-detail", colors: [[0.56, 0.33, 0.25]] },
 ];
 
 function srgbToLinear(value: number): number {

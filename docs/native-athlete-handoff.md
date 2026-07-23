@@ -30,7 +30,7 @@ contract identity separately:
 
 | Artifact                           |  Bytes | SHA-256                                                            |
 | ---------------------------------- | -----: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.contract.json` | 10,085 | `dec721c10ff12231fdeb4d64d7102a932af6135dcdae923ba49a1ea1b287cf84` |
+| `rowplay-athlete-v4.contract.json` | 10,116 | `7cbbcbbd6c324e12388206f346d23e3f62fff230641bfb765f939bb604c74845` |
 
 After an asset or contract rebuild, run `vp run build:replay-rig-v4-contract`
 and update this contract row in the same reviewed change.
@@ -59,8 +59,9 @@ Summary:
 - Mesh: one production `SkinnedMesh` with one connected authored topology
   component after exact-position UV-seam welding. The GLB embeds no images or
   textures, but carries reviewed `TEXCOORD_0` coordinates so the web runtime can
-  add deterministic per-instance surface relief at Medium and above without an
-  external request. Its coherent remeshed primary body mass is the visual
+  add deterministic per-instance surface material maps at Medium and above
+  without an external request: 32px at Medium, 64px at High, and 96px at
+  Ultra. Its coherent remeshed primary body mass is the visual
   contract, while the component count is an inventory record rather than an
   art-quality constraint.
 - Bones: stable 19-bone V4 semantic order; the checked contract records any

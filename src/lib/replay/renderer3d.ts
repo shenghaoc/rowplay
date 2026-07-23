@@ -204,7 +204,7 @@ export interface Renderer3DOptions {
    * Capture-only framing used by the visual-QA harness. It is reachable only
    * through an explicit replay QA query, never through normal replay controls.
    */
-  qaCamera?: "normal" | "athlete-close";
+  qaCamera?: "normal" | "athlete-close" | "athlete-front";
   /** Draw the live V4 skeleton over the real rendered athlete for QA evidence. */
   showV4Skeleton?: boolean;
 }
@@ -3588,7 +3588,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly ghostRadius = 26;
 
   private readonly quality: RenderQuality;
-  private readonly qaCamera: "normal" | "athlete-close";
+  private readonly qaCamera: "normal" | "athlete-close" | "athlete-front";
   private cfg: QualityConfig;
   private renderer: RendererLike;
   /**
@@ -5946,9 +5946,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     // The close rig exists solely for the query-gated visual-QA harness. It
     // preserves the production chase composition for every normal replay,
     // while letting evidence inspect the shoulder/elbow/hip surface directly.
-    const qaClose = this.qaCamera === "athlete-close" && !state.ghost;
+    const qaClose = this.qaCamera !== "normal" && !state.ghost;
+    const qaFront = this.qaCamera === "athlete-front" && !state.ghost;
     const normalBack = baseBack + comparisonPullback;
-    const closeScale = this.qaCamera === "athlete-close" ? 0.42 : 1;
+    const closeScale = qaClose ? 0.42 : 1;
     const back = normalBack * closeScale;
     const baseHeight = this.reduceMotion
       ? sportRig.height + 0.7
@@ -5972,13 +5973,17 @@ export class CourseRenderer3D implements ReplayRenderer {
     const rx = focusX / focusRadius;
     const rz = focusZ / focusRadius;
     const cameraLayoutMode =
-      (narrow ? 1 : 0) | (state.ghost ? 2 : 0) | (this.reduceMotion ? 4 : 0) | (qaClose ? 8 : 0);
+      (narrow ? 1 : 0) |
+      (state.ghost ? 2 : 0) |
+      (this.reduceMotion ? 4 : 0) |
+      (qaClose ? 8 : 0) |
+      (qaFront ? 16 : 0);
     const cameraLayoutChanged = cameraLayoutMode !== this.cameraLayoutMode;
     this.cameraLayoutMode = cameraLayoutMode;
     this.chase.set(
-      focusX - focusTx * back + rx * lateral,
+      focusX + (qaFront ? focusTx : -focusTx) * back + rx * (qaFront ? -lateral : lateral),
       height,
-      focusZ - focusTz * back + rz * lateral,
+      focusZ + (qaFront ? focusTz : -focusTz) * back + rz * (qaFront ? -lateral : lateral),
     );
     this.lookAt.set(
       focusX + focusTx * ahead,

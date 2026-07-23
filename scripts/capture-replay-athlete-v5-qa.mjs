@@ -1,4 +1,4 @@
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -37,6 +37,7 @@ const only = new Set(
     .map((name) => name.trim())
     .filter(Boolean),
 );
+const append = process.argv.includes("--append");
 const commit = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).stdout.trim();
 
 await mkdir(outputDir, { recursive: true });
@@ -44,7 +45,20 @@ await mkdir(resolve(outputDir, "poses"), { recursive: true });
 await mkdir(resolve(outputDir, "tiers"), { recursive: true });
 await mkdir(resolve(outputDir, "cycles"), { recursive: true });
 
-const evidence = [];
+let evidence = [];
+if (append) {
+  try {
+    const existing = JSON.parse(await readFile(resolve(outputDir, "manifest.json"), "utf8"));
+    if (existing.commit !== commit) {
+      throw new Error(
+        `Cannot append evidence from ${existing.commit ?? "an unknown commit"} to ${commit}`,
+      );
+    }
+    if (Array.isArray(existing.evidence)) evidence = existing.evidence;
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
 
 function shouldCapture(name) {
   return only.size === 0 || only.has(name);
@@ -110,7 +124,8 @@ async function openReplay({
   const stage = page.locator(".canvas3d-host:not(.hidden) canvas");
   await stage.waitFor({ state: "visible", timeout: 30_000 });
   await page.locator(".backend-label").waitFor({ state: "visible", timeout: 30_000 });
-  const expectedQaCamera = camera === "close" ? "athlete-close" : "normal";
+  const expectedQaCamera =
+    camera === "front" ? "athlete-front" : camera === "close" ? "athlete-close" : "normal";
   const effectiveQaCamera = await stage.getAttribute("data-replay-qa-camera");
   if (effectiveQaCamera !== expectedQaCamera) {
     throw new Error(
@@ -279,6 +294,17 @@ if (shouldCapture("mobile-row-finish")) {
     theme: "light",
     viewport: "mobile",
     camera: "normal",
+  });
+}
+if (shouldCapture("row-finish-front")) {
+  await captureStill({
+    name: "row-finish-front",
+    sport: SPORTS.row,
+    seconds: 0.8,
+    quality: "ultra",
+    theme: "light",
+    viewport: "desktop",
+    camera: "front",
   });
 }
 

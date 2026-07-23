@@ -267,12 +267,12 @@ describe("createRenderer3D", () => {
         loadAssets: async () => assets,
         loadV4Assets: async () => v4Assets,
       },
-      { qaCamera: "athlete-close", showV4Skeleton: true },
+      { qaCamera: "athlete-front", showV4Skeleton: true },
     );
 
     expect(webGlInstances).toHaveLength(1);
     expect(webGlInstances[0]?.ctorArgs[3]).toEqual({
-      qaCamera: "athlete-close",
+      qaCamera: "athlete-front",
       showV4Skeleton: true,
       assets,
       v4Assets,

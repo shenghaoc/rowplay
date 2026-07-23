@@ -1751,7 +1751,11 @@ describe("CourseRenderer3D", () => {
           skinRoughness: number;
           jerseySheen: number;
           jerseyBumpScale: number;
+          jerseyNormalScale: number;
+          jerseyDetailResolution: number;
+          jerseyHasAlbedoDetail: boolean;
           jerseyHasDetailMap: boolean;
+          jerseyHasNormalDetail: boolean;
           jerseyHasRoughnessDetail: boolean;
           vertexCount: number;
           indexCount: number;
@@ -1791,7 +1795,11 @@ describe("CourseRenderer3D", () => {
             skinRoughness: skin!.roughness,
             jerseySheen: jersey!.sheen,
             jerseyBumpScale: jersey!.bumpScale,
+            jerseyNormalScale: jersey!.normalScale.x,
+            jerseyDetailResolution: Number(jersey!.userData.replayV4SurfaceDetailResolution),
+            jerseyHasAlbedoDetail: jersey!.map != null,
             jerseyHasDetailMap: jersey!.bumpMap != null,
+            jerseyHasNormalDetail: jersey!.normalMap != null,
             jerseyHasRoughnessDetail: jersey!.roughnessMap != null,
             vertexCount: instance.mesh.geometry.getAttribute("position").count,
             indexCount: instance.mesh.geometry.getIndex()!.count,
@@ -1816,6 +1824,14 @@ describe("CourseRenderer3D", () => {
       expect(medium.jerseyHasDetailMap).toBe(true);
       expect(high.jerseyHasDetailMap).toBe(true);
       expect(ultra.jerseyHasDetailMap).toBe(true);
+      expect(low.jerseyHasAlbedoDetail).toBe(false);
+      expect(medium.jerseyHasAlbedoDetail).toBe(true);
+      expect(high.jerseyHasAlbedoDetail).toBe(true);
+      expect(ultra.jerseyHasAlbedoDetail).toBe(true);
+      expect(low.jerseyHasNormalDetail).toBe(false);
+      expect(medium.jerseyHasNormalDetail).toBe(true);
+      expect(high.jerseyHasNormalDetail).toBe(true);
+      expect(ultra.jerseyHasNormalDetail).toBe(true);
       expect(low.jerseyHasRoughnessDetail).toBe(false);
       expect(medium.jerseyHasRoughnessDetail).toBe(true);
       expect(high.jerseyHasRoughnessDetail).toBe(true);
@@ -1823,6 +1839,12 @@ describe("CourseRenderer3D", () => {
       expect(low.jerseyBumpScale).toBeLessThan(medium.jerseyBumpScale);
       expect(medium.jerseyBumpScale).toBeLessThan(high.jerseyBumpScale);
       expect(high.jerseyBumpScale).toBeLessThan(ultra.jerseyBumpScale);
+      expect(low.jerseyNormalScale).toBeLessThan(medium.jerseyNormalScale);
+      expect(medium.jerseyNormalScale).toBeLessThan(high.jerseyNormalScale);
+      expect(high.jerseyNormalScale).toBeLessThan(ultra.jerseyNormalScale);
+      expect(low.jerseyDetailResolution).toBe(0);
+      expect(medium.jerseyDetailResolution).toBeLessThan(high.jerseyDetailResolution);
+      expect(high.jerseyDetailResolution).toBeLessThan(ultra.jerseyDetailResolution);
       expect(low.vertexCount).toBe(ultra.vertexCount);
       expect(low.indexCount).toBe(ultra.indexCount);
     });

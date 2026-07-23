@@ -538,6 +538,16 @@ const QUALITY_DETAIL_STRENGTH: Readonly<Record<RenderQuality, number>> = {
   ultra: 0.085,
 };
 
+// Detail resolution rises with the selected tier as well as contrast. This
+// makes each tier spend its GPU budget on a concrete gain, while the
+// 32 → 64 → 96 progression avoids a disproportionate Ultra-only jump.
+const QUALITY_DETAIL_TEXTURE_SIZE: Readonly<Record<RenderQuality, number>> = {
+  low: 0,
+  medium: 32,
+  high: 64,
+  ultra: 96,
+};
+
 const SURFACE_DETAIL_MULTIPLIER: Readonly<Record<ReplayV4SurfaceRole, number>> = {
   skin: 0.54,
   jersey: 1,
@@ -557,8 +567,6 @@ const SURFACE_DETAIL_REPEAT: Readonly<Record<ReplayV4SurfaceRole, readonly [numb
   trim: [16, 8],
   "face-detail": [4, 4],
 };
-
-const DETAIL_TEXTURE_SIZE = 32;
 
 function clampByte(value: number): number {
   return Math.max(0, Math.min(255, Math.round(value)));
@@ -590,7 +598,33 @@ function detailSample(role: ReplayV4SurfaceRole, x: number, y: number): number {
   }
 }
 
-type SurfaceDetailMapKind = "bump" | "roughness";
+type SurfaceDetailMapKind = "albedo" | "bump" | "normal" | "roughness";
+
+function normalSample(
+  role: ReplayV4SurfaceRole,
+  x: number,
+  y: number,
+  strength: number,
+  size: number,
+) {
+  const scale = THREE.MathUtils.clamp(strength / 0.085, 0, 1) * 1.45;
+  const current = detailSample(role, x, y);
+  const dx = detailSample(role, (x + 1) % size, y) - current;
+  const dy = detailSample(role, x, (y + 1) % size) - current;
+  return {
+    r: clampByte(128 - dx * scale),
+    g: clampByte(128 - dy * scale),
+    b: 255,
+  };
+}
+
+function albedoSample(role: ReplayV4SurfaceRole, x: number, y: number, strength: number): number {
+  // The vertex palette remains the source of athlete identity; this merely
+  // adds progressively clearer fabric, hair, and skin variation at replay
+  // distance. The restrained base prevents any tier reading as a decal.
+  const contrast = THREE.MathUtils.clamp(strength / 0.085, 0, 1) * 38;
+  return clampByte(244 + ((detailSample(role, x, y) - 126) / 42) * contrast);
+}
 
 function roughnessSample(
   role: ReplayV4SurfaceRole,
@@ -610,26 +644,33 @@ function createSurfaceDetailMap(
   role: ReplayV4SurfaceRole,
   kind: SurfaceDetailMapKind,
   strength: number,
+  size: number,
 ): THREE.DataTexture {
-  const pixels = new Uint8Array(DETAIL_TEXTURE_SIZE * DETAIL_TEXTURE_SIZE * 4);
-  for (let y = 0; y < DETAIL_TEXTURE_SIZE; y++) {
-    for (let x = 0; x < DETAIL_TEXTURE_SIZE; x++) {
-      const offset = (y * DETAIL_TEXTURE_SIZE + x) * 4;
-      const sample = clampByte(
-        kind === "bump" ? detailSample(role, x, y) : roughnessSample(role, x, y, strength),
-      );
-      pixels[offset] = sample;
-      pixels[offset + 1] = sample;
-      pixels[offset + 2] = sample;
+  const pixels = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const offset = (y * size + x) * 4;
+      if (kind === "normal") {
+        const normal = normalSample(role, x, y, strength, size);
+        pixels[offset] = normal.r;
+        pixels[offset + 1] = normal.g;
+        pixels[offset + 2] = normal.b;
+      } else {
+        const sample = clampByte(
+          kind === "bump"
+            ? detailSample(role, x, y)
+            : kind === "roughness"
+              ? roughnessSample(role, x, y, strength)
+              : albedoSample(role, x, y, strength),
+        );
+        pixels[offset] = sample;
+        pixels[offset + 1] = sample;
+        pixels[offset + 2] = sample;
+      }
       pixels[offset + 3] = 255;
     }
   }
-  const texture = new THREE.DataTexture(
-    pixels,
-    DETAIL_TEXTURE_SIZE,
-    DETAIL_TEXTURE_SIZE,
-    THREE.RGBAFormat,
-  );
+  const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
   const [repeatX, repeatY] = SURFACE_DETAIL_REPEAT[role];
   texture.name = `rowplay-v4-${role}-${kind}-detail`;
   texture.wrapS = THREE.RepeatWrapping;
@@ -637,7 +678,7 @@ function createSurfaceDetailMap(
   texture.repeat.set(repeatX, repeatY);
   texture.magFilter = THREE.LinearFilter;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.colorSpace = THREE.NoColorSpace;
+  texture.colorSpace = kind === "albedo" ? THREE.SRGBColorSpace : THREE.NoColorSpace;
   texture.generateMipmaps = true;
   texture.needsUpdate = true;
   return texture;
@@ -666,21 +707,39 @@ function applySurfaceQuality(
   material.sheenRoughness = profile.sheenRoughness;
   material.sheenColor.set(profile.sheenColor);
   material.specularIntensity = profile.specularIntensity;
-  // Each lane owns its material clone. Release any old map before assigning a
-  // new one so changing/reinstalling a renderer cannot leak source-owned GPU
-  // resources, and skip relief gracefully for compatibility fixtures without
-  // UVs while the production GLB supplies its reviewed UV seam.
-  material.bumpMap?.dispose();
-  material.roughnessMap?.dispose();
+  // Each lane owns its generated maps. Release only those maps before a
+  // quality change, so future authored source textures remain template-owned.
+  const priorMaps = material.userData.replayV4GeneratedDetailMaps;
+  if (Array.isArray(priorMaps)) {
+    for (const map of priorMaps) {
+      if (map instanceof THREE.Texture) map.dispose();
+    }
+  }
+  material.map = null;
   material.bumpMap = null;
+  material.normalMap = null;
   material.roughnessMap = null;
+  material.normalScale.set(0, 0);
   const strength = QUALITY_DETAIL_STRENGTH[quality] * SURFACE_DETAIL_MULTIPLIER[role];
+  const textureSize = QUALITY_DETAIL_TEXTURE_SIZE[quality];
   material.bumpScale = strength;
   if (hasUv && strength > 0) {
-    material.bumpMap = createSurfaceDetailMap(role, "bump", strength);
-    material.roughnessMap = createSurfaceDetailMap(role, "roughness", strength);
+    const albedo = createSurfaceDetailMap(role, "albedo", strength, textureSize);
+    const bump = createSurfaceDetailMap(role, "bump", strength, textureSize);
+    const normal = createSurfaceDetailMap(role, "normal", strength, textureSize);
+    const roughness = createSurfaceDetailMap(role, "roughness", strength, textureSize);
+    material.map = albedo;
+    material.bumpMap = bump;
+    material.normalMap = normal;
+    material.roughnessMap = roughness;
+    const normalScale = THREE.MathUtils.clamp(strength * 7.4, 0, 0.63);
+    material.normalScale.set(normalScale, normalScale);
+    material.userData.replayV4GeneratedDetailMaps = [albedo, bump, normal, roughness];
+  } else {
+    material.userData.replayV4GeneratedDetailMaps = [];
   }
   material.userData.replayV4SurfaceDetailStrength = strength;
+  material.userData.replayV4SurfaceDetailResolution = hasUv && strength > 0 ? textureSize : 0;
 }
 
 function styleInstance(

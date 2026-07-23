@@ -293,7 +293,8 @@
 		if (page.url.searchParams.get('qa') !== 'athlete-visual') return {};
 		const camera = page.url.searchParams.get('athleteCamera');
 		return {
-			qaCamera: camera === 'close' ? 'athlete-close' : 'normal',
+			qaCamera:
+				camera === 'front' ? 'athlete-front' : camera === 'close' ? 'athlete-close' : 'normal',
 			showV4Skeleton: page.url.searchParams.get('athleteSkeleton') === '1'
 		} as const;
 	}
