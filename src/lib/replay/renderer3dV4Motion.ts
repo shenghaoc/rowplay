@@ -1,10 +1,13 @@
 import * as THREE from "three";
 import type { Sport } from "../types";
+import type { RenderQuality } from "./replayRenderer";
 import { solveTwoBone3D } from "./figurePose";
 import {
   disposeReplayV4AthleteInstance,
+  REPLAY_V4_SURFACE_ROLES,
   type ReplayV4AthleteInstance,
   type ReplayV4EffectorName,
+  type ReplayV4SurfaceRole,
 } from "./renderer3dV4Assets";
 
 const TAU = Math.PI * 2;
@@ -83,6 +86,8 @@ export interface ReplayV4MotionInstallOptions {
   readonly opacity?: number;
   readonly castShadow?: boolean;
   readonly receiveShadow?: boolean;
+  /** Athlete-specific material response; independent from environment density. */
+  readonly quality?: RenderQuality;
   /** Subtle tint blended into the asset's vertex colours; use white for live. */
   readonly laneColor?: THREE.ColorRepresentation;
   /** Optional bone-local overrides for authored palm/sole contact extras. */
@@ -131,6 +136,8 @@ interface FallbackVisibility {
 }
 
 interface ChainBinding {
+  /** -1 port / left, +1 starboard / right in athlete-local space. */
+  readonly side: -1 | 1;
   readonly upper: THREE.Bone;
   readonly middle: THREE.Bone;
   readonly effector: THREE.Bone;
@@ -208,12 +215,343 @@ function setFallbackVisibility(fallback: readonly FallbackVisibility[], hidden: 
   for (const state of fallback) state.object.visible = hidden ? false : state.visible;
 }
 
+interface SurfaceQualityProfile {
+  readonly roughness: number;
+  readonly metalness: number;
+  readonly clearcoat: number;
+  readonly clearcoatRoughness: number;
+  readonly sheen: number;
+  readonly sheenRoughness: number;
+  readonly sheenColor: THREE.ColorRepresentation;
+  readonly specularIntensity: number;
+}
+
+type SurfaceQualityProfiles = Readonly<Record<ReplayV4SurfaceRole, SurfaceQualityProfile>>;
+
+/**
+ * Quality changes are deliberately concentrated on the visible athlete.
+ * Every tier shares the same geometry and contact solve; increasing quality
+ * improves distinct skin, cloth, footwear, hair, and trim response rather
+ * than spending all extra work on DPR or the distant venue.
+ */
+const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProfiles>> = {
+  low: {
+    skin: {
+      roughness: 0.78,
+      metalness: 0,
+      clearcoat: 0,
+      clearcoatRoughness: 0.7,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.55,
+    },
+    jersey: {
+      roughness: 0.94,
+      metalness: 0,
+      clearcoat: 0,
+      clearcoatRoughness: 0.8,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.45,
+    },
+    lower: {
+      roughness: 0.92,
+      metalness: 0,
+      clearcoat: 0,
+      clearcoatRoughness: 0.8,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.45,
+    },
+    footwear: {
+      roughness: 0.78,
+      metalness: 0,
+      clearcoat: 0,
+      clearcoatRoughness: 0.7,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.55,
+    },
+    hair: {
+      roughness: 0.74,
+      metalness: 0,
+      clearcoat: 0,
+      clearcoatRoughness: 0.75,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.45,
+    },
+    trim: {
+      roughness: 0.7,
+      metalness: 0.02,
+      clearcoat: 0.01,
+      clearcoatRoughness: 0.6,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.6,
+    },
+    "face-detail": {
+      roughness: 0.68,
+      metalness: 0,
+      clearcoat: 0,
+      clearcoatRoughness: 0.7,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.5,
+    },
+  },
+  medium: {
+    skin: {
+      roughness: 0.66,
+      metalness: 0,
+      clearcoat: 0.015,
+      clearcoatRoughness: 0.55,
+      sheen: 0.025,
+      sheenRoughness: 0.72,
+      sheenColor: 0xffd8cf,
+      specularIntensity: 0.7,
+    },
+    jersey: {
+      roughness: 0.81,
+      metalness: 0,
+      clearcoat: 0.01,
+      clearcoatRoughness: 0.65,
+      sheen: 0.1,
+      sheenRoughness: 0.68,
+      sheenColor: 0xc7d2fe,
+      specularIntensity: 0.6,
+    },
+    lower: {
+      roughness: 0.78,
+      metalness: 0,
+      clearcoat: 0.01,
+      clearcoatRoughness: 0.62,
+      sheen: 0.075,
+      sheenRoughness: 0.7,
+      sheenColor: 0xd3eef5,
+      specularIntensity: 0.6,
+    },
+    footwear: {
+      roughness: 0.62,
+      metalness: 0.01,
+      clearcoat: 0.045,
+      clearcoatRoughness: 0.48,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.72,
+    },
+    hair: {
+      roughness: 0.62,
+      metalness: 0,
+      clearcoat: 0.025,
+      clearcoatRoughness: 0.52,
+      sheen: 0.02,
+      sheenRoughness: 0.8,
+      sheenColor: 0xc9d4df,
+      specularIntensity: 0.65,
+    },
+    trim: {
+      roughness: 0.54,
+      metalness: 0.035,
+      clearcoat: 0.07,
+      clearcoatRoughness: 0.42,
+      sheen: 0.06,
+      sheenRoughness: 0.62,
+      sheenColor: 0xe0dcff,
+      specularIntensity: 0.74,
+    },
+    "face-detail": {
+      roughness: 0.52,
+      metalness: 0,
+      clearcoat: 0.02,
+      clearcoatRoughness: 0.55,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.68,
+    },
+  },
+  high: {
+    skin: {
+      roughness: 0.51,
+      metalness: 0,
+      clearcoat: 0.04,
+      clearcoatRoughness: 0.42,
+      sheen: 0.06,
+      sheenRoughness: 0.55,
+      sheenColor: 0xffcdc0,
+      specularIntensity: 0.88,
+    },
+    jersey: {
+      roughness: 0.69,
+      metalness: 0,
+      clearcoat: 0.025,
+      clearcoatRoughness: 0.5,
+      sheen: 0.3,
+      sheenRoughness: 0.5,
+      sheenColor: 0xbfc8ff,
+      specularIntensity: 0.72,
+    },
+    lower: {
+      roughness: 0.64,
+      metalness: 0,
+      clearcoat: 0.02,
+      clearcoatRoughness: 0.48,
+      sheen: 0.22,
+      sheenRoughness: 0.54,
+      sheenColor: 0xc5ebf3,
+      specularIntensity: 0.72,
+    },
+    footwear: {
+      roughness: 0.42,
+      metalness: 0.025,
+      clearcoat: 0.13,
+      clearcoatRoughness: 0.32,
+      sheen: 0.02,
+      sheenRoughness: 0.7,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.88,
+    },
+    hair: {
+      roughness: 0.48,
+      metalness: 0,
+      clearcoat: 0.07,
+      clearcoatRoughness: 0.38,
+      sheen: 0.055,
+      sheenRoughness: 0.6,
+      sheenColor: 0xd1dce4,
+      specularIntensity: 0.84,
+    },
+    trim: {
+      roughness: 0.38,
+      metalness: 0.075,
+      clearcoat: 0.17,
+      clearcoatRoughness: 0.3,
+      sheen: 0.14,
+      sheenRoughness: 0.5,
+      sheenColor: 0xe1dcff,
+      specularIntensity: 0.92,
+    },
+    "face-detail": {
+      roughness: 0.4,
+      metalness: 0,
+      clearcoat: 0.045,
+      clearcoatRoughness: 0.4,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.84,
+    },
+  },
+  ultra: {
+    skin: {
+      roughness: 0.43,
+      metalness: 0,
+      clearcoat: 0.065,
+      clearcoatRoughness: 0.32,
+      sheen: 0.1,
+      sheenRoughness: 0.44,
+      sheenColor: 0xffc8b7,
+      specularIntensity: 1,
+    },
+    jersey: {
+      roughness: 0.58,
+      metalness: 0,
+      clearcoat: 0.04,
+      clearcoatRoughness: 0.42,
+      sheen: 0.46,
+      sheenRoughness: 0.4,
+      sheenColor: 0xb9c5ff,
+      specularIntensity: 0.84,
+    },
+    lower: {
+      roughness: 0.53,
+      metalness: 0,
+      clearcoat: 0.035,
+      clearcoatRoughness: 0.4,
+      sheen: 0.36,
+      sheenRoughness: 0.44,
+      sheenColor: 0xb9e6f0,
+      specularIntensity: 0.84,
+    },
+    footwear: {
+      roughness: 0.29,
+      metalness: 0.04,
+      clearcoat: 0.24,
+      clearcoatRoughness: 0.24,
+      sheen: 0.04,
+      sheenRoughness: 0.58,
+      sheenColor: 0xffffff,
+      specularIntensity: 1,
+    },
+    hair: {
+      roughness: 0.34,
+      metalness: 0,
+      clearcoat: 0.12,
+      clearcoatRoughness: 0.3,
+      sheen: 0.1,
+      sheenRoughness: 0.48,
+      sheenColor: 0xd5e1e7,
+      specularIntensity: 0.98,
+    },
+    trim: {
+      roughness: 0.26,
+      metalness: 0.11,
+      clearcoat: 0.3,
+      clearcoatRoughness: 0.22,
+      sheen: 0.22,
+      sheenRoughness: 0.42,
+      sheenColor: 0xe4deff,
+      specularIntensity: 1,
+    },
+    "face-detail": {
+      roughness: 0.32,
+      metalness: 0,
+      clearcoat: 0.075,
+      clearcoatRoughness: 0.32,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.96,
+    },
+  },
+};
+
+function surfaceRole(material: THREE.Material): ReplayV4SurfaceRole {
+  const raw = material.userData.replayV4SurfaceRole;
+  return typeof raw === "string" && (REPLAY_V4_SURFACE_ROLES as readonly string[]).includes(raw)
+    ? (raw as ReplayV4SurfaceRole)
+    : "jersey";
+}
+
+function applySurfaceQuality(material: THREE.Material, quality: RenderQuality): void {
+  if (!(material instanceof THREE.MeshPhysicalMaterial)) return;
+  const profile = ATHLETE_SURFACE_QUALITY[quality][surfaceRole(material)];
+  material.roughness = profile.roughness;
+  material.metalness = profile.metalness;
+  material.clearcoat = profile.clearcoat;
+  material.clearcoatRoughness = profile.clearcoatRoughness;
+  material.sheen = profile.sheen;
+  material.sheenRoughness = profile.sheenRoughness;
+  material.sheenColor.set(profile.sheenColor);
+  material.specularIntensity = profile.specularIntensity;
+}
+
 function styleInstance(
   instance: ReplayV4AthleteInstance,
   options: ReplayV4MotionInstallOptions,
 ): void {
   const requestedOpacity = THREE.MathUtils.clamp(finite(options.opacity ?? 1, 1), 0, 1);
   const requestedLaneColor = new THREE.Color(options.laneColor ?? 0xffffff);
+  const quality = options.quality ?? "medium";
   // A saturated lane colour used as a direct multiplier destroys authored skin
   // and kit separation. Ghost identity therefore comes from a restrained cool
   // tint, not alpha: one deforming mesh contains overlapping anatomical forms,
@@ -225,6 +563,7 @@ function styleInstance(
     ? instance.mesh.material
     : [instance.mesh.material];
   for (const material of materials) {
+    applySurfaceQuality(material, quality);
     material.opacity = 1;
     material.transparent = false;
     material.depthWrite = true;
@@ -237,6 +576,7 @@ function styleInstance(
   }
   instance.mesh.userData.replayRequestedOpacity = requestedOpacity;
   instance.mesh.userData.replayBodyRenderMode = "opaque-depth-writing";
+  instance.mesh.userData.replayV4Quality = quality;
   instance.mesh.castShadow = options.castShadow ?? true;
   instance.mesh.receiveShadow = options.receiveShadow ?? options.castShadow ?? true;
   // A moving SkinnedMesh needs either animated bounds or culling disabled. The
@@ -328,6 +668,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private readonly effectorWorldScale = new THREE.Vector3();
   private readonly currentDirection = new THREE.Vector3();
   private readonly desiredDirection = new THREE.Vector3();
+  private readonly branchLateral = new THREE.Vector3();
   private readonly parentWorldQuaternion = new THREE.Quaternion();
   private readonly targetWorldQuaternion = new THREE.Quaternion();
   private readonly rootWorldQuaternion = new THREE.Quaternion();
@@ -355,6 +696,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // and BikeErg knees additionally select the anatomical two-bone branch.
     this.chains = [
       {
+        side: -1,
         upper: requireBone(instance, "v4LeftUpperArm"),
         middle: requireBone(instance, "v4LeftForearm"),
         effector: requireBone(instance, instance.effectors.leftHand.bone),
@@ -364,6 +706,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         isLeg: false,
       },
       {
+        side: 1,
         upper: requireBone(instance, "v4RightUpperArm"),
         middle: requireBone(instance, "v4RightForearm"),
         effector: requireBone(instance, instance.effectors.rightHand.bone),
@@ -373,6 +716,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         isLeg: false,
       },
       {
+        side: -1,
         upper: requireBone(instance, "v4LeftUpperLeg"),
         middle: requireBone(instance, "v4LeftLowerLeg"),
         effector: requireBone(instance, instance.effectors.leftFoot.bone),
@@ -382,6 +726,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         isLeg: true,
       },
       {
+        side: 1,
         upper: requireBone(instance, "v4RightUpperLeg"),
         middle: requireBone(instance, "v4RightLowerLeg"),
         effector: requireBone(instance, instance.effectors.rightFoot.bone),
@@ -649,6 +994,30 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   }
 
   /**
+   * Keep the visible rowing elbow outside the skinned ribcage without moving
+   * the authoritative scull grip or widening the procedural fallback's arm
+   * corridor. The shared marker selects the rearward branch; this V4-only
+   * athlete-local offset supplies clearance for the production torso after the
+   * two-bone solve projects that marker onto the current arm plane.
+   */
+  private refreshBendHint(chain: ChainBinding): void {
+    if (this.usesSharedJointTarget(chain)) {
+      chain.jointTarget.getWorldPosition(this.bendHint);
+      this.bendHint.sub(this.rootWorld);
+    } else {
+      this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
+    }
+    if (!chain.isLeg && this.options.sport === "rower") {
+      this.root.getWorldQuaternion(this.rootWorldQuaternion);
+      this.branchLateral.set(chain.side * 0.34, 0.015, 0).applyQuaternion(this.rootWorldQuaternion);
+      this.bendHint.add(this.branchLateral);
+    }
+    if (this.bendHint.lengthSq() <= TRANSFORM_EPSILON) {
+      this.bendHint.set(0, chain.isLeg ? 1 : -1, 0);
+    }
+  }
+
+  /**
    * Close one rigid contact chain on top of the authored clip pose.
    *
    * Most bend planes come from the sampled clip. RowErg and SkiErg are the
@@ -663,15 +1032,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     chain.effector.getWorldPosition(this.effectorWorld);
     chain.target.getWorldPosition(this.targetWorld);
 
-    if (this.usesSharedJointTarget(chain)) {
-      chain.jointTarget.getWorldPosition(this.bendHint);
-      this.bendHint.sub(this.rootWorld);
-    } else {
-      this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
-    }
-    if (this.bendHint.lengthSq() <= TRANSFORM_EPSILON) {
-      this.bendHint.set(0, chain.isLeg ? 1 : -1, 0);
-    }
+    this.refreshBendHint(chain);
 
     this.getEffectorWorld(chain, this.currentWorld);
     const residual = this.currentWorld.distanceTo(this.targetWorld);
@@ -760,15 +1121,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // Refresh the desired bend plane after every parent swing. Bike knees and
     // RowErg/SkiErg elbows follow their shared mechanical branch markers;
     // other chains retain the current clip-led plane.
-    if (this.usesSharedJointTarget(chain)) {
-      chain.jointTarget.getWorldPosition(this.bendHint);
-      this.bendHint.sub(this.rootWorld);
-    } else {
-      this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
-    }
-    if (this.bendHint.lengthSq() <= TRANSFORM_EPSILON) {
-      this.bendHint.set(0, chain.isLeg ? 1 : -1, 0);
-    }
+    this.refreshBendHint(chain);
 
     solveTwoBone3D(
       this.rootWorld,

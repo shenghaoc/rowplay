@@ -116,18 +116,27 @@ constraint drift.
 
 ## Materials and identity
 
-The GLB deliberately carries placeholder authoring material only. Runtime
-metadata resolves each leaf/template child to semantic skin, fabric, hair,
-footwear, painted composite, dark/light trim, metal, rubber, or grip materials.
-This preserves lane accent, theme, and camera-light response without baking a
-colour or identity into the asset. Fabric uses restrained sheen and painted
-assemblies use restrained clearcoat; the lane accent remains selective rather
-than tinting the entire person and machine. V4's deforming human mesh remains
+The GLB deliberately carries one portable authoring material only. At template
+load time, the V4 loader partitions its reviewed regional vertex colours into
+seven PBR surface roles: skin, jersey, lower garment, footwear, hair, trim, and
+face detail. Each live/ghost clone receives independent role materials while
+retaining one geometry, skeleton, clip set, and asset request. Low, Medium,
+High, and Ultra keep the same athlete and deterministic contact solve, but
+progressively refine those materials' roughness, specular response, cloth sheen,
+clearcoat, and hair/face response. This ensures quality changes visibly improve
+the athlete rather than only DPR or remote environment density.
+
+Runtime ownership preserves lane accent, theme, and camera-light response
+without baking an identity into the asset. V4's deforming human mesh remains
 opaque and depth-writing in both lanes. Ghost identity uses a cool opaque tint;
 only separate ghost equipment/effects may use alpha. This prevents transparent
 triangle sorting from revealing interior overlaps or dropping limbs. The chest
 zip is carried by vertex colour rather than a near-coplanar surface, and slate
-leg panels retain separation from the shell and cockpit.
+leg panels retain separation from the shell and cockpit. BikeErg's small
+low-profile saddle is the deliberate exception: it draws before and without
+depth-write against the athlete so its support silhouette remains visible while
+the opaque skin owns overlap pixels, preventing the former visible body/seat
+cut-through without changing any semantic movement target.
 
 The athlete remains a generic illustration. Concept2 does not supply body
 dimensions, joint telemetry, clothing, appearance, or likeness; the authored

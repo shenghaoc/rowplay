@@ -11,6 +11,7 @@ import {
   loadOptionalReplayV4Asset,
   REPLAY_V4_ASSET_PATH,
   REPLAY_V4_CLIP_NAMES,
+  REPLAY_V4_SURFACE_ROLES,
   resetReplayV4AssetCache,
   tryCreateReplayV4AthleteInstance,
   type ReplayV4AssetTemplate,
@@ -87,6 +88,20 @@ describe("V4 runtime asset contract", () => {
     try {
       expect(REPLAY_V4_ASSET_PATH).toBe("/replay-assets/rowplay-athlete-v4.glb");
       expect(template.mesh).toBeInstanceOf(THREE.SkinnedMesh);
+      const materials = Array.isArray(template.mesh.material)
+        ? template.mesh.material
+        : [template.mesh.material];
+      expect(materials).toHaveLength(REPLAY_V4_SURFACE_ROLES.length);
+      expect(materials.map((material) => material.userData.replayV4SurfaceRole)).toEqual(
+        REPLAY_V4_SURFACE_ROLES,
+      );
+      expect(template.mesh.geometry.groups.reduce((count, group) => count + group.count, 0)).toBe(
+        template.mesh.geometry.getIndex()!.count,
+      );
+      expect(template.mesh.userData).toMatchObject({
+        replayV4RuntimeSurfaceRoles: [...REPLAY_V4_SURFACE_ROLES],
+        replayV4RuntimeSurfacePartition: "vertex-colour-triangle-groups",
+      });
       // Semantic joints are required; helper bones may increase the total.
       expect(template.skeleton.bones.length).toBeGreaterThanOrEqual(19);
       expect(Object.keys(template.bones)).toHaveLength(19);

@@ -1559,9 +1559,12 @@ describe("CourseRenderer3D", () => {
       if (v3Assets) disposeReplayAssetTemplateLibrary(v3Assets);
     });
 
-    function rendererFor(sport: "rower" | "skierg" | "bike") {
+    function rendererFor(
+      sport: "rower" | "skierg" | "bike",
+      quality: "low" | "medium" | "high" | "ultra" = "ultra",
+    ) {
       if (!v3Assets || !v4Assets) throw new Error("production replay assets did not load");
-      const renderer = new CourseRenderer3D(makeHost(), "ultra", sport, {
+      const renderer = new CourseRenderer3D(makeHost(), quality, sport, {
         assets: v3Assets,
         v4Assets,
       });
@@ -1739,6 +1742,67 @@ describe("CourseRenderer3D", () => {
           renderer.destroy();
         }
       }
+    });
+
+    it("spends each quality tier on distinct V4 athlete material response", () => {
+      const profiles = new Map<
+        "low" | "medium" | "high" | "ultra",
+        { skinRoughness: number; jerseySheen: number; vertexCount: number; indexCount: number }
+      >();
+      for (const quality of ["low", "medium", "high", "ultra"] as const) {
+        const renderer = rendererFor("rower", quality);
+        try {
+          renderer.render(makeSportState("rower", 0.31), false);
+          const { instance } = v4Lane(renderer);
+          const materials = Array.isArray(instance.mesh.material)
+            ? instance.mesh.material
+            : [instance.mesh.material];
+          expect(instance.mesh.userData.replayV4Quality).toBe(quality);
+          expect(materials.map((material) => material.userData.replayV4SurfaceRole)).toEqual([
+            "skin",
+            "jersey",
+            "lower",
+            "footwear",
+            "hair",
+            "trim",
+            "face-detail",
+          ]);
+          expect(instance.mesh.geometry.groups.map((group) => group.materialIndex)).toEqual([
+            0, 1, 2, 3, 4, 5, 6,
+          ]);
+          expect(instance.mesh.geometry.groups.every((group) => group.count > 0)).toBe(true);
+          const skin = materials.find(
+            (material) => material.userData.replayV4SurfaceRole === "skin",
+          ) as THREE.MeshPhysicalMaterial | undefined;
+          const jersey = materials.find(
+            (material) => material.userData.replayV4SurfaceRole === "jersey",
+          ) as THREE.MeshPhysicalMaterial | undefined;
+          expect(skin).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+          expect(jersey).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+          profiles.set(quality, {
+            skinRoughness: skin!.roughness,
+            jerseySheen: jersey!.sheen,
+            vertexCount: instance.mesh.geometry.getAttribute("position").count,
+            indexCount: instance.mesh.geometry.getIndex()!.count,
+          });
+          expectV4Contacts(renderer, `${quality} rower material tier`);
+        } finally {
+          renderer.destroy();
+        }
+      }
+
+      const low = profiles.get("low")!;
+      const medium = profiles.get("medium")!;
+      const high = profiles.get("high")!;
+      const ultra = profiles.get("ultra")!;
+      expect(low.skinRoughness).toBeGreaterThan(medium.skinRoughness);
+      expect(medium.skinRoughness).toBeGreaterThan(high.skinRoughness);
+      expect(high.skinRoughness).toBeGreaterThan(ultra.skinRoughness);
+      expect(low.jerseySheen).toBeLessThan(medium.jerseySheen);
+      expect(medium.jerseySheen).toBeLessThan(high.jerseySheen);
+      expect(high.jerseySheen).toBeLessThan(ultra.jerseySheen);
+      expect(low.vertexCount).toBe(ultra.vertexCount);
+      expect(low.indexCount).toBe(ultra.indexCount);
     });
 
     it("keeps V3 arm and leg tubes hidden across a full stroke so the athlete is not double-limbed", () => {
@@ -2053,6 +2117,35 @@ describe("CourseRenderer3D", () => {
       }
     });
 
+    it("draws the V4 BikeErg saddle behind the lower body through a crank cycle", () => {
+      const renderer = rendererFor("bike");
+      try {
+        const saddle = sceneObject(renderer, "bike-saddle") as THREE.Mesh;
+        const material = saddle.material as THREE.MeshStandardMaterial;
+        expect(saddle.renderOrder).toBeLessThan(0);
+        expect(material.transparent).toBe(false);
+        expect(material.depthWrite).toBe(false);
+        expect(material.depthTest).toBe(true);
+        for (let step = 0; step <= 96; step++) {
+          const cycle = step / 96;
+          renderer.render(makeSportState("bike", cycle), false);
+          const { instance, motion } = v4Lane(renderer);
+          getScene(renderer).updateMatrixWorld(true);
+          // The low-profile support must draw first without writing depth, so
+          // the opaque skinned athlete owns every overlapping pixel. This
+          // avoids the old visible butt/seat penetration while leaving the
+          // saddle's outer silhouette and frame attachment normally occluded.
+          expect(motion.enabled, `BikeErg V4 stays active at ${cycle}`).toBe(true);
+          expect(instance.mesh.renderOrder, `athlete follows saddle at ${cycle}`).toBeGreaterThan(
+            saddle.renderOrder,
+          );
+          expect(material.depthWrite, `saddle does not cut through skin at ${cycle}`).toBe(false);
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
     it("locks every V4 palm and sole after clip sampling while preserving authored hip motion", () => {
       const phases = {
         rower: [0.01, 0.18, 0.38, 0.54, 0.64, 0.73, 0.78, 0.98],
@@ -2105,7 +2198,7 @@ describe("CourseRenderer3D", () => {
       }
     });
 
-    it("keeps V4 RowErg palms and forearms outside the torso core through the stroke", () => {
+    it("keeps V4 RowErg elbows, palms, and forearms outside the torso core through the stroke", () => {
       const renderer = rendererFor("rower");
       try {
         const previousPalms = new Map<"left" | "right", THREE.Vector3>();
@@ -2132,6 +2225,7 @@ describe("CourseRenderer3D", () => {
             ].getWorldPosition(new THREE.Vector3());
 
             for (const [part, point] of [
+              ["elbow", elbow],
               ["palm", palm],
               ["forearm midpoint", elbow.clone().lerp(palm, 0.5)],
             ] as const) {
@@ -2144,7 +2238,7 @@ describe("CourseRenderer3D", () => {
               expect(
                 point.distanceTo(torsoCenter),
                 `${side} ${part} torso clearance at ${cycle}`,
-              ).toBeGreaterThan(part === "palm" ? 0.14 : 0.11);
+              ).toBeGreaterThan(part === "palm" ? 0.14 : part === "elbow" ? 0.18 : 0.13);
             }
             const prior = previousPalms.get(side);
             if (prior) {
@@ -2417,11 +2511,15 @@ describe("CourseRenderer3D", () => {
           ["live", live, 1],
           ["ghost", ghost, 0.45],
         ] as const) {
-          const material = athlete.mesh.material as THREE.Material;
-          expect(material.transparent, `${lane} skinned body stays in opaque pass`).toBe(false);
-          expect(material.opacity, `${lane} skinned body opacity`).toBe(1);
-          expect(material.depthWrite, `${lane} skinned body writes depth`).toBe(true);
-          expect(material.depthTest, `${lane} skinned body tests depth`).toBe(true);
+          const materials = Array.isArray(athlete.mesh.material)
+            ? athlete.mesh.material
+            : [athlete.mesh.material];
+          for (const material of materials) {
+            expect(material.transparent, `${lane} skinned body stays in opaque pass`).toBe(false);
+            expect(material.opacity, `${lane} skinned body opacity`).toBe(1);
+            expect(material.depthWrite, `${lane} skinned body writes depth`).toBe(true);
+            expect(material.depthTest, `${lane} skinned body tests depth`).toBe(true);
+          }
           expect(athlete.mesh.userData, `${lane} material diagnostic`).toMatchObject({
             replayRequestedOpacity: requestedOpacity,
             replayBodyRenderMode: "opaque-depth-writing",

@@ -30,7 +30,7 @@ contract identity separately:
 
 | Artifact                           | Bytes | SHA-256                                                            |
 | ---------------------------------- | ----: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.contract.json` | 9,845 | `14c6cf7aa4900ff33145a88d44adbde339300383b6d2b86ca4b76ca973da31bd` |
+| `rowplay-athlete-v4.contract.json` | 9,845 | `c4d01f23964fe435075d03a2d2dcb78ea881a29968242ab4fa3a5a37b73a92cc` |
 
 After an asset or contract rebuild, run `vp run build:replay-rig-v4-contract`
 and update this contract row in the same reviewed change.
@@ -56,7 +56,7 @@ Summary:
 - Up axis: `+Y`
 - Forward axis: `+Z`
 - Handedness: right-handed
-- Mesh: one production `SkinnedMesh` with three connected topology components;
+- Mesh: one production `SkinnedMesh` with one connected topology component;
   its coherent remeshed primary body mass is the visual contract, while the
   component count is an inventory record rather than an art-quality constraint
 - Bones: stable 19-bone V4 semantic order; the checked contract records any

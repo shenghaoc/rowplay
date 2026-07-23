@@ -102,10 +102,14 @@ without a long load or degraded replay smoothness.
 3. WHEN quality tiers or adaptive degradation change THEN timing, contacts,
    authored-shell transforms, reduced motion, and ghost comparison SHALL remain
    deterministic.
-4. WHEN authored details do not change the captured desktop or mobile
+4. WHEN athlete quality changes THEN it SHALL retain the same skinned body,
+   semantic pose, and contact solve while providing material/detail differences
+   that are visible on the athlete itself, not only a higher device-pixel ratio
+   or more distant environment dressing.
+5. WHEN authored details do not change the captured desktop or mobile
    silhouette THEN they SHALL be removed rather than consuming web and GPU
    budget.
-5. WHEN the GLB is loaded THEN it SHALL remain local to the deployed rowplay
+6. WHEN the GLB is loaded THEN it SHALL remain local to the deployed rowplay
    origin and SHALL make no third-party asset request.
 
 ### Requirement 5: Frame-led visual acceptance

@@ -71,6 +71,7 @@ LEG_FABRIC_LIGHT = (0.38, 0.52, 0.60, 1.0)
 SKIN = (0.72, 0.48, 0.36, 1.0)
 SKIN_LIGHT = (0.82, 0.60, 0.48, 1.0)
 HAIR = (0.08, 0.09, 0.12, 1.0)
+EYE = (0.055, 0.045, 0.04, 1.0)
 SHOE = (0.88, 0.90, 0.93, 1.0)
 SHOE_DARK = (0.12, 0.15, 0.19, 1.0)
 SOLE = (0.06, 0.08, 0.10, 1.0)
@@ -78,7 +79,9 @@ SOLE = (0.06, 0.08, 0.10, 1.0)
 # Coarser remesh keeps the production GLB deployable and clone-fast for
 # live+ghost lanes in unit tests / CI, while remaining continuous and readable
 # at chase-camera distance.
-VOXEL_SIZE = 0.0115
+# A denser remesh keeps facial planes, garment seams, and the seated pelvis
+# readable at the replay camera without crossing the reviewed 4.5 MB GLB cap.
+VOXEL_SIZE = 0.0098
 SMOOTH_ITERATIONS = 1
 
 
@@ -267,10 +270,14 @@ def build_torso(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
     chest = bones["v4Chest"]
     neck = bones["v4Neck"]
     rings = [
-        Ring(Vector((0, 0.86, -0.008)), (0.155, 0.118), {"v4Hips": 1}, SHORTS, 0.03),
-        Ring(Vector((0, 0.92, -0.004)), (0.19, 0.142), {"v4Hips": 1}, SHORTS, 0.04),
-        Ring(hips + Vector((0, 0.0, 0.002)), (0.215, 0.16), {"v4Hips": 1}, SHORTS, 0.05, 0.04),
-        Ring(Vector((0, 1.09, 0.006)), (0.185, 0.14), {"v4Hips": 0.78, "v4Spine": 0.22}, SHORTS),
+        # The rear lower-pelvis section is deliberately tucked toward the
+        # athlete's centreline. It keeps a seated BikeErg body from visibly
+        # cutting through the fixed saddle shell while preserving the hips,
+        # legs, and pedal contacts that the technique rig owns.
+        Ring(Vector((0, 0.86, 0.016)), (0.155, 0.118), {"v4Hips": 1}, SHORTS, 0.03, 0.26),
+        Ring(Vector((0, 0.92, 0.018)), (0.19, 0.142), {"v4Hips": 1}, SHORTS, 0.04, 0.3),
+        Ring(hips + Vector((0, 0.0, 0.02)), (0.215, 0.16), {"v4Hips": 1}, SHORTS, 0.05, 0.32),
+        Ring(Vector((0, 1.09, 0.018)), (0.185, 0.14), {"v4Hips": 0.78, "v4Spine": 0.22}, SHORTS, 0.0, 0.16),
         Ring(Vector((0, 1.14, 0.01)), (0.17, 0.13), {"v4Hips": 0.5, "v4Spine": 0.5}, TRIM),
         Ring(Vector((0, 1.19, 0.014)), (0.172, 0.132), {"v4Hips": 0.28, "v4Spine": 0.72}, FABRIC),
         Ring(spine + Vector((0, 0.01, 0.008)), (0.195, 0.148), {"v4Spine": 0.86, "v4Hips": 0.14}, FABRIC, 0.03, 0.04),
@@ -302,16 +309,73 @@ def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
 
     def shape(point: Vector, _u: float, _v: float) -> Vector:
         local = point - center
+        # Establish a recognisable generic cranium, brow, cheek and jaw before
+        # adding small features. A rounded-only ellipsoid reads as a doll head
+        # at the replay camera even when its material is otherwise polished.
         if local.y < -0.01:
-            taper = 0.86 + max(0.0, min(1.0, (local.y + 0.12) / 0.11)) * 0.14
-            local.x *= taper
-        front = max(0.0, local.z / 0.1)
-        nose = math.exp(-((local.x / 0.028) ** 2 + ((local.y + 0.0) / 0.04) ** 2))
-        chin = math.exp(-((local.y + 0.085) / 0.03) ** 2) * math.exp(-(local.x / 0.05) ** 2)
-        local.z += front * (0.013 * nose + 0.006 * chin)
+            jaw_blend = max(0.0, min(1.0, (local.y + 0.13) / 0.12))
+            local.x *= 0.79 + jaw_blend * 0.2
+            local.z *= 0.9 + jaw_blend * 0.08
+        elif local.y > 0.055:
+            # Slightly broader cranial mass prevents a pinched, toy-like cap.
+            local.x *= 1.035
+        front = max(0.0, local.z / 0.104)
+        forehead = math.exp(-((local.x / 0.082) ** 2 + ((local.y - 0.055) / 0.05) ** 2))
+        nose_bridge = math.exp(-((local.x / 0.022) ** 2 + ((local.y - 0.012) / 0.06) ** 2))
+        nose_tip = math.exp(-((local.x / 0.03) ** 2 + ((local.y + 0.018) / 0.027) ** 2))
+        brow = math.exp(-((abs(local.x) - 0.046) / 0.026) ** 2) * math.exp(
+            -((local.y - 0.024) / 0.021) ** 2
+        )
+        eye_socket = math.exp(-((abs(local.x) - 0.047) / 0.022) ** 2) * math.exp(
+            -((local.y + 0.005) / 0.022) ** 2
+        )
+        cheek = math.exp(-((abs(local.x) - 0.058) / 0.04) ** 2) * math.exp(
+            -((local.y + 0.04) / 0.04) ** 2
+        )
+        chin = math.exp(-((local.y + 0.094) / 0.028) ** 2) * math.exp(-(local.x / 0.05) ** 2)
+        # A readable generic face plane at replay distance: no likeness or
+        # photoreal detail, but enough forehead/brow/eye/nose/chin structure
+        # that the head does not read as a featureless egg.
+        local.z += front * (
+            0.008 * forehead
+            + 0.032 * nose_bridge
+            + 0.022 * nose_tip
+            + 0.014 * brow
+            - 0.009 * eye_socket
+            + 0.008 * cheek
+            + 0.018 * chin
+        )
         return center + local
 
-    builder.add_ellipsoid(center, (0.105, 0.132, 0.098), {"v4Head": 1}, SKIN, 40, 28, shape)
+    builder.add_ellipsoid(center, (0.116, 0.144, 0.11), {"v4Head": 1}, SKIN, 48, 34, shape)
+
+    # These overlapping planes survive voxel remesh as one coherent face
+    # rather than decals or separate toy parts.
+    builder.add_ellipsoid(
+        center + Vector((0, -0.006, 0.124)),
+        (0.026, 0.042, 0.026),
+        {"v4Head": 1},
+        SKIN_LIGHT,
+        20,
+        16,
+    )
+    builder.add_ellipsoid(
+        center + Vector((0, -0.094, 0.042)),
+        (0.07, 0.04, 0.06),
+        {"v4Head": 1},
+        SKIN,
+        24,
+        16,
+    )
+    for side in (-1.0, 1.0):
+        builder.add_ellipsoid(
+            center + Vector((side * 0.047, 0.024, 0.108)),
+            (0.032, 0.013, 0.017),
+            {"v4Head": 1},
+            SKIN_LIGHT,
+            18,
+            12,
+        )
 
     for side in (-1.0, 1.0):
         builder.add_ellipsoid(
@@ -323,7 +387,7 @@ def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
             10,
         )
 
-    hair_center = center + Vector((0, 0.07, -0.018))
+    hair_center = center + Vector((0, 0.078, -0.014))
 
     def shape_hair(point: Vector, _u: float, _v: float) -> Vector:
         local = point - hair_center
@@ -334,10 +398,19 @@ def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
             local.z *= 0.3
             local.y = max(local.y, 0.002)
         if local.y > 0.038:
-            local.y = 0.038 + (local.y - 0.038) * 0.4
+            local.y = 0.038 + (local.y - 0.038) * 0.48
         return hair_center + local
 
-    builder.add_ellipsoid(hair_center, (0.096, 0.05, 0.088), {"v4Head": 1}, HAIR, 28, 18, shape_hair)
+    builder.add_ellipsoid(hair_center, (0.11, 0.07, 0.102), {"v4Head": 1}, HAIR, 36, 24, shape_hair)
+    for side in (-1.0, 1.0):
+        builder.add_ellipsoid(
+            center + Vector((side * 0.087, 0.025, -0.004)),
+            (0.018, 0.06, 0.026),
+            {"v4Head": 1},
+            HAIR,
+            14,
+            12,
+        )
 
 
 def build_arm(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: str) -> None:
@@ -580,6 +653,21 @@ def create_production_surface(cage: bpy.types.Object) -> bpy.types.Object:
     mesh = surface.data
     for vertex in mesh.vertices:
         p = from_blender(vertex.co)
+        # BikeErg derives its hip location from the frozen semantic motion
+        # target, so the visible skin needs a small, anatomical underside
+        # relief rather than a moved pelvis or altered pedal solve.  Compress
+        # only the rear/underside of the glute mass into a shallow saddle
+        # channel.  This keeps the seated silhouette supported by the saddle
+        # without letting the closed skin volume occupy the saddle solid as
+        # the hips pitch through a crank cycle.
+        seat_height = max(0.0, 1.0 - abs(p.y - 1.01) / 0.18)
+        seat_rear = max(0.0, min(1.0, (0.06 - p.z) / 0.2))
+        seat_center = max(0.0, 1.0 - abs(p.x) / 0.22)
+        seat_channel = seat_height * seat_rear * seat_center
+        if seat_channel > 0.0:
+            p.y += 0.12 * seat_channel
+            p.z += 0.055 * seat_channel
+            vertex.co = to_blender(p)
         weights: list[tuple[str, float]] = []
         for group in surface.vertex_groups:
             try:
@@ -588,6 +676,12 @@ def create_production_surface(cage: bpy.types.Object) -> bpy.types.Object:
                 continue
             if value > 1e-5:
                 weights.append((group.name, value))
+        # The compressed rear seat region belongs to the pelvis rather than
+        # following the cycling thigh.  Without this blend, the hip/thigh seam
+        # sweeps the glute surface down through the fixed saddle at top-dead
+        # centre even though the semantic hip itself is correctly seated.
+        if seat_channel > 0.08:
+            weights.append(("v4Hips", 1.4 + seat_channel * 2.0))
         # Keep ribcage influence in the armpit so raised arms cannot open a hole.
         if 1.32 < p.y < 1.55 and 0.1 < abs(p.x) < 0.28:
             weights.append(("v4Chest", 0.45))
@@ -651,7 +745,16 @@ def paint_vertex_colors(obj: bpy.types.Object) -> None:
         # Shoes live only in the foot block (ankle ~0.06, toe forward in +Z).
         near_foot = y < 0.12 and abs(x) > 0.05 and z > -0.08
         near_hand = y > 1.05 and abs(x) > 0.48
-        if y > 1.64 and z < 0.04:
+        # A clear swept cap and sideburn silhouette stop the head reading as a
+        # bald doll even when the chase camera is too far away for face planes.
+        if y > 1.855 or (y > 1.805 and z < 0.045) or (1.70 < y < 1.79 and z < -0.01):
+            color = HAIR
+        # Two small recessed eye marks orient the face at chase-camera
+        # distance. Keep them narrow: broader dark vertex regions read as a
+        # visor or mask instead of a generic human face.
+        elif 1.768 < y < 1.784 and z > 0.14 and 0.037 < abs(x) < 0.058:
+            color = EYE
+        elif y > 1.64 and z < 0.04:
             color = HAIR
         elif y > 1.55 or (y > 1.48 and abs(x) < 0.12 and z > -0.02):
             color = SKIN

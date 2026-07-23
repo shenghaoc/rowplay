@@ -144,22 +144,37 @@ remain automatic fallbacks.
   external-looking references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named semantic
-  bones plus any contract-recorded visual helpers, three connected topology
-  components, one opaque vertex-colour `MeshPhysicalMaterial`, and zero
-  textures/images. The semantic order is the only replay-motion interface;
-  helper joints may influence skinning but are not direct animation targets.
-  The surface is a coherent sports character:
+  bones plus any contract-recorded visual helpers, one connected topology
+  component, one portable opaque vertex-colour material in the GLB, and zero
+  textures/images. The web loader derives seven independent runtime
+  `MeshPhysicalMaterial` surface roles (`skin`, `jersey`, `lower`, `footwear`,
+  `hair`, `trim`, and `face-detail`) from the reviewed colour regions while
+  retaining the same geometry, skeleton, and asset request. The semantic order
+  is the only replay-motion interface; helper joints may influence skinning but
+  are not direct animation targets. The surface is a coherent sports character:
   ribcage-emergent shoulders, tapered limbs with volume at elbows/knees,
-  modelled palm mass, performance shoes, and deliberate kit panels painted in
-  vertex colour. Exact vertex, triangle, and topology-component counts are
-  recorded in the contract and are not frozen as an art-quality proxy.
+  modelled palm mass, performance shoes, deliberate kit panels, and a generic
+  facial plane with brow, eye, nose, cheek, chin, hair, and sideburn silhouette.
+  Exact vertex, triangle, and topology-component counts are recorded in the
+  contract and are not frozen as an art-quality proxy.
+- **Quality tiers:** Low, Medium, High, and Ultra use the same athlete and
+  contact-safe technique. They intentionally differ in PBR response rather than
+  exchanging a different character: each step refines skin roughness/specular
+  response, fabric sheen, footwear/trim clearcoat, hair response, and face
+  detail. This makes higher quality visibly spend compute on the athlete while
+  preserving phase, clip, proportions, and equipment contacts.
 - **Depth contract:** both live and ghost V4 bodies render with `opacity: 1`,
   `transparent: false`, and depth test/write enabled. Ghost identity uses a
   cool material tint while ghost equipment/wakes may remain translucent; the
   single deforming skin never enters Three.js's transparent triangle-sorting
   path, so limbs and overlapping garment forms cannot disappear by draw order.
+  BikeErg's fixed saddle is a low-profile opaque support drawn before the skin
+  without writing depth, so the athlete naturally occludes the overlapping
+  cushion pixels instead of appearing to pass through a thick solid block.
 - **Skinning:** elbow, wrist, knee, ankle, shoulder, and hip rings use spatial
-  parent-to-child weight gradients. Palm/sole marker nodes and terminal-bone
+  parent-to-child weight gradients. The seated posterior uses a shallow
+  pelvis-led relief blend so the thigh seam does not sweep the body through the
+  BikeErg support under crank motion. Palm/sole marker nodes and terminal-bone
   glTF extras encode exact local contact offsets: left/right hand
   `[-0.08,-0.01,0.035]` / `[0.08,-0.01,0.035]`; both feet
   `[0,-0.055,0.13]`.

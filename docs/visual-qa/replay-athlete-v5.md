@@ -50,13 +50,23 @@ The production path still loads `rowplay-athlete-v4.glb` through
 
 1. **Surface authoring** (`scripts/build-replay-athlete-v4-blender.py`)
    - denser anatomical cage with deliberate deltoid / thigh / calf volume
+   - enlarged, shaped generic head with forehead, brow, recessed eye, nose,
+     cheek, chin, hair, and sideburn silhouette rather than a featureless egg
    - voxel remesh → coherent primary body mass; the release component count is
      sealed in the contract rather than treated as an art-quality target
    - weight transfer from the ring-weighted cage (not bone-heat)
    - armpit chest-weight boost so raised SkiErg arms do not open holes
-   - regional vertex colours for kit / skin / tights / shoes / hair
-2. **Materials** (`rigV4.ts` `createV4Material`)
-   - slightly lower roughness, restrained sheen/clearcoat for fabric response
+   - seated posterior relief and pelvis-led weight blend so the BikeErg thigh
+     seam does not sweep the visible body through the fixed support
+   - regional vertex colours for kit / skin / tights / shoes / hair / eye detail
+2. **Runtime materials** (`renderer3dV4Assets.ts`, `renderer3dV4Motion.ts`)
+   - retain one portable GLB primitive/material for native handoff, then split
+     its reviewed vertex-colour regions into seven runtime PBR surface roles
+   - Low → Medium → High → Ultra retain the same athlete, clip, and contacts
+     while progressively refining skin response, cloth sheen, footwear/trim
+     clearcoat, hair, and face detail
+   - material profiles are athlete-specific, so a higher tier visibly improves
+     the person rather than only pixel ratio or distant environment density
 3. **Runtime contract**
    - semantic 19 bones remain required
    - build, GLB validation, runtime loading, and USDZ handoff preserve
@@ -88,13 +98,17 @@ Rendered from the sealed production GLB with the PR #171 clips:
 ### Problems removed
 
 - Assembled-tube limb read → continuous remeshed body mass
-- 24 fragmented topology components → **3** deliberate components, with a
-  coherent primary body mass; the count is sealed in the contract rather than
-  used as an art-quality target
+- 24 fragmented topology components → **1** coherent primary body mass; the
+  count is sealed in the contract rather than used as an art-quality target
 - Floating lace islands and open hair rims → removed
 - Gaping armpit under raised arms → chest-weight boost + thicker deltoid root
 - White shin “sock” paint bands → foot-block-only shoe colouring
-- Plastic mannequin material → fabric sheen response
+- Plastic mannequin material → role-specific PBR skin, fabric, hair, trim,
+  footwear, and face-detail response at every quality tier
+- RowErg elbow-through-torso risk → V4-only lateral bend clearance while
+  preserving the scull grips and shared elbow branch
+- BikeErg body/seat cut-through → low-profile support prepass plus a seated
+  pelvis relief blend; hips, cranks, pedals, hands, and feet remain graph-owned
 
 ### Motion freeze proof
 
@@ -103,6 +117,15 @@ Rendered from the sealed production GLB with the PR #171 clips:
 - Clip names, drive ends (`0.38` / `0.34` / `0.5`), contact offsets, and
   phase landmarks match the PR #171 contract
 - Validator still requires the same 19 semantic bones and three clips
+
+### Post-review visual corrections
+
+The follow-up addressed reported elbow/body and BikeErg body/seat overlap
+without moving PR #171's semantic movement targets. Dense-cycle renderer tests
+protect the rowing palm/elbow/forearm clearance, the V4 BikeErg support draw
+order, all palm/sole contacts, and the per-tier material-role progression.
+These automated checks establish contact and rendering contracts; fresh actual
+browser capture remains the acceptance evidence for final visual appearance.
 
 ## Asset and licensing
 

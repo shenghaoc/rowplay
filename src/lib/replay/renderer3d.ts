@@ -2025,11 +2025,13 @@ function makeRowerAvatar(
       // The fallback owns the exact grip target and the RowErg anatomical
       // branch marker consumed by V4. Arms remain long while armDraw is low;
       // once the late draw creates visible flexion, the sagittal component is
-      // strongly rearward / bowward (-z) with only restrained lateral
-      // clearance. This is an elbow-to-bows pull, not a horizontal
-      // chicken-wing flare.
+      // strongly rearward / bowward (-z) with restrained *outward* lateral
+      // clearance. `setArmBendHint` multiplies lateral by arm side, so a
+      // negative value inverted both elbow hints toward the torso and could
+      // select an elbow-through-chest branch. This remains an elbow-to-bows
+      // pull, not a horizontal chicken-wing flare.
       setArmBendHint(arm.shoulderPoint, arm.wristTarget, arm.side, arm.bendHint, {
-        lateral: -0.08 + draw * 0.12 + shoulderSet * 0.006,
+        lateral: 0.22 + draw * 0.065 + shoulderSet * 0.012,
         up: 0.04 + draw * 0.04,
         aft: -0.52 - bodySwing * 0.22 - handleTravel * 0.12 - draw * 0.65,
       });
@@ -2994,12 +2996,21 @@ function makeBikeAvatar(
   });
   group.add(cranks);
 
-  // The saddle closes the previously visible gap between the frame and the
-  // rider's pelvis, which was especially obvious from the chase camera.
-  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.055, 0.3), saddleMaterial);
+  // A bicycle saddle is a low-profile shell, not a thick rectangular block.
+  // Render its cushion before, but without writing depth against, the rider:
+  // the visible body therefore cleanly occludes the support wherever their
+  // silhouettes overlap, while its outer edge and fixed frame attachment
+  // remain visible. This is a microscopic equipment compatibility correction;
+  // no graph-owned hip, crank, or pedal path changes.
+  const saddle = new THREE.Mesh(
+    roundedVenueBlockGeometry(0.21, 0.032, 0.28, 0.018),
+    saddleMaterial,
+  );
   setReplayAssetSlot(saddle, "equipment:bike:saddle");
   saddle.name = "bike-saddle";
-  saddle.position.set(0, wheelR + 0.77, -0.4);
+  saddle.position.set(0, wheelR + 0.755, -0.4);
+  saddle.renderOrder = -2;
+  saddleMaterial.depthWrite = false;
   group.add(saddle);
   frameFallback.push(saddle);
 
@@ -3569,6 +3580,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly loopRadius = 30;
   private readonly ghostRadius = 26;
 
+  private readonly quality: RenderQuality;
   private cfg: QualityConfig;
   private renderer: RendererLike;
   /**
@@ -3670,6 +3682,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     sport: Sport = "rower",
     options: Renderer3DOptions = {},
   ) {
+    this.quality = quality;
     this.cfg = QUALITY[quality];
     this.sport = sport;
     this.profile = SPORT_PROFILES[sport];
@@ -3831,6 +3844,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         fallbackRoot: this.liveAvatar.group,
         instance: tryCreateReplayV4AthleteInstance(options.v4Assets),
         targets: this.liveAvatar.v4Targets,
+        quality: this.quality,
         castShadow: this.cfg.shadows,
         receiveShadow: this.cfg.shadows,
       });
@@ -3840,6 +3854,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         fallbackRoot: this.ghostAvatar.group,
         instance: tryCreateReplayV4AthleteInstance(options.v4Assets),
         targets: this.ghostAvatar.v4Targets,
+        quality: this.quality,
         opacity: 0.45,
         castShadow: false,
         receiveShadow: false,
