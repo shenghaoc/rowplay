@@ -46,7 +46,8 @@ source of truth.
 
 `static/replay-assets/rowplay-athlete-v4.glb` uses a two-stage repository build.
 `scripts/build-replay-athlete-v4-blender.py` authors the visible surface,
-vertex colours, smooth normals, and deformation weights in Blender 5.2;
+vertex colours, smooth normals, reviewed `TEXCOORD_0` UVs, and deformation
+weights in Blender 5.2;
 `scripts/build-replay-rig-v4.mjs` remaps Blender's joint indices to the exact
 `rigV4.ts` order and seals the canonical skeleton, contacts, and three
 one-second clips. It round-trips as one indexed `SkinnedMesh`/primitive with
@@ -123,8 +124,11 @@ face detail. Each live/ghost clone receives independent role materials while
 retaining one geometry, skeleton, clip set, and asset request. Low, Medium,
 High, and Ultra keep the same athlete and deterministic contact solve, but
 progressively refine those materials' roughness, specular response, cloth sheen,
-clearcoat, and hair/face response. This ensures quality changes visibly improve
-the athlete rather than only DPR or remote environment density.
+clearcoat, hair/face response, and deterministic per-instance UV relief. The
+GLB still embeds no image or texture: Medium begins the local relief treatment,
+then High and Ultra strengthen it instead of substituting a different athlete.
+This ensures quality changes visibly improve the athlete rather than only DPR
+or remote environment density.
 
 Runtime ownership preserves lane accent, theme, and camera-light response
 without baking an identity into the asset. V4's deforming human mesh remains

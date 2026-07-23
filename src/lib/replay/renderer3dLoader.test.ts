@@ -254,6 +254,31 @@ describe("createRenderer3D", () => {
     expect(result.quality).toBe("medium");
   });
 
+  it("threads query-gated athlete visual-QA controls through the selected backend", async () => {
+    const webGlInstances: FakeRendererInstance[] = [];
+    await createRenderer3D(
+      host,
+      "high",
+      "rower",
+      {
+        detectWebGPU: async () => false,
+        detectWebGL: () => true,
+        loadWebGL: async () => makeCtor(() => Promise.resolve(), webGlInstances, "webgl"),
+        loadAssets: async () => assets,
+        loadV4Assets: async () => v4Assets,
+      },
+      { qaCamera: "athlete-close", showV4Skeleton: true },
+    );
+
+    expect(webGlInstances).toHaveLength(1);
+    expect(webGlInstances[0]?.ctorArgs[3]).toEqual({
+      qaCamera: "athlete-close",
+      showV4Skeleton: true,
+      assets,
+      v4Assets,
+    });
+  });
+
   it("throws when neither backend is available", async () => {
     const loadAssets = vi.fn(async () => assets);
     const loadV4Assets = vi.fn(async () => v4Assets);

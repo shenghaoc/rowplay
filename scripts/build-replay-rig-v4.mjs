@@ -104,7 +104,10 @@ function topologicallyOrderHelperBones(helperBones) {
 function remapBlenderGeometry(sourceMesh) {
   const geometry = sourceMesh.geometry.clone();
   if (!geometry.index) throw new Error("Blender V4 source must remain indexed");
-  const requiredAttributes = ["position", "normal", "color", "skinIndex", "skinWeight"];
+  // UVs are deliberately retained even though the portable GLB owns no bitmap
+  // textures. Runtime material clones use them for deterministic, per-instance
+  // surface relief at medium and above quality tiers.
+  const requiredAttributes = ["position", "normal", "color", "uv", "skinIndex", "skinWeight"];
   for (const name of requiredAttributes) {
     if (!geometry.getAttribute(name)) throw new Error(`Blender V4 source is missing ${name}`);
   }

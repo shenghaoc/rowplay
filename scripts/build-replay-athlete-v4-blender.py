@@ -70,7 +70,7 @@ LEG_FABRIC_SIDE = (0.14, 0.24, 0.30, 1.0)
 LEG_FABRIC_LIGHT = (0.38, 0.52, 0.60, 1.0)
 SKIN = (0.72, 0.48, 0.36, 1.0)
 SKIN_LIGHT = (0.82, 0.60, 0.48, 1.0)
-HAIR = (0.08, 0.09, 0.12, 1.0)
+HAIR = (0.13, 0.085, 0.055, 1.0)
 EYE = (0.055, 0.045, 0.04, 1.0)
 SHOE = (0.88, 0.90, 0.93, 1.0)
 SHOE_DARK = (0.12, 0.15, 0.19, 1.0)
@@ -714,6 +714,18 @@ def create_production_surface(cage: bpy.types.Object) -> bpy.types.Object:
     # Remesh discards colour attributes; repaint deliberate kit/skin regions.
     paint_vertex_colors(surface)
 
+    # Preserve an authored texture-coordinate seam on the coherent remeshed
+    # body. Runtime PBR detail maps use this single UV set for cloth weave,
+    # skin micro-relief, footwear grain, and hair direction; the portable GLB
+    # remains one mesh and one material.
+    bpy.ops.object.select_all(action="DESELECT")
+    surface.select_set(True)
+    bpy.context.view_layer.objects.active = surface
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.028)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.mesh.normals_make_consistent(inside=False)
@@ -745,16 +757,23 @@ def paint_vertex_colors(obj: bpy.types.Object) -> None:
         # Shoes live only in the foot block (ankle ~0.06, toe forward in +Z).
         near_foot = y < 0.12 and abs(x) > 0.05 and z > -0.08
         near_hand = y > 1.05 and abs(x) > 0.48
-        # A clear swept cap and sideburn silhouette stop the head reading as a
-        # bald doll even when the chase camera is too far away for face planes.
-        if y > 1.855 or (y > 1.805 and z < 0.045) or (1.70 < y < 1.79 and z < -0.01):
+        # Keep a short, warm swept cap rather than a solid black helmet. The
+        # crown and rear hairline are clear at chase-camera distance while the
+        # forehead remains skin so the head still has a human face plane.
+        if y > 1.87 or (y > 1.815 and z < 0.018) or (1.71 < y < 1.79 and z < -0.045):
             color = HAIR
-        # Two small recessed eye marks orient the face at chase-camera
-        # distance. Keep them narrow: broader dark vertex regions read as a
-        # visor or mask instead of a generic human face.
-        elif 1.768 < y < 1.784 and z > 0.14 and 0.037 < abs(x) < 0.058:
+        # Brows, eyes, nose highlight and mouth are intentionally compact.
+        # They orient the generic head without turning it into a likeness,
+        # a visor, or a photoreal portrait.
+        elif 1.792 < y < 1.808 and z > 0.09 and 0.034 < abs(x) < 0.08:
             color = EYE
-        elif y > 1.64 and z < 0.04:
+        elif 1.758 < y < 1.783 and z > 0.092 and 0.032 < abs(x) < 0.066:
+            color = EYE
+        elif 1.735 < y < 1.805 and z > 0.108 and abs(x) < 0.026:
+            color = SKIN_LIGHT
+        elif 1.700 < y < 1.718 and z > 0.105 and abs(x) < 0.038:
+            color = EYE
+        elif y > 1.64 and z < -0.025:
             color = HAIR
         elif y > 1.55 or (y > 1.48 and abs(x) < 0.12 and z > -0.02):
             color = SKIN

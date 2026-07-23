@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vite-plus/test";
+import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { disposeV4AthleteAsset, createV4AthleteAsset } from "../../src/lib/replay/rigV4";
 
@@ -54,6 +55,16 @@ describe("V4 GLB build validator", () => {
       const helperIndex = asset.skeleton.bones.indexOf(helper);
       const skinIndex = asset.mesh.geometry.getAttribute("skinIndex");
       const skinWeight = asset.mesh.geometry.getAttribute("skinWeight");
+      const position = asset.mesh.geometry.getAttribute("position");
+      const uvs = new Float32Array(position.count * 2);
+      for (let vertex = 0; vertex < position.count; vertex++) {
+        // The helper fixture exercises the same reviewed UV contract as the
+        // production asset without making its synthetic geometry depend on
+        // Blender's smart-project layout.
+        uvs[vertex * 2] = (position.getX(vertex) + 1) * 0.5;
+        uvs[vertex * 2 + 1] = (position.getY(vertex) + 1) * 0.5;
+      }
+      asset.mesh.geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
       skinIndex.setXYZW(0, helperIndex, 0, 0, 0);
       skinWeight.setXYZW(0, 1, 0, 0, 0);
       skinIndex.needsUpdate = true;

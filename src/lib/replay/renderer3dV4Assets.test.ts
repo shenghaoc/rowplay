@@ -327,6 +327,19 @@ describe("V4 runtime asset contract", () => {
     expect(geometryDispose).toHaveBeenCalledTimes(1);
   });
 
+  it("releases per-instance material maps with the athlete clone", () => {
+    const template = createTemplate();
+    const instance = createReplayV4AthleteInstance(template);
+    const material = materialAt(instance.mesh) as THREE.MeshPhysicalMaterial;
+    const detail = new THREE.DataTexture(new Uint8Array([127]), 1, 1);
+    material.bumpMap = detail;
+    const dispose = vi.spyOn(detail, "dispose");
+
+    disposeReplayV4AthleteInstance(instance);
+    expect(dispose).toHaveBeenCalledTimes(1);
+    disposeReplayV4AssetTemplate(template);
+  });
+
   it("round-trips through GLTFLoader and retries after an optional-load failure", async () => {
     const bytes = await createGlbBytes();
     const direct = await fetchReplayV4Asset(async (input) => {

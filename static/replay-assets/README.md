@@ -144,9 +144,12 @@ remain automatic fallbacks.
   external-looking references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named semantic
-  bones plus any contract-recorded visual helpers, one connected topology
-  component, one portable opaque vertex-colour material in the GLB, and zero
-  textures/images. The web loader derives seven independent runtime
+  bones plus any contract-recorded visual helpers, one connected authored
+  topology component after exact-position UV-seam welding, one portable opaque
+  vertex-colour material in the GLB, and zero embedded textures/images. The
+  reviewed `TEXCOORD_0` layout exists solely for the web loader's local,
+  deterministic per-instance relief maps; it adds no asset request or native
+  bitmap dependency. The web loader derives seven independent runtime
   `MeshPhysicalMaterial` surface roles (`skin`, `jersey`, `lower`, `footwear`,
   `hair`, `trim`, and `face-detail`) from the reviewed colour regions while
   retaining the same geometry, skeleton, and asset request. The semantic order
@@ -158,11 +161,13 @@ remain automatic fallbacks.
   Exact vertex, triangle, and topology-component counts are recorded in the
   contract and are not frozen as an art-quality proxy.
 - **Quality tiers:** Low, Medium, High, and Ultra use the same athlete and
-  contact-safe technique. They intentionally differ in PBR response rather than
-  exchanging a different character: each step refines skin roughness/specular
-  response, fabric sheen, footwear/trim clearcoat, hair response, and face
-  detail. This makes higher quality visibly spend compute on the athlete while
-  preserving phase, clip, proportions, and equipment contacts.
+  contact-safe technique. They are progressive rather than a single Ultra leap:
+  Low keeps clean regional colour; Medium introduces restrained UV-mapped
+  fabric/skin relief; High increases that relief and distinct PBR response; and
+  Ultra refines it again alongside skin roughness/specular response, fabric
+  sheen, footwear/trim clearcoat, hair response, and face detail. This makes
+  higher quality visibly spend compute on the athlete while preserving phase,
+  clip, proportions, and equipment contacts.
 - **Depth contract:** both live and ghost V4 bodies render with `opacity: 1`,
   `transparent: false`, and depth test/write enabled. Ghost identity uses a
   cool material tint while ghost equipment/wakes may remain translucent; the

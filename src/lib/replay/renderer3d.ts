@@ -200,6 +200,13 @@ export interface Renderer3DOptions {
   WebGPURenderer?: WebGPURendererCtor;
   assets?: ReplayAssetLibrary | null;
   v4Assets?: ReplayV4AssetTemplate | null;
+  /**
+   * Capture-only framing used by the visual-QA harness. It is reachable only
+   * through an explicit replay QA query, never through normal replay controls.
+   */
+  qaCamera?: "normal" | "athlete-close";
+  /** Draw the live V4 skeleton over the real rendered athlete for QA evidence. */
+  showV4Skeleton?: boolean;
 }
 
 /**
@@ -3581,6 +3588,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly ghostRadius = 26;
 
   private readonly quality: RenderQuality;
+  private readonly qaCamera: "normal" | "athlete-close";
   private cfg: QualityConfig;
   private renderer: RendererLike;
   /**
@@ -3657,6 +3665,8 @@ export class CourseRenderer3D implements ReplayRenderer {
   private ghostLabelTex: THREE.CanvasTexture | null = null;
   private lastLiveLabel = "";
   private lastGhostLabel = "";
+  /** Opt-in QA overlay; normal replay rendering never allocates this helper. */
+  private v4SkeletonHelper: THREE.SkeletonHelper | null = null;
   /** Desired chase-camera position for the current frame. */
   private chase = new THREE.Vector3();
   /** Desired point of interest; kept separate so both translation and aim damp. */
@@ -3683,6 +3693,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     options: Renderer3DOptions = {},
   ) {
     this.quality = quality;
+    this.qaCamera = options.qaCamera ?? "normal";
     this.cfg = QUALITY[quality];
     this.sport = sport;
     this.profile = SPORT_PROFILES[sport];
@@ -3694,6 +3705,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     // fresh context every time, so destroy()'s loseContext() can't poison reuse.
     this.host = host;
     this.canvas = document.createElement("canvas");
+    // Minimal DOM/canvas hosts used by renderer consumers need not implement
+    // HTMLElement.dataset. The marker is QA-only and must never make 3D setup
+    // depend on that optional browser convenience.
+    if (this.canvas.dataset) this.canvas.dataset.replayQaCamera = this.qaCamera;
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
     // Append the canvas first so the WebGL/WebGPU context is bound to a node
@@ -3845,6 +3860,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         instance: tryCreateReplayV4AthleteInstance(options.v4Assets),
         targets: this.liveAvatar.v4Targets,
         quality: this.quality,
+        diagnosticMode: options.showV4Skeleton ? "skeleton" : undefined,
         castShadow: this.cfg.shadows,
         receiveShadow: this.cfg.shadows,
       });
@@ -3869,6 +3885,19 @@ export class CourseRenderer3D implements ReplayRenderer {
       const v4ArmReach = Math.min(contactReach("leftHand"), contactReach("rightHand"));
       if (this.liveAvatar.v4Motion) this.liveAvatar.setV4ArmReach?.(v4ArmReach);
       if (this.ghostAvatar.v4Motion) this.ghostAvatar.setV4ArmReach?.(v4ArmReach);
+      if (options.showV4Skeleton && this.liveAvatar.v4Motion) {
+        const helper = new THREE.SkeletonHelper(this.liveAvatar.v4Motion.root);
+        helper.name = "qa:v4-live-skeleton";
+        const material = helper.material as THREE.LineBasicMaterial;
+        material.depthTest = false;
+        material.depthWrite = false;
+        material.transparent = true;
+        material.opacity = 0.92;
+        helper.setColors(new THREE.Color(0xffd34e), new THREE.Color(0xfff4a8));
+        helper.renderOrder = 8;
+        this.v4SkeletonHelper = helper;
+        this.scene.add(helper);
+      }
     }
     this.scene.add(this.liveBoat, this.ghostGroup);
 
@@ -5914,11 +5943,17 @@ export class CourseRenderer3D implements ReplayRenderer {
         Math.max(0.05, Math.tan(horizontalHalfFov) * 0.9)
       : baseBack;
     const comparisonPullback = Math.max(0, requiredComparisonBack - baseBack);
-    const back = baseBack + comparisonPullback;
+    // The close rig exists solely for the query-gated visual-QA harness. It
+    // preserves the production chase composition for every normal replay,
+    // while letting evidence inspect the shoulder/elbow/hip surface directly.
+    const qaClose = this.qaCamera === "athlete-close" && !state.ghost;
+    const normalBack = baseBack + comparisonPullback;
+    const closeScale = this.qaCamera === "athlete-close" ? 0.42 : 1;
+    const back = normalBack * closeScale;
     const baseHeight = this.reduceMotion
       ? sportRig.height + 0.7
       : sportRig.height + (narrow ? 0.3 : 0);
-    const height = baseHeight + Math.min(2.5, comparisonSpan * 0.16);
+    const height = (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);
     // A small live-lane bias keeps the vector non-zero when the two course
     // tangents cancel at half a lap. Adding it before normalization makes the
     // heading continuous as the gap crosses that point; a binary fallback
@@ -5936,7 +5971,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     const focusRadius = Math.max(1e-6, Math.hypot(focusX, focusZ));
     const rx = focusX / focusRadius;
     const rz = focusZ / focusRadius;
-    const cameraLayoutMode = (narrow ? 1 : 0) | (state.ghost ? 2 : 0) | (this.reduceMotion ? 4 : 0);
+    const cameraLayoutMode =
+      (narrow ? 1 : 0) | (state.ghost ? 2 : 0) | (this.reduceMotion ? 4 : 0) | (qaClose ? 8 : 0);
     const cameraLayoutChanged = cameraLayoutMode !== this.cameraLayoutMode;
     this.cameraLayoutMode = cameraLayoutMode;
     this.chase.set(
@@ -5944,7 +5980,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       height,
       focusZ - focusTz * back + rz * lateral,
     );
-    this.lookAt.set(focusX + focusTx * ahead, sportRig.aimY, focusZ + focusTz * ahead);
+    this.lookAt.set(
+      focusX + focusTx * ahead,
+      sportRig.aimY + (qaClose ? 0.12 : 0),
+      focusZ + focusTz * ahead,
+    );
     if (!this.cameraInit) {
       this.camera.position.copy(this.chase);
       this.cameraAim.copy(this.lookAt);
@@ -5980,6 +6020,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     }
     this.camera.lookAt(this.cameraAim);
 
+    this.v4SkeletonHelper?.updateMatrixWorld(true);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -5999,6 +6040,11 @@ export class CourseRenderer3D implements ReplayRenderer {
     // before the generic scene walk so shared cache templates remain untouched.
     this.liveAvatar.v4Motion?.dispose();
     this.ghostAvatar.v4Motion?.dispose();
+    if (this.v4SkeletonHelper) {
+      this.v4SkeletonHelper.removeFromParent();
+      this.v4SkeletonHelper.dispose();
+      this.v4SkeletonHelper = null;
+    }
     // Walk the whole scene — avatar helper geometries (taperedLimb, makeHand,
     // makeFoot, makeHead) are created inline by makeRowerAvatar / makeSkier /
     // makeBike and never tracked in `this.geometries`. Disposing through

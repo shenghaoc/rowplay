@@ -170,7 +170,7 @@ function readAccessor(document, binary, accessorIndex) {
   return { accessor, values };
 }
 
-function connectedComponents(vertexCount, indices) {
+function connectedComponents(vertexCount, indices, positions) {
   const parent = Array.from({ length: vertexCount }, (_, vertex) => vertex);
   const find = (vertex) => {
     let root = vertex;
@@ -187,6 +187,17 @@ function connectedComponents(vertexCount, indices) {
     const rightRoot = find(right);
     if (leftRoot !== rightRoot) parent[rightRoot] = leftRoot;
   };
+  // glTF splits otherwise identical vertices at UV island boundaries. Count
+  // authored surface islands, not those GPU attribute seams, so the contract
+  // continues to describe whether the athlete is a coherent body mass.
+  const canonicalVertex = new Map();
+  for (let vertex = 0; vertex < vertexCount; vertex++) {
+    const position = positions[vertex];
+    const key = `${position[0]},${position[1]},${position[2]}`;
+    const existing = canonicalVertex.get(key);
+    if (existing === undefined) canonicalVertex.set(key, vertex);
+    else union(vertex, existing);
+  }
   for (let offset = 0; offset < indices.length; offset += 3) {
     union(indices[offset], indices[offset + 1]);
     union(indices[offset + 1], indices[offset + 2]);
@@ -303,7 +314,7 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
   const semantics = Object.keys(primitive.attributes ?? {}).sort();
   invariant(
     JSON.stringify(semantics) ===
-      JSON.stringify(["COLOR_0", "JOINTS_0", "NORMAL", "POSITION", "WEIGHTS_0"]),
+      JSON.stringify(["COLOR_0", "JOINTS_0", "NORMAL", "POSITION", "TEXCOORD_0", "WEIGHTS_0"]),
     "V4 vertex attribute contract drifted",
   );
 
@@ -312,11 +323,12 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
   const weights = readAccessor(document, binary, primitive.attributes.WEIGHTS_0);
   const colors = readAccessor(document, binary, primitive.attributes.COLOR_0);
   const normals = readAccessor(document, binary, primitive.attributes.NORMAL);
+  const uvs = readAccessor(document, binary, primitive.attributes.TEXCOORD_0);
   const indices = readAccessor(document, binary, primitive.indices);
   const vertexCount = positions.accessor.count;
   invariant(vertexCount >= MIN_VERTICES && vertexCount <= MAX_VERTICES, "V4 vertex budget failed");
   invariant(
-    [joints, weights, colors, normals].every((value) => value.accessor.count === vertexCount),
+    [joints, weights, colors, normals, uvs].every((value) => value.accessor.count === vertexCount),
     "V4 per-vertex accessor counts differ",
   );
   invariant(indices.accessor.type === "SCALAR", "V4 index accessor must be scalar");
@@ -331,7 +343,7 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     flatIndices.every((value) => value < vertexCount),
     "V4 index exceeds vertex count",
   );
-  const components = connectedComponents(vertexCount, flatIndices);
+  const components = connectedComponents(vertexCount, flatIndices, positions.values);
   invariant(
     components.length >= MIN_COMPONENTS && components.length <= MAX_COMPONENTS,
     `V4 topology component count ${components.length} is outside ${MIN_COMPONENTS}-${MAX_COMPONENTS}`,
@@ -350,7 +362,8 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     invariant(
       positions.values[vertex].every(Number.isFinite) &&
         normals.values[vertex].every(Number.isFinite) &&
-        colors.values[vertex].every(Number.isFinite),
+        colors.values[vertex].every(Number.isFinite) &&
+        uvs.values[vertex].every(Number.isFinite),
       `V4 vertex ${vertex} has non-finite geometry`,
     );
     invariant(

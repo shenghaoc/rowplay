@@ -525,6 +525,124 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
   },
 };
 
+/**
+ * Material-resolution work belongs to the athlete, not only the venue. Low
+ * keeps the authored colour regions clean and inexpensive; Medium introduces
+ * a restrained procedural relief map, then High and Ultra progressively make
+ * cloth weave, skin, hair, footwear and trim read under moving light.
+ */
+const QUALITY_DETAIL_STRENGTH: Readonly<Record<RenderQuality, number>> = {
+  low: 0,
+  medium: 0.022,
+  high: 0.052,
+  ultra: 0.085,
+};
+
+const SURFACE_DETAIL_MULTIPLIER: Readonly<Record<ReplayV4SurfaceRole, number>> = {
+  skin: 0.54,
+  jersey: 1,
+  lower: 0.82,
+  footwear: 0.72,
+  hair: 0.38,
+  trim: 0.52,
+  "face-detail": 0.16,
+};
+
+const SURFACE_DETAIL_REPEAT: Readonly<Record<ReplayV4SurfaceRole, readonly [number, number]>> = {
+  skin: [3, 3],
+  jersey: [12, 10],
+  lower: [10, 12],
+  footwear: [8, 8],
+  hair: [18, 5],
+  trim: [16, 8],
+  "face-detail": [4, 4],
+};
+
+const DETAIL_TEXTURE_SIZE = 32;
+
+function clampByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+/**
+ * Deterministic, source-owned relief maps. They are generated per cloned
+ * athlete material so live and ghost resource disposal remains independent;
+ * no network request, third-party bitmap, or texture-atlas contract is added.
+ */
+function detailSample(role: ReplayV4SurfaceRole, x: number, y: number): number {
+  const grain = ((x * 29 + y * 17 + x * y * 7) % 17) - 8;
+  const stripe = Math.sin((x + y * 0.24) * Math.PI * 0.72);
+  switch (role) {
+    case "jersey":
+      return 126 + (x % 4 === 0 || y % 5 === 0 ? 28 : -10) + grain * 0.65;
+    case "lower":
+      return 126 + (x % 5 === 0 || (x + y) % 7 === 0 ? 22 : -9) + grain * 0.55;
+    case "footwear":
+      return 126 + (((x + y * 2) % 8 < 2 ? 24 : -12) + grain * 0.45);
+    case "hair":
+      return 126 + stripe * 31 + grain * 0.35;
+    case "trim":
+      return 126 + (x % 3 === 0 ? 24 : -12) + grain * 0.4;
+    case "skin":
+      return 126 + grain * 0.8 + Math.sin((x * 0.61 + y * 0.37) * Math.PI) * 4;
+    case "face-detail":
+      return 126 + grain * 0.22;
+  }
+}
+
+type SurfaceDetailMapKind = "bump" | "roughness";
+
+function roughnessSample(
+  role: ReplayV4SurfaceRole,
+  x: number,
+  y: number,
+  strength: number,
+): number {
+  // Roughness needs to stay in its upper range: it modulates the authored PBR
+  // profile rather than turning fabric into wet plastic. Its contrast grows
+  // with the selected quality tier, so Medium, High and Ultra are visibly
+  // distinct even when the camera is too far away to resolve every bump.
+  const contrast = THREE.MathUtils.clamp(strength / 0.085, 0, 1) * 34;
+  return 232 + ((detailSample(role, x, y) - 126) / 42) * contrast;
+}
+
+function createSurfaceDetailMap(
+  role: ReplayV4SurfaceRole,
+  kind: SurfaceDetailMapKind,
+  strength: number,
+): THREE.DataTexture {
+  const pixels = new Uint8Array(DETAIL_TEXTURE_SIZE * DETAIL_TEXTURE_SIZE * 4);
+  for (let y = 0; y < DETAIL_TEXTURE_SIZE; y++) {
+    for (let x = 0; x < DETAIL_TEXTURE_SIZE; x++) {
+      const offset = (y * DETAIL_TEXTURE_SIZE + x) * 4;
+      const sample = clampByte(
+        kind === "bump" ? detailSample(role, x, y) : roughnessSample(role, x, y, strength),
+      );
+      pixels[offset] = sample;
+      pixels[offset + 1] = sample;
+      pixels[offset + 2] = sample;
+      pixels[offset + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(
+    pixels,
+    DETAIL_TEXTURE_SIZE,
+    DETAIL_TEXTURE_SIZE,
+    THREE.RGBAFormat,
+  );
+  const [repeatX, repeatY] = SURFACE_DETAIL_REPEAT[role];
+  texture.name = `rowplay-v4-${role}-${kind}-detail`;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function surfaceRole(material: THREE.Material): ReplayV4SurfaceRole {
   const raw = material.userData.replayV4SurfaceRole;
   return typeof raw === "string" && (REPLAY_V4_SURFACE_ROLES as readonly string[]).includes(raw)
@@ -532,9 +650,14 @@ function surfaceRole(material: THREE.Material): ReplayV4SurfaceRole {
     : "jersey";
 }
 
-function applySurfaceQuality(material: THREE.Material, quality: RenderQuality): void {
+function applySurfaceQuality(
+  material: THREE.Material,
+  quality: RenderQuality,
+  hasUv: boolean,
+): void {
   if (!(material instanceof THREE.MeshPhysicalMaterial)) return;
-  const profile = ATHLETE_SURFACE_QUALITY[quality][surfaceRole(material)];
+  const role = surfaceRole(material);
+  const profile = ATHLETE_SURFACE_QUALITY[quality][role];
   material.roughness = profile.roughness;
   material.metalness = profile.metalness;
   material.clearcoat = profile.clearcoat;
@@ -543,6 +666,21 @@ function applySurfaceQuality(material: THREE.Material, quality: RenderQuality): 
   material.sheenRoughness = profile.sheenRoughness;
   material.sheenColor.set(profile.sheenColor);
   material.specularIntensity = profile.specularIntensity;
+  // Each lane owns its material clone. Release any old map before assigning a
+  // new one so changing/reinstalling a renderer cannot leak source-owned GPU
+  // resources, and skip relief gracefully for compatibility fixtures without
+  // UVs while the production GLB supplies its reviewed UV seam.
+  material.bumpMap?.dispose();
+  material.roughnessMap?.dispose();
+  material.bumpMap = null;
+  material.roughnessMap = null;
+  const strength = QUALITY_DETAIL_STRENGTH[quality] * SURFACE_DETAIL_MULTIPLIER[role];
+  material.bumpScale = strength;
+  if (hasUv && strength > 0) {
+    material.bumpMap = createSurfaceDetailMap(role, "bump", strength);
+    material.roughnessMap = createSurfaceDetailMap(role, "roughness", strength);
+  }
+  material.userData.replayV4SurfaceDetailStrength = strength;
 }
 
 function styleInstance(
@@ -562,8 +700,10 @@ function styleInstance(
   const materials = Array.isArray(instance.mesh.material)
     ? instance.mesh.material
     : [instance.mesh.material];
+  const uv = instance.mesh.geometry.getAttribute("uv");
+  const hasUv = !!uv && uv.itemSize >= 2 && uv.count > 0;
   for (const material of materials) {
-    applySurfaceQuality(material, quality);
+    applySurfaceQuality(material, quality, hasUv);
     material.opacity = 1;
     material.transparent = false;
     material.depthWrite = true;

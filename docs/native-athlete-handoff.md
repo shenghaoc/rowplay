@@ -28,9 +28,9 @@ The GLB and USDZ byte counts and SHA-256 digests are sealed in
 contract cannot include its own digest, so this handoff pins the checked
 contract identity separately:
 
-| Artifact                           | Bytes | SHA-256                                                            |
-| ---------------------------------- | ----: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.contract.json` | 9,845 | `c4d01f23964fe435075d03a2d2dcb78ea881a29968242ab4fa3a5a37b73a92cc` |
+| Artifact                           |  Bytes | SHA-256                                                            |
+| ---------------------------------- | -----: | ------------------------------------------------------------------ |
+| `rowplay-athlete-v4.contract.json` | 10,085 | `dec721c10ff12231fdeb4d64d7102a932af6135dcdae923ba49a1ea1b287cf84` |
 
 After an asset or contract rebuild, run `vp run build:replay-rig-v4-contract`
 and update this contract row in the same reviewed change.
@@ -56,9 +56,13 @@ Summary:
 - Up axis: `+Y`
 - Forward axis: `+Z`
 - Handedness: right-handed
-- Mesh: one production `SkinnedMesh` with one connected topology component;
-  its coherent remeshed primary body mass is the visual contract, while the
-  component count is an inventory record rather than an art-quality constraint
+- Mesh: one production `SkinnedMesh` with one connected authored topology
+  component after exact-position UV-seam welding. The GLB embeds no images or
+  textures, but carries reviewed `TEXCOORD_0` coordinates so the web runtime can
+  add deterministic per-instance surface relief at Medium and above without an
+  external request. Its coherent remeshed primary body mass is the visual
+  contract, while the component count is an inventory record rather than an
+  art-quality constraint.
 - Bones: stable 19-bone V4 semantic order; the checked contract records any
   optional visual helper bones and their rest transforms. Helpers may influence
   deformation but inherit semantic motion and are never replay-motion targets.

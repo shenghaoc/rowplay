@@ -122,7 +122,15 @@ const SURFACE_PALETTES: readonly SurfacePalette[] = [
       [0.06, 0.08, 0.1],
     ],
   },
-  { role: "hair", colors: [[0.08, 0.09, 0.12]] },
+  // Accept the prior cool-black swatch while cached/test V4 sources transition
+  // to the warmer, less helmet-like authored hair palette.
+  {
+    role: "hair",
+    colors: [
+      [0.13, 0.085, 0.055],
+      [0.08, 0.09, 0.12],
+    ],
+  },
   { role: "trim", colors: [[0.42, 0.38, 0.78]] },
   { role: "face-detail", colors: [[0.055, 0.045, 0.04]] },
 ];
@@ -908,6 +916,21 @@ export function disposeReplayV4AthleteInstance(instance: ReplayV4AthleteInstance
     instance.mixer.uncacheRoot(instance.root);
   } catch {
     /* best-effort */
+  }
+  // Material disposal does not release maps owned by the instance. In
+  // particular, the Medium+ quality tiers create per-instance procedural
+  // bump/roughness textures, so collect and release those before disposing
+  // their material clones.
+  const textures = new Set<THREE.Texture>();
+  for (const material of state.materials) {
+    for (const texture of materialTextures(material)) textures.add(texture);
+  }
+  for (const texture of textures) {
+    try {
+      texture.dispose();
+    } catch {
+      /* best-effort cleanup */
+    }
   }
   for (const material of state.materials) {
     try {

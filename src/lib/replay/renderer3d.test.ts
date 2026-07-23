@@ -1747,7 +1747,15 @@ describe("CourseRenderer3D", () => {
     it("spends each quality tier on distinct V4 athlete material response", () => {
       const profiles = new Map<
         "low" | "medium" | "high" | "ultra",
-        { skinRoughness: number; jerseySheen: number; vertexCount: number; indexCount: number }
+        {
+          skinRoughness: number;
+          jerseySheen: number;
+          jerseyBumpScale: number;
+          jerseyHasDetailMap: boolean;
+          jerseyHasRoughnessDetail: boolean;
+          vertexCount: number;
+          indexCount: number;
+        }
       >();
       for (const quality of ["low", "medium", "high", "ultra"] as const) {
         const renderer = rendererFor("rower", quality);
@@ -1782,6 +1790,9 @@ describe("CourseRenderer3D", () => {
           profiles.set(quality, {
             skinRoughness: skin!.roughness,
             jerseySheen: jersey!.sheen,
+            jerseyBumpScale: jersey!.bumpScale,
+            jerseyHasDetailMap: jersey!.bumpMap != null,
+            jerseyHasRoughnessDetail: jersey!.roughnessMap != null,
             vertexCount: instance.mesh.geometry.getAttribute("position").count,
             indexCount: instance.mesh.geometry.getIndex()!.count,
           });
@@ -1801,6 +1812,17 @@ describe("CourseRenderer3D", () => {
       expect(low.jerseySheen).toBeLessThan(medium.jerseySheen);
       expect(medium.jerseySheen).toBeLessThan(high.jerseySheen);
       expect(high.jerseySheen).toBeLessThan(ultra.jerseySheen);
+      expect(low.jerseyHasDetailMap).toBe(false);
+      expect(medium.jerseyHasDetailMap).toBe(true);
+      expect(high.jerseyHasDetailMap).toBe(true);
+      expect(ultra.jerseyHasDetailMap).toBe(true);
+      expect(low.jerseyHasRoughnessDetail).toBe(false);
+      expect(medium.jerseyHasRoughnessDetail).toBe(true);
+      expect(high.jerseyHasRoughnessDetail).toBe(true);
+      expect(ultra.jerseyHasRoughnessDetail).toBe(true);
+      expect(low.jerseyBumpScale).toBeLessThan(medium.jerseyBumpScale);
+      expect(medium.jerseyBumpScale).toBeLessThan(high.jerseyBumpScale);
+      expect(high.jerseyBumpScale).toBeLessThan(ultra.jerseyBumpScale);
       expect(low.vertexCount).toBe(ultra.vertexCount);
       expect(low.indexCount).toBe(ultra.indexCount);
     });
