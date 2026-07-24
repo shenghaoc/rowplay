@@ -320,6 +320,10 @@ for (const sport of Object.values(SPORTS)) {
   if (shouldCapture(`${sport.label}-one-cycle`)) await captureCycle(sport);
 }
 
+// Re-running a bounded subset of the capture after a transient browser hiccup
+// must update its record rather than duplicate a file in the manifest.
+const uniqueEvidence = [...new Map(evidence.map((entry) => [entry.file, entry])).values()];
+
 await writeFile(
   resolve(outputDir, "manifest.json"),
   `${JSON.stringify(
@@ -328,11 +332,11 @@ await writeFile(
       source: baseUrl,
       command: `node scripts/capture-replay-athlete-v5-qa.mjs --base-url=${baseUrl}`,
       note: "Real RowPlay 3D application capture. Requested Ultra may report High when the browser backend is WebGL; the manifest records the effective tier and backend for every file.",
-      evidence,
+      evidence: uniqueEvidence,
     },
     null,
     2,
   )}\n`,
 );
 
-console.log(`Captured ${evidence.length} real in-app athlete QA artifacts in ${outputDir}`);
+console.log(`Captured ${uniqueEvidence.length} real in-app athlete QA artifacts in ${outputDir}`);

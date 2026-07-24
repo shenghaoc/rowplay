@@ -7,13 +7,13 @@ movement physics.
 
 ## Baseline
 
-| Item              | Value                                                                             |
-| ----------------- | --------------------------------------------------------------------------------- |
-| Baseline commit   | `da0dc73` (PR #171 merge into `main`)                                             |
-| Renderer          | WebGPU-first 3D Ultra (production path)                                           |
-| Motion owner      | PR #171 (`rigV4.ts` clips + contact-constrained solve)                            |
-| Baseline captures | [athlete-v5/baseline](athlete-v5/baseline/) (copied from higher-ceiling V4 Ultra) |
-| Studio baseline   | [higher-ceiling/v4-blender](higher-ceiling/v4-blender/)                           |
+| Item              | Value                                                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Baseline commit   | `da0dc73` (PR #171 merge into `main`)                                                                                |
+| Renderer          | WebGPU-first 3D; the final headless capture records its actual WebGL/High fallback rather than claiming Ultra output |
+| Motion owner      | PR #171 (`rigV4.ts` clips + contact-constrained solve)                                                               |
+| Baseline captures | [historical six-pose `da0dc73` manifest](athlete-v5/baseline/2026-07-23-da0dc73/manifest.json)                       |
+| Studio baseline   | [higher-ceiling/v4-blender](higher-ceiling/v4-blender/)                                                              |
 
 ### Mannequin diagnosis (post-PR-171)
 
@@ -35,8 +35,8 @@ authoritative. This pass adapts the character to that motion.
 ## Art direction
 
 Target: stylized sports-broadcast athlete — anatomically believable, readable at
-chase-camera distance, deliberately modelled clothing panels, clean head/hair
-silhouette, no photoreal face detail.
+chase-camera distance, deliberately modelled clothing panels, a close-fitting
+short-hair silhouette and human facial landmarks, not a photoreal likeness.
 
 References retained from the higher-ceiling pass:
 
@@ -50,8 +50,9 @@ The production path still loads `rowplay-athlete-v4.glb` through
 
 1. **Surface authoring** (`scripts/build-replay-athlete-v4-blender.py`)
    - denser anatomical cage with deliberate deltoid / thigh / calf volume
-   - enlarged, shaped generic head with forehead, brow, recessed eye, nose,
-     cheek, chin, hair, and sideburn silhouette rather than a featureless egg
+   - shaped generic head with forehead, cheek, jaw, shallow nose ridge,
+     low-profile eyes, a quiet mouth plane, and a smooth curved hair cap rather
+     than a featureless egg, dark visor, or protruding bead-like facial parts
    - voxel remesh → coherent primary body mass; the release component count is
      sealed in the contract rather than treated as an art-quality target
    - weight transfer from the ring-weighted cage (not bone-heat)
@@ -62,9 +63,10 @@ The production path still loads `rowplay-athlete-v4.glb` through
 2. **Runtime materials** (`renderer3dV4Assets.ts`, `renderer3dV4Motion.ts`)
    - retain one portable GLB primitive/material for native handoff, then split
      its reviewed vertex-colour regions into seven runtime PBR surface roles
-   - Low → Medium → High → Ultra retain the same athlete, clip, and contacts
-     while progressively refining skin response, cloth sheen, footwear/trim
-     clearcoat, hair, and face detail
+   - Low → Medium → High → Ultra retain the same athlete, clip, and contacts.
+     Low has no generated maps; Medium first reveals 32px deterministic UV
+     albedo, normal, roughness, and relief; High sharpens that work at 64px;
+     Ultra reaches 96px with the strongest, but still incremental, PBR response
    - material profiles are athlete-specific, so a higher tier visibly improves
      the person rather than only pixel ratio or distant environment density
 3. **Runtime contract**
@@ -79,7 +81,50 @@ The production path still loads `rowplay-athlete-v4.glb` through
 
 ## Evidence
 
-### Studio nine-pose stress set
+### Final real in-app 3D acceptance
+
+The primary evidence is the production app rather than an offline mesh viewer.
+The [capture manifest](athlete-v5/in-app/2026-07-23-21d24f1/manifest.json)
+is tied to rendered code commit `21d24f192aa095939f825144ac89a2b5fea00fc1`
+and records the renderer backend and effective quality for every artifact.
+
+| Sport / stress pose  | Final athlete                                                             | Skeleton overlay                                                                     |
+| -------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| RowErg catch         | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/row-catch.jpg)         | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/row-catch-skeleton.jpg)         |
+| RowErg finish        | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/row-finish.jpg)        | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/row-finish-skeleton.jpg)        |
+| SkiErg high reach    | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/ski-high-reach.jpg)    | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/ski-high-reach-skeleton.jpg)    |
+| SkiErg loaded press  | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/ski-loaded-press.jpg)  | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/ski-loaded-press-skeleton.jpg)  |
+| BikeErg pedal top    | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/bike-pedal-top.jpg)    | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/bike-pedal-top-skeleton.jpg)    |
+| BikeErg pedal bottom | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/bike-pedal-bottom.jpg) | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/bike-pedal-bottom-skeleton.jpg) |
+
+Quality is deliberately progressive rather than a Low-to-Ultra cliff. The
+same close RowErg finish was captured at every requested tier:
+
+| Tier   | In-app frame                                                                   | Runtime surface work                             |
+| ------ | ------------------------------------------------------------------------------ | ------------------------------------------------ |
+| Low    | [frame](athlete-v5/in-app/2026-07-23-21d24f1/tiers/tier-row-finish-low.jpg)    | base role material; no generated maps            |
+| Medium | [frame](athlete-v5/in-app/2026-07-23-21d24f1/tiers/tier-row-finish-medium.jpg) | first 32px albedo, normal, roughness, and relief |
+| High   | [frame](athlete-v5/in-app/2026-07-23-21d24f1/tiers/tier-row-finish-high.jpg)   | sharper 64px maps and stronger material response |
+| Ultra  | [frame](athlete-v5/in-app/2026-07-23-21d24f1/tiers/tier-row-finish-ultra.jpg)  | strongest 96px material response                 |
+
+The capture also includes [one RowErg cycle](athlete-v5/in-app/2026-07-23-21d24f1/cycles/row-one-cycle.webm), [one SkiErg cycle](athlete-v5/in-app/2026-07-23-21d24f1/cycles/ski-one-cycle.webm), [one BikeErg cycle](athlete-v5/in-app/2026-07-23-21d24f1/cycles/bike-one-cycle.webm), [opaque ghost SkiErg](athlete-v5/in-app/2026-07-23-21d24f1/poses/ghost-ski-loaded-press.jpg), [mobile RowErg](athlete-v5/in-app/2026-07-23-21d24f1/poses/mobile-row-finish.jpg), and a [front close-up](athlete-v5/in-app/2026-07-23-21d24f1/poses/row-finish-front.jpg).
+
+Review of the final in-app frames confirms the following visible outcomes:
+
+- at both RowErg end poses, the skeleton overlay places elbows outside the
+  torso volume while the hands stay on the scull grips;
+- at both BikeErg extremes, the saddle remains visibly behind the pelvis rather
+  than filling it; and
+- the close-up shows a deliberately simplified but human face with a curved
+  short-hair silhouette, shallow landmarks, and no dark visor/mask artifact.
+
+Headless Chromium had no WebGPU adapter, so the manifest truthfully reports
+`WEBGL` and `High` as the effective output when an Ultra request falls back.
+The test suite proves the separate 96px Ultra material configuration, but a
+hardware WebGPU Ultra capture remains a manual visual acceptance gate; these
+frames do not claim to be that sign-off.
+
+### Supplementary studio nine-pose stress set
 
 Rendered from the sealed production GLB with the PR #171 clips:
 
@@ -98,7 +143,7 @@ Rendered from the sealed production GLB with the PR #171 clips:
 ### Problems removed
 
 - Assembled-tube limb read → continuous remeshed body mass
-- 24 fragmented topology components → **1** coherent primary body mass; the
+- 24 fragmented topology components → a coherent primary body mass; the final
   count is sealed in the contract rather than used as an art-quality target
 - Floating lace islands and open hair rims → removed
 - Gaping armpit under raised arms → chest-weight boost + thicker deltoid root
@@ -161,24 +206,10 @@ contract and are not art targets.
 - [x] One shared athlete for all three PR #171 clips
 - [x] Opaque live/ghost body path retained (no transparent sorting)
 - [x] Canvas 2D / environments / equipment motion untouched
-- [x] In-app live captures for row / ski / bike (dark + light + ghost + mobile)
-- [ ] Real-time cycle videos (row / ski / bike) — optional follow-up; studio
-      stress frames and live stills are the primary evidence in this PR
-
-### In-app captures
-
-Headless Chromium selected WebGL High (WebGPU Ultra is not always available
-headless). Production V4 athlete loaded with zero page errors:
-
-| Capture    | Path                                                                                                |
-| ---------- | --------------------------------------------------------------------------------------------------- |
-| Row dark   | [in-app/row-3d-desktop-dark-ultra.jpg](athlete-v5/in-app/row-3d-desktop-dark-ultra.jpg)             |
-| Row light  | [in-app/row-3d-desktop-light-ultra.jpg](athlete-v5/in-app/row-3d-desktop-light-ultra.jpg)           |
-| Ski dark   | [in-app/ski-3d-desktop-dark-ultra.jpg](athlete-v5/in-app/ski-3d-desktop-dark-ultra.jpg)             |
-| Ski ghost  | [in-app/ski-3d-desktop-dark-ultra-ghost.jpg](athlete-v5/in-app/ski-3d-desktop-dark-ultra-ghost.jpg) |
-| Bike dark  | [in-app/bike-3d-desktop-dark-ultra.jpg](athlete-v5/in-app/bike-3d-desktop-dark-ultra.jpg)           |
-| Bike light | [in-app/bike-3d-desktop-light-ultra.jpg](athlete-v5/in-app/bike-3d-desktop-light-ultra.jpg)         |
-| Mobile     | [in-app/row-3d-mobile-light.jpg](athlete-v5/in-app/row-3d-mobile-light.jpg)                         |
-
-Ghost comparison: both live and ghost bodies remain complete, opaque, and free
-of transparent triangle-sorting disappearance.
+- [x] In-app six-pose contact evidence for row / ski / bike, plus ghost,
+      mobile, and front-close views
+- [x] Real-time cycle videos for row / ski / bike
+- [x] Progressive Low / Medium / High / Ultra material configuration with
+      in-app tier captures
+- [ ] Hardware WebGPU Ultra visual acceptance (this headless environment has
+      no adapter, so it can only attest to WebGL High fallback output)
