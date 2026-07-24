@@ -56,6 +56,14 @@ and a sport grip curl after contact so sculls, poles, and hoods read as gripped
 rather than open mitts. Helpers are not motion targets; clips still own only
 the 19 semantic bones.
 
+**Hard surface rebuild** (response to “still looks low-poly / mannequin”):
+
+- finer body remesh (`VOXEL_SIZE` 0.0046) with light smooth only
+- athletic V-taper torso, lat flare, crew-collar shelf, continuous head planes
+- legs authored **after** remesh (dense pelvis was swallowing cage legs)
+- hard kit colour panels; budget ceiling 16 MB / 220k verts / 450k tris
+- studio evidence: [blender-qa-hard](athlete-v5/blender-qa-hard/)
+
 ## Art direction
 
 Target: stylized sports-broadcast athlete — anatomically believable, readable at

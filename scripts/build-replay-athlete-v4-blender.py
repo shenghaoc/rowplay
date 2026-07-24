@@ -96,12 +96,13 @@ SHOE = (0.88, 0.90, 0.93, 1.0)
 SHOE_DARK = (0.12, 0.15, 0.19, 1.0)
 SOLE = (0.06, 0.08, 0.10, 1.0)
 
-# Body-only voxel remesh: fine enough for athletic limb/torso mass at the
-# replay camera, while hands/face/kit trim stay as post-remesh authored islands
-# so fingers and facial planes are not erased. Validator ceiling is 10 MB /
-# 120k verts / 240k tris for live+ghost clone delivery.
-VOXEL_SIZE = 0.0070
-SMOOTH_ITERATIONS = 2
+# Hard surface rebuild: fine voxel remesh preserves athletic silhouette and
+# cage-authored facial planes instead of melting them into a soft mannequin.
+# Hands stay post-remesh islands. Validator ceiling is 16 MB / 220k verts /
+# 450k tris for live+ghost clone delivery.
+VOXEL_SIZE = 0.0046
+SMOOTH_ITERATIONS = 1
+SMOOTH_FACTOR = 0.28
 
 
 def parse_args() -> argparse.Namespace:
@@ -288,98 +289,122 @@ def build_torso(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
     spine = bones["v4Spine"]
     chest = bones["v4Chest"]
     neck = bones["v4Neck"]
+    # Athletic V-taper: tucked seat, narrow waist, broad lats/chest, clean crew
+    # neck — matches the premium stylized sports-broadcast art direction rather
+    # than a soft cylindrical mannequin.
     rings = [
-        # The rear lower-pelvis section is deliberately tucked toward the
-        # athlete's centreline. It keeps a seated BikeErg body from visibly
-        # cutting through the fixed saddle shell while preserving the hips,
-        # legs, and pedal contacts that the technique rig owns.
-        Ring(Vector((0, 0.86, 0.016)), (0.155, 0.118), {"v4Hips": 1}, SHORTS, 0.03, 0.26),
-        Ring(Vector((0, 0.92, 0.018)), (0.19, 0.142), {"v4Hips": 1}, SHORTS, 0.04, 0.3),
-        Ring(hips + Vector((0, 0.0, 0.02)), (0.215, 0.16), {"v4Hips": 1}, SHORTS, 0.05, 0.32),
-        Ring(Vector((0, 1.09, 0.018)), (0.185, 0.14), {"v4Hips": 0.78, "v4Spine": 0.22}, SHORTS, 0.0, 0.16),
-        Ring(Vector((0, 1.14, 0.01)), (0.17, 0.13), {"v4Hips": 0.5, "v4Spine": 0.5}, TRIM),
-        Ring(Vector((0, 1.19, 0.014)), (0.172, 0.132), {"v4Hips": 0.28, "v4Spine": 0.72}, FABRIC),
-        Ring(spine + Vector((0, 0.01, 0.008)), (0.195, 0.148), {"v4Spine": 0.86, "v4Hips": 0.14}, FABRIC, 0.03, 0.04),
-        Ring(Vector((0, 1.30, 0.02)), (0.222, 0.162), {"v4Spine": 0.7, "v4Chest": 0.3}, FABRIC, 0.04, 0.05),
-        Ring(Vector((0, 1.38, 0.028)), (0.235, 0.166), {"v4Spine": 0.4, "v4Chest": 0.6}, FABRIC, 0.04, 0.07),
-        Ring(chest + Vector((0, -0.01, 0.02)), (0.242, 0.168), {"v4Chest": 0.82, "v4Spine": 0.18}, FABRIC, 0.035, 0.085),
-        Ring(chest + Vector((0, 0.03, 0.024)), (0.238, 0.158), {"v4Chest": 0.92, "v4Neck": 0.08}, FABRIC, 0.025, 0.065),
-        Ring(Vector((0, 1.52, 0.045)), (0.205, 0.136), {"v4Chest": 0.78, "v4Neck": 0.22}, FABRIC, 0.02),
-        Ring(Vector((0, 1.555, 0.05)), (0.14, 0.1), {"v4Chest": 0.4, "v4Neck": 0.6}, FABRIC),
-        Ring(Vector((0, 1.58, 0.052)), (0.09, 0.078), {"v4Neck": 0.78, "v4Chest": 0.22}, SKIN),
+        Ring(Vector((0, 0.86, 0.014)), (0.148, 0.112), {"v4Hips": 1}, SHORTS, 0.04, 0.28),
+        Ring(Vector((0, 0.92, 0.016)), (0.182, 0.136), {"v4Hips": 1}, SHORTS, 0.05, 0.32),
+        Ring(hips + Vector((0, 0.0, 0.018)), (0.205, 0.152), {"v4Hips": 1}, SHORTS, 0.06, 0.34),
+        Ring(Vector((0, 1.06, 0.016)), (0.178, 0.132), {"v4Hips": 0.82, "v4Spine": 0.18}, SHORTS, 0.02, 0.18),
+        Ring(Vector((0, 1.1, 0.012)), (0.162, 0.122), {"v4Hips": 0.6, "v4Spine": 0.4}, SHORTS_PANEL, 0.01, 0.12),
+        # Hard waistband break — geometric ridge that survives fine remesh.
+        Ring(Vector((0, 1.13, 0.01)), (0.158, 0.118), {"v4Hips": 0.45, "v4Spine": 0.55}, TRIM, 0.0, 0.08),
+        Ring(Vector((0, 1.155, 0.012)), (0.152, 0.114), {"v4Hips": 0.28, "v4Spine": 0.72}, FABRIC, 0.02, 0.06),
+        Ring(Vector((0, 1.19, 0.014)), (0.158, 0.12), {"v4Spine": 0.88, "v4Hips": 0.12}, FABRIC, 0.03, 0.05),
+        Ring(spine + Vector((0, 0.01, 0.01)), (0.188, 0.14), {"v4Spine": 0.9, "v4Hips": 0.1}, FABRIC, 0.04, 0.06),
+        # Lat flare into athletic ribcage.
+        Ring(Vector((0, 1.28, 0.018)), (0.218, 0.155), {"v4Spine": 0.72, "v4Chest": 0.28}, FABRIC_SIDE, 0.05, 0.07),
+        Ring(Vector((0, 1.34, 0.024)), (0.238, 0.162), {"v4Spine": 0.48, "v4Chest": 0.52}, FABRIC, 0.05, 0.09),
+        Ring(Vector((0, 1.4, 0.028)), (0.248, 0.168), {"v4Spine": 0.28, "v4Chest": 0.72}, FABRIC, 0.045, 0.1),
+        Ring(chest + Vector((0, -0.02, 0.022)), (0.252, 0.17), {"v4Chest": 0.86, "v4Spine": 0.14}, FABRIC, 0.04, 0.1),
+        Ring(chest + Vector((0, 0.02, 0.026)), (0.246, 0.16), {"v4Chest": 0.94, "v4Neck": 0.06}, FABRIC_LIGHT, 0.03, 0.08),
+        Ring(Vector((0, 1.5, 0.04)), (0.22, 0.142), {"v4Chest": 0.82, "v4Neck": 0.18}, FABRIC, 0.025, 0.05),
+        # Crew collar shelf.
+        Ring(Vector((0, 1.535, 0.048)), (0.168, 0.112), {"v4Chest": 0.55, "v4Neck": 0.45}, TRIM, 0.02),
+        Ring(Vector((0, 1.56, 0.05)), (0.118, 0.086), {"v4Chest": 0.28, "v4Neck": 0.72}, FABRIC_LIGHT, 0.015),
+        Ring(Vector((0, 1.585, 0.052)), (0.082, 0.07), {"v4Neck": 0.85, "v4Chest": 0.15}, SKIN),
     ]
-    builder.add_loft(rings, 60, Vector((1, 0, 0)), torso_color)
+    builder.add_loft(rings, 72, Vector((1, 0, 0)), torso_color)
+
+    # Trap / upper-back mass so the rear silhouette is not a flat board.
+    builder.add_loft(
+        [
+            Ring(chest + Vector((0, 0.0, -0.04)), (0.2, 0.06), {"v4Chest": 0.9, "v4Spine": 0.1}, FABRIC_SIDE, 0.1),
+            Ring(chest + Vector((0, 0.05, -0.055)), (0.175, 0.055), {"v4Chest": 0.85, "v4Neck": 0.15}, FABRIC, 0.08),
+            Ring(neck + Vector((0, -0.02, -0.03)), (0.1, 0.04), {"v4Neck": 0.7, "v4Chest": 0.3}, FABRIC, 0.04),
+        ],
+        36,
+        Vector((1, 0, 0)),
+        cap_start=False,
+        cap_end=False,
+    )
 
     builder.add_loft(
         [
-            Ring(neck + Vector((0, -0.025, 0.004)), (0.088, 0.076), {"v4Neck": 0.9, "v4Chest": 0.1}, SKIN),
-            Ring(neck + Vector((0, 0.025, 0.01)), (0.068, 0.06), {"v4Neck": 0.88, "v4Head": 0.12}, SKIN),
-            Ring(neck + Vector((0, 0.07, 0.014)), (0.07, 0.062), {"v4Neck": 0.5, "v4Head": 0.5}, SKIN),
-            Ring(neck + Vector((0, 0.11, 0.016)), (0.076, 0.068), {"v4Head": 1}, SKIN),
+            Ring(neck + Vector((0, -0.02, 0.006)), (0.086, 0.074), {"v4Neck": 0.9, "v4Chest": 0.1}, SKIN),
+            Ring(neck + Vector((0, 0.02, 0.012)), (0.066, 0.058), {"v4Neck": 0.88, "v4Head": 0.12}, SKIN),
+            Ring(neck + Vector((0, 0.065, 0.016)), (0.068, 0.06), {"v4Neck": 0.5, "v4Head": 0.5}, SKIN),
+            Ring(neck + Vector((0, 0.105, 0.018)), (0.074, 0.066), {"v4Head": 1}, SKIN),
         ],
-        40,
+        48,
         Vector((1, 0, 0)),
         cap_start=False,
     )
 
 
 def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
-    center = bones["v4Head"] + Vector((0, 0.07, 0.018))
+    center = bones["v4Head"] + Vector((0, 0.068, 0.02))
 
     def shape(point: Vector, _u: float, _v: float) -> Vector:
         local = point - center
-        # Establish a recognisable generic cranium, brow, cheek and jaw before
-        # adding small features. A rounded-only ellipsoid reads as a doll head
-        # at the replay camera even when its material is otherwise polished.
-        if local.y < -0.015:
-            # Taper from cheekbone into an actual jaw and chin, rather than
-            # carrying the cranium's roundness all the way to the neck.
-            jaw_blend = max(0.0, min(1.0, (local.y + 0.135) / 0.12))
-            local.x *= 0.76 + jaw_blend * 0.2
-            local.z *= 0.86 + jaw_blend * 0.1
-        elif local.y > 0.055:
-            # A restrained upper cranium reads as a skull rather than the
-            # oversized spherical head used by the historical mannequin.
-            local.x *= 1.015
-        front = max(0.0, local.z / 0.098)
-        forehead = math.exp(-((local.x / 0.082) ** 2 + ((local.y - 0.055) / 0.05) ** 2))
-        nose_bridge = math.exp(-((local.x / 0.02) ** 2 + ((local.y - 0.012) / 0.058) ** 2))
-        nose_tip = math.exp(-((local.x / 0.028) ** 2 + ((local.y + 0.02) / 0.025) ** 2))
-        brow = math.exp(-((abs(local.x) - 0.046) / 0.026) ** 2) * math.exp(
-            -((local.y - 0.024) / 0.021) ** 2
+        # Continuous face plane authored into the cage so fine remesh keeps a
+        # human head rather than an egg with stick-on features.
+        if local.y < -0.01:
+            jaw_blend = max(0.0, min(1.0, (local.y + 0.14) / 0.13))
+            local.x *= 0.72 + jaw_blend * 0.22
+            local.z *= 0.84 + jaw_blend * 0.12
+            # Square the jaw slightly for athletic broadcast silhouette.
+            local.x *= 1.0 + 0.08 * max(0.0, -local.y - 0.04)
+        elif local.y > 0.05:
+            local.x *= 1.02
+            local.z *= 0.97
+        front = max(0.0, local.z / 0.1)
+        forehead = math.exp(-((local.x / 0.078) ** 2 + ((local.y - 0.058) / 0.048) ** 2))
+        temple = math.exp(-((abs(local.x) - 0.07) / 0.035) ** 2) * math.exp(
+            -((local.y - 0.02) / 0.05) ** 2
         )
-        eye_socket = math.exp(-((abs(local.x) - 0.047) / 0.022) ** 2) * math.exp(
-            -((local.y + 0.005) / 0.022) ** 2
+        nose_bridge = math.exp(-((local.x / 0.016) ** 2 + ((local.y - 0.01) / 0.055) ** 2))
+        nose_tip = math.exp(-((local.x / 0.024) ** 2 + ((local.y + 0.022) / 0.022) ** 2))
+        brow = math.exp(-((abs(local.x) - 0.042) / 0.024) ** 2) * math.exp(
+            -((local.y - 0.028) / 0.018) ** 2
         )
-        cheek = math.exp(-((abs(local.x) - 0.058) / 0.04) ** 2) * math.exp(
-            -((local.y + 0.04) / 0.04) ** 2
+        eye_socket = math.exp(-((abs(local.x) - 0.044) / 0.02) ** 2) * math.exp(
+            -((local.y + 0.002) / 0.018) ** 2
         )
-        chin = math.exp(-((local.y + 0.094) / 0.028) ** 2) * math.exp(-(local.x / 0.05) ** 2)
-        mouth_plane = math.exp(-((local.x / 0.046) ** 2 + ((local.y + 0.058) / 0.014) ** 2))
-        # A readable generic face plane at replay distance: no likeness or
-        # photoreal detail, but enough forehead/brow/eye/nose/chin structure
-        # that the head does not read as a featureless egg.
+        cheek = math.exp(-((abs(local.x) - 0.055) / 0.038) ** 2) * math.exp(
+            -((local.y + 0.038) / 0.036) ** 2
+        )
+        chin = math.exp(-((local.y + 0.1) / 0.026) ** 2) * math.exp(-(local.x / 0.045) ** 2)
+        mouth_plane = math.exp(-((local.x / 0.042) ** 2 + ((local.y + 0.06) / 0.012) ** 2))
+        philtrum = math.exp(-((local.x / 0.012) ** 2 + ((local.y + 0.04) / 0.018) ** 2))
         local.z += front * (
-            0.006 * forehead
-            + 0.013 * nose_bridge
-            + 0.011 * nose_tip
-            + 0.005 * brow
-            - 0.005 * eye_socket
-            + 0.004 * cheek
-            + 0.009 * chin
-            - 0.002 * mouth_plane
+            0.009 * forehead
+            + 0.018 * nose_bridge
+            + 0.016 * nose_tip
+            + 0.01 * brow
+            - 0.01 * eye_socket
+            + 0.007 * cheek
+            + 0.014 * chin
+            - 0.004 * mouth_plane
+            + 0.004 * philtrum
+            - 0.004 * temple
         )
+        # Slight vertical nose ridge so remesh cannot flatten the midface.
+        local.y += front * (0.004 * nose_bridge - 0.003 * eye_socket)
         return center + local
 
-    builder.add_ellipsoid(center, (0.105, 0.146, 0.098), {"v4Head": 1}, SKIN, 56, 40, shape)
+    # Dense cranium so facial planes survive voxel remesh.
+    builder.add_ellipsoid(center, (0.1, 0.14, 0.096), {"v4Head": 1}, SKIN, 72, 52, shape)
     for side in (-1.0, 1.0):
+        # Ear volume authored into the cage (not only post-remesh islands).
         builder.add_ellipsoid(
-            center + Vector((side * 0.097, -0.006, -0.008)),
-            (0.014, 0.028, 0.016),
+            center + Vector((side * 0.095, -0.004, -0.012)),
+            (0.016, 0.03, 0.018),
             {"v4Head": 1},
             SKIN_LIGHT,
-            16,
-            12,
+            20,
+            14,
         )
 
 
@@ -421,65 +446,95 @@ def build_arm(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: 
         Ring(elbow.lerp(wrist, 0.9), (0.032, 0.028), {fore_name: 0.62, hand_name: 0.38}, SKIN),
         Ring(wrist, (0.028, 0.024), {fore_name: 0.28, hand_name: 0.72}, SKIN),
     ]
-    builder.add_loft(rings, 44, Vector((0, 0, 1)), cap_start=False, cap_end=True)
+    builder.add_loft(rings, 52, Vector((0, 0, 1)), cap_start=False, cap_end=True)
 
 
-def build_leg(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: str) -> None:
+def build_leg_stubs(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: str) -> None:
+    """Short thigh stubs only — full legs join after remesh.
+
+    Dense pelvis remesh swallows thin cage legs into the hip solid. Keep a short
+    upper-thigh mass on the cage so the shorts silhouette is continuous, then
+    author the visible leg + shoe after remesh (same strategy as hands).
+    """
+
     upper_name = f"v4{side_name}UpperLeg"
-    lower_name = f"v4{side_name}LowerLeg"
-    foot_name = f"v4{side_name}Foot"
     hip = bones[upper_name]
-    knee = bones[lower_name]
-    ankle = bones[foot_name]
-
+    knee = bones[f"v4{side_name}LowerLeg"]
     rings = [
-        Ring(hip + Vector((0, 0.03, 0.0)), (0.105, 0.095), {"v4Hips": 0.86, upper_name: 0.14}, SHORTS, 0.04, 0.03),
-        Ring(hip + Vector((0, -0.01, 0.004)), (0.122, 0.108), {"v4Hips": 0.52, upper_name: 0.48}, SHORTS, 0.05, 0.05),
-        Ring(hip.lerp(knee, 0.12), (0.13, 0.114), {upper_name: 0.88, "v4Hips": 0.12}, SHORTS, 0.065, 0.07),
-        Ring(hip.lerp(knee, 0.28), (0.134, 0.116), {upper_name: 1}, SHORTS, 0.07, 0.08),
-        Ring(hip.lerp(knee, 0.44), (0.124, 0.11), {upper_name: 1}, SHORTS_PANEL, 0.055, 0.06),
-        Ring(hip.lerp(knee, 0.58), (0.116, 0.104), {upper_name: 0.96, lower_name: 0.04}, TRIM, 0.045),
-        Ring(hip.lerp(knee, 0.72), (0.108, 0.096), {upper_name: 0.88, lower_name: 0.12}, LEG_FABRIC, 0.04),
-        Ring(hip.lerp(knee, 0.86), (0.098, 0.09), {upper_name: 0.72, lower_name: 0.28}, LEG_FABRIC),
-        Ring(hip.lerp(knee, 0.95), (0.09, 0.084), {upper_name: 0.55, lower_name: 0.45}, LEG_FABRIC),
-        Ring(knee, (0.088, 0.082), {upper_name: 0.45, lower_name: 0.55}, LEG_FABRIC_LIGHT, 0.03, 0.045),
-        Ring(knee.lerp(ankle, 0.12), (0.098, 0.09), {upper_name: 0.22, lower_name: 0.78}, LEG_FABRIC, 0.045, 0.045),
-        Ring(knee.lerp(ankle, 0.3), (0.102, 0.092), {lower_name: 0.94, upper_name: 0.06}, LEG_FABRIC, 0.055, 0.045),
-        Ring(knee.lerp(ankle, 0.5), (0.094, 0.084), {lower_name: 0.97, foot_name: 0.03}, LEG_FABRIC, 0.045),
-        Ring(knee.lerp(ankle, 0.68), (0.078, 0.072), {lower_name: 0.9, foot_name: 0.1}, LEG_FABRIC_SIDE, 0.035),
-        Ring(knee.lerp(ankle, 0.84), (0.064, 0.06), {lower_name: 0.72, foot_name: 0.28}, LEG_FABRIC_SIDE),
-        Ring(ankle, (0.05, 0.048), {lower_name: 0.32, foot_name: 0.68}, SHOE_DARK),
+        Ring(hip + Vector((0, 0.05, 0.0)), (0.12, 0.105), {"v4Hips": 0.9, upper_name: 0.1}, SHORTS, 0.05, 0.06),
+        Ring(hip + Vector((0, 0.01, 0.004)), (0.135, 0.118), {"v4Hips": 0.55, upper_name: 0.45}, SHORTS, 0.06, 0.08),
+        Ring(hip.lerp(knee, 0.2), (0.138, 0.12), {upper_name: 0.88, "v4Hips": 0.12}, SHORTS, 0.07, 0.09),
+        Ring(hip.lerp(knee, 0.35), (0.132, 0.116), {upper_name: 1}, SHORTS_PANEL, 0.06, 0.08),
+        Ring(hip.lerp(knee, 0.48), (0.122, 0.108), {upper_name: 1}, SHORTS, 0.05, 0.06),
+        Ring(hip.lerp(knee, 0.58), (0.11, 0.098), {upper_name: 1}, LEG_FABRIC, 0.04),
     ]
-    builder.add_loft(rings, 48, Vector((1, 0, 0)), cap_start=False)
+    builder.add_loft(rings, 48, Vector((1, 0, 0)), cap_start=False, cap_end=True)
 
-    # Soft shoe mass in the cage so remesh stays continuous at the ankle; sole
-    # and heel-counter overlays join after remesh for crisp shoe language.
-    heel = ankle + Vector((0, -0.032, -0.05))
-    rear = ankle + Vector((0, -0.018, -0.01))
-    mid = ankle + Vector((0, -0.042, 0.09))
-    cleat = ankle + Vector(CONTACT_OFFSETS[foot_name])
-    toe = ankle + Vector((0, -0.034, 0.23))
-    builder.add_loft(
-        [
-            Ring(heel, (0.078, 0.054), {foot_name: 1}, SHOE_DARK, 0.03),
-            Ring(rear, (0.094, 0.062), {foot_name: 1}, SHOE, 0.04),
-            Ring(mid, (0.11, 0.062), {foot_name: 1}, SHOE, 0.05),
-            Ring(cleat, (0.114, 0.052), {foot_name: 1}, SHOE, 0.04),
-            Ring(toe, (0.086, 0.036), {foot_name: 1}, SHOE, 0.02),
-        ],
-        34,
-        Vector((1, 0, 0)),
-    )
-    builder.add_loft(
-        [
-            Ring(heel + Vector((0, -0.032, 0.0)), (0.08, 0.013), {foot_name: 1}, SOLE),
-            Ring(mid + Vector((0, -0.036, 0.0)), (0.112, 0.014), {foot_name: 1}, SOLE),
-            Ring(cleat + Vector((0, -0.032, 0.0)), (0.116, 0.013), {foot_name: 1}, SOLE),
-            Ring(toe + Vector((0, -0.024, -0.004)), (0.09, 0.011), {foot_name: 1}, SOLE),
-        ],
-        26,
-        Vector((1, 0, 0)),
-    )
+
+def add_authored_legs(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
+    """Join athletic legs and shoes after body remesh so shins are never eaten."""
+
+    for side_name in ("Left", "Right"):
+        upper_name = f"v4{side_name}UpperLeg"
+        lower_name = f"v4{side_name}LowerLeg"
+        foot_name = f"v4{side_name}Foot"
+        hip = bones[upper_name]
+        knee = bones[lower_name]
+        ankle = bones[foot_name]
+        builder = AthleteMeshBuilder()
+
+        # Start deep inside the remeshed stub (past mid-thigh) so bind pose has
+        # no skirt gap between shorts solid and leg volume.
+        rings = [
+            Ring(hip.lerp(knee, 0.08), (0.136, 0.12), {upper_name: 0.85, "v4Hips": 0.15}, SHORTS, 0.07, 0.09),
+            Ring(hip.lerp(knee, 0.18), (0.138, 0.122), {upper_name: 0.95, "v4Hips": 0.05}, SHORTS, 0.07, 0.09),
+            Ring(hip.lerp(knee, 0.3), (0.134, 0.118), {upper_name: 1}, SHORTS, 0.07, 0.08),
+            Ring(hip.lerp(knee, 0.4), (0.13, 0.114), {upper_name: 1}, SHORTS_PANEL, 0.06, 0.08),
+            Ring(hip.lerp(knee, 0.5), (0.122, 0.108), {upper_name: 0.96, lower_name: 0.04}, SHORTS, 0.05),
+            Ring(hip.lerp(knee, 0.6), (0.116, 0.104), {upper_name: 0.9, lower_name: 0.1}, LEG_FABRIC, 0.05, 0.05),
+            Ring(hip.lerp(knee, 0.72), (0.11, 0.1), {upper_name: 0.78, lower_name: 0.22}, LEG_FABRIC, 0.045),
+            Ring(hip.lerp(knee, 0.86), (0.102, 0.094), {upper_name: 0.58, lower_name: 0.42}, LEG_FABRIC),
+            Ring(knee, (0.094, 0.088), {upper_name: 0.4, lower_name: 0.6}, LEG_FABRIC, 0.04, 0.05),
+            # Clear shin / calf volume — the piece remesh previously erased.
+            Ring(knee.lerp(ankle, 0.12), (0.102, 0.094), {upper_name: 0.16, lower_name: 0.84}, LEG_FABRIC, 0.05, 0.05),
+            Ring(knee.lerp(ankle, 0.28), (0.106, 0.096), {lower_name: 0.95, upper_name: 0.05}, LEG_FABRIC, 0.06, 0.05),
+            Ring(knee.lerp(ankle, 0.48), (0.098, 0.088), {lower_name: 0.97, foot_name: 0.03}, LEG_FABRIC, 0.05),
+            Ring(knee.lerp(ankle, 0.66), (0.082, 0.076), {lower_name: 0.9, foot_name: 0.1}, LEG_FABRIC_SIDE, 0.04),
+            Ring(knee.lerp(ankle, 0.82), (0.068, 0.064), {lower_name: 0.72, foot_name: 0.28}, LEG_FABRIC_SIDE),
+            Ring(ankle, (0.052, 0.05), {lower_name: 0.3, foot_name: 0.7}, SHOE_DARK),
+        ]
+        builder.add_loft(rings, 44, Vector((1, 0, 0)), cap_start=False, cap_end=False)
+
+        heel = ankle + Vector((0, -0.03, -0.048))
+        rear = ankle + Vector((0, -0.016, -0.01))
+        mid = ankle + Vector((0, -0.04, 0.09))
+        cleat = ankle + Vector(CONTACT_OFFSETS[foot_name])
+        toe = ankle + Vector((0, -0.032, 0.22))
+        weights = {foot_name: 1.0}
+        builder.add_loft(
+            [
+                Ring(heel, (0.066, 0.044), weights, SHOE_DARK, 0.03),
+                Ring(rear, (0.08, 0.052), weights, SHOE, 0.04),
+                Ring(mid, (0.094, 0.052), weights, SHOE, 0.05),
+                Ring(cleat, (0.096, 0.044), weights, SHOE, 0.04),
+                Ring(toe, (0.072, 0.03), weights, SHOE, 0.02),
+            ],
+            28,
+            Vector((1, 0, 0)),
+        )
+        builder.add_loft(
+            [
+                Ring(heel + Vector((0, -0.03, 0.0)), (0.068, 0.011), weights, SOLE),
+                Ring(mid + Vector((0, -0.032, 0.0)), (0.096, 0.012), weights, SOLE),
+                Ring(cleat + Vector((0, -0.03, 0.0)), (0.098, 0.011), weights, SOLE),
+                Ring(toe + Vector((0, -0.022, -0.004)), (0.074, 0.01), weights, SOLE),
+            ],
+            22,
+            Vector((1, 0, 0)),
+        )
+        join_builder_detail(
+            surface, f"rowplay-v4-leg-{side_name.lower()}", builder, default_bone=upper_name
+        )
 
 
 def hand_helper_landmarks(
@@ -790,107 +845,37 @@ def add_authored_hands(surface: bpy.types.Object, bones: dict[str, Vector]) -> N
 
 
 def add_flush_face_details(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
-    """Add human facial landmarks after remesh without photoreal likeness."""
+    """Add only the smallest post-remesh eye accents.
 
-    center = bones["v4Head"] + Vector((0, 0.07, 0.018))
+    Nose, brow, jaw, chin, and ears are cage-authored into the continuous head
+    so the portrait no longer reads as stickers on an egg. Eyes remain slightly
+    proud colour islands for readable sclera/iris at chase distance.
+    """
+
+    center = bones["v4Head"] + Vector((0, 0.068, 0.02))
 
     for side in (-1.0, 1.0):
         side_name = "left" if side < 0 else "right"
-        # Warm sclera + inset iris form a readable eye aperture at portrait distance.
         join_ellipsoid_detail(
             surface,
             f"rowplay-v4-eye-white-{side_name}",
-            center + Vector((side * 0.044, 0.006, 0.094)),
-            (0.017, 0.0012, 0.006),
+            center + Vector((side * 0.042, 0.004, 0.09)),
+            (0.015, 0.001, 0.0055),
             EYE_WHITE,
             "v4Head",
-            segments=28,
-            rings=14,
+            segments=24,
+            rings=12,
         )
         join_ellipsoid_detail(
             surface,
             f"rowplay-v4-iris-{side_name}",
-            center + Vector((side * 0.044, 0.006, 0.097)),
-            (0.0046, 0.001, 0.0046),
+            center + Vector((side * 0.042, 0.004, 0.093)),
+            (0.0042, 0.0009, 0.0042),
             EYE,
             "v4Head",
-            segments=20,
-            rings=12,
-        )
-        join_ellipsoid_detail(
-            surface,
-            f"rowplay-v4-brow-{side_name}",
-            center + Vector((side * 0.044, 0.034, 0.095)),
-            (0.022, 0.001, 0.003),
-            BROW,
-            "v4Head",
-            segments=22,
-            rings=10,
-            rotation_y=side * 0.1,
-        )
-        # Simple ear shells — enough silhouette that the head is not a smooth egg.
-        join_ellipsoid_detail(
-            surface,
-            f"rowplay-v4-ear-{side_name}",
-            center + Vector((side * 0.102, -0.004, -0.01)),
-            (0.012, 0.028, 0.018),
-            SKIN_LIGHT,
-            "v4Head",
             segments=18,
-            rings=12,
-            rotation_y=side * 0.35,
+            rings=10,
         )
-
-    join_ellipsoid_detail(
-        surface,
-        "rowplay-v4-nose-bridge",
-        center + Vector((0, 0.004, 0.118)),
-        (0.011, 0.0036, 0.03),
-        SKIN,
-        "v4Head",
-        segments=26,
-        rings=16,
-    )
-    join_ellipsoid_detail(
-        surface,
-        "rowplay-v4-nose-tip",
-        center + Vector((0, -0.03, 0.12)),
-        (0.015, 0.0032, 0.01),
-        SKIN,
-        "v4Head",
-        segments=24,
-        rings=14,
-    )
-    join_ellipsoid_detail(
-        surface,
-        "rowplay-v4-upper-lip",
-        center + Vector((0, -0.056, 0.1)),
-        (0.026, 0.0011, 0.003),
-        MOUTH,
-        "v4Head",
-        segments=26,
-        rings=10,
-    )
-    join_ellipsoid_detail(
-        surface,
-        "rowplay-v4-lower-lip",
-        center + Vector((0, -0.064, 0.099)),
-        (0.024, 0.001, 0.0026),
-        MOUTH,
-        "v4Head",
-        segments=26,
-        rings=10,
-    )
-    join_ellipsoid_detail(
-        surface,
-        "rowplay-v4-chin",
-        center + Vector((0, -0.1, 0.07)),
-        (0.03, 0.014, 0.018),
-        SKIN,
-        "v4Head",
-        segments=22,
-        rings=12,
-    )
 
 
 def add_short_hair_cap(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
@@ -960,20 +945,14 @@ def add_short_hair_cap(surface: bpy.types.Object, bones: dict[str, Vector]) -> N
 
 
 def add_kit_trim(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
-    """Join collar, sleeve cuffs, and shorts hems as shallow garment ridges."""
+    """Join only sleeve cuffs as flush garment ridges.
+
+    Collar and waistband breaks are now cage-authored into the torso so they
+    remesh as continuous kit form rather than floating hoops.
+    """
 
     builder = AthleteMeshBuilder()
 
-    # Crew-neck collar — slightly proud of the remeshed neck, not a free hoop.
-    neck = bones["v4Neck"]
-    collar_rings = [
-        Ring(neck + Vector((0, -0.016, 0.01)), (0.078, 0.068), {"v4Neck": 0.7, "v4Chest": 0.3}, TRIM, 0.02),
-        Ring(neck + Vector((0, 0.0, 0.014)), (0.082, 0.072), {"v4Neck": 0.85, "v4Chest": 0.15}, TRIM, 0.02),
-        Ring(neck + Vector((0, 0.014, 0.016)), (0.076, 0.066), {"v4Neck": 0.9, "v4Head": 0.1}, FABRIC_LIGHT, 0.02),
-    ]
-    builder.add_loft(collar_rings, 28, Vector((1, 0, 0)), cap_start=False, cap_end=False)
-
-    # Short-sleeve hems at the mid-upper-arm kit/skin boundary.
     for side_name in ("Left", "Right"):
         upper = bones[f"v4{side_name}UpperArm"]
         elbow = bones[f"v4{side_name}Forearm"]
@@ -982,30 +961,12 @@ def add_kit_trim(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
         axis = (upper - elbow).normalized()
         builder.add_loft(
             [
-                Ring(cuff_center + axis * 0.01, (0.062, 0.054), cuff_weights, TRIM, 0.03),
-                Ring(cuff_center, (0.064, 0.056), cuff_weights, TRIM, 0.03),
-                Ring(cuff_center - axis * 0.008, (0.06, 0.052), cuff_weights, FABRIC, 0.02),
+                Ring(cuff_center + axis * 0.008, (0.06, 0.052), cuff_weights, TRIM, 0.03),
+                Ring(cuff_center, (0.062, 0.054), cuff_weights, TRIM, 0.03),
+                Ring(cuff_center - axis * 0.006, (0.058, 0.05), cuff_weights, FABRIC, 0.02),
             ],
-            20,
+            22,
             Vector((0, 0, 1)),
-            cap_start=False,
-            cap_end=False,
-        )
-
-    # Shorts hem ridges around each upper thigh (flush with remeshed mass).
-    for side_name in ("Left", "Right"):
-        hip = bones[f"v4{side_name}UpperLeg"]
-        knee = bones[f"v4{side_name}LowerLeg"]
-        hem = hip.lerp(knee, 0.5)
-        hem_weights = {f"v4{side_name}UpperLeg": 1.0}
-        builder.add_loft(
-            [
-                Ring(hem + Vector((0, 0.01, 0)), (0.108, 0.096), hem_weights, TRIM, 0.04),
-                Ring(hem, (0.11, 0.098), hem_weights, SHORTS_PANEL, 0.04),
-                Ring(hem + Vector((0, -0.01, 0)), (0.106, 0.094), hem_weights, SHORTS, 0.03),
-            ],
-            24,
-            Vector((1, 0, 0)),
             cap_start=False,
             cap_end=False,
         )
@@ -1014,54 +975,24 @@ def add_kit_trim(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
 
 
 def add_shoe_overlays(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
-    """Join heel counters and sole pads so footwear reads as performance shoes."""
+    """Join a slim heel counter only — soles are authored with the legs."""
 
     for side_name in ("Left", "Right"):
         foot_name = f"v4{side_name}Foot"
         ankle = bones[foot_name]
-        contact = ankle + Vector(CONTACT_OFFSETS[foot_name])
         builder = AthleteMeshBuilder()
         weights = {foot_name: 1.0}
         heel = ankle + Vector((0, -0.02, -0.04))
-        toe = ankle + Vector((0, -0.03, 0.22))
-        mid = ankle + Vector((0, -0.035, 0.09))
-
-        # Heel counter shell.
         builder.add_loft(
             [
-                Ring(heel + Vector((0, 0.02, -0.01)), (0.07, 0.05), weights, SHOE_DARK, 0.04),
-                Ring(heel + Vector((0, 0.0, 0.0)), (0.082, 0.056), weights, SHOE_DARK, 0.04),
-                Ring(heel + Vector((0, -0.01, 0.02)), (0.078, 0.048), weights, SHOE, 0.03),
-            ],
-            18,
-            Vector((1, 0, 0)),
-            cap_start=False,
-            cap_end=False,
-        )
-        # Sole pad under the contact plane.
-        builder.add_loft(
-            [
-                Ring(heel + Vector((0, -0.038, 0.01)), (0.078, 0.014), weights, SOLE, 0.02),
-                Ring(mid + Vector((0, -0.04, 0.0)), (0.112, 0.015), weights, SOLE, 0.02),
-                Ring(contact + Vector((0, -0.036, 0.0)), (0.114, 0.014), weights, SOLE, 0.02),
-                Ring(toe + Vector((0, -0.028, -0.01)), (0.088, 0.012), weights, SOLE, 0.02),
-            ],
-            18,
-            Vector((1, 0, 0)),
-            cap_start=True,
-            cap_end=True,
-        )
-        # Toe-box ridge for a trainer silhouette.
-        builder.add_loft(
-            [
-                Ring(toe + Vector((0, 0.008, -0.04)), (0.08, 0.03), weights, SHOE, 0.03),
-                Ring(toe + Vector((0, 0.004, -0.015)), (0.076, 0.028), weights, SHOE, 0.02),
-                Ring(toe + Vector((0, -0.004, 0.0)), (0.06, 0.02), weights, SHOE_DARK, 0.02),
+                Ring(heel + Vector((0, 0.014, -0.006)), (0.058, 0.04), weights, SHOE_DARK, 0.04),
+                Ring(heel + Vector((0, 0.0, 0.0)), (0.068, 0.046), weights, SHOE_DARK, 0.04),
+                Ring(heel + Vector((0, -0.006, 0.016)), (0.062, 0.038), weights, SHOE, 0.03),
             ],
             16,
             Vector((1, 0, 0)),
             cap_start=False,
-            cap_end=True,
+            cap_end=False,
         )
         join_builder_detail(
             surface,
@@ -1092,8 +1023,10 @@ def create_production_surface(cage: bpy.types.Object, bones: dict[str, Vector]) 
     remesh.use_smooth_shade = True
     bpy.ops.object.modifier_apply(modifier=remesh.name)
 
+    # Light smooth only — heavy smooth is what melted earlier athletes into
+    # soft mannequins and erased cage-authored facial / kit planes.
     smooth = surface.modifiers.new(name="ProductionSmooth", type="SMOOTH")
-    smooth.factor = 0.45
+    smooth.factor = SMOOTH_FACTOR
     smooth.iterations = SMOOTH_ITERATIONS
     bpy.ops.object.modifier_apply(modifier=smooth.name)
 
@@ -1184,6 +1117,7 @@ def create_production_surface(cage: bpy.types.Object, bones: dict[str, Vector]) 
     # High-value form joins after remesh so fingers, face, kit trim, and shoe
     # overlays are not erased by voxelisation. Body mass stays continuous.
     add_authored_hands(surface, bones)
+    add_authored_legs(surface, bones)
     add_flush_face_details(surface, bones)
     add_short_hair_cap(surface, bones)
     add_kit_trim(surface, bones)
@@ -1213,7 +1147,7 @@ def create_production_surface(cage: bpy.types.Object, bones: dict[str, Vector]) 
 
 
 def paint_vertex_colors(obj: bpy.types.Object) -> None:
-    """Region paint in bind-pose space (Three/glTF Y-up metres)."""
+    """Region paint hard kit panels in bind-pose space (Three/glTF Y-up metres)."""
 
     mesh = obj.data
     # Replace any prior colour attribute from remesh leftovers.
@@ -1228,37 +1162,37 @@ def paint_vertex_colors(obj: bpy.types.Object) -> None:
         x = p.x
         z = p.z
         # Bind-pose landmarks: head ~1.72, chest ~1.45, hips ~1.02, knees ~0.53,
-        # ankles ~0.06. Shoe paint is restricted to the foot block only.
-        # Shoes live only in the foot block (ankle ~0.06, toe forward in +Z).
+        # ankles ~0.06. Hard panel breaks match the art-direction kit language.
         near_foot = y < 0.12 and abs(x) > 0.05 and z > -0.08
-        # Keep short sleeves attached through the deltoid and upper arm; only
-        # the outer forearm/palm block becomes skin. A global outer-arm skin
-        # cut made the jersey look painted onto a toy shoulder.
         near_hand = y > 1.05 and abs(x) > 0.68
         if (y > 1.62 and abs(x) < 0.105) or (1.57 < y < 1.62 and abs(x) < 0.05 and z > 0.035):
             color = SKIN
         elif near_hand:
             color = SKIN_LIGHT if abs(x) > 0.58 else SKIN
         elif near_foot:
-            color = SOLE if y < 0.04 else (SHOE_DARK if z < 0.0 else SHOE)
-        elif y < 1.02 and abs(x) > 0.05:
-            # Full lower-leg performance tights — never shoe white on the shin.
-            if abs(y - 0.53) < 0.07:
-                color = LEG_FABRIC_LIGHT
-            elif abs(x) > 0.11:
+            color = SOLE if y < 0.035 else (SHOE_DARK if z < -0.01 else SHOE)
+        elif y < 1.0 and abs(x) > 0.05:
+            # Performance tights — no bright knee sock band.
+            if abs(x) > 0.105:
                 color = LEG_FABRIC_SIDE
             else:
                 color = LEG_FABRIC
-        elif y < 1.16:
-            color = SHORTS_PANEL if abs(x) > 0.12 else SHORTS
-        elif y < 1.28 and abs(x) > 0.22:
-            # Outer deltoid still kit.
-            color = FABRIC
-        elif abs(x) > 0.2 and y > 1.2:
-            color = FABRIC_SIDE if abs(x) > 0.24 else FABRIC
-        elif abs(x) < 0.016 and z > 0.02 and 1.18 < y < 1.48:
+        elif y < 1.12:
+            # Shorts block with hard outer panel.
+            color = SHORTS_PANEL if abs(x) > 0.1 else SHORTS
+        elif y < 1.145:
             color = TRIM
-        elif y > 1.35 and abs(x) < 0.12:
+        elif y < 1.28 and abs(x) > 0.2:
+            color = FABRIC_SIDE if abs(x) > 0.22 else FABRIC
+        elif abs(x) > 0.18 and y > 1.22:
+            # Lateral jersey panel (art-direction block colour).
+            color = FABRIC_SIDE if abs(x) > 0.22 else FABRIC
+        elif abs(x) < 0.03 and z > 0.015 and 1.18 < y < 1.5:
+            color = TRIM
+        elif y > 1.48 and abs(x) < 0.14:
+            # Chest light panel / collar region.
+            color = FABRIC_LIGHT if abs(x) < 0.09 else FABRIC
+        elif y > 1.32 and abs(x) < 0.1 and z > 0.02:
             color = FABRIC_LIGHT
         else:
             color = FABRIC
@@ -1320,8 +1254,8 @@ def main() -> None:
     build_head(builder, bones)
     build_arm(builder, bones, "Left")
     build_arm(builder, bones, "Right")
-    build_leg(builder, bones, "Left")
-    build_leg(builder, bones, "Right")
+    build_leg_stubs(builder, bones, "Left")
+    build_leg_stubs(builder, bones, "Right")
 
     cage = create_cage(builder)
     armature = create_armature(bones)
