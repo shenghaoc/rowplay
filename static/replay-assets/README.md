@@ -145,10 +145,10 @@ remain automatic fallbacks.
   external-looking references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named semantic
-  bones plus any contract-recorded visual helpers, 12 connected topology
-  components sealed in the current contract, one portable opaque vertex-colour
-  material in the GLB, and zero embedded textures/images. The reviewed
-  `TEXCOORD_0` layout exists solely for the web loader's local,
+  bones plus any contract-recorded visual helpers, 12 authored topology
+  components after exact-position UV-seam welding, one portable opaque
+  vertex-colour material in the GLB, and zero embedded textures/images. The
+  reviewed `TEXCOORD_0` layout exists solely for the web loader's local,
   deterministic per-instance material maps; it adds no asset request or native
   bitmap dependency. The web loader derives seven independent runtime
   `MeshPhysicalMaterial` surface roles (`skin`, `jersey`, `lower`, `footwear`,

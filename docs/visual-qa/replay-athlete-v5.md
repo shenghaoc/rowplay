@@ -7,13 +7,13 @@ movement physics.
 
 ## Baseline
 
-| Item              | Value                                                                                                                  |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Baseline commit   | `da0dc73` (PR #171 merge into `main`)                                                                                  |
-| Renderer          | WebGPU-first 3D; headless evidence records WebGL/High fallback and the final hardware pass records Chrome WebGPU/Ultra |
-| Motion owner      | PR #171 (`rigV4.ts` clips + contact-constrained solve)                                                                 |
-| Baseline captures | [historical six-pose `da0dc73` manifest](athlete-v5/baseline/2026-07-23-da0dc73/manifest.json)                         |
-| Studio baseline   | [higher-ceiling/v4-blender](higher-ceiling/v4-blender/)                                                                |
+| Item              | Value                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Baseline commit   | `da0dc73` (PR #171 merge into `main`)                                                                                                 |
+| Renderer          | WebGPU-first 3D; headless evidence records WebGL/High fallback while the final acceptance below records connected Chrome WebGPU/Ultra |
+| Motion owner      | PR #171 (`rigV4.ts` clips + contact-constrained solve)                                                                                |
+| Baseline captures | [historical six-pose `da0dc73` manifest](athlete-v5/baseline/2026-07-23-da0dc73/manifest.json)                                        |
+| Studio baseline   | [higher-ceiling/v4-blender](higher-ceiling/v4-blender/)                                                                               |
 
 ### Mannequin diagnosis (post-PR-171)
 
@@ -77,37 +77,44 @@ The production path still loads `rowplay-athlete-v4.glb` through
      joints, so helpers derive their pose from the hierarchy
    - topology component count and micro triangle budgets are no longer frozen
 4. **Motion**
-   - clips, drive ends, contact offsets, and IK solve are unchanged
+   - clips, drive ends, contact offsets, and IK solve are unchanged; only the V4 surface/deformation clearance and a microscopic BikeErg saddle-compatibility relief are adjusted
 
 ## Evidence
 
 ### Final real in-app 3D acceptance
 
 The primary evidence is the production app rather than an offline mesh viewer.
-The [capture manifest](athlete-v5/in-app/2026-07-23-21d24f1/manifest.json)
-is tied to rendered code commit `21d24f192aa095939f825144ac89a2b5fea00fc1`
-and records the renderer backend and effective quality for every artifact.
+The [capture manifest](athlete-v5/in-app/2026-07-24-5b3220a/manifest.json)
+is tied to rendered code commit `e0709ca` and records the renderer backend,
+quality tier, viewport, and capture method for every artifact. These are
+hardware-backed Chrome captures: `WebGPU` is the reported backend for every
+final still and cycle.
+
+The [six-pose comparison sheet](athlete-v5/in-app/2026-07-24-5b3220a/six-pose-comparison.jpg)
+keeps the requested columns in order: **baseline**, **production athlete**, and
+**skeleton / contacts**. Rows are RowErg catch/finish, SkiErg high-reach/loaded-
+press, and BikeErg pedal-top/pedal-bottom.
 
 | Sport / stress pose  | Final athlete                                                             | Skeleton overlay                                                                     |
 | -------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| RowErg catch         | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/row-catch.jpg)         | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/row-catch-skeleton.jpg)         |
-| RowErg finish        | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/row-finish.jpg)        | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/row-finish-skeleton.jpg)        |
-| SkiErg high reach    | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/ski-high-reach.jpg)    | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/ski-high-reach-skeleton.jpg)    |
-| SkiErg loaded press  | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/ski-loaded-press.jpg)  | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/ski-loaded-press-skeleton.jpg)  |
-| BikeErg pedal top    | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/bike-pedal-top.jpg)    | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/bike-pedal-top-skeleton.jpg)    |
-| BikeErg pedal bottom | [frame](athlete-v5/in-app/2026-07-23-21d24f1/poses/bike-pedal-bottom.jpg) | [overlay](athlete-v5/in-app/2026-07-23-21d24f1/poses/bike-pedal-bottom-skeleton.jpg) |
+| RowErg catch         | [frame](athlete-v5/in-app/2026-07-24-5b3220a/poses/row-catch.jpg)         | [overlay](athlete-v5/in-app/2026-07-24-5b3220a/poses/row-catch-skeleton.jpg)         |
+| RowErg finish        | [frame](athlete-v5/in-app/2026-07-24-5b3220a/poses/row-finish.jpg)        | [overlay](athlete-v5/in-app/2026-07-24-5b3220a/poses/row-finish-skeleton.jpg)        |
+| SkiErg high reach    | [frame](athlete-v5/in-app/2026-07-24-5b3220a/poses/ski-high-reach.jpg)    | [overlay](athlete-v5/in-app/2026-07-24-5b3220a/poses/ski-high-reach-skeleton.jpg)    |
+| SkiErg loaded press  | [frame](athlete-v5/in-app/2026-07-24-5b3220a/poses/ski-loaded-press.jpg)  | [overlay](athlete-v5/in-app/2026-07-24-5b3220a/poses/ski-loaded-press-skeleton.jpg)  |
+| BikeErg pedal top    | [frame](athlete-v5/in-app/2026-07-24-5b3220a/poses/bike-pedal-top.jpg)    | [overlay](athlete-v5/in-app/2026-07-24-5b3220a/poses/bike-pedal-top-skeleton.jpg)    |
+| BikeErg pedal bottom | [frame](athlete-v5/in-app/2026-07-24-5b3220a/poses/bike-pedal-bottom.jpg) | [overlay](athlete-v5/in-app/2026-07-24-5b3220a/poses/bike-pedal-bottom-skeleton.jpg) |
 
 Quality is deliberately progressive rather than a Low-to-Ultra cliff. The
 same close RowErg finish was captured at every requested tier:
 
 | Tier   | In-app frame                                                                   | Runtime surface work                             |
 | ------ | ------------------------------------------------------------------------------ | ------------------------------------------------ |
-| Low    | [frame](athlete-v5/in-app/2026-07-23-21d24f1/tiers/tier-row-finish-low.jpg)    | base role material; no generated maps            |
-| Medium | [frame](athlete-v5/in-app/2026-07-23-21d24f1/tiers/tier-row-finish-medium.jpg) | first 32px albedo, normal, roughness, and relief |
-| High   | [frame](athlete-v5/in-app/2026-07-23-21d24f1/tiers/tier-row-finish-high.jpg)   | sharper 64px maps and stronger material response |
-| Ultra  | [frame](athlete-v5/in-app/2026-07-23-21d24f1/tiers/tier-row-finish-ultra.jpg)  | strongest 96px material response                 |
+| Low    | [frame](athlete-v5/in-app/2026-07-24-5b3220a/tiers/tier-row-finish-low.jpg)    | base role material; no generated maps            |
+| Medium | [frame](athlete-v5/in-app/2026-07-24-5b3220a/tiers/tier-row-finish-medium.jpg) | first 32px albedo, normal, roughness, and relief |
+| High   | [frame](athlete-v5/in-app/2026-07-24-5b3220a/tiers/tier-row-finish-high.jpg)   | sharper 64px maps and stronger material response |
+| Ultra  | [frame](athlete-v5/in-app/2026-07-24-5b3220a/tiers/tier-row-finish-ultra.jpg)  | strongest 96px material response                 |
 
-The capture also includes [one RowErg cycle](athlete-v5/in-app/2026-07-23-21d24f1/cycles/row-one-cycle.webm), [one SkiErg cycle](athlete-v5/in-app/2026-07-23-21d24f1/cycles/ski-one-cycle.webm), [one BikeErg cycle](athlete-v5/in-app/2026-07-23-21d24f1/cycles/bike-one-cycle.webm), [opaque ghost SkiErg](athlete-v5/in-app/2026-07-23-21d24f1/poses/ghost-ski-loaded-press.jpg), [mobile RowErg](athlete-v5/in-app/2026-07-23-21d24f1/poses/mobile-row-finish.jpg), and a [front close-up](athlete-v5/in-app/2026-07-23-21d24f1/poses/row-finish-front.jpg).
+The capture also includes [one RowErg cycle](athlete-v5/in-app/2026-07-24-5b3220a/cycles/row-one-cycle.webm), [one SkiErg cycle](athlete-v5/in-app/2026-07-24-5b3220a/cycles/ski-one-cycle.webm), [one BikeErg cycle](athlete-v5/in-app/2026-07-24-5b3220a/cycles/bike-one-cycle.webm), [opaque ghost SkiErg](athlete-v5/in-app/2026-07-24-5b3220a/poses/ghost-ski-loaded-press.jpg), [mobile RowErg](athlete-v5/in-app/2026-07-24-5b3220a/poses/mobile-row-finish.jpg), and a [front close-up](athlete-v5/in-app/2026-07-24-5b3220a/poses/row-finish-front.jpg). The [desktop dark/light Ultra set](athlete-v5/in-app/2026-07-24-5b3220a/manifest.json) covers RowErg, SkiErg, and BikeErg.
 
 Review of the final in-app frames confirms the following visible outcomes:
 
@@ -126,6 +133,15 @@ environment branch without console warnings or errors. See the
 [hardware WebGPU manifest](athlete-v5/in-app/2026-07-24-hardware-webgpu/manifest.json),
 [RowErg frame](athlete-v5/in-app/2026-07-24-hardware-webgpu/hardware-webgpu-ultra-row.jpg),
 and [SkiErg frame](athlete-v5/in-app/2026-07-24-hardware-webgpu/hardware-webgpu-ultra-ski.jpg).
+The separate headless fallback remains covered by automated tests, but it is not
+used to label the final athlete artifacts. The final visual gate is explicitly
+the connected Chrome run above, where every entry in the exact-head manifest
+reports `WebGPU` and the requested tier. The earlier focused RowErg/SkiErg
+hardware manifest is retained as an independent environment sanity check; the
+newer six-pose, three-cycle, Ghost, mobile, theme, and tier evidence is the
+authoritative athlete acceptance set. This keeps the quality-tier comparison
+honest: HD/Ultra compute is spent on visible authored-athlete detail rather
+than an unverified backend fallback.
 
 ### Supplementary studio nine-pose stress set
 
@@ -187,9 +203,9 @@ feet land inside the stretcher while the knees stay raised above the open
 cockpit rather than spreading across the shell.
 
 The focused renderer contract covers the stretcher bounds and full-stroke foot
-positions. A fresh local RowErg catch/finish capture also confirmed the visual
-read in the real app; headless Chromium used WebGL High because no WebGPU
-adapter was available.
+positions. The final connected-Chrome manifest above supersedes the earlier
+headless spot check: its RowErg catch/finish and three-cycle captures report
+the actual WebGPU Ultra path.
 
 ## Asset and licensing
 
@@ -232,5 +248,6 @@ contract and are not art targets.
 - [x] Real-time cycle videos for row / ski / bike
 - [x] Progressive Low / Medium / High / Ultra material configuration with
       in-app tier captures
-- [x] Hardware WebGPU Ultra visual acceptance in Google Chrome on macOS, with
-      RowErg/SkiErg captures and a machine-readable manifest
+- [x] Hardware WebGPU Ultra visual acceptance recorded in the connected Chrome
+      manifest, including six-pose comparison, all three cycles, ghost, mobile,
+      dark/light desktop, and Low/Medium/High/Ultra tier captures

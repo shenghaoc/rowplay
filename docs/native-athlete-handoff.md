@@ -56,8 +56,8 @@ Summary:
 - Up axis: `+Y`
 - Forward axis: `+Z`
 - Handedness: right-handed
-- Mesh: one production `SkinnedMesh` with 12 connected topology components
-  sealed in the current contract. The GLB embeds no images or textures, but
+- Mesh: one production `SkinnedMesh` with 12 authored topology components after
+  exact-position UV-seam welding. The GLB embeds no images or textures, but
   carries reviewed `TEXCOORD_0` coordinates so the web runtime can add
   deterministic per-instance surface material maps at Medium and above without
   an external request: 32px at Medium, 64px at High, and 96px at Ultra. Its
