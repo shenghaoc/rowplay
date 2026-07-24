@@ -7,13 +7,13 @@ movement physics.
 
 ## Baseline
 
-| Item              | Value                                                                                                                |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Baseline commit   | `da0dc73` (PR #171 merge into `main`)                                                                                |
-| Renderer          | WebGPU-first 3D; the final headless capture records its actual WebGL/High fallback rather than claiming Ultra output |
-| Motion owner      | PR #171 (`rigV4.ts` clips + contact-constrained solve)                                                               |
-| Baseline captures | [historical six-pose `da0dc73` manifest](athlete-v5/baseline/2026-07-23-da0dc73/manifest.json)                       |
-| Studio baseline   | [higher-ceiling/v4-blender](higher-ceiling/v4-blender/)                                                              |
+| Item              | Value                                                                                                                  |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Baseline commit   | `da0dc73` (PR #171 merge into `main`)                                                                                  |
+| Renderer          | WebGPU-first 3D; headless evidence records WebGL/High fallback and the final hardware pass records Chrome WebGPU/Ultra |
+| Motion owner      | PR #171 (`rigV4.ts` clips + contact-constrained solve)                                                                 |
+| Baseline captures | [historical six-pose `da0dc73` manifest](athlete-v5/baseline/2026-07-23-da0dc73/manifest.json)                         |
+| Studio baseline   | [higher-ceiling/v4-blender](higher-ceiling/v4-blender/)                                                                |
 
 ### Mannequin diagnosis (post-PR-171)
 
@@ -118,11 +118,14 @@ Review of the final in-app frames confirms the following visible outcomes:
 - the close-up shows a deliberately simplified but human face with a curved
   short-hair silhouette, shallow landmarks, and no dark visor/mask artifact.
 
-Headless Chromium had no WebGPU adapter, so the manifest truthfully reports
-`WEBGL` and `High` as the effective output when an Ultra request falls back.
-The test suite proves the separate 96px Ultra material configuration, but a
-hardware WebGPU Ultra capture remains a manual visual acceptance gate; these
-frames do not claim to be that sign-off.
+Headless Chromium had no WebGPU adapter, so its manifest truthfully reports
+`WEBGL` and `High` when an Ultra request falls back. The final hardware pass
+closed that acceptance boundary in Google Chrome on macOS: RowErg and SkiErg
+both reported `WebGPU`, accepted `Ultra`, and rendered the combined athlete and
+environment branch without console warnings or errors. See the
+[hardware WebGPU manifest](athlete-v5/in-app/2026-07-24-hardware-webgpu/manifest.json),
+[RowErg frame](athlete-v5/in-app/2026-07-24-hardware-webgpu/hardware-webgpu-ultra-row.jpg),
+and [SkiErg frame](athlete-v5/in-app/2026-07-24-hardware-webgpu/hardware-webgpu-ultra-ski.jpg).
 
 ### Supplementary studio nine-pose stress set
 
@@ -157,8 +160,9 @@ Rendered from the sealed production GLB with the PR #171 clips:
 
 ### Motion freeze proof
 
-- `src/lib/replay/motionGraph.ts`, `sportKinematics.ts`, `figurePose.ts`,
-  `strokeModel.ts`, and the Canvas 2D renderer are **untouched**
+- `src/lib/replay/motionGraph.ts`, `sportKinematics.ts`, `figurePose.ts`, and
+  `strokeModel.ts` are **untouched**. The separate environment refinement only
+  changes Canvas scenery paint and does not alter athlete or equipment motion.
 - Clip names, drive ends (`0.38` / `0.34` / `0.5`), contact offsets, and
   phase landmarks match the PR #171 contract
 - Validator still requires the same 19 semantic bones and three clips
@@ -220,11 +224,13 @@ contract and are not art targets.
 - [x] Elbows/knees preserve volume through flexion
 - [x] One shared athlete for all three PR #171 clips
 - [x] Opaque live/ghost body path retained (no transparent sorting)
-- [x] Canvas 2D / environments / equipment motion untouched
+- [x] Canvas athlete/equipment motion untouched; the intentional environment-only
+      Canvas refinement is documented in
+      [replay-environment-refinement.md](replay-environment-refinement.md)
 - [x] In-app six-pose contact evidence for row / ski / bike, plus ghost,
       mobile, and front-close views
 - [x] Real-time cycle videos for row / ski / bike
 - [x] Progressive Low / Medium / High / Ultra material configuration with
       in-app tier captures
-- [ ] Hardware WebGPU Ultra visual acceptance (this headless environment has
-      no adapter, so it can only attest to WebGL High fallback output)
+- [x] Hardware WebGPU Ultra visual acceptance in Google Chrome on macOS, with
+      RowErg/SkiErg captures and a machine-readable manifest

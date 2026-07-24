@@ -75,16 +75,16 @@ figure, readability, and motion specs.
     near-coplanar chest zip, and protect shell/seat/leg/material contracts with
     checked-asset and dense-cycle tests
 
-- [ ] **10. Complete the dedicated production-athlete visual-quality gate**
-  - [ ] Replace the round mannequin head, bead-like features, helmet hair, and
+- [x] **10. Complete the dedicated production-athlete visual-quality gate**
+  - [x] Replace the round mannequin head, bead-like features, helmet hair, and
     ball-shaped shoulders with a recognisably human generic athlete silhouette
-  - [ ] Keep PR #171 technique timing, semantic joints, equipment targets, and
+  - [x] Keep PR #171 technique timing, semantic joints, equipment targets, and
     shared procedural motion frozen; isolate elbow clearance to the V4 skin
-  - [ ] Keep the BikeErg pelvis visually supported without body/saddle
+  - [x] Keep the BikeErg pelvis visually supported without body/saddle
     penetration, limiting equipment work to the minimum compatibility treatment
-  - [ ] Give Low, Medium, High, and Ultra materially progressive athlete PBR
+  - [x] Give Low, Medium, High, and Ultra materially progressive athlete PBR
     detail while preserving one geometry, rig, clip set, and fallback chain
-  - [ ] Publish one baseline/new/skeleton six-pose sheet, three real-time sport
+  - [x] Publish one baseline/new/skeleton six-pose sheet, three real-time sport
     cycles, ghost/mobile/theme coverage, and real hardware WebGPU Ultra evidence
-  - [ ] Rebuild and validate GLB, USDZ, and the seven-role native contract; run
+  - [x] Rebuild and validate GLB, USDZ, and the seven-role native contract; run
     focused tests, the full local gate, E2E, and exact-head CI

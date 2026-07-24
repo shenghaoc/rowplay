@@ -50,3 +50,15 @@ Follow-up to: `.kiro/specs/replay-3d-athlete-readability/`
     moving, light/dark, ghost comparison, and low/ultra quality states
   - Replace public replay captures after final visual QA and pass the repository
     quality gate
+
+- [x] **8. Refine RowErg water and SkiErg snow for the production-athlete phase**
+  - Add depth channels and shoreline reflections to the RowErg Canvas basin
+  - Add static water variation, a shoreline shelf/bank, and a restrained foam
+    edge to the shared WebGPU/WebGL RowErg scene
+  - Add cool snow contours and perspective corduroy to the SkiErg Canvas field
+  - Add visible lane variation, snow-edge shadows, and sparse Nordic fencing to
+    the shared WebGPU/WebGL SkiErg scene
+  - Keep BikeErg unchanged and protect sport-object isolation with regression
+    coverage
+  - Publish final Canvas and real-hardware WebGPU Ultra RowErg/SkiErg captures,
+    then pass the focused renderer tests, full repository gate, and E2E
