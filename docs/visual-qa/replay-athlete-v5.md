@@ -174,11 +174,13 @@ Rendered from the sealed production GLB with the PR #171 clips:
 - BikeErg body/seat cut-through → low-profile support prepass plus a seated
   pelvis relief blend; hips, cranks, pedals, hands, and feet remain graph-owned
 
-### Motion freeze proof
+### Motion scope proof
 
-- `src/lib/replay/motionGraph.ts`, `sportKinematics.ts`, `figurePose.ts`, and
-  `strokeModel.ts` are **untouched**. The separate environment refinement only
-  changes Canvas scenery paint and does not alter athlete or equipment motion.
+- `sportKinematics.ts`, `figurePose.ts`, `strokeModel.ts`, and the Canvas 2D
+  renderer are **untouched**
+- the shell follow-up changes only RowErg's existing graph windows: body opening
+  starts after the leg drive is established, while recovery remains hands-away
+  → body-over → slide
 - Clip names, drive ends (`0.38` / `0.34` / `0.5`), contact offsets, and
   phase landmarks match the PR #171 contract
 - Validator still requires the same 19 semantic bones and three clips
@@ -194,18 +196,38 @@ browser capture remains the acceptance evidence for final visual appearance.
 
 ### Rowing shell and leg alignment follow-up
 
-The authored RowErg assembly now gives the neutral lower hull a distinct
-waterline beneath the lane-coloured decks, keeping the recessed cockpit and
-gunwales readable at chase-camera distance. The fixed stretcher is lower and
-more inset, with heel cups, an instep bar, and diagonal supports. Its contact
-landmarks are shared with the renderer's procedural and V4 targets, so the
-feet land inside the stretcher while the knees stay raised above the open
-cockpit rather than spreading across the shell.
+The geometry and movement targets were checked against current racing-shell and
+coaching references:
 
-The focused renderer contract covers the stretcher bounds and full-stroke foot
-positions. The final connected-Chrome manifest above supersedes the earlier
-headless spot check: its RowErg catch/finish and three-cycle captures report
-the actual WebGPU Ultra path.
+- [Filippi's F14 racing single](https://www.filippiboats.com/eng/boats/competition/single-sculls-1x/f14)
+  documents an 8.33 m, 29 cm waterline, U-section carbon racing shell with a
+  wing rigger, sliding seat, and full-carbon foot stretcher.
+- [Empacher's racing mould table](https://www.empacher.com/fileadmin/DE/downloads/BOFO22-1-2.pdf)
+  places racing singles between 7.40 and 8.30 m, depending on athlete mass.
+- [British Rowing's rigging guidance](https://plus.britishrowing.org/2024/04/22/rigging-for-success-understanding-the-key-principles-and-adjustments/)
+  gives a 38–45° stretcher range and a typical 15–20 cm seat-to-heel height.
+- [British Rowing's on-water technique model](https://www.britishrowing.org/knowledge/rower-development/british-rowing-technique/water-rowing-technique/)
+  specifies vertical shins and a forward hip hinge at catch; a leg-led drive;
+  late body/arm contribution; and hands-away, body-over, then slide on recovery.
+- [World Rowing's equipment rules](https://worldrowing.com/wp-content/uploads/2025/04/2025-World-Rowing-Rules-of-Racing-Overall-Classic-rowing-Related-byelaws_March2025.pdf)
+  require a visible bow ball and quick-release feet/heel restraints.
+
+Applied to RowPlay, the shell is now 7.8 m long with extended tapered decks,
+a neutral lower U-hull, a bow ball, a shifted stern fin, and the existing
+full-width wing rigger/oarlocks. The fixed stretcher is 42° from the hull floor;
+its heels sit about 16 cm below the seat and now include heel restraints,
+instep hardware, and diagonal supports. The shared procedural/V4 leg solve
+keeps the shins near vertical at catch, the knees above and inside the open
+cockpit, and the legs near straight at finish.
+The complete RowErg assembly is oriented bow-first on the course while the
+seated athlete faces the stern, matching on-water rowing.
+
+The focused renderer contract covers shell length, stretcher rake,
+seat-to-heel height, full-stroke foot positions, catch shin alignment, finish
+extension, orientation, and portrait framing. The final connected browser pass
+confirmed the WebGPU path with the bow leading down-course and the athlete
+facing the stern; the manifest above remains the broader catch/finish and
+three-cycle acceptance evidence.
 
 ## Asset and licensing
 

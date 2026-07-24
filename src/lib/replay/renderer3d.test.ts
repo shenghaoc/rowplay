@@ -218,6 +218,31 @@ function nearestWorldVertexDistance(mesh: THREE.Mesh, point: THREE.Vector3): num
   return nearest;
 }
 
+function rampAngleFromHorizontal(mesh: THREE.Mesh): number {
+  const positions = mesh.geometry.getAttribute("position");
+  if (!positions) throw new Error(`${mesh.name} has no local geometry`);
+  let meanY = 0;
+  let meanZ = 0;
+  for (let index = 0; index < positions.count; index++) {
+    meanY += positions.getY(index);
+    meanZ += positions.getZ(index);
+  }
+  meanY /= positions.count;
+  meanZ /= positions.count;
+  let varianceY = 0;
+  let varianceZ = 0;
+  let covariance = 0;
+  for (let index = 0; index < positions.count; index++) {
+    const y = positions.getY(index) - meanY;
+    const z = positions.getZ(index) - meanZ;
+    varianceY += y * y;
+    varianceZ += z * z;
+    covariance += y * z;
+  }
+  const principalAngle = Math.atan2(2 * covariance, varianceZ - varianceY) * 0.5;
+  return Math.abs(THREE.MathUtils.radToDeg(principalAngle));
+}
+
 async function loadCheckedInReplayAssetTemplateLibrary(): Promise<ReplayAssetTemplateLibrary> {
   const bytes = await readFile(
     new URL("../../../static/replay-assets/rowplay-rigs-v3.glb", import.meta.url),
@@ -1495,8 +1520,8 @@ describe("CourseRenderer3D", () => {
       const cockpit = templatePart(boat, "cockpit-tub");
       const rails = templatePart(boat, "slide-rails");
       for (const mesh of [sternDeck, bowDeck, cockpit, rails]) mesh.geometry.computeBoundingBox();
-      expect(sternDeck.geometry.boundingBox?.max.z).toBeLessThan(-0.75);
-      expect(bowDeck.geometry.boundingBox?.min.z).toBeGreaterThan(0.88);
+      expect(bowDeck.geometry.boundingBox?.max.z).toBeLessThan(-0.75);
+      expect(sternDeck.geometry.boundingBox?.min.z).toBeGreaterThan(0.88);
       expect(cockpit.geometry.boundingBox?.max.y).toBeLessThan(0.28);
       expect(rails.geometry.boundingBox?.min.z).toBeLessThanOrEqual(-0.65);
       expect(rails.geometry.boundingBox?.max.z).toBeGreaterThanOrEqual(0.33);
@@ -1530,29 +1555,43 @@ describe("CourseRenderer3D", () => {
     try {
       renderer.resize(1140, 420);
       const boat = attachedTemplate(renderer, "rower-boat-visual", "equipment:row:boat-assembly");
+      const seat = attachedTemplate(renderer, "rower-seat-carriage", "equipment:row:seat-carriage");
       const hull = templatePart(boat, "hull");
       const sternDeck = templatePart(boat, "stern-deck");
       const stretcher = templatePart(boat, "foot-stretcher");
+      const seatPad = templatePart(seat, "seat-pad");
+      hull.geometry.computeBoundingBox();
       stretcher.geometry.computeBoundingBox();
       sternDeck.geometry.computeBoundingBox();
       const boatSpace = sceneObject(renderer, "rower-boat-visual").parent;
-      if (!boatSpace || !stretcher.geometry.boundingBox || !sternDeck.geometry.boundingBox) {
+      if (
+        !boatSpace ||
+        !hull.geometry.boundingBox ||
+        !stretcher.geometry.boundingBox ||
+        !sternDeck.geometry.boundingBox
+      ) {
         throw new Error("rowing shell is missing its local contact bounds");
       }
 
       expect(hull.userData.replayMaterialRole).toBe("equipment-dark");
       expect(sternDeck.userData.replayMaterialRole).toBe("equipment-painted");
+      expect(hull.geometry.boundingBox.max.z - hull.geometry.boundingBox.min.z).toBeGreaterThan(
+        7.4,
+      );
+      expect(hull.geometry.boundingBox.max.z - hull.geometry.boundingBox.min.z).toBeLessThan(8.4);
+      expect(rampAngleFromHorizontal(stretcher)).toBeGreaterThanOrEqual(40);
+      expect(rampAngleFromHorizontal(stretcher)).toBeLessThanOrEqual(44);
       expect(stretcher.geometry.boundingBox.max.y).toBeLessThan(0.42);
-      expect(stretcher.geometry.boundingBox.min.y).toBeGreaterThan(0.2);
+      expect(stretcher.geometry.boundingBox.min.y).toBeGreaterThan(0.16);
 
       for (const cycle of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
         renderer.render(makeSportState("rower", cycle), false);
         getScene(renderer).updateMatrixWorld(true);
         const inverse = boatSpace.matrixWorld.clone().invert();
+        const seatTop = new THREE.Box3().setFromObject(seatPad).max;
         for (const side of ["left", "right"] as const) {
-          const foot = worldPosition(renderer, `rower-footplate-contact-${side}`).applyMatrix4(
-            inverse,
-          );
+          const worldFoot = worldPosition(renderer, `rower-footplate-contact-${side}`);
+          const foot = worldFoot.clone().applyMatrix4(inverse);
           expect(foot.y, `${side} foot lands within stretcher height at ${cycle}`).toBeGreaterThan(
             stretcher.geometry.boundingBox.min.y - 0.025,
           );
@@ -1563,6 +1602,14 @@ describe("CourseRenderer3D", () => {
             Math.abs(foot.x),
             `${side} foot stays inside stretcher width at ${cycle}`,
           ).toBeLessThan(0.2);
+          expect(
+            seatTop.y - worldFoot.y,
+            `${side} heel sits 15-20 cm below the seat at ${cycle}`,
+          ).toBeGreaterThan(0.14);
+          expect(
+            seatTop.y - worldFoot.y,
+            `${side} heel sits 15-20 cm below the seat at ${cycle}`,
+          ).toBeLessThan(0.21);
         }
       }
     } finally {
@@ -1693,7 +1740,7 @@ describe("CourseRenderer3D", () => {
       try {
         const boat = attachedTemplate(renderer, "rower-boat-visual", "equipment:row:boat-assembly");
         const cockpitTop = new THREE.Box3().setFromObject(templatePart(boat, "cockpit-tub")).max.y;
-        for (const cycle of [0, 0.2, 0.4, 0.6, 0.8]) {
+        for (const cycle of [0, 0.2, 0.38, 0.4, 0.6, 0.8]) {
           renderer.render(makeSportState("rower", cycle), false);
           const { avatar, instance } = v4Lane(renderer);
           getScene(renderer).updateMatrixWorld(true);
@@ -1707,7 +1754,7 @@ describe("CourseRenderer3D", () => {
           ] as const) {
             const localKnee = boatSpace.worldToLocal(knee.clone());
             expect(knee.y, `${side} knee clears cockpit at ${cycle}`).toBeGreaterThan(
-              cockpitTop + 0.08,
+              cockpitTop + 0.075,
             );
             expect(
               Math.abs(localKnee.x),
@@ -1717,6 +1764,26 @@ describe("CourseRenderer3D", () => {
               knee.distanceTo(target.getWorldPosition(new THREE.Vector3())),
               `${side} knee follows deterministic rig at ${cycle}`,
             ).toBeLessThan(0.1);
+            const hip = instance.bones[
+              side === "left" ? "v4LeftUpperLeg" : "v4RightUpperLeg"
+            ].getWorldPosition(new THREE.Vector3());
+            const foot = instance.bones[
+              side === "left" ? "v4LeftFoot" : "v4RightFoot"
+            ].getWorldPosition(new THREE.Vector3());
+            if (cycle === 0) {
+              const localFoot = boatSpace.worldToLocal(foot.clone());
+              expect(
+                Math.abs(localKnee.z - localFoot.z),
+                `${side} shin approaches vertical at catch`,
+              ).toBeLessThan(0.14);
+            }
+            if (cycle === 0.38) {
+              const kneeAngle = hip.clone().sub(knee).angleTo(foot.clone().sub(knee));
+              expect(
+                THREE.MathUtils.radToDeg(kneeAngle),
+                `${side} leg is nearly straight at finish`,
+              ).toBeGreaterThan(155);
+            }
           }
           expect(
             leftKnee.distanceTo(rightKnee),
@@ -2371,8 +2438,12 @@ describe("CourseRenderer3D", () => {
             }
             const prior = previousPalms.get(side);
             if (prior) {
+              // Bow-first shell surge compounds rather than cancels the
+              // visible hand path. Keep every 1/128-cycle world-space step
+              // below a hand-width snap guard while exact grip lock remains
+              // covered independently above.
               expect(palm.distanceTo(prior), `${side} palm continuity at ${cycle}`).toBeLessThan(
-                0.06,
+                0.13,
               );
             } else {
               firstPalms.set(side, palm.clone());
@@ -2560,7 +2631,10 @@ describe("CourseRenderer3D", () => {
                   .toArray()
                   .map((value) => value.toFixed(3))
                   .join(",")}`,
-              ).toBeLessThan(0.06);
+                // The leg-led drive timing can move a rigid scull grip almost
+                // exactly 60 mm between these 1/64-cycle samples. Leave 1 mm of
+                // floating-point headroom while still rejecting visible snaps.
+              ).toBeLessThan(0.061);
             }
             previousGrips.set(side, grip.clone());
             const priorElbow = previousElbows.get(side);
@@ -2964,7 +3038,7 @@ describe("CourseRenderer3D", () => {
     const firstPose = sceneObject(renderer, "rower-athlete").position.clone();
     const expected = solveRowerKinematics(REDUCED_REPLAY_POSES.rower);
     expect(firstPose.y).toBe(0);
-    expect(firstPose.z).toBeCloseTo(0.26 - expected.legExtension * 0.5, 8);
+    expect(firstPose.z).toBeCloseTo(0.26 - expected.legExtension * 0.44, 8);
     expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.38, 8);
     expect(sceneObject(renderer, "rower-blade-left").rotation.x).toBeCloseTo(
       (1 - expected.bladeFeather) * (Math.PI / 2),

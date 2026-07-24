@@ -1552,8 +1552,15 @@ function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 1
 
 const ROWER_FOOT_CONTACT = Object.freeze({
   lateral: 0.12,
-  y: 0.35,
-  z: 0.72,
+  y: 0.21,
+  z: 0.75,
+});
+const ROWER_STRETCHER = Object.freeze({
+  centerY: 0.295,
+  centerZ: 0.68,
+  boardRotation: THREE.MathUtils.degToRad(-48),
+  shoeCatchPitch: THREE.MathUtils.degToRad(-35),
+  shoeFinishPitch: THREE.MathUtils.degToRad(-42),
 });
 
 /**
@@ -1603,7 +1610,7 @@ function makeRowerAvatar(
   });
   const hull = setReplayAssetSlot(
     new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.34, 3.15, eqCylSegs, Math.round(eqCylSegs * 1.4)),
+      new THREE.CapsuleGeometry(0.34, 7.12, eqCylSegs, Math.round(eqCylSegs * 1.4)),
       kitDarkMaterial,
     ),
     "equipment:row:hull",
@@ -1615,14 +1622,17 @@ function makeRowerAvatar(
 
   // Two short decks leave a genuine cockpit opening around the athlete. The
   // old full-length slab hid both legs and made the seat look glued on top.
-  const sternDeck = new THREE.Mesh(roundedVenueBlockGeometry(0.18, 0.045, 1.0, 0.022), accentMat());
-  sternDeck.name = "rower-stern-deck";
-  sternDeck.position.set(0, 0.275, -1.32);
+  const sternDeck = new THREE.Mesh(
+    roundedVenueBlockGeometry(0.18, 0.045, 2.92, 0.022),
+    accentMat(),
+  );
+  sternDeck.name = "rower-bow-deck";
+  sternDeck.position.set(0, 0.275, -2.34);
   sternDeck.userData.accent = true;
   group.add(sternDeck);
-  const bowDeck = new THREE.Mesh(roundedVenueBlockGeometry(0.17, 0.043, 0.94, 0.021), accentMat());
-  bowDeck.name = "rower-bow-deck";
-  bowDeck.position.set(0, 0.273, 1.42);
+  const bowDeck = new THREE.Mesh(roundedVenueBlockGeometry(0.17, 0.043, 2.86, 0.021), accentMat());
+  bowDeck.name = "rower-stern-deck";
+  bowDeck.position.set(0, 0.273, 2.37);
   bowDeck.userData.accent = true;
   group.add(bowDeck);
   const cockpitFloor = new THREE.Mesh(
@@ -1633,16 +1643,23 @@ function makeRowerAvatar(
   cockpitFloor.position.set(0, 0.17, 0.05);
   group.add(cockpitFloor);
   const sternStripe = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.04, 0.014, 0.74, 0.007),
+    roundedVenueBlockGeometry(0.04, 0.014, 2.42, 0.007),
     equipmentLightMaterial,
   );
-  sternStripe.name = "rower-stern-deck-stripe";
-  sternStripe.position.set(0, 0.305, -1.34);
+  sternStripe.name = "rower-bow-deck-stripe";
+  sternStripe.position.set(0, 0.305, -2.31);
   group.add(sternStripe);
   const bowStripe = sternStripe.clone();
-  bowStripe.name = "rower-bow-deck-stripe";
-  bowStripe.position.set(0, 0.304, 1.4);
+  bowStripe.name = "rower-stern-deck-stripe";
+  bowStripe.position.set(0, 0.304, 2.28);
   group.add(bowStripe);
+  const bowBall = new THREE.Mesh(
+    new THREE.SphereGeometry(0.042, Math.max(12, eqCylSegs), Math.max(8, eqTorSegs)),
+    equipmentLightMaterial,
+  );
+  bowBall.name = "rower-bow-ball";
+  bowBall.position.set(0, 0.205, -3.91);
+  group.add(bowBall);
   const gunwale = new THREE.Mesh(
     roundedVenueBlockGeometry(0.02, 0.032, 2.86, 0.009),
     equipmentLightMaterial,
@@ -1665,26 +1682,26 @@ function makeRowerAvatar(
   }
 
   const footPlate = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.38, 0.18, 0.04, 0.018),
+    roundedVenueBlockGeometry(0.38, 0.29, 0.036, 0.018),
     kitDarkMaterial,
   );
   footPlate.name = "rower-footplate";
-  footPlate.position.set(0, 0.31, ROWER_FOOT_CONTACT.z);
-  footPlate.rotation.x = -0.28;
+  footPlate.position.set(0, ROWER_STRETCHER.centerY, ROWER_STRETCHER.centerZ);
+  footPlate.rotation.x = ROWER_STRETCHER.boardRotation;
   group.add(footPlate);
   const heelCups: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
     const heelCup = new THREE.Mesh(
-      roundedVenueBlockGeometry(0.105, 0.065, 0.11, 0.016),
+      roundedVenueBlockGeometry(0.105, 0.075, 0.12, 0.016),
       equipmentGripMaterial,
     );
     heelCup.name = side < 0 ? "rower-heel-cup-left" : "rower-heel-cup-right";
     heelCup.position.set(
       side * ROWER_FOOT_CONTACT.lateral,
-      ROWER_FOOT_CONTACT.y - 0.035,
-      ROWER_FOOT_CONTACT.z - 0.03,
+      ROWER_FOOT_CONTACT.y,
+      ROWER_FOOT_CONTACT.z,
     );
-    heelCup.rotation.x = -0.28;
+    heelCup.rotation.x = ROWER_STRETCHER.boardRotation;
     heelCups.push(heelCup);
     group.add(heelCup);
   }
@@ -1694,19 +1711,33 @@ function makeRowerAvatar(
   );
   instepBar.name = "rower-footplate-instep-bar";
   instepBar.rotation.z = Math.PI / 2;
-  instepBar.position.set(0, ROWER_FOOT_CONTACT.y + 0.06, ROWER_FOOT_CONTACT.z - 0.03);
+  instepBar.position.set(0, 0.35, 0.625);
   group.add(instepBar);
   const stretcherSupports: THREE.Mesh[] = [];
+  const heelRestraints: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
     const support = tubeBetween(
       side < 0 ? "rower-footplate-support-left" : "rower-footplate-support-right",
-      { x: side * 0.17, y: 0.205, z: ROWER_FOOT_CONTACT.z - 0.12 },
-      { x: side * 0.17, y: 0.31, z: ROWER_FOOT_CONTACT.z },
+      { x: side * 0.17, y: 0.175, z: 0.84 },
+      {
+        x: side * 0.17,
+        y: ROWER_STRETCHER.centerY,
+        z: ROWER_STRETCHER.centerZ,
+      },
       0.009,
       equipmentMetalMaterial,
     );
     stretcherSupports.push(support);
     group.add(support);
+    const heelRestraint = tubeBetween(
+      side < 0 ? "rower-heel-restraint-left" : "rower-heel-restraint-right",
+      { x: side * 0.12, y: 0.185, z: 0.785 },
+      { x: side * 0.12, y: 0.245, z: 0.72 },
+      0.006,
+      equipmentGripMaterial,
+    );
+    heelRestraints.push(heelRestraint);
+    group.add(heelRestraint);
   }
   for (const side of [-1, 1]) {
     const anchor = new THREE.Object3D();
@@ -1731,6 +1762,7 @@ function makeRowerAvatar(
       cockpitFloor,
       sternStripe,
       bowStripe,
+      bowBall,
       gunwale,
       gunwaleR,
       ...slideRails,
@@ -1738,6 +1770,7 @@ function makeRowerAvatar(
       ...heelCups,
       instepBar,
       ...stretcherSupports,
+      ...heelRestraints,
     ],
   });
 
@@ -1966,7 +1999,7 @@ function makeRowerAvatar(
   // turn them into a stroke that reads at a glance without leaving the hull.
   // Seat start is biased forward so travel can grow without pulling the hips
   // past the fixed footplate reach of the thigh+shin chain (~1.10 m).
-  const SEAT_TRAVEL = 0.5;
+  const SEAT_TRAVEL = 0.44;
   const SEAT_CATCH_Z = 0.26;
   const THIGH_LENGTH = 0.552;
   const SHIN_LENGTH = 0.552;
@@ -2037,10 +2070,9 @@ function makeRowerAvatar(
       // Preserve the graph-authored sweep as the preferred solution, but make
       // the rigid inboard lever meet a long arm until the late draw. This is
       // the 3D equivalent of the Canvas closed-chain reach floor.
-      // `armDraw` is already the graph's late, eased channel. Using it
-      // directly spreads the handle close over the whole anatomical draw;
-      // re-smoothing a narrow sub-range made the oar jump by ~10 degrees in a
-      // single dense-sample frame and visibly snapped the elbow.
+      // `armDraw` is the graph's late eased channel. Consume it directly so
+      // the close spans the full anatomical draw without stacking another
+      // easing curve that would accelerate the middle of the pull.
       const draw = THREE.MathUtils.clamp(armDraw, 0, 1);
       // V4 refinement supplies the sampled shoulder and its structural
       // shoulder-to-wrist reach. The sampled wrist-to-palm offset is applied
@@ -2130,7 +2162,11 @@ function makeRowerAvatar(
       // Keep the knees above the recessed cockpit without spreading them over
       // the gunwales. The old, wider/high marker made the leg chain read as a
       // separate object laid across the shell instead of a seated rower.
-      leg.bendHint.set(leg.side * 0.42, 0.65 - legExtension * 0.06, -0.26);
+      leg.bendHint.set(
+        leg.side * (0.22 - legExtension * 0.08),
+        0.77 - legExtension * 0.2,
+        leg.footTarget.z - 0.04 - legExtension * 0.2,
+      );
       solveTwoBone3D(
         leg.hipPoint,
         leg.footTarget,
@@ -2147,7 +2183,15 @@ function makeRowerAvatar(
       // a sliver. Place it directly at the heel/ankle with the shoe sole
       // pitched slightly downward into the stretcher.
       leg.foot.position.copy(leg.footPoint);
-      leg.foot.rotation.set(-0.22, 0, 0);
+      leg.foot.rotation.set(
+        THREE.MathUtils.lerp(
+          ROWER_STRETCHER.shoeCatchPitch,
+          ROWER_STRETCHER.shoeFinishPitch,
+          legExtension,
+        ),
+        0,
+        0,
+      );
       leg.foot.scale.set(1, 1, 1);
       leg.knee.position.copy(leg.kneePoint);
     }
@@ -5839,12 +5883,16 @@ export class CourseRenderer3D implements ReplayRenderer {
     const vertical = "vertical" in motion ? motion.vertical : motion.rebound;
     const bob = reduce || this.profile.bobAmp === 0 ? 0 : vertical * this.profile.bobAmp;
     outer.position.set(x, 0, z);
-    outer.rotation.y = Math.atan2(tx, tz); // local +Z (travel) -> tangent
+    // Rowing shells travel bow-first while the athlete faces the stern. The
+    // rower rig's fixed-contact anatomy faces local +Z, so its racing bow is
+    // local -Z and the complete shell needs a half-turn relative to the course
+    // tangent. The other sport rigs continue to face local +Z down-course.
+    outer.rotation.y = Math.atan2(tx, tz) + (this.sport === "rower" ? Math.PI : 0);
     avatar.group.position.y = bob;
     // Stroke surge: the hull checks at the catch and runs out through the
-    // drive — a local +Z (travel) offset synced to the shared stroke phase.
+    // drive — a local longitudinal offset synced to the shared stroke phase.
     const surge = reduce || this.profile.surgeAmp === 0 ? 0 : motion.surge * this.profile.surgeAmp;
-    avatar.group.position.z = surge;
+    avatar.group.position.z = this.sport === "rower" ? -surge : surge;
     // Hull roll mixes a slow ambient rock with a stroke-synced check so the
     // shell visibly loads at the catch instead of only drifting side to side.
     const ambientRoll = Math.sin(this.animPhase + cadence * 0.05) * 0.035;
@@ -5970,7 +6018,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.livePlacement,
     );
 
-    const liveSurge = this.liveAvatar.group.position.z;
+    const liveSurge = this.liveAvatar.group.position.z * (this.sport === "rower" ? -1 : 1);
     this.liveContactFootprint.position.set(
       p.x + p.tx * liveSurge,
       this.sport === "rower" ? 0.022 : 0.018,
@@ -6090,7 +6138,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         this.ghostPlacement,
       );
       this.ghostContactFootprint.visible = true;
-      const ghostSurge = this.ghostAvatar.group.position.z;
+      const ghostSurge = this.ghostAvatar.group.position.z * (this.sport === "rower" ? -1 : 1);
       this.ghostContactFootprint.position.set(
         gp.x + gp.tx * ghostSurge,
         this.sport === "rower" ? 0.021 : 0.017,
@@ -6152,7 +6200,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Portrait RowErg needs substantially more room for the full oar span;
     // upright SkiErg and compact BikeErg can stay closer.
     const narrowScale =
-      this.sport === "rower" ? (state.ghost ? 2.12 : 1.96) : state.ghost ? 1.38 : 1.2;
+      this.sport === "rower" ? (state.ghost ? 2.12 : 2.1) : state.ghost ? 1.38 : 1.2;
     const baseBack = this.reduceMotion
       ? sportRig.back + 0.8 + ghostPullback
       : (sportRig.back + ghostPullback) * (narrow ? narrowScale : 1);

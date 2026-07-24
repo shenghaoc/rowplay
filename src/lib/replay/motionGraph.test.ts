@@ -81,6 +81,11 @@ describe("motionGraph", () => {
 
   it("sequences RowErg legs, spine, shoulders, and hands with overlap", () => {
     const driveFraction = poseAt("rower", 0).driveFrac;
+    const legLedDrive = sampleRowerMotionGraph(poseAt("rower", driveFraction * 0.2));
+    expect(legLedDrive.body.legExtension.value).toBeGreaterThan(0.1);
+    expect(legLedDrive.body.spineHinge.value).toBeLessThan(0.01);
+    expect(legLedDrive.body.armDraw.value).toBe(0);
+
     const earlyDrive = sampleRowerMotionGraph(poseAt("rower", driveFraction * 0.5));
     expect(earlyDrive.body.legExtension.value).toBeGreaterThan(earlyDrive.body.spineHinge.value);
     expect(earlyDrive.body.spineHinge.value).toBeGreaterThan(earlyDrive.body.armDraw.value);
@@ -94,6 +99,13 @@ describe("motionGraph", () => {
     expect(recovery.body.spineHinge.value).toBeLessThan(recovery.body.legExtension.value);
     expect(recovery.body.pelvisTravel.value).toBeCloseTo(recovery.body.seatTravel.value, 12);
     expect(recovery.body.torsoReach.value + recovery.body.spineHinge.value).toBeCloseTo(1, 12);
+
+    const handsAway = sampleRowerMotionGraph(
+      poseAt("rower", driveFraction + (1 - driveFraction) * 0.16),
+    );
+    expect(handsAway.body.armDraw.value).toBeLessThan(handsAway.body.spineHinge.value);
+    expect(handsAway.body.spineHinge.value).toBeCloseTo(1, 12);
+    expect(handsAway.body.legExtension.value).toBeCloseTo(1, 12);
   });
 
   it("keeps RowErg endpoints and equipment envelopes C2-flat at phase boundaries", () => {
