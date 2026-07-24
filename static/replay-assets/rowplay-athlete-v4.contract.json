@@ -5,13 +5,13 @@
   "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 12054464,
-    "sha256": "2a566adb3d507f3445d33de3c5fca9556effefb9dfabded5b50f437399b3141c"
+    "byteCount": 5009404,
+    "sha256": "8edbb4c07aa9b346eb738d89c25efbb2445ed158821dc684754b20bceddc09e4"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 25869950,
-    "sha256": "c47c7f95535e03dc84275888aa6da76164a1371b2db2dde60c2517784c93bb44"
+    "byteCount": 11696664,
+    "sha256": "3ef18d8e9af854f89db07a8dbe1ad5ff4938826259ec8e8efb73e83dbecaf0b0"
   },
   "coordinateSystem": {
     "units": "metres",
@@ -29,9 +29,20 @@
     "meshName": "v4Athlete",
     "skinnedMeshes": 1,
     "primitives": 1,
-    "vertices": 133370,
-    "triangles": 244080,
-    "topologyComponents": 124,
+    "vertices": 63551,
+    "triangles": 105288,
+    "topologyComponents": 26,
+    "continuousCore": true,
+    "connectedCoreBones": [
+      "v4LeftUpperArm",
+      "v4LeftForearm",
+      "v4RightUpperArm",
+      "v4RightForearm",
+      "v4LeftUpperLeg",
+      "v4LeftLowerLeg",
+      "v4RightUpperLeg",
+      "v4RightLowerLeg"
+    ],
     "skins": 1,
     "materials": 1,
     "materialSlots": 1
@@ -411,15 +422,17 @@
     }
   ],
   "provenance": {
-    "owner": "rowplay",
-    "licence": "MIT",
-    "source": "repository-authored Blender 5 production skinned athlete",
+    "owner": "rowplay (adaptation); Dan Ulrich / Blender Studio (anatomical base)",
+    "licence": "MIT AND CC0-1.0",
+    "source": "RowPlay-authored Blender 5 athlete derived from Blender Human Base Meshes v1.4.1 (CC0)",
+    "upstreamSource": "https://download.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip",
+    "reviewedBase": "static/replay-assets/source/rowplay-human-base-male-v1.4.1.blend",
+    "sourceExtractionScript": "scripts/extract-replay-athlete-base-blender.py",
     "authoringTool": "Blender 5.2 LTS",
     "authoringScript": "scripts/build-replay-athlete-v4-blender.py",
     "rigAndClipSource": "src/lib/replay/rigV4.ts",
     "forbiddenSources": [
-      "downloaded model",
-      "third-party character",
+      "undocumented download",
       "scan",
       "likeness",
       "avatar generator",

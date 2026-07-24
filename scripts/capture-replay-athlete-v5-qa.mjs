@@ -111,6 +111,9 @@ async function openReplay({
   );
 
   const page = await context.newPage();
+  await page.route(/^https:\/\/fonts\.(?:googleapis|gstatic)\.com\//, (route) =>
+    route.fulfill({ status: 204, body: "" }),
+  );
   const errors = [];
   const warnings = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -119,7 +122,10 @@ async function openReplay({
     if (message.type() === "warning") warnings.push(message.text());
   });
 
-  await page.goto(qaUrl({ sport, camera, skeleton, ghostPace }), { waitUntil: "domcontentloaded" });
+  await page.goto(qaUrl({ sport, camera, skeleton, ghostPace }), {
+    waitUntil: "domcontentloaded",
+    timeout: 120_000,
+  });
   await page.waitForFunction(() => document.documentElement.dataset.appHydrated === "true");
   const toggle = page.getByRole("button", { name: "3D", exact: true });
   await toggle.waitFor({ state: "visible" });

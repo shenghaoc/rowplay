@@ -7,6 +7,10 @@ must not independently remodel, reproportion, reskin, or reanimate the athlete.
 ## Canonical source
 
 - Surface source: `scripts/build-replay-athlete-v4-blender.py`
+- Reviewed anatomical base:
+  `static/replay-assets/source/rowplay-human-base-male-v1.4.1.blend`
+- Base extraction/provenance:
+  `scripts/extract-replay-athlete-base-blender.py`
 - Rig, contact, and clip source: `src/lib/replay/rigV4.ts`
 - Web runtime artifact: `static/replay-assets/rowplay-athlete-v4.glb`
 - Native derivative: `static/replay-assets/rowplay-athlete-v4.usdz`
@@ -14,12 +18,12 @@ must not independently remodel, reproportion, reskin, or reanimate the athlete.
   `static/replay-assets/rowplay-athlete-v4.contract.json`
 - Contract schema: `rowplay.replay.athlete.v4`, version `1`
 
-The GLB remains the production web runtime artifact. Blender 5.2 authors its
-generic local surface from the repository Python script; the Node build remaps
-that surface to the canonical V4 skeleton and adds the reviewed clips and
-contact metadata. The USDZ conversion script then derives the Studio artifact
-from that exact checked GLB and contains no second model or alternative
-proportions.
+The GLB remains the production web runtime artifact. Blender 5.2 retargets the
+reviewed Blender Studio Human Base Meshes v1.4.1 CC0 topology into the generic
+RowPlay athlete; the Node build remaps it to the canonical V4 skeleton and adds
+the reviewed clips and contact metadata. The USDZ conversion script then derives
+the Studio artifact from that exact checked GLB and contains no second model or
+alternative proportions.
 
 ## Artifact identity
 
@@ -30,7 +34,7 @@ contract identity separately:
 
 | Artifact                           |  Bytes | SHA-256                                                            |
 | ---------------------------------- | -----: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.contract.json` | 11,982 | `74e45da0e26b0e4f7444d90896079f048221513925761df14e75b7f09f1dac28` |
+| `rowplay-athlete-v4.contract.json` | 12,606 | `7727484927e294b58c409a4054721b5d73cc7040f5240f7d0a1e7d92331f5d3e` |
 
 After an asset or contract rebuild, run `vp run build:replay-rig-v4-contract`
 and update this contract row in the same reviewed change.
@@ -56,12 +60,13 @@ Summary:
 - Up axis: `+Y`
 - Forward axis: `+Z`
 - Handedness: right-handed
-- Mesh: one production `SkinnedMesh` with remeshed body mass plus post-remesh
-  hands, face, kit trim, and shoe overlays (component count sealed in the
-  contract as inventory, not an art-quality target). The GLB embeds no images
-  or textures, but carries reviewed `TEXCOORD_0` coordinates so the web runtime
-  can add deterministic per-instance surface material maps at Medium and above
-  without an external request: 128px at Medium, 256px at High, and 512px at Ultra.
+- Mesh: one production `SkinnedMesh` with a continuous reviewed anatomical body
+  plus deliberate eye, hair, and footwear detail islands. Core-continuity
+  validation rejects detached major limbs; the component count remains sealed
+  inventory, not an art-quality target. The GLB embeds no images or textures,
+  but carries reviewed `TEXCOORD_0` coordinates so the web runtime can add
+  deterministic per-instance surface maps at Medium and above: 128px at
+  Medium, 256px at High, and 512px at Ultra.
 - Bones: stable 19-bone V4 semantic order; the checked contract records any
   optional visual helper bones and their rest transforms. Helpers may influence
   deformation but inherit semantic motion and are never replay-motion targets.

@@ -141,12 +141,12 @@ press, and BikeErg pedal-top/pedal-bottom.
 Quality is deliberately progressive rather than a Low-to-Ultra cliff. The
 same close RowErg finish was captured at every requested tier:
 
-| Tier   | In-app frame                                                                   | Runtime surface work (Phase B)                     |
-| ------ | ------------------------------------------------------------------------------ | -------------------------------------------------- |
-| Low    | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-low.jpg)    | base role material; no generated maps              |
-| Medium | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-medium.jpg) | first 128px albedo, normal, roughness, and relief  |
-| High   | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-high.jpg)   | sharper 256px maps and stronger material response  |
-| Ultra  | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-ultra.jpg)  | strongest 512px maps + peak clearcoat/sheen        |
+| Tier   | In-app frame                                                                   | Runtime surface work (Phase B)                    |
+| ------ | ------------------------------------------------------------------------------ | ------------------------------------------------- |
+| Low    | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-low.jpg)    | base role material; no generated maps             |
+| Medium | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-medium.jpg) | first 128px albedo, normal, roughness, and relief |
+| High   | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-high.jpg)   | sharper 256px maps and stronger material response |
+| Ultra  | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-ultra.jpg)  | strongest 512px maps + peak clearcoat/sheen       |
 
 Historical tier stills above predate the Phase B resolution ladder; the map
 sizes in the Runtime surface work column are the live contract.

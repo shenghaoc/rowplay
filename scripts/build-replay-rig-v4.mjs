@@ -31,7 +31,8 @@ const DEFAULT_OUTPUT = `static/replay-assets/${V4_ASSET_FILENAME}`;
 const output = resolve(process.argv[2] ?? DEFAULT_OUTPUT);
 const BLENDER_GENERATOR = resolve("scripts/build-replay-athlete-v4-blender.py");
 const DEFAULT_BLENDER = "/Applications/Blender.app/Contents/MacOS/blender";
-const SOURCE_DESCRIPTION = "repository-authored Blender 5 production skinned athlete";
+const SOURCE_DESCRIPTION =
+  "RowPlay-authored Blender 5 athlete derived from Blender Human Base Meshes v1.4.1 (CC0)";
 
 // GLTFExporter has a browser FileReader dependency. Node's Blob has equivalent
 // byte access, so the adapter remains local, deterministic and dependency-free.
@@ -99,6 +100,28 @@ function topologicallyOrderHelperBones(helperBones) {
     pending = unresolved;
   }
   return ordered;
+}
+
+function canonicalizeTriangleIndex(geometry) {
+  const index = geometry.getIndex();
+  if (!index || index.count % 3 !== 0) {
+    throw new Error("Blender V4 source must have a complete triangle index");
+  }
+  const triangles = [];
+  for (let offset = 0; offset < index.count; offset += 3) {
+    const source = [index.getX(offset), index.getX(offset + 1), index.getX(offset + 2)];
+    const smallest = source.indexOf(Math.min(...source));
+    // Cyclic rotation preserves the authored winding while removing Blender's
+    // nondeterministic choice of the first corner and triangle emission order.
+    triangles.push([source[smallest], source[(smallest + 1) % 3], source[(smallest + 2) % 3]]);
+  }
+  triangles.sort((left, right) => left[0] - right[0] || left[1] - right[1] || left[2] - right[2]);
+  const IndexArray = geometry.getAttribute("position").count > 65_535 ? Uint32Array : Uint16Array;
+  const canonical = new IndexArray(index.count);
+  for (let triangle = 0; triangle < triangles.length; triangle++) {
+    canonical.set(triangles[triangle], triangle * 3);
+  }
+  geometry.setIndex(new THREE.BufferAttribute(canonical, 1));
 }
 
 function remapBlenderGeometry(sourceMesh) {
@@ -178,6 +201,7 @@ function remapBlenderGeometry(sourceMesh) {
     }
   }
   geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(remapped, 4));
+  canonicalizeTriangleIndex(geometry);
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return { geometry, sourceBoneNames, helperBones: orderedHelperBones };

@@ -100,27 +100,33 @@ while the hidden procedural rig continues to own equipment motion and exact
 hand, foot, oar, pedal, and planted-pole targets. V3, procedural 3D, and Canvas
 remain automatic fallbacks.
 
-- **Purpose:** one generic repository-authored production `SkinnedMesh` with a
+- **Purpose:** one generic, provenance-reviewed production `SkinnedMesh` with a
   stable 19-bone semantic skeleton, optional visual deformation helpers, and
   distinct deterministic RowErg, SkiErg, and BikeErg base clips. Runtime
   samples normalized clip time from replay phase and applies the analytic
   contact pass after the authored pose.
-- **Ownership and licence:** created specifically for rowplay from source in
-  this repository; copyright (c) 2026 shenghaoc and rowplay contributors and
-  distributed under the repository's MIT `LICENSE`. It contains no downloaded
-  model, scan, likeness, avatar-generator output, user data, image, texture, or
-  external request.
-- **Source of truth:** `scripts/build-replay-athlete-v4-blender.py` authors a
-  denser anatomical cage, voxel-remeshes the primary body mass, then joins
-  post-remesh hands (palm + fingers + thumb), face landmarks, ears, short hair,
-  kit trim (collar / sleeve / shorts hems), and shoe overlays. It transfers
-  cage skin weights and paints kit/skin/footwear vertex colours in Blender 5.2.
-  `src/lib/replay/rigV4.ts` owns the semantic skeleton, contacts, and clips;
-  `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint indices to
-  the canonical semantic order while preserving documented visual helper joints
-  and sealing the final GLB. The scripts and GLB are production contracts. Set
-  `BLENDER_BIN` when Blender is not installed at the default macOS application
-  path.
+- **Ownership and licence:** the anatomical topology is Dan Ulrich / Blender
+  Studio's **Human Base Meshes v1.4.1**, released under CC0-1.0 and downloaded
+  from the [official Blender asset bundle](https://download.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip).
+  RowPlay's extraction, retargeting, rigging, appearance, build code, and other
+  modifications are distributed under the repository's MIT `LICENSE`. The
+  result is a generic anatomical base adaptation, not a scan, likeness,
+  avatar-generator output, user image, embedded texture, or runtime request.
+- **Reviewed base source:** `source/rowplay-human-base-male-v1.4.1.blend` is a
+  2.25 MB audited subset containing the body and two eyes at one applied
+  multires level. `scripts/extract-replay-athlete-base-blender.py` documents
+  and reproduces that extraction from the exact v1.4.1 bundle; the `.blend`
+  also embeds its provenance record.
+- **Production source of truth:** `scripts/build-replay-athlete-v4-blender.py`
+  deterministically retargets the source A-pose into the existing V4 rest
+  skeleton, assigns bounded four-influence weights including grip helpers,
+  preserves one continuous anatomical body, adds repository-authored short
+  hair, eyes, performance footwear, and kit accents, and paints reviewed
+  skin/fabric/hair/footwear regions in Blender 5.2.
+  `src/lib/replay/rigV4.ts` continues to own the semantic skeleton, contacts,
+  and clips; `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint
+  indices to canonical order and seals the final GLB. Set `BLENDER_BIN` when
+  Blender is not installed at the default macOS application path.
 - **Native handoff:** `rowplay-athlete-v4.usdz` is generated from the exact GLB
   by Blender 5.2. `scripts/build-replay-rig-v4-usdz.ts` honours `BLENDER_BIN`
   and launches the converter in `scripts/build-replay-rig-v4-usdz.py`. The
@@ -147,8 +153,8 @@ remain automatic fallbacks.
   external-looking references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named semantic
-  bones plus any contract-recorded visual helpers, 12 authored topology
-  components after exact-position UV-seam welding, one portable opaque
+  bones plus four contract-recorded visual helpers, a continuous human body
+  core plus deliberate eye/hair/footwear detail islands, one portable opaque
   vertex-colour material in the GLB, and zero embedded textures/images. The
   reviewed `TEXCOORD_0` layout exists solely for the web loader's local,
   deterministic per-instance material maps; it adds no asset request or native
@@ -157,14 +163,13 @@ remain automatic fallbacks.
   `hair`, `trim`, and `face-detail`) from the reviewed colour regions while
   retaining the same geometry, skeleton, and asset request. The semantic order
   is the only replay-motion interface; helper joints may influence skinning but
-  are not direct animation targets. The surface is a coherent sports character:
-  ribcage-emergent shoulders, tapered limbs with volume at elbows/knees,
-  grip-ready hands with fingers and thumb (visual `v4*Fingers` / `v4*Thumb`
-  helpers plus a sport grip curl after contact), performance shoes with
-  sole/heel form, deliberate kit panels (collar, sleeve, shorts hems), and a
-  generic facial plane with brow, eye, ear, nose, cheek, chin, hair, and
-  sideburn silhouette. Exact vertex, triangle, and topology-component counts
-  are recorded in the contract and are not frozen as an art-quality proxy.
+  are not direct animation targets. The surface now carries anatomically
+  modelled head/face/ears, individual fingers and toes beneath equipment,
+  ribcage, shoulder, pelvis, knee, calf, and hand volume from the reviewed
+  human topology; RowPlay supplies performance kit regions, close sports hair,
+  footwear, and the post-contact finger curl. Exact vertex, triangle, and
+  topology-component counts are recorded in the contract and are not frozen as
+  an art-quality proxy.
 - **Quality tiers:** Low, Medium, High, and Ultra use the same athlete and
   contact-safe technique. They are progressive rather than a single Ultra leap:
   Low keeps clean regional colour and no generated maps; Medium adds 128px
@@ -182,8 +187,11 @@ remain automatic fallbacks.
   BikeErg's fixed saddle is a low-profile opaque support drawn before the skin
   without writing depth, so the athlete naturally occludes the overlapping
   cushion pixels instead of appearing to pass through a thick solid block.
-- **Skinning:** elbow, wrist, knee, ankle, shoulder, and hip rings use spatial
-  parent-to-child weight gradients. The seated posterior uses a shallow
+- **Skinning:** reviewed anatomical face sets drive deterministic A-pose→V4
+  segment retargeting and bounded parent/child blends at shoulders, elbows,
+  wrists, hips, knees, and ankles. The continuous body's major limb influences
+  must remain in the pelvis/torso component; the validator rejects merely
+  overlapping or capped limb islands. The seated posterior uses a shallow
   pelvis-led relief blend so the thigh seam does not sweep the body through the
   BikeErg support under crank motion. Palm/sole marker nodes and terminal-bone
   glTF extras encode exact local contact offsets: left/right hand

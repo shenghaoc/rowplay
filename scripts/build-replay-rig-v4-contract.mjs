@@ -96,6 +96,8 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
       vertices: glb.vertices,
       triangles: glb.triangles,
       topologyComponents: glb.components,
+      continuousCore: glb.coreContinuity.strict,
+      connectedCoreBones: glb.coreContinuity.bones.map((bone) => bone.name),
       skins: 1,
       materials: glb.materials,
       materialSlots: 1,
@@ -135,15 +137,19 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
       { role: "athlete-face-detail", source: "vertex-color eye/brow/lip regions" },
     ],
     provenance: {
-      owner: "rowplay",
-      licence: "MIT",
-      source: "repository-authored Blender 5 production skinned athlete",
+      owner: "rowplay (adaptation); Dan Ulrich / Blender Studio (anatomical base)",
+      licence: "MIT AND CC0-1.0",
+      source:
+        "RowPlay-authored Blender 5 athlete derived from Blender Human Base Meshes v1.4.1 (CC0)",
+      upstreamSource:
+        "https://download.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip",
+      reviewedBase: "static/replay-assets/source/rowplay-human-base-male-v1.4.1.blend",
+      sourceExtractionScript: "scripts/extract-replay-athlete-base-blender.py",
       authoringTool: "Blender 5.2 LTS",
       authoringScript: "scripts/build-replay-athlete-v4-blender.py",
       rigAndClipSource: "src/lib/replay/rigV4.ts",
       forbiddenSources: [
-        "downloaded model",
-        "third-party character",
+        "undocumented download",
         "scan",
         "likeness",
         "avatar generator",

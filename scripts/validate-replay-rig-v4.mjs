@@ -6,19 +6,32 @@ const DEFAULT_ASSET = "static/replay-assets/rowplay-athlete-v4.glb";
 // Hard surface rebuild: athletic form language needs denser remesh and
 // continuous facial planes. Ceiling stays bounded for live+ghost clone
 // delivery on Workers static assets, but no longer forces mannequin density.
-const MAX_FILE_BYTES = 16_000 * 1024;
+const MAX_FILE_BYTES = 24_000 * 1024;
 const MIN_VERTICES = 4_500;
 const MAX_VERTICES = 220_000;
 const MIN_TRIANGLES = 8_500;
 const MAX_TRIANGLES = 450_000;
-// A production surface may be one coherent remeshed body or a small set of
-// deliberate parts (body + hair + shoes). Exact component counts are no longer
-// an art-quality proxy.
+// A production surface may keep deliberate detail parts (eyes, hair, fingers,
+// shoes), so exact component counts are inventory rather than an art-quality
+// proxy. Core continuity is checked by skin role below.
 const MIN_COMPONENTS = 1;
-// Remeshed production surfaces may retain small deliberate islands (laces,
-// ears, sole pads). Exact counts are not an art-quality gate.
 const MAX_COMPONENTS = 256;
-const SOURCE_DESCRIPTION = "repository-authored Blender 5 production skinned athlete";
+const SOURCE_DESCRIPTION =
+  "RowPlay-authored Blender 5 athlete derived from Blender Human Base Meshes v1.4.1 (CC0)";
+const LICENCE_DESCRIPTION = "MIT AND CC0-1.0";
+const CORE_CONTINUITY_BONES = [
+  "v4LeftUpperArm",
+  "v4LeftForearm",
+  "v4RightUpperArm",
+  "v4RightForearm",
+  "v4LeftUpperLeg",
+  "v4LeftLowerLeg",
+  "v4RightUpperLeg",
+  "v4RightLowerLeg",
+];
+const CORE_WEIGHT_THRESHOLD = 0.08;
+const CORE_CONNECTED_FRACTION = 0.6;
+const MIN_CORE_INFLUENCED_VERTICES = 80;
 
 const BONE_NAMES = [
   "v4Hips",
@@ -203,15 +216,86 @@ function connectedComponents(vertexCount, indices, positions) {
     union(indices[offset], indices[offset + 1]);
     union(indices[offset + 1], indices[offset + 2]);
   }
-  const sizes = new Map();
+  const sizesByRoot = new Map();
   for (let vertex = 0; vertex < vertexCount; vertex++) {
     const root = find(vertex);
-    sizes.set(root, (sizes.get(root) ?? 0) + 1);
+    sizesByRoot.set(root, (sizesByRoot.get(root) ?? 0) + 1);
   }
-  return [...sizes.values()].sort((left, right) => right - left);
+  const ranked = [...sizesByRoot.entries()].sort((left, right) => right[1] - left[1]);
+  const rankByRoot = new Map(ranked.map(([root], rank) => [root, rank]));
+  return {
+    sizes: ranked.map(([, size]) => size),
+    componentByVertex: Array.from({ length: vertexCount }, (_, vertex) =>
+      rankByRoot.get(find(vertex)),
+    ),
+  };
 }
 
-export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
+function validateCoreContinuity(loadedBoneNames, joints, weights, componentByVertex, options) {
+  const allowDisconnectedReferenceTopology = options.allowDisconnectedReferenceTopology === true;
+  const hipsIndex = loadedBoneNames.indexOf("v4Hips");
+  invariant(hipsIndex >= 0, "V4 topology validation cannot find v4Hips");
+  let torsoVertices = 0;
+  for (let vertex = 0; vertex < joints.values.length; vertex++) {
+    let hipWeight = 0;
+    for (let influence = 0; influence < joints.values[vertex].length; influence++) {
+      if (joints.values[vertex][influence] === hipsIndex) {
+        hipWeight += weights.values[vertex][influence];
+      }
+    }
+    if (hipWeight >= CORE_WEIGHT_THRESHOLD && componentByVertex[vertex] === 0) {
+      torsoVertices++;
+    }
+  }
+  invariant(
+    torsoVertices >= MIN_CORE_INFLUENCED_VERTICES,
+    "V4 largest topology component is not the pelvis/torso core",
+  );
+
+  const bones = [];
+  for (const name of CORE_CONTINUITY_BONES) {
+    const jointIndex = loadedBoneNames.indexOf(name);
+    invariant(jointIndex >= 0, `V4 topology validation cannot find ${name}`);
+    let influencedVertices = 0;
+    let connectedVertices = 0;
+    for (let vertex = 0; vertex < joints.values.length; vertex++) {
+      let boneWeight = 0;
+      for (let influence = 0; influence < joints.values[vertex].length; influence++) {
+        if (joints.values[vertex][influence] === jointIndex) {
+          boneWeight += weights.values[vertex][influence];
+        }
+      }
+      if (boneWeight < CORE_WEIGHT_THRESHOLD) continue;
+      influencedVertices++;
+      if (componentByVertex[vertex] === 0) connectedVertices++;
+    }
+    invariant(
+      influencedVertices >= MIN_CORE_INFLUENCED_VERTICES,
+      `V4 ${name} has too little authored surface for continuity validation`,
+    );
+    const connectedFraction = connectedVertices / influencedVertices;
+    if (!allowDisconnectedReferenceTopology) {
+      invariant(
+        connectedFraction >= CORE_CONNECTED_FRACTION,
+        `V4 ${name} is detached from the pelvis/torso core (${connectedVertices}/${influencedVertices} connected vertices)`,
+      );
+    }
+    bones.push({
+      name,
+      influencedVertices,
+      connectedVertices,
+      connectedFraction,
+    });
+  }
+  return {
+    torsoVertices,
+    requiredConnectedFraction: CORE_CONNECTED_FRACTION,
+    strict: !allowDisconnectedReferenceTopology,
+    bones,
+  };
+}
+
+export async function validateV4Asset(assetPath = DEFAULT_ASSET, options = {}) {
   const resolvedPath = resolve(assetPath);
   const bytes = await readFile(resolvedPath);
   invariant(bytes.byteLength <= MAX_FILE_BYTES, `V4 asset exceeds ${MAX_FILE_BYTES} bytes`);
@@ -244,7 +328,7 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     "V4 is not product-marked",
   );
   invariant(root.extras?.source === SOURCE_DESCRIPTION, "V4 source metadata is invalid");
-  invariant(root.extras?.licence === "MIT", "V4 licence metadata is invalid");
+  invariant(root.extras?.licence === LICENCE_DESCRIPTION, "V4 licence metadata is invalid");
 
   invariant(document.skins?.length === 1, "V4 must contain exactly one skin");
   const skin = document.skins[0];
@@ -344,7 +428,8 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     flatIndices.every((value) => value < vertexCount),
     "V4 index exceeds vertex count",
   );
-  const components = connectedComponents(vertexCount, flatIndices, positions.values);
+  const topology = connectedComponents(vertexCount, flatIndices, positions.values);
+  const components = topology.sizes;
   invariant(
     components.length >= MIN_COMPONENTS && components.length <= MAX_COMPONENTS,
     `V4 topology component count ${components.length} is outside ${MIN_COMPONENTS}-${MAX_COMPONENTS}`,
@@ -356,6 +441,13 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
   invariant(
     majorComponents.reduce((sum, size) => sum + size, 0) >= Math.floor(vertexCount * 0.55),
     "V4 major body mass is too fragmented relative to total vertices",
+  );
+  const coreContinuity = validateCoreContinuity(
+    loadedBoneNames,
+    joints,
+    weights,
+    topology.componentByVertex,
+    options,
   );
 
   const jointCount = skin.joints.length;
@@ -505,6 +597,7 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     triangles: triangleCount,
     components: components.length,
     largestComponents: components.slice(0, 5),
+    coreContinuity,
     materials: document.materials.length,
     clipTracks: document.animations.reduce(
       (count, animation) => count + animation.channels.length,
@@ -514,7 +607,12 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
 }
 
 async function main() {
-  const result = await validateV4Asset(process.argv[2] ?? DEFAULT_ASSET);
+  const arguments_ = process.argv.slice(2);
+  const allowDisconnectedReferenceTopology = arguments_.includes("--allow-reference-topology");
+  const assetPath = arguments_.find((argument) => !argument.startsWith("--")) ?? DEFAULT_ASSET;
+  const result = await validateV4Asset(assetPath, {
+    allowDisconnectedReferenceTopology,
+  });
   const displayPath = relative(process.cwd(), result.path) || result.path;
   console.log(
     `validated ${displayPath}: ${result.bones} bones (${result.helperBones} helpers), ${result.clips} clips, ${result.components} topology components, ${result.triangles} triangles, ${result.vertices} vertices, ${result.bytes} bytes, sha256 ${result.checksum}`,

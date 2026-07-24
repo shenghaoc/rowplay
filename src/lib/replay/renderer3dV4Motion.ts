@@ -376,7 +376,7 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       clearcoatRoughness: 0.52,
       sheen: 0.02,
       sheenRoughness: 0.8,
-      sheenColor: 0xc9d4df,
+      sheenColor: 0x5b2815,
       specularIntensity: 0.65,
     },
     trim: {
@@ -402,14 +402,14 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
   },
   high: {
     skin: {
-      roughness: 0.48,
+      roughness: 0.5,
       metalness: 0,
-      clearcoat: 0.055,
-      clearcoatRoughness: 0.38,
-      sheen: 0.085,
-      sheenRoughness: 0.5,
+      clearcoat: 0.022,
+      clearcoatRoughness: 0.46,
+      sheen: 0.065,
+      sheenRoughness: 0.56,
       sheenColor: 0xffcdc0,
-      specularIntensity: 0.94,
+      specularIntensity: 0.84,
     },
     jersey: {
       roughness: 0.62,
@@ -448,7 +448,7 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       clearcoatRoughness: 0.42,
       sheen: 0.07,
       sheenRoughness: 0.6,
-      sheenColor: 0xd1dce4,
+      sheenColor: 0x77391d,
       specularIntensity: 0.84,
     },
     trim: {
@@ -474,14 +474,14 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
   },
   ultra: {
     skin: {
-      roughness: 0.38,
+      roughness: 0.43,
       metalness: 0,
-      clearcoat: 0.085,
-      clearcoatRoughness: 0.28,
-      sheen: 0.14,
-      sheenRoughness: 0.4,
+      clearcoat: 0.035,
+      clearcoatRoughness: 0.38,
+      sheen: 0.095,
+      sheenRoughness: 0.48,
       sheenColor: 0xffc2af,
-      specularIntensity: 1.05,
+      specularIntensity: 0.94,
     },
     jersey: {
       roughness: 0.5,
@@ -520,7 +520,7 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       clearcoatRoughness: 0.34,
       sheen: 0.12,
       sheenRoughness: 0.5,
-      sheenColor: 0xd8e4ea,
+      sheenColor: 0x96502a,
       specularIntensity: 0.92,
     },
     trim: {
@@ -651,12 +651,44 @@ function normalSample(
   };
 }
 
-function albedoSample(role: ReplayV4SurfaceRole, x: number, y: number, strength: number): number {
+function albedoSample(
+  role: ReplayV4SurfaceRole,
+  x: number,
+  y: number,
+  strength: number,
+): { readonly r: number; readonly g: number; readonly b: number } {
   // The vertex palette remains the source of athlete identity; this merely
   // adds progressively clearer fabric, hair, and skin variation at replay
-  // distance. The restrained base prevents any tier reading as a decal.
+  // distance. Skin and hair need chromatic micro-variation to avoid the wax
+  // figure read produced by a perfectly grey multiplier; kit stays neutral so
+  // lane identity and the reviewed vertex palette remain authoritative.
   const contrast = detailStrengthNorm(strength) * 86;
-  return clampByte(238 + ((detailSample(role, x, y) - 126) / 42) * contrast);
+  const variation = ((detailSample(role, x, y) - 126) / 42) * contrast;
+  const speckle = ((x * 47 + y * 31 + x * y * 11) % 97) / 96;
+  if (role === "skin") {
+    const freckle = speckle > 0.92 ? -10 * detailStrengthNorm(strength) : 0;
+    return {
+      r: clampByte(246 + variation * 0.56 + freckle),
+      g: clampByte(238 + variation * 0.34 + freckle * 0.72),
+      b: clampByte(232 + variation * 0.2 + freckle * 0.52),
+    };
+  }
+  if (role === "face-detail") {
+    return {
+      r: clampByte(244 + variation * 0.24),
+      g: clampByte(239 + variation * 0.18),
+      b: clampByte(234 + variation * 0.14),
+    };
+  }
+  if (role === "hair") {
+    return {
+      r: clampByte(238 + variation * 0.5),
+      g: clampByte(231 + variation * 0.34),
+      b: clampByte(224 + variation * 0.2),
+    };
+  }
+  const neutral = clampByte(238 + variation);
+  return { r: neutral, g: neutral, b: neutral };
 }
 
 function roughnessSample(
@@ -688,13 +720,14 @@ function createSurfaceDetailMap(
         pixels[offset] = normal.r;
         pixels[offset + 1] = normal.g;
         pixels[offset + 2] = normal.b;
+      } else if (kind === "albedo") {
+        const albedo = albedoSample(role, x, y, strength);
+        pixels[offset] = albedo.r;
+        pixels[offset + 1] = albedo.g;
+        pixels[offset + 2] = albedo.b;
       } else {
         const sample = clampByte(
-          kind === "bump"
-            ? detailSample(role, x, y)
-            : kind === "roughness"
-              ? roughnessSample(role, x, y, strength)
-              : albedoSample(role, x, y, strength),
+          kind === "bump" ? detailSample(role, x, y) : roughnessSample(role, x, y, strength),
         );
         pixels[offset] = sample;
         pixels[offset + 1] = sample;
@@ -740,6 +773,28 @@ function applySurfaceQuality(
   material.sheenRoughness = profile.sheenRoughness;
   material.sheenColor.set(profile.sheenColor);
   material.specularIntensity = profile.specularIntensity;
+  const qualityStep = { low: 0, medium: 1, high: 2, ultra: 3 }[quality];
+  // Human-scale optics are role-specific and progressive. Hair/fabric gain
+  // directional response with quality, while skin uses a warm dielectric
+  // specular lobe instead of the wet clearcoat that made the old athlete look
+  // like painted vinyl.
+  material.ior = role === "skin" || role === "face-detail" ? 1.4 : 1.48;
+  material.specularColor.set(
+    role === "skin" || role === "face-detail"
+      ? new THREE.Color(0xffd8ca).lerp(new THREE.Color(0xffeee8), qualityStep / 3)
+      : role === "hair"
+        ? new THREE.Color(0x8a4322).lerp(new THREE.Color(0xffcfaa), qualityStep / 3)
+        : 0xffffff,
+  );
+  material.anisotropy =
+    role === "hair"
+      ? [0.06, 0.28, 0.56, 0.82][qualityStep]!
+      : role === "jersey" || role === "lower"
+        ? [0, 0.08, 0.2, 0.34][qualityStep]!
+        : role === "trim"
+          ? [0, 0.04, 0.1, 0.18][qualityStep]!
+          : 0;
+  material.anisotropyRotation = role === "hair" ? Math.PI * 0.5 : 0;
   // Each lane owns its generated maps. Release only those maps before a
   // quality change, so future authored source textures remain template-owned.
   const priorMaps = material.userData.replayV4GeneratedDetailMaps;

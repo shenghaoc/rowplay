@@ -10,8 +10,8 @@ repository-owned GLB containing authored athlete and sport-equipment geometry.
 The GLB changes visible form, not motion truth. `sportKinematics.ts`, the
 existing contact targets, and the established live/ghost placement remain
 authoritative. Canvas 2D and the procedural 3D geometry remain reliable
-fallbacks. The asset is a generic sports illustration: it is not an avatar
-generator output, scan, user image, or athlete likeness.
+fallbacks. The asset is a generic photoreal-directed sports character: it is not
+an avatar generator output, scan, user image, or athlete likeness.
 
 This specification supersedes only the procedural-only 3D asset restrictions
 in the completed replay figure and motion specifications. The later
@@ -63,8 +63,8 @@ losing trustworthy sport timing or equipment contact.
 4. WHEN theme or lane identity changes THEN runtime-owned materials SHALL retain
    light/dark separation and live/ghost accents without baking identity into the
    asset.
-5. WHEN the athlete is shown THEN the result SHALL remain a generic
-   illustration and SHALL NOT claim measured biomechanics, body shape,
+5. WHEN the athlete is shown THEN the result SHALL remain a generic character
+   and SHALL NOT claim measured biomechanics, body shape,
    clothing, appearance, or likeness.
 
 ### Requirement 3: Reliable loading and fallback

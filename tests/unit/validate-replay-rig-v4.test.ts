@@ -77,9 +77,19 @@ describe("V4 GLB build validator", () => {
       if (!(glb instanceof ArrayBuffer)) throw new Error("V4 exporter did not return a GLB");
       await writeFile(output, new Uint8Array(glb));
 
+      // The lightweight Three.js reference deliberately keeps five closed
+      // major lofts. Production validation must reject that topology so a
+      // capped arm/leg island cannot masquerade as the Blender release body.
+      await expect(
+        execFileAsync(process.execPath, ["scripts/validate-replay-rig-v4.mjs", output]),
+      ).rejects.toMatchObject({
+        stderr: expect.stringContaining("detached from the pelvis/torso core"),
+      });
+
       const { stdout } = await execFileAsync(process.execPath, [
         "scripts/validate-replay-rig-v4.mjs",
         output,
+        "--allow-reference-topology",
       ]);
       expect(stdout).toContain("20 bones (1 helpers)");
       expect(stdout).toContain("3 clips");

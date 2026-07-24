@@ -2047,15 +2047,16 @@ function createV4Material(): THREE.Material {
   });
 }
 
-/** Build the self-contained, repository-authored V4 generic athlete asset. */
+/** Build the self-contained, provenance-reviewed V4 generic athlete asset. */
 export function createV4AthleteAsset(options: V4AthleteAssetOptions = {}): V4AthleteAsset {
   const root = new THREE.Group();
   root.name = V4_ROOT_NAME;
   root.userData = {
     replayRigVersion: 4,
     replayAssetRole: "production-skinned-athlete",
-    source: "repository-authored Blender 5 production skinned athlete",
-    licence: "MIT",
+    source:
+      "RowPlay-authored Blender 5 athlete derived from Blender Human Base Meshes v1.4.1 (CC0)",
+    licence: "MIT AND CC0-1.0",
     genericCanonicalTechnique: true,
     replayClipNames: V4_CLIP_NAMES,
     replayDriveEnd: V4_DRIVE_END,
