@@ -6,7 +6,7 @@ import * as THREE from "three";
  * This module owns the stable generic skeleton, reference skin, explicit
  * contact effectors, and deterministic canonical clips for RowErg, SkiErg and
  * BikeErg. The checked production GLB replaces the reference surface with the
- * higher-detail Blender-authored mesh from
+ * production Blender-authored surface from
  * `scripts/build-replay-athlete-v4-blender.py` before export. No downloaded
  * mesh, scan, likeness, avatar generator, texture, user image, or athlete
  * telemetry contributes to either path.
@@ -137,6 +137,25 @@ export type V4BoneDefinition = {
   readonly parent?: V4BoneName;
   readonly position: readonly [number, number, number];
 };
+
+/**
+ * A visual-only joint carried by the production surface. Helpers can add
+ * twist or corrective deformation without expanding the replay motion API:
+ * all clips continue to target only `V4_BONE_NAMES`, so helpers inherit their
+ * pose from a semantic ancestor.
+ */
+export type V4VisualHelperBoneDefinition = {
+  readonly name: string;
+  readonly parent: string;
+  readonly position: readonly [number, number, number];
+  readonly rotationQuaternion?: readonly [number, number, number, number];
+  readonly scale?: readonly [number, number, number];
+};
+
+export interface V4AthleteAssetOptions {
+  /** Optional production-surface deformation joints; never motion targets. */
+  readonly helperBones?: readonly V4VisualHelperBoneDefinition[];
+}
 
 /**
  * These are joint locations in a neutral, generic adult sports-illustration
@@ -452,22 +471,92 @@ class SkinnedGeometryBuilder {
   }
 }
 
-function buildBones(mesh: THREE.SkinnedMesh): {
+function finiteVector(
+  value: readonly number[],
+  components: number,
+  description: string,
+): readonly number[] {
+  if (value.length !== components || !value.every(Number.isFinite)) {
+    throw new Error(`V4 ${description} must contain ${components} finite components`);
+  }
+  return value;
+}
+
+function buildBones(
+  mesh: THREE.SkinnedMesh,
+  helperDefinitions: readonly V4VisualHelperBoneDefinition[] = [],
+): {
   readonly skeleton: THREE.Skeleton;
   readonly bones: Readonly<Record<V4BoneName, THREE.Bone>>;
   readonly effectors: Readonly<Record<V4ContactBoneName, THREE.Object3D>>;
 } {
   const mutableBones = {} as Record<V4BoneName, THREE.Bone>;
   const orderedBones: THREE.Bone[] = [];
+  const allBones = new Map<string, THREE.Bone>();
   for (const definition of V4_BONE_DEFINITIONS) {
     const bone = new THREE.Bone();
     bone.name = definition.name;
     bone.position.fromArray(definition.position);
     mutableBones[definition.name] = bone;
+    allBones.set(definition.name, bone);
     orderedBones.push(bone);
     if (definition.parent) mutableBones[definition.parent].add(bone);
     else mesh.add(bone);
   }
+
+  const semanticNames = new Set<string>(V4_BONE_NAMES);
+  const helperNames = new Set<string>();
+  for (const definition of helperDefinitions) {
+    if (
+      !definition.name ||
+      semanticNames.has(definition.name) ||
+      helperNames.has(definition.name)
+    ) {
+      throw new Error(
+        `V4 helper bone name is missing, semantic, or duplicated: ${definition.name}`,
+      );
+    }
+    helperNames.add(definition.name);
+    finiteVector(definition.position, 3, `${definition.name} helper position`);
+    if (definition.rotationQuaternion) {
+      finiteVector(definition.rotationQuaternion, 4, `${definition.name} helper rotation`);
+    }
+    if (definition.scale) finiteVector(definition.scale, 3, `${definition.name} helper scale`);
+  }
+
+  // Source skeletons may list a helper before its helper parent. Resolve the
+  // complete helper graph while keeping the authored list order in the final
+  // Skeleton whenever parents are already available.
+  let pendingHelpers = [...helperDefinitions];
+  while (pendingHelpers.length > 0) {
+    const unresolved: V4VisualHelperBoneDefinition[] = [];
+    let added = 0;
+    for (const definition of pendingHelpers) {
+      const parent = allBones.get(definition.parent);
+      if (!parent) {
+        unresolved.push(definition);
+        continue;
+      }
+      const bone = new THREE.Bone();
+      bone.name = definition.name;
+      bone.position.fromArray(definition.position);
+      if (definition.rotationQuaternion) bone.quaternion.fromArray(definition.rotationQuaternion);
+      if (definition.scale) bone.scale.fromArray(definition.scale);
+      parent.add(bone);
+      allBones.set(definition.name, bone);
+      orderedBones.push(bone);
+      added++;
+    }
+    if (added === 0) {
+      throw new Error(
+        `V4 helper bones must be parented to semantic or helper joints: ${unresolved
+          .map((definition) => `${definition.name}->${definition.parent}`)
+          .join(", ")}`,
+      );
+    }
+    pendingHelpers = unresolved;
+  }
+
   const effectors = {} as Record<V4ContactBoneName, THREE.Object3D>;
   for (const boneName of Object.keys(V4_CONTACT_OFFSETS) as V4ContactBoneName[]) {
     const bone = mutableBones[boneName];
@@ -1936,15 +2025,16 @@ function createV4Material(): THREE.Material {
     // multiplying every region by the jersey colour before lane styling.
     color: 0xffffff,
     vertexColors: true,
-    // Matte performance kit: high/ultra VSM rim light should soften seams, not
-    // polish every loft join into a shiny hard edge.
-    roughness: 0.78,
+    // Soft fabric sheen with restrained skin response. High enough roughness
+    // to avoid plastic mannequin highlights, low enough for readable form under
+    // chase-camera key light in both light and dark venues.
+    roughness: 0.64,
     metalness: 0,
-    sheen: 0.02,
-    sheenColor: new THREE.Color(0x6e8496),
-    sheenRoughness: 0.95,
-    clearcoat: 0,
-    clearcoatRoughness: 1,
+    sheen: 0.16,
+    sheenColor: new THREE.Color(0x8a9bb0),
+    sheenRoughness: 0.72,
+    clearcoat: 0.03,
+    clearcoatRoughness: 0.85,
     flatShading: false,
     transmission: 0,
     thickness: 0,
@@ -1958,13 +2048,13 @@ function createV4Material(): THREE.Material {
 }
 
 /** Build the self-contained, repository-authored V4 generic athlete asset. */
-export function createV4AthleteAsset(): V4AthleteAsset {
+export function createV4AthleteAsset(options: V4AthleteAssetOptions = {}): V4AthleteAsset {
   const root = new THREE.Group();
   root.name = V4_ROOT_NAME;
   root.userData = {
     replayRigVersion: 4,
     replayAssetRole: "production-skinned-athlete",
-    source: "repository-authored Blender 5 parametric skinned athlete",
+    source: "repository-authored Blender 5 production skinned athlete",
     licence: "MIT",
     genericCanonicalTechnique: true,
     replayClipNames: V4_CLIP_NAMES,
@@ -1982,7 +2072,7 @@ export function createV4AthleteAsset(): V4AthleteAsset {
   mesh.frustumCulled = false;
   root.add(mesh);
 
-  const { skeleton, bones, effectors } = buildBones(mesh);
+  const { skeleton, bones, effectors } = buildBones(mesh, options.helperBones);
   mesh.geometry.dispose();
   mesh.geometry = createAthleteGeometry(bones);
   mesh.bind(skeleton);

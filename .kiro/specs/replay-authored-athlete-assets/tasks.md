@@ -74,3 +74,18 @@ figure, readability, and motion specs.
   - [x] Keep the live and ghost skin opaque/depth-writing, remove the
     near-coplanar chest zip, and protect shell/seat/leg/material contracts with
     checked-asset and dense-cycle tests
+
+- [x] **10. Complete the dedicated production-athlete visual-quality gate**
+  - [x] Replace the round mannequin head, bead-like features, helmet hair, and
+    ball-shaped shoulders with a recognisably human generic athlete silhouette
+  - [x] Keep PR #171 technique timing, semantic joints, and shared procedural
+    motion frozen; allow only the documented microscopic RowErg stretcher
+    compatibility alignment and isolate elbow clearance to the V4 skin
+  - [x] Keep the BikeErg pelvis visually supported without body/saddle
+    penetration, limiting equipment work to the minimum compatibility treatment
+  - [x] Give Low, Medium, High, and Ultra materially progressive athlete PBR
+    detail while preserving one geometry, rig, clip set, and fallback chain
+  - [x] Publish one baseline/new/skeleton six-pose sheet, three real-time sport
+    cycles, ghost/mobile/theme coverage, and real hardware WebGPU Ultra evidence
+  - [x] Rebuild and validate GLB, USDZ, and the seven-role native contract; run
+    focused tests, the full local gate, E2E, and exact-head CI

@@ -20,6 +20,15 @@ import bpy
 from mathutils import Vector
 
 
+# These are the physical contact landmarks shared with the runtime rowing rig.
+# Keep the shell's fixed stretcher around the same point as the procedural and
+# V4 foot targets so the authored boat cannot make correctly solved legs look
+# detached or sunk into a panel.
+ROWER_FOOT_CONTACT_Y = 0.35
+ROWER_FOOT_CONTACT_Z = 0.72
+ROWER_STRETCHER_ANGLE = -0.28
+
+
 def parse_args() -> argparse.Namespace:
     args = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else sys.argv[1:]
     parser = argparse.ArgumentParser(description="Build the RowPlay rowing shell source")
@@ -99,7 +108,7 @@ def add_open_hull() -> None:
     faces.append(tuple(reversed(range(row))))
     last = (len(stations) - 1) * row
     faces.append(tuple(last + index for index in range(row)))
-    create_mesh_part("hull", "open-u-shell", "equipment-painted", vertices, faces)
+    create_mesh_part("hull", "open-u-shell", "equipment-dark", vertices, faces)
 
 
 def add_deck_surface(
@@ -330,35 +339,47 @@ def build_boat() -> None:
     )
 
     # Angled stretcher, heel cups, and instep bar make the fixed foot contact
-    # look load-bearing instead of a detached rectangular prop.
+    # look load-bearing instead of a detached rectangular prop. The previous
+    # tall board rose well above the contact target, so the legs appeared to
+    # terminate in front of a wall rather than on a foot stretcher.
     add_bevelled_box(
         "foot-stretcher",
         "board",
         "equipment-dark",
-        (0, 0.405, 0.72),
-        (0.38, 0.27, 0.04),
+        (0, 0.31, ROWER_FOOT_CONTACT_Z),
+        (0.38, 0.18, 0.04),
         bevel=0.014,
-        rotation_x=-0.24,
+        rotation_x=ROWER_STRETCHER_ANGLE,
     )
     for side in (-1, 1):
         add_bevelled_box(
             "heel-cups",
             "left-heel-cup" if side < 0 else "right-heel-cup",
             "equipment-rubber",
-            (side * 0.12, 0.304, 0.69),
-            (0.105, 0.055, 0.1),
+            (side * 0.12, ROWER_FOOT_CONTACT_Y - 0.035, ROWER_FOOT_CONTACT_Z - 0.03),
+            (0.105, 0.065, 0.11),
             bevel=0.016,
-            rotation_x=-0.24,
+            rotation_x=ROWER_STRETCHER_ANGLE,
         )
     add_cylinder_between(
         "stretcher-hardware",
         "instep-bar",
         "equipment-metal",
-        (-0.18, 0.42, 0.69),
-        (0.18, 0.42, 0.69),
+        (-0.18, ROWER_FOOT_CONTACT_Y + 0.06, ROWER_FOOT_CONTACT_Z - 0.03),
+        (0.18, ROWER_FOOT_CONTACT_Y + 0.06, ROWER_FOOT_CONTACT_Z - 0.03),
         0.012,
         vertices=16,
     )
+    for side in (-1, 1):
+        add_cylinder_between(
+            "stretcher-hardware",
+            "left-support" if side < 0 else "right-support",
+            "equipment-metal",
+            (side * 0.17, 0.205, ROWER_FOOT_CONTACT_Z - 0.12),
+            (side * 0.17, 0.31, ROWER_FOOT_CONTACT_Z),
+            0.009,
+            vertices=14,
+        )
 
     # The wing rigger terminates at the exact runtime oar pivots. Diagonal
     # braces and collars make the load path from shell to blade unambiguous.

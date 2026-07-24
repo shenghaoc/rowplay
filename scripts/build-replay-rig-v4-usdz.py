@@ -86,12 +86,24 @@ def main() -> None:
 
     mesh = skinned_meshes[0]
     bone_names = [bone.name for bone in armature.data.bones]
-    if bone_names != EXPECTED_BONES:
-        raise RuntimeError(f"bone order drifted after GLB import: {bone_names}")
+    if len(set(bone_names)) != len(bone_names):
+        raise RuntimeError(f"duplicate bone names after GLB import: {bone_names}")
+    semantic_bones = [name for name in bone_names if name in EXPECTED_BONES]
+    if semantic_bones != EXPECTED_BONES:
+        raise RuntimeError(f"semantic bone order drifted after GLB import: {bone_names}")
+    bone_name_set = set(bone_names)
+    for bone in armature.data.bones:
+        if bone.name in EXPECTED_BONES:
+            continue
+        if bone.parent is None or bone.parent.name not in bone_name_set:
+            raise RuntimeError(f"helper bone is not parented to the imported skeleton: {bone.name}")
     if not any(modifier.type == "ARMATURE" and modifier.object == armature for modifier in mesh.modifiers):
         raise RuntimeError("imported mesh is not bound to the imported armature")
-    if sorted(group.name for group in mesh.vertex_groups) != sorted(EXPECTED_BONES):
-        raise RuntimeError("imported mesh vertex groups do not match the V4 skeleton")
+    group_names = {group.name for group in mesh.vertex_groups}
+    if not set(EXPECTED_BONES).issubset(group_names):
+        raise RuntimeError("imported mesh is missing V4 semantic vertex groups")
+    if not group_names.issubset(bone_name_set):
+        raise RuntimeError("imported mesh has a vertex group outside the V4 skeleton")
     if not bpy.data.actions:
         raise RuntimeError("imported GLB contains no animation actions")
 

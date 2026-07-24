@@ -284,6 +284,21 @@
 		if (w) renderer?.resize(w, courseHeight());
 	}
 
+	/**
+	 * The visual-QA harness asks for this explicit query-only path to capture
+	 * close athlete and skeleton frames in the real application. Normal replay
+	 * controls and stored preferences cannot enable either override.
+	 */
+	function visualQaOptions() {
+		if (page.url.searchParams.get('qa') !== 'athlete-visual') return {};
+		const camera = page.url.searchParams.get('athleteCamera');
+		return {
+			qaCamera:
+				camera === 'front' ? 'athlete-front' : camera === 'close' ? 'athlete-close' : 'normal',
+			showV4Skeleton: page.url.searchParams.get('athleteSkeleton') === '1'
+		} as const;
+	}
+
 	async function setRenderer(kind: RendererKind) {
 		if (activeLoadId < 0) return;
 		if (kind === '3d' && !renderer3dOk) return;
@@ -325,7 +340,7 @@
 			renderCurrent();
 			let next3d: Awaited<ReturnType<typeof createRenderer3D>> | null = null;
 			try {
-				next3d = await createRenderer3D(host3d, quality, detail.sport);
+			next3d = await createRenderer3D(host3d, quality, detail.sport, {}, visualQaOptions());
 			} finally {
 				if (myLoadId === activeLoadId) loading3d = false;
 			}

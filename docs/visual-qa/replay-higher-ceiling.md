@@ -435,8 +435,9 @@ and must not be used as visual proof of that newer surface.
 The production V4 surface is now generated in Blender 5.2 from the reviewed
 repository script `scripts/build-replay-athlete-v4-blender.py`. It uses no
 downloaded model, scan, likeness, avatar generator, texture, or external
-request. The Node build remaps Blender's joint order onto the canonical 19-bone
-V4 skeleton, adds the three deterministic technique clips and contact metadata,
+request. The Node build remaps Blender's semantic joint order onto the
+canonical 19-bone V4 motion skeleton, preserves any visual helper joints for
+deformation, adds the three deterministic technique clips and contact metadata,
 and exports the final GLB.
 
 [Open the full nine-frame Blender deformation sheet](higher-ceiling/v4-blender/v4-blender-contact-sheet.jpg).

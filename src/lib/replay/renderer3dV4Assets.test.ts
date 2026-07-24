@@ -11,6 +11,7 @@ import {
   loadOptionalReplayV4Asset,
   REPLAY_V4_ASSET_PATH,
   REPLAY_V4_CLIP_NAMES,
+  REPLAY_V4_SURFACE_ROLES,
   resetReplayV4AssetCache,
   tryCreateReplayV4AthleteInstance,
   type ReplayV4AssetTemplate,
@@ -82,12 +83,27 @@ function materialAt(mesh: THREE.Mesh, index = 0): THREE.Material {
 afterEach(() => resetReplayV4AssetCache());
 
 describe("V4 runtime asset contract", () => {
-  it("validates one 19-bone skin and exposes all three named sport clips", () => {
+  it("validates semantic bones and exposes all three named sport clips", () => {
     const template = createTemplate();
     try {
       expect(REPLAY_V4_ASSET_PATH).toBe("/replay-assets/rowplay-athlete-v4.glb");
       expect(template.mesh).toBeInstanceOf(THREE.SkinnedMesh);
-      expect(template.skeleton.bones).toHaveLength(19);
+      const materials = Array.isArray(template.mesh.material)
+        ? template.mesh.material
+        : [template.mesh.material];
+      expect(materials).toHaveLength(REPLAY_V4_SURFACE_ROLES.length);
+      expect(materials.map((material) => material.userData.replayV4SurfaceRole)).toEqual(
+        REPLAY_V4_SURFACE_ROLES,
+      );
+      expect(template.mesh.geometry.groups.reduce((count, group) => count + group.count, 0)).toBe(
+        template.mesh.geometry.getIndex()!.count,
+      );
+      expect(template.mesh.userData).toMatchObject({
+        replayV4RuntimeSurfaceRoles: [...REPLAY_V4_SURFACE_ROLES],
+        replayV4RuntimeSurfacePartition: "vertex-colour-triangle-groups",
+      });
+      // Semantic joints are required; helper bones may increase the total.
+      expect(template.skeleton.bones.length).toBeGreaterThanOrEqual(19);
       expect(Object.keys(template.bones)).toHaveLength(19);
       expect([...template.clips.keys()]).toEqual(Object.values(REPLAY_V4_CLIP_NAMES));
       expect(template.clipsBySport.rower.name).toBe(REPLAY_V4_CLIP_NAMES.rower);
@@ -108,6 +124,68 @@ describe("V4 runtime asset contract", () => {
       expect(template.byteLength).toBe(223_960);
     } finally {
       disposeReplayV4AssetTemplate(template);
+    }
+  });
+
+  it("accepts optional helper bones while requiring the semantic joint set", () => {
+    const asset = createV4AthleteAsset({
+      helperBones: [
+        {
+          name: "v4LeftForearmTwist",
+          parent: "v4LeftForearm",
+          position: [-0.18, -0.06, 0.03],
+        },
+      ],
+    });
+    const helper = asset.skeleton.getBoneByName("v4LeftForearmTwist");
+    if (!helper) throw new Error("V4 helper bone was not authored");
+    const helperIndex = asset.skeleton.bones.indexOf(helper);
+    const skinIndex = asset.mesh.geometry.getAttribute("skinIndex");
+    const skinWeight = asset.mesh.geometry.getAttribute("skinWeight");
+    skinIndex.setXYZW(0, helperIndex, 0, 0, 0);
+    skinWeight.setXYZW(0, 1, 0, 0, 0);
+    skinIndex.needsUpdate = true;
+    skinWeight.needsUpdate = true;
+    const clips = productionNamedClips(asset);
+    expect(
+      clips.every((clip) => clip.tracks.every((track) => !track.name.includes(helper.name))),
+    ).toBe(true);
+    releaseAuthoringMixer(asset);
+    // collectReplayV4AssetTemplate takes ownership of the authoring root.
+    const template = collectReplayV4AssetTemplate(asset.root, clips, 223_960);
+    try {
+      expect(template.skeleton.bones.length).toBeGreaterThan(19);
+      expect(Object.keys(template.bones)).toHaveLength(19);
+      expect(template.bones.v4LeftForearm).toBeDefined();
+      expect(template.skeleton.getBoneByName("v4LeftForearmTwist")).toBe(helper);
+    } finally {
+      disposeReplayV4AssetTemplate(template);
+    }
+  });
+
+  it("rejects clips that directly animate a visual helper bone", () => {
+    const asset = createV4AthleteAsset({
+      helperBones: [
+        {
+          name: "v4LeftForearmTwist",
+          parent: "v4LeftForearm",
+          position: [-0.18, -0.06, 0.03],
+        },
+      ],
+    });
+    try {
+      const clips = productionNamedClips(asset);
+      clips[0]!.tracks[clips[0]!.tracks.length - 1] = new THREE.QuaternionKeyframeTrack(
+        ".bones[v4LeftForearmTwist].quaternion",
+        [0, 1],
+        [0, 0, 0, 1, 0, 0, 0, 1],
+      );
+      releaseAuthoringMixer(asset);
+      expect(() => collectReplayV4AssetTemplate(asset.root, clips, 223_960)).toThrow(
+        "directly targets a visual helper bone",
+      );
+    } finally {
+      disposeV4AthleteAsset(asset);
     }
   });
 
@@ -143,7 +221,7 @@ describe("V4 runtime asset contract", () => {
       missingBone.bones.v4LeftHand.name = "renamedLeftHand";
       expect(() =>
         collectReplayV4AssetTemplate(missingBone.root, productionNamedClips(missingBone)),
-      ).toThrow("missing bone: v4LeftHand");
+      ).toThrow("missing semantic bone: v4LeftHand");
     } finally {
       disposeV4AthleteAsset(missingBone);
     }
@@ -247,6 +325,19 @@ describe("V4 runtime asset contract", () => {
     expect(instanceMaterialDispose).toHaveBeenCalledTimes(1);
     expect(instanceGeometryDispose).toHaveBeenCalledTimes(1);
     expect(geometryDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases per-instance material maps with the athlete clone", () => {
+    const template = createTemplate();
+    const instance = createReplayV4AthleteInstance(template);
+    const material = materialAt(instance.mesh) as THREE.MeshPhysicalMaterial;
+    const detail = new THREE.DataTexture(new Uint8Array([127]), 1, 1);
+    material.bumpMap = detail;
+    const dispose = vi.spyOn(detail, "dispose");
+
+    disposeReplayV4AthleteInstance(instance);
+    expect(dispose).toHaveBeenCalledTimes(1);
+    disposeReplayV4AssetTemplate(template);
   });
 
   it("round-trips through GLTFLoader and retries after an optional-load failure", async () => {

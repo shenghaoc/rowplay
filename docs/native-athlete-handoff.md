@@ -23,19 +23,25 @@ proportions.
 
 ## Artifact identity
 
-| Artifact                           |     Bytes | SHA-256                                                            |
-| ---------------------------------- | --------: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.glb`           |   584,796 | `73e0ece3e6c6de5a7a020a5097b172ca3e0ed8315c27ff604159b144fa90547b` |
-| `rowplay-athlete-v4.usdz`          | 1,318,256 | `934b0d3af0454f60a84dde76f95b77121919f5ad7cfc366684a670ae5d99658e` |
-| `rowplay-athlete-v4.contract.json` |     9,290 | `e9fb56f372ac1ea44ee5ccaf1d00b5a975e1eb4a1a2ee7843ab9e53609fb189d` |
+The GLB and USDZ byte counts and SHA-256 digests are sealed in
+`static/replay-assets/rowplay-athlete-v4.contract.json` after each rebuild. A
+contract cannot include its own digest, so this handoff pins the checked
+contract identity separately:
+
+| Artifact                           |  Bytes | SHA-256                                                            |
+| ---------------------------------- | -----: | ------------------------------------------------------------------ |
+| `rowplay-athlete-v4.contract.json` | 11,982 | `74e45da0e26b0e4f7444d90896079f048221513925761df14e75b7f09f1dac28` |
+
+After an asset or contract rebuild, run `vp run build:replay-rig-v4-contract`
+and update this contract row in the same reviewed change.
 
 Blender 5.2 does not currently produce byte-identical USDZ containers across
 repeat exports. Two same-basename exports differed in the `.usdc` payload, so
 the release contract records the checked artifact SHA and validates portability
-semantically through Three.js `USDLoader`: one skinned athlete, the 19 bones in
-contract order, normalized finite skin weights, finite bounds, matching
-triangle count, no external-looking references, and clone-safe skeleton/material
-instances.
+semantically through Three.js `USDLoader`: one skinned athlete, the 19 semantic
+bones in contract order, normalized finite skin weights, finite bounds,
+matching triangle count, no external-looking references, and clone-safe
+skeleton/material instances.
 
 ## Coordinate and rig contract
 
@@ -50,11 +56,19 @@ Summary:
 - Up axis: `+Y`
 - Forward axis: `+Z`
 - Handedness: right-handed
-- Mesh: one intended skinned athlete
-- Bones: stable 19-bone V4 order
+- Mesh: one production `SkinnedMesh` with remeshed body mass plus post-remesh
+  hands, face, kit trim, and shoe overlays (component count sealed in the
+  contract as inventory, not an art-quality target). The GLB embeds no images
+  or textures, but carries reviewed `TEXCOORD_0` coordinates so the web runtime
+  can add deterministic per-instance surface material maps at Medium and above
+  without an external request: 128px at Medium, 256px at High, and 512px at Ultra.
+- Bones: stable 19-bone V4 semantic order; the checked contract records any
+  optional visual helper bones and their rest transforms. Helpers may influence
+  deformation but inherit semantic motion and are never replay-motion targets.
 - Clips: RowErg, SkiErg, BikeErg normalized one-second technique clips
 - Contacts: left/right palms and soles only; runtime equipment constraints
   remain authoritative
+- Visual QA: `docs/visual-qa/replay-athlete-v5.md`
 
 ## Build and validation
 

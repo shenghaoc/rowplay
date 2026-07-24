@@ -42,6 +42,7 @@ export const REPLAY_V4_BONE_NAMES = [
 ] as const;
 
 export type ReplayV4BoneName = (typeof REPLAY_V4_BONE_NAMES)[number];
+const REPLAY_V4_SEMANTIC_BONE_NAMES = new Set<string>(REPLAY_V4_BONE_NAMES);
 
 export const REPLAY_V4_EFFECTOR_BONES = Object.freeze({
   leftHand: "v4LeftHand",
@@ -60,6 +61,191 @@ export const REPLAY_V4_CONTACT_ROLES = Object.freeze({
 } as const satisfies Readonly<Record<ReplayV4EffectorName, string>>);
 
 export type ReplayV4ContactRole = (typeof REPLAY_V4_CONTACT_ROLES)[ReplayV4EffectorName];
+
+/**
+ * Runtime surface partition for the repository-owned V4 body. The portable
+ * GLB remains one skinned primitive for native handoff, while WebGL/WebGPU
+ * derive these PBR slots from the reviewed regional vertex-colour palette.
+ * This gives every quality tier visible athlete-specific work without adding a
+ * second skeleton, external texture, or a parallel avatar contract.
+ */
+export const REPLAY_V4_SURFACE_ROLES = [
+  "skin",
+  "jersey",
+  "lower",
+  "footwear",
+  "hair",
+  "trim",
+  "face-detail",
+] as const;
+
+export type ReplayV4SurfaceRole = (typeof REPLAY_V4_SURFACE_ROLES)[number];
+
+type SurfaceColor = readonly [number, number, number];
+
+interface SurfacePalette {
+  readonly role: ReplayV4SurfaceRole;
+  readonly colors: readonly SurfaceColor[];
+}
+
+const SURFACE_PALETTES: readonly SurfacePalette[] = [
+  {
+    role: "skin",
+    colors: [
+      [0.72, 0.48, 0.36],
+      [0.82, 0.6, 0.48],
+    ],
+  },
+  {
+    role: "jersey",
+    colors: [
+      [0.2, 0.18, 0.45],
+      [0.11, 0.12, 0.28],
+      [0.34, 0.36, 0.66],
+    ],
+  },
+  {
+    role: "lower",
+    colors: [
+      [0.08, 0.09, 0.16],
+      [0.14, 0.16, 0.28],
+      [0.22, 0.36, 0.44],
+      [0.14, 0.24, 0.3],
+      [0.38, 0.52, 0.6],
+    ],
+  },
+  {
+    role: "footwear",
+    colors: [
+      [0.88, 0.9, 0.93],
+      [0.12, 0.15, 0.19],
+      [0.06, 0.08, 0.1],
+    ],
+  },
+  // Accept historical cool-black swatches while the production source uses a
+  // lighter warm-brown hair treatment that reads as hair rather than a helmet.
+  {
+    role: "hair",
+    colors: [
+      [0.3, 0.17, 0.09],
+      [0.22, 0.13, 0.075],
+      [0.13, 0.085, 0.055],
+      [0.08, 0.09, 0.12],
+    ],
+  },
+  { role: "trim", colors: [[0.42, 0.38, 0.78]] },
+  {
+    role: "face-detail",
+    colors: [
+      [0.35, 0.2, 0.14],
+      [0.78, 0.72, 0.64],
+      [0.25, 0.13, 0.08],
+      [0.44, 0.24, 0.17],
+    ],
+  },
+];
+
+function srgbToLinear(value: number): number {
+  return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+}
+
+function colorDistance(red: number, green: number, blue: number, target: SurfaceColor): number {
+  const direct = (red - target[0]) ** 2 + (green - target[1]) ** 2 + (blue - target[2]) ** 2;
+  const linear =
+    (red - srgbToLinear(target[0])) ** 2 +
+    (green - srgbToLinear(target[1])) ** 2 +
+    (blue - srgbToLinear(target[2])) ** 2;
+  // Blender/glTF and procedural test assets can expose the same authored
+  // palette in either transfer space. Accept the closest representation, not
+  // a brittle exporter-specific byte value.
+  return Math.min(direct, linear);
+}
+
+function surfaceRoleIndex(
+  color: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+  vertex: number,
+): number {
+  const red = color.getX(vertex);
+  const green = color.getY(vertex);
+  const blue = color.getZ(vertex);
+  let result = 1; // jersey is the safe kit fallback for unrecognised test colours.
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let roleIndex = 0; roleIndex < SURFACE_PALETTES.length; roleIndex++) {
+    const palette = SURFACE_PALETTES[roleIndex]!;
+    for (const swatch of palette.colors) {
+      const distance = colorDistance(red, green, blue, swatch);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        result = roleIndex;
+      }
+    }
+  }
+  return result;
+}
+
+function runtimeSurfaceMaterial(role: ReplayV4SurfaceRole): THREE.MeshPhysicalMaterial {
+  const material = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    vertexColors: true,
+    roughness: 0.72,
+    metalness: 0,
+    clearcoat: 0,
+    sheen: 0,
+    specularIntensity: 0.75,
+  });
+  material.name = `rowplay-v4-${role}`;
+  material.userData.replayV4SurfaceRole = role;
+  material.userData.replayV4RuntimeSurface = true;
+  return material;
+}
+
+/**
+ * Turn the reviewed colour regions into draw groups once per parsed template.
+ * The clones then receive independent physical materials while retaining one
+ * geometry, one skeleton, one set of semantic joints, and one asset request.
+ */
+function partitionRuntimeSurfaceMaterials(mesh: THREE.SkinnedMesh): void {
+  const color = mesh.geometry.getAttribute("color");
+  const index = mesh.geometry.getIndex();
+  if (!color || color.itemSize < 3 || color.count === 0) {
+    throw new Error("Replay V4 production surface is missing regional vertex colours");
+  }
+  if (!index || index.count === 0 || index.count % 3 !== 0) {
+    throw new Error("Replay V4 production surface must use indexed triangles");
+  }
+
+  const trianglesByRole = REPLAY_V4_SURFACE_ROLES.map(() => [] as number[]);
+  for (let offset = 0; offset < index.count; offset += 3) {
+    const first = surfaceRoleIndex(color, index.getX(offset));
+    const second = surfaceRoleIndex(color, index.getX(offset + 1));
+    const third = surfaceRoleIndex(color, index.getX(offset + 2));
+    // Prefer a majority at a painted seam. If all three differ, the first
+    // vertex is deterministic and remains adjacent to its original triangles.
+    const role = first === second || first === third ? first : second === third ? second : first;
+    trianglesByRole[role]!.push(index.getX(offset), index.getX(offset + 1), index.getX(offset + 2));
+  }
+
+  const groupedIndex =
+    mesh.geometry.getAttribute("position")!.count > 65_535 || index.array instanceof Uint32Array
+      ? new Uint32Array(index.count)
+      : new Uint16Array(index.count);
+  let writeOffset = 0;
+  mesh.geometry.clearGroups();
+  for (let roleIndex = 0; roleIndex < trianglesByRole.length; roleIndex++) {
+    const values = trianglesByRole[roleIndex]!;
+    if (values.length === 0) continue;
+    groupedIndex.set(values, writeOffset);
+    mesh.geometry.addGroup(writeOffset, values.length, roleIndex);
+    writeOffset += values.length;
+  }
+  mesh.geometry.setIndex(new THREE.BufferAttribute(groupedIndex, 1));
+
+  const sourceMaterials = meshMaterials(mesh);
+  mesh.material = REPLAY_V4_SURFACE_ROLES.map(runtimeSurfaceMaterial);
+  for (const material of sourceMaterials) material.dispose();
+  mesh.userData.replayV4RuntimeSurfaceRoles = [...REPLAY_V4_SURFACE_ROLES];
+  mesh.userData.replayV4RuntimeSurfacePartition = "vertex-colour-triangle-groups";
+}
 
 export interface ReplayV4EffectorMetric {
   readonly bone: ReplayV4BoneName;
@@ -228,11 +414,16 @@ function meshMaterials(mesh: THREE.Mesh): readonly THREE.Material[] {
   return materials;
 }
 
+/**
+ * Require the canonical semantic bones used by motion/contact code. Additional
+ * helper / twist / corrective bones are allowed for deformation quality and are
+ * intentionally not exposed on the semantic bone map.
+ */
 function collectBones(mesh: THREE.SkinnedMesh): Readonly<Record<ReplayV4BoneName, THREE.Bone>> {
   const { bones } = mesh.skeleton;
-  if (bones.length !== REPLAY_V4_BONE_NAMES.length) {
+  if (bones.length < REPLAY_V4_BONE_NAMES.length) {
     throw new Error(
-      `Replay V4 skeleton must have ${REPLAY_V4_BONE_NAMES.length} bones, received ${bones.length}`,
+      `Replay V4 skeleton must include at least ${REPLAY_V4_BONE_NAMES.length} semantic bones, received ${bones.length}`,
     );
   }
   const names = new Set<string>();
@@ -245,7 +436,7 @@ function collectBones(mesh: THREE.SkinnedMesh): Readonly<Record<ReplayV4BoneName
   }
   for (const name of REPLAY_V4_BONE_NAMES) {
     const bone = mesh.skeleton.getBoneByName(name);
-    if (!bone) throw new Error(`Replay V4 skeleton is missing bone: ${name}`);
+    if (!bone) throw new Error(`Replay V4 skeleton is missing semantic bone: ${name}`);
     result[name] = bone;
   }
   if (mesh.skeleton.boneInverses.length !== bones.length) {
@@ -318,11 +509,48 @@ function collectEffectorMetrics(
   });
 }
 
+function clipTrackTarget(track: THREE.KeyframeTrack): {
+  readonly boneName: string;
+  readonly propertyName: string;
+} {
+  let binding: ReturnType<typeof THREE.PropertyBinding.parseTrackName>;
+  try {
+    binding = THREE.PropertyBinding.parseTrackName(track.name);
+  } catch {
+    throw new Error(`Replay V4 clip has an unreadable track target: ${track.name}`);
+  }
+  const boneName = binding.objectName === "bones" ? binding.objectIndex : binding.nodeName;
+  if (typeof boneName !== "string" || typeof binding.propertyName !== "string") {
+    throw new Error(`Replay V4 clip has an invalid track target: ${track.name}`);
+  }
+  return { boneName, propertyName: binding.propertyName };
+}
+
 function validateClip(clip: THREE.AnimationClip): number {
-  if (!Number.isFinite(clip.duration) || clip.duration <= 0 || clip.tracks.length === 0) {
+  if (
+    !Number.isFinite(clip.duration) ||
+    clip.duration <= 0 ||
+    clip.tracks.length !== REPLAY_V4_BONE_NAMES.length + 1
+  ) {
     throw new Error(`Replay V4 clip has invalid timing or no tracks: ${clip.name}`);
   }
+  let hipsTranslations = 0;
+  const rotationTargets = new Set<string>();
   for (const track of clip.tracks) {
+    const { boneName, propertyName } = clipTrackTarget(track);
+    if (!REPLAY_V4_SEMANTIC_BONE_NAMES.has(boneName)) {
+      throw new Error(`Replay V4 clip directly targets a visual helper bone: ${boneName}`);
+    }
+    if (propertyName === "position") {
+      if (boneName !== "v4Hips") {
+        throw new Error(`Replay V4 clip translates a non-hips semantic bone: ${boneName}`);
+      }
+      hipsTranslations++;
+    } else if (propertyName === "quaternion") {
+      rotationTargets.add(boneName);
+    } else {
+      throw new Error(`Replay V4 clip has an unreviewed track property: ${track.name}`);
+    }
     if (track.times.length < 2 || track.values.length === 0) {
       throw new Error(`Replay V4 clip has an empty track: ${clip.name}/${track.name}`);
     }
@@ -338,6 +566,9 @@ function validateClip(clip: THREE.AnimationClip): number {
         throw new Error(`Replay V4 clip has non-finite values: ${clip.name}/${track.name}`);
       }
     }
+  }
+  if (hipsTranslations !== 1 || rotationTargets.size !== REPLAY_V4_BONE_NAMES.length) {
+    throw new Error(`Replay V4 clip must target every semantic bone exactly once: ${clip.name}`);
   }
   if (!clip.validate()) throw new Error(`Replay V4 clip failed Three.js validation: ${clip.name}`);
   const driveEnd: unknown = clip.userData.replayDriveEnd;
@@ -418,6 +649,7 @@ export function collectReplayV4AssetTemplate(
   const bones = collectBones(mesh);
   const effectors = collectEffectorMetrics(bones);
   validateGeometry(mesh);
+  partitionRuntimeSurfaceMaterials(mesh);
   const { clips, clipsBySport, clipTimingBySport } = collectClips(animations);
   const template: ReplayV4AssetTemplate = {
     byteLength,
@@ -694,6 +926,21 @@ export function disposeReplayV4AthleteInstance(instance: ReplayV4AthleteInstance
     instance.mixer.uncacheRoot(instance.root);
   } catch {
     /* best-effort */
+  }
+  // Material disposal does not release maps owned by the instance. In
+  // particular, the Medium+ quality tiers create per-instance procedural
+  // bump/roughness textures, so collect and release those before disposing
+  // their material clones.
+  const textures = new Set<THREE.Texture>();
+  for (const material of state.materials) {
+    for (const texture of materialTextures(material)) textures.add(texture);
+  }
+  for (const texture of textures) {
+    try {
+      texture.dispose();
+    } catch {
+      /* best-effort cleanup */
+    }
   }
   for (const material of state.materials) {
     try {

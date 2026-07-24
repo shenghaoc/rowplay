@@ -1493,6 +1493,53 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  it("keeps the foot contacts inside the authored stretcher and gives the shell a layered finish", async () => {
+    const assets = await loadCheckedInReplayAssetTemplateLibrary();
+    const renderer = new CourseRenderer3D(makeHost(), "ultra", "rower", { assets });
+    try {
+      renderer.resize(1140, 420);
+      const boat = attachedTemplate(renderer, "rower-boat-visual", "equipment:row:boat-assembly");
+      const hull = templatePart(boat, "hull");
+      const sternDeck = templatePart(boat, "stern-deck");
+      const stretcher = templatePart(boat, "foot-stretcher");
+      stretcher.geometry.computeBoundingBox();
+      sternDeck.geometry.computeBoundingBox();
+      const boatSpace = sceneObject(renderer, "rower-boat-visual").parent;
+      if (!boatSpace || !stretcher.geometry.boundingBox || !sternDeck.geometry.boundingBox) {
+        throw new Error("rowing shell is missing its local contact bounds");
+      }
+
+      expect(hull.userData.replayMaterialRole).toBe("equipment-dark");
+      expect(sternDeck.userData.replayMaterialRole).toBe("equipment-painted");
+      expect(stretcher.geometry.boundingBox.max.y).toBeLessThan(0.42);
+      expect(stretcher.geometry.boundingBox.min.y).toBeGreaterThan(0.2);
+
+      for (const cycle of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
+        renderer.render(makeSportState("rower", cycle), false);
+        getScene(renderer).updateMatrixWorld(true);
+        const inverse = boatSpace.matrixWorld.clone().invert();
+        for (const side of ["left", "right"] as const) {
+          const foot = worldPosition(renderer, `rower-footplate-contact-${side}`).applyMatrix4(
+            inverse,
+          );
+          expect(foot.y, `${side} foot lands within stretcher height at ${cycle}`).toBeGreaterThan(
+            stretcher.geometry.boundingBox.min.y - 0.025,
+          );
+          expect(foot.y, `${side} foot lands within stretcher height at ${cycle}`).toBeLessThan(
+            stretcher.geometry.boundingBox.max.y + 0.025,
+          );
+          expect(
+            Math.abs(foot.x),
+            `${side} foot stays inside stretcher width at ${cycle}`,
+          ).toBeLessThan(0.2);
+        }
+      }
+    } finally {
+      renderer.destroy();
+      disposeReplayAssetTemplateLibrary(assets);
+    }
+  });
+
   it("keeps the authored BikeErg cockpit on the authoritative hand contacts", async () => {
     const assets = await loadCheckedInReplayAssetTemplateLibrary();
     const renderer = new CourseRenderer3D(makeHost(), "ultra", "bike", { assets });
@@ -1541,6 +1588,8 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  // Production V4 clones a full skinned mesh per lane; live+ghost paths need
+  // headroom on slower CI runners without weakening the independence contract.
   describe("production V4 skinned athlete integration", () => {
     let v3Assets: ReplayAssetTemplateLibrary | null = null;
     let v4Assets: ReplayV4AssetTemplate | null = null;
@@ -1550,16 +1599,19 @@ describe("CourseRenderer3D", () => {
         loadCheckedInReplayAssetTemplateLibrary(),
         loadCheckedInReplayV4AssetTemplate(),
       ]);
-    });
+    }, 30_000);
 
     afterAll(() => {
       if (v4Assets) disposeReplayV4AssetTemplate(v4Assets);
       if (v3Assets) disposeReplayAssetTemplateLibrary(v3Assets);
     });
 
-    function rendererFor(sport: "rower" | "skierg" | "bike") {
+    function rendererFor(
+      sport: "rower" | "skierg" | "bike",
+      quality: "low" | "medium" | "high" | "ultra" = "ultra",
+    ) {
       if (!v3Assets || !v4Assets) throw new Error("production replay assets did not load");
-      const renderer = new CourseRenderer3D(makeHost(), "ultra", sport, {
+      const renderer = new CourseRenderer3D(makeHost(), quality, sport, {
         assets: v3Assets,
         v4Assets,
       });
@@ -1616,13 +1668,20 @@ describe("CourseRenderer3D", () => {
           getScene(renderer).updateMatrixWorld(true);
           const leftKnee = instance.bones.v4LeftLowerLeg.getWorldPosition(new THREE.Vector3());
           const rightKnee = instance.bones.v4RightLowerLeg.getWorldPosition(new THREE.Vector3());
+          const boatSpace = sceneObject(renderer, "rower-boat-visual").parent;
+          if (!boatSpace) throw new Error("rowing shell has no shared boat space");
           for (const [side, knee, target] of [
             ["left", leftKnee, avatar.v4Targets.leftKnee],
             ["right", rightKnee, avatar.v4Targets.rightKnee],
           ] as const) {
+            const localKnee = boatSpace.worldToLocal(knee.clone());
             expect(knee.y, `${side} knee clears cockpit at ${cycle}`).toBeGreaterThan(
               cockpitTop + 0.08,
             );
+            expect(
+              Math.abs(localKnee.x),
+              `${side} knee stays inside the shell at ${cycle}`,
+            ).toBeLessThan(0.43);
             expect(
               knee.distanceTo(target.getWorldPosition(new THREE.Vector3())),
               `${side} knee follows deterministic rig at ${cycle}`,
@@ -1737,6 +1796,111 @@ describe("CourseRenderer3D", () => {
           renderer.destroy();
         }
       }
+    });
+
+    it("spends each quality tier on distinct V4 athlete material response", () => {
+      const profiles = new Map<
+        "low" | "medium" | "high" | "ultra",
+        {
+          skinRoughness: number;
+          jerseySheen: number;
+          jerseyBumpScale: number;
+          jerseyNormalScale: number;
+          jerseyDetailResolution: number;
+          jerseyHasAlbedoDetail: boolean;
+          jerseyHasDetailMap: boolean;
+          jerseyHasNormalDetail: boolean;
+          jerseyHasRoughnessDetail: boolean;
+          vertexCount: number;
+          indexCount: number;
+        }
+      >();
+      for (const quality of ["low", "medium", "high", "ultra"] as const) {
+        const renderer = rendererFor("rower", quality);
+        try {
+          renderer.render(makeSportState("rower", 0.31), false);
+          const { instance } = v4Lane(renderer);
+          const materials = Array.isArray(instance.mesh.material)
+            ? instance.mesh.material
+            : [instance.mesh.material];
+          expect(instance.mesh.userData.replayV4Quality).toBe(quality);
+          expect(materials.map((material) => material.userData.replayV4SurfaceRole)).toEqual([
+            "skin",
+            "jersey",
+            "lower",
+            "footwear",
+            "hair",
+            "trim",
+            "face-detail",
+          ]);
+          expect(instance.mesh.geometry.groups.map((group) => group.materialIndex)).toEqual([
+            0, 1, 2, 3, 4, 5, 6,
+          ]);
+          expect(instance.mesh.geometry.groups.every((group) => group.count > 0)).toBe(true);
+          const skin = materials.find(
+            (material) => material.userData.replayV4SurfaceRole === "skin",
+          ) as THREE.MeshPhysicalMaterial | undefined;
+          const jersey = materials.find(
+            (material) => material.userData.replayV4SurfaceRole === "jersey",
+          ) as THREE.MeshPhysicalMaterial | undefined;
+          expect(skin).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+          expect(jersey).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+          profiles.set(quality, {
+            skinRoughness: skin!.roughness,
+            jerseySheen: jersey!.sheen,
+            jerseyBumpScale: jersey!.bumpScale,
+            jerseyNormalScale: jersey!.normalScale.x,
+            jerseyDetailResolution: Number(jersey!.userData.replayV4SurfaceDetailResolution),
+            jerseyHasAlbedoDetail: jersey!.map != null,
+            jerseyHasDetailMap: jersey!.bumpMap != null,
+            jerseyHasNormalDetail: jersey!.normalMap != null,
+            jerseyHasRoughnessDetail: jersey!.roughnessMap != null,
+            vertexCount: instance.mesh.geometry.getAttribute("position").count,
+            indexCount: instance.mesh.geometry.getIndex()!.count,
+          });
+          expectV4Contacts(renderer, `${quality} rower material tier`);
+        } finally {
+          renderer.destroy();
+        }
+      }
+
+      const low = profiles.get("low")!;
+      const medium = profiles.get("medium")!;
+      const high = profiles.get("high")!;
+      const ultra = profiles.get("ultra")!;
+      expect(low.skinRoughness).toBeGreaterThan(medium.skinRoughness);
+      expect(medium.skinRoughness).toBeGreaterThan(high.skinRoughness);
+      expect(high.skinRoughness).toBeGreaterThan(ultra.skinRoughness);
+      expect(low.jerseySheen).toBeLessThan(medium.jerseySheen);
+      expect(medium.jerseySheen).toBeLessThan(high.jerseySheen);
+      expect(high.jerseySheen).toBeLessThan(ultra.jerseySheen);
+      expect(low.jerseyHasDetailMap).toBe(false);
+      expect(medium.jerseyHasDetailMap).toBe(true);
+      expect(high.jerseyHasDetailMap).toBe(true);
+      expect(ultra.jerseyHasDetailMap).toBe(true);
+      expect(low.jerseyHasAlbedoDetail).toBe(false);
+      expect(medium.jerseyHasAlbedoDetail).toBe(true);
+      expect(high.jerseyHasAlbedoDetail).toBe(true);
+      expect(ultra.jerseyHasAlbedoDetail).toBe(true);
+      expect(low.jerseyHasNormalDetail).toBe(false);
+      expect(medium.jerseyHasNormalDetail).toBe(true);
+      expect(high.jerseyHasNormalDetail).toBe(true);
+      expect(ultra.jerseyHasNormalDetail).toBe(true);
+      expect(low.jerseyHasRoughnessDetail).toBe(false);
+      expect(medium.jerseyHasRoughnessDetail).toBe(true);
+      expect(high.jerseyHasRoughnessDetail).toBe(true);
+      expect(ultra.jerseyHasRoughnessDetail).toBe(true);
+      expect(low.jerseyBumpScale).toBeLessThan(medium.jerseyBumpScale);
+      expect(medium.jerseyBumpScale).toBeLessThan(high.jerseyBumpScale);
+      expect(high.jerseyBumpScale).toBeLessThan(ultra.jerseyBumpScale);
+      expect(low.jerseyNormalScale).toBeLessThan(medium.jerseyNormalScale);
+      expect(medium.jerseyNormalScale).toBeLessThan(high.jerseyNormalScale);
+      expect(high.jerseyNormalScale).toBeLessThan(ultra.jerseyNormalScale);
+      expect(low.jerseyDetailResolution).toBe(0);
+      expect(medium.jerseyDetailResolution).toBeLessThan(high.jerseyDetailResolution);
+      expect(high.jerseyDetailResolution).toBeLessThan(ultra.jerseyDetailResolution);
+      expect(low.vertexCount).toBe(ultra.vertexCount);
+      expect(low.indexCount).toBe(ultra.indexCount);
     });
 
     it("keeps V3 arm and leg tubes hidden across a full stroke so the athlete is not double-limbed", () => {
@@ -2051,6 +2215,35 @@ describe("CourseRenderer3D", () => {
       }
     });
 
+    it("draws the V4 BikeErg saddle behind the lower body through a crank cycle", () => {
+      const renderer = rendererFor("bike");
+      try {
+        const saddle = sceneObject(renderer, "bike-saddle") as THREE.Mesh;
+        const material = saddle.material as THREE.MeshStandardMaterial;
+        expect(saddle.renderOrder).toBeLessThan(0);
+        expect(material.transparent).toBe(false);
+        expect(material.depthWrite).toBe(false);
+        expect(material.depthTest).toBe(true);
+        for (let step = 0; step <= 96; step++) {
+          const cycle = step / 96;
+          renderer.render(makeSportState("bike", cycle), false);
+          const { instance, motion } = v4Lane(renderer);
+          getScene(renderer).updateMatrixWorld(true);
+          // The low-profile support must draw first without writing depth, so
+          // the opaque skinned athlete owns every overlapping pixel. This
+          // avoids the old visible butt/seat penetration while leaving the
+          // saddle's outer silhouette and frame attachment normally occluded.
+          expect(motion.enabled, `BikeErg V4 stays active at ${cycle}`).toBe(true);
+          expect(instance.mesh.renderOrder, `athlete follows saddle at ${cycle}`).toBeGreaterThan(
+            saddle.renderOrder,
+          );
+          expect(material.depthWrite, `saddle does not cut through skin at ${cycle}`).toBe(false);
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
     it("locks every V4 palm and sole after clip sampling while preserving authored hip motion", () => {
       const phases = {
         rower: [0.01, 0.18, 0.38, 0.54, 0.64, 0.73, 0.78, 0.98],
@@ -2103,7 +2296,7 @@ describe("CourseRenderer3D", () => {
       }
     });
 
-    it("keeps V4 RowErg palms and forearms outside the torso core through the stroke", () => {
+    it("keeps V4 RowErg elbows, palms, and forearms outside the torso core through the stroke", () => {
       const renderer = rendererFor("rower");
       try {
         const previousPalms = new Map<"left" | "right", THREE.Vector3>();
@@ -2130,6 +2323,7 @@ describe("CourseRenderer3D", () => {
             ].getWorldPosition(new THREE.Vector3());
 
             for (const [part, point] of [
+              ["elbow", elbow],
               ["palm", palm],
               ["forearm midpoint", elbow.clone().lerp(palm, 0.5)],
             ] as const) {
@@ -2142,7 +2336,7 @@ describe("CourseRenderer3D", () => {
               expect(
                 point.distanceTo(torsoCenter),
                 `${side} ${part} torso clearance at ${cycle}`,
-              ).toBeGreaterThan(part === "palm" ? 0.14 : 0.11);
+              ).toBeGreaterThan(part === "palm" ? 0.14 : part === "elbow" ? 0.18 : 0.13);
             }
             const prior = previousPalms.get(side);
             if (prior) {
@@ -2415,11 +2609,15 @@ describe("CourseRenderer3D", () => {
           ["live", live, 1],
           ["ghost", ghost, 0.45],
         ] as const) {
-          const material = athlete.mesh.material as THREE.Material;
-          expect(material.transparent, `${lane} skinned body stays in opaque pass`).toBe(false);
-          expect(material.opacity, `${lane} skinned body opacity`).toBe(1);
-          expect(material.depthWrite, `${lane} skinned body writes depth`).toBe(true);
-          expect(material.depthTest, `${lane} skinned body tests depth`).toBe(true);
+          const materials = Array.isArray(athlete.mesh.material)
+            ? athlete.mesh.material
+            : [athlete.mesh.material];
+          for (const material of materials) {
+            expect(material.transparent, `${lane} skinned body stays in opaque pass`).toBe(false);
+            expect(material.opacity, `${lane} skinned body opacity`).toBe(1);
+            expect(material.depthWrite, `${lane} skinned body writes depth`).toBe(true);
+            expect(material.depthTest, `${lane} skinned body tests depth`).toBe(true);
+          }
           expect(athlete.mesh.userData, `${lane} material diagnostic`).toMatchObject({
             replayRequestedOpacity: requestedOpacity,
             replayBodyRenderMode: "opaque-depth-writing",
@@ -2454,7 +2652,7 @@ describe("CourseRenderer3D", () => {
       } finally {
         if (!destroyed) renderer.destroy();
       }
-    });
+    }, 20_000);
   });
 
   it("keeps RowErg knees visually separated from the hull through the stroke", () => {

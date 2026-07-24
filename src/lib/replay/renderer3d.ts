@@ -200,6 +200,13 @@ export interface Renderer3DOptions {
   WebGPURenderer?: WebGPURendererCtor;
   assets?: ReplayAssetLibrary | null;
   v4Assets?: ReplayV4AssetTemplate | null;
+  /**
+   * Capture-only framing used by the visual-QA harness. It is reachable only
+   * through an explicit replay QA query, never through normal replay controls.
+   */
+  qaCamera?: "normal" | "athlete-close" | "athlete-front";
+  /** Draw the live V4 skeleton over the real rendered athlete for QA evidence. */
+  showV4Skeleton?: boolean;
 }
 
 /**
@@ -1543,10 +1550,17 @@ function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 1
   return head;
 }
 
+const ROWER_FOOT_CONTACT = Object.freeze({
+  lateral: 0.12,
+  y: 0.35,
+  z: 0.72,
+});
+
 /**
  * Low-poly single scull: long thin hull (capsule), a seated rower, and two oars
- * with blades. The hull, deck and oar blades carry `userData.accent`; the rower
- * slides + leans and the oars sweep/feather per stroke.
+ * with blades. The lower hull stays neutral while the deck and oar blades carry
+ * `userData.accent`; the rower slides + leans and the oars sweep/feather per
+ * stroke.
  */
 function makeRowerAvatar(
   accent: number,
@@ -1590,14 +1604,13 @@ function makeRowerAvatar(
   const hull = setReplayAssetSlot(
     new THREE.Mesh(
       new THREE.CapsuleGeometry(0.34, 3.15, eqCylSegs, Math.round(eqCylSegs * 1.4)),
-      accentMat(),
+      kitDarkMaterial,
     ),
     "equipment:row:hull",
   );
   hull.rotation.x = Math.PI / 2; // capsule axis Y -> Z (travel)
-  hull.scale.set(0.52, 0.3, 1); // keep the fallback below the visible leg chain
+  hull.scale.set(0.55, 0.3, 1); // keep the fallback below the visible leg chain
   hull.position.y = 0.135;
-  hull.userData.accent = true;
   group.add(hull);
 
   // Two short decks leave a genuine cockpit opening around the athlete. The
@@ -1652,17 +1665,57 @@ function makeRowerAvatar(
   }
 
   const footPlate = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.38, 0.26, 0.04, 0.018),
+    roundedVenueBlockGeometry(0.38, 0.18, 0.04, 0.018),
     kitDarkMaterial,
   );
   footPlate.name = "rower-footplate";
-  footPlate.position.set(0, 0.405, 0.72);
-  footPlate.rotation.x = -0.24;
+  footPlate.position.set(0, 0.31, ROWER_FOOT_CONTACT.z);
+  footPlate.rotation.x = -0.28;
   group.add(footPlate);
+  const heelCups: THREE.Mesh[] = [];
+  for (const side of [-1, 1]) {
+    const heelCup = new THREE.Mesh(
+      roundedVenueBlockGeometry(0.105, 0.065, 0.11, 0.016),
+      equipmentGripMaterial,
+    );
+    heelCup.name = side < 0 ? "rower-heel-cup-left" : "rower-heel-cup-right";
+    heelCup.position.set(
+      side * ROWER_FOOT_CONTACT.lateral,
+      ROWER_FOOT_CONTACT.y - 0.035,
+      ROWER_FOOT_CONTACT.z - 0.03,
+    );
+    heelCup.rotation.x = -0.28;
+    heelCups.push(heelCup);
+    group.add(heelCup);
+  }
+  const instepBar = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.012, 0.336, 8, 12),
+    equipmentMetalMaterial,
+  );
+  instepBar.name = "rower-footplate-instep-bar";
+  instepBar.rotation.z = Math.PI / 2;
+  instepBar.position.set(0, ROWER_FOOT_CONTACT.y + 0.06, ROWER_FOOT_CONTACT.z - 0.03);
+  group.add(instepBar);
+  const stretcherSupports: THREE.Mesh[] = [];
+  for (const side of [-1, 1]) {
+    const support = tubeBetween(
+      side < 0 ? "rower-footplate-support-left" : "rower-footplate-support-right",
+      { x: side * 0.17, y: 0.205, z: ROWER_FOOT_CONTACT.z - 0.12 },
+      { x: side * 0.17, y: 0.31, z: ROWER_FOOT_CONTACT.z },
+      0.009,
+      equipmentMetalMaterial,
+    );
+    stretcherSupports.push(support);
+    group.add(support);
+  }
   for (const side of [-1, 1]) {
     const anchor = new THREE.Object3D();
     anchor.name = side < 0 ? "rower-footplate-contact-left" : "rower-footplate-contact-right";
-    anchor.position.set(side * 0.12, 0.34, 0.72);
+    anchor.position.set(
+      side * ROWER_FOOT_CONTACT.lateral,
+      ROWER_FOOT_CONTACT.y,
+      ROWER_FOOT_CONTACT.z,
+    );
     group.add(anchor);
   }
   // V3 keeps the entire scull as one designed assembly while the existing
@@ -1682,6 +1735,9 @@ function makeRowerAvatar(
       gunwaleR,
       ...slideRails,
       footPlate,
+      ...heelCups,
+      instepBar,
+      ...stretcherSupports,
     ],
   });
 
@@ -2066,8 +2122,15 @@ function makeRowerAvatar(
       leg.hipPoint.set(leg.side * 0.13, hips.position.y, hips.position.z);
       // The plate is in BOAT space, while these limbs live in the translating
       // rower group. Subtract the slide so the world foot contact stays fixed.
-      leg.footTarget.set(leg.side * 0.12, 0.34 - rower.position.y, 0.72 - rower.position.z);
-      leg.bendHint.set(leg.side * 0.46, 0.7 - legExtension * 0.1, -0.28);
+      leg.footTarget.set(
+        leg.side * ROWER_FOOT_CONTACT.lateral,
+        ROWER_FOOT_CONTACT.y - rower.position.y,
+        ROWER_FOOT_CONTACT.z - rower.position.z,
+      );
+      // Keep the knees above the recessed cockpit without spreading them over
+      // the gunwales. The old, wider/high marker made the leg chain read as a
+      // separate object laid across the shell instead of a seated rower.
+      leg.bendHint.set(leg.side * 0.42, 0.65 - legExtension * 0.06, -0.26);
       solveTwoBone3D(
         leg.hipPoint,
         leg.footTarget,
@@ -2994,12 +3057,21 @@ function makeBikeAvatar(
   });
   group.add(cranks);
 
-  // The saddle closes the previously visible gap between the frame and the
-  // rider's pelvis, which was especially obvious from the chase camera.
-  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.055, 0.3), saddleMaterial);
+  // A bicycle saddle is a low-profile shell, not a thick rectangular block.
+  // Render its cushion before, but without writing depth against, the rider:
+  // the visible body therefore cleanly occludes the support wherever their
+  // silhouettes overlap, while its outer edge and fixed frame attachment
+  // remain visible. This is a microscopic equipment compatibility correction;
+  // no graph-owned hip, crank, or pedal path changes.
+  const saddle = new THREE.Mesh(
+    roundedVenueBlockGeometry(0.21, 0.032, 0.28, 0.018),
+    saddleMaterial,
+  );
   setReplayAssetSlot(saddle, "equipment:bike:saddle");
   saddle.name = "bike-saddle";
-  saddle.position.set(0, wheelR + 0.77, -0.4);
+  saddle.position.set(0, wheelR + 0.755, -0.4);
+  saddle.renderOrder = -2;
+  saddleMaterial.depthWrite = false;
   group.add(saddle);
   frameFallback.push(saddle);
 
@@ -3569,6 +3641,8 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly loopRadius = 30;
   private readonly ghostRadius = 26;
 
+  private readonly quality: RenderQuality;
+  private readonly qaCamera: "normal" | "athlete-close" | "athlete-front";
   private cfg: QualityConfig;
   private renderer: RendererLike;
   /**
@@ -3645,6 +3719,8 @@ export class CourseRenderer3D implements ReplayRenderer {
   private ghostLabelTex: THREE.CanvasTexture | null = null;
   private lastLiveLabel = "";
   private lastGhostLabel = "";
+  /** Opt-in QA overlay; normal replay rendering never allocates this helper. */
+  private v4SkeletonHelper: THREE.SkeletonHelper | null = null;
   /** Desired chase-camera position for the current frame. */
   private chase = new THREE.Vector3();
   /** Desired point of interest; kept separate so both translation and aim damp. */
@@ -3670,6 +3746,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     sport: Sport = "rower",
     options: Renderer3DOptions = {},
   ) {
+    this.quality = quality;
+    this.qaCamera = options.qaCamera ?? "normal";
     this.cfg = QUALITY[quality];
     this.sport = sport;
     this.profile = SPORT_PROFILES[sport];
@@ -3681,6 +3759,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     // fresh context every time, so destroy()'s loseContext() can't poison reuse.
     this.host = host;
     this.canvas = document.createElement("canvas");
+    // Minimal DOM/canvas hosts used by renderer consumers need not implement
+    // HTMLElement.dataset. The marker is QA-only and must never make 3D setup
+    // depend on that optional browser convenience.
+    if (this.canvas.dataset) this.canvas.dataset.replayQaCamera = this.qaCamera;
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
     // Append the canvas first so the WebGL/WebGPU context is bound to a node
@@ -3831,6 +3913,8 @@ export class CourseRenderer3D implements ReplayRenderer {
         fallbackRoot: this.liveAvatar.group,
         instance: tryCreateReplayV4AthleteInstance(options.v4Assets),
         targets: this.liveAvatar.v4Targets,
+        quality: this.quality,
+        diagnosticMode: options.showV4Skeleton ? "skeleton" : undefined,
         castShadow: this.cfg.shadows,
         receiveShadow: this.cfg.shadows,
       });
@@ -3840,6 +3924,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         fallbackRoot: this.ghostAvatar.group,
         instance: tryCreateReplayV4AthleteInstance(options.v4Assets),
         targets: this.ghostAvatar.v4Targets,
+        quality: this.quality,
         opacity: 0.45,
         castShadow: false,
         receiveShadow: false,
@@ -3847,6 +3932,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       });
       this.liveAvatar.group.userData.authoredReplayV4 = !!this.liveAvatar.v4Motion;
       this.ghostAvatar.group.userData.authoredReplayV4 = !!this.ghostAvatar.v4Motion;
+      // The marker is intentionally QA-only. It lets the capture harness wait
+      // for the real skinned production athlete instead of racing the first
+      // empty renderer frame, while remaining inert for every normal replay.
+      if (this.canvas.dataset) {
+        this.canvas.dataset.replayV4Athlete = this.liveAvatar.v4Motion ? "ready" : "unavailable";
+      }
       const contactReach = (side: "leftHand" | "rightHand"): number => {
         const effector = options.v4Assets!.effectors[side];
         return replayV4ArmContactReach(this.sport, effector);
@@ -3854,6 +3945,19 @@ export class CourseRenderer3D implements ReplayRenderer {
       const v4ArmReach = Math.min(contactReach("leftHand"), contactReach("rightHand"));
       if (this.liveAvatar.v4Motion) this.liveAvatar.setV4ArmReach?.(v4ArmReach);
       if (this.ghostAvatar.v4Motion) this.ghostAvatar.setV4ArmReach?.(v4ArmReach);
+      if (options.showV4Skeleton && this.liveAvatar.v4Motion) {
+        const helper = new THREE.SkeletonHelper(this.liveAvatar.v4Motion.root);
+        helper.name = "qa:v4-live-skeleton";
+        const material = helper.material as THREE.LineBasicMaterial;
+        material.depthTest = false;
+        material.depthWrite = false;
+        material.transparent = true;
+        material.opacity = 0.92;
+        helper.setColors(new THREE.Color(0xffd34e), new THREE.Color(0xfff4a8));
+        helper.renderOrder = 8;
+        this.v4SkeletonHelper = helper;
+        this.scene.add(helper);
+      }
     }
     this.scene.add(this.liveBoat, this.ghostGroup);
 
@@ -5899,11 +6003,30 @@ export class CourseRenderer3D implements ReplayRenderer {
         Math.max(0.05, Math.tan(horizontalHalfFov) * 0.9)
       : baseBack;
     const comparisonPullback = Math.max(0, requiredComparisonBack - baseBack);
-    const back = baseBack + comparisonPullback;
+    // The close rig exists solely for the query-gated visual-QA harness. It
+    // preserves the production chase composition for every normal replay,
+    // while letting evidence inspect the shoulder/elbow/hip surface directly.
+    const qaClose = this.qaCamera !== "normal" && !state.ghost;
+    // `athlete-front` is a capture-only portrait, not a reversed chase view:
+    // it must make the actual head, shoulder mass, and face treatment legible
+    // enough to review. The normal and diagnostic-close cameras keep their
+    // broadcast framing unchanged.
+    const qaFront = this.qaCamera === "athlete-front" && !state.ghost;
+    const normalBack = baseBack + comparisonPullback;
+    const closeScale = qaFront ? 0.22 : qaClose ? 0.42 : 1;
+    const back = normalBack * closeScale;
     const baseHeight = this.reduceMotion
       ? sportRig.height + 0.7
       : sportRig.height + (narrow ? 0.3 : 0);
-    const height = baseHeight + Math.min(2.5, comparisonSpan * 0.16);
+    // The camera looks gently down toward the face instead of shooting upward
+    // from chest height. This branch is query-gated and never changes the
+    // production chase view.
+    const portraitAimY = sportRig.aimY + 0.28;
+    const height = qaFront
+      ? portraitAimY + 0.42
+      : (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);
+    const qaLateral = qaFront ? Math.min(0.16, lateral * 0.13) : lateral;
+    const qaAhead = qaFront ? 0 : ahead;
     // A small live-lane bias keeps the vector non-zero when the two course
     // tangents cancel at half a lap. Adding it before normalization makes the
     // heading continuous as the gap crosses that point; a binary fallback
@@ -5921,15 +6044,24 @@ export class CourseRenderer3D implements ReplayRenderer {
     const focusRadius = Math.max(1e-6, Math.hypot(focusX, focusZ));
     const rx = focusX / focusRadius;
     const rz = focusZ / focusRadius;
-    const cameraLayoutMode = (narrow ? 1 : 0) | (state.ghost ? 2 : 0) | (this.reduceMotion ? 4 : 0);
+    const cameraLayoutMode =
+      (narrow ? 1 : 0) |
+      (state.ghost ? 2 : 0) |
+      (this.reduceMotion ? 4 : 0) |
+      (qaClose ? 8 : 0) |
+      (qaFront ? 16 : 0);
     const cameraLayoutChanged = cameraLayoutMode !== this.cameraLayoutMode;
     this.cameraLayoutMode = cameraLayoutMode;
     this.chase.set(
-      focusX - focusTx * back + rx * lateral,
+      focusX + (qaFront ? focusTx : -focusTx) * back + rx * (qaFront ? -qaLateral : qaLateral),
       height,
-      focusZ - focusTz * back + rz * lateral,
+      focusZ + (qaFront ? focusTz : -focusTz) * back + rz * (qaFront ? -qaLateral : qaLateral),
     );
-    this.lookAt.set(focusX + focusTx * ahead, sportRig.aimY, focusZ + focusTz * ahead);
+    this.lookAt.set(
+      focusX + focusTx * qaAhead,
+      qaFront ? portraitAimY : sportRig.aimY + (qaClose ? 0.12 : 0),
+      focusZ + focusTz * qaAhead,
+    );
     if (!this.cameraInit) {
       this.camera.position.copy(this.chase);
       this.cameraAim.copy(this.lookAt);
@@ -5965,6 +6097,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     }
     this.camera.lookAt(this.cameraAim);
 
+    this.v4SkeletonHelper?.updateMatrixWorld(true);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -5984,6 +6117,11 @@ export class CourseRenderer3D implements ReplayRenderer {
     // before the generic scene walk so shared cache templates remain untouched.
     this.liveAvatar.v4Motion?.dispose();
     this.ghostAvatar.v4Motion?.dispose();
+    if (this.v4SkeletonHelper) {
+      this.v4SkeletonHelper.removeFromParent();
+      this.v4SkeletonHelper.dispose();
+      this.v4SkeletonHelper = null;
+    }
     // Walk the whole scene — avatar helper geometries (taperedLimb, makeHand,
     // makeFoot, makeHead) are created inline by makeRowerAvatar / makeSkier /
     // makeBike and never tracked in `this.geometries`. Disposing through
