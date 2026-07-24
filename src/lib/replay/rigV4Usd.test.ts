@@ -23,6 +23,10 @@ type V4Contract = {
       readonly durationSeconds: number;
     }[];
   };
+  readonly surfaces: readonly {
+    readonly role: string;
+    readonly source: string;
+  }[];
 };
 
 const SEMANTIC_BONE_NAMES = new Set<string>(V4_BONE_NAMES);
@@ -91,6 +95,15 @@ describe("RowPlay V4 USDZ native handoff", () => {
       expect(sortedNames(contract.bones.helperNames)).toEqual(
         sortedNames(boneNames.filter((name) => !SEMANTIC_BONE_NAMES.has(name))),
       );
+      expect(contract.surfaces.map((surface) => surface.role)).toEqual([
+        "athlete-fabric",
+        "athlete-skin",
+        "athlete-shorts",
+        "athlete-footwear",
+        "athlete-hair",
+        "athlete-trim",
+        "athlete-face-detail",
+      ]);
       const position = mesh.geometry.getAttribute("position");
       const skinIndex = mesh.geometry.getAttribute("skinIndex");
       const skinWeight = mesh.geometry.getAttribute("skinWeight");

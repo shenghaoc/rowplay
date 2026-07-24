@@ -76,6 +76,8 @@ HAIR = (0.30, 0.17, 0.09, 1.0)
 # two compact eye regions; continuous painted brows or a mouth line become a
 # visor or cartoon mask at normal replay distance.
 EYE = (0.35, 0.20, 0.14, 1.0)
+EYE_WHITE = (0.78, 0.72, 0.64, 1.0)
+BROW = (0.25, 0.13, 0.08, 1.0)
 MOUTH = (0.44, 0.24, 0.17, 1.0)
 SHOE = (0.88, 0.90, 0.93, 1.0)
 SHOE_DARK = (0.12, 0.15, 0.19, 1.0)
@@ -289,10 +291,10 @@ def build_torso(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
         Ring(Vector((0, 1.19, 0.014)), (0.172, 0.132), {"v4Hips": 0.28, "v4Spine": 0.72}, FABRIC),
         Ring(spine + Vector((0, 0.01, 0.008)), (0.195, 0.148), {"v4Spine": 0.86, "v4Hips": 0.14}, FABRIC, 0.03, 0.04),
         Ring(Vector((0, 1.30, 0.02)), (0.222, 0.162), {"v4Spine": 0.7, "v4Chest": 0.3}, FABRIC, 0.04, 0.05),
-        Ring(Vector((0, 1.38, 0.028)), (0.245, 0.172), {"v4Spine": 0.4, "v4Chest": 0.6}, FABRIC, 0.045, 0.08),
-        Ring(chest + Vector((0, -0.01, 0.02)), (0.255, 0.175), {"v4Chest": 0.82, "v4Spine": 0.18}, FABRIC, 0.04, 0.1),
-        Ring(chest + Vector((0, 0.03, 0.024)), (0.25, 0.165), {"v4Chest": 0.92, "v4Neck": 0.08}, FABRIC, 0.03, 0.08),
-        Ring(Vector((0, 1.52, 0.045)), (0.215, 0.14), {"v4Chest": 0.78, "v4Neck": 0.22}, FABRIC, 0.02),
+        Ring(Vector((0, 1.38, 0.028)), (0.235, 0.166), {"v4Spine": 0.4, "v4Chest": 0.6}, FABRIC, 0.04, 0.07),
+        Ring(chest + Vector((0, -0.01, 0.02)), (0.242, 0.168), {"v4Chest": 0.82, "v4Spine": 0.18}, FABRIC, 0.035, 0.085),
+        Ring(chest + Vector((0, 0.03, 0.024)), (0.238, 0.158), {"v4Chest": 0.92, "v4Neck": 0.08}, FABRIC, 0.025, 0.065),
+        Ring(Vector((0, 1.52, 0.045)), (0.205, 0.136), {"v4Chest": 0.78, "v4Neck": 0.22}, FABRIC, 0.02),
         Ring(Vector((0, 1.555, 0.05)), (0.14, 0.1), {"v4Chest": 0.4, "v4Neck": 0.6}, FABRIC),
         Ring(Vector((0, 1.58, 0.052)), (0.09, 0.078), {"v4Neck": 0.78, "v4Chest": 0.22}, SKIN),
     ]
@@ -326,9 +328,10 @@ def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
             local.x *= 0.76 + jaw_blend * 0.2
             local.z *= 0.86 + jaw_blend * 0.1
         elif local.y > 0.055:
-            # Slightly broader cranial mass prevents a pinched, toy-like cap.
-            local.x *= 1.035
-        front = max(0.0, local.z / 0.104)
+            # A restrained upper cranium reads as a skull rather than the
+            # oversized spherical head used by the historical mannequin.
+            local.x *= 1.015
+        front = max(0.0, local.z / 0.098)
         forehead = math.exp(-((local.x / 0.082) ** 2 + ((local.y - 0.055) / 0.05) ** 2))
         nose_bridge = math.exp(-((local.x / 0.02) ** 2 + ((local.y - 0.012) / 0.058) ** 2))
         nose_tip = math.exp(-((local.x / 0.028) ** 2 + ((local.y + 0.02) / 0.025) ** 2))
@@ -347,27 +350,28 @@ def build_head(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
         # photoreal detail, but enough forehead/brow/eye/nose/chin structure
         # that the head does not read as a featureless egg.
         local.z += front * (
-            0.008 * forehead
-            + 0.014 * nose_bridge
-            + 0.009 * nose_tip
-            + 0.007 * brow
-            - 0.006 * eye_socket
-            + 0.005 * cheek
-            + 0.011 * chin
+            0.006 * forehead
+            + 0.013 * nose_bridge
+            + 0.011 * nose_tip
+            + 0.005 * brow
+            - 0.005 * eye_socket
+            + 0.004 * cheek
+            + 0.009 * chin
             - 0.002 * mouth_plane
         )
         return center + local
 
-    builder.add_ellipsoid(center, (0.112, 0.142, 0.108), {"v4Head": 1}, SKIN, 52, 36, shape)
+    builder.add_ellipsoid(center, (0.105, 0.146, 0.098), {"v4Head": 1}, SKIN, 52, 36, shape)
     for side in (-1.0, 1.0):
         builder.add_ellipsoid(
-            center + Vector((side * 0.102, -0.004, -0.01)),
-            (0.013, 0.026, 0.016),
+            center + Vector((side * 0.097, -0.006, -0.008)),
+            (0.011, 0.024, 0.013),
             {"v4Head": 1},
             SKIN_LIGHT,
             14,
             10,
         )
+
 
 def build_arm(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: str) -> None:
     sign = -1.0 if side_name == "Left" else 1.0
@@ -390,10 +394,10 @@ def build_arm(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: 
         # Keep a human deltoid sweep rather than a spherical shoulder pad.
         # The sleeve still overlaps the rib cage deeply enough for the raised
         # SkiErg and RowErg poses, but it tapers immediately into the upper arm.
-        Ring(shoulder, (0.085, 0.074), {clavicle_name: 0.32, upper_name: 0.68, "v4Chest": 0.0}, FABRIC, 0.05, 0.045),
-        Ring(shoulder.lerp(elbow, 0.12), (0.088, 0.078), {upper_name: 0.92, clavicle_name: 0.08}, FABRIC, 0.055, 0.045),
-        Ring(shoulder.lerp(elbow, 0.28), (0.08, 0.07), {upper_name: 1}, FABRIC, 0.045, 0.035),
-        Ring(shoulder.lerp(elbow, 0.42), (0.072, 0.063), {upper_name: 1}, TRIM, 0.035),
+        Ring(shoulder, (0.074, 0.066), {clavicle_name: 0.32, upper_name: 0.68, "v4Chest": 0.0}, FABRIC, 0.045, 0.035),
+        Ring(shoulder.lerp(elbow, 0.12), (0.078, 0.069), {upper_name: 0.92, clavicle_name: 0.08}, FABRIC, 0.05, 0.035),
+        Ring(shoulder.lerp(elbow, 0.28), (0.074, 0.065), {upper_name: 1}, FABRIC, 0.04, 0.03),
+        Ring(shoulder.lerp(elbow, 0.42), (0.069, 0.06), {upper_name: 1}, TRIM, 0.03),
         Ring(shoulder.lerp(elbow, 0.55), (0.067, 0.057), {upper_name: 0.96, fore_name: 0.04}, SKIN_LIGHT, 0.025),
         Ring(shoulder.lerp(elbow, 0.7), (0.062, 0.054), {upper_name: 0.88, fore_name: 0.12}, SKIN, 0.025),
         Ring(shoulder.lerp(elbow, 0.85), (0.052, 0.046), {upper_name: 0.7, fore_name: 0.3}, SKIN),
@@ -574,85 +578,117 @@ def add_flush_face_details(surface: bpy.types.Object, bones: dict[str, Vector]) 
     """
 
     center = bones["v4Head"] + Vector((0, 0.07, 0.018))
-    for side in (-1.0, 1.0):
+
+    def join_ellipsoid(
+        name: str,
+        offset: tuple[float, float, float],
+        scale: tuple[float, float, float],
+        color_value: tuple[float, float, float, float],
+        *,
+        segments: int = 24,
+        rings: int = 12,
+        rotation_y: float = 0.0,
+    ) -> None:
+        """Join one shallow, head-weighted facial form into the shared mesh."""
+
         bpy.ops.mesh.primitive_uv_sphere_add(
-            segments=18,
-            ring_count=10,
-            location=to_blender(center + Vector((side * 0.047, 0.005, 0.11))),
+            segments=segments,
+            ring_count=rings,
+            location=to_blender(center + Vector(offset)),
         )
-        eye = bpy.context.active_object
-        eye.name = f"rowplay-v4-eye-{'left' if side < 0 else 'right'}"
+        detail = bpy.context.active_object
+        detail.name = name
         # RowPlay uses +Y up / +Z forward; Blender uses +Z up / -Y forward.
-        # The tiny forward radius prevents a bead silhouette at portrait range.
-        eye.scale = (0.009, 0.0007, 0.0045)
+        detail.scale = scale
+        detail.rotation_euler[1] = rotation_y
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-        for polygon in eye.data.polygons:
+        for polygon in detail.data.polygons:
             polygon.use_smooth = True
-        color = eye.data.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
+        color = detail.data.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
         for value in color.data:
-            value.color_srgb = EYE
-        group = eye.vertex_groups.new(name="v4Head")
-        group.add(list(range(len(eye.data.vertices))), 1.0, "REPLACE")
+            value.color_srgb = color_value
+        group = detail.vertex_groups.new(name="v4Head")
+        group.add(list(range(len(detail.data.vertices))), 1.0, "REPLACE")
         bpy.ops.object.select_all(action="DESELECT")
         surface.select_set(True)
-        eye.select_set(True)
+        detail.select_set(True)
         bpy.context.view_layer.objects.active = surface
         bpy.ops.object.join()
 
-    # A tall, shallow nose bridge gives the face an actual profile. Its front
-    # extent is only ~6 mm beyond the remeshed plane: enough to catch light,
-    # not enough to turn into the earlier bead-like button nose.
-    bpy.ops.mesh.primitive_uv_sphere_add(
-        segments=18,
-        ring_count=12,
-        location=to_blender(center + Vector((0, -0.018, 0.127))),
-    )
-    nose = bpy.context.active_object
-    nose.name = "rowplay-v4-nose-ridge"
-    nose.scale = (0.012, 0.006, 0.022)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    for polygon in nose.data.polygons:
-        polygon.use_smooth = True
-    color = nose.data.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
-    for value in color.data:
-        value.color_srgb = SKIN
-    group = nose.vertex_groups.new(name="v4Head")
-    group.add(list(range(len(nose.data.vertices))), 1.0, "REPLACE")
-    bpy.ops.object.select_all(action="DESELECT")
-    surface.select_set(True)
-    nose.select_set(True)
-    bpy.context.view_layer.objects.active = surface
-    bpy.ops.object.join()
+    # Warm sclera, inset iris, and a restrained brow produce an eye aperture
+    # instead of the two black beads that made the earlier face read as a toy.
+    for side in (-1.0, 1.0):
+        side_name = "left" if side < 0 else "right"
+        join_ellipsoid(
+            f"rowplay-v4-eye-white-{side_name}",
+            (side * 0.044, 0.006, 0.092),
+            (0.016, 0.001, 0.005),
+            EYE_WHITE,
+            segments=24,
+            rings=12,
+        )
+        join_ellipsoid(
+            f"rowplay-v4-iris-{side_name}",
+            (side * 0.044, 0.006, 0.094),
+            (0.0042, 0.0008, 0.0042),
+            EYE,
+            segments=18,
+            rings=10,
+        )
+        join_ellipsoid(
+            f"rowplay-v4-brow-{side_name}",
+            (side * 0.044, 0.032, 0.093),
+            (0.020, 0.0007, 0.0024),
+            BROW,
+            segments=20,
+            rings=8,
+            rotation_y=side * 0.08,
+        )
 
-    # A single warm, thin mouth plane is deliberately quieter than the eyes.
-    # It supplies a human lower-face landmark without drawing a cartoon smile.
-    bpy.ops.mesh.primitive_uv_sphere_add(
-        segments=18,
-        ring_count=8,
-        location=to_blender(center + Vector((0, -0.057, 0.107))),
+    # Split the nose into a connected-looking bridge and tip. Both forms are
+    # shallow and skin coloured, avoiding the old button-nose silhouette while
+    # still surviving the replay camera and the coarse primary-body remesh.
+    join_ellipsoid(
+        "rowplay-v4-nose-bridge",
+        (0, 0.001, 0.116),
+        (0.010, 0.0032, 0.026),
+        SKIN,
+        segments=24,
+        rings=14,
     )
-    mouth = bpy.context.active_object
-    mouth.name = "rowplay-v4-mouth"
-    mouth.scale = (0.018, 0.00055, 0.002)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    for polygon in mouth.data.polygons:
-        polygon.use_smooth = True
-    color = mouth.data.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
-    for value in color.data:
-        value.color_srgb = MOUTH
-    group = mouth.vertex_groups.new(name="v4Head")
-    group.add(list(range(len(mouth.data.vertices))), 1.0, "REPLACE")
-    bpy.ops.object.select_all(action="DESELECT")
-    surface.select_set(True)
-    mouth.select_set(True)
-    bpy.context.view_layer.objects.active = surface
-    bpy.ops.object.join()
+    join_ellipsoid(
+        "rowplay-v4-nose-tip",
+        (0, -0.032, 0.116),
+        (0.014, 0.0028, 0.009),
+        SKIN,
+        segments=24,
+        rings=12,
+    )
+
+    # Two muted lip planes retain a closed, neutral expression without the
+    # straight painted mouth line associated with the mannequin.
+    join_ellipsoid(
+        "rowplay-v4-upper-lip",
+        (0, -0.057, 0.096),
+        (0.024, 0.0008, 0.0025),
+        MOUTH,
+        segments=24,
+        rings=8,
+    )
+    join_ellipsoid(
+        "rowplay-v4-lower-lip",
+        (0, -0.063, 0.096),
+        (0.022, 0.0007, 0.0022),
+        MOUTH,
+        segments=24,
+        rings=8,
+    )
 
 
 def add_short_hair_cap(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
     """Lay a smooth, close-fitting short-hair cap over the remeshed cranium."""
 
-    center = bones["v4Head"] + Vector((0, 0.10, 0.028))
+    center = bones["v4Head"] + Vector((0, 0.102, 0.024))
     bpy.ops.mesh.primitive_uv_sphere_add(
         segments=32,
         ring_count=20,
@@ -663,20 +699,29 @@ def add_short_hair_cap(surface: bpy.types.Object, bones: dict[str, Vector]) -> N
     # Blender axes map to RowPlay x / -z / y. This cap follows the cranium but
     # sits only a few millimetres proud of it, so it reads as cut hair rather
     # than a helmet or a separate doll accessory.
-    hair.scale = (0.116, 0.12, 0.112)
+    hair.scale = (0.108, 0.108, 0.119)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     mesh = hair.data
     edit = bmesh.new()
     edit.from_mesh(mesh)
     # Retain only the upper dome. The lower rim rises through the centre of the
-    # forehead and sits lower at the temples, preventing the horizontal cap
-    # edge that makes a procedural athlete look like a helmeted figurine.
+    # forehead, recedes at the temples, and falls lower around the rear skull.
+    # This removes the horizontal bowl-cut edge and helmet-sized overhang.
     bmesh.ops.delete(
         edit,
         geom=[
             vertex
             for vertex in edit.verts
-            if vertex.co.z < 0.012 + 0.035 * math.exp(-((vertex.co.x / 0.06) ** 2))
+            if vertex.co.z
+            < (
+                -0.035
+                + max(0.0, min(1.0, -vertex.co.y / 0.105))
+                * (
+                    0.065
+                    + 0.024 * (abs(vertex.co.x) / 0.108) ** 1.8
+                    - 0.012 * math.exp(-((vertex.co.x / 0.038) ** 2))
+                )
+            )
         ],
         context="VERTS",
     )

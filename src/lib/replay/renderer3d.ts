@@ -2032,13 +2032,11 @@ function makeRowerAvatar(
       // The fallback owns the exact grip target and the RowErg anatomical
       // branch marker consumed by V4. Arms remain long while armDraw is low;
       // once the late draw creates visible flexion, the sagittal component is
-      // strongly rearward / bowward (-z) with restrained *outward* lateral
-      // clearance. `setArmBendHint` multiplies lateral by arm side, so a
-      // negative value inverted both elbow hints toward the torso and could
-      // select an elbow-through-chest branch. This remains an elbow-to-bows
-      // pull, not a horizontal chicken-wing flare.
+      // strongly rearward / bowward (-z) with only restrained lateral
+      // clearance. This is an elbow-to-bows pull, not a horizontal
+      // chicken-wing flare.
       setArmBendHint(arm.shoulderPoint, arm.wristTarget, arm.side, arm.bendHint, {
-        lateral: 0.22 + draw * 0.065 + shoulderSet * 0.012,
+        lateral: -0.08 + draw * 0.12 + shoulderSet * 0.006,
         up: 0.04 + draw * 0.04,
         aft: -0.52 - bodySwing * 0.22 - handleTravel * 0.12 - draw * 0.65,
       });
@@ -5964,9 +5962,12 @@ export class CourseRenderer3D implements ReplayRenderer {
     const baseHeight = this.reduceMotion
       ? sportRig.height + 0.7
       : sportRig.height + (narrow ? 0.3 : 0);
-    const portraitAimY = sportRig.aimY + 0.22;
+    // The camera looks gently down toward the face instead of shooting upward
+    // from chest height. This branch is query-gated and never changes the
+    // production chase view.
+    const portraitAimY = sportRig.aimY + 0.28;
     const height = qaFront
-      ? portraitAimY + 0.12
+      ? portraitAimY + 0.42
       : (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);
     const qaLateral = qaFront ? Math.min(0.16, lateral * 0.13) : lateral;
     const qaAhead = qaFront ? 0 : ahead;

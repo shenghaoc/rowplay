@@ -138,6 +138,8 @@ const SURFACE_PALETTES: readonly SurfacePalette[] = [
     role: "face-detail",
     colors: [
       [0.35, 0.2, 0.14],
+      [0.78, 0.72, 0.64],
+      [0.25, 0.13, 0.08],
       [0.44, 0.24, 0.17],
     ],
   },

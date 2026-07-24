@@ -5,8 +5,8 @@
   "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 4916964,
-    "sha256": "593f472b955f192cee1b6a5db4ca3724149e583cd57656e995ab86e9f3fd87f7"
+    "byteCount": 5063176,
+    "sha256": "8a73141e890eb80350952f92c23dfed4cfba60ceedac6ad01623bef76f253790"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
@@ -29,9 +29,9 @@
     "meshName": "v4Athlete",
     "skinnedMeshes": 1,
     "primitives": 1,
-    "vertices": 61642,
-    "triangles": 111768,
-    "topologyComponents": 6,
+    "vertices": 63673,
+    "triangles": 113124,
+    "topologyComponents": 12,
     "skins": 1,
     "materials": 1,
     "materialSlots": 1
@@ -359,6 +359,10 @@
     {
       "role": "athlete-trim",
       "source": "vertex-color jersey/shoe accent regions"
+    },
+    {
+      "role": "athlete-face-detail",
+      "source": "vertex-color eye/brow/lip regions"
     }
   ],
   "provenance": {

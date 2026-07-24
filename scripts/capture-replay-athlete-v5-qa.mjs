@@ -31,6 +31,9 @@ function option(name, fallback) {
 
 const baseUrl = option("base-url", "http://127.0.0.1:5173").replace(/\/$/, "");
 const outputDir = resolve(option("output", "docs/visual-qa/athlete-v5/in-app/current"));
+const baselineDir = resolve(
+  option("baseline", "docs/visual-qa/athlete-v5/baseline/2026-07-23-da0dc73/poses"),
+);
 const only = new Set(
   option("only", "")
     .split(",")
@@ -254,6 +257,126 @@ async function captureCycle(sport) {
   });
 }
 
+async function imageDataUrl(path) {
+  return `data:image/jpeg;base64,${(await readFile(path)).toString("base64")}`;
+}
+
+async function captureSixPoseComparison() {
+  console.log("[capture] six-pose baseline / final / skeleton comparison");
+  const rows = await Promise.all(
+    POSES.map(async (pose) => ({
+      label: pose.name
+        .replaceAll("-", " ")
+        .replace(/\b(row|ski|bike)\b/, (value) => value.toUpperCase()),
+      baseline: await imageDataUrl(resolve(baselineDir, `${pose.name}.jpg`)),
+      final: await imageDataUrl(resolve(outputDir, "poses", `${pose.name}.jpg`)),
+      skeleton: await imageDataUrl(resolve(outputDir, "poses", `${pose.name}-skeleton.jpg`)),
+    })),
+  );
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: 1920, height: 1800 } });
+  const file = "six-pose-comparison.jpg";
+  try {
+    await page.setContent(`
+      <!doctype html>
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            * { box-sizing: border-box; }
+            html, body { margin: 0; background: #07131d; color: #edf4fb; }
+            body {
+              width: 1920px;
+              padding: 34px;
+              font: 600 20px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            }
+            .sheet {
+              border: 1px solid #294154;
+              border-radius: 18px;
+              overflow: hidden;
+              background: #0b1b27;
+              box-shadow: 0 18px 50px rgb(0 0 0 / 35%);
+            }
+            .title {
+              padding: 25px 28px 20px;
+              font-size: 30px;
+              letter-spacing: 0.01em;
+            }
+            .grid {
+              display: grid;
+              grid-template-columns: 170px repeat(3, minmax(0, 1fr));
+              gap: 1px;
+              background: #294154;
+            }
+            .cell {
+              min-width: 0;
+              background: #0d202d;
+            }
+            .heading, .pose {
+              display: flex;
+              align-items: center;
+              padding: 14px 18px;
+            }
+            .heading {
+              min-height: 54px;
+              color: #a9c5d9;
+              text-transform: uppercase;
+              letter-spacing: 0.08em;
+              font-size: 16px;
+            }
+            .pose {
+              color: #d9e7f1;
+              text-transform: capitalize;
+            }
+            img {
+              display: block;
+              width: 100%;
+              aspect-ratio: 1112 / 420;
+              object-fit: cover;
+              background: #061019;
+            }
+          </style>
+        </head>
+        <body>
+          <section class="sheet">
+            <div class="title">RowPlay athlete — six-pose comparison</div>
+            <div class="grid">
+              <div class="cell heading">Stress pose</div>
+              <div class="cell heading">PR #171 baseline</div>
+              <div class="cell heading">Production athlete</div>
+              <div class="cell heading">Skeleton overlay</div>
+              ${rows
+                .map(
+                  (row) => `
+                    <div class="cell pose">${row.label}</div>
+                    <div class="cell"><img alt="" src="${row.baseline}" /></div>
+                    <div class="cell"><img alt="" src="${row.final}" /></div>
+                    <div class="cell"><img alt="" src="${row.skeleton}" /></div>
+                  `,
+                )
+                .join("")}
+            </div>
+          </section>
+        </body>
+      </html>
+    `);
+    await page.locator(".sheet").screenshot({
+      path: resolve(outputDir, file),
+      type: "jpeg",
+      quality: 92,
+    });
+  } finally {
+    await browser.close();
+  }
+  evidence.push({
+    kind: "comparison",
+    file,
+    baseline: baselineDir,
+    columns: ["PR #171 baseline", "production athlete", "skeleton overlay"],
+    poses: POSES.map((pose) => pose.name),
+  });
+}
+
 for (const pose of POSES) {
   if (shouldCapture(pose.name)) await captureStill({ ...pose, name: pose.name, camera: "close" });
   if (shouldCapture(`${pose.name}-skeleton`)) {
@@ -319,6 +442,7 @@ if (shouldCapture("row-finish-front")) {
 for (const sport of Object.values(SPORTS)) {
   if (shouldCapture(`${sport.label}-one-cycle`)) await captureCycle(sport);
 }
+if (shouldCapture("six-pose-comparison")) await captureSixPoseComparison();
 
 // Re-running a bounded subset of the capture after a transient browser hiccup
 // must update its record rather than duplicate a file in the manifest.
