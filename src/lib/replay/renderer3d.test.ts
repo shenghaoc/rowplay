@@ -3200,6 +3200,7 @@ describe("CourseRenderer3D", () => {
       const renderer = rendererFor("rower");
       try {
         const previousPalms = new Map<"left" | "right", THREE.Vector3>();
+        const previousGrips = new Map<"left" | "right", THREE.Vector3>();
         const firstPalms = new Map<"left" | "right", THREE.Vector3>();
         for (let step = 0; step <= 128; step++) {
           const cycle = step / 128;
@@ -3214,8 +3215,9 @@ describe("CourseRenderer3D", () => {
           for (const side of ["left", "right"] as const) {
             const effector = `${side}Hand` as const;
             const palm = v4EffectorWorld(instance, effector);
+            const grip = worldPosition(renderer, `rower-hand-contact-${side}`);
             expect(
-              palm.distanceTo(worldPosition(renderer, `rower-hand-contact-${side}`)),
+              palm.distanceTo(grip),
               `${side} palm stays on rigid scull grip at ${cycle}`,
             ).toBeLessThan(0.015);
             const elbow = instance.bones[
@@ -3256,18 +3258,22 @@ describe("CourseRenderer3D", () => {
               ).toBeGreaterThan(hipsLocal.z - 0.12);
             }
             const prior = previousPalms.get(side);
-            if (prior) {
-              // Bow-first shell surge compounds rather than cancels the
-              // visible hand path. Keep every 1/128-cycle world-space step
-              // below a hand-width snap guard while exact grip lock remains
-              // covered independently above.
-              expect(palm.distanceTo(prior), `${side} palm continuity at ${cycle}`).toBeLessThan(
-                0.13,
-              );
+            const priorGrip = previousGrips.get(side);
+            if (prior && priorGrip) {
+              // A contact-locked palm must inherit the rigid grip's motion.
+              // Compare frame deltas so bow-first hull surge cannot disguise
+              // an IK discontinuity or force a looser world-distance guard.
+              const palmDelta = palm.clone().sub(prior);
+              const gripDelta = grip.clone().sub(priorGrip);
+              expect(
+                palmDelta.distanceTo(gripDelta),
+                `${side} palm follows grip continuously at ${cycle}`,
+              ).toBeLessThan(0.006);
             } else {
               firstPalms.set(side, palm.clone());
             }
             previousPalms.set(side, palm.clone());
+            previousGrips.set(side, grip.clone());
           }
         }
         for (const side of ["left", "right"] as const) {

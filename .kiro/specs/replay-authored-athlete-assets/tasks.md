@@ -78,9 +78,9 @@ figure, readability, and motion specs.
 - [x] **10. Complete the dedicated production-athlete visual-quality gate**
   - [x] Replace the round mannequin head, bead-like features, helmet hair, and
     ball-shaped shoulders with a recognisably human generic athlete silhouette
-  - [x] Keep PR #171 technique timing, semantic joints, and shared procedural
-    motion frozen; allow only the documented microscopic RowErg stretcher
-    compatibility alignment and isolate elbow clearance to the V4 skin
+  - [x] Preserve PR #171 semantic joints and equipment targets; keep SkiErg and
+    BikeErg timing frozen while the rowing-specific task below corrects RowErg
+    technique sequencing and shell orientation
   - [x] Keep the BikeErg pelvis visually supported without body/saddle
     penetration in the athlete-only pass; Task 12 owns the later equipment/fit
     rebuild
@@ -157,3 +157,17 @@ figure, readability, and motion specs.
     (`validate-replay-assets.mjs` documents the rationale) — the old ceiling
     predated the true-scale bicycle and full SkiErg family and left 164 bytes;
     triangle/vertex budgets are unchanged and still bind first
+
+- [x] **14. Correct the RowErg shell, foot rigging, and stroke sequence**
+  - [x] Replace the short symmetric boat read with an approximately 7.8 m
+    bow-first single shell, distinct bow/stern decks, open cockpit, wing rigger,
+    oarlocks, paired sculls, rails, and sliding carriage
+  - [x] Face the athlete aft and place the fixed 40–44° stretcher bow-side of
+    the seat, with both heels 15–20 cm below the seat top, visible straps, and
+    heel restraints
+  - [x] Sequence the drive legs → torso → arms and recovery hands → body → slide
+    while preserving deterministic cadence, hand/sole contacts, oar mechanics,
+    reduced motion, ghost comparison, and all fallback paths
+  - [x] Protect shell dimensions/orientation, stretcher geometry, foot and knee
+    placement, phase ordering, contact lock, and cycle continuity with focused
+    tests and visual browser QA
