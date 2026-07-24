@@ -531,6 +531,37 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  it("gives water and snow distinct boundary cues without changing BikeErg", () => {
+    const rower = new CourseRenderer3D(makeHost(), "low", "rower");
+    const rowScene = getScene(rower);
+    expect(rowScene.getObjectByName("environment:rower:shoreline-shelf")).toBeDefined();
+    expect(rowScene.getObjectByName("environment:rower:shoreline-bank")).toBeDefined();
+    expect(rowScene.getObjectByName("environment:rower:shoreline-foam")).toBeDefined();
+    expect(
+      (sceneObject(rower, "ground") as THREE.Mesh).geometry.getAttribute("color"),
+    ).toBeDefined();
+
+    const skier = new CourseRenderer3D(makeHost(), "low", "skierg");
+    const skiScene = getScene(skier);
+    expect(skiScene.getObjectByName("environment:skierg:snow-edge-shadow-inner")).toBeDefined();
+    expect(skiScene.getObjectByName("environment:skierg:snow-edge-shadow-outer")).toBeDefined();
+    expect((sceneObject(skier, "lane") as THREE.Mesh).geometry.getAttribute("color")).toBeDefined();
+    const fencePosts = sceneObject(
+      skier,
+      "environment:skierg:snow-fence-posts",
+    ) as THREE.InstancedMesh;
+    expect(fencePosts.count).toBe(8);
+
+    const bike = new CourseRenderer3D(makeHost(), "low", "bike");
+    const bikeScene = getScene(bike);
+    expect(bikeScene.getObjectByName("environment:rower:shoreline-bank")).toBeUndefined();
+    expect(bikeScene.getObjectByName("environment:skierg:snow-fence-posts")).toBeUndefined();
+
+    rower.destroy();
+    skier.destroy();
+    bike.destroy();
+  });
+
   it("places venue dressing in authored sectors with deliberate open vistas", () => {
     const rower = new CourseRenderer3D(makeHost(), "low", "rower");
     const rowPines = sceneObject(rower, "environment:rower:pines") as THREE.InstancedMesh;
