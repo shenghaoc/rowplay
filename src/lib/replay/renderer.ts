@@ -2462,33 +2462,6 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.fillStyle = withAlpha(palette.surfaceHighlight, 0.16);
     ctx.fillRect(0, horizon + 1.5, w, 2.5);
 
-    // Broad submerged channels keep the basin from reading as one flat teal
-    // rectangle. They are intentionally softer than the lane marks: depth
-    // should come from the water itself, not from another grid painted over
-    // the athlete.
-    for (const [centerFrac, widthFactor, alpha] of [
-      [0.16, 0.12, 0.14],
-      [0.42, 0.16, 0.1],
-      [0.67, 0.13, 0.095],
-      [0.92, 0.1, 0.13],
-    ] as const) {
-      const center = w * centerFrac;
-      const channel = ctx.createLinearGradient(0, horizon, 0, h);
-      channel.addColorStop(0, withAlpha(palette.surfaceShadow, alpha * 0.2));
-      channel.addColorStop(0.34, withAlpha(palette.surfaceShadow, alpha));
-      channel.addColorStop(1, withAlpha(palette.surfaceShadow, alpha * 0.72));
-      ctx.fillStyle = channel;
-      ctx.beginPath();
-      const topWidth = Math.max(3, h * 0.018 * widthFactor);
-      const bottomWidth = Math.max(10, h * 0.16 * widthFactor);
-      ctx.moveTo(center - topWidth, horizon);
-      ctx.quadraticCurveTo(center - bottomWidth * 0.72, h * 0.68, center - bottomWidth, h);
-      ctx.lineTo(center + bottomWidth, h);
-      ctx.quadraticCurveTo(center + bottomWidth * 0.72, h * 0.68, center + topWidth, horizon);
-      ctx.closePath();
-      ctx.fill();
-    }
-
     // Multi-column sun reflection with staggered taper — a real solar-path
     // glare has a visible centre column flanked by softer side bands. The
     // delta column widens near the horizon and tapers toward the bottom, so
@@ -2545,20 +2518,6 @@ export class CourseRenderer implements ReplayRenderer {
       ctx.lineTo(pavilionX + 35 + spread, yy);
       ctx.moveTo(towerX + 11 - spread * 0.34, yy + 2);
       ctx.lineTo(towerX + 11 + spread * 0.34, yy + 2);
-      ctx.stroke();
-    }
-
-    // A broken tree-line reflection adds a second shoreline depth cue. The
-    // short vertical strokes are distance-driven, so they remain stable when
-    // scrubbing and do not turn into frame-rate animation.
-    const reflectionShift = this.materialOffset(meters, 0.032, 27);
-    ctx.strokeStyle = withAlpha(palette.foliageNear, this.darkTheme ? 0.2 : 0.16);
-    ctx.lineWidth = 1.2;
-    for (let x = -27 + reflectionShift; x < w + 27; x += 27) {
-      const height = 5 + (Math.abs(Math.floor((x - reflectionShift) / 27)) % 3) * 2;
-      ctx.beginPath();
-      ctx.moveTo(x, horizon + 5);
-      ctx.lineTo(x + 1.2, horizon + 5 + height);
       ctx.stroke();
     }
   }
@@ -2654,28 +2613,6 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.fillStyle = snow;
     ctx.fillRect(0, horizon, w, h - horizon);
 
-    // Cold snow is not uniformly white. These long, blue-shadowed contours
-    // describe wind-packed dips between the groomed lanes and give the field
-    // a downhill direction before the athlete and tracks are painted on top.
-    for (const [left, right, depth, alpha] of [
-      [0.06, 0.29, 0.72, 0.12],
-      [0.37, 0.54, 0.52, 0.085],
-      [0.72, 0.96, 0.68, 0.105],
-    ] as const) {
-      const contour = ctx.createLinearGradient(0, horizon, 0, h);
-      contour.addColorStop(0, withAlpha(palette.surfaceShadow, alpha * 0.22));
-      contour.addColorStop(0.48, withAlpha(palette.surfaceShadow, alpha));
-      contour.addColorStop(1, withAlpha(palette.surfaceShadow, alpha * depth));
-      ctx.fillStyle = contour;
-      ctx.beginPath();
-      ctx.moveTo(w * left, horizon);
-      ctx.quadraticCurveTo(w * (left + 0.07), h * 0.68, w * (left + 0.01), h);
-      ctx.lineTo(w * right, h);
-      ctx.quadraticCurveTo(w * (right - 0.06), h * 0.66, w * (right - 0.05), horizon);
-      ctx.closePath();
-      ctx.fill();
-    }
-
     // Snowbank highlights — the cold field is sculpted downhill rather than
     // a single flat gradient. Two sweeping highlights follow the direction
     // of the course, so the athlete always has a directional background.
@@ -2753,24 +2690,6 @@ export class CourseRenderer implements ReplayRenderer {
       }
       ctx.stroke();
     }
-
-    // Perspective corduroy: a small set of curved grooves converges toward
-    // the Nordic stadium, making the snow feel groomed and spatial instead of
-    // like a white card. The dash phase follows distance, never frame count.
-    const vanishingX = w * 0.52;
-    ctx.setLineDash([9, 15]);
-    ctx.lineDashOffset = this.dashMaterialOffset(meters, 0.2, 32);
-    for (let lane = -5; lane <= 5; lane++) {
-      const bottomX = vanishingX + lane * w * 0.12;
-      ctx.strokeStyle = withAlpha(palette.surfaceLine, 0.13 - Math.abs(lane) * 0.006);
-      ctx.lineWidth = lane % 3 === 0 ? 0.9 : 0.62;
-      ctx.beginPath();
-      ctx.moveTo(vanishingX + lane * 3.2, horizon + 11);
-      ctx.quadraticCurveTo(vanishingX + lane * w * 0.035, h * 0.65, bottomX, h + 2);
-      ctx.stroke();
-    }
-    ctx.setLineDash(SOLID_LINE);
-    ctx.lineDashOffset = 0;
   }
 
   private drawBikeVenue(w: number, h: number, meters: number, palette: VenuePalette) {
