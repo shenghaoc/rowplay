@@ -111,14 +111,16 @@ remain automatic fallbacks.
   model, scan, likeness, avatar-generator output, user data, image, texture, or
   external request.
 - **Source of truth:** `scripts/build-replay-athlete-v4-blender.py` authors a
-  denser anatomical cage, voxel-remeshes it into a coherent primary body mass,
-  transfers cage skin weights, and paints kit/skin/footwear vertex colours in
-  Blender 5.2. `src/lib/replay/rigV4.ts` owns the semantic skeleton, contacts,
-  and clips; `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint
-  indices to the canonical semantic order while preserving documented visual
-  helper joints and sealing the final GLB. The scripts and GLB are production
-  contracts. Set `BLENDER_BIN` when Blender is not installed at the default
-  macOS application path.
+  denser anatomical cage, voxel-remeshes the primary body mass, then joins
+  post-remesh hands (palm + fingers + thumb), face landmarks, ears, short hair,
+  kit trim (collar / sleeve / shorts hems), and shoe overlays. It transfers
+  cage skin weights and paints kit/skin/footwear vertex colours in Blender 5.2.
+  `src/lib/replay/rigV4.ts` owns the semantic skeleton, contacts, and clips;
+  `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint indices to
+  the canonical semantic order while preserving documented visual helper joints
+  and sealing the final GLB. The scripts and GLB are production contracts. Set
+  `BLENDER_BIN` when Blender is not installed at the default macOS application
+  path.
 - **Native handoff:** `rowplay-athlete-v4.usdz` is generated from the exact GLB
   by Blender 5.2. `scripts/build-replay-rig-v4-usdz.ts` honours `BLENDER_BIN`
   and launches the converter in `scripts/build-replay-rig-v4-usdz.py`. The
@@ -157,16 +159,18 @@ remain automatic fallbacks.
   is the only replay-motion interface; helper joints may influence skinning but
   are not direct animation targets. The surface is a coherent sports character:
   ribcage-emergent shoulders, tapered limbs with volume at elbows/knees,
-  modelled palm mass, performance shoes, deliberate kit panels, and a generic
-  facial plane with brow, eye, nose, cheek, chin, hair, and sideburn silhouette.
-  Exact vertex, triangle, and topology-component counts are recorded in the
-  contract and are not frozen as an art-quality proxy.
+  grip-ready hands with fingers and thumb (visual `v4*Fingers` / `v4*Thumb`
+  helpers plus a sport grip curl after contact), performance shoes with
+  sole/heel form, deliberate kit panels (collar, sleeve, shorts hems), and a
+  generic facial plane with brow, eye, ear, nose, cheek, chin, hair, and
+  sideburn silhouette. Exact vertex, triangle, and topology-component counts
+  are recorded in the contract and are not frozen as an art-quality proxy.
 - **Quality tiers:** Low, Medium, High, and Ultra use the same athlete and
   contact-safe technique. They are progressive rather than a single Ultra leap:
-  Low keeps clean regional colour and no generated maps; Medium adds 32px
+  Low keeps clean regional colour and no generated maps; Medium adds 128px
   deterministic UV albedo, normal, roughness, and relief maps; High raises
-  those maps to 64px with stronger material response; Ultra raises them to 96px
-  alongside further skin roughness/specular, fabric sheen, footwear/trim
+  those maps to 256px with stronger material response; Ultra raises them to
+  512px alongside further skin roughness/specular, fabric sheen, footwear/trim
   clearcoat, hair response, and face-detail refinement. This makes higher
   quality visibly spend compute on the athlete while preserving phase, clip,
   proportions, and equipment contacts.

@@ -5,13 +5,13 @@
   "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 5063176,
-    "sha256": "8a73141e890eb80350952f92c23dfed4cfba60ceedac6ad01623bef76f253790"
+    "byteCount": 9063348,
+    "sha256": "142c328e2b6951c82809dc28061587dea2897d91dac2d8680888584f255eb707"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 12092204,
-    "sha256": "669fe2738fe89615cae883fd49d17f8b357a60703b51f9bdc17643174ab2998d"
+    "byteCount": 19403449,
+    "sha256": "09d748ceb8bca1e05a83fcc687cc870e6051a4e6d8a77706425119713af4374b"
   },
   "coordinateSystem": {
     "units": "metres",
@@ -29,9 +29,9 @@
     "meshName": "v4Athlete",
     "skinnedMeshes": 1,
     "primitives": 1,
-    "vertices": 63673,
-    "triangles": 113124,
-    "topologyComponents": 12,
+    "vertices": 100189,
+    "triangles": 182856,
+    "topologyComponents": 42,
     "skins": 1,
     "materials": 1,
     "materialSlots": 1
@@ -39,7 +39,7 @@
   "materialDetail": {
     "glbEmbeddedTextures": 0,
     "uvCoordinateSet": "TEXCOORD_0",
-    "webRuntime": "Per-instance deterministic UV albedo, normal, roughness, and relief maps: 32px Medium, 64px High, 96px Ultra; no external image or texture request."
+    "webRuntime": "Per-instance deterministic UV albedo, normal, roughness, and relief maps: 128px Medium, 256px High, 512px Ultra; no external image or texture request."
   },
   "bones": {
     "count": 19,
@@ -86,9 +86,9 @@
       "v4RightLowerLeg",
       "v4RightFoot"
     ],
-    "totalCount": 19,
-    "helperCount": 0,
-    "helperNames": [],
+    "totalCount": 23,
+    "helperCount": 4,
+    "helperNames": ["v4LeftFingers", "v4LeftThumb", "v4RightFingers", "v4RightThumb"],
     "hierarchy": [
       {
         "name": "v4Hips",
@@ -262,7 +262,52 @@
         }
       }
     ],
-    "helpers": []
+    "helpers": [
+      {
+        "name": "v4LeftFingers",
+        "parent": "v4LeftHand",
+        "restLocalTransform": {
+          "translation": [-0.025924280285835266, 0.07910710573196411, 0.011993978172540665],
+          "rotationQuaternion": [
+            -0.14392900466918945, 0.1463630199432373, 0.044956400990486145, 0.9776713848114014
+          ],
+          "scale": [1.0000001192092896, 1.0000001192092896, 1]
+        }
+      },
+      {
+        "name": "v4LeftThumb",
+        "parent": "v4LeftHand",
+        "restLocalTransform": {
+          "translation": [-0.03578519821166992, 0.016363641247153282, -0.015142425894737244],
+          "rotationQuaternion": [
+            -0.47950121760368347, 0.48604124784469604, 0.15434804558753967, 0.7141563296318054
+          ],
+          "scale": [0.9999999403953552, 0.9999998807907104, 1]
+        }
+      },
+      {
+        "name": "v4RightFingers",
+        "parent": "v4RightHand",
+        "restLocalTransform": {
+          "translation": [0.025924280285835266, 0.07910710573196411, 0.011993978172540665],
+          "rotationQuaternion": [
+            -0.14392900466918945, -0.1463630199432373, -0.044956400990486145, 0.9776713848114014
+          ],
+          "scale": [1.0000001192092896, 1.0000001192092896, 1]
+        }
+      },
+      {
+        "name": "v4RightThumb",
+        "parent": "v4RightHand",
+        "restLocalTransform": {
+          "translation": [-0.024703562259674072, 0.03212772309780121, 0.01162707433104515],
+          "rotationQuaternion": [
+            0.032170798629522324, -0.066019207239151, 0.2979678213596344, 0.9517467021942139
+          ],
+          "scale": [1, 0.9999998807907104, 0.9999999403953552]
+        }
+      }
+    ]
   },
   "animation": {
     "clips": [

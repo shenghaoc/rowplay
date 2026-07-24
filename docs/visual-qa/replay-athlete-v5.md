@@ -32,6 +32,30 @@ Visible defects were structural, not motion bugs:
 PR #171 contact timing, joint trajectories, and equipment paths remain
 authoritative. This pass adapts the character to that motion.
 
+## Phase A form floor (this branch)
+
+Raises the geometry floor so Low already reads as a sports character rather than
+a mannequin with Ultra-only shader polish:
+
+- body voxel remesh `0.0088` → `0.0070` with two smooth passes
+- post-remesh authored hands (palm + four fingers + thumb)
+- richer face landmarks (ears, chin, denser eyes/nose/lips) and sideburn hairline
+- kit trim islands: collar, sleeve cuffs, shorts hems
+- shoe overlays: heel counter, sole pad, toe-box ridge
+- validator ceilings: 10 MB / 120k verts / 240k tris (sealed production
+  artifact is under those ceilings; see the contract for exact inventory)
+
+Motion, contacts, and clip drive ends remain frozen. Quality tiers share the
+same mesh. **Phase B** rebalanced the material ladder so Ultra spends real GPU
+budget on the athlete: Medium 128px / High 256px / Ultra 512px detail maps with
+stronger per-tier sheen, clearcoat, and normal response.
+
+**Phase C** adds visual-only finger helpers (`v4Left/RightFingers`,
+`v4Left/RightThumb`) weighted into the authored hands, fuller deltoid/quad mass,
+and a sport grip curl after contact so sculls, poles, and hoods read as gripped
+rather than open mitts. Helpers are not motion targets; clips still own only
+the 19 semantic bones.
+
 ## Art direction
 
 Target: stylized sports-broadcast athlete — anatomically believable, readable at
@@ -64,9 +88,9 @@ The production path still loads `rowplay-athlete-v4.glb` through
    - retain one portable GLB primitive/material for native handoff, then split
      its reviewed vertex-colour regions into seven runtime PBR surface roles
    - Low → Medium → High → Ultra retain the same athlete, clip, and contacts.
-     Low has no generated maps; Medium first reveals 32px deterministic UV
-     albedo, normal, roughness, and relief; High sharpens that work at 64px;
-     Ultra reaches 96px with the strongest, but still incremental, PBR response
+     Low has no generated maps; Medium first reveals 128px deterministic UV
+     albedo, normal, roughness, and relief; High sharpens that work at 256px;
+     Ultra reaches 512px with the strongest PBR response (Phase B ladder)
    - material profiles are athlete-specific, so a higher tier visibly improves
      the person rather than only pixel ratio or distant environment density
 3. **Runtime contract**
@@ -107,12 +131,15 @@ press, and BikeErg pedal-top/pedal-bottom.
 Quality is deliberately progressive rather than a Low-to-Ultra cliff. The
 same close RowErg finish was captured at every requested tier:
 
-| Tier   | In-app frame                                                                   | Runtime surface work                             |
-| ------ | ------------------------------------------------------------------------------ | ------------------------------------------------ |
-| Low    | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-low.jpg)    | base role material; no generated maps            |
-| Medium | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-medium.jpg) | first 32px albedo, normal, roughness, and relief |
-| High   | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-high.jpg)   | sharper 64px maps and stronger material response |
-| Ultra  | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-ultra.jpg)  | strongest 96px material response                 |
+| Tier   | In-app frame                                                                   | Runtime surface work (Phase B)                     |
+| ------ | ------------------------------------------------------------------------------ | -------------------------------------------------- |
+| Low    | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-low.jpg)    | base role material; no generated maps              |
+| Medium | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-medium.jpg) | first 128px albedo, normal, roughness, and relief  |
+| High   | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-high.jpg)   | sharper 256px maps and stronger material response  |
+| Ultra  | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-ultra.jpg)  | strongest 512px maps + peak clearcoat/sheen        |
+
+Historical tier stills above predate the Phase B resolution ladder; the map
+sizes in the Runtime surface work column are the live contract.
 
 The capture also includes [one RowErg cycle](athlete-v5/in-app/2026-07-24-12325d3/cycles/row-one-cycle.webm), [one SkiErg cycle](athlete-v5/in-app/2026-07-24-12325d3/cycles/ski-one-cycle.webm), [one BikeErg cycle](athlete-v5/in-app/2026-07-24-12325d3/cycles/bike-one-cycle.webm), [opaque ghost SkiErg](athlete-v5/in-app/2026-07-24-12325d3/poses/ghost-ski-loaded-press.jpg), [mobile RowErg](athlete-v5/in-app/2026-07-24-12325d3/poses/mobile-row-finish.jpg), and a [front close-up](athlete-v5/in-app/2026-07-24-12325d3/poses/row-finish-front.jpg). The [desktop dark/light Ultra set](athlete-v5/in-app/2026-07-24-12325d3/manifest.json) covers RowErg, SkiErg, and BikeErg.
 

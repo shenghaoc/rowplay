@@ -30,6 +30,27 @@ const LEG_SOFT_ANGLE_RAD = THREE.MathUtils.degToRad(18);
 const CONTACT_DEADZONE_M = 0.000_05;
 const SOFT_ANGLE_DEADZONE = THREE.MathUtils.degToRad(1.5);
 
+/**
+ * Visual-only finger helpers from the Blender production surface. Clips never
+ * target them; after contact we apply a sport grip curl so palms read as hands
+ * on sculls, poles, and hoods rather than open mitts.
+ */
+const HAND_HELPER_NAMES = [
+  "v4LeftFingers",
+  "v4LeftThumb",
+  "v4RightFingers",
+  "v4RightThumb",
+] as const;
+
+/** Radians of local curl applied to finger/thumb helpers after contact. */
+const GRIP_CURL_BY_SPORT: Readonly<
+  Record<Sport, { readonly fingers: number; readonly thumb: number }>
+> = {
+  rower: { fingers: 0.95, thumb: 0.62 },
+  skierg: { fingers: 0.82, thumb: 0.55 },
+  bike: { fingers: 0.7, thumb: 0.48 },
+};
+
 /** Diagnostic overlay modes for isolation of defects (PROMPT 9). */
 export type ReplayV4DiagnosticMode =
   | "off"
@@ -381,146 +402,146 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
   },
   high: {
     skin: {
-      roughness: 0.51,
-      metalness: 0,
-      clearcoat: 0.04,
-      clearcoatRoughness: 0.42,
-      sheen: 0.06,
-      sheenRoughness: 0.55,
-      sheenColor: 0xffcdc0,
-      specularIntensity: 0.88,
-    },
-    jersey: {
-      roughness: 0.69,
-      metalness: 0,
-      clearcoat: 0.025,
-      clearcoatRoughness: 0.5,
-      sheen: 0.3,
-      sheenRoughness: 0.5,
-      sheenColor: 0xbfc8ff,
-      specularIntensity: 0.72,
-    },
-    lower: {
-      roughness: 0.64,
-      metalness: 0,
-      clearcoat: 0.02,
-      clearcoatRoughness: 0.48,
-      sheen: 0.22,
-      sheenRoughness: 0.54,
-      sheenColor: 0xc5ebf3,
-      specularIntensity: 0.72,
-    },
-    footwear: {
-      roughness: 0.42,
-      metalness: 0.025,
-      clearcoat: 0.13,
-      clearcoatRoughness: 0.32,
-      sheen: 0.02,
-      sheenRoughness: 0.7,
-      sheenColor: 0xffffff,
-      specularIntensity: 0.88,
-    },
-    hair: {
-      roughness: 0.56,
-      metalness: 0,
-      clearcoat: 0.03,
-      clearcoatRoughness: 0.46,
-      sheen: 0.045,
-      sheenRoughness: 0.66,
-      sheenColor: 0xd1dce4,
-      specularIntensity: 0.76,
-    },
-    trim: {
-      roughness: 0.38,
-      metalness: 0.075,
-      clearcoat: 0.17,
-      clearcoatRoughness: 0.3,
-      sheen: 0.14,
-      sheenRoughness: 0.5,
-      sheenColor: 0xe1dcff,
-      specularIntensity: 0.92,
-    },
-    "face-detail": {
-      roughness: 0.58,
-      metalness: 0,
-      clearcoat: 0.008,
-      clearcoatRoughness: 0.58,
-      sheen: 0,
-      sheenRoughness: 1,
-      sheenColor: 0xffffff,
-      specularIntensity: 0.66,
-    },
-  },
-  ultra: {
-    skin: {
-      roughness: 0.43,
-      metalness: 0,
-      clearcoat: 0.065,
-      clearcoatRoughness: 0.32,
-      sheen: 0.1,
-      sheenRoughness: 0.44,
-      sheenColor: 0xffc8b7,
-      specularIntensity: 1,
-    },
-    jersey: {
-      roughness: 0.58,
-      metalness: 0,
-      clearcoat: 0.04,
-      clearcoatRoughness: 0.42,
-      sheen: 0.46,
-      sheenRoughness: 0.4,
-      sheenColor: 0xb9c5ff,
-      specularIntensity: 0.84,
-    },
-    lower: {
-      roughness: 0.53,
-      metalness: 0,
-      clearcoat: 0.035,
-      clearcoatRoughness: 0.4,
-      sheen: 0.36,
-      sheenRoughness: 0.44,
-      sheenColor: 0xb9e6f0,
-      specularIntensity: 0.84,
-    },
-    footwear: {
-      roughness: 0.29,
-      metalness: 0.04,
-      clearcoat: 0.24,
-      clearcoatRoughness: 0.24,
-      sheen: 0.04,
-      sheenRoughness: 0.58,
-      sheenColor: 0xffffff,
-      specularIntensity: 1,
-    },
-    hair: {
       roughness: 0.48,
       metalness: 0,
+      clearcoat: 0.055,
+      clearcoatRoughness: 0.38,
+      sheen: 0.085,
+      sheenRoughness: 0.5,
+      sheenColor: 0xffcdc0,
+      specularIntensity: 0.94,
+    },
+    jersey: {
+      roughness: 0.62,
+      metalness: 0,
+      clearcoat: 0.035,
+      clearcoatRoughness: 0.46,
+      sheen: 0.38,
+      sheenRoughness: 0.44,
+      sheenColor: 0xbfc8ff,
+      specularIntensity: 0.8,
+    },
+    lower: {
+      roughness: 0.58,
+      metalness: 0,
+      clearcoat: 0.03,
+      clearcoatRoughness: 0.44,
+      sheen: 0.3,
+      sheenRoughness: 0.48,
+      sheenColor: 0xc5ebf3,
+      specularIntensity: 0.8,
+    },
+    footwear: {
+      roughness: 0.36,
+      metalness: 0.03,
+      clearcoat: 0.18,
+      clearcoatRoughness: 0.28,
+      sheen: 0.03,
+      sheenRoughness: 0.64,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.96,
+    },
+    hair: {
+      roughness: 0.5,
+      metalness: 0,
       clearcoat: 0.04,
-      clearcoatRoughness: 0.4,
-      sheen: 0.08,
-      sheenRoughness: 0.56,
-      sheenColor: 0xd5e1e7,
+      clearcoatRoughness: 0.42,
+      sheen: 0.07,
+      sheenRoughness: 0.6,
+      sheenColor: 0xd1dce4,
       specularIntensity: 0.84,
     },
     trim: {
-      roughness: 0.26,
-      metalness: 0.11,
-      clearcoat: 0.3,
-      clearcoatRoughness: 0.22,
-      sheen: 0.22,
-      sheenRoughness: 0.42,
-      sheenColor: 0xe4deff,
+      roughness: 0.32,
+      metalness: 0.09,
+      clearcoat: 0.24,
+      clearcoatRoughness: 0.26,
+      sheen: 0.18,
+      sheenRoughness: 0.44,
+      sheenColor: 0xe1dcff,
       specularIntensity: 1,
     },
     "face-detail": {
       roughness: 0.52,
       metalness: 0,
       clearcoat: 0.015,
-      clearcoatRoughness: 0.5,
-      sheen: 0,
-      sheenRoughness: 1,
-      sheenColor: 0xffffff,
+      clearcoatRoughness: 0.52,
+      sheen: 0.01,
+      sheenRoughness: 0.9,
+      sheenColor: 0xffd8cf,
       specularIntensity: 0.74,
+    },
+  },
+  ultra: {
+    skin: {
+      roughness: 0.38,
+      metalness: 0,
+      clearcoat: 0.085,
+      clearcoatRoughness: 0.28,
+      sheen: 0.14,
+      sheenRoughness: 0.4,
+      sheenColor: 0xffc2af,
+      specularIntensity: 1.05,
+    },
+    jersey: {
+      roughness: 0.5,
+      metalness: 0,
+      clearcoat: 0.055,
+      clearcoatRoughness: 0.36,
+      sheen: 0.58,
+      sheenRoughness: 0.34,
+      sheenColor: 0xb3c0ff,
+      specularIntensity: 0.92,
+    },
+    lower: {
+      roughness: 0.46,
+      metalness: 0,
+      clearcoat: 0.045,
+      clearcoatRoughness: 0.34,
+      sheen: 0.46,
+      sheenRoughness: 0.38,
+      sheenColor: 0xb0e2ee,
+      specularIntensity: 0.92,
+    },
+    footwear: {
+      roughness: 0.24,
+      metalness: 0.05,
+      clearcoat: 0.32,
+      clearcoatRoughness: 0.2,
+      sheen: 0.06,
+      sheenRoughness: 0.52,
+      sheenColor: 0xffffff,
+      specularIntensity: 1.08,
+    },
+    hair: {
+      roughness: 0.42,
+      metalness: 0,
+      clearcoat: 0.055,
+      clearcoatRoughness: 0.34,
+      sheen: 0.12,
+      sheenRoughness: 0.5,
+      sheenColor: 0xd8e4ea,
+      specularIntensity: 0.92,
+    },
+    trim: {
+      roughness: 0.2,
+      metalness: 0.14,
+      clearcoat: 0.38,
+      clearcoatRoughness: 0.18,
+      sheen: 0.28,
+      sheenRoughness: 0.36,
+      sheenColor: 0xe8e2ff,
+      specularIntensity: 1.08,
+    },
+    "face-detail": {
+      roughness: 0.46,
+      metalness: 0,
+      clearcoat: 0.025,
+      clearcoatRoughness: 0.44,
+      sheen: 0.02,
+      sheenRoughness: 0.85,
+      sheenColor: 0xffd8cf,
+      specularIntensity: 0.82,
     },
   },
 };
@@ -533,43 +554,47 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
  */
 const QUALITY_DETAIL_STRENGTH: Readonly<Record<RenderQuality, number>> = {
   low: 0,
-  // Deliberate, progressive steps: Medium first reveals the weave and skin
-  // variation, High sharpens it, and Ultra raises both micro-contrast and
-  // texture resolution. No tier is merely the same flat athlete at a higher
-  // compute cost, and Ultra is not a single discontinuous visual jump.
-  medium: 0.038,
-  high: 0.068,
-  ultra: 0.1,
+  // Progressive ladder after the Phase-A form floor: Medium first reveals
+  // weave and skin variation, High sharpens micro-contrast, Ultra spends the
+  // largest GPU budget on both amplitude and map resolution. Strength is
+  // normalized against the Ultra peak in albedo/normal/roughness sampling.
+  medium: 0.055,
+  high: 0.1,
+  ultra: 0.15,
 };
 
-// Detail resolution rises with the selected tier as well as contrast. This
-// makes each tier spend its GPU budget on a concrete gain, while the
-// 32 → 64 → 96 progression avoids a disproportionate Ultra-only jump.
+// Map resolution rises with the selected tier so each step spends GPU budget
+// on concrete athlete detail rather than only venue density or DPR.
+// 128 → 256 → 512 keeps Medium readable and makes Ultra a real material jump.
 const QUALITY_DETAIL_TEXTURE_SIZE: Readonly<Record<RenderQuality, number>> = {
   low: 0,
-  medium: 32,
-  high: 64,
-  ultra: 96,
+  medium: 128,
+  high: 256,
+  ultra: 512,
 };
 
+// Peak strength used to normalize albedo/normal/roughness contrast so Medium
+// and High remain visibly below Ultra rather than saturating early.
+const QUALITY_DETAIL_STRENGTH_PEAK = QUALITY_DETAIL_STRENGTH.ultra;
+
 const SURFACE_DETAIL_MULTIPLIER: Readonly<Record<ReplayV4SurfaceRole, number>> = {
-  skin: 0.54,
+  skin: 0.62,
   jersey: 1,
-  lower: 0.82,
-  footwear: 0.72,
-  hair: 0.38,
-  trim: 0.52,
-  "face-detail": 0.16,
+  lower: 0.88,
+  footwear: 0.8,
+  hair: 0.48,
+  trim: 0.62,
+  "face-detail": 0.28,
 };
 
 const SURFACE_DETAIL_REPEAT: Readonly<Record<ReplayV4SurfaceRole, readonly [number, number]>> = {
-  skin: [3, 3],
-  jersey: [12, 10],
-  lower: [10, 12],
-  footwear: [8, 8],
-  hair: [18, 5],
-  trim: [16, 8],
-  "face-detail": [4, 4],
+  skin: [4, 4],
+  jersey: [14, 12],
+  lower: [12, 14],
+  footwear: [10, 10],
+  hair: [22, 6],
+  trim: [18, 10],
+  "face-detail": [5, 5],
 };
 
 function clampByte(value: number): number {
@@ -604,6 +629,10 @@ function detailSample(role: ReplayV4SurfaceRole, x: number, y: number): number {
 
 type SurfaceDetailMapKind = "albedo" | "bump" | "normal" | "roughness";
 
+function detailStrengthNorm(strength: number): number {
+  return THREE.MathUtils.clamp(strength / QUALITY_DETAIL_STRENGTH_PEAK, 0, 1);
+}
+
 function normalSample(
   role: ReplayV4SurfaceRole,
   x: number,
@@ -611,7 +640,7 @@ function normalSample(
   strength: number,
   size: number,
 ) {
-  const scale = THREE.MathUtils.clamp(strength / 0.1, 0, 1) * 1.45;
+  const scale = detailStrengthNorm(strength) * 1.7;
   const current = detailSample(role, x, y);
   const dx = detailSample(role, (x + 1) % size, y) - current;
   const dy = detailSample(role, x, (y + 1) % size) - current;
@@ -626,7 +655,7 @@ function albedoSample(role: ReplayV4SurfaceRole, x: number, y: number, strength:
   // The vertex palette remains the source of athlete identity; this merely
   // adds progressively clearer fabric, hair, and skin variation at replay
   // distance. The restrained base prevents any tier reading as a decal.
-  const contrast = THREE.MathUtils.clamp(strength / 0.1, 0, 1) * 68;
+  const contrast = detailStrengthNorm(strength) * 86;
   return clampByte(238 + ((detailSample(role, x, y) - 126) / 42) * contrast);
 }
 
@@ -640,7 +669,7 @@ function roughnessSample(
   // profile rather than turning fabric into wet plastic. Its contrast grows
   // with the selected quality tier, so Medium, High and Ultra are visibly
   // distinct even when the camera is too far away to resolve every bump.
-  const contrast = THREE.MathUtils.clamp(strength / 0.1, 0, 1) * 46;
+  const contrast = detailStrengthNorm(strength) * 58;
   return 232 + ((detailSample(role, x, y) - 126) / 42) * contrast;
 }
 
@@ -736,7 +765,7 @@ function applySurfaceQuality(
     material.bumpMap = bump;
     material.normalMap = normal;
     material.roughnessMap = roughness;
-    const normalScale = THREE.MathUtils.clamp(strength * 8, 0, 0.72);
+    const normalScale = THREE.MathUtils.clamp(strength * 8.5, 0, 1.05);
     material.normalScale.set(normalScale, normalScale);
     material.userData.replayV4GeneratedDetailMaps = [albedo, bump, normal, roughness];
   } else {
@@ -880,6 +909,15 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private readonly desiredWorldQuaternion = new THREE.Quaternion();
   private readonly localQuaternion = new THREE.Quaternion();
   private readonly blendedWorldQuaternion = new THREE.Quaternion();
+  private readonly gripCurlQuaternion = new THREE.Quaternion();
+  private readonly gripAxis = new THREE.Vector3(1, 0, 0);
+  /** Rest local quaternions for optional finger helpers (identity when absent). */
+  private readonly handHelpers: readonly {
+    readonly bone: THREE.Bone;
+    readonly rest: THREE.Quaternion;
+    readonly kind: "fingers" | "thumb";
+    readonly side: -1 | 1;
+  }[];
 
   constructor(
     private readonly options: ReplayV4MotionInstallOptions & { instance: ReplayV4AthleteInstance },
@@ -893,6 +931,24 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     if (!timing?.clip || !(timing.clip.duration > 0)) {
       throw new Error(`Replay V4 motion is missing the ${sport} clip`);
     }
+
+    const helpers: {
+      bone: THREE.Bone;
+      rest: THREE.Quaternion;
+      kind: "fingers" | "thumb";
+      side: -1 | 1;
+    }[] = [];
+    for (const name of HAND_HELPER_NAMES) {
+      const bone = instance.skeleton.getBoneByName(name);
+      if (!bone) continue;
+      helpers.push({
+        bone,
+        rest: bone.quaternion.clone(),
+        kind: name.includes("Thumb") ? "thumb" : "fingers",
+        side: name.includes("Left") ? -1 : 1,
+      });
+    }
+    this.handHelpers = helpers;
 
     this.fallback = collectFallbackVisibility(options.fallbackRoot ?? parent);
     // Contact targets are always terminal authorities. RowErg/SkiErg elbows
@@ -1085,6 +1141,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         for (const chain of this.chains) this.correctContactChain(chain);
       }
 
+      this.applyGripHelpers();
       this.root.updateMatrixWorld(true);
       if (mode !== "clip-only") this.assertPelvisAligned();
       this.options.instance.skeleton.update();
@@ -1183,6 +1240,23 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
 
   private softAngleBudget(chain: ChainBinding): number {
     return chain.isLeg ? LEG_SOFT_ANGLE_RAD : ARM_SOFT_ANGLE_RAD;
+  }
+
+  /**
+   * Curl visual finger helpers toward the grip after the hand is contact-locked.
+   * Safe no-op when the production GLB has no helpers (older procedural templates).
+   */
+  private applyGripHelpers(): void {
+    if (this.handHelpers.length === 0) return;
+    const grip = GRIP_CURL_BY_SPORT[this.options.sport] ?? GRIP_CURL_BY_SPORT.rower;
+    for (const helper of this.handHelpers) {
+      const angle = helper.kind === "thumb" ? grip.thumb : grip.fingers;
+      // Local +X curl folds digits into the palm for the bind-posed hand layout.
+      // Side sign keeps left/right thumbs wrapping toward the palm midline.
+      const signed = angle * (helper.kind === "thumb" ? helper.side : 1);
+      this.gripCurlQuaternion.setFromAxisAngle(this.gripAxis.set(1, 0, 0), signed);
+      helper.bone.quaternion.copy(helper.rest).multiply(this.gripCurlQuaternion);
+    }
   }
 
   private usesSharedJointTarget(chain: ChainBinding): boolean {

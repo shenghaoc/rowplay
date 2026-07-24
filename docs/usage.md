@@ -241,8 +241,8 @@ and the compact telemetry pill leaves the figure as the visual focus.
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics.
 Every tier keeps the sky, horizon, course material, core venue silhouette, and
 athlete readable. Higher tiers add denser scenery, stronger shadows, richer
-material detail, and more wake or spray; Ultra is intended for WebGPU-capable
-devices. If the device can't hold a smooth frame rate at the selected tier, the
+athlete material detail (128→256→512px procedural maps on Medium/High/Ultra),
+and more wake or spray; Ultra is intended for WebGPU-capable devices. If the device can't hold a smooth frame rate at the selected tier, the
 renderer automatically lowers resolution first and then decorative effects such
 as water motion and spray for the rest of the session. This never changes
 recorded timing, distance, or equipment contacts. Replay animation honours the

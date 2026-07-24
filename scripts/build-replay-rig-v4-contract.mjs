@@ -104,7 +104,7 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
       glbEmbeddedTextures: 0,
       uvCoordinateSet: "TEXCOORD_0",
       webRuntime:
-        "Per-instance deterministic UV albedo, normal, roughness, and relief maps: 32px Medium, 64px High, 96px Ultra; no external image or texture request.",
+        "Per-instance deterministic UV albedo, normal, roughness, and relief maps: 128px Medium, 256px High, 512px Ultra; no external image or texture request.",
     },
     bones: {
       // Keep the semantic interface stable for existing consumers. Visual

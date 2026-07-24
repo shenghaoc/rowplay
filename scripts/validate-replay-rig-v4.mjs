@@ -5,14 +5,14 @@ import { relative, resolve } from "node:path";
 const DEFAULT_ASSET = "static/replay-assets/rowplay-athlete-v4.glb";
 // Production athlete is deployable but no longer forced into a micro-budget
 // that preserved mannequin lofts. Keep a hard ceiling for Worker static assets.
-// The shared athlete now reserves enough static payload for readable facial
-// planes and garment topology instead of flattening those forms to an
-// arbitrary micro-budget. It remains bounded for lazy Worker delivery.
-const MAX_FILE_BYTES = 5_500 * 1024;
+// Phase-A form floor reserves enough static payload for denser body remesh,
+// authored hands/face/kit trim, and readable garment topology while remaining
+// bounded for lazy Worker delivery (live + ghost clone).
+const MAX_FILE_BYTES = 10_000 * 1024;
 const MIN_VERTICES = 4_500;
-const MAX_VERTICES = 80_000;
+const MAX_VERTICES = 120_000;
 const MIN_TRIANGLES = 8_500;
-const MAX_TRIANGLES = 160_000;
+const MAX_TRIANGLES = 240_000;
 // A production surface may be one coherent remeshed body or a small set of
 // deliberate parts (body + hair + shoes). Exact component counts are no longer
 // an art-quality proxy.
