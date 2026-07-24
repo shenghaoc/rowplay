@@ -729,7 +729,10 @@ function cliplessPedalGeometry() {
 }
 
 const ROWING_BOAT_PARTS = new Map([
-  ["hull", "equipment-painted"],
+  // Keep the lower hull visually separate from the lane-coloured deck. This
+  // gives the open cockpit a readable waterline and stops the shell reading
+  // as one flat purple plank at chase-camera distance.
+  ["hull", "equipment-dark"],
   ["stern-deck", "equipment-painted"],
   ["bow-deck", "equipment-painted"],
   ["cockpit-tub", "equipment-dark"],

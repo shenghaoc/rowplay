@@ -22,14 +22,15 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 673,048 bytes; SHA-256
-  `dc33a4fd2ccb0906a360b56bb081345c33e47f9ca817a767082a4e5d76d482c1`.
+- **Reviewed V3 artifact:** 676,456 bytes; SHA-256
+  `3cd040317e99ac092208c0c09bb7575633849f963335964aab554c0ba9ebf63e`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
-  nodes total). The package has 26,486 indexed triangles and 18,629 indexed
+  nodes total). The package has 26,590 indexed triangles and 18,745 indexed
   vertices, one neutral placeholder material, zero textures/images, zero
   animations, and zero skins.
-- **Detail language:** shared-vertex smooth normals, directional brow/nose/ear
+- **Detail language:** shared-vertex smooth normals, a neutral lower rowing hull
+  beneath lane-coloured split decks, directional brow/nose/ear
   head planes, a swept hair cap, an aero helmet with tail and visor, low-relief
   jersey collar/raglan/back-yoke construction, asymmetric muscle-to-tendon
   limbs, deltoid transitions, and grip/sole/elbow detail. Equipment includes a

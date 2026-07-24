@@ -1493,6 +1493,53 @@ describe("CourseRenderer3D", () => {
     }
   });
 
+  it("keeps the foot contacts inside the authored stretcher and gives the shell a layered finish", async () => {
+    const assets = await loadCheckedInReplayAssetTemplateLibrary();
+    const renderer = new CourseRenderer3D(makeHost(), "ultra", "rower", { assets });
+    try {
+      renderer.resize(1140, 420);
+      const boat = attachedTemplate(renderer, "rower-boat-visual", "equipment:row:boat-assembly");
+      const hull = templatePart(boat, "hull");
+      const sternDeck = templatePart(boat, "stern-deck");
+      const stretcher = templatePart(boat, "foot-stretcher");
+      stretcher.geometry.computeBoundingBox();
+      sternDeck.geometry.computeBoundingBox();
+      const boatSpace = sceneObject(renderer, "rower-boat-visual").parent;
+      if (!boatSpace || !stretcher.geometry.boundingBox || !sternDeck.geometry.boundingBox) {
+        throw new Error("rowing shell is missing its local contact bounds");
+      }
+
+      expect(hull.userData.replayMaterialRole).toBe("equipment-dark");
+      expect(sternDeck.userData.replayMaterialRole).toBe("equipment-painted");
+      expect(stretcher.geometry.boundingBox.max.y).toBeLessThan(0.42);
+      expect(stretcher.geometry.boundingBox.min.y).toBeGreaterThan(0.2);
+
+      for (const cycle of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
+        renderer.render(makeSportState("rower", cycle), false);
+        getScene(renderer).updateMatrixWorld(true);
+        const inverse = boatSpace.matrixWorld.clone().invert();
+        for (const side of ["left", "right"] as const) {
+          const foot = worldPosition(renderer, `rower-footplate-contact-${side}`).applyMatrix4(
+            inverse,
+          );
+          expect(foot.y, `${side} foot lands within stretcher height at ${cycle}`).toBeGreaterThan(
+            stretcher.geometry.boundingBox.min.y - 0.025,
+          );
+          expect(foot.y, `${side} foot lands within stretcher height at ${cycle}`).toBeLessThan(
+            stretcher.geometry.boundingBox.max.y + 0.025,
+          );
+          expect(
+            Math.abs(foot.x),
+            `${side} foot stays inside stretcher width at ${cycle}`,
+          ).toBeLessThan(0.2);
+        }
+      }
+    } finally {
+      renderer.destroy();
+      disposeReplayAssetTemplateLibrary(assets);
+    }
+  });
+
   it("keeps the authored BikeErg cockpit on the authoritative hand contacts", async () => {
     const assets = await loadCheckedInReplayAssetTemplateLibrary();
     const renderer = new CourseRenderer3D(makeHost(), "ultra", "bike", { assets });
@@ -1621,13 +1668,20 @@ describe("CourseRenderer3D", () => {
           getScene(renderer).updateMatrixWorld(true);
           const leftKnee = instance.bones.v4LeftLowerLeg.getWorldPosition(new THREE.Vector3());
           const rightKnee = instance.bones.v4RightLowerLeg.getWorldPosition(new THREE.Vector3());
+          const boatSpace = sceneObject(renderer, "rower-boat-visual").parent;
+          if (!boatSpace) throw new Error("rowing shell has no shared boat space");
           for (const [side, knee, target] of [
             ["left", leftKnee, avatar.v4Targets.leftKnee],
             ["right", rightKnee, avatar.v4Targets.rightKnee],
           ] as const) {
+            const localKnee = boatSpace.worldToLocal(knee.clone());
             expect(knee.y, `${side} knee clears cockpit at ${cycle}`).toBeGreaterThan(
               cockpitTop + 0.08,
             );
+            expect(
+              Math.abs(localKnee.x),
+              `${side} knee stays inside the shell at ${cycle}`,
+            ).toBeLessThan(0.43);
             expect(
               knee.distanceTo(target.getWorldPosition(new THREE.Vector3())),
               `${side} knee follows deterministic rig at ${cycle}`,

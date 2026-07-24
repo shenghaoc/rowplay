@@ -172,6 +172,21 @@ order, all palm/sole contacts, and the per-tier material-role progression.
 These automated checks establish contact and rendering contracts; fresh actual
 browser capture remains the acceptance evidence for final visual appearance.
 
+### Rowing shell and leg alignment follow-up
+
+The authored RowErg assembly now gives the neutral lower hull a distinct
+waterline beneath the lane-coloured decks, keeping the recessed cockpit and
+gunwales readable at chase-camera distance. The fixed stretcher is lower and
+more inset, with heel cups, an instep bar, and diagonal supports. Its contact
+landmarks are shared with the renderer's procedural and V4 targets, so the
+feet land inside the stretcher while the knees stay raised above the open
+cockpit rather than spreading across the shell.
+
+The focused renderer contract covers the stretcher bounds and full-stroke foot
+positions. A fresh local RowErg catch/finish capture also confirmed the visual
+read in the real app; headless Chromium used WebGL High because no WebGPU
+adapter was available.
+
 ## Asset and licensing
 
 | Field             | Value                                                                    |

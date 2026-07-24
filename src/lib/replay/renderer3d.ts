@@ -1550,10 +1550,17 @@ function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 1
   return head;
 }
 
+const ROWER_FOOT_CONTACT = Object.freeze({
+  lateral: 0.12,
+  y: 0.35,
+  z: 0.72,
+});
+
 /**
  * Low-poly single scull: long thin hull (capsule), a seated rower, and two oars
- * with blades. The hull, deck and oar blades carry `userData.accent`; the rower
- * slides + leans and the oars sweep/feather per stroke.
+ * with blades. The lower hull stays neutral while the deck and oar blades carry
+ * `userData.accent`; the rower slides + leans and the oars sweep/feather per
+ * stroke.
  */
 function makeRowerAvatar(
   accent: number,
@@ -1597,14 +1604,13 @@ function makeRowerAvatar(
   const hull = setReplayAssetSlot(
     new THREE.Mesh(
       new THREE.CapsuleGeometry(0.34, 3.15, eqCylSegs, Math.round(eqCylSegs * 1.4)),
-      accentMat(),
+      kitDarkMaterial,
     ),
     "equipment:row:hull",
   );
   hull.rotation.x = Math.PI / 2; // capsule axis Y -> Z (travel)
-  hull.scale.set(0.52, 0.3, 1); // keep the fallback below the visible leg chain
+  hull.scale.set(0.55, 0.3, 1); // keep the fallback below the visible leg chain
   hull.position.y = 0.135;
-  hull.userData.accent = true;
   group.add(hull);
 
   // Two short decks leave a genuine cockpit opening around the athlete. The
@@ -1659,17 +1665,57 @@ function makeRowerAvatar(
   }
 
   const footPlate = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.38, 0.26, 0.04, 0.018),
+    roundedVenueBlockGeometry(0.38, 0.18, 0.04, 0.018),
     kitDarkMaterial,
   );
   footPlate.name = "rower-footplate";
-  footPlate.position.set(0, 0.405, 0.72);
-  footPlate.rotation.x = -0.24;
+  footPlate.position.set(0, 0.31, ROWER_FOOT_CONTACT.z);
+  footPlate.rotation.x = -0.28;
   group.add(footPlate);
+  const heelCups: THREE.Mesh[] = [];
+  for (const side of [-1, 1]) {
+    const heelCup = new THREE.Mesh(
+      roundedVenueBlockGeometry(0.105, 0.065, 0.11, 0.016),
+      equipmentGripMaterial,
+    );
+    heelCup.name = side < 0 ? "rower-heel-cup-left" : "rower-heel-cup-right";
+    heelCup.position.set(
+      side * ROWER_FOOT_CONTACT.lateral,
+      ROWER_FOOT_CONTACT.y - 0.035,
+      ROWER_FOOT_CONTACT.z - 0.03,
+    );
+    heelCup.rotation.x = -0.28;
+    heelCups.push(heelCup);
+    group.add(heelCup);
+  }
+  const instepBar = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.012, 0.336, 8, 12),
+    equipmentMetalMaterial,
+  );
+  instepBar.name = "rower-footplate-instep-bar";
+  instepBar.rotation.z = Math.PI / 2;
+  instepBar.position.set(0, ROWER_FOOT_CONTACT.y + 0.06, ROWER_FOOT_CONTACT.z - 0.03);
+  group.add(instepBar);
+  const stretcherSupports: THREE.Mesh[] = [];
+  for (const side of [-1, 1]) {
+    const support = tubeBetween(
+      side < 0 ? "rower-footplate-support-left" : "rower-footplate-support-right",
+      { x: side * 0.17, y: 0.205, z: ROWER_FOOT_CONTACT.z - 0.12 },
+      { x: side * 0.17, y: 0.31, z: ROWER_FOOT_CONTACT.z },
+      0.009,
+      equipmentMetalMaterial,
+    );
+    stretcherSupports.push(support);
+    group.add(support);
+  }
   for (const side of [-1, 1]) {
     const anchor = new THREE.Object3D();
     anchor.name = side < 0 ? "rower-footplate-contact-left" : "rower-footplate-contact-right";
-    anchor.position.set(side * 0.12, 0.34, 0.72);
+    anchor.position.set(
+      side * ROWER_FOOT_CONTACT.lateral,
+      ROWER_FOOT_CONTACT.y,
+      ROWER_FOOT_CONTACT.z,
+    );
     group.add(anchor);
   }
   // V3 keeps the entire scull as one designed assembly while the existing
@@ -1689,6 +1735,9 @@ function makeRowerAvatar(
       gunwaleR,
       ...slideRails,
       footPlate,
+      ...heelCups,
+      instepBar,
+      ...stretcherSupports,
     ],
   });
 
@@ -2073,8 +2122,15 @@ function makeRowerAvatar(
       leg.hipPoint.set(leg.side * 0.13, hips.position.y, hips.position.z);
       // The plate is in BOAT space, while these limbs live in the translating
       // rower group. Subtract the slide so the world foot contact stays fixed.
-      leg.footTarget.set(leg.side * 0.12, 0.34 - rower.position.y, 0.72 - rower.position.z);
-      leg.bendHint.set(leg.side * 0.46, 0.7 - legExtension * 0.1, -0.28);
+      leg.footTarget.set(
+        leg.side * ROWER_FOOT_CONTACT.lateral,
+        ROWER_FOOT_CONTACT.y - rower.position.y,
+        ROWER_FOOT_CONTACT.z - rower.position.z,
+      );
+      // Keep the knees above the recessed cockpit without spreading them over
+      // the gunwales. The old, wider/high marker made the leg chain read as a
+      // separate object laid across the shell instead of a seated rower.
+      leg.bendHint.set(leg.side * 0.42, 0.65 - legExtension * 0.06, -0.26);
       solveTwoBone3D(
         leg.hipPoint,
         leg.footTarget,
