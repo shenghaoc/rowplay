@@ -289,35 +289,49 @@ def build_torso(builder: AthleteMeshBuilder, bones: dict[str, Vector]) -> None:
     spine = bones["v4Spine"]
     chest = bones["v4Chest"]
     neck = bones["v4Neck"]
-    # Athletic V-taper: tucked seat, narrow waist, broad lats/chest, clean crew
-    # neck — matches the premium stylized sports-broadcast art direction rather
-    # than a soft cylindrical mannequin.
+    # One continuous garment body: no geometric waist gap. Colour paint draws
+    # shorts/jersey panels; radii stay continuous so remesh cannot open a
+    # mannequin midsection. Hip solid is deliberately narrower so remesh-safe
+    # legs (laterally offset) can emerge instead of being swallowed.
     rings = [
-        Ring(Vector((0, 0.86, 0.014)), (0.148, 0.112), {"v4Hips": 1}, SHORTS, 0.04, 0.28),
-        Ring(Vector((0, 0.92, 0.016)), (0.182, 0.136), {"v4Hips": 1}, SHORTS, 0.05, 0.32),
-        Ring(hips + Vector((0, 0.0, 0.018)), (0.205, 0.152), {"v4Hips": 1}, SHORTS, 0.06, 0.34),
-        Ring(Vector((0, 1.06, 0.016)), (0.178, 0.132), {"v4Hips": 0.82, "v4Spine": 0.18}, SHORTS, 0.02, 0.18),
-        Ring(Vector((0, 1.1, 0.012)), (0.162, 0.122), {"v4Hips": 0.6, "v4Spine": 0.4}, SHORTS_PANEL, 0.01, 0.12),
-        # Hard waistband break — geometric ridge that survives fine remesh.
-        Ring(Vector((0, 1.13, 0.01)), (0.158, 0.118), {"v4Hips": 0.45, "v4Spine": 0.55}, TRIM, 0.0, 0.08),
-        Ring(Vector((0, 1.155, 0.012)), (0.152, 0.114), {"v4Hips": 0.28, "v4Spine": 0.72}, FABRIC, 0.02, 0.06),
-        Ring(Vector((0, 1.19, 0.014)), (0.158, 0.12), {"v4Spine": 0.88, "v4Hips": 0.12}, FABRIC, 0.03, 0.05),
-        Ring(spine + Vector((0, 0.01, 0.01)), (0.188, 0.14), {"v4Spine": 0.9, "v4Hips": 0.1}, FABRIC, 0.04, 0.06),
-        # Lat flare into athletic ribcage.
-        Ring(Vector((0, 1.28, 0.018)), (0.218, 0.155), {"v4Spine": 0.72, "v4Chest": 0.28}, FABRIC_SIDE, 0.05, 0.07),
-        Ring(Vector((0, 1.34, 0.024)), (0.238, 0.162), {"v4Spine": 0.48, "v4Chest": 0.52}, FABRIC, 0.05, 0.09),
-        Ring(Vector((0, 1.4, 0.028)), (0.248, 0.168), {"v4Spine": 0.28, "v4Chest": 0.72}, FABRIC, 0.045, 0.1),
-        Ring(chest + Vector((0, -0.02, 0.022)), (0.252, 0.17), {"v4Chest": 0.86, "v4Spine": 0.14}, FABRIC, 0.04, 0.1),
-        Ring(chest + Vector((0, 0.02, 0.026)), (0.246, 0.16), {"v4Chest": 0.94, "v4Neck": 0.06}, FABRIC_LIGHT, 0.03, 0.08),
-        Ring(Vector((0, 1.5, 0.04)), (0.22, 0.142), {"v4Chest": 0.82, "v4Neck": 0.18}, FABRIC, 0.025, 0.05),
-        # Crew collar shelf.
-        Ring(Vector((0, 1.535, 0.048)), (0.168, 0.112), {"v4Chest": 0.55, "v4Neck": 0.45}, TRIM, 0.02),
-        Ring(Vector((0, 1.56, 0.05)), (0.118, 0.086), {"v4Chest": 0.28, "v4Neck": 0.72}, FABRIC_LIGHT, 0.015),
-        Ring(Vector((0, 1.585, 0.052)), (0.082, 0.07), {"v4Neck": 0.85, "v4Chest": 0.15}, SKIN),
+        # Deep shorts solid — continuous with long thigh stubs, no mid-body hole.
+        Ring(Vector((0, 0.78, 0.01)), (0.135, 0.105), {"v4Hips": 1}, SHORTS, 0.05, 0.22),
+        Ring(Vector((0, 0.86, 0.012)), (0.16, 0.122), {"v4Hips": 1}, SHORTS, 0.05, 0.26),
+        Ring(Vector((0, 0.92, 0.014)), (0.172, 0.132), {"v4Hips": 1}, SHORTS, 0.06, 0.28),
+        Ring(hips + Vector((0, -0.02, 0.016)), (0.18, 0.14), {"v4Hips": 1}, SHORTS, 0.06, 0.3),
+        Ring(hips + Vector((0, 0.04, 0.016)), (0.178, 0.138), {"v4Hips": 1}, SHORTS, 0.05, 0.26),
+        Ring(Vector((0, 1.08, 0.014)), (0.172, 0.132), {"v4Hips": 0.78, "v4Spine": 0.22}, SHORTS, 0.03, 0.16),
+        Ring(Vector((0, 1.12, 0.012)), (0.17, 0.13), {"v4Hips": 0.5, "v4Spine": 0.5}, SHORTS_PANEL, 0.02, 0.1),
+        # Continuous waist — jersey begins without a geometric pinch/gap.
+        Ring(Vector((0, 1.15, 0.012)), (0.172, 0.132), {"v4Hips": 0.32, "v4Spine": 0.68}, TRIM, 0.02, 0.08),
+        Ring(Vector((0, 1.18, 0.014)), (0.178, 0.135), {"v4Spine": 0.86, "v4Hips": 0.14}, FABRIC, 0.03, 0.06),
+        Ring(spine + Vector((0, 0.01, 0.012)), (0.198, 0.148), {"v4Spine": 0.92, "v4Hips": 0.08}, FABRIC, 0.04, 0.06),
+        Ring(Vector((0, 1.28, 0.02)), (0.222, 0.16), {"v4Spine": 0.7, "v4Chest": 0.3}, FABRIC_SIDE, 0.05, 0.08),
+        Ring(Vector((0, 1.34, 0.026)), (0.242, 0.166), {"v4Spine": 0.45, "v4Chest": 0.55}, FABRIC, 0.05, 0.09),
+        Ring(Vector((0, 1.4, 0.03)), (0.25, 0.17), {"v4Spine": 0.25, "v4Chest": 0.75}, FABRIC, 0.045, 0.1),
+        Ring(chest + Vector((0, -0.02, 0.024)), (0.252, 0.172), {"v4Chest": 0.88, "v4Spine": 0.12}, FABRIC, 0.04, 0.1),
+        Ring(chest + Vector((0, 0.02, 0.028)), (0.246, 0.162), {"v4Chest": 0.94, "v4Neck": 0.06}, FABRIC_LIGHT, 0.03, 0.08),
+        Ring(Vector((0, 1.5, 0.042)), (0.22, 0.144), {"v4Chest": 0.8, "v4Neck": 0.2}, FABRIC, 0.025, 0.05),
+        Ring(Vector((0, 1.535, 0.05)), (0.168, 0.112), {"v4Chest": 0.55, "v4Neck": 0.45}, TRIM, 0.02),
+        Ring(Vector((0, 1.56, 0.052)), (0.118, 0.086), {"v4Chest": 0.28, "v4Neck": 0.72}, FABRIC_LIGHT, 0.015),
+        Ring(Vector((0, 1.585, 0.054)), (0.082, 0.07), {"v4Neck": 0.85, "v4Chest": 0.15}, SKIN),
     ]
     builder.add_loft(rings, 72, Vector((1, 0, 0)), torso_color)
 
-    # Trap / upper-back mass so the rear silhouette is not a flat board.
+    # Crotch + lower shorts fill so the remeshed pelvis is a solid block.
+    builder.add_loft(
+        [
+            Ring(Vector((0, 0.8, 0.015)), (0.12, 0.09), {"v4Hips": 1}, SHORTS, 0.1, 0.22),
+            Ring(Vector((0, 0.88, 0.025)), (0.14, 0.1), {"v4Hips": 1}, SHORTS, 0.08, 0.2),
+            Ring(Vector((0, 0.96, 0.03)), (0.15, 0.105), {"v4Hips": 1}, SHORTS, 0.06, 0.16),
+            Ring(Vector((0, 1.04, 0.02)), (0.14, 0.1), {"v4Hips": 1}, SHORTS, 0.05, 0.12),
+        ],
+        40,
+        Vector((1, 0, 0)),
+        cap_start=True,
+        cap_end=True,
+    )
+
     builder.add_loft(
         [
             Ring(chest + Vector((0, 0.0, -0.04)), (0.2, 0.06), {"v4Chest": 0.9, "v4Spine": 0.1}, FABRIC_SIDE, 0.1),
@@ -450,29 +464,31 @@ def build_arm(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: 
 
 
 def build_leg_stubs(builder: AthleteMeshBuilder, bones: dict[str, Vector], side_name: str) -> None:
-    """Short thigh stubs only — full legs join after remesh.
-
-    Dense pelvis remesh swallows thin cage legs into the hip solid. Keep a short
-    upper-thigh mass on the cage so the shorts silhouette is continuous, then
-    author the visible leg + shoe after remesh (same strategy as hands).
-    """
+    """Long thigh stubs remeshed with the torso — the continuous hip shell."""
 
     upper_name = f"v4{side_name}UpperLeg"
     hip = bones[upper_name]
     knee = bones[f"v4{side_name}LowerLeg"]
+    # Stub runs almost to the knee so post-remesh legs can bury deep inside it.
     rings = [
-        Ring(hip + Vector((0, 0.05, 0.0)), (0.12, 0.105), {"v4Hips": 0.9, upper_name: 0.1}, SHORTS, 0.05, 0.06),
-        Ring(hip + Vector((0, 0.01, 0.004)), (0.135, 0.118), {"v4Hips": 0.55, upper_name: 0.45}, SHORTS, 0.06, 0.08),
-        Ring(hip.lerp(knee, 0.2), (0.138, 0.12), {upper_name: 0.88, "v4Hips": 0.12}, SHORTS, 0.07, 0.09),
-        Ring(hip.lerp(knee, 0.35), (0.132, 0.116), {upper_name: 1}, SHORTS_PANEL, 0.06, 0.08),
-        Ring(hip.lerp(knee, 0.48), (0.122, 0.108), {upper_name: 1}, SHORTS, 0.05, 0.06),
-        Ring(hip.lerp(knee, 0.58), (0.11, 0.098), {upper_name: 1}, LEG_FABRIC, 0.04),
+        Ring(hip + Vector((0, 0.08, 0.0)), (0.13, 0.115), {"v4Hips": 0.92, upper_name: 0.08}, SHORTS, 0.06, 0.1),
+        Ring(hip + Vector((0, 0.03, 0.004)), (0.145, 0.128), {"v4Hips": 0.6, upper_name: 0.4}, SHORTS, 0.07, 0.12),
+        Ring(hip.lerp(knee, 0.2), (0.148, 0.13), {upper_name: 0.88, "v4Hips": 0.12}, SHORTS, 0.08, 0.12),
+        Ring(hip.lerp(knee, 0.38), (0.145, 0.128), {upper_name: 1}, SHORTS, 0.07, 0.1),
+        Ring(hip.lerp(knee, 0.55), (0.138, 0.122), {upper_name: 1}, SHORTS_PANEL, 0.06, 0.09),
+        Ring(hip.lerp(knee, 0.7), (0.128, 0.114), {upper_name: 1}, SHORTS, 0.05, 0.07),
+        Ring(hip.lerp(knee, 0.82), (0.115, 0.102), {upper_name: 1}, LEG_FABRIC, 0.04),
     ]
-    builder.add_loft(rings, 48, Vector((1, 0, 0)), cap_start=False, cap_end=True)
+    builder.add_loft(rings, 52, Vector((1, 0, 0)), cap_start=False, cap_end=True)
 
 
 def add_authored_legs(surface: bpy.types.Object, bones: dict[str, Vector]) -> None:
-    """Join athletic legs and shoes after body remesh so shins are never eaten."""
+    """Join full legs after remesh; oversize thigh roots bury into remeshed stubs.
+
+    Voxel remesh destroys thin shin tubes, so legs stay authored. A deep, fatter
+    thigh root completely encloses the remeshed stub so bind pose has no skirt
+    gap. No second remesh — that would re-eat the shins.
+    """
 
     for side_name in ("Left", "Right"):
         upper_name = f"v4{side_name}UpperLeg"
@@ -482,54 +498,49 @@ def add_authored_legs(surface: bpy.types.Object, bones: dict[str, Vector]) -> No
         knee = bones[lower_name]
         ankle = bones[foot_name]
         builder = AthleteMeshBuilder()
-
-        # Start deep inside the remeshed stub (past mid-thigh) so bind pose has
-        # no skirt gap between shorts solid and leg volume.
+        # Thigh root is tights-coloured and buried deep in the remeshed shorts
+        # stub — never a second floating shorts shell under the jersey.
         rings = [
-            Ring(hip.lerp(knee, 0.08), (0.136, 0.12), {upper_name: 0.85, "v4Hips": 0.15}, SHORTS, 0.07, 0.09),
-            Ring(hip.lerp(knee, 0.18), (0.138, 0.122), {upper_name: 0.95, "v4Hips": 0.05}, SHORTS, 0.07, 0.09),
-            Ring(hip.lerp(knee, 0.3), (0.134, 0.118), {upper_name: 1}, SHORTS, 0.07, 0.08),
-            Ring(hip.lerp(knee, 0.4), (0.13, 0.114), {upper_name: 1}, SHORTS_PANEL, 0.06, 0.08),
-            Ring(hip.lerp(knee, 0.5), (0.122, 0.108), {upper_name: 0.96, lower_name: 0.04}, SHORTS, 0.05),
-            Ring(hip.lerp(knee, 0.6), (0.116, 0.104), {upper_name: 0.9, lower_name: 0.1}, LEG_FABRIC, 0.05, 0.05),
-            Ring(hip.lerp(knee, 0.72), (0.11, 0.1), {upper_name: 0.78, lower_name: 0.22}, LEG_FABRIC, 0.045),
-            Ring(hip.lerp(knee, 0.86), (0.102, 0.094), {upper_name: 0.58, lower_name: 0.42}, LEG_FABRIC),
-            Ring(knee, (0.094, 0.088), {upper_name: 0.4, lower_name: 0.6}, LEG_FABRIC, 0.04, 0.05),
-            # Clear shin / calf volume — the piece remesh previously erased.
-            Ring(knee.lerp(ankle, 0.12), (0.102, 0.094), {upper_name: 0.16, lower_name: 0.84}, LEG_FABRIC, 0.05, 0.05),
-            Ring(knee.lerp(ankle, 0.28), (0.106, 0.096), {lower_name: 0.95, upper_name: 0.05}, LEG_FABRIC, 0.06, 0.05),
-            Ring(knee.lerp(ankle, 0.48), (0.098, 0.088), {lower_name: 0.97, foot_name: 0.03}, LEG_FABRIC, 0.05),
-            Ring(knee.lerp(ankle, 0.66), (0.082, 0.076), {lower_name: 0.9, foot_name: 0.1}, LEG_FABRIC_SIDE, 0.04),
-            Ring(knee.lerp(ankle, 0.82), (0.068, 0.064), {lower_name: 0.72, foot_name: 0.28}, LEG_FABRIC_SIDE),
-            Ring(ankle, (0.052, 0.05), {lower_name: 0.3, foot_name: 0.7}, SHOE_DARK),
+            Ring(hip.lerp(knee, 0.2), (0.148, 0.13), {upper_name: 0.95, "v4Hips": 0.05}, LEG_FABRIC, 0.08, 0.1),
+            Ring(hip.lerp(knee, 0.35), (0.145, 0.128), {upper_name: 1}, LEG_FABRIC, 0.07, 0.09),
+            Ring(hip.lerp(knee, 0.48), (0.136, 0.12), {upper_name: 0.96, lower_name: 0.04}, LEG_FABRIC, 0.06, 0.08),
+            Ring(hip.lerp(knee, 0.6), (0.126, 0.112), {upper_name: 0.9, lower_name: 0.1}, LEG_FABRIC, 0.05, 0.06),
+            Ring(hip.lerp(knee, 0.72), (0.118, 0.106), {upper_name: 0.78, lower_name: 0.22}, LEG_FABRIC, 0.05, 0.05),
+            Ring(hip.lerp(knee, 0.86), (0.108, 0.1), {upper_name: 0.58, lower_name: 0.42}, LEG_FABRIC),
+            Ring(knee, (0.1, 0.094), {upper_name: 0.4, lower_name: 0.6}, LEG_FABRIC, 0.04, 0.05),
+            Ring(knee.lerp(ankle, 0.12), (0.11, 0.102), {upper_name: 0.16, lower_name: 0.84}, LEG_FABRIC, 0.055, 0.05),
+            Ring(knee.lerp(ankle, 0.28), (0.114, 0.104), {lower_name: 0.95, upper_name: 0.05}, LEG_FABRIC, 0.06, 0.05),
+            Ring(knee.lerp(ankle, 0.48), (0.106, 0.096), {lower_name: 0.97, foot_name: 0.03}, LEG_FABRIC, 0.05),
+            Ring(knee.lerp(ankle, 0.66), (0.09, 0.084), {lower_name: 0.9, foot_name: 0.1}, LEG_FABRIC_SIDE, 0.04),
+            Ring(knee.lerp(ankle, 0.84), (0.074, 0.07), {lower_name: 0.72, foot_name: 0.28}, LEG_FABRIC_SIDE),
+            Ring(ankle, (0.054, 0.052), {lower_name: 0.3, foot_name: 0.7}, SHOE_DARK),
         ]
-        builder.add_loft(rings, 44, Vector((1, 0, 0)), cap_start=False, cap_end=False)
+        builder.add_loft(rings, 48, Vector((1, 0, 0)), cap_start=False, cap_end=False)
 
-        heel = ankle + Vector((0, -0.03, -0.048))
-        rear = ankle + Vector((0, -0.016, -0.01))
-        mid = ankle + Vector((0, -0.04, 0.09))
-        cleat = ankle + Vector(CONTACT_OFFSETS[foot_name])
-        toe = ankle + Vector((0, -0.032, 0.22))
+        bone_cleat = ankle + Vector(CONTACT_OFFSETS[foot_name])
+        bone_toe = ankle + Vector((0, -0.032, 0.22))
+        bone_heel = ankle + Vector((0, -0.03, -0.048))
+        bone_mid = ankle + Vector((0, -0.04, 0.09))
         weights = {foot_name: 1.0}
         builder.add_loft(
             [
-                Ring(heel, (0.066, 0.044), weights, SHOE_DARK, 0.03),
-                Ring(rear, (0.08, 0.052), weights, SHOE, 0.04),
-                Ring(mid, (0.094, 0.052), weights, SHOE, 0.05),
-                Ring(cleat, (0.096, 0.044), weights, SHOE, 0.04),
-                Ring(toe, (0.072, 0.03), weights, SHOE, 0.02),
+                Ring(bone_heel, (0.066, 0.044), weights, SHOE_DARK, 0.03),
+                Ring(ankle + Vector((0, -0.016, -0.01)), (0.08, 0.052), weights, SHOE, 0.04),
+                Ring(bone_mid, (0.094, 0.052), weights, SHOE, 0.05),
+                Ring(bone_cleat, (0.096, 0.044), weights, SHOE, 0.04),
+                Ring(bone_toe, (0.072, 0.03), weights, SHOE, 0.02),
             ],
-            28,
+            30,
             Vector((1, 0, 0)),
         )
         builder.add_loft(
             [
-                Ring(heel + Vector((0, -0.03, 0.0)), (0.068, 0.011), weights, SOLE),
-                Ring(mid + Vector((0, -0.032, 0.0)), (0.096, 0.012), weights, SOLE),
-                Ring(cleat + Vector((0, -0.03, 0.0)), (0.098, 0.011), weights, SOLE),
-                Ring(toe + Vector((0, -0.022, -0.004)), (0.074, 0.01), weights, SOLE),
+                Ring(bone_heel + Vector((0, -0.03, 0.0)), (0.068, 0.011), weights, SOLE),
+                Ring(bone_mid + Vector((0, -0.032, 0.0)), (0.096, 0.012), weights, SOLE),
+                Ring(bone_cleat + Vector((0, -0.03, 0.0)), (0.098, 0.011), weights, SOLE),
+                Ring(bone_toe + Vector((0, -0.022, -0.004)), (0.074, 0.01), weights, SOLE),
             ],
-            22,
+            24,
             Vector((1, 0, 0)),
         )
         join_builder_detail(
@@ -1114,8 +1125,8 @@ def create_production_surface(cage: bpy.types.Object, bones: dict[str, Vector]) 
     # Remesh discards colour attributes; repaint deliberate kit/skin regions.
     paint_vertex_colors(surface)
 
-    # High-value form joins after remesh so fingers, face, kit trim, and shoe
-    # overlays are not erased by voxelisation. Body mass stays continuous.
+    # Hands + full legs after remesh (shins must not go through another remesh).
+    # Fat thigh roots bury into long remeshed stubs so the hip has no skirt gap.
     add_authored_hands(surface, bones)
     add_authored_legs(surface, bones)
     add_flush_face_details(surface, bones)
@@ -1171,26 +1182,21 @@ def paint_vertex_colors(obj: bpy.types.Object) -> None:
             color = SKIN_LIGHT if abs(x) > 0.58 else SKIN
         elif near_foot:
             color = SOLE if y < 0.035 else (SHOE_DARK if z < -0.01 else SHOE)
-        elif y < 1.0 and abs(x) > 0.05:
-            # Performance tights — no bright knee sock band.
-            if abs(x) > 0.105:
-                color = LEG_FABRIC_SIDE
-            else:
-                color = LEG_FABRIC
-        elif y < 1.12:
-            # Shorts block with hard outer panel.
-            color = SHORTS_PANEL if abs(x) > 0.1 else SHORTS
-        elif y < 1.145:
+        elif y < 0.95 and abs(x) > 0.06:
+            # Performance tights under the remeshed shorts hem.
+            color = LEG_FABRIC_SIDE if abs(x) > 0.11 else LEG_FABRIC
+        elif y < 1.14:
+            # One continuous shorts block (no mid-waist hole in colour).
+            color = SHORTS_PANEL if abs(x) > 0.11 else SHORTS
+        elif y < 1.17:
             color = TRIM
         elif y < 1.28 and abs(x) > 0.2:
             color = FABRIC_SIDE if abs(x) > 0.22 else FABRIC
         elif abs(x) > 0.18 and y > 1.22:
-            # Lateral jersey panel (art-direction block colour).
             color = FABRIC_SIDE if abs(x) > 0.22 else FABRIC
         elif abs(x) < 0.03 and z > 0.015 and 1.18 < y < 1.5:
             color = TRIM
         elif y > 1.48 and abs(x) < 0.14:
-            # Chest light panel / collar region.
             color = FABRIC_LIGHT if abs(x) < 0.09 else FABRIC
         elif y > 1.32 and abs(x) < 0.1 and z > 0.02:
             color = FABRIC_LIGHT

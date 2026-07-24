@@ -60,7 +60,9 @@ the 19 semantic bones.
 
 - finer body remesh (`VOXEL_SIZE` 0.0046) with light smooth only
 - athletic V-taper torso, lat flare, crew-collar shelf, continuous head planes
-- legs authored **after** remesh (dense pelvis was swallowing cage legs)
+- continuous jersey→shorts waist (no geometric mid-body hole)
+- long remeshed thigh stubs + post-remesh tights buried into shorts (no skirt gap)
+- legs authored **after** remesh so shins survive (voxel remesh eats thin tubes)
 - hard kit colour panels; budget ceiling 16 MB / 220k verts / 450k tris
 - studio evidence: [blender-qa-hard](athlete-v5/blender-qa-hard/)
 
