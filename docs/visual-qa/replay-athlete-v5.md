@@ -527,6 +527,44 @@ The V4 loader remains an optional hero path above V3, procedural 3D, and Canvas
 fallbacks. No second motion system, equipment authority, environment path, or
 asset request was introduced.
 
+## Separate RowErg shell-mechanics follow-up
+
+The RowErg shell and athlete-positioning work is intentionally delivered on the
+separate `codex/rowerg-shell-mechanics` branch, after the production-athlete PR.
+It changes the existing RowErg equipment template and rowing-specific motion
+windows without changing the V4 athlete asset, SkiErg/BikeErg timing, cadence,
+drive endpoint, contact authority, reduced-motion behavior, ghost comparison,
+or fallback chain.
+
+The geometry and movement targets were checked against current racing-shell and
+coaching references:
+
+- [Filippi's F14 racing single](https://www.filippiboats.com/eng/boats/competition/single-sculls-1x/f14)
+  documents an 8.33 m, 29 cm waterline, U-section carbon racing shell with a
+  wing rigger, sliding seat, and full-carbon foot stretcher.
+- [Empacher's racing mould table](https://www.empacher.com/fileadmin/DE/downloads/BOFO22-1-2.pdf)
+  places racing singles between 7.40 and 8.30 m, depending on athlete mass.
+- [British Rowing's rigging guidance](https://plus.britishrowing.org/2024/04/22/rigging-for-success-understanding-the-key-principles-and-adjustments/)
+  gives a 38–45° stretcher range and a typical 15–20 cm seat-to-heel height.
+- [British Rowing's on-water technique model](https://www.britishrowing.org/knowledge/rower-development/british-rowing-technique/water-rowing-technique/)
+  specifies vertical shins and a forward hip hinge at catch, a leg-led drive,
+  late body/arm contribution, and hands-away, body-over, then slide on recovery.
+- [World Rowing's equipment rules](https://worldrowing.com/wp-content/uploads/2025/04/2025-World-Rowing-Rules-of-Racing-Overall-Classic-rowing-Related-byelaws_March2025.pdf)
+  require a visible bow ball and quick-release feet/heel restraints.
+
+Applied to RowPlay, the shell is 7.8 m long with tapered bow/stern decks, a
+neutral lower U-hull, bow ball, stern fin, open cockpit, full-width wing rigger,
+and oarlocks. The aft-facing athlete sits stern-side of a fixed 42° stretcher;
+the heels sit about 16 cm below the seat and include heel restraints, instep
+hardware, and diagonal supports. The shared procedural/V4 leg solve keeps the
+shins near vertical at catch, knees above and inside the cockpit, and legs near
+straight at finish. The rowing graph sequences legs → torso → arms on the drive
+and hands → body → slide on recovery.
+
+Focused contracts cover shell orientation and length, stretcher rake,
+seat-to-heel height, full-stroke foot positions, catch shin alignment, finish
+extension, rigid grip contact, and cycle continuity.
+
 ## Rebuild and validation
 
 ```sh

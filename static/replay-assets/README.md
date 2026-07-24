@@ -35,9 +35,10 @@ identity, or Canvas 2D fallback.
   head planes, a swept hair cap, an aero helmet with tail and visor, low-relief
   jersey collar/raglan/back-yoke construction, asymmetric muscle-to-tendon
   limbs, deltoid transitions, and grip/sole/elbow detail. Equipment includes a
-  Blender-authored open-U racing shell with split decks, recessed cockpit,
-  slide rails, angled stretcher, heel cups, wing rigger, oarlocks, moving
-  four-roller seat carriage, and sculpted oar; a measured cambered ski pair with
+  Blender-authored 7.8 m open-U racing shell with split decks, recessed cockpit,
+  bow ball, slide rails, 42° stretcher, heel cups/restraints, wing rigger,
+  oarlocks, moving four-roller seat carriage, and sculpted oar; a measured
+  cambered ski pair with
   separate top sheets, metal edges, free-heel toe binding hardware, raised tip
   ridge, sculpted Nordic pole grip straps, and hard-track basket ribs; and a
   **true-scale road bicycle** — 0.67 m (700c) wheels on a 1.00 m wheelbase, sized
@@ -213,15 +214,9 @@ remain automatic fallbacks.
   cool material tint while ghost equipment/wakes may remain translucent; the
   single deforming skin never enters Three.js's transparent triangle-sorting
   path, so limbs and overlapping garment forms cannot disappear by draw order.
-  BikeErg seating is geometric: saddle height is solved from knee flexion at
-  bottom dead centre (30°, inside the 25-35° road-fit window), and the pad top
-  is placed on the **measured ischial plateau** — skin at |x| 0.050-0.075, a
-  sit-bone spread that matches a real pelvis. The saddle itself comes from the
-  shared `src/lib/replay/bikeSaddle.js` station table, which both this package
-  and the procedural renderer loft: a winged rear that carries the ischia, a
-  through cut-out for the perineum, which on a standing-derived mesh hangs
-  37 mm below them, and a nose that narrows and drops away so the sweeping
-  thighs clear it.
+  BikeErg's fixed saddle is a low-profile opaque support drawn before the skin
+  without writing depth, so the athlete naturally occludes the overlapping
+  cushion pixels instead of appearing to pass through a thick solid block.
 - **Skinning:** reviewed anatomical face sets drive deterministic A-pose→V4
   segment retargeting and bounded parent/child blends at shoulders, elbows,
   wrists, hips, knees, and ankles. The continuous body's major limb influences

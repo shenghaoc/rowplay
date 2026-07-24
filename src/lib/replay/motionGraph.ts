@@ -461,10 +461,10 @@ function sampleRower(timing: MotionTiming, pose: StrokePose): RowerMotionGraph {
   const legs = pulse(cycle, 0, drive * 0.56, drive + recovery * 0.34, 1);
   const torso = pulse(
     cycle,
-    drive * 0.12,
-    drive * 0.82,
-    drive + recovery * 0.13,
-    drive + recovery * 0.66,
+    drive * 0.34,
+    drive * 0.9,
+    drive + recovery * 0.18,
+    drive + recovery * 0.58,
   );
   // Legs → body → arms: the hands first clear the knee envelope with
   // softly long arms, then the late draw brings the handle into the finish.
@@ -1139,10 +1139,10 @@ function sampleRowerInto(pose: StrokePose, output: RowerMotionGraph): void {
   pulseInto(
     curves.rowTorso,
     cycle,
-    drive * 0.12,
-    drive * 0.82,
-    drive + recovery * 0.13,
-    drive + recovery * 0.66,
+    drive * 0.34,
+    drive * 0.9,
+    drive + recovery * 0.18,
+    drive + recovery * 0.58,
   );
   // Legs → body → arms: keep the arms softly long until the hands clear
   // the knee envelope, then expose the late draw in both fallback and V4 rigs.
