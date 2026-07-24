@@ -2367,6 +2367,7 @@ describe("CourseRenderer3D", () => {
       const renderer = rendererFor("rower");
       try {
         const previousPalms = new Map<"left" | "right", THREE.Vector3>();
+        const previousGrips = new Map<"left" | "right", THREE.Vector3>();
         const firstPalms = new Map<"left" | "right", THREE.Vector3>();
         for (let step = 0; step <= 128; step++) {
           const cycle = step / 128;
@@ -2381,8 +2382,9 @@ describe("CourseRenderer3D", () => {
           for (const side of ["left", "right"] as const) {
             const effector = `${side}Hand` as const;
             const palm = v4EffectorWorld(instance, effector);
+            const grip = worldPosition(renderer, `rower-hand-contact-${side}`);
             expect(
-              palm.distanceTo(worldPosition(renderer, `rower-hand-contact-${side}`)),
+              palm.distanceTo(grip),
               `${side} palm stays on rigid scull grip at ${cycle}`,
             ).toBeLessThan(0.015);
             const elbow = instance.bones[
@@ -2406,18 +2408,22 @@ describe("CourseRenderer3D", () => {
               ).toBeGreaterThan(part === "palm" ? 0.14 : part === "elbow" ? 0.18 : 0.13);
             }
             const prior = previousPalms.get(side);
-            if (prior) {
-              // Bow-first shell surge compounds rather than cancels the
-              // visible hand path. Keep every 1/128-cycle world-space step
-              // below a hand-width snap guard while exact grip lock remains
-              // covered independently above.
-              expect(palm.distanceTo(prior), `${side} palm continuity at ${cycle}`).toBeLessThan(
-                0.13,
-              );
+            const priorGrip = previousGrips.get(side);
+            if (prior && priorGrip) {
+              // A contact-locked palm must inherit the rigid grip's motion.
+              // Compare frame deltas so bow-first hull surge cannot disguise
+              // an IK discontinuity or force a looser world-distance guard.
+              const palmDelta = palm.clone().sub(prior);
+              const gripDelta = grip.clone().sub(priorGrip);
+              expect(
+                palmDelta.distanceTo(gripDelta),
+                `${side} palm follows grip continuously at ${cycle}`,
+              ).toBeLessThan(0.006);
             } else {
               firstPalms.set(side, palm.clone());
             }
             previousPalms.set(side, palm.clone());
+            previousGrips.set(side, grip.clone());
           }
         }
         for (const side of ["left", "right"] as const) {
@@ -2600,10 +2606,7 @@ describe("CourseRenderer3D", () => {
                   .toArray()
                   .map((value) => value.toFixed(3))
                   .join(",")}`,
-                // The leg-led drive timing can move a rigid scull grip almost
-                // exactly 60 mm between these 1/64-cycle samples. Leave 1 mm of
-                // floating-point headroom while still rejecting visible snaps.
-              ).toBeLessThan(0.061);
+              ).toBeLessThan(0.06);
             }
             previousGrips.set(side, grip.clone());
             const priorElbow = previousElbows.get(side);

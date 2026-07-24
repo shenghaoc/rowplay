@@ -100,6 +100,17 @@ anchors remain authoritative. A fallback mesh is hidden only after that exact
 template validates and attaches. Geometry replacement/attachment occurs once,
 before animation, and the previous per-instance geometry is disposed.
 
+The RowErg venue represents a bow-first single racing shell rather than an
+indoor ergometer. Its 7.8 m hull has a distinct fine bow, fuller stern, open
+cockpit, fixed 42° foot stretcher, heel restraints, sliding seat rails, wing
+rigger, oarlocks, and paired sculls. The athlete faces aft: the sliding seat is
+stern-side of the pelvis and the stretcher is bow-side, with heels approximately
+16 cm below the seat top. The shared rowing graph deliberately models the
+technique correction introduced with this assembly: legs lead the drive, torso
+opening follows, and arms finish; hands then move away before body-over and the
+seat recovery. Contact tests protect feet within the stretcher, hands on the
+grips, knees above and inside the cockpit, and bow-first hull surge.
+
 The renderer continues to update the same groups, limbs, contacts, oars, poles,
 pedals, wheels, bars, saddle, skis, hull, and camera. SkiErg’s two poles use a
 second post-placement contact solve: each basket transitions with C1 contact
