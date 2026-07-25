@@ -1419,7 +1419,6 @@ describe("CourseRenderer3D", () => {
           "bike-wheel-visual-front",
           "equipment:bike:wheel-assembly",
         );
-        attachedTemplate(renderer, "bike-wheel-visual-rear", "equipment:bike:wheel-assembly");
         attachedTemplate(renderer, "bike-frame-visual", "equipment:bike:frame-assembly");
         attachedTemplate(renderer, "bike-drivetrain-visual", "equipment:bike:drivetrain-assembly");
         const wheelMeshes: THREE.Mesh[] = [];
@@ -2696,7 +2695,7 @@ describe("CourseRenderer3D", () => {
 
             // Tyres rest on the ground in avatar-local space (not world AABB —
             // course bank/yaw would false-positive). Sample visible mesh verts.
-            for (const wheelName of ["bike-wheel-front", "bike-wheel-rear"] as const) {
+            for (const wheelName of ["bike-wheel-front"] as const) {
               const wheel = sceneObject(renderer, wheelName);
               let wheelMinY = Infinity;
               wheel.traverse((object) => {
@@ -3437,7 +3436,6 @@ describe("CourseRenderer3D", () => {
     renderer.render(makeSportState("bike", 0.25, 9), false);
     const wheelAngle = 9 / BIKE_RIG.wheelRadius;
     expect(sceneObject(renderer, "bike-wheel-front").rotation.x).toBeCloseTo(wheelAngle, 8);
-    expect(sceneObject(renderer, "bike-wheel-rear").rotation.x).toBeCloseTo(wheelAngle, 8);
     expect(sceneObject(renderer, "bike-cranks").rotation.x).toBeCloseTo(Math.PI / 2, 8);
     renderer.destroy();
   });

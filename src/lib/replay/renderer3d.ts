@@ -2948,49 +2948,48 @@ function makeBikeAvatar(
   const wheelR = BIKE_RIG.wheelRadius;
   const tyreTube = BIKE_RIG.tyreTube;
   // Axle height includes tyre tube so the outer shell rests on y = 0 — never
-  // through the ground (穿模).
+  // through the ground (穿模). A BikeErg has one front flywheel; the rear
+  // carries stabiliser feet only — no second wheel.
   const wheelAxleY = bikeWheelAxleY(BIKE_RIG);
-  const wheels: THREE.Group[] = [];
-  for (const z of [BIKE_RIG.frontAxleZ, BIKE_RIG.rearAxleZ]) {
-    const wheel = new THREE.Group();
-    wheel.name = z > 0 ? "bike-wheel-front" : "bike-wheel-rear";
-    const tyre = setReplayAssetSlot(
-      new THREE.Mesh(
-        new THREE.TorusGeometry(wheelR, tyreTube, eqCylSegs, eqCylSegs * 2),
-        tyreMaterial,
-      ),
-      "equipment:bike:tyre",
+  // Front flywheel (the only wheel on a stationary indoor erg).
+  const frontWheel = new THREE.Group();
+  frontWheel.name = "bike-wheel-front";
+  const frontTyre = setReplayAssetSlot(
+    new THREE.Mesh(
+      new THREE.TorusGeometry(wheelR, tyreTube, eqCylSegs, eqCylSegs * 2),
+      tyreMaterial,
+    ),
+    "equipment:bike:tyre",
+  );
+  frontTyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
+  frontWheel.add(frontTyre);
+  const wheelFallback: THREE.Object3D[] = [frontTyre];
+  // Three paired round spokes preserve visible cadence without the two thick
+  // box crosses that made the bicycle read as a toy diagram at rest.
+  for (const [index, angle] of [0, Math.PI / 3, (Math.PI * 2) / 3].entries()) {
+    const spoke = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.011, 0.011, wheelR * 1.72, eqCylSegs),
+      spokeMaterial,
     );
-    tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
-    wheel.add(tyre);
-    const wheelFallback: THREE.Object3D[] = [tyre];
-    // Three paired round spokes preserve visible cadence without the two thick
-    // box crosses that made the bicycle read as a toy diagram at rest.
-    for (const [index, angle] of [0, Math.PI / 3, (Math.PI * 2) / 3].entries()) {
-      const spoke = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.011, 0.011, wheelR * 1.72, eqCylSegs),
-        spokeMaterial,
-      );
-      spoke.name = `${wheel.name}-spoke-${index}`;
-      spoke.rotation.x = angle;
-      wheel.add(spoke);
-      wheelFallback.push(spoke);
-    }
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.1, 12), hubMaterial);
-    hub.name = `${wheel.name}-hub`;
-    hub.rotation.z = Math.PI / 2;
-    wheel.add(hub);
-    wheelFallback.push(hub);
-    const wheelVisual = new THREE.Group();
-    wheelVisual.name = z > 0 ? "bike-wheel-visual-front" : "bike-wheel-visual-rear";
-    wheel.add(wheelVisual);
-    setReplayAssetTemplateAnchor(wheelVisual, "equipment:bike:wheel-assembly", {
-      fallback: wheelFallback,
-    });
-    wheel.position.set(0, wheelAxleY, z);
-    group.add(wheel);
-    wheels.push(wheel);
+    spoke.name = `bike-wheel-front-spoke-${index}`;
+    spoke.rotation.x = angle;
+    frontWheel.add(spoke);
+    wheelFallback.push(spoke);
   }
+  const frontHub = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.1, 12), hubMaterial);
+  frontHub.name = "bike-wheel-front-hub";
+  frontHub.rotation.z = Math.PI / 2;
+  frontWheel.add(frontHub);
+  wheelFallback.push(frontHub);
+  const wheelVisual = new THREE.Group();
+  wheelVisual.name = "bike-wheel-visual-front";
+  frontWheel.add(wheelVisual);
+  setReplayAssetTemplateAnchor(wheelVisual, "equipment:bike:wheel-assembly", {
+    fallback: wheelFallback,
+  });
+  frontWheel.position.set(0, wheelAxleY, BIKE_RIG.frontAxleZ);
+  group.add(frontWheel);
+  const wheels = [frontWheel];
 
   // Stationary BikeErg-form fallback: longitudinal rail, seat upright, mast,
   // and BB drop. V3 authored equipment replaces these shells when available.
