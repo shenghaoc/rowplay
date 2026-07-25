@@ -27,8 +27,8 @@ export const BIKE_RIG = Object.freeze({
   seatCluster: Object.freeze([0, 1.27, -0.4]),
   headBottom: Object.freeze([0, 1.06, 0.42]),
   headTop: Object.freeze([0, 1.31, 0.5]),
-  /** Saddle centre. Pad top is ~6 cm above centre from the V3 loft. */
-  saddle: Object.freeze([0, 1.265, -0.4]),
+  /** Saddle centre — matches the V3 performance-saddle loft position. */
+  saddle: Object.freeze([0, 1.3, -0.4]),
   handlebar: Object.freeze({
     base: Object.freeze([0, 1.31, 0.35]),
     grip: Object.freeze({ y: 1.29, z: 0.39, halfSpan: 0.32 }),
@@ -36,7 +36,7 @@ export const BIKE_RIG = Object.freeze({
   crank: Object.freeze({ lateral: 0.1, pedalRadius: 0.21 }),
   rider: Object.freeze({
     // Hip positioned so the measured V4 sit surface lands on the saddle pad.
-    root: Object.freeze([0, 1.425, -0.38]),
+    root: Object.freeze([0, 1.43, -0.38]),
     pelvisOffset: Object.freeze([0, 0.005, -0.005]),
     /** Measured posterior sit surface relative to v4Hips (metres). */
     sitSurfaceFromHip: Object.freeze([0, -0.065, -0.04]),
