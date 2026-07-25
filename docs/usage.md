@@ -252,7 +252,9 @@ relevant equipment targets through the post-clip contact pass — oar handles an
 foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals. The larger
 3D stage and rear three-quarter chase camera keep paired limbs visible; sport-
 and viewport-aware framing, speed-aware follow, and camera-relative fill light
-keep the athlete readable around the full course. Environment contrast and
+keep the athlete readable around the full course. RowErg uses a slightly lower,
+longer chase and nearer fog so the far bank softens into late-afternoon haze
+instead of drawing a sharp circular toy course. Environment contrast and
 detail stay subordinate to the figure, equipment contacts, ghost comparison,
 and telemetry.
 

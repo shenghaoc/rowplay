@@ -221,22 +221,24 @@ interface VenuePalette {
 
 const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
   rower: {
-    skyTop: "#31769f",
-    skyHorizon: "#e7c68d",
-    haze: "#f8dfac",
-    sun: "#fff0bd",
-    ridgeFar: "#6f8d76",
-    ridgeNear: "#365f4f",
-    foliageFar: "#416d56",
-    foliageNear: "#1d493f",
+    // Warm late-afternoon haze first; saturated mid-greens second. Distance
+    // must desaturate into the sky or the 2D venue reads as flat cutouts.
+    skyTop: "#4d86a8",
+    skyHorizon: "#f2d29a",
+    haze: "#f3e2bc",
+    sun: "#ffe7b0",
+    ridgeFar: "#9aae90",
+    ridgeNear: "#4a6d56",
+    foliageFar: "#5a7a62",
+    foliageNear: "#2a5244",
     structure: "#ece6d9",
     structureShade: "#8c7b67",
     structureLight: "#ffd68a",
-    groundTop: "#3d879b",
-    groundMid: "#185a6c",
-    groundBottom: "#0a3544",
-    surfaceLine: "#8fd0db",
-    surfaceHighlight: "#e0f5f7",
+    groundTop: "#4a92a3",
+    groundMid: "#1d6172",
+    groundBottom: "#0c3a48",
+    surfaceLine: "#9fd6df",
+    surfaceHighlight: "#e8f6f7",
     surfaceShadow: "#082a37",
     marker: "#ef5b42",
     safety: "#d9e7e7",
@@ -292,12 +294,12 @@ const VENUES_DARK: Readonly<Record<Sport, VenuePalette>> = {
   rower: {
     skyTop: "#071724",
     skyHorizon: "#294f62",
-    haze: "#718c93",
+    haze: "#7a9499",
     sun: "#f0c67b",
-    ridgeFar: "#294b46",
-    ridgeNear: "#173832",
-    foliageFar: "#23483d",
-    foliageNear: "#102e29",
+    ridgeFar: "#3a5654",
+    ridgeNear: "#1d3f39",
+    foliageFar: "#2a4d44",
+    foliageNear: "#12332d",
     structure: "#8c908c",
     structureShade: "#3b4648",
     structureLight: "#f0b65c",
@@ -2382,73 +2384,92 @@ export class CourseRenderer implements ReplayRenderer {
     const farShift = this.materialOffset(meters, 0.018, 18);
     const midShift = this.materialOffset(meters, 0.03, 26);
 
-    // Far valley ridge — tall enough to own the skyline the way Ski owns its
-    // massif. The old row ridge barely rose 40px and read as a green smudge.
-    ctx.fillStyle = palette.ridgeFar;
-    ctx.beginPath();
-    ctx.moveTo(0, horizon + 8);
-    ctx.lineTo(0, horizon - 28);
-    ctx.quadraticCurveTo(w * 0.08, horizon - 72, w * 0.16, horizon - 86);
-    ctx.quadraticCurveTo(w * 0.24, horizon - 58, w * 0.32, horizon - 42);
-    ctx.quadraticCurveTo(w * 0.42, horizon - 96, w * 0.52, horizon - 78);
-    ctx.quadraticCurveTo(w * 0.6, horizon - 52, w * 0.68, horizon - 64);
-    ctx.quadraticCurveTo(w * 0.78, horizon - 92, w * 0.88, horizon - 60);
-    ctx.quadraticCurveTo(w * 0.94, horizon - 44, w, horizon - 50);
-    ctx.lineTo(w, horizon + 8);
-    ctx.closePath();
-    ctx.fill();
+    // Far valley as stacked translucent mass — hard single-colour silhouettes
+    // are what made the 2D venue look like paper cutouts.
+    const drawRidge = (
+      top: number,
+      colour: string,
+      alpha: number,
+      points: readonly [number, number][],
+    ) => {
+      ctx.fillStyle = withAlpha(colour, alpha);
+      ctx.beginPath();
+      ctx.moveTo(0, horizon + 10);
+      ctx.lineTo(0, horizon - points[0]![1]);
+      for (const [xf, yf] of points) {
+        ctx.lineTo(w * xf, horizon - yf);
+      }
+      ctx.lineTo(w, horizon + 10);
+      ctx.closePath();
+      ctx.fill();
+      // Soft upper wash into haze so ridge tops dissolve rather than hard-edge.
+      const wash = ctx.createLinearGradient(0, horizon - top, 0, horizon - top * 0.35);
+      wash.addColorStop(0, withAlpha(palette.haze, this.darkTheme ? 0.28 : 0.42));
+      wash.addColorStop(1, withAlpha(palette.haze, 0));
+      ctx.fillStyle = wash;
+      ctx.fill();
+    };
+    drawRidge(92, palette.ridgeFar, this.darkTheme ? 0.55 : 0.72, [
+      [0.08, 62],
+      [0.18, 88],
+      [0.3, 48],
+      [0.44, 96],
+      [0.58, 70],
+      [0.72, 84],
+      [0.88, 58],
+      [1, 52],
+    ]);
+    drawRidge(70, palette.ridgeFar, this.darkTheme ? 0.4 : 0.5, [
+      [0.12, 42],
+      [0.28, 68],
+      [0.46, 52],
+      [0.64, 74],
+      [0.82, 46],
+      [1, 38],
+    ]);
 
-    // Atmospheric veil so the far ridge falls back behind the forest belt.
-    ctx.fillStyle = withAlpha(palette.haze, this.darkTheme ? 0.16 : 0.24);
-    ctx.beginPath();
-    ctx.moveTo(0, horizon - 8);
-    ctx.lineTo(0, horizon - 28);
-    ctx.quadraticCurveTo(w * 0.08, horizon - 72, w * 0.16, horizon - 86);
-    ctx.quadraticCurveTo(w * 0.24, horizon - 58, w * 0.32, horizon - 42);
-    ctx.quadraticCurveTo(w * 0.42, horizon - 96, w * 0.52, horizon - 78);
-    ctx.quadraticCurveTo(w * 0.6, horizon - 52, w * 0.68, horizon - 64);
-    ctx.quadraticCurveTo(w * 0.78, horizon - 92, w * 0.88, horizon - 60);
-    ctx.quadraticCurveTo(w * 0.94, horizon - 44, w, horizon - 50);
-    ctx.lineTo(w, horizon + 8);
-    ctx.lineTo(0, horizon + 8);
-    ctx.closePath();
-    ctx.fill();
-
-    // Mid forest mass — a continuous wooded shoulder, not a dotted treeline.
-    ctx.fillStyle = palette.ridgeNear;
+    // Mid forest mass — cooler body, still softened by haze at the crown.
+    ctx.fillStyle = withAlpha(palette.ridgeNear, this.darkTheme ? 0.82 : 0.9);
     ctx.beginPath();
     ctx.moveTo(0, horizon + 10);
-    ctx.lineTo(0, horizon - 18);
-    ctx.quadraticCurveTo(w * 0.1, horizon - 48, w * 0.2, horizon - 54);
-    ctx.quadraticCurveTo(w * 0.3, horizon - 34, w * 0.4, horizon - 46);
-    ctx.quadraticCurveTo(w * 0.52, horizon - 62, w * 0.62, horizon - 40);
-    ctx.quadraticCurveTo(w * 0.74, horizon - 58, w * 0.84, horizon - 44);
-    ctx.quadraticCurveTo(w * 0.93, horizon - 30, w, horizon - 26);
+    ctx.lineTo(0, horizon - 20);
+    ctx.quadraticCurveTo(w * 0.12, horizon - 50, w * 0.22, horizon - 56);
+    ctx.quadraticCurveTo(w * 0.34, horizon - 36, w * 0.46, horizon - 52);
+    ctx.quadraticCurveTo(w * 0.58, horizon - 64, w * 0.7, horizon - 42);
+    ctx.quadraticCurveTo(w * 0.84, horizon - 58, w * 0.94, horizon - 34);
+    ctx.lineTo(w, horizon - 28);
     ctx.lineTo(w, horizon + 10);
     ctx.closePath();
     ctx.fill();
+    const midWash = ctx.createLinearGradient(0, horizon - 60, 0, horizon - 8);
+    midWash.addColorStop(0, withAlpha(palette.haze, this.darkTheme ? 0.18 : 0.28));
+    midWash.addColorStop(1, withAlpha(palette.haze, 0));
+    ctx.fillStyle = midWash;
+    ctx.fill();
 
-    // Individual pine crowns along the mid belt for needle silhouette.
-    ctx.fillStyle = palette.foliageFar;
-    for (let x = -20 + midShift; x <= w + 24; x += 14) {
-      const i = Math.abs(Math.floor((x - midShift) / 14));
-      const base = horizon - 6 - (i % 3) * 2;
-      const tip = base - (16 + (i % 5) * 4);
-      const half = 4.5 + (i % 3) * 1.2;
-      ctx.beginPath();
-      ctx.moveTo(x, tip);
-      ctx.lineTo(x + half, base + 2);
-      ctx.lineTo(x - half, base + 2);
-      ctx.closePath();
-      ctx.fill();
-      if (i % 2 === 0) {
+    // Clumped pine stands — irregular gaps prevent a picket-fence tree line.
+    ctx.fillStyle = withAlpha(palette.foliageFar, 0.88);
+    for (let x = -24 + midShift; x <= w + 28; ) {
+      const i = Math.abs(Math.floor((x - midShift) / 11));
+      const gap = i % 7 === 3 || i % 11 === 0;
+      if (gap) {
+        x += 18 + (i % 3) * 6;
+        continue;
+      }
+      const stand = 2 + (i % 4);
+      for (let t = 0; t < stand; t++) {
+        const px = x + t * (5 + (i % 3));
+        const base = horizon - 4 - (t % 3) * 2 - (i % 2);
+        const tip = base - (14 + ((i + t) % 5) * 3.5);
+        const half = 3.6 + ((i + t) % 3) * 1.1;
         ctx.beginPath();
-        ctx.moveTo(x, tip + 6);
-        ctx.lineTo(x + half * 0.78, base + 5);
-        ctx.lineTo(x - half * 0.78, base + 5);
+        ctx.moveTo(px, tip);
+        ctx.lineTo(px + half, base + 2);
+        ctx.lineTo(px - half, base + 2);
         ctx.closePath();
         ctx.fill();
       }
+      x += 16 + stand * 3 + (i % 5) * 2;
     }
 
     // Near shoreline bank with real vertical rise into the water.

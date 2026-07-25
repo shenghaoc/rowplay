@@ -419,17 +419,20 @@ const CAMERA_RIGS: Record<Sport, CameraRig> = {
   // elbow silhouette and the bicycle frame instead of flattening the athlete
   // into a rear-facing toy. The pullback logic below still owns narrow and
   // comparison framing, so this is a static composition choice, not an orbit.
-  // Subject-first framing: RowErg needs its broad scull envelope, but the
-  // former distant/high line made the athlete too small for the additional
-  // anatomical detail to register. This stays wide enough for the grips and
-  // blades while lowering the horizon and putting the seated body in the
-  // composition's visual centre.
-  rower: { back: 3.65, height: 2.02, ahead: 0.72, lateral: 2.25, aimY: 0.92 },
+  // Row sits slightly lower and longer than before so the water plane and
+  // softened far bank fill more of the frame, without clipping the scull.
+  rower: { back: 4.05, height: 1.78, ahead: 0.88, lateral: 2.05, aimY: 0.84 },
   skierg: { back: 3.15, height: 2.3, ahead: 0.9, lateral: 1.86, aimY: 1.14 },
   bike: { back: 3.12, height: 1.96, ahead: 0.58, lateral: 1.92, aimY: 0.92 },
 };
 
-const BASE_CAMERA_FOV = 42;
+const BASE_CAMERA_FOV: Record<Sport, number> = {
+  // Slightly tighter than Ski/Bike so the far bank compresses into fog; still
+  // wide enough that the full scull span survives portrait viewports.
+  rower: 40,
+  skierg: 42,
+  bike: 42,
+};
 const SPEED_CAMERA_FOV_GAIN = 2;
 
 /**
@@ -686,29 +689,30 @@ const themed =
  */
 const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
   rower: {
-    // Late-afternoon regatta: a humid blue sky settles into the same warm,
-    // green river valley as the banks instead of meeting a disconnected teal
-    // arena at the horizon.
-    skyZenith: themed(0x4f8eaf, 0x0b2334),
-    skyHorizon: themed(0xf4d8a8, 0x527785),
-    skyNadir: themed(0x4f7f7b, 0x102c35),
-    fog: themed(0xc4d5c8, 0x294852),
-    fogNear: 70,
-    fogFar: 195,
-    hemisphereSky: themed(0xffecd0, 0x7ba5b2),
-    hemisphereGround: themed(0x2d5852, 0x132d31),
-    hemisphereIntensity: 1.28,
-    sun: themed(0xffe4ad, 0xffc978),
-    sunIntensity: 2.35,
-    fill: themed(0xa8dfea, 0x4b8090),
-    fillIntensity: 0.62,
-    exposure: 1.1,
-    farSilhouette: themed(0x66806a, 0x173438),
-    midSilhouette: themed(0x315a42, 0x194438),
-    venueStructure: themed(0xe7e0cf, 0x708085),
-    venueAccent: themed(0xa95f38, 0xd89a5f),
-    infield: themed(0x2c7488, 0x164d5e),
-    apron: themed(0x347f91, 0x185666),
+    // Late-afternoon regatta immersion: warm haze owns distance. Fog begins
+    // inside the arena diameter so the far bank softens instead of drawing a
+    // perfect circular toy course against a hard green cutout.
+    skyZenith: themed(0x5a8fb0, 0x0c2436),
+    skyHorizon: themed(0xf6d9a4, 0x5a7f8c),
+    skyNadir: themed(0x6a9188, 0x14323a),
+    fog: themed(0xe6dcc4, 0x2a4650),
+    fogNear: 28,
+    fogFar: 98,
+    hemisphereSky: themed(0xffe8c4, 0x7ba5b2),
+    hemisphereGround: themed(0x3d6a5c, 0x152f33),
+    hemisphereIntensity: 1.18,
+    sun: themed(0xffe0a0, 0xffc978),
+    sunIntensity: 2.15,
+    fill: themed(0xb5d8e4, 0x4b8090),
+    fillIntensity: 0.48,
+    exposure: 1.06,
+    // Far forms desaturate into the haze; mid forms keep cooler green body.
+    farSilhouette: themed(0x9aab8e, 0x2a4548),
+    midSilhouette: themed(0x4a6d55, 0x1c403c),
+    venueStructure: themed(0xe8e0cf, 0x6e7e86),
+    venueAccent: themed(0xb56a3d, 0xd89a5f),
+    infield: themed(0x2f7a8c, 0x164d5e),
+    apron: themed(0x3a8796, 0x185666),
   },
   skierg: {
     // Cold Nordic morning: sky, airborne frost, snow bowl and blue-shadow
@@ -3987,7 +3991,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private lastNowMs = NaN;
   /** Replay-space speed (m/s), smoothed; breathes the chase-camera FOV. */
   private smoothedSpeed = 0;
-  private fovCurrent = BASE_CAMERA_FOV;
+  private fovCurrent = 42;
   /** Steps effects down when frames run persistently over budget. */
   private governor = new PerfGovernor({ maxLevel: 3 });
   /** Set once the governor flattens the water (level 3). */
@@ -4126,7 +4130,8 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.renderer.shadowMap.type = THREE.VSMShadowMap;
     }
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(BASE_CAMERA_FOV, 1, 0.1, 500);
+    this.camera = new THREE.PerspectiveCamera(BASE_CAMERA_FOV[this.sport], 1, 0.1, 500);
+    this.fovCurrent = BASE_CAMERA_FOV[this.sport];
 
     // Venue-specific sky/ground fill plus a warm key and cool bounce establish
     // a deliberate broadcast-lighting rig instead of a flat ambient wash.
@@ -4945,8 +4950,13 @@ export class CourseRenderer3D implements ReplayRenderer {
     phase: number,
   ): THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> {
     const positions = new Float32Array(segments * 18);
+    const colors = new Float32Array(segments * 18);
     const composition = HORIZON_COMPOSITIONS[this.sport];
     let cursor = 0;
+    // Aerial perspective: ridge tops lean into fog, bases keep body color so
+    // the skyline is atmosphere rather than a cardboard cutout.
+    const baseColor = new THREE.Color(color("light"));
+    const hazeColor = new THREE.Color(this.environment.fog("light"));
     const envelopeAt = (angle: number): number => {
       let envelope = composition.floor;
       for (const lobe of composition.lobes) {
@@ -4961,12 +4971,24 @@ export class CourseRenderer3D implements ReplayRenderer {
       const a = (i / segments) * Math.PI * 2;
       const broad = Math.sin(a * 3 + phase) * 0.46 + Math.sin(a * 7 - phase * 0.7) * 0.28;
       const ridge = Math.abs(Math.sin(a * 11 + phase * 1.9)) * 0.34;
+      // Extra mid-frequency roughness stops the ridge reading as a smooth CG
+      // wall — natural skylines are broken at multiple scales.
+      const scrub = Math.sin(a * 23 + phase * 2.4) * 0.12 + Math.sin(a * 41) * 0.06;
       const envelope = envelopeAt(a);
-      return averageHeight * envelope + variation * (broad + ridge) * (0.38 + envelope * 0.62);
+      return (
+        averageHeight * envelope +
+        variation * (broad + ridge + scrub) * (0.38 + envelope * 0.62)
+      );
     };
     const radiusAt = (i: number): number => {
       const a = (i / segments) * Math.PI * 2;
-      return radius + Math.sin(a * 5 + phase) * 2.1 + Math.sin(a * 13) * 0.8;
+      return radius + Math.sin(a * 5 + phase) * 2.1 + Math.sin(a * 13) * 0.8 + Math.sin(a * 29) * 0.45;
+    };
+    const writeColor = (offset: number, heightFactor: number): void => {
+      const sample = baseColor.clone().lerp(hazeColor, clamp01(0.18 + heightFactor * 0.72));
+      colors[offset] = sample.r;
+      colors[offset + 1] = sample.g;
+      colors[offset + 2] = sample.b;
     };
     for (let i = 0; i < segments; i++) {
       const a0 = (i / segments) * Math.PI * 2;
@@ -4977,20 +4999,26 @@ export class CourseRenderer3D implements ReplayRenderer {
       const z0 = composition.offsetZ + Math.cos(a0) * r0;
       const x1 = composition.offsetX + Math.sin(a1) * r1;
       const z1 = composition.offsetZ + Math.cos(a1) * r1;
-      const y0 = baseY + Math.max(0.4, heightAt(i));
-      const y1 = baseY + Math.max(0.4, heightAt(i + 1));
+      const peak0 = Math.max(0.4, heightAt(i));
+      const peak1 = Math.max(0.4, heightAt(i + 1));
+      // Sink the base slightly below the water plane so the ridge meets the
+      // world instead of hovering as a floating billboard.
+      const foot = baseY - 1.4;
+      const y0 = baseY + peak0;
+      const y1 = baseY + peak1;
+      const maxPeak = Math.max(peak0, peak1, 0.001);
       const quad = [
         x0,
-        baseY,
+        foot,
         z0,
         x1,
         y1,
         z1,
         x1,
-        baseY,
+        foot,
         z1,
         x0,
-        baseY,
+        foot,
         z0,
         x0,
         y0,
@@ -5000,14 +5028,22 @@ export class CourseRenderer3D implements ReplayRenderer {
         z1,
       ];
       positions.set(quad, cursor);
+      writeColor(cursor, 0.05);
+      writeColor(cursor + 3, peak1 / maxPeak);
+      writeColor(cursor + 6, 0.05);
+      writeColor(cursor + 9, 0.05);
+      writeColor(cursor + 12, peak0 / maxPeak);
+      writeColor(cursor + 15, peak1 / maxPeak);
       cursor += quad.length;
     }
     const geometry = this.track(new THREE.BufferGeometry());
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     geometry.computeVertexNormals();
     const material = this.environmentBasicMat(`${name}:material`, color, {
       side: THREE.DoubleSide,
       fog: true,
+      vertexColors: true,
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = name;
@@ -5060,21 +5096,34 @@ export class CourseRenderer3D implements ReplayRenderer {
     const quaternion = new THREE.Quaternion();
     const scale = new THREE.Vector3();
     const position = new THREE.Vector3();
+    // Clump trees into irregular stands so the tree line never reads as a
+    // perfectly spaced ring of ornaments around the arena.
+    const clumpCount = Math.max(3, Math.round(count / 7));
     for (let i = 0; i < count; i++) {
-      const { angle: a } = sectorSample(i, count, sectors);
+      const clump = Math.floor((i / count) * clumpCount);
+      const { angle: clumpAngle } = sectorSample(clump, clumpCount, sectors);
+      const clumpJitter = (Math.sin(clump * 17.13) * 0.5 + Math.sin(i * 3.7) * 0.5) * degrees(9);
+      const memberJitter = (Math.sin(i * 9.41) * 0.5 + 0.5) * degrees(4.5) * (i % 2 === 0 ? 1 : -1);
+      const a = clumpAngle + clumpJitter + memberJitter;
+      const depthBias = (i % 5) / 4;
       const radius =
-        radiusMin + (radiusMax - radiusMin) * (0.18 + 0.82 * (0.5 + Math.sin(i * 12.9898) * 0.5));
-      const size = 0.75 + (0.5 + Math.sin(i * 7.31) * 0.5) * 0.8;
+        radiusMin +
+        (radiusMax - radiusMin) * (0.12 + 0.78 * depthBias + 0.1 * Math.sin(i * 12.9898));
+      // Heavy size variance: a few tall dominants, many mid, some short scrub.
+      const sizeRoll = 0.5 + Math.sin(i * 7.31) * 0.5;
+      const size =
+        (sizeRoll < 0.18 ? 0.48 : sizeRoll > 0.86 ? 1.55 : 0.78 + sizeRoll * 0.55) *
+        (this.sport === "rower" ? 1.08 : 1);
       // The canopy deliberately has asymmetric boughs, so rotate every
       // instance independently rather than exposing the same silhouette at
       // every point on the ridge.
       quaternion.setFromAxisAngle(WORLD_UP, (i * 2.399963229728653) % FULL_CIRCLE);
       position.set(Math.sin(a) * radius, 2.02 * size, Math.cos(a) * radius);
-      scale.set(size * 1.04, size * 1.04, size * 1.04);
+      scale.set(size * (0.92 + (i % 3) * 0.06), size * 1.04, size * (0.92 + (i % 4) * 0.05));
       matrix.compose(position, quaternion, scale);
       canopies.setMatrixAt(i, matrix);
       position.y = 0.55 * size;
-      scale.set(size, size, size);
+      scale.set(size * 0.95, size, size * 0.95);
       matrix.compose(position, quaternion, scale);
       trunks.setMatrixAt(i, matrix);
     }
@@ -5646,32 +5695,30 @@ export class CourseRenderer3D implements ReplayRenderer {
   private addRowerValleyRidges(group: THREE.Group): void {
     const valley = new THREE.Group();
     valley.name = "environment:rower:valley-ridges";
+    // Far ridges stay solid haze-tinted colour — mapped detail at that
+    // distance is what made the valley look like textured game props.
     const farMat = this.environmentStandardMat(
       "environment:rower:ridge-far-material",
-      themed(0x4f6d58, 0x1a3534),
-      { fog: true, roughness: 0.97, metalness: 0 },
+      themed(0x8fa48a, 0x2a4548),
+      { fog: true, roughness: 1, metalness: 0 },
     );
     const midMat = this.environmentStandardMat(
       "environment:rower:ridge-mid-material",
-      themed(0x3d6449, 0x173f36),
-      { fog: true, roughness: 0.95, metalness: 0 },
+      themed(0x4d6e55, 0x1a403a),
+      { fog: true, roughness: 0.96, metalness: 0 },
     );
     const nearMat = this.environmentStandardMat(
       "environment:rower:shoreline-material",
-      themed(0x315f49, 0x163c33),
+      themed(0x355f48, 0x163c33),
       { fog: true, roughness: 0.94, metalness: 0 },
     );
-    this.applyEnvironmentSurfaceMaps(
-      midMat,
-      "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
-      [1.6, 2],
-      0.16,
-    );
+    // Only the near shoulder carries leaf maps; mid stays soft body colour so
+    // atmosphere can own the middle distance.
     this.applyEnvironmentSurfaceMaps(
       nearMat,
       "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
       [2.1, 2.6],
-      0.2,
+      0.16,
     );
 
     const placeRidges = (
@@ -5772,20 +5819,37 @@ export class CourseRenderer3D implements ReplayRenderer {
     const quaternion = new THREE.Quaternion();
     const position = new THREE.Vector3();
     const scale = new THREE.Vector3();
+    const clumpCount = Math.max(4, Math.round(count / 8));
+    let written = 0;
     for (let index = 0; index < count; index++) {
-      const { angle } = sectorSample(index, count, ROW_PINE_SECTORS);
-      // Two depth bands: a rear wall plus a denser mid belt so the forest has
-      // thickness when the chase camera yaws around the course.
+      const clump = Math.floor((index / count) * clumpCount);
+      const { angle: clumpAngle } = sectorSample(clump, clumpCount, ROW_PINE_SECTORS);
+      // Leave deliberate gaps between clumps so the forest is a series of
+      // stands, not a continuous green wall marching around the loop.
+      const gap = Math.sin(clump * 5.7);
+      if (gap < -0.55 && index % 3 !== 0) continue;
+      const angle =
+        clumpAngle +
+        Math.sin(index * 4.17) * degrees(7) +
+        Math.sin(clump * 11.3) * degrees(5);
       const band = index % 3;
       const radius =
-        (band === 0 ? 88 : band === 1 ? 74 : 66) + Math.sin(index * 4.17) * (band === 0 ? 4.5 : 2.4);
-      const size = (band === 0 ? 1.55 : band === 1 ? 1.2 : 0.95) * (0.85 + (index % 5) * 0.08);
+        (band === 0 ? 86 : band === 1 ? 73 : 64) + Math.sin(index * 4.17) * (band === 0 ? 5.5 : 2.8);
+      const size =
+        (band === 0 ? 1.7 : band === 1 ? 1.25 : 0.9) *
+        (0.7 + (0.5 + Math.sin(index * 6.1) * 0.5) * 0.55);
       quaternion.setFromAxisAngle(WORLD_UP, (index * 2.399963229728653) % FULL_CIRCLE);
-      position.set(Math.sin(angle) * radius, 2.4 * size, Math.cos(angle) * radius);
-      scale.set(size * 1.65, size * 1.35, size * 1.65);
+      position.set(Math.sin(angle) * radius, 2.15 * size, Math.cos(angle) * radius);
+      scale.set(size * 1.85, size * 1.15, size * 1.55);
       matrix.compose(position, quaternion, scale);
-      belt.setMatrixAt(index, matrix);
+      belt.setMatrixAt(written, matrix);
+      written += 1;
     }
+    // Hide any unused capacity after gap culling so instances never pile at
+    // the origin.
+    matrix.makeScale(0, 0, 0);
+    for (let index = written; index < count; index++) belt.setMatrixAt(index, matrix);
+    belt.count = written;
     belt.instanceMatrix.needsUpdate = true;
     group.add(belt);
   }
@@ -5896,8 +5960,8 @@ export class CourseRenderer3D implements ReplayRenderer {
       [0.11, 0.11],
       0.24,
     );
-    // Shingle waterline replaces the old transparent wash so the shore edge
-    // has its own mineral material between water and earth.
+    // Shingle waterline plus a dark wet strip: the water must meet land with a
+    // contact edge or the whole bank floats like a decal on the basin.
     const waterlineMat = this.environmentStandardMat(
       "environment:rower:bank-waterline-material",
       themed(0xb4afa0, 0x4f5854),
@@ -5908,6 +5972,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       "/replay-assets/environments/dry-river-pebbles/dry-river-pebbles",
       [0.42, 0.42],
       0.45,
+    );
+    const wetEdgeMat = this.environmentStandardMat(
+      "environment:rower:wet-edge-material",
+      themed(0x2a5a5e, 0x16363c),
+      { roughness: 0.28, metalness: 0.08 },
     );
     const bankSectors: readonly EnvironmentSector[] = [
       { start: degrees(-42), span: degrees(184) },
@@ -5950,10 +6019,18 @@ export class CourseRenderer3D implements ReplayRenderer {
           earthMat,
         ),
         this.makeHorizontalArc(
+          `environment:rower:wet-edge-${index + 1}`,
+          outerR + 2.45,
+          outerR + 3.05,
+          0.04,
+          sector,
+          wetEdgeMat,
+        ),
+        this.makeHorizontalArc(
           `environment:rower:waterline-${index + 1}`,
-          outerR + 2.8,
-          outerR + 3.45,
-          0.09,
+          outerR + 2.9,
+          outerR + 3.55,
+          0.11,
           sector,
           waterlineMat,
         ),
@@ -7363,17 +7440,17 @@ export class CourseRenderer3D implements ReplayRenderer {
     // vestibular trigger, so it is pinned flat under reduced motion; seek-
     // sized distance jumps are excluded from the speed estimate so a scrub
     // doesn't pulse the lens.
+    const baseFov = BASE_CAMERA_FOV[this.sport];
     if (this.reduceMotion) {
       this.smoothedSpeed = 0;
-      this.fovCurrent = BASE_CAMERA_FOV;
+      this.fovCurrent = baseFov;
     } else {
       if (dt > 0 && dLive >= 0 && dLive < dt * 120) {
         const inst = dLive > 0 ? Math.min(dLive / dt, 40) : 0;
         this.smoothedSpeed += (inst - this.smoothedSpeed) * dampFactor(3, dt);
       }
       const fovTarget =
-        BASE_CAMERA_FOV +
-        Math.max(0, Math.min(1, (this.smoothedSpeed - 3) / 6)) * SPEED_CAMERA_FOV_GAIN;
+        baseFov + Math.max(0, Math.min(1, (this.smoothedSpeed - 3) / 6)) * SPEED_CAMERA_FOV_GAIN;
       this.fovCurrent +=
         (fovTarget - this.fovCurrent) * (this.cameraInit ? dampFactor(2.5, dt) : 1);
     }
