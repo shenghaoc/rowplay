@@ -222,10 +222,18 @@ infield, service apron, tiered stands, roof structure, floodlights, urban dusk
 skyline, and embedded lap reflectors rather than using a generic
 velodrome-style circuit. High and Ultra BikeErg use optimized local derivatives
 of Poly Haven's CC0 Clean Asphalt material; its creator, source, license, and
-digests are recorded with the assets. The 2D view composes sky, horizon, middle distance, course,
-and foreground layers. The 3D view adds atmospheric depth, a readable horizon,
-smooth compound scenery, material-specific terrain variation, and sport-specific
-surfaces so the athlete is grounded in a venue rather than floating on a plane.
+digests are recorded with the assets. High and Ultra RowErg keep an authored
+clear-coat water basin and dress the full river valley with local Poly Haven
+CC0 derivatives: Aerial Grass Rock (grass banks), Forest Ground 01 (earth
+banks), Dry River Pebbles (shingle waterline), Leafy Grass (reed beds), Forest
+Leaves 04 (wooded shoreline and pine canopies), Bark Brown 01 (pine trunks),
+and Brown Planks 03 (launch dock and regatta pavilion bodies). SkiErg reuses
+the bark and leaf maps on its evergreen tree line. Creators, sources, licenses,
+and digests are recorded with the assets. The 2D view
+composes sky, horizon, middle distance, course, and foreground layers. The 3D
+view adds atmospheric depth, a readable horizon, smooth compound scenery,
+material-specific terrain variation, and sport-specific surfaces so the athlete
+is grounded in a venue rather than floating on a plane.
 
 The venue, weather, light, trees, mountains, shoreline, and structures are
 generic presentation art. Concept2 does not provide route geography, venue,

@@ -1019,14 +1019,23 @@ function organicRadialSurfaceGeometry(
 ): THREE.BufferGeometry {
   const ringCount = profile.length;
   const maxRadius = Math.max(0.001, ...profile.map((point) => point.x));
-  const positions = new Float32Array((ringCount * radialSegments + 2) * 3);
+  const vertexCount = ringCount * radialSegments + 2;
+  const positions = new Float32Array(vertexCount * 3);
+  // Cylindrical UVs so High/Ultra CC0 bark/leaf/terrain maps can dress pines,
+  // shoreline hills, and alpine forms without a separate unwrap step.
+  const uvs = new Float32Array(vertexCount * 2);
   const indices: number[] = [];
   let cursor = 0;
+  let uvCursor = 0;
+  const yMin = Math.min(...profile.map((point) => point.y));
+  const yMax = Math.max(...profile.map((point) => point.y));
+  const yRange = Math.max(0.001, yMax - yMin);
 
   for (let ring = 0; ring < ringCount; ring++) {
     const point = profile[ring];
     if (!point) continue;
     const radiusWeight = point.x / maxRadius;
+    const v = (point.y - yMin) / yRange;
     for (let segment = 0; segment < radialSegments; segment++) {
       const angle = (segment / radialSegments) * Math.PI * 2;
       // Three long-frequency lobes establish asymmetric shoulders; smaller
@@ -1048,6 +1057,8 @@ function organicRadialSurfaceGeometry(
       positions[cursor++] = Math.cos(angle) * radius;
       positions[cursor++] = point.y + verticalNoise;
       positions[cursor++] = Math.sin(angle) * radius;
+      uvs[uvCursor++] = segment / radialSegments;
+      uvs[uvCursor++] = v;
     }
   }
 
@@ -1070,6 +1081,10 @@ function organicRadialSurfaceGeometry(
   const top = profile.at(-1);
   positions.set([0, bottom?.y ?? 0, 0], bottomCenter * 3);
   positions.set([0, top?.y ?? 0, 0], topCenter * 3);
+  uvs[bottomCenter * 2] = 0.5;
+  uvs[bottomCenter * 2 + 1] = 0;
+  uvs[topCenter * 2] = 0.5;
+  uvs[topCenter * 2 + 1] = 1;
   const topRing = (ringCount - 1) * radialSegments;
   for (let segment = 0; segment < radialSegments; segment++) {
     const next = (segment + 1) % radialSegments;
@@ -1079,6 +1094,7 @@ function organicRadialSurfaceGeometry(
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   geometry.computeBoundingBox();
@@ -4342,6 +4358,46 @@ export class CourseRenderer3D implements ReplayRenderer {
     return texture;
   }
 
+  /**
+   * Apply a provenance-recorded CC0 surface set at High (diffuse + roughness)
+   * and Ultra (+ OpenGL normal). Low/Medium keep solid procedural colours so
+   * the venue identity never depends on an image decode.
+   */
+  private applyEnvironmentSurfaceMaps(
+    material: THREE.MeshStandardMaterial,
+    basePath: string,
+    repeat: [number, number],
+    normalScale = 0.22,
+  ): void {
+    if (this.cfg.environmentDetail < 2) return;
+    material.map = this.loadEnvironmentTexture(`${basePath}-diffuse-512.jpg`, repeat, true);
+    material.roughnessMap = this.loadEnvironmentTexture(
+      `${basePath}-roughness-512.jpg`,
+      repeat,
+    );
+    if (this.cfg.environmentDetail >= 3) {
+      material.normalMap = this.loadEnvironmentTexture(
+        `${basePath}-normal-gl-512.jpg`,
+        repeat,
+      );
+      material.normalScale.set(normalScale, normalScale);
+    }
+    material.needsUpdate = true;
+  }
+
+  /** Planar XZ UVs in world units so seamless surface maps tile on arc/terrain forms. */
+  private ensurePlanarWorldUv(geometry: THREE.BufferGeometry, scale = 1): void {
+    if (geometry.getAttribute("uv")) return;
+    const positions = geometry.getAttribute("position");
+    if (!positions) return;
+    const uvs = new Float32Array(positions.count * 2);
+    for (let index = 0; index < positions.count; index++) {
+      uvs[index * 2] = positions.getX(index) * scale;
+      uvs[index * 2 + 1] = positions.getZ(index) * scale;
+    }
+    geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  }
+
   private makeWaterNormalTexture(ultra: boolean): THREE.DataTexture {
     const size = ultra ? 128 : 64;
     const pixels = new Uint8Array(size * size * 4);
@@ -4978,6 +5034,20 @@ export class CourseRenderer3D implements ReplayRenderer {
       themed(0x5a4635, 0x261f1b),
       { roughness: 0.96, metalness: 0 },
     );
+    // High/Ultra woodland uses local CC0 bark and leaf litter so the tree
+    // line is material, not only silhouette — shared by Row and Ski valleys.
+    this.applyEnvironmentSurfaceMaps(
+      canopyMat,
+      "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
+      [2.4, 3.2],
+      0.18,
+    );
+    this.applyEnvironmentSurfaceMaps(
+      trunkMat,
+      "/replay-assets/environments/bark-brown-01/bark-brown-01",
+      [1.1, 2.4],
+      0.55,
+    );
     const canopies = this.trackInstanced(new THREE.InstancedMesh(canopyGeo, canopyMat, count));
     const trunks = this.trackInstanced(new THREE.InstancedMesh(trunkGeo, trunkMat, count));
     canopies.name = `environment:${this.sport}:pines`;
@@ -5100,6 +5170,16 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.environment.venueAccent,
       { roughness: 0.5, metalness: 0.16 },
     );
+    // Row regatta buildings pick up the same local plank response as the
+    // launch dock so High/Ultra venue forms share one wood language.
+    if (this.sport === "rower") {
+      this.applyEnvironmentSurfaceMaps(
+        bodyMat,
+        "/replay-assets/environments/brown-planks-03/brown-planks-03",
+        [1.4, 0.9],
+        0.22,
+      );
+    }
     const glassMat = this.mat(
       new THREE.MeshPhysicalMaterial({
         color: themed(0x8ed4e5, 0x173a4d)("light"),
@@ -5267,6 +5347,9 @@ export class CourseRenderer3D implements ReplayRenderer {
     }
     const geometry = this.track(new THREE.BufferGeometry());
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    // World-space planar UVs let High/Ultra CC0 bank materials tile without
+    // depending on a per-mesh unwrap, while untextured arcs ignore them.
+    this.ensurePlanarWorldUv(geometry);
     geometry.computeVertexNormals();
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = name;
@@ -5502,6 +5585,14 @@ export class CourseRenderer3D implements ReplayRenderer {
       themed(0x9a7654, 0x49392d),
       { roughness: 0.78, metalness: 0.02 },
     );
+    // Close-up High/Ultra dock decks use local CC0 plank response so the
+    // launch structure belongs to the river valley rather than a flat block.
+    this.applyEnvironmentSurfaceMaps(
+      deckMat,
+      "/replay-assets/environments/brown-planks-03/brown-planks-03",
+      [2.8, 0.7],
+      0.35,
+    );
     const railMat = this.environmentStandardMat(
       "environment:rower:dock-rail-material",
       this.environment.venueStructure,
@@ -5552,6 +5643,14 @@ export class CourseRenderer3D implements ReplayRenderer {
       themed(0x315f49, 0x163c33),
       { fog: true, roughness: 0.95, metalness: 0 },
     );
+    // Wooded shoreline hills use leaf litter so they read as vegetation mass
+    // rather than a second copy of the earth-bank soil map.
+    this.applyEnvironmentSurfaceMaps(
+      material,
+      "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
+      [2.1, 2.6],
+      0.2,
+    );
     const shoreline = this.trackInstanced(new THREE.InstancedMesh(geometry, material, count));
     shoreline.name = "environment:rower:wooded-shoreline";
     const matrix = new THREE.Matrix4();
@@ -5586,10 +5685,32 @@ export class CourseRenderer3D implements ReplayRenderer {
       themed(0x55724b, 0x294b3d),
       { roughness: 0.94, metalness: 0 },
     );
-    const waterlineMat = this.environmentBasicMat(
+    // High/Ultra dress the authored banks with local CC0 terrain response so
+    // the river valley is more than a flat tint beside procedural water.
+    this.applyEnvironmentSurfaceMaps(
+      earthMat,
+      "/replay-assets/environments/forrest-ground-01/forrest-ground-01",
+      [0.14, 0.14],
+      0.28,
+    );
+    this.applyEnvironmentSurfaceMaps(
+      grassMat,
+      "/replay-assets/environments/aerial-grass-rock/aerial-grass-rock",
+      [0.11, 0.11],
+      0.24,
+    );
+    // Shingle waterline replaces the old transparent wash so the shore edge
+    // has its own mineral material between water and earth.
+    const waterlineMat = this.environmentStandardMat(
       "environment:rower:bank-waterline-material",
-      themed(0xc6d3b5, 0x708d82),
-      { transparent: true, opacity: 0.48, fog: true },
+      themed(0xb4afa0, 0x4f5854),
+      { roughness: 0.9, metalness: 0.05 },
+    );
+    this.applyEnvironmentSurfaceMaps(
+      waterlineMat,
+      "/replay-assets/environments/dry-river-pebbles/dry-river-pebbles",
+      [0.42, 0.42],
+      0.45,
     );
     const bankSectors: readonly EnvironmentSector[] = [
       { start: degrees(-42), span: degrees(184) },
@@ -5630,6 +5751,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       "environment:rower:reed-material",
       themed(0x8b8850, 0x53633f),
       { roughness: 0.96, metalness: 0 },
+    );
+    this.applyEnvironmentSurfaceMaps(
+      reedMat,
+      "/replay-assets/environments/leafy-grass/leafy-grass",
+      [1.6, 4.2],
+      0.32,
     );
     const reeds = this.trackInstanced(new THREE.InstancedMesh(reedGeo, reedMat, reedCount));
     reeds.name = "environment:rower:reed-beds";

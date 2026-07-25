@@ -666,6 +666,90 @@ describe("CourseRenderer3D", () => {
           .material as THREE.MeshPhysicalMaterial
       ).normalMap?.name,
     ).toBe("environment:texture:water-normal-ultra");
+    // High/Ultra dress the full river valley — banks, shoreline, dock, reeds,
+    // waterline pebbles, pine bark/leaves, and pavilion wood — with local CC0
+    // maps. Low/Medium stay solid so identity never depends on bitmap decode.
+    // Water itself remains the authored clear-coat basin.
+    const bankGrass = qualities.map((_, index) => {
+      const material = (
+        rowScenes[index]!.scene.getObjectByName("environment:rower:grass-bank-1") as THREE.Mesh
+      ).material as THREE.MeshStandardMaterial;
+      return material;
+    });
+    expect(bankGrass[0]!.map).toBeNull();
+    expect(bankGrass[1]!.map).toBeNull();
+    expect(bankGrass[2]!.map?.userData.sourcePath).toContain("aerial-grass-rock-diffuse");
+    expect(bankGrass[2]!.roughnessMap?.userData.sourcePath).toContain(
+      "aerial-grass-rock-roughness",
+    );
+    expect(bankGrass[2]!.normalMap).toBeNull();
+    expect(bankGrass[3]!.normalMap?.userData.sourcePath).toContain("aerial-grass-rock-normal");
+    const bankEarth = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:earth-bank-1") as THREE.Mesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(bankEarth.map?.userData.sourcePath).toContain("forrest-ground-01-diffuse");
+    const waterline = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:waterline-1") as THREE.Mesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(waterline.map?.userData.sourcePath).toContain("dry-river-pebbles-diffuse");
+    const shoreline = (
+      rowScenes[2]!.scene.getObjectByName(
+        "environment:rower:wooded-shoreline",
+      ) as THREE.InstancedMesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(shoreline.map?.userData.sourcePath).toContain("forest-leaves-04-diffuse");
+    const reeds = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:reed-beds") as THREE.InstancedMesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(reeds.map?.userData.sourcePath).toContain("leafy-grass-diffuse");
+    const pineCanopy = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(pineCanopy.map?.userData.sourcePath).toContain("forest-leaves-04-diffuse");
+    const pineTrunks = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:pine-trunks") as THREE.InstancedMesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(pineTrunks.map?.userData.sourcePath).toContain("bark-brown-01-diffuse");
+    expect(
+      (
+        rowScenes[3]!.scene.getObjectByName(
+          "environment:rower:pine-trunks",
+        ) as THREE.InstancedMesh
+      ).material as THREE.MeshStandardMaterial
+    ).toMatchObject({
+      normalMap: expect.objectContaining({
+        userData: expect.objectContaining({
+          sourcePath: expect.stringContaining("bark-brown-01-normal"),
+        }),
+      }),
+    });
+    const dockDeckMaterial = (quality: number): THREE.MeshStandardMaterial => {
+      const dock = rowScenes[quality]!.scene.getObjectByName(
+        "environment:rower:launch-dock",
+      ) as THREE.Group;
+      const deck = dock.children.find(
+        (child) =>
+          child instanceof THREE.Mesh &&
+          (child.material as THREE.MeshStandardMaterial).name ===
+            "environment:rower:dock-deck-material",
+      ) as THREE.Mesh;
+      return deck.material as THREE.MeshStandardMaterial;
+    };
+    expect(dockDeckMaterial(2).map?.userData.sourcePath).toContain("brown-planks-03-diffuse");
+    expect(dockDeckMaterial(3).normalMap?.userData.sourcePath).toContain("brown-planks-03-normal");
+    const pavilionBody = (
+      rowScenes[2]!.scene.getObjectByName(
+        "environment:rower:regatta-pavilion",
+      ) as THREE.Group
+    ).children.find(
+      (child) =>
+        child instanceof THREE.Mesh &&
+        (child.material as THREE.MeshStandardMaterial).name ===
+          "environment:rower:pavilion-body-material",
+    ) as THREE.Mesh;
+    expect((pavilionBody.material as THREE.MeshStandardMaterial).map?.userData.sourcePath).toContain(
+      "brown-planks-03-diffuse",
+    );
     for (const { renderer } of rowScenes) renderer.destroy();
 
     const snowMaterials = qualities.map((quality) => {

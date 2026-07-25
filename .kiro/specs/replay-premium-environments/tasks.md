@@ -55,6 +55,10 @@ Follow-up to: `.kiro/specs/replay-3d-athlete-readability/`
   - [x] Rebase the environment work on the merged production-athlete PR
   - [x] Give adjacent Row tiers distinct reflection, venue, and highlight layers
   - [x] Give High/Ultra Ski snow documented local PBR material response
+  - [x] Give High/Ultra Row the full river-valley CC0 material system (grass
+    banks, forest-ground earth, pebble waterline, leafy reeds, leaf shoreline,
+    bark trunks, leaf canopies, plank dock/pavilions) while water stays the
+    authored clear-coat basin; Ski reuses bark/leaf on pines
   - [x] Record CC0 source, creator, license, source checksums, and shipped digests
   - [x] Add regression coverage proving tiers differ beyond DPR and density
   - [x] Complete browser visual QA across Low, Medium, High, and Ultra

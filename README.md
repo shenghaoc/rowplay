@@ -76,9 +76,11 @@ account.
 - Canvas 2D and optional Three.js 3D renderers that share the same technique
   phases, equipment contact targets, and sport-specific water, snow, and track
   materials for RowErg, SkiErg, and BikeErg
-- Premium sport-specific environments in both views: layered regatta water and
-  shoreline, groomed Nordic snow and alpine venue cues, or a barrier-lined
-  asphalt/velodrome training circuit
+- Premium sport-specific environments in both views: layered regatta water with
+  a full river-valley material system (banks, pebbles, reeds, woodland, dock,
+  pavilions), groomed Nordic snow and alpine venue cues, or a barrier-lined
+  asphalt training circuit; High/Ultra dress Row surroundings, Ski snow/pines,
+  and Bike asphalt with provenance-recorded CC0 surface maps
 - A compact repository-owned V4 GLB supplies one generic skinned athlete in 3D.
   RowErg, SkiErg, and BikeErg each use an authored canonical technique clip,
   sampled deterministically from replay pose and time; an analytic post-clip
