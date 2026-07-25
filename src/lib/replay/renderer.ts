@@ -2553,8 +2553,8 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.fillStyle = palette.marker;
     ctx.fillRect(towerX + 6, horizon - 64, 14, 3);
 
-    // One continuous lake body. Vertical thermocline plus a radial darkening
-    // toward mid-basin so the course centre is open water, not empty stage.
+    // Water is the racing channel. Mid-course silhouette is a land island —
+    // not more water — matching the 3D lagoon centre.
     const water = ctx.createLinearGradient(0, horizon, 0, h);
     water.addColorStop(0, palette.groundTop);
     water.addColorStop(0.18, withAlpha(palette.groundTop, 0.78));
@@ -2563,33 +2563,30 @@ export class CourseRenderer implements ReplayRenderer {
     water.addColorStop(1, palette.groundBottom);
     ctx.fillStyle = water;
     ctx.fillRect(0, horizon, w, h - horizon);
-    const basinDeep = ctx.createRadialGradient(
-      w * 0.5,
-      horizon + h * 0.22,
-      h * 0.02,
-      w * 0.5,
-      horizon + h * 0.28,
-      h * 0.42,
-    );
-    basinDeep.addColorStop(0, withAlpha(palette.groundBottom, this.darkTheme ? 0.55 : 0.38));
-    basinDeep.addColorStop(0.55, withAlpha(palette.groundMid, 0.18));
-    basinDeep.addColorStop(1, withAlpha(palette.groundBottom, 0));
-    ctx.fillStyle = basinDeep;
-    ctx.fillRect(0, horizon, w, h - horizon);
-    // Start pontoons in open water, aligned under the campus — centre furniture
-    // that belongs to a real course, not a floating decorative island.
-    const pontoonY = horizon + h * 0.09;
-    ctx.fillStyle = palette.structureShade;
-    roundRect(ctx, w * 0.42, pontoonY, w * 0.07, 3.2, 1);
-    ctx.fill();
-    roundRect(ctx, w * 0.52, pontoonY + 5, w * 0.06, 3, 1);
-    ctx.fill();
-    ctx.strokeStyle = withAlpha(palette.structureLight, 0.35);
-    ctx.lineWidth = 0.8;
+    const islandCx = w * 0.52;
+    const islandCy = horizon + h * 0.16;
+    ctx.fillStyle = palette.foliageNear;
     ctx.beginPath();
-    ctx.moveTo(w * 0.18, horizon + 2);
-    ctx.lineTo(w * 0.45, pontoonY + 1);
-    ctx.stroke();
+    ctx.ellipse(islandCx, islandCy, w * 0.11, h * 0.045, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = palette.structureShade;
+    ctx.beginPath();
+    ctx.ellipse(islandCx, islandCy + 2, w * 0.12, h * 0.018, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = palette.foliageFar;
+    for (const [dx, tip] of [
+      [-18, 14],
+      [-4, 18],
+      [10, 15],
+      [22, 12],
+    ] as const) {
+      ctx.beginPath();
+      ctx.moveTo(islandCx + dx, islandCy - tip);
+      ctx.lineTo(islandCx + dx + 7, islandCy + 2);
+      ctx.lineTo(islandCx + dx - 7, islandCy + 2);
+      ctx.closePath();
+      ctx.fill();
+    }
     // Bright surface meniscus — stronger than before so the waterline reads
     // instantly across the full course width, even on small screens.
     ctx.fillStyle = withAlpha(palette.surfaceHighlight, 0.44);
