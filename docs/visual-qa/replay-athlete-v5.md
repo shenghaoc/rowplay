@@ -159,54 +159,82 @@ truthfully record effective High/WebGL. They prove anatomy, enclosure, and
 clipping at the same geometry and contact solve used by all tiers; the existing
 hardware Chrome evidence remains the Ultra/WebGPU material proof.
 
-### BikeErg-form equipment (option B outcome) — 2026-07-25
+### BikeErg equipment and seated fit — 2026-07-25
 
-Product goal: better **machine** + correct athlete interaction. Athlete body is
-#172; this change replaces the toy road diamond with a stationary indoor
-BikeErg-form silhouette (front flywheel cage, fixed base feet, seat rail, mast,
-console, grips) generated from `BIKE_RIG`, with sit/grip/pedal contacts locked.
+Product goal: a better **machine** plus correct athlete interaction. The athlete
+body itself is #172; this change is equipment and contact.
 
-A CC-BY Sketchfab spin bike was evaluated and **not imported** (≈435k faces vs
-32k V3 package budget; Sketchfab auth; no retarget). Provenance:
-`static/replay-assets/source/bike/PROVENANCE.md`. Shipped geometry is
+**What shipped.** A stylised diamond-frame road bicycle: two equal wheels on the
+ground, a main triangle with chain- and seat-stays and fork blades, a segmented
+chain to the rear cassette, drop bars with contact-aligned hoods, and a
+channelled performance saddle. An indoor-erg silhouette (flywheel cage, fixed
+base, mast, console) was attempted first and abandoned — it read as an
+incoherent object at chase-camera distance and made the rolling-progress
+metaphor unreadable. The docs are written against the bicycle that ships, not
+that abandoned direction; `docs/usage.md` and the asset README both state
+plainly that the bicycle is a course metaphor, not a depiction of Concept2
+hardware.
+
+**Provenance.** A CC-BY Sketchfab spin bike was evaluated and **not imported**
+(≈435k faces against a 32k V3 package budget; Sketchfab auth; no retarget).
+See `static/replay-assets/source/bike/PROVENANCE.md`. Shipped geometry is
 repository-authored MIT under the same fit contract a third-party mesh would use.
 
-### BikeErg sit-surface correction — 2026-07-25
+**The seating bug, and why the first two attempts missed it.** The initial
+"seated fit" moved the hip **bone** onto the saddle marker, which unit tests
+happily confirmed while the chase camera showed an empty seat. The reason is
+that the hip bone is not the contact surface: measured over the pad footprint
+after the full clip and contact solve, the lowest hips-weighted posterior skin
+trails the hip bone by ≈ 18.8 cm at the worst crank phase — not the ~6.5 cm an
+earlier bone-only estimate suggested. `BIKE_RIG.rider.sitSurfaceFromHip` now
+records the measured value, and hip height is _derived_ from it
+(`bikeRiderHipY`) rather than tuned by eye.
 
-Codex’s earlier “seated fit” change only moved the hip **bone** onto the saddle
-marker. Measured after full clip + contact solve, the production V4 posterior
-sit surface still sat ~8 cm below that marker, so the buttocks sank under the
-authored saddle and the seat read as empty from the chase camera while
-hip-to-saddle unit tests stayed green. Palms were already on the hood contacts
-(~0 mm).
+**Current mechanism.** Seating is geometric end to end. The pad top is
+`BIKE_RIG.saddle.y + saddlePadHalfHeight`; the authored V3 saddle mesh is built
+so its highest vertex lands exactly on that plane; hip Y is derived so the
+measured sit surface rests on it, less a 5 mm cushion nestle. At runtime the V4
+controller receives an explicit `seatContract` and may lift the root if clip hip
+pitch would otherwise re-open 穿模 — bounded at 8 cm, beyond which the solve
+refuses and replay falls back rather than posing the rider mid-air. The V4
+post-clip pass samples the visible shoulders and derives a tucked elbow marker
+per hood; the motion graph remains the authority for opposed pedal contacts.
 
-Fix: lower the shared `BIKE_RIG` saddle/seat-cluster under
-`hip + sitSurfaceFromHip` (keep the hip high enough for full pedal reach),
-rebuild V3 equipment from that contract, document `sitSurfaceFromHip`, and
-assert sit-surface distance (not hip≈saddle) plus palm-to-grip lock in the
-tiered fit test. Post-fix: sit-to-saddle ≈ 2 cm, palm-to-grip ≈ 0 mm. No
-third-party bike download — the empty seat was an athlete/saddle alignment bug,
-not missing bike geometry.
+**Regressions this closed.** Lowering the saddle without moving the seat post
+left the post ending ~10 cm above the pad — straight through the rider — in the
+V3 package, which is the _preferred_ path over the procedural fallback. The post
+now stops beneath the pad, and `validate-replay-assets.mjs` fails the build on
+any bike frame vertex that rises above the pad top inside the rider's footprint,
+so this cannot recur silently. Separately, the V3 generator previously re-typed
+the fit numbers by hand; it now imports `BIKE_RIG` directly, which is what makes
+the no-drift claim in the asset README true rather than aspirational. That
+import also revealed a 5 cm mismatch between the V3 frame's bottom-bracket
+junction and the runtime crank centre, now resolved.
 
-### BikeErg seated-fit follow-up — 2026-07-25
+**Coverage.** The focused suite samples six crank phases across all four quality
+tiers, asserting saddle support from skinned mesh vertices (not a config point),
+palm-to-grip lock, shoulder-width elbows, and no ground penetration. Five new
+controller tests cover the seat contract itself: the lift, XZ lock during lift,
+refusal to drag the rider downward, over-budget fallback, and the shipped
+`BIKE_RIG` numbers. The earlier version of this work had none — a height
+heuristic in the controller meant the correction never executed under test.
 
-The BikeErg machine and rider now share one `BIKE_RIG` proportion contract in
-the procedural renderer and generated V3 package. The shorter wheelbase,
-raised saddle cluster, and narrowed hood span keep the machine at a human-scale
-relationship to the V4 body instead of stretching the frame around the old
-pose. The V4 post-clip pass samples the visible shoulders, derives a deterministic
-tucked elbow marker for each hood, and still leaves the motion graph as the
-authority for opposed pedal contacts.
+**Frames.** Captured from the real application at
+`http://127.0.0.1:8787` (Workers preview) with
+`node scripts/capture-replay-athlete-v5-qa.mjs --only=…`; manifest at
+[`bike-fit-2026-07-25/manifest.json`](athlete-v5/in-app/bike-fit-2026-07-25/manifest.json).
 
-Local in-app review used `/replay/1004?qa=athlete-visual&athleteCamera=close` at
-Ultra/WebGPU plus the skeleton overlay at the same pedal-top pose. The paused
-and moving spot-checks showed the pelvis supported by the saddle, both palms on
-the hood contacts, elbows below and behind the shoulders, and both shoes on the
-opposed pedals. The focused regression suite additionally samples six phases
-across the crank cycle and asserts saddle support, shoulder-width elbows, and
-hood clearance. The update reuses the existing CC0-derived V4 athlete and
-repository-authored V3/procedural equipment; no new runtime asset download was
-introduced.
+| View                        | Frame                                                                                                                                               | What it shows                                                                     |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Chase, pedal top            | [frame](athlete-v5/in-app/bike-fit-2026-07-25/poses/saddle-bike-pedal-top.jpg)                                                                      | Rider seated on the pad at the crank extreme that previously reopened penetration |
+| Chase, pedal top + skeleton | [overlay](athlete-v5/in-app/bike-fit-2026-07-25/poses/saddle-bike-pedal-top-skeleton.jpg)                                                           | Hip joint above the pad, continuous leg chain to the pedal                        |
+| Chase, pedal bottom         | [frame](athlete-v5/in-app/bike-fit-2026-07-25/poses/saddle-bike-pedal-bottom.jpg)                                                                   | Seat still occupied through bottom dead centre; both wheels on the ground         |
+| Close, pedal top / bottom   | [top](athlete-v5/in-app/bike-fit-2026-07-25/poses/bike-pedal-top.jpg) · [bottom](athlete-v5/in-app/bike-fit-2026-07-25/poses/bike-pedal-bottom.jpg) | Frame silhouette and rider posture at working distance                            |
+| Grip close-up               | [frame](athlete-v5/in-app/bike-fit-2026-07-25/poses/grip-bike-pedal-top.jpg)                                                                        | Both palms closed on the bar; ghost hand independently gripping                   |
+
+Remaining compromise: the `athlete-close` camera crops the rider's head on
+BikeErg at desktop framing, which is why the seat evidence above uses the
+ordinary chase camera. The close frames remain the posture reference.
 
 The primary matrix is the
 [six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):

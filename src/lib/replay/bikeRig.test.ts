@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as THREE from "three";
-import { BIKE_RIG, bikeWheelAxleY } from "./bikeRig";
+import { BIKE_RIG, bikeRiderHipY, bikeSaddleTopY, bikeWheelAxleY } from "./bikeRig";
 
 function point(value: readonly number[]): THREE.Vector3 {
   return new THREE.Vector3(...value);
@@ -21,29 +21,36 @@ describe("BikeErg fit contract", () => {
     expect(BIKE_RIG.rearAxleZ).toBeLessThan(BIKE_RIG.saddle[2]!);
   });
 
-  it("places the sit surface on the saddle top — not through the seat", () => {
+  it("derives hip height from the sit surface and pad top — not a free Y tweak", () => {
     const saddle = point(BIKE_RIG.saddle);
     const hip = point(BIKE_RIG.rider.root).add(point(BIKE_RIG.rider.pelvisOffset));
     const sit = hip.clone().add(point(BIKE_RIG.rider.sitSurfaceFromHip));
-    // Authored pad top sits above the centre marker (~7 cm for the V3
-    // performance-saddle loft).
-    const saddleTopY = saddle.y + 0.07;
+    const saddleTopY = bikeSaddleTopY(BIKE_RIG);
     const leftGrip = new THREE.Vector3(
       -BIKE_RIG.handlebar.grip.halfSpan,
       BIKE_RIG.handlebar.grip.y,
       BIKE_RIG.handlebar.grip.z,
     );
 
-    // Hip above seat; sit on/above the pad — never through the saddle top.
+    // Hip Y is the single derived seating value.
+    expect(BIKE_RIG.rider.root[1]).toBeCloseTo(bikeRiderHipY(BIKE_RIG), 8);
+    expect(saddleTopY).toBeCloseTo(saddle.y + BIKE_RIG.saddlePadHalfHeight, 8);
+
+    // Sit surface is a real mesh offset (~20 cm worst-phase), not a token cm.
+    expect(BIKE_RIG.rider.sitSurfaceFromHip[1]!).toBeLessThanOrEqual(-0.14);
+    expect(BIKE_RIG.rider.sitSurfaceFromHip[1]!).toBeGreaterThanOrEqual(-0.24);
+
+    // Hip above seat; sit on the pad (soft nestle only) — never through the top.
     expect(hip.y).toBeGreaterThan(saddleTopY);
-    expect(sit.y).toBeGreaterThanOrEqual(saddleTopY - 0.015);
-    expect(sit.y).toBeLessThan(saddleTopY + 0.05);
+    expect(sit.y).toBeGreaterThanOrEqual(saddleTopY - BIKE_RIG.rider.sitNestle - 1e-6);
+    expect(sit.y).toBeLessThanOrEqual(saddleTopY + 0.02);
     expect(Math.abs(sit.z - saddle.z)).toBeLessThan(0.08);
     expect(leftGrip.distanceTo(hip)).toBeGreaterThan(0.5);
-    expect(leftGrip.distanceTo(hip)).toBeLessThan(0.95);
+    expect(leftGrip.distanceTo(hip)).toBeLessThan(1.05);
 
     const bottomPedalY = BIKE_RIG.bottomBracket[1]! - BIKE_RIG.crank.pedalRadius;
-    expect(hip.y - bottomPedalY).toBeLessThan(1.22);
+    // Legs must still reach the bottom of the stroke after sit-driven hip lift.
+    expect(hip.y - bottomPedalY).toBeLessThan(1.28);
   });
 
   it("places wheel axles so the tyre shell rests on the ground, not through it", () => {

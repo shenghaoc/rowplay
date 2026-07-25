@@ -409,6 +409,25 @@ for (const pose of [
   if (shouldCapture(pose.name)) await captureStill({ ...pose, camera: "grip" });
 }
 
+// Seat evidence. The BikeErg 屁股穿模 defect is only legible from the ordinary
+// chase view — the close athlete camera crops it — because "the seat reads as
+// empty" is precisely a chase-distance symptom. Captured at both crank
+// extremes, since hip pitch is what reopens the penetration mid-stroke.
+for (const pose of [
+  { name: "saddle-bike-pedal-top", sport: SPORTS.bike, seconds: 0.05 },
+  { name: "saddle-bike-pedal-bottom", sport: SPORTS.bike, seconds: 0.72 },
+]) {
+  if (shouldCapture(pose.name)) await captureStill({ ...pose, camera: "normal" });
+  if (shouldCapture(`${pose.name}-skeleton`)) {
+    await captureStill({
+      ...pose,
+      name: `${pose.name}-skeleton`,
+      camera: "normal",
+      skeleton: true,
+    });
+  }
+}
+
 for (const quality of ["low", "medium", "high", "ultra"]) {
   const name = `tier-row-finish-${quality}`;
   if (shouldCapture(name)) {

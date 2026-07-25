@@ -181,17 +181,22 @@ returns underneath the arm for the next plant without changing to the opposite
 two-bone intersection.
 BikeErg shoes stay on opposed pedals while each knee follows a continuous
 rider-forward branch and retains flexion through bottom dead centre. The 3D
-BikeErg machine is a stationary indoor-erg silhouette (front flywheel cage,
-fixed base, seat rail, cockpit)—not a free road bicycle—shared by the
-procedural renderer and generated V3 equipment through one `BIKE_RIG` fit
-contract for bottom bracket, saddle, grips, and pedals. The production V4
-athlete (PR #172) places its hip above that saddle so the mesh sit surface
-rests on the seat, and rebuilds the elbow branch from the visible shoulders to
-the hood contacts so palms lock to the grips. Equipment form and athlete–bike
-contact are present at every 3D tier; higher tiers add material response and
-detail rather than replaying the same misfit at a larger pixel budget. These
-are deliberate illustrative motion constraints, not measured joint or force data
-from Concept2.
+BikeErg rider is drawn on a stylised diamond-frame road bicycle—two equal
+wheels, a chain to the rear cassette, drop bars—rather than a literal model of
+the stationary machine, because the replay carries the athlete along a race
+course and a rolling bicycle reads that progress at a glance. The frame and the
+rider share one `BIKE_RIG` fit contract for bottom bracket, saddle, grips, and
+pedals, so the procedural renderer and the generated V3 equipment cannot drift
+apart. The production V4 athlete (PR #172) derives hip height from the measured
+mesh sit surface and pad top (not a free Y tweak), keeps the posterior on a
+channelled performance saddle so the body cannot pass through the cushion, and
+rebuilds the elbow branch from the visible shoulders to the hood contacts so
+palms lock to the grips. Equipment form and athlete–bike contact are present at
+every 3D tier; higher tiers add material response and detail rather than
+replaying the same misfit at a larger pixel budget. These are deliberate
+illustrative motion constraints, not measured joint or force data from
+Concept2, and the bicycle is a visual metaphor rather than a depiction of
+Concept2 hardware.
 
 The shipped V4 athlete is a local, repository-owned generic asset: one skinned
 mesh, an authored skeleton, and three canonical sport clips. Three.js samples

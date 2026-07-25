@@ -55,16 +55,27 @@ with licence + SHA-256.
 
 ## Shipped source of truth
 
-| Field            | Value                                                                    |
-| ---------------- | ------------------------------------------------------------------------ |
-| Form             | Diamond-frame road bike (two equal wheels, BB at axle height)            |
-| Fit contract     | `src/lib/replay/bikeRig.js`                                              |
-| Generator        | `scripts/build-replay-assets.mjs` (`bikeWheelAssemblyParts`,             |
-|                  | `bikeFrameAssemblyParts`, `bikeDrivetrainAssemblyParts`)                 |
-| Runtime fallback | `src/lib/replay/renderer3d.ts` `makeBikeAvatar`                          |
-| Licence          | Copyright (c) 2026 shenghaoc and rowplay contributors; MIT (`LICENSE`)   |
-| External assets  | None — no textures, downloads, scans, or avatar-generator output         |
-| Interaction      | V4 athlete from PR #172; sit surface, palm grips, and pedals own contact |
+| Field            | Value                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| Form             | Diamond-frame road bike (two equal wheels, BB at axle height)                                       |
+| Fit contract     | `src/lib/replay/bikeRig.js`                                                                         |
+| Generator        | `scripts/build-replay-assets.mjs` (`bikeWheelAssemblyParts`,                                        |
+|                  | `bikeFrameAssemblyParts`, `bikeDrivetrainAssemblyParts`)                                            |
+| Runtime fallback | `src/lib/replay/renderer3d.ts` `makeBikeAvatar`                                                     |
+| Licence          | Copyright (c) 2026 shenghaoc and rowplay contributors; MIT (`LICENSE`)                              |
+| External assets  | None — no textures, downloads, scans, or avatar-generator output                                    |
+| Interaction      | V4 athlete from PR #172; measured sit surface on channelled pad, palm grips, and pedals own contact |
+
+The generator **imports** `bikeRig.js` rather than re-typing its numbers, so the
+checked-in package and the procedural renderer cannot disagree about the bottom
+bracket, saddle pad, grips, axles, or crank radius. `validate-replay-assets.mjs`
+enforces two further rules for this assembly:
+
+- the authored saddle mesh's highest vertex must equal the contract pad top, and
+- no frame part may rise above that pad top within the rider's footprint.
+
+The second rule exists because lowering the saddle once left the seat post
+ending ten centimetres above the pad, inside the seated athlete.
 
 ## Rebuild
 

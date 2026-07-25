@@ -17,7 +17,7 @@ import {
   SKI_POLE_APPROACH_START_CYCLE,
   type BikeMotionGraph,
 } from "./motionGraph";
-import { BIKE_RIG, bikeWheelAxleY } from "./bikeRig";
+import { BIKE_RIG, bikeSaddleTopY, bikeWheelAxleY } from "./bikeRig";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import { METERS_PER_CYCLE, ParticlePool, PerfGovernor, clampDt, dampFactor } from "./motion";
@@ -39,6 +39,7 @@ import {
 import {
   installReplayV4MotionController,
   type ReplayV4MotionController,
+  type ReplayV4SeatContract,
 } from "./renderer3dV4Motion";
 
 // Resolve lazily because this module is also imported during SSR. The returned
@@ -2901,6 +2902,25 @@ function makeSkierAvatar(
 }
 
 /**
+ * Seat contract for the V4 controller, in avatar-group-local space.
+ *
+ * Only BikeErg has one: the rower sits on a sliding seat their pelvis marker
+ * already tracks exactly, and the skier stands. Returning `undefined` for those
+ * leaves their pelvis alignment exact rather than merely bounded.
+ */
+function bikeSeatContract(sport: Sport): ReplayV4SeatContract | undefined {
+  if (sport !== "bike") return undefined;
+  return {
+    padTopY: bikeSaddleTopY(BIKE_RIG),
+    sitSurfaceOffsetY: BIKE_RIG.rider.sitSurfaceFromHip[1] ?? -0.2,
+    nestle: BIKE_RIG.rider.sitNestle ?? 0.005,
+    // The clip's own hip pitch is the only thing this absorbs; anything larger
+    // means the rig and the saddle have genuinely drifted apart.
+    maxLift: 0.08,
+  };
+}
+
+/**
  * Low-poly BikeErg cyclist: a rider in an aero tuck on a two-wheeled frame.
  * Frame, wheel spokes and jersey carry `userData.accent`; the wheels roll, the
  * cranks turn and the rider's thighs pedal in opposition.
@@ -3137,17 +3157,18 @@ function makeBikeAvatar(
   group.add(seatPost);
   frameFallback.push(seatPost);
 
-  // A bicycle saddle is a low-profile shell, not a thick rectangular block.
-  // Render its cushion before, but without writing depth against, the rider:
-  // the visible body therefore cleanly occludes the support wherever their
-  // silhouettes overlap, while its outer edge and fixed frame attachment
-  // remain visible.
-  const saddle = new THREE.Mesh(roundedVenueBlockGeometry(0.18, 0.025, 0.3, 0.025), saddleMaterial);
+  // Thin performance pad. Geometry contact (sit surface on pad top) owns the
+  // no-穿模 contract; depthWrite stays on so the cushion remains a solid
+  // support rather than a draw-order band-aid over a penetrating mesh.
+  const saddlePadHalf = BIKE_RIG.saddlePadHalfHeight ?? 0.035;
+  const saddle = new THREE.Mesh(
+    roundedVenueBlockGeometry(0.18, saddlePadHalf * 2, 0.3, 0.02),
+    saddleMaterial,
+  );
   setReplayAssetSlot(saddle, "equipment:bike:saddle");
   saddle.name = "bike-saddle";
   saddle.position.set(BIKE_RIG.saddle[0] ?? 0, BIKE_RIG.saddle[1] ?? 0, BIKE_RIG.saddle[2] ?? 0);
   saddle.renderOrder = -2;
-  saddleMaterial.depthWrite = false;
   group.add(saddle);
   frameFallback.push(saddle);
 
@@ -3352,11 +3373,11 @@ function makeBikeAvatar(
   const SHIN_LENGTH = 0.63;
   const BIKE_AERO_SPINE_LEAN = 0.74;
   const BIKE_HEAD_GAZE_COMPENSATION = -0.47;
-  // Place the hip above the saddle so the V4 mesh sit surface lands on the
-  // authored pad top (no 穿模).  The procedural pelvis nestles into the seat
-  // shell; the V4 hip-bone sits slightly above.
-  const BIKE_PELVIS_BASE_Y = 0;
-  const BIKE_PELVIS_BASE_Z = -0.005;
+  // Pelvis stays at the rider root derived by bikeRiderHipY() — sit surface
+  // on pad top. Do not add a vertical dig: averagePedalLoad used to sink the
+  // hips into the cushion and re-open butt/saddle 穿模 every downstroke.
+  const BIKE_PELVIS_BASE_Y = BIKE_RIG.rider.pelvisOffset[1] ?? 0;
+  const BIKE_PELVIS_BASE_Z = BIKE_RIG.rider.pelvisOffset[2] ?? -0.005;
   const BIKE_ANKLE_MIN = -0.22;
   const BIKE_ANKLE_MAX = 0.14;
   const placeBarArms = (): void => {
@@ -3457,9 +3478,6 @@ function makeBikeAvatar(
       (motion.leftPedal.drive.value - motion.rightPedal.drive.value) * animationScale;
     const pedalExtensionShift =
       (motion.leftPedal.legExtension.value - motion.rightPedal.legExtension.value) * animationScale;
-    const averagePedalLoad =
-      ((motion.leftPedal.drive.value + motion.rightPedal.drive.value) * 0.5 - 0.25) *
-      animationScale;
     const pelvisRock = motion.body.pelvisRock.value * animationScale;
     const torsoSway = motion.body.torsoSway.value * animationScale;
     const spineLean = motion.body.spineLean.value * animationScale;
@@ -3467,12 +3485,12 @@ function makeBikeAvatar(
     const headStabilization = motion.body.headStabilization.value * animationScale;
 
     // A seated rider shifts pressure across the saddle with each downstroke.
-    // These are compact root cues, not free translations: hips remain within
-    // the saddle shell while the contact solver preserves both pedal links.
+    // Lateral/fore-aft only — vertical load is absorbed by the pad nestle in
+    // BIKE_RIG, not by translating the hip through the cushion.
     pelvis.position.set(
-      pelvisRock * 0.16 + pedalLoadShift * 0.018,
-      BIKE_PELVIS_BASE_Y - averagePedalLoad * 0.01,
-      BIKE_PELVIS_BASE_Z + pedalExtensionShift * 0.018,
+      pelvisRock * 0.12 + pedalLoadShift * 0.014,
+      BIKE_PELVIS_BASE_Y,
+      BIKE_PELVIS_BASE_Z + pedalExtensionShift * 0.014,
     );
     pelvis.rotation.set(
       spineLean * 0.3 + pedalExtensionShift * 0.01,
@@ -4035,6 +4053,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       finalizeAvatar(this.ghostAvatar.group, false, 0.45);
     }
     if (options.v4Assets) {
+      // BikeErg is the one sport the athlete sits on top of, so the controller
+      // needs the pad plane to keep the posterior out of the cushion. The
+      // avatar group is the space BIKE_RIG is authored in, and it is exactly
+      // the parent installed below, so these values need no conversion.
+      const seatContract = bikeSeatContract(this.sport);
       this.liveAvatar.v4Motion = installReplayV4MotionController({
         sport: this.sport,
         parent: this.liveAvatar.group,
@@ -4045,6 +4068,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         diagnosticMode: options.showV4Skeleton ? "skeleton" : undefined,
         castShadow: this.cfg.shadows,
         receiveShadow: this.cfg.shadows,
+        seatContract,
       });
       this.ghostAvatar.v4Motion = installReplayV4MotionController({
         sport: this.sport,
@@ -4057,6 +4081,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         castShadow: false,
         receiveShadow: false,
         laneColor: COLORS_LIGHT.ghost,
+        seatContract,
       });
       this.liveAvatar.group.userData.authoredReplayV4 = !!this.liveAvatar.v4Motion;
       this.ghostAvatar.group.userData.authoredReplayV4 = !!this.ghostAvatar.v4Motion;

@@ -22,11 +22,11 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 616,028 bytes; SHA-256
-  `37dbde88bf1eea4f9d175c6f9ae8242a3335678756bb1efc21d3404eed94642e`.
+- **Reviewed V3 artifact:** 681,908 bytes; SHA-256
+  `db15f6b1a32c0c65c64cd4071ab6df9a51eb5658be73720837f94cd5d61c8df5`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
-  nodes total). The package has 26,590 indexed triangles and 18,745 indexed
+  nodes total). The package has 26,846 indexed triangles and 18,907 indexed
   vertices, one neutral placeholder material, zero textures/images, zero
   animations, and zero skins.
 - **Detail language:** shared-vertex smooth normals, a neutral lower rowing hull
@@ -36,16 +36,21 @@ identity, or Canvas 2D fallback.
   limbs, deltoid transitions, and grip/sole/elbow detail. Equipment includes a
   Blender-authored open-U racing shell with split decks, recessed cockpit,
   slide rails, angled stretcher, heel cups, wing rigger, oarlocks, moving
-  four-roller seat carriage, and sculpted oar; raised ski deck and binding; aero-rim wheels
-  with 14 fine spokes and six-spoke disc rotors; a stationary **BikeErg-form**
-  indoor machine (front flywheel cage, fixed base feet, seat rail, mast,
-  console, contact-aligned grips, rotating crank) generated from the shared
-  `src/lib/replay/bikeRig.js` contract so the checked-in V3 equipment cannot
-  drift from the renderer's sit/grip/pedal fit. Bike equipment provenance and
-  the evaluated-but-not-imported CC-BY spin-bike candidate are recorded in
-  `source/bike/PROVENANCE.md`. All detail is generated from reviewed local
-  Three.js or Blender Python source; there is no image, texture, downloaded
-  model, scan, or avatar-generator output.
+  four-roller seat carriage, and sculpted oar; raised ski deck and binding; and a
+  stylised **diamond-frame road bicycle** — aero-rim wheels with 14 fine spokes
+  and six-spoke disc rotors, a main triangle with chain- and seat-stays and fork
+  blades, chain and cassette, calipers, contact-aligned brake hoods and levers, a
+  channelled performance saddle on a post that stops beneath the pad, and a
+  rotating crank assembly. The bicycle is a course-progress metaphor rather than
+  a model of Concept2's stationary BikeErg. Every one of those frame nodes is
+  read at build time from the shared `src/lib/replay/bikeRig.js` contract that
+  `makeBikeAvatar` also uses, so the checked-in V3 equipment cannot drift from
+  the renderer's sit/grip/pedal fit; `validate-replay-assets.mjs` additionally
+  refuses any frame geometry that rises above the saddle pad within the rider's
+  footprint. Bike equipment provenance and the evaluated-but-not-imported CC-BY
+  spin-bike candidate are recorded in `source/bike/PROVENANCE.md`. All detail is
+  generated from reviewed local Three.js or Blender Python source; there is no
+  image, texture, downloaded model, scan, or avatar-generator output.
 
 ### V3 schema and coordinate contracts
 
@@ -190,9 +195,10 @@ remain automatic fallbacks.
   cool material tint while ghost equipment/wakes may remain translucent; the
   single deforming skin never enters Three.js's transparent triangle-sorting
   path, so limbs and overlapping garment forms cannot disappear by draw order.
-  BikeErg's fixed saddle is a low-profile opaque support drawn before the skin
-  without writing depth, so the athlete naturally occludes the overlapping
-  cushion pixels instead of appearing to pass through a thick solid block.
+  BikeErg seating is geometric: the V4 posterior sit surface is constrained onto
+  the pad top (hip Y derived from the measured sit offset), and the saddle is a
+  thin performance shell with a centre channel plus sit-bone platforms so the
+  butt does not pass through the cushion.
 - **Skinning:** reviewed anatomical face sets drive deterministic A-pose→V4
   segment retargeting and bounded parent/child blends at shoulders, elbows,
   wrists, hips, knees, and ankles. The continuous body's major limb influences

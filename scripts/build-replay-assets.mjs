@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { BIKE_RIG, bikeWheelAxleY } from "../src/lib/replay/bikeRig.js";
 
 // v3 deliberately widens the asset contract from isolated replacement shells
 // to a small set of authored equipment assemblies.  Keeping this a new file
@@ -663,40 +664,75 @@ function nordicPoleBasketGeometry() {
 }
 
 function performanceSaddleGeometry() {
+  // Thin performance pad with modest sit-bone platforms and a depressed
+  // centre channel. A raised centre ridge forced the V4 posterior through the
+  // cushion (屁股穿模); the channel gives soft-tissue clearance while the
+  // lateral platforms carry the ischial contact. Keep max pad height near
+  // BIKE_RIG.saddlePadHalfHeight so runtime sit math matches the mesh.
+  // Ring half-heights are capped so the highest authored vertex lands exactly on
+  // the contract pad top (`saddlePadHalfHeight`). A loft that quietly overshoots
+  // it would put the cushion above the plane the sit solve trusts.
   const shell = loftGeometry(
     [
-      { p: -0.16, rx: 0.052, rz: 0.025 },
-      { p: -0.11, rx: 0.085, rz: 0.042, oz: 0.004 },
-      { p: -0.035, rx: 0.12, rz: 0.056, oz: 0.012 },
-      { p: 0.045, rx: 0.116, rz: 0.052, oz: 0.016 },
-      { p: 0.115, rx: 0.09, rz: 0.04, oz: 0.012 },
-      { p: 0.16, rx: 0.055, rz: 0.025, oz: 0.006 },
+      { p: -0.16, rx: 0.048, rz: 0.016 },
+      { p: -0.11, rx: 0.078, rz: 0.018, oz: 0.001 },
+      { p: -0.035, rx: 0.105, rz: 0.018, oz: 0.002 },
+      { p: 0.045, rx: 0.1, rz: 0.017, oz: 0.002 },
+      { p: 0.115, rx: 0.078, rz: 0.017, oz: 0.001 },
+      { p: 0.16, rx: 0.048, rz: 0.014 },
     ],
     16,
     "z",
     Math.PI / 16,
   );
-  const centralRelief = ridgeGeometry(
+  // Centre channel (depression), not a raised relief ridge.
+  const centralChannel = ridgeGeometry(
     [
-      new THREE.Vector3(0, 0.044, -0.1),
-      new THREE.Vector3(0, 0.062, -0.015),
-      new THREE.Vector3(0, 0.054, 0.1),
+      new THREE.Vector3(0, -0.01, -0.1),
+      new THREE.Vector3(0, -0.018, -0.015),
+      new THREE.Vector3(0, -0.012, 0.1),
     ],
-    0.008,
+    0.01,
     10,
+    8,
+  );
+  // Sit-bone platforms — the ridge centreline plus its tube radius must not
+  // exceed saddlePadHalfHeight, or the platforms become the real pad top and
+  // the contract plane the sit solve uses is no longer the highest surface.
+  const platformRadius = 0.01;
+  const platformPeak = BIKE_RIG.saddlePadHalfHeight - platformRadius;
+  const platformShoulder = platformPeak - 0.004;
+  const leftPlatform = ridgeGeometry(
+    [
+      new THREE.Vector3(-0.045, platformShoulder, -0.06),
+      new THREE.Vector3(-0.05, platformPeak, 0.01),
+      new THREE.Vector3(-0.04, platformShoulder, 0.08),
+    ],
+    platformRadius,
+    8,
+    8,
+  );
+  const rightPlatform = ridgeGeometry(
+    [
+      new THREE.Vector3(0.045, platformShoulder, -0.06),
+      new THREE.Vector3(0.05, platformPeak, 0.01),
+      new THREE.Vector3(0.04, platformShoulder, 0.08),
+    ],
+    platformRadius,
+    8,
     8,
   );
   const underside = loftGeometry(
     [
-      { p: -0.11, rx: 0.062, rz: 0.012 },
-      { p: 0.08, rx: 0.07, rz: 0.014 },
+      { p: -0.11, rx: 0.05, rz: 0.008 },
+      { p: 0.08, rx: 0.055, rz: 0.01 },
     ],
     12,
     "z",
     Math.PI / 12,
   );
-  underside.translate(0, -0.045, -0.015);
-  return composeGeometry(shell, centralRelief, underside);
+  underside.translate(0, -0.024, -0.015);
+  return composeGeometry(shell, centralChannel, leftPlatform, rightPlatform, underside);
 }
 
 function cliplessPedalGeometry() {
@@ -984,17 +1020,27 @@ function bikeWheelAssemblyParts() {
   ];
 }
 
-/** Bike-root coordinates match the current avatar group exactly. */
+/**
+ * Bike-root coordinates match the current avatar group exactly.
+ *
+ * Every frame node is read from the shared `BIKE_RIG` contract rather than
+ * re-typed here. That is what makes the README's no-drift guarantee real: the
+ * checked-in V3 package and `makeBikeAvatar` cannot disagree about where the
+ * bottom bracket, saddle pad, grips, or axles are.
+ */
 function bikeFrameAssemblyParts() {
-  const wheelAxleY = 0.51; // wheelRadius + tyreTube so tyres rest on ground
-  const bottomBracket = [0, wheelAxleY, -0.05];
-  const seatCluster = [0, wheelAxleY + 0.76, -0.4];
-  const headBottom = [0, wheelAxleY + 0.55, 0.42];
-  const headTop = [0, wheelAxleY + 0.8, 0.5];
-  const rearAxle = [0, wheelAxleY, -0.85];
-  const frontAxle = [0, wheelAxleY, 0.85];
-  const barY = wheelAxleY + 0.8;
-  const gripY = wheelAxleY + 0.78;
+  const wheelAxleY = bikeWheelAxleY(BIKE_RIG); // tyres rest on the ground plane
+  const bottomBracket = [...BIKE_RIG.bottomBracket];
+  const seatCluster = [...BIKE_RIG.seatCluster];
+  const headBottom = [...BIKE_RIG.headBottom];
+  const headTop = [...BIKE_RIG.headTop];
+  const rearAxle = [0, wheelAxleY, BIKE_RIG.rearAxleZ];
+  const frontAxle = [0, wheelAxleY, BIKE_RIG.frontAxleZ];
+  const barY = BIKE_RIG.handlebar.base[1];
+  const gripY = BIKE_RIG.handlebar.grip.y;
+  const gripHalfSpan = BIKE_RIG.handlebar.grip.halfSpan;
+  const gripZ = BIKE_RIG.handlebar.grip.z;
+  const barZ = BIKE_RIG.handlebar.base[2];
   const mainFrame = composeGeometry(
     tubeGeometryBetween(bottomBracket, headBottom, 0.055, 16, 0.85),
     tubeGeometryBetween(bottomBracket, seatCluster, 0.052, 16, 0.88),
@@ -1005,35 +1051,36 @@ function bikeFrameAssemblyParts() {
   for (const side of [-1, 1]) {
     stays.push(
       tubeGeometryBetween(
-        [side * 0.065, wheelAxleY, -0.85],
-        [side * 0.055, wheelAxleY, -0.05],
+        [side * 0.065, wheelAxleY, rearAxle[2]],
+        [side * 0.055, bottomBracket[1], bottomBracket[2]],
         0.027,
         12,
       ),
       tubeGeometryBetween(
-        [side * 0.065, wheelAxleY, -0.85],
-        [side * 0.055, seatCluster[1], -0.4],
+        [side * 0.065, wheelAxleY, rearAxle[2]],
+        [side * 0.055, seatCluster[1], seatCluster[2]],
         0.026,
         12,
         0.82,
       ),
       tubeGeometryBetween(
-        [side * 0.043, headBottom[1], 0.42],
-        [side * 0.046, wheelAxleY, 0.85],
+        [side * 0.043, headBottom[1], headBottom[2]],
+        [side * 0.046, wheelAxleY, frontAxle[2]],
         0.031,
         14,
         0.82,
       ),
     );
   }
-  const barCentre = [0, barY, 0.35];
-  const leftGripContact = [-0.32, gripY, 0.39];
-  const rightGripContact = [0.32, gripY, 0.39];
+  const barCentre = [0, barY, barZ];
+  const leftGripContact = [-gripHalfSpan, gripY, gripZ];
+  const rightGripContact = [gripHalfSpan, gripY, gripZ];
+  const barHalfWidth = gripHalfSpan + 0.04;
   const cockpit = composeGeometry(
     tubeGeometryBetween(headTop, barCentre, 0.02, 12),
-    tubeGeometryBetween([-0.36, barY, 0.35], [0.36, barY, 0.35], 0.02, 16),
-    tubeGeometryBetween([-0.34, barY, 0.35], leftGripContact, 0.016, 12),
-    tubeGeometryBetween([0.34, barY, 0.35], rightGripContact, 0.016, 12),
+    tubeGeometryBetween([-barHalfWidth, barY, barZ], [barHalfWidth, barY, barZ], 0.02, 16),
+    tubeGeometryBetween([-gripHalfSpan - 0.02, barY, barZ], leftGripContact, 0.016, 12),
+    tubeGeometryBetween([gripHalfSpan + 0.02, barY, barZ], rightGripContact, 0.016, 12),
   );
   const brakeHoodForms = [];
   const brakeLeverForms = [];
@@ -1041,7 +1088,7 @@ function bikeFrameAssemblyParts() {
     [-1, leftGripContact],
     [1, rightGripContact],
   ]) {
-    const barEnd = [side * 0.34, barY, 0.35];
+    const barEnd = [side * (gripHalfSpan + 0.02), barY, barZ];
     brakeHoodForms.push(
       tubeGeometryBetween(barEnd, contact, 0.022, 14, 0.82),
       ellipsoidGeometry([0.032, 0.038, 0.045], 18, 12, contact),
@@ -1049,8 +1096,8 @@ function bikeFrameAssemblyParts() {
     brakeLeverForms.push(
       ridgeGeometry(
         [
-          new THREE.Vector3(side * 0.365, gripY - 0.08, 0.49),
-          new THREE.Vector3(side * 0.362, gripY - 0.05, 0.45),
+          new THREE.Vector3(side * (gripHalfSpan + 0.045), gripY - 0.08, gripZ + 0.1),
+          new THREE.Vector3(side * (gripHalfSpan + 0.042), gripY - 0.05, gripZ + 0.06),
           new THREE.Vector3(...contact),
         ],
         0.008,
@@ -1089,12 +1136,19 @@ function bikeFrameAssemblyParts() {
     }),
   );
   const driveSideX = -0.078;
+  // The chain wraps the chainring at the bottom bracket and the cassette at the
+  // rear axle, so each run is anchored to its own sprocket rather than to a
+  // single hard-coded height. With the contract's BB drop those are 5 cm apart.
+  const chainRingY = bottomBracket[1];
+  const chainZNear = bottomBracket[2] - 0.03;
+  const chainZFar = rearAxle[2] + 0.02;
+  const chainZMid = (chainZNear + chainZFar) / 2;
   const chainAndCassetteForms = [
     ridgeGeometry(
       [
-        new THREE.Vector3(driveSideX, wheelAxleY + 0.135, -0.08),
-        new THREE.Vector3(driveSideX, wheelAxleY + 0.1, -0.43),
-        new THREE.Vector3(driveSideX, wheelAxleY + 0.065, -0.83),
+        new THREE.Vector3(driveSideX, chainRingY + 0.135, chainZNear),
+        new THREE.Vector3(driveSideX, (chainRingY + 0.135 + wheelAxleY + 0.065) / 2, chainZMid),
+        new THREE.Vector3(driveSideX, wheelAxleY + 0.065, chainZFar),
       ],
       0.008,
       12,
@@ -1102,9 +1156,9 @@ function bikeFrameAssemblyParts() {
     ),
     ridgeGeometry(
       [
-        new THREE.Vector3(driveSideX, wheelAxleY - 0.135, -0.08),
-        new THREE.Vector3(driveSideX, wheelAxleY - 0.11, -0.43),
-        new THREE.Vector3(driveSideX, wheelAxleY - 0.08, -0.83),
+        new THREE.Vector3(driveSideX, chainRingY - 0.135, chainZNear),
+        new THREE.Vector3(driveSideX, (chainRingY - 0.135 + wheelAxleY - 0.08) / 2, chainZMid),
+        new THREE.Vector3(driveSideX, wheelAxleY - 0.08, chainZFar),
       ],
       0.008,
       12,
@@ -1128,10 +1182,14 @@ function bikeFrameAssemblyParts() {
   }
   const chainAndCassette = composeGeometry(...chainAndCassetteForms);
   const saddle = performanceSaddleGeometry();
-  saddle.translate(0, wheelAxleY + 0.79, -0.4);
+  // Match BIKE_RIG.saddle so the V4 sit surface lands on the pad, not under it.
+  saddle.translate(BIKE_RIG.saddle[0], BIKE_RIG.saddle[1], BIKE_RIG.saddle[2]);
+  // The post carries the saddle from below and stops under the pad. It must
+  // never reach the pad top: the rider's sit surface is one nestle beneath it,
+  // so any post that outruns the cushion spears straight through the athlete.
   const seatPost = tubeGeometryBetween(
-    [0, wheelAxleY + 0.73, -0.4],
-    [0, wheelAxleY + 0.85, -0.4],
+    [BIKE_RIG.saddle[0], seatCluster[1] - 0.02, BIKE_RIG.saddle[2]],
+    [BIKE_RIG.saddle[0], BIKE_RIG.saddle[1] - BIKE_RIG.saddlePadHalfHeight, BIKE_RIG.saddle[2]],
     0.024,
     12,
   );
@@ -1173,14 +1231,17 @@ function bikeDrivetrainAssemblyParts() {
     tubeGeometryBetween([0, -0.14, 0], [0, 0.14, 0], 0.012, 10),
     tubeGeometryBetween([0, 0, -0.14], [0, 0, 0.14], 0.012, 10),
   );
+  // Crank arms reach exactly the contract pedal radius so the authored arm ends
+  // where the runtime solves the shoe contact.
+  const crankRadius = BIKE_RIG.crank.pedalRadius;
   const crankArms = composeGeometry(
-    tubeGeometryBetween([0, 0, 0], [0, -0.215, 0], 0.018, 12, 0.82),
-    tubeGeometryBetween([0, 0, 0], [0, 0.215, 0], 0.018, 12, 0.82),
+    tubeGeometryBetween([0, 0, 0], [0, -crankRadius, 0], 0.018, 12, 0.82),
+    tubeGeometryBetween([0, 0, 0], [0, crankRadius, 0], 0.018, 12, 0.82),
   );
   const pedals = [];
   for (const side of [-1, 1]) {
     const pedal = cliplessPedalGeometry();
-    pedal.translate(side * 0.1, side * 0.21, 0);
+    pedal.translate(side * BIKE_RIG.crank.lateral, side * crankRadius, 0);
     pedals.push(pedal);
   }
   const spindle = bakeGeometry(new THREE.CylinderGeometry(0.04, 0.04, 0.22, 16), {

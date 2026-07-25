@@ -15,6 +15,7 @@ import {
   type ReplayV4ContactTargets,
   type ReplayV4MotionController,
 } from "./renderer3dV4Motion";
+import { BIKE_RIG, bikeSaddleTopY } from "./bikeRig";
 
 type TestLane = {
   readonly scene: THREE.Group;
@@ -1094,5 +1095,137 @@ describe("V4 motion determinism and fallback safety", () => {
     } finally {
       disposeLane(lane);
     }
+  });
+});
+
+describe("V4 seat contract", () => {
+  /** Sit surface of the mock rig, measured the way the real contract is. */
+  const SIT_OFFSET_Y = -0.2;
+
+  function sitSurfaceY(lane: TestLane): number {
+    const hips = lane.instance.bones.v4Hips.getWorldPosition(new THREE.Vector3());
+    lane.parent.worldToLocal(hips);
+    return hips.y + SIT_OFFSET_Y;
+  }
+
+  function pelvisTargetLocalY(lane: TestLane): number {
+    const target = lane.targets.pelvis.getWorldPosition(new THREE.Vector3());
+    lane.parent.worldToLocal(target);
+    return target.y;
+  }
+
+  /**
+   * Pad placed above where the clip alone would leave the sit surface, so the
+   * correction has real work to do. This is the case the old height heuristic
+   * skipped entirely.
+   */
+  function contractLiftingBy(lane: TestLane, lift: number, maxLift = 0.08) {
+    return {
+      padTopY: pelvisTargetLocalY(lane) + SIT_OFFSET_Y + lift,
+      sitSurfaceOffsetY: SIT_OFFSET_Y,
+      nestle: 0,
+      maxLift,
+    };
+  }
+
+  it("lifts the root so the sit surface lands on the pad, and locks XZ while doing it", () => {
+    const lane = createLane();
+    const seatContract = contractLiftingBy(lane, 0.04);
+    const controller = installReplayV4MotionController({
+      sport: "bike",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      seatContract,
+    });
+    try {
+      expect(controller?.update({ phase: 0, cycleFrac: 0.19, driveFrac: 0.38 })).toBe(true);
+      lane.scene.updateMatrixWorld(true);
+
+      // The posterior rests exactly on the pad, not through it.
+      expect(sitSurfaceY(lane)).toBeCloseTo(seatContract.padTopY, 6);
+
+      // The hip rose by the lift, and only by the lift.
+      const hips = lane.instance.bones.v4Hips.getWorldPosition(new THREE.Vector3());
+      const target = lane.targets.pelvis.getWorldPosition(new THREE.Vector3());
+      lane.parent.worldToLocal(hips);
+      lane.parent.worldToLocal(target);
+      expect(hips.y - target.y).toBeCloseTo(0.04, 6);
+      expect(Math.hypot(hips.x - target.x, hips.z - target.z)).toBeLessThan(1e-6);
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
+  it("never drags the rider down when the clip already sits above the pad", () => {
+    const lane = createLane();
+    const controller = installReplayV4MotionController({
+      sport: "bike",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      // Pad well below the clip's own sit surface — nothing to correct.
+      seatContract: contractLiftingBy(lane, -0.25),
+    });
+    try {
+      expect(controller?.update({ phase: 0, cycleFrac: 0.19, driveFrac: 0.38 })).toBe(true);
+      lane.scene.updateMatrixWorld(true);
+      // Pelvis stays exactly on its target; a seat may only push up.
+      expect(sitSurfaceY(lane)).toBeCloseTo(pelvisTargetLocalY(lane) + SIT_OFFSET_Y, 6);
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
+  it("disables itself rather than posing mid-air when the fit exceeds the budget", () => {
+    const lane = createLane();
+    // A pad half a metre above the clip's sit surface is not a fit to absorb.
+    // The solve must refuse, record why, and hand replay back to the fallback.
+    const controller = installReplayV4MotionController({
+      sport: "bike",
+      parent: lane.parent,
+      fallbackRoot: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      seatContract: contractLiftingBy(lane, 0.5, 0.08),
+    });
+    try {
+      expect(controller?.update({ phase: 0, cycleFrac: 0.19, driveFrac: 0.38 })).toBe(false);
+      expect(controller?.enabled).toBe(false);
+      expect(String(controller?.root.userData.replayV4Failure)).toMatch(/seat correction/i);
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
+  it("keeps pelvis alignment exact for sports with no seat contract", () => {
+    const lane = createLane();
+    const controller = installReplayV4MotionController({
+      sport: "bike",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+    });
+    try {
+      expect(controller?.update({ phase: 0, cycleFrac: 0.19, driveFrac: 0.38 })).toBe(true);
+      lane.scene.updateMatrixWorld(true);
+      const hips = lane.instance.bones.v4Hips.getWorldPosition(new THREE.Vector3());
+      const target = lane.targets.pelvis.getWorldPosition(new THREE.Vector3());
+      expect(hips.distanceTo(target)).toBeLessThan(1e-6);
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
+  it("derives a live BikeErg contract that seats the rider on the authored pad", () => {
+    // Guards the wiring itself: the shipped numbers must describe a rider whose
+    // hip sits above the pad and whose sit surface lands on it.
+    const padTopY = bikeSaddleTopY(BIKE_RIG);
+    const sitOffsetY = BIKE_RIG.rider.sitSurfaceFromHip[1] ?? 0;
+    const nestle = BIKE_RIG.rider.sitNestle ?? 0;
+    const hipY = BIKE_RIG.rider.root[1] ?? 0;
+
+    expect(hipY).toBeGreaterThan(padTopY);
+    expect(hipY + sitOffsetY).toBeCloseTo(padTopY - nestle, 8);
   });
 });
