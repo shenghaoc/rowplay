@@ -10,8 +10,8 @@ repository-owned GLB containing authored athlete and sport-equipment geometry.
 The GLB changes visible form, not motion truth. `sportKinematics.ts`, the
 existing contact targets, and the established live/ghost placement remain
 authoritative. Canvas 2D and the procedural 3D geometry remain reliable
-fallbacks. The asset is a generic sports illustration: it is not an avatar
-generator output, scan, user image, or athlete likeness.
+fallbacks. The asset is a generic photoreal-directed sports character: it is not
+an avatar generator output, scan, user image, or athlete likeness.
 
 This specification supersedes only the procedural-only 3D asset restrictions
 in the completed replay figure and motion specifications. The later
@@ -63,9 +63,15 @@ losing trustworthy sport timing or equipment contact.
 4. WHEN theme or lane identity changes THEN runtime-owned materials SHALL retain
    light/dark separation and live/ghost accents without baking identity into the
    asset.
-5. WHEN the athlete is shown THEN the result SHALL remain a generic
-   illustration and SHALL NOT claim measured biomechanics, body shape,
+5. WHEN the athlete is shown THEN the result SHALL remain a generic character
+   and SHALL NOT claim measured biomechanics, body shape,
    clothing, appearance, or likeness.
+6. WHEN production V4 hands meet RowErg, SkiErg, or BikeErg grips THEN
+   individually weighted finger segments and an opposing thumb SHALL close
+   around each human-scale handle after the authoritative palm contact solve.
+   The visual grip SHALL preserve the existing equipment targets and SHALL NOT
+   leave mitten-like hands, open floating fingers, or visible handle
+   penetration.
 
 ### Requirement 3: Reliable loading and fallback
 
@@ -102,10 +108,14 @@ without a long load or degraded replay smoothness.
 3. WHEN quality tiers or adaptive degradation change THEN timing, contacts,
    authored-shell transforms, reduced motion, and ghost comparison SHALL remain
    deterministic.
-4. WHEN authored details do not change the captured desktop or mobile
+4. WHEN athlete quality changes THEN it SHALL retain the same skinned body,
+   semantic pose, and contact solve while providing material/detail differences
+   that are visible on the athlete itself, not only a higher device-pixel ratio
+   or more distant environment dressing.
+5. WHEN authored details do not change the captured desktop or mobile
    silhouette THEN they SHALL be removed rather than consuming web and GPU
    budget.
-5. WHEN the GLB is loaded THEN it SHALL remain local to the deployed rowplay
+6. WHEN the GLB is loaded THEN it SHALL remain local to the deployed rowplay
    origin and SHALL make no third-party asset request.
 
 ### Requirement 5: Frame-led visual acceptance

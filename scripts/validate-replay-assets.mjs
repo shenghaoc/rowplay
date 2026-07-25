@@ -776,7 +776,7 @@ async function main() {
     const v4 = await validateV4Asset();
     const v4DisplayPath = relative(process.cwd(), v4.path) || v4.path;
     console.log(
-      `validated ${v4DisplayPath}: ${v4.bones} bones, ${v4.clips} clips, ${v4.components} topology components, ${v4.triangles} triangles, ${v4.vertices} vertices, ${v4.bytes} bytes, sha256 ${v4.checksum}`,
+      `validated ${v4DisplayPath}: ${v4.bones} bones (${v4.helperBones} helpers), ${v4.clips} clips, ${v4.components} topology components, ${v4.triangles} triangles, ${v4.vertices} vertices, ${v4.bytes} bytes, sha256 ${v4.checksum}`,
     );
     const usdz = await validateV4Usdz();
     const usdzDisplayPath = relative(process.cwd(), usdz.path) || usdz.path;

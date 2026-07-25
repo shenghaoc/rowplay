@@ -200,6 +200,13 @@ export interface Renderer3DOptions {
   WebGPURenderer?: WebGPURendererCtor;
   assets?: ReplayAssetLibrary | null;
   v4Assets?: ReplayV4AssetTemplate | null;
+  /**
+   * Capture-only framing used by the visual-QA harness. It is reachable only
+   * through an explicit replay QA query, never through normal replay controls.
+   */
+  qaCamera?: "normal" | "athlete-close" | "athlete-front" | "athlete-grip";
+  /** Draw the live V4 skeleton over the real rendered athlete for QA evidence. */
+  showV4Skeleton?: boolean;
 }
 
 /**
@@ -1543,10 +1550,17 @@ function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 1
   return head;
 }
 
+const ROWER_FOOT_CONTACT = Object.freeze({
+  lateral: 0.12,
+  y: 0.35,
+  z: 0.72,
+});
+
 /**
  * Low-poly single scull: long thin hull (capsule), a seated rower, and two oars
- * with blades. The hull, deck and oar blades carry `userData.accent`; the rower
- * slides + leans and the oars sweep/feather per stroke.
+ * with blades. The lower hull stays neutral while the deck and oar blades carry
+ * `userData.accent`; the rower slides + leans and the oars sweep/feather per
+ * stroke.
  */
 function makeRowerAvatar(
   accent: number,
@@ -1590,14 +1604,13 @@ function makeRowerAvatar(
   const hull = setReplayAssetSlot(
     new THREE.Mesh(
       new THREE.CapsuleGeometry(0.34, 3.15, eqCylSegs, Math.round(eqCylSegs * 1.4)),
-      accentMat(),
+      kitDarkMaterial,
     ),
     "equipment:row:hull",
   );
   hull.rotation.x = Math.PI / 2; // capsule axis Y -> Z (travel)
-  hull.scale.set(0.52, 0.3, 1); // keep the fallback below the visible leg chain
+  hull.scale.set(0.55, 0.3, 1); // keep the fallback below the visible leg chain
   hull.position.y = 0.135;
-  hull.userData.accent = true;
   group.add(hull);
 
   // Two short decks leave a genuine cockpit opening around the athlete. The
@@ -1652,17 +1665,57 @@ function makeRowerAvatar(
   }
 
   const footPlate = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.38, 0.26, 0.04, 0.018),
+    roundedVenueBlockGeometry(0.38, 0.18, 0.04, 0.018),
     kitDarkMaterial,
   );
   footPlate.name = "rower-footplate";
-  footPlate.position.set(0, 0.405, 0.72);
-  footPlate.rotation.x = -0.24;
+  footPlate.position.set(0, 0.31, ROWER_FOOT_CONTACT.z);
+  footPlate.rotation.x = -0.28;
   group.add(footPlate);
+  const heelCups: THREE.Mesh[] = [];
+  for (const side of [-1, 1]) {
+    const heelCup = new THREE.Mesh(
+      roundedVenueBlockGeometry(0.105, 0.065, 0.11, 0.016),
+      equipmentGripMaterial,
+    );
+    heelCup.name = side < 0 ? "rower-heel-cup-left" : "rower-heel-cup-right";
+    heelCup.position.set(
+      side * ROWER_FOOT_CONTACT.lateral,
+      ROWER_FOOT_CONTACT.y - 0.035,
+      ROWER_FOOT_CONTACT.z - 0.03,
+    );
+    heelCup.rotation.x = -0.28;
+    heelCups.push(heelCup);
+    group.add(heelCup);
+  }
+  const instepBar = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.012, 0.336, 8, 12),
+    equipmentMetalMaterial,
+  );
+  instepBar.name = "rower-footplate-instep-bar";
+  instepBar.rotation.z = Math.PI / 2;
+  instepBar.position.set(0, ROWER_FOOT_CONTACT.y + 0.06, ROWER_FOOT_CONTACT.z - 0.03);
+  group.add(instepBar);
+  const stretcherSupports: THREE.Mesh[] = [];
+  for (const side of [-1, 1]) {
+    const support = tubeBetween(
+      side < 0 ? "rower-footplate-support-left" : "rower-footplate-support-right",
+      { x: side * 0.17, y: 0.205, z: ROWER_FOOT_CONTACT.z - 0.12 },
+      { x: side * 0.17, y: 0.31, z: ROWER_FOOT_CONTACT.z },
+      0.009,
+      equipmentMetalMaterial,
+    );
+    stretcherSupports.push(support);
+    group.add(support);
+  }
   for (const side of [-1, 1]) {
     const anchor = new THREE.Object3D();
     anchor.name = side < 0 ? "rower-footplate-contact-left" : "rower-footplate-contact-right";
-    anchor.position.set(side * 0.12, 0.34, 0.72);
+    anchor.position.set(
+      side * ROWER_FOOT_CONTACT.lateral,
+      ROWER_FOOT_CONTACT.y,
+      ROWER_FOOT_CONTACT.z,
+    );
     group.add(anchor);
   }
   // V3 keeps the entire scull as one designed assembly while the existing
@@ -1682,6 +1735,9 @@ function makeRowerAvatar(
       gunwaleR,
       ...slideRails,
       footPlate,
+      ...heelCups,
+      instepBar,
+      ...stretcherSupports,
     ],
   });
 
@@ -1849,13 +1905,13 @@ function makeRowerAvatar(
     oar.name = side < 0 ? "rower-oar-left" : "rower-oar-right";
     // 3.1 m shaft: ~0.85 m inboard of the pin, ~2.25 m outboard to the blade.
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.032, 0.038, 3.15, eqCylSegs),
+      new THREE.CylinderGeometry(0.018, 0.021, 3.15, eqCylSegs),
       equipmentLightMaterial,
     );
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
     shaft.position.x = side * 0.7;
     oar.add(shaft);
-    const grip = capsulePart(0.045, 0.28, equipmentGripMaterial, "x");
+    const grip = capsulePart(0.021, 0.24, equipmentGripMaterial, "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
     // A regulation-scale scull has roughly 0.8–0.9 m of inboard leverage. The
     // shorter placeholder forced a false choice between centreline hands and
@@ -1928,9 +1984,10 @@ function makeRowerAvatar(
   const PELVIS_PITCH_CATCH = 0.07;
   const PELVIS_PITCH_FINISH = -0.105;
   // Concept2 / scull handle path: early drive keeps grips forward so arms can
-  // stay long; late draw brings the bar to the body.
-  const OAR_YAW_CATCH = 0.28;
-  const OAR_YAW_SPAN = -0.68;
+  // stay long; late draw brings the bar to the *lower chest / ribs*, not behind
+  // the back (British Rowing / Concept2 finish coaching).
+  const OAR_YAW_CATCH = 0.3;
+  const OAR_YAW_SPAN = -0.58;
   // A scull blade is buried only just below the surface. The former deep roll
   // lifted the 0.82 m inboard handle by more than 11 cm during the first few
   // drive frames, making the otherwise closed-chain grip surge forward.
@@ -2004,10 +2061,11 @@ function makeRowerAvatar(
         activeArmReach - 0.002,
         oar.group.rotation.y,
       );
-      // Finish at a realistic lower-rib draw without sweeping the inboard
-      // handle through an exaggerated final arc. This keeps peak hand speed
-      // smooth while still producing a clear rearward elbow bend.
-      const drawYaw = -oar.side * 0.75;
+      // Finish at a realistic lower-rib draw. Public sculling coaching (e.g.
+      // British Rowing / Concept2): hands draw *to the lower chest*, elbows
+      // tuck beside/slightly behind the shoulder plane — never hauled through
+      // the torso into an illegal behind-the-back finish.
+      const drawYaw = -oar.side * 0.58;
       const yawDelta = Math.atan2(
         Math.sin(drawYaw - longReachYaw),
         Math.cos(drawYaw - longReachYaw),
@@ -2022,16 +2080,12 @@ function makeRowerAvatar(
       arm.wristTarget.copy(handlePoint);
       const v4ContactOffset = v4Refinement?.contactOffsets[i];
       if (v4ContactOffset) arm.wristTarget.sub(v4ContactOffset);
-      // The fallback owns the exact grip target and the RowErg anatomical
-      // branch marker consumed by V4. Arms remain long while armDraw is low;
-      // once the late draw creates visible flexion, the sagittal component is
-      // strongly rearward / bowward (-z) with only restrained lateral
-      // clearance. This is an elbow-to-bows pull, not a horizontal
-      // chicken-wing flare.
+      // Elbow branch: clearly rearward of the shoulder with restrained lateral
+      // clearance, while the palm target stays on the chest-level grip.
       setArmBendHint(arm.shoulderPoint, arm.wristTarget, arm.side, arm.bendHint, {
-        lateral: -0.08 + draw * 0.12 + shoulderSet * 0.006,
-        up: 0.04 + draw * 0.04,
-        aft: -0.52 - bodySwing * 0.22 - handleTravel * 0.12 - draw * 0.65,
+        lateral: -0.06 + draw * 0.09 + shoulderSet * 0.004,
+        up: 0.06 + draw * 0.05,
+        aft: -0.34 - bodySwing * 0.12 - handleTravel * 0.08 - draw * 0.34,
       });
       solveTwoBone3D(
         arm.shoulderPoint,
@@ -2051,12 +2105,12 @@ function makeRowerAvatar(
       // hidden anatomical solve at the wrist while the terminal hand marker
       // remains exactly on the rigid grip.
       arm.hand.position.copy(arm.handTarget);
-      // Mild grip orientation — V4 closes the palm against the authoritative
-      // contact while limiting terminal rotation so the forearm cannot be
-      // corkscrewed by a forced equipment quaternion.
+      // Palm faces the scull grip: wrap fingers around the handle so V4's grip
+      // curl closes a fist *on* the rubber rather than an open mitt beside it.
       arm.hand.quaternion.copy(oar.group.quaternion);
       arm.hand.rotateZ(arm.side * (Math.PI / 2));
-      arm.hand.rotateX(-0.28 - shoulderSet * 0.06);
+      arm.hand.rotateX(-0.55 - shoulderSet * 0.08);
+      arm.hand.rotateY(arm.side * 0.12);
     }
   };
 
@@ -2066,8 +2120,15 @@ function makeRowerAvatar(
       leg.hipPoint.set(leg.side * 0.13, hips.position.y, hips.position.z);
       // The plate is in BOAT space, while these limbs live in the translating
       // rower group. Subtract the slide so the world foot contact stays fixed.
-      leg.footTarget.set(leg.side * 0.12, 0.34 - rower.position.y, 0.72 - rower.position.z);
-      leg.bendHint.set(leg.side * 0.46, 0.7 - legExtension * 0.1, -0.28);
+      leg.footTarget.set(
+        leg.side * ROWER_FOOT_CONTACT.lateral,
+        ROWER_FOOT_CONTACT.y - rower.position.y,
+        ROWER_FOOT_CONTACT.z - rower.position.z,
+      );
+      // Keep the knees above the recessed cockpit without spreading them over
+      // the gunwales. The old, wider/high marker made the leg chain read as a
+      // separate object laid across the shell instead of a seated rower.
+      leg.bendHint.set(leg.side * 0.42, 0.65 - legExtension * 0.06, -0.26);
       solveTwoBone3D(
         leg.hipPoint,
         leg.footTarget,
@@ -2457,7 +2518,7 @@ function makeSkierAvatar(
     tipAnchor: THREE.Object3D;
   }> = [];
   for (const side of [-1, 1]) {
-    const shaftGeo = new THREE.CylinderGeometry(0.028, 0.028, 1, eqCylSegs);
+    const shaftGeo = new THREE.CylinderGeometry(0.012, 0.012, 1, eqCylSegs);
     shaftGeo.rotateX(Math.PI / 2); // unit shaft lives on +Z for endpoint placement
     const shaft = setReplayAssetSlot(
       new THREE.Mesh(shaftGeo, side < 0 ? farPoleMaterial : poleMaterial),
@@ -2465,7 +2526,7 @@ function makeSkierAvatar(
     );
     shaft.name = side < 0 ? "skierg-pole-shaft-left" : "skierg-pole-shaft-right";
     const grip = setReplayAssetSlot(
-      capsulePart(0.025, 0.18, gripMaterial, "z"),
+      capsulePart(0.018, 0.16, gripMaterial, "z"),
       "equipment:ski:pole-grip",
     );
     grip.name = side < 0 ? "skierg-pole-grip-left" : "skierg-pole-grip-right";
@@ -2745,10 +2806,13 @@ function makeSkierAvatar(
       pole.basket.position.copy(tipLocalPoint).addScaledVector(groundUpLocal, 0.026);
       pole.basket.quaternion.copy(inverseUpperWorld);
       pole.tipAnchor.position.copy(tipLocalPoint);
-      // Mild grip orientation — V4 closes the grip position while limiting
-      // terminal rotation; avoid corkscrewing the procedural forearm too.
+      // Establish the terminal frame only after the current-frame rigid pole
+      // has been placed. The old mild assignment here overwrote the intended
+      // pole wrap above, leaving both procedural and V4 hands open against the
+      // grip even though their contact points were numerically coincident.
       arm.hand.quaternion.copy(pole.grip.quaternion);
-      arm.hand.rotateX(-0.25);
+      arm.hand.rotateX(1.15);
+      arm.hand.rotateZ(arm.side * 0.2);
     }
   };
 
@@ -2994,23 +3058,32 @@ function makeBikeAvatar(
   });
   group.add(cranks);
 
-  // The saddle closes the previously visible gap between the frame and the
-  // rider's pelvis, which was especially obvious from the chase camera.
-  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.055, 0.3), saddleMaterial);
+  // A bicycle saddle is a low-profile shell, not a thick rectangular block.
+  // Render its cushion before, but without writing depth against, the rider:
+  // the visible body therefore cleanly occludes the support wherever their
+  // silhouettes overlap, while its outer edge and fixed frame attachment
+  // remain visible. This is a microscopic equipment compatibility correction;
+  // no graph-owned hip, crank, or pedal path changes.
+  const saddle = new THREE.Mesh(
+    roundedVenueBlockGeometry(0.21, 0.032, 0.28, 0.018),
+    saddleMaterial,
+  );
   setReplayAssetSlot(saddle, "equipment:bike:saddle");
   saddle.name = "bike-saddle";
-  saddle.position.set(0, wheelR + 0.77, -0.4);
+  saddle.position.set(0, wheelR + 0.755, -0.4);
+  saddle.renderOrder = -2;
+  saddleMaterial.depthWrite = false;
   group.add(saddle);
   frameFallback.push(saddle);
 
   const handlebar = new THREE.Group();
   handlebar.name = "bike-handlebar";
-  const crossbar = capsulePart(0.03, 0.72, equipmentMaterial, "x");
+  const crossbar = capsulePart(0.02, 0.72, equipmentMaterial, "x");
   handlebar.add(crossbar);
   frameFallback.push(crossbar);
   const barContacts: Array<{ side: number; anchor: THREE.Object3D }> = [];
   for (const side of [-1, 1]) {
-    const grip = capsulePart(0.024, 0.22, equipmentMaterial, "z");
+    const grip = capsulePart(0.017, 0.22, equipmentMaterial, "z");
     grip.name = side < 0 ? "bike-handlebar-grip-left" : "bike-handlebar-grip-right";
     grip.position.set(side * 0.32, -0.02, 0.04);
     grip.rotation.x = -0.3;
@@ -3220,7 +3293,9 @@ function makeBikeAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
-      arm.hand.rotation.set(-0.28, 0, arm.side * 0.08);
+      // Pronated hoods grip: palm over the bar, fingers curling forward/down
+      // so the cyclist is clearly holding the cockpit rather than floating.
+      arm.hand.rotation.set(-0.72, arm.side * 0.06, arm.side * 0.18);
     }
   };
 
@@ -3569,6 +3644,8 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly loopRadius = 30;
   private readonly ghostRadius = 26;
 
+  private readonly quality: RenderQuality;
+  private readonly qaCamera: "normal" | "athlete-close" | "athlete-front" | "athlete-grip";
   private cfg: QualityConfig;
   private renderer: RendererLike;
   /**
@@ -3622,6 +3699,9 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly shadowDirection = new THREE.Vector3();
   private readonly shadowRight = new THREE.Vector3();
   private readonly shadowUp = new THREE.Vector3();
+  /** Query-gated grip camera scratch; inert during normal replay. */
+  private readonly qaGripFocus = new THREE.Vector3();
+  private readonly qaGripOther = new THREE.Vector3();
   private worldFill!: THREE.DirectionalLight;
   private readonly environmentMidGroup = new THREE.Group();
   private readonly environmentDetailGroup = new THREE.Group();
@@ -3645,6 +3725,8 @@ export class CourseRenderer3D implements ReplayRenderer {
   private ghostLabelTex: THREE.CanvasTexture | null = null;
   private lastLiveLabel = "";
   private lastGhostLabel = "";
+  /** Opt-in QA overlay; normal replay rendering never allocates this helper. */
+  private v4SkeletonHelper: THREE.SkeletonHelper | null = null;
   /** Desired chase-camera position for the current frame. */
   private chase = new THREE.Vector3();
   /** Desired point of interest; kept separate so both translation and aim damp. */
@@ -3670,6 +3752,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     sport: Sport = "rower",
     options: Renderer3DOptions = {},
   ) {
+    this.quality = quality;
+    this.qaCamera = options.qaCamera ?? "normal";
     this.cfg = QUALITY[quality];
     this.sport = sport;
     this.profile = SPORT_PROFILES[sport];
@@ -3681,6 +3765,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     // fresh context every time, so destroy()'s loseContext() can't poison reuse.
     this.host = host;
     this.canvas = document.createElement("canvas");
+    // Minimal DOM/canvas hosts used by renderer consumers need not implement
+    // HTMLElement.dataset. The marker is QA-only and must never make 3D setup
+    // depend on that optional browser convenience.
+    if (this.canvas.dataset) this.canvas.dataset.replayQaCamera = this.qaCamera;
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
     // Append the canvas first so the WebGL/WebGPU context is bound to a node
@@ -3831,6 +3919,8 @@ export class CourseRenderer3D implements ReplayRenderer {
         fallbackRoot: this.liveAvatar.group,
         instance: tryCreateReplayV4AthleteInstance(options.v4Assets),
         targets: this.liveAvatar.v4Targets,
+        quality: this.quality,
+        diagnosticMode: options.showV4Skeleton ? "skeleton" : undefined,
         castShadow: this.cfg.shadows,
         receiveShadow: this.cfg.shadows,
       });
@@ -3840,6 +3930,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         fallbackRoot: this.ghostAvatar.group,
         instance: tryCreateReplayV4AthleteInstance(options.v4Assets),
         targets: this.ghostAvatar.v4Targets,
+        quality: this.quality,
         opacity: 0.45,
         castShadow: false,
         receiveShadow: false,
@@ -3847,6 +3938,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       });
       this.liveAvatar.group.userData.authoredReplayV4 = !!this.liveAvatar.v4Motion;
       this.ghostAvatar.group.userData.authoredReplayV4 = !!this.ghostAvatar.v4Motion;
+      // The marker is intentionally QA-only. It lets the capture harness wait
+      // for the real skinned production athlete instead of racing the first
+      // empty renderer frame, while remaining inert for every normal replay.
+      if (this.canvas.dataset) {
+        this.canvas.dataset.replayV4Athlete = this.liveAvatar.v4Motion ? "ready" : "unavailable";
+      }
       const contactReach = (side: "leftHand" | "rightHand"): number => {
         const effector = options.v4Assets!.effectors[side];
         return replayV4ArmContactReach(this.sport, effector);
@@ -3854,6 +3951,19 @@ export class CourseRenderer3D implements ReplayRenderer {
       const v4ArmReach = Math.min(contactReach("leftHand"), contactReach("rightHand"));
       if (this.liveAvatar.v4Motion) this.liveAvatar.setV4ArmReach?.(v4ArmReach);
       if (this.ghostAvatar.v4Motion) this.ghostAvatar.setV4ArmReach?.(v4ArmReach);
+      if (options.showV4Skeleton && this.liveAvatar.v4Motion) {
+        const helper = new THREE.SkeletonHelper(this.liveAvatar.v4Motion.root);
+        helper.name = "qa:v4-live-skeleton";
+        const material = helper.material as THREE.LineBasicMaterial;
+        material.depthTest = false;
+        material.depthWrite = false;
+        material.transparent = true;
+        material.opacity = 0.92;
+        helper.setColors(new THREE.Color(0xffd34e), new THREE.Color(0xfff4a8));
+        helper.renderOrder = 8;
+        this.v4SkeletonHelper = helper;
+        this.scene.add(helper);
+      }
     }
     this.scene.add(this.liveBoat, this.ghostGroup);
 
@@ -5543,6 +5653,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     // pose instead of forcing IK to compensate for a hidden-rig mismatch.
     const v4Motion = avatar.v4Motion;
     let v4Prepared = v4Motion?.prepare(v4Sample) ?? false;
+    // RowErg pre-orients palms before refining the rigid oar arc so the wrist→
+    // palm vector is part of the exact grip solve. SkiErg/BikeErg keep their
+    // pole-led / hood-led terminal frames through the contact pass (pre-orient
+    // here would break seek-exact pose identity for those sports).
     if (v4Prepared && this.sport === "rower") {
       v4Prepared = v4Motion!.orientHandsToTargets();
     }
@@ -5881,8 +5995,29 @@ export class CourseRenderer3D implements ReplayRenderer {
     // pullback from the current horizontal lens. This treats the comparison as
     // a bounded pair instead of assuming a small lane-only offset. Scalars keep
     // this render-hot path allocation-free.
-    const focusX = state.ghost ? (p.x + this.ghostPlacement.x) * 0.5 : p.x;
-    const focusZ = state.ghost ? (p.z + this.ghostPlacement.z) * 0.5 : p.z;
+    const qaGrip = this.qaCamera === "athlete-grip" && !state.ghost;
+    if (qaGrip) {
+      this.liveAvatar.v4Targets.leftHand.getWorldPosition(this.qaGripFocus);
+      this.liveAvatar.v4Targets.rightHand.getWorldPosition(this.qaGripOther);
+      if (this.sport === "rower") {
+        // Sculling hands converge at the finish, so their midpoint sits behind
+        // the torso from every useful close-up. Track the starboard palm itself
+        // to make the finger/handle enclosure reviewable at catch and finish.
+        this.qaGripFocus.copy(this.qaGripOther);
+      } else {
+        this.qaGripFocus.add(this.qaGripOther).multiplyScalar(0.5);
+      }
+    }
+    const focusX = qaGrip
+      ? this.qaGripFocus.x
+      : state.ghost
+        ? (p.x + this.ghostPlacement.x) * 0.5
+        : p.x;
+    const focusZ = qaGrip
+      ? this.qaGripFocus.z
+      : state.ghost
+        ? (p.z + this.ghostPlacement.z) * 0.5
+        : p.z;
     const comparisonSpan = state.ghost
       ? Math.hypot(p.x - this.ghostPlacement.x, p.z - this.ghostPlacement.z)
       : 0;
@@ -5899,11 +6034,43 @@ export class CourseRenderer3D implements ReplayRenderer {
         Math.max(0.05, Math.tan(horizontalHalfFov) * 0.9)
       : baseBack;
     const comparisonPullback = Math.max(0, requiredComparisonBack - baseBack);
-    const back = baseBack + comparisonPullback;
+    // The close rig exists solely for the query-gated visual-QA harness. It
+    // preserves the production chase composition for every normal replay,
+    // while letting evidence inspect the shoulder/elbow/hip surface directly.
+    const qaClose = this.qaCamera !== "normal" && !state.ghost;
+    // `athlete-front` is a capture-only portrait, not a reversed chase view:
+    // it must make the actual head, shoulder mass, and face treatment legible
+    // enough to review. The normal and diagnostic-close cameras keep their
+    // broadcast framing unchanged.
+    const qaFront = this.qaCamera === "athlete-front" && !state.ghost;
+    // Row grips finish against the front of the lower ribs and are completely
+    // occluded from a rear chase close-up. The grip diagnostic approaches only
+    // RowErg from ahead; SkiErg/BikeErg retain the rear-three-quarter view that
+    // shows both independent handles.
+    const qaGripFront = qaGrip && this.sport === "rower";
+    const normalBack = baseBack + comparisonPullback;
+    const closeScale = qaGrip ? (qaGripFront ? 0.035 : 0.15) : qaFront ? 0.22 : qaClose ? 0.42 : 1;
+    const back = normalBack * closeScale;
     const baseHeight = this.reduceMotion
       ? sportRig.height + 0.7
       : sportRig.height + (narrow ? 0.3 : 0);
-    const height = baseHeight + Math.min(2.5, comparisonSpan * 0.16);
+    // The camera looks gently down toward the face instead of shooting upward
+    // from chest height. This branch is query-gated and never changes the
+    // production chase view.
+    const portraitAimY = sportRig.aimY + 0.28;
+    const height = qaGrip
+      ? this.qaGripFocus.y + (qaGripFront ? 0.55 : 0.24)
+      : qaFront
+        ? portraitAimY + 0.42
+        : (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);
+    const qaLateral = qaGrip
+      ? qaGripFront
+        ? Math.min(0.12, lateral * 0.07)
+        : Math.min(0.32, lateral * 0.14)
+      : qaFront
+        ? Math.min(0.16, lateral * 0.13)
+        : lateral;
+    const qaAhead = qaFront || qaGrip ? 0 : ahead;
     // A small live-lane bias keeps the vector non-zero when the two course
     // tangents cancel at half a lap. Adding it before normalization makes the
     // heading continuous as the gap crosses that point; a binary fallback
@@ -5921,15 +6088,29 @@ export class CourseRenderer3D implements ReplayRenderer {
     const focusRadius = Math.max(1e-6, Math.hypot(focusX, focusZ));
     const rx = focusX / focusRadius;
     const rz = focusZ / focusRadius;
-    const cameraLayoutMode = (narrow ? 1 : 0) | (state.ghost ? 2 : 0) | (this.reduceMotion ? 4 : 0);
+    const cameraLayoutMode =
+      (narrow ? 1 : 0) |
+      (state.ghost ? 2 : 0) |
+      (this.reduceMotion ? 4 : 0) |
+      (qaClose ? 8 : 0) |
+      (qaFront ? 16 : 0) |
+      (qaGrip ? 32 : 0);
     const cameraLayoutChanged = cameraLayoutMode !== this.cameraLayoutMode;
     this.cameraLayoutMode = cameraLayoutMode;
     this.chase.set(
-      focusX - focusTx * back + rx * lateral,
+      focusX +
+        (qaFront || qaGripFront ? focusTx : -focusTx) * back +
+        rx * (qaFront || qaGripFront ? -qaLateral : qaLateral),
       height,
-      focusZ - focusTz * back + rz * lateral,
+      focusZ +
+        (qaFront || qaGripFront ? focusTz : -focusTz) * back +
+        rz * (qaFront || qaGripFront ? -qaLateral : qaLateral),
     );
-    this.lookAt.set(focusX + focusTx * ahead, sportRig.aimY, focusZ + focusTz * ahead);
+    this.lookAt.set(
+      focusX + focusTx * qaAhead,
+      qaGrip ? this.qaGripFocus.y : qaFront ? portraitAimY : sportRig.aimY + (qaClose ? 0.12 : 0),
+      focusZ + focusTz * qaAhead,
+    );
     if (!this.cameraInit) {
       this.camera.position.copy(this.chase);
       this.cameraAim.copy(this.lookAt);
@@ -5951,6 +6132,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     } else if (
       dLive !== 0 ||
       cameraLayoutChanged ||
+      qaClose ||
       this.camera.position.distanceToSquared(this.chase) > 9
     ) {
       // Paused renders are on-demand, so nothing would drive a gradual
@@ -5965,6 +6147,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     }
     this.camera.lookAt(this.cameraAim);
 
+    this.v4SkeletonHelper?.updateMatrixWorld(true);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -5984,6 +6167,11 @@ export class CourseRenderer3D implements ReplayRenderer {
     // before the generic scene walk so shared cache templates remain untouched.
     this.liveAvatar.v4Motion?.dispose();
     this.ghostAvatar.v4Motion?.dispose();
+    if (this.v4SkeletonHelper) {
+      this.v4SkeletonHelper.removeFromParent();
+      this.v4SkeletonHelper.dispose();
+      this.v4SkeletonHelper = null;
+    }
     // Walk the whole scene — avatar helper geometries (taperedLimb, makeHand,
     // makeFoot, makeHead) are created inline by makeRowerAvatar / makeSkier /
     // makeBike and never tracked in `this.geometries`. Disposing through

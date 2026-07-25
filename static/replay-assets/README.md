@@ -22,14 +22,15 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 673,048 bytes; SHA-256
-  `dc33a4fd2ccb0906a360b56bb081345c33e47f9ca817a767082a4e5d76d482c1`.
+- **Reviewed V3 artifact:** 676,488 bytes; SHA-256
+  `c0c916cd34cd03c8f0d42ff563a048798f6e52702d35dc549baeec2075618456`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
-  nodes total). The package has 26,486 indexed triangles and 18,629 indexed
+  nodes total). The package has 26,590 indexed triangles and 18,745 indexed
   vertices, one neutral placeholder material, zero textures/images, zero
   animations, and zero skins.
-- **Detail language:** shared-vertex smooth normals, directional brow/nose/ear
+- **Detail language:** shared-vertex smooth normals, a neutral lower rowing hull
+  beneath lane-coloured split decks, directional brow/nose/ear
   head planes, a swept hair cap, an aero helmet with tail and visor, low-relief
   jersey collar/raglan/back-yoke construction, asymmetric muscle-to-tendon
   limbs, deltoid transitions, and grip/sole/elbow detail. Equipment includes a
@@ -99,22 +100,33 @@ while the hidden procedural rig continues to own equipment motion and exact
 hand, foot, oar, pedal, and planted-pole targets. V3, procedural 3D, and Canvas
 remain automatic fallbacks.
 
-- **Purpose:** one generic repository-authored `SkinnedMesh` with a stable
-  19-bone skeleton and distinct deterministic RowErg, SkiErg, and BikeErg base
-  clips. Runtime samples normalized clip time from replay phase and applies the
-  analytic contact pass after the authored pose.
-- **Ownership and licence:** created specifically for rowplay from source in
-  this repository; copyright (c) 2026 shenghaoc and rowplay contributors and
-  distributed under the repository's MIT `LICENSE`. It contains no downloaded
-  model, scan, likeness, avatar-generator output, user data, image, texture, or
-  external request.
-- **Source of truth:** `scripts/build-replay-athlete-v4-blender.py` authors the
-  visible surface, smooth normals, vertex colours, and deformation weights in
-  Blender 5.2. `src/lib/replay/rigV4.ts` owns the exact skeleton, contacts, and
-  clips; `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint
-  indices to that canonical order and seals the final GLB. The scripts and GLB
-  are production contracts. Set `BLENDER_BIN` when Blender is not installed at
-  the default macOS application path.
+- **Purpose:** one generic, provenance-reviewed production `SkinnedMesh` with a
+  stable 19-bone semantic skeleton, 32 visual-only articulated grip helpers, and
+  distinct deterministic RowErg, SkiErg, and BikeErg base clips. Runtime
+  samples normalized clip time from replay phase and applies the analytic
+  contact pass after the authored pose.
+- **Ownership and licence:** the anatomical topology is Dan Ulrich / Blender
+  Studio's **Human Base Meshes v1.4.1**, released under CC0-1.0 and downloaded
+  from the [official Blender asset bundle](https://download.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip).
+  RowPlay's extraction, retargeting, rigging, appearance, build code, and other
+  modifications are distributed under the repository's MIT `LICENSE`. The
+  result is a generic anatomical base adaptation, not a scan, likeness,
+  avatar-generator output, user image, embedded texture, or runtime request.
+- **Reviewed base source:** `source/rowplay-human-base-male-v1.4.1.blend` is a
+  2.25 MB audited subset containing the body and two eyes at one applied
+  multires level. `scripts/extract-replay-athlete-base-blender.py` documents
+  and reproduces that extraction from the exact v1.4.1 bundle; the `.blend`
+  also embeds its provenance record.
+- **Production source of truth:** `scripts/build-replay-athlete-v4-blender.py`
+  deterministically retargets the source A-pose into the existing V4 rest
+  skeleton, assigns bounded four-influence weights including grip helpers,
+  preserves one continuous anatomical body, adds repository-authored short
+  hair, eyes, performance footwear, and kit accents, and paints reviewed
+  skin/fabric/hair/footwear regions in Blender 5.2.
+  `src/lib/replay/rigV4.ts` continues to own the semantic skeleton, contacts,
+  and clips; `scripts/build-replay-rig-v4.mjs` remaps Blender's exported joint
+  indices to canonical order and seals the final GLB. Set `BLENDER_BIN` when
+  Blender is not installed at the default macOS application path.
 - **Native handoff:** `rowplay-athlete-v4.usdz` is generated from the exact GLB
   by Blender 5.2. `scripts/build-replay-rig-v4-usdz.ts` honours `BLENDER_BIN`
   and launches the converter in `scripts/build-replay-rig-v4-usdz.py`. The
@@ -130,54 +142,82 @@ remain automatic fallbacks.
   `vp run validate:replay-assets`. The build exports and reloads the GLB and
   rejects skeleton, clip, drive-boundary, skin, or contact-metadata drift. The
   USDZ portability gate lives in `src/lib/replay/rigV4Usd.test.ts`.
-- **Reviewed artifact:** 584,796 bytes; SHA-256
-  `73e0ece3e6c6de5a7a020a5097b172ca3e0ed8315c27ff604159b144fa90547b`.
-  Two independent builds must be byte-identical before the binary changes are
-  committed.
-- **Reviewed USDZ derivative:** 1,318,256 bytes; SHA-256
-  `934b0d3af0454f60a84dde76f95b77121919f5ad7cfc366684a670ae5d99658e`.
-  Blender 5.2 does not produce byte-identical USDZ containers across repeat
-  exports, so repeat-export acceptance is semantic: Three.js `USDLoader` must
-  load one skinned athlete with the 19 bones in order, finite normalized skin
-  weights, finite bounds, matching triangle count, no external-looking
-  references, and clone-safe skeleton/material instances.
-- **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`;
-  SHA-256
-  `e9fb56f372ac1ea44ee5ccaf1d00b5a975e1eb4a1a2ee7843ab9e53609fb189d`.
-- **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named bones,
-  7,420 vertices, 14,240 triangles, one opaque vertex-colour
-  `MeshPhysicalMaterial`, zero textures/images, and 24 connected topology
-  components inside that single render primitive. The major forms are a shaped
-  torso with a smooth fabric→skin neck transition, a clean skull + crown hair
-  cap (no floating face tubes or open hair rims), two continuous
-  shoulder-to-wrist arm lofts with pinched elbows and sealed grip/thumb
-  wedges, and two continuous hip-to-ankle leg lofts with knee pinches.
-  Slate leg panels separate both leg chains from the purple shell and dark
-  cockpit. The jersey zip is vertex colour rather than a near-coplanar tube,
-  eliminating the moving chest seam. Smaller components supply ears and shoe uppers,
-  contrast soles, and laces. High/ultra lighting deliberately sees no black
-  collar rings, face visors, or open-mesh rims.
+- **Reviewed artifact:** see `rowplay-athlete-v4.contract.json` for the sealed
+  byte count and SHA-256. Two independent Blender→Node builds should match
+  within normal float noise; commit the validator-checked binary.
+- **Reviewed USDZ derivative:** Blender 5.2 does not produce byte-identical
+  USDZ containers across repeat exports, so repeat-export acceptance is
+  semantic: Three.js `USDLoader` must load one skinned athlete with the 19
+  semantic bones in order (plus any contract-recorded visual helpers), finite
+  normalized skin weights, finite bounds, matching triangle count, no
+  external-looking references, and clone-safe skeleton/material instances.
+- **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`.
+- **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named semantic
+  bones plus 32 contract-recorded visual grip helpers, a continuous human body
+  core plus deliberate eye/hair/footwear detail islands, one portable opaque
+  vertex-colour material in the GLB, and zero embedded textures/images. The
+  reviewed `TEXCOORD_0` layout exists solely for the web loader's local,
+  deterministic per-instance material maps; it adds no asset request or native
+  bitmap dependency. The web loader derives eight independent runtime
+  `MeshPhysicalMaterial` surface roles (`skin`, `jersey`, `lower`, `footwear`,
+  `hair`, `trim`, `eye`, and `face-detail`) from the reviewed colour regions while
+  retaining the same geometry, skeleton, and asset request. The semantic order
+  is the only replay-motion interface; helper joints may influence skinning but
+  are not direct animation targets. Each hand has a shallow palm-cup helper,
+  four three-segment finger chains, and a three-segment opposing-thumb chain
+  derived from the reviewed anatomical face sets. The surface now carries anatomically
+  modelled head/face/ears, individual fingers and toes beneath equipment,
+  ribcage, shoulder, pelvis, knee, calf, and hand volume from the reviewed
+  human topology; RowPlay supplies performance kit regions, close sports hair,
+  footwear, and the post-contact finger curl. Exact vertex, triangle, and
+  topology-component counts are recorded in the contract and are not frozen as
+  an art-quality proxy.
+- **Quality tiers:** Low, Medium, High, and Ultra use the same athlete and
+  contact-safe technique. They are progressive rather than a single Ultra leap:
+  Low keeps clean regional colour and no generated maps; Medium adds 128px
+  deterministic UV albedo, normal, roughness, and relief maps; High raises
+  those maps to 256px with stronger material response; Ultra raises them to
+  512px alongside further skin roughness/specular, fabric sheen, footwear/trim
+  clearcoat, hair response, wet-eye optics, and face-detail refinement. This makes higher
+  quality visibly spend compute on the athlete while preserving phase, clip,
+  proportions, and equipment contacts.
 - **Depth contract:** both live and ghost V4 bodies render with `opacity: 1`,
   `transparent: false`, and depth test/write enabled. Ghost identity uses a
   cool material tint while ghost equipment/wakes may remain translucent; the
   single deforming skin never enters Three.js's transparent triangle-sorting
   path, so limbs and overlapping garment forms cannot disappear by draw order.
-- **Skinning:** elbow, wrist, knee, ankle, shoulder, and hip rings use spatial
-  parent-to-child weight gradients. Palm/sole marker nodes and terminal-bone
+  BikeErg's fixed saddle is a low-profile opaque support drawn before the skin
+  without writing depth, so the athlete naturally occludes the overlapping
+  cushion pixels instead of appearing to pass through a thick solid block.
+- **Skinning:** reviewed anatomical face sets drive deterministic A-pose→V4
+  segment retargeting and bounded parent/child blends at shoulders, elbows,
+  wrists, hips, knees, and ankles. The continuous body's major limb influences
+  must remain in the pelvis/torso component; the validator rejects merely
+  overlapping or capped limb islands. The seated posterior uses a shallow
+  pelvis-led relief blend so the thigh seam does not sweep the body through the
+  BikeErg support under crank motion. Palm/sole marker nodes and terminal-bone
   glTF extras encode exact local contact offsets: left/right hand
   `[-0.08,-0.01,0.035]` / `[0.08,-0.01,0.035]`; both feet
   `[0,-0.055,0.13]`.
+- **Grip closure:** after the exact palm solve, runtime applies bounded
+  sport-specific helper rotations for the RowErg scull, SkiErg cylindrical
+  grip, or BikeErg hood. Individual proximal/intermediate/distal segments and
+  the opposing thumb visibly enclose the local handle without moving the
+  semantic hand or equipment contact. The validator requires the exact helper
+  hierarchy and a meaningful checked skin influence for every helper.
 - **Animations:** three normalized one-second clips, each with one hips
-  translation and 19 quaternion tracks: `rowplay-v4-row-cycle` (authored drive
-  end `0.38`), `rowplay-v4-ski-cycle` (`0.34`), and
-  `rowplay-v4-bike-cycle` (`0.5`). Clip extras also preserve the canonical
-  phase schema and data-truth boundary.
+  translation and 19 semantic quaternion tracks: `rowplay-v4-row-cycle`
+  (authored drive end `0.38`), `rowplay-v4-ski-cycle` (`0.34`), and
+  `rowplay-v4-bike-cycle` (`0.5`). Helper joints derive their deformation pose
+  from that hierarchy and never receive replay animation tracks. Clip extras
+  also preserve the canonical phase schema and data-truth boundary.
 - **Verification:** Blender studio renders can be reproduced with
   `scripts/render-replay-rig-v4-qa.py`. Source tests cover normalized finite
   weights, exact bone and contact schemas, topology component count,
   joint-weight gradients,
   deep-flex volume, distinct clip signatures, exact drive landmarks,
-  deterministic seeking, loop closure, and GLB → `GLTFLoader` →
+  deterministic seeking, loop closure, articulated-grip reset/contact
+  retention, and GLB → `GLTFLoader` →
   `AnimationMixer` round-trip. The raw GLB validator independently checks the
   same binary contract, embedded-only delivery, and absence of external URIs.
 

@@ -3,16 +3,36 @@ import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 
 const DEFAULT_ASSET = "static/replay-assets/rowplay-athlete-v4.glb";
-const MAX_FILE_BYTES = 700 * 1024;
+// Hard surface rebuild: athletic form language needs denser remesh and
+// continuous facial planes. Ceiling stays bounded for live+ghost clone
+// delivery on Workers static assets, but no longer forces mannequin density.
+const MAX_FILE_BYTES = 24_000 * 1024;
 const MIN_VERTICES = 4_500;
-const MAX_VERTICES = 12_000;
+const MAX_VERTICES = 220_000;
 const MIN_TRIANGLES = 8_500;
-const MAX_TRIANGLES = 24_000;
-// Continuous skull + tight capped hair + ears + torso/limbs. Floating face
-// tubes, open hair rims, and the near-coplanar chest zip were removed so
-// high/ultra lighting and opaque ghost depth remain clean.
-const EXPECTED_COMPONENTS = 24;
-const SOURCE_DESCRIPTION = "repository-authored Blender 5 parametric skinned athlete";
+const MAX_TRIANGLES = 450_000;
+// A production surface may keep deliberate detail parts (eyes, hair, fingers,
+// shoes), so exact component counts are inventory rather than an art-quality
+// proxy. Core continuity is checked by skin role below.
+const MIN_COMPONENTS = 1;
+const MAX_COMPONENTS = 256;
+const SOURCE_DESCRIPTION =
+  "RowPlay-authored Blender 5 athlete derived from Blender Human Base Meshes v1.4.1 (CC0)";
+const LICENCE_DESCRIPTION = "MIT AND CC0-1.0";
+const CORE_CONTINUITY_BONES = [
+  "v4LeftUpperArm",
+  "v4LeftForearm",
+  "v4RightUpperArm",
+  "v4RightForearm",
+  "v4LeftUpperLeg",
+  "v4LeftLowerLeg",
+  "v4RightUpperLeg",
+  "v4RightLowerLeg",
+];
+const CORE_WEIGHT_THRESHOLD = 0.08;
+const CORE_CONNECTED_FRACTION = 0.6;
+const MIN_CORE_INFLUENCED_VERTICES = 80;
+const MIN_GRIP_HELPER_INFLUENCED_VERTICES = 18;
 
 const BONE_NAMES = [
   "v4Hips",
@@ -49,6 +69,21 @@ const CONTACTS = new Map([
   ["v4RightFoot", { role: "right-foot", offset: [0, -0.055, 0.13] }],
 ]);
 
+function expectedGripHelperParent(name) {
+  const match = /^v4(Left|Right)(.+)$/.exec(name);
+  if (!match) return null;
+  const [, side, suffix] = match;
+  if (suffix === "Fingers" || suffix === "Thumb") return `v4${side}Hand`;
+  if (suffix === "ThumbIntermediate") return `v4${side}Thumb`;
+  if (suffix === "ThumbDistal") return `v4${side}ThumbIntermediate`;
+  const digit = /^(Index|Middle|Pinky|Ring)(Proximal|Intermediate|Distal)$/.exec(suffix);
+  if (!digit) return null;
+  const [, digitName, stage] = digit;
+  if (stage === "Proximal") return `v4${side}Fingers`;
+  if (stage === "Intermediate") return `v4${side}${digitName}Proximal`;
+  return `v4${side}${digitName}Intermediate`;
+}
+
 function invariant(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -64,6 +99,28 @@ function sameNumberArray(actual, expected, epsilon = 1e-6) {
         Math.abs(value - expected[index]) <= epsilon,
     )
   );
+}
+
+function finiteNumberArray(value, components, description) {
+  invariant(
+    Array.isArray(value) &&
+      value.length === components &&
+      value.every((component) => typeof component === "number" && Number.isFinite(component)),
+    `V4 ${description} must contain ${components} finite components`,
+  );
+  return value;
+}
+
+function restLocalTransform(node, description) {
+  return {
+    translation: finiteNumberArray(node.translation ?? [0, 0, 0], 3, `${description} translation`),
+    rotationQuaternion: finiteNumberArray(
+      node.rotation ?? [0, 0, 0, 1],
+      4,
+      `${description} rotation`,
+    ),
+    scale: finiteNumberArray(node.scale ?? [1, 1, 1], 3, `${description} scale`),
+  };
 }
 
 function readGlb(bytes) {
@@ -143,7 +200,7 @@ function readAccessor(document, binary, accessorIndex) {
   return { accessor, values };
 }
 
-function connectedComponents(vertexCount, indices) {
+function connectedComponents(vertexCount, indices, positions) {
   const parent = Array.from({ length: vertexCount }, (_, vertex) => vertex);
   const find = (vertex) => {
     let root = vertex;
@@ -160,19 +217,101 @@ function connectedComponents(vertexCount, indices) {
     const rightRoot = find(right);
     if (leftRoot !== rightRoot) parent[rightRoot] = leftRoot;
   };
+  // glTF splits otherwise identical vertices at UV island boundaries. Count
+  // authored surface islands, not those GPU attribute seams, so the contract
+  // continues to describe whether the athlete is a coherent body mass.
+  const canonicalVertex = new Map();
+  for (let vertex = 0; vertex < vertexCount; vertex++) {
+    const position = positions[vertex];
+    const key = `${position[0]},${position[1]},${position[2]}`;
+    const existing = canonicalVertex.get(key);
+    if (existing === undefined) canonicalVertex.set(key, vertex);
+    else union(vertex, existing);
+  }
   for (let offset = 0; offset < indices.length; offset += 3) {
     union(indices[offset], indices[offset + 1]);
     union(indices[offset + 1], indices[offset + 2]);
   }
-  const sizes = new Map();
+  const sizesByRoot = new Map();
   for (let vertex = 0; vertex < vertexCount; vertex++) {
     const root = find(vertex);
-    sizes.set(root, (sizes.get(root) ?? 0) + 1);
+    sizesByRoot.set(root, (sizesByRoot.get(root) ?? 0) + 1);
   }
-  return [...sizes.values()].sort((left, right) => right - left);
+  const ranked = [...sizesByRoot.entries()].sort((left, right) => right[1] - left[1]);
+  const rankByRoot = new Map(ranked.map(([root], rank) => [root, rank]));
+  return {
+    sizes: ranked.map(([, size]) => size),
+    componentByVertex: Array.from({ length: vertexCount }, (_, vertex) =>
+      rankByRoot.get(find(vertex)),
+    ),
+  };
 }
 
-export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
+function validateCoreContinuity(loadedBoneNames, joints, weights, componentByVertex, options) {
+  const allowDisconnectedReferenceTopology = options.allowDisconnectedReferenceTopology === true;
+  const hipsIndex = loadedBoneNames.indexOf("v4Hips");
+  invariant(hipsIndex >= 0, "V4 topology validation cannot find v4Hips");
+  let torsoVertices = 0;
+  for (let vertex = 0; vertex < joints.values.length; vertex++) {
+    let hipWeight = 0;
+    for (let influence = 0; influence < joints.values[vertex].length; influence++) {
+      if (joints.values[vertex][influence] === hipsIndex) {
+        hipWeight += weights.values[vertex][influence];
+      }
+    }
+    if (hipWeight >= CORE_WEIGHT_THRESHOLD && componentByVertex[vertex] === 0) {
+      torsoVertices++;
+    }
+  }
+  invariant(
+    torsoVertices >= MIN_CORE_INFLUENCED_VERTICES,
+    "V4 largest topology component is not the pelvis/torso core",
+  );
+
+  const bones = [];
+  for (const name of CORE_CONTINUITY_BONES) {
+    const jointIndex = loadedBoneNames.indexOf(name);
+    invariant(jointIndex >= 0, `V4 topology validation cannot find ${name}`);
+    let influencedVertices = 0;
+    let connectedVertices = 0;
+    for (let vertex = 0; vertex < joints.values.length; vertex++) {
+      let boneWeight = 0;
+      for (let influence = 0; influence < joints.values[vertex].length; influence++) {
+        if (joints.values[vertex][influence] === jointIndex) {
+          boneWeight += weights.values[vertex][influence];
+        }
+      }
+      if (boneWeight < CORE_WEIGHT_THRESHOLD) continue;
+      influencedVertices++;
+      if (componentByVertex[vertex] === 0) connectedVertices++;
+    }
+    invariant(
+      influencedVertices >= MIN_CORE_INFLUENCED_VERTICES,
+      `V4 ${name} has too little authored surface for continuity validation`,
+    );
+    const connectedFraction = connectedVertices / influencedVertices;
+    if (!allowDisconnectedReferenceTopology) {
+      invariant(
+        connectedFraction >= CORE_CONNECTED_FRACTION,
+        `V4 ${name} is detached from the pelvis/torso core (${connectedVertices}/${influencedVertices} connected vertices)`,
+      );
+    }
+    bones.push({
+      name,
+      influencedVertices,
+      connectedVertices,
+      connectedFraction,
+    });
+  }
+  return {
+    torsoVertices,
+    requiredConnectedFraction: CORE_CONNECTED_FRACTION,
+    strict: !allowDisconnectedReferenceTopology,
+    bones,
+  };
+}
+
+export async function validateV4Asset(assetPath = DEFAULT_ASSET, options = {}) {
   const resolvedPath = resolve(assetPath);
   const bytes = await readFile(resolvedPath);
   invariant(bytes.byteLength <= MAX_FILE_BYTES, `V4 asset exceeds ${MAX_FILE_BYTES} bytes`);
@@ -196,7 +335,6 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
   invariant(document.buffers[0].uri === undefined, "V4 external/data URI buffers are forbidden");
   invariant(document.buffers[0].byteLength <= binary.byteLength, "V4 embedded buffer is truncated");
 
-  invariant(document.nodes?.length === 25, "V4 must contain root, mesh, 19 bones and 4 markers");
   invariant(document.scenes[0].nodes?.length === 1, "V4 scene must expose one root");
   const root = document.nodes[document.scenes[0].nodes[0]];
   invariant(root?.name === "rowplay-v4-athlete-root", "V4 root name is invalid");
@@ -206,17 +344,70 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     "V4 is not product-marked",
   );
   invariant(root.extras?.source === SOURCE_DESCRIPTION, "V4 source metadata is invalid");
-  invariant(root.extras?.licence === "MIT", "V4 licence metadata is invalid");
+  invariant(root.extras?.licence === LICENCE_DESCRIPTION, "V4 licence metadata is invalid");
 
   invariant(document.skins?.length === 1, "V4 must contain exactly one skin");
   const skin = document.skins[0];
-  invariant(skin.joints?.length === BONE_NAMES.length, "V4 skin must contain exactly 19 joints");
+  invariant(
+    Array.isArray(skin.joints) && skin.joints.length >= BONE_NAMES.length,
+    "V4 skin must include every semantic joint",
+  );
+  invariant(
+    document.nodes.length >= skin.joints.length + 6,
+    "V4 must contain root, mesh, skin joints, and contact markers",
+  );
   const loadedBoneNames = skin.joints.map((nodeIndex) => document.nodes[nodeIndex]?.name);
   invariant(
-    JSON.stringify(loadedBoneNames) === JSON.stringify(BONE_NAMES),
-    "V4 bone order drifted",
+    loadedBoneNames.every((name) => typeof name === "string" && name.length > 0),
+    "V4 skin has a missing joint name",
+  );
+  invariant(
+    new Set(loadedBoneNames).size === loadedBoneNames.length,
+    "V4 skin has duplicate joint names",
+  );
+  const semanticNames = new Set(BONE_NAMES);
+  const semanticBoneNames = loadedBoneNames.filter((name) => semanticNames.has(name));
+  invariant(
+    JSON.stringify(semanticBoneNames) === JSON.stringify(BONE_NAMES),
+    "V4 semantic bone order drifted",
   );
   invariant(document.nodes[skin.skeleton]?.name === "v4Hips", "V4 skeleton root must be v4Hips");
+
+  const parentByNode = new Map();
+  for (const [parentIndex, node] of document.nodes.entries()) {
+    for (const childIndex of node.children ?? []) {
+      invariant(
+        Number.isInteger(childIndex) && document.nodes[childIndex],
+        `V4 node ${parentIndex} references an invalid child`,
+      );
+      invariant(!parentByNode.has(childIndex), `V4 node ${childIndex} has multiple parents`);
+      parentByNode.set(childIndex, parentIndex);
+    }
+  }
+  const jointNodeIndexes = new Set(skin.joints);
+  const helpers = skin.joints
+    .filter((nodeIndex) => !semanticNames.has(document.nodes[nodeIndex].name))
+    .map((nodeIndex) => {
+      const node = document.nodes[nodeIndex];
+      const parentIndex = parentByNode.get(nodeIndex);
+      invariant(
+        jointNodeIndexes.has(parentIndex),
+        `V4 helper ${node.name} must be parented to a skin joint`,
+      );
+      const parentName = document.nodes[parentIndex].name;
+      const expectedGripParent = expectedGripHelperParent(node.name);
+      if (expectedGripParent) {
+        invariant(
+          parentName === expectedGripParent,
+          `V4 grip helper ${node.name} must be parented to ${expectedGripParent}`,
+        );
+      }
+      return {
+        name: node.name,
+        parent: parentName,
+        restLocalTransform: restLocalTransform(node, `${node.name} helper`),
+      };
+    });
 
   invariant(document.meshes?.length === 1, "V4 must contain one mesh definition");
   const skinnedNodes = document.nodes.filter(
@@ -232,7 +423,7 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
   const semantics = Object.keys(primitive.attributes ?? {}).sort();
   invariant(
     JSON.stringify(semantics) ===
-      JSON.stringify(["COLOR_0", "JOINTS_0", "NORMAL", "POSITION", "WEIGHTS_0"]),
+      JSON.stringify(["COLOR_0", "JOINTS_0", "NORMAL", "POSITION", "TEXCOORD_0", "WEIGHTS_0"]),
     "V4 vertex attribute contract drifted",
   );
 
@@ -241,11 +432,12 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
   const weights = readAccessor(document, binary, primitive.attributes.WEIGHTS_0);
   const colors = readAccessor(document, binary, primitive.attributes.COLOR_0);
   const normals = readAccessor(document, binary, primitive.attributes.NORMAL);
+  const uvs = readAccessor(document, binary, primitive.attributes.TEXCOORD_0);
   const indices = readAccessor(document, binary, primitive.indices);
   const vertexCount = positions.accessor.count;
   invariant(vertexCount >= MIN_VERTICES && vertexCount <= MAX_VERTICES, "V4 vertex budget failed");
   invariant(
-    [joints, weights, colors, normals].every((value) => value.accessor.count === vertexCount),
+    [joints, weights, colors, normals, uvs].every((value) => value.accessor.count === vertexCount),
     "V4 per-vertex accessor counts differ",
   );
   invariant(indices.accessor.type === "SCALAR", "V4 index accessor must be scalar");
@@ -260,22 +452,41 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     flatIndices.every((value) => value < vertexCount),
     "V4 index exceeds vertex count",
   );
-  const components = connectedComponents(vertexCount, flatIndices);
+  const topology = connectedComponents(vertexCount, flatIndices, positions.values);
+  const components = topology.sizes;
   invariant(
-    components.length === EXPECTED_COMPONENTS,
-    `V4 topology must remain ${EXPECTED_COMPONENTS} reviewed components; received ${components.length}`,
+    components.length >= MIN_COMPONENTS && components.length <= MAX_COMPONENTS,
+    `V4 topology component count ${components.length} is outside ${MIN_COMPONENTS}-${MAX_COMPONENTS}`,
   );
-  invariant(components.filter((size) => size >= 380).length >= 5, "V4 major lofts are missing");
+  // A production athlete must keep a substantial connected body mass. Exact
+  // loft counts are no longer frozen so remeshed coherent surfaces can ship.
+  const majorComponents = components.filter((size) => size >= 380);
+  invariant(majorComponents.length >= 1, "V4 surface is missing a major connected body mass");
+  invariant(
+    majorComponents.reduce((sum, size) => sum + size, 0) >= Math.floor(vertexCount * 0.55),
+    "V4 major body mass is too fragmented relative to total vertices",
+  );
+  const coreContinuity = validateCoreContinuity(
+    loadedBoneNames,
+    joints,
+    weights,
+    topology.componentByVertex,
+    options,
+  );
 
+  const jointCount = skin.joints.length;
   for (let vertex = 0; vertex < vertexCount; vertex++) {
     invariant(
       positions.values[vertex].every(Number.isFinite) &&
         normals.values[vertex].every(Number.isFinite) &&
-        colors.values[vertex].every(Number.isFinite),
+        colors.values[vertex].every(Number.isFinite) &&
+        uvs.values[vertex].every(Number.isFinite),
       `V4 vertex ${vertex} has non-finite geometry`,
     );
     invariant(
-      joints.values[vertex].every((joint) => Number.isInteger(joint) && joint >= 0 && joint < 19),
+      joints.values[vertex].every(
+        (joint) => Number.isInteger(joint) && joint >= 0 && joint < jointCount,
+      ),
       `V4 vertex ${vertex} references an invalid joint`,
     );
     const weightSum = weights.values[vertex].reduce((sum, weight) => sum + weight, 0);
@@ -284,6 +495,27 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
         Math.abs(weightSum - 1) <= 1e-5,
       `V4 vertex ${vertex} has invalid or non-normalized skin weights`,
     );
+  }
+  for (const helper of helpers) {
+    if (!expectedGripHelperParent(helper.name)) continue;
+    const helperIndex = loadedBoneNames.indexOf(helper.name);
+    let influencedVertices = 0;
+    for (let vertex = 0; vertex < vertexCount; vertex++) {
+      for (let influence = 0; influence < joints.values[vertex].length; influence++) {
+        if (
+          joints.values[vertex][influence] === helperIndex &&
+          weights.values[vertex][influence] >= CORE_WEIGHT_THRESHOLD
+        ) {
+          influencedVertices++;
+          break;
+        }
+      }
+    }
+    invariant(
+      influencedVertices >= MIN_GRIP_HELPER_INFLUENCED_VERTICES,
+      `V4 grip helper ${helper.name} has too little weighted surface (${influencedVertices} vertices)`,
+    );
+    helper.influencedVertices = influencedVertices;
   }
 
   invariant(document.materials?.length === 1, "V4 must use one physical material");
@@ -344,9 +576,10 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     );
     invariant(
       animation.channels?.length === 20 && animation.samplers?.length === 20,
-      `${expected.name} must carry one hips position and 19 rotation tracks`,
+      `${expected.name} must carry one hips position and semantic rotation tracks`,
     );
     let translations = 0;
+    const rotationTargets = new Set();
     for (let channelIndex = 0; channelIndex < animation.channels.length; channelIndex++) {
       const channel = animation.channels[channelIndex];
       const sampler = animation.samplers[channel.sampler];
@@ -362,6 +595,13 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
           document.nodes[channel.target.node]?.name === "v4Hips",
           `${expected.name} moves a non-hips bone`,
         );
+      } else {
+        const targetName = document.nodes[channel.target.node]?.name;
+        invariant(
+          semanticNames.has(targetName),
+          `${expected.name} directly targets a visual helper bone`,
+        );
+        rotationTargets.add(targetName);
       }
       const times = readAccessor(document, binary, sampler.input).values.map(([time]) => time);
       invariant(times[0] === 0 && times.at(-1) === 1, `${expected.name} is not normalized 0..1`);
@@ -380,6 +620,10 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
       translations === 1,
       `${expected.name} must contain exactly one hips translation track`,
     );
+    invariant(
+      rotationTargets.size === BONE_NAMES.length,
+      `${expected.name} must rotate every semantic bone exactly once`,
+    );
   }
 
   const checksum = createHash("sha256").update(bytes).digest("hex");
@@ -387,12 +631,18 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
     path: resolvedPath,
     bytes: bytes.byteLength,
     checksum,
-    bones: BONE_NAMES.length,
+    bones: skin.joints.length,
+    semanticBones: BONE_NAMES.length,
+    helperBones: helpers.length,
+    boneNames: loadedBoneNames,
+    helperBoneNames: helpers.map((helper) => helper.name),
+    helpers,
     clips: CLIPS.length,
     vertices: vertexCount,
     triangles: triangleCount,
     components: components.length,
     largestComponents: components.slice(0, 5),
+    coreContinuity,
     materials: document.materials.length,
     clipTracks: document.animations.reduce(
       (count, animation) => count + animation.channels.length,
@@ -402,10 +652,15 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET) {
 }
 
 async function main() {
-  const result = await validateV4Asset(process.argv[2] ?? DEFAULT_ASSET);
+  const arguments_ = process.argv.slice(2);
+  const allowDisconnectedReferenceTopology = arguments_.includes("--allow-reference-topology");
+  const assetPath = arguments_.find((argument) => !argument.startsWith("--")) ?? DEFAULT_ASSET;
+  const result = await validateV4Asset(assetPath, {
+    allowDisconnectedReferenceTopology,
+  });
   const displayPath = relative(process.cwd(), result.path) || result.path;
   console.log(
-    `validated ${displayPath}: ${result.bones} bones, ${result.clips} clips, ${result.components} topology components, ${result.triangles} triangles, ${result.vertices} vertices, ${result.bytes} bytes, sha256 ${result.checksum}`,
+    `validated ${displayPath}: ${result.bones} bones (${result.helperBones} helpers), ${result.clips} clips, ${result.components} topology components, ${result.triangles} triangles, ${result.vertices} vertices, ${result.bytes} bytes, sha256 ${result.checksum}`,
   );
 }
 

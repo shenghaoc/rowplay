@@ -5,10 +5,15 @@
 This pass adds compact authored-geometry layers above the existing procedural
 rig. The checked-in `rowplay-rigs-v3.glb` is a texture-free library of reusable
 fallback athlete shells and composite sport-equipment templates. The production
-`rowplay-athlete-v4.glb` supplies one continuous generic `SkinnedMesh`, a stable
-19-bone skeleton, and deterministic RowErg, SkiErg, and BikeErg clips. Both were
-created specifically for rowplay; neither contains a recording, scanned person,
-likeness, avatar-generator output, or user data.
+`rowplay-athlete-v4.glb` supplies one generic `SkinnedMesh` with a continuous
+reviewed anatomical body, deliberate eye/hair/footwear detail islands, a stable
+19-bone semantic skeleton, 32 visual-only articulated grip helpers, and
+deterministic RowErg, SkiErg, and BikeErg clips. Its exact topology-component
+count is sealed as release inventory, not treated as an art-quality requirement.
+The V3 asset is repository-authored; V4 adapts the documented CC0 Blender Human
+Base Meshes v1.4.1 topology and RowPlay-authored appearance/rigging. Neither
+contains a recording, scanned person, likeness, avatar-generator output, or user
+data.
 
 The current rig remains the contact and equipment authority. It owns sport
 timing, exact targets, body/equipment transforms, lane placement, live/ghost
@@ -42,14 +47,26 @@ materials remain outside the GLB so theme and live/ghost identity keep one
 source of truth.
 
 `static/replay-assets/rowplay-athlete-v4.glb` uses a two-stage repository build.
-`scripts/build-replay-athlete-v4-blender.py` authors the visible surface,
-vertex colours, smooth normals, and deformation weights in Blender 5.2;
+`scripts/extract-replay-athlete-base-blender.py` reduces the official CC0 source
+bundle to the reviewed body and eyes; `scripts/build-replay-athlete-v4-blender.py`
+retargets that continuous surface and authors its vertex colours, sports hair,
+footwear, smooth normals, reviewed `TEXCOORD_0` UVs, and deformation weights in
+Blender 5.2;
 `scripts/build-replay-rig-v4.mjs` remaps Blender's joint indices to the exact
 `rigV4.ts` order and seals the canonical skeleton, contacts, and three
 one-second clips. It round-trips as one indexed `SkinnedMesh`/primitive with
 skin, fabric, shorts, trim, hair, and footwear regions. Palm/sole contact
 offsets remain stored on terminal bones and validated from the checked binary.
 Both authoring scripts, `rigV4.ts`, and the GLB are production contracts.
+
+The grip helpers are derived from the reviewed hand face sets rather than
+inventing a second hand model. Each side has a shallow palm-cup helper, four
+three-segment finger chains, and one three-segment opposing-thumb chain. The
+helpers carry bounded skin influence, inherit the terminal semantic hand, and
+are excluded from authored clip tracks. Runtime applies their sport-specific
+closure only after the authoritative palm contact solve, so RowErg sculls,
+SkiErg grips, and BikeErg hoods remain fixed while the visible fingers wrap
+around them.
 
 The filename is versioned. An incompatible slot or coordinate-contract change
 requires a new versioned filename and corresponding loader contract.
@@ -113,20 +130,33 @@ constraint drift.
 
 ## Materials and identity
 
-The GLB deliberately carries placeholder authoring material only. Runtime
-metadata resolves each leaf/template child to semantic skin, fabric, hair,
-footwear, painted composite, dark/light trim, metal, rubber, or grip materials.
-This preserves lane accent, theme, and camera-light response without baking a
-colour or identity into the asset. Fabric uses restrained sheen and painted
-assemblies use restrained clearcoat; the lane accent remains selective rather
-than tinting the entire person and machine. V4's deforming human mesh remains
+The GLB deliberately carries one portable authoring material only. At template
+load time, the V4 loader partitions its reviewed regional vertex colours into
+eight PBR surface roles: skin, jersey, lower garment, footwear, hair, trim, wet
+eye, and face detail. Each live/ghost clone receives independent role materials while
+retaining one geometry, skeleton, clip set, and asset request. Low, Medium,
+High, and Ultra keep the same athlete and deterministic contact solve, but
+progressively refine those materials' roughness, specular response, cloth sheen,
+clearcoat, hair/face response, and deterministic per-instance UV albedo,
+normal, roughness, and relief maps. Low has no generated maps; Medium uses
+128px maps, High uses 256px maps, and Ultra uses 512px maps rather than
+substituting a different athlete. The GLB still embeds no image or texture.
+This ensures quality changes visibly improve the athlete rather than only DPR
+or remote environment density.
+
+Runtime ownership preserves lane accent, theme, and camera-light response
+without baking an identity into the asset. V4's deforming human mesh remains
 opaque and depth-writing in both lanes. Ghost identity uses a cool opaque tint;
 only separate ghost equipment/effects may use alpha. This prevents transparent
 triangle sorting from revealing interior overlaps or dropping limbs. The chest
 zip is carried by vertex colour rather than a near-coplanar surface, and slate
-leg panels retain separation from the shell and cockpit.
+leg panels retain separation from the shell and cockpit. BikeErg's small
+low-profile saddle is the deliberate exception: it draws before and without
+depth-write against the athlete so its support silhouette remains visible while
+the opaque skin owns overlap pixels, preventing the former visible body/seat
+cut-through without changing any semantic movement target.
 
-The athlete remains a generic illustration. Concept2 does not supply body
+The athlete remains a generic photoreal-directed character. Concept2 does not supply body
 dimensions, joint telemetry, clothing, appearance, or likeness; the authored
 shells must not be presented as a reconstruction of the athlete.
 
@@ -138,9 +168,13 @@ build command, and restrictions. A future third-party contribution must add the
 exact source/version, compatible licence text, attribution, and modifications
 before its bytes may enter the repository.
 
-The current asset is created from repository source and distributed under the
-project's MIT licence. It contains no third-party model, stock texture,
-avatar-generator output, scan, or user image.
+The current asset adapts Dan Ulrich / Blender Studio's generic realistic male
+topology from Human Base Meshes v1.4.1, distributed under CC0-1.0. The exact
+official source URL, extraction script, reviewed 2.25 MB `.blend`, and all
+RowPlay retargeting/material modifications live beside the asset contract.
+RowPlay-authored code and modifications remain MIT. The source is an anatomical
+base, not an avatar-generator output, scan, likeness, stock texture, or user
+image.
 
 ## Visual acceptance
 
@@ -153,7 +187,7 @@ The authored forms retain indexed shared vertices and normalized smooth normals
 at export. Runtime athlete materials deliberately preserve that shading and use
 restrained fabric/skin roughness, while rounded kit trim avoids creating a
 separate planar backpack-like silhouette over the torso. This is a rendering
-choice, not athlete reconstruction: the generic illustration remains governed
+choice, not athlete reconstruction: the generic character remains governed
 by the existing rig and source-policy boundary.
 
 At least three screenshot-and-critique iterations record visible defects and
@@ -181,23 +215,25 @@ PR #171 is the canonical V4 athlete source for both rowplay and RowPlay Studio.
 The web app continues to ship and load `rowplay-athlete-v4.glb` through
 `GLTFLoader`. `rowplay-athlete-v4.usdz` is a generated derivative for the native
 handoff, exported by Blender 5.2 from that exact GLB with armature/skinning
-enabled. The conversion script contains no mesh authoring, no alternate
-proportions, and no downloaded or generated character content.
+enabled. The conversion script contains no mesh authoring or alternate
+proportions; the documented CC0 base and all modifications are already sealed
+in the canonical GLB provenance.
 
 `rowplay-athlete-v4.contract.json` is generated from the Blender surface source,
-`rigV4.ts` constants, and the checked artifacts. It records the contract Studio must pin: schema version,
-hashes, bytes, units, axes, one-skinned-mesh inventory, exact 19-bone order,
-parent hierarchy, bind/rest local transforms, clip names, sport mapping, phase
-landmarks, palm/sole contact metadata, surface roles, provenance, licence, and
-validation commands.
+`rigV4.ts` constants, and the checked artifacts. It records the contract Studio
+must pin: schema version, hashes, bytes, units, axes, one-skinned-mesh inventory,
+the exact 19-bone semantic order, any visual helper names and rest transforms,
+parent hierarchy, clip names, sport mapping, phase landmarks, palm/sole contact
+metadata, surface roles, provenance, licence, and validation commands.
 
 Blender 5.2 did not produce byte-identical USDZ containers across repeat
 exports. The accepted native gate therefore records the checked USDZ hash and
 validates semantic round-trip through Three.js `USDLoader`: one intended
-skinned athlete, exact bone order, normalized finite skin weights, finite
-bounds, no external-looking references, matching triangle count, and cloned
-instances with independent skeleton/material state. This remains a portability
-gate only; it does not migrate the web runtime to USDZ.
+skinned athlete, exact semantic order plus any contract-recorded helpers,
+normalized finite skin weights, finite bounds, no external-looking references,
+matching triangle count, and cloned instances with independent skeleton/material
+state. This remains a portability gate only; it does not migrate the web runtime
+to USDZ.
 
 ## Out of scope
 

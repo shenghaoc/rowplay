@@ -19,6 +19,7 @@ import {
   createV4AthleteAsset,
   disposeV4AthleteAsset,
   V4_ASSET_FILENAME,
+  V4_BONE_DEFINITIONS,
   V4_BONE_NAMES,
   V4_CLIP_NAMES,
   V4_CONTACT_OFFSETS,
@@ -30,7 +31,8 @@ const DEFAULT_OUTPUT = `static/replay-assets/${V4_ASSET_FILENAME}`;
 const output = resolve(process.argv[2] ?? DEFAULT_OUTPUT);
 const BLENDER_GENERATOR = resolve("scripts/build-replay-athlete-v4-blender.py");
 const DEFAULT_BLENDER = "/Applications/Blender.app/Contents/MacOS/blender";
-const SOURCE_DESCRIPTION = "repository-authored Blender 5 parametric skinned athlete";
+const SOURCE_DESCRIPTION =
+  "RowPlay-authored Blender 5 athlete derived from Blender Human Base Meshes v1.4.1 (CC0)";
 
 // GLTFExporter has a browser FileReader dependency. Node's Blob has equivalent
 // byte access, so the adapter remains local, deterministic and dependency-free.
@@ -72,10 +74,108 @@ function onlySkinnedMesh(root) {
   return meshes[0];
 }
 
+function topologicallyOrderHelperBones(helperBones) {
+  const ordered = [];
+  const resolvedNames = new Set(V4_BONE_NAMES);
+  let pending = [...helperBones];
+  while (pending.length > 0) {
+    const unresolved = [];
+    let added = 0;
+    for (const helper of pending) {
+      if (!resolvedNames.has(helper.parent)) {
+        unresolved.push(helper);
+        continue;
+      }
+      ordered.push(helper);
+      resolvedNames.add(helper.name);
+      added++;
+    }
+    if (added === 0) {
+      throw new Error(
+        `Blender V4 helper hierarchy is cyclic or disconnected: ${unresolved
+          .map((helper) => `${helper.name}->${helper.parent}`)
+          .join(", ")}`,
+      );
+    }
+    pending = unresolved;
+  }
+  return ordered;
+}
+
+/**
+ * Blender's edit bones carry anatomical roll so their local axes follow each
+ * phalanx. The canonical semantic V4 skeleton intentionally uses translation-
+ * only rest joints. Reusing Blender-local helper transforms under that
+ * different parent frame moves pivots several centimetres away from the hand
+ * and turns a curl into exploding spikes. Preserve each authored helper world
+ * matrix, then derive the local transform against the canonical parent graph.
+ */
+function canonicalizeHelperBoneTransforms(helperBones) {
+  const worldByName = new Map();
+  for (const definition of V4_BONE_DEFINITIONS) {
+    const local = new THREE.Matrix4().makeTranslation(...definition.position);
+    const parentWorld = definition.parent ? worldByName.get(definition.parent) : null;
+    const world = parentWorld ? new THREE.Matrix4().multiplyMatrices(parentWorld, local) : local;
+    worldByName.set(definition.name, world);
+  }
+
+  return helperBones.map((helper) => {
+    const parentWorld = worldByName.get(helper.parent);
+    if (!parentWorld) {
+      throw new Error(`Blender V4 helper ${helper.name} has no canonical parent transform`);
+    }
+    const world = new THREE.Matrix4().fromArray(helper.sourceWorldMatrix);
+    const local = new THREE.Matrix4().copy(parentWorld).invert().multiply(world);
+    const position = new THREE.Vector3();
+    const rotation = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    local.decompose(position, rotation, scale);
+    if (
+      ![...position.toArray(), ...rotation.toArray(), ...scale.toArray()].every(Number.isFinite)
+    ) {
+      throw new Error(`Blender V4 helper ${helper.name} canonical transform is invalid`);
+    }
+    worldByName.set(helper.name, world);
+    return {
+      name: helper.name,
+      parent: helper.parent,
+      position: position.toArray(),
+      rotationQuaternion: rotation.normalize().toArray(),
+      scale: scale.toArray(),
+    };
+  });
+}
+
+function canonicalizeTriangleIndex(geometry) {
+  const index = geometry.getIndex();
+  if (!index || index.count % 3 !== 0) {
+    throw new Error("Blender V4 source must have a complete triangle index");
+  }
+  const triangles = [];
+  for (let offset = 0; offset < index.count; offset += 3) {
+    const source = [index.getX(offset), index.getX(offset + 1), index.getX(offset + 2)];
+    const smallest = source.indexOf(Math.min(...source));
+    // Cyclic rotation preserves the authored winding while removing Blender's
+    // nondeterministic choice of the first corner and triangle emission order.
+    triangles.push([source[smallest], source[(smallest + 1) % 3], source[(smallest + 2) % 3]]);
+  }
+  triangles.sort((left, right) => left[0] - right[0] || left[1] - right[1] || left[2] - right[2]);
+  const IndexArray = geometry.getAttribute("position").count > 65_535 ? Uint32Array : Uint16Array;
+  const canonical = new IndexArray(index.count);
+  for (let triangle = 0; triangle < triangles.length; triangle++) {
+    canonical.set(triangles[triangle], triangle * 3);
+  }
+  geometry.setIndex(new THREE.BufferAttribute(canonical, 1));
+}
+
 function remapBlenderGeometry(sourceMesh) {
+  sourceMesh.updateWorldMatrix(true, true);
   const geometry = sourceMesh.geometry.clone();
   if (!geometry.index) throw new Error("Blender V4 source must remain indexed");
-  const requiredAttributes = ["position", "normal", "color", "skinIndex", "skinWeight"];
+  // UVs are deliberately retained even though the portable GLB owns no bitmap
+  // textures. Runtime material clones use them for deterministic, per-instance
+  // surface relief at medium and above quality tiers.
+  const requiredAttributes = ["position", "normal", "color", "uv", "skinIndex", "skinWeight"];
   for (const name of requiredAttributes) {
     if (!geometry.getAttribute(name)) throw new Error(`Blender V4 source is missing ${name}`);
   }
@@ -86,32 +186,83 @@ function remapBlenderGeometry(sourceMesh) {
     throw new Error(`Blender V4 source has unreviewed attributes: ${unexpected.join(", ")}`);
   }
 
-  const sourceBoneNames = sourceMesh.skeleton.bones.map((bone) => bone.name);
+  const sourceBones = sourceMesh.skeleton.bones;
+  const sourceBoneNames = sourceBones.map((bone) => bone.name);
+  const semanticNames = new Set(V4_BONE_NAMES);
   if (
-    sourceBoneNames.length !== V4_BONE_NAMES.length ||
-    new Set(sourceBoneNames).size !== V4_BONE_NAMES.length ||
+    sourceBoneNames.length < V4_BONE_NAMES.length ||
+    new Set(sourceBoneNames).size !== sourceBoneNames.length ||
     V4_BONE_NAMES.some((name) => !sourceBoneNames.includes(name))
   ) {
     throw new Error(`Blender V4 source skeleton drifted: ${sourceBoneNames.join(", ")}`);
   }
-  const canonicalIndex = new Map(V4_BONE_NAMES.map((name, index) => [name, index]));
-  const sourceToCanonical = sourceBoneNames.map((name) => canonicalIndex.get(name));
+
+  const sourceByName = new Map(sourceBones.map((bone) => [bone.name, bone]));
+  for (const definition of V4_BONE_DEFINITIONS) {
+    const sourceBone = sourceByName.get(definition.name);
+    if (!sourceBone) throw new Error(`Blender V4 source is missing ${definition.name}`);
+    if (definition.parent) {
+      if (sourceBone.parent?.name !== definition.parent) {
+        throw new Error(`Blender V4 semantic hierarchy drifted at ${definition.name}`);
+      }
+    } else if (sourceBone.parent?.isBone) {
+      throw new Error(`Blender V4 semantic root ${definition.name} must not have a bone parent`);
+    }
+  }
+
+  const helperBones = sourceBones
+    .filter((bone) => !semanticNames.has(bone.name))
+    .map((bone) => {
+      const parent = bone.parent;
+      if (!parent?.isBone || !sourceByName.has(parent.name)) {
+        throw new Error(`Blender V4 helper ${bone.name} must have a skin-joint parent`);
+      }
+      const position = bone.position.toArray();
+      const rotationQuaternion = bone.quaternion.toArray();
+      const scale = bone.scale.toArray();
+      if (![...position, ...rotationQuaternion, ...scale].every(Number.isFinite)) {
+        throw new Error(`Blender V4 helper ${bone.name} has a non-finite rest transform`);
+      }
+      const sourceWorldMatrix = bone.matrixWorld.toArray();
+      if (!sourceWorldMatrix.every(Number.isFinite)) {
+        throw new Error(`Blender V4 helper ${bone.name} has a non-finite world transform`);
+      }
+      return {
+        name: bone.name,
+        parent: parent.name,
+        position,
+        rotationQuaternion,
+        scale,
+        sourceWorldMatrix,
+      };
+    });
+
+  const orderedHelperBones = canonicalizeHelperBoneTransforms(
+    topologicallyOrderHelperBones(helperBones),
+  );
+  // Semantic joints remain the stable leading section of the final Skeleton;
+  // visual helpers follow in deterministic hierarchy order so skin indices can
+  // be remapped without exposing helpers to replay motion code.
+  const targetBoneNames = [...V4_BONE_NAMES, ...orderedHelperBones.map((bone) => bone.name)];
+  const targetIndex = new Map(targetBoneNames.map((name, index) => [name, index]));
+  const sourceToTarget = sourceBoneNames.map((name) => targetIndex.get(name));
   const skinIndex = geometry.getAttribute("skinIndex");
   const remapped = new Uint16Array(skinIndex.count * 4);
   for (let vertex = 0; vertex < skinIndex.count; vertex++) {
     for (let influence = 0; influence < 4; influence++) {
       const sourceIndex = skinIndex.getComponent(vertex, influence);
-      const targetIndex = sourceToCanonical[sourceIndex];
-      if (!Number.isInteger(targetIndex)) {
+      const mappedIndex = sourceToTarget[sourceIndex];
+      if (!Number.isInteger(mappedIndex)) {
         throw new Error(`Blender V4 source uses invalid joint ${sourceIndex} at vertex ${vertex}`);
       }
-      remapped[vertex * 4 + influence] = targetIndex;
+      remapped[vertex * 4 + influence] = mappedIndex;
     }
   }
   geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(remapped, 4));
+  canonicalizeTriangleIndex(geometry);
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
-  return geometry;
+  return { geometry, sourceBoneNames, helperBones: orderedHelperBones };
 }
 
 function disposeParsedSource(root) {
@@ -142,22 +293,23 @@ async function buildBlenderGeometry() {
     const sourceBytes = await readFile(sourcePath);
     const source = await parseGlb(sourceBytes);
     const sourceMesh = onlySkinnedMesh(source.scene);
-    const geometry = remapBlenderGeometry(sourceMesh);
+    const { geometry, sourceBoneNames, helperBones } = remapBlenderGeometry(sourceMesh);
     const sourceMetrics = {
       blenderBytes: sourceBytes.byteLength,
       vertices: geometry.getAttribute("position").count,
       triangles: geometry.index.count / 3,
-      sourceBoneOrder: sourceMesh.skeleton.bones.map((bone) => bone.name),
+      sourceBoneOrder: sourceBoneNames,
+      helperBones: helperBones.map((bone) => bone.name),
     };
     disposeParsedSource(source.scene);
-    return { geometry, sourceMetrics };
+    return { geometry, helperBones, sourceMetrics };
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }
 }
 
-const { geometry: blenderGeometry, sourceMetrics } = await buildBlenderGeometry();
-const asset = createV4AthleteAsset();
+const { geometry: blenderGeometry, helperBones, sourceMetrics } = await buildBlenderGeometry();
+const asset = createV4AthleteAsset({ helperBones });
 try {
   asset.mesh.geometry.dispose();
   asset.mesh.geometry = blenderGeometry;
@@ -195,8 +347,9 @@ try {
     throw new Error("V4 GLB did not preserve normalized drive-boundary metadata");
   }
   const loadedBoneNames = loadedSkins[0].skeleton.bones.map((bone) => bone.name);
-  if (JSON.stringify(loadedBoneNames) !== JSON.stringify(V4_BONE_NAMES)) {
-    throw new Error("V4 GLB did not preserve the exact stable skeleton order");
+  const expectedBoneNames = [...V4_BONE_NAMES, ...helperBones.map((bone) => bone.name)];
+  if (JSON.stringify(loadedBoneNames) !== JSON.stringify(expectedBoneNames)) {
+    throw new Error("V4 GLB did not preserve the stable semantic and helper skeleton order");
   }
   for (const [boneName, offset] of Object.entries(V4_CONTACT_OFFSETS)) {
     const bone = loadedSkins[0].skeleton.getBoneByName(boneName);

@@ -1,0 +1,107 @@
+{
+  "schema": "rowplay.replay.athlete.v5.visual-qa",
+  "commit": "12325d3",
+  "baselineCommit": "da0dc73",
+  "capturedAt": "2026-07-24",
+  "source": "http://127.0.0.1:5175",
+  "capture": {
+    "browser": "connected Chrome",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "renderer": "WebGPU",
+    "quality": "Ultra",
+    "note": "Hardware WebGPU captures from connected Chrome after exact athlete-only code head 12325d3. The Canvas 2D renderer, venue construction, and movement physics are unchanged; each still is cropped from the visible canvas rect after page alignment."
+  },
+  "comparison": {
+    "sheet": "six-pose-comparison.jpg",
+    "columns": ["baseline", "production athlete", "skeleton / contacts"],
+    "rows": [
+      "Row · catch",
+      "Row · finish",
+      "SkiErg · high reach",
+      "SkiErg · loaded press",
+      "BikeErg · pedal top",
+      "BikeErg · pedal bottom"
+    ],
+    "baselineDirectory": "../../baseline/2026-07-23-da0dc73/poses"
+  },
+  "poses": {
+    "row": ["row-catch.jpg", "row-finish.jpg", "row-catch-skeleton.jpg", "row-finish-skeleton.jpg"],
+    "ski": [
+      "ski-high-reach.jpg",
+      "ski-loaded-press.jpg",
+      "ski-high-reach-skeleton.jpg",
+      "ski-loaded-press-skeleton.jpg"
+    ],
+    "bike": [
+      "bike-pedal-top.jpg",
+      "bike-pedal-bottom.jpg",
+      "bike-pedal-top-skeleton.jpg",
+      "bike-pedal-bottom-skeleton.jpg"
+    ],
+    "portrait": "row-finish-front.jpg",
+    "mobile": "mobile-row-finish.jpg"
+  },
+  "tiers": {
+    "low": "tiers/tier-row-finish-low.jpg",
+    "medium": "tiers/tier-row-finish-medium.jpg",
+    "high": "tiers/tier-row-finish-high.jpg",
+    "ultra": "tiers/tier-row-finish-ultra.jpg",
+    "renderer": "WebGPU",
+    "theme": "light",
+    "note": "Tier captures use the same production athlete with progressive map/detail settings; Ultra adds the highest authored PBR detail."
+  },
+  "cycles": {
+    "row": {
+      "file": "cycles/row-one-cycle.webm",
+      "renderer": "WebGPU",
+      "quality": "Ultra",
+      "frames": 24,
+      "encodedFps": 5
+    },
+    "ski": {
+      "file": "cycles/ski-one-cycle.webm",
+      "renderer": "WebGPU",
+      "quality": "Ultra",
+      "frames": 24,
+      "encodedFps": 5
+    },
+    "bike": {
+      "file": "cycles/bike-one-cycle.webm",
+      "renderer": "WebGPU",
+      "quality": "Ultra",
+      "frames": 24,
+      "encodedFps": 5
+    }
+  },
+  "ghost": {
+    "file": "poses/ghost-ski-loaded-press.jpg",
+    "renderer": "WebGPU",
+    "quality": "Ultra",
+    "ghostPace": "2:00/500m"
+  },
+  "mobile": {
+    "file": "poses/mobile-row-finish.jpg",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "canvas": {
+      "width": 365,
+      "height": 360
+    },
+    "renderer": "WebGPU",
+    "quality": "Ultra",
+    "theme": "light"
+  },
+  "desktopThemes": [
+    "poses/row-3d-desktop-dark-ultra.jpg",
+    "poses/row-3d-desktop-light-ultra.jpg",
+    "poses/ski-3d-desktop-dark-ultra.jpg",
+    "poses/ski-3d-desktop-light-ultra.jpg",
+    "poses/bike-3d-desktop-dark-ultra.jpg",
+    "poses/bike-3d-desktop-light-ultra.jpg"
+  ]
+}

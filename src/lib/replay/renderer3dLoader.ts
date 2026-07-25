@@ -1,4 +1,4 @@
-import type { CourseRenderer3D } from "./renderer3d";
+import type { CourseRenderer3D, Renderer3DOptions } from "./renderer3d";
 import type { RenderQuality } from "./replayRenderer";
 import type { ReplayRenderer } from "./renderer";
 import type { Renderer3DBackend } from "./renderer3d";
@@ -13,6 +13,9 @@ export type Renderer3DResult = {
   backend: Renderer3DBackend;
   quality: RenderQuality;
 };
+
+/** Query-gated capture controls; kept outside user-facing renderer preferences. */
+export type Renderer3DVisualQaOptions = Pick<Renderer3DOptions, "qaCamera" | "showV4Skeleton">;
 
 type GpuNavigator = Navigator & {
   gpu?: {
@@ -120,6 +123,7 @@ export async function createRenderer3D(
   quality: RenderQuality,
   sport: Sport,
   deps: Renderer3DFactoryDeps = {},
+  visualQa: Renderer3DVisualQaOptions = {},
 ): Promise<Renderer3DResult> {
   // The authored mesh pack raises visual fidelity but must never turn a local
   // asset or parser failure into a blank replay. The existing procedural 3D
@@ -143,7 +147,7 @@ export async function createRenderer3D(
     try {
       const Ctor = await (deps.loadWebGPU ?? loadRenderer3DWebGPU)();
       const [assets, v4Assets] = await Promise.all([getAssets(), getV4Assets()]);
-      renderer = new Ctor(host, quality, sport, { assets, v4Assets });
+      renderer = new Ctor(host, quality, sport, { ...visualQa, assets, v4Assets });
       await renderer.ready?.();
       // Honour the renderer's effective backend rather than the requested one:
       // Three's WebGPURenderer can install its own WebGL2 fallback inside
@@ -176,7 +180,7 @@ export async function createRenderer3D(
   const [assets, v4Assets] = await Promise.all([getAssets(), getV4Assets()]);
   let renderer: CourseRenderer3D | null = null;
   try {
-    renderer = new Ctor(host, webglQuality, sport, { assets, v4Assets });
+    renderer = new Ctor(host, webglQuality, sport, { ...visualQa, assets, v4Assets });
     await renderer.ready?.();
     return { renderer, backend: "webgl", quality: webglQuality };
   } catch (err) {

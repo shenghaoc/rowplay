@@ -6,7 +6,7 @@ import * as THREE from "three";
  * This module owns the stable generic skeleton, reference skin, explicit
  * contact effectors, and deterministic canonical clips for RowErg, SkiErg and
  * BikeErg. The checked production GLB replaces the reference surface with the
- * higher-detail Blender-authored mesh from
+ * production Blender-authored surface from
  * `scripts/build-replay-athlete-v4-blender.py` before export. No downloaded
  * mesh, scan, likeness, avatar generator, texture, user image, or athlete
  * telemetry contributes to either path.
@@ -103,6 +103,48 @@ export type V4BoneName = (typeof V4_BONE_NAMES)[number];
 export type V4ContactBoneName = keyof typeof V4_CONTACT_OFFSETS;
 export type V4ContactMarkerName = `${V4ContactBoneName}Contact`;
 
+/**
+ * Production grip deformation helpers (visual only). Keep names aligned with
+ * `REPLAY_V4_HAND_HELPER_NAMES` in the runtime loader and the sealed contract.
+ */
+export const V4_HAND_HELPER_NAMES = [
+  "v4LeftFingers",
+  "v4LeftIndexProximal",
+  "v4LeftIndexIntermediate",
+  "v4LeftIndexDistal",
+  "v4LeftMiddleProximal",
+  "v4LeftMiddleIntermediate",
+  "v4LeftMiddleDistal",
+  "v4LeftPinkyProximal",
+  "v4LeftPinkyIntermediate",
+  "v4LeftPinkyDistal",
+  "v4LeftRingProximal",
+  "v4LeftRingIntermediate",
+  "v4LeftRingDistal",
+  "v4LeftThumb",
+  "v4LeftThumbIntermediate",
+  "v4LeftThumbDistal",
+  "v4RightFingers",
+  "v4RightIndexProximal",
+  "v4RightIndexIntermediate",
+  "v4RightIndexDistal",
+  "v4RightMiddleProximal",
+  "v4RightMiddleIntermediate",
+  "v4RightMiddleDistal",
+  "v4RightPinkyProximal",
+  "v4RightPinkyIntermediate",
+  "v4RightPinkyDistal",
+  "v4RightRingProximal",
+  "v4RightRingIntermediate",
+  "v4RightRingDistal",
+  "v4RightThumb",
+  "v4RightThumbIntermediate",
+  "v4RightThumbDistal",
+] as const;
+
+export type V4HandHelperName = (typeof V4_HAND_HELPER_NAMES)[number];
+export type V4VisualHelperRole = "grip" | "twist" | "corrective";
+
 export interface V4RigMetrics {
   readonly bones: number;
   readonly vertices: number;
@@ -137,6 +179,28 @@ export type V4BoneDefinition = {
   readonly parent?: V4BoneName;
   readonly position: readonly [number, number, number];
 };
+
+/**
+ * A visual-only joint carried by the production surface. Helpers can add
+ * twist or corrective deformation without expanding the replay motion API:
+ * all clips continue to target only `V4_BONE_NAMES`, so helpers inherit their
+ * pose from a semantic ancestor.
+ */
+export type V4VisualHelperBoneDefinition = {
+  readonly name: string;
+  /** Prefer a semantic parent; helper parents are allowed for multi-joint chains. */
+  readonly parent: V4BoneName | (string & {});
+  readonly position: readonly [number, number, number];
+  readonly rotationQuaternion?: readonly [number, number, number, number];
+  readonly scale?: readonly [number, number, number];
+  /** Tooling / diagnostics only — never expands the motion API. */
+  readonly role?: V4VisualHelperRole;
+};
+
+export interface V4AthleteAssetOptions {
+  /** Optional production-surface deformation joints; never motion targets. */
+  readonly helperBones?: readonly V4VisualHelperBoneDefinition[];
+}
 
 /**
  * These are joint locations in a neutral, generic adult sports-illustration
@@ -452,22 +516,107 @@ class SkinnedGeometryBuilder {
   }
 }
 
-function buildBones(mesh: THREE.SkinnedMesh): {
+function finiteVector(
+  value: readonly number[],
+  components: number,
+  description: string,
+): readonly number[] {
+  if (value.length !== components || !value.every(Number.isFinite)) {
+    throw new Error(`V4 ${description} must contain ${components} finite components`);
+  }
+  return value;
+}
+
+function buildBones(
+  mesh: THREE.SkinnedMesh,
+  helperDefinitions: readonly V4VisualHelperBoneDefinition[] = [],
+): {
   readonly skeleton: THREE.Skeleton;
   readonly bones: Readonly<Record<V4BoneName, THREE.Bone>>;
   readonly effectors: Readonly<Record<V4ContactBoneName, THREE.Object3D>>;
 } {
   const mutableBones = {} as Record<V4BoneName, THREE.Bone>;
   const orderedBones: THREE.Bone[] = [];
+  const allBones = new Map<string, THREE.Bone>();
   for (const definition of V4_BONE_DEFINITIONS) {
     const bone = new THREE.Bone();
     bone.name = definition.name;
     bone.position.fromArray(definition.position);
     mutableBones[definition.name] = bone;
+    allBones.set(definition.name, bone);
     orderedBones.push(bone);
     if (definition.parent) mutableBones[definition.parent].add(bone);
     else mesh.add(bone);
   }
+
+  const semanticNames = new Set<string>(V4_BONE_NAMES);
+  const helperNames = new Set<string>();
+  for (const definition of helperDefinitions) {
+    if (
+      !definition.name ||
+      semanticNames.has(definition.name) ||
+      helperNames.has(definition.name)
+    ) {
+      throw new Error(
+        `V4 helper bone name is missing, semantic, or duplicated: ${definition.name}`,
+      );
+    }
+    helperNames.add(definition.name);
+    finiteVector(definition.position, 3, `${definition.name} helper position`);
+    if (definition.rotationQuaternion) {
+      const quat = finiteVector(
+        definition.rotationQuaternion,
+        4,
+        `${definition.name} helper rotation`,
+      );
+      const length = Math.hypot(quat[0], quat[1], quat[2], quat[3]);
+      if (!(length > 0.99 && length < 1.01)) {
+        throw new Error(
+          `V4 helper ${definition.name} rotationQuaternion must be approximately unit length`,
+        );
+      }
+    }
+    if (definition.scale) {
+      const scale = finiteVector(definition.scale, 3, `${definition.name} helper scale`);
+      if (scale[0] <= 0 || scale[1] <= 0 || scale[2] <= 0) {
+        throw new Error(`V4 helper ${definition.name} scale components must be positive`);
+      }
+    }
+  }
+
+  // Source skeletons may list a helper before its helper parent. Resolve the
+  // complete helper graph while keeping the authored list order in the final
+  // Skeleton whenever parents are already available.
+  let pendingHelpers = [...helperDefinitions];
+  while (pendingHelpers.length > 0) {
+    const unresolved: V4VisualHelperBoneDefinition[] = [];
+    let added = 0;
+    for (const definition of pendingHelpers) {
+      const parent = allBones.get(definition.parent);
+      if (!parent) {
+        unresolved.push(definition);
+        continue;
+      }
+      const bone = new THREE.Bone();
+      bone.name = definition.name;
+      bone.position.fromArray(definition.position);
+      if (definition.rotationQuaternion) bone.quaternion.fromArray(definition.rotationQuaternion);
+      if (definition.scale) bone.scale.fromArray(definition.scale);
+      parent.add(bone);
+      allBones.set(definition.name, bone);
+      orderedBones.push(bone);
+      added++;
+    }
+    if (added === 0) {
+      throw new Error(
+        `V4 helper bones must be parented to semantic or helper joints: ${unresolved
+          .map((definition) => `${definition.name}->${definition.parent}`)
+          .join(", ")}`,
+      );
+    }
+    pendingHelpers = unresolved;
+  }
+
   const effectors = {} as Record<V4ContactBoneName, THREE.Object3D>;
   for (const boneName of Object.keys(V4_CONTACT_OFFSETS) as V4ContactBoneName[]) {
     const bone = mutableBones[boneName];
@@ -1139,15 +1288,19 @@ function createSportClip(
 
 /**
  * Concept2 / sculling-style row cycle authored from technique sequencing:
- * catch → leg drive (arms DEAD STRAIGHT) → body open (arms still straight) →
- * arm draw begins → finish (elbows aft, deep flexion) → hands-away →
- * body-over → slide.
+ * catch → leg drive (arms near-straight) → body open (arms still near-straight) →
+ * arm draw begins → finish (hands to lower chest/ribs, elbows tucked) →
+ * hands-away → body-over → slide.
  *
- * CRITICAL: Real rowing sequencing is legs → body → arms. The arms must stay
- * completely straight (forearm near zero) through the entire leg drive AND the
- * body swing. Elbow bend begins ONLY after the body has opened past ~80%.
- * This eliminates the "premature draw" that makes the stroke look like a
- * shoulder shrug.
+ * CRITICAL: Real rowing sequencing is legs → body → arms. Forearms stay near-
+ * straight (a few degrees of soft flex) through leg drive and body open.
+ * Elbow flexion begins near drive fraction ~0.30 (after body-open ~0.26), not
+ * at catch. At the finish (drive end 0.38), hands draw *to the lower chest*
+ * (British Rowing / Concept2 / sculling coaching) — never hauled through the
+ * torso behind the back.
+ *
+ * Phase landmarks in V4_PHASE_SCHEMAS are semantic seek anchors and need not
+ * match every keyframe label time exactly.
  *
  * 14-key clip for smoother interpolation across transition points.
  *
@@ -1158,6 +1311,7 @@ function createSportClip(
 function createRowCycleClip(): THREE.AnimationClip {
   // 14 keyframes: catch, early-leg, mid-leg, late-leg, body-open, arm-draw-begin,
   // arm-draw-mid, finish, hands-away, arms-extend, body-over, mid-slide, late-slide, loop
+  // Times are clip seconds; landmarks (drive end 0.38, etc.) are seek anchors.
   const times = [
     0, 0.06, 0.12, 0.2, 0.26, 0.3, 0.34, 0.38, 0.48, 0.56, 0.66, 0.78, 0.9, 1,
   ] as const;
@@ -1188,10 +1342,10 @@ function createRowCycleClip(): THREE.AnimationClip {
     [0.42, -0.1, -0.44], // mid leg: still straight, arms hang from shoulders
     [0.4, -0.1, -0.43], // late leg: barely perceptible change
     [0.34, -0.09, -0.42], // body open: arms still straight, moving with body
-    [0.18, -0.07, -0.38], // draw begin: upper arm starts traveling aft
-    [0.02, -0.05, -0.34], // draw mid: elbows moving behind ribcage
-    [-0.1, -0.03, -0.28], // finish: elbows fully aft, not winged out
-    [0.12, -0.07, -0.38], // hands away: rapid extension forward
+    [0.22, -0.07, -0.4], // draw begin: upper arm starts traveling aft
+    [0.12, -0.05, -0.36], // draw mid: elbows tucking toward ribs
+    [0.06, -0.04, -0.32], // finish: elbows aft of shoulder, hands still at chest
+    [0.14, -0.07, -0.38], // hands away: rapid extension forward
     [0.28, -0.09, -0.42], // arms extend: nearly straight again
     [0.35, -0.1, -0.44], // body over: arms fully extended
     [0.39, -0.1, -0.44], // mid slide: arms still straight
@@ -1199,7 +1353,8 @@ function createRowCycleClip(): THREE.AnimationClip {
     [0.42, -0.1, -0.44], // loop
   ] as const;
   // Forearm: ABSOLUTELY STRAIGHT through leg drive and body open.
-  // Only begins flexing at arm-draw-begin (t=0.30). Deep flexion at finish only.
+  // Only begins flexing at arm-draw-begin (t=0.30). Finish flexion draws the
+  // handle to the lower ribs — deep, but not a behind-the-back haul.
   const leftForearm = [
     [-0.06, 0.03, -0.08], // catch: nearly straight, soft not locked
     [-0.06, 0.03, -0.08], // early drive: straight
@@ -1207,8 +1362,8 @@ function createRowCycleClip(): THREE.AnimationClip {
     [-0.07, 0.03, -0.08], // late leg: STILL STRAIGHT
     [-0.08, 0.03, -0.09], // body open: barely perceptible flex
     [-0.28, 0.03, -0.14], // draw begin: elbows start bending
-    [-0.68, 0.035, -0.22], // draw mid: accelerating into draw
-    [-1.12, 0.04, -0.28], // finish: deep draw, elbows back
+    [-0.58, 0.035, -0.2], // draw mid: accelerating into chest draw
+    [-0.88, 0.04, -0.24], // finish: handle to lower ribs / chest
     [-0.48, 0.03, -0.18], // hands away: rapid extension
     [-0.18, 0.03, -0.12], // arms extend: nearly straight
     [-0.1, 0.03, -0.09], // body over: arms fully extended
@@ -1936,15 +2091,16 @@ function createV4Material(): THREE.Material {
     // multiplying every region by the jersey colour before lane styling.
     color: 0xffffff,
     vertexColors: true,
-    // Matte performance kit: high/ultra VSM rim light should soften seams, not
-    // polish every loft join into a shiny hard edge.
-    roughness: 0.78,
+    // Soft fabric sheen with restrained skin response. High enough roughness
+    // to avoid plastic mannequin highlights, low enough for readable form under
+    // chase-camera key light in both light and dark venues.
+    roughness: 0.64,
     metalness: 0,
-    sheen: 0.02,
-    sheenColor: new THREE.Color(0x6e8496),
-    sheenRoughness: 0.95,
-    clearcoat: 0,
-    clearcoatRoughness: 1,
+    sheen: 0.16,
+    sheenColor: new THREE.Color(0x8a9bb0),
+    sheenRoughness: 0.72,
+    clearcoat: 0.03,
+    clearcoatRoughness: 0.85,
     flatShading: false,
     transmission: 0,
     thickness: 0,
@@ -1957,15 +2113,16 @@ function createV4Material(): THREE.Material {
   });
 }
 
-/** Build the self-contained, repository-authored V4 generic athlete asset. */
-export function createV4AthleteAsset(): V4AthleteAsset {
+/** Build the self-contained, provenance-reviewed V4 generic athlete asset. */
+export function createV4AthleteAsset(options: V4AthleteAssetOptions = {}): V4AthleteAsset {
   const root = new THREE.Group();
   root.name = V4_ROOT_NAME;
   root.userData = {
     replayRigVersion: 4,
     replayAssetRole: "production-skinned-athlete",
-    source: "repository-authored Blender 5 parametric skinned athlete",
-    licence: "MIT",
+    source:
+      "RowPlay-authored Blender 5 athlete derived from Blender Human Base Meshes v1.4.1 (CC0)",
+    licence: "MIT AND CC0-1.0",
     genericCanonicalTechnique: true,
     replayClipNames: V4_CLIP_NAMES,
     replayDriveEnd: V4_DRIVE_END,
@@ -1982,7 +2139,7 @@ export function createV4AthleteAsset(): V4AthleteAsset {
   mesh.frustumCulled = false;
   root.add(mesh);
 
-  const { skeleton, bones, effectors } = buildBones(mesh);
+  const { skeleton, bones, effectors } = buildBones(mesh, options.helperBones);
   mesh.geometry.dispose();
   mesh.geometry = createAthleteGeometry(bones);
   mesh.bind(skeleton);

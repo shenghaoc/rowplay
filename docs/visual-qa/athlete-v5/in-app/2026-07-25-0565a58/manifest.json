@@ -1,0 +1,126 @@
+{
+  "commit": "0565a5856e85ef6d25c4b114d177ea15ab855e5a",
+  "source": "http://127.0.0.1:5173",
+  "command": "node scripts/capture-replay-athlete-v5-qa.mjs --base-url=http://127.0.0.1:5173",
+  "note": "Real RowPlay 3D application capture. Requested Ultra may report High when the browser backend is WebGL; the manifest records the effective tier and backend for every file.",
+  "evidence": [
+    {
+      "kind": "still",
+      "file": "poses/row-finish.jpg",
+      "sport": "row",
+      "seconds": 0.8,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": [
+        "[.WebGL-0x124005be400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[.WebGL-0x124005bd800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "No available adapters.",
+        "[replay] WebGPU unavailable, quality downgraded from ultra to high",
+        "[.WebGL-0x124005d0400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+      ]
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-loaded-press.jpg",
+      "sport": "ski",
+      "seconds": 0.5,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": [
+        "[.WebGL-0x13c005c5600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[.WebGL-0x13c005c0200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "No available adapters.",
+        "[replay] WebGPU unavailable, quality downgraded from ultra to high",
+        "[.WebGL-0x13c005ce000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[.WebGL-0x13c005d5200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+      ]
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-pedal-top.jpg",
+      "sport": "bike",
+      "seconds": 0.05,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": [
+        "[.WebGL-0x134005c6200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[.WebGL-0x134005cda00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "No available adapters.",
+        "[replay] WebGPU unavailable, quality downgraded from ultra to high",
+        "[.WebGL-0x134005db200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[.WebGL-0x134005bf600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+      ]
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-pedal-bottom.jpg",
+      "sport": "bike",
+      "seconds": 0.72,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": [
+        "[.WebGL-0x12c005c1a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[.WebGL-0x12c005ba200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "No available adapters.",
+        "[replay] WebGPU unavailable, quality downgraded from ultra to high",
+        "[.WebGL-0x12c005da000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+      ]
+    }
+  ]
+}

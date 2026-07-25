@@ -3,7 +3,6 @@ import * as THREE from "three";
 import type { Sport } from "../types";
 import {
   REPLAY_V4_CLIP_NAMES,
-  REPLAY_V4_BONE_NAMES,
   type ReplayV4AthleteInstance,
   type ReplayV4BoneName,
   type ReplayV4ClipName,
@@ -11,6 +10,8 @@ import {
 } from "./renderer3dV4Assets";
 import {
   installReplayV4MotionController,
+  REPLAY_V4_HAND_HELPER_NAMES,
+  REPLAY_V4_QUALITY_DETAIL_TEXTURE_SIZE,
   type ReplayV4ContactTargets,
   type ReplayV4MotionController,
 } from "./renderer3dV4Motion";
@@ -18,7 +19,8 @@ import {
 type TestLane = {
   readonly scene: THREE.Group;
   readonly parent: THREE.Group;
-  readonly instance: ReplayV4AthleteInstance;
+  /** Mutable so tests can swap in UV/helper variants without rebuilding the scene graph. */
+  instance: ReplayV4AthleteInstance;
   readonly targets: ReplayV4ContactTargets;
   readonly athleteFallback: THREE.Object3D;
   readonly initiallyHiddenFallback: THREE.Object3D;
@@ -124,9 +126,13 @@ function sportClip(sport: Sport): THREE.AnimationClip {
   ]);
 }
 
-function createInstance(): ReplayV4AthleteInstance {
+function createInstance(options?: {
+  readonly withHandHelpers?: boolean;
+  readonly withUv?: boolean;
+}): ReplayV4AthleteInstance {
   const root = new THREE.Group();
   const bones = {} as Record<ReplayV4BoneName, THREE.Bone>;
+  const allBones: THREE.Bone[] = [];
   for (const definition of BONE_DEFINITIONS) {
     const bone = new THREE.Bone();
     bone.name = definition.name;
@@ -134,6 +140,35 @@ function createInstance(): ReplayV4AthleteInstance {
     bones[definition.name] = bone;
     const parent = definition.parent ? bones[definition.parent] : root;
     parent.add(bone);
+    allBones.push(bone);
+  }
+  if (options?.withHandHelpers) {
+    const helperBones = new Map<string, THREE.Bone>(
+      allBones.map((bone) => [bone.name, bone] as const),
+    );
+    const helperParentName = (name: (typeof REPLAY_V4_HAND_HELPER_NAMES)[number]): string => {
+      const hand = name.includes("Left") ? "v4LeftHand" : "v4RightHand";
+      if (name.endsWith("Fingers") || /^v4(?:Left|Right)Thumb$/.test(name)) return hand;
+      if (name.endsWith("Proximal")) {
+        return name.includes("Left") ? "v4LeftFingers" : "v4RightFingers";
+      }
+      if (name.endsWith("Intermediate")) {
+        return name.includes("Thumb")
+          ? name.replace(/ThumbIntermediate$/, "Thumb")
+          : name.replace(/Intermediate$/, "Proximal");
+      }
+      return name.replace(/Distal$/, "Intermediate");
+    };
+    for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
+      const helper = new THREE.Bone();
+      helper.name = name;
+      helper.position.set(name.includes("Thumb") ? 0.02 : 0.04, 0, 0.01);
+      const parent = helperBones.get(helperParentName(name));
+      if (!parent) throw new Error(`Test grip helper parent is missing for ${name}`);
+      parent.add(helper);
+      helperBones.set(name, helper);
+      allBones.push(helper);
+    }
   }
   root.updateMatrixWorld(true);
 
@@ -143,6 +178,9 @@ function createInstance(): ReplayV4AthleteInstance {
     new THREE.Float32BufferAttribute([-0.05, 1, 0, 0.05, 1, 0, 0, 1.1, 0], 3),
   );
   geometry.setAttribute("normal", new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+  if (options?.withUv) {
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 0.5, 1], 2));
+  }
   geometry.setAttribute(
     "skinIndex",
     new THREE.Uint16BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4),
@@ -152,10 +190,14 @@ function createInstance(): ReplayV4AthleteInstance {
     new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4),
   );
   geometry.setIndex([0, 1, 2]);
-  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true });
+  const material = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    vertexColors: true,
+  });
+  material.userData.replayV4SurfaceRole = "jersey";
   const mesh = new THREE.SkinnedMesh(geometry, material);
   mesh.name = "v4Athlete";
-  const skeleton = new THREE.Skeleton(REPLAY_V4_BONE_NAMES.map((name) => bones[name]));
+  const skeleton = new THREE.Skeleton(allBones);
   mesh.bind(skeleton);
   root.add(mesh);
   root.updateMatrixWorld(true);
@@ -759,6 +801,250 @@ describe("V4 motion determinism and fallback safety", () => {
       expect(lane.equipment.visible).toBe(true);
     } finally {
       disposeLane(lane, controller);
+    }
+  });
+
+  it("curls production finger helpers after contact without breaking palm lock", () => {
+    const driveEnd: Record<"rower" | "skierg" | "bike", number> = {
+      rower: 0.38,
+      skierg: 0.34,
+      bike: 0.5,
+    };
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const lane = createLane();
+      // Swap in an instance that carries the production grip helpers.
+      disposeLane(lane);
+      const instance = createInstance({ withHandHelpers: true });
+      lane.instance = instance;
+      lane.parent.add(instance.root);
+      const controller = installReplayV4MotionController({
+        sport,
+        parent: lane.parent,
+        instance,
+        targets: lane.targets,
+        quality: "medium",
+        diagnosticMode: "clip-pelvis",
+      });
+      try {
+        for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
+          expect(instance.skeleton.getBoneByName(name), `${sport} ${name}`).toBeTruthy();
+        }
+        const rest = new Map(
+          REPLAY_V4_HAND_HELPER_NAMES.map((name) => {
+            const bone = instance.skeleton.getBoneByName(name)!;
+            return [name, bone.quaternion.clone()] as const;
+          }),
+        );
+        const cycleFrac = driveEnd[sport] * 0.9;
+        // Align pelvis from the clip, place reachable targets, then full contact+curl.
+        expect(controller?.update({ phase: 0, cycleFrac, driveFrac: driveEnd[sport] })).toBe(true);
+        placeTargetsNearClipEffectors(lane);
+        controller?.setDiagnosticMode("full");
+        expect(controller?.update({ phase: 0, cycleFrac, driveFrac: driveEnd[sport] })).toBe(true);
+        for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
+          const bone = instance.skeleton.getBoneByName(name)!;
+          const before = rest.get(name)!;
+          const delta = bone.quaternion.angleTo(before);
+          const minimumCurl = name.endsWith("Fingers")
+            ? 0.04
+            : name.includes("Thumb")
+              ? 0.4
+              : name.endsWith("Intermediate")
+                ? 1.05
+                : 0.55;
+          expect(delta, `${sport} ${name} curl after contact`).toBeGreaterThan(minimumCurl);
+          expect(bone.quaternion.toArray().every(Number.isFinite)).toBe(true);
+        }
+        // Palm contact residual must still close after curl.
+        for (const side of ["leftHand", "rightHand"] as const) {
+          const metric = instance.effectors[side];
+          const palm = instance.bones[metric.bone].localToWorld(
+            new THREE.Vector3().fromArray(metric.contactOffset),
+          );
+          const target = lane.targets[side].getWorldPosition(new THREE.Vector3());
+          expect(palm.distanceTo(target), `${sport} ${side} residual after curl`).toBeLessThan(
+            0.05,
+          );
+        }
+      } finally {
+        disposeLane(lane, controller);
+      }
+    }
+  });
+
+  it("restores finger helpers when switching from a closed grip to clip-only", () => {
+    const lane = createLane();
+    disposeLane(lane);
+    lane.instance = createInstance({ withHandHelpers: true });
+    lane.parent.add(lane.instance.root);
+    const controller = installReplayV4MotionController({
+      sport: "rower",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      diagnosticMode: "full",
+    });
+    try {
+      const rest = new Map(
+        REPLAY_V4_HAND_HELPER_NAMES.map((name) => {
+          const bone = lane.instance.skeleton.getBoneByName(name)!;
+          return [name, bone.quaternion.clone()] as const;
+        }),
+      );
+      expect(controller?.update({ phase: 0, cycleFrac: 0.35, driveFrac: 0.38 })).toBe(true);
+      expect(
+        REPLAY_V4_HAND_HELPER_NAMES.some((name) => {
+          const bone = lane.instance.skeleton.getBoneByName(name)!;
+          return bone.quaternion.angleTo(rest.get(name)!) > 0.25;
+        }),
+      ).toBe(true);
+      controller?.setDiagnosticMode("clip-only");
+      expect(controller?.update({ phase: 0, cycleFrac: 0.35, driveFrac: 0.38 })).toBe(true);
+      for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
+        const bone = lane.instance.skeleton.getBoneByName(name)!;
+        expect(
+          bone.quaternion.angleTo(rest.get(name)!),
+          `${name} stays at rest in clip-only`,
+        ).toBeLessThan(1e-6);
+      }
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
+  it("exposes soft palm orientation for ski and bike within the arm budget", () => {
+    for (const sport of ["skierg", "bike"] as const) {
+      const lane = createLane();
+      const controller = installReplayV4MotionController({
+        sport,
+        parent: lane.parent,
+        instance: lane.instance,
+        targets: lane.targets,
+        diagnosticMode: "clip-pelvis",
+      });
+      try {
+        const driveFrac = sport === "skierg" ? 0.34 : 0.5;
+        // prepare only — orientHands requires a prepared pose before constrain.
+        expect(controller?.prepare({ phase: 0, cycleFrac: driveFrac * 0.6, driveFrac })).toBe(true);
+        placeTargetsNearClipEffectors(lane);
+        lane.scene.updateMatrixWorld(true);
+        const residualsBefore = new Map<"left" | "right", number>();
+        for (const side of ["left", "right"] as const) {
+          const bone = lane.instance.bones[side === "left" ? "v4LeftHand" : "v4RightHand"];
+          const handQ = bone.getWorldQuaternion(new THREE.Quaternion());
+          const targetQ = lane.targets[`${side}Hand` as const].getWorldQuaternion(
+            new THREE.Quaternion(),
+          );
+          residualsBefore.set(side, handQ.angleTo(targetQ));
+        }
+        expect(controller?.orientHandsToTargets()).toBe(true);
+        for (const side of ["left", "right"] as const) {
+          const bone = lane.instance.bones[side === "left" ? "v4LeftHand" : "v4RightHand"];
+          const handQ = bone.getWorldQuaternion(new THREE.Quaternion());
+          const targetQ = lane.targets[`${side}Hand` as const].getWorldQuaternion(
+            new THREE.Quaternion(),
+          );
+          const residual = handQ.angleTo(targetQ);
+          const before = residualsBefore.get(side)!;
+          // Soft orient is an 8° slerp budget — residual must not grow, and
+          // when the gap is large it must shrink by up to that budget.
+          expect(residual, `${sport} ${side} residual after soft orient`).toBeLessThanOrEqual(
+            before + 1e-6,
+          );
+          if (before > THREE.MathUtils.degToRad(1.5)) {
+            expect(before - residual, `${sport} ${side} soft-orient progress`).toBeGreaterThan(0);
+            expect(before - residual).toBeLessThanOrEqual(THREE.MathUtils.degToRad(8) + 1e-3);
+          }
+        }
+        expect(controller?.constrain()).toBe(true);
+      } finally {
+        disposeLane(lane, controller);
+      }
+    }
+  });
+
+  it("pins athlete detail map sizes to the sealed 0/128/256/512 ladder", () => {
+    expect(REPLAY_V4_QUALITY_DETAIL_TEXTURE_SIZE).toEqual({
+      low: 0,
+      medium: 128,
+      high: 256,
+      ultra: 512,
+    });
+    const lane = createLane();
+    // UV-enabled jersey material so quality styling attaches shared maps.
+    disposeLane(lane);
+    lane.instance = createInstance({ withUv: true });
+    lane.parent.add(lane.instance.root);
+    const controller = installReplayV4MotionController({
+      sport: "rower",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      quality: "ultra",
+    });
+    try {
+      expect(controller).toBeTruthy();
+      const material = (
+        Array.isArray(lane.instance.mesh.material)
+          ? lane.instance.mesh.material[0]
+          : lane.instance.mesh.material
+      ) as THREE.MeshPhysicalMaterial;
+      expect(material.userData.replayV4SurfaceDetailResolution).toBe(512);
+      expect(material.map).toBeTruthy();
+      const mapImage = material.map!.image as { readonly width?: number } | undefined;
+      const mapSource = material.map!.source.data as { readonly width?: number } | undefined;
+      expect(mapImage?.width ?? mapSource?.width).toBe(512);
+      // Second install at Ultra reuses the shared map identity.
+      const ghost = createInstance({ withUv: true });
+      lane.parent.add(ghost.root);
+      const ghostController = installReplayV4MotionController({
+        sport: "rower",
+        parent: lane.parent,
+        instance: ghost,
+        targets: lane.targets,
+        quality: "ultra",
+        opacity: 0.5,
+      });
+      try {
+        const ghostMaterial = (
+          Array.isArray(ghost.mesh.material) ? ghost.mesh.material[0] : ghost.mesh.material
+        ) as THREE.MeshPhysicalMaterial;
+        expect(ghostMaterial.map).toBe(material.map);
+      } finally {
+        ghostController?.dispose();
+        ghost.mixer.stopAllAction();
+        ghost.skeleton.dispose();
+        ghost.mesh.geometry.dispose();
+      }
+    } finally {
+      disposeLane(lane, controller);
+    }
+
+    // Low must not attach generated detail maps.
+    const lowLane = createLane();
+    disposeLane(lowLane);
+    lowLane.instance = createInstance({ withUv: true });
+    lowLane.parent.add(lowLane.instance.root);
+    const lowController = installReplayV4MotionController({
+      sport: "rower",
+      parent: lowLane.parent,
+      instance: lowLane.instance,
+      targets: lowLane.targets,
+      quality: "low",
+    });
+    try {
+      const lowMaterial = (
+        Array.isArray(lowLane.instance.mesh.material)
+          ? lowLane.instance.mesh.material[0]
+          : lowLane.instance.mesh.material
+      ) as THREE.MeshPhysicalMaterial;
+      expect(lowMaterial.userData.replayV4SurfaceDetailResolution ?? 0).toBe(0);
+      expect(lowMaterial.map).toBeNull();
+      expect(lowMaterial.bumpMap).toBeNull();
+      expect(lowMaterial.normalMap).toBeNull();
+      expect(lowMaterial.roughnessMap).toBeNull();
+    } finally {
+      disposeLane(lowLane, lowController);
     }
   });
 
