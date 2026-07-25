@@ -229,9 +229,10 @@ cared-for circle centre and land uses, not a ring of props:
   service campus for the service lane and building.
 
 High and Ultra materials use provenance-recorded local CC0 surface maps (snow,
-asphalt, grass, forest ground, bark, leaves, planks, pebbles) only as material
-response — not as venue photographs. Creators, sources, licenses, and digests
-are recorded with the assets. The 2D view composes sky, horizon, middle
+asphalt, grass, forest ground, bark, leaves, planks, pebbles, brushed concrete,
+cobblestone, painted concrete) only as material response — not as venue
+photographs. Creators, sources, licenses, and digests are recorded with the
+assets. The 2D view composes sky, horizon, middle
 distance, course, and foreground layers. The 3D view adds atmospheric depth, a
 readable horizon, smooth compound scenery, and sport-specific surfaces so the
 athlete is grounded in a venue rather than floating on a plane.

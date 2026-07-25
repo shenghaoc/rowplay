@@ -738,6 +738,14 @@ describe("CourseRenderer3D", () => {
       rowScenes[2]!.scene.getObjectByName("environment:rower:waterline-1") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
     expect(waterline.map?.userData.sourcePath).toContain("dry-river-pebbles-diffuse");
+    const islandPath = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:island-path") as THREE.Mesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(islandPath.map?.userData.sourcePath).toContain("cobblestone-floor-03-diffuse");
+    const islandLawn = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:island-lawn") as THREE.Mesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(islandLawn.map?.userData.sourcePath).toContain("aerial-grass-rock-diffuse");
     const shoreline = (
       rowScenes[2]!.scene.getObjectByName(
         "environment:rower:wooded-shoreline",
@@ -856,6 +864,33 @@ describe("CourseRenderer3D", () => {
     expect(bikeLane[2].map?.userData.sourcePath).toContain("clean-asphalt-diffuse");
     expect(bikeLane[3].normalMap?.userData.sourcePath).toContain("clean-asphalt-normal");
     for (const { renderer } of bikeScenes) renderer.destroy();
+
+    // Centre hardscape uses local CC0 paving maps at High/Ultra.
+    const skiHigh = new CourseRenderer3D(makeHost(), "high", "skierg");
+    const skiUltra = new CourseRenderer3D(makeHost(), "ultra", "skierg");
+    const skiPave = (
+      getScene(skiHigh).getObjectByName("environment:skierg:bowl-packed") as THREE.Mesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(skiPave.map?.userData.sourcePath).toContain("brushed-concrete-2-diffuse");
+    expect(
+      (
+        (getScene(skiUltra).getObjectByName("environment:skierg:bowl-packed") as THREE.Mesh)
+          .material as THREE.MeshStandardMaterial
+      ).normalMap?.userData.sourcePath,
+    ).toContain("brushed-concrete-2-normal");
+    skiHigh.destroy();
+    skiUltra.destroy();
+
+    const bikeHigh = new CourseRenderer3D(makeHost(), "high", "bike");
+    const bikePlaza = (
+      getScene(bikeHigh).getObjectByName("environment:bike:infield-plaza") as THREE.Mesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(bikePlaza.map?.userData.sourcePath).toContain("cobblestone-floor-03-diffuse");
+    const service = (
+      getScene(bikeHigh).getObjectByName("environment:bike:service-lane") as THREE.Mesh
+    ).material as THREE.MeshStandardMaterial;
+    expect(service.map?.userData.sourcePath).toContain("clean-asphalt-diffuse");
+    bikeHigh.destroy();
   });
 
   it("re-themes the complete environment rather than recoloring only the athlete", () => {

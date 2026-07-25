@@ -226,3 +226,69 @@ normals. High/Ultra surroundings form one coherent river valley:
 
 SkiErg High/Ultra pine trunks and canopies reuse Bark Brown 01 and Forest
 Leaves 04 so the Nordic tree line matches the same woodland material language.
+
+## Brushed Concrete 2
+
+- Source: [Poly Haven — Brushed Concrete 2](https://polyhaven.com/a/brushed_concrete_2)
+- Creators: Dimitrios Savva (Photography), Dario Barresi (Processing)
+- License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+- Source resolution used: Poly Haven's 1K JPEG maps
+- Retrieved: 2026-07-25
+
+Used for High/Ultra SkiErg stadium plaza paving/walkways and BikeErg fountain.
+
+| File                                                          | Purpose                            | SHA-256                                                            |
+| ------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------ |
+| `brushed-concrete-2/brushed-concrete-2-diffuse-512.jpg`       | High/Ultra concrete colour         | `e0552acd803f63c2e055aac8c096f5a1dddc4668cd3008017bcdc0f46a2e173f` |
+| `brushed-concrete-2/brushed-concrete-2-roughness-512.jpg`     | High/Ultra concrete roughness      | `500e543fa6bf4a14a43233352ff6273b326ab63f0e49b5d0af14edb729e43f55` |
+| `brushed-concrete-2/brushed-concrete-2-normal-gl-512.jpg`     | Ultra OpenGL concrete normals      | `18a8e69e29c18478b07ac00cdb4ceada80f3be3a5fdfd4a0b3b05824ba2fd7b4` |
+
+Original Poly Haven MD5 values:
+
+- diffuse: `a8dcaf190900eff56de4571eef76cb7d`
+- roughness: `c77b5b219f98aa5e458d183c9700fde2`
+- OpenGL normal: `83544a8457287355d3c854791b7e7915`
+
+## Cobblestone Floor 03
+
+- Source: [Poly Haven — Cobblestone Floor 03](https://polyhaven.com/a/cobblestone_floor_03)
+- Creator: Rob Tuytel
+- License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+- Source resolution used: Poly Haven's 1K JPEG maps
+- Retrieved: 2026-07-25
+
+Used for High/Ultra RowErg island/campus paths and BikeErg infield plaza.
+
+| File                                                              | Purpose                           | SHA-256                                                            |
+| ----------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------ |
+| `cobblestone-floor-03/cobblestone-floor-03-diffuse-512.jpg`       | High/Ultra cobble colour          | `999a8745fbf6996860e9c64995728c97185032389201931b29ff6f80691ff0e9` |
+| `cobblestone-floor-03/cobblestone-floor-03-roughness-512.jpg`     | High/Ultra cobble roughness       | `daeab61257a199ae69efd7ecd278f7555ed5a68ef0ba4f43fa9f7e8c492e7281` |
+| `cobblestone-floor-03/cobblestone-floor-03-normal-gl-512.jpg`     | Ultra OpenGL cobble normals       | `947b46c737dbfe5890e264636ec437be09665a8a227a11c8b8228eec4089c335` |
+
+Original Poly Haven MD5 values:
+
+- diffuse: `d5e23f634ea666527747ea22734d1984`
+- roughness: `e136999af6faa42d51aef4ddfe9e7b87`
+- OpenGL normal: `714091302c0177ff073ee385a07800e5`
+
+## Concrete Floor Painted
+
+- Source: [Poly Haven — Concrete Floor Painted](https://polyhaven.com/a/concrete_floor_painted)
+- Creator: Rob Tuytel
+- License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+- Source resolution used: Poly Haven's 1K JPEG maps
+- Retrieved: 2026-07-25
+
+Used for High/Ultra SkiErg timing kiosk and BikeErg podium hardscape.
+
+| File                                                                    | Purpose                              | SHA-256                                                            |
+| ----------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| `concrete-floor-painted/concrete-floor-painted-diffuse-512.jpg`         | High/Ultra painted-concrete colour   | `19c89793bd4a07d5f233799a0a372da2faa58b9ecf50d47220e762ba9101dd1e` |
+| `concrete-floor-painted/concrete-floor-painted-roughness-512.jpg`       | High/Ultra painted-concrete roughness| `0ba04433f0a61569d4e1d19eef1e947364ad43280b92ebb0e4c7bf5cd98cc613` |
+| `concrete-floor-painted/concrete-floor-painted-normal-gl-512.jpg`       | Ultra OpenGL painted-concrete normals| `20253d5ec67097b4ee522afd787e926396add5c55a2565bc40fe3917ccecb66a` |
+
+Original Poly Haven MD5 values:
+
+- diffuse: `07cee8ac8966a2f84fd7bc2ecb416de9`
+- roughness: `5af13a648433a32f7b3b4d6ac51a4b4c`
+- OpenGL normal: `95eeeb46f335e3b4ba76340193dc1b7d`

@@ -5802,6 +5802,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       themed(0xb7aea0, 0x4e524c),
       { roughness: 0.88, metalness: 0.02 },
     );
+    this.applyEnvironmentSurfaceMaps(
+      pathMat,
+      "/replay-assets/environments/cobblestone-floor-03/cobblestone-floor-03",
+      [1.4, 1.4],
+      0.4,
+    );
     island.add(
       this.makeHorizontalArc(
         "environment:rower:island-path",
@@ -6146,6 +6152,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       themed(0xb7aea0, 0x4e524c),
       { roughness: 0.88, metalness: 0.02 },
     );
+    this.applyEnvironmentSurfaceMaps(
+      pathMat,
+      "/replay-assets/environments/cobblestone-floor-03/cobblestone-floor-03",
+      [1.2, 1.2],
+      0.38,
+    );
     campus.add(
       this.makeHorizontalArc(
         "environment:rower:campus-path",
@@ -6304,6 +6316,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       { roughness: 0.94, metalness: 0 },
     );
     this.applyEnvironmentSurfaceMaps(
+      paveMat,
+      "/replay-assets/environments/brushed-concrete-2/brushed-concrete-2",
+      [0.35, 0.35],
+      0.22,
+    );
+    this.applyEnvironmentSurfaceMaps(
       turfMat,
       "/replay-assets/environments/aerial-grass-rock/aerial-grass-rock",
       [0.5, 0.5],
@@ -6333,6 +6351,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       "environment:skierg:plaza-walk-material",
       themed(0xa8b4bc, 0x3f4e58),
       { roughness: 0.86, metalness: 0.05 },
+    );
+    this.applyEnvironmentSurfaceMaps(
+      walkMat,
+      "/replay-assets/environments/brushed-concrete-2/brushed-concrete-2",
+      [0.55, 0.55],
+      0.2,
     );
     plaza.add(
       this.makeHorizontalArc(
@@ -6404,6 +6428,12 @@ export class CourseRenderer3D implements ReplayRenderer {
         "environment:skierg:kiosk-material",
         this.environment.venueStructure,
         { roughness: 0.65, metalness: 0.12 },
+      );
+      this.applyEnvironmentSurfaceMaps(
+        kioskMat,
+        "/replay-assets/environments/concrete-floor-painted/concrete-floor-painted",
+        [1.0, 0.8],
+        0.18,
       );
       const kiosk = new THREE.Mesh(
         this.track(roundedVenueBlockGeometry(3.4, 2.2, 2.4, 0.22)),
@@ -6635,6 +6665,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       [0.6, 0.6],
       0.18,
     );
+    this.applyEnvironmentSurfaceMaps(
+      plazaMat,
+      "/replay-assets/environments/cobblestone-floor-03/cobblestone-floor-03",
+      [0.9, 0.9],
+      0.42,
+    );
     const grass = new THREE.Mesh(
       this.track(new THREE.CircleGeometry(outerR - 1.0, this.cfg.laneSegments)),
       grassMat,
@@ -6693,6 +6729,12 @@ export class CourseRenderer3D implements ReplayRenderer {
         themed(0x8a9198, 0x3e474f),
         { roughness: 0.45, metalness: 0.35 },
       );
+      this.applyEnvironmentSurfaceMaps(
+        fountainMat,
+        "/replay-assets/environments/brushed-concrete-2/brushed-concrete-2",
+        [1.2, 1.2],
+        0.25,
+      );
       const base = new THREE.Mesh(
         this.track(new THREE.CylinderGeometry(1.6, 1.9, 0.35, 20)),
         fountainMat,
@@ -6720,6 +6762,12 @@ export class CourseRenderer3D implements ReplayRenderer {
         "environment:bike:podium-material",
         this.environment.venueStructure,
         { roughness: 0.55, metalness: 0.2 },
+      );
+      this.applyEnvironmentSurfaceMaps(
+        podiumMat,
+        "/replay-assets/environments/concrete-floor-painted/concrete-floor-painted",
+        [1.0, 0.7],
+        0.2,
       );
       const standAngle = BIKE_STAND_SECTORS[0]!.start + BIKE_STAND_SECTORS[0]!.span * 0.5;
       for (const [index, height] of [0.55, 0.85, 0.45].entries()) {
@@ -6938,6 +6986,12 @@ export class CourseRenderer3D implements ReplayRenderer {
       "environment:bike:service-lane-material",
       themed(0x6b6863, 0x343941),
       { roughness: 0.86, metalness: 0.04 },
+    );
+    this.applyEnvironmentSurfaceMaps(
+      serviceMat,
+      "/replay-assets/environments/clean-asphalt/clean-asphalt",
+      [0.45, 0.45],
+      0.12,
     );
     // Service apron only on the service campus sector.
     const serviceLane = this.makeHorizontalArc(
