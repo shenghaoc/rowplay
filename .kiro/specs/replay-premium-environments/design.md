@@ -2,8 +2,9 @@
 
 > Scope clarification (July 2026):
 > [Replay authored athlete assets](../replay-authored-athlete-assets/design.md)
-> applies only to 3D athlete and sport-equipment shells. This specification's
-> procedural, repository-local environment policy remains authoritative.
+> applies only to 3D athlete and sport-equipment shells. Environment composition
+> remains repository-local; documented CC0 surface maps may supplement High and
+> Ultra materials without becoming venue imagery.
 
 ## Overview
 
@@ -107,13 +108,15 @@ lower-contrast distant materials create depth without hiding the course.
 
 Environment quality is additive:
 
-- **Low:** complete sky, horizon, course material, and one clear venue
-  silhouette per sport.
-- **Medium:** additional edge forms and moderate background repetition.
-- **High:** denser but still restrained scenery, stronger material detail, and
-  the normal shadow/effect budget.
-- **Ultra:** the richest supported geometry and atmosphere, subject to the same
-  performance governor as the rest of the replay.
+- **Low:** a deliberately graphic sky, horizon, flat course material, and one
+  clear venue silhouette per sport.
+- **Medium:** a shaped procedural surface plus a new midground layer; Row water
+  gains broad sky-reflection bands.
+- **High:** authored venue depth and local PBR surface response; Row gains a
+  launch dock and Ski uses local CC0 diffuse/roughness snow maps.
+- **Ultra:** a distinct close-surface treatment, not just more samples; Row
+  gains sun-glint composition and Ski adds normal-mapped snow and restrained
+  crystal highlights.
 
 The governor may lower pixel ratio and decorative effects during a session.
 Optional environment density is chosen at scene build time rather than being
@@ -134,10 +137,11 @@ fades or double-renders the environment.
 
 ## Asset provenance and truthfulness
 
-All shipped environment art is local procedural code: Canvas paths, gradients,
-and fills in 2D; Three.js geometry and standard materials in 3D. Visual concept
-work may guide art direction, but no generated environment bitmap, stock photo,
-scanned venue, or imported location model is included in the runtime bundle.
+Venue art is local procedural code: Canvas paths, gradients, and fills in 2D;
+Three.js geometry and standard materials in 3D. Seamless CC0 surface maps may be
+bundled as material inputs when provenance and shipped digests are recorded.
+They cannot depict or identify a venue. Generated environment imagery, stock
+backplates, scanned locations, and imported location models remain excluded.
 
 The scene is intentionally generic. Documentation states that Concept2 data
 drives timing and progress while scenery, weather, time of day, and venue forms

@@ -50,3 +50,12 @@ Follow-up to: `.kiro/specs/replay-3d-athlete-readability/`
     moving, light/dark, ghost comparison, and low/ultra quality states
   - Replace public replay captures after final visual QA and pass the repository
     quality gate
+
+- [x] **8. Make quality tiers visually and materially distinct**
+  - [x] Rebase the environment work on the merged production-athlete PR
+  - [x] Give adjacent Row tiers distinct reflection, venue, and highlight layers
+  - [x] Give High/Ultra Ski snow documented local PBR material response
+  - [x] Record CC0 source, creator, license, source checksums, and shipped digests
+  - [x] Add regression coverage proving tiers differ beyond DPR and density
+  - [x] Complete browser visual QA across Low, Medium, High, and Ultra
+  - [x] Pass the full repository quality gate

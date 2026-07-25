@@ -531,7 +531,7 @@ const FULL_CIRCLE = Math.PI * 2;
 const degrees = (value: number): number => (value * Math.PI) / 180;
 
 const ROW_PINE_SECTORS: readonly EnvironmentSector[] = [
-  { start: degrees(-25), span: degrees(95), weight: 1.15 },
+  { start: degrees(-25), span: degrees(165), weight: 1.35 },
   { start: degrees(185), span: degrees(70), weight: 0.9 },
 ];
 const SKI_PINE_SECTORS: readonly EnvironmentSector[] = [
@@ -555,21 +555,21 @@ const BIKE_STAND_SECTORS: readonly EnvironmentSector[] = [
 const ROW_LANDMARKS: readonly EnvironmentPlacement[] = [
   {
     angle: degrees(17),
-    radius: 62,
+    radius: 72,
     name: "environment:rower:regatta-pavilion",
-    scale: [1.12, 1.08, 1],
+    scale: [0.9, 0.88, 0.86],
   },
   {
     angle: degrees(32),
-    radius: 65,
+    radius: 75,
     name: "environment:rower:boathouse",
-    scale: [0.82, 0.88, 0.9],
+    scale: [0.72, 0.74, 0.76],
   },
   {
     angle: degrees(43),
-    radius: 61,
+    radius: 70,
     name: "environment:rower:timing-tower",
-    scale: [0.6, 1.58, 0.68],
+    scale: [0.5, 1.26, 0.56],
   },
 ];
 
@@ -4002,6 +4002,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   /** Framing mode bits that require an immediate paused-render camera update. */
   private cameraLayoutMode = -1;
   private disposables: THREE.Material[] = [];
+  private textures: THREE.Texture[] = [];
   private geometries: THREE.BufferGeometry[] = [];
   private instancedMeshes: THREE.InstancedMesh[] = [];
   private courseThemeMats: Array<{ material: THREE.MeshStandardMaterial; color: CourseColor }> = [];
@@ -4287,6 +4288,60 @@ export class CourseRenderer3D implements ReplayRenderer {
   private trackInstanced<T extends THREE.InstancedMesh>(mesh: T): T {
     this.instancedMeshes.push(mesh);
     return mesh;
+  }
+
+  private loadEnvironmentTexture(
+    path: string,
+    repeat: [number, number],
+    color = false,
+  ): THREE.Texture {
+    // The renderer unit harness intentionally supplies only the DOM surface
+    // needed for WebGL construction. Keep the material contract inspectable
+    // there without pretending an image can be decoded outside a browser.
+    const texture =
+      typeof document.createElementNS === "function"
+        ? new THREE.TextureLoader().load(path)
+        : new THREE.Texture();
+    texture.name = `environment:texture:${path.split("/").at(-1) ?? path}`;
+    texture.userData.sourcePath = path;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(...repeat);
+    texture.anisotropy = this.quality === "ultra" ? 8 : 4;
+    if (color) texture.colorSpace = THREE.SRGBColorSpace;
+    this.textures.push(texture);
+    return texture;
+  }
+
+  private makeWaterNormalTexture(ultra: boolean): THREE.DataTexture {
+    const size = ultra ? 128 : 64;
+    const pixels = new Uint8Array(size * size * 4);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const u = x / size;
+        const v = y / size;
+        const longWave = Math.sin((u * 3.1 + v * 0.7) * FULL_CIRCLE) * 0.58;
+        const crossWave = Math.sin((u * 0.9 - v * 4.3) * FULL_CIRCLE) * 0.34;
+        const capillary = ultra ? Math.sin((u * 12.7 + v * 7.9) * FULL_CIRCLE) * 0.08 : 0;
+        const nx = longWave * 0.18 + capillary;
+        const ny = crossWave * 0.15 - capillary * 0.55;
+        const offset = (y * size + x) * 4;
+        pixels[offset] = Math.round((nx * 0.5 + 0.5) * 255);
+        pixels[offset + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+        pixels[offset + 2] = 255;
+        pixels[offset + 3] = 255;
+      }
+    }
+    const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
+    texture.name = ultra
+      ? "environment:texture:water-normal-ultra"
+      : "environment:texture:water-normal-high";
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(10, 10);
+    texture.needsUpdate = true;
+    this.textures.push(texture);
+    return texture;
   }
 
   private courseMat(
@@ -4871,7 +4926,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     for (let i = 0; i < count; i++) {
       const { angle: a } = sectorSample(i, count, SKI_PEAK_SECTORS);
       const radius = 79 + (0.5 + Math.sin(i * 8.17) * 0.5) * 13;
-      const size = 0.72 + (0.5 + Math.sin(i * 4.91) * 0.5) * 0.62;
+      const tierScale = [0.72, 0.86, 0.96, 1][this.cfg.environmentDetail];
+      const size = (0.72 + (0.5 + Math.sin(i * 4.91) * 0.5) * 0.62) * tierScale;
       quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), a + (i % 3) * 0.31);
       position.set(Math.sin(a) * radius, 7.2 * size, Math.cos(a) * radius);
       scale.set(size * (0.9 + (i % 4) * 0.08), size, size);
@@ -5153,6 +5209,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     const position = new THREE.Vector3();
     const scale = new THREE.Vector3();
     const up = new THREE.Vector3(0, 1, 0);
+    const tierScale = [0.58, 0.76, 0.9, 1][this.cfg.environmentDetail];
     for (let i = 0; i < count; i++) {
       const { angle } = sectorSample(i, count, SKI_BERM_SECTORS);
       const radius = outerR + 2.8 + Math.sin(i * 5.31) * 0.62;
@@ -5160,7 +5217,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       const height = 0.42 + (0.5 + Math.sin(i * 4.17) * 0.5) * 0.28;
       quaternion.setFromAxisAngle(up, angle);
       position.set(Math.sin(angle) * radius, 0.12 + height * 0.25, Math.cos(angle) * radius);
-      scale.set(width, height, 0.82 + (i % 3) * 0.12);
+      scale.set(width * tierScale, height * tierScale, (0.82 + (i % 3) * 0.12) * tierScale);
       matrix.compose(position, quaternion, scale);
       berms.setMatrixAt(i, matrix);
     }
@@ -5267,10 +5324,178 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(scoreboard);
   }
 
+  /**
+   * Water quality is compositional, not just geometric resolution. Medium adds
+   * broad sky reflections, High adds a readable launch dock, and Ultra adds a
+   * sparse field of near-camera sun glints. Low keeps the clean graphic basin.
+   */
+  private addRowerWaterTier(group: THREE.Group, outerR: number): void {
+    if (this.cfg.environmentDetail === 0) return;
+    const reflectionMat = this.environmentBasicMat(
+      "environment:rower:reflection-material",
+      themed(0xffdfab, 0x85bdc8),
+      { transparent: true, opacity: 0.14, depthWrite: false, fog: true },
+    );
+    const reflections = new THREE.Group();
+    reflections.name = "environment:rower:reflection-bands";
+    for (const [index, sector] of [
+      { start: degrees(-18), span: degrees(42) },
+      { start: degrees(154), span: degrees(28) },
+    ].entries()) {
+      reflections.add(
+        this.makeHorizontalArc(
+          `environment:rower:reflection-band-${index + 1}`,
+          outerR + 1.2,
+          outerR + 6.4,
+          0.012,
+          sector,
+          reflectionMat,
+        ),
+      );
+    }
+    group.add(reflections);
+
+    if (this.cfg.environmentDetail < 2) return;
+    const dock = new THREE.Group();
+    dock.name = "environment:rower:launch-dock";
+    const dockAngle = degrees(31);
+    dock.position.set(Math.sin(dockAngle) * 68, 0.08, Math.cos(dockAngle) * 68);
+    dock.rotation.y = dockAngle;
+    const deckMat = this.environmentStandardMat(
+      "environment:rower:dock-deck-material",
+      themed(0x9a7654, 0x49392d),
+      { roughness: 0.78, metalness: 0.02 },
+    );
+    const railMat = this.environmentStandardMat(
+      "environment:rower:dock-rail-material",
+      this.environment.venueStructure,
+      { roughness: 0.46, metalness: 0.42 },
+    );
+    const deck = new THREE.Mesh(this.track(roundedVenueBlockGeometry(11, 0.22, 2.2, 0.1)), deckMat);
+    const railGeo = this.track(new THREE.CylinderGeometry(0.045, 0.055, 1.15, 10));
+    for (const x of [-4.6, -1.55, 1.55, 4.6]) {
+      const rail = new THREE.Mesh(railGeo, railMat);
+      rail.position.set(x, 0.56, -0.92);
+      dock.add(rail);
+    }
+    dock.add(deck);
+    group.add(dock);
+
+    if (this.cfg.environmentDetail < 3) return;
+    const glintGeo = this.track(new THREE.CircleGeometry(0.12, 8));
+    const glintMat = this.environmentBasicMat(
+      "environment:rower:sun-glint-material",
+      themed(0xfff1c8, 0x9cd5dc),
+      { transparent: true, opacity: 0.2, depthWrite: false, fog: true },
+    );
+    const glints = this.trackInstanced(new THREE.InstancedMesh(glintGeo, glintMat, 56));
+    glints.name = "environment:rower:sun-glints";
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    for (let index = 0; index < glints.count; index++) {
+      const angle = degrees(-18) + degrees(42) * ((index + 0.5) / glints.count);
+      const radius = 36 + (index % 9) * 2.3 + Math.sin(index * 3.17) * 1.4;
+      position.set(Math.sin(angle) * radius, 0.025, Math.cos(angle) * radius);
+      const length = 0.55 + (index % 5) * 0.24;
+      scale.set(length, 0.32, 1);
+      matrix.compose(position, quaternion, scale);
+      glints.setMatrixAt(index, matrix);
+    }
+    glints.instanceMatrix.needsUpdate = true;
+    group.add(glints);
+  }
+
+  /** A broad asymmetric landform keeps the regatta from ending at a black line. */
+  private addRowerShoreline(group: THREE.Group): void {
+    const count = [4, 7, 11, 15][this.cfg.environmentDetail];
+    const geometry = this.track(alpineFoothillGeometry());
+    const material = this.environmentStandardMat(
+      "environment:rower:shoreline-material",
+      themed(0x315f49, 0x163c33),
+      { fog: true, roughness: 0.95, metalness: 0 },
+    );
+    const shoreline = this.trackInstanced(new THREE.InstancedMesh(geometry, material, count));
+    shoreline.name = "environment:rower:wooded-shoreline";
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    for (let index = 0; index < count; index++) {
+      const { angle } = sectorSample(index, count, ROW_PINE_SECTORS);
+      const size = 0.62 + (0.5 + Math.sin(index * 5.37) * 0.5) * 0.48;
+      const radius = 60 + Math.sin(index * 3.91) * 2.8;
+      quaternion.setFromAxisAngle(WORLD_UP, angle + 0.45 + (index % 4) * 0.21);
+      position.set(Math.sin(angle) * radius, 1.25 * size, Math.cos(angle) * radius);
+      scale.set(size * 2.2, size * 0.42, size);
+      matrix.compose(position, quaternion, scale);
+      shoreline.setMatrixAt(index, matrix);
+    }
+    shoreline.instanceMatrix.needsUpdate = true;
+    group.add(shoreline);
+  }
+
+  /** High and Ultra snow gain separate surface language beyond denser scenery. */
+  private addSkiSurfaceTier(group: THREE.Group, outerR: number): void {
+    if (this.cfg.environmentDetail < 2) return;
+    const windLipMat = this.environmentStandardMat(
+      "environment:skierg:wind-lip-material",
+      themed(0xdcebf2, 0x7993a1),
+      { roughness: 0.94, metalness: 0 },
+    );
+    const windLips = new THREE.Group();
+    windLips.name = "environment:skierg:wind-lips";
+    for (const [index, sector] of [
+      { start: degrees(18), span: degrees(38) },
+      { start: degrees(198), span: degrees(46) },
+    ].entries()) {
+      windLips.add(
+        this.makeHorizontalArc(
+          `environment:skierg:wind-lip-${index + 1}`,
+          outerR + 1.7,
+          outerR + 3.1,
+          0.12,
+          sector,
+          windLipMat,
+        ),
+      );
+    }
+    group.add(windLips);
+
+    if (this.cfg.environmentDetail < 3) return;
+    const crystalGeo = this.track(new THREE.OctahedronGeometry(0.045, 0));
+    const crystalMat = this.environmentBasicMat(
+      "environment:skierg:snow-crystal-material",
+      themed(0xffffff, 0xbfe4f4),
+      { transparent: true, opacity: 0.3, depthWrite: false, fog: true },
+    );
+    const crystals = this.trackInstanced(new THREE.InstancedMesh(crystalGeo, crystalMat, 72));
+    crystals.name = "environment:skierg:snow-crystals";
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    for (let index = 0; index < crystals.count; index++) {
+      const angle = ((index * 0.61803398875) % 1) * FULL_CIRCLE;
+      const radius = 34 + (index % 13) * 1.45;
+      position.set(Math.sin(angle) * radius, 0.08 + (index % 4) * 0.015, Math.cos(angle) * radius);
+      quaternion.setFromAxisAngle(WORLD_UP, angle + index * 0.37);
+      const size = 0.7 + (index % 5) * 0.16;
+      scale.set(size * 2.1, size * 0.5, size);
+      matrix.compose(position, quaternion, scale);
+      crystals.setMatrixAt(index, matrix);
+    }
+    crystals.instanceMatrix.needsUpdate = true;
+    group.add(crystals);
+  }
+
   private buildEnvironment(innerR: number, outerR: number): void {
     this.buildSky();
     this.environmentMidGroup.name = `environment:${this.sport}:midground`;
     this.environmentDetailGroup.name = `environment:${this.sport}:detail`;
+    this.environmentMidGroup.userData.environmentQuality = this.quality;
+    this.environmentMidGroup.userData.environmentDetail = this.cfg.environmentDetail;
     this.scene.add(this.environmentMidGroup, this.environmentDetailGroup);
 
     const farHeight = this.sport === "skierg" ? 14 : this.sport === "bike" ? 11 : 5.5;
@@ -5344,11 +5569,13 @@ export class CourseRenderer3D implements ReplayRenderer {
       );
       this.addInstancedPines(
         this.environmentMidGroup,
-        28 + this.cfg.environmentDetail * 16,
+        [22, 34, 54, 76][this.cfg.environmentDetail],
         64,
         82,
         ROW_PINE_SECTORS,
       );
+      this.addRowerShoreline(this.environmentMidGroup);
+      this.addRowerWaterTier(this.environmentMidGroup, outerR);
       this.addPavilions(this.environmentDetailGroup, ROW_LANDMARKS);
     } else if (this.sport === "skierg") {
       this.addAtmosphericClouds(
@@ -5356,16 +5583,21 @@ export class CourseRenderer3D implements ReplayRenderer {
         5 + this.cfg.environmentDetail,
         SKI_PEAK_SECTORS,
       );
-      this.addAlpineFoothills(this.environmentMidGroup, 7 + this.cfg.environmentDetail * 3);
-      this.addAlpinePeaks(this.environmentMidGroup, 16 + this.cfg.environmentDetail * 4);
-      this.addSnowBerms(this.environmentMidGroup, outerR, 22 + this.cfg.environmentDetail * 8);
+      this.addAlpineFoothills(this.environmentMidGroup, [4, 7, 12, 18][this.cfg.environmentDetail]);
+      this.addAlpinePeaks(this.environmentMidGroup, [8, 14, 22, 30][this.cfg.environmentDetail]);
+      this.addSnowBerms(
+        this.environmentMidGroup,
+        outerR,
+        [14, 24, 38, 54][this.cfg.environmentDetail],
+      );
       this.addInstancedPines(
         this.environmentMidGroup,
-        38 + this.cfg.environmentDetail * 20,
+        [24, 42, 70, 104][this.cfg.environmentDetail],
         56,
         80,
         SKI_PINE_SECTORS,
       );
+      this.addSkiSurfaceTier(this.environmentMidGroup, outerR);
       this.addFloodlights(
         this.environmentDetailGroup,
         SKI_FLOODLIGHTS,
@@ -5621,6 +5853,50 @@ export class CourseRenderer3D implements ReplayRenderer {
           }),
     );
     groundMat.name = "ground";
+    groundMat.userData.environmentQuality = this.quality;
+    groundMat.userData.environmentMaterialTier =
+      this.cfg.environmentDetail === 0
+        ? "graphic"
+        : this.cfg.environmentDetail === 1
+          ? "shaped"
+          : this.cfg.environmentDetail === 2
+            ? "pbr"
+            : "pbr-normal";
+    if (
+      this.sport === "skierg" &&
+      this.cfg.environmentDetail >= 2 &&
+      groundMat instanceof THREE.MeshStandardMaterial
+    ) {
+      groundMat.map = this.loadEnvironmentTexture(
+        "/replay-assets/environments/snow-02/snow-diffuse-512.jpg",
+        [18, 18],
+        true,
+      );
+      groundMat.roughnessMap = this.loadEnvironmentTexture(
+        "/replay-assets/environments/snow-02/snow-roughness-512.jpg",
+        [18, 18],
+      );
+      if (this.cfg.environmentDetail >= 3) {
+        groundMat.normalMap = this.loadEnvironmentTexture(
+          "/replay-assets/environments/snow-02/snow-normal-gl-512.jpg",
+          [22, 22],
+        );
+        groundMat.normalScale.set(0.16, 0.16);
+      }
+      groundMat.needsUpdate = true;
+    }
+    if (
+      this.sport === "rower" &&
+      this.cfg.environmentDetail >= 2 &&
+      groundMat instanceof THREE.MeshPhysicalMaterial
+    ) {
+      groundMat.normalMap = this.makeWaterNormalTexture(this.cfg.environmentDetail >= 3);
+      groundMat.normalScale.set(
+        this.cfg.environmentDetail >= 3 ? 0.32 : 0.21,
+        this.cfg.environmentDetail >= 3 ? 0.24 : 0.16,
+      );
+      groundMat.needsUpdate = true;
+    }
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.05;
@@ -6472,6 +6748,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     if (this.ghostLabel?.material instanceof THREE.Material) this.ghostLabel.material.dispose();
     this.liveLabelTex.dispose();
     this.ghostLabelTex?.dispose();
+    for (const texture of this.textures) texture.dispose();
     for (const m of this.disposables) m.dispose();
     for (const g of this.geometries) g.dispose();
     // Lose the context *before* dispose(): once disposed, getContext() may

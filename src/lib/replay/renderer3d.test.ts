@@ -539,7 +539,7 @@ describe("CourseRenderer3D", () => {
     expect(
       instanceAngles(rowPines).every(
         (angle) =>
-          angleInSector(angle, deg(-25), deg(95)) || angleInSector(angle, deg(185), deg(70)),
+          angleInSector(angle, deg(-25), deg(165)) || angleInSector(angle, deg(185), deg(70)),
       ),
     ).toBe(true);
     for (const landmark of [
@@ -618,7 +618,7 @@ describe("CourseRenderer3D", () => {
     const lowPines = lowScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
     const ultraPines = ultraScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
 
-    expect(lowPines.count).toBe(28);
+    expect(lowPines.count).toBe(22);
     expect(ultraPines.count).toBe(76);
     for (const scene of [lowScene, ultraScene]) {
       expect(scene.getObjectByName("environment:rower:sky")).toBeDefined();
@@ -627,6 +627,58 @@ describe("CourseRenderer3D", () => {
     }
     low.destroy();
     ultra.destroy();
+  });
+
+  it("spends environment tiers on different scene and material features, not only resolution", () => {
+    const qualities = ["low", "medium", "high", "ultra"] as const;
+    const rowScenes = qualities.map((quality) => {
+      const renderer = new CourseRenderer3D(makeHost(), quality, "rower");
+      return { renderer, scene: getScene(renderer) };
+    });
+    expect(
+      rowScenes[0].scene.getObjectByName("environment:rower:reflection-bands"),
+    ).toBeUndefined();
+    expect(rowScenes[1].scene.getObjectByName("environment:rower:reflection-bands")).toBeDefined();
+    expect(rowScenes[1].scene.getObjectByName("environment:rower:launch-dock")).toBeUndefined();
+    expect(rowScenes[2].scene.getObjectByName("environment:rower:launch-dock")).toBeDefined();
+    expect(rowScenes[2].scene.getObjectByName("environment:rower:sun-glints")).toBeUndefined();
+    expect(rowScenes[3].scene.getObjectByName("environment:rower:sun-glints")).toBeDefined();
+    expect(
+      (
+        (rowScenes[2].scene.getObjectByName("ground") as THREE.Mesh)
+          .material as THREE.MeshPhysicalMaterial
+      ).normalMap?.name,
+    ).toBe("environment:texture:water-normal-high");
+    expect(
+      (
+        (rowScenes[3].scene.getObjectByName("ground") as THREE.Mesh)
+          .material as THREE.MeshPhysicalMaterial
+      ).normalMap?.name,
+    ).toBe("environment:texture:water-normal-ultra");
+    for (const { renderer } of rowScenes) renderer.destroy();
+
+    const snowMaterials = qualities.map((quality) => {
+      const renderer = new CourseRenderer3D(makeHost(), quality, "skierg");
+      const scene = getScene(renderer);
+      const material = (scene.getObjectByName("ground") as THREE.Mesh).material as
+        | THREE.MeshStandardMaterial
+        | THREE.MeshPhysicalMaterial;
+      return { renderer, scene, material };
+    });
+    expect(snowMaterials[0].material.map).toBeNull();
+    expect(snowMaterials[1].material.map).toBeNull();
+    expect(snowMaterials[2].material.map?.userData.sourcePath).toContain("snow-diffuse");
+    expect(snowMaterials[2].material.roughnessMap?.userData.sourcePath).toContain("snow-roughness");
+    expect(snowMaterials[2].material.normalMap).toBeNull();
+    expect(snowMaterials[3].material.normalMap?.userData.sourcePath).toContain("snow-normal");
+    expect(snowMaterials[2].scene.getObjectByName("environment:skierg:wind-lips")).toBeDefined();
+    expect(
+      snowMaterials[2].scene.getObjectByName("environment:skierg:snow-crystals"),
+    ).toBeUndefined();
+    expect(
+      snowMaterials[3].scene.getObjectByName("environment:skierg:snow-crystals"),
+    ).toBeDefined();
+    for (const { renderer } of snowMaterials) renderer.destroy();
   });
 
   it("re-themes the complete environment rather than recoloring only the athlete", () => {

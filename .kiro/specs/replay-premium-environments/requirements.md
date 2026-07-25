@@ -2,8 +2,9 @@
 
 > Scope clarification (July 2026):
 > [Replay authored athlete assets](../replay-authored-athlete-assets/requirements.md)
-> does not permit imported, generated, scanned, or downloaded environment art.
-> These procedural-environment requirements remain authoritative.
+> remains authoritative for athletes and equipment. Environment art may now
+> include repository-bundled CC0 surface maps with recorded provenance; venue
+> composition and all fallback art remain local and illustrative.
 
 ## Introduction
 
@@ -112,10 +113,12 @@ misled about what my workout recorded.
 3. WHEN decorative forms are too small to survive the replay pixel budget THEN
    the renderer SHALL prefer bold authored silhouettes over noisy sub-pixel
    detail.
-4. WHEN replay art is bundled THEN the environment SHALL be produced from local
-   procedural Canvas drawing and Three.js geometry/materials; it SHALL NOT
-   download or ship generated environment images, scanned locations, or imported
-   venue models.
+4. WHEN replay art is bundled THEN venue composition SHALL be produced from
+   local procedural Canvas drawing and Three.js geometry/materials. Seamless
+   surface maps MAY be bundled only when their commercial-use license, creator,
+   source URL, retrieval date, and shipped digest are recorded; generated
+   environment images, scanned locations, and imported venue models remain
+   prohibited.
 
 ### Requirement 5: Performance, fallback, and accessibility
 
@@ -140,6 +143,9 @@ only the fastest hardware.
 5. WHEN a ghost comparison is active THEN environment detail SHALL remain
    bounded so both athletes stay visible within the existing camera and
    performance contracts.
+6. WHEN quality tiers differ THEN at least one scene-composition or material
+   feature SHALL change between adjacent tiers; tiers SHALL NOT differ only by
+   pixel ratio, tessellation, or repeated-object density.
 
 ### Requirement 6: Regression proof and visual verification
 

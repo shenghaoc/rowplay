@@ -107,9 +107,13 @@ account.
   than layering a second simulated shadow over the same live athlete
 - Generic replay figures only—no scan, athlete likeness, avatar-generator
   output, user image, or undocumented downloaded model
-- Local procedural scenery built from Canvas drawing and Three.js geometry;
-  no generated environment images, scanned venues, or downloaded location
-  models are shipped in the replay runtime
+- Local procedural venue composition built from Canvas drawing and Three.js
+  geometry, supplemented only by provenance-recorded CC0 surface maps; no
+  generated environment images, scanned venues, runtime downloads, or imported
+  location models are shipped
+- Quality tiers change scene composition and material response—not only pixel
+  ratio—with graphic Low, shaped Medium, PBR High, and normal-detailed Ultra
+  environments
 - Alias-resistant 2D BikeErg drivetrain motion with explicit cranks, pedals,
   chain and directional wheel markers that remain readable through 8× playback
 - Progressive 3D fallback from WebGPU to WebGL, then to the stable 2D renderer

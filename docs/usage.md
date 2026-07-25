@@ -226,10 +226,12 @@ surfaces so the athlete is grounded in a venue rather than floating on a plane.
 The venue, weather, light, trees, mountains, shoreline, and structures are
 generic presentation art. Concept2 does not provide route geography, venue,
 weather, or camera data, so these scenes do not reconstruct where or under what
-conditions the workout happened. All shipped scenery is created locally from
-procedural Canvas drawing and Three.js geometry and materials. The replay does
-not ship or download generated environment images, photographs, scanned venues,
-or imported location models.
+conditions the workout happened. Venue composition is created locally from
+procedural Canvas drawing and Three.js geometry and materials. High and Ultra
+SkiErg use optimized local derivatives of Poly Haven's CC0 Snow 02 material;
+their creator, source, license, and digests are recorded with the assets. The
+replay does not download runtime scenery or ship generated environment images,
+venue photographs, scanned locations, or imported location models.
 
 In 3D, the authored human-scale skinned athlete keeps feet and hands on the
 relevant equipment targets through the post-clip contact pass — oar handles and
@@ -260,9 +262,13 @@ and the compact telemetry pill leaves the figure as the visual focus.
 
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics.
 Every tier keeps the sky, horizon, course material, core venue silhouette, and
-athlete readable. Higher tiers add denser scenery, stronger shadows, richer
-athlete material detail (128→256→512px procedural maps on Medium/High/Ultra),
-and more wake or spray; Ultra is intended for WebGPU-capable devices. If the device can't hold a smooth frame rate at the selected tier, the
+athlete readable, but the tiers are not merely different render resolutions.
+Low uses a deliberately graphic scene; Medium adds shaped surfaces and
+midground reflections; High adds PBR ground response, venue depth, and shadows;
+Ultra adds normal-mapped close-surface detail and restrained glints. Higher
+tiers also add richer athlete material detail (128→256→512px procedural maps on
+Medium/High/Ultra) and more wake or spray. Ultra is intended for WebGPU-capable
+devices. If the device can't hold a smooth frame rate at the selected tier, the
 renderer automatically lowers resolution first and then decorative effects such
 as water motion and spray for the rest of the session. This never changes
 recorded timing, distance, or equipment contacts. Replay animation honours the
