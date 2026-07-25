@@ -4,9 +4,11 @@ import type { RenderQuality } from "./replayRenderer";
 import { solveTwoBone3D } from "./figurePose";
 import {
   disposeReplayV4AthleteInstance,
+  REPLAY_V4_HAND_HELPER_NAMES,
   REPLAY_V4_SURFACE_ROLES,
   type ReplayV4AthleteInstance,
   type ReplayV4EffectorName,
+  type ReplayV4HandHelperName,
   type ReplayV4SurfaceRole,
 } from "./renderer3dV4Assets";
 
@@ -31,33 +33,27 @@ const CONTACT_DEADZONE_M = 0.000_05;
 const SOFT_ANGLE_DEADZONE = THREE.MathUtils.degToRad(1.5);
 
 /**
- * Visual-only finger helpers from the Blender production surface. Clips never
- * target them; after contact we apply a sport grip curl so palms read as hands
- * on sculls, poles, and hoods rather than open mitts.
- */
-const HAND_HELPER_NAMES = [
-  "v4LeftFingers",
-  "v4LeftThumb",
-  "v4RightFingers",
-  "v4RightThumb",
-] as const;
-
-/**
  * Radians of local curl applied to finger/thumb helpers after contact.
  * Strong enough that open mittens read as a closed grip on sculls, poles,
  * and hoods once the terminal hand is oriented to the equipment.
  */
-const GRIP_CURL_BY_SPORT: Readonly<
-  Record<
-    Sport,
-    {
-      readonly fingersFlex: number;
-      readonly fingersCurl: number;
-      readonly thumbFlex: number;
-      readonly thumbOppose: number;
-    }
-  >
-> = {
+export type ReplayV4GripCurlConfig = {
+  readonly fingersFlex: number;
+  readonly fingersCurl: number;
+  readonly thumbFlex: number;
+  readonly thumbOppose: number;
+};
+
+const HAND_HELPER_META: Readonly<
+  Record<ReplayV4HandHelperName, { readonly kind: "fingers" | "thumb"; readonly side: -1 | 1 }>
+> = Object.freeze({
+  v4LeftFingers: { kind: "fingers", side: -1 },
+  v4LeftThumb: { kind: "thumb", side: -1 },
+  v4RightFingers: { kind: "fingers", side: 1 },
+  v4RightThumb: { kind: "thumb", side: 1 },
+});
+
+const GRIP_CURL_BY_SPORT: Readonly<Record<Sport, ReplayV4GripCurlConfig>> = {
   rower: { fingersFlex: 1.35, fingersCurl: 0.45, thumbFlex: 0.95, thumbOppose: 0.7 },
   skierg: { fingersFlex: 1.25, fingersCurl: 0.4, thumbFlex: 0.9, thumbOppose: 0.65 },
   bike: { fingersFlex: 1.15, fingersCurl: 0.35, thumbFlex: 0.85, thumbOppose: 0.55 },
@@ -629,7 +625,7 @@ const QUALITY_DETAIL_TEXTURE_SIZE: Readonly<Record<RenderQuality, number>> = {
 export const REPLAY_V4_QUALITY_DETAIL_TEXTURE_SIZE = QUALITY_DETAIL_TEXTURE_SIZE;
 
 /** Production finger helper names — shared with the sealed GLB contract. */
-export const REPLAY_V4_HAND_HELPER_NAMES = HAND_HELPER_NAMES;
+export { REPLAY_V4_HAND_HELPER_NAMES };
 
 type SurfaceDetailMapKind = "albedo" | "bump" | "normal" | "roughness";
 
@@ -1106,17 +1102,26 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       kind: "fingers" | "thumb";
       side: -1 | 1;
     }[] = [];
-    for (const name of HAND_HELPER_NAMES) {
+    for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
       const bone = instance.skeleton.getBoneByName(name);
       if (!bone) continue;
+      const meta = HAND_HELPER_META[name];
       helpers.push({
         bone,
         rest: bone.quaternion.clone(),
-        kind: name.includes("Thumb") ? "thumb" : "fingers",
-        side: name.includes("Left") ? -1 : 1,
+        kind: meta.kind,
+        side: meta.side,
       });
     }
     this.handHelpers = helpers;
+    // Diagnostics only: production meshes should carry the full grip set.
+    if (helpers.length === 0) {
+      this.root.userData.replayV4GripHelpers = "missing";
+    } else if (helpers.length < REPLAY_V4_HAND_HELPER_NAMES.length) {
+      this.root.userData.replayV4GripHelpers = "partial";
+    } else {
+      this.root.userData.replayV4GripHelpers = "ready";
+    }
 
     this.fallback = collectFallbackVisibility(options.fallbackRoot ?? parent);
     // Contact targets are always terminal authorities. RowErg/SkiErg elbows
@@ -1299,17 +1304,16 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     try {
       const mode = this.diagnosticMode;
 
-      if (mode === "full" || mode === "clip-hands" || mode === "skeleton" || mode === "shadows") {
+      const applyContact =
+        mode !== "clip-pelvis" && mode !== "clip-only";
+      if (applyContact) {
+        // Visual isolation modes (and full) keep rigid contact so the hero
+        // reads as equipment-connected while materials change.
         for (const chain of this.chains) this.correctContactChain(chain);
-      } else if (mode === "clip-pelvis" || mode === "clip-only") {
-        // Pure clip (+ optional pelvis): no contact correction.
-      } else {
-        // Visual isolation modes still keep rigid contact so the hero reads as
-        // equipment-connected while materials change.
-        for (const chain of this.chains) this.correctContactChain(chain);
+        // Curl only after contact lock — clip-only / clip-pelvis leave rest pose.
+        this.applyGripHelpers();
       }
 
-      this.applyGripHelpers();
       this.root.updateMatrixWorld(true);
       if (mode !== "clip-only") this.assertPelvisAligned();
       this.options.instance.skeleton.update();
@@ -1416,7 +1420,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
    */
   private applyGripHelpers(): void {
     if (this.handHelpers.length === 0) return;
-    const grip = GRIP_CURL_BY_SPORT[this.options.sport] ?? GRIP_CURL_BY_SPORT.rower;
+    const grip = GRIP_CURL_BY_SPORT[this.options.sport];
     for (const helper of this.handHelpers) {
       // Flex fingers into the palm (+X) and slightly adduce them (+Z) so they
       // wrap the equipment instead of staying open mitts. Thumb gets opposition.

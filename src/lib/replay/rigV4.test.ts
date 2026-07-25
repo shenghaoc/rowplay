@@ -12,11 +12,15 @@ import {
   V4_CONTACT_ROLES,
   V4_CYCLE_SECONDS,
   V4_DRIVE_END,
+  V4_HAND_HELPER_NAMES,
   V4_PHASE_SCHEMAS,
   type V4BoneName,
   type V4ContactBoneName,
   type V4Sport,
 } from "./rigV4";
+import contractJson from "../../../static/replay-assets/rowplay-athlete-v4.contract.json" with {
+  type: "json",
+};
 
 /** GLTFExporter uses the browser FileReader surface, including in Node tests. */
 function installFileReaderShim(): void {
@@ -244,6 +248,26 @@ describe("V4 production skinned athlete", () => {
     } finally {
       disposeV4AthleteAsset(asset);
     }
+  });
+
+  it("pins drive ends and production grip helpers against the sealed contract", () => {
+    expect(V4_DRIVE_END).toEqual({
+      rower: 0.38,
+      skierg: 0.34,
+      bike: 0.5,
+    });
+    const sealedDriveEnds = Object.fromEntries(
+      (contractJson.animation.clips as readonly { sport: string; driveEnd: number }[]).map(
+        (clip) => [clip.sport, clip.driveEnd],
+      ),
+    );
+    expect(sealedDriveEnds).toEqual(V4_DRIVE_END);
+    expect(contractJson.bones.helperNames).toEqual([...V4_HAND_HELPER_NAMES]);
+    expect(contractJson.bones.helperCount).toBe(V4_HAND_HELPER_NAMES.length);
+    expect(contractJson.bones.totalCount).toBe(23);
+    expect(contractJson.bones.totalCount).toBe(
+      contractJson.bones.semanticCount + contractJson.bones.helperCount,
+    );
   });
 
   it("provides distinct loop-safe sport clips with exact drive landmarks", () => {

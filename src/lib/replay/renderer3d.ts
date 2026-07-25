@@ -5652,6 +5652,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     // pose instead of forcing IK to compensate for a hidden-rig mismatch.
     const v4Motion = avatar.v4Motion;
     let v4Prepared = v4Motion?.prepare(v4Sample) ?? false;
+    // RowErg pre-orients palms before refining the rigid oar arc so the wrist→
+    // palm vector is part of the exact grip solve. SkiErg/BikeErg keep their
+    // pole-led / hood-led terminal frames through the contact pass (pre-orient
+    // here would break seek-exact pose identity for those sports).
     if (v4Prepared && this.sport === "rower") {
       v4Prepared = v4Motion!.orientHandsToTargets();
     }

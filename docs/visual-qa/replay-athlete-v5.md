@@ -3,8 +3,10 @@
 This note records the dedicated 3D athlete visual-quality pass on
 `codex/replay-athlete-visual-overhaul`, relative to merge base `da0dc73`. It
 replaces the assembled procedural mannequin with a source-backed human surface
-while retaining PR #171's motion, contacts, equipment, environments, and
-fallbacks.
+while retaining PR #171's **shared technique modules** (`motionGraph`,
+`sportKinematics`, Canvas), contacts, equipment, environments, and fallbacks.
+V4 **base clip keyframes** in `rigV4.ts` were re-authored on this branch for
+finish/grip readability (drive ends stay frozen at 0.38 / 0.34 / 0.5).
 
 ## Target and scope
 
@@ -95,6 +97,9 @@ face-detail. All tiers use the same geometry, rig, contacts, and technique.
 | Medium | 128 px deterministic UV albedo, normal, roughness, and relief maps                                                                           |
 | High   | 256 px maps with stronger skin, fabric, footwear, hair, and facial response                                                                  |
 | Ultra  | 512 px maps plus the strongest skin/specular, fabric sheen, trim/footwear clearcoat, hair response, wet-eye optics, and face-detail response |
+
+Medium+ detail maps are **process-shared** per (quality, role, kind) so live and
+ghost lanes reuse the same textures instead of rebuilding Ultra 512² maps twice.
 
 This is a progressive ladder, not a Low-to-Ultra cliff. A denser 169k-vertex,
 19.6 MB GLB experiment was also tested and rejected because it produced no

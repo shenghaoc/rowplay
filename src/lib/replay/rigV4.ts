@@ -103,6 +103,20 @@ export type V4BoneName = (typeof V4_BONE_NAMES)[number];
 export type V4ContactBoneName = keyof typeof V4_CONTACT_OFFSETS;
 export type V4ContactMarkerName = `${V4ContactBoneName}Contact`;
 
+/**
+ * Production grip deformation helpers (visual only). Keep names aligned with
+ * `REPLAY_V4_HAND_HELPER_NAMES` in the runtime loader and the sealed contract.
+ */
+export const V4_HAND_HELPER_NAMES = [
+  "v4LeftFingers",
+  "v4LeftThumb",
+  "v4RightFingers",
+  "v4RightThumb",
+] as const;
+
+export type V4HandHelperName = (typeof V4_HAND_HELPER_NAMES)[number];
+export type V4VisualHelperRole = "grip" | "twist" | "corrective";
+
 export interface V4RigMetrics {
   readonly bones: number;
   readonly vertices: number;
@@ -146,10 +160,13 @@ export type V4BoneDefinition = {
  */
 export type V4VisualHelperBoneDefinition = {
   readonly name: string;
-  readonly parent: string;
+  /** Prefer a semantic parent; helper parents are allowed for multi-joint chains. */
+  readonly parent: V4BoneName | (string & {});
   readonly position: readonly [number, number, number];
   readonly rotationQuaternion?: readonly [number, number, number, number];
   readonly scale?: readonly [number, number, number];
+  /** Tooling / diagnostics only — never expands the motion API. */
+  readonly role?: V4VisualHelperRole;
 };
 
 export interface V4AthleteAssetOptions {
@@ -519,9 +536,24 @@ function buildBones(
     helperNames.add(definition.name);
     finiteVector(definition.position, 3, `${definition.name} helper position`);
     if (definition.rotationQuaternion) {
-      finiteVector(definition.rotationQuaternion, 4, `${definition.name} helper rotation`);
+      const quat = finiteVector(
+        definition.rotationQuaternion,
+        4,
+        `${definition.name} helper rotation`,
+      );
+      const length = Math.hypot(quat[0], quat[1], quat[2], quat[3]);
+      if (!(length > 0.99 && length < 1.01)) {
+        throw new Error(
+          `V4 helper ${definition.name} rotationQuaternion must be approximately unit length`,
+        );
+      }
     }
-    if (definition.scale) finiteVector(definition.scale, 3, `${definition.name} helper scale`);
+    if (definition.scale) {
+      const scale = finiteVector(definition.scale, 3, `${definition.name} helper scale`);
+      if (scale[0] <= 0 || scale[1] <= 0 || scale[2] <= 0) {
+        throw new Error(`V4 helper ${definition.name} scale components must be positive`);
+      }
+    }
   }
 
   // Source skeletons may list a helper before its helper parent. Resolve the

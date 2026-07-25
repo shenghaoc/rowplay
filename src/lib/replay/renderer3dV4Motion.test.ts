@@ -852,6 +852,93 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
+  it("leaves finger helpers uncurled in clip-only mode", () => {
+    const lane = createLane();
+    disposeLane(lane);
+    lane.instance = createInstance({ withHandHelpers: true });
+    lane.parent.add(lane.instance.root);
+    const controller = installReplayV4MotionController({
+      sport: "rower",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      diagnosticMode: "clip-only",
+    });
+    try {
+      const rest = new Map(
+        REPLAY_V4_HAND_HELPER_NAMES.map((name) => {
+          const bone = lane.instance.skeleton.getBoneByName(name)!;
+          return [name, bone.quaternion.clone()] as const;
+        }),
+      );
+      expect(controller?.update({ phase: 0, cycleFrac: 0.35, driveFrac: 0.38 })).toBe(true);
+      for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
+        const bone = lane.instance.skeleton.getBoneByName(name)!;
+        expect(
+          bone.quaternion.angleTo(rest.get(name)!),
+          `${name} stays at rest in clip-only`,
+        ).toBeLessThan(1e-6);
+      }
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
+  it("exposes soft palm orientation for ski and bike within the arm budget", () => {
+    for (const sport of ["skierg", "bike"] as const) {
+      const lane = createLane();
+      const controller = installReplayV4MotionController({
+        sport,
+        parent: lane.parent,
+        instance: lane.instance,
+        targets: lane.targets,
+        diagnosticMode: "clip-pelvis",
+      });
+      try {
+        const driveFrac = sport === "skierg" ? 0.34 : 0.5;
+        // prepare only — orientHands requires a prepared pose before constrain.
+        expect(controller?.prepare({ phase: 0, cycleFrac: driveFrac * 0.6, driveFrac })).toBe(
+          true,
+        );
+        placeTargetsNearClipEffectors(lane);
+        lane.scene.updateMatrixWorld(true);
+        const residualsBefore = new Map<"left" | "right", number>();
+        for (const side of ["left", "right"] as const) {
+          const bone = lane.instance.bones[side === "left" ? "v4LeftHand" : "v4RightHand"];
+          const handQ = bone.getWorldQuaternion(new THREE.Quaternion());
+          const targetQ = lane.targets[`${side}Hand` as const].getWorldQuaternion(
+            new THREE.Quaternion(),
+          );
+          residualsBefore.set(side, handQ.angleTo(targetQ));
+        }
+        expect(controller?.orientHandsToTargets()).toBe(true);
+        for (const side of ["left", "right"] as const) {
+          const bone = lane.instance.bones[side === "left" ? "v4LeftHand" : "v4RightHand"];
+          const handQ = bone.getWorldQuaternion(new THREE.Quaternion());
+          const targetQ = lane.targets[`${side}Hand` as const].getWorldQuaternion(
+            new THREE.Quaternion(),
+          );
+          const residual = handQ.angleTo(targetQ);
+          const before = residualsBefore.get(side)!;
+          // Soft orient is an 8° slerp budget — residual must not grow, and
+          // when the gap is large it must shrink by up to that budget.
+          expect(residual, `${sport} ${side} residual after soft orient`).toBeLessThanOrEqual(
+            before + 1e-6,
+          );
+          if (before > THREE.MathUtils.degToRad(1.5)) {
+            expect(before - residual, `${sport} ${side} soft-orient progress`).toBeGreaterThan(0);
+            expect(before - residual).toBeLessThanOrEqual(
+              THREE.MathUtils.degToRad(8) + 1e-3,
+            );
+          }
+        }
+        expect(controller?.constrain()).toBe(true);
+      } finally {
+        disposeLane(lane, controller);
+      }
+    }
+  });
+
   it("pins athlete detail map sizes to the sealed 0/128/256/512 ladder", () => {
     expect(REPLAY_V4_QUALITY_DETAIL_TEXTURE_SIZE).toEqual({
       low: 0,
@@ -903,8 +990,36 @@ describe("V4 motion determinism and fallback safety", () => {
         ghost.skeleton.dispose();
         ghost.mesh.geometry.dispose();
       }
+
     } finally {
       disposeLane(lane, controller);
+    }
+
+    // Low must not attach generated detail maps.
+    const lowLane = createLane();
+    disposeLane(lowLane);
+    lowLane.instance = createInstance({ withUv: true });
+    lowLane.parent.add(lowLane.instance.root);
+    const lowController = installReplayV4MotionController({
+      sport: "rower",
+      parent: lowLane.parent,
+      instance: lowLane.instance,
+      targets: lowLane.targets,
+      quality: "low",
+    });
+    try {
+      const lowMaterial = (
+        Array.isArray(lowLane.instance.mesh.material)
+          ? lowLane.instance.mesh.material[0]
+          : lowLane.instance.mesh.material
+      ) as THREE.MeshPhysicalMaterial;
+      expect(lowMaterial.userData.replayV4SurfaceDetailResolution ?? 0).toBe(0);
+      expect(lowMaterial.map).toBeNull();
+      expect(lowMaterial.bumpMap).toBeNull();
+      expect(lowMaterial.normalMap).toBeNull();
+      expect(lowMaterial.roughnessMap).toBeNull();
+    } finally {
+      disposeLane(lowLane, lowController);
     }
   });
 

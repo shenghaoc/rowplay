@@ -44,6 +44,47 @@ export const REPLAY_V4_BONE_NAMES = [
 export type ReplayV4BoneName = (typeof REPLAY_V4_BONE_NAMES)[number];
 const REPLAY_V4_SEMANTIC_BONE_NAMES = new Set<string>(REPLAY_V4_BONE_NAMES);
 
+/**
+ * Production grip helpers (visual deformation only). Names must match the
+ * sealed GLB contract and `V4_HAND_HELPER_NAMES` in the authoring module.
+ */
+export const REPLAY_V4_HAND_HELPER_NAMES = [
+  "v4LeftFingers",
+  "v4LeftThumb",
+  "v4RightFingers",
+  "v4RightThumb",
+] as const;
+
+export type ReplayV4HandHelperName = (typeof REPLAY_V4_HAND_HELPER_NAMES)[number];
+
+/** Compile-time bridge: authoring sports/bones must stay equal to runtime Sport/bones. */
+type AssertEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+  ? true
+  : never;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type _ReplayV4BoneNamesMatchAuthoring = AssertEqual<
+  ReplayV4BoneName,
+  | "v4Hips"
+  | "v4Spine"
+  | "v4Chest"
+  | "v4Neck"
+  | "v4Head"
+  | "v4LeftClavicle"
+  | "v4LeftUpperArm"
+  | "v4LeftForearm"
+  | "v4LeftHand"
+  | "v4RightClavicle"
+  | "v4RightUpperArm"
+  | "v4RightForearm"
+  | "v4RightHand"
+  | "v4LeftUpperLeg"
+  | "v4LeftLowerLeg"
+  | "v4LeftFoot"
+  | "v4RightUpperLeg"
+  | "v4RightLowerLeg"
+  | "v4RightFoot"
+>;
+
 export const REPLAY_V4_EFFECTOR_BONES = Object.freeze({
   leftHand: "v4LeftHand",
   rightHand: "v4RightHand",
@@ -332,6 +373,11 @@ export interface ReplayV4AssetTemplate {
   readonly mesh: THREE.SkinnedMesh;
   readonly skeleton: THREE.Skeleton;
   readonly bones: Readonly<Record<ReplayV4BoneName, THREE.Bone>>;
+  /**
+   * Non-semantic skeleton bones (grip helpers, twist/correctives). Diagnostics
+   * only — motion never targets these names.
+   */
+  readonly helperBoneNames: readonly string[];
   readonly clips: ReadonlyMap<ReplayV4ClipName, THREE.AnimationClip>;
   readonly clipsBySport: Readonly<Record<Sport, THREE.AnimationClip>>;
   readonly clipTimingBySport: Readonly<Record<Sport, ReplayV4ClipTiming>>;
@@ -504,6 +550,14 @@ function collectBones(mesh: THREE.SkinnedMesh): Readonly<Record<ReplayV4BoneName
     }
   }
   return Object.freeze(result);
+}
+
+function collectHelperBoneNames(skeleton: THREE.Skeleton): readonly string[] {
+  const names: string[] = [];
+  for (const bone of skeleton.bones) {
+    if (bone.name && !REPLAY_V4_SEMANTIC_BONE_NAMES.has(bone.name)) names.push(bone.name);
+  }
+  return Object.freeze(names);
 }
 
 function localContactOffset(
@@ -703,6 +757,7 @@ export function collectReplayV4AssetTemplate(
   const mesh = findOnlySkinnedMesh(root);
   meshMaterials(mesh);
   const bones = collectBones(mesh);
+  const helperBoneNames = collectHelperBoneNames(mesh.skeleton);
   const effectors = collectEffectorMetrics(bones);
   validateGeometry(mesh);
   partitionRuntimeSurfaceMaterials(mesh);
@@ -713,6 +768,7 @@ export function collectReplayV4AssetTemplate(
     mesh,
     skeleton: mesh.skeleton,
     bones,
+    helperBoneNames,
     clips,
     clipsBySport,
     clipTimingBySport,
