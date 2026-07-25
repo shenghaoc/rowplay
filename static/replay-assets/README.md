@@ -22,8 +22,8 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 676,456 bytes; SHA-256
-  `3cd040317e99ac092208c0c09bb7575633849f963335964aab554c0ba9ebf63e`.
+- **Reviewed V3 artifact:** 676,488 bytes; SHA-256
+  `c0c916cd34cd03c8f0d42ff563a048798f6e52702d35dc549baeec2075618456`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
   nodes total). The package has 26,590 indexed triangles and 18,745 indexed
@@ -101,7 +101,7 @@ hand, foot, oar, pedal, and planted-pole targets. V3, procedural 3D, and Canvas
 remain automatic fallbacks.
 
 - **Purpose:** one generic, provenance-reviewed production `SkinnedMesh` with a
-  stable 19-bone semantic skeleton, optional visual deformation helpers, and
+  stable 19-bone semantic skeleton, 32 visual-only articulated grip helpers, and
   distinct deterministic RowErg, SkiErg, and BikeErg base clips. Runtime
   samples normalized clip time from replay phase and applies the analytic
   contact pass after the authored pose.
@@ -153,7 +153,7 @@ remain automatic fallbacks.
   external-looking references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named semantic
-  bones plus four contract-recorded visual helpers, a continuous human body
+  bones plus 32 contract-recorded visual grip helpers, a continuous human body
   core plus deliberate eye/hair/footwear detail islands, one portable opaque
   vertex-colour material in the GLB, and zero embedded textures/images. The
   reviewed `TEXCOORD_0` layout exists solely for the web loader's local,
@@ -163,7 +163,9 @@ remain automatic fallbacks.
   `hair`, `trim`, `eye`, and `face-detail`) from the reviewed colour regions while
   retaining the same geometry, skeleton, and asset request. The semantic order
   is the only replay-motion interface; helper joints may influence skinning but
-  are not direct animation targets. The surface now carries anatomically
+  are not direct animation targets. Each hand has a shallow palm-cup helper,
+  four three-segment finger chains, and a three-segment opposing-thumb chain
+  derived from the reviewed anatomical face sets. The surface now carries anatomically
   modelled head/face/ears, individual fingers and toes beneath equipment,
   ribcage, shoulder, pelvis, knee, calf, and hand volume from the reviewed
   human topology; RowPlay supplies performance kit regions, close sports hair,
@@ -197,6 +199,12 @@ remain automatic fallbacks.
   glTF extras encode exact local contact offsets: left/right hand
   `[-0.08,-0.01,0.035]` / `[0.08,-0.01,0.035]`; both feet
   `[0,-0.055,0.13]`.
+- **Grip closure:** after the exact palm solve, runtime applies bounded
+  sport-specific helper rotations for the RowErg scull, SkiErg cylindrical
+  grip, or BikeErg hood. Individual proximal/intermediate/distal segments and
+  the opposing thumb visibly enclose the local handle without moving the
+  semantic hand or equipment contact. The validator requires the exact helper
+  hierarchy and a meaningful checked skin influence for every helper.
 - **Animations:** three normalized one-second clips, each with one hips
   translation and 19 semantic quaternion tracks: `rowplay-v4-row-cycle`
   (authored drive end `0.38`), `rowplay-v4-ski-cycle` (`0.34`), and
@@ -208,7 +216,8 @@ remain automatic fallbacks.
   weights, exact bone and contact schemas, topology component count,
   joint-weight gradients,
   deep-flex volume, distinct clip signatures, exact drive landmarks,
-  deterministic seeking, loop closure, and GLB → `GLTFLoader` →
+  deterministic seeking, loop closure, articulated-grip reset/contact
+  retention, and GLB → `GLTFLoader` →
   `AnimationMixer` round-trip. The raw GLB validator independently checks the
   same binary contract, embedded-only delivery, and absence of external URIs.
 

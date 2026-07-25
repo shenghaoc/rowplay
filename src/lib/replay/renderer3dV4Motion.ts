@@ -38,26 +38,87 @@ const SOFT_ANGLE_DEADZONE = THREE.MathUtils.degToRad(1.5);
  * and hoods once the terminal hand is oriented to the equipment.
  */
 export type ReplayV4GripCurlConfig = {
-  readonly fingersFlex: number;
-  readonly fingersCurl: number;
-  readonly thumbFlex: number;
+  readonly fingerCup: number;
+  readonly fingerProximal: number;
+  readonly fingerIntermediate: number;
+  readonly fingerDistal: number;
   readonly thumbOppose: number;
+  readonly thumbProximal: number;
+  readonly thumbIntermediate: number;
+  readonly thumbDistal: number;
 };
 
-const HAND_HELPER_META: Readonly<
-  Record<ReplayV4HandHelperName, { readonly kind: "fingers" | "thumb"; readonly side: -1 | 1 }>
-> = Object.freeze({
-  v4LeftFingers: { kind: "fingers", side: -1 },
-  v4LeftThumb: { kind: "thumb", side: -1 },
-  v4RightFingers: { kind: "fingers", side: 1 },
-  v4RightThumb: { kind: "thumb", side: 1 },
-});
+type ReplayV4GripHelperStage = "cup" | "proximal" | "intermediate" | "distal";
+type ReplayV4GripDigit = "index" | "middle" | "ring" | "pinky" | "thumb";
 
 const GRIP_CURL_BY_SPORT: Readonly<Record<Sport, ReplayV4GripCurlConfig>> = {
-  rower: { fingersFlex: 1.35, fingersCurl: 0.45, thumbFlex: 0.95, thumbOppose: 0.7 },
-  skierg: { fingersFlex: 1.25, fingersCurl: 0.4, thumbFlex: 0.9, thumbOppose: 0.65 },
-  bike: { fingersFlex: 1.15, fingersCurl: 0.35, thumbFlex: 0.85, thumbOppose: 0.55 },
+  // RowErg stays relaxed at the MCP joint but closes firmly at PIP/DIP around
+  // the narrow scull handle. SkiErg is the firmest cylindrical grip. BikeErg
+  // still uses a restrained hood grip, but every finger must visibly enclose
+  // the bar; the authored cockpit has no brake lever that would justify an
+  // extended index finger.
+  rower: {
+    fingerCup: 0.08,
+    fingerProximal: 0.75,
+    fingerIntermediate: 1.25,
+    fingerDistal: 0.7,
+    thumbOppose: 0.82,
+    thumbProximal: 0.42,
+    thumbIntermediate: 0.72,
+    thumbDistal: 0.44,
+  },
+  skierg: {
+    fingerCup: 0.1,
+    fingerProximal: 0.9,
+    fingerIntermediate: 1.4,
+    fingerDistal: 0.82,
+    thumbOppose: 0.9,
+    thumbProximal: 0.48,
+    thumbIntermediate: 0.78,
+    thumbDistal: 0.5,
+  },
+  bike: {
+    fingerCup: 0.1,
+    fingerProximal: 0.95,
+    fingerIntermediate: 1.45,
+    fingerDistal: 0.85,
+    thumbOppose: 0.92,
+    thumbProximal: 0.5,
+    thumbIntermediate: 0.82,
+    thumbDistal: 0.52,
+  },
 };
+
+const FINGER_CURL_SCALE: Readonly<Record<Exclude<ReplayV4GripDigit, "thumb">, number>> = {
+  index: 0.92,
+  middle: 1,
+  ring: 1.05,
+  pinky: 1.1,
+};
+
+function gripHelperMeta(name: ReplayV4HandHelperName): {
+  readonly side: -1 | 1;
+  readonly digit: ReplayV4GripDigit | null;
+  readonly stage: ReplayV4GripHelperStage;
+} {
+  const side = name.includes("Left") ? -1 : 1;
+  if (name.endsWith("Fingers")) return { side, digit: null, stage: "cup" };
+  const digit = name.includes("Index")
+    ? "index"
+    : name.includes("Middle")
+      ? "middle"
+      : name.includes("Ring")
+        ? "ring"
+        : name.includes("Pinky")
+          ? "pinky"
+          : "thumb";
+  const stage = name.endsWith("Distal")
+    ? "distal"
+    : name.endsWith("Intermediate")
+      ? "intermediate"
+      : "proximal";
+  return { side, digit, stage };
+}
 
 /** Diagnostic overlay modes for isolation of defects (PROMPT 9). */
 export type ReplayV4DiagnosticMode =
@@ -1079,8 +1140,9 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private readonly handHelpers: readonly {
     readonly bone: THREE.Bone;
     readonly rest: THREE.Quaternion;
-    readonly kind: "fingers" | "thumb";
     readonly side: -1 | 1;
+    readonly digit: ReplayV4GripDigit | null;
+    readonly stage: ReplayV4GripHelperStage;
   }[];
 
   constructor(
@@ -1099,18 +1161,20 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     const helpers: {
       bone: THREE.Bone;
       rest: THREE.Quaternion;
-      kind: "fingers" | "thumb";
       side: -1 | 1;
+      digit: ReplayV4GripDigit | null;
+      stage: ReplayV4GripHelperStage;
     }[] = [];
     for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
       const bone = instance.skeleton.getBoneByName(name);
       if (!bone) continue;
-      const meta = HAND_HELPER_META[name];
+      const meta = gripHelperMeta(name);
       helpers.push({
         bone,
         rest: bone.quaternion.clone(),
-        kind: meta.kind,
         side: meta.side,
+        digit: meta.digit,
+        stage: meta.stage,
       });
     }
     this.handHelpers = helpers;
@@ -1260,6 +1324,12 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       for (const state of this.sampledChainRotations) {
         state.bone.quaternion.copy(state.quaternion);
       }
+      // Helpers are not animation tracks. Restore their bind rotations before
+      // every deterministic seek so switching to clip-only cannot retain the
+      // previous frame's closed grip.
+      for (const helper of this.handHelpers) {
+        helper.bone.quaternion.copy(helper.rest);
+      }
       this.options.instance.mixer.setTime(fraction * timing.clip.duration);
       for (const state of this.sampledChainRotations) {
         state.quaternion.copy(state.bone.quaternion);
@@ -1304,8 +1374,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     try {
       const mode = this.diagnosticMode;
 
-      const applyContact =
-        mode !== "clip-pelvis" && mode !== "clip-only";
+      const applyContact = mode !== "clip-pelvis" && mode !== "clip-only";
       if (applyContact) {
         // Visual isolation modes (and full) keep rigid contact so the hero
         // reads as equipment-connected while materials change.
@@ -1422,28 +1491,46 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     if (this.handHelpers.length === 0) return;
     const grip = GRIP_CURL_BY_SPORT[this.options.sport];
     for (const helper of this.handHelpers) {
-      // Flex fingers into the palm (+X) and slightly adduce them (+Z) so they
-      // wrap the equipment instead of staying open mitts. Thumb gets opposition.
-      if (helper.kind === "fingers") {
-        this.gripCurlQuaternion.setFromAxisAngle(this.gripAxis.set(1, 0, 0), grip.fingersFlex);
-        this.gripCurlSecondary.setFromAxisAngle(
-          this.gripAxis.set(0, 0, 1),
-          helper.side * grip.fingersCurl,
-        );
-      } else {
+      this.gripCurlQuaternion.identity();
+      this.gripCurlSecondary.identity();
+      if (helper.stage === "cup") {
+        // The stable v4*Fingers parent adds only a shallow palm cup. Individual
+        // phalanges below it perform the visible cylindrical enclosure.
         this.gripCurlQuaternion.setFromAxisAngle(
-          this.gripAxis.set(1, 0, 0),
-          helper.side * grip.thumbFlex,
-        );
-        this.gripCurlSecondary.setFromAxisAngle(
           this.gripAxis.set(0, 1, 0),
-          -helper.side * grip.thumbOppose,
+          -helper.side * grip.fingerCup,
         );
+      } else if (helper.digit === "thumb") {
+        const flex =
+          helper.stage === "proximal"
+            ? grip.thumbProximal
+            : helper.stage === "intermediate"
+              ? grip.thumbIntermediate
+              : grip.thumbDistal;
+        // Blender authors helper local +X across the palm and +Z along palm
+        // up. Negative X flexes into the handle; proximal Z opposition brings
+        // the thumb across the fingers instead of leaving it splayed.
+        this.gripCurlQuaternion.setFromAxisAngle(this.gripAxis.set(1, 0, 0), -flex);
+        if (helper.stage === "proximal") {
+          this.gripCurlSecondary.setFromAxisAngle(
+            this.gripAxis.set(0, 0, 1),
+            helper.side * grip.thumbOppose,
+          );
+        }
+      } else {
+        const scale = FINGER_CURL_SCALE[helper.digit!];
+        const flex =
+          helper.stage === "proximal"
+            ? grip.fingerProximal
+            : helper.stage === "intermediate"
+              ? grip.fingerIntermediate
+              : grip.fingerDistal;
+        this.gripCurlQuaternion.setFromAxisAngle(this.gripAxis.set(1, 0, 0), -flex * scale);
       }
       helper.bone.quaternion
         .copy(helper.rest)
-        .multiply(this.gripCurlQuaternion)
-        .multiply(this.gripCurlSecondary);
+        .multiply(this.gripCurlSecondary)
+        .multiply(this.gripCurlQuaternion);
     }
   }
 

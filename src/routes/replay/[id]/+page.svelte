@@ -294,7 +294,13 @@
 		const camera = page.url.searchParams.get('athleteCamera');
 		return {
 			qaCamera:
-				camera === 'front' ? 'athlete-front' : camera === 'close' ? 'athlete-close' : 'normal',
+				camera === 'front'
+					? 'athlete-front'
+					: camera === 'close'
+						? 'athlete-close'
+						: camera === 'grip'
+							? 'athlete-grip'
+							: 'normal',
 			showV4Skeleton: page.url.searchParams.get('athleteSkeleton') === '1'
 		} as const;
 	}

@@ -204,7 +204,7 @@ export interface Renderer3DOptions {
    * Capture-only framing used by the visual-QA harness. It is reachable only
    * through an explicit replay QA query, never through normal replay controls.
    */
-  qaCamera?: "normal" | "athlete-close" | "athlete-front";
+  qaCamera?: "normal" | "athlete-close" | "athlete-front" | "athlete-grip";
   /** Draw the live V4 skeleton over the real rendered athlete for QA evidence. */
   showV4Skeleton?: boolean;
 }
@@ -1905,13 +1905,13 @@ function makeRowerAvatar(
     oar.name = side < 0 ? "rower-oar-left" : "rower-oar-right";
     // 3.1 m shaft: ~0.85 m inboard of the pin, ~2.25 m outboard to the blade.
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.032, 0.038, 3.15, eqCylSegs),
+      new THREE.CylinderGeometry(0.018, 0.021, 3.15, eqCylSegs),
       equipmentLightMaterial,
     );
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
     shaft.position.x = side * 0.7;
     oar.add(shaft);
-    const grip = capsulePart(0.045, 0.28, equipmentGripMaterial, "x");
+    const grip = capsulePart(0.021, 0.24, equipmentGripMaterial, "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
     // A regulation-scale scull has roughly 0.8–0.9 m of inboard leverage. The
     // shorter placeholder forced a false choice between centreline hands and
@@ -2518,7 +2518,7 @@ function makeSkierAvatar(
     tipAnchor: THREE.Object3D;
   }> = [];
   for (const side of [-1, 1]) {
-    const shaftGeo = new THREE.CylinderGeometry(0.028, 0.028, 1, eqCylSegs);
+    const shaftGeo = new THREE.CylinderGeometry(0.012, 0.012, 1, eqCylSegs);
     shaftGeo.rotateX(Math.PI / 2); // unit shaft lives on +Z for endpoint placement
     const shaft = setReplayAssetSlot(
       new THREE.Mesh(shaftGeo, side < 0 ? farPoleMaterial : poleMaterial),
@@ -2526,7 +2526,7 @@ function makeSkierAvatar(
     );
     shaft.name = side < 0 ? "skierg-pole-shaft-left" : "skierg-pole-shaft-right";
     const grip = setReplayAssetSlot(
-      capsulePart(0.025, 0.18, gripMaterial, "z"),
+      capsulePart(0.018, 0.16, gripMaterial, "z"),
       "equipment:ski:pole-grip",
     );
     grip.name = side < 0 ? "skierg-pole-grip-left" : "skierg-pole-grip-right";
@@ -2795,11 +2795,6 @@ function makeSkierAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
-      // Palm wraps the pole shaft: fingers curl around the grip so the skier
-      // clutches the poles rather than open-handing them.
-      arm.hand.quaternion.copy(pole.shaft.quaternion);
-      arm.hand.rotateX(1.15);
-      arm.hand.rotateZ(arm.side * 0.2);
 
       // The solved hand and the basket are the endpoints of one rigid pole in
       // every phase. Neither planted nor recovering hardware may telescope.
@@ -2811,10 +2806,13 @@ function makeSkierAvatar(
       pole.basket.position.copy(tipLocalPoint).addScaledVector(groundUpLocal, 0.026);
       pole.basket.quaternion.copy(inverseUpperWorld);
       pole.tipAnchor.position.copy(tipLocalPoint);
-      // Mild grip orientation — V4 closes the grip position while limiting
-      // terminal rotation; avoid corkscrewing the procedural forearm too.
+      // Establish the terminal frame only after the current-frame rigid pole
+      // has been placed. The old mild assignment here overwrote the intended
+      // pole wrap above, leaving both procedural and V4 hands open against the
+      // grip even though their contact points were numerically coincident.
       arm.hand.quaternion.copy(pole.grip.quaternion);
-      arm.hand.rotateX(-0.25);
+      arm.hand.rotateX(1.15);
+      arm.hand.rotateZ(arm.side * 0.2);
     }
   };
 
@@ -3080,12 +3078,12 @@ function makeBikeAvatar(
 
   const handlebar = new THREE.Group();
   handlebar.name = "bike-handlebar";
-  const crossbar = capsulePart(0.03, 0.72, equipmentMaterial, "x");
+  const crossbar = capsulePart(0.02, 0.72, equipmentMaterial, "x");
   handlebar.add(crossbar);
   frameFallback.push(crossbar);
   const barContacts: Array<{ side: number; anchor: THREE.Object3D }> = [];
   for (const side of [-1, 1]) {
-    const grip = capsulePart(0.024, 0.22, equipmentMaterial, "z");
+    const grip = capsulePart(0.017, 0.22, equipmentMaterial, "z");
     grip.name = side < 0 ? "bike-handlebar-grip-left" : "bike-handlebar-grip-right";
     grip.position.set(side * 0.32, -0.02, 0.04);
     grip.rotation.x = -0.3;
@@ -3647,7 +3645,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly ghostRadius = 26;
 
   private readonly quality: RenderQuality;
-  private readonly qaCamera: "normal" | "athlete-close" | "athlete-front";
+  private readonly qaCamera: "normal" | "athlete-close" | "athlete-front" | "athlete-grip";
   private cfg: QualityConfig;
   private renderer: RendererLike;
   /**
@@ -3701,6 +3699,9 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly shadowDirection = new THREE.Vector3();
   private readonly shadowRight = new THREE.Vector3();
   private readonly shadowUp = new THREE.Vector3();
+  /** Query-gated grip camera scratch; inert during normal replay. */
+  private readonly qaGripFocus = new THREE.Vector3();
+  private readonly qaGripOther = new THREE.Vector3();
   private worldFill!: THREE.DirectionalLight;
   private readonly environmentMidGroup = new THREE.Group();
   private readonly environmentDetailGroup = new THREE.Group();
@@ -5994,8 +5995,29 @@ export class CourseRenderer3D implements ReplayRenderer {
     // pullback from the current horizontal lens. This treats the comparison as
     // a bounded pair instead of assuming a small lane-only offset. Scalars keep
     // this render-hot path allocation-free.
-    const focusX = state.ghost ? (p.x + this.ghostPlacement.x) * 0.5 : p.x;
-    const focusZ = state.ghost ? (p.z + this.ghostPlacement.z) * 0.5 : p.z;
+    const qaGrip = this.qaCamera === "athlete-grip" && !state.ghost;
+    if (qaGrip) {
+      this.liveAvatar.v4Targets.leftHand.getWorldPosition(this.qaGripFocus);
+      this.liveAvatar.v4Targets.rightHand.getWorldPosition(this.qaGripOther);
+      if (this.sport === "rower") {
+        // Sculling hands converge at the finish, so their midpoint sits behind
+        // the torso from every useful close-up. Track the starboard palm itself
+        // to make the finger/handle enclosure reviewable at catch and finish.
+        this.qaGripFocus.copy(this.qaGripOther);
+      } else {
+        this.qaGripFocus.add(this.qaGripOther).multiplyScalar(0.5);
+      }
+    }
+    const focusX = qaGrip
+      ? this.qaGripFocus.x
+      : state.ghost
+        ? (p.x + this.ghostPlacement.x) * 0.5
+        : p.x;
+    const focusZ = qaGrip
+      ? this.qaGripFocus.z
+      : state.ghost
+        ? (p.z + this.ghostPlacement.z) * 0.5
+        : p.z;
     const comparisonSpan = state.ghost
       ? Math.hypot(p.x - this.ghostPlacement.x, p.z - this.ghostPlacement.z)
       : 0;
@@ -6021,8 +6043,13 @@ export class CourseRenderer3D implements ReplayRenderer {
     // enough to review. The normal and diagnostic-close cameras keep their
     // broadcast framing unchanged.
     const qaFront = this.qaCamera === "athlete-front" && !state.ghost;
+    // Row grips finish against the front of the lower ribs and are completely
+    // occluded from a rear chase close-up. The grip diagnostic approaches only
+    // RowErg from ahead; SkiErg/BikeErg retain the rear-three-quarter view that
+    // shows both independent handles.
+    const qaGripFront = qaGrip && this.sport === "rower";
     const normalBack = baseBack + comparisonPullback;
-    const closeScale = qaFront ? 0.22 : qaClose ? 0.42 : 1;
+    const closeScale = qaGrip ? (qaGripFront ? 0.035 : 0.15) : qaFront ? 0.22 : qaClose ? 0.42 : 1;
     const back = normalBack * closeScale;
     const baseHeight = this.reduceMotion
       ? sportRig.height + 0.7
@@ -6031,11 +6058,19 @@ export class CourseRenderer3D implements ReplayRenderer {
     // from chest height. This branch is query-gated and never changes the
     // production chase view.
     const portraitAimY = sportRig.aimY + 0.28;
-    const height = qaFront
-      ? portraitAimY + 0.42
-      : (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);
-    const qaLateral = qaFront ? Math.min(0.16, lateral * 0.13) : lateral;
-    const qaAhead = qaFront ? 0 : ahead;
+    const height = qaGrip
+      ? this.qaGripFocus.y + (qaGripFront ? 0.55 : 0.24)
+      : qaFront
+        ? portraitAimY + 0.42
+        : (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);
+    const qaLateral = qaGrip
+      ? qaGripFront
+        ? Math.min(0.12, lateral * 0.07)
+        : Math.min(0.32, lateral * 0.14)
+      : qaFront
+        ? Math.min(0.16, lateral * 0.13)
+        : lateral;
+    const qaAhead = qaFront || qaGrip ? 0 : ahead;
     // A small live-lane bias keeps the vector non-zero when the two course
     // tangents cancel at half a lap. Adding it before normalization makes the
     // heading continuous as the gap crosses that point; a binary fallback
@@ -6058,17 +6093,22 @@ export class CourseRenderer3D implements ReplayRenderer {
       (state.ghost ? 2 : 0) |
       (this.reduceMotion ? 4 : 0) |
       (qaClose ? 8 : 0) |
-      (qaFront ? 16 : 0);
+      (qaFront ? 16 : 0) |
+      (qaGrip ? 32 : 0);
     const cameraLayoutChanged = cameraLayoutMode !== this.cameraLayoutMode;
     this.cameraLayoutMode = cameraLayoutMode;
     this.chase.set(
-      focusX + (qaFront ? focusTx : -focusTx) * back + rx * (qaFront ? -qaLateral : qaLateral),
+      focusX +
+        (qaFront || qaGripFront ? focusTx : -focusTx) * back +
+        rx * (qaFront || qaGripFront ? -qaLateral : qaLateral),
       height,
-      focusZ + (qaFront ? focusTz : -focusTz) * back + rz * (qaFront ? -qaLateral : qaLateral),
+      focusZ +
+        (qaFront || qaGripFront ? focusTz : -focusTz) * back +
+        rz * (qaFront || qaGripFront ? -qaLateral : qaLateral),
     );
     this.lookAt.set(
       focusX + focusTx * qaAhead,
-      qaFront ? portraitAimY : sportRig.aimY + (qaClose ? 0.12 : 0),
+      qaGrip ? this.qaGripFocus.y : qaFront ? portraitAimY : sportRig.aimY + (qaClose ? 0.12 : 0),
       focusZ + focusTz * qaAhead,
     );
     if (!this.cameraInit) {
@@ -6092,6 +6132,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     } else if (
       dLive !== 0 ||
       cameraLayoutChanged ||
+      qaClose ||
       this.camera.position.distanceToSquared(this.chase) > 9
     ) {
       // Paused renders are on-demand, so nothing would drive a gradual

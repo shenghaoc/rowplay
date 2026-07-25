@@ -102,6 +102,50 @@ function topologicallyOrderHelperBones(helperBones) {
   return ordered;
 }
 
+/**
+ * Blender's edit bones carry anatomical roll so their local axes follow each
+ * phalanx. The canonical semantic V4 skeleton intentionally uses translation-
+ * only rest joints. Reusing Blender-local helper transforms under that
+ * different parent frame moves pivots several centimetres away from the hand
+ * and turns a curl into exploding spikes. Preserve each authored helper world
+ * matrix, then derive the local transform against the canonical parent graph.
+ */
+function canonicalizeHelperBoneTransforms(helperBones) {
+  const worldByName = new Map();
+  for (const definition of V4_BONE_DEFINITIONS) {
+    const local = new THREE.Matrix4().makeTranslation(...definition.position);
+    const parentWorld = definition.parent ? worldByName.get(definition.parent) : null;
+    const world = parentWorld ? new THREE.Matrix4().multiplyMatrices(parentWorld, local) : local;
+    worldByName.set(definition.name, world);
+  }
+
+  return helperBones.map((helper) => {
+    const parentWorld = worldByName.get(helper.parent);
+    if (!parentWorld) {
+      throw new Error(`Blender V4 helper ${helper.name} has no canonical parent transform`);
+    }
+    const world = new THREE.Matrix4().fromArray(helper.sourceWorldMatrix);
+    const local = new THREE.Matrix4().copy(parentWorld).invert().multiply(world);
+    const position = new THREE.Vector3();
+    const rotation = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    local.decompose(position, rotation, scale);
+    if (
+      ![...position.toArray(), ...rotation.toArray(), ...scale.toArray()].every(Number.isFinite)
+    ) {
+      throw new Error(`Blender V4 helper ${helper.name} canonical transform is invalid`);
+    }
+    worldByName.set(helper.name, world);
+    return {
+      name: helper.name,
+      parent: helper.parent,
+      position: position.toArray(),
+      rotationQuaternion: rotation.normalize().toArray(),
+      scale: scale.toArray(),
+    };
+  });
+}
+
 function canonicalizeTriangleIndex(geometry) {
   const index = geometry.getIndex();
   if (!index || index.count % 3 !== 0) {
@@ -125,6 +169,7 @@ function canonicalizeTriangleIndex(geometry) {
 }
 
 function remapBlenderGeometry(sourceMesh) {
+  sourceMesh.updateWorldMatrix(true, true);
   const geometry = sourceMesh.geometry.clone();
   if (!geometry.index) throw new Error("Blender V4 source must remain indexed");
   // UVs are deliberately retained even though the portable GLB owns no bitmap
@@ -178,10 +223,23 @@ function remapBlenderGeometry(sourceMesh) {
       if (![...position, ...rotationQuaternion, ...scale].every(Number.isFinite)) {
         throw new Error(`Blender V4 helper ${bone.name} has a non-finite rest transform`);
       }
-      return { name: bone.name, parent: parent.name, position, rotationQuaternion, scale };
+      const sourceWorldMatrix = bone.matrixWorld.toArray();
+      if (!sourceWorldMatrix.every(Number.isFinite)) {
+        throw new Error(`Blender V4 helper ${bone.name} has a non-finite world transform`);
+      }
+      return {
+        name: bone.name,
+        parent: parent.name,
+        position,
+        rotationQuaternion,
+        scale,
+        sourceWorldMatrix,
+      };
     });
 
-  const orderedHelperBones = topologicallyOrderHelperBones(helperBones);
+  const orderedHelperBones = canonicalizeHelperBoneTransforms(
+    topologicallyOrderHelperBones(helperBones),
+  );
   // Semantic joints remain the stable leading section of the final Skeleton;
   // visual helpers follow in deterministic hierarchy order so skin indices can
   // be remapped without exposing helpers to replay motion code.

@@ -142,7 +142,13 @@ async function openReplay({
     { timeout: 30_000 },
   );
   const expectedQaCamera =
-    camera === "front" ? "athlete-front" : camera === "close" ? "athlete-close" : "normal";
+    camera === "front"
+      ? "athlete-front"
+      : camera === "close"
+        ? "athlete-close"
+        : camera === "grip"
+          ? "athlete-grip"
+          : "normal";
   const effectiveQaCamera = await stage.getAttribute("data-replay-qa-camera");
   if (effectiveQaCamera !== expectedQaCamera) {
     throw new Error(
@@ -393,6 +399,14 @@ for (const pose of POSES) {
       skeleton: true,
     });
   }
+}
+
+for (const pose of [
+  { name: "grip-row-catch", sport: SPORTS.row, seconds: 0.05 },
+  { name: "grip-ski-loaded-press", sport: SPORTS.ski, seconds: 0.5 },
+  { name: "grip-bike-pedal-top", sport: SPORTS.bike, seconds: 0.05 },
+]) {
+  if (shouldCapture(pose.name)) await captureStill({ ...pose, camera: "grip" });
 }
 
 for (const quality of ["low", "medium", "high", "ultra"]) {

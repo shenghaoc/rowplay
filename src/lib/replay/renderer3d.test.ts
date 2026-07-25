@@ -1173,10 +1173,9 @@ describe("CourseRenderer3D", () => {
             `${side} elbow travels rearward during visible draw at ${cycle}`,
           ).toBeLessThan(shoulder.z - 0.012);
           // Hands finish at the lower chest / grip — not behind the hips.
-          expect(
-            handLocal.z,
-            `${side} hand stays on chest-level grip at ${cycle}`,
-          ).toBeGreaterThan(elbow.z - 0.02);
+          expect(handLocal.z, `${side} hand stays on chest-level grip at ${cycle}`).toBeGreaterThan(
+            elbow.z - 0.02,
+          );
         }
         if (graph.body.armDraw.value < 0.03) {
           expect(straightness, `${side} long arm before/after draw at ${cycle}`).toBeGreaterThan(

@@ -63,15 +63,54 @@ BONE_DEFINITIONS = [
 
 BONE_NAMES = [definition[0] for definition in BONE_DEFINITIONS]
 
-# Visual-only deformation helpers. Clips never target these; the Node seal and
-# web runtime inherit their pose from the parent hand, then apply a sport grip
-# curl after contact. Keep names stable — they are production skin contracts.
-HELPER_BONE_NAMES = [
-    "v4LeftFingers",
-    "v4LeftThumb",
-    "v4RightFingers",
-    "v4RightThumb",
-]
+# The Human Base face sets split every digit into anatomical sections. Preserve
+# that information in the production skin instead of rotating all four fingers
+# as one rigid mitten. `v4*Fingers` remains the stable palm-cup parent and
+# `v4*Thumb` remains the proximal thumb joint; the phalanx helpers below are
+# visual-only and are never targeted by the three semantic sport clips.
+GRIP_DIGIT_FACE_SETS = {
+    "Left": {
+        "Index": (88, 89, 90, 91),
+        "Middle": (92, 93, 94, 95),
+        "Ring": (96, 97, 98, 99),
+        "Pinky": (100, 101, 102, 103),
+        "Thumb": (84, 85, 86, 87),
+    },
+    "Right": {
+        "Index": (76, 77, 78, 79),
+        "Middle": (72, 73, 74, 75),
+        "Ring": (68, 69, 70, 71),
+        "Pinky": (64, 65, 66, 67),
+        "Thumb": (80, 81, 82, 83),
+    },
+}
+
+
+def grip_digit_bone_names(side_name: str, digit_name: str) -> tuple[str, str, str]:
+    if digit_name == "Thumb":
+        return (
+            f"v4{side_name}Thumb",
+            f"v4{side_name}ThumbIntermediate",
+            f"v4{side_name}ThumbDistal",
+        )
+    prefix = f"v4{side_name}{digit_name}"
+    return (f"{prefix}Proximal", f"{prefix}Intermediate", f"{prefix}Distal")
+
+
+HELPER_BONE_NAMES = []
+for helper_side_name in ("Left", "Right"):
+    HELPER_BONE_NAMES.append(f"v4{helper_side_name}Fingers")
+    for helper_digit_name in ("Index", "Middle", "Pinky", "Ring", "Thumb"):
+        HELPER_BONE_NAMES.extend(
+            grip_digit_bone_names(helper_side_name, helper_digit_name)
+        )
+
+GRIP_FACE_SET_BINDINGS = {
+    face_set: (side_name, digit_name, segment)
+    for side_name, digits in GRIP_DIGIT_FACE_SETS.items()
+    for digit_name, face_sets in digits.items()
+    for segment, face_set in enumerate(face_sets)
+}
 
 CONTACT_OFFSETS = {
     "v4LeftHand": (-0.08, -0.01, 0.035),
@@ -307,7 +346,9 @@ def hand_helper_landmarks(
     return wrist, contact, forward, palm_right, palm_up, knuckle
 
 
-def create_armature(bones: dict[str, Vector]) -> bpy.types.Object:
+def create_armature(
+    bones: dict[str, Vector], grip_centers: dict[int, Vector]
+) -> bpy.types.Object:
     armature_data = bpy.data.armatures.new("RowPlayV4Armature")
     armature = bpy.data.objects.new("RowPlayV4Armature", armature_data)
     bpy.context.scene.collection.objects.link(armature)
@@ -345,34 +386,67 @@ def create_armature(bones: dict[str, Vector]) -> bpy.types.Object:
             bone.parent = edit_bones[parent]
             bone.use_connect = False
 
-    # Visual finger helpers: knuckle/thumb pivots for grip-weighted skinning.
+    # Visual grip helpers. Each source phalanx gets its own joint so fingers can
+    # form a cylindrical wrap instead of swinging as one straight fan.
     for side_name in ("Left", "Right"):
         hand_name = f"v4{side_name}Hand"
-        _wrist, _contact, forward, palm_right, palm_up, knuckle = hand_helper_landmarks(
+        _wrist, _contact, _forward, _palm_right, palm_up, _knuckle = hand_helper_landmarks(
             bones, side_name
         )
         fingers_name = f"v4{side_name}Fingers"
-        thumb_name = f"v4{side_name}Thumb"
+        digit_points: dict[str, tuple[Vector, Vector, Vector, Vector]] = {}
+        for digit_name, face_sets in GRIP_DIGIT_FACE_SETS[side_name].items():
+            try:
+                digit_points[digit_name] = tuple(
+                    grip_centers[face_set] for face_set in face_sets
+                )
+            except KeyError as error:
+                raise RuntimeError(
+                    f"reviewed human base is missing {side_name} {digit_name} face set "
+                    f"{error.args[0]}"
+                ) from error
+
+        finger_bases = []
+        finger_first_joints = []
+        for digit_name in ("Index", "Middle", "Ring", "Pinky"):
+            first, second, _third, _tip = digit_points[digit_name]
+            finger_bases.append(first + (first - second) * 0.62)
+            finger_first_joints.append(first.lerp(second, 0.54))
+
         fingers = armature_data.edit_bones.new(fingers_name)
-        fingers.head = to_blender(knuckle)
-        fingers.tail = to_blender(knuckle + forward * 0.055 - palm_up * 0.022)
+        fingers.head = to_blender(
+            sum(finger_bases, Vector((0.0, 0.0, 0.0))) / len(finger_bases)
+        )
+        fingers.tail = to_blender(
+            sum(finger_first_joints, Vector((0.0, 0.0, 0.0)))
+            / len(finger_first_joints)
+        )
         fingers.parent = edit_bones[hand_name]
         fingers.use_connect = False
         fingers.use_deform = True
+        fingers.align_roll(to_blender(palm_up))
         edit_bones[fingers_name] = fingers
 
-        thumb_base = bones[hand_name].lerp(
-            bones[hand_name] + Vector(CONTACT_OFFSETS[hand_name]), 0.28
-        ) - palm_right * 0.034 - palm_up * 0.004
-        thumb = armature_data.edit_bones.new(thumb_name)
-        thumb.head = to_blender(thumb_base)
-        thumb.tail = to_blender(
-            thumb_base + forward * 0.03 - palm_right * 0.034 - palm_up * 0.016
-        )
-        thumb.parent = edit_bones[hand_name]
-        thumb.use_connect = False
-        thumb.use_deform = True
-        edit_bones[thumb_name] = thumb
+        # Blender exports sibling joints in this stable lexical order.
+        for digit_name in ("Index", "Middle", "Pinky", "Ring", "Thumb"):
+            first, second, third, tip = digit_points[digit_name]
+            base = first + (first - second) * 0.62
+            first_joint = first.lerp(second, 0.54)
+            second_joint = second.lerp(third, 0.56)
+            fingertip = tip + (tip - third) * 0.16
+            names = grip_digit_bone_names(side_name, digit_name)
+            points = (base, first_joint, second_joint, fingertip)
+            parent_name = hand_name if digit_name == "Thumb" else fingers_name
+            for index, name in enumerate(names):
+                bone = armature_data.edit_bones.new(name)
+                bone.head = to_blender(points[index])
+                bone.tail = to_blender(points[index + 1])
+                bone.parent = edit_bones[parent_name]
+                bone.use_connect = index > 0
+                bone.use_deform = True
+                bone.align_roll(to_blender(palm_up))
+                edit_bones[name] = bone
+                parent_name = name
 
     bpy.ops.object.mode_set(mode="OBJECT")
     return armature
@@ -806,10 +880,26 @@ def base_vertex_weights(face_set: int, point: Vector) -> dict[str, float]:
 
     if left_hand or right_hand:
         side_name = "Left" if left_hand else "Right"
-        helper = f"v4{side_name}Thumb" if face_set in ({84, 85, 86, 87} if left_hand else {80, 81, 82, 83}) else f"v4{side_name}Fingers"
         if face_set in ({10} if left_hand else {9}):
             return {f"v4{side_name}Hand": 1.0}
-        return {f"v4{side_name}Hand": 0.28, helper: 0.72}
+        binding = GRIP_FACE_SET_BINDINGS.get(face_set)
+        if binding is None:
+            return {f"v4{side_name}Hand": 1.0}
+        _bound_side, digit_name, segment = binding
+        proximal, middle, distal = grip_digit_bone_names(side_name, digit_name)
+        if segment == 0:
+            if digit_name == "Thumb":
+                return {f"v4{side_name}Hand": 0.18, proximal: 0.82}
+            return {
+                f"v4{side_name}Hand": 0.18,
+                f"v4{side_name}Fingers": 0.12,
+                proximal: 0.7,
+            }
+        if segment == 1:
+            return {proximal: 0.15, middle: 0.85}
+        if segment == 2:
+            return {middle: 0.15, distal: 0.85}
+        return {distal: 1.0}
 
     if face_set in {23, 24}:
         side_name = "Left" if face_set == 23 else "Right"
@@ -970,7 +1060,7 @@ def add_base_eye_details(surface: bpy.types.Object) -> None:
 def create_base_production_surface(
     source: pathlib.Path,
     bones: dict[str, Vector],
-) -> bpy.types.Object:
+) -> tuple[bpy.types.Object, dict[int, Vector]]:
     """Retarget and skin the reviewed CC0 human base to the canonical V4 rig."""
 
     surface, eyes = load_base_objects(source)
@@ -987,6 +1077,9 @@ def create_base_production_surface(
 
     face_sets = source_vertex_face_sets(surface.data)
     chains = base_retarget_chains(bones)
+    grip_points: dict[int, list[Vector]] = {
+        face_set: [] for face_set in GRIP_FACE_SET_BINDINGS
+    }
     for vertex, face_set in zip(surface.data.vertices, face_sets, strict=True):
         original = vertex.co.copy()
         mapped = retarget_base_vertex(original, face_set, chains)
@@ -1003,6 +1096,8 @@ def create_base_production_surface(
             rowplay.z += 0.04 * seat_channel
             mapped = to_blender(rowplay)
         vertex.co = mapped
+        if face_set in grip_points:
+            grip_points[face_set].append(from_blender(mapped))
 
         weights = base_vertex_weights(face_set, mapped)
         if seat_channel > 0.08:
@@ -1053,7 +1148,12 @@ def create_base_production_surface(
     bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.028)
     bpy.ops.mesh.normals_make_consistent(inside=False)
     bpy.ops.object.mode_set(mode="OBJECT")
-    return surface
+    grip_centers = {}
+    for face_set, points in grip_points.items():
+        if not points:
+            raise RuntimeError(f"reviewed human base grip face set {face_set} is empty")
+        grip_centers[face_set] = sum(points, Vector((0.0, 0.0, 0.0))) / len(points)
+    return surface, grip_centers
 
 
 
@@ -1174,8 +1274,8 @@ def main() -> None:
 
     base_mesh = options.base_mesh.resolve()
     bones = global_bone_positions()
-    armature = create_armature(bones)
-    surface = create_base_production_surface(base_mesh, bones)
+    surface, grip_centers = create_base_production_surface(base_mesh, bones)
+    armature = create_armature(bones, grip_centers)
     create_material(surface)
     bind_surface(surface, armature)
 

@@ -3,7 +3,6 @@ import * as THREE from "three";
 import type { Sport } from "../types";
 import {
   REPLAY_V4_CLIP_NAMES,
-  REPLAY_V4_BONE_NAMES,
   type ReplayV4AthleteInstance,
   type ReplayV4BoneName,
   type ReplayV4ClipName,
@@ -144,12 +143,30 @@ function createInstance(options?: {
     allBones.push(bone);
   }
   if (options?.withHandHelpers) {
+    const helperBones = new Map<string, THREE.Bone>(
+      allBones.map((bone) => [bone.name, bone] as const),
+    );
+    const helperParentName = (name: (typeof REPLAY_V4_HAND_HELPER_NAMES)[number]): string => {
+      const hand = name.includes("Left") ? "v4LeftHand" : "v4RightHand";
+      if (name.endsWith("Fingers") || /^v4(?:Left|Right)Thumb$/.test(name)) return hand;
+      if (name.endsWith("Proximal")) {
+        return name.includes("Left") ? "v4LeftFingers" : "v4RightFingers";
+      }
+      if (name.endsWith("Intermediate")) {
+        return name.includes("Thumb")
+          ? name.replace(/ThumbIntermediate$/, "Thumb")
+          : name.replace(/Intermediate$/, "Proximal");
+      }
+      return name.replace(/Distal$/, "Intermediate");
+    };
     for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
       const helper = new THREE.Bone();
       helper.name = name;
       helper.position.set(name.includes("Thumb") ? 0.02 : 0.04, 0, 0.01);
-      const parentName = name.includes("Left") ? "v4LeftHand" : "v4RightHand";
-      bones[parentName]!.add(helper);
+      const parent = helperBones.get(helperParentName(name));
+      if (!parent) throw new Error(`Test grip helper parent is missing for ${name}`);
+      parent.add(helper);
+      helperBones.set(name, helper);
       allBones.push(helper);
     }
   }
@@ -820,19 +837,22 @@ describe("V4 motion determinism and fallback safety", () => {
         );
         const cycleFrac = driveEnd[sport] * 0.9;
         // Align pelvis from the clip, place reachable targets, then full contact+curl.
-        expect(controller?.update({ phase: 0, cycleFrac, driveFrac: driveEnd[sport] })).toBe(
-          true,
-        );
+        expect(controller?.update({ phase: 0, cycleFrac, driveFrac: driveEnd[sport] })).toBe(true);
         placeTargetsNearClipEffectors(lane);
         controller?.setDiagnosticMode("full");
-        expect(controller?.update({ phase: 0, cycleFrac, driveFrac: driveEnd[sport] })).toBe(
-          true,
-        );
+        expect(controller?.update({ phase: 0, cycleFrac, driveFrac: driveEnd[sport] })).toBe(true);
         for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
           const bone = instance.skeleton.getBoneByName(name)!;
           const before = rest.get(name)!;
           const delta = bone.quaternion.angleTo(before);
-          expect(delta, `${sport} ${name} curl after contact`).toBeGreaterThan(0.5);
+          const minimumCurl = name.endsWith("Fingers")
+            ? 0.04
+            : name.includes("Thumb")
+              ? 0.4
+              : name.endsWith("Intermediate")
+                ? 1.05
+                : 0.55;
+          expect(delta, `${sport} ${name} curl after contact`).toBeGreaterThan(minimumCurl);
           expect(bone.quaternion.toArray().every(Number.isFinite)).toBe(true);
         }
         // Palm contact residual must still close after curl.
@@ -852,7 +872,7 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
-  it("leaves finger helpers uncurled in clip-only mode", () => {
+  it("restores finger helpers when switching from a closed grip to clip-only", () => {
     const lane = createLane();
     disposeLane(lane);
     lane.instance = createInstance({ withHandHelpers: true });
@@ -862,7 +882,7 @@ describe("V4 motion determinism and fallback safety", () => {
       parent: lane.parent,
       instance: lane.instance,
       targets: lane.targets,
-      diagnosticMode: "clip-only",
+      diagnosticMode: "full",
     });
     try {
       const rest = new Map(
@@ -871,6 +891,14 @@ describe("V4 motion determinism and fallback safety", () => {
           return [name, bone.quaternion.clone()] as const;
         }),
       );
+      expect(controller?.update({ phase: 0, cycleFrac: 0.35, driveFrac: 0.38 })).toBe(true);
+      expect(
+        REPLAY_V4_HAND_HELPER_NAMES.some((name) => {
+          const bone = lane.instance.skeleton.getBoneByName(name)!;
+          return bone.quaternion.angleTo(rest.get(name)!) > 0.25;
+        }),
+      ).toBe(true);
+      controller?.setDiagnosticMode("clip-only");
       expect(controller?.update({ phase: 0, cycleFrac: 0.35, driveFrac: 0.38 })).toBe(true);
       for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
         const bone = lane.instance.skeleton.getBoneByName(name)!;
@@ -897,9 +925,7 @@ describe("V4 motion determinism and fallback safety", () => {
       try {
         const driveFrac = sport === "skierg" ? 0.34 : 0.5;
         // prepare only — orientHands requires a prepared pose before constrain.
-        expect(controller?.prepare({ phase: 0, cycleFrac: driveFrac * 0.6, driveFrac })).toBe(
-          true,
-        );
+        expect(controller?.prepare({ phase: 0, cycleFrac: driveFrac * 0.6, driveFrac })).toBe(true);
         placeTargetsNearClipEffectors(lane);
         lane.scene.updateMatrixWorld(true);
         const residualsBefore = new Map<"left" | "right", number>();
@@ -927,9 +953,7 @@ describe("V4 motion determinism and fallback safety", () => {
           );
           if (before > THREE.MathUtils.degToRad(1.5)) {
             expect(before - residual, `${sport} ${side} soft-orient progress`).toBeGreaterThan(0);
-            expect(before - residual).toBeLessThanOrEqual(
-              THREE.MathUtils.degToRad(8) + 1e-3,
-            );
+            expect(before - residual).toBeLessThanOrEqual(THREE.MathUtils.degToRad(8) + 1e-3);
           }
         }
         expect(controller?.constrain()).toBe(true);
@@ -967,7 +991,9 @@ describe("V4 motion determinism and fallback safety", () => {
       ) as THREE.MeshPhysicalMaterial;
       expect(material.userData.replayV4SurfaceDetailResolution).toBe(512);
       expect(material.map).toBeTruthy();
-      expect(material.map!.image?.width ?? material.map!.source?.data?.width).toBe(512);
+      const mapImage = material.map!.image as { readonly width?: number } | undefined;
+      const mapSource = material.map!.source.data as { readonly width?: number } | undefined;
+      expect(mapImage?.width ?? mapSource?.width).toBe(512);
       // Second install at Ultra reuses the shared map identity.
       const ghost = createInstance({ withUv: true });
       lane.parent.add(ghost.root);
@@ -990,7 +1016,6 @@ describe("V4 motion determinism and fallback safety", () => {
         ghost.skeleton.dispose();
         ghost.mesh.geometry.dispose();
       }
-
     } finally {
       disposeLane(lane, controller);
     }

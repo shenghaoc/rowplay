@@ -66,6 +66,12 @@ losing trustworthy sport timing or equipment contact.
 5. WHEN the athlete is shown THEN the result SHALL remain a generic character
    and SHALL NOT claim measured biomechanics, body shape,
    clothing, appearance, or likeness.
+6. WHEN production V4 hands meet RowErg, SkiErg, or BikeErg grips THEN
+   individually weighted finger segments and an opposing thumb SHALL close
+   around each human-scale handle after the authoritative palm contact solve.
+   The visual grip SHALL preserve the existing equipment targets and SHALL NOT
+   leave mitten-like hands, open floating fingers, or visible handle
+   penetration.
 
 ### Requirement 3: Reliable loading and fallback
 

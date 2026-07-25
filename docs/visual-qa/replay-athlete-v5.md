@@ -75,15 +75,17 @@ artifacts (do not hand-edit digests).
 
 | Artifact                           |      Bytes | SHA-256                                                            |
 | ---------------------------------- | ---------: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.glb`           |  5,059,340 | `a9641ad0d443ccf83fe81d5458e9d8b32712e3eecebaebeba403d9df8a9c0b91` |
-| `rowplay-athlete-v4.usdz`          | 11,800,036 | `a51e0a6cffaafc2b88f7edae341629206f25c05e64c154704793d749d0f73f88` |
-| `rowplay-athlete-v4.contract.json` |     12,727 | `c692216c542b634191321db5d509b2510dfbc4c27734b6b10a979c7405f418c6` |
+| `rowplay-athlete-v4.glb`           |  5,069,284 | `d435338500c15ee50ee4343a28f821779be179987ebd38819f578bd0fbf55bc7` |
+| `rowplay-athlete-v4.usdz`          | 11,830,173 | `1af7475805bfb7d9ac79d5af902ec11c6c957a8cc408c51f6cbdd7a56c7908e2` |
+| `rowplay-athlete-v4.contract.json` |     27,593 | `4388abafdd7d7abe987359ceacd5e655416121e4a748f053da497d3d16729190` |
 
 The GLB contains one indexed `SkinnedMesh`, 64,200 vertices, 106,256 triangles,
 28 deliberate topology components, one continuous human core, one skin, one
-portable vertex-colour material, 19 semantic bones, and four visual-only helper
-bones (`v4LeftFingers`, `v4LeftThumb`, `v4RightFingers`, `v4RightThumb`). The
-validator rejects a body assembled from disconnected limb islands.
+portable vertex-colour material, 19 semantic bones, and 32 visual-only grip
+helpers. Each hand has one palm cup, four three-segment finger chains, and one
+three-segment opposing-thumb chain. The validator rejects a body assembled
+from disconnected limb islands, helper hierarchy drift, or a helper without
+meaningful checked skin influence.
 
 ## Materials and quality tiers
 
@@ -176,11 +178,15 @@ structural inspection only, not a substitute for the in-app renderer.
 ## Contact and clipping acceptance
 
 - RowErg catch and finish keep both elbows outside the torso while both palms
-  remain on their scull grips.
+  remain on their scull grips; individual phalanges and opposing thumbs close
+  around the slim handles.
 - BikeErg pedal top and bottom keep the saddle behind the pelvis rather than
   drawing through the body; both soles remain on the opposed pedals.
 - SkiErg high reach and loaded press retain both pole contacts without opening
-  the shoulder or armpit surface.
+  the shoulder or armpit surface; both hands visibly enclose the cylindrical
+  grips.
+- BikeErg palms remain on the existing hood contacts while curled fingers close
+  below the cockpit bar instead of floating open or merging into the handle.
 - Live and ghost athletes retain complete opaque bodies with independent
   skeletons and material instances.
 - Dense-cycle renderer tests cover elbow/forearm/palm clearance, saddle draw
@@ -192,8 +198,8 @@ structural inspection only, not a substitute for the in-app renderer.
 `src/lib/replay/motionGraph.ts`, `sportKinematics.ts`, `figurePose.ts`,
 `strokeModel.ts`, and the Canvas renderer are untouched. The V4 clip names,
 phase landmarks, and drive ends remain `0.38` for RowErg, `0.34` for SkiErg,
-and `0.5` for BikeErg. The four helper bones derive from the semantic hierarchy
-and are not animation targets.
+and `0.5` for BikeErg. The 32 visual-only grip helpers derive from the semantic
+hand hierarchy, carry no clip tracks, and are not replay-motion targets.
 
 The V4 loader remains an optional hero path above V3, procedural 3D, and Canvas
 fallbacks. No second motion system, equipment authority, environment path, or
@@ -216,6 +222,8 @@ git diff --check
 
 - [x] Source-backed continuous human anatomy replaces the assembled mannequin
 - [x] Human head, face, eyes, hair, hands, feet, and joint volume survive all three clips
+- [x] Individual fingers and opposing thumbs enclose all three machine grips
+      without changing authoritative palm targets
 - [x] RowErg elbow/body and BikeErg pelvis/saddle overlap are removed
 - [x] Low, Medium, High, and Ultra have materially progressive athlete quality
 - [x] Hardware WebGPU/Ultra is recorded separately from headless High fallback

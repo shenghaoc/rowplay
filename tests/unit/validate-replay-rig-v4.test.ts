@@ -6,7 +6,11 @@ import { promisify } from "node:util";
 import { describe, expect, it } from "vite-plus/test";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
-import { disposeV4AthleteAsset, createV4AthleteAsset } from "../../src/lib/replay/rigV4";
+import {
+  disposeV4AthleteAsset,
+  createV4AthleteAsset,
+  V4_HAND_HELPER_NAMES,
+} from "../../src/lib/replay/rigV4";
 
 const execFileAsync = promisify(execFile);
 
@@ -36,25 +40,19 @@ function installFileReaderShim(): void {
 }
 
 describe("V4 GLB build validator", () => {
-  it("validates the checked-in production athlete GLB with four finger helpers", async () => {
+  it("validates the checked-in production athlete GLB with articulated finger chains", async () => {
     const { stdout } = await execFileAsync(process.execPath, [
       "scripts/validate-replay-rig-v4.mjs",
       "static/replay-assets/rowplay-athlete-v4.glb",
     ]);
-    expect(stdout).toContain("23 bones (4 helpers)");
+    expect(stdout).toContain("51 bones (32 helpers)");
     expect(stdout).toContain("3 clips");
     // Production grip helpers must be present by exact name.
-    const contract = await import(
-      "../../static/replay-assets/rowplay-athlete-v4.contract.json",
-      { with: { type: "json" } }
-    );
+    const contract = await import("../../static/replay-assets/rowplay-athlete-v4.contract.json", {
+      with: { type: "json" },
+    });
     const helpers = contract.default?.bones?.helperNames ?? contract.bones?.helperNames;
-    expect(helpers).toEqual([
-      "v4LeftFingers",
-      "v4LeftThumb",
-      "v4RightFingers",
-      "v4RightThumb",
-    ]);
+    expect(helpers).toEqual([...V4_HAND_HELPER_NAMES]);
   });
 
   it("accepts a skinned visual helper while retaining semantic-only animation", async () => {

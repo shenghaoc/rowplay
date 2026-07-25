@@ -50,17 +50,44 @@ const REPLAY_V4_SEMANTIC_BONE_NAMES = new Set<string>(REPLAY_V4_BONE_NAMES);
  */
 export const REPLAY_V4_HAND_HELPER_NAMES = [
   "v4LeftFingers",
+  "v4LeftIndexProximal",
+  "v4LeftIndexIntermediate",
+  "v4LeftIndexDistal",
+  "v4LeftMiddleProximal",
+  "v4LeftMiddleIntermediate",
+  "v4LeftMiddleDistal",
+  "v4LeftPinkyProximal",
+  "v4LeftPinkyIntermediate",
+  "v4LeftPinkyDistal",
+  "v4LeftRingProximal",
+  "v4LeftRingIntermediate",
+  "v4LeftRingDistal",
   "v4LeftThumb",
+  "v4LeftThumbIntermediate",
+  "v4LeftThumbDistal",
   "v4RightFingers",
+  "v4RightIndexProximal",
+  "v4RightIndexIntermediate",
+  "v4RightIndexDistal",
+  "v4RightMiddleProximal",
+  "v4RightMiddleIntermediate",
+  "v4RightMiddleDistal",
+  "v4RightPinkyProximal",
+  "v4RightPinkyIntermediate",
+  "v4RightPinkyDistal",
+  "v4RightRingProximal",
+  "v4RightRingIntermediate",
+  "v4RightRingDistal",
   "v4RightThumb",
+  "v4RightThumbIntermediate",
+  "v4RightThumbDistal",
 ] as const;
 
 export type ReplayV4HandHelperName = (typeof REPLAY_V4_HAND_HELPER_NAMES)[number];
 
 /** Compile-time bridge: authoring sports/bones must stay equal to runtime Sport/bones. */
-type AssertEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
-  ? true
-  : never;
+type AssertEqual<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : never;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type _ReplayV4BoneNamesMatchAuthoring = AssertEqual<
   ReplayV4BoneName,

@@ -7,7 +7,7 @@ rig. The checked-in `rowplay-rigs-v3.glb` is a texture-free library of reusable
 fallback athlete shells and composite sport-equipment templates. The production
 `rowplay-athlete-v4.glb` supplies one generic `SkinnedMesh` with a continuous
 reviewed anatomical body, deliberate eye/hair/footwear detail islands, a stable
-19-bone semantic skeleton, optional visual helper joints for deformation, and
+19-bone semantic skeleton, 32 visual-only articulated grip helpers, and
 deterministic RowErg, SkiErg, and BikeErg clips. Its exact topology-component
 count is sealed as release inventory, not treated as an art-quality requirement.
 The V3 asset is repository-authored; V4 adapts the documented CC0 Blender Human
@@ -58,6 +58,15 @@ one-second clips. It round-trips as one indexed `SkinnedMesh`/primitive with
 skin, fabric, shorts, trim, hair, and footwear regions. Palm/sole contact
 offsets remain stored on terminal bones and validated from the checked binary.
 Both authoring scripts, `rigV4.ts`, and the GLB are production contracts.
+
+The grip helpers are derived from the reviewed hand face sets rather than
+inventing a second hand model. Each side has a shallow palm-cup helper, four
+three-segment finger chains, and one three-segment opposing-thumb chain. The
+helpers carry bounded skin influence, inherit the terminal semantic hand, and
+are excluded from authored clip tracks. Runtime applies their sport-specific
+closure only after the authoritative palm contact solve, so RowErg sculls,
+SkiErg grips, and BikeErg hoods remain fixed while the visible fingers wrap
+around them.
 
 The filename is versioned. An incompatible slot or coordinate-contract change
 requires a new versioned filename and corresponding loader contract.

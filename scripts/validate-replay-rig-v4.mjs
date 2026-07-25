@@ -32,6 +32,7 @@ const CORE_CONTINUITY_BONES = [
 const CORE_WEIGHT_THRESHOLD = 0.08;
 const CORE_CONNECTED_FRACTION = 0.6;
 const MIN_CORE_INFLUENCED_VERTICES = 80;
+const MIN_GRIP_HELPER_INFLUENCED_VERTICES = 18;
 
 const BONE_NAMES = [
   "v4Hips",
@@ -67,6 +68,21 @@ const CONTACTS = new Map([
   ["v4LeftFoot", { role: "left-foot", offset: [0, -0.055, 0.13] }],
   ["v4RightFoot", { role: "right-foot", offset: [0, -0.055, 0.13] }],
 ]);
+
+function expectedGripHelperParent(name) {
+  const match = /^v4(Left|Right)(.+)$/.exec(name);
+  if (!match) return null;
+  const [, side, suffix] = match;
+  if (suffix === "Fingers" || suffix === "Thumb") return `v4${side}Hand`;
+  if (suffix === "ThumbIntermediate") return `v4${side}Thumb`;
+  if (suffix === "ThumbDistal") return `v4${side}ThumbIntermediate`;
+  const digit = /^(Index|Middle|Pinky|Ring)(Proximal|Intermediate|Distal)$/.exec(suffix);
+  if (!digit) return null;
+  const [, digitName, stage] = digit;
+  if (stage === "Proximal") return `v4${side}Fingers`;
+  if (stage === "Intermediate") return `v4${side}${digitName}Proximal`;
+  return `v4${side}${digitName}Intermediate`;
+}
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message);
@@ -378,9 +394,17 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET, options = {}) {
         jointNodeIndexes.has(parentIndex),
         `V4 helper ${node.name} must be parented to a skin joint`,
       );
+      const parentName = document.nodes[parentIndex].name;
+      const expectedGripParent = expectedGripHelperParent(node.name);
+      if (expectedGripParent) {
+        invariant(
+          parentName === expectedGripParent,
+          `V4 grip helper ${node.name} must be parented to ${expectedGripParent}`,
+        );
+      }
       return {
         name: node.name,
-        parent: document.nodes[parentIndex].name,
+        parent: parentName,
         restLocalTransform: restLocalTransform(node, `${node.name} helper`),
       };
     });
@@ -471,6 +495,27 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET, options = {}) {
         Math.abs(weightSum - 1) <= 1e-5,
       `V4 vertex ${vertex} has invalid or non-normalized skin weights`,
     );
+  }
+  for (const helper of helpers) {
+    if (!expectedGripHelperParent(helper.name)) continue;
+    const helperIndex = loadedBoneNames.indexOf(helper.name);
+    let influencedVertices = 0;
+    for (let vertex = 0; vertex < vertexCount; vertex++) {
+      for (let influence = 0; influence < joints.values[vertex].length; influence++) {
+        if (
+          joints.values[vertex][influence] === helperIndex &&
+          weights.values[vertex][influence] >= CORE_WEIGHT_THRESHOLD
+        ) {
+          influencedVertices++;
+          break;
+        }
+      }
+    }
+    invariant(
+      influencedVertices >= MIN_GRIP_HELPER_INFLUENCED_VERTICES,
+      `V4 grip helper ${helper.name} has too little weighted surface (${influencedVertices} vertices)`,
+    );
+    helper.influencedVertices = influencedVertices;
   }
 
   invariant(document.materials?.length === 1, "V4 must use one physical material");

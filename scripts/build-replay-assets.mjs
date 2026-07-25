@@ -838,13 +838,13 @@ async function buildRowingAssemblyParts() {
 }
 
 function rowOarRigParts() {
-  const shaft = tubeGeometryBetween([-0.61, 0, 0], [2.14, 0, 0], 0.032, 16, 0.82);
+  const shaft = tubeGeometryBetween([-0.61, 0, 0], [2.14, 0, 0], 0.02, 16, 0.82);
   const grip = loftGeometry(
     [
-      { p: -0.78, rx: 0.031, rz: 0.031 },
-      { p: -0.68, rx: 0.045, rz: 0.042 },
-      { p: -0.5, rx: 0.047, rz: 0.043 },
-      { p: -0.42, rx: 0.034, rz: 0.033 },
+      { p: -0.78, rx: 0.018, rz: 0.018 },
+      { p: -0.68, rx: 0.023, rz: 0.021 },
+      { p: -0.5, rx: 0.024, rz: 0.022 },
+      { p: -0.42, rx: 0.018, rz: 0.018 },
     ],
     14,
     "x",
@@ -858,7 +858,7 @@ function rowOarRigParts() {
     rotation: [0, 0, Math.PI / 2],
     position: [1.57, 0, 0],
   });
-  const handleCap = ellipsoidGeometry([0.04, 0.04, 0.04], 14, 10, [-0.79, 0, 0]);
+  const handleCap = ellipsoidGeometry([0.022, 0.022, 0.022], 14, 10, [-0.79, 0, 0]);
   return [
     { name: "shaft", geometry: shaft, materialRole: "equipment-light" },
     { name: "grip", geometry: grip, materialRole: "equipment-grip" },
@@ -1019,10 +1019,10 @@ function bikeFrameAssemblyParts() {
   const leftGripContact = [-0.32, 1.23, 0.39];
   const rightGripContact = [0.32, 1.23, 0.39];
   const cockpit = composeGeometry(
-    tubeGeometryBetween(headTop, barCentre, 0.028, 12),
-    tubeGeometryBetween([-0.36, 1.25, 0.35], [0.36, 1.25, 0.35], 0.03, 16),
-    tubeGeometryBetween([-0.34, 1.25, 0.35], leftGripContact, 0.022, 12),
-    tubeGeometryBetween([0.34, 1.25, 0.35], rightGripContact, 0.022, 12),
+    tubeGeometryBetween(headTop, barCentre, 0.02, 12),
+    tubeGeometryBetween([-0.36, 1.25, 0.35], [0.36, 1.25, 0.35], 0.02, 16),
+    tubeGeometryBetween([-0.34, 1.25, 0.35], leftGripContact, 0.016, 12),
+    tubeGeometryBetween([0.34, 1.25, 0.35], rightGripContact, 0.016, 12),
   );
   // The sculpted hoods and their lever blades meet the existing hand anchors
   // exactly. They enrich the visible control hardware without becoming a new
@@ -1035,8 +1035,8 @@ function bikeFrameAssemblyParts() {
   ]) {
     const barEnd = [side * 0.34, 1.25, 0.35];
     brakeHoodForms.push(
-      tubeGeometryBetween(barEnd, contact, 0.031, 14, 0.82),
-      ellipsoidGeometry([0.043, 0.052, 0.06], 18, 12, contact),
+      tubeGeometryBetween(barEnd, contact, 0.022, 14, 0.82),
+      ellipsoidGeometry([0.032, 0.038, 0.045], 18, 12, contact),
     );
     brakeLeverForms.push(
       ridgeGeometry(

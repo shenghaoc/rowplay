@@ -18,9 +18,7 @@ import {
   type V4ContactBoneName,
   type V4Sport,
 } from "./rigV4";
-import contractJson from "../../../static/replay-assets/rowplay-athlete-v4.contract.json" with {
-  type: "json",
-};
+import contractJson from "../../../static/replay-assets/rowplay-athlete-v4.contract.json" with { type: "json" };
 
 /** GLTFExporter uses the browser FileReader surface, including in Node tests. */
 function installFileReaderShim(): void {
@@ -264,7 +262,7 @@ describe("V4 production skinned athlete", () => {
     expect(sealedDriveEnds).toEqual(V4_DRIVE_END);
     expect(contractJson.bones.helperNames).toEqual([...V4_HAND_HELPER_NAMES]);
     expect(contractJson.bones.helperCount).toBe(V4_HAND_HELPER_NAMES.length);
-    expect(contractJson.bones.totalCount).toBe(23);
+    expect(contractJson.bones.totalCount).toBe(V4_BONE_NAMES.length + V4_HAND_HELPER_NAMES.length);
     expect(contractJson.bones.totalCount).toBe(
       contractJson.bones.semanticCount + contractJson.bones.helperCount,
     );

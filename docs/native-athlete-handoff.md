@@ -34,7 +34,7 @@ contract identity separately:
 
 | Artifact                           |  Bytes | SHA-256                                                            |
 | ---------------------------------- | -----: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.contract.json` | 12,727 | `c692216c542b634191321db5d509b2510dfbc4c27734b6b10a979c7405f418c6` |
+| `rowplay-athlete-v4.contract.json` | 27,593 | `4388abafdd7d7abe987359ceacd5e655416121e4a748f053da497d3d16729190` |
 
 After an asset or contract rebuild, run `vp run build:replay-rig-v4-contract`
 and update this contract row in the same reviewed change.
@@ -67,12 +67,15 @@ Summary:
   but carries reviewed `TEXCOORD_0` coordinates so the web runtime can add
   deterministic per-instance surface maps at Medium and above: 128px at
   Medium, 256px at High, and 512px at Ultra.
-- Bones: stable 19-bone V4 semantic order; the checked contract records any
-  optional visual helper bones and their rest transforms. Helpers may influence
-  deformation but inherit semantic motion and are never replay-motion targets.
+- Bones: stable 19-bone V4 semantic order plus 32 checked visual-only grip
+  helpers. Each hand has a palm cup, four three-segment finger chains, and a
+  three-segment opposing-thumb chain. Helpers carry reviewed skin influence,
+  inherit semantic motion, and are never replay-motion targets.
 - Clips: RowErg, SkiErg, BikeErg normalized one-second technique clips
 - Contacts: left/right palms and soles only; runtime equipment constraints
   remain authoritative
+- Grip closure: runtime articulates helpers only after palm contact, with
+  separate RowErg scull, SkiErg grip, and BikeErg hood poses
 - Visual QA: `docs/visual-qa/replay-athlete-v5.md`
 
 ## Build and validation
