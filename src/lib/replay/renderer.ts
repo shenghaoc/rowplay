@@ -2780,6 +2780,21 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.closePath();
     ctx.fill();
 
+    // A low city edge ties the outdoor circuit to the dusk horizon instead of
+    // leaving a generic hill silhouette behind an unrelated grandstand.
+    ctx.fillStyle = withAlpha(palette.ridgeNear, 0.88);
+    for (let index = 0; index < 12; index++) {
+      const x = w * 0.49 + index * Math.max(15, w * 0.043);
+      const width = Math.max(11, w * (0.027 + (index % 3) * 0.004));
+      const height = 13 + (index % 5) * 5;
+      ctx.fillRect(x, horizon - height, width, height + 4);
+      if (index % 2 === 0) {
+        ctx.fillStyle = withAlpha(palette.structureLight, 0.34);
+        ctx.fillRect(x + width * 0.25, horizon - height + 5, width * 0.5, 1.5);
+        ctx.fillStyle = withAlpha(palette.ridgeNear, 0.88);
+      }
+    }
+
     // Premium track pavilion with a floating roof and lit hospitality boxes.
     const standX = Math.max(16, w * 0.12);
     const standW = Math.min(w * 0.46, 390);
@@ -2842,6 +2857,35 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.fillStyle = asphalt;
     ctx.fillRect(0, horizon, w, h - horizon);
 
+    // Infield planting, service apron and track curb create a continuous venue
+    // transition rather than one asphalt rectangle beneath floating stands.
+    ctx.fillStyle = palette.foliageNear;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 18);
+    ctx.quadraticCurveTo(w * 0.25, horizon + 8, w * 0.5, horizon + 22);
+    ctx.quadraticCurveTo(w * 0.76, horizon + 35, w, horizon + 17);
+    ctx.lineTo(w, horizon + 31);
+    ctx.quadraticCurveTo(w * 0.74, horizon + 49, w * 0.49, horizon + 36);
+    ctx.quadraticCurveTo(w * 0.24, horizon + 23, 0, horizon + 34);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = withAlpha(palette.safetyLight, 0.58);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 34);
+    ctx.quadraticCurveTo(w * 0.25, horizon + 23, w * 0.5, horizon + 36);
+    ctx.quadraticCurveTo(w * 0.75, horizon + 49, w, horizon + 31);
+    ctx.stroke();
+
+    ctx.fillStyle = withAlpha(palette.structure, 0.32);
+    ctx.beginPath();
+    ctx.moveTo(w * 0.69, horizon + 19);
+    ctx.lineTo(w, horizon + 24);
+    ctx.lineTo(w, horizon + 38);
+    ctx.lineTo(w * 0.67, horizon + 31);
+    ctx.closePath();
+    ctx.fill();
+
     // Faint track lights bloom — dusk venues glow from the floodlight beams.
     // Two wide, soft pools of light spilling onto the course from the poles.
     for (const [bx, bw, ba] of [
@@ -2874,6 +2918,13 @@ export class CourseRenderer implements ReplayRenderer {
       ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.5);
       ctx.lineWidth = 0.75;
       ctx.strokeRect(x, horizon + 3, 42, 10);
+    }
+
+    // Warm embedded reflectors establish the lap edge at dusk.
+    ctx.fillStyle = withAlpha(palette.structureLight, 0.72);
+    for (let x = -28 + barrierShift * 0.42; x < w + 28; x += 28) {
+      roundRect(ctx, x, horizon + 19, 7, 1.5, 0.7);
+      ctx.fill();
     }
 
     // Fine aggregate lines — sparse and deterministic; distance scrubbing

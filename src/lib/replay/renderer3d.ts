@@ -732,11 +732,12 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     apron: themed(0xf7fafb, 0xd5e0e5),
   },
   bike: {
-    // Dusk velodrome: violet zenith, warm horizon glow, practical floodlights.
-    skyZenith: themed(0x1a2848, 0x0e1628),
-    skyHorizon: themed(0xd27a57, 0x874e58),
-    skyNadir: themed(0x383544, 0x101622),
-    fog: themed(0x5c5562, 0x1e2230),
+    // Dusk circuit: cobalt air, a narrow warm horizon and charcoal venue
+    // materials remain one controlled palette from skyline to asphalt.
+    skyZenith: themed(0x27466b, 0x0b1729),
+    skyHorizon: themed(0xe39364, 0x80505a),
+    skyNadir: themed(0x4a4244, 0x111925),
+    fog: themed(0x74656a, 0x222834),
     fogNear: 62,
     fogFar: 175,
     hemisphereSky: themed(0xb8cbe2, 0x5a6f8a),
@@ -747,12 +748,12 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     fill: themed(0x96b8ea, 0x4d6796),
     fillIntensity: 0.68,
     exposure: 1.12,
-    farSilhouette: themed(0x2c3644, 0x0e131c),
-    midSilhouette: themed(0x303948, 0x1f2634),
-    venueStructure: themed(0x323e4e, 0x1c2432),
-    venueAccent: themed(0xf4a45a, 0xffb46b),
-    infield: themed(0x1a302e, 0x101e1c),
-    apron: themed(0x423e3c, 0x282d35),
+    farSilhouette: themed(0x46505c, 0x111923),
+    midSilhouette: themed(0x313b49, 0x202a38),
+    venueStructure: themed(0x354454, 0x1b2635),
+    venueAccent: themed(0xf29b55, 0xffb468),
+    infield: themed(0x203b35, 0x10251f),
+    apron: themed(0x484441, 0x292e36),
   },
 };
 
@@ -5772,6 +5773,124 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(crystals);
   }
 
+  /** A low urban edge makes the arena belong to its dusk skyline. */
+  private addBikeCityscape(group: THREE.Group): void {
+    const city = new THREE.Group();
+    city.name = "environment:bike:city-edge";
+    const count = [7, 11, 16, 22][this.cfg.environmentDetail];
+    const buildingMat = this.environmentStandardMat(
+      "environment:bike:city-building-material",
+      this.environment.farSilhouette,
+      { roughness: 0.9, metalness: 0.08, fog: true },
+    );
+    const windowMat = this.environmentBasicMat(
+      "environment:bike:city-window-material",
+      themed(0xf7bd73, 0xffc574),
+      { transparent: true, opacity: 0.52, fog: true },
+    );
+    for (let index = 0; index < count; index++) {
+      const sample = sectorSample(index, count, [
+        { start: degrees(-18), span: degrees(48) },
+        { start: degrees(156), span: degrees(58) },
+      ]);
+      const height = 3.8 + (index % 5) * 1.15;
+      const width = 2.8 + (index % 4) * 0.72;
+      const building = new THREE.Mesh(
+        this.track(roundedVenueBlockGeometry(width, height, 2.4, 0.16)),
+        buildingMat,
+      );
+      building.name = `environment:bike:city-building-${index + 1}`;
+      const radius = 75 + (index % 3) * 2.4;
+      building.position.set(
+        Math.sin(sample.angle) * radius,
+        height * 0.5,
+        Math.cos(sample.angle) * radius,
+      );
+      building.rotation.y = sample.angle;
+      city.add(building);
+
+      if (this.cfg.environmentDetail >= 1 && index % 2 === 0) {
+        const window = new THREE.Mesh(
+          this.track(roundedVenueBlockGeometry(width * 0.62, 0.22, 0.05, 0.04)),
+          windowMat,
+        );
+        window.name = `environment:bike:city-window-${index + 1}`;
+        window.position.copy(building.position);
+        window.position.y = height * 0.58;
+        window.rotation.y = sample.angle;
+        window.translateZ(-1.23);
+        city.add(window);
+      }
+    }
+    group.add(city);
+  }
+
+  /**
+   * Adjacent BikeErg tiers add different venue ideas: a service lane at
+   * Medium, roof trusses at High, and embedded track reflectors at Ultra.
+   */
+  private addBikeVenueTier(group: THREE.Group, outerR: number): void {
+    if (this.cfg.environmentDetail === 0) return;
+    const serviceMat = this.environmentStandardMat(
+      "environment:bike:service-lane-material",
+      themed(0x6b6863, 0x343941),
+      { roughness: 0.86, metalness: 0.04 },
+    );
+    const serviceLane = this.makeHorizontalArc(
+      "environment:bike:service-lane",
+      outerR + 1.4,
+      outerR + 4.5,
+      0.045,
+      { start: degrees(205), span: degrees(74) },
+      serviceMat,
+    );
+    group.add(serviceLane);
+
+    if (this.cfg.environmentDetail < 2) return;
+    const trusses = new THREE.Group();
+    trusses.name = "environment:bike:roof-trusses";
+    const trussGeo = this.track(roundedVenueBlockGeometry(0.16, 0.16, 6.2, 0.035));
+    const trussMat = this.environmentStandardMat(
+      "environment:bike:roof-truss-material",
+      themed(0x82909b, 0x4b5968),
+      { roughness: 0.42, metalness: 0.62 },
+    );
+    for (const [sectorIndex, sector] of BIKE_STAND_SECTORS.entries()) {
+      for (let index = 0; index < 5; index++) {
+        const angle = sector.start + sector.span * ((index + 0.5) / 5);
+        const truss = new THREE.Mesh(trussGeo, trussMat);
+        truss.name = `environment:bike:roof-truss-${sectorIndex + 1}-${index + 1}`;
+        truss.position.set(Math.sin(angle) * 56.6, 5.7, Math.cos(angle) * 56.6);
+        truss.rotation.y = angle;
+        truss.rotation.x = -0.12;
+        trusses.add(truss);
+      }
+    }
+    group.add(trusses);
+
+    if (this.cfg.environmentDetail < 3) return;
+    const reflectorGeo = this.track(new THREE.CircleGeometry(0.09, 10));
+    const reflectorMat = this.environmentBasicMat(
+      "environment:bike:track-reflector-material",
+      themed(0xffcb78, 0xffbd5f),
+      { transparent: true, opacity: 0.76, depthWrite: false, fog: true },
+    );
+    const reflectors = this.trackInstanced(new THREE.InstancedMesh(reflectorGeo, reflectorMat, 56));
+    reflectors.name = "environment:bike:track-reflectors";
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3(1.8, 0.6, 1);
+    for (let index = 0; index < reflectors.count; index++) {
+      const angle = (index / reflectors.count) * FULL_CIRCLE;
+      position.set(Math.sin(angle) * (outerR + 0.72), 0.11, Math.cos(angle) * (outerR + 0.72));
+      matrix.compose(position, quaternion, scale);
+      reflectors.setMatrixAt(index, matrix);
+    }
+    reflectors.instanceMatrix.needsUpdate = true;
+    group.add(reflectors);
+  }
+
   private buildEnvironment(innerR: number, outerR: number): void {
     this.buildSky();
     this.environmentMidGroup.name = `environment:${this.sport}:midground`;
@@ -5900,6 +6019,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         SKI_LANDMARKS.slice(0, this.cfg.environmentDetail >= 1 ? 2 : 1),
       );
     } else {
+      this.addBikeCityscape(this.environmentMidGroup);
       const wallMat = this.environmentBasicMat(
         "environment:bike:arena-wall-material",
         this.environment.venueStructure,
@@ -5994,6 +6114,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         }
       }
       this.environmentMidGroup.add(stands);
+      this.addBikeVenueTier(this.environmentMidGroup, outerR);
       this.addFloodlights(
         this.environmentDetailGroup,
         BIKE_FLOODLIGHTS,

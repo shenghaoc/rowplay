@@ -26,6 +26,9 @@ generic background. RowErg therefore composes a continuous river valley from
 water through reeds, banks, woodland, docks, and regatta buildings. SkiErg
 composes one winter bowl from groomed track through snow shoulders, race
 fencing, forest, lodge forms, and blue-shadowed alpine terrain.
+BikeErg completes the same system with a cobalt-and-amber dusk skyline, urban
+edge, planted infield, service apron, grandstands, roof structure, practical
+lighting, barriers, and asphalt lap details.
 
 ## Environment art direction
 

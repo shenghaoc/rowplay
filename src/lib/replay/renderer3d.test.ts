@@ -582,6 +582,7 @@ describe("CourseRenderer3D", () => {
       ),
     ).toBeLessThan(TAU * 0.5);
     expect(getScene(bike).getObjectByName("environment:bike:scoreboard")).toBeDefined();
+    expect(getScene(bike).getObjectByName("environment:bike:city-edge")).toBeDefined();
 
     rower.destroy();
     skier.destroy();
@@ -695,6 +696,20 @@ describe("CourseRenderer3D", () => {
       snowMaterials[3].scene.getObjectByName("environment:skierg:snow-crystals"),
     ).toBeDefined();
     for (const { renderer } of snowMaterials) renderer.destroy();
+
+    const bikeScenes = qualities.map((quality) => {
+      const renderer = new CourseRenderer3D(makeHost(), quality, "bike");
+      return { renderer, scene: getScene(renderer) };
+    });
+    expect(bikeScenes[0].scene.getObjectByName("environment:bike:service-lane")).toBeUndefined();
+    expect(bikeScenes[1].scene.getObjectByName("environment:bike:service-lane")).toBeDefined();
+    expect(bikeScenes[1].scene.getObjectByName("environment:bike:roof-trusses")).toBeUndefined();
+    expect(bikeScenes[2].scene.getObjectByName("environment:bike:roof-trusses")).toBeDefined();
+    expect(
+      bikeScenes[2].scene.getObjectByName("environment:bike:track-reflectors"),
+    ).toBeUndefined();
+    expect(bikeScenes[3].scene.getObjectByName("environment:bike:track-reflectors")).toBeDefined();
+    for (const { renderer } of bikeScenes) renderer.destroy();
   });
 
   it("re-themes the complete environment rather than recoloring only the athlete", () => {

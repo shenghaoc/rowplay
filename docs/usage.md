@@ -217,7 +217,9 @@ Both views use complete sport-specific illustrative environments, not one
 generic floor with different colors. RowErg joins layered water to river banks,
 wetland reeds, woodland, docks, and regatta architecture; SkiErg joins groomed,
 blue-shadowed snow to a winter valley bowl, race fencing, snowbanks, evergreen,
-alpine, and Nordic-venue forms; BikeErg uses a deliberate
+alpine, and Nordic-venue forms; BikeErg joins its asphalt circuit to a planted
+infield, service apron, tiered stands, roof structure, floodlights, urban dusk
+skyline, and embedded lap reflectors rather than using a generic
 asphalt or velodrome-style circuit with curbs, barriers, infield, and built-venue
 or floodlight cues. The 2D view composes sky, horizon, middle distance, course,
 and foreground layers. The 3D view adds atmospheric depth, a readable horizon,
