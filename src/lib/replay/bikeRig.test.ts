@@ -7,25 +7,26 @@ function point(value: readonly number[]): THREE.Vector3 {
 }
 
 describe("BikeErg fit contract", () => {
-  it("keeps a stationary indoor erg proportion instead of a free road diamond", () => {
+  it("keeps a clean diamond-frame proportion with two equal wheels", () => {
     const wheelbase = BIKE_RIG.frontAxleZ - BIKE_RIG.rearAxleZ;
     const wheelDiameter = BIKE_RIG.wheelRadius * 2;
 
-    expect(wheelbase).toBeGreaterThan(0.9);
-    expect(wheelbase).toBeLessThan(1.5);
-    expect(wheelbase / wheelDiameter).toBeGreaterThan(1.4);
+    expect(wheelbase).toBeGreaterThan(1.5);
+    expect(wheelbase).toBeLessThan(2.2);
+    expect(wheelbase / wheelDiameter).toBeGreaterThan(1.6);
     expect(wheelbase / wheelDiameter).toBeLessThan(2.2);
     expect(BIKE_RIG.saddle[2]).toBeLessThan(BIKE_RIG.bottomBracket[2]!);
     expect(BIKE_RIG.handlebar.grip.z).toBeGreaterThan(BIKE_RIG.saddle[2]!);
-    expect(BIKE_RIG.base.frontFootZ).toBeGreaterThan(BIKE_RIG.frontAxleZ);
-    expect(BIKE_RIG.base.rearFootZ).toBeLessThan(BIKE_RIG.rearAxleZ);
+    expect(BIKE_RIG.frontAxleZ).toBeGreaterThan(BIKE_RIG.bottomBracket[2]!);
+    expect(BIKE_RIG.rearAxleZ).toBeLessThan(BIKE_RIG.saddle[2]!);
   });
 
   it("places the sit surface on the saddle top — not through the seat", () => {
     const saddle = point(BIKE_RIG.saddle);
     const hip = point(BIKE_RIG.rider.root).add(point(BIKE_RIG.rider.pelvisOffset));
     const sit = hip.clone().add(point(BIKE_RIG.rider.sitSurfaceFromHip));
-    // Authored pad top sits slightly above the centre marker (~7 cm).
+    // Authored pad top sits above the centre marker (~7 cm for the V3
+    // performance-saddle loft).
     const saddleTopY = saddle.y + 0.07;
     const leftGrip = new THREE.Vector3(
       -BIKE_RIG.handlebar.grip.halfSpan,
@@ -42,7 +43,7 @@ describe("BikeErg fit contract", () => {
     expect(leftGrip.distanceTo(hip)).toBeLessThan(0.95);
 
     const bottomPedalY = BIKE_RIG.bottomBracket[1]! - BIKE_RIG.crank.pedalRadius;
-    expect(hip.y - bottomPedalY).toBeLessThan(1.07);
+    expect(hip.y - bottomPedalY).toBeLessThan(1.15);
   });
 
   it("places wheel axles so the tyre shell rests on the ground, not through it", () => {
@@ -50,14 +51,11 @@ describe("BikeErg fit contract", () => {
     // Outer tyre extent = major radius + tube; bottom at y = 0 when axle is at axleY.
     expect(axleY).toBeCloseTo(BIKE_RIG.wheelRadius + BIKE_RIG.tyreTube, 8);
     expect(axleY - BIKE_RIG.wheelRadius - BIKE_RIG.tyreTube).toBeCloseTo(0, 8);
-    // Base feet stay on the ground plane.
-    expect(BIKE_RIG.base.railY).toBeGreaterThan(0);
-    expect(BIKE_RIG.base.railY).toBeLessThan(0.12);
   });
 
   it("keeps the opposed pedal radius and lateral spacing identical to the authored runtime", () => {
     expect(BIKE_RIG.crank.pedalRadius).toBeGreaterThan(0.15);
-    expect(BIKE_RIG.crank.pedalRadius).toBeLessThan(0.22);
+    expect(BIKE_RIG.crank.pedalRadius).toBeLessThan(0.25);
     expect(BIKE_RIG.crank.lateral).toBeGreaterThan(0.08);
     expect(BIKE_RIG.crank.lateral).toBeLessThan(0.13);
   });

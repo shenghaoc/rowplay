@@ -2948,144 +2948,94 @@ function makeBikeAvatar(
   const wheelR = BIKE_RIG.wheelRadius;
   const tyreTube = BIKE_RIG.tyreTube;
   // Axle height includes tyre tube so the outer shell rests on y = 0 — never
-  // through the ground (穿模). A BikeErg has one front flywheel; the rear
-  // carries stabiliser feet only — no second wheel.
+  // through the ground (穿模).  Bike has two equal wheels; both touch the
+  // ground plane without clipping through it.
   const wheelAxleY = bikeWheelAxleY(BIKE_RIG);
-  // Front flywheel (the only wheel on a stationary indoor erg).
-  const frontWheel = new THREE.Group();
-  frontWheel.name = "bike-wheel-front";
-  const frontTyre = setReplayAssetSlot(
-    new THREE.Mesh(
-      new THREE.TorusGeometry(wheelR, tyreTube, eqCylSegs, eqCylSegs * 2),
-      tyreMaterial,
-    ),
-    "equipment:bike:tyre",
-  );
-  frontTyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
-  frontWheel.add(frontTyre);
-  const wheelFallback: THREE.Object3D[] = [frontTyre];
-  // Three paired round spokes preserve visible cadence without the two thick
-  // box crosses that made the bicycle read as a toy diagram at rest.
-  for (const [index, angle] of [0, Math.PI / 3, (Math.PI * 2) / 3].entries()) {
-    const spoke = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.011, 0.011, wheelR * 1.72, eqCylSegs),
-      spokeMaterial,
+  const wheels: THREE.Group[] = [];
+  for (const z of [BIKE_RIG.frontAxleZ, BIKE_RIG.rearAxleZ]) {
+    const wheel = new THREE.Group();
+    wheel.name = z > 0 ? "bike-wheel-front" : "bike-wheel-rear";
+    const tyre = setReplayAssetSlot(
+      new THREE.Mesh(
+        new THREE.TorusGeometry(wheelR, tyreTube, eqCylSegs, eqCylSegs * 2),
+        tyreMaterial,
+      ),
+      "equipment:bike:tyre",
     );
-    spoke.name = `bike-wheel-front-spoke-${index}`;
-    spoke.rotation.x = angle;
-    frontWheel.add(spoke);
-    wheelFallback.push(spoke);
+    tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
+    wheel.add(tyre);
+    const wheelFallback: THREE.Object3D[] = [tyre];
+    for (const [index, angle] of [0, Math.PI / 3, (Math.PI * 2) / 3].entries()) {
+      const spoke = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.011, 0.011, wheelR * 1.72, eqCylSegs),
+        spokeMaterial,
+      );
+      spoke.name = `${wheel.name}-spoke-${index}`;
+      spoke.rotation.x = angle;
+      wheel.add(spoke);
+      wheelFallback.push(spoke);
+    }
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.1, 12), hubMaterial);
+    hub.name = `${wheel.name}-hub`;
+    hub.rotation.z = Math.PI / 2;
+    wheel.add(hub);
+    wheelFallback.push(hub);
+    const wheelVisual = new THREE.Group();
+    wheelVisual.name = z > 0 ? "bike-wheel-visual-front" : "bike-wheel-visual-rear";
+    wheel.add(wheelVisual);
+    setReplayAssetTemplateAnchor(wheelVisual, "equipment:bike:wheel-assembly", {
+      fallback: wheelFallback,
+    });
+    wheel.position.set(0, wheelAxleY, z);
+    group.add(wheel);
+    wheels.push(wheel);
   }
-  const frontHub = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.1, 12), hubMaterial);
-  frontHub.name = "bike-wheel-front-hub";
-  frontHub.rotation.z = Math.PI / 2;
-  frontWheel.add(frontHub);
-  wheelFallback.push(frontHub);
-  const wheelVisual = new THREE.Group();
-  wheelVisual.name = "bike-wheel-visual-front";
-  frontWheel.add(wheelVisual);
-  setReplayAssetTemplateAnchor(wheelVisual, "equipment:bike:wheel-assembly", {
-    fallback: wheelFallback,
-  });
-  frontWheel.position.set(0, wheelAxleY, BIKE_RIG.frontAxleZ);
-  group.add(frontWheel);
-  const wheels = [frontWheel];
 
-  // Stationary BikeErg-form fallback: longitudinal rail, seat upright, mast,
-  // and BB drop. V3 authored equipment replaces these shells when available.
-  const bikePoint = (point: readonly number[]) => ({
-    x: point[0] ?? 0,
-    y: point[1] ?? 0,
-    z: point[2] ?? 0,
-  });
-  const bottomBracket = bikePoint(BIKE_RIG.bottomBracket);
-  const seatCluster = bikePoint(BIKE_RIG.seatCluster);
-  const headBottom = bikePoint(BIKE_RIG.headBottom);
-  const headTop = bikePoint(BIKE_RIG.headTop);
-  const railY = BIKE_RIG.base.railY + 0.08;
+  // Clean diamond frame — down tube, seat tube, top tube, and head tube form
+  // the main triangle.  Paired chain- and seat-stays complete the rear end.
+  const bottomBracket = { x: 0, y: wheelAxleY, z: -0.05 };
+  const seatCluster = { x: 0, y: BIKE_RIG.seatCluster[1] ?? 0, z: BIKE_RIG.seatCluster[2] ?? -0.4 };
+  const headBottom = { x: 0, y: BIKE_RIG.headBottom[1] ?? 0, z: BIKE_RIG.headBottom[2] ?? 0.42 };
+  const headTop = { x: 0, y: BIKE_RIG.headTop[1] ?? 0, z: BIKE_RIG.headTop[2] ?? 0.5 };
   const frameFallback: THREE.Object3D[] = [];
-  const seatRail = accentPart(
-    tubeBetween(
-      "bike-seat-rail",
-      { x: 0, y: railY, z: BIKE_RIG.rearAxleZ + 0.08 },
-      { x: 0, y: railY, z: BIKE_RIG.frontAxleZ - 0.12 },
-      0.038,
-      accentMat(),
-    ),
+  const downTube = accentPart(
+    tubeBetween("bike-down-tube", bottomBracket, headBottom, 0.055, accentMat()),
   );
-  setReplayAssetSlot(seatRail, "equipment:bike:frame-tube");
+  setReplayAssetSlot(downTube, "equipment:bike:frame-tube");
   const seatTube = accentPart(
-    tubeBetween(
-      "bike-seat-tube",
-      { x: 0, y: railY, z: seatCluster.z },
-      seatCluster,
-      0.042,
-      accentMat(),
-    ),
+    tubeBetween("bike-seat-tube", bottomBracket, seatCluster, 0.052, accentMat()),
   );
   setReplayAssetSlot(seatTube, "equipment:bike:frame-tube");
-  const mast = accentPart(
-    tubeBetween("bike-mast", { x: 0, y: railY, z: headBottom.z }, headBottom, 0.045, accentMat()),
+  const topTube = accentPart(
+    tubeBetween("bike-top-tube", seatCluster, headTop, 0.048, accentMat()),
   );
-  setReplayAssetSlot(mast, "equipment:bike:frame-tube");
+  setReplayAssetSlot(topTube, "equipment:bike:frame-tube");
   const headTube = accentPart(
-    tubeBetween("bike-head-tube", headBottom, headTop, 0.04, accentMat()),
+    tubeBetween("bike-head-tube", headBottom, headTop, 0.06, accentMat()),
   );
   setReplayAssetSlot(headTube, "equipment:bike:frame-tube");
-  const bbDrop = accentPart(
-    tubeBetween(
-      "bike-bb-drop",
-      { x: 0, y: railY, z: bottomBracket.z },
-      bottomBracket,
-      0.036,
-      accentMat(),
-    ),
-  );
-  setReplayAssetSlot(bbDrop, "equipment:bike:frame-tube");
-  group.add(seatRail, seatTube, mast, headTube, bbDrop);
-  frameFallback.push(seatRail, seatTube, mast, headTube, bbDrop);
-  // Fixed base feet so the erg does not read as a free road bicycle.
+  group.add(downTube, seatTube, topTube, headTube);
+  frameFallback.push(downTube, seatTube, topTube, headTube);
   for (const side of [-1, 1]) {
-    const rearFoot = accentPart(
-      tubeBetween(
-        "bike-rear-foot",
-        { x: side * BIKE_RIG.base.halfWidth * 0.35, y: railY, z: BIKE_RIG.base.rearFootZ + 0.12 },
-        {
-          x: side * BIKE_RIG.base.halfWidth,
-          y: BIKE_RIG.base.railY * 0.4,
-          z: BIKE_RIG.base.rearFootZ,
-        },
-        0.028,
-        accentMat(),
-      ),
+    const rearAxle = { x: side * 0.07, y: wheelAxleY, z: BIKE_RIG.rearAxleZ };
+    const bbSide = { ...bottomBracket, x: side * 0.055 };
+    const seatSide = { ...seatCluster, x: side * 0.055 };
+    const chainStay = accentPart(
+      tubeBetween("bike-chain-stay", rearAxle, bbSide, 0.028, accentMat()),
     );
-    const frontFoot = accentPart(
-      tubeBetween(
-        "bike-front-foot",
-        { x: side * BIKE_RIG.base.halfWidth * 0.3, y: railY, z: BIKE_RIG.base.frontFootZ - 0.12 },
-        {
-          x: side * BIKE_RIG.base.halfWidth,
-          y: BIKE_RIG.base.railY * 0.4,
-          z: BIKE_RIG.base.frontFootZ,
-        },
-        0.028,
-        accentMat(),
-      ),
+    const seatStay = accentPart(
+      tubeBetween("bike-seat-stay", rearAxle, seatSide, 0.028, accentMat()),
     );
-    setReplayAssetSlot(rearFoot, "equipment:bike:frame-tube");
-    setReplayAssetSlot(frontFoot, "equipment:bike:frame-tube");
-    group.add(rearFoot, frontFoot);
-    frameFallback.push(rearFoot, frontFoot);
+    setReplayAssetSlot(chainStay, "equipment:bike:frame-tube");
+    setReplayAssetSlot(seatStay, "equipment:bike:frame-tube");
+    group.add(chainStay, seatStay);
+    frameFallback.push(chainStay, seatStay);
   }
 
   // Cranks: spin about the bottom bracket (X axis) with two pedals.
   const cranks = new THREE.Group();
   cranks.name = "bike-cranks";
-  cranks.position.set(
-    BIKE_RIG.bottomBracket[0] ?? 0,
-    BIKE_RIG.bottomBracket[1] ?? wheelR,
-    BIKE_RIG.bottomBracket[2] ?? 0,
-  );
+  cranks.position.set(bottomBracket.x, bottomBracket.y, bottomBracket.z);
   // Chain ring — a toroidal disc at the bottom bracket.
   const chainRing = new THREE.Mesh(
     new THREE.TorusGeometry(0.16, 0.018, eqCylSegs, eqCylSegs * 2),
@@ -3118,8 +3068,7 @@ function makeBikeAvatar(
   // Render its cushion before, but without writing depth against, the rider:
   // the visible body therefore cleanly occludes the support wherever their
   // silhouettes overlap, while its outer edge and fixed frame attachment
-  // remain visible. This is a microscopic equipment compatibility correction;
-  // no graph-owned hip, crank, or pedal path changes.
+  // remain visible.
   const saddle = new THREE.Mesh(
     roundedVenueBlockGeometry(0.21, 0.032, 0.28, 0.018),
     saddleMaterial,
@@ -3143,8 +3092,8 @@ function makeBikeAvatar(
     grip.name = side < 0 ? "bike-handlebar-grip-left" : "bike-handlebar-grip-right";
     grip.position.set(
       side * BIKE_RIG.handlebar.grip.halfSpan,
-      BIKE_RIG.handlebar.grip.y - BIKE_RIG.handlebar.base[1],
-      BIKE_RIG.handlebar.grip.z - BIKE_RIG.handlebar.base[2],
+      BIKE_RIG.handlebar.grip.y - (BIKE_RIG.handlebar.base[1] ?? 0),
+      BIKE_RIG.handlebar.grip.z - (BIKE_RIG.handlebar.base[2] ?? 0),
     );
     grip.rotation.x = -0.3;
     const anchor = new THREE.Object3D();
@@ -3307,7 +3256,7 @@ function makeBikeAvatar(
       elbowPoint: new THREE.Vector3(),
       handTarget: new THREE.Vector3(),
       handPoint: new THREE.Vector3(),
-      bendHint: new THREE.Vector3(side * 0.2, -0.28, -0.18),
+      bendHint: new THREE.Vector3(side * 0.38, -0.52, -0.12),
     });
   }
   rider.add(pelvis, torso);
@@ -3317,16 +3266,15 @@ function makeBikeAvatar(
   const sampledV4Shoulders = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const UPPER_ARM_LENGTH = 0.37;
   const FOREARM_LENGTH = 0.35;
-  const THIGH_LENGTH = 0.54;
-  const SHIN_LENGTH = 0.53;
+  const THIGH_LENGTH = 0.6;
+  const SHIN_LENGTH = 0.6;
   const BIKE_AERO_SPINE_LEAN = 0.74;
   const BIKE_HEAD_GAZE_COMPENSATION = -0.47;
-  // Hip joint is raised above the saddle marker so the V4 mesh sit surface
-  // (see BIKE_RIG.rider.sitSurfaceFromHip) lands on the seat. Aligning the hip
-  // bone to the saddle centre sinks the buttocks under the authored saddle and
-  // makes the seat look empty. Keep enough knee bend at bottom dead centre.
-  const BIKE_PELVIS_BASE_Y = BIKE_RIG.rider.pelvisOffset[1] ?? 0;
-  const BIKE_PELVIS_BASE_Z = BIKE_RIG.rider.pelvisOffset[2] ?? 0;
+  // Place the hip above the saddle so the V4 mesh sit surface lands on the
+  // authored pad top (no 穿模).  The procedural pelvis nestles into the seat
+  // shell; the V4 hip-bone sits slightly above.
+  const BIKE_PELVIS_BASE_Y = 0;
+  const BIKE_PELVIS_BASE_Z = -0.005;
   const BIKE_ANKLE_MIN = -0.22;
   const BIKE_ANKLE_MAX = 0.14;
   const placeBarArms = (): void => {
