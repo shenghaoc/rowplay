@@ -129,6 +129,36 @@ sculls / poles / hoods. Bounded in-app stills for that motion are sealed in
 cycles remain the surface/contact matrix from `a56460b`; hardware WebGPU Ultra
 proof is still the prior Chrome capture (headless Chromium reports WebGL/High).
 
+### Articulated Concept2-machine grips (`4f23b36`)
+
+The final hand pass replaces each rigid finger fan with individually weighted
+proximal/intermediate/distal chains plus an opposing three-segment thumb. The
+user-supplied Concept2 RowErg, SkiErg, and BikeErg photographs were used as
+technique references for local hand enclosure only: the existing machine
+contact paths, timing, equipment layout, and environments remain authoritative.
+Outdoor rowing, cycling, and skiing references informed athletic silhouette
+only and were not substituted for Concept2 machine geometry.
+
+The exact implementation commit is
+`4f23b36ac4855c564dab38b150572da387c15305`. Its bounded
+[capture manifest](athlete-v5/in-app/2026-07-25-4f23b36/manifest.json) records
+the real 1112×420 application stage, requested tier, effective tier, backend,
+camera, and pose for:
+
+- [RowErg catch grip](athlete-v5/in-app/2026-07-25-4f23b36/poses/grip-row-catch.jpg):
+  relaxed palm cup, four phalange chains around the slim scull handle, and an
+  opposing thumb;
+- [SkiErg loaded-press grips](athlete-v5/in-app/2026-07-25-4f23b36/poses/grip-ski-loaded-press.jpg):
+  both hands visibly enclose the independent cylindrical grips; and
+- [BikeErg pedal-top grips](athlete-v5/in-app/2026-07-25-4f23b36/poses/grip-bike-pedal-top.jpg):
+  both palms retain the existing hood/bar contacts while the fingers close
+  below the cockpit.
+
+The capture browser again had no WebGPU adapter, so these macro frames
+truthfully record effective High/WebGL. They prove anatomy, enclosure, and
+clipping at the same geometry and contact solve used by all tiers; the existing
+hardware Chrome evidence remains the Ultra/WebGPU material proof.
+
 The primary matrix is the
 [six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):
 baseline, production athlete, and skeleton/contact overlay for RowErg catch and
