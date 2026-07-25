@@ -39,7 +39,18 @@ const outputDir = resolve(
 
 await mkdir(outputDir, { recursive: true });
 
-const browser = await chromium.launch({ headless: true });
+/**
+ * Playwright's bundled Chromium exposes `navigator.gpu` but resolves no
+ * adapter, so every Ultra request silently downgrades to High on WebGL and the
+ * frames misrepresent the tier. `--browser-channel=chrome` drives the machine's
+ * installed Google Chrome instead, which does get a real adapter. Required for
+ * any Ultra capture; optional everywhere else.
+ */
+const browserChannel = option("browser-channel");
+const browser = await chromium.launch({
+  headless: true,
+  ...(browserChannel ? { channel: browserChannel } : {}),
+});
 const evidence = [];
 
 function normalizedWarnings(warnings) {
@@ -406,7 +417,15 @@ await writeFile(
     {
       source: baseUrl,
       matrix,
-      command: `node scripts/capture-replay-release-matrix.mjs --matrix=${matrix} --base-url=${baseUrl}`,
+      // Which browser produced these frames decides whether a WebGPU adapter
+      // was available at all, so it belongs in the evidence.
+      browserChannel: browserChannel ?? "playwright-bundled-chromium",
+      command: [
+        "node scripts/capture-replay-release-matrix.mjs",
+        `--matrix=${matrix}`,
+        `--base-url=${baseUrl}`,
+        ...(browserChannel ? [`--browser-channel=${browserChannel}`] : []),
+      ].join(" "),
       note: "Screenshots use demo data, actual application themes, native media emulation, and unscaled CSS pixels. Silhouette display transforms are screenshot-only and do not alter application state or renderer selection.",
       evidence,
     },

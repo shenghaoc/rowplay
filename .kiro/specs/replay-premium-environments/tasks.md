@@ -68,11 +68,13 @@ Follow-up to: `.kiro/specs/replay-3d-athlete-readability/`
     and instance counts by test
   - [x] Complete browser visual QA across Low, Medium, and High, with captures
     committed under `docs/visual-qa/replay-premium-environments.md`
-  - [ ] Complete browser visual QA at Ultra — blocked: Ultra is WebGPU-only and
-    no WebGPU adapter is available in this environment, so the request downgrades
-    to High. Needs a re-run on WebGPU-capable hardware to confirm normal-mapped
-    close-surface detail and the sun glints.
+  - [x] Complete browser visual QA at Ultra — captured on WebGPU by driving the
+    installed Google Chrome (`--browser-channel=chrome`) instead of Playwright's
+    bundled Chromium, which exposes `navigator.gpu` but resolves no adapter. All
+    15 Ultra frames report `effectiveQuality: "ultra"` on `backend: "WEBGPU"`,
+    and the High→Ultra difference is measured against the same-tier noise floor
+    rather than asserted.
   - [x] Replace the public replay captures (`docs/screenshots/replay-demo.png`,
-    `docs/screenshots/replay-3d-demo.png`) — regenerated at 3D High / WebGL
-    rather than the previous Ultra / WebGPU frame, for the same reason
+    `docs/screenshots/replay-3d-demo.png`) — the 3D capture is a genuine
+    Ultra / WebGPU frame
   - [x] Pass the full repository quality gate

@@ -1,7 +1,8 @@
 {
   "source": "http://127.0.0.1:8787",
   "matrix": "environment",
-  "command": "node scripts/capture-replay-release-matrix.mjs --matrix=environment --base-url=http://127.0.0.1:8787",
+  "browserChannel": "chrome",
+  "command": "node scripts/capture-replay-release-matrix.mjs --matrix=environment --base-url=http://127.0.0.1:8787 --browser-channel=chrome",
   "note": "Screenshots use demo data, actual application themes, native media emulation, and unscaled CSS pixels. Silhouette display transforms are screenshot-only and do not alter application state or renderer selection.",
   "evidence": [
     {
@@ -25,7 +26,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["Chromium GPU readback warning during screenshot"]
+      "warnings": []
     },
     {
       "file": "row-2d-light-moving.jpg",
@@ -103,7 +104,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -117,7 +118,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-low-light-moving.jpg",
@@ -126,7 +127,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -140,7 +141,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-low-dark-paused.jpg",
@@ -149,7 +150,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -163,7 +164,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-low-dark-moving.jpg",
@@ -172,7 +173,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -186,7 +187,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-medium-light-paused.jpg",
@@ -195,7 +196,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -209,7 +210,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-medium-light-moving.jpg",
@@ -218,7 +219,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -232,7 +233,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-medium-dark-paused.jpg",
@@ -241,7 +242,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -255,7 +256,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-medium-dark-moving.jpg",
@@ -264,7 +265,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -278,7 +279,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-high-light-paused.jpg",
@@ -287,7 +288,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -301,7 +302,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-high-light-moving.jpg",
@@ -310,7 +311,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -324,7 +325,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-high-dark-paused.jpg",
@@ -333,7 +334,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -347,7 +348,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "row-3d-high-dark-moving.jpg",
@@ -356,7 +357,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -370,16 +371,108 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
+    },
+    {
+      "file": "row-3d-ultra-light-paused.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": []
+    },
+    {
+      "file": "row-3d-ultra-light-moving.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": []
+    },
+    {
+      "file": "row-3d-ultra-dark-paused.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": []
+    },
+    {
+      "file": "row-3d-ultra-dark-moving.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": []
     },
     {
       "file": "row-3d-ghost-dark.jpg",
       "sport": "row",
       "route": "/replay/1001",
       "renderer": "3d",
-      "requestedQuality": "high",
-      "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -393,7 +486,7 @@
       "playback": "paused",
       "ghostPace": "2:00",
       "seekSeconds": 4.2,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-2d-light-paused.jpg",
@@ -494,7 +587,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -508,7 +601,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-low-light-moving.jpg",
@@ -517,7 +610,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -531,7 +624,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-low-dark-paused.jpg",
@@ -540,7 +633,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -554,7 +647,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-low-dark-moving.jpg",
@@ -563,7 +656,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -577,7 +670,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-medium-light-paused.jpg",
@@ -586,7 +679,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -600,7 +693,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-medium-light-moving.jpg",
@@ -609,7 +702,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -623,7 +716,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-medium-dark-paused.jpg",
@@ -632,7 +725,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -646,7 +739,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-medium-dark-moving.jpg",
@@ -655,7 +748,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -669,7 +762,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-high-light-paused.jpg",
@@ -678,7 +771,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -692,7 +785,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-high-light-moving.jpg",
@@ -701,7 +794,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -715,7 +808,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-high-dark-paused.jpg",
@@ -724,7 +817,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -738,7 +831,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "bike-3d-high-dark-moving.jpg",
@@ -747,7 +840,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -761,16 +854,108 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
+    },
+    {
+      "file": "bike-3d-ultra-light-paused.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": []
+    },
+    {
+      "file": "bike-3d-ultra-light-moving.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": []
+    },
+    {
+      "file": "bike-3d-ultra-dark-paused.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": []
+    },
+    {
+      "file": "bike-3d-ultra-dark-moving.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": []
     },
     {
       "file": "bike-3d-ghost-dark.jpg",
       "sport": "bike",
       "route": "/replay/1004",
       "renderer": "3d",
-      "requestedQuality": "high",
-      "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -784,7 +969,7 @@
       "playback": "paused",
       "ghostPace": "2:00",
       "seekSeconds": 2.6,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-2d-light-paused.jpg",
@@ -885,7 +1070,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -899,7 +1084,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-low-light-moving.jpg",
@@ -908,7 +1093,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -922,7 +1107,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-low-dark-paused.jpg",
@@ -931,7 +1116,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -945,7 +1130,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-low-dark-moving.jpg",
@@ -954,7 +1139,7 @@
       "renderer": "3d",
       "requestedQuality": "low",
       "effectiveQuality": "low",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -968,7 +1153,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-medium-light-paused.jpg",
@@ -977,7 +1162,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -991,7 +1176,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-medium-light-moving.jpg",
@@ -1000,7 +1185,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -1014,7 +1199,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-medium-dark-paused.jpg",
@@ -1023,7 +1208,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -1037,7 +1222,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-medium-dark-moving.jpg",
@@ -1046,7 +1231,7 @@
       "renderer": "3d",
       "requestedQuality": "medium",
       "effectiveQuality": "medium",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -1060,7 +1245,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-high-light-paused.jpg",
@@ -1069,7 +1254,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -1083,7 +1268,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-high-light-moving.jpg",
@@ -1092,7 +1277,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "light",
       "viewport": {
         "width": 1440,
@@ -1106,7 +1291,7 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-high-dark-paused.jpg",
@@ -1115,7 +1300,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -1129,7 +1314,7 @@
       "playback": "paused",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     },
     {
       "file": "ski-3d-high-dark-moving.jpg",
@@ -1138,7 +1323,7 @@
       "renderer": "3d",
       "requestedQuality": "high",
       "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -1152,16 +1337,108 @@
       "playback": "moving",
       "ghostPace": null,
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
+    },
+    {
+      "file": "ski-3d-ultra-light-paused.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": []
+    },
+    {
+      "file": "ski-3d-ultra-light-moving.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": []
+    },
+    {
+      "file": "ski-3d-ultra-dark-paused.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": []
+    },
+    {
+      "file": "ski-3d-ultra-dark-moving.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": []
     },
     {
       "file": "ski-3d-ghost-dark.jpg",
       "sport": "ski",
       "route": "/replay/1003",
       "renderer": "3d",
-      "requestedQuality": "high",
-      "effectiveQuality": "high",
-      "backend": "WEBGL",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
       "theme": "dark",
       "viewport": {
         "width": 1440,
@@ -1175,7 +1452,7 @@
       "playback": "paused",
       "ghostPace": "2:00",
       "seekSeconds": 3.25,
-      "warnings": ["No available adapters."]
+      "warnings": []
     }
   ]
 }
