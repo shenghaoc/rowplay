@@ -1309,6 +1309,229 @@ export class EnvironmentBuilder {
    * land — an island park — just as a stadium’s infield is not more track.
    * Outer shore keeps authored land uses; campus owns dock and buildings.
    */
+
+  /**
+   * A structure spanning the course radially, which the athlete passes beneath
+   * once per lap.
+   *
+   * Every venue previously staged all of its content at the horizon: nothing
+   * was ever close to the camera and nothing was ever overhead, so the scenes
+   * read as a diorama and one lap looked exactly like the next. Content at
+   * effective infinity produces no parallax. A span is the cheapest fix for
+   * both problems at once — it crosses the frame, briefly occludes the sky, and
+   * gives the lap a landmark that arrives and passes.
+   *
+   * Radial, not tangential: the athlete travels along the circle, so a crossing
+   * must run from inside the lane band to outside it. Local +X maps to
+   * (cos r, 0, -sin r), and the radial direction at angle a is (sin a, 0, cos a),
+   * so the deck yaws by a - PI/2.
+   */
+  private addOverheadSpan(
+    group: THREE.Group,
+    name: string,
+    angle: number,
+    innerRadius: number,
+    outerRadius: number,
+    clearance: number,
+    legMaterial: THREE.Material,
+    deckMaterial: THREE.Material,
+    deckThickness = 0.44,
+  ): void {
+    const legGeo = this.ctx.track(new THREE.CylinderGeometry(0.24, 0.32, clearance, 8));
+    for (const [index, radius] of [innerRadius, outerRadius].entries()) {
+      const leg = new THREE.Mesh(legGeo, legMaterial);
+      leg.name = `${name}-leg-${index + 1}`;
+      leg.position.set(Math.sin(angle) * radius, clearance / 2, Math.cos(angle) * radius);
+      leg.castShadow = this.ctx.cfg.shadows;
+      group.add(leg);
+    }
+    const midRadius = (innerRadius + outerRadius) / 2;
+    const deckGeo = this.ctx.track(
+      new THREE.BoxGeometry(outerRadius - innerRadius, deckThickness, 1.6),
+    );
+    const deck = new THREE.Mesh(deckGeo, deckMaterial);
+    deck.name = `${name}-deck`;
+    deck.position.set(
+      Math.sin(angle) * midRadius,
+      clearance + deckThickness / 2,
+      Math.cos(angle) * midRadius,
+    );
+    deck.rotation.y = angle - Math.PI / 2;
+    deck.castShadow = this.ctx.cfg.shadows;
+    group.add(deck);
+  }
+
+  /**
+   * Repeating furniture at the lane edge, close enough to sweep past the
+   * camera. This is the parallax reference the venues lacked: without
+   * something near, speed reads only off the athlete's own animation.
+   *
+   * `sector` matters more than it looks. On a circular course the camera always
+   * sees the far side of the loop, so anything at a constant radius closes into
+   * a visible ring. That is correct where the real venue has a continuous
+   * boundary — a velodrome safety rail, a Nordic stadium's course marking — and
+   * badly wrong where it does not: a full ring of posts around open water reads
+   * as a picket fence around a lake. Pass a sector to keep the run asymmetric.
+   */
+  private addTrackEdgePosts(
+    group: THREE.Group,
+    name: string,
+    radius: number,
+    count: number,
+    height: number,
+    material: THREE.Material,
+    topMaterial?: THREE.Material,
+    sector?: EnvironmentSector,
+  ): void {
+    const spanOf = (index: number): number =>
+      sector ? sector.start + sector.span * ((index + 0.5) / count) : (index / count) * FULL_CIRCLE;
+    const postGeo = this.ctx.track(new THREE.CylinderGeometry(0.075, 0.095, height, 6));
+    const posts = this.ctx.trackInstanced(new THREE.InstancedMesh(postGeo, material, count));
+    posts.name = name;
+    posts.castShadow = this.ctx.cfg.shadows;
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3(1, 1, 1);
+    for (let i = 0; i < count; i++) {
+      const angle = spanOf(i);
+      position.set(Math.sin(angle) * radius, height / 2, Math.cos(angle) * radius);
+      matrix.compose(position, quaternion, scale);
+      posts.setMatrixAt(i, matrix);
+    }
+    posts.instanceMatrix.needsUpdate = true;
+    group.add(posts);
+
+    if (!topMaterial) return;
+    // Alternating heads read as distance boards rather than a picket fence.
+    const headGeo = this.ctx.track(new THREE.BoxGeometry(0.52, 0.34, 0.06));
+    const heads = this.ctx.trackInstanced(
+      new THREE.InstancedMesh(headGeo, topMaterial, Math.ceil(count / 2)),
+    );
+    heads.name = `${name}-boards`;
+    for (let i = 0; i < heads.count; i++) {
+      const angle = spanOf(i * 2);
+      position.set(Math.sin(angle) * radius, height + 0.14, Math.cos(angle) * radius);
+      quaternion.setFromAxisAngle(WORLD_UP, angle);
+      matrix.compose(position, quaternion, scale);
+      heads.setMatrixAt(i, matrix);
+    }
+    heads.instanceMatrix.needsUpdate = true;
+    quaternion.identity();
+    group.add(heads);
+  }
+
+  /** Near-field and overhead pass for the regatta basin. */
+  private addRowerNearField(group: THREE.Group, outerR: number): void {
+    const timber = this.ctx.environmentStandardMat(
+      "environment:rower:bridge-structure",
+      this.ctx.environment.venueStructure,
+      { roughness: 0.82, metalness: 0.05, fog: true },
+    );
+    const deck = this.ctx.environmentStandardMat(
+      "environment:rower:bridge-deck",
+      this.ctx.environment.venueAccent,
+      { roughness: 0.74, metalness: 0.06, fog: true },
+    );
+    // Judges' footbridge over the course: rowing venues put one across the
+    // water, and it is the only thing in the basin that passes overhead.
+    this.addOverheadSpan(
+      group,
+      "environment:rower:course-bridge",
+      degrees(148),
+      outerR - 11.5,
+      outerR + 2.4,
+      4.7,
+      timber,
+      deck,
+      0.5,
+    );
+    // Bank-side distance boards, not a ring: open water carries buoy lines and
+    // nothing else, so these sit in the campus arc where a shore already is.
+    this.addTrackEdgePosts(
+      group,
+      "environment:rower:distance-posts",
+      outerR + 1.6,
+      [4, 5, 7, 9][this.ctx.cfg.environmentDetail],
+      2.5,
+      timber,
+      deck,
+      ROW_CAMPUS_SECTOR,
+    );
+  }
+
+  /** Near-field and overhead pass for the Nordic stadium. */
+  private addSkiNearField(group: THREE.Group, outerR: number): void {
+    const upright = this.ctx.environmentStandardMat(
+      "environment:skierg:arch-structure",
+      this.ctx.environment.venueStructure,
+      { roughness: 0.7, metalness: 0.14, fog: true },
+    );
+    const banner = this.ctx.environmentStandardMat(
+      "environment:skierg:arch-banner",
+      this.ctx.environment.venueAccent,
+      { roughness: 0.66, metalness: 0.04, fog: true },
+    );
+    // Start/finish banner arch by the lodge, the way a Nordic stadium marks its
+    // timing line — and the one piece of overhead structure on the course.
+    this.addOverheadSpan(
+      group,
+      "environment:skierg:timing-arch",
+      degrees(-8),
+      outerR - 10.5,
+      outerR + 2,
+      4.3,
+      upright,
+      banner,
+      0.72,
+    );
+    this.addTrackEdgePosts(
+      group,
+      "environment:skierg:piste-poles",
+      outerR + 0.9,
+      [12, 20, 30, 40][this.ctx.cfg.environmentDetail],
+      1.8,
+      upright,
+      banner,
+    );
+  }
+
+  /** Near-field and overhead pass for the velodrome. */
+  private addBikeNearField(group: THREE.Group, outerR: number): void {
+    const steel = this.ctx.environmentStandardMat(
+      "environment:bike:gantry-structure",
+      this.ctx.environment.venueStructure,
+      { roughness: 0.52, metalness: 0.42, fog: true },
+    );
+    const trim = this.ctx.environmentStandardMat(
+      "environment:bike:gantry-trim",
+      this.ctx.environment.venueAccent,
+      { roughness: 0.58, metalness: 0.18, fog: true },
+    );
+    // Finish gantry over the boards, carrying the timing beam.
+    this.addOverheadSpan(
+      group,
+      "environment:bike:finish-gantry",
+      degrees(2),
+      outerR - 9.5,
+      outerR + 1.6,
+      3.9,
+      steel,
+      trim,
+      0.5,
+    );
+    // Trackside safety rail: in a real velodrome this sits a metre from the
+    // riders and is the closest object to the camera anywhere in the venue.
+    this.addTrackEdgePosts(
+      group,
+      "environment:bike:rail-posts",
+      outerR + 0.75,
+      [14, 24, 36, 48][this.ctx.cfg.environmentDetail],
+      1.15,
+      steel,
+    );
+  }
+
   addRowerRegattaWorld(group: THREE.Group, detailGroup: THREE.Group, outerR: number): void {
     // Land island in the lagoon centre (not more water), continuous shore,
     // denser bank woodland, water-surface dressing, and the shore campus.
@@ -1317,6 +1540,7 @@ export class EnvironmentBuilder {
     this.addRowerReeds(group, outerR);
     this.addRowerTrees(group, outerR);
     this.addRowerWaterTier(group, outerR);
+    this.addRowerNearField(group, outerR);
     this.addRowerCampus(group, detailGroup, outerR);
     this.addRowerValleyBackdrop(group);
   }
@@ -1965,6 +2189,7 @@ export class EnvironmentBuilder {
    */
   addSkiStadiumWorld(group: THREE.Group, detailGroup: THREE.Group, outerR: number): void {
     this.addSkiStadiumCentre(group, outerR);
+    this.addSkiNearField(group, outerR);
     this.addSkiValley(group, outerR);
     this.addSnowBerms(group, outerR, [20, 34, 52, 72][this.ctx.cfg.environmentDetail]);
     this.addAlpineFoothills(group, [8, 12, 18, 26][this.ctx.cfg.environmentDetail]);
@@ -2227,6 +2452,7 @@ export class EnvironmentBuilder {
    */
   addBikeCircuitWorld(group: THREE.Group, detailGroup: THREE.Group, outerR: number): void {
     this.addBikeInfieldFloor(group, outerR);
+    this.addBikeNearField(group, outerR);
     this.addBikeSeating(group);
     this.addBikeArenaWall(group);
     this.addBikeTrackBoards(group, outerR);

@@ -136,6 +136,23 @@ athlete apparently floating on it. The dome is deepened and the fog cooled,
 giving the snow something to be bright _against_; it is still a cold Nordic
 morning rather than a different time of day.
 
+**Every venue now has something overhead and something near.** The venues used
+to stage all of their content at the horizon — nothing was ever close to the
+camera, nothing ever crossed the frame, nothing occluded anything. Content at
+effective infinity produces no parallax, which is why laps looked identical and
+why better lighting could not fix it. Each venue gained a radial span the
+athlete passes beneath (regatta footbridge, Nordic timing arch, velodrome finish
+gantry) plus lane-edge furniture.
+
+**Constant-radius furniture is a ring, and that is only sometimes right.** On a
+circular course the camera always sees the far side of the loop, so anything at
+a fixed radius closes into a visible ring. That is correct where the real venue
+has a continuous boundary — the velodrome safety rail reads properly, and the
+Nordic course-marking poles give the snow vertical structure. It was wrong on
+open water: a full ring of posts around the basin read as a picket fence around
+a lake, so RowErg's distance boards are confined to the campus arc instead.
+Pinned by test, since the distinction is not obvious from the code.
+
 **Each sport reads as its own place.** RowErg is a lagoon loop whose circle
 centre is a land island rather than more water — visible in both the 3D basin and
 the 2D mid-course silhouette. SkiErg is a Nordic stadium with a snow-covered

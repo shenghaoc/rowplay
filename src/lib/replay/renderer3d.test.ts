@@ -32,6 +32,7 @@ vi.mock("three", async (importOriginal) => {
 });
 
 import { CourseRenderer3D, replayV4ArmContactReach } from "./renderer3d";
+import type { Sport } from "../types";
 import { COLORS_DARK, REDUCED_REPLAY_POSES } from "./renderer";
 import {
   disposeReplayAssetTemplateLibrary,
@@ -4747,6 +4748,45 @@ describe("CourseRenderer3D", () => {
       renderer.destroy();
       expect(disposed).toBe(true);
       expect(scene.environment).toBeNull();
+    });
+  });
+
+  describe("near field and overhead", () => {
+    it("gives every venue something that passes overhead", () => {
+      // Before this the venues staged all content at the horizon: nothing was
+      // ever close to camera and nothing overhead, so a lap had no parallax
+      // and every lap looked identical.
+      const spans = {
+        rower: "environment:rower:course-bridge-deck",
+        skierg: "environment:skierg:timing-arch-deck",
+        bike: "environment:bike:finish-gantry-deck",
+      } as const;
+      for (const [sport, name] of Object.entries(spans)) {
+        const renderer = new CourseRenderer3D(makeHost(), "high", sport as Sport);
+        const deck = getScene(renderer).getObjectByName(name);
+        expect(deck, `${sport} has no overhead span`).toBeDefined();
+        // Above the athlete, not decoration lying on the ground.
+        expect(deck!.position.y).toBeGreaterThan(3);
+        renderer.destroy();
+      }
+    });
+
+    it("rings the venues that really have a continuous boundary, and no others", () => {
+      // A circular course means the camera always sees the far side of the
+      // loop, so constant-radius furniture closes into a visible ring. Correct
+      // for a velodrome safety rail; a picket fence around open water is not.
+      const countOf = (sport: Sport, name: string): number => {
+        const renderer = new CourseRenderer3D(makeHost(), "ultra", sport);
+        const mesh = getScene(renderer).getObjectByName(name) as THREE.InstancedMesh;
+        const count = mesh.count;
+        renderer.destroy();
+        return count;
+      };
+      const rail = countOf("bike", "environment:bike:rail-posts");
+      const boards = countOf("rower", "environment:rower:distance-posts");
+      expect(rail).toBeGreaterThanOrEqual(48);
+      // Bank-side boards confined to the campus arc, not a ring in the water.
+      expect(boards).toBeLessThan(rail / 4);
     });
   });
 });
