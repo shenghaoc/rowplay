@@ -2683,7 +2683,8 @@ describe("CourseRenderer3D", () => {
 
             // Tyres rest on the ground in avatar-local space (not world AABB —
             // course bank/yaw would false-positive). Sample visible mesh verts.
-            for (const wheelName of ["bike-wheel-front"] as const) {
+            // 穿模 guard 1: both wheels rest on the ground plane (y >= 0).
+            for (const wheelName of ["bike-wheel-front", "bike-wheel-rear"] as const) {
               const wheel = sceneObject(renderer, wheelName);
               let wheelMinY = Infinity;
               wheel.traverse((object) => {
@@ -2702,6 +2703,34 @@ describe("CourseRenderer3D", () => {
               expect(
                 wheelMinY,
                 `${quality} ${wheelName} does not clip through the ground at ${cycle}`,
+              ).toBeGreaterThanOrEqual(-0.01);
+            }
+            // 穿模 guard 2: frame never sinks below the ground plane.
+            const frameVisual = sceneObject(renderer, "bike-frame-visual");
+            let frameMinY = Infinity;
+            frameVisual.traverse((object) => {
+              if (!(object instanceof THREE.Mesh) || !object.visible) return;
+              const positions = object.geometry.getAttribute("position");
+              if (!positions) return;
+              object.updateWorldMatrix(true, false);
+              for (let i = 0; i < positions.count; i += 4) {
+                sample
+                  .fromBufferAttribute(positions, i)
+                  .applyMatrix4(object.matrixWorld)
+                  .applyMatrix4(inverse);
+                if (sample.y < frameMinY) frameMinY = sample.y;
+              }
+            });
+            expect(
+              frameMinY,
+              `${quality} frame stays above the ground at ${cycle}`,
+            ).toBeGreaterThanOrEqual(-0.01);
+            // 穿模 guard 3: athlete feet never dip below the ground plane.
+            for (const side of ["left", "right"] as const) {
+              const footY = v4EffectorWorld(instance, `${side}Foot`).applyMatrix4(inverse).y;
+              expect(
+                footY,
+                `${quality} ${side} foot stays above the ground at ${cycle}`,
               ).toBeGreaterThanOrEqual(-0.01);
             }
 
