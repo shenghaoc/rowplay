@@ -2985,8 +2985,8 @@ function makeBikeAvatar(
     wheels.push(wheel);
   }
 
-  // Endpoint-built tubes form a real diamond frame. The previous horizontal
-  // boxes never met at frame nodes, so the rear wheel swallowed the machine.
+  // Stationary BikeErg-form fallback: longitudinal rail, seat upright, mast,
+  // and BB drop. V3 authored equipment replaces these shells when available.
   const bikePoint = (point: readonly number[]) => ({
     x: point[0] ?? 0,
     y: point[1] ?? 0,
@@ -2996,41 +2996,70 @@ function makeBikeAvatar(
   const seatCluster = bikePoint(BIKE_RIG.seatCluster);
   const headBottom = bikePoint(BIKE_RIG.headBottom);
   const headTop = bikePoint(BIKE_RIG.headTop);
+  const railY = BIKE_RIG.base.railY + 0.08;
   const frameFallback: THREE.Object3D[] = [];
-  const downTube = accentPart(
-    tubeBetween("bike-down-tube", bottomBracket, headBottom, 0.055, accentMat()),
+  const seatRail = accentPart(
+    tubeBetween(
+      "bike-seat-rail",
+      { x: 0, y: railY, z: BIKE_RIG.rearAxleZ + 0.08 },
+      { x: 0, y: railY, z: BIKE_RIG.frontAxleZ - 0.12 },
+      0.038,
+      accentMat(),
+    ),
   );
-  setReplayAssetSlot(downTube, "equipment:bike:frame-tube");
+  setReplayAssetSlot(seatRail, "equipment:bike:frame-tube");
   const seatTube = accentPart(
-    tubeBetween("bike-seat-tube", bottomBracket, seatCluster, 0.052, accentMat()),
+    tubeBetween("bike-seat-tube", { x: 0, y: railY, z: seatCluster.z }, seatCluster, 0.042, accentMat()),
   );
   setReplayAssetSlot(seatTube, "equipment:bike:frame-tube");
-  const topTube = accentPart(
-    tubeBetween("bike-top-tube", seatCluster, headTop, 0.048, accentMat()),
+  const mast = accentPart(
+    tubeBetween("bike-mast", { x: 0, y: railY, z: headBottom.z }, headBottom, 0.045, accentMat()),
   );
-  setReplayAssetSlot(topTube, "equipment:bike:frame-tube");
+  setReplayAssetSlot(mast, "equipment:bike:frame-tube");
   const headTube = accentPart(
-    tubeBetween("bike-head-tube", headBottom, headTop, 0.06, accentMat()),
+    tubeBetween("bike-head-tube", headBottom, headTop, 0.04, accentMat()),
   );
   setReplayAssetSlot(headTube, "equipment:bike:frame-tube");
-  group.add(downTube, seatTube, topTube, headTube);
-  frameFallback.push(downTube, seatTube, topTube, headTube);
-  // Paired chain and seat stays expose the frame triangle from the new
-  // three-quarter chase angle.
+  const bbDrop = accentPart(
+    tubeBetween(
+      "bike-bb-drop",
+      { x: 0, y: railY, z: bottomBracket.z },
+      bottomBracket,
+      0.036,
+      accentMat(),
+    ),
+  );
+  setReplayAssetSlot(bbDrop, "equipment:bike:frame-tube");
+  group.add(seatRail, seatTube, mast, headTube, bbDrop);
+  frameFallback.push(seatRail, seatTube, mast, headTube, bbDrop);
+  // Fixed base feet so the erg does not read as a free road bicycle.
   for (const side of [-1, 1]) {
-    const rearAxle = { x: side * 0.07, y: wheelR, z: BIKE_RIG.rearAxleZ };
-    const bbSide = { ...bottomBracket, x: side * 0.055 };
-    const seatSide = { ...seatCluster, x: side * 0.055 };
-    const chainStay = accentPart(
-      tubeBetween("bike-chain-stay", rearAxle, bbSide, 0.028, accentMat()),
+    const rearFoot = accentPart(
+      tubeBetween(
+        "bike-rear-foot",
+        { x: side * BIKE_RIG.base.halfWidth * 0.35, y: railY, z: BIKE_RIG.base.rearFootZ + 0.12 },
+        { x: side * BIKE_RIG.base.halfWidth, y: BIKE_RIG.base.railY * 0.4, z: BIKE_RIG.base.rearFootZ },
+        0.028,
+        accentMat(),
+      ),
     );
-    const seatStay = accentPart(
-      tubeBetween("bike-seat-stay", rearAxle, seatSide, 0.028, accentMat()),
+    const frontFoot = accentPart(
+      tubeBetween(
+        "bike-front-foot",
+        { x: side * BIKE_RIG.base.halfWidth * 0.3, y: railY, z: BIKE_RIG.base.frontFootZ - 0.12 },
+        {
+          x: side * BIKE_RIG.base.halfWidth,
+          y: BIKE_RIG.base.railY * 0.4,
+          z: BIKE_RIG.base.frontFootZ,
+        },
+        0.028,
+        accentMat(),
+      ),
     );
-    setReplayAssetSlot(chainStay, "equipment:bike:frame-tube");
-    setReplayAssetSlot(seatStay, "equipment:bike:frame-tube");
-    group.add(chainStay, seatStay);
-    frameFallback.push(chainStay, seatStay);
+    setReplayAssetSlot(rearFoot, "equipment:bike:frame-tube");
+    setReplayAssetSlot(frontFoot, "equipment:bike:frame-tube");
+    group.add(rearFoot, frontFoot);
+    frameFallback.push(rearFoot, frontFoot);
   }
 
   // Cranks: spin about the bottom bracket (X axis) with two pedals.

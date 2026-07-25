@@ -180,15 +180,16 @@ The hand and rigid pole then lift and travel forward on recovery, and the elbow
 returns underneath the arm for the next plant without changing to the opposite
 two-bone intersection.
 BikeErg shoes stay on opposed pedals while each knee follows a continuous
-rider-forward branch and retains flexion through bottom dead centre. The
-BikeErg fit contract is shared by the procedural renderer and generated V3
-equipment: wheelbase, bottom bracket, saddle, cockpit, and hand contacts stay
-in one proportioned coordinate set. The V4 path places the hip joint above that
-saddle so the mesh sit surface rests on the seat (the hip bone is not the sit
-surface), and rebuilds the elbow branch from the visible shoulders to the hood
-contacts so palms lock to the grips with a tucked cockpit reach. These geometry
-and pose fixes are present at every 3D tier; higher tiers add material response
-and detail rather than replaying the same misfit at a larger pixel budget. These
+rider-forward branch and retains flexion through bottom dead centre. The 3D
+BikeErg machine is a stationary indoor-erg silhouette (front flywheel cage,
+fixed base, seat rail, cockpit)—not a free road bicycle—shared by the
+procedural renderer and generated V3 equipment through one `BIKE_RIG` fit
+contract for bottom bracket, saddle, grips, and pedals. The production V4
+athlete (PR #172) places its hip above that saddle so the mesh sit surface
+rests on the seat, and rebuilds the elbow branch from the visible shoulders to
+the hood contacts so palms lock to the grips. Equipment form and athlete–bike
+contact are present at every 3D tier; higher tiers add material response and
+detail rather than replaying the same misfit at a larger pixel budget. These
 are deliberate illustrative motion constraints, not measured joint or force data
 from Concept2.
 

@@ -932,56 +932,58 @@ function skiAssemblyParts() {
   ];
 }
 
-/** One wheel, rooted at the existing wheel-group centre with an axle along X. */
+/**
+ * Front flywheel / rear stabilizer rotor. Rooted at the existing wheel-group
+ * centre with an axle along X. The front instance is the BikeErg fan; the rear
+ * instance is a small transport wheel on the fixed base (same template).
+ */
 function bikeWheelAssemblyParts() {
-  const tyre = bakeGeometry(aeroRingGeometry(BIKE_RIG.wheelRadius, 0.065, 56), {
+  const r = BIKE_RIG.wheelRadius;
+  // Outer cage ring reads as a fan shroud rather than a road tyre.
+  const tyre = bakeGeometry(aeroRingGeometry(r, 0.048, 48), {
     rotation: [0, Math.PI / 2, 0],
   });
-  const rim = bakeGeometry(aeroRingGeometry(BIKE_RIG.wheelRadius * 0.856, 0.031, 56), {
+  const rim = bakeGeometry(aeroRingGeometry(r * 0.82, 0.028, 48), {
     rotation: [0, Math.PI / 2, 0],
   });
-  const hub = bakeGeometry(new THREE.CylinderGeometry(0.052, 0.052, 0.128, 18), {
+  const hub = bakeGeometry(new THREE.CylinderGeometry(0.06, 0.06, 0.14, 16), {
     rotation: [0, 0, Math.PI / 2],
   });
-  // A rotor is a thin structural object, not a floating torus. The carrier,
-  // six lightening spokes and bolt heads keep the detail readable when the
-  // chase camera catches a spinning wheel, without introducing a texture or
-  // a dense per-tooth mesh.
-  const rotorOffsetX = 0.068;
+  // Fan blades / rotor plates — denser than road spokes so the front reads as
+  // a flywheel when spinning with distance/cadence.
   const rotorParts = [
-    bakeGeometry(new THREE.TorusGeometry(0.105, 0.007, 7, 30), {
+    bakeGeometry(new THREE.TorusGeometry(r * 0.55, 0.01, 6, 28), {
       rotation: [0, Math.PI / 2, 0],
-      position: [rotorOffsetX, 0, 0],
-    }),
-    bakeGeometry(new THREE.TorusGeometry(0.036, 0.006, 6, 18), {
-      rotation: [0, Math.PI / 2, 0],
-      position: [rotorOffsetX, 0, 0],
+      position: [0.04, 0, 0],
     }),
   ];
-  for (let index = 0; index < 6; index++) {
-    const angle = (index / 6) * Math.PI * 2 + Math.PI / 6;
+  for (let index = 0; index < 8; index++) {
+    const angle = (index / 8) * Math.PI * 2;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     rotorParts.push(
       tubeGeometryBetween(
-        [rotorOffsetX, cos * 0.03, sin * 0.03],
-        [rotorOffsetX, cos * 0.096, sin * 0.096],
-        0.005,
+        [0.04, cos * 0.05, sin * 0.05],
+        [0.04, cos * r * 0.72, sin * r * 0.72],
+        0.01,
         8,
-        0.78,
+        0.8,
       ),
-      bakeGeometry(new THREE.CylinderGeometry(0.006, 0.006, 0.012, 8), {
-        rotation: [0, 0, Math.PI / 2],
-        position: [rotorOffsetX + 0.007, cos * 0.046, sin * 0.046],
-      }),
     );
   }
   const rotor = composeGeometry(...rotorParts);
   const spokes = [];
-  for (let index = 0; index < 14; index++) {
-    const angle = (index / 14) * Math.PI * 2 + Math.PI / 14;
-    const end = [0, Math.cos(angle) * 0.382, Math.sin(angle) * 0.382];
-    spokes.push(tubeGeometryBetween([0, 0, 0], end, 0.006, 8, 0.72));
+  for (let index = 0; index < 12; index++) {
+    const angle = (index / 12) * Math.PI * 2 + Math.PI / 12;
+    spokes.push(
+      tubeGeometryBetween(
+        [0, 0, 0],
+        [0, Math.cos(angle) * r * 0.88, Math.sin(angle) * r * 0.88],
+        0.007,
+        8,
+        0.75,
+      ),
+    );
   }
   return [
     { name: "tyre", geometry: tyre, materialRole: "equipment-rubber" },
@@ -992,49 +994,117 @@ function bikeWheelAssemblyParts() {
   ];
 }
 
-/** Bike-root coordinates match the current avatar group exactly. */
+/**
+ * Stationary BikeErg-form frame in avatar-root coordinates. Part names keep
+ * the V3 template contract; geometry is an indoor erg (base, mast, seat rail,
+ * cockpit, flywheel mounts) rather than a road diamond frame.
+ */
 function bikeFrameAssemblyParts() {
   const bottomBracket = [...BIKE_RIG.bottomBracket];
   const seatCluster = [...BIKE_RIG.seatCluster];
   const headBottom = [...BIKE_RIG.headBottom];
   const headTop = [...BIKE_RIG.headTop];
-  const rearAxle = [0, BIKE_RIG.wheelRadius, BIKE_RIG.rearAxleZ];
+  const rearAxle = [0, BIKE_RIG.wheelRadius * 0.35, BIKE_RIG.rearAxleZ];
   const frontAxle = [0, BIKE_RIG.wheelRadius, BIKE_RIG.frontAxleZ];
+  const base = BIKE_RIG.base;
+  const half = base.halfWidth;
+
+  // Main spine: seat rail + mast + BB drop — the erg monocoque silhouette.
   const mainFrame = composeGeometry(
-    tubeGeometryBetween(bottomBracket, headBottom, 0.055, 16, 0.85),
-    tubeGeometryBetween(bottomBracket, seatCluster, 0.052, 16, 0.88),
-    tubeGeometryBetween(seatCluster, headTop, 0.048, 16, 0.9),
-    tubeGeometryBetween(headBottom, headTop, 0.06, 16),
+    // Longitudinal seat rail
+    tubeGeometryBetween(
+      [0, base.railY + 0.08, BIKE_RIG.rearAxleZ + 0.08],
+      [0, base.railY + 0.08, BIKE_RIG.frontAxleZ - 0.12],
+      0.038,
+      14,
+      0.9,
+    ),
+    // Seat upright
+    tubeGeometryBetween(
+      [0, base.railY + 0.08, seatCluster[2]],
+      seatCluster,
+      0.042,
+      14,
+      0.88,
+    ),
+    // Mast from rail to cockpit
+    tubeGeometryBetween(
+      [0, base.railY + 0.08, headBottom[2]],
+      headBottom,
+      0.045,
+      14,
+      0.88,
+    ),
+    tubeGeometryBetween(headBottom, headTop, 0.04, 14),
+    // BB drop from rail
+    tubeGeometryBetween(
+      [0, base.railY + 0.08, bottomBracket[2]],
+      bottomBracket,
+      0.036,
+      12,
+      0.86,
+    ),
+    // Front flywheel support arms
+    tubeGeometryBetween(
+      [0, base.railY + 0.08, BIKE_RIG.frontAxleZ - 0.1],
+      [0, BIKE_RIG.wheelRadius * 0.55, BIKE_RIG.frontAxleZ],
+      0.034,
+      12,
+    ),
   );
+
+  // Fixed base: front/rear feet and cross-members (stays-and-fork slot).
   const stays = [];
   for (const side of [-1, 1]) {
     stays.push(
+      // Rear foot
       tubeGeometryBetween(
-        [side * 0.065, BIKE_RIG.wheelRadius, BIKE_RIG.rearAxleZ],
-        [side * 0.055, BIKE_RIG.wheelRadius, BIKE_RIG.bottomBracket[2]],
-        0.027,
-        12,
+        [side * half * 0.35, base.railY, base.rearFootZ + 0.12],
+        [side * half, base.railY * 0.4, base.rearFootZ],
+        0.028,
+        10,
       ),
+      // Front foot
       tubeGeometryBetween(
-        [side * 0.065, BIKE_RIG.wheelRadius, BIKE_RIG.rearAxleZ],
-        [side * 0.055, BIKE_RIG.seatCluster[1], BIKE_RIG.seatCluster[2]],
-        0.026,
-        12,
-        0.82,
+        [side * half * 0.3, base.railY, base.frontFootZ - 0.12],
+        [side * half, base.railY * 0.4, base.frontFootZ],
+        0.028,
+        10,
       ),
+      // Cross brace to BB
       tubeGeometryBetween(
-        [side * 0.043, BIKE_RIG.headBottom[1], BIKE_RIG.headBottom[2]],
-        [side * 0.046, BIKE_RIG.wheelRadius, BIKE_RIG.frontAxleZ],
-        0.031,
-        14,
+        [side * half * 0.55, base.railY, bottomBracket[2]],
+        [side * 0.04, bottomBracket[1] - 0.04, bottomBracket[2]],
+        0.022,
+        10,
+        0.85,
+      ),
+      // Flywheel cage strut
+      tubeGeometryBetween(
+        [side * 0.12, BIKE_RIG.wheelRadius * 0.35, BIKE_RIG.frontAxleZ - 0.05],
+        [side * 0.05, BIKE_RIG.wheelRadius, BIKE_RIG.frontAxleZ],
+        0.02,
+        10,
         0.82,
       ),
     );
   }
-  // These endpoints intentionally match the runtime's explicit grip-contact
-  // anchors. The procedural anchors remain the authoritative hand-IK targets;
-  // the authored cockpit must meet them rather than creating a prettier bar a
-  // few decimetres ahead of the rider's hands.
+  stays.push(
+    tubeGeometryBetween(
+      [-half, base.railY * 0.5, base.rearFootZ],
+      [half, base.railY * 0.5, base.rearFootZ],
+      0.024,
+      12,
+    ),
+    tubeGeometryBetween(
+      [-half, base.railY * 0.5, base.frontFootZ],
+      [half, base.railY * 0.5, base.frontFootZ],
+      0.024,
+      12,
+    ),
+  );
+
+  // Cockpit meets the authoritative grip contacts exactly.
   const barCentre = [...BIKE_RIG.handlebar.base];
   const leftGripContact = [
     -BIKE_RIG.handlebar.grip.halfSpan,
@@ -1047,146 +1117,120 @@ function bikeFrameAssemblyParts() {
     BIKE_RIG.handlebar.grip.z,
   ];
   const cockpit = composeGeometry(
-    tubeGeometryBetween(headTop, barCentre, 0.02, 12),
+    tubeGeometryBetween(headTop, barCentre, 0.022, 12),
+    // Monitor / console plate
+    bakeGeometry(new THREE.BoxGeometry(0.22, 0.12, 0.04), {
+      position: [0, headTop[1] + 0.1, headTop[2] + 0.02],
+    }),
     tubeGeometryBetween(
-      [-0.36, BIKE_RIG.handlebar.base[1], BIKE_RIG.handlebar.base[2]],
-      [0.36, BIKE_RIG.handlebar.base[1], BIKE_RIG.handlebar.base[2]],
-      0.02,
-      16,
+      [-BIKE_RIG.handlebar.grip.halfSpan - 0.04, barCentre[1], barCentre[2]],
+      [BIKE_RIG.handlebar.grip.halfSpan + 0.04, barCentre[1], barCentre[2]],
+      0.018,
+      14,
     ),
     tubeGeometryBetween(
-      [-0.34, BIKE_RIG.handlebar.base[1], BIKE_RIG.handlebar.base[2]],
+      [-BIKE_RIG.handlebar.grip.halfSpan - 0.02, barCentre[1], barCentre[2]],
       leftGripContact,
-      0.016,
+      0.015,
       12,
     ),
     tubeGeometryBetween(
-      [0.34, BIKE_RIG.handlebar.base[1], BIKE_RIG.handlebar.base[2]],
+      [BIKE_RIG.handlebar.grip.halfSpan + 0.02, barCentre[1], barCentre[2]],
       rightGripContact,
-      0.016,
+      0.015,
       12,
     ),
   );
-  // The sculpted hoods and their lever blades meet the existing hand anchors
-  // exactly. They enrich the visible control hardware without becoming a new
-  // source of hand targets: the procedural contact nodes still drive arms.
+
+  // Grip sleeves sit on the hand anchors (hood slot).
   const brakeHoodForms = [];
   const brakeLeverForms = [];
   for (const [side, contact] of [
     [-1, leftGripContact],
     [1, rightGripContact],
   ]) {
-    const barEnd = [side * 0.34, BIKE_RIG.handlebar.base[1], BIKE_RIG.handlebar.base[2]];
     brakeHoodForms.push(
-      tubeGeometryBetween(barEnd, contact, 0.022, 14, 0.82),
-      ellipsoidGeometry([0.032, 0.038, 0.045], 18, 12, contact),
+      ellipsoidGeometry([0.028, 0.03, 0.055], 14, 10, contact),
+      tubeGeometryBetween(
+        [side * (BIKE_RIG.handlebar.grip.halfSpan - 0.02), barCentre[1], barCentre[2]],
+        contact,
+        0.02,
+        12,
+        0.85,
+      ),
     );
     brakeLeverForms.push(
       ridgeGeometry(
         [
-          new THREE.Vector3(
-            side * 0.365,
-            BIKE_RIG.handlebar.grip.y - 0.06,
-            BIKE_RIG.handlebar.grip.z + 0.16,
-          ),
-          new THREE.Vector3(
-            side * 0.362,
-            BIKE_RIG.handlebar.grip.y - 0.03,
-            BIKE_RIG.handlebar.grip.z + 0.12,
-          ),
+          new THREE.Vector3(side * 0.26, contact[1] - 0.05, contact[2] + 0.08),
+          new THREE.Vector3(side * 0.25, contact[1] - 0.02, contact[2] + 0.04),
           new THREE.Vector3(...contact),
         ],
-        0.008,
-        10,
+        0.007,
         8,
+        7,
       ),
     );
   }
   const brakeHoods = composeGeometry(...brakeHoodForms);
   const brakeLevers = composeGeometry(...brakeLeverForms);
 
-  // Disc calipers sit at the actual rotor plane on the fork and rear stay.
-  // Keeping them in the static frame assembly preserves the wheel and crank
-  // animation groups while still making the braking system read as assembled.
+  // Damper / cable hardware near the flywheel and mast (caliper slot).
   const brakeCalipers = composeGeometry(
-    ellipsoidGeometry([0.052, 0.067, 0.042], 16, 11, [0.09, 0.67, BIKE_RIG.frontAxleZ - 0.07]),
-    ellipsoidGeometry([0.042, 0.058, 0.038], 16, 11, [0.09, 0.59, BIKE_RIG.rearAxleZ + 0.07]),
+    ellipsoidGeometry([0.04, 0.05, 0.035], 12, 9, [
+      0.08,
+      BIKE_RIG.wheelRadius * 0.85,
+      BIKE_RIG.frontAxleZ - 0.08,
+    ]),
+    ellipsoidGeometry([0.03, 0.04, 0.03], 10, 8, [0.06, headBottom[1], headBottom[2] - 0.04]),
     tubeGeometryBetween(
-      [0.077, 0.67, BIKE_RIG.frontAxleZ - 0.07],
-      [0.043, 0.9, 0.59],
-      0.014,
-      10,
+      [0.08, BIKE_RIG.wheelRadius * 0.85, BIKE_RIG.frontAxleZ - 0.08],
+      [0.05, headBottom[1] - 0.05, headBottom[2]],
+      0.01,
+      8,
       0.8,
     ),
-    tubeGeometryBetween(
-      [0.077, 0.59, BIKE_RIG.rearAxleZ + 0.07],
-      [0.048, 1.0, -0.54],
-      0.014,
-      10,
-      0.8,
+  );
+
+  // Drive chain from BB toward the front flywheel (not a rear cassette).
+  const driveSideX = -0.075;
+  const chainAndCassette = composeGeometry(
+    ridgeGeometry(
+      [
+        new THREE.Vector3(driveSideX, bottomBracket[1] + 0.06, bottomBracket[2]),
+        new THREE.Vector3(driveSideX, BIKE_RIG.wheelRadius * 0.55, BIKE_RIG.frontAxleZ * 0.45),
+        new THREE.Vector3(driveSideX, BIKE_RIG.wheelRadius * 0.35, BIKE_RIG.frontAxleZ - 0.02),
+      ],
+      0.009,
+      12,
+      7,
     ),
-    bakeGeometry(new THREE.CylinderGeometry(0.016, 0.016, 0.025, 10), {
-      rotation: [0, 0, Math.PI / 2],
-      position: [0.112, 0.67, BIKE_RIG.frontAxleZ - 0.04],
-    }),
-    bakeGeometry(new THREE.CylinderGeometry(0.014, 0.014, 0.025, 10), {
-      rotation: [0, 0, Math.PI / 2],
-      position: [0.112, 0.59, BIKE_RIG.rearAxleZ - 0.03],
+    ridgeGeometry(
+      [
+        new THREE.Vector3(driveSideX, bottomBracket[1] - 0.06, bottomBracket[2]),
+        new THREE.Vector3(driveSideX, BIKE_RIG.wheelRadius * 0.25, BIKE_RIG.frontAxleZ * 0.45),
+        new THREE.Vector3(driveSideX, BIKE_RIG.wheelRadius * 0.15, BIKE_RIG.frontAxleZ - 0.02),
+      ],
+      0.009,
+      12,
+      7,
+    ),
+    bakeGeometry(new THREE.TorusGeometry(0.07, 0.008, 6, 20), {
+      rotation: [0, Math.PI / 2, 0],
+      position: [driveSideX, BIKE_RIG.wheelRadius * 0.25, BIKE_RIG.frontAxleZ],
     }),
   );
 
-  // A single visible-side chain line and compact stepped cassette establish
-  // the BikeErg's mechanical connection without a dense, noisy link mesh.
-  // The chain lives in frame-root coordinates; pedal rotation remains entirely
-  // owned by the separate drivetrain root.
-  const driveSideX = -0.078;
-  const chainAndCassetteForms = [
-    ridgeGeometry(
-      [
-        new THREE.Vector3(driveSideX, 0.585, -0.08),
-        new THREE.Vector3(driveSideX, 0.55, -0.43),
-        new THREE.Vector3(driveSideX, 0.515, BIKE_RIG.rearAxleZ - 0.07),
-      ],
-      0.008,
-      12,
-      7,
-    ),
-    ridgeGeometry(
-      [
-        new THREE.Vector3(driveSideX, 0.315, -0.08),
-        new THREE.Vector3(driveSideX, 0.34, -0.43),
-        new THREE.Vector3(driveSideX, 0.37, BIKE_RIG.rearAxleZ - 0.07),
-      ],
-      0.008,
-      12,
-      7,
-    ),
-    ellipsoidGeometry([0.03, 0.062, 0.048], 14, 10, [driveSideX - 0.012, 0.36, BIKE_RIG.rearAxleZ]),
-    tubeGeometryBetween(
-      [driveSideX - 0.012, 0.39, BIKE_RIG.rearAxleZ + 0.01],
-      [driveSideX, 0.43, BIKE_RIG.rearAxleZ - 0.08],
-      0.012,
-      10,
-    ),
-  ];
-  for (const [index, radius] of [0.052, 0.066, 0.081, 0.096].entries()) {
-    chainAndCassetteForms.push(
-      bakeGeometry(new THREE.TorusGeometry(radius, 0.006, 6, 24), {
-        rotation: [0, Math.PI / 2, 0],
-        position: [driveSideX - index * 0.009, rearAxle[1], rearAxle[2]],
-      }),
-    );
-  }
-  const chainAndCassette = composeGeometry(...chainAndCassetteForms);
   const saddle = performanceSaddleGeometry();
   saddle.translate(...BIKE_RIG.saddle);
   const seatPost = tubeGeometryBetween(
-    [0, BIKE_RIG.saddle[1] - 0.04, BIKE_RIG.saddle[2]],
-    [0, BIKE_RIG.saddle[1] + 0.08, BIKE_RIG.saddle[2]],
-    0.024,
+    [0, BIKE_RIG.saddle[1] - 0.05, BIKE_RIG.saddle[2]],
+    [0, BIKE_RIG.saddle[1] + 0.06, BIKE_RIG.saddle[2]],
+    0.026,
     12,
   );
-  const forkCrown = ellipsoidGeometry([0.07, 0.07, 0.055], 16, 10, headBottom);
+  const forkCrown = ellipsoidGeometry([0.06, 0.055, 0.05], 14, 10, headBottom);
+
   return [
     { name: "main-triangle", geometry: mainFrame, materialRole: "equipment-painted" },
     {
@@ -1208,12 +1252,12 @@ function bikeFrameAssemblyParts() {
     { name: "fork-crown", geometry: forkCrown, materialRole: "equipment-painted" },
     {
       name: "rear-axle",
-      geometry: ellipsoidGeometry([0.06, 0.035, 0.035], 14, 9, rearAxle),
+      geometry: ellipsoidGeometry([0.05, 0.03, 0.03], 12, 8, rearAxle),
       materialRole: "equipment-metal",
     },
     {
       name: "front-axle",
-      geometry: ellipsoidGeometry([0.06, 0.035, 0.035], 14, 9, frontAxle),
+      geometry: ellipsoidGeometry([0.055, 0.04, 0.04], 12, 8, frontAxle),
       materialRole: "equipment-metal",
     },
   ];

@@ -159,6 +159,18 @@ truthfully record effective High/WebGL. They prove anatomy, enclosure, and
 clipping at the same geometry and contact solve used by all tiers; the existing
 hardware Chrome evidence remains the Ultra/WebGPU material proof.
 
+### BikeErg-form equipment (option B outcome) — 2026-07-25
+
+Product goal: better **machine** + correct athlete interaction. Athlete body is
+#172; this change replaces the toy road diamond with a stationary indoor
+BikeErg-form silhouette (front flywheel cage, fixed base feet, seat rail, mast,
+console, grips) generated from `BIKE_RIG`, with sit/grip/pedal contacts locked.
+
+A CC-BY Sketchfab spin bike was evaluated and **not imported** (≈435k faces vs
+32k V3 package budget; Sketchfab auth; no retarget). Provenance:
+`static/replay-assets/source/bike/PROVENANCE.md`. Shipped geometry is
+repository-authored MIT under the same fit contract a third-party mesh would use.
+
 ### BikeErg sit-surface correction — 2026-07-25
 
 Codex’s earlier “seated fit” change only moved the hip **bone** onto the saddle

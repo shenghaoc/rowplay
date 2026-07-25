@@ -1,43 +1,51 @@
 /**
- * One BikeErg fit contract shared by the procedural renderer and the generated
+ * Shared BikeErg-form fit contract for the procedural renderer and generated
  * V3 equipment package. Local +Z is travel; +Y is up; lateral contacts use X.
  *
- * The values are a stylised indoor-racing-bike proportion baseline, not a
- * claim about a particular athlete's fit. Keeping the machine anchors here
- * prevents the fallback and authored equipment from drifting apart again.
+ * This is a stylised **stationary indoor erg** (Concept2 BikeErg-like), not a
+ * free road bicycle. The chase camera still carries the machine around the
+ * race course as a progress metaphor; the equipment silhouette is an indoor
+ * bike with a front flywheel cage, fixed base, seat rail, and cockpit.
  *
- * Rider placement is hip-joint based. The production V4 mesh's posterior sit
- * surface sits below/aft of `v4Hips` (`sitSurfaceFromHip`). The saddle is
- * therefore placed under that sit surface, not under the hip bone: aligning
- * the hip bone to a high saddle marker sinks the buttocks under the authored
- * seat and makes the saddle look empty from the chase camera even though
- * bone-to-marker tests still pass.
+ * Athlete interaction is hip-joint based: the production V4 mesh's posterior
+ * sit surface sits below/aft of `v4Hips` (`sitSurfaceFromHip`). The saddle is
+ * placed under that sit surface so the rider reads as seated. Palm targets are
+ * the hood/grip contacts; feet lock to the crank pedals.
  */
 export const BIKE_RIG = Object.freeze({
-  wheelRadius: 0.45,
-  rearAxleZ: -0.76,
-  frontAxleZ: 0.76,
-  bottomBracket: Object.freeze([0, 0.45, -0.05]),
-  // Seat cluster / saddle sit under the mesh sit surface (hip + sitSurfaceFromHip),
-  // not under the hip joint. Hip stays high enough for full pedal reach.
-  seatCluster: Object.freeze([0, 1.14, -0.33]),
-  headBottom: Object.freeze([0, 1.0, 0.34]),
-  headTop: Object.freeze([0, 1.25, 0.41]),
-  saddle: Object.freeze([0, 1.15, -0.33]),
+  /** Front flywheel radius (also drives the rotating "wheel" visual group). */
+  wheelRadius: 0.36,
+  /** Front flywheel axle Z (forward). */
+  frontAxleZ: 0.58,
+  /** Rear base-foot visual Z (aft stabilizer; not a free road wheel). */
+  rearAxleZ: -0.62,
+  bottomBracket: Object.freeze([0, 0.34, 0.02]),
+  seatCluster: Object.freeze([0, 1.05, -0.4]),
+  /** Stem / mast base under the cockpit. */
+  headBottom: Object.freeze([0, 0.72, 0.2]),
+  headTop: Object.freeze([0, 1.12, 0.16]),
+  saddle: Object.freeze([0, 1.06, -0.4]),
   handlebar: Object.freeze({
-    base: Object.freeze([0, 1.23, 0.29]),
-    grip: Object.freeze({ y: 1.21, z: 0.33, halfSpan: 0.3 }),
+    base: Object.freeze([0, 1.1, 0.14]),
+    grip: Object.freeze({ y: 1.08, z: 0.2, halfSpan: 0.24 }),
   }),
-  crank: Object.freeze({ lateral: 0.1, pedalRadius: 0.21 }),
+  crank: Object.freeze({ lateral: 0.1, pedalRadius: 0.175 }),
   rider: Object.freeze({
-    // Hip joint above the saddle so the mesh sit surface lands on the seat
-    // while thigh+shin still reach bottom dead centre.
-    root: Object.freeze([0, 1.22, -0.29]),
+    // Hip above the saddle so mesh sit surface lands on the seat, while
+    // thigh+shin still reach bottom dead centre without residual IK gap.
+    root: Object.freeze([0, 1.12, -0.38]),
     pelvisOffset: Object.freeze([0, 0.005, -0.005]),
     /**
      * Approximate posterior sit surface relative to the hip joint after the
-     * bike clip (metres, rider-local). Saddle ≈ hip + sitSurfaceFromHip.
+     * bike clip (metres). Saddle ≈ hip + sitSurfaceFromHip.
      */
-    sitSurfaceFromHip: Object.freeze([0, -0.075, -0.04]),
+    sitSurfaceFromHip: Object.freeze([0, -0.065, -0.04]),
+  }),
+  /** Front/rear floor feet for the fixed base. */
+  base: Object.freeze({
+    frontFootZ: 0.78,
+    rearFootZ: -0.72,
+    halfWidth: 0.28,
+    railY: 0.06,
   }),
 });

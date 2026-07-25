@@ -22,8 +22,8 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 676,524 bytes; SHA-256
-  `c2cbc714c5ccfbe6541fc6d5c29cbb5d4a7c868c3bde8ae87c6196a75d3b323e`.
+- **Reviewed V3 artifact:** 616,040 bytes; SHA-256
+  `5d948662fe780defaab2edfce99c2a41ed537a66bfbe616125fd126751af1ae2`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
   nodes total). The package has 26,590 indexed triangles and 18,745 indexed
@@ -37,13 +37,15 @@ identity, or Canvas 2D fallback.
   Blender-authored open-U racing shell with split decks, recessed cockpit,
   slide rails, angled stretcher, heel cups, wing rigger, oarlocks, moving
   four-roller seat carriage, and sculpted oar; raised ski deck and binding; aero-rim wheels
-  with 14 fine spokes and six-spoke disc rotors, a proper diamond-frame bicycle
-  with chain/cassette, calipers, contact-aligned brake hoods/levers, and a
-  rotating crank assembly. The BikeErg frame, saddle, hood, and pedal anchors
-  are generated from the shared `src/lib/replay/bikeRig.js` contract, so the
-  checked-in V3 equipment cannot drift from the renderer's fit. All detail is
-  generated from reviewed local Three.js or Blender Python source; there is no
-  image, texture, downloaded model, scan, or avatar-generator output.
+  with 14 fine spokes and six-spoke disc rotors; a stationary **BikeErg-form**
+  indoor machine (front flywheel cage, fixed base feet, seat rail, mast,
+  console, contact-aligned grips, rotating crank) generated from the shared
+  `src/lib/replay/bikeRig.js` contract so the checked-in V3 equipment cannot
+  drift from the renderer's sit/grip/pedal fit. Bike equipment provenance and
+  the evaluated-but-not-imported CC-BY spin-bike candidate are recorded in
+  `source/bike/PROVENANCE.md`. All detail is generated from reviewed local
+  Three.js or Blender Python source; there is no image, texture, downloaded
+  model, scan, or avatar-generator output.
 
 ### V3 schema and coordinate contracts
 

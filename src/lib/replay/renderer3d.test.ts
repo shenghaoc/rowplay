@@ -479,7 +479,7 @@ describe("CourseRenderer3D", () => {
         "skierg-hand-left",
       ],
       bike: [
-        "bike-top-tube",
+        "bike-seat-rail",
         "bike-chain-ring",
         "bike-handlebar",
         "bike-pedal-left",
@@ -812,24 +812,29 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
-  it("joins the BikeErg diamond-frame tubes at their authored endpoints", () => {
+  it("joins the BikeErg stationary-frame tubes at their authored endpoints", () => {
     const renderer = new CourseRenderer3D(makeHost(), "low", "bike");
+    const railY = BIKE_RIG.base.railY + 0.08;
     const expected = {
-      "bike-down-tube": [
-        new THREE.Vector3(...BIKE_RIG.bottomBracket),
-        new THREE.Vector3(...BIKE_RIG.headBottom),
+      "bike-seat-rail": [
+        new THREE.Vector3(0, railY, BIKE_RIG.rearAxleZ + 0.08),
+        new THREE.Vector3(0, railY, BIKE_RIG.frontAxleZ - 0.12),
       ],
       "bike-seat-tube": [
-        new THREE.Vector3(...BIKE_RIG.bottomBracket),
+        new THREE.Vector3(0, railY, BIKE_RIG.seatCluster[2]!),
         new THREE.Vector3(...BIKE_RIG.seatCluster),
       ],
-      "bike-top-tube": [
-        new THREE.Vector3(...BIKE_RIG.seatCluster),
-        new THREE.Vector3(...BIKE_RIG.headTop),
+      "bike-mast": [
+        new THREE.Vector3(0, railY, BIKE_RIG.headBottom[2]!),
+        new THREE.Vector3(...BIKE_RIG.headBottom),
       ],
       "bike-head-tube": [
         new THREE.Vector3(...BIKE_RIG.headBottom),
         new THREE.Vector3(...BIKE_RIG.headTop),
+      ],
+      "bike-bb-drop": [
+        new THREE.Vector3(0, railY, BIKE_RIG.bottomBracket[2]!),
+        new THREE.Vector3(...BIKE_RIG.bottomBracket),
       ],
     } as const;
 
@@ -934,12 +939,12 @@ describe("CourseRenderer3D", () => {
     ski.destroy();
 
     const bike = new CourseRenderer3D(makeHost(), "ultra", "bike");
-    const topTube = sceneObject(bike, "bike-top-tube") as THREE.Mesh<
+    const seatRail = sceneObject(bike, "bike-seat-rail") as THREE.Mesh<
       THREE.BufferGeometry,
       THREE.Material
     >;
-    expect(topTube.material).toBeInstanceOf(THREE.MeshPhysicalMaterial);
-    expect((topTube.material as THREE.MeshPhysicalMaterial).clearcoat).toBeGreaterThan(0);
+    expect(seatRail.material).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+    expect((seatRail.material as THREE.MeshPhysicalMaterial).clearcoat).toBeGreaterThan(0);
     expect(
       (sceneObject(bike, "ground") as THREE.Mesh).geometry.getAttribute("color"),
     ).toBeDefined();
@@ -3384,8 +3389,9 @@ describe("CourseRenderer3D", () => {
     renderer.render(makeSportState("bike", 0.25, 0), false);
     expect(sceneObject(renderer, "bike-wheel-front").rotation.x).toBe(0);
     renderer.render(makeSportState("bike", 0.25, 9), false);
-    expect(sceneObject(renderer, "bike-wheel-front").rotation.x).toBeCloseTo(20, 8);
-    expect(sceneObject(renderer, "bike-wheel-rear").rotation.x).toBeCloseTo(20, 8);
+    const wheelAngle = 9 / BIKE_RIG.wheelRadius;
+    expect(sceneObject(renderer, "bike-wheel-front").rotation.x).toBeCloseTo(wheelAngle, 8);
+    expect(sceneObject(renderer, "bike-wheel-rear").rotation.x).toBeCloseTo(wheelAngle, 8);
     expect(sceneObject(renderer, "bike-cranks").rotation.x).toBeCloseTo(Math.PI / 2, 8);
     renderer.destroy();
   });

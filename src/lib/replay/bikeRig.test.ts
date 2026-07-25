@@ -7,14 +7,19 @@ function point(value: readonly number[]): THREE.Vector3 {
 }
 
 describe("BikeErg fit contract", () => {
-  it("keeps the frame human-scale instead of stretching the wheelbase around the rider", () => {
+  it("keeps a stationary indoor erg proportion instead of a free road diamond", () => {
     const wheelbase = BIKE_RIG.frontAxleZ - BIKE_RIG.rearAxleZ;
     const wheelDiameter = BIKE_RIG.wheelRadius * 2;
 
-    expect(wheelbase / wheelDiameter).toBeGreaterThan(1.5);
-    expect(wheelbase / wheelDiameter).toBeLessThan(1.9);
-    expect(BIKE_RIG.seatCluster[2]).toBeGreaterThan(BIKE_RIG.rearAxleZ);
-    expect(BIKE_RIG.headTop[2]).toBeLessThan(BIKE_RIG.frontAxleZ);
+    // Front flywheel + rear base foot span stays human-scale for an indoor erg.
+    expect(wheelbase).toBeGreaterThan(0.9);
+    expect(wheelbase).toBeLessThan(1.5);
+    expect(wheelbase / wheelDiameter).toBeGreaterThan(1.4);
+    expect(wheelbase / wheelDiameter).toBeLessThan(2.2);
+    expect(BIKE_RIG.saddle[2]).toBeLessThan(BIKE_RIG.bottomBracket[2]!);
+    expect(BIKE_RIG.handlebar.grip.z).toBeGreaterThan(BIKE_RIG.saddle[2]!);
+    expect(BIKE_RIG.base.frontFootZ).toBeGreaterThan(BIKE_RIG.frontAxleZ);
+    expect(BIKE_RIG.base.rearFootZ).toBeLessThan(BIKE_RIG.rearAxleZ);
   });
 
   it("places the hip above the saddle so the mesh sit surface lands on the seat", () => {
@@ -28,26 +33,23 @@ describe("BikeErg fit contract", () => {
     );
     const rightGrip = leftGrip.clone().setX(BIKE_RIG.handlebar.grip.halfSpan);
 
-    // Hip is intentionally above the saddle marker; the sit surface is what
-    // must land on the seat.
     expect(hip.y - saddle.y).toBeGreaterThan(0.05);
     expect(hip.y - saddle.y).toBeLessThan(0.12);
     expect(Math.abs(sit.y - saddle.y)).toBeLessThan(0.03);
     expect(Math.abs(sit.z - saddle.z)).toBeLessThan(0.05);
     expect(leftGrip.y).toBeLessThan(hip.y);
     expect(rightGrip.y).toBeLessThan(hip.y);
-    expect(leftGrip.distanceTo(hip)).toBeGreaterThan(0.55);
-    expect(leftGrip.distanceTo(hip)).toBeLessThan(0.85);
+    expect(leftGrip.distanceTo(hip)).toBeGreaterThan(0.5);
+    expect(leftGrip.distanceTo(hip)).toBeLessThan(0.9);
     expect(rightGrip.distanceTo(hip)).toBeCloseTo(leftGrip.distanceTo(hip), 8);
 
-    // Bottom-dead-centre pedal still within thigh+shin reach (~1.07 m).
     const bottomPedalY = BIKE_RIG.bottomBracket[1]! - BIKE_RIG.crank.pedalRadius;
     expect(hip.y - bottomPedalY).toBeLessThan(1.07);
   });
 
   it("keeps the opposed pedal radius and lateral spacing identical to the authored runtime", () => {
-    expect(BIKE_RIG.crank.pedalRadius).toBeGreaterThan(0.18);
-    expect(BIKE_RIG.crank.pedalRadius).toBeLessThan(0.24);
+    expect(BIKE_RIG.crank.pedalRadius).toBeGreaterThan(0.15);
+    expect(BIKE_RIG.crank.pedalRadius).toBeLessThan(0.22);
     expect(BIKE_RIG.crank.lateral).toBeGreaterThan(0.08);
     expect(BIKE_RIG.crank.lateral).toBeLessThan(0.13);
   });
