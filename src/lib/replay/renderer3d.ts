@@ -2965,12 +2965,14 @@ function makeBikeAvatar(
     tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
     wheel.add(tyre);
     const wheelFallback: THREE.Object3D[] = [tyre];
-    for (const [index, angle] of [0, Math.PI / 3, (Math.PI * 2) / 3].entries()) {
+    // Eight radial spokes per wheel — reads as a bicycle, not a toy diagram.
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI;
       const spoke = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.011, 0.011, wheelR * 1.72, eqCylSegs),
+        new THREE.CylinderGeometry(0.008, 0.008, wheelR * 1.8, eqCylSegs),
         spokeMaterial,
       );
-      spoke.name = `${wheel.name}-spoke-${index}`;
+      spoke.name = `${wheel.name}-spoke-${i}`;
       spoke.rotation.x = angle;
       wheel.add(spoke);
       wheelFallback.push(spoke);
@@ -3030,6 +3032,21 @@ function makeBikeAvatar(
     setReplayAssetSlot(seatStay, "equipment:bike:frame-tube");
     group.add(chainStay, seatStay);
     frameFallback.push(chainStay, seatStay);
+    // Fork blades — connect the head tube to the front axle so the wheel
+    // doesn't float in space.
+    const frontAxlePt = { x: side * 0.05, y: wheelAxleY, z: BIKE_RIG.frontAxleZ };
+    const forkBlade = accentPart(
+      tubeBetween(
+        `bike-fork-blade-${side > 0 ? "right" : "left"}`,
+        headBottom,
+        frontAxlePt,
+        0.026,
+        accentMat(),
+      ),
+    );
+    setReplayAssetSlot(forkBlade, "equipment:bike:frame-tube");
+    group.add(forkBlade);
+    frameFallback.push(forkBlade);
   }
 
   // Cranks: spin about the bottom bracket (X axis) with two pedals.
@@ -3063,6 +3080,28 @@ function makeBikeAvatar(
     fallback: drivetrainFallback,
   });
   group.add(cranks);
+
+  // Drive chain from chainring to rear cassette — two thin parallel tubes
+  // so the drivetrain reads as mechanically connected instead of floating.
+  const driveSideX = -0.075;
+  const chainTop = tubeBetween(
+    "bike-chain-top",
+    { x: driveSideX, y: wheelAxleY + 0.08, z: -0.05 },
+    { x: driveSideX, y: wheelAxleY + 0.03, z: BIKE_RIG.rearAxleZ + 0.03 },
+    0.005,
+    spokeMaterial,
+  );
+  const chainBottom = tubeBetween(
+    "bike-chain-bottom",
+    { x: driveSideX, y: wheelAxleY - 0.08, z: -0.05 },
+    { x: driveSideX, y: wheelAxleY - 0.03, z: BIKE_RIG.rearAxleZ + 0.03 },
+    0.005,
+    spokeMaterial,
+  );
+  setReplayAssetSlot(chainTop, "equipment:bike:frame-tube");
+  setReplayAssetSlot(chainBottom, "equipment:bike:frame-tube");
+  group.add(chainTop, chainBottom);
+  frameFallback.push(chainTop, chainBottom);
 
   // A bicycle saddle is a low-profile shell, not a thick rectangular block.
   // Render its cushion before, but without writing depth against, the rider:
