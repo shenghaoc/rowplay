@@ -4520,18 +4520,22 @@ export class CourseRenderer3D implements ReplayRenderer {
   private makeWaterNormalTexture(ultra: boolean): THREE.DataTexture {
     const size = ultra ? 128 : 64;
     const pixels = new Uint8Array(size * size * 4);
+    const octaves = ultra ? 4 : 3;
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
+        // Fractal Brownian motion over 2D simplex gives natural wave patterns
+        // with crossing swells and capillary detail — no periodic sine artifacts.
         const u = x / size;
         const v = y / size;
-        const longWave = Math.sin((u * 3.1 + v * 0.7) * FULL_CIRCLE) * 0.58;
-        const crossWave = Math.sin((u * 0.9 - v * 4.3) * FULL_CIRCLE) * 0.34;
-        const capillary = ultra ? Math.sin((u * 12.7 + v * 7.9) * FULL_CIRCLE) * 0.08 : 0;
-        const nx = longWave * 0.18 + capillary;
-        const ny = crossWave * 0.15 - capillary * 0.55;
+        const scale = ultra ? 5.5 : 3.8;
+        const nx = fbm2(u * scale, v * scale, octaves) * 0.7;
+        const ny = fbm2(u * scale + 3.7, v * scale + 2.1, octaves) * 0.55;
+        const capillary = ultra
+          ? fbm2(u * 18.0, v * 18.0, 3) * 0.08
+          : 0;
         const offset = (y * size + x) * 4;
-        pixels[offset] = Math.round((nx * 0.5 + 0.5) * 255);
-        pixels[offset + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+        pixels[offset] = Math.round(((nx + capillary) * 0.5 + 0.5) * 255);
+        pixels[offset + 1] = Math.round(((ny - capillary * 0.6) * 0.5 + 0.5) * 255);
         pixels[offset + 2] = 255;
         pixels[offset + 3] = 255;
       }
@@ -4586,17 +4590,20 @@ export class CourseRenderer3D implements ReplayRenderer {
   private makeWaterSurfaceTexture(detail: number): THREE.DataTexture {
     const size = detail >= 3 ? 128 : 64;
     const pixels = new Uint8Array(size * size * 4);
+    const scale = detail >= 3 ? 6.0 : 4.0;
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         const u = x / size;
         const v = y / size;
-        const long = Math.sin((u * 2.4 + v * 0.42) * FULL_CIRCLE);
-        const cross = Math.sin((u * 0.72 - v * 3.1) * FULL_CIRCLE);
-        const fine = Math.sin((u * 11.7 + v * 7.1) * FULL_CIRCLE);
-        const sheen = long * 0.5 + cross * 0.34 + fine * (detail >= 3 ? 0.13 : 0.06);
-        const highlight = Math.pow(Math.max(0, Math.sin((u * 5.2 - v * 0.7) * FULL_CIRCLE)), 12);
-        const value = Math.max(0, Math.min(255, Math.round(214 + sheen * 30 + highlight * 18)));
+        // Fractal water sheen: broad swells + fine ripple, no periodic sine.
+        const sheen = fbm2(u * scale, v * scale, 4) * 0.6;
+        const highlight = Math.pow(
+          Math.max(0, fbm2(u * 7.2 + 1.3, v * 7.2 + 0.7, 3) * 0.5 + 0.5),
+          8,
+        );
+        const value = Math.max(0, Math.min(255, Math.round(212 + sheen * 38 + highlight * 22)));
         const offset = (y * size + x) * 4;
+        // Slight cool-blue tint for deeper-looking water.
         pixels[offset] = Math.max(0, value - 14);
         pixels[offset + 1] = Math.max(0, value - 2);
         pixels[offset + 2] = Math.min(255, value + 5);
