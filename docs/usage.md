@@ -220,8 +220,9 @@ blue-shadowed snow to a winter valley bowl, race fencing, snowbanks, evergreen,
 alpine, and Nordic-venue forms; BikeErg joins its asphalt circuit to a planted
 infield, service apron, tiered stands, roof structure, floodlights, urban dusk
 skyline, and embedded lap reflectors rather than using a generic
-asphalt or velodrome-style circuit with curbs, barriers, infield, and built-venue
-or floodlight cues. The 2D view composes sky, horizon, middle distance, course,
+velodrome-style circuit. High and Ultra BikeErg use optimized local derivatives
+of Poly Haven's CC0 Clean Asphalt material; its creator, source, license, and
+digests are recorded with the assets. The 2D view composes sky, horizon, middle distance, course,
 and foreground layers. The 3D view adds atmospheric depth, a readable horizon,
 smooth compound scenery, material-specific terrain variation, and sport-specific
 surfaces so the athlete is grounded in a venue rather than floating on a plane.

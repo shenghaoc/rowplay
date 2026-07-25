@@ -709,6 +709,22 @@ describe("CourseRenderer3D", () => {
       bikeScenes[2].scene.getObjectByName("environment:bike:track-reflectors"),
     ).toBeUndefined();
     expect(bikeScenes[3].scene.getObjectByName("environment:bike:track-reflectors")).toBeDefined();
+    const bikeGround = bikeScenes.map(
+      ({ scene }) =>
+        (scene.getObjectByName("ground") as THREE.Mesh).material as THREE.MeshStandardMaterial,
+    );
+    const bikeLane = bikeScenes.map(
+      ({ scene }) =>
+        (scene.getObjectByName("lane") as THREE.Mesh).material as THREE.MeshStandardMaterial,
+    );
+    expect(bikeGround[0].map).toBeNull();
+    expect(bikeGround[1].map).toBeNull();
+    expect(bikeGround[2].map?.userData.sourcePath).toContain("clean-asphalt-diffuse");
+    expect(bikeGround[2].roughnessMap?.userData.sourcePath).toContain("clean-asphalt-roughness");
+    expect(bikeGround[2].normalMap).toBeNull();
+    expect(bikeGround[3].normalMap?.userData.sourcePath).toContain("clean-asphalt-normal");
+    expect(bikeLane[2].map?.userData.sourcePath).toContain("clean-asphalt-diffuse");
+    expect(bikeLane[3].normalMap?.userData.sourcePath).toContain("clean-asphalt-normal");
     for (const { renderer } of bikeScenes) renderer.destroy();
   });
 

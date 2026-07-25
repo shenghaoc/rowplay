@@ -28,3 +28,30 @@ Original Poly Haven MD5 values recorded by its public asset API:
 
 No asset is fetched at runtime. Low and Medium retain procedural surfaces;
 High and Ultra load the local optimized derivatives.
+
+## Clean Asphalt
+
+- Source: [Poly Haven — Clean Asphalt](https://polyhaven.com/a/clean_asphalt)
+- Creator: Dimitrios Savva
+- License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+- Source resolution used: Poly Haven's 1K JPEG maps
+- Retrieved: 2026-07-25
+
+The shipped 512 px JPEGs are resized derivatives. They provide material
+response only for the generic BikeErg course and do not depict a real circuit,
+venue, route, or event.
+
+| File                                            | Purpose                             | SHA-256                                                            |
+| ----------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------ |
+| `clean-asphalt/clean-asphalt-diffuse-512.jpg`   | High/Ultra asphalt aggregate colour | `789cb0acc4a45106b0d5815ff52a439a2cd6c89f576e96c821f336e31626d993` |
+| `clean-asphalt/clean-asphalt-roughness-512.jpg` | High/Ultra asphalt roughness        | `353a69474a36819c3d88c394730c45ee2b0532ea653871a691e27867f2633776` |
+| `clean-asphalt/clean-asphalt-normal-gl-512.jpg` | Ultra OpenGL asphalt normal detail  | `51f7f689d1bb6a48532d173a0df5b2218a914a853ee93cd5d19fde4aceb53cfd` |
+
+Original Poly Haven MD5 values recorded by its public asset API:
+
+- diffuse: `7edccb95cbf72e63889baade8455f9e5`
+- roughness: `4238f2eab76530f4b0c66ddb929b142d`
+- OpenGL normal: `24dadd366637a722b59c19a672cbbcf6`
+
+Low and Medium retain the fast procedural asphalt receiver. High adds the
+local CC0 diffuse/roughness response and Ultra adds its normal map.

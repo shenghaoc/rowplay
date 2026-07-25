@@ -123,10 +123,11 @@ Environment quality is additive:
 - **Medium:** a shaped procedural surface plus a new midground layer; Row water
   gains broad sky-reflection bands.
 - **High:** authored venue depth and local PBR surface response; Row gains a
-  launch dock and Ski uses local CC0 diffuse/roughness snow maps.
+  launch dock, while Ski and Bike use local CC0 diffuse/roughness maps for
+  snow and asphalt respectively.
 - **Ultra:** a distinct close-surface treatment, not just more samples; Row
-  gains sun-glint composition and Ski adds normal-mapped snow and restrained
-  crystal highlights.
+  gains sun-glint composition, Ski adds normal-mapped snow and restrained
+  crystal highlights, and Bike adds normal-mapped asphalt plus lap reflectors.
 
 The governor may lower pixel ratio and decorative effects during a session.
 Optional environment density is chosen at scene build time rather than being

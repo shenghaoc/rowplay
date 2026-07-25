@@ -6336,6 +6336,32 @@ export class CourseRenderer3D implements ReplayRenderer {
       groundMat.needsUpdate = true;
     }
     if (
+      this.sport === "bike" &&
+      this.cfg.environmentDetail >= 2 &&
+      groundMat instanceof THREE.MeshStandardMaterial
+    ) {
+      // The lower, broad receiver carries real asphalt aggregate at High and
+      // Ultra. This gives the infield edge and the visible outer circuit a
+      // physical material identity without replacing our generic venue art.
+      groundMat.map = this.loadEnvironmentTexture(
+        "/replay-assets/environments/clean-asphalt/clean-asphalt-diffuse-512.jpg",
+        [20, 20],
+        true,
+      );
+      groundMat.roughnessMap = this.loadEnvironmentTexture(
+        "/replay-assets/environments/clean-asphalt/clean-asphalt-roughness-512.jpg",
+        [20, 20],
+      );
+      if (this.cfg.environmentDetail >= 3) {
+        groundMat.normalMap = this.loadEnvironmentTexture(
+          "/replay-assets/environments/clean-asphalt/clean-asphalt-normal-gl-512.jpg",
+          [24, 24],
+        );
+        groundMat.normalScale.set(0.11, 0.11);
+      }
+      groundMat.needsUpdate = true;
+    }
+    if (
       this.sport === "rower" &&
       this.cfg.environmentDetail >= 1 &&
       groundMat instanceof THREE.MeshPhysicalMaterial
@@ -6384,6 +6410,28 @@ export class CourseRenderer3D implements ReplayRenderer {
       // tiny procedural groom map gives the close course ring its own packed
       // albedo without waiting on an image decode.
       laneMat.map = this.makeSnowSurfaceTexture(this.cfg.environmentDetail);
+      laneMat.needsUpdate = true;
+    }
+    if (this.sport === "bike" && this.cfg.environmentDetail >= 2) {
+      // Unlike a pre-painted running-track image, this seamless material
+      // preserves the authored lap markings and keeps the scene generic while
+      // giving High/Ultra tyre contact a genuine asphalt microstructure.
+      laneMat.map = this.loadEnvironmentTexture(
+        "/replay-assets/environments/clean-asphalt/clean-asphalt-diffuse-512.jpg",
+        [14, 14],
+        true,
+      );
+      laneMat.roughnessMap = this.loadEnvironmentTexture(
+        "/replay-assets/environments/clean-asphalt/clean-asphalt-roughness-512.jpg",
+        [14, 14],
+      );
+      if (this.cfg.environmentDetail >= 3) {
+        laneMat.normalMap = this.loadEnvironmentTexture(
+          "/replay-assets/environments/clean-asphalt/clean-asphalt-normal-gl-512.jpg",
+          [18, 18],
+        );
+        laneMat.normalScale.set(0.14, 0.14);
+      }
       laneMat.needsUpdate = true;
     }
     const lane = new THREE.Mesh(laneGeo, laneMat);
