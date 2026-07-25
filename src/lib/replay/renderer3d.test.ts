@@ -519,13 +519,22 @@ describe("CourseRenderer3D", () => {
       const scene = getScene(renderer);
       for (const layer of [
         `environment:${sport}:sky`,
-        `environment:${sport}:horizon-far`,
-        `environment:${sport}:horizon-mid`,
         `environment:${sport}:infield`,
         `environment:${sport}:apron`,
         "athlete:live:contact-footprint",
       ]) {
         expect(scene.getObjectByName(layer), `${sport} missing ${layer}`).toBeDefined();
+      }
+      // BikeErg is an indoor velodrome — no horizon rings.
+      if (sport !== "bike") {
+        expect(
+          scene.getObjectByName(`environment:${sport}:horizon-far`),
+          `${sport} missing horizon-far`,
+        ).toBeDefined();
+        expect(
+          scene.getObjectByName(`environment:${sport}:horizon-mid`),
+          `${sport} missing horizon-mid`,
+        ).toBeDefined();
       }
       expect(scene.background).toBeInstanceOf(THREE.Color);
       expect(scene.fog).toBeInstanceOf(THREE.Fog);
@@ -578,11 +587,9 @@ describe("CourseRenderer3D", () => {
           angleInSector(angle, deg(-150), deg(65)) || angleInSector(angle, deg(35), deg(60)),
       ),
     ).toBe(true);
-    expect(getScene(skier).getObjectByName("environment:skierg:bowl-center")).toBeDefined();
-    // Centre is stadium plaza (pave + turf), not a snow field.
-    expect(getScene(skier).getObjectByName("environment:skierg:bowl-packed")).toBeDefined();
-    expect(getScene(skier).getObjectByName("environment:skierg:bowl-field")).toBeDefined();
-    expect(getScene(skier).getObjectByName("environment:skierg:plaza-boards")).toBeDefined();
+    expect(getScene(skier).getObjectByName("environment:skierg:stadium-centre")).toBeDefined();
+    // Centre is packed snow with grooming texture — a real XC stadium.
+    expect(getScene(skier).getObjectByName("environment:skierg:start-chute")).toBeDefined();
     expect(getScene(skier).getObjectByName("environment:skierg:bowl-track-1")).toBeUndefined();
     expect(getScene(skier).getObjectByName("environment:skierg:valley-bowl")).toBeDefined();
     expect(getScene(skier).getObjectByName("environment:skierg:course-fencing")).toBeDefined();
@@ -610,16 +617,15 @@ describe("CourseRenderer3D", () => {
       ),
     ).toBeLessThan(TAU * 0.5);
     expect(getScene(bike).getObjectByName("environment:bike:scoreboard")).toBeDefined();
-    expect(getScene(bike).getObjectByName("environment:bike:city-edge")).toBeDefined();
-    expect(getScene(bike).getObjectByName("environment:bike:infield-park")).toBeDefined();
-    expect(getScene(bike).getObjectByName("environment:bike:infield-grass")).toBeDefined();
-    expect(getScene(bike).getObjectByName("environment:bike:infield-plaza")).toBeDefined();
-    expect(getScene(bike).getObjectByName("environment:bike:park-trees")).toBeDefined();
-    expect(getScene(bike).getObjectByName("environment:bike:planting-bed-1")).toBeDefined();
-    // Bare infield disk is suppressed so the planted park owns the centre.
+    // Indoor velodrome: no skyline, no park. Walls, infield floor, and roof.
+    expect(getScene(bike).getObjectByName("environment:bike:city-edge")).toBeUndefined();
+    expect(getScene(bike).getObjectByName("environment:bike:infield-floor")).toBeDefined();
+    expect(getScene(bike).getObjectByName("environment:bike:infield-centre-circle")).toBeDefined();
     expect((getScene(bike).getObjectByName("environment:bike:infield") as THREE.Object3D).visible).toBe(
-      false,
+      true,
     );
+    expect(getScene(bike).getObjectByName("environment:bike:infield-park")).toBeUndefined();
+    expect(getScene(bike).getObjectByName("environment:bike:park-trees")).toBeUndefined();
 
     rower.destroy();
     skier.destroy();
@@ -865,27 +871,20 @@ describe("CourseRenderer3D", () => {
     expect(bikeLane[3].normalMap?.userData.sourcePath).toContain("clean-asphalt-normal");
     for (const { renderer } of bikeScenes) renderer.destroy();
 
-    // Centre hardscape uses local CC0 paving maps at High/Ultra.
+    // SkiErg centre is packed snow — no more concrete paving or plaza.
     const skiHigh = new CourseRenderer3D(makeHost(), "high", "skierg");
-    const skiUltra = new CourseRenderer3D(makeHost(), "ultra", "skierg");
-    const skiPave = (
-      getScene(skiHigh).getObjectByName("environment:skierg:bowl-packed") as THREE.Mesh
+    const skiCentre = (
+      getScene(skiHigh).getObjectByName("environment:skierg:stadium-centre") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
-    expect(skiPave.map?.userData.sourcePath).toContain("brushed-concrete-2-diffuse");
-    expect(
-      (
-        (getScene(skiUltra).getObjectByName("environment:skierg:bowl-packed") as THREE.Mesh)
-          .material as THREE.MeshStandardMaterial
-      ).normalMap?.userData.sourcePath,
-    ).toContain("brushed-concrete-2-normal");
+    expect(skiCentre.map).not.toBeNull();
     skiHigh.destroy();
-    skiUltra.destroy();
 
+    // BikeErg infield is a flat sports-court floor — no cobblestone plaza.
     const bikeHigh = new CourseRenderer3D(makeHost(), "high", "bike");
-    const bikePlaza = (
-      getScene(bikeHigh).getObjectByName("environment:bike:infield-plaza") as THREE.Mesh
+    const bikeFloor = (
+      getScene(bikeHigh).getObjectByName("environment:bike:infield-floor") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
-    expect(bikePlaza.map?.userData.sourcePath).toContain("cobblestone-floor-03-diffuse");
+    expect(bikeFloor).toBeDefined();
     const service = (
       getScene(bikeHigh).getObjectByName("environment:bike:service-lane") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
