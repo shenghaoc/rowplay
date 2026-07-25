@@ -43,7 +43,7 @@ describe("BikeErg fit contract", () => {
     expect(leftGrip.distanceTo(hip)).toBeLessThan(0.95);
 
     const bottomPedalY = BIKE_RIG.bottomBracket[1]! - BIKE_RIG.crank.pedalRadius;
-    expect(hip.y - bottomPedalY).toBeLessThan(1.15);
+    expect(hip.y - bottomPedalY).toBeLessThan(1.22);
   });
 
   it("places wheel axles so the tyre shell rests on the ground, not through it", () => {

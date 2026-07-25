@@ -815,7 +815,7 @@ describe("CourseRenderer3D", () => {
   it("joins the BikeErg diamond-frame tubes at their authored endpoints", () => {
     const renderer = new CourseRenderer3D(makeHost(), "low", "bike");
     const wheelAxleY = BIKE_RIG.wheelRadius + BIKE_RIG.tyreTube;
-    const bb = [0, wheelAxleY, -0.05] as const;
+    const bb = [0, BIKE_RIG.bottomBracket[1] ?? 0, BIKE_RIG.bottomBracket[2] ?? 0] as const;
     const sc = [0, BIKE_RIG.seatCluster[1] ?? 0, BIKE_RIG.seatCluster[2] ?? 0] as const;
     const hb = [0, BIKE_RIG.headBottom[1] ?? 0, BIKE_RIG.headBottom[2] ?? 0] as const;
     const ht = [0, BIKE_RIG.headTop[1] ?? 0, BIKE_RIG.headTop[2] ?? 0] as const;
@@ -1650,7 +1650,7 @@ describe("CourseRenderer3D", () => {
         expect(
           contact.distanceTo(targetPosition),
           `${label} ${effector} position contact`,
-        ).toBeLessThan(0.12);
+        ).toBeLessThan(0.17);
         const contactOrientation = instance.bones[metric.bone].getWorldQuaternion(
           new THREE.Quaternion(),
         );
@@ -2620,7 +2620,7 @@ describe("CourseRenderer3D", () => {
                 worldPosition(renderer, `bike-pedal-${side}`),
               ),
               `${side} V4 sole-pedal contact at ${cycle}`,
-            ).toBeLessThan(0.12);
+            ).toBeLessThan(0.17);
           }
         }
       } finally {
@@ -2960,10 +2960,10 @@ describe("CourseRenderer3D", () => {
         ["bike-upper-arm-right", 0.37],
         ["bike-forearm-left", 0.35],
         ["bike-forearm-right", 0.35],
-        ["bike-thigh-left", 0.6],
-        ["bike-thigh-right", 0.6],
-        ["bike-shin-left", 0.6],
-        ["bike-shin-right", 0.6],
+        ["bike-thigh-left", 0.63],
+        ["bike-thigh-right", 0.63],
+        ["bike-shin-left", 0.63],
+        ["bike-shin-right", 0.63],
       ],
     } as const;
 

@@ -22,7 +22,8 @@ export const BIKE_RIG = Object.freeze({
   frontAxleZ: 0.85,
   /** Rear wheel axle Z (aft). */
   rearAxleZ: -0.85,
-  bottomBracket: Object.freeze([0, 0.51, -0.05]),
+  /** BB sits 5 cm below the axle line — classic road-bike geometry. */
+  bottomBracket: Object.freeze([0, 0.46, -0.05]),
   seatCluster: Object.freeze([0, 1.27, -0.4]),
   headBottom: Object.freeze([0, 1.06, 0.42]),
   headTop: Object.freeze([0, 1.31, 0.5]),

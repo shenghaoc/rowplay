@@ -2995,7 +2995,8 @@ function makeBikeAvatar(
 
   // Clean diamond frame — down tube, seat tube, top tube, and head tube form
   // the main triangle.  Paired chain- and seat-stays complete the rear end.
-  const bottomBracket = { x: 0, y: wheelAxleY, z: -0.05 };
+  const bbDrop = 0.05; // classic road geometry — BB sits below the axle line
+  const bottomBracket = { x: 0, y: wheelAxleY - bbDrop, z: -0.05 };
   const seatCluster = { x: 0, y: BIKE_RIG.seatCluster[1] ?? 0, z: BIKE_RIG.seatCluster[2] ?? -0.4 };
   const headBottom = { x: 0, y: BIKE_RIG.headBottom[1] ?? 0, z: BIKE_RIG.headBottom[2] ?? 0.42 };
   const headTop = { x: 0, y: BIKE_RIG.headTop[1] ?? 0, z: BIKE_RIG.headTop[2] ?? 0.5 };
@@ -3086,7 +3087,7 @@ function makeBikeAvatar(
   const driveSideX = -0.075;
   // Segmented chain from chainring to rear cassette — alternating outer/inner
   // plates create a readable bicycle-chain silhouette.
-  const chainStart = { x: driveSideX, y: wheelAxleY + 0.08, z: -0.05 };
+  const chainStart = { x: driveSideX, y: bottomBracket.y + 0.08, z: -0.05 };
   const chainEnd = { x: driveSideX, y: wheelAxleY + 0.03, z: BIKE_RIG.rearAxleZ + 0.03 };
   const linkCount = 24;
   for (let i = 0; i < linkCount; i++) {
@@ -3347,8 +3348,8 @@ function makeBikeAvatar(
   const sampledV4Shoulders = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const UPPER_ARM_LENGTH = 0.37;
   const FOREARM_LENGTH = 0.35;
-  const THIGH_LENGTH = 0.6;
-  const SHIN_LENGTH = 0.6;
+  const THIGH_LENGTH = 0.63;
+  const SHIN_LENGTH = 0.63;
   const BIKE_AERO_SPINE_LEAN = 0.74;
   const BIKE_HEAD_GAZE_COMPENSATION = -0.47;
   // Place the hip above the saddle so the V4 mesh sit surface lands on the
