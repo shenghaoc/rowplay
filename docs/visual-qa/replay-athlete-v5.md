@@ -285,29 +285,104 @@ Frames, same harness, manifest at
 | Close, top / bottom     | [top](athlete-v5/in-app/bike-rescale-2026-07-25/poses/bike-pedal-top.jpg) · [bottom](athlete-v5/in-app/bike-rescale-2026-07-25/poses/bike-pedal-bottom.jpg) | Frame tubing at road diameters instead of scaffolding            |
 | Grip close-up           | [frame](athlete-v5/in-app/bike-rescale-2026-07-25/poses/grip-bike-pedal-top.jpg)                                                                            | Palms closed on shaped hoods; alloy bar with dark tape and drops |
 
-**Known remaining compromise.** The saddle sits 0.547 m above the bottom
-bracket where a race fit for this rider would be nearer 0.70. That is not a
-tuning choice: the sit surface is measured 0.20 m below `v4Hips` and is
-constant to 1.5 mm across the whole crank cycle, because the authored BikeErg
-clip never rotates the pelvis into a seated pose. What the saddle is placed
-under is therefore a standing figure's gluteal fold, and raising it without a
-genuinely seated clip would simply drive the buttock through the cushion.
+### BikeErg saddle height and seat shape — 2026-07-26
 
-The obvious lever — the `seat_channel` lift in
-`build-replay-athlete-v4-blender.py`, which exists to flatten the seated
-contact patch — **does not reach it.** Its band is centred on the hip at
-y = 1.01 with a half-width of 0.16, so it covers y ∈ [0.85, 1.17], while the
-gluteal fold that actually contacts the saddle is at y ≈ 0.82. Raising the lift
-from 0.075 to 0.115 and rebuilding produced a sit offset identical to four
-decimal places across all eight sampled phases, because no contact vertex is
-inside the band. That was verified and reverted; the shipped GLB hash is
-unchanged. It also means an earlier attempt on this branch to fix the seating
-by raising the same constant to 0.14 would have had no effect either.
+The section above closed with the saddle 0.547 m above the bottom bracket and
+called it unfixable without a re-shaped glute or a new clip. **That diagnosis
+was wrong**, and worth recording precisely because the measurement looked
+convincing.
 
-Closing the gap properly needs either the channel band re-centred on the fold —
-which reshapes the glute for the standing SkiErg silhouette too, so it needs its
-own QA pass — or genuine pelvic rotation authored into the bike clip, which is
-PR #171's frozen technique timing. Both are deliberately out of scope here.
+**The sit surface was measured in the wrong place.** `SIT_SURFACE_FROM_HIP_Y`
+was −0.2016, taken as "lowest hips-weighted posterior skin" with no lateral
+gate. Binning that same region by |x| shows what it actually found:
+
+| band                   | y below `v4Hips` | what it is    |
+| ---------------------- | ---------------- | ------------- |
+| \|x\| < 0.026          | −0.1952          | perineum      |
+| \|x\| ∈ [0.026, 0.050] | −0.1455          | gluteal cleft |
+| \|x\| ∈ [0.050, 0.075] | **−0.158**       | **ischia**    |
+
+The lowest vertices sat on the centreline at z ≈ 0 — the crotch, not the
+buttock. The saddle was being placed under soft tissue that on a real bike
+hangs into a cut-out, so the whole bicycle was pulled 3.7 cm down. The
+“constant to 1.5 mm across the cycle” observation was true and irrelevant: a
+surface measured in the wrong place is stable in the wrong place.
+
+The ischial band it should have used is at |x| 0.050–0.075 — a 100–150 mm
+sit-bone spread, against 110–130 mm on a real pelvis — over a 40 mm plateau
+0.095–0.135 behind the pelvis root, flat to about 3 mm.
+
+**A second, independent 2.5 cm was lost to the hip joint.** The seating solve
+treated `v4Hips` as the point the femur starts from. It is not: `v4LeftUpperLeg`
+sits 25 mm below it. The leg was solved as if it began at the pelvis root, so
+the derived reach fell 25 mm short.
+
+**Saddle height now comes from knee angle.** `LEG_EXTENSION_AT_BDC = 0.95` was
+never a fit criterion, just a number under 1 that kept the knee bent. Combined
+with the femoral-head error it produced **44.8° of knee flexion at bottom dead
+centre** — a cruiser squat. Bike fitters use the Holmes window, 25–35°, so
+`KNEE_FLEXION_AT_BDC` is now 30° and the reach falls out of the law of cosines.
+
+| quantity             | before  | after   |
+| -------------------- | ------- | ------- |
+| knee flexion at BDC  | 44.8°   | 30.0°   |
+| knee flexion at TDC  | 110.5°  | 104.1°  |
+| pad top above BB     | 0.547 m | 0.630 m |
+| pelvis root above BB | 0.742 m | 0.783 m |
+
+**The 0.883 × inseam rule does not apply to this rider, and that is a rig
+fact, not a fudge.** It wants 0.75 m of saddle height for a 0.848 m inseam.
+Solving that puts the femoral head 1.098 m from the BDC pedal while femur +
+tibia is 0.971 m — the leg cannot reach. The V4 skeleton's femur + tibia is
+14.5% of its crotch height longer than a scanned human's (0.971/0.848 = 1.145
+against ~1.09), so the two criteria cannot both be met. Knee angle is the one
+that decides whether the rider reads as a cyclist, so it wins; the bone lengths
+are frozen for the RowErg and SkiErg work in flight.
+
+**Raising the saddle exposed a defect that was already shipping.** With the pad
+on the ischia, the previous 0.27 m rounded block was 19 mm inside the rider's
+thighs at the crank extremes. It had been inside them at the old height too —
+the guard never saw it, because it only sampled hips-weighted vertices, and
+thighs are not hips-weighted.
+
+**The saddle is now a shape contract, not a block.**
+[`bikeSaddle.js`](../../src/lib/replay/bikeSaddle.js) holds a 14-station table
+that the procedural renderer lofts, the authored V3 package lofts, and the
+penetration guard tests against — one definition, three consumers. Measured
+against the rider it has to be a winged, cut-out, dropped-nose saddle, which is
+a real product shape (Selle SMP) that exists for exactly this reason:
+
+- wings at |x| up to 0.075 carrying the ischia on a flat plateau;
+- a **through cut-out** on the centreline, because the perineum hangs 37 mm
+  below the ischia and no amount of channel depth in a solid pad clears that;
+- a nose that narrows to 17 mm half-width and drops 62 mm, under the crotch and
+  inboard of the sweeping thighs.
+
+**Both features are load-bearing, and the guard proves it.** Removing the
+cut-out drives the rider 7.7 mm into the shell; flattening the nose, 6.7 mm.
+Both fail the new guard. The guard samples **every** vertex against the
+analytic saddle solid at eighth-cycle phases across all four quality tiers —
+quarter phases missed the worst case, and a stride of 3 walked past the contact
+patch entirely. Baseline penetration is 2.0 mm, which is the ischial contact
+itself, inside the 5 mm nestle. A second assertion requires that contact: a pad
+parked clear of the athlete would otherwise satisfy "no penetration" perfectly.
+
+| View                      | Frame                                                                                                                                               | What it shows                                                    |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Chase, pedal bottom       | [frame](athlete-v5/in-app/bike-fit-2026-07-26/poses/saddle-bike-pedal-bottom.jpg)                                                                   | Road posture: hips high, leg long at BDC, seat occupied          |
+| Chase, light, bottom      | [frame](athlete-v5/in-app/bike-fit-2026-07-26/poses/saddle-bike-pedal-bottom-light.jpg)                                                             | Same at readable contrast — glute on the wings, saddle not empty |
+| Chase, light, pedal top   | [frame](athlete-v5/in-app/bike-fit-2026-07-26/poses/saddle-bike-pedal-top-light.jpg)                                                                | Seat still carried at the phase that used to reopen penetration  |
+| Chase + skeleton          | [overlay](athlete-v5/in-app/bike-fit-2026-07-26/poses/saddle-bike-pedal-top-skeleton.jpg)                                                           | Hip above the pad, leg chain unbroken to the pedal               |
+| Close, top / bottom       | [top](athlete-v5/in-app/bike-fit-2026-07-26/poses/bike-pedal-top.jpg) · [bottom](athlete-v5/in-app/bike-fit-2026-07-26/poses/bike-pedal-bottom.jpg) | Knee angle through the stroke                                    |
+| Grip close-up             | [frame](athlete-v5/in-app/bike-fit-2026-07-26/poses/grip-bike-pedal-top.jpg)                                                                        | Arms still reach the hoods after the 4 cm hip lift               |
+| RowErg / SkiErg unchanged | [row](athlete-v5/in-app/bike-fit-2026-07-26/poses/row-finish.jpg) · [ski](athlete-v5/in-app/bike-fit-2026-07-26/poses/ski-loaded-press.jpg)         | No regression — the shared athlete mesh was not touched          |
+
+**What this deliberately did not do.** The athlete GLB is byte-identical; the
+`seat_channel` band in `build-replay-athlete-v4-blender.py` is untouched. The
+fix turned out not to need the shared mesh at all, which keeps it clear of the
+SkiErg (#175) and RowErg work in flight. The BikeErg clip's pelvis timing is
+still PR #171's, and still unrotated — it simply stopped mattering once the
+saddle was placed on the surface that actually carries the rider.
 
 The primary matrix is the
 [six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):

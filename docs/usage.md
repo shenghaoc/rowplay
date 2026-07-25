@@ -186,14 +186,16 @@ wheelbase, a chain to the rear cassette, drop bars—rather than a literal model
 of the stationary machine, because the replay carries the athlete along a race
 course and a rolling bicycle reads that progress at a glance. The bicycle is
 sized to the athlete rather than the other way round: its frame comes from real
-road geometry, and the rider's hip is then derived from their own leg length
-against the bottom bracket, the way a bike is actually fitted. The frame and the
+road geometry, and the saddle height is then solved from the rider's own knee
+angle, the way a bike is actually fitted — 30° of knee flexion at the bottom of
+the pedal stroke, the middle of the 25-35° road-fit window. The frame and the
 rider share one `BIKE_RIG` contract for bottom bracket, saddle, grips, and
 pedals, so the procedural renderer and the generated V3 equipment cannot drift
-apart. The production V4 athlete (PR #172) keeps its measured sit surface on a
-channelled performance saddle so the body cannot pass through the cushion, and
-rebuilds the elbow branch from the visible shoulders to the hood contacts so
-palms lock to the grips. Equipment form and athlete–bike contact are present at
+apart. The production V4 athlete (PR #172) rests its measured sit-bone surface
+on a winged, cut-out performance saddle whose shape is derived from the rider's
+own seat geometry, so the body cannot pass through the cushion and the thighs
+clear the nose through the whole crank cycle; and it rebuilds the elbow branch
+from the visible shoulders to the hood contacts so palms lock to the grips. Equipment form and athlete–bike contact are present at
 every 3D tier; higher tiers add material response and detail rather than
 replaying the same misfit at a larger pixel budget. These are deliberate
 illustrative motion constraints, not measured joint or force data from
