@@ -539,9 +539,11 @@ describe("CourseRenderer3D", () => {
     expect(
       instanceAngles(rowPines).every(
         (angle) =>
-          angleInSector(angle, deg(-25), deg(165)) || angleInSector(angle, deg(185), deg(70)),
+          angleInSector(angle, deg(-38), deg(188)) || angleInSector(angle, deg(178), deg(92)),
       ),
     ).toBe(true);
+    expect(getScene(rower).getObjectByName("environment:rower:river-banks")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:reed-beds")).toBeDefined();
     for (const landmark of [
       "environment:rower:regatta-pavilion",
       "environment:rower:boathouse",
@@ -558,6 +560,8 @@ describe("CourseRenderer3D", () => {
           angleInSector(angle, deg(-150), deg(65)) || angleInSector(angle, deg(35), deg(60)),
       ),
     ).toBe(true);
+    expect(getScene(skier).getObjectByName("environment:skierg:valley-bowl")).toBeDefined();
+    expect(getScene(skier).getObjectByName("environment:skierg:course-fencing")).toBeDefined();
     expect(getScene(skier).getObjectByName("environment:skierg:timing-lodge")).toBeDefined();
 
     const bike = new CourseRenderer3D(makeHost(), "low", "bike");
@@ -605,7 +609,7 @@ describe("CourseRenderer3D", () => {
     };
     expect(internals.renderer.toneMapping).toBe(THREE.ACESFilmicToneMapping);
     expect(internals.renderer.toneMappingExposure).toBeGreaterThan(1);
-    expect((internals.scene.background as THREE.Color).getHex()).toBe(0xf0c98e);
+    expect((internals.scene.background as THREE.Color).getHex()).toBe(0xf4d8a8);
     expect(internals.scene.fog).toBeInstanceOf(THREE.Fog);
     renderer.destroy();
   });

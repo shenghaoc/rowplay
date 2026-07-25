@@ -531,8 +531,8 @@ const FULL_CIRCLE = Math.PI * 2;
 const degrees = (value: number): number => (value * Math.PI) / 180;
 
 const ROW_PINE_SECTORS: readonly EnvironmentSector[] = [
-  { start: degrees(-25), span: degrees(165), weight: 1.35 },
-  { start: degrees(185), span: degrees(70), weight: 0.9 },
+  { start: degrees(-38), span: degrees(188), weight: 1.35 },
+  { start: degrees(178), span: degrees(92), weight: 0.9 },
 ];
 const SKI_PINE_SECTORS: readonly EnvironmentSector[] = [
   { start: degrees(-170), span: degrees(55), weight: 0.95 },
@@ -618,12 +618,12 @@ const BIKE_FLOODLIGHTS: readonly EnvironmentPlacement[] = [
 
 const HORIZON_COMPOSITIONS: Record<Sport, HorizonComposition> = {
   rower: {
-    offsetX: -12,
-    offsetZ: 8,
-    floor: 0.34,
+    offsetX: -18,
+    offsetZ: 11,
+    floor: 0.2,
     lobes: [
-      { center: degrees(22), halfSpan: degrees(72), height: 0.72 },
-      { center: degrees(220), halfSpan: degrees(60), height: 0.58 },
+      { center: degrees(24), halfSpan: degrees(88), height: 0.46 },
+      { center: degrees(224), halfSpan: degrees(72), height: 0.34 },
     ],
   },
   skierg: {
@@ -682,11 +682,13 @@ const themed =
  */
 const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
   rower: {
-    // Golden-hour regatta: warm horizon (locked by test), cool zenith, soft fog.
-    skyZenith: themed(0x3a7190, 0x0a1f30),
-    skyHorizon: themed(0xf0c98e, 0x466d79),
-    skyNadir: themed(0x1f5464, 0x081f2a),
-    fog: themed(0xb0ccc8, 0x24404b),
+    // Late-afternoon regatta: a humid blue sky settles into the same warm,
+    // green river valley as the banks instead of meeting a disconnected teal
+    // arena at the horizon.
+    skyZenith: themed(0x4f8eaf, 0x0b2334),
+    skyHorizon: themed(0xf4d8a8, 0x527785),
+    skyNadir: themed(0x4f7f7b, 0x102c35),
+    fog: themed(0xc4d5c8, 0x294852),
     fogNear: 70,
     fogFar: 195,
     hemisphereSky: themed(0xffecd0, 0x7ba5b2),
@@ -697,19 +699,21 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     fill: themed(0xa8dfea, 0x4b8090),
     fillIntensity: 0.62,
     exposure: 1.1,
-    farSilhouette: themed(0x2f5244, 0x0e2a2c),
-    midSilhouette: themed(0x244f3a, 0x154033),
-    venueStructure: themed(0xede7d8, 0x6f7f83),
-    venueAccent: themed(0xd07a42, 0xe0a05d),
-    infield: themed(0x438e9f, 0x1b5363),
-    apron: themed(0x4d9eae, 0x1d5d6b),
+    farSilhouette: themed(0x66806a, 0x173438),
+    midSilhouette: themed(0x315a42, 0x194438),
+    venueStructure: themed(0xe7e0cf, 0x708085),
+    venueAccent: themed(0xa95f38, 0xd89a5f),
+    infield: themed(0x2c7488, 0x164d5e),
+    apron: themed(0x347f91, 0x185666),
   },
   skierg: {
-    // Clear alpine morning: high-key snow, cool fill, crisp mountain air.
-    skyZenith: themed(0x4a8ab5, 0x0e2136),
-    skyHorizon: themed(0xeef6fb, 0x6e8799),
-    skyNadir: themed(0xc5dae6, 0x2a4354),
-    fog: themed(0xdce9ee, 0x78909c),
+    // Cold Nordic morning: sky, airborne frost, snow bowl and blue-shadow
+    // massif share one temperature instead of reading as a summer panorama
+    // behind a separate white floor.
+    skyZenith: themed(0x6e9fbd, 0x11283d),
+    skyHorizon: themed(0xe8f1f5, 0x78909f),
+    skyNadir: themed(0xd8e6eb, 0x385161),
+    fog: themed(0xe2ecef, 0x7d939e),
     fogNear: 68,
     fogFar: 190,
     hemisphereSky: themed(0xf2f9ff, 0x9db7c9),
@@ -720,9 +724,9 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     fill: themed(0xc4e5ff, 0x759db8),
     fillIntensity: 0.72,
     exposure: 1.08,
-    farSilhouette: themed(0xa8c0ce, 0x4c6575),
-    midSilhouette: themed(0x6e90a2, 0x294958),
-    venueStructure: themed(0x2c4656, 0x172e3b),
+    farSilhouette: themed(0xb5cbd5, 0x536c7b),
+    midSilhouette: themed(0x7799aa, 0x304e5e),
+    venueStructure: themed(0x344f5d, 0x192f3d),
     venueAccent: themed(0xe04852, 0xff6670),
     infield: themed(0xeaf2f6, 0xb4c5cd),
     apron: themed(0xf7fafb, 0xd5e0e5),
@@ -5567,6 +5571,153 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(shoreline);
   }
 
+  /** Join the water material to a continuous river valley. */
+  private addRowerBanks(group: THREE.Group, outerR: number): void {
+    const bank = new THREE.Group();
+    bank.name = "environment:rower:river-banks";
+    const earthMat = this.environmentStandardMat(
+      "environment:rower:bank-earth-material",
+      themed(0x6d7050, 0x32392f),
+      { roughness: 0.98, metalness: 0 },
+    );
+    const grassMat = this.environmentStandardMat(
+      "environment:rower:bank-grass-material",
+      themed(0x55724b, 0x294b3d),
+      { roughness: 0.94, metalness: 0 },
+    );
+    const waterlineMat = this.environmentBasicMat(
+      "environment:rower:bank-waterline-material",
+      themed(0xc6d3b5, 0x708d82),
+      { transparent: true, opacity: 0.48, fog: true },
+    );
+    const bankSectors: readonly EnvironmentSector[] = [
+      { start: degrees(-42), span: degrees(184) },
+      { start: degrees(177), span: degrees(96) },
+    ];
+    for (const [index, sector] of bankSectors.entries()) {
+      bank.add(
+        this.makeHorizontalArc(
+          `environment:rower:earth-bank-${index + 1}`,
+          outerR + 3.2,
+          outerR + 12.5,
+          0.025,
+          sector,
+          earthMat,
+        ),
+        this.makeHorizontalArc(
+          `environment:rower:grass-bank-${index + 1}`,
+          outerR + 5.1,
+          outerR + 14.8,
+          0.075,
+          sector,
+          grassMat,
+        ),
+        this.makeHorizontalArc(
+          `environment:rower:waterline-${index + 1}`,
+          outerR + 2.8,
+          outerR + 3.45,
+          0.09,
+          sector,
+          waterlineMat,
+        ),
+      );
+    }
+
+    const reedCount = [18, 30, 48, 68][this.cfg.environmentDetail];
+    const reedGeo = this.track(new THREE.CylinderGeometry(0.018, 0.027, 1, 7));
+    const reedMat = this.environmentStandardMat(
+      "environment:rower:reed-material",
+      themed(0x8b8850, 0x53633f),
+      { roughness: 0.96, metalness: 0 },
+    );
+    const reeds = this.trackInstanced(new THREE.InstancedMesh(reedGeo, reedMat, reedCount));
+    reeds.name = "environment:rower:reed-beds";
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    for (let index = 0; index < reedCount; index++) {
+      const { angle } = sectorSample(index, reedCount, bankSectors);
+      const radius = outerR + 3.55 + (index % 7) * 0.19;
+      const height = 0.42 + (index % 5) * 0.11;
+      position.set(Math.sin(angle) * radius, height * 0.5 + 0.08, Math.cos(angle) * radius);
+      quaternion.setFromAxisAngle(WORLD_UP, angle + index * 0.27);
+      scale.set(1, height, 1);
+      matrix.compose(position, quaternion, scale);
+      reeds.setMatrixAt(index, matrix);
+    }
+    reeds.instanceMatrix.needsUpdate = true;
+    bank.add(reeds);
+    group.add(bank);
+  }
+
+  /** Join the groomed track to a Nordic snow bowl and race edge. */
+  private addSkiValley(group: THREE.Group, outerR: number): void {
+    const valley = new THREE.Group();
+    valley.name = "environment:skierg:valley-bowl";
+    const shadowSnowMat = this.environmentStandardMat(
+      "environment:skierg:valley-shadow-material",
+      themed(0xcbdde5, 0x6e8795),
+      { roughness: 0.98, metalness: 0 },
+    );
+    const sunSnowMat = this.environmentStandardMat(
+      "environment:skierg:valley-sun-material",
+      themed(0xf1f6f8, 0xa9bdc7),
+      { roughness: 0.95, metalness: 0 },
+    );
+    const slopeSectors: readonly EnvironmentSector[] = [
+      { start: degrees(-164), span: degrees(116) },
+      { start: degrees(22), span: degrees(126) },
+    ];
+    for (const [index, sector] of slopeSectors.entries()) {
+      valley.add(
+        this.makeHorizontalArc(
+          `environment:skierg:valley-shadow-${index + 1}`,
+          outerR + 2.6,
+          outerR + 19,
+          0.03,
+          sector,
+          shadowSnowMat,
+        ),
+        this.makeHorizontalArc(
+          `environment:skierg:valley-sun-${index + 1}`,
+          outerR + 6.4,
+          outerR + 17.2,
+          0.085,
+          { start: sector.start + degrees(8), span: sector.span * 0.72 },
+          sunSnowMat,
+        ),
+      );
+    }
+
+    const panelCount = [8, 12, 18, 24][this.cfg.environmentDetail];
+    const panelGeo = this.track(roundedVenueBlockGeometry(1.75, 0.52, 0.08, 0.07));
+    const panelMat = this.environmentBasicMat(
+      "environment:skierg:course-panel-material",
+      this.environment.venueAccent,
+      { fog: true },
+    );
+    const panels = this.trackInstanced(new THREE.InstancedMesh(panelGeo, panelMat, panelCount));
+    panels.name = "environment:skierg:course-fencing";
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3(1, 1, 1);
+    for (let index = 0; index < panelCount; index++) {
+      const side = index % 2 === 0 ? -1 : 1;
+      const local = Math.floor(index / 2) / Math.max(1, Math.ceil(panelCount / 2) - 1);
+      const angle = degrees(48 + local * 72 + (side < 0 ? 0 : 180));
+      const radius = outerR + 2.15;
+      position.set(Math.sin(angle) * radius, 0.58, Math.cos(angle) * radius);
+      quaternion.setFromAxisAngle(WORLD_UP, angle);
+      matrix.compose(position, quaternion, scale);
+      panels.setMatrixAt(index, matrix);
+    }
+    panels.instanceMatrix.needsUpdate = true;
+    valley.add(panels);
+    group.add(valley);
+  }
+
   /** High and Ultra snow gain separate surface language beyond denser scenery. */
   private addSkiSurfaceTier(group: THREE.Group, outerR: number): void {
     if (this.cfg.environmentDetail < 2) return;
@@ -5714,6 +5865,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         ROW_PINE_SECTORS,
       );
       this.addRowerShoreline(this.environmentMidGroup);
+      this.addRowerBanks(this.environmentMidGroup, outerR);
       this.addRowerWaterTier(this.environmentMidGroup, outerR);
       this.addPavilions(this.environmentDetailGroup, ROW_LANDMARKS);
     } else if (this.sport === "skierg") {
@@ -5724,6 +5876,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       );
       this.addAlpineFoothills(this.environmentMidGroup, [4, 7, 12, 18][this.cfg.environmentDetail]);
       this.addAlpinePeaks(this.environmentMidGroup, [8, 14, 22, 30][this.cfg.environmentDetail]);
+      this.addSkiValley(this.environmentMidGroup, outerR);
       this.addSnowBerms(
         this.environmentMidGroup,
         outerR,

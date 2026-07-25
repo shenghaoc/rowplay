@@ -2407,6 +2407,34 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.closePath();
     ctx.fill();
 
+    // A continuous near bank joins the treeline to the upgraded basin.
+    const bank = ctx.createLinearGradient(0, horizon - 4, 0, horizon + 12);
+    bank.addColorStop(0, palette.foliageNear);
+    bank.addColorStop(0.62, palette.structureShade);
+    bank.addColorStop(1, withAlpha(palette.groundTop, 0.74));
+    ctx.fillStyle = bank;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon - 2);
+    for (let x = -28 + farShift; x <= w + 36; x += 34) {
+      const rise = 2 + (Math.abs(Math.floor(x / 34)) % 3) * 1.8;
+      ctx.quadraticCurveTo(x + 9, horizon - rise - 4, x + 20, horizon - rise);
+      ctx.quadraticCurveTo(x + 28, horizon + 2, x + 36, horizon);
+    }
+    ctx.lineTo(w, horizon + 11);
+    ctx.lineTo(0, horizon + 11);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = withAlpha(palette.foliageFar, 0.78);
+    ctx.lineWidth = 0.8;
+    for (let x = -18 + farShift; x < w + 18; x += 11) {
+      const height = 4 + (Math.abs(Math.floor(x / 11)) % 4) * 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x, horizon + 5);
+      ctx.quadraticCurveTo(x - 0.8, horizon + 2, x + 0.7, horizon + 5 - height);
+      ctx.stroke();
+    }
+
     // Regatta pavilion, dock and timing tower establish a credible venue.
     // Unique architecture stays fixed. Only genuinely repeating shoreline and
     // material bands use modulo parallax, so a long workout cannot teleport a
@@ -2595,6 +2623,31 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.quadraticCurveTo(w * 0.72, horizon - 64, w * 0.75, horizon - 51);
     ctx.stroke();
 
+    // Snow-covered valley shoulders close the gap between the massif and the
+    // groomed field, sharing the track's blue-shadow language.
+    ctx.fillStyle = withAlpha(palette.groundMid, 0.9);
+    ctx.beginPath();
+    ctx.moveTo(0, horizon - 10);
+    ctx.quadraticCurveTo(w * 0.14, horizon - 28, w * 0.31, horizon + 4);
+    ctx.quadraticCurveTo(w * 0.5, horizon + 17, w * 0.68, horizon + 2);
+    ctx.quadraticCurveTo(w * 0.86, horizon - 25, w, horizon - 7);
+    ctx.lineTo(w, horizon + 26);
+    ctx.lineTo(0, horizon + 26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = withAlpha(palette.surfaceHighlight, 0.66);
+    ctx.beginPath();
+    ctx.moveTo(0, horizon - 13);
+    ctx.quadraticCurveTo(w * 0.14, horizon - 31, w * 0.31, horizon + 1);
+    ctx.quadraticCurveTo(w * 0.5, horizon + 11, w * 0.68, horizon - 2);
+    ctx.quadraticCurveTo(w * 0.86, horizon - 29, w, horizon - 10);
+    ctx.lineTo(w, horizon - 3);
+    ctx.quadraticCurveTo(w * 0.84, horizon - 18, w * 0.68, horizon + 7);
+    ctx.quadraticCurveTo(w * 0.48, horizon + 21, w * 0.29, horizon + 7);
+    ctx.quadraticCurveTo(w * 0.14, horizon - 20, 0, horizon - 4);
+    ctx.closePath();
+    ctx.fill();
+
     // Frost wrap — a very cold, low-opacity wash that sits between the sky
     // and the snow. This is the visual signal that the venue is sub-zero,
     // not a warm pasture with white-green grass.
@@ -2666,6 +2719,24 @@ export class CourseRenderer implements ReplayRenderer {
     for (let i = 0; i < 5; i++) ctx.fillRect(cabinX + 5 + i * 13, horizon - 16, 8, 8);
     this.drawFloodlight(w * 0.07, horizon + 2, h * 0.19, palette, -1);
     this.drawFloodlight(w * 0.9, horizon + 2, h * 0.21, palette, 1);
+
+    // Low race fencing gives the snow venue its own Nordic vocabulary.
+    ctx.strokeStyle = withAlpha(palette.safety, 0.7);
+    ctx.lineWidth = 1.2;
+    for (const side of [-1, 1]) {
+      const start = side < 0 ? w * 0.02 : w * 0.73;
+      const end = side < 0 ? w * 0.27 : w * 0.98;
+      ctx.beginPath();
+      ctx.moveTo(start, horizon + 20);
+      ctx.lineTo(end, horizon + 31);
+      ctx.stroke();
+      for (let x = start; x <= end; x += Math.max(18, w * 0.035)) {
+        ctx.beginPath();
+        ctx.moveTo(x, horizon + 17);
+        ctx.lineTo(x, horizon + 31);
+        ctx.stroke();
+      }
+    }
 
     // Sculpted snowbanks frame the groomed competition field.
     ctx.fillStyle = withAlpha(palette.surfaceHighlight, 0.55);

@@ -146,6 +146,10 @@ only the fastest hardware.
 6. WHEN quality tiers differ THEN at least one scene-composition or material
    feature SHALL change between adjacent tiers; tiers SHALL NOT differ only by
    pixel ratio, tessellation, or repeated-object density.
+7. WHEN RowErg or SkiErg receives a new primary surface treatment THEN its sky,
+   atmosphere, horizon, terrain transition, vegetation, and venue structures
+   SHALL be updated as a coherent art-directed environment rather than retaining
+   a visually unrelated background.
 
 ### Requirement 6: Regression proof and visual verification
 

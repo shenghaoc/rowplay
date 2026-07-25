@@ -20,6 +20,13 @@ to establish scale. It is not photorealism and does not reconstruct a real
 route. A coherent scene at replay scale is more valuable than dense detail that
 turns into noise.
 
+Surface, scenery, sky, atmosphere, and venue architecture are one art-directed
+unit. A new water or snow material must not be placed inside an unchanged
+generic background. RowErg therefore composes a continuous river valley from
+water through reeds, banks, woodland, docks, and regatta buildings. SkiErg
+composes one winter bowl from groomed track through snow shoulders, race
+fencing, forest, lodge forms, and blue-shadowed alpine terrain.
+
 ## Environment art direction
 
 Each sport uses its own Environment_Profile across 2D and 3D. The renderers do
