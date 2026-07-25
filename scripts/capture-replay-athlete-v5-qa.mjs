@@ -426,6 +426,12 @@ for (const pose of [
       skeleton: true,
     });
   }
+  // Dark kit against the dark velodrome hides hip and saddle form almost
+  // entirely. The light theme is the only frame where glute shape and seat
+  // contact are legible, so it is part of the seat evidence, not a nicety.
+  if (shouldCapture(`${pose.name}-light`)) {
+    await captureStill({ ...pose, name: `${pose.name}-light`, camera: "normal", theme: "light" });
+  }
 }
 
 for (const quality of ["low", "medium", "high", "ultra"]) {

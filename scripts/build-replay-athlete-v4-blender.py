@@ -904,6 +904,11 @@ def base_vertex_weights(face_set: int, point: Vector) -> dict[str, float]:
     if face_set in {23, 24}:
         side_name = "Left" if face_set == 23 else "Right"
         hip_blend = max(0.0, min(0.35, (point.z - 0.82) * 1.8))
+        # Meet the pelvis rule above: the buttock keeps its shape while the
+        # femur swings, so the thigh skin directly under it has to carry more
+        # pelvis influence or the two rules tear apart at the gluteal fold.
+        posterior = max(0.0, min(1.0, (point.y - 0.005) / 0.055))
+        hip_blend = min(0.55, hip_blend * (1.0 + 0.6 * posterior))
         return {
             f"v4{side_name}UpperLeg": 1.0 - hip_blend,
             "v4Hips": hip_blend,
@@ -922,9 +927,17 @@ def base_vertex_weights(face_set: int, point: Vector) -> dict[str, float]:
     if point.z < 1.08:
         side_name = "Left" if point.x < 0 else "Right"
         lateral = min(1.0, abs(point.x) / 0.13)
+        # A hip folds at the front, not all the way round. The femur may claim
+        # the anterior crease, but the buttock behind the joint belongs to the
+        # pelvis: giving the glute a flat third of the femur's rotation made it
+        # shear sideways as the thigh swung, which reads as a broken hip.
+        # +Y is posterior in Blender space (from_blender maps y -> -z).
+        posterior = max(0.0, min(1.0, (point.y - 0.005) / 0.055))
+        descent = max(0.0, min(1.0, (1.08 - point.z) / 0.16))
+        femur = 0.34 * descent * (1.0 - posterior) * (0.55 + 0.45 * lateral)
         return {
-            "v4Hips": 0.68 + 0.2 * (1.0 - lateral),
-            f"v4{side_name}UpperLeg": 0.32 - 0.2 * (1.0 - lateral),
+            "v4Hips": 1.0 - femur,
+            f"v4{side_name}UpperLeg": femur,
         }
     if point.z < 1.25:
         return blend_pair("v4Hips", "v4Spine", (point.z - 1.08) / 0.17)

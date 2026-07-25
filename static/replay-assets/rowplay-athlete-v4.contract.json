@@ -6,12 +6,12 @@
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
     "byteCount": 5069284,
-    "sha256": "d435338500c15ee50ee4343a28f821779be179987ebd38819f578bd0fbf55bc7"
+    "sha256": "03a588681c5a066d4974f6fc695101ecb49a0b77bbbf760baa8dbf2f763c8b24"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 11830173,
-    "sha256": "1af7475805bfb7d9ac79d5af902ec11c6c957a8cc408c51f6cbdd7a56c7908e2"
+    "byteCount": 11830161,
+    "sha256": "2cec944fa12954b78a3f808856f611f4d5fd3689838325c196ab4b41caed337d"
   },
   "coordinateSystem": {
     "units": "metres",
