@@ -480,6 +480,9 @@ git diff --check
 - [x] Individual fingers and opposing thumbs enclose all three machine grips
       without changing authoritative palm targets
 - [x] RowErg elbow/body and BikeErg pelvis/saddle overlap are removed
+- [x] BikeErg saddle height is solved from knee flexion at BDC (30°, Holmes
+      25-35°) with the pad on the measured ischial plateau, and no skin — of
+      any bone — enters the saddle solid at any eighth-cycle phase or tier
 - [x] Low, Medium, High, and Ultra have materially progressive athlete quality
 - [x] Hardware WebGPU/Ultra is recorded separately from headless High fallback
 - [x] Six stress poses, skeleton/contact overlays, three cycles, ghost, mobile, and front views are captured
