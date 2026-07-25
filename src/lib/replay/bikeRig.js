@@ -39,8 +39,12 @@ export const BIKE_RIG = Object.freeze({
   }),
   crank: Object.freeze({ lateral: 0.1, pedalRadius: 0.175 }),
   rider: Object.freeze({
-    // Hip for full pedal reach; sit = hip + sitSurfaceFromHip ≈ saddle top.
-    root: Object.freeze([0, 1.12, -0.38]),
+    // Hip for full pedal reach — lowered so the measured V4 sit surface
+    // (hip + sitSurfaceFromHip) lands on the authored saddle pad top (0.922 m
+    // above ground) rather than floating 4 cm above it. Pedal reach and
+    // handlebar contact are verified at every crank phase by the BikeErg fit
+    // test (renderer3d.test.ts).
+    root: Object.freeze([0, 1.08, -0.38]),
     pelvisOffset: Object.freeze([0, 0.005, -0.005]),
     /**
      * Measured posterior sit surface relative to v4Hips after bike clip +
