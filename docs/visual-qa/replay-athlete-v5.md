@@ -1,280 +1,201 @@
-# Replay production athlete visual overhaul
+# Replay production athlete visual acceptance
 
-This note records the dedicated **3D athlete visual-quality** pass on branch
-`codex/replay-athlete-visual-overhaul`. It replaces the mannequin-like V4 loft
-assembly with a coherent production sports character while freezing PR #171
-movement physics.
+This note records the dedicated 3D athlete visual-quality pass on
+`codex/replay-athlete-visual-overhaul`, relative to merge base `da0dc73`. It
+replaces the assembled procedural mannequin with a source-backed human surface
+while retaining PR #171's motion, contacts, equipment, environments, and
+fallbacks.
 
-## Baseline
+## Target and scope
 
-| Item              | Value                                                                                                                                 |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Baseline commit   | `da0dc73` (PR #171 merge into `main`)                                                                                                 |
-| Renderer          | WebGPU-first 3D; headless evidence records WebGL/High fallback while the final acceptance below records connected Chrome WebGPU/Ultra |
-| Motion owner      | PR #171 (`rigV4.ts` clips + contact-constrained solve)                                                                                |
-| Baseline captures | [historical six-pose `da0dc73` manifest](athlete-v5/baseline/2026-07-23-da0dc73/manifest.json)                                        |
-| Studio baseline   | [higher-ceiling/v4-blender](higher-ceiling/v4-blender/)                                                                               |
+The shipped athlete is a **photoreal-directed generic human**: it uses reviewed
+anatomical topology, continuous body volume, facial landmarks, wet-eye optics,
+short sports hair, performance clothing, and tiered PBR materials. It is not an
+Epic MetaHuman asset, scan, real-person likeness, avatar-generator output, or
+user image. Calling it an Epic MetaHuman would be inaccurate and would require a
+separately supplied asset with compatible redistribution rights.
 
-### Mannequin diagnosis (post-PR-171)
+The visual target applies across every quality tier. Low retains the complete
+human silhouette and regional materials; Medium, High, and Ultra progressively
+spend more GPU work on the athlete instead of reserving all visible improvement
+for Ultra.
 
-Visible defects were structural, not motion bugs:
+## Diagnosis and correction
 
-| Region              | Cause                                                            |
-| ------------------- | ---------------------------------------------------------------- |
-| Tube limbs          | Separate elliptical lofts with constant radial profiles          |
-| Detached joint look | Caps / pinches at elbow and knee without continuous volume       |
-| Shoulder seam       | Sleeve root bolted to ribcage as a thin tube join                |
-| Mitten hands        | Short palm loft without thumb mass after remesh                  |
-| Pelvis skirt risk   | Independent thigh lofts under hip flexion                        |
-| Flat toy materials  | Single vertex-colour physical material with high matte roughness |
-| Fragmented topology | 24 connected components pretending to be one body                |
+The previous V4 surface was built from independent lofted tubes and caps. Its
+limbs, shoulders, pelvis, hands, and head read as a toy even when rendered at
+high resolution. More pixels could not repair that form.
 
-PR #171 contact timing, joint trajectories, and equipment paths remain
-authoritative. This pass adapts the character to that motion.
+The replacement:
 
-## Phase A form floor (this branch)
+- retargets one continuous anatomical body from the reviewed Blender source;
+- preserves shoulder, elbow, wrist, pelvis, knee, calf, hand, finger, foot, and
+  toe volume through the three existing sport clips;
+- narrows the upper-arm and forearm radial profiles so the shoulders no longer
+  inflate into a toy-like silhouette;
+- shapes the forehead, brow, eyelids, cheek, nose, mouth, jaw, ears, and beard
+  planes, with separate recessed ocular surfaces, limbal rings, irises, pupils,
+  and highlights;
+- adds close sports hair with crown lift, a temple fade, and non-uniform colour
+  response instead of a smooth helmet;
+- assigns matte technical fabric, skin, hair, footwear, trim, eye, and facial
+  material roles with progressively richer response by quality tier;
+- retains a shallow seated posterior channel and contact-safe elbow clearance
+  without changing the shared motion graph; and
+- keeps the live and ghost bodies opaque, depth-tested, and independently
+  cloned so overlapping body parts cannot disappear through transparency
+  sorting.
 
-Raises the geometry floor so Low already reads as a sports character rather than
-a mannequin with Ultra-only shader polish:
+## Asset provenance
 
-- body voxel remesh `0.0088` → `0.0070` with two smooth passes
-- post-remesh authored hands (palm + four fingers + thumb)
-- richer face landmarks (ears, chin, denser eyes/nose/lips) and sideburn hairline
-- kit trim islands: collar, sleeve cuffs, shorts hems
-- shoe overlays: heel counter, sole pad, toe-box ridge
-- validator ceilings: 10 MB / 120k verts / 240k tris (sealed production
-  artifact is under those ceilings; see the contract for exact inventory)
+| Field              | Reviewed value                                                                                                                                |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Anatomical source  | Blender Studio **Human Base Meshes v1.4.1**, male base                                                                                        |
+| Creator            | Dan Ulrich / Blender Studio                                                                                                                   |
+| Official source    | <https://download.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip>                                       |
+| Upstream licence   | CC0-1.0                                                                                                                                       |
+| Reviewed subset    | `static/replay-assets/source/rowplay-human-base-male-v1.4.1.blend`                                                                            |
+| Extraction         | `scripts/extract-replay-athlete-base-blender.py`                                                                                              |
+| RowPlay adaptation | Retargeting, bounded skin weights, rig helpers, facial/eye/hair treatment, sports kit, footwear, vertex colours, clips, build, and validation |
+| Distribution       | CC0-1.0 anatomical source plus MIT RowPlay modifications; redistribution permitted                                                            |
 
-Motion, contacts, and clip drive ends remain frozen. Quality tiers share the
-same mesh. **Phase B** rebalanced the material ladder so Ultra spends real GPU
-budget on the athlete: Medium 128px / High 256px / Ultra 512px detail maps with
-stronger per-tier sheen, clearcoat, and normal response.
+The reviewed `.blend` is an audited 2,246,454-byte subset of the official
+source and has SHA-256
+`1defdfb22b53ce3bd779acfa96278ccfdff17f0e1178fa94967d600a9e27c457`.
+The canonical asset and its contract contain no embedded texture, external URI,
+runtime image request, scan, likeness, or undocumented download.
 
-**Phase C** adds visual-only finger helpers (`v4Left/RightFingers`,
-`v4Left/RightThumb`) weighted into the authored hands, fuller deltoid/quad mass,
-and a sport grip curl after contact so sculls, poles, and hoods read as gripped
-rather than open mitts. Helpers are not motion targets; clips still own only
-the 19 semantic bones.
+## Sealed production inventory
 
-**Hard surface rebuild** (response to “still looks low-poly / mannequin”):
+| Artifact                           |      Bytes | SHA-256                                                            |
+| ---------------------------------- | ---------: | ------------------------------------------------------------------ |
+| `rowplay-athlete-v4.glb`           |  5,059,344 | `6cb07263ebeed58750c5d7c52b34361b333b008fb1945ee68baec525643cae3d` |
+| `rowplay-athlete-v4.usdz`          | 11,800,039 | `53dc821186fc6f3311e3633f1e4373226205228c0a5188fc8d54729ee64efc9c` |
+| `rowplay-athlete-v4.contract.json` |     12,720 | `99b0b2a5cba35b13b210122f2a68e93bb5fc7b2f0cda5700d443ef995ba5ba44` |
 
-- finer body remesh (`VOXEL_SIZE` 0.0046) with light smooth only
-- athletic V-taper torso, lat flare, crew-collar shelf, continuous head planes
-- continuous jersey→shorts waist (no geometric mid-body hole)
-- long remeshed thigh stubs + post-remesh tights buried into shorts (no skirt gap)
-- legs authored **after** remesh so shins survive (voxel remesh eats thin tubes)
-- hard kit colour panels; budget ceiling 16 MB / 220k verts / 450k tris
-- studio evidence: [blender-qa-hard](athlete-v5/blender-qa-hard/)
+The GLB contains one indexed `SkinnedMesh`, 64,200 vertices, 106,256 triangles,
+28 deliberate topology components, one continuous human core, one skin, one
+portable vertex-colour material, 19 semantic bones, and four visual-only helper
+bones. The validator rejects a body assembled from disconnected limb islands.
 
-## Art direction
+## Materials and quality tiers
 
-Target: stylized sports-broadcast athlete — anatomically believable, readable at
-chase-camera distance, deliberately modelled clothing panels, a close-fitting
-short-hair silhouette and human facial landmarks, not a photoreal likeness.
+At runtime the reviewed colour regions become eight independent physical
+surface roles: skin, jersey, lower kit, footwear, hair, trim, eye, and
+face-detail. All tiers use the same geometry, rig, contacts, and technique.
 
-References retained from the higher-ceiling pass:
+| Tier   | Athlete detail                                                                                                                               |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Low    | Complete anatomical surface and clean regional colour; no generated maps                                                                     |
+| Medium | 128 px deterministic UV albedo, normal, roughness, and relief maps                                                                           |
+| High   | 256 px maps with stronger skin, fabric, footwear, hair, and facial response                                                                  |
+| Ultra  | 512 px maps plus the strongest skin/specular, fabric sheen, trim/footwear clearcoat, hair response, wet-eye optics, and face-detail response |
 
-- [replay art-direction triptych](higher-ceiling/reference/replay-art-direction.png)
-- Concept2 technique stills (motion only; not mesh sources)
+This is a progressive ladder, not a Low-to-Ultra cliff. A denser 169k-vertex,
+19.6 MB GLB experiment was also tested and rejected because it produced no
+meaningful in-app improvement. The sealed level-one anatomical surface plus
+facial and material work gives the better visual result without wasting replay
+compute.
 
-## Approach A — replace V4 surface, keep semantic contract
+## Exact in-app evidence
 
-The production path still loads `rowplay-athlete-v4.glb` through
-`renderer3dV4Assets.ts`. Changes:
+The acceptance set is
+[`2026-07-25-a56460b`](athlete-v5/in-app/2026-07-25-a56460b/manifest.json),
+captured from implementation commit
+`a56460b40d9611ee8319ed1566bf62b75ad8dfaa`.
 
-1. **Surface authoring** (`scripts/build-replay-athlete-v4-blender.py`)
-   - denser anatomical cage with deliberate deltoid / thigh / calf volume
-   - shaped generic head with forehead, cheek, jaw, shallow nose ridge,
-     low-profile eyes, a quiet mouth plane, and a smooth curved hair cap rather
-     than a featureless egg, dark visor, or protruding bead-like facial parts
-   - voxel remesh → coherent primary body mass; the release component count is
-     sealed in the contract rather than treated as an art-quality target
-   - weight transfer from the ring-weighted cage (not bone-heat)
-   - armpit chest-weight boost so raised SkiErg arms do not open holes
-   - seated posterior relief and pelvis-led weight blend so the BikeErg thigh
-     seam does not sweep the visible body through the fixed support
-   - regional vertex colours for kit / skin / tights / shoes / hair / eye detail
-2. **Runtime materials** (`renderer3dV4Assets.ts`, `renderer3dV4Motion.ts`)
-   - retain one portable GLB primitive/material for native handoff, then split
-     its reviewed vertex-colour regions into seven runtime PBR surface roles
-   - Low → Medium → High → Ultra retain the same athlete, clip, and contacts.
-     Low has no generated maps; Medium first reveals 128px deterministic UV
-     albedo, normal, roughness, and relief; High sharpens that work at 256px;
-     Ultra reaches 512px with the strongest PBR response (Phase B ladder)
-   - material profiles are athlete-specific, so a higher tier visibly improves
-     the person rather than only pixel ratio or distant environment density
-3. **Runtime contract**
-   - semantic 19 bones remain required
-   - build, GLB validation, runtime loading, and USDZ handoff preserve
-     contract-recorded helper bones when an authored surface needs them
-   - helpers remain visual-only: the three technique clips target semantic
-     joints, so helpers derive their pose from the hierarchy
-   - topology component count and micro triangle budgets are no longer frozen
-4. **Motion**
-   - clips, drive ends, contact offsets, and IK solve are unchanged; only the V4 surface/deformation clearance and a microscopic BikeErg saddle-compatibility relief are adjusted
+The primary matrix is the
+[six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):
+baseline, production athlete, and skeleton/contact overlay for RowErg catch and
+finish, SkiErg high reach and loaded press, and BikeErg pedal top and bottom.
 
-## Evidence
-
-### Final real in-app 3D acceptance
-
-The primary evidence is the production app rather than an offline mesh viewer.
-The [capture manifest](athlete-v5/in-app/2026-07-24-12325d3/manifest.json)
-is tied to rendered code commit `12325d3` and records the renderer backend,
-quality tier, viewport, and capture method for every artifact. These are
-hardware-backed Chrome captures: `WebGPU` is the reported backend for every
-final still and cycle.
-
-The [six-pose comparison sheet](athlete-v5/in-app/2026-07-24-12325d3/six-pose-comparison.jpg)
-keeps the requested columns in order: **baseline**, **production athlete**, and
-**skeleton / contacts**. Rows are RowErg catch/finish, SkiErg high-reach/loaded-
-press, and BikeErg pedal-top/pedal-bottom.
-
-| Sport / stress pose  | Final athlete                                                             | Skeleton overlay                                                                     |
+| Stress pose          | Production frame                                                          | Skeleton/contact overlay                                                             |
 | -------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| RowErg catch         | [frame](athlete-v5/in-app/2026-07-24-12325d3/poses/row-catch.jpg)         | [overlay](athlete-v5/in-app/2026-07-24-12325d3/poses/row-catch-skeleton.jpg)         |
-| RowErg finish        | [frame](athlete-v5/in-app/2026-07-24-12325d3/poses/row-finish.jpg)        | [overlay](athlete-v5/in-app/2026-07-24-12325d3/poses/row-finish-skeleton.jpg)        |
-| SkiErg high reach    | [frame](athlete-v5/in-app/2026-07-24-12325d3/poses/ski-high-reach.jpg)    | [overlay](athlete-v5/in-app/2026-07-24-12325d3/poses/ski-high-reach-skeleton.jpg)    |
-| SkiErg loaded press  | [frame](athlete-v5/in-app/2026-07-24-12325d3/poses/ski-loaded-press.jpg)  | [overlay](athlete-v5/in-app/2026-07-24-12325d3/poses/ski-loaded-press-skeleton.jpg)  |
-| BikeErg pedal top    | [frame](athlete-v5/in-app/2026-07-24-12325d3/poses/bike-pedal-top.jpg)    | [overlay](athlete-v5/in-app/2026-07-24-12325d3/poses/bike-pedal-top-skeleton.jpg)    |
-| BikeErg pedal bottom | [frame](athlete-v5/in-app/2026-07-24-12325d3/poses/bike-pedal-bottom.jpg) | [overlay](athlete-v5/in-app/2026-07-24-12325d3/poses/bike-pedal-bottom-skeleton.jpg) |
+| RowErg catch         | [frame](athlete-v5/in-app/2026-07-25-a56460b/poses/row-catch.jpg)         | [overlay](athlete-v5/in-app/2026-07-25-a56460b/poses/row-catch-skeleton.jpg)         |
+| RowErg finish        | [frame](athlete-v5/in-app/2026-07-25-a56460b/poses/row-finish.jpg)        | [overlay](athlete-v5/in-app/2026-07-25-a56460b/poses/row-finish-skeleton.jpg)        |
+| SkiErg high reach    | [frame](athlete-v5/in-app/2026-07-25-a56460b/poses/ski-high-reach.jpg)    | [overlay](athlete-v5/in-app/2026-07-25-a56460b/poses/ski-high-reach-skeleton.jpg)    |
+| SkiErg loaded press  | [frame](athlete-v5/in-app/2026-07-25-a56460b/poses/ski-loaded-press.jpg)  | [overlay](athlete-v5/in-app/2026-07-25-a56460b/poses/ski-loaded-press-skeleton.jpg)  |
+| BikeErg pedal top    | [frame](athlete-v5/in-app/2026-07-25-a56460b/poses/bike-pedal-top.jpg)    | [overlay](athlete-v5/in-app/2026-07-25-a56460b/poses/bike-pedal-top-skeleton.jpg)    |
+| BikeErg pedal bottom | [frame](athlete-v5/in-app/2026-07-25-a56460b/poses/bike-pedal-bottom.jpg) | [overlay](athlete-v5/in-app/2026-07-25-a56460b/poses/bike-pedal-bottom-skeleton.jpg) |
 
-Quality is deliberately progressive rather than a Low-to-Ultra cliff. The
-same close RowErg finish was captured at every requested tier:
+The same set includes complete
+[RowErg](athlete-v5/in-app/2026-07-25-a56460b/cycles/row-one-cycle.webm),
+[SkiErg](athlete-v5/in-app/2026-07-25-a56460b/cycles/ski-one-cycle.webm), and
+[BikeErg](athlete-v5/in-app/2026-07-25-a56460b/cycles/bike-one-cycle.webm)
+cycles, an
+[opaque live/ghost SkiErg frame](athlete-v5/in-app/2026-07-25-a56460b/poses/ghost-ski-loaded-press.jpg),
+a [mobile RowErg frame](athlete-v5/in-app/2026-07-25-a56460b/poses/mobile-row-finish.jpg),
+and a [front face view](athlete-v5/in-app/2026-07-25-a56460b/poses/row-finish-front.jpg).
 
-| Tier   | In-app frame                                                                   | Runtime surface work (Phase B)                    |
-| ------ | ------------------------------------------------------------------------------ | ------------------------------------------------- |
-| Low    | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-low.jpg)    | base role material; no generated maps             |
-| Medium | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-medium.jpg) | first 128px albedo, normal, roughness, and relief |
-| High   | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-high.jpg)   | sharper 256px maps and stronger material response |
-| Ultra  | [frame](athlete-v5/in-app/2026-07-24-12325d3/tiers/tier-row-finish-ultra.jpg)  | strongest 512px maps + peak clearcoat/sheen       |
+The automated capture browser had no WebGPU adapter. Its manifest therefore
+truthfully records `WEBGL` and effective `High` when a still requested Ultra.
+The four tier frames document requested tier behavior, but the requested-Ultra
+headless frame is **not** presented as Ultra acceptance:
 
-Historical tier stills above predate the Phase B resolution ladder; the map
-sizes in the Runtime surface work column are the live contract.
+- [Low](athlete-v5/in-app/2026-07-25-a56460b/tiers/tier-row-finish-low.jpg)
+- [Medium](athlete-v5/in-app/2026-07-25-a56460b/tiers/tier-row-finish-medium.jpg)
+- [High](athlete-v5/in-app/2026-07-25-a56460b/tiers/tier-row-finish-high.jpg)
+- [requested Ultra, effective High fallback](athlete-v5/in-app/2026-07-25-a56460b/tiers/tier-row-finish-ultra.jpg)
 
-The capture also includes [one RowErg cycle](athlete-v5/in-app/2026-07-24-12325d3/cycles/row-one-cycle.webm), [one SkiErg cycle](athlete-v5/in-app/2026-07-24-12325d3/cycles/ski-one-cycle.webm), [one BikeErg cycle](athlete-v5/in-app/2026-07-24-12325d3/cycles/bike-one-cycle.webm), [opaque ghost SkiErg](athlete-v5/in-app/2026-07-24-12325d3/poses/ghost-ski-loaded-press.jpg), [mobile RowErg](athlete-v5/in-app/2026-07-24-12325d3/poses/mobile-row-finish.jpg), and a [front close-up](athlete-v5/in-app/2026-07-24-12325d3/poses/row-finish-front.jpg). The [desktop dark/light Ultra set](athlete-v5/in-app/2026-07-24-12325d3/manifest.json) covers RowErg, SkiErg, and BikeErg.
+Genuine hardware acceptance is separately recorded in the
+[Chrome WebGPU/Ultra manifest](athlete-v5/in-app/2026-07-25-a56460b/hardware-webgpu-ultra.json).
+The [canvas-only close-up](athlete-v5/in-app/2026-07-25-a56460b/poses/row-webgpu-ultra-front.png)
+shows the final face and materials, while the
+[frame with application controls](athlete-v5/in-app/2026-07-25-a56460b/poses/row-webgpu-ultra-front-with-controls.png)
+visibly records effective **Ultra** and **WebGPU** on installed Chrome for
+macOS hardware.
 
-Review of the final in-app frames confirms the following visible outcomes:
+Earlier in-app directories, including `2026-07-24-12325d3`, are historical and
+superseded; they are not final acceptance evidence. The regenerated
+[`blender-qa-photoreal`](athlete-v5/blender-qa-photoreal/) set is supplementary
+structural inspection only, not a substitute for the in-app renderer.
 
-- at both RowErg end poses, the skeleton overlay places elbows outside the
-  torso volume while the hands stay on the scull grips;
-- at both BikeErg extremes, the saddle remains visibly behind the pelvis rather
-  than filling it; and
-- the close-up shows a deliberately simplified but human face with a curved
-  short-hair silhouette, shallow landmarks, and no dark visor/mask artifact.
+## Contact and clipping acceptance
 
-Headless Chromium had no WebGPU adapter, so its automated manifest truthfully
-reports `WebGL` and `High` when an Ultra request falls back. The final visual
-gate is the connected Chrome run above, where every entry in the exact-head
-manifest reports `WebGPU` and the requested tier. The headless fallback remains
-covered by automated tests, but it is not used to label the final athlete
-artifacts. This keeps the quality-tier comparison honest: HD/Ultra compute is
-spent on visible authored-athlete detail rather than an unverified backend
-fallback.
+- RowErg catch and finish keep both elbows outside the torso while both palms
+  remain on their scull grips.
+- BikeErg pedal top and bottom keep the saddle behind the pelvis rather than
+  drawing through the body; both soles remain on the opposed pedals.
+- SkiErg high reach and loaded press retain both pole contacts without opening
+  the shoulder or armpit surface.
+- Live and ghost athletes retain complete opaque bodies with independent
+  skeletons and material instances.
+- Dense-cycle renderer tests cover elbow/forearm/palm clearance, saddle draw
+  order, palm and sole contacts, clone isolation, and the quality-tier material
+  progression.
 
-### Supplementary studio nine-pose stress set
+## Motion and architecture freeze
 
-Rendered from the sealed production GLB with the PR #171 clips:
+`src/lib/replay/motionGraph.ts`, `sportKinematics.ts`, `figurePose.ts`,
+`strokeModel.ts`, and the Canvas renderer are untouched. The V4 clip names,
+phase landmarks, and drive ends remain `0.38` for RowErg, `0.34` for SkiErg,
+and `0.5` for BikeErg. The four helper bones derive from the semantic hierarchy
+and are not animation targets.
 
-| Pose                | Frame                                                                             |
-| ------------------- | --------------------------------------------------------------------------------- |
-| Rowing catch        | [blender-qa/v4-blender-rower-1.jpg](athlete-v5/blender-qa/v4-blender-rower-1.jpg) |
-| Rowing finish       | [blender-qa/v4-blender-rower-2.jpg](athlete-v5/blender-qa/v4-blender-rower-2.jpg) |
-| Rowing recovery     | [blender-qa/v4-blender-rower-3.jpg](athlete-v5/blender-qa/v4-blender-rower-3.jpg) |
-| SkiErg high reach   | [blender-qa/v4-blender-skier-1.jpg](athlete-v5/blender-qa/v4-blender-skier-1.jpg) |
-| SkiErg loaded press | [blender-qa/v4-blender-skier-2.jpg](athlete-v5/blender-qa/v4-blender-skier-2.jpg) |
-| SkiErg recovery     | [blender-qa/v4-blender-skier-3.jpg](athlete-v5/blender-qa/v4-blender-skier-3.jpg) |
-| BikeErg pedal top   | [blender-qa/v4-blender-bike-1.jpg](athlete-v5/blender-qa/v4-blender-bike-1.jpg)   |
-| BikeErg power       | [blender-qa/v4-blender-bike-2.jpg](athlete-v5/blender-qa/v4-blender-bike-2.jpg)   |
-| BikeErg opposed     | [blender-qa/v4-blender-bike-3.jpg](athlete-v5/blender-qa/v4-blender-bike-3.jpg)   |
+The V4 loader remains an optional hero path above V3, procedural 3D, and Canvas
+fallbacks. No second motion system, equipment authority, environment path, or
+asset request was introduced.
 
-### Problems removed
-
-- Assembled-tube limb read → continuous remeshed body mass
-- 24 fragmented topology components → a coherent primary body mass; the final
-  count is sealed in the contract rather than used as an art-quality target
-- Floating lace islands and open hair rims → removed
-- Gaping armpit under raised arms → chest-weight boost + thicker deltoid root
-- White shin “sock” paint bands → foot-block-only shoe colouring
-- Plastic mannequin material → role-specific PBR skin, fabric, hair, trim,
-  footwear, and face-detail response at every quality tier
-- RowErg elbow-through-torso risk → V4-only lateral bend clearance while
-  preserving the scull grips and shared elbow branch
-- BikeErg body/seat cut-through → low-profile support prepass plus a seated
-  pelvis relief blend; hips, cranks, pedals, hands, and feet remain graph-owned
-
-### Motion freeze proof
-
-- `src/lib/replay/motionGraph.ts`, `sportKinematics.ts`, `figurePose.ts`, and
-  `strokeModel.ts` are **untouched**. The athlete-specific changes do not alter
-  athlete or equipment motion.
-- Clip names, drive ends (`0.38` / `0.34` / `0.5`), contact offsets, and
-  phase landmarks match the PR #171 contract
-- Validator still requires the same 19 semantic bones and three clips
-
-### Post-review visual corrections
-
-The follow-up addressed reported elbow/body and BikeErg body/seat overlap
-without moving PR #171's semantic movement targets. Dense-cycle renderer tests
-protect the rowing palm/elbow/forearm clearance, the V4 BikeErg support draw
-order, all palm/sole contacts, and the per-tier material-role progression.
-These automated checks establish contact and rendering contracts; fresh actual
-browser capture remains the acceptance evidence for final visual appearance.
-
-### Rowing shell and leg alignment follow-up
-
-The authored RowErg assembly now gives the neutral lower hull a distinct
-waterline beneath the lane-coloured decks, keeping the recessed cockpit and
-gunwales readable at chase-camera distance. The fixed stretcher is lower and
-more inset, with heel cups, an instep bar, and diagonal supports. Its contact
-landmarks are shared with the renderer's procedural and V4 targets, so the
-feet land inside the stretcher while the knees stay raised above the open
-cockpit rather than spreading across the shell.
-
-The focused renderer contract covers the stretcher bounds and full-stroke foot
-positions. The final connected-Chrome manifest above supersedes the earlier
-headless spot check: its RowErg catch/finish and three-cycle captures report
-the actual WebGPU Ultra path.
-
-## Asset and licensing
-
-| Field             | Value                                                                    |
-| ----------------- | ------------------------------------------------------------------------ |
-| Asset             | `static/replay-assets/rowplay-athlete-v4.glb`                            |
-| Native derivative | `static/replay-assets/rowplay-athlete-v4.usdz`                           |
-| Contract          | `static/replay-assets/rowplay-athlete-v4.contract.json`                  |
-| Author            | repository-authored Blender 5 production skinned athlete                 |
-| Source            | `scripts/build-replay-athlete-v4-blender.py` + `src/lib/replay/rigV4.ts` |
-| Licence           | MIT (repository)                                                         |
-| Third-party mesh  | **none**                                                                 |
-| Redistribution    | permitted under repository MIT                                           |
-
-## Rebuild
+## Rebuild and validation
 
 ```sh
 vp run build:replay-rig-v4
 vp run build:replay-rig-v4-usdz
 vp run build:replay-rig-v4-contract
 vp run validate:replay-assets
+vp run validate:locales
+vp run test:e2e:smoke
+vp run check
+git diff --check
 ```
 
-Remesh resolution is tuned so live+ghost clones stay within CI test budgets.
-Exact vertex, triangle, and topology-component counts are sealed in the
-contract and are not art targets.
+## Definition of done
 
-## Definition of done checklist
-
-- [x] Coherent body rather than assembled tubes
-- [x] Shoulders emerge from the torso (no open armpit hole in studio stress set)
-- [x] Elbows/knees preserve volume through flexion
-- [x] One shared athlete for all three PR #171 clips
-- [x] Opaque live/ghost body path retained (no transparent sorting)
-- [x] Canvas athlete/equipment motion untouched; the 2D renderer and environment
-      construction remain outside this athlete-only PR
-- [x] In-app six-pose contact evidence for row / ski / bike, plus ghost,
-      mobile, and front-close views
-- [x] Real-time cycle videos for row / ski / bike
-- [x] Progressive Low / Medium / High / Ultra material configuration with
-      in-app tier captures
-- [x] Hardware WebGPU Ultra visual acceptance recorded in the connected Chrome
-      manifest, including six-pose comparison, all three cycles, ghost, mobile,
-      dark/light desktop, and Low/Medium/High/Ultra tier captures
+- [x] Source-backed continuous human anatomy replaces the assembled mannequin
+- [x] Human head, face, eyes, hair, hands, feet, and joint volume survive all three clips
+- [x] RowErg elbow/body and BikeErg pelvis/saddle overlap are removed
+- [x] Low, Medium, High, and Ultra have materially progressive athlete quality
+- [x] Hardware WebGPU/Ultra is recorded separately from headless High fallback
+- [x] Six stress poses, skeleton/contact overlays, three cycles, ghost, mobile, and front views are captured
+- [x] Source, creator, version, licence, extraction, modifications, hashes, and redistribution are documented
+- [x] PR #171 motion/contact ownership and all fallback paths remain intact

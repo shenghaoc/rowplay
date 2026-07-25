@@ -1,0 +1,27 @@
+{
+  "commit": "a56460b40d9611ee8319ed1566bf62b75ad8dfaa",
+  "capturedAt": "2026-07-25T00:14:59Z",
+  "source": "http://127.0.0.1:5173/replay/1001?qa=athlete-visual&athleteCamera=front",
+  "browser": "Chrome extension on macOS hardware",
+  "viewport": {
+    "width": 1512,
+    "height": 798,
+    "devicePixelRatio": 2
+  },
+  "stage": {
+    "width": 1112,
+    "height": 420
+  },
+  "sport": "row",
+  "poseSeconds": 0.8,
+  "requestedQuality": "ultra",
+  "effectiveQuality": "ultra",
+  "backend": "WebGPU",
+  "athleteState": "ready",
+  "qaCamera": "athlete-front",
+  "artifacts": [
+    "poses/row-webgpu-ultra-front.png",
+    "poses/row-webgpu-ultra-front-with-controls.png"
+  ],
+  "note": "The with-controls frame includes the application's Ultra selection and WebGPU backend label. The canvas-only frame is the same rendered pose without controls."
+}
