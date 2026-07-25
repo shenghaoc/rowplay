@@ -792,29 +792,28 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     apron: themed(0xf7fafb, 0xd5e0e5),
   },
   bike: {
-    // Indoor velodrome ceiling: a single dark steel tone so the dome
-    // reads as a roof cavity, not a night sky. Warm artificial spots
-    // light the track from below — the ceiling stays uniformly dark.
-    skyZenith: themed(0x181c24, 0x0c1018),
-    skyHorizon: themed(0x181c24, 0x0c1018),
-    skyNadir: themed(0x181c24, 0x0c1018),
-    fog: themed(0x181c24, 0x10141c),
-    fogNear: 60,
-    fogFar: 140,
-    hemisphereSky: themed(0x242830, 0x141820),
-    hemisphereGround: themed(0x1e1c18, 0x101014),
-    hemisphereIntensity: 0.48,
-    sun: themed(0xffd4a0, 0xffc080),
-    sunIntensity: 3.2,
-    fill: themed(0x5a6880, 0x2a3850),
-    fillIntensity: 0.32,
-    exposure: 1.02,
-    farSilhouette: themed(0x1e2630, 0x0e141e),
-    midSilhouette: themed(0x222a36, 0x141a26),
-    venueStructure: themed(0x2a3444, 0x1a2434),
-    venueAccent: themed(0xf29b55, 0xffb468),
-    infield: themed(0x4a5a4e, 0x1e2e24),
-    apron: themed(0x383430, 0x1e2028),
+    // Indoor velodrome: warm arena lighting over a deep roof cavity.
+    // Bright enough to read the architecture, dark enough to feel enclosed.
+    skyZenith: themed(0x2a3040, 0x141a28),
+    skyHorizon: themed(0x2a3040, 0x141a28),
+    skyNadir: themed(0x2a3040, 0x141a28),
+    fog: themed(0x2a3040, 0x181c28),
+    fogNear: 55,
+    fogFar: 145,
+    hemisphereSky: themed(0x3a4058, 0x202840),
+    hemisphereGround: themed(0x2a2620, 0x181820),
+    hemisphereIntensity: 0.65,
+    sun: themed(0xffd8a8, 0xffc888),
+    sunIntensity: 3.0,
+    fill: themed(0x7a8ca8, 0x3a4c68),
+    fillIntensity: 0.45,
+    exposure: 1.1,
+    farSilhouette: themed(0x2a3448, 0x18202e),
+    midSilhouette: themed(0x303e52, 0x1a2638),
+    venueStructure: themed(0x3a4a60, 0x243044),
+    venueAccent: themed(0xf4a560, 0xffb868),
+    infield: themed(0x5a6a5e, 0x2a3a2e),
+    apron: themed(0x484440, 0x282c34),
   },
 };
 
@@ -6901,15 +6900,16 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.profile.waves
         ? new THREE.MeshPhysicalMaterial({
             color: this.profile.groundColor("light"),
-            transparent: false,
-            opacity: 1,
+            transparent: true,
+            opacity: 0.82,
             roughness: 0.12,
             metalness: 0.03,
             clearcoat: 0.92,
             clearcoatRoughness: 0.06,
-            emissive: 0x082f3a,
-            emissiveIntensity: 0.2,
+            emissive: 0x062535,
+            emissiveIntensity: 0.35,
             vertexColors: true,
+            depthWrite: true,
           })
         : new THREE.MeshStandardMaterial({
             color: this.profile.groundColor("light"),
@@ -7110,24 +7110,25 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.scene.add(inst);
     }
 
-    // Start/finish line — thin painted checker, flush with the track so
-    // it never occludes the athlete or equipment passing over it.
+    // Start/finish line — thin painted checker, positioned per sport so it
+    // never reads as stuck to the wrong surface. Rowing floats it above the
+    // water like a real regatta start platform; Ski/Bike keep it flush.
     this.cellMatDark = this.mat(
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.finishDark) }),
     );
     this.cellMatLight = this.mat(
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.finishLight) }),
     );
-    // Use a nearly-flat box (0.4 cm) so the checker reads as a painted
-    // marking, not a 3D curb that would intersect feet / skis / wheels.
     const cellGeo = this.track(new THREE.BoxGeometry(0.9, 0.004, 0.95));
+    const cellY =
+      this.sport === "rower" ? 0.1 : 0.002;
     for (let zc = 0; zc < 9; zc++) {
       for (let xc = 0; xc < 2; xc++) {
         const cell = new THREE.Mesh(
           cellGeo,
           (zc + xc) % 2 === 0 ? this.cellMatDark : this.cellMatLight,
         );
-        cell.position.set(-0.5 + xc, 0.002, innerR + 0.6 + zc * 0.95);
+        cell.position.set(-0.5 + xc, cellY, innerR + 0.6 + zc * 0.95);
         this.scene.add(cell);
       }
     }
