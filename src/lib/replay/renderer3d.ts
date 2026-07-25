@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { SimplexNoise } from "three/addons/math/SimplexNoise.js";
 import type { ReplayRenderer, RenderState } from "./renderer";
 import { COLORS_DARK, COLORS_LIGHT, REDUCED_REPLAY_POSES } from "./renderer";
 import type { RenderQuality } from "./replayRenderer";
@@ -1061,6 +1062,63 @@ function capsulePart(
 }
 
 /**
+ * Shared {@link SimplexNoise} singleton. One deterministic instance keeps
+ * all organic geometry consistent within a session without re-seeding.
+ */
+const _simplexNoise = new SimplexNoise();
+
+/**
+ * Fractal Brownian Motion over 2D simplex noise.
+ * Returns a value in [-1, 1] — a drop-in for the old multi-sine "noise"
+ * that produced periodic, too-smooth terrain.
+ */
+function fbm2(
+  x: number,
+  y: number,
+  octaves: number,
+  lacunarity = 2.1,
+  gain = 0.48,
+): number {
+  let value = 0;
+  let amplitude = 1;
+  let frequency = 1;
+  let total = 0;
+  for (let i = 0; i < octaves; i++) {
+    value += amplitude * _simplexNoise.noise(x * frequency, y * frequency);
+    total += amplitude;
+    amplitude *= gain;
+    frequency *= lacunarity;
+  }
+  return value / total;
+}
+
+/**
+ * Fractal Brownian Motion over 3D simplex noise.
+ * The third dimension lets ring index break up angular symmetry so
+ * mountains read as asymmetric massifs instead of lathed cones.
+ */
+function fbm3(
+  x: number,
+  y: number,
+  z: number,
+  octaves: number,
+  lacunarity = 2.1,
+  gain = 0.48,
+): number {
+  let value = 0;
+  let amplitude = 1;
+  let frequency = 1;
+  let total = 0;
+  for (let i = 0; i < octaves; i++) {
+    value += amplitude * _simplexNoise.noise3d(x * frequency, y * frequency, z * frequency);
+    total += amplitude;
+    amplitude *= gain;
+    frequency *= lacunarity;
+  }
+  return value / total;
+}
+
+/**
  * Build one shared-vertex radial surface from an authored vertical profile.
  *
  * `LatheGeometry` gives every mountain the same circular contour, which can
@@ -1072,7 +1130,7 @@ function capsulePart(
 function organicRadialSurfaceGeometry(
   profile: readonly THREE.Vector2[],
   radialSegments: number,
-  phase: number,
+  _phase: number,
   name: string,
   irregularity = 1,
 ): THREE.BufferGeometry {
@@ -1097,20 +1155,21 @@ function organicRadialSurfaceGeometry(
     const v = (point.y - yMin) / yRange;
     for (let segment = 0; segment < radialSegments; segment++) {
       const angle = (segment / radialSegments) * Math.PI * 2;
-      // Three long-frequency lobes establish asymmetric shoulders; smaller
-      // frequencies break the repetitive "lathed" highlight without becoming
-      // noisy enough to sparkle when the camera moves around the course.
-      const radialNoise =
-        Math.sin(angle * 3 + phase) * 0.082 +
-        Math.sin(angle * 7 - phase * 1.7 + ring * 0.31) * 0.037 +
-        Math.sin(angle * 11 + ring * 0.67) * 0.015;
+      // Fractal Brownian motion over 3D simplex noise. Projecting the
+      // angle onto a circle gives seamless wrapping; ring index as the
+      // third axis breaks rotational symmetry so terrain reads as an
+      // asymmetric massif instead of a lathed cone.
+      const nx = Math.cos(angle) * 1.8;
+      const nz = Math.sin(angle) * 1.8;
+      const ny = ring * 0.38;
+      const radialNoise = fbm3(nx, ny, nz, 4) * 0.13;
       const radius = Math.max(
         0.012,
         point.x * (1 + radialNoise * irregularity * (0.3 + radiusWeight * 0.7)),
       );
       const verticalNoise =
-        (Math.sin(angle * 2 + phase * 0.73) * 0.105 +
-          Math.sin(angle * 5 - phase + ring * 0.41) * 0.045) *
+        fbm3(nx + 5.7, ny + 3.1, nz + 2.4, 4) *
+        0.16 *
         radiusWeight *
         irregularity;
       positions[cursor++] = Math.cos(angle) * radius;
@@ -4998,7 +5057,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     variation: number,
     segments: number,
     color: ThemeColor,
-    phase: number,
+    _phase: number,
   ): THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> {
     const positions = new Float32Array(segments * 18);
     const colors = new Float32Array(segments * 18);
@@ -5020,20 +5079,22 @@ export class CourseRenderer3D implements ReplayRenderer {
     };
     const heightAt = (i: number): number => {
       const a = (i / segments) * Math.PI * 2;
-      const broad = Math.sin(a * 3 + phase) * 0.46 + Math.sin(a * 7 - phase * 0.7) * 0.28;
-      const ridge = Math.abs(Math.sin(a * 11 + phase * 1.9)) * 0.34;
-      // Extra mid-frequency roughness stops the ridge reading as a smooth CG
-      // wall — natural skylines are broken at multiple scales.
-      const scrub = Math.sin(a * 23 + phase * 2.4) * 0.12 + Math.sin(a * 41) * 0.06;
+      // Fractal Brownian motion reads as natural ridgeline shoulders;
+      // abs() on a second octave-tuned sample adds ridge crests that
+      // break the smooth CG silhouette at multiple scales.
+      const nx = Math.cos(a) * 2.0;
+      const nz = Math.sin(a) * 2.0;
+      const broad = fbm2(nx, nz, 5) * 0.65;
+      const ridge = Math.abs(fbm2(nx * 1.7 + 3.1, nz * 1.7 + 1.4, 4)) * 0.38;
       const envelope = envelopeAt(a);
       return (
         averageHeight * envelope +
-        variation * (broad + ridge + scrub) * (0.38 + envelope * 0.62)
+        variation * (broad + ridge) * (0.38 + envelope * 0.62)
       );
     };
     const radiusAt = (i: number): number => {
       const a = (i / segments) * Math.PI * 2;
-      return radius + Math.sin(a * 5 + phase) * 2.1 + Math.sin(a * 13) * 0.8 + Math.sin(a * 29) * 0.45;
+      return radius + fbm2(Math.cos(a) * 3.2, Math.sin(a) * 3.2, 3) * 2.8;
     };
     const writeColor = (offset: number, heightFactor: number): void => {
       const sample = baseColor.clone().lerp(hazeColor, clamp01(0.18 + heightFactor * 0.72));
