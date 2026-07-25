@@ -544,32 +544,24 @@ describe("CourseRenderer3D", () => {
 
   it("places venue dressing in authored sectors with deliberate open vistas", () => {
     const rower = new CourseRenderer3D(makeHost(), "low", "rower");
-    const rowPines = sceneObject(rower, "environment:rower:pines") as THREE.InstancedMesh;
-    // Pines grow only on authored woodland land, not the campus or open vista.
-    expect(
-      instanceAngles(rowPines).every(
-        (angle) =>
-          angleInSector(angle, deg(-55), deg(65)) ||
-          angleInSector(angle, deg(55), deg(115)) ||
-          angleInSector(angle, deg(180), deg(125)),
-      ),
-    ).toBe(true);
-    expect(getScene(rower).getObjectByName("environment:rower:river-banks")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:reed-beds")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:basin-center")).toBeDefined();
+    const rowTrees = sceneObject(rower, "environment:rower:bank-trees") as THREE.InstancedMesh;
+    expect(rowTrees.count).toBeGreaterThan(0);
+    expect(getScene(rower).getObjectByName("environment:rower:shoreline")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:reed-beds")).toBeUndefined();
+    expect(getScene(rower).getObjectByName("environment:rower:basin-center")).toBeUndefined();
     // Centre is a natural land island (earth, grass, beach) — not a landscaped park.
-    expect(getScene(rower).getObjectByName("environment:rower:island-lawn")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:island-beach")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:island-trees")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:island-lawn")).toBeUndefined();
+    expect(getScene(rower).getObjectByName("environment:rower:island-beach")).toBeUndefined();
+    expect(getScene(rower).getObjectByName("environment:rower:island-trees")).toBeUndefined();
     // No gazebo, paths, or mounds on a regatta-course island.
     expect(getScene(rower).getObjectByName("environment:rower:island-gazebo")).toBeUndefined();
     expect(getScene(rower).getObjectByName("environment:rower:island-path")).toBeUndefined();
     expect(getScene(rower).getObjectByName("environment:rower:island-mound")).toBeUndefined();
     expect(getScene(rower).getObjectByName("environment:rower:basin-deep")).toBeUndefined();
-    expect(getScene(rower).getObjectByName("environment:rower:campus")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:woodland")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:valley-ridges")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:wooded-shoreline")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:campus")).toBeUndefined();
+    expect(getScene(rower).getObjectByName("environment:rower:woodland")).toBeUndefined();
+    expect(getScene(rower).getObjectByName("environment:rower:valley-ridges")).toBeUndefined();
+    expect(getScene(rower).getObjectByName("environment:rower:wooded-shoreline")).toBeUndefined();
     expect(getScene(rower).getObjectByName("environment:rower:river-island")).toBeUndefined();
     expect(getScene(rower).getObjectByName("environment:rower:forest-belt")).toBeUndefined();
     expect((getScene(rower).getObjectByName("environment:rower:infield") as THREE.Object3D).visible).toBe(
@@ -595,8 +587,8 @@ describe("CourseRenderer3D", () => {
     // Centre is packed snow with grooming texture — a real XC stadium.
     expect(getScene(skier).getObjectByName("environment:skierg:start-chute")).toBeDefined();
     expect(getScene(skier).getObjectByName("environment:skierg:bowl-track-1")).toBeUndefined();
-    expect(getScene(skier).getObjectByName("environment:skierg:valley-bowl")).toBeDefined();
-    expect(getScene(skier).getObjectByName("environment:skierg:course-fencing")).toBeDefined();
+    expect(getScene(skier).getObjectByName("environment:skierg:valley-bowl")).toBeUndefined();
+    expect(getScene(skier).getObjectByName("environment:skierg:course-fencing")).toBeUndefined();
     expect(getScene(skier).getObjectByName("environment:skierg:timing-lodge")).toBeDefined();
     // Lodge buildings stay on the lodge campus; wax hut is no longer opposite the field.
     const wax = sceneObject(skier, "environment:skierg:wax-hut");
@@ -604,23 +596,9 @@ describe("CourseRenderer3D", () => {
     expect(angleInSector(lodgeAngle, deg(-20), deg(55))).toBe(true);
 
     const bike = new CourseRenderer3D(makeHost(), "low", "bike");
-    const wallPanels = sceneObject(bike, "environment:bike:wall-panels") as THREE.InstancedMesh;
-    expect(
-      instanceAngles(wallPanels).every(
-        (angle) =>
-          angleInSector(angle, deg(55), deg(85)) || angleInSector(angle, deg(220), deg(60)),
-      ),
-    ).toBe(true);
-    const arenaWall = sceneObject(bike, "environment:bike:arena-wall");
-    // Indoor velodrome: continuous walls enclose the full arena, not just stand sectors.
-    expect(arenaWall.children.length).toBeGreaterThanOrEqual(2);
-    expect(
-      arenaWall.children.reduce(
-        (span, sector) =>
-          span + ((sector.userData.authoredSector as { span?: number } | undefined)?.span ?? 0),
-        0,
-      ),
-    ).toBeGreaterThanOrEqual(TAU * 1.5);
+    // Arena wall panels are deleted — velodrome uses simple seating.
+    expect(getScene(bike).getObjectByName("environment:bike:wall-panels")).toBeUndefined();
+    expect(getScene(bike).getObjectByName("environment:bike:stands")).toBeDefined();
     expect(getScene(bike).getObjectByName("environment:bike:scoreboard")).toBeDefined();
     // Indoor velodrome: no skyline, no park. Walls, infield floor, and roof.
     expect(getScene(bike).getObjectByName("environment:bike:city-edge")).toBeUndefined();
@@ -671,20 +649,18 @@ describe("CourseRenderer3D", () => {
     const ultra = new CourseRenderer3D(makeHost(), "ultra", "rower");
     const lowScene = getScene(low);
     const ultraScene = getScene(ultra);
-    const lowPines = lowScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
-    const ultraPines = ultraScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
+    const lowTrees = lowScene.getObjectByName("environment:rower:bank-trees") as THREE.InstancedMesh;
+    const ultraTrees = ultraScene.getObjectByName("environment:rower:bank-trees") as THREE.InstancedMesh;
 
-    expect(lowPines.count).toBe(40);
-    expect(ultraPines.count).toBe(140);
+    expect(lowTrees.count).toBe(12);
+    expect(ultraTrees.count).toBe(48);
     for (const scene of [lowScene, ultraScene]) {
       expect(scene.getObjectByName("environment:rower:sky")).toBeDefined();
       expect(scene.getObjectByName("environment:rower:horizon-mid")).toBeDefined();
-      expect(scene.getObjectByName("environment:rower:basin-center")).toBeDefined();
-      expect(scene.getObjectByName("environment:rower:campus")).toBeDefined();
+      expect(scene.getObjectByName("environment:rower:shoreline")).toBeDefined();
       expect(scene.getObjectByName("lane")).toBeDefined();
     }
-    expect(lowScene.getObjectByName("environment:rower:start-pontoons")).toBeUndefined();
-    expect(ultraScene.getObjectByName("environment:rower:start-pontoons")).toBeDefined();
+    // Start pontoons deleted — simple shoreline replaces island system.
     low.destroy();
     ultra.destroy();
   });
@@ -695,16 +671,13 @@ describe("CourseRenderer3D", () => {
       const renderer = new CourseRenderer3D(makeHost(), quality, "rower");
       return { renderer, scene: getScene(renderer) };
     });
-    expect(
-      rowScenes[0].scene.getObjectByName("environment:rower:reflection-bands"),
-    ).toBeUndefined();
-    expect(rowScenes[1].scene.getObjectByName("environment:rower:reflection-bands")).toBeDefined();
-    expect(rowScenes[1].scene.getObjectByName("environment:rower:launch-dock")).toBeUndefined();
-    expect(rowScenes[2].scene.getObjectByName("environment:rower:launch-dock")).toBeDefined();
-    expect(rowScenes[1].scene.getObjectByName("environment:rower:start-pontoons")).toBeDefined();
-    expect(rowScenes[0].scene.getObjectByName("environment:rower:start-pontoons")).toBeUndefined();
-    expect(rowScenes[2].scene.getObjectByName("environment:rower:sun-glints")).toBeUndefined();
-    expect(rowScenes[3].scene.getObjectByName("environment:rower:sun-glints")).toBeDefined();
+    // Water reflections deleted — clean graphic water.
+    expect(rowScenes[1].scene.getObjectByName("environment:rower:reflection-bands")).toBeUndefined();
+    // Launch dock deleted — simple shoreline replaces campus system.
+    expect(rowScenes[2].scene.getObjectByName("environment:rower:launch-dock")).toBeUndefined();
+    // Start pontoons deleted.
+    // Sun glints deleted — water tier no longer adds decorative glints.
+    expect(rowScenes[3].scene.getObjectByName("environment:rower:sun-glints")).toBeUndefined();
     expect(
       (
         (rowScenes[2].scene.getObjectByName("ground") as THREE.Mesh)
@@ -727,81 +700,33 @@ describe("CourseRenderer3D", () => {
     // waterline pebbles, pine bark/leaves, and pavilion wood — with local CC0
     // maps. Low/Medium stay solid so identity never depends on bitmap decode.
     // Water itself remains the authored clear-coat basin.
-    const bankGrass = qualities.map((_, index) => {
+    const bankMat = qualities.map((_, index) => {
       const material = (
-        rowScenes[index]!.scene.getObjectByName("environment:rower:grass-bank-1") as THREE.Mesh
+        rowScenes[index]!.scene.getObjectByName("environment:rower:shoreline") as THREE.Mesh
       ).material as THREE.MeshStandardMaterial;
       return material;
     });
-    expect(bankGrass[0]!.map).toBeNull();
-    expect(bankGrass[1]!.map).toBeNull();
-    expect(bankGrass[2]!.map?.userData.sourcePath).toContain("aerial-grass-rock-diffuse");
-    expect(bankGrass[2]!.roughnessMap?.userData.sourcePath).toContain(
-      "aerial-grass-rock-roughness",
-    );
-    expect(bankGrass[2]!.normalMap).toBeNull();
-    expect(bankGrass[3]!.normalMap?.userData.sourcePath).toContain("aerial-grass-rock-normal");
-    const bankEarth = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:earth-bank-1") as THREE.Mesh
+    expect(bankMat[0]!.map).toBeNull();
+    expect(bankMat[1]!.map).toBeNull();
+    expect(bankMat[2]!.map?.userData.sourcePath).toContain("forrest-ground-01-diffuse");
+    expect(bankMat[3]!.normalMap?.userData.sourcePath).toContain("forrest-ground-01-normal");
+    // Simplified shoreline — one bank ring replaces multi-layer earth/waterline system.
+    const bank = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:shoreline") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
-    expect(bankEarth.map?.userData.sourcePath).toContain("forrest-ground-01-diffuse");
-    const waterline = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:waterline-1") as THREE.Mesh
+    expect(bank.map?.userData.sourcePath).toContain("forrest-ground-01-diffuse");
+    const shoreGrass = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:shoreline-grass") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
-    expect(waterline.map?.userData.sourcePath).toContain("dry-river-pebbles-diffuse");
-    const islandBeach = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:island-beach") as THREE.Mesh
-    ).material as THREE.MeshStandardMaterial;
-    expect(islandBeach.map?.userData.sourcePath).toContain("dry-river-pebbles-diffuse");
-    const islandLawn = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:island-lawn") as THREE.Mesh
-    ).material as THREE.MeshStandardMaterial;
-    expect(islandLawn.map?.userData.sourcePath).toContain("aerial-grass-rock-diffuse");
-    const shoreline = (
+    expect(shoreGrass.map?.userData.sourcePath).toContain("aerial-grass-rock-diffuse");
+    const bankTrees = (
       rowScenes[2]!.scene.getObjectByName(
-        "environment:rower:wooded-shoreline",
+        "environment:rower:bank-trees",
       ) as THREE.InstancedMesh
     ).material as THREE.MeshStandardMaterial;
-    expect(shoreline.map?.userData.sourcePath).toContain("forest-leaves-04-diffuse");
-    const reeds = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:reed-beds") as THREE.InstancedMesh
-    ).material as THREE.MeshStandardMaterial;
-    expect(reeds.map?.userData.sourcePath).toContain("leafy-grass-diffuse");
-    const pineCanopy = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh
-    ).material as THREE.MeshStandardMaterial;
-    expect(pineCanopy.map?.userData.sourcePath).toContain("forest-leaves-04-diffuse");
-    const pineTrunks = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:pine-trunks") as THREE.InstancedMesh
-    ).material as THREE.MeshStandardMaterial;
-    expect(pineTrunks.map?.userData.sourcePath).toContain("bark-brown-01-diffuse");
-    expect(
-      (
-        rowScenes[3]!.scene.getObjectByName(
-          "environment:rower:pine-trunks",
-        ) as THREE.InstancedMesh
-      ).material as THREE.MeshStandardMaterial
-    ).toMatchObject({
-      normalMap: expect.objectContaining({
-        userData: expect.objectContaining({
-          sourcePath: expect.stringContaining("bark-brown-01-normal"),
-        }),
-      }),
-    });
-    const dockDeckMaterial = (quality: number): THREE.MeshStandardMaterial => {
-      const dock = rowScenes[quality]!.scene.getObjectByName(
-        "environment:rower:launch-dock",
-      ) as THREE.Group;
-      const deck = dock.children.find(
-        (child) =>
-          child instanceof THREE.Mesh &&
-          (child.material as THREE.MeshStandardMaterial).name ===
-            "environment:rower:dock-deck-material",
-      ) as THREE.Mesh;
-      return deck.material as THREE.MeshStandardMaterial;
-    };
-    expect(dockDeckMaterial(2).map?.userData.sourcePath).toContain("brown-planks-03-diffuse");
-    expect(dockDeckMaterial(3).normalMap?.userData.sourcePath).toContain("brown-planks-03-normal");
+    expect(bankTrees.map?.userData.sourcePath).toContain("forest-leaves-04-diffuse");
+    // Launch dock, pine trunks, waterline, earth-banks all deleted.
+    // RowErg CC0 maps now live on shoreline + bank-trees only.
     const pavilionBody = (
       rowScenes[2]!.scene.getObjectByName(
         "environment:rower:regatta-pavilion",
@@ -837,27 +762,18 @@ describe("CourseRenderer3D", () => {
           .material as THREE.MeshStandardMaterial
       ).map?.name,
     ).toBe("environment:texture:snow-groomed-ultra");
-    expect(snowMaterials[2].scene.getObjectByName("environment:skierg:wind-lips")).toBeDefined();
-    expect(
-      snowMaterials[2].scene.getObjectByName("environment:skierg:snow-crystals"),
-    ).toBeUndefined();
-    expect(
-      snowMaterials[3].scene.getObjectByName("environment:skierg:snow-crystals"),
-    ).toBeDefined();
+    // Wind lips + snow crystals deleted — surface tier removed.
     for (const { renderer } of snowMaterials) renderer.destroy();
 
     const bikeScenes = qualities.map((quality) => {
       const renderer = new CourseRenderer3D(makeHost(), quality, "bike");
       return { renderer, scene: getScene(renderer) };
     });
-    expect(bikeScenes[0].scene.getObjectByName("environment:bike:service-lane")).toBeUndefined();
-    expect(bikeScenes[1].scene.getObjectByName("environment:bike:service-lane")).toBeDefined();
-    expect(bikeScenes[1].scene.getObjectByName("environment:bike:roof-trusses")).toBeUndefined();
-    expect(bikeScenes[2].scene.getObjectByName("environment:bike:roof-trusses")).toBeDefined();
-    expect(
-      bikeScenes[2].scene.getObjectByName("environment:bike:track-reflectors"),
-    ).toBeUndefined();
-    expect(bikeScenes[3].scene.getObjectByName("environment:bike:track-reflectors")).toBeDefined();
+    // Service lane, roof trusses, and track reflectors deleted — velodrome is simpler.
+    for (const scene of bikeScenes) {
+      expect(scene.scene.getObjectByName("environment:bike:service-lane")).toBeUndefined();
+      expect(scene.scene.getObjectByName("environment:bike:roof-trusses")).toBeUndefined();
+    }
     const bikeGround = bikeScenes.map(
       ({ scene }) =>
         (scene.getObjectByName("ground") as THREE.Mesh).material as THREE.MeshStandardMaterial,
@@ -890,10 +806,7 @@ describe("CourseRenderer3D", () => {
       getScene(bikeHigh).getObjectByName("environment:bike:infield-floor") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
     expect(bikeFloor).toBeDefined();
-    const service = (
-      getScene(bikeHigh).getObjectByName("environment:bike:service-lane") as THREE.Mesh
-    ).material as THREE.MeshStandardMaterial;
-    expect(service.map?.userData.sourcePath).toContain("clean-asphalt-diffuse");
+    // Service lane deleted — velodrome uses simple infield + seating.
     bikeHigh.destroy();
   });
 
@@ -1168,8 +1081,6 @@ describe("CourseRenderer3D", () => {
     const pines = sceneObject(ski, "environment:skierg:pines") as THREE.InstancedMesh;
     const peaks = sceneObject(ski, "environment:skierg:mountain-peaks") as THREE.InstancedMesh;
     const snowcaps = sceneObject(ski, "environment:skierg:snowcaps") as THREE.InstancedMesh;
-    const foothills = sceneObject(ski, "environment:skierg:foothills") as THREE.InstancedMesh;
-    const berms = sceneObject(ski, "environment:skierg:snowbank") as THREE.InstancedMesh;
     const ground = sceneObject(ski, "ground") as THREE.Mesh<THREE.BufferGeometry>;
     const skiTorso = sceneObject(ski, "skierg-torso") as THREE.Mesh<
       THREE.BufferGeometry,
@@ -1186,9 +1097,6 @@ describe("CourseRenderer3D", () => {
     expect(peaks.geometry.getIndex()?.count).toBeGreaterThan(7_000);
     expect(snowcaps.geometry.userData.organicRadialSurface).toBe(true);
     expect(snowcaps.geometry.name).toBe("environment:alpine-snow-mantle");
-    expect(foothills.geometry.userData.organicRadialSurface).toBe(true);
-    expect(foothills.count).toBeGreaterThan(7);
-    expect(berms.geometry.getAttribute("position").count).toBeGreaterThan(200);
     expect(ground.geometry.getAttribute("color")).toBeDefined();
     expect(skiTorso.material).toBeInstanceOf(THREE.MeshPhysicalMaterial);
     expect((skiTorso.material as THREE.MeshPhysicalMaterial).sheen).toBeGreaterThan(0);

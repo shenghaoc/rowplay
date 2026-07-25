@@ -5781,11 +5781,77 @@ export class CourseRenderer3D implements ReplayRenderer {
     detailGroup: THREE.Group,
     outerR: number,
   ): void {
-    this.addRowerIslandCenter(group, outerR);
-    this.addRowerShorelineSystem(group, outerR);
-    this.addRowerWoodland(group, outerR);
-    this.addRowerCampus(group, detailGroup, outerR);
-    this.addRowerValleyBackdrop(group);
+    this.addRowerShoreline(group, outerR);
+    this.addRowerTrees(group, outerR);
+    this.addPavilions(detailGroup, ROW_LANDMARKS);
+  }
+
+  /**
+   * Island park in the lagoon centre. Water stays in the racing channel
+   * Simple shoreline bank ringing the regatta basin — earth topped with grass,
+   * not a multi-sector land-use system.
+   */
+  private addRowerShoreline(group: THREE.Group, outerR: number): void {
+    const earthMat = this.environmentStandardMat(
+      "environment:rower:bank-material",
+      themed(0x6d7050, 0x32392f),
+      { roughness: 0.97, metalness: 0 },
+    );
+    const grassMat = this.environmentStandardMat(
+      "environment:rower:bank-grass-material",
+      themed(0x55724b, 0x294b3d),
+      { roughness: 0.94, metalness: 0 },
+    );
+    this.applyEnvironmentSurfaceMaps(earthMat,
+      "/replay-assets/environments/forrest-ground-01/forrest-ground-01", [0.55, 0.55], 0.22);
+    this.applyEnvironmentSurfaceMaps(grassMat,
+      "/replay-assets/environments/aerial-grass-rock/aerial-grass-rock", [0.45, 0.45], 0.2);
+    const bank = new THREE.Mesh(
+      this.track(new THREE.RingGeometry(outerR + 0.5, outerR + 8, this.cfg.laneSegments)), earthMat);
+    bank.name = "environment:rower:shoreline";
+    bank.rotation.x = -Math.PI / 2;
+    bank.position.y = 0.15;
+    bank.receiveShadow = this.cfg.shadows;
+    const grass = new THREE.Mesh(
+      this.track(new THREE.RingGeometry(outerR + 2, outerR + 7.5, this.cfg.laneSegments)), grassMat);
+    grass.name = "environment:rower:shoreline-grass";
+    grass.rotation.x = -Math.PI / 2;
+    grass.position.y = 0.18;
+    group.add(bank, grass);
+  }
+
+  /**
+   * Trees scattered along the outer bank — natural clumps, not formal planting.
+   */
+  private addRowerTrees(group: THREE.Group, outerR: number): void {
+    const count = [12, 20, 32, 48][this.cfg.environmentDetail];
+    const canopyGeo = this.track(sculptedPineGeometry());
+    const mat = this.environmentStandardMat(
+      "environment:rower:bank-tree-material", themed(0x2d6548, 0x1c503c),
+      { fog: true, roughness: 0.86, metalness: 0 },
+    );
+    this.applyEnvironmentSurfaceMaps(mat,
+      "/replay-assets/environments/forest-leaves-04/forest-leaves-04", [1.8, 2.2], 0.14);
+    const trees = this.trackInstanced(new THREE.InstancedMesh(canopyGeo, mat, count));
+    trees.name = "environment:rower:bank-trees";
+    const m4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const p = new THREE.Vector3();
+    const s = new THREE.Vector3();
+    for (let i = 0; i < count; i++) {
+      const cluster = i % 3;
+      const base = (cluster / 3) * FULL_CIRCLE + degrees(20 + cluster * 55);
+      const angle = base + (i - cluster) * degrees(2 + cluster * 3);
+      const radius = outerR + 3.5 + (i % 6) * 1.2;
+      const size = 0.4 + (i % 5) * 0.09;
+      q.setFromAxisAngle(WORLD_UP, angle + i * 0.25);
+      p.set(Math.sin(angle) * radius, 0.85 * size, Math.cos(angle) * radius);
+      s.set(size * 1.05, size, size * 1.05);
+      m4.compose(p, q, s);
+      trees.setMatrixAt(i, m4);
+    }
+    trees.instanceMatrix.needsUpdate = true;
+    group.add(trees);
   }
 
   /**
@@ -6285,22 +6351,18 @@ export class CourseRenderer3D implements ReplayRenderer {
     outerR: number,
   ): void {
     this.addSkiStadiumCentre(group, outerR);
-    this.addSkiValley(group, outerR);
-    this.addSnowBerms(group, outerR, [18, 30, 46, 64][this.cfg.environmentDetail]);
-    this.addAlpineFoothills(group, [6, 10, 16, 24][this.cfg.environmentDetail]);
     this.addAlpinePeaks(group, [10, 16, 24, 34][this.cfg.environmentDetail]);
     this.addInstancedPines(
       group,
       [36, 58, 88, 128][this.cfg.environmentDetail],
-      outerR + 28,
-      outerR + 58,
+      outerR + 30,
+      outerR + 60,
       SKI_FOREST_SECTORS,
     );
-    this.addSkiSurfaceTier(group, outerR);
     this.addFloodlights(
       detailGroup,
       SKI_FLOODLIGHTS,
-      10 + this.cfg.environmentDetail * 2,
+      6 + this.cfg.environmentDetail * 2,
     );
     this.addPavilions(detailGroup, SKI_LANDMARKS);
   }
@@ -6487,18 +6549,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     outerR: number,
   ): void {
     this.addBikeInfieldFloor(group, outerR);
-    this.addBikeStadiumShell(group);
-    this.addBikeVenueTier(group, outerR);
-    this.addFloodlights(
-      detailGroup,
-      BIKE_FLOODLIGHTS,
-      10 + this.cfg.environmentDetail * 2,
-    );
+    this.addBikeSeating(group);
     this.addScoreboard(detailGroup, BIKE_SCOREBOARD);
-    if (this.cfg.environmentDetail >= 1) {
-      this.addPavilions(detailGroup, [BIKE_SERVICE_BUILDING]);
-    }
-    this.addBikeRoofArch(group, outerR);
   }
 
     /**
@@ -6538,150 +6590,11 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(centreCircle);
   }
 
-    /**
-   * A broad arched roof spanning the velodrome.  Real indoor tracks sit under
-   * a single curved shell or twin-pitch truss, not a narrow canopy ring.
+  /**
+   * Tiered spectator seating — the only architecture a velodrome needs
+   * beyond the track and infield. Three concentric rings stepping up.
    */
-  private addBikeRoofArch(group: THREE.Group, outerR: number): void {
-    if (this.cfg.environmentDetail < 1) return;
-    const archMat = this.environmentStandardMat(
-      "environment:bike:roof-arch-material",
-      themed(0x4a5868, 0x1e2a38),
-      { roughness: 0.48, metalness: 0.55, side: THREE.DoubleSide },
-    );
-    // Twelve radial arch ribs spanning the full arena.
-    const archCount = [0, 6, 10, 16][this.cfg.environmentDetail];
-    const archGeo = this.track(
-      new THREE.TorusGeometry(outerR + 18, 0.22, 12, 8, Math.PI),
-    );
-    const archGroup = new THREE.Group();
-    archGroup.name = "environment:bike:roof-arches";
-    for (let i = 0; i < archCount; i++) {
-      const angle = (i / archCount) * Math.PI * 2;
-      const arch = new THREE.Mesh(archGeo, archMat);
-      arch.name = `environment:bike:roof-arch-${i + 1}`;
-      arch.position.set(0, 7.5, 0);
-      arch.rotation.set(0, angle, Math.PI / 2);
-      archGroup.add(arch);
-    }
-    group.add(archGroup);
-
-    // Ridge beam connecting arch crowns.
-    if (this.cfg.environmentDetail >= 2) {
-      const ridgeGeo = this.track(
-        new THREE.TorusGeometry(outerR + 17.5, 0.14, 8, 48),
-      );
-      const ridge = new THREE.Mesh(ridgeGeo, archMat);
-      ridge.name = "environment:bike:roof-ridge";
-      ridge.rotation.x = Math.PI / 2;
-      ridge.position.y = 7.6;
-      group.add(ridge);
-    }
-  }
-
-    /** Grandstand shell as one continuous stadium edge on stand sectors only. */
-  private addBikeStadiumShell(group: THREE.Group): void {
-    // Tall continuous arena walls enclose the full velodrome interior.
-    // Real indoor tracks sit inside a building, not a partial facade.
-    const wallMat = this.environmentBasicMat(
-      "environment:bike:arena-wall-material",
-      this.environment.venueStructure,
-      { side: THREE.BackSide, fog: true },
-    );
-    const arenaWall = new THREE.Group();
-    arenaWall.name = "environment:bike:arena-wall";
-    // Full-height wall ring wrapping the entire arena.
-    arenaWall.add(
-      this.makeVerticalArc(
-        "environment:bike:arena-wall-full",
-        58,
-        8.5,
-        4.8,
-        { start: 0, span: FULL_CIRCLE },
-        wallMat,
-      ),
-    );
-    // Upper wall band — reaches toward the ceiling so the interior
-    // reads as an enclosed building cavity.
-    const upperWallMat = this.environmentBasicMat(
-      "environment:bike:arena-upper-wall-material",
-      this.environment.farSilhouette,
-      { side: THREE.BackSide, fog: true },
-    );
-    arenaWall.add(
-      this.makeVerticalArc(
-        "environment:bike:arena-upper-wall",
-        58,
-        4.5,
-        8.7,
-        { start: 0, span: FULL_CIRCLE },
-        upperWallMat,
-      ),
-    );
-    group.add(arenaWall);
-    // Ceiling soffit ring — the dark junction between walls and roof.
-    const soffitMat = this.environmentBasicMat(
-      "environment:bike:soffit-material",
-      themed(0x1a1e28, 0x0e121c),
-      { side: THREE.DoubleSide, fog: true, transparent: true, opacity: 0.85 },
-    );
-    group.add(
-      this.makeHorizontalArc(
-        "environment:bike:ceiling-soffit",
-        56,
-        60,
-        13.3,
-        { start: 0, span: FULL_CIRCLE },
-        soffitMat,
-      ),
-    );
-
-    this.addArenaPanels(group, 28 + this.cfg.environmentDetail * 4, 57.75, BIKE_STAND_SECTORS);
-
-    const canopyMat = this.environmentStandardMat(
-      "environment:bike:canopy-material",
-      this.environment.venueAccent,
-      { roughness: 0.52, metalness: 0.34, side: THREE.DoubleSide },
-    );
-    const canopy = new THREE.Group();
-    canopy.name = "environment:bike:canopy";
-    for (const [index, sector] of BIKE_STAND_SECTORS.entries()) {
-      canopy.add(
-        this.makeHorizontalArc(
-          `environment:bike:canopy-sector-${index + 1}`,
-          54.4,
-          59,
-          5.35,
-          sector,
-          canopyMat,
-        ),
-      );
-    }
-    group.add(canopy);
-
-    const ledMat = this.environmentBasicMat(
-      "environment:bike:led-band-material",
-      this.environment.venueAccent,
-      { fog: true, side: THREE.BackSide },
-    );
-    const ledBands = new THREE.Group();
-    ledBands.name = "environment:bike:led-bands";
-    for (const [sectorIndex, sector] of BIKE_STAND_SECTORS.entries()) {
-      for (const [heightIndex, y] of [1.02, 4.12].entries()) {
-        ledBands.add(
-          this.makeVerticalArc(
-            `environment:bike:led-band-${sectorIndex + 1}-${heightIndex + 1}`,
-            57.86,
-            0.12,
-            y,
-            sector,
-            ledMat,
-          ),
-        );
-      }
-    }
-    group.add(ledBands);
-
+  private addBikeSeating(group: THREE.Group): void {
     const tierMat = this.environmentBasicMat(
       "environment:bike:stands-material",
       this.environment.midSilhouette,
@@ -6689,7 +6602,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     );
     const stands = new THREE.Group();
     stands.name = "environment:bike:stands";
-    for (const [innerRadius, outerRadius, y] of [
+    for (const [innerR, outerR, y] of [
       [47.8, 51.2, 0.72],
       [50.8, 54.1, 1.52],
       [53.7, 57.2, 2.46],
@@ -6698,8 +6611,8 @@ export class CourseRenderer3D implements ReplayRenderer {
         stands.add(
           this.makeHorizontalArc(
             "environment:bike:stands-tier",
-            innerRadius,
-            outerRadius,
+            innerR,
+            outerR,
             y,
             sector,
             tierMat,
@@ -6708,79 +6621,6 @@ export class CourseRenderer3D implements ReplayRenderer {
       }
     }
     group.add(stands);
-  }
-
-  /**
-   * Adjacent BikeErg tiers add different venue ideas: a service lane at
-   * Medium, roof trusses at High, and embedded track reflectors at Ultra.
-   */
-  private addBikeVenueTier(group: THREE.Group, outerR: number): void {
-    if (this.cfg.environmentDetail === 0) return;
-    const serviceMat = this.environmentStandardMat(
-      "environment:bike:service-lane-material",
-      themed(0x6b6863, 0x343941),
-      { roughness: 0.86, metalness: 0.04 },
-    );
-    this.applyEnvironmentSurfaceMaps(
-      serviceMat,
-      "/replay-assets/environments/clean-asphalt/clean-asphalt",
-      [0.45, 0.45],
-      0.12,
-    );
-    // Service apron only on the service campus sector.
-    const serviceLane = this.makeHorizontalArc(
-      "environment:bike:service-lane",
-      outerR + 1.4,
-      outerR + 4.5,
-      0.045,
-      BIKE_SERVICE_SECTOR,
-      serviceMat,
-    );
-    group.add(serviceLane);
-
-    if (this.cfg.environmentDetail < 2) return;
-    const trusses = new THREE.Group();
-    trusses.name = "environment:bike:roof-trusses";
-    const trussGeo = this.track(roundedVenueBlockGeometry(0.16, 0.16, 6.2, 0.035));
-    const trussMat = this.environmentStandardMat(
-      "environment:bike:roof-truss-material",
-      themed(0x82909b, 0x4b5968),
-      { roughness: 0.42, metalness: 0.62 },
-    );
-    for (const [sectorIndex, sector] of BIKE_STAND_SECTORS.entries()) {
-      for (let index = 0; index < 5; index++) {
-        const angle = sector.start + sector.span * ((index + 0.5) / 5);
-        const truss = new THREE.Mesh(trussGeo, trussMat);
-        truss.name = `environment:bike:roof-truss-${sectorIndex + 1}-${index + 1}`;
-        truss.position.set(Math.sin(angle) * 56.6, 5.7, Math.cos(angle) * 56.6);
-        truss.rotation.y = angle;
-        truss.rotation.x = -0.12;
-        trusses.add(truss);
-      }
-    }
-    group.add(trusses);
-
-    if (this.cfg.environmentDetail < 3) return;
-    const reflectorGeo = this.track(new THREE.CircleGeometry(0.09, 10));
-    const reflectorMat = this.environmentBasicMat(
-      "environment:bike:track-reflector-material",
-      themed(0xffcb78, 0xffbd5f),
-      { transparent: true, opacity: 0.76, depthWrite: false, fog: true },
-    );
-    const reflectors = this.trackInstanced(new THREE.InstancedMesh(reflectorGeo, reflectorMat, 56));
-    reflectors.name = "environment:bike:track-reflectors";
-    const matrix = new THREE.Matrix4();
-    const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
-    const position = new THREE.Vector3();
-    const scale = new THREE.Vector3(1.8, 0.6, 1);
-    for (let index = 0; index < reflectors.count; index++) {
-      const angle = (index / reflectors.count) * FULL_CIRCLE;
-      position.set(Math.sin(angle) * (outerR + 0.72), 0.11, Math.cos(angle) * (outerR + 0.72));
-      matrix.compose(position, quaternion, scale);
-      reflectors.setMatrixAt(index, matrix);
-    }
-    reflectors.instanceMatrix.needsUpdate = true;
-    group.add(reflectors);
   }
 
   private buildEnvironment(innerR: number, outerR: number): void {
@@ -6884,24 +6724,12 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.scene.add(apron);
 
     if (this.sport === "rower") {
-      this.addAtmosphericClouds(
-        this.environmentMidGroup,
-        4 + this.cfg.environmentDetail,
-        ROW_WOODLAND_SECTORS,
-      );
-      // One authored place: basin centre, continuous shore, woodland, campus.
       this.addRowerRegattaWorld(
         this.environmentMidGroup,
         this.environmentDetailGroup,
         outerR,
       );
-      this.addRowerWaterTier(this.environmentMidGroup, outerR);
     } else if (this.sport === "skierg") {
-      this.addAtmosphericClouds(
-        this.environmentMidGroup,
-        5 + this.cfg.environmentDetail,
-        SKI_ALPINE_SECTORS,
-      );
       this.addSkiStadiumWorld(
         this.environmentMidGroup,
         this.environmentDetailGroup,
