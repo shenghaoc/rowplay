@@ -906,10 +906,11 @@ describe("CourseRenderer stroke pose input", () => {
         renderer.render(state, false, "light");
         const landmark = operations.find((operation) => {
           if (sport === "rower") {
+            // Timing-tower cabin mass (kept fixed, not parallax-wrapped).
             return (
               operation.method === "fillRect" &&
-              operation.args[2] === 29 &&
-              operation.args[3] === 14
+              operation.args[2] === 34 &&
+              operation.args[3] === 18
             );
           }
           if (sport === "bike") {

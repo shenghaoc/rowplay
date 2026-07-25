@@ -214,8 +214,10 @@ V4 source and locally authored equipment; it adds no runtime download or
 undocumented third-party asset.
 
 Both views use complete sport-specific illustrative environments, not one
-generic floor with different colors. RowErg joins layered water to river banks,
-wetland reeds, woodland, docks, and regatta architecture; SkiErg joins groomed,
+generic floor with different colors. RowErg joins layered water to a full river
+valley — tall wooded ridges, a continuous forest belt, raised bank terraces,
+mid-basin island, wetland reeds, docks, and regatta architecture — rather than
+a thin green stripe behind the athlete; SkiErg joins groomed,
 blue-shadowed snow to a winter valley bowl, race fencing, snowbanks, evergreen,
 alpine, and Nordic-venue forms; BikeErg joins its asphalt circuit to a planted
 infield, service apron, tiered stands, roof structure, floodlights, urban dusk

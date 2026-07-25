@@ -2380,96 +2380,171 @@ export class CourseRenderer implements ReplayRenderer {
     const { ctx } = this;
     const horizon = h * 0.405;
     const farShift = this.materialOffset(meters, 0.018, 18);
+    const midShift = this.materialOffset(meters, 0.03, 26);
 
-    // Soft wooded shoreline, built as two depth-separated silhouettes.
+    // Far valley ridge — tall enough to own the skyline the way Ski owns its
+    // massif. The old row ridge barely rose 40px and read as a green smudge.
     ctx.fillStyle = palette.ridgeFar;
     ctx.beginPath();
-    ctx.moveTo(0, horizon + 5);
-    ctx.lineTo(0, horizon - 13);
-    ctx.quadraticCurveTo(w * 0.1, horizon - 33, w * 0.2, horizon - 19);
-    ctx.quadraticCurveTo(w * 0.34, horizon - 43, w * 0.49, horizon - 20);
-    ctx.quadraticCurveTo(w * 0.63, horizon - 38, w * 0.78, horizon - 16);
-    ctx.quadraticCurveTo(w * 0.9, horizon - 28, w, horizon - 12);
-    ctx.lineTo(w, horizon + 5);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = palette.ridgeNear;
-    ctx.beginPath();
     ctx.moveTo(0, horizon + 8);
-    ctx.lineTo(0, horizon - 4);
-    for (let x = -24 + farShift; x <= w + 28; x += 22) {
-      const crown = horizon - 10 - ((Math.floor((x - farShift) / 22) & 1) === 0 ? 6 : 1);
-      ctx.quadraticCurveTo(x + 6, crown - 7, x + 13, crown);
-      ctx.quadraticCurveTo(x + 18, crown + 5, x + 24, horizon - 2);
-    }
+    ctx.lineTo(0, horizon - 28);
+    ctx.quadraticCurveTo(w * 0.08, horizon - 72, w * 0.16, horizon - 86);
+    ctx.quadraticCurveTo(w * 0.24, horizon - 58, w * 0.32, horizon - 42);
+    ctx.quadraticCurveTo(w * 0.42, horizon - 96, w * 0.52, horizon - 78);
+    ctx.quadraticCurveTo(w * 0.6, horizon - 52, w * 0.68, horizon - 64);
+    ctx.quadraticCurveTo(w * 0.78, horizon - 92, w * 0.88, horizon - 60);
+    ctx.quadraticCurveTo(w * 0.94, horizon - 44, w, horizon - 50);
     ctx.lineTo(w, horizon + 8);
     ctx.closePath();
     ctx.fill();
 
-    // A continuous near bank joins the treeline to the upgraded basin.
-    const bank = ctx.createLinearGradient(0, horizon - 4, 0, horizon + 12);
-    bank.addColorStop(0, palette.foliageNear);
-    bank.addColorStop(0.62, palette.structureShade);
-    bank.addColorStop(1, withAlpha(palette.groundTop, 0.74));
-    ctx.fillStyle = bank;
+    // Atmospheric veil so the far ridge falls back behind the forest belt.
+    ctx.fillStyle = withAlpha(palette.haze, this.darkTheme ? 0.16 : 0.24);
     ctx.beginPath();
-    ctx.moveTo(0, horizon - 2);
-    for (let x = -28 + farShift; x <= w + 36; x += 34) {
-      const rise = 2 + (Math.abs(Math.floor(x / 34)) % 3) * 1.8;
-      ctx.quadraticCurveTo(x + 9, horizon - rise - 4, x + 20, horizon - rise);
-      ctx.quadraticCurveTo(x + 28, horizon + 2, x + 36, horizon);
-    }
-    ctx.lineTo(w, horizon + 11);
-    ctx.lineTo(0, horizon + 11);
+    ctx.moveTo(0, horizon - 8);
+    ctx.lineTo(0, horizon - 28);
+    ctx.quadraticCurveTo(w * 0.08, horizon - 72, w * 0.16, horizon - 86);
+    ctx.quadraticCurveTo(w * 0.24, horizon - 58, w * 0.32, horizon - 42);
+    ctx.quadraticCurveTo(w * 0.42, horizon - 96, w * 0.52, horizon - 78);
+    ctx.quadraticCurveTo(w * 0.6, horizon - 52, w * 0.68, horizon - 64);
+    ctx.quadraticCurveTo(w * 0.78, horizon - 92, w * 0.88, horizon - 60);
+    ctx.quadraticCurveTo(w * 0.94, horizon - 44, w, horizon - 50);
+    ctx.lineTo(w, horizon + 8);
+    ctx.lineTo(0, horizon + 8);
     ctx.closePath();
     ctx.fill();
 
-    ctx.strokeStyle = withAlpha(palette.foliageFar, 0.78);
-    ctx.lineWidth = 0.8;
-    for (let x = -18 + farShift; x < w + 18; x += 11) {
-      const height = 4 + (Math.abs(Math.floor(x / 11)) % 4) * 1.4;
+    // Mid forest mass — a continuous wooded shoulder, not a dotted treeline.
+    ctx.fillStyle = palette.ridgeNear;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 10);
+    ctx.lineTo(0, horizon - 18);
+    ctx.quadraticCurveTo(w * 0.1, horizon - 48, w * 0.2, horizon - 54);
+    ctx.quadraticCurveTo(w * 0.3, horizon - 34, w * 0.4, horizon - 46);
+    ctx.quadraticCurveTo(w * 0.52, horizon - 62, w * 0.62, horizon - 40);
+    ctx.quadraticCurveTo(w * 0.74, horizon - 58, w * 0.84, horizon - 44);
+    ctx.quadraticCurveTo(w * 0.93, horizon - 30, w, horizon - 26);
+    ctx.lineTo(w, horizon + 10);
+    ctx.closePath();
+    ctx.fill();
+
+    // Individual pine crowns along the mid belt for needle silhouette.
+    ctx.fillStyle = palette.foliageFar;
+    for (let x = -20 + midShift; x <= w + 24; x += 14) {
+      const i = Math.abs(Math.floor((x - midShift) / 14));
+      const base = horizon - 6 - (i % 3) * 2;
+      const tip = base - (16 + (i % 5) * 4);
+      const half = 4.5 + (i % 3) * 1.2;
       ctx.beginPath();
-      ctx.moveTo(x, horizon + 5);
-      ctx.quadraticCurveTo(x - 0.8, horizon + 2, x + 0.7, horizon + 5 - height);
+      ctx.moveTo(x, tip);
+      ctx.lineTo(x + half, base + 2);
+      ctx.lineTo(x - half, base + 2);
+      ctx.closePath();
+      ctx.fill();
+      if (i % 2 === 0) {
+        ctx.beginPath();
+        ctx.moveTo(x, tip + 6);
+        ctx.lineTo(x + half * 0.78, base + 5);
+        ctx.lineTo(x - half * 0.78, base + 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // Near shoreline bank with real vertical rise into the water.
+    const bank = ctx.createLinearGradient(0, horizon - 18, 0, horizon + 14);
+    bank.addColorStop(0, palette.foliageNear);
+    bank.addColorStop(0.45, palette.structureShade);
+    bank.addColorStop(0.78, withAlpha(palette.groundTop, 0.55));
+    bank.addColorStop(1, withAlpha(palette.groundTop, 0.82));
+    ctx.fillStyle = bank;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon - 8);
+    for (let x = -28 + farShift; x <= w + 36; x += 28) {
+      const rise = 8 + (Math.abs(Math.floor(x / 28)) % 4) * 3.2;
+      ctx.quadraticCurveTo(x + 8, horizon - rise - 6, x + 16, horizon - rise);
+      ctx.quadraticCurveTo(x + 22, horizon - 2, x + 28, horizon - 4);
+    }
+    ctx.lineTo(w, horizon + 14);
+    ctx.lineTo(0, horizon + 14);
+    ctx.closePath();
+    ctx.fill();
+
+    // Reed fringe along the waterline.
+    ctx.strokeStyle = withAlpha(palette.foliageNear, 0.85);
+    ctx.lineWidth = 1;
+    ctx.lineCap = "round";
+    for (let x = -18 + farShift; x < w + 18; x += 7) {
+      const height = 7 + (Math.abs(Math.floor(x / 7)) % 5) * 2.1;
+      ctx.beginPath();
+      ctx.moveTo(x, horizon + 6);
+      ctx.quadraticCurveTo(x - 1.2, horizon + 1, x + 0.9, horizon + 6 - height);
       ctx.stroke();
     }
+
+    // Mid-basin island so the open water still has a place cue.
+    const islandX = w * 0.58;
+    ctx.fillStyle = palette.structureShade;
+    ctx.beginPath();
+    ctx.ellipse(islandX, horizon + 3, w * 0.055, h * 0.012, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = palette.foliageNear;
+    ctx.beginPath();
+    ctx.moveTo(islandX - 10, horizon + 1);
+    ctx.quadraticCurveTo(islandX - 2, horizon - 14, islandX + 4, horizon - 10);
+    ctx.quadraticCurveTo(islandX + 12, horizon - 4, islandX + 14, horizon + 2);
+    ctx.closePath();
+    ctx.fill();
 
     // Regatta pavilion, dock and timing tower establish a credible venue.
     // Unique architecture stays fixed. Only genuinely repeating shoreline and
     // material bands use modulo parallax, so a long workout cannot teleport a
     // landmark when its wrap period rolls over.
     const pavilionX = Math.max(24, w * 0.105);
-    const pavilionY = horizon - 25;
+    const pavilionY = horizon - 34;
     ctx.fillStyle = palette.structureShade;
     ctx.beginPath();
-    ctx.moveTo(pavilionX - 7, pavilionY + 5);
-    ctx.lineTo(pavilionX + 91, pavilionY + 5);
-    ctx.lineTo(pavilionX + 80, pavilionY - 5);
-    ctx.lineTo(pavilionX + 6, pavilionY - 5);
+    ctx.moveTo(pavilionX - 8, pavilionY + 8);
+    ctx.lineTo(pavilionX + 98, pavilionY + 8);
+    ctx.lineTo(pavilionX + 86, pavilionY - 8);
+    ctx.lineTo(pavilionX + 6, pavilionY - 8);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = palette.structure;
-    roundRect(ctx, pavilionX, pavilionY + 5, 84, 20, 1.8);
+    roundRect(ctx, pavilionX, pavilionY + 8, 90, 24, 1.8);
     ctx.fill();
     ctx.fillStyle = withAlpha(palette.structureLight, 0.78);
-    for (let i = 0; i < 6; i++) {
-      roundRect(ctx, pavilionX + 6 + i * 13, pavilionY + 9, 8, 8, 1);
+    for (let i = 0; i < 7; i++) {
+      roundRect(ctx, pavilionX + 6 + i * 12, pavilionY + 12, 8, 10, 1);
       ctx.fill();
     }
     ctx.fillStyle = palette.structureShade;
-    ctx.fillRect(pavilionX - 12, horizon + 1, 118, 3);
-    ctx.fillRect(pavilionX + 9, pavilionY + 18, 3, 10);
-    ctx.fillRect(pavilionX + 72, pavilionY + 18, 3, 10);
+    ctx.fillRect(pavilionX - 14, horizon + 1, 128, 4);
+    ctx.fillRect(pavilionX + 10, pavilionY + 22, 3.5, 14);
+    ctx.fillRect(pavilionX + 76, pavilionY + 22, 3.5, 14);
+
+    // Boathouse mass beside the pavilion for campus depth.
+    ctx.fillStyle = palette.structure;
+    roundRect(ctx, pavilionX + 102, pavilionY + 14, 36, 18, 1.4);
+    ctx.fill();
+    ctx.fillStyle = palette.structureShade;
+    ctx.beginPath();
+    ctx.moveTo(pavilionX + 98, pavilionY + 14);
+    ctx.lineTo(pavilionX + 120, pavilionY + 2);
+    ctx.lineTo(pavilionX + 142, pavilionY + 14);
+    ctx.closePath();
+    ctx.fill();
 
     const towerX = w * 0.87;
     ctx.fillStyle = palette.structureShade;
-    ctx.fillRect(towerX, horizon - 43, 3, 44);
-    ctx.fillRect(towerX + 20, horizon - 43, 3, 44);
+    ctx.fillRect(towerX, horizon - 58, 3.5, 59);
+    ctx.fillRect(towerX + 22, horizon - 58, 3.5, 59);
     ctx.fillStyle = palette.structure;
-    ctx.fillRect(towerX - 3, horizon - 45, 29, 14);
+    ctx.fillRect(towerX - 4, horizon - 62, 34, 18);
     ctx.fillStyle = withAlpha(palette.structureLight, 0.8);
-    ctx.fillRect(towerX + 2, horizon - 42, 19, 6);
+    ctx.fillRect(towerX + 2, horizon - 58, 22, 8);
+    ctx.fillStyle = palette.marker;
+    ctx.fillRect(towerX + 6, horizon - 64, 14, 3);
 
     // Deep regatta basin with a cooler, richer bottom depth. The old 3-stop
     // gradient turned the entire lower canvas into one uniform teal slab;

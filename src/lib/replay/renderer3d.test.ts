@@ -544,6 +544,11 @@ describe("CourseRenderer3D", () => {
     ).toBe(true);
     expect(getScene(rower).getObjectByName("environment:rower:river-banks")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:reed-beds")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:valley-ridges")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:forest-belt")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:river-island")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:ridge-far")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:wooded-shoreline")).toBeDefined();
     for (const landmark of [
       "environment:rower:regatta-pavilion",
       "environment:rower:boathouse",
@@ -623,8 +628,18 @@ describe("CourseRenderer3D", () => {
     const lowPines = lowScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
     const ultraPines = ultraScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
 
-    expect(lowPines.count).toBe(22);
-    expect(ultraPines.count).toBe(76);
+    expect(lowPines.count).toBe(42);
+    expect(ultraPines.count).toBe(148);
+    const lowForest = lowScene.getObjectByName(
+      "environment:rower:forest-belt",
+    ) as THREE.InstancedMesh;
+    const ultraForest = ultraScene.getObjectByName(
+      "environment:rower:forest-belt",
+    ) as THREE.InstancedMesh;
+    expect(lowForest.count).toBe(36);
+    expect(ultraForest.count).toBe(128);
+    expect(ultraScene.getObjectByName("environment:rower:valley-haze")).toBeDefined();
+    expect(lowScene.getObjectByName("environment:rower:valley-haze")).toBeUndefined();
     for (const scene of [lowScene, ultraScene]) {
       expect(scene.getObjectByName("environment:rower:sky")).toBeDefined();
       expect(scene.getObjectByName("environment:rower:horizon-mid")).toBeDefined();

@@ -618,12 +618,16 @@ const BIKE_FLOODLIGHTS: readonly EnvironmentPlacement[] = [
 
 const HORIZON_COMPOSITIONS: Record<Sport, HorizonComposition> = {
   rower: {
-    offsetX: -18,
-    offsetZ: 11,
-    floor: 0.2,
+    // A real river valley needs continuous high shoulders with a few open
+    // water vistas, not a thin green ring barely above the fog plane.
+    offsetX: -14,
+    offsetZ: 9,
+    floor: 0.28,
     lobes: [
-      { center: degrees(24), halfSpan: degrees(88), height: 0.46 },
-      { center: degrees(224), halfSpan: degrees(72), height: 0.34 },
+      { center: degrees(18), halfSpan: degrees(78), height: 0.78 },
+      { center: degrees(92), halfSpan: degrees(36), height: 0.42 },
+      { center: degrees(210), halfSpan: degrees(68), height: 0.7 },
+      { center: degrees(300), halfSpan: degrees(34), height: 0.38 },
     ],
   },
   skierg: {
@@ -5634,41 +5638,234 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(glints);
   }
 
-  /** A broad asymmetric landform keeps the regatta from ending at a black line. */
-  private addRowerShoreline(group: THREE.Group): void {
-    const count = [4, 7, 11, 15][this.cfg.environmentDetail];
-    const geometry = this.track(alpineFoothillGeometry());
-    const material = this.environmentStandardMat(
-      "environment:rower:shoreline-material",
-      themed(0x315f49, 0x163c33),
+  /**
+   * Build the river valley as stacked terrain mass, not a few flat green
+   * pancakes. Far ridges set the skyline; mid hills lock the tree line; a
+   * near shoreline shoulder joins banks to the course.
+   */
+  private addRowerValleyRidges(group: THREE.Group): void {
+    const valley = new THREE.Group();
+    valley.name = "environment:rower:valley-ridges";
+    const farMat = this.environmentStandardMat(
+      "environment:rower:ridge-far-material",
+      themed(0x4f6d58, 0x1a3534),
+      { fog: true, roughness: 0.97, metalness: 0 },
+    );
+    const midMat = this.environmentStandardMat(
+      "environment:rower:ridge-mid-material",
+      themed(0x3d6449, 0x173f36),
       { fog: true, roughness: 0.95, metalness: 0 },
     );
-    // Wooded shoreline hills use leaf litter so they read as vegetation mass
-    // rather than a second copy of the earth-bank soil map.
+    const nearMat = this.environmentStandardMat(
+      "environment:rower:shoreline-material",
+      themed(0x315f49, 0x163c33),
+      { fog: true, roughness: 0.94, metalness: 0 },
+    );
     this.applyEnvironmentSurfaceMaps(
-      material,
+      midMat,
+      "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
+      [1.6, 2],
+      0.16,
+    );
+    this.applyEnvironmentSurfaceMaps(
+      nearMat,
       "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
       [2.1, 2.6],
       0.2,
     );
-    const shoreline = this.trackInstanced(new THREE.InstancedMesh(geometry, material, count));
-    shoreline.name = "environment:rower:wooded-shoreline";
+
+    const placeRidges = (
+      name: string,
+      material: THREE.MeshStandardMaterial,
+      count: number,
+      radiusBase: number,
+      radiusJitter: number,
+      heightScale: number,
+      widthScale: number,
+      sectors: readonly EnvironmentSector[],
+    ): void => {
+      const geometry = this.track(alpineFoothillGeometry());
+      const mesh = this.trackInstanced(new THREE.InstancedMesh(geometry, material, count));
+      mesh.name = name;
+      const matrix = new THREE.Matrix4();
+      const quaternion = new THREE.Quaternion();
+      const position = new THREE.Vector3();
+      const scale = new THREE.Vector3();
+      for (let index = 0; index < count; index++) {
+        const { angle } = sectorSample(index, count, sectors);
+        const size = 0.78 + (0.5 + Math.sin(index * 5.37) * 0.5) * 0.72;
+        const radius = radiusBase + Math.sin(index * 3.91) * radiusJitter;
+        quaternion.setFromAxisAngle(WORLD_UP, angle + 0.45 + (index % 5) * 0.19);
+        // Raise the mass so the silhouette breaks the fog line instead of
+        // sitting as a thin pancake against the water plane.
+        position.set(
+          Math.sin(angle) * radius,
+          heightScale * size * 1.55,
+          Math.cos(angle) * radius,
+        );
+        scale.set(size * widthScale, size * heightScale, size * (widthScale * 0.72));
+        matrix.compose(position, quaternion, scale);
+        mesh.setMatrixAt(index, matrix);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      valley.add(mesh);
+    };
+
+    const farCount = [8, 12, 18, 26][this.cfg.environmentDetail];
+    const midCount = [7, 12, 18, 26][this.cfg.environmentDetail];
+    const nearCount = [6, 10, 16, 22][this.cfg.environmentDetail];
+    placeRidges(
+      "environment:rower:ridge-far",
+      farMat,
+      farCount,
+      96,
+      6.5,
+      1.55,
+      3.4,
+      ROW_PINE_SECTORS,
+    );
+    placeRidges(
+      "environment:rower:ridge-mid",
+      midMat,
+      midCount,
+      78,
+      4.2,
+      1.28,
+      2.8,
+      ROW_PINE_SECTORS,
+    );
+    placeRidges(
+      "environment:rower:wooded-shoreline",
+      nearMat,
+      nearCount,
+      62,
+      3.1,
+      0.92,
+      2.35,
+      ROW_PINE_SECTORS,
+    );
+    group.add(valley);
+  }
+
+  /**
+   * A continuous forest belt reads as woodland volume rather than a sparse
+   * ring of individual Christmas trees. Large canopy blobs form the mass;
+   * the existing pine instances supply the needle silhouette on top.
+   */
+  private addRowerForestBelt(group: THREE.Group): void {
+    const count = [36, 58, 92, 128][this.cfg.environmentDetail];
+    const canopyGeo = this.track(sculptedPineGeometry());
+    const canopyMat = this.environmentStandardMat(
+      "environment:rower:forest-belt-material",
+      themed(0x2a563f, 0x14382f),
+      { fog: true, roughness: 0.9, metalness: 0 },
+    );
+    this.applyEnvironmentSurfaceMaps(
+      canopyMat,
+      "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
+      [1.8, 2.4],
+      0.14,
+    );
+    const belt = this.trackInstanced(new THREE.InstancedMesh(canopyGeo, canopyMat, count));
+    belt.name = "environment:rower:forest-belt";
     const matrix = new THREE.Matrix4();
     const quaternion = new THREE.Quaternion();
     const position = new THREE.Vector3();
     const scale = new THREE.Vector3();
     for (let index = 0; index < count; index++) {
       const { angle } = sectorSample(index, count, ROW_PINE_SECTORS);
-      const size = 0.62 + (0.5 + Math.sin(index * 5.37) * 0.5) * 0.48;
-      const radius = 60 + Math.sin(index * 3.91) * 2.8;
-      quaternion.setFromAxisAngle(WORLD_UP, angle + 0.45 + (index % 4) * 0.21);
-      position.set(Math.sin(angle) * radius, 1.25 * size, Math.cos(angle) * radius);
-      scale.set(size * 2.2, size * 0.42, size);
+      // Two depth bands: a rear wall plus a denser mid belt so the forest has
+      // thickness when the chase camera yaws around the course.
+      const band = index % 3;
+      const radius =
+        (band === 0 ? 88 : band === 1 ? 74 : 66) + Math.sin(index * 4.17) * (band === 0 ? 4.5 : 2.4);
+      const size = (band === 0 ? 1.55 : band === 1 ? 1.2 : 0.95) * (0.85 + (index % 5) * 0.08);
+      quaternion.setFromAxisAngle(WORLD_UP, (index * 2.399963229728653) % FULL_CIRCLE);
+      position.set(Math.sin(angle) * radius, 2.4 * size, Math.cos(angle) * radius);
+      scale.set(size * 1.65, size * 1.35, size * 1.65);
       matrix.compose(position, quaternion, scale);
-      shoreline.setMatrixAt(index, matrix);
+      belt.setMatrixAt(index, matrix);
     }
-    shoreline.instanceMatrix.needsUpdate = true;
-    group.add(shoreline);
+    belt.instanceMatrix.needsUpdate = true;
+    group.add(belt);
+  }
+
+  /** A mid-basin spit keeps the open vista from reading as empty void. */
+  private addRowerRiverIsland(group: THREE.Group): void {
+    const island = new THREE.Group();
+    island.name = "environment:rower:river-island";
+    // Opposite the main wooded sectors so the open water vista still has a
+    // place cue without walling the athlete in.
+    const angle = degrees(118);
+    const radius = 48;
+    island.position.set(Math.sin(angle) * radius, 0, Math.cos(angle) * radius);
+    island.rotation.y = angle;
+
+    const soilMat = this.environmentStandardMat(
+      "environment:rower:island-soil-material",
+      themed(0x6a6d4f, 0x2f3630),
+      { roughness: 0.97, metalness: 0 },
+    );
+    const foliageMat = this.environmentStandardMat(
+      "environment:rower:island-foliage-material",
+      themed(0x3f6648, 0x1c4338),
+      { roughness: 0.93, metalness: 0 },
+    );
+    this.applyEnvironmentSurfaceMaps(
+      soilMat,
+      "/replay-assets/environments/forrest-ground-01/forrest-ground-01",
+      [0.8, 0.8],
+      0.22,
+    );
+    this.applyEnvironmentSurfaceMaps(
+      foliageMat,
+      "/replay-assets/environments/aerial-grass-rock/aerial-grass-rock",
+      [0.7, 0.7],
+      0.2,
+    );
+
+    const mound = new THREE.Mesh(this.track(alpineFoothillGeometry()), soilMat);
+    mound.name = "environment:rower:island-mound";
+    mound.scale.set(1.85, 0.55, 1.15);
+    mound.position.y = 0.9;
+    const scrubCount = [3, 5, 7, 9][this.cfg.environmentDetail];
+    const scrubGeo = this.track(sculptedPineGeometry());
+    for (let index = 0; index < scrubCount; index++) {
+      const scrub = new THREE.Mesh(scrubGeo, foliageMat);
+      scrub.name = `environment:rower:island-scrub-${index + 1}`;
+      const local = (index / Math.max(1, scrubCount - 1) - 0.5) * 3.4;
+      scrub.position.set(local, 1.15 + (index % 3) * 0.12, (index % 2 === 0 ? -0.35 : 0.4));
+      scrub.scale.set(0.28 + (index % 3) * 0.06, 0.34 + (index % 2) * 0.08, 0.28);
+      scrub.rotation.y = index * 0.7;
+      island.add(scrub);
+    }
+    island.add(mound);
+    group.add(island);
+  }
+
+  /** Soft valley haze planes give the stacked ridges atmospheric depth. */
+  private addRowerValleyHaze(group: THREE.Group): void {
+    if (this.cfg.environmentDetail < 1) return;
+    const haze = new THREE.Group();
+    haze.name = "environment:rower:valley-haze";
+    const hazeMat = this.environmentBasicMat(
+      "environment:rower:valley-haze-material",
+      themed(0xd7e4d6, 0x2d4a4f),
+      { transparent: true, opacity: 0.11, depthWrite: false, fog: true, side: THREE.DoubleSide },
+    );
+    for (const [index, radius] of [72, 90, 108].entries()) {
+      if (this.cfg.environmentDetail < 2 && index > 0) continue;
+      const band = this.makeHorizontalArc(
+        `environment:rower:haze-band-${index + 1}`,
+        radius,
+        radius + 4.5 + index * 1.2,
+        3.2 + index * 1.6,
+        { start: degrees(-48), span: degrees(210) },
+        hazeMat,
+      );
+      haze.add(band);
+    }
+    group.add(haze);
   }
 
   /** Join the water material to a continuous river valley. */
@@ -5733,6 +5930,24 @@ export class CourseRenderer3D implements ReplayRenderer {
           0.075,
           sector,
           grassMat,
+        ),
+        // Raised embankment terrace so the bank has vertical mass instead of
+        // reading as a paper-thin colour strip on the water plane.
+        this.makeHorizontalArc(
+          `environment:rower:bank-terrace-${index + 1}`,
+          outerR + 7.2,
+          outerR + 13.6,
+          0.55,
+          sector,
+          grassMat,
+        ),
+        this.makeHorizontalArc(
+          `environment:rower:bank-shoulder-${index + 1}`,
+          outerR + 10.5,
+          outerR + 16.2,
+          1.15,
+          sector,
+          earthMat,
         ),
         this.makeHorizontalArc(
           `environment:rower:waterline-${index + 1}`,
@@ -6026,10 +6241,12 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.environmentMidGroup.userData.environmentDetail = this.cfg.environmentDetail;
     this.scene.add(this.environmentMidGroup, this.environmentDetailGroup);
 
-    const farHeight = this.sport === "skierg" ? 14 : this.sport === "bike" ? 11 : 5.5;
-    const farVariation = this.sport === "skierg" ? 6.5 : this.sport === "bike" ? 3 : 2.4;
-    const midHeight = this.sport === "skierg" ? 7 : this.sport === "bike" ? 7 : 4.2;
-    const midVariation = this.sport === "skierg" ? 4 : this.sport === "bike" ? 2 : 1.8;
+    // Row needs a real valley skyline: previously its horizon rings were half
+    // the height of Ski/Bike and read as a perfunctory green stripe.
+    const farHeight = this.sport === "skierg" ? 14 : this.sport === "bike" ? 11 : 12.5;
+    const farVariation = this.sport === "skierg" ? 6.5 : this.sport === "bike" ? 3 : 5.2;
+    const midHeight = this.sport === "skierg" ? 7 : this.sport === "bike" ? 7 : 8.4;
+    const midVariation = this.sport === "skierg" ? 4 : this.sport === "bike" ? 2 : 3.6;
     this.environmentMidGroup.add(
       this.makeHorizonRing(
         `environment:${this.sport}:horizon-far`,
@@ -6100,17 +6317,22 @@ export class CourseRenderer3D implements ReplayRenderer {
     if (this.sport === "rower") {
       this.addAtmosphericClouds(
         this.environmentMidGroup,
-        4 + this.cfg.environmentDetail,
+        6 + this.cfg.environmentDetail * 2,
         ROW_PINE_SECTORS,
       );
+      // Terrain mass first, then forest volume, then needle silhouettes, then
+      // banks/water dressing. Order keeps the valley reading as one place.
+      this.addRowerValleyRidges(this.environmentMidGroup);
+      this.addRowerForestBelt(this.environmentMidGroup);
+      this.addRowerValleyHaze(this.environmentMidGroup);
       this.addInstancedPines(
         this.environmentMidGroup,
-        [22, 34, 54, 76][this.cfg.environmentDetail],
-        64,
-        82,
+        [42, 68, 104, 148][this.cfg.environmentDetail],
+        58,
+        94,
         ROW_PINE_SECTORS,
       );
-      this.addRowerShoreline(this.environmentMidGroup);
+      this.addRowerRiverIsland(this.environmentMidGroup);
       this.addRowerBanks(this.environmentMidGroup, outerR);
       this.addRowerWaterTier(this.environmentMidGroup, outerR);
       this.addPavilions(this.environmentDetailGroup, ROW_LANDMARKS);
