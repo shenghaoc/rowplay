@@ -116,15 +116,16 @@ The surface, face, kit, and quality-tier acceptance set is
 captured from implementation commit
 `a56460b40d9611ee8319ed1566bf62b75ad8dfaa`.
 
-### Motion / grip follow-up (`be0886a`+)
+### Motion / grip follow-up (`0565a58`)
 
-After that capture, `be0886a` re-authored the RowErg finish (hands to lower
-chest, not behind the back), strengthened multi-axis finger/thumb grip curl,
-and re-oriented row/ski/bike terminal hands toward equipment. Those changes
-are sealed into the production GLB/USDZ/contract and covered by unit tests;
-the stills/cycles below remain **surface and contact geometry** evidence and
-are not re-shot as finish/grip motion proof. Re-capture when hardware WebGPU
-evidence is next required for a release.
+After the surface capture, finish and grip work was re-authored and unit-tested
+(`be0886a`–`0565a58`): RowErg hands finish at the lower chest, multi-axis finger
+helpers curl after contact, and terminal hand soft-orient remains available for
+sculls / poles / hoods. Bounded in-app stills for that motion are sealed in
+[`2026-07-25-0565a58`](athlete-v5/in-app/2026-07-25-0565a58/manifest.json)
+(row finish, ski loaded press, bike pedal top/bottom). Full six-pose sheets and
+cycles remain the surface/contact matrix from `a56460b`; hardware WebGPU Ultra
+proof is still the prior Chrome capture (headless Chromium reports WebGL/High).
 
 The primary matrix is the
 [six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):
