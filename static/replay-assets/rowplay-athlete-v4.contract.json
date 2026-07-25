@@ -5,13 +5,13 @@
   "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 5059344,
-    "sha256": "6cb07263ebeed58750c5d7c52b34361b333b008fb1945ee68baec525643cae3d"
+    "byteCount": 5059340,
+    "sha256": "a9641ad0d443ccf83fe81d5458e9d8b32712e3eecebaebeba403d9df8a9c0b91"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 11800039,
-    "sha256": "53dc821186fc6f3311e3633f1e4373226205228c0a5188fc8d54729ee64efc9c"
+    "byteCount": 11800036,
+    "sha256": "a51e0a6cffaafc2b88f7edae341629206f25c05e64c154704793d749d0f73f88"
   },
   "coordinateSystem": {
     "units": "metres",

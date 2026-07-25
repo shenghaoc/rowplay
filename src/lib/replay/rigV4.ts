@@ -1229,14 +1229,15 @@ function createSportClip(
 /**
  * Concept2 / sculling-style row cycle authored from technique sequencing:
  * catch → leg drive (arms DEAD STRAIGHT) → body open (arms still straight) →
- * arm draw begins → finish (elbows aft, deep flexion) → hands-away →
- * body-over → slide.
+ * arm draw begins → finish (hands to lower chest/ribs, elbows tucked) →
+ * hands-away → body-over → slide.
  *
  * CRITICAL: Real rowing sequencing is legs → body → arms. The arms must stay
  * completely straight (forearm near zero) through the entire leg drive AND the
  * body swing. Elbow bend begins ONLY after the body has opened past ~80%.
- * This eliminates the "premature draw" that makes the stroke look like a
- * shoulder shrug.
+ * At the finish, hands draw *to the lower chest* (British Rowing / Concept2 /
+ * sculling coaching) — never hauled through the torso behind the back.
+ * This eliminates the "premature draw" and the illegal behind-the-back finish.
  *
  * 14-key clip for smoother interpolation across transition points.
  *
@@ -1277,10 +1278,10 @@ function createRowCycleClip(): THREE.AnimationClip {
     [0.42, -0.1, -0.44], // mid leg: still straight, arms hang from shoulders
     [0.4, -0.1, -0.43], // late leg: barely perceptible change
     [0.34, -0.09, -0.42], // body open: arms still straight, moving with body
-    [0.18, -0.07, -0.38], // draw begin: upper arm starts traveling aft
-    [0.02, -0.05, -0.34], // draw mid: elbows moving behind ribcage
-    [-0.1, -0.03, -0.28], // finish: elbows fully aft, not winged out
-    [0.12, -0.07, -0.38], // hands away: rapid extension forward
+    [0.22, -0.07, -0.4], // draw begin: upper arm starts traveling aft
+    [0.12, -0.05, -0.36], // draw mid: elbows tucking toward ribs
+    [0.06, -0.04, -0.32], // finish: elbows aft of shoulder, hands still at chest
+    [0.14, -0.07, -0.38], // hands away: rapid extension forward
     [0.28, -0.09, -0.42], // arms extend: nearly straight again
     [0.35, -0.1, -0.44], // body over: arms fully extended
     [0.39, -0.1, -0.44], // mid slide: arms still straight
@@ -1288,7 +1289,8 @@ function createRowCycleClip(): THREE.AnimationClip {
     [0.42, -0.1, -0.44], // loop
   ] as const;
   // Forearm: ABSOLUTELY STRAIGHT through leg drive and body open.
-  // Only begins flexing at arm-draw-begin (t=0.30). Deep flexion at finish only.
+  // Only begins flexing at arm-draw-begin (t=0.30). Finish flexion draws the
+  // handle to the lower ribs — deep, but not a behind-the-back haul.
   const leftForearm = [
     [-0.06, 0.03, -0.08], // catch: nearly straight, soft not locked
     [-0.06, 0.03, -0.08], // early drive: straight
@@ -1296,8 +1298,8 @@ function createRowCycleClip(): THREE.AnimationClip {
     [-0.07, 0.03, -0.08], // late leg: STILL STRAIGHT
     [-0.08, 0.03, -0.09], // body open: barely perceptible flex
     [-0.28, 0.03, -0.14], // draw begin: elbows start bending
-    [-0.68, 0.035, -0.22], // draw mid: accelerating into draw
-    [-1.12, 0.04, -0.28], // finish: deep draw, elbows back
+    [-0.58, 0.035, -0.2], // draw mid: accelerating into chest draw
+    [-0.88, 0.04, -0.24], // finish: handle to lower ribs / chest
     [-0.48, 0.03, -0.18], // hands away: rapid extension
     [-0.18, 0.03, -0.12], // arms extend: nearly straight
     [-0.1, 0.03, -0.09], // body over: arms fully extended

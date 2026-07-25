@@ -1984,9 +1984,10 @@ function makeRowerAvatar(
   const PELVIS_PITCH_CATCH = 0.07;
   const PELVIS_PITCH_FINISH = -0.105;
   // Concept2 / scull handle path: early drive keeps grips forward so arms can
-  // stay long; late draw brings the bar to the body.
-  const OAR_YAW_CATCH = 0.28;
-  const OAR_YAW_SPAN = -0.68;
+  // stay long; late draw brings the bar to the *lower chest / ribs*, not behind
+  // the back (British Rowing / Concept2 finish coaching).
+  const OAR_YAW_CATCH = 0.3;
+  const OAR_YAW_SPAN = -0.58;
   // A scull blade is buried only just below the surface. The former deep roll
   // lifted the 0.82 m inboard handle by more than 11 cm during the first few
   // drive frames, making the otherwise closed-chain grip surge forward.
@@ -2060,10 +2061,11 @@ function makeRowerAvatar(
         activeArmReach - 0.002,
         oar.group.rotation.y,
       );
-      // Finish at a realistic lower-rib draw without sweeping the inboard
-      // handle through an exaggerated final arc. This keeps peak hand speed
-      // smooth while still producing a clear rearward elbow bend.
-      const drawYaw = -oar.side * 0.75;
+      // Finish at a realistic lower-rib draw. Public sculling coaching (e.g.
+      // British Rowing / Concept2): hands draw *to the lower chest*, elbows
+      // tuck beside/slightly behind the shoulder plane — never hauled through
+      // the torso into an illegal behind-the-back finish.
+      const drawYaw = -oar.side * 0.58;
       const yawDelta = Math.atan2(
         Math.sin(drawYaw - longReachYaw),
         Math.cos(drawYaw - longReachYaw),
@@ -2078,16 +2080,12 @@ function makeRowerAvatar(
       arm.wristTarget.copy(handlePoint);
       const v4ContactOffset = v4Refinement?.contactOffsets[i];
       if (v4ContactOffset) arm.wristTarget.sub(v4ContactOffset);
-      // The fallback owns the exact grip target and the RowErg anatomical
-      // branch marker consumed by V4. Arms remain long while armDraw is low;
-      // once the late draw creates visible flexion, the sagittal component is
-      // strongly rearward / bowward (-z) with only restrained lateral
-      // clearance. This is an elbow-to-bows pull, not a horizontal
-      // chicken-wing flare.
+      // Elbow branch: clearly rearward of the shoulder with restrained lateral
+      // clearance, while the palm target stays on the chest-level grip.
       setArmBendHint(arm.shoulderPoint, arm.wristTarget, arm.side, arm.bendHint, {
-        lateral: -0.08 + draw * 0.12 + shoulderSet * 0.006,
-        up: 0.04 + draw * 0.04,
-        aft: -0.52 - bodySwing * 0.22 - handleTravel * 0.12 - draw * 0.65,
+        lateral: -0.06 + draw * 0.09 + shoulderSet * 0.004,
+        up: 0.06 + draw * 0.05,
+        aft: -0.34 - bodySwing * 0.12 - handleTravel * 0.08 - draw * 0.34,
       });
       solveTwoBone3D(
         arm.shoulderPoint,
@@ -2107,12 +2105,12 @@ function makeRowerAvatar(
       // hidden anatomical solve at the wrist while the terminal hand marker
       // remains exactly on the rigid grip.
       arm.hand.position.copy(arm.handTarget);
-      // Mild grip orientation — V4 closes the palm against the authoritative
-      // contact while limiting terminal rotation so the forearm cannot be
-      // corkscrewed by a forced equipment quaternion.
+      // Palm faces the scull grip: wrap fingers around the handle so V4's grip
+      // curl closes a fist *on* the rubber rather than an open mitt beside it.
       arm.hand.quaternion.copy(oar.group.quaternion);
       arm.hand.rotateZ(arm.side * (Math.PI / 2));
-      arm.hand.rotateX(-0.28 - shoulderSet * 0.06);
+      arm.hand.rotateX(-0.55 - shoulderSet * 0.08);
+      arm.hand.rotateY(arm.side * 0.12);
     }
   };
 
@@ -2797,6 +2795,11 @@ function makeSkierAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
+      // Palm wraps the pole shaft: fingers curl around the grip so the skier
+      // clutches the poles rather than open-handing them.
+      arm.hand.quaternion.copy(pole.shaft.quaternion);
+      arm.hand.rotateX(1.15);
+      arm.hand.rotateZ(arm.side * 0.2);
 
       // The solved hand and the basket are the endpoints of one rigid pole in
       // every phase. Neither planted nor recovering hardware may telescope.
@@ -3292,7 +3295,9 @@ function makeBikeAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
-      arm.hand.rotation.set(-0.28, 0, arm.side * 0.08);
+      // Pronated hoods grip: palm over the bar, fingers curling forward/down
+      // so the cyclist is clearly holding the cockpit rather than floating.
+      arm.hand.rotation.set(-0.72, arm.side * 0.06, arm.side * 0.18);
     }
   };
 

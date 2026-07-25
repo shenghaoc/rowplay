@@ -34,7 +34,7 @@ contract identity separately:
 
 | Artifact                           |  Bytes | SHA-256                                                            |
 | ---------------------------------- | -----: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.contract.json` | 12,720 | `99b0b2a5cba35b13b210122f2a68e93bb5fc7b2f0cda5700d443ef995ba5ba44` |
+| `rowplay-athlete-v4.contract.json` | 12,720 | `cdeb14c000567cba01ec5ba88115ded09327ece2a797e41c255b0108ef0d6eb6` |
 
 After an asset or contract rebuild, run `vp run build:replay-rig-v4-contract`
 and update this contract row in the same reviewed change.

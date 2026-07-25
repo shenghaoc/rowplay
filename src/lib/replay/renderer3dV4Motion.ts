@@ -42,13 +42,25 @@ const HAND_HELPER_NAMES = [
   "v4RightThumb",
 ] as const;
 
-/** Radians of local curl applied to finger/thumb helpers after contact. */
+/**
+ * Radians of local curl applied to finger/thumb helpers after contact.
+ * Strong enough that open mittens read as a closed grip on sculls, poles,
+ * and hoods once the terminal hand is oriented to the equipment.
+ */
 const GRIP_CURL_BY_SPORT: Readonly<
-  Record<Sport, { readonly fingers: number; readonly thumb: number }>
+  Record<
+    Sport,
+    {
+      readonly fingersFlex: number;
+      readonly fingersCurl: number;
+      readonly thumbFlex: number;
+      readonly thumbOppose: number;
+    }
+  >
 > = {
-  rower: { fingers: 0.95, thumb: 0.62 },
-  skierg: { fingers: 0.82, thumb: 0.55 },
-  bike: { fingers: 0.7, thumb: 0.48 },
+  rower: { fingersFlex: 1.35, fingersCurl: 0.45, thumbFlex: 0.95, thumbOppose: 0.7 },
+  skierg: { fingersFlex: 1.25, fingersCurl: 0.4, thumbFlex: 0.9, thumbOppose: 0.65 },
+  bike: { fingersFlex: 1.15, fingersCurl: 0.35, thumbFlex: 0.85, thumbOppose: 0.55 },
 };
 
 /** Diagnostic overlay modes for isolation of defects (PROMPT 9). */
@@ -1011,6 +1023,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private readonly localQuaternion = new THREE.Quaternion();
   private readonly blendedWorldQuaternion = new THREE.Quaternion();
   private readonly gripCurlQuaternion = new THREE.Quaternion();
+  private readonly gripCurlSecondary = new THREE.Quaternion();
   private readonly gripAxis = new THREE.Vector3(1, 0, 0);
   /** Rest local quaternions for optional finger helpers (identity when absent). */
   private readonly handHelpers: readonly {
@@ -1351,12 +1364,28 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     if (this.handHelpers.length === 0) return;
     const grip = GRIP_CURL_BY_SPORT[this.options.sport] ?? GRIP_CURL_BY_SPORT.rower;
     for (const helper of this.handHelpers) {
-      const angle = helper.kind === "thumb" ? grip.thumb : grip.fingers;
-      // Local +X curl folds digits into the palm for the bind-posed hand layout.
-      // Side sign keeps left/right thumbs wrapping toward the palm midline.
-      const signed = angle * (helper.kind === "thumb" ? helper.side : 1);
-      this.gripCurlQuaternion.setFromAxisAngle(this.gripAxis.set(1, 0, 0), signed);
-      helper.bone.quaternion.copy(helper.rest).multiply(this.gripCurlQuaternion);
+      // Flex fingers into the palm (+X) and slightly adduce them (+Z) so they
+      // wrap the equipment instead of staying open mitts. Thumb gets opposition.
+      if (helper.kind === "fingers") {
+        this.gripCurlQuaternion.setFromAxisAngle(this.gripAxis.set(1, 0, 0), grip.fingersFlex);
+        this.gripCurlSecondary.setFromAxisAngle(
+          this.gripAxis.set(0, 0, 1),
+          helper.side * grip.fingersCurl,
+        );
+      } else {
+        this.gripCurlQuaternion.setFromAxisAngle(
+          this.gripAxis.set(1, 0, 0),
+          helper.side * grip.thumbFlex,
+        );
+        this.gripCurlSecondary.setFromAxisAngle(
+          this.gripAxis.set(0, 1, 0),
+          -helper.side * grip.thumbOppose,
+        );
+      }
+      helper.bone.quaternion
+        .copy(helper.rest)
+        .multiply(this.gripCurlQuaternion)
+        .multiply(this.gripCurlSecondary);
     }
   }
 

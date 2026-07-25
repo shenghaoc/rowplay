@@ -1120,9 +1120,10 @@ describe("CourseRenderer3D", () => {
       );
       const elbow = athlete.worldToLocal(worldPosition(renderer, `rower-elbow-${label}`).clone());
       // The RowErg athlete faces +z in its local frame. A completed draw
-      // therefore sends the elbow behind the torso (-z), with only restrained
-      // lateral clearance instead of a horizontal goalpost/chicken wing.
-      expect(elbow.z, `${label} elbow rearward at finish`).toBeLessThan(shoulder.z - 0.04);
+      // sends the elbow slightly rearward of the shoulder (-z) with restrained
+      // lateral clearance — elbows tuck beside the ribs while hands stay on the
+      // lower-chest grip (not hauled behind the back).
+      expect(elbow.z, `${label} elbow rearward at finish`).toBeLessThan(shoulder.z - 0.02);
       expect((elbow.x - shoulder.x) * side, `${label} elbow outward restraint`).toBeLessThan(0.16);
     }
 
@@ -1170,7 +1171,12 @@ describe("CourseRenderer3D", () => {
           expect(
             elbow.z,
             `${side} elbow travels rearward during visible draw at ${cycle}`,
-          ).toBeLessThan(shoulder.z - 0.025);
+          ).toBeLessThan(shoulder.z - 0.012);
+          // Hands finish at the lower chest / grip — not behind the hips.
+          expect(
+            handLocal.z,
+            `${side} hand stays on chest-level grip at ${cycle}`,
+          ).toBeGreaterThan(elbow.z - 0.02);
         }
         if (graph.body.armDraw.value < 0.03) {
           expect(straightness, `${side} long arm before/after draw at ${cycle}`).toBeGreaterThan(
