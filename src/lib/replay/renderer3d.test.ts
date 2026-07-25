@@ -2641,13 +2641,6 @@ describe("CourseRenderer3D", () => {
       }
     });
 
-    
-    
-    
-    
-    
-    
-    
     it("keeps the V4 BikeErg fit across every quality tier and crank phase", () => {
       for (const quality of ["low", "medium", "high", "ultra"] as const) {
         const renderer = rendererFor("bike", quality);
@@ -2688,10 +2681,9 @@ describe("CourseRenderer3D", () => {
               }
             });
             const sit = hip.clone().add(sitOffset);
-            expect(
-              hip.y,
-              `${quality} hip stays above the saddle at ${cycle}`,
-            ).toBeGreaterThan(saddleTopY);
+            expect(hip.y, `${quality} hip stays above the saddle at ${cycle}`).toBeGreaterThan(
+              saddleTopY,
+            );
             // Sit on the seat — never through the pad (穿模).
             expect(
               sit.y,

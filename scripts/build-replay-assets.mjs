@@ -1023,30 +1023,12 @@ function bikeFrameAssemblyParts() {
       0.9,
     ),
     // Seat upright
-    tubeGeometryBetween(
-      [0, base.railY + 0.08, seatCluster[2]],
-      seatCluster,
-      0.042,
-      14,
-      0.88,
-    ),
+    tubeGeometryBetween([0, base.railY + 0.08, seatCluster[2]], seatCluster, 0.042, 14, 0.88),
     // Mast from rail to cockpit
-    tubeGeometryBetween(
-      [0, base.railY + 0.08, headBottom[2]],
-      headBottom,
-      0.045,
-      14,
-      0.88,
-    ),
+    tubeGeometryBetween([0, base.railY + 0.08, headBottom[2]], headBottom, 0.045, 14, 0.88),
     tubeGeometryBetween(headBottom, headTop, 0.04, 14),
     // BB drop from rail
-    tubeGeometryBetween(
-      [0, base.railY + 0.08, bottomBracket[2]],
-      bottomBracket,
-      0.036,
-      12,
-      0.86,
-    ),
+    tubeGeometryBetween([0, base.railY + 0.08, bottomBracket[2]], bottomBracket, 0.036, 12, 0.86),
     // Front flywheel support arms
     tubeGeometryBetween(
       [0, base.railY + 0.08, BIKE_RIG.frontAxleZ - 0.1],

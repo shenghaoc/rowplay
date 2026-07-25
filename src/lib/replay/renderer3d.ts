@@ -3016,7 +3016,13 @@ function makeBikeAvatar(
   );
   setReplayAssetSlot(seatRail, "equipment:bike:frame-tube");
   const seatTube = accentPart(
-    tubeBetween("bike-seat-tube", { x: 0, y: railY, z: seatCluster.z }, seatCluster, 0.042, accentMat()),
+    tubeBetween(
+      "bike-seat-tube",
+      { x: 0, y: railY, z: seatCluster.z },
+      seatCluster,
+      0.042,
+      accentMat(),
+    ),
   );
   setReplayAssetSlot(seatTube, "equipment:bike:frame-tube");
   const mast = accentPart(
@@ -3045,7 +3051,11 @@ function makeBikeAvatar(
       tubeBetween(
         "bike-rear-foot",
         { x: side * BIKE_RIG.base.halfWidth * 0.35, y: railY, z: BIKE_RIG.base.rearFootZ + 0.12 },
-        { x: side * BIKE_RIG.base.halfWidth, y: BIKE_RIG.base.railY * 0.4, z: BIKE_RIG.base.rearFootZ },
+        {
+          x: side * BIKE_RIG.base.halfWidth,
+          y: BIKE_RIG.base.railY * 0.4,
+          z: BIKE_RIG.base.rearFootZ,
+        },
         0.028,
         accentMat(),
       ),
