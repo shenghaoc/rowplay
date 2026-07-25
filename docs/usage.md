@@ -214,29 +214,28 @@ V4 source and locally authored equipment; it adds no runtime download or
 undocumented third-party asset.
 
 Both views use complete sport-specific illustrative environments, not one
-generic floor with different colors. RowErg is a closed regatta basin: the
-racing ring and circle centre are one continuous lake (deeper open water inside
-the lanes, start pontoons in the centre), with authored land uses on shore —
-woodland banks, an open vista, and a single campus that owns dock, lawn, path,
-and buildings together — rather than scattered props or fog tricks; SkiErg joins groomed,
-blue-shadowed snow to a winter valley bowl, race fencing, snowbanks, evergreen,
-alpine, and Nordic-venue forms; BikeErg joins its asphalt circuit to a planted
-infield, service apron, tiered stands, roof structure, floodlights, urban dusk
-skyline, and embedded lap reflectors rather than using a generic
-velodrome-style circuit. High and Ultra BikeErg use optimized local derivatives
-of Poly Haven's CC0 Clean Asphalt material; its creator, source, license, and
-digests are recorded with the assets. High and Ultra RowErg keep an authored
-clear-coat water basin and dress the full river valley with local Poly Haven
-CC0 derivatives: Aerial Grass Rock (grass banks), Forest Ground 01 (earth
-banks), Dry River Pebbles (shingle waterline), Leafy Grass (reed beds), Forest
-Leaves 04 (wooded shoreline and pine canopies), Bark Brown 01 (pine trunks),
-and Brown Planks 03 (launch dock and regatta pavilion bodies). SkiErg reuses
-the bark and leaf maps on its evergreen tree line. Creators, sources, licenses,
-and digests are recorded with the assets. The 2D view
-composes sky, horizon, middle distance, course, and foreground layers. The 3D
-view adds atmospheric depth, a readable horizon, smooth compound scenery,
-material-specific terrain variation, and sport-specific surfaces so the athlete
-is grounded in a venue rather than floating on a plane.
+generic floor with different colors. Each sport is one authored place with a
+cared-for circle centre and land uses, not a ring of props:
+
+- **RowErg** is a closed regatta basin: continuous lake through the racing ring
+  and centre (deeper open water, start pontoons), with shoreline land uses —
+  woodland banks, open vista, and a campus that owns dock, lawn, path, and
+  buildings together.
+- **SkiErg** is a Nordic stadium bowl: packed competition field in the centre
+  with groomed tracks, continuous snow valley shoulders, forest only on forest
+  land, alpine massif on alpine land, and a lodge campus for timing lodge, wax
+  hut, and floodlights.
+- **BikeErg** is a dusk circuit venue: planted infield park (grass, path, plaza,
+  park trees) at the centre, grandstand shell on stand sectors, urban skyline
+  only on city land, and a service campus for the service lane and building.
+
+High and Ultra materials use provenance-recorded local CC0 surface maps (snow,
+asphalt, grass, forest ground, bark, leaves, planks, pebbles) only as material
+response — not as venue photographs. Creators, sources, licenses, and digests
+are recorded with the assets. The 2D view composes sky, horizon, middle
+distance, course, and foreground layers. The 3D view adds atmospheric depth, a
+readable horizon, smooth compound scenery, and sport-specific surfaces so the
+athlete is grounded in a venue rather than floating on a plane.
 
 The venue, weather, light, trees, mountains, shoreline, and structures are
 generic presentation art. Concept2 does not provide route geography, venue,

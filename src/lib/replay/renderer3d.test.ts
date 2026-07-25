@@ -571,9 +571,15 @@ describe("CourseRenderer3D", () => {
           angleInSector(angle, deg(-150), deg(65)) || angleInSector(angle, deg(35), deg(60)),
       ),
     ).toBe(true);
+    expect(getScene(skier).getObjectByName("environment:skierg:bowl-center")).toBeDefined();
+    expect(getScene(skier).getObjectByName("environment:skierg:bowl-packed")).toBeDefined();
     expect(getScene(skier).getObjectByName("environment:skierg:valley-bowl")).toBeDefined();
     expect(getScene(skier).getObjectByName("environment:skierg:course-fencing")).toBeDefined();
     expect(getScene(skier).getObjectByName("environment:skierg:timing-lodge")).toBeDefined();
+    // Lodge buildings stay on the lodge campus; wax hut is no longer opposite the field.
+    const wax = sceneObject(skier, "environment:skierg:wax-hut");
+    const lodgeAngle = Math.atan2(wax.position.x, wax.position.z);
+    expect(angleInSector(lodgeAngle, deg(-20), deg(55))).toBe(true);
 
     const bike = new CourseRenderer3D(makeHost(), "low", "bike");
     const wallPanels = sceneObject(bike, "environment:bike:wall-panels") as THREE.InstancedMesh;
@@ -594,6 +600,13 @@ describe("CourseRenderer3D", () => {
     ).toBeLessThan(TAU * 0.5);
     expect(getScene(bike).getObjectByName("environment:bike:scoreboard")).toBeDefined();
     expect(getScene(bike).getObjectByName("environment:bike:city-edge")).toBeDefined();
+    expect(getScene(bike).getObjectByName("environment:bike:infield-park")).toBeDefined();
+    expect(getScene(bike).getObjectByName("environment:bike:infield-grass")).toBeDefined();
+    expect(getScene(bike).getObjectByName("environment:bike:infield-plaza")).toBeDefined();
+    // Bare infield disk is suppressed so the planted park owns the centre.
+    expect((getScene(bike).getObjectByName("environment:bike:infield") as THREE.Object3D).visible).toBe(
+      false,
+    );
 
     rower.destroy();
     skier.destroy();

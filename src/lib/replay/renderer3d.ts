@@ -555,23 +555,54 @@ const ROW_VISTA_SECTOR: EnvironmentSector = {
 };
 /** @deprecated alias kept for pine placement tests that still reference woodland. */
 const ROW_PINE_SECTORS: readonly EnvironmentSector[] = ROW_WOODLAND_SECTORS;
-const SKI_PINE_SECTORS: readonly EnvironmentSector[] = [
+
+/**
+ * Nordic stadium bowl land uses: lodge campus, forested valley shoulders,
+ * alpine massif backdrop, and an open snow vista for sightlines.
+ */
+const SKI_LODGE_SECTOR: EnvironmentSector = {
+  start: degrees(-12),
+  span: degrees(40),
+  weight: 1,
+};
+const SKI_FOREST_SECTORS: readonly EnvironmentSector[] = [
   { start: degrees(-170), span: degrees(55), weight: 0.95 },
   { start: degrees(105), span: degrees(65), weight: 1.1 },
-  { start: degrees(25), span: degrees(25), weight: 0.7 },
+  { start: degrees(40), span: degrees(28), weight: 0.75 },
 ];
-const SKI_PEAK_SECTORS: readonly EnvironmentSector[] = [
+const SKI_PINE_SECTORS: readonly EnvironmentSector[] = SKI_FOREST_SECTORS;
+const SKI_ALPINE_SECTORS: readonly EnvironmentSector[] = [
   { start: degrees(-150), span: degrees(65), weight: 1.1 },
   { start: degrees(35), span: degrees(60), weight: 1 },
 ];
+const SKI_PEAK_SECTORS: readonly EnvironmentSector[] = SKI_ALPINE_SECTORS;
 const SKI_BERM_SECTORS: readonly EnvironmentSector[] = [
   { start: degrees(38), span: degrees(112), weight: 1 },
   { start: degrees(195), span: degrees(125), weight: 1.05 },
 ];
+const SKI_OPEN_SECTOR: EnvironmentSector = {
+  start: degrees(250),
+  span: degrees(55),
+  weight: 1,
+};
+
+/**
+ * Dusk circuit land uses: grandstands, urban skyline, service apron, and an
+ * open approach so the infield park remains the compositional centre.
+ */
 const BIKE_STAND_SECTORS: readonly EnvironmentSector[] = [
   { start: degrees(55), span: degrees(85), weight: 1.2 },
   { start: degrees(220), span: degrees(60), weight: 0.85 },
 ];
+const BIKE_CITY_SECTORS: readonly EnvironmentSector[] = [
+  { start: degrees(-18), span: degrees(48), weight: 1 },
+  { start: degrees(156), span: degrees(50), weight: 1 },
+];
+const BIKE_SERVICE_SECTOR: EnvironmentSector = {
+  start: degrees(228),
+  span: degrees(42),
+  weight: 1,
+};
 
 const ROW_LANDMARKS: readonly EnvironmentPlacement[] = [
   {
@@ -596,44 +627,46 @@ const ROW_LANDMARKS: readonly EnvironmentPlacement[] = [
 
 const SKI_LANDMARKS: readonly EnvironmentPlacement[] = [
   {
-    angle: degrees(4),
+    angle: SKI_LODGE_SECTOR.start + SKI_LODGE_SECTOR.span * 0.45,
     radius: 59,
     name: "environment:skierg:timing-lodge",
     scale: [1.05, 1.12, 1],
   },
   {
-    angle: degrees(150),
-    radius: 62,
+    angle: SKI_LODGE_SECTOR.start + SKI_LODGE_SECTOR.span * 0.78,
+    radius: 61,
     name: "environment:skierg:wax-hut",
     scale: [0.68, 0.76, 0.74],
   },
 ];
 
 const BIKE_SERVICE_BUILDING: EnvironmentPlacement = {
-  angle: degrees(250),
+  angle: BIKE_SERVICE_SECTOR.start + BIKE_SERVICE_SECTOR.span * 0.55,
   radius: 60,
   name: "environment:bike:service-building",
   scale: [0.82, 0.82, 1.05],
 };
 const BIKE_SCOREBOARD: EnvironmentPlacement = {
-  angle: degrees(96),
+  angle: BIKE_STAND_SECTORS[0]!.start + BIKE_STAND_SECTORS[0]!.span * 0.48,
   radius: 58,
   name: "environment:bike:scoreboard",
 };
 
+// Floodlights only along the lodge edge — a real stadium lights the field,
+// not the entire mountain ring.
 const SKI_FLOODLIGHTS: readonly EnvironmentPlacement[] = [
-  -24, -9, 12, 28, 154, 174, 196, 216, -34, 38, 144, 226, 3, 186,
+  -8, 2, 12, 22, 32, -16, 38, 18,
 ].map((angle, index) => ({
   angle: degrees(angle),
-  radius: index < 4 ? 53 : index < 8 ? 55 : 56,
+  radius: index < 4 ? 53 : 55.5,
   name: `environment:skierg:floodlight-${index + 1}`,
 }));
-
+// Floodlights only on grandstand sectors.
 const BIKE_FLOODLIGHTS: readonly EnvironmentPlacement[] = [
-  48, 72, 118, 142, 218, 282, 58, 130, 232, 270, 82, 108, 246, 258, 64, 124,
+  62, 78, 96, 118, 132, 228, 244, 260, 70, 108, 236, 270,
 ].map((angle, index) => ({
   angle: degrees(angle),
-  radius: index < 6 ? 57 : 58.5,
+  radius: index < 8 ? 57 : 58.5,
   name: `environment:bike:floodlight-${index + 1}`,
 }));
 
@@ -6126,7 +6159,122 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(valley);
   }
 
-  /** Join the groomed track to a Nordic snow bowl and race edge. */
+  /**
+   * One Nordic stadium bowl: groomed centre field, continuous snow valley,
+   * forest only on forest land, alpine massif on alpine land, lodge campus
+   * owning buildings and lights. No decorative scatter around the loop.
+   */
+  private addSkiStadiumWorld(
+    group: THREE.Group,
+    detailGroup: THREE.Group,
+    outerR: number,
+  ): void {
+    this.addSkiBowlCenter(group, outerR);
+    this.addSkiValley(group, outerR);
+    this.addSnowBerms(group, outerR, [14, 24, 38, 54][this.cfg.environmentDetail]);
+    this.addAlpineFoothills(group, [4, 7, 12, 18][this.cfg.environmentDetail]);
+    this.addAlpinePeaks(group, [8, 14, 22, 30][this.cfg.environmentDetail]);
+    this.addInstancedPines(
+      group,
+      [24, 42, 70, 104][this.cfg.environmentDetail],
+      outerR + 18,
+      outerR + 36,
+      SKI_FOREST_SECTORS,
+    );
+    this.addSkiSurfaceTier(group, outerR);
+    this.addFloodlights(
+      detailGroup,
+      SKI_FLOODLIGHTS,
+      8 + this.cfg.environmentDetail * 2,
+    );
+    // Both lodge buildings always present — the campus is incomplete without them.
+    this.addPavilions(detailGroup, SKI_LANDMARKS);
+  }
+
+  /**
+   * Circle centre is the competition snow field — packed tracks and a stadium
+   * mark — continuous with the groomed course, not an empty disk.
+   */
+  private addSkiBowlCenter(group: THREE.Group, outerR: number): void {
+    const bowl = new THREE.Group();
+    bowl.name = "environment:skierg:bowl-center";
+    const packedMat = this.environmentStandardMat(
+      "environment:skierg:bowl-packed-material",
+      themed(0xd5e4ec, 0x7d95a2),
+      { roughness: 0.92, metalness: 0 },
+    );
+    const fieldMat = this.environmentStandardMat(
+      "environment:skierg:bowl-field-material",
+      themed(0xe8f1f5, 0x8fa7b4),
+      { roughness: 0.96, metalness: 0 },
+    );
+    if (this.cfg.environmentDetail >= 1) {
+      packedMat.map = this.makeSnowSurfaceTexture(this.cfg.environmentDetail);
+      fieldMat.map = this.makeSnowSurfaceTexture(this.cfg.environmentDetail);
+      packedMat.needsUpdate = true;
+      fieldMat.needsUpdate = true;
+    }
+    const packed = new THREE.Mesh(
+      this.track(new THREE.CircleGeometry(9.5, this.cfg.laneSegments)),
+      packedMat,
+    );
+    packed.name = "environment:skierg:bowl-packed";
+    packed.rotation.x = -Math.PI / 2;
+    packed.position.y = -0.012;
+    const field = new THREE.Mesh(
+      this.track(new THREE.RingGeometry(9.5, outerR - 0.5, this.cfg.laneSegments)),
+      fieldMat,
+    );
+    field.name = "environment:skierg:bowl-field";
+    field.rotation.x = -Math.PI / 2;
+    field.position.y = -0.008;
+    bowl.add(packed, field);
+
+    // Parallel groomed ski tracks across the centre field — the place cue for
+    // a Nordic stadium, not random centre props.
+    const trackMat = this.environmentBasicMat(
+      "environment:skierg:bowl-track-material",
+      themed(0xc2d4de, 0x6a8492),
+      { fog: true },
+    );
+    const trackCount = [4, 6, 8, 10][this.cfg.environmentDetail];
+    for (let index = 0; index < trackCount; index++) {
+      const across = (index / Math.max(1, trackCount - 1) - 0.5) * 14;
+      const strip = new THREE.Mesh(
+        this.track(new THREE.PlaneGeometry(22, 0.22)),
+        trackMat,
+      );
+      strip.name = `environment:skierg:bowl-track-${index + 1}`;
+      strip.rotation.x = -Math.PI / 2;
+      strip.position.set(across * 0.15, 0.01, across * 0.02);
+      strip.rotation.z = degrees(8);
+      bowl.add(strip);
+    }
+
+    // Lodge-side warm-up lane boards keep the centre connected to the campus.
+    if (this.cfg.environmentDetail >= 1) {
+      const boardMat = this.environmentBasicMat(
+        "environment:skierg:warmup-board-material",
+        this.environment.venueAccent,
+        { fog: true },
+      );
+      const board = this.makeHorizontalArc(
+        "environment:skierg:warmup-lane",
+        12.5,
+        13.1,
+        0.06,
+        {
+          start: SKI_LODGE_SECTOR.start + degrees(4),
+          span: SKI_LODGE_SECTOR.span * 0.7,
+        },
+        boardMat,
+      );
+      bowl.add(board);
+    }
+    group.add(bowl);
+  }
+
+  /** Continuous snow valley shoulders with race fencing only on lodge approaches. */
   private addSkiValley(group: THREE.Group, outerR: number): void {
     const valley = new THREE.Group();
     valley.name = "environment:skierg:valley-bowl";
@@ -6140,9 +6288,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       themed(0xf1f6f8, 0xa9bdc7),
       { roughness: 0.95, metalness: 0 },
     );
+    // Continuous land snow except the open vista sector.
     const slopeSectors: readonly EnvironmentSector[] = [
-      { start: degrees(-164), span: degrees(116) },
-      { start: degrees(22), span: degrees(126) },
+      { start: degrees(-170), span: degrees(150), weight: 1 },
+      { start: degrees(20), span: degrees(140), weight: 1 },
+      { start: degrees(195), span: degrees(50), weight: 0.8 },
     ];
     for (const [index, sector] of slopeSectors.entries()) {
       valley.add(
@@ -6159,12 +6309,13 @@ export class CourseRenderer3D implements ReplayRenderer {
           outerR + 6.4,
           outerR + 17.2,
           0.085,
-          { start: sector.start + degrees(8), span: sector.span * 0.72 },
+          { start: sector.start + degrees(6), span: sector.span * 0.78 },
           sunSnowMat,
         ),
       );
     }
 
+    // Course fencing only frames the lodge/competition approaches.
     const panelCount = [8, 12, 18, 24][this.cfg.environmentDetail];
     const panelGeo = this.track(roundedVenueBlockGeometry(1.75, 0.52, 0.08, 0.07));
     const panelMat = this.environmentBasicMat(
@@ -6179,9 +6330,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     const quaternion = new THREE.Quaternion();
     const scale = new THREE.Vector3(1, 1, 1);
     for (let index = 0; index < panelCount; index++) {
-      const side = index % 2 === 0 ? -1 : 1;
-      const local = Math.floor(index / 2) / Math.max(1, Math.ceil(panelCount / 2) - 1);
-      const angle = degrees(48 + local * 72 + (side < 0 ? 0 : 180));
+      const { angle } = sectorSample(index, panelCount, [
+        SKI_LODGE_SECTOR,
+        { start: degrees(175), span: degrees(55), weight: 1 },
+      ]);
       const radius = outerR + 2.15;
       position.set(Math.sin(angle) * radius, 0.58, Math.cos(angle) * radius);
       quaternion.setFromAxisAngle(WORLD_UP, angle);
@@ -6193,7 +6345,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(valley);
   }
 
-  /** High and Ultra snow gain separate surface language beyond denser scenery. */
+  /** High/Ultra snow language on the course edge — not a random glitter field. */
   private addSkiSurfaceTier(group: THREE.Group, outerR: number): void {
     if (this.cfg.environmentDetail < 2) return;
     const windLipMat = this.environmentStandardMat(
@@ -6204,8 +6356,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     const windLips = new THREE.Group();
     windLips.name = "environment:skierg:wind-lips";
     for (const [index, sector] of [
-      { start: degrees(18), span: degrees(38) },
-      { start: degrees(198), span: degrees(46) },
+      SKI_LODGE_SECTOR,
+      { start: degrees(190), span: degrees(50), weight: 1 },
     ].entries()) {
       windLips.add(
         this.makeHorizontalArc(
@@ -6221,24 +6373,25 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(windLips);
 
     if (this.cfg.environmentDetail < 3) return;
+    // Crystal highlights only near sun-facing lodge snow, not a full-loop spray.
     const crystalGeo = this.track(new THREE.OctahedronGeometry(0.045, 0));
     const crystalMat = this.environmentBasicMat(
       "environment:skierg:snow-crystal-material",
       themed(0xffffff, 0xbfe4f4),
       { transparent: true, opacity: 0.3, depthWrite: false, fog: true },
     );
-    const crystals = this.trackInstanced(new THREE.InstancedMesh(crystalGeo, crystalMat, 72));
+    const crystals = this.trackInstanced(new THREE.InstancedMesh(crystalGeo, crystalMat, 36));
     crystals.name = "environment:skierg:snow-crystals";
     const matrix = new THREE.Matrix4();
     const quaternion = new THREE.Quaternion();
     const position = new THREE.Vector3();
     const scale = new THREE.Vector3();
     for (let index = 0; index < crystals.count; index++) {
-      const angle = ((index * 0.61803398875) % 1) * FULL_CIRCLE;
-      const radius = 34 + (index % 13) * 1.45;
-      position.set(Math.sin(angle) * radius, 0.08 + (index % 4) * 0.015, Math.cos(angle) * radius);
+      const { angle } = sectorSample(index, crystals.count, [SKI_LODGE_SECTOR, SKI_OPEN_SECTOR]);
+      const radius = outerR + 1.2 + (index % 7) * 0.55;
+      position.set(Math.sin(angle) * radius, 0.09 + (index % 3) * 0.012, Math.cos(angle) * radius);
       quaternion.setFromAxisAngle(WORLD_UP, angle + index * 0.37);
-      const size = 0.7 + (index % 5) * 0.16;
+      const size = 0.7 + (index % 5) * 0.14;
       scale.set(size * 2.1, size * 0.5, size);
       matrix.compose(position, quaternion, scale);
       crystals.setMatrixAt(index, matrix);
@@ -6247,7 +6400,112 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(crystals);
   }
 
-  /** A low urban edge makes the arena belong to its dusk skyline. */
+  /**
+   * One dusk circuit venue: planted infield park at the centre, grandstands
+   * as the stadium shell, city skyline only on urban land, service campus on
+   * its own sector.
+   */
+  private addBikeCircuitWorld(
+    group: THREE.Group,
+    detailGroup: THREE.Group,
+    outerR: number,
+  ): void {
+    this.addBikeInfieldPark(group, outerR);
+    this.addBikeCityscape(group);
+    this.addBikeStadiumShell(group);
+    this.addBikeVenueTier(group, outerR);
+    this.addFloodlights(
+      detailGroup,
+      BIKE_FLOODLIGHTS,
+      10 + this.cfg.environmentDetail * 2,
+    );
+    this.addScoreboard(detailGroup, BIKE_SCOREBOARD);
+    if (this.cfg.environmentDetail >= 1) {
+      this.addPavilions(detailGroup, [BIKE_SERVICE_BUILDING]);
+    }
+  }
+
+  /**
+   * Circle centre is a planted park — grass field, path ring, and a small
+   * plaza — continuous with a real circuit infield, not bare asphalt under
+   * the athlete.
+   */
+  private addBikeInfieldPark(group: THREE.Group, outerR: number): void {
+    const park = new THREE.Group();
+    park.name = "environment:bike:infield-park";
+    const grassMat = this.environmentStandardMat(
+      "environment:bike:infield-grass-material",
+      themed(0x3f5e45, 0x24382c),
+      { roughness: 0.94, metalness: 0 },
+    );
+    const plazaMat = this.environmentStandardMat(
+      "environment:bike:infield-plaza-material",
+      themed(0x6b6863, 0x343941),
+      { roughness: 0.86, metalness: 0.04 },
+    );
+    this.applyEnvironmentSurfaceMaps(
+      grassMat,
+      "/replay-assets/environments/aerial-grass-rock/aerial-grass-rock",
+      [0.22, 0.22],
+      0.18,
+    );
+    const grass = new THREE.Mesh(
+      this.track(new THREE.CircleGeometry(outerR - 1.2, this.cfg.laneSegments)),
+      grassMat,
+    );
+    grass.name = "environment:bike:infield-grass";
+    grass.rotation.x = -Math.PI / 2;
+    grass.position.y = -0.01;
+    grass.receiveShadow = this.cfg.shadows;
+    const plaza = new THREE.Mesh(
+      this.track(new THREE.CircleGeometry(5.2, 28)),
+      plazaMat,
+    );
+    plaza.name = "environment:bike:infield-plaza";
+    plaza.rotation.x = -Math.PI / 2;
+    plaza.position.y = -0.002;
+    const path = this.makeHorizontalArc(
+      "environment:bike:infield-path",
+      8.5,
+      9.4,
+      0.02,
+      { start: 0, span: FULL_CIRCLE * 0.92 },
+      plazaMat,
+    );
+    park.add(grass, plaza, path);
+
+    // A few park trees only inside the infield grass — not a second random forest.
+    if (this.cfg.environmentDetail >= 1) {
+      const treeCount = [4, 6, 8, 10][this.cfg.environmentDetail];
+      const canopyGeo = this.track(sculptedPineGeometry());
+      const canopyMat = this.environmentStandardMat(
+        "environment:bike:park-canopy-material",
+        themed(0x2f5540, 0x1a3a2e),
+        { roughness: 0.88, metalness: 0, fog: true },
+      );
+      const trees = this.trackInstanced(new THREE.InstancedMesh(canopyGeo, canopyMat, treeCount));
+      trees.name = "environment:bike:park-trees";
+      const matrix = new THREE.Matrix4();
+      const quaternion = new THREE.Quaternion();
+      const position = new THREE.Vector3();
+      const scale = new THREE.Vector3();
+      for (let index = 0; index < treeCount; index++) {
+        const angle = (index / treeCount) * FULL_CIRCLE + degrees(12);
+        const radius = 11 + (index % 3) * 2.2;
+        const size = 0.55 + (index % 4) * 0.08;
+        quaternion.setFromAxisAngle(WORLD_UP, angle);
+        position.set(Math.sin(angle) * radius, 1.15 * size, Math.cos(angle) * radius);
+        scale.set(size, size * 0.9, size);
+        matrix.compose(position, quaternion, scale);
+        trees.setMatrixAt(index, matrix);
+      }
+      trees.instanceMatrix.needsUpdate = true;
+      park.add(trees);
+    }
+    group.add(park);
+  }
+
+  /** Urban skyline only on authored city land — not a full decorative ring. */
   private addBikeCityscape(group: THREE.Group): void {
     const city = new THREE.Group();
     city.name = "environment:bike:city-edge";
@@ -6263,10 +6521,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       { transparent: true, opacity: 0.52, fog: true },
     );
     for (let index = 0; index < count; index++) {
-      const sample = sectorSample(index, count, [
-        { start: degrees(-18), span: degrees(48) },
-        { start: degrees(156), span: degrees(58) },
-      ]);
+      const sample = sectorSample(index, count, BIKE_CITY_SECTORS);
       const height = 3.8 + (index % 5) * 1.15;
       const width = 2.8 + (index % 4) * 0.72;
       const building = new THREE.Mesh(
@@ -6299,6 +6554,102 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(city);
   }
 
+  /** Grandstand shell as one continuous stadium edge on stand sectors only. */
+  private addBikeStadiumShell(group: THREE.Group): void {
+    const wallMat = this.environmentBasicMat(
+      "environment:bike:arena-wall-material",
+      this.environment.venueStructure,
+      { side: THREE.BackSide, fog: true },
+    );
+    const arenaWall = new THREE.Group();
+    arenaWall.name = "environment:bike:arena-wall";
+    for (const [index, sector] of BIKE_STAND_SECTORS.entries()) {
+      arenaWall.add(
+        this.makeVerticalArc(
+          `environment:bike:arena-wall-sector-${index + 1}`,
+          58,
+          5,
+          2.25,
+          sector,
+          wallMat,
+        ),
+      );
+    }
+    group.add(arenaWall);
+    this.addArenaPanels(group, 28 + this.cfg.environmentDetail * 4, 57.75, BIKE_STAND_SECTORS);
+
+    const canopyMat = this.environmentStandardMat(
+      "environment:bike:canopy-material",
+      this.environment.venueAccent,
+      { roughness: 0.52, metalness: 0.34, side: THREE.DoubleSide },
+    );
+    const canopy = new THREE.Group();
+    canopy.name = "environment:bike:canopy";
+    for (const [index, sector] of BIKE_STAND_SECTORS.entries()) {
+      canopy.add(
+        this.makeHorizontalArc(
+          `environment:bike:canopy-sector-${index + 1}`,
+          54.4,
+          59,
+          5.35,
+          sector,
+          canopyMat,
+        ),
+      );
+    }
+    group.add(canopy);
+
+    const ledMat = this.environmentBasicMat(
+      "environment:bike:led-band-material",
+      this.environment.venueAccent,
+      { fog: true, side: THREE.BackSide },
+    );
+    const ledBands = new THREE.Group();
+    ledBands.name = "environment:bike:led-bands";
+    for (const [sectorIndex, sector] of BIKE_STAND_SECTORS.entries()) {
+      for (const [heightIndex, y] of [1.02, 4.12].entries()) {
+        ledBands.add(
+          this.makeVerticalArc(
+            `environment:bike:led-band-${sectorIndex + 1}-${heightIndex + 1}`,
+            57.86,
+            0.12,
+            y,
+            sector,
+            ledMat,
+          ),
+        );
+      }
+    }
+    group.add(ledBands);
+
+    const tierMat = this.environmentBasicMat(
+      "environment:bike:stands-material",
+      this.environment.midSilhouette,
+      { side: THREE.DoubleSide, fog: true },
+    );
+    const stands = new THREE.Group();
+    stands.name = "environment:bike:stands";
+    for (const [innerRadius, outerRadius, y] of [
+      [47.8, 51.2, 0.72],
+      [50.8, 54.1, 1.52],
+      [53.7, 57.2, 2.46],
+    ] as const) {
+      for (const sector of BIKE_STAND_SECTORS) {
+        stands.add(
+          this.makeHorizontalArc(
+            "environment:bike:stands-tier",
+            innerRadius,
+            outerRadius,
+            y,
+            sector,
+            tierMat,
+          ),
+        );
+      }
+    }
+    group.add(stands);
+  }
+
   /**
    * Adjacent BikeErg tiers add different venue ideas: a service lane at
    * Medium, roof trusses at High, and embedded track reflectors at Ultra.
@@ -6310,12 +6661,13 @@ export class CourseRenderer3D implements ReplayRenderer {
       themed(0x6b6863, 0x343941),
       { roughness: 0.86, metalness: 0.04 },
     );
+    // Service apron only on the service campus sector.
     const serviceLane = this.makeHorizontalArc(
       "environment:bike:service-lane",
       outerR + 1.4,
       outerR + 4.5,
       0.045,
-      { start: degrees(205), span: degrees(74) },
+      BIKE_SERVICE_SECTOR,
       serviceMat,
     );
     group.add(serviceLane);
@@ -6420,14 +6772,19 @@ export class CourseRenderer3D implements ReplayRenderer {
       infieldMat.map = this.makeWaterSurfaceTexture(this.cfg.environmentDetail);
       infieldMat.needsUpdate = true;
     }
+    // Ski bowl centre and Bike infield park own their own centre geometry;
+    // keep the generic infield only as a fallback underlay for those sports.
     const infield = new THREE.Mesh(
       this.track(new THREE.CircleGeometry(innerR - 0.8, this.cfg.laneSegments)),
       infieldMat,
     );
     infield.name = `environment:${this.sport}:infield`;
     infield.rotation.x = -Math.PI / 2;
-    infield.position.y = -0.015;
+    infield.position.y = this.sport === "bike" ? -0.04 : -0.015;
     infield.receiveShadow = this.cfg.shadows;
+    // Bike centre is the planted park mesh; hide the bare disk so it cannot
+    // fight the grass field. Ski keeps a thin underlay under bowl snow.
+    if (this.sport === "bike") infield.visible = false;
     this.scene.add(infield);
 
     const apronMat = this.environmentStandardMat(
@@ -6473,138 +6830,19 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.addAtmosphericClouds(
         this.environmentMidGroup,
         5 + this.cfg.environmentDetail,
-        SKI_PEAK_SECTORS,
+        SKI_ALPINE_SECTORS,
       );
-      this.addAlpineFoothills(this.environmentMidGroup, [4, 7, 12, 18][this.cfg.environmentDetail]);
-      this.addAlpinePeaks(this.environmentMidGroup, [8, 14, 22, 30][this.cfg.environmentDetail]);
-      this.addSkiValley(this.environmentMidGroup, outerR);
-      this.addSnowBerms(
+      this.addSkiStadiumWorld(
         this.environmentMidGroup,
+        this.environmentDetailGroup,
         outerR,
-        [14, 24, 38, 54][this.cfg.environmentDetail],
-      );
-      this.addInstancedPines(
-        this.environmentMidGroup,
-        [24, 42, 70, 104][this.cfg.environmentDetail],
-        56,
-        80,
-        SKI_PINE_SECTORS,
-      );
-      this.addSkiSurfaceTier(this.environmentMidGroup, outerR);
-      this.addFloodlights(
-        this.environmentDetailGroup,
-        SKI_FLOODLIGHTS,
-        8 + this.cfg.environmentDetail * 2,
-      );
-      this.addPavilions(
-        this.environmentDetailGroup,
-        SKI_LANDMARKS.slice(0, this.cfg.environmentDetail >= 1 ? 2 : 1),
       );
     } else {
-      this.addBikeCityscape(this.environmentMidGroup);
-      const wallMat = this.environmentBasicMat(
-        "environment:bike:arena-wall-material",
-        this.environment.venueStructure,
-        { side: THREE.BackSide, fog: true },
-      );
-      const arenaWall = new THREE.Group();
-      arenaWall.name = "environment:bike:arena-wall";
-      for (const [index, sector] of BIKE_STAND_SECTORS.entries()) {
-        arenaWall.add(
-          this.makeVerticalArc(
-            `environment:bike:arena-wall-sector-${index + 1}`,
-            58,
-            5,
-            2.25,
-            sector,
-            wallMat,
-          ),
-        );
-      }
-      this.environmentMidGroup.add(arenaWall);
-      this.addArenaPanels(
+      this.addBikeCircuitWorld(
         this.environmentMidGroup,
-        28 + this.cfg.environmentDetail * 4,
-        57.75,
-        BIKE_STAND_SECTORS,
-      );
-      const canopyMat = this.environmentStandardMat(
-        "environment:bike:canopy-material",
-        this.environment.venueAccent,
-        { roughness: 0.52, metalness: 0.34, side: THREE.DoubleSide },
-      );
-      const canopy = new THREE.Group();
-      canopy.name = "environment:bike:canopy";
-      for (const [index, sector] of BIKE_STAND_SECTORS.entries()) {
-        canopy.add(
-          this.makeHorizontalArc(
-            `environment:bike:canopy-sector-${index + 1}`,
-            54.4,
-            59,
-            5.35,
-            sector,
-            canopyMat,
-          ),
-        );
-      }
-      this.environmentMidGroup.add(canopy);
-      const ledMat = this.environmentBasicMat(
-        "environment:bike:led-band-material",
-        this.environment.venueAccent,
-        { fog: true, side: THREE.BackSide },
-      );
-      const ledBands = new THREE.Group();
-      ledBands.name = "environment:bike:led-bands";
-      for (const [sectorIndex, sector] of BIKE_STAND_SECTORS.entries()) {
-        for (const [heightIndex, y] of [1.02, 4.12].entries()) {
-          ledBands.add(
-            this.makeVerticalArc(
-              `environment:bike:led-band-${sectorIndex + 1}-${heightIndex + 1}`,
-              57.86,
-              0.12,
-              y,
-              sector,
-              ledMat,
-            ),
-          );
-        }
-      }
-      this.environmentMidGroup.add(ledBands);
-      const tierMat = this.environmentBasicMat(
-        "environment:bike:stands-material",
-        this.environment.midSilhouette,
-        { side: THREE.DoubleSide, fog: true },
-      );
-      const stands = new THREE.Group();
-      stands.name = "environment:bike:stands";
-      for (const [innerRadius, outerRadius, y] of [
-        [47.8, 51.2, 0.72],
-        [50.8, 54.1, 1.52],
-        [53.7, 57.2, 2.46],
-      ] as const) {
-        for (const sector of BIKE_STAND_SECTORS) {
-          stands.add(
-            this.makeHorizontalArc(
-              "environment:bike:stands-tier",
-              innerRadius,
-              outerRadius,
-              y,
-              sector,
-              tierMat,
-            ),
-          );
-        }
-      }
-      this.environmentMidGroup.add(stands);
-      this.addBikeVenueTier(this.environmentMidGroup, outerR);
-      this.addFloodlights(
         this.environmentDetailGroup,
-        BIKE_FLOODLIGHTS,
-        10 + this.cfg.environmentDetail * 2,
+        outerR,
       );
-      this.addScoreboard(this.environmentDetailGroup, BIKE_SCOREBOARD);
-      if (this.cfg.environmentDetail >= 1)
-        this.addPavilions(this.environmentDetailGroup, [BIKE_SERVICE_BUILDING]);
     }
   }
 
