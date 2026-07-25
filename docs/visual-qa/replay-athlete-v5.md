@@ -159,6 +159,26 @@ truthfully record effective High/WebGL. They prove anatomy, enclosure, and
 clipping at the same geometry and contact solve used by all tiers; the existing
 hardware Chrome evidence remains the Ultra/WebGPU material proof.
 
+### BikeErg seated-fit follow-up — 2026-07-25
+
+The BikeErg machine and rider now share one `BIKE_RIG` proportion contract in
+the procedural renderer and generated V3 package. The shorter wheelbase,
+raised saddle cluster, and narrowed hood span keep the machine at a human-scale
+relationship to the V4 body instead of stretching the frame around the old
+pose. The V4 post-clip pass samples the visible shoulders, derives a deterministic
+tucked elbow marker for each hood, and still leaves the motion graph as the
+authority for opposed pedal contacts.
+
+Local in-app review used `/replay/1004?qa=athlete-visual&athleteCamera=close` at
+Ultra/WebGPU plus the skeleton overlay at the same pedal-top pose. The paused
+and moving spot-checks showed the pelvis supported by the saddle, both palms on
+the hood contacts, elbows below and behind the shoulders, and both shoes on the
+opposed pedals. The focused regression suite additionally samples six phases
+across the crank cycle and asserts saddle support, shoulder-width elbows, and
+hood clearance. The update reuses the existing CC0-derived V4 athlete and
+repository-authored V3/procedural equipment; no new runtime asset download was
+introduced.
+
 The primary matrix is the
 [six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):
 baseline, production athlete, and skeleton/contact overlay for RowErg catch and

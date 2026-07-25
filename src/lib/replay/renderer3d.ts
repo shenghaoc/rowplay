@@ -17,6 +17,7 @@ import {
   SKI_POLE_APPROACH_START_CYCLE,
   type BikeMotionGraph,
 } from "./motionGraph";
+import { BIKE_RIG } from "./bikeRig";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import { METERS_PER_CYCLE, ParticlePool, PerfGovernor, clampDt, dampFactor } from "./motion";
@@ -331,7 +332,8 @@ interface Avatar {
   setV4ArmReach?(reach: number): void;
   /**
    * Re-solves equipment targets from the just-sampled visible V4 shoulders.
-   * Only RowErg needs this because its rigid oars own a moving inboard arc.
+   * Equipment-specific arms use this because a generic clip bend plane cannot
+   * describe every seated or planted machine contact.
    */
   refineV4Targets?(motion: ReplayV4MotionController): void;
   animate(
@@ -2943,9 +2945,9 @@ function makeBikeAvatar(
     "equipment-grip": equipmentMaterial,
     "equipment-trim": saddleMaterial,
   });
-  const wheelR = 0.45;
+  const wheelR = BIKE_RIG.wheelRadius;
   const wheels: THREE.Group[] = [];
-  for (const z of [0.85, -0.85]) {
+  for (const z of [BIKE_RIG.frontAxleZ, BIKE_RIG.rearAxleZ]) {
     const wheel = new THREE.Group();
     wheel.name = z > 0 ? "bike-wheel-front" : "bike-wheel-rear";
     const tyre = setReplayAssetSlot(
@@ -2985,10 +2987,15 @@ function makeBikeAvatar(
 
   // Endpoint-built tubes form a real diamond frame. The previous horizontal
   // boxes never met at frame nodes, so the rear wheel swallowed the machine.
-  const bottomBracket = { x: 0, y: wheelR, z: -0.05 };
-  const seatCluster = { x: 0, y: wheelR + 0.76, z: -0.4 };
-  const headBottom = { x: 0, y: wheelR + 0.55, z: 0.42 };
-  const headTop = { x: 0, y: wheelR + 0.8, z: 0.5 };
+  const bikePoint = (point: readonly number[]) => ({
+    x: point[0] ?? 0,
+    y: point[1] ?? 0,
+    z: point[2] ?? 0,
+  });
+  const bottomBracket = bikePoint(BIKE_RIG.bottomBracket);
+  const seatCluster = bikePoint(BIKE_RIG.seatCluster);
+  const headBottom = bikePoint(BIKE_RIG.headBottom);
+  const headTop = bikePoint(BIKE_RIG.headTop);
   const frameFallback: THREE.Object3D[] = [];
   const downTube = accentPart(
     tubeBetween("bike-down-tube", bottomBracket, headBottom, 0.055, accentMat()),
@@ -3011,7 +3018,7 @@ function makeBikeAvatar(
   // Paired chain and seat stays expose the frame triangle from the new
   // three-quarter chase angle.
   for (const side of [-1, 1]) {
-    const rearAxle = { x: side * 0.07, y: wheelR, z: -0.85 };
+    const rearAxle = { x: side * 0.07, y: wheelR, z: BIKE_RIG.rearAxleZ };
     const bbSide = { ...bottomBracket, x: side * 0.055 };
     const seatSide = { ...seatCluster, x: side * 0.055 };
     const chainStay = accentPart(
@@ -3029,7 +3036,11 @@ function makeBikeAvatar(
   // Cranks: spin about the bottom bracket (X axis) with two pedals.
   const cranks = new THREE.Group();
   cranks.name = "bike-cranks";
-  cranks.position.set(0, wheelR, -0.05);
+  cranks.position.set(
+    BIKE_RIG.bottomBracket[0] ?? 0,
+    BIKE_RIG.bottomBracket[1] ?? wheelR,
+    BIKE_RIG.bottomBracket[2] ?? 0,
+  );
   // Chain ring — a toroidal disc at the bottom bracket.
   const chainRing = new THREE.Mesh(
     new THREE.TorusGeometry(0.16, 0.018, eqCylSegs, eqCylSegs * 2),
@@ -3044,8 +3055,8 @@ function makeBikeAvatar(
     const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.1), pedalMaterial);
     setReplayAssetSlot(pedal, "equipment:bike:pedal");
     pedal.name = side < 0 ? "bike-pedal-left" : "bike-pedal-right";
-    const crankY = side * 0.21;
-    pedal.position.set(side * 0.1, crankY, 0);
+    const crankY = side * BIKE_RIG.crank.pedalRadius;
+    pedal.position.set(side * BIKE_RIG.crank.lateral, crankY, 0);
     cranks.add(pedal);
     drivetrainFallback.push(pedal);
     pedals.push({ side, crankY });
@@ -3070,7 +3081,7 @@ function makeBikeAvatar(
   );
   setReplayAssetSlot(saddle, "equipment:bike:saddle");
   saddle.name = "bike-saddle";
-  saddle.position.set(0, wheelR + 0.755, -0.4);
+  saddle.position.set(BIKE_RIG.saddle[0] ?? 0, BIKE_RIG.saddle[1] ?? 0, BIKE_RIG.saddle[2] ?? 0);
   saddle.renderOrder = -2;
   saddleMaterial.depthWrite = false;
   group.add(saddle);
@@ -3085,7 +3096,11 @@ function makeBikeAvatar(
   for (const side of [-1, 1]) {
     const grip = capsulePart(0.017, 0.22, equipmentMaterial, "z");
     grip.name = side < 0 ? "bike-handlebar-grip-left" : "bike-handlebar-grip-right";
-    grip.position.set(side * 0.32, -0.02, 0.04);
+    grip.position.set(
+      side * BIKE_RIG.handlebar.grip.halfSpan,
+      BIKE_RIG.handlebar.grip.y - BIKE_RIG.handlebar.base[1],
+      BIKE_RIG.handlebar.grip.z - BIKE_RIG.handlebar.base[2],
+    );
     grip.rotation.x = -0.3;
     const anchor = new THREE.Object3D();
     anchor.name = side < 0 ? "bike-hand-contact-left" : "bike-hand-contact-right";
@@ -3094,7 +3109,11 @@ function makeBikeAvatar(
     frameFallback.push(grip);
     barContacts.push({ side, anchor });
   }
-  handlebar.position.set(0, wheelR + 0.8, 0.35);
+  handlebar.position.set(
+    BIKE_RIG.handlebar.base[0] ?? 0,
+    BIKE_RIG.handlebar.base[1] ?? 0,
+    BIKE_RIG.handlebar.base[2] ?? 0,
+  );
   group.add(handlebar);
   // The frame template leaves the explicit hand contacts in this original
   // group alone, so bar IK keeps targeting the same moving-free anchors.
@@ -3109,7 +3128,11 @@ function makeBikeAvatar(
   // the lane accent, while limbs stay skin/kit coloured so the athlete does not
   // read as a single bright toy shape.
   const rider = new THREE.Group();
-  rider.position.set(0, wheelR + 0.76, -0.38);
+  rider.position.set(
+    BIKE_RIG.rider.root[0] ?? 0,
+    BIKE_RIG.rider.root[1] ?? 0,
+    BIKE_RIG.rider.root[2] ?? 0,
+  );
   const pelvis = ellipsoid([0.175, 0.125, 0.16], kitDarkMaterial, segs);
   setReplayAssetSlot(pelvis, "athlete:pelvis");
   pelvis.name = "bike-pelvis";
@@ -3186,7 +3209,7 @@ function makeBikeAvatar(
     rider.add(thigh, shin, shoe, knee);
     legs.push({
       side,
-      crankY: pedals.find((p) => p.side === side)?.crankY ?? side * 0.18,
+      crankY: pedals.find((p) => p.side === side)?.crankY ?? side * BIKE_RIG.crank.pedalRadius,
       thigh,
       shin,
       shoe,
@@ -3239,13 +3262,14 @@ function makeBikeAvatar(
       elbowPoint: new THREE.Vector3(),
       handTarget: new THREE.Vector3(),
       handPoint: new THREE.Vector3(),
-      bendHint: new THREE.Vector3(side * 0.38, -0.52, -0.12),
+      bendHint: new THREE.Vector3(side * 0.2, -0.28, -0.18),
     });
   }
   rider.add(pelvis, torso);
   group.add(rider);
 
   const barPoint = new THREE.Vector3();
+  const sampledV4Shoulders = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const UPPER_ARM_LENGTH = 0.37;
   const FOREARM_LENGTH = 0.35;
   const THIGH_LENGTH = 0.54;
@@ -3255,8 +3279,8 @@ function makeBikeAvatar(
   // Sit the hip centre into the saddle rather than above it. This preserves a
   // safe ~25° knee bend at maximum extension instead of visually locking the
   // leg as the pedal passes bottom dead centre.
-  const BIKE_PELVIS_BASE_Y = -0.02;
-  const BIKE_PELVIS_BASE_Z = -0.01;
+  const BIKE_PELVIS_BASE_Y = BIKE_RIG.rider.pelvisOffset[1] ?? 0;
+  const BIKE_PELVIS_BASE_Z = BIKE_RIG.rider.pelvisOffset[2] ?? 0;
   const BIKE_ANKLE_MIN = -0.22;
   const BIKE_ANKLE_MAX = 0.14;
   const placeBarArms = (): void => {
@@ -3305,11 +3329,11 @@ function makeBikeAvatar(
       // The graph owns one circular state per pedal. Deriving the target from
       // that state (rather than a separate limb phase) keeps both shoes locked
       // to their mechanically opposed pedals at the 0 / 2π wrap boundary.
-      const pedalRadius = Math.abs(leg.crankY);
+      const pedalRadius = BIKE_RIG.crank.pedalRadius;
       const pedalY = -pedalRadius * pedal.rotation.cos;
       const pedalZ = -pedalRadius * pedal.rotation.sin;
       leg.pedalTarget.set(
-        leg.side * 0.1,
+        leg.side * BIKE_RIG.crank.lateral,
         cranks.position.y + pedalY - rider.position.y,
         cranks.position.z + pedalZ - rider.position.z,
       );
@@ -3403,6 +3427,27 @@ function makeBikeAvatar(
     );
   };
 
+  const refineV4Targets = (motion: ReplayV4MotionController): void => {
+    motion.getShoulderWorld("left", sampledV4Shoulders[0]);
+    motion.getShoulderWorld("right", sampledV4Shoulders[1]);
+    // The visible V4 shoulder is the anatomical origin. Rebuild the shared
+    // elbow branch from that shoulder and the fixed hood contact so the
+    // post-clip solver bends the arms under the shoulder instead of replaying
+    // a generic clip plane that was authored without a bicycle cockpit.
+    for (let index = 0; index < arms.length; index++) {
+      const arm = arms[index];
+      const sampledShoulder = sampledV4Shoulders[index];
+      if (!arm || !sampledShoulder) continue;
+      rider.worldToLocal(sampledShoulder);
+      setArmBendHint(sampledShoulder, arm.hand.position, arm.side, arm.bendHint, {
+        lateral: 0.2,
+        up: -0.28,
+        aft: -0.18,
+      });
+      arm.elbow.position.copy(sampledShoulder).add(arm.bendHint);
+    }
+  };
+
   const neutralBikeMotion = sampleBikeMotionGraphInto(
     fallbackStrokePose("bike", 0),
     bikeMotionGraph,
@@ -3452,6 +3497,7 @@ function makeBikeAvatar(
   return {
     group,
     animate,
+    refineV4Targets,
     assetMaterialResolver: resolveAssetMaterial,
     v4Targets: {
       pelvis,

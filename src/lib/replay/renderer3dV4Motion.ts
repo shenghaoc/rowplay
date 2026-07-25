@@ -1538,11 +1538,18 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // Every planted/contact-driven leg needs the deterministic rig's knee
     // branch. RowErg raises both knees above the cockpit, BikeErg keeps them
     // aligned with opposed pedals, and SkiErg keeps each knee over its own ski.
+    // BikeErg arms also use their explicit elbow markers: a seated cockpit has
+    // a very different bend plane from the generic clip, and retaining the
+    // clip-only branch makes the hands reach the bars with winged elbows.
     // Retaining the mirrored SkiErg clip plane after locking both feet allowed
     // the left and right thighs to solve through one another even though the
     // boots themselves remained correctly separated.
     if (chain.isLeg) return true;
-    return this.options.sport === "rower" || this.options.sport === "skierg";
+    return (
+      this.options.sport === "rower" ||
+      this.options.sport === "skierg" ||
+      this.options.sport === "bike"
+    );
   }
 
   /**
@@ -1572,11 +1579,12 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   /**
    * Close one rigid contact chain on top of the authored clip pose.
    *
-   * Most bend planes come from the sampled clip. RowErg and SkiErg are the
-   * deliberate arm exceptions: a rigid grip can close on either elbow branch,
-   * so the reference-backed shared marker chooses the rearward/sagittal one.
-   * All leg chains likewise use their mechanically solved knee target so a
-   * contact-locked foot can never select the opposite-side knee branch.
+   * Most bend planes come from the sampled clip. Machine-contact arms use the
+   * deterministic shared elbow marker because a rigid grip can close on either
+   * elbow branch: rowing selects the rearward draw, SkiErg the sagittal pull,
+   * and BikeErg the tucked seated cockpit reach. All leg chains likewise use
+   * their mechanically solved knee target so a contact-locked foot can never
+   * select the opposite-side knee branch.
    */
   private correctContactChain(chain: ChainBinding): void {
     chain.upper.getWorldPosition(this.rootWorld);

@@ -22,8 +22,8 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 676,488 bytes; SHA-256
-  `c0c916cd34cd03c8f0d42ff563a048798f6e52702d35dc549baeec2075618456`.
+- **Reviewed V3 artifact:** 676,520 bytes; SHA-256
+  `193e405553bd929d7486a7355685a0c2695938fdc10ae8c252bf99b4f6b46fde`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
   nodes total). The package has 26,590 indexed triangles and 18,745 indexed
@@ -39,9 +39,11 @@ identity, or Canvas 2D fallback.
   four-roller seat carriage, and sculpted oar; raised ski deck and binding; aero-rim wheels
   with 14 fine spokes and six-spoke disc rotors, a proper diamond-frame bicycle
   with chain/cassette, calipers, contact-aligned brake hoods/levers, and a
-  rotating crank assembly. All detail is generated from reviewed local
-  Three.js or Blender Python source; there is no image, texture, downloaded model, scan, or
-  avatar-generator output.
+  rotating crank assembly. The BikeErg frame, saddle, hood, and pedal anchors
+  are generated from the shared `src/lib/replay/bikeRig.js` contract, so the
+  checked-in V3 equipment cannot drift from the renderer's fit. All detail is
+  generated from reviewed local Three.js or Blender Python source; there is no
+  image, texture, downloaded model, scan, or avatar-generator output.
 
 ### V3 schema and coordinate contracts
 

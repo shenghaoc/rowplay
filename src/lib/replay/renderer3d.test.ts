@@ -48,6 +48,7 @@ import {
 import { sampleRowerMotionGraph } from "./motionGraph";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
+import { BIKE_RIG } from "./bikeRig";
 import * as THREE from "three";
 
 /** Minimal 2D context stub for text sprite canvas creation. */
@@ -814,10 +815,22 @@ describe("CourseRenderer3D", () => {
   it("joins the BikeErg diamond-frame tubes at their authored endpoints", () => {
     const renderer = new CourseRenderer3D(makeHost(), "low", "bike");
     const expected = {
-      "bike-down-tube": [new THREE.Vector3(0, 0.45, -0.05), new THREE.Vector3(0, 1, 0.42)],
-      "bike-seat-tube": [new THREE.Vector3(0, 0.45, -0.05), new THREE.Vector3(0, 1.21, -0.4)],
-      "bike-top-tube": [new THREE.Vector3(0, 1.21, -0.4), new THREE.Vector3(0, 1.25, 0.5)],
-      "bike-head-tube": [new THREE.Vector3(0, 1, 0.42), new THREE.Vector3(0, 1.25, 0.5)],
+      "bike-down-tube": [
+        new THREE.Vector3(...BIKE_RIG.bottomBracket),
+        new THREE.Vector3(...BIKE_RIG.headBottom),
+      ],
+      "bike-seat-tube": [
+        new THREE.Vector3(...BIKE_RIG.bottomBracket),
+        new THREE.Vector3(...BIKE_RIG.seatCluster),
+      ],
+      "bike-top-tube": [
+        new THREE.Vector3(...BIKE_RIG.seatCluster),
+        new THREE.Vector3(...BIKE_RIG.headTop),
+      ],
+      "bike-head-tube": [
+        new THREE.Vector3(...BIKE_RIG.headBottom),
+        new THREE.Vector3(...BIKE_RIG.headTop),
+      ],
     } as const;
 
     for (const [name, [expectedStart, expectedEnd]] of Object.entries(expected)) {
@@ -2620,6 +2633,55 @@ describe("CourseRenderer3D", () => {
         }
       } finally {
         renderer.destroy();
+      }
+    });
+
+    it("keeps the V4 BikeErg fit across every quality tier and crank phase", () => {
+      for (const quality of ["low", "medium", "high", "ultra"] as const) {
+        const renderer = rendererFor("bike", quality);
+        try {
+          const inverse = new THREE.Matrix4();
+          for (const cycle of [0, 0.125, 0.25, 0.5, 0.75, 0.999]) {
+            renderer.render(makeSportState("bike", cycle), false);
+            const { avatar, instance } = v4Lane(renderer);
+            getScene(renderer).updateMatrixWorld(true);
+            inverse.copy(avatar.group.matrixWorld).invert();
+
+            const pelvis = avatar.v4Targets.pelvis
+              .getWorldPosition(new THREE.Vector3())
+              .applyMatrix4(inverse);
+            const saddle = worldPosition(renderer, "bike-saddle").applyMatrix4(inverse);
+            expect(
+              pelvis.distanceTo(saddle),
+              `${quality} pelvis remains supported by the saddle at ${cycle}`,
+            ).toBeLessThan(0.055);
+
+            for (const side of ["Left", "Right"] as const) {
+              const lower = side.toLowerCase() as "left" | "right";
+              const hand = v4EffectorWorld(instance, `${lower}Hand`).applyMatrix4(inverse);
+              const shoulder = instance.bones[`v4${side}UpperArm`]
+                .getWorldPosition(new THREE.Vector3())
+                .applyMatrix4(inverse);
+              const elbow = instance.bones[`v4${side}Forearm`]
+                .getWorldPosition(new THREE.Vector3())
+                .applyMatrix4(inverse);
+              expect(
+                elbow.y,
+                `${quality} ${lower} elbow drops below the shoulder at ${cycle}`,
+              ).toBeLessThan(shoulder.y - 0.08);
+              expect(
+                elbow.z,
+                `${quality} ${lower} elbow stays behind the hood contact at ${cycle}`,
+              ).toBeLessThan(hand.z - 0.1);
+              expect(
+                Math.abs(elbow.x - shoulder.x),
+                `${quality} ${lower} elbow stays inside the shoulder width at ${cycle}`,
+              ).toBeLessThan(0.25);
+            }
+          }
+        } finally {
+          renderer.destroy();
+        }
       }
     });
 

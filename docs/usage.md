@@ -180,9 +180,17 @@ The hand and rigid pole then lift and travel forward on recovery, and the elbow
 returns underneath the arm for the next plant without changing to the opposite
 two-bone intersection.
 BikeErg shoes stay on opposed pedals while each knee follows a continuous
-rider-forward branch and retains flexion through bottom dead centre. These are
-deliberate illustrative motion constraints, not measured joint or force data
-from Concept2.
+rider-forward branch and retains flexion through bottom dead centre. The
+BikeErg fit contract is shared by the procedural renderer and generated V3
+equipment: wheelbase, bottom bracket, saddle, cockpit, and hand contacts stay
+in one proportioned coordinate set. The V4 path places the pelvis over that
+saddle and rebuilds the elbow branch from the visible shoulders to the hood
+contacts, so the rider reads as seated with a tucked cockpit reach instead of
+holding the bars with a generic winged pose. These geometry and pose fixes are
+present at every 3D tier; higher tiers add material response and detail rather
+than replaying the same misfit at a larger pixel budget. These are deliberate
+illustrative motion constraints, not measured joint or force data from
+Concept2.
 
 The shipped V4 athlete is a local, repository-owned generic asset: one skinned
 mesh, an authored skeleton, and three canonical sport clips. Three.js samples
@@ -191,7 +199,9 @@ analytic post-clip correction to the hands and feet. This improves deformation
 and contact fidelity without implying that rowplay can infer an athlete's real
 joints, posture, or biomechanics from a Logbook workout. V4 remains subject to
 the same equipment-contact authority and V3, procedural 3D, and Canvas fallback
-rules.
+rules. The BikeErg fit update reuses the existing repository-owned, CC0-derived
+V4 source and locally authored equipment; it adds no runtime download or
+undocumented third-party asset.
 
 Both views use complete sport-specific illustrative environments, not one
 generic floor with different colors. RowErg combines layered water with

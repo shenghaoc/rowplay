@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { BIKE_RIG } from "../src/lib/replay/bikeRig.js";
 
 // v3 deliberately widens the asset contract from isolated replacement shells
 // to a small set of authored equipment assemblies.  Keeping this a new file
@@ -933,8 +934,10 @@ function skiAssemblyParts() {
 
 /** One wheel, rooted at the existing wheel-group centre with an axle along X. */
 function bikeWheelAssemblyParts() {
-  const tyre = bakeGeometry(aeroRingGeometry(0.45, 0.065, 56), { rotation: [0, Math.PI / 2, 0] });
-  const rim = bakeGeometry(aeroRingGeometry(0.385, 0.031, 56), {
+  const tyre = bakeGeometry(aeroRingGeometry(BIKE_RIG.wheelRadius, 0.065, 56), {
+    rotation: [0, Math.PI / 2, 0],
+  });
+  const rim = bakeGeometry(aeroRingGeometry(BIKE_RIG.wheelRadius * 0.856, 0.031, 56), {
     rotation: [0, Math.PI / 2, 0],
   });
   const hub = bakeGeometry(new THREE.CylinderGeometry(0.052, 0.052, 0.128, 18), {
@@ -991,12 +994,12 @@ function bikeWheelAssemblyParts() {
 
 /** Bike-root coordinates match the current avatar group exactly. */
 function bikeFrameAssemblyParts() {
-  const bottomBracket = [0, 0.45, -0.05];
-  const seatCluster = [0, 1.21, -0.4];
-  const headBottom = [0, 1.0, 0.42];
-  const headTop = [0, 1.25, 0.5];
-  const rearAxle = [0, 0.45, -0.85];
-  const frontAxle = [0, 0.45, 0.85];
+  const bottomBracket = [...BIKE_RIG.bottomBracket];
+  const seatCluster = [...BIKE_RIG.seatCluster];
+  const headBottom = [...BIKE_RIG.headBottom];
+  const headTop = [...BIKE_RIG.headTop];
+  const rearAxle = [0, BIKE_RIG.wheelRadius, BIKE_RIG.rearAxleZ];
+  const frontAxle = [0, BIKE_RIG.wheelRadius, BIKE_RIG.frontAxleZ];
   const mainFrame = composeGeometry(
     tubeGeometryBetween(bottomBracket, headBottom, 0.055, 16, 0.85),
     tubeGeometryBetween(bottomBracket, seatCluster, 0.052, 16, 0.88),
@@ -1006,23 +1009,63 @@ function bikeFrameAssemblyParts() {
   const stays = [];
   for (const side of [-1, 1]) {
     stays.push(
-      tubeGeometryBetween([side * 0.065, 0.45, -0.85], [side * 0.055, 0.45, -0.05], 0.027, 12),
-      tubeGeometryBetween([side * 0.065, 0.45, -0.85], [side * 0.055, 1.21, -0.4], 0.026, 12, 0.82),
-      tubeGeometryBetween([side * 0.043, 1.0, 0.42], [side * 0.046, 0.45, 0.85], 0.031, 14, 0.82),
+      tubeGeometryBetween(
+        [side * 0.065, BIKE_RIG.wheelRadius, BIKE_RIG.rearAxleZ],
+        [side * 0.055, BIKE_RIG.wheelRadius, BIKE_RIG.bottomBracket[2]],
+        0.027,
+        12,
+      ),
+      tubeGeometryBetween(
+        [side * 0.065, BIKE_RIG.wheelRadius, BIKE_RIG.rearAxleZ],
+        [side * 0.055, BIKE_RIG.seatCluster[1], BIKE_RIG.seatCluster[2]],
+        0.026,
+        12,
+        0.82,
+      ),
+      tubeGeometryBetween(
+        [side * 0.043, BIKE_RIG.headBottom[1], BIKE_RIG.headBottom[2]],
+        [side * 0.046, BIKE_RIG.wheelRadius, BIKE_RIG.frontAxleZ],
+        0.031,
+        14,
+        0.82,
+      ),
     );
   }
   // These endpoints intentionally match the runtime's explicit grip-contact
   // anchors. The procedural anchors remain the authoritative hand-IK targets;
   // the authored cockpit must meet them rather than creating a prettier bar a
   // few decimetres ahead of the rider's hands.
-  const barCentre = [0, 1.25, 0.35];
-  const leftGripContact = [-0.32, 1.23, 0.39];
-  const rightGripContact = [0.32, 1.23, 0.39];
+  const barCentre = [...BIKE_RIG.handlebar.base];
+  const leftGripContact = [
+    -BIKE_RIG.handlebar.grip.halfSpan,
+    BIKE_RIG.handlebar.grip.y,
+    BIKE_RIG.handlebar.grip.z,
+  ];
+  const rightGripContact = [
+    BIKE_RIG.handlebar.grip.halfSpan,
+    BIKE_RIG.handlebar.grip.y,
+    BIKE_RIG.handlebar.grip.z,
+  ];
   const cockpit = composeGeometry(
     tubeGeometryBetween(headTop, barCentre, 0.02, 12),
-    tubeGeometryBetween([-0.36, 1.25, 0.35], [0.36, 1.25, 0.35], 0.02, 16),
-    tubeGeometryBetween([-0.34, 1.25, 0.35], leftGripContact, 0.016, 12),
-    tubeGeometryBetween([0.34, 1.25, 0.35], rightGripContact, 0.016, 12),
+    tubeGeometryBetween(
+      [-0.36, BIKE_RIG.handlebar.base[1], BIKE_RIG.handlebar.base[2]],
+      [0.36, BIKE_RIG.handlebar.base[1], BIKE_RIG.handlebar.base[2]],
+      0.02,
+      16,
+    ),
+    tubeGeometryBetween(
+      [-0.34, BIKE_RIG.handlebar.base[1], BIKE_RIG.handlebar.base[2]],
+      leftGripContact,
+      0.016,
+      12,
+    ),
+    tubeGeometryBetween(
+      [0.34, BIKE_RIG.handlebar.base[1], BIKE_RIG.handlebar.base[2]],
+      rightGripContact,
+      0.016,
+      12,
+    ),
   );
   // The sculpted hoods and their lever blades meet the existing hand anchors
   // exactly. They enrich the visible control hardware without becoming a new
@@ -1033,7 +1076,7 @@ function bikeFrameAssemblyParts() {
     [-1, leftGripContact],
     [1, rightGripContact],
   ]) {
-    const barEnd = [side * 0.34, 1.25, 0.35];
+    const barEnd = [side * 0.34, BIKE_RIG.handlebar.base[1], BIKE_RIG.handlebar.base[2]];
     brakeHoodForms.push(
       tubeGeometryBetween(barEnd, contact, 0.022, 14, 0.82),
       ellipsoidGeometry([0.032, 0.038, 0.045], 18, 12, contact),
@@ -1041,8 +1084,16 @@ function bikeFrameAssemblyParts() {
     brakeLeverForms.push(
       ridgeGeometry(
         [
-          new THREE.Vector3(side * 0.365, 1.15, 0.49),
-          new THREE.Vector3(side * 0.362, 1.18, 0.45),
+          new THREE.Vector3(
+            side * 0.365,
+            BIKE_RIG.handlebar.grip.y - 0.06,
+            BIKE_RIG.handlebar.grip.z + 0.16,
+          ),
+          new THREE.Vector3(
+            side * 0.362,
+            BIKE_RIG.handlebar.grip.y - 0.03,
+            BIKE_RIG.handlebar.grip.z + 0.12,
+          ),
           new THREE.Vector3(...contact),
         ],
         0.008,
@@ -1058,17 +1109,29 @@ function bikeFrameAssemblyParts() {
   // Keeping them in the static frame assembly preserves the wheel and crank
   // animation groups while still making the braking system read as assembled.
   const brakeCalipers = composeGeometry(
-    ellipsoidGeometry([0.052, 0.067, 0.042], 16, 11, [0.09, 0.67, 0.78]),
-    ellipsoidGeometry([0.042, 0.058, 0.038], 16, 11, [0.09, 0.59, -0.79]),
-    tubeGeometryBetween([0.077, 0.67, 0.78], [0.043, 0.9, 0.59], 0.014, 10, 0.8),
-    tubeGeometryBetween([0.077, 0.59, -0.79], [0.048, 1.0, -0.54], 0.014, 10, 0.8),
+    ellipsoidGeometry([0.052, 0.067, 0.042], 16, 11, [0.09, 0.67, BIKE_RIG.frontAxleZ - 0.07]),
+    ellipsoidGeometry([0.042, 0.058, 0.038], 16, 11, [0.09, 0.59, BIKE_RIG.rearAxleZ + 0.07]),
+    tubeGeometryBetween(
+      [0.077, 0.67, BIKE_RIG.frontAxleZ - 0.07],
+      [0.043, 0.9, 0.59],
+      0.014,
+      10,
+      0.8,
+    ),
+    tubeGeometryBetween(
+      [0.077, 0.59, BIKE_RIG.rearAxleZ + 0.07],
+      [0.048, 1.0, -0.54],
+      0.014,
+      10,
+      0.8,
+    ),
     bakeGeometry(new THREE.CylinderGeometry(0.016, 0.016, 0.025, 10), {
       rotation: [0, 0, Math.PI / 2],
-      position: [0.112, 0.67, 0.78],
+      position: [0.112, 0.67, BIKE_RIG.frontAxleZ - 0.04],
     }),
     bakeGeometry(new THREE.CylinderGeometry(0.014, 0.014, 0.025, 10), {
       rotation: [0, 0, Math.PI / 2],
-      position: [0.112, 0.59, -0.79],
+      position: [0.112, 0.59, BIKE_RIG.rearAxleZ - 0.03],
     }),
   );
 
@@ -1082,7 +1145,7 @@ function bikeFrameAssemblyParts() {
       [
         new THREE.Vector3(driveSideX, 0.585, -0.08),
         new THREE.Vector3(driveSideX, 0.55, -0.43),
-        new THREE.Vector3(driveSideX, 0.515, -0.83),
+        new THREE.Vector3(driveSideX, 0.515, BIKE_RIG.rearAxleZ - 0.07),
       ],
       0.008,
       12,
@@ -1092,14 +1155,19 @@ function bikeFrameAssemblyParts() {
       [
         new THREE.Vector3(driveSideX, 0.315, -0.08),
         new THREE.Vector3(driveSideX, 0.34, -0.43),
-        new THREE.Vector3(driveSideX, 0.37, -0.83),
+        new THREE.Vector3(driveSideX, 0.37, BIKE_RIG.rearAxleZ - 0.07),
       ],
       0.008,
       12,
       7,
     ),
-    ellipsoidGeometry([0.03, 0.062, 0.048], 14, 10, [driveSideX - 0.012, 0.36, -0.77]),
-    tubeGeometryBetween([driveSideX - 0.012, 0.39, -0.77], [driveSideX, 0.43, -0.84], 0.012, 10),
+    ellipsoidGeometry([0.03, 0.062, 0.048], 14, 10, [driveSideX - 0.012, 0.36, BIKE_RIG.rearAxleZ]),
+    tubeGeometryBetween(
+      [driveSideX - 0.012, 0.39, BIKE_RIG.rearAxleZ + 0.01],
+      [driveSideX, 0.43, BIKE_RIG.rearAxleZ - 0.08],
+      0.012,
+      10,
+    ),
   ];
   for (const [index, radius] of [0.052, 0.066, 0.081, 0.096].entries()) {
     chainAndCassetteForms.push(
@@ -1111,8 +1179,13 @@ function bikeFrameAssemblyParts() {
   }
   const chainAndCassette = composeGeometry(...chainAndCassetteForms);
   const saddle = performanceSaddleGeometry();
-  saddle.translate(0, 1.24, -0.4);
-  const seatPost = tubeGeometryBetween([0, 1.18, -0.4], [0, 1.3, -0.4], 0.024, 12);
+  saddle.translate(...BIKE_RIG.saddle);
+  const seatPost = tubeGeometryBetween(
+    [0, BIKE_RIG.saddle[1] - 0.04, BIKE_RIG.saddle[2]],
+    [0, BIKE_RIG.saddle[1] + 0.08, BIKE_RIG.saddle[2]],
+    0.024,
+    12,
+  );
   const forkCrown = ellipsoidGeometry([0.07, 0.07, 0.055], 16, 10, headBottom);
   return [
     { name: "main-triangle", geometry: mainFrame, materialRole: "equipment-painted" },
@@ -1156,8 +1229,8 @@ function bikeDrivetrainAssemblyParts() {
     tubeGeometryBetween([0, 0, -0.14], [0, 0, 0.14], 0.012, 10),
   );
   const crankArms = composeGeometry(
-    tubeGeometryBetween([0, 0, 0], [0, -0.215, 0], 0.018, 12, 0.82),
-    tubeGeometryBetween([0, 0, 0], [0, 0.215, 0], 0.018, 12, 0.82),
+    tubeGeometryBetween([0, 0, 0], [0, -BIKE_RIG.crank.pedalRadius - 0.005, 0], 0.018, 12, 0.82),
+    tubeGeometryBetween([0, 0, 0], [0, BIKE_RIG.crank.pedalRadius + 0.005, 0], 0.018, 12, 0.82),
   );
   const pedals = [];
   for (const side of [-1, 1]) {
@@ -1165,7 +1238,7 @@ function bikeDrivetrainAssemblyParts() {
     // Match the procedural pedal/foot-contact radius exactly. The runtime
     // still owns that contact solve even after this visible assembly replaces
     // its fallback pedal meshes.
-    pedal.translate(side * 0.1, side * 0.21, 0);
+    pedal.translate(side * BIKE_RIG.crank.lateral, side * BIKE_RIG.crank.pedalRadius, 0);
     pedals.push(pedal);
   }
   const spindle = bakeGeometry(new THREE.CylinderGeometry(0.04, 0.04, 0.22, 16), {
