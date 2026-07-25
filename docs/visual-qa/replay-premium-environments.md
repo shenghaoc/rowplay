@@ -123,6 +123,19 @@ water-normal change, so a pixel diff cannot separate the two. Their presence at
 Ultra only is asserted in `renderer3d.test.ts`; the capture confirms that region
 changes, not which of the two changed it.
 
+**Stands read as growth, not as one repeated stamp.** Placement already varied
+angle, radius, rotation and scale, so the silhouettes differed — but every
+instance shared a single material colour, which is what actually gave a tree
+line away. `scatterTint` adds per-instance colour through `instanceColor`, so it
+modulates the themed colour rather than replacing it. Crowns take a full spread;
+trunks take a narrow one and no temperature swing.
+
+**SkiErg has a horizon again.** Sky, airborne frost and snow had all sat within
+a few points of white, so the stadium collapsed into one flat sheet with the
+athlete apparently floating on it. The dome is deepened and the fog cooled,
+giving the snow something to be bright _against_; it is still a cold Nordic
+morning rather than a different time of day.
+
 **Each sport reads as its own place.** RowErg is a lagoon loop whose circle
 centre is a land island rather than more water — visible in both the 3D basin and
 the 2D mid-course silhouette. SkiErg is a Nordic stadium with a snow-covered
@@ -136,6 +149,53 @@ double-painted or faded scenery.
 **Theme is a venue-wide change.** Dark frames re-light sky, ridges, foliage,
 ground, and course surface rather than only recolouring the athlete. This is
 additionally asserted in `renderer.test.ts` for the 2D venue.
+
+## Image-based lighting
+
+The venues had no `scene.environment` at all. Every `MeshStandardMaterial` and
+`MeshPhysicalMaterial` was lit by direct lights plus flat hemisphere ambient
+only, so the venues paid the full cost of physically-based materials and got
+none of the payoff. `makeSkyRadianceTexture` now builds an equirectangular
+radiance map from the same zenith/horizon/nadir/sun colours that drive the
+visible sky dome, so lighting and backdrop cannot drift apart. It is procedural
+and half-float: no HDRI is downloaded, imported, or scanned, and payload is
+unchanged.
+
+Adding it required handing the ambient budget over rather than paying it twice —
+the hemisphere light had been tuned as the _only_ ambient, so leaving it at
+strength washed every venue out. `hemisphereIntensityIbl` is the rebalanced
+value; direct sun and fill are untouched.
+
+**It is on for SkiErg and BikeErg, and off for RowErg.** Measured against each
+sport's own noise floor, on paused High frames:
+
+| Sport   | Luminance | Saturation | Local contrast | IBL |
+| ------- | --------- | ---------- | -------------- | --- |
+| BikeErg | +3        | −3         | −0.6           | on  |
+| SkiErg  | +3        | −1         | −3.7           | on  |
+| RowErg  | +47       | **−35**    | **−16.4**      | off |
+
+RowErg is mostly a semi-transparent, low-roughness water plane over a dark bed.
+Global IBL lifts and desaturates the whole surface at once — the teal lagoon
+turns to grey slack water. Band analysis confirmed the sky was untouched (+0)
+while every water band lost 48–58 points of saturation, so this is the water,
+not the exposure.
+
+The per-material escape hatch does not exist on the primary backend: **Three
+r184 ignores `material.envMapIntensity` on the WebGPU path.** Setting it on the
+water and again on the lake bed each moved exactly zero pixels, while
+scene-level `environmentIntensity` and ordinary material properties (roughness,
+clearcoat) both moved the image. Reducing RowErg's scene-level intensity to a
+third still cost 27 points of saturation, because the water dominates the frame.
+
+So RowErg keeps its art-directed rig until the water is reworked to take a
+Fresnel-weighted share of the environment — strong at grazing angles, weak
+looking straight down — which is the correct fix and a larger change than this
+pass. Shipping a washed-out flagship venue to claim three-for-three would have
+been the worse trade.
+
+Low skips IBL at every venue; it is the tier that already drops shadows and
+displacement.
 
 ## Capture determinism
 

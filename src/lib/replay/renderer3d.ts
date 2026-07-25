@@ -3,6 +3,7 @@ import {
   clamp01,
   degrees,
   FULL_CIRCLE,
+  makeSkyRadianceTexture,
   roundedVenueBlockGeometry,
   sectorSample,
   themed,
@@ -499,15 +500,33 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     // Infield and apron are the same lake as the outer basin, not a second floor.
     infield: themed(0x3f8ea3, 0x155566),
     apron: themed(0x4596a8, 0x176070),
+    // No IBL. The basin is mostly a semi-transparent, low-roughness water
+    // plane over a dark bed, and global image-based lighting lifts and
+    // desaturates it across the whole surface: measured at -27 points of
+    // saturation and -13 local contrast even at a third strength, which reads
+    // as grey slack water instead of a teal lagoon. The per-material escape
+    // hatch does not exist on the primary backend — Three r184 ignores
+    // `envMapIntensity` on the WebGPU path (verified: changing it on both the
+    // water and the lake bed moved zero pixels, while scene-level
+    // `environmentIntensity` and ordinary material properties both did). Until
+    // the water is reworked to take a Fresnel-weighted share, RowErg keeps its
+    // art-directed rig. See docs/visual-qa/replay-premium-environments.md.
+    envIntensity: 0,
+    hemisphereIntensityIbl: 1.22,
   },
   skierg: {
     // Cold Nordic morning: sky, airborne frost, snow bowl and blue-shadow
     // massif share one temperature instead of reading as a summer panorama
     // behind a separate white floor.
-    skyZenith: themed(0x6e9fbd, 0x11283d),
-    skyHorizon: themed(0xe8f1f5, 0x78909f),
-    skyNadir: themed(0xd8e6eb, 0x385161),
-    fog: themed(0xe2ecef, 0x7d939e),
+    // Sky, airborne frost and snow all sat within a few points of white, so
+    // the horizon vanished and the stadium read as one flat sheet. Deepening
+    // the dome and cooling the fog restores a horizon line and gives the snow
+    // something to be bright *against* — the venue is still a cold Nordic
+    // morning, just no longer a white-out.
+    skyZenith: themed(0x4d84ab, 0x11283d),
+    skyHorizon: themed(0xcfe2ec, 0x78909f),
+    skyNadir: themed(0xc2d6df, 0x385161),
+    fog: themed(0xd3e2e9, 0x7d939e),
     fogNear: 68,
     fogFar: 190,
     hemisphereSky: themed(0xf2f9ff, 0x9db7c9),
@@ -522,8 +541,14 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     midSilhouette: themed(0x7799aa, 0x304e5e),
     venueStructure: themed(0x344f5d, 0x192f3d),
     venueAccent: themed(0xe04852, 0xff6670),
-    infield: themed(0xeaf2f6, 0xb4c5cd),
-    apron: themed(0xf7fafb, 0xd5e0e5),
+    // Snow keeps its brightness but picks up the sky's cool bounce, so the
+    // groomed surface separates from the dome instead of merging into it.
+    infield: themed(0xe1ecf3, 0xb4c5cd),
+    apron: themed(0xeef5f9, 0xd5e0e5),
+    // Snow already bounces hard into the hemisphere light; a full-strength sky
+    // on top of that is what blows the venue out to flat white.
+    envIntensity: 0.62,
+    hemisphereIntensityIbl: 0.36,
   },
   bike: {
     // Indoor velodrome: warm arena lighting over a deep roof cavity.
@@ -548,6 +573,9 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     venueAccent: themed(0xf4a560, 0xffb868),
     infield: themed(0x5a6a5e, 0x2a3a2e),
     apron: themed(0x484440, 0x282c34),
+    // Roofed arena: ambient arrives off boards and seating, not off a sky.
+    envIntensity: 0.5,
+    hemisphereIntensityIbl: 0.3,
   },
 };
 
@@ -3561,6 +3589,8 @@ export class CourseRenderer3D implements ReplayRenderer {
   private lastGhostLabel = "";
   /** Opt-in QA overlay; normal replay rendering never allocates this helper. */
   private v4SkeletonHelper: THREE.SkeletonHelper | null = null;
+  /** Current image-based lighting map; rebuilt per theme, disposed on destroy. */
+  private skyRadiance: THREE.DataTexture | null = null;
   /** Desired chase-camera position for the current frame. */
   private chase = new THREE.Vector3();
   /** Desired point of interest; kept separate so both translation and aim damp. */
@@ -4996,6 +5026,31 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.buildContactFootprints();
   }
 
+  /**
+   * Point the scene's image-based lighting at the current theme.
+   *
+   * Held in a field rather than the shared `textures` registry because the map
+   * is rebuilt on every light/dark switch: pushing each one would grow the
+   * registry for the lifetime of the renderer. The previous map is released
+   * here and the survivor is disposed in destroy().
+   *
+   * Low skips IBL entirely. It is the tier that already drops shadows and
+   * displacement, and prefiltering a radiance map is exactly the kind of
+   * one-off GPU cost it exists to avoid.
+   */
+  private applySkyRadiance(themeName: "light" | "dark"): void {
+    // envIntensity 0 opts a venue out entirely (see RowErg).
+    if (this.cfg.environmentDetail < 1 || this.environment.envIntensity <= 0) return;
+    const previous = this.skyRadiance;
+    this.skyRadiance = makeSkyRadianceTexture(this.environment, themeName, this.sunOffset);
+    this.scene.environment = this.skyRadiance;
+    this.scene.environmentIntensity = this.environment.envIntensity;
+    // Hand the ambient budget over to the radiance map rather than paying it
+    // twice. Low never reaches here and keeps the original hemisphere value.
+    this.hemisphereLight.intensity = this.environment.hemisphereIntensityIbl;
+    previous?.dispose();
+  }
+
   private applyTheme(themeName: "light" | "dark"): void {
     const C = themeName === "dark" ? COLORS_DARK : COLORS_LIGHT;
     this.theme = themeName;
@@ -5014,6 +5069,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.environment.fogFar,
     );
     this.updateSkyColors(themeName);
+    this.applySkyRadiance(themeName);
     this.hemisphereLight.color.setHex(this.environment.hemisphereSky(themeName));
     this.hemisphereLight.groundColor.setHex(this.environment.hemisphereGround(themeName));
     this.sunLight.color.setHex(this.environment.sun(themeName));
@@ -5734,6 +5790,11 @@ export class CourseRenderer3D implements ReplayRenderer {
     });
     this.liveWake?.dispose();
     this.ghostWake?.dispose();
+    // The radiance map hangs off scene.environment, not off any mesh, so the
+    // traversal above never reaches it.
+    this.skyRadiance?.dispose();
+    this.skyRadiance = null;
+    this.scene.environment = null;
     // Instance buffers are owned by the InstancedMesh, not its geometry or
     // material, so they still need their own dispose() after the traversal.
     this.buoyMesh?.dispose();

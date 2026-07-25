@@ -76,6 +76,8 @@ function makeContext(sport: Sport, quality: RenderQuality) {
       venueAccent: themed(0xb14a3c, 0x5c2a24),
       infield: themed(0x7fa06a, 0x1b2a1e),
       apron: themed(0xb9b3a6, 0x252d38),
+      envIntensity: 0.8,
+      hemisphereIntensityIbl: 0.35,
     },
     textures: registries.textures,
     environmentThemeMats: registries.themeMats,

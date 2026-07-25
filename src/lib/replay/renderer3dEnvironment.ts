@@ -7,6 +7,7 @@ import {
   degrees,
   FULL_CIRCLE,
   roundedVenueBlockGeometry,
+  scatterTint,
   sectorSample,
   themed,
   WORLD_UP,
@@ -897,6 +898,10 @@ export class EnvironmentBuilder {
     }
     canopies.instanceMatrix.needsUpdate = true;
     trunks.instanceMatrix.needsUpdate = true;
+    // Crowns catch different amounts of sun and differ by age; trunks vary far
+    // less, so they take a narrower spread and no colour temperature swing.
+    scatterTint(canopies, count, 12.9898);
+    scatterTint(trunks, count, 7.117, 0.09, 0);
     group.add(trunks, canopies);
   }
 
@@ -1400,6 +1405,7 @@ export class EnvironmentBuilder {
       trees.setMatrixAt(i, m4);
     }
     trees.instanceMatrix.needsUpdate = true;
+    scatterTint(trees, count, 5.3271);
     group.add(trees);
   }
 
@@ -1539,6 +1545,7 @@ export class EnvironmentBuilder {
         shrubs.setMatrixAt(i, sm);
       }
       shrubs.instanceMatrix.needsUpdate = true;
+      scatterTint(shrubs, shrubCount, 3.8817, 0.12, 0.05);
       island.add(shrubs);
     }
 
@@ -1577,6 +1584,7 @@ export class EnvironmentBuilder {
       trees.setMatrixAt(index, matrix);
     }
     trees.instanceMatrix.needsUpdate = true;
+    scatterTint(trees, treeCount, 9.4413);
     island.add(trees);
 
     // Start pontoons live in the water channel (between island and outer shore),

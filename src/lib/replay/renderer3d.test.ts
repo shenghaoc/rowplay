@@ -4697,4 +4697,56 @@ describe("CourseRenderer3D", () => {
       }
     });
   });
+
+  describe("image-based lighting", () => {
+    it("lights the venues that measurably benefit and skips the one that does not", () => {
+      // SkiErg and BikeErg gain contrast from a sky radiance map. RowErg is
+      // mostly a semi-transparent water plane over a dark bed, and global IBL
+      // desaturates it across the whole surface, so it opts out via
+      // envIntensity 0. Three r184 offers no per-material escape on WebGPU.
+      const ski = new CourseRenderer3D(makeHost(), "high", "skierg");
+      const bike = new CourseRenderer3D(makeHost(), "high", "bike");
+      const row = new CourseRenderer3D(makeHost(), "high", "rower");
+      expect(getScene(ski).environment?.name).toBe("environment:texture:sky-radiance");
+      expect(getScene(bike).environment?.name).toBe("environment:texture:sky-radiance");
+      expect(getScene(row).environment).toBeNull();
+      for (const renderer of [ski, bike, row]) renderer.destroy();
+    });
+
+    it("skips IBL at Low, which is the tier that drops shadows and displacement", () => {
+      const low = new CourseRenderer3D(makeHost(), "low", "skierg");
+      const medium = new CourseRenderer3D(makeHost(), "medium", "skierg");
+      expect(getScene(low).environment).toBeNull();
+      expect(getScene(medium).environment?.name).toBe("environment:texture:sky-radiance");
+      low.destroy();
+      medium.destroy();
+    });
+
+    it("hands the ambient budget to the radiance map instead of paying it twice", () => {
+      // Leaving the original hemisphere intensity in place double-counts
+      // ambient and washes the venue out.
+      const lit = new CourseRenderer3D(makeHost(), "high", "skierg");
+      const unlit = new CourseRenderer3D(makeHost(), "low", "skierg");
+      const hemisphereOf = (renderer: CourseRenderer3D): number =>
+        (getScene(renderer).getObjectByName("environment:hemisphere") as THREE.HemisphereLight)
+          .intensity;
+      expect(hemisphereOf(lit)).toBeLessThan(hemisphereOf(unlit));
+      lit.destroy();
+      unlit.destroy();
+    });
+
+    it("releases the radiance map on destroy rather than leaking it past the scene walk", () => {
+      // scene.environment hangs off no mesh, so destroy()'s traversal misses it.
+      const renderer = new CourseRenderer3D(makeHost(), "high", "bike");
+      const scene = getScene(renderer);
+      const texture = scene.environment as THREE.DataTexture;
+      let disposed = false;
+      texture.addEventListener("dispose", () => {
+        disposed = true;
+      });
+      renderer.destroy();
+      expect(disposed).toBe(true);
+      expect(scene.environment).toBeNull();
+    });
+  });
 });
