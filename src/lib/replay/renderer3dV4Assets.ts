@@ -760,6 +760,8 @@ function disposeTemplateResources(template: ReplayV4AssetTemplate, state: Templa
     if (object instanceof THREE.SkinnedMesh) skeletons.add(object.skeleton);
   });
   for (const texture of textures) {
+    // Shared athlete detail maps are process-cached; never dispose them here.
+    if (typeof texture.userData.replayV4SharedDetailMapKey === "string") continue;
     try {
       texture.dispose();
     } catch (e) {
@@ -983,15 +985,15 @@ export function disposeReplayV4AthleteInstance(instance: ReplayV4AthleteInstance
   } catch {
     /* best-effort */
   }
-  // Material disposal does not release maps owned by the instance. In
-  // particular, the Medium+ quality tiers create per-instance procedural
-  // bump/roughness textures, so collect and release those before disposing
-  // their material clones.
+  // Material disposal does not release maps. Medium+ quality tiers attach
+  // shared deterministic detail maps (process-cached) and any future owned
+  // textures; only dispose non-shared maps.
   const textures = new Set<THREE.Texture>();
   for (const material of state.materials) {
     for (const texture of materialTextures(material)) textures.add(texture);
   }
   for (const texture of textures) {
+    if (typeof texture.userData.replayV4SharedDetailMapKey === "string") continue;
     try {
       texture.dispose();
     } catch {

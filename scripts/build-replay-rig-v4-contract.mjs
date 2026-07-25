@@ -106,7 +106,7 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
       glbEmbeddedTextures: 0,
       uvCoordinateSet: "TEXCOORD_0",
       webRuntime:
-        "Per-instance deterministic UV albedo, normal, roughness, and relief maps: 128px Medium, 256px High, 512px Ultra; no external image or texture request.",
+        "Process-shared deterministic UV albedo, normal, roughness, and relief maps: 128px Medium, 256px High, 512px Ultra (live+ghost reuse); no external image or texture request.",
     },
     bones: {
       // Keep the semantic interface stable for existing consumers. Visual
@@ -161,15 +161,15 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
     },
     validation: {
       buildCommands: [
-        "pnpm run build:replay-rig-v4",
-        "pnpm run build:replay-rig-v4-usdz",
-        "pnpm run build:replay-rig-v4-contract",
+        "vp run build:replay-rig-v4",
+        "vp run build:replay-rig-v4-usdz",
+        "vp run build:replay-rig-v4-contract",
       ],
       validationCommands: [
-        "pnpm run validate:replay-assets",
-        "pnpm run check",
-        "pnpm run validate:locales",
-        "pnpm run test:e2e:smoke",
+        "vp run validate:replay-assets",
+        "vp run check",
+        "vp run validate:locales",
+        "vp run test:e2e:smoke",
         "git diff --check",
       ],
     },

@@ -625,6 +625,14 @@ const QUALITY_DETAIL_TEXTURE_SIZE: Readonly<Record<RenderQuality, number>> = {
   ultra: 512,
 };
 
+/** Exported for tests — production path must keep this ladder frozen. */
+export const REPLAY_V4_QUALITY_DETAIL_TEXTURE_SIZE = QUALITY_DETAIL_TEXTURE_SIZE;
+
+/** Production finger helper names — shared with the sealed GLB contract. */
+export const REPLAY_V4_HAND_HELPER_NAMES = HAND_HELPER_NAMES;
+
+type SurfaceDetailMapKind = "albedo" | "bump" | "normal" | "roughness";
+
 // Peak strength used to normalize albedo/normal/roughness contrast so Medium
 // and High remain visibly below Ultra rather than saturating early.
 const QUALITY_DETAIL_STRENGTH_PEAK = QUALITY_DETAIL_STRENGTH.ultra;
@@ -656,10 +664,58 @@ function clampByte(value: number): number {
 }
 
 /**
- * Deterministic, source-owned relief maps. They are generated per cloned
- * athlete material so live and ghost resource disposal remains independent;
- * no network request, third-party bitmap, or texture-atlas contract is added.
+ * Deterministic, source-owned relief maps. Shared per (quality, role, kind) so
+ * live+ghost Ultra lanes do not rebuild 512² maps twice; refcounted dispose
+ * keeps ownership correct when a lane is released or re-styled.
+ * No network request, third-party bitmap, or texture-atlas contract is added.
  */
+type SharedDetailMapKey = string;
+
+const sharedDetailMaps = new Map<
+  SharedDetailMapKey,
+  { readonly texture: THREE.DataTexture; refCount: number }
+>();
+
+function sharedDetailMapKey(
+  quality: RenderQuality,
+  role: ReplayV4SurfaceRole,
+  kind: SurfaceDetailMapKind,
+): SharedDetailMapKey {
+  return `${quality}|${role}|${kind}`;
+}
+
+function retainSharedDetailMap(
+  quality: RenderQuality,
+  role: ReplayV4SurfaceRole,
+  kind: SurfaceDetailMapKind,
+  strength: number,
+  size: number,
+): THREE.DataTexture {
+  const key = sharedDetailMapKey(quality, role, kind);
+  const existing = sharedDetailMaps.get(key);
+  if (existing) {
+    existing.refCount += 1;
+    return existing.texture;
+  }
+  const texture = createSurfaceDetailMap(role, kind, strength, size);
+  texture.userData.replayV4SharedDetailMapKey = key;
+  sharedDetailMaps.set(key, { texture, refCount: 1 });
+  return texture;
+}
+
+function releaseDetailMap(map: THREE.Texture): void {
+  const key = map.userData.replayV4SharedDetailMapKey;
+  if (typeof key !== "string") {
+    map.dispose();
+    return;
+  }
+  const entry = sharedDetailMaps.get(key);
+  if (!entry) return;
+  // Keep shared maps alive for the process lifetime so live+ghost restyles and
+  // quality switches reuse Ultra 512² maps without rebuilding or double-free.
+  entry.refCount = Math.max(0, entry.refCount - 1);
+}
+
 function detailSample(role: ReplayV4SurfaceRole, x: number, y: number): number {
   const grain = ((x * 29 + y * 17 + x * y * 7) % 17) - 8;
   const stripe = Math.sin((x + y * 0.24) * Math.PI * 0.72);
@@ -682,8 +738,6 @@ function detailSample(role: ReplayV4SurfaceRole, x: number, y: number): number {
       return 126 + grain * 0.22;
   }
 }
-
-type SurfaceDetailMapKind = "albedo" | "bump" | "normal" | "roughness";
 
 function detailStrengthNorm(strength: number): number {
   return THREE.MathUtils.clamp(strength / QUALITY_DETAIL_STRENGTH_PEAK, 0, 1);
@@ -853,12 +907,12 @@ function applySurfaceQuality(
           ? [0, 0.04, 0.1, 0.18][qualityStep]!
           : 0;
   material.anisotropyRotation = role === "hair" ? Math.PI * 0.5 : 0;
-  // Each lane owns its generated maps. Release only those maps before a
-  // quality change, so future authored source textures remain template-owned.
+  // Release previous maps (shared maps are refcounted). Authored source
+  // textures remain template-owned and are never listed here.
   const priorMaps = material.userData.replayV4GeneratedDetailMaps;
   if (Array.isArray(priorMaps)) {
     for (const map of priorMaps) {
-      if (map instanceof THREE.Texture) map.dispose();
+      if (map instanceof THREE.Texture) releaseDetailMap(map);
     }
   }
   material.map = null;
@@ -870,10 +924,10 @@ function applySurfaceQuality(
   const textureSize = QUALITY_DETAIL_TEXTURE_SIZE[quality];
   material.bumpScale = strength;
   if (hasUv && strength > 0) {
-    const albedo = createSurfaceDetailMap(role, "albedo", strength, textureSize);
-    const bump = createSurfaceDetailMap(role, "bump", strength, textureSize);
-    const normal = createSurfaceDetailMap(role, "normal", strength, textureSize);
-    const roughness = createSurfaceDetailMap(role, "roughness", strength, textureSize);
+    const albedo = retainSharedDetailMap(quality, role, "albedo", strength, textureSize);
+    const bump = retainSharedDetailMap(quality, role, "bump", strength, textureSize);
+    const normal = retainSharedDetailMap(quality, role, "normal", strength, textureSize);
+    const roughness = retainSharedDetailMap(quality, role, "roughness", strength, textureSize);
     material.map = albedo;
     material.bumpMap = bump;
     material.normalMap = normal;

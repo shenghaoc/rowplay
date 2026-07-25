@@ -1918,8 +1918,9 @@ describe("CourseRenderer3D", () => {
       expect(medium.jerseyNormalScale).toBeLessThan(high.jerseyNormalScale);
       expect(high.jerseyNormalScale).toBeLessThan(ultra.jerseyNormalScale);
       expect(low.jerseyDetailResolution).toBe(0);
-      expect(medium.jerseyDetailResolution).toBeLessThan(high.jerseyDetailResolution);
-      expect(high.jerseyDetailResolution).toBeLessThan(ultra.jerseyDetailResolution);
+      expect(medium.jerseyDetailResolution).toBe(128);
+      expect(high.jerseyDetailResolution).toBe(256);
+      expect(ultra.jerseyDetailResolution).toBe(512);
       expect(low.vertexCount).toBe(ultra.vertexCount);
       expect(low.indexCount).toBe(ultra.indexCount);
     });
@@ -2358,6 +2359,23 @@ describe("CourseRenderer3D", () => {
                 point.distanceTo(torsoCenter),
                 `${side} ${part} torso clearance at ${cycle}`,
               ).toBeGreaterThan(part === "palm" ? 0.14 : part === "elbow" ? 0.18 : 0.13);
+            }
+            // True finish window (drive end 0.38): palms stay chest-level on
+            // the grip — never hauled aft past the hips through the torso.
+            if (cycle >= 0.36 && cycle <= 0.4) {
+              const athlete = sceneObject(renderer, "rower-athlete");
+              const elbowLocal = athlete.worldToLocal(elbow.clone());
+              const palmLocal = athlete.worldToLocal(palm.clone());
+              const hipsLocal = athlete.worldToLocal(hips.clone());
+              expect(
+                palmLocal.z,
+                `${side} V4 palm stays chest-level vs elbow at finish ${cycle}`,
+              ).toBeGreaterThan(elbowLocal.z - 0.08);
+              // Handle finishes near the lower ribs/chest, not behind the hips.
+              expect(
+                palmLocal.z,
+                `${side} V4 palm not hauled behind hips at finish ${cycle}`,
+              ).toBeGreaterThan(hipsLocal.z - 0.12);
             }
             const prior = previousPalms.get(side);
             if (prior) {

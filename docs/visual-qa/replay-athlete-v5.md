@@ -67,16 +67,21 @@ runtime image request, scan, likeness, or undocumented download.
 
 ## Sealed production inventory
 
+Binary identity is sealed in `static/replay-assets/rowplay-athlete-v4.contract.json`.
+Refresh this table only after `vp run build:replay-rig-v4-contract` on the same
+artifacts (do not hand-edit digests).
+
 | Artifact                           |      Bytes | SHA-256                                                            |
 | ---------------------------------- | ---------: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.glb`           |  5,059,344 | `6cb07263ebeed58750c5d7c52b34361b333b008fb1945ee68baec525643cae3d` |
-| `rowplay-athlete-v4.usdz`          | 11,800,039 | `53dc821186fc6f3311e3633f1e4373226205228c0a5188fc8d54729ee64efc9c` |
-| `rowplay-athlete-v4.contract.json` |     12,720 | `99b0b2a5cba35b13b210122f2a68e93bb5fc7b2f0cda5700d443ef995ba5ba44` |
+| `rowplay-athlete-v4.glb`           |  5,059,340 | `a9641ad0d443ccf83fe81d5458e9d8b32712e3eecebaebeba403d9df8a9c0b91` |
+| `rowplay-athlete-v4.usdz`          | 11,800,036 | `a51e0a6cffaafc2b88f7edae341629206f25c05e64c154704793d749d0f73f88` |
+| `rowplay-athlete-v4.contract.json` |     12,727 | `c692216c542b634191321db5d509b2510dfbc4c27734b6b10a979c7405f418c6` |
 
 The GLB contains one indexed `SkinnedMesh`, 64,200 vertices, 106,256 triangles,
 28 deliberate topology components, one continuous human core, one skin, one
 portable vertex-colour material, 19 semantic bones, and four visual-only helper
-bones. The validator rejects a body assembled from disconnected limb islands.
+bones (`v4LeftFingers`, `v4LeftThumb`, `v4RightFingers`, `v4RightThumb`). The
+validator rejects a body assembled from disconnected limb islands.
 
 ## Materials and quality tiers
 
@@ -99,10 +104,22 @@ compute.
 
 ## Exact in-app evidence
 
-The acceptance set is
+### Surface / materials acceptance (`a56460b`)
+
+The surface, face, kit, and quality-tier acceptance set is
 [`2026-07-25-a56460b`](athlete-v5/in-app/2026-07-25-a56460b/manifest.json),
 captured from implementation commit
 `a56460b40d9611ee8319ed1566bf62b75ad8dfaa`.
+
+### Motion / grip follow-up (`be0886a`+)
+
+After that capture, `be0886a` re-authored the RowErg finish (hands to lower
+chest, not behind the back), strengthened multi-axis finger/thumb grip curl,
+and re-oriented row/ski/bike terminal hands toward equipment. Those changes
+are sealed into the production GLB/USDZ/contract and covered by unit tests;
+the stills/cycles below remain **surface and contact geometry** evidence and
+are not re-shot as finish/grip motion proof. Re-capture when hardware WebGPU
+evidence is next required for a release.
 
 The primary matrix is the
 [six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):

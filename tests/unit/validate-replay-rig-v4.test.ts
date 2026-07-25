@@ -36,6 +36,27 @@ function installFileReaderShim(): void {
 }
 
 describe("V4 GLB build validator", () => {
+  it("validates the checked-in production athlete GLB with four finger helpers", async () => {
+    const { stdout } = await execFileAsync(process.execPath, [
+      "scripts/validate-replay-rig-v4.mjs",
+      "static/replay-assets/rowplay-athlete-v4.glb",
+    ]);
+    expect(stdout).toContain("23 bones (4 helpers)");
+    expect(stdout).toContain("3 clips");
+    // Production grip helpers must be present by exact name.
+    const contract = await import(
+      "../../static/replay-assets/rowplay-athlete-v4.contract.json",
+      { with: { type: "json" } }
+    );
+    const helpers = contract.default?.bones?.helperNames ?? contract.bones?.helperNames;
+    expect(helpers).toEqual([
+      "v4LeftFingers",
+      "v4LeftThumb",
+      "v4RightFingers",
+      "v4RightThumb",
+    ]);
+  });
+
   it("accepts a skinned visual helper while retaining semantic-only animation", async () => {
     installFileReaderShim();
     const directory = await mkdtemp(join(tmpdir(), "rowplay-v4-helper-validator-"));

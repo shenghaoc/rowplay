@@ -1228,16 +1228,19 @@ function createSportClip(
 
 /**
  * Concept2 / sculling-style row cycle authored from technique sequencing:
- * catch → leg drive (arms DEAD STRAIGHT) → body open (arms still straight) →
+ * catch → leg drive (arms near-straight) → body open (arms still near-straight) →
  * arm draw begins → finish (hands to lower chest/ribs, elbows tucked) →
  * hands-away → body-over → slide.
  *
- * CRITICAL: Real rowing sequencing is legs → body → arms. The arms must stay
- * completely straight (forearm near zero) through the entire leg drive AND the
- * body swing. Elbow bend begins ONLY after the body has opened past ~80%.
- * At the finish, hands draw *to the lower chest* (British Rowing / Concept2 /
- * sculling coaching) — never hauled through the torso behind the back.
- * This eliminates the "premature draw" and the illegal behind-the-back finish.
+ * CRITICAL: Real rowing sequencing is legs → body → arms. Forearms stay near-
+ * straight (a few degrees of soft flex) through leg drive and body open.
+ * Elbow flexion begins near drive fraction ~0.30 (after body-open ~0.26), not
+ * at catch. At the finish (drive end 0.38), hands draw *to the lower chest*
+ * (British Rowing / Concept2 / sculling coaching) — never hauled through the
+ * torso behind the back.
+ *
+ * Phase landmarks in V4_PHASE_SCHEMAS are semantic seek anchors and need not
+ * match every keyframe label time exactly.
  *
  * 14-key clip for smoother interpolation across transition points.
  *
@@ -1248,6 +1251,7 @@ function createSportClip(
 function createRowCycleClip(): THREE.AnimationClip {
   // 14 keyframes: catch, early-leg, mid-leg, late-leg, body-open, arm-draw-begin,
   // arm-draw-mid, finish, hands-away, arms-extend, body-over, mid-slide, late-slide, loop
+  // Times are clip seconds; landmarks (drive end 0.38, etc.) are seek anchors.
   const times = [
     0, 0.06, 0.12, 0.2, 0.26, 0.3, 0.34, 0.38, 0.48, 0.56, 0.66, 0.78, 0.9, 1,
   ] as const;

@@ -11,6 +11,8 @@ import {
 } from "./renderer3dV4Assets";
 import {
   installReplayV4MotionController,
+  REPLAY_V4_HAND_HELPER_NAMES,
+  REPLAY_V4_QUALITY_DETAIL_TEXTURE_SIZE,
   type ReplayV4ContactTargets,
   type ReplayV4MotionController,
 } from "./renderer3dV4Motion";
@@ -18,7 +20,8 @@ import {
 type TestLane = {
   readonly scene: THREE.Group;
   readonly parent: THREE.Group;
-  readonly instance: ReplayV4AthleteInstance;
+  /** Mutable so tests can swap in UV/helper variants without rebuilding the scene graph. */
+  instance: ReplayV4AthleteInstance;
   readonly targets: ReplayV4ContactTargets;
   readonly athleteFallback: THREE.Object3D;
   readonly initiallyHiddenFallback: THREE.Object3D;
@@ -124,9 +127,13 @@ function sportClip(sport: Sport): THREE.AnimationClip {
   ]);
 }
 
-function createInstance(): ReplayV4AthleteInstance {
+function createInstance(options?: {
+  readonly withHandHelpers?: boolean;
+  readonly withUv?: boolean;
+}): ReplayV4AthleteInstance {
   const root = new THREE.Group();
   const bones = {} as Record<ReplayV4BoneName, THREE.Bone>;
+  const allBones: THREE.Bone[] = [];
   for (const definition of BONE_DEFINITIONS) {
     const bone = new THREE.Bone();
     bone.name = definition.name;
@@ -134,6 +141,17 @@ function createInstance(): ReplayV4AthleteInstance {
     bones[definition.name] = bone;
     const parent = definition.parent ? bones[definition.parent] : root;
     parent.add(bone);
+    allBones.push(bone);
+  }
+  if (options?.withHandHelpers) {
+    for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
+      const helper = new THREE.Bone();
+      helper.name = name;
+      helper.position.set(name.includes("Thumb") ? 0.02 : 0.04, 0, 0.01);
+      const parentName = name.includes("Left") ? "v4LeftHand" : "v4RightHand";
+      bones[parentName]!.add(helper);
+      allBones.push(helper);
+    }
   }
   root.updateMatrixWorld(true);
 
@@ -143,6 +161,9 @@ function createInstance(): ReplayV4AthleteInstance {
     new THREE.Float32BufferAttribute([-0.05, 1, 0, 0.05, 1, 0, 0, 1.1, 0], 3),
   );
   geometry.setAttribute("normal", new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+  if (options?.withUv) {
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 0.5, 1], 2));
+  }
   geometry.setAttribute(
     "skinIndex",
     new THREE.Uint16BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4),
@@ -152,10 +173,14 @@ function createInstance(): ReplayV4AthleteInstance {
     new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4),
   );
   geometry.setIndex([0, 1, 2]);
-  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true });
+  const material = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    vertexColors: true,
+  });
+  material.userData.replayV4SurfaceRole = "jersey";
   const mesh = new THREE.SkinnedMesh(geometry, material);
   mesh.name = "v4Athlete";
-  const skeleton = new THREE.Skeleton(REPLAY_V4_BONE_NAMES.map((name) => bones[name]));
+  const skeleton = new THREE.Skeleton(allBones);
   mesh.bind(skeleton);
   root.add(mesh);
   root.updateMatrixWorld(true);
@@ -757,6 +782,127 @@ describe("V4 motion determinism and fallback safety", () => {
       expect(lane.initiallyHiddenFallback.visible).toBe(false);
       expect(lane.headband.visible).toBe(true);
       expect(lane.equipment.visible).toBe(true);
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
+  it("curls production finger helpers after contact without breaking palm lock", () => {
+    const driveEnd: Record<"rower" | "skierg" | "bike", number> = {
+      rower: 0.38,
+      skierg: 0.34,
+      bike: 0.5,
+    };
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const lane = createLane();
+      // Swap in an instance that carries the production grip helpers.
+      disposeLane(lane);
+      const instance = createInstance({ withHandHelpers: true });
+      lane.instance = instance;
+      lane.parent.add(instance.root);
+      const controller = installReplayV4MotionController({
+        sport,
+        parent: lane.parent,
+        instance,
+        targets: lane.targets,
+        quality: "medium",
+        diagnosticMode: "clip-pelvis",
+      });
+      try {
+        for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
+          expect(instance.skeleton.getBoneByName(name), `${sport} ${name}`).toBeTruthy();
+        }
+        const rest = new Map(
+          REPLAY_V4_HAND_HELPER_NAMES.map((name) => {
+            const bone = instance.skeleton.getBoneByName(name)!;
+            return [name, bone.quaternion.clone()] as const;
+          }),
+        );
+        const cycleFrac = driveEnd[sport] * 0.9;
+        // Align pelvis from the clip, place reachable targets, then full contact+curl.
+        expect(controller?.update({ phase: 0, cycleFrac, driveFrac: driveEnd[sport] })).toBe(
+          true,
+        );
+        placeTargetsNearClipEffectors(lane);
+        controller?.setDiagnosticMode("full");
+        expect(controller?.update({ phase: 0, cycleFrac, driveFrac: driveEnd[sport] })).toBe(
+          true,
+        );
+        for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
+          const bone = instance.skeleton.getBoneByName(name)!;
+          const before = rest.get(name)!;
+          const delta = bone.quaternion.angleTo(before);
+          expect(delta, `${sport} ${name} curl after contact`).toBeGreaterThan(0.5);
+          expect(bone.quaternion.toArray().every(Number.isFinite)).toBe(true);
+        }
+        // Palm contact residual must still close after curl.
+        for (const side of ["leftHand", "rightHand"] as const) {
+          const metric = instance.effectors[side];
+          const palm = instance.bones[metric.bone].localToWorld(
+            new THREE.Vector3().fromArray(metric.contactOffset),
+          );
+          const target = lane.targets[side].getWorldPosition(new THREE.Vector3());
+          expect(palm.distanceTo(target), `${sport} ${side} residual after curl`).toBeLessThan(
+            0.05,
+          );
+        }
+      } finally {
+        disposeLane(lane, controller);
+      }
+    }
+  });
+
+  it("pins athlete detail map sizes to the sealed 0/128/256/512 ladder", () => {
+    expect(REPLAY_V4_QUALITY_DETAIL_TEXTURE_SIZE).toEqual({
+      low: 0,
+      medium: 128,
+      high: 256,
+      ultra: 512,
+    });
+    const lane = createLane();
+    // UV-enabled jersey material so quality styling attaches shared maps.
+    disposeLane(lane);
+    lane.instance = createInstance({ withUv: true });
+    lane.parent.add(lane.instance.root);
+    const controller = installReplayV4MotionController({
+      sport: "rower",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      quality: "ultra",
+    });
+    try {
+      expect(controller).toBeTruthy();
+      const material = (
+        Array.isArray(lane.instance.mesh.material)
+          ? lane.instance.mesh.material[0]
+          : lane.instance.mesh.material
+      ) as THREE.MeshPhysicalMaterial;
+      expect(material.userData.replayV4SurfaceDetailResolution).toBe(512);
+      expect(material.map).toBeTruthy();
+      expect(material.map!.image?.width ?? material.map!.source?.data?.width).toBe(512);
+      // Second install at Ultra reuses the shared map identity.
+      const ghost = createInstance({ withUv: true });
+      lane.parent.add(ghost.root);
+      const ghostController = installReplayV4MotionController({
+        sport: "rower",
+        parent: lane.parent,
+        instance: ghost,
+        targets: lane.targets,
+        quality: "ultra",
+        opacity: 0.5,
+      });
+      try {
+        const ghostMaterial = (
+          Array.isArray(ghost.mesh.material) ? ghost.mesh.material[0] : ghost.mesh.material
+        ) as THREE.MeshPhysicalMaterial;
+        expect(ghostMaterial.map).toBe(material.map);
+      } finally {
+        ghostController?.dispose();
+        ghost.mixer.stopAllAction();
+        ghost.skeleton.dispose();
+        ghost.mesh.geometry.dispose();
+      }
     } finally {
       disposeLane(lane, controller);
     }
