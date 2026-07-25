@@ -536,21 +536,25 @@ describe("CourseRenderer3D", () => {
   it("places venue dressing in authored sectors with deliberate open vistas", () => {
     const rower = new CourseRenderer3D(makeHost(), "low", "rower");
     const rowPines = sceneObject(rower, "environment:rower:pines") as THREE.InstancedMesh;
-    // Clumped stands jitter within authored sectors; allow a small margin so
-    // the tree line can break regularity without leaving the valley shoulders.
+    // Pines grow only on authored woodland land, not the campus or open vista.
     expect(
       instanceAngles(rowPines).every(
         (angle) =>
-          angleInSector(angle, deg(-50), deg(210)) || angleInSector(angle, deg(165), deg(115)),
+          angleInSector(angle, deg(-55), deg(65)) ||
+          angleInSector(angle, deg(55), deg(115)) ||
+          angleInSector(angle, deg(180), deg(125)),
       ),
     ).toBe(true);
     expect(getScene(rower).getObjectByName("environment:rower:river-banks")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:reed-beds")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:basin-center")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:basin-deep")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:campus")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:woodland")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:valley-ridges")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:forest-belt")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:river-island")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:ridge-far")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:wooded-shoreline")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:river-island")).toBeUndefined();
+    expect(getScene(rower).getObjectByName("environment:rower:forest-belt")).toBeUndefined();
     for (const landmark of [
       "environment:rower:regatta-pavilion",
       "environment:rower:boathouse",
@@ -617,10 +621,11 @@ describe("CourseRenderer3D", () => {
     };
     expect(internals.renderer.toneMapping).toBe(THREE.ACESFilmicToneMapping);
     expect(internals.renderer.toneMappingExposure).toBeGreaterThan(1);
-    expect((internals.scene.background as THREE.Color).getHex()).toBe(0xf6d9a4);
+    expect((internals.scene.background as THREE.Color).getHex()).toBe(0xf4d8a8);
     expect(internals.scene.fog).toBeInstanceOf(THREE.Fog);
-    expect((internals.scene.fog as THREE.Fog).near).toBeLessThan(40);
-    expect((internals.scene.fog as THREE.Fog).far).toBeLessThan(120);
+    // Honest air perspective only — place identity must not depend on near fog.
+    expect((internals.scene.fog as THREE.Fog).near).toBeGreaterThanOrEqual(50);
+    expect((internals.scene.fog as THREE.Fog).far).toBeGreaterThan(140);
     renderer.destroy();
   });
 
@@ -632,26 +637,17 @@ describe("CourseRenderer3D", () => {
     const lowPines = lowScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
     const ultraPines = ultraScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
 
-    expect(lowPines.count).toBe(42);
-    expect(ultraPines.count).toBe(148);
-    const lowForest = lowScene.getObjectByName(
-      "environment:rower:forest-belt",
-    ) as THREE.InstancedMesh;
-    const ultraForest = ultraScene.getObjectByName(
-      "environment:rower:forest-belt",
-    ) as THREE.InstancedMesh;
-    // Gap-culled forest belt keeps capacity but writes fewer living instances.
-    expect(lowForest.count).toBeGreaterThan(12);
-    expect(lowForest.count).toBeLessThanOrEqual(36);
-    expect(ultraForest.count).toBeGreaterThan(70);
-    expect(ultraForest.count).toBeLessThanOrEqual(128);
-    expect(ultraScene.getObjectByName("environment:rower:valley-haze")).toBeDefined();
-    expect(lowScene.getObjectByName("environment:rower:valley-haze")).toBeUndefined();
+    expect(lowPines.count).toBe(28);
+    expect(ultraPines.count).toBe(100);
     for (const scene of [lowScene, ultraScene]) {
       expect(scene.getObjectByName("environment:rower:sky")).toBeDefined();
       expect(scene.getObjectByName("environment:rower:horizon-mid")).toBeDefined();
+      expect(scene.getObjectByName("environment:rower:basin-center")).toBeDefined();
+      expect(scene.getObjectByName("environment:rower:campus")).toBeDefined();
       expect(scene.getObjectByName("lane")).toBeDefined();
     }
+    expect(lowScene.getObjectByName("environment:rower:start-pontoons")).toBeUndefined();
+    expect(ultraScene.getObjectByName("environment:rower:start-pontoons")).toBeDefined();
     low.destroy();
     ultra.destroy();
   });
@@ -668,6 +664,8 @@ describe("CourseRenderer3D", () => {
     expect(rowScenes[1].scene.getObjectByName("environment:rower:reflection-bands")).toBeDefined();
     expect(rowScenes[1].scene.getObjectByName("environment:rower:launch-dock")).toBeUndefined();
     expect(rowScenes[2].scene.getObjectByName("environment:rower:launch-dock")).toBeDefined();
+    expect(rowScenes[1].scene.getObjectByName("environment:rower:start-pontoons")).toBeDefined();
+    expect(rowScenes[0].scene.getObjectByName("environment:rower:start-pontoons")).toBeUndefined();
     expect(rowScenes[2].scene.getObjectByName("environment:rower:sun-glints")).toBeUndefined();
     expect(rowScenes[3].scene.getObjectByName("environment:rower:sun-glints")).toBeDefined();
     expect(

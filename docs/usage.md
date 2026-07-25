@@ -214,10 +214,11 @@ V4 source and locally authored equipment; it adds no runtime download or
 undocumented third-party asset.
 
 Both views use complete sport-specific illustrative environments, not one
-generic floor with different colors. RowErg joins layered water to a full river
-valley — tall wooded ridges, a continuous forest belt, raised bank terraces,
-mid-basin island, wetland reeds, docks, and regatta architecture — rather than
-a thin green stripe behind the athlete; SkiErg joins groomed,
+generic floor with different colors. RowErg is a closed regatta basin: the
+racing ring and circle centre are one continuous lake (deeper open water inside
+the lanes, start pontoons in the centre), with authored land uses on shore —
+woodland banks, an open vista, and a single campus that owns dock, lawn, path,
+and buildings together — rather than scattered props or fog tricks; SkiErg joins groomed,
 blue-shadowed snow to a winter valley bowl, race fencing, snowbanks, evergreen,
 alpine, and Nordic-venue forms; BikeErg joins its asphalt circuit to a planted
 infield, service apron, tiered stands, roof structure, floodlights, urban dusk
@@ -252,11 +253,9 @@ relevant equipment targets through the post-clip contact pass — oar handles an
 foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals. The larger
 3D stage and rear three-quarter chase camera keep paired limbs visible; sport-
 and viewport-aware framing, speed-aware follow, and camera-relative fill light
-keep the athlete readable around the full course. RowErg uses a slightly lower,
-longer chase and nearer fog so the far bank softens into late-afternoon haze
-instead of drawing a sharp circular toy course. Environment contrast and
-detail stay subordinate to the figure, equipment contacts, ghost comparison,
-and telemetry.
+keep the athlete readable around the full course. RowErg uses a slightly lower, longer chase that keeps the basin centre and
+shore campus in the same readable place. Environment contrast and detail stay
+subordinate to the figure, equipment contacts, ghost comparison, and telemetry.
 
 The contact pass does not move or resize equipment to rescue an authored pose.
 It rotates each reachable two-link limb over its anatomical envelope, uses the

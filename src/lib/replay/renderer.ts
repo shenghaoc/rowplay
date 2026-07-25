@@ -2503,20 +2503,6 @@ export class CourseRenderer implements ReplayRenderer {
       ctx.stroke();
     }
 
-    // Mid-basin island so the open water still has a place cue.
-    const islandX = w * 0.58;
-    ctx.fillStyle = palette.structureShade;
-    ctx.beginPath();
-    ctx.ellipse(islandX, horizon + 3, w * 0.055, h * 0.012, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = palette.foliageNear;
-    ctx.beginPath();
-    ctx.moveTo(islandX - 10, horizon + 1);
-    ctx.quadraticCurveTo(islandX - 2, horizon - 14, islandX + 4, horizon - 10);
-    ctx.quadraticCurveTo(islandX + 12, horizon - 4, islandX + 14, horizon + 2);
-    ctx.closePath();
-    ctx.fill();
-
     // Regatta pavilion, dock and timing tower establish a credible venue.
     // Unique architecture stays fixed. Only genuinely repeating shoreline and
     // material bands use modulo parallax, so a long workout cannot teleport a
@@ -2567,10 +2553,8 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.fillStyle = palette.marker;
     ctx.fillRect(towerX + 6, horizon - 64, 14, 3);
 
-    // Deep regatta basin with a cooler, richer bottom depth. The old 3-stop
-    // gradient turned the entire lower canvas into one uniform teal slab;
-    // 5 stops give a visible thermocline and keep the surface distinct from
-    // the deep water beneath both athlete lanes.
+    // One continuous lake body. Vertical thermocline plus a radial darkening
+    // toward mid-basin so the course centre is open water, not empty stage.
     const water = ctx.createLinearGradient(0, horizon, 0, h);
     water.addColorStop(0, palette.groundTop);
     water.addColorStop(0.18, withAlpha(palette.groundTop, 0.78));
@@ -2579,6 +2563,33 @@ export class CourseRenderer implements ReplayRenderer {
     water.addColorStop(1, palette.groundBottom);
     ctx.fillStyle = water;
     ctx.fillRect(0, horizon, w, h - horizon);
+    const basinDeep = ctx.createRadialGradient(
+      w * 0.5,
+      horizon + h * 0.22,
+      h * 0.02,
+      w * 0.5,
+      horizon + h * 0.28,
+      h * 0.42,
+    );
+    basinDeep.addColorStop(0, withAlpha(palette.groundBottom, this.darkTheme ? 0.55 : 0.38));
+    basinDeep.addColorStop(0.55, withAlpha(palette.groundMid, 0.18));
+    basinDeep.addColorStop(1, withAlpha(palette.groundBottom, 0));
+    ctx.fillStyle = basinDeep;
+    ctx.fillRect(0, horizon, w, h - horizon);
+    // Start pontoons in open water, aligned under the campus — centre furniture
+    // that belongs to a real course, not a floating decorative island.
+    const pontoonY = horizon + h * 0.09;
+    ctx.fillStyle = palette.structureShade;
+    roundRect(ctx, w * 0.42, pontoonY, w * 0.07, 3.2, 1);
+    ctx.fill();
+    roundRect(ctx, w * 0.52, pontoonY + 5, w * 0.06, 3, 1);
+    ctx.fill();
+    ctx.strokeStyle = withAlpha(palette.structureLight, 0.35);
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.18, horizon + 2);
+    ctx.lineTo(w * 0.45, pontoonY + 1);
+    ctx.stroke();
     // Bright surface meniscus — stronger than before so the waterline reads
     // instantly across the full course width, even on small screens.
     ctx.fillStyle = withAlpha(palette.surfaceHighlight, 0.44);
