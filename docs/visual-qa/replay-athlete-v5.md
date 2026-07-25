@@ -292,8 +292,22 @@ constant to 1.5 mm across the whole crank cycle, because the authored BikeErg
 clip never rotates the pelvis into a seated pose. What the saddle is placed
 under is therefore a standing figure's gluteal fold, and raising it without a
 genuinely seated clip would simply drive the buttock through the cushion.
-Closing that gap means authoring pelvic rotation into the clip, which is PR
-#171's frozen technique timing and deliberately out of scope here.
+
+The obvious lever — the `seat_channel` lift in
+`build-replay-athlete-v4-blender.py`, which exists to flatten the seated
+contact patch — **does not reach it.** Its band is centred on the hip at
+y = 1.01 with a half-width of 0.16, so it covers y ∈ [0.85, 1.17], while the
+gluteal fold that actually contacts the saddle is at y ≈ 0.82. Raising the lift
+from 0.075 to 0.115 and rebuilding produced a sit offset identical to four
+decimal places across all eight sampled phases, because no contact vertex is
+inside the band. That was verified and reverted; the shipped GLB hash is
+unchanged. It also means an earlier attempt on this branch to fix the seating
+by raising the same constant to 0.14 would have had no effect either.
+
+Closing the gap properly needs either the channel band re-centred on the fold —
+which reshapes the glute for the standing SkiErg silhouette too, so it needs its
+own QA pass — or genuine pelvic rotation authored into the bike clip, which is
+PR #171's frozen technique timing. Both are deliberately out of scope here.
 
 The primary matrix is the
 [six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):
