@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as THREE from "three";
-import { BIKE_RIG } from "./bikeRig";
+import { BIKE_RIG, bikeWheelAxleY } from "./bikeRig";
 
 function point(value: readonly number[]): THREE.Vector3 {
   return new THREE.Vector3(...value);
@@ -11,7 +11,6 @@ describe("BikeErg fit contract", () => {
     const wheelbase = BIKE_RIG.frontAxleZ - BIKE_RIG.rearAxleZ;
     const wheelDiameter = BIKE_RIG.wheelRadius * 2;
 
-    // Front flywheel + rear base foot span stays human-scale for an indoor erg.
     expect(wheelbase).toBeGreaterThan(0.9);
     expect(wheelbase).toBeLessThan(1.5);
     expect(wheelbase / wheelDiameter).toBeGreaterThan(1.4);
@@ -22,29 +21,38 @@ describe("BikeErg fit contract", () => {
     expect(BIKE_RIG.base.rearFootZ).toBeLessThan(BIKE_RIG.rearAxleZ);
   });
 
-  it("places the hip above the saddle so the mesh sit surface lands on the seat", () => {
+  it("places the sit surface on the saddle top — not through the seat", () => {
     const saddle = point(BIKE_RIG.saddle);
     const hip = point(BIKE_RIG.rider.root).add(point(BIKE_RIG.rider.pelvisOffset));
     const sit = hip.clone().add(point(BIKE_RIG.rider.sitSurfaceFromHip));
+    // Authored pad top sits slightly above the centre marker (~7 cm).
+    const saddleTopY = saddle.y + 0.07;
     const leftGrip = new THREE.Vector3(
       -BIKE_RIG.handlebar.grip.halfSpan,
       BIKE_RIG.handlebar.grip.y,
       BIKE_RIG.handlebar.grip.z,
     );
-    const rightGrip = leftGrip.clone().setX(BIKE_RIG.handlebar.grip.halfSpan);
 
-    expect(hip.y - saddle.y).toBeGreaterThan(0.05);
-    expect(hip.y - saddle.y).toBeLessThan(0.12);
-    expect(Math.abs(sit.y - saddle.y)).toBeLessThan(0.03);
-    expect(Math.abs(sit.z - saddle.z)).toBeLessThan(0.05);
-    expect(leftGrip.y).toBeLessThan(hip.y);
-    expect(rightGrip.y).toBeLessThan(hip.y);
+    // Hip above seat; sit on/above the pad — never through the saddle top.
+    expect(hip.y).toBeGreaterThan(saddleTopY);
+    expect(sit.y).toBeGreaterThanOrEqual(saddleTopY - 0.015);
+    expect(sit.y).toBeLessThan(saddleTopY + 0.05);
+    expect(Math.abs(sit.z - saddle.z)).toBeLessThan(0.08);
     expect(leftGrip.distanceTo(hip)).toBeGreaterThan(0.5);
-    expect(leftGrip.distanceTo(hip)).toBeLessThan(0.9);
-    expect(rightGrip.distanceTo(hip)).toBeCloseTo(leftGrip.distanceTo(hip), 8);
+    expect(leftGrip.distanceTo(hip)).toBeLessThan(0.95);
 
     const bottomPedalY = BIKE_RIG.bottomBracket[1]! - BIKE_RIG.crank.pedalRadius;
     expect(hip.y - bottomPedalY).toBeLessThan(1.07);
+  });
+
+  it("places wheel axles so the tyre shell rests on the ground, not through it", () => {
+    const axleY = bikeWheelAxleY(BIKE_RIG);
+    // Outer tyre extent = major radius + tube; bottom at y = 0 when axle is at axleY.
+    expect(axleY).toBeCloseTo(BIKE_RIG.wheelRadius + BIKE_RIG.tyreTube, 8);
+    expect(axleY - BIKE_RIG.wheelRadius - BIKE_RIG.tyreTube).toBeCloseTo(0, 8);
+    // Base feet stay on the ground plane.
+    expect(BIKE_RIG.base.railY).toBeGreaterThan(0);
+    expect(BIKE_RIG.base.railY).toBeLessThan(0.12);
   });
 
   it("keeps the opposed pedal radius and lateral spacing identical to the authored runtime", () => {

@@ -17,7 +17,7 @@ import {
   SKI_POLE_APPROACH_START_CYCLE,
   type BikeMotionGraph,
 } from "./motionGraph";
-import { BIKE_RIG } from "./bikeRig";
+import { BIKE_RIG, bikeWheelAxleY } from "./bikeRig";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import { METERS_PER_CYCLE, ParticlePool, PerfGovernor, clampDt, dampFactor } from "./motion";
@@ -2946,12 +2946,19 @@ function makeBikeAvatar(
     "equipment-trim": saddleMaterial,
   });
   const wheelR = BIKE_RIG.wheelRadius;
+  const tyreTube = BIKE_RIG.tyreTube;
+  // Axle height includes tyre tube so the outer shell rests on y = 0 — never
+  // through the ground (穿模).
+  const wheelAxleY = bikeWheelAxleY(BIKE_RIG);
   const wheels: THREE.Group[] = [];
   for (const z of [BIKE_RIG.frontAxleZ, BIKE_RIG.rearAxleZ]) {
     const wheel = new THREE.Group();
     wheel.name = z > 0 ? "bike-wheel-front" : "bike-wheel-rear";
     const tyre = setReplayAssetSlot(
-      new THREE.Mesh(new THREE.TorusGeometry(wheelR, 0.06, eqCylSegs, eqCylSegs * 2), tyreMaterial),
+      new THREE.Mesh(
+        new THREE.TorusGeometry(wheelR, tyreTube, eqCylSegs, eqCylSegs * 2),
+        tyreMaterial,
+      ),
       "equipment:bike:tyre",
     );
     tyre.rotation.y = Math.PI / 2; // axle along X (perpendicular to travel)
@@ -2980,7 +2987,7 @@ function makeBikeAvatar(
     setReplayAssetTemplateAnchor(wheelVisual, "equipment:bike:wheel-assembly", {
       fallback: wheelFallback,
     });
-    wheel.position.set(0, wheelR, z);
+    wheel.position.set(0, wheelAxleY, z);
     group.add(wheel);
     wheels.push(wheel);
   }

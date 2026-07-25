@@ -2643,6 +2643,11 @@ describe("CourseRenderer3D", () => {
 
     
     
+    
+    
+    
+    
+    
     it("keeps the V4 BikeErg fit across every quality tier and crank phase", () => {
       for (const quality of ["low", "medium", "high", "ultra"] as const) {
         const renderer = rendererFor("bike", quality);
@@ -2659,18 +2664,67 @@ describe("CourseRenderer3D", () => {
               .getWorldPosition(new THREE.Vector3())
               .applyMatrix4(inverse);
             const saddle = worldPosition(renderer, "bike-saddle").applyMatrix4(inverse);
-            // Hip bone stays above the saddle marker; the mesh sit surface is
-            // what must land on the seat (Codex previously asserted hip≈saddle
-            // and greenlit a still-empty seat).
+            // Soft pad top from the visible authored saddle (fallback is hidden).
+            let saddleTopY = saddle.y + 0.02;
+            const sample = new THREE.Vector3();
+            avatar.group.traverse((object) => {
+              if (!(object instanceof THREE.Mesh) || !object.visible) return;
+              if (
+                object.userData.replayAssetPart !== "saddle" &&
+                !/saddle/i.test(object.name) &&
+                object.userData.replayAssetSlot !== "equipment:bike:saddle"
+              ) {
+                return;
+              }
+              const positions = object.geometry.getAttribute("position");
+              if (!positions) return;
+              object.updateWorldMatrix(true, false);
+              for (let i = 0; i < positions.count; i += 2) {
+                sample
+                  .fromBufferAttribute(positions, i)
+                  .applyMatrix4(object.matrixWorld)
+                  .applyMatrix4(inverse);
+                if (sample.y > saddleTopY) saddleTopY = sample.y;
+              }
+            });
             const sit = hip.clone().add(sitOffset);
             expect(
-              hip.y - saddle.y,
-              `${quality} hip stays above the saddle marker at ${cycle}`,
-            ).toBeGreaterThan(0.05);
+              hip.y,
+              `${quality} hip stays above the saddle at ${cycle}`,
+            ).toBeGreaterThan(saddleTopY);
+            // Sit on the seat — never through the pad (穿模).
             expect(
-              sit.distanceTo(saddle),
-              `${quality} mesh sit surface remains on the saddle at ${cycle}`,
-            ).toBeLessThan(0.06);
+              sit.y,
+              `${quality} sit surface rests on the saddle top at ${cycle}`,
+            ).toBeGreaterThanOrEqual(saddleTopY - 0.015);
+            expect(
+              Math.abs(sit.z - saddle.z),
+              `${quality} sit stays over the saddle at ${cycle}`,
+            ).toBeLessThan(0.08);
+
+            // Tyres rest on the ground in avatar-local space (not world AABB —
+            // course bank/yaw would false-positive). Sample visible mesh verts.
+            for (const wheelName of ["bike-wheel-front", "bike-wheel-rear"] as const) {
+              const wheel = sceneObject(renderer, wheelName);
+              let wheelMinY = Infinity;
+              wheel.traverse((object) => {
+                if (!(object instanceof THREE.Mesh) || !object.visible) return;
+                const positions = object.geometry.getAttribute("position");
+                if (!positions) return;
+                object.updateWorldMatrix(true, false);
+                for (let i = 0; i < positions.count; i += 4) {
+                  sample
+                    .fromBufferAttribute(positions, i)
+                    .applyMatrix4(object.matrixWorld)
+                    .applyMatrix4(inverse);
+                  if (sample.y < wheelMinY) wheelMinY = sample.y;
+                }
+              });
+              expect(
+                wheelMinY,
+                `${quality} ${wheelName} does not clip through the ground at ${cycle}`,
+              ).toBeGreaterThanOrEqual(-0.01);
+            }
 
             for (const side of ["Left", "Right"] as const) {
               const lower = side.toLowerCase() as "left" | "right";

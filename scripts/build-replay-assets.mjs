@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { BIKE_RIG } from "../src/lib/replay/bikeRig.js";
+import { BIKE_RIG, bikeWheelAxleY } from "../src/lib/replay/bikeRig.js";
 
 // v3 deliberately widens the asset contract from isolated replacement shells
 // to a small set of authored equipment assemblies.  Keeping this a new file
@@ -939,11 +939,13 @@ function skiAssemblyParts() {
  */
 function bikeWheelAssemblyParts() {
   const r = BIKE_RIG.wheelRadius;
-  // Outer cage ring reads as a fan shroud rather than a road tyre.
-  const tyre = bakeGeometry(aeroRingGeometry(r, 0.048, 48), {
+  const tube = BIKE_RIG.tyreTube;
+  // Outer cage ring — thickness matches BIKE_RIG.tyreTube so axle height
+  // `bikeWheelAxleY()` keeps the shell on the ground, not through it.
+  const tyre = bakeGeometry(aeroRingGeometry(r, tube, 48), {
     rotation: [0, Math.PI / 2, 0],
   });
-  const rim = bakeGeometry(aeroRingGeometry(r * 0.82, 0.028, 48), {
+  const rim = bakeGeometry(aeroRingGeometry(r * 0.82, tube * 0.5, 48), {
     rotation: [0, Math.PI / 2, 0],
   });
   const hub = bakeGeometry(new THREE.CylinderGeometry(0.06, 0.06, 0.14, 16), {
@@ -1004,8 +1006,9 @@ function bikeFrameAssemblyParts() {
   const seatCluster = [...BIKE_RIG.seatCluster];
   const headBottom = [...BIKE_RIG.headBottom];
   const headTop = [...BIKE_RIG.headTop];
-  const rearAxle = [0, BIKE_RIG.wheelRadius * 0.35, BIKE_RIG.rearAxleZ];
-  const frontAxle = [0, BIKE_RIG.wheelRadius, BIKE_RIG.frontAxleZ];
+  const wheelAxleY = bikeWheelAxleY(BIKE_RIG);
+  const rearAxle = [0, Math.max(0.08, BIKE_RIG.base.railY + 0.02), BIKE_RIG.rearAxleZ];
+  const frontAxle = [0, wheelAxleY, BIKE_RIG.frontAxleZ];
   const base = BIKE_RIG.base;
   const half = base.halfWidth;
 
