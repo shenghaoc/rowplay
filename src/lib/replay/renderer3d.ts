@@ -6381,6 +6381,13 @@ export class CourseRenderer3D implements ReplayRenderer {
       snowMat.map = this.makeSnowSurfaceTexture(this.cfg.environmentDetail);
       snowMat.needsUpdate = true;
     }
+    // Subtle blue-white emissive gives snow a crystalline light-scatter
+    // that reads as real wind-packed snow, not a white floor.
+    if (this.cfg.environmentDetail >= 2) {
+      snowMat.emissive = new THREE.Color(themed(0x1a2a38, 0x0a1828)("light"));
+      snowMat.emissiveIntensity = 0.12;
+      snowMat.needsUpdate = true;
+    }
     const centreSnow = new THREE.Mesh(
       this.track(new THREE.CircleGeometry(outerR - 1.0, this.cfg.laneSegments)),
       snowMat,
@@ -6550,6 +6557,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.addBikeInfieldFloor(group, outerR);
     this.addBikeSeating(group);
     this.addScoreboard(detailGroup, BIKE_SCOREBOARD);
+    this.addBikeCeilingBeams(group, outerR);
   }
 
     /**
@@ -6587,6 +6595,45 @@ export class CourseRenderer3D implements ReplayRenderer {
     centreCircle.rotation.x = -Math.PI / 2;
     centreCircle.position.y = 0.005;
     group.add(centreCircle);
+  }
+
+  /**
+   * Tiered spectator seating — the only architecture a velodrome needs
+   * Radial ceiling beams spanning from the arena centre outward — the
+   * distinctive roof structure that makes a velodrome read as a building.
+   */
+  private addBikeCeilingBeams(group: THREE.Group, outerR: number): void {
+    if (this.cfg.environmentDetail < 1) return;
+    const beamCount = [0, 12, 20, 32][this.cfg.environmentDetail];
+    const beamMat = this.environmentBasicMat(
+      "environment:bike:ceiling-beam-material",
+      themed(0x3a4458, 0x1e2838),
+      { side: THREE.DoubleSide, fog: true, transparent: true, opacity: 0.55 },
+    );
+    const beamGeo = this.track(new THREE.BoxGeometry(0.12, 0.08, outerR + 24));
+    const beams = new THREE.Group();
+    beams.name = "environment:bike:ceiling-beams";
+    for (let i = 0; i < beamCount; i++) {
+      const angle = (i / beamCount) * Math.PI * 2;
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.name = `environment:bike:ceiling-beam-${i + 1}`;
+      beam.position.set(0, 11.5, 0);
+      beam.rotation.set(0, angle, -0.15);
+      beams.add(beam);
+    }
+    group.add(beams);
+
+    // Ring beam connecting the radial trusses at their midpoints.
+    if (this.cfg.environmentDetail >= 2) {
+      const ringGeo = this.track(
+        new THREE.TorusGeometry(outerR + 10, 0.06, 8, 48),
+      );
+      const ring = new THREE.Mesh(ringGeo, beamMat);
+      ring.name = "environment:bike:ceiling-ring";
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 11.2;
+      group.add(ring);
+    }
   }
 
   /**
@@ -6949,7 +6996,9 @@ export class CourseRenderer3D implements ReplayRenderer {
           "/replay-assets/environments/snow-02/snow-normal-gl-512.jpg",
           [22, 22],
         );
-        groundMat.normalScale.set(0.16, 0.16);
+        // Stronger normals give snow a crystalline, wind-sculpted surface
+        // rather than a flat white floor.
+        groundMat.normalScale.set(0.35, 0.35);
       }
       groundMat.needsUpdate = true;
     }
@@ -7006,6 +7055,25 @@ export class CourseRenderer3D implements ReplayRenderer {
     ground.receiveShadow = this.cfg.shadows;
     this.groundMesh = ground;
     this.scene.add(ground);
+
+    // Rowing: a dark lake bed beneath the translucent water gives real depth.
+    // Without it the water looks like paint on a track, not a body of water.
+    if (this.sport === "rower") {
+      const bedGeo = new THREE.PlaneGeometry(260, 260);
+      const bedMat = new THREE.MeshStandardMaterial({
+        color: 0x0a2a30,
+        roughness: 0.95,
+        metalness: 0,
+        depthWrite: true,
+      });
+      bedMat.name = "environment:rower:lake-bed";
+      const bed = new THREE.Mesh(bedGeo, bedMat);
+      bed.rotation.x = -Math.PI / 2;
+      bed.position.y = -1.2;
+      bed.name = "environment:rower:lake-bed";
+      bed.receiveShadow = false;
+      this.scene.add(bed);
+    }
 
     this.buildEnvironment(innerR, outerR);
 
