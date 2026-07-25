@@ -548,13 +548,20 @@ describe("CourseRenderer3D", () => {
     expect(getScene(rower).getObjectByName("environment:rower:river-banks")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:reed-beds")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:basin-center")).toBeDefined();
-    expect(getScene(rower).getObjectByName("environment:rower:basin-deep")).toBeDefined();
+    // Centre is land (island park), not more water — stadium logic.
+    expect(getScene(rower).getObjectByName("environment:rower:island-lawn")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:island-beach")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:island-trees")).toBeDefined();
+    expect(getScene(rower).getObjectByName("environment:rower:basin-deep")).toBeUndefined();
     expect(getScene(rower).getObjectByName("environment:rower:campus")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:woodland")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:valley-ridges")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:wooded-shoreline")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:river-island")).toBeUndefined();
     expect(getScene(rower).getObjectByName("environment:rower:forest-belt")).toBeUndefined();
+    expect((getScene(rower).getObjectByName("environment:rower:infield") as THREE.Object3D).visible).toBe(
+      false,
+    );
     for (const landmark of [
       "environment:rower:regatta-pavilion",
       "environment:rower:boathouse",
@@ -572,7 +579,11 @@ describe("CourseRenderer3D", () => {
       ),
     ).toBe(true);
     expect(getScene(skier).getObjectByName("environment:skierg:bowl-center")).toBeDefined();
+    // Centre is stadium plaza (pave + turf), not a snow field.
     expect(getScene(skier).getObjectByName("environment:skierg:bowl-packed")).toBeDefined();
+    expect(getScene(skier).getObjectByName("environment:skierg:bowl-field")).toBeDefined();
+    expect(getScene(skier).getObjectByName("environment:skierg:plaza-boards")).toBeDefined();
+    expect(getScene(skier).getObjectByName("environment:skierg:bowl-track-1")).toBeUndefined();
     expect(getScene(skier).getObjectByName("environment:skierg:valley-bowl")).toBeDefined();
     expect(getScene(skier).getObjectByName("environment:skierg:course-fencing")).toBeDefined();
     expect(getScene(skier).getObjectByName("environment:skierg:timing-lodge")).toBeDefined();
@@ -603,6 +614,8 @@ describe("CourseRenderer3D", () => {
     expect(getScene(bike).getObjectByName("environment:bike:infield-park")).toBeDefined();
     expect(getScene(bike).getObjectByName("environment:bike:infield-grass")).toBeDefined();
     expect(getScene(bike).getObjectByName("environment:bike:infield-plaza")).toBeDefined();
+    expect(getScene(bike).getObjectByName("environment:bike:park-trees")).toBeDefined();
+    expect(getScene(bike).getObjectByName("environment:bike:planting-bed-1")).toBeDefined();
     // Bare infield disk is suppressed so the planted park owns the centre.
     expect((getScene(bike).getObjectByName("environment:bike:infield") as THREE.Object3D).visible).toBe(
       false,
@@ -650,8 +663,8 @@ describe("CourseRenderer3D", () => {
     const lowPines = lowScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
     const ultraPines = ultraScene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh;
 
-    expect(lowPines.count).toBe(28);
-    expect(ultraPines.count).toBe(100);
+    expect(lowPines.count).toBe(40);
+    expect(ultraPines.count).toBe(140);
     for (const scene of [lowScene, ultraScene]) {
       expect(scene.getObjectByName("environment:rower:sky")).toBeDefined();
       expect(scene.getObjectByName("environment:rower:horizon-mid")).toBeDefined();
