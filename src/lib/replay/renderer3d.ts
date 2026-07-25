@@ -5850,68 +5850,9 @@ export class CourseRenderer3D implements ReplayRenderer {
     beach.name = "environment:rower:island-beach";
     beach.rotation.x = -Math.PI / 2;
     beach.position.y = 0.04;
-    // Gentle land mound so the island has mass above the water plane.
-    const mound = new THREE.Mesh(this.track(alpineFoothillGeometry()), grassMat);
-    mound.name = "environment:rower:island-mound";
-    mound.scale.set(2.4, 0.55, 2.1);
-    mound.position.y = 1.05;
-    island.add(core, lawn, beach, mound);
+    island.add(core, lawn, beach);
 
-    // Paths and a small viewing gazebo — centre is a place people stand, not water.
-    const pathMat = this.environmentStandardMat(
-      "environment:rower:island-path-material",
-      themed(0xb7aea0, 0x4e524c),
-      { roughness: 0.88, metalness: 0.02 },
-    );
-    this.applyEnvironmentSurfaceMaps(
-      pathMat,
-      "/replay-assets/environments/cobblestone-floor-03/cobblestone-floor-03",
-      [1.4, 1.4],
-      0.4,
-    );
-    island.add(
-      this.makeHorizontalArc(
-        "environment:rower:island-path",
-        6.2,
-        7.1,
-        0.11,
-        { start: 0, span: FULL_CIRCLE * 0.88 },
-        pathMat,
-      ),
-    );
-    if (this.cfg.environmentDetail >= 1) {
-      const gazebo = new THREE.Group();
-      gazebo.name = "environment:rower:island-gazebo";
-      const bodyMat = this.environmentStandardMat(
-        "environment:rower:island-gazebo-body",
-        this.environment.venueStructure,
-        { roughness: 0.7, metalness: 0.05 },
-      );
-      this.applyEnvironmentSurfaceMaps(
-        bodyMat,
-        "/replay-assets/environments/brown-planks-03/brown-planks-03",
-        [1.1, 0.8],
-        0.2,
-      );
-      const roofMat = this.environmentStandardMat(
-        "environment:rower:island-gazebo-roof",
-        this.environment.venueAccent,
-        { roughness: 0.55, metalness: 0.12 },
-      );
-      const body = new THREE.Mesh(
-        this.track(roundedVenueBlockGeometry(4.2, 1.8, 4.2, 0.28)),
-        bodyMat,
-      );
-      body.position.y = 0.95;
-      const roof = new THREE.Mesh(
-        this.track(new THREE.ConeGeometry(3.4, 1.1, 8)),
-        roofMat,
-      );
-      roof.position.y = 2.35;
-      gazebo.add(body, roof);
-      island.add(gazebo);
-    }
-
+    // Natural tree cover — scattered pines, not a formal park planting.
     const treeCount = [10, 16, 24, 34][this.cfg.environmentDetail];
     const canopyGeo = this.track(sculptedPineGeometry());
     const canopyMat = this.environmentStandardMat(
@@ -5932,12 +5873,16 @@ export class CourseRenderer3D implements ReplayRenderer {
     const position = new THREE.Vector3();
     const scale = new THREE.Vector3();
     for (let index = 0; index < treeCount; index++) {
-      const angle = (index / treeCount) * FULL_CIRCLE + degrees(9);
-      const radius = 4.8 + (index % 5) * 1.35;
-      const size = 0.42 + (index % 4) * 0.1;
-      quaternion.setFromAxisAngle(WORLD_UP, angle + index * 0.4);
-      position.set(Math.sin(angle) * radius, 1.05 * size, Math.cos(angle) * radius);
-      scale.set(size * 1.1, size, size * 1.1);
+      // Clustered placement: trees bunch in 3–4 loose groups rather than
+      // an even ring, so the island reads as natural growth, not a park.
+      const cluster = index % 4;
+      const baseAngle = (cluster / 4) * FULL_CIRCLE + degrees(14 + cluster * 37);
+      const angle = baseAngle + (index - cluster) * degrees(4 + cluster * 3);
+      const radius = 3.2 + (index % 7) * 1.25 + (cluster % 2) * 0.6;
+      const size = 0.38 + (index % 5) * 0.08;
+      quaternion.setFromAxisAngle(WORLD_UP, angle + index * 0.22);
+      position.set(Math.sin(angle) * radius, 0.8 * size, Math.cos(angle) * radius);
+      scale.set(size * 1.05, size, size * 1.05);
       matrix.compose(position, quaternion, scale);
       trees.setMatrixAt(index, matrix);
     }

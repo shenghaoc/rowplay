@@ -557,10 +557,14 @@ describe("CourseRenderer3D", () => {
     expect(getScene(rower).getObjectByName("environment:rower:river-banks")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:reed-beds")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:basin-center")).toBeDefined();
-    // Centre is land (island park), not more water — stadium logic.
+    // Centre is a natural land island (earth, grass, beach) — not a landscaped park.
     expect(getScene(rower).getObjectByName("environment:rower:island-lawn")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:island-beach")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:island-trees")).toBeDefined();
+    // No gazebo, paths, or mounds on a regatta-course island.
+    expect(getScene(rower).getObjectByName("environment:rower:island-gazebo")).toBeUndefined();
+    expect(getScene(rower).getObjectByName("environment:rower:island-path")).toBeUndefined();
+    expect(getScene(rower).getObjectByName("environment:rower:island-mound")).toBeUndefined();
     expect(getScene(rower).getObjectByName("environment:rower:basin-deep")).toBeUndefined();
     expect(getScene(rower).getObjectByName("environment:rower:campus")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:woodland")).toBeDefined();
@@ -744,10 +748,10 @@ describe("CourseRenderer3D", () => {
       rowScenes[2]!.scene.getObjectByName("environment:rower:waterline-1") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
     expect(waterline.map?.userData.sourcePath).toContain("dry-river-pebbles-diffuse");
-    const islandPath = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:island-path") as THREE.Mesh
+    const islandBeach = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:island-beach") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
-    expect(islandPath.map?.userData.sourcePath).toContain("cobblestone-floor-03-diffuse");
+    expect(islandBeach.map?.userData.sourcePath).toContain("dry-river-pebbles-diffuse");
     const islandLawn = (
       rowScenes[2]!.scene.getObjectByName("environment:rower:island-lawn") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
