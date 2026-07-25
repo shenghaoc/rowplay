@@ -95,6 +95,26 @@ double-painted or faded scenery.
 ground, and course surface rather than only recolouring the athlete. This is
 additionally asserted in `renderer.test.ts` for the 2D venue.
 
+## Capture determinism
+
+Useful when re-running the matrix or diffing frames across a change:
+
+| Frames                     | Reproducible byte-for-byte |
+| -------------------------- | -------------------------- |
+| All 2D                     | Yes                        |
+| BikeErg 3D, paused         | Yes                        |
+| RowErg / SkiErg 3D, paused | **No**                     |
+| Any `moving` frame         | **No**                     |
+
+RowErg and SkiErg animate their surfaces on wall-clock time even while playback
+is paused, so two runs of the _same build_ produce different bytes for those
+frames. Moving frames advance with real elapsed time and never repeat. Only the
+2D and BikeErg-3D paused frames are safe to use as byte-exact baselines; judge
+the rest by eye.
+
+This was confirmed by capturing twice against one unchanged build: the frames
+that differed were exactly the Row/Ski 3D paused and all moving frames.
+
 ## Known cosmetic notes
 
 - On the stage crop the world-space telemetry pill can sit partly above the crop

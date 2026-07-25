@@ -17,15 +17,27 @@ import { describe, expect, it } from "vite-plus/test";
  */
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
-const RENDERER = join(REPO_ROOT, "src/lib/replay/renderer3d.ts");
+const REPLAY_SRC = join(REPO_ROOT, "src/lib/replay");
 const ENVIRONMENTS = join(REPO_ROOT, "static/replay-assets/environments");
 const README = join(ENVIRONMENTS, "README.md");
 
 /** Suffixes `applyEnvironmentSurfaceMaps` appends to a base path. */
 const MAP_SUFFIXES = ["-diffuse-512.jpg", "-roughness-512.jpg", "-normal-gl-512.jpg"] as const;
 
+/**
+ * Concatenated replay renderer sources. Scanning the whole directory rather than
+ * one file keeps this guard working when venue code is split into new modules.
+ */
+async function replaySource(): Promise<string> {
+  const files = (await readdir(REPLAY_SRC)).filter(
+    (name) => name.endsWith(".ts") && !name.endsWith(".test.ts"),
+  );
+  const bodies = await Promise.all(files.map((name) => readFile(join(REPLAY_SRC, name), "utf8")));
+  return bodies.join("\n");
+}
+
 async function referencedPaths(): Promise<string[]> {
-  const source = await readFile(RENDERER, "utf8");
+  const source = await replaySource();
   const matches = source.matchAll(/["'`](\/replay-assets\/environments\/[A-Za-z0-9_./-]+)["'`]/g);
   return [...new Set([...matches].map((match) => match[1]!))].sort();
 }
@@ -71,7 +83,7 @@ describe("replay environment surface maps", () => {
   });
 
   it("does not ship texture sets no sport uses", async () => {
-    const source = await readFile(RENDERER, "utf8");
+    const source = await replaySource();
     const unused = (await readdir(ENVIRONMENTS, { withFileTypes: true }))
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
