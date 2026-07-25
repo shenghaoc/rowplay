@@ -218,15 +218,16 @@ generic floor with different colors. Each sport is one authored place with a
 cared-for circle centre and land uses, not a ring of props:
 
 - **RowErg** is a lagoon loop: water is the racing channel only. The circle
-  centre is a land island (lawn, beach, paths, trees, gazebo); start pontoons
-  sit in the channel toward the shore campus (dock, lawn, buildings).
-- **SkiErg** is a Nordic stadium: snow is the track and outer valley only. The
-  circle centre is a stadium plaza (paving, turf, boards, flags, timing kiosk),
-  with forest/alpine land uses and a lodge campus for buildings and lights.
-- **BikeErg** is a dusk circuit stadium: a detailed infield park (grass, dual
-  paths, planting beds, fountain, podium, dense park trees) at the centre,
-  grandstand shell on stand sectors, urban skyline only on city land, and a
-  service campus for the service lane and building.
+  centre is a land island (lawn, beach, trees, shrubs, mound); reeds and a
+  multi-band forest line the shore; the campus owns path, launch dock, and
+  buildings; start pontoons sit in the water channel.
+- **SkiErg** is a Nordic stadium: snow covers the track and the stadium
+  centre (packed start pad, groom lines, lodge chute, snow fences), with dense
+  forest, alpine peaks/foothills, valley snow shoulders, wind lips, and a lodge
+  campus for buildings and floodlights.
+- **BikeErg** is an indoor velodrome: multi-use sports-hall infield (court
+  markings, staging pads), full seating bowl, arena wall, track boards, hangar
+  lights, dense ceiling trusses/rings, scoreboard, and service building.
 
 High and Ultra materials use provenance-recorded local CC0 surface maps (snow,
 asphalt, grass, forest ground, bark, leaves, planks, pebbles, brushed concrete,
