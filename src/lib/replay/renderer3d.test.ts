@@ -1803,6 +1803,8 @@ describe("CourseRenderer3D", () => {
         "low" | "medium" | "high" | "ultra",
         {
           skinRoughness: number;
+          eyeRoughness: number;
+          eyeClearcoat: number;
           jerseySheen: number;
           jerseyBumpScale: number;
           jerseyNormalScale: number;
@@ -1831,10 +1833,11 @@ describe("CourseRenderer3D", () => {
             "footwear",
             "hair",
             "trim",
+            "eye",
             "face-detail",
           ]);
           expect(instance.mesh.geometry.groups.map((group) => group.materialIndex)).toEqual([
-            0, 1, 2, 3, 4, 5, 6,
+            0, 1, 2, 3, 4, 5, 6, 7,
           ]);
           expect(instance.mesh.geometry.groups.every((group) => group.count > 0)).toBe(true);
           const skin = materials.find(
@@ -1843,10 +1846,16 @@ describe("CourseRenderer3D", () => {
           const jersey = materials.find(
             (material) => material.userData.replayV4SurfaceRole === "jersey",
           ) as THREE.MeshPhysicalMaterial | undefined;
+          const eye = materials.find(
+            (material) => material.userData.replayV4SurfaceRole === "eye",
+          ) as THREE.MeshPhysicalMaterial | undefined;
           expect(skin).toBeInstanceOf(THREE.MeshPhysicalMaterial);
           expect(jersey).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+          expect(eye).toBeInstanceOf(THREE.MeshPhysicalMaterial);
           profiles.set(quality, {
             skinRoughness: skin!.roughness,
+            eyeRoughness: eye!.roughness,
+            eyeClearcoat: eye!.clearcoat,
             jerseySheen: jersey!.sheen,
             jerseyBumpScale: jersey!.bumpScale,
             jerseyNormalScale: jersey!.normalScale.x,
@@ -1871,6 +1880,12 @@ describe("CourseRenderer3D", () => {
       expect(low.skinRoughness).toBeGreaterThan(medium.skinRoughness);
       expect(medium.skinRoughness).toBeGreaterThan(high.skinRoughness);
       expect(high.skinRoughness).toBeGreaterThan(ultra.skinRoughness);
+      expect(low.eyeRoughness).toBeGreaterThan(medium.eyeRoughness);
+      expect(medium.eyeRoughness).toBeGreaterThan(high.eyeRoughness);
+      expect(high.eyeRoughness).toBeGreaterThan(ultra.eyeRoughness);
+      expect(low.eyeClearcoat).toBeLessThan(medium.eyeClearcoat);
+      expect(medium.eyeClearcoat).toBeLessThan(high.eyeClearcoat);
+      expect(high.eyeClearcoat).toBeLessThan(ultra.eyeClearcoat);
       expect(low.jerseySheen).toBeLessThan(medium.jerseySheen);
       expect(medium.jerseySheen).toBeLessThan(high.jerseySheen);
       expect(high.jerseySheen).toBeLessThan(ultra.jerseySheen);

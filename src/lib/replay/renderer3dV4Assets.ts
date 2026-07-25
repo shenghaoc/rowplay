@@ -76,6 +76,7 @@ export const REPLAY_V4_SURFACE_ROLES = [
   "footwear",
   "hair",
   "trim",
+  "eye",
   "face-detail",
 ] as const;
 
@@ -92,6 +93,11 @@ const SURFACE_PALETTES: readonly SurfacePalette[] = [
   {
     role: "skin",
     colors: [
+      [0.64, 0.39, 0.285],
+      [0.73, 0.49, 0.37],
+      [0.69, 0.405, 0.285],
+      [0.49, 0.285, 0.225],
+      // Historical production swatches remain accepted by isolated fixtures.
       [0.58, 0.34, 0.245],
       [0.68, 0.43, 0.32],
       [0.72, 0.48, 0.36],
@@ -148,6 +154,8 @@ const SURFACE_PALETTES: readonly SurfacePalette[] = [
     role: "hair",
     colors: [
       [0.13, 0.035, 0.008],
+      [0.145, 0.041, 0.01],
+      [0.16, 0.05, 0.013],
       [0.045, 0.009, 0.003],
       [0.24, 0.075, 0.018],
       [0.18, 0.075, 0.028],
@@ -170,14 +178,21 @@ const SURFACE_PALETTES: readonly SurfacePalette[] = [
     ],
   },
   {
-    role: "face-detail",
+    role: "eye",
     colors: [
       [0.35, 0.2, 0.14],
       [0.24, 0.1, 0.035],
+      [0.075, 0.028, 0.012],
       [0.035, 0.018, 0.012],
+      [0.86, 0.82, 0.75],
       [0.73, 0.69, 0.62],
       [0.88, 0.845, 0.78],
       [0.94, 0.97, 1],
+    ],
+  },
+  {
+    role: "face-detail",
+    colors: [
       [0.25, 0.13, 0.08],
       [0.44, 0.24, 0.17],
       [0.29, 0.12, 0.09],

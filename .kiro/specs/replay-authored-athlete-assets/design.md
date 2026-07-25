@@ -123,8 +123,8 @@ constraint drift.
 
 The GLB deliberately carries one portable authoring material only. At template
 load time, the V4 loader partitions its reviewed regional vertex colours into
-seven PBR surface roles: skin, jersey, lower garment, footwear, hair, trim, and
-face detail. Each live/ghost clone receives independent role materials while
+eight PBR surface roles: skin, jersey, lower garment, footwear, hair, trim, wet
+eye, and face detail. Each live/ghost clone receives independent role materials while
 retaining one geometry, skeleton, clip set, and asset request. Low, Medium,
 High, and Ultra keep the same athlete and deterministic contact solve, but
 progressively refine those materials' roughness, specular response, cloth sheen,

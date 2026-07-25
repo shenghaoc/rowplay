@@ -158,9 +158,9 @@ remain automatic fallbacks.
   vertex-colour material in the GLB, and zero embedded textures/images. The
   reviewed `TEXCOORD_0` layout exists solely for the web loader's local,
   deterministic per-instance material maps; it adds no asset request or native
-  bitmap dependency. The web loader derives seven independent runtime
+  bitmap dependency. The web loader derives eight independent runtime
   `MeshPhysicalMaterial` surface roles (`skin`, `jersey`, `lower`, `footwear`,
-  `hair`, `trim`, and `face-detail`) from the reviewed colour regions while
+  `hair`, `trim`, `eye`, and `face-detail`) from the reviewed colour regions while
   retaining the same geometry, skeleton, and asset request. The semantic order
   is the only replay-motion interface; helper joints may influence skinning but
   are not direct animation targets. The surface now carries anatomically
@@ -176,7 +176,7 @@ remain automatic fallbacks.
   deterministic UV albedo, normal, roughness, and relief maps; High raises
   those maps to 256px with stronger material response; Ultra raises them to
   512px alongside further skin roughness/specular, fabric sheen, footwear/trim
-  clearcoat, hair response, and face-detail refinement. This makes higher
+  clearcoat, hair response, wet-eye optics, and face-detail refinement. This makes higher
   quality visibly spend compute on the athlete while preserving phase, clip,
   proportions, and equipment contacts.
 - **Depth contract:** both live and ghost V4 bodies render with `opacity: 1`,

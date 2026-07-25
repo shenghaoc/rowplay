@@ -298,14 +298,14 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       specularIntensity: 0.55,
     },
     hair: {
-      roughness: 0.74,
+      roughness: 0.8,
       metalness: 0,
       clearcoat: 0,
       clearcoatRoughness: 0.75,
       sheen: 0,
       sheenRoughness: 1,
       sheenColor: 0xffffff,
-      specularIntensity: 0.45,
+      specularIntensity: 0.36,
     },
     trim: {
       roughness: 0.7,
@@ -316,6 +316,16 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       sheenRoughness: 1,
       sheenColor: 0xffffff,
       specularIntensity: 0.6,
+    },
+    eye: {
+      roughness: 0.34,
+      metalness: 0,
+      clearcoat: 0.08,
+      clearcoatRoughness: 0.34,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.82,
     },
     "face-detail": {
       roughness: 0.68,
@@ -340,19 +350,19 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       specularIntensity: 0.7,
     },
     jersey: {
-      roughness: 0.81,
+      roughness: 0.86,
       metalness: 0,
-      clearcoat: 0.01,
+      clearcoat: 0.005,
       clearcoatRoughness: 0.65,
-      sheen: 0.1,
+      sheen: 0.08,
       sheenRoughness: 0.68,
       sheenColor: 0xc7d2fe,
-      specularIntensity: 0.6,
+      specularIntensity: 0.56,
     },
     lower: {
-      roughness: 0.78,
+      roughness: 0.82,
       metalness: 0,
-      clearcoat: 0.01,
+      clearcoat: 0.005,
       clearcoatRoughness: 0.62,
       sheen: 0.075,
       sheenRoughness: 0.7,
@@ -370,14 +380,14 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       specularIntensity: 0.72,
     },
     hair: {
-      roughness: 0.62,
+      roughness: 0.78,
       metalness: 0,
-      clearcoat: 0.025,
-      clearcoatRoughness: 0.52,
-      sheen: 0.02,
+      clearcoat: 0,
+      clearcoatRoughness: 0.62,
+      sheen: 0.005,
       sheenRoughness: 0.8,
       sheenColor: 0x5b2815,
-      specularIntensity: 0.65,
+      specularIntensity: 0.42,
     },
     trim: {
       roughness: 0.54,
@@ -388,6 +398,16 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       sheenRoughness: 0.62,
       sheenColor: 0xe0dcff,
       specularIntensity: 0.74,
+    },
+    eye: {
+      roughness: 0.25,
+      metalness: 0,
+      clearcoat: 0.16,
+      clearcoatRoughness: 0.24,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 0.94,
     },
     "face-detail": {
       roughness: 0.62,
@@ -412,19 +432,19 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       specularIntensity: 0.84,
     },
     jersey: {
-      roughness: 0.62,
+      roughness: 0.78,
       metalness: 0,
-      clearcoat: 0.035,
+      clearcoat: 0.01,
       clearcoatRoughness: 0.46,
-      sheen: 0.38,
+      sheen: 0.18,
       sheenRoughness: 0.44,
       sheenColor: 0xbfc8ff,
-      specularIntensity: 0.8,
+      specularIntensity: 0.62,
     },
     lower: {
-      roughness: 0.58,
+      roughness: 0.68,
       metalness: 0,
-      clearcoat: 0.03,
+      clearcoat: 0.008,
       clearcoatRoughness: 0.44,
       sheen: 0.3,
       sheenRoughness: 0.48,
@@ -442,14 +462,14 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       specularIntensity: 0.96,
     },
     hair: {
-      roughness: 0.5,
+      roughness: 0.74,
       metalness: 0,
-      clearcoat: 0.04,
-      clearcoatRoughness: 0.42,
-      sheen: 0.07,
+      clearcoat: 0,
+      clearcoatRoughness: 0.55,
+      sheen: 0.015,
       sheenRoughness: 0.6,
       sheenColor: 0x77391d,
-      specularIntensity: 0.84,
+      specularIntensity: 0.46,
     },
     trim: {
       roughness: 0.32,
@@ -460,6 +480,16 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       sheenRoughness: 0.44,
       sheenColor: 0xe1dcff,
       specularIntensity: 1,
+    },
+    eye: {
+      roughness: 0.17,
+      metalness: 0,
+      clearcoat: 0.26,
+      clearcoatRoughness: 0.17,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 1.04,
     },
     "face-detail": {
       roughness: 0.52,
@@ -484,19 +514,19 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       specularIntensity: 0.94,
     },
     jersey: {
-      roughness: 0.5,
+      roughness: 0.74,
       metalness: 0,
-      clearcoat: 0.055,
+      clearcoat: 0.012,
       clearcoatRoughness: 0.36,
-      sheen: 0.58,
+      sheen: 0.26,
       sheenRoughness: 0.34,
       sheenColor: 0xb3c0ff,
-      specularIntensity: 0.92,
+      specularIntensity: 0.7,
     },
     lower: {
-      roughness: 0.46,
+      roughness: 0.6,
       metalness: 0,
-      clearcoat: 0.045,
+      clearcoat: 0.01,
       clearcoatRoughness: 0.34,
       sheen: 0.46,
       sheenRoughness: 0.38,
@@ -514,14 +544,14 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       specularIntensity: 1.08,
     },
     hair: {
-      roughness: 0.42,
+      roughness: 0.7,
       metalness: 0,
-      clearcoat: 0.055,
-      clearcoatRoughness: 0.34,
-      sheen: 0.12,
+      clearcoat: 0,
+      clearcoatRoughness: 0.48,
+      sheen: 0.025,
       sheenRoughness: 0.5,
       sheenColor: 0x96502a,
-      specularIntensity: 0.92,
+      specularIntensity: 0.5,
     },
     trim: {
       roughness: 0.2,
@@ -532,6 +562,16 @@ const ATHLETE_SURFACE_QUALITY: Readonly<Record<RenderQuality, SurfaceQualityProf
       sheenRoughness: 0.36,
       sheenColor: 0xe8e2ff,
       specularIntensity: 1.08,
+    },
+    eye: {
+      roughness: 0.1,
+      metalness: 0,
+      clearcoat: 0.38,
+      clearcoatRoughness: 0.11,
+      sheen: 0,
+      sheenRoughness: 1,
+      sheenColor: 0xffffff,
+      specularIntensity: 1.14,
     },
     "face-detail": {
       roughness: 0.46,
@@ -584,6 +624,7 @@ const SURFACE_DETAIL_MULTIPLIER: Readonly<Record<ReplayV4SurfaceRole, number>> =
   footwear: 0.8,
   hair: 0.48,
   trim: 0.62,
+  eye: 0,
   "face-detail": 0.28,
 };
 
@@ -594,6 +635,7 @@ const SURFACE_DETAIL_REPEAT: Readonly<Record<ReplayV4SurfaceRole, readonly [numb
   footwear: [10, 10],
   hair: [22, 6],
   trim: [18, 10],
+  eye: [1, 1],
   "face-detail": [5, 5],
 };
 
@@ -622,6 +664,8 @@ function detailSample(role: ReplayV4SurfaceRole, x: number, y: number): number {
       return 126 + (x % 3 === 0 ? 24 : -12) + grain * 0.4;
     case "skin":
       return 126 + grain * 0.8 + Math.sin((x * 0.61 + y * 0.37) * Math.PI) * 4;
+    case "eye":
+      return 126;
     case "face-detail":
       return 126 + grain * 0.22;
   }
@@ -778,17 +822,19 @@ function applySurfaceQuality(
   // directional response with quality, while skin uses a warm dielectric
   // specular lobe instead of the wet clearcoat that made the old athlete look
   // like painted vinyl.
-  material.ior = role === "skin" || role === "face-detail" ? 1.4 : 1.48;
+  material.ior = role === "eye" ? 1.376 : role === "skin" || role === "face-detail" ? 1.4 : 1.48;
   material.specularColor.set(
-    role === "skin" || role === "face-detail"
-      ? new THREE.Color(0xffd8ca).lerp(new THREE.Color(0xffeee8), qualityStep / 3)
-      : role === "hair"
-        ? new THREE.Color(0x8a4322).lerp(new THREE.Color(0xffcfaa), qualityStep / 3)
-        : 0xffffff,
+    role === "eye"
+      ? 0xffffff
+      : role === "skin" || role === "face-detail"
+        ? new THREE.Color(0xffd8ca).lerp(new THREE.Color(0xffeee8), qualityStep / 3)
+        : role === "hair"
+          ? new THREE.Color(0x8a4322).lerp(new THREE.Color(0xffcfaa), qualityStep / 3)
+          : 0xffffff,
   );
   material.anisotropy =
     role === "hair"
-      ? [0.06, 0.28, 0.56, 0.82][qualityStep]!
+      ? [0.03, 0.1, 0.2, 0.35][qualityStep]!
       : role === "jersey" || role === "lower"
         ? [0, 0.08, 0.2, 0.34][qualityStep]!
         : role === "trim"

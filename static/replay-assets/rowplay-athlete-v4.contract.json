@@ -5,13 +5,13 @@
   "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 5009404,
-    "sha256": "8edbb4c07aa9b346eb738d89c25efbb2445ed158821dc684754b20bceddc09e4"
+    "byteCount": 5059344,
+    "sha256": "6cb07263ebeed58750c5d7c52b34361b333b008fb1945ee68baec525643cae3d"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 11696664,
-    "sha256": "3ef18d8e9af854f89db07a8dbe1ad5ff4938826259ec8e8efb73e83dbecaf0b0"
+    "byteCount": 11800039,
+    "sha256": "53dc821186fc6f3311e3633f1e4373226205228c0a5188fc8d54729ee64efc9c"
   },
   "coordinateSystem": {
     "units": "metres",
@@ -29,9 +29,9 @@
     "meshName": "v4Athlete",
     "skinnedMeshes": 1,
     "primitives": 1,
-    "vertices": 63551,
-    "triangles": 105288,
-    "topologyComponents": 26,
+    "vertices": 64200,
+    "triangles": 106256,
+    "topologyComponents": 28,
     "continuousCore": true,
     "connectedCoreBones": [
       "v4LeftUpperArm",
@@ -417,8 +417,12 @@
       "source": "vertex-color jersey/shoe accent regions"
     },
     {
+      "role": "athlete-eye",
+      "source": "vertex-color sclera/iris/cornea-highlight regions"
+    },
+    {
       "role": "athlete-face-detail",
-      "source": "vertex-color eye/brow/lip regions"
+      "source": "vertex-color brow/lip/nostril regions"
     }
   ],
   "provenance": {

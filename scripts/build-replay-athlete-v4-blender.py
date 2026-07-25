@@ -91,14 +91,19 @@ SHORTS_PANEL = (0.065, 0.08, 0.12, 1.0)
 TRIM = (0.26, 0.38, 0.72, 1.0)
 LEG_FABRIC = (0.075, 0.12, 0.15, 1.0)
 LEG_FABRIC_SIDE = (0.04, 0.075, 0.095, 1.0)
-SKIN = (0.58, 0.34, 0.245, 1.0)
-SKIN_LIGHT = (0.68, 0.43, 0.32, 1.0)
+SKIN = (0.64, 0.39, 0.285, 1.0)
+SKIN_LIGHT = (0.73, 0.49, 0.37, 1.0)
+SKIN_WARM = (0.69, 0.405, 0.285, 1.0)
+SKIN_SHADOW = (0.49, 0.285, 0.225, 1.0)
 HAIR = (0.13, 0.035, 0.008, 1.0)
+HAIR_MID = (0.145, 0.041, 0.01, 1.0)
+HAIR_HIGHLIGHT = (0.16, 0.05, 0.013, 1.0)
 # Face accents stay chocolate-brown rather than black. They are applied only as
 # compact anatomical regions; continuous painted masks remain forbidden.
 IRIS = (0.24, 0.10, 0.035, 1.0)
+LIMBAL = (0.075, 0.028, 0.012, 1.0)
 PUPIL = (0.035, 0.018, 0.012, 1.0)
-EYE_WHITE = (0.73, 0.69, 0.62, 1.0)
+EYE_WHITE = (0.86, 0.82, 0.75, 1.0)
 EYE_GLINT = (0.94, 0.97, 1.0, 1.0)
 BROW = (0.25, 0.13, 0.08, 1.0)
 MOUTH = (0.44, 0.24, 0.17, 1.0)
@@ -523,7 +528,16 @@ def add_short_hair_cap(surface: bpy.types.Object, bones: dict[str, Vector]) -> N
         azimuth = math.atan2(point.z, point.x)
         strand = math.sin(azimuth * 19.0 + point.y * 31.0)
         breakup = math.sin(azimuth * 7.0 - point.y * 43.0)
-        lift = 0.0024 + 0.00065 * strand + 0.00035 * breakup
+        crown = max(0.0, min(1.0, (point.y - 1.69) / 0.115))
+        side_fade = max(0.0, min(1.0, (0.145 - abs(point.x)) / 0.085))
+        # A close fade stays nearly flush at the temples while the crown gains
+        # enough irregular volume to stop reading as a painted skull cap.
+        lift = (
+            0.0014
+            + crown * (0.0065 + 0.0042 * side_fade)
+            + 0.0012 * strand * crown
+            + 0.00075 * breakup
+        )
         vertices.append(source_vertex.co + source_vertex.normal.normalized() * lift)
     faces = [tuple(remap[index] for index in face) for face in selected_faces]
 
@@ -550,10 +564,11 @@ def add_short_hair_cap(surface: bpy.types.Object, bones: dict[str, Vector]) -> N
     for polygon in hair_mesh.polygons:
         polygon.use_smooth = True
     color = hair_mesh.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
-    for value in color.data:
-        # Runtime anisotropy and the quality-tier albedo map provide fine hair
-        # variation. Large per-vertex swatches read as striped plastic.
-        value.color_srgb = HAIR
+    for index, value in enumerate(color.data):
+        # Vertex-index hashing breaks up the shell without the concentric
+        # contour bands created by position-based stripes on a scalp mesh.
+        strand_mix = (index * 37 + index * index * 11 + 17) % 101
+        value.color_srgb = HAIR_HIGHLIGHT if strand_mix > 91 else HAIR_MID if strand_mix > 55 else HAIR
     group = hair.vertex_groups.new(name="v4Head")
     group.add(list(range(len(hair_mesh.vertices))), 1.0, "REPLACE")
     bpy.ops.object.select_all(action="DESELECT")
@@ -679,22 +694,30 @@ def retarget_base_vertex(
     mapped = transform_base_point(point)
     if face_set == 20:
         source, target = zip(*chains["LeftArm"], strict=True)
-        articulated = segment_map(mapped, source[0], source[1], target[0], target[1])
+        articulated = segment_map(
+            mapped, source[0], source[1], target[0], target[1], radial_scale=0.9
+        )
         shoulder_blend = max(0.0, min(1.0, (abs(mapped.x) - 0.16) / 0.14))
         shoulder_blend = shoulder_blend * shoulder_blend * (3.0 - 2.0 * shoulder_blend)
         return mapped.lerp(articulated, shoulder_blend)
     if face_set == 21:
         source, target = zip(*chains["RightArm"], strict=True)
-        articulated = segment_map(mapped, source[0], source[1], target[0], target[1])
+        articulated = segment_map(
+            mapped, source[0], source[1], target[0], target[1], radial_scale=0.9
+        )
         shoulder_blend = max(0.0, min(1.0, (abs(mapped.x) - 0.16) / 0.14))
         shoulder_blend = shoulder_blend * shoulder_blend * (3.0 - 2.0 * shoulder_blend)
         return mapped.lerp(articulated, shoulder_blend)
     if face_set == 11:
         source, target = zip(*chains["LeftArm"], strict=True)
-        return segment_map(mapped, source[1], source[2], target[1], target[2])
+        return segment_map(
+            mapped, source[1], source[2], target[1], target[2], radial_scale=0.92
+        )
     if face_set == 12:
         source, target = zip(*chains["RightArm"], strict=True)
-        return segment_map(mapped, source[1], source[2], target[1], target[2])
+        return segment_map(
+            mapped, source[1], source[2], target[1], target[2], radial_scale=0.92
+        )
     if face_set == 10 or 84 <= face_set <= 103:
         source, target = zip(*chains["LeftArm"], strict=True)
         return segment_map(mapped, source[2], source[3], target[2], target[3])
@@ -854,11 +877,23 @@ def add_base_eye_details(surface: bpy.types.Object) -> None:
     for side_name, side in (("left", -1.0), ("right", 1.0)):
         center_blender = transform_base_point(Vector((side * 0.033, -0.122, 1.574)))
         center = from_blender(center_blender)
-        iris_center = center + Vector((0, 0, 0.014))
+        # Recess the ocular surface under the source eyelids. The old 14 mm
+        # projection exposed too much sclera and created a staring toy eye.
+        iris_center = center + Vector((0, 0, 0.0105))
+        join_ellipsoid_detail(
+            surface,
+            f"rowplay-v4-limbal-ring-{side_name}",
+            iris_center,
+            (0.0066, 0.00055, 0.0066),
+            LIMBAL,
+            "v4Head",
+            segments=22,
+            rings=12,
+        )
         join_ellipsoid_detail(
             surface,
             f"rowplay-v4-iris-{side_name}",
-            iris_center,
+            iris_center + Vector((0, 0, 0.00045)),
             (0.0058, 0.0007, 0.0058),
             IRIS,
             "v4Head",
@@ -868,7 +903,7 @@ def add_base_eye_details(surface: bpy.types.Object) -> None:
         join_ellipsoid_detail(
             surface,
             f"rowplay-v4-pupil-{side_name}",
-            iris_center + Vector((0, 0, 0.0008)),
+            iris_center + Vector((0, 0, 0.00115)),
             (0.0024, 0.00045, 0.0024),
             PUPIL,
             "v4Head",
@@ -878,7 +913,7 @@ def add_base_eye_details(surface: bpy.types.Object) -> None:
         join_ellipsoid_detail(
             surface,
             f"rowplay-v4-eye-glint-{side_name}",
-            iris_center + Vector((-side * 0.001, 0.0012, 0.0014)),
+            iris_center + Vector((-side * 0.001, 0.0012, 0.00175)),
             (0.00055, 0.00025, 0.00055),
             EYE_GLINT,
             "v4Head",
@@ -896,6 +931,7 @@ def add_base_eye_details(surface: bpy.types.Object) -> None:
             "v4Head",
             segments=22,
             rings=10,
+            rotation_y=side * 0.09,
         )
         join_ellipsoid_detail(
             surface,
@@ -987,6 +1023,9 @@ def create_base_production_surface(
     for eye in eyes:
         for vertex in eye.data.vertices:
             vertex.co = transform_base_point(vertex.co)
+            # Keep the anatomical eyeball behind the eyelid margin; iris,
+            # limbal ring and glint overlays restore the wet forward surface.
+            vertex.co.y += 0.0025
         color = eye.data.color_attributes.new(name="Color", type="BYTE_COLOR", domain="POINT")
         for value in color.data:
             value.color_srgb = EYE_WHITE
@@ -1037,10 +1076,26 @@ def paint_vertex_colors(obj: bpy.types.Object) -> None:
         # ankles ~0.06. Hard panel breaks match the art-direction kit language.
         near_foot = y < 0.12 and abs(x) > 0.05 and z > -0.08
         near_hand = y > 1.05 and abs(x) > 0.68
-        if (y > 1.59 and abs(x) < 0.135) or (
+        is_face = (y > 1.59 and abs(x) < 0.135) or (
             1.54 < y < 1.59 and abs(x) < 0.075 and z > 0.025
-        ):
-            color = SKIN
+        )
+        if is_face:
+            cheek = (
+                1.64 < y < 1.73
+                and 0.032 < abs(x) < 0.095
+                and z > 0.075
+            )
+            nose = 1.625 < y < 1.735 and abs(x) < 0.031 and z > 0.09
+            brow_plane = 1.71 < y < 1.775 and abs(x) < 0.105 and z > 0.055
+            beard_plane = 1.585 < y < 1.665 and abs(x) < 0.105 and z > 0.045
+            if cheek or nose:
+                color = SKIN_WARM
+            elif brow_plane:
+                color = SKIN_LIGHT
+            elif beard_plane:
+                color = SKIN_SHADOW
+            else:
+                color = SKIN
         elif near_hand:
             color = SKIN_LIGHT if abs(x) > 0.58 else SKIN
         elif near_foot:

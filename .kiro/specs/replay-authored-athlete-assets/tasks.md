@@ -87,5 +87,5 @@ figure, readability, and motion specs.
     detail while preserving one geometry, rig, clip set, and fallback chain
   - [x] Publish one baseline/new/skeleton six-pose sheet, three real-time sport
     cycles, ghost/mobile/theme coverage, and real hardware WebGPU Ultra evidence
-  - [x] Rebuild and validate GLB, USDZ, and the seven-role native contract; run
+  - [x] Rebuild and validate GLB, USDZ, and the eight-role native contract; run
     focused tests, the full local gate, E2E, and exact-head CI

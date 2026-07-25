@@ -134,7 +134,8 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
       { role: "athlete-footwear", source: "vertex-color shoe regions" },
       { role: "athlete-hair", source: "vertex-color hair regions" },
       { role: "athlete-trim", source: "vertex-color jersey/shoe accent regions" },
-      { role: "athlete-face-detail", source: "vertex-color eye/brow/lip regions" },
+      { role: "athlete-eye", source: "vertex-color sclera/iris/cornea-highlight regions" },
+      { role: "athlete-face-detail", source: "vertex-color brow/lip/nostril regions" },
     ],
     provenance: {
       owner: "rowplay (adaptation); Dan Ulrich / Blender Studio (anatomical base)",

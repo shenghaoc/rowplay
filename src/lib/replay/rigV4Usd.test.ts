@@ -102,6 +102,7 @@ describe("RowPlay V4 USDZ native handoff", () => {
         "athlete-footwear",
         "athlete-hair",
         "athlete-trim",
+        "athlete-eye",
         "athlete-face-detail",
       ]);
       const position = mesh.geometry.getAttribute("position");
