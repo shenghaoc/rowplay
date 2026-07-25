@@ -612,14 +612,15 @@ describe("CourseRenderer3D", () => {
       ),
     ).toBe(true);
     const arenaWall = sceneObject(bike, "environment:bike:arena-wall");
-    expect(arenaWall.children).toHaveLength(2);
+    // Indoor velodrome: continuous walls enclose the full arena, not just stand sectors.
+    expect(arenaWall.children.length).toBeGreaterThanOrEqual(2);
     expect(
       arenaWall.children.reduce(
         (span, sector) =>
           span + ((sector.userData.authoredSector as { span?: number } | undefined)?.span ?? 0),
         0,
       ),
-    ).toBeLessThan(TAU * 0.5);
+    ).toBeGreaterThanOrEqual(TAU * 1.5);
     expect(getScene(bike).getObjectByName("environment:bike:scoreboard")).toBeDefined();
     // Indoor velodrome: no skyline, no park. Walls, infield floor, and roof.
     expect(getScene(bike).getObjectByName("environment:bike:city-edge")).toBeUndefined();

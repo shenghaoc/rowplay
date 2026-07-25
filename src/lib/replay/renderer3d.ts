@@ -792,22 +792,23 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     apron: themed(0xf7fafb, 0xd5e0e5),
   },
   bike: {
-    // Indoor velodrome: warm artificial spots over a dark roof cavity.
-    // No sky, no horizon — the dome interior reads as one closed arena.
-    skyZenith: themed(0x1a1e24, 0x0a0e14),
-    skyHorizon: themed(0x2a2e35, 0x12161e),
-    skyNadir: themed(0x242830, 0x0e1218),
-    fog: themed(0x282c34, 0x181c24),
-    fogNear: 45,
-    fogFar: 150,
-    hemisphereSky: themed(0x3a3e48, 0x1a1e28),
-    hemisphereGround: themed(0x2a241e, 0x141218),
-    hemisphereIntensity: 0.72,
-    sun: themed(0xffcc88, 0xffb866),
-    sunIntensity: 2.8,
-    fill: themed(0x6a7890, 0x3a4860),
-    fillIntensity: 0.42,
-    exposure: 1.05,
+    // Indoor velodrome ceiling: a single dark steel tone so the dome
+    // reads as a roof cavity, not a night sky. Warm artificial spots
+    // light the track from below — the ceiling stays uniformly dark.
+    skyZenith: themed(0x181c24, 0x0c1018),
+    skyHorizon: themed(0x181c24, 0x0c1018),
+    skyNadir: themed(0x181c24, 0x0c1018),
+    fog: themed(0x181c24, 0x10141c),
+    fogNear: 60,
+    fogFar: 140,
+    hemisphereSky: themed(0x242830, 0x141820),
+    hemisphereGround: themed(0x1e1c18, 0x101014),
+    hemisphereIntensity: 0.48,
+    sun: themed(0xffd4a0, 0xffc080),
+    sunIntensity: 3.2,
+    fill: themed(0x5a6880, 0x2a3850),
+    fillIntensity: 0.32,
+    exposure: 1.02,
     farSilhouette: themed(0x1e2630, 0x0e141e),
     midSilhouette: themed(0x222a36, 0x141a26),
     venueStructure: themed(0x2a3444, 0x1a2434),
@@ -5269,16 +5270,18 @@ export class CourseRenderer3D implements ReplayRenderer {
     const position = new THREE.Vector3();
     for (let i = 0; i < count; i++) {
       const { angle: a } = sectorSample(i, count, SKI_PEAK_SECTORS);
-      const radius = 79 + (0.5 + Math.sin(i * 8.17) * 0.5) * 13;
-      const tierScale = [0.72, 0.86, 0.96, 1][this.cfg.environmentDetail];
-      const size = (0.72 + (0.5 + Math.sin(i * 4.91) * 0.5) * 0.62) * tierScale;
+      // Distant massif: push peaks well beyond the track so they read as
+      // a real mountain backdrop, not scenery flats hugging the course.
+      const radius = 130 + (0.5 + Math.sin(i * 8.17) * 0.5) * 28;
+      const tierScale = [0.82, 0.95, 1.08, 1.2][this.cfg.environmentDetail];
+      const size = (0.85 + (0.5 + Math.sin(i * 4.91) * 0.5) * 0.72) * tierScale;
       quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), a + (i % 3) * 0.31);
-      position.set(Math.sin(a) * radius, 7.2 * size, Math.cos(a) * radius);
-      scale.set(size * (0.9 + (i % 4) * 0.08), size, size);
+      position.set(Math.sin(a) * radius, 12 * size, Math.cos(a) * radius);
+      scale.set(size * (0.9 + (i % 4) * 0.08), size * 1.4, size);
       matrix.compose(position, quaternion, scale);
       peaks.setMatrixAt(i, matrix);
-      position.y = 7.2 * size;
-      scale.set(size, size, size);
+      position.y = 12 * size;
+      scale.set(size, size * 0.95, size);
       matrix.compose(position, quaternion, scale);
       caps.setMatrixAt(i, matrix);
     }
@@ -5307,12 +5310,13 @@ export class CourseRenderer3D implements ReplayRenderer {
     const position = new THREE.Vector3();
     for (let i = 0; i < count; i++) {
       const { angle: a } = sectorSample(i, count, SKI_PEAK_SECTORS);
-      const size = 0.76 + (0.5 + Math.sin(i * 6.13) * 0.5) * 0.52;
+      const size = 0.82 + (0.5 + Math.sin(i * 6.13) * 0.5) * 0.58;
       const verticalScale = size * 0.84;
-      const radius = 48.5 + Math.sin(i * 4.41) * 2.1;
+      // Foothills sit between the track and the distant massif, not on the course edge.
+      const radius = 85 + Math.sin(i * 4.41) * 4.5;
       quaternion.setFromAxisAngle(WORLD_UP, a + 0.36 + (i % 4) * 0.29);
-      position.set(Math.sin(a) * radius, 2.5 * verticalScale, Math.cos(a) * radius);
-      scale.set(size * 1.5, verticalScale, size * 0.88);
+      position.set(Math.sin(a) * radius, 3.2 * verticalScale, Math.cos(a) * radius);
+      scale.set(size * 1.8, verticalScale, size * 1.05);
       matrix.compose(position, quaternion, scale);
       foothills.setMatrixAt(i, matrix);
     }
@@ -6288,8 +6292,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.addInstancedPines(
       group,
       [36, 58, 88, 128][this.cfg.environmentDetail],
-      outerR + 16,
-      outerR + 40,
+      outerR + 28,
+      outerR + 58,
       SKI_FOREST_SECTORS,
     );
     this.addSkiSurfaceTier(group, outerR);
@@ -6577,6 +6581,8 @@ export class CourseRenderer3D implements ReplayRenderer {
 
     /** Grandstand shell as one continuous stadium edge on stand sectors only. */
   private addBikeStadiumShell(group: THREE.Group): void {
+    // Tall continuous arena walls enclose the full velodrome interior.
+    // Real indoor tracks sit inside a building, not a partial facade.
     const wallMat = this.environmentBasicMat(
       "environment:bike:arena-wall-material",
       this.environment.venueStructure,
@@ -6584,19 +6590,52 @@ export class CourseRenderer3D implements ReplayRenderer {
     );
     const arenaWall = new THREE.Group();
     arenaWall.name = "environment:bike:arena-wall";
-    for (const [index, sector] of BIKE_STAND_SECTORS.entries()) {
-      arenaWall.add(
-        this.makeVerticalArc(
-          `environment:bike:arena-wall-sector-${index + 1}`,
-          58,
-          5,
-          2.25,
-          sector,
-          wallMat,
-        ),
-      );
-    }
+    // Full-height wall ring wrapping the entire arena.
+    arenaWall.add(
+      this.makeVerticalArc(
+        "environment:bike:arena-wall-full",
+        58,
+        8.5,
+        4.8,
+        { start: 0, span: FULL_CIRCLE },
+        wallMat,
+      ),
+    );
+    // Upper wall band — reaches toward the ceiling so the interior
+    // reads as an enclosed building cavity.
+    const upperWallMat = this.environmentBasicMat(
+      "environment:bike:arena-upper-wall-material",
+      this.environment.farSilhouette,
+      { side: THREE.BackSide, fog: true },
+    );
+    arenaWall.add(
+      this.makeVerticalArc(
+        "environment:bike:arena-upper-wall",
+        58,
+        4.5,
+        8.7,
+        { start: 0, span: FULL_CIRCLE },
+        upperWallMat,
+      ),
+    );
     group.add(arenaWall);
+    // Ceiling soffit ring — the dark junction between walls and roof.
+    const soffitMat = this.environmentBasicMat(
+      "environment:bike:soffit-material",
+      themed(0x1a1e28, 0x0e121c),
+      { side: THREE.DoubleSide, fog: true, transparent: true, opacity: 0.85 },
+    );
+    group.add(
+      this.makeHorizontalArc(
+        "environment:bike:ceiling-soffit",
+        56,
+        60,
+        13.3,
+        { start: 0, span: FULL_CIRCLE },
+        soffitMat,
+      ),
+    );
+
     this.addArenaPanels(group, 28 + this.cfg.environmentDetail * 4, 57.75, BIKE_STAND_SECTORS);
 
     const canopyMat = this.environmentStandardMat(
@@ -6755,10 +6794,10 @@ export class CourseRenderer3D implements ReplayRenderer {
     // BikeErg is an indoor velodrome — no distant horizon or valley skyline.
     // Ski and Row keep authored horizon rings for their outdoor settings.
     if (this.sport !== "bike") {
-      const farHeight = this.sport === "skierg" ? 14 : 12.5;
-      const farVariation = this.sport === "skierg" ? 6.5 : 5.2;
-      const midHeight = this.sport === "skierg" ? 7 : 8.4;
-      const midVariation = this.sport === "skierg" ? 4 : 3.6;
+      const farHeight = this.sport === "skierg" ? 22 : 12.5;
+      const farVariation = this.sport === "skierg" ? 9 : 5.2;
+      const midHeight = this.sport === "skierg" ? 12 : 8.4;
+      const midVariation = this.sport === "skierg" ? 6 : 3.6;
       this.environmentMidGroup.add(
         this.makeHorizonRing(
           `environment:${this.sport}:horizon-far`,
