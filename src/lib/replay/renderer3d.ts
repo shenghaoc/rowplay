@@ -5476,14 +5476,16 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.cellMatLight = this.mat(
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.finishLight) }),
     );
-    const cellGeo = this.track(new THREE.BoxGeometry(0.9, 0.06, 0.95));
+    // A painted finish line, not a raised kerb — keep it flat so wheels,
+    // skis, and hulls roll over it without clipping (穿模).
+    const cellGeo = this.track(new THREE.BoxGeometry(0.9, 0.005, 0.95));
     for (let zc = 0; zc < 9; zc++) {
       for (let xc = 0; xc < 2; xc++) {
         const cell = new THREE.Mesh(
           cellGeo,
           (zc + xc) % 2 === 0 ? this.cellMatDark : this.cellMatLight,
         );
-        cell.position.set(-0.5 + xc, 0.04, innerR + 0.6 + zc * 0.95);
+        cell.position.set(-0.5 + xc, 0.003, innerR + 0.6 + zc * 0.95);
         this.scene.add(cell);
       }
     }
