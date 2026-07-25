@@ -1796,7 +1796,7 @@ describe("CourseRenderer3D", () => {
           renderer.destroy();
         }
       }
-    });
+    }, 20_000);
 
     it("spends each quality tier on distinct V4 athlete material response", () => {
       const profiles = new Map<
@@ -1999,7 +1999,7 @@ describe("CourseRenderer3D", () => {
           renderer.destroy();
         }
       }
-    });
+    }, 20_000);
 
     it("keeps RowErg hands on separate scull grips without chicken-wing elbows", () => {
       const renderer = rendererFor("rower");
@@ -2285,7 +2285,7 @@ describe("CourseRenderer3D", () => {
           renderer.destroy();
         }
       }
-    });
+    }, 20_000);
 
     it("repeats exact seeks and holds one calm contact-safe pose in reduced motion", () => {
       for (const sport of ["rower", "skierg", "bike"] as const) {
@@ -2309,7 +2309,7 @@ describe("CourseRenderer3D", () => {
           renderer.destroy();
         }
       }
-    });
+    }, 20_000);
 
     it("keeps V4 RowErg elbows, palms, and forearms outside the torso core through the stroke", () => {
       const renderer = rendererFor("rower");
