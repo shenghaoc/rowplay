@@ -61,5 +61,18 @@ Follow-up to: `.kiro/specs/replay-3d-athlete-readability/`
     authored clear-coat basin; Ski reuses bark/leaf on pines
   - [x] Record CC0 source, creator, license, source checksums, and shipped digests
   - [x] Add regression coverage proving tiers differ beyond DPR and density
-  - [x] Complete browser visual QA across Low, Medium, High, and Ultra
+  - [x] Guard the surface-map contract: resolve every referenced path against the
+    shipped files, re-derive each provenance digest, and fall back to solid
+    colour when a map fails to load
+  - [x] Record the per-tier request count and payload, and bound payload, mesh,
+    and instance counts by test
+  - [x] Complete browser visual QA across Low, Medium, and High, with captures
+    committed under `docs/visual-qa/replay-premium-environments.md`
+  - [ ] Complete browser visual QA at Ultra — blocked: Ultra is WebGPU-only and
+    no WebGPU adapter is available in this environment, so the request downgrades
+    to High. Needs a re-run on WebGPU-capable hardware to confirm normal-mapped
+    close-surface detail and the sun glints.
+  - [x] Replace the public replay captures (`docs/screenshots/replay-demo.png`,
+    `docs/screenshots/replay-3d-demo.png`) — regenerated at 3D High / WebGL
+    rather than the previous Ultra / WebGPU frame, for the same reason
   - [x] Pass the full repository quality gate

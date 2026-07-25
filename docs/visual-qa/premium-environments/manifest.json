@@ -1,0 +1,1181 @@
+{
+  "source": "http://127.0.0.1:8787",
+  "matrix": "environment",
+  "command": "node scripts/capture-replay-release-matrix.mjs --matrix=environment --base-url=http://127.0.0.1:8787",
+  "note": "Screenshots use demo data, actual application themes, native media emulation, and unscaled CSS pixels. Silhouette display transforms are screenshot-only and do not alter application state or renderer selection.",
+  "evidence": [
+    {
+      "file": "row-2d-light-paused.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["Chromium GPU readback warning during screenshot"]
+    },
+    {
+      "file": "row-2d-light-moving.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": []
+    },
+    {
+      "file": "row-2d-dark-paused.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": []
+    },
+    {
+      "file": "row-2d-dark-moving.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": []
+    },
+    {
+      "file": "row-3d-low-light-paused.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-low-light-moving.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-low-dark-paused.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-low-dark-moving.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-medium-light-paused.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-medium-light-moving.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-medium-dark-paused.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-medium-dark-moving.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-high-light-paused.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-high-light-moving.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-high-dark-paused.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-high-dark-moving.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "row-3d-ghost-dark.jpg",
+      "sport": "row",
+      "route": "/replay/1001",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 450
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": "2:00",
+      "seekSeconds": 4.2,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-2d-light-paused.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": []
+    },
+    {
+      "file": "bike-2d-light-moving.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": []
+    },
+    {
+      "file": "bike-2d-dark-paused.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": []
+    },
+    {
+      "file": "bike-2d-dark-moving.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": []
+    },
+    {
+      "file": "bike-3d-low-light-paused.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-low-light-moving.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-low-dark-paused.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-low-dark-moving.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-medium-light-paused.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-medium-light-moving.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-medium-dark-paused.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-medium-dark-moving.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-high-light-paused.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-high-light-moving.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-high-dark-paused.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-high-dark-moving.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "bike-3d-ghost-dark.jpg",
+      "sport": "bike",
+      "route": "/replay/1004",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 450
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": "2:00",
+      "seekSeconds": 2.6,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-2d-light-paused.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": []
+    },
+    {
+      "file": "ski-2d-light-moving.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": []
+    },
+    {
+      "file": "ski-2d-dark-paused.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": []
+    },
+    {
+      "file": "ski-2d-dark-moving.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "2d",
+      "requestedQuality": "medium",
+      "effectiveQuality": null,
+      "backend": null,
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 300
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": []
+    },
+    {
+      "file": "ski-3d-low-light-paused.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-low-light-moving.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-low-dark-paused.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-low-dark-moving.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-medium-light-paused.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-medium-light-moving.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-medium-dark-paused.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-medium-dark-moving.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-high-light-paused.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-high-light-moving.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-high-dark-paused.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-high-dark-moving.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "reducedMotion": false,
+      "playback": "moving",
+      "ghostPace": null,
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    },
+    {
+      "file": "ski-3d-ghost-dark.jpg",
+      "sport": "ski",
+      "route": "/replay/1003",
+      "renderer": "3d",
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 450
+      },
+      "reducedMotion": false,
+      "playback": "paused",
+      "ghostPace": "2:00",
+      "seekSeconds": 3.25,
+      "warnings": ["No available adapters."]
+    }
+  ]
+}
