@@ -674,12 +674,12 @@ function performanceSaddleGeometry() {
   // it would put the cushion above the plane the sit solve trusts.
   const shell = loftGeometry(
     [
-      { p: -0.16, rx: 0.048, rz: 0.016 },
-      { p: -0.11, rx: 0.078, rz: 0.018, oz: 0.001 },
-      { p: -0.035, rx: 0.105, rz: 0.018, oz: 0.002 },
-      { p: 0.045, rx: 0.1, rz: 0.017, oz: 0.002 },
-      { p: 0.115, rx: 0.078, rz: 0.017, oz: 0.001 },
-      { p: 0.16, rx: 0.048, rz: 0.014 },
+      { p: -0.135, rx: 0.03, rz: 0.014 },
+      { p: -0.09, rx: 0.052, rz: 0.017, oz: 0.001 },
+      { p: -0.03, rx: 0.068, rz: 0.018, oz: 0.002 },
+      { p: 0.04, rx: 0.064, rz: 0.017, oz: 0.002 },
+      { p: 0.095, rx: 0.046, rz: 0.016, oz: 0.001 },
+      { p: 0.135, rx: 0.026, rz: 0.013 },
     ],
     16,
     "z",
@@ -704,9 +704,9 @@ function performanceSaddleGeometry() {
   const platformShoulder = platformPeak - 0.004;
   const leftPlatform = ridgeGeometry(
     [
-      new THREE.Vector3(-0.045, platformShoulder, -0.06),
-      new THREE.Vector3(-0.05, platformPeak, 0.01),
-      new THREE.Vector3(-0.04, platformShoulder, 0.08),
+      new THREE.Vector3(-0.03, platformShoulder, -0.05),
+      new THREE.Vector3(-0.034, platformPeak, 0.01),
+      new THREE.Vector3(-0.027, platformShoulder, 0.065),
     ],
     platformRadius,
     8,
@@ -714,9 +714,9 @@ function performanceSaddleGeometry() {
   );
   const rightPlatform = ridgeGeometry(
     [
-      new THREE.Vector3(0.045, platformShoulder, -0.06),
-      new THREE.Vector3(0.05, platformPeak, 0.01),
-      new THREE.Vector3(0.04, platformShoulder, 0.08),
+      new THREE.Vector3(0.03, platformShoulder, -0.05),
+      new THREE.Vector3(0.034, platformPeak, 0.01),
+      new THREE.Vector3(0.027, platformShoulder, 0.065),
     ],
     platformRadius,
     8,
@@ -724,31 +724,31 @@ function performanceSaddleGeometry() {
   );
   const underside = loftGeometry(
     [
-      { p: -0.11, rx: 0.05, rz: 0.008 },
-      { p: 0.08, rx: 0.055, rz: 0.01 },
+      { p: -0.09, rx: 0.032, rz: 0.007 },
+      { p: 0.065, rx: 0.036, rz: 0.009 },
     ],
     12,
     "z",
     Math.PI / 12,
   );
-  underside.translate(0, -0.024, -0.015);
+  underside.translate(0, -0.02, -0.012);
   return composeGeometry(shell, centralChannel, leftPlatform, rightPlatform, underside);
 }
 
 function cliplessPedalGeometry() {
   const body = loftGeometry(
     [
-      { p: -0.11, rx: 0.018, rz: 0.028 },
-      { p: -0.075, rx: 0.032, rz: 0.046 },
-      { p: 0, rx: 0.038, rz: 0.052 },
-      { p: 0.075, rx: 0.032, rz: 0.046 },
-      { p: 0.11, rx: 0.018, rz: 0.028 },
+      { p: -0.038, rx: 0.007, rz: 0.02 },
+      { p: -0.026, rx: 0.011, rz: 0.031 },
+      { p: 0, rx: 0.013, rz: 0.035 },
+      { p: 0.026, rx: 0.011, rz: 0.031 },
+      { p: 0.038, rx: 0.007, rz: 0.02 },
     ],
     12,
     "x",
     Math.PI / 12,
   );
-  const axle = new THREE.CylinderGeometry(0.015, 0.015, 0.24, 12);
+  const axle = new THREE.CylinderGeometry(0.006, 0.006, 0.085, 12);
   axle.rotateZ(Math.PI / 2);
   const toeHook = loftGeometry(
     [
@@ -966,22 +966,32 @@ function skiAssemblyParts() {
     { name: "tip-ridge", geometry: kick, materialRole: "equipment-light" },
   ];
 }
-/** One wheel, rooted at the existing wheel-group centre with an axle along X. */
+/**
+ * One wheel, rooted at the existing wheel-group centre with an axle along X.
+ *
+ * Sized from `BIKE_RIG`, not from constants typed here: the frame reads its
+ * axles from the contract, so a wheel authored at a different radius would
+ * float off its own dropouts.
+ */
 function bikeWheelAssemblyParts() {
-  const tyre = bakeGeometry(aeroRingGeometry(0.45, 0.065, 56), { rotation: [0, Math.PI / 2, 0] });
-  const rim = bakeGeometry(aeroRingGeometry(0.385, 0.031, 56), {
+  const outer = bikeWheelAxleY(BIKE_RIG);
+  const rimRadius = outer - BIKE_RIG.tyreTube - 0.008;
+  const tyre = bakeGeometry(aeroRingGeometry(outer - BIKE_RIG.tyreTube, BIKE_RIG.tyreTube, 56), {
     rotation: [0, Math.PI / 2, 0],
   });
-  const hub = bakeGeometry(new THREE.CylinderGeometry(0.052, 0.052, 0.128, 18), {
+  const rim = bakeGeometry(aeroRingGeometry(rimRadius, 0.017, 56), {
+    rotation: [0, Math.PI / 2, 0],
+  });
+  const hub = bakeGeometry(new THREE.CylinderGeometry(0.024, 0.024, 0.1, 18), {
     rotation: [0, 0, Math.PI / 2],
   });
-  const rotorOffsetX = 0.068;
+  const rotorOffsetX = 0.05;
   const rotorParts = [
-    bakeGeometry(new THREE.TorusGeometry(0.105, 0.007, 7, 30), {
+    bakeGeometry(new THREE.TorusGeometry(0.07, 0.005, 7, 30), {
       rotation: [0, Math.PI / 2, 0],
       position: [rotorOffsetX, 0, 0],
     }),
-    bakeGeometry(new THREE.TorusGeometry(0.036, 0.006, 6, 18), {
+    bakeGeometry(new THREE.TorusGeometry(0.025, 0.004, 6, 18), {
       rotation: [0, Math.PI / 2, 0],
       position: [rotorOffsetX, 0, 0],
     }),
@@ -992,24 +1002,24 @@ function bikeWheelAssemblyParts() {
     const sin = Math.sin(angle);
     rotorParts.push(
       tubeGeometryBetween(
-        [rotorOffsetX, cos * 0.03, sin * 0.03],
-        [rotorOffsetX, cos * 0.096, sin * 0.096],
-        0.005,
+        [rotorOffsetX, cos * 0.022, sin * 0.022],
+        [rotorOffsetX, cos * 0.064, sin * 0.064],
+        0.0035,
         8,
         0.78,
       ),
-      bakeGeometry(new THREE.CylinderGeometry(0.006, 0.006, 0.012, 8), {
+      bakeGeometry(new THREE.CylinderGeometry(0.004, 0.004, 0.009, 8), {
         rotation: [0, 0, Math.PI / 2],
-        position: [rotorOffsetX + 0.007, cos * 0.046, sin * 0.046],
+        position: [rotorOffsetX + 0.005, cos * 0.032, sin * 0.032],
       }),
     );
   }
   const rotor = composeGeometry(...rotorParts);
   const spokes = [];
-  for (let index = 0; index < 14; index++) {
-    const angle = (index / 14) * Math.PI * 2 + Math.PI / 14;
-    const end = [0, Math.cos(angle) * 0.382, Math.sin(angle) * 0.382];
-    spokes.push(tubeGeometryBetween([0, 0, 0], end, 0.006, 8, 0.72));
+  for (let index = 0; index < 16; index++) {
+    const angle = (index / 16) * Math.PI * 2 + Math.PI / 16;
+    const end = [0, Math.cos(angle) * rimRadius, Math.sin(angle) * rimRadius];
+    spokes.push(tubeGeometryBetween([0, 0, 0], end, 0.0022, 6, 0.72));
   }
   return [
     { name: "tyre", geometry: tyre, materialRole: "equipment-rubber" },
@@ -1041,32 +1051,34 @@ function bikeFrameAssemblyParts() {
   const gripHalfSpan = BIKE_RIG.handlebar.grip.halfSpan;
   const gripZ = BIKE_RIG.handlebar.grip.z;
   const barZ = BIKE_RIG.handlebar.base[2];
+  // Real road tubing diameters (~35 mm down tube down to ~19 mm stays). These
+  // were nearly three times thicker when the bike was oversized.
   const mainFrame = composeGeometry(
-    tubeGeometryBetween(bottomBracket, headBottom, 0.055, 16, 0.85),
-    tubeGeometryBetween(bottomBracket, seatCluster, 0.052, 16, 0.88),
-    tubeGeometryBetween(seatCluster, headTop, 0.048, 16, 0.9),
-    tubeGeometryBetween(headBottom, headTop, 0.06, 16),
+    tubeGeometryBetween(bottomBracket, headBottom, 0.0185, 16, 0.85),
+    tubeGeometryBetween(bottomBracket, seatCluster, 0.0165, 16, 0.88),
+    tubeGeometryBetween(seatCluster, headTop, 0.015, 16, 0.9),
+    tubeGeometryBetween(headBottom, headTop, 0.021, 16),
   );
   const stays = [];
   for (const side of [-1, 1]) {
     stays.push(
       tubeGeometryBetween(
-        [side * 0.065, wheelAxleY, rearAxle[2]],
-        [side * 0.055, bottomBracket[1], bottomBracket[2]],
-        0.027,
+        [side * 0.055, wheelAxleY, rearAxle[2]],
+        [side * 0.036, bottomBracket[1], bottomBracket[2]],
+        0.0115,
         12,
       ),
       tubeGeometryBetween(
-        [side * 0.065, wheelAxleY, rearAxle[2]],
-        [side * 0.055, seatCluster[1], seatCluster[2]],
-        0.026,
+        [side * 0.055, wheelAxleY, rearAxle[2]],
+        [side * 0.026, seatCluster[1], seatCluster[2]],
+        0.0095,
         12,
         0.82,
       ),
       tubeGeometryBetween(
-        [side * 0.043, headBottom[1], headBottom[2]],
-        [side * 0.046, wheelAxleY, frontAxle[2]],
-        0.031,
+        [side * 0.022, headBottom[1] - 0.012, headBottom[2] + 0.004],
+        [side * 0.048, wheelAxleY, frontAxle[2]],
+        0.0115,
         14,
         0.82,
       ),
@@ -1075,12 +1087,12 @@ function bikeFrameAssemblyParts() {
   const barCentre = [0, barY, barZ];
   const leftGripContact = [-gripHalfSpan, gripY, gripZ];
   const rightGripContact = [gripHalfSpan, gripY, gripZ];
-  const barHalfWidth = gripHalfSpan + 0.04;
+  const barHalfWidth = gripHalfSpan;
   const cockpit = composeGeometry(
-    tubeGeometryBetween(headTop, barCentre, 0.02, 12),
-    tubeGeometryBetween([-barHalfWidth, barY, barZ], [barHalfWidth, barY, barZ], 0.02, 16),
-    tubeGeometryBetween([-gripHalfSpan - 0.02, barY, barZ], leftGripContact, 0.016, 12),
-    tubeGeometryBetween([gripHalfSpan + 0.02, barY, barZ], rightGripContact, 0.016, 12),
+    tubeGeometryBetween(headTop, barCentre, 0.0125, 12),
+    tubeGeometryBetween([-barHalfWidth, barY, barZ], [barHalfWidth, barY, barZ], 0.0125, 16),
+    tubeGeometryBetween([-gripHalfSpan, barY, barZ], leftGripContact, 0.0125, 12),
+    tubeGeometryBetween([gripHalfSpan, barY, barZ], rightGripContact, 0.0125, 12),
   );
   const brakeHoodForms = [];
   const brakeLeverForms = [];
@@ -1088,19 +1100,36 @@ function bikeFrameAssemblyParts() {
     [-1, leftGripContact],
     [1, rightGripContact],
   ]) {
-    const barEnd = [side * (gripHalfSpan + 0.02), barY, barZ];
+    // The hood is the shaped lever body the palm actually rests on, and the
+    // drop curves down and back from it, so the bar is something a hand can
+    // hold rather than a rod that ends in a point.
+    const barEnd = [side * gripHalfSpan, barY, barZ];
     brakeHoodForms.push(
-      tubeGeometryBetween(barEnd, contact, 0.022, 14, 0.82),
-      ellipsoidGeometry([0.032, 0.038, 0.045], 18, 12, contact),
+      tubeGeometryBetween(barEnd, contact, 0.0125, 14, 0.82),
+      ellipsoidGeometry([0.019, 0.022, 0.055], 18, 12, [
+        contact[0],
+        contact[1] + 0.012,
+        contact[2] - 0.012,
+      ]),
+      ridgeGeometry(
+        [
+          new THREE.Vector3(...contact),
+          new THREE.Vector3(side * gripHalfSpan, gripY - 0.045, gripZ + 0.045),
+          new THREE.Vector3(side * gripHalfSpan, gripY - 0.115, gripZ + 0.012),
+        ],
+        0.0125,
+        12,
+        8,
+      ),
     );
     brakeLeverForms.push(
       ridgeGeometry(
         [
-          new THREE.Vector3(side * (gripHalfSpan + 0.045), gripY - 0.08, gripZ + 0.1),
-          new THREE.Vector3(side * (gripHalfSpan + 0.042), gripY - 0.05, gripZ + 0.06),
-          new THREE.Vector3(...contact),
+          new THREE.Vector3(side * gripHalfSpan, gripY - 0.06, gripZ + 0.052),
+          new THREE.Vector3(side * gripHalfSpan, gripY - 0.03, gripZ + 0.05),
+          new THREE.Vector3(contact[0], contact[1] + 0.004, contact[2] + 0.01),
         ],
-        0.008,
+        0.005,
         10,
         8,
       ),
@@ -1108,75 +1137,83 @@ function bikeFrameAssemblyParts() {
   }
   const brakeHoods = composeGeometry(...brakeHoodForms);
   const brakeLevers = composeGeometry(...brakeLeverForms);
-  const caliperY = wheelAxleY + 0.22;
+  // Rim calipers sit just above each tyre at the brake track, derived from the
+  // axles rather than pinned to coordinates from the oversized bike.
+  const caliperReach = wheelAxleY - BIKE_RIG.tyreTube - 0.012;
   const brakeCalipers = composeGeometry(
-    ellipsoidGeometry([0.052, 0.067, 0.042], 16, 11, [0.09, caliperY, 0.78]),
-    ellipsoidGeometry([0.042, 0.058, 0.038], 16, 11, [0.09, caliperY - 0.08, -0.79]),
+    ellipsoidGeometry([0.02, 0.03, 0.016], 16, 11, [0.012, caliperReach, frontAxle[2] - 0.012]),
+    ellipsoidGeometry([0.018, 0.027, 0.015], 16, 11, [0.012, caliperReach, rearAxle[2] + 0.02]),
     tubeGeometryBetween(
-      [0.077, caliperY, 0.78],
-      [0.043, wheelAxleY + 0.45, wheelAxleY + 0.08],
-      0.014,
+      [0.012, caliperReach, frontAxle[2] - 0.012],
+      [0.012, caliperReach + 0.04, frontAxle[2] - 0.03],
+      0.006,
       10,
       0.8,
     ),
     tubeGeometryBetween(
-      [0.077, caliperY - 0.08, -0.79],
-      [0.048, wheelAxleY + 0.55, wheelAxleY - 0.05],
-      0.014,
+      [0.012, caliperReach, rearAxle[2] + 0.02],
+      [0.012, caliperReach + 0.04, rearAxle[2] + 0.045],
+      0.006,
       10,
       0.8,
     ),
-    bakeGeometry(new THREE.CylinderGeometry(0.016, 0.016, 0.025, 10), {
-      rotation: [0, 0, Math.PI / 2],
-      position: [0.112, caliperY, 0.78],
-    }),
-    bakeGeometry(new THREE.CylinderGeometry(0.014, 0.014, 0.025, 10), {
-      rotation: [0, 0, Math.PI / 2],
-      position: [0.112, caliperY - 0.08, -0.79],
-    }),
   );
-  const driveSideX = -0.078;
-  // The chain wraps the chainring at the bottom bracket and the cassette at the
-  // rear axle, so each run is anchored to its own sprocket rather than to a
-  // single hard-coded height. With the contract's BB drop those are 5 cm apart.
-  const chainRingY = bottomBracket[1];
-  const chainZNear = bottomBracket[2] - 0.03;
-  const chainZFar = rearAxle[2] + 0.02;
-  const chainZMid = (chainZNear + chainZFar) / 2;
+  // Chain: two external tangents plus the arcs it wraps, so it actually meets
+  // the chainring and the cassette instead of floating between two guesses.
+  const driveSideX = -0.045;
+  const ringRadius = 0.098;
+  const cogRadius = 0.043;
+  const chainDz = rearAxle[2] - bottomBracket[2];
+  const chainDy = rearAxle[1] - bottomBracket[1];
+  const chainSpan = Math.hypot(chainDz, chainDy);
+  const chainAlpha = Math.atan2(chainDy, chainDz);
+  const chainBeta = Math.asin(Math.max(-1, Math.min(1, (ringRadius - cogRadius) / chainSpan)));
+  const chainTangent = Math.PI / 2 - chainBeta;
+  const chainPoints = [];
+  const pushArc = (centreY, centreZ, radius, from, to, steps) => {
+    for (let i = 0; i <= steps; i++) {
+      const angle = from + ((to - from) * i) / steps;
+      chainPoints.push(
+        new THREE.Vector3(
+          driveSideX,
+          centreY + radius * Math.sin(angle),
+          centreZ + radius * Math.cos(angle),
+        ),
+      );
+    }
+  };
+  pushArc(
+    bottomBracket[1],
+    bottomBracket[2],
+    ringRadius,
+    chainAlpha + chainTangent,
+    chainAlpha - chainTangent + Math.PI * 2,
+    14,
+  );
+  pushArc(
+    rearAxle[1],
+    rearAxle[2],
+    cogRadius,
+    chainAlpha - chainTangent,
+    chainAlpha + chainTangent,
+    10,
+  );
   const chainAndCassetteForms = [
-    ridgeGeometry(
-      [
-        new THREE.Vector3(driveSideX, chainRingY + 0.135, chainZNear),
-        new THREE.Vector3(driveSideX, (chainRingY + 0.135 + wheelAxleY + 0.065) / 2, chainZMid),
-        new THREE.Vector3(driveSideX, wheelAxleY + 0.065, chainZFar),
-      ],
-      0.008,
-      12,
-      7,
-    ),
-    ridgeGeometry(
-      [
-        new THREE.Vector3(driveSideX, chainRingY - 0.135, chainZNear),
-        new THREE.Vector3(driveSideX, (chainRingY - 0.135 + wheelAxleY - 0.08) / 2, chainZMid),
-        new THREE.Vector3(driveSideX, wheelAxleY - 0.08, chainZFar),
-      ],
-      0.008,
-      12,
-      7,
-    ),
-    ellipsoidGeometry([0.03, 0.062, 0.048], 14, 10, [driveSideX - 0.012, wheelAxleY - 0.09, -0.77]),
-    tubeGeometryBetween(
-      [driveSideX - 0.012, wheelAxleY - 0.06, -0.77],
-      [driveSideX, wheelAxleY - 0.02, -0.84],
-      0.012,
-      10,
+    flatGeometry(
+      new THREE.TubeGeometry(
+        new THREE.CatmullRomCurve3(chainPoints, true, "centripetal"),
+        96,
+        0.0042,
+        6,
+        true,
+      ),
     ),
   ];
-  for (const [index, radius] of [0.052, 0.066, 0.081, 0.096].entries()) {
+  for (const [index, radius] of [0.043, 0.036, 0.03, 0.025].entries()) {
     chainAndCassetteForms.push(
-      bakeGeometry(new THREE.TorusGeometry(radius, 0.006, 6, 24), {
+      bakeGeometry(new THREE.TorusGeometry(radius, 0.0035, 6, 24), {
         rotation: [0, Math.PI / 2, 0],
-        position: [driveSideX - index * 0.009, rearAxle[1], rearAxle[2]],
+        position: [driveSideX - index * 0.006, rearAxle[1], rearAxle[2]],
       }),
     );
   }
@@ -1190,10 +1227,14 @@ function bikeFrameAssemblyParts() {
   const seatPost = tubeGeometryBetween(
     [BIKE_RIG.saddle[0], seatCluster[1] - 0.02, BIKE_RIG.saddle[2]],
     [BIKE_RIG.saddle[0], BIKE_RIG.saddle[1] - BIKE_RIG.saddlePadHalfHeight, BIKE_RIG.saddle[2]],
-    0.024,
+    0.0135,
     12,
   );
-  const forkCrown = ellipsoidGeometry([0.07, 0.07, 0.055], 16, 10, headBottom);
+  const forkCrown = ellipsoidGeometry([0.03, 0.026, 0.022], 16, 10, [
+    headBottom[0],
+    headBottom[1] - 0.012,
+    headBottom[2] + 0.004,
+  ]);
   return [
     { name: "main-triangle", geometry: mainFrame, materialRole: "equipment-painted" },
     {
@@ -1224,19 +1265,19 @@ function bikeFrameAssemblyParts() {
 
 /** Bike crank-root coordinates: the runtime still rotates this assembly about X. */
 function bikeDrivetrainAssemblyParts() {
-  const chainring = bakeGeometry(new THREE.TorusGeometry(0.16, 0.016, 8, 36), {
+  const chainring = bakeGeometry(new THREE.TorusGeometry(0.098, 0.006, 8, 36), {
     rotation: [0, Math.PI / 2, 0],
   });
   const spider = composeGeometry(
-    tubeGeometryBetween([0, -0.14, 0], [0, 0.14, 0], 0.012, 10),
-    tubeGeometryBetween([0, 0, -0.14], [0, 0, 0.14], 0.012, 10),
+    tubeGeometryBetween([0, -0.085, 0], [0, 0.085, 0], 0.007, 10),
+    tubeGeometryBetween([0, 0, -0.085], [0, 0, 0.085], 0.007, 10),
   );
   // Crank arms reach exactly the contract pedal radius so the authored arm ends
   // where the runtime solves the shoe contact.
   const crankRadius = BIKE_RIG.crank.pedalRadius;
   const crankArms = composeGeometry(
-    tubeGeometryBetween([0, 0, 0], [0, -crankRadius, 0], 0.018, 12, 0.82),
-    tubeGeometryBetween([0, 0, 0], [0, crankRadius, 0], 0.018, 12, 0.82),
+    tubeGeometryBetween([0, 0, 0], [0, -crankRadius, 0], 0.009, 12, 0.82),
+    tubeGeometryBetween([0, 0, 0], [0, crankRadius, 0], 0.009, 12, 0.82),
   );
   const pedals = [];
   for (const side of [-1, 1]) {
@@ -1244,7 +1285,7 @@ function bikeDrivetrainAssemblyParts() {
     pedal.translate(side * BIKE_RIG.crank.lateral, side * crankRadius, 0);
     pedals.push(pedal);
   }
-  const spindle = bakeGeometry(new THREE.CylinderGeometry(0.04, 0.04, 0.22, 16), {
+  const spindle = bakeGeometry(new THREE.CylinderGeometry(0.019, 0.019, 0.145, 16), {
     rotation: [0, 0, Math.PI / 2],
   });
   return [

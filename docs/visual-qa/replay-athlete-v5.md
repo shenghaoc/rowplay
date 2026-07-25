@@ -75,9 +75,9 @@ artifacts (do not hand-edit digests).
 
 | Artifact                           |      Bytes | SHA-256                                                            |
 | ---------------------------------- | ---------: | ------------------------------------------------------------------ |
-| `rowplay-athlete-v4.glb`           |  5,069,284 | `d435338500c15ee50ee4343a28f821779be179987ebd38819f578bd0fbf55bc7` |
-| `rowplay-athlete-v4.usdz`          | 11,830,173 | `1af7475805bfb7d9ac79d5af902ec11c6c957a8cc408c51f6cbdd7a56c7908e2` |
-| `rowplay-athlete-v4.contract.json` |     27,593 | `4388abafdd7d7abe987359ceacd5e655416121e4a748f053da497d3d16729190` |
+| `rowplay-athlete-v4.glb`           |  5,069,284 | `03a588681c5a066d4974f6fc695101ecb49a0b77bbbf760baa8dbf2f763c8b24` |
+| `rowplay-athlete-v4.usdz`          | 11,830,161 | `2cec944fa12954b78a3f808856f611f4d5fd3689838325c196ab4b41caed337d` |
+| `rowplay-athlete-v4.contract.json` |     27,593 | `72b730a7cae727373d590c3cbe529ec3498e334704ce59e3118d95556178dbae` |
 
 The GLB contains one indexed `SkinnedMesh`, 64,200 vertices, 106,256 triangles,
 28 deliberate topology components, one continuous human core, one skin, one
@@ -235,6 +235,65 @@ heuristic in the controller meant the correction never executed under test.
 Remaining compromise: the `athlete-close` camera crops the rider's head on
 BikeErg at desktop framing, which is why the seat evidence above uses the
 ordinary chase camera. The close frames remain the posture reference.
+
+### BikeErg true-scale rebuild — 2026-07-25
+
+Review of the frames above found the bicycle itself was the problem, not its
+details. Measured against the V4 athlete — 1.83 m tall, hip at 1.02, femur
+0.4915, tibia 0.4794 — the bike was roughly 1.5× oversized: **1.02 m wheels**
+(a 700c wheel is 0.67) on a **1.70 m wheelbase** (road bikes are ~1.00), with
+the saddle at 1.23 m. The BikeErg's procedural legs had been stretched to
+0.63/0.63 to reach it, where the rower's are 0.552.
+
+Every other front-end complaint followed from that. Wheels that large force the
+front wheel far forward or the pedals strike it, so the fork had to rake out to
+**52° over 0.70 m** to meet the axle — a chopper, not a bicycle. The head tube
+was also built backwards, with its top 0.08 m _ahead_ of its bottom, where a
+real steerer leans back as it rises.
+
+**Now derived, not authored.** `bikeRig.js` takes real road geometry (0.335 m
+axle height, 0.07 BB drop, 73° head angle, 0.05 fork rake, 0.41 chainstay) and
+then solves the rider's hip from their own leg length against the bottom
+bracket, the way a fitter would. Results: 0.670 m wheels, 0.999 m wheelbase,
+73.0° head angle with the top correctly rearward, a 0.384 m fork, 95% leg
+extension at bottom dead centre, and 0.124 m of toe clearance to the front
+wheel. Procedural femur and tibia now read from the same contract, so the
+fallback figure cannot drift from the skinned athlete again.
+
+**Parts and materials.** The tyre was a mid blue-grey at roughness 0.4 with a
+touch of metalness, which is why the wheels read as moulded plastic; it is now
+near-black at roughness 0.95 and zero metal. The chain was 48 straight tubes
+between two eyeballed points that touched neither sprocket — it is now a single
+closed loop solved as two external tangents plus the arcs it wraps, with a
+cassette to wrap at the back. (The first attempt used `π/2 + β` for the tangent
+contact angle where the correct solution of `cos(θ−α) = (r₁−r₂)/d` is
+`π/2 − β`; a tangency test caught it.) The bar was a bare capsule ending in a
+point, and is now a drop bar with shaped brake hoods the palms close on. The
+saddle is deliberately **grey rather than black**: a black saddle merged with
+both the dark kit above and the dark track behind, which is how "is the rider
+on the seat?" became impossible to answer by eye, and it failed the semantic
+contrast rule the renderer already enforced.
+
+Frames, same harness, manifest at
+[`bike-rescale-2026-07-25/manifest.json`](athlete-v5/in-app/bike-rescale-2026-07-25/manifest.json):
+
+| View                    | Frame                                                                                                                                                       | What it shows                                                    |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Chase, light, pedal top | [frame](athlete-v5/in-app/bike-rescale-2026-07-25/poses/saddle-bike-pedal-top-light.jpg)                                                                    | True-scale bicycle under a correctly proportioned rider          |
+| Chase, light, bottom    | [frame](athlete-v5/in-app/bike-rescale-2026-07-25/poses/saddle-bike-pedal-bottom-light.jpg)                                                                 | Steep short fork, rubber tyres, seat occupied through BDC        |
+| Chase + skeleton        | [overlay](athlete-v5/in-app/bike-rescale-2026-07-25/poses/saddle-bike-pedal-top-skeleton.jpg)                                                               | Hip above the pad, leg chain unbroken to the pedal               |
+| Close, top / bottom     | [top](athlete-v5/in-app/bike-rescale-2026-07-25/poses/bike-pedal-top.jpg) · [bottom](athlete-v5/in-app/bike-rescale-2026-07-25/poses/bike-pedal-bottom.jpg) | Frame tubing at road diameters instead of scaffolding            |
+| Grip close-up           | [frame](athlete-v5/in-app/bike-rescale-2026-07-25/poses/grip-bike-pedal-top.jpg)                                                                            | Palms closed on shaped hoods; alloy bar with dark tape and drops |
+
+**Known remaining compromise.** The saddle sits 0.547 m above the bottom
+bracket where a race fit for this rider would be nearer 0.70. That is not a
+tuning choice: the sit surface is measured 0.20 m below `v4Hips` and is
+constant to 1.5 mm across the whole crank cycle, because the authored BikeErg
+clip never rotates the pelvis into a seated pose. What the saddle is placed
+under is therefore a standing figure's gluteal fold, and raising it without a
+genuinely seated clip would simply drive the buttock through the cushion.
+Closing that gap means authoring pelvic rotation into the clip, which is PR
+#171's frozen technique timing and deliberately out of scope here.
 
 The primary matrix is the
 [six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):

@@ -2224,8 +2224,11 @@ describe("CourseRenderer3D", () => {
             expect(kneeLocal.z, `${side} knee forward at ${cycle}`).toBeGreaterThan(
               hipLocal.z + 0.02,
             );
+            // Derived from the crank rather than a magic height: the knee must
+            // clear the pedal even at top dead centre, whatever the bike's scale.
+            const topPedalY = (BIKE_RIG.bottomBracket[1] ?? 0) + BIKE_RIG.crank.pedalRadius;
             expect(kneeLocal.y, `${side} knee stays above the pedal at ${cycle}`).toBeGreaterThan(
-              0.55,
+              topPedalY,
             );
             const interiorAngle = kneeLocal
               .clone()
@@ -2262,7 +2265,10 @@ describe("CourseRenderer3D", () => {
       try {
         const saddle = sceneObject(renderer, "bike-saddle") as THREE.Mesh;
         const material = saddle.material as THREE.MeshStandardMaterial;
-        expect(saddle.renderOrder).toBeLessThan(0);
+        // No renderOrder override: the pad is ordinary opaque geometry, so the
+        // depth buffer resolves it against the rider. The old negative order
+        // was left over from a depthWrite:false workaround that no longer runs.
+        expect(saddle.renderOrder).toBe(0);
         expect(material.transparent).toBe(false);
         // Geometry contact owns no-穿模; the pad is a depth-writing solid, not
         // a draw-order band-aid over a mesh that still penetrates the cushion.
@@ -2274,7 +2280,7 @@ describe("CourseRenderer3D", () => {
           const { instance, motion } = v4Lane(renderer);
           getScene(renderer).updateMatrixWorld(true);
           expect(motion.enabled, `BikeErg V4 stays active at ${cycle}`).toBe(true);
-          expect(instance.mesh.renderOrder, `athlete follows saddle at ${cycle}`).toBeGreaterThan(
+          expect(instance.mesh.renderOrder, `athlete draw order at ${cycle}`).toBe(
             saddle.renderOrder,
           );
         }
@@ -3031,14 +3037,14 @@ describe("CourseRenderer3D", () => {
         ["skierg-shin-right", 0.39],
       ],
       bike: [
-        ["bike-upper-arm-left", 0.37],
-        ["bike-upper-arm-right", 0.37],
-        ["bike-forearm-left", 0.35],
-        ["bike-forearm-right", 0.35],
-        ["bike-thigh-left", 0.63],
-        ["bike-thigh-right", 0.63],
-        ["bike-shin-left", 0.63],
-        ["bike-shin-right", 0.63],
+        ["bike-upper-arm-left", 0.39],
+        ["bike-upper-arm-right", 0.39],
+        ["bike-forearm-left", 0.375],
+        ["bike-forearm-right", 0.375],
+        ["bike-thigh-left", 0.4915],
+        ["bike-thigh-right", 0.4915],
+        ["bike-shin-left", 0.4794],
+        ["bike-shin-right", 0.4794],
       ],
     } as const;
 

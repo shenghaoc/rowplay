@@ -22,11 +22,11 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 681,908 bytes; SHA-256
-  `db15f6b1a32c0c65c64cd4071ab6df9a51eb5658be73720837f94cd5d61c8df5`.
+- **Reviewed V3 artifact:** 691,928 bytes; SHA-256
+  `fa86b5ecc5cd7b6acd0436d37b1f26b6c9e935013c6daa854f4d6cf6aacfc690`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
-  nodes total). The package has 26,846 indexed triangles and 18,907 indexed
+  nodes total). The package has 27,558 indexed triangles and 19,142 indexed
   vertices, one neutral placeholder material, zero textures/images, zero
   animations, and zero skins.
 - **Detail language:** shared-vertex smooth normals, a neutral lower rowing hull
@@ -37,11 +37,14 @@ identity, or Canvas 2D fallback.
   Blender-authored open-U racing shell with split decks, recessed cockpit,
   slide rails, angled stretcher, heel cups, wing rigger, oarlocks, moving
   four-roller seat carriage, and sculpted oar; raised ski deck and binding; and a
-  stylised **diamond-frame road bicycle** — aero-rim wheels with 14 fine spokes
-  and six-spoke disc rotors, a main triangle with chain- and seat-stays and fork
-  blades, chain and cassette, calipers, contact-aligned brake hoods and levers, a
-  channelled performance saddle on a post that stops beneath the pad, and a
-  rotating crank assembly. The bicycle is a course-progress metaphor rather than
+  **true-scale road bicycle** — 0.67 m (700c) wheels on a 1.00 m wheelbase, sized
+  to the 1.83 m athlete rather than inflated to meet them. Aero rims with 16 fine
+  spokes and disc rotors, a main triangle with chain- and seat-stays, fork blades
+  running from the crown to the axle on the steering axis, a chain solved as two
+  external tangents plus the arcs it wraps around chainring and cassette, rim
+  calipers, drop bars with brake hoods the palms close on, a channelled
+  performance saddle on a post that stops beneath the pad, and a rotating crank
+  assembly with arms. The bicycle is a course-progress metaphor rather than
   a model of Concept2's stationary BikeErg. Every one of those frame nodes is
   read at build time from the shared `src/lib/replay/bikeRig.js` contract that
   `makeBikeAvatar` also uses, so the checked-in V3 equipment cannot drift from

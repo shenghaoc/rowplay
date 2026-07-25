@@ -181,14 +181,16 @@ returns underneath the arm for the next plant without changing to the opposite
 two-bone intersection.
 BikeErg shoes stay on opposed pedals while each knee follows a continuous
 rider-forward branch and retains flexion through bottom dead centre. The 3D
-BikeErg rider is drawn on a stylised diamond-frame road bicycle—two equal
-wheels, a chain to the rear cassette, drop bars—rather than a literal model of
-the stationary machine, because the replay carries the athlete along a race
-course and a rolling bicycle reads that progress at a glance. The frame and the
-rider share one `BIKE_RIG` fit contract for bottom bracket, saddle, grips, and
+BikeErg rider is drawn on a stylised road bicycle—two 0.67 m wheels on a 1.00 m
+wheelbase, a chain to the rear cassette, drop bars—rather than a literal model
+of the stationary machine, because the replay carries the athlete along a race
+course and a rolling bicycle reads that progress at a glance. The bicycle is
+sized to the athlete rather than the other way round: its frame comes from real
+road geometry, and the rider's hip is then derived from their own leg length
+against the bottom bracket, the way a bike is actually fitted. The frame and the
+rider share one `BIKE_RIG` contract for bottom bracket, saddle, grips, and
 pedals, so the procedural renderer and the generated V3 equipment cannot drift
-apart. The production V4 athlete (PR #172) derives hip height from the measured
-mesh sit surface and pad top (not a free Y tweak), keeps the posterior on a
+apart. The production V4 athlete (PR #172) keeps its measured sit surface on a
 channelled performance saddle so the body cannot pass through the cushion, and
 rebuilds the elbow branch from the visible shoulders to the hood contacts so
 palms lock to the grips. Equipment form and athlete–bike contact are present at
