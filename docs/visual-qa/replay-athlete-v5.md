@@ -159,6 +159,23 @@ truthfully record effective High/WebGL. They prove anatomy, enclosure, and
 clipping at the same geometry and contact solve used by all tiers; the existing
 hardware Chrome evidence remains the Ultra/WebGPU material proof.
 
+### BikeErg sit-surface correction — 2026-07-25
+
+Codex’s earlier “seated fit” change only moved the hip **bone** onto the saddle
+marker. Measured after full clip + contact solve, the production V4 posterior
+sit surface still sat ~8 cm below that marker, so the buttocks sank under the
+authored saddle and the seat read as empty from the chase camera while
+hip-to-saddle unit tests stayed green. Palms were already on the hood contacts
+(~0 mm).
+
+Fix: lower the shared `BIKE_RIG` saddle/seat-cluster under
+`hip + sitSurfaceFromHip` (keep the hip high enough for full pedal reach),
+rebuild V3 equipment from that contract, document `sitSurfaceFromHip`, and
+assert sit-surface distance (not hip≈saddle) plus palm-to-grip lock in the
+tiered fit test. Post-fix: sit-to-saddle ≈ 2 cm, palm-to-grip ≈ 0 mm. No
+third-party bike download — the empty seat was an athlete/saddle alignment bug,
+not missing bike geometry.
+
 ### BikeErg seated-fit follow-up — 2026-07-25
 
 The BikeErg machine and rider now share one `BIKE_RIG` proportion contract in

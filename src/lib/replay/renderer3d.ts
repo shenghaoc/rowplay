@@ -3276,9 +3276,10 @@ function makeBikeAvatar(
   const SHIN_LENGTH = 0.53;
   const BIKE_AERO_SPINE_LEAN = 0.74;
   const BIKE_HEAD_GAZE_COMPENSATION = -0.47;
-  // Sit the hip centre into the saddle rather than above it. This preserves a
-  // safe ~25° knee bend at maximum extension instead of visually locking the
-  // leg as the pedal passes bottom dead centre.
+  // Hip joint is raised above the saddle marker so the V4 mesh sit surface
+  // (see BIKE_RIG.rider.sitSurfaceFromHip) lands on the seat. Aligning the hip
+  // bone to the saddle centre sinks the buttocks under the authored saddle and
+  // makes the seat look empty. Keep enough knee bend at bottom dead centre.
   const BIKE_PELVIS_BASE_Y = BIKE_RIG.rider.pelvisOffset[1] ?? 0;
   const BIKE_PELVIS_BASE_Z = BIKE_RIG.rider.pelvisOffset[2] ?? 0;
   const BIKE_ANKLE_MIN = -0.22;

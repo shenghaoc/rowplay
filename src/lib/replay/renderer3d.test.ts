@@ -2636,35 +2636,53 @@ describe("CourseRenderer3D", () => {
       }
     });
 
+    
+    
     it("keeps the V4 BikeErg fit across every quality tier and crank phase", () => {
       for (const quality of ["low", "medium", "high", "ultra"] as const) {
         const renderer = rendererFor("bike", quality);
         try {
           const inverse = new THREE.Matrix4();
+          const sitOffset = new THREE.Vector3(...BIKE_RIG.rider.sitSurfaceFromHip);
           for (const cycle of [0, 0.125, 0.25, 0.5, 0.75, 0.999]) {
             renderer.render(makeSportState("bike", cycle), false);
             const { avatar, instance } = v4Lane(renderer);
             getScene(renderer).updateMatrixWorld(true);
             inverse.copy(avatar.group.matrixWorld).invert();
 
-            const pelvis = avatar.v4Targets.pelvis
+            const hip = instance.bones.v4Hips
               .getWorldPosition(new THREE.Vector3())
               .applyMatrix4(inverse);
             const saddle = worldPosition(renderer, "bike-saddle").applyMatrix4(inverse);
+            // Hip bone stays above the saddle marker; the mesh sit surface is
+            // what must land on the seat (Codex previously asserted hip≈saddle
+            // and greenlit a still-empty seat).
+            const sit = hip.clone().add(sitOffset);
             expect(
-              pelvis.distanceTo(saddle),
-              `${quality} pelvis remains supported by the saddle at ${cycle}`,
-            ).toBeLessThan(0.055);
+              hip.y - saddle.y,
+              `${quality} hip stays above the saddle marker at ${cycle}`,
+            ).toBeGreaterThan(0.05);
+            expect(
+              sit.distanceTo(saddle),
+              `${quality} mesh sit surface remains on the saddle at ${cycle}`,
+            ).toBeLessThan(0.06);
 
             for (const side of ["Left", "Right"] as const) {
               const lower = side.toLowerCase() as "left" | "right";
               const hand = v4EffectorWorld(instance, `${lower}Hand`).applyMatrix4(inverse);
+              const grip = avatar.v4Targets[`${lower}Hand`]
+                .getWorldPosition(new THREE.Vector3())
+                .applyMatrix4(inverse);
               const shoulder = instance.bones[`v4${side}UpperArm`]
                 .getWorldPosition(new THREE.Vector3())
                 .applyMatrix4(inverse);
               const elbow = instance.bones[`v4${side}Forearm`]
                 .getWorldPosition(new THREE.Vector3())
                 .applyMatrix4(inverse);
+              expect(
+                hand.distanceTo(grip),
+                `${quality} ${lower} palm stays on the hood contact at ${cycle}`,
+              ).toBeLessThan(0.015);
               expect(
                 elbow.y,
                 `${quality} ${lower} elbow drops below the shoulder at ${cycle}`,

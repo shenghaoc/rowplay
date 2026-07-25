@@ -17,9 +17,10 @@ describe("BikeErg fit contract", () => {
     expect(BIKE_RIG.headTop[2]).toBeLessThan(BIKE_RIG.frontAxleZ);
   });
 
-  it("places the pelvis over the saddle and the hoods inside an arm-length reach", () => {
+  it("places the hip above the saddle so the mesh sit surface lands on the seat", () => {
     const saddle = point(BIKE_RIG.saddle);
-    const pelvis = point(BIKE_RIG.rider.root).add(point(BIKE_RIG.rider.pelvisOffset));
+    const hip = point(BIKE_RIG.rider.root).add(point(BIKE_RIG.rider.pelvisOffset));
+    const sit = hip.clone().add(point(BIKE_RIG.rider.sitSurfaceFromHip));
     const leftGrip = new THREE.Vector3(
       -BIKE_RIG.handlebar.grip.halfSpan,
       BIKE_RIG.handlebar.grip.y,
@@ -27,13 +28,21 @@ describe("BikeErg fit contract", () => {
     );
     const rightGrip = leftGrip.clone().setX(BIKE_RIG.handlebar.grip.halfSpan);
 
-    expect(Math.abs(pelvis.y - saddle.y)).toBeLessThan(0.02);
-    expect(Math.abs(pelvis.z - saddle.z)).toBeLessThan(0.025);
-    expect(leftGrip.y).toBeLessThan(pelvis.y);
-    expect(rightGrip.y).toBeLessThan(pelvis.y);
-    expect(leftGrip.distanceTo(pelvis)).toBeGreaterThan(0.55);
-    expect(leftGrip.distanceTo(pelvis)).toBeLessThan(0.78);
-    expect(rightGrip.distanceTo(pelvis)).toBeCloseTo(leftGrip.distanceTo(pelvis), 8);
+    // Hip is intentionally above the saddle marker; the sit surface is what
+    // must land on the seat.
+    expect(hip.y - saddle.y).toBeGreaterThan(0.05);
+    expect(hip.y - saddle.y).toBeLessThan(0.12);
+    expect(Math.abs(sit.y - saddle.y)).toBeLessThan(0.03);
+    expect(Math.abs(sit.z - saddle.z)).toBeLessThan(0.05);
+    expect(leftGrip.y).toBeLessThan(hip.y);
+    expect(rightGrip.y).toBeLessThan(hip.y);
+    expect(leftGrip.distanceTo(hip)).toBeGreaterThan(0.55);
+    expect(leftGrip.distanceTo(hip)).toBeLessThan(0.85);
+    expect(rightGrip.distanceTo(hip)).toBeCloseTo(leftGrip.distanceTo(hip), 8);
+
+    // Bottom-dead-centre pedal still within thigh+shin reach (~1.07 m).
+    const bottomPedalY = BIKE_RIG.bottomBracket[1]! - BIKE_RIG.crank.pedalRadius;
+    expect(hip.y - bottomPedalY).toBeLessThan(1.07);
   });
 
   it("keeps the opposed pedal radius and lateral spacing identical to the authored runtime", () => {

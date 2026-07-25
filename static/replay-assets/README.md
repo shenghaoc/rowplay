@@ -22,8 +22,8 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 676,520 bytes; SHA-256
-  `193e405553bd929d7486a7355685a0c2695938fdc10ae8c252bf99b4f6b46fde`.
+- **Reviewed V3 artifact:** 676,524 bytes; SHA-256
+  `c2cbc714c5ccfbe6541fc6d5c29cbb5d4a7c868c3bde8ae87c6196a75d3b323e`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
   nodes total). The package has 26,590 indexed triangles and 18,745 indexed
