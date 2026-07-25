@@ -3084,34 +3084,64 @@ function makeBikeAvatar(
   // Drive chain from chainring to rear cassette — two thin parallel tubes
   // so the drivetrain reads as mechanically connected instead of floating.
   const driveSideX = -0.075;
-  const chainTop = tubeBetween(
-    "bike-chain-top",
-    { x: driveSideX, y: wheelAxleY + 0.08, z: -0.05 },
-    { x: driveSideX, y: wheelAxleY + 0.03, z: BIKE_RIG.rearAxleZ + 0.03 },
-    0.005,
-    spokeMaterial,
+  // Segmented chain from chainring to rear cassette — alternating outer/inner
+  // plates create a readable bicycle-chain silhouette.
+  const chainStart = { x: driveSideX, y: wheelAxleY + 0.08, z: -0.05 };
+  const chainEnd = { x: driveSideX, y: wheelAxleY + 0.03, z: BIKE_RIG.rearAxleZ + 0.03 };
+  const linkCount = 24;
+  for (let i = 0; i < linkCount; i++) {
+    const t0 = i / linkCount;
+    const t1 = (i + 1) / linkCount;
+    const outerPlate = i % 2 === 0;
+    const linkR = outerPlate ? 0.006 : 0.0035;
+    const offsetY = outerPlate ? 0 : 0.005;
+    const p0 = {
+      x: chainStart.x,
+      y: chainStart.y + (chainEnd.y - chainStart.y) * t0,
+      z: chainStart.z + (chainEnd.z - chainStart.z) * t0,
+    };
+    const p1 = {
+      x: chainStart.x,
+      y: chainStart.y + (chainEnd.y - chainStart.y) * t1,
+      z: chainStart.z + (chainEnd.z - chainStart.z) * t1,
+    };
+    const link = tubeBetween(`bike-chain-${i}`, p0, p1, linkR, spokeMaterial);
+    group.add(link);
+    frameFallback.push(link);
+    // Return path (bottom run).
+    const b0 = {
+      x: chainStart.x,
+      y: chainStart.y - 0.16 + (chainEnd.y - (chainStart.y - 0.16)) * t0 + offsetY,
+      z: chainStart.z + (chainEnd.z - chainStart.z) * t0,
+    };
+    const b1 = {
+      x: chainStart.x,
+      y: chainStart.y - 0.16 + (chainEnd.y - (chainStart.y - 0.16)) * t1 + offsetY,
+      z: chainStart.z + (chainEnd.z - chainStart.z) * t1,
+    };
+    const bLink = tubeBetween(`bike-chain-b-${i}`, b0, b1, linkR, spokeMaterial);
+    group.add(bLink);
+    frameFallback.push(bLink);
+  }
+
+  // Seat post — visible tube from the seat cluster up to the saddle shell.
+  const seatPost = tubeBetween(
+    "bike-seat-post",
+    seatCluster,
+    { x: 0, y: BIKE_RIG.saddle[1] ?? 0, z: BIKE_RIG.saddle[2] ?? 0 },
+    0.024,
+    accentMat(),
   );
-  const chainBottom = tubeBetween(
-    "bike-chain-bottom",
-    { x: driveSideX, y: wheelAxleY - 0.08, z: -0.05 },
-    { x: driveSideX, y: wheelAxleY - 0.03, z: BIKE_RIG.rearAxleZ + 0.03 },
-    0.005,
-    spokeMaterial,
-  );
-  setReplayAssetSlot(chainTop, "equipment:bike:frame-tube");
-  setReplayAssetSlot(chainBottom, "equipment:bike:frame-tube");
-  group.add(chainTop, chainBottom);
-  frameFallback.push(chainTop, chainBottom);
+  setReplayAssetSlot(seatPost, "equipment:bike:frame-tube");
+  group.add(seatPost);
+  frameFallback.push(seatPost);
 
   // A bicycle saddle is a low-profile shell, not a thick rectangular block.
   // Render its cushion before, but without writing depth against, the rider:
   // the visible body therefore cleanly occludes the support wherever their
   // silhouettes overlap, while its outer edge and fixed frame attachment
   // remain visible.
-  const saddle = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.21, 0.032, 0.28, 0.018),
-    saddleMaterial,
-  );
+  const saddle = new THREE.Mesh(roundedVenueBlockGeometry(0.18, 0.025, 0.3, 0.025), saddleMaterial);
   setReplayAssetSlot(saddle, "equipment:bike:saddle");
   saddle.name = "bike-saddle";
   saddle.position.set(BIKE_RIG.saddle[0] ?? 0, BIKE_RIG.saddle[1] ?? 0, BIKE_RIG.saddle[2] ?? 0);
@@ -3119,6 +3149,18 @@ function makeBikeAvatar(
   saddleMaterial.depthWrite = false;
   group.add(saddle);
   frameFallback.push(saddle);
+
+  // Stem — connects the handlebar to the head tube so the cockpit doesn't float.
+  const stem = tubeBetween(
+    "bike-stem",
+    headTop,
+    { x: 0, y: BIKE_RIG.handlebar.base[1] ?? 0, z: BIKE_RIG.handlebar.base[2] ?? 0 },
+    0.022,
+    accentMat(),
+  );
+  setReplayAssetSlot(stem, "equipment:bike:frame-tube");
+  group.add(stem);
+  frameFallback.push(stem);
 
   const handlebar = new THREE.Group();
   handlebar.name = "bike-handlebar";
