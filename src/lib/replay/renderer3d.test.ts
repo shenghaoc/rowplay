@@ -48,7 +48,8 @@ import {
 import { sampleRowerMotionGraph } from "./motionGraph";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
-import { BIKE_RIG } from "./bikeRig";
+import { BIKE_RIG, bikeSaddleTopY } from "./bikeRig";
+import { BIKE_SADDLE_SHELL_THICKNESS, bikeSaddleDropAt } from "./bikeSaddle";
 import * as THREE from "three";
 
 /** Minimal 2D context stub for text sprite canvas creation. */
@@ -2657,7 +2658,14 @@ describe("CourseRenderer3D", () => {
           const skinned = new THREE.Vector3();
           const skinTemp = new THREE.Vector3();
           const skinMat = new THREE.Matrix4();
-          for (const cycle of [0, 0.125, 0.25, 0.5, 0.75, 0.999]) {
+          // Contact is a whole-cycle property: the clip shifts the pelvis a
+          // few millimetres through the stroke, as a real rider does, so the
+          // ischia need not be hard on the pad at literally every phase.
+          let bestPlateauContact = Infinity;
+          // Eighths, not quarters: the saddle's worst crank phases are the
+          // odd eighths, where the thigh sweeps closest to the nose. A coarser
+          // list let a saddle with no cut-out at all pass this guard.
+          for (const cycle of [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 0.999]) {
             renderer.render(makeSportState("bike", cycle), false);
             const { avatar, instance } = v4Lane(renderer);
             getScene(renderer).updateMatrixWorld(true);
@@ -2729,14 +2737,23 @@ describe("CourseRenderer3D", () => {
             const bindMatrix = mesh.bindMatrix;
             let lowestSitBoneY = Infinity;
             let sitBoneSamples = 0;
-            for (let i = 0; i < position.count; i += 3) {
+            // Every-bone 穿模 guard: no skin at all may sit inside the saddle
+            // shell. The old guard only sampled hips-weighted vertices, so the
+            // thighs swept 19 mm through the pad at the crank extremes without
+            // failing anything.
+            let worstDig = -Infinity;
+            let worstDigLabel = "";
+            let plateauContact = Infinity;
+            const padTopContract = bikeSaddleTopY(BIKE_RIG);
+            // Every vertex, not every third: the ischial contact patch is a
+            // few dozen vertices wide and a stride walks straight past it.
+            for (let i = 0; i < position.count; i++) {
               let hipsW = 0;
               for (let j = 0; j < 4; j++) {
                 if (skinIndex.getComponent(i, j) === hipsIndex) {
                   hipsW += skinWeight.getComponent(i, j);
                 }
               }
-              if (hipsW < 0.25) continue;
               skinnedVertex.fromBufferAttribute(position, i).applyMatrix4(bindMatrix);
               skinned.set(0, 0, 0);
               for (let j = 0; j < 4; j++) {
@@ -2747,7 +2764,38 @@ describe("CourseRenderer3D", () => {
                 skinned.add(skinTemp);
               }
               sample.copy(skinned).applyMatrix4(inverse);
-              if (Math.abs(sample.x) > 0.1) continue;
+
+              // Analytic saddle solid, from the contract both renderers loft.
+              const drop = bikeSaddleDropAt(
+                sample.x - (BIKE_RIG.saddle[0] ?? 0),
+                sample.z - (BIKE_RIG.saddle[2] ?? 0),
+              );
+              if (drop !== null) {
+                const surfaceY = padTopContract - drop;
+                // Inside the shell, not merely under it — the legs pass
+                // beneath the saddle all cycle and that is not a collision.
+                const dig = Math.min(
+                  surfaceY - sample.y,
+                  sample.y - (surfaceY - BIKE_SADDLE_SHELL_THICKNESS),
+                );
+                if (dig > worstDig) {
+                  worstDig = dig;
+                  worstDigLabel = `x=${sample.x.toFixed(3)} z=${sample.z.toFixed(3)} y=${sample.y.toFixed(3)}`;
+                }
+                // Sit bones must actually reach the plateau, not hover.
+                const localZ = sample.z - (BIKE_RIG.saddle[2] ?? 0);
+                if (localZ > -0.04 && localZ < 0.03 && Math.abs(sample.x) >= 0.04) {
+                  const gap = sample.y - surfaceY;
+                  if (gap > -0.05 && gap < plateauContact) plateauContact = gap;
+                }
+              }
+
+              if (hipsW < 0.25) continue;
+              // Ischial band only. The centreline is *supposed* to hang below
+              // the pad plane now — that is what the cut-out is for — so a
+              // guard spanning |x| <= 0.1 would be asserting the perineum out
+              // of the relief channel that exists to clear it.
+              if (Math.abs(sample.x) < 0.04 || Math.abs(sample.x) > 0.1) continue;
               if (sample.z < saddle.z - 0.14 || sample.z > saddle.z + 0.08) continue;
               if (sample.y > hip.y - 0.02 || sample.y < hip.y - 0.22) continue;
               sitBoneSamples += 1;
@@ -2761,6 +2809,11 @@ describe("CourseRenderer3D", () => {
               lowestSitBoneY,
               `${quality} mesh sit bones stay on the pad at ${cycle}`,
             ).toBeGreaterThanOrEqual(saddleTopY - 0.02);
+            expect(
+              worstDig,
+              `${quality} no skin inside the saddle shell at ${cycle} (${worstDigLabel})`,
+            ).toBeLessThanOrEqual(BIKE_RIG.rider.sitNestle + 0.001);
+            bestPlateauContact = Math.min(bestPlateauContact, plateauContact);
 
             // Tyres rest on the ground in avatar-local space (not world AABB —
             // course bank/yaw would false-positive). Sample visible mesh verts.
@@ -2845,6 +2898,13 @@ describe("CourseRenderer3D", () => {
               ).toBeLessThan(0.25);
             }
           }
+          // The rider is on the saddle, not hovering above it. Without this the
+          // whole fit can be satisfied by a pad parked a few centimetres clear
+          // of the athlete, which is what "no penetration" alone would allow.
+          expect(
+            bestPlateauContact,
+            `${quality} ischia reach the saddle plateau somewhere in the cycle`,
+          ).toBeLessThanOrEqual(0.004);
         } finally {
           renderer.destroy();
         }

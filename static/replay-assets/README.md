@@ -22,11 +22,11 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 691,928 bytes; SHA-256
-  `fa86b5ecc5cd7b6acd0436d37b1f26b6c9e935013c6daa854f4d6cf6aacfc690`.
+- **Reviewed V3 artifact:** 706,256 bytes; SHA-256
+  `f9654906c6fe5f5c208ca0cf99a13b789096ed7f85ecfd0b535c011f84ad6cb7`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
-  nodes total). The package has 27,558 indexed triangles and 19,142 indexed
+  nodes total). The package has 28,382 indexed triangles and 19,531 indexed
   vertices, one neutral placeholder material, zero textures/images, zero
   animations, and zero skins.
 - **Detail language:** shared-vertex smooth normals, a neutral lower rowing hull
@@ -42,7 +42,7 @@ identity, or Canvas 2D fallback.
   spokes and disc rotors, a main triangle with chain- and seat-stays, fork blades
   running from the crown to the axle on the steering axis, a chain solved as two
   external tangents plus the arcs it wraps around chainring and cassette, rim
-  calipers, drop bars with brake hoods the palms close on, a channelled
+  calipers, drop bars with brake hoods the palms close on, a winged cut-out
   performance saddle on a post that stops beneath the pad, and a rotating crank
   assembly with arms. The bicycle is a course-progress metaphor rather than
   a model of Concept2's stationary BikeErg. Every one of those frame nodes is
@@ -198,10 +198,15 @@ remain automatic fallbacks.
   cool material tint while ghost equipment/wakes may remain translucent; the
   single deforming skin never enters Three.js's transparent triangle-sorting
   path, so limbs and overlapping garment forms cannot disappear by draw order.
-  BikeErg seating is geometric: the V4 posterior sit surface is constrained onto
-  the pad top (hip Y derived from the measured sit offset), and the saddle is a
-  thin performance shell with a centre channel plus sit-bone platforms so the
-  butt does not pass through the cushion.
+  BikeErg seating is geometric: saddle height is solved from knee flexion at
+  bottom dead centre (30°, inside the 25-35° road-fit window), and the pad top
+  is placed on the **measured ischial plateau** — skin at |x| 0.050-0.075, a
+  sit-bone spread that matches a real pelvis. The saddle itself comes from the
+  shared `src/lib/replay/bikeSaddle.js` station table, which both this package
+  and the procedural renderer loft: a winged rear that carries the ischia, a
+  through cut-out for the perineum, which on a standing-derived mesh hangs
+  37 mm below them, and a nose that narrows and drops away so the sweeping
+  thighs clear it.
 - **Skinning:** reviewed anatomical face sets drive deterministic A-pose→V4
   segment retargeting and bounded parent/child blends at shoulders, elbows,
   wrists, hips, knees, and ankles. The continuous body's major limb influences

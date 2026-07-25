@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { BIKE_RIG, bikeWheelAxleY } from "../src/lib/replay/bikeRig.js";
+import { buildBikeSaddleGeometry } from "../src/lib/replay/bikeSaddle.js";
 
 // v3 deliberately widens the asset contract from isolated replacement shells
 // to a small set of authored equipment assemblies.  Keeping this a new file
@@ -664,75 +665,34 @@ function nordicPoleBasketGeometry() {
 }
 
 function performanceSaddleGeometry() {
-  // Thin performance pad with modest sit-bone platforms and a depressed
-  // centre channel. A raised centre ridge forced the V4 posterior through the
-  // cushion (屁股穿模); the channel gives soft-tissue clearance while the
-  // lateral platforms carry the ischial contact. Keep max pad height near
-  // BIKE_RIG.saddlePadHalfHeight so runtime sit math matches the mesh.
-  // Ring half-heights are capped so the highest authored vertex lands exactly on
-  // the contract pad top (`saddlePadHalfHeight`). A loft that quietly overshoots
-  // it would put the cushion above the plane the sit solve trusts.
-  const shell = loftGeometry(
-    [
-      { p: -0.135, rx: 0.03, rz: 0.014 },
-      { p: -0.09, rx: 0.052, rz: 0.017, oz: 0.001 },
-      { p: -0.03, rx: 0.068, rz: 0.018, oz: 0.002 },
-      { p: 0.04, rx: 0.064, rz: 0.017, oz: 0.002 },
-      { p: 0.095, rx: 0.046, rz: 0.016, oz: 0.001 },
-      { p: 0.135, rx: 0.026, rz: 0.013 },
-    ],
-    16,
-    "z",
-    Math.PI / 16,
-  );
-  // Centre channel (depression), not a raised relief ridge.
-  const centralChannel = ridgeGeometry(
-    [
-      new THREE.Vector3(0, -0.01, -0.1),
-      new THREE.Vector3(0, -0.018, -0.015),
-      new THREE.Vector3(0, -0.012, 0.1),
-    ],
-    0.01,
-    10,
-    8,
-  );
-  // Sit-bone platforms — the ridge centreline plus its tube radius must not
-  // exceed saddlePadHalfHeight, or the platforms become the real pad top and
-  // the contract plane the sit solve uses is no longer the highest surface.
-  const platformRadius = 0.01;
-  const platformPeak = BIKE_RIG.saddlePadHalfHeight - platformRadius;
-  const platformShoulder = platformPeak - 0.004;
-  const leftPlatform = ridgeGeometry(
-    [
-      new THREE.Vector3(-0.03, platformShoulder, -0.05),
-      new THREE.Vector3(-0.034, platformPeak, 0.01),
-      new THREE.Vector3(-0.027, platformShoulder, 0.065),
-    ],
-    platformRadius,
-    8,
-    8,
-  );
-  const rightPlatform = ridgeGeometry(
-    [
-      new THREE.Vector3(0.03, platformShoulder, -0.05),
-      new THREE.Vector3(0.034, platformPeak, 0.01),
-      new THREE.Vector3(0.027, platformShoulder, 0.065),
-    ],
-    platformRadius,
-    8,
-    8,
-  );
-  const underside = loftGeometry(
-    [
-      { p: -0.09, rx: 0.032, rz: 0.007 },
-      { p: 0.065, rx: 0.036, rz: 0.009 },
-    ],
-    12,
-    "z",
-    Math.PI / 12,
-  );
-  underside.translate(0, -0.02, -0.012);
-  return composeGeometry(shell, centralChannel, leftPlatform, rightPlatform, underside);
+  // Winged, cut-out performance saddle straight from the shared BIKE_SADDLE
+  // station table — the same one the procedural renderer lofts and the
+  // penetration guard tests against, so the authored pad cannot drift from
+  // the cushion the fit is solved on.
+  //
+  // The previous pad was a lofted block, widest in the middle and tapered at
+  // both ends. With the saddle placed under the perineum rather than the sit
+  // bones it looked plausible; once the fit was corrected it was 19 mm inside
+  // the rider's thighs at the crank extremes.
+  const shell = buildBikeSaddleGeometry(THREE, { lateralSegments: 5, stationsPerSpan: 2 });
+  // Rails: two tubes under the shell running back from the clamp, as a real
+  // saddle carries its load to the post.
+  const rails = [];
+  for (const side of [-1, 1]) {
+    rails.push(
+      ridgeGeometry(
+        [
+          new THREE.Vector3(side * 0.022, -0.03, -0.02),
+          new THREE.Vector3(side * 0.026, -0.036, 0.05),
+          new THREE.Vector3(side * 0.02, -0.03, 0.11),
+        ],
+        0.0035,
+        8,
+        6,
+      ),
+    );
+  }
+  return composeGeometry(shell, ...rails);
 }
 
 function cliplessPedalGeometry() {

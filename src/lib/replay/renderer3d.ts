@@ -18,6 +18,7 @@ import {
   type BikeMotionGraph,
 } from "./motionGraph";
 import { BIKE_RIG, bikeSaddleTopY, bikeWheelAxleY } from "./bikeRig";
+import { buildBikeSaddleGeometry } from "./bikeSaddle";
 import type { Sport } from "../types";
 import { fmtPace } from "../format";
 import { METERS_PER_CYCLE, ParticlePool, PerfGovernor, clampDt, dampFactor } from "./motion";
@@ -3250,11 +3251,17 @@ function makeBikeAvatar(
   group.add(seatPost);
   frameFallback.push(seatPost);
 
-  // Thin performance pad. Geometry contact (sit surface on pad top) owns the
-  // no-穿模 contract; depthWrite stays on so the cushion remains a solid
-  // support rather than a draw-order band-aid over a penetrating mesh.
+  // Winged, cut-out performance saddle from the shared BIKE_SADDLE contract —
+  // the same table the authored V3 pad and the penetration guard read, so the
+  // cushion the tests trust is the cushion this renderer draws. Geometry
+  // contact (sit surface on pad top) owns the no-穿模 contract; depthWrite
+  // stays on so the cushion remains a solid support rather than a draw-order
+  // band-aid over a penetrating mesh.
   const saddle = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.135, saddlePadHalfHeight * 2, 0.27, 0.018),
+    buildBikeSaddleGeometry(THREE, {
+      lateralSegments: Math.max(4, Math.round(eqCylSegs / 3)),
+      stationsPerSpan: bodySegments >= 16 ? 2 : 1,
+    }),
     saddleMaterial,
   );
   setReplayAssetSlot(saddle, "equipment:bike:saddle");
