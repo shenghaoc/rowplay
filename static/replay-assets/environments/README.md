@@ -61,7 +61,8 @@ Original Poly Haven MD5 values recorded by its public asset API:
 - Source resolution used: Poly Haven's 1K JPEG maps
 - Retrieved: 2026-07-25
 
-Shipped 512 px derivatives detail High/Ultra RowErg grass banks.
+Shipped 512 px derivatives detail High/Ultra RowErg grass banks, shoreline
+grass, and the basin island's lawn.
 
 | File                                                    | Purpose                         | SHA-256                                                            |
 | ------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------ |
@@ -84,7 +85,7 @@ Original Poly Haven MD5 values:
 - Retrieved: 2026-07-25
 
 Note: Poly Haven's asset id keeps the historical spelling `forrest_ground_01`.
-Used for High/Ultra RowErg earth banks.
+Used for High/Ultra RowErg earth banks, shoreline, and island ground.
 
 | File                                                    | Purpose                         | SHA-256                                                            |
 | ------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------ |
@@ -106,11 +107,12 @@ Original Poly Haven MD5 values:
 - Source resolution used: Poly Haven's 1K JPEG maps
 - Retrieved: 2026-07-25
 
-Used for the High/Ultra RowErg launch-dock deck and regatta pavilion bodies.
+Used for High/Ultra RowErg launch-dock and campus decking, regatta pavilion
+bodies, island structures, and the BikeErg velodrome track boards.
 
-| File                                              | Purpose                              | SHA-256                                                            |
-| ------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
-| `brown-planks-03/brown-planks-03-diffuse-512.jpg` | High/Ultra dock/pavilion colour      | `3b53a63afb2a1ce6ee1fa45e6c7bab5b0241cb5f03f267e8c223b3e7694b66c2` |
+| File                                                | Purpose                            | SHA-256                                                            |
+| --------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------ |
+| `brown-planks-03/brown-planks-03-diffuse-512.jpg`   | High/Ultra dock/pavilion colour    | `3b53a63afb2a1ce6ee1fa45e6c7bab5b0241cb5f03f267e8c223b3e7694b66c2` |
 | `brown-planks-03/brown-planks-03-roughness-512.jpg` | High/Ultra dock/pavilion roughness | `edc3f1996678a5d3ba5a306180ff6b4a0d0364b9cbdcf4e2ef0362cafbf0e3ee` |
 | `brown-planks-03/brown-planks-03-normal-gl-512.jpg` | Ultra OpenGL dock/pavilion normals | `6ef4b139a08ef9f0bf75e84c0182176d5866fa2e4364c0ba5685b45e16834f37` |
 
@@ -130,9 +132,9 @@ Original Poly Haven MD5 values:
 
 Used for High/Ultra RowErg and SkiErg pine trunks.
 
-| File                                          | Purpose                      | SHA-256                                                            |
-| --------------------------------------------- | ---------------------------- | ------------------------------------------------------------------ |
-| `bark-brown-01/bark-brown-01-diffuse-512.jpg` | High/Ultra trunk colour      | `3a5c636bf35244e6bf436b5a5da999f29efffa04882c24d42387f80ec9e21049` |
+| File                                            | Purpose                    | SHA-256                                                            |
+| ----------------------------------------------- | -------------------------- | ------------------------------------------------------------------ |
+| `bark-brown-01/bark-brown-01-diffuse-512.jpg`   | High/Ultra trunk colour    | `3a5c636bf35244e6bf436b5a5da999f29efffa04882c24d42387f80ec9e21049` |
 | `bark-brown-01/bark-brown-01-roughness-512.jpg` | High/Ultra trunk roughness | `c8392e995cb7040fc022fba4099dcbced67662a3a52ba99c4b7452c627e4b7c0` |
 | `bark-brown-01/bark-brown-01-normal-gl-512.jpg` | Ultra OpenGL trunk normals | `572f31a0c68bd0ecd3b1680ae939cb669db901419850525edf0261caf5143170` |
 
@@ -150,13 +152,14 @@ Original Poly Haven MD5 values:
 - Source resolution used: Poly Haven's 1K JPEG maps
 - Retrieved: 2026-07-25
 
-Used for High/Ultra pine canopies (Row + Ski) and RowErg wooded shoreline hills.
+Used for High/Ultra pine canopies (Row + Ski), RowErg bank and island trees, and
+the wooded shoreline hills.
 
-| File                                                    | Purpose                            | SHA-256                                                            |
-| ------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------ |
-| `forest-leaves-04/forest-leaves-04-diffuse-512.jpg`     | High/Ultra canopy/shore colour     | `0c4a19d3e4f81ac2bd28475d1c0c15e0b951cf68e6b35a72ec48bdd790331b47` |
-| `forest-leaves-04/forest-leaves-04-roughness-512.jpg`   | High/Ultra canopy/shore roughness  | `001bfa94e88d2debe0b3f91c8aa72577a6d4db4e79392ba9d0354b1c86d5b925` |
-| `forest-leaves-04/forest-leaves-04-normal-gl-512.jpg`   | Ultra OpenGL canopy/shore normals  | `d3b4bed87b801470ec1567bb582a618883ce06e6051298db38731a28362c4644` |
+| File                                                  | Purpose                           | SHA-256                                                            |
+| ----------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------ |
+| `forest-leaves-04/forest-leaves-04-diffuse-512.jpg`   | High/Ultra canopy/shore colour    | `0c4a19d3e4f81ac2bd28475d1c0c15e0b951cf68e6b35a72ec48bdd790331b47` |
+| `forest-leaves-04/forest-leaves-04-roughness-512.jpg` | High/Ultra canopy/shore roughness | `001bfa94e88d2debe0b3f91c8aa72577a6d4db4e79392ba9d0354b1c86d5b925` |
+| `forest-leaves-04/forest-leaves-04-normal-gl-512.jpg` | Ultra OpenGL canopy/shore normals | `d3b4bed87b801470ec1567bb582a618883ce06e6051298db38731a28362c4644` |
 
 Original Poly Haven MD5 values:
 
@@ -172,13 +175,13 @@ Original Poly Haven MD5 values:
 - Source resolution used: Poly Haven's 1K JPEG maps
 - Retrieved: 2026-07-25
 
-Used for High/Ultra RowErg reed beds.
+Used for High/Ultra RowErg reed beds and shoreline grass.
 
-| File                                        | Purpose                     | SHA-256                                                            |
-| ------------------------------------------- | --------------------------- | ------------------------------------------------------------------ |
-| `leafy-grass/leafy-grass-diffuse-512.jpg`   | High/Ultra reed colour      | `92cd6d767e9502ab4d8b1aed49b6f40e16d4b9c761020e833681fabe371506d4` |
-| `leafy-grass/leafy-grass-roughness-512.jpg` | High/Ultra reed roughness   | `6cca720bf619d284bedd2dac4be5a6126a3abfa566fc410312efdb9f0392391d` |
-| `leafy-grass/leafy-grass-normal-gl-512.jpg` | Ultra OpenGL reed normals   | `946fc165aa732befa8bbfe55073c66d1662c2463998bc24cfeb37afd32f8afaa` |
+| File                                        | Purpose                   | SHA-256                                                            |
+| ------------------------------------------- | ------------------------- | ------------------------------------------------------------------ |
+| `leafy-grass/leafy-grass-diffuse-512.jpg`   | High/Ultra reed colour    | `92cd6d767e9502ab4d8b1aed49b6f40e16d4b9c761020e833681fabe371506d4` |
+| `leafy-grass/leafy-grass-roughness-512.jpg` | High/Ultra reed roughness | `6cca720bf619d284bedd2dac4be5a6126a3abfa566fc410312efdb9f0392391d` |
+| `leafy-grass/leafy-grass-normal-gl-512.jpg` | Ultra OpenGL reed normals | `946fc165aa732befa8bbfe55073c66d1662c2463998bc24cfeb37afd32f8afaa` |
 
 Original Poly Haven MD5 values:
 
@@ -194,13 +197,14 @@ Original Poly Haven MD5 values:
 - Source resolution used: Poly Haven's 1K JPEG maps
 - Retrieved: 2026-07-25
 
-Used for the High/Ultra RowErg shingle waterline between water and earth bank.
+Used for the High/Ultra RowErg shingle waterline between water and earth bank,
+and the basin island's beach.
 
-| File                                                        | Purpose                          | SHA-256                                                            |
-| ----------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------ |
-| `dry-river-pebbles/dry-river-pebbles-diffuse-512.jpg`       | High/Ultra waterline colour      | `717c0d224a024e72909504dbbe9e26f85914894067b29c909a5241df0b526662` |
-| `dry-river-pebbles/dry-river-pebbles-roughness-512.jpg`     | High/Ultra waterline roughness   | `cebf7ff77629c6ea308bfc46358314a515aeb59d076153a58712a87159cd1470` |
-| `dry-river-pebbles/dry-river-pebbles-normal-gl-512.jpg`     | Ultra OpenGL waterline normals   | `a35aeba24d6e3744771053a5e9074d29a89afbee185bfc6917dc87245085db6d` |
+| File                                                    | Purpose                        | SHA-256                                                            |
+| ------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------ |
+| `dry-river-pebbles/dry-river-pebbles-diffuse-512.jpg`   | High/Ultra waterline colour    | `717c0d224a024e72909504dbbe9e26f85914894067b29c909a5241df0b526662` |
+| `dry-river-pebbles/dry-river-pebbles-roughness-512.jpg` | High/Ultra waterline roughness | `cebf7ff77629c6ea308bfc46358314a515aeb59d076153a58712a87159cd1470` |
+| `dry-river-pebbles/dry-river-pebbles-normal-gl-512.jpg` | Ultra OpenGL waterline normals | `a35aeba24d6e3744771053a5e9074d29a89afbee185bfc6917dc87245085db6d` |
 
 Original Poly Haven MD5 values:
 
@@ -213,16 +217,18 @@ Original Poly Haven MD5 values:
 RowErg water remains an authored clear-coat basin with procedural sheen and
 normals. High/Ultra surroundings form one coherent river valley:
 
-| Scene element        | CC0 set              |
-| -------------------- | -------------------- |
-| Grass banks          | Aerial Grass Rock    |
-| Earth banks          | Forest Ground 01     |
-| Shingle waterline    | Dry River Pebbles    |
-| Reed beds            | Leafy Grass          |
-| Wooded shoreline     | Forest Leaves 04     |
-| Pine canopies        | Forest Leaves 04     |
-| Pine trunks          | Bark Brown 01        |
-| Launch dock + pavilions | Brown Planks 03   |
+| Scene element                    | CC0 set              |
+| -------------------------------- | -------------------- |
+| Grass banks + island lawn        | Aerial Grass Rock    |
+| Earth banks + island ground      | Forest Ground 01     |
+| Shingle waterline + island beach | Dry River Pebbles    |
+| Reed beds + shoreline grass      | Leafy Grass          |
+| Wooded shoreline                 | Forest Leaves 04     |
+| Bank and island trees            | Forest Leaves 04     |
+| Pine canopies                    | Forest Leaves 04     |
+| Pine trunks                      | Bark Brown 01        |
+| Dock, decking, pavilions         | Brown Planks 03      |
+| Shore-campus paths               | Cobblestone Floor 03 |
 
 SkiErg High/Ultra pine trunks and canopies reuse Bark Brown 01 and Forest
 Leaves 04 so the Nordic tree line matches the same woodland material language.
@@ -235,13 +241,13 @@ Leaves 04 so the Nordic tree line matches the same woodland material language.
 - Source resolution used: Poly Haven's 1K JPEG maps
 - Retrieved: 2026-07-25
 
-Used for High/Ultra SkiErg stadium plaza paving/walkways and BikeErg fountain.
+Used for the High/Ultra BikeErg velodrome infield floor.
 
-| File                                                          | Purpose                            | SHA-256                                                            |
-| ------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------ |
-| `brushed-concrete-2/brushed-concrete-2-diffuse-512.jpg`       | High/Ultra concrete colour         | `e0552acd803f63c2e055aac8c096f5a1dddc4668cd3008017bcdc0f46a2e173f` |
-| `brushed-concrete-2/brushed-concrete-2-roughness-512.jpg`     | High/Ultra concrete roughness      | `500e543fa6bf4a14a43233352ff6273b326ab63f0e49b5d0af14edb729e43f55` |
-| `brushed-concrete-2/brushed-concrete-2-normal-gl-512.jpg`     | Ultra OpenGL concrete normals      | `18a8e69e29c18478b07ac00cdb4ceada80f3be3a5fdfd4a0b3b05824ba2fd7b4` |
+| File                                                      | Purpose                       | SHA-256                                                            |
+| --------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------ |
+| `brushed-concrete-2/brushed-concrete-2-diffuse-512.jpg`   | High/Ultra concrete colour    | `e0552acd803f63c2e055aac8c096f5a1dddc4668cd3008017bcdc0f46a2e173f` |
+| `brushed-concrete-2/brushed-concrete-2-roughness-512.jpg` | High/Ultra concrete roughness | `500e543fa6bf4a14a43233352ff6273b326ab63f0e49b5d0af14edb729e43f55` |
+| `brushed-concrete-2/brushed-concrete-2-normal-gl-512.jpg` | Ultra OpenGL concrete normals | `18a8e69e29c18478b07ac00cdb4ceada80f3be3a5fdfd4a0b3b05824ba2fd7b4` |
 
 Original Poly Haven MD5 values:
 
@@ -257,13 +263,13 @@ Original Poly Haven MD5 values:
 - Source resolution used: Poly Haven's 1K JPEG maps
 - Retrieved: 2026-07-25
 
-Used for High/Ultra RowErg island/campus paths and BikeErg infield plaza.
+Used for High/Ultra RowErg shore-campus paths.
 
-| File                                                              | Purpose                           | SHA-256                                                            |
-| ----------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------ |
-| `cobblestone-floor-03/cobblestone-floor-03-diffuse-512.jpg`       | High/Ultra cobble colour          | `999a8745fbf6996860e9c64995728c97185032389201931b29ff6f80691ff0e9` |
-| `cobblestone-floor-03/cobblestone-floor-03-roughness-512.jpg`     | High/Ultra cobble roughness       | `daeab61257a199ae69efd7ecd278f7555ed5a68ef0ba4f43fa9f7e8c492e7281` |
-| `cobblestone-floor-03/cobblestone-floor-03-normal-gl-512.jpg`     | Ultra OpenGL cobble normals       | `947b46c737dbfe5890e264636ec437be09665a8a227a11c8b8228eec4089c335` |
+| File                                                          | Purpose                     | SHA-256                                                            |
+| ------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------ |
+| `cobblestone-floor-03/cobblestone-floor-03-diffuse-512.jpg`   | High/Ultra cobble colour    | `999a8745fbf6996860e9c64995728c97185032389201931b29ff6f80691ff0e9` |
+| `cobblestone-floor-03/cobblestone-floor-03-roughness-512.jpg` | High/Ultra cobble roughness | `daeab61257a199ae69efd7ecd278f7555ed5a68ef0ba4f43fa9f7e8c492e7281` |
+| `cobblestone-floor-03/cobblestone-floor-03-normal-gl-512.jpg` | Ultra OpenGL cobble normals | `947b46c737dbfe5890e264636ec437be09665a8a227a11c8b8228eec4089c335` |
 
 Original Poly Haven MD5 values:
 
@@ -279,13 +285,13 @@ Original Poly Haven MD5 values:
 - Source resolution used: Poly Haven's 1K JPEG maps
 - Retrieved: 2026-07-25
 
-Used for High/Ultra SkiErg timing kiosk and BikeErg podium hardscape.
+Used for High/Ultra BikeErg infield staging pads and arena wall.
 
-| File                                                                    | Purpose                              | SHA-256                                                            |
-| ----------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
-| `concrete-floor-painted/concrete-floor-painted-diffuse-512.jpg`         | High/Ultra painted-concrete colour   | `19c89793bd4a07d5f233799a0a372da2faa58b9ecf50d47220e762ba9101dd1e` |
-| `concrete-floor-painted/concrete-floor-painted-roughness-512.jpg`       | High/Ultra painted-concrete roughness| `0ba04433f0a61569d4e1d19eef1e947364ad43280b92ebb0e4c7bf5cd98cc613` |
-| `concrete-floor-painted/concrete-floor-painted-normal-gl-512.jpg`       | Ultra OpenGL painted-concrete normals| `20253d5ec67097b4ee522afd787e926396add5c55a2565bc40fe3917ccecb66a` |
+| File                                                              | Purpose                               | SHA-256                                                            |
+| ----------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------ |
+| `concrete-floor-painted/concrete-floor-painted-diffuse-512.jpg`   | High/Ultra painted-concrete colour    | `19c89793bd4a07d5f233799a0a372da2faa58b9ecf50d47220e762ba9101dd1e` |
+| `concrete-floor-painted/concrete-floor-painted-roughness-512.jpg` | High/Ultra painted-concrete roughness | `0ba04433f0a61569d4e1d19eef1e947364ad43280b92ebb0e4c7bf5cd98cc613` |
+| `concrete-floor-painted/concrete-floor-painted-normal-gl-512.jpg` | Ultra OpenGL painted-concrete normals | `20253d5ec67097b4ee522afd787e926396add5c55a2565bc40fe3917ccecb66a` |
 
 Original Poly Haven MD5 values:
 

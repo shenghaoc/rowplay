@@ -554,9 +554,6 @@ const ROW_VISTA_SECTOR: EnvironmentSector = {
   span: degrees(58),
   weight: 1,
 };
-/** @deprecated alias kept for pine placement tests that still reference woodland. */
-const ROW_PINE_SECTORS: readonly EnvironmentSector[] = ROW_WOODLAND_SECTORS;
-
 /**
  * Nordic stadium bowl land uses: lodge campus, forested valley shoulders,
  * alpine massif backdrop, and an open snow vista for sightlines.
@@ -571,7 +568,6 @@ const SKI_FOREST_SECTORS: readonly EnvironmentSector[] = [
   { start: degrees(105), span: degrees(65), weight: 1.1 },
   { start: degrees(40), span: degrees(28), weight: 0.75 },
 ];
-const SKI_PINE_SECTORS: readonly EnvironmentSector[] = SKI_FOREST_SECTORS;
 const SKI_ALPINE_SECTORS: readonly EnvironmentSector[] = [
   { start: degrees(-150), span: degrees(65), weight: 1.1 },
   { start: degrees(35), span: degrees(60), weight: 1 },
@@ -655,22 +651,13 @@ const BIKE_SCOREBOARD: EnvironmentPlacement = {
 
 // Floodlights only along the lodge edge — a real stadium lights the field,
 // not the entire mountain ring.
-const SKI_FLOODLIGHTS: readonly EnvironmentPlacement[] = [
-  -8, 2, 12, 22, 32, -16, 38, 18,
-].map((angle, index) => ({
-  angle: degrees(angle),
-  radius: index < 4 ? 53 : 55.5,
-  name: `environment:skierg:floodlight-${index + 1}`,
-}));
-// Floodlights only on grandstand sectors.
-const BIKE_FLOODLIGHTS: readonly EnvironmentPlacement[] = [
-  62, 78, 96, 118, 132, 228, 244, 260, 70, 108, 236, 270,
-].map((angle, index) => ({
-  angle: degrees(angle),
-  radius: index < 8 ? 57 : 58.5,
-  name: `environment:bike:floodlight-${index + 1}`,
-}));
-
+const SKI_FLOODLIGHTS: readonly EnvironmentPlacement[] = [-8, 2, 12, 22, 32, -16, 38, 18].map(
+  (angle, index) => ({
+    angle: degrees(angle),
+    radius: index < 4 ? 53 : 55.5,
+    name: `environment:skierg:floodlight-${index + 1}`,
+  }),
+);
 const HORIZON_COMPOSITIONS: Record<Sport, HorizonComposition> = {
   rower: {
     // A real river valley needs continuous high shoulders with a few open
@@ -1072,13 +1059,7 @@ const _simplexNoise = new SimplexNoise();
  * Returns a value in [-1, 1] — a drop-in for the old multi-sine "noise"
  * that produced periodic, too-smooth terrain.
  */
-function fbm2(
-  x: number,
-  y: number,
-  octaves: number,
-  lacunarity = 2.1,
-  gain = 0.48,
-): number {
+function fbm2(x: number, y: number, octaves: number, lacunarity = 2.1, gain = 0.48): number {
   let value = 0;
   let amplitude = 1;
   let frequency = 1;
@@ -1168,10 +1149,7 @@ function organicRadialSurfaceGeometry(
         point.x * (1 + radialNoise * irregularity * (0.3 + radiusWeight * 0.7)),
       );
       const verticalNoise =
-        fbm3(nx + 5.7, ny + 3.1, nz + 2.4, 4) *
-        0.16 *
-        radiusWeight *
-        irregularity;
+        fbm3(nx + 5.7, ny + 3.1, nz + 2.4, 4) * 0.16 * radiusWeight * irregularity;
       positions[cursor++] = Math.cos(angle) * radius;
       positions[cursor++] = point.y + verticalNoise;
       positions[cursor++] = Math.sin(angle) * radius;
@@ -4454,17 +4432,42 @@ export class CourseRenderer3D implements ReplayRenderer {
     return mesh;
   }
 
+  /**
+   * Bind one bundled CC0 surface map to a material slot.
+   *
+   * Paths are assembled from directory and suffix conventions, so a rename or a
+   * dropped file breaks a slot without breaking the build. On fetch or decode
+   * failure the slot is cleared: an undecoded texture renders as flat black,
+   * which wrecks the venue far worse than the authored solid colour it replaced.
+   * `slot` also decides colour space — only the diffuse map is sRGB.
+   */
   private loadEnvironmentTexture(
+    material: THREE.MeshStandardMaterial,
+    slot: "map" | "roughnessMap" | "normalMap",
     path: string,
     repeat: [number, number],
-    color = false,
-  ): THREE.Texture {
+  ): void {
+    // A network error is asynchronous, but a data-URI or cache-layer failure can
+    // report back before load() even returns. Track it either way so the broken
+    // texture is never the value left in the slot.
+    let failed = false;
+    const onError = () => {
+      failed = true;
+      if (material[slot]?.userData.sourcePath === path) {
+        material[slot] = null;
+        material.needsUpdate = true;
+      }
+      // Each renderer requests each path once, so this is already one line per
+      // broken map. A quality change rebuilds the renderer and re-reports, which
+      // is what you want when diagnosing a bad deploy.
+      console.warn(`[replay] environment surface map unavailable, using solid colour: ${path}`);
+    };
     // The renderer unit harness intentionally supplies only the DOM surface
     // needed for WebGL construction. Keep the material contract inspectable
     // there without pretending an image can be decoded outside a browser.
     const texture =
       typeof document.createElementNS === "function"
-        ? new THREE.TextureLoader().load(path)
+        ? new THREE.TextureLoader().load(path, undefined, undefined, onError)
         : new THREE.Texture();
     texture.name = `environment:texture:${path.split("/").at(-1) ?? path}`;
     texture.userData.sourcePath = path;
@@ -4472,9 +4475,13 @@ export class CourseRenderer3D implements ReplayRenderer {
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(...repeat);
     texture.anisotropy = this.quality === "ultra" ? 8 : 4;
-    if (color) texture.colorSpace = THREE.SRGBColorSpace;
+    if (slot === "map") texture.colorSpace = THREE.SRGBColorSpace;
+    // Registered for disposal even on failure — the Texture object exists either
+    // way, and destroy() must stay the single owner of every texture we create.
     this.textures.push(texture);
-    return texture;
+    if (failed) return;
+    material[slot] = texture;
+    material.needsUpdate = true;
   }
 
   /**
@@ -4489,19 +4496,12 @@ export class CourseRenderer3D implements ReplayRenderer {
     normalScale = 0.22,
   ): void {
     if (this.cfg.environmentDetail < 2) return;
-    material.map = this.loadEnvironmentTexture(`${basePath}-diffuse-512.jpg`, repeat, true);
-    material.roughnessMap = this.loadEnvironmentTexture(
-      `${basePath}-roughness-512.jpg`,
-      repeat,
-    );
+    this.loadEnvironmentTexture(material, "map", `${basePath}-diffuse-512.jpg`, repeat);
+    this.loadEnvironmentTexture(material, "roughnessMap", `${basePath}-roughness-512.jpg`, repeat);
     if (this.cfg.environmentDetail >= 3) {
-      material.normalMap = this.loadEnvironmentTexture(
-        `${basePath}-normal-gl-512.jpg`,
-        repeat,
-      );
+      this.loadEnvironmentTexture(material, "normalMap", `${basePath}-normal-gl-512.jpg`, repeat);
       material.normalScale.set(normalScale, normalScale);
     }
-    material.needsUpdate = true;
   }
 
   /** Planar XZ UVs in world units so seamless surface maps tile on arc/terrain forms. */
@@ -4530,9 +4530,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         const scale = ultra ? 5.5 : 3.8;
         const nx = fbm2(u * scale, v * scale, octaves) * 0.7;
         const ny = fbm2(u * scale + 3.7, v * scale + 2.1, octaves) * 0.55;
-        const capillary = ultra
-          ? fbm2(u * 18.0, v * 18.0, 3) * 0.08
-          : 0;
+        const capillary = ultra ? fbm2(u * 18.0, v * 18.0, 3) * 0.08 : 0;
         const offset = (y * size + x) * 4;
         pixels[offset] = Math.round(((nx + capillary) * 0.5 + 0.5) * 255);
         pixels[offset + 1] = Math.round(((ny - capillary * 0.6) * 0.5 + 0.5) * 255);
@@ -5094,10 +5092,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       const broad = fbm2(nx, nz, 5) * 0.65;
       const ridge = Math.abs(fbm2(nx * 1.7 + 3.1, nz * 1.7 + 1.4, 4)) * 0.38;
       const envelope = envelopeAt(a);
-      return (
-        averageHeight * envelope +
-        variation * (broad + ridge) * (0.38 + envelope * 0.62)
-      );
+      return averageHeight * envelope + variation * (broad + ridge) * (0.38 + envelope * 0.62);
     };
     const radiusAt = (i: number): number => {
       const a = (i / segments) * Math.PI * 2;
@@ -5126,26 +5121,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       const y0 = baseY + peak0;
       const y1 = baseY + peak1;
       const maxPeak = Math.max(peak0, peak1, 0.001);
-      const quad = [
-        x0,
-        foot,
-        z0,
-        x1,
-        y1,
-        z1,
-        x1,
-        foot,
-        z1,
-        x0,
-        foot,
-        z0,
-        x0,
-        y0,
-        z0,
-        x1,
-        y1,
-        z1,
-      ];
+      const quad = [x0, foot, z0, x1, y1, z1, x1, foot, z1, x0, foot, z0, x0, y0, z0, x1, y1, z1];
       positions.set(quad, cursor);
       writeColor(cursor, 0.05);
       writeColor(cursor + 3, peak1 / maxPeak);
@@ -5782,11 +5758,7 @@ export class CourseRenderer3D implements ReplayRenderer {
    * land — an island park — just as a stadium’s infield is not more track.
    * Outer shore keeps authored land uses; campus owns dock and buildings.
    */
-  private addRowerRegattaWorld(
-    group: THREE.Group,
-    detailGroup: THREE.Group,
-    outerR: number,
-  ): void {
+  private addRowerRegattaWorld(group: THREE.Group, detailGroup: THREE.Group, outerR: number): void {
     // Land island in the lagoon centre (not more water), continuous shore,
     // denser bank woodland, water-surface dressing, and the shore campus.
     this.addRowerIslandCenter(group, outerR);
@@ -5814,18 +5786,30 @@ export class CourseRenderer3D implements ReplayRenderer {
       themed(0x55724b, 0x294b3d),
       { roughness: 0.94, metalness: 0 },
     );
-    this.applyEnvironmentSurfaceMaps(earthMat,
-      "/replay-assets/environments/forrest-ground-01/forrest-ground-01", [0.55, 0.55], 0.22);
-    this.applyEnvironmentSurfaceMaps(grassMat,
-      "/replay-assets/environments/aerial-grass-rock/aerial-grass-rock", [0.45, 0.45], 0.2);
+    this.applyEnvironmentSurfaceMaps(
+      earthMat,
+      "/replay-assets/environments/forrest-ground-01/forrest-ground-01",
+      [0.55, 0.55],
+      0.22,
+    );
+    this.applyEnvironmentSurfaceMaps(
+      grassMat,
+      "/replay-assets/environments/aerial-grass-rock/aerial-grass-rock",
+      [0.45, 0.45],
+      0.2,
+    );
     const bank = new THREE.Mesh(
-      this.track(new THREE.RingGeometry(outerR + 0.5, outerR + 8, this.cfg.laneSegments)), earthMat);
+      this.track(new THREE.RingGeometry(outerR + 0.5, outerR + 8, this.cfg.laneSegments)),
+      earthMat,
+    );
     bank.name = "environment:rower:shoreline";
     bank.rotation.x = -Math.PI / 2;
     bank.position.y = 0.15;
     bank.receiveShadow = this.cfg.shadows;
     const grass = new THREE.Mesh(
-      this.track(new THREE.RingGeometry(outerR + 2, outerR + 7.5, this.cfg.laneSegments)), grassMat);
+      this.track(new THREE.RingGeometry(outerR + 2, outerR + 7.5, this.cfg.laneSegments)),
+      grassMat,
+    );
     grass.name = "environment:rower:shoreline-grass";
     grass.rotation.x = -Math.PI / 2;
     grass.position.y = 0.18;
@@ -5839,11 +5823,16 @@ export class CourseRenderer3D implements ReplayRenderer {
     const count = [28, 48, 72, 110][this.cfg.environmentDetail];
     const canopyGeo = this.track(sculptedPineGeometry());
     const mat = this.environmentStandardMat(
-      "environment:rower:bank-tree-material", themed(0x2d6548, 0x1c503c),
+      "environment:rower:bank-tree-material",
+      themed(0x2d6548, 0x1c503c),
       { fog: true, roughness: 0.86, metalness: 0 },
     );
-    this.applyEnvironmentSurfaceMaps(mat,
-      "/replay-assets/environments/forest-leaves-04/forest-leaves-04", [1.8, 2.2], 0.14);
+    this.applyEnvironmentSurfaceMaps(
+      mat,
+      "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
+      [1.8, 2.2],
+      0.14,
+    );
     const trees = this.trackInstanced(new THREE.InstancedMesh(canopyGeo, mat, count));
     trees.name = "environment:rower:bank-trees";
     const m4 = new THREE.Matrix4();
@@ -5856,8 +5845,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       const cluster = Math.floor(i / 3) % 5;
       const base = (cluster / 5) * FULL_CIRCLE + degrees(18 + cluster * 48);
       const angle = base + ((i % 7) - 3) * degrees(2.4 + band);
-      const radius =
-        outerR + 3.2 + band * 7.5 + (i % 5) * 0.9 + Math.sin(i * 1.7) * 1.1;
+      const radius = outerR + 3.2 + band * 7.5 + (i % 5) * 0.9 + Math.sin(i * 1.7) * 1.1;
       const size = (band === 0 ? 0.55 : band === 1 ? 0.72 : 0.95) * (0.85 + (i % 4) * 0.08);
       q.setFromAxisAngle(WORLD_UP, angle + i * 0.25);
       p.set(Math.sin(angle) * radius, 0.9 * size, Math.cos(angle) * radius);
@@ -6132,10 +6120,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       { roughness: 0.28, metalness: 0.08 },
     );
 
-    const landSectors: readonly EnvironmentSector[] = [
-      ...ROW_WOODLAND_SECTORS,
-      ROW_CAMPUS_SECTOR,
-    ];
+    const landSectors: readonly EnvironmentSector[] = [...ROW_WOODLAND_SECTORS, ROW_CAMPUS_SECTOR];
     for (const [index, sector] of landSectors.entries()) {
       const isCampus = sector === ROW_CAMPUS_SECTOR;
       bank.add(
@@ -6224,10 +6209,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     const scale = new THREE.Vector3();
     // Reeds only at land/water edges (woodland + vista), never on the campus
     // lawn where a real club would keep the shore clear for launching.
-    const reedSectors: readonly EnvironmentSector[] = [
-      ...ROW_WOODLAND_SECTORS,
-      ROW_VISTA_SECTOR,
-    ];
+    const reedSectors: readonly EnvironmentSector[] = [...ROW_WOODLAND_SECTORS, ROW_VISTA_SECTOR];
     for (let index = 0; index < reedCount; index++) {
       const { angle } = sectorSample(index, reedCount, reedSectors);
       const radius = outerR + 3.4 + (index % 6) * 0.22;
@@ -6297,11 +6279,7 @@ export class CourseRenderer3D implements ReplayRenderer {
    * One campus owns dock, lawn path and buildings as a connected facility
    * rather than three props dropped at random angles.
    */
-  private addRowerCampus(
-    group: THREE.Group,
-    detailGroup: THREE.Group,
-    outerR: number,
-  ): void {
+  private addRowerCampus(group: THREE.Group, detailGroup: THREE.Group, outerR: number): void {
     const campus = new THREE.Group();
     campus.name = "environment:rower:campus";
     const center = ROW_CAMPUS_SECTOR.start + ROW_CAMPUS_SECTOR.span * 0.48;
@@ -6429,11 +6407,7 @@ export class CourseRenderer3D implements ReplayRenderer {
    * centre is the stadium plaza — hardscape, lawn, boards, flags — not more
    * snow. Forest/alpine/lodge land uses own the periphery.
    */
-  private addSkiStadiumWorld(
-    group: THREE.Group,
-    detailGroup: THREE.Group,
-    outerR: number,
-  ): void {
+  private addSkiStadiumWorld(group: THREE.Group, detailGroup: THREE.Group, outerR: number): void {
     this.addSkiStadiumCentre(group, outerR);
     this.addSkiValley(group, outerR);
     this.addSnowBerms(group, outerR, [20, 34, 52, 72][this.cfg.environmentDetail]);
@@ -6447,15 +6421,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       SKI_FOREST_SECTORS,
     );
     this.addSkiSurfaceTier(group, outerR);
-    this.addFloodlights(
-      detailGroup,
-      SKI_FLOODLIGHTS,
-      10 + this.cfg.environmentDetail * 3,
-    );
+    this.addFloodlights(detailGroup, SKI_FLOODLIGHTS, 10 + this.cfg.environmentDetail * 3);
     this.addPavilions(detailGroup, SKI_LANDMARKS);
   }
 
-    /**
+  /**
    * A real XC stadium centre is snow, not paving. The start/finish area sits
    * on packed snow with subtle grooming texture — no concrete, turf, boards or
    * flag masts belong inside a Nordic course loop.
@@ -6567,7 +6537,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     group.add(centre);
   }
 
-    private addSkiValley(group: THREE.Group, outerR: number): void {
+  private addSkiValley(group: THREE.Group, outerR: number): void {
     const valley = new THREE.Group();
     valley.name = "environment:skierg:valley-bowl";
     const shadowSnowMat = this.environmentStandardMat(
@@ -6697,11 +6667,7 @@ export class CourseRenderer3D implements ReplayRenderer {
    * as the stadium shell, city skyline only on urban land, service campus on
    * its own sector.
    */
-  private addBikeCircuitWorld(
-    group: THREE.Group,
-    detailGroup: THREE.Group,
-    outerR: number,
-  ): void {
+  private addBikeCircuitWorld(group: THREE.Group, detailGroup: THREE.Group, outerR: number): void {
     this.addBikeInfieldFloor(group, outerR);
     this.addBikeSeating(group);
     this.addBikeArenaWall(group);
@@ -6746,10 +6712,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       { transparent: true, opacity: 0.32, depthWrite: false },
     );
     // Court centre circle + half-court + key boxes for multi-use hall read.
-    const centreCircle = new THREE.Mesh(
-      this.track(new THREE.RingGeometry(1.65, 1.8, 48)),
-      lineMat,
-    );
+    const centreCircle = new THREE.Mesh(this.track(new THREE.RingGeometry(1.65, 1.8, 48)), lineMat);
     centreCircle.name = "environment:bike:infield-centre-circle";
     centreCircle.rotation.x = -Math.PI / 2;
     centreCircle.position.y = 0.005;
@@ -7101,23 +7064,11 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.scene.add(apron);
 
     if (this.sport === "rower") {
-      this.addRowerRegattaWorld(
-        this.environmentMidGroup,
-        this.environmentDetailGroup,
-        outerR,
-      );
+      this.addRowerRegattaWorld(this.environmentMidGroup, this.environmentDetailGroup, outerR);
     } else if (this.sport === "skierg") {
-      this.addSkiStadiumWorld(
-        this.environmentMidGroup,
-        this.environmentDetailGroup,
-        outerR,
-      );
+      this.addSkiStadiumWorld(this.environmentMidGroup, this.environmentDetailGroup, outerR);
     } else {
-      this.addBikeCircuitWorld(
-        this.environmentMidGroup,
-        this.environmentDetailGroup,
-        outerR,
-      );
+      this.addBikeCircuitWorld(this.environmentMidGroup, this.environmentDetailGroup, outerR);
     }
   }
 
@@ -7313,17 +7264,22 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.cfg.environmentDetail >= 2 &&
       groundMat instanceof THREE.MeshStandardMaterial
     ) {
-      groundMat.map = this.loadEnvironmentTexture(
+      this.loadEnvironmentTexture(
+        groundMat,
+        "map",
         "/replay-assets/environments/snow-02/snow-diffuse-512.jpg",
         [18, 18],
-        true,
       );
-      groundMat.roughnessMap = this.loadEnvironmentTexture(
+      this.loadEnvironmentTexture(
+        groundMat,
+        "roughnessMap",
         "/replay-assets/environments/snow-02/snow-roughness-512.jpg",
         [18, 18],
       );
       if (this.cfg.environmentDetail >= 3) {
-        groundMat.normalMap = this.loadEnvironmentTexture(
+        this.loadEnvironmentTexture(
+          groundMat,
+          "normalMap",
           "/replay-assets/environments/snow-02/snow-normal-gl-512.jpg",
           [22, 22],
         );
@@ -7341,17 +7297,22 @@ export class CourseRenderer3D implements ReplayRenderer {
       // The lower, broad receiver carries real asphalt aggregate at High and
       // Ultra. This gives the infield edge and the visible outer circuit a
       // physical material identity without replacing our generic venue art.
-      groundMat.map = this.loadEnvironmentTexture(
+      this.loadEnvironmentTexture(
+        groundMat,
+        "map",
         "/replay-assets/environments/clean-asphalt/clean-asphalt-diffuse-512.jpg",
         [20, 20],
-        true,
       );
-      groundMat.roughnessMap = this.loadEnvironmentTexture(
+      this.loadEnvironmentTexture(
+        groundMat,
+        "roughnessMap",
         "/replay-assets/environments/clean-asphalt/clean-asphalt-roughness-512.jpg",
         [20, 20],
       );
       if (this.cfg.environmentDetail >= 3) {
-        groundMat.normalMap = this.loadEnvironmentTexture(
+        this.loadEnvironmentTexture(
+          groundMat,
+          "normalMap",
           "/replay-assets/environments/clean-asphalt/clean-asphalt-normal-gl-512.jpg",
           [24, 24],
         );
@@ -7433,17 +7394,22 @@ export class CourseRenderer3D implements ReplayRenderer {
       // Unlike a pre-painted running-track image, this seamless material
       // preserves the authored lap markings and keeps the scene generic while
       // giving High/Ultra tyre contact a genuine asphalt microstructure.
-      laneMat.map = this.loadEnvironmentTexture(
+      this.loadEnvironmentTexture(
+        laneMat,
+        "map",
         "/replay-assets/environments/clean-asphalt/clean-asphalt-diffuse-512.jpg",
         [14, 14],
-        true,
       );
-      laneMat.roughnessMap = this.loadEnvironmentTexture(
+      this.loadEnvironmentTexture(
+        laneMat,
+        "roughnessMap",
         "/replay-assets/environments/clean-asphalt/clean-asphalt-roughness-512.jpg",
         [14, 14],
       );
       if (this.cfg.environmentDetail >= 3) {
-        laneMat.normalMap = this.loadEnvironmentTexture(
+        this.loadEnvironmentTexture(
+          laneMat,
+          "normalMap",
           "/replay-assets/environments/clean-asphalt/clean-asphalt-normal-gl-512.jpg",
           [18, 18],
         );
@@ -7519,8 +7485,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       new THREE.MeshStandardMaterial({ color: hex(COLORS_LIGHT.finishLight) }),
     );
     const cellGeo = this.track(new THREE.BoxGeometry(0.9, 0.004, 0.95));
-    const cellY =
-      this.sport === "rower" ? 0.1 : 0.002;
+    const cellY = this.sport === "rower" ? 0.1 : 0.002;
     for (let zc = 0; zc < 9; zc++) {
       for (let xc = 0; xc < 2; xc++) {
         const cell = new THREE.Mesh(

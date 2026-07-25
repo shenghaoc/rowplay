@@ -557,9 +557,9 @@ describe("CourseRenderer3D", () => {
     expect(getScene(rower).getObjectByName("environment:rower:campus")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:valley-ridges")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:basin-deep")).toBeUndefined();
-    expect((getScene(rower).getObjectByName("environment:rower:infield") as THREE.Object3D).visible).toBe(
-      false,
-    );
+    expect(
+      (getScene(rower).getObjectByName("environment:rower:infield") as THREE.Object3D).visible,
+    ).toBe(false);
     for (const landmark of [
       "environment:rower:regatta-pavilion",
       "environment:rower:boathouse",
@@ -640,8 +640,12 @@ describe("CourseRenderer3D", () => {
     const ultra = new CourseRenderer3D(makeHost(), "ultra", "rower");
     const lowScene = getScene(low);
     const ultraScene = getScene(ultra);
-    const lowTrees = lowScene.getObjectByName("environment:rower:bank-trees") as THREE.InstancedMesh;
-    const ultraTrees = ultraScene.getObjectByName("environment:rower:bank-trees") as THREE.InstancedMesh;
+    const lowTrees = lowScene.getObjectByName(
+      "environment:rower:bank-trees",
+    ) as THREE.InstancedMesh;
+    const ultraTrees = ultraScene.getObjectByName(
+      "environment:rower:bank-trees",
+    ) as THREE.InstancedMesh;
 
     expect(lowTrees.count).toBe(28);
     expect(ultraTrees.count).toBe(110);
@@ -666,7 +670,9 @@ describe("CourseRenderer3D", () => {
       const renderer = new CourseRenderer3D(makeHost(), quality, "rower");
       return { renderer, scene: getScene(renderer) };
     });
-    expect(rowScenes[0].scene.getObjectByName("environment:rower:reflection-bands")).toBeUndefined();
+    expect(
+      rowScenes[0].scene.getObjectByName("environment:rower:reflection-bands"),
+    ).toBeUndefined();
     expect(rowScenes[1].scene.getObjectByName("environment:rower:reflection-bands")).toBeDefined();
     expect(rowScenes[1].scene.getObjectByName("environment:rower:launch-dock")).toBeUndefined();
     expect(rowScenes[2].scene.getObjectByName("environment:rower:launch-dock")).toBeDefined();
@@ -706,18 +712,15 @@ describe("CourseRenderer3D", () => {
     expect(bankMat[2]!.map?.userData.sourcePath).toContain("forrest-ground-01-diffuse");
     expect(bankMat[3]!.normalMap?.userData.sourcePath).toContain("forrest-ground-01-normal");
     // Simplified shoreline — one bank ring replaces multi-layer earth/waterline system.
-    const bank = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:shoreline") as THREE.Mesh
-    ).material as THREE.MeshStandardMaterial;
+    const bank = (rowScenes[2]!.scene.getObjectByName("environment:rower:shoreline") as THREE.Mesh)
+      .material as THREE.MeshStandardMaterial;
     expect(bank.map?.userData.sourcePath).toContain("forrest-ground-01-diffuse");
     const shoreGrass = (
       rowScenes[2]!.scene.getObjectByName("environment:rower:shoreline-grass") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
     expect(shoreGrass.map?.userData.sourcePath).toContain("aerial-grass-rock-diffuse");
     const bankTrees = (
-      rowScenes[2]!.scene.getObjectByName(
-        "environment:rower:bank-trees",
-      ) as THREE.InstancedMesh
+      rowScenes[2]!.scene.getObjectByName("environment:rower:bank-trees") as THREE.InstancedMesh
     ).material as THREE.MeshStandardMaterial;
     expect(bankTrees.map?.userData.sourcePath).toContain("forest-leaves-04-diffuse");
     const reeds = (
@@ -729,18 +732,16 @@ describe("CourseRenderer3D", () => {
     ).material as THREE.MeshStandardMaterial;
     expect(islandLawn.map?.userData.sourcePath).toContain("aerial-grass-rock-diffuse");
     const pavilionBody = (
-      rowScenes[2]!.scene.getObjectByName(
-        "environment:rower:regatta-pavilion",
-      ) as THREE.Group
+      rowScenes[2]!.scene.getObjectByName("environment:rower:regatta-pavilion") as THREE.Group
     ).children.find(
       (child) =>
         child instanceof THREE.Mesh &&
         (child.material as THREE.MeshStandardMaterial).name ===
           "environment:rower:pavilion-body-material",
     ) as THREE.Mesh;
-    expect((pavilionBody.material as THREE.MeshStandardMaterial).map?.userData.sourcePath).toContain(
-      "brown-planks-03-diffuse",
-    );
+    expect(
+      (pavilionBody.material as THREE.MeshStandardMaterial).map?.userData.sourcePath,
+    ).toContain("brown-planks-03-diffuse");
     for (const { renderer } of rowScenes) renderer.destroy();
 
     const snowMaterials = qualities.map((quality) => {
@@ -764,7 +765,9 @@ describe("CourseRenderer3D", () => {
       ).map?.name,
     ).toBe("environment:texture:snow-groomed-ultra");
     expect(snowMaterials[2].scene.getObjectByName("environment:skierg:wind-lips")).toBeDefined();
-    expect(snowMaterials[3].scene.getObjectByName("environment:skierg:snow-crystals")).toBeDefined();
+    expect(
+      snowMaterials[3].scene.getObjectByName("environment:skierg:snow-crystals"),
+    ).toBeDefined();
     expect(snowMaterials[1].scene.getObjectByName("environment:skierg:snow-fences")).toBeDefined();
     for (const { renderer } of snowMaterials) renderer.destroy();
 
@@ -807,6 +810,60 @@ describe("CourseRenderer3D", () => {
     ).material as THREE.MeshStandardMaterial;
     expect(bikeFloor.map?.userData.sourcePath).toContain("brushed-concrete-2-diffuse");
     bikeHigh.destroy();
+  });
+
+  // A real 404 reports back asynchronously, but a cache-layer or data-URI
+  // failure can report before load() returns. Both orderings must leave the
+  // authored solid colour in the slot, so both are covered.
+  it.each([
+    { timing: "asynchronously", async: true },
+    { timing: "synchronously", async: false },
+  ])("falls back to solid colour when a surface map fails $timing", async ({ async }) => {
+    // The default harness has no createElementNS, so the renderer skips the real
+    // loader entirely. Supplying one drives the genuine TextureLoader path with
+    // an <img> that reports failure, which is what a 404 or a decode error looks
+    // like in a browser.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const requested: string[] = [];
+    globalThis.document = {
+      createElement: (tag: string) => (tag === "canvas" ? makeCanvas() : {}),
+      createElementNS: (_ns: string, tag: string) => {
+        if (tag !== "img") return {};
+        const listeners = new Map<string, (event: unknown) => void>();
+        return {
+          addEventListener: (type: string, fn: (event: unknown) => void) =>
+            void listeners.set(type, fn),
+          removeEventListener: (type: string) => void listeners.delete(type),
+          set src(url: string) {
+            requested.push(url);
+            const fail = () => listeners.get("error")?.({ type: "error" });
+            if (async) queueMicrotask(fail);
+            else fail();
+          },
+        };
+      },
+    } as unknown as Document;
+
+    const renderer = new CourseRenderer3D(makeHost(), "ultra", "bike");
+    // Ultra bike asks for asphalt diffuse, roughness and normal on both the
+    // ground receiver and the lane.
+    expect(requested.some((url) => url.includes("clean-asphalt-diffuse"))).toBe(true);
+    await Promise.resolve();
+
+    for (const name of ["ground", "lane"]) {
+      const material = (getScene(renderer).getObjectByName(name) as THREE.Mesh)
+        .material as THREE.MeshStandardMaterial;
+      expect(material.map, `${name} kept a failed diffuse map`).toBeNull();
+      expect(material.roughnessMap, `${name} kept a failed roughness map`).toBeNull();
+      expect(material.normalMap, `${name} kept a failed normal map`).toBeNull();
+      // The authored solid colour must survive as the fallback.
+      expect(material.color.getHex()).toBeGreaterThan(0);
+    }
+    expect(warn.mock.calls.flat().join(" ")).toContain("environment surface map unavailable");
+
+    // Failed textures are still owned by the renderer, so destroy() stays safe.
+    expect(() => renderer.destroy()).not.toThrow();
+    warn.mockRestore();
   });
 
   it("re-themes the complete environment rather than recoloring only the athlete", () => {
