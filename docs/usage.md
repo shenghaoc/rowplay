@@ -282,7 +282,14 @@ Low uses a deliberately graphic scene; Medium adds shaped surfaces and
 midground reflections; High adds PBR ground response, venue depth, and shadows;
 Ultra adds normal-mapped close-surface detail and restrained glints. Higher
 tiers also add richer athlete material detail (128→256→512px procedural maps on
-Medium/High/Ultra) and more wake or spray. Ultra is intended for WebGPU-capable
+Medium/High/Ultra) and more wake or spray.
+
+Low and Medium draw their surfaces procedurally and download nothing extra. High
+and Ultra additionally load the bundled surface maps for the chosen sport — most
+for RowErg (about 1.2 MB at High, 2.0 MB at Ultra), less for SkiErg and BikeErg
+(under 1 MB either way). They are served from the app, not a third party, and are
+cached after the first replay. If a map is unavailable the surface simply falls
+back to its solid colour. Ultra is intended for WebGPU-capable
 devices. If the device can't hold a smooth frame rate at the selected tier, the
 renderer automatically lowers resolution first and then decorative effects such
 as water motion and spray for the rest of the session. This never changes

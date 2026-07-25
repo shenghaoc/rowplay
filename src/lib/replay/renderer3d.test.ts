@@ -145,6 +145,28 @@ function getScene(renderer: CourseRenderer3D) {
   return (renderer as unknown as { scene: THREE.Scene }).scene;
 }
 
+/** Distinct bundled surface-map URLs a renderer asked for, in load order. */
+function requestedSurfaceMaps(renderer: CourseRenderer3D): string[] {
+  const { textures } = renderer as unknown as { textures: THREE.Texture[] };
+  return [
+    ...new Set(
+      textures
+        .map((texture) => texture.userData.sourcePath as unknown)
+        .filter((path): path is string => typeof path === "string"),
+    ),
+  ];
+}
+
+function sceneComplexity(renderer: CourseRenderer3D): { meshes: number; instances: number } {
+  let meshes = 0;
+  let instances = 0;
+  getScene(renderer).traverse((object) => {
+    if (object instanceof THREE.InstancedMesh) instances += object.count;
+    else if (object instanceof THREE.Mesh) meshes++;
+  });
+  return { meshes, instances };
+}
+
 const TAU = Math.PI * 2;
 const deg = (value: number) => (value * Math.PI) / 180;
 
@@ -810,6 +832,47 @@ describe("CourseRenderer3D", () => {
     ).material as THREE.MeshStandardMaterial;
     expect(bikeFloor.map?.userData.sourcePath).toContain("brushed-concrete-2-diffuse");
     bikeHigh.destroy();
+  });
+
+  /**
+   * Requirement 5 bounds environment detail, but nothing enforced it: the
+   * densification commits could raise instance counts or add another CC0 set to
+   * a sport without any signal. These ceilings sit roughly 15–20% above the
+   * measured values recorded in `static/replay-assets/environments/README.md`.
+   * Raising one is a deliberate act — update the README table in the same commit.
+   */
+  it("keeps each sport's environment payload and scene complexity within budget", async () => {
+    const budget = {
+      rower: { sets: 7, maxKiB: 2400, maxMeshes: 520, maxInstances: 700 },
+      skierg: { sets: 3, maxKiB: 1150, maxMeshes: 440, maxInstances: 720 },
+      bike: { sets: 4, maxKiB: 950, maxMeshes: 700, maxInstances: 720 },
+    } as const;
+
+    for (const sport of ["rower", "skierg", "bike"] as const) {
+      const { sets, maxKiB, maxMeshes, maxInstances } = budget[sport];
+      for (const quality of ["low", "medium", "high", "ultra"] as const) {
+        const renderer = new CourseRenderer3D(makeHost(), quality, sport);
+        const requested = requestedSurfaceMaps(renderer);
+        const label = `${sport}/${quality}`;
+
+        // Low and Medium must stay fully procedural: venue identity can never
+        // wait on an image decode.
+        const expected =
+          quality === "low" || quality === "medium" ? 0 : sets * (quality === "ultra" ? 3 : 2);
+        expect(requested.length, `${label} surface-map request count`).toBe(expected);
+
+        let bytes = 0;
+        for (const path of requested) {
+          bytes += (await readFile(`static${path}`)).byteLength;
+        }
+        expect(bytes / 1024, `${label} surface-map payload`).toBeLessThanOrEqual(maxKiB);
+
+        const { meshes, instances } = sceneComplexity(renderer);
+        expect(meshes, `${label} mesh count`).toBeLessThanOrEqual(maxMeshes);
+        expect(instances, `${label} instance count`).toBeLessThanOrEqual(maxInstances);
+        renderer.destroy();
+      }
+    }
   });
 
   // A real 404 reports back asynchronously, but a cache-layer or data-URI

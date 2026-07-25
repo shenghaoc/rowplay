@@ -7,6 +7,26 @@ or time of day.
 No asset is fetched at runtime. Low and Medium retain procedural surfaces;
 High and Ultra load the local optimized derivatives.
 
+## Per-tier payload
+
+What each sport actually loads at each tier. High binds diffuse + roughness per
+set; Ultra adds the OpenGL normal. Low and Medium bind nothing, so venue
+identity never waits on an image decode.
+
+| Sport   | Sets | High            | Ultra           |
+| ------- | ---- | --------------- | --------------- |
+| RowErg  | 7    | 14 req, 1.2 MiB | 21 req, 2.0 MiB |
+| SkiErg  | 3    | 6 req, 0.5 MiB  | 9 req, 1.0 MiB  |
+| BikeErg | 4    | 8 req, 0.6 MiB  | 12 req, 0.8 MiB |
+
+RowErg carries the most because the river valley dresses banks, shoreline,
+island, vegetation, decking, and paths; SkiErg and BikeErg reuse a few sets
+across their whole venue.
+
+`renderer3d.test.ts` pins these request counts and a payload ceiling per sport,
+alongside mesh and instance ceilings, so densifying a venue or adding a set
+cannot pass unnoticed. Update this table in the same commit as any budget change.
+
 ## Snow 02
 
 - Source: [Poly Haven — Snow 02](https://polyhaven.com/a/snow_02)
