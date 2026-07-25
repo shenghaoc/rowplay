@@ -163,6 +163,36 @@ describe("BikeErg fit contract", () => {
     expect(bikeSaddleDropAt(0.06, 0.08)).toBeNull();
   });
 
+  it("carries the saddle on a real seatpost in line with the seat tube", () => {
+    const bb = BIKE_RIG.bottomBracket;
+    const cluster = BIKE_RIG.seatCluster;
+    const clamp = BIKE_RIG.saddleClamp;
+    const angle = (dy: number, dz: number) => (Math.atan2(dy, dz) * 180) / Math.PI;
+
+    // Seat tube in the road range, and the exposed post collinear with it —
+    // pinning the cluster 30 mm under the saddle left an 8 mm stub slanting
+    // 50 mm aft once the saddle moved back over the sit bones.
+    const seatTube = angle(cluster[1]! - bb[1]!, bb[2]! - cluster[2]!);
+    const post = angle(clamp[1]! - cluster[1]!, cluster[2]! - clamp[2]!);
+    expect(seatTube).toBeGreaterThan(71);
+    expect(seatTube).toBeLessThan(76);
+    expect(Math.abs(post - seatTube)).toBeLessThan(2);
+    expect(Math.hypot(clamp[1]! - cluster[1]!, clamp[2]! - cluster[2]!)).toBeGreaterThan(0.04);
+
+    // The post stops under the pad; anything higher spears the rider.
+    expect(clamp[1]!).toBeLessThanOrEqual(bikeSaddleTopY(BIKE_RIG) - 0.02 + 1e-9);
+    // Compact road frame: the top tube meets the seat tube below the saddle
+    // and rises to the head tube, rather than running at saddle height.
+    expect(cluster[1]!).toBeLessThan(bikeSaddleTopY(BIKE_RIG) - 0.05);
+    expect(BIKE_RIG.headTop[1]!).toBeGreaterThan(cluster[1]!);
+    expect(BIKE_RIG.headTop[1]! - cluster[1]!).toBeLessThan(0.12);
+
+    // Saddle-to-bar drop, the other half of a road fit.
+    const drop = bikeSaddleTopY(BIKE_RIG) - BIKE_RIG.handlebar.grip.y;
+    expect(drop).toBeGreaterThan(0.02);
+    expect(drop).toBeLessThan(0.14);
+  });
+
   it("stays inside real saddle dimensions", () => {
     // 200 mm is a short-nose road saddle; 143 mm is a standard rear width.
     expect(BIKE_SADDLE_LENGTH).toBeGreaterThan(0.17);

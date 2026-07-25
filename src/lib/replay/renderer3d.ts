@@ -3243,7 +3243,7 @@ function makeBikeAvatar(
   const seatPost = tubeBetween(
     "bike-seat-post",
     seatCluster,
-    { x: 0, y: (BIKE_RIG.saddle[1] ?? 0) - saddlePadHalfHeight, z: BIKE_RIG.saddle[2] ?? 0 },
+    { x: 0, y: BIKE_RIG.saddleClamp[1] ?? 0, z: BIKE_RIG.saddleClamp[2] ?? 0 },
     0.0135,
     accentMat(),
   );

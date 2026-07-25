@@ -377,6 +377,15 @@ parked clear of the athlete would otherwise satisfy "no penetration" perfectly.
 | Grip close-up             | [frame](athlete-v5/in-app/bike-fit-2026-07-26/poses/grip-bike-pedal-top.jpg)                                                                        | Arms still reach the hoods after the 4 cm hip lift               |
 | RowErg / SkiErg unchanged | [row](athlete-v5/in-app/bike-fit-2026-07-26/poses/row-finish.jpg) · [ski](athlete-v5/in-app/bike-fit-2026-07-26/poses/ski-loaded-press.jpg)         | No regression — the shared athlete mesh was not touched          |
 
+**One regression this created, and fixed.** Moving the saddle 115 mm aft of the
+pelvis root — onto the sit bones — turned the seatpost into an 8 mm stub
+slanting 50 mm backwards, because `seatCluster` was pinned 30 mm under the
+saddle. That pin was always wrong: it also ran the top tube and seat stays at
+saddle height, a city-bike silhouette. The cluster is now derived back down the
+seat-tube axis, giving 60 mm of exposed post collinear with a 72.4° seat tube,
+a top tube that meets it below the saddle and rises 47 mm to the head tube
+(compact road geometry), and a 55 mm saddle-to-bar drop. A guard pins all four.
+
 **What this deliberately did not do.** The athlete GLB is byte-identical; the
 `seat_channel` band in `build-replay-athlete-v4-blender.py` is untouched. The
 fix turned out not to need the shared mesh at all, which keeps it clear of the

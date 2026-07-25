@@ -149,6 +149,24 @@ const SADDLE_Y = SADDLE_PAD_TOP_Y - SADDLE_PAD_HALF_HEIGHT;
 const SADDLE_Z = PELVIS_Z + SIT_CONTACT_Z_FROM_HIP;
 /** Rail clamp, near the saddle's mid-length and so ahead of the sit bones. */
 const SADDLE_CLAMP_Z = 0.05;
+const SADDLE_CLAMP_Y = SADDLE_Y - SADDLE_PAD_HALF_HEIGHT;
+
+/**
+ * Seat tube angle, and the exposed seatpost between the frame's seat cluster
+ * and the rail clamp. The cluster used to be pinned 30 mm under the saddle,
+ * which put the top tube and seat stays almost at saddle height — a city-bike
+ * silhouette — and left no visible post at all. Placing the saddle over the
+ * sit bones then dragged the clamp 115 mm aft of the pelvis root, turning that
+ * 30 mm stub into a near-horizontal spur.
+ *
+ * Deriving the cluster back down the seat-tube axis instead gives a compact
+ * road frame: a real length of post in line with the tube, and a top tube that
+ * meets the seat tube below the saddle and rises slightly to the head tube.
+ */
+const SEAT_TUBE_ANGLE = (73 * Math.PI) / 180;
+const SEATPOST_EXPOSED = 0.06;
+const SEAT_CLUSTER_Y = SADDLE_CLAMP_Y - SEATPOST_EXPOSED * Math.sin(SEAT_TUBE_ANGLE);
+const SEAT_CLUSTER_Z = SADDLE_Z + SADDLE_CLAMP_Z + SEATPOST_EXPOSED * Math.cos(SEAT_TUBE_ANGLE);
 
 export const BIKE_RIG = Object.freeze({
   /** Wheel major radius (rim centreline). */
@@ -160,12 +178,10 @@ export const BIKE_RIG = Object.freeze({
   /** Rear wheel axle Z (aft). */
   rearAxleZ: REAR_AXLE_Z,
   bottomBracket: Object.freeze([0, BB_Y, BB_Z]),
-  /**
-   * Seat-tube top, just under the saddle so the post supports the pad. The
-   * post meets the rails near the saddle's mid-length, which is ahead of the
-   * sit-bone origin the saddle is now placed by.
-   */
-  seatCluster: Object.freeze([0, SADDLE_Y - 0.03, SADDLE_Z + SADDLE_CLAMP_Z]),
+  /** Seat-tube top, one exposed seatpost below the rail clamp. */
+  seatCluster: Object.freeze([0, SEAT_CLUSTER_Y, SEAT_CLUSTER_Z]),
+  /** Where the post meets the rails: under the saddle's mid-length. */
+  saddleClamp: Object.freeze([0, SADDLE_CLAMP_Y, SADDLE_Z + SADDLE_CLAMP_Z]),
   headBottom: Object.freeze([0, HEAD_BOTTOM_Y, HEAD_BOTTOM_Z]),
   headTop: Object.freeze([0, HEAD_TOP_Y, HEAD_TOP_Z]),
   /** Saddle centre. Pad top = centre + {@link BIKE_RIG.saddlePadHalfHeight}. */

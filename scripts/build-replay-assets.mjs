@@ -1184,12 +1184,7 @@ function bikeFrameAssemblyParts() {
   // The post carries the saddle from below and stops under the pad. It must
   // never reach the pad top: the rider's sit surface is one nestle beneath it,
   // so any post that outruns the cushion spears straight through the athlete.
-  const seatPost = tubeGeometryBetween(
-    [BIKE_RIG.saddle[0], seatCluster[1] - 0.02, BIKE_RIG.saddle[2]],
-    [BIKE_RIG.saddle[0], BIKE_RIG.saddle[1] - BIKE_RIG.saddlePadHalfHeight, BIKE_RIG.saddle[2]],
-    0.0135,
-    12,
-  );
+  const seatPost = tubeGeometryBetween(seatCluster, [...BIKE_RIG.saddleClamp], 0.0135, 12);
   const forkCrown = ellipsoidGeometry([0.03, 0.026, 0.022], 16, 10, [
     headBottom[0],
     headBottom[1] - 0.012,
