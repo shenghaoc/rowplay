@@ -7,6 +7,9 @@ import {
   COLORS_DARK,
   COLORS_LIGHT,
   CourseRenderer,
+  VENUES_DARK,
+  VENUES_LIGHT,
+  VENUE_LANDMARK_2D,
   skiPolePlantCourseX2D,
   solveBikeRotationPoint2D,
   solveRigidOar2D,
@@ -183,12 +186,23 @@ describe("CourseRenderer stroke pose input", () => {
     setLineDash: ReturnType<typeof vi.fn>;
     dashOffsets: number[];
     styles: string[];
+    /**
+     * Every colour reaching the canvas in call order — fill/stroke styles plus
+     * gradient colour stops. Sky and water are painted as gradients, so `styles`
+     * alone cannot see them, and depth-order assertions need one merged stream.
+     */
+    paints: string[];
     operations: { method: string; args: unknown[] }[];
   } {
-    const gradient = { addColorStop: vi.fn() };
     const setLineDash = vi.fn();
     const dashOffsets: number[] = [];
     const styles: string[] = [];
+    const paints: string[] = [];
+    const gradient = {
+      addColorStop: vi.fn((_stop: number, color: unknown) => {
+        if (typeof color === "string") paints.push(color);
+      }),
+    };
     const operations: { method: string; args: unknown[] }[] = [];
     const target: Record<string, unknown> = {
       canvas: { width: 0, height: 0, style: {} },
@@ -208,6 +222,7 @@ describe("CourseRenderer stroke pose input", () => {
         set(obj, prop: string, value) {
           if ((prop === "fillStyle" || prop === "strokeStyle") && typeof value === "string") {
             styles.push(value);
+            paints.push(value);
           }
           if (prop === "lineDashOffset" && typeof value === "number") dashOffsets.push(value);
           obj[prop] = value;
@@ -217,6 +232,7 @@ describe("CourseRenderer stroke pose input", () => {
       setLineDash,
       dashOffsets,
       styles,
+      paints,
       operations,
     };
   }
@@ -899,39 +915,133 @@ describe("CourseRenderer stroke pose input", () => {
       const renderer = new CourseRenderer(canvas);
       renderer.resize(640, 300);
 
-      const landmarkX = (meters: number) => {
+      const { w, h } = VENUE_LANDMARK_2D[sport];
+      const landmarksAt = (meters: number) => {
         operations.length = 0;
         const state = makeState(sport, false);
         state.frame = { ...state.frame, d: meters };
         renderer.render(state, false, "light");
-        const landmark = operations.find((operation) => {
-          if (sport === "rower") {
-            // Timing-tower cabin mass (kept fixed, not parallax-wrapped).
-            return (
-              operation.method === "fillRect" &&
-              operation.args[2] === 34 &&
-              operation.args[3] === 18
-            );
-          }
-          if (sport === "bike") {
-            return (
-              operation.method === "fillRect" && operation.args[2] === 14 && operation.args[3] === 7
-            );
-          }
-          // The alpine ridgeline is intentionally smooth rather than a
-          // faceted triangle, so use the fixed timing cabin as the landmark.
-          return (
-            operation.method === "fillRect" && operation.args[2] === 70 && operation.args[3] === 22
-          );
-        });
-        expect(landmark, `${sport} landmark not drawn`).toBeDefined();
-        return landmark?.args[0];
+        return operations.filter(
+          (operation) =>
+            operation.method === "fillRect" && operation.args[2] === w && operation.args[3] === h,
+        );
       };
 
+      // These masses belong to the fixed venue, not to a scrolling parallax
+      // band. If one were wrapped, the seam would change how many are painted
+      // and where the first one sits — so pin both, at the wrap distance and
+      // at distances either side of it.
       const wrapDistance = sport === "rower" ? 1_000 : sport === "skierg" ? 1_200 : 1_100;
-      expect(landmarkX(wrapDistance)).toBe(landmarkX(0));
+      const distances = [0, wrapDistance, wrapDistance * 2.5, 37];
+      const drawn = distances.map((meters) => landmarksAt(meters));
+      for (const [index, landmarks] of drawn.entries()) {
+        expect(
+          landmarks.length,
+          `${sport} landmark not drawn at ${distances[index]} m`,
+        ).toBeGreaterThan(0);
+      }
+      expect(new Set(drawn.map((l) => l.length)).size, `${sport} landmark count moved`).toBe(1);
+      expect(
+        new Set(drawn.map((l) => l[0]!.args[0])).size,
+        `${sport} landmark drifted with distance`,
+      ).toBe(1);
     }
   });
+
+  /**
+   * A palette colour reaches the canvas either as bare hex or, via `withAlpha`,
+   * as `rgba(r,g,b,a)`. Match both so a layer painted translucently still counts
+   * as painted.
+   */
+  function paintMatchers(hex: string): string[] {
+    const h = hex.replace("#", "");
+    const pair = (index: number) =>
+      h.length === 3 ? h[index]! + h[index]! : h.slice(index * 2, index * 2 + 2);
+    const [r, g, b] = [0, 1, 2].map((index) => parseInt(pair(index), 16));
+    return [hex.toLowerCase(), `rgba(${r},${g},${b},`];
+  }
+
+  it.each(["rower", "skierg", "bike"] as const)(
+    "paints the %s venue back-to-front from sky through course surface",
+    (sport) => {
+      const { ctx, paints } = makeCtx();
+      const canvas = {
+        getContext: (kind: string) => (kind === "2d" ? ctx : null),
+      } as unknown as HTMLCanvasElement;
+      const renderer = new CourseRenderer(canvas);
+      renderer.resize(640, 300);
+      renderer.render(makeState(sport, false), false, "light");
+
+      const palette = VENUES_LIGHT[sport];
+      const stream = paints.map((paint) => paint.toLowerCase());
+      const firstPaint = (hex: string) => {
+        const matchers = paintMatchers(hex);
+        const index = stream.findIndex((paint) => matchers.some((m) => paint.includes(m)));
+        return index === -1 ? Number.POSITIVE_INFINITY : index;
+      };
+
+      // Depth order is what stops the venue reading as flat cutouts: sky and
+      // haze establish distance, far ridges sit against it, near foliage and
+      // structures sit in front, and the course surface lands closest.
+      const layers: [string, number][] = [
+        ["sky", firstPaint(palette.skyTop)],
+        ["far ridge", firstPaint(palette.ridgeFar)],
+        ["near ridge", firstPaint(palette.ridgeNear)],
+        ["structure", firstPaint(palette.structure)],
+        ["course surface", firstPaint(palette.surfaceLine)],
+      ];
+      for (const [name, index] of layers) {
+        expect(index, `${sport} never painted its ${name} layer`).toBeLessThan(
+          Number.POSITIVE_INFINITY,
+        );
+      }
+      const indices = layers.map(([, index]) => index);
+      expect(
+        indices,
+        `${sport} venue layers out of depth order: ${layers.map(([n, i]) => `${n}@${i}`).join(", ")}`,
+      ).toEqual([...indices].sort((a, b) => a - b));
+    },
+  );
+
+  it.each(["rower", "skierg", "bike"] as const)(
+    "re-paints the whole %s venue for dark theme, not only the athlete",
+    (sport) => {
+      const paint = (theme: "light" | "dark") => {
+        const { ctx, paints } = makeCtx();
+        const canvas = {
+          getContext: (kind: string) => (kind === "2d" ? ctx : null),
+        } as unknown as HTMLCanvasElement;
+        const renderer = new CourseRenderer(canvas);
+        renderer.resize(640, 300);
+        renderer.render(makeState(sport, false), false, theme);
+        return paints.map((value) => value.toLowerCase());
+      };
+
+      const light = paint("light");
+      const dark = paint("dark");
+      // Every venue-palette colour must actually reach the canvas in its own
+      // theme and must not leak into the other one. A theme switch that only
+      // recoloured the athlete would fail here.
+      const painted = (stream: string[], hex: string) =>
+        paintMatchers(hex).some((m) => stream.some((paint) => paint.includes(m)));
+
+      for (const key of [
+        "skyTop",
+        "ridgeFar",
+        "foliageNear",
+        "groundTop",
+        "surfaceLine",
+      ] as const) {
+        const lightHex = VENUES_LIGHT[sport][key];
+        const darkHex = VENUES_DARK[sport][key];
+        expect(painted(light, lightHex), `${sport} light venue missing ${key}`).toBe(true);
+        expect(painted(dark, darkHex), `${sport} dark venue missing ${key}`).toBe(true);
+        if (lightHex.toLowerCase() !== darkHex.toLowerCase()) {
+          expect(painted(dark, lightHex), `${sport} dark venue leaked light ${key}`).toBe(false);
+        }
+      }
+    },
+  );
 
   it.each(["rower", "skierg", "bike"] as const)(
     "models %s with near/far anatomy and semantic kit colours",

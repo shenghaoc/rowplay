@@ -219,7 +219,23 @@ interface VenuePalette {
   safetyLight: string;
 }
 
-const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
+/**
+ * Footprint of each sport's signature fixed venue mass: the RowErg timing-tower
+ * cabin, the SkiErg timing cabin, and one BikeErg grandstand seating block.
+ *
+ * Exported so venue regression tests can locate these landmarks in a recorded
+ * canvas stream without hard-coding pixel dimensions that shift every time the
+ * venue art is retuned.
+ */
+export const VENUE_LANDMARK_2D: Readonly<
+  Record<Sport, { readonly w: number; readonly h: number }>
+> = {
+  rower: { w: 34, h: 18 },
+  skierg: { w: 70, h: 22 },
+  bike: { w: 14, h: 7 },
+};
+
+export const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
   rower: {
     // Warm late-afternoon haze first; saturated mid-greens second. Distance
     // must desaturate into the sky or the 2D venue reads as flat cutouts.
@@ -290,7 +306,7 @@ const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
   },
 };
 
-const VENUES_DARK: Readonly<Record<Sport, VenuePalette>> = {
+export const VENUES_DARK: Readonly<Record<Sport, VenuePalette>> = {
   rower: {
     skyTop: "#071724",
     skyHorizon: "#294f62",
@@ -2547,7 +2563,7 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.fillRect(towerX, horizon - 58, 3.5, 59);
     ctx.fillRect(towerX + 22, horizon - 58, 3.5, 59);
     ctx.fillStyle = palette.structure;
-    ctx.fillRect(towerX - 4, horizon - 62, 34, 18);
+    ctx.fillRect(towerX - 4, horizon - 62, VENUE_LANDMARK_2D.rower.w, VENUE_LANDMARK_2D.rower.h);
     ctx.fillStyle = withAlpha(palette.structureLight, 0.8);
     ctx.fillRect(towerX + 2, horizon - 58, 22, 8);
     ctx.fillStyle = palette.marker;
@@ -2818,7 +2834,7 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = palette.structure;
-    ctx.fillRect(cabinX, horizon - 20, 70, 22);
+    ctx.fillRect(cabinX, horizon - 20, VENUE_LANDMARK_2D.skierg.w, VENUE_LANDMARK_2D.skierg.h);
     ctx.fillStyle = withAlpha(palette.structureLight, 0.82);
     for (let i = 0; i < 5; i++) ctx.fillRect(cabinX + 5 + i * 13, horizon - 16, 8, 8);
     this.drawFloodlight(w * 0.07, horizon + 2, h * 0.19, palette, -1);
@@ -2921,7 +2937,7 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.fill();
     ctx.fillStyle = withAlpha(palette.structureLight, 0.78);
     for (let x = standX + 10; x < standX + standW - 16; x += 22) {
-      ctx.fillRect(x, standTop + 10, 14, 7);
+      ctx.fillRect(x, standTop + 10, VENUE_LANDMARK_2D.bike.w, VENUE_LANDMARK_2D.bike.h);
     }
     ctx.strokeStyle = withAlpha(palette.structureShade, 0.5);
     ctx.lineWidth = 1;
