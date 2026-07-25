@@ -651,6 +651,12 @@ describe("CourseRenderer3D", () => {
     ).toBe("environment:texture:water-normal-high");
     expect(
       (
+        (rowScenes[1].scene.getObjectByName("ground") as THREE.Mesh)
+          .material as THREE.MeshPhysicalMaterial
+      ).map?.name,
+    ).toBe("environment:texture:water-sheen");
+    expect(
+      (
         (rowScenes[3].scene.getObjectByName("ground") as THREE.Mesh)
           .material as THREE.MeshPhysicalMaterial
       ).normalMap?.name,
@@ -671,6 +677,12 @@ describe("CourseRenderer3D", () => {
     expect(snowMaterials[2].material.roughnessMap?.userData.sourcePath).toContain("snow-roughness");
     expect(snowMaterials[2].material.normalMap).toBeNull();
     expect(snowMaterials[3].material.normalMap?.userData.sourcePath).toContain("snow-normal");
+    expect(
+      (
+        (snowMaterials[3].scene.getObjectByName("lane") as THREE.Mesh)
+          .material as THREE.MeshStandardMaterial
+      ).map?.name,
+    ).toBe("environment:texture:snow-groomed-ultra");
     expect(snowMaterials[2].scene.getObjectByName("environment:skierg:wind-lips")).toBeDefined();
     expect(
       snowMaterials[2].scene.getObjectByName("environment:skierg:snow-crystals"),

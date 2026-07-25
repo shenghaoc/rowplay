@@ -701,8 +701,8 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     midSilhouette: themed(0x244f3a, 0x154033),
     venueStructure: themed(0xede7d8, 0x6f7f83),
     venueAccent: themed(0xd07a42, 0xe0a05d),
-    infield: themed(0x185668, 0x143f4c),
-    apron: themed(0x247384, 0x1c5462),
+    infield: themed(0x438e9f, 0x1b5363),
+    apron: themed(0x4d9eae, 0x1d5d6b),
   },
   skierg: {
     // Clear alpine morning: high-key snow, cool fill, crisp mountain air.
@@ -1187,6 +1187,28 @@ function alpineFoothillGeometry(): THREE.BufferGeometry {
     1.37,
     "environment:alpine-foothill",
     0.88,
+  );
+}
+
+/** A low, wind-shaped snow drift with a planted base rather than a sphere. */
+function snowDriftGeometry(): THREE.BufferGeometry {
+  return organicRadialSurfaceGeometry(
+    [
+      new THREE.Vector2(0.035, 0),
+      new THREE.Vector2(0.42, 0.015),
+      new THREE.Vector2(0.76, 0.06),
+      new THREE.Vector2(1.02, 0.16),
+      new THREE.Vector2(1.08, 0.3),
+      new THREE.Vector2(0.94, 0.5),
+      new THREE.Vector2(0.7, 0.68),
+      new THREE.Vector2(0.43, 0.82),
+      new THREE.Vector2(0.18, 0.9),
+      new THREE.Vector2(0.025, 0.94),
+    ],
+    32,
+    0.48,
+    "environment:snow-drift",
+    0.28,
   );
 }
 
@@ -3743,17 +3765,18 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     sprayOffset: 2.2, // off the blade tips
     groundOpacity: 1,
     trailColor: 0xffffff,
-    // Deep regatta basin rather than a teal race-track ribbon.
-    groundColor: (t) => (t === "dark" ? 0x0d3f4c : 0x0f4f63),
+    // A broad blue-green basin; the course markings sit on top of this water
+    // instead of turning the whole loop into a teal race-track ribbon.
+    groundColor: (t) => (t === "dark" ? 0x145264 : 0x4e9db1),
     course: {
-      surface: (t) => (t === "dark" ? 0x146a7c : 0x1f7d96),
+      surface: (t) => (t === "dark" ? 0x1c5c6d : 0x5ba9b8),
       edge: (t) => (t === "dark" ? 0xb8f0fb : 0xf5fcff),
       laneLine: (t) => (t === "dark" ? 0x7ad4e8 : 0xe8f9ff),
       detail: (t) => (t === "dark" ? 0xf6c453 : 0xf59e0b),
       secondary: (t) => (t === "dark" ? 0xe8fbff : 0xffffff),
-      surfaceOpacity: 0.42,
-      roughness: 0.28,
-      metalness: 0.12,
+      surfaceOpacity: 0.05,
+      roughness: 0.22,
+      metalness: 0.08,
     },
     make: makeRowerAvatar,
   },
@@ -3773,11 +3796,11 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     // Cool alpine snowfield: not pure white, so tracks and kit separate.
     groundColor: (t) => (t === "dark" ? 0xa8b7c2 : 0xe6eef3),
     course: {
-      surface: (t) => (t === "dark" ? 0xd0dce4 : 0xf4f8fb),
+      surface: (t) => (t === "dark" ? 0x8da7b4 : 0xddebf2),
       edge: (t) => (t === "dark" ? 0x8fa3b4 : 0xc5d4de),
-      laneLine: (t) => (t === "dark" ? 0x9bb0c0 : 0xd5e2ea),
+      laneLine: (t) => (t === "dark" ? 0x6f8996 : 0x9db9c7),
       detail: (t) => (t === "dark" ? 0x7c6cf0 : 0x6d5ef5),
-      secondary: (t) => (t === "dark" ? 0x6b7d8c : 0xb8c8d2),
+      secondary: (t) => (t === "dark" ? 0x556e7b : 0x7898a7),
       surfaceOpacity: 1,
       roughness: 0.94,
       metalness: 0.01,
@@ -4003,6 +4026,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private cameraLayoutMode = -1;
   private disposables: THREE.Material[] = [];
   private textures: THREE.Texture[] = [];
+  private snowSurfaceTexture: THREE.DataTexture | null = null;
   private geometries: THREE.BufferGeometry[] = [];
   private instancedMeshes: THREE.InstancedMesh[] = [];
   private courseThemeMats: Array<{ material: THREE.MeshStandardMaterial; color: CourseColor }> = [];
@@ -4344,6 +4368,73 @@ export class CourseRenderer3D implements ReplayRenderer {
     return texture;
   }
 
+  private makeSnowSurfaceTexture(detail: number): THREE.DataTexture {
+    if (this.snowSurfaceTexture) return this.snowSurfaceTexture;
+    const size = detail >= 3 ? 128 : 64;
+    const pixels = new Uint8Array(size * size * 4);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const u = x / size;
+        const v = y / size;
+        const fine =
+          Math.sin((u * 17.1 + v * 4.3) * FULL_CIRCLE) * 0.5 +
+          Math.sin((u * 31.7 - v * 13.2) * FULL_CIRCLE) * 0.3 +
+          Math.sin((u * 71.3 + v * 57.1) * FULL_CIRCLE) * 0.2;
+        const groom = Math.sin((v * 22.5 + u * 1.8) * FULL_CIRCLE) * 0.5 + 0.5;
+        const packed = Math.max(0, fine * 0.5 + groom * 0.18);
+        const value = Math.round(224 + fine * 11 - packed * 12);
+        const offset = (y * size + x) * 4;
+        pixels[offset] = Math.max(0, Math.min(255, value - 8));
+        pixels[offset + 1] = Math.max(0, Math.min(255, value));
+        pixels[offset + 2] = Math.max(0, Math.min(255, value + 8));
+        pixels[offset + 3] = 255;
+      }
+    }
+    const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
+    texture.name =
+      detail >= 3 ? "environment:texture:snow-groomed-ultra" : "environment:texture:snow-groomed";
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(detail >= 3 ? 18 : 12, detail >= 3 ? 18 : 12);
+    texture.needsUpdate = true;
+    this.snowSurfaceTexture = texture;
+    this.textures.push(texture);
+    return texture;
+  }
+
+  private makeWaterSurfaceTexture(detail: number): THREE.DataTexture {
+    const size = detail >= 3 ? 128 : 64;
+    const pixels = new Uint8Array(size * size * 4);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const u = x / size;
+        const v = y / size;
+        const long = Math.sin((u * 2.4 + v * 0.42) * FULL_CIRCLE);
+        const cross = Math.sin((u * 0.72 - v * 3.1) * FULL_CIRCLE);
+        const fine = Math.sin((u * 11.7 + v * 7.1) * FULL_CIRCLE);
+        const sheen = long * 0.5 + cross * 0.34 + fine * (detail >= 3 ? 0.13 : 0.06);
+        const highlight = Math.pow(Math.max(0, Math.sin((u * 5.2 - v * 0.7) * FULL_CIRCLE)), 12);
+        const value = Math.max(0, Math.min(255, Math.round(214 + sheen * 30 + highlight * 18)));
+        const offset = (y * size + x) * 4;
+        pixels[offset] = Math.max(0, value - 14);
+        pixels[offset + 1] = Math.max(0, value - 2);
+        pixels[offset + 2] = Math.min(255, value + 5);
+        pixels[offset + 3] = 255;
+      }
+    }
+    const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
+    texture.name =
+      detail >= 3 ? "environment:texture:water-sheen-ultra" : "environment:texture:water-sheen";
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(detail >= 3 ? 8 : 6, detail >= 3 ? 8 : 6);
+    texture.needsUpdate = true;
+    this.textures.push(texture);
+    return texture;
+  }
+
   private courseMat(
     name: string,
     color: CourseColor,
@@ -4479,7 +4570,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Specular water streaks give the basin a living surface without textures.
     const streakMat = this.courseMat("course:rower:water-streak", style.secondary, {
       transparent: true,
-      opacity: 0.38,
+      opacity: 0.2,
       depthWrite: false,
       roughness: 0.22,
       metalness: 0.14,
@@ -4517,6 +4608,19 @@ export class CourseRenderer3D implements ReplayRenderer {
 
   private addSkierCourseDetails(group: THREE.Group, innerR: number, outerR: number): void {
     const style = this.profile.course;
+    // A skier's lane is compressed and slightly blue from repeated grooming.
+    // These broad shoulders sit below the fine grooves, giving the track a
+    // soft packed-snow volume instead of a white painted oval.
+    const packedMat = this.courseMat("course:skierg:packed-snow", style.secondary, {
+      transparent: true,
+      opacity: 0.34,
+      roughness: 0.99,
+      metalness: 0,
+    });
+    for (const center of [this.ghostRadius, this.loopRadius]) {
+      this.addCourseRing(group, center, 0.19, packedMat, "course:skierg:packed-snow", 0.043);
+    }
+
     // Paired ski tracks (two grooves per lane) instead of evenly spaced combs.
     const grooveMat = this.courseMat("course:skierg:groomed-groove", style.laneLine, {
       roughness: 0.96,
@@ -4532,7 +4636,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.addCourseRing(
         group,
         center - 0.09,
-        0.02,
+        0.03,
         grooveMat,
         "course:skierg:groomed-groove",
         0.05,
@@ -4540,7 +4644,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.addCourseRing(
         group,
         center + 0.09,
-        0.02,
+        0.03,
         grooveMat,
         "course:skierg:groomed-groove",
         0.05,
@@ -4550,11 +4654,11 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Soft corduroy comb reads as groomed snow rather than polished ice.
     const combMat = this.courseMat("course:skierg:snow-comb", style.secondary, {
       transparent: true,
-      opacity: 0.28,
+      opacity: 0.42,
       roughness: 0.98,
       metalness: 0,
     });
-    const combGeo = this.track(new THREE.CapsuleGeometry(0.014, outerR - innerR - 1.88, 4, 10));
+    const combGeo = this.track(new THREE.CapsuleGeometry(0.022, outerR - innerR - 1.88, 4, 10));
     combGeo.rotateZ(Math.PI / 2);
     const combs = this.cfg.laneSegments >= 120 ? 72 : 42;
     for (let i = 0; i < combs; i++) {
@@ -5196,10 +5300,10 @@ export class CourseRenderer3D implements ReplayRenderer {
   }
 
   private addSnowBerms(group: THREE.Group, outerR: number, count: number): void {
-    const geometry = this.track(new THREE.SphereGeometry(1, 18, 12));
+    const geometry = this.track(snowDriftGeometry());
     const material = this.environmentStandardMat(
       "environment:skierg:snowbank-material",
-      this.environment.apron,
+      themed(0xe0edf2, 0x718a96),
       { roughness: 0.98, metalness: 0 },
     );
     const berms = this.trackInstanced(new THREE.InstancedMesh(geometry, material, count));
@@ -5216,7 +5320,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       const width = 1.55 + (0.5 + Math.sin(i * 7.77) * 0.5) * 0.8;
       const height = 0.42 + (0.5 + Math.sin(i * 4.17) * 0.5) * 0.28;
       quaternion.setFromAxisAngle(up, angle);
-      position.set(Math.sin(angle) * radius, 0.12 + height * 0.25, Math.cos(angle) * radius);
+      position.set(Math.sin(angle) * radius, 0.025, Math.cos(angle) * radius);
       scale.set(width * tierScale, height * tierScale, (0.82 + (i % 3) * 0.12) * tierScale);
       matrix.compose(position, quaternion, scale);
       berms.setMatrixAt(i, matrix);
@@ -5331,23 +5435,50 @@ export class CourseRenderer3D implements ReplayRenderer {
    */
   private addRowerWaterTier(group: THREE.Group, outerR: number): void {
     if (this.cfg.environmentDetail === 0) return;
+    const rippleMat = this.environmentBasicMat(
+      "environment:rower:water-ripple-material",
+      themed(0xe2f8f7, 0x6caeba),
+      { transparent: true, opacity: 0.16, depthWrite: false, fog: true },
+    );
+    const ripples = new THREE.Group();
+    ripples.name = "environment:rower:ripple-field";
+    const rippleCount = [0, 18, 30, 44][this.cfg.environmentDetail];
+    for (let index = 0; index < rippleCount; index++) {
+      const spread = (index * 0.7548776662466927) % 1;
+      const radius = 8 + spread * 76;
+      const angle = (index * 0.6180339887498949 + (index % 4) * 0.071) * FULL_CIRCLE;
+      const span = degrees(5 + (index % 6) * 2.6);
+      const width = 0.18 + (index % 5) * 0.1;
+      ripples.add(
+        this.makeHorizontalArc(
+          `environment:rower:water-ripple-${index + 1}`,
+          radius,
+          radius + width,
+          0.1 + (index % 3) * 0.004,
+          { start: angle, span },
+          rippleMat,
+        ),
+      );
+    }
+    group.add(ripples);
+
     const reflectionMat = this.environmentBasicMat(
       "environment:rower:reflection-material",
       themed(0xffdfab, 0x85bdc8),
-      { transparent: true, opacity: 0.14, depthWrite: false, fog: true },
+      { transparent: true, opacity: 0.065, depthWrite: false, fog: true },
     );
     const reflections = new THREE.Group();
     reflections.name = "environment:rower:reflection-bands";
     for (const [index, sector] of [
-      { start: degrees(-18), span: degrees(42) },
-      { start: degrees(154), span: degrees(28) },
+      { start: degrees(-18), span: degrees(42), inner: outerR + 1.8, outer: outerR + 2.8 },
+      { start: degrees(154), span: degrees(28), inner: outerR + 1.8, outer: outerR + 2.8 },
     ].entries()) {
       reflections.add(
         this.makeHorizontalArc(
           `environment:rower:reflection-band-${index + 1}`,
-          outerR + 1.2,
-          outerR + 6.4,
-          0.012,
+          sector.inner,
+          sector.outer,
+          0.1,
           sector,
           reflectionMat,
         ),
@@ -5386,7 +5517,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     const glintMat = this.environmentBasicMat(
       "environment:rower:sun-glint-material",
       themed(0xfff1c8, 0x9cd5dc),
-      { transparent: true, opacity: 0.2, depthWrite: false, fog: true },
+      { transparent: true, opacity: 0.28, depthWrite: false, fog: true },
     );
     const glints = this.trackInstanced(new THREE.InstancedMesh(glintGeo, glintMat, 56));
     glints.name = "environment:rower:sun-glints";
@@ -5397,7 +5528,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     for (let index = 0; index < glints.count; index++) {
       const angle = degrees(-18) + degrees(42) * ((index + 0.5) / glints.count);
       const radius = 36 + (index % 9) * 2.3 + Math.sin(index * 3.17) * 1.4;
-      position.set(Math.sin(angle) * radius, 0.025, Math.cos(angle) * radius);
+      position.set(Math.sin(angle) * radius, 0.12, Math.cos(angle) * radius);
       const length = 0.55 + (index % 5) * 0.24;
       scale.set(length, 0.32, 1);
       matrix.compose(position, quaternion, scale);
@@ -5533,6 +5664,10 @@ export class CourseRenderer3D implements ReplayRenderer {
         metalness: this.sport === "rower" ? 0.1 : 0.01,
       },
     );
+    if (this.sport === "skierg" && this.cfg.environmentDetail >= 1) {
+      infieldMat.map = this.makeSnowSurfaceTexture(this.cfg.environmentDetail);
+      infieldMat.needsUpdate = true;
+    }
     const infield = new THREE.Mesh(
       this.track(new THREE.CircleGeometry(innerR - 0.8, this.cfg.laneSegments)),
       infieldMat,
@@ -5551,6 +5686,10 @@ export class CourseRenderer3D implements ReplayRenderer {
         metalness: this.sport === "rower" ? 0.08 : 0.01,
       },
     );
+    if (this.sport === "skierg" && this.cfg.environmentDetail >= 1) {
+      apronMat.map = this.makeSnowSurfaceTexture(this.cfg.environmentDetail);
+      apronMat.needsUpdate = true;
+    }
     const apron = new THREE.Mesh(
       this.track(new THREE.RingGeometry(outerR + 0.2, 55, this.cfg.laneSegments)),
       apronMat,
@@ -5788,8 +5927,6 @@ export class CourseRenderer3D implements ReplayRenderer {
       ? this.cfg.groundSegments
       : Math.max(12, Math.round(this.cfg.groundSegments * 0.7));
     const geometry = this.track(new THREE.PlaneGeometry(260, 260, subdivision, subdivision));
-    if (this.profile.waves) return geometry;
-
     const positions = geometry.getAttribute("position");
     const colors = new Float32Array(positions.count * 3);
     for (let index = 0; index < positions.count; index++) {
@@ -5797,14 +5934,52 @@ export class CourseRenderer3D implements ReplayRenderer {
       const y = positions.getY(index);
       const broad = Math.sin(x * 0.17 + y * 0.11) * 0.5 + Math.sin(x * 0.067 - y * 0.13) * 0.5;
       const fine = Math.sin(x * 0.91 + y * 1.17) * 0.5 + Math.sin(x * 1.73 - y * 0.61) * 0.5;
-      if (this.sport === "skierg") {
+      if (this.profile.waves) {
+        // Water needs a basin-wide value field, not one uniformly lit plane.
+        // The broad term is deliberately non-radial so it does not turn into
+        // another set of perfect rings around the course. Higher tiers also
+        // start with a quiet static surface before animated displacement takes
+        // over, so a paused replay still shows water.
+        const radius = Math.hypot(x, y);
+        const depth = clamp01((radius - 8) / 88);
+        const sheen =
+          0.82 -
+          depth * 0.1 +
+          broad * 0.09 +
+          fine * (this.cfg.environmentDetail >= 2 ? 0.045 : 0.025);
+        const relief =
+          this.cfg.environmentDetail === 0
+            ? 0
+            : this.cfg.environmentDetail === 1
+              ? 0.018
+              : this.cfg.environmentDetail === 2
+                ? 0.032
+                : 0.046;
+        positions.setZ(
+          index,
+          (Math.sin(y * 0.18 + x * 0.035) * 0.58 +
+            Math.sin(x * 0.31 - y * 0.09) * 0.27 +
+            Math.sin((x + y) * 0.63) * 0.15) *
+            relief,
+        );
+        colors[index * 3] = sheen * 0.88;
+        colors[index * 3 + 1] = sheen * 1.03;
+        colors[index * 3 + 2] = Math.min(1, sheen * 1.12);
+      } else if (this.sport === "skierg") {
         // Snow gets very shallow wind-packed undulations and a cool/bright
         // variation. Keep it below the course profile so poles and skis remain
         // visually and physically contact-locked.
         positions.setZ(index, broad * 0.012 + fine * 0.0035);
-        const value = 0.92 + broad * 0.055 + fine * 0.015;
-        colors[index * 3] = value * 0.97;
-        colors[index * 3 + 1] = value;
+        const radius = Math.hypot(x, y);
+        const packed = clamp01(
+          1 - Math.abs(radius - (this.ghostRadius + this.loopRadius) * 0.5) / 7.5,
+        );
+        const value = 0.95 + broad * 0.045 + fine * 0.012 - packed * 0.045;
+        // Compressed ski lanes are cooler and slightly darker than the loose
+        // snow beside them. This broad value change remains visible even when
+        // the high-tier bitmap has not finished loading.
+        colors[index * 3] = value * (0.98 - packed * 0.12);
+        colors[index * 3 + 1] = value * (1 - packed * 0.045);
         colors[index * 3 + 2] = Math.min(1, value * 1.025);
       } else {
         // Asphalt reads from a fine charcoal aggregate rather than a single
@@ -5837,11 +6012,12 @@ export class CourseRenderer3D implements ReplayRenderer {
             transparent: false,
             opacity: 1,
             roughness: 0.12,
-            metalness: 0.04,
-            clearcoat: 0.95,
-            clearcoatRoughness: 0.08,
-            emissive: this.profile.groundColor("light"),
-            emissiveIntensity: 0.55,
+            metalness: 0.03,
+            clearcoat: 0.92,
+            clearcoatRoughness: 0.06,
+            emissive: 0x082f3a,
+            emissiveIntensity: 0.2,
+            vertexColors: true,
           })
         : new THREE.MeshStandardMaterial({
             color: this.profile.groundColor("light"),
@@ -5887,13 +6063,21 @@ export class CourseRenderer3D implements ReplayRenderer {
     }
     if (
       this.sport === "rower" &&
+      this.cfg.environmentDetail >= 1 &&
+      groundMat instanceof THREE.MeshPhysicalMaterial
+    ) {
+      groundMat.map = this.makeWaterSurfaceTexture(this.cfg.environmentDetail);
+      groundMat.needsUpdate = true;
+    }
+    if (
+      this.sport === "rower" &&
       this.cfg.environmentDetail >= 2 &&
       groundMat instanceof THREE.MeshPhysicalMaterial
     ) {
       groundMat.normalMap = this.makeWaterNormalTexture(this.cfg.environmentDetail >= 3);
       groundMat.normalScale.set(
-        this.cfg.environmentDetail >= 3 ? 0.32 : 0.21,
-        this.cfg.environmentDetail >= 3 ? 0.24 : 0.16,
+        this.cfg.environmentDetail >= 3 ? 0.46 : 0.3,
+        this.cfg.environmentDetail >= 3 ? 0.34 : 0.22,
       );
       groundMat.needsUpdate = true;
     }
@@ -5920,6 +6104,14 @@ export class CourseRenderer3D implements ReplayRenderer {
       metalness: this.profile.course.metalness,
     });
     laneMat.name = "lane";
+    if (this.sport === "skierg" && this.cfg.environmentDetail >= 1) {
+      // Keep the visible course deterministic across WebGL and WebGPU. The
+      // bundled CC0 snow maps detail the broad terrain receiver, while this
+      // tiny procedural groom map gives the close course ring its own packed
+      // albedo without waiting on an image decode.
+      laneMat.map = this.makeSnowSurfaceTexture(this.cfg.environmentDetail);
+      laneMat.needsUpdate = true;
+    }
     const lane = new THREE.Mesh(laneGeo, laneMat);
     lane.name = "lane";
     lane.rotation.x = -Math.PI / 2;
@@ -6032,7 +6224,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       themed.material.color.setHex(color);
       if (this.profile.waves && themed.material.name === "lane") {
         themed.material.emissive.setHex(color).multiplyScalar(themeName === "dark" ? 0.16 : 0.05);
-        themed.material.emissiveIntensity = 0.5;
+        themed.material.emissiveIntensity = 0.28;
       }
     }
     for (const themed of this.environmentThemeMats) {
@@ -6044,6 +6236,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         this.groundMesh.material.emissive
           .setHex(this.profile.groundColor(themeName))
           .multiplyScalar(themeName === "dark" ? 0.2 : 0.08);
+        this.groundMesh.material.emissiveIntensity = 0.2;
       }
     }
 
