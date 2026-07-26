@@ -312,7 +312,9 @@ function updateTextSprite(
  * Parts carrying `userData.accent` re-theme to the per-lane accent
  * (`--live` / `--ghost`); skin/kit/shafts stay fixed. Local +Z is travel.
  */
-type AvatarMotionCues = { vertical: number; surge: number } | { rebound: number; surge: number };
+type AvatarMotionCues =
+  | { vertical: number; surge: number; rollDamp?: number }
+  | { rebound: number; surge: number };
 type BoatDetail = 0 | 1 | 2 | 3;
 
 const STATIC_AVATAR_MOTION: AvatarMotionCues = { vertical: 0, surge: 0 };
@@ -1057,9 +1059,12 @@ function steerArmBendHint(
  * Solve the equipment-locked arm while keeping its elbow in the soft
  * shoulder-to-grip corridor. The margin represents elbow/upper-arm thickness,
  * not a second target: the wrist remains exactly on the oar grip and the
- * two-bone lengths remain authoritative. A short projected hint correction is
- * enough for the few late-draw frames where the rigid grip passes the shoulder
- * line and the unconstrained circle would put the elbow just inside the torso.
+ * two-bone lengths remain authoritative. The rowing finish intersects the
+ * elbow circle with the handle-height plane and chooses its anatomical
+ * out/rear solution, fading that preference in via `planeWeight` so the elbow
+ * rotates onto the plane instead of switching branches in one frame. Other
+ * callers retain the short projected hint correction used when a rigid grip
+ * passes the shoulder line.
  */
 function solveRowerArmWithCorridor(
   shoulder: THREE.Vector3,
@@ -1070,11 +1075,168 @@ function solveRowerArmWithCorridor(
   elbow: THREE.Vector3,
   handOut: THREE.Vector3,
   minimumElbowZ?: number,
+  minimumElbowY?: number,
+  maximumElbowY?: number,
+  side = 0,
+  planeWeight = 1,
 ): void {
   solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
 
-  const corridorMin = Math.min(shoulder.x, hand.x) - 0.04;
-  const corridorMax = Math.max(shoulder.x, hand.x) + 0.04;
+  const corridorMin =
+    side < 0
+      ? shoulder.x - 0.45
+      : side > 0
+        ? shoulder.x + 0.2
+        : Math.min(shoulder.x, hand.x) - 0.04;
+  const corridorMax =
+    side < 0
+      ? shoulder.x - 0.2
+      : side > 0
+        ? shoulder.x + 0.45
+        : Math.max(shoulder.x, hand.x) + 0.04;
+
+  if (minimumElbowY !== undefined && maximumElbowY !== undefined) {
+    if (planeWeight <= 0) return;
+    // A bent two-bone arm has one remaining degree of freedom: the elbow can
+    // rotate around the shoulder-to-wrist chord. Intersect that circle with
+    // the finish handle-height plane and score its two solutions. This keeps
+    // the upper arm sloping down toward the handle without an iterative solve
+    // in the per-frame render path.
+    ARM_BEND_CHORD.copy(hand).sub(shoulder);
+    const chordLength = ARM_BEND_CHORD.length();
+    if (chordLength <= 1e-6) return;
+    ARM_BEND_CHORD.multiplyScalar(1 / chordLength);
+    ARM_BEND_AXIS.set(0, 1, 0);
+    ARM_BEND_AXIS.addScaledVector(ARM_BEND_CHORD, -ARM_BEND_AXIS.dot(ARM_BEND_CHORD));
+    const verticalProjection = ARM_BEND_AXIS.length();
+    if (verticalProjection <= 1e-6) return;
+    ARM_BEND_AXIS.multiplyScalar(1 / verticalProjection);
+    ARM_BEND_CROSS.crossVectors(ARM_BEND_CHORD, ARM_BEND_AXIS).normalize();
+
+    const solveDistance = Math.max(
+      Math.abs(upperArmLength - forearmLength),
+      Math.min(upperArmLength + forearmLength, chordLength),
+    );
+    const along =
+      (upperArmLength * upperArmLength -
+        forearmLength * forearmLength +
+        solveDistance * solveDistance) /
+      (2 * Math.max(1e-9, solveDistance));
+    const elbowRadius = Math.sqrt(Math.max(0, upperArmLength * upperArmLength - along * along));
+    if (elbowRadius <= 1e-6) return;
+
+    const targetY = (minimumElbowY + maximumElbowY) * 0.5;
+    const circleCenterY = shoulder.y + ARM_BEND_CHORD.y * along;
+    const verticalDirection = THREE.MathUtils.clamp(
+      (targetY - circleCenterY) / elbowRadius,
+      -verticalProjection,
+      verticalProjection,
+    );
+    const verticalWeight = THREE.MathUtils.clamp(verticalDirection / verticalProjection, -1, 1);
+    const crossWeight = Math.sqrt(Math.max(0, 1 - verticalWeight * verticalWeight));
+    const corridorCenter = (corridorMin + corridorMax) * 0.5;
+    let bestScore = Number.POSITIVE_INFINITY;
+    let bestBranch = 1;
+    let bestTrialZ = Number.POSITIVE_INFINITY;
+
+    for (let branch = -1; branch <= 1; branch += 2) {
+      ARM_BEND_CANDIDATE.copy(ARM_BEND_AXIS)
+        .multiplyScalar(verticalWeight)
+        .addScaledVector(ARM_BEND_CROSS, branch * crossWeight);
+      solveTwoBone3D(
+        shoulder,
+        hand,
+        upperArmLength,
+        forearmLength,
+        ARM_BEND_CANDIDATE,
+        ARM_BEND_TRIAL,
+        ARM_BEND_TRIAL_END,
+      );
+      const xPenalty = Math.max(corridorMin - ARM_BEND_TRIAL.x, 0, ARM_BEND_TRIAL.x - corridorMax);
+      const yPenalty = Math.max(
+        minimumElbowY - ARM_BEND_TRIAL.y,
+        0,
+        ARM_BEND_TRIAL.y - maximumElbowY,
+      );
+      const zPenalty =
+        minimumElbowZ === undefined ? 0 : Math.max(minimumElbowZ - ARM_BEND_TRIAL.z, 0);
+      const score =
+        (xPenalty + yPenalty + zPenalty) * 100 +
+        Math.abs(ARM_BEND_TRIAL.y - targetY) +
+        Math.abs(ARM_BEND_TRIAL.x - corridorCenter) * 0.01;
+      if (score < bestScore) {
+        bestScore = score;
+        bestBranch = branch;
+        bestTrialZ = ARM_BEND_TRIAL.z;
+        ARM_BEND_BEST.copy(ARM_BEND_CANDIDATE);
+      }
+    }
+
+    if (minimumElbowZ !== undefined && bestTrialZ < minimumElbowZ - 1e-6) {
+      // The height plane fixes the elbow's vertical station, but the finish
+      // also forbids the joint from slipping behind the shoulder plane.
+      // Rotate the winning branch along the elbow circle onto the z-floor
+      // plane instead of merely scoring the violation: elbow position is
+      // center + r·(u·axis + v·cross) with v = branch·sqrt(1-u²), so the
+      // floor is a quadratic in u with a closed-form root. The correction is
+      // continuous in its inputs, so it cannot introduce a frame pop.
+      const axisZ = ARM_BEND_AXIS.z;
+      const crossZ = ARM_BEND_CROSS.z;
+      const planeNorm = axisZ * axisZ + crossZ * crossZ;
+      const circleCenterZ = shoulder.z + ARM_BEND_CHORD.z * along;
+      const zTarget = (minimumElbowZ - circleCenterZ) / elbowRadius;
+      if (planeNorm > 1e-9 && zTarget * zTarget <= planeNorm) {
+        const rootSpread = Math.abs(crossZ) * Math.sqrt(planeNorm - zTarget * zTarget);
+        let floorU = Number.NaN;
+        for (const root of [
+          (zTarget * axisZ + rootSpread) / planeNorm,
+          (zTarget * axisZ - rootSpread) / planeNorm,
+        ]) {
+          // Keep only roots on the winning branch's half of the circle, then
+          // prefer the one nearest the height-plane solution so the elbow
+          // gives up as little of its handle-line station as possible.
+          if (Math.abs(root) > 1) continue;
+          if (bestBranch * crossZ * (zTarget - root * axisZ) < -1e-9) continue;
+          if (
+            !Number.isFinite(floorU) ||
+            Math.abs(root - verticalWeight) < Math.abs(floorU - verticalWeight)
+          ) {
+            floorU = root;
+          }
+        }
+        if (Number.isFinite(floorU)) {
+          ARM_BEND_BEST.copy(ARM_BEND_AXIS)
+            .multiplyScalar(floorU)
+            .addScaledVector(
+              ARM_BEND_CROSS,
+              bestBranch * Math.sqrt(Math.max(0, 1 - floorU * floorU)),
+            );
+        }
+      }
+    }
+
+    if (planeWeight < 1) {
+      // Fade the plane preference in rather than replacing the incoming bend
+      // plane outright. An unconditional overwrite teleports the elbow across
+      // the chord circle in the single frame the caller starts passing the
+      // height band, which reads as a mid-draw elbow pop. Blending the two
+      // unit hints (both perpendicular to the chord) rotates the elbow
+      // continuously from the free-solve branch onto the finish plane while
+      // the elbow circle is still small.
+      ARM_BEND_TARGET.copy(bendHint).addScaledVector(ARM_BEND_CHORD, -bendHint.dot(ARM_BEND_CHORD));
+      const freeLength = ARM_BEND_TARGET.length();
+      if (freeLength > 1e-6) {
+        ARM_BEND_TARGET.multiplyScalar(1 / freeLength).lerp(ARM_BEND_BEST, planeWeight);
+        if (ARM_BEND_TARGET.lengthSq() > 1e-8) {
+          ARM_BEND_BEST.copy(ARM_BEND_TARGET.normalize());
+        }
+      }
+    }
+    bendHint.copy(ARM_BEND_BEST);
+    solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
+    return;
+  }
+
   for (let iteration = 0; iteration < 16; iteration++) {
     const xViolation =
       elbow.x < corridorMin
@@ -1576,10 +1738,14 @@ const ROWER_STRETCHER = Object.freeze({
 });
 const ROWER_OARLOCK = Object.freeze({
   lateral: 0.88,
-  // The pin sits below the lower-rib draw. A drive-side roll of the fixed oar
-  // raises only the shorter inboard lever, preserving long catch arms while
-  // bringing the handles to the body at the finish.
-  y: 0.62,
+  // The pin rides ~0.14 above the seat top — real sculling rigging height —
+  // and stays below the lower-rib draw. With the 0.78 m inboard / 2.09 m
+  // outboard levers, the drive-side roll that buries the spoon just below the
+  // water then puts the handles at the drive height, and a small extra roll
+  // lifts them the last few centimetres into the finish. The former 0.62 pin
+  // sat so far above the water that no anatomical handle height could ever
+  // reach the surface with the blade.
+  y: 0.51,
   /** Stern-side pin keeps the scull handles in front of the torso at mid-draw. */
   z: 0.28,
 });
@@ -1684,7 +1850,11 @@ function makeRowerAvatar(
     "equipment:row:hull",
   );
   hull.rotation.x = Math.PI / 2; // capsule axis Y -> Z (travel)
-  hull.scale.set(0.55, 0.3, 1); // keep the fallback below the visible leg chain
+  // Object scale applies in capsule-local axes *before* that rotation: local Y
+  // is the long axis (kept at full length so the fallback matches the 7.8 m
+  // deck/gunwale footprint) and local Z becomes world height, flattened so the
+  // fallback hull stays below the visible leg chain and the gunwales.
+  hull.scale.set(0.55, 1, 0.3);
   hull.position.y = 0.135;
   group.add(hull);
 
@@ -2122,15 +2292,21 @@ function makeRowerAvatar(
   const OAR_YAW_CATCH = 0.68;
   const OAR_DRAW_YAW = -0.8;
   const OAR_YAW_SPAN = OAR_DRAW_YAW - OAR_YAW_CATCH;
-  // A scull blade is buried only just below the surface. The former deep roll
-  // lifted the 0.82 m inboard handle by more than 11 cm during the first few
-  // drive frames, making the otherwise closed-chain grip surge forward.
-  // A loaded scull is pitched about ten degrees around its fixed pin: the
-  // spoon sits down at the water while the shorter inboard lever lifts the
-  // handle into the lower-rib band. The old three-degree roll left the blades
-  // visibly high and forced both hands down beside the pelvis.
-  const BLADE_DIP = 0.1;
-  const HANDLE_RISE_ROLL = 0.24;
+  // A scull blade is buried only just below the surface. With the 0.51 pin
+  // and the 2.09 m outboard lever, ~16 degrees of fixed-pin roll drops the
+  // spoon comfortably under the -0.05 water plane for the whole bladeWater
+  // window — with margin for the damped drive-phase hull roll — while the
+  // 0.78 m inboard lever holds the handles at the drive height. The former
+  // 0.1 rad dip left the loaded spoon ~0.3 m airborne through the entire
+  // drive and only wet it at the release.
+  const BLADE_DIP = 0.28;
+  // Real handles rise only a few centimetres into the finish — any more and
+  // the pin leverage digs the spoon half a metre deep. This small extra roll
+  // adds ~3 cm of grip height across the draw; the lower-rib finish comes from
+  // the layback carrying the ribs to the hands, not from hauling the handles
+  // up. The former 0.24 rad rise was doing the burial work the drive roll
+  // should have done, which is why immersion happened only at the extraction.
+  const HANDLE_RISE_ROLL = 0.04;
 
   const handlePoint = new THREE.Vector3();
   const sampledV4Shoulders = [new THREE.Vector3(), new THREE.Vector3()] as const;
@@ -2231,7 +2407,8 @@ function makeRowerAvatar(
       // clearance, while the palm target stays on the chest-level grip.
       // The fixed scull handle sweeps through the knees before the late draw;
       // give the elbow a short mid-drive clearance bias, then taper it before
-      // the finish so the joint still tucks beside the lower ribs.
+      // the finish so the joint points down along the handle line instead of
+      // lifting into a shoulder-height chicken wing.
       const midDriveClearance =
         0.014 *
         THREE.MathUtils.smoothstep(draw, 0.58, 0.7) *
@@ -2271,7 +2448,14 @@ function makeRowerAvatar(
           0.08,
         );
       }
-      if (draw > 0.9) {
+      // Fade the finish handle-height plane in across the visible draw. The
+      // ramp starts while the arm is still nearly straight — the elbow circle
+      // is tiny there, so adopting the plane costs almost no motion — and
+      // saturates before the finish assertions. A hard draw threshold made
+      // the analytic solve replace the free branch in a single frame, which
+      // measured as a ~0.45 m elbow teleport at that exact sample.
+      const finishPlaneWeight = THREE.MathUtils.smoothstep(draw, 0.25, 0.9);
+      if (finishPlaneWeight > 0) {
         solveRowerArmWithCorridor(
           arm.shoulderPoint,
           arm.wristTarget,
@@ -2281,6 +2465,10 @@ function makeRowerAvatar(
           arm.elbowPoint,
           arm.handPoint,
           arm.shoulderPoint.z + 0.014,
+          arm.handTarget.y + 0.025,
+          arm.handTarget.y + 0.13,
+          arm.side,
+          finishPlaneWeight,
         );
       } else {
         solveTwoBone3D(
@@ -2410,10 +2598,10 @@ function makeRowerAvatar(
     const handleProgress = handleTravel;
     for (const oar of oars) {
       oar.group.rotation.y = oar.side * (OAR_YAW_CATCH + handleProgress * OAR_YAW_SPAN);
-      // Both blade tips dip together despite opposite X signs. As the drive
-      // comes through, the same fixed-pin roll raises the shorter inboard
-      // handles into the lower ribs instead of lifting the oarlocks or forcing
-      // an early elbow bend while the hands still overlap the knees.
+      // Both blade tips dip together despite opposite X signs. The bladeWater
+      // channel buries the spoon for the whole loaded drive; the small extra
+      // draw roll lifts the inboard grips a few centimetres toward the finish
+      // without lifting the oarlocks or digging the spoon.
       oar.group.rotation.z =
         -oar.side * (bladeDepth * BLADE_DIP + handleProgress * HANDLE_RISE_ROLL);
       // The oarlock is a hull-fixed fulcrum. Moving this parent to bury the
@@ -2446,7 +2634,10 @@ function makeRowerAvatar(
     // athlete's real knee volume still overlaps the hand path for the first
     // part of that easing interval. Hold the fixed-oar draw at long-arm reach
     // until that geometric crossover, then use the remainder of the channel
-    // for the lower-rib pull.
+    // for the lower-rib pull. The 0.62 gate is the measured hand-past-knee
+    // crossover: gating earlier folds the elbows before the hands clear the
+    // knees, so any further widening of the visible draw window has to come
+    // from retiming the shared graph's arm channel, not from this gate.
     const equipmentHandleTravel = THREE.MathUtils.smoothstep(graph.body.armDraw.value, 0.62, 1);
     placeUpperBody(
       graph.body.spineHinge.value,
@@ -2467,7 +2658,15 @@ function makeRowerAvatar(
     placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel);
     return reduce
       ? STATIC_AVATAR_MOTION
-      : { vertical: graph.accents.vertical.value, surge: graph.accents.surge.value };
+      : {
+          vertical: graph.accents.vertical.value,
+          surge: graph.accents.surge.value,
+          // Two buried spoons act as water-locked outriggers: a real scull is
+          // roll-stabilised for exactly the part of the stroke when the
+          // blades are in the water. Undamped hull roll swings the 2.97 m
+          // levers enough to porpoise the loaded blade back out of the water.
+          rollDamp: 1 - 0.8 * graph.contacts.bladeWater.value,
+        };
   };
 
   const [leftArm, rightArm] = arms;
@@ -6063,9 +6262,13 @@ export class CourseRenderer3D implements ReplayRenderer {
     avatar.group.position.z = this.sport === "rower" ? -surge : surge;
     // Hull roll mixes a slow ambient rock with a stroke-synced check so the
     // shell visibly loads at the catch instead of only drifting side to side.
+    // Sport rigs may damp it while their equipment is water-locked (buried
+    // scull blades stabilise the shell like outriggers through the drive).
     const ambientRoll = Math.sin(this.animPhase + cadence * 0.05) * 0.035;
     const strokeRoll = "surge" in motion ? motion.surge * 0.045 : 0;
-    avatar.group.rotation.z = reduce || !this.profile.roll ? 0 : ambientRoll + strokeRoll;
+    const rollDamp = "rollDamp" in motion && motion.rollDamp !== undefined ? motion.rollDamp : 1;
+    avatar.group.rotation.z =
+      reduce || !this.profile.roll ? 0 : (ambientRoll + strokeRoll) * rollDamp;
     // Most contacts are local to their equipment. Nordic poles are different:
     // their basket has to stay fixed in the course while the skier advances and
     // folds through the drive. Resolve that only after the outer course pose,

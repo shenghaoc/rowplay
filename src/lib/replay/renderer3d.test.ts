@@ -1637,12 +1637,28 @@ describe("CourseRenderer3D", () => {
         worldPosition(renderer, `rower-shoulder-${label}`).clone(),
       );
       const elbow = athlete.worldToLocal(worldPosition(renderer, `rower-elbow-${label}`).clone());
+      const handle = athlete.worldToLocal(
+        worldPosition(renderer, `rower-hand-contact-${label}`).clone(),
+      );
       // The RowErg athlete's chest faces +z in its local frame. A completed
-      // draw sends the elbow slightly rearward of the shoulder (+z) with
-      // restrained lateral clearance — elbows tuck beside the ribs while
-      // hands stay on the lower-chest grip (not hauled behind the back).
+      // draw sends the elbow slightly rearward of the shoulder (+z) and
+      // diagonally down/out toward the grip. Hands stay on the lower-chest
+      // handles rather than being hauled behind the back.
       expect(elbow.z, `${label} elbow rearward at finish`).toBeGreaterThan(shoulder.z + 0.02);
-      expect((elbow.x - shoulder.x) * side, `${label} elbow outward restraint`).toBeLessThan(0.16);
+      expect(shoulder.y - elbow.y, `${label} upper arm slopes down at finish`).toBeGreaterThan(
+        0.025,
+      );
+      expect(
+        (elbow.x - shoulder.x) * side,
+        `${label} elbow opens outward at finish`,
+      ).toBeGreaterThan(0.2);
+      expect((elbow.x - shoulder.x) * side, `${label} elbow outward restraint`).toBeLessThan(0.45);
+      expect(elbow.y, `${label} elbow stays above the finish handle`).toBeGreaterThan(
+        handle.y + 0.02,
+      );
+      expect(elbow.y, `${label} elbow points down along the handle line`).toBeLessThan(
+        handle.y + 0.14,
+      );
     }
 
     renderer.destroy();
@@ -1704,8 +1720,12 @@ describe("CourseRenderer3D", () => {
           // the continuity guard as soon as either arm exposes real flexion.
           Math.min(straightness, priorStraightness) < 0.8
         ) {
+          // The fastest legitimate elbow motion is the compressed late draw
+          // (~0.16 per 1/256-cycle step, wrist-speed bound). A branch flip
+          // teleports the elbow across the chord circle (0.4+ in one step),
+          // so this margin separates fast-but-continuous from discontinuous.
           expect(elbow.distanceTo(prior), `${side} elbow continuity at ${cycle}`).toBeLessThan(
-            0.56,
+            0.22,
           );
         }
         previous.set(side, elbow.clone());
@@ -1752,7 +1772,11 @@ describe("CourseRenderer3D", () => {
     }
     renderer.destroy();
 
-    const clearanceIndex = samples.findIndex((sample) => sample.handMinusKnee <= 0);
+    // The grip and knee are both ~5 cm-radius volumes; their joint-centre
+    // z-planes crossing is not the physical contact criterion. Treat the hand
+    // as clear once its centre is within 2 cm of the knee-centre plane so a
+    // millimetre-scale sweep change cannot flip this sequencing race.
+    const clearanceIndex = samples.findIndex((sample) => sample.handMinusKnee <= 0.02);
     const visibleDrawIndex = samples.findIndex((sample) => sample.bendDegrees > 10);
     if (clearanceIndex < 0 || visibleDrawIndex < 0) {
       throw new Error("Procedural RowErg drive did not expose hand/knee clearance and arm draw");
@@ -3285,6 +3309,9 @@ describe("CourseRenderer3D", () => {
             const elbow = instance.bones[
               side === "left" ? "v4LeftForearm" : "v4RightForearm"
             ].getWorldPosition(new THREE.Vector3());
+            const shoulder = instance.bones[
+              side === "left" ? "v4LeftUpperArm" : "v4RightUpperArm"
+            ].getWorldPosition(new THREE.Vector3());
 
             for (const [part, point] of [
               ["elbow", elbow],
@@ -3308,11 +3335,24 @@ describe("CourseRenderer3D", () => {
               const athlete = sceneObject(renderer, "rower-athlete");
               const elbowLocal = athlete.worldToLocal(elbow.clone());
               const palmLocal = athlete.worldToLocal(palm.clone());
+              const shoulderLocal = athlete.worldToLocal(shoulder.clone());
               const hipsLocal = athlete.worldToLocal(hips.clone());
               expect(
                 palmLocal.z,
                 `${side} V4 palm stays chest-level vs elbow at finish ${cycle}`,
               ).toBeGreaterThan(elbowLocal.z - 0.08);
+              expect(
+                shoulderLocal.y - elbowLocal.y,
+                `${side} V4 upper arm slopes down at finish ${cycle}`,
+              ).toBeGreaterThan(0.025);
+              expect(
+                elbowLocal.y,
+                `${side} V4 elbow stays above the finish handle ${cycle}`,
+              ).toBeGreaterThan(palmLocal.y + 0.02);
+              expect(
+                elbowLocal.y,
+                `${side} V4 elbow points down along the handle line ${cycle}`,
+              ).toBeLessThan(palmLocal.y + 0.14);
               // Handle finishes near the lower ribs/chest, not behind the hips.
               expect(
                 palmLocal.z,
@@ -3397,7 +3437,10 @@ describe("CourseRenderer3D", () => {
         renderer.destroy();
       }
 
-      const clearanceIndex = samples.findIndex((sample) => sample.handMinusKnee <= 0);
+      // Same volumetric tolerance as the procedural clearance test: the grip
+      // and knee are ~5 cm-radius bodies, so centre-plane crossing within
+      // 2 cm counts as cleared rather than racing the exact sample boundary.
+      const clearanceIndex = samples.findIndex((sample) => sample.handMinusKnee <= 0.02);
       const visibleDrawIndex = samples.findIndex((sample) => sample.bendDegrees > 10);
       if (clearanceIndex < 0 || visibleDrawIndex < 0) {
         throw new Error("V4 RowErg drive did not expose hand/knee clearance and arm draw");
@@ -4280,13 +4323,13 @@ describe("CourseRenderer3D", () => {
     // The shaft fulcrum remains locked at its oarlock; immersion is supplied
     // by the blade's rotation rather than dropping the whole pivot through
     // the rigger during the drive.
-    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.62, 5);
+    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.51, 5);
     expect(squaredDrive).toBeCloseTo(Math.PI / 2, 5);
 
     renderer.render(makeSportState("rower", 0.69), false);
     const recoveryBladeY = worldPosition(renderer, "rower-blade-left").y;
     const feathered = sceneObject(renderer, "rower-blade-left").rotation.x;
-    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.62, 5);
+    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.51, 5);
     expect(driveBladeY).toBeLessThan(recoveryBladeY - 0.08);
     expect(feathered).toBeCloseTo(0, 5);
 
@@ -4359,7 +4402,7 @@ describe("CourseRenderer3D", () => {
     const expected = solveRowerKinematics(REDUCED_REPLAY_POSES.rower);
     expect(firstPose.y).toBe(0);
     expect(firstPose.z).toBeCloseTo(0.26 - expected.legExtension * 0.44, 8);
-    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.62, 8);
+    expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.51, 8);
     expect(sceneObject(renderer, "rower-blade-left").rotation.x).toBeCloseTo(
       (1 - expected.bladeFeather) * (Math.PI / 2),
       8,

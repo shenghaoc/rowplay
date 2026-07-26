@@ -60,7 +60,7 @@ The shared RowErg graph follows the public coaching sequence rather than an
 aesthetic arm loop. [Concept2's rowing-technique guidance](https://www.concept2.com/training/rowing-technique)
 defines a long-arm catch, a leg-led drive, body swing before the arm draw, a
 finish with the handle just below the ribs, and recovery in the reverse order
-with hands away before the knees rise. [British Rowing's indoor technique](https://www.britishrowing.org/indoor-rowing/go-row-indoor/how-to-indoor-row/british-rowing-technique/)
+with hands away before the knees rise. [British Rowing's indoor technique](https://www.britishrowing.org/knowledge/rower-development/british-rowing-technique/indoor-rowing-technique/)
 likewise delays the arm draw until the legs are extended and requires the
 elbows to follow the handle line with aligned wrists and forearms. In the
 animation, the hand passing the drive-side knee envelope is the observable
@@ -81,17 +81,21 @@ long-arm reach, closes the last part of the handle path from the graph's late
 marker. V4 first samples its authored clip and hand orientation, then the
 renderer re-solves each fixed oar circle from the visible skinned shoulder,
 structural shoulder-to-wrist reach, and sampled wrist-to-palm offset before the
-final contact pass chooses the shared anatomical elbow branch. The rigid grip
-remains terminal authority without asking IK to compensate for a hidden-rig
-shoulder mismatch. Dense-cycle tests reject elbow flexion before hand/knee
-clearance, forward-pointing or sideways elbows, grip separation, torso
-intersection, and branch snaps. The hand target lies on the physical rubber
-grip axis, and the oar frame supplies a side-specific neutral wrist
-orientation. This deliberately avoids an unconstrained look-at roll, whose
-equally valid second solution can turn the palm through 180 degrees. The
-authored grip ends in a flat thumb stop and its carbon shaft begins only where
-the rubber ends, so close-up QA can verify fingers around the handle rather
-than a clenched hand floating beside an occluding shaft.
+final contact pass chooses the shared anatomical elbow branch. During the late
+draw, the equipment-locked two-bone solve intersects the elbow circle with a
+narrow plane just above the handle line and selects the outward/rearward
+solution. The visible upper arm therefore slopes down from shoulder to elbow
+without either the old shoulder-height chicken wing or a below-grip droop. The
+rigid grip remains terminal authority without asking IK to compensate for a
+hidden-rig shoulder mismatch. Dense-cycle tests reject elbow flexion before
+hand/knee clearance, forward-pointing or sideways elbows, grip separation,
+torso intersection, finish-height violations, and branch snaps. The hand target
+lies on the physical rubber grip axis, and the oar frame supplies a side-specific
+neutral wrist orientation. This deliberately avoids an unconstrained look-at
+roll, whose equally valid second solution can turn the palm through 180 degrees.
+The authored grip ends in a flat thumb stop and its carbon shaft begins only
+where the rubber ends, so close-up QA can verify fingers around the handle
+rather than a clenched hand floating beside an occluding shaft.
 
 ### Classic double-pole reference contract
 

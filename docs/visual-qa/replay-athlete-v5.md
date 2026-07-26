@@ -559,11 +559,26 @@ the heels sit about 16 cm below the seat and include heel restraints, instep
 hardware, and diagonal supports. The shared procedural/V4 leg solve keeps the
 shins near vertical at catch, knees above and inside the cockpit, and legs near
 straight at finish. The rowing graph sequences legs → torso → arms on the drive
-and hands → body → slide on recovery.
+and hands → body → slide on recovery. At the late draw, both upper arms slope
+down/out from the shoulders to elbows held just above the two handle axes. This
+rejects both the shoulder-height “chicken wing” and a below-handle elbow droop
+while the palms remain locked around their separate rubber grips.
+
+Blade/water interaction follows the same on-water model: the squared spoons
+drop in just before the catch, stay buried below the water plane for the entire
+loaded drive (the `bladeWater` contact holds through the full drive and
+extracts in early recovery), and feather clear on the way forward. The oarlock
+pin sits at real rigging height (~14 cm above the seat top), so the fixed-pin
+roll that buries the spoon leaves the handles at an anatomical drive height and
+adds only a few centimetres of rise into the lower-rib finish. Hull roll is
+damped while the blades are buried — two water-locked spoons stabilise a scull
+like outriggers — which also keeps the 2.97 m levers from porpoising a loaded
+blade back out of the water.
 
 Focused contracts cover shell orientation and length, stretcher rake,
 seat-to-heel height, full-stroke foot positions, catch shin alignment, finish
-extension, rigid grip contact, and cycle continuity.
+extension, finish elbow-to-handle height, rigid grip contact, and cycle
+continuity.
 
 ## Rebuild and validation
 

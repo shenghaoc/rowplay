@@ -33,7 +33,11 @@ ROWER_FOOT_CONTACT_Z = 0.75
 ROWER_STRETCHER_ANGLE = math.radians(-48)
 ROWER_STRETCHER_CENTER_Y = 0.295
 ROWER_STRETCHER_CENTER_Z = 0.68
-ROWER_OARLOCK_Y = 0.62
+# The pin rides ~0.14 above the seat top (real sculling rigging height). It
+# must match the runtime `ROWER_OARLOCK` so the authored rigger terminates at
+# the animated oar pivot; the drive-side roll that buries the spoon then puts
+# the handles at the drive height instead of the shoulders.
+ROWER_OARLOCK_Y = 0.51
 ROWER_OARLOCK_Z = 0.28
 
 
