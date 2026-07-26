@@ -386,12 +386,70 @@ seat-tube axis, giving 60 mm of exposed post collinear with a 72.4° seat tube,
 a top tube that meets it below the saddle and rises 47 mm to the head tube
 (compact road geometry), and a 55 mm saddle-to-bar drop. A guard pins all four.
 
-**What this deliberately did not do.** The athlete GLB is byte-identical; the
-`seat_channel` band in `build-replay-athlete-v4-blender.py` is untouched. The
-fix turned out not to need the shared mesh at all, which keeps it clear of the
-SkiErg (#175) and RowErg work in flight. The BikeErg clip's pelvis timing is
-still PR #171's, and still unrotated — it simply stopped mattering once the
-saddle was placed on the surface that actually carries the rider.
+**What this deliberately did not do.** The athlete GLB was byte-identical at
+this point; the `seat_channel` band in `build-replay-athlete-v4-blender.py` is
+untouched. (The hip-crease fix below, done the same day, _did_ regenerate the
+shared mesh — with Row/Ski verified — so the byte-identical status is
+historical to this section only.) The BikeErg clip's pelvis timing is still PR
+#171's, and still unrotated — it simply stopped mattering once the saddle was
+placed on the surface that actually carries the rider.
+
+### BikeErg hip crease — the chopped-off thigh — 2026-07-26
+
+With the fit corrected, review found the thigh under the saddle read as
+severed and shifted forward. That was a skinning defect at the pelvis/thigh
+border, and it was measurable: posing the shipped GLB through the clips and
+checking every mesh edge in the hip region, adjacent vertices across the
+border separated by up to **5.9× rest distance on the BikeErg — and 10.4× at
+the rowing catch**, which has more hip flexion than any crank phase.
+
+The cause was two weight rules that never agreed. The pelvis body gave its
+posterior skin **zero** femur influence ("a hip folds at the front only", from
+PR #172's standing-shear fix), while the thigh face sets reached **100% femur
+by the very height where the pelvis rule still held 80–100% hips**. Whatever
+either rule did alone, their border was a cliff, and ~90° of hip flexion
+turned the cliff into a visible chop at the gluteal fold.
+
+`hip_zone_weights()` in `build-replay-athlete-v4-blender.py` now owns the
+whole crease: skin weights there are a **function of position only**, shared
+by both face-set branches, so two neighbouring vertices cannot disagree no
+matter which side of the border they fall on. Three constraints shaped it,
+each found by measurement:
+
+- **The gradient must be bounded.** The first cut moved the band with a
+  posterior offset of 0.185 over a 5.5 cm ramp — a full femur transition
+  inside 2.7 cm of glute surface, which just relocated the chop onto the back
+  of the thigh. Offsets and ramps are now sized together to keep the
+  transition under ~20%/cm.
+- **The crotch floor is pelvic.** The two inner thighs touch at the midline;
+  giving each side its own femur there tore the crotch ×35 at the rowing
+  catch the moment the legs phased apart. Femur influence pinches out toward
+  the midline at crease heights, and what remains is split between both legs.
+- **The sit bones are planted.** Even a 6% femur share on the ischial plateau
+  pulled it 2 cm under mean hip flexion and broke the saddle-contact contract
+  the BikeErg fit is solved on. The posterior band tops out just below the
+  measured plateau, so the sit surface — and the saddle placed under it — do
+  not move with the pedal stroke, exactly as on a real rider.
+
+Result, same probe: bike worst ×5.90 → ×4.36, rower ×10.39 → ×7.37, ski
+×6.85 → ×5.01, and the residual worst edges are the fold itself stretching
+smoothly (which real skin over a flexed hip does) rather than a step between
+coplanar triangles. The renderer suite now carries a permanent guard —
+weight-variation-per-metre plus per-sport posed stretch/gap ceilings, with
+thresholds set between the measured continuous skin (19.9/m) and the measured
+defect (32.6/m). The guard was falsified both ways: it fails against the old
+GLB and passes against the new one. An earlier draft of that guard only
+sampled edges under 1.4 cm and **passed the defective skin** — the seam ran
+entirely along the crease's coarse 2–4 cm triangles — which is why no assert
+in it may filter to short edges.
+
+| View                      | Frame                                                                                                                                                                         | What it shows                                                      |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Chase, pedal top          | [frame](athlete-v5/in-app/hip-seam-2026-07-26/poses/bike-pedal-top.jpg)                                                                                                       | Glute flows into the hamstring; no notch, no forward-shifted thigh |
+| Chase, pedal bottom       | [frame](athlete-v5/in-app/hip-seam-2026-07-26/poses/bike-pedal-bottom.jpg)                                                                                                    | Continuous crease at the opposite crank extreme                    |
+| Seat, light, top / bottom | [top](athlete-v5/in-app/hip-seam-2026-07-26/poses/saddle-bike-pedal-top-light.jpg) · [bottom](athlete-v5/in-app/hip-seam-2026-07-26/poses/saddle-bike-pedal-bottom-light.jpg) | Readable-contrast seat contact through the stroke                  |
+| RowErg catch / finish     | [catch](athlete-v5/in-app/hip-seam-2026-07-26/poses/row-catch.jpg) · [finish](athlete-v5/in-app/hip-seam-2026-07-26/poses/row-finish.jpg)                                     | Deepest hip flexion of any clip — crease holds                     |
+| SkiErg press / reach      | [press](athlete-v5/in-app/hip-seam-2026-07-26/poses/ski-loaded-press.jpg) · [reach](athlete-v5/in-app/hip-seam-2026-07-26/poses/ski-high-reach.jpg)                           | Standing silhouette unregressed by the shared-mesh change          |
 
 The primary matrix is the
 [six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):
@@ -489,6 +547,9 @@ git diff --check
 - [x] Individual fingers and opposing thumbs enclose all three machine grips
       without changing authoritative palm targets
 - [x] RowErg elbow/body and BikeErg pelvis/saddle overlap are removed
+- [x] The hip crease is weight-continuous: no chopped-off thigh at the saddle,
+      guarded by weight-variation and posed stretch/gap ceilings falsified
+      against the defective GLB
 - [x] BikeErg saddle height is solved from knee flexion at BDC (30°, Holmes
       25-35°) with the pad on the measured ischial plateau, and no skin — of
       any bone — enters the saddle solid at any eighth-cycle phase or tier

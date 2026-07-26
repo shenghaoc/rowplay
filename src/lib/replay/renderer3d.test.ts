@@ -2791,24 +2791,28 @@ describe("CourseRenderer3D", () => {
               }
 
               if (hipsW < 0.25) continue;
-              // Ischial band only. The centreline is *supposed* to hang below
-              // the pad plane now — that is what the cut-out is for — so a
-              // guard spanning |x| <= 0.1 would be asserting the perineum out
-              // of the relief channel that exists to clear it.
+              // Ischial band only, and only where the shell actually has
+              // material beneath the vertex. The centreline hangs into the
+              // cut-out by design, and the upper hamstring passes *beside*
+              // the narrowed nose by design — a flat-slab band here would
+              // assert skin out of the very clearances the saddle shape
+              // exists to provide.
               if (Math.abs(sample.x) < 0.04 || Math.abs(sample.x) > 0.1) continue;
-              if (sample.z < saddle.z - 0.14 || sample.z > saddle.z + 0.08) continue;
+              if (drop === null) continue;
               if (sample.y > hip.y - 0.02 || sample.y < hip.y - 0.22) continue;
               sitBoneSamples += 1;
-              if (sample.y < lowestSitBoneY) lowestSitBoneY = sample.y;
+              const sitDig = padTopContract - drop - sample.y;
+              if (-sitDig < lowestSitBoneY) lowestSitBoneY = -sitDig;
             }
             expect(sitBoneSamples, `${quality} sampled sit-bone skin at ${cycle}`).toBeGreaterThan(
               10,
             );
-            // Allow soft nestle into the pad, but not a multi-centimetre dig.
+            // Allow soft nestle into the pad, but not a multi-centimetre dig
+            // through the local shell surface.
             expect(
               lowestSitBoneY,
               `${quality} mesh sit bones stay on the pad at ${cycle}`,
-            ).toBeGreaterThanOrEqual(saddleTopY - 0.02);
+            ).toBeGreaterThanOrEqual(-0.02);
             expect(
               worstDig,
               `${quality} no skin inside the saddle shell at ${cycle} (${worstDigLabel})`,
@@ -2907,6 +2911,130 @@ describe("CourseRenderer3D", () => {
           ).toBeLessThanOrEqual(0.004);
         } finally {
           renderer.destroy();
+        }
+      }
+    });
+
+    it("keeps the hip crease continuous — no chopped-off thigh in any sport", () => {
+      // The pelvis body and the thigh face sets used to weight their shared
+      // border with two rules that never agreed (posterior pelvis: zero
+      // femur; thigh top: ~50% femur inches away), so under the bike clip's
+      // ~90° hip flexion the glute stayed put while the thigh sheared forward
+      // — the leg read as severed at the saddle. Thresholds below sit between
+      // the measured continuous-crease skin and the measured defective skin
+      // (in parentheses), so a regression to per-face-set weighting fails on
+      // several independent axes at once. The crease region tessellates at
+      // 2-4 cm, so no assert here may filter to "short" edges only: the
+      // original defect ran its seam entirely along the coarse triangles and
+      // a 1.4 cm cap sampled right past it.
+      const renderer = rendererFor("bike");
+      renderer.render(makeSportState("bike", 0), false);
+      const { instance } = v4Lane(renderer);
+      const mesh = instance.mesh;
+      const index = mesh.geometry.getIndex();
+      expect(index, "hip guard needs an indexed mesh").not.toBeNull();
+      const position = mesh.geometry.getAttribute("position");
+      const skinIndex = mesh.geometry.getAttribute("skinIndex");
+      const skinWeight = mesh.geometry.getAttribute("skinWeight");
+      const bindMatrix = mesh.bindMatrix;
+      const rest: THREE.Vector3[] = [];
+      for (let i = 0; i < position.count; i++) {
+        rest.push(new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(bindMatrix));
+      }
+      const inRegion = (v: THREE.Vector3) => v.y > 0.72 && v.y < 1.1 && Math.abs(v.x) < 0.24;
+      const edges: Array<[number, number, number]> = [];
+      const seen = new Set<number>();
+      for (let i = 0; i < index!.count; i += 3) {
+        const tri = [index!.getX(i), index!.getX(i + 1), index!.getX(i + 2)];
+        for (let e = 0; e < 3; e++) {
+          const a = tri[e]!;
+          const b = tri[(e + 1) % 3]!;
+          const key = a < b ? a * 100000 + b : b * 100000 + a;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          if (!inRegion(rest[a]!) || !inRegion(rest[b]!)) continue;
+          const len = rest[a]!.distanceTo(rest[b]!);
+          if (len < 1e-6 || len > 0.05) continue;
+          edges.push([a, b, len]);
+        }
+      }
+      expect(edges.length, "hip-region edges").toBeGreaterThan(2000);
+
+      // Weight continuity, pose-independent: total variation of skin weights
+      // per metre of rest edge. Continuous crease: 19.9/m; defect: 32.6/m.
+      let worstVariationRate = 0;
+      for (const [a, b, len] of edges) {
+        const wa = new Map<number, number>();
+        const wb = new Map<number, number>();
+        for (let j = 0; j < 4; j++) {
+          const waw = skinWeight.getComponent(a, j);
+          if (waw > 0) wa.set(skinIndex.getComponent(a, j), waw);
+          const wbw = skinWeight.getComponent(b, j);
+          if (wbw > 0) wb.set(skinIndex.getComponent(b, j), wbw);
+        }
+        let variation = 0;
+        for (const bone of new Set([...wa.keys(), ...wb.keys()])) {
+          variation += Math.abs((wa.get(bone) ?? 0) - (wb.get(bone) ?? 0));
+        }
+        worstVariationRate = Math.max(worstVariationRate, variation / 2 / len);
+      }
+      expect(worstVariationRate, "worst skin-weight variation per metre").toBeLessThanOrEqual(25);
+      renderer.destroy();
+
+      // Posed seams per sport across the whole cycle. Stretch is the ratio a
+      // fold may open (real skin stretches over a flexed hip; a chop tears);
+      // gap is the absolute opening. Continuous vs defect:
+      //   bike   x4.36 / x5.90   12.0 cm / 17.5 cm
+      //   rower  x7.37 / x10.39  22.2 cm / 33.0 cm  (catch, occluded crease)
+      //   skierg x5.01 / x6.85   14.4 cm / 20.9 cm
+      const ceilings = {
+        bike: { stretch: 5.0, gap: 0.145 },
+        rower: { stretch: 8.6, gap: 0.27 },
+        skierg: { stretch: 5.8, gap: 0.17 },
+      } as const;
+      const skinnedVertex = new THREE.Vector3();
+      const skinMat = new THREE.Matrix4();
+      const skinTemp = new THREE.Vector3();
+      const pa = new THREE.Vector3();
+      const pb = new THREE.Vector3();
+      for (const sport of ["bike", "rower", "skierg"] as const) {
+        const sportRenderer = rendererFor(sport);
+        try {
+          sportRenderer.render(makeSportState(sport, 0), false);
+          const laneMesh = v4Lane(sportRenderer).instance.mesh;
+          const pose = (i: number, out: THREE.Vector3) => {
+            skinnedVertex.copy(rest[i]!);
+            out.set(0, 0, 0);
+            for (let j = 0; j < 4; j++) {
+              const w = skinWeight.getComponent(i, j);
+              if (w === 0) continue;
+              skinMat.fromArray(laneMesh.skeleton.boneMatrices!, skinIndex.getComponent(i, j) * 16);
+              skinTemp.copy(skinnedVertex).applyMatrix4(skinMat).multiplyScalar(w);
+              out.add(skinTemp);
+            }
+          };
+          let worstStretch = 0;
+          let worstGap = 0;
+          for (const cycle of [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875]) {
+            sportRenderer.render(makeSportState(sport, cycle), false);
+            laneMesh.skeleton.update();
+            for (const edge of edges) {
+              pose(edge[0], pa);
+              pose(edge[1], pb);
+              const posed = pa.distanceTo(pb);
+              worstStretch = Math.max(worstStretch, posed / edge[2]);
+              worstGap = Math.max(worstGap, posed - edge[2]);
+            }
+          }
+          expect(
+            worstStretch,
+            `${sport} worst hip-edge stretch stays a fold, not a tear`,
+          ).toBeLessThanOrEqual(ceilings[sport].stretch);
+          expect(worstGap, `${sport} worst hip-edge opening stays bounded`).toBeLessThanOrEqual(
+            ceilings[sport].gap,
+          );
+        } finally {
+          sportRenderer.destroy();
         }
       }
     });

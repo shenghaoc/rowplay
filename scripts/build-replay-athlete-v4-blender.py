@@ -837,6 +837,80 @@ def blend_pair(
     return {first: first_weight, second: amount}
 
 
+def hip_zone_weights(point: Vector) -> dict[str, float]:
+    """Continuous hips↔femur blend through the hip crease.
+
+    The pelvis body and the thigh face sets meet along the gluteal fold and the
+    front crease, and they used to weight that border with two rules that never
+    agreed: the pelvis side gave its posterior skin zero femur, while the thigh
+    side reached 100% femur by the very height the pelvis rule still held
+    80-100% hips. Under the bike clip's ~90° of hip flexion (and more at the
+    rowing catch), adjacent vertices across that border separated by 5-10x
+    their rest distance — the thigh read as chopped off and shifted forward.
+
+    Weights here are a function of *position only*, shared by both branches,
+    so two neighbouring vertices cannot disagree no matter which face set they
+    belong to. The blend band runs from `top` (pure pelvis above) to `bottom`
+    (pure femur below):
+
+    - anteriorly the band is long and high — the front crease compresses
+      smoothly under flexion, starting just above the femoral head (z 0.995);
+    - posteriorly it is short and low, handing over just *below* the ischial
+      plateau (z 0.862) so the sit bones stay with the pelvis and the saddle
+      contact the BikeErg fit is solved on does not move with the pedal stroke.
+
+    Near the midline the femur share is split between both legs and the split
+    fades to the owning side by the bottom of the band, so counter-rotating
+    bike legs cannot tear the crotch down the centre.
+    """
+
+    # The posterior ramp and its band offsets are gradient-bounded together:
+    # shifting the band by `offset` across a ramp of width `ramp` adds a skin
+    # gradient of roughly 1.5*offset/(ramp*band) per metre, and keeping that
+    # under ~20/m is what keeps neighbouring vertices within ~x2.5 of each
+    # other under full hip flexion. The first cut used offset 0.185 over a
+    # 0.055 ramp — a full femur transition inside 2.7 cm of glute surface,
+    # which just moved the chop from the fold onto the back of the thigh.
+    posterior = max(0.0, min(1.0, (point.y + 0.03) / 0.12))
+    # The posterior top sits just BELOW the measured ischial plateau (rest z
+    # 0.862): a planted sit bone cannot ride the pedal stroke, and even a 6%
+    # femur share there pulled the plateau 2 cm under mean hip flexion and
+    # broke the saddle-contact contract the BikeErg fit is solved on.
+    top = 1.0 - 0.142 * posterior
+    bottom = 0.885 - 0.108 * posterior
+    if point.z >= top:
+        return {"v4Hips": 1.0}
+    t = min(1.0, (top - point.z) / (top - bottom))
+    femur = t * t * (3.0 - 2.0 * t)
+
+    # The crotch floor between the legs is pelvic tissue: femur influence
+    # pinches out toward the midline at crease heights, because the two inner
+    # thighs touch there and a full single-femur weight on either side of the
+    # contact line tears the crotch apart the moment the legs counter-rotate
+    # (bike) or the clip phases them slightly apart (rowing catch, x35 before
+    # this term). The pinch fades below the crease where the legs separate and
+    # the midline stops being shared skin.
+    pinch = min(1.0, abs(point.x) / 0.05)
+    pinch += (1.0 - pinch) * max(0.0, min(1.0, (0.795 - point.z) / 0.045))
+    femur *= pinch
+    if femur <= 1e-4:
+        return {"v4Hips": 1.0}
+
+    # Near the midline whatever femur remains is split between both legs, so
+    # the shared skin follows their average rather than one side.
+    own = 0.5 + 0.5 * min(1.0, abs(point.x) / 0.055)
+    side_name = "Left" if point.x < 0 else "Right"
+    other_name = "Right" if point.x < 0 else "Left"
+    weights = {f"v4{side_name}UpperLeg": femur * own}
+    hips = 1.0 - femur
+    if hips > 1e-4:
+        weights["v4Hips"] = hips
+    cross = femur * (1.0 - own)
+    if cross > 1e-4:
+        weights[f"v4{other_name}UpperLeg"] = cross
+    return weights
+
+
 def base_vertex_weights(face_set: int, point: Vector) -> dict[str, float]:
     """Assign deterministic four-influence skin weights to the retargeted base."""
 
@@ -903,16 +977,11 @@ def base_vertex_weights(face_set: int, point: Vector) -> dict[str, float]:
 
     if face_set in {23, 24}:
         side_name = "Left" if face_set == 23 else "Right"
-        hip_blend = max(0.0, min(0.35, (point.z - 0.82) * 1.8))
-        # Meet the pelvis rule above: the buttock keeps its shape while the
-        # femur swings, so the thigh skin directly under it has to carry more
-        # pelvis influence or the two rules tear apart at the gluteal fold.
-        posterior = max(0.0, min(1.0, (point.y - 0.005) / 0.055))
-        hip_blend = min(0.55, hip_blend * (1.0 + 0.6 * posterior))
-        return {
-            f"v4{side_name}UpperLeg": 1.0 - hip_blend,
-            "v4Hips": hip_blend,
-        }
+        # One function of position for the whole hip region — the face set no
+        # longer chooses a side, so two touching inner-thigh vertices from
+        # opposite legs get identical (midline-pinched) weights.
+        del side_name
+        return hip_zone_weights(point)
     if face_set in {16, 15}:
         side_name = "Left" if face_set == 16 else "Right"
         knee_blend = max(0.0, min(0.28, (point.z - 0.45) * 2.4))
@@ -925,20 +994,10 @@ def base_vertex_weights(face_set: int, point: Vector) -> dict[str, float]:
         return {f"v4{side_name}Foot": 1.0}
 
     if point.z < 1.08:
-        side_name = "Left" if point.x < 0 else "Right"
-        lateral = min(1.0, abs(point.x) / 0.13)
-        # A hip folds at the front, not all the way round. The femur may claim
-        # the anterior crease, but the buttock behind the joint belongs to the
-        # pelvis: giving the glute a flat third of the femur's rotation made it
-        # shear sideways as the thigh swung, which reads as a broken hip.
-        # +Y is posterior in Blender space (from_blender maps y -> -z).
-        posterior = max(0.0, min(1.0, (point.y - 0.005) / 0.055))
-        descent = max(0.0, min(1.0, (1.08 - point.z) / 0.16))
-        femur = 0.34 * descent * (1.0 - posterior) * (0.55 + 0.45 * lateral)
-        return {
-            "v4Hips": 1.0 - femur,
-            f"v4{side_name}UpperLeg": femur,
-        }
+        # The crease band is shared with the thigh face sets, so the border
+        # between pelvis and thigh geometry cannot tear whatever its exact
+        # height: weights are a function of position, not of face set.
+        return hip_zone_weights(point)
     if point.z < 1.25:
         return blend_pair("v4Hips", "v4Spine", (point.z - 1.08) / 0.17)
     if point.z < 1.48:
