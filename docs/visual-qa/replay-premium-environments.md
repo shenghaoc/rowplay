@@ -19,6 +19,18 @@ Renderer tests pin those signatures, but Requirement 6 still requires actual
 replay captures. The complete Chrome/WebGPU matrix and public screenshots must
 be regenerated before task 9 or this visual gate can be marked complete.
 
+> **⚠️ All committed frames are stale.** They predate the one-light-story art
+> pass (`c524061`: ski dusk flip, bike evening enclosure + côte d'azur, timber
+> double-darkening fix, restored woodland density). Re-capture attempts from
+> this environment returned byte-identical frames across three different
+> builds: sibling agent worktrees race for port 8787, and a surviving old
+> preview server can win it mid-run. Before refreshing, give the harness
+> exclusive port ownership — or add a `--port` flag and record a build hash in
+> the manifest so a stale server fails loudly instead of silently producing
+> evidence for the wrong build. The `c524061` changes were verified by direct
+> Playwright probes at forced High on WebGPU (fresh page, chunk identity
+> confirmed in the request log), not by this matrix.
+
 ## Historical evidence (pre-overhaul)
 
 - Frames: [`premium-environments/`](premium-environments/) — 63 JPEGs, 4.2 MB
