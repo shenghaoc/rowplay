@@ -5370,7 +5370,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       };
 
       if (this.sport === "rower") {
-        addPatch("hull-reflection", 0, 0, 1.72, 0.12);
+        addPatch("hull-reflection", 0, 0, 3.9, 0.12);
       } else if (this.sport === "skierg") {
         addPatch("ski-left", 0.08, -0.21, 0.98, 0.055);
         addPatch("ski-right", 0.08, 0.21, 0.98, 0.055);
@@ -6178,7 +6178,13 @@ export class CourseRenderer3D implements ReplayRenderer {
     // fractional texels as the athlete rounds the 70 m arena.
     this.updateStableShadowAnchor(p.x, p.z);
 
-    this.advanceWake(this.liveWake, dLive, p.x - p.tx * 1.6, p.z - p.tz * 1.6);
+    const liveWakeOffset = this.sport === "rower" ? 4.15 : 1.6;
+    this.advanceWake(
+      this.liveWake,
+      dLive,
+      p.x - p.tx * liveWakeOffset,
+      p.z - p.tz * liveWakeOffset,
+    );
 
     // Catch spray on the live lane: spawn a burst as each stroke catches,
     // integrate, and write the survivors into the InstancedMesh.
@@ -6290,7 +6296,13 @@ export class CourseRenderer3D implements ReplayRenderer {
         gp.z + gp.tz * ghostSurge,
       );
       this.ghostContactFootprint.rotation.y = Math.atan2(gp.tx, gp.tz) - Math.PI / 2;
-      this.advanceWake(this.ghostWake, dGhost, gp.x - gp.tx * 1.6, gp.z - gp.tz * 1.6);
+      const ghostWakeOffset = this.sport === "rower" ? 4.15 : 1.6;
+      this.advanceWake(
+        this.ghostWake,
+        dGhost,
+        gp.x - gp.tx * ghostWakeOffset,
+        gp.z - gp.tz * ghostWakeOffset,
+      );
       const ghostText = `${state.ghost.label || "PB"} · ${Math.round(state.ghost.distFrac * 100)}%`;
       if (ghostText !== this.lastGhostLabel && this.ghostLabel && this.ghostLabelTex) {
         updateTextSprite(this.ghostLabel, this.ghostLabelTex, ghostText, C.labelBg, C.ghost);
@@ -6347,8 +6359,12 @@ export class CourseRenderer3D implements ReplayRenderer {
     const narrowScale =
       this.sport === "rower" ? (state.ghost ? 2.12 : 2.1) : state.ghost ? 1.38 : 1.2;
     const baseBack = this.reduceMotion
-      ? sportRig.back + 0.8 + ghostPullback
-      : (sportRig.back + ghostPullback) * (narrow ? narrowScale : 1);
+      ? (this.sport === "rower" ? 6.2 : sportRig.back + 0.8) + ghostPullback
+      : narrow
+        ? (sportRig.back + ghostPullback) * narrowScale
+        : this.sport === "rower"
+          ? 5.4 + ghostPullback
+          : sportRig.back + ghostPullback;
     const ahead = sportRig.ahead;
     // A static lateral offset is not an animation trigger. Preserve the full
     // three-quarter line on desktop; on the narrow SkiErg stage, ease toward
@@ -6437,6 +6453,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         ? Math.min(0.16, lateral * 0.13)
         : lateral;
     const qaAhead = qaFront || qaGrip ? 0 : ahead;
+    const qaFromPositiveTangent = (qaFront || qaGripFront) && this.sport !== "rower";
     // A small live-lane bias keeps the vector non-zero when the two course
     // tangents cancel at half a lap. Adding it before normalization makes the
     // heading continuous as the gap crosses that point; a binary fallback
@@ -6465,12 +6482,12 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.cameraLayoutMode = cameraLayoutMode;
     this.chase.set(
       focusX +
-        (qaFront || qaGripFront ? focusTx : -focusTx) * back +
-        rx * (qaFront || qaGripFront ? -qaLateral : qaLateral),
+        (qaFromPositiveTangent ? focusTx : -focusTx) * back +
+        rx * (qaFromPositiveTangent ? -qaLateral : qaLateral),
       height,
       focusZ +
-        (qaFront || qaGripFront ? focusTz : -focusTz) * back +
-        rz * (qaFront || qaGripFront ? -qaLateral : qaLateral),
+        (qaFromPositiveTangent ? focusTz : -focusTz) * back +
+        rz * (qaFromPositiveTangent ? -qaLateral : qaLateral),
     );
     this.lookAt.set(
       focusX + focusTx * qaAhead,
