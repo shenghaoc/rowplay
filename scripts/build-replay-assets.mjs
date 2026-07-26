@@ -825,7 +825,8 @@ function collectBlenderParts(scene, expectedParts) {
  */
 async function buildRowingAssemblyParts() {
   const scratch = await mkdtemp(join(tmpdir(), "rowplay-rowing-shell-blender-"));
-  const sourcePath = join(scratch, "rowplay-rowing-shell-source.glb");
+  const sourcePath =
+    process.env.ROWING_SHELL_SOURCE || join(scratch, "rowplay-rowing-shell-source.glb");
   const blender = process.env.BLENDER_BIN || DEFAULT_BLENDER;
   try {
     // The build must stay a pure function of reviewed source. An earlier

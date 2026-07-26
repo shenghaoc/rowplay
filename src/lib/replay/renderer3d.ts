@@ -106,6 +106,7 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     sprayPerCatch: 0,
     environmentDetail: 0,
     bodySegments: 10,
+    boatDetail: 0,
   },
   medium: {
     dprCap: 2,
@@ -124,6 +125,7 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     sprayPerCatch: 7,
     environmentDetail: 1,
     bodySegments: 14,
+    boatDetail: 1,
   },
   high: {
     dprCap: 2,
@@ -142,6 +144,7 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     sprayPerCatch: 8,
     environmentDetail: 2,
     bodySegments: 18,
+    boatDetail: 2,
   },
   ultra: {
     dprCap: 3,
@@ -160,6 +163,7 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     sprayPerCatch: 10,
     environmentDetail: 3,
     bodySegments: 24,
+    boatDetail: 3,
   },
 };
 
@@ -309,6 +313,7 @@ function updateTextSprite(
  * (`--live` / `--ghost`); skin/kit/shafts stay fixed. Local +Z is travel.
  */
 type AvatarMotionCues = { vertical: number; surge: number } | { rebound: number; surge: number };
+type BoatDetail = 0 | 1 | 2 | 3;
 
 const STATIC_AVATAR_MOTION: AvatarMotionCues = { vertical: 0, surge: 0 };
 
@@ -676,16 +681,32 @@ function accentMaterial(accent: number): THREE.MeshPhysicalMaterial {
 }
 
 /** Painted composite equipment carries a restrained clearcoat, never fabric. */
-function accentEquipmentMaterial(accent: number): THREE.MeshPhysicalMaterial {
+function boatMaterial(
+  color: number,
+  detail: BoatDetail,
+  roughness: number,
+  metalness: number,
+): THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial {
+  if (detail === 0) return humanMat(color, Math.min(0.88, roughness + 0.2), metalness * 0.45);
+  const level = detail - 1;
+  const clearcoat = [0.18, 0.42, 0.7][level] ?? 0.7;
   return new THREE.MeshPhysicalMaterial({
-    color: accent,
-    roughness: 0.34,
-    metalness: 0.08,
-    clearcoat: 0.32,
-    clearcoatRoughness: 0.26,
-    emissive: accent,
-    emissiveIntensity: 0.008,
+    color,
+    roughness: Math.max(0.16, roughness - level * 0.055),
+    metalness: Math.min(0.82, metalness + level * 0.035),
+    clearcoat,
+    clearcoatRoughness: [0.28, 0.2, 0.12][level] ?? 0.12,
+    sheen: detail >= 3 ? 0.08 : 0,
+    emissive: color,
+    emissiveIntensity: 0.006,
   });
+}
+
+function accentEquipmentMaterial(
+  accent: number,
+  detail: BoatDetail = 3,
+): THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial {
+  return boatMaterial(accent, detail, 0.34, 0.08);
 }
 
 function accentPart(mesh: THREE.Mesh): THREE.Mesh {
@@ -938,6 +959,16 @@ const ELBOW_INSIDE = new THREE.Vector3();
 const ELBOW_SIDE = new THREE.Vector3();
 const ELBOW_FRAME = new THREE.Matrix4();
 const ARM_BEND_SCRATCH = new THREE.Vector3();
+const ARM_BEND_CHORD = new THREE.Vector3();
+const ARM_BEND_PREVIOUS = new THREE.Vector3();
+const ARM_BEND_TARGET = new THREE.Vector3();
+const ARM_BEND_AXIS = new THREE.Vector3();
+const ARM_BEND_CROSS = new THREE.Vector3();
+const ARM_BEND_ROTATION = new THREE.Quaternion();
+const ARM_BEND_CANDIDATE = new THREE.Vector3();
+const ARM_BEND_BEST = new THREE.Vector3();
+const ARM_BEND_TRIAL = new THREE.Vector3();
+const ARM_BEND_TRIAL_END = new THREE.Vector3();
 
 /**
  * Stable two-bone arm bend direction for equipment-locked hands.
@@ -972,6 +1003,136 @@ function setArmBendHint(
 }
 
 /**
+ * Turn an equipment-locked arm's bend plane by a bounded angle per frame.
+ *
+ * The two mathematical elbow branches are opposite points on the same
+ * shoulder/wrist circle. A linear blend between them crosses zero and lets the
+ * solver pick the other branch in one frame. Rotating the projected previous
+ * bend direction around the current shoulder-to-wrist chord keeps the bone
+ * lengths exact while the preferred rowing finish turns the elbow aft.
+ */
+function steerArmBendHint(
+  shoulder: THREE.Vector3,
+  hand: THREE.Vector3,
+  previousElbow: THREE.Vector3,
+  out: THREE.Vector3,
+  side: number,
+  maxTurn: number,
+): void {
+  ARM_BEND_CHORD.set(hand.x - shoulder.x, hand.y - shoulder.y, hand.z - shoulder.z);
+  const chordLength = ARM_BEND_CHORD.length();
+  if (chordLength <= 1e-6) return;
+  ARM_BEND_CHORD.multiplyScalar(1 / chordLength);
+
+  ARM_BEND_TARGET.copy(out);
+  ARM_BEND_TARGET.addScaledVector(ARM_BEND_CHORD, -ARM_BEND_TARGET.dot(ARM_BEND_CHORD));
+  const targetLength = ARM_BEND_TARGET.length();
+  if (targetLength <= 1e-6) return;
+  ARM_BEND_TARGET.multiplyScalar(1 / targetLength);
+
+  ARM_BEND_PREVIOUS.set(
+    previousElbow.x - shoulder.x,
+    previousElbow.y - shoulder.y,
+    previousElbow.z - shoulder.z,
+  );
+  ARM_BEND_PREVIOUS.addScaledVector(ARM_BEND_CHORD, -ARM_BEND_PREVIOUS.dot(ARM_BEND_CHORD));
+  const previousLength = ARM_BEND_PREVIOUS.length();
+  if (previousLength <= 1e-6) return;
+  ARM_BEND_PREVIOUS.multiplyScalar(1 / previousLength);
+
+  ARM_BEND_AXIS.copy(ARM_BEND_CHORD);
+  ARM_BEND_CROSS.crossVectors(ARM_BEND_PREVIOUS, ARM_BEND_TARGET);
+  const signedSine = ARM_BEND_AXIS.dot(ARM_BEND_CROSS);
+  const cosine = THREE.MathUtils.clamp(ARM_BEND_PREVIOUS.dot(ARM_BEND_TARGET), -1, 1);
+  let turn = Math.atan2(signedSine, cosine);
+  if (Math.abs(turn) > Math.PI - 1e-4 && Math.abs(signedSine) < 1e-4) {
+    turn = side < 0 ? Math.PI : -Math.PI;
+  }
+  turn = THREE.MathUtils.clamp(turn, -maxTurn, maxTurn);
+  ARM_BEND_ROTATION.setFromAxisAngle(ARM_BEND_AXIS, turn);
+  out.copy(ARM_BEND_PREVIOUS).applyQuaternion(ARM_BEND_ROTATION);
+}
+
+/**
+ * Solve the equipment-locked arm while keeping its elbow in the soft
+ * shoulder-to-grip corridor. The margin represents elbow/upper-arm thickness,
+ * not a second target: the wrist remains exactly on the oar grip and the
+ * two-bone lengths remain authoritative. A short projected hint correction is
+ * enough for the few late-draw frames where the rigid grip passes the shoulder
+ * line and the unconstrained circle would put the elbow just inside the torso.
+ */
+function solveRowerArmWithCorridor(
+  shoulder: THREE.Vector3,
+  hand: THREE.Vector3,
+  upperArmLength: number,
+  forearmLength: number,
+  bendHint: THREE.Vector3,
+  elbow: THREE.Vector3,
+  handOut: THREE.Vector3,
+  minimumElbowZ?: number,
+): void {
+  solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
+
+  const corridorMin = Math.min(shoulder.x, hand.x) - 0.04;
+  const corridorMax = Math.max(shoulder.x, hand.x) + 0.04;
+  for (let iteration = 0; iteration < 16; iteration++) {
+    const xViolation =
+      elbow.x < corridorMin
+        ? corridorMin - elbow.x
+        : elbow.x > corridorMax
+          ? elbow.x - corridorMax
+          : 0;
+    const zViolation =
+      minimumElbowZ !== undefined && elbow.z < minimumElbowZ ? minimumElbowZ - elbow.z : 0;
+    if (xViolation <= 1e-5 && zViolation <= 1e-5) return;
+
+    const correctZ = zViolation > xViolation;
+    const desiredDirection = correctZ ? 1 : elbow.x < corridorMin ? 1 : -1;
+    let bestMovement = 0;
+    for (let axis = 0; axis < 3; axis++) {
+      for (let sign = -1; sign <= 1; sign += 2) {
+        ARM_BEND_CANDIDATE.copy(bendHint);
+        if (axis === 0) ARM_BEND_CANDIDATE.x += sign * 0.12;
+        else if (axis === 1) ARM_BEND_CANDIDATE.y += sign * 0.12;
+        else ARM_BEND_CANDIDATE.z += sign * 0.12;
+        solveTwoBone3D(
+          shoulder,
+          hand,
+          upperArmLength,
+          forearmLength,
+          ARM_BEND_CANDIDATE,
+          ARM_BEND_TRIAL,
+          ARM_BEND_TRIAL_END,
+        );
+        const movement =
+          (correctZ ? ARM_BEND_TRIAL.z : ARM_BEND_TRIAL.x) - (correctZ ? elbow.z : elbow.x);
+        const directedMovement = movement * desiredDirection;
+        if (directedMovement > bestMovement) {
+          bestMovement = directedMovement;
+          ARM_BEND_BEST.copy(ARM_BEND_CANDIDATE);
+        }
+      }
+    }
+
+    if (bestMovement <= 1e-5) {
+      if (correctZ) bendHint.y += 0.12;
+      else bendHint.x += desiredDirection * 0.12;
+      solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
+      continue;
+    }
+
+    const violation = correctZ
+      ? minimumElbowZ! - elbow.z
+      : desiredDirection > 0
+        ? corridorMin - elbow.x
+        : elbow.x - corridorMax;
+    const blend = THREE.MathUtils.clamp(violation / bestMovement, 0, 1);
+    bendHint.lerp(ARM_BEND_BEST, blend);
+    solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
+  }
+}
+
+/**
  * Choose the continuous yaw branch on a rigid oar's inboard circle that
  * satisfies a requested shoulder-to-grip reach. The motion-graph yaw is used
  * only for a degenerate fallback and the later late-draw blend.
@@ -989,6 +1150,7 @@ function solveRowerOarYaw(
   bladeRoll: number,
   requestedReach: number,
   preferredYaw: number,
+  forceReachBoundary = false,
 ): number {
   const pinDeltaX = pinX - shoulder.x;
   const pinDeltaY = pinY - shoulder.y;
@@ -1010,6 +1172,21 @@ function solveRowerOarYaw(
     pinDeltaY * pinDeltaY +
     pinDeltaZ * pinDeltaZ +
     signedInboard * signedInboard;
+  const preferredDistanceSquared =
+    baseDistanceSquared +
+    2 *
+      signedInboard *
+      (projectedX * Math.cos(preferredYaw) +
+        projectedZ * Math.sin(preferredYaw) +
+        pinDeltaY * rollSin);
+  // A bent elbow is a normal part of the drive. Follow the graph-authored
+  // oar arc directly whenever the shoulder can reach it; solving only the
+  // outer reach boundary would make the two circle intersections exchange
+  // branches as soon as the hands become reachable, producing a visible
+  // snap at the exact moment the handle should be travelling smoothly.
+  if (!forceReachBoundary && preferredDistanceSquared <= requestedReach * requestedReach + 1e-5) {
+    return preferredYaw;
+  }
   const cosine = THREE.MathUtils.clamp(
     (requestedReach * requestedReach -
       baseDistanceSquared -
@@ -1021,12 +1198,26 @@ function solveRowerOarYaw(
   const center = Math.atan2(projectedZ, projectedX);
   const offset = Math.acos(cosine);
   const first = center + offset;
-  // With regulation-scale inboards and the full-width rigger, this fixed
-  // mirrored branch is the centreline/forward catch for both sculls. Never
-  // choose per-frame by nearest angle or lateral distance: those scores can
-  // exchange at a tangent and snap an otherwise continuous elbow across the
-  // boat.
-  return first;
+  const second = center - offset;
+  // Select the analytic solution closest to the staged equipment arc. Both
+  // branches have the requested anatomical reach; the staged arc determines
+  // whether the visible catch sits bow-side or the late draw turns aft.
+  // Comparing angular deltas (rather than raw angles) avoids the ±π branch
+  // cut. The runtime arc is C2-smoothed by the graph, so this choice remains
+  // stable except at the exact tangent where both solutions coincide.
+  const firstDelta = Math.abs(
+    Math.atan2(Math.sin(first - preferredYaw), Math.cos(first - preferredYaw)),
+  );
+  const secondDelta = Math.abs(
+    Math.atan2(Math.sin(second - preferredYaw), Math.cos(second - preferredYaw)),
+  );
+  const selected = forceReachBoundary ? second : firstDelta <= secondDelta ? first : second;
+  // atan2 is periodic. Keep the selected reach-limited branch equivalent to
+  // the staged yaw that was authored for this frame so the oar never takes a
+  // visible ±2π jump when the analytic circle crosses its branch cut.
+  return (
+    preferredYaw + Math.atan2(Math.sin(selected - preferredYaw), Math.cos(selected - preferredYaw))
+  );
 }
 
 function placeSegmentCoordinates(
@@ -1379,15 +1570,66 @@ function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 1
 const ROWER_FOOT_CONTACT = Object.freeze({
   lateral: 0.12,
   y: 0.21,
-  z: 0.75,
+  /** Bow-side of the aft-facing athlete; the shell bow is local -Z. */
+  z: -0.75,
 });
 const ROWER_STRETCHER = Object.freeze({
   centerY: 0.295,
-  centerZ: 0.68,
+  centerZ: -0.68,
   boardRotation: THREE.MathUtils.degToRad(-48),
   shoeCatchPitch: THREE.MathUtils.degToRad(-35),
   shoeFinishPitch: THREE.MathUtils.degToRad(-42),
 });
+const ROWER_OARLOCK = Object.freeze({
+  lateral: 0.88,
+  y: 0.38,
+  /** Bow-side pin keeps the scull handles in front of the torso at mid-draw. */
+  z: -0.28,
+});
+
+function addRowerBoatQualityDetails(
+  boatVisual: THREE.Group,
+  detail: BoatDetail,
+  lightMaterial: THREE.Material,
+  metalMaterial: THREE.Material,
+): void {
+  const quality = new THREE.Group();
+  quality.name = "rower-boat-quality-detail";
+  quality.userData.boatDetail = detail;
+  if (detail >= 2) {
+    // High and Ultra spend geometry on the shell itself: two fine waterline
+    // strakes follow the open cockpit instead of only increasing the canvas
+    // DPR. They make the long, narrow hull legible in a rear three-quarter
+    // camera without changing any contact target.
+    for (const side of [-1, 1]) {
+      quality.add(
+        tubeBetween(
+          side < 0 ? "rower-shell-waterline-port" : "rower-shell-waterline-starboard",
+          { x: side * 0.205, y: 0.22, z: -2.55 },
+          { x: side * 0.205, y: 0.22, z: 2.55 },
+          detail >= 3 ? 0.006 : 0.004,
+          lightMaterial,
+        ),
+      );
+    }
+  }
+  if (detail >= 3) {
+    // Ultra adds the visible cockpit load path: cross braces sit below the
+    // coaming and visually connect the rails to the shell walls.
+    for (const z of [-0.78, 0.93]) {
+      quality.add(
+        tubeBetween(
+          `rower-cockpit-cross-brace-${z < 0 ? "aft" : "fore"}`,
+          { x: -0.16, y: 0.235, z },
+          { x: 0.16, y: 0.235, z },
+          0.008,
+          metalMaterial,
+        ),
+      );
+    }
+  }
+  boatVisual.add(quality);
+}
 
 /**
  * Low-poly single scull: long thin hull (capsule), a seated rower, and two oars
@@ -1400,6 +1642,7 @@ function makeRowerAvatar(
   castShadow: boolean,
   opacity = 1,
   bodySegments = 16,
+  boatDetail: BoatDetail = 1,
 ): Avatar {
   const segs = bodySegments;
   const capSegs = Math.max(10, Math.round(segs * 0.82));
@@ -1410,7 +1653,7 @@ function makeRowerAvatar(
   // Each avatar owns its sampled graph so live and ghost athletes never share
   // mutable frame state. This keeps the motion path allocation-free in 3D.
   const rowMotionGraph = createRowerMotionGraphScratch();
-  const laneMaterial = accentEquipmentMaterial(accent);
+  const laneMaterial = accentEquipmentMaterial(accent, boatDetail);
   const jerseyMaterial = accentMaterial(accent);
   const accentMat = () => laneMaterial;
   const skinMaterial = makeSkinMaterial(HUMAN_SKIN);
@@ -1418,26 +1661,28 @@ function makeRowerAvatar(
   const kitMaterial = humanMat(HUMAN_KIT, 0.58);
   const kitDarkMaterial = humanMat(HUMAN_KIT_DARK, 0.64);
   const shoeMaterial = humanMat(HUMAN_SHOE, 0.46);
-  const equipmentLightMaterial = humanMat(0xf1f5f9, 0.42, 0.12);
-  const equipmentMetalMaterial = humanMat(0x8a9097, 0.38, 0.58);
-  const equipmentGripMaterial = humanMat(0x26343d, 0.56, 0.04);
+  const boatDarkMaterial = boatMaterial(0x162631, boatDetail, 0.42, 0.16);
+  const boatTrimMaterial = boatMaterial(0xc8d4dc, boatDetail, 0.34, 0.08);
+  const equipmentLightMaterial = boatMaterial(0xf1f5f9, boatDetail, 0.42, 0.12);
+  const equipmentMetalMaterial = boatMaterial(0x8a9097, boatDetail, 0.38, 0.58);
+  const equipmentGripMaterial = boatMaterial(0x26343d, boatDetail, 0.56, 0.04);
   const resolveAssetMaterial = makeAssetMaterialResolver({
     "athlete-skin": skinMaterial,
     "athlete-fabric": jerseyMaterial,
     "athlete-hair": hairMaterial,
     "athlete-footwear": shoeMaterial,
     "equipment-painted": laneMaterial,
-    "equipment-dark": kitDarkMaterial,
+    "equipment-dark": boatDarkMaterial,
     "equipment-light": equipmentLightMaterial,
     "equipment-metal": equipmentMetalMaterial,
     "equipment-rubber": equipmentGripMaterial,
     "equipment-grip": equipmentGripMaterial,
-    "equipment-trim": kitMaterial,
+    "equipment-trim": boatTrimMaterial,
   });
   const hull = setReplayAssetSlot(
     new THREE.Mesh(
       new THREE.CapsuleGeometry(0.34, 7.12, eqCylSegs, Math.round(eqCylSegs * 1.4)),
-      kitDarkMaterial,
+      boatDarkMaterial,
     ),
     "equipment:row:hull",
   );
@@ -1537,14 +1782,14 @@ function makeRowerAvatar(
   );
   instepBar.name = "rower-footplate-instep-bar";
   instepBar.rotation.z = Math.PI / 2;
-  instepBar.position.set(0, 0.35, 0.625);
+  instepBar.position.set(0, 0.35, -0.625);
   group.add(instepBar);
   const stretcherSupports: THREE.Mesh[] = [];
   const heelRestraints: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
     const support = tubeBetween(
       side < 0 ? "rower-footplate-support-left" : "rower-footplate-support-right",
-      { x: side * 0.17, y: 0.175, z: 0.84 },
+      { x: side * 0.17, y: 0.175, z: -0.84 },
       {
         x: side * 0.17,
         y: ROWER_STRETCHER.centerY,
@@ -1557,8 +1802,8 @@ function makeRowerAvatar(
     group.add(support);
     const heelRestraint = tubeBetween(
       side < 0 ? "rower-heel-restraint-left" : "rower-heel-restraint-right",
-      { x: side * 0.12, y: 0.185, z: 0.785 },
-      { x: side * 0.12, y: 0.245, z: 0.72 },
+      { x: side * 0.12, y: 0.185, z: -0.785 },
+      { x: side * 0.12, y: 0.245, z: -0.72 },
       0.006,
       equipmentGripMaterial,
     );
@@ -1599,6 +1844,12 @@ function makeRowerAvatar(
       ...heelRestraints,
     ],
   });
+  addRowerBoatQualityDetails(
+    boatVisual,
+    boatDetail,
+    equipmentLightMaterial,
+    equipmentMetalMaterial,
+  );
 
   // Rower in its own group so slide, layback, legs and arms all move from the
   // recorded stroke pose rather than as one rigid toy block.
@@ -1677,6 +1928,8 @@ function makeRowerAvatar(
     wristTarget: THREE.Vector3;
     handPoint: THREE.Vector3;
     bendHint: THREE.Vector3;
+    lastWristTarget: THREE.Vector3;
+    hasPreviousPose: boolean;
   }> = [];
   const legs: Array<{
     side: number;
@@ -1744,6 +1997,8 @@ function makeRowerAvatar(
       wristTarget: new THREE.Vector3(),
       handPoint: new THREE.Vector3(),
       bendHint: new THREE.Vector3(side * 0.56, -0.48, -0.18),
+      lastWristTarget: new THREE.Vector3(),
+      hasPreviousPose: false,
     });
   }
   rower.position.z = -0.1;
@@ -1777,6 +2032,7 @@ function makeRowerAvatar(
     // long arms; this reach lets both coexist while the fixed pin remains on
     // the rigger.
     grip.position.x = -side * 0.82;
+    grip.position.y = -0.04;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
@@ -1784,7 +2040,8 @@ function makeRowerAvatar(
     // remains well inside the 28 cm rubber grip, while the resulting hand
     // separation prevents real scull handles from reading as crossed wrists
     // at the centreline.
-    handleAnchor.position.x = -side * 0.74;
+    handleAnchor.position.x = -side * 0.78;
+    handleAnchor.position.y = -0.04;
     oar.add(handleAnchor);
     // Oar collar — a small ring near the blade end for visual detail.
     const collar = new THREE.Mesh(
@@ -1815,7 +2072,11 @@ function makeRowerAvatar(
     // The 1.56 m span matches a full-width sculling rigger. Its pins sit beside
     // the athlete rather than ahead of the knees, keeping the grips on their
     // own lateral halves and the forearms clear of the torso.
-    oar.position.set(side * 0.78, 0.38, 0.095);
+    // The pin sits bow-side of the athlete's hip line. This leaves the
+    // catch handle ahead of the torso while the seat drives aft, keeps the
+    // two scull grips separated at the finish, and still gives the inboard
+    // lever enough sweep to finish at the lower chest.
+    oar.position.set(side * ROWER_OARLOCK.lateral, ROWER_OARLOCK.y, ROWER_OARLOCK.z);
     oar.userData.side = side;
     group.add(oar);
     oars.push({ side, group: oar, blade, handleAnchor });
@@ -1826,7 +2087,9 @@ function makeRowerAvatar(
   // Seat start is biased forward so travel can grow without pulling the hips
   // past the fixed footplate reach of the thigh+shin chain (~1.10 m).
   const SEAT_TRAVEL = 0.44;
-  const SEAT_CATCH_Z = 0.26;
+  // The shell bow and stretcher are local -Z. At the catch the seat is
+  // bow-side; the drive carries it aft (+Z) while the feet stay fixed.
+  const SEAT_CATCH_Z = -0.26;
   const THIGH_LENGTH = 0.552;
   const SHIN_LENGTH = 0.552;
   const UPPER_ARM_LENGTH = 0.39;
@@ -1845,8 +2108,9 @@ function makeRowerAvatar(
   // Concept2 / scull handle path: early drive keeps grips forward so arms can
   // stay long; late draw brings the bar to the *lower chest / ribs*, not behind
   // the back (British Rowing / Concept2 finish coaching).
-  const OAR_YAW_CATCH = 0.3;
-  const OAR_YAW_SPAN = -0.58;
+  const OAR_YAW_CATCH = -0.3;
+  const OAR_DRAW_YAW = 0.715;
+  const OAR_YAW_SPAN = OAR_DRAW_YAW - OAR_YAW_CATCH;
   // A scull blade is buried only just below the surface. The former deep roll
   // lifted the 0.82 m inboard handle by more than 11 cm during the first few
   // drive frames, making the otherwise closed-chain grip surge forward.
@@ -1854,6 +2118,7 @@ function makeRowerAvatar(
 
   const handlePoint = new THREE.Vector3();
   const sampledV4Shoulders = [new THREE.Vector3(), new THREE.Vector3()] as const;
+  const sampledV4Knees = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const sampledV4ReachOrigins = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const sampledV4ContactOffsets = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const sampledV4ArmReaches: [number, number] = [BASE_ARM_REACH, BASE_ARM_REACH];
@@ -1909,26 +2174,34 @@ function makeRowerAvatar(
         v4Refinement?.armReaches[i] ?? Math.max(BASE_ARM_REACH, contactArmReach);
       const activeUpperArmLength = activeArmReach * UPPER_ARM_SHARE;
       const activeForearmLength = activeArmReach - activeUpperArmLength;
-      const longReachYaw = solveRowerOarYaw(
+      // Finish at a realistic lower-rib draw. Public sculling coaching (e.g.
+      // British Rowing / Concept2): hands draw *to the lower chest*, elbows
+      // tuck beside/slightly behind the shoulder plane — never hauled through
+      // the torso into an illegal behind-the-back finish. The complete oar
+      // path follows the graph's handle travel, not only the late arm channel;
+      // the fixed oarlock therefore moves the handles during the leg/body
+      // phases while the arms remain long.
+      const reachRelaxation = 0.1 * THREE.MathUtils.smoothstep(draw, 0.03, 0.42);
+      const solvedYaw = solveRowerOarYaw(
         v4Refinement?.reachOrigins[i] ?? arm.shoulderPoint,
         oar.group.position.x - rower.position.x,
         oar.group.position.y - rower.position.y,
         oar.group.position.z - rower.position.z,
         oar.handleAnchor.position.x,
         oar.group.rotation.z,
-        activeArmReach - 0.002,
+        activeArmReach - 0.002 - reachRelaxation,
         oar.group.rotation.y,
+        true,
       );
-      // Finish at a realistic lower-rib draw. Public sculling coaching (e.g.
-      // British Rowing / Concept2): hands draw *to the lower chest*, elbows
-      // tuck beside/slightly behind the shoulder plane — never hauled through
-      // the torso into an illegal behind-the-back finish.
-      const drawYaw = -oar.side * 0.58;
-      const yawDelta = Math.atan2(
-        Math.sin(drawYaw - longReachYaw),
-        Math.cos(drawYaw - longReachYaw),
-      );
-      oar.group.rotation.y = longReachYaw + yawDelta * draw;
+      const stagedYaw = oar.side * (OAR_YAW_CATCH + draw * OAR_YAW_SPAN);
+      // Keep the early drive at the long-arm reach boundary, then hand the
+      // fixed oar back to the authored draw arc with a smooth transition. A
+      // direct branch switch at the first arm-draw sample makes the elbow
+      // jump even though the oar itself is moving continuously.
+      const boundaryBlend = 1 - THREE.MathUtils.smoothstep(draw, 0.03, 1.2);
+      const yawDelta =
+        THREE.MathUtils.euclideanModulo(stagedYaw - solvedYaw + Math.PI, Math.PI * 2) - Math.PI;
+      oar.group.rotation.y = solvedYaw + yawDelta * (1 - boundaryBlend);
       // Convert the oar-local grip endpoint into rower-local coordinates. Both
       // objects share the avatar group as parent, so this is exact even before
       // Three updates matrixWorld for the draw.
@@ -1940,20 +2213,76 @@ function makeRowerAvatar(
       if (v4ContactOffset) arm.wristTarget.sub(v4ContactOffset);
       // Elbow branch: clearly rearward of the shoulder with restrained lateral
       // clearance, while the palm target stays on the chest-level grip.
+      // The fixed scull handle sweeps through the knees before the late draw;
+      // give the elbow a short mid-drive clearance bias, then taper it before
+      // the finish so the joint still tucks beside the lower ribs.
+      const midDriveClearance =
+        0.014 *
+        THREE.MathUtils.smoothstep(draw, 0.58, 0.7) *
+        (1 - THREE.MathUtils.smoothstep(draw, 0.78, 0.9));
+      const finishTuck = THREE.MathUtils.smoothstep(draw, 0.78, 0.92);
+      const finishLateralRelief = 1 - 0.5 * THREE.MathUtils.smoothstep(draw, 0.94, 1);
+      const lateOutwardClearance = 0.012 * THREE.MathUtils.smoothstep(draw, 0.94, 1);
       setArmBendHint(arm.shoulderPoint, arm.wristTarget, arm.side, arm.bendHint, {
-        lateral: -0.06 + draw * 0.09 + shoulderSet * 0.004,
+        lateral:
+          -0.06 +
+          draw * 0.09 +
+          midDriveClearance +
+          lateOutwardClearance +
+          shoulderSet * 0.004 -
+          0.055 * finishTuck * finishLateralRelief,
         up: 0.06 + draw * 0.05,
-        aft: -0.34 - bodySwing * 0.12 - handleTravel * 0.08 - draw * 0.34,
+        aft:
+          THREE.MathUtils.lerp(
+            -0.34 - bodySwing * 0.12 - handleTravel * 0.08,
+            -0.2 + bodySwing * 0.12 + handleTravel * 0.08,
+            THREE.MathUtils.smoothstep(draw, 0.03, 0.2),
+          ) +
+          0.06 * finishTuck,
       });
-      solveTwoBone3D(
-        arm.shoulderPoint,
-        arm.wristTarget,
-        activeUpperArmLength,
-        activeForearmLength,
-        arm.bendHint,
-        arm.elbowPoint,
-        arm.handPoint,
-      );
+      if (
+        arm.hasPreviousPose &&
+        draw > 0.35 &&
+        arm.wristTarget.distanceTo(arm.lastWristTarget) < 0.16
+      ) {
+        // The rigid grip crosses the knees while the athlete transitions from
+        // the drive to the lower-chest finish. The two-bone solve has two
+        // equally valid elbow branches; turn the previous branch toward the
+        // authored finish by a bounded angle so it cannot jump through the
+        // torso when the preferred bend cue crosses the chord.
+        steerArmBendHint(
+          arm.shoulderPoint,
+          arm.wristTarget,
+          arm.elbowPoint,
+          arm.bendHint,
+          arm.side,
+          0.18 * THREE.MathUtils.smoothstep(draw, 0.35, 0.92),
+        );
+      }
+      if (draw > 0.9) {
+        solveRowerArmWithCorridor(
+          arm.shoulderPoint,
+          arm.wristTarget,
+          activeUpperArmLength,
+          activeForearmLength,
+          arm.bendHint,
+          arm.elbowPoint,
+          arm.handPoint,
+          arm.shoulderPoint.z + 0.014,
+        );
+      } else {
+        solveTwoBone3D(
+          arm.shoulderPoint,
+          arm.wristTarget,
+          activeUpperArmLength,
+          activeForearmLength,
+          arm.bendHint,
+          arm.elbowPoint,
+          arm.handPoint,
+        );
+      }
+      arm.lastWristTarget.copy(arm.wristTarget);
+      arm.hasPreviousPose = true;
       arm.shoulder.position.copy(arm.shoulderPoint);
       placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
       placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
@@ -1988,7 +2317,7 @@ function makeRowerAvatar(
       // separate object laid across the shell instead of a seated rower.
       leg.bendHint.set(
         leg.side * (0.22 - legExtension * 0.08),
-        0.77 - legExtension * 0.2,
+        0.35 - legExtension * 0.2,
         leg.footTarget.z - 0.04 - legExtension * 0.2,
       );
       solveTwoBone3D(
@@ -2086,17 +2415,24 @@ function makeRowerAvatar(
     const graph = sampleRowerMotionGraphInto(resolvedPose, rowMotionGraph);
     // Seat motion follows leg extension only; body swing and arm draw happen on
     // their later staged channels, eliminating the old one-cosine puppet motion.
-    rower.position.z = SEAT_CATCH_Z - graph.body.pelvisTravel.value * SEAT_TRAVEL;
+    rower.position.z = SEAT_CATCH_Z + graph.body.pelvisTravel.value * SEAT_TRAVEL;
     rower.position.y = reduce ? 0 : graph.accents.vertical.value * 0.03;
     rower.rotation.set(0, 0, 0);
+    const graphHandleTravel = graph.body.handleTravel.value;
+    // The oarlock is fixed to the shell. During the leg drive the athlete
+    // slides away from a nearly stationary catch handle; the late arm-draw
+    // channel is the equipment cue that moves the handle aft toward the
+    // chest. Using the aggregate handle channel here would include its leg
+    // contribution and pull the grip through the knees and torso too early.
+    const equipmentHandleTravel = graph.body.armDraw.value;
     placeUpperBody(
       graph.body.spineHinge.value,
       graph.body.shoulderSet.value,
-      graph.body.handleTravel.value,
+      graphHandleTravel,
       graph.body.headBob.value,
     );
     placeOars(
-      graph.body.handleTravel.value,
+      equipmentHandleTravel,
       graph.contacts.bladeWater.value,
       graph.contacts.bladeFeather.value,
     );
@@ -2104,7 +2440,7 @@ function makeRowerAvatar(
     pendingBodySwing = graph.body.spineHinge.value;
     pendingArmDraw = graph.body.armDraw.value;
     pendingShoulderSet = graph.body.shoulderSet.value;
-    pendingHandleTravel = graph.body.handleTravel.value;
+    pendingHandleTravel = equipmentHandleTravel;
     placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel);
     return reduce
       ? STATIC_AVATAR_MOTION
@@ -2131,6 +2467,15 @@ function makeRowerAvatar(
     // oar-pin circles and shared elbow branch markers.
     rower.worldToLocal(sampledV4Shoulders[0]);
     rower.worldToLocal(sampledV4Shoulders[1]);
+    motion.getLegJointTargetWorld("left", sampledV4Knees[0]);
+    motion.getLegJointTargetWorld("right", sampledV4Knees[1]);
+    rower.worldToLocal(sampledV4Knees[0]);
+    rower.worldToLocal(sampledV4Knees[1]);
+    // The authored V4 lower body has its own segment proportions. Use the
+    // same constrained two-bone solve to derive its knee marker rather than
+    // asking that chain to imitate the shorter procedural fallback leg.
+    leftLeg.knee.position.copy(sampledV4Knees[0]);
+    rightLeg.knee.position.copy(sampledV4Knees[1]);
     rower.worldToLocal(sampledV4ReachOrigins[0]);
     rower.worldToLocal(sampledV4ReachOrigins[1]);
     sampledV4ContactOffsets[0].copy(sampledV4ReachOrigins[0]).sub(sampledV4Shoulders[0]);
