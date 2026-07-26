@@ -83,6 +83,9 @@ const SKI_FOREST_SECTORS: readonly EnvironmentSector[] = [
   { start: degrees(-170), span: degrees(55), weight: 0.95 },
   { start: degrees(105), span: degrees(65), weight: 1.1 },
   { start: degrees(40), span: degrees(28), weight: 0.75 },
+  // Fourth stand: without it the forest lives on one half of the ring and the
+  // camera spends half of every lap looking at open lawn.
+  { start: degrees(205), span: degrees(52), weight: 0.9 },
 ];
 
 const SKI_ALPINE_SECTORS: readonly EnvironmentSector[] = [
@@ -910,7 +913,9 @@ export class EnvironmentBuilder {
     const broadleafCount = Math.round(count * broadleafShare);
     const pineCount = count - broadleafCount;
     const pineColor =
-      this.ctx.sport === "skierg" ? themed(0x335d51, 0x244d45) : themed(0x2d6548, 0x1c503c);
+      // Ski's light theme is blue-hour dusk, so its spruce sits near-black —
+      // the dark mass the lit snow is bright against.
+      this.ctx.sport === "skierg" ? themed(0x27403c, 0x244d45) : themed(0x2d6548, 0x1c503c);
     // A single continuous canopy keeps the silhouette coniferous at replay
     // distance. The separate spherical crown still read as a row of green
     // balls above the SkiErg tree line against the bright snow.
@@ -1659,7 +1664,9 @@ export class EnvironmentBuilder {
     this.addRowerShorelineSystem(group, outerR);
     this.addInstancedPines(
       group,
-      [14, 24, 36, 48][this.ctx.cfg.environmentDetail],
+      // Bank woodland reads as woodland only past ~60 crowns; below that the
+      // shore is a lawn with specimen trees and the basin loses its enclosure.
+      [14, 32, 72, 104][this.ctx.cfg.environmentDetail],
       outerR + 9,
       outerR + 31,
       ROW_WOODLAND_SECTORS,
@@ -2248,14 +2255,17 @@ export class EnvironmentBuilder {
     this.addSkiStadiumCentre(group, outerR);
     this.addSkiNearField(group, outerR);
     if (this.ctx.cfg.environmentDetail >= 1) this.addSkiValley(group, outerR);
-    this.addSnowBerms(group, outerR, [6, 12, 18, 24][this.ctx.cfg.environmentDetail]);
+    this.addSnowBerms(group, outerR, [6, 16, 28, 40][this.ctx.cfg.environmentDetail]);
     if (this.ctx.cfg.environmentDetail >= 1) {
-      this.addAlpineFoothills(group, [0, 4, 7, 9][this.ctx.cfg.environmentDetail]);
+      this.addAlpineFoothills(group, [0, 8, 14, 20][this.ctx.cfg.environmentDetail]);
     }
-    this.addAlpinePeaks(group, [3, 5, 7, 9][this.ctx.cfg.environmentDetail]);
+    this.addAlpinePeaks(group, [3, 8, 14, 22][this.ctx.cfg.environmentDetail]);
+    // A Nordic stadium sits inside a forest, not a lawn with specimen trees.
+    // Density is what sells it, and it is also the dark mass the dusk flip
+    // needs the lit snow to be bright against.
     this.addInstancedPines(
       group,
-      [10, 20, 32, 44][this.ctx.cfg.environmentDetail],
+      [10, 36, 88, 132][this.ctx.cfg.environmentDetail],
       outerR + 22,
       outerR + 58,
       SKI_FOREST_SECTORS,

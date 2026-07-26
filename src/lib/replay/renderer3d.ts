@@ -509,65 +509,75 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     hemisphereIntensityIbl: 1.22,
   },
   skierg: {
-    // Cold Nordic morning: sky, airborne frost, snow bowl and blue-shadow
-    // massif share one temperature instead of reading as a summer panorama
-    // behind a separate white floor.
-    // Sky, airborne frost and snow all sat within a few points of white, so
-    // the horizon vanished and the stadium read as one flat sheet. Deepening
-    // the dome and cooling the fog restores a horizon line and gives the snow
-    // something to be bright *against* — the venue is still a cold Nordic
-    // morning, just no longer a white-out.
-    skyZenith: themed(0x3b7fae, 0x102b45),
-    skyHorizon: themed(0xbddbe8, 0x6f8d9f),
-    skyNadir: themed(0xabcbd8, 0x385669),
-    fog: themed(0xb8cfd9, 0x718d9b),
+    // Blue-hour dusk over a lit track. Snow against a bright sky can only
+    // white-out — the daylight versions of this venue kept proving it — so the
+    // contrast is flipped instead: deep blue-grey dome, near-black spruce, and
+    // the groomed course as the brightest surface in frame under a warm
+    // floodlight key. Two temperatures carry the scene — cold shadow snow,
+    // warm lit snow — which is the Nordic night-race look, and it makes the
+    // athlete's legibility structural rather than tuned: a jersey on lit snow
+    // cannot vanish. Dark theme stays full night, so the pair reads as
+    // dusk/night rather than day/night.
+    skyZenith: themed(0x1f3c58, 0x102b45),
+    skyHorizon: themed(0xa2b4c4, 0x6f8d9f),
+    skyNadir: themed(0x7e97a9, 0x385669),
+    fog: themed(0x64798c, 0x718d9b),
     fogNear: 74,
     fogFar: 205,
-    hemisphereSky: themed(0xf1f9ff, 0xa0bfd0),
-    hemisphereGround: themed(0x8faab8, 0x405c6d),
-    hemisphereIntensity: 1.22,
-    sun: themed(0xfff4d7, 0xeaf6ff),
-    sunIntensity: 2.55,
-    fill: themed(0xb8ddf6, 0x719bb5),
-    fillIntensity: 0.76,
+    hemisphereSky: themed(0xb9cfe2, 0xa0bfd0),
+    hemisphereGround: themed(0x5d7789, 0x405c6d),
+    hemisphereIntensity: 0.9,
+    // The key is a floodlight now, not the sun: warm-white against the cold
+    // ambient, at full strength so the lit snow genuinely separates.
+    sun: themed(0xffe8c0, 0xeaf6ff),
+    sunIntensity: 2.7,
+    fill: themed(0x7fa3c4, 0x719bb5),
+    fillIntensity: 0.62,
     exposure: 1.02,
-    farSilhouette: themed(0x91afbe, 0x506f82),
-    midSilhouette: themed(0x5f8498, 0x315267),
-    venueStructure: themed(0x344f5d, 0x192f3d),
+    // Faint alpenglow: the far massif carries the day's last warmth while the
+    // mid range has already gone cold — the one warm/cold seam in the backdrop.
+    farSilhouette: themed(0x9a8b96, 0x506f82),
+    midSilhouette: themed(0x435d72, 0x315267),
+    venueStructure: themed(0x25394a, 0x192f3d),
     venueAccent: themed(0xe04852, 0xff6670),
-    // Snow keeps its brightness but picks up the sky's cool bounce, so the
-    // groomed surface separates from the dome instead of merging into it.
-    infield: themed(0xd8e7ef, 0x9fb7c5),
-    apron: themed(0xe8f1f5, 0xc7d7df),
+    // Snow stays the brightest value in the frame — brighter than the horizon —
+    // which is the entire point of the flip.
+    infield: themed(0xcfdfe9, 0x9fb7c5),
+    apron: themed(0xdfeaf1, 0xc7d7df),
     // Snow already bounces hard into the hemisphere light; a full-strength sky
     // on top of that is what blows the venue out to flat white.
     envIntensity: 0.62,
     hemisphereIntensityIbl: 0.36,
   },
   bike: {
-    // Daylit timber velodrome. "Light" is now genuinely bright: a pale roof
-    // and skylight bounce expose the architecture and athlete instead of
-    // staging both themes inside the same black hangar.
-    skyZenith: themed(0xc6d5dd, 0x1c2a38),
-    skyHorizon: themed(0xe8e5d8, 0x344252),
-    skyNadir: themed(0xaebbb7, 0x202d36),
-    fog: themed(0xc7ccc7, 0x2b3944),
+    // Evening session under one warm cone. Indoor venues live or die on light
+    // shaping, and a pale skylit hall gave the frame no shape at all: the
+    // track band is the lit subject, the seating bowl falls toward shadow, and
+    // the roof cavity stays dim so the architecture reads as enclosure rather
+    // than as a second bright surface competing with the timber. Light theme
+    // is the evening session; dark theme is the late session with the house
+    // lights further down — same building, one hour apart.
+    skyZenith: themed(0x2e3540, 0x1c2a38),
+    skyHorizon: themed(0x4a4e54, 0x344252),
+    skyNadir: themed(0x33383f, 0x202d36),
+    fog: themed(0x3d4249, 0x2b3944),
     fogNear: 72,
     fogFar: 165,
-    hemisphereSky: themed(0xf3f8fa, 0x5f7485),
-    hemisphereGround: themed(0x9e8469, 0x312d28),
-    hemisphereIntensity: 1.12,
-    sun: themed(0xfff0cf, 0xffd49a),
-    sunIntensity: 2.6,
-    fill: themed(0xc8e4ef, 0x607e93),
-    fillIntensity: 0.78,
-    exposure: 1.12,
-    farSilhouette: themed(0x9aa6aa, 0x263442),
-    midSilhouette: themed(0x748389, 0x314352),
-    venueStructure: themed(0x929fa5, 0x344452),
+    hemisphereSky: themed(0x8a8f96, 0x5f7485),
+    hemisphereGround: themed(0x6b5844, 0x312d28),
+    hemisphereIntensity: 1.15,
+    // The one warm cone: a high haloed key doing the work the daylight did.
+    sun: themed(0xffe2b0, 0xffd49a),
+    sunIntensity: 3.5,
+    fill: themed(0x7d94a8, 0x607e93),
+    fillIntensity: 0.62,
+    exposure: 1.16,
+    farSilhouette: themed(0x525c63, 0x263442),
+    midSilhouette: themed(0x454f58, 0x314352),
+    venueStructure: themed(0x5a646c, 0x344452),
     venueAccent: themed(0xd79a50, 0xf0b667),
-    infield: themed(0x98a7a0, 0x405149),
-    apron: themed(0xb3aa99, 0x3c3c3a),
+    infield: themed(0x6d7a74, 0x405149),
+    apron: themed(0x847d70, 0x3c3c3a),
     // The pale roof acts as a broad indirect source; the generated radiance
     // map supplies that response without an external HDR panorama.
     envIntensity: 0.72,
@@ -3362,8 +3372,9 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     sprayOffset: 0.4, // at the pole baskets
     groundOpacity: 1,
     trailColor: 0xffffff,
-    // Cool alpine snowfield: not pure white, so tracks and kit separate.
-    groundColor: (t) => (t === "dark" ? 0x8fa5b3 : 0xd5e4ec),
+    // Dusk snowfield: dimmer and cooler than the floodlit course ring, so the
+    // lit track reads as lit rather than the whole bowl being bright.
+    groundColor: (t) => (t === "dark" ? 0x8fa5b3 : 0xaabfd0),
     course: {
       surface: (t) => (t === "dark" ? 0x849daa : 0xd8e7ee),
       edge: (t) => (t === "dark" ? 0x7893a2 : 0xb6ccd8),
@@ -3387,7 +3398,11 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     trailColor: null,
     groundColor: (t) => (t === "dark" ? 0x303a40 : 0x98a09d),
     course: {
-      surface: (t) => (t === "dark" ? 0x7c5a3c : 0xd8b181),
+      // Near-white, not timber-brown: at High/Ultra the wood-floor diffuse map
+      // multiplies this colour, and brown × brown ≈ black — the track spent a
+      // whole art pass reading as charcoal because the albedo was paid twice.
+      // The map carries the wood; this tint only warms it.
+      surface: (t) => (t === "dark" ? 0x977244 : 0xdbc09a),
       edge: (t) => (t === "dark" ? 0xdfe7e8 : 0xf4f2eb),
       laneLine: (t) => (t === "dark" ? 0x5fa4c4 : 0x2f7298),
       detail: (t) => (t === "dark" ? 0xe9685e : 0xc63f38),
@@ -4244,6 +4259,23 @@ export class CourseRenderer3D implements ReplayRenderer {
       roughness: 0.48,
       metalness: 0.02,
     });
+    // The côte d'azur: the pale blue apron band between the infield and the
+    // measurement line. It is the third colour of the "black/red/blue" grammar
+    // above, and the strongest single cue that this floor is a velodrome and
+    // not a running track.
+    const azurMat = this.courseMat(
+      "course:bike:cote-d-azur",
+      (t) => (t === "dark" ? 0x2c5a6e : 0x7db6cc),
+      { roughness: 0.55, metalness: 0.02 },
+    );
+    const azurGeo = this.track(new THREE.RingGeometry(innerR + 0.06, innerR + 0.58, 96));
+    const azur = new THREE.Mesh(azurGeo, azurMat);
+    azur.name = "course:bike:cote-d-azur";
+    azur.rotation.x = -Math.PI / 2;
+    azur.position.y = 0.052;
+    azur.receiveShadow = this.cfg.shadows;
+    group.add(azur);
+
     this.addCourseRing(group, innerR + 0.72, 0.026, blackLine, "course:bike:measure-line", 0.063);
     this.addCourseRing(
       group,

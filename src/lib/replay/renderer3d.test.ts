@@ -676,7 +676,9 @@ describe("CourseRenderer3D", () => {
       );
 
     expect(woodlandCount(lowScene)).toBe(14);
-    expect(woodlandCount(ultraScene)).toBe(48);
+    // 104, not 48: bank woodland reads as woodland only past ~60 crowns —
+    // below that the shore is a lawn with specimen trees.
+    expect(woodlandCount(ultraScene)).toBe(104);
     for (const scene of [lowScene, ultraScene]) {
       expect(scene.getObjectByName("environment:rower:sky")).toBeDefined();
       expect(scene.getObjectByName("environment:rower:horizon-mid")).toBeDefined();
@@ -4250,7 +4252,9 @@ describe("CourseRenderer3D", () => {
       const lane = getScene(r).getObjectByName("lane") as unknown as {
         material: { color: { getHex(): number } };
       };
-      expect(lane.material.color.getHex()).toBe(0x7c5a3c);
+      // Near-white tint: the wood-floor diffuse map multiplies this colour,
+      // and the old timber-brown made brown x brown ~ black at High/Ultra.
+      expect(lane.material.color.getHex()).toBe(0x977244);
       r.destroy();
     });
 
