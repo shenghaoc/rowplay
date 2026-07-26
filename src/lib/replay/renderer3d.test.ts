@@ -4254,7 +4254,7 @@ describe("CourseRenderer3D", () => {
       };
       // Near-white tint: the wood-floor diffuse map multiplies this colour,
       // and the old timber-brown made brown x brown ~ black at High/Ultra.
-      expect(lane.material.color.getHex()).toBe(0x977244);
+      expect(lane.material.color.getHex()).toBe(0xe6cfa8);
       r.destroy();
     });
 

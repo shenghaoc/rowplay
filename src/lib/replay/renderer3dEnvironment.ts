@@ -1678,7 +1678,7 @@ export class EnvironmentBuilder {
       themed(0xffc97e, 0xffc27a),
       {
         transparent: true,
-        opacity: 0.32,
+        opacity: 0.38,
         depthWrite: false,
         fog: false,
       },

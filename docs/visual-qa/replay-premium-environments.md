@@ -3,7 +3,7 @@
 > **Current status (2026-07-26): recaptured and current.** The 63-frame matrix
 > below was re-taken after the one-light-story pass and the morning-glass /
 > finish-tower / floodlight-pool set pieces, on the build it evidences:
-> `buildVersion 1785043302330`, recorded in the manifest. The harness now
+> `buildVersion 1785044266849`, recorded in the manifest. The harness now
 > asserts the served `_app/version.json` matches the disk build before
 > capturing, so the port-race staleness that invalidated the previous set
 > fails loudly instead of silently photographing the wrong build. All 51 3D

@@ -563,13 +563,13 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     fog: themed(0x3d4249, 0x2b3944),
     fogNear: 72,
     fogFar: 165,
-    hemisphereSky: themed(0x8a8f96, 0x5f7485),
+    hemisphereSky: themed(0x8a8f96, 0x707f8e),
     hemisphereGround: themed(0x6b5844, 0x312d28),
     hemisphereIntensity: 1.15,
     // The one warm cone: a high haloed key doing the work the daylight did.
     sun: themed(0xffe2b0, 0xffd49a),
     sunIntensity: 3.5,
-    fill: themed(0x7d94a8, 0x607e93),
+    fill: themed(0x7d94a8, 0x6d8ba0),
     fillIntensity: 0.62,
     exposure: 1.16,
     farSilhouette: themed(0x525c63, 0x263442),
@@ -3376,7 +3376,10 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     // lit track reads as lit rather than the whole bowl being bright.
     groundColor: (t) => (t === "dark" ? 0x8fa5b3 : 0xaabfd0),
     course: {
-      surface: (t) => (t === "dark" ? 0x849daa : 0xd8e7ee),
+      // Dimmer than the old daylight groom: the floodlight pools are the lit
+      // subject now, and they can only read if the ring between them is not
+      // already bright.
+      surface: (t) => (t === "dark" ? 0x849daa : 0xc7d6e2),
       edge: (t) => (t === "dark" ? 0x7893a2 : 0xb6ccd8),
       laneLine: (t) => (t === "dark" ? 0x607f8e : 0x8eafbd),
       detail: (t) => (t === "dark" ? 0x7c6cf0 : 0x6d5ef5),
@@ -3402,13 +3405,20 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
       // multiplies this colour, and brown × brown ≈ black — the track spent a
       // whole art pass reading as charcoal because the albedo was paid twice.
       // The map carries the wood; this tint only warms it.
-      surface: (t) => (t === "dark" ? 0x977244 : 0xdbc09a),
+      // Dark stays NEAR-WHITE too: the wood map multiplies it, and the dark
+      // room already dims the result — a dark tint × dark map × dim light was
+      // charcoal three times over. Separation from equipment passes on the
+      // bright side of the gap.
+      surface: (t) => (t === "dark" ? 0xe6cfa8 : 0xdbc09a),
       edge: (t) => (t === "dark" ? 0xdfe7e8 : 0xf4f2eb),
       laneLine: (t) => (t === "dark" ? 0x5fa4c4 : 0x2f7298),
       detail: (t) => (t === "dark" ? 0xe9685e : 0xc63f38),
       secondary: (t) => (t === "dark" ? 0x51463e : 0x725f4d),
       surfaceOpacity: 1,
-      roughness: 0.56,
+      // Matte, not varnish: with the roughness map multiplying this down, the
+      // glossy value mirrored the dark roof cavity and the timber read black
+      // at night no matter what colour it was.
+      roughness: 0.82,
       metalness: 0.025,
     },
     make: makeBikeAvatar,
