@@ -4925,4 +4925,50 @@ describe("CourseRenderer3D", () => {
       renderer.destroy();
     });
   });
+
+  describe("one-light-story set pieces", () => {
+    it("pools floodlight on the dusk ski course, anchored to the masts", () => {
+      const renderer = new CourseRenderer3D(makeHost(), "high", "skierg");
+      const pools = getScene(renderer).getObjectByName(
+        "environment:skierg:floodlight-pools",
+      ) as THREE.InstancedMesh;
+      expect(pools).toBeDefined();
+      expect(pools.count).toBe(8);
+      // Painted light: additive and non-occluding, never a real THREE light.
+      const material = pools.material as THREE.MeshBasicMaterial;
+      expect(material.blending).toBe(THREE.AdditiveBlending);
+      expect(material.depthWrite).toBe(false);
+      renderer.destroy();
+    });
+
+    it("gives the rower water its own sky reflections without scene-wide IBL", () => {
+      const renderer = new CourseRenderer3D(makeHost(), "high", "rower");
+      const scene = getScene(renderer);
+      // The scene-wide opt-out stands — that path measurably desaturated the
+      // basin — while the water alone carries the sky through its envMap.
+      expect(scene.environment).toBeNull();
+      const water = (scene.getObjectByName("ground") as THREE.Mesh)
+        .material as THREE.MeshPhysicalMaterial;
+      expect(water.envMap?.name).toBe("environment:texture:sky-radiance");
+      renderer.destroy();
+    });
+
+    it("keeps Low's water on the art-directed rig with no radiance map", () => {
+      const renderer = new CourseRenderer3D(makeHost(), "low", "rower");
+      const water = (getScene(renderer).getObjectByName("ground") as THREE.Mesh)
+        .material as THREE.MeshPhysicalMaterial;
+      expect(water.envMap).toBeNull();
+      renderer.destroy();
+    });
+
+    it("builds the finish tower with its timing wing and morning mist", () => {
+      const renderer = new CourseRenderer3D(makeHost(), "high", "rower");
+      const scene = getScene(renderer);
+      const tower = scene.getObjectByName("environment:rower:finish-tower");
+      expect(tower).toBeDefined();
+      expect(scene.getObjectByName("environment:rower:finish-tower-wing")).toBeDefined();
+      expect(scene.getObjectByName("environment:rower:mist-band-1")).toBeDefined();
+      renderer.destroy();
+    });
+  });
 });

@@ -1656,12 +1656,151 @@ export class EnvironmentBuilder {
     );
   }
 
+  /**
+   * Warm pools of floodlight on the groomed course, one per mast, so the dusk
+   * track alternates lit and dim instead of being uniformly bright. Painted
+   * light, not THREE lights: eight spotlights would cost more than the whole
+   * venue, while eight additive discs cost one instanced draw. The pools sit
+   * at the masts' course angles, so light and source agree.
+   */
+  private addSkiLightPools(group: THREE.Group, outerR: number): void {
+    if (this.ctx.cfg.environmentDetail < 1) return;
+    const count = Math.min(SKI_FLOODLIGHTS.length, [0, 5, 8, 8][this.ctx.cfg.environmentDetail]);
+    if (count === 0) return;
+    const poolGeo = this.ctx.track(new THREE.CircleGeometry(1, 24));
+    const poolMat = this.ctx.environmentBasicMat(
+      "environment:skierg:floodlight-pool-material",
+      themed(0xffe4b0, 0xffdca0),
+      {
+        transparent: true,
+        opacity: 0.3,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        fog: false,
+      },
+    );
+    const pools = this.ctx.trackInstanced(new THREE.InstancedMesh(poolGeo, poolMat, count));
+    pools.name = "environment:skierg:floodlight-pools";
+    const matrix = new THREE.Matrix4();
+    const flat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+    const spin = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    const laneCentre = outerR - 4;
+    for (let i = 0; i < count; i++) {
+      const placement = SKI_FLOODLIGHTS[i]!;
+      const a = placement.angle;
+      position.set(Math.sin(a) * laneCentre, 0.045, Math.cos(a) * laneCentre);
+      // Elongated along the direction of travel, like a beam raking the snow.
+      spin.setFromAxisAngle(WORLD_UP, a).multiply(flat);
+      scale.set(3.2 + (i % 3) * 0.5, 5.6 + (i % 2) * 0.9, 1);
+      matrix.compose(position, spin, scale);
+      pools.setMatrixAt(i, matrix);
+    }
+    pools.instanceMatrix.needsUpdate = true;
+    group.add(pools);
+  }
+
+  /**
+   * Morning mist hugging the far shoreline: one translucent band between the
+   * water and the bank woodland. It is the middle value of the dark-light-dark
+   * structure that makes early-water photography read — trees, mist and glare,
+   * then foreground water.
+   */
+  private addRowerMistBand(group: THREE.Group, outerR: number): void {
+    if (this.ctx.cfg.environmentDetail < 1) return;
+    const mistMat = this.ctx.environmentBasicMat(
+      "environment:rower:mist-material",
+      themed(0xf2ede2, 0x9db4bd),
+      { transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, fog: true },
+    );
+    for (const [index, sector] of ROW_WOODLAND_SECTORS.entries()) {
+      const band = this.ctx.makeVerticalArc(
+        `environment:rower:mist-band-${index + 1}`,
+        outerR + 5.2,
+        1.15,
+        0.35,
+        sector,
+        mistMat,
+      );
+      group.add(band);
+    }
+  }
+
+  /**
+   * Finish tower with a horizontal timing wing: the lap's destination. Real
+   * regatta courses put the judges' tower at the line, and it is the one
+   * vertical the basin's long horizontals need.
+   */
+  private addRowerFinishTower(group: THREE.Group, outerR: number): void {
+    if (this.ctx.cfg.environmentDetail < 1) return;
+    const angle = degrees(52);
+    const radius = outerR + 3.4;
+    const x = Math.sin(angle) * radius;
+    const z = Math.cos(angle) * radius;
+    const structureMat = this.ctx.environmentStandardMat(
+      "environment:rower:finish-tower-material",
+      this.ctx.environment.venueStructure,
+      { roughness: 0.62, metalness: 0.12, fog: true },
+    );
+    const accentMat = this.ctx.environmentStandardMat(
+      "environment:rower:finish-tower-accent-material",
+      this.ctx.environment.venueAccent,
+      { roughness: 0.55, metalness: 0.08, fog: true },
+    );
+    const glassMat = this.ctx.environmentBasicMat(
+      "environment:rower:finish-tower-glass-material",
+      themed(0xdff1f6, 0x8fc3d4),
+      { transparent: true, opacity: 0.85, fog: true },
+    );
+    const tower = new THREE.Group();
+    tower.name = "environment:rower:finish-tower";
+    const shaft = new THREE.Mesh(
+      this.ctx.track(new THREE.BoxGeometry(1.5, 5.6, 1.5)),
+      structureMat,
+    );
+    shaft.name = "environment:rower:finish-tower-shaft";
+    shaft.position.set(0, 2.8, 0);
+    const cabin = new THREE.Mesh(
+      this.ctx.track(roundedVenueBlockGeometry(2.6, 1.5, 2.2, 0.12)),
+      structureMat,
+    );
+    cabin.name = "environment:rower:finish-tower-cabin";
+    cabin.position.set(0, 6.4, 0);
+    const glazing = new THREE.Mesh(
+      this.ctx.track(new THREE.BoxGeometry(2.65, 0.62, 2.25)),
+      glassMat,
+    );
+    glazing.name = "environment:rower:finish-tower-glazing";
+    glazing.position.set(0, 6.55, 0);
+    // The wing reaches over the water toward the finish line.
+    const wing = new THREE.Mesh(this.ctx.track(new THREE.BoxGeometry(0.35, 0.3, 6.4)), accentMat);
+    wing.name = "environment:rower:finish-tower-wing";
+    wing.position.set(0, 7.35, -2.4);
+    const mast = new THREE.Mesh(
+      this.ctx.track(new THREE.CylinderGeometry(0.07, 0.09, 1.6, 8)),
+      accentMat,
+    );
+    mast.name = "environment:rower:finish-tower-mast";
+    mast.position.set(0, 8.1, 0);
+    tower.add(shaft, cabin, glazing, wing, mast);
+    for (const mesh of tower.children) {
+      if (mesh instanceof THREE.Mesh) mesh.castShadow = this.ctx.cfg.shadows;
+    }
+    tower.position.set(x, 0, z);
+    // Face the wing across the course toward the centre.
+    tower.rotation.y = angle + Math.PI;
+    group.add(tower);
+  }
+
   addRowerRegattaWorld(group: THREE.Group, detailGroup: THREE.Group, outerR: number): void {
     // One basin, four authored land uses. Low gets the island, clean banks and
     // one club landmark; higher tiers progressively add valley depth, material
     // transitions, course infrastructure and an Ultra wetland destination.
     this.addRowerIslandCenter(group, outerR);
     this.addRowerShorelineSystem(group, outerR);
+    this.addRowerMistBand(group, outerR);
+    this.addRowerFinishTower(group, outerR);
     this.addInstancedPines(
       group,
       // Bank woodland reads as woodland only past ~60 crowns; below that the
@@ -2254,6 +2393,7 @@ export class EnvironmentBuilder {
   addSkiStadiumWorld(group: THREE.Group, detailGroup: THREE.Group, outerR: number): void {
     this.addSkiStadiumCentre(group, outerR);
     this.addSkiNearField(group, outerR);
+    this.addSkiLightPools(group, outerR);
     if (this.ctx.cfg.environmentDetail >= 1) this.addSkiValley(group, outerR);
     this.addSnowBerms(group, outerR, [6, 16, 28, 40][this.ctx.cfg.environmentDetail]);
     if (this.ctx.cfg.environmentDetail >= 1) {

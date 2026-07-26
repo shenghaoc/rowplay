@@ -159,6 +159,10 @@ export function makeSkyRadianceTexture(
   style: EnvironmentStyle,
   theme: ThemeName,
   sunDirection: THREE.Vector3,
+  // Baked-in gain. Three r184's WebGPU path ignores envMapIntensity, so a
+  // consumer that needs a weaker map cannot dial it at the material — the
+  // texture itself is the only dial that works on both backends.
+  intensity = 1,
 ): THREE.DataTexture {
   const zenith = new THREE.Color().setHex(style.skyZenith(theme), THREE.SRGBColorSpace);
   const horizon = new THREE.Color().setHex(style.skyHorizon(theme), THREE.SRGBColorSpace);
@@ -192,9 +196,9 @@ export function makeSkyRadianceTexture(
         Math.pow(cosToSun, SUN_GLOW_EXPONENT) * SUN_GLOW_RADIANCE;
 
       const offset = (y * SKY_RADIANCE_WIDTH + x) * 4;
-      data[offset] = THREE.DataUtils.toHalfFloat(sample.r + sun.r * lobe);
-      data[offset + 1] = THREE.DataUtils.toHalfFloat(sample.g + sun.g * lobe);
-      data[offset + 2] = THREE.DataUtils.toHalfFloat(sample.b + sun.b * lobe);
+      data[offset] = THREE.DataUtils.toHalfFloat((sample.r + sun.r * lobe) * intensity);
+      data[offset + 1] = THREE.DataUtils.toHalfFloat((sample.g + sun.g * lobe) * intensity);
+      data[offset + 2] = THREE.DataUtils.toHalfFloat((sample.b + sun.b * lobe) * intensity);
       data[offset + 3] = THREE.DataUtils.toHalfFloat(1);
     }
   }

@@ -3602,6 +3602,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private v4SkeletonHelper: THREE.SkeletonHelper | null = null;
   /** Current image-based lighting map; rebuilt per theme, disposed on destroy. */
   private skyRadiance: THREE.DataTexture | null = null;
+  private waterRadiance: THREE.DataTexture | null = null;
   /** Desired chase-camera position for the current frame. */
   private chase = new THREE.Vector3();
   /** Desired point of interest; kept separate so both translation and aim damp. */
@@ -4979,15 +4980,41 @@ export class CourseRenderer3D implements ReplayRenderer {
    * one-off GPU cost it exists to avoid.
    */
   private applySkyRadiance(themeName: "light" | "dark"): void {
-    // envIntensity 0 opts a venue out entirely (see RowErg).
-    if (this.cfg.environmentDetail < 1 || this.environment.envIntensity <= 0) return;
+    if (this.cfg.environmentDetail < 1) return;
     const previous = this.skyRadiance;
     this.skyRadiance = makeSkyRadianceTexture(this.environment, themeName, this.sunOffset);
-    this.scene.environment = this.skyRadiance;
-    this.scene.environmentIntensity = this.environment.envIntensity;
-    // Hand the ambient budget over to the radiance map rather than paying it
-    // twice. Low never reaches here and keeps the original hemisphere value.
-    this.hemisphereLight.intensity = this.environment.hemisphereIntensityIbl;
+    if (this.environment.envIntensity > 0) {
+      this.scene.environment = this.skyRadiance;
+      this.scene.environmentIntensity = this.environment.envIntensity;
+      // Hand the ambient budget over to the radiance map rather than paying it
+      // twice. Low never reaches here and keeps the original hemisphere value.
+      this.hemisphereLight.intensity = this.environment.hemisphereIntensityIbl;
+    } else if (this.profile.waves) {
+      // RowErg's Fresnel-aware share: scene-wide IBL desaturated the whole
+      // basin (measured, see the palette note), and Three r184's WebGPU path
+      // ignores per-material envMapIntensity — but it does honour a
+      // per-material envMap. So the water alone carries the sky: grazing
+      // angles pick up the morning sky and sun streak through the PBR Fresnel
+      // term, steep angles keep the authored teal, and every other material
+      // keeps the art-directed rig untouched.
+      const water = this.groundMesh.material;
+      if (water instanceof THREE.MeshPhysicalMaterial) {
+        // A separate dimmed bake, not this.skyRadiance: at full strength the
+        // clearcoat water mirrors the pale sky at every angle and the teal
+        // reads as ice. envMapIntensity cannot dial this down on WebGPU, so
+        // the gain is baked into the texture.
+        const previousWater = this.waterRadiance;
+        this.waterRadiance = makeSkyRadianceTexture(
+          this.environment,
+          themeName,
+          this.sunOffset,
+          0.32,
+        );
+        water.envMap = this.waterRadiance;
+        water.needsUpdate = true;
+        previousWater?.dispose();
+      }
+    }
     previous?.dispose();
   }
 
@@ -5734,6 +5761,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     // traversal above never reaches it.
     this.skyRadiance?.dispose();
     this.skyRadiance = null;
+    this.waterRadiance?.dispose();
+    this.waterRadiance = null;
     this.scene.environment = null;
     // Instance buffers are owned by the InstancedMesh, not its geometry or
     // material, so they still need their own dispose() after the traversal.
