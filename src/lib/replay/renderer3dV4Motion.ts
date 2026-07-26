@@ -1681,7 +1681,11 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     }
     if (!chain.isLeg && this.options.sport === "rower") {
       this.root.getWorldQuaternion(this.rootWorldQuaternion);
-      this.branchLateral.set(chain.side * 0.34, 0.015, 0).applyQuaternion(this.rootWorldQuaternion);
+      // A gentle outward lean is enough ribcage clearance now that the shared
+      // marker points the drawing elbow down under the shoulder line; the old
+      // 0.34 bias rotated the bend plane sideways and re-created the exact
+      // left/right chicken-wing the marker was selected to avoid.
+      this.branchLateral.set(chain.side * 0.12, 0.015, 0).applyQuaternion(this.rootWorldQuaternion);
       this.bendHint.add(this.branchLateral);
     }
     if (this.bendHint.lengthSq() <= TRANSFORM_EPSILON) {

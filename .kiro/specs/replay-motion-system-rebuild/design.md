@@ -81,11 +81,13 @@ long-arm reach, closes the last part of the handle path from the graph's late
 marker. V4 first samples its authored clip and hand orientation, then the
 renderer re-solves each fixed oar circle from the visible skinned shoulder,
 structural shoulder-to-wrist reach, and sampled wrist-to-palm offset before the
-final contact pass chooses the shared anatomical elbow branch. During the late
-draw, the equipment-locked two-bone solve intersects the elbow circle with a
-narrow plane just above the handle line and selects the outward/rearward
-solution. The visible upper arm therefore slopes down from shoulder to elbow
-without either the old shoulder-height chicken wing or a below-grip droop. The
+final contact pass chooses the shared anatomical elbow branch. During the
+loaded draw, the equipment-locked two-bone solve intersects the elbow circle
+with a height band below the handle line — its depth follows blade load — and
+keeps the joint close under its own shoulder. The visible humerus therefore
+extends down-and-back to an elbow beneath the grips, without the old
+shoulder-height chicken wing, a left/right horizontal flare, or a
+past-vertical behind-the-back haul. The
 rigid grip remains terminal authority without asking IK to compensate for a
 hidden-rig shoulder mismatch. Dense-cycle tests reject elbow flexion before
 hand/knee clearance, forward-pointing or sideways elbows, grip separation,

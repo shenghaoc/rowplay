@@ -1640,25 +1640,25 @@ describe("CourseRenderer3D", () => {
       const handle = athlete.worldToLocal(
         worldPosition(renderer, `rower-hand-contact-${label}`).clone(),
       );
-      // The RowErg athlete's chest faces +z in its local frame. A completed
-      // draw sends the elbow slightly rearward of the shoulder (+z) and
-      // diagonally down/out toward the grip. Hands stay on the lower-chest
-      // handles rather than being hauled behind the back.
-      expect(elbow.z, `${label} elbow rearward at finish`).toBeGreaterThan(shoulder.z + 0.02);
+      // The RowErg athlete's chest faces +z in its local frame. At the finish
+      // the humerus extends down-and-back: the elbow hangs below the handle
+      // line, close under its own shoulder, at most slightly behind the
+      // laid-back shoulder plane — never flared into a left/right wing and
+      // never hauled deep behind the back.
+      expect(elbow.z, `${label} elbow not hauled behind the back`).toBeGreaterThan(
+        shoulder.z - 0.18,
+      );
+      expect(elbow.z, `${label} elbow stays behind the grip`).toBeLessThan(handle.z - 0.02);
       expect(shoulder.y - elbow.y, `${label} upper arm slopes down at finish`).toBeGreaterThan(
-        0.025,
+        0.18,
       );
       expect(
         (elbow.x - shoulder.x) * side,
-        `${label} elbow opens outward at finish`,
-      ).toBeGreaterThan(0.2);
-      expect((elbow.x - shoulder.x) * side, `${label} elbow outward restraint`).toBeLessThan(0.45);
-      expect(elbow.y, `${label} elbow stays above the finish handle`).toBeGreaterThan(
-        handle.y + 0.02,
-      );
-      expect(elbow.y, `${label} elbow points down along the handle line`).toBeLessThan(
-        handle.y + 0.14,
-      );
+        `${label} elbow stays near the shoulder line`,
+      ).toBeGreaterThan(-0.05);
+      expect((elbow.x - shoulder.x) * side, `${label} elbow outward restraint`).toBeLessThan(0.2);
+      expect(elbow.y, `${label} elbow hangs below the finish handle`).toBeLessThan(handle.y - 0.02);
+      expect(elbow.y, `${label} elbow depth restraint`).toBeGreaterThan(handle.y - 0.28);
     }
 
     renderer.destroy();
@@ -1720,12 +1720,13 @@ describe("CourseRenderer3D", () => {
           // the continuity guard as soon as either arm exposes real flexion.
           Math.min(straightness, priorStraightness) < 0.8
         ) {
-          // The fastest legitimate elbow motion is the late draw (~0.12 per
-          // 1/256-cycle step, wrist-speed bound). A branch flip teleports the
-          // elbow across the chord circle (0.4+ in one step), so this margin
-          // separates fast-but-continuous from discontinuous.
+          // The fastest legitimate elbow motion is the late draw (~0.165 per
+          // 1/256-cycle step as the joint sweeps down under the shoulder
+          // line). A branch flip teleports the elbow across the chord circle
+          // (0.3+ in one step), so this margin separates fast-but-continuous
+          // from discontinuous.
           expect(elbow.distanceTo(prior), `${side} elbow continuity at ${cycle}`).toBeLessThan(
-            0.16,
+            0.18,
           );
         }
         previous.set(side, elbow.clone());
@@ -3343,7 +3344,11 @@ describe("CourseRenderer3D", () => {
             }
             // True finish window (drive end 0.38): palms stay chest-level on
             // the grip — never hauled aft past the hips through the torso.
-            if (cycle >= 0.36 && cycle <= 0.4) {
+            // The strict down-elbow band applies to the loaded finish only:
+            // by ~0.39 the blade is extracting and the elbows are already
+            // straightening for hands-away, so the joint legitimately rises
+            // back toward handle height.
+            if (cycle >= 0.36 && cycle <= 0.385) {
               const athlete = sceneObject(renderer, "rower-athlete");
               const elbowLocal = athlete.worldToLocal(elbow.clone());
               const palmLocal = athlete.worldToLocal(palm.clone());
@@ -3356,15 +3361,14 @@ describe("CourseRenderer3D", () => {
               expect(
                 shoulderLocal.y - elbowLocal.y,
                 `${side} V4 upper arm slopes down at finish ${cycle}`,
-              ).toBeGreaterThan(0.025);
+              ).toBeGreaterThan(0.15);
               expect(
                 elbowLocal.y,
-                `${side} V4 elbow stays above the finish handle ${cycle}`,
-              ).toBeGreaterThan(palmLocal.y + 0.02);
-              expect(
-                elbowLocal.y,
-                `${side} V4 elbow points down along the handle line ${cycle}`,
-              ).toBeLessThan(palmLocal.y + 0.14);
+                `${side} V4 elbow hangs below the finish handle ${cycle}`,
+              ).toBeLessThan(palmLocal.y - 0.01);
+              expect(elbowLocal.y, `${side} V4 elbow depth restraint ${cycle}`).toBeGreaterThan(
+                palmLocal.y - 0.3,
+              );
               // Handle finishes near the lower ribs/chest, not behind the hips.
               expect(
                 palmLocal.z,

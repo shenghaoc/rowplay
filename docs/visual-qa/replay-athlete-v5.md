@@ -559,10 +559,13 @@ the heels sit about 16 cm below the seat and include heel restraints, instep
 hardware, and diagonal supports. The shared procedural/V4 leg solve keeps the
 shins near vertical at catch, knees above and inside the cockpit, and legs near
 straight at finish. The rowing graph sequences legs → torso → arms on the drive
-and hands → body → slide on recovery. At the late draw, both upper arms slope
-down/out from the shoulders to elbows held just above the two handle axes. This
-rejects both the shoulder-height “chicken wing” and a below-handle elbow droop
-while the palms remain locked around their separate rubber grips.
+and hands → body → slide on recovery. At the loaded draw, each humerus extends
+down-and-back: the elbows hang below the handle line, close under their own
+shoulders and at most slightly behind the laid-back shoulder plane, then rise
+back toward handle height as the blades extract. This rejects the
+shoulder-height “chicken wing”, the left/right horizontal elbow flare, and a
+past-vertical behind-the-back haul while the palms remain locked around their
+separate rubber grips.
 
 Blade/water interaction follows the same on-water model: the squared spoons
 drop in just before the catch, stay buried below the water plane for the entire

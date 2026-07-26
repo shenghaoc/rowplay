@@ -1081,17 +1081,21 @@ function solveRowerArmWithCorridor(
 ): void {
   solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
 
+  // A drawing elbow hangs close under its own shoulder line: allow a modest
+  // outboard lean and only a token inboard excursion. The former 0.2–0.45 m
+  // outboard band pushed the joint past the hand line and, combined with a
+  // chord-height target, read as elbows pointing left/right instead of down.
   const corridorMin =
-    side < 0
-      ? shoulder.x - 0.45
-      : side > 0
-        ? shoulder.x + 0.2
-        : Math.min(shoulder.x, hand.x) - 0.04;
-  const corridorMax =
     side < 0
       ? shoulder.x - 0.2
       : side > 0
-        ? shoulder.x + 0.45
+        ? shoulder.x - 0.03
+        : Math.min(shoulder.x, hand.x) - 0.04;
+  const corridorMax =
+    side < 0
+      ? shoulder.x + 0.03
+      : side > 0
+        ? shoulder.x + 0.2
         : Math.max(shoulder.x, hand.x) + 0.04;
 
   if (minimumElbowY !== undefined && maximumElbowY !== undefined) {
@@ -2321,6 +2325,11 @@ function makeRowerAvatar(
   let pendingArmDraw = 0;
   let pendingShoulderSet = 0;
   let pendingHandleTravel = 0;
+  // Blade immersion drives the elbow band: while the spoon is loaded the
+  // drawing elbow hangs deep below the handle line, and it rises back toward
+  // handle height as the blade extracts so the release cannot pin the deep
+  // solution against the behind-the-back floor and snap branches.
+  let pendingBladeLoad = 0;
   const placeArms = (
     bodySwing: number,
     armDraw: number,
@@ -2454,10 +2463,10 @@ function makeRowerAvatar(
       // Fade the finish handle-height plane in across the visible draw. The
       // ramp starts while the arm is still nearly straight — the elbow circle
       // is tiny there, so adopting the plane costs almost no motion — and
-      // saturates before the finish assertions. A hard draw threshold made
-      // the analytic solve replace the free branch in a single frame, which
-      // measured as a ~0.45 m elbow teleport at that exact sample.
-      const finishPlaneWeight = THREE.MathUtils.smoothstep(draw, 0.25, 0.9);
+      // saturates early so the elbow is already pointing down before the
+      // circle grows; a late saturation swept the enlarged circle mid-draw
+      // and a hard threshold measured as a ~0.45 m one-frame teleport.
+      const finishPlaneWeight = THREE.MathUtils.smoothstep(draw, 0.08, 0.7);
       if (finishPlaneWeight > 0) {
         solveRowerArmWithCorridor(
           arm.shoulderPoint,
@@ -2467,11 +2476,20 @@ function makeRowerAvatar(
           arm.bendHint,
           arm.elbowPoint,
           arm.handPoint,
-          // Keep the joint visibly ahead of the shoulder plane — the finish
-          // contract asserts a 0.02 minimum, so enforce it with margin.
-          arm.shoulderPoint.z + 0.025,
-          arm.handTarget.y + 0.025,
-          arm.handTarget.y + 0.13,
+          // With ~28° of layback a straight-down humerus already hangs the
+          // elbow ~0.145 behind the shoulder plane, so the floor only forbids
+          // a past-vertical behind-the-back haul. A tighter floor bound the
+          // deep release elbow and made the floor-root selection snap.
+          arm.shoulderPoint.z - 0.16,
+          // Aim below the handle line: the humerus extends down-and-back at
+          // the loaded finish, so the elbow hangs under the shoulder–grip
+          // chord (roughly 5–24 cm beneath the handle). Targeting a band
+          // deeper than the elbow circle usually reaches makes the solve pick
+          // the lowest point of the circle — elbows pointing down, not out.
+          // The depth follows blade load so the joint rises smoothly with the
+          // extraction instead of pinning against the behind-the-back floor.
+          arm.handTarget.y - THREE.MathUtils.lerp(0.125, 0.24, pendingBladeLoad),
+          arm.handTarget.y - THREE.MathUtils.lerp(-0.065, 0.05, pendingBladeLoad),
           arm.side,
           finishPlaneWeight,
         );
@@ -2660,6 +2678,7 @@ function makeRowerAvatar(
     pendingArmDraw = equipmentHandleTravel;
     pendingShoulderSet = graph.body.shoulderSet.value;
     pendingHandleTravel = equipmentHandleTravel;
+    pendingBladeLoad = graph.contacts.bladeWater.value;
     placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel);
     return reduce
       ? STATIC_AVATAR_MOTION

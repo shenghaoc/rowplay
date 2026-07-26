@@ -96,9 +96,11 @@ viewing speed.
    SHALL straighten
    the arms and move the hands back past the knees before body-over and slide;
    neither renderer SHALL select a forward-pointing, horizontal-wing, or
-   through-torso elbow branch. At the finish, each upper arm SHALL descend
-   outward from the shoulder toward an elbow just above the handle line;
-   neither a shoulder-height chicken wing nor a below-grip elbow droop is
+   through-torso elbow branch. At the loaded finish, each humerus SHALL extend
+   down-and-back to an elbow below the handle line, close under its own
+   shoulder and at most slightly behind the laid-back shoulder plane; neither
+   a shoulder-height chicken wing, a left/right horizontal elbow flare, nor a
+   past-vertical behind-the-back haul is
    acceptable. V4 feet SHALL remain locked to the stretcher while both knees
    follow the shared raised rowing branch; neither leg may inherit the standing
    rest skeleton's downward branch or pass through the cockpit. Each hand SHALL
