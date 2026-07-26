@@ -106,7 +106,6 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     sprayPerCatch: 0,
     environmentDetail: 0,
     bodySegments: 10,
-    boatDetail: 0,
   },
   medium: {
     dprCap: 2,
@@ -125,7 +124,6 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     sprayPerCatch: 7,
     environmentDetail: 1,
     bodySegments: 14,
-    boatDetail: 1,
   },
   high: {
     dprCap: 2,
@@ -144,7 +142,6 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     sprayPerCatch: 8,
     environmentDetail: 2,
     bodySegments: 18,
-    boatDetail: 2,
   },
   ultra: {
     dprCap: 3,
@@ -163,7 +160,6 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     sprayPerCatch: 10,
     environmentDetail: 3,
     bodySegments: 24,
-    boatDetail: 3,
   },
 };
 
@@ -430,7 +426,10 @@ const CAMERA_RIGS: Record<Sport, CameraRig> = {
   // comparison framing, so this is a static composition choice, not an orbit.
   // Row sits slightly lower and longer than before so the water plane and
   // softened far bank fill more of the frame, without clipping the scull.
-  rower: { back: 4.05, height: 1.78, ahead: 0.88, lateral: 2.05, aimY: 0.84 },
+  // The 7.8 m shell pulls the desktop chase back to 5.4 m; lateral rises with
+  // it so the rear-three-quarter ratio (lateral/retreat) stays above the 0.38
+  // composition contract instead of flattening into a rear view.
+  rower: { back: 4.05, height: 1.78, ahead: 0.88, lateral: 2.16, aimY: 0.84 },
   skierg: { back: 3.15, height: 2.3, ahead: 0.9, lateral: 1.86, aimY: 1.14 },
   bike: { back: 3.12, height: 1.96, ahead: 0.58, lateral: 1.92, aimY: 0.92 },
 };
@@ -1805,8 +1804,12 @@ function makeRowerAvatar(
   castShadow: boolean,
   opacity = 1,
   bodySegments = 16,
-  boatDetail: BoatDetail = 1,
+  quality: RenderQuality = "medium",
 ): Avatar {
+  // RowErg shell finish/detail ladder follows the shared quality tier the
+  // sport-profile factory now passes to every avatar maker.
+  const boatDetail: BoatDetail =
+    quality === "low" ? 0 : quality === "medium" ? 1 : quality === "high" ? 2 : 3;
   const segs = bodySegments;
   const capSegs = Math.max(10, Math.round(segs * 0.82));
   const headSegs = Math.max(14, segs + 2);

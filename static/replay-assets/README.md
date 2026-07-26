@@ -23,11 +23,11 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 720,756 bytes; SHA-256
-  `4422979720d151711c07f7f7107dda86aff1ee51681f86e386ce898ace9a8db8`.
+- **Reviewed V3 artifact:** 733,864 bytes; SHA-256
+  `31418f4808b30fa786830129b0b637fc025b6e5ddbb539d848fc8cab74806925`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 53
   direct composite parts (25 top-level logical entities; 78 nodes / 71 mesh
-  nodes total). The package has 28,708 indexed triangles and 19,888 indexed
+  nodes total). The package has 29,292 indexed triangles and 20,289 indexed
   vertices, one neutral placeholder material, zero textures/images, zero
   animations, and zero skins.
 - **Detail language:** shared-vertex smooth normals, a neutral lower rowing hull
@@ -75,7 +75,7 @@ strict part count, and its material-role list.
 
 | Template root                        | Canonical anchor contract                                                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `equipment:row:boat-assembly`        | Row avatar root coordinates: open hull, split fore/aft decks, recessed cockpit, stern-side stretcher at local `z ≈ 0.68`, rails, and full-width rigger; stern-side oarlocks meet the animated pivots at `(±0.88, 0.51, 0.28)`. |
+| `equipment:row:boat-assembly`        | Row avatar root coordinates: open hull, split fore/aft decks, recessed cockpit, stern-side stretcher at local `z ≈ 0.68`, rails, and full-width rigger; stern-side oarlocks meet the animated pivots at `(±0.88, 0.51, 0.28)`.                                                                                                                                                 |
 | `equipment:row:oar-rig`              | One oar at its pin, with `+X` outboard: attach identity on the right and yaw π on the left. The animated blade remains the leaf slot.                                                                                                                                                                                                                                          |
 | `equipment:row:seat-carriage`        | Moving rower-group coordinates: the shaped pad, metal carriage, guides, and four rollers translate with the pelvis while remaining directly over the static slide rails.                                                                                                                                                                                                       |
 | `equipment:ski:ski-assembly`         | One measured readable-classic ski at the per-side anchor `(side × 0.15, 0, 0.16)`; clone it once per ski. The 1.90 m runner (scaled at build time from the authored 2.06 m native profile to the `skiEquipment.ts` contract), 0.072 m maximum width, raised tip, metal edges, and free-heel toe binding parts remain static while poles and boots retain the runtime contacts. |
