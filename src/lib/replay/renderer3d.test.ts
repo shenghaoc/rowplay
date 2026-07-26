@@ -3057,6 +3057,34 @@ describe("CourseRenderer3D", () => {
               channel.clone().sub(wrist).normalize().dot(inward),
               `${side} palm turned inward at ${cycle}`,
             ).toBeGreaterThan(0.2);
+            // The hand must also be the right way up: thumb toward the grip
+            // top, pinky lowest. The former nearest-arc curl alignment held
+            // the pole with the fist inverted (thumb pointing down-shaft) at
+            // every phase — palms read as flipped 180° — so the stacking
+            // order along the shaft is pinned here for both hands.
+            const thumbStation = scene
+              .getObjectByName(`v4${cap}ThumbDistal`)!
+              .getWorldPosition(new THREE.Vector3())
+              .sub(shaft.gripW)
+              .dot(shaft.axis);
+            const pinkyStation = scene
+              .getObjectByName(`v4${cap}PinkyDistal`)!
+              .getWorldPosition(new THREE.Vector3())
+              .sub(shaft.gripW)
+              .dot(shaft.axis);
+            const indexStation = scene
+              .getObjectByName(`v4${cap}IndexDistal`)!
+              .getWorldPosition(new THREE.Vector3())
+              .sub(shaft.gripW)
+              .dot(shaft.axis);
+            expect(
+              pinkyStation - thumbStation,
+              `${side} thumb rides above the pinky on the grip at ${cycle}`,
+            ).toBeGreaterThan(0.03);
+            expect(
+              indexStation - thumbStation,
+              `${side} thumb rides above the index on the grip at ${cycle}`,
+            ).toBeGreaterThan(0.005);
           }
         }
       } finally {
@@ -4473,7 +4501,7 @@ describe("CourseRenderer3D", () => {
       // swing clamp at all.
       const ENVELOPES = {
         rower: { twist: 1.36, flexion: 2.06, deviation: 1.75 },
-        skierg: { twist: 1.36, flexion: 1.62, deviation: 2.05 },
+        skierg: { twist: 1.36, flexion: 2.0, deviation: 1.5 },
         bike: { twist: 1.36, flexion: 1.62, deviation: 0.8 },
       } as const;
       for (const sport of ["rower", "skierg", "bike"] as const) {

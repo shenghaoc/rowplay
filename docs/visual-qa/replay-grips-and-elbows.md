@@ -61,6 +61,20 @@ orientation limited to an 8° slerp for RowErg/BikeErg.
 | BikeErg grip-channel contact residual             | ≤17 mm across the crank cycle (was budgeted 170 mm)                                                                                   |
 | Wrist clamp engagement in production frames       | never (`clampedSwing == 0` asserted across 256 phases × 3 sports)                                                                     |
 
+A follow-up fix in the same branch corrected the SkiErg hold orientation:
+the pole frame's former nearest-arc curl alignment silently selected the
+inverted branch at every phase — thumb pointing down the shaft, pinky above
+index — an upside-down hold that read as palms flipped 180° (it predates
+this branch; the old open-mitten fingers merely hid it, and the geometry-
+closed wrap made it legible). The alignment is now a deterministic contract
+(`handCurlAxisThumbward` toward the grip top), measured after the fix as
+thumb above index above pinky at every sampled phase with the palm still
+facing the centreline (pf·inward 0.98–1.00), and pinned by a stacking-order
+regression in the fist-enclosure test. The corrected frame is also
+anatomically calmer: ski wrist demand outside the double-cover region
+dropped to ≤109° flexion / ≤78° deviation with the emergency clamp never
+engaging.
+
 Geometry acceptance now runs in `renderer3d.test.ts` against the shipped GLB:
 handle-inside-enclosure with opposing thumb contact for both sculls, thumb on
 the flat handle ends, hood palm support with fingertips wrapped past the

@@ -46,7 +46,7 @@ import {
   solveRowerArm,
   solveRowerOarYaw,
 } from "./rowRig";
-import { handChannelCentre, orientHandToGripChannel } from "./handGrip";
+import { handChannelCentre, handCurlAxisThumbward, orientHandToGripChannel } from "./handGrip";
 import {
   applyReplayAssetLibrary,
   hideWithReplayAssets,
@@ -1113,8 +1113,12 @@ function gripContractFor(
  *
  * The shaft frame supplies the baseline, which fixes the one genuinely free
  * parameter — spin about the pole — continuously with the rigid link. The
- * curl axis is then rotated onto the shaft by the shortest arc, so the wrist
- * keeps whatever the arm solve chose and only the enclosure is corrected.
+ * curl axis is aligned **thumb-ward toward the grip top**: the former
+ * nearest-arc auto-flip silently selected the inverted branch (pinky above
+ * index, thumb pointing down the shaft) at every phase, which is the
+ * upside-down hold that read as palms flipped 180°. A pole grip has exactly
+ * one correct end for the thumb, so the sign is a contract, not a distance
+ * heuristic.
  *
  * `shaftDirLocal` is the shaft's own direction (grip end → tip) in the hand's
  * **parent** frame, which is where this whole construction lives. Deriving the
@@ -1134,13 +1138,10 @@ function orientHandToNordicPole(
   scratchRoll: THREE.Vector3,
 ): void {
   hand.quaternion.copy(poleShaft.quaternion);
-  scratchAxis
-    .set(SKI_HAND_CURL_AXIS.x, side * SKI_HAND_CURL_AXIS.y, side * SKI_HAND_CURL_AXIS.z)
-    .normalize()
-    .applyQuaternion(hand.quaternion);
-  // Either shaft end may be the closer one; take the nearer so the correction
-  // is the shortest arc and the thumb never flips end-for-end mid-cycle.
-  scratchTarget.copy(shaftDirLocal).multiplyScalar(shaftDirLocal.dot(scratchAxis) >= 0 ? 1 : -1);
+  handCurlAxisThumbward(side, scratchAxis).applyQuaternion(hand.quaternion);
+  // Thumb toward the grip top: the along-shaft target is the *up*-shaft
+  // direction, deterministically, at every phase.
+  scratchTarget.copy(shaftDirLocal).multiplyScalar(-1).normalize();
   hand.quaternion.premultiply(scratch.setFromUnitVectors(scratchAxis, scratchTarget));
 
   // Aligning the curl axis leaves exactly one freedom: spin about the shaft.
