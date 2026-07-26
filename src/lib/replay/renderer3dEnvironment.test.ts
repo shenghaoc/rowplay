@@ -267,7 +267,7 @@ describe("EnvironmentBuilder", () => {
       builder.loadEnvironmentTexture(
         material,
         "map",
-        "/replay-assets/environments/clean-asphalt/clean-asphalt-diffuse-512.jpg",
+        "/replay-assets/environments/wood-floor/wood-floor-diffuse-512.jpg",
         [4, 4],
       );
       await Promise.resolve();

@@ -26,9 +26,9 @@ generic background. RowErg therefore composes a continuous river valley from
 water through reeds, banks, woodland, docks, and regatta buildings. SkiErg
 composes one winter bowl from groomed track through snow shoulders, race
 fencing, forest, lodge forms, and blue-shadowed alpine terrain.
-BikeErg completes the same system with a cobalt-and-amber dusk skyline, urban
-edge, planted infield, service apron, grandstands, roof structure, practical
-lighting, barriers, and asphalt lap details.
+BikeErg completes the same system as a bright indoor timber velodrome: a
+daylit roof and skylights, two authored seating straights, multi-use infield,
+service pit, track boards, scoreboard, and tier-gated hospitality architecture.
 
 ## Environment art direction
 
@@ -36,11 +36,11 @@ Each sport uses its own Environment_Profile across 2D and 3D. The renderers do
 not need identical geometry, but they share the same material and composition
 language.
 
-| Sport   | Primary material           | Horizon and venue language                                      | Accent restraint                    |
-| ------- | -------------------------- | ---------------------------------------------------------------- | ----------------------------------- |
-| RowErg  | Deep layered water         | Wooded shoreline, low regatta structures, disciplined markers   | Warm light and lane/buoy highlights |
-| SkiErg  | Groomed blue-shadowed snow | Snowbanks, alpine silhouettes, evergreens, Nordic-stadium forms  | Cool light with sparse safety color |
-| BikeErg | Dark asphalt/track surface | Barriers, infield/apron, pavilion or training-circuit structures | Warm floodlights and curb markings  |
+| Sport   | Primary material           | Horizon and venue language                                     | Accent restraint                    |
+| ------- | -------------------------- | -------------------------------------------------------------- | ----------------------------------- |
+| RowErg  | Deep layered water         | Sector-authored banks, woodland, regatta campus, open wetland   | Warm light and sparse buoy cues     |
+| SkiErg  | Groomed blue-shadowed snow | Snow shoulders, alpine mass, forest clusters, Nordic lodge      | Cool light with sparse safety color |
+| BikeErg | Warm varnished timber      | Daylit roof, seating straights, infield pit, hospitality suite  | Blue/red regulation lines           |
 
 Foreground contrast is reserved for the athlete, equipment, course edge, and
 important contact effects. Background scenery uses simpler silhouettes, lower
@@ -50,7 +50,7 @@ contrast, atmospheric perspective, and restrained repetition.
 
 Renderer_2D builds every frame back-to-front:
 
-1. a theme-aware sky gradient and atmospheric horizon;
+1. a theme-aware outdoor sky and horizon, or BikeErg roof/daylight shell;
 2. distant terrain or built-venue silhouettes;
 3. middle-distance vegetation, snowbanks, barriers, or regatta infrastructure;
 4. the sport-specific course material and perspective markings;
@@ -110,26 +110,34 @@ increments within a sport-specific envelope; the same key vector positions the
 visible sun disc. Native shadows land only on the authoritative opaque ground
 receiver, while live contact marks are suppressed so they cannot double or
 contradict that shadow. Water uses cool depth and controlled highlights, snow
-uses high diffuse value with blue shadow separation, and asphalt remains dark
-enough for lane paint, equipment, and athlete footwear to survive. Fog and
-lower-contrast distant materials create depth without hiding the course.
+uses high diffuse value with blue shadow separation, and BikeErg timber stays
+warm and bright enough to separate from its pale roof, concrete infield, dark
+equipment, and athlete footwear. Fog and lower-contrast distant materials
+create outdoor depth without hiding the course; the indoor venue uses broad
+skylight pools instead of atmospheric fog.
 
 ## Quality and performance
 
 Environment quality is additive:
 
-- **Low:** a deliberately graphic sky, horizon, flat course material, and one
-  clear venue silhouette per sport.
-- **Medium:** a shaped procedural surface plus a new midground layer; Row water
-  gains broad sky-reflection bands.
-- **High:** authored venue depth and local PBR surface response; Row gains a
-  launch dock plus CC0 grass/forest-ground/plank maps on banks, shoreline, and
-  dock, while Ski and Bike use local CC0 diffuse/roughness maps for snow and
-  asphalt respectively.
-- **Ultra:** a distinct close-surface treatment, not just more samples; Row
-  gains sun-glint composition and normal-mapped river surroundings, Ski adds
-  normal-mapped snow and restrained crystal highlights, and Bike adds
-  normal-mapped asphalt plus lap reflectors.
+- **Low:** a deliberately graphic, complete scene with the fewest silhouettes:
+  Row has the island, sector banks, one clubhouse, and no far-valley ring; Ski
+  has a clean snow bowl, one lodge, sparse forest clusters, and no far-valley
+  layer; Bike has a roof shell, two seating straights, and a clean timber lap
+  without skylights or race-day architecture.
+- **Medium:** a new spatial layer rather than denser copies. Outdoor venues add
+  the far horizon; Row adds boathouse and broad sky reflections, Ski adds the
+  valley, course orientation, and restrained lights, and Bike adds skylights,
+  roof lighting, infield keys, staging pads, and an information ribbon.
+- **High:** authored event infrastructure plus local PBR response. Row adds the
+  timing campus, launch dock and overhead bridge; Ski adds the timing arch,
+  rock shoulder and wax hut; Bike adds the finish gantry, scoreboard, service
+  building, team pit, brushed-concrete slab, and tangentially unwrapped CC0 oak
+  course.
+- **Ultra:** an additional destination zone, not only normal maps or density.
+  Row adds a wetland boardwalk and hide; Ski adds a spectator terrace and
+  mountain-rescue shelter; Bike adds a hospitality deck. Ultra also adds the
+  corresponding normal maps and restrained water/snow highlights.
 
 The governor may lower pixel ratio and decorative effects during a session.
 Optional environment density is chosen at scene build time rather than being

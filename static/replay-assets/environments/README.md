@@ -10,18 +10,20 @@ High and Ultra load the local optimized derivatives.
 ## Per-tier payload
 
 What each sport actually loads at each tier. High binds diffuse + roughness per
-set; Ultra adds the OpenGL normal. Low and Medium bind nothing, so venue
-identity never waits on an image decode.
+set; Ultra adds the OpenGL normal and, for SkiErg, an Ultra-only timber terrace
+set. Low and Medium bind nothing, so venue identity never waits on an image
+decode.
 
-| Sport   | Sets | High            | Ultra           |
-| ------- | ---- | --------------- | --------------- |
-| RowErg  | 7    | 14 req, 1.2 MiB | 21 req, 2.0 MiB |
-| SkiErg  | 3    | 6 req, 0.5 MiB  | 9 req, 1.0 MiB  |
-| BikeErg | 4    | 8 req, 0.6 MiB  | 12 req, 0.8 MiB |
+| Sport   | Sets (High / Ultra) | High            | Ultra            |
+| ------- | ------------------- | --------------- | ---------------- |
+| RowErg  | 8 / 8               | 16 req, 1.4 MiB | 24 req, 2.3 MiB  |
+| SkiErg  | 4 / 5               | 8 req, 0.7 MiB  | 15 req, 1.46 MiB |
+| BikeErg | 4 / 4               | 8 req, 0.6 MiB  | 12 req, 0.8 MiB  |
 
 RowErg carries the most because the river valley dresses banks, shoreline,
-island, vegetation, decking, and paths; SkiErg and BikeErg reuse a few sets
-across their whole venue.
+island, vegetation, decking, and paths. SkiErg adds a rock shoulder at High and
+a timber spectator terrace at Ultra. BikeErg uses concrete around a separate
+oak course instead of applying one asphalt map to the whole venue.
 
 `renderer3d.test.ts` pins these request counts and a payload ceiling per sport,
 alongside mesh and instance ceilings, so densifying a venue or adding a set
@@ -49,29 +51,53 @@ Original Poly Haven MD5 values recorded by its public asset API:
 - roughness: `1dbae0269e53dbf80d4fd1c4335f25a2`
 - OpenGL normal: `f16b5701f9ad521cdd6af10c1d6d2b48`
 
-## Clean Asphalt
+## Rock 01
 
-- Source: [Poly Haven — Clean Asphalt](https://polyhaven.com/a/clean_asphalt)
-- Creator: Dimitrios Savva
+- Source: [Poly Haven — Rock 01](https://polyhaven.com/a/rock_01)
+- Creator: Rob Tuytel
 - License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
 - Source resolution used: Poly Haven's 1K JPEG maps
-- Retrieved: 2026-07-25
+- Retrieved: 2026-07-26
 
-The shipped 512 px JPEGs are resized derivatives. They provide material
-response only for the generic BikeErg course and do not depict a real circuit,
-venue, route, or event.
+The shipped 512 px JPEGs are resized and recompressed derivatives. They detail
+the High/Ultra SkiErg rock-shoulder outcrops and do not depict a real mountain
+or venue.
 
-| File                                            | Purpose                             | SHA-256                                                            |
-| ----------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------ |
-| `clean-asphalt/clean-asphalt-diffuse-512.jpg`   | High/Ultra asphalt aggregate colour | `789cb0acc4a45106b0d5815ff52a439a2cd6c89f576e96c821f336e31626d993` |
-| `clean-asphalt/clean-asphalt-roughness-512.jpg` | High/Ultra asphalt roughness        | `353a69474a36819c3d88c394730c45ee2b0532ea653871a691e27867f2633776` |
-| `clean-asphalt/clean-asphalt-normal-gl-512.jpg` | Ultra OpenGL asphalt normal detail  | `51f7f689d1bb6a48532d173a0df5b2218a914a853ee93cd5d19fde4aceb53cfd` |
+| File                                | Purpose                            | SHA-256                                                            |
+| ----------------------------------- | ---------------------------------- | ------------------------------------------------------------------ |
+| `rock-01/rock-01-diffuse-512.jpg`   | High/Ultra outcrop colour          | `1ee06fb1752c9eab2b21d7e89e7912efd5981b923e72a6e30f5ce4c3e3bc5898` |
+| `rock-01/rock-01-roughness-512.jpg` | High/Ultra outcrop roughness       | `511ba59e965cdc61ee16d30cfc5b5e19cec2e99986945cc48cad0e14767766d0` |
+| `rock-01/rock-01-normal-gl-512.jpg` | Ultra OpenGL outcrop normal detail | `6025fd703dd261b8edcbb39b21223a850f291b1b8e7564f80d7037b48160b087` |
 
 Original Poly Haven MD5 values recorded by its public asset API:
 
-- diffuse: `7edccb95cbf72e63889baade8455f9e5`
-- roughness: `4238f2eab76530f4b0c66ddb929b142d`
-- OpenGL normal: `24dadd366637a722b59c19a672cbbcf6`
+- diffuse: `5897cd4496982b03cad0c3e2358486c0`
+- roughness: `d524d822733ce9958a74ef89285ca99b`
+- OpenGL normal: `d5a1d0797aaeb1ac3520504911058903`
+
+## Wood Floor
+
+- Source: [Poly Haven — Wood Floor](https://polyhaven.com/a/wood_floor)
+- Creator: Dimitrios Savva
+- License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+- Source resolution used: Poly Haven's 1K JPEG maps
+- Retrieved: 2026-07-26
+
+The shipped 512 px JPEGs are resized and recompressed derivatives. High/Ultra
+BikeErg uses them only for its generic timber track; custom tangential UVs keep
+the boards aligned to the lap instead of slicing across bends.
+
+| File                                      | Purpose                          | SHA-256                                                            |
+| ----------------------------------------- | -------------------------------- | ------------------------------------------------------------------ |
+| `wood-floor/wood-floor-diffuse-512.jpg`   | High/Ultra track-board colour    | `763103fd5fb60cc18b1f3764bff98fbb666ab0c74512ec90f8f12626f59cb50e` |
+| `wood-floor/wood-floor-roughness-512.jpg` | High/Ultra track roughness       | `6a639e0d23c6133df3a7906a8aa0ebdadfe9dba0472221dc21d7dc16fe2bcdc4` |
+| `wood-floor/wood-floor-normal-gl-512.jpg` | Ultra OpenGL board normal detail | `0096fb6be668196d968459efd93cd482e16a6f62fd8b86807346930fb6a58613` |
+
+Original Poly Haven MD5 values recorded by its public asset API:
+
+- diffuse: `b7e927d2bf2f8f103820ff3890c8407c`
+- roughness: `36146634f1dbd1bc30cd071857584c10`
+- OpenGL normal: `620f174d2c09b579c5d02d37b2106668`
 
 ## Aerial Grass Rock
 
@@ -128,7 +154,8 @@ Original Poly Haven MD5 values:
 - Retrieved: 2026-07-25
 
 Used for High/Ultra RowErg launch-dock and campus decking, regatta pavilion
-bodies, island structures, and the BikeErg velodrome track boards.
+bodies, island structures, BikeErg track boards, and the Ultra SkiErg spectator
+terrace.
 
 | File                                                | Purpose                            | SHA-256                                                            |
 | --------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------ |
@@ -252,6 +279,15 @@ normals. High/Ultra surroundings form one coherent river valley:
 
 SkiErg High/Ultra pine trunks and canopies reuse Bark Brown 01 and Forest
 Leaves 04 so the Nordic tree line matches the same woodland material language.
+Snow 02 owns the piste, Rock 01 owns one authored shoulder, and Brown Planks 03
+appears only at Ultra on the spectator terrace; that extra set is an intentional
+composition-tier difference.
+
+BikeErg High/Ultra separates materials by construction: Brushed Concrete 2 on
+the arena slab and infield, Concrete Floor Painted on wall and staging bays,
+Brown Planks 03 on the inner safety boards, and Wood Floor on the tangentially
+unwrapped racing surface. The previous Clean Asphalt set is no longer shipped
+or loaded.
 
 ## Brushed Concrete 2
 

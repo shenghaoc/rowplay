@@ -948,6 +948,29 @@ describe("CourseRenderer stroke pose input", () => {
     }
   });
 
+  it("keeps the BikeErg fallback inside a daylit timber velodrome", () => {
+    const { ctx, paints, setLineDash } = makeCtx();
+    const canvas = {
+      getContext: (kind: string) => (kind === "2d" ? ctx : null),
+    } as unknown as HTMLCanvasElement;
+    const renderer = new CourseRenderer(canvas);
+    renderer.resize(640, 300);
+    const internals = renderer as unknown as {
+      drawSky(...args: unknown[]): void;
+    };
+    const drawOutdoorSky = vi.spyOn(internals, "drawSky");
+
+    renderer.render(makeState("bike", false), false, "light");
+
+    expect(drawOutdoorSky).not.toHaveBeenCalled();
+    expect(paints).toContain(VENUES_LIGHT.bike.skyTop);
+    expect(paints).toContain(VENUES_LIGHT.bike.groundTop);
+    expect(setLineDash).toHaveBeenCalledWith([30, 18]);
+
+    renderer.render(makeState("rower", false), false, "light");
+    expect(drawOutdoorSky).toHaveBeenCalled();
+  });
+
   /**
    * A palette colour reaches the canvas either as bare hex or, via `withAlpha`,
    * as `rgba(r,g,b,a)`. Match both so a layer painted translucently still counts

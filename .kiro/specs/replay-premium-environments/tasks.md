@@ -5,7 +5,7 @@ Follow-up to: `.kiro/specs/replay-3d-athlete-readability/`
 
 - [x] **1. Define the sport environment art system**
   - Establish RowErg water/regatta, SkiErg snow/alpine, and BikeErg
-    asphalt/venue palettes and silhouettes
+    timber-velodrome palettes and silhouettes
   - Keep light/dark theme, ghost comparison, and semantic contrast explicit
   - Document that venue, weather, and scenery are illustrative rather than
     recorded workout facts
@@ -27,7 +27,7 @@ Follow-up to: `.kiro/specs/replay-3d-athlete-readability/`
 
 - [x] **4. Re-author lighting and material hierarchy**
   - Apply coherent theme palettes to sky, fog, lights, ground, lane, and scenery
-  - Separate water, snow, and asphalt through value, roughness, highlights, and
+  - Separate water, snow, and timber through value, roughness, highlights, and
     restrained emissive accents
   - Keep environment contrast subordinate to athletes, equipment, and telemetry
 
@@ -78,3 +78,22 @@ Follow-up to: `.kiro/specs/replay-3d-athlete-readability/`
     `docs/screenshots/replay-3d-demo.png`) — the 3D capture is a genuine
     Ultra / WebGPU frame
   - [x] Pass the full repository quality gate
+
+> The July 26 composition rebuild below supersedes task 8's captured scene.
+> Those frames remain historical until this new visual gate is completed.
+
+- [ ] **9. Replace repetition with authored tier destinations**
+  - [x] Rebase this isolated worktree on current `origin/main`
+  - [x] Recompose RowErg as sector banks/campus/open wetland, with an Ultra-only
+    boardwalk and hide rather than a denser ring of shoreline props
+  - [x] Recompose SkiErg as a bright snow bowl with authored forest gaps, a
+    High rock shoulder, and Ultra spectator/rescue destinations
+  - [x] Recompose BikeErg in both renderers as one bright indoor timber
+    velodrome, with High team-pit/event architecture and Ultra hospitality
+  - [x] Replace Bike asphalt with provenance-recorded CC0 oak and add
+    provenance-recorded CC0 rock to the Ski shoulder
+  - [x] Pin adjacent-tier scene signatures, payloads, custom timber UVs, and
+    non-ring object bounds in renderer tests
+  - [ ] Regenerate the complete Chrome/WebGPU visual matrix and replace stale
+    public captures
+  - [ ] Pass the full repository quality gate on the final captured head

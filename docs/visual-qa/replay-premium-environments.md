@@ -1,16 +1,25 @@
 # Replay premium environments visual acceptance
 
-This note records the venue visual-quality pass on
-`codex/replay-environment-tier-overhaul`, relative to merge base `158029f`
-(PR #172, the production athlete). It covers the rebuilt RowErg, SkiErg, and
-BikeErg venues in both renderers and the tier contract that goes with them.
+> **Current status (2026-07-26): recapture required.** The scene was recomposed
+> after the 63-frame matrix below. Those images are retained as historical
+> comparison only and MUST NOT be used as acceptance evidence for the current
+> branch or PR.
 
-It exists to discharge Requirement 6 of
-[`.kiro/specs/replay-premium-environments/requirements.md`](../../.kiro/specs/replay-premium-environments/requirements.md),
-which ties environment quality to tests **and actual replay captures** so object
-counts cannot substitute for a rendered result.
+The current implementation changes scene hierarchy, not only object counts:
 
-## Evidence
+- Low outdoor venues omit the far-horizon layer; Medium adds it.
+- High adds sport-specific event infrastructure and CC0 PBR response.
+- Ultra adds a distinct destination zone: RowErg wetland boardwalk/hide,
+  SkiErg spectator terrace/rescue shelter, or BikeErg hospitality deck.
+- BikeErg is now the same bright indoor timber velodrome in Canvas and 3D.
+- Full-radius/repeated prop systems were replaced with authored sectors,
+  irregular clusters, continuous regulation lines, and deliberate open space.
+
+Renderer tests pin those signatures, but Requirement 6 still requires actual
+replay captures. The complete Chrome/WebGPU matrix and public screenshots must
+be regenerated before task 9 or this visual gate can be marked complete.
+
+## Historical evidence (pre-overhaul)
 
 - Frames: [`premium-environments/`](premium-environments/) — 63 JPEGs, 4.2 MB
 - Manifest: [`premium-environments/manifest.json`](premium-environments/manifest.json)

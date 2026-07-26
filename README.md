@@ -77,10 +77,11 @@ account.
   phases, equipment contact targets, and sport-specific water, snow, and track
   materials for RowErg, SkiErg, and BikeErg
 - Premium sport-specific environments in both views: layered regatta water with
-  a full river-valley material system (banks, pebbles, reeds, woodland, dock,
-  pavilions), groomed Nordic snow and alpine venue cues, or a barrier-lined
-  asphalt training circuit; High/Ultra dress Row surroundings, Ski snow/pines,
-  and Bike asphalt with provenance-recorded CC0 surface maps
+  sector-authored banks, wetland, woodland, and regatta campus; groomed Nordic
+  snow with alpine, forest, rock-shoulder, lodge, and spectator cues; or a
+  bright indoor timber velodrome with roof daylight, seating straights, infield,
+  team pit, and hospitality. High/Ultra use provenance-recorded CC0 surface
+  maps where material response matters
 - A compact repository-owned V4 GLB supplies one generic skinned athlete in 3D.
   RowErg, SkiErg, and BikeErg each use an authored canonical technique clip,
   sampled deterministically from replay pose and time; an analytic post-clip
@@ -114,8 +115,9 @@ account.
   generated environment images, scanned venues, runtime downloads, or imported
   location models are shipped
 - Quality tiers change scene composition and material response—not only pixel
-  ratio—with graphic Low, shaped Medium, PBR High, and normal-detailed Ultra
-  environments
+  ratio—with a clean graphic Low, a new spatial layer at Medium, PBR plus event
+  infrastructure at High, and Ultra-only destination architecture as well as
+  normal detail
 - Alias-resistant 2D BikeErg drivetrain motion with explicit cranks, pedals,
   chain and directional wheel markers that remain readable through 8× playback
 - Progressive 3D fallback from WebGPU to WebGL, then to the stable 2D renderer

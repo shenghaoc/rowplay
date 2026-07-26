@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import {
   afterAll,
   afterEach,
@@ -471,7 +472,7 @@ describe("CourseRenderer3D", () => {
     const detailName = {
       rower: "course:rower:water-streak",
       skierg: "course:skierg:groomed-groove",
-      bike: "course:bike:curb",
+      bike: "course:bike:measure-line",
     } as const;
     const equipmentNames = {
       rower: [
@@ -548,12 +549,11 @@ describe("CourseRenderer3D", () => {
       ]) {
         expect(scene.getObjectByName(layer), `${sport} missing ${layer}`).toBeDefined();
       }
-      // BikeErg is an indoor velodrome — no horizon rings.
+      // BikeErg is an indoor velodrome — no horizon rings. Low outdoor
+      // venues deliberately keep one broad shoulder; Medium adds the far
+      // valley layer so it is compositionally different, not a denser Low.
       if (sport !== "bike") {
-        expect(
-          scene.getObjectByName(`environment:${sport}:horizon-far`),
-          `${sport} missing horizon-far`,
-        ).toBeDefined();
+        expect(scene.getObjectByName(`environment:${sport}:horizon-far`)).toBeUndefined();
         expect(
           scene.getObjectByName(`environment:${sport}:horizon-mid`),
           `${sport} missing horizon-mid`,
@@ -566,12 +566,12 @@ describe("CourseRenderer3D", () => {
   });
 
   it("places venue dressing in authored sectors with deliberate open vistas", () => {
-    const rower = new CourseRenderer3D(makeHost(), "low", "rower");
+    const rower = new CourseRenderer3D(makeHost(), "high", "rower");
     // Bank woodland is two archetypes, so density is their sum.
-    const rowTrees = sceneObject(rower, "environment:rower:bank-trees") as THREE.InstancedMesh;
+    const rowTrees = sceneObject(rower, "environment:rower:pines") as THREE.InstancedMesh;
     const rowBroadleaves = sceneObject(
       rower,
-      "environment:rower:bank-broadleaves",
+      "environment:rower:broadleaves",
     ) as THREE.InstancedMesh;
     expect(rowTrees.count + rowBroadleaves.count).toBeGreaterThan(20);
     expect(getScene(rower).getObjectByName("environment:rower:shoreline")).toBeDefined();
@@ -596,7 +596,7 @@ describe("CourseRenderer3D", () => {
       expect(getScene(rower).getObjectByName(landmark)).toBeDefined();
     }
 
-    const skier = new CourseRenderer3D(makeHost(), "low", "skierg");
+    const skier = new CourseRenderer3D(makeHost(), "high", "skierg");
     const peaks = sceneObject(skier, "environment:skierg:mountain-peaks") as THREE.InstancedMesh;
     expect(
       instanceAngles(peaks).every(
@@ -616,9 +616,9 @@ describe("CourseRenderer3D", () => {
     const lodgeAngle = Math.atan2(wax.position.x, wax.position.z);
     expect(angleInSector(lodgeAngle, deg(-20), deg(55))).toBe(true);
 
-    const bike = new CourseRenderer3D(makeHost(), "low", "bike");
+    const bike = new CourseRenderer3D(makeHost(), "high", "bike");
     expect(getScene(bike).getObjectByName("environment:bike:stands")).toBeDefined();
-    expect(getScene(bike).getObjectByName("environment:bike:stands-tier-1")).toBeDefined();
+    expect(getScene(bike).getObjectByName("environment:bike:stands-tier-1-sector-1")).toBeDefined();
     expect(getScene(bike).getObjectByName("environment:bike:arena-wall")).toBeDefined();
     expect(getScene(bike).getObjectByName("environment:bike:track-boards-inner")).toBeDefined();
     expect(getScene(bike).getObjectByName("environment:bike:scoreboard")).toBeDefined();
@@ -643,7 +643,7 @@ describe("CourseRenderer3D", () => {
     const rower = new CourseRenderer3D(makeHost(), "low", "rower");
     const buoys = sceneObject(rower, "environment:rower:buoy-strings");
     expect(buoys).toBeInstanceOf(THREE.InstancedMesh);
-    expect((buoys as THREE.InstancedMesh).count).toBe(48);
+    expect((buoys as THREE.InstancedMesh).count).toBe(24);
     rower.destroy();
   });
 
@@ -655,7 +655,7 @@ describe("CourseRenderer3D", () => {
     };
     expect(internals.renderer.toneMapping).toBe(THREE.ACESFilmicToneMapping);
     expect(internals.renderer.toneMappingExposure).toBeGreaterThan(1);
-    expect((internals.scene.background as THREE.Color).getHex()).toBe(0xf4d8a8);
+    expect((internals.scene.background as THREE.Color).getHex()).toBe(0xdceef1);
     expect(internals.scene.fog).toBeInstanceOf(THREE.Fog);
     // Honest air perspective only — place identity must not depend on near fog.
     expect((internals.scene.fog as THREE.Fog).near).toBeGreaterThanOrEqual(50);
@@ -670,13 +670,13 @@ describe("CourseRenderer3D", () => {
     const ultraScene = getScene(ultra);
     // Conifers and broadleaves together carry the authored bank density.
     const woodlandCount = (scene: THREE.Scene): number =>
-      (["environment:rower:bank-trees", "environment:rower:bank-broadleaves"] as const).reduce(
+      (["environment:rower:pines", "environment:rower:broadleaves"] as const).reduce(
         (total, name) => total + (scene.getObjectByName(name) as THREE.InstancedMesh).count,
         0,
       );
 
-    expect(woodlandCount(lowScene)).toBe(28);
-    expect(woodlandCount(ultraScene)).toBe(110);
+    expect(woodlandCount(lowScene)).toBe(14);
+    expect(woodlandCount(ultraScene)).toBe(48);
     for (const scene of [lowScene, ultraScene]) {
       expect(scene.getObjectByName("environment:rower:sky")).toBeDefined();
       expect(scene.getObjectByName("environment:rower:horizon-mid")).toBeDefined();
@@ -688,6 +688,10 @@ describe("CourseRenderer3D", () => {
     expect(ultraScene.getObjectByName("environment:rower:start-pontoons")).toBeDefined();
     expect(lowScene.getObjectByName("environment:rower:launch-dock")).toBeUndefined();
     expect(ultraScene.getObjectByName("environment:rower:launch-dock")).toBeDefined();
+    expect(lowScene.getObjectByName("environment:rower:horizon-far")).toBeUndefined();
+    expect(ultraScene.getObjectByName("environment:rower:horizon-far")).toBeDefined();
+    expect(lowScene.getObjectByName("environment:rower:wetland-boardwalk")).toBeUndefined();
+    expect(ultraScene.getObjectByName("environment:rower:wetland-boardwalk")).toBeDefined();
     low.destroy();
     ultra.destroy();
   });
@@ -725,13 +729,22 @@ describe("CourseRenderer3D", () => {
           .material as THREE.MeshPhysicalMaterial
       ).normalMap?.name,
     ).toBe("environment:texture:water-normal-ultra");
+    expect(rowScenes[0].scene.getObjectByName("environment:rower:horizon-far")).toBeUndefined();
+    expect(rowScenes[0].scene.getObjectByName("environment:rower:boathouse")).toBeUndefined();
+    expect(rowScenes[1].scene.getObjectByName("environment:rower:horizon-far")).toBeDefined();
+    expect(rowScenes[1].scene.getObjectByName("environment:rower:boathouse")).toBeDefined();
+    expect(rowScenes[2].scene.getObjectByName("environment:rower:timing-tower")).toBeDefined();
+    expect(
+      rowScenes[2].scene.getObjectByName("environment:rower:course-bridge-deck"),
+    ).toBeDefined();
+    expect(rowScenes[3].scene.getObjectByName("environment:rower:wetland-boardwalk")).toBeDefined();
     // High/Ultra dress the full river valley — banks, shoreline, dock, reeds,
     // waterline pebbles, pine bark/leaves, and pavilion wood — with local CC0
     // maps. Low/Medium stay solid so identity never depends on bitmap decode.
     // Water itself remains the authored clear-coat basin.
     const bankMat = qualities.map((_, index) => {
       const material = (
-        rowScenes[index]!.scene.getObjectByName("environment:rower:shoreline") as THREE.Mesh
+        rowScenes[index]!.scene.getObjectByName("environment:rower:earth-bank-1") as THREE.Mesh
       ).material as THREE.MeshStandardMaterial;
       return material;
     });
@@ -739,16 +752,16 @@ describe("CourseRenderer3D", () => {
     expect(bankMat[1]!.map).toBeNull();
     expect(bankMat[2]!.map?.userData.sourcePath).toContain("forrest-ground-01-diffuse");
     expect(bankMat[3]!.normalMap?.userData.sourcePath).toContain("forrest-ground-01-normal");
-    // Simplified shoreline — one bank ring replaces multi-layer earth/waterline system.
-    const bank = (rowScenes[2]!.scene.getObjectByName("environment:rower:shoreline") as THREE.Mesh)
-      .material as THREE.MeshStandardMaterial;
+    const bank = (
+      rowScenes[2]!.scene.getObjectByName("environment:rower:earth-bank-1") as THREE.Mesh
+    ).material as THREE.MeshStandardMaterial;
     expect(bank.map?.userData.sourcePath).toContain("forrest-ground-01-diffuse");
     const shoreGrass = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:shoreline-grass") as THREE.Mesh
+      rowScenes[2]!.scene.getObjectByName("environment:rower:grass-bank-1") as THREE.Mesh
     ).material as THREE.MeshStandardMaterial;
     expect(shoreGrass.map?.userData.sourcePath).toContain("aerial-grass-rock-diffuse");
     const bankTrees = (
-      rowScenes[2]!.scene.getObjectByName("environment:rower:bank-trees") as THREE.InstancedMesh
+      rowScenes[2]!.scene.getObjectByName("environment:rower:pines") as THREE.InstancedMesh
     ).material as THREE.MeshStandardMaterial;
     expect(bankTrees.map?.userData.sourcePath).toContain("forest-leaves-04-diffuse");
     const reeds = (
@@ -797,6 +810,25 @@ describe("CourseRenderer3D", () => {
       snowMaterials[3].scene.getObjectByName("environment:skierg:snow-crystals"),
     ).toBeDefined();
     expect(snowMaterials[1].scene.getObjectByName("environment:skierg:snow-fences")).toBeDefined();
+    expect(
+      snowMaterials[0].scene.getObjectByName("environment:skierg:horizon-far"),
+    ).toBeUndefined();
+    expect(snowMaterials[1].scene.getObjectByName("environment:skierg:horizon-far")).toBeDefined();
+    expect(
+      snowMaterials[1].scene.getObjectByName("environment:skierg:timing-arch"),
+    ).toBeUndefined();
+    expect(
+      snowMaterials[2].scene.getObjectByName("environment:skierg:timing-arch-deck"),
+    ).toBeDefined();
+    expect(
+      snowMaterials[2].scene.getObjectByName("environment:skierg:rock-shoulder"),
+    ).toBeDefined();
+    expect(
+      snowMaterials[3].scene.getObjectByName("environment:skierg:spectator-terrace"),
+    ).toBeDefined();
+    expect(
+      snowMaterials[3].scene.getObjectByName("environment:skierg:mountain-rescue-shelter"),
+    ).toBeDefined();
     for (const { renderer } of snowMaterials) renderer.destroy();
 
     const bikeScenes = qualities.map((quality) => {
@@ -804,9 +836,18 @@ describe("CourseRenderer3D", () => {
       return { renderer, scene: getScene(renderer) };
     });
     expect(bikeScenes[0].scene.getObjectByName("environment:bike:hangar-lights")).toBeUndefined();
+    expect(bikeScenes[0].scene.getObjectByName("environment:bike:roof-canopy")).toBeDefined();
+    expect(bikeScenes[0].scene.getObjectByName("environment:bike:skylight-1")).toBeUndefined();
     expect(bikeScenes[1].scene.getObjectByName("environment:bike:hangar-lights")).toBeDefined();
-    expect(bikeScenes[2].scene.getObjectByName("environment:bike:ceiling-ring")).toBeDefined();
-    expect(bikeScenes[2].scene.getObjectByName("environment:bike:staging-pad-1")).toBeDefined();
+    expect(bikeScenes[1].scene.getObjectByName("environment:bike:skylight-1")).toBeDefined();
+    expect(bikeScenes[1].scene.getObjectByName("environment:bike:staging-pad-1")).toBeDefined();
+    expect(
+      bikeScenes[2].scene.getObjectByName("environment:bike:finish-gantry-deck"),
+    ).toBeDefined();
+    expect(bikeScenes[2].scene.getObjectByName("environment:bike:team-pit")).toBeDefined();
+    expect(bikeScenes[2].scene.getObjectByName("environment:bike:scoreboard")).toBeDefined();
+    expect(bikeScenes[3].scene.getObjectByName("environment:bike:hospitality-deck")).toBeDefined();
+    expect(bikeScenes[3].scene.getObjectByName("environment:bike:skylight-4")).toBeDefined();
     const bikeGround = bikeScenes.map(
       ({ scene }) =>
         (scene.getObjectByName("ground") as THREE.Mesh).material as THREE.MeshStandardMaterial,
@@ -817,12 +858,17 @@ describe("CourseRenderer3D", () => {
     );
     expect(bikeGround[0].map).toBeNull();
     expect(bikeGround[1].map).toBeNull();
-    expect(bikeGround[2].map?.userData.sourcePath).toContain("clean-asphalt-diffuse");
-    expect(bikeGround[2].roughnessMap?.userData.sourcePath).toContain("clean-asphalt-roughness");
+    expect(bikeGround[2].map?.userData.sourcePath).toContain("brushed-concrete-2-diffuse");
+    expect(bikeGround[2].roughnessMap?.userData.sourcePath).toContain(
+      "brushed-concrete-2-roughness",
+    );
     expect(bikeGround[2].normalMap).toBeNull();
-    expect(bikeGround[3].normalMap?.userData.sourcePath).toContain("clean-asphalt-normal");
-    expect(bikeLane[2].map?.userData.sourcePath).toContain("clean-asphalt-diffuse");
-    expect(bikeLane[3].normalMap?.userData.sourcePath).toContain("clean-asphalt-normal");
+    expect(bikeGround[3].normalMap?.userData.sourcePath).toContain("brushed-concrete-2-normal");
+    expect(bikeLane[2].map?.userData.sourcePath).toContain("wood-floor-diffuse");
+    expect(bikeLane[3].normalMap?.userData.sourcePath).toContain("wood-floor-normal");
+    expect((bikeScenes[2].scene.getObjectByName("lane") as THREE.Mesh).geometry.userData).toEqual(
+      expect.objectContaining({ trackFollowingUv: true }),
+    );
     for (const { renderer } of bikeScenes) renderer.destroy();
 
     const skiHigh = new CourseRenderer3D(makeHost(), "high", "skierg");
@@ -849,13 +895,31 @@ describe("CourseRenderer3D", () => {
    */
   it("keeps each sport's environment payload and scene complexity within budget", async () => {
     const budget = {
-      rower: { sets: 7, maxKiB: 2400, maxMeshes: 520, maxInstances: 700 },
-      skierg: { sets: 3, maxKiB: 1150, maxMeshes: 440, maxInstances: 720 },
-      bike: { sets: 4, maxKiB: 950, maxMeshes: 700, maxInstances: 720 },
+      rower: {
+        requests: { low: 0, medium: 0, high: 16, ultra: 24 },
+        maxKiB: 2400,
+        maxMeshes: 520,
+        maxInstances: 700,
+      },
+      skierg: {
+        // Ultra alone adds the timber spectator terrace, so it intentionally
+        // owns one more CC0 set than High instead of being the same scene with
+        // normal maps switched on.
+        requests: { low: 0, medium: 0, high: 8, ultra: 15 },
+        maxKiB: 1600,
+        maxMeshes: 440,
+        maxInstances: 720,
+      },
+      bike: {
+        requests: { low: 0, medium: 0, high: 8, ultra: 12 },
+        maxKiB: 950,
+        maxMeshes: 700,
+        maxInstances: 720,
+      },
     } as const;
 
     for (const sport of ["rower", "skierg", "bike"] as const) {
-      const { sets, maxKiB, maxMeshes, maxInstances } = budget[sport];
+      const { requests, maxKiB, maxMeshes, maxInstances } = budget[sport];
       for (const quality of ["low", "medium", "high", "ultra"] as const) {
         const renderer = new CourseRenderer3D(makeHost(), quality, sport);
         const requested = requestedSurfaceMaps(renderer);
@@ -863,9 +927,7 @@ describe("CourseRenderer3D", () => {
 
         // Low and Medium must stay fully procedural: venue identity can never
         // wait on an image decode.
-        const expected =
-          quality === "low" || quality === "medium" ? 0 : sets * (quality === "ultra" ? 3 : 2);
-        expect(requested.length, `${label} surface-map request count`).toBe(expected);
+        expect(requested.length, `${label} surface-map request count`).toBe(requests[quality]);
 
         let bytes = 0;
         for (const path of requested) {
@@ -878,6 +940,28 @@ describe("CourseRenderer3D", () => {
         expect(instances, `${label} instance count`).toBeLessThanOrEqual(maxInstances);
         renderer.destroy();
       }
+    }
+  });
+
+  it("pins the shipped digests of the new CC0 rock and timber derivatives", async () => {
+    const digests = {
+      "static/replay-assets/environments/rock-01/rock-01-diffuse-512.jpg":
+        "1ee06fb1752c9eab2b21d7e89e7912efd5981b923e72a6e30f5ce4c3e3bc5898",
+      "static/replay-assets/environments/rock-01/rock-01-roughness-512.jpg":
+        "511ba59e965cdc61ee16d30cfc5b5e19cec2e99986945cc48cad0e14767766d0",
+      "static/replay-assets/environments/rock-01/rock-01-normal-gl-512.jpg":
+        "6025fd703dd261b8edcbb39b21223a850f291b1b8e7564f80d7037b48160b087",
+      "static/replay-assets/environments/wood-floor/wood-floor-diffuse-512.jpg":
+        "763103fd5fb60cc18b1f3764bff98fbb666ab0c74512ec90f8f12626f59cb50e",
+      "static/replay-assets/environments/wood-floor/wood-floor-roughness-512.jpg":
+        "6a639e0d23c6133df3a7906a8aa0ebdadfe9dba0472221dc21d7dc16fe2bcdc4",
+      "static/replay-assets/environments/wood-floor/wood-floor-normal-gl-512.jpg":
+        "0096fb6be668196d968459efd93cd482e16a6f62fd8b86807346930fb6a58613",
+    } as const;
+
+    for (const [path, expected] of Object.entries(digests)) {
+      const bytes = await readFile(path);
+      expect(createHash("sha256").update(bytes).digest("hex"), path).toBe(expected);
     }
   });
 
@@ -914,9 +998,10 @@ describe("CourseRenderer3D", () => {
     } as unknown as Document;
 
     const renderer = new CourseRenderer3D(makeHost(), "ultra", "bike");
-    // Ultra bike asks for asphalt diffuse, roughness and normal on both the
-    // ground receiver and the lane.
-    expect(requested.some((url) => url.includes("clean-asphalt-diffuse"))).toBe(true);
+    // Ultra bike asks for brushed concrete under the venue and tangential oak
+    // boards on the course. A failure in either family must preserve solids.
+    expect(requested.some((url) => url.includes("brushed-concrete-2-diffuse"))).toBe(true);
+    expect(requested.some((url) => url.includes("wood-floor-diffuse"))).toBe(true);
     await Promise.resolve();
 
     for (const name of ["ground", "lane"]) {
@@ -4165,7 +4250,7 @@ describe("CourseRenderer3D", () => {
       const lane = getScene(r).getObjectByName("lane") as unknown as {
         material: { color: { getHex(): number } };
       };
-      expect(lane.material.color.getHex()).toBe(0x2a3038);
+      expect(lane.material.color.getHex()).toBe(0x7c5a3c);
       r.destroy();
     });
 
@@ -4789,9 +4874,9 @@ describe("CourseRenderer3D", () => {
       };
       const rail = countOf("bike", "environment:bike:rail-posts");
       const boards = countOf("rower", "environment:rower:distance-posts");
-      expect(rail).toBeGreaterThanOrEqual(48);
+      expect(rail).toBe(20);
       // Bank-side boards confined to the campus arc, not a ring in the water.
-      expect(boards).toBeLessThan(rail / 4);
+      expect(boards).toBe(6);
     });
   });
 
@@ -4802,7 +4887,7 @@ describe("CourseRenderer3D", () => {
         const scene = getScene(renderer);
         const [pineName, broadleafName] =
           sport === "rower"
-            ? ["environment:rower:bank-trees", "environment:rower:bank-broadleaves"]
+            ? ["environment:rower:pines", "environment:rower:broadleaves"]
             : [`environment:${sport}:pines`, `environment:${sport}:broadleaves`];
         const pines = scene.getObjectByName(pineName) as THREE.InstancedMesh;
         const broadleaves = scene.getObjectByName(broadleafName) as THREE.InstancedMesh;

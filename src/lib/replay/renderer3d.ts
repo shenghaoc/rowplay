@@ -5,7 +5,6 @@ import {
   FULL_CIRCLE,
   makeSkyRadianceTexture,
   roundedVenueBlockGeometry,
-  sectorSample,
   themed,
   WORLD_UP,
   type EnvironmentSector,
@@ -90,7 +89,7 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     shadowMapSize: 0,
     wake: 0,
     buoys: true,
-    buoysPerRing: 24,
+    buoysPerRing: 12,
     buoyRings: 2,
     spray: false,
     sprayParticles: 0,
@@ -108,8 +107,8 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     shadowMapSize: 0,
     wake: 20,
     buoys: true,
-    buoysPerRing: 40,
-    buoyRings: 3,
+    buoysPerRing: 18,
+    buoyRings: 2,
     spray: true,
     sprayParticles: 64,
     sprayPerCatch: 7,
@@ -126,8 +125,8 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     shadowMapSize: 1024,
     wake: 32,
     buoys: true,
-    buoysPerRing: 52,
-    buoyRings: 3,
+    buoysPerRing: 22,
+    buoyRings: 2,
     spray: true,
     sprayParticles: 80,
     sprayPerCatch: 8,
@@ -144,8 +143,8 @@ const QUALITY: Record<RenderQuality, QualityConfig> = {
     shadowMapSize: 2048,
     wake: 52,
     buoys: true,
-    buoysPerRing: 72,
-    buoyRings: 3,
+    buoysPerRing: 28,
+    buoyRings: 2,
     spray: true,
     sprayParticles: 112,
     sprayPerCatch: 10,
@@ -430,7 +429,7 @@ const SPEED_CAMERA_FOV_GAIN = 2;
 const SUN_OFFSETS: Record<Sport, readonly [number, number, number]> = {
   rower: [-22, 18, 14],
   skierg: [16, 28, 10],
-  bike: [10, 14, -16],
+  bike: [12, 20, -10],
 };
 
 /**
@@ -464,11 +463,6 @@ interface CourseStyle {
   metalness: number;
 }
 
-const _BIKE_CITY_SECTORS: readonly EnvironmentSector[] = [
-  { start: degrees(-18), span: degrees(48), weight: 1 },
-  { start: degrees(156), span: degrees(50), weight: 1 },
-];
-
 /**
  * Art-directed venue palettes. Athlete accents remain deliberately absent:
  * physical scenery is shared by live and ghost competitors and never changes
@@ -476,30 +470,30 @@ const _BIKE_CITY_SECTORS: readonly EnvironmentSector[] = [
  */
 const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
   rower: {
-    // Closed regatta basin under late afternoon light. Fog is ordinary air
-    // perspective only — the place must read as one continuous lake, shore,
-    // woodland and campus whether near or far, not a soft-focus shortcut.
-    skyZenith: themed(0x4f8eaf, 0x0b2334),
-    skyHorizon: themed(0xf4d8a8, 0x527785),
-    skyNadir: themed(0x4f7f7b, 0x102c35),
-    fog: themed(0xd5e0d4, 0x294852),
-    fogNear: 55,
-    fogFar: 165,
-    hemisphereSky: themed(0xffecd0, 0x7ba5b2),
-    hemisphereGround: themed(0x2d5852, 0x132d31),
-    hemisphereIntensity: 1.22,
-    sun: themed(0xffe4ad, 0xffc978),
-    sunIntensity: 2.25,
-    fill: themed(0xa8dfea, 0x4b8090),
-    fillIntensity: 0.55,
-    exposure: 1.08,
-    farSilhouette: themed(0x6a856f, 0x1a383c),
-    midSilhouette: themed(0x355f46, 0x194438),
-    venueStructure: themed(0xe7e0cf, 0x708085),
-    venueAccent: themed(0xa95f38, 0xd89a5f),
+    // Bright temperate daylight. The earlier beige horizon flattened water,
+    // woodland and mountains into one value family; this clearer blue/green
+    // stack leaves enough luminance for real bank and building separation.
+    skyZenith: themed(0x4b91bd, 0x0b2639),
+    skyHorizon: themed(0xdceef1, 0x557c8c),
+    skyNadir: themed(0x5f8f8e, 0x12333c),
+    fog: themed(0xbfd4ca, 0x2e5059),
+    fogNear: 62,
+    fogFar: 178,
+    hemisphereSky: themed(0xf2fbff, 0x7eabb9),
+    hemisphereGround: themed(0x426c5b, 0x173535),
+    hemisphereIntensity: 1.3,
+    sun: themed(0xffedc1, 0xffce82),
+    sunIntensity: 2.55,
+    fill: themed(0xbfe9f1, 0x568b9a),
+    fillIntensity: 0.7,
+    exposure: 1.06,
+    farSilhouette: themed(0x78947b, 0x23454a),
+    midSilhouette: themed(0x3f6d50, 0x1c493d),
+    venueStructure: themed(0xe8e4d8, 0x7f9093),
+    venueAccent: themed(0xa65e3b, 0xd9a066),
     // Infield and apron are the same lake as the outer basin, not a second floor.
-    infield: themed(0x3f8ea3, 0x155566),
-    apron: themed(0x4596a8, 0x176070),
+    infield: themed(0x2f8198, 0x124f62),
+    apron: themed(0x3c91a3, 0x175a69),
     // No IBL. The basin is mostly a semi-transparent, low-roughness water
     // plane over a dark bed, and global image-based lighting lifts and
     // desaturates it across the whole surface: measured at -27 points of
@@ -523,59 +517,61 @@ const ENVIRONMENTS: Record<Sport, EnvironmentStyle> = {
     // the dome and cooling the fog restores a horizon line and gives the snow
     // something to be bright *against* — the venue is still a cold Nordic
     // morning, just no longer a white-out.
-    skyZenith: themed(0x4d84ab, 0x11283d),
-    skyHorizon: themed(0xcfe2ec, 0x78909f),
-    skyNadir: themed(0xc2d6df, 0x385161),
-    fog: themed(0xd3e2e9, 0x7d939e),
-    fogNear: 68,
-    fogFar: 190,
-    hemisphereSky: themed(0xf2f9ff, 0x9db7c9),
-    hemisphereGround: themed(0xb0c2cc, 0x3e5664),
-    hemisphereIntensity: 1.35,
-    sun: themed(0xfff4db, 0xe8f4ff),
-    sunIntensity: 2.1,
-    fill: themed(0xc4e5ff, 0x759db8),
-    fillIntensity: 0.72,
-    exposure: 1.08,
-    farSilhouette: themed(0xb5cbd5, 0x536c7b),
-    midSilhouette: themed(0x7799aa, 0x304e5e),
+    skyZenith: themed(0x3b7fae, 0x102b45),
+    skyHorizon: themed(0xbddbe8, 0x6f8d9f),
+    skyNadir: themed(0xabcbd8, 0x385669),
+    fog: themed(0xb8cfd9, 0x718d9b),
+    fogNear: 74,
+    fogFar: 205,
+    hemisphereSky: themed(0xf1f9ff, 0xa0bfd0),
+    hemisphereGround: themed(0x8faab8, 0x405c6d),
+    hemisphereIntensity: 1.22,
+    sun: themed(0xfff4d7, 0xeaf6ff),
+    sunIntensity: 2.55,
+    fill: themed(0xb8ddf6, 0x719bb5),
+    fillIntensity: 0.76,
+    exposure: 1.02,
+    farSilhouette: themed(0x91afbe, 0x506f82),
+    midSilhouette: themed(0x5f8498, 0x315267),
     venueStructure: themed(0x344f5d, 0x192f3d),
     venueAccent: themed(0xe04852, 0xff6670),
     // Snow keeps its brightness but picks up the sky's cool bounce, so the
     // groomed surface separates from the dome instead of merging into it.
-    infield: themed(0xe1ecf3, 0xb4c5cd),
-    apron: themed(0xeef5f9, 0xd5e0e5),
+    infield: themed(0xd8e7ef, 0x9fb7c5),
+    apron: themed(0xe8f1f5, 0xc7d7df),
     // Snow already bounces hard into the hemisphere light; a full-strength sky
     // on top of that is what blows the venue out to flat white.
     envIntensity: 0.62,
     hemisphereIntensityIbl: 0.36,
   },
   bike: {
-    // Indoor velodrome: warm arena lighting over a deep roof cavity.
-    // Bright enough to read the architecture, dark enough to feel enclosed.
-    skyZenith: themed(0x2a3040, 0x141a28),
-    skyHorizon: themed(0x2a3040, 0x141a28),
-    skyNadir: themed(0x2a3040, 0x141a28),
-    fog: themed(0x2a3040, 0x181c28),
-    fogNear: 55,
-    fogFar: 145,
-    hemisphereSky: themed(0x3a4058, 0x202840),
-    hemisphereGround: themed(0x2a2620, 0x181820),
-    hemisphereIntensity: 0.65,
-    sun: themed(0xffd8a8, 0xffc888),
-    sunIntensity: 3.0,
-    fill: themed(0x7a8ca8, 0x3a4c68),
-    fillIntensity: 0.45,
-    exposure: 1.1,
-    farSilhouette: themed(0x2a3448, 0x18202e),
-    midSilhouette: themed(0x303e52, 0x1a2638),
-    venueStructure: themed(0x3a4a60, 0x243044),
-    venueAccent: themed(0xf4a560, 0xffb868),
-    infield: themed(0x5a6a5e, 0x2a3a2e),
-    apron: themed(0x484440, 0x282c34),
-    // Roofed arena: ambient arrives off boards and seating, not off a sky.
-    envIntensity: 0.5,
-    hemisphereIntensityIbl: 0.3,
+    // Daylit timber velodrome. "Light" is now genuinely bright: a pale roof
+    // and skylight bounce expose the architecture and athlete instead of
+    // staging both themes inside the same black hangar.
+    skyZenith: themed(0xc6d5dd, 0x1c2a38),
+    skyHorizon: themed(0xe8e5d8, 0x344252),
+    skyNadir: themed(0xaebbb7, 0x202d36),
+    fog: themed(0xc7ccc7, 0x2b3944),
+    fogNear: 72,
+    fogFar: 165,
+    hemisphereSky: themed(0xf3f8fa, 0x5f7485),
+    hemisphereGround: themed(0x9e8469, 0x312d28),
+    hemisphereIntensity: 1.12,
+    sun: themed(0xfff0cf, 0xffd49a),
+    sunIntensity: 2.6,
+    fill: themed(0xc8e4ef, 0x607e93),
+    fillIntensity: 0.78,
+    exposure: 1.12,
+    farSilhouette: themed(0x9aa6aa, 0x263442),
+    midSilhouette: themed(0x748389, 0x314352),
+    venueStructure: themed(0x929fa5, 0x344452),
+    venueAccent: themed(0xd79a50, 0xf0b667),
+    infield: themed(0x98a7a0, 0x405149),
+    apron: themed(0xb3aa99, 0x3c3c3a),
+    // The pale roof acts as a broad indirect source; the generated radiance
+    // map supplies that response without an external HDR panorama.
+    envIntensity: 0.72,
+    hemisphereIntensityIbl: 0.34,
   },
 };
 
@@ -3340,16 +3336,16 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     trailColor: 0xffffff,
     // A broad blue-green basin; the course markings sit on top of this water
     // instead of turning the whole loop into a teal race-track ribbon.
-    groundColor: (t) => (t === "dark" ? 0x145264 : 0x4e9db1),
+    groundColor: (t) => (t === "dark" ? 0x104d60 : 0x2f879c),
     course: {
-      surface: (t) => (t === "dark" ? 0x1c5c6d : 0x5ba9b8),
-      edge: (t) => (t === "dark" ? 0xb8f0fb : 0xf5fcff),
-      laneLine: (t) => (t === "dark" ? 0x7ad4e8 : 0xe8f9ff),
+      surface: (t) => (t === "dark" ? 0x155568 : 0x378da0),
+      edge: (t) => (t === "dark" ? 0x8ed5e1 : 0xd9eef2),
+      laneLine: (t) => (t === "dark" ? 0x68bed0 : 0xc9e5ea),
       detail: (t) => (t === "dark" ? 0xf6c453 : 0xf59e0b),
       secondary: (t) => (t === "dark" ? 0xe8fbff : 0xffffff),
-      surfaceOpacity: 0.05,
-      roughness: 0.22,
-      metalness: 0.08,
+      surfaceOpacity: 0.035,
+      roughness: 0.18,
+      metalness: 0.06,
     },
     make: makeRowerAvatar,
   },
@@ -3367,11 +3363,11 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     groundOpacity: 1,
     trailColor: 0xffffff,
     // Cool alpine snowfield: not pure white, so tracks and kit separate.
-    groundColor: (t) => (t === "dark" ? 0xa8b7c2 : 0xe6eef3),
+    groundColor: (t) => (t === "dark" ? 0x8fa5b3 : 0xd5e4ec),
     course: {
-      surface: (t) => (t === "dark" ? 0x8da7b4 : 0xddebf2),
-      edge: (t) => (t === "dark" ? 0x8fa3b4 : 0xc5d4de),
-      laneLine: (t) => (t === "dark" ? 0x6f8996 : 0x9db9c7),
+      surface: (t) => (t === "dark" ? 0x849daa : 0xd8e7ee),
+      edge: (t) => (t === "dark" ? 0x7893a2 : 0xb6ccd8),
+      laneLine: (t) => (t === "dark" ? 0x607f8e : 0x8eafbd),
       detail: (t) => (t === "dark" ? 0x7c6cf0 : 0x6d5ef5),
       secondary: (t) => (t === "dark" ? 0x556e7b : 0x7898a7),
       surfaceOpacity: 1,
@@ -3389,16 +3385,16 @@ const SPORT_PROFILES: Record<Sport, SportProfile> = {
     sprayOffset: null,
     groundOpacity: 1,
     trailColor: null,
-    groundColor: (t) => (t === "dark" ? 0x1a1f26 : 0x5f6a72),
+    groundColor: (t) => (t === "dark" ? 0x303a40 : 0x98a09d),
     course: {
-      surface: (t) => (t === "dark" ? 0x2a3038 : 0x3f464e),
-      edge: (t) => (t === "dark" ? 0xf1f5f9 : 0xfafcfe),
-      laneLine: (t) => (t === "dark" ? 0xfbbf24 : 0xf59e0b),
-      detail: (t) => (t === "dark" ? 0xef4444 : 0xdc2626),
-      secondary: (t) => (t === "dark" ? 0x9aa8b8 : 0x74808c),
+      surface: (t) => (t === "dark" ? 0x7c5a3c : 0xd8b181),
+      edge: (t) => (t === "dark" ? 0xdfe7e8 : 0xf4f2eb),
+      laneLine: (t) => (t === "dark" ? 0x5fa4c4 : 0x2f7298),
+      detail: (t) => (t === "dark" ? 0xe9685e : 0xc63f38),
+      secondary: (t) => (t === "dark" ? 0x51463e : 0x725f4d),
       surfaceOpacity: 1,
-      roughness: 0.84,
-      metalness: 0.05,
+      roughness: 0.56,
+      metalness: 0.025,
     },
     make: makeBikeAvatar,
   },
@@ -4022,61 +4018,105 @@ export class CourseRenderer3D implements ReplayRenderer {
     return block;
   }
 
+  /**
+   * BikeErg needs track-following UVs: the bundled oak boards run tangentially
+   * around the lap instead of staying world-aligned and slicing diagonally
+   * through every bend. Row/Ski retain Three's ordinary radial surface.
+   */
+  private makeLaneGeometry(innerR: number, outerR: number): THREE.BufferGeometry {
+    if (this.sport !== "bike") {
+      return this.track(new THREE.RingGeometry(innerR, outerR, this.cfg.laneSegments));
+    }
+    const segments = this.cfg.laneSegments;
+    const positions = new Float32Array((segments + 1) * 2 * 3);
+    const normals = new Float32Array((segments + 1) * 2 * 3);
+    const uvs = new Float32Array((segments + 1) * 2 * 2);
+    const indices: number[] = [];
+    for (let index = 0; index <= segments; index++) {
+      const angle = (index / segments) * FULL_CIRCLE;
+      for (const [side, radius] of [innerR, outerR].entries()) {
+        const vertex = index * 2 + side;
+        positions[vertex * 3] = Math.sin(angle) * radius;
+        positions[vertex * 3 + 1] = -Math.cos(angle) * radius;
+        positions[vertex * 3 + 2] = 0;
+        normals[vertex * 3 + 2] = 1;
+        // U crosses the track; V follows travel, matching the long direction
+        // of the floorboards in the seamless CC0 source.
+        uvs[vertex * 2] = side;
+        uvs[vertex * 2 + 1] = index / segments;
+      }
+      if (index === segments) continue;
+      const inner = index * 2;
+      const outer = inner + 1;
+      const nextInner = inner + 2;
+      const nextOuter = inner + 3;
+      indices.push(inner, nextInner, outer, outer, nextInner, nextOuter);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+    geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    geometry.name = "course:bike:tangential-timber";
+    geometry.userData.trackFollowingUv = true;
+    return this.track(geometry);
+  }
+
   private addRowerCourseDetails(group: THREE.Group, innerR: number, outerR: number): void {
     const style = this.profile.course;
-    // Parallel regatta lane cables — thin continuous rings, not sparse ticks.
+    // Keep only the course boundaries at Low. Medium and above add the two
+    // athlete lane cables, but never return to the six-ring wire diagram that
+    // made the basin look like a spreadsheet laid over water.
     const cableMat = this.courseMat("course:rower:lane-line", style.laneLine, {
       roughness: 0.34,
       metalness: 0.12,
     });
-    const laneRadii = [
-      innerR + 0.55,
-      innerR + 1.65,
-      this.ghostRadius,
-      this.loopRadius,
-      outerR - 1.65,
-      outerR - 0.55,
-    ];
+    const laneRadii =
+      this.cfg.environmentDetail === 0
+        ? [innerR + 0.55, outerR - 0.55]
+        : [innerR + 0.55, this.ghostRadius, this.loopRadius, outerR - 0.55];
     for (const r of laneRadii) {
       this.addCourseRing(group, r, 0.012, cableMat, "course:rower:lane-line", 0.048);
     }
 
-    // Specular water streaks give the basin a living surface without textures.
+    // A few long, broken highlights establish flow. Their count is deliberately
+    // capped: water reads from broad light and normal response, not dozens of
+    // identical white capsules.
     const streakMat = this.courseMat("course:rower:water-streak", style.secondary, {
       transparent: true,
-      opacity: 0.2,
+      opacity: 0.13,
       depthWrite: false,
       roughness: 0.22,
       metalness: 0.14,
     });
-    const streakGeo = this.track(new THREE.CapsuleGeometry(0.022, 2.02, 4, 10));
+    const streakGeo = this.track(new THREE.CapsuleGeometry(0.018, 2.8, 4, 10));
     streakGeo.rotateX(Math.PI / 2);
-    const streaks = this.cfg.laneSegments >= 120 ? 96 : this.cfg.laneSegments >= 90 ? 68 : 44;
+    const streaks = [8, 12, 16, 22][this.cfg.environmentDetail];
     for (let i = 0; i < streaks; i++) {
-      const band = (i % 6) / 5;
+      const band = (i % 4) / 3;
       const radius = innerR + 1.1 + (outerR - innerR - 2.2) * band;
-      const angle = ((i * 0.61803398875 + (i % 6) * 0.061) % 1) * FULL_CIRCLE;
+      const angle = ((i * 0.61803398875 + (i % 4) * 0.071) % 1) * FULL_CIRCLE;
       this.addCourseBlock(group, streakGeo, streakMat, radius, angle, "course:rower:water-streak");
     }
 
-    // Distance buoy clusters at cardinals — warm markers against cool water.
+    // One distance board at each quarter, instead of three-block clusters.
     const buoyTickMat = this.courseMat("course:rower:distance-buoy", style.detail, {
       roughness: 0.48,
       metalness: 0.04,
     });
     const buoyTickGeo = this.track(roundedVenueBlockGeometry(0.14, 0.055, 0.55, 0.025));
     for (const marker of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
-      for (const offset of [-degrees(1.1), 0, degrees(1.1)]) {
-        this.addCourseBlock(
-          group,
-          buoyTickGeo,
-          buoyTickMat,
-          outerR - 0.32,
-          marker + offset,
-          "course:rower:distance-buoy",
-          0.078,
-        );
-      }
+      this.addCourseBlock(
+        group,
+        buoyTickGeo,
+        buoyTickMat,
+        outerR - 0.32,
+        marker,
+        "course:rower:distance-buoy",
+        0.078,
+      );
     }
   }
 
@@ -4095,30 +4135,26 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.addCourseRing(group, center, 0.19, packedMat, "course:skierg:packed-snow", 0.043);
     }
 
-    // Paired ski tracks (two grooves per lane) instead of evenly spaced combs.
+    // One paired groove per athlete lane. The previous four centres produced
+    // eight concentric grooves and made the piste read as a rail yard.
     const grooveMat = this.courseMat("course:skierg:groomed-groove", style.laneLine, {
       roughness: 0.96,
       metalness: 0.01,
     });
-    const trackCenters = [
-      this.ghostRadius - 0.55,
-      this.ghostRadius + 0.55,
-      this.loopRadius - 0.55,
-      this.loopRadius + 0.55,
-    ];
+    const trackCenters = [this.ghostRadius, this.loopRadius];
     for (const center of trackCenters) {
       this.addCourseRing(
         group,
-        center - 0.09,
-        0.03,
+        center - 0.11,
+        0.026,
         grooveMat,
         "course:skierg:groomed-groove",
         0.05,
       );
       this.addCourseRing(
         group,
-        center + 0.09,
-        0.03,
+        center + 0.11,
+        0.026,
         grooveMat,
         "course:skierg:groomed-groove",
         0.05,
@@ -4128,13 +4164,13 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Soft corduroy comb reads as groomed snow rather than polished ice.
     const combMat = this.courseMat("course:skierg:snow-comb", style.secondary, {
       transparent: true,
-      opacity: 0.42,
+      opacity: 0.18,
       roughness: 0.98,
       metalness: 0,
     });
     const combGeo = this.track(new THREE.CapsuleGeometry(0.022, outerR - innerR - 1.88, 4, 10));
     combGeo.rotateZ(Math.PI / 2);
-    const combs = this.cfg.laneSegments >= 120 ? 72 : 42;
+    const combs = [14, 20, 28, 36][this.cfg.environmentDetail];
     for (let i = 0; i < combs; i++) {
       this.addCourseBlock(
         group,
@@ -4147,23 +4183,17 @@ export class CourseRenderer3D implements ReplayRenderer {
       );
     }
 
-    // Low purple course gates — match the art-direction marker language.
+    // Sparse control markers belong to two course sectors, not the full loop.
     const gateMat = this.courseMat("course:skierg:gate", style.detail, {
       roughness: 0.42,
       metalness: 0.05,
     });
     const gateGeo = this.track(roundedVenueBlockGeometry(0.18, 0.07, 0.55, 0.035));
-    for (let i = 0; i < 16; i++) {
-      const angle = (i / 16) * Math.PI * 2;
-      this.addCourseBlock(
-        group,
-        gateGeo,
-        gateMat,
-        innerR + 0.48,
-        angle,
-        "course:skierg:gate",
-        0.075,
-      );
+    const gateCount = [4, 6, 8, 10][this.cfg.environmentDetail];
+    for (let i = 0; i < gateCount; i++) {
+      const local = (i + 0.5) / gateCount;
+      const angle =
+        i % 2 === 0 ? degrees(-18) + local * degrees(44) : degrees(174) + local * degrees(46);
       this.addCourseBlock(
         group,
         gateGeo,
@@ -4185,13 +4215,13 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.addCourseRing(group, this.ghostRadius, 0.016, seamMat, "course:bike:seam", 0.056);
     this.addCourseRing(group, this.loopRadius, 0.016, seamMat, "course:bike:seam", 0.056);
 
-    // Continuous yellow centre dashes — velodrome lane grammar.
+    // Sparse pursuit dashes supplement the permanent timber-track lines.
     const dashMat = this.courseMat("course:bike:dash", style.laneLine, {
       roughness: 0.5,
       metalness: 0.05,
     });
     const dashGeo = this.track(roundedVenueBlockGeometry(0.14, 0.045, 1.7, 0.035));
-    const dashCount = this.cfg.laneSegments >= 120 ? 64 : 46;
+    const dashCount = [18, 24, 30, 36][this.cfg.environmentDetail];
     for (let i = 0; i < dashCount; i++) {
       this.addCourseBlock(
         group,
@@ -4204,64 +4234,39 @@ export class CourseRenderer3D implements ReplayRenderer {
       );
     }
 
-    const curbRed = this.courseMat("course:bike:curb-red", style.detail, {
-      roughness: 0.46,
-      metalness: 0.04,
-    });
-    const curbWhite = this.courseMat("course:bike:curb-white", style.edge, {
-      roughness: 0.48,
-      metalness: 0.03,
-    });
-    const curbGeo = this.track(roundedVenueBlockGeometry(0.38, 0.07, 0.92, 0.045));
-    const curbCount = this.cfg.laneSegments >= 120 ? 80 : 54;
-    for (let i = 0; i < curbCount; i++) {
-      const angle = (i / curbCount) * Math.PI * 2;
-      const mat = i % 2 === 0 ? curbRed : curbWhite;
-      this.addCourseBlock(group, curbGeo, mat, innerR + 0.28, angle, "course:bike:curb", 0.092);
-      this.addCourseBlock(group, curbGeo, mat, outerR - 0.28, angle, "course:bike:curb", 0.092);
-    }
-
-    // Soft outer speed marks for dusk track depth.
-    const speedMat = this.courseMat("course:bike:speed-bars", style.edge, {
-      transparent: true,
-      opacity: 0.36,
-      roughness: 0.55,
+    // Velodrome grammar is continuous black/red/blue paint on timber, not
+    // hundreds of red kerb blocks and purple balls.
+    const blackLine = this.courseMat("course:bike:measure-line", style.secondary, {
+      roughness: 0.52,
       metalness: 0.02,
     });
-    const speedGeo = this.track(roundedVenueBlockGeometry(1.2, 0.03, 0.12, 0.025));
-    for (let i = 0; i < 32; i++) {
-      const angle = (i / 32) * Math.PI * 2 + 0.03;
-      this.addCourseBlock(
-        group,
-        speedGeo,
-        speedMat,
-        outerR - 1.45,
-        angle,
-        "course:bike:speed-bars",
-        0.07,
-      );
-    }
-
-    // Purple course markers from the art direction — low balls that read as
-    // velodrome lane furniture without competing with the athlete silhouette.
-    const markerMat = this.courseMat("course:bike:lane-marker", themed(0x8b7cf5, 0x7c6cf0), {
-      roughness: 0.42,
-      metalness: 0.08,
-      emissive: 0x5b4fd1,
-      emissiveIntensity: 0.18,
+    const redLine = this.courseMat("course:bike:sprinter-line", style.detail, {
+      roughness: 0.48,
+      metalness: 0.02,
     });
-    const markerGeo = this.track(new THREE.SphereGeometry(0.11, 8, 6));
-    const markerCount = this.cfg.laneSegments >= 120 ? 40 : 28;
-    for (let i = 0; i < markerCount; i++) {
-      const angle = (i / markerCount) * Math.PI * 2;
+    this.addCourseRing(group, innerR + 0.72, 0.026, blackLine, "course:bike:measure-line", 0.063);
+    this.addCourseRing(
+      group,
+      (this.ghostRadius + this.loopRadius) / 2,
+      0.028,
+      dashMat,
+      "course:bike:pursuit-line",
+      0.064,
+    );
+    this.addCourseRing(group, outerR - 0.8, 0.026, redLine, "course:bike:sprinter-line", 0.063);
+
+    // Short sprint markers live only on the two straights.
+    const markerGeo = this.track(roundedVenueBlockGeometry(0.11, 0.035, 0.9, 0.025));
+    for (let i = 0; i < 8; i++) {
+      const angle = (i < 4 ? degrees(-6) : Math.PI - degrees(6)) + (i % 4) * degrees(4);
       this.addCourseBlock(
         group,
         markerGeo,
-        markerMat,
-        outerR - 0.95,
+        redLine,
+        outerR - 1.35,
         angle,
-        "course:bike:lane-marker",
-        0.12,
+        "course:bike:sprint-marker",
+        0.076,
       );
     }
   }
@@ -4343,66 +4348,6 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.scene.add(sun);
   }
 
-  private addArenaPanels(
-    group: THREE.Group,
-    count: number,
-    radius: number,
-    sectors: readonly EnvironmentSector[],
-  ): void {
-    const panelGeo = this.track(roundedVenueBlockGeometry(5.1, 1.45, 0.16, 0.12));
-    const ribGeo = this.track(roundedVenueBlockGeometry(0.13, 4.4, 0.22, 0.04));
-    const panelMat = this.mat(
-      new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        fog: true,
-        vertexColors: false,
-        roughness: 0.58,
-        metalness: 0.18,
-      }),
-    );
-    panelMat.name = "environment:bike:wall-panel-material";
-    const ribMat = this.environmentBasicMat(
-      "environment:bike:wall-rib-material",
-      themed(0x647181, 0x384458),
-      { fog: true },
-    );
-    const panels = this.trackInstanced(new THREE.InstancedMesh(panelGeo, panelMat, count));
-    const ribs = this.trackInstanced(new THREE.InstancedMesh(ribGeo, ribMat, count));
-    panels.name = "environment:bike:wall-panels";
-    ribs.name = "environment:bike:wall-ribs";
-    const neutralPanel = new THREE.Color(0x3b4658);
-    const alternatePanel = new THREE.Color(0x46546a);
-    const mainStraightAccent = new THREE.Color(0xd88749);
-    const matrix = new THREE.Matrix4();
-    const quaternion = new THREE.Quaternion();
-    const scale = new THREE.Vector3(1, 1, 1);
-    const position = new THREE.Vector3();
-    const up = new THREE.Vector3(0, 1, 0);
-    for (let i = 0; i < count; i++) {
-      const sample = sectorSample(i, count, sectors);
-      const a = sample.angle;
-      quaternion.setFromAxisAngle(up, a);
-      position.set(Math.sin(a) * radius, 2.15, Math.cos(a) * radius);
-      matrix.compose(position, quaternion, scale);
-      panels.setMatrixAt(i, matrix);
-      panels.setColorAt(
-        i,
-        sample.sector === 0 && sample.local > 0.3 && sample.local < 0.7
-          ? mainStraightAccent
-          : i % 5 === 0
-            ? alternatePanel
-            : neutralPanel,
-      );
-      position.y = 2.2;
-      matrix.compose(position, quaternion, scale);
-      ribs.setMatrixAt(i, matrix);
-    }
-    panels.instanceMatrix.needsUpdate = true;
-    if (panels.instanceColor) panels.instanceColor.needsUpdate = true;
-    ribs.instanceMatrix.needsUpdate = true;
-    group.add(panels, ribs);
-  }
-
   private makeVerticalArc(
     name: string,
     radius: number,
@@ -4432,49 +4377,6 @@ export class CourseRenderer3D implements ReplayRenderer {
     return mesh;
   }
 
-  /**
-   * Low-opacity, rounded cloud banks add aerial depth without a panorama or
-   * image texture. They remain outside the course silhouette and are static,
-   * so they cost one instanced draw rather than a post-processing pass.
-   */
-  private addAtmosphericClouds(
-    group: THREE.Group,
-    count: number,
-    sectors: readonly EnvironmentSector[],
-  ): void {
-    const geometry = this.track(new THREE.SphereGeometry(1, 20, 12));
-    const color = this.sport === "skierg" ? themed(0xf8fcff, 0x2a4d65) : themed(0xfff1df, 0x193947);
-    const material = this.environmentBasicMat(`environment:${this.sport}:cloud-material`, color, {
-      transparent: true,
-      opacity: this.sport === "skierg" ? 0.13 : 0.1,
-      depthWrite: false,
-      fog: true,
-    });
-    const clouds = this.trackInstanced(new THREE.InstancedMesh(geometry, material, count));
-    clouds.name = `environment:${this.sport}:cloud-banks`;
-    clouds.renderOrder = -700;
-    const matrix = new THREE.Matrix4();
-    const quaternion = new THREE.Quaternion();
-    const position = new THREE.Vector3();
-    const scale = new THREE.Vector3();
-    for (let index = 0; index < count; index++) {
-      const { angle } = sectorSample(index, count, sectors);
-      const size = 2.6 + (0.5 + Math.sin(index * 4.91) * 0.5) * 2.1;
-      const radius = 98 + Math.sin(index * 9.37) * 11;
-      position.set(
-        Math.sin(angle) * radius,
-        12 + Math.sin(index * 2.73) * 2.6,
-        Math.cos(angle) * radius,
-      );
-      quaternion.setFromAxisAngle(WORLD_UP, angle + index * 0.37);
-      scale.set(size * 2.7, size * 0.38, size * 1.12);
-      matrix.compose(position, quaternion, scale);
-      clouds.setMatrixAt(index, matrix);
-    }
-    clouds.instanceMatrix.needsUpdate = true;
-    group.add(clouds);
-  }
-
   private buildEnvironment(innerR: number, outerR: number): void {
     this.buildSky();
     this.environmentMidGroup.name = `environment:${this.sport}:midground`;
@@ -4490,17 +4392,24 @@ export class CourseRenderer3D implements ReplayRenderer {
       const farVariation = this.sport === "skierg" ? 9 : 5.2;
       const midHeight = this.sport === "skierg" ? 12 : 8.4;
       const midVariation = this.sport === "skierg" ? 6 : 3.6;
+      // Low owns one clear graphic silhouette. Medium introduces a second,
+      // more distant atmospheric band; High/Ultra spend their budget on the
+      // authored venue zones rather than merely subdividing these same rings.
+      if (this.cfg.environmentDetail >= 1) {
+        this.environmentMidGroup.add(
+          this.environmentBuilder.makeHorizonRing(
+            `environment:${this.sport}:horizon-far`,
+            116,
+            -2.5,
+            farHeight,
+            farVariation,
+            72,
+            this.environment.farSilhouette,
+            0.7,
+          ),
+        );
+      }
       this.environmentMidGroup.add(
-        this.environmentBuilder.makeHorizonRing(
-          `environment:${this.sport}:horizon-far`,
-          116,
-          -2.5,
-          farHeight,
-          farVariation,
-          72,
-          this.environment.farSilhouette,
-          0.7,
-        ),
         this.environmentBuilder.makeHorizonRing(
           `environment:${this.sport}:horizon-mid`,
           84,
@@ -4718,7 +4627,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         const packed = clamp01(
           1 - Math.abs(radius - (this.ghostRadius + this.loopRadius) * 0.5) / 7.5,
         );
-        const value = 0.95 + broad * 0.045 + fine * 0.012 - packed * 0.045;
+        const value = 0.89 + broad * 0.065 + fine * 0.018 - packed * 0.055;
         // Compressed ski lanes are cooler and slightly darker than the loose
         // snow beside them. This broad value change remains visible even when
         // the high-tier bitmap has not finished loading.
@@ -4726,14 +4635,13 @@ export class CourseRenderer3D implements ReplayRenderer {
         colors[index * 3 + 1] = value * (1 - packed * 0.045);
         colors[index * 3 + 2] = Math.min(1, value * 1.025);
       } else {
-        // Asphalt reads from a fine charcoal aggregate rather than a single
-        // flat slab. The relief is intentionally near-zero so tyre shadows do
-        // not shimmer or lift from the lane.
-        positions.setZ(index, broad * 0.0025 + fine * 0.0012);
-        const value = 0.79 + broad * 0.055 + fine * 0.028;
-        colors[index * 3] = value * 0.94;
-        colors[index * 3 + 1] = value * 0.97;
-        colors[index * 3 + 2] = value;
+        // The arena slab stays quiet and pale beneath the authored timber
+        // track. Relief remains near-zero so tyre shadows never shimmer.
+        positions.setZ(index, broad * 0.0018 + fine * 0.0008);
+        const value = 0.9 + broad * 0.04 + fine * 0.018;
+        colors[index * 3] = value * 0.98;
+        colors[index * 3 + 1] = value;
+        colors[index * 3 + 2] = value * 0.99;
       }
     }
     positions.needsUpdate = true;
@@ -4818,29 +4726,29 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.cfg.environmentDetail >= 2 &&
       groundMat instanceof THREE.MeshStandardMaterial
     ) {
-      // The lower, broad receiver carries real asphalt aggregate at High and
-      // Ultra. This gives the infield edge and the visible outer circuit a
-      // physical material identity without replacing our generic venue art.
+      // A pale brushed-concrete arena slab sits beneath the timber track. It
+      // keeps the venue bright and material-rich without turning the course
+      // itself back into the old black asphalt loop.
       this.environmentBuilder.loadEnvironmentTexture(
         groundMat,
         "map",
-        "/replay-assets/environments/clean-asphalt/clean-asphalt-diffuse-512.jpg",
-        [20, 20],
+        "/replay-assets/environments/brushed-concrete-2/brushed-concrete-2-diffuse-512.jpg",
+        [14, 14],
       );
       this.environmentBuilder.loadEnvironmentTexture(
         groundMat,
         "roughnessMap",
-        "/replay-assets/environments/clean-asphalt/clean-asphalt-roughness-512.jpg",
-        [20, 20],
+        "/replay-assets/environments/brushed-concrete-2/brushed-concrete-2-roughness-512.jpg",
+        [14, 14],
       );
       if (this.cfg.environmentDetail >= 3) {
         this.environmentBuilder.loadEnvironmentTexture(
           groundMat,
           "normalMap",
-          "/replay-assets/environments/clean-asphalt/clean-asphalt-normal-gl-512.jpg",
-          [24, 24],
+          "/replay-assets/environments/brushed-concrete-2/brushed-concrete-2-normal-gl-512.jpg",
+          [18, 18],
         );
-        groundMat.normalScale.set(0.11, 0.11);
+        groundMat.normalScale.set(0.08, 0.08);
       }
       groundMat.needsUpdate = true;
     }
@@ -4899,7 +4807,7 @@ export class CourseRenderer3D implements ReplayRenderer {
     course.name = `course:${this.sport}`;
     this.scene.add(course);
 
-    const laneGeo = this.track(new THREE.RingGeometry(innerR, outerR, this.cfg.laneSegments));
+    const laneGeo = this.makeLaneGeometry(innerR, outerR);
     const laneMat = this.courseMat("lane", this.profile.course.surface, {
       transparent: this.profile.course.surfaceOpacity < 1,
       opacity: this.profile.course.surfaceOpacity,
@@ -4917,29 +4825,29 @@ export class CourseRenderer3D implements ReplayRenderer {
       laneMat.needsUpdate = true;
     }
     if (this.sport === "bike" && this.cfg.environmentDetail >= 2) {
-      // Unlike a pre-painted running-track image, this seamless material
-      // preserves the authored lap markings and keeps the scene generic while
-      // giving High/Ultra tyre contact a genuine asphalt microstructure.
+      // High/Ultra turn the course into varnished timber. The map is a generic
+      // seamless floor surface, while all velodrome lines remain authored
+      // geometry, so this never claims a recorded or real-world venue.
       this.environmentBuilder.loadEnvironmentTexture(
         laneMat,
         "map",
-        "/replay-assets/environments/clean-asphalt/clean-asphalt-diffuse-512.jpg",
-        [14, 14],
+        "/replay-assets/environments/wood-floor/wood-floor-diffuse-512.jpg",
+        [1.2, 12],
       );
       this.environmentBuilder.loadEnvironmentTexture(
         laneMat,
         "roughnessMap",
-        "/replay-assets/environments/clean-asphalt/clean-asphalt-roughness-512.jpg",
-        [14, 14],
+        "/replay-assets/environments/wood-floor/wood-floor-roughness-512.jpg",
+        [1.2, 12],
       );
       if (this.cfg.environmentDetail >= 3) {
         this.environmentBuilder.loadEnvironmentTexture(
           laneMat,
           "normalMap",
-          "/replay-assets/environments/clean-asphalt/clean-asphalt-normal-gl-512.jpg",
-          [18, 18],
+          "/replay-assets/environments/wood-floor/wood-floor-normal-gl-512.jpg",
+          [1.2, 12],
         );
-        laneMat.normalScale.set(0.14, 0.14);
+        laneMat.normalScale.set(0.1, 0.1);
       }
       laneMat.needsUpdate = true;
     }

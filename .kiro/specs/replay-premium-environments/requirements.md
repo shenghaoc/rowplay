@@ -49,9 +49,10 @@ generic stage.
 2. WHEN a SkiErg replay is shown THEN both renderers SHALL present groomed snow
    with snowbank, alpine, evergreen, or Nordic-stadium cues and readable cool
    shadow separation.
-3. WHEN a BikeErg replay is shown THEN both renderers SHALL present a deliberate
-   asphalt or velodrome-style course with curbs, barriers, and built-venue or
-   floodlit training-circuit cues.
+3. WHEN a BikeErg replay is shown THEN both renderers SHALL present one coherent
+   bright indoor timber velodrome with roof daylight, built seating/infield
+   cues, and continuous regulation lines rather than outdoor skyline,
+   vegetation, or repeated curb/barrier blocks.
 4. WHEN switching sports THEN the environment SHALL change in composition,
    material, silhouette, and palette rather than only changing a tint.
 
@@ -63,8 +64,9 @@ a first-class product.
 
 #### Acceptance Criteria
 
-1. WHEN Renderer_2D paints a frame THEN it SHALL compose distinct sky,
-   horizon/background, middle-distance venue, course, and foreground layers.
+1. WHEN Renderer_2D paints a frame THEN it SHALL compose distinct atmosphere or
+   roof daylight, background, middle-distance venue, course, and foreground
+   layers appropriate to the sport.
 2. WHEN course texture or parallax moves THEN its offset SHALL follow replay
    distance and direction rather than renderer frame count.
 3. WHEN a ghost is present THEN the shared environment SHALL retain full
@@ -150,6 +152,10 @@ only the fastest hardware.
    atmosphere, horizon, terrain transition, vegetation, and venue structures
    SHALL be updated as a coherent art-directed environment rather than retaining
    a visually unrelated background.
+8. WHEN optional scenery is repeated THEN it SHALL be grouped into authored
+   sectors or irregular natural clusters with deliberate open space; increasing
+   tier quality SHALL NOT primarily create full-radius rings or evenly spaced
+   copies of the same prop.
 
 ### Requirement 6: Regression proof and visual verification
 
