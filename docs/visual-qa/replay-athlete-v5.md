@@ -554,9 +554,9 @@ coaching references:
 
 Applied to RowPlay, the shell is 7.8 m long with tapered bow/stern decks, a
 neutral lower U-hull, bow ball, stern fin, open cockpit, full-width wing rigger,
-and oarlocks. The aft-facing athlete sits stern-side of a fixed 42° stretcher;
-the heels sit about 16 cm below the seat and include heel restraints, instep
-hardware, and diagonal supports. The shared procedural/V4 leg solve keeps the
+and oarlocks. The aft-facing athlete sits between the bow-side sliding seat and
+the stern-side fixed 42° stretcher; the heels sit about 16 cm below the seat
+and include heel restraints, instep hardware, and diagonal supports. The shared procedural/V4 leg solve keeps the
 shins near vertical at catch, knees above and inside the cockpit, and legs near
 straight at finish. The rowing graph sequences legs → torso → arms on the drive
 and hands → body → slide on recovery. At the loaded draw, each humerus extends

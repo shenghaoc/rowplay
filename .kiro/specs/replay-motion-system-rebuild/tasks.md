@@ -78,8 +78,9 @@
   - [x] Seat each V4 palm on the rubber grip axis with fingers visibly wrapped,
     a flat thumb stop at the handle end, and continuous neutral wrist rotation;
     reject 180-degree hand/forearm roll solutions
-  - [x] Point both finish elbows down/out along the handle line, keeping them
-    just above the grips instead of at shoulder height or drooping below contact
+  - [x] Point both finish elbows down-and-back below the handle line, close
+    under each shoulder and at most slightly behind the laid-back shoulder
+    plane, instead of a shoulder-height chicken wing or left/right flare
   - [x] Protect the result with dense full-cycle 2D/3D sampling, V4 contact and
     torso-clearance tests, plus explicit 2D/procedural/V4 hand-over-knee timing
     assertions, repository gates, moving browser acceptance, and exact-head
