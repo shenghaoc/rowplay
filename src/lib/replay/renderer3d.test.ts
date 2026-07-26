@@ -567,8 +567,13 @@ describe("CourseRenderer3D", () => {
 
   it("places venue dressing in authored sectors with deliberate open vistas", () => {
     const rower = new CourseRenderer3D(makeHost(), "low", "rower");
+    // Bank woodland is two archetypes, so density is their sum.
     const rowTrees = sceneObject(rower, "environment:rower:bank-trees") as THREE.InstancedMesh;
-    expect(rowTrees.count).toBeGreaterThan(20);
+    const rowBroadleaves = sceneObject(
+      rower,
+      "environment:rower:bank-broadleaves",
+    ) as THREE.InstancedMesh;
+    expect(rowTrees.count + rowBroadleaves.count).toBeGreaterThan(20);
     expect(getScene(rower).getObjectByName("environment:rower:shoreline")).toBeDefined();
     expect(getScene(rower).getObjectByName("environment:rower:reed-beds")).toBeDefined();
     // Centre is a land island (not more water).
@@ -663,15 +668,15 @@ describe("CourseRenderer3D", () => {
     const ultra = new CourseRenderer3D(makeHost(), "ultra", "rower");
     const lowScene = getScene(low);
     const ultraScene = getScene(ultra);
-    const lowTrees = lowScene.getObjectByName(
-      "environment:rower:bank-trees",
-    ) as THREE.InstancedMesh;
-    const ultraTrees = ultraScene.getObjectByName(
-      "environment:rower:bank-trees",
-    ) as THREE.InstancedMesh;
+    // Conifers and broadleaves together carry the authored bank density.
+    const woodlandCount = (scene: THREE.Scene): number =>
+      (["environment:rower:bank-trees", "environment:rower:bank-broadleaves"] as const).reduce(
+        (total, name) => total + (scene.getObjectByName(name) as THREE.InstancedMesh).count,
+        0,
+      );
 
-    expect(lowTrees.count).toBe(28);
-    expect(ultraTrees.count).toBe(110);
+    expect(woodlandCount(lowScene)).toBe(28);
+    expect(woodlandCount(ultraScene)).toBe(110);
     for (const scene of [lowScene, ultraScene]) {
       expect(scene.getObjectByName("environment:rower:sky")).toBeDefined();
       expect(scene.getObjectByName("environment:rower:horizon-mid")).toBeDefined();
@@ -4787,6 +4792,48 @@ describe("CourseRenderer3D", () => {
       expect(rail).toBeGreaterThanOrEqual(48);
       // Bank-side boards confined to the campus arc, not a ring in the water.
       expect(boards).toBeLessThan(rail / 4);
+    });
+  });
+
+  describe("woodland and landform variety", () => {
+    it("mixes two tree archetypes, weighted to the venue's climate", () => {
+      const share = (sport: Sport): number => {
+        const renderer = new CourseRenderer3D(makeHost(), "ultra", sport);
+        const scene = getScene(renderer);
+        const [pineName, broadleafName] =
+          sport === "rower"
+            ? ["environment:rower:bank-trees", "environment:rower:bank-broadleaves"]
+            : [`environment:${sport}:pines`, `environment:${sport}:broadleaves`];
+        const pines = scene.getObjectByName(pineName) as THREE.InstancedMesh;
+        const broadleaves = scene.getObjectByName(broadleafName) as THREE.InstancedMesh;
+        expect(pines, `${sport} lost its conifers`).toBeDefined();
+        expect(broadleaves, `${sport} has no broadleaf archetype`).toBeDefined();
+        const ratio = broadleaves.count / (pines.count + broadleaves.count);
+        renderer.destroy();
+        return ratio;
+      };
+      // A temperate regatta valley is mixed woodland; a Nordic stadium is not.
+      expect(share("rower")).toBeGreaterThan(0.3);
+      expect(share("skierg")).toBeLessThan(0.3);
+      expect(share("skierg")).toBeGreaterThan(0);
+    });
+
+    it("grades landforms by height so they read as volume, not cutouts", () => {
+      const renderer = new CourseRenderer3D(makeHost(), "ultra", "skierg");
+      const peaks = getScene(renderer).getObjectByName(
+        "environment:skierg:mountain-peaks",
+      ) as THREE.InstancedMesh;
+      const color = peaks.geometry.getAttribute("color");
+      expect(color, "alpine massif has no height grade").toBeDefined();
+      // The grade has to actually vary, or it is just a flat tint.
+      let min = Infinity;
+      let max = -Infinity;
+      for (let i = 0; i < color.count; i++) {
+        min = Math.min(min, color.getX(i));
+        max = Math.max(max, color.getX(i));
+      }
+      expect(max - min).toBeGreaterThan(0.2);
+      renderer.destroy();
     });
   });
 });

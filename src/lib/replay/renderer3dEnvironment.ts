@@ -276,12 +276,27 @@ function fbm3(
  * and remains safe for both WebGL and WebGPU.  Adjacent rings share vertices
  * so the normal field stays continuous instead of exposing triangle bands.
  */
+/**
+ * Height-graded vertex shading for a landform.
+ *
+ * `base` and `ridge` multiply the material colour at the bottom and top of the
+ * form. Distant masses were previously one flat tone across the whole
+ * silhouette, which is what made them read as paper cutouts: real ranges carry
+ * haze pooled low and catch light along the ridge, and it is that internal
+ * value change — not the outline — that makes them read as volume.
+ */
+interface VerticalShade {
+  base: number;
+  ridge: number;
+}
+
 function organicRadialSurfaceGeometry(
   profile: readonly THREE.Vector2[],
   radialSegments: number,
   _phase: number,
   name: string,
   irregularity = 1,
+  verticalShade?: VerticalShade,
 ): THREE.BufferGeometry {
   const ringCount = profile.length;
   const maxRadius = Math.max(0.001, ...profile.map((point) => point.x));
@@ -290,6 +305,8 @@ function organicRadialSurfaceGeometry(
   // Cylindrical UVs so High/Ultra CC0 bark/leaf/terrain maps can dress pines,
   // shoreline hills, and alpine forms without a separate unwrap step.
   const uvs = new Float32Array(vertexCount * 2);
+  const colors = verticalShade ? new Float32Array(vertexCount * 3) : null;
+  let colorCursor = 0;
   const indices: number[] = [];
   let cursor = 0;
   let uvCursor = 0;
@@ -323,6 +340,15 @@ function organicRadialSurfaceGeometry(
       positions[cursor++] = Math.sin(angle) * radius;
       uvs[uvCursor++] = segment / radialSegments;
       uvs[uvCursor++] = v;
+      if (colors && verticalShade) {
+        // Break the gradient with the same noise field that shapes the form, so
+        // the shading follows the geology instead of banding horizontally.
+        const mottle = fbm3(nx + 11.3, ny + 7.9, nz + 4.6, 3) * 0.05;
+        const shade = verticalShade.base + (verticalShade.ridge - verticalShade.base) * v + mottle;
+        colors[colorCursor++] = shade;
+        colors[colorCursor++] = shade;
+        colors[colorCursor++] = shade;
+      }
     }
   }
 
@@ -349,6 +375,10 @@ function organicRadialSurfaceGeometry(
   uvs[bottomCenter * 2 + 1] = 0;
   uvs[topCenter * 2] = 0.5;
   uvs[topCenter * 2 + 1] = 1;
+  if (colors && verticalShade) {
+    colors.fill(verticalShade.base, bottomCenter * 3, bottomCenter * 3 + 3);
+    colors.fill(verticalShade.ridge, topCenter * 3, topCenter * 3 + 3);
+  }
   const topRing = (ringCount - 1) * radialSegments;
   for (let segment = 0; segment < radialSegments; segment++) {
     const next = (segment + 1) % radialSegments;
@@ -359,6 +389,7 @@ function organicRadialSurfaceGeometry(
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  if (colors) geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   geometry.computeBoundingBox();
@@ -366,6 +397,40 @@ function organicRadialSurfaceGeometry(
   geometry.name = name;
   geometry.userData.organicRadialSurface = true;
   return geometry;
+}
+
+/**
+ * A rounded, lobed broadleaf crown.
+ *
+ * Every tree in every venue used to be the same conifer. That is defensible for
+ * a Nordic stadium and wrong for a temperate regatta valley, and more to the
+ * point one archetype at any density reads as a repeated stamp. The profile
+ * swells low and closes softly rather than tapering to a needle, so the two
+ * silhouettes stay distinguishable at replay distance.
+ */
+function sculptedBroadleafGeometry(): THREE.BufferGeometry {
+  return organicRadialSurfaceGeometry(
+    [
+      new THREE.Vector2(0.04, -2.12),
+      new THREE.Vector2(0.26, -2.0),
+      new THREE.Vector2(0.42, -1.62),
+      new THREE.Vector2(0.55, -1.18),
+      new THREE.Vector2(0.92, -0.82),
+      new THREE.Vector2(1.24, -0.44),
+      new THREE.Vector2(1.42, -0.04),
+      new THREE.Vector2(1.47, 0.36),
+      new THREE.Vector2(1.38, 0.76),
+      new THREE.Vector2(1.19, 1.12),
+      new THREE.Vector2(0.94, 1.44),
+      new THREE.Vector2(0.63, 1.72),
+      new THREE.Vector2(0.31, 1.94),
+      new THREE.Vector2(0.02, 2.08),
+    ],
+    36,
+    0.64,
+    "environment:broadleaf-canopy",
+    0.95,
+  );
 }
 
 /**
@@ -428,6 +493,7 @@ function alpinePeakGeometry(): THREE.BufferGeometry {
     0.43,
     "environment:alpine-massif",
     1,
+    { base: 0.74, ridge: 1.14 },
   );
 }
 
@@ -472,6 +538,7 @@ function alpineFoothillGeometry(): THREE.BufferGeometry {
     1.37,
     "environment:alpine-foothill",
     0.88,
+    { base: 0.8, ridge: 1.1 },
   );
 }
 
@@ -827,7 +894,14 @@ export class EnvironmentBuilder {
     sectors: readonly EnvironmentSector[],
   ): void {
     const canopyGeo = this.ctx.track(sculptedPineGeometry());
+    const broadleafGeo = this.ctx.track(sculptedBroadleafGeometry());
     const trunkGeo = this.ctx.track(new THREE.CylinderGeometry(0.11, 0.17, 1.38, 16));
+    // A Nordic stadium is overwhelmingly coniferous; a temperate regatta valley
+    // is not, and one archetype at this density reads as a repeated stamp
+    // wherever it is used.
+    const broadleafShare = this.ctx.sport === "rower" ? 0.45 : 0.16;
+    const broadleafCount = Math.round(count * broadleafShare);
+    const pineCount = count - broadleafCount;
     const pineColor =
       this.ctx.sport === "skierg" ? themed(0x335d51, 0x244d45) : themed(0x2d6548, 0x1c503c);
     // A single continuous canopy keeps the silhouette coniferous at replay
@@ -857,10 +931,29 @@ export class EnvironmentBuilder {
       [1.1, 2.4],
       0.55,
     );
-    const canopies = this.ctx.trackInstanced(new THREE.InstancedMesh(canopyGeo, canopyMat, count));
+    const broadleafMat = this.ctx.environmentStandardMat(
+      `environment:${this.ctx.sport}:broadleaf-canopy-material`,
+      this.ctx.sport === "skierg" ? themed(0x3f6b4a, 0x27503a) : themed(0x4b7f3e, 0x264d2e),
+      { fog: true, roughness: 0.85, metalness: 0.005 },
+    );
+    this.applyEnvironmentSurfaceMaps(
+      broadleafMat,
+      "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
+      [2.1, 2.8],
+      0.2,
+    );
+    const canopies = this.ctx.trackInstanced(
+      new THREE.InstancedMesh(canopyGeo, canopyMat, pineCount),
+    );
+    const broadleaves = this.ctx.trackInstanced(
+      new THREE.InstancedMesh(broadleafGeo, broadleafMat, broadleafCount),
+    );
     const trunks = this.ctx.trackInstanced(new THREE.InstancedMesh(trunkGeo, trunkMat, count));
     canopies.name = `environment:${this.ctx.sport}:pines`;
+    broadleaves.name = `environment:${this.ctx.sport}:broadleaves`;
     trunks.name = `environment:${this.ctx.sport}:pine-trunks`;
+    let pineCursor = 0;
+    let broadleafCursor = 0;
     const matrix = new THREE.Matrix4();
     const quaternion = new THREE.Quaternion();
     const scale = new THREE.Vector3();
@@ -890,19 +983,27 @@ export class EnvironmentBuilder {
       position.set(Math.sin(a) * radius, 2.02 * size, Math.cos(a) * radius);
       scale.set(size * (0.92 + (i % 3) * 0.06), size * 1.04, size * (0.92 + (i % 4) * 0.05));
       matrix.compose(position, quaternion, scale);
-      canopies.setMatrixAt(i, matrix);
+      // Interleave by index so stands stay mixed rather than splitting the
+      // woodland into a conifer half and a broadleaf half.
+      const wantsBroadleaf =
+        broadleafCursor < broadleafCount &&
+        (pineCursor >= pineCount || (i * broadleafCount) % count < broadleafCount);
+      if (wantsBroadleaf) broadleaves.setMatrixAt(broadleafCursor++, matrix);
+      else canopies.setMatrixAt(Math.min(pineCursor++, pineCount - 1), matrix);
       position.y = 0.55 * size;
       scale.set(size * 0.95, size, size * 0.95);
       matrix.compose(position, quaternion, scale);
       trunks.setMatrixAt(i, matrix);
     }
     canopies.instanceMatrix.needsUpdate = true;
+    broadleaves.instanceMatrix.needsUpdate = true;
     trunks.instanceMatrix.needsUpdate = true;
     // Crowns catch different amounts of sun and differ by age; trunks vary far
     // less, so they take a narrower spread and no colour temperature swing.
-    scatterTint(canopies, count, 12.9898);
+    scatterTint(canopies, pineCount, 12.9898);
+    scatterTint(broadleaves, broadleafCount, 4.771);
     scatterTint(trunks, count, 7.117, 0.09, 0);
-    group.add(trunks, canopies);
+    group.add(trunks, canopies, broadleaves);
   }
 
   private addAlpinePeaks(group: THREE.Group, count: number): void {
@@ -913,7 +1014,7 @@ export class EnvironmentBuilder {
     const peakMat = this.ctx.environmentStandardMat(
       "environment:skierg:mountain-material",
       themed(0x7897a8, 0x4f6a7a),
-      { fog: true, roughness: 0.92, metalness: 0 },
+      { fog: true, roughness: 0.92, metalness: 0, vertexColors: true },
     );
     const capMat = this.ctx.environmentStandardMat(
       "environment:skierg:snowcap-material",
@@ -960,7 +1061,7 @@ export class EnvironmentBuilder {
     const material = this.ctx.environmentStandardMat(
       "environment:skierg:foothill-material",
       themed(0x638794, 0x3a5968),
-      { fog: true, roughness: 0.96, metalness: 0 },
+      { fog: true, roughness: 0.96, metalness: 0, vertexColors: true },
     );
     const foothills = this.ctx.trackInstanced(new THREE.InstancedMesh(geometry, material, count));
     foothills.name = "environment:skierg:foothills";
@@ -1608,8 +1709,30 @@ export class EnvironmentBuilder {
       [1.8, 2.2],
       0.14,
     );
-    const trees = this.ctx.trackInstanced(new THREE.InstancedMesh(canopyGeo, mat, count));
+    // The basin sits in a temperate valley, so its banks are mixed woodland
+    // rather than the all-conifer stand this used to be.
+    const broadleafGeo = this.ctx.track(sculptedBroadleafGeometry());
+    const broadleafMat = this.ctx.environmentStandardMat(
+      "environment:rower:bank-broadleaf-material",
+      themed(0x4b7f3e, 0x264d2e),
+      { fog: true, roughness: 0.87, metalness: 0 },
+    );
+    this.applyEnvironmentSurfaceMaps(
+      broadleafMat,
+      "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
+      [1.6, 2.0],
+      0.16,
+    );
+    const broadleafCount = Math.round(count * 0.45);
+    const pineCount = count - broadleafCount;
+    const trees = this.ctx.trackInstanced(new THREE.InstancedMesh(canopyGeo, mat, pineCount));
+    const broadleaves = this.ctx.trackInstanced(
+      new THREE.InstancedMesh(broadleafGeo, broadleafMat, broadleafCount),
+    );
     trees.name = "environment:rower:bank-trees";
+    broadleaves.name = "environment:rower:bank-broadleaves";
+    let pineCursor = 0;
+    let broadleafCursor = 0;
     const m4 = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const p = new THREE.Vector3();
@@ -1626,11 +1749,19 @@ export class EnvironmentBuilder {
       p.set(Math.sin(angle) * radius, 0.9 * size, Math.cos(angle) * radius);
       s.set(size * 1.08, size, size * 1.08);
       m4.compose(p, q, s);
-      trees.setMatrixAt(i, m4);
+      // Interleave so the two archetypes share every stand instead of the
+      // woodland splitting into a conifer half and a broadleaf half.
+      const wantsBroadleaf =
+        broadleafCursor < broadleafCount &&
+        (pineCursor >= pineCount || (i * broadleafCount) % count < broadleafCount);
+      if (wantsBroadleaf) broadleaves.setMatrixAt(broadleafCursor++, m4);
+      else trees.setMatrixAt(Math.min(pineCursor++, pineCount - 1), m4);
     }
     trees.instanceMatrix.needsUpdate = true;
-    scatterTint(trees, count, 5.3271);
-    group.add(trees);
+    broadleaves.instanceMatrix.needsUpdate = true;
+    scatterTint(trees, pineCount, 5.3271);
+    scatterTint(broadleaves, broadleafCount, 8.4413);
+    group.add(trees, broadleaves);
   }
 
   /** Reed beds at the waterline — continuous wetland edge detail. */
@@ -2009,52 +2140,6 @@ export class EnvironmentBuilder {
    * Woodland grows only on land behind the continuous bank — one tree system,
    * not a second random prop field competing with the shoreline.
    */
-  private addRowerWoodland(group: THREE.Group, outerR: number): void {
-    const woodland = new THREE.Group();
-    woodland.name = "environment:rower:woodland";
-    const nearCount = [10, 16, 24, 32][this.ctx.cfg.environmentDetail];
-    const nearMat = this.ctx.environmentStandardMat(
-      "environment:rower:shoreline-material",
-      themed(0x355f48, 0x163c33),
-      { fog: true, roughness: 0.94, metalness: 0 },
-    );
-    this.applyEnvironmentSurfaceMaps(
-      nearMat,
-      "/replay-assets/environments/forest-leaves-04/forest-leaves-04",
-      [2.1, 2.6],
-      0.16,
-    );
-    const nearGeo = this.ctx.track(alpineFoothillGeometry());
-    const nearHills = this.ctx.trackInstanced(new THREE.InstancedMesh(nearGeo, nearMat, nearCount));
-    nearHills.name = "environment:rower:wooded-shoreline";
-    const matrix = new THREE.Matrix4();
-    const quaternion = new THREE.Quaternion();
-    const position = new THREE.Vector3();
-    const scale = new THREE.Vector3();
-    for (let index = 0; index < nearCount; index++) {
-      const { angle } = sectorSample(index, nearCount, ROW_WOODLAND_SECTORS);
-      const size = 0.85 + (0.5 + Math.sin(index * 4.7) * 0.5) * 0.45;
-      const radius = outerR + 14 + (index % 4) * 1.8;
-      quaternion.setFromAxisAngle(WORLD_UP, angle + 0.4);
-      position.set(Math.sin(angle) * radius, 1.35 * size, Math.cos(angle) * radius);
-      scale.set(size * 2.4, size * 0.85, size * 1.5);
-      matrix.compose(position, quaternion, scale);
-      nearHills.setMatrixAt(index, matrix);
-    }
-    nearHills.instanceMatrix.needsUpdate = true;
-    woodland.add(nearHills);
-
-    // Pines only behind woodland banks — the campus and vista stay clear.
-    this.addInstancedPines(
-      woodland,
-      [40, 64, 96, 140][this.ctx.cfg.environmentDetail],
-      outerR + 14,
-      outerR + 38,
-      ROW_WOODLAND_SECTORS,
-    );
-    group.add(woodland);
-  }
-
   /**
    * One campus owns dock, lawn path and buildings as a connected facility
    * rather than three props dropped at random angles.
@@ -2138,12 +2223,12 @@ export class EnvironmentBuilder {
     const farMat = this.ctx.environmentStandardMat(
       "environment:rower:ridge-far-material",
       themed(0x6f8a72, 0x1f3d40),
-      { fog: true, roughness: 1, metalness: 0 },
+      { fog: true, roughness: 1, metalness: 0, vertexColors: true },
     );
     const midMat = this.ctx.environmentStandardMat(
       "environment:rower:ridge-mid-material",
       themed(0x4a6d54, 0x1a403a),
-      { fog: true, roughness: 0.97, metalness: 0 },
+      { fog: true, roughness: 0.97, metalness: 0, vertexColors: true },
     );
     const count = [6, 9, 12, 16][this.ctx.cfg.environmentDetail];
     const geo = this.ctx.track(alpineFoothillGeometry());

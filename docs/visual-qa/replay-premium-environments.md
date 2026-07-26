@@ -153,6 +153,20 @@ open water: a full ring of posts around the basin read as a picket fence around
 a lake, so RowErg's distance boards are confined to the campus arc instead.
 Pinned by test, since the distinction is not obvious from the code.
 
+**Woodland is two archetypes now, weighted to climate.** Every tree in every
+venue used to be the same conifer — defensible for a Nordic stadium, wrong for a
+temperate regatta valley, and at any density a single archetype reads as a
+repeated stamp. A rounded broadleaf crown now stands beside the conifer,
+interleaved through every stand so the woodland does not split into halves:
+45% broadleaf on the RowErg banks, 16% at SkiErg. Total authored density is
+unchanged, so the tier density tests still pin the same numbers.
+
+**Landforms are graded by height rather than painted one flat tone.** The alpine
+massif, the foothills, and the RowErg valley ridges carry vertex shading that
+runs from a hazier base to a lighter ridge, mottled by the same noise field that
+shapes the form. Their outlines were always fBm-displaced; what made them read
+as paper cutouts was having no internal value change at all.
+
 **Each sport reads as its own place.** RowErg is a lagoon loop whose circle
 centre is a land island rather than more water — visible in both the 3D basin and
 the 2D mid-course silhouette. SkiErg is a Nordic stadium with a snow-covered
