@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { BIKE_RIG, bikeWheelAxleY } from "../src/lib/replay/bikeRig.js";
+import { SKI_ATHLETE_PROPORTIONS } from "../src/lib/replay/skiEquipment.ts";
 import { buildBikeSaddleGeometry } from "../src/lib/replay/bikeSaddle.js";
 
 // v3 deliberately widens the asset contract from isolated replacement shells
@@ -620,48 +621,66 @@ function scullBladeGeometry() {
   return composeGeometry(spoon, spine);
 }
 
+/** Unit-length race carbon shaft (fitted to the rigid pole span at runtime). */
 function nordicPoleShaftGeometry() {
   const shaft = loftGeometry(
     [
-      { p: -0.5, rx: 0.72, rz: 0.72 },
-      { p: -0.32, rx: 0.82, rz: 0.82 },
-      { p: 0.12, rx: 0.98, rz: 0.98 },
-      { p: 0.36, rx: 0.8, rz: 0.8 },
-      { p: 0.5, rx: 0.62, rz: 0.62 },
+      { p: -0.5, rx: 0.48, rz: 0.48 },
+      { p: -0.28, rx: 0.62, rz: 0.62 },
+      { p: 0.1, rx: 0.78, rz: 0.78 },
+      { p: 0.38, rx: 0.64, rz: 0.64 },
+      { p: 0.5, rx: 0.42, rz: 0.42 },
     ],
     8,
     "z",
     Math.PI / 8,
   );
-  const lowerReinforcement = new THREE.CylinderGeometry(0.92, 0.72, 0.14, 8);
+  const lowerReinforcement = new THREE.CylinderGeometry(0.55, 0.42, 0.1, 8);
   lowerReinforcement.rotateX(Math.PI / 2);
-  lowerReinforcement.translate(0, 0, 0.39);
+  lowerReinforcement.translate(0, 0, 0.4);
   return composeGeometry(shaft, lowerReinforcement);
 }
 
 function nordicPoleGripGeometry() {
   const grip = loftGeometry(
     [
-      { p: -0.5, rx: 0.62, rz: 0.7 },
-      { p: -0.3, rx: 0.92, rz: 1.0, oz: -0.04 },
-      { p: 0.12, rx: 1.02, rz: 1.06, oz: -0.06 },
-      { p: 0.4, rx: 0.76, rz: 0.82, oz: -0.03 },
-      { p: 0.5, rx: 0.5, rz: 0.56 },
+      { p: -0.5, rx: 0.48, rz: 0.55 },
+      { p: -0.28, rx: 0.78, rz: 0.86, oz: -0.03 },
+      { p: 0.1, rx: 0.88, rz: 0.94, oz: -0.04 },
+      { p: 0.38, rx: 0.62, rz: 0.68, oz: -0.02 },
+      { p: 0.5, rx: 0.4, rz: 0.44 },
     ],
     8,
     "z",
     Math.PI / 8,
   );
-  const guard = new THREE.TorusGeometry(0.84, 0.11, 6, 10);
-  guard.translate(0, 0, -0.42);
-  return composeGeometry(grip, guard);
+  const guard = new THREE.TorusGeometry(0.62, 0.08, 6, 10);
+  guard.translate(0, 0, -0.4);
+  const strap = new THREE.TorusGeometry(0.68, 0.05, 6, 12);
+  strap.translate(0, 0, -0.1);
+  const cap = translatedGeometry(new THREE.CylinderGeometry(0.4, 0.32, 0.06, 10), 0, 0, 0.42);
+  return composeGeometry(grip, guard, strap, cap);
 }
 
+/** Hard-track basket — small disc, not a powder snowshoe. */
 function nordicPoleBasketGeometry() {
-  const basket = new THREE.CylinderGeometry(0.88, 1, 0.28, 10);
-  const ferrule = translatedGeometry(new THREE.ConeGeometry(0.36, 0.52, 8), 0, -0.38, 0);
-  const cap = translatedGeometry(new THREE.CylinderGeometry(0.58, 0.58, 0.08, 10), 0, 0.18, 0);
-  return composeGeometry(basket, ferrule, cap);
+  const basket = new THREE.CylinderGeometry(0.55, 0.62, 0.14, 8);
+  const ferrule = translatedGeometry(new THREE.ConeGeometry(0.22, 0.36, 6), 0, -0.28, 0);
+  const cap = translatedGeometry(new THREE.CylinderGeometry(0.36, 0.36, 0.05, 6), 0, 0.1, 0);
+  const ribs = [];
+  for (let spoke = 0; spoke < 4; spoke++) {
+    const angle = (spoke / 4) * Math.PI * 2;
+    ribs.push(
+      tubeGeometryBetween(
+        [0, 0.08, 0],
+        [Math.cos(angle) * 0.48, 0.08, Math.sin(angle) * 0.48],
+        0.035,
+        5,
+        0.68,
+      ),
+    );
+  }
+  return composeGeometry(basket, ferrule, cap, ...ribs);
 }
 
 function performanceSaddleGeometry() {
@@ -809,12 +828,24 @@ async function buildRowingAssemblyParts() {
   const sourcePath = join(scratch, "rowplay-rowing-shell-source.glb");
   const blender = process.env.BLENDER_BIN || DEFAULT_BLENDER;
   try {
+    // The build must stay a pure function of reviewed source. An earlier
+    // revision fell back to reading OUTPUT — the artifact this script writes —
+    // when Blender was missing, which made the result depend on the previously
+    // committed binary, produced two different byte-outputs from one commit,
+    // and turned a deleted GLB into an ENOENT instead of a rebuild. Blender is
+    // required; set BLENDER_BIN if it is not at the default path.
+    const unavailable = (reason) =>
+      new Error(
+        `Blender rowing-shell authoring unavailable: ${reason}. ` +
+          `Install Blender or set BLENDER_BIN; the V3 asset cannot be rebuilt without it.`,
+      );
     const result = spawnSync(
       blender,
       ["--background", "--python", ROWING_SHELL_GENERATOR, "--", "--output", sourcePath],
       { stdio: "inherit" },
     );
-    if (result.error) throw result.error;
+    if (result.error) throw unavailable(result.error.message);
+    if (result.status === null) throw unavailable("Blender terminated before producing output");
     if (result.status !== 0) {
       throw new Error(`Blender rowing-shell authoring failed with exit code ${result.status}`);
     }
@@ -864,67 +895,124 @@ function rowOarRigParts() {
   ];
 }
 
-/** One local ski, rooted at its existing per-side anchor: (side × .21, 0, .16). */
+/**
+ * One local readable-classic ski, rooted at its measured per-side anchor:
+ * (side × 0.15, 0, 0.16). Max width ~72 mm, free-heel toe bar. Wider than
+ * literal 44 mm race stock so the boot still sits on a platform at
+ * chase-camera distance; narrower than the old 110 mm toy planks.
+ *
+ * The profile below is authored at a 2.06 m native length; every part is
+ * scaled longitudinally to `SKI_ATHLETE_PROPORTIONS.skiLength` on the way
+ * out, so the shipped ski always matches the runtime contract the contact
+ * solver and the procedural fallback read.
+ */
+const SKI_NATIVE_LENGTH = 2.06;
+
 function skiAssemblyParts() {
+  const lengthScale = SKI_ATHLETE_PROPORTIONS.skiLength / SKI_NATIVE_LENGTH;
+  const toContractLength = (geometry) => {
+    geometry.scale(1, 1, lengthScale);
+    geometry.computeVertexNormals();
+    return geometry;
+  };
+  // Loft half-profiles along Z: rx is half-width, rz is half-thickness.
+  // Sidecut waist is narrower than the shovel; tip rises gradually.
   const base = loftGeometry(
     [
-      { p: -1.05, rx: 0.028, rz: 0.012 },
-      { p: -0.88, rx: 0.048, rz: 0.018 },
-      { p: -0.43, rx: 0.065, rz: 0.024 },
-      { p: 0.16, rx: 0.067, rz: 0.026 },
-      { p: 0.66, rx: 0.059, rz: 0.024 },
-      { p: 1.0, rx: 0.044, rz: 0.018, oz: 0.016 },
-      { p: 1.16, rx: 0.018, rz: 0.01, oz: 0.07 },
+      { p: -1.03, rx: 0.016, rz: 0.007 },
+      { p: -0.88, rx: 0.03, rz: 0.01 },
+      { p: -0.4, rx: 0.028, rz: 0.011 },
+      { p: 0.05, rx: 0.03, rz: 0.011 },
+      { p: 0.55, rx: 0.036, rz: 0.01 },
+      { p: 0.88, rx: 0.028, rz: 0.008, oz: 0.012 },
+      { p: 1.03, rx: 0.01, rz: 0.005, oz: 0.055 },
     ],
-    18,
+    12,
     "z",
-    Math.PI / 18,
+    Math.PI / 12,
   );
-  base.translate(0, 0.028, 0);
+  base.translate(0, 0.016, 0);
   const topDeck = loftGeometry(
     [
-      { p: -0.89, rx: 0.033, rz: 0.008 },
-      { p: -0.46, rx: 0.052, rz: 0.011 },
-      { p: 0.08, rx: 0.055, rz: 0.012 },
-      { p: 0.67, rx: 0.046, rz: 0.01 },
-      { p: 0.97, rx: 0.026, rz: 0.008, oz: 0.014 },
+      { p: -0.86, rx: 0.02, rz: 0.004 },
+      { p: -0.36, rx: 0.026, rz: 0.005 },
+      { p: 0.1, rx: 0.028, rz: 0.005 },
+      { p: 0.55, rx: 0.024, rz: 0.0045 },
+      { p: 0.9, rx: 0.014, rz: 0.004, oz: 0.012 },
     ],
-    16,
+    10,
     "z",
-    Math.PI / 16,
+    Math.PI / 10,
   );
-  topDeck.translate(0, 0.058, -0.04);
-  const binding = composeGeometry(
+  topDeck.translate(0, 0.03, -0.02);
+  const edgeLeft = ridgeGeometry(
+    [
+      new THREE.Vector3(-0.028, 0.024, -0.88),
+      new THREE.Vector3(-0.032, 0.024, -0.3),
+      new THREE.Vector3(-0.034, 0.026, 0.25),
+      new THREE.Vector3(-0.024, 0.034, 0.78),
+    ],
+    0.004,
+    8,
+    4,
+  );
+  const edgeRight = edgeLeft.clone();
+  edgeRight.scale(-1, 1, 1);
+  edgeRight.computeVertexNormals();
+  // NIS plate spans most of the ski width; free heel, not an alpine block.
+  const bindingPlate = composeGeometry(
     loftGeometry(
       [
-        { p: -0.18, rx: 0.062, rz: 0.028 },
-        { p: -0.04, rx: 0.08, rz: 0.042 },
-        { p: 0.16, rx: 0.074, rz: 0.034 },
+        { p: -0.1, rx: 0.026, rz: 0.007 },
+        { p: 0.0, rx: 0.032, rz: 0.009 },
+        { p: 0.1, rx: 0.028, rz: 0.007 },
       ],
-      14,
+      8,
       "z",
-      Math.PI / 14,
+      Math.PI / 8,
     ),
-    tubeGeometryBetween([-0.055, 0.105, -0.11], [-0.055, 0.105, 0.12], 0.008, 10),
-    tubeGeometryBetween([0.055, 0.105, -0.11], [0.055, 0.105, 0.12], 0.008, 10),
+    tubeGeometryBetween([-0.02, 0.044, -0.07], [-0.02, 0.044, 0.1], 0.0032, 5),
+    tubeGeometryBetween([0.02, 0.044, -0.07], [0.02, 0.044, 0.1], 0.0032, 5),
   );
-  binding.translate(0, 0.075, 0.02);
+  bindingPlate.translate(0, 0.032, 0.02);
+  const bindingToe = composeGeometry(
+    ellipsoidGeometry([0.028, 0.014, 0.022], 8, 6, [0, 0.052, -0.08]),
+    ridgeGeometry(
+      [
+        new THREE.Vector3(-0.022, 0.058, -0.085),
+        new THREE.Vector3(0, 0.064, -0.1),
+        new THREE.Vector3(0.022, 0.058, -0.085),
+      ],
+      0.0035,
+      6,
+      4,
+    ),
+  );
+  // Low free-heel bumper only — heel is not locked.
+  const bindingHeel = composeGeometry(
+    ellipsoidGeometry([0.022, 0.006, 0.024], 7, 5, [0, 0.04, 0.1]),
+    tubeGeometryBetween([-0.018, 0.042, 0.1], [0.018, 0.042, 0.1], 0.0028, 5),
+  );
   const kick = ridgeGeometry(
     [
-      new THREE.Vector3(0, 0.054, 0.74),
-      new THREE.Vector3(0, 0.08, 1.0),
-      new THREE.Vector3(0, 0.145, 1.16),
+      new THREE.Vector3(0, 0.024, 0.72),
+      new THREE.Vector3(0, 0.042, 0.92),
+      new THREE.Vector3(0, 0.072, 1.03),
     ],
-    0.009,
-    8,
-    7,
+    0.005,
+    6,
+    5,
   );
   return [
     { name: "base", geometry: base, materialRole: "equipment-dark" },
     { name: "top-deck", geometry: topDeck, materialRole: "equipment-painted" },
-    { name: "binding", geometry: binding, materialRole: "equipment-dark" },
+    { name: "edge-left", geometry: edgeLeft, materialRole: "equipment-metal" },
+    { name: "edge-right", geometry: edgeRight, materialRole: "equipment-metal" },
+    { name: "binding-plate", geometry: bindingPlate, materialRole: "equipment-dark" },
+    { name: "binding-toe", geometry: bindingToe, materialRole: "equipment-metal" },
+    { name: "binding-heel", geometry: bindingHeel, materialRole: "equipment-trim" },
     { name: "tip-ridge", geometry: kick, materialRole: "equipment-light" },
-  ];
+  ].map((part) => ({ ...part, geometry: toContractLength(part.geometry) }));
 }
 /**
  * One wheel, rooted at the existing wheel-group centre with an axle along X.

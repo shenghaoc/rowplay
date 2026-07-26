@@ -809,7 +809,13 @@ export function collectReplayV4AssetTemplate(
   return template;
 }
 
-function materialTextures(material: THREE.Material): readonly THREE.Texture[] {
+/**
+ * Every texture a material owns. `Material.dispose()` does not release them, so
+ * scene teardown has to walk them explicitly. `ShaderMaterial` uniforms are
+ * included because procedural sky/water materials hold their maps there rather
+ * than on a named property.
+ */
+export function materialTextures(material: THREE.Material): readonly THREE.Texture[] {
   const textures = new Set<THREE.Texture>();
   for (const value of Object.values(material)) {
     if (value instanceof THREE.Texture) textures.add(value);

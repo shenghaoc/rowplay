@@ -68,14 +68,18 @@ const GRIP_CURL_BY_SPORT: Readonly<Record<Sport, ReplayV4GripCurlConfig>> = {
     thumbDistal: 0.44,
   },
   skierg: {
-    fingerCup: 0.1,
-    fingerProximal: 0.9,
-    fingerIntermediate: 1.4,
-    fingerDistal: 0.82,
-    thumbOppose: 0.9,
-    thumbProximal: 0.48,
-    thumbIntermediate: 0.78,
-    thumbDistal: 0.5,
+    // Thin pole shaft needs a clear wrap, so the fingers curl further than the
+    // other two sports. Thumb stays mostly up the pole (light opposition) so it
+    // does not fold across the knuckles. Verified on the macro grip camera —
+    // see docs/visual-qa/replay-ski-equipment.md.
+    fingerCup: 0.14,
+    fingerProximal: 1.15,
+    fingerIntermediate: 1.55,
+    fingerDistal: 1.0,
+    thumbOppose: 0.4,
+    thumbProximal: 0.35,
+    thumbIntermediate: 0.5,
+    thumbDistal: 0.35,
   },
   bike: {
     fingerCup: 0.1,
@@ -1714,6 +1718,8 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // The renderer pre-orients RowErg hands before refining the rigid oar arc,
     // so its wrist→palm vector is part of that exact solve. Re-orienting here
     // would invalidate the refined target and reintroduce a visible grip gap.
+    // SkiErg takes the pole-led frame first so the palm offset stays
+    // consistent with the shaft frame while position closes.
     if (!(this.options.sport === "rower" && this.handOrientationPrepared)) {
       this.softOrientEffector(chain);
       this.root.updateMatrixWorld(true);
@@ -1721,6 +1727,19 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     for (let pass = 0; pass < 6; pass++) {
       this.solvePositionTowardTarget(chain, proximalLength, distalLength);
       this.root.updateMatrixWorld(true);
+    }
+    if (this.options.sport === "skierg") {
+      // The pole-led frame moves the palm by centimetres relative to the clip
+      // wrist, so frame and position are closed alternately: orient, then solve
+      // position with that frame held fixed (see solvePositionTowardTarget's
+      // preserve). Position has to run last — a trailing orientation set
+      // rotates the contact offset and reopens the gap it just closed.
+      for (let pass = 0; pass < 4; pass++) {
+        this.softOrientEffector(chain);
+        this.root.updateMatrixWorld(true);
+        this.solvePositionTowardTarget(chain, proximalLength, distalLength);
+        this.root.updateMatrixWorld(true);
+      }
     }
   }
 
@@ -1774,13 +1793,12 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     chain.upper.getWorldPosition(this.rootWorld);
     chain.middle.getWorldPosition(this.middleWorld);
     this.swingBoneToward(chain.middle, chain.effector, this.solvedEnd);
-    if (!chain.isLeg && this.options.sport === "rower") {
-      // RowErg's long, centreline-bound reach needs the wrist frame chosen by
-      // softOrientEffector to survive its parent-bone swings. Counter-rotate
-      // the hand after the forearm solve so the palm offset remains stable;
-      // the next pass can then close the rigid grip instead of chasing a
-      // contact point that moves with every IK pass. SkiErg deliberately keeps
-      // its existing pole-led terminal rotation through the vertical press.
+    if (!chain.isLeg && (this.options.sport === "rower" || this.options.sport === "skierg")) {
+      // RowErg and SkiErg both need the wrist frame chosen by softOrientEffector
+      // to survive parent-bone swings. Counter-rotate the hand after the
+      // forearm solve so the palm offset remains stable; the next pass can then
+      // close the rigid grip instead of chasing a contact point that moves with
+      // every IK pass. For SkiErg this preserves the cylindrical pole wrap.
       this.root.updateMatrixWorld(true);
       this.setBoneWorldQuaternion(chain.effector, this.preservedEffectorWorldQuaternion);
     }
@@ -1795,7 +1813,11 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private softOrientEffector(chain: ChainBinding): void {
     chain.effector.getWorldQuaternion(this.rootWorldQuaternion);
     chain.target.getWorldQuaternion(this.targetWorldQuaternion);
-    if (chain.isLeg) {
+    // Legs always take the equipment frame. SkiErg arms also take the full
+    // pole-led frame: every prepare() restores clip hand rotations, so an 8°
+    // soft slerp can never reach the shaft frame and the fingers curl past the
+    // pole instead of around it.
+    if (chain.isLeg || this.options.sport === "skierg") {
       this.setBoneWorldQuaternion(chain.effector, this.targetWorldQuaternion);
       return;
     }

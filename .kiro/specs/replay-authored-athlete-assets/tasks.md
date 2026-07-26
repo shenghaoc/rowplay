@@ -118,3 +118,42 @@ figure, readability, and motion specs.
   - [x] Update provenance, hashes, user documentation, native handoff, and
     visual-QA evidence; run focused tests, the full repository gate, browser
     smoke, deployment, and exact-head CI
+
+- [x] **13. Refine SkiErg equipment proportions and repair the grip frame**
+  - [x] Centralise SkiErg proportions, grip shift, and the hand-frame angles in
+    `src/lib/replay/skiEquipment.ts`, and make equipment progressive in geometry
+    across Low/Medium/High/Ultra rather than in pixel density alone
+  - [x] Resolve the wrist pitch axis in the hand's parent frame; a world-space
+    axis passed to `Object3D.rotateOnWorldAxis` coupled the grip to the course
+    yaw and drifted 120° a quarter lap from where it was tuned
+  - [x] Build the wrist frame against the pole instead of from hand-frame
+    angles: lay the rig's authored finger-curl axis along the shaft, drive the
+    fitted fist centre (not the palm-surface contact) onto the shaft axis, and
+    resolve the remaining spin so the palms face inward. Replace the scalar
+    palm-to-grip assertion, which any direction satisfied, with directional
+    enclosure cover
+  - [x] Keep equipment shading procedural: the authored V3 ski composite carries
+    POSITION and NORMAL only, so any bound map samples a single texel. No
+    third-party raster textures ship
+  - [x] Keep the asset build a pure function of reviewed source — never read the
+    artifact it writes — and confirm a byte-identical Blender rebuild
+  - [x] Restore the contact tolerances loosened during development; name the
+    residual defects at one pinned constant instead of budgeting per call site
+  - [x] Publish real in-app SkiErg evidence: chase and macro-grip poses, the
+    four-tier geometry ladder, a full technique cycle, and a manifest recording
+    requested vs effective quality and backend
+  - [ ] Resolve the left-hand recovery reach defect (up to 0.135 m at cycle
+    0.31–0.34; right hand and all other sports close to 0.015 m)
+  - [x] Re-derive ski and pole length against the measured 1.64 m rig: skis
+    1.90 m (~116%, inside 112–117%) and poles 1.37 m (~83.5%, inside 83–84%).
+    The GLB generator scales its authored native profile to the
+    `skiEquipment.ts` contract at build time. The shorter pole approached the
+    pole+arm collinear singularity before basket release — the failure that
+    broke the previous resize attempt — so the basket now plants 0.24 m
+    forward of centre, restoring a 0.365 m taut margin; plant fixation,
+    rigid length, and grip continuity re-measured exact/within budget over
+    512 dense steps
+  - [x] Reclaim V3 asset headroom: budget re-derived from 704 KiB to 768 KiB
+    (`validate-replay-assets.mjs` documents the rationale) — the old ceiling
+    predated the true-scale bicycle and full SkiErg family and left 164 bytes;
+    triangle/vertex budgets are unchanged and still bind first

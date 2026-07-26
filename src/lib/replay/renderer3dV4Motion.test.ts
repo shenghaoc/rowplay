@@ -846,10 +846,14 @@ describe("V4 motion determinism and fallback safety", () => {
           const bone = instance.skeleton.getBoneByName(name)!;
           const before = rest.get(name)!;
           const delta = bone.quaternion.angleTo(before);
+          // SkiErg keeps the thumb mostly up the pole (lighter opposition/flex)
+          // so it does not fold across the fingers like a scull or hood grip.
           const minimumCurl = name.endsWith("Fingers")
             ? 0.04
             : name.includes("Thumb")
-              ? 0.4
+              ? sport === "skierg"
+                ? 0.25
+                : 0.4
               : name.endsWith("Intermediate")
                 ? 1.05
                 : 0.55;
@@ -913,7 +917,7 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
-  it("exposes soft palm orientation for ski and bike within the arm budget", () => {
+  it("orients ski palms fully to the pole target and bike palms within the arm budget", () => {
     for (const sport of ["skierg", "bike"] as const) {
       const lane = createLane();
       const controller = installReplayV4MotionController({
@@ -947,14 +951,22 @@ describe("V4 motion determinism and fallback safety", () => {
           );
           const residual = handQ.angleTo(targetQ);
           const before = residualsBefore.get(side)!;
-          // Soft orient is an 8° slerp budget — residual must not grow, and
-          // when the gap is large it must shrink by up to that budget.
-          expect(residual, `${sport} ${side} residual after soft orient`).toBeLessThanOrEqual(
+          // Residual must not grow.
+          expect(residual, `${sport} ${side} residual after orient`).toBeLessThanOrEqual(
             before + 1e-6,
           );
           if (before > THREE.MathUtils.degToRad(1.5)) {
-            expect(before - residual, `${sport} ${side} soft-orient progress`).toBeGreaterThan(0);
-            expect(before - residual).toBeLessThanOrEqual(THREE.MathUtils.degToRad(8) + 1e-3);
+            expect(before - residual, `${sport} ${side} orient progress`).toBeGreaterThan(0);
+            if (sport === "skierg") {
+              // SkiErg takes the full pole-led shaft frame — clip reset
+              // would leave an 8° soft slerp forever short of a real grip.
+              expect(residual, `${sport} ${side} pole-led hand frame`).toBeLessThan(
+                THREE.MathUtils.degToRad(1),
+              );
+            } else {
+              // Bike keeps the soft 8° arm budget.
+              expect(before - residual).toBeLessThanOrEqual(THREE.MathUtils.degToRad(8) + 1e-3);
+            }
           }
         }
         expect(controller?.constrain()).toBe(true);
