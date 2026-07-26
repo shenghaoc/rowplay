@@ -54,7 +54,6 @@ import { BIKE_RIG, bikeSaddleTopY } from "./bikeRig";
 import { BIKE_SADDLE_SHELL_THICKNESS, bikeSaddleDropAt } from "./bikeSaddle";
 import {
   SKI_ATHLETE_PROPORTIONS,
-  SKI_GRIP_SHIFT,
   SKI_HAND_CURL_AXIS,
   SKI_HAND_FIST_CENTRE,
   SKI_HAND_FIST_RADIUS,
@@ -1691,6 +1690,24 @@ describe("CourseRenderer3D", () => {
         const upper = elbow.clone().sub(shoulder);
         const forearm = handLocal.clone().sub(elbow);
         const straightness = upper.dot(forearm) / (upper.length() * forearm.length());
+        // A rower's elbows only ever point down (British Rowing indoor
+        // technique): whenever the arm shows real bend, the elbow's offset
+        // from the shoulder-grip chord must aim dominantly below it. A small
+        // outward tilt is natural; the bend plane rolling toward horizontal
+        // is the 90°-armpit wing this guards against.
+        const chord = handLocal.clone().sub(shoulder);
+        const along = THREE.MathUtils.clamp(
+          upper.dot(chord) / Math.max(1e-9, chord.lengthSq()),
+          0,
+          1,
+        );
+        const bendDirection = elbow.clone().sub(shoulder.clone().addScaledVector(chord, along));
+        if (bendDirection.length() > 0.02) {
+          expect(
+            bendDirection.normalize().y,
+            `${side} bend plane points down at ${cycle}`,
+          ).toBeLessThan(-0.3);
+        }
         if (graph.body.armDraw.value > 0.9) {
           // Hands finish at the lower-chest grip — an elbow may sit a little
           // farther aft than the hands in a natural finish, so validate the
@@ -2872,11 +2889,9 @@ describe("CourseRenderer3D", () => {
       }
     });
 
-    /** Recovery phase where both arms hit their reach limit. See the pin below. */
-    const REACH_LIMITED_SKI_CYCLE = 0.34;
-
     /**
-     * KNOWN DEFECT, pinned at its measured peak so it cannot widen.
+     * KNOWN DEFECT (peaks in the ~0.34 recovery phase where both arms hit
+     * their reach limit), pinned at its measured peak so it cannot widen.
      *
      * Through the recovery band around cycle 0.31–0.34 the **left** hand alone
      * drifts up to 0.135 m from its target; the right hand and every other

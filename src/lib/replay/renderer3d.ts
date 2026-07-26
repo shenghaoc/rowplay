@@ -39,6 +39,13 @@ import { fmtPace } from "../format";
 import { METERS_PER_CYCLE, ParticlePool, PerfGovernor, clampDt, dampFactor } from "./motion";
 import { solveRigidContactPoint3D, solveTwoBone3D, type FigurePoint3 } from "./figurePose";
 import {
+  ROWER_FOOT_CONTACT,
+  ROWER_OARLOCK,
+  ROWER_STRETCHER,
+  solveRowerArmWithCorridor,
+  solveRowerOarYaw,
+} from "./rowRig";
+import {
   applyReplayAssetLibrary,
   hideWithReplayAssets,
   setReplayAssetSlot,
@@ -960,16 +967,6 @@ const ELBOW_INSIDE = new THREE.Vector3();
 const ELBOW_SIDE = new THREE.Vector3();
 const ELBOW_FRAME = new THREE.Matrix4();
 const ARM_BEND_SCRATCH = new THREE.Vector3();
-const ARM_BEND_CHORD = new THREE.Vector3();
-const ARM_BEND_PREVIOUS = new THREE.Vector3();
-const ARM_BEND_TARGET = new THREE.Vector3();
-const ARM_BEND_AXIS = new THREE.Vector3();
-const ARM_BEND_CROSS = new THREE.Vector3();
-const ARM_BEND_ROTATION = new THREE.Quaternion();
-const ARM_BEND_CANDIDATE = new THREE.Vector3();
-const ARM_BEND_BEST = new THREE.Vector3();
-const ARM_BEND_TRIAL = new THREE.Vector3();
-const ARM_BEND_TRIAL_END = new THREE.Vector3();
 
 /**
  * Stable two-bone arm bend direction for equipment-locked hands.
@@ -1001,382 +998,6 @@ function setArmBendHint(
     // Degenerate: fall back to pure side-out so the solver still has a plane.
     out.set(side, 0.25, 0);
   }
-}
-
-/**
- * Turn an equipment-locked arm's bend plane by a bounded angle per frame.
- *
- * The two mathematical elbow branches are opposite points on the same
- * shoulder/wrist circle. A linear blend between them crosses zero and lets the
- * solver pick the other branch in one frame. Rotating the projected previous
- * bend direction around the current shoulder-to-wrist chord keeps the bone
- * lengths exact while the preferred rowing finish turns the elbow aft.
- */
-function steerArmBendHint(
-  shoulder: THREE.Vector3,
-  hand: THREE.Vector3,
-  previousElbow: THREE.Vector3,
-  out: THREE.Vector3,
-  side: number,
-  maxTurn: number,
-): void {
-  ARM_BEND_CHORD.set(hand.x - shoulder.x, hand.y - shoulder.y, hand.z - shoulder.z);
-  const chordLength = ARM_BEND_CHORD.length();
-  if (chordLength <= 1e-6) return;
-  ARM_BEND_CHORD.multiplyScalar(1 / chordLength);
-
-  ARM_BEND_TARGET.copy(out);
-  ARM_BEND_TARGET.addScaledVector(ARM_BEND_CHORD, -ARM_BEND_TARGET.dot(ARM_BEND_CHORD));
-  const targetLength = ARM_BEND_TARGET.length();
-  if (targetLength <= 1e-6) return;
-  ARM_BEND_TARGET.multiplyScalar(1 / targetLength);
-
-  ARM_BEND_PREVIOUS.set(
-    previousElbow.x - shoulder.x,
-    previousElbow.y - shoulder.y,
-    previousElbow.z - shoulder.z,
-  );
-  ARM_BEND_PREVIOUS.addScaledVector(ARM_BEND_CHORD, -ARM_BEND_PREVIOUS.dot(ARM_BEND_CHORD));
-  const previousLength = ARM_BEND_PREVIOUS.length();
-  if (previousLength <= 1e-6) return;
-  ARM_BEND_PREVIOUS.multiplyScalar(1 / previousLength);
-
-  ARM_BEND_AXIS.copy(ARM_BEND_CHORD);
-  ARM_BEND_CROSS.crossVectors(ARM_BEND_PREVIOUS, ARM_BEND_TARGET);
-  const signedSine = ARM_BEND_AXIS.dot(ARM_BEND_CROSS);
-  const cosine = THREE.MathUtils.clamp(ARM_BEND_PREVIOUS.dot(ARM_BEND_TARGET), -1, 1);
-  let turn = Math.atan2(signedSine, cosine);
-  if (Math.abs(turn) > Math.PI - 1e-4 && Math.abs(signedSine) < 1e-4) {
-    turn = side < 0 ? Math.PI : -Math.PI;
-  }
-  turn = THREE.MathUtils.clamp(turn, -maxTurn, maxTurn);
-  ARM_BEND_ROTATION.setFromAxisAngle(ARM_BEND_AXIS, turn);
-  out.copy(ARM_BEND_PREVIOUS).applyQuaternion(ARM_BEND_ROTATION);
-}
-
-/**
- * Solve the equipment-locked arm while keeping its elbow in the soft
- * shoulder-to-grip corridor. The margin represents elbow/upper-arm thickness,
- * not a second target: the wrist remains exactly on the oar grip and the
- * two-bone lengths remain authoritative. The rowing finish intersects the
- * elbow circle with the handle-height plane and chooses its anatomical
- * out/rear solution, fading that preference in via `planeWeight` so the elbow
- * rotates onto the plane instead of switching branches in one frame. Other
- * callers retain the short projected hint correction used when a rigid grip
- * passes the shoulder line.
- */
-function solveRowerArmWithCorridor(
-  shoulder: THREE.Vector3,
-  hand: THREE.Vector3,
-  upperArmLength: number,
-  forearmLength: number,
-  bendHint: THREE.Vector3,
-  elbow: THREE.Vector3,
-  handOut: THREE.Vector3,
-  minimumElbowZ?: number,
-  minimumElbowY?: number,
-  maximumElbowY?: number,
-  side = 0,
-  planeWeight = 1,
-): void {
-  solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
-
-  // A drawing elbow hangs close under its own shoulder line: allow a modest
-  // outboard lean and only a token inboard excursion. The former 0.2–0.45 m
-  // outboard band pushed the joint past the hand line and, combined with a
-  // chord-height target, read as elbows pointing left/right instead of down.
-  const corridorMin =
-    side < 0
-      ? shoulder.x - 0.2
-      : side > 0
-        ? shoulder.x - 0.03
-        : Math.min(shoulder.x, hand.x) - 0.04;
-  const corridorMax =
-    side < 0
-      ? shoulder.x + 0.03
-      : side > 0
-        ? shoulder.x + 0.2
-        : Math.max(shoulder.x, hand.x) + 0.04;
-
-  if (minimumElbowY !== undefined && maximumElbowY !== undefined) {
-    if (planeWeight <= 0) return;
-    // A bent two-bone arm has one remaining degree of freedom: the elbow can
-    // rotate around the shoulder-to-wrist chord. Intersect that circle with
-    // the finish handle-height plane and score its two solutions. This keeps
-    // the upper arm sloping down toward the handle without an iterative solve
-    // in the per-frame render path.
-    ARM_BEND_CHORD.copy(hand).sub(shoulder);
-    const chordLength = ARM_BEND_CHORD.length();
-    if (chordLength <= 1e-6) return;
-    ARM_BEND_CHORD.multiplyScalar(1 / chordLength);
-    ARM_BEND_AXIS.set(0, 1, 0);
-    ARM_BEND_AXIS.addScaledVector(ARM_BEND_CHORD, -ARM_BEND_AXIS.dot(ARM_BEND_CHORD));
-    const verticalProjection = ARM_BEND_AXIS.length();
-    if (verticalProjection <= 1e-6) return;
-    ARM_BEND_AXIS.multiplyScalar(1 / verticalProjection);
-    ARM_BEND_CROSS.crossVectors(ARM_BEND_CHORD, ARM_BEND_AXIS).normalize();
-
-    const solveDistance = Math.max(
-      Math.abs(upperArmLength - forearmLength),
-      Math.min(upperArmLength + forearmLength, chordLength),
-    );
-    const along =
-      (upperArmLength * upperArmLength -
-        forearmLength * forearmLength +
-        solveDistance * solveDistance) /
-      (2 * Math.max(1e-9, solveDistance));
-    const elbowRadius = Math.sqrt(Math.max(0, upperArmLength * upperArmLength - along * along));
-    if (elbowRadius <= 1e-6) return;
-
-    const targetY = (minimumElbowY + maximumElbowY) * 0.5;
-    const circleCenterY = shoulder.y + ARM_BEND_CHORD.y * along;
-    const verticalDirection = THREE.MathUtils.clamp(
-      (targetY - circleCenterY) / elbowRadius,
-      -verticalProjection,
-      verticalProjection,
-    );
-    const verticalWeight = THREE.MathUtils.clamp(verticalDirection / verticalProjection, -1, 1);
-    const crossWeight = Math.sqrt(Math.max(0, 1 - verticalWeight * verticalWeight));
-    const corridorCenter = (corridorMin + corridorMax) * 0.5;
-    let bestScore = Number.POSITIVE_INFINITY;
-    let bestBranch = 1;
-    let bestTrialZ = Number.POSITIVE_INFINITY;
-
-    for (let branch = -1; branch <= 1; branch += 2) {
-      ARM_BEND_CANDIDATE.copy(ARM_BEND_AXIS)
-        .multiplyScalar(verticalWeight)
-        .addScaledVector(ARM_BEND_CROSS, branch * crossWeight);
-      solveTwoBone3D(
-        shoulder,
-        hand,
-        upperArmLength,
-        forearmLength,
-        ARM_BEND_CANDIDATE,
-        ARM_BEND_TRIAL,
-        ARM_BEND_TRIAL_END,
-      );
-      const xPenalty = Math.max(corridorMin - ARM_BEND_TRIAL.x, 0, ARM_BEND_TRIAL.x - corridorMax);
-      const yPenalty = Math.max(
-        minimumElbowY - ARM_BEND_TRIAL.y,
-        0,
-        ARM_BEND_TRIAL.y - maximumElbowY,
-      );
-      const zPenalty =
-        minimumElbowZ === undefined ? 0 : Math.max(minimumElbowZ - ARM_BEND_TRIAL.z, 0);
-      const score =
-        (xPenalty + yPenalty + zPenalty) * 100 +
-        Math.abs(ARM_BEND_TRIAL.y - targetY) +
-        Math.abs(ARM_BEND_TRIAL.x - corridorCenter) * 0.01;
-      if (score < bestScore) {
-        bestScore = score;
-        bestBranch = branch;
-        bestTrialZ = ARM_BEND_TRIAL.z;
-        ARM_BEND_BEST.copy(ARM_BEND_CANDIDATE);
-      }
-    }
-
-    if (minimumElbowZ !== undefined && bestTrialZ < minimumElbowZ - 1e-6) {
-      // The height plane fixes the elbow's vertical station, but the finish
-      // also forbids the joint from slipping behind the shoulder plane.
-      // Rotate the winning branch along the elbow circle onto the z-floor
-      // plane instead of merely scoring the violation: elbow position is
-      // center + r·(u·axis + v·cross) with v = branch·sqrt(1-u²), so the
-      // floor is a quadratic in u with a closed-form root. The correction is
-      // continuous in its inputs, so it cannot introduce a frame pop.
-      const axisZ = ARM_BEND_AXIS.z;
-      const crossZ = ARM_BEND_CROSS.z;
-      const planeNorm = axisZ * axisZ + crossZ * crossZ;
-      const circleCenterZ = shoulder.z + ARM_BEND_CHORD.z * along;
-      const zTarget = (minimumElbowZ - circleCenterZ) / elbowRadius;
-      if (planeNorm > 1e-9 && zTarget * zTarget <= planeNorm) {
-        const rootSpread = Math.abs(crossZ) * Math.sqrt(planeNorm - zTarget * zTarget);
-        let floorU = Number.NaN;
-        for (const root of [
-          (zTarget * axisZ + rootSpread) / planeNorm,
-          (zTarget * axisZ - rootSpread) / planeNorm,
-        ]) {
-          // Keep only roots on the winning branch's half of the circle, then
-          // prefer the one nearest the height-plane solution so the elbow
-          // gives up as little of its handle-line station as possible.
-          if (Math.abs(root) > 1) continue;
-          if (bestBranch * crossZ * (zTarget - root * axisZ) < -1e-9) continue;
-          if (
-            !Number.isFinite(floorU) ||
-            Math.abs(root - verticalWeight) < Math.abs(floorU - verticalWeight)
-          ) {
-            floorU = root;
-          }
-        }
-        if (Number.isFinite(floorU)) {
-          ARM_BEND_BEST.copy(ARM_BEND_AXIS)
-            .multiplyScalar(floorU)
-            .addScaledVector(
-              ARM_BEND_CROSS,
-              bestBranch * Math.sqrt(Math.max(0, 1 - floorU * floorU)),
-            );
-        }
-      }
-    }
-
-    if (planeWeight < 1) {
-      // Fade the plane preference in rather than replacing the incoming bend
-      // plane outright. An unconditional overwrite teleports the elbow across
-      // the chord circle in the single frame the caller starts passing the
-      // height band, which reads as a mid-draw elbow pop. Blending the two
-      // unit hints (both perpendicular to the chord) rotates the elbow
-      // continuously from the free-solve branch onto the finish plane while
-      // the elbow circle is still small.
-      ARM_BEND_TARGET.copy(bendHint).addScaledVector(ARM_BEND_CHORD, -bendHint.dot(ARM_BEND_CHORD));
-      const freeLength = ARM_BEND_TARGET.length();
-      if (freeLength > 1e-6) {
-        ARM_BEND_TARGET.multiplyScalar(1 / freeLength).lerp(ARM_BEND_BEST, planeWeight);
-        if (ARM_BEND_TARGET.lengthSq() > 1e-8) {
-          ARM_BEND_BEST.copy(ARM_BEND_TARGET.normalize());
-        }
-      }
-    }
-    bendHint.copy(ARM_BEND_BEST);
-    solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
-    return;
-  }
-
-  for (let iteration = 0; iteration < 16; iteration++) {
-    const xViolation =
-      elbow.x < corridorMin
-        ? corridorMin - elbow.x
-        : elbow.x > corridorMax
-          ? elbow.x - corridorMax
-          : 0;
-    const zViolation =
-      minimumElbowZ !== undefined && elbow.z < minimumElbowZ ? minimumElbowZ - elbow.z : 0;
-    if (xViolation <= 1e-5 && zViolation <= 1e-5) return;
-
-    const correctZ = zViolation > xViolation;
-    const desiredDirection = correctZ ? 1 : elbow.x < corridorMin ? 1 : -1;
-    let bestMovement = 0;
-    for (let axis = 0; axis < 3; axis++) {
-      for (let sign = -1; sign <= 1; sign += 2) {
-        ARM_BEND_CANDIDATE.copy(bendHint);
-        if (axis === 0) ARM_BEND_CANDIDATE.x += sign * 0.12;
-        else if (axis === 1) ARM_BEND_CANDIDATE.y += sign * 0.12;
-        else ARM_BEND_CANDIDATE.z += sign * 0.12;
-        solveTwoBone3D(
-          shoulder,
-          hand,
-          upperArmLength,
-          forearmLength,
-          ARM_BEND_CANDIDATE,
-          ARM_BEND_TRIAL,
-          ARM_BEND_TRIAL_END,
-        );
-        const movement =
-          (correctZ ? ARM_BEND_TRIAL.z : ARM_BEND_TRIAL.x) - (correctZ ? elbow.z : elbow.x);
-        const directedMovement = movement * desiredDirection;
-        if (directedMovement > bestMovement) {
-          bestMovement = directedMovement;
-          ARM_BEND_BEST.copy(ARM_BEND_CANDIDATE);
-        }
-      }
-    }
-
-    if (bestMovement <= 1e-5) {
-      if (correctZ) bendHint.y += 0.12;
-      else bendHint.x += desiredDirection * 0.12;
-      solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
-      continue;
-    }
-
-    const violation = correctZ
-      ? minimumElbowZ! - elbow.z
-      : desiredDirection > 0
-        ? corridorMin - elbow.x
-        : elbow.x - corridorMax;
-    const blend = THREE.MathUtils.clamp(violation / bestMovement, 0, 1);
-    bendHint.lerp(ARM_BEND_BEST, blend);
-    solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
-  }
-}
-
-/**
- * Choose the continuous yaw branch on a rigid oar's inboard circle that
- * satisfies a requested shoulder-to-grip reach. The motion-graph yaw is used
- * only for a degenerate fallback and the later late-draw blend.
- *
- * The oar's local x axis is transformed by yaw then blade-depth roll. Solving
- * that circle analytically keeps the hot path allocation-free and prevents
- * early elbow flexion from compensating for an underspecified handle sweep.
- */
-function solveRowerOarYaw(
-  shoulder: THREE.Vector3,
-  pinX: number,
-  pinY: number,
-  pinZ: number,
-  signedInboard: number,
-  bladeRoll: number,
-  requestedReach: number,
-  preferredYaw: number,
-  forceReachBoundary = false,
-): number {
-  const pinDeltaX = pinX - shoulder.x;
-  const pinDeltaY = pinY - shoulder.y;
-  const pinDeltaZ = pinZ - shoulder.z;
-  // Three's XYZ Euler order sends an oar-local X vector to
-  // (cos(roll)cos(yaw), sin(roll), -cos(roll)sin(yaw)). Blade burial therefore
-  // contributes a yaw-independent vertical term; treating that Y offset as
-  // part of the yaw circle shortened the grip reach as soon as the blade
-  // squared and made both fallback elbows fold during the leg drive.
-  const rollCos = Math.cos(bladeRoll);
-  const rollSin = Math.sin(bladeRoll);
-  const projectedX = pinDeltaX * rollCos;
-  const projectedZ = -pinDeltaZ * rollCos;
-  const amplitude = Math.hypot(projectedX, projectedZ);
-  if (amplitude < 1e-8 || Math.abs(signedInboard) < 1e-8) return preferredYaw;
-
-  const baseDistanceSquared =
-    pinDeltaX * pinDeltaX +
-    pinDeltaY * pinDeltaY +
-    pinDeltaZ * pinDeltaZ +
-    signedInboard * signedInboard;
-  const preferredDistanceSquared =
-    baseDistanceSquared +
-    2 *
-      signedInboard *
-      (projectedX * Math.cos(preferredYaw) +
-        projectedZ * Math.sin(preferredYaw) +
-        pinDeltaY * rollSin);
-  // A bent elbow is a normal part of the drive. Follow the graph-authored
-  // oar arc directly whenever the shoulder can reach it; solving only the
-  // outer reach boundary would make the two circle intersections exchange
-  // branches as soon as the hands become reachable, producing a visible
-  // snap at the exact moment the handle should be travelling smoothly.
-  if (!forceReachBoundary && preferredDistanceSquared <= requestedReach * requestedReach + 1e-5) {
-    return preferredYaw;
-  }
-  const cosine = THREE.MathUtils.clamp(
-    (requestedReach * requestedReach -
-      baseDistanceSquared -
-      2 * signedInboard * pinDeltaY * rollSin) /
-      (2 * signedInboard * amplitude),
-    -1,
-    1,
-  );
-  const center = Math.atan2(projectedZ, projectedX);
-  const offset = Math.acos(cosine);
-  const first = center + offset;
-  const second = center - offset;
-  // The catch is the root whose inboard grip sits farther toward the
-  // stretcher (+Z). Selecting by that physical relationship keeps both
-  // mirrored oars forward even when the two angular roots exchange which one
-  // is numerically closest to the staged yaw.
-  const firstGripZ = pinZ - signedInboard * rollCos * Math.sin(first);
-  const secondGripZ = pinZ - signedInboard * rollCos * Math.sin(second);
-  const selected = firstGripZ >= secondGripZ ? first : second;
-  // atan2 is periodic. Keep the selected reach-limited branch equivalent to
-  // the staged yaw that was authored for this frame so the oar never takes a
-  // visible ±2π jump when the analytic circle crosses its branch cut.
-  return (
-    preferredYaw + Math.atan2(Math.sin(selected - preferredYaw), Math.cos(selected - preferredYaw))
-  );
 }
 
 function placeSegmentCoordinates(
@@ -1725,33 +1346,6 @@ function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 1
   head.add(hair);
   return head;
 }
-
-const ROWER_FOOT_CONTACT = Object.freeze({
-  lateral: 0.12,
-  y: 0.215,
-  /** Stern-side and directly ahead of the aft-facing athlete. */
-  z: 0.75,
-});
-const ROWER_STRETCHER = Object.freeze({
-  centerY: 0.295,
-  centerZ: 0.68,
-  boardRotation: THREE.MathUtils.degToRad(-48),
-  shoeCatchPitch: THREE.MathUtils.degToRad(-35),
-  shoeFinishPitch: THREE.MathUtils.degToRad(-42),
-});
-const ROWER_OARLOCK = Object.freeze({
-  lateral: 0.88,
-  // The pin rides ~0.14 above the seat top — real sculling rigging height —
-  // and stays below the lower-rib draw. With the 0.78 m inboard / 2.09 m
-  // outboard levers, the drive-side roll that buries the spoon just below the
-  // water then puts the handles at the drive height, and a small extra roll
-  // lifts them the last few centimetres into the finish. The former 0.62 pin
-  // sat so far above the water that no anatomical handle height could ever
-  // reach the surface with the blade.
-  y: 0.51,
-  /** Stern-side pin keeps the scull handles in front of the torso at mid-draw. */
-  z: 0.28,
-});
 
 function addRowerBoatQualityDetails(
   boatVisual: THREE.Group,
@@ -2102,8 +1696,6 @@ function makeRowerAvatar(
     wristTarget: THREE.Vector3;
     handPoint: THREE.Vector3;
     bendHint: THREE.Vector3;
-    lastWristTarget: THREE.Vector3;
-    hasPreviousPose: boolean;
   }> = [];
   const legs: Array<{
     side: number;
@@ -2171,8 +1763,6 @@ function makeRowerAvatar(
       wristTarget: new THREE.Vector3(),
       handPoint: new THREE.Vector3(),
       bendHint: new THREE.Vector3(side * 0.56, -0.48, -0.18),
-      lastWristTarget: new THREE.Vector3(),
-      hasPreviousPose: false,
     });
   }
   rower.position.z = -0.1;
@@ -2415,97 +2005,40 @@ function makeRowerAvatar(
       arm.wristTarget.copy(handlePoint);
       const v4ContactOffset = v4Refinement?.contactOffsets[i];
       if (v4ContactOffset) arm.wristTarget.sub(v4ContactOffset);
-      // Elbow branch: clearly rearward of the shoulder with restrained lateral
-      // clearance, while the palm target stays on the chest-level grip.
-      // The fixed scull handle sweeps through the knees before the late draw;
-      // give the elbow a short mid-drive clearance bias, then taper it before
-      // the finish so the joint points down along the handle line instead of
-      // lifting into a shoulder-height chicken wing.
-      const midDriveClearance =
-        0.014 *
-        THREE.MathUtils.smoothstep(draw, 0.58, 0.7) *
-        (1 - THREE.MathUtils.smoothstep(draw, 0.78, 0.9));
-      const finishTuck = THREE.MathUtils.smoothstep(draw, 0.78, 0.92);
-      const finishLateralRelief = 1 - 0.5 * THREE.MathUtils.smoothstep(draw, 0.94, 1);
-      const lateOutwardClearance = 0.012 * THREE.MathUtils.smoothstep(draw, 0.94, 1);
-      setArmBendHint(arm.shoulderPoint, arm.wristTarget, arm.side, arm.bendHint, {
-        lateral:
-          -0.06 +
-          draw * 0.09 +
-          midDriveClearance +
-          lateOutwardClearance +
-          shoulderSet * 0.004 -
-          0.055 * finishTuck * finishLateralRelief,
-        up: 0.06 + draw * 0.05,
-        aft:
-          THREE.MathUtils.lerp(
-            -0.34 - bodySwing * 0.12 - handleTravel * 0.08,
-            -0.2 + bodySwing * 0.12 + handleTravel * 0.08,
-            THREE.MathUtils.smoothstep(draw, 0.03, 0.2),
-          ) +
-          0.06 * finishTuck,
-      });
-      if (arm.hasPreviousPose && arm.wristTarget.distanceTo(arm.lastWristTarget) < 0.16) {
-        // The rigid grip crosses the knees while the athlete transitions from
-        // the drive to the lower-chest finish. The two-bone solve has two
-        // equally valid elbow branches; turn the previous branch toward the
-        // authored finish by a bounded angle so it cannot jump through the
-        // torso when the preferred bend cue crosses the chord.
-        steerArmBendHint(
-          arm.shoulderPoint,
-          arm.wristTarget,
-          arm.elbowPoint,
-          arm.bendHint,
-          arm.side,
-          0.08,
-        );
-      }
-      // Fade the finish handle-height plane in across the visible draw. The
-      // ramp starts while the arm is still nearly straight — the elbow circle
-      // is tiny there, so adopting the plane costs almost no motion — and
-      // saturates early so the elbow is already pointing down before the
-      // circle grows; a late saturation swept the enlarged circle mid-draw
-      // and a hard threshold measured as a ~0.45 m one-frame teleport.
-      const finishPlaneWeight = THREE.MathUtils.smoothstep(draw, 0.08, 0.7);
-      if (finishPlaneWeight > 0) {
-        solveRowerArmWithCorridor(
-          arm.shoulderPoint,
-          arm.wristTarget,
-          activeUpperArmLength,
-          activeForearmLength,
-          arm.bendHint,
-          arm.elbowPoint,
-          arm.handPoint,
-          // With ~28° of layback a straight-down humerus already hangs the
-          // elbow ~0.145 behind the shoulder plane, so the floor only forbids
-          // a past-vertical behind-the-back haul. A tighter floor bound the
-          // deep release elbow and made the floor-root selection snap.
-          arm.shoulderPoint.z - 0.16,
-          // Aim below the handle line: the humerus extends down-and-back at
-          // the loaded finish, so the elbow hangs under the shoulder–grip
-          // chord (roughly 5–24 cm beneath the handle). Targeting a band
-          // deeper than the elbow circle usually reaches makes the solve pick
-          // the lowest point of the circle — elbows pointing down, not out.
-          // The depth follows blade load so the joint rises smoothly with the
-          // extraction instead of pinning against the behind-the-back floor.
-          arm.handTarget.y - THREE.MathUtils.lerp(0.125, 0.24, pendingBladeLoad),
-          arm.handTarget.y - THREE.MathUtils.lerp(-0.065, 0.05, pendingBladeLoad),
-          arm.side,
-          finishPlaneWeight,
-        );
-      } else {
-        solveTwoBone3D(
-          arm.shoulderPoint,
-          arm.wristTarget,
-          activeUpperArmLength,
-          activeForearmLength,
-          arm.bendHint,
-          arm.elbowPoint,
-          arm.handPoint,
-        );
-      }
-      arm.lastWristTarget.copy(arm.wristTarget);
-      arm.hasPreviousPose = true;
+      // A rower's elbows only ever point down (British Rowing indoor
+      // technique): the arms hang from the shoulders with a near-vertical
+      // bend plane through the whole stroke — soft at the catch and
+      // recovery, deep down-and-back at the loaded draw, tilted a touch
+      // outward by the corridor — and the upper arm never opens toward a
+      // horizontal 90° armpit. Solving the down-plane unconditionally (not
+      // gated on a draw phase) is what makes that true: with a long arm the
+      // elbow circle is tiny and the down preference costs nothing, and as
+      // the draw bends the arm the same continuous solve deepens the hang.
+      arm.bendHint.set(0, -1, 0);
+      solveRowerArmWithCorridor(
+        arm.shoulderPoint,
+        arm.wristTarget,
+        activeUpperArmLength,
+        activeForearmLength,
+        arm.bendHint,
+        arm.elbowPoint,
+        arm.handPoint,
+        // With ~28° of layback a straight-down humerus already hangs the
+        // elbow ~0.145 behind the shoulder plane, so the floor only forbids
+        // a past-vertical behind-the-back haul. A tighter floor bound the
+        // deep release elbow and made the floor-root selection snap.
+        arm.shoulderPoint.z - 0.16,
+        // Aim below the handle line. Targeting a band deeper than the elbow
+        // circle usually reaches makes the solve pick the lowest point of
+        // the circle, so straight-arm phases hang the elbow directly under
+        // the shoulder–grip chord. The depth follows blade load so the bent
+        // finish elbow rides deep while the spoon is buried and rises
+        // smoothly with the extraction instead of pinning against the
+        // behind-the-back floor.
+        arm.handTarget.y - THREE.MathUtils.lerp(0.125, 0.24, pendingBladeLoad),
+        arm.handTarget.y - THREE.MathUtils.lerp(-0.065, 0.05, pendingBladeLoad),
+        arm.side,
+      );
       arm.shoulder.position.copy(arm.shoulderPoint);
       placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
       placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);

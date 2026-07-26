@@ -451,6 +451,21 @@ in it may filter to short edges.
 | RowErg catch / finish     | [catch](athlete-v5/in-app/hip-seam-2026-07-26/poses/row-catch.jpg) · [finish](athlete-v5/in-app/hip-seam-2026-07-26/poses/row-finish.jpg)                                     | Deepest hip flexion of any clip — crease holds                     |
 | SkiErg press / reach      | [press](athlete-v5/in-app/hip-seam-2026-07-26/poses/ski-loaded-press.jpg) · [reach](athlete-v5/in-app/hip-seam-2026-07-26/poses/ski-high-reach.jpg)                           | Standing silhouette unregressed by the shared-mesh change          |
 
+### RowErg down-pointing elbows and buried drive — 2026-07-26
+
+The [`elbows-down-2026-07-26`](athlete-v5/in-app/elbows-down-2026-07-26/manifest.json)
+set was captured on the Workers preview after the blade-immersion and
+down-plane elbow rework. It verifies, in the real app, that the elbows hang
+below the shoulder–grip chord through the whole stroke with only the slight
+outward tilt of the British Rowing indoor model:
+
+| View                    | Frame                                                                         | What it verifies                                                        |
+| ----------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Chase, catch            | [frame](athlete-v5/in-app/elbows-down-2026-07-26/poses/row-catch.jpg)         | Long soft arms to the swept grips; squared blades already buried        |
+| Chase, finish           | [frame](athlete-v5/in-app/elbows-down-2026-07-26/poses/row-finish.jpg)        | Layback with handles at the lower chest and elbows tucked down-and-back |
+| Front, finish           | [frame](athlete-v5/in-app/elbows-down-2026-07-26/poses/row-finish-front.jpg)  | Both elbows point down beside the ribs — no horizontal 90° armpit wing  |
+| Mobile portrait, finish | [frame](athlete-v5/in-app/elbows-down-2026-07-26/poses/mobile-row-finish.jpg) | The down-elbow silhouette survives the narrow pullback framing          |
+
 The primary matrix is the
 [six-pose comparison](athlete-v5/in-app/2026-07-25-a56460b/six-pose-comparison.jpg):
 baseline, production athlete, and skeleton/contact overlay for RowErg catch and
@@ -549,6 +564,10 @@ coaching references:
 - [British Rowing's on-water technique model](https://www.britishrowing.org/knowledge/rower-development/british-rowing-technique/water-rowing-technique/)
   specifies vertical shins and a forward hip hinge at catch, a leg-led drive,
   late body/arm contribution, and hands-away, body-over, then slide on recovery.
+- [British Rowing's indoor rowing technique](https://www.britishrowing.org/knowledge/rower-development/british-rowing-technique/indoor-rowing-technique/)
+  keeps the arms hanging relaxed from the shoulders throughout: the elbows
+  point down with only a slight outward tilt, and the upper arm never opens
+  toward a horizontal 90° armpit.
 - [World Rowing's equipment rules](https://worldrowing.com/wp-content/uploads/2025/04/2025-World-Rowing-Rules-of-Racing-Overall-Classic-rowing-Related-byelaws_March2025.pdf)
   require a visible bow ball and quick-release feet/heel restraints.
 
@@ -559,13 +578,15 @@ the stern-side fixed 42° stretcher; the heels sit about 16 cm below the seat
 and include heel restraints, instep hardware, and diagonal supports. The shared procedural/V4 leg solve keeps the
 shins near vertical at catch, knees above and inside the cockpit, and legs near
 straight at finish. The rowing graph sequences legs → torso → arms on the drive
-and hands → body → slide on recovery. At the loaded draw, each humerus extends
-down-and-back: the elbows hang below the handle line, close under their own
-shoulders and at most slightly behind the laid-back shoulder plane, then rise
+and hands → body → slide on recovery. The elbows only ever point down: the
+arms hang from the shoulders with a near-vertical bend plane and a slight
+outward tilt through the whole stroke. At the loaded draw each humerus extends
+down-and-back — the elbows hang below the handle line, close under their own
+shoulders and at most slightly behind the laid-back shoulder plane — then rise
 back toward handle height as the blades extract. This rejects the
-shoulder-height “chicken wing”, the left/right horizontal elbow flare, and a
-past-vertical behind-the-back haul while the palms remain locked around their
-separate rubber grips.
+shoulder-height “chicken wing”, the left/right horizontal 90°-armpit flare,
+and a past-vertical behind-the-back haul while the palms remain locked around
+their separate rubber grips.
 
 Blade/water interaction follows the same on-water model: the squared spoons
 drop in just before the catch, stay buried below the water plane for the entire
