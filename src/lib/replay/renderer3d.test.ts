@@ -815,7 +815,6 @@ describe("CourseRenderer3D", () => {
 
   it("joins the BikeErg diamond-frame tubes at their authored endpoints", () => {
     const renderer = new CourseRenderer3D(makeHost(), "low", "bike");
-    const wheelAxleY = BIKE_RIG.wheelRadius + BIKE_RIG.tyreTube;
     const bb = [0, BIKE_RIG.bottomBracket[1] ?? 0, BIKE_RIG.bottomBracket[2] ?? 0] as const;
     const sc = [0, BIKE_RIG.seatCluster[1] ?? 0, BIKE_RIG.seatCluster[2] ?? 0] as const;
     const hb = [0, BIKE_RIG.headBottom[1] ?? 0, BIKE_RIG.headBottom[2] ?? 0] as const;

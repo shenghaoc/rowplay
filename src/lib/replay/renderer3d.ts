@@ -3239,7 +3239,6 @@ function makeBikeAvatar(
   // Seat post — visible tube from the seat cluster up to the saddle shell.
   // It stops at the pad underside: the rider's sit surface is one nestle above
   // the pad top, so a post that outruns the cushion goes through the athlete.
-  const saddlePadHalfHeight = BIKE_RIG.saddlePadHalfHeight ?? 0.022;
   const seatPost = tubeBetween(
     "bike-seat-post",
     seatCluster,
