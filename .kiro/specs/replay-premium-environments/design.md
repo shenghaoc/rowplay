@@ -26,9 +26,16 @@ generic background. RowErg therefore composes a continuous river valley from
 water through reeds, banks, woodland, docks, and regatta buildings. SkiErg
 composes one winter bowl from groomed track through snow shoulders, race
 fencing, forest, lodge forms, and blue-shadowed alpine terrain.
-BikeErg completes the same system as a bright indoor timber velodrome: a
-daylit roof and skylights, two authored seating straights, multi-use infield,
-service pit, track boards, scoreboard, and tier-gated hospitality architecture.
+BikeErg completes the same system as an indoor timber velodrome under an
+evening-session light story: a dim roof cavity and skylights, two authored
+seating straights, multi-use infield, service pit, track boards with the full
+black/red/blue plus côte d'azur line grammar, scoreboard, and tier-gated
+hospitality architecture.
+
+Each venue commits to one light story rather than a generic day/night flip:
+RowErg is morning glass over a temperate basin, SkiErg is blue-hour dusk over a
+lit piste, and BikeErg is an evening session under one warm cone. Light and dark
+themes are two hours of the same story, not unrelated palettes.
 
 ## Environment art direction
 
@@ -36,11 +43,11 @@ Each sport uses its own Environment_Profile across 2D and 3D. The renderers do
 not need identical geometry, but they share the same material and composition
 language.
 
-| Sport   | Primary material           | Horizon and venue language                                     | Accent restraint                    |
-| ------- | -------------------------- | -------------------------------------------------------------- | ----------------------------------- |
-| RowErg  | Deep layered water         | Sector-authored banks, woodland, regatta campus, open wetland   | Warm light and sparse buoy cues     |
-| SkiErg  | Groomed blue-shadowed snow | Snow shoulders, alpine mass, forest clusters, Nordic lodge      | Cool light with sparse safety color |
-| BikeErg | Warm varnished timber      | Daylit roof, seating straights, infield pit, hospitality suite  | Blue/red regulation lines           |
+| Sport   | Primary material           | Horizon and venue language                                     | Accent restraint                          |
+| ------- | -------------------------- | -------------------------------------------------------------- | ----------------------------------------- |
+| RowErg  | Deep layered water         | Morning-glass basin, banks, woodland, campus, finish tower     | Warm morning light and sparse buoy cues   |
+| SkiErg  | Groomed blue-shadowed snow | Blue-hour dusk piste, forest clusters, Nordic lodge, floods    | Warm flood pools on cool snow, safety red |
+| BikeErg | Warm matte timber          | Evening velodrome roof, seating bowl, infield pit, hospitality | Single warm cone; black/red/blue/azure    |
 
 Foreground contrast is reserved for the athlete, equipment, course edge, and
 important contact effects. Background scenery uses simpler silhouettes, lower
@@ -50,7 +57,7 @@ contrast, atmospheric perspective, and restrained repetition.
 
 Renderer_2D builds every frame back-to-front:
 
-1. a theme-aware outdoor sky and horizon, or BikeErg roof/daylight shell;
+1. a theme-aware outdoor sky and horizon, or BikeErg roof/evening shell;
 2. distant terrain or built-venue silhouettes;
 3. middle-distance vegetation, snowbanks, barriers, or regatta infrastructure;
 4. the sport-specific course material and perspective markings;
@@ -107,14 +114,31 @@ The lighting stack keeps one stable world key plus soft ambient/fill support for
 the environment and the existing camera-relative athlete lights. At High and
 Ultra, one VSM directional map follows the athlete in texel-snapped light-space
 increments within a sport-specific envelope; the same key vector positions the
-visible sun disc. Native shadows land only on the authoritative opaque ground
-receiver, while live contact marks are suppressed so they cannot double or
-contradict that shadow. Water uses cool depth and controlled highlights, snow
-uses high diffuse value with blue shadow separation, and BikeErg timber stays
-warm and bright enough to separate from its pale roof, concrete infield, dark
-equipment, and athlete footwear. Fog and lower-contrast distant materials
-create outdoor depth without hiding the course; the indoor venue uses broad
-skylight pools instead of atmospheric fog.
+visible sun disc or flood cone. Native shadows land only on the authoritative
+opaque ground receiver, while live contact marks are suppressed so they cannot
+double or contradict that shadow.
+
+Per-sport light stories stay coherent with the materials:
+
+- **RowErg (morning glass):** cool depth water with a per-material dimmed sky
+  radiance map for Fresnel sheen at grazing angles while steep angles keep
+  saturated teal (WebGPU ignores `envMapIntensity`, so the gain is baked into
+  the texture). Mist hugs the wooded far shore; the finish tower is the campus
+  destination vertical.
+- **SkiErg (blue-hour dusk):** deep blue-grey dome, near-black spruce, and the
+  groomed course as the brightest surface under a warm floodlight key. Warm
+  normal-blend floodlight pools at the masts' course angles tint cool snow by
+  hue (additive light cannot read on near-white under ACES). Light/dark themes
+  read as dusk/night rather than day/night.
+- **BikeErg (evening session):** one warm cone shapes the enclosed bowl; the
+  timber track is the lit subject, seating falls toward shadow, and the roof
+  cavity stays dim. Timber is matte enough for the diffuse oak response to
+  read instead of mirroring the dark roof; the track carries black/red/blue
+  plus the côte d'azur apron band.
+
+Fog and lower-contrast distant materials create outdoor depth without hiding
+the course; the indoor venue uses enclosure and a single cone instead of a
+second bright roof surface competing with the timber.
 
 ## Quality and performance
 

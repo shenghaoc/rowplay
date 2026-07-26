@@ -50,8 +50,9 @@ generic stage.
    with snowbank, alpine, evergreen, or Nordic-stadium cues and readable cool
    shadow separation.
 3. WHEN a BikeErg replay is shown THEN both renderers SHALL present one coherent
-   bright indoor timber velodrome with roof daylight, built seating/infield
-   cues, and continuous regulation lines rather than outdoor skyline,
+   indoor timber velodrome under an evening-session light story, with roof
+   enclosure, built seating/infield cues, and continuous regulation lines
+   (including the côte d'azur apron band) rather than outdoor skyline,
    vegetation, or repeated curb/barrier blocks.
 4. WHEN switching sports THEN the environment SHALL change in composition,
    material, silhouette, and palette rather than only changing a tint.
@@ -65,8 +66,8 @@ a first-class product.
 #### Acceptance Criteria
 
 1. WHEN Renderer_2D paints a frame THEN it SHALL compose distinct atmosphere or
-   roof daylight, background, middle-distance venue, course, and foreground
-   layers appropriate to the sport.
+   indoor roof enclosure, background, middle-distance venue, course, and
+   foreground layers appropriate to the sport.
 2. WHEN course texture or parallax moves THEN its offset SHALL follow replay
    distance and direction rather than renderer frame count.
 3. WHEN a ghost is present THEN the shared environment SHALL retain full

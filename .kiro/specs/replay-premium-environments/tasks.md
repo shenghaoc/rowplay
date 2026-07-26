@@ -79,21 +79,29 @@ Follow-up to: `.kiro/specs/replay-3d-athlete-readability/`
     Ultra / WebGPU frame
   - [x] Pass the full repository quality gate
 
-> The July 26 composition rebuild below supersedes task 8's captured scene.
-> Those frames remain historical until this new visual gate is completed.
+> Task 9 supersedes task 8's earlier scene composition. The committed matrix
+> under `docs/visual-qa/premium-environments/` and the public screenshots were
+> recaptured on head `c76fde9` (`buildVersion 1785044266849`) after the
+> one-light-story pass, with harness version pinning so a stale server fails
+> the capture loudly.
 
-- [ ] **9. Replace repetition with authored tier destinations**
+- [x] **9. Replace repetition with authored tier destinations**
   - [x] Rebase this isolated worktree on current `origin/main`
   - [x] Recompose RowErg as sector banks/campus/open wetland, with an Ultra-only
     boardwalk and hide rather than a denser ring of shoreline props
-  - [x] Recompose SkiErg as a bright snow bowl with authored forest gaps, a
+  - [x] Recompose SkiErg as a Nordic stadium bowl with authored forest gaps, a
     High rock shoulder, and Ultra spectator/rescue destinations
-  - [x] Recompose BikeErg in both renderers as one bright indoor timber
-    velodrome, with High team-pit/event architecture and Ultra hospitality
+  - [x] Recompose BikeErg in both renderers as one indoor timber velodrome
+    (evening-session light story), with High team-pit/event architecture and
+    Ultra hospitality
   - [x] Replace Bike asphalt with provenance-recorded CC0 oak and add
     provenance-recorded CC0 rock to the Ski shoulder
   - [x] Pin adjacent-tier scene signatures, payloads, custom timber UVs, and
     non-ring object bounds in renderer tests
-  - [ ] Regenerate the complete Chrome/WebGPU visual matrix and replace stale
-    public captures
-  - [ ] Pass the full repository quality gate on the final captured head
+  - [x] Commit each venue to one light story: Row morning glass (per-material
+    sky radiance on water, mist, finish tower), Ski blue-hour dusk (warm
+    floodlight pools on dimmer groom), Bike evening session (single warm cone,
+    matte timber, côte d'azur line grammar)
+  - [x] Regenerate the complete Chrome/WebGPU visual matrix and replace public
+    captures; harness asserts served `_app/version.json` matches disk build
+  - [x] Pass the full repository quality gate on the final captured head

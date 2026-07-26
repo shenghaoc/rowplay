@@ -217,32 +217,37 @@ Both views use complete sport-specific illustrative environments, not one
 generic floor with different colors. Each sport is one authored place with a
 cared-for circle centre and land uses, not a ring of props:
 
-- **RowErg** is a lagoon loop: water is the racing channel only. The circle
-  centre is a land island (lawn, beach, trees, shrubs, mound); reeds and a
-  sector-authored forest line the shore with deliberate open vistas; the campus
-  owns path, launch dock, and buildings; start pontoons sit in the water
-  channel. Ultra adds a separate wetland boardwalk and hide.
-- **SkiErg** is a Nordic stadium: snow covers the track and the stadium
-  centre (packed start pad, groom lines, lodge chute, snow fences), with
-  irregular forest stands, alpine peaks/foothills, valley snow shoulders, wind
-  lips, and a lodge campus. High adds a rock shoulder and timing arch; Ultra
-  adds a spectator terrace and mountain-rescue shelter.
-- **BikeErg** is an indoor velodrome: multi-use sports-hall infield (court
-  markings, staging pads), two authored seating straights, arena-wall bays,
-  warm timber track, long-span roof with skylights, scoreboard, and service
-  building. High adds a team pit and finish gantry; Ultra adds a hospitality
-  deck. Canvas 2D uses the same indoor daylight/wood language rather than an
-  unrelated outdoor road circuit.
+- **RowErg** is a morning-glass lagoon loop: water is the racing channel only.
+  The circle centre is a land island (lawn, beach, trees, shrubs, mound); reeds
+  and a sector-authored forest line the shore with deliberate open vistas; the
+  campus owns path, launch dock, buildings, and a finish tower with timing
+  wing; start pontoons sit in the water channel. Ultra adds a separate wetland
+  boardwalk and hide.
+- **SkiErg** is a Nordic stadium at blue-hour dusk: snow covers the track and
+  the stadium centre (packed start pad, groom lines, lodge chute, snow fences),
+  with irregular forest stands, alpine peaks/foothills, valley snow shoulders,
+  wind lips, lodge campus, and warm floodlight pools on the groom. High adds a
+  rock shoulder and timing arch; Ultra adds a spectator terrace and
+  mountain-rescue shelter.
+- **BikeErg** is an indoor velodrome under an evening-session light story:
+  multi-use sports-hall infield (court markings, staging pads), two authored
+  seating straights, arena-wall bays, warm timber track with black/red/blue
+  plus côte d'azur line grammar, long-span roof with skylights, scoreboard, and
+  service building. High adds a team pit and finish gantry; Ultra adds a
+  hospitality deck. Canvas 2D uses the same indoor timber/enclosure language
+  rather than an unrelated outdoor road circuit.
 
 High and Ultra materials use provenance-recorded local CC0 surface maps (snow,
 rock, oak, grass, forest ground, bark, leaves, planks, pebbles, brushed
 concrete, cobblestone, painted concrete) only as material response — not as
 venue photographs. Creators, sources, licenses, source checksums, and shipped
 digests are recorded with the assets. The 2D view composes outdoor atmosphere
-or indoor roof daylight, background, middle distance, course, and foreground
+or indoor roof enclosure, background, middle distance, course, and foreground
 layers. The 3D view adds atmospheric depth or roof architecture, smooth
 compound scenery, and sport-specific surfaces so the athlete is grounded in a
-venue rather than floating on a plane.
+venue rather than floating on a plane. Each venue keeps one light story across
+themes (Row morning glass, Ski blue-hour dusk, Bike evening session) rather
+than flipping to an unrelated day or night palette.
 
 The venue, weather, light, trees, mountains, shoreline, and structures are
 generic presentation art. Concept2 does not provide route geography, venue,
