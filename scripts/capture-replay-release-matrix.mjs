@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -21,11 +21,58 @@ function option(name, fallback) {
 }
 
 const baseUrl = option("base-url", "http://127.0.0.1:5173").replace(/\/$/, "");
-const outputDir = resolve(option("output", "docs/visual-qa/higher-ceiling/release-gate"));
+/**
+ * `release-gate` (default) keeps the original per-sport gate frames.
+ * `environment` sweeps the premium-environments Requirement 6.2 matrix:
+ * every sport in 2D and 3D, paused and moving, light and dark, at Low and
+ * Ultra, plus a ghost comparison.
+ */
+const matrix = option("matrix", "release-gate");
+const outputDir = resolve(
+  option(
+    "output",
+    matrix === "environment"
+      ? "docs/visual-qa/premium-environments/current"
+      : "docs/visual-qa/higher-ceiling/release-gate",
+  ),
+);
 
 await mkdir(outputDir, { recursive: true });
 
-const browser = await chromium.launch({ headless: true });
+/**
+ * Playwright's bundled Chromium exposes `navigator.gpu` but resolves no
+ * adapter, so every Ultra request silently downgrades to High on WebGL and the
+ * frames misrepresent the tier. `--browser-channel=chrome` drives the machine's
+ * installed Google Chrome instead, which does get a real adapter. Required for
+ * any Ultra capture; optional everywhere else.
+ */
+const browserChannel = option("browser-channel");
+/**
+ * Fingerprint of the build this capture is meant to evidence. The version file
+ * changes every build, so a server that answers with a different fingerprint
+ * is serving some other build — which happened silently when several agent
+ * worktrees raced for one port, and produced byte-identical "captures" across
+ * three different builds. Staleness must fail loudly, not photograph the
+ * wrong venue.
+ */
+async function assertServedBuildMatches() {
+  const version = JSON.parse(
+    await readFile(resolve(".svelte-kit/cloudflare/_app/version.json"), "utf8"),
+  ).version;
+  const served = await fetch(`${baseUrl}/_app/version.json`).then((r) => r.json());
+  if (served.version !== version) {
+    throw new Error(
+      `stale server: disk build ${version} but ${baseUrl} serves ${served.version}. ` +
+        "Another process owns the port, or the preview was not restarted after the build.",
+    );
+  }
+  return version;
+}
+
+const browser = await chromium.launch({
+  headless: true,
+  ...(browserChannel ? { channel: browserChannel } : {}),
+});
 const evidence = [];
 
 function normalizedWarnings(warnings) {
@@ -40,7 +87,16 @@ function normalizedWarnings(warnings) {
   ];
 }
 
-async function openReplay({ sport, renderer, quality, theme, viewport, reducedMotion }) {
+async function openReplay({
+  sport,
+  renderer,
+  quality,
+  theme,
+  viewport,
+  reducedMotion,
+  playing = false,
+  ghostPace,
+}) {
   const context = await browser.newContext({
     viewport: VIEWPORTS[viewport],
     deviceScaleFactor: 1,
@@ -67,7 +123,10 @@ async function openReplay({ sport, renderer, quality, theme, viewport, reducedMo
     if (message.type() === "warning") warnings.push(message.text());
   });
 
-  await page.goto(`${baseUrl}/replay/${sport.id}?qa=release-gate`, {
+  const url = new URL(`/replay/${sport.id}`, `${baseUrl}/`);
+  url.searchParams.set("qa", "release-gate");
+  if (ghostPace) url.searchParams.set("ghostPace", ghostPace);
+  await page.goto(url.toString(), {
     waitUntil: "domcontentloaded",
   });
   await page.waitForFunction(() => document.documentElement.dataset.appHydrated === "true");
@@ -103,10 +162,27 @@ async function openReplay({ sport, renderer, quality, theme, viewport, reducedMo
   await stage.scrollIntoViewIfNeeded();
   await page.waitForTimeout(150);
 
+  // Moving playback: let the replay actually run, so wake, spray, parallax and
+  // the chase camera are captured mid-motion rather than from a paused frame.
+  // Canvas rAF is unaffected by Playwright's CSS `animations: "disabled"`.
+  if (playing) {
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await page.waitForTimeout(renderer === "3d" ? 1_200 : 600);
+  }
+
   const stageBox = await stage.boundingBox();
   if (!stageBox) throw new Error(`${sport.slug} ${renderer}: stage has no bounding box`);
   const backend =
     renderer === "3d" ? (await page.locator(".backend-label").innerText()).trim() : null;
+  // Ultra is WebGPU-only. Where no adapter exists the renderer downgrades to
+  // High, so record what was actually rendered rather than what was requested.
+  const effectiveQuality =
+    renderer === "3d"
+      ? await page
+          .locator(".quality-select select")
+          .inputValue()
+          .catch(() => null)
+      : null;
   const actualTheme = await page.locator("html").getAttribute("data-theme");
   if (actualTheme !== (theme === "dark" ? "dark" : "rowplay")) {
     throw new Error(`${sport.slug} ${renderer}: expected ${theme} theme, got ${actualTheme}`);
@@ -115,7 +191,7 @@ async function openReplay({ sport, renderer, quality, theme, viewport, reducedMo
     throw new Error(`${sport.slug} ${renderer}: browser errors: ${errors.join(" | ")}`);
   }
 
-  return { context, page, stage, stageBox, backend, warnings };
+  return { context, page, stage, stageBox, backend, effectiveQuality, warnings };
 }
 
 async function captureViewport(options, filename) {
@@ -126,6 +202,18 @@ async function captureViewport(options, filename) {
       type: "jpeg",
       quality: 88,
       animations: "disabled",
+      // Venue review only needs the stage; cropping keeps the committed
+      // evidence small and puts the environment itself under scrutiny.
+      ...(options.clipToStage
+        ? {
+            clip: {
+              x: Math.round(opened.stageBox.x),
+              y: Math.round(opened.stageBox.y),
+              width: Math.round(opened.stageBox.width),
+              height: Math.round(opened.stageBox.height),
+            },
+          }
+        : {}),
     });
     evidence.push({
       file: filename,
@@ -133,6 +221,7 @@ async function captureViewport(options, filename) {
       route: `/replay/${options.sport.id}`,
       renderer: options.renderer,
       requestedQuality: options.quality,
+      effectiveQuality: opened.effectiveQuality,
       backend: opened.backend,
       theme: options.theme,
       viewport: VIEWPORTS[options.viewport],
@@ -141,6 +230,8 @@ async function captureViewport(options, filename) {
         height: Math.round(opened.stageBox.height),
       },
       reducedMotion: options.reducedMotion,
+      playback: options.playing ? "moving" : "paused",
+      ghostPace: options.ghostPace ?? null,
       seekSeconds: options.sport.seekSeconds,
       warnings: normalizedWarnings(opened.warnings),
     });
@@ -217,7 +308,74 @@ async function captureSilhouette(sport) {
   }
 }
 
-try {
+/**
+ * Requirement 6.2 for the premium-environments spec: all three sports reviewed
+ * in 2D and 3D, paused and moving, light and dark, at the extreme quality tiers,
+ * plus a ghost comparison that must stay readable over the shared venue.
+ */
+async function captureEnvironmentMatrix() {
+  // The quality selector only exists in 3D — the Canvas renderer has no tiers —
+  // so a 2D tier axis would emit identical frames under different names.
+  const tiers = (option("tiers", "low,medium,high,ultra") ?? "").split(",").filter(Boolean);
+
+  for (const sport of SPORTS) {
+    for (const theme of ["light", "dark"]) {
+      for (const playing of [false, true]) {
+        await captureViewport(
+          {
+            sport,
+            renderer: "2d",
+            quality: "medium",
+            theme,
+            viewport: "desktop",
+            reducedMotion: false,
+            playing,
+            clipToStage: true,
+          },
+          `${sport.slug}-2d-${theme}-${playing ? "moving" : "paused"}.jpg`,
+        );
+      }
+    }
+
+    for (const quality of tiers) {
+      for (const theme of ["light", "dark"]) {
+        for (const playing of [false, true]) {
+          await captureViewport(
+            {
+              sport,
+              renderer: "3d",
+              quality,
+              theme,
+              viewport: "desktop",
+              reducedMotion: false,
+              playing,
+              clipToStage: true,
+            },
+            `${sport.slug}-3d-${quality}-${theme}-${playing ? "moving" : "paused"}.jpg`,
+          );
+        }
+      }
+    }
+
+    // Ghost comparison: both athletes and the shared venue must stay readable
+    // without double-painted or faded scenery.
+    await captureViewport(
+      {
+        sport,
+        renderer: "3d",
+        quality: tiers.at(-1) ?? "high",
+        theme: "dark",
+        viewport: "desktop",
+        reducedMotion: false,
+        ghostPace: "2:00",
+        clipToStage: true,
+      },
+      `${sport.slug}-3d-ghost-dark.jpg`,
+    );
+  }
+}
+
+async function captureReleaseGate() {
   for (const sport of SPORTS) {
     await captureViewport(
       {
@@ -265,6 +423,13 @@ try {
     );
     await captureSilhouette(sport);
   }
+}
+
+const buildVersion = await assertServedBuildMatches();
+
+try {
+  if (matrix === "environment") await captureEnvironmentMatrix();
+  else await captureReleaseGate();
 } finally {
   await browser.close();
 }
@@ -275,7 +440,17 @@ await writeFile(
   `${JSON.stringify(
     {
       source: baseUrl,
-      command: `node scripts/capture-replay-release-matrix.mjs --base-url=${baseUrl}`,
+      matrix,
+      // Which browser produced these frames decides whether a WebGPU adapter
+      // was available at all, so it belongs in the evidence.
+      browserChannel: browserChannel ?? "playwright-bundled-chromium",
+      buildVersion,
+      command: [
+        "node scripts/capture-replay-release-matrix.mjs",
+        `--matrix=${matrix}`,
+        `--base-url=${baseUrl}`,
+        ...(browserChannel ? [`--browser-channel=${browserChannel}`] : []),
+      ].join(" "),
       note: "Screenshots use demo data, actual application themes, native media emulation, and unscaled CSS pixels. Silhouette display transforms are screenshot-only and do not alter application state or renderer selection.",
       evidence,
     },
@@ -291,4 +466,4 @@ if (formatter.status !== 0) {
   throw new Error(`Failed to format ${manifestPath}`);
 }
 
-console.log(`Captured ${evidence.length} release-gate frames in ${outputDir}`);
+console.log(`Captured ${evidence.length} ${matrix} frames in ${outputDir}`);

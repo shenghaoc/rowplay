@@ -177,8 +177,7 @@ const STREAK_ALPHAS = [0.35, 0.28, 0.22, 0.16] as const;
 const STREAK_LENGTH_FACTORS = [1, 0.75, 0.55, 0.4] as const;
 const STREAK_Y_OFFSETS = [-3, 0, 3, -5] as const;
 const SKI_GROOVE_DASH = [6, 7];
-const BIKE_CURB_DASH = [8, 8];
-const BIKE_LANE_DASH = [12, 8];
+const BIKE_BOARD_JOINT_DASH = [30, 18];
 const SOLID_LINE: number[] = [];
 const BIKE_WHEEL_SPOKE_COUNT = 6;
 /** Stable mid-drive pose used when decorative athlete motion is reduced. */
@@ -219,24 +218,42 @@ interface VenuePalette {
   safetyLight: string;
 }
 
-const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
+/**
+ * Footprint of each sport's signature fixed venue mass: the RowErg timing-tower
+ * cabin, the SkiErg timing cabin, and one BikeErg grandstand seating block.
+ *
+ * Exported so venue regression tests can locate these landmarks in a recorded
+ * canvas stream without hard-coding pixel dimensions that shift every time the
+ * venue art is retuned.
+ */
+export const VENUE_LANDMARK_2D: Readonly<
+  Record<Sport, { readonly w: number; readonly h: number }>
+> = {
+  rower: { w: 34, h: 18 },
+  skierg: { w: 70, h: 22 },
+  bike: { w: 14, h: 7 },
+};
+
+export const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
   rower: {
-    skyTop: "#31769f",
-    skyHorizon: "#e7c68d",
-    haze: "#f8dfac",
-    sun: "#fff0bd",
-    ridgeFar: "#6f8d76",
-    ridgeNear: "#365f4f",
-    foliageFar: "#416d56",
-    foliageNear: "#1d493f",
+    // Warm late-afternoon haze first; saturated mid-greens second. Distance
+    // must desaturate into the sky or the 2D venue reads as flat cutouts.
+    skyTop: "#4d86a8",
+    skyHorizon: "#f2d29a",
+    haze: "#f3e2bc",
+    sun: "#ffe7b0",
+    ridgeFar: "#9aae90",
+    ridgeNear: "#4a6d56",
+    foliageFar: "#5a7a62",
+    foliageNear: "#2a5244",
     structure: "#ece6d9",
     structureShade: "#8c7b67",
     structureLight: "#ffd68a",
-    groundTop: "#3d879b",
-    groundMid: "#185a6c",
-    groundBottom: "#0a3544",
-    surfaceLine: "#8fd0db",
-    surfaceHighlight: "#e0f5f7",
+    groundTop: "#4a92a3",
+    groundMid: "#1d6172",
+    groundBottom: "#0c3a48",
+    surfaceLine: "#9fd6df",
+    surfaceHighlight: "#e8f6f7",
     surfaceShadow: "#082a37",
     marker: "#ef5b42",
     safety: "#d9e7e7",
@@ -265,39 +282,43 @@ const VENUES_LIGHT: Readonly<Record<Sport, VenuePalette>> = {
     safetyLight: "#f5fbfd",
   },
   bike: {
-    skyTop: "#3b5877",
-    skyHorizon: "#e4a06f",
-    haze: "#f5c997",
-    sun: "#ffe0a1",
-    ridgeFar: "#65727c",
-    ridgeNear: "#3b474f",
-    foliageFar: "#46584f",
-    foliageNear: "#2a3935",
-    structure: "#d6d9da",
-    structureShade: "#565f66",
-    structureLight: "#ffd77f",
-    groundTop: "#4f575f",
-    groundMid: "#343b42",
-    groundBottom: "#1d2329",
-    surfaceLine: "#8e989e",
-    surfaceHighlight: "#c2c9cc",
-    surfaceShadow: "#12171c",
-    marker: "#e8483f",
-    safety: "#d6d2c9",
-    safetyLight: "#f5f0e7",
+    // Bright indoor timber velodrome. The "sky" family is the roof daylight
+    // system here; retaining the shared palette shape lets all three fallback
+    // venues re-theme through one contract without pretending BikeErg is
+    // outdoors.
+    skyTop: "#edf3f4",
+    skyHorizon: "#cbd8da",
+    haze: "#f8f4e8",
+    sun: "#fff7d8",
+    ridgeFar: "#b6c2c4",
+    ridgeNear: "#87969b",
+    foliageFar: "#6f817a",
+    foliageNear: "#4e6d63",
+    structure: "#d9e1e2",
+    structureShade: "#596970",
+    structureLight: "#fff6d4",
+    groundTop: "#e0c39a",
+    groundMid: "#c99b68",
+    groundBottom: "#91623e",
+    surfaceLine: "#f3eee4",
+    surfaceHighlight: "#fff8e8",
+    surfaceShadow: "#503c2f",
+    marker: "#c83f38",
+    safety: "#2f7298",
+    safetyLight: "#f8f5ed",
   },
 };
 
-const VENUES_DARK: Readonly<Record<Sport, VenuePalette>> = {
+export const VENUES_DARK: Readonly<Record<Sport, VenuePalette>> = {
   rower: {
     skyTop: "#071724",
     skyHorizon: "#294f62",
-    haze: "#718c93",
+    haze: "#7a9499",
     sun: "#f0c67b",
-    ridgeFar: "#294b46",
-    ridgeNear: "#173832",
-    foliageFar: "#23483d",
-    foliageNear: "#102e29",
+    ridgeFar: "#3a5654",
+    ridgeNear: "#1d3f39",
+    foliageFar: "#2a4d44",
+    foliageNear: "#12332d",
     structure: "#8c908c",
     structureShade: "#3b4648",
     structureLight: "#f0b65c",
@@ -334,26 +355,26 @@ const VENUES_DARK: Readonly<Record<Sport, VenuePalette>> = {
     safetyLight: "#d7e8ee",
   },
   bike: {
-    skyTop: "#070f1b",
-    skyHorizon: "#3a3546",
-    haze: "#86644f",
-    sun: "#d9a55f",
-    ridgeFar: "#303a43",
-    ridgeNear: "#1c252c",
-    foliageFar: "#26342e",
-    foliageNear: "#141f1d",
-    structure: "#777e82",
-    structureShade: "#293036",
-    structureLight: "#ffd16e",
-    groundTop: "#3a4249",
-    groundMid: "#262d33",
-    groundBottom: "#13181d",
-    surfaceLine: "#6e7b82",
-    surfaceHighlight: "#aab5ba",
-    surfaceShadow: "#080c10",
-    marker: "#ef554a",
-    safety: "#9a9a94",
-    safetyLight: "#e5e2d9",
+    skyTop: "#1b2934",
+    skyHorizon: "#40515b",
+    haze: "#66767b",
+    sun: "#f2c981",
+    ridgeFar: "#45535a",
+    ridgeNear: "#2c3b43",
+    foliageFar: "#3d514a",
+    foliageNear: "#26473e",
+    structure: "#849198",
+    structureShade: "#25333c",
+    structureLight: "#f4d38c",
+    groundTop: "#9f7650",
+    groundMid: "#775337",
+    groundBottom: "#3f2d23",
+    surfaceLine: "#d9d4ca",
+    surfaceHighlight: "#ebddc5",
+    surfaceShadow: "#171412",
+    marker: "#ef5f53",
+    safety: "#5fa4c4",
+    safetyLight: "#e8e3d8",
   },
 };
 
@@ -2236,22 +2257,27 @@ export class CourseRenderer implements ReplayRenderer {
     roundRect(ctx, 0, 0, w, h, 5);
     ctx.clip();
 
-    this.drawSky(w, h, palette);
-    if (sport === "skierg") this.drawSkiVenue(w, h, meters, palette);
-    else if (sport === "bike") this.drawBikeVenue(w, h, meters, palette);
-    else this.drawRowVenue(w, h, meters, palette);
+    if (sport === "bike") {
+      // BikeErg is an indoor velodrome in both renderers. Let the venue own
+      // the full backdrop instead of painting an outdoor sky first and then
+      // trying to disguise it with grandstands.
+      this.drawBikeVenue(w, h, meters, palette);
+    } else {
+      this.drawSky(w, h, palette);
+      if (sport === "skierg") this.drawSkiVenue(w, h, meters, palette);
+      else this.drawRowVenue(w, h, meters, palette);
 
-    // Atmospheric fog veil — a soft blend that pulls the horizon away from
-    // the course without washing out the venue silhouettes. The 3D renderer
-    // does this with actual `scene.fog`; the canvas renderer needs one
-    // explicit pass so the depth ordering between ridge/near/water/snow/
-    // asphalt stays consistent across all three sports.
-    const fog = ctx.createLinearGradient(0, h * 0.31, 0, h * 0.48);
-    fog.addColorStop(0, withAlpha(palette.haze, 0));
-    fog.addColorStop(0.55, withAlpha(palette.haze, this.darkTheme ? 0.23 : 0.28));
-    fog.addColorStop(1, withAlpha(palette.haze, 0));
-    ctx.fillStyle = fog;
-    ctx.fillRect(0, h * 0.31, w, h * 0.17);
+      // Atmospheric fog veil — a soft blend that pulls the horizon away from
+      // the course without washing out the venue silhouettes. The 3D renderer
+      // does this with actual `scene.fog`; the canvas renderer needs one
+      // explicit pass so the depth ordering stays consistent outdoors.
+      const fog = ctx.createLinearGradient(0, h * 0.31, 0, h * 0.48);
+      fog.addColorStop(0, withAlpha(palette.haze, 0));
+      fog.addColorStop(0.55, withAlpha(palette.haze, this.darkTheme ? 0.23 : 0.28));
+      fog.addColorStop(1, withAlpha(palette.haze, 0));
+      ctx.fillStyle = fog;
+      ctx.fillRect(0, h * 0.31, w, h * 0.17);
+    }
 
     // A restrained frame vignette supplies depth without obscuring the race.
     const vignette = ctx.createLinearGradient(0, 0, w, 0);
@@ -2380,73 +2406,189 @@ export class CourseRenderer implements ReplayRenderer {
     const { ctx } = this;
     const horizon = h * 0.405;
     const farShift = this.materialOffset(meters, 0.018, 18);
+    const midShift = this.materialOffset(meters, 0.03, 26);
 
-    // Soft wooded shoreline, built as two depth-separated silhouettes.
-    ctx.fillStyle = palette.ridgeFar;
+    // Far valley as stacked translucent mass — hard single-colour silhouettes
+    // are what made the 2D venue look like paper cutouts.
+    const drawRidge = (
+      top: number,
+      colour: string,
+      alpha: number,
+      points: readonly [number, number][],
+    ) => {
+      ctx.fillStyle = withAlpha(colour, alpha);
+      ctx.beginPath();
+      ctx.moveTo(0, horizon + 10);
+      ctx.lineTo(0, horizon - points[0]![1]);
+      for (const [xf, yf] of points) {
+        ctx.lineTo(w * xf, horizon - yf);
+      }
+      ctx.lineTo(w, horizon + 10);
+      ctx.closePath();
+      ctx.fill();
+      // Soft upper wash into haze so ridge tops dissolve rather than hard-edge.
+      const wash = ctx.createLinearGradient(0, horizon - top, 0, horizon - top * 0.35);
+      wash.addColorStop(0, withAlpha(palette.haze, this.darkTheme ? 0.28 : 0.42));
+      wash.addColorStop(1, withAlpha(palette.haze, 0));
+      ctx.fillStyle = wash;
+      ctx.fill();
+    };
+    drawRidge(92, palette.ridgeFar, this.darkTheme ? 0.55 : 0.72, [
+      [0.08, 62],
+      [0.18, 88],
+      [0.3, 48],
+      [0.44, 96],
+      [0.58, 70],
+      [0.72, 84],
+      [0.88, 58],
+      [1, 52],
+    ]);
+    drawRidge(70, palette.ridgeFar, this.darkTheme ? 0.4 : 0.5, [
+      [0.12, 42],
+      [0.28, 68],
+      [0.46, 52],
+      [0.64, 74],
+      [0.82, 46],
+      [1, 38],
+    ]);
+
+    // Mid forest mass — cooler body, still softened by haze at the crown.
+    ctx.fillStyle = withAlpha(palette.ridgeNear, this.darkTheme ? 0.82 : 0.9);
     ctx.beginPath();
-    ctx.moveTo(0, horizon + 5);
-    ctx.lineTo(0, horizon - 13);
-    ctx.quadraticCurveTo(w * 0.1, horizon - 33, w * 0.2, horizon - 19);
-    ctx.quadraticCurveTo(w * 0.34, horizon - 43, w * 0.49, horizon - 20);
-    ctx.quadraticCurveTo(w * 0.63, horizon - 38, w * 0.78, horizon - 16);
-    ctx.quadraticCurveTo(w * 0.9, horizon - 28, w, horizon - 12);
-    ctx.lineTo(w, horizon + 5);
+    ctx.moveTo(0, horizon + 10);
+    ctx.lineTo(0, horizon - 20);
+    ctx.quadraticCurveTo(w * 0.12, horizon - 50, w * 0.22, horizon - 56);
+    ctx.quadraticCurveTo(w * 0.34, horizon - 36, w * 0.46, horizon - 52);
+    ctx.quadraticCurveTo(w * 0.58, horizon - 64, w * 0.7, horizon - 42);
+    ctx.quadraticCurveTo(w * 0.84, horizon - 58, w * 0.94, horizon - 34);
+    ctx.lineTo(w, horizon - 28);
+    ctx.lineTo(w, horizon + 10);
     ctx.closePath();
     ctx.fill();
+    const midWash = ctx.createLinearGradient(0, horizon - 60, 0, horizon - 8);
+    midWash.addColorStop(0, withAlpha(palette.haze, this.darkTheme ? 0.18 : 0.28));
+    midWash.addColorStop(1, withAlpha(palette.haze, 0));
+    ctx.fillStyle = midWash;
+    ctx.fill();
 
-    ctx.fillStyle = palette.ridgeNear;
-    ctx.beginPath();
-    ctx.moveTo(0, horizon + 8);
-    ctx.lineTo(0, horizon - 4);
-    for (let x = -24 + farShift; x <= w + 28; x += 22) {
-      const crown = horizon - 10 - ((Math.floor((x - farShift) / 22) & 1) === 0 ? 6 : 1);
-      ctx.quadraticCurveTo(x + 6, crown - 7, x + 13, crown);
-      ctx.quadraticCurveTo(x + 18, crown + 5, x + 24, horizon - 2);
+    // Clumped pine stands — irregular gaps prevent a picket-fence tree line.
+    ctx.fillStyle = withAlpha(palette.foliageFar, 0.88);
+    for (let x = -24 + midShift; x <= w + 28; ) {
+      const i = Math.abs(Math.floor((x - midShift) / 11));
+      const gap = i % 7 === 3 || i % 11 === 0;
+      if (gap) {
+        x += 18 + (i % 3) * 6;
+        continue;
+      }
+      const stand = 2 + (i % 4);
+      for (let t = 0; t < stand; t++) {
+        const px = x + t * (5 + (i % 3));
+        const base = horizon - 4 - (t % 3) * 2 - (i % 2);
+        const tip = base - (14 + ((i + t) % 5) * 3.5);
+        const half = 3.6 + ((i + t) % 3) * 1.1;
+        ctx.beginPath();
+        ctx.moveTo(px, tip);
+        ctx.lineTo(px + half, base + 2);
+        ctx.lineTo(px - half, base + 2);
+        ctx.closePath();
+        ctx.fill();
+      }
+      x += 16 + stand * 3 + (i % 5) * 2;
     }
-    ctx.lineTo(w, horizon + 8);
+
+    // Near shoreline bank with real vertical rise into the water.
+    const bank = ctx.createLinearGradient(0, horizon - 18, 0, horizon + 14);
+    bank.addColorStop(0, palette.foliageNear);
+    bank.addColorStop(0.45, palette.structureShade);
+    bank.addColorStop(0.78, withAlpha(palette.groundTop, 0.55));
+    bank.addColorStop(1, withAlpha(palette.groundTop, 0.82));
+    ctx.fillStyle = bank;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon - 8);
+    for (let x = -28 + farShift; x <= w + 36; x += 28) {
+      const rise = 8 + (Math.abs(Math.floor(x / 28)) % 4) * 3.2;
+      ctx.quadraticCurveTo(x + 8, horizon - rise - 6, x + 16, horizon - rise);
+      ctx.quadraticCurveTo(x + 22, horizon - 2, x + 28, horizon - 4);
+    }
+    ctx.lineTo(w, horizon + 14);
+    ctx.lineTo(0, horizon + 14);
     ctx.closePath();
     ctx.fill();
+
+    // Reed beds occupy a handful of natural shore pockets, leaving the
+    // boathouse/campus waterline open instead of fencing the full panorama.
+    ctx.strokeStyle = withAlpha(palette.foliageNear, 0.85);
+    ctx.lineWidth = 1;
+    ctx.lineCap = "round";
+    for (const [cluster, center, count, spacing] of [
+      [0, 0.025, 5, 5],
+      [1, 0.36, 4, 6],
+      [2, 0.62, 7, 4.5],
+      [3, 0.77, 3, 7],
+      [4, 0.97, 5, 5],
+    ] as const) {
+      for (let reed = 0; reed < count; reed++) {
+        const x = w * center + (reed - (count - 1) / 2) * spacing;
+        const height = 7 + ((cluster * 3 + reed * 2) % 5) * 2.1;
+        ctx.beginPath();
+        ctx.moveTo(x, horizon + 6);
+        ctx.quadraticCurveTo(x - 1.2, horizon + 1, x + 0.9, horizon + 6 - height);
+        ctx.stroke();
+      }
+    }
 
     // Regatta pavilion, dock and timing tower establish a credible venue.
     // Unique architecture stays fixed. Only genuinely repeating shoreline and
     // material bands use modulo parallax, so a long workout cannot teleport a
     // landmark when its wrap period rolls over.
     const pavilionX = Math.max(24, w * 0.105);
-    const pavilionY = horizon - 25;
+    const pavilionY = horizon - 34;
     ctx.fillStyle = palette.structureShade;
     ctx.beginPath();
-    ctx.moveTo(pavilionX - 7, pavilionY + 5);
-    ctx.lineTo(pavilionX + 91, pavilionY + 5);
-    ctx.lineTo(pavilionX + 80, pavilionY - 5);
-    ctx.lineTo(pavilionX + 6, pavilionY - 5);
+    ctx.moveTo(pavilionX - 8, pavilionY + 8);
+    ctx.lineTo(pavilionX + 98, pavilionY + 8);
+    ctx.lineTo(pavilionX + 86, pavilionY - 8);
+    ctx.lineTo(pavilionX + 6, pavilionY - 8);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = palette.structure;
-    roundRect(ctx, pavilionX, pavilionY + 5, 84, 20, 1.8);
+    roundRect(ctx, pavilionX, pavilionY + 8, 90, 24, 1.8);
     ctx.fill();
     ctx.fillStyle = withAlpha(palette.structureLight, 0.78);
-    for (let i = 0; i < 6; i++) {
-      roundRect(ctx, pavilionX + 6 + i * 13, pavilionY + 9, 8, 8, 1);
+    for (let i = 0; i < 7; i++) {
+      roundRect(ctx, pavilionX + 6 + i * 12, pavilionY + 12, 8, 10, 1);
       ctx.fill();
     }
     ctx.fillStyle = palette.structureShade;
-    ctx.fillRect(pavilionX - 12, horizon + 1, 118, 3);
-    ctx.fillRect(pavilionX + 9, pavilionY + 18, 3, 10);
-    ctx.fillRect(pavilionX + 72, pavilionY + 18, 3, 10);
+    ctx.fillRect(pavilionX - 14, horizon + 1, 128, 4);
+    ctx.fillRect(pavilionX + 10, pavilionY + 22, 3.5, 14);
+    ctx.fillRect(pavilionX + 76, pavilionY + 22, 3.5, 14);
+
+    // Boathouse mass beside the pavilion for campus depth.
+    ctx.fillStyle = palette.structure;
+    roundRect(ctx, pavilionX + 102, pavilionY + 14, 36, 18, 1.4);
+    ctx.fill();
+    ctx.fillStyle = palette.structureShade;
+    ctx.beginPath();
+    ctx.moveTo(pavilionX + 98, pavilionY + 14);
+    ctx.lineTo(pavilionX + 120, pavilionY + 2);
+    ctx.lineTo(pavilionX + 142, pavilionY + 14);
+    ctx.closePath();
+    ctx.fill();
 
     const towerX = w * 0.87;
     ctx.fillStyle = palette.structureShade;
-    ctx.fillRect(towerX, horizon - 43, 3, 44);
-    ctx.fillRect(towerX + 20, horizon - 43, 3, 44);
+    ctx.fillRect(towerX, horizon - 58, 3.5, 59);
+    ctx.fillRect(towerX + 22, horizon - 58, 3.5, 59);
     ctx.fillStyle = palette.structure;
-    ctx.fillRect(towerX - 3, horizon - 45, 29, 14);
+    ctx.fillRect(towerX - 4, horizon - 62, VENUE_LANDMARK_2D.rower.w, VENUE_LANDMARK_2D.rower.h);
     ctx.fillStyle = withAlpha(palette.structureLight, 0.8);
-    ctx.fillRect(towerX + 2, horizon - 42, 19, 6);
+    ctx.fillRect(towerX + 2, horizon - 58, 22, 8);
+    ctx.fillStyle = palette.marker;
+    ctx.fillRect(towerX + 6, horizon - 64, 14, 3);
 
-    // Deep regatta basin with a cooler, richer bottom depth. The old 3-stop
-    // gradient turned the entire lower canvas into one uniform teal slab;
-    // 5 stops give a visible thermocline and keep the surface distinct from
-    // the deep water beneath both athlete lanes.
+    // Water is the racing channel. Mid-course silhouette is a land island —
+    // not more water — matching the 3D lagoon centre.
     const water = ctx.createLinearGradient(0, horizon, 0, h);
     water.addColorStop(0, palette.groundTop);
     water.addColorStop(0.18, withAlpha(palette.groundTop, 0.78));
@@ -2455,6 +2597,30 @@ export class CourseRenderer implements ReplayRenderer {
     water.addColorStop(1, palette.groundBottom);
     ctx.fillStyle = water;
     ctx.fillRect(0, horizon, w, h - horizon);
+    const islandCx = w * 0.52;
+    const islandCy = horizon + h * 0.16;
+    ctx.fillStyle = palette.foliageNear;
+    ctx.beginPath();
+    ctx.ellipse(islandCx, islandCy, w * 0.11, h * 0.045, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = palette.structureShade;
+    ctx.beginPath();
+    ctx.ellipse(islandCx, islandCy + 2, w * 0.12, h * 0.018, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = palette.foliageFar;
+    for (const [dx, tip] of [
+      [-18, 14],
+      [-4, 18],
+      [10, 15],
+      [22, 12],
+    ] as const) {
+      ctx.beginPath();
+      ctx.moveTo(islandCx + dx, islandCy - tip);
+      ctx.lineTo(islandCx + dx + 7, islandCy + 2);
+      ctx.lineTo(islandCx + dx - 7, islandCy + 2);
+      ctx.closePath();
+      ctx.fill();
+    }
     // Bright surface meniscus — stronger than before so the waterline reads
     // instantly across the full course width, even on small screens.
     ctx.fillStyle = withAlpha(palette.surfaceHighlight, 0.44);
@@ -2492,16 +2658,18 @@ export class CourseRenderer implements ReplayRenderer {
 
     // Thin horizontal shimmer lines locked to metres so the water surface
     // visibly responds to both playback transport and passive scrub.
-    for (let row = 0; row < 8; row++) {
-      const yy = horizon + 14 + row * Math.max(11, h * 0.048);
-      const rowAlpha = 0.2 - row * 0.018;
+    for (let row = 0; row < 5; row++) {
+      const yy = horizon + 16 + row * Math.max(17, h * 0.072);
+      const rowAlpha = 0.19 - row * 0.025;
       ctx.strokeStyle = withAlpha(palette.surfaceHighlight, rowAlpha);
       ctx.lineWidth = 0.75;
       ctx.beginPath();
-      const offset = this.materialOffset(meters, 0.14 + row * 0.021, 34);
-      for (let x = -34 + offset; x <= w + 34; x += 34) {
+      const offset = this.materialOffset(meters, 0.1 + row * 0.017, 88);
+      for (const [segment, fraction] of [0.08, 0.29, 0.52, 0.76, 0.93].entries()) {
+        const x = w * fraction + offset + (row % 2 === 0 ? 8 : -11);
+        const length = 13 + ((row * 7 + segment * 5) % 12);
         ctx.moveTo(x, yy);
-        ctx.quadraticCurveTo(x + 8, yy - (row % 3) * 0.7 - 0.6, x + 17, yy);
+        ctx.quadraticCurveTo(x + length * 0.46, yy - (row % 3) * 0.7 - 0.6, x + length, yy);
       }
       ctx.stroke();
     }
@@ -2525,7 +2693,6 @@ export class CourseRenderer implements ReplayRenderer {
   private drawSkiVenue(w: number, h: number, meters: number, palette: VenuePalette) {
     const { ctx } = this;
     const horizon = h * 0.445;
-    const treeShift = this.materialOffset(meters, 0.055, 38);
 
     // Two soft alpine ranges create atmospheric scale. The far ridge uses a
     // lighter, haze-closer colour to push mountains back before the pine belt.
@@ -2595,6 +2762,31 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.quadraticCurveTo(w * 0.72, horizon - 64, w * 0.75, horizon - 51);
     ctx.stroke();
 
+    // Snow-covered valley shoulders close the gap between the massif and the
+    // groomed field, sharing the track's blue-shadow language.
+    ctx.fillStyle = withAlpha(palette.groundMid, 0.9);
+    ctx.beginPath();
+    ctx.moveTo(0, horizon - 10);
+    ctx.quadraticCurveTo(w * 0.14, horizon - 28, w * 0.31, horizon + 4);
+    ctx.quadraticCurveTo(w * 0.5, horizon + 17, w * 0.68, horizon + 2);
+    ctx.quadraticCurveTo(w * 0.86, horizon - 25, w, horizon - 7);
+    ctx.lineTo(w, horizon + 26);
+    ctx.lineTo(0, horizon + 26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = withAlpha(palette.surfaceHighlight, 0.66);
+    ctx.beginPath();
+    ctx.moveTo(0, horizon - 13);
+    ctx.quadraticCurveTo(w * 0.14, horizon - 31, w * 0.31, horizon + 1);
+    ctx.quadraticCurveTo(w * 0.5, horizon + 11, w * 0.68, horizon - 2);
+    ctx.quadraticCurveTo(w * 0.86, horizon - 29, w, horizon - 10);
+    ctx.lineTo(w, horizon - 3);
+    ctx.quadraticCurveTo(w * 0.84, horizon - 18, w * 0.68, horizon + 7);
+    ctx.quadraticCurveTo(w * 0.48, horizon + 21, w * 0.29, horizon + 7);
+    ctx.quadraticCurveTo(w * 0.14, horizon - 20, 0, horizon - 4);
+    ctx.closePath();
+    ctx.fill();
+
     // Frost wrap — a very cold, low-opacity wash that sits between the sky
     // and the snow. This is the visual signal that the venue is sub-zero,
     // not a warm pasture with white-green grass.
@@ -2633,21 +2825,31 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.closePath();
     ctx.fill();
 
-    // Pine belt. Repeating scenery moves only with travelled distance.
-    for (let x = -42 + treeShift; x < w + 42; x += 38) {
-      const index = Math.floor((x - treeShift + 42) / 38);
-      const treeH = 20 + (Math.abs(index) % 3) * 5;
-      const trunkY = horizon + 3;
-      ctx.fillStyle = withAlpha(palette.structureShade, 0.68);
-      ctx.fillRect(x - 1, trunkY - treeH * 0.28, 2, treeH * 0.34);
-      drawEvergreen(
-        ctx,
-        x,
-        trunkY + 1,
-        treeH,
-        index % 2 === 0 ? palette.foliageNear : palette.foliageFar,
-        palette.surfaceHighlight,
-      );
+    // Authored conifer stands with deliberate gaps. The forest is scenery,
+    // not a scrolling picket fence, so only snow texture moves with metres.
+    for (const [clusterIndex, center, count, spread] of [
+      [0, 0.035, 3, 7],
+      [1, 0.17, 2, 9],
+      [2, 0.34, 5, 6],
+      [3, 0.62, 3, 8],
+      [4, 0.81, 4, 7],
+      [5, 0.965, 2, 9],
+    ] as const) {
+      for (let tree = 0; tree < count; tree++) {
+        const x = w * center + (tree - (count - 1) / 2) * spread;
+        const treeH = 17 + ((clusterIndex * 3 + tree * 5) % 4) * 4.5;
+        const trunkY = horizon + 3 - ((clusterIndex + tree) % 3);
+        ctx.fillStyle = withAlpha(palette.structureShade, 0.68);
+        ctx.fillRect(x - 1, trunkY - treeH * 0.28, 2, treeH * 0.34);
+        drawEvergreen(
+          ctx,
+          x,
+          trunkY + 1,
+          treeH,
+          (clusterIndex + tree) % 3 === 0 ? palette.foliageFar : palette.foliageNear,
+          palette.surfaceHighlight,
+        );
+      }
     }
 
     // Nordic stadium timing cabin and paired floodlights.
@@ -2661,11 +2863,30 @@ export class CourseRenderer implements ReplayRenderer {
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = palette.structure;
-    ctx.fillRect(cabinX, horizon - 20, 70, 22);
+    ctx.fillRect(cabinX, horizon - 20, VENUE_LANDMARK_2D.skierg.w, VENUE_LANDMARK_2D.skierg.h);
     ctx.fillStyle = withAlpha(palette.structureLight, 0.82);
     for (let i = 0; i < 5; i++) ctx.fillRect(cabinX + 5 + i * 13, horizon - 16, 8, 8);
     this.drawFloodlight(w * 0.07, horizon + 2, h * 0.19, palette, -1);
     this.drawFloodlight(w * 0.9, horizon + 2, h * 0.21, palette, 1);
+
+    // Low race fencing gives the snow venue its own Nordic vocabulary.
+    ctx.strokeStyle = withAlpha(palette.safety, 0.7);
+    ctx.lineWidth = 1.2;
+    for (const side of [-1, 1]) {
+      const start = side < 0 ? w * 0.02 : w * 0.73;
+      const end = side < 0 ? w * 0.27 : w * 0.98;
+      ctx.beginPath();
+      ctx.moveTo(start, horizon + 20);
+      ctx.lineTo(end, horizon + 31);
+      ctx.stroke();
+      for (const fraction of [0, 0.18, 0.43, 0.71, 1]) {
+        const x = start + (end - start) * fraction;
+        ctx.beginPath();
+        ctx.moveTo(x, horizon + 17);
+        ctx.lineTo(x, horizon + 31);
+        ctx.stroke();
+      }
+    }
 
     // Sculpted snowbanks frame the groomed competition field.
     ctx.fillStyle = withAlpha(palette.surfaceHighlight, 0.55);
@@ -2694,128 +2915,213 @@ export class CourseRenderer implements ReplayRenderer {
 
   private drawBikeVenue(w: number, h: number, meters: number, palette: VenuePalette) {
     const { ctx } = this;
-    const horizon = h * 0.43;
-    const barrierShift = this.materialOffset(meters, 0.11, 46);
+    const horizon = h * 0.44;
 
-    // Low city/hills silhouette anchors the velodrome in a real place.
-    ctx.fillStyle = palette.ridgeFar;
-    ctx.beginPath();
-    ctx.moveTo(0, horizon + 8);
-    ctx.lineTo(0, horizon - 8);
-    ctx.quadraticCurveTo(w * 0.18, horizon - 39, w * 0.36, horizon - 12);
-    ctx.quadraticCurveTo(w * 0.58, horizon - 45, w * 0.76, horizon - 10);
-    ctx.quadraticCurveTo(w * 0.9, horizon - 26, w, horizon - 7);
-    ctx.lineTo(w, horizon + 8);
-    ctx.closePath();
-    ctx.fill();
+    // Broad daylit roof shell. This replaces the old outdoor sunset, skyline,
+    // foliage and floodlights so Canvas and 3D now describe the same place.
+    const roof = ctx.createLinearGradient(0, 0, 0, horizon + 18);
+    roof.addColorStop(0, palette.skyTop);
+    roof.addColorStop(0.58, palette.skyHorizon);
+    roof.addColorStop(1, palette.haze);
+    ctx.fillStyle = roof;
+    ctx.fillRect(0, 0, w, horizon + 18);
 
-    // Premium track pavilion with a floating roof and lit hospitality boxes.
-    const standX = Math.max(16, w * 0.12);
-    const standW = Math.min(w * 0.46, 390);
-    const standTop = horizon - 38;
-    ctx.fillStyle = palette.structureShade;
-    ctx.beginPath();
-    ctx.moveTo(standX - 15, standTop + 4);
-    ctx.lineTo(standX + standW + 13, standTop + 4);
-    ctx.quadraticCurveTo(standX + standW + 3, standTop - 4, standX + standW - 4, standTop - 5);
-    ctx.quadraticCurveTo(standX + standW * 0.5, standTop - 8, standX + 2, standTop - 5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = palette.structure;
-    ctx.beginPath();
-    ctx.moveTo(standX, standTop + 5);
-    ctx.lineTo(standX + standW, standTop + 5);
-    ctx.lineTo(standX + standW - 16, horizon + 3);
-    ctx.lineTo(standX + 12, horizon + 3);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = withAlpha(palette.structureLight, 0.78);
-    for (let x = standX + 10; x < standX + standW - 16; x += 22) {
-      ctx.fillRect(x, standTop + 10, 14, 7);
-    }
-    ctx.strokeStyle = withAlpha(palette.structureShade, 0.5);
-    ctx.lineWidth = 1;
-    for (let row = 0; row < 3; row++) {
-      const y = standTop + 23 + row * 6;
+    // Three broad skylights produce actual pools of daylight instead of a
+    // ring of copied lamps. Unequal widths keep the ceiling from looking
+    // generated from one repeated prop.
+    for (const [center, width, alpha] of [
+      [0.18, 0.12, 0.66],
+      [0.53, 0.18, 0.78],
+      [0.84, 0.1, 0.58],
+    ] as const) {
+      const x = w * center;
+      const stripW = w * width;
+      const light = ctx.createLinearGradient(x, 0, x + stripW * 0.22, horizon);
+      light.addColorStop(0, withAlpha(palette.sun, alpha));
+      light.addColorStop(1, withAlpha(palette.sun, 0));
+      ctx.fillStyle = light;
       ctx.beginPath();
-      ctx.moveTo(standX + 10 + row * 3, y);
-      ctx.quadraticCurveTo(standX + standW * 0.5, y + 1.6, standX + standW - 12 - row * 3, y);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = withAlpha(palette.safetyLight, 0.26);
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(standX + 12, standTop + 8);
-    ctx.quadraticCurveTo(standX + standW * 0.5, standTop + 4.5, standX + standW - 14, standTop + 8);
-    ctx.stroke();
-
-    this.drawFloodlight(w * 0.06, horizon + 4, h * 0.22, palette, -1);
-    this.drawFloodlight(w * 0.93, horizon + 4, h * 0.24, palette, 1);
-
-    // Dusk atmosphere — a warm, narrow band right at the horizon that gives
-    // the velodrome its golden-hour character. Without this, the violet sky
-    // and grey asphalt feel disconnected.
-    const duskGlow = ctx.createLinearGradient(0, horizon - 6, 0, horizon + 22);
-    duskGlow.addColorStop(0, withAlpha(palette.sun, 0));
-    duskGlow.addColorStop(0.35, withAlpha(palette.sun, this.darkTheme ? 0.16 : 0.22));
-    duskGlow.addColorStop(1, withAlpha(palette.sun, 0));
-    ctx.fillStyle = duskGlow;
-    ctx.fillRect(0, horizon - 6, w, 28);
-
-    const asphalt = ctx.createLinearGradient(0, horizon, 0, h);
-    asphalt.addColorStop(0, palette.groundTop);
-    asphalt.addColorStop(0.22, withAlpha(palette.groundTop, 0.65));
-    asphalt.addColorStop(0.5, palette.groundMid);
-    asphalt.addColorStop(0.78, withAlpha(palette.groundBottom, 0.82));
-    asphalt.addColorStop(1, palette.groundBottom);
-    ctx.fillStyle = asphalt;
-    ctx.fillRect(0, horizon, w, h - horizon);
-
-    // Faint track lights bloom — dusk venues glow from the floodlight beams.
-    // Two wide, soft pools of light spilling onto the course from the poles.
-    for (const [bx, bw, ba] of [
-      [w * 0.06, w * 0.13, 0.08],
-      [w * 0.93, w * 0.13, 0.09],
-    ]) {
-      const bloom = ctx.createRadialGradient(bx, horizon + 6, 0, bx, horizon + 6, bw);
-      bloom.addColorStop(0, withAlpha(palette.structureLight, ba));
-      bloom.addColorStop(0.5, withAlpha(palette.structureLight, ba * 0.3));
-      bloom.addColorStop(1, withAlpha(palette.structureLight, 0));
-      ctx.fillStyle = bloom;
-      ctx.fillRect(bx - bw, horizon + 2, bw * 2, 36);
-    }
-
-    // Trackside safety barrier: disciplined repeating panels with two-tone
-    // rendering so the red-marked face reads separately from the backing.
-    ctx.fillStyle = palette.structureShade;
-    ctx.fillRect(0, horizon + 11, w, 5);
-    for (let x = -46 + barrierShift; x < w + 46; x += 46) {
-      ctx.fillStyle = palette.safety;
-      ctx.fillRect(x, horizon + 3, 42, 10);
-      ctx.fillStyle = palette.marker;
-      ctx.beginPath();
-      ctx.moveTo(x, horizon + 3);
-      ctx.lineTo(x + 11, horizon + 3);
-      ctx.lineTo(x + 20, horizon + 13);
-      ctx.lineTo(x + 9, horizon + 13);
+      ctx.moveTo(x - stripW * 0.5, 0);
+      ctx.lineTo(x + stripW * 0.5, 0);
+      ctx.lineTo(x + stripW * 0.2, horizon);
+      ctx.lineTo(x - stripW * 0.12, horizon);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.5);
-      ctx.lineWidth = 0.75;
-      ctx.strokeRect(x, horizon + 3, 42, 10);
     }
 
-    // Fine aggregate lines — sparse and deterministic; distance scrubbing
-    // moves them backwards as the athlete advances, preserving forward read.
-    ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.08);
-    ctx.lineWidth = 0.85;
-    for (let y = horizon + 38; y < h; y += 23) {
-      const shift = this.materialOffset(meters, 0.31 + y * 0.0007, 31);
+    // Long-span roof trusses cross the hall in a few deliberate bays.
+    ctx.strokeStyle = withAlpha(palette.structureShade, this.darkTheme ? 0.72 : 0.48);
+    ctx.lineWidth = Math.max(2, h * 0.012);
+    for (const [x, lean] of [
+      [w * 0.08, w * 0.14],
+      [w * 0.39, -w * 0.09],
+      [w * 0.72, w * 0.08],
+      [w * 0.94, -w * 0.12],
+    ] as const) {
       ctx.beginPath();
-      for (let x = -31 + shift; x < w + 31; x += 31) {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + 7, y);
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + lean, horizon - 7);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = withAlpha(palette.structureShade, 0.34);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.105);
+    ctx.quadraticCurveTo(w * 0.5, h * 0.02, w, h * 0.11);
+    ctx.stroke();
+
+    // Far arena wall first, then two asymmetric seating sectors. Leaving the
+    // service side visually open gives the venue orientation and prevents the
+    // old full-ring, repeated-stadium read.
+    ctx.fillStyle = palette.ridgeFar;
+    ctx.fillRect(0, horizon - 36, w, 45);
+    ctx.fillStyle = withAlpha(palette.structureShade, 0.18);
+    ctx.fillRect(0, horizon - 31, w, 2);
+    ctx.fillRect(0, horizon - 8, w, 2);
+
+    ctx.fillStyle = palette.ridgeNear;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.04, horizon + 4);
+    ctx.lineTo(w * 0.08, horizon - 30);
+    ctx.lineTo(w * 0.56, horizon - 30);
+    ctx.lineTo(w * 0.62, horizon + 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(w * 0.78, horizon + 4);
+    ctx.lineTo(w * 0.82, horizon - 19);
+    ctx.lineTo(w * 0.97, horizon - 19);
+    ctx.lineTo(w, horizon + 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Seating tiers follow each occupied straight; three strokes are enough
+    // to read as stands without filling the backdrop with copied seats.
+    ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.48);
+    ctx.lineWidth = 1;
+    for (const [x0, x1, top, rows] of [
+      [w * 0.09, w * 0.58, horizon - 23, 3],
+      [w * 0.82, w * 0.98, horizon - 13, 2],
+    ] as const) {
+      for (let row = 0; row < rows; row++) {
+        const y = top + row * 7;
+        ctx.beginPath();
+        ctx.moveTo(x0 + row * 4, y);
+        ctx.lineTo(x1 - row * 4, y + 1);
+        ctx.stroke();
       }
+    }
+
+    // One hospitality suite and one scoreboard give the main straight a
+    // destination. Their fixed placement remains stable while timber grain
+    // scrolls under the athlete.
+    const suiteX = w * 0.24;
+    const suiteY = horizon - 42;
+    const suiteW = Math.min(170, w * 0.27);
+    ctx.fillStyle = palette.structure;
+    roundRect(ctx, suiteX, suiteY, suiteW, 22, 2.5);
+    ctx.fill();
+    ctx.fillStyle = withAlpha(palette.structureLight, 0.82);
+    for (let window = 0; window < 3; window++) {
+      ctx.fillRect(
+        suiteX + 10 + window * 23,
+        suiteY + 7,
+        VENUE_LANDMARK_2D.bike.w,
+        VENUE_LANDMARK_2D.bike.h,
+      );
+    }
+    ctx.fillStyle = palette.structureShade;
+    roundRect(ctx, w * 0.69, horizon - 45, Math.min(92, w * 0.16), 29, 2.5);
+    ctx.fill();
+    ctx.fillStyle = withAlpha(palette.safety, 0.9);
+    ctx.fillRect(w * 0.705, horizon - 38, Math.min(71, w * 0.125), 2.5);
+    ctx.fillStyle = withAlpha(palette.marker, 0.88);
+    ctx.fillRect(w * 0.705, horizon - 30, Math.min(53, w * 0.09), 2.5);
+
+    // Concrete infield and a compact team-pit block occupy the service end.
+    const infield = ctx.createLinearGradient(0, horizon, 0, h);
+    infield.addColorStop(0, withAlpha(palette.ridgeFar, 0.96));
+    infield.addColorStop(1, palette.foliageFar);
+    ctx.fillStyle = infield;
+    ctx.fillRect(0, horizon, w, h - horizon);
+    ctx.fillStyle = palette.foliageNear;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.7, horizon + 10);
+    ctx.lineTo(w, horizon + 16);
+    ctx.lineTo(w, horizon + 38);
+    ctx.lineTo(w * 0.67, horizon + 30);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = withAlpha(palette.structure, 0.58);
+    for (const [x, width] of [
+      [w * 0.73, w * 0.07],
+      [w * 0.815, w * 0.09],
+      [w * 0.92, w * 0.06],
+    ] as const) {
+      roundRect(ctx, x, horizon + 15, width, 11, 1.5);
+      ctx.fill();
+    }
+
+    // Warm timber track, banked toward the far rail. A broad gradient and
+    // sparse travelling board joints give material motion without repeating
+    // scenery props around the whole lap.
+    const timber = ctx.createLinearGradient(0, horizon + 7, 0, h);
+    timber.addColorStop(0, palette.groundTop);
+    timber.addColorStop(0.42, palette.groundMid);
+    timber.addColorStop(1, palette.groundBottom);
+    ctx.fillStyle = timber;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 18);
+    ctx.quadraticCurveTo(w * 0.5, horizon + 8, w, horizon + 17);
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.fill();
+
+    // Skylight reflections spread over the boards as broad, soft fields.
+    for (const [x, radius, alpha] of [
+      [w * 0.21, w * 0.2, 0.16],
+      [w * 0.58, w * 0.27, 0.2],
+      [w * 0.87, w * 0.15, 0.12],
+    ] as const) {
+      const pool = ctx.createRadialGradient(x, horizon + 42, 0, x, horizon + 42, radius);
+      pool.addColorStop(0, withAlpha(palette.structureLight, alpha));
+      pool.addColorStop(1, withAlpha(palette.structureLight, 0));
+      ctx.fillStyle = pool;
+      ctx.fillRect(x - radius, horizon + 8, radius * 2, h - horizon);
+    }
+
+    const jointShift = this.materialOffset(meters, 0.18, 96);
+    ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.16);
+    ctx.lineWidth = 0.75;
+    for (let row = 0; row < 5; row++) {
+      const y = horizon + 32 + row * Math.max(17, h * 0.075);
+      ctx.beginPath();
+      for (let x = -96 + jointShift + row * 19; x < w + 96; x += 96) {
+        const length = 34 + ((row * 17 + Math.round(x)) % 29);
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + length, y + (row % 2 === 0 ? 0.4 : -0.35));
+      }
+      ctx.stroke();
+    }
+
+    // Continuous regulation lines replace the old red/white barrier blocks.
+    ctx.strokeStyle = palette.surfaceLine;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 18);
+    ctx.quadraticCurveTo(w * 0.5, horizon + 8, w, horizon + 17);
+    ctx.stroke();
+    for (const [y, color, width] of [
+      [horizon + 39, palette.surfaceShadow, 1.2],
+      [horizon + 56, palette.safety, 1.4],
+      [horizon + 75, palette.marker, 1.3],
+    ] as const) {
+      ctx.strokeStyle = withAlpha(color, 0.78);
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y + 1.5);
       ctx.stroke();
     }
   }
@@ -3113,41 +3419,46 @@ export class CourseRenderer implements ReplayRenderer {
     const bandTop = y - 11;
     const bandBottom = y + 28;
     const band = ctx.createLinearGradient(0, bandTop, 0, bandBottom);
-    band.addColorStop(0, withAlpha(palette.surfaceHighlight, 0.24));
-    band.addColorStop(0.36, withAlpha(palette.groundMid, 0.92));
-    band.addColorStop(1, withAlpha(palette.surfaceShadow, 0.72));
+    band.addColorStop(0, withAlpha(palette.groundTop, 0.98));
+    band.addColorStop(0.42, palette.groundMid);
+    band.addColorStop(1, palette.groundBottom);
     ctx.fillStyle = band;
     roundRect(ctx, startX, bandTop, span, bandBottom - bandTop, 5);
     ctx.fill();
 
-    // Regulation red/ivory curbs belong to the venue, never the athlete. Their
-    // scrub-safe offset advances from distance, matching clockwise wheel roll.
-    const dashOffset = this.dashMaterialOffset(meters, 0.5, 16);
-    for (let edge = 0; edge < 2; edge++) {
-      const cy = edge === 0 ? bandTop + 1.5 : bandBottom - 1.5;
-      ctx.setLineDash(BIKE_CURB_DASH);
-      ctx.lineDashOffset = dashOffset;
-      ctx.strokeStyle = palette.marker;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(startX, cy);
-      ctx.lineTo(startX + span, cy);
-      ctx.stroke();
-      ctx.lineDashOffset = dashOffset - 8;
-      ctx.strokeStyle = palette.safetyLight;
-      ctx.stroke();
-    }
-
-    ctx.setLineDash(BIKE_LANE_DASH);
-    ctx.lineDashOffset = this.dashMaterialOffset(meters, 0.38, 20);
-    ctx.strokeStyle = withAlpha(palette.surfaceHighlight, 0.66);
-    ctx.lineWidth = 1;
+    // The only scrolling repeat is the board-joint rhythm, a material cue
+    // rather than another ring of barrier props. Regulation lines remain
+    // continuous, matching the 3D timber track.
+    ctx.setLineDash(BIKE_BOARD_JOINT_DASH);
+    ctx.lineDashOffset = this.dashMaterialOffset(meters, 0.42, 48);
+    ctx.strokeStyle = withAlpha(palette.surfaceShadow, 0.2);
+    ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.moveTo(startX, y + 8);
-    ctx.lineTo(startX + span, y + 8);
+    ctx.moveTo(startX, y + 15);
+    ctx.lineTo(startX + span, y + 15);
     ctx.stroke();
     ctx.setLineDash(SOLID_LINE);
     ctx.lineDashOffset = 0;
+
+    for (const [lineY, color, width] of [
+      [bandTop + 2, palette.safetyLight, 1.4],
+      [y + 5, palette.surfaceShadow, 1],
+      [y + 10, palette.safety, 1.2],
+      [bandBottom - 3, palette.marker, 1.2],
+    ] as const) {
+      ctx.strokeStyle = withAlpha(color, 0.78);
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(startX, lineY);
+      ctx.lineTo(startX + span, lineY);
+      ctx.stroke();
+    }
+
+    // Two authored sprint-sector ticks orient the lap without a repeated curb.
+    ctx.fillStyle = withAlpha(palette.marker, 0.72);
+    for (const x of [startX + span * 0.18, startX + span * 0.82]) {
+      ctx.fillRect(x - 1, bandTop + 1, 2, bandBottom - bandTop - 2);
+    }
   }
 
   private drawLaneTrail(o: LaneOpts, avX: number) {

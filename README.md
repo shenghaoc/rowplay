@@ -76,9 +76,13 @@ account.
 - Canvas 2D and optional Three.js 3D renderers that share the same technique
   phases, equipment contact targets, and sport-specific water, snow, and track
   materials for RowErg, SkiErg, and BikeErg
-- Premium sport-specific environments in both views: layered regatta water and
-  shoreline, groomed Nordic snow and alpine venue cues, or a barrier-lined
-  asphalt/velodrome training circuit
+- Premium sport-specific environments in both views, each with one light story:
+  RowErg morning-glass regatta water with sector-authored banks, wetland,
+  woodland, campus, and finish tower; SkiErg blue-hour dusk Nordic piste with
+  alpine, forest, rock-shoulder, lodge, floodlight pools, and spectator cues; or
+  a BikeErg evening indoor timber velodrome with roof enclosure, seating
+  straights, infield, team pit, and hospitality. High/Ultra use
+  provenance-recorded CC0 surface maps where material response matters
 - A compact repository-owned V4 GLB supplies one generic skinned athlete in 3D.
   RowErg, SkiErg, and BikeErg each use an authored canonical technique clip,
   sampled deterministically from replay pose and time; an analytic post-clip
@@ -107,9 +111,14 @@ account.
   than layering a second simulated shadow over the same live athlete
 - Generic replay figures only—no scan, athlete likeness, avatar-generator
   output, user image, or undocumented downloaded model
-- Local procedural scenery built from Canvas drawing and Three.js geometry;
-  no generated environment images, scanned venues, or downloaded location
-  models are shipped in the replay runtime
+- Local procedural venue composition built from Canvas drawing and Three.js
+  geometry, supplemented only by provenance-recorded CC0 surface maps; no
+  generated environment images, scanned venues, runtime downloads, or imported
+  location models are shipped
+- Quality tiers change scene composition and material response—not only pixel
+  ratio—with a clean graphic Low, a new spatial layer at Medium, PBR plus event
+  infrastructure at High, and Ultra-only destination architecture as well as
+  normal detail
 - Alias-resistant 2D BikeErg drivetrain motion with explicit cranks, pedals,
   chain and directional wheel markers that remain readable through 8× playback
 - Progressive 3D fallback from WebGPU to WebGL, then to the stable 2D renderer

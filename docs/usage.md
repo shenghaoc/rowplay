@@ -214,31 +214,59 @@ V4 source and locally authored equipment; it adds no runtime download or
 undocumented third-party asset.
 
 Both views use complete sport-specific illustrative environments, not one
-generic floor with different colors. RowErg combines layered water with
-shoreline and regatta-scale cues; SkiErg uses groomed, blue-shadowed snow with
-snowbank, evergreen, alpine, and Nordic-venue forms; BikeErg uses a deliberate
-asphalt or velodrome-style circuit with curbs, barriers, infield, and built-venue
-or floodlight cues. The 2D view composes sky, horizon, middle distance, course,
-and foreground layers. The 3D view adds atmospheric depth, a readable horizon,
-smooth compound scenery, material-specific terrain variation, and sport-specific
-surfaces so the athlete is grounded in a venue rather than floating on a plane.
+generic floor with different colors. Each sport is one authored place with a
+cared-for circle centre and land uses, not a ring of props:
+
+- **RowErg** is a morning-glass lagoon loop: water is the racing channel only.
+  The circle centre is a land island (lawn, beach, trees, shrubs, mound); reeds
+  and a sector-authored forest line the shore with deliberate open vistas; the
+  campus owns path, launch dock, buildings, and a finish tower with timing
+  wing; start pontoons sit in the water channel. Ultra adds a separate wetland
+  boardwalk and hide.
+- **SkiErg** is a Nordic stadium at blue-hour dusk: snow covers the track and
+  the stadium centre (packed start pad, groom lines, lodge chute, snow fences),
+  with irregular forest stands, alpine peaks/foothills, valley snow shoulders,
+  wind lips, lodge campus, and warm floodlight pools on the groom. High adds a
+  rock shoulder and timing arch; Ultra adds a spectator terrace and
+  mountain-rescue shelter.
+- **BikeErg** is an indoor velodrome under an evening-session light story:
+  multi-use sports-hall infield (court markings, staging pads), two authored
+  seating straights, arena-wall bays, warm timber track with black/red/blue
+  plus côte d'azur line grammar, long-span roof with skylights, scoreboard, and
+  service building. High adds a team pit and finish gantry; Ultra adds a
+  hospitality deck. Canvas 2D uses the same indoor timber/enclosure language
+  rather than an unrelated outdoor road circuit.
+
+High and Ultra materials use provenance-recorded local CC0 surface maps (snow,
+rock, oak, grass, forest ground, bark, leaves, planks, pebbles, brushed
+concrete, cobblestone, painted concrete) only as material response — not as
+venue photographs. Creators, sources, licenses, source checksums, and shipped
+digests are recorded with the assets. The 2D view composes outdoor atmosphere
+or indoor roof enclosure, background, middle distance, course, and foreground
+layers. The 3D view adds atmospheric depth or roof architecture, smooth
+compound scenery, and sport-specific surfaces so the athlete is grounded in a
+venue rather than floating on a plane. Each venue keeps one light story across
+themes (Row morning glass, Ski blue-hour dusk, Bike evening session) rather
+than flipping to an unrelated day or night palette.
 
 The venue, weather, light, trees, mountains, shoreline, and structures are
 generic presentation art. Concept2 does not provide route geography, venue,
 weather, or camera data, so these scenes do not reconstruct where or under what
-conditions the workout happened. All shipped scenery is created locally from
-procedural Canvas drawing and Three.js geometry and materials. The replay does
-not ship or download generated environment images, photographs, scanned venues,
-or imported location models.
+conditions the workout happened. Venue composition is created locally from
+procedural Canvas drawing and Three.js geometry and materials. High and Ultra
+SkiErg use optimized local derivatives of Poly Haven's CC0 Snow 02 material;
+their creator, source, license, and digests are recorded with the assets. The
+replay does not download runtime scenery or ship generated environment images,
+venue photographs, scanned locations, or imported location models.
 
 In 3D, the authored human-scale skinned athlete keeps feet and hands on the
 relevant equipment targets through the post-clip contact pass — oar handles and
 foot plates, SkiErg pole grips and boots, or BikeErg bars and pedals. The larger
 3D stage and rear three-quarter chase camera keep paired limbs visible; sport-
 and viewport-aware framing, speed-aware follow, and camera-relative fill light
-keep the athlete readable around the full course. Environment contrast and
-detail stay subordinate to the figure, equipment contacts, ghost comparison,
-and telemetry.
+keep the athlete readable around the full course. RowErg uses a slightly lower, longer chase that keeps the basin centre and
+shore campus in the same readable place. Environment contrast and detail stay
+subordinate to the figure, equipment contacts, ghost comparison, and telemetry.
 
 The contact pass does not move or resize equipment to rescue an authored pose.
 It rotates each reachable two-link limb over its anatomical envelope, uses the
@@ -260,9 +288,23 @@ and the compact telemetry pill leaves the figure as the visual focus.
 
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics.
 Every tier keeps the sky, horizon, course material, core venue silhouette, and
-athlete readable. Higher tiers add denser scenery, stronger shadows, richer
-athlete material detail (128→256→512px procedural maps on Medium/High/Ultra),
-and more wake or spray; Ultra is intended for WebGPU-capable devices. If the device can't hold a smooth frame rate at the selected tier, the
+athlete readable, but the tiers are not merely different render resolutions.
+Low uses a deliberately graphic scene; Medium adds shaped surfaces and
+an additional spatial layer; High adds PBR response, shadows, and event
+infrastructure; Ultra adds normal-mapped close-surface detail plus a destination
+that changes the scene silhouette (Row wetland, Ski spectator/rescue area, Bike
+hospitality deck). Higher
+tiers also add richer athlete material detail (128→256→512px procedural maps on
+Medium/High/Ultra) and more wake or spray.
+
+Low and Medium draw their surfaces procedurally and download nothing extra. High
+and Ultra additionally load the bundled surface maps for the chosen sport — most
+for RowErg (about 1.4 MiB at High, 2.3 MiB at Ultra), then SkiErg (about
+0.7 MiB / 1.46 MiB) and BikeErg (about 0.6 MiB / 0.8 MiB). They are served from
+the app, not a third party, and are cached after the first replay. If a map is
+unavailable the surface simply falls back to its solid colour. Ultra is
+intended for WebGPU-capable
+devices. If the device can't hold a smooth frame rate at the selected tier, the
 renderer automatically lowers resolution first and then decorative effects such
 as water motion and spray for the rest of the session. This never changes
 recorded timing, distance, or equipment contacts. Replay animation honours the

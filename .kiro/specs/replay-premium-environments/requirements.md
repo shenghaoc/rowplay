@@ -2,8 +2,9 @@
 
 > Scope clarification (July 2026):
 > [Replay authored athlete assets](../replay-authored-athlete-assets/requirements.md)
-> does not permit imported, generated, scanned, or downloaded environment art.
-> These procedural-environment requirements remain authoritative.
+> remains authoritative for athletes and equipment. Environment art may now
+> include repository-bundled CC0 surface maps with recorded provenance; venue
+> composition and all fallback art remain local and illustrative.
 
 ## Introduction
 
@@ -48,9 +49,11 @@ generic stage.
 2. WHEN a SkiErg replay is shown THEN both renderers SHALL present groomed snow
    with snowbank, alpine, evergreen, or Nordic-stadium cues and readable cool
    shadow separation.
-3. WHEN a BikeErg replay is shown THEN both renderers SHALL present a deliberate
-   asphalt or velodrome-style course with curbs, barriers, and built-venue or
-   floodlit training-circuit cues.
+3. WHEN a BikeErg replay is shown THEN both renderers SHALL present one coherent
+   indoor timber velodrome under an evening-session light story, with roof
+   enclosure, built seating/infield cues, and continuous regulation lines
+   (including the côte d'azur apron band) rather than outdoor skyline,
+   vegetation, or repeated curb/barrier blocks.
 4. WHEN switching sports THEN the environment SHALL change in composition,
    material, silhouette, and palette rather than only changing a tint.
 
@@ -62,8 +65,9 @@ a first-class product.
 
 #### Acceptance Criteria
 
-1. WHEN Renderer_2D paints a frame THEN it SHALL compose distinct sky,
-   horizon/background, middle-distance venue, course, and foreground layers.
+1. WHEN Renderer_2D paints a frame THEN it SHALL compose distinct atmosphere or
+   indoor roof enclosure, background, middle-distance venue, course, and
+   foreground layers appropriate to the sport.
 2. WHEN course texture or parallax moves THEN its offset SHALL follow replay
    distance and direction rather than renderer frame count.
 3. WHEN a ghost is present THEN the shared environment SHALL retain full
@@ -112,10 +116,12 @@ misled about what my workout recorded.
 3. WHEN decorative forms are too small to survive the replay pixel budget THEN
    the renderer SHALL prefer bold authored silhouettes over noisy sub-pixel
    detail.
-4. WHEN replay art is bundled THEN the environment SHALL be produced from local
-   procedural Canvas drawing and Three.js geometry/materials; it SHALL NOT
-   download or ship generated environment images, scanned locations, or imported
-   venue models.
+4. WHEN replay art is bundled THEN venue composition SHALL be produced from
+   local procedural Canvas drawing and Three.js geometry/materials. Seamless
+   surface maps MAY be bundled only when their commercial-use license, creator,
+   source URL, retrieval date, and shipped digest are recorded; generated
+   environment images, scanned locations, and imported venue models remain
+   prohibited.
 
 ### Requirement 5: Performance, fallback, and accessibility
 
@@ -140,6 +146,17 @@ only the fastest hardware.
 5. WHEN a ghost comparison is active THEN environment detail SHALL remain
    bounded so both athletes stay visible within the existing camera and
    performance contracts.
+6. WHEN quality tiers differ THEN at least one scene-composition or material
+   feature SHALL change between adjacent tiers; tiers SHALL NOT differ only by
+   pixel ratio, tessellation, or repeated-object density.
+7. WHEN any sport receives a new primary surface treatment THEN its sky,
+   atmosphere, horizon, terrain transition, vegetation, and venue structures
+   SHALL be updated as a coherent art-directed environment rather than retaining
+   a visually unrelated background.
+8. WHEN optional scenery is repeated THEN it SHALL be grouped into authored
+   sectors or irregular natural clusters with deliberate open space; increasing
+   tier quality SHALL NOT primarily create full-radius rings or evenly spaced
+   copies of the same prop.
 
 ### Requirement 6: Regression proof and visual verification
 
