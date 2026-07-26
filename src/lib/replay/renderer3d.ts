@@ -2018,28 +2018,35 @@ function makeRowerAvatar(
     // outboard lever including the spoon. The former 3.4 m overall assembly
     // read as a sweep oar and overwhelmed a one-person shell.
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.018, 0.021, 2.54, eqCylSegs),
+      new THREE.CylinderGeometry(0.018, 0.021, 2.22, eqCylSegs),
       equipmentLightMaterial,
     );
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
-    shaft.position.x = side * 0.45;
+    shaft.position.x = side * 0.61;
     oar.add(shaft);
-    const grip = capsulePart(0.021, 0.24, equipmentGripMaterial, "x");
+    const grip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.023, 0.023, 0.32, eqCylSegs),
+      equipmentGripMaterial,
+    );
+    grip.rotation.z = Math.PI / 2;
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
     // A regulation-scale scull has roughly 0.8–0.9 m of inboard leverage. The
     // shorter placeholder forced a false choice between centreline hands and
     // long arms; this reach lets both coexist while the fixed pin remains on
     // the rigger.
-    grip.position.x = -side * 0.82;
+    grip.position.x = -side * 0.66;
     grip.position.y = -0.04;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    // Land each palm eight centimetres outboard of the grip centre. The point
-    // remains well inside the 28 cm rubber grip, while the resulting hand
-    // separation prevents real scull handles from reading as crossed wrists
-    // at the centreline.
+    // Land the palm within the rubber grip. The visible V4 hand extends around
+    // this contact so four fingers can hook over the cylinder while the thumb
+    // remains near its end; targeting either the cap or shaft seam makes the
+    // grip read as a fist floating beside the oar.
     handleAnchor.position.x = -side * 0.78;
+    // The contact and rendered rubber share one axis. Keeping equipment and
+    // solver coordinates identical prevents a visually closed fist from
+    // floating above or below the actual handle.
     handleAnchor.position.y = -0.04;
     oar.add(handleAnchor);
     // The collar/button bears against the oarlock at the fixed pin.
@@ -2297,8 +2304,10 @@ function makeRowerAvatar(
       // hidden anatomical solve at the wrist while the terminal hand marker
       // remains exactly on the rigid grip.
       arm.hand.position.copy(arm.handTarget);
-      // Palm faces the scull grip: wrap fingers around the handle so V4's grip
-      // curl closes a fist *on* the rubber rather than an open mitt beside it.
+      // The authored hand's local axes are fixed by its reviewed grip pose.
+      // Inherit the oar frame and apply only its small side-specific neutral
+      // wrist correction; a free look-at solve has two mathematically valid
+      // roll solutions and can turn a palm through 180 degrees.
       arm.hand.quaternion.copy(oar.group.quaternion);
       arm.hand.rotateZ(arm.side * (Math.PI / 2));
       arm.hand.rotateX(-0.55 - shoulderSet * 0.08);

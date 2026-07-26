@@ -85,7 +85,13 @@ final contact pass chooses the shared anatomical elbow branch. The rigid grip
 remains terminal authority without asking IK to compensate for a hidden-rig
 shoulder mismatch. Dense-cycle tests reject elbow flexion before hand/knee
 clearance, forward-pointing or sideways elbows, grip separation, torso
-intersection, and branch snaps.
+intersection, and branch snaps. The hand target lies on the physical rubber
+grip axis, and the oar frame supplies a side-specific neutral wrist
+orientation. This deliberately avoids an unconstrained look-at roll, whose
+equally valid second solution can turn the palm through 180 degrees. The
+authored grip ends in a flat thumb stop and its carbon shaft begins only where
+the rubber ends, so close-up QA can verify fingers around the handle rather
+than a clenched hand floating beside an occluding shaft.
 
 ### Classic double-pole reference contract
 

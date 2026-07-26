@@ -98,7 +98,10 @@ viewing speed.
    through-torso elbow branch. V4 feet SHALL remain locked to the stretcher
    while both knees follow the shared raised rowing branch; neither leg may
    inherit the standing rest skeleton's downward branch or pass through the
-   cockpit.
+   cockpit. Each hand SHALL enclose its own rubber scull grip with the four
+   fingers hooked around the cylinder, the thumb at the handle end, and a
+   neutral wrist continuous with the forearm; contact correction SHALL reject
+   a 180-degree palm, wrist, forearm, or torso twist.
 2. WHEN SkiErg is shown THEN reach, velocity-matched plant, loaded pull, and
    release SHALL read as distinct states; baskets SHALL remain course-anchored
    throughout the loaded phase while the athlete advances relative to them.

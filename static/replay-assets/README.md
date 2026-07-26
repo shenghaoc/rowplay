@@ -102,6 +102,11 @@ equipment-compliance guidance supplies the racing-shell/bow-ball context, and
 Concept2's public technique guidance supplies the legs-then-body-then-arms
 sequence and handle finish below the ribs. RowPlay's Blender/Three.js sources
 translate those references into the documented metric rig and remain MIT.
+World Rowing and British Rowing grip guidance additionally constrains each hand
+to a relaxed cylindrical hold: fingers around the rubber, thumb at the handle
+end, flat wrist, and no excessive wrist rotation. The authored shaft therefore
+stops at the rubber seam and the handle uses a flat thumb stop rather than a
+spherical pommel.
 
 Rebuild and validate V3 from the repository root with:
 

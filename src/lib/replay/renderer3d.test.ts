@@ -4036,6 +4036,45 @@ describe("CourseRenderer3D", () => {
         if (!destroyed) renderer.destroy();
       }
     }, 20_000);
+
+    it("keeps RowErg wrist rotation continuous without a 180-degree grip twist", () => {
+      const renderer = rendererFor("rower");
+      try {
+        const previous = new Map<"left" | "right", THREE.Quaternion>();
+        const previousTargets = new Map<"left" | "right", THREE.Quaternion>();
+        for (let step = 0; step < 128; step++) {
+          const cycle = step / 128;
+          renderer.render(makeSportState("rower", cycle), false);
+          const { avatar, instance } = v4Lane(renderer);
+          getScene(renderer).updateMatrixWorld(true);
+          for (const side of ["left", "right"] as const) {
+            const hand = instance.bones[
+              side === "left" ? "v4LeftHand" : "v4RightHand"
+            ].getWorldQuaternion(new THREE.Quaternion());
+            const target = avatar.v4Targets[
+              side === "left" ? "leftHand" : "rightHand"
+            ].getWorldQuaternion(new THREE.Quaternion());
+            const prior = previous.get(side);
+            const priorTarget = previousTargets.get(side);
+            if (prior) {
+              expect(prior.angleTo(hand), `${side} IK wrist never flips at ${cycle}`).toBeLessThan(
+                0.75,
+              );
+            }
+            if (priorTarget) {
+              expect(
+                priorTarget.angleTo(target),
+                `${side} grip frame stays continuous at ${cycle}`,
+              ).toBeLessThan(0.75);
+            }
+            previous.set(side, hand);
+            previousTargets.set(side, target);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
   });
 
   it("keeps RowErg knees visually separated from the hull through the stroke", () => {
