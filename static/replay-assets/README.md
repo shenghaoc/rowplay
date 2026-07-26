@@ -23,11 +23,11 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 720,756 bytes; SHA-256
-  `4422979720d151711c07f7f7107dda86aff1ee51681f86e386ce898ace9a8db8`.
+- **Reviewed V3 artifact:** 733,864 bytes; SHA-256
+  `31418f4808b30fa786830129b0b637fc025b6e5ddbb539d848fc8cab74806925`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 53
   direct composite parts (25 top-level logical entities; 78 nodes / 71 mesh
-  nodes total). The package has 28,708 indexed triangles and 19,888 indexed
+  nodes total). The package has 29,292 indexed triangles and 20,289 indexed
   vertices, one neutral placeholder material, zero textures/images, zero
   animations, and zero skins.
 - **Detail language:** shared-vertex smooth normals, a neutral lower rowing hull
@@ -35,9 +35,11 @@ identity, or Canvas 2D fallback.
   head planes, a swept hair cap, an aero helmet with tail and visor, low-relief
   jersey collar/raglan/back-yoke construction, asymmetric muscle-to-tendon
   limbs, deltoid transitions, and grip/sole/elbow detail. Equipment includes a
-  Blender-authored open-U racing shell with split decks, recessed cockpit,
-  slide rails, angled stretcher, heel cups, wing rigger, oarlocks, moving
-  four-roller seat carriage, and sculpted oar; a measured cambered ski pair with
+  Blender-authored 7.8 m open-U racing shell with split decks, recessed cockpit,
+  bow ball, slide rails, 42° stretcher, heel cups/restraints, wing rigger,
+  oarlocks, moving four-roller seat carriage, and regulation-scale 2.89 m
+  sculls; a measured
+  cambered ski pair with
   separate top sheets, metal edges, free-heel toe binding hardware, raised tip
   ridge, sculpted Nordic pole grip straps, and hard-track basket ribs; and a
   **true-scale road bicycle** — 0.67 m (700c) wheels on a 1.00 m wheelbase, sized
@@ -73,7 +75,7 @@ strict part count, and its material-role list.
 
 | Template root                        | Canonical anchor contract                                                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `equipment:row:boat-assembly`        | Row avatar root coordinates: open hull, split fore/aft decks, recessed cockpit, rails, stretcher, and full-width rigger; oarlocks meet the animated pivots at `(±0.78, 0.38, 0.095)`.                                                                                                                                                                                          |
+| `equipment:row:boat-assembly`        | Row avatar root coordinates: open hull, split fore/aft decks, recessed cockpit, stern-side stretcher at local `z ≈ 0.68`, rails, and full-width rigger; stern-side oarlocks meet the animated pivots at `(±0.88, 0.51, 0.28)`.                                                                                                                                                 |
 | `equipment:row:oar-rig`              | One oar at its pin, with `+X` outboard: attach identity on the right and yaw π on the left. The animated blade remains the leaf slot.                                                                                                                                                                                                                                          |
 | `equipment:row:seat-carriage`        | Moving rower-group coordinates: the shaped pad, metal carriage, guides, and four rollers translate with the pelvis while remaining directly over the static slide rails.                                                                                                                                                                                                       |
 | `equipment:ski:ski-assembly`         | One measured readable-classic ski at the per-side anchor `(side × 0.15, 0, 0.16)`; clone it once per ski. The 1.90 m runner (scaled at build time from the authored 2.06 m native profile to the `skiEquipment.ts` contract), 0.072 m maximum width, raised tip, metal edges, and free-heel toe binding parts remain static while poles and boots retain the runtime contacts. |
@@ -85,6 +87,26 @@ Runtime materials remain outside the GLB. The neutral placeholder is never a
 product colour source: `replayMaterialRole` lets the renderer preserve lane
 paint, equipment metal/rubber/grip, athlete fabric/skin/hair/footwear,
 light/dark themes, and ghost transparency.
+
+### Rowing-shell reference
+
+The rowing assembly is repository-authored geometry, not a downloaded model.
+Its modern single-scull form, athlete scale, carbon wing-rigger layout,
+outboard pin placement, separate scull grips, and lower-rib finish relationship
+were reviewed against TudorTulok's 20 July 2024 photograph
+[`SL Racing single scull with carbon rigger on river`](https://commons.wikimedia.org/wiki/File:SL_Racing_single_scull_with_carbon_rigger_on_river.jpg),
+released under the
+[`CC0 1.0 Universal Public Domain Dedication`](https://creativecommons.org/publicdomain/zero/1.0/).
+The reference image is not embedded or shipped. World Rowing's public
+equipment-compliance guidance supplies the racing-shell/bow-ball context, and
+Concept2's public technique guidance supplies the legs-then-body-then-arms
+sequence and handle finish below the ribs. RowPlay's Blender/Three.js sources
+translate those references into the documented metric rig and remain MIT.
+World Rowing and British Rowing grip guidance additionally constrains each hand
+to a relaxed cylindrical hold: fingers around the rubber, thumb at the handle
+end, flat wrist, and no excessive wrist rotation. The authored shaft therefore
+stops at the rubber seam and the handle uses a flat thumb stop rather than a
+spherical pommel.
 
 Rebuild and validate V3 from the repository root with:
 
@@ -213,15 +235,9 @@ remain automatic fallbacks.
   cool material tint while ghost equipment/wakes may remain translucent; the
   single deforming skin never enters Three.js's transparent triangle-sorting
   path, so limbs and overlapping garment forms cannot disappear by draw order.
-  BikeErg seating is geometric: saddle height is solved from knee flexion at
-  bottom dead centre (30°, inside the 25-35° road-fit window), and the pad top
-  is placed on the **measured ischial plateau** — skin at |x| 0.050-0.075, a
-  sit-bone spread that matches a real pelvis. The saddle itself comes from the
-  shared `src/lib/replay/bikeSaddle.js` station table, which both this package
-  and the procedural renderer loft: a winged rear that carries the ischia, a
-  through cut-out for the perineum, which on a standing-derived mesh hangs
-  37 mm below them, and a nose that narrows and drops away so the sweeping
-  thighs clear it.
+  BikeErg's fixed saddle is a low-profile opaque support drawn before the skin
+  without writing depth, so the athlete naturally occludes the overlapping
+  cushion pixels instead of appearing to pass through a thick solid block.
 - **Skinning:** reviewed anatomical face sets drive deterministic A-pose→V4
   segment retargeting and bounded parent/child blends at shoulders, elbows,
   wrists, hips, knees, and ankles. The continuous body's major limb influences

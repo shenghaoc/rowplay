@@ -24,9 +24,21 @@ from mathutils import Vector
 # Keep the shell's fixed stretcher around the same point as the procedural and
 # V4 foot targets so the authored boat cannot make correctly solved legs look
 # detached or sunk into a panel.
-ROWER_FOOT_CONTACT_Y = 0.35
-ROWER_FOOT_CONTACT_Z = 0.72
-ROWER_STRETCHER_ANGLE = -0.28
+# British Rowing rigging guidance puts a typical racing stretcher at 38-45
+# degrees from the hull floor and the seat 15-20 cm above the heels. The board
+# is authored as an XY plane, so a -48 degree object rotation leaves that plane
+# 42 degrees above horizontal in the exported Three.js coordinate system.
+ROWER_FOOT_CONTACT_Y = 0.215
+ROWER_FOOT_CONTACT_Z = 0.75
+ROWER_STRETCHER_ANGLE = math.radians(-48)
+ROWER_STRETCHER_CENTER_Y = 0.295
+ROWER_STRETCHER_CENTER_Z = 0.68
+# The pin rides ~0.14 above the seat top (real sculling rigging height). It
+# must match the runtime `ROWER_OARLOCK` so the authored rigger terminates at
+# the animated oar pivot; the drive-side roll that buries the spoon then puts
+# the handles at the drive height instead of the shoulders.
+ROWER_OARLOCK_Y = 0.51
+ROWER_OARLOCK_Z = 0.28
 
 
 def parse_args() -> argparse.Namespace:
@@ -73,18 +85,21 @@ def add_open_hull() -> None:
     # A real open U-shell: the central athlete volume is never covered by a
     # fake top deck.  Cross-sections taper aggressively into a racing bow and
     # stern while retaining enough side wall to read at replay scale.
+    # Racing singles are commonly 7.4-8.3 m long. Keep the athlete/cockpit
+    # coordinates unchanged while extending both closed decks into the slender
+    # ends of a 7.8 m shell instead of the former 4.2 m toy-like hull.
     stations = [
-        (-2.08, 0.018, 0.205, 0.185),
-        (-1.94, 0.075, 0.235, 0.105),
-        (-1.64, 0.145, 0.26, 0.045),
-        (-1.18, 0.19, 0.278, 0.005),
-        (-0.62, 0.218, 0.282, -0.012),
+        (-3.9, 0.018, 0.205, 0.185),
+        (-3.68, 0.06, 0.225, 0.12),
+        (-3.15, 0.115, 0.245, 0.07),
+        (-2.35, 0.165, 0.268, 0.02),
+        (-1.35, 0.205, 0.28, -0.008),
         (0.08, 0.222, 0.282, -0.016),
-        (0.72, 0.205, 0.278, -0.004),
-        (1.25, 0.17, 0.263, 0.035),
-        (1.7, 0.115, 0.245, 0.105),
-        (1.98, 0.052, 0.222, 0.16),
-        (2.08, 0.016, 0.205, 0.185),
+        (1.45, 0.2, 0.278, -0.004),
+        (2.45, 0.16, 0.262, 0.04),
+        (3.2, 0.11, 0.242, 0.11),
+        (3.68, 0.05, 0.22, 0.16),
+        (3.9, 0.016, 0.205, 0.185),
     ]
     cross_steps = 24
     vertices: list[tuple[float, float, float]] = []
@@ -234,31 +249,56 @@ def add_torus(
     return obj
 
 
+def add_sphere(
+    part: str,
+    component: str,
+    role: str,
+    center: tuple[float, float, float],
+    radius: float,
+) -> bpy.types.Object:
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        segments=20,
+        ring_count=12,
+        radius=radius,
+        location=to_blender(center),
+    )
+    obj = bpy.context.object
+    if obj is None:
+        raise RuntimeError("Blender did not create a sphere")
+    obj.name = f"{part}__{component}"
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    set_part_metadata(obj, part, role)
+    return obj
+
+
 def build_boat() -> None:
     add_open_hull()
-    add_deck_surface(
-        "stern-deck",
-        "equipment-painted",
-        [
-            (-2.04, 0.025, 0.208),
-            (-1.86, 0.09, 0.246),
-            (-1.48, 0.155, 0.274),
-            (-1.04, 0.19, 0.286),
-            (-0.8, 0.202, 0.287),
-        ],
-        component="aft-camber",
-    )
     add_deck_surface(
         "bow-deck",
         "equipment-painted",
         [
-            (0.94, 0.192, 0.284),
-            (1.28, 0.166, 0.274),
-            (1.64, 0.12, 0.255),
-            (1.94, 0.055, 0.225),
-            (2.04, 0.022, 0.208),
+            (-3.88, 0.022, 0.208),
+            (-3.55, 0.075, 0.238),
+            (-2.8, 0.13, 0.265),
+            (-1.8, 0.18, 0.283),
+            (-1.2, 0.198, 0.287),
+            (-0.8, 0.202, 0.287),
         ],
         component="fore-camber",
+    )
+    add_deck_surface(
+        "stern-deck",
+        "equipment-painted",
+        [
+            (0.94, 0.192, 0.284),
+            (1.5, 0.19, 0.282),
+            (2.4, 0.158, 0.268),
+            (3.2, 0.105, 0.245),
+            (3.65, 0.05, 0.22),
+            (3.88, 0.02, 0.208),
+        ],
+        component="aft-camber",
     )
 
     # Recessed cockpit tub: its floor is below the knees and shoes, with no
@@ -323,7 +363,7 @@ def build_boat() -> None:
         "accent-strakes",
         "aft",
         "equipment-light",
-        (0, 0.325, -1.84),
+        (0, 0.325, -3.55),
         (0, 0.326, -0.9),
         0.012,
         vertices=16,
@@ -333,9 +373,19 @@ def build_boat() -> None:
         "fore",
         "equipment-light",
         (0, 0.323, 1.02),
-        (0, 0.3, 1.82),
+        (0, 0.3, 3.55),
         0.012,
         vertices=16,
+    )
+    # World Rowing racing shells carry a visible bow ball. Keep it in the
+    # existing light-detail part family so the strict V3 template schema stays
+    # compatible while the silhouette gains a recognisable racing-shell end.
+    add_sphere(
+        "accent-strakes",
+        "bow-ball",
+        "equipment-light",
+        (0, 0.205, -3.91),
+        0.042,
     )
 
     # Angled stretcher, heel cups, and instep bar make the fixed foot contact
@@ -346,8 +396,8 @@ def build_boat() -> None:
         "foot-stretcher",
         "board",
         "equipment-dark",
-        (0, 0.31, ROWER_FOOT_CONTACT_Z),
-        (0.38, 0.18, 0.04),
+        (0, ROWER_STRETCHER_CENTER_Y, ROWER_STRETCHER_CENTER_Z),
+        (0.38, 0.29, 0.036),
         bevel=0.014,
         rotation_x=ROWER_STRETCHER_ANGLE,
     )
@@ -356,8 +406,8 @@ def build_boat() -> None:
             "heel-cups",
             "left-heel-cup" if side < 0 else "right-heel-cup",
             "equipment-rubber",
-            (side * 0.12, ROWER_FOOT_CONTACT_Y - 0.035, ROWER_FOOT_CONTACT_Z - 0.03),
-            (0.105, 0.065, 0.11),
+            (side * 0.12, ROWER_FOOT_CONTACT_Y, ROWER_FOOT_CONTACT_Z),
+            (0.105, 0.075, 0.12),
             bevel=0.016,
             rotation_x=ROWER_STRETCHER_ANGLE,
         )
@@ -365,8 +415,8 @@ def build_boat() -> None:
         "stretcher-hardware",
         "instep-bar",
         "equipment-metal",
-        (-0.18, ROWER_FOOT_CONTACT_Y + 0.06, ROWER_FOOT_CONTACT_Z - 0.03),
-        (0.18, ROWER_FOOT_CONTACT_Y + 0.06, ROWER_FOOT_CONTACT_Z - 0.03),
+        (-0.18, 0.35, 0.625),
+        (0.18, 0.35, 0.625),
         0.012,
         vertices=16,
     )
@@ -375,10 +425,19 @@ def build_boat() -> None:
             "stretcher-hardware",
             "left-support" if side < 0 else "right-support",
             "equipment-metal",
-            (side * 0.17, 0.205, ROWER_FOOT_CONTACT_Z - 0.12),
-            (side * 0.17, 0.31, ROWER_FOOT_CONTACT_Z),
+            (side * 0.17, 0.175, 0.84),
+            (side * 0.17, ROWER_STRETCHER_CENTER_Y, ROWER_STRETCHER_CENTER_Z),
             0.009,
             vertices=14,
+        )
+        add_cylinder_between(
+            "heel-cups",
+            "left-heel-restraint" if side < 0 else "right-heel-restraint",
+            "equipment-rubber",
+            (side * 0.12, 0.185, 0.785),
+            (side * 0.12, 0.245, 0.72),
+            0.006,
+            vertices=12,
         )
 
     # The wing rigger terminates at the exact runtime oar pivots. Diagonal
@@ -387,7 +446,10 @@ def build_boat() -> None:
     # pins close to the narrow hull crossed the grips at the catch and forced
     # both forearms through the torso; these wider pins keep
     # each hand on its own grip while preserving the long lever and open shell.
-    pivots = [(-0.78, 0.38, 0.095), (0.78, 0.38, 0.095)]
+    pivots = [
+        (-0.88, ROWER_OARLOCK_Y, ROWER_OARLOCK_Z),
+        (0.88, ROWER_OARLOCK_Y, ROWER_OARLOCK_Z),
+    ]
     for index, pivot in enumerate(pivots):
         side_name = "port" if index == 0 else "starboard"
         sign = -1 if index == 0 else 1
@@ -395,7 +457,7 @@ def build_boat() -> None:
             "riggers",
             f"{side_name}-main",
             "equipment-metal",
-            (sign * 0.105, 0.286, -0.02),
+            (sign * 0.105, 0.286, 0.02),
             pivot,
             0.019,
             vertices=20,
@@ -404,7 +466,7 @@ def build_boat() -> None:
             "riggers",
             f"{side_name}-brace-aft",
             "equipment-metal",
-            (sign * 0.17, 0.286, -0.24),
+            (sign * 0.17, 0.286, 0.24),
             pivot,
             0.012,
             vertices=16,
@@ -413,7 +475,7 @@ def build_boat() -> None:
             "riggers",
             f"{side_name}-brace-fore",
             "equipment-metal",
-            (sign * 0.17, 0.286, 0.18),
+            (sign * 0.17, 0.286, -0.18),
             pivot,
             0.012,
             vertices=16,
@@ -422,7 +484,7 @@ def build_boat() -> None:
             "oarlocks",
             f"{side_name}-post",
             "equipment-metal",
-            (pivot[0], 0.284, pivot[2]),
+            (pivot[0], 0.292, pivot[2]),
             pivot,
             0.021,
             vertices=18,
@@ -438,11 +500,11 @@ def build_boat() -> None:
 
     # A restrained stern fin gives the shell a credible underwater profile.
     profile = [
-        (0.095, -1.48),
-        (0.025, -1.42),
-        (-0.055, -1.28),
-        (0.045, -1.12),
-        (0.095, -1.08),
+        (0.095, 2.95),
+        (0.025, 2.88),
+        (-0.055, 2.68),
+        (0.045, 2.48),
+        (0.095, 2.43),
     ]
     fin_vertices = [(-0.008, y, z) for y, z in profile] + [
         (0.008, y, z) for y, z in profile

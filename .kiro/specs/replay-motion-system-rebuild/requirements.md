@@ -90,15 +90,26 @@ viewing speed.
    feathered blades SHALL create a continuous catch → drive → finish →
    hands-away → slide sequence while grips stay clear of the torso. Arms SHALL
    remain softly long through the leg drive and body opening. On the drive,
-   visible elbow flexion SHALL begin only after the hands have passed the knee
-   envelope and the legs are nearly extended; both elbows SHALL then travel
-   rearward as the handle approaches the lower ribs. Recovery SHALL straighten
+   visible elbow flexion SHALL begin only after the legs are nearly extended,
+   with the hands clear of the knee envelope throughout; both elbows SHALL
+   then travel rearward as the handle approaches the lower ribs. Recovery
+   SHALL straighten
    the arms and move the hands back past the knees before body-over and slide;
    neither renderer SHALL select a forward-pointing, horizontal-wing, or
-   through-torso elbow branch. V4 feet SHALL remain locked to the stretcher
-   while both knees follow the shared raised rowing branch; neither leg may
-   inherit the standing rest skeleton's downward branch or pass through the
-   cockpit.
+   through-torso elbow branch. The elbow bend plane SHALL point down with at
+   most a slight outward tilt for the entire stroke; the upper arm SHALL never
+   open toward a horizontal 90° armpit. At the loaded finish, each humerus
+   SHALL extend down-and-back to an elbow below the handle line, close under
+   its own shoulder and at most slightly behind the laid-back shoulder plane;
+   neither a shoulder-height chicken wing, a left/right horizontal elbow
+   flare, nor a past-vertical behind-the-back haul is
+   acceptable. V4 feet SHALL remain locked to the stretcher while both knees
+   follow the shared raised rowing branch; neither leg may inherit the standing
+   rest skeleton's downward branch or pass through the cockpit. Each hand SHALL
+   enclose its own rubber scull grip with the four fingers hooked around the
+   cylinder, the thumb at the handle end, and a neutral wrist continuous with
+   the forearm; contact correction SHALL reject a 180-degree palm, wrist,
+   forearm, or torso twist.
 2. WHEN SkiErg is shown THEN reach, velocity-matched plant, loaded pull, and
    release SHALL read as distinct states; baskets SHALL remain course-anchored
    throughout the loaded phase while the athlete advances relative to them.

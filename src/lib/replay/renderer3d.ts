@@ -39,6 +39,13 @@ import { fmtPace } from "../format";
 import { METERS_PER_CYCLE, ParticlePool, PerfGovernor, clampDt, dampFactor } from "./motion";
 import { solveRigidContactPoint3D, solveTwoBone3D, type FigurePoint3 } from "./figurePose";
 import {
+  ROWER_FOOT_CONTACT,
+  ROWER_OARLOCK,
+  ROWER_STRETCHER,
+  solveRowerArmWithCorridor,
+  solveRowerOarYaw,
+} from "./rowRig";
+import {
   applyReplayAssetLibrary,
   hideWithReplayAssets,
   setReplayAssetSlot,
@@ -308,7 +315,10 @@ function updateTextSprite(
  * Parts carrying `userData.accent` re-theme to the per-lane accent
  * (`--live` / `--ghost`); skin/kit/shafts stay fixed. Local +Z is travel.
  */
-type AvatarMotionCues = { vertical: number; surge: number } | { rebound: number; surge: number };
+type AvatarMotionCues =
+  | { vertical: number; surge: number; rollDamp?: number }
+  | { rebound: number; surge: number };
+type BoatDetail = 0 | 1 | 2 | 3;
 
 const STATIC_AVATAR_MOTION: AvatarMotionCues = { vertical: 0, surge: 0 };
 
@@ -423,7 +433,10 @@ const CAMERA_RIGS: Record<Sport, CameraRig> = {
   // comparison framing, so this is a static composition choice, not an orbit.
   // Row sits slightly lower and longer than before so the water plane and
   // softened far bank fill more of the frame, without clipping the scull.
-  rower: { back: 4.05, height: 1.78, ahead: 0.88, lateral: 2.05, aimY: 0.84 },
+  // The 7.8 m shell pulls the desktop chase back to 5.4 m; lateral rises with
+  // it so the rear-three-quarter ratio (lateral/retreat) stays above the 0.38
+  // composition contract instead of flattening into a rear view.
+  rower: { back: 4.05, height: 1.78, ahead: 0.88, lateral: 2.16, aimY: 0.84 },
   skierg: { back: 3.15, height: 2.3, ahead: 0.9, lateral: 1.86, aimY: 1.14 },
   bike: { back: 3.12, height: 1.96, ahead: 0.58, lateral: 1.92, aimY: 0.92 },
 };
@@ -676,16 +689,32 @@ function accentMaterial(accent: number): THREE.MeshPhysicalMaterial {
 }
 
 /** Painted composite equipment carries a restrained clearcoat, never fabric. */
-function accentEquipmentMaterial(accent: number): THREE.MeshPhysicalMaterial {
+function boatMaterial(
+  color: number,
+  detail: BoatDetail,
+  roughness: number,
+  metalness: number,
+): THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial {
+  if (detail === 0) return humanMat(color, Math.min(0.88, roughness + 0.2), metalness * 0.45);
+  const level = detail - 1;
+  const clearcoat = [0.18, 0.42, 0.7][level] ?? 0.7;
   return new THREE.MeshPhysicalMaterial({
-    color: accent,
-    roughness: 0.34,
-    metalness: 0.08,
-    clearcoat: 0.32,
-    clearcoatRoughness: 0.26,
-    emissive: accent,
-    emissiveIntensity: 0.008,
+    color,
+    roughness: Math.max(0.16, roughness - level * 0.055),
+    metalness: Math.min(0.82, metalness + level * 0.035),
+    clearcoat,
+    clearcoatRoughness: [0.28, 0.2, 0.12][level] ?? 0.12,
+    sheen: detail >= 3 ? 0.08 : 0,
+    emissive: color,
+    emissiveIntensity: 0.006,
   });
+}
+
+function accentEquipmentMaterial(
+  accent: number,
+  detail: BoatDetail = 3,
+): THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial {
+  return boatMaterial(accent, detail, 0.34, 0.08);
 }
 
 function accentPart(mesh: THREE.Mesh): THREE.Mesh {
@@ -969,64 +998,6 @@ function setArmBendHint(
     // Degenerate: fall back to pure side-out so the solver still has a plane.
     out.set(side, 0.25, 0);
   }
-}
-
-/**
- * Choose the continuous yaw branch on a rigid oar's inboard circle that
- * satisfies a requested shoulder-to-grip reach. The motion-graph yaw is used
- * only for a degenerate fallback and the later late-draw blend.
- *
- * The oar's local x axis is transformed by yaw then blade-depth roll. Solving
- * that circle analytically keeps the hot path allocation-free and prevents
- * early elbow flexion from compensating for an underspecified handle sweep.
- */
-function solveRowerOarYaw(
-  shoulder: THREE.Vector3,
-  pinX: number,
-  pinY: number,
-  pinZ: number,
-  signedInboard: number,
-  bladeRoll: number,
-  requestedReach: number,
-  preferredYaw: number,
-): number {
-  const pinDeltaX = pinX - shoulder.x;
-  const pinDeltaY = pinY - shoulder.y;
-  const pinDeltaZ = pinZ - shoulder.z;
-  // Three's XYZ Euler order sends an oar-local X vector to
-  // (cos(roll)cos(yaw), sin(roll), -cos(roll)sin(yaw)). Blade burial therefore
-  // contributes a yaw-independent vertical term; treating that Y offset as
-  // part of the yaw circle shortened the grip reach as soon as the blade
-  // squared and made both fallback elbows fold during the leg drive.
-  const rollCos = Math.cos(bladeRoll);
-  const rollSin = Math.sin(bladeRoll);
-  const projectedX = pinDeltaX * rollCos;
-  const projectedZ = -pinDeltaZ * rollCos;
-  const amplitude = Math.hypot(projectedX, projectedZ);
-  if (amplitude < 1e-8 || Math.abs(signedInboard) < 1e-8) return preferredYaw;
-
-  const baseDistanceSquared =
-    pinDeltaX * pinDeltaX +
-    pinDeltaY * pinDeltaY +
-    pinDeltaZ * pinDeltaZ +
-    signedInboard * signedInboard;
-  const cosine = THREE.MathUtils.clamp(
-    (requestedReach * requestedReach -
-      baseDistanceSquared -
-      2 * signedInboard * pinDeltaY * rollSin) /
-      (2 * signedInboard * amplitude),
-    -1,
-    1,
-  );
-  const center = Math.atan2(projectedZ, projectedX);
-  const offset = Math.acos(cosine);
-  const first = center + offset;
-  // With regulation-scale inboards and the full-width rigger, this fixed
-  // mirrored branch is the centreline/forward catch for both sculls. Never
-  // choose per-frame by nearest angle or lateral distance: those scores can
-  // exchange at a tangent and snap an otherwise continuous elbow across the
-  // boat.
-  return first;
 }
 
 function placeSegmentCoordinates(
@@ -1376,11 +1347,49 @@ function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 1
   return head;
 }
 
-const ROWER_FOOT_CONTACT = Object.freeze({
-  lateral: 0.12,
-  y: 0.35,
-  z: 0.72,
-});
+function addRowerBoatQualityDetails(
+  boatVisual: THREE.Group,
+  detail: BoatDetail,
+  lightMaterial: THREE.Material,
+  metalMaterial: THREE.Material,
+): void {
+  const quality = new THREE.Group();
+  quality.name = "rower-boat-quality-detail";
+  quality.userData.boatDetail = detail;
+  if (detail >= 2) {
+    // High and Ultra spend geometry on the shell itself: two fine waterline
+    // strakes follow the open cockpit instead of only increasing the canvas
+    // DPR. They make the long, narrow hull legible in a rear three-quarter
+    // camera without changing any contact target.
+    for (const side of [-1, 1]) {
+      quality.add(
+        tubeBetween(
+          side < 0 ? "rower-shell-waterline-port" : "rower-shell-waterline-starboard",
+          { x: side * 0.205, y: 0.22, z: -2.55 },
+          { x: side * 0.205, y: 0.22, z: 2.55 },
+          detail >= 3 ? 0.006 : 0.004,
+          lightMaterial,
+        ),
+      );
+    }
+  }
+  if (detail >= 3) {
+    // Ultra adds the visible cockpit load path: cross braces sit below the
+    // coaming and visually connect the rails to the shell walls.
+    for (const z of [-0.78, 0.93]) {
+      quality.add(
+        tubeBetween(
+          `rower-cockpit-cross-brace-${z < 0 ? "aft" : "fore"}`,
+          { x: -0.16, y: 0.235, z },
+          { x: 0.16, y: 0.235, z },
+          0.008,
+          metalMaterial,
+        ),
+      );
+    }
+  }
+  boatVisual.add(quality);
+}
 
 /**
  * Low-poly single scull: long thin hull (capsule), a seated rower, and two oars
@@ -1393,7 +1402,12 @@ function makeRowerAvatar(
   castShadow: boolean,
   opacity = 1,
   bodySegments = 16,
+  quality: RenderQuality = "medium",
 ): Avatar {
+  // RowErg shell finish/detail ladder follows the shared quality tier the
+  // sport-profile factory now passes to every avatar maker.
+  const boatDetail: BoatDetail =
+    quality === "low" ? 0 : quality === "medium" ? 1 : quality === "high" ? 2 : 3;
   const segs = bodySegments;
   const capSegs = Math.max(10, Math.round(segs * 0.82));
   const headSegs = Math.max(14, segs + 2);
@@ -1403,7 +1417,7 @@ function makeRowerAvatar(
   // Each avatar owns its sampled graph so live and ghost athletes never share
   // mutable frame state. This keeps the motion path allocation-free in 3D.
   const rowMotionGraph = createRowerMotionGraphScratch();
-  const laneMaterial = accentEquipmentMaterial(accent);
+  const laneMaterial = accentEquipmentMaterial(accent, boatDetail);
   const jerseyMaterial = accentMaterial(accent);
   const accentMat = () => laneMaterial;
   const skinMaterial = makeSkinMaterial(HUMAN_SKIN);
@@ -1411,44 +1425,53 @@ function makeRowerAvatar(
   const kitMaterial = humanMat(HUMAN_KIT, 0.58);
   const kitDarkMaterial = humanMat(HUMAN_KIT_DARK, 0.64);
   const shoeMaterial = humanMat(HUMAN_SHOE, 0.46);
-  const equipmentLightMaterial = humanMat(0xf1f5f9, 0.42, 0.12);
-  const equipmentMetalMaterial = humanMat(0x8a9097, 0.38, 0.58);
-  const equipmentGripMaterial = humanMat(0x26343d, 0.56, 0.04);
+  const boatDarkMaterial = boatMaterial(0x162631, boatDetail, 0.42, 0.16);
+  const boatTrimMaterial = boatMaterial(0xc8d4dc, boatDetail, 0.34, 0.08);
+  const equipmentLightMaterial = boatMaterial(0xf1f5f9, boatDetail, 0.42, 0.12);
+  const equipmentMetalMaterial = boatMaterial(0x8a9097, boatDetail, 0.38, 0.58);
+  const equipmentGripMaterial = boatMaterial(0x26343d, boatDetail, 0.56, 0.04);
   const resolveAssetMaterial = makeAssetMaterialResolver({
     "athlete-skin": skinMaterial,
     "athlete-fabric": jerseyMaterial,
     "athlete-hair": hairMaterial,
     "athlete-footwear": shoeMaterial,
     "equipment-painted": laneMaterial,
-    "equipment-dark": kitDarkMaterial,
+    "equipment-dark": boatDarkMaterial,
     "equipment-light": equipmentLightMaterial,
     "equipment-metal": equipmentMetalMaterial,
     "equipment-rubber": equipmentGripMaterial,
     "equipment-grip": equipmentGripMaterial,
-    "equipment-trim": kitMaterial,
+    "equipment-trim": boatTrimMaterial,
   });
   const hull = setReplayAssetSlot(
     new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.34, 3.15, eqCylSegs, Math.round(eqCylSegs * 1.4)),
-      kitDarkMaterial,
+      new THREE.CapsuleGeometry(0.34, 7.12, eqCylSegs, Math.round(eqCylSegs * 1.4)),
+      boatDarkMaterial,
     ),
     "equipment:row:hull",
   );
   hull.rotation.x = Math.PI / 2; // capsule axis Y -> Z (travel)
-  hull.scale.set(0.55, 0.3, 1); // keep the fallback below the visible leg chain
+  // Object scale applies in capsule-local axes *before* that rotation: local Y
+  // is the long axis (kept at full length so the fallback matches the 7.8 m
+  // deck/gunwale footprint) and local Z becomes world height, flattened so the
+  // fallback hull stays below the visible leg chain and the gunwales.
+  hull.scale.set(0.55, 1, 0.3);
   hull.position.y = 0.135;
   group.add(hull);
 
   // Two short decks leave a genuine cockpit opening around the athlete. The
   // old full-length slab hid both legs and made the seat look glued on top.
-  const sternDeck = new THREE.Mesh(roundedVenueBlockGeometry(0.18, 0.045, 1.0, 0.022), accentMat());
-  sternDeck.name = "rower-stern-deck";
-  sternDeck.position.set(0, 0.275, -1.32);
+  const sternDeck = new THREE.Mesh(
+    roundedVenueBlockGeometry(0.18, 0.045, 2.92, 0.022),
+    accentMat(),
+  );
+  sternDeck.name = "rower-bow-deck";
+  sternDeck.position.set(0, 0.275, -2.34);
   sternDeck.userData.accent = true;
   group.add(sternDeck);
-  const bowDeck = new THREE.Mesh(roundedVenueBlockGeometry(0.17, 0.043, 0.94, 0.021), accentMat());
-  bowDeck.name = "rower-bow-deck";
-  bowDeck.position.set(0, 0.273, 1.42);
+  const bowDeck = new THREE.Mesh(roundedVenueBlockGeometry(0.17, 0.043, 2.86, 0.021), accentMat());
+  bowDeck.name = "rower-stern-deck";
+  bowDeck.position.set(0, 0.273, 2.37);
   bowDeck.userData.accent = true;
   group.add(bowDeck);
   const cockpitFloor = new THREE.Mesh(
@@ -1459,16 +1482,23 @@ function makeRowerAvatar(
   cockpitFloor.position.set(0, 0.17, 0.05);
   group.add(cockpitFloor);
   const sternStripe = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.04, 0.014, 0.74, 0.007),
+    roundedVenueBlockGeometry(0.04, 0.014, 2.42, 0.007),
     equipmentLightMaterial,
   );
-  sternStripe.name = "rower-stern-deck-stripe";
-  sternStripe.position.set(0, 0.305, -1.34);
+  sternStripe.name = "rower-bow-deck-stripe";
+  sternStripe.position.set(0, 0.305, -2.31);
   group.add(sternStripe);
   const bowStripe = sternStripe.clone();
-  bowStripe.name = "rower-bow-deck-stripe";
-  bowStripe.position.set(0, 0.304, 1.4);
+  bowStripe.name = "rower-stern-deck-stripe";
+  bowStripe.position.set(0, 0.304, 2.28);
   group.add(bowStripe);
+  const bowBall = new THREE.Mesh(
+    new THREE.SphereGeometry(0.042, Math.max(12, eqCylSegs), Math.max(8, eqTorSegs)),
+    equipmentLightMaterial,
+  );
+  bowBall.name = "rower-bow-ball";
+  bowBall.position.set(0, 0.205, -3.91);
+  group.add(bowBall);
   const gunwale = new THREE.Mesh(
     roundedVenueBlockGeometry(0.02, 0.032, 2.86, 0.009),
     equipmentLightMaterial,
@@ -1491,26 +1521,26 @@ function makeRowerAvatar(
   }
 
   const footPlate = new THREE.Mesh(
-    roundedVenueBlockGeometry(0.38, 0.18, 0.04, 0.018),
+    roundedVenueBlockGeometry(0.38, 0.29, 0.036, 0.018),
     kitDarkMaterial,
   );
   footPlate.name = "rower-footplate";
-  footPlate.position.set(0, 0.31, ROWER_FOOT_CONTACT.z);
-  footPlate.rotation.x = -0.28;
+  footPlate.position.set(0, ROWER_STRETCHER.centerY, ROWER_STRETCHER.centerZ);
+  footPlate.rotation.x = ROWER_STRETCHER.boardRotation;
   group.add(footPlate);
   const heelCups: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
     const heelCup = new THREE.Mesh(
-      roundedVenueBlockGeometry(0.105, 0.065, 0.11, 0.016),
+      roundedVenueBlockGeometry(0.105, 0.075, 0.12, 0.016),
       equipmentGripMaterial,
     );
     heelCup.name = side < 0 ? "rower-heel-cup-left" : "rower-heel-cup-right";
     heelCup.position.set(
       side * ROWER_FOOT_CONTACT.lateral,
-      ROWER_FOOT_CONTACT.y - 0.035,
-      ROWER_FOOT_CONTACT.z - 0.03,
+      ROWER_FOOT_CONTACT.y,
+      ROWER_FOOT_CONTACT.z,
     );
-    heelCup.rotation.x = -0.28;
+    heelCup.rotation.x = ROWER_STRETCHER.boardRotation;
     heelCups.push(heelCup);
     group.add(heelCup);
   }
@@ -1520,19 +1550,33 @@ function makeRowerAvatar(
   );
   instepBar.name = "rower-footplate-instep-bar";
   instepBar.rotation.z = Math.PI / 2;
-  instepBar.position.set(0, ROWER_FOOT_CONTACT.y + 0.06, ROWER_FOOT_CONTACT.z - 0.03);
+  instepBar.position.set(0, 0.35, 0.625);
   group.add(instepBar);
   const stretcherSupports: THREE.Mesh[] = [];
+  const heelRestraints: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
     const support = tubeBetween(
       side < 0 ? "rower-footplate-support-left" : "rower-footplate-support-right",
-      { x: side * 0.17, y: 0.205, z: ROWER_FOOT_CONTACT.z - 0.12 },
-      { x: side * 0.17, y: 0.31, z: ROWER_FOOT_CONTACT.z },
+      { x: side * 0.17, y: 0.175, z: 0.84 },
+      {
+        x: side * 0.17,
+        y: ROWER_STRETCHER.centerY,
+        z: ROWER_STRETCHER.centerZ,
+      },
       0.009,
       equipmentMetalMaterial,
     );
     stretcherSupports.push(support);
     group.add(support);
+    const heelRestraint = tubeBetween(
+      side < 0 ? "rower-heel-restraint-left" : "rower-heel-restraint-right",
+      { x: side * 0.12, y: 0.185, z: 0.785 },
+      { x: side * 0.12, y: 0.245, z: 0.72 },
+      0.006,
+      equipmentGripMaterial,
+    );
+    heelRestraints.push(heelRestraint);
+    group.add(heelRestraint);
   }
   for (const side of [-1, 1]) {
     const anchor = new THREE.Object3D();
@@ -1557,6 +1601,7 @@ function makeRowerAvatar(
       cockpitFloor,
       sternStripe,
       bowStripe,
+      bowBall,
       gunwale,
       gunwaleR,
       ...slideRails,
@@ -1564,8 +1609,15 @@ function makeRowerAvatar(
       ...heelCups,
       instepBar,
       ...stretcherSupports,
+      ...heelRestraints,
     ],
   });
+  addRowerBoatQualityDetails(
+    boatVisual,
+    boatDetail,
+    equipmentLightMaterial,
+    equipmentMetalMaterial,
+  );
 
   // Rower in its own group so slide, layback, legs and arms all move from the
   // recorded stroke pose rather than as one rigid toy block.
@@ -1729,43 +1781,54 @@ function makeRowerAvatar(
   for (const side of [-1, 1]) {
     const oar = new THREE.Group();
     oar.name = side < 0 ? "rower-oar-left" : "rower-oar-right";
-    // 3.1 m shaft: ~0.85 m inboard of the pin, ~2.25 m outboard to the blade.
+    // Regulation-scale 2.89 m scull: 0.82 m inboard of the pin and a 2.07 m
+    // outboard lever including the spoon. The former 3.4 m overall assembly
+    // read as a sweep oar and overwhelmed a one-person shell.
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.018, 0.021, 3.15, eqCylSegs),
+      new THREE.CylinderGeometry(0.018, 0.021, 2.22, eqCylSegs),
       equipmentLightMaterial,
     );
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
-    shaft.position.x = side * 0.7;
+    shaft.position.x = side * 0.61;
     oar.add(shaft);
-    const grip = capsulePart(0.021, 0.24, equipmentGripMaterial, "x");
+    const grip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.023, 0.023, 0.32, eqCylSegs),
+      equipmentGripMaterial,
+    );
+    grip.rotation.z = Math.PI / 2;
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
     // A regulation-scale scull has roughly 0.8–0.9 m of inboard leverage. The
     // shorter placeholder forced a false choice between centreline hands and
     // long arms; this reach lets both coexist while the fixed pin remains on
     // the rigger.
-    grip.position.x = -side * 0.82;
+    grip.position.x = -side * 0.66;
+    grip.position.y = -0.04;
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    // Land each palm eight centimetres outboard of the grip centre. The point
-    // remains well inside the 28 cm rubber grip, while the resulting hand
-    // separation prevents real scull handles from reading as crossed wrists
-    // at the centreline.
-    handleAnchor.position.x = -side * 0.74;
+    // Land the palm within the rubber grip. The visible V4 hand extends around
+    // this contact so four fingers can hook over the cylinder while the thumb
+    // remains near its end; targeting either the cap or shaft seam makes the
+    // grip read as a fist floating beside the oar.
+    handleAnchor.position.x = -side * 0.78;
+    // The contact and rendered rubber share one axis. Keeping equipment and
+    // solver coordinates identical prevents a visually closed fist from
+    // floating above or below the actual handle.
+    handleAnchor.position.y = -0.04;
     oar.add(handleAnchor);
-    // Oar collar — a small ring near the blade end for visual detail.
+    // The collar/button bears against the oarlock at the fixed pin.
     const collar = new THREE.Mesh(
       new THREE.TorusGeometry(0.05, 0.015, eqTorSegs, eqCylSegs),
       equipmentMetalMaterial,
     );
     collar.name = "rower-oar-collar";
-    collar.position.set(side * 1.95, 0, 0);
+    collar.position.set(side * 0.02, 0, 0);
     collar.rotation.y = Math.PI / 2;
     oar.add(collar);
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.022, 0.3), accentMat());
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.022, 0.3), accentMat());
     setReplayAssetSlot(blade, "equipment:row:blade");
     blade.name = side < 0 ? "rower-blade-left" : "rower-blade-right";
-    blade.position.set(side * 2.36, -0.06, 0);
+    blade.position.set(side * 1.82, -0.06, 0);
     blade.userData.accent = true;
     oar.add(blade);
     // The authored oar has one canonical +X outboard direction. Mirror the
@@ -1782,7 +1845,11 @@ function makeRowerAvatar(
     // The 1.56 m span matches a full-width sculling rigger. Its pins sit beside
     // the athlete rather than ahead of the knees, keeping the grips on their
     // own lateral halves and the forearms clear of the torso.
-    oar.position.set(side * 0.78, 0.38, 0.095);
+    // The pin sits bow-side of the athlete's hip line. This leaves the
+    // catch handle ahead of the torso while the seat drives aft, keeps the
+    // two scull grips separated at the finish, and still gives the inboard
+    // lever enough sweep to finish at the lower chest.
+    oar.position.set(side * ROWER_OARLOCK.lateral, ROWER_OARLOCK.y, ROWER_OARLOCK.z);
     oar.userData.side = side;
     group.add(oar);
     oars.push({ side, group: oar, blade, handleAnchor });
@@ -1792,7 +1859,10 @@ function makeRowerAvatar(
   // turn them into a stroke that reads at a glance without leaving the hull.
   // Seat start is biased forward so travel can grow without pulling the hips
   // past the fixed footplate reach of the thigh+shin chain (~1.10 m).
-  const SEAT_TRAVEL = 0.5;
+  const SEAT_TRAVEL = -0.44;
+  // The aft-facing athlete and fixed stretcher point toward local +Z. At the
+  // catch the seat is closest to the feet; the drive carries it bowward (-Z)
+  // while the feet stay fixed.
   const SEAT_CATCH_Z = 0.26;
   const THIGH_LENGTH = 0.552;
   const SHIN_LENGTH = 0.552;
@@ -1812,15 +1882,32 @@ function makeRowerAvatar(
   // Concept2 / scull handle path: early drive keeps grips forward so arms can
   // stay long; late draw brings the bar to the *lower chest / ribs*, not behind
   // the back (British Rowing / Concept2 finish coaching).
-  const OAR_YAW_CATCH = 0.3;
-  const OAR_YAW_SPAN = -0.58;
-  // A scull blade is buried only just below the surface. The former deep roll
-  // lifted the 0.82 m inboard handle by more than 11 cm during the first few
-  // drive frames, making the otherwise closed-chain grip surge forward.
-  const BLADE_DIP = 0.055;
+  // Positive catch yaw puts each inboard grip ahead of the shoulders toward
+  // the stretcher. The drive crosses the pin normal and finishes on the
+  // athlete-facing side, at the lower ribs. Keeping both values negative put
+  // the catch behind the torso and made the rower reach backward for the oars.
+  const OAR_YAW_CATCH = 0.68;
+  const OAR_DRAW_YAW = -0.8;
+  const OAR_YAW_SPAN = OAR_DRAW_YAW - OAR_YAW_CATCH;
+  // A scull blade is buried only just below the surface. With the 0.51 pin
+  // and the 2.09 m outboard lever, ~16 degrees of fixed-pin roll drops the
+  // spoon comfortably under the -0.05 water plane for the whole bladeWater
+  // window — with margin for the damped drive-phase hull roll — while the
+  // 0.78 m inboard lever holds the handles at the drive height. The former
+  // 0.1 rad dip left the loaded spoon ~0.3 m airborne through the entire
+  // drive and only wet it at the release.
+  const BLADE_DIP = 0.28;
+  // Real handles rise only a few centimetres into the finish — any more and
+  // the pin leverage digs the spoon half a metre deep. This small extra roll
+  // adds ~3 cm of grip height across the draw; the lower-rib finish comes from
+  // the layback carrying the ribs to the hands, not from hauling the handles
+  // up. The former 0.24 rad rise was doing the burial work the drive roll
+  // should have done, which is why immersion happened only at the extraction.
+  const HANDLE_RISE_ROLL = 0.04;
 
   const handlePoint = new THREE.Vector3();
   const sampledV4Shoulders = [new THREE.Vector3(), new THREE.Vector3()] as const;
+  const sampledV4Knees = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const sampledV4ReachOrigins = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const sampledV4ContactOffsets = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const sampledV4ArmReaches: [number, number] = [BASE_ARM_REACH, BASE_ARM_REACH];
@@ -1828,6 +1915,11 @@ function makeRowerAvatar(
   let pendingArmDraw = 0;
   let pendingShoulderSet = 0;
   let pendingHandleTravel = 0;
+  // Blade immersion drives the elbow band: while the spoon is loaded the
+  // drawing elbow hangs deep below the handle line, and it rises back toward
+  // handle height as the blade extracts so the release cannot pin the deep
+  // solution against the behind-the-back floor and snap branches.
+  let pendingBladeLoad = 0;
   const placeArms = (
     bodySwing: number,
     armDraw: number,
@@ -1864,10 +1956,9 @@ function makeRowerAvatar(
       // Preserve the graph-authored sweep as the preferred solution, but make
       // the rigid inboard lever meet a long arm until the late draw. This is
       // the 3D equivalent of the Canvas closed-chain reach floor.
-      // `armDraw` is already the graph's late, eased channel. Using it
-      // directly spreads the handle close over the whole anatomical draw;
-      // re-smoothing a narrow sub-range made the oar jump by ~10 degrees in a
-      // single dense-sample frame and visibly snapped the elbow.
+      // `armDraw` is the graph's late eased channel. Consume it directly so
+      // the close spans the full anatomical draw without stacking another
+      // easing curve that would accelerate the middle of the pull.
       const draw = THREE.MathUtils.clamp(armDraw, 0, 1);
       // V4 refinement supplies the sampled shoulder and its structural
       // shoulder-to-wrist reach. The sampled wrist-to-palm offset is applied
@@ -1877,26 +1968,34 @@ function makeRowerAvatar(
         v4Refinement?.armReaches[i] ?? Math.max(BASE_ARM_REACH, contactArmReach);
       const activeUpperArmLength = activeArmReach * UPPER_ARM_SHARE;
       const activeForearmLength = activeArmReach - activeUpperArmLength;
-      const longReachYaw = solveRowerOarYaw(
+      // Finish at a realistic lower-rib draw. Public sculling coaching (e.g.
+      // British Rowing / Concept2): hands draw *to the lower chest*, elbows
+      // tuck beside/slightly behind the shoulder plane — never hauled through
+      // the torso into an illegal behind-the-back finish. The complete oar
+      // path follows the graph's handle travel, not only the late arm channel;
+      // the fixed oarlock therefore moves the handles during the leg/body
+      // phases while the arms remain long.
+      const reachRelaxation = 0.1 * THREE.MathUtils.smoothstep(draw, 0.22, 0.55);
+      const solvedYaw = solveRowerOarYaw(
         v4Refinement?.reachOrigins[i] ?? arm.shoulderPoint,
         oar.group.position.x - rower.position.x,
         oar.group.position.y - rower.position.y,
         oar.group.position.z - rower.position.z,
         oar.handleAnchor.position.x,
         oar.group.rotation.z,
-        activeArmReach - 0.002,
+        activeArmReach - 0.002 - reachRelaxation,
         oar.group.rotation.y,
+        true,
       );
-      // Finish at a realistic lower-rib draw. Public sculling coaching (e.g.
-      // British Rowing / Concept2): hands draw *to the lower chest*, elbows
-      // tuck beside/slightly behind the shoulder plane — never hauled through
-      // the torso into an illegal behind-the-back finish.
-      const drawYaw = -oar.side * 0.58;
-      const yawDelta = Math.atan2(
-        Math.sin(drawYaw - longReachYaw),
-        Math.cos(drawYaw - longReachYaw),
-      );
-      oar.group.rotation.y = longReachYaw + yawDelta * draw;
+      const stagedYaw = oar.side * (OAR_YAW_CATCH + draw * OAR_YAW_SPAN);
+      // Keep the early drive at the long-arm reach boundary, then hand the
+      // fixed oar back to the authored draw arc with a smooth transition. A
+      // direct branch switch at the first arm-draw sample makes the elbow
+      // jump even though the oar itself is moving continuously.
+      const boundaryBlend = 1 - THREE.MathUtils.smoothstep(draw, 0.22, 1);
+      const yawDelta =
+        THREE.MathUtils.euclideanModulo(stagedYaw - solvedYaw + Math.PI, Math.PI * 2) - Math.PI;
+      oar.group.rotation.y = solvedYaw + yawDelta * (1 - boundaryBlend);
       // Convert the oar-local grip endpoint into rower-local coordinates. Both
       // objects share the avatar group as parent, so this is exact even before
       // Three updates matrixWorld for the draw.
@@ -1906,14 +2005,17 @@ function makeRowerAvatar(
       arm.wristTarget.copy(handlePoint);
       const v4ContactOffset = v4Refinement?.contactOffsets[i];
       if (v4ContactOffset) arm.wristTarget.sub(v4ContactOffset);
-      // Elbow branch: clearly rearward of the shoulder with restrained lateral
-      // clearance, while the palm target stays on the chest-level grip.
-      setArmBendHint(arm.shoulderPoint, arm.wristTarget, arm.side, arm.bendHint, {
-        lateral: -0.06 + draw * 0.09 + shoulderSet * 0.004,
-        up: 0.06 + draw * 0.05,
-        aft: -0.34 - bodySwing * 0.12 - handleTravel * 0.08 - draw * 0.34,
-      });
-      solveTwoBone3D(
+      // A rower's elbows only ever point down (British Rowing indoor
+      // technique): the arms hang from the shoulders with a near-vertical
+      // bend plane through the whole stroke — soft at the catch and
+      // recovery, deep down-and-back at the loaded draw, tilted a touch
+      // outward by the corridor — and the upper arm never opens toward a
+      // horizontal 90° armpit. Solving the down-plane unconditionally (not
+      // gated on a draw phase) is what makes that true: with a long arm the
+      // elbow circle is tiny and the down preference costs nothing, and as
+      // the draw bends the arm the same continuous solve deepens the hang.
+      arm.bendHint.set(0, -1, 0);
+      solveRowerArmWithCorridor(
         arm.shoulderPoint,
         arm.wristTarget,
         activeUpperArmLength,
@@ -1921,6 +2023,21 @@ function makeRowerAvatar(
         arm.bendHint,
         arm.elbowPoint,
         arm.handPoint,
+        // With ~28° of layback a straight-down humerus already hangs the
+        // elbow ~0.145 behind the shoulder plane, so the floor only forbids
+        // a past-vertical behind-the-back haul. A tighter floor bound the
+        // deep release elbow and made the floor-root selection snap.
+        arm.shoulderPoint.z - 0.16,
+        // Aim below the handle line. Targeting a band deeper than the elbow
+        // circle usually reaches makes the solve pick the lowest point of
+        // the circle, so straight-arm phases hang the elbow directly under
+        // the shoulder–grip chord. The depth follows blade load so the bent
+        // finish elbow rides deep while the spoon is buried and rises
+        // smoothly with the extraction instead of pinning against the
+        // behind-the-back floor.
+        arm.handTarget.y - THREE.MathUtils.lerp(0.125, 0.24, pendingBladeLoad),
+        arm.handTarget.y - THREE.MathUtils.lerp(-0.065, 0.05, pendingBladeLoad),
+        arm.side,
       );
       arm.shoulder.position.copy(arm.shoulderPoint);
       placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
@@ -1931,8 +2048,10 @@ function makeRowerAvatar(
       // hidden anatomical solve at the wrist while the terminal hand marker
       // remains exactly on the rigid grip.
       arm.hand.position.copy(arm.handTarget);
-      // Palm faces the scull grip: wrap fingers around the handle so V4's grip
-      // curl closes a fist *on* the rubber rather than an open mitt beside it.
+      // The authored hand's local axes are fixed by its reviewed grip pose.
+      // Inherit the oar frame and apply only its small side-specific neutral
+      // wrist correction; a free look-at solve has two mathematically valid
+      // roll solutions and can turn a palm through 180 degrees.
       arm.hand.quaternion.copy(oar.group.quaternion);
       arm.hand.rotateZ(arm.side * (Math.PI / 2));
       arm.hand.rotateX(-0.55 - shoulderSet * 0.08);
@@ -1954,7 +2073,11 @@ function makeRowerAvatar(
       // Keep the knees above the recessed cockpit without spreading them over
       // the gunwales. The old, wider/high marker made the leg chain read as a
       // separate object laid across the shell instead of a seated rower.
-      leg.bendHint.set(leg.side * 0.42, 0.65 - legExtension * 0.06, -0.26);
+      leg.bendHint.set(
+        leg.side * (0.22 - legExtension * 0.08),
+        0.35 - legExtension * 0.2,
+        leg.footTarget.z - 0.04 - legExtension * 0.2,
+      );
       solveTwoBone3D(
         leg.hipPoint,
         leg.footTarget,
@@ -1971,7 +2094,15 @@ function makeRowerAvatar(
       // a sliver. Place it directly at the heel/ankle with the shoe sole
       // pitched slightly downward into the stretcher.
       leg.foot.position.copy(leg.footPoint);
-      leg.foot.rotation.set(-0.22, 0, 0);
+      leg.foot.rotation.set(
+        THREE.MathUtils.lerp(
+          ROWER_STRETCHER.shoeCatchPitch,
+          ROWER_STRETCHER.shoeFinishPitch,
+          legExtension,
+        ),
+        0,
+        0,
+      );
       leg.foot.scale.set(1, 1, 1);
       leg.knee.position.copy(leg.kneePoint);
     }
@@ -2023,12 +2154,16 @@ function makeRowerAvatar(
     const handleProgress = handleTravel;
     for (const oar of oars) {
       oar.group.rotation.y = oar.side * (OAR_YAW_CATCH + handleProgress * OAR_YAW_SPAN);
-      // Both blade tips dip into the water together despite opposite X signs.
-      oar.group.rotation.z = -oar.side * bladeDepth * BLADE_DIP;
+      // Both blade tips dip together despite opposite X signs. The bladeWater
+      // channel buries the spoon for the whole loaded drive; the small extra
+      // draw roll lifts the inboard grips a few centimetres toward the finish
+      // without lifting the oarlocks or digging the spoon.
+      oar.group.rotation.z =
+        -oar.side * (bladeDepth * BLADE_DIP + handleProgress * HANDLE_RISE_ROLL);
       // The oarlock is a hull-fixed fulcrum. Moving this parent to bury the
       // blade made every drive visibly detach the shaft from its rigger; the
       // existing rotation supplies immersion while the real pivot stays put.
-      oar.group.position.y = 0.38;
+      oar.group.position.y = ROWER_OARLOCK.y;
       // The blade squares for catch/drive, feathers flat through recovery, then
       // squares again continuously before the next catch.
       oar.blade.rotation.x = (1 - bladeFeather) * (Math.PI / 2);
@@ -2042,29 +2177,53 @@ function makeRowerAvatar(
     const graph = sampleRowerMotionGraphInto(resolvedPose, rowMotionGraph);
     // Seat motion follows leg extension only; body swing and arm draw happen on
     // their later staged channels, eliminating the old one-cosine puppet motion.
-    rower.position.z = SEAT_CATCH_Z - graph.body.pelvisTravel.value * SEAT_TRAVEL;
+    rower.position.z = SEAT_CATCH_Z + graph.body.pelvisTravel.value * SEAT_TRAVEL;
     rower.position.y = reduce ? 0 : graph.accents.vertical.value * 0.03;
     rower.rotation.set(0, 0, 0);
+    const graphHandleTravel = graph.body.handleTravel.value;
+    // The oarlock is fixed to the shell. During the leg drive the athlete
+    // slides away from a nearly stationary catch handle; the late arm-draw
+    // channel is the equipment cue that moves the handle aft toward the
+    // chest. Using the aggregate handle channel here would include its leg
+    // contribution and pull the grip through the knees and torso too early.
+    // The shared graph begins its arm channel only after the legs have
+    // finished driving, so by the time armDraw rises the knees are flat and
+    // the raised drive-height grips travel above the knee envelope, not
+    // through it. Gating away just the first sliver of the channel keeps the
+    // long-arm reach through any residual leg motion while spreading the
+    // visible draw across most of the channel: the former 0.62 gate crushed
+    // the entire handle pull into roughly two display frames, which read as a
+    // finish teleport rather than a draw to the ribs.
+    const equipmentHandleTravel = THREE.MathUtils.smoothstep(graph.body.armDraw.value, 0.12, 1);
     placeUpperBody(
       graph.body.spineHinge.value,
       graph.body.shoulderSet.value,
-      graph.body.handleTravel.value,
+      graphHandleTravel,
       graph.body.headBob.value,
     );
     placeOars(
-      graph.body.handleTravel.value,
+      equipmentHandleTravel,
       graph.contacts.bladeWater.value,
       graph.contacts.bladeFeather.value,
     );
     placeLegs(graph.body.legExtension.value);
     pendingBodySwing = graph.body.spineHinge.value;
-    pendingArmDraw = graph.body.armDraw.value;
+    pendingArmDraw = equipmentHandleTravel;
     pendingShoulderSet = graph.body.shoulderSet.value;
-    pendingHandleTravel = graph.body.handleTravel.value;
+    pendingHandleTravel = equipmentHandleTravel;
+    pendingBladeLoad = graph.contacts.bladeWater.value;
     placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel);
     return reduce
       ? STATIC_AVATAR_MOTION
-      : { vertical: graph.accents.vertical.value, surge: graph.accents.surge.value };
+      : {
+          vertical: graph.accents.vertical.value,
+          surge: graph.accents.surge.value,
+          // Two buried spoons act as water-locked outriggers: a real scull is
+          // roll-stabilised for exactly the part of the stroke when the
+          // blades are in the water. Undamped hull roll swings the 2.97 m
+          // levers enough to porpoise the loaded blade back out of the water.
+          rollDamp: 1 - 0.8 * graph.contacts.bladeWater.value,
+        };
   };
 
   const [leftArm, rightArm] = arms;
@@ -2087,6 +2246,15 @@ function makeRowerAvatar(
     // oar-pin circles and shared elbow branch markers.
     rower.worldToLocal(sampledV4Shoulders[0]);
     rower.worldToLocal(sampledV4Shoulders[1]);
+    motion.getLegJointTargetWorld("left", sampledV4Knees[0]);
+    motion.getLegJointTargetWorld("right", sampledV4Knees[1]);
+    rower.worldToLocal(sampledV4Knees[0]);
+    rower.worldToLocal(sampledV4Knees[1]);
+    // The authored V4 lower body has its own segment proportions. Use the
+    // same constrained two-bone solve to derive its knee marker rather than
+    // asking that chain to imitate the shorter procedural fallback leg.
+    leftLeg.knee.position.copy(sampledV4Knees[0]);
+    rightLeg.knee.position.copy(sampledV4Knees[1]);
     rower.worldToLocal(sampledV4ReachOrigins[0]);
     rower.worldToLocal(sampledV4ReachOrigins[1]);
     sampledV4ContactOffsets[0].copy(sampledV4ReachOrigins[0]).sub(sampledV4Shoulders[0]);
@@ -4981,7 +5149,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       };
 
       if (this.sport === "rower") {
-        addPatch("hull-reflection", 0, 0, 1.72, 0.12);
+        addPatch("hull-reflection", 0, 0, 3.9, 0.12);
       } else if (this.sport === "skierg") {
         addPatch("ski-left", 0.08, -0.21, 0.98, 0.055);
         addPatch("ski-right", 0.08, 0.21, 0.98, 0.055);
@@ -5639,17 +5807,25 @@ export class CourseRenderer3D implements ReplayRenderer {
     const vertical = "vertical" in motion ? motion.vertical : motion.rebound;
     const bob = reduce || this.profile.bobAmp === 0 ? 0 : vertical * this.profile.bobAmp;
     outer.position.set(x, 0, z);
-    outer.rotation.y = Math.atan2(tx, tz); // local +Z (travel) -> tangent
+    // Rowing shells travel bow-first while the athlete faces the stern. The
+    // rower rig's fixed-contact anatomy faces local +Z, so its racing bow is
+    // local -Z and the complete shell needs a half-turn relative to the course
+    // tangent. The other sport rigs continue to face local +Z down-course.
+    outer.rotation.y = Math.atan2(tx, tz) + (this.sport === "rower" ? Math.PI : 0);
     avatar.group.position.y = bob;
     // Stroke surge: the hull checks at the catch and runs out through the
-    // drive — a local +Z (travel) offset synced to the shared stroke phase.
+    // drive — a local longitudinal offset synced to the shared stroke phase.
     const surge = reduce || this.profile.surgeAmp === 0 ? 0 : motion.surge * this.profile.surgeAmp;
-    avatar.group.position.z = surge;
+    avatar.group.position.z = this.sport === "rower" ? -surge : surge;
     // Hull roll mixes a slow ambient rock with a stroke-synced check so the
     // shell visibly loads at the catch instead of only drifting side to side.
+    // Sport rigs may damp it while their equipment is water-locked (buried
+    // scull blades stabilise the shell like outriggers through the drive).
     const ambientRoll = Math.sin(this.animPhase + cadence * 0.05) * 0.035;
     const strokeRoll = "surge" in motion ? motion.surge * 0.045 : 0;
-    avatar.group.rotation.z = reduce || !this.profile.roll ? 0 : ambientRoll + strokeRoll;
+    const rollDamp = "rollDamp" in motion && motion.rollDamp !== undefined ? motion.rollDamp : 1;
+    avatar.group.rotation.z =
+      reduce || !this.profile.roll ? 0 : (ambientRoll + strokeRoll) * rollDamp;
     // Most contacts are local to their equipment. Nordic poles are different:
     // their basket has to stay fixed in the course while the skier advances and
     // folds through the drive. Resolve that only after the outer course pose,
@@ -5770,7 +5946,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.livePlacement,
     );
 
-    const liveSurge = this.liveAvatar.group.position.z;
+    const liveSurge = this.liveAvatar.group.position.z * (this.sport === "rower" ? -1 : 1);
     this.liveContactFootprint.position.set(
       p.x + p.tx * liveSurge,
       this.sport === "rower" ? 0.022 : 0.018,
@@ -5785,7 +5961,13 @@ export class CourseRenderer3D implements ReplayRenderer {
     // fractional texels as the athlete rounds the 70 m arena.
     this.updateStableShadowAnchor(p.x, p.z);
 
-    this.advanceWake(this.liveWake, dLive, p.x - p.tx * 1.6, p.z - p.tz * 1.6);
+    const liveWakeOffset = this.sport === "rower" ? 4.15 : 1.6;
+    this.advanceWake(
+      this.liveWake,
+      dLive,
+      p.x - p.tx * liveWakeOffset,
+      p.z - p.tz * liveWakeOffset,
+    );
 
     // Catch spray on the live lane: spawn a burst as each stroke catches,
     // integrate, and write the survivors into the InstancedMesh.
@@ -5890,14 +6072,20 @@ export class CourseRenderer3D implements ReplayRenderer {
         this.ghostPlacement,
       );
       this.ghostContactFootprint.visible = true;
-      const ghostSurge = this.ghostAvatar.group.position.z;
+      const ghostSurge = this.ghostAvatar.group.position.z * (this.sport === "rower" ? -1 : 1);
       this.ghostContactFootprint.position.set(
         gp.x + gp.tx * ghostSurge,
         this.sport === "rower" ? 0.021 : 0.017,
         gp.z + gp.tz * ghostSurge,
       );
       this.ghostContactFootprint.rotation.y = Math.atan2(gp.tx, gp.tz) - Math.PI / 2;
-      this.advanceWake(this.ghostWake, dGhost, gp.x - gp.tx * 1.6, gp.z - gp.tz * 1.6);
+      const ghostWakeOffset = this.sport === "rower" ? 4.15 : 1.6;
+      this.advanceWake(
+        this.ghostWake,
+        dGhost,
+        gp.x - gp.tx * ghostWakeOffset,
+        gp.z - gp.tz * ghostWakeOffset,
+      );
       const ghostText = `${state.ghost.label || "PB"} · ${Math.round(state.ghost.distFrac * 100)}%`;
       if (ghostText !== this.lastGhostLabel && this.ghostLabel && this.ghostLabelTex) {
         updateTextSprite(this.ghostLabel, this.ghostLabelTex, ghostText, C.labelBg, C.ghost);
@@ -5952,10 +6140,14 @@ export class CourseRenderer3D implements ReplayRenderer {
     // Portrait RowErg needs substantially more room for the full oar span;
     // upright SkiErg and compact BikeErg can stay closer.
     const narrowScale =
-      this.sport === "rower" ? (state.ghost ? 2.12 : 1.96) : state.ghost ? 1.38 : 1.2;
+      this.sport === "rower" ? (state.ghost ? 2.12 : 2.1) : state.ghost ? 1.38 : 1.2;
     const baseBack = this.reduceMotion
-      ? sportRig.back + 0.8 + ghostPullback
-      : (sportRig.back + ghostPullback) * (narrow ? narrowScale : 1);
+      ? (this.sport === "rower" ? 6.2 : sportRig.back + 0.8) + ghostPullback
+      : narrow
+        ? (sportRig.back + ghostPullback) * narrowScale
+        : this.sport === "rower"
+          ? 5.4 + ghostPullback
+          : sportRig.back + ghostPullback;
     const ahead = sportRig.ahead;
     // A static lateral offset is not an animation trigger. Preserve the full
     // three-quarter line on desktop; on the narrow SkiErg stage, ease toward
@@ -6044,6 +6236,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         ? Math.min(0.16, lateral * 0.13)
         : lateral;
     const qaAhead = qaFront || qaGrip ? 0 : ahead;
+    const qaFromPositiveTangent = (qaFront || qaGripFront) && this.sport !== "rower";
     // A small live-lane bias keeps the vector non-zero when the two course
     // tangents cancel at half a lap. Adding it before normalization makes the
     // heading continuous as the gap crosses that point; a binary fallback
@@ -6072,12 +6265,12 @@ export class CourseRenderer3D implements ReplayRenderer {
     this.cameraLayoutMode = cameraLayoutMode;
     this.chase.set(
       focusX +
-        (qaFront || qaGripFront ? focusTx : -focusTx) * back +
-        rx * (qaFront || qaGripFront ? -qaLateral : qaLateral),
+        (qaFromPositiveTangent ? focusTx : -focusTx) * back +
+        rx * (qaFromPositiveTangent ? -qaLateral : qaLateral),
       height,
       focusZ +
-        (qaFront || qaGripFront ? focusTz : -focusTz) * back +
-        rz * (qaFront || qaGripFront ? -qaLateral : qaLateral),
+        (qaFromPositiveTangent ? focusTz : -focusTz) * back +
+        rz * (qaFromPositiveTangent ? -qaLateral : qaLateral),
     );
     this.lookAt.set(
       focusX + focusTx * qaAhead,

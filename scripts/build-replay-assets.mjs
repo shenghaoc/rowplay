@@ -825,7 +825,8 @@ function collectBlenderParts(scene, expectedParts) {
  */
 async function buildRowingAssemblyParts() {
   const scratch = await mkdtemp(join(tmpdir(), "rowplay-rowing-shell-blender-"));
-  const sourcePath = join(scratch, "rowplay-rowing-shell-source.glb");
+  const sourcePath =
+    process.env.ROWING_SHELL_SOURCE || join(scratch, "rowplay-rowing-shell-source.glb");
   const blender = process.env.BLENDER_BIN || DEFAULT_BLENDER;
   try {
     // The build must stay a pure function of reviewed source. An earlier
@@ -865,27 +866,33 @@ async function buildRowingAssemblyParts() {
 }
 
 function rowOarRigParts() {
-  const shaft = tubeGeometryBetween([-0.61, 0, 0], [2.14, 0, 0], 0.02, 16, 0.82);
+  // The carbon shaft starts where the rubber grip ends. Extending it through
+  // the grip made the white shaft occlude the dark handhold, so the athlete
+  // appeared to clutch a bare tube even when the finger rig was closed.
+  const shaft = tubeGeometryBetween([-0.5, -0.04, 0], [1.72, 0, 0], 0.02, 16, 0.82);
   const grip = loftGeometry(
     [
-      { p: -0.78, rx: 0.018, rz: 0.018 },
-      { p: -0.68, rx: 0.023, rz: 0.021 },
-      { p: -0.5, rx: 0.024, rz: 0.022 },
-      { p: -0.42, rx: 0.018, rz: 0.018 },
+      { p: -0.82, rx: 0.021, rz: 0.021 },
+      { p: -0.76, rx: 0.024, rz: 0.023 },
+      { p: -0.55, rx: 0.024, rz: 0.023 },
+      { p: -0.5, rx: 0.021, rz: 0.021 },
     ],
     14,
     "x",
     Math.PI / 14,
   );
+  grip.translate(0, -0.04, 0);
   const collar = bakeGeometry(new THREE.TorusGeometry(0.052, 0.012, 8, 18), {
     rotation: [0, Math.PI / 2, 0],
-    position: [1.82, 0, 0],
+    position: [0.02, 0, 0],
   });
   const sleeve = bakeGeometry(new THREE.CylinderGeometry(0.043, 0.036, 0.19, 16), {
     rotation: [0, 0, Math.PI / 2],
-    position: [1.57, 0, 0],
+    position: [0.14, 0, 0],
   });
-  const handleCap = ellipsoidGeometry([0.022, 0.022, 0.022], 14, 10, [-0.79, 0, 0]);
+  // Scull grips terminate in a flat thumb stop, not a spherical pommel. The
+  // former ball read as though it passed through the wrist at the finish.
+  const handleCap = ellipsoidGeometry([0.006, 0.023, 0.023], 14, 10, [-0.824, -0.04, 0]);
   return [
     { name: "shaft", geometry: shaft, materialRole: "equipment-light" },
     { name: "grip", geometry: grip, materialRole: "equipment-grip" },

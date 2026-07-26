@@ -211,6 +211,22 @@ whose limbs disappear through transparency sorting.
    decorations that cause moving depth seams SHALL be removed or represented by
    vertex colour, and both leg chains SHALL remain distinguishable from shell
    and cockpit materials.
+6. WHEN the rowing assembly is shown underway THEN the racing shell SHALL be
+   approximately 7.8 m long, travel bow-first, and place the aft-facing athlete
+   between the bow-side sliding seat and stern-side fixed foot stretcher.
+7. WHEN the feet are contact-locked THEN the stretcher SHALL be angled 40–44°,
+   both heels SHALL sit 15–20 cm below the seat top, and visible straps plus
+   heel restraints SHALL communicate secure attachment without moving the
+   authoritative sole contacts.
+8. WHEN the rowing drive runs THEN leg extension SHALL lead torso opening and
+   the arm draw; WHEN recovery runs THEN hands-away SHALL lead body-over and
+   the seat slide, while the shell, riggers, oarlocks, and feet retain their
+   deterministic mechanical relationships.
+9. WHEN the single-scull assembly is proportioned THEN its modern hull/rigger
+   relationship SHALL be checked against a documented licence-compatible
+   reference, paired sculls SHALL remain regulation-scale, catch grips SHALL
+   begin forward of the shoulders, and finish grips SHALL draw to the lower-rib
+   band without entering the torso.
 
 ### Requirement 9: True-scale BikeErg equipment and seated fit
 

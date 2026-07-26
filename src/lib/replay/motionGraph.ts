@@ -461,10 +461,10 @@ function sampleRower(timing: MotionTiming, pose: StrokePose): RowerMotionGraph {
   const legs = pulse(cycle, 0, drive * 0.56, drive + recovery * 0.34, 1);
   const torso = pulse(
     cycle,
-    drive * 0.12,
-    drive * 0.82,
-    drive + recovery * 0.13,
-    drive + recovery * 0.66,
+    drive * 0.34,
+    drive * 0.9,
+    drive + recovery * 0.18,
+    drive + recovery * 0.58,
   );
   // Legs → body → arms: the hands first clear the knee envelope with
   // softly long arms, then the late draw brings the handle into the finish.
@@ -477,7 +477,11 @@ function sampleRower(timing: MotionTiming, pose: StrokePose): RowerMotionGraph {
   // The blade is already squared and loaded at the catch. Preparing depth in
   // late recovery keeps this cyclic contact C2-continuous and avoids using the
   // long oar lever to kick the handle (and hands) forward after the catch.
-  const driveBladeWater = pulse(cycle, -drive * 0.1, 0, drive * 0.78, drive * 0.95);
+  // Burial holds through the *entire* drive — the arm draw is still propulsive
+  // — and the spoon extracts in the first stretch of the recovery. The former
+  // 0.78–0.95 fade released the blade while the hands were mid-draw, so the
+  // rendered spoon left the water exactly when the stroke was loaded.
+  const driveBladeWater = pulse(cycle, -drive * 0.1, 0, drive, drive + recovery * 0.08);
   const preCatchBladeWater = quinticRamp(cycle, drive + recovery * 0.82, 1);
   const bladeWater = add(driveBladeWater, preCatchBladeWater);
   const bladeFeather = pulse(
@@ -1139,10 +1143,10 @@ function sampleRowerInto(pose: StrokePose, output: RowerMotionGraph): void {
   pulseInto(
     curves.rowTorso,
     cycle,
-    drive * 0.12,
-    drive * 0.82,
-    drive + recovery * 0.13,
-    drive + recovery * 0.66,
+    drive * 0.34,
+    drive * 0.9,
+    drive + recovery * 0.18,
+    drive + recovery * 0.58,
   );
   // Legs → body → arms: keep the arms softly long until the hands clear
   // the knee envelope, then expose the late draw in both fallback and V4 rigs.
@@ -1151,7 +1155,9 @@ function sampleRowerInto(pose: StrokePose, output: RowerMotionGraph): void {
   combine2Into(curves.rowArms, curves.rowArms, 1, curves.rowArmRecovery, -1);
   combine3Into(curves.rowHandle, curves.rowLegs, 0.42, curves.rowTorso, 0.32, curves.rowArms, 0.26);
   combine2Into(curves.rowShoulders, curves.rowTorso, 0.45, curves.rowArms, 0.55);
-  pulseInto(curves.rowBladeDrive, cycle, -drive * 0.1, 0, drive * 0.78, drive * 0.95);
+  // Mirrors sampleRower: burial holds through the full drive and extracts in
+  // early recovery so the loaded draw never renders an airborne spoon.
+  pulseInto(curves.rowBladeDrive, cycle, -drive * 0.1, 0, drive, drive + recovery * 0.08);
   quinticRampInto(curves.rowBladePreCatch, cycle, drive + recovery * 0.82, 1);
   combine2Into(curves.rowBladeWater, curves.rowBladeDrive, 1, curves.rowBladePreCatch, 1);
   pulseInto(

@@ -505,6 +505,21 @@ if (shouldCapture("row-finish-front")) {
     camera: "front",
   });
 }
+for (const gripPose of [
+  { name: "row-grip-catch", seconds: 0.05 },
+  { name: "row-grip-finish", seconds: 0.8 },
+]) {
+  if (shouldCapture(gripPose.name)) {
+    await captureStill({
+      ...gripPose,
+      sport: SPORTS.row,
+      quality: "ultra",
+      theme: "light",
+      viewport: "desktop",
+      camera: "grip",
+    });
+  }
+}
 
 for (const sport of Object.values(SPORTS)) {
   if (shouldCapture(`${sport.label}-one-cycle`)) await captureCycle(sport);

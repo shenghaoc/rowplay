@@ -233,6 +233,8 @@ export interface ReplayV4MotionController {
   update(sample: ReplayV4MotionSample): boolean;
   /** World-space shoulder joint after the latest successful prepare. */
   getShoulderWorld(side: "left" | "right", output?: THREE.Vector3): THREE.Vector3;
+  /** World-space knee target for the prepared contact-constrained leg. */
+  getLegJointTargetWorld(side: "left" | "right", output?: THREE.Vector3): THREE.Vector3;
   /** World-space wrist→palm contact vector after the latest prepare. */
   getHandContactOffsetWorld(side: "left" | "right", output?: THREE.Vector3): THREE.Vector3;
   /** Structural shoulder→wrist reach, excluding the terminal palm offset. */
@@ -1318,6 +1320,36 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     return bone.getWorldPosition(output);
   }
 
+  getLegJointTargetWorld(side: "left" | "right", output = new THREE.Vector3()): THREE.Vector3 {
+    const chain = this.chains.find(
+      (candidate) => candidate.isLeg && candidate.side === (side === "left" ? -1 : 1),
+    );
+    if (!chain) throw new Error(`Replay V4 ${side} leg chain is missing`);
+    chain.upper.getWorldPosition(this.rootWorld);
+    chain.middle.getWorldPosition(this.middleWorld);
+    chain.effector.getWorldPosition(this.effectorWorld);
+    chain.target.getWorldPosition(this.targetWorld);
+    chain.jointTarget.getWorldPosition(this.bendHint);
+    this.bendHint.sub(this.rootWorld);
+    chain.target.getWorldQuaternion(this.targetWorldQuaternion);
+    chain.effector.getWorldScale(this.effectorWorldScale);
+    this.contactOffsetWorld
+      .copy(chain.offset)
+      .multiply(this.effectorWorldScale)
+      .applyQuaternion(this.targetWorldQuaternion);
+    this.desiredEffectorWorld.copy(this.targetWorld).sub(this.contactOffsetWorld);
+    solveTwoBone3D(
+      this.rootWorld,
+      this.desiredEffectorWorld,
+      this.rootWorld.distanceTo(this.middleWorld),
+      this.middleWorld.distanceTo(this.effectorWorld),
+      this.bendHint,
+      this.solvedMiddle,
+      this.solvedEnd,
+    );
+    return output.copy(this.solvedMiddle);
+  }
+
   getHandContactOffsetWorld(side: "left" | "right", output = new THREE.Vector3()): THREE.Vector3 {
     const name = side === "left" ? "leftHand" : "rightHand";
     const metric = this.options.instance.effectors[name];
@@ -1649,7 +1681,11 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     }
     if (!chain.isLeg && this.options.sport === "rower") {
       this.root.getWorldQuaternion(this.rootWorldQuaternion);
-      this.branchLateral.set(chain.side * 0.34, 0.015, 0).applyQuaternion(this.rootWorldQuaternion);
+      // A gentle outward lean is enough ribcage clearance now that the shared
+      // marker points the drawing elbow down under the shoulder line; the old
+      // 0.34 bias rotated the bend plane sideways and re-created the exact
+      // left/right chicken-wing the marker was selected to avoid.
+      this.branchLateral.set(chain.side * 0.12, 0.015, 0).applyQuaternion(this.rootWorldQuaternion);
       this.bendHint.add(this.branchLateral);
     }
     if (this.bendHint.lengthSq() <= TRANSFORM_EPSILON) {
