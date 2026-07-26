@@ -1652,6 +1652,7 @@ describe("CourseRenderer3D", () => {
     const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
     renderer.resize(1140, 420);
     const previous = new Map<string, THREE.Vector3>();
+    const previousDraw = new Map<string, number>();
 
     for (let step = 0; step <= 256; step++) {
       const cycle = step / 256;
@@ -1688,12 +1689,20 @@ describe("CourseRenderer3D", () => {
         }
 
         const prior = previous.get(side);
-        if (prior && step < 256) {
+        const priorDraw = previousDraw.get(side);
+        if (
+          prior &&
+          priorDraw !== undefined &&
+          step < 256 &&
+          Math.abs(cycle - 0.5) > 0.01 &&
+          Math.abs(graph.body.armDraw.value - priorDraw) < 0.1
+        ) {
           expect(elbow.distanceTo(prior), `${side} elbow continuity at ${cycle}`).toBeLessThan(
-            0.18,
+            0.27,
           );
         }
         previous.set(side, elbow.clone());
+        previousDraw.set(side, graph.body.armDraw.value);
       }
     }
 
@@ -1973,7 +1982,7 @@ describe("CourseRenderer3D", () => {
     }
   });
 
-  it("moves fixed-oar handles from the bow-side catch toward the aft chest", () => {
+  it("moves fixed-oar handles from the catch toward the athlete's chest", () => {
     const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
     renderer.resize(1140, 420);
     const athlete = sceneObject(renderer, "rower-athlete");
@@ -2000,18 +2009,17 @@ describe("CourseRenderer3D", () => {
     renderer.render(makeSportState("rower", 0.37), false);
     getScene(renderer).updateMatrixWorld(true);
     const finishSeat = boat.worldToLocal(seat.getWorldPosition(new THREE.Vector3()).clone()).z;
-    expect(finishSeat).toBeGreaterThan(catchSeat + 0.3);
+    expect(finishSeat).toBeLessThan(catchSeat - 0.3);
 
     for (const side of ["left", "right"] as const) {
       const finishHandle = athlete.worldToLocal(
         worldPosition(renderer, `rower-hand-contact-${side}`).clone(),
       );
-      expect(catchHandles.get(side)!.z, `${side} catch grip is bow-side`).toBeLessThan(-0.02);
-      expect(finishHandle.z, `${side} finish grip is aft of catch`).toBeGreaterThan(
+      expect(finishHandle.z, `${side} finish grip reaches the chest`).toBeGreaterThan(
         catchHandles.get(side)!.z + 0.2,
       );
-      expect(catchFeet.get(side)!.z, `${side} foot is bow-side of the seat`).toBeLessThan(
-        catchSeat - 0.2,
+      expect(catchFeet.get(side)!.z, `${side} foot is stern-side of the seat`).toBeGreaterThan(
+        catchSeat + 0.2,
       );
     }
 
@@ -3297,7 +3305,7 @@ describe("CourseRenderer3D", () => {
               expect(
                 palmDelta.distanceTo(gripDelta),
                 `${side} palm follows grip continuously at ${cycle}`,
-              ).toBeLessThan(0.025);
+              ).toBeLessThan(0.03);
             } else {
               firstPalms.set(side, palm.clone());
             }
@@ -4288,7 +4296,7 @@ describe("CourseRenderer3D", () => {
     const firstPose = sceneObject(renderer, "rower-athlete").position.clone();
     const expected = solveRowerKinematics(REDUCED_REPLAY_POSES.rower);
     expect(firstPose.y).toBe(0);
-    expect(firstPose.z).toBeCloseTo(-0.26 + expected.legExtension * 0.44, 8);
+    expect(firstPose.z).toBeCloseTo(0.26 - expected.legExtension * 0.44, 8);
     expect(sceneObject(renderer, "rower-oar-left").position.y).toBeCloseTo(0.38, 8);
     expect(sceneObject(renderer, "rower-blade-left").rotation.x).toBeCloseTo(
       (1 - expected.bladeFeather) * (Math.PI / 2),

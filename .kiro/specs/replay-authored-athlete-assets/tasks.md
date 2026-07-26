@@ -162,7 +162,7 @@ figure, readability, and motion specs.
   - [x] Replace the short symmetric boat read with an approximately 7.8 m
     bow-first single shell, distinct bow/stern decks, open cockpit, wing rigger,
     oarlocks, paired sculls, rails, and sliding carriage
-  - [x] Face the athlete aft and place the fixed 40–44° stretcher bow-side of
+  - [x] Face the athlete aft and place the fixed 40–44° stretcher stern-side of
     the seat, with both heels 15–20 cm below the seat top, visible straps, and
     heel restraints
   - [x] Sequence the drive legs → torso → arms and recovery hands → body → slide

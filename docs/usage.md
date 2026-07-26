@@ -159,7 +159,7 @@ The current 3D packages make the anatomical and equipment contracts visible:
 the V4 skin deforms around its authored skeleton, while the V3 equipment builds
 as coherent assemblies. RowErg uses a bow-first, approximately 7.8 m
 open-cockpit single shell with distinct bow/stern decks, wing rigger, fixed
-oarlocks, paired sculls, recessed leg well, fixed 42° bow-side stretcher,
+oarlocks, paired sculls, recessed leg well, fixed 42° stern-side stretcher,
 visible straps and heel restraints, and a moving four-roller seat carriage. The
 athlete faces aft; fixed-oar handles sweep from the catch to the lower chest
 while the feet stay secured to the stretcher. Other assemblies include cambered

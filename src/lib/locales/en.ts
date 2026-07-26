@@ -332,7 +332,7 @@ The animation follows the workout's valid logged cycles: each stroke row advance
 
 The 2D view draws a lightweight procedural athlete. In 3D, rowplay loads a compact, repository-owned generic athlete as one skinned mesh. RowErg, SkiErg, and BikeErg each have an authored canonical technique clip, sampled deterministically from replay pose and time; after each sample, analytic hand and foot correction preserves the authoritative equipment contacts. If V4 cannot load, the V3 authored geometry and procedural 3D paths remain available, with Canvas 2D as the stable outer fallback. The figure and clips are presentation art, not athlete-specific biomechanics: the assets contain no scan, avatar-generator output, user image, recorded motion, or athlete likeness.
 
-The 3D RowErg presentation uses a bow-first, approximately 7.8 m open-cockpit single shell. The athlete faces aft with feet secured to a fixed 42° bow-side stretcher by visible straps and heel restraints; fixed oarlocks guide paired scull handles from the catch to the lower chest.
+The 3D RowErg presentation uses a bow-first, approximately 7.8 m open-cockpit single shell. The athlete faces aft with feet secured to a fixed 42° stern-side stretcher by visible straps and heel restraints; fixed oarlocks guide paired scull handles from the catch to the lower chest.
 
 In 3D, the **Quality** selector picks low, medium, high, or ultra graphics. Ultra requires WebGPU; on WebGL-only devices it falls back to high. If the device can't hold a smooth frame rate, the renderer automatically lowers resolution first and effects second. Replay animation honours the operating system's reduced-motion setting.
 

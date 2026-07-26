@@ -28,11 +28,11 @@ from mathutils import Vector
 # degrees from the hull floor and the seat 15-20 cm above the heels. The board
 # is authored as an XY plane, so a -48 degree object rotation leaves that plane
 # 42 degrees above horizontal in the exported Three.js coordinate system.
-ROWER_FOOT_CONTACT_Y = 0.21
-ROWER_FOOT_CONTACT_Z = -0.75
+ROWER_FOOT_CONTACT_Y = 0.215
+ROWER_FOOT_CONTACT_Z = 0.75
 ROWER_STRETCHER_ANGLE = math.radians(-48)
 ROWER_STRETCHER_CENTER_Y = 0.295
-ROWER_STRETCHER_CENTER_Z = -0.68
+ROWER_STRETCHER_CENTER_Z = 0.68
 
 
 def parse_args() -> argparse.Namespace:
@@ -440,7 +440,7 @@ def build_boat() -> None:
     # pins close to the narrow hull crossed the grips at the catch and forced
     # both forearms through the torso; these wider pins keep
     # each hand on its own grip while preserving the long lever and open shell.
-    pivots = [(-0.88, 0.38, -0.28), (0.88, 0.38, -0.28)]
+    pivots = [(-0.88, 0.38, 0.28), (0.88, 0.38, 0.28)]
     for index, pivot in enumerate(pivots):
         side_name = "port" if index == 0 else "starboard"
         sign = -1 if index == 0 else 1
@@ -448,7 +448,7 @@ def build_boat() -> None:
             "riggers",
             f"{side_name}-main",
             "equipment-metal",
-            (sign * 0.105, 0.286, -0.02),
+            (sign * 0.105, 0.286, 0.02),
             pivot,
             0.019,
             vertices=20,
@@ -457,7 +457,7 @@ def build_boat() -> None:
             "riggers",
             f"{side_name}-brace-aft",
             "equipment-metal",
-            (sign * 0.17, 0.286, -0.24),
+            (sign * 0.17, 0.286, 0.24),
             pivot,
             0.012,
             vertices=16,
@@ -466,7 +466,7 @@ def build_boat() -> None:
             "riggers",
             f"{side_name}-brace-fore",
             "equipment-metal",
-            (sign * 0.17, 0.286, 0.18),
+            (sign * 0.17, 0.286, -0.18),
             pivot,
             0.012,
             vertices=16,

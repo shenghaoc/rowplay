@@ -1569,13 +1569,13 @@ function makeHead(skinMat: THREE.Material, hairMat: THREE.Material, segments = 1
 
 const ROWER_FOOT_CONTACT = Object.freeze({
   lateral: 0.12,
-  y: 0.21,
-  /** Bow-side of the aft-facing athlete; the shell bow is local -Z. */
-  z: -0.75,
+  y: 0.215,
+  /** Stern-side and directly ahead of the aft-facing athlete. */
+  z: 0.75,
 });
 const ROWER_STRETCHER = Object.freeze({
   centerY: 0.295,
-  centerZ: -0.68,
+  centerZ: 0.68,
   boardRotation: THREE.MathUtils.degToRad(-48),
   shoeCatchPitch: THREE.MathUtils.degToRad(-35),
   shoeFinishPitch: THREE.MathUtils.degToRad(-42),
@@ -1583,8 +1583,8 @@ const ROWER_STRETCHER = Object.freeze({
 const ROWER_OARLOCK = Object.freeze({
   lateral: 0.88,
   y: 0.38,
-  /** Bow-side pin keeps the scull handles in front of the torso at mid-draw. */
-  z: -0.28,
+  /** Stern-side pin keeps the scull handles in front of the torso at mid-draw. */
+  z: 0.28,
 });
 
 function addRowerBoatQualityDetails(
@@ -2086,10 +2086,11 @@ function makeRowerAvatar(
   // turn them into a stroke that reads at a glance without leaving the hull.
   // Seat start is biased forward so travel can grow without pulling the hips
   // past the fixed footplate reach of the thigh+shin chain (~1.10 m).
-  const SEAT_TRAVEL = 0.44;
-  // The shell bow and stretcher are local -Z. At the catch the seat is
-  // bow-side; the drive carries it aft (+Z) while the feet stay fixed.
-  const SEAT_CATCH_Z = -0.26;
+  const SEAT_TRAVEL = -0.44;
+  // The aft-facing athlete and fixed stretcher point toward local +Z. At the
+  // catch the seat is closest to the feet; the drive carries it bowward (-Z)
+  // while the feet stay fixed.
+  const SEAT_CATCH_Z = 0.26;
   const THIGH_LENGTH = 0.552;
   const SHIN_LENGTH = 0.552;
   const UPPER_ARM_LENGTH = 0.39;
@@ -2109,7 +2110,7 @@ function makeRowerAvatar(
   // stay long; late draw brings the bar to the *lower chest / ribs*, not behind
   // the back (British Rowing / Concept2 finish coaching).
   const OAR_YAW_CATCH = -0.3;
-  const OAR_DRAW_YAW = 0.715;
+  const OAR_DRAW_YAW = -0.715;
   const OAR_YAW_SPAN = OAR_DRAW_YAW - OAR_YAW_CATCH;
   // A scull blade is buried only just below the surface. The former deep roll
   // lifted the 0.82 m inboard handle by more than 11 cm during the first few
