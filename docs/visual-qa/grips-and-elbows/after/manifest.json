@@ -1,0 +1,1961 @@
+{
+  "commit": "47c4c60fdaa848f1744b8f2ba73516c582d13fa8",
+  "baseUrl": "http://127.0.0.1:8792",
+  "appBundle": "/_app/immutable/entry/app.BxBtCa4E.js",
+  "capturedAt": "2026-07-26T17:25:01.978Z",
+  "evidence": [
+    {
+      "kind": "still",
+      "file": "poses/row-catch-normal.jpg",
+      "sport": "row",
+      "phase": "catch",
+      "seconds": 0.05,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-catch-front.jpg",
+      "sport": "row",
+      "phase": "catch",
+      "seconds": 0.05,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-catch-rear.jpg",
+      "sport": "row",
+      "phase": "catch",
+      "seconds": 0.05,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-catch-top.jpg",
+      "sport": "row",
+      "phase": "catch",
+      "seconds": 0.05,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-catch-close.jpg",
+      "sport": "row",
+      "phase": "catch",
+      "seconds": 0.05,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-catch-grip.jpg",
+      "sport": "row",
+      "phase": "catch",
+      "seconds": 0.05,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-catch-grip-left.jpg",
+      "sport": "row",
+      "phase": "catch",
+      "seconds": 0.05,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-mid-drive-normal.jpg",
+      "sport": "row",
+      "phase": "mid-drive",
+      "seconds": 0.55,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-mid-drive-front.jpg",
+      "sport": "row",
+      "phase": "mid-drive",
+      "seconds": 0.55,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-mid-drive-rear.jpg",
+      "sport": "row",
+      "phase": "mid-drive",
+      "seconds": 0.55,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-mid-drive-top.jpg",
+      "sport": "row",
+      "phase": "mid-drive",
+      "seconds": 0.55,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-mid-drive-close.jpg",
+      "sport": "row",
+      "phase": "mid-drive",
+      "seconds": 0.55,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-mid-drive-grip.jpg",
+      "sport": "row",
+      "phase": "mid-drive",
+      "seconds": 0.55,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-mid-drive-grip-left.jpg",
+      "sport": "row",
+      "phase": "mid-drive",
+      "seconds": 0.55,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-finish-draw-normal.jpg",
+      "sport": "row",
+      "phase": "finish-draw",
+      "seconds": 0.8,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-finish-draw-front.jpg",
+      "sport": "row",
+      "phase": "finish-draw",
+      "seconds": 0.8,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-finish-draw-rear.jpg",
+      "sport": "row",
+      "phase": "finish-draw",
+      "seconds": 0.8,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-finish-draw-top.jpg",
+      "sport": "row",
+      "phase": "finish-draw",
+      "seconds": 0.8,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-finish-draw-close.jpg",
+      "sport": "row",
+      "phase": "finish-draw",
+      "seconds": 0.8,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-finish-draw-grip.jpg",
+      "sport": "row",
+      "phase": "finish-draw",
+      "seconds": 0.8,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-finish-draw-grip-left.jpg",
+      "sport": "row",
+      "phase": "finish-draw",
+      "seconds": 0.8,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-extraction-normal.jpg",
+      "sport": "row",
+      "phase": "extraction",
+      "seconds": 0.95,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-extraction-front.jpg",
+      "sport": "row",
+      "phase": "extraction",
+      "seconds": 0.95,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-extraction-rear.jpg",
+      "sport": "row",
+      "phase": "extraction",
+      "seconds": 0.95,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-extraction-top.jpg",
+      "sport": "row",
+      "phase": "extraction",
+      "seconds": 0.95,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-extraction-close.jpg",
+      "sport": "row",
+      "phase": "extraction",
+      "seconds": 0.95,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-extraction-grip.jpg",
+      "sport": "row",
+      "phase": "extraction",
+      "seconds": 0.95,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-extraction-grip-left.jpg",
+      "sport": "row",
+      "phase": "extraction",
+      "seconds": 0.95,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-recovery-normal.jpg",
+      "sport": "row",
+      "phase": "recovery",
+      "seconds": 1.5,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-recovery-front.jpg",
+      "sport": "row",
+      "phase": "recovery",
+      "seconds": 1.5,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-recovery-rear.jpg",
+      "sport": "row",
+      "phase": "recovery",
+      "seconds": 1.5,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-recovery-top.jpg",
+      "sport": "row",
+      "phase": "recovery",
+      "seconds": 1.5,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-recovery-close.jpg",
+      "sport": "row",
+      "phase": "recovery",
+      "seconds": 1.5,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-recovery-grip.jpg",
+      "sport": "row",
+      "phase": "recovery",
+      "seconds": 1.5,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-recovery-grip-left.jpg",
+      "sport": "row",
+      "phase": "recovery",
+      "seconds": 1.5,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-finish-draw-close-skeleton.jpg",
+      "sport": "row",
+      "phase": "finish-draw",
+      "seconds": 0.8,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": true,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "cycle",
+      "file": "cycles/row-cycle-normal.webm",
+      "sport": "row",
+      "camera": "normal",
+      "durationMs": 4500,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "cycle",
+      "file": "cycles/row-cycle-grip.webm",
+      "sport": "row",
+      "camera": "grip",
+      "durationMs": 4500,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "cycle",
+      "file": "cycles/row-cycle-grip-left.webm",
+      "sport": "row",
+      "camera": "grip-left",
+      "durationMs": 4500,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-reach-normal.jpg",
+      "sport": "ski",
+      "phase": "reach",
+      "seconds": 0.05,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-reach-front.jpg",
+      "sport": "ski",
+      "phase": "reach",
+      "seconds": 0.05,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-reach-rear.jpg",
+      "sport": "ski",
+      "phase": "reach",
+      "seconds": 0.05,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-reach-top.jpg",
+      "sport": "ski",
+      "phase": "reach",
+      "seconds": 0.05,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-reach-close.jpg",
+      "sport": "ski",
+      "phase": "reach",
+      "seconds": 0.05,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-reach-grip.jpg",
+      "sport": "ski",
+      "phase": "reach",
+      "seconds": 0.05,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-reach-grip-left.jpg",
+      "sport": "ski",
+      "phase": "reach",
+      "seconds": 0.05,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-plant-normal.jpg",
+      "sport": "ski",
+      "phase": "plant",
+      "seconds": 0.3,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-plant-front.jpg",
+      "sport": "ski",
+      "phase": "plant",
+      "seconds": 0.3,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-plant-rear.jpg",
+      "sport": "ski",
+      "phase": "plant",
+      "seconds": 0.3,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-plant-top.jpg",
+      "sport": "ski",
+      "phase": "plant",
+      "seconds": 0.3,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-plant-close.jpg",
+      "sport": "ski",
+      "phase": "plant",
+      "seconds": 0.3,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-plant-grip.jpg",
+      "sport": "ski",
+      "phase": "plant",
+      "seconds": 0.3,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-plant-grip-left.jpg",
+      "sport": "ski",
+      "phase": "plant",
+      "seconds": 0.3,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-loaded-pull-normal.jpg",
+      "sport": "ski",
+      "phase": "loaded-pull",
+      "seconds": 0.55,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-loaded-pull-front.jpg",
+      "sport": "ski",
+      "phase": "loaded-pull",
+      "seconds": 0.55,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-loaded-pull-rear.jpg",
+      "sport": "ski",
+      "phase": "loaded-pull",
+      "seconds": 0.55,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-loaded-pull-top.jpg",
+      "sport": "ski",
+      "phase": "loaded-pull",
+      "seconds": 0.55,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-loaded-pull-close.jpg",
+      "sport": "ski",
+      "phase": "loaded-pull",
+      "seconds": 0.55,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-loaded-pull-grip.jpg",
+      "sport": "ski",
+      "phase": "loaded-pull",
+      "seconds": 0.55,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-loaded-pull-grip-left.jpg",
+      "sport": "ski",
+      "phase": "loaded-pull",
+      "seconds": 0.55,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-release-normal.jpg",
+      "sport": "ski",
+      "phase": "release",
+      "seconds": 0.85,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-release-front.jpg",
+      "sport": "ski",
+      "phase": "release",
+      "seconds": 0.85,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-release-rear.jpg",
+      "sport": "ski",
+      "phase": "release",
+      "seconds": 0.85,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-release-top.jpg",
+      "sport": "ski",
+      "phase": "release",
+      "seconds": 0.85,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-release-close.jpg",
+      "sport": "ski",
+      "phase": "release",
+      "seconds": 0.85,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-release-grip.jpg",
+      "sport": "ski",
+      "phase": "release",
+      "seconds": 0.85,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-release-grip-left.jpg",
+      "sport": "ski",
+      "phase": "release",
+      "seconds": 0.85,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-recovery-normal.jpg",
+      "sport": "ski",
+      "phase": "recovery",
+      "seconds": 1.4,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-recovery-front.jpg",
+      "sport": "ski",
+      "phase": "recovery",
+      "seconds": 1.4,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-recovery-rear.jpg",
+      "sport": "ski",
+      "phase": "recovery",
+      "seconds": 1.4,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-recovery-top.jpg",
+      "sport": "ski",
+      "phase": "recovery",
+      "seconds": 1.4,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-recovery-close.jpg",
+      "sport": "ski",
+      "phase": "recovery",
+      "seconds": 1.4,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-recovery-grip.jpg",
+      "sport": "ski",
+      "phase": "recovery",
+      "seconds": 1.4,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-recovery-grip-left.jpg",
+      "sport": "ski",
+      "phase": "recovery",
+      "seconds": 1.4,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-loaded-pull-close-skeleton.jpg",
+      "sport": "ski",
+      "phase": "loaded-pull",
+      "seconds": 0.55,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": true,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "cycle",
+      "file": "cycles/ski-cycle-normal.webm",
+      "sport": "ski",
+      "camera": "normal",
+      "durationMs": 4500,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "cycle",
+      "file": "cycles/ski-cycle-grip.webm",
+      "sport": "ski",
+      "camera": "grip",
+      "durationMs": 4500,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "cycle",
+      "file": "cycles/ski-cycle-grip-left.webm",
+      "sport": "ski",
+      "camera": "grip-left",
+      "durationMs": 4500,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-top-normal.jpg",
+      "sport": "bike",
+      "phase": "left-top",
+      "seconds": 0.05,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-top-front.jpg",
+      "sport": "bike",
+      "phase": "left-top",
+      "seconds": 0.05,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-top-rear.jpg",
+      "sport": "bike",
+      "phase": "left-top",
+      "seconds": 0.05,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-top-top.jpg",
+      "sport": "bike",
+      "phase": "left-top",
+      "seconds": 0.05,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-top-close.jpg",
+      "sport": "bike",
+      "phase": "left-top",
+      "seconds": 0.05,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-top-grip.jpg",
+      "sport": "bike",
+      "phase": "left-top",
+      "seconds": 0.05,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-top-grip-left.jpg",
+      "sport": "bike",
+      "phase": "left-top",
+      "seconds": 0.05,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-power-normal.jpg",
+      "sport": "bike",
+      "phase": "left-power",
+      "seconds": 0.2,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-power-front.jpg",
+      "sport": "bike",
+      "phase": "left-power",
+      "seconds": 0.2,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-power-rear.jpg",
+      "sport": "bike",
+      "phase": "left-power",
+      "seconds": 0.2,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-power-top.jpg",
+      "sport": "bike",
+      "phase": "left-power",
+      "seconds": 0.2,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-power-close.jpg",
+      "sport": "bike",
+      "phase": "left-power",
+      "seconds": 0.2,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-power-grip.jpg",
+      "sport": "bike",
+      "phase": "left-power",
+      "seconds": 0.2,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-left-power-grip-left.jpg",
+      "sport": "bike",
+      "phase": "left-power",
+      "seconds": 0.2,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-opposed-normal.jpg",
+      "sport": "bike",
+      "phase": "opposed",
+      "seconds": 0.37,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-opposed-front.jpg",
+      "sport": "bike",
+      "phase": "opposed",
+      "seconds": 0.37,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-opposed-rear.jpg",
+      "sport": "bike",
+      "phase": "opposed",
+      "seconds": 0.37,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-opposed-top.jpg",
+      "sport": "bike",
+      "phase": "opposed",
+      "seconds": 0.37,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-opposed-close.jpg",
+      "sport": "bike",
+      "phase": "opposed",
+      "seconds": 0.37,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-opposed-grip.jpg",
+      "sport": "bike",
+      "phase": "opposed",
+      "seconds": 0.37,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-opposed-grip-left.jpg",
+      "sport": "bike",
+      "phase": "opposed",
+      "seconds": 0.37,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-right-power-normal.jpg",
+      "sport": "bike",
+      "phase": "right-power",
+      "seconds": 0.55,
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-right-power-front.jpg",
+      "sport": "bike",
+      "phase": "right-power",
+      "seconds": 0.55,
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-right-power-rear.jpg",
+      "sport": "bike",
+      "phase": "right-power",
+      "seconds": 0.55,
+      "camera": "rear",
+      "effectiveQaCamera": "athlete-rear",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-right-power-top.jpg",
+      "sport": "bike",
+      "phase": "right-power",
+      "seconds": 0.55,
+      "camera": "top",
+      "effectiveQaCamera": "athlete-top",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-right-power-close.jpg",
+      "sport": "bike",
+      "phase": "right-power",
+      "seconds": 0.55,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-right-power-grip.jpg",
+      "sport": "bike",
+      "phase": "right-power",
+      "seconds": 0.55,
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-right-power-grip-left.jpg",
+      "sport": "bike",
+      "phase": "right-power",
+      "seconds": 0.55,
+      "camera": "grip-left",
+      "effectiveQaCamera": "athlete-grip-left",
+      "skeleton": false,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-opposed-close-skeleton.jpg",
+      "sport": "bike",
+      "phase": "opposed",
+      "seconds": 0.37,
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": true,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "cycle",
+      "file": "cycles/bike-cycle-normal.webm",
+      "sport": "bike",
+      "camera": "normal",
+      "durationMs": 4500,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "cycle",
+      "file": "cycles/bike-cycle-grip.webm",
+      "sport": "bike",
+      "camera": "grip",
+      "durationMs": 4500,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "cycle",
+      "file": "cycles/bike-cycle-grip-left.webm",
+      "sport": "bike",
+      "camera": "grip-left",
+      "durationMs": 4500,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WEBGL",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    }
+  ]
+}

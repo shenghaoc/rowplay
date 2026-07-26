@@ -300,7 +300,13 @@
 						? 'athlete-close'
 						: camera === 'grip'
 							? 'athlete-grip'
-							: 'normal',
+							: camera === 'grip-left'
+								? 'athlete-grip-left'
+								: camera === 'rear'
+									? 'athlete-rear'
+									: camera === 'top'
+										? 'athlete-top'
+										: 'normal',
 			showV4Skeleton: page.url.searchParams.get('athleteSkeleton') === '1'
 		} as const;
 	}

@@ -167,10 +167,19 @@ while the feet stay secured to the stretcher. The repository-authored shell,
 CC0 modern single-scull reference; the reference image itself is not shipped.
 Other assemblies include cambered Nordic skis with top sheets, metal edges,
 binding plate/toe/heel and shaped race boots; and a continuous
-bicycle wheel/frame/drivetrain. RowErg palms stay on separate rigid scull grips
+bicycle wheel/frame/drivetrain. RowErg hands stay on separate rigid scull grips
 and outside the torso; both 2D and 3D keep the elbows softly open until the
-hands clear the knees, then keep the bent elbows behind the shoulders rather
-than pointing toward the handle or flaring into a horizontal goalpost. During
+hands clear the knees, then draw each elbow principally aft along its own
+handle line inside a bounded boat-local corridor — a modest natural outward
+lean, never a horizontal chicken wing and never an artificial downward
+collapse. In 3D the visible fingers are closed geometrically against the
+actual equipment: each digit flexes until it reaches the 0.023 m scull rubber,
+the SkiErg grip channel, or the brake-hood body and stops at contact, so the
+handle sits inside the finger/thumb enclosure (with the sculling thumbs on the
+flat handle ends) instead of the hand posing in a styled fist beside it.
+Feathering rolls the handle inside that enclosure, and axial hand rotation is
+shared between wrist and forearm within bounded budgets rather than
+corkscrewing the wrist. During
 the illustrated SkiErg plant, each rigid 1.37 m
 pole holds a deterministic course anchor while its hand remains on the grip.
 The skier advances relative to that basket, releases it near the end of the

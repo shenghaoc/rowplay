@@ -41,10 +41,12 @@ import { solveRigidContactPoint3D, solveTwoBone3D, type FigurePoint3 } from "./f
 import {
   ROWER_FOOT_CONTACT,
   ROWER_OARLOCK,
+  ROWER_SCULL_GRIP,
   ROWER_STRETCHER,
-  solveRowerArmWithCorridor,
+  solveRowerArm,
   solveRowerOarYaw,
 } from "./rowRig";
+import { handChannelCentre, orientHandToGripChannel } from "./handGrip";
 import {
   applyReplayAssetLibrary,
   hideWithReplayAssets,
@@ -71,6 +73,7 @@ import {
   SKI_ATHLETE_PROPORTIONS,
   SKI_HAND_CURL_AXIS,
   SKI_HAND_FIST_CENTRE,
+  SKI_HAND_FIST_RADIUS,
   SKI_GRIP_SHIFT,
   type SkiEquipmentDetail,
 } from "./skiEquipment";
@@ -210,7 +213,14 @@ export interface Renderer3DOptions {
    * Capture-only framing used by the visual-QA harness. It is reachable only
    * through an explicit replay QA query, never through normal replay controls.
    */
-  qaCamera?: "normal" | "athlete-close" | "athlete-front" | "athlete-grip";
+  qaCamera?:
+    | "normal"
+    | "athlete-close"
+    | "athlete-front"
+    | "athlete-grip"
+    | "athlete-grip-left"
+    | "athlete-rear"
+    | "athlete-top";
   /** Draw the live V4 skeleton over the real rendered athlete for QA evidence. */
   showV4Skeleton?: boolean;
 }
@@ -967,6 +977,10 @@ const ELBOW_INSIDE = new THREE.Vector3();
 const ELBOW_SIDE = new THREE.Vector3();
 const ELBOW_FRAME = new THREE.Matrix4();
 const ARM_BEND_SCRATCH = new THREE.Vector3();
+const GRIP_SHAFT_SCRATCH = new THREE.Vector3();
+const GRIP_ROLL_SCRATCH = new THREE.Vector3();
+const BIKE_HOOD_QUAT = new THREE.Quaternion();
+const BIKE_HOOD_AXIS_X = new THREE.Vector3(1, 0, 0);
 
 /**
  * Stable two-bone arm bend direction for equipment-locked hands.
@@ -1044,17 +1058,52 @@ function placeFigureSegmentBetween(
 }
 
 /**
- * SkiErg replaces the authored palm-surface contact with the centre of the
- * closed fist, so the contact solver seats the shaft inside the finger curl.
- * Every other sport keeps its authored extras: RowErg and BikeErg close on
- * flat handles and hoods, where the palm surface *is* the contact.
+ * Every sport replaces the authored palm-surface contact with the centre of
+ * the hand's grip channel for that equipment radius, so the contact solver
+ * seats the shaft/handle/hood core inside the digit enclosure rather than
+ * laying it against the palm skin. SkiErg keeps its historical fist-centre
+ * measurement (which `handChannelCentre` reproduces exactly at the fitted
+ * 0.0169 m radius); RowErg's 0.023 m rubber and the BikeErg hood body seat
+ * proportionally further out — the same hand as a relaxed hook.
  */
-function skiGripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
-  if (sport !== "skierg") return undefined;
-  const { x, y, z } = SKI_HAND_FIST_CENTRE;
+function gripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
+  if (sport === "skierg") {
+    const { x, y, z } = SKI_HAND_FIST_CENTRE;
+    return {
+      leftHand: { x: -x, y, z },
+      rightHand: { x, y, z },
+    };
+  }
+  const radius =
+    sport === "rower" ? ROWER_SCULL_GRIP.radius : (BIKE_RIG.handlebar.hood?.radius ?? 0.016);
+  const right = handChannelCentre(radius, 1);
   return {
-    leftHand: { x: -x, y, z },
-    rightHand: { x, y, z },
+    leftHand: { x: -right.x, y: right.y, z: right.z },
+    rightHand: { x: right.x, y: right.y, z: right.z },
+  };
+}
+
+/** Geometry contract handed to the V4 digit-closure solve, per sport. */
+function gripContractFor(
+  sport: Sport,
+): { radius: number; thumbOppose: number; thumbEndAxial?: number } | undefined {
+  if (sport === "rower") {
+    return {
+      radius: ROWER_SCULL_GRIP.radius,
+      // Sculling thumb: light opposition keeps it near the end of the handle
+      // where it presses the flat thumb stop instead of folding across.
+      thumbOppose: 0.3,
+      thumbEndAxial: ROWER_SCULL_GRIP.anchorFromEnd,
+    };
+  }
+  if (sport === "skierg") {
+    // The fitted fist channel radius — pole grips are authored to fit it.
+    return { radius: SKI_HAND_FIST_RADIUS, thumbOppose: 0.62 };
+  }
+  return {
+    radius: BIKE_RIG.handlebar.hood?.radius ?? 0.016,
+    // Hood thumb hooks the inboard face opposite the wrapped fingers.
+    thumbOppose: 0.7,
   };
 }
 
@@ -1792,7 +1841,12 @@ function makeRowerAvatar(
     shaft.position.x = side * 0.61;
     oar.add(shaft);
     const grip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.023, 0.023, 0.32, eqCylSegs),
+      new THREE.CylinderGeometry(
+        ROWER_SCULL_GRIP.radius,
+        ROWER_SCULL_GRIP.radius,
+        ROWER_SCULL_GRIP.length,
+        eqCylSegs,
+      ),
       equipmentGripMaterial,
     );
     grip.rotation.z = Math.PI / 2;
@@ -1806,11 +1860,13 @@ function makeRowerAvatar(
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    // Land the palm within the rubber grip. The visible V4 hand extends around
-    // this contact so four fingers can hook over the cylinder while the thumb
-    // remains near its end; targeting either the cap or shaft seam makes the
-    // grip read as a fist floating beside the oar.
-    handleAnchor.position.x = -side * 0.78;
+    // Land the grip channel within the rubber, `anchorFromEnd` inboard of the
+    // flat thumb stop: the enclosure solve drives the hand's channel centre
+    // onto this axis point, so four fingers hook over the cylinder while the
+    // thumb presses its end. Targeting the cap or shaft seam instead makes
+    // the grip read as a fist floating beside the oar.
+    handleAnchor.position.x =
+      -side * (0.66 + ROWER_SCULL_GRIP.length / 2 - ROWER_SCULL_GRIP.anchorFromEnd);
     // The contact and rendered rubber share one axis. Keeping equipment and
     // solver coordinates identical prevents a visually closed fist from
     // floating above or below the actual handle.
@@ -2005,57 +2061,52 @@ function makeRowerAvatar(
       arm.wristTarget.copy(handlePoint);
       const v4ContactOffset = v4Refinement?.contactOffsets[i];
       if (v4ContactOffset) arm.wristTarget.sub(v4ContactOffset);
-      // A rower's elbows only ever point down (British Rowing indoor
-      // technique): the arms hang from the shoulders with a near-vertical
-      // bend plane through the whole stroke — soft at the catch and
-      // recovery, deep down-and-back at the loaded draw, tilted a touch
-      // outward by the corridor — and the upper arm never opens toward a
-      // horizontal 90° armpit. Solving the down-plane unconditionally (not
-      // gated on a draw phase) is what makes that true: with a long arm the
-      // elbow circle is tiny and the down preference costs nothing, and as
-      // the draw bends the arm the same continuous solve deepens the hang.
-      arm.bendHint.set(0, -1, 0);
-      solveRowerArmWithCorridor(
+      // A sculling elbow follows its handle line principally aft (British
+      // Rowing technique): the bend plane stays down-dominant with only a
+      // slight outward tilt, rotating rearward through the late draw, and
+      // the corridor clamp forbids both the horizontal chicken wing and a
+      // past-vertical behind-the-back haul. Solving the shared plane
+      // unconditionally (not gated on a draw phase) keeps it continuous:
+      // with a long arm the elbow circle is tiny and the plane costs
+      // nothing, and as the draw bends the arm the same formula deepens and
+      // rotates the hang without a branch switch.
+      solveRowerArm(
         arm.shoulderPoint,
         arm.wristTarget,
         activeUpperArmLength,
         activeForearmLength,
-        arm.bendHint,
+        arm.side,
+        draw,
+        pendingBladeLoad,
         arm.elbowPoint,
         arm.handPoint,
-        // With ~28° of layback a straight-down humerus already hangs the
-        // elbow ~0.145 behind the shoulder plane, so the floor only forbids
-        // a past-vertical behind-the-back haul. A tighter floor bound the
-        // deep release elbow and made the floor-root selection snap.
-        arm.shoulderPoint.z - 0.16,
-        // Aim below the handle line. Targeting a band deeper than the elbow
-        // circle usually reaches makes the solve pick the lowest point of
-        // the circle, so straight-arm phases hang the elbow directly under
-        // the shoulder–grip chord. The depth follows blade load so the bent
-        // finish elbow rides deep while the spoon is buried and rises
-        // smoothly with the extraction instead of pinning against the
-        // behind-the-back floor.
-        arm.handTarget.y - THREE.MathUtils.lerp(0.125, 0.24, pendingBladeLoad),
-        arm.handTarget.y - THREE.MathUtils.lerp(-0.065, 0.05, pendingBladeLoad),
-        arm.side,
+        arm.bendHint,
       );
       arm.shoulder.position.copy(arm.shoulderPoint);
       placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
       placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
-      // The visible V4 target is the palm contact, not its wrist bone. Keep the
-      // hidden anatomical solve at the wrist while the terminal hand marker
-      // remains exactly on the rigid grip.
+      // The visible V4 target is the grip-channel centre, not the wrist bone.
+      // Keep the hidden anatomical solve at the wrist while the terminal
+      // hand marker remains exactly on the rigid grip.
       arm.hand.position.copy(arm.handTarget);
-      // The authored hand's local axes are fixed by its reviewed grip pose.
-      // Inherit the oar frame and apply only its small side-specific neutral
-      // wrist correction; a free look-at solve has two mathematically valid
-      // roll solutions and can turn a palm through 180 degrees.
-      arm.hand.quaternion.copy(oar.group.quaternion);
-      arm.hand.rotateZ(arm.side * (Math.PI / 2));
-      arm.hand.rotateX(-0.55 - shoulderSet * 0.08);
-      arm.hand.rotateY(arm.side * 0.12);
+      // Build the full sculling grip frame from the equipment: the hand's
+      // authored curl axis lies along the rubber, signed so the thumb faces
+      // the flat handle end, and the free spin about the shaft resolves the
+      // knuckles up / flat wrist — not from side-specific Euler offsets. The
+      // oar's feathering roll about its own shaft cancels out, so the handle
+      // rolls inside the fingers instead of twisting the wrist with it.
+      GRIP_SHAFT_SCRATCH.set(-oar.side, 0, 0).applyQuaternion(oar.group.quaternion);
+      GRIP_ROLL_SCRATCH.set(0, -1, 0);
+      orientHandToGripChannel(
+        arm.hand,
+        oar.side,
+        ROWER_SCULL_GRIP.radius,
+        GRIP_SHAFT_SCRATCH,
+        GRIP_ROLL_SCRATCH,
+        oar.group.quaternion,
+      );
     }
   };
 
@@ -3695,9 +3746,23 @@ function makeBikeAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
-      // Pronated hoods grip: palm over the bar, fingers curling forward/down
-      // so the cyclist is clearly holding the cockpit rather than floating.
-      arm.hand.rotation.set(-0.72, arm.side * 0.06, arm.side * 0.18);
+      // Pronated hoods grip built from the hood contract: the curl axis lies
+      // along the hood body's long axis (pinky at the bar tops, index toward
+      // the nose) and the spin resolves the palm heel onto the hood's upper
+      // surface, so the fingers hook the front/underside and the thumb hooks
+      // the inboard face rather than posing a fixed Euler fist beside it.
+      const hoodRotation = BIKE_RIG.handlebar.hood?.rotationX ?? -0.24;
+      GRIP_SHAFT_SCRATCH.set(0, -Math.sin(hoodRotation), Math.cos(hoodRotation));
+      GRIP_ROLL_SCRATCH.set(0, -Math.cos(hoodRotation), -Math.sin(hoodRotation));
+      BIKE_HOOD_QUAT.setFromAxisAngle(BIKE_HOOD_AXIS_X, hoodRotation);
+      orientHandToGripChannel(
+        arm.hand,
+        arm.side,
+        BIKE_RIG.handlebar.hood?.radius ?? 0.016,
+        GRIP_SHAFT_SCRATCH,
+        GRIP_ROLL_SCRATCH,
+        BIKE_HOOD_QUAT,
+      );
     }
   };
 
@@ -4082,7 +4147,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly ghostRadius = 26;
 
   private readonly quality: RenderQuality;
-  private readonly qaCamera: "normal" | "athlete-close" | "athlete-front" | "athlete-grip";
+  private readonly qaCamera: NonNullable<Renderer3DOptions["qaCamera"]>;
   private cfg: QualityConfig;
   private renderer: RendererLike;
   /**
@@ -4385,7 +4450,8 @@ export class CourseRenderer3D implements ReplayRenderer {
       // SkiErg drives the centre of the closed fist onto the shaft, not the
       // authored palm-surface point: the latter lays the pole across the
       // knuckles and the fingers shut beside it instead of around it.
-      const effectorOffsets = skiGripEffectorOffsets(this.sport);
+      const effectorOffsets = gripEffectorOffsets(this.sport);
+      const gripContract = gripContractFor(this.sport);
       this.liveAvatar.v4Motion = installReplayV4MotionController({
         sport: this.sport,
         parent: this.liveAvatar.group,
@@ -4398,6 +4464,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         receiveShadow: this.cfg.shadows,
         seatContract,
         effectorOffsets,
+        gripContract,
       });
       this.ghostAvatar.v4Motion = installReplayV4MotionController({
         sport: this.sport,
@@ -4412,6 +4479,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         laneColor: COLORS_LIGHT.ghost,
         seatContract,
         effectorOffsets,
+        gripContract,
       });
       this.liveAvatar.group.userData.authoredReplayV4 = !!this.liveAvatar.v4Motion;
       this.ghostAvatar.group.userData.authoredReplayV4 = !!this.ghostAvatar.v4Motion;
@@ -6160,18 +6228,21 @@ export class CourseRenderer3D implements ReplayRenderer {
     // pullback from the current horizontal lens. This treats the comparison as
     // a bounded pair instead of assuming a small lane-only offset. Scalars keep
     // this render-hot path allocation-free.
-    const qaGrip = this.qaCamera === "athlete-grip" && !state.ghost;
+    const qaGripLeft = this.qaCamera === "athlete-grip-left" && !state.ghost;
+    const qaGrip = (this.qaCamera === "athlete-grip" || qaGripLeft) && !state.ghost;
     if (qaGrip) {
       this.liveAvatar.v4Targets.leftHand.getWorldPosition(this.qaGripFocus);
       this.liveAvatar.v4Targets.rightHand.getWorldPosition(this.qaGripOther);
-      if (this.sport === "rower") {
+      if (this.sport === "rower" && !qaGripLeft) {
         // Sculling hands converge at the finish, so their midpoint sits behind
         // the torso from every useful close-up. Track the starboard palm itself
         // to make the finger/handle enclosure reviewable at catch and finish.
         this.qaGripFocus.copy(this.qaGripOther);
-      } else {
+      } else if (!qaGripLeft) {
         this.qaGripFocus.add(this.qaGripOther).multiplyScalar(0.5);
       }
+      // `athlete-grip-left` keeps the port palm focus for the mirrored
+      // enclosure evidence — both hands get their own close-up lane.
     }
     const focusX = qaGrip
       ? this.qaGripFocus.x
@@ -6203,6 +6274,12 @@ export class CourseRenderer3D implements ReplayRenderer {
     // preserves the production chase composition for every normal replay,
     // while letting evidence inspect the shoulder/elbow/hip surface directly.
     const qaClose = this.qaCamera !== "normal" && !state.ghost;
+    // Capture-only complements: `athlete-rear` closes in from the athlete's
+    // back side (opposite tangent to `athlete-front`) and `athlete-top`
+    // hangs a steep arm-path view above the athlete. Query-gated like the
+    // rest of the QA rig; the production chase never uses them.
+    const qaRear = this.qaCamera === "athlete-rear" && !state.ghost;
+    const qaTop = this.qaCamera === "athlete-top" && !state.ghost;
     // `athlete-front` is a capture-only portrait, not a reversed chase view:
     // it must make the actual head, shoulder mass, and face treatment legible
     // enough to review. The normal and diagnostic-close cameras keep their
@@ -6214,7 +6291,17 @@ export class CourseRenderer3D implements ReplayRenderer {
     // shows both independent handles.
     const qaGripFront = qaGrip && this.sport === "rower";
     const normalBack = baseBack + comparisonPullback;
-    const closeScale = qaGrip ? (qaGripFront ? 0.035 : 0.15) : qaFront ? 0.22 : qaClose ? 0.42 : 1;
+    const closeScale = qaGrip
+      ? qaGripFront
+        ? 0.035
+        : 0.15
+      : qaFront
+        ? 0.22
+        : qaTop
+          ? 0.12
+          : qaClose
+            ? 0.42
+            : 1;
     const back = normalBack * closeScale;
     const baseHeight = this.reduceMotion
       ? sportRig.height + 0.7
@@ -6227,7 +6314,9 @@ export class CourseRenderer3D implements ReplayRenderer {
       ? this.qaGripFocus.y + (qaGripFront ? 0.55 : 0.24)
       : qaFront
         ? portraitAimY + 0.42
-        : (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);
+        : qaTop
+          ? sportRig.aimY + 3.1
+          : (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);
     const qaLateral = qaGrip
       ? qaGripFront
         ? Math.min(0.12, lateral * 0.07)
@@ -6235,8 +6324,11 @@ export class CourseRenderer3D implements ReplayRenderer {
       : qaFront
         ? Math.min(0.16, lateral * 0.13)
         : lateral;
-    const qaAhead = qaFront || qaGrip ? 0 : ahead;
-    const qaFromPositiveTangent = (qaFront || qaGripFront) && this.sport !== "rower";
+    const qaAhead = qaFront || qaGrip || qaTop ? 0 : ahead;
+    // Front portraits approach ski/bike from ahead and the aft-facing rower
+    // from behind the hull; the rear view is exactly the opposite side.
+    const qaFromPositiveTangent =
+      ((qaFront || qaGripFront) && this.sport !== "rower") || (qaRear && this.sport === "rower");
     // A small live-lane bias keeps the vector non-zero when the two course
     // tangents cancel at half a lap. Adding it before normalization makes the
     // heading continuous as the gap crosses that point; a binary fallback
@@ -6260,17 +6352,22 @@ export class CourseRenderer3D implements ReplayRenderer {
       (this.reduceMotion ? 4 : 0) |
       (qaClose ? 8 : 0) |
       (qaFront ? 16 : 0) |
-      (qaGrip ? 32 : 0);
+      (qaGrip ? 32 : 0) |
+      (qaRear ? 64 : 0) |
+      (qaTop ? 128 : 0) |
+      (qaGripLeft ? 256 : 0);
     const cameraLayoutChanged = cameraLayoutMode !== this.cameraLayoutMode;
     this.cameraLayoutMode = cameraLayoutMode;
+    // The port-palm close-up approaches from the port side of the course.
+    const qaLateralSigned = qaGripLeft ? -qaLateral : qaLateral;
     this.chase.set(
       focusX +
         (qaFromPositiveTangent ? focusTx : -focusTx) * back +
-        rx * (qaFromPositiveTangent ? -qaLateral : qaLateral),
+        rx * (qaFromPositiveTangent ? -qaLateralSigned : qaLateralSigned),
       height,
       focusZ +
         (qaFromPositiveTangent ? focusTz : -focusTz) * back +
-        rz * (qaFromPositiveTangent ? -qaLateral : qaLateral),
+        rz * (qaFromPositiveTangent ? -qaLateralSigned : qaLateralSigned),
     );
     this.lookAt.set(
       focusX + focusTx * qaAhead,

@@ -90,10 +90,15 @@ export const SKI_GRIP_SHIFT = 0.042;
  * the palm instead of across it, which walked the hand past the pole and left
  * only the fingertips touching the grip.
  *
- * Re-derived from the shipped rig by "derives the SkiErg curl axis from the
- * authored grip helpers", so an asset rebuild cannot silently invalidate it.
+ * This is the **cup-free** rest measurement (Fingers × MiddleProximal rest
+ * quaternions from the sealed contract): the former (-0.61, 0.16, 0.77) had
+ * the legacy 0.14 rad palm-cup styling baked in, which rotated every grip
+ * frame ~8° off the true channel once the geometry-closure grips stopped
+ * applying that cup. Re-derived from the shipped rig by "derives the curl
+ * axis and grip channel from the authored rig", so an asset rebuild cannot
+ * silently invalidate it.
  */
-export const SKI_HAND_CURL_AXIS = Object.freeze({ x: -0.61, y: 0.16, z: 0.77 } as const);
+export const SKI_HAND_CURL_AXIS = Object.freeze({ x: -0.658, y: 0.034, z: 0.752 } as const);
 
 /**
  * Centre of the closed fist's grip channel, in hand-local space, for the
