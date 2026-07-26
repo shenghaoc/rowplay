@@ -222,6 +222,11 @@ whose limbs disappear through transparency sorting.
    the arm draw; WHEN recovery runs THEN hands-away SHALL lead body-over and
    the seat slide, while the shell, riggers, oarlocks, and feet retain their
    deterministic mechanical relationships.
+9. WHEN the single-scull assembly is proportioned THEN its modern hull/rigger
+   relationship SHALL be checked against a documented licence-compatible
+   reference, paired sculls SHALL remain regulation-scale, catch grips SHALL
+   begin forward of the shoulders, and finish grips SHALL draw to the lower-rib
+   band without entering the torso.
 
 ### Requirement 9: True-scale BikeErg equipment and seated fit
 

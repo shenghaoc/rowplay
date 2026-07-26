@@ -33,6 +33,8 @@ ROWER_FOOT_CONTACT_Z = 0.75
 ROWER_STRETCHER_ANGLE = math.radians(-48)
 ROWER_STRETCHER_CENTER_Y = 0.295
 ROWER_STRETCHER_CENTER_Z = 0.68
+ROWER_OARLOCK_Y = 0.62
+ROWER_OARLOCK_Z = 0.28
 
 
 def parse_args() -> argparse.Namespace:
@@ -409,8 +411,8 @@ def build_boat() -> None:
         "stretcher-hardware",
         "instep-bar",
         "equipment-metal",
-        (-0.18, 0.35, -0.625),
-        (0.18, 0.35, -0.625),
+        (-0.18, 0.35, 0.625),
+        (0.18, 0.35, 0.625),
         0.012,
         vertices=16,
     )
@@ -419,7 +421,7 @@ def build_boat() -> None:
             "stretcher-hardware",
             "left-support" if side < 0 else "right-support",
             "equipment-metal",
-            (side * 0.17, 0.175, -0.84),
+            (side * 0.17, 0.175, 0.84),
             (side * 0.17, ROWER_STRETCHER_CENTER_Y, ROWER_STRETCHER_CENTER_Z),
             0.009,
             vertices=14,
@@ -428,8 +430,8 @@ def build_boat() -> None:
             "heel-cups",
             "left-heel-restraint" if side < 0 else "right-heel-restraint",
             "equipment-rubber",
-            (side * 0.12, 0.185, -0.785),
-            (side * 0.12, 0.245, -0.72),
+            (side * 0.12, 0.185, 0.785),
+            (side * 0.12, 0.245, 0.72),
             0.006,
             vertices=12,
         )
@@ -440,7 +442,10 @@ def build_boat() -> None:
     # pins close to the narrow hull crossed the grips at the catch and forced
     # both forearms through the torso; these wider pins keep
     # each hand on its own grip while preserving the long lever and open shell.
-    pivots = [(-0.88, 0.38, 0.28), (0.88, 0.38, 0.28)]
+    pivots = [
+        (-0.88, ROWER_OARLOCK_Y, ROWER_OARLOCK_Z),
+        (0.88, ROWER_OARLOCK_Y, ROWER_OARLOCK_Z),
+    ]
     for index, pivot in enumerate(pivots):
         side_name = "port" if index == 0 else "starboard"
         sign = -1 if index == 0 else 1
@@ -475,7 +480,7 @@ def build_boat() -> None:
             "oarlocks",
             f"{side_name}-post",
             "equipment-metal",
-            (pivot[0], 0.284, pivot[2]),
+            (pivot[0], 0.292, pivot[2]),
             pivot,
             0.021,
             vertices=18,

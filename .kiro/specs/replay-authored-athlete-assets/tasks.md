@@ -171,3 +171,6 @@ figure, readability, and motion specs.
   - [x] Protect shell dimensions/orientation, stretcher geometry, foot and knee
     placement, phase ordering, contact lock, and cycle continuity with focused
     tests and visual browser QA
+  - [x] Document a CC0 modern single-scull reference, correct the 2.89 m scull
+    and collar proportions, raise the fixed pins into the lower-rib handle
+    band, and select the forward catch branch before the chest-directed draw

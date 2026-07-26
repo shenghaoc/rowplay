@@ -866,7 +866,7 @@ async function buildRowingAssemblyParts() {
 }
 
 function rowOarRigParts() {
-  const shaft = tubeGeometryBetween([-0.61, 0, 0], [2.14, 0, 0], 0.02, 16, 0.82);
+  const shaft = tubeGeometryBetween([-0.82, 0, 0], [1.72, 0, 0], 0.02, 16, 0.82);
   const grip = loftGeometry(
     [
       { p: -0.78, rx: 0.018, rz: 0.018 },
@@ -880,11 +880,11 @@ function rowOarRigParts() {
   );
   const collar = bakeGeometry(new THREE.TorusGeometry(0.052, 0.012, 8, 18), {
     rotation: [0, Math.PI / 2, 0],
-    position: [1.82, 0, 0],
+    position: [0.02, 0, 0],
   });
   const sleeve = bakeGeometry(new THREE.CylinderGeometry(0.043, 0.036, 0.19, 16), {
     rotation: [0, 0, Math.PI / 2],
-    position: [1.57, 0, 0],
+    position: [0.14, 0, 0],
   });
   const handleCap = ellipsoidGeometry([0.022, 0.022, 0.022], 14, 10, [-0.79, 0, 0]);
   return [

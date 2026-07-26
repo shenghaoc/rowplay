@@ -1199,19 +1199,13 @@ function solveRowerOarYaw(
   const offset = Math.acos(cosine);
   const first = center + offset;
   const second = center - offset;
-  // Select the analytic solution closest to the staged equipment arc. Both
-  // branches have the requested anatomical reach; the staged arc determines
-  // whether the visible catch sits bow-side or the late draw turns aft.
-  // Comparing angular deltas (rather than raw angles) avoids the ±π branch
-  // cut. The runtime arc is C2-smoothed by the graph, so this choice remains
-  // stable except at the exact tangent where both solutions coincide.
-  const firstDelta = Math.abs(
-    Math.atan2(Math.sin(first - preferredYaw), Math.cos(first - preferredYaw)),
-  );
-  const secondDelta = Math.abs(
-    Math.atan2(Math.sin(second - preferredYaw), Math.cos(second - preferredYaw)),
-  );
-  const selected = forceReachBoundary ? second : firstDelta <= secondDelta ? first : second;
+  // The catch is the root whose inboard grip sits farther toward the
+  // stretcher (+Z). Selecting by that physical relationship keeps both
+  // mirrored oars forward even when the two angular roots exchange which one
+  // is numerically closest to the staged yaw.
+  const firstGripZ = pinZ - signedInboard * rollCos * Math.sin(first);
+  const secondGripZ = pinZ - signedInboard * rollCos * Math.sin(second);
+  const selected = firstGripZ >= secondGripZ ? first : second;
   // atan2 is periodic. Keep the selected reach-limited branch equivalent to
   // the staged yaw that was authored for this frame so the oar never takes a
   // visible ±2π jump when the analytic circle crosses its branch cut.
@@ -1582,7 +1576,10 @@ const ROWER_STRETCHER = Object.freeze({
 });
 const ROWER_OARLOCK = Object.freeze({
   lateral: 0.88,
-  y: 0.38,
+  // The pin sits below the lower-rib draw. A drive-side roll of the fixed oar
+  // raises only the shorter inboard lever, preserving long catch arms while
+  // bringing the handles to the body at the finish.
+  y: 0.62,
   /** Stern-side pin keeps the scull handles in front of the torso at mid-draw. */
   z: 0.28,
 });
@@ -1782,14 +1779,14 @@ function makeRowerAvatar(
   );
   instepBar.name = "rower-footplate-instep-bar";
   instepBar.rotation.z = Math.PI / 2;
-  instepBar.position.set(0, 0.35, -0.625);
+  instepBar.position.set(0, 0.35, 0.625);
   group.add(instepBar);
   const stretcherSupports: THREE.Mesh[] = [];
   const heelRestraints: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
     const support = tubeBetween(
       side < 0 ? "rower-footplate-support-left" : "rower-footplate-support-right",
-      { x: side * 0.17, y: 0.175, z: -0.84 },
+      { x: side * 0.17, y: 0.175, z: 0.84 },
       {
         x: side * 0.17,
         y: ROWER_STRETCHER.centerY,
@@ -1802,8 +1799,8 @@ function makeRowerAvatar(
     group.add(support);
     const heelRestraint = tubeBetween(
       side < 0 ? "rower-heel-restraint-left" : "rower-heel-restraint-right",
-      { x: side * 0.12, y: 0.185, z: -0.785 },
-      { x: side * 0.12, y: 0.245, z: -0.72 },
+      { x: side * 0.12, y: 0.185, z: 0.785 },
+      { x: side * 0.12, y: 0.245, z: 0.72 },
       0.006,
       equipmentGripMaterial,
     );
@@ -2017,13 +2014,15 @@ function makeRowerAvatar(
   for (const side of [-1, 1]) {
     const oar = new THREE.Group();
     oar.name = side < 0 ? "rower-oar-left" : "rower-oar-right";
-    // 3.1 m shaft: ~0.85 m inboard of the pin, ~2.25 m outboard to the blade.
+    // Regulation-scale 2.89 m scull: 0.82 m inboard of the pin and a 2.07 m
+    // outboard lever including the spoon. The former 3.4 m overall assembly
+    // read as a sweep oar and overwhelmed a one-person shell.
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.018, 0.021, 3.15, eqCylSegs),
+      new THREE.CylinderGeometry(0.018, 0.021, 2.54, eqCylSegs),
       equipmentLightMaterial,
     );
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
-    shaft.position.x = side * 0.7;
+    shaft.position.x = side * 0.45;
     oar.add(shaft);
     const grip = capsulePart(0.021, 0.24, equipmentGripMaterial, "x");
     grip.name = side < 0 ? "rower-handle-left" : "rower-handle-right";
@@ -2043,19 +2042,19 @@ function makeRowerAvatar(
     handleAnchor.position.x = -side * 0.78;
     handleAnchor.position.y = -0.04;
     oar.add(handleAnchor);
-    // Oar collar — a small ring near the blade end for visual detail.
+    // The collar/button bears against the oarlock at the fixed pin.
     const collar = new THREE.Mesh(
       new THREE.TorusGeometry(0.05, 0.015, eqTorSegs, eqCylSegs),
       equipmentMetalMaterial,
     );
     collar.name = "rower-oar-collar";
-    collar.position.set(side * 1.95, 0, 0);
+    collar.position.set(side * 0.02, 0, 0);
     collar.rotation.y = Math.PI / 2;
     oar.add(collar);
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.022, 0.3), accentMat());
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.022, 0.3), accentMat());
     setReplayAssetSlot(blade, "equipment:row:blade");
     blade.name = side < 0 ? "rower-blade-left" : "rower-blade-right";
-    blade.position.set(side * 2.36, -0.06, 0);
+    blade.position.set(side * 1.82, -0.06, 0);
     blade.userData.accent = true;
     oar.add(blade);
     // The authored oar has one canonical +X outboard direction. Mirror the
@@ -2109,13 +2108,22 @@ function makeRowerAvatar(
   // Concept2 / scull handle path: early drive keeps grips forward so arms can
   // stay long; late draw brings the bar to the *lower chest / ribs*, not behind
   // the back (British Rowing / Concept2 finish coaching).
-  const OAR_YAW_CATCH = -0.3;
-  const OAR_DRAW_YAW = -0.715;
+  // Positive catch yaw puts each inboard grip ahead of the shoulders toward
+  // the stretcher. The drive crosses the pin normal and finishes on the
+  // athlete-facing side, at the lower ribs. Keeping both values negative put
+  // the catch behind the torso and made the rower reach backward for the oars.
+  const OAR_YAW_CATCH = 0.68;
+  const OAR_DRAW_YAW = -0.8;
   const OAR_YAW_SPAN = OAR_DRAW_YAW - OAR_YAW_CATCH;
   // A scull blade is buried only just below the surface. The former deep roll
   // lifted the 0.82 m inboard handle by more than 11 cm during the first few
   // drive frames, making the otherwise closed-chain grip surge forward.
-  const BLADE_DIP = 0.055;
+  // A loaded scull is pitched about ten degrees around its fixed pin: the
+  // spoon sits down at the water while the shorter inboard lever lifts the
+  // handle into the lower-rib band. The old three-degree roll left the blades
+  // visibly high and forced both hands down beside the pelvis.
+  const BLADE_DIP = 0.1;
+  const HANDLE_RISE_ROLL = 0.24;
 
   const handlePoint = new THREE.Vector3();
   const sampledV4Shoulders = [new THREE.Vector3(), new THREE.Vector3()] as const;
@@ -2182,7 +2190,7 @@ function makeRowerAvatar(
       // path follows the graph's handle travel, not only the late arm channel;
       // the fixed oarlock therefore moves the handles during the leg/body
       // phases while the arms remain long.
-      const reachRelaxation = 0.1 * THREE.MathUtils.smoothstep(draw, 0.03, 0.42);
+      const reachRelaxation = 0.1 * THREE.MathUtils.smoothstep(draw, 0.22, 0.55);
       const solvedYaw = solveRowerOarYaw(
         v4Refinement?.reachOrigins[i] ?? arm.shoulderPoint,
         oar.group.position.x - rower.position.x,
@@ -2199,7 +2207,7 @@ function makeRowerAvatar(
       // fixed oar back to the authored draw arc with a smooth transition. A
       // direct branch switch at the first arm-draw sample makes the elbow
       // jump even though the oar itself is moving continuously.
-      const boundaryBlend = 1 - THREE.MathUtils.smoothstep(draw, 0.03, 1.2);
+      const boundaryBlend = 1 - THREE.MathUtils.smoothstep(draw, 0.22, 1);
       const yawDelta =
         THREE.MathUtils.euclideanModulo(stagedYaw - solvedYaw + Math.PI, Math.PI * 2) - Math.PI;
       oar.group.rotation.y = solvedYaw + yawDelta * (1 - boundaryBlend);
@@ -2241,11 +2249,7 @@ function makeRowerAvatar(
           ) +
           0.06 * finishTuck,
       });
-      if (
-        arm.hasPreviousPose &&
-        draw > 0.35 &&
-        arm.wristTarget.distanceTo(arm.lastWristTarget) < 0.16
-      ) {
+      if (arm.hasPreviousPose && arm.wristTarget.distanceTo(arm.lastWristTarget) < 0.16) {
         // The rigid grip crosses the knees while the athlete transitions from
         // the drive to the lower-chest finish. The two-bone solve has two
         // equally valid elbow branches; turn the previous branch toward the
@@ -2257,7 +2261,7 @@ function makeRowerAvatar(
           arm.elbowPoint,
           arm.bendHint,
           arm.side,
-          0.18 * THREE.MathUtils.smoothstep(draw, 0.35, 0.92),
+          0.08,
         );
       }
       if (draw > 0.9) {
@@ -2397,12 +2401,16 @@ function makeRowerAvatar(
     const handleProgress = handleTravel;
     for (const oar of oars) {
       oar.group.rotation.y = oar.side * (OAR_YAW_CATCH + handleProgress * OAR_YAW_SPAN);
-      // Both blade tips dip into the water together despite opposite X signs.
-      oar.group.rotation.z = -oar.side * bladeDepth * BLADE_DIP;
+      // Both blade tips dip together despite opposite X signs. As the drive
+      // comes through, the same fixed-pin roll raises the shorter inboard
+      // handles into the lower ribs instead of lifting the oarlocks or forcing
+      // an early elbow bend while the hands still overlap the knees.
+      oar.group.rotation.z =
+        -oar.side * (bladeDepth * BLADE_DIP + handleProgress * HANDLE_RISE_ROLL);
       // The oarlock is a hull-fixed fulcrum. Moving this parent to bury the
       // blade made every drive visibly detach the shaft from its rigger; the
       // existing rotation supplies immersion while the real pivot stays put.
-      oar.group.position.y = 0.38;
+      oar.group.position.y = ROWER_OARLOCK.y;
       // The blade squares for catch/drive, feathers flat through recovery, then
       // squares again continuously before the next catch.
       oar.blade.rotation.x = (1 - bladeFeather) * (Math.PI / 2);
@@ -2425,7 +2433,12 @@ function makeRowerAvatar(
     // channel is the equipment cue that moves the handle aft toward the
     // chest. Using the aggregate handle channel here would include its leg
     // contribution and pull the grip through the knees and torso too early.
-    const equipmentHandleTravel = graph.body.armDraw.value;
+    // The shared graph begins its arm channel as the legs finish, but the V4
+    // athlete's real knee volume still overlaps the hand path for the first
+    // part of that easing interval. Hold the fixed-oar draw at long-arm reach
+    // until that geometric crossover, then use the remainder of the channel
+    // for the lower-rib pull.
+    const equipmentHandleTravel = THREE.MathUtils.smoothstep(graph.body.armDraw.value, 0.62, 1);
     placeUpperBody(
       graph.body.spineHinge.value,
       graph.body.shoulderSet.value,
@@ -2439,7 +2452,7 @@ function makeRowerAvatar(
     );
     placeLegs(graph.body.legExtension.value);
     pendingBodySwing = graph.body.spineHinge.value;
-    pendingArmDraw = graph.body.armDraw.value;
+    pendingArmDraw = equipmentHandleTravel;
     pendingShoulderSet = graph.body.shoulderSet.value;
     pendingHandleTravel = equipmentHandleTravel;
     placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel);
