@@ -184,6 +184,27 @@ export interface ReplayV4MotionInstallOptions {
   readonly effectorOffsets?: ReplayV4EffectorOffsetOverrides;
   /** Isolation mode for visual QA; default full contact-constrained solve. */
   readonly diagnosticMode?: ReplayV4DiagnosticMode;
+  /**
+   * Seat contract for machines the athlete sits **on** rather than in, where
+   * the hip bone is not the contact surface. Supplying it enables the sit
+   * correction; omitting it leaves the pelvis exactly on its target.
+   *
+   * All values are in the install `parent`'s local space, which is why the
+   * caller owns them: the controller has no knowledge of any machine's frame.
+   */
+  readonly seatContract?: ReplayV4SeatContract;
+}
+
+/** Where the seat is, and how far the posterior skin trails the hip bone. */
+export interface ReplayV4SeatContract {
+  /** Pad top plane in parent-local space. */
+  readonly padTopY: number;
+  /** Signed offset from the hip bone to the lowest sit surface (negative). */
+  readonly sitSurfaceOffsetY: number;
+  /** How far the sit surface may sink into a soft pad. */
+  readonly nestle: number;
+  /** Largest correction accepted before the fit is considered broken. */
+  readonly maxLift: number;
 }
 
 export interface ReplayV4MotionController {
@@ -1468,11 +1489,67 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     this.root.position.add(this.targetLocal).sub(this.currentLocal);
     if (!finiteVector(this.root.position)) throw new Error("Replay V4 pelvis position is invalid");
     this.root.updateMatrixWorld(true);
+
+    // On a seat the hip bone is not the contact surface. After the clip pose
+    // lands the hips on the target, lift the root so the measured posterior
+    // rests on the pad instead of sinking through it (屁股穿模). Height-only
+    // rig tuning is not enough once hip pitch from the clip rotates the
+    // posterior relative to the fixed seat.
+    const seat = this.options.seatContract;
+    if (seat) this.enforceSitSurface(parent, seat);
+  }
+
+  /**
+   * Keep the posterior on the seat pad. The caller supplies the pad plane and
+   * the measured hip→sit offset, so clip pitch cannot drive the mesh through
+   * the cushion after a pure pelvis translation align.
+   */
+  private enforceSitSurface(parent: THREE.Object3D, seat: ReplayV4SeatContract): void {
+    this.hips.getWorldPosition(this.currentWorld);
+    parent.worldToLocal(this.currentWorld);
+    const sitLocalY = this.currentWorld.y + seat.sitSurfaceOffsetY;
+    const lift = seat.padTopY - seat.nestle - sitLocalY;
+    // Only lift out of the pad — never drag the rider down through a high clip.
+    if (lift <= 1e-5) return;
+    if (lift > seat.maxLift) {
+      throw new Error(
+        `Replay V4 seat correction of ${lift.toFixed(6)} m exceeds the ${seat.maxLift} m budget`,
+      );
+    }
+    this.root.position.y += lift;
+    if (!finiteVector(this.root.position)) {
+      throw new Error("Replay V4 seat correction produced an invalid root");
+    }
+    this.root.updateMatrixWorld(true);
   }
 
   private assertPelvisAligned(): void {
     this.options.targets.pelvis.getWorldPosition(this.targetWorld);
     this.hips.getWorldPosition(this.currentWorld);
+    const seat = this.options.seatContract;
+    if (seat) {
+      // Sit correction may raise the hip above the procedural pelvis marker
+      // without changing XZ. Require horizontal lock and a bounded upward lift;
+      // the ceiling is the same budget the correction itself enforces, so a
+      // drifting seat fit fails here instead of quietly posing mid-air.
+      const parent = this.root.parent;
+      if (!parent) throw new Error("Replay V4 athlete has no lane parent");
+      this.targetLocal.copy(this.targetWorld);
+      this.currentLocal.copy(this.currentWorld);
+      parent.worldToLocal(this.targetLocal);
+      parent.worldToLocal(this.currentLocal);
+      const dx = this.currentLocal.x - this.targetLocal.x;
+      const dz = this.currentLocal.z - this.targetLocal.z;
+      const dy = this.currentLocal.y - this.targetLocal.y;
+      const horizontal = Math.hypot(dx, dz);
+      if (!Number.isFinite(horizontal) || horizontal > 1e-5) {
+        throw new Error(`Replay V4 seated pelvis XZ drifted by ${horizontal.toFixed(6)} m`);
+      }
+      if (!Number.isFinite(dy) || dy < -1e-5 || dy > seat.maxLift) {
+        throw new Error(`Replay V4 seated pelvis Y lift out of range: ${dy.toFixed(6)} m`);
+      }
+      return;
+    }
     const residual = this.currentWorld.distanceTo(this.targetWorld);
     if (!Number.isFinite(residual) || residual > 1e-5) {
       throw new Error(`Replay V4 pelvis alignment drifted by ${residual.toFixed(6)} m`);
@@ -1538,11 +1615,18 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // Every planted/contact-driven leg needs the deterministic rig's knee
     // branch. RowErg raises both knees above the cockpit, BikeErg keeps them
     // aligned with opposed pedals, and SkiErg keeps each knee over its own ski.
+    // BikeErg arms also use their explicit elbow markers: a seated cockpit has
+    // a very different bend plane from the generic clip, and retaining the
+    // clip-only branch makes the hands reach the bars with winged elbows.
     // Retaining the mirrored SkiErg clip plane after locking both feet allowed
     // the left and right thighs to solve through one another even though the
     // boots themselves remained correctly separated.
     if (chain.isLeg) return true;
-    return this.options.sport === "rower" || this.options.sport === "skierg";
+    return (
+      this.options.sport === "rower" ||
+      this.options.sport === "skierg" ||
+      this.options.sport === "bike"
+    );
   }
 
   /**
@@ -1572,11 +1656,12 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   /**
    * Close one rigid contact chain on top of the authored clip pose.
    *
-   * Most bend planes come from the sampled clip. RowErg and SkiErg are the
-   * deliberate arm exceptions: a rigid grip can close on either elbow branch,
-   * so the reference-backed shared marker chooses the rearward/sagittal one.
-   * All leg chains likewise use their mechanically solved knee target so a
-   * contact-locked foot can never select the opposite-side knee branch.
+   * Most bend planes come from the sampled clip. Machine-contact arms use the
+   * deterministic shared elbow marker because a rigid grip can close on either
+   * elbow branch: rowing selects the rearward draw, SkiErg the sagittal pull,
+   * and BikeErg the tucked seated cockpit reach. All leg chains likewise use
+   * their mechanically solved knee target so a contact-locked foot can never
+   * select the opposite-side knee branch.
    */
   private correctContactChain(chain: ChainBinding): void {
     chain.upper.getWorldPosition(this.rootWorld);

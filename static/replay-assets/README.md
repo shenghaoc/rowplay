@@ -22,11 +22,11 @@ identity, or Canvas 2D fallback.
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 676,488 bytes; SHA-256
-  `c0c916cd34cd03c8f0d42ff563a048798f6e52702d35dc549baeec2075618456`.
+- **Reviewed V3 artifact:** 706,308 bytes; SHA-256
+  `ff1dbd52fdbb7c37c82b6109d666d49706e97315b0864608ab4055bd7803fd15`.
 - **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
   direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
-  nodes total). The package has 26,590 indexed triangles and 18,745 indexed
+  nodes total). The package has 28,382 indexed triangles and 19,531 indexed
   vertices, one neutral placeholder material, zero textures/images, zero
   animations, and zero skins.
 - **Detail language:** shared-vertex smooth normals, a neutral lower rowing hull
@@ -36,12 +36,24 @@ identity, or Canvas 2D fallback.
   limbs, deltoid transitions, and grip/sole/elbow detail. Equipment includes a
   Blender-authored open-U racing shell with split decks, recessed cockpit,
   slide rails, angled stretcher, heel cups, wing rigger, oarlocks, moving
-  four-roller seat carriage, and sculpted oar; raised ski deck and binding; aero-rim wheels
-  with 14 fine spokes and six-spoke disc rotors, a proper diamond-frame bicycle
-  with chain/cassette, calipers, contact-aligned brake hoods/levers, and a
-  rotating crank assembly. All detail is generated from reviewed local
-  Three.js or Blender Python source; there is no image, texture, downloaded model, scan, or
-  avatar-generator output.
+  four-roller seat carriage, and sculpted oar; raised ski deck and binding; and a
+  **true-scale road bicycle** — 0.67 m (700c) wheels on a 1.00 m wheelbase, sized
+  to the 1.83 m athlete rather than inflated to meet them. Aero rims with 16 fine
+  spokes and disc rotors, a main triangle with chain- and seat-stays, fork blades
+  running from the crown to the axle on the steering axis, a chain solved as two
+  external tangents plus the arcs it wraps around chainring and cassette, rim
+  calipers, drop bars with brake hoods the palms close on, a winged cut-out
+  performance saddle on a post that stops beneath the pad, and a rotating crank
+  assembly with arms. The bicycle is a course-progress metaphor rather than
+  a model of Concept2's stationary BikeErg. Every one of those frame nodes is
+  read at build time from the shared `src/lib/replay/bikeRig.js` contract that
+  `makeBikeAvatar` also uses, so the checked-in V3 equipment cannot drift from
+  the renderer's sit/grip/pedal fit; `validate-replay-assets.mjs` additionally
+  refuses any frame geometry that rises above the saddle pad within the rider's
+  footprint. Bike equipment provenance and the evaluated-but-not-imported CC-BY
+  spin-bike candidate are recorded in `source/bike/PROVENANCE.md`. All detail is
+  generated from reviewed local Three.js or Blender Python source; there is no
+  image, texture, downloaded model, scan, or avatar-generator output.
 
 ### V3 schema and coordinate contracts
 
@@ -186,9 +198,15 @@ remain automatic fallbacks.
   cool material tint while ghost equipment/wakes may remain translucent; the
   single deforming skin never enters Three.js's transparent triangle-sorting
   path, so limbs and overlapping garment forms cannot disappear by draw order.
-  BikeErg's fixed saddle is a low-profile opaque support drawn before the skin
-  without writing depth, so the athlete naturally occludes the overlapping
-  cushion pixels instead of appearing to pass through a thick solid block.
+  BikeErg seating is geometric: saddle height is solved from knee flexion at
+  bottom dead centre (30°, inside the 25-35° road-fit window), and the pad top
+  is placed on the **measured ischial plateau** — skin at |x| 0.050-0.075, a
+  sit-bone spread that matches a real pelvis. The saddle itself comes from the
+  shared `src/lib/replay/bikeSaddle.js` station table, which both this package
+  and the procedural renderer loft: a winged rear that carries the ischia, a
+  through cut-out for the perineum, which on a standing-derived mesh hangs
+  37 mm below them, and a nose that narrows and drops away so the sweeping
+  thighs clear it.
 - **Skinning:** reviewed anatomical face sets drive deterministic A-pose→V4
   segment retargeting and bounded parent/child blends at shoulders, elbows,
   wrists, hips, knees, and ankles. The continuous body's major limb influences

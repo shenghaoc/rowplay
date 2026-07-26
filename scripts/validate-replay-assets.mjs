@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { relative, resolve } from "node:path";
 import { validateV4Asset } from "./validate-replay-rig-v4.mjs";
 import { validateV4Usdz } from "./validate-replay-rig-v4-usdz.mjs";
+import { BIKE_RIG, bikeSaddleTopY } from "../src/lib/replay/bikeRig.js";
 
 const DEFAULT_ASSET = "static/replay-assets/rowplay-rigs-v3.glb";
 // Blender-authored open hull, slide rails, and seat carriage add reviewed
@@ -130,6 +131,39 @@ const MATERIAL_ROLES = new Set([
   "equipment-grip",
   "equipment-trim",
 ]);
+
+/**
+ * The seated rider is the only thing above the BikeErg saddle pad, so no frame
+ * part may rise past it in the saddle's own footprint.
+ *
+ * This is the contract a lowered saddle silently broke once: the pad dropped
+ * and thinned while the seat post kept its old top, leaving ten centimetres of
+ * post inside the athlete. The test is per-vertex rather than per-bounding-box
+ * because the frame triangle legitimately reaches above pad height at the head
+ * tube, far in front of the rider.
+ */
+function validateBikeSeatFit(bikeFrameParts) {
+  const padTopY = bikeSaddleTopY(BIKE_RIG);
+  const [saddleX, , saddleZ] = BIKE_RIG.saddle;
+  const saddle = bikeFrameParts.get("saddle");
+  invariant(saddle, "bike frame assembly is missing its saddle geometry");
+  const saddleTopY = Math.max(...saddle.map((vertex) => vertex.y));
+  invariant(
+    Math.abs(saddleTopY - padTopY) <= 2e-3,
+    `authored saddle top ${saddleTopY.toFixed(4)} m must equal the BIKE_RIG pad top ${padTopY.toFixed(4)} m`,
+  );
+  for (const [part, vertices] of bikeFrameParts) {
+    if (part === "saddle") continue;
+    for (const vertex of vertices) {
+      // Only geometry genuinely beneath the rider can spear them.
+      if (Math.abs(vertex.x - saddleX) > 0.14 || Math.abs(vertex.z - saddleZ) > 0.18) continue;
+      invariant(
+        vertex.y <= padTopY + 1e-6,
+        `bike frame part ${part} reaches ${vertex.y.toFixed(4)} m under the saddle footprint, above the pad top ${padTopY.toFixed(4)} m — it would pass through the seated rider`,
+      );
+    }
+  }
+}
 
 const LEAF_MATERIAL_ROLES = new Map([
   ["athlete:torso", "athlete-fabric"],
@@ -550,6 +584,8 @@ function validateDocument(document, binary) {
   const templates = new Map();
   const classifiedNodes = new Set();
   const usedMeshes = new Set();
+  /** Position accessors of the bike frame parts, for the seat-fit contract. */
+  const bikeFrameBounds = new Map();
   let vertexCount = 0;
   let triangleCount = 0;
 
@@ -714,6 +750,16 @@ function validateDocument(document, binary) {
       seenParts.add(part);
       seenRoles.add(role);
       validateMesh(child, `template ${template} part ${part}`);
+      if (template === "equipment:bike:frame-assembly") {
+        bikeFrameBounds.set(
+          part,
+          readPositionVectors(
+            document,
+            binary,
+            document.meshes[child.mesh].primitives[0].attributes.POSITION,
+          ),
+        );
+      }
     }
     invariant(
       seenParts.size === expectedParts.size,
@@ -747,6 +793,7 @@ function validateDocument(document, binary) {
     missingTemplates.length === 0,
     `asset is missing replay templates: ${missingTemplates.join(", ")}`,
   );
+  validateBikeSeatFit(bikeFrameBounds);
   invariant(
     triangleCount >= MIN_TRIANGLES,
     `asset is below the ${MIN_TRIANGLES}-triangle fidelity floor`,

@@ -82,7 +82,8 @@ figure, readability, and motion specs.
     motion frozen; allow only the documented microscopic RowErg stretcher
     compatibility alignment and isolate elbow clearance to the V4 skin
   - [x] Keep the BikeErg pelvis visually supported without body/saddle
-    penetration, limiting equipment work to the minimum compatibility treatment
+    penetration in the athlete-only pass; Task 12 owns the later equipment/fit
+    rebuild
   - [x] Give Low, Medium, High, and Ultra materially progressive athlete PBR
     detail while preserving one geometry, rig, clip set, and fallback chain
   - [x] Publish one baseline/new/skeleton six-pose sheet, three real-time sport
@@ -99,3 +100,21 @@ figure, readability, and motion specs.
     existing human fingers; preserve equipment paths, timing, and environments
   - [x] Validate exact helper hierarchy/influence, deterministic reset,
     contact retention, and all three machine grips with bounded close-up frames
+
+- [x] **12. Rebuild BikeErg equipment around the seated athlete**
+  - [x] Centralize true-scale wheels, wheelbase, frame, steering, crank,
+    handlebar, saddle, and rider anchors in one `BIKE_RIG` contract consumed by
+    procedural rendering, authored-asset generation, runtime contact, and tests
+  - [x] Replace the block pad with one analytic winged, cut-out, dropped-nose
+    saddle used by both graphics paths and dense whole-surface penetration tests
+  - [x] Keep the rider on the sit bones, palms closed on shaped hoods, shoes on
+    opposed pedals, and knees on the continuous forward branch through the full
+    crank cycle and every quality tier
+  - [x] Replace placeholder tyres, frame, bar, seatpost, and drivetrain form
+    with coherent materials and geometry while retaining the established
+    contact anchors, animation graph, and fallback chain
+  - [x] Give the shared pelvis/thigh crease one continuous position-driven
+    weight field and verify the same mesh in RowErg and SkiErg
+  - [x] Update provenance, hashes, user documentation, native handoff, and
+    visual-QA evidence; run focused tests, the full repository gate, browser
+    smoke, deployment, and exact-head CI

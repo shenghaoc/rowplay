@@ -128,6 +128,39 @@ and soles. Repeated same-time seeks restore the last authored sample before IK,
 so scrubbing, pause, reduced motion, and live/ghost comparison cannot accumulate
 constraint drift.
 
+## BikeErg fit and equipment contract
+
+`src/lib/replay/bikeRig.js` is the single dimensional authority for BikeErg.
+It derives a 0.999 m wheelbase, 0.670 m wheels, rearward-rising 73° head tube,
+compact frame nodes, handlebar contacts, crank geometry, and rider placement
+from the V4 segment lengths and a 30° knee-flexion target at bottom dead centre.
+The procedural maker, authored V3 generator, runtime contact solve, and tests
+consume this contract; none retype a second bicycle fit.
+
+`src/lib/replay/bikeSaddle.js` separately owns one analytic saddle solid. Its
+station table forms ischial-support wings, a through cut-out, and a narrow
+dropped nose. The procedural renderer and authored V3 package loft that same
+table, while dense tests sample the skinned V4 surface against the analytic
+solid. Contact must be present at the sit-bone plateau, penetration stays within
+the soft-pad nestle, and the frame/seatpost validator rejects geometry entering
+the seated-rider footprint.
+
+The final V4 surface keeps the sit-bone and posterior gluteal region owned by
+the pelvis while the anterior hip folds with the femurs. One position-driven
+crease function is shared by the pelvis and thigh face sets, preventing the
+former weight discontinuity that made the thigh look severed. RowErg and
+SkiErg consume the same mesh, so their deepest hip-flexion and standing poses
+remain explicit regression gates.
+
+The equipment shell uses road-scale tubing, near-black diffuse rubber, alloy
+spokes and hubs, a wrapped tangent chain and cassette, a connected seatpost,
+and shaped drop-bar hoods. Authored equipment remains a one-time replacement
+above the procedural fallback; it does not introduce a second motion graph or
+move hand, foot, wheel, crank, or saddle anchors. Low through Ultra retain this
+same correct fit. Their existing geometry resolution, athlete PBR response,
+lighting, shadows, course density, and effects provide materially progressive
+quality instead of scaling one incorrect image by device-pixel ratio.
+
 ## Materials and identity
 
 The GLB deliberately carries one portable authoring material only. At template

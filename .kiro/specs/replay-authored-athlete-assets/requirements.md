@@ -211,3 +211,40 @@ whose limbs disappear through transparency sorting.
    decorations that cause moving depth seams SHALL be removed or represented by
    vertex colour, and both leg chains SHALL remain distinguishable from shell
    and cockpit materials.
+
+### Requirement 9: True-scale BikeErg equipment and seated fit
+
+**User Story:** As a cyclist, I want the replay athlete to sit naturally on a
+credible human-scale bicycle while keeping hands and feet attached to the
+controls throughout the pedal cycle.
+
+#### Acceptance Criteria
+
+1. WHEN BikeErg renders THEN procedural and authored equipment SHALL consume one
+   shared fit contract for wheel size, wheelbase, steering axis, frame nodes,
+   crank, saddle, handlebar, and rider anchors rather than independently typed
+   constants.
+2. WHEN the bicycle is fitted to V4 THEN it SHALL use 0.670 m wheels, a
+   0.999 m wheelbase, a rearward-rising 73° head tube, and a saddle height
+   derived from a 30° knee-flexion target at bottom dead centre.
+3. WHEN the athlete is seated THEN one analytic winged, cut-out, dropped-nose
+   saddle contract SHALL carry the ischial region without body/saddle
+   penetration, while the frame and seatpost remain outside the seated-rider
+   footprint.
+4. WHEN the crank advances THEN shoes SHALL remain on opposed pedals, knees
+   SHALL stay on the continuous rider-forward bend branch, and palms SHALL
+   remain closed on shaped brake hoods without changing the authoritative
+   contact targets.
+5. WHEN Low, Medium, High, or Ultra is selected THEN every tier SHALL retain the
+   same correct fit and motion truth while spending additional quality on
+   visible geometry, athlete materials, lighting, shadows, course detail, and
+   effects rather than device-pixel ratio alone.
+6. WHEN the shared V4 skin flexes THEN one position-driven pelvis/thigh weight
+   field SHALL keep the posterior sit-bone region pelvis-owned and fold the
+   anterior hip continuously, without regressing RowErg or SkiErg.
+7. WHEN BikeErg equipment assets ship THEN their source, ownership, compatible
+   licence, generator, hashes, and no-runtime-download boundary SHALL be
+   documented beside the checked assets.
+8. WHEN the fit is released THEN dense crank-cycle tests across all four
+   quality tiers, authored-asset validation, RowErg/SkiErg regression tests,
+   visual QA, the repository gate, browser smoke, and exact-head CI SHALL pass.

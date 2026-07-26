@@ -14,7 +14,7 @@ reports `userData.replayV4Architecture = "clip-contact-constrained"`.
 
 | Sport   | Current mechanical contract                                                                                                                                                                                                                                                                                                                                                                 |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| BikeErg | Both shoes remain on mechanically opposed pedals. Each knee selects one continuous rider-forward branch of the hip/pedal sphere intersection; saddle height retains visible flexion through bottom dead centre.                                                                                                                                                                             |
+| BikeErg | The pelvis stays supported by the saddle fit contract, both shoes remain on mechanically opposed pedals, and each knee selects one continuous rider-forward branch of the hip/pedal sphere intersection. The V4 arms use visible-shoulder hood markers for a tucked seated reach rather than the generic clip bend plane.                                                                   |
 | RowErg  | Each palm terminates on its own rigid inboard scull grip. Arms remain softly long until the hands pass the knees and the legs are nearly extended; both elbows then travel behind the torso in the late draw and arms clear first on recovery. Hands remain uncrossed and forearms remain outside the torso; neither a forward-pointing elbow nor a horizontal chicken wing is allowed.     |
 | SkiErg  | Each pole is a rigid 1.55 m link. The basket plants steeply, remains fixed while the skier advances, releases by 29% of the cycle, lifts through recovery, and converges continuously on the next catch. The elbow points down at plant, rotates rearward during the loaded press, and returns underneath the forward-lifting arm before the next plant without changing two-bone branches. |
 
@@ -597,8 +597,9 @@ sport was played at 1×, 2×, and 8×; route changes reset transport to 1×.
   and course motion, so the athlete advances while the planted tips stay almost
   stationary; mobile framing moves toward rear-three-quarter to preserve the
   paired-pole pixel budget.
-- **BikeErg:** hands remain on the bar, feet remain on opposed pedals, and the
-  rider's knees, ankles, pelvis, shoulders, and head follow the shared circular
+- **BikeErg:** the pelvis remains over the saddle, hands remain on the bar with
+  elbows tucked below and behind the shoulders, feet remain on opposed pedals,
+  and the rider's knees, ankles, shoulders, and head follow the shared circular
   graph. Positive wheel rotation and the matching crank/road cues remain the
   mechanically correct forward direction; reversing them would create the
   backwards-cycling defect.

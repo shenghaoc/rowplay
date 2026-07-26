@@ -180,9 +180,27 @@ The hand and rigid pole then lift and travel forward on recovery, and the elbow
 returns underneath the arm for the next plant without changing to the opposite
 two-bone intersection.
 BikeErg shoes stay on opposed pedals while each knee follows a continuous
-rider-forward branch and retains flexion through bottom dead centre. These are
-deliberate illustrative motion constraints, not measured joint or force data
-from Concept2.
+rider-forward branch and retains flexion through bottom dead centre. The 3D
+BikeErg rider is drawn on a stylised road bicycle—two 0.67 m wheels on a 1.00 m
+wheelbase, a chain to the rear cassette, drop bars—rather than a literal model
+of the stationary machine, because the replay carries the athlete along a race
+course and a rolling bicycle reads that progress at a glance. The bicycle is
+sized to the athlete rather than the other way round: its frame comes from real
+road geometry, and the saddle height is then solved from the rider's own knee
+angle, the way a bike is actually fitted — 30° of knee flexion at the bottom of
+the pedal stroke, the middle of the 25-35° road-fit window. The frame and the
+rider share one `BIKE_RIG` contract for bottom bracket, saddle, grips, and
+pedals, so the procedural renderer and the generated V3 equipment cannot drift
+apart. The production V4 athlete (PR #172) rests its measured sit-bone surface
+on a winged, cut-out performance saddle whose shape is derived from the rider's
+own seat geometry, so the body cannot pass through the cushion and the thighs
+clear the nose through the whole crank cycle; and it rebuilds the elbow branch
+from the visible shoulders to the hood contacts so palms lock to the grips. Equipment form and athlete–bike contact are present at
+every 3D tier; higher tiers add material response and detail rather than
+replaying the same misfit at a larger pixel budget. These are deliberate
+illustrative motion constraints, not measured joint or force data from
+Concept2, and the bicycle is a visual metaphor rather than a depiction of
+Concept2 hardware.
 
 The shipped V4 athlete is a local, repository-owned generic asset: one skinned
 mesh, an authored skeleton, and three canonical sport clips. Three.js samples
@@ -191,7 +209,9 @@ analytic post-clip correction to the hands and feet. This improves deformation
 and contact fidelity without implying that rowplay can infer an athlete's real
 joints, posture, or biomechanics from a Logbook workout. V4 remains subject to
 the same equipment-contact authority and V3, procedural 3D, and Canvas fallback
-rules.
+rules. The BikeErg fit update reuses the existing repository-owned, CC0-derived
+V4 source and locally authored equipment; it adds no runtime download or
+undocumented third-party asset.
 
 Both views use complete sport-specific illustrative environments, not one
 generic floor with different colors. RowErg combines layered water with
