@@ -573,7 +573,10 @@ roll that buries the spoon leaves the handles at an anatomical drive height and
 adds only a few centimetres of rise into the lower-rib finish. Hull roll is
 damped while the blades are buried — two water-locked spoons stabilise a scull
 like outriggers — which also keeps the 2.97 m levers from porpoising a loaded
-blade back out of the water.
+blade back out of the water. The visible arm draw begins only once the legs
+have finished and spans roughly the last 100 ms of the drive at 28 spm, with
+the grips passing well above the flattened knee envelope, rather than
+collapsing the whole pull into a couple of display frames.
 
 Focused contracts cover shell orientation and length, stretcher rake,
 seat-to-heel height, full-stroke foot positions, catch shin alignment, finish

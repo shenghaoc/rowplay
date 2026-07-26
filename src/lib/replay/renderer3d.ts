@@ -2464,7 +2464,9 @@ function makeRowerAvatar(
           arm.bendHint,
           arm.elbowPoint,
           arm.handPoint,
-          arm.shoulderPoint.z + 0.014,
+          // Keep the joint visibly ahead of the shoulder plane — the finish
+          // contract asserts a 0.02 minimum, so enforce it with margin.
+          arm.shoulderPoint.z + 0.025,
           arm.handTarget.y + 0.025,
           arm.handTarget.y + 0.13,
           arm.side,
@@ -2630,15 +2632,15 @@ function makeRowerAvatar(
     // channel is the equipment cue that moves the handle aft toward the
     // chest. Using the aggregate handle channel here would include its leg
     // contribution and pull the grip through the knees and torso too early.
-    // The shared graph begins its arm channel as the legs finish, but the V4
-    // athlete's real knee volume still overlaps the hand path for the first
-    // part of that easing interval. Hold the fixed-oar draw at long-arm reach
-    // until that geometric crossover, then use the remainder of the channel
-    // for the lower-rib pull. The 0.62 gate is the measured hand-past-knee
-    // crossover: gating earlier folds the elbows before the hands clear the
-    // knees, so any further widening of the visible draw window has to come
-    // from retiming the shared graph's arm channel, not from this gate.
-    const equipmentHandleTravel = THREE.MathUtils.smoothstep(graph.body.armDraw.value, 0.62, 1);
+    // The shared graph begins its arm channel only after the legs have
+    // finished driving, so by the time armDraw rises the knees are flat and
+    // the raised drive-height grips travel above the knee envelope, not
+    // through it. Gating away just the first sliver of the channel keeps the
+    // long-arm reach through any residual leg motion while spreading the
+    // visible draw across most of the channel: the former 0.62 gate crushed
+    // the entire handle pull into roughly two display frames, which read as a
+    // finish teleport rather than a draw to the ribs.
+    const equipmentHandleTravel = THREE.MathUtils.smoothstep(graph.body.armDraw.value, 0.12, 1);
     placeUpperBody(
       graph.body.spineHinge.value,
       graph.body.shoulderSet.value,

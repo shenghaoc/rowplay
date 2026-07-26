@@ -90,9 +90,10 @@ viewing speed.
    feathered blades SHALL create a continuous catch → drive → finish →
    hands-away → slide sequence while grips stay clear of the torso. Arms SHALL
    remain softly long through the leg drive and body opening. On the drive,
-   visible elbow flexion SHALL begin only after the hands have passed the knee
-   envelope and the legs are nearly extended; both elbows SHALL then travel
-   rearward as the handle approaches the lower ribs. Recovery SHALL straighten
+   visible elbow flexion SHALL begin only after the legs are nearly extended,
+   with the hands clear of the knee envelope throughout; both elbows SHALL
+   then travel rearward as the handle approaches the lower ribs. Recovery
+   SHALL straighten
    the arms and move the hands back past the knees before body-over and slide;
    neither renderer SHALL select a forward-pointing, horizontal-wing, or
    through-torso elbow branch. At the finish, each upper arm SHALL descend

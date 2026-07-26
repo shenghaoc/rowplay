@@ -1720,12 +1720,12 @@ describe("CourseRenderer3D", () => {
           // the continuity guard as soon as either arm exposes real flexion.
           Math.min(straightness, priorStraightness) < 0.8
         ) {
-          // The fastest legitimate elbow motion is the compressed late draw
-          // (~0.16 per 1/256-cycle step, wrist-speed bound). A branch flip
-          // teleports the elbow across the chord circle (0.4+ in one step),
-          // so this margin separates fast-but-continuous from discontinuous.
+          // The fastest legitimate elbow motion is the late draw (~0.12 per
+          // 1/256-cycle step, wrist-speed bound). A branch flip teleports the
+          // elbow across the chord circle (0.4+ in one step), so this margin
+          // separates fast-but-continuous from discontinuous.
           expect(elbow.distanceTo(prior), `${side} elbow continuity at ${cycle}`).toBeLessThan(
-            0.22,
+            0.16,
           );
         }
         previous.set(side, elbow.clone());
@@ -1737,12 +1737,12 @@ describe("CourseRenderer3D", () => {
     renderer.destroy();
   });
 
-  it("keeps procedural RowErg arms long until the handle clears the knees", () => {
+  it("keeps procedural RowErg arms long until the legs finish, clear of the knees", () => {
     const renderer = new CourseRenderer3D(makeHost(), "medium", "rower");
     renderer.resize(1140, 420);
     const samples: Array<{
       cycle: number;
-      handMinusKnee: number;
+      handKneeDistance: number;
       bendDegrees: number;
       armDraw: number;
       legExtension: number;
@@ -1764,7 +1764,7 @@ describe("CourseRenderer3D", () => {
       const straightness = upper.dot(forearm) / (upper.length() * forearm.length());
       samples.push({
         cycle,
-        handMinusKnee: hand.z - knee.z,
+        handKneeDistance: hand.distanceTo(knee),
         bendDegrees: (Math.acos(THREE.MathUtils.clamp(straightness, -1, 1)) * 180) / Math.PI,
         armDraw: graph.body.armDraw.value,
         legExtension: graph.body.legExtension.value,
@@ -1772,31 +1772,37 @@ describe("CourseRenderer3D", () => {
     }
     renderer.destroy();
 
-    // The grip and knee are both ~5 cm-radius volumes; their joint-centre
-    // z-planes crossing is not the physical contact criterion. Treat the hand
-    // as clear once its centre is within 2 cm of the knee-centre plane so a
-    // millimetre-scale sweep change cannot flip this sequencing race.
-    const clearanceIndex = samples.findIndex((sample) => sample.handMinusKnee <= 0.02);
+    // Drive-side sequencing, stated physically: the arms stay softly long
+    // until the legs have finished driving, and the grip keeps genuine 3D
+    // clearance from the knee volume for the whole drive. The knees are flat
+    // once the legs extend, so the raised drive-height handle passes above
+    // the knee envelope rather than around a joint-centre z-plane — the old
+    // plane-crossing race failed on millimetre sweep changes while never
+    // measuring an actual hand/knee conflict.
     const visibleDrawIndex = samples.findIndex((sample) => sample.bendDegrees > 10);
-    if (clearanceIndex < 0 || visibleDrawIndex < 0) {
-      throw new Error("Procedural RowErg drive did not expose hand/knee clearance and arm draw");
+    if (visibleDrawIndex < 0) {
+      throw new Error("Procedural RowErg drive did not expose a visible arm draw");
     }
 
-    if (clearanceIndex > 0) {
-      expect(samples[clearanceIndex - 1]!.handMinusKnee).toBeGreaterThan(0);
-    }
     expect(
-      Math.max(...samples.slice(0, clearanceIndex).map((sample) => sample.bendDegrees)),
+      Math.max(
+        ...samples
+          .filter((sample) => sample.legExtension < 0.95)
+          .map((sample) => sample.bendDegrees),
+      ),
       "squared blades retain a softly unlocked long arm through the leg drive",
     ).toBeLessThan(9);
+    // Knee joint centre to grip centre: ~7 cm knee radius + ~5 cm gripped
+    // hand radius + slack. Measured minimum is ~0.35 at the mid-draw.
     expect(
-      visibleDrawIndex,
-      "procedural elbow flexion follows drive-side knee clearance",
-    ).toBeGreaterThanOrEqual(clearanceIndex);
+      Math.min(...samples.map((sample) => sample.handKneeDistance)),
+      "the grip never sweeps through the knee envelope on the drive",
+    ).toBeGreaterThan(0.15);
     expect(
       samples[visibleDrawIndex]!.legExtension,
       "the legs finish driving before the arms visibly draw",
     ).toBeGreaterThan(0.99);
+    expect(samples[visibleDrawIndex]!.armDraw).toBeGreaterThan(0);
     expect(samples.at(-1)!.bendDegrees, "finish has a readable late arm draw").toBeGreaterThan(55);
   });
 
@@ -3386,11 +3392,11 @@ describe("CourseRenderer3D", () => {
       }
     });
 
-    it("keeps V4 RowErg arms long until the handle clears the knees", () => {
+    it("keeps V4 RowErg arms long until the legs finish, clear of the knees", () => {
       const renderer = rendererFor("rower");
       const samples: Array<{
         cycle: number;
-        handMinusKnee: number;
+        handKneeDistance: number;
         bendDegrees: number;
         armDraw: number;
         legExtension: number;
@@ -3426,7 +3432,7 @@ describe("CourseRenderer3D", () => {
           const straightness = upper.dot(forearm) / (upper.length() * forearm.length());
           samples.push({
             cycle,
-            handMinusKnee: hand.z - knee.z,
+            handKneeDistance: hand.distanceTo(knee),
             bendDegrees: (Math.acos(THREE.MathUtils.clamp(straightness, -1, 1)) * 180) / Math.PI,
             armDraw: graph.body.armDraw.value,
             legExtension: graph.body.legExtension.value,
@@ -3437,26 +3443,27 @@ describe("CourseRenderer3D", () => {
         renderer.destroy();
       }
 
-      // Same volumetric tolerance as the procedural clearance test: the grip
-      // and knee are ~5 cm-radius bodies, so centre-plane crossing within
-      // 2 cm counts as cleared rather than racing the exact sample boundary.
-      const clearanceIndex = samples.findIndex((sample) => sample.handMinusKnee <= 0.02);
+      // Same physical criteria as the procedural sequencing test: softly
+      // long skinned arms until the legs finish driving, and genuine 3D
+      // grip-to-knee clearance for the whole drive instead of racing a
+      // joint-centre z-plane crossing against the flexion sample.
       const visibleDrawIndex = samples.findIndex((sample) => sample.bendDegrees > 10);
-      if (clearanceIndex < 0 || visibleDrawIndex < 0) {
-        throw new Error("V4 RowErg drive did not expose hand/knee clearance and arm draw");
+      if (visibleDrawIndex < 0) {
+        throw new Error("V4 RowErg drive did not expose a visible arm draw");
       }
 
-      if (clearanceIndex > 0) {
-        expect(samples[clearanceIndex - 1]!.handMinusKnee).toBeGreaterThan(0);
-      }
       expect(
-        Math.max(...samples.slice(0, clearanceIndex).map((sample) => sample.bendDegrees)),
+        Math.max(
+          ...samples
+            .filter((sample) => sample.legExtension < 0.95)
+            .map((sample) => sample.bendDegrees),
+        ),
         "the skinned elbows never fold and re-extend during the leg/body drive",
       ).toBeLessThan(13);
       expect(
-        visibleDrawIndex,
-        "visible V4 elbow flexion starts at or after drive-side knee clearance",
-      ).toBeGreaterThanOrEqual(clearanceIndex);
+        Math.min(...samples.map((sample) => sample.handKneeDistance)),
+        "the V4 grip never sweeps through the knee envelope on the drive",
+      ).toBeGreaterThan(0.15);
       expect(samples[visibleDrawIndex]!.armDraw).toBeGreaterThan(0);
       expect(
         samples[visibleDrawIndex]!.legExtension,
