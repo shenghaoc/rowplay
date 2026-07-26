@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -47,6 +47,28 @@ await mkdir(outputDir, { recursive: true });
  * any Ultra capture; optional everywhere else.
  */
 const browserChannel = option("browser-channel");
+/**
+ * Fingerprint of the build this capture is meant to evidence. The version file
+ * changes every build, so a server that answers with a different fingerprint
+ * is serving some other build — which happened silently when several agent
+ * worktrees raced for one port, and produced byte-identical "captures" across
+ * three different builds. Staleness must fail loudly, not photograph the
+ * wrong venue.
+ */
+async function assertServedBuildMatches() {
+  const version = JSON.parse(
+    await readFile(resolve(".svelte-kit/cloudflare/_app/version.json"), "utf8"),
+  ).version;
+  const served = await fetch(`${baseUrl}/_app/version.json`).then((r) => r.json());
+  if (served.version !== version) {
+    throw new Error(
+      `stale server: disk build ${version} but ${baseUrl} serves ${served.version}. ` +
+        "Another process owns the port, or the preview was not restarted after the build.",
+    );
+  }
+  return version;
+}
+
 const browser = await chromium.launch({
   headless: true,
   ...(browserChannel ? { channel: browserChannel } : {}),
@@ -403,6 +425,8 @@ async function captureReleaseGate() {
   }
 }
 
+const buildVersion = await assertServedBuildMatches();
+
 try {
   if (matrix === "environment") await captureEnvironmentMatrix();
   else await captureReleaseGate();
@@ -420,6 +444,7 @@ await writeFile(
       // Which browser produced these frames decides whether a WebGPU adapter
       // was available at all, so it belongs in the evidence.
       browserChannel: browserChannel ?? "playwright-bundled-chromium",
+      buildVersion,
       command: [
         "node scripts/capture-replay-release-matrix.mjs",
         `--matrix=${matrix}`,

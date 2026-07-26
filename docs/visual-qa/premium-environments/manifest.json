@@ -2,6 +2,7 @@
   "source": "http://127.0.0.1:8787",
   "matrix": "environment",
   "browserChannel": "chrome",
+  "buildVersion": "1785043302330",
   "command": "node scripts/capture-replay-release-matrix.mjs --matrix=environment --base-url=http://127.0.0.1:8787 --browser-channel=chrome",
   "note": "Screenshots use demo data, actual application themes, native media emulation, and unscaled CSS pixels. Silhouette display transforms are screenshot-only and do not alter application state or renderer selection.",
   "evidence": [

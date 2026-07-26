@@ -1,37 +1,28 @@
 # Replay premium environments visual acceptance
 
-> **Current status (2026-07-26): recapture required.** The scene was recomposed
-> after the 63-frame matrix below. Those images are retained as historical
-> comparison only and MUST NOT be used as acceptance evidence for the current
-> branch or PR.
+> **Current status (2026-07-26): recaptured and current.** The 63-frame matrix
+> below was re-taken after the one-light-story pass and the morning-glass /
+> finish-tower / floodlight-pool set pieces, on the build it evidences:
+> `buildVersion 1785043302330`, recorded in the manifest. The harness now
+> asserts the served `_app/version.json` matches the disk build before
+> capturing, so the port-race staleness that invalidated the previous set
+> fails loudly instead of silently photographing the wrong build. All 51 3D
+> frames report WEBGPU; all 15 Ultra frames report effective Ultra; zero
+> console warnings.
 
-The current implementation changes scene hierarchy, not only object counts:
+The venues this set evidences:
 
-- Low outdoor venues omit the far-horizon layer; Medium adds it.
-- High adds sport-specific event infrastructure and CC0 PBR response.
-- Ultra adds a distinct destination zone: RowErg wetland boardwalk/hide,
-  SkiErg spectator terrace/rescue shelter, or BikeErg hospitality deck.
-- BikeErg is now the same bright indoor timber velodrome in Canvas and 3D.
-- Full-radius/repeated prop systems were replaced with authored sectors,
-  irregular clusters, continuous regulation lines, and deliberate open space.
+- RowErg: morning-glass basin — the water carries a per-material dimmed sky
+  radiance map (Fresnel sheen at grazing angles, teal preserved at steep ones),
+  mist bands on the wooded shore, finish tower with timing wing, footbridge,
+  mixed bank woodland.
+- SkiErg: blue-hour dusk — floodlight pools as warm normal-blend tint at the
+  masts' course angles (additive light cannot read on near-white snow), dense
+  spruce, timing arch.
+- BikeErg: evening session — enclosed bowl, one warm cone, timber track with
+  the black/red/blue line grammar including the côte d'azur.
 
-Renderer tests pin those signatures, but Requirement 6 still requires actual
-replay captures. The complete Chrome/WebGPU matrix and public screenshots must
-be regenerated before task 9 or this visual gate can be marked complete.
-
-> **⚠️ All committed frames are stale.** They predate the one-light-story art
-> pass (`c524061`: ski dusk flip, bike evening enclosure + côte d'azur, timber
-> double-darkening fix, restored woodland density). Re-capture attempts from
-> this environment returned byte-identical frames across three different
-> builds: sibling agent worktrees race for port 8787, and a surviving old
-> preview server can win it mid-run. Before refreshing, give the harness
-> exclusive port ownership — or add a `--port` flag and record a build hash in
-> the manifest so a stale server fails loudly instead of silently producing
-> evidence for the wrong build. The `c524061` changes were verified by direct
-> Playwright probes at forced High on WebGPU (fresh page, chunk identity
-> confirmed in the request log), not by this matrix.
-
-## Historical evidence (pre-overhaul)
+## Evidence
 
 - Frames: [`premium-environments/`](premium-environments/) — 63 JPEGs, 4.2 MB
 - Manifest: [`premium-environments/manifest.json`](premium-environments/manifest.json)

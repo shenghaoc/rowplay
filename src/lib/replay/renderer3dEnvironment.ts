@@ -1668,14 +1668,18 @@ export class EnvironmentBuilder {
     const count = Math.min(SKI_FLOODLIGHTS.length, [0, 5, 8, 8][this.ctx.cfg.environmentDetail]);
     if (count === 0) return;
     const poolGeo = this.ctx.track(new THREE.CircleGeometry(1, 24));
+    // Normal blend, not additive: snow sits near white, and additive light
+    // cannot brighten what is already bright — probed as invisible. What reads
+    // on snow is temperature: a warm tint pooled on cool dusk snow separates
+    // by hue even where luminance barely moves, which is how night-race
+    // photography actually looks.
     const poolMat = this.ctx.environmentBasicMat(
       "environment:skierg:floodlight-pool-material",
-      themed(0xffe4b0, 0xffdca0),
+      themed(0xffc97e, 0xffc27a),
       {
         transparent: true,
-        opacity: 0.3,
+        opacity: 0.32,
         depthWrite: false,
-        blending: THREE.AdditiveBlending,
         fog: false,
       },
     );

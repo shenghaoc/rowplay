@@ -4934,9 +4934,11 @@ describe("CourseRenderer3D", () => {
       ) as THREE.InstancedMesh;
       expect(pools).toBeDefined();
       expect(pools.count).toBe(8);
-      // Painted light: additive and non-occluding, never a real THREE light.
+      // Painted light: non-occluding warm tint, never a real THREE light.
+      // Normal blend on purpose — additive cannot read on near-white snow.
       const material = pools.material as THREE.MeshBasicMaterial;
-      expect(material.blending).toBe(THREE.AdditiveBlending);
+      expect(material.blending).toBe(THREE.NormalBlending);
+      expect(material.transparent).toBe(true);
       expect(material.depthWrite).toBe(false);
       renderer.destroy();
     });
