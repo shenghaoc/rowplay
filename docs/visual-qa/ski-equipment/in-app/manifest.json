@@ -1,0 +1,184 @@
+{
+  "commit": "b426a3f53fe6e6c95cd33e6ac731d4820cf6663c",
+  "source": "http://127.0.0.1:8807",
+  "command": "node scripts/capture-replay-athlete-v5-qa.mjs --base-url=http://127.0.0.1:8807",
+  "note": "Real RowPlay 3D application capture. Requested Ultra may report High when the browser backend is WebGL; the manifest records the effective tier and backend for every file.",
+  "evidence": [
+    {
+      "kind": "still",
+      "file": "poses/ski-high-reach.jpg",
+      "sport": "ski",
+      "seconds": 0.05,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "poses/ski-loaded-press.jpg",
+      "sport": "ski",
+      "seconds": 0.5,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "poses/grip-ski-loaded-press.jpg",
+      "sport": "ski",
+      "seconds": 0.5,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "cycle",
+      "file": "cycles/ski-one-cycle.webm",
+      "sport": "ski",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "durationMs": 4000,
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "tiers/tier-ski-equipment-low.jpg",
+      "sport": "ski",
+      "seconds": 0.5,
+      "requestedQuality": "low",
+      "effectiveQuality": "low",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "tiers/tier-ski-equipment-medium.jpg",
+      "sport": "ski",
+      "seconds": 0.5,
+      "requestedQuality": "medium",
+      "effectiveQuality": "medium",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "tiers/tier-ski-equipment-high.jpg",
+      "sport": "ski",
+      "seconds": 0.5,
+      "requestedQuality": "high",
+      "effectiveQuality": "high",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "tiers/tier-ski-equipment-ultra.jpg",
+      "sport": "ski",
+      "seconds": 0.5,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    }
+  ]
+}

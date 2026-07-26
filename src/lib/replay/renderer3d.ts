@@ -48,15 +48,25 @@ import {
   type ReplayAssetMaterialRole,
 } from "./renderer3dAssets";
 import {
+  materialTextures,
   tryCreateReplayV4AthleteInstance,
   type ReplayV4AssetTemplate,
   type ReplayV4EffectorMetric,
 } from "./renderer3dV4Assets";
 import {
   installReplayV4MotionController,
+  type ReplayV4EffectorOffsetOverrides,
   type ReplayV4MotionController,
   type ReplayV4SeatContract,
 } from "./renderer3dV4Motion";
+import {
+  skiEquipmentDetail,
+  SKI_ATHLETE_PROPORTIONS,
+  SKI_HAND_CURL_AXIS,
+  SKI_HAND_FIST_CENTRE,
+  SKI_GRIP_SHIFT,
+  type SkiEquipmentDetail,
+} from "./skiEquipment";
 
 // Resolve lazily because this module is also imported during SSR. The returned
 // MediaQueryList stays live as the OS preference changes, while avoiding a new
@@ -389,7 +399,13 @@ interface SportProfile {
   /** Static course surface, lane line, and sport-specific marking colours. */
   course: CourseStyle;
   /** Build the lane avatar (athlete + machine). */
-  make(accent: number, castShadow: boolean, opacity: number, bodySegments: number): Avatar;
+  make(
+    accent: number,
+    castShadow: boolean,
+    opacity: number,
+    bodySegments: number,
+    quality: RenderQuality,
+  ): Avatar;
 }
 
 interface CameraRig {
@@ -612,7 +628,8 @@ const HUMAN_HAIR = 0x3d322c;
 const HUMAN_KIT = 0x5e7386;
 const HUMAN_KIT_DARK = 0x1f2b36;
 const HUMAN_SHOE = 0xdde6ea;
-const HUMAN_SNOW_SHOE = 0x1f2b36;
+/** Race Nordic boots read graphite/black, not pale snow boots. */
+const HUMAN_NORDIC_BOOT = 0x1a1f24;
 
 function humanMat(color: number, roughness = 0.62, metalness = 0): THREE.MeshStandardMaterial {
   // Athlete shells are deliberately smooth-shaded. The authored rig carries
@@ -829,6 +846,76 @@ function capsulePart(
   return new THREE.Mesh(geometry, material);
 }
 
+/**
+ * A race-classic needle ski: long thin runner, mild sidecut, and a gradual
+ * raised tip. Width is the maximum shovel width; waist sits slightly inside.
+ */
+function profiledSkiGeometry(
+  length: number,
+  width: number,
+  thickness: number,
+  radialSegments: number,
+  baseY: number,
+): THREE.BufferGeometry {
+  // t is normalized along the runner (-0.5 tail … +0.5 tip). Width factors
+  // describe race classic sidecut: narrower waist, slightly flared shovel,
+  // tapered tip and tail rather than a constant plank.
+  const sections = [
+    { t: -0.5, width: 0.42, y: baseY, thickness: 0.72 },
+    { t: -0.42, width: 0.88, y: baseY, thickness: 0.9 },
+    { t: -0.18, width: 0.78, y: baseY, thickness: 1 },
+    { t: 0.05, width: 0.82, y: baseY, thickness: 1 },
+    { t: 0.28, width: 1, y: baseY + 0.002, thickness: 0.92 },
+    { t: 0.4, width: 0.86, y: baseY + 0.012, thickness: 0.7 },
+    { t: 0.47, width: 0.48, y: baseY + 0.038, thickness: 0.48 },
+    { t: 0.5, width: 0.14, y: baseY + 0.072, thickness: 0.28 },
+  ];
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (const section of sections) {
+    for (let side = 0; side < radialSegments; side++) {
+      const angle = (side / radialSegments) * Math.PI * 2;
+      // Flatten the cross-section so the runner reads as a ski edge, not a tube.
+      const rx = width * section.width * 0.5;
+      const ry = thickness * section.thickness * 0.5;
+      positions.push(
+        Math.cos(angle) * rx,
+        section.y + Math.sin(angle) * ry * 0.55,
+        section.t * length,
+      );
+    }
+  }
+  for (let section = 0; section < sections.length - 1; section++) {
+    for (let side = 0; side < radialSegments; side++) {
+      const next = (side + 1) % radialSegments;
+      const a = section * radialSegments + side;
+      const b = section * radialSegments + next;
+      const c = (section + 1) * radialSegments + side;
+      const d = (section + 1) * radialSegments + next;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+  const firstCenter = positions.length / 3;
+  positions.push(0, sections[0]?.y ?? baseY, -length * 0.5);
+  const lastCenter = positions.length / 3;
+  const last = sections.at(-1);
+  positions.push(0, last?.y ?? baseY, length * 0.5);
+  const lastStart = (sections.length - 1) * radialSegments;
+  for (let side = 0; side < radialSegments; side++) {
+    const next = (side + 1) % radialSegments;
+    indices.push(firstCenter, next, side);
+    indices.push(lastCenter, lastStart + side, lastStart + next);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.name = "skierg-profiled-ski";
+  return geometry;
+}
+
 function tubeBetween(
   name: string,
   start: FigurePoint3,
@@ -986,6 +1073,78 @@ function placeFigureSegmentBetween(
 }
 
 /**
+ * SkiErg replaces the authored palm-surface contact with the centre of the
+ * closed fist, so the contact solver seats the shaft inside the finger curl.
+ * Every other sport keeps its authored extras: RowErg and BikeErg close on
+ * flat handles and hoods, where the palm surface *is* the contact.
+ */
+function skiGripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
+  if (sport !== "skierg") return undefined;
+  const { x, y, z } = SKI_HAND_FIST_CENTRE;
+  return {
+    leftHand: { x: -x, y, z },
+    rightHand: { x, y, z },
+  };
+}
+
+/**
+ * SkiErg pole grip: lay the hand's authored finger-curl axis along the rigid
+ * shaft so the fist closes *around* the pole.
+ *
+ * The shaft frame supplies the baseline, which fixes the one genuinely free
+ * parameter — spin about the pole — continuously with the rigid link. The
+ * curl axis is then rotated onto the shaft by the shortest arc, so the wrist
+ * keeps whatever the arm solve chose and only the enclosure is corrected.
+ *
+ * `shaftDirLocal` is the shaft's own direction (grip end → tip) in the hand's
+ * **parent** frame, which is where this whole construction lives. Deriving the
+ * axis from parent-frame geometry is what keeps the grip heading-independent:
+ * an earlier frame built from hand-local angles and a world-space axis drifted
+ * a full 120° a quarter lap around the course.
+ */
+function orientHandToNordicPole(
+  hand: THREE.Object3D,
+  poleShaft: THREE.Object3D,
+  side: number,
+  shaftDirLocal: THREE.Vector3,
+  athleteRightLocal: THREE.Vector3,
+  scratch: THREE.Quaternion,
+  scratchAxis: THREE.Vector3,
+  scratchTarget: THREE.Vector3,
+  scratchRoll: THREE.Vector3,
+): void {
+  hand.quaternion.copy(poleShaft.quaternion);
+  scratchAxis
+    .set(SKI_HAND_CURL_AXIS.x, side * SKI_HAND_CURL_AXIS.y, side * SKI_HAND_CURL_AXIS.z)
+    .normalize()
+    .applyQuaternion(hand.quaternion);
+  // Either shaft end may be the closer one; take the nearer so the correction
+  // is the shortest arc and the thumb never flips end-for-end mid-cycle.
+  scratchTarget.copy(shaftDirLocal).multiplyScalar(shaftDirLocal.dot(scratchAxis) >= 0 ? 1 : -1);
+  hand.quaternion.premultiply(scratch.setFromUnitVectors(scratchAxis, scratchTarget));
+
+  // Aligning the curl axis leaves exactly one freedom: spin about the shaft.
+  // Inheriting it from the shaft frame put the backs of the hands toward each
+  // other. Resolve it explicitly instead — the palm has to face **inward**, so
+  // the wrist→grip-channel vector points at the athlete's centreline. This is
+  // the parameter the earlier hand-frame angles were really groping for.
+  scratchAxis
+    .set(side * SKI_HAND_FIST_CENTRE.x, SKI_HAND_FIST_CENTRE.y, SKI_HAND_FIST_CENTRE.z)
+    .normalize()
+    .applyQuaternion(hand.quaternion);
+  scratchRoll.copy(athleteRightLocal).multiplyScalar(-side);
+  // Compare only the components across the shaft; the along-shaft parts carry
+  // no roll information.
+  scratchAxis.addScaledVector(scratchTarget, -scratchAxis.dot(scratchTarget));
+  scratchRoll.addScaledVector(scratchTarget, -scratchRoll.dot(scratchTarget));
+  if (scratchAxis.lengthSq() > 1e-8 && scratchRoll.lengthSq() > 1e-8) {
+    hand.quaternion.premultiply(
+      scratch.setFromUnitVectors(scratchAxis.normalize(), scratchRoll.normalize()),
+    );
+  }
+}
+
+/**
  * Aim the authored elbow cuff from the actual arm bend rather than leaving its
  * asymmetric flex groove in a fixed local orientation. Local +Z follows the
  * shoulder-to-wrist chord; local -Y exposes the olecranon to the outside of
@@ -1127,6 +1286,68 @@ function makeFoot(material: THREE.Material): THREE.Group {
   shoe.name = "athlete:foot:shoe";
   foot.add(shoe);
   return foot;
+}
+
+/**
+ * A free-heel Nordic boot sized to the ski platform: sole slightly wider than
+ * the runner (real XC overhang), shell not an alpine brick and not wider than
+ * the stance gap.
+ */
+function makeSkiBoot(
+  shellMaterial: THREE.Material,
+  soleMaterial: THREE.Material,
+  trimMaterial: THREE.Material,
+  detail: SkiEquipmentDetail,
+  useAuthoredLeaf: boolean,
+): THREE.Group {
+  const boot = new THREE.Group();
+  boot.name = "athlete:foot";
+  // Sole ≈ ski width + small overhang; shell a touch wider for volume.
+  const soleWidth = SKI_ATHLETE_PROPORTIONS.skiWidth * 1.15;
+  const shellWidth = SKI_ATHLETE_PROPORTIONS.skiWidth * 1.28;
+  const shell = new THREE.Mesh(
+    roundedVenueBlockGeometry(shellWidth, 0.095, 0.28, 0.02),
+    shellMaterial,
+  );
+  shell.name = "skierg-ski-boot-shell";
+  shell.position.set(0, 0.048, 0.01);
+  if (useAuthoredLeaf) setReplayAssetSlot(shell, "athlete:shoe");
+  const sole = new THREE.Mesh(
+    roundedVenueBlockGeometry(soleWidth, 0.016, 0.29, 0.008),
+    soleMaterial,
+  );
+  sole.name = "skierg-ski-boot-sole";
+  sole.position.set(0, -0.006, 0.008);
+  // Low cuff sits just above the ankle; free heel stays readable from chase.
+  const cuff = new THREE.Mesh(
+    roundedVenueBlockGeometry(shellWidth * 0.92, 0.075, 0.11, 0.018),
+    shellMaterial,
+  );
+  cuff.name = "skierg-ski-boot-cuff";
+  cuff.position.set(0, 0.1, -0.05);
+  // NNN/Prolink-style toe bar: the only rigid ski attachment.
+  const toeBar = new THREE.Mesh(
+    roundedVenueBlockGeometry(soleWidth * 0.9, 0.014, 0.03, 0.006),
+    trimMaterial,
+  );
+  toeBar.name = "skierg-ski-boot-toe-bar";
+  toeBar.position.set(0, 0.002, -0.1);
+  boot.add(shell, sole, cuff, toeBar);
+  if (detail.bootClosures) {
+    for (const [z, y] of [
+      [-0.015, 0.085],
+      [0.04, 0.078],
+    ] as const) {
+      const closure = new THREE.Mesh(
+        roundedVenueBlockGeometry(shellWidth * 0.95, 0.012, 0.024, 0.004),
+        trimMaterial,
+      );
+      closure.name = "skierg-ski-boot-closure";
+      closure.position.set(0, y, z);
+      boot.add(closure);
+    }
+  }
+  return boot;
 }
 
 /**
@@ -1911,11 +2132,15 @@ function makeSkierAvatar(
   castShadow: boolean,
   opacity = 1,
   bodySegments = 16,
+  quality: RenderQuality = "medium",
 ): Avatar {
   const segs = bodySegments;
   const capSegs = Math.max(10, Math.round(segs * 0.82));
   const headSegs = Math.max(14, segs + 2);
-  const eqCylSegs = Math.max(12, Math.round(segs * 0.7));
+  const equipment = skiEquipmentDetail(quality);
+  const eqCylSegs = Math.max(equipment.radialSegments, Math.round(segs * 0.7));
+  const useAuthoredSkiLeaves = quality !== "low";
+  const useAuthoredSkiAssembly = quality === "high" || quality === "ultra";
   const group = new THREE.Group();
   const laneMaterial = accentEquipmentMaterial(accent);
   const jerseyMaterial = accentMaterial(accent);
@@ -1924,11 +2149,11 @@ function makeSkierAvatar(
   const hairMaterial = makeHairMaterial(HUMAN_HAIR);
   const kitMaterial = humanMat(HUMAN_KIT, 0.58);
   const kitDarkMaterial = humanMat(HUMAN_KIT_DARK, 0.64);
-  const shoeMaterial = humanMat(HUMAN_SNOW_SHOE, 0.5);
-  const poleMaterial = humanMat(0x486775, 0.58);
-  const farPoleMaterial = humanMat(0x2f5362, 0.7);
-  const gripMaterial = humanMat(0x20242a);
-  const equipmentMetalMaterial = humanMat(0x6d8490, 0.32, 0.62);
+  const shoeMaterial = humanMat(HUMAN_NORDIC_BOOT, 0.48);
+  const poleMaterial = humanMat(0x1c242c, 0.42, 0.18);
+  const farPoleMaterial = humanMat(0x141a20, 0.5, 0.14);
+  const gripMaterial = humanMat(0x14181c, 0.62);
+  const equipmentMetalMaterial = humanMat(0x8a949c, 0.28, 0.72);
   const resolveAssetMaterial = makeAssetMaterialResolver({
     "athlete-skin": skinMaterial,
     "athlete-fabric": jerseyMaterial,
@@ -1938,7 +2163,7 @@ function makeSkierAvatar(
     "equipment-dark": kitDarkMaterial,
     "equipment-light": poleMaterial,
     "equipment-metal": equipmentMetalMaterial,
-    "equipment-rubber": shoeMaterial,
+    "equipment-rubber": gripMaterial,
     "equipment-grip": gripMaterial,
     "equipment-trim": kitMaterial,
   });
@@ -1958,33 +2183,124 @@ function makeSkierAvatar(
   };
   const elbowDirection: SkierElbowDirection = { vertical: -1, foreAft: 0 };
 
-  // Art-direction skis: dark base with a full accent top deck so the pair
-  // reads as equipment without swallowing the athlete's legs.
+  // Readable classic runners: thinner than toy planks, wide enough that the
+  // boot still sits on a visible platform. Free-heel toe binding; progressive
+  // hardware by tier.
+  const halfSki = SKI_ATHLETE_PROPORTIONS.skiWidth * 0.5;
   for (const side of [-1, 1]) {
-    const ski = new THREE.Mesh(roundedVenueBlockGeometry(0.13, 0.04, 2.05, 0.035), kitDarkMaterial);
-    setReplayAssetSlot(ski, "equipment:ski:ski");
-    ski.position.set(side * 0.21, 0.028, 0.16);
-    group.add(ski);
-    const deck = new THREE.Mesh(roundedVenueBlockGeometry(0.11, 0.018, 1.85, 0.018), accentMat());
-    deck.name = "skierg-ski-deck";
-    deck.position.set(side * 0.21, 0.055, 0.12);
-    deck.userData.accent = true;
-    group.add(deck);
-    const tip = new THREE.Mesh(roundedVenueBlockGeometry(0.12, 0.035, 0.32, 0.025), accentMat());
-    tip.name = "skierg-ski-tip";
-    tip.position.set(side * 0.21, 0.07, 1.28);
-    tip.rotation.x = -0.28;
-    tip.userData.accent = true;
-    group.add(tip);
-    // The V3 ski is a coherent deck/binding/tip shell rooted at the same
-    // planted location. Boots remain separate contact targets for the leg IK.
     const skiVisual = new THREE.Group();
     skiVisual.name = side < 0 ? "skierg-ski-visual-left" : "skierg-ski-visual-right";
-    skiVisual.position.set(side * 0.21, 0, 0.16);
+    skiVisual.position.set(side * SKI_ATHLETE_PROPORTIONS.skiCenterOffset, 0, 0.16);
     group.add(skiVisual);
-    setReplayAssetTemplateAnchor(skiVisual, "equipment:ski:ski-assembly", {
-      fallback: [ski, deck, tip],
-    });
+    const fallback: THREE.Object3D[] = [];
+    const ski = new THREE.Mesh(
+      profiledSkiGeometry(
+        SKI_ATHLETE_PROPORTIONS.skiLength,
+        SKI_ATHLETE_PROPORTIONS.skiWidth,
+        0.022,
+        equipment.radialSegments,
+        0.016,
+      ),
+      kitDarkMaterial,
+    );
+    ski.name = side < 0 ? "skierg-ski-base-left" : "skierg-ski-base-right";
+    if (useAuthoredSkiLeaves) setReplayAssetSlot(ski, "equipment:ski:ski");
+    skiVisual.add(ski);
+    fallback.push(ski);
+
+    if (equipment.topSheet) {
+      const deck = new THREE.Mesh(
+        profiledSkiGeometry(
+          SKI_ATHLETE_PROPORTIONS.skiLength * 0.9,
+          SKI_ATHLETE_PROPORTIONS.skiWidth * 0.82,
+          0.006,
+          equipment.radialSegments,
+          0.032,
+        ),
+        accentMat(),
+      );
+      deck.name = "skierg-ski-deck";
+      deck.userData.accent = true;
+      skiVisual.add(deck);
+      fallback.push(deck);
+    }
+
+    // Tip accent is a short shovel cap, not a second full ski stacked on top.
+    const tip = new THREE.Mesh(
+      profiledSkiGeometry(
+        0.22,
+        SKI_ATHLETE_PROPORTIONS.skiWidth * 0.75,
+        0.01,
+        equipment.radialSegments,
+        0.04,
+      ),
+      accentMat(),
+    );
+    tip.name = "skierg-ski-tip";
+    tip.position.z = SKI_ATHLETE_PROPORTIONS.skiLength * 0.4;
+    tip.userData.accent = true;
+    skiVisual.add(tip);
+    fallback.push(tip);
+
+    if (equipment.metalEdges) {
+      for (const edgeSide of [-1, 1]) {
+        const edge = tubeBetween(
+          `skierg-ski-edge-${edgeSide < 0 ? "left" : "right"}`,
+          { x: edgeSide * halfSki * 0.94, y: 0.022, z: -SKI_ATHLETE_PROPORTIONS.skiLength * 0.42 },
+          { x: edgeSide * halfSki * 0.98, y: 0.03, z: SKI_ATHLETE_PROPORTIONS.skiLength * 0.36 },
+          0.0022,
+          equipmentMetalMaterial,
+        );
+        skiVisual.add(edge);
+        fallback.push(edge);
+      }
+    }
+
+    if (equipment.bindingRails) {
+      // Binding plate spans most of the ski width under midfoot; free heel.
+      const plateWidth = SKI_ATHLETE_PROPORTIONS.skiWidth * 0.88;
+      const bindingPlate = new THREE.Mesh(
+        roundedVenueBlockGeometry(plateWidth, 0.012, 0.24, 0.006),
+        kitDarkMaterial,
+      );
+      bindingPlate.name = "skierg-ski-binding-plate";
+      bindingPlate.position.set(0, 0.036, 0.02);
+      skiVisual.add(bindingPlate);
+      fallback.push(bindingPlate);
+      for (const railSide of [-1, 1]) {
+        const rail = tubeBetween(
+          `skierg-ski-binding-rail-${railSide < 0 ? "left" : "right"}`,
+          { x: railSide * plateWidth * 0.32, y: 0.046, z: -0.08 },
+          { x: railSide * plateWidth * 0.32, y: 0.046, z: 0.12 },
+          0.003,
+          equipmentMetalMaterial,
+        );
+        skiVisual.add(rail);
+        fallback.push(rail);
+      }
+      const bindingToe = new THREE.Mesh(
+        roundedVenueBlockGeometry(plateWidth * 0.92, 0.022, 0.045, 0.008),
+        equipmentMetalMaterial,
+      );
+      bindingToe.name = "skierg-ski-binding-toe";
+      bindingToe.position.set(0, 0.05, -0.08);
+      skiVisual.add(bindingToe);
+      fallback.push(bindingToe);
+      const bindingHeel = new THREE.Mesh(
+        roundedVenueBlockGeometry(plateWidth * 0.75, 0.008, 0.055, 0.006),
+        kitMaterial,
+      );
+      bindingHeel.name = "skierg-ski-binding-heel";
+      bindingHeel.position.set(0, 0.04, 0.1);
+      skiVisual.add(bindingHeel);
+      fallback.push(bindingHeel);
+    }
+
+    // The V3 ski is a coherent deck/binding/tip shell rooted at the same
+    // measured anchor. Boots remain separate contact targets for the leg IK.
+    if (useAuthoredSkiAssembly) {
+      setReplayAssetTemplateAnchor(skiVisual, "equipment:ski:ski-assembly", { fallback });
+    }
   }
 
   // Planted fixed-length legs solve from the moving pelvis to the boots.  The
@@ -2003,10 +2319,16 @@ function makeSkierAvatar(
     bendHint: THREE.Vector3;
   }> = [];
   for (const side of [-1, 1]) {
-    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.34), shoeMaterial);
-    setReplayAssetSlot(boot, "athlete:shoe");
+    const boot = makeSkiBoot(
+      shoeMaterial,
+      gripMaterial,
+      kitMaterial,
+      equipment,
+      useAuthoredSkiLeaves,
+    );
     boot.name = side < 0 ? "skierg-foot-contact-left" : "skierg-foot-contact-right";
-    boot.position.set(side * 0.21, 0.12, 0.18);
+    // Boot sole sits on the binding plate height (~0.05).
+    boot.position.set(side * SKI_ATHLETE_PROPORTIONS.skiCenterOffset, 0.055, 0.18);
     group.add(boot);
 
     const thigh = taperedLimb(0.08, 0.058, kitDarkMaterial, segs);
@@ -2026,9 +2348,9 @@ function makeSkierAvatar(
       knee,
       hipPoint: new THREE.Vector3(),
       kneePoint: new THREE.Vector3(),
-      anklePoint: new THREE.Vector3(side * 0.21, 0.16, 0.18),
+      anklePoint: new THREE.Vector3(side * SKI_ATHLETE_PROPORTIONS.skiCenterOffset, 0.1, 0.18),
       solvedAnkle: new THREE.Vector3(),
-      bendHint: new THREE.Vector3(side * 0.12, 0.08, 0.72),
+      bendHint: new THREE.Vector3(side * 0.1, 0.08, 0.72),
     });
   }
   const upper = new THREE.Group();
@@ -2095,7 +2417,7 @@ function makeSkierAvatar(
     shoulder.userData.hideWithReplayAssets = false;
     setReplayAssetSlot(shoulder, "athlete:shoulder");
     shoulder.name = side < 0 ? "skierg-shoulder-left" : "skierg-shoulder-right";
-    shoulder.position.set(side * 0.25, 0.54, 0.05);
+    shoulder.position.set(side * SKI_ATHLETE_PROPORTIONS.shoulderHalfWidth, 0.54, 0.05);
     upper.add(upperArm, forearm, hand, elbow, shoulder);
     arms.push({
       side,
@@ -2103,7 +2425,11 @@ function makeSkierAvatar(
       forearm,
       hand,
       elbow,
-      shoulderPoint: new THREE.Vector3(side * 0.25, 0.54, 0.05),
+      shoulderPoint: new THREE.Vector3(
+        side * SKI_ATHLETE_PROPORTIONS.shoulderHalfWidth,
+        0.54,
+        0.05,
+      ),
       elbowPoint: new THREE.Vector3(),
       handTarget: new THREE.Vector3(),
       handPoint: new THREE.Vector3(),
@@ -2123,24 +2449,52 @@ function makeSkierAvatar(
     tipAnchor: THREE.Object3D;
   }> = [];
   for (const side of [-1, 1]) {
-    const shaftGeo = new THREE.CylinderGeometry(0.012, 0.012, 1, eqCylSegs);
+    // Readable carbon taper: ~18 mm near the grip down to ~12 mm at the basket.
+    const shaftGeo = new THREE.CylinderGeometry(0.006, 0.009, 1, eqCylSegs, 2);
     shaftGeo.rotateX(Math.PI / 2); // unit shaft lives on +Z for endpoint placement
-    const shaft = setReplayAssetSlot(
-      new THREE.Mesh(shaftGeo, side < 0 ? farPoleMaterial : poleMaterial),
-      "equipment:ski:pole-shaft",
-    );
+    const shaftMesh = new THREE.Mesh(shaftGeo, side < 0 ? farPoleMaterial : poleMaterial);
+    const shaft = useAuthoredSkiLeaves
+      ? setReplayAssetSlot(shaftMesh, "equipment:ski:pole-shaft")
+      : shaftMesh;
     shaft.name = side < 0 ? "skierg-pole-shaft-left" : "skierg-pole-shaft-right";
-    const grip = setReplayAssetSlot(
-      capsulePart(0.018, 0.16, gripMaterial, "z"),
-      "equipment:ski:pole-grip",
-    );
+    const gripMesh = capsulePart(0.016, 0.15, gripMaterial, "z");
+    const grip = useAuthoredSkiLeaves
+      ? setReplayAssetSlot(gripMesh, "equipment:ski:pole-grip")
+      : gripMesh;
     grip.name = side < 0 ? "skierg-pole-grip-left" : "skierg-pole-grip-right";
-    const basket = setReplayAssetSlot(
-      new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.03, eqCylSegs), accentMat()),
-      "equipment:ski:pole-basket",
+    if (equipment.gripStraps) {
+      const strap = new THREE.Mesh(
+        new THREE.TorusGeometry(0.019, 0.0032, 5, Math.max(8, eqCylSegs)),
+        kitDarkMaterial,
+      );
+      strap.name = side < 0 ? "skierg-pole-grip-strap-left" : "skierg-pole-grip-strap-right";
+      strap.position.z = -0.032;
+      grip.add(strap);
+    }
+    // Hard-track basket ~55 mm — small, not a powder snowshoe disc.
+    const basketMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.028, 0.022, 0.014, eqCylSegs, 1),
+      accentMat(),
     );
+    const basket = useAuthoredSkiLeaves
+      ? setReplayAssetSlot(basketMesh, "equipment:ski:pole-basket")
+      : basketMesh;
     basket.name = side < 0 ? "skierg-pole-tip-left" : "skierg-pole-tip-right";
     basket.userData.accent = true;
+    if (equipment.basketRibs) {
+      for (let spoke = 0; spoke < 4; spoke++) {
+        const angle = (spoke / 4) * Math.PI * 2;
+        basket.add(
+          tubeBetween(
+            `skierg-pole-basket-rib-${side < 0 ? "left" : "right"}-${spoke}`,
+            { x: 0, y: 0.006, z: 0 },
+            { x: Math.cos(angle) * 0.022, y: 0.006, z: Math.sin(angle) * 0.022 },
+            0.0016,
+            equipmentMetalMaterial,
+          ),
+        );
+      }
+    }
     const tipAnchor = new THREE.Object3D();
     tipAnchor.name = side < 0 ? "skierg-pole-contact-left" : "skierg-pole-contact-right";
     upper.add(shaft, grip, basket, tipAnchor);
@@ -2159,21 +2513,26 @@ function makeSkierAvatar(
   const courseCenterAtPlant = new THREE.Vector3();
   const courseRightWorld = new THREE.Vector3();
   const courseForwardWorld = new THREE.Vector3();
+  const athleteRightLocal = new THREE.Vector3();
   const inverseUpperWorld = new THREE.Quaternion();
+  const gripPitch = new THREE.Quaternion();
+  const gripCurlAxis = new THREE.Vector3();
+  const gripCurlTarget = new THREE.Vector3();
+  const gripCurlRoll = new THREE.Vector3();
   // Fixed arm lengths must contain every authored hand keyframe. A finish
   // target outside this reach collapses to a short pull no matter how far
   // aft the preferred Z claims to go.
-  const UPPER_ARM_LENGTH = 0.49;
-  const FOREARM_LENGTH = 0.47;
+  const UPPER_ARM_LENGTH = SKI_ATHLETE_PROPORTIONS.upperArmLength;
+  const FOREARM_LENGTH = SKI_ATHLETE_PROPORTIONS.forearmLength;
   const MAX_ARM_REACH = UPPER_ARM_LENGTH + FOREARM_LENGTH - 0.02;
   let contactArmReach = UPPER_ARM_LENGTH + FOREARM_LENGTH;
-  const THIGH_LENGTH = 0.4;
-  const SHIN_LENGTH = 0.39;
-  // A 1.55 m classic-technique pole keeps the high catch reachable for this
-  // human-scale athlete while still permitting an exact ground plant. The
-  // former 1.42 m shaft was shorter than the catch hand's vertical clearance,
-  // forcing an impossible last-frame hand drop at the cycle seam.
-  const POLE_LENGTH = 1.55;
+  const THIGH_LENGTH = SKI_ATHLETE_PROPORTIONS.thighLength;
+  const SHIN_LENGTH = SKI_ATHLETE_PROPORTIONS.shinLength;
+  // Classic double-pole length (~83.5% of the measured 1.64 m rig). Long
+  // enough for the high catch and short enough to stay inside the arm reach
+  // envelope; the forward plant offset keeps the pole+arm chain away from its
+  // collinear singularity through the press.
+  const POLE_LENGTH = SKI_ATHLETE_PROPORTIONS.poleLength;
   const POLE_CONTACT_Y = 0.055;
   // The SkiErg action is a compact double-pole press, not a deep squat. Keep
   // the pelvis high enough for the legs to read as springy, then make the
@@ -2200,10 +2559,14 @@ function makeSkierAvatar(
   const skiPreferredHand = (motion: SkierKinematics, side: number, out: THREE.Vector3): void => {
     const reach = 0.44 - motion.elbowLoad * 0.08 + motion.armExtension * 0.36;
     const angle = 0.56 - motion.poleSweep * 2.56;
-    out.set(side * 0.3, 0.54 + Math.sin(angle) * reach, 0.05 + Math.cos(angle) * reach);
+    out.set(
+      side * (SKI_ATHLETE_PROPORTIONS.shoulderHalfWidth + 0.05),
+      0.54 + Math.sin(angle) * reach,
+      0.05 + Math.cos(angle) * reach,
+    );
     // Hard clamp: if authoring ever drifts outside reach, pull the target
     // toward the shoulder so the arm IK stays rigid.
-    const sx = side * 0.25;
+    const sx = side * SKI_ATHLETE_PROPORTIONS.shoulderHalfWidth;
     const sy = 0.54;
     const sz = 0.05;
     const dx = out.x - sx;
@@ -2228,7 +2591,7 @@ function makeSkierAvatar(
       // `upper`. Convert that hip attachment back into root-local space so a
       // torso crunch cannot leave the thighs detached from the pelvis.
       leg.hipPoint
-        .set(leg.side * 0.12, 0, 0.02)
+        .set(leg.side * SKI_ATHLETE_PROPORTIONS.hipHalfWidth, 0, 0.02)
         .applyQuaternion(upper.quaternion)
         .add(upper.position);
       solveTwoBone3D(
@@ -2277,8 +2640,8 @@ function makeSkierAvatar(
     // Plant just outside the ski and behind the high handle. The previous
     // 1.15 m forward offset reversed this relationship, so the shaft pointed
     // forward at impact instead of slanting backward into the snow.
-    const localX = side * 0.49;
-    const localZ = 0.04;
+    const localX = side * SKI_ATHLETE_PROPORTIONS.polePlantLateralOffset;
+    const localZ = SKI_ATHLETE_PROPORTIONS.polePlantForwardOffset;
     output.set(
       courseCenterAtPlant.x + localX * Math.cos(yaw) + localZ * Math.sin(yaw),
       POLE_CONTACT_Y,
@@ -2295,6 +2658,9 @@ function makeSkierAvatar(
     // does not counter-rotate the pole sweep.
     courseRightWorld.set(1, 0, 0).transformDirection(outer.matrixWorld);
     courseForwardWorld.set(0, 0, 1).transformDirection(outer.matrixWorld);
+    // Same frame conversion as `groundUpLocal`: the hands live under `upper`, so
+    // the wrist pitch axis has to leave the course frame before it is applied.
+    athleteRightLocal.copy(courseRightWorld).applyQuaternion(inverseUpperWorld).normalize();
     solveSkierElbowDirection(motion, elbowDirection);
     // The bend plane follows the technique phase instead of holding one fixed
     // down/forward vector for the whole cycle. Local -y points down, local -z
@@ -2312,7 +2678,7 @@ function makeSkierAvatar(
       // Shoulders live on the hinging upper body; refresh the local origin so
       // the press tracks torso pitch instead of a stale rest pose.
       if (hasSampledV4Shoulders) arm.shoulderPoint.copy(sampledV4Shoulders[i]!);
-      else arm.shoulderPoint.set(arm.side * 0.25, 0.54, 0.05);
+      else arm.shoulderPoint.set(arm.side * SKI_ATHLETE_PROPORTIONS.shoulderHalfWidth, 0.54, 0.05);
       // Start from the authored double-pole arc, then solve the exact rigid
       // pole/arm closure once the course-space basket position is known.
       skiPreferredHand(motion, arm.side, arm.handTarget);
@@ -2406,18 +2772,38 @@ function makeSkierAvatar(
       tipLocalPoint.copy(tipWorld);
       upper.worldToLocal(tipLocalPoint);
       placeFigureSegmentBetween(pole.shaft, arm.handPoint, tipLocalPoint);
-      pole.grip.position.copy(arm.handPoint);
       pole.grip.quaternion.copy(pole.shaft.quaternion);
+      // The hand wraps the upper portion of the grip, not its geometric centre.
+      // A 0.15 m capsule centred at the hand reads as a grip floating above
+      // the shaft instead of enclosing it. Shift the grip toward the tip so
+      // the hand sits in the upper ~30 % and the shaft runs through the grip.
+      pole.grip.position
+        .copy(arm.handPoint)
+        .addScaledVector(
+          SEGMENT_DIR.set(
+            tipLocalPoint.x - arm.handPoint.x,
+            tipLocalPoint.y - arm.handPoint.y,
+            tipLocalPoint.z - arm.handPoint.z,
+          ).normalize(),
+          SKI_GRIP_SHIFT,
+        );
       pole.basket.position.copy(tipLocalPoint).addScaledVector(groundUpLocal, 0.026);
       pole.basket.quaternion.copy(inverseUpperWorld);
       pole.tipAnchor.position.copy(tipLocalPoint);
       // Establish the terminal frame only after the current-frame rigid pole
-      // has been placed. The old mild assignment here overwrote the intended
-      // pole wrap above, leaving both procedural and V4 hands open against the
-      // grip even though their contact points were numerically coincident.
-      arm.hand.quaternion.copy(pole.grip.quaternion);
-      arm.hand.rotateX(1.15);
-      arm.hand.rotateZ(arm.side * 0.2);
+      // has been placed. `SEGMENT_DIR` still holds the grip-end → tip direction
+      // set just above, which is the axis the fist has to close around.
+      orientHandToNordicPole(
+        arm.hand,
+        pole.shaft,
+        arm.side,
+        SEGMENT_DIR,
+        athleteRightLocal,
+        gripPitch,
+        gripCurlAxis,
+        gripCurlTarget,
+        gripCurlRoll,
+      );
     }
   };
 
@@ -3787,6 +4173,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       this.cfg.shadows,
       1,
       this.cfg.bodySegments,
+      this.quality,
     );
     this.liveBoat = new THREE.Group();
     this.liveBoat.add(this.liveAvatar.group);
@@ -3797,6 +4184,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       false,
       0.45,
       this.cfg.bodySegments,
+      this.quality,
     );
     this.ghostGroup = new THREE.Group();
     this.ghostGroup.visible = false;
@@ -3826,6 +4214,10 @@ export class CourseRenderer3D implements ReplayRenderer {
       // avatar group is the space BIKE_RIG is authored in, and it is exactly
       // the parent installed below, so these values need no conversion.
       const seatContract = bikeSeatContract(this.sport);
+      // SkiErg drives the centre of the closed fist onto the shaft, not the
+      // authored palm-surface point: the latter lays the pole across the
+      // knuckles and the fingers shut beside it instead of around it.
+      const effectorOffsets = skiGripEffectorOffsets(this.sport);
       this.liveAvatar.v4Motion = installReplayV4MotionController({
         sport: this.sport,
         parent: this.liveAvatar.group,
@@ -3837,6 +4229,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         castShadow: this.cfg.shadows,
         receiveShadow: this.cfg.shadows,
         seatContract,
+        effectorOffsets,
       });
       this.ghostAvatar.v4Motion = installReplayV4MotionController({
         sport: this.sport,
@@ -3850,6 +4243,7 @@ export class CourseRenderer3D implements ReplayRenderer {
         receiveShadow: false,
         laneColor: COLORS_LIGHT.ghost,
         seatContract,
+        effectorOffsets,
       });
       this.liveAvatar.group.userData.authoredReplayV4 = !!this.liveAvatar.v4Motion;
       this.ghostAvatar.group.userData.authoredReplayV4 = !!this.ghostAvatar.v4Motion;
@@ -5761,7 +6155,12 @@ export class CourseRenderer3D implements ReplayRenderer {
         o.geometry.dispose();
         const mats = Array.isArray(o.material) ? o.material : [o.material];
         for (const m of mats) {
-          if (m instanceof THREE.Material) m.dispose();
+          if (m instanceof THREE.Material) {
+            // Material-owned textures need an explicit dispose; the procedural
+            // scenery maps are not tracked anywhere else.
+            for (const texture of materialTextures(m)) texture.dispose();
+            m.dispose();
+          }
         }
       }
     });

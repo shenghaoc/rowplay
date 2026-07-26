@@ -6,9 +6,14 @@ import { validateV4Usdz } from "./validate-replay-rig-v4-usdz.mjs";
 import { BIKE_RIG, bikeSaddleTopY } from "../src/lib/replay/bikeRig.js";
 
 const DEFAULT_ASSET = "static/replay-assets/rowplay-rigs-v3.glb";
-// Blender-authored open hull, slide rails, and seat carriage add reviewed
-// hard-surface topology while remaining comfortably below one compressed MB.
-const MAX_FILE_BYTES = 704 * 1024;
+// Re-derived 2026-07: the 704 KiB budget predated the true-scale bicycle and
+// the full SkiErg equipment family, whose reviewed geometry measures 720,756
+// bytes — 164 bytes under the old ceiling, so any equipment change failed
+// validation. 768 KiB restores ~8% iteration headroom while staying an
+// order of magnitude below the V4 athlete GLB and well under one compressed
+// MB. The triangle/vertex budgets below are unchanged and still bind first
+// for runaway geometry.
+const MAX_FILE_BYTES = 768 * 1024;
 const MIN_TRIANGLES = 10_000;
 const MAX_TRIANGLES = 32_000;
 const MAX_VERTICES = 64_000;
@@ -93,7 +98,19 @@ const TEMPLATE_PARTS = new Map([
     new Set(["seat-pad", "seat-carriage", "seat-rollers", "seat-guides"]),
   ],
   ["equipment:row:oar-rig", new Set(["shaft", "grip", "handle-cap", "collar", "blade-sleeve"])],
-  ["equipment:ski:ski-assembly", new Set(["base", "top-deck", "binding", "tip-ridge"])],
+  [
+    "equipment:ski:ski-assembly",
+    new Set([
+      "base",
+      "top-deck",
+      "edge-left",
+      "edge-right",
+      "binding-plate",
+      "binding-toe",
+      "binding-heel",
+      "tip-ridge",
+    ]),
+  ],
   ["equipment:bike:wheel-assembly", new Set(["tyre", "aero-rim", "hub", "brake-rotor", "spokes"])],
   [
     "equipment:bike:frame-assembly",

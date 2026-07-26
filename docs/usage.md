@@ -159,12 +159,13 @@ The current 3D packages make the anatomical and equipment contracts visible:
 the V4 skin deforms around its authored skeleton, while the V3 equipment builds
 as coherent assemblies—an open-cockpit racing shell with split decks, recessed
 leg well, fixed rails/stretcher and a moving four-roller seat carriage; an oar
-rig; Nordic skis; and a continuous
+rig; cambered Nordic skis with top sheets, metal edges, binding plate/toe/heel
+and shaped race boots; and a continuous
 bicycle wheel/frame/drivetrain. RowErg palms stay on separate rigid scull grips
 and outside the torso; both 2D and 3D keep the elbows softly open until the
 hands clear the knees, then keep the bent elbows behind the shoulders rather
 than pointing toward the handle or flaring into a horizontal goalpost. During
-the illustrated SkiErg plant, each rigid 1.55 m
+the illustrated SkiErg plant, each rigid 1.37 m
 pole holds a deterministic course anchor while its hand remains on the grip.
 The skier advances relative to that basket, releases it near the end of the
 short planted phase, lifts it through recovery, and approaches the next anchor

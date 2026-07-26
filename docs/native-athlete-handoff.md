@@ -76,7 +76,8 @@ Summary:
   remain authoritative
 - Grip closure: runtime articulates helpers only after palm contact, with
   separate RowErg scull, SkiErg grip, and BikeErg hood poses
-- Visual QA: `docs/visual-qa/replay-athlete-v5.md`
+- Visual QA: `docs/visual-qa/replay-athlete-v5.md`; SkiErg equipment and
+  proportions in `docs/visual-qa/replay-ski-equipment.md`
 
 ## Build and validation
 

@@ -16,17 +16,18 @@ identity, or Canvas 2D fallback.
 - **Source of truth:** `scripts/build-replay-assets.mjs`; the RowErg open shell
   and moving seat carriage are hard-surface authored by
   `scripts/build-replay-rowing-shell-blender.py` in Blender 5.2 and folded into
-  the same validated V3 template contract.
+  the same validated V3 template contract. Blender is required: the build is a
+  pure function of reviewed source and never reads the artifact it writes.
 - **Validator:** `scripts/validate-replay-assets.mjs` verifies the binary,
   exact V3 hierarchy, slot/template names, material-role metadata, geometry
   bounds, normals, triangle/vertex/file budgets, and zero external assets.
 - **Exporter:** Three.js `GLTFExporter` using the repository-pinned Three.js
   dependency and Node.js 24 or newer.
-- **Reviewed V3 artifact:** 706,308 bytes; SHA-256
-  `ff1dbd52fdbb7c37c82b6109d666d49706e97315b0864608ab4055bd7803fd15`.
-- **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 49
-  direct composite parts (25 top-level logical entities; 74 nodes / 67 mesh
-  nodes total). The package has 28,382 indexed triangles and 19,531 indexed
+- **Reviewed V3 artifact:** 720,756 bytes; SHA-256
+  `4422979720d151711c07f7f7107dda86aff1ee51681f86e386ce898ace9a8db8`.
+- **Inventory:** 18 compatibility leaf meshes, seven composite roots, and 53
+  direct composite parts (25 top-level logical entities; 78 nodes / 71 mesh
+  nodes total). The package has 28,708 indexed triangles and 19,888 indexed
   vertices, one neutral placeholder material, zero textures/images, zero
   animations, and zero skins.
 - **Detail language:** shared-vertex smooth normals, a neutral lower rowing hull
@@ -36,7 +37,9 @@ identity, or Canvas 2D fallback.
   limbs, deltoid transitions, and grip/sole/elbow detail. Equipment includes a
   Blender-authored open-U racing shell with split decks, recessed cockpit,
   slide rails, angled stretcher, heel cups, wing rigger, oarlocks, moving
-  four-roller seat carriage, and sculpted oar; raised ski deck and binding; and a
+  four-roller seat carriage, and sculpted oar; a measured cambered ski pair with
+  separate top sheets, metal edges, free-heel toe binding hardware, raised tip
+  ridge, sculpted Nordic pole grip straps, and hard-track basket ribs; and a
   **true-scale road bicycle** — 0.67 m (700c) wheels on a 1.00 m wheelbase, sized
   to the 1.83 m athlete rather than inflated to meet them. Aero rims with 16 fine
   spokes and disc rotors, a main triangle with chain- and seat-stays, fork blades
@@ -68,15 +71,15 @@ existing renderer clones it onto its known rig anchor. Each root records
 `replayAssetTemplateSlot`, `replayAssetKind: "composite"`, version 3, the
 strict part count, and its material-role list.
 
-| Template root                        | Canonical anchor contract                                                                                                                                                             |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `equipment:row:boat-assembly`        | Row avatar root coordinates: open hull, split fore/aft decks, recessed cockpit, rails, stretcher, and full-width rigger; oarlocks meet the animated pivots at `(±0.78, 0.38, 0.095)`. |
-| `equipment:row:oar-rig`              | One oar at its pin, with `+X` outboard: attach identity on the right and yaw π on the left. The animated blade remains the leaf slot.                                                 |
-| `equipment:row:seat-carriage`        | Moving rower-group coordinates: the shaped pad, metal carriage, guides, and four rollers translate with the pelvis while remaining directly over the static slide rails.              |
-| `equipment:ski:ski-assembly`         | One ski at the existing per-side anchor `(side × 0.21, 0, 0.16)`; clone it once per ski.                                                                                              |
-| `equipment:bike:wheel-assembly`      | One wheel at the existing wheel-group centre with its axle along local X; the carrier, rotor spokes, and bolt heads remain wheel-local.                                               |
-| `equipment:bike:frame-assembly`      | Bike avatar-root coordinates for the frame, stays, fork, cockpit, calipers, chain/cassette, saddle, and axles. Brake hoods and levers end at the rig's authoritative hand contacts.   |
-| `equipment:bike:drivetrain-assembly` | Crank-group-local coordinates; the existing renderer rotates the complete root about X and its clipless pedals meet the authoritative foot contacts.                                  |
+| Template root                        | Canonical anchor contract                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `equipment:row:boat-assembly`        | Row avatar root coordinates: open hull, split fore/aft decks, recessed cockpit, rails, stretcher, and full-width rigger; oarlocks meet the animated pivots at `(±0.78, 0.38, 0.095)`.                                                                                                                                                                                          |
+| `equipment:row:oar-rig`              | One oar at its pin, with `+X` outboard: attach identity on the right and yaw π on the left. The animated blade remains the leaf slot.                                                                                                                                                                                                                                          |
+| `equipment:row:seat-carriage`        | Moving rower-group coordinates: the shaped pad, metal carriage, guides, and four rollers translate with the pelvis while remaining directly over the static slide rails.                                                                                                                                                                                                       |
+| `equipment:ski:ski-assembly`         | One measured readable-classic ski at the per-side anchor `(side × 0.15, 0, 0.16)`; clone it once per ski. The 1.90 m runner (scaled at build time from the authored 2.06 m native profile to the `skiEquipment.ts` contract), 0.072 m maximum width, raised tip, metal edges, and free-heel toe binding parts remain static while poles and boots retain the runtime contacts. |
+| `equipment:bike:wheel-assembly`      | One wheel at the existing wheel-group centre with its axle along local X; the carrier, rotor spokes, and bolt heads remain wheel-local.                                                                                                                                                                                                                                        |
+| `equipment:bike:frame-assembly`      | Bike avatar-root coordinates for the frame, stays, fork, cockpit, calipers, chain/cassette, saddle, and axles. Brake hoods and levers end at the rig's authoritative hand contacts.                                                                                                                                                                                            |
+| `equipment:bike:drivetrain-assembly` | Crank-group-local coordinates; the existing renderer rotates the complete root about X and its clipless pedals meet the authoritative foot contacts.                                                                                                                                                                                                                           |
 
 Runtime materials remain outside the GLB. The neutral placeholder is never a
 product colour source: `replayMaterialRole` lets the renderer preserve lane
@@ -90,9 +93,21 @@ vp run build:replay-assets
 vp run validate:replay-assets
 ```
 
-The V3 build now invokes Blender at
+The V3 build invokes Blender at
 `/Applications/Blender.app/Contents/MacOS/blender`; set `BLENDER_BIN` to a
-different Blender 5 executable when necessary.
+different Blender 5 executable when necessary. Without Blender the build fails
+rather than falling back, so the committed artifact always traces to reviewed
+source. Verified: a clean rebuild on Blender 5.2.0 LTS reproduces
+`4422979720d151711c07f7f7107dda86aff1ee51681f86e386ce898ace9a8db8` byte for
+byte.
+
+The SkiErg geometry in this package is repository-authored in
+`scripts/build-replay-assets.mjs` and is distributed under the repository's MIT
+licence. It does not download or embed third-party models, scans, textures, or
+logos at build or runtime, and its runtime materials stay procedural at every
+quality tier. The composite carries POSITION and NORMAL only, so a texture map
+bound to these parts would sample a single texel; any future map has to arrive
+together with UVs and a relaxed slot validator.
 
 Review the resulting binary diff, exact size, and SHA-256 before committing it.
 The `v3` filename identifies this composite hierarchy and coordinate contract;

@@ -41,6 +41,9 @@ const only = new Set(
     .filter(Boolean),
 );
 const append = process.argv.includes("--append");
+// Headed launch gives the capture a real Metal-backed WebGPU adapter, which
+// headless Chromium does not expose; required for genuine Ultra evidence.
+const headed = process.argv.includes("--headed");
 const commit = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).stdout.trim();
 
 await mkdir(outputDir, { recursive: true });
@@ -87,7 +90,7 @@ async function openReplay({
   ghostPace,
   video,
 }) {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: !headed });
   const context = await browser.newContext({
     viewport: VIEWPORTS[viewport],
     deviceScaleFactor: 1,
@@ -285,7 +288,7 @@ async function captureSixPoseComparison() {
       skeleton: await imageDataUrl(resolve(outputDir, "poses", `${pose.name}-skeleton.jpg`)),
     })),
   );
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: !headed });
   const page = await browser.newPage({ viewport: { width: 1920, height: 1800 } });
   const file = "six-pose-comparison.jpg";
   try {
@@ -445,6 +448,25 @@ for (const quality of ["low", "medium", "high", "ultra"]) {
       theme: "light",
       viewport: "desktop",
       camera: "close",
+    });
+  }
+}
+
+// SkiErg equipment is progressive in geometry, not only pixel density (top
+// sheets, metal edges, binding rails, boot closures, grip straps, basket ribs
+// each earn a tier). The grip camera is the only one where that trim is
+// resolvable, so the tier ladder is captured there rather than at chase range.
+for (const quality of ["low", "medium", "high", "ultra"]) {
+  const name = `tier-ski-equipment-${quality}`;
+  if (shouldCapture(name)) {
+    await captureStill({
+      name,
+      sport: SPORTS.ski,
+      seconds: 0.5,
+      quality,
+      theme: "light",
+      viewport: "desktop",
+      camera: "grip",
     });
   }
 }
