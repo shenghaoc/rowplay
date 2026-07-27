@@ -124,6 +124,17 @@
 	const DEFAULT_SPEED = 1;
 	let speed = $state(DEFAULT_SPEED);
 
+	/**
+	 * Capture-harness-only slow motion (0 < rate ≤ 1) for the visual-QA
+	 * recordings of the arm-draw timing. Shares the athlete-visual QA gate:
+	 * unreachable from normal replay controls or stored preferences.
+	 */
+	function qaPlaybackRate(): number | null {
+		if (page.url.searchParams.get('qa') !== 'athlete-visual') return null;
+		const rate = Number(page.url.searchParams.get('qaPlaybackRate'));
+		return Number.isFinite(rate) && rate > 0 && rate <= 1 ? rate : null;
+	}
+
 	// Comparison ("ghost") state — race a past session, a constant pace, or an
 	// uploaded CSV/TCX/FIT file. All three resolve to a ghost stroke array.
 	type CompareMode = 'none' | 'session' | 'pace' | 'file';
@@ -307,7 +318,8 @@
 									: camera === 'top'
 										? 'athlete-top'
 										: 'normal',
-			showV4Skeleton: page.url.searchParams.get('athleteSkeleton') === '1'
+			showV4Skeleton: page.url.searchParams.get('athleteSkeleton') === '1',
+			showArmDiagnostics: page.url.searchParams.get('athleteArmDiag') === '1'
 		} as const;
 	}
 
@@ -458,7 +470,7 @@
 				playing = p;
 				safeRender(buildState(f), p, uiTheme.value);
 			});
-			engine.setSpeed(speed);
+			engine.setSpeed(qaPlaybackRate() ?? speed);
 			void setRenderer(rendererKind);
 		});
 		return () => {

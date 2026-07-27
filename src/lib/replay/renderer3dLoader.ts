@@ -15,7 +15,10 @@ export type Renderer3DResult = {
 };
 
 /** Query-gated capture controls; kept outside user-facing renderer preferences. */
-export type Renderer3DVisualQaOptions = Pick<Renderer3DOptions, "qaCamera" | "showV4Skeleton">;
+export type Renderer3DVisualQaOptions = Pick<
+  Renderer3DOptions,
+  "qaCamera" | "showV4Skeleton" | "showArmDiagnostics"
+>;
 
 type GpuNavigator = Navigator & {
   gpu?: {

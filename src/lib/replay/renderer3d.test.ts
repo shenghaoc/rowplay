@@ -102,6 +102,7 @@ beforeEach(() => {
   globalThis.document = {
     createElement: (tag: string) => {
       if (tag === "canvas") return makeCanvas();
+      if (tag === "div") return { style: {}, dataset: {}, remove: () => {} };
       return {};
     },
   } as unknown as Document;
@@ -1749,12 +1750,20 @@ describe("CourseRenderer3D", () => {
             `${side} bend plane points down at ${cycle}`,
           ).toBeLessThan(-0.3);
         }
-        if (graph.body.armDraw.value > 0.9) {
+        if (graph.body.armDraw.value > 0.98) {
           // Hands finish at the lower-chest grip — an elbow may sit a little
           // farther aft than the hands in a natural finish, so validate the
           // grip's chest band directly rather than forcing an elbow/hand order.
+          // Gated on the finish plateau: the widened 0.64–0.995 draw window
+          // spends real time above 0.9 while the shoulders are still swinging
+          // aft, where the approaching grip legitimately rides deeper than
+          // the settled finish band. The band itself sits ~0.13 aft of the
+          // athlete origin: the 141° production fold brings the grip to the
+          // ribs of the laid-back torso (~7 cm clear of the sternum plane —
+          // the torso-volume test above owns non-interpenetration), not to an
+          // upright-chest z.
           expect(handLocal.z, `${side} hand stays on chest-level grip at ${cycle}`).toBeGreaterThan(
-            -0.1,
+            -0.16,
           );
         }
         if (graph.body.armDraw.value < 0.03) {
@@ -4325,6 +4334,191 @@ describe("CourseRenderer3D", () => {
       }
     }, 30_000);
 
+    it("times the production arm draw readably at 24–36 spm with one velocity profile", () => {
+      // 512-phase sweep of the shipped athlete at four stroke rates, driven
+      // through the public render loop. Measures the actual elbow interior
+      // flexion of the skinned bones — not channel values — and holds the
+      // rework's readability contract:
+      //   • arms softly long (< 25° of bend) through the leg drive,
+      //   • visible flexion onset in the 0.66–0.74 band of the drive, only
+      //     after the hands have cleared the knees,
+      //   • one monotonic C2 pull whose visible span stays readable at
+      //     every rate (12.8+ frames at 28 spm down to ~10.7 at 36),
+      //   • no isolated velocity spike (head ≤ 1.6× the cruise) and a
+      //     bounded cycle-domain angular rate/acceleration,
+      //   • the deep finish fold with a dormant lateral corridor.
+      const renderer = rendererFor("rower");
+      try {
+        const scene = getScene(renderer);
+        const SAMPLES = 512;
+        const stateAt = (cycle: number, rate: number) =>
+          makeSportState("rower", cycle, 100, {
+            frame: { t: cycle, d: 100, pace: 120, spm: rate, watts: 180, hr: 0, progress: 0.05 },
+            strokePose: fallbackStrokePose("rower", cycle * TAU, rate),
+          });
+        for (const rate of [24, 28, 32, 36]) {
+          const strokeSeconds = 60 / rate;
+          const drive = fallbackStrokePose("rower", 0, rate).driveFrac;
+          const samples: { cycle: number; flex: number; kneeClear: number; out: number }[] = [];
+          const { avatar, instance } = v4Lane(renderer);
+          const inverse = new THREE.Matrix4();
+          for (let step = 0; step <= SAMPLES; step++) {
+            const cycle = step / SAMPLES;
+            renderer.render(stateAt(cycle, rate), false);
+            scene.updateMatrixWorld(true);
+            inverse.copy(avatar.group.matrixWorld).invert();
+            const shoulder = instance.bones.v4RightUpperArm
+              .getWorldPosition(new THREE.Vector3())
+              .applyMatrix4(inverse);
+            const elbow = instance.bones.v4RightForearm
+              .getWorldPosition(new THREE.Vector3())
+              .applyMatrix4(inverse);
+            const wrist = instance.bones.v4RightHand
+              .getWorldPosition(new THREE.Vector3())
+              .applyMatrix4(inverse);
+            const knee = instance.bones.v4RightLowerLeg
+              .getWorldPosition(new THREE.Vector3())
+              .applyMatrix4(inverse);
+            samples.push({
+              cycle,
+              flex:
+                180 -
+                THREE.MathUtils.radToDeg(
+                  shoulder.clone().sub(elbow).angleTo(wrist.clone().sub(elbow)),
+                ),
+              kneeClear: wrist.distanceTo(knee),
+              out: rowerElbowOutboard(shoulder, wrist, elbow, 1),
+            });
+          }
+
+          // Arms softly long through the leg drive and body opening.
+          let baseline = 0;
+          let baselineCount = 0;
+          for (const sample of samples) {
+            if (sample.cycle > drive * 0.1 && sample.cycle < drive * 0.55) {
+              expect(sample.flex, `arm stays softly long at ${sample.cycle} @${rate}`).toBeLessThan(
+                25,
+              );
+              baseline += sample.flex;
+              baselineCount++;
+            }
+          }
+          baseline /= Math.max(1, baselineCount);
+          const maxFlex = samples.reduce((best, sample) => Math.max(best, sample.flex), 0);
+          expect(maxFlex, `finish fold at ${rate} spm`).toBeGreaterThan(132);
+          expect(maxFlex, `finish fold bounded at ${rate} spm`).toBeLessThan(148);
+
+          // Visible onset: first drive sample past 10% of the flexion range,
+          // in the 0.66–0.74 of-drive band, with the hands clear of the knees.
+          const low = baseline + (maxFlex - baseline) * 0.1;
+          const onset = samples.find(
+            (sample) => sample.cycle > drive * 0.4 && sample.cycle <= drive && sample.flex >= low,
+          );
+          expect(onset, `visible onset exists at ${rate} spm`).toBeDefined();
+          expect(onset!.cycle / drive, `onset of drive at ${rate} spm`).toBeGreaterThan(0.66);
+          expect(onset!.cycle / drive, `onset of drive at ${rate} spm`).toBeLessThan(0.74);
+          expect(onset!.kneeClear, `knees cleared at onset at ${rate} spm`).toBeGreaterThan(0.3);
+
+          // Monotonic pull to the fold and a readable visible span.
+          const finishAt = samples.find(
+            (sample) => sample.cycle >= onset!.cycle && sample.flex >= maxFlex - 1,
+          );
+          expect(finishAt, `finish arrival exists at ${rate} spm`).toBeDefined();
+          for (let i = 1; i < samples.length; i++) {
+            const prev = samples[i - 1]!;
+            const cur = samples[i]!;
+            if (cur.cycle <= onset!.cycle || cur.cycle > finishAt!.cycle) continue;
+            expect(
+              cur.flex,
+              `flexion monotonic through the draw at ${cur.cycle} @${rate}`,
+            ).toBeGreaterThan(prev.flex - 0.5);
+          }
+          const visibleSeconds = (finishAt!.cycle - onset!.cycle) * strokeSeconds;
+          const minimumSeconds = rate <= 28 ? 0.21 : rate <= 32 ? 0.19 : 0.17;
+          expect(visibleSeconds, `visible span at ${rate} spm`).toBeGreaterThanOrEqual(
+            minimumSeconds,
+          );
+
+          // One velocity profile: bounded cycle-domain rate everywhere, and
+          // the fastest step (the regularised head) within 1.6× of the
+          // mid-window cruise — a stacked easing measured ~1.9× here, and the
+          // pre-rework teleport ~5×.
+          let peakRate = 0;
+          let cruise = 0;
+          for (let i = 1; i < samples.length; i++) {
+            const prev = samples[i - 1]!;
+            const cur = samples[i]!;
+            if (cur.cycle <= drive * 0.55 || cur.cycle > drive) continue;
+            const cycleRate = (cur.flex - prev.flex) * SAMPLES;
+            peakRate = Math.max(peakRate, cycleRate);
+            if (Math.abs(cur.cycle - (drive * (0.64 + 0.995)) / 2) < drive * 0.04) {
+              cruise = Math.max(cruise, cycleRate);
+            }
+          }
+          // ≤ ~2650°/cycle ⇒ ≤ ~10°/frame at 60 fps up to 32 spm inside the
+          // visible band; the absolute per-frame cost scales with rate.
+          expect(peakRate, `cycle-domain angular rate bounded at ${rate} spm`).toBeLessThan(2650);
+          expect(peakRate, `no isolated head spike at ${rate} spm`).toBeLessThan(cruise * 1.6);
+
+          // Deep finish with a dormant lateral corridor at every phase.
+          for (const sample of samples) {
+            expect(
+              sample.out,
+              `corridor stays a safety limit at ${sample.cycle} @${rate}`,
+            ).toBeLessThan(ROWER_ELBOW_CORRIDOR.maxOutboard * 0.85 + 0.02);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    }, 240_000);
+
+    it("exposes the QA arm-diagnostics overlay only when explicitly requested", () => {
+      if (!v3Assets || !v4Assets) throw new Error("production replay assets did not load");
+      const plainHost = makeHost();
+      const plain = new CourseRenderer3D(plainHost, "ultra", "rower", {
+        assets: v3Assets,
+        v4Assets,
+      });
+      try {
+        expect(
+          Array.from(
+            plainHost.children as unknown as { dataset?: { replayArmDiag?: string } }[],
+          ).filter((child) => child?.dataset?.replayArmDiag === "1"),
+        ).toHaveLength(0);
+      } finally {
+        plain.destroy();
+      }
+
+      const host = makeHost();
+      const renderer = new CourseRenderer3D(host, "ultra", "rower", {
+        assets: v3Assets,
+        v4Assets,
+        showArmDiagnostics: true,
+      });
+      renderer.resize(1140, 420);
+      try {
+        renderer.render(makeSportState("rower", 0.34), false);
+        const panel = Array.from(
+          host.children as unknown as {
+            dataset?: { replayArmDiag?: string };
+            textContent?: string;
+          }[],
+        ).find((child) => child?.dataset?.replayArmDiag === "1");
+        expect(panel, "diagnostics panel appended").toBeDefined();
+        const text = panel!.textContent ?? "";
+        // Measured values, not placeholders: mid-draw shows live draw
+        // progress, flexion, authority, corridor outboard, and clearance.
+        expect(text).toMatch(/draw {2}0\.\d\d/);
+        expect(text).toMatch(/flex {2}\d+/);
+        expect(text).toMatch(/auth {2}[01]\.\d\d/);
+        expect(text).toMatch(/out {3}0\.\d{3} \/ max 0\.110/);
+        expect(text).toMatch(/knee {2}\d/);
+      } finally {
+        renderer.destroy();
+      }
+    });
+
     it("keeps production rowing elbows in the boat-local corridor with a rearward-dominant draw", () => {
       const renderer = rendererFor("rower");
       try {
@@ -4375,10 +4569,14 @@ describe("CourseRenderer3D", () => {
             previousOut.set(side, outboard);
             const prior = previousElbow.get(side);
             if (prior) {
+              // Continuity guard against release snaps (the pre-rework frame
+              // snap measured 0.3+ m/sample). The brisk hands-away legitimately
+              // peaks near 3 m/s of elbow travel — ≈0.11 m per 1/64-cycle
+              // sample at this rate — which is speed, not discontinuity.
               expect(
                 elbow.distanceTo(prior),
                 `${side} elbow path continuous at ${cycle}`,
-              ).toBeLessThan(0.1);
+              ).toBeLessThan(0.13);
               if (side === "right" && cycle > 0.34 && cycle <= 0.46) {
                 drawRearward += Math.max(0, prior.z - elbow.z);
                 drawOutboardGain += Math.max(
@@ -4504,7 +4702,10 @@ describe("CourseRenderer3D", () => {
       // grazes them, and the production solve must never need the emergency
       // swing clamp at all.
       const ENVELOPES = {
-        rower: { twist: 1.36, flexion: 2.06, deviation: 1.75 },
+        // Rower deviation re-measured after the 0.64-window draw retiming:
+        // the deep fold now overlaps the final shoulder swing, peaking at
+        // 1.78 in the hand bone's (non-anatomical) axis convention.
+        rower: { twist: 1.36, flexion: 2.06, deviation: 1.82 },
         skierg: { twist: 1.36, flexion: 2.0, deviation: 1.75 },
         bike: { twist: 1.36, flexion: 1.62, deviation: 0.8 },
       } as const;

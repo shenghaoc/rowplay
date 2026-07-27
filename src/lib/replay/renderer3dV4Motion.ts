@@ -9,6 +9,7 @@ import {
   type HandDigitContactReport,
   type HandGripSurface,
 } from "./handGrip";
+import { rowerElbowFlexion, rowerElbowPlaneAuthority } from "./rowRig";
 import {
   disposeReplayV4AthleteInstance,
   REPLAY_V4_HAND_HELPER_NAMES,
@@ -1874,17 +1875,38 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
 
   /**
    * All machine-contact chains follow their shared deterministic branch
-   * markers verbatim. The rowing marker is already solved on the boat-local
-   * elbow corridor (`solveRowerArm`) with the V4 arm's own proportions, so
-   * adding any athlete-local lateral bias here would rotate the bend plane
-   * back out of that corridor — the former `side * 0.12` "ribcage clearance"
-   * offset was the measured source of the 0.27–0.30 m outboard elbow wing
-   * during the arm draw.
+   * markers. The rowing marker is already solved on the boat-local elbow
+   * corridor (`solveRowerArm`) with the V4 arm's own proportions, so adding
+   * any athlete-local lateral bias here would rotate the bend plane back out
+   * of that corridor — the former `side * 0.12` "ribcage clearance" offset
+   * was the measured source of the 0.27–0.30 m outboard elbow wing during
+   * the arm draw. Rowing arms additionally fade the marker's authority to
+   * zero at the near-straight singularity: with a long arm the marker's
+   * projected plane would dictate the joint completely for no visible
+   * positional gain while twisting the limb about its own axis, so the
+   * authored clip's own elbow direction owns that region and the marker
+   * takes over smoothly as real flexion develops.
    */
   private refreshBendHint(chain: ChainBinding): void {
     if (this.usesSharedJointTarget(chain)) {
       chain.jointTarget.getWorldPosition(this.bendHint);
       this.bendHint.sub(this.rootWorld);
+      if (!chain.isLeg && this.options.sport === "rower") {
+        const proximal = this.rootWorld.distanceTo(this.middleWorld);
+        const distal = this.middleWorld.distanceTo(this.effectorWorld);
+        const chord = this.rootWorld.distanceTo(this.effectorWorld);
+        const authority = rowerElbowPlaneAuthority(rowerElbowFlexion(chord, proximal, distal));
+        if (authority < 1) {
+          this.currentDirection.copy(this.middleWorld).sub(this.rootWorld);
+          const markerLength = this.bendHint.length();
+          const clipLength = this.currentDirection.length();
+          if (markerLength > 1e-6 && clipLength > 1e-6) {
+            this.bendHint
+              .multiplyScalar(authority / markerLength)
+              .addScaledVector(this.currentDirection, (1 - authority) / clipLength);
+          }
+        }
+      }
     } else {
       this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
     }

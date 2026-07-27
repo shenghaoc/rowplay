@@ -28,10 +28,18 @@ import {
   createBikeMotionGraphScratch,
   createRowerMotionGraphScratch,
   sampleBikeMotionGraphInto,
+  sampleRowerMotionGraph,
   sampleRowerMotionGraphInto,
   SKI_POLE_APPROACH_START_CYCLE,
   type BikeMotionGraph,
 } from "./motionGraph";
+
+/** Scratch objects for the QA arm-diagnostics overlay (allocation-free). */
+const ARM_DIAG_MATRIX = new THREE.Matrix4();
+const ARM_DIAG_SHOULDER = new THREE.Vector3();
+const ARM_DIAG_ELBOW = new THREE.Vector3();
+const ARM_DIAG_WRIST = new THREE.Vector3();
+const ARM_DIAG_KNEE = new THREE.Vector3();
 import { BIKE_RIG, bikeSaddleTopY, bikeWheelAxleY } from "./bikeRig";
 import { buildBikeSaddleGeometry } from "./bikeSaddle";
 import type { Sport } from "../types";
@@ -39,10 +47,17 @@ import { fmtPace } from "../format";
 import { METERS_PER_CYCLE, ParticlePool, PerfGovernor, clampDt, dampFactor } from "./motion";
 import { solveRigidContactPoint3D, solveTwoBone3D, type FigurePoint3 } from "./figurePose";
 import {
+  ROWER_DRAW_FINISH_FLEXION,
+  ROWER_DRAW_SOFT_FLEXION,
+  ROWER_ELBOW_CORRIDOR,
   ROWER_FOOT_CONTACT,
   ROWER_OARLOCK,
   ROWER_SCULL_GRIP,
   ROWER_STRETCHER,
+  rowerElbowFlexion,
+  rowerElbowOutboard,
+  rowerElbowPlaneAuthority,
+  rowerReachForFlexion,
   solveRowerArm,
   solveRowerOarYaw,
 } from "./rowRig";
@@ -76,7 +91,6 @@ import {
 import {
   skiEquipmentDetail,
   SKI_ATHLETE_PROPORTIONS,
-  SKI_HAND_CURL_AXIS,
   SKI_HAND_FIST_CENTRE,
   SKI_HAND_FIST_RADIUS,
   SKI_GRIP_SHIFT,
@@ -228,6 +242,12 @@ export interface Renderer3DOptions {
     | "athlete-top";
   /** Draw the live V4 skeleton over the real rendered athlete for QA evidence. */
   showV4Skeleton?: boolean;
+  /**
+   * Capture-only rowing arm-draw diagnostics panel (draw progress, measured
+   * elbow flexion and angular velocity, plane authority, corridor outboard,
+   * hand–knee clearance). Reachable only through the replay QA query.
+   */
+  showArmDiagnostics?: boolean;
 }
 
 /**
@@ -1988,11 +2008,6 @@ function makeRowerAvatar(
   let pendingArmDraw = 0;
   let pendingShoulderSet = 0;
   let pendingHandleTravel = 0;
-  // Blade immersion drives the elbow band: while the spoon is loaded the
-  // drawing elbow hangs deep below the handle line, and it rises back toward
-  // handle height as the blade extracts so the release cannot pin the deep
-  // solution against the behind-the-back floor and snap branches.
-  let pendingBladeLoad = 0;
   const placeArms = (
     bodySwing: number,
     armDraw: number,
@@ -2044,11 +2059,27 @@ function makeRowerAvatar(
       // Finish at a realistic lower-rib draw. Public sculling coaching (e.g.
       // British Rowing / Concept2): hands draw *to the lower chest*, elbows
       // tuck beside/slightly behind the shoulder plane — never hauled through
-      // the torso into an illegal behind-the-back finish. The complete oar
-      // path follows the graph's handle travel, not only the late arm channel;
-      // the fixed oarlock therefore moves the handles during the leg/body
-      // phases while the arms remain long.
-      const reachRelaxation = 0.1 * THREE.MathUtils.smoothstep(draw, 0.22, 0.55);
+      // the torso into an illegal behind-the-back finish.
+      //
+      // The armDraw channel is the only velocity profile in this chain: it
+      // schedules the elbow's interior flexion affinely from the soft
+      // long-arm unlock to the measured production finish fold, the law of
+      // cosines converts that flexion into the requested shoulder→wrist
+      // reach, and the rigid-oar solve places the handle on that shrinking
+      // reach sphere. During the leg drive (draw = 0) this is the soft
+      // long-arm reach boundary — elbows unlocked, never at the straight
+      // singularity where mm-scale IK settling reads as an onset pop — so
+      // the fixed oarlock still sweeps the handles while the arms stay
+      // long; as the channel opens, the arm folds at constant angular
+      // velocity with C2-flat ends inherited from the channel. The former
+      // reach-relaxation smoothstep and boundary→staged yaw blend re-eased
+      // this path twice and compressed the visible pull into ~3 frames.
+      const requestedReach =
+        rowerReachForFlexion(
+          ROWER_DRAW_SOFT_FLEXION + draw * (ROWER_DRAW_FINISH_FLEXION - ROWER_DRAW_SOFT_FLEXION),
+          activeUpperArmLength,
+          activeForearmLength,
+        ) - 0.002;
       const solvedYaw = solveRowerOarYaw(
         v4Refinement?.reachOrigins[i] ?? arm.shoulderPoint,
         oar.group.position.x - rower.position.x,
@@ -2056,19 +2087,11 @@ function makeRowerAvatar(
         oar.group.position.z - rower.position.z,
         oar.handleAnchor.position.x,
         oar.group.rotation.z,
-        activeArmReach - 0.002 - reachRelaxation,
-        oar.group.rotation.y,
+        requestedReach,
+        oar.side * (OAR_YAW_CATCH + draw * OAR_YAW_SPAN),
         true,
       );
-      const stagedYaw = oar.side * (OAR_YAW_CATCH + draw * OAR_YAW_SPAN);
-      // Keep the early drive at the long-arm reach boundary, then hand the
-      // fixed oar back to the authored draw arc with a smooth transition. A
-      // direct branch switch at the first arm-draw sample makes the elbow
-      // jump even though the oar itself is moving continuously.
-      const boundaryBlend = 1 - THREE.MathUtils.smoothstep(draw, 0.22, 1);
-      const yawDelta =
-        THREE.MathUtils.euclideanModulo(stagedYaw - solvedYaw + Math.PI, Math.PI * 2) - Math.PI;
-      oar.group.rotation.y = solvedYaw + yawDelta * (1 - boundaryBlend);
+      oar.group.rotation.y = solvedYaw;
       // Convert the oar-local grip endpoint into rower-local coordinates. Both
       // objects share the avatar group as parent, so this is exact even before
       // Three updates matrixWorld for the draw.
@@ -2079,22 +2102,18 @@ function makeRowerAvatar(
       const v4ContactOffset = v4Refinement?.contactOffsets[i];
       if (v4ContactOffset) arm.wristTarget.sub(v4ContactOffset);
       // A sculling elbow follows its handle line principally aft (British
-      // Rowing technique): the bend plane stays down-dominant with only a
-      // slight outward tilt, rotating rearward through the late draw, and
-      // the corridor clamp forbids both the horizontal chicken wing and a
-      // past-vertical behind-the-back haul. Solving the shared plane
-      // unconditionally (not gated on a draw phase) keeps it continuous:
-      // with a long arm the elbow circle is tiny and the plane costs
-      // nothing, and as the draw bends the arm the same formula deepens and
-      // rotates the hang without a branch switch.
+      // Rowing technique) once the arm actually bends. The solver schedules
+      // its own plane authority from the flexion the reach demands: a long
+      // early-drive arm keeps its relaxed hang (no forced down vector at the
+      // near-straight singularity), and the aft draw takes over smoothly as
+      // the handle comes to the ribs. The corridor remains a lateral safety
+      // clamp, not the desired pose.
       solveRowerArm(
         arm.shoulderPoint,
         arm.wristTarget,
         activeUpperArmLength,
         activeForearmLength,
         arm.side,
-        draw,
-        pendingBladeLoad,
         arm.elbowPoint,
         arm.handPoint,
         arm.bendHint,
@@ -2254,15 +2273,14 @@ function makeRowerAvatar(
     // channel is the equipment cue that moves the handle aft toward the
     // chest. Using the aggregate handle channel here would include its leg
     // contribution and pull the grip through the knees and torso too early.
-    // The shared graph begins its arm channel only after the legs have
-    // finished driving, so by the time armDraw rises the knees are flat and
-    // the raised drive-height grips travel above the knee envelope, not
-    // through it. Gating away just the first sliver of the channel keeps the
-    // long-arm reach through any residual leg motion while spreading the
-    // visible draw across most of the channel: the former 0.62 gate crushed
-    // the entire handle pull into roughly two display frames, which read as a
-    // finish teleport rather than a draw to the ribs.
-    const equipmentHandleTravel = THREE.MathUtils.smoothstep(graph.body.armDraw.value, 0.12, 1);
+    // The graph's armDraw channel is consumed verbatim: it is the single
+    // authored velocity profile for the pull (C2-flat cruise over the
+    // widened 0.64–0.995 drive window), and stacking another smoothstep on
+    // top of it re-compressed the visible draw into ~3 frames — the finish
+    // teleport this rework removes. The graph already opens the channel only
+    // after the legs have finished driving, so the raised grips travel above
+    // the flat knee envelope without a renderer-side gate.
+    const equipmentHandleTravel = graph.body.armDraw.value;
     placeUpperBody(
       graph.body.spineHinge.value,
       graph.body.shoulderSet.value,
@@ -2279,7 +2297,6 @@ function makeRowerAvatar(
     pendingArmDraw = equipmentHandleTravel;
     pendingShoulderSet = graph.body.shoulderSet.value;
     pendingHandleTravel = equipmentHandleTravel;
-    pendingBladeLoad = graph.contacts.bladeWater.value;
     placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel);
     return reduce
       ? STATIC_AVATAR_MOTION
@@ -4213,6 +4230,15 @@ export class CourseRenderer3D implements ReplayRenderer {
 
   private host: HTMLElement;
   private canvas: HTMLCanvasElement;
+  /** Capture-only rowing arm diagnostics panel (see showArmDiagnostics). */
+  private armDiagPanel: HTMLElement | null = null;
+  private armDiagLastFlex = NaN;
+  private armDiagBones: {
+    shoulder: THREE.Object3D | null;
+    elbow: THREE.Object3D | null;
+    wrist: THREE.Object3D | null;
+    knee: THREE.Object3D | null;
+  } | null = null;
   private readonly sport: Sport;
   private readonly profile: SportProfile;
   private readonly environment: EnvironmentStyle;
@@ -4330,6 +4356,23 @@ export class CourseRenderer3D implements ReplayRenderer {
     // run because `this` was never returned — doesn't leak a stub canvas
     // under `host`.
     host.appendChild(this.canvas);
+    if (options.showArmDiagnostics && sport === "rower") {
+      // QA-only numeric overlay for the arm-draw rework: draw progress,
+      // measured elbow flexion + angular velocity, plane authority, corridor
+      // outboard, and hand–knee clearance, sampled from the live skinned
+      // bones every frame. Guards keep minimal DOM hosts (tests) valid.
+      const panel = document.createElement("div");
+      if (panel.style) {
+        panel.style.cssText =
+          "position:absolute;left:8px;top:8px;z-index:5;padding:6px 9px;" +
+          "background:rgba(8,12,20,0.78);color:#9fe8c8;border-radius:6px;" +
+          "font:600 11px/1.5 'Source Code Pro',ui-monospace,monospace;" +
+          "white-space:pre;pointer-events:none;";
+      }
+      if (panel.dataset) panel.dataset.replayArmDiag = "1";
+      host.appendChild(panel);
+      this.armDiagPanel = panel;
+    }
     try {
       if (this.backend === "webgpu") {
         if (!options.WebGPURenderer) throw new Error("WebGPU renderer unavailable");
@@ -5832,6 +5875,56 @@ export class CourseRenderer3D implements ReplayRenderer {
    * light-space snapping prevents sub-texel shadow swimming without widening
    * the map or changing the art-directed sun direction.
    */
+  /**
+   * Fill the QA arm-diagnostics panel from the live skinned bones. All values
+   * are *measured* on the rendered athlete (not channel echoes): elbow
+   * flexion from the shoulder/elbow/wrist bone positions, plane authority
+   * from that flexion, corridor outboard from the working-plane metric, and
+   * hand–knee clearance as the wrist↔knee distance.
+   */
+  private updateArmDiagnostics(livePose: StrokePose, dt: number): void {
+    const panel = this.armDiagPanel;
+    const v4Root = this.liveAvatar.v4Motion?.root;
+    if (!panel || !v4Root) return;
+    if (!this.armDiagBones) {
+      const bone = (name: string) => v4Root.getObjectByName(name) ?? null;
+      this.armDiagBones = {
+        shoulder: bone("v4RightUpperArm"),
+        elbow: bone("v4RightForearm"),
+        wrist: bone("v4RightHand"),
+        knee: bone("v4RightLowerLeg"),
+      };
+    }
+    const bones = this.armDiagBones;
+    if (!bones.shoulder || !bones.elbow || !bones.wrist || !bones.knee) return;
+    const graph = sampleRowerMotionGraph(livePose);
+    this.liveAvatar.group.updateWorldMatrix(true, true);
+    const inverse = ARM_DIAG_MATRIX.copy(this.liveAvatar.group.matrixWorld).invert();
+    const shoulder = bones.shoulder.getWorldPosition(ARM_DIAG_SHOULDER).applyMatrix4(inverse);
+    const elbow = bones.elbow.getWorldPosition(ARM_DIAG_ELBOW).applyMatrix4(inverse);
+    const wrist = bones.wrist.getWorldPosition(ARM_DIAG_WRIST).applyMatrix4(inverse);
+    const knee = bones.knee.getWorldPosition(ARM_DIAG_KNEE).applyMatrix4(inverse);
+    const upperArm = shoulder.distanceTo(elbow);
+    const forearmLength = elbow.distanceTo(wrist);
+    const flexion = rowerElbowFlexion(shoulder.distanceTo(wrist), upperArm, forearmLength);
+    const flexionDegrees = THREE.MathUtils.radToDeg(flexion);
+    const velocity =
+      dt > 0 && Number.isFinite(this.armDiagLastFlex)
+        ? (flexionDegrees - this.armDiagLastFlex) / dt
+        : 0;
+    this.armDiagLastFlex = flexionDegrees;
+    const outboard = rowerElbowOutboard(shoulder, wrist, elbow, 1);
+    panel.textContent =
+      `draw  ${graph.body.armDraw.value.toFixed(2)}  vel ${graph.body.armDraw.velocity.toFixed(2)}/s\n` +
+      `flex  ${flexionDegrees.toFixed(1)}°  ${velocity.toFixed(0)}°/s\n` +
+      `auth  ${rowerElbowPlaneAuthority(flexion).toFixed(2)}\n` +
+      `out   ${outboard.toFixed(3)} / max ${ROWER_ELBOW_CORRIDOR.maxOutboard.toFixed(3)}\n` +
+      `knee  ${wrist.distanceTo(knee).toFixed(2)} m  drive ${(livePose.driveFrac
+        ? Math.min(1, graph.timing.cycle / livePose.driveFrac)
+        : 0
+      ).toFixed(2)}`;
+  }
+
   private updateStableShadowAnchor(x: number, z: number): void {
     const target = this.shadowTarget.set(x, SHADOW_TARGET_HEIGHT, z);
     if (this.cfg.shadows) {
@@ -6054,6 +6147,8 @@ export class CourseRenderer3D implements ReplayRenderer {
     // athlete, but stabilize its projection rather than letting it swim over
     // fractional texels as the athlete rounds the 70 m arena.
     this.updateStableShadowAnchor(p.x, p.z);
+
+    if (this.armDiagPanel) this.updateArmDiagnostics(livePose, dt);
 
     const liveWakeOffset = this.sport === "rower" ? 4.15 : 1.6;
     this.advanceWake(
@@ -6452,6 +6547,9 @@ export class CourseRenderer3D implements ReplayRenderer {
   }
 
   destroy(): void {
+    this.armDiagPanel?.remove?.();
+    this.armDiagPanel = null;
+    this.armDiagBones = null;
     // V4 owns lane-local skeleton/mixer/geometry/material resources. Remove it
     // before the generic scene walk so shared cache templates remain untouched.
     this.liveAvatar.v4Motion?.dispose();

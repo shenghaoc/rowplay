@@ -83,7 +83,7 @@ close review of the captures:
    right-way-up, the wrist reads much calmer primarily because the closed
    fist now carries the bend; `refineGripSpinForWrist` additionally trims
    the last degrees of wrist bend by spending the grip's one free degree of
-   freedom (spin about the shaft) on flatness — but only inside a *tight*
+   freedom (spin about the shaft) on flatness — but only inside a _tight_
    0.3 rad inward-palm cone. An earlier iteration used a 1.35 rad cone,
    which measurably rotated the visible palms toward the chase camera
    ("palms facing outward" from the default view) while buying nothing at
@@ -137,6 +137,122 @@ Representative pairs to review side by side:
 | Pole enclosed, thumb opposing                        | `before/poses/ski-loaded-pull-grip.jpg`                         | `after/poses/ski-loaded-pull-grip.jpg`                                           |
 | Hood supported and hooked                            | `before/poses/bike-left-power-grip.jpg` (flat splayed fingers)  | `after/poses/bike-left-power-grip.jpg`, `after/poses/bike-opposed-grip-left.jpg` |
 | Whole-cycle behaviour                                | `before/cycles/*.webm`                                          | `after/cycles/*.webm`                                                            |
+
+## Arm-draw retiming and elbow-path naturalisation (same branch, follow-up commit)
+
+The grip work above fixed _where_ the hands hold the equipment; review of the
+whole-cycle recordings showed the rowing arm pull itself was compressed into a
+teleport, and the elbow model still forced a bend plane onto near-straight
+arms. Both are reworked in `fix(replay): retime rowing arm draw and
+naturalize elbow path`.
+
+### Root cause (measured on the grips head `af38c29`, production athlete, 28 spm)
+
+| Defect                              | Measurement                                                                                                       |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Visible flexion onset               | 0.88 of the drive                                                                                                 |
+| 10→90 % flexion rise                | **0.050 s = 3.0 frames** at 60 fps                                                                                |
+| Peak elbow angular velocity         | **2821 °/s ≈ 47 °/frame** — the teleport                                                                          |
+| Finish corridor state               | working-plane outboard exactly 0.110 m = the corridor clamp, saturated every cycle (the clamp _was_ the pose)     |
+| Near-straight elbow plane authority | full — the down-dominant plane dictated the joint at zero visible bend, twisting the limb about its own long axis |
+
+The timing chain stacked four easings: the `armDraw` channel opened only at
+0.78 of the drive, the renderer re-eased it with a `smoothstep(0.12→1)`, a
+reach-relaxation smoothstep re-eased the shoulder→grip distance again, and a
+staged-yaw/boundary blend re-eased the oar arc on top.
+
+### What changed
+
+- **One velocity profile.** The motion-graph `armDraw` channel is the single
+  authored profile: a C2-flat `cruiseRamp` over the widened
+  **0.64–0.995 of the drive** (release: quintic over the first 0.30 of the
+  recovery). Every renderer-side easing is deleted; `placeArms` consumes the
+  channel verbatim.
+- **Flexion-scheduled reach.** The channel schedules the elbow's interior
+  flexion affinely from a soft 0.32 rad long-arm unlock to the measured
+  2.46 rad production finish fold; the law of cosines converts that flexion
+  into the requested shoulder→grip reach, and `solveRowerOarYaw` places the
+  rigid handle exactly on that shrinking sphere (`achieved == requested` at
+  every sampled phase). The soft floor exists because the rig's grip-sphere →
+  wrist-sphere mapping carries a ~8 mm contact-offset bias: scheduling below
+  ~0.32 rad left the wrist target outside the skeleton's chord — a dead zone
+  the arm then rushed to catch up (a measured 1265 °/s onset spike, now gone).
+- **Flexion-gated elbow-plane authority.** `solveRowerArm` computes actual
+  flexion from the chord and fades plane authority C2-smoothly from zero (at
+  ≤0.14 rad) to full (at 0.55 rad); near straight the authored clip owns the
+  joint. At authority the elbow's circle station blends to fixed
+  **chord-frame weights** (down 0.97, outboard 0.24) — the chord's azimuth
+  swings ~30° between mid-draw and finish, so no fixed athlete-frame
+  direction can be modestly outboard at both. Outboard displacement now
+  scales with the bend radius and the absolute corridor is a dormant safety
+  limit.
+- **Sampler unification regression test.** The renderer consumes the
+  zero-alloc `sampleRowerMotionGraphInto`; the authored windows also live in
+  the public `sampleRowerMotionGraph`. During this work a window retime that
+  landed in only one of them shipped a 0.78 pull to the renderer while every
+  channel test read the new window — a dense 512-sample × 3-rate equality
+  test now pins the two samplers together.
+- **V4 clip re-key + regenerated assets.** The row-cycle clip's late-drive
+  keys (root/hips/spine/chest/neck/head/clavicles/arms/hands) are re-authored
+  so the torso opens by 0.80 of the drive (its aft shoulder travel is what
+  geometrically releases the rigid handle) and the clip's draw prior tracks
+  the widened window; GLB/USDZ/contract regenerated via the documented
+  builders (`build:replay-rig-v4*`), never hand-edited.
+
+### Measured after (production athlete through the real renderer, 512 samples/rate)
+
+| Property                                | 24 spm            | 28 spm            | 32 spm            | 36 spm            |
+| --------------------------------------- | ----------------- | ----------------- | ----------------- | ----------------- |
+| Visible flexion onset (of drive)        | 0.684             | 0.684             | 0.684             | 0.684             |
+| Visible span, onset → finish fold       | 0.269 s = 16.1 fr | 0.230 s = 13.8 fr | 0.201 s = 12.1 fr | 0.179 s = 10.7 fr |
+| Peak elbow angular velocity             | 589 °/s           | 687 °/s           | 785 °/s           | 884 °/s           |
+| Max true adjacent-frame change (60 fps) | 8.5°              | 11.3°             | 13.9°             | 13.9°             |
+| Peak angular acceleration               | 61 k°/s²          | 83 k°/s²          | 109 k°/s²         | 139 k°/s²         |
+
+(Before at 28 spm: onset 0.88, 3.0 frames, 2821 °/s, 47 °/frame, 302 k°/s².)
+
+Sequencing and finish, rate-invariant: flexion is monotonic through the draw;
+hand–knee clearance at visible onset 0.44 m; baseline flexion through the leg
+drive ≈ 18° (softly-long unlocked elbows, never the straight-arm singularity);
+finish fold 140.9° with the elbow at (+0.067, −0.380, −0.057) m from the
+shoulder — behind it, below it, modestly outboard; working-plane outboard
+grows smoothly 0.05 → 0.086 m through the draw against the 0.11 m corridor
+(clamp never engages). Hands release over the first 0.30 of the recovery,
+then body-over, then slide, and the loop is C2 at both stroke boundaries.
+
+Acceptance lives in `renderer3d.test.ts` ("times the production arm draw
+readably at 24–36 spm"): 512 phases × 4 rates of the shipped GLB asserting
+soft-long arms, the 0.66–0.74 onset band, knee clearance at onset,
+monotonicity, per-rate minimum visible spans, a bounded cycle-domain angular
+rate, head-spike ≤ 1.6× cruise, and the dormant corridor. Channel-level
+timing, duration, recovery-order, and sampler-equality contracts live in
+`motionGraph.test.ts`; the chord-frame station and finish-rejection contracts
+(drooped and winged finishes both rejected on observable metrics, production
+segment lengths 0.388/0.378 m) live in `rowRig.test.ts`.
+
+### Diagnostics overlay
+
+`?qa=athlete-visual&athleteArmDiag=1` (share the athlete-visual gate; not
+reachable from replay controls) renders a live numeric panel measured from
+the skinned bones each frame: draw progress + channel velocity, elbow flexion
+
+- angular velocity, plane authority, working-plane outboard vs the corridor
+  bound, hand–knee clearance, and drive progress.
+
+### Capture matrix (arm-retime)
+
+`docs/visual-qa/grips-and-elbows/arm-retime/` — same preview/viewport/theme
+discipline as above: **15 named phases** (catch, leg-drive-early/mid,
+legs-flat, body-opening, draw-onset, draw-early/mid/late, finish, release,
+hands-away, body-over, slide-return, late-recovery) × cameras `normal`
+(chase), `front`, `rear`, `top`, `close`; skeleton overlays at draw-onset,
+draw-mid, and finish (plus the close overlay at leg-drive-mid); cycle
+recordings from the chase and rear cameras, a diagnostics-overlay recording,
+and **14 s chase recordings (≥6 consecutive strokes at the demo workout's
+natural 28–32 spm cadence) at 1×, 0.5×, and 0.25×** via the capture-only
+`qaPlaybackRate` query. The exact 24/28/32/36 sweep is owned by the
+512-phase acceptance test; the recordings verify the same motion in the real
+application at watchable and frame-by-frame speeds.
 
 ## Remaining limitations (stated honestly)
 

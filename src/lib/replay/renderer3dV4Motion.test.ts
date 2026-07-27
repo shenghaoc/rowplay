@@ -532,15 +532,21 @@ describe("V4 motion determinism and fallback safety", () => {
       placeTargetsNearClipEffectors(lane);
       // In the RowErg parent frame the athlete faces +z, so both branch markers
       // sit rearward (-z) of their shoulder. The test scene itself is rotated/
-      // scaled to prove the controller consumes this in world space.
+      // scaled to prove the controller consumes this in world space. The
+      // marker only *owns* the bend plane at visible flexion — near straight
+      // the authored clip keeps the joint (rowerElbowPlaneAuthority) — so the
+      // wrist targets are pulled inside the reach until the arm is clearly
+      // bent before asserting marker-following.
       for (const side of ["left", "right"] as const) {
         const upper = side === "left" ? "v4LeftUpperArm" : "v4RightUpperArm";
         const marker = side === "left" ? lane.targets.leftElbow : lane.targets.rightElbow;
+        const handTarget = side === "left" ? lane.targets.leftHand : lane.targets.rightHand;
         const shoulder = lane.instance.bones[upper].getWorldPosition(new THREE.Vector3());
         lane.parent.worldToLocal(shoulder);
         marker.position
           .copy(shoulder)
           .add(new THREE.Vector3(side === "left" ? -0.04 : 0.04, 0, -0.24));
+        handTarget.position.sub(shoulder).setLength(0.58).add(shoulder);
       }
       lane.scene.updateMatrixWorld(true);
       controller?.setDiagnosticMode("full");

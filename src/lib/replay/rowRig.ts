@@ -169,28 +169,139 @@ export const ROWER_ELBOW_CORRIDOR = Object.freeze({
 } as const);
 
 /**
- * Preferred rowing elbow-plane direction in the athlete frame (+z stretcher,
- * -z aft draw direction, +y up, x outboard by side).
+ * Elbow-plane schedule driven by the arm's *actual* flexion, not by a phase
+ * channel: the shoulder→wrist distance determines how bent the arm is, and
+ * only a visibly bent arm has a visually meaningful bend plane. Near full
+ * extension the elbow circle is a singular, low-authority region — forcing a
+ * strong preferred direction there twists the limb about its own long axis
+ * for no visible positional gain, which is exactly the artefact this
+ * schedule removes.
+ */
+/**
+ * Arm-draw schedule: the elbow's interior flexion — the visually meaningful
+ * quantity — grows linearly with the motion graph's cruise-shaped armDraw
+ * channel, reaching the measured production finish fold at draw = 1. The
+ * renderer converts the scheduled flexion into a requested shoulder→wrist
+ * reach via the law of cosines and lets the rigid-oar solve place the
+ * handle, so the channel is the *only* velocity profile in the chain — the
+ * former stack (reach-relaxation smoothstep + boundary/staged yaw blend +
+ * renderer smoothstep) compressed the visible pull into ~3 frames.
+ */
+export const ROWER_DRAW_FINISH_FLEXION = 2.46;
+
+/**
+ * Soft elbow unlock held through the whole drive (radians from straight).
+ * A rower's arms hang long but never locked; geometrically this keeps the
+ * shoulder→wrist chord away from the straight-arm singularity, where the
+ * flexion-per-millimetre gain of the law of cosines diverges and mm-scale
+ * IK settling reads as a multi-degree elbow pop exactly at draw onset.
  *
- * One continuous, C1 direction replaces the former two-branch scored
- * selection: down-dominant with a slight outward tilt through the whole
- * stroke, rotating aft as the late arm draw closes. The loaded finish keeps
- * the deepest down component (elbow below the handle line while the spoon is
- * buried); extraction releases depth continuously as the load fades. Because
- * both sides evaluate one formula mirrored by `side`, left and right can
- * never select opposite branches at the same phase.
+ * The value is measured on the production V4 rig: the refined grip-sphere →
+ * wrist-sphere mapping carries a ~8 mm contact-offset bias, so scheduled
+ * flexion below ~0.32 rad leaves the wrist target outside the skeleton's
+ * natural chord — a dead zone the arm then rushed to catch up, which was
+ * the last remaining onset velocity spike. At 0.32 rad the arm engages the
+ * shrinking sphere from the first millimetre of the draw window.
+ */
+export const ROWER_DRAW_SOFT_FLEXION = 0.32;
+
+/** Shoulder→wrist reach that yields `flexion` for the given segment pair. */
+export function rowerReachForFlexion(
+  flexion: number,
+  upperArmLength: number,
+  forearmLength: number,
+): number {
+  const clamped = THREE.MathUtils.clamp(flexion, 0, Math.PI - 1e-3);
+  return Math.sqrt(
+    Math.max(
+      0,
+      upperArmLength * upperArmLength +
+        forearmLength * forearmLength +
+        2 * upperArmLength * forearmLength * Math.cos(clamped),
+    ),
+  );
+}
+
+export const ROWER_ELBOW_PLANE = Object.freeze({
+  /** Flexion (rad from straight) below which the plane has no authority. */
+  authorityStart: 0.14,
+  /** Flexion at which the drawn plane owns the joint completely. */
+  authorityFull: 0.55,
+  /**
+   * Relaxed near-straight direction, athlete frame: a soft under-arm hang
+   * with the natural sculling outboard lean, derived from the authored
+   * catch pose. Positionally almost inert at low flexion; it exists to keep
+   * the singular region deterministic and mirror-symmetric.
+   */
+  relaxed: Object.freeze({ x: 0.32, y: -1, z: -0.12 }),
+  /**
+   * Drawn direction, athlete frame. Used only as the two-bone branch hint:
+   * once the circle is decomposed, `drawnDownWeight`/`drawnOutboardWeight`
+   * own the station at full authority. Down-and-aft picks the correct
+   * (non-mirrored, non-winged) branch at every draw chord.
+   */
+  drawn: Object.freeze({ x: 0.02, y: -0.72, z: -0.69 }),
+  /**
+   * Chord-frame station of the drawn elbow on its circle. The chord itself
+   * swings ~30° of azimuth between mid-draw and finish, so no fixed
+   * athlete-frame direction can be modestly outboard at both — expressed in
+   * the working basis (in-plane-down v̂, outboard ŵ) the preference is
+   * chord-relative and the outboard offset scales with the circle radius:
+   * 0.24 · radius stays a visible but modest lean (≈ 0.067 m mid-draw,
+   * ≈ 0.087 m at the deep finish fold) and leaves the absolute-metre
+   * corridor as a dormant safety limit instead of the operating pose.
+   */
+  drawnOutboardWeight: 0.24,
+  drawnDownWeight: Math.sqrt(1 - 0.24 * 0.24),
+} as const);
+
+/** Elbow flexion (radians away from a straight arm) for a given reach. */
+export function rowerElbowFlexion(
+  chordLength: number,
+  upperArmLength: number,
+  forearmLength: number,
+): number {
+  const clamped = THREE.MathUtils.clamp(
+    chordLength,
+    Math.abs(upperArmLength - forearmLength) + 1e-6,
+    upperArmLength + forearmLength - 1e-6,
+  );
+  const cosInterior =
+    (upperArmLength * upperArmLength + forearmLength * forearmLength - clamped * clamped) /
+    (2 * upperArmLength * forearmLength);
+  return Math.PI - Math.acos(THREE.MathUtils.clamp(cosInterior, -1, 1));
+}
+
+/**
+ * How much the preferred plane may steer the joint, 0 near straight → 1 once
+ * flexion is clearly visible. C2 (smootherstep), so plane authority cannot
+ * step while the draw develops.
+ */
+export function rowerElbowPlaneAuthority(flexion: number): number {
+  const span = ROWER_ELBOW_PLANE.authorityFull - ROWER_ELBOW_PLANE.authorityStart;
+  const unit = THREE.MathUtils.clamp((flexion - ROWER_ELBOW_PLANE.authorityStart) / span, 0, 1);
+  return unit * unit * unit * (unit * (unit * 6 - 15) + 10);
+}
+
+/**
+ * Preferred rowing elbow-plane direction in the athlete frame (+z stretcher,
+ * -z aft draw direction, +y up, x outboard by side), blended from the
+ * relaxed hang to the aft draw by plane authority. Because both sides
+ * evaluate one formula mirrored by `side`, left and right can never select
+ * opposite branches at the same flexion.
  */
 export function rowerElbowPlane(
   side: number,
-  draw: number,
-  load: number,
+  authority: number,
   out: THREE.Vector3,
 ): THREE.Vector3 {
-  const drawAmount = THREE.MathUtils.clamp(draw, 0, 1);
-  const loadAmount = THREE.MathUtils.clamp(load, 0, 1);
-  const outboard = 0.14 + 0.06 * drawAmount;
-  const aft = drawAmount * (0.34 + 0.52 * (1 - 0.5 * loadAmount));
-  out.set(Math.sign(side) * outboard, -1, -aft);
+  const mix = THREE.MathUtils.clamp(authority, 0, 1);
+  const sign = Math.sign(side) || 1;
+  out.set(
+    sign * THREE.MathUtils.lerp(ROWER_ELBOW_PLANE.relaxed.x, ROWER_ELBOW_PLANE.drawn.x, mix),
+    THREE.MathUtils.lerp(ROWER_ELBOW_PLANE.relaxed.y, ROWER_ELBOW_PLANE.drawn.y, mix),
+    THREE.MathUtils.lerp(ROWER_ELBOW_PLANE.relaxed.z, ROWER_ELBOW_PLANE.drawn.z, mix),
+  );
   return out.normalize();
 }
 
@@ -226,15 +337,20 @@ export function rowerElbowOutboard(
 }
 
 /**
- * Solve one equipment-locked sculling arm on the shared elbow-plane contract.
+ * Solve one equipment-locked sculling arm on the flexion-scheduled elbow
+ * contract.
  *
  * The wrist lands exactly on the rigid grip and both bone lengths remain
- * authoritative; the one free degree of freedom — rotation of the elbow about
- * the shoulder→wrist chord — follows `rowerElbowPlane`, then two closed
- * secant passes clamp the solved joint into the boat-local corridor
- * (outboard band and behind-the-shoulder floor). Every step is continuous in
- * its inputs, so the draw cannot snap branches and mirrored arms stay
- * symmetric. `planeOut` receives the final plane direction for diagnostics.
+ * authoritative. The one free degree of freedom — rotation of the elbow
+ * about the shoulder→wrist chord — is steered by `rowerElbowPlane` with
+ * authority proportional to the *actual* flexion the reach demands: a
+ * near-straight arm keeps its relaxed hang (the singular region is left
+ * alone), and the aft draw takes over smoothly as the arm genuinely bends.
+ * The corridor then acts purely as a safety clamp, and an up-clamp prevents
+ * an above-horizontal wing at visible flexion without ever dragging the
+ * joint downward. Every step is continuous in its inputs, so the draw
+ * cannot snap branches and mirrored arms stay symmetric. `planeOut`
+ * receives the final plane direction for diagnostics.
  */
 const ARM_CHORD3 = new THREE.Vector3();
 const ARM_IN_PLANE_DOWN = new THREE.Vector3();
@@ -245,13 +361,14 @@ export function solveRowerArm(
   upperArmLength: number,
   forearmLength: number,
   side: number,
-  draw: number,
-  load: number,
   elbow: THREE.Vector3,
   handOut: THREE.Vector3,
   planeOut?: THREE.Vector3,
-): void {
-  rowerElbowPlane(side, draw, load, ARM_PLANE);
+): number {
+  const reach = shoulder.distanceTo(hand);
+  const flexion = rowerElbowFlexion(reach, upperArmLength, forearmLength);
+  const authority = rowerElbowPlaneAuthority(flexion);
+  rowerElbowPlane(side, authority, ARM_PLANE);
   solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, ARM_PLANE, elbow, handOut);
 
   // The remaining freedom of a bent two-bone arm is the elbow's station on a
@@ -265,7 +382,7 @@ export function solveRowerArm(
   const chordLength = ARM_CHORD3.length();
   if (chordLength <= 1e-6) {
     if (planeOut) planeOut.copy(ARM_PLANE);
-    return;
+    return authority;
   }
   ARM_CHORD3.multiplyScalar(1 / chordLength);
   const along =
@@ -274,7 +391,7 @@ export function solveRowerArm(
   const radius = Math.sqrt(Math.max(0, upperArmLength * upperArmLength - along * along));
   if (radius <= 1e-4) {
     if (planeOut) planeOut.copy(ARM_PLANE);
-    return;
+    return authority;
   }
 
   // Outboard normal of the vertical working plane; exactly perpendicular to
@@ -294,20 +411,52 @@ export function solveRowerArm(
   let downWeight = ARM_BEND_CHORD.dot(ARM_IN_PLANE_DOWN);
   let outWeight = ARM_BEND_CHORD.dot(ARM_OUT_NORMAL);
 
+  // Blend the natural station toward the chord-frame drawn station as the
+  // plane gains authority. v̂ and ŵ span the circle plane, so the natural
+  // decomposition is exact; renormalising after the lerp keeps the joint on
+  // the circle rather than shrinking the bend radius.
+  downWeight += (ROWER_ELBOW_PLANE.drawnDownWeight - downWeight) * authority;
+  outWeight += (ROWER_ELBOW_PLANE.drawnOutboardWeight - outWeight) * authority;
+  const stationNorm = Math.hypot(downWeight, outWeight);
+  if (stationNorm > 1e-6) {
+    downWeight /= stationNorm;
+    outWeight /= stationNorm;
+  } else {
+    downWeight = 1;
+    outWeight = 0;
+  }
+
   const maxOut = Math.min(1, ROWER_ELBOW_CORRIDOR.maxOutboard / radius);
   const maxIn = Math.min(1, ROWER_ELBOW_CORRIDOR.maxInboard / radius);
-  outWeight = THREE.MathUtils.clamp(outWeight, -maxIn, maxOut);
-  // Rebuild on the circle, keeping the elbow on its downward half. A clip or
-  // degenerate hint that leaked an upward component is folded down rather
-  // than allowed to select the mirror (chicken-wing) station. There is no
-  // post-hoc behind-the-shoulder circle walk here: the plane's bounded aft
-  // component owns that limit, because rotating around the circle to satisfy
-  // a z floor moves the joint laterally and snapped the old release frames.
-  downWeight = Math.sqrt(Math.max(0, 1 - outWeight * outWeight));
+  const clampedOut = THREE.MathUtils.clamp(outWeight, -maxIn, maxOut);
+  if (clampedOut !== outWeight) {
+    outWeight = clampedOut;
+    // Re-normalise on the circle without changing the vertical hemisphere the
+    // plane chose — the corridor is a lateral safety limit, not a pose.
+    downWeight = Math.sign(downWeight || 1) * Math.sqrt(Math.max(0, 1 - outWeight * outWeight));
+  }
+  // Up-clamp: at visible flexion the joint may not rise above the horizontal
+  // through the chord (that is the start of a wing), but nothing folds it
+  // *down* — the drawn plane's own modest drop owns the finish depth, and
+  // near-straight arms keep whatever hemisphere their relaxed hang gave
+  // them. There is no post-hoc behind-the-shoulder circle walk here: the
+  // plane's bounded aft component owns that limit, because rotating around
+  // the circle to satisfy a z floor moves the joint laterally and snapped
+  // the old release frames.
+  const minimumDown = -(1 - authority);
+  if (downWeight < minimumDown) {
+    downWeight = minimumDown;
+    outWeight =
+      Math.sign(outWeight || 1) *
+      Math.min(Math.sqrt(Math.max(0, 1 - downWeight * downWeight)), maxOut);
+  }
 
   ARM_PLANE.copy(ARM_IN_PLANE_DOWN)
     .multiplyScalar(downWeight)
     .addScaledVector(ARM_OUT_NORMAL, outWeight);
+  if (ARM_PLANE.lengthSq() > 1e-10) ARM_PLANE.normalize();
+  else ARM_PLANE.copy(ARM_IN_PLANE_DOWN);
   elbow.copy(shoulder).addScaledVector(ARM_CHORD3, along).addScaledVector(ARM_PLANE, radius);
   if (planeOut) planeOut.copy(ARM_PLANE);
+  return authority;
 }

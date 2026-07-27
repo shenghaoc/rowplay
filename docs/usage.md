@@ -125,8 +125,11 @@ posture. The visible movement is therefore a deterministic, generic technique
 model aligned to logged cycles, rather than a reconstruction of your individual
 biomechanics. Its shared technique phases stage RowErg legs, body, then arms
 (the arms stay softly long until the hands have passed the knees and the legs
-are nearly extended; both elbows then pull behind the torso as the handle
-approaches the lower ribs, and the arms straighten first on recovery);
+are nearly extended; the visible arm pull then begins near seven-tenths of
+the drive and folds the elbows at one steady rate over the last third — a
+readable draw of roughly a quarter second at 28 spm rather than an
+instantaneous snap — bringing the handle to the lower ribs with both elbows
+behind the torso, and the hands lead away first on recovery);
 SkiErg's classic double-pole high reach,
 steep plant, down-pointing early elbow bend, core-led press with the elbow
 rotating rearward, long-arm pole-off, and lifted forward recovery that returns
@@ -170,9 +173,11 @@ binding plate/toe/heel and shaped race boots; and a continuous
 bicycle wheel/frame/drivetrain. RowErg hands stay on separate rigid scull grips
 and outside the torso; both 2D and 3D keep the elbows softly open until the
 hands clear the knees, then draw each elbow principally aft along its own
-handle line inside a bounded boat-local corridor — a modest natural outward
-lean, never a horizontal chicken wing and never an artificial downward
-collapse. In 3D the visible fingers are closed geometrically against the
+handle line — a modest natural outward lean that grows with the arm's actual
+bend, never a horizontal chicken wing and never an artificial downward
+collapse; a nearly straight arm is left to hang naturally instead of having a
+bend direction forced onto it, and the boat-local lateral corridor remains as
+a safety bound the natural pose no longer touches. In 3D the visible fingers are closed geometrically against the
 actual equipment: each digit flexes until it reaches the 0.023 m scull rubber,
 the SkiErg grip channel, or the brake-hood body and stops at contact, so the
 handle sits inside the finger/thumb enclosure (with the sculling thumbs on the

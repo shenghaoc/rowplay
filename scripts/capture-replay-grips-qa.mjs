@@ -15,7 +15,7 @@
  * The `before` matrix from a main-branch build predates the rear/top/grip-left
  * cameras; pass --cameras=normal,front,close,grip there.
  */
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -29,14 +29,30 @@ const SPORTS = {
   bike: { id: "1004", label: "bike" },
 };
 
-/** Scrub positions (workout seconds) for the named technique phases. */
+/**
+ * Scrub positions (workout seconds) for the named technique phases. The
+ * rowing list walks one full demo stroke (~2.1 s at the workout's natural
+ * cadence) through all fifteen arm-draw rework landmarks: the drive's leg /
+ * body / arm staging, the 0.64-window draw sub-phases, and the hands-away →
+ * body-over → slide recovery order.
+ */
 const PHASES = {
   row: [
-    { name: "catch", seconds: 0.05 },
-    { name: "mid-drive", seconds: 0.55 },
-    { name: "finish-draw", seconds: 0.8 },
-    { name: "extraction", seconds: 0.95 },
-    { name: "recovery", seconds: 1.5 },
+    { name: "catch", seconds: 0.03 },
+    { name: "leg-drive-early", seconds: 0.15 },
+    { name: "leg-drive-mid", seconds: 0.3 },
+    { name: "legs-flat", seconds: 0.45 },
+    { name: "body-opening", seconds: 0.52 },
+    { name: "draw-onset", seconds: 0.56 },
+    { name: "draw-early", seconds: 0.61 },
+    { name: "draw-mid", seconds: 0.66 },
+    { name: "draw-late", seconds: 0.72 },
+    { name: "finish", seconds: 0.78 },
+    { name: "release", seconds: 0.88 },
+    { name: "hands-away", seconds: 1.05 },
+    { name: "body-over", seconds: 1.35 },
+    { name: "slide-return", seconds: 1.65 },
+    { name: "late-recovery", seconds: 1.95 },
   ],
   ski: [
     { name: "reach", seconds: 0.05 },
@@ -75,17 +91,53 @@ const commit = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).std
 await mkdir(resolve(outputDir, "poses"), { recursive: true });
 await mkdir(resolve(outputDir, "cycles"), { recursive: true });
 
-const evidence = [];
+const manifestPath = resolve(outputDir, "manifest.json");
+let evidence = [];
+try {
+  const parsed = JSON.parse(await readFile(manifestPath, "utf8"));
+  if (parsed.commit === commit && Array.isArray(parsed.evidence)) evidence = parsed.evidence;
+} catch {
+  // First run for this output directory.
+}
+let appBundleForManifest = "unknown";
 
-function qaUrl({ sport, camera, skeleton }) {
+/**
+ * Rewrite the manifest after every capture: a crashed run then leaves a
+ * valid manifest of everything captured so far, and skip-on-resume keys on
+ * file + entry so nothing is ever silently unrecorded.
+ */
+async function flushManifest() {
+  await writeFile(
+    manifestPath,
+    `${JSON.stringify(
+      {
+        commit,
+        baseUrl,
+        appBundle: appBundleForManifest,
+        capturedAt: new Date().toISOString(),
+        evidence,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
+
+function hasEvidence(file) {
+  return evidence.some((entry) => entry.file === file);
+}
+
+function qaUrl({ sport, camera, skeleton, rate, diagnostics }) {
   const url = new URL(`/replay/${sport.id}`, `${baseUrl}/`);
   url.searchParams.set("qa", "athlete-visual");
   url.searchParams.set("athleteCamera", camera);
   if (skeleton) url.searchParams.set("athleteSkeleton", "1");
+  if (rate && rate !== 1) url.searchParams.set("qaPlaybackRate", String(rate));
+  if (diagnostics) url.searchParams.set("athleteArmDiag", "1");
   return url.toString();
 }
 
-async function openReplay({ sport, seconds, camera, skeleton, video }) {
+async function openReplay({ sport, seconds, camera, skeleton, video, rate, diagnostics }) {
   const browser = await chromium.launch({ headless: !headed });
   const context = await browser.newContext({
     viewport: VIEWPORT,
@@ -110,7 +162,7 @@ async function openReplay({ sport, seconds, camera, skeleton, video }) {
     if (message.type() === "error") errors.push(message.text());
   });
 
-  await page.goto(qaUrl({ sport, camera, skeleton }), {
+  await page.goto(qaUrl({ sport, camera, skeleton, rate, diagnostics }), {
     waitUntil: "domcontentloaded",
     timeout: 120_000,
   });
@@ -119,15 +171,17 @@ async function openReplay({ sport, seconds, camera, skeleton, video }) {
   await toggle.waitFor({ state: "visible" });
   if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
   const stage = page.locator(".canvas3d-host:not(.hidden) canvas");
-  await stage.waitFor({ state: "visible", timeout: 30_000 });
-  await page.locator(".backend-label").waitFor({ state: "visible", timeout: 30_000 });
+  // Fresh Chromium per capture: allow 3D init headroom under load — the 30 s
+  // wait intermittently lost on a busy host across ~80 launches.
+  await stage.waitFor({ state: "visible", timeout: 90_000 });
+  await page.locator(".backend-label").waitFor({ state: "visible", timeout: 90_000 });
   await page.waitForFunction(
     () =>
       document
         .querySelector(".canvas3d-host:not(.hidden) canvas")
         ?.getAttribute("data-replay-v4-athlete") === "ready",
     undefined,
-    { timeout: 30_000 },
+    { timeout: 90_000 },
   );
   const effectiveQaCamera = await stage.getAttribute("data-replay-qa-camera");
 
@@ -137,7 +191,7 @@ async function openReplay({ sport, seconds, camera, skeleton, video }) {
     input.dispatchEvent(new Event("input", { bubbles: true }));
   }, seconds);
   await page.waitForTimeout(700);
-  await stage.scrollIntoViewIfNeeded();
+  await stage.scrollIntoViewIfNeeded({ timeout: 90_000 });
   await page.waitForTimeout(120);
   if (errors.length) throw new Error(`${sport.label}: browser errors: ${errors.join(" | ")}`);
   return {
@@ -151,11 +205,34 @@ async function openReplay({ sport, seconds, camera, skeleton, video }) {
   };
 }
 
+async function fileExists(path) {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** One retry per capture: a cold 3D init on a loaded host is a flake, twice is a failure. */
+async function withRetry(name, run) {
+  try {
+    await run();
+  } catch (error) {
+    console.warn(`[capture] retrying ${name} after: ${error.message?.split("\n")[0]}`);
+    await run();
+  }
+}
+
 async function captureStill({ sport, phase, camera, skeleton = false }) {
   const name = `${sport.label}-${phase.name}-${camera}${skeleton ? "-skeleton" : ""}`;
+  const file = `poses/${name}.jpg`;
+  if ((await fileExists(resolve(outputDir, file))) && hasEvidence(file)) {
+    console.log(`[capture] still ${name} exists, skipping`);
+    return;
+  }
   console.log(`[capture] still ${name}`);
   const opened = await openReplay({ sport, seconds: phase.seconds, camera, skeleton });
-  const file = `poses/${name}.jpg`;
   try {
     await opened.canvas.screenshot({ path: resolve(outputDir, file), type: "jpeg", quality: 92 });
     evidence.push({
@@ -173,17 +250,30 @@ async function captureStill({ sport, phase, camera, skeleton = false }) {
       theme: "dark",
       viewport: VIEWPORT,
     });
+    await flushManifest();
   } finally {
     await opened.context.close();
     await opened.browser.close();
   }
 }
 
-async function captureCycle(sport, camera, durationMs = 4_500) {
-  const name = `${sport.label}-cycle-${camera}`;
-  console.log(`[capture] cycle ${name}`);
-  const opened = await openReplay({ sport, seconds: 0.05, camera, video: true });
+async function captureCycle(
+  sport,
+  camera,
+  durationMs = 4_500,
+  { rate = 1, diagnostics = false } = {},
+) {
+  const suffix = `${rate !== 1 ? `-rate${rate}` : ""}${diagnostics ? "-diag" : ""}${
+    durationMs !== 4_500 ? `-${Math.round(durationMs / 1000)}s` : ""
+  }`;
+  const name = `${sport.label}-cycle-${camera}${suffix}`;
   const file = `cycles/${name}.webm`;
+  if ((await fileExists(resolve(outputDir, file))) && hasEvidence(file)) {
+    console.log(`[capture] cycle ${name} exists, skipping`);
+    return;
+  }
+  console.log(`[capture] cycle ${name}`);
+  const opened = await openReplay({ sport, seconds: 0.05, camera, video: true, rate, diagnostics });
   const video = opened.page.video();
   try {
     await opened.page.getByRole("button", { name: "Play", exact: true }).click();
@@ -201,12 +291,15 @@ async function captureCycle(sport, camera, durationMs = 4_500) {
     sport: sport.label,
     camera,
     durationMs,
+    playbackRate: rate,
+    armDiagnostics: diagnostics,
     requestedQuality: "ultra",
     effectiveQuality: opened.effectiveQuality,
     backend: opened.backend,
     theme: "dark",
     viewport: VIEWPORT,
   });
+  await flushManifest();
 }
 
 async function buildIdentity() {
@@ -219,6 +312,7 @@ async function buildIdentity() {
 }
 
 const appBundle = await buildIdentity();
+appBundleForManifest = appBundle;
 console.log(`[capture] ${baseUrl} serves ${appBundle} at commit ${commit}`);
 
 for (const key of onlySports) {
@@ -226,28 +320,45 @@ for (const key of onlySports) {
   if (!sport) continue;
   for (const phase of PHASES[key]) {
     for (const camera of cameras) {
-      await captureStill({ sport, phase, camera });
+      await withRetry(`${phase.name}-${camera}`, () => captureStill({ sport, phase, camera }));
     }
   }
   // One skeleton overlay at the most technique-critical phase per sport.
   const overlayPhase = PHASES[key][Math.min(2, PHASES[key].length - 1)];
-  await captureStill({ sport, phase: overlayPhase, camera: "close", skeleton: true });
+  await withRetry(`${overlayPhase.name}-close-skeleton`, () =>
+    captureStill({ sport, phase: overlayPhase, camera: "close", skeleton: true }),
+  );
+  if (key === "row") {
+    // Skeleton evidence across the retimed draw itself.
+    for (const phaseName of ["draw-onset", "draw-mid", "finish"]) {
+      const phase = PHASES.row.find((entry) => entry.name === phaseName);
+      if (phase)
+        await withRetry(`${phase.name}-skeleton`, () =>
+          captureStill({ sport, phase, camera: "normal", skeleton: true }),
+        );
+    }
+  }
   if (captureCycles) {
-    await captureCycle(sport, "normal");
-    if (cameras.includes("grip")) await captureCycle(sport, "grip");
-    if (cameras.includes("grip-left")) await captureCycle(sport, "grip-left");
+    await withRetry("cycle-normal", () => captureCycle(sport, "normal"));
+    if (cameras.includes("grip")) await withRetry("cycle-grip", () => captureCycle(sport, "grip"));
+    if (cameras.includes("grip-left"))
+      await withRetry("cycle-grip-left", () => captureCycle(sport, "grip-left"));
+    if (key === "row") {
+      // ≥6 consecutive cycles at the demo workout's natural cadence, then the
+      // capture-only slow-motion passes and the numeric diagnostics overlay.
+      // The exact 24/28/32/36 spm sweep is owned by the 512-phase renderer
+      // acceptance test; these recordings verify the same motion in the real
+      // application at watchable and frame-by-frame speeds.
+      await withRetry("cycle-14s", () => captureCycle(sport, "normal", 14_000));
+      await withRetry("cycle-0.5x", () => captureCycle(sport, "normal", 14_000, { rate: 0.5 }));
+      await withRetry("cycle-0.25x", () => captureCycle(sport, "normal", 14_000, { rate: 0.25 }));
+      await withRetry("cycle-diag", () =>
+        captureCycle(sport, "normal", 9_000, { diagnostics: true }),
+      );
+      await withRetry("cycle-rear", () => captureCycle(sport, "rear", 9_000));
+    }
   }
 }
 
-let existing = [];
-try {
-  const parsed = JSON.parse(await readFile(resolve(outputDir, "manifest.json"), "utf8"));
-  if (parsed.commit === commit && Array.isArray(parsed.evidence)) existing = parsed.evidence;
-} catch {
-  // First run for this output directory.
-}
-await writeFile(
-  resolve(outputDir, "manifest.json"),
-  `${JSON.stringify({ commit, baseUrl, appBundle, capturedAt: new Date().toISOString(), evidence: [...existing, ...evidence] }, null, 2)}\n`,
-);
-console.log(`[capture] wrote ${evidence.length} new evidence entries to ${outputDir}`);
+await flushManifest();
+console.log(`[capture] manifest records ${evidence.length} evidence entries in ${outputDir}`);

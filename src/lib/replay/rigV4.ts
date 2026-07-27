@@ -1321,10 +1321,10 @@ function createRowCycleClip(): THREE.AnimationClip {
     [0.04, -0.02, -0.1], // catch: protracted, slightly depressed
     [0.04, -0.02, -0.1], // early leg: no change
     [0.04, -0.018, -0.1], // mid leg: minimal
-    [0.035, -0.015, -0.095], // late leg: beginning
-    [0.02, -0.005, -0.08], // body open: shoulders starting to set
-    [0.005, 0.008, -0.065], // draw begin: scapulae engage
-    [-0.01, 0.02, -0.055], // draw mid: retracting
+    [0.028, -0.01, -0.088], // late leg: beginning
+    [0.012, 0.002, -0.072], // body open: shoulders setting
+    [-0.002, 0.012, -0.06], // draw begin: scapulae engage
+    [-0.013, 0.022, -0.052], // draw mid: retracting
     [-0.02, 0.028, -0.045], // finish: scapulae squeezed, not shrugged
     [0.005, 0.01, -0.065], // hands away: releasing
     [0.02, -0.005, -0.08], // arms extend: returning
@@ -1340,10 +1340,10 @@ function createRowCycleClip(): THREE.AnimationClip {
     [0.42, -0.1, -0.44], // catch: moderate reach, not shrugged
     [0.43, -0.1, -0.44], // early leg: arms completely still
     [0.42, -0.1, -0.44], // mid leg: still straight, arms hang from shoulders
-    [0.4, -0.1, -0.43], // late leg: barely perceptible change
-    [0.34, -0.09, -0.42], // body open: arms still straight, moving with body
-    [0.22, -0.07, -0.4], // draw begin: upper arm starts traveling aft
-    [0.12, -0.05, -0.36], // draw mid: elbows tucking toward ribs
+    [0.41, -0.1, -0.435], // late leg: still long
+    [0.36, -0.09, -0.425], // draw onset (channel opens 0.64 of drive; visible ~0.68): first travel aft
+    [0.24, -0.075, -0.405], // early draw: upper arm traveling aft
+    [0.13, -0.052, -0.365], // late draw: elbows tucking toward ribs
     [0.06, -0.04, -0.32], // finish: elbows aft of shoulder, hands still at chest
     [0.14, -0.07, -0.38], // hands away: rapid extension forward
     [0.28, -0.09, -0.42], // arms extend: nearly straight again
@@ -1360,9 +1360,9 @@ function createRowCycleClip(): THREE.AnimationClip {
     [-0.06, 0.03, -0.08], // early drive: straight
     [-0.06, 0.03, -0.08], // mid leg: still straight
     [-0.07, 0.03, -0.08], // late leg: STILL STRAIGHT
-    [-0.08, 0.03, -0.09], // body open: barely perceptible flex
-    [-0.28, 0.03, -0.14], // draw begin: elbows start bending
-    [-0.58, 0.035, -0.2], // draw mid: accelerating into chest draw
+    [-0.12, 0.03, -0.1], // draw onset (channel opens 0.64 of drive; visible ~0.68): first visible flex
+    [-0.42, 0.032, -0.16], // early draw: steady fold
+    [-0.68, 0.037, -0.215], // late draw: approaching the ribs
     [-0.88, 0.04, -0.24], // finish: handle to lower ribs / chest
     [-0.48, 0.03, -0.18], // hands away: rapid extension
     [-0.18, 0.03, -0.12], // arms extend: nearly straight
@@ -1410,10 +1410,10 @@ function createRowCycleClip(): THREE.AnimationClip {
       [0, 0.96, -0.27], // catch: low, forward
       [0, 0.955, -0.28], // early leg
       [0, 0.965, -0.24], // mid leg
-      [0, 0.99, -0.12], // late leg
-      [0, 1.01, 0.0], // body open
-      [0, 1.025, 0.08], // draw begin
-      [0, 1.033, 0.13], // draw mid
+      [0, 1.0, -0.06], // late leg: swing already beginning
+      [0, 1.02, 0.05], // body open: most of the swing done
+      [0, 1.031, 0.11], // draw begin
+      [0, 1.036, 0.155], // draw mid
       [0, 1.038, 0.17], // finish
       [0, 1.032, 0.14], // hands away
       [0, 1.02, 0.08], // arms extend
@@ -1427,10 +1427,10 @@ function createRowCycleClip(): THREE.AnimationClip {
         [-0.1, 0, 0],
         [-0.11, 0, 0],
         [-0.09, 0, 0],
-        [-0.04, 0, 0],
-        [0.02, 0, 0],
-        [0.1, 0, 0],
-        [0.15, 0, 0],
+        [-0.01, 0, 0],
+        [0.07, 0, 0],
+        [0.13, 0, 0],
+        [0.165, 0, 0],
         [0.18, 0, 0],
         [0.08, 0, 0],
         [0.02, 0, 0],
@@ -1443,10 +1443,10 @@ function createRowCycleClip(): THREE.AnimationClip {
         [-0.28, 0, 0],
         [-0.29, 0, 0],
         [-0.27, 0, 0],
-        [-0.2, 0, 0],
-        [-0.1, 0, 0],
-        [0.06, 0, 0],
-        [0.16, 0, 0],
+        [-0.16, 0, 0],
+        [0.02, 0, 0],
+        [0.13, 0, 0],
+        [0.21, 0, 0],
         [0.24, 0, 0],
         [0.06, 0, 0],
         [-0.06, 0, 0],
@@ -1459,10 +1459,10 @@ function createRowCycleClip(): THREE.AnimationClip {
         [-0.09, 0, 0],
         [-0.1, 0, 0],
         [-0.09, 0, 0],
-        [-0.07, 0, 0],
-        [-0.04, 0, 0],
-        [0.03, 0, 0],
-        [0.08, 0, 0],
+        [-0.05, 0, 0],
+        [0.0, 0, 0],
+        [0.06, 0, 0],
+        [0.1, 0, 0],
         [0.12, 0, 0],
         [0.04, 0, 0],
         [-0.02, 0, 0],
@@ -1475,10 +1475,10 @@ function createRowCycleClip(): THREE.AnimationClip {
         [0.08, 0, 0],
         [0.08, 0, 0],
         [0.08, 0, 0],
-        [0.06, 0, 0],
-        [0.04, 0, 0],
-        [0.0, 0, 0],
-        [-0.03, 0, 0],
+        [0.05, 0, 0],
+        [0.02, 0, 0],
+        [-0.02, 0, 0],
+        [-0.045, 0, 0],
         [-0.06, 0, 0],
         [-0.01, 0, 0],
         [0.02, 0, 0],
@@ -1491,10 +1491,10 @@ function createRowCycleClip(): THREE.AnimationClip {
         [0.08, 0, 0],
         [0.08, 0, 0],
         [0.08, 0, 0],
-        [0.05, 0, 0],
-        [0.03, 0, 0],
-        [-0.02, 0, 0],
-        [-0.05, 0, 0],
+        [0.04, 0, 0],
+        [0.0, 0, 0],
+        [-0.04, 0, 0],
+        [-0.065, 0, 0],
         [-0.08, 0, 0],
         [-0.02, 0, 0],
         [0.01, 0, 0],
@@ -1514,9 +1514,9 @@ function createRowCycleClip(): THREE.AnimationClip {
         [0, 0.025, -0.05],
         [0, 0.025, -0.05],
         [0, 0.02, -0.04],
-        [0, 0.015, -0.03],
-        [0, 0.005, -0.01],
-        [0, -0.01, 0.015],
+        [0, 0.012, -0.025],
+        [0, 0.0, -0.005],
+        [0, -0.013, 0.02],
         [0, -0.02, 0.03],
         [0, 0, -0.01],
         [0, 0.01, -0.025],
@@ -1530,9 +1530,9 @@ function createRowCycleClip(): THREE.AnimationClip {
         [0, 0.025, -0.05],
         [0, 0.025, -0.05],
         [0, 0.02, -0.04],
-        [0, 0.015, -0.03],
-        [0, 0.005, -0.01],
-        [0, -0.01, 0.015],
+        [0, 0.012, -0.025],
+        [0, 0.0, -0.005],
+        [0, -0.013, 0.02],
         [0, -0.02, 0.03],
         [0, 0, -0.01],
         [0, 0.01, -0.025],

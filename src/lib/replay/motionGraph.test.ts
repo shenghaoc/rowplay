@@ -251,6 +251,114 @@ describe("motionGraph", () => {
     );
   });
 
+  it("opens the RowErg arm draw at 0.64 of the drive with one cruise profile", () => {
+    const drive = poseAt("rower", 0).driveFrac;
+    // Arms stay long until the window opens…
+    expect(sampleRowerMotionGraph(poseAt("rower", drive * 0.63)).body.armDraw.value).toBe(0);
+    // …the channel is live shortly after…
+    expect(
+      sampleRowerMotionGraph(poseAt("rower", drive * 0.68)).body.armDraw.value,
+    ).toBeGreaterThan(0.01);
+    // …and the draw completes with the drive.
+    expect(
+      sampleRowerMotionGraph(poseAt("rower", drive * 0.995)).body.armDraw.value,
+    ).toBeGreaterThan(0.999);
+    // Monotonic through the drive: the handle never retreats mid-pull.
+    let previous = -1;
+    for (let step = 0; step <= 256; step++) {
+      const value = sampleRowerMotionGraph(poseAt("rower", (step / 256) * drive)).body.armDraw
+        .value;
+      expect(value).toBeGreaterThanOrEqual(previous - 1e-12);
+      previous = value;
+    }
+    // Exactly one velocity profile: a C2-eased head and tail around a flat
+    // cruise. The peak of the profile may not exceed the cruise plateau by
+    // more than numerical noise — a stacked easing (the removed renderer
+    // smoothstep) showed up here as a mid-window velocity peak ~1.9× cruise.
+    let peak = 0;
+    for (let step = 0; step <= 512; step++) {
+      const cycle = drive * (0.6 + (step / 512) * 0.4);
+      peak = Math.max(peak, sampleRowerMotionGraph(poseAt("rower", cycle)).body.armDraw.velocity);
+    }
+    const midWindow = sampleRowerMotionGraph(poseAt("rower", drive * 0.82)).body.armDraw.velocity;
+    expect(peak).toBeLessThanOrEqual(midWindow * 1.02);
+  });
+
+  it("gives the visible draw a readable duration at stroke rates 24–36", () => {
+    // The 0.64–0.995 drive window in seconds at each rate. The visible
+    // flexion onset trails the window head slightly (C2 ease), so the full
+    // window must clear the readability targets with margin: ≥ 0.2 s at
+    // 28–32 spm and ≥ 0.18 s at 36 spm.
+    for (const [rate, minimumSeconds] of [
+      [24, 0.24],
+      [28, 0.22],
+      [32, 0.2],
+      [36, 0.18],
+    ] as const) {
+      const pose = fallbackStrokePose("rower", 0.25 * TAU, rate);
+      const windowSeconds = (0.995 - 0.64) * pose.driveFrac * pose.strokeSeconds;
+      expect(windowSeconds, `draw window at ${rate} spm`).toBeGreaterThanOrEqual(minimumSeconds);
+    }
+  });
+
+  it("releases hands before body before slide through the recovery", () => {
+    const drive = poseAt("rower", 0).driveFrac;
+    const recovery = 1 - drive;
+    // Early recovery: the hands are already leaving while the body has not
+    // begun to fall and the legs are still locked long.
+    const early = sampleRowerMotionGraph(poseAt("rower", drive + recovery * 0.1));
+    expect(early.body.armDraw.value).toBeLessThan(0.9);
+    expect(early.body.spineHinge.value).toBeCloseTo(1, 6);
+    expect(early.body.legExtension.value).toBeCloseTo(1, 6);
+    // Mid recovery: arms essentially long, body swinging over, slide moving.
+    const mid = sampleRowerMotionGraph(poseAt("rower", drive + recovery * 0.45));
+    expect(mid.body.armDraw.value).toBeLessThan(0.05);
+    expect(mid.body.spineHinge.value).toBeLessThan(0.75);
+    expect(mid.body.spineHinge.value).toBeGreaterThan(0.05);
+    expect(mid.body.legExtension.value).toBeGreaterThan(mid.body.spineHinge.value);
+  });
+
+  it("keeps the zero-alloc rower sampler equal to the public one at every cycle", () => {
+    // Regression: the renderer consumes sampleRowerMotionGraphInto while the
+    // authored windows live in sampleRowerMotionGraph. A retimed arm-draw
+    // window that only landed in one of them survived the sparse mirror grid
+    // below and shipped a 0.78-of-drive pull to the renderer while every
+    // channel-level test read 0.64. Dense equality over the full cycle at
+    // several rates makes the two samplers a single source of truth.
+    const scratch = createRowerMotionGraphScratch();
+    for (const rate of [24, 30, 36]) {
+      for (let step = 0; step <= 512; step++) {
+        const pose = {
+          ...fallbackStrokePose("rower", (step / 512) * TAU, rate),
+          phase: (step / 512) * TAU,
+        };
+        sampleRowerMotionGraphInto(pose, scratch);
+        const reference = sampleRowerMotionGraph(pose);
+        for (const key of [
+          "legExtension",
+          "spineHinge",
+          "armDraw",
+          "shoulderSet",
+          "handleTravel",
+          "torsoSwing",
+        ] as const) {
+          expect(scratch.body[key].value, `${key} value at ${step}/512 @${rate}`).toBeCloseTo(
+            reference.body[key].value,
+            12,
+          );
+          expect(scratch.body[key].velocity, `${key} velocity at ${step}/512 @${rate}`).toBeCloseTo(
+            reference.body[key].velocity,
+            9,
+          );
+        }
+        expect(scratch.contacts.bladeWater.value).toBeCloseTo(
+          reference.contacts.bladeWater.value,
+          12,
+        );
+      }
+    }
+  });
+
   it("fills caller-owned graph trees without changing sampled choreography", () => {
     const row = createRowerMotionGraphScratch();
     const skier = createSkierMotionGraphScratch();
