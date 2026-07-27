@@ -46,7 +46,12 @@ import {
   solveRowerArm,
   solveRowerOarYaw,
 } from "./rowRig";
-import { handChannelCentre, handCurlAxisThumbward, orientHandToGripChannel } from "./handGrip";
+import {
+  handChannelCentre,
+  handCurlAxisThumbward,
+  orientHandToGripChannel,
+  refineGripSpinForWrist,
+} from "./handGrip";
 import {
   applyReplayAssetLibrary,
   hideWithReplayAssets,
@@ -979,6 +984,15 @@ const ELBOW_FRAME = new THREE.Matrix4();
 const ARM_BEND_SCRATCH = new THREE.Vector3();
 const GRIP_SHAFT_SCRATCH = new THREE.Vector3();
 const GRIP_ROLL_SCRATCH = new THREE.Vector3();
+const GRIP_FOREARM_SCRATCH = new THREE.Vector3();
+/**
+ * How far the SkiErg palm may pitch away from the pure inward reference while
+ * the spin relief flattens the wrist. Real double-pole palms rotate well past
+ * pure inward at the high reach — down-and-back over the grip top — without
+ * ever facing outward; 1.35 rad keeps the inward component positive at every
+ * phase while letting the reach-phase wrist flatten instead of shearing.
+ */
+const SKI_PALM_CONE = 1.35;
 const BIKE_HOOD_QUAT = new THREE.Quaternion();
 const BIKE_HOOD_AXIS_X = new THREE.Vector3(1, 0, 0);
 
@@ -3024,6 +3038,15 @@ function makeSkierAvatar(
         gripCurlTarget,
         gripCurlRoll,
       );
+      // Spend the remaining spin freedom on a flat wrist: the hand's long
+      // axis follows the solved forearm as nearly as the inward-palm cone
+      // allows, so the pole-frame demand no longer shears the wrist skin.
+      GRIP_FOREARM_SCRATCH.set(
+        arm.handPoint.x - arm.elbowPoint.x,
+        arm.handPoint.y - arm.elbowPoint.y,
+        arm.handPoint.z - arm.elbowPoint.z,
+      );
+      refineGripSpinForWrist(arm.hand, arm.side, SEGMENT_DIR, GRIP_FOREARM_SCRATCH, SKI_PALM_CONE);
     }
   };
 

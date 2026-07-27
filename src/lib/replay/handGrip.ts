@@ -92,6 +92,58 @@ export function handCurlAxisThumbward(side: number, out = new THREE.Vector3()) {
   return handCurlAxis(side, out).multiplyScalar(Math.sign(side) || 1);
 }
 
+/**
+ * Hand long axis — wrist origin toward the middle-finger root — in hand-local
+ * space, measured from the sealed contract's composed helper rest transforms
+ * (right hand; x mirrors). A flat wrist is the pose where this axis continues
+ * the forearm line, which makes it the lever the spin-relief below optimises.
+ */
+export const HAND_LONG_AXIS = Object.freeze({ x: 0.926, y: 0.105, z: 0.363 } as const);
+
+export function handLongAxis(side: number, out = new THREE.Vector3()) {
+  const mirror = Math.sign(side) || 1;
+  return out.set(mirror * HAND_LONG_AXIS.x, HAND_LONG_AXIS.y, HAND_LONG_AXIS.z).normalize();
+}
+
+const SPIN_LONG = new THREE.Vector3();
+const SPIN_FOREARM = new THREE.Vector3();
+const SPIN_QUAT = new THREE.Quaternion();
+
+/**
+ * Relieve the wrist by spending the grip's one free degree of freedom — spin
+ * about the shaft — on flatness: rotate the hand about the shaft so its long
+ * axis continues the forearm line as nearly as the palm cone allows. Without
+ * this, a frame pinned to "palm exactly on the reference" can demand ~100° of
+ * combined wrist bend, which linear-blend skinning concentrates at the wrist
+ * ring and renders as a severed hand. The clamp keeps the palm within
+ * `maxPalmDeviation` of the requested reference, so the relief can never spin
+ * the palm away from the side the technique requires. Deterministic and
+ * continuous: the optimum angle is a smooth function of the forearm
+ * direction, and the clamp is a plain interval clamp.
+ */
+export function refineGripSpinForWrist(
+  hand: THREE.Object3D,
+  side: number,
+  shaftDir: THREE.Vector3,
+  forearmDir: THREE.Vector3,
+  maxPalmDeviation: number,
+): void {
+  const shaft = FRAME_TARGET.copy(shaftDir).normalize();
+  handLongAxis(side, SPIN_LONG).applyQuaternion(hand.quaternion);
+  SPIN_LONG.addScaledVector(shaft, -SPIN_LONG.dot(shaft));
+  SPIN_FOREARM.copy(forearmDir).addScaledVector(shaft, -forearmDir.dot(shaft));
+  if (SPIN_LONG.lengthSq() < 1e-8 || SPIN_FOREARM.lengthSq() < 1e-6) return;
+  SPIN_LONG.normalize();
+  SPIN_FOREARM.normalize();
+  const angle = Math.atan2(
+    FRAME_ROLL.crossVectors(SPIN_LONG, SPIN_FOREARM).dot(shaft),
+    SPIN_LONG.dot(SPIN_FOREARM),
+  );
+  const clamped = THREE.MathUtils.clamp(angle, -maxPalmDeviation, maxPalmDeviation);
+  if (Math.abs(clamped) < 1e-6) return;
+  hand.quaternion.premultiply(SPIN_QUAT.setFromAxisAngle(shaft, clamped));
+}
+
 /** One solved digit-stage rotation: rest × oppose × flex, as radians. */
 export interface HandDigitStagePose {
   readonly helper: string;
@@ -150,8 +202,12 @@ export interface HandDigitChain {
   readonly tipLength: number;
 }
 
-const FINGER_STAGE_LIMITS = [1.45, 1.65, 1.15] as const;
-const THUMB_STAGE_LIMITS = [0.9, 1.05, 0.9] as const;
+// Full-fist anatomical maxima (MCP ~90°, PIP ~110°, DIP ~80°; thumb MCP/IP
+// ~60/80°): the closure stops at contact, so these bind only for digits that
+// genuinely cannot reach a thin shaft — a pinky short of a 17 mm pole should
+// close all the way, not hang half-open at a styled limit.
+const FINGER_STAGE_LIMITS = [1.57, 1.92, 1.4] as const;
+const THUMB_STAGE_LIMITS = [1.0, 1.25, 1.35] as const;
 const DEFAULT_FINGER_FLESH = 0.008;
 const DEFAULT_THUMB_FLESH = 0.0095;
 

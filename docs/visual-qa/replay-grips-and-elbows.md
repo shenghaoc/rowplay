@@ -61,19 +61,34 @@ orientation limited to an 8° slerp for RowErg/BikeErg.
 | BikeErg grip-channel contact residual             | ≤17 mm across the crank cycle (was budgeted 170 mm)                                                                                   |
 | Wrist clamp engagement in production frames       | never (`clampedSwing == 0` asserted across 256 phases × 3 sports)                                                                     |
 
-A follow-up fix in the same branch corrected the SkiErg hold orientation:
-the pole frame's former nearest-arc curl alignment silently selected the
-inverted branch at every phase — thumb pointing down the shaft, pinky above
-index — an upside-down hold that read as palms flipped 180° (it predates
-this branch; the old open-mitten fingers merely hid it, and the geometry-
-closed wrap made it legible). The alignment is now a deterministic contract
-(`handCurlAxisThumbward` toward the grip top), measured after the fix as
-thumb above index above pinky at every sampled phase with the palm still
-facing the centreline (pf·inward 0.98–1.00), and pinned by a stacking-order
-regression in the fist-enclosure test. The corrected frame is also
-anatomically calmer: ski wrist demand outside the double-cover region
-dropped to ≤109° flexion / ≤78° deviation with the emergency clamp never
-engaging.
+Three follow-up fixes in the same branch corrected the SkiErg hold after
+close review of the captures:
+
+1. **Thumb-up orientation.** The pole frame's former nearest-arc curl
+   alignment silently selected the inverted branch at every phase — thumb
+   pointing down the shaft, pinky above index — an upside-down hold that
+   read as palms flipped 180° (it predates this branch; the old open-mitten
+   fingers merely hid it, and the geometry-closed wrap made it legible). The
+   alignment is now a deterministic contract (`handCurlAxisThumbward` toward
+   the grip top), measured after as thumb above index above pinky at every
+   sampled phase on both hands, and pinned by a stacking-order regression in
+   the fist-enclosure test.
+2. **Full-fist closure limits.** The corrected view exposed that the ring
+   and pinky never reached the thin 17 mm channel — they stopped at
+   conservative stage limits and hung open. The closure limits are now
+   full-fist anatomical maxima (MCP ~90°, PIP ~110°, DIP ~80°); contact
+   remains the stop condition, so thicker grips still produce the relaxed
+   hook while a thin pole gets a genuinely closed fist.
+3. **Wrist spin-relief.** With the hold right-way-up, the pole frame's
+   pinned "palm exactly inward" spin demanded up to ~114° of bone-term wrist
+   bend at the high reach, which linear-blend skinning concentrated at the
+   wrist ring — the hand read as severed from the forearm. The grip's one
+   free degree of freedom (spin about the shaft) now flattens the wrist —
+   the hand's long axis follows the solved forearm — inside a 1.35 rad
+   inward-palm cone (`refineGripSpinForWrist`). Press-phase bend dropped to
+   6–26°, recovery to ~79°, and the reach keeps only the anatomically
+   unavoidable cocked-over-the-grip extension; the wrist skin now reads as
+   one continuous limb in the close-ups.
 
 Geometry acceptance now runs in `renderer3d.test.ts` against the shipped GLB:
 handle-inside-enclosure with opposing thumb contact for both sculls, thumb on
@@ -133,6 +148,12 @@ Representative pairs to review side by side:
 - The SkiErg left-hand recovery reach defect from the equipment work (up to
   0.135 m at cycle 0.31–0.34, `SKI_V4_CONTACT_TOLERANCE`) predates this work
   and remains pinned at its measured peak.
+- The SkiErg high-reach wrist keeps a strong cocked-over-the-grip extension
+  (~109° in bone terms ≈ 50–70° visually): with the thumb pinned up the
+  shaft and the forearm reaching up the near-vertical pole, that extension
+  is the anatomical minimum for this hand, and a real pre-plant wrist does
+  extend hard over the grip. Only dedicated wrist/twist helper bones could
+  soften the remaining skin crease further.
 - Wrist metrics are reported in the hand bone's own axis conventions, which
   sit ~40–60° from the visual flat-hand impression (the bone origin and
   metacarpal arch carry a built-in offset); the per-sport envelopes in the
