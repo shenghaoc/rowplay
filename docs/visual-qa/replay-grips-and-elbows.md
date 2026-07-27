@@ -109,10 +109,12 @@ per frame in each manifest — grip and elbow geometry is identical at every
 tier, which the tier-identity test asserts, so the evidence is
 quality-independent for this work). Each manifest also records the served
 `appBundle` hash as build identity: `app.BeEeKEQ9.js` for before,
-`app.BxBtCa4E.js` for after. The after manifest's `commit` field shows the
-base commit because the captures were taken from the built working tree of
-this branch before its commit existed; the bundle hash is the authoritative
-identity.
+`app.NOO0KIcP.js` for the final after matrix (the build containing every
+fix on this branch, including the SkiErg thumb-up, full-fist closure, and
+wrist spin-relief follow-ups). The after manifest's `commit` field can lag
+one commit behind because captures run from the built working tree while
+the matching commit is being recorded; the bundle hash is the
+authoritative identity.
 
 - `docs/visual-qa/grips-and-elbows/before/` — `main` @ `47c4c60`, cameras
   `normal`, `front`, `close`, `grip` (the rear/top/port-palm QA cameras did
