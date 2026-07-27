@@ -79,16 +79,18 @@ close review of the captures:
    full-fist anatomical maxima (MCP ~90°, PIP ~110°, DIP ~80°); contact
    remains the stop condition, so thicker grips still produce the relaxed
    hook while a thin pole gets a genuinely closed fist.
-3. **Wrist spin-relief.** With the hold right-way-up, the pole frame's
-   pinned "palm exactly inward" spin demanded up to ~114° of bone-term wrist
-   bend at the high reach, which linear-blend skinning concentrated at the
-   wrist ring — the hand read as severed from the forearm. The grip's one
-   free degree of freedom (spin about the shaft) now flattens the wrist —
-   the hand's long axis follows the solved forearm — inside a 1.35 rad
-   inward-palm cone (`refineGripSpinForWrist`). Press-phase bend dropped to
-   6–26°, recovery to ~79°, and the reach keeps only the anatomically
-   unavoidable cocked-over-the-grip extension; the wrist skin now reads as
-   one continuous limb in the close-ups.
+3. **Wrist relief without trading the palm away.** With the hold
+   right-way-up, the wrist reads much calmer primarily because the closed
+   fist now carries the bend; `refineGripSpinForWrist` additionally trims
+   the last degrees of wrist bend by spending the grip's one free degree of
+   freedom (spin about the shaft) on flatness — but only inside a *tight*
+   0.3 rad inward-palm cone. An earlier iteration used a 1.35 rad cone,
+   which measurably rotated the visible palms toward the chase camera
+   ("palms facing outward" from the default view) while buying nothing at
+   the worst phase — the reach bend is anatomy-limited and spin-invariant —
+   so palms-facing-each-other is enforced as the binding constraint
+   (inward-dot ≥ 0.55 asserted at every checked phase) and the anatomically
+   unavoidable cocked-over-the-grip reach extension is simply accepted.
 
 Geometry acceptance now runs in `renderer3d.test.ts` against the shipped GLB:
 handle-inside-enclosure with opposing thumb contact for both sculls, thumb on

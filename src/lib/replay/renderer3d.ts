@@ -987,12 +987,14 @@ const GRIP_ROLL_SCRATCH = new THREE.Vector3();
 const GRIP_FOREARM_SCRATCH = new THREE.Vector3();
 /**
  * How far the SkiErg palm may pitch away from the pure inward reference while
- * the spin relief flattens the wrist. Real double-pole palms rotate well past
- * pure inward at the high reach — down-and-back over the grip top — without
- * ever facing outward; 1.35 rad keeps the inward component positive at every
- * phase while letting the reach-phase wrist flatten instead of shearing.
+ * the spin relief flattens the wrist. Palms facing each other is the visual
+ * contract — a generous cone measurably rotated the visible palm past
+ * sideways at reach/recovery and read as palms-out — so the relief may only
+ * trim the last few degrees of wrist bend, never trade the palm away. The
+ * anatomically unavoidable reach extension is accepted (spin cannot reduce
+ * it at any cone size; measured invariant from 0.85 to 1.35 rad).
  */
-const SKI_PALM_CONE = 1.35;
+const SKI_PALM_CONE = 0.3;
 const BIKE_HOOD_QUAT = new THREE.Quaternion();
 const BIKE_HOOD_AXIS_X = new THREE.Vector3(1, 0, 0);
 

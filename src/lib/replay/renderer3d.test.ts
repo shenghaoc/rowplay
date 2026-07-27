@@ -3053,14 +3053,14 @@ describe("CourseRenderer3D", () => {
               instance.effectors[`${side === "left" ? "right" : "left"}Hand`].bone
             ]!.getWorldPosition(new THREE.Vector3());
             const inward = otherWrist.clone().sub(wrist).normalize();
-            // The wrist-relief spin legitimately rotates the high-reach palm
-            // down over the grip top (a real pre-plant hand); the inward
-            // component must simply stay positive there, while the loaded
-            // phases keep the firm inward bound.
+            // Palms face each other at every phase — the tight relief cone
+            // may trim wrist bend but can never rotate the palm toward
+            // sideways, let alone outward. 0.55 ≈ within ~35° of pure
+            // inward after the ⊥-shaft projection loss.
             expect(
               channel.clone().sub(wrist).normalize().dot(inward),
               `${side} palm turned inward at ${cycle}`,
-            ).toBeGreaterThan(cycle === 0.05 || cycle === 0.7 ? 0.05 : 0.2);
+            ).toBeGreaterThan(0.55);
             // The hand must also be the right way up: thumb toward the grip
             // top, pinky lowest. The former nearest-arc curl alignment held
             // the pole with the fist inverted (thumb pointing down-shaft) at
