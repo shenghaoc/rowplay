@@ -1,8 +1,8 @@
 {
-  "commit": "42f4699de7f69516577ec7a8679209be7d6c5c7b",
+  "commit": "9bd6e572a620fa2e82274adaca20d30d1643f7ef",
   "baseUrl": "http://127.0.0.1:8792",
-  "appBundle": "/_app/immutable/entry/app.NOO0KIcP.js",
-  "capturedAt": "2026-07-27T00:33:51.531Z",
+  "appBundle": "/_app/immutable/entry/app.BX7QZegP.js",
+  "capturedAt": "2026-07-27T00:56:54.283Z",
   "evidence": [
     {
       "kind": "still",
