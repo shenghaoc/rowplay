@@ -144,6 +144,55 @@ export function refineGripSpinForWrist(
   hand.quaternion.premultiply(SPIN_QUAT.setFromAxisAngle(shaft, clamped));
 }
 
+/** Hand-local inward palm normal, mirrored the way the rig mirrors hands. */
+export function handPalmNormalIn(side: number, out = new THREE.Vector3()) {
+  const mirror = Math.sign(side) || 1;
+  return out
+    .set(mirror * HAND_PALM_NORMAL_IN.x, HAND_PALM_NORMAL_IN.y, HAND_PALM_NORMAL_IN.z)
+    .normalize();
+}
+
+/**
+ * Relieve the wrist with the grip's second anatomical freedom — the shaft
+ * running *diagonally* across the palm — by tilting the hand about its own
+ * palm normal toward the forearm line, but only for the misalignment beyond
+ * `comfort`. A real pole is never held exactly square across the fist at a
+ * high reach: the grip rides from the index base toward the pinky heel,
+ * which is precisely a rotation about the palm normal. Because the palm
+ * normal is the rotation axis, the palm's facing direction is bit-exact
+ * unchanged — the palms-inward contract cannot be traded away by this
+ * relief. The comfort gate keeps calm phases untouched: the digit closure
+ * is solved once in rest space against the authored channel, so a tilt is a
+ * real (bounded) divergence between the closed fingers and the shaft, spent
+ * only where the square-across-the-fist convention would otherwise tear the
+ * wrist ring open. Deterministic and continuous: the misalignment angle is
+ * a smooth function of the pose and the excess-over-comfort mapping is
+ * continuous at the gate.
+ */
+export function refineGripTiltForWrist(
+  hand: THREE.Object3D,
+  side: number,
+  forearmDir: THREE.Vector3,
+  comfort: number,
+  maxTilt: number,
+): void {
+  handPalmNormalIn(side, FRAME_TARGET).applyQuaternion(hand.quaternion).normalize();
+  handLongAxis(side, SPIN_LONG).applyQuaternion(hand.quaternion);
+  SPIN_LONG.addScaledVector(FRAME_TARGET, -SPIN_LONG.dot(FRAME_TARGET));
+  SPIN_FOREARM.copy(forearmDir).addScaledVector(FRAME_TARGET, -forearmDir.dot(FRAME_TARGET));
+  if (SPIN_LONG.lengthSq() < 1e-8 || SPIN_FOREARM.lengthSq() < 1e-6) return;
+  SPIN_LONG.normalize();
+  SPIN_FOREARM.normalize();
+  const angle = Math.atan2(
+    FRAME_ROLL.crossVectors(SPIN_LONG, SPIN_FOREARM).dot(FRAME_TARGET),
+    SPIN_LONG.dot(SPIN_FOREARM),
+  );
+  const excess = Math.max(0, Math.abs(angle) - comfort);
+  const clamped = Math.sign(angle) * Math.min(excess, maxTilt);
+  if (Math.abs(clamped) < 1e-6) return;
+  hand.quaternion.premultiply(SPIN_QUAT.setFromAxisAngle(FRAME_TARGET, clamped));
+}
+
 /** One solved digit-stage rotation: rest × oppose × flex, as radians. */
 export interface HandDigitStagePose {
   readonly helper: string;

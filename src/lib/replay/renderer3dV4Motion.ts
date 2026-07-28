@@ -169,27 +169,34 @@ export const REPLAY_V4_WRIST_DEVIATION_BUDGET = THREE.MathUtils.degToRad(150);
 /**
  * SkiErg-specific wrist twist keep-cap.
  *
- * The classic double-pole swings the forearm through ~100° of elevation while
- * the hand stays locked to a near-vertical pole with the palms facing each
- * other, so the hand↔forearm *relative* axial rotation legitimately sweeps
- * ~±100° per cycle. Under the generic 75° budget the wrist itself carried the
- * first 75° of that — a visible corkscrew at the high reach and through the
- * recovery, with the forearm only absorbing the overflow. A real athlete
- * absorbs essentially all of it as forearm pronation/supination (the
- * radioulnar joint — visually the forearm segment); the wrist joint itself
- * has no meaningful axial freedom. The redistribution is the existing
- * world-preserving forearm counter-rotation, so the grip frame — palm-inward
- * contract, thumb-up stacking, pole contact — is bit-exact unchanged by this
- * cap.
- *
- * The cap is exactly zero for a second, measured reason: the reach pose's
- * hand↔forearm delta approaches a half-turn, where the twist⁄swing
- * decomposition's branch is numerically unstable frame-to-frame. The two
- * branches land the forearm 2·cap apart in world space — a measured 149°
- * forearm snap under the 75° budget and a 30° snap at a 15° cap — and at 0
- * they coincide physically, so the instability cannot render at all.
+ * The authored ski clip still holds its poles on the pre-grip-work inverted
+ * branch: measured against the contract grip frame, the clip hand sits a
+ * half-turn (±~45° of phase sweep) of spin about the pole away at every
+ * phase. That axial demand has to be distributed along the arm the way a
+ * real shoulder + radioulnar joint share it — `alignSkiArmPronation`
+ * pre-rolls the forearm toward the hold leaving exactly this keep as the
+ * wrist's residual, and `distributeSkiElbowTwist` moves the elbow-seam
+ * excess into shoulder internal rotation. Earlier one-place attempts both
+ * failed visibly: the generic 75° budget corkscrewed the wrist (and the
+ * near-half-turn residual made the twist⁄swing decomposition flip branches,
+ * a measured 149° single-sample forearm snap), while a 0° keep pushed the
+ * whole delta into the forearm and tore the wrist ring open. 30° is the
+ * anatomical play a wrist reads as natural; because the pre-roll leaves the
+ * constrain residual at ±this value, the decomposition operates far from
+ * the unstable half-turn on every frame.
  */
-export const REPLAY_V4_SKI_WRIST_TWIST_KEEP = 0;
+export const REPLAY_V4_SKI_WRIST_TWIST_KEEP = THREE.MathUtils.degToRad(30);
+
+/**
+ * Share of the SkiErg pronation pre-alignment carried as shoulder internal
+ * rotation (the rest is forearm roll). See `alignSkiArmPronation`: the
+ * authored clip holds the poles on the inverted branch, a half-turn of spin
+ * from the contract grip, and distributing that along the arm the way a real
+ * shoulder + radioulnar joint share it keeps every skin seam inside an
+ * authorable range instead of wringing the wrist or elbow with the full
+ * amount.
+ */
+export const REPLAY_V4_SKI_PRONATION_SHOULDER_SHARE = 0.5;
 
 /** Per-hand wrist metrics after the latest constrained solve (radians). */
 export interface ReplayV4WristMetrics {
@@ -2002,6 +2009,9 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // so re-orienting to the refined oar/hood frame is exact; only the legacy
     // slerp path must keep its pre-oriented RowErg frame, whose incremental
     // blend a re-orient would invalidate.
+    if (this.options.sport === "skierg" && this.solvedGripPoses) {
+      this.alignSkiArmPronation(chain);
+    }
     const legacyRowerPreOriented =
       this.options.sport === "rower" && this.handOrientationPrepared && !this.solvedGripPoses;
     if (!legacyRowerPreOriented) {
@@ -2024,7 +2034,127 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         this.solvePositionTowardTarget(chain, proximalLength, distalLength);
         this.root.updateMatrixWorld(true);
       }
+      if (this.solvedGripPoses) this.distributeSkiElbowTwist(chain);
     }
+  }
+
+  /**
+   * Pre-align the SkiErg arm's axial rolls to the pole-grip hold before the
+   * orientation/position passes run.
+   *
+   * The authored ski clip still holds its poles on the pre-grip-work
+   * inverted branch: measured against the contract grip frame, the clip
+   * hand sits a half-turn (±~45° of phase sweep) of spin about the pole
+   * away at *every* phase. Left uncorrected, the grip solve drags the hand
+   * ~150° from the clip prior and the whole mismatch lands on the two
+   * forearm seams — measured 60–130° of wrist-seam and up to 160° of
+   * elbow-seam relative rotation against a clip that authors 3°/≤55° —
+   * which is the visible corkscrew (when the wrist carried it) and the torn
+   * wrist skin (when the forearm carried it).
+   *
+   * A real athlete distributes that half-turn along the arm: shoulder
+   * internal rotation plus forearm pronation. This does the same with two
+   * exact bone-axis rolls before the passes: the humerus rolls about its own
+   * shoulder→elbow axis (elbow position untouched) and the forearm's world
+   * orientation is re-set to a roll about its own elbow→wrist axis (wrist
+   * position untouched), so the clip prior already agrees with the hold and
+   * the passes only close millimetres. The twist is computed on the branch
+   * centred at the mirrored half-turn — the measured demand stays inside
+   * ±(180−45)° of that centre all cycle, so the branch is continuous and
+   * frame-order independent.
+   */
+  private alignSkiArmPronation(chain: ChainBinding): void {
+    chain.upper.getWorldPosition(this.rootWorld);
+    chain.middle.getWorldPosition(this.middleWorld);
+    chain.effector.getWorldPosition(this.effectorWorld);
+    this.currentDirection.copy(this.middleWorld).sub(this.rootWorld);
+    this.desiredDirection.copy(this.effectorWorld).sub(this.middleWorld);
+    if (
+      this.currentDirection.lengthSq() <= TRANSFORM_EPSILON ||
+      this.desiredDirection.lengthSq() <= TRANSFORM_EPSILON
+    ) {
+      return;
+    }
+    const forearmAxis = this.desiredDirection.normalize();
+
+    // Spin of (clip hand → grip hand) about the forearm's long axis.
+    chain.effector.getWorldQuaternion(this.rootWorldQuaternion);
+    chain.target.getWorldQuaternion(this.targetWorldQuaternion);
+    this.wristDelta.copy(this.rootWorldQuaternion).invert().multiply(this.targetWorldQuaternion);
+    // The delta is in the hand's local sense; express the forearm axis there.
+    this.wristAxisLocal
+      .copy(forearmAxis)
+      .applyQuaternion(this.forearmTwistQuaternion.copy(this.rootWorldQuaternion).invert());
+    const dot =
+      this.wristDelta.x * this.wristAxisLocal.x +
+      this.wristDelta.y * this.wristAxisLocal.y +
+      this.wristDelta.z * this.wristAxisLocal.z;
+    let spin = 2 * Math.atan2(dot, this.wristDelta.w);
+    // Wrap onto the branch centred at the mirrored half-turn.
+    const centre = chain.side < 0 ? Math.PI : -Math.PI;
+    spin -= centre;
+    while (spin > Math.PI) spin -= 2 * Math.PI;
+    while (spin < -Math.PI) spin += 2 * Math.PI;
+    spin += centre;
+
+    // Distribute the hold's half-turn along the arm in balanced shares: the
+    // wrist keeps REPLAY_V4_SKI_WRIST_TWIST_KEEP (its constrain pass sees a
+    // residual of exactly that size — far from the half-turn where the
+    // twist/swing decomposition flips branches), the forearm pre-rolls the
+    // remainder toward the hold, and the humerus carries its anatomical
+    // share of that pre-roll as shoulder internal rotation. Every rotation
+    // is about a bone long axis and the forearm's world orientation is
+    // re-fixed after the humerus roll, so no joint position moves and the
+    // hand stays exactly on its clip pose until softOrient takes it.
+    const wristKeepMagnitude = Math.min(REPLAY_V4_SKI_WRIST_TWIST_KEEP, Math.abs(spin));
+    const forearmRoll = spin - Math.sign(spin) * wristKeepMagnitude;
+    if (Math.abs(forearmRoll) < 1e-6) return;
+    chain.middle.getWorldQuaternion(this.blendedWorldQuaternion);
+    this.forearmTwistQuaternion.setFromAxisAngle(forearmAxis, forearmRoll);
+    this.blendedWorldQuaternion.premultiply(this.forearmTwistQuaternion);
+    this.setBoneWorldQuaternion(chain.middle, this.blendedWorldQuaternion);
+    this.root.updateMatrixWorld(true);
+  }
+
+  /**
+   * Post-solve shoulder share of the SkiErg pronation.
+   *
+   * After the passes settle, the forearm's local rotation relative to the
+   * humerus carries whatever axial twist the hold demanded beyond the wrist
+   * keep. Measured against the authored clip's own elbow-seam twist (the
+   * clip snapshot's forearm local), the excess is rolled into the humerus
+   * about its own long axis — shoulder internal rotation — and the forearm's
+   * world orientation is restored, which restores every descendant including
+   * the solved grip hand. Joint positions and the hand frame are bit-exact;
+   * only the seam distribution changes.
+   */
+  private distributeSkiElbowTwist(chain: ChainBinding): void {
+    const rest = this.wristRest.find((entry) => entry.side === chain.side);
+    if (!rest) return;
+    const snapshot = this.sampledChainRotations.find((entry) => entry.bone === chain.middle);
+    if (!snapshot) return;
+    this.wristDelta.copy(snapshot.quaternion).invert().multiply(chain.middle.quaternion);
+    const dot =
+      this.wristDelta.x * rest.forearmAxisLocal.x +
+      this.wristDelta.y * rest.forearmAxisLocal.y +
+      this.wristDelta.z * rest.forearmAxisLocal.z;
+    let excess = 2 * Math.atan2(dot, this.wristDelta.w);
+    if (excess > Math.PI) excess -= 2 * Math.PI;
+    else if (excess < -Math.PI) excess += 2 * Math.PI;
+    const humerusRoll = excess * REPLAY_V4_SKI_PRONATION_SHOULDER_SHARE;
+    if (Math.abs(humerusRoll) < 1e-6) return;
+    chain.upper.getWorldPosition(this.rootWorld);
+    chain.middle.getWorldPosition(this.middleWorld);
+    this.currentDirection.copy(this.middleWorld).sub(this.rootWorld);
+    if (this.currentDirection.lengthSq() <= TRANSFORM_EPSILON) return;
+    chain.middle.getWorldQuaternion(this.blendedWorldQuaternion);
+    this.forearmTwistQuaternion.setFromAxisAngle(this.currentDirection.normalize(), humerusRoll);
+    chain.upper.getWorldQuaternion(this.desiredWorldQuaternion);
+    this.desiredWorldQuaternion.premultiply(this.forearmTwistQuaternion);
+    this.setBoneWorldQuaternion(chain.upper, this.desiredWorldQuaternion);
+    this.root.updateMatrixWorld(true);
+    this.setBoneWorldQuaternion(chain.middle, this.blendedWorldQuaternion);
+    this.root.updateMatrixWorld(true);
   }
 
   private solvePositionTowardTarget(

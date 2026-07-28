@@ -1,7 +1,7 @@
 {
-  "commit": "22bf29e+ski-wrist-fix (working tree)",
-  "appBundle": "/_app/immutable/entry/app.D-5YG4mp.js",
-  "note": "REPLAY_V4_SKI_WRIST_TWIST_KEEP=0: wrist twist 0 at every phase, pronation carried by the forearm, forearm steps \u226429\u00b0/sample",
+  "commit": "9e225b0+ski-pronation-distribution (working tree)",
+  "appBundle": "/_app/immutable/entry/app.DZB82qQ3.js",
+  "note": "three-way pronation distribution: wrist keeps <=30 deg of twist, forearm pre-rolls toward the hold, shoulder internal rotation absorbs half the elbow-seam excess, and the comfort-gated diagonal-grip relief (palm-normal tilt <=0.6 rad beyond 1.15 rad of misalignment) closes the wrist-ring tear; palms-inward and fist closure unchanged",
   "evidence": [
     {
       "kind": "still",

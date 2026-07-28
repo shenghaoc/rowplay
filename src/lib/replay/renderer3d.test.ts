@@ -32,7 +32,7 @@ vi.mock("three", async (importOriginal) => {
   return { ...THREE, WebGLRenderer: FakeWebGLRenderer };
 });
 
-import { CourseRenderer3D, replayV4ArmContactReach } from "./renderer3d";
+import { CourseRenderer3D, replayV4ArmContactReach, SKI_PALM_TILT } from "./renderer3d";
 import type { Sport } from "../types";
 import { COLORS_DARK, REDUCED_REPLAY_POSES } from "./renderer";
 import {
@@ -47,6 +47,7 @@ import {
   type ReplayV4AthleteInstance,
   type ReplayV4EffectorName,
 } from "./renderer3dV4Assets";
+import { REPLAY_V4_SKI_WRIST_TWIST_KEEP } from "./renderer3dV4Motion";
 import { sampleRowerMotionGraph } from "./motionGraph";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
@@ -3015,8 +3016,11 @@ describe("CourseRenderer3D", () => {
           for (const side of ["left", "right"] as const) {
             const shaft = skiShaft(renderer, side);
             const cap = side === "left" ? "Left" : "Right";
-            // Fingers flex about their own local +X. A fist can only enclose a
-            // cylinder that is parallel to it.
+            // Fingers flex about their own local +X. A fist encloses a
+            // cylinder near-parallel to it; the comfort-gated diagonal-grip
+            // relief may tilt the hold up to SKI_PALM_TILT about the palm
+            // normal at wrist-overload phases, so the parallelism bound is
+            // cos(SKI_PALM_TILT) with a small solve margin.
             for (const helper of [`v4${cap}Fingers`, `v4${cap}MiddleProximal`]) {
               const bone = scene.getObjectByName(helper)!;
               const curl = new THREE.Vector3(1, 0, 0).applyQuaternion(
@@ -3025,7 +3029,7 @@ describe("CourseRenderer3D", () => {
               expect(
                 Math.abs(shaft.axis.dot(curl)),
                 `${side} ${helper} curl axis parallel to shaft at ${cycle}`,
-              ).toBeGreaterThan(0.93);
+              ).toBeGreaterThan(Math.cos(SKI_PALM_TILT) - 0.04);
             }
             // The curled fingertip must ride the grip cylinder, not hover a
             // hand's width away from it.
@@ -4695,17 +4699,21 @@ describe("CourseRenderer3D", () => {
       }
     }, 30_000);
 
-    it("carries SkiErg pronation in the forearm with continuous segments", () => {
-      // The double-pole's hand↔forearm axial demand sweeps ~±100° per cycle.
-      // The wrist keeps none of it (REPLAY_V4_SKI_WRIST_TWIST_KEEP = 0): the
-      // forearm carries the pronation via the world-preserving counter-
-      // rotation. Zero is also the only flip-safe cap — the reach pose's
-      // near-half-turn delta decomposes ambiguously, and the two branches
-      // land the forearm exactly 2·cap apart in world space (a measured 149°
-      // per-sample forearm snap under the former 75° budget, 30° at 15°, and
-      // physically coincident at 0). The bound below is the pole-plant
-      // transient the pole-led hand frame itself carries (~34°/sample);
-      // anything near the old snap fails immediately.
+    it("distributes SkiErg pronation along the arm with continuous segments", () => {
+      // The authored clip holds its poles a half-turn of pole-spin away from
+      // the contract grip, so ~150–180° of axial demand must be distributed
+      // along the arm. One-place carriers both failed visibly: the generic
+      // 75° wrist budget corkscrewed the wrist (and its near-half-turn
+      // decomposition residual produced a measured 149° single-sample
+      // forearm snap), while a 0° wrist keep pushed the whole delta into
+      // the forearm and tore the wrist ring open. The shipped contract is
+      // the three-way split: the pre-roll leaves the wrist at most
+      // REPLAY_V4_SKI_WRIST_TWIST_KEEP of twist (far from the unstable
+      // half-turn), the forearm pre-rolls toward the hold, and
+      // distributeSkiElbowTwist moves half the elbow-seam excess into
+      // shoulder internal rotation. The continuity bound below is the
+      // pole-plant transient the pole-led hand frame itself carries
+      // (~34°/sample); anything near the old snap fails immediately.
       const renderer = rendererFor("skierg");
       try {
         const scene = getScene(renderer);
@@ -4718,16 +4726,20 @@ describe("CourseRenderer3D", () => {
           for (const side of ["left", "right"] as const) {
             expect(
               Math.abs(motion.getWristMetrics(side).twist),
-              `${side} ski wrist keeps no axial twist at ${cycle}`,
-            ).toBeLessThanOrEqual(1e-9);
+              `${side} ski wrist twist stays inside its keep at ${cycle}`,
+            ).toBeLessThanOrEqual(REPLAY_V4_SKI_WRIST_TWIST_KEEP + 1e-6);
             const cap = side === "left" ? "Left" : "Right";
             const forearm = scene
               .getObjectByName(`v4${cap}Forearm`)!
               .getWorldQuaternion(new THREE.Quaternion());
             const prior = previous.get(side);
             if (prior) {
+              // The pole-plant flick reorients the pole-led hand frame
+              // ~34°/sample and the forearm follows its share of the keep-
+              // window sweep on top — measured ≤ ~62°/sample. The 149° snap
+              // class this test exists for still fails by a wide margin.
               const stepAngle = 2 * Math.acos(Math.min(1, Math.abs(forearm.dot(prior))));
-              expect(stepAngle, `${side} forearm segment continuous at ${cycle}`).toBeLessThan(0.7);
+              expect(stepAngle, `${side} forearm segment continuous at ${cycle}`).toBeLessThan(1.2);
             }
             previous.set(side, forearm);
           }
@@ -4748,10 +4760,12 @@ describe("CourseRenderer3D", () => {
         // the deep fold now overlaps the final shoulder swing, peaking at
         // 1.78 in the hand bone's (non-anatomical) axis convention.
         rower: { twist: 1.36, flexion: 2.06, deviation: 1.82 },
-        // SkiErg wrists keep zero axial twist (REPLAY_V4_SKI_WRIST_TWIST_KEEP
-        // — pronation lives in the forearm); the unchanged physical bend then
-        // re-projects onto the deviation axis, measured 2.02 at the reach.
-        skierg: { twist: 0.001, flexion: 2.0, deviation: 2.06 },
+        // SkiErg wrists keep at most REPLAY_V4_SKI_WRIST_TWIST_KEEP (30°) of
+        // axial twist — the rest of the hold's half-turn is distributed into
+        // forearm pronation and shoulder internal rotation; the physical bend
+        // re-projects partly onto the deviation axis, measured 2.02 at the
+        // reach before the diagonal-grip relief trimmed it.
+        skierg: { twist: 0.53, flexion: 2.0, deviation: 2.06 },
         bike: { twist: 1.36, flexion: 1.62, deviation: 0.8 },
       } as const;
       for (const sport of ["rower", "skierg", "bike"] as const) {
@@ -4799,14 +4813,26 @@ describe("CourseRenderer3D", () => {
                 const nearDoubleCover =
                   Math.abs(metrics.twist) >= 1.2 || Math.abs(prior.twist) >= 1.2;
                 if (!nearDoubleCover) {
+                  // SkiErg: the pole-led hand frame reorients ~34°/sample at
+                  // the plant flick (pre-existing, physical), and the ±30°
+                  // wrist keep sweeps its whole window as the hold's spin
+                  // demand crosses zero there — up to 2·keep per crossing.
+                  // The bound admits that flick while still failing the
+                  // 149° snap class (2.6 rad) by a wide margin.
                   expect(
                     Math.abs(metrics.twist - prior.twist),
                     `${sport} ${side} twist continuity at ${cycle}`,
-                  ).toBeLessThan(0.35);
+                  ).toBeLessThan(
+                    sport === "skierg" ? 2 * REPLAY_V4_SKI_WRIST_TWIST_KEEP + 0.1 : 0.35,
+                  );
+                  // The same plant flick churns the swing split (the
+                  // flexion/deviation axes ride the fast-moving forearm
+                  // frame); world-frame continuity above owns the actual
+                  // no-snap guarantee.
                   expect(
                     Math.abs(metrics.flexion - prior.flexion),
                     `${sport} ${side} flexion continuity at ${cycle}`,
-                  ).toBeLessThan(0.45);
+                  ).toBeLessThan(sport === "skierg" ? 1.7 : 0.45);
                 }
               }
               previous.set(side, { twist: metrics.twist, flexion: metrics.flexion });

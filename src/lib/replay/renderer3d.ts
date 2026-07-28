@@ -66,6 +66,7 @@ import {
   handCurlAxisThumbward,
   orientHandToGripChannel,
   refineGripSpinForWrist,
+  refineGripTiltForWrist,
 } from "./handGrip";
 import {
   applyReplayAssetLibrary,
@@ -1014,7 +1015,22 @@ const GRIP_FOREARM_SCRATCH = new THREE.Vector3();
  * anatomically unavoidable reach extension is accepted (spin cannot reduce
  * it at any cone size; measured invariant from 0.85 to 1.35 rad).
  */
-const SKI_PALM_CONE = 0.3;
+export const SKI_PALM_CONE = 0.3;
+/**
+ * How far the pole may ride diagonally across the palm (rotation about the
+ * palm normal) to keep the hand's long axis near the forearm line. Real
+ * double-pole grips sit diagonal at the high reach; without this freedom the
+ * square-across-the-fist channel demanded ~130° of hand-vs-forearm
+ * reorientation and linear-blend skinning tore the wrist ring open.
+ */
+export const SKI_PALM_TILT = 0.6;
+/**
+ * Hand-long-axis-vs-forearm misalignment (about the palm normal) a wrist
+ * carries comfortably without any diagonal-grip relief. Below this the
+ * closed fist stays exactly on its authored square channel; only the excess
+ * beyond it is tilted away, up to SKI_PALM_TILT.
+ */
+export const SKI_PALM_TILT_COMFORT = 1.15;
 const BIKE_HOOD_QUAT = new THREE.Quaternion();
 const BIKE_HOOD_AXIS_X = new THREE.Vector3(1, 0, 0);
 
@@ -3066,6 +3082,16 @@ function makeSkierAvatar(
         arm.handPoint.z - arm.elbowPoint.z,
       );
       refineGripSpinForWrist(arm.hand, arm.side, SEGMENT_DIR, GRIP_FOREARM_SCRATCH, SKI_PALM_CONE);
+      // Second relief: let the shaft ride diagonally across the palm (palm
+      // facing unchanged — the palm normal is the rotation axis) so the hand
+      // continues the forearm instead of tearing the wrist ring.
+      refineGripTiltForWrist(
+        arm.hand,
+        arm.side,
+        GRIP_FOREARM_SCRATCH,
+        SKI_PALM_TILT_COMFORT,
+        SKI_PALM_TILT,
+      );
     }
   };
 

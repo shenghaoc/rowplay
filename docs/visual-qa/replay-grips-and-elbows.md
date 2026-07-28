@@ -254,49 +254,78 @@ natural 28–32 spm cadence) at 1×, 0.5×, and 0.25×** via the capture-only
 512-phase acceptance test; the recordings verify the same motion in the real
 application at watchable and frame-by-frame speeds.
 
-## SkiErg wrist twist follow-up (same branch, after live review)
+## SkiErg wrist follow-ups (same branch, after live review)
 
-Live review after the arm-draw work flagged the SkiErg wrists as
-"unnecessarily twisted". Measured on the production athlete
-(`getWristMetrics`, 32 spm, both hands):
+Two rounds of live review flagged the SkiErg wrists — first as "unnecessarily
+twisted", then (after an intermediate fix) as "twisted, torn apart". The
+final root cause, measured on the production athlete:
 
-- The wrist itself carried the full ±75° axial-twist budget through the high
-  reach, the pull, and the recovery — the hand is locked to a near-vertical
-  pole with the palms facing inward while the forearm sweeps ~100° of
-  elevation, so the hand↔forearm relative axial rotation legitimately sweeps
-  ~±100° per cycle, and the generic budget let the wrist absorb the first
-  75° of it as a visible corkscrew (the forearm only took the overflow).
-- Worse, the reach pose's hand↔forearm delta approaches a half-turn, where
-  the twist⁄swing decomposition's branch is numerically unstable between
-  frames. The two branches land the forearm exactly **2·cap** apart in world
-  space: a measured **149° single-sample forearm snap** in the shipped build
-  (75° budget), 30° at a 15° cap — and physically coincident at 0.
+- **The authored ski clip still holds its poles on the pre-grip-work
+  inverted branch.** Against the contract grip frame (palms-inward,
+  thumb-up), the clip hand sits a **half-turn of spin about the pole
+  (−180° ± 45°) at every phase** of the cycle. The clip is internally
+  coherent (its own wrist seam carries 0.6–5.5°, its elbow seam ≤ 55°), but
+  the runtime grip contract drags the hand ~150–180° away from that prior,
+  and the whole mismatch has to land somewhere on the arm.
+- Under the original shared 75° wrist-twist budget, the wrist carried the
+  first 75° of it — the visible corkscrew — and, because the residual sat
+  near the half-turn where the twist⁄swing decomposition flips branches,
+  the forearm snapped **149° in a single sample** at the reach (the two
+  branches land the forearm exactly 2·cap apart; measured 149° at cap 75°,
+  30° at cap 15°).
+- An intermediate zero-keep fix (all twist into the forearm) removed the
+  corkscrew and the snaps but pushed the hand↔forearm relative rotation
+  into a pure ~130° sideways hinge at the reach/recovery — linear-blend
+  skinning tore the wrist ring open (hole plus a detached-looking flap of
+  hand skin), which was the second review flag.
 
-Fix: `REPLAY_V4_SKI_WRIST_TWIST_KEEP = 0`. The ski wrist keeps no axial
-twist; the existing world-preserving counter-rotation carries all pronation
-in the forearm — anatomically where the radioulnar joint carries it — and
-the zero cap makes the decomposition instability unable to render at all.
-The hand's world grip frame is bit-exact unchanged, so the palm-inward
-contract, thumb-up stacking, pole contact, and closure reports are untouched
-by construction. Measured after: wrist twist 0 at every phase, forearm
-world-orientation steps ≤ 29°/sample (the pre-existing pole-plant transient
-of the pole-led hand frame itself, unchanged from before), and the unchanged
-physical wrist bend re-projects onto the deviation axis (envelope
-recalibrated 1.75 → 2.06 in bone terms). Pinned by "carries SkiErg pronation
-in the forearm with continuous segments" (dense 256-sample twist-zero +
-forearm-continuity sweep) and the tightened ski twist envelope (0.001 rad).
+The shipped fix distributes the half-turn along the arm the way a real
+shoulder + radioulnar joint share it, plus one anatomical grip freedom:
 
-Visible effect: the wrist crease no longer corkscrews at the reach and
-through the recovery; the forearm segment rotates instead, which a sleeve
-reads as normal pronation. Rowing and BikeErg keep the 75° shared budget
-unchanged.
+1. **Wrist keeps ≤ 30°** (`REPLAY_V4_SKI_WRIST_TWIST_KEEP`) — natural play,
+   visibly untwisted.
+2. **Forearm pre-rolls toward the hold** (`alignSkiArmPronation`): before
+   the IK passes, the forearm rolls about its own elbow→wrist axis to leave
+   the wrist exactly its keep — so the constrain decomposition operates
+   ±30° from centre, far from the unstable half-turn, and the snap class
+   cannot occur. Computed on the branch centred at the mirrored half-turn
+   (the demand stays within ±135° of it all cycle, so the branch is
+   continuous).
+3. **Shoulder internal rotation absorbs half the elbow-seam excess**
+   (`distributeSkiElbowTwist`): post-solve, the forearm's local twist
+   beyond the clip's own elbow seam is measured exactly and half of it is
+   rolled into the humerus about its long axis, with the forearm (and so
+   the solved hand) world orientation restored — joint positions and the
+   grip frame bit-exact.
+4. **Comfort-gated diagonal grip** (`refineGripTiltForWrist`): a real pole
+   is never held square across the fist at a high reach — it rides
+   diagonally from index base toward pinky heel. When the hand's long axis
+   is misaligned from the forearm by more than 1.15 rad about the palm
+   normal, the hold tilts by the excess (≤ 0.6 rad) about the **palm
+   normal** — the palms-inward contract is unchanged by construction
+   because its own axis is the rotation axis. Calm phases (the pull) stay
+   exactly on the authored square channel with the fully closed fist; only
+   the overload phases trade a bounded finger-to-shaft divergence for a
+   connected wrist.
+
+Measured after: wrist twist ≤ 30° everywhere; no decomposition flips; the
+wrist ring is connected at every phase (the reach/recovery holes are gone);
+forearm world-orientation steps ≤ ~62°/sample only inside the pole-plant
+flick, where the pole-led hand frame itself reorients ~34°/sample
+(pre-existing). Palms-inward (≥ 0.55), thumb-up stacking, and the digit
+closure reports are unchanged. Pinned by the "distributes SkiErg pronation
+along the arm with continuous segments" 256-sample sweep (wrist keep bound
+
+- forearm continuity), the tightened ski twist envelope (0.53 rad), and the
+  diagonal-aware enclosure bound (cos(SKI_PALM_TILT) parallelism with the
+  fingertip-on-cylinder and wrist-proximity assertions unchanged).
 
 Evidence: `docs/visual-qa/grips-and-elbows/ski-wrist/{before,after}/` —
-chase and palm close-ups at reach / pull / recovery, manifested with build
-identity (before `app.DxA7wv0I.js` @ `22bf29e`, after the fixed build).
-The pull close-up pair shows the change most directly: the ulnar shelf and
-pinched crease where the hand twisted against the forearm are replaced by a
-continuous forearm-to-hand surface, with the grip itself pixel-identical.
+chase and palm close-ups at reach / pull / recovery with build identity.
+`before` is the original 75°-budget corkscrew; `after` is the shipped
+distribution (the intermediate torn state is described above and
+reproducible at `9e225b0`). The pull close-up pair shows the wrist-shelf
+fix; the recovery pair shows the reconnected wrist ring.
 
 ## Remaining limitations (stated honestly)
 

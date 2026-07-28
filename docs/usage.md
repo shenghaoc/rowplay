@@ -184,10 +184,12 @@ handle sits inside the finger/thumb enclosure (with the sculling thumbs on the
 flat handle ends) instead of the hand posing in a styled fist beside it.
 Feathering rolls the handle inside that enclosure, and axial hand rotation is
 shared between wrist and forearm within bounded budgets rather than
-corkscrewing the wrist — on the SkiErg, whose pole-locked hands sweep ~±100°
-of axial rotation against the swinging forearms each cycle, that rotation is
-carried entirely by the forearms as pronation, the way a real double-poler's
-radioulnar joints carry it, so the wrists stay visually untwisted. During
+corkscrewing the wrist — on the SkiErg, whose pole-locked hands carry a large
+axial demand against the swinging forearms, that rotation is distributed the
+way a real arm distributes it: a few degrees of wrist play, forearm
+pronation, and shoulder internal rotation, with the pole allowed to ride
+diagonally across the palm at the high reach the way real grips do — so the
+wrists stay visually untwisted and the wrist skin stays connected. During
 the illustrated SkiErg plant, each rigid 1.37 m
 pole holds a deterministic course anchor while its hand remains on the grip.
 The skier advances relative to that basket, releases it near the end of the
