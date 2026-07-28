@@ -71,7 +71,10 @@ shells.
    exact.
 3. WHEN a V4 clip supplies the base pose THEN a post-clip analytic constraint
    pass SHALL keep hands, feet, oars, handlebars, pedals, ski baskets, and
-   planted pole contacts authoritative.
+   planted pole contacts authoritative. RowErg and SkiErg hand closure SHALL
+   use each visible shoulder, that side's structural arm reach, and the final
+   oriented wrist-to-grip-channel offset; dense full-cycle acceptance SHALL
+   keep each fitted grip channel within 5 mm of its rigid equipment target.
 4. WHEN V4 cannot load or validate THEN V3 procedural/contact-safe 3D and
    Canvas 2D SHALL remain usable without a blank or degraded route.
 5. WHEN V4 assets ship THEN they SHALL remain repository-generated or clearly
@@ -109,15 +112,24 @@ viewing speed.
    enclose its own rubber scull grip with the four fingers hooked around the
    cylinder, the thumb at the handle end, and a neutral wrist continuous with
    the forearm; contact correction SHALL reject a 180-degree palm, wrist,
-   forearm, or torso twist.
+   forearm, or torso twist. The fitted grip-channel centre SHALL remain within
+   5 mm of its rigid scull target through both drive and feathered recovery;
+   refinement SHALL use the current post-IK wrist frame rather than a stale
+   pre-orientation frame.
 2. WHEN SkiErg is shown THEN reach, velocity-matched plant, loaded pull, and
    release SHALL read as distinct states; baskets SHALL remain course-anchored
    throughout the loaded phase while the athlete advances relative to them.
    Flexed elbows SHALL point down at plant, rotate rearward in the sagittal
    plane during the loaded core-led press, and re-extend into pole-off without
-   selecting a sideways or horizontally inverted branch. During recovery the
-   hands and poles SHALL lift and travel forward while the elbow plane returns
-   underneath the arm, so the elbows point down again before the next plant.
+   selecting a sideways or horizontally inverted branch. The arm SHALL
+   continue extending as the basket leaves the snow rather than re-bending
+   immediately after pole-off. During recovery the hands and poles SHALL lift
+   and travel forward while the elbow plane returns underneath the arm, so the
+   elbows point down again before the next plant. Each fitted fist channel
+   SHALL remain within 5 mm of its rigid pole grip through planted and airborne
+   phases. An infeasible airborne basket MAY move by the minimum distance
+   needed to close the visible arm/pole chain; a course-anchored planted basket
+   SHALL NOT move.
    Both skis and boots SHALL retain a narrow parallel stance rather than a
    fore/aft striding split. Each hip, knee, and foot SHALL preserve left/right
    order for the entire cycle; V4 SHALL use the shared same-side knee targets

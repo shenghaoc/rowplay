@@ -22,12 +22,9 @@ Contract, with ratios against the **measured 1.64 m V4 rest-pose stature**
 | Pole length            |  **1.37 m** | ~83.5% height — inside the classic 83–84% band  |
 | Pole plant lateral     | **±0.46 m** | Just outside the ski pair                       |
 
-> **Known deviation.** Ski and pole length were chosen against a nominal 1.8 m
-> athlete. The shipped V4 rig measures 1.64 m, so both run long relative to the
-> classic bands this note originally claimed. The values are left as shipped
-> because resizing is a visual change that needs its own acceptance pass; the
-> ratios are now pinned in `skiEquipment.test.ts` so the overshoot is visible
-> and cannot grow silently.
+Ski and pole length have been re-derived against the shipped 1.64 m V4 rig;
+the ratios above are pinned in `skiEquipment.test.ts` so an asset or equipment
+change cannot silently move them outside the accepted bands.
 
 **Coherence rule:** boot sole width ≈ ski width × 1.15. A 10 cm boot on a
 4.6 cm ski is what made the literal-race pass look broken.
@@ -90,7 +87,7 @@ effective quality, backend, and stage size:
 | Artifact                                                                                  | Shows                                                               |
 | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | [`poses/ski-loaded-press.jpg`](ski-equipment/in-app/poses/ski-loaded-press.jpg)           | Chase-distance silhouette: planted poles, skis under the boots      |
-| [`poses/ski-high-reach.jpg`](ski-equipment/in-app/poses/ski-high-reach.jpg)               | Top of recovery — the reach-limited phase named below               |
+| [`poses/ski-high-reach.jpg`](ski-equipment/in-app/poses/ski-high-reach.jpg)               | Top of recovery — the post-release reach/contact phase              |
 | [`poses/grip-ski-loaded-press.jpg`](ski-equipment/in-app/poses/grip-ski-loaded-press.jpg) | Macro grip camera: shaft through the fist, strap, basket            |
 | [`tiers/tier-ski-equipment-{low,medium,high,ultra}.jpg`](ski-equipment/in-app/tiers/)     | Progressive **geometry**: top sheets, edges, closures, straps, ribs |
 | [`cycles/ski-one-cycle.webm`](ski-equipment/in-app/cycles/ski-one-cycle.webm)             | One full technique cycle                                            |
@@ -131,14 +128,22 @@ Both constants are measurements of the shipped GLB, re-derived from the rig by
 `derives the SkiErg curl axis and grip channel from the authored rig` so an
 asset rebuild cannot silently invalidate them.
 
-### Known defect (pinned, not fixed)
+### Recovery contact closure
 
-Through recovery around cycle 0.31–0.34 the **left** hand alone drifts up to
-0.135 m from its target; the right hand and every other sport close to 0.015 m.
-The asymmetry points at the arm-reach solve, not the grip frame. It predates
-this branch and was previously spread across per-call-site budgets of 0.068 and
-0.18; it is now a single named constant in `renderer3d.test.ts` pinned at its
-measured peak.
+The former left-hand-only gap at cycle 0.31–0.34 is resolved. Its measured peak
+was 0.135 m because the free-pole preference used one shared procedural
+shoulder/reach scalar while the visible V4 rig had separate sampled shoulders
+and reached through a wrist bone plus an oriented fist-channel offset.
+
+`SkiGripReachSolver` now derives each side from its current visible shoulder and
+structural shoulder-to-wrist reach, rotates the fitted fist-channel offset
+through the final pole-led hand frame, and intersects that wrist sphere with
+the rigid 1.37 m pole sphere. If an authored airborne basket is infeasible it
+moves only by the minimum distance needed for closure; a planted course anchor
+never moves. A C2 reach floor continues extension through basket release, then
+returns authority to the recovery arc by the flight apex. Dense production
+V4 sampling keeps both grip channels below the 5 mm contact budget without
+post-release elbow re-bend.
 
 ## Validation
 
@@ -174,6 +179,13 @@ Regression cover added by this pass:
 - `ties the declared SkiErg standing height to the shipped V4 rig` — makes the
   proportion ratios describe the rendered athlete instead of dividing two
   constants by each other.
+- `moves only a released basket enough to close an unreachable grip` and
+  `never moves a planted basket when the same geometry is unreachable` — pin
+  free-hardware correction and course-anchor authority independently.
+- `keeps planted SkiErg hardware fixed in the course while the V4 skier
+advances` plus the technique/continuity sweeps — enforce sub-5 mm bilateral
+  contact, rigid poles, planted-tip fixation, release extension, and loop
+  continuity.
 
 ## Definition of done
 
@@ -182,5 +194,5 @@ Regression cover added by this pass:
 - [x] Contact tolerances restored; residuals named rather than budgeted away
 - [x] Asset build deterministic from reviewed source (no self-reference)
 - [x] Provenance accurate; no third-party textures shipped
-- [ ] Left-hand recovery reach defect resolved (pinned, tracked separately)
-- [ ] Ski/pole length re-derived against the 1.64 m rig (tracked separately)
+- [x] Left-hand recovery reach defect resolved below the 5 mm full-cycle budget
+- [x] Ski/pole length re-derived against the 1.64 m rig

@@ -131,10 +131,19 @@ above and inside the cockpit, and bow-first hull surge.
 
 The renderer continues to update the same groups, limbs, contacts, oars, poles,
 pedals, wheels, bars, saddle, skis, hull, and camera. SkiErg’s two poles use a
-second post-placement contact solve: each basket transitions with C1 contact
-velocity to a deterministic catch-course snow anchor, while the two-bone arm
-and fixed pole length remain exact. No asset loader or geometry operation
-belongs in the frame loop.
+focused allocation-free reach solver after placement. It converts each
+authored fist-channel offset through the final hand orientation, intersects
+that side's visible shoulder/wrist sphere with the rigid pole sphere, and
+iterates a bounded number of times to close the coupled frame. Each basket
+transitions with C1 contact velocity to a deterministic catch-course snow
+anchor; an infeasible free basket moves only by the minimum distance needed
+for closure, while a planted anchor never moves. A short C2 extension hold
+prevents post-release elbow re-bend before returning to the authored recovery
+arc. RowErg similarly performs one reversible arm-only settle so its second
+rigid-oar solve observes the current post-IK wrist offset and corrects only
+structural reach excess before the normal final constraint pass. Both paths
+hold their fitted grip-channel centres inside the 5 mm dense-cycle budget. No
+asset loader or geometry operation belongs in the frame loop.
 
 When V4 validates, the renderer hides only the procedural/V3 human shell and
 keeps V3 sport equipment visible. Every frame first solves the authoritative

@@ -85,6 +85,10 @@
     torso-clearance tests, plus explicit 2D/procedural/V4 hand-over-knee timing
     assertions, repository gates, moving browser acceptance, and exact-head
     draft-PR CI
+  - [x] Close the V4 recovery contact residual by provisionally settling the
+    current oriented wrist frame, restoring the sampled pose, and correcting
+    only structural reach excess before the final rigid-oar/contact pass;
+    enforce a 5 mm full-cycle grip-channel budget
 
 - [x] **10. Restore the complete RowErg seated leg chain**
   - [x] Make V4 consume the deterministic raised-knee target after foot-contact
@@ -101,8 +105,13 @@
     inverted high-plant intersection
   - [x] Drive procedural 3D and V4 post-clip IK from the phase-varying marker
     while preserving rigid poles, planted baskets, and exact hand contacts
+  - [x] Replace the scalar shared reach estimate with a per-side oriented
+    fist-channel/pole-sphere solve; minimally correct only airborne baskets,
+    preserve planted anchors, and hold extension through release without
+    elbow re-bend
   - [x] Protect plant, load, pole-off, recovery, pre-plant, fixed segment
-    lengths, and dense-cycle continuity with 2D/shared/3D regressions
+    lengths, sub-5 mm grip contact, and dense-cycle continuity with
+    2D/shared/3D regressions
 
 - [x] **12. Keep SkiErg legs on their own parallel skis**
   - [x] Replace the Canvas fore/aft split stance with one narrow parallel

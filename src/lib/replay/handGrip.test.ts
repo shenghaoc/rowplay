@@ -303,9 +303,9 @@ describe("orientHandToGripChannel", () => {
   const shaft = new THREE.Vector3(0.2, 0.05, 0.97).normalize();
   const roll = new THREE.Vector3(0.1, -1, 0.05).normalize();
 
-  function orient(base = new THREE.Quaternion()) {
+  function orient(base = new THREE.Quaternion(), rollReference: THREE.Vector3 = roll) {
     const hand = new THREE.Object3D();
-    orientHandToGripChannel(hand, 1, ROWER_SCULL_GRIP.radius, shaft, roll, base);
+    orientHandToGripChannel(hand, 1, ROWER_SCULL_GRIP.radius, shaft, rollReference, base);
     return hand.quaternion.clone();
   }
 
@@ -333,6 +333,24 @@ describe("orientHandToGripChannel", () => {
     const first = orient();
     const second = orient();
     expect(Math.abs(first.dot(second))).toBeGreaterThan(1 - 1e-12);
+  });
+
+  it("keeps the shaft alignment when the requested roll is exactly opposite", () => {
+    const aligned = new THREE.Quaternion().setFromUnitVectors(handCurlAxisThumbward(1), shaft);
+    const alignedChannel = handChannelCentre(ROWER_SCULL_GRIP.radius, 1).applyQuaternion(aligned);
+    const oppositeRoll = alignedChannel
+      .addScaledVector(shaft, -alignedChannel.dot(shaft))
+      .normalize()
+      .multiplyScalar(-1);
+    const quaternion = orient(new THREE.Quaternion(), oppositeRoll);
+    const appliedAxis = handCurlAxisThumbward(1).applyQuaternion(quaternion);
+    const appliedChannel = handChannelCentre(ROWER_SCULL_GRIP.radius, 1).applyQuaternion(
+      quaternion,
+    );
+    appliedChannel.addScaledVector(shaft, -appliedChannel.dot(shaft)).normalize();
+
+    expect(appliedAxis.dot(shaft)).toBeGreaterThan(0.9999);
+    expect(appliedChannel.dot(oppositeRoll)).toBeGreaterThan(0.9999);
   });
 });
 

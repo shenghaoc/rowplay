@@ -1294,8 +1294,9 @@ function createSportClip(
  *
  * CRITICAL: Real rowing sequencing is legs → body → arms. Forearms stay near-
  * straight (a few degrees of soft flex) through leg drive and body open.
- * Elbow flexion begins near drive fraction ~0.30 (after body-open ~0.26), not
- * at catch. At the finish (drive end 0.38), hands draw *to the lower chest*
+ * The clip's elbow-flexion prior begins near cycle 0.26, aligned with the
+ * graph's 0.64-drive channel opening and ~0.68 visible onset, not at catch.
+ * At the finish (drive end 0.38), hands draw *to the lower chest*
  * (British Rowing / Concept2 / sculling coaching) — never hauled through the
  * torso behind the back.
  *
@@ -1309,8 +1310,8 @@ function createSportClip(
  * - British Rowing / World Rowing sculling posture stills
  */
 function createRowCycleClip(): THREE.AnimationClip {
-  // 14 keyframes: catch, early-leg, mid-leg, late-leg, body-open, arm-draw-begin,
-  // arm-draw-mid, finish, hands-away, arms-extend, body-over, mid-slide, late-slide, loop
+  // 14 keyframes: catch, early-leg, mid-leg, late-leg, draw-prior, early-draw,
+  // mid-draw, finish, hands-away, arms-extend, body-over, mid-slide, late-slide, loop
   // Times are clip seconds; landmarks (drive end 0.38, etc.) are seek anchors.
   const times = [
     0, 0.06, 0.12, 0.2, 0.26, 0.3, 0.34, 0.38, 0.48, 0.56, 0.66, 0.78, 0.9, 1,
@@ -1352,9 +1353,10 @@ function createRowCycleClip(): THREE.AnimationClip {
     [0.41, -0.1, -0.44], // late slide: preparing for catch
     [0.42, -0.1, -0.44], // loop
   ] as const;
-  // Forearm: ABSOLUTELY STRAIGHT through leg drive and body open.
-  // Only begins flexing at arm-draw-begin (t=0.30). Finish flexion draws the
-  // handle to the lower ribs — deep, but not a behind-the-back haul.
+  // Forearm: ABSOLUTELY STRAIGHT through the leg drive. The clip prior first
+  // flexes at t=0.26; the contact-authoritative graph produces visible onset
+  // near 0.68 of the drive. Finish flexion draws the handle to the lower ribs
+  // — deep, but not a behind-the-back haul.
   const leftForearm = [
     [-0.06, 0.03, -0.08], // catch: nearly straight, soft not locked
     [-0.06, 0.03, -0.08], // early drive: straight

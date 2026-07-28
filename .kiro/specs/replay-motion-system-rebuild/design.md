@@ -81,7 +81,14 @@ long-arm reach, closes the last part of the handle path from the graph's late
 marker. V4 first samples its authored clip and hand orientation, then the
 renderer re-solves each fixed oar circle from the visible skinned shoulder,
 structural shoulder-to-wrist reach, and sampled wrist-to-palm offset before the
-final contact pass chooses the shared anatomical elbow branch. During the
+final contact pass chooses the shared anatomical elbow branch. Because that
+first rigid-oar solve also changes the oriented grip-channel frame, RowErg
+performs one provisional arm-only settle, measures only the part of the
+resulting wrist target that lies outside the structural reach sphere, restores
+the prepared clip pose, and subtracts that excess in a second oar solve. The
+normal final constraint pass then closes the current grip frame without
+carrying the former 19 mm recovery residual or consuming the sampled pose.
+During the
 loaded draw, the equipment-locked two-bone solve intersects the elbow circle
 with a height band below the handle line — its depth follows blade load — and
 keeps the joint close under its own shoulder. The visible humerus therefore
@@ -130,10 +137,19 @@ torso. Three.js rotates its shared sagittal bend vector from down to back during
 the loaded sweep and returns by the shortest sagittal arc underneath the
 recovering arm. The V4 clip supplies the skinned base pose, but that shared
 marker owns its post-clip SkiErg two-bone branch; the rigid pole owns terminal
-hand contact. At the C2-flat flight apex the renderer changes from the previous
-snow anchor to the next with zero visible weight, then lowers the basket
-continuously into pre-plant. This prevents horizontal elbow inversion,
-telescoping poles, and the late-recovery pole drop.
+hand contact. `SkiGripReachSolver` converts the fitted fist-channel offset into
+world space for each side, intersects the structural wrist sphere with the
+rigid pole sphere, and performs a bounded fixed-point refinement against the
+final grip orientation. If an airborne authored basket cannot close that chain,
+the solver translates only the free basket by the minimum feasible distance;
+the planted course anchor never moves. A C2 post-release reach floor holds the
+arm's extension as the basket leaves snow, with 0.1 mm of continuation inside
+the 2 mm straight-arm margin, then returns authority to the authored recovery
+arc by the flight apex. At the C2-flat flight apex the renderer changes
+from the previous snow anchor to the next with zero visible weight, then lowers
+the basket continuously into pre-plant. This prevents horizontal elbow
+inversion, telescoping poles, one-sided grip separation, post-release elbow
+re-bend, and the late-recovery pole drop.
 
 The legs retain a narrow parallel double-pole stance throughout the same cycle.
 Canvas represents lateral depth with a small constant offset shared by each

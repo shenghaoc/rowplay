@@ -46,20 +46,29 @@ orientation limited to an 8° slerp for RowErg/BikeErg.
   counter-rotation; flexion/deviation flip-guards reject the 180° palm-flip
   class of solution; per-hand wrist metrics and digit-contact reports are
   exposed for tests and diagnostics.
+- `skiGripReach.ts`: a focused allocation-free per-side closure between the
+  sampled V4 shoulder/wrist sphere, oriented fitted fist channel, and rigid
+  SkiErg pole; infeasible airborne baskets receive only the minimum correction
+  while planted course anchors remain immutable.
+- `renderer3d.ts`: RowErg provisionally settles and restores the current arm
+  frame before its second rigid-oar solve, correcting only structural reach
+  excess so the final contact pass no longer inherits a previous-frame wrist
+  offset.
 - `docs/usage.md` documents the user-visible behaviour.
 
 ## Measured after (branch head, same instrumentation)
 
-| Property                                          | After                                                                                                                                 |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Hand orientation vs grip frame (all three sports) | 0.0° at every sampled phase                                                                                                           |
-| RowErg draw-phase elbow outboard displacement     | ≤0.109 m marker / ≤0.125 m skinned (corridor bound 0.11 m + 8 mm IK residual)                                                         |
-| RowErg draw-phase humeral abduction               | 11–13° (was 45–50°)                                                                                                                   |
-| Extraction branch behaviour                       | continuous, left/right symmetric (≤0.06 m divergence bound over 256 samples)                                                          |
-| Digit closure residual (solve space)              | ≤4 mm for every digit, all sports; deep penetration structurally impossible (contact is the stop condition)                           |
-| RowErg loaded-draw grip-channel contact residual  | 0.0 mm (recovery worst case ~19 mm, from the rigid-oar-arc refine using the previous frame's wrist frame; budgeted at 25 mm in tests) |
-| BikeErg grip-channel contact residual             | ≤17 mm across the crank cycle (was budgeted 170 mm)                                                                                   |
-| Wrist clamp engagement in production frames       | never (`clampedSwing == 0` asserted across 256 phases × 3 sports)                                                                     |
+| Property                                          | After                                                                                                       |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Hand orientation vs grip frame (all three sports) | 0.0° at every sampled phase                                                                                 |
+| RowErg draw-phase elbow outboard displacement     | ≤0.109 m marker / ≤0.125 m skinned (corridor bound 0.11 m + 8 mm IK residual)                               |
+| RowErg draw-phase humeral abduction               | 11–13° (was 45–50°)                                                                                         |
+| Extraction branch behaviour                       | continuous, left/right symmetric (≤0.06 m divergence bound over 256 samples)                                |
+| Digit closure residual (solve space)              | ≤4 mm for every digit, all sports; deep penetration structurally impossible (contact is the stop condition) |
+| RowErg grip-channel contact residual, full cycle  | <5 mm (drive and feathered recovery; previous recovery peak ~19 mm)                                         |
+| SkiErg grip-channel contact residual, full cycle  | <5 mm bilaterally (previous left recovery peak 135 mm at cycle 0.31–0.34)                                   |
+| BikeErg grip-channel contact residual             | ≤17 mm across the crank cycle (was budgeted 170 mm)                                                         |
+| Wrist clamp engagement in production frames       | never (`clampedSwing == 0` asserted across 256 phases × 3 sports)                                           |
 
 Three follow-up fixes in the same branch corrected the SkiErg hold after
 close review of the captures:
@@ -327,20 +336,25 @@ distribution (the intermediate torn state is described above and
 reproducible at `9e225b0`). The pull close-up pair shows the wrist-shelf
 fix; the recovery pair shows the reconnected wrist ring.
 
+## Final contact closure
+
+- **RowErg:** the first rigid-oar solve now receives one reversible arm-only
+  settle, measures the final oriented wrist target against the structural reach
+  sphere, restores the prepared clip pose, and subtracts only the unreachable
+  excess in the second solve. Dense full-cycle production-V4 sampling replaces
+  the former 25 mm exception with a 5 mm budget.
+- **SkiErg:** the former shared scalar reach estimate is replaced by a
+  per-side oriented fist-channel/pole-sphere solve. The solver minimally moves
+  only infeasible airborne baskets, never planted anchors, and holds extension
+  through release before returning to the authored recovery. Dense sampling
+  replaces the former 140 mm exception with a 5 mm bilateral budget.
+
 ## Remaining limitations (stated honestly)
 
-- The RowErg grip-channel contact carries up to ~19 mm of residual during the
-  feathered recovery and ~11 mm at the catch: the rigid oar-arc refine solves
-  against the previous frame's wrist frame before the final orientation lands.
-  The loaded drive closes to zero. Visible as a hair of handle/palm float in
-  the recovery close-ups only.
 - BikeErg fingertips wrap the inboard hood face with the thumb hooked under
   the core — a three-sided cage that reads as a hold, but the authored hood
   body still has no brake lever, so there is deliberately no extended lever
   finger.
-- The SkiErg left-hand recovery reach defect from the equipment work (up to
-  0.135 m at cycle 0.31–0.34, `SKI_V4_CONTACT_TOLERANCE`) predates this work
-  and remains pinned at its measured peak.
 - The SkiErg high-reach wrist keeps a strong cocked-over-the-grip extension
   (~109° in bone terms ≈ 50–70° visually): with the thumb pinned up the
   shaft and the forearm reaching up the near-vertical pole, that extension

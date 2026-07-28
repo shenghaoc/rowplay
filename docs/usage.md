@@ -177,7 +177,11 @@ handle line — a modest natural outward lean that grows with the arm's actual
 bend, never a horizontal chicken wing and never an artificial downward
 collapse; a nearly straight arm is left to hang naturally instead of having a
 bend direction forced onto it, and the boat-local lateral corridor remains as
-a safety bound the natural pose no longer touches. In 3D the visible fingers are closed geometrically against the
+a safety bound the natural pose no longer touches. The V4 contact pass measures
+the current oriented wrist frame against the visible shoulder and structural
+arm reach, keeping each grip channel on its rigid scull through both drive and
+feathered recovery rather than solving against a previous-frame offset. In 3D
+the visible fingers are closed geometrically against the
 actual equipment: each digit flexes until it reaches the 0.023 m scull rubber,
 the SkiErg grip channel, or the brake-hood body and stops at contact, so the
 handle sits inside the finger/thumb enclosure (with the sculling thumbs on the
@@ -194,7 +198,11 @@ the illustrated SkiErg plant, each rigid 1.37 m
 pole holds a deterministic course anchor while its hand remains on the grip.
 The skier advances relative to that basket, releases it near the end of the
 short planted phase, lifts it through recovery, and approaches the next anchor
-without a vertical drop. The 3D elbow is constrained to the shared sagittal
+without a vertical drop. Each side's visible shoulder, structural wrist reach,
+oriented fist channel, and rigid pole are solved together; only an infeasible
+airborne basket may receive a minimal correction, while a planted basket never
+moves. The arms continue extending through release instead of immediately
+re-bending. The 3D elbow is constrained to the shared sagittal
 technique branch rather than a sideways branch inherited from the base clip.
 The same post-clip pass constrains each V4 knee to the same-side deterministic
 marker above its own planted ski; locking the boots may not push either thigh

@@ -142,8 +142,11 @@ figure, readability, and motion specs.
   - [x] Publish real in-app SkiErg evidence: chase and macro-grip poses, the
     four-tier geometry ladder, a full technique cycle, and a manifest recording
     requested vs effective quality and backend
-  - [ ] Resolve the left-hand recovery reach defect (up to 0.135 m at cycle
-    0.31–0.34; right hand and all other sports close to 0.015 m)
+  - [x] Resolve the left-hand recovery reach defect (previously up to 0.135 m
+    at cycle 0.31–0.34): derive each side from its visible V4 shoulder and
+    structural reach, solve the oriented fitted fist channel against the rigid
+    pole sphere, minimally move only infeasible airborne baskets, and enforce
+    a 5 mm full-cycle contact budget with no post-release elbow re-bend
   - [x] Re-derive ski and pole length against the measured 1.64 m rig: skis
     1.90 m (~116%, inside 112–117%) and poles 1.37 m (~83.5%, inside 83–84%).
     The GLB generator scales its authored native profile to the

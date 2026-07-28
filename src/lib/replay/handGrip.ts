@@ -548,8 +548,16 @@ export function orientHandToGripChannel(
   FRAME_AXIS.addScaledVector(FRAME_TARGET, -FRAME_AXIS.dot(FRAME_TARGET));
   FRAME_ROLL.addScaledVector(FRAME_TARGET, -FRAME_ROLL.dot(FRAME_TARGET));
   if (FRAME_AXIS.lengthSq() > 1e-8 && FRAME_ROLL.lengthSq() > 1e-8) {
+    FRAME_AXIS.normalize();
+    FRAME_ROLL.normalize();
+    const cosine = THREE.MathUtils.clamp(FRAME_AXIS.dot(FRAME_ROLL), -1, 1);
+    // Both vectors are perpendicular to FRAME_TARGET, so their signed angle
+    // is an axial roll. Using atan2 keeps the exact 180° case on the shaft
+    // axis; setFromUnitVectors has no unique cross-axis there and can choose a
+    // swing that destroys the alignment established above.
+    const sine = FRAME_AXIS.cross(FRAME_ROLL).dot(FRAME_TARGET);
     hand.quaternion.premultiply(
-      FRAME_SWING.setFromUnitVectors(FRAME_AXIS.normalize(), FRAME_ROLL.normalize()),
+      FRAME_SWING.setFromAxisAngle(FRAME_TARGET, Math.atan2(sine, cosine)),
     );
   }
 }

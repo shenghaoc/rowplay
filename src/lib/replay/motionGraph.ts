@@ -17,6 +17,7 @@ const CURVE_BOUNDARY_EPSILON = 1e-12;
 export const SKI_ELBOW_LOAD_CYCLE = 0.11;
 export const SKI_POLE_RELEASE_START_CYCLE = 0.245;
 export const SKI_POLE_OFF_CYCLE = 0.29;
+export const SKI_POLE_FLIGHT_APEX_CYCLE = 0.42;
 export const SKI_POLE_APPROACH_START_CYCLE = 0.88;
 export const SKI_PREPLANT_START_CYCLE = 0.94;
 
@@ -570,7 +571,13 @@ function sampleSkier(timing: MotionTiming, pose: StrokePose): SkierMotionGraph {
     scale(quinticRamp(cycle, 0.72, 1), -1),
   );
   const poleLift = bump(cycle, SKI_POLE_OFF_CYCLE, 1);
-  const poleFlight = pulse(cycle, SKI_POLE_OFF_CYCLE, 0.42, SKI_POLE_APPROACH_START_CYCLE, 1);
+  const poleFlight = pulse(
+    cycle,
+    SKI_POLE_OFF_CYCLE,
+    SKI_POLE_FLIGHT_APEX_CYCLE,
+    SKI_POLE_APPROACH_START_CYCLE,
+    1,
+  );
 
   // At the cycle seam the basket has already velocity-matched the next snow
   // point. Adding the late C2 pre-plant ramp to the early hold keeps contact
@@ -1281,7 +1288,7 @@ function sampleSkierInto(pose: StrokePose, output: SkierMotionGraph): void {
     curves.skiPoleFlight,
     cycle,
     SKI_POLE_OFF_CYCLE,
-    0.42,
+    SKI_POLE_FLIGHT_APEX_CYCLE,
     SKI_POLE_APPROACH_START_CYCLE,
     1,
   );

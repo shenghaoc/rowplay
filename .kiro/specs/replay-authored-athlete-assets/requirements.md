@@ -71,7 +71,10 @@ losing trustworthy sport timing or equipment contact.
    around each human-scale handle after the authoritative palm contact solve.
    The visual grip SHALL preserve the existing equipment targets and SHALL NOT
    leave mitten-like hands, open floating fingers, or visible handle
-   penetration.
+   penetration. For RowErg and SkiErg, the fitted grip-channel centre SHALL be
+   solved from each visible shoulder, that side's structural arm reach, and
+   the final oriented wrist offset, and SHALL remain within 5 mm of the rigid
+   equipment contact throughout a dense full cycle.
 
 ### Requirement 3: Reliable loading and fallback
 

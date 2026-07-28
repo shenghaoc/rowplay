@@ -63,7 +63,6 @@ import {
 } from "./rowRig";
 import {
   handChannelCentre,
-  handCurlAxisThumbward,
   orientHandToGripChannel,
   refineGripSpinForWrist,
   refineGripTiltForWrist,
@@ -97,6 +96,7 @@ import {
   SKI_GRIP_SHIFT,
   type SkiEquipmentDetail,
 } from "./skiEquipment";
+import { SkiGripReachSolver, skiPostReleaseExtensionAuthority } from "./skiGripReach";
 
 // Resolve lazily because this module is also imported during SSR. The returned
 // MediaQueryList stays live as the OS preference changes, while avoiding a new
@@ -1160,64 +1160,6 @@ function gripContractFor(
 }
 
 /**
- * SkiErg pole grip: lay the hand's authored finger-curl axis along the rigid
- * shaft so the fist closes *around* the pole.
- *
- * The shaft frame supplies the baseline, which fixes the one genuinely free
- * parameter — spin about the pole — continuously with the rigid link. The
- * curl axis is aligned **thumb-ward toward the grip top**: the former
- * nearest-arc auto-flip silently selected the inverted branch (pinky above
- * index, thumb pointing down the shaft) at every phase, which is the
- * upside-down hold that read as palms flipped 180°. A pole grip has exactly
- * one correct end for the thumb, so the sign is a contract, not a distance
- * heuristic.
- *
- * `shaftDirLocal` is the shaft's own direction (grip end → tip) in the hand's
- * **parent** frame, which is where this whole construction lives. Deriving the
- * axis from parent-frame geometry is what keeps the grip heading-independent:
- * an earlier frame built from hand-local angles and a world-space axis drifted
- * a full 120° a quarter lap around the course.
- */
-function orientHandToNordicPole(
-  hand: THREE.Object3D,
-  poleShaft: THREE.Object3D,
-  side: number,
-  shaftDirLocal: THREE.Vector3,
-  athleteRightLocal: THREE.Vector3,
-  scratch: THREE.Quaternion,
-  scratchAxis: THREE.Vector3,
-  scratchTarget: THREE.Vector3,
-  scratchRoll: THREE.Vector3,
-): void {
-  hand.quaternion.copy(poleShaft.quaternion);
-  handCurlAxisThumbward(side, scratchAxis).applyQuaternion(hand.quaternion);
-  // Thumb toward the grip top: the along-shaft target is the *up*-shaft
-  // direction, deterministically, at every phase.
-  scratchTarget.copy(shaftDirLocal).multiplyScalar(-1).normalize();
-  hand.quaternion.premultiply(scratch.setFromUnitVectors(scratchAxis, scratchTarget));
-
-  // Aligning the curl axis leaves exactly one freedom: spin about the shaft.
-  // Inheriting it from the shaft frame put the backs of the hands toward each
-  // other. Resolve it explicitly instead — the palm has to face **inward**, so
-  // the wrist→grip-channel vector points at the athlete's centreline. This is
-  // the parameter the earlier hand-frame angles were really groping for.
-  scratchAxis
-    .set(side * SKI_HAND_FIST_CENTRE.x, SKI_HAND_FIST_CENTRE.y, SKI_HAND_FIST_CENTRE.z)
-    .normalize()
-    .applyQuaternion(hand.quaternion);
-  scratchRoll.copy(athleteRightLocal).multiplyScalar(-side);
-  // Compare only the components across the shaft; the along-shaft parts carry
-  // no roll information.
-  scratchAxis.addScaledVector(scratchTarget, -scratchAxis.dot(scratchTarget));
-  scratchRoll.addScaledVector(scratchTarget, -scratchRoll.dot(scratchTarget));
-  if (scratchAxis.lengthSq() > 1e-8 && scratchRoll.lengthSq() > 1e-8) {
-    hand.quaternion.premultiply(
-      scratch.setFromUnitVectors(scratchAxis.normalize(), scratchRoll.normalize()),
-    );
-  }
-}
-
-/**
  * Aim the authored elbow cuff from the actual arm bend rather than leaving its
  * asymmetric flex groove in a fixed local orientation. Local +Z follows the
  * shoulder-to-wrist chord; local -Y exposes the olecranon to the outside of
@@ -2020,10 +1962,22 @@ function makeRowerAvatar(
   const sampledV4ReachOrigins = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const sampledV4ContactOffsets = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const sampledV4ArmReaches: [number, number] = [BASE_ARM_REACH, BASE_ARM_REACH];
+  const sampledV4ReachCorrections: [number, number] = [0, 0];
   let pendingBodySwing = 0;
   let pendingArmDraw = 0;
   let pendingShoulderSet = 0;
   let pendingHandleTravel = 0;
+  const requestedRowerWristReach = (armReach: number, draw: number): number => {
+    const upperArmLength = armReach * UPPER_ARM_SHARE;
+    const forearmLength = armReach - upperArmLength;
+    return (
+      rowerReachForFlexion(
+        ROWER_DRAW_SOFT_FLEXION + draw * (ROWER_DRAW_FINISH_FLEXION - ROWER_DRAW_SOFT_FLEXION),
+        upperArmLength,
+        forearmLength,
+      ) - 0.002
+    );
+  };
   const placeArms = (
     bodySwing: number,
     armDraw: number,
@@ -2034,6 +1988,7 @@ function makeRowerAvatar(
       readonly reachOrigins: readonly [THREE.Vector3, THREE.Vector3];
       readonly contactOffsets: readonly [THREE.Vector3, THREE.Vector3];
       readonly armReaches: readonly [number, number];
+      readonly reachCorrections: readonly [number, number];
     },
   ): void => {
     // The shoulders lead the late draw but never detach from the torso. A
@@ -2091,11 +2046,7 @@ function makeRowerAvatar(
       // reach-relaxation smoothstep and boundary→staged yaw blend re-eased
       // this path twice and compressed the visible pull into ~3 frames.
       const requestedReach =
-        rowerReachForFlexion(
-          ROWER_DRAW_SOFT_FLEXION + draw * (ROWER_DRAW_FINISH_FLEXION - ROWER_DRAW_SOFT_FLEXION),
-          activeUpperArmLength,
-          activeForearmLength,
-        ) - 0.002;
+        requestedRowerWristReach(activeArmReach, draw) - (v4Refinement?.reachCorrections[i] ?? 0);
       const solvedYaw = solveRowerOarYaw(
         v4Refinement?.reachOrigins[i] ?? arm.shoulderPoint,
         oar.group.position.x - rower.position.x,
@@ -2332,7 +2283,14 @@ function makeRowerAvatar(
   if (!leftArm || !rightArm || !leftLeg || !rightLeg) {
     throw new Error("RowErg V4 target rig is incomplete");
   }
-  const refineV4Targets = (motion: ReplayV4MotionController): void => {
+  const v4ArmRefinement = {
+    shoulders: sampledV4Shoulders,
+    reachOrigins: sampledV4ReachOrigins,
+    contactOffsets: sampledV4ContactOffsets,
+    armReaches: sampledV4ArmReaches,
+    reachCorrections: sampledV4ReachCorrections,
+  } as const;
+  const sampleV4ArmRefinement = (motion: ReplayV4MotionController): void => {
     motion.getShoulderWorld("left", sampledV4Shoulders[0]);
     motion.getShoulderWorld("right", sampledV4Shoulders[1]);
     motion.getHandContactOffsetWorld("left", sampledV4ContactOffsets[0]);
@@ -2347,6 +2305,12 @@ function makeRowerAvatar(
     // oar-pin circles and shared elbow branch markers.
     rower.worldToLocal(sampledV4Shoulders[0]);
     rower.worldToLocal(sampledV4Shoulders[1]);
+    rower.worldToLocal(sampledV4ReachOrigins[0]);
+    rower.worldToLocal(sampledV4ReachOrigins[1]);
+    sampledV4ContactOffsets[0].copy(sampledV4ReachOrigins[0]).sub(sampledV4Shoulders[0]);
+    sampledV4ContactOffsets[1].copy(sampledV4ReachOrigins[1]).sub(sampledV4Shoulders[1]);
+  };
+  const refineV4Targets = (motion: ReplayV4MotionController): void => {
     motion.getLegJointTargetWorld("left", sampledV4Knees[0]);
     motion.getLegJointTargetWorld("right", sampledV4Knees[1]);
     rower.worldToLocal(sampledV4Knees[0]);
@@ -2356,16 +2320,40 @@ function makeRowerAvatar(
     // asking that chain to imitate the shorter procedural fallback leg.
     leftLeg.knee.position.copy(sampledV4Knees[0]);
     rightLeg.knee.position.copy(sampledV4Knees[1]);
-    rower.worldToLocal(sampledV4ReachOrigins[0]);
-    rower.worldToLocal(sampledV4ReachOrigins[1]);
-    sampledV4ContactOffsets[0].copy(sampledV4ReachOrigins[0]).sub(sampledV4Shoulders[0]);
-    sampledV4ContactOffsets[1].copy(sampledV4ReachOrigins[1]).sub(sampledV4Shoulders[1]);
-    placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel, {
-      shoulders: sampledV4Shoulders,
-      reachOrigins: sampledV4ReachOrigins,
-      contactOffsets: sampledV4ContactOffsets,
-      armReaches: sampledV4ArmReaches,
-    });
+    // The first rigid-oar solve changes the full grip-channel frame. Settle the
+    // prepared arm onto it, then measure how far that post-IK frame exceeds the
+    // structural wrist sphere. The second solve cancels only that excess;
+    // otherwise recovery retains the clip wrist offset and reopens centimetres
+    // of contact.
+    sampledV4ReachCorrections[0] = 0;
+    sampledV4ReachCorrections[1] = 0;
+    sampleV4ArmRefinement(motion);
+    placeArms(
+      pendingBodySwing,
+      pendingArmDraw,
+      pendingShoulderSet,
+      pendingHandleTravel,
+      v4ArmRefinement,
+    );
+    if (!motion.settleHandContacts()) return;
+    sampleV4ArmRefinement(motion);
+    for (let i = 0; i < arms.length; i++) {
+      const arm = arms[i];
+      if (!arm) continue;
+      arm.wristTarget.copy(arm.handTarget).sub(sampledV4ContactOffsets[i]);
+      sampledV4ReachCorrections[i] = Math.max(
+        0,
+        arm.wristTarget.distanceTo(sampledV4Shoulders[i]) - (sampledV4ArmReaches[i] - 0.002),
+      );
+    }
+    if (!motion.restoreHandPoseAfterSettle()) return;
+    placeArms(
+      pendingBodySwing,
+      pendingArmDraw,
+      pendingShoulderSet,
+      pendingHandleTravel,
+      v4ArmRefinement,
+    );
   };
   finalizeAvatar(group, castShadow, opacity);
   const rowerAvatar: Avatar = {
@@ -2777,6 +2765,10 @@ function makeSkierAvatar(
   const solvedHandWorld = new THREE.Vector3();
   const shoulderWorld = new THREE.Vector3();
   const sampledV4Shoulders = [new THREE.Vector3(), new THREE.Vector3()] as const;
+  const sampledV4ArmReaches: [number, number] = [
+    SKI_ATHLETE_PROPORTIONS.upperArmLength + SKI_ATHLETE_PROPORTIONS.forearmLength,
+    SKI_ATHLETE_PROPORTIONS.upperArmLength + SKI_ATHLETE_PROPORTIONS.forearmLength,
+  ];
   const tipLocalPoint = new THREE.Vector3();
   const groundUpLocal = new THREE.Vector3();
   const courseCenterAtPlant = new THREE.Vector3();
@@ -2784,16 +2776,16 @@ function makeSkierAvatar(
   const courseForwardWorld = new THREE.Vector3();
   const athleteRightLocal = new THREE.Vector3();
   const inverseUpperWorld = new THREE.Quaternion();
-  const gripPitch = new THREE.Quaternion();
-  const gripCurlAxis = new THREE.Vector3();
-  const gripCurlTarget = new THREE.Vector3();
-  const gripCurlRoll = new THREE.Vector3();
+  const gripWorldQuaternion = new THREE.Quaternion();
+  const gripThumbwardLocal = new THREE.Vector3();
+  const gripRollLocal = new THREE.Vector3();
   // Fixed arm lengths must contain every authored hand keyframe. A finish
   // target outside this reach collapses to a short pull no matter how far
   // aft the preferred Z claims to go.
   const UPPER_ARM_LENGTH = SKI_ATHLETE_PROPORTIONS.upperArmLength;
   const FOREARM_LENGTH = SKI_ATHLETE_PROPORTIONS.forearmLength;
   const MAX_ARM_REACH = UPPER_ARM_LENGTH + FOREARM_LENGTH - 0.02;
+  const MINIMUM_ARM_REACH = Math.abs(UPPER_ARM_LENGTH - FOREARM_LENGTH) + 0.008;
   let contactArmReach = UPPER_ARM_LENGTH + FOREARM_LENGTH;
   const THIGH_LENGTH = SKI_ATHLETE_PROPORTIONS.thighLength;
   const SHIN_LENGTH = SKI_ATHLETE_PROPORTIONS.shinLength;
@@ -2802,6 +2794,7 @@ function makeSkierAvatar(
   // envelope; the forward plant offset keeps the pole+arm chain away from its
   // collinear singularity through the press.
   const POLE_LENGTH = SKI_ATHLETE_PROPORTIONS.poleLength;
+  const skiGripReachSolver = new SkiGripReachSolver(POLE_LENGTH, MINIMUM_ARM_REACH);
   const POLE_CONTACT_Y = 0.055;
   // The SkiErg action is a compact double-pole press, not a deep squat. Keep
   // the pelvis high enough for the legs to read as springy, then make the
@@ -2962,6 +2955,23 @@ function makeSkierAvatar(
 
       desiredHandWorld.copy(arm.handTarget);
       upper.localToWorld(desiredHandWorld);
+      shoulderWorld.copy(arm.shoulderPoint);
+      upper.localToWorld(shoulderWorld);
+      const structuralV4Reach = sampledV4ArmReaches[i]!;
+      if (hasSampledV4Shoulders) {
+        // Author the free pole trajectory from a point the visible arm can
+        // actually reach. The former path was clamped around a static
+        // procedural shoulder with total arm+palm length, so immediately
+        // after pole-off the basket eased toward a hand point 3–14 cm beyond
+        // the sampled V4 shoulder. Clamping this *preference* to the real
+        // structural reach keeps the shared C2 flight timing intact; the
+        // rigid pole/oriented-offset passes below then find the exact contact.
+        skiGripReachSolver.clampPreferredContact(
+          shoulderWorld,
+          desiredHandWorld,
+          structuralV4Reach,
+        );
+      }
 
       setPlantTipWorld(plantTipWorld, arm.side, pose, meters, outer);
 
@@ -2969,7 +2979,10 @@ function makeSkierAvatar(
       // from the measured shallow pole-off attitude (~23°) toward a steep
       // plant (~80°), while a clearance envelope keeps it above the snow.
       const poleAngle = THREE.MathUtils.degToRad(80 - motion.poleSweep * 57);
-      const clearance = 0.08 + motion.poleLift * 0.3;
+      // The basket needs visible snow clearance without rising so fast that a
+      // rigid classic-length pole outruns the athlete's arm during release.
+      // 20 cm of lift above the base envelope preserves both contracts.
+      const clearance = 0.08 + motion.poleLift * 0.2;
       const desiredVertical = -Math.sin(poleAngle) * POLE_LENGTH;
       const vertical = Math.min(
         POLE_LENGTH * 0.985,
@@ -2995,103 +3008,143 @@ function makeSkierAvatar(
       freeTipWorld.lerp(plantTipWorld, 1 - motion.poleFlight);
       tipWorld.lerpVectors(freeTipWorld, plantTipWorld, motion.poleContact);
 
-      shoulderWorld.copy(arm.shoulderPoint);
-      upper.localToWorld(shoulderWorld);
-      // `contactArmReach` includes the palm offset beyond the terminal hand
-      // bone. Reserve only solver epsilon: subtracting the palm length—or
-      // counting it twice—breaks the visible V4 reach contract.
-      const maximumReach = Math.min(MAX_ARM_REACH, Math.max(0.4, contactArmReach - 0.002));
+      // A scalar total reach is only a broad first estimate: the grip-channel
+      // offset does not point along the shoulder→contact ray at every phase.
+      // The passes below enforce the exact oriented offset. Starting from the
+      // fitted channel length (rather than the asset's unrelated palm marker)
+      // keeps that fixed-point solve close and symmetric.
+      const maximumReach = Math.min(
+        MAX_ARM_REACH,
+        Math.max(
+          0.4,
+          hasSampledV4Shoulders
+            ? skiGripReachSolver.maximumContactReach(structuralV4Reach)
+            : contactArmReach - 0.002,
+        ),
+      );
       solveRigidContactPoint3D(
         shoulderWorld,
         desiredHandWorld,
         tipWorld,
         POLE_LENGTH,
-        Math.abs(UPPER_ARM_LENGTH - FOREARM_LENGTH) + 0.008,
+        MINIMUM_ARM_REACH,
         maximumReach,
         solvedHandWorld,
       );
-      arm.handTarget.copy(solvedHandWorld);
-      upper.worldToLocal(arm.handTarget);
-      // Recompute the bend plane from the solved target. This keeps the elbow
-      // on its anatomical outside/back branch instead of preserving a hint for
-      // a preferred point the hand no longer occupies.
-      setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
-        lateral: bendLateral,
-        up: bendUp,
-        aft: bendAft,
-      });
 
-      solveTwoBone3D(
-        arm.shoulderPoint,
-        arm.handTarget,
-        UPPER_ARM_LENGTH,
-        FOREARM_LENGTH,
-        arm.bendHint,
-        arm.elbowPoint,
-        arm.handPoint,
-      );
-      placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
-      placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
-      arm.elbow.position.copy(arm.elbowPoint);
-      orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
-      arm.hand.position.copy(arm.handPoint);
+      // The V4 constraint reaches with a wrist bone plus an oriented local
+      // grip-channel offset. Solve that exact geometry as a short fixed-point:
+      // every pass establishes the rigid pole and final wrist frame, then
+      // shifts the reach-sphere origin by the resulting world-space offset.
+      // The final pass only places the converged result. Procedural fallback
+      // takes one pass because its visible hand point is the contact itself.
+      const postReleaseExtension = skiPostReleaseExtensionAuthority(motion.cycle);
+      const contactPasses = hasSampledV4Shoulders ? (postReleaseExtension > 0.95 ? 4 : 2) : 1;
+      for (let contactPass = 0; contactPass < contactPasses; contactPass++) {
+        arm.handTarget.copy(solvedHandWorld);
+        upper.worldToLocal(arm.handTarget);
+        // Recompute the bend plane from the solved target. This keeps the elbow
+        // on its anatomical outside/back branch instead of preserving a hint
+        // for a preferred point the hand no longer occupies.
+        setArmBendHint(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint, {
+          lateral: bendLateral,
+          up: bendUp,
+          aft: bendAft,
+        });
 
-      // The solved hand and the basket are the endpoints of one rigid pole in
-      // every phase. Neither planted nor recovering hardware may telescope.
-      tipLocalPoint.copy(tipWorld);
-      upper.worldToLocal(tipLocalPoint);
-      placeFigureSegmentBetween(pole.shaft, arm.handPoint, tipLocalPoint);
-      pole.grip.quaternion.copy(pole.shaft.quaternion);
-      // The hand wraps the upper portion of the grip, not its geometric centre.
-      // A 0.15 m capsule centred at the hand reads as a grip floating above
-      // the shaft instead of enclosing it. Shift the grip toward the tip so
-      // the hand sits in the upper ~30 % and the shaft runs through the grip.
-      pole.grip.position
-        .copy(arm.handPoint)
-        .addScaledVector(
-          SEGMENT_DIR.set(
-            tipLocalPoint.x - arm.handPoint.x,
-            tipLocalPoint.y - arm.handPoint.y,
-            tipLocalPoint.z - arm.handPoint.z,
-          ).normalize(),
-          SKI_GRIP_SHIFT,
+        solveTwoBone3D(
+          arm.shoulderPoint,
+          arm.handTarget,
+          UPPER_ARM_LENGTH,
+          FOREARM_LENGTH,
+          arm.bendHint,
+          arm.elbowPoint,
+          arm.handPoint,
         );
-      pole.basket.position.copy(tipLocalPoint).addScaledVector(groundUpLocal, 0.026);
-      pole.basket.quaternion.copy(inverseUpperWorld);
-      pole.tipAnchor.position.copy(tipLocalPoint);
-      // Establish the terminal frame only after the current-frame rigid pole
-      // has been placed. `SEGMENT_DIR` still holds the grip-end → tip direction
-      // set just above, which is the axis the fist has to close around.
-      orientHandToNordicPole(
-        arm.hand,
-        pole.shaft,
-        arm.side,
-        SEGMENT_DIR,
-        athleteRightLocal,
-        gripPitch,
-        gripCurlAxis,
-        gripCurlTarget,
-        gripCurlRoll,
-      );
-      // Spend the remaining spin freedom on a flat wrist: the hand's long
-      // axis follows the solved forearm as nearly as the inward-palm cone
-      // allows, so the pole-frame demand no longer shears the wrist skin.
-      GRIP_FOREARM_SCRATCH.set(
-        arm.handPoint.x - arm.elbowPoint.x,
-        arm.handPoint.y - arm.elbowPoint.y,
-        arm.handPoint.z - arm.elbowPoint.z,
-      );
-      refineGripSpinForWrist(arm.hand, arm.side, SEGMENT_DIR, GRIP_FOREARM_SCRATCH, SKI_PALM_CONE);
-      // Second relief: let the shaft ride diagonally across the palm (palm
-      // facing unchanged — the palm normal is the rotation axis) so the hand
-      // continues the forearm instead of tearing the wrist ring.
-      refineGripTiltForWrist(
-        arm.hand,
-        arm.side,
-        GRIP_FOREARM_SCRATCH,
-        SKI_PALM_TILT_COMFORT,
-        SKI_PALM_TILT,
-      );
+        placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
+        placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
+        arm.elbow.position.copy(arm.elbowPoint);
+        orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
+        arm.hand.position.copy(arm.handPoint);
+
+        // The solved hand and the basket are the endpoints of one rigid pole in
+        // every phase. Neither planted nor recovering hardware may telescope.
+        tipLocalPoint.copy(tipWorld);
+        upper.worldToLocal(tipLocalPoint);
+        placeFigureSegmentBetween(pole.shaft, arm.handPoint, tipLocalPoint);
+        pole.grip.quaternion.copy(pole.shaft.quaternion);
+        // The hand wraps the upper portion of the grip, not its geometric centre.
+        // A 0.15 m capsule centred at the hand reads as a grip floating above
+        // the shaft instead of enclosing it. Shift the grip toward the tip so
+        // the hand sits in the upper ~30 % and the shaft runs through the grip.
+        pole.grip.position
+          .copy(arm.handPoint)
+          .addScaledVector(
+            SEGMENT_DIR.set(
+              tipLocalPoint.x - arm.handPoint.x,
+              tipLocalPoint.y - arm.handPoint.y,
+              tipLocalPoint.z - arm.handPoint.z,
+            ).normalize(),
+            SKI_GRIP_SHIFT,
+          );
+        pole.basket.position.copy(tipLocalPoint).addScaledVector(groundUpLocal, 0.026);
+        pole.basket.quaternion.copy(inverseUpperWorld);
+        pole.tipAnchor.position.copy(tipLocalPoint);
+        // Thumb points toward the grip top and the palm rides inward. Reuse the
+        // one shared equipment-channel frame used by sculls and bike hoods;
+        // SkiErg no longer maintains a duplicate orientation system.
+        gripThumbwardLocal.copy(SEGMENT_DIR).multiplyScalar(-1);
+        gripRollLocal.copy(athleteRightLocal).multiplyScalar(-arm.side);
+        orientHandToGripChannel(
+          arm.hand,
+          arm.side,
+          SKI_HAND_FIST_RADIUS,
+          gripThumbwardLocal,
+          gripRollLocal,
+          pole.shaft.quaternion,
+        );
+        // Spend the remaining spin freedom on a flat wrist: the hand's long
+        // axis follows the solved forearm as nearly as the inward-palm cone
+        // allows, so the pole-frame demand no longer shears the wrist skin.
+        GRIP_FOREARM_SCRATCH.set(
+          arm.handPoint.x - arm.elbowPoint.x,
+          arm.handPoint.y - arm.elbowPoint.y,
+          arm.handPoint.z - arm.elbowPoint.z,
+        );
+        refineGripSpinForWrist(
+          arm.hand,
+          arm.side,
+          SEGMENT_DIR,
+          GRIP_FOREARM_SCRATCH,
+          SKI_PALM_CONE,
+        );
+        // Second relief: let the shaft ride diagonally across the palm (palm
+        // facing unchanged — the palm normal is the rotation axis) so the hand
+        // continues the forearm instead of tearing the wrist ring.
+        refineGripTiltForWrist(
+          arm.hand,
+          arm.side,
+          GRIP_FOREARM_SCRATCH,
+          SKI_PALM_TILT_COMFORT,
+          SKI_PALM_TILT,
+        );
+
+        if (contactPass + 1 < contactPasses) {
+          upper.getWorldQuaternion(gripWorldQuaternion);
+          skiGripReachSolver.solve(
+            shoulderWorld,
+            desiredHandWorld,
+            tipWorld,
+            structuralV4Reach,
+            arm.side,
+            gripWorldQuaternion,
+            arm.hand.quaternion,
+            motion.poleContact < 1 - 1e-9,
+            solvedHandWorld,
+            postReleaseExtension,
+          );
+        }
+      }
     }
   };
 
@@ -3139,9 +3192,13 @@ function makeSkierAvatar(
   const refineV4Targets = (motion: ReplayV4MotionController): void => {
     motion.getShoulderWorld("left", sampledV4Shoulders[0]);
     motion.getShoulderWorld("right", sampledV4Shoulders[1]);
+    sampledV4ArmReaches[0] = motion.getArmReach("left");
+    sampledV4ArmReaches[1] = motion.getArmReach("right");
     // The pole authority and the V4 skin share the avatar parent but not the
     // same torso node. Convert the visible shoulder roots into the pole
-    // solver's frame before the final course-space contact pass.
+    // solver's frame before the final course-space contact pass; each side's
+    // authored structural reach remains separate so an asymmetric rig cannot
+    // reopen one hand while the other stays attached.
     upper.worldToLocal(sampledV4Shoulders[0]);
     upper.worldToLocal(sampledV4Shoulders[1]);
     hasSampledV4Shoulders = true;
