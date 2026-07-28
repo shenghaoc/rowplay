@@ -4695,6 +4695,48 @@ describe("CourseRenderer3D", () => {
       }
     }, 30_000);
 
+    it("carries SkiErg pronation in the forearm with continuous segments", () => {
+      // The double-pole's hand↔forearm axial demand sweeps ~±100° per cycle.
+      // The wrist keeps none of it (REPLAY_V4_SKI_WRIST_TWIST_KEEP = 0): the
+      // forearm carries the pronation via the world-preserving counter-
+      // rotation. Zero is also the only flip-safe cap — the reach pose's
+      // near-half-turn delta decomposes ambiguously, and the two branches
+      // land the forearm exactly 2·cap apart in world space (a measured 149°
+      // per-sample forearm snap under the former 75° budget, 30° at 15°, and
+      // physically coincident at 0). The bound below is the pole-plant
+      // transient the pole-led hand frame itself carries (~34°/sample);
+      // anything near the old snap fails immediately.
+      const renderer = rendererFor("skierg");
+      try {
+        const scene = getScene(renderer);
+        const previous = new Map<string, THREE.Quaternion>();
+        for (let step = 0; step <= 256; step++) {
+          const cycle = step / 256;
+          renderer.render(makeSportState("skierg", cycle), false);
+          scene.updateMatrixWorld(true);
+          const { motion } = v4Lane(renderer);
+          for (const side of ["left", "right"] as const) {
+            expect(
+              Math.abs(motion.getWristMetrics(side).twist),
+              `${side} ski wrist keeps no axial twist at ${cycle}`,
+            ).toBeLessThanOrEqual(1e-9);
+            const cap = side === "left" ? "Left" : "Right";
+            const forearm = scene
+              .getObjectByName(`v4${cap}Forearm`)!
+              .getWorldQuaternion(new THREE.Quaternion());
+            const prior = previous.get(side);
+            if (prior) {
+              const stepAngle = 2 * Math.acos(Math.min(1, Math.abs(forearm.dot(prior))));
+              expect(stepAngle, `${side} forearm segment continuous at ${cycle}`).toBeLessThan(0.7);
+            }
+            previous.set(side, forearm);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    }, 30_000);
+
     it("holds every wrist inside its measured envelope without corkscrew or clamps", () => {
       // Envelopes are the shipped rig's measured demand plus margin, in the
       // hand bone's own axis conventions (see REPLAY_V4_WRIST_* docs). A
@@ -4706,7 +4748,10 @@ describe("CourseRenderer3D", () => {
         // the deep fold now overlaps the final shoulder swing, peaking at
         // 1.78 in the hand bone's (non-anatomical) axis convention.
         rower: { twist: 1.36, flexion: 2.06, deviation: 1.82 },
-        skierg: { twist: 1.36, flexion: 2.0, deviation: 1.75 },
+        // SkiErg wrists keep zero axial twist (REPLAY_V4_SKI_WRIST_TWIST_KEEP
+        // — pronation lives in the forearm); the unchanged physical bend then
+        // re-projects onto the deviation axis, measured 2.02 at the reach.
+        skierg: { twist: 0.001, flexion: 2.0, deviation: 2.06 },
         bike: { twist: 1.36, flexion: 1.62, deviation: 0.8 },
       } as const;
       for (const sport of ["rower", "skierg", "bike"] as const) {

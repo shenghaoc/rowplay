@@ -166,6 +166,31 @@ export const REPLAY_V4_WRIST_TWIST_BUDGET = THREE.MathUtils.degToRad(75);
 export const REPLAY_V4_WRIST_FLEXION_BUDGET = THREE.MathUtils.degToRad(150);
 export const REPLAY_V4_WRIST_DEVIATION_BUDGET = THREE.MathUtils.degToRad(150);
 
+/**
+ * SkiErg-specific wrist twist keep-cap.
+ *
+ * The classic double-pole swings the forearm through ~100° of elevation while
+ * the hand stays locked to a near-vertical pole with the palms facing each
+ * other, so the hand↔forearm *relative* axial rotation legitimately sweeps
+ * ~±100° per cycle. Under the generic 75° budget the wrist itself carried the
+ * first 75° of that — a visible corkscrew at the high reach and through the
+ * recovery, with the forearm only absorbing the overflow. A real athlete
+ * absorbs essentially all of it as forearm pronation/supination (the
+ * radioulnar joint — visually the forearm segment); the wrist joint itself
+ * has no meaningful axial freedom. The redistribution is the existing
+ * world-preserving forearm counter-rotation, so the grip frame — palm-inward
+ * contract, thumb-up stacking, pole contact — is bit-exact unchanged by this
+ * cap.
+ *
+ * The cap is exactly zero for a second, measured reason: the reach pose's
+ * hand↔forearm delta approaches a half-turn, where the twist⁄swing
+ * decomposition's branch is numerically unstable frame-to-frame. The two
+ * branches land the forearm 2·cap apart in world space — a measured 149°
+ * forearm snap under the 75° budget and a 30° snap at a 15° cap — and at 0
+ * they coincide physically, so the instability cannot render at all.
+ */
+export const REPLAY_V4_SKI_WRIST_TWIST_KEEP = 0;
+
 /** Per-hand wrist metrics after the latest constrained solve (radians). */
 export interface ReplayV4WristMetrics {
   /** Pronation/supination the wrist itself carries relative to rest. */
@@ -2131,11 +2156,11 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       .copy(this.wristDelta)
       .multiply(this.forearmTwistQuaternion.copy(this.wristTwist).invert());
 
-    const keptTwist = THREE.MathUtils.clamp(
-      twistAngle,
-      -REPLAY_V4_WRIST_TWIST_BUDGET,
-      REPLAY_V4_WRIST_TWIST_BUDGET,
-    );
+    const twistBudget =
+      this.options.sport === "skierg"
+        ? REPLAY_V4_SKI_WRIST_TWIST_KEEP
+        : REPLAY_V4_WRIST_TWIST_BUDGET;
+    const keptTwist = THREE.MathUtils.clamp(twistAngle, -twistBudget, twistBudget);
     const excess = twistAngle - keptTwist;
     if (Math.abs(excess) > 1e-5) {
       // The forearm's long axis passes through both the elbow and the wrist,

@@ -1,0 +1,109 @@
+{
+  "commit": "22bf29e+ski-wrist-fix (working tree)",
+  "appBundle": "/_app/immutable/entry/app.D-5YG4mp.js",
+  "note": "REPLAY_V4_SKI_WRIST_TWIST_KEEP=0: wrist twist 0 at every phase, pronation carried by the forearm, forearm steps \u226429\u00b0/sample",
+  "evidence": [
+    {
+      "kind": "still",
+      "file": "ski-reach.jpg",
+      "phase": "reach",
+      "seconds": 0.05,
+      "camera": "normal",
+      "sport": "ski",
+      "workout": "1003",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WebGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "ski-pull.jpg",
+      "phase": "pull",
+      "seconds": 0.55,
+      "camera": "normal",
+      "sport": "ski",
+      "workout": "1003",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WebGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "ski-recovery.jpg",
+      "phase": "recovery",
+      "seconds": 1.4,
+      "camera": "normal",
+      "sport": "ski",
+      "workout": "1003",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WebGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "ski-reach-grip.jpg",
+      "phase": "reach-grip",
+      "seconds": 0.05,
+      "camera": "grip",
+      "sport": "ski",
+      "workout": "1003",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WebGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "ski-pull-grip.jpg",
+      "phase": "pull-grip",
+      "seconds": 0.55,
+      "camera": "grip",
+      "sport": "ski",
+      "workout": "1003",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WebGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    },
+    {
+      "kind": "still",
+      "file": "ski-recovery-grip.jpg",
+      "phase": "recovery-grip",
+      "seconds": 1.4,
+      "camera": "grip",
+      "sport": "ski",
+      "workout": "1003",
+      "requestedQuality": "ultra",
+      "effectiveQuality": "high",
+      "backend": "WebGL",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      }
+    }
+  ]
+}
