@@ -349,6 +349,54 @@ fix; the recovery pair shows the reconnected wrist ring.
   through release before returning to the authored recovery. Dense sampling
   replaces the former 140 mm exception with a 5 mm bilateral budget.
 
+## SkiErg clip re-authored onto the pole-grip branch (partial fix — read the limits)
+
+A third review of the SkiErg hand ("still torn apart") was correct. Staged
+diagnostics through every solve stage (authored clip → grip frame → spin/tilt
+reliefs → V4 two-bone passes → wrist constrain → pronation distribution),
+recording joint frames, axis angles and skinned wrist-ring triangle metrics,
+located the source:
+
+- **The authored ski clip held its poles on the wrong branch at every phase.**
+  Measured as the clip-forearm⁻¹ × grip-target rotation at each key time, the
+  runtime had to drag the hand **65–113°** away from the clip prior at _every_
+  sampled phase. Every previous ski fix in this branch was a runtime patch
+  redistributing that error rather than removing it.
+
+**What this commit changes:** the clip's `v4LeftHand` / `v4RightHand` tracks
+are re-authored onto the pole-grip branch — each key measured from the runtime
+grip-channel target frame (thumb to grip top, palm inward, spin/tilt resolved)
+at that key's own cycle, mirrored for the right hand. The half-turn runtime
+pre-alignment (`alignSkiArmPronation`) is deleted; the small residual
+pronation distribution (`distributeSkiElbowTwist`) remains.
+
+Measured after (same harness): clip→target hand correction falls from 65–113°
+to **0.1–24°** across the cycle, with most keys under 5°. GLB/USDZ/contract
+regenerated from source (GLB sha256 `66aebaf3…`, 5,069,244 B).
+
+### Honest status: the reported defect is improved, not eliminated
+
+The pole is enclosed by fingers and thumb at every phase and the hold reads
+right-way-up with palms inward, but **a visible crease/notch remains at the
+wrist on several phases** (most legible around the high reach and late
+recovery in the `grip` close-up). Two things this commit does _not_ do:
+
+1. **No coupled elbow/grip solve.** I prototyped one (choose the elbow station
+   on its circle so the forearm meets the pole near the hand's neutral-wrist
+   cone, ≈70.6° from the grip-channel axis, with a palm-floored closed-form
+   spin choice). It measurably improved the worst phases but its branch
+   selection could flip between adjacent samples, producing 0.09 m/sample
+   elbow and 1.68 rad/sample forearm steps — a new snap. Shipping a snap to
+   remove a crease is not a trade worth making, so it was reverted. A
+   continuous (hysteresis-free, deterministic) station selection is the
+   correct next step.
+2. **No deformation helper bones.** The forearm is still a single skinned
+   segment into the hand. Distributing residual pronation across
+   proximal/distal twist helpers plus a wrist corrective — and reweighting the
+   wrist ring across them — remains the structural fix for the crease itself,
+   and requires the Blender armature/weights, loader, USDZ, contract,
+   validators and docs to move together.
+
 ## Remaining limitations (stated honestly)
 
 - BikeErg fingertips wrap the inboard hood face with the thumb hooked under
