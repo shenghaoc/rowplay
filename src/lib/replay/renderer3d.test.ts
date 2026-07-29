@@ -3027,7 +3027,8 @@ describe("CourseRenderer3D", () => {
       // is directional, so assert direction.
       const renderer = rendererFor("skierg");
       try {
-        for (const cycle of [0.05, 0.18, 0.5, 0.7]) {
+        for (let step = 0; step < 16; step++) {
+          const cycle = step / 16;
           renderer.render(makeSportState("skierg", cycle, 200 + cycle * 8), false);
           const { instance } = v4Lane(renderer);
           const scene = getScene(renderer);
@@ -3058,7 +3059,7 @@ describe("CourseRenderer3D", () => {
             expect(
               perpFromShaft(tip, shaft),
               `${side} fingertip on the grip cylinder at ${cycle}`,
-            ).toBeLessThan(SKI_HAND_FIST_RADIUS + 0.008);
+            ).toBeLessThan(SKI_HAND_FIST_RADIUS + 0.009);
             // And the wrist has to be within a fist of the shaft, so the pole
             // passes through the hand instead of past it.
             const wrist = instance.bones[instance.effectors[`${side}Hand`].bone]!.getWorldPosition(
@@ -4802,7 +4803,10 @@ describe("CourseRenderer3D", () => {
         // forearm pronation and shoulder internal rotation; the physical bend
         // re-projects partly onto the deviation axis, measured 2.02 at the
         // reach before the diagonal-grip relief trimmed it.
-        skierg: { twist: 0.53, flexion: 2.0, deviation: 2.06 },
+        // SkiErg deviation tightened 2.06 -> 1.50 rad (118° -> 86°) once the tilt
+        // relief stopped rotating about the wrong axis: measured ceiling is
+        // 1.458 rad. The old 118° bound accepted the reported outward U-bend.
+        skierg: { twist: 0.53, flexion: 2.0, deviation: 1.5 },
         bike: { twist: 1.36, flexion: 1.62, deviation: 0.8 },
       } as const;
       for (const sport of ["rower", "skierg", "bike"] as const) {

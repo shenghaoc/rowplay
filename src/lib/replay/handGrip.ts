@@ -246,7 +246,12 @@ export function refineGripTiltForWrist(
   comfort: number,
   maxTilt: number,
 ): void {
-  handPalmNormalIn(side, FRAME_TARGET).applyQuaternion(hand.quaternion).normalize();
+  // Rotate about the TRUE palm normal. This used `HAND_PALM_NORMAL_IN`, which
+  // is the channel-construction ray sitting 75.5° away — so the "palm facing
+  // unchanged" guarantee in this function's own contract was false, and the
+  // tilt silently re-rolled the palm by up to `maxTilt` after the grip frame
+  // had deliberately set it. That is what let the inversion return.
+  handPalmNormalOut(side, FRAME_TARGET).applyQuaternion(hand.quaternion).normalize();
   handLongAxis(side, SPIN_LONG).applyQuaternion(hand.quaternion);
   SPIN_LONG.addScaledVector(FRAME_TARGET, -SPIN_LONG.dot(FRAME_TARGET));
   SPIN_FOREARM.copy(forearmDir).addScaledVector(FRAME_TARGET, -forearmDir.dot(FRAME_TARGET));
