@@ -85,6 +85,19 @@ export const REPLAY_V4_HAND_HELPER_NAMES = [
 
 export type ReplayV4HandHelperName = (typeof REPLAY_V4_HAND_HELPER_NAMES)[number];
 
+/** Runtime names for the production forearm-twist and wrist-volume helpers. */
+export const REPLAY_V4_FOREARM_DEFORMATION_HELPER_NAMES = [
+  "v4LeftForearmTwistProximal",
+  "v4LeftForearmTwistDistal",
+  "v4LeftWristCorrective",
+  "v4RightForearmTwistProximal",
+  "v4RightForearmTwistDistal",
+  "v4RightWristCorrective",
+] as const;
+
+export type ReplayV4ForearmDeformationHelperName =
+  (typeof REPLAY_V4_FOREARM_DEFORMATION_HELPER_NAMES)[number];
+
 /** Compile-time bridge: authoring sports/bones must stay equal to runtime Sport/bones. */
 type AssertEqual<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : never;

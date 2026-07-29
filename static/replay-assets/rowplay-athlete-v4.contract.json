@@ -5,13 +5,13 @@
   "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 5069244,
-    "sha256": "66aebaf3b257a4e17f33d5e8bbab3c110862aa6e64b27b7628850c78c42cc747"
+    "byteCount": 5071300,
+    "sha256": "d2833fea936037d3ad5d66b13067471886374ad7079da5f159fbd488fadafdda"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 11830588,
-    "sha256": "7460ddefecab1bb9f2b26ae2472ebb7d13baef27b542bc004730abac681d5ac8"
+    "byteCount": 11839148,
+    "sha256": "cd617c35e08b3a23f51b2b8f005c4e91ad0074a4d2cd354ab42f12cc9d24218b"
   },
   "coordinateSystem": {
     "units": "metres",
@@ -97,9 +97,11 @@
       "v4RightLowerLeg",
       "v4RightFoot"
     ],
-    "totalCount": 51,
-    "helperCount": 32,
+    "totalCount": 57,
+    "helperCount": 38,
     "helperNames": [
+      "v4LeftForearmTwistDistal",
+      "v4LeftForearmTwistProximal",
       "v4LeftFingers",
       "v4LeftIndexProximal",
       "v4LeftIndexIntermediate",
@@ -116,6 +118,9 @@
       "v4LeftThumb",
       "v4LeftThumbIntermediate",
       "v4LeftThumbDistal",
+      "v4LeftWristCorrective",
+      "v4RightForearmTwistDistal",
+      "v4RightForearmTwistProximal",
       "v4RightFingers",
       "v4RightIndexProximal",
       "v4RightIndexIntermediate",
@@ -131,7 +136,8 @@
       "v4RightRingDistal",
       "v4RightThumb",
       "v4RightThumbIntermediate",
-      "v4RightThumbDistal"
+      "v4RightThumbDistal",
+      "v4RightWristCorrective"
     ],
     "hierarchy": [
       {
@@ -308,6 +314,32 @@
     ],
     "helpers": [
       {
+        "name": "v4LeftForearmTwistDistal",
+        "parent": "v4LeftForearm",
+        "restLocalTransform": {
+          "translation": [-0.20532007034325028, -0.06263950774377403, 0.03479976827005818],
+          "rotationQuaternion": [
+            0.6153951862264694, -0.5150844524031634, -0.5150844443022602, -0.30110593966186433
+          ],
+          "scale": [0.9999998356861076, 0.9999999536584334, 0.9999998684194451]
+        },
+        "influencedVertices": 958,
+        "role": "forearm-deformation"
+      },
+      {
+        "name": "v4LeftForearmTwistProximal",
+        "parent": "v4LeftForearm",
+        "restLocalTransform": {
+          "translation": [-0.08496013095413213, -0.025919462682098215, 0.01439976332289905],
+          "rotationQuaternion": [
+            0.6153951911822793, -0.5150844420770032, -0.5150844417278068, -0.30110595160159487
+          ],
+          "scale": [0.9999998356861077, 0.9999999536584341, 0.9999998684194442]
+        },
+        "influencedVertices": 858,
+        "role": "forearm-deformation"
+      },
+      {
         "name": "v4LeftFingers",
         "parent": "v4LeftHand",
         "restLocalTransform": {
@@ -317,7 +349,8 @@
           ],
           "scale": [0.9999998884701239, 0.9999999976696989, 0.9999998356269841]
         },
-        "influencedVertices": 664
+        "influencedVertices": 664,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftIndexProximal",
@@ -329,7 +362,8 @@
           ],
           "scale": [0.9999999991096058, 0.9999999392865716, 0.9999999401130225]
         },
-        "influencedVertices": 327
+        "influencedVertices": 327,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftIndexIntermediate",
@@ -341,7 +375,8 @@
           ],
           "scale": [0.9999999404479347, 0.9999998818818497, 0.9999999414385649]
         },
-        "influencedVertices": 316
+        "influencedVertices": 316,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftIndexDistal",
@@ -353,7 +388,8 @@
           ],
           "scale": [0.9999999410081355, 1.0000000040329622, 1.0000000034345677]
         },
-        "influencedVertices": 201
+        "influencedVertices": 201,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftMiddleProximal",
@@ -365,7 +401,8 @@
           ],
           "scale": [1.0000000000490736, 1.0000000000742248, 0.9999998808203326]
         },
-        "influencedVertices": 309
+        "influencedVertices": 309,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftMiddleIntermediate",
@@ -377,7 +414,8 @@
           ],
           "scale": [0.9999999403421292, 0.9999999997002831, 0.999999999747532]
         },
-        "influencedVertices": 323
+        "influencedVertices": 323,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftMiddleDistal",
@@ -389,7 +427,8 @@
           ],
           "scale": [1.0000001187704786, 0.9999999935973944, 0.9999999940286289]
         },
-        "influencedVertices": 208
+        "influencedVertices": 208,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftPinkyProximal",
@@ -401,7 +440,8 @@
           ],
           "scale": [1.0000000003107583, 1.000000119523518, 0.9999999404701752]
         },
-        "influencedVertices": 270
+        "influencedVertices": 270,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftPinkyIntermediate",
@@ -413,7 +453,8 @@
           ],
           "scale": [1.0000000000296354, 0.9999998808607231, 0.9999999404479589]
         },
-        "influencedVertices": 274
+        "influencedVertices": 274,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftPinkyDistal",
@@ -425,7 +466,8 @@
           ],
           "scale": [0.9999999463609203, 1.0000000237839668, 0.9999999589824764]
         },
-        "influencedVertices": 211
+        "influencedVertices": 211,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftRingProximal",
@@ -437,7 +479,8 @@
           ],
           "scale": [0.9999998807906553, 0.999999999995374, 0.9999999403907759]
         },
-        "influencedVertices": 290
+        "influencedVertices": 290,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftRingIntermediate",
@@ -449,7 +492,8 @@
           ],
           "scale": [0.9999999412228567, 1.0000000018543111, 1.00000000127348]
         },
-        "influencedVertices": 340
+        "influencedVertices": 340,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftRingDistal",
@@ -461,7 +505,8 @@
           ],
           "scale": [1.000000000137197, 1.000000002140599, 0.9999999424257907]
         },
-        "influencedVertices": 221
+        "influencedVertices": 221,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftThumb",
@@ -473,7 +518,8 @@
           ],
           "scale": [0.999999915163742, 0.9999999072655945, 0.9999998492251945]
         },
-        "influencedVertices": 290
+        "influencedVertices": 290,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftThumbIntermediate",
@@ -485,7 +531,8 @@
           ],
           "scale": [1.000000000034866, 1.0000001193237376, 1.0000000000800464]
         },
-        "influencedVertices": 323
+        "influencedVertices": 323,
+        "role": "grip-closure"
       },
       {
         "name": "v4LeftThumbDistal",
@@ -497,7 +544,47 @@
           ],
           "scale": [1.0000000031690444, 1.0000001236352605, 1.0000000014282577]
         },
-        "influencedVertices": 192
+        "influencedVertices": 192,
+        "role": "grip-closure"
+      },
+      {
+        "name": "v4LeftWristCorrective",
+        "parent": "v4LeftForearm",
+        "restLocalTransform": {
+          "translation": [-0.35400007531274047, -0.10799944785105309, 0.059999785192436456],
+          "rotationQuaternion": [
+            0.6153951363462747, -0.5150844676123247, -0.5150844185861552, -0.3011060595797444
+          ],
+          "scale": [0.9999997760814808, 0.999999953658443, 0.9999999280240678]
+        },
+        "influencedVertices": 1558,
+        "role": "forearm-deformation"
+      },
+      {
+        "name": "v4RightForearmTwistDistal",
+        "parent": "v4RightForearm",
+        "restLocalTransform": {
+          "translation": [0.20532007034325028, -0.06263950774377403, 0.03479976827005818],
+          "rotationQuaternion": [
+            0.6153951862264694, 0.5150844524031634, 0.5150844443022602, -0.30110593966186433
+          ],
+          "scale": [0.9999998356861076, 0.9999999536584334, 0.9999998684194451]
+        },
+        "influencedVertices": 960,
+        "role": "forearm-deformation"
+      },
+      {
+        "name": "v4RightForearmTwistProximal",
+        "parent": "v4RightForearm",
+        "restLocalTransform": {
+          "translation": [0.08496013095413213, -0.025919462682098215, 0.01439976332289905],
+          "rotationQuaternion": [
+            0.6153951911822793, 0.5150844420770032, 0.5150844417278068, -0.30110595160159487
+          ],
+          "scale": [0.9999998356861077, 0.9999999536584341, 0.9999998684194442]
+        },
+        "influencedVertices": 856,
+        "role": "forearm-deformation"
       },
       {
         "name": "v4RightFingers",
@@ -509,7 +596,8 @@
           ],
           "scale": [0.9999997641615669, 0.9999998758951453, 0.9999997726817378]
         },
-        "influencedVertices": 667
+        "influencedVertices": 667,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightIndexProximal",
@@ -521,7 +609,8 @@
           ],
           "scale": [0.9999998816952885, 1.0000000011225831, 0.9999998214696153]
         },
-        "influencedVertices": 322
+        "influencedVertices": 322,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightIndexIntermediate",
@@ -533,7 +622,8 @@
           ],
           "scale": [0.9999999404544018, 1.0000000012036259, 1.0000001203591151]
         },
-        "influencedVertices": 311
+        "influencedVertices": 311,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightIndexDistal",
@@ -545,7 +635,8 @@
           ],
           "scale": [0.9999998816167837, 0.9999999456495429, 0.9999999448435003]
         },
-        "influencedVertices": 195
+        "influencedVertices": 195,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightMiddleProximal",
@@ -557,7 +648,8 @@
           ],
           "scale": [1.0000000006306196, 0.9999999413509982, 0.9999998811733187]
         },
-        "influencedVertices": 311
+        "influencedVertices": 311,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightMiddleIntermediate",
@@ -569,7 +661,8 @@
           ],
           "scale": [1.0000000000732476, 1.0000000004290275, 0.9999999407593807]
         },
-        "influencedVertices": 329
+        "influencedVertices": 329,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightMiddleDistal",
@@ -581,7 +674,8 @@
           ],
           "scale": [0.9999998805605851, 0.9999999961825699, 0.9999999368043144]
         },
-        "influencedVertices": 215
+        "influencedVertices": 215,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightPinkyProximal",
@@ -593,7 +687,8 @@
           ],
           "scale": [0.9999999486225544, 0.9999999486992092, 0.9999998231499991]
         },
-        "influencedVertices": 276
+        "influencedVertices": 276,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightPinkyIntermediate",
@@ -605,7 +700,8 @@
           ],
           "scale": [0.9999999404788871, 0.9999998809891416, 1.0000001193585928]
         },
-        "influencedVertices": 281
+        "influencedVertices": 281,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightPinkyDistal",
@@ -617,7 +713,8 @@
           ],
           "scale": [1.0000000029000493, 1.0000001306719326, 1.0000000089414407]
         },
-        "influencedVertices": 214
+        "influencedVertices": 214,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightRingProximal",
@@ -629,7 +726,8 @@
           ],
           "scale": [0.9999999999999082, 0.9999999999904698, 0.9999999999905468]
         },
-        "influencedVertices": 290
+        "influencedVertices": 290,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightRingIntermediate",
@@ -641,7 +739,8 @@
           ],
           "scale": [0.9999999406636537, 1.0000000005851035, 0.9999999407920445]
         },
-        "influencedVertices": 337
+        "influencedVertices": 337,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightRingDistal",
@@ -653,7 +752,8 @@
           ],
           "scale": [0.9999999407362151, 1.0000000049614617, 1.0000000046874737]
         },
-        "influencedVertices": 219
+        "influencedVertices": 219,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightThumb",
@@ -665,7 +765,8 @@
           ],
           "scale": [1.0000000377307934, 0.9999999748330238, 0.9999998445533069]
         },
-        "influencedVertices": 292
+        "influencedVertices": 292,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightThumbIntermediate",
@@ -677,7 +778,8 @@
           ],
           "scale": [1.0000000000341795, 0.9999998809100082, 1.0000000000855713]
         },
-        "influencedVertices": 330
+        "influencedVertices": 330,
+        "role": "grip-closure"
       },
       {
         "name": "v4RightThumbDistal",
@@ -689,7 +791,21 @@
           ],
           "scale": [0.9999999997916097, 0.9999999401044202, 0.9999999999060943]
         },
-        "influencedVertices": 201
+        "influencedVertices": 201,
+        "role": "grip-closure"
+      },
+      {
+        "name": "v4RightWristCorrective",
+        "parent": "v4RightForearm",
+        "restLocalTransform": {
+          "translation": [0.35400007531274047, -0.10799944785105309, 0.059999785192436456],
+          "rotationQuaternion": [
+            0.6153951363462747, 0.5150844676123247, 0.5150844185861552, -0.3011060595797444
+          ],
+          "scale": [0.9999997760814808, 0.999999953658443, 0.9999999280240678]
+        },
+        "influencedVertices": 1568,
+        "role": "forearm-deformation"
       }
     ]
   },

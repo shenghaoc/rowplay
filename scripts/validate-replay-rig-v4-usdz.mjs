@@ -52,6 +52,18 @@ function validateSkinnedMesh(mesh, contract) {
         JSON.stringify(sortedNames(helperBoneNames)),
     "V4 USDZ bone inventory drifted from the contract",
   );
+  const helperContractByName = new Map(
+    (contract.bones?.helpers ?? []).map((helper) => [helper.name, helper]),
+  );
+  for (const helperName of helperBoneNames) {
+    const bone = mesh.skeleton.getBoneByName(helperName);
+    const helperContract = helperContractByName.get(helperName);
+    invariant(bone && helperContract, `V4 USDZ helper ${helperName} is missing its contract`);
+    invariant(
+      bone.parent?.name === helperContract.parent,
+      `V4 USDZ helper ${helperName} parent drifted from the contract`,
+    );
+  }
   const position = mesh.geometry.getAttribute("position");
   const skinIndex = mesh.geometry.getAttribute("skinIndex");
   const skinWeight = mesh.geometry.getAttribute("skinWeight");

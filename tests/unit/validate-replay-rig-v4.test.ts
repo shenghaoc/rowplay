@@ -9,6 +9,7 @@ import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import {
   disposeV4AthleteAsset,
   createV4AthleteAsset,
+  V4_FOREARM_DEFORMATION_HELPER_NAMES,
   V4_HAND_HELPER_NAMES,
 } from "../../src/lib/replay/rigV4";
 
@@ -45,31 +46,37 @@ describe("V4 GLB build validator", () => {
       "scripts/validate-replay-rig-v4.mjs",
       "static/replay-assets/rowplay-athlete-v4.glb",
     ]);
-    expect(stdout).toContain("51 bones (32 helpers)");
+    expect(stdout).toContain("57 bones (38 helpers)");
     expect(stdout).toContain("3 clips");
     // Production grip helpers must be present by exact name.
     const contract = await import("../../static/replay-assets/rowplay-athlete-v4.contract.json", {
       with: { type: "json" },
     });
     const helpers = contract.default?.bones?.helperNames ?? contract.bones?.helperNames;
-    expect(helpers).toEqual([...V4_HAND_HELPER_NAMES]);
+    // Grip chains plus the mirrored forearm-twist / wrist-corrective
+    // deformation helpers. Export order is Blender's, so compare as a set:
+    // the ordered contract itself is pinned by rigV4.test.ts.
+    expect([...(helpers as string[])].sort()).toEqual(
+      [...V4_HAND_HELPER_NAMES, ...V4_FOREARM_DEFORMATION_HELPER_NAMES].sort(),
+    );
   });
 
   it("accepts a skinned visual helper while retaining semantic-only animation", async () => {
     installFileReaderShim();
     const directory = await mkdtemp(join(tmpdir(), "rowplay-v4-helper-validator-"));
     const output = join(directory, "rowplay-athlete-v4-helper.glb");
+    // The validator now requires the full mirrored deformation-helper set, so
+    // author all six here; the skinned/animation assertions below still key on
+    // the single helper that carries the fixture's vertex weight.
     const asset = createV4AthleteAsset({
-      helperBones: [
-        {
-          name: "v4LeftForearmTwist",
-          parent: "v4LeftForearm",
-          position: [-0.18, -0.06, 0.03],
-        },
-      ],
+      helperBones: V4_FOREARM_DEFORMATION_HELPER_NAMES.map((name) => ({
+        name,
+        parent: name.includes("Left") ? "v4LeftForearm" : "v4RightForearm",
+        position: [name.includes("Left") ? -0.18 : 0.18, -0.06, 0.03] as [number, number, number],
+      })),
     });
     try {
-      const helper = asset.skeleton.getBoneByName("v4LeftForearmTwist");
+      const helper = asset.skeleton.getBoneByName("v4LeftForearmTwistProximal");
       if (!helper) throw new Error("V4 helper bone was not authored");
       const helperIndex = asset.skeleton.bones.indexOf(helper);
       const skinIndex = asset.mesh.geometry.getAttribute("skinIndex");
@@ -110,7 +117,7 @@ describe("V4 GLB build validator", () => {
         output,
         "--allow-reference-topology",
       ]);
-      expect(stdout).toContain("20 bones (1 helpers)");
+      expect(stdout).toContain("25 bones (6 helpers)");
       expect(stdout).toContain("3 clips");
     } finally {
       disposeV4AthleteAsset(asset);

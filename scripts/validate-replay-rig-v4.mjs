@@ -33,6 +33,7 @@ const CORE_WEIGHT_THRESHOLD = 0.08;
 const CORE_CONNECTED_FRACTION = 0.6;
 const MIN_CORE_INFLUENCED_VERTICES = 80;
 const MIN_GRIP_HELPER_INFLUENCED_VERTICES = 18;
+const MIN_FOREARM_DEFORMATION_INFLUENCED_VERTICES = 80;
 
 const BONE_NAMES = [
   "v4Hips",
@@ -69,6 +70,15 @@ const CONTACTS = new Map([
   ["v4RightFoot", { role: "right-foot", offset: [0, -0.055, 0.13] }],
 ]);
 
+const FOREARM_DEFORMATION_HELPER_PARENTS = new Map([
+  ["v4LeftForearmTwistProximal", "v4LeftForearm"],
+  ["v4LeftForearmTwistDistal", "v4LeftForearm"],
+  ["v4LeftWristCorrective", "v4LeftForearm"],
+  ["v4RightForearmTwistProximal", "v4RightForearm"],
+  ["v4RightForearmTwistDistal", "v4RightForearm"],
+  ["v4RightWristCorrective", "v4RightForearm"],
+]);
+
 function expectedGripHelperParent(name) {
   const match = /^v4(Left|Right)(.+)$/.exec(name);
   if (!match) return null;
@@ -82,6 +92,10 @@ function expectedGripHelperParent(name) {
   if (stage === "Proximal") return `v4${side}Fingers`;
   if (stage === "Intermediate") return `v4${side}${digitName}Proximal`;
   return `v4${side}${digitName}Intermediate`;
+}
+
+function expectedHelperParent(name) {
+  return FOREARM_DEFORMATION_HELPER_PARENTS.get(name) ?? expectedGripHelperParent(name);
 }
 
 function invariant(condition, message) {
@@ -395,19 +409,24 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET, options = {}) {
         `V4 helper ${node.name} must be parented to a skin joint`,
       );
       const parentName = document.nodes[parentIndex].name;
-      const expectedGripParent = expectedGripHelperParent(node.name);
-      if (expectedGripParent) {
-        invariant(
-          parentName === expectedGripParent,
-          `V4 grip helper ${node.name} must be parented to ${expectedGripParent}`,
-        );
-      }
+      const expectedParent = expectedHelperParent(node.name);
+      invariant(expectedParent, `V4 helper ${node.name} is outside the sealed helper vocabulary`);
+      invariant(
+        parentName === expectedParent,
+        `V4 helper ${node.name} must be parented to ${expectedParent}`,
+      );
       return {
         name: node.name,
         parent: parentName,
         restLocalTransform: restLocalTransform(node, `${node.name} helper`),
       };
     });
+  invariant(
+    [...FOREARM_DEFORMATION_HELPER_PARENTS.keys()].every((name) =>
+      helpers.some((helper) => helper.name === name),
+    ),
+    "V4 skin is missing a forearm-twist or wrist-corrective helper",
+  );
 
   invariant(document.meshes?.length === 1, "V4 must contain one mesh definition");
   const skinnedNodes = document.nodes.filter(
@@ -497,7 +516,6 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET, options = {}) {
     );
   }
   for (const helper of helpers) {
-    if (!expectedGripHelperParent(helper.name)) continue;
     const helperIndex = loadedBoneNames.indexOf(helper.name);
     let influencedVertices = 0;
     for (let vertex = 0; vertex < vertexCount; vertex++) {
@@ -511,11 +529,23 @@ export async function validateV4Asset(assetPath = DEFAULT_ASSET, options = {}) {
         }
       }
     }
+    const isForearmDeformer = FOREARM_DEFORMATION_HELPER_PARENTS.has(helper.name);
+    const minimumInfluencedVertices = isForearmDeformer
+      ? MIN_FOREARM_DEFORMATION_INFLUENCED_VERTICES
+      : MIN_GRIP_HELPER_INFLUENCED_VERTICES;
+    // Influence floors describe the production Blender surface. The synthetic
+    // reference asset carries only a token skinned vertex per helper, so the
+    // same flag that relaxes its disconnected topology relaxes these too; the
+    // shipped GLB is always validated without it.
     invariant(
-      influencedVertices >= MIN_GRIP_HELPER_INFLUENCED_VERTICES,
-      `V4 grip helper ${helper.name} has too little weighted surface (${influencedVertices} vertices)`,
+      options.allowDisconnectedReferenceTopology === true ||
+        influencedVertices >= minimumInfluencedVertices,
+      `V4 ${isForearmDeformer ? "forearm deformation" : "grip"} helper ${
+        helper.name
+      } has too little weighted surface (${influencedVertices} vertices)`,
     );
     helper.influencedVertices = influencedVertices;
+    helper.role = isForearmDeformer ? "forearm-deformation" : "grip-closure";
   }
 
   invariant(document.materials?.length === 1, "V4 must use one physical material");

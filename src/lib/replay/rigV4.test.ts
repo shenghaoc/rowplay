@@ -12,6 +12,7 @@ import {
   V4_CONTACT_ROLES,
   V4_CYCLE_SECONDS,
   V4_DRIVE_END,
+  V4_FOREARM_DEFORMATION_HELPER_NAMES,
   V4_HAND_HELPER_NAMES,
   V4_PHASE_SCHEMAS,
   type V4BoneName,
@@ -260,9 +261,10 @@ describe("V4 production skinned athlete", () => {
       ),
     );
     expect(sealedDriveEnds).toEqual(V4_DRIVE_END);
-    expect(contractJson.bones.helperNames).toEqual([...V4_HAND_HELPER_NAMES]);
-    expect(contractJson.bones.helperCount).toBe(V4_HAND_HELPER_NAMES.length);
-    expect(contractJson.bones.totalCount).toBe(V4_BONE_NAMES.length + V4_HAND_HELPER_NAMES.length);
+    const helperNames = [...V4_FOREARM_DEFORMATION_HELPER_NAMES, ...V4_HAND_HELPER_NAMES];
+    expect([...contractJson.bones.helperNames].sort()).toEqual([...helperNames].sort());
+    expect(contractJson.bones.helperCount).toBe(helperNames.length);
+    expect(contractJson.bones.totalCount).toBe(V4_BONE_NAMES.length + helperNames.length);
     expect(contractJson.bones.totalCount).toBe(
       contractJson.bones.semanticCount + contractJson.bones.helperCount,
     );

@@ -143,6 +143,21 @@ export const V4_HAND_HELPER_NAMES = [
 ] as const;
 
 export type V4HandHelperName = (typeof V4_HAND_HELPER_NAMES)[number];
+
+/**
+ * Mirrored forearm/wrist deformation helpers. They are visual joints only:
+ * semantic forearm and hand names remain the stable contact/animation API.
+ */
+export const V4_FOREARM_DEFORMATION_HELPER_NAMES = [
+  "v4LeftForearmTwistProximal",
+  "v4LeftForearmTwistDistal",
+  "v4LeftWristCorrective",
+  "v4RightForearmTwistProximal",
+  "v4RightForearmTwistDistal",
+  "v4RightWristCorrective",
+] as const;
+
+export type V4ForearmDeformationHelperName = (typeof V4_FOREARM_DEFORMATION_HELPER_NAMES)[number];
 export type V4VisualHelperRole = "grip" | "twist" | "corrective";
 
 export interface V4RigMetrics {
