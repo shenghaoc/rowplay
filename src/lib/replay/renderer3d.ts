@@ -64,6 +64,8 @@ import {
 import {
   handChannelCentre,
   orientHandToGripChannel,
+  handPalmNormalOut,
+  pronationRollReference,
   refineGripSpinForWrist,
   refineGripTiltForWrist,
 } from "./handGrip";
@@ -1031,6 +1033,13 @@ export const SKI_PALM_TILT = 0.6;
  * beyond it is tilted away, up to SKI_PALM_TILT.
  */
 export const SKI_PALM_TILT_COMFORT = 1.15;
+/**
+ * Target forearm pronation for the SkiErg pole grip (radians from the neutral
+ * handshake). A double-poler's hands sit near neutral — thumb toward the grip
+ * top, palms facing inward on a near-vertical shaft — so a modest pronation
+ * matches technique references and stays far inside the ±90° human limit.
+ */
+export const SKI_TARGET_PRONATION = THREE.MathUtils.degToRad(30);
 const BIKE_HOOD_QUAT = new THREE.Quaternion();
 const BIKE_HOOD_AXIS_X = new THREE.Vector3(1, 0, 0);
 
@@ -2779,6 +2788,7 @@ function makeSkierAvatar(
   const gripWorldQuaternion = new THREE.Quaternion();
   const gripThumbwardLocal = new THREE.Vector3();
   const gripRollLocal = new THREE.Vector3();
+  const GRIP_PALM_SCRATCH = new THREE.Vector3();
   // Fixed arm lengths must contain every authored hand keyframe. A finish
   // target outside this reach collapses to a short pull no matter how far
   // aft the preferred Z claims to go.
@@ -3094,7 +3104,26 @@ function makeSkierAvatar(
         // one shared equipment-channel frame used by sculls and bike hoods;
         // SkiErg no longer maintains a duplicate orientation system.
         gripThumbwardLocal.copy(SEGMENT_DIR).multiplyScalar(-1);
-        gripRollLocal.copy(athleteRightLocal).multiplyScalar(-arm.side);
+        // Pinning the fist's channel axis along the shaft leaves exactly one
+        // freedom — spin about the shaft — and that freedom IS the forearm's
+        // pronation. Resolve it against the palm's true outward facing for a
+        // bounded, human pronation instead of against a fixed lateral
+        // direction: the pole's inclination sweeps 79° across the cycle, so a
+        // fixed reference drove pronation through 147° of range and past the
+        // ±90° limit, which is rotation only a forearm can supply and this rig
+        // cannot — so it surfaced as a wrist hinged sideways off the arm.
+        const pronationReferenced = pronationRollReference(
+          arm.shoulderPoint,
+          arm.elbowPoint,
+          arm.handPoint,
+          SKI_TARGET_PRONATION,
+          arm.side,
+          gripRollLocal,
+        );
+        if (!pronationReferenced) {
+          // Straight arm: no hinge plane exists, so keep the legacy reference.
+          gripRollLocal.copy(athleteRightLocal).multiplyScalar(-arm.side);
+        }
         orientHandToGripChannel(
           arm.hand,
           arm.side,
@@ -3102,25 +3131,27 @@ function makeSkierAvatar(
           gripThumbwardLocal,
           gripRollLocal,
           pole.shaft.quaternion,
+          pronationReferenced ? handPalmNormalOut(arm.side, GRIP_PALM_SCRATCH) : undefined,
         );
-        // Spend the remaining spin freedom on a flat wrist: the hand's long
-        // axis follows the solved forearm as nearly as the inward-palm cone
-        // allows, so the pole-frame demand no longer shears the wrist skin.
         GRIP_FOREARM_SCRATCH.set(
           arm.handPoint.x - arm.elbowPoint.x,
           arm.handPoint.y - arm.elbowPoint.y,
           arm.handPoint.z - arm.elbowPoint.z,
         );
-        refineGripSpinForWrist(
-          arm.hand,
-          arm.side,
-          SEGMENT_DIR,
-          GRIP_FOREARM_SCRATCH,
-          SKI_PALM_CONE,
-        );
-        // Second relief: let the shaft ride diagonally across the palm (palm
-        // facing unchanged — the palm normal is the rotation axis) so the hand
-        // continues the forearm instead of tearing the wrist ring.
+        if (!pronationReferenced) {
+          // Legacy relief, retained only for the degenerate straight-arm case.
+          refineGripSpinForWrist(
+            arm.hand,
+            arm.side,
+            SEGMENT_DIR,
+            GRIP_FOREARM_SCRATCH,
+            SKI_PALM_CONE,
+          );
+        }
+        // The pole may ride diagonally across the palm to keep the hand
+        // continuous with the forearm. This rotates about the palm normal, so
+        // the palm's facing — and therefore the pronation set above — is
+        // unchanged by construction.
         refineGripTiltForWrist(
           arm.hand,
           arm.side,

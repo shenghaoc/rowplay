@@ -105,6 +105,76 @@ export function handLongAxis(side: number, out = new THREE.Vector3()) {
   return out.set(mirror * HAND_LONG_AXIS.x, HAND_LONG_AXIS.y, HAND_LONG_AXIS.z).normalize();
 }
 
+/**
+ * Outward palm normal of the right hand in hand-local space — the direction
+ * the palm actually faces. Measured from the shipped GLB's bind geometry as
+ * the normal of the plane through the wrist origin, the middle-finger root
+ * and the pinky→index knuckle line, signed toward the grip channel (a held
+ * cylinder sits against the palm). Left mirrors x.
+ *
+ * This is NOT `HAND_PALM_NORMAL_IN`, and the distinction matters: that vector
+ * is the palm-skin→channel-centre *construction* ray used to seat a cylinder,
+ * and it sits 61.3° away from the true palm facing (signed about the
+ * thumbward axis, invariant of shaft direction). Resolving a grip's roll
+ * against the construction ray therefore mis-set the palm by that fixed 61.3°
+ * everywhere; on a near-horizontal handle it happened to land on a plausible
+ * overhand grip, but on a ski pole whose inclination sweeps 79° across the
+ * cycle it drove forearm pronation through 147° of range and past the human
+ * limit.
+ */
+export const HAND_PALM_NORMAL_OUT = Object.freeze({
+  x: -0.1052,
+  y: -0.8513,
+  z: 0.514,
+} as const);
+
+export function handPalmNormalOut(side: number, out = new THREE.Vector3()) {
+  const mirror = Math.sign(side) || 1;
+  return out
+    .set(mirror * HAND_PALM_NORMAL_OUT.x, HAND_PALM_NORMAL_OUT.y, HAND_PALM_NORMAL_OUT.z)
+    .normalize();
+}
+
+/**
+ * World-space direction the outward palm normal should face for a requested
+ * forearm pronation, given the arm's own geometry.
+ *
+ * Pronation is the rotation of the palm about the forearm's long axis,
+ * measured from the elbow's hinge axis: 0 is the neutral handshake (thumb up,
+ * palm medial) and ±90° is roughly the human limit. Supplying this as the
+ * grip's roll reference makes pronation a bounded *input* to the hand frame
+ * rather than an unconstrained output of wherever the equipment happens to
+ * point — which is what let the SkiErg hand rotate past anatomy.
+ */
+export function pronationRollReference(
+  shoulder: THREE.Vector3,
+  elbow: THREE.Vector3,
+  wrist: THREE.Vector3,
+  pronation: number,
+  side: number,
+  out = new THREE.Vector3(),
+): boolean {
+  PRONATION_FORE.copy(wrist).sub(elbow);
+  PRONATION_UPPER.copy(elbow).sub(shoulder);
+  if (PRONATION_FORE.lengthSq() < 1e-10 || PRONATION_UPPER.lengthSq() < 1e-10) return false;
+  PRONATION_FORE.normalize();
+  PRONATION_UPPER.normalize();
+  // The hinge axis is a cross product, so it mirrors as a pseudovector; the
+  // side factor restores one shared convention across both arms.
+  PRONATION_HINGE.crossVectors(PRONATION_UPPER, PRONATION_FORE);
+  if (PRONATION_HINGE.lengthSq() < 1e-8) return false; // straight arm: no hinge plane
+  PRONATION_HINGE.normalize().multiplyScalar(Math.sign(side) || 1);
+  out
+    .copy(PRONATION_HINGE)
+    .applyAxisAngle(PRONATION_FORE, (Math.sign(side) || 1) * pronation)
+    .normalize();
+  return true;
+}
+
+const PRONATION_FORE = new THREE.Vector3();
+const PRONATION_UPPER = new THREE.Vector3();
+const PRONATION_HINGE = new THREE.Vector3();
+
 const SPIN_LONG = new THREE.Vector3();
 const SPIN_FOREARM = new THREE.Vector3();
 const SPIN_QUAT = new THREE.Quaternion();
@@ -536,13 +606,21 @@ export function orientHandToGripChannel(
   shaftDirThumbward: THREE.Vector3,
   rollReference: THREE.Vector3,
   baseQuaternion: THREE.Quaternion,
+  /**
+   * Hand-local vector aligned to `rollReference` when resolving the remaining
+   * spin about the shaft. Defaults to the channel-centre construction ray for
+   * the sports whose rendered grips were approved against it; pass
+   * `handPalmNormalOut(side)` to resolve roll against the palm's true facing.
+   */
+  rollVectorLocal?: THREE.Vector3,
 ): void {
   hand.quaternion.copy(baseQuaternion);
   handCurlAxisThumbward(side, FRAME_AXIS).applyQuaternion(hand.quaternion);
   FRAME_TARGET.copy(shaftDirThumbward).normalize();
   hand.quaternion.premultiply(FRAME_SWING.setFromUnitVectors(FRAME_AXIS, FRAME_TARGET));
 
-  handChannelCentre(radius, side, FRAME_AXIS).normalize();
+  if (rollVectorLocal) FRAME_AXIS.copy(rollVectorLocal).normalize();
+  else handChannelCentre(radius, side, FRAME_AXIS).normalize();
   FRAME_AXIS.applyQuaternion(hand.quaternion);
   FRAME_ROLL.copy(rollReference).normalize();
   FRAME_AXIS.addScaledVector(FRAME_TARGET, -FRAME_AXIS.dot(FRAME_TARGET));
