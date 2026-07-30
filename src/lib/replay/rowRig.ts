@@ -165,7 +165,14 @@ export const ROWER_ELBOW_CORRIDOR = Object.freeze({
    * (outboard excursion)/(rearward travel) for the plane parameters below;
    * a winged pose measures well above 1.
    */
-  maxOutboardPerRearward: 0.5,
+  // Recalibrated 0.5 -> 0.7 with the flat-wrist sculling grip: laying the
+  // hand's long axis on the forearm rotates the wrist origin around the fixed
+  // grip channel (~5 cm lever), which shifts the solved elbow slightly
+  // outboard through the draw. The absolute corridor caps above still bound
+  // the pose; this ratio only guards draw *style* against the chicken-wing
+  // returning, and 0.61 measured with flat wrists is an arm drawing past the
+  // body, not a wing.
+  maxOutboardPerRearward: 0.7,
 } as const);
 
 /**

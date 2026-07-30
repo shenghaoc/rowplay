@@ -245,6 +245,14 @@ export function refineGripTiltForWrist(
   forearmDir: THREE.Vector3,
   comfort: number,
   maxTilt: number,
+  /**
+   * 0..1 scale on the applied tilt. When the forearm sweeps near the shaft
+   * line (a sculling feather/extraction), the projected flat-wrist target
+   * spins and a full-strength tilt chases it, breaking frame-to-frame
+   * continuity. Callers fade the tilt smoothly through that window instead —
+   * a brief wrist flex at the feather is textbook rowing.
+   */
+  strength = 1,
 ): void {
   // Rotate about the TRUE palm normal. This used `HAND_PALM_NORMAL_IN`, which
   // is the channel-construction ray sitting 75.5° away — so the "palm facing
@@ -263,7 +271,8 @@ export function refineGripTiltForWrist(
     SPIN_LONG.dot(SPIN_FOREARM),
   );
   const excess = Math.max(0, Math.abs(angle) - comfort);
-  const clamped = Math.sign(angle) * Math.min(excess, maxTilt);
+  const clamped =
+    Math.sign(angle) * Math.min(excess, maxTilt) * THREE.MathUtils.clamp(strength, 0, 1);
   if (Math.abs(clamped) < 1e-6) return;
   hand.quaternion.premultiply(SPIN_QUAT.setFromAxisAngle(FRAME_TARGET, clamped));
 }

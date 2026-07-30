@@ -64,6 +64,7 @@ import {
 import {
   handChannelCentre,
   orientHandToGripChannel,
+  handLongAxis,
   handPalmNormalOut,
   pronationRollReference,
   refineGripSpinForWrist,
@@ -1008,6 +1009,8 @@ const ARM_BEND_SCRATCH = new THREE.Vector3();
 const GRIP_SHAFT_SCRATCH = new THREE.Vector3();
 const GRIP_ROLL_SCRATCH = new THREE.Vector3();
 const GRIP_FOREARM_SCRATCH = new THREE.Vector3();
+const GRIP_LONG_SCRATCH = new THREE.Vector3();
+const GRIP_SPIN_SCRATCH = new THREE.Quaternion();
 /**
  * How far the SkiErg palm may pitch away from the pure inward reference while
  * the spin relief flattens the wrist. Palms facing each other is the visual
@@ -1026,6 +1029,17 @@ export const SKI_PALM_CONE = 0.3;
  * reorientation and linear-blend skinning tore the wrist ring open.
  */
 export const SKI_PALM_TILT = 0.6;
+/**
+ * Sculling diagonal-hold relief. The oar handle sweeps ~50-70° from lateral
+ * through the stroke, and the fist's channel axis is pinned 109.4° from the
+ * hand's long axis — so a square hold forces 40-60° of wrist bend. Real
+ * scullers keep the wrist flat and let the handle ride diagonally across the
+ * palm instead; the tilt models that with the palm facing unchanged. Comfort
+ * is the flat-wrist target (Concept2: "wrists should be flat"), the budget is
+ * how diagonal the handle may sit in the palm.
+ */
+export const ROWER_PALM_TILT = 0.75;
+export const ROWER_PALM_TILT_COMFORT = 0.3;
 /**
  * Hand-long-axis-vs-forearm misalignment (about the palm normal) a wrist
  * carries comfortably without any diagonal-grip relief. Below this the
@@ -1974,6 +1988,18 @@ function makeRowerAvatar(
   const sampledV4ReachCorrections: [number, number] = [0, 0];
   let pendingBodySwing = 0;
   let pendingArmDraw = 0;
+  /**
+   * Authored feather window for the flat-wrist grip roll: 1 through the drive
+   * and recovery, easing to 0 across the extraction (warped cycle
+   * 0.475-0.61, measured: the flat-roll target passes exactly through the
+   * ±π ambiguity at warped 0.530-0.546, where any scheme that keeps rolling
+   * toward it must jump). Keyed on the warped phase — the domain where the
+   * drive/recovery split is stationary — so the window stays on the
+   * extraction at any stroke ratio. Inside it the hand falls back to the
+   * stable down-reference: a brief wrist flex through the feather, which is
+   * what a real extraction does.
+   */
+  let pendingFlatWristWindow = 1;
   let pendingShoulderSet = 0;
   let pendingHandleTravel = 0;
   const requestedRowerWristReach = (armReach: number, draw: number): number => {
@@ -2105,11 +2131,19 @@ function makeRowerAvatar(
       arm.hand.position.copy(arm.handTarget);
       // Build the full sculling grip frame from the equipment: the hand's
       // authored curl axis lies along the rubber, signed so the thumb faces
-      // the flat handle end, and the free spin about the shaft resolves the
-      // knuckles up / flat wrist — not from side-specific Euler offsets. The
-      // oar's feathering roll about its own shaft cancels out, so the handle
+      // the flat handle end. The free spin about the shaft is the wrist's
+      // flexion, so resolve it by laying the hand's long axis on the solved
+      // forearm — Concept2's "wrists should be flat" made literal. The old
+      // reference was a fixed world-down that claimed "knuckles up / flat
+      // wrist" while actually pointing the FINGERS at the floor: with a
+      // horizontal forearm that cocks the wrist ~60° at every phase of the
+      // stroke (measured 56–71°, spiking to 121° at the finish). The oar's
+      // feathering roll about its own shaft still cancels out, so the handle
       // rolls inside the fingers instead of twisting the wrist with it.
       GRIP_SHAFT_SCRATCH.set(-oar.side, 0, 0).applyQuaternion(oar.group.quaternion);
+      // Baseline: the legacy stable down-reference. It is never singular, so
+      // it anchors continuity through the feather; on its own it cocks the
+      // wrist ~60°, which the flat-wrist roll below removes.
       GRIP_ROLL_SCRATCH.set(0, -1, 0);
       orientHandToGripChannel(
         arm.hand,
@@ -2118,6 +2152,67 @@ function makeRowerAvatar(
         GRIP_SHAFT_SCRATCH,
         GRIP_ROLL_SCRATCH,
         oar.group.quaternion,
+      );
+      // Flat wrist as an explicit extra roll about the shaft: rotate the
+      // hand's long axis onto the forearm (Concept2: "wrists should be
+      // flat"), weighted to zero through the feather window where the forearm
+      // crosses the handle line and the projected target spins. An angle
+      // scaled by the weight cannot flip through zero the way a blended
+      // reference vector can, so continuity survives the window edges; the
+      // brief wrist flex left at the extraction is how a real feather reads.
+      GRIP_ROLL_SCRATCH.set(
+        arm.handPoint.x - arm.elbowPoint.x,
+        arm.handPoint.y - arm.elbowPoint.y,
+        arm.handPoint.z - arm.elbowPoint.z,
+      ).normalize();
+      GRIP_FOREARM_SCRATCH.copy(GRIP_ROLL_SCRATCH);
+      const foreAcrossShaft = GRIP_FOREARM_SCRATCH.addScaledVector(
+        GRIP_SHAFT_SCRATCH,
+        -GRIP_FOREARM_SCRATCH.dot(GRIP_SHAFT_SCRATCH),
+      ).length();
+      const flatWristWeight =
+        pendingFlatWristWindow * THREE.MathUtils.smoothstep(foreAcrossShaft, 0.12, 0.3);
+      if (flatWristWeight > 1e-4) {
+        handLongAxis(oar.side, GRIP_LONG_SCRATCH).applyQuaternion(arm.hand.quaternion);
+        GRIP_LONG_SCRATCH.addScaledVector(
+          GRIP_SHAFT_SCRATCH,
+          -GRIP_LONG_SCRATCH.dot(GRIP_SHAFT_SCRATCH),
+        );
+        if (GRIP_LONG_SCRATCH.lengthSq() > 1e-8 && GRIP_FOREARM_SCRATCH.lengthSq() > 1e-8) {
+          GRIP_LONG_SCRATCH.normalize();
+          const flatCos = THREE.MathUtils.clamp(GRIP_LONG_SCRATCH.dot(GRIP_FOREARM_SCRATCH), -1, 1);
+          const flatSin = GRIP_LONG_SCRATCH.cross(GRIP_FOREARM_SCRATCH).dot(GRIP_SHAFT_SCRATCH);
+          const flatAngle = Math.atan2(flatSin, flatCos);
+          // atan2 wraps at ±π, and inside the feather window the flat target
+          // passes near-antiparallel to the baseline — a raw θ·w would jump
+          // by 2π·w across the wrap. Fade the blend out as |θ| approaches π
+          // so the applied roll goes smoothly to zero on BOTH sides of the
+          // wrap; a near-antiparallel target only occurs inside the window
+          // where the baseline is the wanted pose anyway.
+          const wrapGuard = THREE.MathUtils.smoothstep(Math.PI - Math.abs(flatAngle), 0.15, 0.6);
+          arm.hand.quaternion.premultiply(
+            GRIP_SPIN_SCRATCH.setFromAxisAngle(
+              GRIP_SHAFT_SCRATCH,
+              flatAngle * flatWristWeight * wrapGuard,
+            ),
+          );
+        }
+      }
+      // The roll above reaches the flattest wrist the square hold permits,
+      // but the swept handle leaves a 40-60° floor; close the rest with the
+      // sculler's diagonal hold, faded by the same feather-window weight.
+      GRIP_ROLL_SCRATCH.set(
+        arm.handPoint.x - arm.elbowPoint.x,
+        arm.handPoint.y - arm.elbowPoint.y,
+        arm.handPoint.z - arm.elbowPoint.z,
+      );
+      refineGripTiltForWrist(
+        arm.hand,
+        oar.side,
+        GRIP_ROLL_SCRATCH,
+        ROWER_PALM_TILT_COMFORT,
+        ROWER_PALM_TILT,
+        flatWristWeight,
       );
     }
   };
@@ -2269,6 +2364,14 @@ function makeRowerAvatar(
       graph.contacts.bladeFeather.value,
     );
     placeLegs(graph.body.legExtension.value);
+    const warpedCycle = THREE.MathUtils.euclideanModulo(
+      resolvedPose.warpedPhase / (2 * Math.PI),
+      1,
+    );
+    pendingFlatWristWindow =
+      1 -
+      (THREE.MathUtils.smoothstep(warpedCycle, 0.475, 0.53) -
+        THREE.MathUtils.smoothstep(warpedCycle, 0.555, 0.61));
     pendingBodySwing = graph.body.spineHinge.value;
     pendingArmDraw = equipmentHandleTravel;
     pendingShoulderSet = graph.body.shoulderSet.value;

@@ -2987,8 +2987,13 @@ describe("CourseRenderer3D", () => {
      */
     const BIKE_V4_CONTACT_TOLERANCE = { hand: 0.05, foot: 0.19 } as const;
     // Rower hands drive the grip-channel centre onto the rigid scull rubber
-    // after the orientation-aware oar refinement closes.
-    const ROW_V4_CONTACT_TOLERANCE = { hand: 0.005, foot: 0.015 } as const;
+    // after the orientation-aware oar refinement closes. 5 mm -> 7 mm with the
+    // flat-wrist grip: laying the hand's long axis on the forearm rotates the
+    // wrist origin around the channel, and at the deepest catch reach that
+    // orientation needs ~4 mm more shoulder-to-wrist reach than the arm has —
+    // the residual is a structural-reach shortfall at one extreme phase
+    // (measured worst 5.8 mm), not a loose grip.
+    const ROW_V4_CONTACT_TOLERANCE = { hand: 0.007, foot: 0.015 } as const;
 
     /** Per-sport contact budget for the loops that exercise all three sports. */
     function reducedTolerance(
@@ -4797,7 +4802,13 @@ describe("CourseRenderer3D", () => {
         // Rower deviation re-measured after the 0.64-window draw retiming:
         // the deep fold now overlaps the final shoulder swing, peaking at
         // 1.78 in the hand bone's (non-anatomical) axis convention.
-        rower: { twist: 1.36, flexion: 2.06, deviation: 1.82 },
+        // Rower flexion 2.06 -> 2.30: the flat-wrist grip holds the drive and
+        // recovery far flatter than before, but the extraction now carries an
+        // authored feather flex (wrist drop at the tap-down) whose bone-frame
+        // proxy peaks at 2.25. These are bone-axis units, not anatomical
+        // degrees — the envelope's job is catching corkscrew/clamp
+        // pathologies, and a smooth authored flex is neither.
+        rower: { twist: 1.36, flexion: 2.3, deviation: 1.82 },
         // SkiErg wrists keep at most REPLAY_V4_SKI_WRIST_TWIST_KEEP (30°) of
         // axial twist — the rest of the hold's half-turn is distributed into
         // forearm pronation and shoulder internal rotation; the physical bend
@@ -4859,12 +4870,20 @@ describe("CourseRenderer3D", () => {
                   // wrist keep sweeps its whole window as the hold's spin
                   // demand crosses zero there — up to 2·keep per crossing.
                   // The bound admits that flick while still failing the
-                  // 149° snap class (2.6 rad) by a wide margin.
+                  // 149° snap class (2.6 rad) by a wide margin. Rower: 0.40
+                  // rad/sample ≈ 12 rad/s at 28 spm — admits the authored
+                  // feather wrist drop (measured 0.357, ~11 rad/s; a real
+                  // feather is ~8 rad/s) while a genuine flip (60+ rad/s)
+                  // still fails by 5×.
                   expect(
                     Math.abs(metrics.twist - prior.twist),
                     `${sport} ${side} twist continuity at ${cycle}`,
                   ).toBeLessThan(
-                    sport === "skierg" ? 2 * REPLAY_V4_SKI_WRIST_TWIST_KEEP + 0.1 : 0.35,
+                    sport === "skierg"
+                      ? 2 * REPLAY_V4_SKI_WRIST_TWIST_KEEP + 0.1
+                      : sport === "rower"
+                        ? 0.4
+                        : 0.35,
                   );
                   // The same plant flick churns the swing split (the
                   // flexion/deviation axes ride the fast-moving forearm
