@@ -64,6 +64,7 @@ import {
 import {
   handChannelCentre,
   orientHandToGripChannel,
+  HAND_PALM_CONTACT,
   handLongAxis,
   handPalmNormalOut,
   pronationRollReference,
@@ -3963,7 +3964,10 @@ function makeBikeAvatar(
   // figure uses the same femur and tibia as the skinned athlete above it.
   const THIGH_LENGTH = BIKE_RIG.athlete.thigh;
   const SHIN_LENGTH = BIKE_RIG.athlete.shin;
-  const BIKE_AERO_SPINE_LEAN = 0.74;
+  // 0.74 -> 0.80: matches the deepened V4 clip hinge; the shoulders sat
+  // ~26 mm beyond full arm reach so the palms hovered off the hoods with
+  // locked elbows. Weight belongs on the hands.
+  const BIKE_AERO_SPINE_LEAN = 0.8;
   const BIKE_HEAD_GAZE_COMPENSATION = -0.47;
   // Pelvis stays at the rider root derived by bikeRiderHipY() — sit surface
   // on pad top. Do not add a vertical dig: averagePedalLoad used to sink the
