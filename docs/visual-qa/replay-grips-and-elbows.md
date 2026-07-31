@@ -453,6 +453,19 @@ should not bend. Your arms should not fully extend"):
 Measured across 96 phases, both hands: wrist bend ≤ 45° at 96% of samples
 (was 84–86° sustained at reach), worst transient 76° at the pre-plant
 hand-off, max wrist travel 89 mm/sample (was 955), palms inward, V4 hero
-enabled at every phase. Known remaining aesthetic: mid-recovery the carried
-poles read slightly forward-splayed from the chase camera; the wrists and
-elbows are the contract, the carry attitude can be refined separately.
+enabled at every phase.
+
+### Recovery return re-authored (the machine's actual motion)
+
+A later pass fixed the gross recovery motion: the polar hand-path formula —
+correct during contact, where the planted pole overrides it — retraced its
+circle in free flight, scooping the hands 0.25 m below the hips and 0.83 m
+out front like a swimming recovery. The SkiErg return is simple: from behind
+the thighs the hands come forward CLOSE TO THE BODY at hip-to-chest height,
+then lift to the high reach. The recovery path is now a Catmull-Rom through
+exactly those stations (both endpoints reuse the contact formula's boundary
+poses, so the hand-off and the cycle seam stay continuous). Measured: the
+mid-recovery dip is gone (hip-frame low point −0.25 m → 0.00 m) and the
+forward bulge halved (0.83 m → 0.32 m). The carried tips are also held lower
+(tip ray ≥17° below horizontal) with reduced splay, so the trail reads as a
+real pole carry rather than outriggers.

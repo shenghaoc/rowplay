@@ -2953,6 +2953,14 @@ function makeSkierAvatar(
    * shoulder, so the IK sphere intersection cannot flip into a horizontal
    * backwards elbow branch.
    */
+  const skiRecoveryScratch = new THREE.Vector3();
+  const skiRecoveryPoints = [
+    new THREE.Vector3(),
+    new THREE.Vector3(),
+    new THREE.Vector3(),
+    new THREE.Vector3(),
+  ];
+  const skiRecoveryCurve = new THREE.CatmullRomCurve3(skiRecoveryPoints, false, "centripetal");
   const skiPreferredHand = (motion: SkierKinematics, side: number, out: THREE.Vector3): void => {
     // Concept2: "Your arms should not fully extend." Cap the authored radial
     // reach below the structural maximum so the elbow keeps a soft bend even
@@ -2968,6 +2976,39 @@ function makeSkierAvatar(
       0.54 + Math.sin(angle) * reach,
       0.05 + Math.cos(angle) * reach,
     );
+    if (motion.cycle > SKI_POLE_OFF_CYCLE) {
+      // Recovery return. The polar arc above is only the CONTACT-phase seed
+      // (the planted pole overrides it); retracing it in free flight swung
+      // the hands 0.25 m below the hips and 0.83 m out front — a scooping
+      // windmill no SkiErg return performs. The machine's return is simple:
+      // from behind the thighs, the hands come forward CLOSE TO THE BODY at
+      // hip-to-chest height, then lift to the high reach ("stand up and
+      // elevate your arms"). Both endpoints reuse the polar formula at its
+      // boundary sweeps, so the contact hand-off and the cycle seam stay
+      // continuous; sweep itself is the C² recovery progress.
+      const t = 1 - THREE.MathUtils.clamp(motion.poleSweep, 0, 1);
+      // Endpoint at pole-off (sweep 1) from the same formula the contact
+      // branch used on its last frame.
+      const offY = 0.54 + Math.sin(0.56 - 2.56) * reach;
+      const offZ = 0.05 + Math.cos(0.56 - 2.56) * reach;
+      // Endpoint at the next reach (sweep 0) — identical to the polar pose
+      // the contact branch resumes with at the seam.
+      const reachY = 0.54 + Math.sin(0.56) * reach;
+      const reachZ = 0.05 + Math.cos(0.56) * reach;
+      // Interior waypoints: beside the thighs coming forward, then at the
+      // chest on the way up. Authored in the hinging torso frame, so the
+      // stand-up adds its own rise on top. One Catmull-Rom through all four
+      // stations — piecewise smoothstep segments stopped dead at each
+      // waypoint and sprinted between them, which tripped the elbow and
+      // forearm continuity guards.
+      skiRecoveryPoints[0]!.set(out.x, offY, offZ);
+      skiRecoveryPoints[1]!.set(out.x, 0.1, 0.2);
+      skiRecoveryPoints[2]!.set(out.x, 0.48, 0.3);
+      skiRecoveryPoints[3]!.set(out.x, reachY, reachZ);
+      skiRecoveryCurve.getPoint(t, skiRecoveryScratch);
+      out.y = skiRecoveryScratch.y;
+      out.z = skiRecoveryScratch.z;
+    }
     // Hard clamp: if authoring ever drifts outside reach, pull the target
     // toward the shoulder so the arm IK stays rigid.
     const sx = side * SKI_ATHLETE_PROPORTIONS.shoulderHalfWidth;
@@ -3213,15 +3254,15 @@ function makeSkierAvatar(
       // wrist slightly extended. Clamp the carried tip below the hand; the
       // small wrist extension this leaves during early flight is exactly the
       // relaxed trail of a real recovery.
-      if (SKI_CARRY_AXIS.y > -0.12) {
+      if (SKI_CARRY_AXIS.y > -0.3) {
         SKI_CARRY_AXIS.y = 0;
         const horizontal2 = SKI_CARRY_AXIS.lengthSq();
         if (horizontal2 > 1e-8) {
-          SKI_CARRY_AXIS.multiplyScalar(Math.sqrt(1 - 0.12 * 0.12) / Math.sqrt(horizontal2));
+          SKI_CARRY_AXIS.multiplyScalar(Math.sqrt(1 - 0.3 * 0.3) / Math.sqrt(horizontal2));
         } else {
-          SKI_CARRY_AXIS.set(0, 0, -Math.sqrt(1 - 0.12 * 0.12));
+          SKI_CARRY_AXIS.set(0, 0, -Math.sqrt(1 - 0.3 * 0.3));
         }
-        SKI_CARRY_AXIS.y = -0.12;
+        SKI_CARRY_AXIS.y = -0.3;
       }
       // The basket needs visible snow clearance without rising so fast that a
       // rigid classic-length pole outruns the athlete's arm during release.
@@ -3246,7 +3287,7 @@ function makeSkierAvatar(
       );
       SKI_CARRY_TMP.addScaledVector(
         SKI_CARRY_PALM_TARGET,
-        0.9 * Math.max(0.3, SKI_CARRY_TMP.length()),
+        0.85 * Math.max(0.3, SKI_CARRY_TMP.length()),
       );
       if (SKI_CARRY_TMP.lengthSq() < 1e-8) {
         // Perfectly vertical carry: keep the legacy lateral-back fallback so
