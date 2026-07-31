@@ -12,6 +12,7 @@ import {
   V4_CONTACT_ROLES,
   V4_CYCLE_SECONDS,
   V4_DRIVE_END,
+  V4_FOREARM_DEFORMATION_HELPER_NAMES,
   V4_HAND_HELPER_NAMES,
   V4_PHASE_SCHEMAS,
   type V4BoneName,
@@ -152,9 +153,14 @@ describe("V4 production skinned athlete", () => {
     try {
       expect(asset.mesh).toBeInstanceOf(THREE.SkinnedMesh);
       expect(asset.mesh.skeleton).toBe(asset.skeleton);
-      expect(asset.skeleton.bones.map((bone) => bone.name)).toEqual(V4_BONE_NAMES);
+      expect(asset.skeleton.bones.map((bone) => bone.name)).toEqual([
+        ...V4_BONE_NAMES,
+        ...V4_FOREARM_DEFORMATION_HELPER_NAMES,
+      ]);
       expect(asset.metrics).toMatchObject({
-        bones: 19,
+        // 19 semantic + the 6 sealed forearm-deformation helpers the factory
+        // now authors by default.
+        bones: 25,
         clips: 3,
         clipTracks: 60,
         contactEffectors: 4,
@@ -260,9 +266,10 @@ describe("V4 production skinned athlete", () => {
       ),
     );
     expect(sealedDriveEnds).toEqual(V4_DRIVE_END);
-    expect(contractJson.bones.helperNames).toEqual([...V4_HAND_HELPER_NAMES]);
-    expect(contractJson.bones.helperCount).toBe(V4_HAND_HELPER_NAMES.length);
-    expect(contractJson.bones.totalCount).toBe(V4_BONE_NAMES.length + V4_HAND_HELPER_NAMES.length);
+    const helperNames = [...V4_FOREARM_DEFORMATION_HELPER_NAMES, ...V4_HAND_HELPER_NAMES];
+    expect([...contractJson.bones.helperNames].sort()).toEqual([...helperNames].sort());
+    expect(contractJson.bones.helperCount).toBe(helperNames.length);
+    expect(contractJson.bones.totalCount).toBe(V4_BONE_NAMES.length + helperNames.length);
     expect(contractJson.bones.totalCount).toBe(
       contractJson.bones.semanticCount + contractJson.bones.helperCount,
     );
@@ -392,7 +399,10 @@ describe("V4 production skinned athlete", () => {
       });
       expect(loadedMeshes).toHaveLength(1);
       const loadedMesh = loadedMeshes[0]!;
-      expect(loadedMesh.skeleton.bones.map((bone) => bone.name)).toEqual(V4_BONE_NAMES);
+      expect(loadedMesh.skeleton.bones.map((bone) => bone.name)).toEqual([
+        ...V4_BONE_NAMES,
+        ...V4_FOREARM_DEFORMATION_HELPER_NAMES,
+      ]);
       expect(loadedMesh.geometry.getAttribute("skinWeight").itemSize).toBe(4);
       expect(loadedMesh.geometry.getAttribute("color").itemSize).toBe(3);
       expect(gltf.animations.map((clip) => clip.name)).toEqual(Object.values(V4_CLIP_NAMES));

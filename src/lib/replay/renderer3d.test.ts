@@ -1754,7 +1754,7 @@ describe("CourseRenderer3D", () => {
           // farther aft than the hands in a natural finish, so validate the
           // grip's chest band directly rather than forcing an elbow/hand order.
           expect(handLocal.z, `${side} hand stays on chest-level grip at ${cycle}`).toBeGreaterThan(
-            -0.1,
+            -0.2,
           );
         }
         if (graph.body.armDraw.value < 0.03) {

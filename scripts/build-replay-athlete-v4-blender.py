@@ -98,12 +98,21 @@ def grip_digit_bone_names(side_name: str, digit_name: str) -> tuple[str, str, st
 
 
 HELPER_BONE_NAMES = []
+FOREARM_DEFORMATION_HELPER_NAMES = []
 for helper_side_name in ("Left", "Right"):
+    FOREARM_DEFORMATION_HELPER_NAMES.extend(
+        (
+            f"v4{helper_side_name}ForearmTwistProximal",
+            f"v4{helper_side_name}ForearmTwistDistal",
+            f"v4{helper_side_name}WristCorrective",
+        )
+    )
     HELPER_BONE_NAMES.append(f"v4{helper_side_name}Fingers")
     for helper_digit_name in ("Index", "Middle", "Pinky", "Ring", "Thumb"):
         HELPER_BONE_NAMES.extend(
             grip_digit_bone_names(helper_side_name, helper_digit_name)
         )
+HELPER_BONE_NAMES = FOREARM_DEFORMATION_HELPER_NAMES + HELPER_BONE_NAMES
 
 GRIP_FACE_SET_BINDINGS = {
     face_set: (side_name, digit_name, segment)
@@ -385,6 +394,42 @@ def create_armature(
         if parent is not None:
             bone.parent = edit_bones[parent]
             bone.use_connect = False
+
+    # Forearm twist/corrective chain. All three helpers share the semantic
+    # forearm's authored axis and roll, so runtime rotations about local Y
+    # remain collinear and cannot move the wrist/contact point. Their heads
+    # progress toward the wrist; skin weights below progressively hand visual
+    # pronation and wrist swing across them instead of concentrating it at one
+    # forearm→hand seam.
+    for side_name in ("Left", "Right"):
+        forearm_name = f"v4{side_name}Forearm"
+        hand_name = f"v4{side_name}Hand"
+        elbow = bones[forearm_name]
+        wrist = bones[hand_name]
+        direction = (wrist - elbow).normalized()
+        helper_specs = (
+            (f"v4{side_name}ForearmTwistProximal", forearm_name, 0.24),
+            (
+                f"v4{side_name}ForearmTwistDistal",
+                forearm_name,
+                0.58,
+            ),
+            (
+                f"v4{side_name}WristCorrective",
+                forearm_name,
+                1.0,
+            ),
+        )
+        for helper_name, parent_name, fraction in helper_specs:
+            helper = armature_data.edit_bones.new(helper_name)
+            station = elbow + (wrist - elbow) * fraction
+            helper.head = to_blender(station)
+            helper.tail = to_blender(station + direction * 0.12)
+            helper.parent = edit_bones[parent_name]
+            helper.use_connect = False
+            helper.use_deform = True
+            helper.roll = edit_bones[forearm_name].roll
+            edit_bones[helper_name] = helper
 
     # Visual grip helpers. Each source phalanx gets its own joint so fingers can
     # form a cylindrical wrap instead of swinging as one straight fan.
@@ -946,15 +991,52 @@ def base_vertex_weights(face_set: int, point: Vector) -> dict[str, float]:
 
     if left_forearm or right_forearm:
         side_name = "Left" if left_forearm else "Right"
-        wrist_blend = max(0.0, min(0.3, (abs(point.x) - 0.82) * 1.5))
+        forearm = f"v4{side_name}Forearm"
+        proximal = f"v4{side_name}ForearmTwistProximal"
+        distal = f"v4{side_name}ForearmTwistDistal"
+        corrective = f"v4{side_name}WristCorrective"
+        # Canonical elbow/wrist span is 0.375 m in the retargeted A-pose.
+        # Smooth progressive weights make residual pronation accumulate along
+        # the radius/ulna and blend the wrist ring across distal twist,
+        # corrective and hand instead of creating a rigid one-ring hinge.
+        progress = max(0.0, min(1.0, (abs(point.x) - 0.59) / 0.37))
+        if progress < 0.34:
+            blend = progress / 0.34
+            return {forearm: 1.0 - 0.72 * blend, proximal: 0.72 * blend}
+        if progress < 0.72:
+            blend = (progress - 0.34) / 0.38
+            return {
+                proximal: 0.72 * (1.0 - blend),
+                distal: 0.28 + 0.56 * blend,
+            }
+        blend = (progress - 0.72) / 0.28
         return {
-            f"v4{side_name}Forearm": 1.0 - wrist_blend,
-            f"v4{side_name}Hand": wrist_blend,
+            distal: 0.84 * (1.0 - blend),
+            corrective: 0.16 + 0.54 * blend,
+            f"v4{side_name}Hand": 0.3 * blend,
         }
 
     if left_hand or right_hand:
         side_name = "Left" if left_hand else "Right"
         if face_set in ({10} if left_hand else {9}):
+            longitudinal = abs(point.x)
+            # Use the same distal→corrective→hand ramp as the adjoining
+            # forearm face set. A separate palm-base ramp used to assign two
+            # neighbouring vertices materially different skin matrices,
+            # folding one topology strip under strong SkiErg pronation.
+            if longitudinal < 0.96:
+                blend = max(0.0, min(1.0, (longitudinal - 0.8564) / 0.1036))
+                return {
+                    f"v4{side_name}ForearmTwistDistal": 0.84 * (1.0 - blend),
+                    f"v4{side_name}WristCorrective": 0.16 + 0.54 * blend,
+                    f"v4{side_name}Hand": 0.3 * blend,
+                }
+            wrist_progress = max(0.0, min(1.0, (longitudinal - 0.96) / 0.08))
+            if wrist_progress < 1.0:
+                return {
+                    f"v4{side_name}WristCorrective": 0.7 * (1.0 - wrist_progress),
+                    f"v4{side_name}Hand": 0.3 + 0.7 * wrist_progress,
+                }
             return {f"v4{side_name}Hand": 1.0}
         binding = GRIP_FACE_SET_BINDINGS.get(face_set)
         if binding is None:
