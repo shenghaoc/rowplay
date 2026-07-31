@@ -114,6 +114,16 @@ export const SKI_HAND_FIST_CENTRE = Object.freeze({ x: 0.0393, y: -0.0088, z: 0.
 /** Radius of the fitted grip channel; the pole grip must not exceed it. */
 export const SKI_HAND_FIST_RADIUS = 0.0169;
 
+/**
+ * Physical radius of the rendered pole-grip capsule. Together with
+ * `SKI_HAND_FIST_RADIUS` this pins the rig's own digit-flesh calibration: the
+ * approved SkiErg fist closes its bone helpers onto a 0.0169 m circle around
+ * a 0.016 m rubber, so a finger helper of this rig sits ~0.9 mm off the
+ * equipment it presses — the helpers run at the skin of the low-poly mesh,
+ * not at anatomical bone depth.
+ */
+export const SKI_POLE_GRIP_RADIUS = 0.016;
+
 export interface SkiEquipmentDetail {
   /** Radial resolution for the visible hard-surface fallback. */
   readonly radialSegments: number;

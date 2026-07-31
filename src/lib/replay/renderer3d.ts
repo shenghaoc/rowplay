@@ -73,6 +73,7 @@ import {
   SKI_HAND_CURL_AXIS,
   SKI_HAND_FIST_CENTRE,
   SKI_GRIP_SHIFT,
+  SKI_POLE_GRIP_RADIUS,
   type SkiEquipmentDetail,
 } from "./skiEquipment";
 
@@ -2653,7 +2654,7 @@ function makeSkierAvatar(
       ? setReplayAssetSlot(shaftMesh, "equipment:ski:pole-shaft")
       : shaftMesh;
     shaft.name = side < 0 ? "skierg-pole-shaft-left" : "skierg-pole-shaft-right";
-    const gripMesh = capsulePart(0.016, 0.15, gripMaterial, "z");
+    const gripMesh = capsulePart(SKI_POLE_GRIP_RADIUS, 0.15, gripMaterial, "z");
     const grip = useAuthoredSkiLeaves
       ? setReplayAssetSlot(gripMesh, "equipment:ski:pole-grip")
       : gripMesh;

@@ -4,6 +4,7 @@ import type { RenderQuality } from "./replayRenderer";
 import { solveTwoBone3D } from "./figurePose";
 import {
   collectHandDigitChains,
+  HAND_CLOSURE_CUP,
   handCurlAxis,
   solveHandGripClosure,
   type HandDigitContactReport,
@@ -1878,6 +1879,21 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     if (this.handHelpers.length === 0) return;
     if (this.solvedGripPoses) {
       for (const helper of this.handHelpers) {
+        if (helper.stage === "cup") {
+          // The closure is solved in the `HAND_CLOSURE_CUP` carrying posture
+          // the grip channel was fitted in, so the live cup helper must hold
+          // the same pose — leaving it at rest would flatten the palm the
+          // solved flex angles were closed around.
+          helper.bone.quaternion
+            .copy(helper.rest)
+            .multiply(
+              this.gripCurlQuaternion.setFromAxisAngle(
+                this.gripAxis.set(0, 1, 0),
+                -helper.side * HAND_CLOSURE_CUP,
+              ),
+            );
+          continue;
+        }
         const solved = this.solvedGripPoses.get(helper.bone.name);
         if (!solved) continue;
         this.gripCurlSecondary.setFromAxisAngle(this.gripAxis.set(0, 0, 1), solved.oppose);

@@ -19,6 +19,16 @@ import { ROWER_SCULL_GRIP } from "./rowRig";
 // the real hand geometry keeps these solver tests honest: a pass here means
 // the shipped hand can enclose the shipped equipment, not that an idealised
 // test hand can enclose an idealised cylinder.
+
+// Rest transform of the `v4RightFingers` palm-cup helper relative to the
+// hand, straight from the sealed contract — the pivot the closure uses to
+// pose finger chains into the fitted carrying cup.
+const RIGHT_CUP_NODE = {
+  helper: "v4RightFingers",
+  position: new THREE.Vector3(0.047148, -0.003128, 0.010683),
+  quaternion: new THREE.Quaternion(0.39194, 0.501992, 0.727161, -0.256173),
+};
+
 const RIGHT_HAND_CHAINS: HandDigitChain[] = [
   {
     digit: "index",
@@ -40,6 +50,7 @@ const RIGHT_HAND_CHAINS: HandDigitChain[] = [
       },
     ],
     tipLength: 0.018364,
+    cupNode: RIGHT_CUP_NODE,
   },
   {
     digit: "middle",
@@ -61,6 +72,7 @@ const RIGHT_HAND_CHAINS: HandDigitChain[] = [
       },
     ],
     tipLength: 0.021017,
+    cupNode: RIGHT_CUP_NODE,
   },
   {
     digit: "ring",
@@ -82,6 +94,7 @@ const RIGHT_HAND_CHAINS: HandDigitChain[] = [
       },
     ],
     tipLength: 0.020054,
+    cupNode: RIGHT_CUP_NODE,
   },
   {
     digit: "pinky",
@@ -103,6 +116,7 @@ const RIGHT_HAND_CHAINS: HandDigitChain[] = [
       },
     ],
     tipLength: 0.015719,
+    cupNode: RIGHT_CUP_NODE,
   },
   {
     digit: "thumb",

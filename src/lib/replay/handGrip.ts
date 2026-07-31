@@ -1,5 +1,10 @@
 import * as THREE from "three";
-import { SKI_HAND_CURL_AXIS, SKI_HAND_FIST_CENTRE, SKI_HAND_FIST_RADIUS } from "./skiEquipment";
+import {
+  SKI_HAND_CURL_AXIS,
+  SKI_HAND_FIST_CENTRE,
+  SKI_HAND_FIST_RADIUS,
+  SKI_POLE_GRIP_RADIUS,
+} from "./skiEquipment";
 
 /**
  * Geometry-constrained hand grips shared by all three sports.
@@ -11,7 +16,8 @@ import { SKI_HAND_CURL_AXIS, SKI_HAND_FIST_CENTRE, SKI_HAND_FIST_RADIUS } from "
  * - the hand's grip-channel model — where a cylinder of radius R sits in the
  *   hand, derived from the already-pinned SkiErg fist measurements rather
  *   than a new set of eyeballed offsets;
- * - the digit-closure solver — each phalanx flexes until its bone points
+ * - the digit-closure solver — finger chains are posed into the carrying cup
+ *   the channel was fitted in, then each phalanx flexes until its bone points
  *   reach the equipment surface and stops at contact, so curl angles are
  *   outputs of the equipment geometry, not per-sport tuning constants;
  * - the grip-frame orientation — the generalisation of the SkiErg pole frame
@@ -300,9 +306,16 @@ export interface HandGripClosureOptions {
   readonly surface: HandGripSurface;
   /** Base opposition (local Z at the thumb root) bringing the thumb across. */
   readonly thumbOppose: number;
-  /** Effective flesh radius of a finger pad pressed onto the surface. */
+  /**
+   * Effective flesh radius of a finger pad pressed onto the surface.
+   * Defaults to the rig-calibrated `DEFAULT_DIGIT_FLESH`.
+   */
   readonly fingerFlesh?: number;
-  /** Effective flesh radius of the thumb pad. */
+  /**
+   * Effective flesh radius of the thumb pad. Defaults to the rig-calibrated
+   * `DEFAULT_DIGIT_FLESH` radially and to `THUMB_END_PAD_ALLOWANCE` for the
+   * axial press onto a flat handle end.
+   */
   readonly thumbFlesh?: number;
 }
 
@@ -329,10 +342,18 @@ interface DigitJoint {
 
 export interface HandDigitChain {
   readonly digit: "index" | "middle" | "ring" | "pinky" | "thumb";
-  /** Joints proximal→distal, in hand-local rest space (cup already applied for fingers). */
+  /** Joints proximal→distal, in hand-local rest space. */
   readonly joints: readonly DigitJoint[];
   /** Estimated distal-tip length beyond the last joint (m). */
   readonly tipLength: number;
+  /**
+   * Rest transform (relative to the hand) of the `v4*Fingers` palm-cup helper
+   * the chain hangs under, when there is one — the pivot about which the
+   * closure applies `HAND_CLOSURE_CUP` so the solve happens in the carrying
+   * pose the grip channel was fitted in. Thumbs parent the hand directly and
+   * carry no cup node.
+   */
+  readonly cupNode?: DigitJoint;
 }
 
 // Full-fist anatomical maxima (MCP ~90°, PIP ~110°, DIP ~80°; thumb MCP/IP
@@ -341,8 +362,45 @@ export interface HandDigitChain {
 // close all the way, not hang half-open at a styled limit.
 const FINGER_STAGE_LIMITS = [1.57, 1.92, 1.4] as const;
 const THUMB_STAGE_LIMITS = [1.0, 1.25, 1.35] as const;
-const DEFAULT_FINGER_FLESH = 0.008;
-const DEFAULT_THUMB_FLESH = 0.0095;
+/**
+ * Digit-pad flesh calibrated from the rig's own approved envelope, not from
+ * anatomy tables: the fitted SkiErg fist closes its bone helpers onto a
+ * 0.0169 m circle around the 0.016 m rendered rubber, so a helper of this
+ * low-poly mesh sits ~0.9 mm off the equipment it presses — the helper lines
+ * run at the skin, not at anatomical bone depth. The former textbook 8 mm pad
+ * held every solved knuckle 8 mm off the shaft and left the closure a hook
+ * that could never cage what the shipped mesh visibly grips.
+ */
+const DEFAULT_DIGIT_FLESH = SKI_HAND_FIST_RADIUS - SKI_POLE_GRIP_RADIUS;
+/**
+ * Axial allowance for a thumb pressing a flat handle end. This is a different
+ * quantity from the radial digit flesh: the chain's tip point is an estimate
+ * projected past the distal joint, and the end-press contact patch is the pad
+ * *under* that tip, roughly a distal-phalanx pad length behind it. Pressing
+ * the estimated tip all the way onto the end plane instead swings the thumb
+ * around the handle rim chasing millimetres of axial reach.
+ */
+const THUMB_END_PAD_ALLOWANCE = 0.0095;
+/**
+ * Samples used to sweep one stage's flexion range: to bracket the emergence
+ * of a digit that starts inside the grip surface, to catch a non-monotone
+ * mid-range touch, and to hold the closest approach when the surface is
+ * unreachable. The closure runs once per hand when a lane is built (never per
+ * frame), so a dense sweep is free; 24 samples resolve every crossing on the
+ * shipped rig at both the 16.9 mm pole and the 23 mm scull radius.
+ */
+const CLOSURE_EMERGE_SAMPLES = 24;
+
+/**
+ * Palm-cup carrying posture the grip channel was fitted under: the legacy
+ * SkiErg render applies this rotation about the `v4*Fingers` helper's local Y
+ * before curling, and the pinned `SKI_HAND_FIST_CENTRE` circle was measured
+ * in that pose ("derives the SkiErg curl axis and grip channel from the
+ * authored rig"). The closure must solve in the same space — with the cup at
+ * rest the finger roots collapse onto the fitted axis and no digit can wrap
+ * around a channel that runs through its own knuckles.
+ */
+export const HAND_CLOSURE_CUP = 0.14;
 
 /**
  * Extract one hand's digit chains from a V4 skeleton in hand-local rest
@@ -365,6 +423,7 @@ export function collectHandDigitChains(
   ];
   for (const [digit, names] of digits) {
     const joints: DigitJoint[] = [];
+    let cupNode: DigitJoint | undefined;
     let complete = true;
     for (const name of names) {
       const bone = getBone(name);
@@ -389,12 +448,19 @@ export function collectHandDigitChains(
         const node = stack[index]!;
         position.add(node.position.clone().applyQuaternion(quaternion));
         quaternion.multiply(node.quaternion);
+        if (!cupNode && node.name === `${prefix}Fingers`) {
+          cupNode = {
+            helper: node.name,
+            position: position.clone(),
+            quaternion: quaternion.clone(),
+          };
+        }
       }
       joints.push({ helper: name, position, quaternion });
     }
     if (!complete || joints.length < 3) continue;
     const tipLength = Math.max(0.012, joints[2]!.position.distanceTo(joints[1]!.position) * 0.92);
-    chains.push({ digit, joints, tipLength });
+    chains.push({ digit, joints, tipLength, ...(cupNode ? { cupNode } : {}) });
   }
   return chains;
 }
@@ -405,6 +471,7 @@ const CLOSURE_DELTA = new THREE.Vector3();
 const CLOSURE_STAGE_ROT = new THREE.Quaternion();
 const CLOSURE_OPPOSE_ROT = new THREE.Quaternion();
 const CLOSURE_LOCAL_X = new THREE.Vector3(1, 0, 0);
+const CLOSURE_LOCAL_Y = new THREE.Vector3(0, 1, 0);
 const CLOSURE_LOCAL_Z = new THREE.Vector3(0, 0, 1);
 
 function distanceToAxis(point: THREE.Vector3): number {
@@ -457,36 +524,66 @@ function digitPoints(
 }
 
 /**
+ * Apply the carrying cup to a finger chain: conjugate every joint by the cup
+ * rotation about the `v4*Fingers` node, exactly the composition the renderer
+ * applies to the live helper (`rest × R_y(-side·cup)`). Chains without a cup
+ * node (thumbs, minimal test rigs) pass through untouched.
+ */
+function cupChain(chain: HandDigitChain, side: number): HandDigitChain {
+  const cup = chain.cupNode;
+  if (!cup) return chain;
+  const roll = new THREE.Quaternion().setFromAxisAngle(
+    CLOSURE_LOCAL_Y,
+    -(Math.sign(side) || 1) * HAND_CLOSURE_CUP,
+  );
+  const conjugate = cup.quaternion.clone().multiply(roll).multiply(cup.quaternion.clone().invert());
+  return {
+    ...chain,
+    joints: chain.joints.map((joint) => ({
+      helper: joint.helper,
+      position: joint.position
+        .clone()
+        .sub(cup.position)
+        .applyQuaternion(conjugate)
+        .add(cup.position),
+      quaternion: conjugate.clone().multiply(joint.quaternion),
+    })),
+  };
+}
+
+/**
  * Close every digit of one hand around an equipment surface.
  *
  * The capsule axis runs through `handChannelCentre(radius)` along the hand's
- * curl axis, thumb-ward positive. Each stage flexes until the first
- * downstream bone point reaches the surface (radius + pad flesh) and stops
- * there — a deep-penetration pose cannot be produced because contact is the
- * stop condition, and an unreachable surface leaves the stage at its
- * anatomical limit with `contact: false` reported for the tests to judge.
+ * curl axis, thumb-ward positive; finger chains are first posed into the
+ * `HAND_CLOSURE_CUP` carrying posture the channel was fitted in. Each stage
+ * flexes until the first constrained bone point reaches the surface
+ * (radius + pad flesh) and stops there — a deep-penetration pose cannot be
+ * produced because contact is the stop condition, and an unreachable surface
+ * holds the closest approach with `contact: false` reported for the tests to
+ * judge.
  */
 export function solveHandGripClosure(
   chains: readonly HandDigitChain[],
   options: HandGripClosureOptions,
 ): HandGripClosure {
   const { surface } = options;
-  const fingerFlesh = options.fingerFlesh ?? DEFAULT_FINGER_FLESH;
-  const thumbFlesh = options.thumbFlesh ?? DEFAULT_THUMB_FLESH;
+  const fingerFlesh = options.fingerFlesh ?? DEFAULT_DIGIT_FLESH;
+  // Pose the finger chains into the fitted carrying cup before any geometry
+  // is read: axis signing, closure, and contact reporting all happen in the
+  // same space the renderer will draw.
+  const posed = chains.map((chain) => cupChain(chain, options.side));
   handCurlAxis(options.side, CLOSURE_AXIS);
   // Thumb-ward sign: the axis must point from the pinky side toward the
   // index/thumb side so `thumbEndAxial` has one meaning on both hands.
-  const index = chains.find((chain) => chain.digit === "index");
-  const pinky = chains.find((chain) => chain.digit === "pinky");
+  const index = posed.find((chain) => chain.digit === "index");
+  const pinky = posed.find((chain) => chain.digit === "pinky");
   if (index && pinky) {
     CLOSURE_DELTA.copy(index.joints[0]!.position).sub(pinky.joints[0]!.position);
     if (CLOSURE_DELTA.dot(CLOSURE_AXIS) < 0) CLOSURE_AXIS.negate();
   }
   handChannelCentre(surface.radius, options.side, CLOSURE_CENTRE);
 
-  // The `v4*Fingers` palm-cup helper stays at rest under geometry closure:
-  // cupping was a mitten-era compensation, and folding it into the chain FK
-  // would move every solved contact by the cup angle.
   const poses: HandDigitStagePose[] = [];
   const contacts: HandDigitContactReport[] = [];
 
@@ -496,21 +593,23 @@ export function solveHandGripClosure(
     new THREE.Vector3(),
     new THREE.Vector3(),
   ];
-  for (const chain of chains) {
+  for (const chain of posed) {
     const isThumb = chain.digit === "thumb";
     const limits = isThumb ? THUMB_STAGE_LIMITS : FINGER_STAGE_LIMITS;
-    const flesh = isThumb ? thumbFlesh : fingerFlesh;
     const oppose = isThumb ? Math.sign(options.side) * options.thumbOppose : 0;
     const flexions: number[] = [0, 0, 0];
     const thumbEnd = isThumb && surface.thumbEndAxial !== undefined;
+    const flesh = isThumb
+      ? (options.thumbFlesh ?? (thumbEnd ? THUMB_END_PAD_ALLOWANCE : DEFAULT_DIGIT_FLESH))
+      : fingerFlesh;
 
-    // A thumb lies nearly parallel to the shaft it opposes: its thenar and
-    // web segments press flesh-deep against the grip by design (that press
-    // *is* the required web-seat contact), so only the pad — distal joint
-    // and tip — is collision-constrained in radial mode. Fingers wrap
-    // across the shaft and constrain every downstream point.
+    // A thumb lies nearly along the shaft it opposes: its thenar and web
+    // press flesh-deep against the grip by design (that press *is* the
+    // required web-seat contact), so in radial mode only the pad tip is the
+    // opposing contact the solver may constrain. Fingers wrap across the
+    // shaft and constrain every downstream point.
     const firstCollisionPoint = (stage: number): number =>
-      isThumb && !thumbEnd ? Math.max(stage + 1, 2) : stage + 1;
+      isThumb && !thumbEnd ? chain.joints.length : stage + 1;
 
     const clearance = (stage: number): number => {
       digitPoints(chain, flexions, oppose, points);
@@ -537,26 +636,123 @@ export function solveHandGripClosure(
 
     for (let stage = 0; stage < chain.joints.length; stage++) {
       const limit: number = limits[stage] ?? 1;
-      let low = 0;
-      let high = limit;
-      if (clearance(stage) <= 0) {
-        // Already touching before this stage flexes: leave it open.
-        flexions[stage] = 0;
-        continue;
-      }
-      flexions[stage] = high;
+      flexions[stage] = 0;
       if (clearance(stage) > 0) {
-        // The surface is beyond this stage's reach even fully flexed; keep
-        // the limit and let the next stage continue closing.
+        // Outside the surface: close until the first constrained bone point
+        // lands on it.
+        flexions[stage] = limit;
+        if (clearance(stage) > 0) {
+          // Fully flexed still clears. Either the surface is beyond reach, or
+          // the sweep is non-monotone: it can dip onto the surface mid-range
+          // and recede again (the thumb's arc bows away from a shaft seated
+          // against its own web). Scan for a mid-range touch first.
+          let best = limit;
+          let bestClearance = clearance(stage);
+          let touched = -1;
+          let before = 0;
+          for (let sample = 0; sample < CLOSURE_EMERGE_SAMPLES; sample++) {
+            const candidate = (limit * sample) / CLOSURE_EMERGE_SAMPLES;
+            flexions[stage] = candidate;
+            const value = clearance(stage);
+            if (value <= 0) {
+              touched = candidate;
+              break;
+            }
+            before = candidate;
+            if (value < bestClearance) {
+              bestClearance = value;
+              best = candidate;
+            }
+          }
+          if (touched < 0) {
+            // No touch anywhere in range. A finger's non-terminal stage still
+            // curls fully: the wrap it carries is what brings the *next*
+            // segment around the shaft (a pinky short of the surface closes
+            // all the way, not half-open at a styled hover). The tip stage —
+            // and every stage of a radial thumb, whose single pad contact all
+            // three stages share — instead holds the closest approach, since
+            // curling past it walks the pad away from the equipment.
+            const holdClosest = (isThumb && !thumbEnd) || stage === chain.joints.length - 1;
+            flexions[stage] = holdClosest ? best : limit;
+            continue;
+          }
+          let low = before;
+          let high = touched;
+          for (let iteration = 0; iteration < 28; iteration++) {
+            const middle = (low + high) / 2;
+            flexions[stage] = middle;
+            if (clearance(stage) > 0) low = middle;
+            else high = middle;
+          }
+          flexions[stage] = low;
+          continue;
+        }
+        let low = 0;
+        let high = limit;
+        for (let iteration = 0; iteration < 28; iteration++) {
+          const middle = (low + high) / 2;
+          flexions[stage] = middle;
+          if (clearance(stage) > 0) low = middle;
+          else high = middle;
+        }
+        flexions[stage] = low;
         continue;
       }
+
+      // The stage starts *inside* the surface. This is not "already
+      // touching": the channel model seats a cylinder of the requested radius
+      // against the palm, so on a thick handle the ulnar knuckles genuinely
+      // begin inboard of the rubber. Freezing the stage at rest there authors
+      // precisely the deep penetration this solver promises it cannot
+      // produce — the pinky proximal phalanx ended 5.4 mm inside the 23 mm
+      // scull grip, which renders as fingers passing through the handle.
+      // Close further instead: the segment sweeps around the shaft and
+      // emerges onto the far side, which is what a real finger does when the
+      // handle is thicker than the span from its own knuckle. Clearance is
+      // not monotonic across that sweep, so sample first and then bisect the
+      // bracket that contains the crossing.
+      let previous = 0;
+      let emerged = -1;
+      for (let sample = 1; sample <= CLOSURE_EMERGE_SAMPLES; sample++) {
+        const candidate = (limit * sample) / CLOSURE_EMERGE_SAMPLES;
+        flexions[stage] = candidate;
+        if (clearance(stage) > 0) {
+          emerged = candidate;
+          break;
+        }
+        previous = candidate;
+      }
+      if (emerged < 0) {
+        // No pose in anatomical range clears the surface. Keep the flexion
+        // that penetrates least so the reported contact distance is the
+        // honest best this anatomy can reach rather than the rest-pose worst,
+        // and `contact` still tells callers the digit never made a clean
+        // landing.
+        let best = 0;
+        let bestClearance = Number.NEGATIVE_INFINITY;
+        for (let sample = 0; sample <= CLOSURE_EMERGE_SAMPLES; sample++) {
+          const candidate = (limit * sample) / CLOSURE_EMERGE_SAMPLES;
+          flexions[stage] = candidate;
+          const value = clearance(stage);
+          if (value > bestClearance) {
+            bestClearance = value;
+            best = candidate;
+          }
+        }
+        flexions[stage] = best;
+        continue;
+      }
+      // Stop at the first flexion that clears: the segment rests on the
+      // surface instead of continuing to curl into free space.
+      let low = previous;
+      let high = emerged;
       for (let iteration = 0; iteration < 28; iteration++) {
         const middle = (low + high) / 2;
         flexions[stage] = middle;
-        if (clearance(stage) > 0) low = middle;
-        else high = middle;
+        if (clearance(stage) > 0) high = middle;
+        else low = middle;
       }
-      flexions[stage] = low;
+      flexions[stage] = high;
     }
 
     digitPoints(chain, flexions, oppose, points);
