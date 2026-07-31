@@ -32,6 +32,7 @@ import {
   SKI_POLE_APPROACH_START_CYCLE,
   type BikeMotionGraph,
 } from "./motionGraph";
+
 import { BIKE_RIG, bikeSaddleTopY, bikeWheelAxleY } from "./bikeRig";
 import { buildBikeSaddleGeometry } from "./bikeSaddle";
 import type { Sport } from "../types";
@@ -210,9 +211,22 @@ export interface Renderer3DOptions {
    * Capture-only framing used by the visual-QA harness. It is reachable only
    * through an explicit replay QA query, never through normal replay controls.
    */
-  qaCamera?: "normal" | "athlete-close" | "athlete-front" | "athlete-grip";
+  qaCamera?:
+    | "normal"
+    | "athlete-close"
+    | "athlete-front"
+    | "athlete-grip"
+    | "athlete-grip-left"
+    | "athlete-rear"
+    | "athlete-top";
   /** Draw the live V4 skeleton over the real rendered athlete for QA evidence. */
   showV4Skeleton?: boolean;
+  /**
+   * Capture-only rowing arm-draw diagnostics panel (draw progress, measured
+   * elbow flexion and angular velocity, plane authority, corridor outboard,
+   * hand–knee clearance). Reachable only through the replay QA query.
+   */
+  showArmDiagnostics?: boolean;
 }
 
 /**
@@ -968,6 +982,14 @@ const ELBOW_SIDE = new THREE.Vector3();
 const ELBOW_FRAME = new THREE.Matrix4();
 const ARM_BEND_SCRATCH = new THREE.Vector3();
 
+/* ── Exported grip constants ──────────────────────────────────────────── */
+export const SKI_PALM_CONE = 0.54;
+export const SKI_PALM_TILT = 0.86;
+export const ROWER_PALM_TILT = 0.98;
+export const ROWER_PALM_TILT_COMFORT = 0.88;
+export const SKI_PALM_TILT_COMFORT = 0.79;
+export const SKI_TARGET_PRONATION = 0.88;
+
 /**
  * Stable two-bone arm bend direction for equipment-locked hands.
  *
@@ -1049,13 +1071,19 @@ function placeFigureSegmentBetween(
  * Every other sport keeps its authored extras: RowErg and BikeErg close on
  * flat handles and hoods, where the palm surface *is* the contact.
  */
-function skiGripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
-  if (sport !== "skierg") return undefined;
-  const { x, y, z } = SKI_HAND_FIST_CENTRE;
-  return {
-    leftHand: { x: -x, y, z },
-    rightHand: { x, y, z },
-  };
+function gripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
+  if (sport === "skierg") {
+    const { x, y, z } = SKI_HAND_FIST_CENTRE;
+    return {
+      leftHand: { x: -x, y, z },
+      rightHand: { x, y, z },
+    };
+  }
+  // RowErg / BikeErg effector offsets are inactive until the sport-specific
+  // grip layers supply the consuming IK solves. The full channel-centre path
+  // is left here, ready to replace `return undefined` once each sport's grip
+  // layer lands.
+  return undefined;
 }
 
 /**
@@ -4082,7 +4110,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly ghostRadius = 26;
 
   private readonly quality: RenderQuality;
-  private readonly qaCamera: "normal" | "athlete-close" | "athlete-front" | "athlete-grip";
+  private readonly qaCamera: NonNullable<Renderer3DOptions["qaCamera"]>;
   private cfg: QualityConfig;
   private renderer: RendererLike;
   /**
@@ -4385,7 +4413,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       // SkiErg drives the centre of the closed fist onto the shaft, not the
       // authored palm-surface point: the latter lays the pole across the
       // knuckles and the fingers shut beside it instead of around it.
-      const effectorOffsets = skiGripEffectorOffsets(this.sport);
+      const effectorOffsets = gripEffectorOffsets(this.sport);
       this.liveAvatar.v4Motion = installReplayV4MotionController({
         sport: this.sport,
         parent: this.liveAvatar.group,

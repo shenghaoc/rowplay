@@ -536,10 +536,14 @@ describe("CourseRenderer stroke pose input", () => {
 
     expect(samples[clearanceIndex - 1]!.handMinusKnee).toBeGreaterThan(0);
     expect(samples[clearanceIndex]!.legExtension).toBeGreaterThan(0.99);
+    // Below the 10° visible-flexion threshold: the widened 0.64-of-drive
+    // draw window may run its sub-visible C2 head while the handle finishes
+    // crossing the knee line, but visible flexion still waits for clearance
+    // (the ordering assertion below).
     expect(
       Math.max(...samples.slice(peakIndex, clearanceIndex).map((sample) => sample.bendDegrees)),
       "arms remain visually long before the handle clears the knees",
-    ).toBeLessThan(5);
+    ).toBeLessThan(10);
     expect(
       visibleDrawIndex,
       "visible elbow flexion starts at or after drive-side knee clearance",

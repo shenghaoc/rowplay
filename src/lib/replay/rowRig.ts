@@ -22,6 +22,19 @@ export const ROWER_STRETCHER = Object.freeze({
   shoeCatchPitch: THREE.MathUtils.degToRad(-35),
   shoeFinishPitch: THREE.MathUtils.degToRad(-42),
 });
+/**
+ * Physical scull-handle contract shared by the oar geometry, the hand-grip
+ * closure solve, and the grip tests. The rubber is a 0.023 m-radius cylinder
+ * along oar-local X; `anchorFromEnd` is how far inboard of the flat thumb
+ * stop the palm-contact anchor sits, which is what lets the thumb press the
+ * handle end while four fingers hook the cylinder.
+ */
+export const ROWER_SCULL_GRIP = Object.freeze({
+  radius: 0.023,
+  length: 0.32,
+  anchorFromEnd: 0.04,
+} as const);
+
 export const ROWER_OARLOCK = Object.freeze({
   lateral: 0.88,
   // The pin rides ~0.14 above the seat top — real sculling rigging height —
@@ -347,4 +360,65 @@ export function solveRowerArmWithCorridor(
     bendHint.lerp(ARM_BEND_BEST, blend);
     solveTwoBone3D(shoulder, hand, upperArmLength, forearmLength, bendHint, elbow, handOut);
   }
+}
+
+export const ROWER_ELBOW_PLANE = Object.freeze({
+  /** Flexion (rad from straight) below which the plane has no authority. */
+  authorityStart: 0.14,
+  /** Flexion at which the drawn plane owns the joint completely. */
+  authorityFull: 0.55,
+  /**
+   * Relaxed near-straight direction, athlete frame: a soft under-arm hang
+   * with the natural sculling outboard lean, derived from the authored
+   * catch pose. Positionally almost inert at low flexion; it exists to keep
+   * the singular region deterministic and mirror-symmetric.
+   */
+  relaxed: Object.freeze({ x: 0.32, y: -1, z: -0.12 }),
+  /**
+   * Drawn direction, athlete frame. Used only as the two-bone branch hint:
+   * once the circle is decomposed, `drawnDownWeight`/`drawnOutboardWeight`
+   * own the station at full authority. Down-and-aft picks the correct
+   * (non-mirrored, non-winged) branch at every draw chord.
+   */
+  drawn: Object.freeze({ x: 0.02, y: -0.72, z: -0.69 }),
+  /**
+   * Chord-frame station of the drawn elbow on its circle. The chord itself
+   * swings ~30° of azimuth between mid-draw and finish, so no fixed
+   * athlete-frame direction can be modestly outboard at both — expressed in
+   * the working basis (in-plane-down v̂, outboard ŵ) the preference is
+   * chord-relative and the outboard offset scales with the circle radius:
+   * 0.24 · radius stays a visible but modest lean (≈ 0.067 m mid-draw,
+   * ≈ 0.087 m at the deep finish fold) and leaves the absolute-metre
+   * corridor as a dormant safety limit instead of the operating pose.
+   */
+  drawnOutboardWeight: 0.24,
+  drawnDownWeight: Math.sqrt(1 - 0.24 * 0.24),
+} as const);
+
+/** Elbow flexion (radians away from a straight arm) for a given reach. */
+export function rowerElbowFlexion(
+  chordLength: number,
+  upperArmLength: number,
+  forearmLength: number,
+): number {
+  const clamped = THREE.MathUtils.clamp(
+    chordLength,
+    Math.abs(upperArmLength - forearmLength) + 1e-6,
+    upperArmLength + forearmLength - 1e-6,
+  );
+  const cosInterior =
+    (upperArmLength * upperArmLength + forearmLength * forearmLength - clamped * clamped) /
+    (2 * upperArmLength * forearmLength);
+  return Math.PI - Math.acos(THREE.MathUtils.clamp(cosInterior, -1, 1));
+}
+
+/**
+ * How much the preferred plane may steer the joint, 0 near straight → 1 once
+ * flexion is clearly visible. C2 (smootherstep), so plane authority cannot
+ * step while the draw develops.
+ */
+export function rowerElbowPlaneAuthority(flexion: number): number {
+  const span = ROWER_ELBOW_PLANE.authorityFull - ROWER_ELBOW_PLANE.authorityStart;
+  const unit = THREE.MathUtils.clamp((flexion - ROWER_ELBOW_PLANE.authorityStart) / span, 0, 1);
+  return unit * unit * unit * (unit * (unit * 6 - 15) + 10);
 }

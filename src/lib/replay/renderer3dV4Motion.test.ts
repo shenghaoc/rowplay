@@ -532,15 +532,21 @@ describe("V4 motion determinism and fallback safety", () => {
       placeTargetsNearClipEffectors(lane);
       // In the RowErg parent frame the athlete faces +z, so both branch markers
       // sit rearward (-z) of their shoulder. The test scene itself is rotated/
-      // scaled to prove the controller consumes this in world space.
+      // scaled to prove the controller consumes this in world space. The
+      // marker only *owns* the bend plane at visible flexion — near straight
+      // the authored clip keeps the joint (rowerElbowPlaneAuthority) — so the
+      // wrist targets are pulled inside the reach until the arm is clearly
+      // bent before asserting marker-following.
       for (const side of ["left", "right"] as const) {
         const upper = side === "left" ? "v4LeftUpperArm" : "v4RightUpperArm";
         const marker = side === "left" ? lane.targets.leftElbow : lane.targets.rightElbow;
+        const handTarget = side === "left" ? lane.targets.leftHand : lane.targets.rightHand;
         const shoulder = lane.instance.bones[upper].getWorldPosition(new THREE.Vector3());
         lane.parent.worldToLocal(shoulder);
         marker.position
           .copy(shoulder)
           .add(new THREE.Vector3(side === "left" ? -0.04 : 0.04, 0, -0.24));
+        handTarget.position.sub(shoulder).setLength(0.58).add(shoulder);
       }
       lane.scene.updateMatrixWorld(true);
       controller?.setDiagnosticMode("full");
@@ -973,6 +979,55 @@ describe("V4 motion determinism and fallback safety", () => {
       } finally {
         disposeLane(lane, controller);
       }
+    }
+  });
+
+  it("settles RowErg hand contacts without consuming the prepared pose", () => {
+    const lane = createLane();
+    const controller = installReplayV4MotionController({
+      sport: "rower",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+    });
+    try {
+      expect(controller?.prepare({ phase: 0, cycleFrac: 0.54, driveFrac: 0.38 })).toBe(true);
+      placeTargetsNearClipEffectors(lane);
+      expect(controller?.orientHandsToTargets()).toBe(true);
+      const preparedArmRotations = [
+        lane.instance.bones.v4LeftUpperArm,
+        lane.instance.bones.v4LeftForearm,
+        lane.instance.bones.v4LeftHand,
+        lane.instance.bones.v4RightUpperArm,
+        lane.instance.bones.v4RightForearm,
+        lane.instance.bones.v4RightHand,
+      ].map((bone) => bone.quaternion.clone());
+      expect(controller?.settleHandContacts()).toBe(true);
+      expect(controller?.restoreHandPoseAfterSettle()).toBe(true);
+      for (const [index, bone] of [
+        lane.instance.bones.v4LeftUpperArm,
+        lane.instance.bones.v4LeftForearm,
+        lane.instance.bones.v4LeftHand,
+        lane.instance.bones.v4RightUpperArm,
+        lane.instance.bones.v4RightForearm,
+        lane.instance.bones.v4RightHand,
+      ].entries()) {
+        expect(bone.quaternion.toArray()).toEqual(preparedArmRotations[index]!.toArray());
+      }
+
+      // Refinement may move the rigid grips after the interim arm settle. The
+      // prepared sample must remain live so the normal final pass can close
+      // those latest targets, including the untouched leg chains.
+      lane.targets.leftHand.position.z -= 0.004;
+      lane.targets.rightHand.position.z -= 0.004;
+      lane.scene.updateMatrixWorld(true);
+      expect(controller?.constrain()).toBe(true);
+      for (const name of ["leftHand", "rightHand", "leftFoot", "rightFoot"] as const) {
+        const targetWorld = lane.targets[name].getWorldPosition(new THREE.Vector3());
+        expect(controller!.getContactWorld(name).distanceTo(targetWorld)).toBeLessThan(0.03);
+      }
+    } finally {
+      disposeLane(lane, controller);
     }
   });
 
