@@ -9,8 +9,6 @@ export const SKI_GRIP_REACH_MARGIN_M = 0.002;
 export const SKI_POST_RELEASE_EXTENSION_CYCLE = 0.34;
 /** The reach floor is fully released when the free-pole flight reaches its apex. */
 export const SKI_POST_RELEASE_EXTENSION_END_CYCLE = SKI_POLE_FLIGHT_APEX_CYCLE;
-/** Reach band over which the post-release floor eases back to the authored arc. */
-const SKI_POST_RELEASE_EXTENSION_RANGE_M = 0.06;
 /**
  * Keep the post-release peak fractionally ahead of pole-off. This 0.1 mm
  * continuation remains inside the solver's 2 mm straight-arm margin, but
@@ -128,14 +126,18 @@ export class SkiGripReachSolver {
       SKI_GRIP_REACH_MARGIN_M,
       structuralReach - SKI_GRIP_REACH_MARGIN_M + authority * SKI_POST_RELEASE_REACH_CONTINUATION_M,
     );
-    const minimumReach =
-      authority > 0
-        ? THREE.MathUtils.lerp(
-            Math.max(this.minimumReach, maximumReach - SKI_POST_RELEASE_EXTENSION_RANGE_M),
-            maximumReach,
-            authority,
-          )
-        : this.minimumReach;
+    // A REMOVABLE DISCONTINUITY, not a design choice: the branch below used
+    // to lerp from `max(this.minimumReach, maximumReach - RANGE_M)`, which is
+    // a LARGER value than `this.minimumReach` whenever the range floor wins -
+    // so at authority=0 exactly, minimumReach fell to the small default while
+    // the limit as authority -> 0+ approached the large lerp start. Measured:
+    // minimumReach jumped ~0.7 m to ~0.03 m in a single sample right at the
+    // post-release window's exact boundary (SKI_POLE_FLIGHT_APEX_CYCLE),
+    // dragging the whole rigid-contact solve with it. Lerping FROM
+    // this.minimumReach makes both branches agree exactly at authority=0 by
+    // construction - continuous with no special case needed - while
+    // authority=1 still reaches full extension.
+    const minimumReach = THREE.MathUtils.lerp(this.minimumReach, maximumReach, authority);
     let exact = solveRigidContactPoint3D(
       this.reachOriginWorld,
       preferredContactWorld,
