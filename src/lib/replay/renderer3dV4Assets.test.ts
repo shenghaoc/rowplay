@@ -16,6 +16,7 @@ import {
   resetReplayV4AssetCache,
   tryCreateReplayV4AthleteInstance,
   type ReplayV4AssetTemplate,
+  REPLAY_V4_FOREARM_DEFORMATION_HELPER_NAMES,
 } from "./renderer3dV4Assets";
 import { V4_HAND_HELPER_NAMES } from "./rigV4";
 
@@ -124,7 +125,9 @@ describe("V4 runtime asset contract", () => {
           Math.hypot(...template.effectors.leftHand.contactOffset),
       );
       expect(template.byteLength).toBe(223_960);
-      expect(template.helperBoneNames).toEqual([]);
+      // The reference factory authors the sealed deformation-helper set by
+      // default; the loader fails hard without it.
+      expect(template.helperBoneNames).toEqual([...REPLAY_V4_FOREARM_DEFORMATION_HELPER_NAMES]);
       expect([...REPLAY_V4_HAND_HELPER_NAMES]).toEqual([...V4_HAND_HELPER_NAMES]);
     } finally {
       disposeReplayV4AssetTemplate(template);
@@ -160,7 +163,10 @@ describe("V4 runtime asset contract", () => {
     try {
       expect(template.skeleton.bones.length).toBeGreaterThan(19);
       expect(Object.keys(template.bones)).toHaveLength(19);
-      expect(template.helperBoneNames).toEqual(["v4LeftForearmTwist"]);
+      expect(template.helperBoneNames).toEqual([
+        "v4LeftForearmTwist",
+        ...REPLAY_V4_FOREARM_DEFORMATION_HELPER_NAMES,
+      ]);
       expect(template.bones.v4LeftForearm).toBeDefined();
       expect(template.skeleton.getBoneByName("v4LeftForearmTwist")).toBe(helper);
     } finally {

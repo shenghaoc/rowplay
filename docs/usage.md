@@ -210,11 +210,13 @@ The same post-clip pass constrains each V4 knee to the same-side deterministic
 marker above its own planted ski; locking the boots may not push either thigh
 through the opposite leg. Canvas uses a small constant depth offset for the
 parallel skis instead of the former exaggerated fore/aft split.
-At the high plant both 2D and 3D put the flexed elbow below the shoulder; while
-the planted pole bears the press, that bend plane rotates behind the shoulder.
-The hand and rigid pole then lift and travel forward on recovery, and the elbow
-returns underneath the arm for the next plant without changing to the opposite
-two-bone intersection.
+Both views share the same phase timing and pole-contact landmarks, but style
+the arm differently. The 3D athlete plants with the elbows held high and
+slightly wide of the grips so the forearms slant down to the poles and the
+wrists stay flat; the press collapses the elbows down and back, and the
+recovery retraces that path to the next plant. The side-profile Canvas figure
+keeps its single below-shoulder two-bone branch — a flat stylisation chosen
+so its elbow can never flip to the opposite intersection mid-stroke.
 BikeErg shoes stay on opposed pedals while each knee follows a continuous
 rider-forward branch and retains flexion through bottom dead centre. The 3D
 BikeErg rider is drawn on a stylised road bicycle—two 0.67 m wheels on a 1.00 m

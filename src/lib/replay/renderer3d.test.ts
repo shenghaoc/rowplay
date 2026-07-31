@@ -3010,13 +3010,15 @@ describe("CourseRenderer3D", () => {
      */
     const BIKE_V4_CONTACT_TOLERANCE = { hand: 0.05, foot: 0.19 } as const;
     // Rower hands drive the grip-channel centre onto the rigid scull rubber
-    // after the orientation-aware oar refinement closes. 5 mm -> 7 mm with the
-    // flat-wrist grip: laying the hand's long axis on the forearm rotates the
-    // wrist origin around the channel, and at the deepest catch reach that
-    // orientation needs ~4 mm more shoulder-to-wrist reach than the arm has —
-    // the residual is a structural-reach shortfall at one extreme phase
-    // (measured worst 5.8 mm), not a loose grip.
-    const ROW_V4_CONTACT_TOLERANCE = { hand: 0.007, foot: 0.015 } as const;
+    // after the orientation-aware oar refinement closes. The flat-wrist grip
+    // needs ~4 mm more reach than the arm has at the deepest recovery
+    // stretch; the catch-reach yield (the wrist follows the handle line at
+    // full stretch, as a real rower's does) recovers most of it, taking the
+    // worst residual from 5.8 mm to 5.25 mm at one sample. Closing the last
+    // quarter-millimetre would need a visibly cocked wrist through late
+    // recovery — trading the Concept2 flat-wrist contract for an invisible
+    // contact margin — so the pin records the measured optimum instead.
+    const ROW_V4_CONTACT_TOLERANCE = { hand: 0.0055, foot: 0.015 } as const;
 
     /** Per-sport contact budget for the loops that exercise all three sports. */
     function reducedTolerance(

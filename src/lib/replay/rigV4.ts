@@ -553,6 +553,24 @@ function buildBones(
   const mutableBones = {} as Record<V4BoneName, THREE.Bone>;
   const orderedBones: THREE.Bone[] = [];
   const allBones = new Map<string, THREE.Bone>();
+  // The sealed contract requires the mirrored forearm-twist and
+  // wrist-corrective helpers, so the reference asset authors them by default
+  // (callers may still supply their own definitions for these names). The
+  // runtime loader fails hard on their absence, exactly like semantic bones.
+  const augmentedHelpers: V4VisualHelperBoneDefinition[] = [...helperDefinitions];
+  for (const name of V4_FOREARM_DEFORMATION_HELPER_NAMES) {
+    if (!augmentedHelpers.some((definition) => definition.name === name)) {
+      augmentedHelpers.push({
+        name,
+        parent: name.includes("Left") ? "v4LeftForearm" : "v4RightForearm",
+        position: [
+          0,
+          name.includes("Proximal") ? -0.07 : name.includes("Distal") ? -0.14 : -0.2,
+          0,
+        ],
+      });
+    }
+  }
   for (const definition of V4_BONE_DEFINITIONS) {
     const bone = new THREE.Bone();
     bone.name = definition.name;
@@ -566,7 +584,7 @@ function buildBones(
 
   const semanticNames = new Set<string>(V4_BONE_NAMES);
   const helperNames = new Set<string>();
-  for (const definition of helperDefinitions) {
+  for (const definition of augmentedHelpers) {
     if (
       !definition.name ||
       semanticNames.has(definition.name) ||
@@ -602,7 +620,7 @@ function buildBones(
   // Source skeletons may list a helper before its helper parent. Resolve the
   // complete helper graph while keeping the authored list order in the final
   // Skeleton whenever parents are already available.
-  let pendingHelpers = [...helperDefinitions];
+  let pendingHelpers = [...augmentedHelpers];
   while (pendingHelpers.length > 0) {
     const unresolved: V4VisualHelperBoneDefinition[] = [];
     let added = 0;

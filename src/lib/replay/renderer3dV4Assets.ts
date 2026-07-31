@@ -581,6 +581,15 @@ function collectBones(mesh: THREE.SkinnedMesh): Readonly<Record<ReplayV4BoneName
     if (!bone) throw new Error(`Replay V4 skeleton is missing semantic bone: ${name}`);
     result[name] = bone;
   }
+  // The sealed build contract requires the mirrored forearm-twist and
+  // wrist-corrective helpers, so a load-time absence means a stale or foreign
+  // asset — fail as hard as a missing semantic bone rather than rendering a
+  // skeleton the deformation runtime cannot drive.
+  for (const name of REPLAY_V4_FOREARM_DEFORMATION_HELPER_NAMES) {
+    if (!mesh.skeleton.getBoneByName(name)) {
+      throw new Error(`Replay V4 skeleton is missing deformation helper: ${name}`);
+    }
+  }
   if (mesh.skeleton.boneInverses.length !== bones.length) {
     throw new Error("Replay V4 skeleton has an invalid inverse-bind matrix count");
   }

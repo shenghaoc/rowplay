@@ -126,9 +126,14 @@ Published on-snow measurements in
 place pole contact in roughly the first 26–29% of the cycle, with about an 80°
 pole at plant, 23° at pole-off, early elbow flexion, and near-extension at
 release. Those sources establish phase and flexion/extension landmarks rather
-than one universal 3D elbow vector; down-at-plant → rearward-under-load is the
-generic side-view animation contract inferred from those positions, not a
-claim about a recorded athlete's joint path.
+than one universal 3D elbow vector. Down-at-plant → rearward-under-load
+remains the side-view Canvas animation contract inferred from those
+positions. The 3D athlete's contract was revised (July 2026) to the
+high-elbow plant — elbows above the shoulder line and slightly wide, per the
+Concept2 SkiErg technique reference — because the skinned hand's grip
+channel sits 109.4° from its long axis, and only a forearm meeting the
+near-vertical pole from a high elbow keeps the wrist flat while holding the
+grip. Neither is a claim about a recorded athlete's joint path.
 
 Those landmarks own both renderers. Canvas retains one outside two-bone
 intersection: the high forward grip places that branch below the shoulder at

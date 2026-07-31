@@ -2381,9 +2381,19 @@ function makeRowerAvatar(
       1,
     );
     pendingFlatWristWindow =
-      1 -
-      (THREE.MathUtils.smoothstep(warpedCycle, 0.475, 0.53) -
-        THREE.MathUtils.smoothstep(warpedCycle, 0.555, 0.61));
+      (1 -
+        (THREE.MathUtils.smoothstep(warpedCycle, 0.475, 0.53) -
+          THREE.MathUtils.smoothstep(warpedCycle, 0.555, 0.61))) *
+      // The wrist also yields slightly at the deepest catch reach: holding
+      // the hand perfectly flat there demands ~4 mm more reach than the arm
+      // has, which surfaced as a 5.8 mm grip-channel gap at one recovery
+      // sample. A human reaching full stretch lets the hand follow the
+      // handle line; both edges of the dip rejoin 1 so the catch itself
+      // stays flat.
+      (1 -
+        0.35 *
+          (THREE.MathUtils.smoothstep(warpedCycle, 0.8, 0.88) -
+            THREE.MathUtils.smoothstep(warpedCycle, 0.98, 1)));
     pendingBodySwing = graph.body.spineHinge.value;
     pendingArmDraw = equipmentHandleTravel;
     pendingShoulderSet = graph.body.shoulderSet.value;
@@ -3139,18 +3149,28 @@ function makeSkierAvatar(
       // shaft point wherever THAT fist points it, makes the carried pole
       // consistent with a straight wrist by construction. Concept2: "Your
       // wrists should not bend."
+      // Solve the provisional carry arm against the SAME hand the visible V4
+      // arm will reach — the reach-clamped world target — with the V4's own
+      // structural segment lengths. Using the unclamped local target and the
+      // procedural tube lengths built the neutral fist around a forearm the
+      // athlete doesn't have, which surfaced as the pre-plant wrist
+      // transient right where the clamp engages hardest.
+      upper.getWorldQuaternion(SKI_CARRY_ROLL);
+      const carryReach = hasSampledV4Shoulders
+        ? structuralV4Reach
+        : UPPER_ARM_LENGTH + FOREARM_LENGTH;
+      const carryUpper = carryReach * (UPPER_ARM_LENGTH / (UPPER_ARM_LENGTH + FOREARM_LENGTH));
+      SKI_CARRY_TMP.copy(arm.bendHint).applyQuaternion(SKI_CARRY_ROLL);
       solveTwoBone3D(
-        arm.shoulderPoint,
-        arm.handTarget,
-        UPPER_ARM_LENGTH,
-        FOREARM_LENGTH,
-        arm.bendHint,
+        shoulderWorld,
+        desiredHandWorld,
+        carryUpper,
+        carryReach - carryUpper,
+        SKI_CARRY_TMP,
         SKI_CARRY_ELBOW,
         SKI_CARRY_HAND,
       );
-      SKI_CARRY_FORE.copy(SKI_CARRY_HAND).sub(SKI_CARRY_ELBOW);
-      upper.getWorldQuaternion(SKI_CARRY_ROLL);
-      SKI_CARRY_FORE.applyQuaternion(SKI_CARRY_ROLL).normalize();
+      SKI_CARRY_FORE.copy(SKI_CARRY_HAND).sub(SKI_CARRY_ELBOW).normalize();
       SKI_CARRY_SWING.setFromUnitVectors(handLongAxis(arm.side, SKI_CARRY_AXIS), SKI_CARRY_FORE);
       // Roll about the forearm so the palm faces the athlete's midline — the
       // double-pole carry (palms inward, thumbs up the grip). The reference
