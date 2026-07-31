@@ -62,6 +62,7 @@ import {
   solveRowerOarYaw,
 } from "./rowRig";
 import {
+  handChannelCentre,
   orientHandToGripChannel,
   refineGripSpinForWrist,
   handLongAxis,
@@ -1007,6 +1008,8 @@ const ARM_BEND_SCRATCH = new THREE.Vector3();
 const GRIP_FOREARM_SCRATCH = new THREE.Vector3();
 const GRIP_SHAFT_SCRATCH = new THREE.Vector3();
 const GRIP_ROLL_SCRATCH = new THREE.Vector3();
+const BIKE_HOOD_QUAT = new THREE.Quaternion();
+const BIKE_HOOD_AXIS_X = new THREE.Vector3(1, 0, 0);
 const GRIP_LONG_SCRATCH = new THREE.Vector3();
 const GRIP_SPIN_SCRATCH = new THREE.Quaternion();
 const SKI_FLAT_FOREARM = new THREE.Vector3();
@@ -1138,15 +1141,28 @@ function gripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | un
       rightHand: { x, y, z },
     };
   }
-  // RowErg / BikeErg effector offsets are inactive until the sport-specific
-  // grip layers supply the consuming IK solves.
-  return undefined;
+  const radius =
+    sport === "rower" ? ROWER_SCULL_GRIP.radius : (BIKE_RIG.handlebar.hood?.radius ?? 0.016);
+  const right = handChannelCentre(radius, 1);
+  return {
+    leftHand: { x: -right.x, y: right.y, z: right.z },
+    rightHand: { x: right.x, y: right.y, z: right.z },
+  };
 }
 
 /** Geometry contract handed to the V4 digit-closure solve, per sport. */
 function gripContractFor(
   sport: Sport,
 ): { radius: number; thumbOppose: number; thumbEndAxial?: number } | undefined {
+  if (sport === "rower") {
+    return {
+      radius: ROWER_SCULL_GRIP.radius,
+      // Sculling thumb: light opposition keeps it near the end of the handle
+      // where it presses the flat thumb stop instead of folding across.
+      thumbOppose: 0.3,
+      thumbEndAxial: ROWER_SCULL_GRIP.anchorFromEnd,
+    };
+  }
   if (sport === "skierg") {
     // The rendered pole rubber, not the fitted `HAND_FIST_RADIUS` channel:
     // the closure adds pad flesh itself and comes to rest at radius + flesh,
@@ -1155,9 +1171,11 @@ function gripContractFor(
     // the pole — see the `radius` contract on `HandGripSurface`.
     return { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: 0.62 };
   }
-  // RowErg / BikeErg grip contracts are inactive until the sport-specific
-  // grip layers supply the consuming IK solves.
-  return undefined;
+  return {
+    radius: BIKE_RIG.handlebar.hood?.radius ?? 0.016,
+    // Hood thumb hooks the inboard face opposite the wrapped fingers.
+    thumbOppose: 0.7,
+  };
 }
 
 /**
@@ -4173,7 +4191,10 @@ function makeBikeAvatar(
   // figure uses the same femur and tibia as the skinned athlete above it.
   const THIGH_LENGTH = BIKE_RIG.athlete.thigh;
   const SHIN_LENGTH = BIKE_RIG.athlete.shin;
-  const BIKE_AERO_SPINE_LEAN = 0.74;
+  // 0.74 -> 0.80: matches the deepened V4 clip hinge; the shoulders sat
+  // ~26 mm beyond full arm reach so the palms hovered off the hoods with
+  // locked elbows. Weight belongs on the hands.
+  const BIKE_AERO_SPINE_LEAN = 0.8;
   const BIKE_HEAD_GAZE_COMPENSATION = -0.47;
   // Pelvis stays at the rider root derived by bikeRiderHipY() — sit surface
   // on pad top. Do not add a vertical dig: averagePedalLoad used to sink the
@@ -4216,9 +4237,23 @@ function makeBikeAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
-      // Pronated hoods grip: palm over the bar, fingers curling forward/down
-      // so the cyclist is clearly holding the cockpit rather than floating.
-      arm.hand.rotation.set(-0.72, arm.side * 0.06, arm.side * 0.18);
+      // Pronated hoods grip built from the hood contract: the curl axis lies
+      // along the hood body's long axis (pinky at the bar tops, index toward
+      // the nose) and the spin resolves the palm heel onto the hood's upper
+      // surface, so the fingers hook the front/underside and the thumb hooks
+      // the inboard face rather than posing a fixed Euler fist beside it.
+      const hoodRotation = BIKE_RIG.handlebar.hood?.rotationX ?? -0.24;
+      GRIP_SHAFT_SCRATCH.set(0, -Math.sin(hoodRotation), Math.cos(hoodRotation));
+      GRIP_ROLL_SCRATCH.set(0, -Math.cos(hoodRotation), -Math.sin(hoodRotation));
+      BIKE_HOOD_QUAT.setFromAxisAngle(BIKE_HOOD_AXIS_X, hoodRotation);
+      orientHandToGripChannel(
+        arm.hand,
+        arm.side,
+        BIKE_RIG.handlebar.hood?.radius ?? 0.016,
+        GRIP_SHAFT_SCRATCH,
+        GRIP_ROLL_SCRATCH,
+        BIKE_HOOD_QUAT,
+      );
     }
   };
 
