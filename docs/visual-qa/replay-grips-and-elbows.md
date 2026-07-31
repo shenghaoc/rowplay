@@ -418,3 +418,41 @@ recovery in the `grip` close-up). Two things this commit does _not_ do:
   helpers. Within the measured budgets this stays visually plausible; adding
   Blender forearm-twist helpers remains possible follow-up work that would
   require regenerating the GLB/USDZ/contract.
+
+## SkiErg arm path rebuilt to Concept2 technique (flat wrists via the arm, not the hand)
+
+The recurring "torn / twisted ski wrist" had one remaining structural cause
+after the roll fixes: the arm path itself. Measured wrist bend tracks
+`|forearm-vs-pole − 109.4°|` almost exactly (the fist's channel axis is
+pinned 109.4° from the hand's long axis), and the old motion placed the
+forearm 4–6° off the pole line at the plant — no hand orientation can hold
+that with a wrist. Per the Concept2 SkiErg technique reference ("Your wrists
+should not bend. Your arms should not fully extend"):
+
+- **High-elbow plant.** The elbow hint arc starts up-forward (elbows above
+  the shoulder line, slightly wide of the grips) so the forearm meets the
+  near-vertical pole inside the neutral-wrist cone. Measured plant bend
+  **85° → 3°**.
+- **Press without lockout.** The authored radial reach is capped below
+  structural maximum; pole-off holds a soft 133° elbow instead of the former
+  near-lockout, and the elbows collapse down-back past the ribs (the wide
+  collapse is also what keeps the two-bone bend plane defined).
+- **Neutral-wrist pole carry.** In flight the carried pole direction is
+  derived from the fist itself — hand's long axis on the provisional
+  forearm, palm toward the midline, thumb up the grip — instead of an
+  authored shaft angle, with the tip clamped below the hand (a real pole
+  trails on the strap; a tip above the hand would demand a fist inversion).
+- **Release/approach in direction space.** The flight blend rotates the
+  carried shaft toward the hand→plant direction rather than lerping tip
+  positions (which passed under the hand and snapped the grip 955 mm in one
+  sample), and the dead basket fades out over ~7% of the cycle after
+  pole-off instead of dragging the arm straight against a receding point.
+- **Clip keys re-derived.** The baked hand keys are sampled from the new
+  runtime frames so the wrist-twist redistribution never wraps at ±π.
+
+Measured across 96 phases, both hands: wrist bend ≤ 45° at 96% of samples
+(was 84–86° sustained at reach), worst transient 76° at the pre-plant
+hand-off, max wrist travel 89 mm/sample (was 955), palms inward, V4 hero
+enabled at every phase. Known remaining aesthetic: mid-recovery the carried
+poles read slightly forward-splayed from the chase camera; the wrists and
+elbows are the contract, the carry attitude can be refined separately.

@@ -31,6 +31,7 @@ import {
   sampleRowerMotionGraph,
   sampleRowerMotionGraphInto,
   SKI_POLE_APPROACH_START_CYCLE,
+  SKI_POLE_OFF_CYCLE,
   type BikeMotionGraph,
 } from "./motionGraph";
 
@@ -65,6 +66,7 @@ import {
   handChannelCentre,
   orientHandToGripChannel,
   HAND_PALM_CONTACT,
+  handCurlAxisThumbward,
   handLongAxis,
   handPalmNormalOut,
   pronationRollReference,
@@ -1012,6 +1014,15 @@ const GRIP_ROLL_SCRATCH = new THREE.Vector3();
 const GRIP_FOREARM_SCRATCH = new THREE.Vector3();
 const GRIP_LONG_SCRATCH = new THREE.Vector3();
 const GRIP_SPIN_SCRATCH = new THREE.Quaternion();
+const SKI_CARRY_ELBOW = new THREE.Vector3();
+const SKI_CARRY_HAND = new THREE.Vector3();
+const SKI_CARRY_FORE = new THREE.Vector3();
+const SKI_CARRY_AXIS = new THREE.Vector3();
+const SKI_CARRY_PALM = new THREE.Vector3();
+const SKI_CARRY_PALM_TARGET = new THREE.Vector3();
+const SKI_CARRY_TMP = new THREE.Vector3();
+const SKI_CARRY_SWING = new THREE.Quaternion();
+const SKI_CARRY_ROLL = new THREE.Quaternion();
 /**
  * How far the SkiErg palm may pitch away from the pure inward reference while
  * the spin relief flattens the wrist. Palms facing each other is the visual
@@ -2933,7 +2944,14 @@ function makeSkierAvatar(
    * backwards elbow branch.
    */
   const skiPreferredHand = (motion: SkierKinematics, side: number, out: THREE.Vector3): void => {
-    const reach = 0.44 - motion.elbowLoad * 0.08 + motion.armExtension * 0.36;
+    // Concept2: "Your arms should not fully extend." Cap the authored radial
+    // reach below the structural maximum so the elbow keeps a soft bend even
+    // at the deepest press (a full-reach target locks the arm straight and
+    // lays the forearm on the pole line).
+    const reach = Math.min(
+      0.44 - motion.elbowLoad * 0.08 + motion.armExtension * 0.36,
+      MAX_ARM_REACH * 0.96,
+    );
     const angle = 0.56 - motion.poleSweep * 2.56;
     out.set(
       side * (SKI_ATHLETE_PROPORTIONS.shoulderHalfWidth + 0.05),
@@ -3040,11 +3058,32 @@ function makeSkierAvatar(
     solveSkierElbowDirection(motion, elbowDirection);
     // The bend plane follows the technique phase instead of holding one fixed
     // down/forward vector for the whole cycle. Local -y points down, local -z
-    // is rearward. During recovery the hand/pole path itself lifts and travels
-    // forward while this hint takes the shortest sagittal route back underneath
-    // the arm. A small side-out component preserves anatomical clearance
-    // without creating the former horizontal goalpost silhouette.
-    const bendLateral = 0.08 + motion.elbowLoad * 0.04 + motion.poleFlight * 0.015;
+    // is rearward. The press collapse sweeps the sagittal hint near the
+    // shoulder→hand chord; with only the base lateral component the two-bone
+    // bend plane degenerates there and the elbow can flip branches (measured
+    // 0.48 m in one sample). Real double-polers collapse their elbows past
+    // the ribs slightly WIDE, so widen the hint through exactly that window —
+    // anatomy and numerical stability agree here.
+    const collapse =
+      THREE.MathUtils.smoothstep(motion.poleSweep, 0.45, 0.85) *
+      (1 - THREE.MathUtils.smoothstep(motion.poleSweep, 0.9, 1));
+    // At the high plant the sagittal hint necessarily runs near the
+    // shoulder→hand chord (both point up-forward), so the elbow's branch
+    // there is decided by the lateral component — and the branch that yields
+    // the neutral wrist (pole-to-forearm ~113°, measured bend 3°) is the
+    // FLARED one: elbows wide of the grips, exactly how a double-poler
+    // plants. Author that flare explicitly through the pre-plant and early
+    // contact instead of leaving it to the 0.08 floor.
+    const plantFlare = Math.max(
+      THREE.MathUtils.smoothstep(motion.cycle, 0.88, 0.96),
+      1 - THREE.MathUtils.smoothstep(motion.cycle, 0.06, 0.16),
+    );
+    const bendLateral =
+      0.08 +
+      motion.elbowLoad * 0.04 +
+      motion.poleFlight * 0.015 +
+      collapse * 0.3 +
+      plantFlare * 0.25;
     const bendUp = elbowDirection.vertical * 0.78;
     const bendAft = elbowDirection.foreAft * 0.78;
     for (let i = 0; i < arms.length; i++) {
@@ -3089,15 +3128,86 @@ function makeSkierAvatar(
 
       setPlantTipWorld(plantTipWorld, arm.side, pose, meters, outer);
 
-      // The free basket trails the hand in the course frame. Its shaft rotates
-      // from the measured shallow pole-off attitude (~23°) toward a steep
-      // plant (~80°), while a clearance envelope keeps it above the snow.
-      const poleAngle = THREE.MathUtils.degToRad(80 - motion.poleSweep * 57);
+      // The free pole hangs from the fist, so derive its carried direction
+      // from a NEUTRAL WRIST instead of an authored shaft angle. The old
+      // authored attitude rotated the shaft independently of the arm, and by
+      // the high recovery it lay 4-6° off the forearm line — a configuration
+      // whose nearest valid hand orientation still bends the wrist ~85°
+      // (the fist's channel axis is pinned 109.4° from the hand's long axis).
+      // Building the fist frame with the hand's long axis ON the provisional
+      // forearm and the palm at the ski pronation target, then letting the
+      // shaft point wherever THAT fist points it, makes the carried pole
+      // consistent with a straight wrist by construction. Concept2: "Your
+      // wrists should not bend."
+      solveTwoBone3D(
+        arm.shoulderPoint,
+        arm.handTarget,
+        UPPER_ARM_LENGTH,
+        FOREARM_LENGTH,
+        arm.bendHint,
+        SKI_CARRY_ELBOW,
+        SKI_CARRY_HAND,
+      );
+      SKI_CARRY_FORE.copy(SKI_CARRY_HAND).sub(SKI_CARRY_ELBOW);
+      upper.getWorldQuaternion(SKI_CARRY_ROLL);
+      SKI_CARRY_FORE.applyQuaternion(SKI_CARRY_ROLL).normalize();
+      SKI_CARRY_SWING.setFromUnitVectors(handLongAxis(arm.side, SKI_CARRY_AXIS), SKI_CARRY_FORE);
+      // Roll about the forearm so the palm faces the athlete's midline — the
+      // double-pole carry (palms inward, thumbs up the grip). The reference
+      // is deliberately NOT the elbow-hinge pronation zero: the recovery
+      // elbow arc crosses the shoulder-wrist chord plane, and the hinge
+      // pseudovector flips sign there, which inverted the whole carried fist
+      // mid-recovery (palms out, baskets pointing at the sky). The athlete's
+      // lateral axis never crosses the forearm, so this reference cannot
+      // flip; rolling about the forearm keeps the flat wrist untouched.
+      SKI_CARRY_PALM_TARGET.set(-arm.side, 0, 0).applyQuaternion(SKI_CARRY_ROLL);
+      const carryReferenced = Math.abs(SKI_CARRY_PALM_TARGET.dot(SKI_CARRY_FORE)) < 0.985;
+      if (carryReferenced) {
+        handPalmNormalOut(arm.side, SKI_CARRY_PALM).applyQuaternion(SKI_CARRY_SWING);
+        SKI_CARRY_PALM.addScaledVector(SKI_CARRY_FORE, -SKI_CARRY_PALM.dot(SKI_CARRY_FORE));
+        SKI_CARRY_PALM_TARGET.addScaledVector(
+          SKI_CARRY_FORE,
+          -SKI_CARRY_PALM_TARGET.dot(SKI_CARRY_FORE),
+        );
+        if (SKI_CARRY_PALM.lengthSq() > 1e-8 && SKI_CARRY_PALM_TARGET.lengthSq() > 1e-8) {
+          SKI_CARRY_PALM.normalize();
+          SKI_CARRY_PALM_TARGET.normalize();
+          const carryCos = THREE.MathUtils.clamp(SKI_CARRY_PALM.dot(SKI_CARRY_PALM_TARGET), -1, 1);
+          const carrySin = SKI_CARRY_TMP.crossVectors(SKI_CARRY_PALM, SKI_CARRY_PALM_TARGET).dot(
+            SKI_CARRY_FORE,
+          );
+          SKI_CARRY_SWING.premultiply(
+            SKI_CARRY_ROLL.setFromAxisAngle(SKI_CARRY_FORE, Math.atan2(carrySin, carryCos)),
+          );
+        }
+      }
+      // Thumb toward the grip top, so the basket lies down the anti-thumb ray.
+      handCurlAxisThumbward(arm.side, SKI_CARRY_AXIS)
+        .applyQuaternion(SKI_CARRY_SWING)
+        .multiplyScalar(-1);
+      // A strictly neutral wrist would carry the tip ABOVE the hand while the
+      // arm trails aft after release — and the instant the tip crosses the
+      // hand, the thumb-toward-grip-top convention demands a full fist
+      // inversion (measured as a half-turn of the forearm in one sample).
+      // A real pole never goes basket-up: it trails on the strap with the
+      // wrist slightly extended. Clamp the carried tip below the hand; the
+      // small wrist extension this leaves during early flight is exactly the
+      // relaxed trail of a real recovery.
+      if (SKI_CARRY_AXIS.y > -0.12) {
+        SKI_CARRY_AXIS.y = 0;
+        const horizontal2 = SKI_CARRY_AXIS.lengthSq();
+        if (horizontal2 > 1e-8) {
+          SKI_CARRY_AXIS.multiplyScalar(Math.sqrt(1 - 0.12 * 0.12) / Math.sqrt(horizontal2));
+        } else {
+          SKI_CARRY_AXIS.set(0, 0, -Math.sqrt(1 - 0.12 * 0.12));
+        }
+        SKI_CARRY_AXIS.y = -0.12;
+      }
       // The basket needs visible snow clearance without rising so fast that a
       // rigid classic-length pole outruns the athlete's arm during release.
       // 20 cm of lift above the base envelope preserves both contracts.
       const clearance = 0.08 + motion.poleLift * 0.2;
-      const desiredVertical = -Math.sin(poleAngle) * POLE_LENGTH;
+      const desiredVertical = SKI_CARRY_AXIS.y * POLE_LENGTH;
       const vertical = Math.min(
         POLE_LENGTH * 0.985,
         Math.max(
@@ -3107,19 +3217,65 @@ function makeSkierAvatar(
         ),
       );
       const horizontal = Math.sqrt(Math.max(0, POLE_LENGTH * POLE_LENGTH - vertical * vertical));
-      const lateral = arm.side * 0.22;
-      const forward = -Math.sqrt(1 - lateral * lateral);
-      freeTipWorld
-        .copy(desiredHandWorld)
-        .addScaledVector(courseRightWorld, lateral * horizontal)
-        .addScaledVector(courseForwardWorld, forward * horizontal);
+      SKI_CARRY_TMP.set(SKI_CARRY_AXIS.x, 0, SKI_CARRY_AXIS.z);
+      // Splay the carried baskets slightly outward: a purely sagittal carry
+      // converges the two shafts until they visually cross behind the
+      // athlete. Real trailing poles ride just wide of the skis.
+      SKI_CARRY_PALM_TARGET.set(arm.side, 0, 0).applyQuaternion(
+        upper.getWorldQuaternion(SKI_CARRY_ROLL),
+      );
+      SKI_CARRY_TMP.addScaledVector(
+        SKI_CARRY_PALM_TARGET,
+        0.9 * Math.max(0.3, SKI_CARRY_TMP.length()),
+      );
+      if (SKI_CARRY_TMP.lengthSq() < 1e-8) {
+        // Perfectly vertical carry: keep the legacy lateral-back fallback so
+        // the horizontal remainder has a defined direction.
+        SKI_CARRY_TMP.copy(courseRightWorld)
+          .multiplyScalar(arm.side * 0.22)
+          .addScaledVector(courseForwardWorld, -0.9);
+      }
+      SKI_CARRY_TMP.normalize();
+      freeTipWorld.copy(desiredHandWorld).addScaledVector(SKI_CARRY_TMP, horizontal);
       freeTipWorld.y += vertical;
 
-      // Match basket velocity at both ends of flight. Contact can therefore
-      // switch from ground authority to the free arc without a one-frame tip
-      // or grip jump, and late recovery converges on the next plant instead of
-      // dropping vertically from an unrelated sweep.
-      freeTipWorld.lerp(plantTipWorld, 1 - motion.poleFlight);
+      // Match basket attitude at both ends of flight IN DIRECTION SPACE. A
+      // position lerp between the carried tip and the course plant point can
+      // pass underneath the hand — the drawn shaft flips front-to-back and
+      // the rigid grip solve snaps the wrist (measured 955 mm in one sample
+      // at the pre-plant). Rotating the carried shaft direction toward the
+      // hand->plant direction can never flip, releases the dead basket after
+      // pole-off (the pole pivots around the hand instead of dragging the arm
+      // to full extension against a receding snow point), and still converges
+      // exactly: at contact the hand->plant distance IS the pole length, so
+      // tip position and velocity are continuous at both boundaries.
+      SKI_CARRY_PALM.copy(plantTipWorld).sub(desiredHandWorld);
+      // After pole-off the plant point is dead: the athlete advances past it,
+      // so holding the shaft aimed there for the whole flight-ramp dragged
+      // the arm to a 763 mm straight-line stretch against a receding snow
+      // point. Fade the plant attitude out over the first ~7% of the cycle
+      // after release (velocity-matched at the boundary, free thereafter);
+      // the approach side keeps the full ramp so the carry converges on the
+      // NEXT plant.
+      const releaseFade =
+        motion.cycle > SKI_POLE_OFF_CYCLE && motion.cycle < SKI_POLE_APPROACH_START_CYCLE
+          ? 1 -
+            THREE.MathUtils.smoothstep(motion.cycle, SKI_POLE_OFF_CYCLE, SKI_POLE_OFF_CYCLE + 0.05)
+          : 1;
+      if (SKI_CARRY_PALM.lengthSq() > 1e-8 && motion.poleFlight < 1) {
+        SKI_CARRY_PALM.normalize();
+        SKI_CARRY_FORE.copy(freeTipWorld).sub(desiredHandWorld).normalize();
+        const blendAngle =
+          SKI_CARRY_FORE.angleTo(SKI_CARRY_PALM) * (1 - motion.poleFlight) * releaseFade;
+        SKI_CARRY_TMP.crossVectors(SKI_CARRY_FORE, SKI_CARRY_PALM);
+        if (SKI_CARRY_TMP.lengthSq() < 1e-10) {
+          // Antiparallel shafts: rotate through a stable lateral axis.
+          SKI_CARRY_TMP.copy(courseRightWorld);
+        }
+        SKI_CARRY_TMP.normalize();
+        SKI_CARRY_FORE.applyQuaternion(SKI_CARRY_ROLL.setFromAxisAngle(SKI_CARRY_TMP, blendAngle));
+        freeTipWorld.copy(desiredHandWorld).addScaledVector(SKI_CARRY_FORE, POLE_LENGTH);
+      }
       tipWorld.lerpVectors(freeTipWorld, plantTipWorld, motion.poleContact);
 
       // A scalar total reach is only a broad first estimate: the grip-channel
@@ -3209,25 +3365,20 @@ function makeSkierAvatar(
         // SkiErg no longer maintains a duplicate orientation system.
         gripThumbwardLocal.copy(SEGMENT_DIR).multiplyScalar(-1);
         // Pinning the fist's channel axis along the shaft leaves exactly one
-        // freedom — spin about the shaft — and that freedom IS the forearm's
-        // pronation. Resolve it against the palm's true outward facing for a
-        // bounded, human pronation instead of against a fixed lateral
-        // direction: the pole's inclination sweeps 79° across the cycle, so a
-        // fixed reference drove pronation through 147° of range and past the
-        // ±90° limit, which is rotation only a forearm can supply and this rig
-        // cannot — so it surfaced as a wrist hinged sideways off the arm.
-        const pronationReferenced = pronationRollReference(
-          arm.shoulderPoint,
-          arm.elbowPoint,
-          arm.handPoint,
-          SKI_TARGET_PRONATION,
-          arm.side,
-          gripRollLocal,
-        );
-        if (!pronationReferenced) {
-          // Straight arm: no hinge plane exists, so keep the legacy reference.
-          gripRollLocal.copy(athleteRightLocal).multiplyScalar(-arm.side);
-        }
+        // freedom — spin about the shaft. Baseline: palm toward the athlete's
+        // midline (never singular — the lateral axis cannot cross the
+        // forearm), then an explicit extra roll lays the hand's long axis
+        // onto the solved forearm for a FLAT WRIST, exactly as Concept2
+        // specifies ("Your wrists should not bend"). The arm path now meets
+        // the pole near the hand's 109.4° neutral cone at almost every
+        // phase, so the flat roll is small and also lands the palm near the
+        // ski pronation target for free. At the release stretch the shaft
+        // passes near-parallel to the forearm and the flat-roll projection
+        // spins — the same ±π singularity as the rowing feather — so the
+        // extra roll fades on the projection quality and wrap-guards at π,
+        // falling back to the stable palm-inward baseline through that
+        // window.
+        gripRollLocal.copy(athleteRightLocal).multiplyScalar(-arm.side);
         orientHandToGripChannel(
           arm.hand,
           arm.side,
@@ -3235,22 +3386,55 @@ function makeSkierAvatar(
           gripThumbwardLocal,
           gripRollLocal,
           pole.shaft.quaternion,
-          pronationReferenced ? handPalmNormalOut(arm.side, GRIP_PALM_SCRATCH) : undefined,
+          handPalmNormalOut(arm.side, GRIP_PALM_SCRATCH),
         );
         GRIP_FOREARM_SCRATCH.set(
           arm.handPoint.x - arm.elbowPoint.x,
           arm.handPoint.y - arm.elbowPoint.y,
           arm.handPoint.z - arm.elbowPoint.z,
-        );
-        if (!pronationReferenced) {
-          // Legacy relief, retained only for the degenerate straight-arm case.
-          refineGripSpinForWrist(
-            arm.hand,
-            arm.side,
-            SEGMENT_DIR,
-            GRIP_FOREARM_SCRATCH,
-            SKI_PALM_CONE,
-          );
+        ).normalize();
+        GRIP_LONG_SCRATCH.copy(GRIP_FOREARM_SCRATCH);
+        const skiForeAcross = GRIP_LONG_SCRATCH.addScaledVector(
+          SEGMENT_DIR,
+          -GRIP_LONG_SCRATCH.dot(SEGMENT_DIR),
+        ).length();
+        // Fade the flat roll out across the release stretch IN PHASE, like
+        // the rowing feather window: the geometric gates alone engage a large
+        // correction in a single sample as the shaft leaves the near-parallel
+        // zone (measured as a 152° hand pop at pole-off), while a phased
+        // window ramps it over many samples. The geometric weight and wrap
+        // guard stay as backstops for off-window pathologies.
+        const skiFlatWindow =
+          1 -
+          (THREE.MathUtils.smoothstep(motion.cycle, 0.24, 0.3) -
+            THREE.MathUtils.smoothstep(motion.cycle, 0.4, 0.5));
+        const skiFlatWeight = skiFlatWindow * THREE.MathUtils.smoothstep(skiForeAcross, 0.12, 0.35);
+        if (skiFlatWeight > 1e-4) {
+          handLongAxis(arm.side, GRIP_LONG_SCRATCH).applyQuaternion(arm.hand.quaternion);
+          GRIP_LONG_SCRATCH.addScaledVector(SEGMENT_DIR, -GRIP_LONG_SCRATCH.dot(SEGMENT_DIR));
+          GRIP_FOREARM_SCRATCH.addScaledVector(SEGMENT_DIR, -GRIP_FOREARM_SCRATCH.dot(SEGMENT_DIR));
+          if (GRIP_LONG_SCRATCH.lengthSq() > 1e-8 && GRIP_FOREARM_SCRATCH.lengthSq() > 1e-8) {
+            GRIP_LONG_SCRATCH.normalize();
+            GRIP_FOREARM_SCRATCH.normalize();
+            const skiFlatCos = THREE.MathUtils.clamp(
+              GRIP_LONG_SCRATCH.dot(GRIP_FOREARM_SCRATCH),
+              -1,
+              1,
+            );
+            const skiFlatSin = GRIP_LONG_SCRATCH.cross(GRIP_FOREARM_SCRATCH).dot(SEGMENT_DIR);
+            const skiFlatAngle = Math.atan2(skiFlatSin, skiFlatCos);
+            const skiWrapGuard = THREE.MathUtils.smoothstep(
+              Math.PI - Math.abs(skiFlatAngle),
+              0.15,
+              0.6,
+            );
+            arm.hand.quaternion.premultiply(
+              GRIP_SPIN_SCRATCH.setFromAxisAngle(
+                SEGMENT_DIR,
+                skiFlatAngle * skiFlatWeight * skiWrapGuard,
+              ),
+            );
+          }
         }
         // The pole may ride diagonally across the palm to keep the hand
         // continuous with the forearm. This rotates about the palm normal, so

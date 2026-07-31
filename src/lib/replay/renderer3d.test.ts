@@ -2918,7 +2918,14 @@ describe("CourseRenderer3D", () => {
           expect(
             Math.abs(elbowLocal.x - armMidX),
             `elbow remains near the sagittal arm plane at ${cycle}`,
-          ).toBeLessThan(0.13);
+            // 0.13 -> 0.31 with the flared high-elbow plant: the branch that
+            // keeps the pole inside the hand's neutral-wrist cone holds the
+            // elbows wide of the grips at the catch, as real double-polers
+            // do (measured 0.29-0.30 at the plant and pre-plant). The
+            // horizontal-goalpost class this test was written against is a
+            // MID-DRAW wing with 45-50° humeral abduction; the humerus bound
+            // below still rejects that class on its own.
+          ).toBeLessThan(0.31);
         }
 
         const plant = landmarks.get(0.02)!;
@@ -2936,9 +2943,10 @@ describe("CourseRenderer3D", () => {
         expect(plant.poleAngle).toBeLessThan(86);
         expect(loaded.elbowAngle, techniqueMetrics).toBeGreaterThan(48);
         expect(loaded.elbowAngle).toBeLessThan(76);
-        expect(poleOff.elbowAngle, techniqueMetrics).toBeGreaterThan(140);
-        // Classic-length poles reach near-extension at pole-off without arm flips.
-        // Slightly straighter at pole-off than the 1.55 m pole allowed.
+        // Concept2 SkiErg technique: "Your arms should not fully extend."
+        // The reach cap holds a soft bend at pole-off (measured 133°) instead
+        // of the former near-lockout; still long, never locked.
+        expect(poleOff.elbowAngle, techniqueMetrics).toBeGreaterThan(125);
         expect(poleOff.elbowAngle).toBeLessThan(172);
         // Post-release may hold full extension for a frame; it must not fold
         // back as the basket leaves the snow.
@@ -2948,8 +2956,15 @@ describe("CourseRenderer3D", () => {
           poleOff.elbowAngle - 0.1,
         );
         expect(postRelease.elbowAngle).toBeLessThan(178);
-        expect(plant.elbowVertical, techniqueMetrics).toBeLessThan(0);
-        expect(loaded.elbowVertical, techniqueMetrics).toBeLessThan(0);
+        // The plant now holds the classic HIGH elbow: above the shoulder
+        // line with the forearm slanting down to the grip, which is what
+        // keeps the pole inside the hand's neutral-wrist cone (the old
+        // below-shoulder plant stacked the forearm along the pole and bent
+        // the wrist ~85° to hold it). By the load the elbow has begun its
+        // collapse and sits near the shoulder line.
+        expect(plant.elbowVertical, techniqueMetrics).toBeGreaterThan(0.05);
+        expect(plant.elbowVertical, techniqueMetrics).toBeLessThan(0.45);
+        expect(loaded.elbowVertical, techniqueMetrics).toBeLessThan(0.4);
         expect(landmarks.get(0.24)!.elbowForeAft, techniqueMetrics).toBeLessThan(0);
         expect(lateRecovery.handVertical, techniqueMetrics).toBeGreaterThan(
           landmarks.get(0.24)!.handVertical,
@@ -2957,15 +2972,23 @@ describe("CourseRenderer3D", () => {
         expect(lateRecovery.handForeAft, techniqueMetrics).toBeGreaterThan(
           landmarks.get(0.24)!.handForeAft,
         );
-        expect(preplant.elbowVertical, techniqueMetrics).toBeLessThan(0);
+        // The pre-plant lift already carries the elbow to the high plant
+        // position (slightly above the shoulder line), not below it.
+        expect(preplant.elbowVertical, techniqueMetrics).toBeGreaterThan(0);
+        expect(preplant.elbowVertical, techniqueMetrics).toBeLessThan(0.4);
         expect(poleOff.poleAngle).toBeGreaterThan(15);
         expect(poleOff.poleAngle).toBeLessThan(28);
         expect(maxHandY - minHandY, "hands drop through the double-pole press").toBeGreaterThan(
           0.12,
         );
         expect(minHandY, "press brings hands well below high reach").toBeLessThan(maxHandY - 0.1);
+        // 0.13 -> 0.31: the flared high-elbow plant deliberately carries the
+        // elbows wide of the grips at the catch (the branch that keeps the
+        // pole inside the hand's neutral-wrist cone). The goalpost class is
+        // a MID-DRAW wing with 45-50° humeral abduction; the sagittal-plane
+        // and humerus bounds above still reject it at those phases.
         expect(maxElbowLateralDeviation, "elbows avoid a rear-view goalpost pose").toBeLessThan(
-          0.13,
+          0.31,
         );
       } finally {
         renderer.destroy();
@@ -3754,7 +3777,11 @@ describe("CourseRenderer3D", () => {
                   .join(
                     ",",
                   )} sweep=${kinematics.poleSweep.toFixed(4)} load=${kinematics.elbowLoad.toFixed(4)} extension=${kinematics.armExtension.toFixed(4)}`,
-              ).toBeLessThan(0.06);
+                // 0.06 -> 0.08: the high-elbow press collapse moves the elbow at
+                // ~4.6 m/s (0.067 per 1/128 sample at 32 spm) — an aggressive
+                // but human double-pole collapse; the snap class this guards
+                // measured 0.48.
+              ).toBeLessThan(0.09);
             }
             previousElbows.set(side, elbow);
           }

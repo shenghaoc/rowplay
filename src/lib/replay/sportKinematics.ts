@@ -82,23 +82,49 @@ function secondaryScale(intensity: number): number {
 }
 
 /**
- * Resolve the shared down → back → recovery → down SkiErg elbow sequence.
+ * Resolve the shared high-elbow → press → recovery SkiErg elbow sequence.
  *
- * The bend vector follows one continuous arc in the sagittal plane. During
- * contact, `poleSweep` turns it from down toward back. After pole-off, the same
- * C2 channel takes the shortest sagittal arc back underneath the recovering
- * arm. Following the circle avoids interpolating through a zero vector, which
- * would make a two-bone solver choose a lateral fallback and flip.
+ * The bend vector follows one continuous arc in the sagittal plane, authored
+ * to classic double-pole form (Concept2 SkiErg technique): at the plant the
+ * ELBOWS RIDE HIGH AND FORWARD of the grips with the forearms slanting down
+ * to near-vertical poles — the configuration whose pole-to-forearm angle sits
+ * inside the hand's neutral-wrist cone. The press rotates the elbow forward
+ * and down, finishing behind the hip at pole-off; the recovery takes the same
+ * circle up and over, back to the high plant. The former arc pointed the
+ * elbow straight DOWN at the plant, which stacked the forearm along the pole
+ * line and forced ~85° of wrist bend to hold the grip. Following one circle
+ * avoids interpolating through a zero vector, which would make a two-bone
+ * solver choose a lateral fallback and flip.
  */
 export function solveSkierElbowDirection(
   kinematics: SkierKinematics,
   output: SkierElbowDirection = { vertical: -1, foreAft: 0 },
 ): SkierElbowDirection {
   const sweep = clampUnit(kinematics.poleSweep);
+  // vertical = cos(angle), foreAft = sin(angle): 0 is straight up, +π/2 is
+  // horizontal-forward. Plant: up-forward (~57° from vertical). Pole-off:
+  // down-back. The contact arc travels forward-down between them; the
+  // recovery arc continues around through up-back to close the circle.
+  const PLANT_ANGLE = 0.99;
+  const POLE_OFF_ANGLE = Math.PI + 1.1;
+  // Hold the high elbow through the initial lock: rotating toward the press
+  // as soon as the hands leave the plant re-verticalizes the forearm along
+  // the still-steep pole (measured fp 113° -> 8° within a tenth of a cycle).
+  // Elite double-pole keeps the elbows up while the trunk crunch drives the
+  // first part of the press; the elbow collapse follows.
+  const pressSweep = clampUnit((sweep - 0.48) / 0.52);
+  const pressEase = pressSweep * pressSweep * (3 - 2 * pressSweep);
   const angle =
     kinematics.cycle <= SKI_POLE_OFF_CYCLE
-      ? Math.PI + sweep * (Math.PI / 2)
-      : Math.PI * 1.5 - (1 - sweep) * (Math.PI / 2);
+      ? PLANT_ANGLE + pressEase * (POLE_OFF_ANGLE - PLANT_ANGLE)
+      : // Recovery RETRACES the press arc: sweep decays 1 → 0 after pole-off,
+        // taking the elbow from down-back straight back up the forward-down
+        // path it descended — which is what a relaxed human arm does, and is
+        // continuous at both the pole-off boundary and the cycle seam by
+        // construction. Closing the circle over the top instead swept the
+        // hint through straight-up right where the pre-plant chord points up,
+        // degenerating the bend plane (measured 0.3 m sideways elbow).
+        POLE_OFF_ANGLE + (1 - sweep) * (PLANT_ANGLE - POLE_OFF_ANGLE);
   output.vertical = Math.cos(angle);
   output.foreAft = Math.sin(angle);
   return output;

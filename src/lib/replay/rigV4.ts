@@ -1612,21 +1612,28 @@ function createRowCycleClip(): THREE.AnimationClip {
  * - FIS / cross-country double-poling coaching stills
  * - Concept2 SkiErg technique library
  */
+// Derived from the flat-wrist runtime frames (neutral-wrist pole carry +
+// palm-inward baseline + flat-wrist roll): each key is the runtime-corrected
+// hand orientation sampled at its key time, expressed in the forearm frame.
+// Keeping the baked pose within the runtime target's twist half-turn matters:
+// keys authored for the older pronation-target frames sat ~pi away in twist
+// at the release, and the wrist-twist redistribution wrapped there — the
+// forearm bone half-turned in a single sample.
 const skiHandKeys: readonly EulerKey[] = [
-  [0.389, -0.541, 1.445], // reach
-  [0.931, -0.331, 0.857], // peak
-  [0.953, 0.293, 1.217], // plant
-  [1.17, 0.372, 1.166], // load-start
-  [1.092, -0.698, 1.764], // load
-  [0.457, -0.919, 1.719], // drive end
-  [-0.478, -0.961, 1.423], // deep press
-  [-0.244, -0.9, 1.479], // release-start
-  [-0.001, -0.849, 1.549], // release
-  [0.409, 0.174, 1.117], // recover-low
-  [0.396, 0.061, 1.197], // recover-mid
-  [0.361, -1.13, 1.868], // recover-high
-  [0.405, -1.082, 1.862], // pre-reach
-  [0.389, -0.541, 1.445], // loop
+  [-0.327644, -0.30426, 0.410913], // reach
+  [-0.313038, -0.235305, 0.517543], // peak
+  [-0.396587, -0.015651, 0.514104], // plant
+  [0.038871, 0.523524, 0.495186], // load-start
+  [0.745323, -0.097948, 0.462372], // load
+  [0.276639, -0.625955, 1.229759], // drive end
+  [0.205773, -0.402486, 0.962949], // deep press
+  [0.275039, -0.339887, 0.909449], // release-start
+  [0.259247, -0.302234, 0.880468], // release
+  [0.147841, -0.578248, 1.093246], // recover-low
+  [-0.056006, -0.354507, 0.989435], // recover-mid
+  [-0.089345, -0.453574, 0.813948], // recover-high
+  [0.029191, -0.628268, 0.860893], // pre-reach
+  [-0.327644, -0.30426, 0.410913], // loop — must equal reach for the cycle wrap
 ];
 
 function createSkiCycleClip(): THREE.AnimationClip {

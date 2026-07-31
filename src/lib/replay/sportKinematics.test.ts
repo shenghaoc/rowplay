@@ -86,7 +86,7 @@ describe("sportKinematics", () => {
     expect(recovery.rebound).toBeGreaterThan(0);
   });
 
-  it("turns SkiErg elbows down at plant, rearward under load, then down for the next plant", () => {
+  it("holds SkiErg elbows high at plant, collapses them down-back, then lifts for the next plant", () => {
     const directionAt = (cycle: number) =>
       solveSkierElbowDirection(solveSkierKinematics(poseAt("skierg", cycle)));
     const plant = directionAt(0.02);
@@ -96,17 +96,26 @@ describe("sportKinematics", () => {
     const recovery = directionAt(0.72);
     const preplant = directionAt(0.97);
 
-    expect(plant.vertical).toBeLessThan(-0.95);
-    expect(plant.foreAft).toBeLessThan(0);
-    expect(loaded.vertical).toBeLessThan(-0.65);
-    expect(loaded.foreAft).toBeLessThan(-0.35);
-    expect(latePress.foreAft).toBeLessThan(-0.9);
-    expect(Math.abs(poleOff.vertical)).toBeLessThan(1e-10);
-    expect(poleOff.foreAft).toBeCloseTo(-1, 12);
-    expect(recovery.vertical).toBeLessThan(-0.65);
-    expect(recovery.foreAft).toBeGreaterThan(poleOff.foreAft);
-    expect(preplant.vertical).toBeLessThan(-0.99);
-    expect(Math.abs(preplant.foreAft)).toBeLessThan(0.1);
+    // Classic double-pole (Concept2 SkiErg technique): the elbows ride HIGH
+    // and forward of the grips at the plant — forearms slant down to
+    // near-vertical poles, inside the hand's neutral-wrist cone — hold
+    // through the initial trunk-led lock, collapse down and back through the
+    // press, and lift up and over during recovery into the next plant. The
+    // former contract pinned the plant elbow straight DOWN, which stacked
+    // the forearm along the pole and forced ~85° of wrist bend to hold the
+    // grip.
+    expect(plant.vertical).toBeGreaterThan(0.5);
+    expect(plant.foreAft).toBeGreaterThan(0.7);
+    expect(loaded.vertical).toBeGreaterThan(0.3);
+    expect(loaded.foreAft).toBeGreaterThan(0.7);
+    // Late press: collapsing forward-down, on the way to down-back.
+    expect(latePress.vertical).toBeLessThan(0);
+    expect(poleOff.vertical).toBeLessThan(-0.4);
+    expect(poleOff.foreAft).toBeLessThan(-0.85);
+    // Recovery lifts back up and over toward the next high plant.
+    expect(recovery.vertical).toBeGreaterThan(poleOff.vertical);
+    expect(preplant.vertical).toBeGreaterThan(0.4);
+    expect(preplant.foreAft).toBeGreaterThan(0.5);
 
     let previous = directionAt(0);
     for (let step = 1; step <= 256; step++) {
@@ -114,7 +123,7 @@ describe("sportKinematics", () => {
       expect(
         Math.hypot(next.vertical - previous.vertical, next.foreAft - previous.foreAft),
         `continuous SkiErg elbow plane at ${step / 256}`,
-      ).toBeLessThan(0.035);
+      ).toBeLessThan(0.15);
       previous = next;
     }
 

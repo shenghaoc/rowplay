@@ -131,9 +131,11 @@ readable draw of roughly a quarter second at 28 spm rather than an
 instantaneous snap — bringing the handle to the lower ribs with both elbows
 behind the torso, and the hands lead away first on recovery);
 SkiErg's classic double-pole high reach,
-steep plant, down-pointing early elbow bend, core-led press with the elbow
-rotating rearward, long-arm pole-off, and lifted forward recovery that returns
-the elbow underneath the arm before the next plant. Its hips, knees, boots, and
+steep plant with the elbows held high and slightly wide so the forearms slant
+down to the grips and the wrists stay flat, a core-led press that collapses
+the elbows down and back past the ribs, a long-arm pole-off that stops short
+of full elbow lockout, and a lifted forward recovery that carries the poles
+on a straight wrist back up to the next plant. Its hips, knees, boots, and
 skis retain left/right order in a narrow parallel stance rather than crossing
 or inventing a striding step. In Canvas, the neutral stance stays close to leg
 extension and compresses into an athletic standing bend rather than folding the
