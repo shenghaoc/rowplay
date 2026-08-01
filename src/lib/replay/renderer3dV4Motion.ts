@@ -1345,8 +1345,12 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // Geometry-aware closure: solve every digit against the sport's grip
     // surface once, in hand-local rest space. Curl angles become outputs of
     // the actual equipment radius instead of per-sport constants, contact is
-    // the stop condition (no deep penetration can be authored), and the
-    // per-frame hot path only applies the cached rotations.
+    // the stop condition (penetration is minimised, not forbidden — see
+    // `solveHandGripClosure`), and the per-frame hot path only applies the
+    // cached rotations.
+    //
+    // No sport supplies a contract in this layer, so production still runs
+    // the legacy curl table; the sport layers above wire `gripContract`.
     const contract = options.gripContract;
     const handLongAxes = new Map<-1 | 1, THREE.Vector3>();
     if (contract && helpers.length === REPLAY_V4_HAND_HELPER_NAMES.length) {

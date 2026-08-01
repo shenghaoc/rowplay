@@ -243,15 +243,17 @@ describe("solveHandGripClosure", () => {
   it("keeps the handle axis inside the finger/thumb enclosure with opposing contacts", () => {
     const closure = solveHandGripClosure(RIGHT_HAND_CHAINS, {
       side: 1,
-      surface: { radius: HAND_FIST_RADIUS },
+      // The *equipment* radius, not the channel radius: the solver adds the
+      // pad flesh that carries bone points out to the fitted channel.
+      surface: { radius: SKI_POLE_GRIP_RADIUS },
       thumbOppose: 0.62,
     });
     const fingerAngles = closure.contacts
       .filter((contact) => contact.digit !== "thumb")
-      .map((contact) => angleAroundAxis(contact.tip, HAND_FIST_RADIUS));
+      .map((contact) => angleAroundAxis(contact.tip, SKI_POLE_GRIP_RADIUS));
     const thumbAngle = angleAroundAxis(
       closure.contacts.find((contact) => contact.digit === "thumb")!.tip,
-      HAND_FIST_RADIUS,
+      SKI_POLE_GRIP_RADIUS,
     );
     // Finger tips wrap past the far side of the shaft while the thumb stays
     // on the near/opposing side: the shaft is caged, not cupped from one side.

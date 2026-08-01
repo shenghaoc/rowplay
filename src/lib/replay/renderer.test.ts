@@ -536,10 +536,13 @@ describe("CourseRenderer stroke pose input", () => {
 
     expect(samples[clearanceIndex - 1]!.handMinusKnee).toBeGreaterThan(0);
     expect(samples[clearanceIndex]!.legExtension).toBeGreaterThan(0.99);
-    // Below the 10° visible-flexion threshold: the widened 0.64-of-drive
-    // draw window may run its sub-visible C2 head while the handle finishes
-    // crossing the knee line, but visible flexion still waits for clearance
-    // (the ordering assertion below).
+    // Raised from 5° with the 0.64-of-drive draw window: that window's
+    // sub-visible C2 head now runs while the handle finishes crossing the
+    // knee line. Measured peak on the demo cycle is 9.19°, so this bound has
+    // ~0.8° of headroom — deliberately tight, because the guard's whole job is
+    // to catch a genuine early pull. If a future retime pushes past it, the
+    // fix is the timing, not the number. Visible flexion still has to wait for
+    // clearance; the ordering assertion below is what pins that.
     expect(
       Math.max(...samples.slice(peakIndex, clearanceIndex).map((sample) => sample.bendDegrees)),
       "arms remain visually long before the handle clears the knees",

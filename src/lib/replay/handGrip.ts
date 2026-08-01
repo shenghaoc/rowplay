@@ -71,7 +71,16 @@ export const HAND_CURL_AXIS = Object.freeze({ x: -0.61, y: 0.16, z: 0.77 } as co
  */
 export const HAND_FIST_CENTRE = Object.freeze({ x: 0.0393, y: -0.0088, z: 0.0142 } as const);
 
-/** Radius of the fitted grip channel; a held grip must not exceed it. */
+/**
+ * Radius of the circle the closed fist's finger joints trace — the channel the
+ * reference grip was fitted in.
+ *
+ * This is a *measurement of the hand*, not a ceiling on equipment: thicker
+ * grips are held perfectly well, and `handChannelCentre` seats them by pushing
+ * the axis proportionally further from the palm (the 0.023 m scull rubber
+ * turns the same hand from a fist into a relaxed hook). Its one hard role is
+ * the flesh calibration it forms with `HAND_FIST_REFERENCE_GRIP_RADIUS`.
+ */
 export const HAND_FIST_RADIUS = 0.0169;
 
 /**
@@ -177,9 +186,9 @@ export function handLongAxis(side: number, out = new THREE.Vector3()) {
  *
  * This is NOT `HAND_PALM_NORMAL_IN`, and the distinction matters: that vector
  * is the palm-skin→channel-centre *construction* ray used to seat a cylinder,
- * and it sits 61.3° away from the true palm facing (signed about the
- * thumbward axis, invariant of shaft direction). Resolving a grip's roll
- * against the construction ray therefore mis-set the palm by that fixed 61.3°
+ * and it sits 104° away from the true palm facing (signed about the thumbward
+ * axis, invariant of shaft direction; 99° unsigned). Resolving a grip's roll
+ * against the construction ray therefore mis-set the palm by that fixed angle
  * everywhere; on a near-horizontal handle it happened to land on a plausible
  * overhand grip, but on a ski pole whose inclination sweeps 79° across the
  * cycle it drove forearm pronation through 147° of range and past the human
@@ -318,7 +327,7 @@ export function refineGripTiltForWrist(
   strength = 1,
 ): void {
   // Rotate about the TRUE palm normal. This used `HAND_PALM_NORMAL_IN`, which
-  // is the channel-construction ray sitting 75.5° away — so the "palm facing
+  // is the channel-construction ray sitting 104° away — so the "palm facing
   // unchanged" guarantee in this function's own contract was false, and the
   // tilt silently re-rolled the palm by up to `maxTilt` after the grip frame
   // had deliberately set it. That is what let the inversion return.
@@ -348,7 +357,18 @@ export interface HandDigitStagePose {
 }
 
 export interface HandGripSurface {
-  /** Cylinder/capsule radius of the held equipment (m). */
+  /**
+   * Cylinder/capsule radius of the held **equipment** (m) — the rendered
+   * rubber, shaft or hood body the hand closes on.
+   *
+   * Not the hand's `HAND_FIST_RADIUS` channel. The two differ by the pad
+   * flesh, and the solver adds that flesh itself: bone points come to rest at
+   * `radius + flesh`, which for the reference pole is `0.016 + 0.0009` — the
+   * fitted channel exactly. Passing the channel radius instead double-counts
+   * the flesh, seating the axis ~0.9 mm deeper into the palm and standing
+   * every digit ~0.9 mm off the surface. Sport contracts must therefore pass
+   * `SKI_POLE_GRIP_RADIUS`, `ROWER_SCULL_GRIP.radius` or the hood radius.
+   */
   readonly radius: number;
   /**
    * Signed axial coordinate (along the thumb-ward channel axis, from the
@@ -615,10 +635,14 @@ function cupChain(chain: HandDigitChain, side: number): HandDigitChain {
  * curl axis, thumb-ward positive; finger chains are first posed into the
  * `HAND_CLOSURE_CUP` carrying posture the channel was fitted in. Each stage
  * flexes until the first constrained bone point reaches the surface
- * (radius + pad flesh) and stops there — a deep-penetration pose cannot be
- * produced because contact is the stop condition, and an unreachable surface
- * holds the closest approach with `contact: false` reported for the tests to
- * judge.
+ * (radius + pad flesh) and stops there, so a reachable surface is never
+ * overshot into.
+ *
+ * Penetration is minimised, not forbidden. Where no pose in anatomical range
+ * clears the surface the stage holds its least-penetrating flexion, which is
+ * a real (small) overlap; callers must read `surfaceDistance` rather than
+ * assume non-negative. `contact` is likewise a 4 mm band around the surface,
+ * not an exact landing.
  */
 export function solveHandGripClosure(
   chains: readonly HandDigitChain[],

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as THREE from "three";
 import {
+  ROWER_ELBOW_PLANE,
   ROWER_FOOT_CONTACT,
   ROWER_OARLOCK,
   ROWER_STRETCHER,
+  rowerElbowFlexion,
+  rowerElbowPlaneAuthority,
   solveRowerArmWithCorridor,
   solveRowerOarYaw,
 } from "./rowRig";
@@ -185,5 +188,75 @@ describe("solveRowerArmWithCorridor", () => {
     const { elbow } = solve(wrist.y - 5, wrist.y - 4, floor);
     expect(elbow.z).toBeGreaterThanOrEqual(floor - 1e-6);
     expect(shoulder.distanceTo(elbow)).toBeCloseTo(upperArm, 6);
+  });
+});
+
+describe("rowerElbowFlexion", () => {
+  const upper = 0.32;
+  const fore = 0.28;
+
+  it("reads zero at full extension and grows as the arm draws in", () => {
+    // Straight arm: chord is the summed segment lengths, interior angle pi.
+    // The 1e-6 reach clamp lands just inside the singularity where acos'
+    // slope is unbounded, so "straight" resolves to ~0.2 degrees rather than
+    // exactly zero. That is far below the 0.14 rad (8 degrees) at which plane
+    // authority starts, so it cannot reach the bend hint — but asserting an
+    // exact zero here would be asserting a precision the geometry does not
+    // have.
+    const straight = rowerElbowFlexion(upper + fore, upper, fore);
+    expect(straight).toBeGreaterThanOrEqual(0);
+    expect(straight).toBeLessThan(0.005);
+    expect(rowerElbowPlaneAuthority(straight)).toBe(0);
+    // Drawing the hand in must increase flexion monotonically.
+    let previous = 0;
+    for (const chord of [0.58, 0.54, 0.5, 0.44, 0.38, 0.3]) {
+      const flexion = rowerElbowFlexion(chord, upper, fore);
+      expect(flexion, `chord ${chord} bends further than ${previous}`).toBeGreaterThan(previous);
+      previous = flexion;
+    }
+  });
+
+  it("stays finite on degenerate chords instead of returning NaN", () => {
+    // Over-extension and full fold both sit outside the reachable triangle;
+    // this runs every V4 rower frame, so a NaN here would poison the bend
+    // hint rather than fail loudly.
+    for (const chord of [0, -1, upper + fore + 0.5, Math.abs(upper - fore) - 0.01]) {
+      const flexion = rowerElbowFlexion(chord, upper, fore);
+      expect(Number.isFinite(flexion), `chord ${chord} is finite`).toBe(true);
+      expect(flexion).toBeGreaterThanOrEqual(0);
+      expect(flexion).toBeLessThanOrEqual(Math.PI);
+    }
+  });
+});
+
+describe("rowerElbowPlaneAuthority", () => {
+  it("hands the plane no authority until flexion is visible, then all of it", () => {
+    expect(rowerElbowPlaneAuthority(0)).toBe(0);
+    expect(rowerElbowPlaneAuthority(ROWER_ELBOW_PLANE.authorityStart)).toBe(0);
+    expect(rowerElbowPlaneAuthority(ROWER_ELBOW_PLANE.authorityFull)).toBe(1);
+    expect(rowerElbowPlaneAuthority(Math.PI)).toBe(1);
+    // Negative flexion cannot be produced by the solver, but the clamp must
+    // hold anyway — this feeds a blend weight.
+    expect(rowerElbowPlaneAuthority(-1)).toBe(0);
+  });
+
+  it("is C2 across the ramp so the bend hint cannot step mid-draw", () => {
+    // Smootherstep: zero first and second derivatives at both ends. A step
+    // here reads as the elbow snapping to a new branch during the draw.
+    const { authorityStart, authorityFull } = ROWER_ELBOW_PLANE;
+    const samples = 200;
+    let previous = 0;
+    let previousDelta = 0;
+    for (let index = 1; index <= samples; index++) {
+      const flexion = authorityStart + ((authorityFull - authorityStart) * index) / samples;
+      const value = rowerElbowPlaneAuthority(flexion);
+      const delta = value - previous;
+      expect(value, "monotone").toBeGreaterThanOrEqual(previous);
+      // Second difference stays small: no kink anywhere in the ramp.
+      if (index > 1) expect(Math.abs(delta - previousDelta)).toBeLessThan(0.002);
+      previous = value;
+      previousDelta = delta;
+    }
+    expect(previous).toBeCloseTo(1, 9);
   });
 });
