@@ -22,12 +22,10 @@ Contract, with ratios against the **measured 1.64 m V4 rest-pose stature**
 | Pole length            |  **1.37 m** | ~83.5% height — inside the classic 83–84% band  |
 | Pole plant lateral     | **±0.46 m** | Just outside the ski pair                       |
 
-> **Known deviation.** Ski and pole length were chosen against a nominal 1.8 m
-> athlete. The shipped V4 rig measures 1.64 m, so both run long relative to the
-> classic bands this note originally claimed. The values are left as shipped
-> because resizing is a visual change that needs its own acceptance pass; the
-> ratios are now pinned in `skiEquipment.test.ts` so the overshoot is visible
-> and cannot grow silently.
+> **Validated fit.** The lengths were re-derived against the measured 1.64 m
+> shipped rig: 1.90 m skis are ~116% of stature and 1.37 m poles are ~83.5%.
+> `skiEquipment.test.ts` pins both ratios so a future asset or equipment change
+> cannot silently move them outside the documented classic bands.
 
 **Coherence rule:** boot sole width ≈ ski width × 1.15. A 10 cm boot on a
 4.6 cm ski is what made the literal-race pass look broken.
@@ -131,14 +129,21 @@ Both constants are measurements of the shipped GLB, re-derived from the rig by
 `derives the SkiErg curl axis and grip channel from the authored rig` so an
 asset rebuild cannot silently invalidate them.
 
-### Known defect (pinned, not fixed)
+### Recovery closure and wrist envelope
 
-Through recovery around cycle 0.31–0.34 the **left** hand alone drifts up to
-0.135 m from its target; the right hand and every other sport close to 0.015 m.
-The asymmetry points at the arm-reach solve, not the grip frame. It predates
-this branch and was previously spread across per-call-site budgets of 0.068 and
-0.18; it is now a single named constant in `renderer3d.test.ts` pinned at its
-measured peak.
+The former one-sided recovery defect is resolved. The V4 solve now converts the
+oriented fist-channel offset into world space for each visible shoulder and
+retains a 60 mm reachable interval at peak post-release extension; collapsing
+that interval onto a tangent sphere was the source of the measured 0.138 m
+branch jump. The dense 1/256-cycle production sweep now keeps both hands inside
+the 5 mm SkiErg contact budget and every adjacent grip step below 50 mm.
+
+The free return also uses the same geometry-conditioned shaft-spin relief as
+the loaded pull, with a bounded diagonal hold and a lower-but-visible basket
+clearance. Across 257 cycle samples per side, hand-long-axis wrist bend now
+measures 87.9° at p95 and 91.1° maximum; every true palm normal remains inward,
+the grip enclosure stays on the rendered pole, and the forearm segments remain
+continuous.
 
 ## Validation
 
@@ -182,5 +187,6 @@ Regression cover added by this pass:
 - [x] Contact tolerances restored; residuals named rather than budgeted away
 - [x] Asset build deterministic from reviewed source (no self-reference)
 - [x] Provenance accurate; no third-party textures shipped
-- [ ] Left-hand recovery reach defect resolved (pinned, tracked separately)
-- [ ] Ski/pole length re-derived against the 1.64 m rig (tracked separately)
+- [x] Left-hand recovery reach defect resolved with symmetric 5 mm contact and
+      dense continuity guards
+- [x] Ski/pole length re-derived against the measured 1.64 m rig

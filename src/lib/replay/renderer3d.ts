@@ -230,12 +230,6 @@ export interface Renderer3DOptions {
     | "athlete-top";
   /** Draw the live V4 skeleton over the real rendered athlete for QA evidence. */
   showV4Skeleton?: boolean;
-  /**
-   * Capture-only rowing arm-draw diagnostics panel (draw progress, measured
-   * elbow flexion and angular velocity, plane authority, corridor outboard,
-   * hand–knee clearance). Reachable only through the replay QA query.
-   */
-  showArmDiagnostics?: boolean;
 }
 
 /**
@@ -999,8 +993,11 @@ const SKI_CARRY_TMP = new THREE.Vector3();
 const SKI_CARRY_ROLL = new THREE.Quaternion();
 const SKI_HANG_CHORD = new THREE.Vector3();
 const SKI_HANG_DIR = new THREE.Vector3();
-/** Largest shaft-spin relief the SkiErg grip may spend on wrist flatness. */
-const SKI_FLAT_MAX_SPIN = THREE.MathUtils.degToRad(35);
+/**
+ * Largest shaft-spin relief the SkiErg grip may spend on wrist flatness.
+ * The dense-cycle guard still requires the true palm normal to face inward.
+ */
+const SKI_FLAT_MAX_SPIN = THREE.MathUtils.degToRad(48);
 /**
  * How far the pole may ride diagonally across the palm (rotation about the
  * palm normal) to keep the hand's long axis near the forearm line. Real
@@ -1008,18 +1005,7 @@ const SKI_FLAT_MAX_SPIN = THREE.MathUtils.degToRad(35);
  * square-across-the-fist channel demanded ~130° of hand-vs-forearm
  * reorientation and linear-blend skinning tore the wrist ring open.
  */
-export const SKI_PALM_TILT = 0.6;
-/**
- * Sculling diagonal-hold relief. The oar handle sweeps ~50-70° from lateral
- * through the stroke, and the fist's channel axis is pinned 109.4° from the
- * hand's long axis — so a square hold forces 40-60° of wrist bend. Real
- * scullers keep the wrist flat and let the handle ride diagonally across the
- * palm instead; the tilt models that with the palm facing unchanged. Comfort
- * is the flat-wrist target (Concept2: "wrists should be flat"), the budget is
- * how diagonal the handle may sit in the palm.
- */
-export const ROWER_PALM_TILT = 0.98;
-export const ROWER_PALM_TILT_COMFORT = 0.88;
+export const SKI_PALM_TILT = 0.65;
 /**
  * Hand-long-axis-vs-forearm misalignment (about the palm normal) a wrist
  * carries comfortably without any diagonal-grip relief. Below this the
@@ -1104,30 +1090,20 @@ function placeFigureSegmentBetween(
 }
 
 /**
- * Replaces the authored palm-surface contact with the centre of the hand's
- * grip channel, so the contact solver seats the equipment core inside the
- * digit enclosure rather than laying it against the palm skin. Active for
- * SkiErg only in this layer — its historical fist-centre measurement, which
- * `handChannelCentre` reproduces exactly at the fitted 0.0169 m radius.
- * RowErg and BikeErg keep palm-skin contact until their own grip layers
- * switch them over (their larger radii seat proportionally further out —
- * the same hand as a relaxed hook).
+ * SkiErg replaces the authored palm-surface contact with the centre of the
+ * fitted fist channel, so the pole core sits inside the digit enclosure.
  */
-function gripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
-  if (sport === "skierg") {
-    const { x, y, z } = HAND_FIST_CENTRE;
-    return {
-      leftHand: { x: -x, y, z },
-      rightHand: { x, y, z },
-    };
-  }
-  // RowErg / BikeErg effector offsets are inactive until the sport-specific
-  // grip layers supply the consuming IK solves.
-  return undefined;
+function skiGripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
+  if (sport !== "skierg") return undefined;
+  const { x, y, z } = HAND_FIST_CENTRE;
+  return {
+    leftHand: { x: -x, y, z },
+    rightHand: { x, y, z },
+  };
 }
 
-/** Geometry contract handed to the V4 digit-closure solve, per sport. */
-function gripContractFor(
+/** SkiErg geometry contract handed to the V4 digit-closure solve. */
+function skiGripContract(
   sport: Sport,
 ): { radius: number; thumbOppose: number; thumbEndAxial?: number } | undefined {
   if (sport === "skierg") {
@@ -1138,8 +1114,6 @@ function gripContractFor(
     // the pole — see the `radius` contract on `HandGripSurface`.
     return { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: 0.62 };
   }
-  // RowErg / BikeErg grip contracts are inactive until the sport-specific
-  // grip layers supply the consuming IK solves.
   return undefined;
 }
 
@@ -3069,8 +3043,11 @@ function makeSkierAvatar(
       const poleAngle = THREE.MathUtils.degToRad(80 - motion.poleSweep * 57);
       // The basket needs visible snow clearance without rising so fast that a
       // rigid classic-length pole outruns the athlete's arm during release.
-      // 20 cm of lift above the base envelope preserves both contracts.
-      const clearance = 0.08 + motion.poleLift * 0.2;
+      // The 1.5 cm direction-space margin composes with the contact height and
+      // basket offset to keep the rendered basket above 10 cm; poleLift then
+      // contributes up to another 20 cm without flattening the mid-return
+      // shaft and forcing the wrist backward.
+      const clearance = 0.015 + motion.poleLift * 0.2;
       const desiredVertical = -Math.sin(poleAngle) * POLE_LENGTH;
       const vertical = Math.min(
         POLE_LENGTH * 0.985,
@@ -3264,35 +3241,20 @@ function makeSkierAvatar(
           SEGMENT_DIR,
           -GRIP_LONG_SCRATCH.dot(SEGMENT_DIR),
         ).length();
-        // Weight the refinement toward the LOADED phase: Concept2's "wrists
-        // should not bend" is stated for the drive, not the free-swinging
-        // recovery, and the projection is best conditioned while the forearm
-        // sits well across the shaft. `skiForeAcross` supplies the first term
-        // and the pole-off fade the second, so the relief arrives and leaves
-        // smoothly rather than at a phase boundary.
-        //
-        // The free swing keeps an elevated baseline bend (p95 98°, max 103°),
-        // unchanged by the relief above — that tail is an arm-path property,
-        // not a grip-roll one, and remains real follow-up work.
-        const skiFlatWeight =
-          THREE.MathUtils.smoothstep(skiForeAcross, 0.12, 0.35) *
-          (1 -
-            THREE.MathUtils.smoothstep(
-              motion.cycle,
-              SKI_POLE_OFF_CYCLE - 0.04,
-              SKI_POLE_OFF_CYCLE + 0.02,
-            ));
+        // Condition the refinement on geometry, not stroke phase. The former
+        // pole-off fade left the free return with a measured 98° p95 wrist
+        // bend even though the same grip freedom remains available in flight.
+        // `skiForeAcross` fades continuously only where the forearm projection
+        // becomes singular, so drive and recovery share one stable rule.
+        const skiFlatWeight = THREE.MathUtils.smoothstep(skiForeAcross, 0.12, 0.35);
         if (skiFlatWeight > 1e-4) {
           // Spend the grip's one free degree of freedom — spin about the shaft
           // — on wrist flatness, using the shared Layer-1 relief rather than a
-          // SkiErg copy of it. The phase fade rides on the allowance instead of
-          // scaling the applied angle, so the correction tapers smoothly to
-          // nothing at pole-off rather than switching off at the gate.
-          //
-          // Measured over the 256-sample stroke: mean skinned wrist bend 55.2°
-          // with no relief, 52.1° with this, and p90/p95/p99/max identical in
-          // both — the relief improves the bulk of the distribution and does
-          // not touch the tail.
+          // SkiErg copy of it. The allowance itself is geometry-weighted, so
+          // the correction has no phase gate to switch at pole-off. Together
+          // with the bounded diagonal hold below, the 257-sample production
+          // sweep measures 87.9° p95 / 91.1° max while every palm remains
+          // inward and the forearm segments remain continuous.
           refineGripSpinForWrist(
             arm.hand,
             arm.side,
@@ -4751,8 +4713,8 @@ export class CourseRenderer3D implements ReplayRenderer {
       // SkiErg drives the centre of the closed fist onto the shaft, not the
       // authored palm-surface point: the latter lays the pole across the
       // knuckles and the fingers shut beside it instead of around it.
-      const effectorOffsets = gripEffectorOffsets(this.sport);
-      const gripContract = gripContractFor(this.sport);
+      const effectorOffsets = skiGripEffectorOffsets(this.sport);
+      const gripContract = skiGripContract(this.sport);
       this.liveAvatar.v4Motion = installReplayV4MotionController({
         sport: this.sport,
         parent: this.liveAvatar.group,

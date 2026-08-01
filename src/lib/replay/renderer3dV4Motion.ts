@@ -10,7 +10,6 @@ import {
   type HandDigitContactReport,
   type HandGripSurface,
 } from "./handGrip";
-import { rowerElbowFlexion, rowerElbowPlaneAuthority } from "./rowRig";
 import {
   disposeReplayV4AthleteInstance,
   REPLAY_V4_HAND_HELPER_NAMES,
@@ -139,7 +138,8 @@ function gripHelperMeta(name: ReplayV4HandHelperName): {
  * (curl angles become outputs of the equipment geometry), terminal hands
  * adopt the full equipment grip frame, and wrist twist is distributed into
  * the forearm under anatomical budgets. Without it the controller keeps the
- * legacy fixed-curl fallback used by procedural instances and older tests.
+ * fixed-curl fallback used by instances whose sport layer does not yet supply
+ * a geometry contract.
  */
 export interface ReplayV4HandGripContract extends HandGripSurface {
   /** Base thumb opposition (rad) bringing the thumb across the channel. */
@@ -306,14 +306,6 @@ export interface ReplayV4MotionController {
   prepare(sample: ReplayV4MotionSample): boolean;
   /** Applies the restrained terminal hand rotation before grip-path refinement. */
   orientHandsToTargets(): boolean;
-  /**
-   * Closes only the prepared arm chains without consuming the sampled pose.
-   * RowErg uses this once between rigid-oar refinement passes so the final
-   * equipment solve can observe the arm's real post-IK wrist frame.
-   */
-  settleHandContacts(): boolean;
-  /** Restores the arm pose captured immediately before `settleHandContacts`. */
-  restoreHandPoseAfterSettle(): boolean;
   /** Closes the prepared pose onto the latest equipment-contact targets. */
   constrain(): boolean;
   /**
@@ -1215,7 +1207,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private disposed = false;
   private prepared = false;
   private handOrientationPrepared = false;
-  private handContactsSettled = false;
   private diagnosticMode: ReplayV4DiagnosticMode;
   private readonly action: THREE.AnimationAction;
   private readonly fallback: readonly FallbackVisibility[];
@@ -1229,7 +1220,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
    * Restoring these before seeking keeps PropertyMixer skip-writes safe.
    */
   private readonly sampledChainRotations: readonly BoneRotationSnapshot[];
-  private readonly preSettleHandRotations: readonly BoneRotationSnapshot[];
 
   // Controller-owned scratch — live and ghost lanes never share IK state.
   private readonly targetWorld = new THREE.Vector3();
@@ -1349,8 +1339,9 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // `solveHandGripClosure`), and the per-frame hot path only applies the
     // cached rotations.
     //
-    // No sport supplies a contract in this layer, so production still runs
-    // the legacy curl table; the sport layers above wire `gripContract`.
+    // The renderer supplies SkiErg's contract in this stack layer. RowErg and
+    // BikeErg keep the fixed-curl fallback until their own grip layers provide
+    // a contract; the controller itself remains sport-neutral.
     const contract = options.gripContract;
     const handLongAxes = new Map<-1 | 1, THREE.Vector3>();
     if (contract && helpers.length === REPLAY_V4_HAND_HELPER_NAMES.length) {
@@ -1437,13 +1428,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       { bone: chain.middle, quaternion: chain.middle.quaternion.clone() },
       { bone: chain.effector, quaternion: chain.effector.quaternion.clone() },
     ]);
-    this.preSettleHandRotations = this.chains
-      .filter((chain) => !chain.isLeg)
-      .flatMap((chain) => [
-        { bone: chain.upper, quaternion: chain.upper.quaternion.clone() },
-        { bone: chain.middle, quaternion: chain.middle.quaternion.clone() },
-        { bone: chain.effector, quaternion: chain.effector.quaternion.clone() },
-      ]);
     // Wrist budgets are measured against a *flat-wrist* reference, not the
     // authored bind pose: the bind hand carries its own built-in flexion, so
     // budgeting from it would spend most of the range before any equipment
@@ -1605,7 +1589,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     try {
       this.prepared = false;
       this.handOrientationPrepared = false;
-      this.handContactsSettled = false;
       if (this.root.parent !== this.options.parent) {
         throw new Error("Replay V4 athlete detached from its lane parent");
       }
@@ -1663,40 +1646,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     }
   }
 
-  settleHandContacts(): boolean {
-    if (!this.enabled || !this.prepared) return false;
-    try {
-      for (const state of this.preSettleHandRotations) {
-        state.quaternion.copy(state.bone.quaternion);
-      }
-      const mode = this.diagnosticMode;
-      const applyContact = mode !== "clip-pelvis" && mode !== "clip-only";
-      if (applyContact) {
-        for (const chain of this.chains) {
-          if (!chain.isLeg) this.correctContactChain(chain);
-        }
-        this.root.updateMatrixWorld(true);
-      }
-      this.handContactsSettled = true;
-      return true;
-    } catch (error) {
-      this.root.userData.replayV4Failure =
-        error instanceof Error ? error.message : "Replay V4 hand contact settle failed";
-      this.disable();
-      return false;
-    }
-  }
-
-  restoreHandPoseAfterSettle(): boolean {
-    if (!this.enabled || !this.prepared || !this.handContactsSettled) return false;
-    for (const state of this.preSettleHandRotations) {
-      state.bone.quaternion.copy(state.quaternion);
-    }
-    this.root.updateMatrixWorld(true);
-    this.handContactsSettled = false;
-    return true;
-  }
-
   constrain(): boolean {
     if (!this.enabled || !this.prepared) return false;
     try {
@@ -1723,12 +1672,10 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       }
       this.prepared = false;
       this.handOrientationPrepared = false;
-      this.handContactsSettled = false;
       return true;
     } catch (error) {
       this.prepared = false;
       this.handOrientationPrepared = false;
-      this.handContactsSettled = false;
       this.root.userData.replayV4Failure =
         error instanceof Error ? error.message : "Replay V4 motion constraint failed";
       this.disable();
@@ -1772,7 +1719,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     this.active = false;
     this.prepared = false;
     this.handOrientationPrepared = false;
-    this.handContactsSettled = false;
     this.action.stop();
     this.root.visible = false;
     this.restoreFallback();
@@ -1990,22 +1936,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     if (this.usesSharedJointTarget(chain)) {
       chain.jointTarget.getWorldPosition(this.bendHint);
       this.bendHint.sub(this.rootWorld);
-      if (!chain.isLeg && this.options.sport === "rower") {
-        const proximal = this.rootWorld.distanceTo(this.middleWorld);
-        const distal = this.middleWorld.distanceTo(this.effectorWorld);
-        const chord = this.rootWorld.distanceTo(this.effectorWorld);
-        const authority = rowerElbowPlaneAuthority(rowerElbowFlexion(chord, proximal, distal));
-        if (authority < 1) {
-          this.currentDirection.copy(this.middleWorld).sub(this.rootWorld);
-          const markerLength = this.bendHint.length();
-          const clipLength = this.currentDirection.length();
-          if (markerLength > 1e-6 && clipLength > 1e-6) {
-            this.bendHint
-              .multiplyScalar(authority / markerLength)
-              .addScaledVector(this.currentDirection, (1 - authority) / clipLength);
-          }
-        }
-      }
     } else {
       this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
     }
@@ -2098,7 +2028,9 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         this.solvePositionTowardTarget(chain, proximalLength, distalLength);
         this.root.updateMatrixWorld(true);
       }
-      if (this.solvedGripPoses) this.distributeSkiElbowTwist(chain);
+      if (this.options.sport === "skierg" && this.solvedGripPoses) {
+        this.distributeSkiElbowTwist(chain);
+      }
     }
   }
 

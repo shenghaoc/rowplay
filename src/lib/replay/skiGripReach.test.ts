@@ -5,6 +5,7 @@ import {
   SKI_GRIP_REACH_MARGIN_M,
   SKI_POST_RELEASE_EXTENSION_CYCLE,
   SKI_POST_RELEASE_EXTENSION_END_CYCLE,
+  SKI_POST_RELEASE_REACH_WINDOW_M,
   SkiGripReachSolver,
   skiPostReleaseExtensionAuthority,
 } from "./skiGripReach";
@@ -111,5 +112,7 @@ describe("SkiGripReachSolver", () => {
     expect(skiPostReleaseExtensionAuthority(0.315)).toBeGreaterThan(0);
     expect(skiPostReleaseExtensionAuthority(0.39)).toBeGreaterThan(0);
     expect(skiPostReleaseExtensionAuthority(0.6)).toBe(0);
+    expect(SKI_POST_RELEASE_REACH_WINDOW_M).toBeGreaterThan(SKI_GRIP_REACH_MARGIN_M);
+    expect(SKI_POST_RELEASE_REACH_WINDOW_M).toBeLessThan(0.07);
   });
 });
