@@ -65,8 +65,22 @@ three-segment finger chains, and one three-segment opposing-thumb chain. The
 helpers carry bounded skin influence, inherit the terminal semantic hand, and
 are excluded from authored clip tracks. Runtime applies their sport-specific
 closure only after the authoritative palm contact solve, so RowErg sculls,
-SkiErg grips, and BikeErg hoods remain fixed while the visible fingers wrap
-around them.
+SkiErg grips, and BikeErg hoods remain fixed while the visible fingers close
+onto them.
+
+**Closure ceiling (known limitation).** `solveHandGripClosure` stops each finger
+stage at its first contact, so a finger comes to rest on the surface it met
+rather than continuing around the shaft. Where the palm sits *on top* of the
+equipment — the BikeErg hood — the proximal phalanx meets the upper surface
+immediately and the fingertips settle 12-24 mm above the hood core instead of
+passing its inboard face. The digits are genuinely in contact and carry the
+hand, but they do not cage the hood from three sides. This is the shared
+closure model, not a per-sport defect: the SkiErg fist solves bit-identical
+digit distances (index/middle 0.0000, ring 0.0020, pinky 0.0062 m). Letting
+fingers curl past first contact would change the approved RowErg and SkiErg
+grips too, so it is deliberately out of scope for the BikeErg hood layer and
+belongs to a closure-model change with its own visual re-approval. The opposing
+thumb *is* seated: it lands on the hood body and hooks beneath the core.
 
 The filename is versioned. An incompatible slot or coordinate-contract change
 requires a new versioned filename and corresponding loader contract.
