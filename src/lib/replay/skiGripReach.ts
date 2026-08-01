@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { solveRigidContactPoint3D, type FigurePoint3 } from "./figurePose";
 import { SKI_POLE_FLIGHT_APEX_CYCLE, SKI_POLE_OFF_CYCLE } from "./motionGraph";
-import { SKI_HAND_FIST_CENTRE } from "./skiEquipment";
+import { HAND_FIST_CENTRE } from "./handGrip";
 
 /** Solver margin retained at the straight-arm boundary. */
 export const SKI_GRIP_REACH_MARGIN_M = 0.002;
@@ -55,11 +55,7 @@ export function skiPostReleaseExtensionAuthority(cycle: number): number {
  * touch. A planted basket is never moved.
  */
 export class SkiGripReachSolver {
-  readonly channelLength = Math.hypot(
-    SKI_HAND_FIST_CENTRE.x,
-    SKI_HAND_FIST_CENTRE.y,
-    SKI_HAND_FIST_CENTRE.z,
-  );
+  readonly channelLength = Math.hypot(HAND_FIST_CENTRE.x, HAND_FIST_CENTRE.y, HAND_FIST_CENTRE.z);
 
   private readonly handWorldQuaternion = new THREE.Quaternion();
   private readonly contactOffsetWorld = new THREE.Vector3();
@@ -117,7 +113,7 @@ export class SkiGripReachSolver {
   ): boolean {
     this.handWorldQuaternion.copy(parentWorldQuaternion).multiply(handLocalQuaternion);
     this.contactOffsetWorld
-      .set(side * SKI_HAND_FIST_CENTRE.x, SKI_HAND_FIST_CENTRE.y, SKI_HAND_FIST_CENTRE.z)
+      .set(side * HAND_FIST_CENTRE.x, HAND_FIST_CENTRE.y, HAND_FIST_CENTRE.z)
       .applyQuaternion(this.handWorldQuaternion);
     this.reachOriginWorld.copy(shoulderWorld).add(this.contactOffsetWorld);
 

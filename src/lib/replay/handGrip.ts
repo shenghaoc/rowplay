@@ -1,10 +1,4 @@
 import * as THREE from "three";
-import {
-  SKI_HAND_CURL_AXIS,
-  SKI_HAND_FIST_CENTRE,
-  SKI_HAND_FIST_RADIUS,
-  SKI_POLE_GRIP_RADIUS,
-} from "./skiEquipment";
 
 /**
  * Geometry-constrained hand grips shared by all three sports.
@@ -28,6 +22,69 @@ import {
  * Everything here is deterministic and unit-testable without a renderer.
  */
 
+/**
+ * Authored finger-curl axis of the hand, in hand-local space, for the **right**
+ * hand; `y` and `z` mirror for the left.
+ *
+ * Every phalanx helper (`v4*Fingers`, `v4*MiddleProximal`, `v4*IndexProximal`,
+ * …) flexes about its own local +X, and this is that axis expressed in the
+ * hand's frame. A fist encloses a cylinder only when the cylinder is parallel
+ * to it, so the wrist frame has to be built from the shaft against this axis
+ * rather than from hand-frame angles chosen by eye — the shaft ran *along* the
+ * palm instead of across it, which walked the hand past the pole and left only
+ * the fingertips touching the grip.
+ *
+ * Measured on the SkiErg pole grip because that is the sport whose fist was
+ * fitted first, but it describes the **hand**, not the pole: sculls and brake
+ * hoods close the same phalanges about the same axis, which is why this lives
+ * here rather than in `skiEquipment.ts`.
+ *
+ * **Measured with the palm cup applied.** This constant and `HAND_FIST_CENTRE`
+ * are two measurements of one pose — the rendered hand carrying
+ * `HAND_CLOSURE_CUP` at the `v4*Fingers` helper — so the pose is a hidden
+ * third parameter of both. Whoever changes whether that cup is applied must
+ * re-derive *both* in the same change or keep the cup: converting one alone
+ * runs the grip channel through the finger roots, which satisfies every
+ * per-digit contact assertion while being physically impossible to wrap.
+ *
+ * Re-derived from the shipped rig by "derives the SkiErg curl axis and grip
+ * channel from the authored rig", so an asset rebuild cannot silently
+ * invalidate it. That test measures the *rendered* rig, so it is the guard
+ * that catches a half-converted pose.
+ */
+export const HAND_CURL_AXIS = Object.freeze({ x: -0.61, y: 0.16, z: 0.77 } as const);
+
+/**
+ * Centre of the closed fist's grip channel, in hand-local space, for the
+ * **right** hand; `x` mirrors for the left.
+ *
+ * The authored palm contact is a point on the palm *surface*, roughly 8.5 cm
+ * from the wrist. Driving that onto the shaft axis lays the equipment against
+ * the knuckles, so the fingers close beside it rather than around it. This is
+ * the centre of the circle the curled middle finger actually traces — put
+ * *this* on the axis and the shaft ends up inside the curl.
+ *
+ * Fitted from the shipped rig by "derives the SkiErg curl axis and grip
+ * channel from the authored rig", which also pins the `HAND_FIST_RADIUS`
+ * channel. Fitted **with the palm cup applied**, like `HAND_CURL_AXIS` — see
+ * the pose warning there.
+ */
+export const HAND_FIST_CENTRE = Object.freeze({ x: 0.0393, y: -0.0088, z: 0.0142 } as const);
+
+/** Radius of the fitted grip channel; a held grip must not exceed it. */
+export const HAND_FIST_RADIUS = 0.0169;
+
+/**
+ * Radius of the equipment the fist channel above was fitted around — the
+ * SkiErg pole rubber, which `SKI_POLE_GRIP_RADIUS` re-exports so the rendered
+ * capsule and this calibration cannot drift apart.
+ *
+ * Paired with `HAND_FIST_RADIUS` it *is* the rig's digit-flesh calibration
+ * (see `DEFAULT_DIGIT_FLESH`), which is why the number lives with the hand
+ * rather than with the pole.
+ */
+export const HAND_FIST_REFERENCE_GRIP_RADIUS = 0.016;
+
 /** Authored palm-surface contact of the right hand, from V4_CONTACT_OFFSETS. */
 export const HAND_PALM_CONTACT = Object.freeze({ x: 0.08, y: -0.01, z: 0.035 } as const);
 
@@ -39,9 +96,9 @@ export const HAND_PALM_CONTACT = Object.freeze({ x: 0.08, y: -0.01, z: 0.035 } a
  */
 export const HAND_PALM_NORMAL_IN = (() => {
   const direction = new THREE.Vector3(
-    SKI_HAND_FIST_CENTRE.x - HAND_PALM_CONTACT.x,
-    SKI_HAND_FIST_CENTRE.y - HAND_PALM_CONTACT.y,
-    SKI_HAND_FIST_CENTRE.z - HAND_PALM_CONTACT.z,
+    HAND_FIST_CENTRE.x - HAND_PALM_CONTACT.x,
+    HAND_FIST_CENTRE.y - HAND_PALM_CONTACT.y,
+    HAND_FIST_CENTRE.z - HAND_PALM_CONTACT.z,
   ).normalize();
   return Object.freeze({ x: direction.x, y: direction.y, z: direction.z });
 })();
@@ -53,17 +110,17 @@ export const HAND_PALM_NORMAL_IN = (() => {
  */
 export const HAND_GRIP_SEAT_FLESH = (() => {
   const distance = Math.hypot(
-    SKI_HAND_FIST_CENTRE.x - HAND_PALM_CONTACT.x,
-    SKI_HAND_FIST_CENTRE.y - HAND_PALM_CONTACT.y,
-    SKI_HAND_FIST_CENTRE.z - HAND_PALM_CONTACT.z,
+    HAND_FIST_CENTRE.x - HAND_PALM_CONTACT.x,
+    HAND_FIST_CENTRE.y - HAND_PALM_CONTACT.y,
+    HAND_FIST_CENTRE.z - HAND_PALM_CONTACT.z,
   );
-  return distance - SKI_HAND_FIST_RADIUS;
+  return distance - HAND_FIST_RADIUS;
 })();
 
 /**
  * Hand-local centre of the channel that a cylinder of `radius` occupies when
  * held: the authored palm contact pushed inward by seat flesh plus the
- * radius. `channelCentre(SKI_HAND_FIST_RADIUS)` reproduces the pinned SkiErg
+ * radius. `channelCentre(HAND_FIST_RADIUS)` reproduces the pinned SkiErg
  * fist centre exactly; larger radii (the 0.023 m scull rubber, the brake-hood
  * body) seat proportionally further from the palm, which is what turns the
  * same hand from a fist into a relaxed hook. x mirrors by side.
@@ -83,7 +140,7 @@ export function handChannelCentre(radius: number, side: number, out = new THREE.
 export function handCurlAxis(side: number, out = new THREE.Vector3()) {
   const mirror = Math.sign(side) || 1;
   return out
-    .set(SKI_HAND_CURL_AXIS.x, mirror * SKI_HAND_CURL_AXIS.y, mirror * SKI_HAND_CURL_AXIS.z)
+    .set(HAND_CURL_AXIS.x, mirror * HAND_CURL_AXIS.y, mirror * HAND_CURL_AXIS.z)
     .normalize();
 }
 
@@ -371,7 +428,7 @@ const THUMB_STAGE_LIMITS = [1.0, 1.25, 1.35] as const;
  * held every solved knuckle 8 mm off the shaft and left the closure a hook
  * that could never cage what the shipped mesh visibly grips.
  */
-const DEFAULT_DIGIT_FLESH = SKI_HAND_FIST_RADIUS - SKI_POLE_GRIP_RADIUS;
+const DEFAULT_DIGIT_FLESH = HAND_FIST_RADIUS - HAND_FIST_REFERENCE_GRIP_RADIUS;
 /**
  * Axial allowance for a thumb pressing a flat handle end. This is a different
  * quantity from the radial digit flesh: the chain's tip point is an estimate
@@ -394,7 +451,7 @@ const CLOSURE_EMERGE_SAMPLES = 24;
 /**
  * Palm-cup carrying posture the grip channel was fitted under: the legacy
  * SkiErg render applies this rotation about the `v4*Fingers` helper's local Y
- * before curling, and the pinned `SKI_HAND_FIST_CENTRE` circle was measured
+ * before curling, and the pinned `HAND_FIST_CENTRE` circle was measured
  * in that pose ("derives the SkiErg curl axis and grip channel from the
  * authored rig"). The closure must solve in the same space — with the cup at
  * rest the finger roots collapse onto the fitted axis and no digit can wrap

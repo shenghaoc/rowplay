@@ -67,11 +67,10 @@ import {
   type ReplayV4MotionController,
   type ReplayV4SeatContract,
 } from "./renderer3dV4Motion";
+import { HAND_CURL_AXIS, HAND_FIST_CENTRE } from "./handGrip";
 import {
   skiEquipmentDetail,
   SKI_ATHLETE_PROPORTIONS,
-  SKI_HAND_CURL_AXIS,
-  SKI_HAND_FIST_CENTRE,
   SKI_GRIP_SHIFT,
   SKI_POLE_GRIP_RADIUS,
   type SkiEquipmentDetail,
@@ -1074,7 +1073,7 @@ function placeFigureSegmentBetween(
  */
 function gripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
   if (sport === "skierg") {
-    const { x, y, z } = SKI_HAND_FIST_CENTRE;
+    const { x, y, z } = HAND_FIST_CENTRE;
     return {
       leftHand: { x: -x, y, z },
       rightHand: { x, y, z },
@@ -1115,7 +1114,7 @@ function orientHandToNordicPole(
 ): void {
   hand.quaternion.copy(poleShaft.quaternion);
   scratchAxis
-    .set(SKI_HAND_CURL_AXIS.x, side * SKI_HAND_CURL_AXIS.y, side * SKI_HAND_CURL_AXIS.z)
+    .set(HAND_CURL_AXIS.x, side * HAND_CURL_AXIS.y, side * HAND_CURL_AXIS.z)
     .normalize()
     .applyQuaternion(hand.quaternion);
   // Either shaft end may be the closer one; take the nearer so the correction
@@ -1129,7 +1128,7 @@ function orientHandToNordicPole(
   // the wrist→grip-channel vector points at the athlete's centreline. This is
   // the parameter the earlier hand-frame angles were really groping for.
   scratchAxis
-    .set(side * SKI_HAND_FIST_CENTRE.x, SKI_HAND_FIST_CENTRE.y, SKI_HAND_FIST_CENTRE.z)
+    .set(side * HAND_FIST_CENTRE.x, HAND_FIST_CENTRE.y, HAND_FIST_CENTRE.z)
     .normalize()
     .applyQuaternion(hand.quaternion);
   scratchRoll.copy(athleteRightLocal).multiplyScalar(-side);

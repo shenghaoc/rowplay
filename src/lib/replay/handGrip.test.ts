@@ -2,6 +2,9 @@ import { describe, expect, it } from "vite-plus/test";
 import * as THREE from "three";
 import {
   collectHandDigitChains,
+  HAND_FIST_CENTRE,
+  HAND_FIST_RADIUS,
+  HAND_FIST_REFERENCE_GRIP_RADIUS,
   HAND_GRIP_SEAT_FLESH,
   HAND_PALM_CONTACT,
   handChannelCentre,
@@ -11,8 +14,8 @@ import {
   solveHandGripClosure,
   type HandDigitChain,
 } from "./handGrip";
-import { SKI_HAND_FIST_CENTRE, SKI_HAND_FIST_RADIUS } from "./skiEquipment";
 import { ROWER_SCULL_GRIP } from "./rowRig";
+import { SKI_POLE_GRIP_RADIUS } from "./skiEquipment";
 
 // Right-hand digit joints in hand-local rest space, composed from the sealed
 // contract's helper rest transforms (rowplay-athlete-v4.contract.json). Using
@@ -165,14 +168,31 @@ function angleAroundAxis(point: readonly [number, number, number], radius: numbe
 
 describe("hand grip channel", () => {
   it("reproduces the fitted SkiErg fist centre at the fitted radius", () => {
-    const right = handChannelCentre(SKI_HAND_FIST_RADIUS, 1);
-    expect(right.x).toBeCloseTo(SKI_HAND_FIST_CENTRE.x, 6);
-    expect(right.y).toBeCloseTo(SKI_HAND_FIST_CENTRE.y, 6);
-    expect(right.z).toBeCloseTo(SKI_HAND_FIST_CENTRE.z, 6);
-    const left = handChannelCentre(SKI_HAND_FIST_RADIUS, -1);
-    expect(left.x).toBeCloseTo(-SKI_HAND_FIST_CENTRE.x, 6);
-    expect(left.y).toBeCloseTo(SKI_HAND_FIST_CENTRE.y, 6);
-    expect(left.z).toBeCloseTo(SKI_HAND_FIST_CENTRE.z, 6);
+    const right = handChannelCentre(HAND_FIST_RADIUS, 1);
+    expect(right.x).toBeCloseTo(HAND_FIST_CENTRE.x, 6);
+    expect(right.y).toBeCloseTo(HAND_FIST_CENTRE.y, 6);
+    expect(right.z).toBeCloseTo(HAND_FIST_CENTRE.z, 6);
+    const left = handChannelCentre(HAND_FIST_RADIUS, -1);
+    expect(left.x).toBeCloseTo(-HAND_FIST_CENTRE.x, 6);
+    expect(left.y).toBeCloseTo(HAND_FIST_CENTRE.y, 6);
+    expect(left.z).toBeCloseTo(HAND_FIST_CENTRE.z, 6);
+  });
+
+  it("keeps the digit-flesh calibration tied to the equipment it was fitted on", () => {
+    // The fitted channel and the rubber it was fitted around are one
+    // calibration: their difference is the flesh every solved grip on all
+    // three sports stands off by. Re-sizing the rendered pole grip without
+    // re-fitting the channel would silently move every contact, so the
+    // rendered capsule reads the calibration constant rather than its own
+    // literal.
+    expect(SKI_POLE_GRIP_RADIUS).toBe(HAND_FIST_REFERENCE_GRIP_RADIUS);
+    expect(HAND_FIST_RADIUS).toBeGreaterThan(HAND_FIST_REFERENCE_GRIP_RADIUS);
+    // ~0.9 mm: helpers of this low-poly mesh run at the skin, not at
+    // anatomical bone depth. A textbook pad (8 mm) would hold every knuckle
+    // off the shaft and reduce the closure to a hook.
+    const flesh = HAND_FIST_RADIUS - HAND_FIST_REFERENCE_GRIP_RADIUS;
+    expect(flesh).toBeGreaterThan(0.0005);
+    expect(flesh).toBeLessThan(0.002);
   });
 
   it("seats larger equipment proportionally further from the palm", () => {
@@ -223,15 +243,15 @@ describe("solveHandGripClosure", () => {
   it("keeps the handle axis inside the finger/thumb enclosure with opposing contacts", () => {
     const closure = solveHandGripClosure(RIGHT_HAND_CHAINS, {
       side: 1,
-      surface: { radius: SKI_HAND_FIST_RADIUS },
+      surface: { radius: HAND_FIST_RADIUS },
       thumbOppose: 0.62,
     });
     const fingerAngles = closure.contacts
       .filter((contact) => contact.digit !== "thumb")
-      .map((contact) => angleAroundAxis(contact.tip, SKI_HAND_FIST_RADIUS));
+      .map((contact) => angleAroundAxis(contact.tip, HAND_FIST_RADIUS));
     const thumbAngle = angleAroundAxis(
       closure.contacts.find((contact) => contact.digit === "thumb")!.tip,
-      SKI_HAND_FIST_RADIUS,
+      HAND_FIST_RADIUS,
     );
     // Finger tips wrap past the far side of the shaft while the thumb stays
     // on the near/opposing side: the shaft is caged, not cupped from one side.

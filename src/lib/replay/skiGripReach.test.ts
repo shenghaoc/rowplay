@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as THREE from "three";
-import { SKI_HAND_FIST_CENTRE } from "./skiEquipment";
+import { HAND_FIST_CENTRE } from "./handGrip";
 import {
   SKI_GRIP_REACH_MARGIN_M,
   SKI_POST_RELEASE_EXTENSION_CYCLE,
@@ -22,9 +22,9 @@ function wristWorld(
     .clone()
     .sub(
       new THREE.Vector3(
-        side * SKI_HAND_FIST_CENTRE.x,
-        SKI_HAND_FIST_CENTRE.y,
-        SKI_HAND_FIST_CENTRE.z,
+        side * HAND_FIST_CENTRE.x,
+        HAND_FIST_CENTRE.y,
+        HAND_FIST_CENTRE.z,
       ).applyQuaternion(quaternion),
     );
 }

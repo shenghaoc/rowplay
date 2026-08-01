@@ -1,3 +1,4 @@
+import { HAND_FIST_REFERENCE_GRIP_RADIUS } from "./handGrip";
 import type { RenderQuality } from "./replayRenderer";
 
 /**
@@ -79,61 +80,16 @@ export const SKI_ATHLETE_PROPORTIONS = Object.freeze({
 export const SKI_GRIP_SHIFT = 0.042;
 
 /**
- * Authored finger-curl axis of the hand, in hand-local space, for the **right**
- * hand; `y` and `z` mirror for the left.
+ * Physical radius of the rendered pole-grip capsule.
  *
- * Every phalanx helper (`v4*Fingers`, `v4*MiddleProximal`, `v4*IndexProximal`,
- * …) flexes about its own local +X, and this is that axis expressed in the
- * hand's frame. A fist encloses a cylinder only when the cylinder is parallel
- * to it, so the wrist frame has to be built from the pole shaft against this
- * axis rather than from hand-frame angles chosen by eye — the shaft ran *along*
- * the palm instead of across it, which walked the hand past the pole and left
- * only the fingertips touching the grip.
- *
- * **Measured with the palm cup applied.** This constant and
- * `SKI_HAND_FIST_CENTRE` are two measurements of one pose — the rendered hand
- * carrying `HAND_CLOSURE_CUP` at the `v4*Fingers` helper — so the pose is a
- * hidden third parameter of both. Whoever changes whether that cup is applied
- * must re-derive *both* in the same change or keep the cup: converting one
- * alone runs the grip channel through the finger roots, which satisfies every
- * per-digit contact assertion while being physically impossible to wrap.
- *
- * Re-derived from the shipped rig by "derives the SkiErg curl axis and grip
- * channel from the authored rig", so an asset rebuild cannot silently
- * invalidate it. That test measures the *rendered* rig, so it is the guard
- * that catches a half-converted pose.
+ * The pole grip is the equipment the shipped hand's fist channel was
+ * calibrated against, so this is not a free styling number: it *is*
+ * `HAND_FIST_REFERENCE_GRIP_RADIUS`, and the pair (fitted 0.0169 m channel
+ * around this 0.016 m rubber) is what pins the rig's digit-flesh envelope in
+ * `handGrip.ts`. Re-sizing the rubber without re-fitting the channel silently
+ * moves every solved grip on all three sports.
  */
-export const SKI_HAND_CURL_AXIS = Object.freeze({ x: -0.61, y: 0.16, z: 0.77 } as const);
-
-/**
- * Centre of the closed fist's grip channel, in hand-local space, for the
- * **right** hand; `x` mirrors for the left.
- *
- * The authored palm contact is a point on the palm *surface*, roughly 8.5 cm
- * from the wrist. Driving that onto the shaft axis lays the pole against the
- * knuckles, so the fingers close beside it rather than around it. This is the
- * centre of the circle the curled middle finger actually traces — put *this*
- * on the axis and the shaft ends up inside the curl.
- *
- * Fitted from the shipped rig at the SkiErg curl amount by "derives the SkiErg
- * curl axis and grip channel from the authored rig", which also pins the
- * 0.0169 m radius the pole grip has to fit. Fitted **with the palm cup
- * applied**, like `SKI_HAND_CURL_AXIS` — see the pose warning there.
- */
-export const SKI_HAND_FIST_CENTRE = Object.freeze({ x: 0.0393, y: -0.0088, z: 0.0142 } as const);
-
-/** Radius of the fitted grip channel; the pole grip must not exceed it. */
-export const SKI_HAND_FIST_RADIUS = 0.0169;
-
-/**
- * Physical radius of the rendered pole-grip capsule. Together with
- * `SKI_HAND_FIST_RADIUS` this pins the rig's own digit-flesh calibration: the
- * approved SkiErg fist closes its bone helpers onto a 0.0169 m circle around
- * a 0.016 m rubber, so a finger helper of this rig sits ~0.9 mm off the
- * equipment it presses — the helpers run at the skin of the low-poly mesh,
- * not at anatomical bone depth.
- */
-export const SKI_POLE_GRIP_RADIUS = 0.016;
+export const SKI_POLE_GRIP_RADIUS = HAND_FIST_REFERENCE_GRIP_RADIUS;
 
 export interface SkiEquipmentDetail {
   /** Radial resolution for the visible hard-surface fallback. */
