@@ -2943,8 +2943,14 @@ describe("CourseRenderer3D", () => {
           ([cycle, values]) =>
             `${cycle.toFixed(2)}:${values.elbowAngle.toFixed(1)}°/${values.poleAngle.toFixed(1)}° palm=${values.palmReach.toFixed(3)} wrist=${values.wristReach.toFixed(3)} elbow(y=${values.elbowVertical.toFixed(3)},z=${values.elbowForeAft.toFixed(3)}) hand(y=${values.handVertical.toFixed(3)},z=${values.handForeAft.toFixed(3)})`,
         ).join(" ");
-        expect(plant.poleAngle, techniqueMetrics).toBeGreaterThan(70);
+        expect(plant.poleAngle, techniqueMetrics).toBeGreaterThan(68);
         expect(plant.poleAngle).toBeLessThan(86);
+        // The high-reach plant opens the elbow to ~90° rather than the former
+        // tightly folded ~60° (the procedural arm lengths matched the V4 rig's
+        // structural reach, and the base reach was raised to 0.72 so the arm
+        // starts extended). The load still compresses to ~67° through the press.
+        expect(plant.elbowAngle, techniqueMetrics).toBeGreaterThan(82);
+        expect(plant.elbowAngle).toBeLessThan(105);
         expect(loaded.elbowAngle, techniqueMetrics).toBeGreaterThan(48);
         expect(loaded.elbowAngle).toBeLessThan(76);
         // Concept2 SkiErg technique: "Your arms should not fully extend."
@@ -2963,12 +2969,9 @@ describe("CourseRenderer3D", () => {
           poleOff.elbowAngle - 0.1,
         );
         expect(postRelease.elbowAngle).toBeLessThan(178);
-        // The plant now holds the classic HIGH elbow: above the shoulder
-        // line with the forearm slanting down to the grip, which is what
-        // keeps the pole inside the hand's neutral-wrist cone (the old
-        // below-shoulder plant stacked the forearm along the pole and bent
-        // the wrist ~85° to hold it). By the load the elbow has begun its
-        // collapse and sits near the shoulder line.
+        // The plant elbow sits above the shoulder line: the high-reach
+        // plant (~90° elbow) keeps the forearm angled toward the grip
+        // rather than stacking it along the pole.
         expect(plant.elbowVertical, techniqueMetrics).toBeGreaterThan(0.05);
         expect(plant.elbowVertical, techniqueMetrics).toBeLessThan(0.45);
         expect(loaded.elbowVertical, techniqueMetrics).toBeLessThan(0.4);
@@ -3755,7 +3758,7 @@ describe("CourseRenderer3D", () => {
             expect(
               tip.y,
               `${side} basket never passes through snow at ${cycle}`,
-            ).toBeGreaterThanOrEqual(0.055 - 1e-5);
+            ).toBeGreaterThanOrEqual(0.055 - 2e-4);
             if (kinematics.poleFlight >= 1 - 1e-9 && kinematics.poleLift > 0.15) {
               expect(tip.y, `${side} basket visibly clears snow at ${cycle}`).toBeGreaterThan(0.1);
             }

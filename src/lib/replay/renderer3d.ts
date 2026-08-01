@@ -2728,11 +2728,13 @@ function makeSkierAvatar(
   const gripThumbwardLocal = new THREE.Vector3();
   const gripRollLocal = new THREE.Vector3();
   const GRIP_PALM_SCRATCH = new THREE.Vector3();
-  // Fixed arm lengths must contain every authored hand keyframe. A finish
-  // target outside this reach collapses to a short pull no matter how far
-  // aft the preferred Z claims to go.
+  // Procedural fallback arm lengths from SKI_ATHLETE_PROPORTIONS. When V4
+  // data is available the two-bone solver derives its segment lengths from
+  // the rig's structural reach instead, matching the RowErg pattern. The
+  // ratio is preserved so the elbow sits at the same proportional split.
   const UPPER_ARM_LENGTH = SKI_ATHLETE_PROPORTIONS.upperArmLength;
   const FOREARM_LENGTH = SKI_ATHLETE_PROPORTIONS.forearmLength;
+  const UPPER_ARM_SHARE = UPPER_ARM_LENGTH / (UPPER_ARM_LENGTH + FOREARM_LENGTH);
   const MAX_ARM_REACH = UPPER_ARM_LENGTH + FOREARM_LENGTH - 0.02;
   const MINIMUM_ARM_REACH = Math.abs(UPPER_ARM_LENGTH - FOREARM_LENGTH) + 0.008;
   let contactArmReach = UPPER_ARM_LENGTH + FOREARM_LENGTH;
@@ -2791,12 +2793,8 @@ function makeSkierAvatar(
     skiRecoveryPoints[3],
   );
   const skiPreferredHand = (motion: SkierKinematics, side: number, out: THREE.Vector3): void => {
-    // Concept2: "Your arms should not fully extend." Cap the authored radial
-    // reach below the structural maximum so the elbow keeps a soft bend even
-    // at the deepest press (a full-reach target locks the arm straight and
-    // lays the forearm on the pole line).
     const reach = Math.min(
-      0.44 - motion.elbowLoad * 0.08 + motion.armExtension * 0.36,
+      0.72 - motion.elbowLoad * 0.28 + motion.armExtension * 0.08,
       MAX_ARM_REACH * 0.96,
     );
     const angle = 0.56 - motion.poleSweep * 2.56;
@@ -2975,7 +2973,7 @@ function makeSkierAvatar(
       motion.elbowLoad * 0.04 +
       motion.poleFlight * 0.015 +
       collapse * motion.poleContact * 0.28;
-    const bendUp = elbowDirection.vertical * 0.78 + plantFlare * 0.6;
+    const bendUp = elbowDirection.vertical * 0.78 + plantFlare * 0.15;
     const bendAft = elbowDirection.foreAft * 0.78 - motion.poleFlight * motion.poleSweep * 0.4;
     // Through the free-pole hang and early lift the retrace hint runs
     // chronically near the shoulder→hand chord (both track the arm's own
@@ -3037,6 +3035,13 @@ function makeSkierAvatar(
       shoulderWorld.copy(arm.shoulderPoint);
       upper.localToWorld(shoulderWorld);
       const structuralV4Reach = sampledV4ArmReaches[i]!;
+      // The two-bone solver's segment lengths must match the V4 rig's bone
+      // envelope, following the RowErg pattern.
+      const activeArmReach = hasSampledV4Shoulders
+        ? structuralV4Reach + skiGripReachSolver.channelLength
+        : UPPER_ARM_LENGTH + FOREARM_LENGTH;
+      const activeUpperArm = activeArmReach * UPPER_ARM_SHARE;
+      const activeForearm = activeArmReach - activeUpperArm;
       if (hasSampledV4Shoulders) {
         // Author the free pole trajectory from a point the visible arm can
         // actually reach. The former path was clamped around a static
@@ -3185,8 +3190,8 @@ function makeSkierAvatar(
         solveTwoBone3D(
           arm.shoulderPoint,
           arm.handTarget,
-          UPPER_ARM_LENGTH,
-          FOREARM_LENGTH,
+          activeUpperArm,
+          activeForearm,
           arm.bendHint,
           arm.elbowPoint,
           arm.handPoint,
