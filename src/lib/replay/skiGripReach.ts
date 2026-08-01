@@ -15,6 +15,14 @@ export const SKI_POST_RELEASE_EXTENSION_END_CYCLE = SKI_POLE_FLIGHT_APEX_CYCLE;
  * prevents fixed-point rounding from reading as an elbow re-bend.
  */
 const SKI_POST_RELEASE_REACH_CONTINUATION_M = 0.0001;
+/**
+ * Small reachable interval retained at peak extension. Collapsing minimum and
+ * maximum reach to the same tangent sphere leaves two neighbouring pole/arm
+ * intersection branches numerically indistinguishable and caused a measured
+ * 0.138 m grip jump. A 60 mm window still biases a visibly extended arm while
+ * preserving a unique continuous solution around the preferred contact.
+ */
+export const SKI_POST_RELEASE_REACH_WINDOW_M = 0.06;
 
 /**
  * C2 window that prevents the arm from re-bending as the basket leaves snow,
@@ -122,18 +130,15 @@ export class SkiGripReachSolver {
       SKI_GRIP_REACH_MARGIN_M,
       structuralReach - SKI_GRIP_REACH_MARGIN_M + authority * SKI_POST_RELEASE_REACH_CONTINUATION_M,
     );
-    // A REMOVABLE DISCONTINUITY, not a design choice: the branch below used
-    // to lerp from `max(this.minimumReach, maximumReach - RANGE_M)`, which is
-    // a LARGER value than `this.minimumReach` whenever the range floor wins -
-    // so at authority=0 exactly, minimumReach fell to the small default while
-    // the limit as authority -> 0+ approached the large lerp start. Measured:
-    // minimumReach jumped ~0.7 m to ~0.03 m in a single sample right at the
-    // post-release window's exact boundary (SKI_POLE_FLIGHT_APEX_CYCLE),
-    // dragging the whole rigid-contact solve with it. Lerping FROM
-    // this.minimumReach makes both branches agree exactly at authority=0 by
-    // construction - continuous with no special case needed - while
-    // authority=1 still reaches full extension.
-    const minimumReach = THREE.MathUtils.lerp(this.minimumReach, maximumReach, authority);
+    // Raise the reach floor continuously toward a narrow extension window.
+    // The authority=0 branch and limit agree exactly, while authority=1 keeps
+    // enough interval for the rigid-contact solver to follow one branch rather
+    // than bifurcate at a tangent sphere intersection.
+    const extensionFloor = Math.max(
+      this.minimumReach,
+      maximumReach - SKI_POST_RELEASE_REACH_WINDOW_M,
+    );
+    const minimumReach = THREE.MathUtils.lerp(this.minimumReach, extensionFloor, authority);
     let exact = solveRigidContactPoint3D(
       this.reachOriginWorld,
       preferredContactWorld,

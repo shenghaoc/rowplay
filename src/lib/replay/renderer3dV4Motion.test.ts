@@ -534,21 +534,15 @@ describe("V4 motion determinism and fallback safety", () => {
       placeTargetsNearClipEffectors(lane);
       // In the RowErg parent frame the athlete faces +z, so both branch markers
       // sit rearward (-z) of their shoulder. The test scene itself is rotated/
-      // scaled to prove the controller consumes this in world space. The
-      // marker only *owns* the bend plane at visible flexion — near straight
-      // the authored clip keeps the joint (rowerElbowPlaneAuthority) — so the
-      // wrist targets are pulled inside the reach until the arm is clearly
-      // bent before asserting marker-following.
+      // scaled to prove the controller consumes this in world space.
       for (const side of ["left", "right"] as const) {
         const upper = side === "left" ? "v4LeftUpperArm" : "v4RightUpperArm";
         const marker = side === "left" ? lane.targets.leftElbow : lane.targets.rightElbow;
-        const handTarget = side === "left" ? lane.targets.leftHand : lane.targets.rightHand;
         const shoulder = lane.instance.bones[upper].getWorldPosition(new THREE.Vector3());
         lane.parent.worldToLocal(shoulder);
         marker.position
           .copy(shoulder)
           .add(new THREE.Vector3(side === "left" ? -0.04 : 0.04, 0, -0.24));
-        handTarget.position.sub(shoulder).setLength(0.58).add(shoulder);
       }
       lane.scene.updateMatrixWorld(true);
       controller?.setDiagnosticMode("full");
@@ -1304,9 +1298,9 @@ describe("V4 geometry-closure grip contract", () => {
   // contract's hand. What is only reachable here is the *wiring*: that a
   // supplied contract actually switches the controller off the legacy curl
   // table, that the solved poses reach the helper bones, and that the cup the
-  // closure solved in is the cup the renderer applies. No sport supplies a
-  // contract in this layer, so without this test the whole geometry path
-  // ships to the sport layers unexercised at runtime.
+  // closure solved in is the cup the renderer applies. This controller-level
+  // test protects the generic path independently of the renderer integration
+  // tests that pin each active sport's contract.
   const contract = { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: 0.62 };
 
   function helperLane(): TestLane {

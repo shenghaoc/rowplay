@@ -23,11 +23,8 @@ export const ROWER_STRETCHER = Object.freeze({
   shoeFinishPitch: THREE.MathUtils.degToRad(-42),
 });
 /**
- * Physical scull-handle contract shared by the oar geometry, the hand-grip
- * closure solve, and the grip tests. The rubber is a 0.023 m-radius cylinder
- * along oar-local X; `anchorFromEnd` is how far inboard of the flat thumb
- * stop the palm-contact anchor sits, which is what lets the thumb press the
- * handle end while four fingers hook the cylinder.
+ * Physical scull-handle contract shared by the rendered rubber and grip
+ * closure. `anchorFromEnd` places the palm inboard of the flat thumb stop.
  */
 export const ROWER_SCULL_GRIP = Object.freeze({
   radius: 0.023,

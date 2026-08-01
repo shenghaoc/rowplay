@@ -10,7 +10,10 @@ import {
   handChannelCentre,
   handCurlAxis,
   handCurlAxisThumbward,
+  handPalmNormalOut,
   orientHandToGripChannel,
+  refineGripSpinForWrist,
+  refineGripTiltForWrist,
   solveHandGripClosure,
   type HandDigitChain,
 } from "./handGrip";
@@ -387,6 +390,38 @@ describe("orientHandToGripChannel", () => {
 
     expect(appliedAxis.dot(shaft)).toBeGreaterThan(0.9999);
     expect(appliedChannel.dot(oppositeRoll)).toBeGreaterThan(0.9999);
+  });
+});
+
+describe("grip wrist relief", () => {
+  it("bounds shaft spin while preserving the channel axis", () => {
+    const hand = new THREE.Object3D();
+    const shaft = new THREE.Vector3(0, 0, 1);
+    orientHandToGripChannel(
+      hand,
+      1,
+      ROWER_SCULL_GRIP.radius,
+      shaft,
+      new THREE.Vector3(0, -1, 0),
+      new THREE.Quaternion(),
+    );
+    const before = hand.quaternion.clone();
+    refineGripSpinForWrist(hand, 1, shaft, new THREE.Vector3(0, 1, 0), 0.2);
+    const rotation = before.angleTo(hand.quaternion);
+    expect(rotation).toBeGreaterThan(0);
+    expect(rotation).toBeLessThanOrEqual(0.2 + 1e-9);
+    expect(handCurlAxisThumbward(1).applyQuaternion(hand.quaternion).dot(shaft)).toBeGreaterThan(
+      0.9999,
+    );
+  });
+
+  it("tilts about the true palm normal without changing palm facing", () => {
+    const hand = new THREE.Object3D();
+    const before = handPalmNormalOut(1);
+    refineGripTiltForWrist(hand, 1, new THREE.Vector3(0, 1, 0), 0, 0.3);
+    const after = handPalmNormalOut(1).applyQuaternion(hand.quaternion);
+    expect(hand.quaternion.angleTo(new THREE.Quaternion())).toBeGreaterThan(0);
+    expect(before.angleTo(after)).toBeLessThan(1e-8);
   });
 });
 

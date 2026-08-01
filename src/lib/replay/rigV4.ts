@@ -143,21 +143,6 @@ export const V4_HAND_HELPER_NAMES = [
 ] as const;
 
 export type V4HandHelperName = (typeof V4_HAND_HELPER_NAMES)[number];
-
-/**
- * Mirrored forearm/wrist deformation helpers. They are visual joints only:
- * semantic forearm and hand names remain the stable contact/animation API.
- */
-export const V4_FOREARM_DEFORMATION_HELPER_NAMES = [
-  "v4LeftForearmTwistProximal",
-  "v4LeftForearmTwistDistal",
-  "v4LeftWristCorrective",
-  "v4RightForearmTwistProximal",
-  "v4RightForearmTwistDistal",
-  "v4RightWristCorrective",
-] as const;
-
-export type V4ForearmDeformationHelperName = (typeof V4_FOREARM_DEFORMATION_HELPER_NAMES)[number];
 export type V4VisualHelperRole = "grip" | "twist" | "corrective";
 
 export interface V4RigMetrics {
@@ -553,24 +538,6 @@ function buildBones(
   const mutableBones = {} as Record<V4BoneName, THREE.Bone>;
   const orderedBones: THREE.Bone[] = [];
   const allBones = new Map<string, THREE.Bone>();
-  // The sealed contract requires the mirrored forearm-twist and
-  // wrist-corrective helpers, so the reference asset authors them by default
-  // (callers may still supply their own definitions for these names). The
-  // runtime loader fails hard on their absence, exactly like semantic bones.
-  const augmentedHelpers: V4VisualHelperBoneDefinition[] = [...helperDefinitions];
-  for (const name of V4_FOREARM_DEFORMATION_HELPER_NAMES) {
-    if (!augmentedHelpers.some((definition) => definition.name === name)) {
-      augmentedHelpers.push({
-        name,
-        parent: name.includes("Left") ? "v4LeftForearm" : "v4RightForearm",
-        position: [
-          0,
-          name.includes("Proximal") ? -0.07 : name.includes("Distal") ? -0.14 : -0.2,
-          0,
-        ],
-      });
-    }
-  }
   for (const definition of V4_BONE_DEFINITIONS) {
     const bone = new THREE.Bone();
     bone.name = definition.name;
@@ -584,7 +551,7 @@ function buildBones(
 
   const semanticNames = new Set<string>(V4_BONE_NAMES);
   const helperNames = new Set<string>();
-  for (const definition of augmentedHelpers) {
+  for (const definition of helperDefinitions) {
     if (
       !definition.name ||
       semanticNames.has(definition.name) ||
@@ -620,7 +587,7 @@ function buildBones(
   // Source skeletons may list a helper before its helper parent. Resolve the
   // complete helper graph while keeping the authored list order in the final
   // Skeleton whenever parents are already available.
-  let pendingHelpers = [...augmentedHelpers];
+  let pendingHelpers = [...helperDefinitions];
   while (pendingHelpers.length > 0) {
     const unresolved: V4VisualHelperBoneDefinition[] = [];
     let added = 0;
@@ -1328,7 +1295,8 @@ function createSportClip(
  * CRITICAL: Real rowing sequencing is legs → body → arms. Forearms stay near-
  * straight (a few degrees of soft flex) through leg drive and body open.
  * The clip's elbow-flexion prior begins near cycle 0.26, aligned with the
- * graph's 0.64-drive channel opening and ~0.68 visible onset, not at catch. At the finish (drive end 0.38), hands draw *to the lower chest*
+ * graph's 0.68-drive channel opening and ~0.72 visible onset, not at catch. At
+ * the finish (drive end 0.38), hands draw *to the lower chest*
  * (British Rowing / Concept2 / sculling coaching) — never hauled through the
  * torso behind the back.
  *
@@ -1374,7 +1342,7 @@ function createRowCycleClip(): THREE.AnimationClip {
     [0.43, -0.1, -0.44], // early leg: arms completely still
     [0.42, -0.1, -0.44], // mid leg: still straight, arms hang from shoulders
     [0.41, -0.1, -0.435], // late leg: still long
-    [0.36, -0.09, -0.425], // draw onset (channel opens 0.64 of drive; visible ~0.68): first travel aft
+    [0.36, -0.09, -0.425], // draw prior near the graph's 0.68-drive opening
     [0.24, -0.075, -0.405], // early draw: upper arm traveling aft
     [0.13, -0.052, -0.365], // late draw: elbows tucking toward ribs
     [0.06, -0.04, -0.32], // finish: elbows aft of shoulder, hands still at chest
@@ -1387,14 +1355,14 @@ function createRowCycleClip(): THREE.AnimationClip {
   ] as const;
   // Forearm: ABSOLUTELY STRAIGHT through the leg drive. The clip prior first
   // flexes at t=0.26; the contact-authoritative graph produces visible onset
-  // near 0.68 of the drive. Finish flexion draws the handle to the lower ribs
+  // near 0.72 of the drive. Finish flexion draws the handle to the lower ribs
   // — deep, but not a behind-the-back haul.
   const leftForearm = [
     [-0.06, 0.03, -0.08], // catch: nearly straight, soft not locked
     [-0.06, 0.03, -0.08], // early drive: straight
     [-0.06, 0.03, -0.08], // mid leg: still straight
     [-0.07, 0.03, -0.08], // late leg: STILL STRAIGHT
-    [-0.12, 0.03, -0.1], // draw onset (channel opens 0.64 of drive; visible ~0.68): first visible flex
+    [-0.12, 0.03, -0.1], // draw prior near the graph's 0.68-drive opening
     [-0.42, 0.032, -0.16], // early draw: steady fold
     [-0.68, 0.037, -0.215], // late draw: approaching the ribs
     [-0.88, 0.04, -0.24], // finish: handle to lower ribs / chest

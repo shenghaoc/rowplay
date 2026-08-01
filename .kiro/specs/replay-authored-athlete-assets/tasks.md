@@ -91,14 +91,19 @@ figure, readability, and motion specs.
   - [x] Rebuild and validate GLB, USDZ, and the eight-role native contract; run
     focused tests, the full local gate, E2E, and exact-head CI
 
-- [x] **11. Articulate machine-specific hand grips**
+- [ ] **11. Articulate machine-specific hand grips**
   - [x] Derive per-finger and opposing-thumb helper chains from the reviewed
-    Blender hand topology without adding a second athlete or motion system
-  - [x] Apply RowErg scull, SkiErg cylindrical-grip, and BikeErg hood closure
-    only after the authoritative palm contact solve
-  - [x] Reduce only oversized local grip cross-sections needed to expose the
+    Blender hand topology and add the shared closure/orientation infrastructure
+    without adding a second athlete or motion system
+  - [x] Apply SkiErg cylindrical-grip closure after the authoritative palm
+    contact solve (#179)
+  - [x] Apply RowErg scull closure after the authoritative palm contact solve
+    (#180)
+  - [ ] Apply BikeErg hood closure after the authoritative palm contact solve
+    (#181)
+  - [ ] Reduce only oversized local grip cross-sections needed to expose the
     existing human fingers; preserve equipment paths, timing, and environments
-  - [x] Validate exact helper hierarchy/influence, deterministic reset,
+  - [ ] Validate exact helper hierarchy/influence, deterministic reset,
     contact retention, and all three machine grips with bounded close-up frames
 
 - [x] **12. Rebuild BikeErg equipment around the seated athlete**
@@ -142,8 +147,11 @@ figure, readability, and motion specs.
   - [x] Publish real in-app SkiErg evidence: chase and macro-grip poses, the
     four-tier geometry ladder, a full technique cycle, and a manifest recording
     requested vs effective quality and backend
-  - [ ] Resolve the left-hand recovery reach defect (up to 0.135 m at cycle
-    0.31–0.34; right hand and all other sports close to 0.015 m)
+  - [x] Resolve the one-sided recovery reach defect: solve the oriented fist
+    channel from each visible shoulder, retain a 60 mm reachable interval at
+    peak post-release extension instead of collapsing onto a tangent sphere,
+    and densely verify both hands within the 5 mm SkiErg contact budget with
+    every 1/256-cycle grip step below 50 mm
   - [x] Re-derive ski and pole length against the measured 1.64 m rig: skis
     1.90 m (~116%, inside 112–117%) and poles 1.37 m (~83.5%, inside 83–84%).
     The GLB generator scales its authored native profile to the

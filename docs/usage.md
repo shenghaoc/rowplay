@@ -128,8 +128,8 @@ biomechanics. Its shared technique phases stage RowErg legs, body, then arms
 are nearly extended; both elbows then pull behind the torso as the handle
 approaches the lower ribs, and the arms straighten first on recovery);
 SkiErg's classic double-pole high reach,
-steep plant with the elbows riding high and forward of the grips, a core-led
-press that collapses the elbows forward and down to finish behind the hips,
+steep plant with the flexed elbows hanging below the raised hands, a core-led
+press that drives the elbows down and back to finish behind the hips,
 a soft elbow bend at pole-off (long, never locked out), and a close-to-body
 recovery that lifts the hands back up to the next high plant. Its hips, knees, boots, and
 skis retain left/right order in a narrow parallel stance rather than crossing

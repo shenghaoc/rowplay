@@ -173,10 +173,8 @@ export function handCurlAxisThumbward(side: number, out = new THREE.Vector3()) {
 }
 
 /**
- * Hand long axis — wrist origin toward the middle-finger root — in hand-local
- * space, measured from the sealed contract's composed helper rest transforms
- * (right hand; x mirrors). A flat wrist is the pose where this axis continues
- * the forearm line, which makes it the lever the spin-relief below optimises.
+ * Hand long axis — wrist origin toward the middle-finger root — measured from
+ * the sealed V4 helper rest transforms (right hand; x mirrors).
  */
 export const HAND_LONG_AXIS = Object.freeze({ x: 0.926, y: 0.105, z: 0.363 } as const);
 
@@ -186,21 +184,9 @@ export function handLongAxis(side: number, out = new THREE.Vector3()) {
 }
 
 /**
- * Outward palm normal of the right hand in hand-local space — the direction
- * the palm actually faces. Measured from the shipped GLB's bind geometry as
- * the normal of the plane through the wrist origin, the middle-finger root
- * and the pinky→index knuckle line, signed toward the grip channel (a held
- * cylinder sits against the palm). Left mirrors x.
- *
- * This is NOT `HAND_PALM_NORMAL_IN`, and the distinction matters: that vector
- * is the palm-skin→channel-centre *construction* ray used to seat a cylinder,
- * and it sits 104° away from the true palm facing (signed about the thumbward
- * axis, invariant of shaft direction; 99° unsigned). Resolving a grip's roll
- * against the construction ray therefore mis-set the palm by that fixed angle
- * everywhere; on a near-horizontal handle it happened to land on a plausible
- * overhand grip, but on a ski pole whose inclination sweeps 79° across the
- * cycle it drove forearm pronation through 147° of range and past the human
- * limit.
+ * Outward palm normal measured from the shipped V4 bind geometry (right hand;
+ * x mirrors). This is distinct from `HAND_PALM_NORMAL_IN`, the construction
+ * ray used to seat a cylinder inside the hand.
  */
 export const HAND_PALM_NORMAL_OUT = Object.freeze({
   x: -0.1052,
@@ -215,61 +201,13 @@ export function handPalmNormalOut(side: number, out = new THREE.Vector3()) {
     .normalize();
 }
 
-/**
- * World-space direction the outward palm normal should face for a requested
- * forearm pronation, given the arm's own geometry.
- *
- * Pronation is the rotation of the palm about the forearm's long axis,
- * measured from the elbow's hinge axis: 0 is the neutral handshake (thumb up,
- * palm medial) and ±90° is roughly the human limit. Supplying this as the
- * grip's roll reference makes pronation a bounded *input* to the hand frame
- * rather than an unconstrained output of wherever the equipment happens to
- * point — which is what let the SkiErg hand rotate past anatomy.
- */
-export function pronationRollReference(
-  shoulder: THREE.Vector3,
-  elbow: THREE.Vector3,
-  wrist: THREE.Vector3,
-  pronation: number,
-  side: number,
-  out = new THREE.Vector3(),
-): boolean {
-  PRONATION_FORE.copy(wrist).sub(elbow);
-  PRONATION_UPPER.copy(elbow).sub(shoulder);
-  if (PRONATION_FORE.lengthSq() < 1e-10 || PRONATION_UPPER.lengthSq() < 1e-10) return false;
-  PRONATION_FORE.normalize();
-  PRONATION_UPPER.normalize();
-  // The hinge axis is a cross product, so it mirrors as a pseudovector; the
-  // side factor restores one shared convention across both arms.
-  PRONATION_HINGE.crossVectors(PRONATION_UPPER, PRONATION_FORE);
-  if (PRONATION_HINGE.lengthSq() < 1e-8) return false; // straight arm: no hinge plane
-  PRONATION_HINGE.normalize().multiplyScalar(Math.sign(side) || 1);
-  out
-    .copy(PRONATION_HINGE)
-    .applyAxisAngle(PRONATION_FORE, (Math.sign(side) || 1) * pronation)
-    .normalize();
-  return true;
-}
-
-const PRONATION_FORE = new THREE.Vector3();
-const PRONATION_UPPER = new THREE.Vector3();
-const PRONATION_HINGE = new THREE.Vector3();
-
 const SPIN_LONG = new THREE.Vector3();
 const SPIN_FOREARM = new THREE.Vector3();
 const SPIN_QUAT = new THREE.Quaternion();
 
 /**
- * Relieve the wrist by spending the grip's one free degree of freedom — spin
- * about the shaft — on flatness: rotate the hand about the shaft so its long
- * axis continues the forearm line as nearly as the palm cone allows. Without
- * this, a frame pinned to "palm exactly on the reference" can demand ~100° of
- * combined wrist bend, which linear-blend skinning concentrates at the wrist
- * ring and renders as a severed hand. The clamp keeps the palm within
- * `maxPalmDeviation` of the requested reference, so the relief can never spin
- * the palm away from the side the technique requires. Deterministic and
- * continuous: the optimum angle is a smooth function of the forearm
- * direction, and the clamp is a plain interval clamp.
+ * Spend the grip frame's free spin about the shaft on wrist flatness, bounded
+ * so the sport-requested palm side remains authoritative.
  */
 export function refineGripSpinForWrist(
   hand: THREE.Object3D,
@@ -294,30 +232,9 @@ export function refineGripSpinForWrist(
   hand.quaternion.premultiply(SPIN_QUAT.setFromAxisAngle(shaft, clamped));
 }
 
-/** Hand-local inward palm normal, mirrored the way the rig mirrors hands. */
-export function handPalmNormalIn(side: number, out = new THREE.Vector3()) {
-  const mirror = Math.sign(side) || 1;
-  return out
-    .set(mirror * HAND_PALM_NORMAL_IN.x, HAND_PALM_NORMAL_IN.y, HAND_PALM_NORMAL_IN.z)
-    .normalize();
-}
-
 /**
- * Relieve the wrist with the grip's second anatomical freedom — the shaft
- * running *diagonally* across the palm — by tilting the hand about its own
- * palm normal toward the forearm line, but only for the misalignment beyond
- * `comfort`. A real pole is never held exactly square across the fist at a
- * high reach: the grip rides from the index base toward the pinky heel,
- * which is precisely a rotation about the palm normal. Because the palm
- * normal is the rotation axis, the palm's facing direction is bit-exact
- * unchanged — the palms-inward contract cannot be traded away by this
- * relief. The comfort gate keeps calm phases untouched: the digit closure
- * is solved once in rest space against the authored channel, so a tilt is a
- * real (bounded) divergence between the closed fingers and the shaft, spent
- * only where the square-across-the-fist convention would otherwise tear the
- * wrist ring open. Deterministic and continuous: the misalignment angle is
- * a smooth function of the pose and the excess-over-comfort mapping is
- * continuous at the gate.
+ * Let a held shaft run diagonally across the palm to relieve remaining wrist
+ * bend. Rotation is about the true palm normal, so palm facing is preserved.
  */
 export function refineGripTiltForWrist(
   hand: THREE.Object3D,
@@ -325,20 +242,8 @@ export function refineGripTiltForWrist(
   forearmDir: THREE.Vector3,
   comfort: number,
   maxTilt: number,
-  /**
-   * 0..1 scale on the applied tilt. When the forearm sweeps near the shaft
-   * line (a sculling feather/extraction), the projected flat-wrist target
-   * spins and a full-strength tilt chases it, breaking frame-to-frame
-   * continuity. Callers fade the tilt smoothly through that window instead —
-   * a brief wrist flex at the feather is textbook rowing.
-   */
   strength = 1,
 ): void {
-  // Rotate about the TRUE palm normal. This used `HAND_PALM_NORMAL_IN`, which
-  // is the channel-construction ray sitting 104° away — so the "palm facing
-  // unchanged" guarantee in this function's own contract was false, and the
-  // tilt silently re-rolled the palm by up to `maxTilt` after the grip frame
-  // had deliberately set it. That is what let the inversion return.
   handPalmNormalOut(side, FRAME_TARGET).applyQuaternion(hand.quaternion).normalize();
   handLongAxis(side, SPIN_LONG).applyQuaternion(hand.quaternion);
   SPIN_LONG.addScaledVector(FRAME_TARGET, -SPIN_LONG.dot(FRAME_TARGET));
@@ -651,6 +556,11 @@ function cupChain(chain: HandDigitChain, side: number): HandDigitChain {
  * a real (small) overlap; callers must read `surfaceDistance` rather than
  * assume non-negative. `contact` is likewise a 4 mm band around the surface,
  * not an exact landing.
+ *
+ * This is an install-time solve. Renderer controllers must cache the returned
+ * helper poses rather than call it from an animation frame; the forward-
+ * kinematics workspace deliberately favors auditable geometry over hot-path
+ * allocation behavior.
  */
 export function solveHandGripClosure(
   chains: readonly HandDigitChain[],
@@ -858,7 +768,7 @@ export function solveHandGripClosure(
     contacts.push({
       digit: chain.digit,
       surfaceDistance,
-      contact: surfaceDistance < 0.004,
+      contact: Math.abs(surfaceDistance) < 0.004,
       tip: [
         points[chain.joints.length]!.x,
         points[chain.joints.length]!.y,

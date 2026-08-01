@@ -283,8 +283,26 @@ async function buildBlenderGeometry() {
   try {
     const result = spawnSync(
       blender,
-      ["--background", "--python", BLENDER_GENERATOR, "--", "--output", sourcePath],
-      { stdio: "inherit" },
+      [
+        "--background",
+        // Keep the authoring conversion single-threaded as an additional
+        // reproducibility guard. The source generator also preserves its
+        // reviewed UVs instead of invoking Blender's nondeterministic Smart UV
+        // island scheduler; runtime rendering remains fully parallel.
+        "--threads",
+        "1",
+        "--python",
+        BLENDER_GENERATOR,
+        "--",
+        "--output",
+        sourcePath,
+      ],
+      {
+        stdio: "inherit",
+        // Blender embeds Python; fix its hash seed so generator or export
+        // set/dict traversal cannot perturb the sealed artifact.
+        env: { ...process.env, PYTHONHASHSEED: "0" },
+      },
     );
     if (result.error) throw result.error;
     if (result.status !== 0) {
