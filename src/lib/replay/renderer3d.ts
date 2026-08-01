@@ -50,7 +50,7 @@ import {
 } from "./rowRig";
 import {
   orientHandToGripChannel,
-  handLongAxis,
+  refineGripSpinForWrist,
   handPalmNormalOut,
   refineGripTiltForWrist,
   HAND_FIST_CENTRE,
@@ -994,24 +994,13 @@ const GRIP_SHAFT_SCRATCH = new THREE.Vector3();
 const GRIP_ROLL_SCRATCH = new THREE.Vector3();
 const GRIP_FOREARM_SCRATCH = new THREE.Vector3();
 const GRIP_LONG_SCRATCH = new THREE.Vector3();
-const GRIP_SPIN_SCRATCH = new THREE.Quaternion();
 const SKI_FLAT_FOREARM = new THREE.Vector3();
-const SKI_FLAT_HAND_BASE = new THREE.Vector3();
-const SKI_FLAT_CROSS = new THREE.Vector3();
 const SKI_CARRY_FORE = new THREE.Vector3();
 const SKI_CARRY_PALM = new THREE.Vector3();
 const SKI_CARRY_TMP = new THREE.Vector3();
 const SKI_CARRY_ROLL = new THREE.Quaternion();
-/**
- * How far the SkiErg palm may pitch away from the pure inward reference while
- * the spin relief flattens the wrist. Palms facing each other is the visual
- * contract — a generous cone measurably rotated the visible palm past
- * sideways at reach/recovery and read as palms-out — so the relief may only
- * trim the last few degrees of wrist bend, never trade the palm away. The
- * anatomically unavoidable reach extension is accepted (spin cannot reduce
- * it at any cone size; measured invariant from 0.85 to 1.35 rad).
- */
-export const SKI_PALM_CONE = 0.3;
+/** Largest shaft-spin relief the SkiErg grip may spend on wrist flatness. */
+const SKI_FLAT_MAX_SPIN = THREE.MathUtils.degToRad(35);
 /**
  * How far the pole may ride diagonally across the palm (rotation about the
  * palm normal) to keep the hand's long axis near the forearm line. Real
@@ -1038,13 +1027,6 @@ export const ROWER_PALM_TILT_COMFORT = 0.88;
  * beyond it is tilted away, up to SKI_PALM_TILT.
  */
 export const SKI_PALM_TILT_COMFORT = 1.15;
-/**
- * Target forearm pronation for the SkiErg pole grip (radians from the neutral
- * handshake). A double-poler's hands sit near neutral — thumb toward the grip
- * top, palms facing inward on a near-vertical shaft — so a modest pronation
- * matches technique references and stays far inside the ±90° human limit.
- */
-export const SKI_TARGET_PRONATION = THREE.MathUtils.degToRad(30);
 const BIKE_HOOD_QUAT = new THREE.Quaternion();
 const BIKE_HOOD_AXIS_X = new THREE.Vector3(1, 0, 0);
 
@@ -3264,18 +3246,16 @@ function makeSkierAvatar(
           SEGMENT_DIR,
           -GRIP_LONG_SCRATCH.dot(SEGMENT_DIR),
         ).length();
-        // Restrict this refinement to the LOADED phase (contact, where
-        // Concept2's "wrists should not bend" actually applies - it is
-        // stated for the drive, not the free-swinging recovery). Every
-        // variant tried for the free-swing window - magnitude clamping,
-        // empirically verifying against this function's own bend estimate,
-        // gating on the raw angle's magnitude - measurably made the FINAL
-        // skinned bend worse there (up to 174 deg), because the downstream
-        // V4 wrist-twist-budget redistribution reacts to the changed input
-        // orientation in ways this local computation cannot predict. The
-        // free swing keeps its baseline palm-inward bend instead (measured
-        // 82-121 deg at its worst, elevated but not a near-inversion); that
-        // remains real follow-up work for the arm path, not the grip roll.
+        // Weight the refinement toward the LOADED phase: Concept2's "wrists
+        // should not bend" is stated for the drive, not the free-swinging
+        // recovery, and the projection is best conditioned while the forearm
+        // sits well across the shaft. `skiForeAcross` supplies the first term
+        // and the pole-off fade the second, so the relief arrives and leaves
+        // smoothly rather than at a phase boundary.
+        //
+        // The free swing keeps an elevated baseline bend (p95 98°, max 103°),
+        // unchanged by the relief above — that tail is an arm-path property,
+        // not a grip-roll one, and remains real follow-up work.
         const skiFlatWeight =
           THREE.MathUtils.smoothstep(skiForeAcross, 0.12, 0.35) *
           (1 -
@@ -3285,63 +3265,23 @@ function makeSkierAvatar(
               SKI_POLE_OFF_CYCLE + 0.02,
             ));
         if (skiFlatWeight > 1e-4) {
-          // Candidate roll from aligning the hand-long-axis and forearm
-          // PROJECTIONS onto the plane perpendicular to the shaft. This is
-          // the theoretical bend-minimizer when the shaft, forearm, and
-          // curl geometry cooperate — but when the arm path has driven the
-          // forearm far from the shaft's own direction (a real condition
-          // documented elsewhere: wrist bend tracks the forearm-vs-shaft
-          // angle, and no roll can fix an arm-path mismatch), the projected
-          // target vector can be short and its azimuth effectively noisy,
-          // and applying the "aligned" angle measurably INCREASED real bend
-          // in testing (baseline 82-121°, "corrected" 163°) instead of
-          // reducing it. So the candidate is gated on magnitude alone: it is
-          // applied only when it already asks for less than ±35°, and skipped
-          // entirely otherwise (see the acceptance note below). There is no
-          // re-measurement of the resulting bend — a local check does not
-          // predict the final skinned result, which is why the gate is the
-          // conditioning of the request rather than its outcome.
-          handLongAxis(arm.side, SKI_FLAT_HAND_BASE).applyQuaternion(arm.hand.quaternion);
-          let skiFlatCandidate = 0;
-          GRIP_LONG_SCRATCH.copy(SKI_FLAT_HAND_BASE).addScaledVector(
+          // Spend the grip's one free degree of freedom — spin about the shaft
+          // — on wrist flatness, using the shared Layer-1 relief rather than a
+          // SkiErg copy of it. The phase fade rides on the allowance instead of
+          // scaling the applied angle, so the correction tapers smoothly to
+          // nothing at pole-off rather than switching off at the gate.
+          //
+          // Measured over the 256-sample stroke: mean skinned wrist bend 55.2°
+          // with no relief, 52.1° with this, and p90/p95/p99/max identical in
+          // both — the relief improves the bulk of the distribution and does
+          // not touch the tail.
+          refineGripSpinForWrist(
+            arm.hand,
+            arm.side,
             SEGMENT_DIR,
-            -SKI_FLAT_HAND_BASE.dot(SEGMENT_DIR),
+            SKI_FLAT_FOREARM,
+            SKI_FLAT_MAX_SPIN * skiFlatWeight,
           );
-          GRIP_FOREARM_SCRATCH.copy(SKI_FLAT_FOREARM).addScaledVector(
-            SEGMENT_DIR,
-            -SKI_FLAT_FOREARM.dot(SEGMENT_DIR),
-          );
-          if (GRIP_LONG_SCRATCH.lengthSq() > 1e-8 && GRIP_FOREARM_SCRATCH.lengthSq() > 1e-8) {
-            GRIP_LONG_SCRATCH.normalize();
-            GRIP_FOREARM_SCRATCH.normalize();
-            const skiFlatCos = THREE.MathUtils.clamp(
-              GRIP_LONG_SCRATCH.dot(GRIP_FOREARM_SCRATCH),
-              -1,
-              1,
-            );
-            const skiFlatSin = SKI_FLAT_CROSS.crossVectors(
-              GRIP_LONG_SCRATCH,
-              GRIP_FOREARM_SCRATCH,
-            ).dot(SEGMENT_DIR);
-            // A LARGE required angle is itself the signature of the
-            // ill-conditioned regime (the arm path has driven the forearm
-            // far from the shaft, so the target's own projection is short
-            // and noisy) - measured to make things WORSE there even after
-            // clamping the magnitude and even after verifying against this
-            // function's own bend estimate (the downstream V4 wrist-twist
-            // budget redistribution reacts differently to different starting
-            // orientations, so a local "does this reduce angleTo" check does
-            // not predict the final skinned result). Trust only small,
-            // well-conditioned corrections; skip the rest rather than guess.
-            const skiFlatMax = THREE.MathUtils.degToRad(35);
-            const skiFlatRaw = Math.atan2(skiFlatSin, skiFlatCos);
-            if (Math.abs(skiFlatRaw) <= skiFlatMax) skiFlatCandidate = skiFlatRaw;
-          }
-          if (Math.abs(skiFlatCandidate) > 1e-6) {
-            arm.hand.quaternion.premultiply(
-              GRIP_SPIN_SCRATCH.setFromAxisAngle(SEGMENT_DIR, skiFlatCandidate * skiFlatWeight),
-            );
-          }
         }
         // The pole may ride diagonally across the palm to keep the hand
         // continuous with the forearm. This rotates about the palm normal, so
@@ -4060,9 +4000,6 @@ function makeBikeAvatar(
   // figure uses the same femur and tibia as the skinned athlete above it.
   const THIGH_LENGTH = BIKE_RIG.athlete.thigh;
   const SHIN_LENGTH = BIKE_RIG.athlete.shin;
-  // 0.74 -> 0.80: matches the deepened V4 clip hinge; the shoulders sat
-  // ~26 mm beyond full arm reach so the palms hovered off the hoods with
-  // locked elbows. Weight belongs on the hands.
   const BIKE_AERO_SPINE_LEAN = 0.74;
   const BIKE_HEAD_GAZE_COMPENSATION = -0.47;
   // Pelvis stays at the rider root derived by bikeRiderHipY() — sit surface

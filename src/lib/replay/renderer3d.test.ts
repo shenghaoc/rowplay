@@ -56,6 +56,7 @@ import { BIKE_RIG, bikeSaddleTopY } from "./bikeRig";
 import { ROWER_SCULL_GRIP } from "./rowRig";
 import { BIKE_SADDLE_SHELL_THICKNESS, bikeSaddleDropAt } from "./bikeSaddle";
 import { SKI_ATHLETE_PROPORTIONS, SKI_POLE_GRIP_RADIUS } from "./skiEquipment";
+import { SKI_POST_RELEASE_EXTENSION_CYCLE } from "./skiGripReach";
 import { handChannelCentre, HAND_CURL_AXIS, HAND_FIST_CENTRE, HAND_FIST_RADIUS } from "./handGrip";
 import * as THREE from "three";
 
@@ -3759,6 +3760,13 @@ describe("CourseRenderer3D", () => {
               expect(tip.y, `${side} V4 planted-tip height`).toBeCloseTo(0.055, 5);
             }
 
+            // The known residual below is isolated to the post-release
+            // extension authority's peak. Confining its allowance to that
+            // window keeps the rest of the cycle under a bound tight enough to
+            // fail on a real regression — a single global 0.14 admitted a
+            // 0.13 m teleport anywhere in the stroke, which is most of the
+            // motion, and so asserted almost nothing.
+            const nearExtensionPeak = Math.abs(cycle - SKI_POST_RELEASE_EXTENSION_CYCLE) <= 0.02;
             const priorGrip = previousGrips.get(side);
             if (priorGrip) {
               expect(
@@ -3776,26 +3784,26 @@ describe("CourseRenderer3D", () => {
                   .toArray()
                   .map((value) => value.toFixed(3))
                   .join(",")}`,
-              ) // Release flings the free pole: the grip legitimately travels ~1.8 m/s
-                // here, i.e. 0.071 m per 1/48-cycle sample. 0.075 -> 0.14: one
-                // additional residual jump (measured 0.1354 m, ~9.3 m/s) was
-                // isolated to the post-release extension authority's peak
-                // (SKI_POST_RELEASE_EXTENSION_CYCLE), where minimumReach and
-                // maximumReach converge and the rigid-contact solver's branch
-                // choice becomes sensitive. Two real bugs in that authority
-                // curve were found and fixed in this pass — a hard-toggled
-                // 2-vs-4 solver pass count that produced measured cross-run
-                // nondeterminism, and a removable discontinuity where the
-                // reach floor's two branches disagreed by ~0.7 m exactly at
-                // authority=0 (SKI_POLE_FLIGHT_APEX_CYCLE) — and this bound
-                // was lowered from a much larger value as those landed. This
-                // residual is confirmed NOT a convergence artifact (identical
-                // at 4 and 10 solver passes) and was not visually perceptible
-                // in an 8-frame close-up capture spanning the same window;
-                // isolating its exact geometric cause is real follow-up work,
-                // not swept under a silently-widened bound. The guard exists
-                // to catch a teleport (0.3+), which it still does here.
-                .toBeLessThan(0.14);
+              ) // Release flings the free pole, but away from the extension
+                // peak the grip moves at most 0.036 m per 1/256-cycle sample
+                // (measured over the whole stroke), so 0.05 there is a real
+                // guard. At the peak (SKI_POST_RELEASE_EXTENSION_CYCLE)
+                // minimumReach and maximumReach converge and the
+                // rigid-contact solver's branch choice becomes sensitive,
+                // producing one 0.1383 m jump at cycle 0.332. Two real bugs
+                // in that authority curve were found and fixed in this pass —
+                // a hard-toggled 2-vs-4 solver pass count that produced
+                // measured cross-run nondeterminism, and a removable
+                // discontinuity where the reach floor's two branches
+                // disagreed by ~0.7 m exactly at authority=0
+                // (SKI_POLE_FLIGHT_APEX_CYCLE). The remaining residual is
+                // confirmed NOT a convergence artifact (identical at 4 and 10
+                // solver passes) and was not visually perceptible in an
+                // 8-frame close-up spanning the window; isolating its
+                // geometric cause is real follow-up work. Scoping the
+                // allowance to that window is what keeps it from excusing the
+                // other 99% of the stroke.
+                .toBeLessThan(nearExtensionPeak ? 0.14 : 0.05);
             }
             previousGrips.set(side, grip.clone());
             const priorElbow = previousElbows.get(side);
@@ -3811,18 +3819,18 @@ describe("CourseRenderer3D", () => {
                   .join(
                     ",",
                   )} sweep=${kinematics.poleSweep.toFixed(4)} load=${kinematics.elbowLoad.toFixed(4)} extension=${kinematics.armExtension.toFixed(4)}`,
-                // 0.06 -> 0.14: the high-elbow press collapse moves the elbow
-                // at ~5-7 m/s, an aggressive but human double-pole collapse
-                // (measured 0.090-0.11 depending on run). The earlier
-                // run-to-run variance is now understood and fixed: a hard
-                // 2-vs-4 solver-pass toggle produced genuine cross-run
-                // nondeterminism, now removed (always converges fully). One
-                // separate residual jump (0.1353 m) at the post-release
-                // extension authority's peak is a confirmed bifurcation in
-                // the rigid-contact solver — see the grip-continuity bound
-                // above for the full writeup; not swept under a silently
-                // widened bound. The snap class this guards measured 0.48.
-              ).toBeLessThan(0.14);
+                // The high-elbow press collapse is the fastest legitimate
+                // elbow motion in the stroke; away from the extension peak it
+                // measures at most 0.085 m per sample, so 0.10 guards it
+                // without excusing a snap (the class this catches measured
+                // 0.48). The earlier run-to-run variance is understood and
+                // fixed: a hard 2-vs-4 solver-pass toggle produced genuine
+                // cross-run nondeterminism, now removed (always converges
+                // fully). The one 0.1383 m jump at the post-release extension
+                // authority's peak is the same confirmed bifurcation as the
+                // grip bound above — see that writeup — and is allowed only
+                // inside that window.
+              ).toBeLessThan(nearExtensionPeak ? 0.14 : 0.1);
             }
             previousElbows.set(side, elbow);
           }
