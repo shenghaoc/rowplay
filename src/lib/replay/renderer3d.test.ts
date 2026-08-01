@@ -4474,8 +4474,9 @@ describe("CourseRenderer3D", () => {
             // shipped SkiErg fist solves bit-identical digit distances
             // (index/middle 0.0000, ring 0.0020, pinky 0.0062 m). Letting
             // fingers curl past first contact would change that approved grip
-            // too, so it is tracked as a known limitation on the motion-system
-            // spec rather than papered over here.
+            // too, so it is tracked as a known limitation under "Closure
+            // ceiling" in the replay-authored-athlete-assets design rather than
+            // papered over here.
             for (const digit of ["Index", "Middle", "Ring", "Pinky"] as const) {
               const tip = scene
                 .getObjectByName(`v4${cap}${digit}Distal`)!
