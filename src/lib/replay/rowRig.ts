@@ -176,15 +176,6 @@ export const ROWER_ELBOW_CORRIDOR = Object.freeze({
 } as const);
 
 /**
- * Elbow-plane schedule driven by the arm's *actual* flexion, not by a phase
- * channel: the shoulder→wrist distance determines how bent the arm is, and
- * only a visibly bent arm has a visually meaningful bend plane. Near full
- * extension the elbow circle is a singular, low-authority region — forcing a
- * strong preferred direction there twists the limb about its own long axis
- * for no visible positional gain, which is exactly the artefact this
- * schedule removes.
- */
-/**
  * Arm-draw schedule: the elbow's interior flexion — the visually meaningful
  * quantity — grows linearly with the motion graph's cruise-shaped armDraw
  * channel, reaching the measured production finish fold at draw = 1. The
@@ -229,6 +220,15 @@ export function rowerReachForFlexion(
   );
 }
 
+/**
+ * Elbow-plane schedule driven by the arm's *actual* flexion, not by a phase
+ * channel: the shoulder→wrist distance determines how bent the arm is, and
+ * only a visibly bent arm has a visually meaningful bend plane. Near full
+ * extension the elbow circle is a singular, low-authority region — forcing a
+ * strong preferred direction there twists the limb about its own long axis
+ * for no visible positional gain, which is exactly the artefact this
+ * schedule removes.
+ */
 export const ROWER_ELBOW_PLANE = Object.freeze({
   /** Flexion (rad from straight) below which the plane has no authority. */
   authorityStart: 0.14,

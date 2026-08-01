@@ -1756,6 +1756,15 @@ describe("CourseRenderer3D", () => {
           expect(handLocal.z, `${side} hand stays on chest-level grip at ${cycle}`).toBeGreaterThan(
             -0.2,
           );
+          // The athlete-origin band above is only a coarse proxy. The invariant
+          // the requirement actually names — no past-vertical behind-the-back
+          // haul — is shoulder-relative, so pin it directly: the retimed draw
+          // finishes with the handle still clearly forward of the laid-back
+          // shoulder plane (measured 0.170 m at the deepest finish fold).
+          expect(
+            handLocal.z - shoulder.z,
+            `${side} finish handle stays forward of the shoulder plane at ${cycle}`,
+          ).toBeGreaterThan(0.1);
         }
         if (graph.body.armDraw.value < 0.03) {
           expect(straightness, `${side} long arm before/after draw at ${cycle}`).toBeGreaterThan(
