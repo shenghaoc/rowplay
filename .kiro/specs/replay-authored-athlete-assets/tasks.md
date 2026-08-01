@@ -95,7 +95,7 @@ figure, readability, and motion specs.
   - [x] Derive per-finger and opposing-thumb helper chains from the reviewed
     Blender hand topology and add the shared closure/orientation infrastructure
     without adding a second athlete or motion system
-  - [ ] Apply SkiErg cylindrical-grip closure after the authoritative palm
+  - [x] Apply SkiErg cylindrical-grip closure after the authoritative palm
     contact solve (#179)
   - [ ] Apply RowErg scull closure after the authoritative palm contact solve
     (#180)
