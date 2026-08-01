@@ -67,7 +67,7 @@ jobs:
       # Install the pinned Node version from .node-version so engine
       # checks and runtime behaviour match local development.
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
       - name: Install pnpm
