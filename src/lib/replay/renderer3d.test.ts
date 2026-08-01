@@ -55,7 +55,7 @@ import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from 
 import { BIKE_RIG, bikeSaddleTopY } from "./bikeRig";
 import { ROWER_SCULL_GRIP } from "./rowRig";
 import { BIKE_SADDLE_SHELL_THICKNESS, bikeSaddleDropAt } from "./bikeSaddle";
-import { SKI_ATHLETE_PROPORTIONS } from "./skiEquipment";
+import { SKI_ATHLETE_PROPORTIONS, SKI_POLE_GRIP_RADIUS } from "./skiEquipment";
 import { handChannelCentre, HAND_CURL_AXIS, HAND_FIST_CENTRE, HAND_FIST_RADIUS } from "./handGrip";
 import * as THREE from "three";
 
@@ -2935,10 +2935,13 @@ describe("CourseRenderer3D", () => {
         expect(loaded.elbowAngle, techniqueMetrics).toBeGreaterThan(48);
         expect(loaded.elbowAngle).toBeLessThan(76);
         // Concept2 SkiErg technique: "Your arms should not fully extend."
-        // The reach cap holds a soft bend at pole-off (measured 133°) instead
-        // of the former near-lockout; still long, never locked.
+        // The reach cap holds a soft bend at pole-off (measured 129.7°)
+        // instead of the former near-lockout; still long, never locked. The
+        // upper bound has to stay near that measurement to mean anything — at
+        // the previous 172° the assertion admitted a straight arm and so
+        // asserted nothing about the technique claim above it.
         expect(poleOff.elbowAngle, techniqueMetrics).toBeGreaterThan(125);
-        expect(poleOff.elbowAngle).toBeLessThan(172);
+        expect(poleOff.elbowAngle).toBeLessThan(140);
         // Post-release may hold full extension for a frame; it must not fold
         // back as the basket leaves the snow.
         // "Must not fold back" is a technique claim, not a numeric identity:
@@ -3140,6 +3143,53 @@ describe("CourseRenderer3D", () => {
               indexStation - thumbStation,
               `${side} thumb rides above the index on the grip at ${cycle}`,
             ).toBeGreaterThan(0.005);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
+    it("seats the closed digits on the rendered pole, not a channel-radius standoff", () => {
+      // The grip contract must hand the solver the *equipment* radius: the
+      // closure adds pad flesh itself and rests bone points at radius + flesh.
+      // Passing `HAND_FIST_RADIUS` (the already-fleshed channel) instead
+      // double-counts, standing every digit ~0.9 mm off the rubber. That error
+      // is invisible to `surfaceDistance`, which is measured against whatever
+      // radius the contract supplied, so it has to be caught against the
+      // rendered shaft geometry.
+      // Measured on the shipped rig across the cycles below: the correct
+      // contract holds the closest joint within 0.35 mm of the rubber, while
+      // passing the channel radius pushes it to 0.83 mm. Half a millimetre
+      // separates the two with margin on both sides. Slight negatives are the
+      // solver's documented, permitted penetration.
+      const renderer = rendererFor("skierg");
+      try {
+        for (const cycle of [0.05, 0.18, 0.32, 0.5, 0.75]) {
+          renderer.render(makeSportState("skierg", cycle, 200), false);
+          const scene = getScene(renderer);
+          scene.updateMatrixWorld(true);
+          for (const side of ["left", "right"] as const) {
+            const cap = side === "left" ? "Left" : "Right";
+            const shaft = skiShaft(renderer, side);
+            // The stage stops at the first bone point to reach the surface, so
+            // the closest joint of the wrapping finger is the one pinned to it.
+            const closest = Math.min(
+              ...[
+                `v4${cap}MiddleProximal`,
+                `v4${cap}MiddleIntermediate`,
+                `v4${cap}MiddleDistal`,
+              ].map((name) =>
+                perpFromShaft(
+                  scene.getObjectByName(name)!.getWorldPosition(new THREE.Vector3()),
+                  shaft,
+                ),
+              ),
+            );
+            expect(
+              closest - SKI_POLE_GRIP_RADIUS,
+              `${side} middle finger rests on the rendered pole at ${cycle}`,
+            ).toBeLessThan(0.0005);
           }
         }
       } finally {

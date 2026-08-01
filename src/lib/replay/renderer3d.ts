@@ -54,7 +54,6 @@ import {
   handPalmNormalOut,
   refineGripTiltForWrist,
   HAND_FIST_CENTRE,
-  HAND_FIST_RADIUS,
 } from "./handGrip";
 import {
   applyReplayAssetLibrary,
@@ -1030,8 +1029,8 @@ export const SKI_PALM_TILT = 0.6;
  * is the flat-wrist target (Concept2: "wrists should be flat"), the budget is
  * how diagonal the handle may sit in the palm.
  */
-export const ROWER_PALM_TILT = 0.75;
-export const ROWER_PALM_TILT_COMFORT = 0.3;
+export const ROWER_PALM_TILT = 0.98;
+export const ROWER_PALM_TILT_COMFORT = 0.88;
 /**
  * Hand-long-axis-vs-forearm misalignment (about the palm normal) a wrist
  * carries comfortably without any diagonal-grip relief. Below this the
@@ -1151,8 +1150,12 @@ function gripContractFor(
   sport: Sport,
 ): { radius: number; thumbOppose: number; thumbEndAxial?: number } | undefined {
   if (sport === "skierg") {
-    // The fitted fist channel radius — pole grips are authored to fit it.
-    return { radius: HAND_FIST_RADIUS, thumbOppose: 0.62 };
+    // The rendered pole rubber, not the fitted `HAND_FIST_RADIUS` channel:
+    // the closure adds pad flesh itself and comes to rest at radius + flesh,
+    // which for this grip is the fitted channel exactly. Passing the channel
+    // radius here double-counts the flesh and stands every digit ~0.9 mm off
+    // the pole — see the `radius` contract on `HandGripSurface`.
+    return { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: 0.62 };
   }
   // RowErg / BikeErg grip contracts are inactive until the sport-specific
   // grip layers supply the consuming IK solves.
@@ -3241,7 +3244,7 @@ function makeSkierAvatar(
         orientHandToGripChannel(
           arm.hand,
           arm.side,
-          HAND_FIST_RADIUS,
+          SKI_POLE_GRIP_RADIUS,
           gripThumbwardLocal,
           gripRollLocal,
           pole.shaft.quaternion,
@@ -3292,11 +3295,12 @@ function makeSkierAvatar(
           // target vector can be short and its azimuth effectively noisy,
           // and applying the "aligned" angle measurably INCREASED real bend
           // in testing (baseline 82-121°, "corrected" 163°) instead of
-          // reducing it. So the candidate is verified, not trusted: measure
-          // the actual 3D bend at 0° and at the candidate, clamped to a
-          // modest ±35° (this rework's original acceptance bound), and keep
-          // whichever is smaller. This can never make the wrist worse than
-          // doing nothing, regardless of how the geometry misbehaves.
+          // reducing it. So the candidate is gated on magnitude alone: it is
+          // applied only when it already asks for less than ±35°, and skipped
+          // entirely otherwise (see the acceptance note below). There is no
+          // re-measurement of the resulting bend — a local check does not
+          // predict the final skinned result, which is why the gate is the
+          // conditioning of the request rather than its outcome.
           handLongAxis(arm.side, SKI_FLAT_HAND_BASE).applyQuaternion(arm.hand.quaternion);
           let skiFlatCandidate = 0;
           GRIP_LONG_SCRATCH.copy(SKI_FLAT_HAND_BASE).addScaledVector(
@@ -3343,10 +3347,15 @@ function makeSkierAvatar(
         // continuous with the forearm. This rotates about the palm normal, so
         // the palm's facing — and therefore the pronation set above — is
         // unchanged by construction.
+        //
+        // Feed the true 3D forearm, not `GRIP_FOREARM_SCRATCH`: the flat-roll
+        // block above reuses that scratch for a shaft-plane projection, so
+        // reading it here would hand the tilt a projected vector whenever
+        // that branch ran and the real forearm whenever it did not.
         refineGripTiltForWrist(
           arm.hand,
           arm.side,
-          GRIP_FOREARM_SCRATCH,
+          SKI_FLAT_FOREARM,
           SKI_PALM_TILT_COMFORT,
           SKI_PALM_TILT,
         );
@@ -4054,7 +4063,7 @@ function makeBikeAvatar(
   // 0.74 -> 0.80: matches the deepened V4 clip hinge; the shoulders sat
   // ~26 mm beyond full arm reach so the palms hovered off the hoods with
   // locked elbows. Weight belongs on the hands.
-  const BIKE_AERO_SPINE_LEAN = 0.8;
+  const BIKE_AERO_SPINE_LEAN = 0.74;
   const BIKE_HEAD_GAZE_COMPENSATION = -0.47;
   // Pelvis stays at the rider root derived by bikeRiderHipY() — sit surface
   // on pad top. Do not add a vertical dig: averagePedalLoad used to sink the

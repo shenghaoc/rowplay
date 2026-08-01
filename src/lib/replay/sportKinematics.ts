@@ -84,17 +84,19 @@ function secondaryScale(intensity: number): number {
 /**
  * Resolve the shared high-elbow → press → recovery SkiErg elbow sequence.
  *
- * The bend vector follows one continuous arc in the sagittal plane, authored
+ * The bend vector stays on one continuous arc in the sagittal plane, authored
  * to classic double-pole form (Concept2 SkiErg technique): at the plant the
  * ELBOWS RIDE HIGH AND FORWARD of the grips with the forearms slanting down
  * to near-vertical poles — the configuration whose pole-to-forearm angle sits
  * inside the hand's neutral-wrist cone. The press rotates the elbow forward
- * and down, finishing behind the hip at pole-off; the recovery takes the same
- * circle up and over, back to the high plant. The former arc pointed the
- * elbow straight DOWN at the plant, which stacked the forearm along the pole
- * line and forced ~85° of wrist bend to hold the grip. Following one circle
- * avoids interpolating through a zero vector, which would make a two-bone
- * solver choose a lateral fallback and flip.
+ * and down, finishing behind the hip at pole-off; the recovery then RETRACES
+ * that same arc back up to the high plant rather than closing a full circle
+ * over the top — see the recovery branch below for why the over-the-top route
+ * was rejected. The former arc pointed the elbow straight DOWN at the plant,
+ * which stacked the forearm along the pole line and forced ~85° of wrist bend
+ * to hold the grip. Staying on a single arc avoids interpolating through a
+ * zero vector, which would make a two-bone solver choose a lateral fallback
+ * and flip.
  */
 export function solveSkierElbowDirection(
   kinematics: SkierKinematics,
@@ -104,7 +106,7 @@ export function solveSkierElbowDirection(
   // vertical = cos(angle), foreAft = sin(angle): 0 is straight up, +π/2 is
   // horizontal-forward. Plant: up-forward (~57° from vertical). Pole-off:
   // down-back. The contact arc travels forward-down between them; the
-  // recovery arc continues around through up-back to close the circle.
+  // recovery runs back along that same arc rather than continuing around.
   const PLANT_ANGLE = 0.99;
   const POLE_OFF_ANGLE = Math.PI + 1.1;
   // Hold the high elbow through the initial lock: rotating toward the press
