@@ -81,6 +81,28 @@ geometry, textures, or likenesses.
 
 ## In-app evidence
 
+### PR #179 exact-head regression audit (2026-08-02)
+
+Fresh Codex in-app browser captures audit source commit
+`58b41caeafd232a0d93957ffcd5d74d6f29c7c47` (the reviewed code/spec head before
+this evidence-only commit). The
+[`manifest`](ski-equipment/in-app/pr179-current/manifest.json) records the
+WebGPU/Ultra backend, exact routes, viewports, pose times, and file hashes.
+
+| Artifact                                                                                                      | Shows                                                                    |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [`ski-high-reach-desktop.png`](ski-equipment/in-app/pr179-current/ski-high-reach-desktop.png)                 | 1440×1024 grip camera: bilateral shaft enclosure at the recovery apex    |
+| [`ski-loaded-press-desktop.png`](ski-equipment/in-app/pr179-current/ski-loaded-press-desktop.png)             | 1440×1024 grip camera: down-and-back elbows and loaded bilateral closure |
+| [`ski-high-reach-mobile.png`](ski-equipment/in-app/pr179-current/ski-high-reach-mobile.png)                   | 390×844 ordinary close camera: full-athlete recovery composition         |
+| [`ski-loaded-press-mobile.png`](ski-equipment/in-app/pr179-current/ski-loaded-press-mobile.png)               | 390×844 ordinary close camera: loaded press plus usable replay controls  |
+
+The temporary worktree used the repository dependency tree through a symlink,
+so Vite declined to serve those external font files. These frames therefore
+accept geometry, responsive composition, and controls; the production build
+gate remains the typography proof. The browser console itself was clean.
+
+### Full matrix baseline
+
 Real application captures, not renders. Manifest with per-file requested vs
 effective quality, backend, and stage size:
 [`ski-equipment/in-app/manifest.json`](ski-equipment/in-app/manifest.json).
@@ -93,7 +115,7 @@ effective quality, backend, and stage size:
 | [`tiers/tier-ski-equipment-{low,medium,high,ultra}.jpg`](ski-equipment/in-app/tiers/)     | Progressive **geometry**: top sheets, edges, closures, straps, ribs |
 | [`cycles/ski-one-cycle.webm`](ski-equipment/in-app/cycles/ski-one-cycle.webm)             | One full technique cycle                                            |
 
-All evidence is captured **headed** (`--headed`), which gives Playwright's
+The full matrix evidence is captured **headed** (`--headed`), which gives Playwright's
 Chromium a real Metal-backed WebGPU adapter: the manifest records
 `backend: WEBGPU` with requested = effective quality for every file, so the
 Ultra tier frame **is** genuine hardware-WebGPU Ultra acceptance. Headless
