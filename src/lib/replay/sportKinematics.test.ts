@@ -117,6 +117,12 @@ describe("sportKinematics", () => {
     expect(preplant.vertical).toBeGreaterThan(0.4);
     expect(preplant.foreAft).toBeGreaterThan(0.5);
 
+    // Bound derived from measurement, not slack: the compressed press
+    // collapse (smoothstep hold to sweep 0.48, then the full plant→pole-off
+    // arc in the remaining half) peaks at 0.1484 per 1/256 step, at cycle
+    // ~0.21. The bound sits 1% above that peak, so any new discontinuity —
+    // or a retune that steepens the collapse — fails here rather than
+    // hiding inside a slack allowance.
     let previous = directionAt(0);
     for (let step = 1; step <= 256; step++) {
       const next = directionAt(step / 256);

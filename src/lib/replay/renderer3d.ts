@@ -990,8 +990,6 @@ const ELBOW_INSIDE = new THREE.Vector3();
 const ELBOW_SIDE = new THREE.Vector3();
 const ELBOW_FRAME = new THREE.Matrix4();
 const ARM_BEND_SCRATCH = new THREE.Vector3();
-const GRIP_SHAFT_SCRATCH = new THREE.Vector3();
-const GRIP_ROLL_SCRATCH = new THREE.Vector3();
 const GRIP_FOREARM_SCRATCH = new THREE.Vector3();
 const GRIP_LONG_SCRATCH = new THREE.Vector3();
 const SKI_FLAT_FOREARM = new THREE.Vector3();
@@ -1027,8 +1025,6 @@ export const ROWER_PALM_TILT_COMFORT = 0.88;
  * beyond it is tilted away, up to SKI_PALM_TILT.
  */
 export const SKI_PALM_TILT_COMFORT = 1.15;
-const BIKE_HOOD_QUAT = new THREE.Quaternion();
-const BIKE_HOOD_AXIS_X = new THREE.Vector3(1, 0, 0);
 
 /**
  * Stable two-bone arm bend direction for equipment-locked hands.
@@ -1106,13 +1102,14 @@ function placeFigureSegmentBetween(
 }
 
 /**
- * Every sport replaces the authored palm-surface contact with the centre of
- * the hand's grip channel for that equipment radius, so the contact solver
- * seats the shaft/handle/hood core inside the digit enclosure rather than
- * laying it against the palm skin. SkiErg keeps its historical fist-centre
- * measurement (which `handChannelCentre` reproduces exactly at the fitted
- * 0.0169 m radius); RowErg's 0.023 m rubber and the BikeErg hood body seat
- * proportionally further out — the same hand as a relaxed hook.
+ * Replaces the authored palm-surface contact with the centre of the hand's
+ * grip channel, so the contact solver seats the equipment core inside the
+ * digit enclosure rather than laying it against the palm skin. Active for
+ * SkiErg only in this layer — its historical fist-centre measurement, which
+ * `handChannelCentre` reproduces exactly at the fitted 0.0169 m radius.
+ * RowErg and BikeErg keep palm-skin contact until their own grip layers
+ * switch them over (their larger radii seat proportionally further out —
+ * the same hand as a relaxed hook).
  */
 function gripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
   if (sport === "skierg") {
@@ -3020,33 +3017,14 @@ function makeSkierAvatar(
 
       setPlantTipWorld(plantTipWorld, arm.side, pose, meters, outer);
 
-      // The free pole hangs from the fist, so derive its carried direction
-      // from a NEUTRAL WRIST instead of an authored shaft angle. The old
-      // authored attitude rotated the shaft independently of the arm, and by
-      // the high recovery it lay 4-6° off the forearm line — a configuration
-      // whose nearest valid hand orientation still bends the wrist ~85°
-      // (the fist's channel axis is pinned 109.4° from the hand's long axis).
-      // Building the fist frame with the hand's long axis ON the provisional
-      // forearm and the palm at the ski pronation target, then letting the
-      // shaft point wherever THAT fist points it, makes the carried pole
-      // consistent with a straight wrist by construction. Concept2: "Your
-      // wrists should not bend."
-      // Solve the provisional carry arm against the SAME hand the visible V4
-      // arm will reach — the reach-clamped world target — with the V4's own
-      // structural segment lengths. Using the unclamped local target and the
-      // procedural tube lengths built the neutral fist around a forearm the
-      // athlete doesn't have, which surfaced as the pre-plant wrist
-      // transient right where the clamp engages hardest.
       // The free pole's carried angle is authored directly from the
-      // technique phase - steep near the reach/plant (matching the on-snow
+      // technique phase — steep near the reach/plant (matching the on-snow
       // ~80 deg attitude) and shallowest at pole-off (~23 deg, also on-snow
-      // measured) - rather than derived from a "neutral wrist" fist frame.
-      // That derivation looked principled but the provisional forearm it
-      // solved against runs close to horizontal through the close-to-body
-      // recovery return, so the carried pole came out held nearly LEVEL
-      // (measured 17-30 deg off horizontal) through roughly 70% of the
-      // cycle - the athlete looked like they were carrying a jousting lance,
-      // not a ski pole. A physically wrong carry, not merely an imperfect
+      // measured). Deriving it from a neutral-wrist fist frame instead was
+      // tried and rejected: the provisional forearm it solved against runs
+      // close to horizontal through the close-to-body recovery return, so
+      // the carried pole came out held nearly level through roughly 70% of
+      // the cycle — a physically wrong carry, not merely an imperfect
       // wrist. The wrist's own flat-wrist relief still comes from the
       // grip-roll code below, same as contact; only the SHAFT direction is
       // authored here.
@@ -3204,9 +3182,10 @@ function makeSkierAvatar(
         pole.basket.position.copy(tipLocalPoint).addScaledVector(groundUpLocal, 0.026);
         pole.basket.quaternion.copy(inverseUpperWorld);
         pole.tipAnchor.position.copy(tipLocalPoint);
-        // Thumb points toward the grip top and the palm rides inward. Reuse the
-        // one shared equipment-channel frame used by sculls and bike hoods;
-        // SkiErg no longer maintains a duplicate orientation system.
+        // Thumb points toward the grip top and the palm rides inward. Built on
+        // the one shared equipment-channel frame (which sculls and bike hoods
+        // adopt in their own layers); SkiErg no longer maintains a duplicate
+        // orientation system.
         gripThumbwardLocal.copy(SEGMENT_DIR).multiplyScalar(-1);
         // Pinning the fist's channel axis along the shaft leaves exactly one
         // freedom — spin about the shaft. Baseline: palm toward the athlete's
@@ -4043,23 +4022,9 @@ function makeBikeAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
-      // Pronated hoods grip built from the hood contract: the curl axis lies
-      // along the hood body's long axis (pinky at the bar tops, index toward
-      // the nose) and the spin resolves the palm heel onto the hood's upper
-      // surface, so the fingers hook the front/underside and the thumb hooks
-      // the inboard face rather than posing a fixed Euler fist beside it.
-      const hoodRotation = BIKE_RIG.handlebar.hood?.rotationX ?? -0.24;
-      GRIP_SHAFT_SCRATCH.set(0, -Math.sin(hoodRotation), Math.cos(hoodRotation));
-      GRIP_ROLL_SCRATCH.set(0, -Math.cos(hoodRotation), -Math.sin(hoodRotation));
-      BIKE_HOOD_QUAT.setFromAxisAngle(BIKE_HOOD_AXIS_X, hoodRotation);
-      orientHandToGripChannel(
-        arm.hand,
-        arm.side,
-        BIKE_RIG.handlebar.hood?.radius ?? 0.016,
-        GRIP_SHAFT_SCRATCH,
-        GRIP_ROLL_SCRATCH,
-        BIKE_HOOD_QUAT,
-      );
+      // Pronated hoods grip: palm over the bar, fingers curling forward/down
+      // so the cyclist is clearly holding the cockpit rather than floating.
+      arm.hand.rotation.set(-0.72, arm.side * 0.06, arm.side * 0.18);
     }
   };
 
@@ -6102,13 +6067,6 @@ export class CourseRenderer3D implements ReplayRenderer {
    * fails on a curved course because it does not align with the shadow texels;
    * light-space snapping prevents sub-texel shadow swimming without widening
    * the map or changing the art-directed sun direction.
-   */
-  /**
-   * Fill the QA arm-diagnostics panel from the live skinned bones. All values
-   * are *measured* on the rendered athlete (not channel echoes): elbow
-   * flexion from the shoulder/elbow/wrist bone positions, plane authority
-   * from that flexion, corridor outboard from the working-plane metric, and
-   * hand–knee clearance as the wrist↔knee distance.
    */
   private updateStableShadowAnchor(x: number, z: number): void {
     const target = this.shadowTarget.set(x, SHADOW_TARGET_HEIGHT, z);
