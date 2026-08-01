@@ -90,8 +90,18 @@ export const SKI_GRIP_SHIFT = 0.042;
  * the palm instead of across it, which walked the hand past the pole and left
  * only the fingertips touching the grip.
  *
- * Re-derived from the shipped rig by "derives the SkiErg curl axis from the
- * authored grip helpers", so an asset rebuild cannot silently invalidate it.
+ * **Measured with the palm cup applied.** This constant and
+ * `SKI_HAND_FIST_CENTRE` are two measurements of one pose — the rendered hand
+ * carrying `HAND_CLOSURE_CUP` at the `v4*Fingers` helper — so the pose is a
+ * hidden third parameter of both. Whoever changes whether that cup is applied
+ * must re-derive *both* in the same change or keep the cup: converting one
+ * alone runs the grip channel through the finger roots, which satisfies every
+ * per-digit contact assertion while being physically impossible to wrap.
+ *
+ * Re-derived from the shipped rig by "derives the SkiErg curl axis and grip
+ * channel from the authored rig", so an asset rebuild cannot silently
+ * invalidate it. That test measures the *rendered* rig, so it is the guard
+ * that catches a half-converted pose.
  */
 export const SKI_HAND_CURL_AXIS = Object.freeze({ x: -0.61, y: 0.16, z: 0.77 } as const);
 
@@ -106,8 +116,9 @@ export const SKI_HAND_CURL_AXIS = Object.freeze({ x: -0.61, y: 0.16, z: 0.77 } a
  * on the axis and the shaft ends up inside the curl.
  *
  * Fitted from the shipped rig at the SkiErg curl amount by "derives the SkiErg
- * grip channel from the curled finger joints", which also pins the 0.0169 m
- * radius the pole grip has to fit.
+ * curl axis and grip channel from the authored rig", which also pins the
+ * 0.0169 m radius the pole grip has to fit. Fitted **with the palm cup
+ * applied**, like `SKI_HAND_CURL_AXIS` — see the pose warning there.
  */
 export const SKI_HAND_FIST_CENTRE = Object.freeze({ x: 0.0393, y: -0.0088, z: 0.0142 } as const);
 
