@@ -83,12 +83,22 @@ marker. V4 first samples its authored clip and hand orientation, then the
 renderer re-solves each fixed oar circle from the visible skinned shoulder,
 structural shoulder-to-wrist reach, and sampled wrist-to-palm offset before the
 final contact pass chooses the shared anatomical elbow branch. During the
-loaded draw, the equipment-locked two-bone solve intersects the elbow circle
-with a height band below the handle line — its depth follows blade load — and
-keeps the joint close under its own shoulder. The visible humerus therefore
-extends down-and-back to an elbow beneath the grips, without the old
-shoulder-height chicken wing, a left/right horizontal flare, or a
-past-vertical behind-the-back haul. The
+loaded draw, the equipment-locked two-bone solve steers the elbow circle by a
+preferred plane whose authority is scheduled on the arm's *measured* flexion
+rather than on a phase channel or a fixed height band: near full extension the
+circle is a singular, low-authority region that is left unsteered, and
+authority ramps in (C2) only once the bend is visibly developed. At full
+authority the station is chord-relative — the circle is decomposed into an
+in-plane-down and an outboard basis, and the outboard offset scales with the
+circle radius — so the elbow keeps a modest, constant-looking lean while the
+chord itself swings through the draw. The absolute-metre elbow corridor
+remains as a dormant safety bound rather than the operating pose. The visible
+humerus therefore extends down-and-back to an elbow beneath the grips, without
+the old shoulder-height chicken wing, a left/right horizontal flare, or a
+past-vertical behind-the-back haul. Arm-draw velocity comes from the graph's
+cruise-shaped `armDraw` channel alone: it schedules elbow flexion, which the
+renderer converts to a requested shoulder-to-wrist reach, leaving the rigid-oar
+solve to place the handle. The
 rigid grip remains terminal authority without asking IK to compensate for a
 hidden-rig shoulder mismatch. Dense-cycle tests reject elbow flexion before
 hand/knee clearance, forward-pointing or sideways elbows, grip separation,

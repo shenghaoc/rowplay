@@ -33,13 +33,6 @@ import {
   SKI_POLE_OFF_CYCLE,
   type BikeMotionGraph,
 } from "./motionGraph";
-
-/** Scratch objects for the QA arm-diagnostics overlay (allocation-free). */
-const ARM_DIAG_MATRIX = new THREE.Matrix4();
-const ARM_DIAG_SHOULDER = new THREE.Vector3();
-const ARM_DIAG_ELBOW = new THREE.Vector3();
-const ARM_DIAG_WRIST = new THREE.Vector3();
-const ARM_DIAG_KNEE = new THREE.Vector3();
 import { BIKE_RIG, bikeSaddleTopY, bikeWheelAxleY } from "./bikeRig";
 import { buildBikeSaddleGeometry } from "./bikeSaddle";
 import type { Sport } from "../types";
@@ -49,14 +42,10 @@ import { solveRigidContactPoint3D, solveTwoBone3D, type FigurePoint3 } from "./f
 import {
   ROWER_DRAW_FINISH_FLEXION,
   ROWER_DRAW_SOFT_FLEXION,
-  ROWER_ELBOW_CORRIDOR,
   ROWER_FOOT_CONTACT,
   ROWER_OARLOCK,
   ROWER_SCULL_GRIP,
   ROWER_STRETCHER,
-  rowerElbowFlexion,
-  rowerElbowOutboard,
-  rowerElbowPlaneAuthority,
   rowerReachForFlexion,
   solveRowerArm,
   solveRowerOarYaw,
