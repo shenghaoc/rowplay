@@ -89,12 +89,12 @@ this evidence-only commit). The
 [`manifest`](ski-equipment/in-app/pr179-current/manifest.json) records the
 WebGPU/Ultra backend, exact routes, viewports, pose times, and file hashes.
 
-| Artifact                                                                                                      | Shows                                                                    |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| [`ski-high-reach-desktop.png`](ski-equipment/in-app/pr179-current/ski-high-reach-desktop.png)                 | 1440×1024 grip camera: bilateral shaft enclosure at the recovery apex    |
-| [`ski-loaded-press-desktop.png`](ski-equipment/in-app/pr179-current/ski-loaded-press-desktop.png)             | 1440×1024 grip camera: down-and-back elbows and loaded bilateral closure |
-| [`ski-high-reach-mobile.png`](ski-equipment/in-app/pr179-current/ski-high-reach-mobile.png)                   | 390×844 ordinary close camera: full-athlete recovery composition         |
-| [`ski-loaded-press-mobile.png`](ski-equipment/in-app/pr179-current/ski-loaded-press-mobile.png)               | 390×844 ordinary close camera: loaded press plus usable replay controls  |
+| Artifact                                                                                          | Shows                                                                    |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [`ski-high-reach-desktop.png`](ski-equipment/in-app/pr179-current/ski-high-reach-desktop.png)     | 1440×1024 grip camera: bilateral shaft enclosure at the recovery apex    |
+| [`ski-loaded-press-desktop.png`](ski-equipment/in-app/pr179-current/ski-loaded-press-desktop.png) | 1440×1024 grip camera: down-and-back elbows and loaded bilateral closure |
+| [`ski-high-reach-mobile.png`](ski-equipment/in-app/pr179-current/ski-high-reach-mobile.png)       | 390×844 ordinary close camera: full-athlete recovery composition         |
+| [`ski-loaded-press-mobile.png`](ski-equipment/in-app/pr179-current/ski-loaded-press-mobile.png)   | 390×844 ordinary close camera: loaded press plus usable replay controls  |
 
 The temporary worktree used the repository dependency tree through a symlink,
 so Vite declined to serve those external font files. These frames therefore
