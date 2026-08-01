@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { V4_CONTACT_OFFSETS } from "./rigV4";
 
 /**
  * Geometry-constrained hand grips shared by all three sports.
@@ -94,8 +95,15 @@ export const HAND_FIST_RADIUS = 0.0169;
  */
 export const HAND_FIST_REFERENCE_GRIP_RADIUS = 0.016;
 
-/** Authored palm-surface contact of the right hand, from V4_CONTACT_OFFSETS. */
-export const HAND_PALM_CONTACT = Object.freeze({ x: 0.08, y: -0.01, z: 0.035 } as const);
+/**
+ * Authored palm-surface contact of the right hand — read from
+ * `V4_CONTACT_OFFSETS` rather than repeated, so the channel model and the
+ * contact solver cannot drift onto two different palms.
+ */
+export const HAND_PALM_CONTACT = (() => {
+  const [x, y, z] = V4_CONTACT_OFFSETS.v4RightHand;
+  return Object.freeze({ x, y, z } as const);
+})();
 
 /**
  * Inward palm normal of the right hand: from the authored palm-surface

@@ -42,6 +42,7 @@ import { solveRigidContactPoint3D, solveTwoBone3D, type FigurePoint3 } from "./f
 import {
   ROWER_FOOT_CONTACT,
   ROWER_OARLOCK,
+  ROWER_SCULL_GRIP,
   ROWER_STRETCHER,
   solveRowerArmWithCorridor,
   solveRowerOarYaw,
@@ -1100,6 +1101,12 @@ function gripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | un
  * axis from parent-frame geometry is what keeps the grip heading-independent:
  * an earlier frame built from hand-local angles and a world-space axis drifted
  * a full 120° a quarter lap around the course.
+ *
+ * Superseded, not redundant: `orientHandToGripChannel` in `handGrip.ts` is
+ * this construction generalised to any cylindrical channel, and the sport
+ * layer that wires a SkiErg grip contract replaces this call site with it.
+ * Until then this remains the shipped SkiErg path, so behaviour-changing
+ * edits belong in the generalisation, not here.
  */
 function orientHandToNordicPole(
   hand: THREE.Object3D,
@@ -1819,8 +1826,16 @@ function makeRowerAvatar(
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
     shaft.position.x = side * 0.61;
     oar.add(shaft);
+    // The rendered rubber and the grip-closure contract are one surface: the
+    // solver closes digits onto exactly this cylinder, so the mesh reads the
+    // shared constant instead of repeating its numbers.
     const grip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.023, 0.023, 0.32, eqCylSegs),
+      new THREE.CylinderGeometry(
+        ROWER_SCULL_GRIP.radius,
+        ROWER_SCULL_GRIP.radius,
+        ROWER_SCULL_GRIP.length,
+        eqCylSegs,
+      ),
       equipmentGripMaterial,
     );
     grip.rotation.z = Math.PI / 2;
