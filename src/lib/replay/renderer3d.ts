@@ -1162,8 +1162,31 @@ function gripContractFor(
   }
   return {
     radius: BIKE_RIG.handlebar.hood?.radius ?? 0.016,
-    // Hood thumb hooks the inboard face opposite the wrapped fingers.
-    thumbOppose: 0.7,
+    /*
+     * Hood thumb hooks under the core opposite the fingers, and must actually
+     * reach it: the radial thumb pad only lands on a 0.016 m body once the
+     * opposition carries it far enough around. Measured on the shipped rig at
+     * the hood channel — `surfaceDistance`, then the thumb tip's height below
+     * the hood core at its worst point in the cycle:
+     *
+     *   0.70 -> 20.1 mm off      1.52..1.60 -> seated, and still >10 mm under
+     *   1.30 -> 12.2 mm off                    the core at every cycle sample
+     *   1.50 ->  4.3 mm off      1.61       -> seated, but the tip rises to
+     *   1.55 ->  seated                        10.0 mm under at cycle 0.25
+     *
+     * So the thumb is both seated on the hood and hooked beneath it only over
+     * roughly 1.52..1.60; 1.56 is the centre of that band. Below it the pad
+     * floats, above it the pad climbs toward the core's own height and stops
+     * reading as a hook. The old 0.70 stood the pad two centimetres off the
+     * hood — it was carried over from the SkiErg fist, which is solved against
+     * a pole held inside the fist and asserts nothing about thumb contact.
+     *
+     * The band is narrow, so re-measure it rather than nudging this constant if
+     * the hood radius or the hand channel ever moves. These are bone-frame
+     * radians, not anatomical thumb rotation: read the measured envelope above
+     * instead of converting to degrees.
+     */
+    thumbOppose: 1.56,
   };
 }
 
@@ -4229,8 +4252,13 @@ function makeBikeAvatar(
       // Pronated hoods grip built from the hood contract: the curl axis lies
       // along the hood body's long axis (pinky at the bar tops, index toward
       // the nose) and the spin resolves the palm heel onto the hood's upper
-      // surface, so the fingers hook the front/underside and the thumb hooks
-      // the inboard face rather than posing a fixed Euler fist beside it.
+      // surface, so the fingers close onto the hood body and the thumb hooks
+      // under it rather than posing a fixed Euler fist beside it.
+      //
+      // The fingers rest on the surface they meet first — the hood's top, since
+      // the palm is above it — instead of wrapping past the inboard face; that
+      // ceiling belongs to the shared digit closure and is the same on the
+      // shipped SkiErg fist. See the hood-grip test for the measurements.
       const hoodRotation = BIKE_RIG.handlebar.hood?.rotationX ?? -0.24;
       GRIP_SHAFT_SCRATCH.set(0, -Math.sin(hoodRotation), Math.cos(hoodRotation));
       GRIP_ROLL_SCRATCH.set(0, -Math.cos(hoodRotation), -Math.sin(hoodRotation));
