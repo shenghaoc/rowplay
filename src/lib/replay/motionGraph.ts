@@ -17,7 +17,6 @@ const CURVE_BOUNDARY_EPSILON = 1e-12;
 export const SKI_ELBOW_LOAD_CYCLE = 0.11;
 export const SKI_POLE_RELEASE_START_CYCLE = 0.245;
 export const SKI_POLE_OFF_CYCLE = 0.29;
-export const SKI_POLE_FLIGHT_APEX_CYCLE = 0.42;
 export const SKI_POLE_APPROACH_START_CYCLE = 0.88;
 export const SKI_PREPLANT_START_CYCLE = 0.94;
 
@@ -460,38 +459,18 @@ function sampleRower(timing: MotionTiming, pose: StrokePose): RowerMotionGraph {
   // The ranges intentionally overlap. The finish is a short shared plateau,
   // while recovery sends hands away before body-over and slide return.
   const legs = pulse(cycle, 0, drive * 0.56, drive + recovery * 0.34, 1);
-  // The body opens through the middle of the drive and is essentially open
-  // by 0.80 of it. This is not only canonical sequencing (legs → body →
-  // arms, finishing the swing before the finish): the shoulder's aft travel
-  // is what geometrically releases the rigid handle toward the chest, so an
-  // opening that ran to 0.90 of the drive pinned the arms straight until the
-  // last sixth of the drive no matter how the arm channel was timed.
   const torso = pulse(
     cycle,
-    drive * 0.3,
-    drive * 0.8,
+    drive * 0.34,
+    drive * 0.9,
     drive + recovery * 0.18,
     drive + recovery * 0.58,
   );
   // Legs → body → arms: the hands first clear the knee envelope with
   // softly long arms, then the late draw brings the handle into the finish.
-  // The draw window is the single authored velocity profile for the arm
-  // pull: the legs are fully driven by 0.56 of the drive and the knees are
-  // flat, so opening the window at 0.64 puts the *visible* flexion onset
-  // (the C2 head hides the first ~12% of the ramp) near 0.68–0.72 of the
-  // drive and keeps the cruise below ~10° of elbow travel per 60 fps frame
-  // at 28 spm, instead of the former 0.78–0.995 window whose renderer-side
-  // smoothstep re-compressed the visible pull into ~3 frames. cruiseRamp is
-  // C2-flat at both ends with a near-constant middle, so no downstream
-  // easing may be stacked on top of it.
-  // Hands away over the first 0.30 of the recovery: brisk enough that the
-  // released grips clear the sternum while the torso is still laid back
-  // (the softly-unlocked draw schedule holds the mid-release hands ~4 cm
-  // closer to the chest than the pre-rework path did), still C2 at the
-  // finish plateau.
   const arms = add(
-    cruiseRamp(cycle, drive * 0.64, drive * 0.995),
-    scale(quinticRamp(cycle, drive, drive + recovery * 0.3), -1),
+    cruiseRamp(cycle, drive * 0.78, drive * 0.995),
+    scale(quinticRamp(cycle, drive, drive + recovery * 0.34), -1),
   );
   const handle = add(scale(legs, 0.42), scale(torso, 0.32), scale(arms, 0.26));
   const shoulders = add(scale(torso, 0.45), scale(arms, 0.55));
@@ -571,13 +550,7 @@ function sampleSkier(timing: MotionTiming, pose: StrokePose): SkierMotionGraph {
     scale(quinticRamp(cycle, 0.72, 1), -1),
   );
   const poleLift = bump(cycle, SKI_POLE_OFF_CYCLE, 1);
-  const poleFlight = pulse(
-    cycle,
-    SKI_POLE_OFF_CYCLE,
-    SKI_POLE_FLIGHT_APEX_CYCLE,
-    SKI_POLE_APPROACH_START_CYCLE,
-    1,
-  );
+  const poleFlight = pulse(cycle, SKI_POLE_OFF_CYCLE, 0.42, SKI_POLE_APPROACH_START_CYCLE, 1);
 
   // At the cycle seam the basket has already velocity-matched the next snow
   // point. Adding the late C2 pre-plant ramp to the early hold keeps contact
@@ -1170,15 +1143,15 @@ function sampleRowerInto(pose: StrokePose, output: RowerMotionGraph): void {
   pulseInto(
     curves.rowTorso,
     cycle,
-    drive * 0.3,
-    drive * 0.8,
+    drive * 0.34,
+    drive * 0.9,
     drive + recovery * 0.18,
     drive + recovery * 0.58,
   );
   // Legs → body → arms: keep the arms softly long until the hands clear
   // the knee envelope, then expose the late draw in both fallback and V4 rigs.
-  cruiseRampInto(curves.rowArms, cycle, drive * 0.64, drive * 0.995);
-  quinticRampInto(curves.rowArmRecovery, cycle, drive, drive + recovery * 0.3);
+  cruiseRampInto(curves.rowArms, cycle, drive * 0.78, drive * 0.995);
+  quinticRampInto(curves.rowArmRecovery, cycle, drive, drive + recovery * 0.34);
   combine2Into(curves.rowArms, curves.rowArms, 1, curves.rowArmRecovery, -1);
   combine3Into(curves.rowHandle, curves.rowLegs, 0.42, curves.rowTorso, 0.32, curves.rowArms, 0.26);
   combine2Into(curves.rowShoulders, curves.rowTorso, 0.45, curves.rowArms, 0.55);
@@ -1288,7 +1261,7 @@ function sampleSkierInto(pose: StrokePose, output: SkierMotionGraph): void {
     curves.skiPoleFlight,
     cycle,
     SKI_POLE_OFF_CYCLE,
-    SKI_POLE_FLIGHT_APEX_CYCLE,
+    0.42,
     SKI_POLE_APPROACH_START_CYCLE,
     1,
   );

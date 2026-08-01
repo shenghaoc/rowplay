@@ -3,15 +3,6 @@ import type { Sport } from "../types";
 import type { RenderQuality } from "./replayRenderer";
 import { solveTwoBone3D } from "./figurePose";
 import {
-  collectHandDigitChains,
-  HAND_CLOSURE_CUP,
-  handCurlAxis,
-  solveHandGripClosure,
-  type HandDigitContactReport,
-  type HandGripSurface,
-} from "./handGrip";
-import { rowerElbowFlexion, rowerElbowPlaneAuthority } from "./rowRig";
-import {
   disposeReplayV4AthleteInstance,
   REPLAY_V4_HAND_HELPER_NAMES,
   REPLAY_V4_SURFACE_ROLES,
@@ -133,78 +124,6 @@ function gripHelperMeta(name: ReplayV4HandHelperName): {
   return { side, digit, stage };
 }
 
-/**
- * Geometry-aware grip contract supplied by the sport rig. When present, the
- * digit helpers are closed against this analytic surface at install time
- * (curl angles become outputs of the equipment geometry), terminal hands
- * adopt the full equipment grip frame, and wrist twist is distributed into
- * the forearm under anatomical budgets. Without it the controller keeps the
- * legacy fixed-curl fallback used by procedural instances and older tests.
- */
-export interface ReplayV4HandGripContract extends HandGripSurface {
-  /** Base thumb opposition (rad) bringing the thumb across the channel. */
-  readonly thumbOppose: number;
-}
-
-/**
- * Wrist animation-safety budgets, relative to a derived flat-wrist reference.
- *
- * Twist beyond the wrist's 75° pronation/supination share is redistributed
- * into the forearm (the anatomically correct place for it) rather than
- * discarded, so the equipment frame is preserved while the wrist stays
- * plausible. The swing guards are calibrated from the shipped rig's own
- * measured demand envelope rather than textbook joint ranges: the authored
- * hand bone's origin and metacarpal arch put its geometric axes ~40–60° from
- * the visual flat-hand impression, so healthy sport frames measure up to
- * ~100° flexion / ~100° deviation in bone terms while looking like a normal
- * working wrist (the shipped, visually accepted SkiErg frames sit exactly in
- * that band). The guards therefore sit well above the legitimate envelope
- * and exist to reject the 180° palm/wrist flip class of solution outright;
- * the per-sport envelopes themselves are pinned by the grip tests through
- * `getWristMetrics`. These are animation limits, not medical claims.
- */
-export const REPLAY_V4_WRIST_TWIST_BUDGET = THREE.MathUtils.degToRad(75);
-export const REPLAY_V4_WRIST_FLEXION_BUDGET = THREE.MathUtils.degToRad(150);
-export const REPLAY_V4_WRIST_DEVIATION_BUDGET = THREE.MathUtils.degToRad(150);
-
-/**
- * SkiErg-specific wrist twist keep-cap.
- *
- * The ski clip's hand tracks are now authored on the pole-grip branch, so
- * the runtime no longer has a half-turn to redistribute (the former
- * `alignSkiArmPronation` pre-roll is deleted). What remains is ordinary
- * pronation demand as the forearm swings against a pole-locked hand: the
- * wrist keeps this much and `distributeSkiElbowTwist` moves the elbow-seam
- * excess into shoulder internal rotation. History pins the value from both
- * sides — the generic 75° budget corkscrewed the wrist (and its
- * near-half-turn residual flipped the twist⁄swing decomposition, a measured
- * 149° single-sample forearm snap), while a 0° keep pushed the whole delta
- * into the forearm and tore the wrist ring open.
- */
-export const REPLAY_V4_SKI_WRIST_TWIST_KEEP = THREE.MathUtils.degToRad(30);
-
-/**
- * Share of the residual SkiErg pronation carried as shoulder internal
- * rotation rather than forearm roll (see `distributeSkiElbowTwist`).
- * Spreading it across both joints keeps every skin seam inside an
- * authorable range instead of wringing one of them with the full amount.
- */
-export const REPLAY_V4_SKI_PRONATION_SHOULDER_SHARE = 0.5;
-
-/** Per-hand wrist metrics after the latest constrained solve (radians). */
-export interface ReplayV4WristMetrics {
-  /** Pronation/supination the wrist itself carries relative to rest. */
-  twist: number;
-  /** Flexion/extension the wrist carries about the curl axis. */
-  flexion: number;
-  /** Radial/ulnar deviation the wrist carries. */
-  deviation: number;
-  /** Axial rotation redistributed into the forearm this frame. */
-  forearmTwist: number;
-  /** Swing the clamp removed (0 while the grip frame is anatomically fine). */
-  clampedSwing: number;
-}
-
 /** Diagnostic overlay modes for isolation of defects (PROMPT 9). */
 export type ReplayV4DiagnosticMode =
   | "off"
@@ -267,8 +186,6 @@ export interface ReplayV4MotionInstallOptions {
   readonly laneColor?: THREE.ColorRepresentation;
   /** Optional bone-local overrides for authored palm/sole contact extras. */
   readonly effectorOffsets?: ReplayV4EffectorOffsetOverrides;
-  /** Geometry-aware grip solve; omitted → legacy fixed-curl fallback. */
-  readonly gripContract?: ReplayV4HandGripContract;
   /** Isolation mode for visual QA; default full contact-constrained solve. */
   readonly diagnosticMode?: ReplayV4DiagnosticMode;
   /**
@@ -306,14 +223,6 @@ export interface ReplayV4MotionController {
   prepare(sample: ReplayV4MotionSample): boolean;
   /** Applies the restrained terminal hand rotation before grip-path refinement. */
   orientHandsToTargets(): boolean;
-  /**
-   * Closes only the prepared arm chains without consuming the sampled pose.
-   * RowErg uses this once between rigid-oar refinement passes so the final
-   * equipment solve can observe the arm's real post-IK wrist frame.
-   */
-  settleHandContacts(): boolean;
-  /** Restores the arm pose captured immediately before `settleHandContacts`. */
-  restoreHandPoseAfterSettle(): boolean;
   /** Closes the prepared pose onto the latest equipment-contact targets. */
   constrain(): boolean;
   /**
@@ -336,10 +245,6 @@ export interface ReplayV4MotionController {
   setDiagnosticMode(mode: ReplayV4DiagnosticMode): void;
   /** World-space palm/sole contact point after the last constrained update. */
   getContactWorld(name: ReplayV4EffectorName, output?: THREE.Vector3): THREE.Vector3;
-  /** Solved digit-contact report per side; empty without a grip contract. */
-  getGripContacts(side: "left" | "right"): readonly HandDigitContactReport[];
-  /** Wrist twist/swing carried after the latest constrain (per side). */
-  getWristMetrics(side: "left" | "right"): ReplayV4WristMetrics;
 }
 
 interface FallbackVisibility {
@@ -1215,7 +1120,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private disposed = false;
   private prepared = false;
   private handOrientationPrepared = false;
-  private handContactsSettled = false;
   private diagnosticMode: ReplayV4DiagnosticMode;
   private readonly action: THREE.AnimationAction;
   private readonly fallback: readonly FallbackVisibility[];
@@ -1229,7 +1133,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
    * Restoring these before seeking keeps PropertyMixer skip-writes safe.
    */
   private readonly sampledChainRotations: readonly BoneRotationSnapshot[];
-  private readonly preSettleHandRotations: readonly BoneRotationSnapshot[];
 
   // Controller-owned scratch — live and ghost lanes never share IK state.
   private readonly targetWorld = new THREE.Vector3();
@@ -1248,6 +1151,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private readonly effectorWorldScale = new THREE.Vector3();
   private readonly currentDirection = new THREE.Vector3();
   private readonly desiredDirection = new THREE.Vector3();
+  private readonly branchLateral = new THREE.Vector3();
   private readonly parentWorldQuaternion = new THREE.Quaternion();
   private readonly targetWorldQuaternion = new THREE.Quaternion();
   private readonly rootWorldQuaternion = new THREE.Quaternion();
@@ -1259,12 +1163,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   private readonly gripCurlQuaternion = new THREE.Quaternion();
   private readonly gripCurlSecondary = new THREE.Quaternion();
   private readonly gripAxis = new THREE.Vector3(1, 0, 0);
-  private readonly wristAxisLocal = new THREE.Vector3();
-  private readonly wristDelta = new THREE.Quaternion();
-  private readonly wristTwist = new THREE.Quaternion();
-  private readonly wristSwing = new THREE.Quaternion();
-  private readonly forearmAxisLocal = new THREE.Vector3();
-  private readonly forearmTwistQuaternion = new THREE.Quaternion();
   /** Rest local quaternions for optional finger helpers (identity when absent). */
   private readonly handHelpers: readonly {
     readonly bone: THREE.Bone;
@@ -1272,32 +1170,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     readonly side: -1 | 1;
     readonly digit: ReplayV4GripDigit | null;
     readonly stage: ReplayV4GripHelperStage;
-  }[];
-  /** Geometry-solved digit poses (helper name → flex/oppose); null = legacy curls. */
-  private readonly solvedGripPoses: ReadonlyMap<
-    string,
-    { readonly flex: number; readonly oppose: number }
-  > | null;
-  private readonly gripContactsBySide: {
-    left: readonly HandDigitContactReport[];
-    right: readonly HandDigitContactReport[];
-  } = { left: [], right: [] };
-  private readonly wristMetricsBySide: { left: ReplayV4WristMetrics; right: ReplayV4WristMetrics } =
-    {
-      left: { twist: 0, flexion: 0, deviation: 0, forearmTwist: 0, clampedSwing: 0 },
-      right: { twist: 0, flexion: 0, deviation: 0, forearmTwist: 0, clampedSwing: 0 },
-    };
-  /** Hand rest local rotation and forearm-local anatomy axes for wrist budgets. */
-  private readonly wristRest: readonly {
-    readonly side: -1 | 1;
-    readonly handRest: THREE.Quaternion;
-    /** Forearm long axis (twist) in the forearm's local frame. */
-    readonly boneAxisLocal: THREE.Vector3;
-    readonly forearmAxisLocal: THREE.Vector3;
-    /** Flexion/extension axis (the hand's curl axis at rest, forearm frame). */
-    readonly flexAxisLocal: THREE.Vector3;
-    /** Radial/ulnar deviation axis, completing the wrist triad. */
-    readonly deviationAxisLocal: THREE.Vector3;
   }[];
 
   constructor(
@@ -1340,48 +1212,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       this.root.userData.replayV4GripHelpers = "partial";
     } else {
       this.root.userData.replayV4GripHelpers = "ready";
-    }
-
-    // Geometry-aware closure: solve every digit against the sport's grip
-    // surface once, in hand-local rest space. Curl angles become outputs of
-    // the actual equipment radius instead of per-sport constants, contact is
-    // the stop condition (penetration is minimised, not forbidden — see
-    // `solveHandGripClosure`), and the per-frame hot path only applies the
-    // cached rotations.
-    //
-    // No sport supplies a contract in this layer, so production still runs
-    // the legacy curl table; the sport layers above wire `gripContract`.
-    const contract = options.gripContract;
-    const handLongAxes = new Map<-1 | 1, THREE.Vector3>();
-    if (contract && helpers.length === REPLAY_V4_HAND_HELPER_NAMES.length) {
-      const solved = new Map<string, { flex: number; oppose: number }>();
-      for (const side of [-1, 1] as const) {
-        const handBone = requireBone(instance, side < 0 ? "v4LeftHand" : "v4RightHand");
-        const chains = collectHandDigitChains(
-          handBone,
-          (name) => instance.skeleton.getBoneByName(name),
-          side,
-        );
-        const closure = solveHandGripClosure(chains, {
-          side,
-          surface: contract,
-          thumbOppose: contract.thumbOppose,
-        });
-        for (const pose of closure.poses) {
-          solved.set(pose.helper, { flex: pose.flex, oppose: pose.oppose });
-        }
-        this.gripContactsBySide[side < 0 ? "left" : "right"] = closure.contacts;
-        // The hand's long axis (wrist → middle-finger root) defines the flat
-        // wrist the budgets measure from. Derived from the same rig data the
-        // closure used, so a rebuilt asset moves the reference with it.
-        const middle = chains.find((chain) => chain.digit === "middle");
-        if (middle) handLongAxes.set(side, middle.joints[0]!.position.clone().normalize());
-      }
-      this.solvedGripPoses = solved;
-      this.root.userData.replayV4GripMode = "geometry-closure";
-    } else {
-      this.solvedGripPoses = null;
-      this.root.userData.replayV4GripMode = "legacy-curl";
     }
 
     this.fallback = collectFallbackVisibility(options.fallbackRoot ?? parent);
@@ -1437,52 +1267,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       { bone: chain.middle, quaternion: chain.middle.quaternion.clone() },
       { bone: chain.effector, quaternion: chain.effector.quaternion.clone() },
     ]);
-    this.preSettleHandRotations = this.chains
-      .filter((chain) => !chain.isLeg)
-      .flatMap((chain) => [
-        { bone: chain.upper, quaternion: chain.upper.quaternion.clone() },
-        { bone: chain.middle, quaternion: chain.middle.quaternion.clone() },
-        { bone: chain.effector, quaternion: chain.effector.quaternion.clone() },
-      ]);
-    // Wrist budgets are measured against a *flat-wrist* reference, not the
-    // authored bind pose: the bind hand carries its own built-in flexion, so
-    // budgeting from it would spend most of the range before any equipment
-    // frame was applied. The reference is the bind rotation swung so the
-    // hand's long axis (wrist → middle-finger root) continues the forearm
-    // bone axis — anatomical zero for flexion and deviation, with the bind
-    // roll kept as the pronation zero. The bone axis toward the hand in the
-    // forearm's local frame is where axial twist lives; rotating the forearm
-    // about it moves neither elbow nor wrist. Flexion/extension happens
-    // about the hand's curl axis (the same lateral axis the fingers flex
-    // about) and radial/ulnar deviation completes the orthogonal triad.
-    this.wristRest = this.chains
-      .filter((chain) => !chain.isLeg)
-      .map((chain) => {
-        const boneAxisLocal = chain.effector.position.clone().normalize();
-        const handRest = chain.effector.quaternion.clone();
-        const longAxis = handLongAxes.get(chain.side);
-        if (longAxis) {
-          const bindLongInForearm = longAxis.clone().applyQuaternion(handRest).normalize();
-          const align = new THREE.Quaternion().setFromUnitVectors(bindLongInForearm, boneAxisLocal);
-          handRest.premultiply(align);
-        }
-        const flexAxisLocal = handCurlAxis(chain.side).applyQuaternion(handRest).normalize();
-        // Orthogonalise against the twist axis so the triad is well-formed.
-        flexAxisLocal.addScaledVector(boneAxisLocal, -flexAxisLocal.dot(boneAxisLocal));
-        if (flexAxisLocal.lengthSq() < 1e-8) flexAxisLocal.set(1, 0, 0);
-        flexAxisLocal.normalize();
-        const deviationAxisLocal = new THREE.Vector3()
-          .crossVectors(boneAxisLocal, flexAxisLocal)
-          .normalize();
-        return {
-          side: chain.side,
-          handRest,
-          boneAxisLocal,
-          forearmAxisLocal: boneAxisLocal.clone(),
-          flexAxisLocal,
-          deviationAxisLocal,
-        };
-      });
 
     styleInstance(instance, options);
     this.root.name = `v4-athlete-${sport}`;
@@ -1528,14 +1312,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     return output;
   }
 
-  getGripContacts(side: "left" | "right"): readonly HandDigitContactReport[] {
-    return this.gripContactsBySide[side];
-  }
-
-  getWristMetrics(side: "left" | "right"): ReplayV4WristMetrics {
-    return this.wristMetricsBySide[side];
-  }
-
   getShoulderWorld(side: "left" | "right", output = new THREE.Vector3()): THREE.Vector3 {
     const bone =
       side === "left"
@@ -1578,19 +1354,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     const name = side === "left" ? "leftHand" : "rightHand";
     const metric = this.options.instance.effectors[name];
     const bone = this.options.instance.bones[metric.bone];
-    // The refine path must measure the offset the contact solve actually
-    // drives — the grip-channel override when one is active — or the rigid
-    // oar-arc solve would aim the wrist at the authored palm point while the
-    // position pass closes a different one.
-    const chain = this.chains.find(
-      (candidate) => !candidate.isLeg && candidate.side === (side === "left" ? -1 : 1),
-    );
-    if (chain) {
-      output.copy(chain.offset);
-      bone.localToWorld(output);
-    } else {
-      this.getContactWorld(name, output);
-    }
+    this.getContactWorld(name, output);
     bone.getWorldPosition(this.currentWorld);
     return output.sub(this.currentWorld);
   }
@@ -1605,7 +1369,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     try {
       this.prepared = false;
       this.handOrientationPrepared = false;
-      this.handContactsSettled = false;
       if (this.root.parent !== this.options.parent) {
         throw new Error("Replay V4 athlete detached from its lane parent");
       }
@@ -1663,40 +1426,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     }
   }
 
-  settleHandContacts(): boolean {
-    if (!this.enabled || !this.prepared) return false;
-    try {
-      for (const state of this.preSettleHandRotations) {
-        state.quaternion.copy(state.bone.quaternion);
-      }
-      const mode = this.diagnosticMode;
-      const applyContact = mode !== "clip-pelvis" && mode !== "clip-only";
-      if (applyContact) {
-        for (const chain of this.chains) {
-          if (!chain.isLeg) this.correctContactChain(chain);
-        }
-        this.root.updateMatrixWorld(true);
-      }
-      this.handContactsSettled = true;
-      return true;
-    } catch (error) {
-      this.root.userData.replayV4Failure =
-        error instanceof Error ? error.message : "Replay V4 hand contact settle failed";
-      this.disable();
-      return false;
-    }
-  }
-
-  restoreHandPoseAfterSettle(): boolean {
-    if (!this.enabled || !this.prepared || !this.handContactsSettled) return false;
-    for (const state of this.preSettleHandRotations) {
-      state.bone.quaternion.copy(state.quaternion);
-    }
-    this.root.updateMatrixWorld(true);
-    this.handContactsSettled = false;
-    return true;
-  }
-
   constrain(): boolean {
     if (!this.enabled || !this.prepared) return false;
     try {
@@ -1723,12 +1452,10 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       }
       this.prepared = false;
       this.handOrientationPrepared = false;
-      this.handContactsSettled = false;
       return true;
     } catch (error) {
       this.prepared = false;
       this.handOrientationPrepared = false;
-      this.handContactsSettled = false;
       this.root.userData.replayV4Failure =
         error instanceof Error ? error.message : "Replay V4 motion constraint failed";
       this.disable();
@@ -1772,7 +1499,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     this.active = false;
     this.prepared = false;
     this.handOrientationPrepared = false;
-    this.handContactsSettled = false;
     this.action.stop();
     this.root.visible = false;
     this.restoreFallback();
@@ -1871,44 +1597,11 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   }
 
   /**
-   * Close the visual digits after the hand is contact-locked.
-   *
-   * With a grip contract, every phalanx applies its geometry-solved rotation:
-   * the flex angles were closed against the actual equipment surface at
-   * install, so the enclosure is collision-derived rather than styled. The
-   * legacy fixed-curl table remains only for instances without a contract
-   * (procedural templates and older tests).
+   * Curl visual finger helpers toward the grip after the hand is contact-locked.
+   * Safe no-op when the production GLB has no helpers (older procedural templates).
    */
   private applyGripHelpers(): void {
     if (this.handHelpers.length === 0) return;
-    if (this.solvedGripPoses) {
-      for (const helper of this.handHelpers) {
-        if (helper.stage === "cup") {
-          // The closure is solved in the `HAND_CLOSURE_CUP` carrying posture
-          // the grip channel was fitted in, so the live cup helper must hold
-          // the same pose — leaving it at rest would flatten the palm the
-          // solved flex angles were closed around.
-          helper.bone.quaternion
-            .copy(helper.rest)
-            .multiply(
-              this.gripCurlQuaternion.setFromAxisAngle(
-                this.gripAxis.set(0, 1, 0),
-                -helper.side * HAND_CLOSURE_CUP,
-              ),
-            );
-          continue;
-        }
-        const solved = this.solvedGripPoses.get(helper.bone.name);
-        if (!solved) continue;
-        this.gripCurlSecondary.setFromAxisAngle(this.gripAxis.set(0, 0, 1), solved.oppose);
-        this.gripCurlQuaternion.setFromAxisAngle(this.gripAxis.set(1, 0, 0), -solved.flex);
-        helper.bone.quaternion
-          .copy(helper.rest)
-          .multiply(this.gripCurlSecondary)
-          .multiply(this.gripCurlQuaternion);
-      }
-      return;
-    }
     const grip = GRIP_CURL_BY_SPORT[this.options.sport];
     for (const helper of this.handHelpers) {
       this.gripCurlQuaternion.identity();
@@ -1973,41 +1666,27 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
   }
 
   /**
-   * All machine-contact chains follow their shared deterministic branch
-   * markers. The rowing marker is already solved on the boat-local elbow
-   * corridor (`solveRowerArm`) with the V4 arm's own proportions, so adding
-   * any athlete-local lateral bias here would rotate the bend plane back out
-   * of that corridor — the former `side * 0.12` "ribcage clearance" offset
-   * was the measured source of the 0.27–0.30 m outboard elbow wing during
-   * the arm draw. Rowing arms additionally fade the marker's authority to
-   * zero at the near-straight singularity: with a long arm the marker's
-   * projected plane would dictate the joint completely for no visible
-   * positional gain while twisting the limb about its own axis, so the
-   * authored clip's own elbow direction owns that region and the marker
-   * takes over smoothly as real flexion develops.
+   * Keep the visible rowing elbow outside the skinned ribcage without moving
+   * the authoritative scull grip or widening the procedural fallback's arm
+   * corridor. The shared marker selects the rearward branch; this V4-only
+   * athlete-local offset supplies clearance for the production torso after the
+   * two-bone solve projects that marker onto the current arm plane.
    */
   private refreshBendHint(chain: ChainBinding): void {
     if (this.usesSharedJointTarget(chain)) {
       chain.jointTarget.getWorldPosition(this.bendHint);
       this.bendHint.sub(this.rootWorld);
-      if (!chain.isLeg && this.options.sport === "rower") {
-        const proximal = this.rootWorld.distanceTo(this.middleWorld);
-        const distal = this.middleWorld.distanceTo(this.effectorWorld);
-        const chord = this.rootWorld.distanceTo(this.effectorWorld);
-        const authority = rowerElbowPlaneAuthority(rowerElbowFlexion(chord, proximal, distal));
-        if (authority < 1) {
-          this.currentDirection.copy(this.middleWorld).sub(this.rootWorld);
-          const markerLength = this.bendHint.length();
-          const clipLength = this.currentDirection.length();
-          if (markerLength > 1e-6 && clipLength > 1e-6) {
-            this.bendHint
-              .multiplyScalar(authority / markerLength)
-              .addScaledVector(this.currentDirection, (1 - authority) / clipLength);
-          }
-        }
-      }
     } else {
       this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
+    }
+    if (!chain.isLeg && this.options.sport === "rower") {
+      this.root.getWorldQuaternion(this.rootWorldQuaternion);
+      // A gentle outward lean is enough ribcage clearance now that the shared
+      // marker points the drawing elbow down under the shoulder line; the old
+      // 0.34 bias rotated the bend plane sideways and re-created the exact
+      // left/right chicken-wing the marker was selected to avoid.
+      this.branchLateral.set(chain.side * 0.12, 0.015, 0).applyQuaternion(this.rootWorldQuaternion);
+      this.bendHint.add(this.branchLateral);
     }
     if (this.bendHint.lengthSq() <= TRANSFORM_EPSILON) {
       this.bendHint.set(0, chain.isLeg ? 1 : -1, 0);
@@ -2070,15 +1749,14 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       return;
     }
 
-    // Arms take their grip frame first, then repeatedly close the palm
+    // Arms keep a restrained terminal frame, then repeatedly close the palm
     // offset. No equipment is allowed to move or telescope to hide residual.
-    // Under a grip contract the orientation is target-driven and idempotent,
-    // so re-orienting to the refined oar/hood frame is exact; only the legacy
-    // slerp path must keep its pre-oriented RowErg frame, whose incremental
-    // blend a re-orient would invalidate.
-    const legacyRowerPreOriented =
-      this.options.sport === "rower" && this.handOrientationPrepared && !this.solvedGripPoses;
-    if (!legacyRowerPreOriented) {
+    // The renderer pre-orients RowErg hands before refining the rigid oar arc,
+    // so its wrist→palm vector is part of that exact solve. Re-orienting here
+    // would invalidate the refined target and reintroduce a visible grip gap.
+    // SkiErg takes the pole-led frame first so the palm offset stays
+    // consistent with the shaft frame while position closes.
+    if (!(this.options.sport === "rower" && this.handOrientationPrepared)) {
       this.softOrientEffector(chain);
       this.root.updateMatrixWorld(true);
     }
@@ -2098,49 +1776,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         this.solvePositionTowardTarget(chain, proximalLength, distalLength);
         this.root.updateMatrixWorld(true);
       }
-      if (this.solvedGripPoses) this.distributeSkiElbowTwist(chain);
     }
-  }
-
-  /**
-   * Post-solve shoulder share of the SkiErg pronation.
-   *
-   * After the passes settle, the forearm's local rotation relative to the
-   * humerus carries whatever axial twist the hold demanded beyond the wrist
-   * keep. Measured against the authored clip's own elbow-seam twist (the
-   * clip snapshot's forearm local), the excess is rolled into the humerus
-   * about its own long axis — shoulder internal rotation — and the forearm's
-   * world orientation is restored, which restores every descendant including
-   * the solved grip hand. Joint positions and the hand frame are bit-exact;
-   * only the seam distribution changes.
-   */
-  private distributeSkiElbowTwist(chain: ChainBinding): void {
-    const rest = this.wristRest.find((entry) => entry.side === chain.side);
-    if (!rest) return;
-    const snapshot = this.sampledChainRotations.find((entry) => entry.bone === chain.middle);
-    if (!snapshot) return;
-    this.wristDelta.copy(snapshot.quaternion).invert().multiply(chain.middle.quaternion);
-    const dot =
-      this.wristDelta.x * rest.forearmAxisLocal.x +
-      this.wristDelta.y * rest.forearmAxisLocal.y +
-      this.wristDelta.z * rest.forearmAxisLocal.z;
-    let excess = 2 * Math.atan2(dot, this.wristDelta.w);
-    if (excess > Math.PI) excess -= 2 * Math.PI;
-    else if (excess < -Math.PI) excess += 2 * Math.PI;
-    const humerusRoll = excess * REPLAY_V4_SKI_PRONATION_SHOULDER_SHARE;
-    if (Math.abs(humerusRoll) < 1e-6) return;
-    chain.upper.getWorldPosition(this.rootWorld);
-    chain.middle.getWorldPosition(this.middleWorld);
-    this.currentDirection.copy(this.middleWorld).sub(this.rootWorld);
-    if (this.currentDirection.lengthSq() <= TRANSFORM_EPSILON) return;
-    chain.middle.getWorldQuaternion(this.blendedWorldQuaternion);
-    this.forearmTwistQuaternion.setFromAxisAngle(this.currentDirection.normalize(), humerusRoll);
-    chain.upper.getWorldQuaternion(this.desiredWorldQuaternion);
-    this.desiredWorldQuaternion.premultiply(this.forearmTwistQuaternion);
-    this.setBoneWorldQuaternion(chain.upper, this.desiredWorldQuaternion);
-    this.root.updateMatrixWorld(true);
-    this.setBoneWorldQuaternion(chain.middle, this.blendedWorldQuaternion);
-    this.root.updateMatrixWorld(true);
   }
 
   private solvePositionTowardTarget(
@@ -2193,16 +1829,12 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     chain.upper.getWorldPosition(this.rootWorld);
     chain.middle.getWorldPosition(this.middleWorld);
     this.swingBoneToward(chain.middle, chain.effector, this.solvedEnd);
-    if (
-      !chain.isLeg &&
-      (this.options.sport === "rower" || this.options.sport === "skierg" || this.solvedGripPoses)
-    ) {
-      // Grip-frame hands need the wrist frame chosen by softOrientEffector to
-      // survive parent-bone swings. Counter-rotate the hand after the forearm
-      // solve so the palm offset remains stable; the next pass can then close
-      // the rigid grip instead of chasing a contact point that moves with
-      // every IK pass. This preserves the cylindrical enclosure for sculls,
-      // poles, and hoods alike.
+    if (!chain.isLeg && (this.options.sport === "rower" || this.options.sport === "skierg")) {
+      // RowErg and SkiErg both need the wrist frame chosen by softOrientEffector
+      // to survive parent-bone swings. Counter-rotate the hand after the
+      // forearm solve so the palm offset remains stable; the next pass can then
+      // close the rigid grip instead of chasing a contact point that moves with
+      // every IK pass. For SkiErg this preserves the cylindrical pole wrap.
       this.root.updateMatrixWorld(true);
       this.setBoneWorldQuaternion(chain.effector, this.preservedEffectorWorldQuaternion);
     }
@@ -2210,20 +1842,19 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
 
   /**
    * Terminal orientation.
-   *
-   * Legs/feet always take the full equipment frame (no forearm twist chain).
-   * Under a grip contract every hand also adopts the full grip-channel frame
-   * — an 8° slerp measured 48–103° short of the oar and hood frames, which is
-   * why fingers curled beside the equipment — and the wrist-budget pass then
-   * distributes axial rotation into the forearm instead of corkscrewing the
-   * wrist. Without a contract, non-SkiErg arms keep the legacy limited slerp.
+   * Arms: limited slerp only — forced equipment quats corkscrewed forearms.
+   * Legs/feet: full equipment frame is safe (no forearm twist chain) and needed
+   * for sole/pedal contact with non-zero contact offsets.
    */
   private softOrientEffector(chain: ChainBinding): void {
     chain.effector.getWorldQuaternion(this.rootWorldQuaternion);
     chain.target.getWorldQuaternion(this.targetWorldQuaternion);
-    if (chain.isLeg || this.options.sport === "skierg" || this.solvedGripPoses) {
+    // Legs always take the equipment frame. SkiErg arms also take the full
+    // pole-led frame: every prepare() restores clip hand rotations, so an 8°
+    // soft slerp can never reach the shaft frame and the fingers curl past the
+    // pole instead of around it.
+    if (chain.isLeg || this.options.sport === "skierg") {
       this.setBoneWorldQuaternion(chain.effector, this.targetWorldQuaternion);
-      if (!chain.isLeg && this.solvedGripPoses) this.constrainWristFrame(chain);
       return;
     }
     limitedSlerp(
@@ -2233,133 +1864,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
       this.blendedWorldQuaternion,
     );
     this.setBoneWorldQuaternion(chain.effector, this.blendedWorldQuaternion);
-  }
-
-  /**
-   * Swing–twist wrist budget, measured against the authored rest pose.
-   *
-   * The hand's local rotation is decomposed about the forearm-local bone
-   * axis: the twist component is pronation/supination, the swing remainder
-   * is flexion/deviation. Twist beyond the wrist budget rotates the forearm
-   * about its own long axis instead (that axis passes through both elbow and
-   * wrist, so neither joint moves), and the hand keeps only the in-budget
-   * residual — the grip-channel frame the equipment demanded is preserved
-   * as forearm + wrist sharing the rotation, exactly how a real forearm
-   * pronates. Swing beyond its budget is clamped outright: anatomy wins over
-   * perfect channel alignment, and the position passes re-close the palm.
-   */
-  private constrainWristFrame(chain: ChainBinding): void {
-    const rest = this.wristRest.find((entry) => entry.side === chain.side);
-    if (!rest) return;
-    const metrics = this.wristMetricsBySide[chain.side < 0 ? "left" : "right"];
-
-    // Deviation from rest expressed in the forearm frame: current = D · rest.
-    this.wristDelta
-      .copy(chain.effector.quaternion)
-      .multiply(this.wristTwist.copy(rest.handRest).invert());
-    this.wristAxisLocal.copy(rest.boneAxisLocal);
-    const dot =
-      this.wristDelta.x * this.wristAxisLocal.x +
-      this.wristDelta.y * this.wristAxisLocal.y +
-      this.wristDelta.z * this.wristAxisLocal.z;
-    // Signed twist about the bone axis; 2·atan2(dot, w) is exact for the
-    // normalized (dot·â, w) projection. Wrap to the short representation.
-    let twistAngle = 2 * Math.atan2(dot, this.wristDelta.w);
-    if (twistAngle > Math.PI) twistAngle -= 2 * Math.PI;
-    else if (twistAngle < -Math.PI) twistAngle += 2 * Math.PI;
-    this.wristTwist.setFromAxisAngle(this.wristAxisLocal, twistAngle);
-    this.wristSwing
-      .copy(this.wristDelta)
-      .multiply(this.forearmTwistQuaternion.copy(this.wristTwist).invert());
-
-    const twistBudget =
-      this.options.sport === "skierg"
-        ? REPLAY_V4_SKI_WRIST_TWIST_KEEP
-        : REPLAY_V4_WRIST_TWIST_BUDGET;
-    const keptTwist = THREE.MathUtils.clamp(twistAngle, -twistBudget, twistBudget);
-    const excess = twistAngle - keptTwist;
-    if (Math.abs(excess) > 1e-5) {
-      // The forearm's long axis passes through both the elbow and the wrist,
-      // so rotating the forearm about it and counter-rotating the hand keeps
-      // every joint position and the world grip frame bit-exact while the
-      // visible twist is shared the way a pronating forearm shares it.
-      this.forearmTwistQuaternion.setFromAxisAngle(
-        this.forearmAxisLocal.copy(rest.forearmAxisLocal),
-        excess,
-      );
-      chain.middle.quaternion.multiply(this.forearmTwistQuaternion);
-      this.forearmTwistQuaternion.invert();
-      chain.effector.quaternion.premultiply(this.forearmTwistQuaternion);
-      chain.middle.updateMatrixWorld(true);
-    }
-
-    // Split the swing into its anatomical components: flexion/extension about
-    // the hand's curl axis, radial/ulnar deviation about the remaining axis.
-    // Each clamps on its own budget — a healthy 55° of grip extension must
-    // not be discarded because a symmetric cone lumped it with deviation.
-    const swingHalf = Math.acos(THREE.MathUtils.clamp(Math.abs(this.wristSwing.w), 0, 1));
-    const swingAngleFull = 2 * swingHalf;
-    const swingSin = Math.sqrt(Math.max(0, 1 - this.wristSwing.w * this.wristSwing.w));
-    let flexion = 0;
-    let deviation = 0;
-    if (swingSin > 1e-7) {
-      const flip = this.wristSwing.w >= 0 ? 1 : -1;
-      const scale = (swingAngleFull / swingSin) * flip;
-      const vx = this.wristSwing.x * scale;
-      const vy = this.wristSwing.y * scale;
-      const vz = this.wristSwing.z * scale;
-      flexion = vx * rest.flexAxisLocal.x + vy * rest.flexAxisLocal.y + vz * rest.flexAxisLocal.z;
-      deviation =
-        vx * rest.deviationAxisLocal.x +
-        vy * rest.deviationAxisLocal.y +
-        vz * rest.deviationAxisLocal.z;
-    }
-    const keptFlexion = THREE.MathUtils.clamp(
-      flexion,
-      -REPLAY_V4_WRIST_FLEXION_BUDGET,
-      REPLAY_V4_WRIST_FLEXION_BUDGET,
-    );
-    const keptDeviation = THREE.MathUtils.clamp(
-      deviation,
-      -REPLAY_V4_WRIST_DEVIATION_BUDGET,
-      REPLAY_V4_WRIST_DEVIATION_BUDGET,
-    );
-    const clampedSwing = Math.hypot(flexion - keptFlexion, deviation - keptDeviation);
-    if (clampedSwing > 1e-5) {
-      // Rebuild the in-budget swing and recompose the hand. This deliberately
-      // moves the hand off the requested frame — anatomy wins — and the
-      // position pass afterwards re-closes the palm with the clamped frame.
-      this.wristAxisLocal
-        .copy(rest.flexAxisLocal)
-        .multiplyScalar(keptFlexion)
-        .addScaledVector(rest.deviationAxisLocal, keptDeviation);
-      const keptSwingAngle = this.wristAxisLocal.length();
-      if (keptSwingAngle > 1e-7) {
-        this.wristAxisLocal.multiplyScalar(1 / keptSwingAngle);
-        this.wristSwing.setFromAxisAngle(this.wristAxisLocal, keptSwingAngle);
-      } else {
-        this.wristSwing.identity();
-      }
-      this.wristTwist.setFromAxisAngle(this.wristAxisLocal.copy(rest.boneAxisLocal), keptTwist);
-      chain.effector.quaternion
-        .copy(this.wristSwing)
-        .multiply(this.wristTwist)
-        .multiply(rest.handRest);
-      // The recompose replaced the counter-rotation applied for the twist
-      // excess above; restore it so the forearm share stays consistent.
-      if (Math.abs(excess) > 1e-5) {
-        chain.effector.quaternion.premultiply(this.forearmTwistQuaternion);
-      }
-    }
-
-    if (!finiteQuaternion(chain.effector.quaternion)) {
-      throw new Error("Replay V4 wrist constraint produced an invalid rotation");
-    }
-    metrics.twist = keptTwist;
-    metrics.flexion = keptFlexion;
-    metrics.deviation = keptDeviation;
-    metrics.forearmTwist = excess;
-    metrics.clampedSwing = clampedSwing;
   }
 
   private getEffectorWorld(chain: ChainBinding, output: THREE.Vector3): void {

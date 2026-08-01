@@ -8,8 +8,6 @@ import {
   type ReplayV4ClipName,
   type ReplayV4EffectorMetrics,
 } from "./renderer3dV4Assets";
-import { HAND_CLOSURE_CUP } from "./handGrip";
-import { SKI_POLE_GRIP_RADIUS } from "./skiEquipment";
 import {
   installReplayV4MotionController,
   REPLAY_V4_HAND_HELPER_NAMES,
@@ -534,21 +532,15 @@ describe("V4 motion determinism and fallback safety", () => {
       placeTargetsNearClipEffectors(lane);
       // In the RowErg parent frame the athlete faces +z, so both branch markers
       // sit rearward (-z) of their shoulder. The test scene itself is rotated/
-      // scaled to prove the controller consumes this in world space. The
-      // marker only *owns* the bend plane at visible flexion — near straight
-      // the authored clip keeps the joint (rowerElbowPlaneAuthority) — so the
-      // wrist targets are pulled inside the reach until the arm is clearly
-      // bent before asserting marker-following.
+      // scaled to prove the controller consumes this in world space.
       for (const side of ["left", "right"] as const) {
         const upper = side === "left" ? "v4LeftUpperArm" : "v4RightUpperArm";
         const marker = side === "left" ? lane.targets.leftElbow : lane.targets.rightElbow;
-        const handTarget = side === "left" ? lane.targets.leftHand : lane.targets.rightHand;
         const shoulder = lane.instance.bones[upper].getWorldPosition(new THREE.Vector3());
         lane.parent.worldToLocal(shoulder);
         marker.position
           .copy(shoulder)
           .add(new THREE.Vector3(side === "left" ? -0.04 : 0.04, 0, -0.24));
-        handTarget.position.sub(shoulder).setLength(0.58).add(shoulder);
       }
       lane.scene.updateMatrixWorld(true);
       controller?.setDiagnosticMode("full");
@@ -984,55 +976,6 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
-  it("settles RowErg hand contacts without consuming the prepared pose", () => {
-    const lane = createLane();
-    const controller = installReplayV4MotionController({
-      sport: "rower",
-      parent: lane.parent,
-      instance: lane.instance,
-      targets: lane.targets,
-    });
-    try {
-      expect(controller?.prepare({ phase: 0, cycleFrac: 0.54, driveFrac: 0.38 })).toBe(true);
-      placeTargetsNearClipEffectors(lane);
-      expect(controller?.orientHandsToTargets()).toBe(true);
-      const preparedArmRotations = [
-        lane.instance.bones.v4LeftUpperArm,
-        lane.instance.bones.v4LeftForearm,
-        lane.instance.bones.v4LeftHand,
-        lane.instance.bones.v4RightUpperArm,
-        lane.instance.bones.v4RightForearm,
-        lane.instance.bones.v4RightHand,
-      ].map((bone) => bone.quaternion.clone());
-      expect(controller?.settleHandContacts()).toBe(true);
-      expect(controller?.restoreHandPoseAfterSettle()).toBe(true);
-      for (const [index, bone] of [
-        lane.instance.bones.v4LeftUpperArm,
-        lane.instance.bones.v4LeftForearm,
-        lane.instance.bones.v4LeftHand,
-        lane.instance.bones.v4RightUpperArm,
-        lane.instance.bones.v4RightForearm,
-        lane.instance.bones.v4RightHand,
-      ].entries()) {
-        expect(bone.quaternion.toArray()).toEqual(preparedArmRotations[index]!.toArray());
-      }
-
-      // Refinement may move the rigid grips after the interim arm settle. The
-      // prepared sample must remain live so the normal final pass can close
-      // those latest targets, including the untouched leg chains.
-      lane.targets.leftHand.position.z -= 0.004;
-      lane.targets.rightHand.position.z -= 0.004;
-      lane.scene.updateMatrixWorld(true);
-      expect(controller?.constrain()).toBe(true);
-      for (const name of ["leftHand", "rightHand", "leftFoot", "rightFoot"] as const) {
-        const targetWorld = lane.targets[name].getWorldPosition(new THREE.Vector3());
-        expect(controller!.getContactWorld(name).distanceTo(targetWorld)).toBeLessThan(0.03);
-      }
-    } finally {
-      disposeLane(lane, controller);
-    }
-  });
-
   it("pins athlete detail map sizes to the sealed 0/128/256/512 ladder", () => {
     expect(REPLAY_V4_QUALITY_DETAIL_TEXTURE_SIZE).toEqual({
       low: 0,
@@ -1296,144 +1239,5 @@ describe("V4 seat contract", () => {
 
     expect(hipY).toBeGreaterThan(padTopY);
     expect(hipY + sitOffsetY).toBeCloseTo(padTopY - nestle, 8);
-  });
-});
-
-describe("V4 geometry-closure grip contract", () => {
-  // The closure itself is unit-tested in handGrip.test.ts against the sealed
-  // contract's hand. What is only reachable here is the *wiring*: that a
-  // supplied contract actually switches the controller off the legacy curl
-  // table, that the solved poses reach the helper bones, and that the cup the
-  // closure solved in is the cup the renderer applies. No sport supplies a
-  // contract in this layer, so without this test the whole geometry path
-  // ships to the sport layers unexercised at runtime.
-  const contract = { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: 0.62 };
-
-  function helperLane(): TestLane {
-    const lane = createLane();
-    disposeLane(lane);
-    lane.instance = createInstance({ withHandHelpers: true });
-    lane.parent.add(lane.instance.root);
-    return lane;
-  }
-
-  function install(lane: TestLane, gripContract?: typeof contract) {
-    return installReplayV4MotionController({
-      sport: "skierg",
-      parent: lane.parent,
-      fallbackRoot: lane.parent,
-      instance: lane.instance,
-      targets: lane.targets,
-      diagnosticMode: "full",
-      ...(gripContract ? { gripContract } : {}),
-    });
-  }
-
-  it("stays on the legacy curl table when no contract is supplied", () => {
-    const lane = helperLane();
-    const controller = install(lane);
-    try {
-      // Dormant by default is what makes this layer safe to land ahead of the
-      // sport layers that wire the contracts.
-      expect(controller?.root.userData.replayV4GripMode).toBe("legacy-curl");
-      expect(controller?.getGripContacts("right")).toHaveLength(0);
-    } finally {
-      controller?.dispose();
-    }
-  });
-
-  it("switches to geometry closure and reports a contact per digit", () => {
-    const lane = helperLane();
-    const controller = install(lane, contract);
-    try {
-      expect(controller?.root.userData.replayV4GripMode).toBe("geometry-closure");
-      for (const side of ["left", "right"] as const) {
-        const contacts = controller?.getGripContacts(side) ?? [];
-        expect(contacts, `${side} reports every digit`).toHaveLength(5);
-        for (const report of contacts) {
-          expect(Number.isFinite(report.surfaceDistance), `${side} ${report.digit}`).toBe(true);
-          expect(report.tip.every((value) => Number.isFinite(value))).toBe(true);
-        }
-      }
-    } finally {
-      controller?.dispose();
-    }
-  });
-
-  it("drives the finger helpers off their rest pose under a contract", () => {
-    const lane = helperLane();
-    const rest = new Map<string, THREE.Quaternion>();
-    for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
-      const bone = lane.instance.skeleton.getBoneByName(name);
-      if (bone) rest.set(name, bone.quaternion.clone());
-    }
-    const controller = install(lane, contract);
-    try {
-      controller?.update({ phase: 0, cycleFrac: 0.22, driveFrac: 0.4 });
-      lane.scene.updateMatrixWorld(true);
-      let moved = 0;
-      for (const [name, restQuaternion] of rest) {
-        const bone = lane.instance.skeleton.getBoneByName(name)!;
-        if (Math.abs(bone.quaternion.dot(restQuaternion)) < 1 - 1e-6) moved++;
-      }
-      // The solved closure has to actually reach the bones; a cached solve
-      // that never gets applied would leave every helper at rest.
-      expect(moved, "solved digits reach their helper bones").toBeGreaterThan(0);
-    } finally {
-      controller?.dispose();
-    }
-  });
-
-  it("holds the fitted carrying cup that the closure solved in", () => {
-    const lane = helperLane();
-    const cupRest = new Map<string, THREE.Quaternion>();
-    for (const name of ["v4LeftFingers", "v4RightFingers"]) {
-      const bone = lane.instance.skeleton.getBoneByName(name);
-      expect(bone, `${name} exists`).toBeTruthy();
-      cupRest.set(name, bone!.quaternion.clone());
-    }
-    const controller = install(lane, contract);
-    try {
-      controller?.update({ phase: 0, cycleFrac: 0.22, driveFrac: 0.4 });
-      lane.scene.updateMatrixWorld(true);
-      for (const side of [-1, 1] as const) {
-        const name = side < 0 ? "v4LeftFingers" : "v4RightFingers";
-        const bone = lane.instance.skeleton.getBoneByName(name)!;
-        // Rest times exactly the cup the closure assumed. A renderer that
-        // leaves the cup at rest flattens the palm the solved flex angles
-        // were closed around — the defect this layer had to fix.
-        const expected = cupRest
-          .get(name)!
-          .clone()
-          .multiply(
-            new THREE.Quaternion().setFromAxisAngle(
-              new THREE.Vector3(0, 1, 0),
-              -side * HAND_CLOSURE_CUP,
-            ),
-          );
-        expect(Math.abs(bone.quaternion.dot(expected)), `${name} carries the cup`).toBeGreaterThan(
-          1 - 1e-6,
-        );
-      }
-    } finally {
-      controller?.dispose();
-    }
-  });
-
-  it("keeps every wrist metric finite under the contract", () => {
-    const lane = helperLane();
-    const controller = install(lane, contract);
-    try {
-      controller?.update({ phase: 0, cycleFrac: 0.22, driveFrac: 0.4 });
-      for (const side of ["left", "right"] as const) {
-        const metrics = controller?.getWristMetrics(side);
-        expect(metrics, `${side} metrics`).toBeTruthy();
-        for (const [key, value] of Object.entries(metrics ?? {})) {
-          expect(Number.isFinite(value), `${side} ${key} finite`).toBe(true);
-        }
-      }
-    } finally {
-      controller?.dispose();
-    }
   });
 });

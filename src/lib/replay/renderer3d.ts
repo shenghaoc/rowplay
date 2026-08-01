@@ -32,7 +32,6 @@ import {
   SKI_POLE_APPROACH_START_CYCLE,
   type BikeMotionGraph,
 } from "./motionGraph";
-
 import { BIKE_RIG, bikeSaddleTopY, bikeWheelAxleY } from "./bikeRig";
 import { buildBikeSaddleGeometry } from "./bikeSaddle";
 import type { Sport } from "../types";
@@ -68,7 +67,7 @@ import {
   type ReplayV4MotionController,
   type ReplayV4SeatContract,
 } from "./renderer3dV4Motion";
-import { HAND_CURL_AXIS, HAND_FIST_CENTRE } from "./handGrip";
+import { HAND_FIST_CENTRE, orientHandToGripChannel } from "./handGrip";
 import {
   skiEquipmentDetail,
   SKI_ATHLETE_PROPORTIONS,
@@ -212,22 +211,9 @@ export interface Renderer3DOptions {
    * Capture-only framing used by the visual-QA harness. It is reachable only
    * through an explicit replay QA query, never through normal replay controls.
    */
-  qaCamera?:
-    | "normal"
-    | "athlete-close"
-    | "athlete-front"
-    | "athlete-grip"
-    | "athlete-grip-left"
-    | "athlete-rear"
-    | "athlete-top";
+  qaCamera?: "normal" | "athlete-close" | "athlete-front" | "athlete-grip";
   /** Draw the live V4 skeleton over the real rendered athlete for QA evidence. */
   showV4Skeleton?: boolean;
-  /**
-   * Capture-only rowing arm-draw diagnostics panel (draw progress, measured
-   * elbow flexion and angular velocity, plane authority, corridor outboard,
-   * hand–knee clearance). Reachable only through the replay QA query.
-   */
-  showArmDiagnostics?: boolean;
 }
 
 /**
@@ -983,14 +969,6 @@ const ELBOW_SIDE = new THREE.Vector3();
 const ELBOW_FRAME = new THREE.Matrix4();
 const ARM_BEND_SCRATCH = new THREE.Vector3();
 
-/* ── Exported grip constants ──────────────────────────────────────────── */
-export const SKI_PALM_CONE = 0.54;
-export const SKI_PALM_TILT = 0.86;
-export const ROWER_PALM_TILT = 0.98;
-export const ROWER_PALM_TILT_COMFORT = 0.88;
-export const SKI_PALM_TILT_COMFORT = 0.79;
-export const SKI_TARGET_PRONATION = 0.88;
-
 /**
  * Stable two-bone arm bend direction for equipment-locked hands.
  *
@@ -1072,82 +1050,13 @@ function placeFigureSegmentBetween(
  * Every other sport keeps its authored extras: RowErg and BikeErg close on
  * flat handles and hoods, where the palm surface *is* the contact.
  */
-function gripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
-  if (sport === "skierg") {
-    const { x, y, z } = HAND_FIST_CENTRE;
-    return {
-      leftHand: { x: -x, y, z },
-      rightHand: { x, y, z },
-    };
-  }
-  // RowErg / BikeErg effector offsets are inactive until the sport-specific
-  // grip layers supply the consuming IK solves. The full channel-centre path
-  // is left here, ready to replace `return undefined` once each sport's grip
-  // layer lands.
-  return undefined;
-}
-
-/**
- * SkiErg pole grip: lay the hand's authored finger-curl axis along the rigid
- * shaft so the fist closes *around* the pole.
- *
- * The shaft frame supplies the baseline, which fixes the one genuinely free
- * parameter — spin about the pole — continuously with the rigid link. The
- * curl axis is then rotated onto the shaft by the shortest arc, so the wrist
- * keeps whatever the arm solve chose and only the enclosure is corrected.
- *
- * `shaftDirLocal` is the shaft's own direction (grip end → tip) in the hand's
- * **parent** frame, which is where this whole construction lives. Deriving the
- * axis from parent-frame geometry is what keeps the grip heading-independent:
- * an earlier frame built from hand-local angles and a world-space axis drifted
- * a full 120° a quarter lap around the course.
- *
- * Superseded, not redundant: `orientHandToGripChannel` in `handGrip.ts` is
- * this construction generalised to any cylindrical channel, and the sport
- * layer that wires a SkiErg grip contract replaces this call site with it.
- * Until then this remains the shipped SkiErg path, so behaviour-changing
- * edits belong in the generalisation, not here.
- */
-function orientHandToNordicPole(
-  hand: THREE.Object3D,
-  poleShaft: THREE.Object3D,
-  side: number,
-  shaftDirLocal: THREE.Vector3,
-  athleteRightLocal: THREE.Vector3,
-  scratch: THREE.Quaternion,
-  scratchAxis: THREE.Vector3,
-  scratchTarget: THREE.Vector3,
-  scratchRoll: THREE.Vector3,
-): void {
-  hand.quaternion.copy(poleShaft.quaternion);
-  scratchAxis
-    .set(HAND_CURL_AXIS.x, side * HAND_CURL_AXIS.y, side * HAND_CURL_AXIS.z)
-    .normalize()
-    .applyQuaternion(hand.quaternion);
-  // Either shaft end may be the closer one; take the nearer so the correction
-  // is the shortest arc and the thumb never flips end-for-end mid-cycle.
-  scratchTarget.copy(shaftDirLocal).multiplyScalar(shaftDirLocal.dot(scratchAxis) >= 0 ? 1 : -1);
-  hand.quaternion.premultiply(scratch.setFromUnitVectors(scratchAxis, scratchTarget));
-
-  // Aligning the curl axis leaves exactly one freedom: spin about the shaft.
-  // Inheriting it from the shaft frame put the backs of the hands toward each
-  // other. Resolve it explicitly instead — the palm has to face **inward**, so
-  // the wrist→grip-channel vector points at the athlete's centreline. This is
-  // the parameter the earlier hand-frame angles were really groping for.
-  scratchAxis
-    .set(side * HAND_FIST_CENTRE.x, HAND_FIST_CENTRE.y, HAND_FIST_CENTRE.z)
-    .normalize()
-    .applyQuaternion(hand.quaternion);
-  scratchRoll.copy(athleteRightLocal).multiplyScalar(-side);
-  // Compare only the components across the shaft; the along-shaft parts carry
-  // no roll information.
-  scratchAxis.addScaledVector(scratchTarget, -scratchAxis.dot(scratchTarget));
-  scratchRoll.addScaledVector(scratchTarget, -scratchRoll.dot(scratchTarget));
-  if (scratchAxis.lengthSq() > 1e-8 && scratchRoll.lengthSq() > 1e-8) {
-    hand.quaternion.premultiply(
-      scratch.setFromUnitVectors(scratchAxis.normalize(), scratchRoll.normalize()),
-    );
-  }
+function skiGripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
+  if (sport !== "skierg") return undefined;
+  const { x, y, z } = HAND_FIST_CENTRE;
+  return {
+    leftHand: { x: -x, y, z },
+    rightHand: { x, y, z },
+  };
 }
 
 /**
@@ -1826,9 +1735,6 @@ function makeRowerAvatar(
     shaft.rotation.z = Math.PI / 2; // cylinder axis Y -> X
     shaft.position.x = side * 0.61;
     oar.add(shaft);
-    // The rendered rubber and the grip-closure contract are one surface: the
-    // solver closes digits onto exactly this cylinder, so the mesh reads the
-    // shared constant instead of repeating its numbers.
     const grip = new THREE.Mesh(
       new THREE.CylinderGeometry(
         ROWER_SCULL_GRIP.radius,
@@ -2726,8 +2632,6 @@ function makeSkierAvatar(
   const courseForwardWorld = new THREE.Vector3();
   const athleteRightLocal = new THREE.Vector3();
   const inverseUpperWorld = new THREE.Quaternion();
-  const gripPitch = new THREE.Quaternion();
-  const gripCurlAxis = new THREE.Vector3();
   const gripCurlTarget = new THREE.Vector3();
   const gripCurlRoll = new THREE.Vector3();
   // Fixed arm lengths must contain every authored hand keyframe. A finish
@@ -3002,18 +2906,18 @@ function makeSkierAvatar(
       pole.basket.quaternion.copy(inverseUpperWorld);
       pole.tipAnchor.position.copy(tipLocalPoint);
       // Establish the terminal frame only after the current-frame rigid pole
-      // has been placed. `SEGMENT_DIR` still holds the grip-end → tip direction
-      // set just above, which is the axis the fist has to close around.
-      orientHandToNordicPole(
+      // has been placed. The shared grip frame replaces the former Ski-only
+      // duplicate; the thumb points toward the grip top while the palm rides
+      // inward, and equipment roll about the pole cancels inside the fingers.
+      gripCurlTarget.copy(SEGMENT_DIR).multiplyScalar(-1);
+      gripCurlRoll.copy(athleteRightLocal).multiplyScalar(-arm.side);
+      orientHandToGripChannel(
         arm.hand,
-        pole.shaft,
         arm.side,
-        SEGMENT_DIR,
-        athleteRightLocal,
-        gripPitch,
-        gripCurlAxis,
+        SKI_POLE_GRIP_RADIUS,
         gripCurlTarget,
         gripCurlRoll,
+        pole.shaft.quaternion,
       );
     }
   };
@@ -4125,7 +4029,7 @@ export class CourseRenderer3D implements ReplayRenderer {
   private readonly ghostRadius = 26;
 
   private readonly quality: RenderQuality;
-  private readonly qaCamera: NonNullable<Renderer3DOptions["qaCamera"]>;
+  private readonly qaCamera: "normal" | "athlete-close" | "athlete-front" | "athlete-grip";
   private cfg: QualityConfig;
   private renderer: RendererLike;
   /**
@@ -4428,7 +4332,7 @@ export class CourseRenderer3D implements ReplayRenderer {
       // SkiErg drives the centre of the closed fist onto the shaft, not the
       // authored palm-surface point: the latter lays the pole across the
       // knuckles and the fingers shut beside it instead of around it.
-      const effectorOffsets = gripEffectorOffsets(this.sport);
+      const effectorOffsets = skiGripEffectorOffsets(this.sport);
       this.liveAvatar.v4Motion = installReplayV4MotionController({
         sport: this.sport,
         parent: this.liveAvatar.group,
