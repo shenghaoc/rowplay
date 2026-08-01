@@ -159,6 +159,14 @@ truthfully record effective High/WebGL. They prove anatomy, enclosure, and
 clipping at the same geometry and contact solve used by all tiers; the existing
 hardware Chrome evidence remains the Ultra/WebGPU material proof.
 
+### Geometry-aware RowErg closure (PR #180)
+
+The historical frames above show the original bounded helper curl. The current
+stacked RowErg layer now solves finger/thumb enclosure from the actual scull
+radius and hand-channel centre after the authoritative oar contact pass. Its
+fresh WebGPU/Ultra catch, finish, front, and mobile acceptance is documented in
+[RowErg geometry-aware grip acceptance](replay-row-grip.md).
+
 ### BikeErg equipment and seated fit — 2026-07-25
 
 Product goal: a better **machine** plus correct athlete interaction. The athlete
