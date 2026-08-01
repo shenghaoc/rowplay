@@ -2936,22 +2936,18 @@ function makeSkierAvatar(
     solveSkierElbowDirection(motion, elbowDirection);
     // The bend plane follows the technique phase instead of holding one fixed
     // down/forward vector for the whole cycle. Local -y points down, local -z
-    // is rearward. The press collapse sweeps the sagittal hint near the
-    // shoulder→hand chord; with only the base lateral component the two-bone
-    // bend plane degenerates there and the elbow can flip branches (measured
-    // 0.48 m in one sample). Real double-polers collapse their elbows past
-    // the ribs slightly WIDE, so widen the hint through exactly that window —
-    // anatomy and numerical stability agree here.
+    // is rearward. Late in the press the sagittal hint can still run near
+    // the shoulder→hand chord (both end up down-back); a mild lateral widen
+    // through that window keeps the two-bone bend plane conditioned — the
+    // elbows pass the ribs a touch wide, which is also the anatomical read.
+    // The early aft swing of the down-elbow arc carries most of the
+    // conditioning now, so the widen stays small: a large value here is the
+    // measured source of the mid-press "elbows point sideways" look.
     const collapse =
       THREE.MathUtils.smoothstep(motion.poleSweep, 0.45, 0.85) *
       (1 - THREE.MathUtils.smoothstep(motion.poleSweep, 0.9, 1));
-    // At the high plant the sagittal hint necessarily runs near the
-    // shoulder→hand chord (both point up-forward), so the elbow's branch
-    // there is decided by the lateral component — and the branch that yields
-    // the neutral wrist (pole-to-forearm ~113°, measured bend 3°) is the
-    // FLARED one: elbows wide of the grips, exactly how a double-poler
-    // plants. Author that flare explicitly through the pre-plant and early
-    // contact instead of leaving it to the 0.08 floor.
+    // Plant window: used only to gate the flight hang-hold off while the
+    // retrace hint carries the elbow into the next down-elbow plant.
     const plantFlare = Math.max(
       THREE.MathUtils.smoothstep(motion.cycle, 0.82, 0.94),
       1 - THREE.MathUtils.smoothstep(motion.cycle, 0.06, 0.16),
@@ -2972,8 +2968,8 @@ function makeSkierAvatar(
       0.2 +
       motion.elbowLoad * 0.04 +
       motion.poleFlight * 0.015 +
-      collapse * motion.poleContact * 0.28;
-    const bendUp = elbowDirection.vertical * 0.78 + plantFlare * 0.15;
+      collapse * motion.poleContact * 0.1;
+    const bendUp = elbowDirection.vertical * 0.78;
     const bendAft = elbowDirection.foreAft * 0.78 - motion.poleFlight * motion.poleSweep * 0.4;
     // Through the free-pole hang and early lift the retrace hint runs
     // chronically near the shoulder→hand chord (both track the arm's own
@@ -2981,7 +2977,7 @@ function makeSkierAvatar(
     // elbow out — forearms pointing across the body instead of forward at
     // the handles. Pin the flight elbow BELOW the chord instead (a relaxed
     // arm hangs; slight out-tilt only), and let the plant window hand over
-    // to the high-elbow route.
+    // to the retrace hint's down-elbow plant.
     // Two regimes cover the flight: the sweep-faded aft bias above shepherds
     // the early swing (a component-space nudge, gentle at the fling), and
     // this hold takes over once the arm has folded into the true hang —
