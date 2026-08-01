@@ -2906,18 +2906,30 @@ describe("CourseRenderer3D", () => {
             maxElbowLateralDeviation,
             Math.abs(elbowLocal.x - armMidX),
           );
+
           expect(
             Math.abs(elbowLocal.x - armMidX),
             `elbow remains near the sagittal arm plane at ${cycle}`,
-            // 0.13 -> 0.32 with the flared high-elbow plant: the branch that
-            // keeps the pole inside the hand's neutral-wrist cone holds the
-            // elbows wide of the grips at the catch, as real double-polers
-            // do (measured 0.29-0.316 at the plant and pre-plant, shifted
-            // slightly by the close-to-body recovery return). The
-            // horizontal-goalpost class this test was written against is a
-            // MID-DRAW wing with 45-50° humeral abduction; the humerus bound
-            // below still rejects that class on its own.
-          ).toBeLessThan(0.32);
+            // A double-poler grabs the handles with the forearms pointing
+            // FORWARD, upper arms flexed in the sagittal plane and tilted out
+            // only slightly to clear the torso — not with the elbows winged
+            // wide so the forearms point across the body. An earlier pass
+            // held the plant elbow 0.29-0.32 wide (67° humeral abduction)
+            // because the sagittal bend hint ran parallel to the arm chord
+            // and the lateral floor decided the branch; the plant-window up
+            // boost and the flight hang hold now keep the plant at 0.003 and
+            // the worst landmark (the press swing-through) at 0.130.
+          ).toBeLessThan(0.16);
+          {
+            // The forearm points forward at the handles throughout: inward
+            // lean (left forearm aiming right and vice versa) is the
+            // goalpost signature and stays under 20° even mid-transit.
+            const forearm = handBoneLocal.clone().sub(elbowLocal).normalize();
+            expect(
+              Math.asin(THREE.MathUtils.clamp(forearm.x, -1, 1)),
+              `left forearm keeps pointing forward at ${cycle}`,
+            ).toBeLessThan(THREE.MathUtils.degToRad(20));
+          }
         }
 
         const plant = landmarks.get(0.02)!;

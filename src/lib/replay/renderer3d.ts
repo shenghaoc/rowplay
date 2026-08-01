@@ -997,6 +997,8 @@ const SKI_CARRY_FORE = new THREE.Vector3();
 const SKI_CARRY_PALM = new THREE.Vector3();
 const SKI_CARRY_TMP = new THREE.Vector3();
 const SKI_CARRY_ROLL = new THREE.Quaternion();
+const SKI_HANG_CHORD = new THREE.Vector3();
+const SKI_HANG_DIR = new THREE.Vector3();
 /** Largest shaft-spin relief the SkiErg grip may spend on wrist flatness. */
 const SKI_FLAT_MAX_SPIN = THREE.MathUtils.degToRad(35);
 /**
@@ -2953,7 +2955,7 @@ function makeSkierAvatar(
     // plants. Author that flare explicitly through the pre-plant and early
     // contact instead of leaving it to the 0.08 floor.
     const plantFlare = Math.max(
-      THREE.MathUtils.smoothstep(motion.cycle, 0.88, 0.96),
+      THREE.MathUtils.smoothstep(motion.cycle, 0.82, 0.94),
       1 - THREE.MathUtils.smoothstep(motion.cycle, 0.06, 0.16),
     );
     // The floor itself (not just the phase-specific windows above) was too
@@ -2969,13 +2971,47 @@ function makeSkierAvatar(
     // 256-sample sweep to clear the whole cluster), which keeps the
     // bend-plane well-conditioned regardless of which phase the arm is in.
     const bendLateral =
-      0.24 +
+      0.2 +
       motion.elbowLoad * 0.04 +
       motion.poleFlight * 0.015 +
-      collapse * 0.3 +
-      plantFlare * 0.25;
-    const bendUp = elbowDirection.vertical * 0.78;
-    const bendAft = elbowDirection.foreAft * 0.78;
+      collapse * motion.poleContact * 0.28;
+    const bendUp = elbowDirection.vertical * 0.78 + plantFlare * 0.6;
+    const bendAft = elbowDirection.foreAft * 0.78 - motion.poleFlight * motion.poleSweep * 0.4;
+    // Through the free-pole hang and early lift the retrace hint runs
+    // chronically near the shoulder→hand chord (both track the arm's own
+    // path), which used to hand the branch to the lateral floor and wing the
+    // elbow out — forearms pointing across the body instead of forward at
+    // the handles. Pin the flight elbow BELOW the chord instead (a relaxed
+    // arm hangs; slight out-tilt only), and let the plant window hand over
+    // to the high-elbow route.
+    // Two regimes cover the flight: the sweep-faded aft bias above shepherds
+    // the early swing (a component-space nudge, gentle at the fling), and
+    // this hold takes over once the arm has folded into the true hang —
+    // where the below-chord direction is already nearly true, so engaging it
+    // is a small rotation rather than a snap. Engaging earlier measurably
+    // added to the post-release residual and tilted the fist frame.
+    const hangHold =
+      motion.poleFlight *
+      (1 - plantFlare) *
+      THREE.MathUtils.smoothstep(motion.cycle, 0.56, 0.7) *
+      (1 - THREE.MathUtils.smoothstep(motion.cycle, 0.76, 0.86)) *
+      0.9;
+    const applyHangHold = (
+      shoulder: THREE.Vector3,
+      hand: THREE.Vector3,
+      side: number,
+      hint: THREE.Vector3,
+    ) => {
+      if (hangHold <= 1e-4) return;
+      SKI_HANG_CHORD.set(hand.x - shoulder.x, hand.y - shoulder.y, hand.z - shoulder.z);
+      if (SKI_HANG_CHORD.lengthSq() < 1e-8) return;
+      SKI_HANG_CHORD.normalize();
+      SKI_HANG_DIR.set(side * 0.18, -1, 0);
+      SKI_HANG_DIR.addScaledVector(SKI_HANG_CHORD, -SKI_HANG_DIR.dot(SKI_HANG_CHORD));
+      if (SKI_HANG_DIR.lengthSq() < 1e-6) return;
+      SKI_HANG_DIR.normalize();
+      hint.lerp(SKI_HANG_DIR, hangHold).normalize();
+    };
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       const pole = poles[i];
@@ -2995,6 +3031,7 @@ function makeSkierAvatar(
         up: bendUp,
         aft: bendAft,
       });
+      applyHangHold(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint);
       desiredHandWorld.copy(arm.handTarget);
       upper.localToWorld(desiredHandWorld);
       shoulderWorld.copy(arm.shoulderPoint);
@@ -3143,6 +3180,7 @@ function makeSkierAvatar(
           up: bendUp,
           aft: bendAft,
         });
+        applyHangHold(arm.shoulderPoint, arm.handTarget, arm.side, arm.bendHint);
 
         solveTwoBone3D(
           arm.shoulderPoint,
