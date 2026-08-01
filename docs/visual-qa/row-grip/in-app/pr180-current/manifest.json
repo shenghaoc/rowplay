@@ -1,0 +1,100 @@
+{
+  "commit": "8c07591b8f267a867deaae63649bd45b216b3c9f",
+  "source": "http://127.0.0.1:8781",
+  "command": "node scripts/capture-replay-athlete-v5-qa.mjs --headed --base-url=http://127.0.0.1:8781 --output=docs/visual-qa/row-grip/in-app/pr180-current --only=row-grip-catch,row-grip-finish,mobile-row-finish,row-finish-front",
+  "note": "Real RowPlay 3D application capture. Requested Ultra may report High when the browser backend is WebGL; the manifest records the effective tier and backend for every file.",
+  "evidence": [
+    {
+      "kind": "still",
+      "file": "poses/mobile-row-finish.jpg",
+      "sport": "row",
+      "seconds": 0.8,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 365,
+        "height": 360
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-finish-front.jpg",
+      "sport": "row",
+      "seconds": 0.8,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "front",
+      "effectiveQaCamera": "athlete-front",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-grip-catch.jpg",
+      "sport": "row",
+      "seconds": 0.05,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "poses/row-grip-finish.jpg",
+      "sport": "row",
+      "seconds": 0.8,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    }
+  ]
+}

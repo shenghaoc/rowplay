@@ -150,8 +150,7 @@ hand, foot, oar, pedal, and planted-pole targets. V3, procedural 3D, and Canvas
 remain automatic fallbacks.
 
 - **Purpose:** one generic, provenance-reviewed production `SkinnedMesh` with a
-  stable 19-bone semantic skeleton, 38 visual-only helper bones (32 articulated
-  grip helpers plus 6 forearm twist/wrist-corrective deformation helpers), and
+  stable 19-bone semantic skeleton, 32 visual-only articulated grip helpers, and
   distinct deterministic RowErg, SkiErg, and BikeErg base clips. Runtime
   samples normalized clip time from replay phase and applies the analytic
   contact pass after the authored pose.
@@ -193,8 +192,10 @@ remain automatic fallbacks.
   rejects skeleton, clip, drive-boundary, skin, or contact-metadata drift. The
   USDZ portability gate lives in `src/lib/replay/rigV4Usd.test.ts`.
 - **Reviewed artifact:** see `rowplay-athlete-v4.contract.json` for the sealed
-  byte count and SHA-256. Two independent Blender→Node builds should match
-  within normal float noise; commit the validator-checked binary.
+  byte count and SHA-256. The Blender→Node build preserves the reviewed Human
+  Base and primitive UVs instead of rerunning Blender's nondeterministic Smart
+  UV island scheduler; repeated builds must therefore produce a byte-identical
+  GLB. Commit only the validator-checked binary.
 - **Reviewed USDZ derivative:** Blender 5.2 does not produce byte-identical
   USDZ containers across repeat exports, so repeat-export acceptance is
   semantic: Three.js `USDLoader` must load one skinned athlete with the 19
@@ -203,8 +204,7 @@ remain automatic fallbacks.
   external-looking references, and clone-safe skeleton/material instances.
 - **Reviewed contract:** schema `rowplay.replay.athlete.v4`, version `1`.
 - **Exact geometry inventory:** one indexed `SkinnedMesh`, 19 named semantic
-  bones plus 38 contract-recorded visual helpers (32 grip, 6 forearm
-  twist/wrist-corrective), a continuous human body
+  bones plus 32 contract-recorded visual grip helpers, a continuous human body
   core plus deliberate eye/hair/footwear detail islands, one portable opaque
   vertex-colour material in the GLB, and zero embedded textures/images. The
   reviewed `TEXCOORD_0` layout exists solely for the web loader's local,
@@ -216,10 +216,7 @@ remain automatic fallbacks.
   is the only replay-motion interface; helper joints may influence skinning but
   are not direct animation targets. Each hand has a shallow palm-cup helper,
   four three-segment finger chains, and a three-segment opposing-thumb chain
-  derived from the reviewed anatomical face sets. Each forearm additionally
-  carries proximal and distal twist helpers plus a wrist corrective, which
-  distribute pronation and wrist bend across the skin instead of collapsing it
-  at a single joint. The surface now carries anatomically
+  derived from the reviewed anatomical face sets. The surface now carries anatomically
   modelled head/face/ears, individual fingers and toes beneath equipment,
   ribcage, shoulder, pelvis, knee, calf, and hand volume from the reviewed
   human topology; RowPlay supplies performance kit regions, close sports hair,
@@ -253,12 +250,15 @@ remain automatic fallbacks.
   glTF extras encode exact local contact offsets: left/right hand
   `[-0.08,-0.01,0.035]` / `[0.08,-0.01,0.035]`; both feet
   `[0,-0.055,0.13]`.
-- **Grip closure:** after the exact palm solve, runtime applies bounded
-  sport-specific helper rotations for the RowErg scull, SkiErg cylindrical
-  grip, or BikeErg hood. Individual proximal/intermediate/distal segments and
-  the opposing thumb visibly enclose the local handle without moving the
-  semantic hand or equipment contact. The validator requires the exact helper
-  hierarchy and a meaningful checked skin influence for every helper.
+- **Grip closure:** after the exact contact solve, runtime applies bounded
+  geometry-aware helper rotations for the SkiErg cylinder, RowErg scull, and
+  BikeErg hood. RowErg and SkiErg retain their approved first-contact policy;
+  BikeErg explicitly searches a collision-bounded final enclosure so its palm
+  can rest on the 36 mm hood while all four fingertips reach the far-side body
+  and the thumb hooks underneath. Individual
+  proximal/intermediate/distal segments move without changing the semantic hand
+  or equipment contact. The validator requires the exact helper hierarchy and
+  a meaningful checked skin influence for every helper.
 - **Animations:** three normalized one-second clips, each with one hips
   translation and 19 semantic quaternion tracks: `rowplay-v4-row-cycle`
   (authored drive end `0.38`), `rowplay-v4-ski-cycle` (`0.34`), and

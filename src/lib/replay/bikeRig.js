@@ -195,13 +195,13 @@ export const BIKE_RIG = Object.freeze({
     grip: Object.freeze({ y: HEAD_TOP_Y, z: HEAD_TOP_Z + 0.175, halfSpan: 0.2 }),
     /**
      * Hood-body grip channel around the hand-contact anchor. The anchor sits
-     * on the channel axis; the palm heel rests on the surface `radius` above
-     * it while the fingers hook the front/underside and the thumb hooks the
-     * inboard face — the hand-grip solver closes the digits against exactly
-     * this capsule. `rotationX` is the hood body's X rotation (the same value
-     * the visual hood mesh uses), so the channel axis is Rx(rotationX)·ẑ.
+     * on the channel axis; the palm heel rests on the upper surface while the
+     * fingers and thumb close around opposing faces. `rotationX` is also the
+     * visual hood mesh's X rotation, keeping contact and rendering aligned.
      */
-    hood: Object.freeze({ rotationX: -0.24, radius: 0.016 }),
+    // The rendered hood is 36 mm across, so its analytic contact surface is
+    // the 18 mm half-section — not the 16 mm corner-rounding radius.
+    hood: Object.freeze({ rotationX: -0.24, radius: 0.018 }),
   }),
   /** Saddle rail clamp offset ahead of the sit-bone origin. */
   saddleClampZ: SADDLE_CLAMP_Z,

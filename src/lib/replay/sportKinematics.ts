@@ -82,21 +82,21 @@ function secondaryScale(intensity: number): number {
 }
 
 /**
- * Resolve the shared high-elbow → press → recovery SkiErg elbow sequence.
+ * Resolve the shared down-elbow → press → recovery SkiErg elbow sequence.
  *
- * The bend vector stays on one continuous arc in the sagittal plane, authored
- * to classic double-pole form (Concept2 SkiErg technique): at the plant the
- * ELBOWS RIDE HIGH AND FORWARD of the grips with the forearms slanting down
- * to near-vertical poles — the configuration whose pole-to-forearm angle sits
- * inside the hand's neutral-wrist cone. The press rotates the elbow forward
- * and down, finishing behind the hip at pole-off; the recovery then RETRACES
- * that same arc back up to the high plant rather than closing a full circle
- * over the top — see the recovery branch below for why the over-the-top route
- * was rejected. The former arc pointed the elbow straight DOWN at the plant,
- * which stacked the forearm along the pole line and forced ~85° of wrist bend
- * to hold the grip. Staying on a single arc avoids interpolating through a
- * zero vector, which would make a two-bone solver choose a lateral fallback
- * and flip.
+ * The bend vector stays on one continuous arc in the sagittal plane. At the
+ * plant the elbows hang BELOW the up-forward shoulder→hand chord (down,
+ * tilted slightly forward) — the compact SkiErg catch, not a skyward
+ * chicken-wing. The press swings the elbow aft early, so through the loaded
+ * pull the elbows drive down-BACK past the ribs, finishing behind the hip at
+ * pole-off; the recovery then RETRACES that same arc rather than closing a
+ * full circle over the top — see the recovery branch below for why the
+ * over-the-top route was rejected. An earlier high-elbow contract (elbows
+ * above the chord at the plant) kept the pole-to-forearm angle nearer the
+ * neutral-wrist cone but read as elbows pointing at the sky; the wrist
+ * relief layers absorb the difference instead. Staying on a single arc
+ * avoids interpolating through a zero vector, which would make a two-bone
+ * solver choose a lateral fallback and flip.
  */
 export function solveSkierElbowDirection(
   kinematics: SkierKinematics,
@@ -104,17 +104,18 @@ export function solveSkierElbowDirection(
 ): SkierElbowDirection {
   const sweep = clampUnit(kinematics.poleSweep);
   // vertical = cos(angle), foreAft = sin(angle): 0 is straight up, +π/2 is
-  // horizontal-forward. Plant: up-forward (~57° from vertical). Pole-off:
-  // down-back. The contact arc travels forward-down between them; the
-  // recovery runs back along that same arc rather than continuing around.
-  const PLANT_ANGLE = 0.99;
+  // horizontal-forward. Plant: down, tilted slightly forward (~166° from
+  // vertical) — below the up-forward chord. Pole-off: down-back. The press
+  // sweeps aft between them; the recovery runs back along that same arc
+  // rather than continuing around.
+  const PLANT_ANGLE = 2.9;
   const POLE_OFF_ANGLE = Math.PI + 1.1;
-  // Hold the high elbow through the initial lock: rotating toward the press
-  // as soon as the hands leave the plant re-verticalizes the forearm along
-  // the still-steep pole (measured fp 113° -> 8° within a tenth of a cycle).
-  // Elite double-pole keeps the elbows up while the trunk crunch drives the
-  // first part of the press; the elbow collapse follows.
-  const pressSweep = clampUnit((sweep - 0.48) / 0.52);
+  // Swing aft EARLY: the loaded pull (hands passing under the shoulders)
+  // needs the elbow already behind the arm chord, or the chord catches up
+  // with the still-down hint mid-press and hands the branch to the lateral
+  // floor — the winged look. Completing the swing in the first 45% of the
+  // sweep keeps the hint a quarter-turn off the chord through the deep load.
+  const pressSweep = clampUnit(sweep / 0.45);
   const pressEase = pressSweep * pressSweep * (3 - 2 * pressSweep);
   const angle =
     kinematics.cycle <= SKI_POLE_OFF_CYCLE

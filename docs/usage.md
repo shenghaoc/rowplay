@@ -128,8 +128,8 @@ biomechanics. Its shared technique phases stage RowErg legs, body, then arms
 are nearly extended; both elbows then pull behind the torso as the handle
 approaches the lower ribs, and the arms straighten first on recovery);
 SkiErg's classic double-pole high reach,
-steep plant with the elbows riding high and forward of the grips, a core-led
-press that collapses the elbows forward and down to finish behind the hips,
+steep plant with the flexed elbows hanging below the raised hands, a core-led
+press that drives the elbows down and back to finish behind the hips,
 a soft elbow bend at pole-off (long, never locked out), and a close-to-body
 recovery that lifts the hands back up to the next high plant. Its hips, knees, boots, and
 skis retain left/right order in a narrow parallel stance rather than crossing
@@ -207,6 +207,10 @@ from the visible shoulders to the hood contacts so palms lock to the grips.
 The rider hinges far enough forward to carry that reach, so the hands rest
 their weight on the brake hoods with the elbows softly bent, rather than
 hovering over them on locked-straight arms.
+After the palm contact solve, individually articulated fingers close onto the
+far side of each hood and the opposing thumb hooks underneath; this visual
+closure does not move the shared cockpit contact or infer the rider's real hand
+pose.
 Equipment form and athlete–bike contact are present at
 every 3D tier; higher tiers add material response and detail rather than
 replaying the same misfit at a larger pixel budget. These are deliberate

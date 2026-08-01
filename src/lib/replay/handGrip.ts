@@ -173,10 +173,8 @@ export function handCurlAxisThumbward(side: number, out = new THREE.Vector3()) {
 }
 
 /**
- * Hand long axis — wrist origin toward the middle-finger root — in hand-local
- * space, measured from the sealed contract's composed helper rest transforms
- * (right hand; x mirrors). A flat wrist is the pose where this axis continues
- * the forearm line, which makes it the lever the spin-relief below optimises.
+ * Hand long axis — wrist origin toward the middle-finger root — measured from
+ * the sealed V4 helper rest transforms (right hand; x mirrors).
  */
 export const HAND_LONG_AXIS = Object.freeze({ x: 0.926, y: 0.105, z: 0.363 } as const);
 
@@ -186,21 +184,9 @@ export function handLongAxis(side: number, out = new THREE.Vector3()) {
 }
 
 /**
- * Outward palm normal of the right hand in hand-local space — the direction
- * the palm actually faces. Measured from the shipped GLB's bind geometry as
- * the normal of the plane through the wrist origin, the middle-finger root
- * and the pinky→index knuckle line, signed toward the grip channel (a held
- * cylinder sits against the palm). Left mirrors x.
- *
- * This is NOT `HAND_PALM_NORMAL_IN`, and the distinction matters: that vector
- * is the palm-skin→channel-centre *construction* ray used to seat a cylinder,
- * and it sits 104° away from the true palm facing (signed about the thumbward
- * axis, invariant of shaft direction; 99° unsigned). Resolving a grip's roll
- * against the construction ray therefore mis-set the palm by that fixed angle
- * everywhere; on a near-horizontal handle it happened to land on a plausible
- * overhand grip, but on a ski pole whose inclination sweeps 79° across the
- * cycle it drove forearm pronation through 147° of range and past the human
- * limit.
+ * Outward palm normal measured from the shipped V4 bind geometry (right hand;
+ * x mirrors). This is distinct from `HAND_PALM_NORMAL_IN`, the construction
+ * ray used to seat a cylinder inside the hand.
  */
 export const HAND_PALM_NORMAL_OUT = Object.freeze({
   x: -0.1052,
@@ -215,61 +201,13 @@ export function handPalmNormalOut(side: number, out = new THREE.Vector3()) {
     .normalize();
 }
 
-/**
- * World-space direction the outward palm normal should face for a requested
- * forearm pronation, given the arm's own geometry.
- *
- * Pronation is the rotation of the palm about the forearm's long axis,
- * measured from the elbow's hinge axis: 0 is the neutral handshake (thumb up,
- * palm medial) and ±90° is roughly the human limit. Supplying this as the
- * grip's roll reference makes pronation a bounded *input* to the hand frame
- * rather than an unconstrained output of wherever the equipment happens to
- * point — which is what let the SkiErg hand rotate past anatomy.
- */
-export function pronationRollReference(
-  shoulder: THREE.Vector3,
-  elbow: THREE.Vector3,
-  wrist: THREE.Vector3,
-  pronation: number,
-  side: number,
-  out = new THREE.Vector3(),
-): boolean {
-  PRONATION_FORE.copy(wrist).sub(elbow);
-  PRONATION_UPPER.copy(elbow).sub(shoulder);
-  if (PRONATION_FORE.lengthSq() < 1e-10 || PRONATION_UPPER.lengthSq() < 1e-10) return false;
-  PRONATION_FORE.normalize();
-  PRONATION_UPPER.normalize();
-  // The hinge axis is a cross product, so it mirrors as a pseudovector; the
-  // side factor restores one shared convention across both arms.
-  PRONATION_HINGE.crossVectors(PRONATION_UPPER, PRONATION_FORE);
-  if (PRONATION_HINGE.lengthSq() < 1e-8) return false; // straight arm: no hinge plane
-  PRONATION_HINGE.normalize().multiplyScalar(Math.sign(side) || 1);
-  out
-    .copy(PRONATION_HINGE)
-    .applyAxisAngle(PRONATION_FORE, (Math.sign(side) || 1) * pronation)
-    .normalize();
-  return true;
-}
-
-const PRONATION_FORE = new THREE.Vector3();
-const PRONATION_UPPER = new THREE.Vector3();
-const PRONATION_HINGE = new THREE.Vector3();
-
 const SPIN_LONG = new THREE.Vector3();
 const SPIN_FOREARM = new THREE.Vector3();
 const SPIN_QUAT = new THREE.Quaternion();
 
 /**
- * Relieve the wrist by spending the grip's one free degree of freedom — spin
- * about the shaft — on flatness: rotate the hand about the shaft so its long
- * axis continues the forearm line as nearly as the palm cone allows. Without
- * this, a frame pinned to "palm exactly on the reference" can demand ~100° of
- * combined wrist bend, which linear-blend skinning concentrates at the wrist
- * ring and renders as a severed hand. The clamp keeps the palm within
- * `maxPalmDeviation` of the requested reference, so the relief can never spin
- * the palm away from the side the technique requires. Deterministic and
- * continuous: the optimum angle is a smooth function of the forearm
- * direction, and the clamp is a plain interval clamp.
+ * Spend the grip frame's free spin about the shaft on wrist flatness, bounded
+ * so the sport-requested palm side remains authoritative.
  */
 export function refineGripSpinForWrist(
   hand: THREE.Object3D,
@@ -294,30 +232,9 @@ export function refineGripSpinForWrist(
   hand.quaternion.premultiply(SPIN_QUAT.setFromAxisAngle(shaft, clamped));
 }
 
-/** Hand-local inward palm normal, mirrored the way the rig mirrors hands. */
-export function handPalmNormalIn(side: number, out = new THREE.Vector3()) {
-  const mirror = Math.sign(side) || 1;
-  return out
-    .set(mirror * HAND_PALM_NORMAL_IN.x, HAND_PALM_NORMAL_IN.y, HAND_PALM_NORMAL_IN.z)
-    .normalize();
-}
-
 /**
- * Relieve the wrist with the grip's second anatomical freedom — the shaft
- * running *diagonally* across the palm — by tilting the hand about its own
- * palm normal toward the forearm line, but only for the misalignment beyond
- * `comfort`. A real pole is never held exactly square across the fist at a
- * high reach: the grip rides from the index base toward the pinky heel,
- * which is precisely a rotation about the palm normal. Because the palm
- * normal is the rotation axis, the palm's facing direction is bit-exact
- * unchanged — the palms-inward contract cannot be traded away by this
- * relief. The comfort gate keeps calm phases untouched: the digit closure
- * is solved once in rest space against the authored channel, so a tilt is a
- * real (bounded) divergence between the closed fingers and the shaft, spent
- * only where the square-across-the-fist convention would otherwise tear the
- * wrist ring open. Deterministic and continuous: the misalignment angle is
- * a smooth function of the pose and the excess-over-comfort mapping is
- * continuous at the gate.
+ * Let a held shaft run diagonally across the palm to relieve remaining wrist
+ * bend. Rotation is about the true palm normal, so palm facing is preserved.
  */
 export function refineGripTiltForWrist(
   hand: THREE.Object3D,
@@ -325,20 +242,8 @@ export function refineGripTiltForWrist(
   forearmDir: THREE.Vector3,
   comfort: number,
   maxTilt: number,
-  /**
-   * 0..1 scale on the applied tilt. When the forearm sweeps near the shaft
-   * line (a sculling feather/extraction), the projected flat-wrist target
-   * spins and a full-strength tilt chases it, breaking frame-to-frame
-   * continuity. Callers fade the tilt smoothly through that window instead —
-   * a brief wrist flex at the feather is textbook rowing.
-   */
   strength = 1,
 ): void {
-  // Rotate about the TRUE palm normal. This used `HAND_PALM_NORMAL_IN`, which
-  // is the channel-construction ray sitting 104° away — so the "palm facing
-  // unchanged" guarantee in this function's own contract was false, and the
-  // tilt silently re-rolled the palm by up to `maxTilt` after the grip frame
-  // had deliberately set it. That is what let the inversion return.
   handPalmNormalOut(side, FRAME_TARGET).applyQuaternion(hand.quaternion).normalize();
   handLongAxis(side, SPIN_LONG).applyQuaternion(hand.quaternion);
   SPIN_LONG.addScaledVector(FRAME_TARGET, -SPIN_LONG.dot(FRAME_TARGET));
@@ -402,12 +307,25 @@ export interface HandGripClosureOptions {
    * axial press onto a flat handle end.
    */
   readonly thumbFlesh?: number;
+  /**
+   * Solve all three bounded finger stages together for a final enclosure
+   * instead of freezing each stage on its first surface contact. This lets a
+   * palm-supported hood reach opposing faces while every final phalanx segment
+   * remains collision-bounded. Omit for the established pole/scull closures,
+   * whose approved poses intentionally use sequential first contact.
+   */
+  readonly wrapFingerStages?: boolean;
 }
 
 export interface HandDigitContactReport {
   readonly digit: string;
   /** Distance of the closest bone point to the equipment surface (m, signed: negative = penetration). */
   readonly surfaceDistance: number;
+  /**
+   * Closest complete downstream phalanx segment to the surface when a
+   * final-enclosure contract requests segment collision proof.
+   */
+  readonly segmentSurfaceDistance?: number;
   /** True when the digit stopped because it reached the surface, not its flex limit. */
   readonly contact: boolean;
   /** Solved tip position in hand-local space. */
@@ -475,6 +393,10 @@ const THUMB_END_PAD_ALLOWANCE = 0.0095;
  * shipped rig at both the 16.9 mm pole and the 23 mm scull radius.
  */
 const CLOSURE_EMERGE_SAMPLES = 24;
+/** Coarse deterministic search resolution for an opt-in final-pose enclosure. */
+const WRAP_GRID_STEPS = 16;
+/** Final helper points may compress into a held surface by at most 0.5 mm. */
+const WRAP_MAX_PENETRATION = 0.0005;
 
 /**
  * Palm-cup carrying posture the grip channel was fitted under: the legacy
@@ -553,6 +475,8 @@ export function collectHandDigitChains(
 const CLOSURE_AXIS = new THREE.Vector3();
 const CLOSURE_CENTRE = new THREE.Vector3();
 const CLOSURE_DELTA = new THREE.Vector3();
+const CLOSURE_SEGMENT_START = new THREE.Vector3();
+const CLOSURE_SEGMENT_DELTA = new THREE.Vector3();
 const CLOSURE_STAGE_ROT = new THREE.Quaternion();
 const CLOSURE_OPPOSE_ROT = new THREE.Quaternion();
 const CLOSURE_LOCAL_X = new THREE.Vector3(1, 0, 0);
@@ -563,6 +487,21 @@ function distanceToAxis(point: THREE.Vector3): number {
   CLOSURE_DELTA.copy(point).sub(CLOSURE_CENTRE);
   const along = CLOSURE_DELTA.dot(CLOSURE_AXIS);
   return Math.sqrt(Math.max(0, CLOSURE_DELTA.lengthSq() - along * along));
+}
+
+/** Minimum radial distance from a complete phalanx segment to the grip axis. */
+function segmentDistanceToAxis(start: THREE.Vector3, end: THREE.Vector3): number {
+  CLOSURE_SEGMENT_START.copy(start).sub(CLOSURE_CENTRE);
+  CLOSURE_SEGMENT_START.addScaledVector(CLOSURE_AXIS, -CLOSURE_SEGMENT_START.dot(CLOSURE_AXIS));
+  CLOSURE_SEGMENT_DELTA.copy(end).sub(CLOSURE_CENTRE);
+  CLOSURE_SEGMENT_DELTA.addScaledVector(CLOSURE_AXIS, -CLOSURE_SEGMENT_DELTA.dot(CLOSURE_AXIS));
+  CLOSURE_SEGMENT_DELTA.sub(CLOSURE_SEGMENT_START);
+  const lengthSq = CLOSURE_SEGMENT_DELTA.lengthSq();
+  const along =
+    lengthSq <= Number.EPSILON
+      ? 0
+      : THREE.MathUtils.clamp(-CLOSURE_SEGMENT_START.dot(CLOSURE_SEGMENT_DELTA) / lengthSq, 0, 1);
+  return CLOSURE_SEGMENT_START.addScaledVector(CLOSURE_SEGMENT_DELTA, along).length();
 }
 
 function axialCoordinate(point: THREE.Vector3): number {
@@ -642,15 +581,23 @@ function cupChain(chain: HandDigitChain, side: number): HandDigitChain {
  * The capsule axis runs through `handChannelCentre(radius)` along the hand's
  * curl axis, thumb-ward positive; finger chains are first posed into the
  * `HAND_CLOSURE_CUP` carrying posture the channel was fitted in. Each stage
- * flexes until the first constrained bone point reaches the surface
- * (radius + pad flesh) and stops there, so a reachable surface is never
- * overshot into.
+ * flexes until a constrained bone point reaches the surface (radius + pad
+ * flesh). By default the stage stops at that first contact. A contract may
+ * opt the fingers into a bounded final-pose search across all three stages;
+ * every phalanx segment and the fingertip must remain on or outside the held
+ * surface. The opt-in path changes neither thumb behavior nor the established
+ * pole/scull solution.
  *
  * Penetration is minimised, not forbidden. Where no pose in anatomical range
  * clears the surface the stage holds its least-penetrating flexion, which is
  * a real (small) overlap; callers must read `surfaceDistance` rather than
  * assume non-negative. `contact` is likewise a 4 mm band around the surface,
  * not an exact landing.
+ *
+ * This is an install-time solve. Renderer controllers must cache the returned
+ * helper poses rather than call it from an animation frame; the forward-
+ * kinematics workspace deliberately favors auditable geometry over hot-path
+ * allocation behavior.
  */
 export function solveHandGripClosure(
   chains: readonly HandDigitChain[],
@@ -723,6 +670,123 @@ export function solveHandGripClosure(
       return nearest;
     };
 
+    const recordDigit = (reportSegments = false): void => {
+      digitPoints(chain, flexions, oppose, points);
+      let surfaceDistance = Number.POSITIVE_INFINITY;
+      for (
+        let pointIndex = firstCollisionPoint(0);
+        pointIndex <= chain.joints.length;
+        pointIndex++
+      ) {
+        const point = points[pointIndex]!;
+        surfaceDistance = Math.min(
+          surfaceDistance,
+          thumbEnd
+            ? axialCoordinate(point) - surface.thumbEndAxial! - flesh
+            : distanceToAxis(point) - surface.radius - flesh,
+        );
+      }
+      let segmentSurfaceDistance: number | undefined;
+      if (reportSegments) {
+        segmentSurfaceDistance = Number.POSITIVE_INFINITY;
+        for (let segment = 1; segment < chain.joints.length; segment++) {
+          segmentSurfaceDistance = Math.min(
+            segmentSurfaceDistance,
+            segmentDistanceToAxis(points[segment]!, points[segment + 1]!) - surface.radius - flesh,
+          );
+        }
+      }
+      contacts.push({
+        digit: chain.digit,
+        surfaceDistance,
+        ...(segmentSurfaceDistance === undefined ? {} : { segmentSurfaceDistance }),
+        contact: Math.abs(surfaceDistance) < 0.004,
+        tip: [
+          points[chain.joints.length]!.x,
+          points[chain.joints.length]!.y,
+          points[chain.joints.length]!.z,
+        ],
+      });
+      for (let stage = 0; stage < chain.joints.length; stage++) {
+        poses.push({
+          helper: chain.joints[stage]!.helper,
+          flex: flexions[stage]!,
+          oppose: stage === 0 ? oppose : 0,
+        });
+      }
+    };
+
+    let wrappedSolved = false;
+    if (options.wrapFingerStages === true && !isThumb) {
+      // A palm-supported hood needs a final-pose enclosure, not the first
+      // point reached while a finger is closing. Search the three bounded
+      // joint ranges together so the final chain can land on the far side
+      // without any joint/tip point penetrating the equipment. This path is
+      // install-time only and deliberately opt-in; pole/scull solutions below
+      // remain byte-for-byte on the sequential first-contact algorithm.
+      let bestScore = Number.NEGATIVE_INFINITY;
+      let bestFlexions: readonly [number, number, number] | undefined;
+      for (let proximal = 0; proximal <= WRAP_GRID_STEPS; proximal++) {
+        flexions[0] = (limits[0] * proximal) / WRAP_GRID_STEPS;
+        for (let intermediate = 0; intermediate <= WRAP_GRID_STEPS; intermediate++) {
+          flexions[1] = (limits[1] * intermediate) / WRAP_GRID_STEPS;
+          for (let distal = 0; distal <= WRAP_GRID_STEPS; distal++) {
+            flexions[2] = (limits[2] * distal) / WRAP_GRID_STEPS;
+            digitPoints(chain, flexions, oppose, points);
+            let nearest = Number.POSITIVE_INFINITY;
+            for (let pointIndex = 1; pointIndex <= chain.joints.length; pointIndex++) {
+              nearest = Math.min(
+                nearest,
+                distanceToAxis(points[pointIndex]!) - surface.radius - flesh,
+              );
+            }
+            // The root→first-joint span begins inside the palm cup by design;
+            // collision authority starts at the same first downstream point
+            // as the established solver. From there, check whole phalanx
+            // segments rather than endpoints alone.
+            for (let segment = 1; segment < chain.joints.length; segment++) {
+              nearest = Math.min(
+                nearest,
+                segmentDistanceToAxis(points[segment]!, points[segment + 1]!) -
+                  surface.radius -
+                  flesh,
+              );
+            }
+            const tipDistance =
+              distanceToAxis(points[chain.joints.length]!) - surface.radius - flesh;
+            if (
+              nearest < -WRAP_MAX_PENETRATION ||
+              Math.abs(nearest) >= 0.004 ||
+              Math.abs(tipDistance) >= 0.004
+            ) {
+              continue;
+            }
+            const wrap =
+              proximal / WRAP_GRID_STEPS +
+              intermediate / WRAP_GRID_STEPS +
+              distal / WRAP_GRID_STEPS;
+            const score = wrap - 12 * (Math.abs(nearest) + Math.abs(tipDistance));
+            if (score > bestScore) {
+              bestScore = score;
+              bestFlexions = [flexions[0], flexions[1], flexions[2]];
+            }
+          }
+        }
+      }
+      if (bestFlexions) {
+        flexions[0] = bestFlexions[0];
+        flexions[1] = bestFlexions[1];
+        flexions[2] = bestFlexions[2];
+        wrappedSolved = true;
+      }
+    }
+    if (wrappedSolved) {
+      recordDigit(true);
+      continue;
+    }
+    flexions[0] = 0;
+    flexions[1] = 0;
+    flexions[2] = 0;
     for (let stage = 0; stage < chain.joints.length; stage++) {
       const limit: number = limits[stage] ?? 1;
       flexions[stage] = 0;
@@ -843,35 +907,7 @@ export function solveHandGripClosure(
       }
       flexions[stage] = high;
     }
-
-    digitPoints(chain, flexions, oppose, points);
-    let surfaceDistance = Number.POSITIVE_INFINITY;
-    for (let pointIndex = firstCollisionPoint(0); pointIndex <= chain.joints.length; pointIndex++) {
-      const point = points[pointIndex]!;
-      surfaceDistance = Math.min(
-        surfaceDistance,
-        thumbEnd
-          ? axialCoordinate(point) - surface.thumbEndAxial! - flesh
-          : distanceToAxis(point) - surface.radius - flesh,
-      );
-    }
-    contacts.push({
-      digit: chain.digit,
-      surfaceDistance,
-      contact: surfaceDistance < 0.004,
-      tip: [
-        points[chain.joints.length]!.x,
-        points[chain.joints.length]!.y,
-        points[chain.joints.length]!.z,
-      ],
-    });
-    for (let stage = 0; stage < chain.joints.length; stage++) {
-      poses.push({
-        helper: chain.joints[stage]!.helper,
-        flex: flexions[stage]!,
-        oppose: stage === 0 ? oppose : 0,
-      });
-    }
+    recordDigit();
   }
   return { poses, contacts };
 }

@@ -86,7 +86,7 @@ describe("sportKinematics", () => {
     expect(recovery.rebound).toBeGreaterThan(0);
   });
 
-  it("holds SkiErg elbows high at plant, collapses them down-back, then lifts for the next plant", () => {
+  it("hangs SkiErg elbows below the chord at plant, drives them down-back, then retraces", () => {
     const directionAt = (cycle: number) =>
       solveSkierElbowDirection(solveSkierKinematics(poseAt("skierg", cycle)));
     const plant = directionAt(0.02);
@@ -96,40 +96,38 @@ describe("sportKinematics", () => {
     const recovery = directionAt(0.72);
     const preplant = directionAt(0.97);
 
-    // Classic double-pole (Concept2 SkiErg technique): the elbows ride HIGH
-    // and forward of the grips at the plant — forearms slant down to
-    // near-vertical poles, inside the hand's neutral-wrist cone — hold
-    // through the initial trunk-led lock, collapse down and back through the
-    // press, and lift up and over during recovery into the next plant. The
-    // former contract pinned the plant elbow straight DOWN, which stacked
-    // the forearm along the pole and forced ~85° of wrist bend to hold the
-    // grip.
-    expect(plant.vertical).toBeGreaterThan(0.5);
-    expect(plant.foreAft).toBeGreaterThan(0.7);
-    expect(loaded.vertical).toBeGreaterThan(0.3);
-    expect(loaded.foreAft).toBeGreaterThan(0.7);
-    // Late press: collapsing forward-down, on the way to down-back.
+    // SkiErg catch: the elbows hang DOWN below the up-forward arm chord
+    // (tilted slightly forward), swing aft early so the loaded pull drives
+    // them down-back past the ribs, and the recovery retraces the same arc
+    // into the next plant. The former high-elbow contract (elbows above the
+    // chord at the plant) read as elbows pointing at the sky.
+    expect(plant.vertical).toBeLessThan(-0.9);
+    expect(plant.foreAft).toBeGreaterThan(0.1);
+    expect(loaded.vertical).toBeLessThan(-0.3);
+    expect(loaded.foreAft).toBeLessThan(-0.7);
+    // Late press: fully down-back.
     expect(latePress.vertical).toBeLessThan(0);
     expect(poleOff.vertical).toBeLessThan(-0.4);
     expect(poleOff.foreAft).toBeLessThan(-0.85);
-    // Recovery lifts back up and over toward the next high plant.
-    expect(recovery.vertical).toBeGreaterThan(poleOff.vertical);
-    expect(preplant.vertical).toBeGreaterThan(0.4);
-    expect(preplant.foreAft).toBeGreaterThan(0.5);
+    // Recovery swings the arc back from down-back toward the down-forward
+    // plant; vertical stays below the horizon the whole way.
+    expect(recovery.foreAft).toBeGreaterThan(poleOff.foreAft);
+    expect(recovery.vertical).toBeLessThan(0);
+    expect(preplant.vertical).toBeLessThan(-0.9);
+    expect(preplant.foreAft).toBeGreaterThan(0.1);
 
-    // Bound derived from measurement, not slack: the compressed press
-    // collapse (smoothstep hold to sweep 0.48, then the full plant→pole-off
-    // arc in the remaining half) peaks at 0.1484 per 1/256 step, at cycle
-    // ~0.21. The bound sits 1% above that peak, so any new discontinuity —
-    // or a retune that steepens the collapse — fails here rather than
-    // hiding inside a slack allowance.
+    // Bound derived from measurement, not slack: the early aft swing
+    // (smoothstep over the first 45% of the sweep, then the arc holds at
+    // down-back) peaks at 0.0708 per 1/256 step. The bound sits just above
+    // that peak, so any new discontinuity — or a retune that steepens the
+    // swing — fails here rather than hiding inside a slack allowance.
     let previous = directionAt(0);
     for (let step = 1; step <= 256; step++) {
       const next = directionAt(step / 256);
       expect(
         Math.hypot(next.vertical - previous.vertical, next.foreAft - previous.foreAft),
         `continuous SkiErg elbow plane at ${step / 256}`,
-      ).toBeLessThan(0.15);
+      ).toBeLessThan(0.075);
       previous = next;
     }
 

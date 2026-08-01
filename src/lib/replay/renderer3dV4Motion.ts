@@ -10,7 +10,6 @@ import {
   type HandDigitContactReport,
   type HandGripSurface,
 } from "./handGrip";
-import { rowerElbowFlexion, rowerElbowPlaneAuthority } from "./rowRig";
 import {
   disposeReplayV4AthleteInstance,
   REPLAY_V4_HAND_HELPER_NAMES,
@@ -139,11 +138,14 @@ function gripHelperMeta(name: ReplayV4HandHelperName): {
  * (curl angles become outputs of the equipment geometry), terminal hands
  * adopt the full equipment grip frame, and wrist twist is distributed into
  * the forearm under anatomical budgets. Without it the controller keeps the
- * legacy fixed-curl fallback used by procedural instances and older tests.
+ * fixed-curl fallback used by instances whose sport layer does not yet supply
+ * a geometry contract.
  */
 export interface ReplayV4HandGripContract extends HandGripSurface {
   /** Base thumb opposition (rad) bringing the thumb across the channel. */
   readonly thumbOppose: number;
+  /** Far-side enclosure for palm-supported grips such as brake hoods. */
+  readonly wrapFingerStages?: boolean;
 }
 
 /**
@@ -1349,8 +1351,8 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // `solveHandGripClosure`), and the per-frame hot path only applies the
     // cached rotations.
     //
-    // No sport supplies a contract in this layer, so production still runs
-    // the legacy curl table; the sport layers above wire `gripContract`.
+    // Each sport layer supplies its own surface contract; the controller
+    // remains sport-neutral and only executes the requested closure policy.
     const contract = options.gripContract;
     const handLongAxes = new Map<-1 | 1, THREE.Vector3>();
     if (contract && helpers.length === REPLAY_V4_HAND_HELPER_NAMES.length) {
@@ -1366,6 +1368,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
           side,
           surface: contract,
           thumbOppose: contract.thumbOppose,
+          wrapFingerStages: contract.wrapFingerStages,
         });
         for (const pose of closure.poses) {
           solved.set(pose.helper, { flex: pose.flex, oppose: pose.oppose });
@@ -1990,22 +1993,6 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     if (this.usesSharedJointTarget(chain)) {
       chain.jointTarget.getWorldPosition(this.bendHint);
       this.bendHint.sub(this.rootWorld);
-      if (!chain.isLeg && this.options.sport === "rower") {
-        const proximal = this.rootWorld.distanceTo(this.middleWorld);
-        const distal = this.middleWorld.distanceTo(this.effectorWorld);
-        const chord = this.rootWorld.distanceTo(this.effectorWorld);
-        const authority = rowerElbowPlaneAuthority(rowerElbowFlexion(chord, proximal, distal));
-        if (authority < 1) {
-          this.currentDirection.copy(this.middleWorld).sub(this.rootWorld);
-          const markerLength = this.bendHint.length();
-          const clipLength = this.currentDirection.length();
-          if (markerLength > 1e-6 && clipLength > 1e-6) {
-            this.bendHint
-              .multiplyScalar(authority / markerLength)
-              .addScaledVector(this.currentDirection, (1 - authority) / clipLength);
-          }
-        }
-      }
     } else {
       this.bendHint.copy(this.middleWorld).sub(this.rootWorld);
     }
@@ -2098,7 +2085,9 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         this.solvePositionTowardTarget(chain, proximalLength, distalLength);
         this.root.updateMatrixWorld(true);
       }
-      if (this.solvedGripPoses) this.distributeSkiElbowTwist(chain);
+      if (this.options.sport === "skierg" && this.solvedGripPoses) {
+        this.distributeSkiElbowTwist(chain);
+      }
     }
   }
 

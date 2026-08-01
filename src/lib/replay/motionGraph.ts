@@ -477,8 +477,8 @@ function sampleRower(timing: MotionTiming, pose: StrokePose): RowerMotionGraph {
   // softly long arms, then the late draw brings the handle into the finish.
   // The draw window is the single authored velocity profile for the arm
   // pull: the legs are fully driven by 0.56 of the drive and the knees are
-  // flat, so opening the window at 0.64 puts the *visible* flexion onset
-  // (the C2 head hides the first ~12% of the ramp) near 0.68–0.72 of the
+  // flat, so opening the window at 0.68 puts the *visible* flexion onset
+  // (the C2 head hides the first ~12% of the ramp) near 0.72–0.76 of the
   // drive and keeps the cruise below ~10° of elbow travel per 60 fps frame
   // at 28 spm, instead of the former 0.78–0.995 window whose renderer-side
   // smoothstep re-compressed the visible pull into ~3 frames. cruiseRamp is
@@ -490,7 +490,7 @@ function sampleRower(timing: MotionTiming, pose: StrokePose): RowerMotionGraph {
   // closer to the chest than the pre-rework path did), still C2 at the
   // finish plateau.
   const arms = add(
-    cruiseRamp(cycle, drive * 0.64, drive * 0.995),
+    cruiseRamp(cycle, drive * 0.68, drive * 0.995),
     scale(quinticRamp(cycle, drive, drive + recovery * 0.3), -1),
   );
   const handle = add(scale(legs, 0.42), scale(torso, 0.32), scale(arms, 0.26));
@@ -1177,7 +1177,7 @@ function sampleRowerInto(pose: StrokePose, output: RowerMotionGraph): void {
   );
   // Legs → body → arms: keep the arms softly long until the hands clear
   // the knee envelope, then expose the late draw in both fallback and V4 rigs.
-  cruiseRampInto(curves.rowArms, cycle, drive * 0.64, drive * 0.995);
+  cruiseRampInto(curves.rowArms, cycle, drive * 0.68, drive * 0.995);
   quinticRampInto(curves.rowArmRecovery, cycle, drive, drive + recovery * 0.3);
   combine2Into(curves.rowArms, curves.rowArms, 1, curves.rowArmRecovery, -1);
   combine3Into(curves.rowHandle, curves.rowLegs, 0.42, curves.rowTorso, 0.32, curves.rowArms, 0.26);

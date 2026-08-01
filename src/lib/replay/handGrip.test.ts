@@ -10,12 +10,16 @@ import {
   handChannelCentre,
   handCurlAxis,
   handCurlAxisThumbward,
+  handPalmNormalOut,
   orientHandToGripChannel,
+  refineGripSpinForWrist,
+  refineGripTiltForWrist,
   solveHandGripClosure,
   type HandDigitChain,
 } from "./handGrip";
 import { ROWER_SCULL_GRIP } from "./rowRig";
 import { SKI_POLE_GRIP_RADIUS } from "./skiEquipment";
+import { BIKE_RIG } from "./bikeRig";
 
 // Right-hand digit joints in hand-local rest space, composed from the sealed
 // contract's helper rest transforms (rowplay-athlete-v4.contract.json). Using
@@ -222,6 +226,42 @@ describe("solveHandGripClosure", () => {
     thumbEndAxial: ROWER_SCULL_GRIP.anchorFromEnd,
   };
 
+  it("cages the BikeErg hood with five bounded contacts", () => {
+    const radius = BIKE_RIG.handlebar.hood.radius;
+    const options = {
+      side: 1,
+      surface: { radius },
+      thumbOppose: 1.56,
+      wrapFingerStages: true,
+    } as const;
+    const closure = solveHandGripClosure(RIGHT_HAND_CHAINS, options);
+    expect(closure.contacts).toHaveLength(5);
+    const flesh = HAND_FIST_RADIUS - HAND_FIST_REFERENCE_GRIP_RADIUS;
+    for (const contact of closure.contacts) {
+      expect(contact.contact, `${contact.digit} reaches the hood`).toBe(true);
+      expect(contact.surfaceDistance, `${contact.digit} does not penetrate`).toBeGreaterThanOrEqual(
+        -0.0005,
+      );
+      expect(contact.surfaceDistance, `${contact.digit} remains on the hood`).toBeLessThan(0.004);
+      expect(
+        Math.abs(axisDistance(contact.tip, radius) - radius - flesh),
+        `${contact.digit} tip remains on the hood`,
+      ).toBeLessThan(0.004);
+      if (contact.digit !== "thumb") {
+        expect(
+          contact.segmentSurfaceDistance,
+          `${contact.digit} complete phalanges remain collision-bounded`,
+        ).toBeGreaterThanOrEqual(-0.0005);
+      }
+    }
+
+    const angles = closure.contacts.map((contact) => angleAroundAxis(contact.tip, radius));
+    expect(Math.max(...angles) - Math.min(...angles), "opposing angular enclosure").toBeGreaterThan(
+      Math.PI * 0.9,
+    );
+    expect(solveHandGripClosure(RIGHT_HAND_CHAINS, options)).toEqual(closure);
+  });
+
   it("closes every finger onto the scull rubber and the thumb onto its end", () => {
     const closure = solveHandGripClosure(RIGHT_HAND_CHAINS, {
       side: 1,
@@ -311,6 +351,15 @@ describe("solveHandGripClosure", () => {
       thumbOppose: 0.3,
     });
     expect(second.poses).toEqual(first.poses);
+    expect(
+      solveHandGripClosure(RIGHT_HAND_CHAINS, {
+        side: 1,
+        surface: scull,
+        thumbOppose: 0.3,
+        wrapFingerStages: false,
+      }),
+      "an omitted Bike-only mode keeps the established scull solve identical",
+    ).toEqual(first);
     for (const pose of first.poses) {
       expect(pose.flex).toBeGreaterThanOrEqual(0);
       expect(pose.flex, `${pose.helper} stays inside stage limits`).toBeLessThanOrEqual(1.93);
@@ -387,6 +436,38 @@ describe("orientHandToGripChannel", () => {
 
     expect(appliedAxis.dot(shaft)).toBeGreaterThan(0.9999);
     expect(appliedChannel.dot(oppositeRoll)).toBeGreaterThan(0.9999);
+  });
+});
+
+describe("grip wrist relief", () => {
+  it("bounds shaft spin while preserving the channel axis", () => {
+    const hand = new THREE.Object3D();
+    const shaft = new THREE.Vector3(0, 0, 1);
+    orientHandToGripChannel(
+      hand,
+      1,
+      ROWER_SCULL_GRIP.radius,
+      shaft,
+      new THREE.Vector3(0, -1, 0),
+      new THREE.Quaternion(),
+    );
+    const before = hand.quaternion.clone();
+    refineGripSpinForWrist(hand, 1, shaft, new THREE.Vector3(0, 1, 0), 0.2);
+    const rotation = before.angleTo(hand.quaternion);
+    expect(rotation).toBeGreaterThan(0);
+    expect(rotation).toBeLessThanOrEqual(0.2 + 1e-9);
+    expect(handCurlAxisThumbward(1).applyQuaternion(hand.quaternion).dot(shaft)).toBeGreaterThan(
+      0.9999,
+    );
+  });
+
+  it("tilts about the true palm normal without changing palm facing", () => {
+    const hand = new THREE.Object3D();
+    const before = handPalmNormalOut(1);
+    refineGripTiltForWrist(hand, 1, new THREE.Vector3(0, 1, 0), 0, 0.3);
+    const after = handPalmNormalOut(1).applyQuaternion(hand.quaternion);
+    expect(hand.quaternion.angleTo(new THREE.Quaternion())).toBeGreaterThan(0);
+    expect(before.angleTo(after)).toBeLessThan(1e-8);
   });
 });
 

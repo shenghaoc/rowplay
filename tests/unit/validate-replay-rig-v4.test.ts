@@ -9,7 +9,6 @@ import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import {
   disposeV4AthleteAsset,
   createV4AthleteAsset,
-  V4_FOREARM_DEFORMATION_HELPER_NAMES,
   V4_HAND_HELPER_NAMES,
 } from "../../src/lib/replay/rigV4";
 
@@ -46,16 +45,14 @@ describe("V4 GLB build validator", () => {
       "scripts/validate-replay-rig-v4.mjs",
       "static/replay-assets/rowplay-athlete-v4.glb",
     ]);
-    expect(stdout).toContain("57 bones (38 helpers)");
+    expect(stdout).toContain("51 bones (32 helpers)");
     expect(stdout).toContain("3 clips");
     // Production grip helpers must be present by exact name.
     const contract = await import("../../static/replay-assets/rowplay-athlete-v4.contract.json", {
       with: { type: "json" },
     });
     const helpers = contract.default?.bones?.helperNames ?? contract.bones?.helperNames;
-    expect([...helpers].sort()).toEqual(
-      [...V4_FOREARM_DEFORMATION_HELPER_NAMES, ...V4_HAND_HELPER_NAMES].sort(),
-    );
+    expect(helpers).toEqual([...V4_HAND_HELPER_NAMES]);
   });
 
   it("accepts a skinned visual helper while retaining semantic-only animation", async () => {
@@ -113,7 +110,7 @@ describe("V4 GLB build validator", () => {
         output,
         "--allow-reference-topology",
       ]);
-      expect(stdout).toContain("26 bones (7 helpers)");
+      expect(stdout).toContain("20 bones (1 helpers)");
       expect(stdout).toContain("3 clips");
     } finally {
       disposeV4AthleteAsset(asset);

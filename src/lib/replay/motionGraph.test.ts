@@ -251,13 +251,13 @@ describe("motionGraph", () => {
     );
   });
 
-  it("opens the RowErg arm draw at 0.64 of the drive with one cruise profile", () => {
+  it("opens the RowErg arm draw at 0.68 of the drive with one cruise profile", () => {
     const drive = poseAt("rower", 0).driveFrac;
     // Arms stay long until the window opens…
-    expect(sampleRowerMotionGraph(poseAt("rower", drive * 0.63)).body.armDraw.value).toBe(0);
+    expect(sampleRowerMotionGraph(poseAt("rower", drive * 0.67)).body.armDraw.value).toBe(0);
     // …the channel is live shortly after…
     expect(
-      sampleRowerMotionGraph(poseAt("rower", drive * 0.68)).body.armDraw.value,
+      sampleRowerMotionGraph(poseAt("rower", drive * 0.72)).body.armDraw.value,
     ).toBeGreaterThan(0.01);
     // …and the draw completes with the drive.
     expect(
@@ -285,7 +285,7 @@ describe("motionGraph", () => {
   });
 
   it("gives the visible draw a readable duration at stroke rates 24–36", () => {
-    // The 0.64–0.995 drive window in seconds at each rate. The visible
+    // The 0.68–0.995 drive window in seconds at each rate. The visible
     // flexion onset trails the window head slightly (C2 ease), so the full
     // window must clear the readability targets with margin: ≥ 0.2 s at
     // 28–32 spm and ≥ 0.18 s at 36 spm.
@@ -296,7 +296,7 @@ describe("motionGraph", () => {
       [36, 0.18],
     ] as const) {
       const pose = fallbackStrokePose("rower", 0.25 * TAU, rate);
-      const windowSeconds = (0.995 - 0.64) * pose.driveFrac * pose.strokeSeconds;
+      const windowSeconds = (0.995 - 0.68) * pose.driveFrac * pose.strokeSeconds;
       expect(windowSeconds, `draw window at ${rate} spm`).toBeGreaterThanOrEqual(minimumSeconds);
     }
   });
@@ -323,7 +323,7 @@ describe("motionGraph", () => {
     // authored windows live in sampleRowerMotionGraph. A retimed arm-draw
     // window that only landed in one of them survived the sparse mirror grid
     // below and shipped a 0.78-of-drive pull to the renderer while every
-    // channel-level test read 0.64. Dense equality over the full cycle at
+    // channel-level test read 0.68. Dense equality over the full cycle at
     // several rates makes the two samplers a single source of truth.
     const scratch = createRowerMotionGraphScratch();
     for (const rate of [24, 30, 36]) {

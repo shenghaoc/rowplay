@@ -68,19 +68,17 @@ closure only after the authoritative palm contact solve, so RowErg sculls,
 SkiErg grips, and BikeErg hoods remain fixed while the visible fingers close
 onto them.
 
-**Closure ceiling (known limitation).** `solveHandGripClosure` stops each finger
-stage at its first contact, so a finger comes to rest on the surface it met
-rather than continuing around the shaft. Where the palm sits *on top* of the
-equipment — the BikeErg hood — the proximal phalanx meets the upper surface
-immediately and the fingertips settle 12-24 mm above the hood core instead of
-passing its inboard face. The digits are genuinely in contact and carry the
-hand, but they do not cage the hood from three sides. This is the shared
-closure model, not a per-sport defect: the SkiErg fist solves bit-identical
-digit distances (index/middle 0.0000, ring 0.0020, pinky 0.0062 m). Letting
-fingers curl past first contact would change the approved RowErg and SkiErg
-grips too, so it is deliberately out of scope for the BikeErg hood layer and
-belongs to a closure-model change with its own visual re-approval. The opposing
-thumb *is* seated: it lands on the hood body and hooks beneath the core.
+**Two explicit closure policies.** The established RowErg and SkiErg contracts
+retain the sequential first-contact solve that their approved poses were fitted
+against. BikeErg opts into a final-pose enclosure search across the three
+bounded finger stages: every candidate is checked against the complete
+downstream chain, may compress the analytic surface by at most 0.5 mm, and must
+land both the chain and fingertip inside the 4 mm contact band. This lets a palm
+rest on top of the hood while fingers reach its far-side surface and the
+opposing thumb hooks underneath. The opt-in is part of the sport's grip contract, so it
+cannot alter RowErg or SkiErg closure. The analytic hood surface uses the
+rendered 36 mm body's true 18 mm half-section rather than its 16 mm corner
+rounding, keeping contact and visible geometry on one contract.
 
 The filename is versioned. An incompatible slot or coordinate-contract change
 requires a new versioned filename and corresponding loader contract.

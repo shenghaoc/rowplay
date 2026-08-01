@@ -1,0 +1,44 @@
+{
+  "schema": "rowplay.replay.ski-grip.premerge-qa",
+  "capturedOn": "2026-08-02",
+  "auditedSourceCommit": "58b41caeafd232a0d93957ffcd5d74d6f29c7c47",
+  "captureSurface": "Codex in-app browser",
+  "backend": "WEBGPU",
+  "quality": "ultra",
+  "browserConsoleErrors": [],
+  "evidence": [
+    {
+      "file": "ski-high-reach-desktop.png",
+      "source": "http://127.0.0.1:5197/replay/1003?qa=athlete-visual&athleteCamera=grip",
+      "seconds": 0.1,
+      "viewport": { "width": 1440, "height": 1024 },
+      "sha256": "b3ba2f87d6e863d57ec37389e9cc4bc9e768f6a122abf644ad604a206fd45954"
+    },
+    {
+      "file": "ski-loaded-press-desktop.png",
+      "source": "http://127.0.0.1:5197/replay/1003?qa=athlete-visual&athleteCamera=grip",
+      "seconds": 0.5,
+      "viewport": { "width": 1440, "height": 1024 },
+      "sha256": "435725504a3acbeeee42f83f8914423aa375ec92bb07927e7016ce89e049fa65"
+    },
+    {
+      "file": "ski-high-reach-mobile.png",
+      "source": "http://127.0.0.1:5197/replay/1003?qa=athlete-visual&athleteCamera=close",
+      "seconds": 0.1,
+      "viewport": { "width": 390, "height": 844 },
+      "sha256": "2e6606f4563c99169d793cf53f3fb3d13d7a64e0c985be5ee58ff143d3de2db8"
+    },
+    {
+      "file": "ski-loaded-press-mobile.png",
+      "source": "http://127.0.0.1:5197/replay/1003?qa=athlete-visual&athleteCamera=close",
+      "seconds": 0.5,
+      "viewport": { "width": 390, "height": 844 },
+      "sha256": "ce240fb2a9b8900876bada2a676ede9009e0fb49b3148dfefc53e663162f5237"
+    }
+  ],
+  "acceptance": {
+    "desktopGripClosure": "Both hands visibly enclose the pole shafts at high reach and loaded press.",
+    "mobileComposition": "The ordinary close camera keeps the athlete and poles legible without horizontal overflow; 3D, quality, playback, seek, and speed controls remain usable.",
+    "limitations": "The local temporary-worktree dev server could not serve repository-external symlinked font files, so these frames validate geometry, responsive composition, and controls rather than production font rendering."
+  }
+}
