@@ -2847,21 +2847,7 @@ describe("CourseRenderer3D", () => {
         // bounded technique envelopes rather than pretending to reproduce one
         // athlete's measured joint path.
         for (const cycle of [
-          0.02,
-          0.11,
-          0.24,
-          0.29,
-          0.34,
-          0.44,
-          0.52,
-          0.68,
-          0.7,
-          0.72,
-          0.74,
-          0.76,
-          0.78,
-          0.8,
-          0.97,
+          0.02, 0.11, 0.24, 0.29, 0.34, 0.44, 0.52, 0.68, 0.7, 0.72, 0.74, 0.76, 0.78, 0.8, 0.97,
         ]) {
           renderer.render(makeSportState("skierg", cycle, 200 + cycle * 8), false);
           const { avatar, instance } = v4Lane(renderer);
