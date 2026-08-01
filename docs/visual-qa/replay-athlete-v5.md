@@ -172,8 +172,9 @@ fresh WebGPU/Ultra catch, finish, front, and mobile acceptance is documented in
 The final stacked layer keeps the same hood contacts while a Bike-only,
 collision-bounded closure mode carries all four fingertips across the 36 mm
 hood body and hooks the opposing thumb underneath. RowErg and SkiErg remain on
-their approved closure paths. Fresh WebGPU/Ultra desktop and mobile evidence is
-documented in [BikeErg geometry-aware grip acceptance](replay-bike-grip.md).
+their approved closure paths. Fresh WebGPU/Ultra desktop macro, crank-extreme,
+and seated-support evidence is documented in
+[BikeErg geometry-aware grip acceptance](replay-bike-grip.md).
 
 ### BikeErg equipment and seated fit — 2026-07-25
 
