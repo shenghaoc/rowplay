@@ -49,8 +49,6 @@ import {
   HUMAN_KIT_DARK,
   HUMAN_SKIN,
   SEGMENT_DIR,
-  SKI_PALM_TILT,
-  SKI_PALM_TILT_COMFORT,
   STATIC_AVATAR_MOTION,
   accentEquipmentMaterial,
   accentMaterial,
@@ -78,6 +76,22 @@ import {
 } from "./renderer3dAvatarKit";
 
 export const HUMAN_NORDIC_BOOT = 0x1a1f24;
+/**
+ * How far the pole may ride diagonally across the palm (rotation about the
+ * palm normal) to keep the hand's long axis near the forearm line. Real
+ * double-pole grips sit diagonal at the high reach; without this freedom the
+ * square-across-the-fist channel demanded ~130° of hand-vs-forearm
+ * reorientation and linear-blend skinning tore the wrist ring open.
+ */
+export const SKI_PALM_TILT = 0.65;
+/**
+ * Hand-long-axis-vs-forearm misalignment (about the palm normal) a wrist
+ * carries comfortably without any diagonal-grip relief. Below this the
+ * closed fist stays exactly on its authored square channel; only the excess
+ * beyond it is tilted away, up to SKI_PALM_TILT.
+ */
+export const SKI_PALM_TILT_COMFORT = 1.15;
+
 /**
  * A race-classic needle ski: long thin runner, mild sidecut, and a gradual
  * raised tip. Width is the maximum shovel width; waist sits slightly inside.

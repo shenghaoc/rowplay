@@ -12,7 +12,13 @@ import {
   humanMat,
   placeSegmentCoordinates,
 } from "./renderer3dAvatarKit";
-import { CourseRenderer3D } from "./renderer3d";
+import {
+  CourseRenderer3D,
+  ROWER_PALM_TILT,
+  ROWER_PALM_TILT_COMFORT,
+  SKI_PALM_TILT,
+  SKI_PALM_TILT_COMFORT,
+} from "./renderer3d";
 
 const SOURCE = readFileSync(new URL("./renderer3dAvatarKit.ts", import.meta.url), "utf8");
 
@@ -41,6 +47,20 @@ describe("renderer3dAvatarKit layering", () => {
     // instead, so the two can never disagree.
     expect(CourseRenderer3D.LOOP_METERS).toBe(COURSE_LOOP_METERS);
     expect(COURSE_LOOP_METERS).toBe(1000);
+  });
+
+  it("leaves sport-specific grip policy in the owning sport modules", () => {
+    for (const sportPolicy of [
+      "ROWER_PALM_TILT",
+      "ROWER_PALM_TILT_COMFORT",
+      "SKI_PALM_TILT",
+      "SKI_PALM_TILT_COMFORT",
+    ]) {
+      expect(SOURCE, `avatar kit must not own ${sportPolicy}`).not.toContain(sportPolicy);
+    }
+    // The stable renderer entry point still exposes the established API.
+    expect([ROWER_PALM_TILT, ROWER_PALM_TILT_COMFORT]).toEqual([0.75, 0.3]);
+    expect([SKI_PALM_TILT, SKI_PALM_TILT_COMFORT]).toEqual([0.65, 1.15]);
   });
 
   it("owns its scratch vectors as shared singletons", () => {

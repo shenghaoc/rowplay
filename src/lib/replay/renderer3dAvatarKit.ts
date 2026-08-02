@@ -370,32 +370,6 @@ export const GRIP_ROLL_SCRATCH = new THREE.Vector3();
 export const GRIP_LONG_SCRATCH = new THREE.Vector3();
 export const GRIP_SPIN_SCRATCH = new THREE.Quaternion();
 /**
- * How far the pole may ride diagonally across the palm (rotation about the
- * palm normal) to keep the hand's long axis near the forearm line. Real
- * double-pole grips sit diagonal at the high reach; without this freedom the
- * square-across-the-fist channel demanded ~130° of hand-vs-forearm
- * reorientation and linear-blend skinning tore the wrist ring open.
- */
-export const SKI_PALM_TILT = 0.65;
-/**
- * Sculling diagonal-hold relief. The oar handle sweeps ~50-70° from lateral
- * through the stroke, and the fist's channel axis is pinned 109.4° from the
- * hand's long axis — so a square hold forces 40-60° of wrist bend. Real
- * scullers keep the wrist flat and let the handle ride diagonally across the
- * palm instead; the tilt models that with the palm facing unchanged. Comfort
- * is the flat-wrist target (Concept2: "wrists should be flat"), the budget is
- * how diagonal the handle may sit in the palm.
- */
-export const ROWER_PALM_TILT = 0.75;
-export const ROWER_PALM_TILT_COMFORT = 0.3;
-/**
- * Hand-long-axis-vs-forearm misalignment (about the palm normal) a wrist
- * carries comfortably without any diagonal-grip relief. Below this the
- * closed fist stays exactly on its authored square channel; only the excess
- * beyond it is tilted away, up to SKI_PALM_TILT.
- */
-export const SKI_PALM_TILT_COMFORT = 1.15;
-/**
  * Stable two-bone arm bend direction for equipment-locked hands.
  *
  * A fixed world hint (pure lateral / pure aft) flips elbows through the body

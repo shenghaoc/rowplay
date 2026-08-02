@@ -42,8 +42,6 @@ import {
   HUMAN_KIT_DARK,
   HUMAN_SHOE,
   HUMAN_SKIN,
-  ROWER_PALM_TILT,
-  ROWER_PALM_TILT_COMFORT,
   STATIC_AVATAR_MOTION,
   accentEquipmentMaterial,
   accentMaterial,
@@ -71,6 +69,18 @@ import {
   type AvatarMotionCues,
   type BoatDetail,
 } from "./renderer3dAvatarKit";
+
+/**
+ * Sculling diagonal-hold relief. The oar handle sweeps ~50-70° from lateral
+ * through the stroke, and the fist's channel axis is pinned 109.4° from the
+ * hand's long axis — so a square hold forces 40-60° of wrist bend. Real
+ * scullers keep the wrist flat and let the handle ride diagonally across the
+ * palm instead; the tilt models that with the palm facing unchanged. Comfort
+ * is the flat-wrist target (Concept2: "wrists should be flat"), the budget is
+ * how diagonal the handle may sit in the palm.
+ */
+export const ROWER_PALM_TILT = 0.75;
+export const ROWER_PALM_TILT_COMFORT = 0.3;
 
 export function addRowerBoatQualityDetails(
   boatVisual: THREE.Group,

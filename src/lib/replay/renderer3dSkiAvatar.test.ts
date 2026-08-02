@@ -6,6 +6,13 @@ import { fallbackStrokePose } from "./strokeModel";
 
 const SOURCE = readFileSync(new URL("./renderer3dSkiAvatar.ts", import.meta.url), "utf8");
 
+function snapshotTargets(avatar: ReturnType<typeof makeSkierAvatar>): number[] {
+  return Object.values(avatar.v4Targets).flatMap((target) => [
+    ...target.position.toArray(),
+    ...target.quaternion.toArray(),
+  ]);
+}
+
 describe("renderer3dSkiAvatar layering", () => {
   it("builds without importing the course renderer or a sibling sport", () => {
     // Each sport avatar sits directly on `renderer3dAvatarKit` and its own
@@ -63,18 +70,29 @@ describe("makeSkierAvatar", () => {
   });
 
   it("keeps live and ghost rigs independent", () => {
-    // Sampling scratch is retained per avatar; a shared graph would let the
-    // ghost lane's phase leak into the live athlete.
+    // Observe the phase-dependent contact rig, not the avatar root: the course
+    // renderer owns root placement, so `group.position` remains unchanged even
+    // when the skier's mutable motion state is wrong.
+    const control = makeSkierAvatar(0x3366aa, true, 1, 16, "high");
     const live = makeSkierAvatar(0x3366aa, true, 1, 16, "high");
     const ghost = makeSkierAvatar(0x996633, false, 0.4, 16, "high");
     expect(live.group).not.toBe(ghost.group);
     expect(live.v4Targets).not.toBe(ghost.v4Targets);
-    const pose = fallbackStrokePose("skierg", 0.25 * Math.PI * 2);
-    live.animate(0.25, false, pose, 10);
-    ghost.animate(0.75, false, fallbackStrokePose("skierg", 0.75 * Math.PI * 2), 90);
-    live.animate(0.25, false, pose, 10);
-    const livePosition = live.group.position.clone();
+
+    const livePose = fallbackStrokePose("skierg", 0.25 * Math.PI * 2);
+    const ghostPose = fallbackStrokePose("skierg", 0.75 * Math.PI * 2);
+    control.animate(0.25, false, livePose, 10);
+    const expectedLiveTargets = snapshotTargets(control);
+    control.animate(0.75, false, ghostPose, 90);
+    expect(snapshotTargets(control)).not.toEqual(expectedLiveTargets);
+
+    live.animate(0.25, false, livePose, 10);
+    ghost.animate(0.75, false, ghostPose, 90);
+    live.animate(0.25, false, livePose, 10);
+    expect(snapshotTargets(live)).toEqual(expectedLiveTargets);
+
+    const liveTargetsBeforeGhost = snapshotTargets(live);
     ghost.animate(0.1, false, fallbackStrokePose("skierg", 0.1 * Math.PI * 2), 5);
-    expect(live.group.position.distanceTo(livePosition)).toBeLessThan(1e-9);
+    expect(snapshotTargets(live)).toEqual(liveTargetsBeforeGhost);
   });
 });

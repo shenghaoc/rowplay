@@ -37,18 +37,10 @@ import {
   type ReplayV4HandGripContract,
 } from "./renderer3dV4Motion";
 import { SKI_POLE_GRIP_RADIUS } from "./skiEquipment";
-import { makeRowerAvatar } from "./renderer3dRowAvatar";
-import { makeSkierAvatar } from "./renderer3dSkiAvatar";
+import { makeRowerAvatar, ROWER_PALM_TILT, ROWER_PALM_TILT_COMFORT } from "./renderer3dRowAvatar";
+import { makeSkierAvatar, SKI_PALM_TILT, SKI_PALM_TILT_COMFORT } from "./renderer3dSkiAvatar";
 import { bikeChainPath, bikeSeatContract, makeBikeAvatar } from "./renderer3dBikeAvatar";
-import {
-  COURSE_LOOP_METERS,
-  ROWER_PALM_TILT,
-  ROWER_PALM_TILT_COMFORT,
-  SKI_PALM_TILT,
-  SKI_PALM_TILT_COMFORT,
-  finalizeAvatar,
-  type Avatar,
-} from "./renderer3dAvatarKit";
+import { COURSE_LOOP_METERS, finalizeAvatar, type Avatar } from "./renderer3dAvatarKit";
 
 export { SKI_PALM_TILT, SKI_PALM_TILT_COMFORT, ROWER_PALM_TILT, ROWER_PALM_TILT_COMFORT };
 export { bikeChainPath };
