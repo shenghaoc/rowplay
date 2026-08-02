@@ -1,0 +1,176 @@
+{
+  "schema": "rowplay.replay.front-portrait.qa",
+  "capturedOn": "2026-08-02",
+  "baseCommit": "f481629641dd3e452efbde466e7ba72b0766a6a0",
+  "sourceState": "working tree at baseCommit (post renderer3d module split) plus the athlete-front portrait fix",
+  "captureSurface": "Playwright headless Chromium against `wrangler dev` on the production build",
+  "backend": "WEBGL",
+  "requestedQuality": "ultra",
+  "effectiveQuality": "high",
+  "backendNote": "Headless Chromium exposes no WebGPU adapter, so these frames record effective High/WebGL. Camera framing is solved identically on both backends; the Ultra/WebGPU material evidence lives with the athlete-v5 and per-grip notes.",
+  "browserConsoleErrors": [],
+  "evidence": [
+    {
+      "file": "poses/before-ski-front-0-05.jpg",
+      "state": "before",
+      "sport": "skierg",
+      "source": "http://127.0.0.1:8871/replay/1003?qa=athlete-visual&athleteCamera=front",
+      "seconds": 0.05,
+      "camera": "front",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 421
+      },
+      "note": "Reported failure: venue fills the frame and only the crown of the head is visible. Captured from the pre-fix build at the original 54808635 base; the framing defect predates the module split.",
+      "sha256": "55b115349fd3a925560e3b450d7c3cb83c2d723f1743c1930843554e90d71f9e"
+    },
+    {
+      "file": "poses/before-ski-front-0-5.jpg",
+      "state": "before",
+      "sport": "skierg",
+      "source": "http://127.0.0.1:8871/replay/1003?qa=athlete-visual&athleteCamera=front",
+      "seconds": 0.5,
+      "camera": "front",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 421
+      },
+      "note": "Reported failure at mid-drive: the surging athlete has passed the lens entirely. Captured from the pre-fix build at the original 54808635 base; the framing defect predates the module split.",
+      "sha256": "f018a45839ba3f3613bc57379af7f5f21ed13d27acf5925b98b2c57b7f1b3004"
+    },
+    {
+      "file": "poses/ski-front-0-05.jpg",
+      "state": "after",
+      "sport": "skierg",
+      "source": "http://127.0.0.1:8871/replay/1003?qa=athlete-visual&athleteCamera=front",
+      "seconds": 0.05,
+      "camera": "front",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 421
+      },
+      "note": "High reach: head centred, both shoulders inside the frame.",
+      "sha256": "f3c6faf343087d8904cf2b37dbad2b5cc12c97bcfd2280b13ee8cef290337b44"
+    },
+    {
+      "file": "poses/ski-front-0-5.jpg",
+      "state": "after",
+      "sport": "skierg",
+      "source": "http://127.0.0.1:8871/replay/1003?qa=athlete-visual&athleteCamera=front",
+      "seconds": 0.5,
+      "camera": "front",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 421
+      },
+      "note": "Loaded press: the folded standing athlete stays framed through the surge.",
+      "sha256": "1aa1ee5510a4be59ea5e5325c5729a926f0f4c49f090915a7153f99eeeaedce9"
+    },
+    {
+      "file": "poses/row-front-0-8.jpg",
+      "state": "after",
+      "sport": "rower",
+      "source": "http://127.0.0.1:8871/replay/1001?qa=athlete-visual&athleteCamera=front",
+      "seconds": 0.8,
+      "camera": "front",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 421
+      },
+      "note": "Seated RowErg finish at the same portrait rule; shoulders no longer run off the bottom edge.",
+      "sha256": "7776e87d34b034b2b59d009512dac4a51153113d8eabb8d9c9a67f706fb400e9"
+    },
+    {
+      "file": "poses/bike-front-0-72.jpg",
+      "state": "after",
+      "sport": "bike",
+      "source": "http://127.0.0.1:8871/replay/1004?qa=athlete-visual&athleteCamera=front",
+      "seconds": 0.72,
+      "camera": "front",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 421
+      },
+      "note": "Seated BikeErg at the same portrait rule.",
+      "sha256": "163c320abb92d3c49cc2f69dc3ac33cf8ea896ca8f3203da482af09b0a8d8781"
+    },
+    {
+      "file": "poses/ski-normal-0-5.jpg",
+      "state": "unchanged",
+      "sport": "skierg",
+      "source": "http://127.0.0.1:8871/replay/1003?qa=athlete-visual&athleteCamera=normal",
+      "seconds": 0.5,
+      "camera": "normal",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 421
+      },
+      "note": "Production chase view; unchanged by this fix.",
+      "sha256": "b0f6cac8243d5a1ad8b399887ccceac4c9597c8a660db9c08f9c478382940265"
+    },
+    {
+      "file": "poses/ski-close-0-5.jpg",
+      "state": "unchanged",
+      "sport": "skierg",
+      "source": "http://127.0.0.1:8871/replay/1003?qa=athlete-visual&athleteCamera=close",
+      "seconds": 0.5,
+      "camera": "close",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 421
+      },
+      "note": "Diagnostic close view; unchanged by this fix.",
+      "sha256": "9a5a8bf52ff648baea436834c0776fbbf3802456091ff79fd35df71ed25ee1d5"
+    },
+    {
+      "file": "poses/ski-grip-0-5.jpg",
+      "state": "unchanged",
+      "sport": "skierg",
+      "source": "http://127.0.0.1:8871/replay/1003?qa=athlete-visual&athleteCamera=grip",
+      "seconds": 0.5,
+      "camera": "grip",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "stage": {
+        "width": 1112,
+        "height": 421
+      },
+      "note": "Grip close-up, the accepted PR #179/#193 capture path; unchanged by this fix.",
+      "sha256": "6258abce90b58ec010b145f0762aa84f652beb82194af5f463be1b73db772b15"
+    }
+  ]
+}
