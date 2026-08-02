@@ -183,3 +183,19 @@ figure, readability, and motion specs.
     and collar proportions, set the fixed pins at real rigging height (~0.51 m
     / ~14 cm above the seat) so blade burial drives anatomical handle height,
     and select the forward catch branch before the chest-directed draw
+
+- [x] **15. Split 3D avatar construction into acyclic sport modules**
+  - [x] Keep course, camera, environment, quality, asset installation, and frame
+    orchestration in `renderer3d.ts` while moving shared avatar primitives to
+    `renderer3dAvatarKit.ts` and construction into one module per sport
+  - [x] Keep RowErg and SkiErg grip-policy constants in their owning sport
+    modules, preserve the existing `renderer3d` re-exports, and centralize the
+    course lap value without a sport-to-controller import cycle
+  - [x] Add co-located boundary and construction tests for the kit and all three
+    sport modules without weakening the existing renderer regression suite
+  - [x] Replace root-position lane assertions with phase-dependent contact-rig
+    snapshots around interleaved live/ghost animation
+  - [x] Exercise BikeErg's effective Low/Medium/High/Ultra body-segment inputs
+    and prove that each tier builds a distinct geometry budget
+  - [x] Run focused renderer tests, the full repository gate, locale validation,
+    browser smoke, `git diff --check`, and exact-head CI

@@ -266,6 +266,35 @@ slot application, live/ghost independence, finite bounds, exact contacts,
 backend fallback, reduced motion, disposal, and the allocation-free hot path.
 They do not establish aesthetic success.
 
+### Renderer module boundaries
+
+`renderer3d.ts` remains the course controller and stable public entry point. It
+owns scene, camera, venue, quality, asset installation, and per-frame
+orchestration, but delegates athlete and machine construction through this
+acyclic layer:
+
+```text
+renderer3d.ts -> renderer3d{Row,Ski,Bike}Avatar.ts -> renderer3dAvatarKit.ts
+             └────────────────────────────────────> renderer3dAvatarKit.ts
+```
+
+The kit owns only contracts and mechanics shared by multiple sports: the
+`Avatar` interface, material and geometry primitives, limb placement, and
+scratch objects. RowErg scull-tilt policy stays with the row avatar; SkiErg
+pole-tilt policy stays with the ski avatar. `renderer3d.ts` re-exports those
+constants so existing callers keep the same API. The shared
+`COURSE_LOOP_METERS` value is the narrow exception needed by both the controller
+and SkiErg's course-space pole solve; the controller exposes the same value as
+`CourseRenderer3D.LOOP_METERS`.
+
+The co-located sport tests validate observable isolation rather than root-node
+identity alone. They sample a phase-dependent set of pelvis, hand, elbow, foot,
+and knee transforms on an independent control, interleave live and ghost phases,
+then require the live rig to reproduce the control and remain unchanged while
+the ghost advances. BikeErg construction additionally runs the controller's
+Low/Medium/High/Ultra body-segment ladder and verifies increasing, distinct
+geometry counts.
+
 Before publication, update the two public replay captures only from accepted
 final demo frames, update the repository visual-QA note, run the full repository
 gate and browser smoke path, and refresh the draft PR for its exact pushed SHA.
