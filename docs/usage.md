@@ -173,7 +173,10 @@ and outside the torso; both 2D and 3D keep the elbows softly open until the
 hands clear the knees, then keep the bent elbows behind the shoulders rather
 than pointing toward the handle or flaring into a horizontal goalpost. During
 the illustrated SkiErg plant, each rigid 1.37 m
-pole holds a deterministic course anchor while its hand remains on the grip.
+pole holds a deterministic course anchor while its hand remains on the grip;
+the individually articulated fingers close around the shaft with the thumb
+folded across the fist rather than extended up the pole, without moving the
+authoritative grip contact.
 The skier advances relative to that basket, releases it near the end of the
 short planted phase, lifts it through recovery, and approaches the next anchor
 without a vertical drop. The 3D elbow is constrained to the shared sagittal
