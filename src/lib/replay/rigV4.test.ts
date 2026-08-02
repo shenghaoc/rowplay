@@ -315,6 +315,62 @@ describe("V4 production skinned athlete", () => {
     }
   });
 
+  it("keeps SkiErg hand keys wrap-safe and mirror-consistent", () => {
+    // skiHandKeys are baked runtime samples with no in-repo generator, so the
+    // clip is the contract: (1) adjacent quaternion keys must stay within a
+    // half-turn (positive dot) — keys authored for the older pronation-target
+    // frames sat ~pi off in twist at the release and the wrist-twist
+    // redistribution wrapped the forearm in one sample; (2) the right-hand
+    // track must be the exact component mirror (x, -y, -z, w) of the left,
+    // which is what mirror() on XYZ Euler keys guarantees. Any manual
+    // re-sample that breaks either property fails here instead of on a
+    // rendered frame.
+    const asset = createV4AthleteAsset();
+    try {
+      const clip = asset.clips.skierg;
+      const handTrack = (side: "Left" | "Right") => {
+        const track = clip.tracks.find(
+          (candidate) => candidate.name === `v4Athlete.bones[v4${side}Hand].quaternion`,
+        );
+        if (!track) throw new Error(`missing v4${side}Hand rotation track`);
+        return track;
+      };
+      const left = handTrack("Left");
+      const right = handTrack("Right");
+      for (const track of [left, right]) {
+        for (let key = 4; key < track.values.length; key += 4) {
+          const dot =
+            track.values[key]! * track.values[key - 4]! +
+            track.values[key + 1]! * track.values[key - 3]! +
+            track.values[key + 2]! * track.values[key - 2]! +
+            track.values[key + 3]! * track.values[key - 1]!;
+          expect(
+            dot,
+            `${track.name} keys ${key / 4 - 1}->${key / 4} stay within a half-turn`,
+          ).toBeGreaterThan(0);
+        }
+      }
+      expect(right.values.length).toBe(left.values.length);
+      for (let key = 0; key < left.values.length; key += 4) {
+        expect(right.values[key], `mirror x at key ${key / 4}`).toBeCloseTo(left.values[key]!, 10);
+        expect(right.values[key + 1], `mirror y at key ${key / 4}`).toBeCloseTo(
+          -left.values[key + 1]!,
+          10,
+        );
+        expect(right.values[key + 2], `mirror z at key ${key / 4}`).toBeCloseTo(
+          -left.values[key + 2]!,
+          10,
+        );
+        expect(right.values[key + 3], `mirror w at key ${key / 4}`).toBeCloseTo(
+          left.values[key + 3]!,
+          10,
+        );
+      }
+    } finally {
+      disposeV4AthleteAsset(asset);
+    }
+  });
+
   it("exports a local three-clip GLB that round-trips with skin and contact extras", async () => {
     installFileReaderShim();
     const asset = createV4AthleteAsset();

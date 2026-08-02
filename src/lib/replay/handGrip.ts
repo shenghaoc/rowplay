@@ -172,6 +172,96 @@ export function handCurlAxisThumbward(side: number, out = new THREE.Vector3()) {
   return handCurlAxis(side, out).multiplyScalar(Math.sign(side) || 1);
 }
 
+/**
+ * Hand long axis — wrist origin toward the middle-finger root — measured from
+ * the sealed V4 helper rest transforms (right hand; x mirrors).
+ */
+export const HAND_LONG_AXIS = Object.freeze({ x: 0.926, y: 0.105, z: 0.363 } as const);
+
+export function handLongAxis(side: number, out = new THREE.Vector3()) {
+  const mirror = Math.sign(side) || 1;
+  return out.set(mirror * HAND_LONG_AXIS.x, HAND_LONG_AXIS.y, HAND_LONG_AXIS.z).normalize();
+}
+
+/**
+ * Outward palm normal measured from the shipped V4 bind geometry (right hand;
+ * x mirrors). This is distinct from `HAND_PALM_NORMAL_IN`, the construction
+ * ray used to seat a cylinder inside the hand.
+ */
+export const HAND_PALM_NORMAL_OUT = Object.freeze({
+  x: -0.1052,
+  y: -0.8513,
+  z: 0.514,
+} as const);
+
+export function handPalmNormalOut(side: number, out = new THREE.Vector3()) {
+  const mirror = Math.sign(side) || 1;
+  return out
+    .set(mirror * HAND_PALM_NORMAL_OUT.x, HAND_PALM_NORMAL_OUT.y, HAND_PALM_NORMAL_OUT.z)
+    .normalize();
+}
+
+const SPIN_LONG = new THREE.Vector3();
+const SPIN_FOREARM = new THREE.Vector3();
+const SPIN_QUAT = new THREE.Quaternion();
+
+/**
+ * Spend the grip frame's free spin about the shaft on wrist flatness, bounded
+ * so the sport-requested palm side remains authoritative.
+ */
+export function refineGripSpinForWrist(
+  hand: THREE.Object3D,
+  side: number,
+  shaftDir: THREE.Vector3,
+  forearmDir: THREE.Vector3,
+  maxPalmDeviation: number,
+): void {
+  const shaft = FRAME_TARGET.copy(shaftDir).normalize();
+  handLongAxis(side, SPIN_LONG).applyQuaternion(hand.quaternion);
+  SPIN_LONG.addScaledVector(shaft, -SPIN_LONG.dot(shaft));
+  SPIN_FOREARM.copy(forearmDir).addScaledVector(shaft, -forearmDir.dot(shaft));
+  if (SPIN_LONG.lengthSq() < 1e-8 || SPIN_FOREARM.lengthSq() < 1e-6) return;
+  SPIN_LONG.normalize();
+  SPIN_FOREARM.normalize();
+  const angle = Math.atan2(
+    FRAME_ROLL.crossVectors(SPIN_LONG, SPIN_FOREARM).dot(shaft),
+    SPIN_LONG.dot(SPIN_FOREARM),
+  );
+  const clamped = THREE.MathUtils.clamp(angle, -maxPalmDeviation, maxPalmDeviation);
+  if (Math.abs(clamped) < 1e-6) return;
+  hand.quaternion.premultiply(SPIN_QUAT.setFromAxisAngle(shaft, clamped));
+}
+
+/**
+ * Let a held shaft run diagonally across the palm to relieve remaining wrist
+ * bend. Rotation is about the true palm normal, so palm facing is preserved.
+ */
+export function refineGripTiltForWrist(
+  hand: THREE.Object3D,
+  side: number,
+  forearmDir: THREE.Vector3,
+  comfort: number,
+  maxTilt: number,
+  strength = 1,
+): void {
+  handPalmNormalOut(side, FRAME_TARGET).applyQuaternion(hand.quaternion).normalize();
+  handLongAxis(side, SPIN_LONG).applyQuaternion(hand.quaternion);
+  SPIN_LONG.addScaledVector(FRAME_TARGET, -SPIN_LONG.dot(FRAME_TARGET));
+  SPIN_FOREARM.copy(forearmDir).addScaledVector(FRAME_TARGET, -forearmDir.dot(FRAME_TARGET));
+  if (SPIN_LONG.lengthSq() < 1e-8 || SPIN_FOREARM.lengthSq() < 1e-6) return;
+  SPIN_LONG.normalize();
+  SPIN_FOREARM.normalize();
+  const angle = Math.atan2(
+    FRAME_ROLL.crossVectors(SPIN_LONG, SPIN_FOREARM).dot(FRAME_TARGET),
+    SPIN_LONG.dot(SPIN_FOREARM),
+  );
+  const excess = Math.max(0, Math.abs(angle) - comfort);
+  const clamped =
+    Math.sign(angle) * Math.min(excess, maxTilt) * THREE.MathUtils.clamp(strength, 0, 1);
+  if (Math.abs(clamped) < 1e-6) return;
+  hand.quaternion.premultiply(SPIN_QUAT.setFromAxisAngle(FRAME_TARGET, clamped));
+}
+
 /** One solved digit-stage rotation: rest × oppose × flex, as radians. */
 export interface HandDigitStagePose {
   readonly helper: string;

@@ -48,9 +48,11 @@ interpretation.
 RowErg runs through catch compression, leg-led acceleration, delayed body open,
 late arm draw after drive-side hand/knee clearance, hands-away, body-over, and
 slide. SkiErg uses a classic Nordic
-double-pole sequence: high reach, steep plant, early elbow load, core-led press,
-near-straight arms at pole-off, lifted recovery, and velocity-matched approach
-to the next plant. BikeErg
+double-pole sequence: high reach, steep plant with the flexed elbows hanging
+below the raised hands, core-led press driving the elbows down and back to
+finish behind the hips, soft-bend pole-off (long, never locked out),
+close-to-body lifted recovery, and
+velocity-matched approach to the next plant. BikeErg
 runs continuous opposed pedal loading with coordinated pelvis shift, shoulder
 counter-rotation, head stabilization, and ankle articulation.
 
@@ -119,9 +121,16 @@ Published on-snow measurements in
 place pole contact in roughly the first 26–29% of the cycle, with about an 80°
 pole at plant, 23° at pole-off, early elbow flexion, and near-extension at
 release. Those sources establish phase and flexion/extension landmarks rather
-than one universal 3D elbow vector; down-at-plant → rearward-under-load is the
-generic side-view animation contract inferred from those positions, not a
-claim about a recorded athlete's joint path.
+than one universal 3D elbow vector. The shipped contract is
+down-at-plant → rearward-under-load: the flexed elbow hangs below the
+up-forward arm chord at the plant, swings aft early in the press, and
+finishes behind the hips. An intermediate high-at-plant revision (elbows
+above the shoulder line, chosen to keep the pole-to-forearm angle near the
+neutral-wrist cone) was rejected on chase-camera review — it read as elbows
+pointing at the sky at the catch and winging sideways mid-press; the wrist
+relief layers absorb the pole-to-forearm difference instead. These are
+side-view animation contracts inferred from those positions, not claims
+about a recorded athlete's joint path.
 
 Those landmarks own both renderers. Canvas retains one outside two-bone
 intersection: the high forward grip places that branch below the shoulder at

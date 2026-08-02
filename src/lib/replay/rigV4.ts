@@ -1595,6 +1595,30 @@ function createRowCycleClip(): THREE.AnimationClip {
  * - FIS / cross-country double-poling coaching stills
  * - Concept2 SkiErg technique library
  */
+// Derived from the flat-wrist runtime frames (neutral-wrist pole carry +
+// palm-inward baseline + flat-wrist roll): each key is the runtime-corrected
+// hand orientation sampled at its key time, expressed in the forearm frame.
+// Keeping the baked pose within the runtime target's twist half-turn matters:
+// keys authored for the older pronation-target frames sat ~pi away in twist
+// at the release, and the wrist-twist redistribution wrapped there — the
+// forearm bone half-turned in a single sample.
+const skiHandKeys: readonly EulerKey[] = [
+  [-0.327644, -0.30426, 0.410913], // reach
+  [-0.313038, -0.235305, 0.517543], // peak
+  [-0.396587, -0.015651, 0.514104], // plant
+  [0.038871, 0.523524, 0.495186], // load-start
+  [0.745323, -0.097948, 0.462372], // load
+  [0.276639, -0.625955, 1.229759], // drive end
+  [0.205773, -0.402486, 0.962949], // deep press
+  [0.275039, -0.339887, 0.909449], // release-start
+  [0.259247, -0.302234, 0.880468], // release
+  [0.147841, -0.578248, 1.093246], // recover-low
+  [-0.056006, -0.354507, 0.989435], // recover-mid
+  [-0.089345, -0.453574, 0.813948], // recover-high
+  [0.029191, -0.628268, 0.860893], // pre-reach
+  [-0.327644, -0.30426, 0.410913], // loop — must equal reach for the cycle wrap
+];
+
 function createSkiCycleClip(): THREE.AnimationClip {
   // reach, peak, plant, load-start, load, drive-end, deep-press, release-start,
   // release, recover-low, recover-mid, recover-high, pre-reach, loop
@@ -1789,38 +1813,17 @@ function createSkiCycleClip(): THREE.AnimationClip {
       v4RightUpperArm: mirror(flipYaw(leftArm)),
       v4LeftForearm: leftForearm,
       v4RightForearm: mirror(leftForearm),
-      v4LeftHand: [
-        [0.03, 0.015, -0.04],
-        [0.025, 0.015, -0.035],
-        [0.02, 0.01, -0.03],
-        [0, 0.005, -0.01],
-        [-0.03, 0, 0.02],
-        [-0.06, -0.01, 0.04],
-        [-0.08, -0.015, 0.05],
-        [-0.05, -0.005, 0.03],
-        [-0.02, 0, 0.01],
-        [0, 0.005, -0.01],
-        [0.015, 0.01, -0.025],
-        [0.025, 0.012, -0.035],
-        [0.03, 0.015, -0.04],
-        [0.03, 0.015, -0.04],
-      ],
-      v4RightHand: mirror([
-        [0.03, 0.015, -0.04],
-        [0.025, 0.015, -0.035],
-        [0.02, 0.01, -0.03],
-        [0, 0.005, -0.01],
-        [-0.03, 0, 0.02],
-        [-0.06, -0.01, 0.04],
-        [-0.08, -0.015, 0.05],
-        [-0.05, -0.005, 0.03],
-        [-0.02, 0, 0.01],
-        [0, 0.005, -0.01],
-        [0.015, 0.01, -0.025],
-        [0.025, 0.012, -0.035],
-        [0.03, 0.015, -0.04],
-        [0.03, 0.015, -0.04],
-      ]),
+      // Hands authored on the pole-grip branch: forearm-local rotations
+      // measured from the runtime grip-channel target frame (thumb toward
+      // the grip top, palm inward, spin chosen for wrist continuity, tilt
+      // relieved) at each key's cycle, so the post-clip contact correction
+      // starts within interpolation error of the hold instead of a
+      // half-turn away. Derived with the staged SkiErg diagnosis harness
+      // (clip-forearm⁻¹ × target at v4-clip-in per key time); the former
+      // near-rest keys measured 65–113° of runtime hand correction at every
+      // phase — the source of the dragged, sideways-hinged wrist.
+      v4LeftHand: skiHandKeys,
+      v4RightHand: mirror(skiHandKeys),
       v4LeftUpperLeg: leftLeg,
       v4RightUpperLeg: mirror(leftLeg),
       v4LeftLowerLeg: lowerLeg,

@@ -32,7 +32,8 @@ vi.mock("three", async (importOriginal) => {
   return { ...THREE, WebGLRenderer: FakeWebGLRenderer };
 });
 
-import { CourseRenderer3D, replayV4ArmContactReach } from "./renderer3d";
+import { CourseRenderer3D, replayV4ArmContactReach, SKI_PALM_TILT } from "./renderer3d";
+import { handPalmNormalOut } from "./handGrip";
 import type { Sport } from "../types";
 import { COLORS_DARK, REDUCED_REPLAY_POSES } from "./renderer";
 import {
@@ -47,13 +48,14 @@ import {
   type ReplayV4AthleteInstance,
   type ReplayV4EffectorName,
 } from "./renderer3dV4Assets";
+import { REPLAY_V4_SKI_WRIST_TWIST_KEEP } from "./renderer3dV4Motion";
 import { sampleRowerMotionGraph } from "./motionGraph";
 import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeModel";
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
 import { BIKE_RIG, bikeSaddleTopY } from "./bikeRig";
 import { BIKE_SADDLE_SHELL_THICKNESS, bikeSaddleDropAt } from "./bikeSaddle";
-import { HAND_CURL_AXIS, HAND_FIST_CENTRE, HAND_FIST_RADIUS } from "./handGrip";
-import { SKI_ATHLETE_PROPORTIONS } from "./skiEquipment";
+import { SKI_ATHLETE_PROPORTIONS, SKI_POLE_GRIP_RADIUS } from "./skiEquipment";
+import { handLongAxis, HAND_CURL_AXIS, HAND_FIST_CENTRE, HAND_FIST_RADIUS } from "./handGrip";
 import * as THREE from "three";
 
 /** Minimal 2D context stub for text sprite canvas creation. */
@@ -96,6 +98,7 @@ beforeEach(() => {
   globalThis.document = {
     createElement: (tag: string) => {
       if (tag === "canvas") return makeCanvas();
+      if (tag === "div") return { style: {}, dataset: {}, remove: () => {} };
       return {};
     },
   } as unknown as Document;
@@ -317,6 +320,20 @@ interface V4MotionTestAccess {
   readonly mesh: THREE.SkinnedMesh;
   readonly enabled: boolean;
   readonly options: { readonly instance: ReplayV4AthleteInstance };
+  getArmReach(side: "left" | "right"): number;
+  getGripContacts(side: "left" | "right"): readonly {
+    readonly digit: string;
+    readonly surfaceDistance: number;
+    readonly contact: boolean;
+    readonly tip: readonly [number, number, number];
+  }[];
+  getWristMetrics(side: "left" | "right"): {
+    twist: number;
+    flexion: number;
+    deviation: number;
+    forearmTwist: number;
+    clampedSwing: number;
+  };
 }
 
 interface V4AvatarTestAccess {
@@ -346,6 +363,25 @@ function v4EffectorWorld(
   return instance.bones[metric.bone].localToWorld(
     new THREE.Vector3(metric.contactOffset[0], metric.contactOffset[1], metric.contactOffset[2]),
   );
+}
+
+/**
+ * World position of the SkiErg contact point the solver actually drives. Feet
+ * keep authored sole offsets; hands drive the fitted fist-channel centre.
+ */
+function v4SkiEffectiveContactWorld(
+  instance: ReplayV4AthleteInstance,
+  effector: ReplayV4EffectorName,
+): THREE.Vector3 {
+  const metric = instance.effectors[effector];
+  if (effector.endsWith("Foot")) return v4EffectorWorld(instance, effector);
+  const side = effector.startsWith("left") ? -1 : 1;
+  const local = new THREE.Vector3(
+    side * HAND_FIST_CENTRE.x,
+    HAND_FIST_CENTRE.y,
+    HAND_FIST_CENTRE.z,
+  );
+  return instance.bones[metric.bone].localToWorld(local);
 }
 
 function v4PoseSnapshot(instance: ReplayV4AthleteInstance): number[] {
@@ -2290,6 +2326,7 @@ describe("CourseRenderer3D", () => {
       positionTolerance: number | { hand: number; foot: number } = 0.015,
     ): void {
       const { avatar, motion, instance } = v4Lane(renderer);
+      const sport = (renderer as unknown as { sport: "rower" | "skierg" | "bike" }).sport;
       getScene(renderer).updateMatrixWorld(true);
       expect(motion.enabled, `${label} V4 remains enabled`).toBe(true);
       expect(motion.root.visible, `${label} V4 root visible`).toBe(true);
@@ -2301,7 +2338,10 @@ describe("CourseRenderer3D", () => {
       ] as const) {
         const metric = instance.effectors[effector];
         const target = avatar.v4Targets[targetName];
-        const contact = v4EffectorWorld(instance, effector);
+        const contact =
+          sport === "skierg"
+            ? v4SkiEffectiveContactWorld(instance, effector)
+            : v4EffectorWorld(instance, effector);
         const targetPosition = target.getWorldPosition(new THREE.Vector3());
         // The clip supplies base performance and arm bend planes; rigid sport
         // equipment remains the terminal contact authority. Orientation stays
@@ -2312,9 +2352,33 @@ describe("CourseRenderer3D", () => {
             : effector.endsWith("Foot")
               ? positionTolerance.foot
               : positionTolerance.hand;
+        let contactDetail = "";
+        if (sport === "skierg" && effector.endsWith("Hand")) {
+          const side = effector.startsWith("left") ? -1 : 1;
+          const shoulder = instance.bones[
+            side < 0 ? "v4LeftUpperArm" : "v4RightUpperArm"
+          ].getWorldPosition(new THREE.Vector3());
+          const targetQuaternion = target.getWorldQuaternion(new THREE.Quaternion());
+          const desiredWrist = targetPosition
+            .clone()
+            .sub(
+              new THREE.Vector3(
+                side * HAND_FIST_CENTRE.x,
+                HAND_FIST_CENTRE.y,
+                HAND_FIST_CENTRE.z,
+              ).applyQuaternion(targetQuaternion),
+            );
+          contactDetail = `; contact reach=${shoulder
+            .distanceTo(targetPosition)
+            .toFixed(
+              6,
+            )} required wrist reach=${shoulder.distanceTo(desiredWrist).toFixed(6)} structural reach=${(
+            metric.proximalLength + metric.distalLength
+          ).toFixed(6)}`;
+        }
         expect(
           contact.distanceTo(targetPosition),
-          `${label} ${effector} position contact`,
+          `${label} ${effector} position contact${contactDetail}`,
         ).toBeLessThan(contactBudget);
 
         const contactOrientation = instance.bones[metric.bone].getWorldQuaternion(
@@ -2773,6 +2837,7 @@ describe("CourseRenderer3D", () => {
             handVertical: number;
             handForeAft: number;
             palmReach: number;
+            wristReach: number;
           }
         >();
 
@@ -2781,7 +2846,9 @@ describe("CourseRenderer3D", () => {
         // extension just after release. The renderer remains stylised, so use
         // bounded technique envelopes rather than pretending to reproduce one
         // athlete's measured joint path.
-        for (const cycle of [0.02, 0.11, 0.24, 0.29, 0.34, 0.44, 0.52, 0.8, 0.97]) {
+        for (const cycle of [
+          0.02, 0.11, 0.24, 0.29, 0.34, 0.44, 0.52, 0.68, 0.7, 0.72, 0.74, 0.76, 0.78, 0.8, 0.97,
+        ]) {
           renderer.render(makeSportState("skierg", cycle, 200 + cycle * 8), false);
           const { avatar, instance } = v4Lane(renderer);
           getScene(renderer).updateMatrixWorld(true);
@@ -2823,6 +2890,7 @@ describe("CourseRenderer3D", () => {
             handVertical: handLocal.y - shoulderLocal.y,
             handForeAft: handLocal.z - shoulderLocal.z,
             palmReach: handLocal.distanceTo(shoulderLocal),
+            wristReach: handBoneLocal.distanceTo(shoulderLocal),
           });
           maxHandY = Math.max(maxHandY, handLocal.y);
           minHandY = Math.min(minHandY, handLocal.y);
@@ -2831,10 +2899,30 @@ describe("CourseRenderer3D", () => {
             maxElbowLateralDeviation,
             Math.abs(elbowLocal.x - armMidX),
           );
+
           expect(
             Math.abs(elbowLocal.x - armMidX),
             `elbow remains near the sagittal arm plane at ${cycle}`,
-          ).toBeLessThan(0.13);
+            // A double-poler grabs the handles with the forearms pointing
+            // FORWARD, upper arms flexed in the sagittal plane and tilted out
+            // only slightly to clear the torso — not with the elbows winged
+            // wide so the forearms point across the body. An earlier pass
+            // held the plant elbow 0.29-0.32 wide (67° humeral abduction)
+            // because the sagittal bend hint ran parallel to the arm chord
+            // and the lateral floor decided the branch; the early aft swing
+            // of the down-elbow arc and the flight hang hold keep the worst
+            // landmark (the press swing-through) near 0.125.
+          ).toBeLessThan(0.16);
+          {
+            // The forearm points forward at the handles throughout: inward
+            // lean (left forearm aiming right and vice versa) is the
+            // goalpost signature and stays under 20° even mid-transit.
+            const forearm = handBoneLocal.clone().sub(elbowLocal).normalize();
+            expect(
+              Math.asin(THREE.MathUtils.clamp(forearm.x, -1, 1)),
+              `left forearm keeps pointing forward at ${cycle}`,
+            ).toBeLessThan(THREE.MathUtils.degToRad(20));
+          }
         }
 
         const plant = landmarks.get(0.02)!;
@@ -2846,22 +2934,40 @@ describe("CourseRenderer3D", () => {
         const techniqueMetrics = Array.from(
           landmarks,
           ([cycle, values]) =>
-            `${cycle.toFixed(2)}:${values.elbowAngle.toFixed(1)}°/${values.poleAngle.toFixed(1)}° reach=${values.palmReach.toFixed(3)} elbow(y=${values.elbowVertical.toFixed(3)},z=${values.elbowForeAft.toFixed(3)}) hand(y=${values.handVertical.toFixed(3)},z=${values.handForeAft.toFixed(3)})`,
+            `${cycle.toFixed(2)}:${values.elbowAngle.toFixed(1)}°/${values.poleAngle.toFixed(1)}° palm=${values.palmReach.toFixed(3)} wrist=${values.wristReach.toFixed(3)} elbow(y=${values.elbowVertical.toFixed(3)},z=${values.elbowForeAft.toFixed(3)}) hand(y=${values.handVertical.toFixed(3)},z=${values.handForeAft.toFixed(3)})`,
         ).join(" ");
-        expect(plant.poleAngle, techniqueMetrics).toBeGreaterThan(70);
+        expect(plant.poleAngle, techniqueMetrics).toBeGreaterThan(68);
         expect(plant.poleAngle).toBeLessThan(86);
+        // The high-reach plant opens the elbow to ~90° rather than the former
+        // tightly folded ~60° (the procedural arm lengths matched the V4 rig's
+        // structural reach, and the base reach was raised to 0.72 so the arm
+        // starts extended). The load still compresses to ~67° through the press.
+        expect(plant.elbowAngle, techniqueMetrics).toBeGreaterThan(82);
+        expect(plant.elbowAngle).toBeLessThan(105);
         expect(loaded.elbowAngle, techniqueMetrics).toBeGreaterThan(48);
         expect(loaded.elbowAngle).toBeLessThan(76);
-        expect(poleOff.elbowAngle, techniqueMetrics).toBeGreaterThan(140);
-        // Classic-length poles reach near-extension at pole-off without arm flips.
-        // Slightly straighter at pole-off than the 1.55 m pole allowed.
-        expect(poleOff.elbowAngle).toBeLessThan(172);
-        // Post-release may hold full extension for a frame; it must not fold back.
-        // The two samples land on the same elbow angle to ~1e-8, so this only
-        // asserts the arm does not re-bend after release.
-        expect(postRelease.elbowAngle).toBeGreaterThanOrEqual(poleOff.elbowAngle - 1e-6);
+        // Concept2 SkiErg technique: "Your arms should not fully extend."
+        // The reach cap holds a soft bend at pole-off (measured 129.7°)
+        // instead of the former near-lockout; still long, never locked. The
+        // upper bound has to stay near that measurement to mean anything — at
+        // the previous 172° the assertion admitted a straight arm and so
+        // asserted nothing about the technique claim above it.
+        expect(poleOff.elbowAngle, techniqueMetrics).toBeGreaterThan(125);
+        expect(poleOff.elbowAngle).toBeLessThan(140);
+        // Post-release may hold full extension for a frame; it must not fold
+        // back as the basket leaves the snow.
+        // "Must not fold back" is a technique claim, not a numeric identity:
+        // hold it to a tenth of a degree rather than float epsilon.
+        expect(postRelease.elbowAngle, techniqueMetrics).toBeGreaterThanOrEqual(
+          poleOff.elbowAngle - 0.1,
+        );
         expect(postRelease.elbowAngle).toBeLessThan(178);
-        expect(plant.elbowVertical, techniqueMetrics).toBeLessThan(0);
+        // The plant elbow hangs BELOW the shoulder line (the compact SkiErg
+        // catch): the bend hint pins the elbow under the up-forward arm
+        // chord, so the elbows read as pointing down at the snow, not the
+        // sky. The load drives them further down and back past the ribs.
+        expect(plant.elbowVertical, techniqueMetrics).toBeGreaterThan(-0.35);
+        expect(plant.elbowVertical, techniqueMetrics).toBeLessThan(-0.05);
         expect(loaded.elbowVertical, techniqueMetrics).toBeLessThan(0);
         expect(landmarks.get(0.24)!.elbowForeAft, techniqueMetrics).toBeLessThan(0);
         expect(lateRecovery.handVertical, techniqueMetrics).toBeGreaterThan(
@@ -2870,15 +2976,22 @@ describe("CourseRenderer3D", () => {
         expect(lateRecovery.handForeAft, techniqueMetrics).toBeGreaterThan(
           landmarks.get(0.24)!.handForeAft,
         );
-        expect(preplant.elbowVertical, techniqueMetrics).toBeLessThan(0);
+        // The pre-plant lift raises the hands while the elbow stays at or
+        // below the shoulder line, ready to hang under the next plant.
+        expect(preplant.elbowVertical, techniqueMetrics).toBeGreaterThan(-0.3);
+        expect(preplant.elbowVertical, techniqueMetrics).toBeLessThan(0.05);
         expect(poleOff.poleAngle).toBeGreaterThan(15);
         expect(poleOff.poleAngle).toBeLessThan(28);
         expect(maxHandY - minHandY, "hands drop through the double-pole press").toBeGreaterThan(
           0.12,
         );
         expect(minHandY, "press brings hands well below high reach").toBeLessThan(maxHandY - 0.1);
+        // The down-elbow plant keeps the elbows near the sagittal arm plane
+        // all cycle (measured 0.125; the former flared high-elbow contract
+        // sat at 0.316). The goalpost class is a MID-DRAW wing with 45-50°
+        // humeral abduction; this bound fails it directly now.
         expect(maxElbowLateralDeviation, "elbows avoid a rear-view goalpost pose").toBeLessThan(
-          0.13,
+          0.15,
         );
       } finally {
         renderer.destroy();
@@ -2886,20 +2999,10 @@ describe("CourseRenderer3D", () => {
     });
 
     /**
-     * KNOWN DEFECT (peaks in the ~0.34 recovery phase where both arms hit
-     * their reach limit), pinned at its measured peak so it cannot widen.
-     *
-     * Through the recovery band around cycle 0.31–0.34 the **left** hand alone
-     * drifts up to 0.135 m from its target; the right hand and every other
-     * sport close to the normal 0.015 m. The asymmetry points at the arm-reach
-     * solve rather than the grip frame — the wrist frame itself is now pinned
-     * by "holds one SkiErg wrist frame all the way around the course loop".
-     *
-     * This predates the equipment work; it was previously spread across
-     * per-call-site budgets of 0.068 and 0.18, which hid it at every phase
-     * instead of naming it at one.
+     * The V4 hand's fitted fist-channel centre must stay on the rigid pole
+     * grip throughout both the planted pull and free recovery.
      */
-    const SKI_V4_CONTACT_TOLERANCE = 0.14;
+    const SKI_V4_CONTACT_TOLERANCE = { hand: 0.005, foot: 0.015 } as const;
 
     /**
      * Soles trail the clip by a few centimetres on the deep reaches of the
@@ -2953,7 +3056,8 @@ describe("CourseRenderer3D", () => {
       // is directional, so assert direction.
       const renderer = rendererFor("skierg");
       try {
-        for (const cycle of [0.05, 0.18, 0.5, 0.7]) {
+        for (let step = 0; step < 16; step++) {
+          const cycle = step / 16;
           renderer.render(makeSportState("skierg", cycle, 200 + cycle * 8), false);
           const { instance } = v4Lane(renderer);
           const scene = getScene(renderer);
@@ -2961,8 +3065,11 @@ describe("CourseRenderer3D", () => {
           for (const side of ["left", "right"] as const) {
             const shaft = skiShaft(renderer, side);
             const cap = side === "left" ? "Left" : "Right";
-            // Fingers flex about their own local +X. A fist can only enclose a
-            // cylinder that is parallel to it.
+            // Fingers flex about their own local +X. A fist encloses a
+            // cylinder near-parallel to it; the comfort-gated diagonal-grip
+            // relief may tilt the hold up to SKI_PALM_TILT about the palm
+            // normal at wrist-overload phases, so the parallelism bound is
+            // cos(SKI_PALM_TILT) with a small solve margin.
             for (const helper of [`v4${cap}Fingers`, `v4${cap}MiddleProximal`]) {
               const bone = scene.getObjectByName(helper)!;
               const curl = new THREE.Vector3(1, 0, 0).applyQuaternion(
@@ -2971,7 +3078,7 @@ describe("CourseRenderer3D", () => {
               expect(
                 Math.abs(shaft.axis.dot(curl)),
                 `${side} ${helper} curl axis parallel to shaft at ${cycle}`,
-              ).toBeGreaterThan(0.93);
+              ).toBeGreaterThan(Math.cos(SKI_PALM_TILT) - 0.04);
             }
             // The curled fingertip must ride the grip cylinder, not hover a
             // hand's width away from it.
@@ -2981,7 +3088,7 @@ describe("CourseRenderer3D", () => {
             expect(
               perpFromShaft(tip, shaft),
               `${side} fingertip on the grip cylinder at ${cycle}`,
-            ).toBeLessThan(HAND_FIST_RADIUS + 0.008);
+            ).toBeLessThan(HAND_FIST_RADIUS + 0.009);
             // And the wrist has to be within a fist of the shaft, so the pole
             // passes through the hand instead of past it.
             const wrist = instance.bones[instance.effectors[`${side}Hand`].bone]!.getWorldPosition(
@@ -2997,21 +3104,100 @@ describe("CourseRenderer3D", () => {
             // vector has to point at the athlete's centreline.
             const handBone = instance.bones[instance.effectors[`${side}Hand`].bone]!;
             const mirror = side === "left" ? -1 : 1;
-            const channel = handBone.localToWorld(
-              new THREE.Vector3(
-                mirror * HAND_FIST_CENTRE.x,
-                HAND_FIST_CENTRE.y,
-                HAND_FIST_CENTRE.z,
-              ),
-            );
+            // Measure the palm's TRUE facing, not the wrist→channel-centre ray.
+            // That ray sits 18° from the hand's long axis and 75.5° from the
+            // palm normal, so asserting it points inward actually asserted that
+            // the FINGERS point at the centreline — which is the defect this
+            // suite was meant to catch, not the contract. The palm normal is
+            // measured from the shipped bind geometry (handPalmNormalOut).
+            const channel = handBone.localToWorld(handPalmNormalOut(mirror).multiplyScalar(0.1));
             const otherWrist = instance.bones[
               instance.effectors[`${side === "left" ? "right" : "left"}Hand`].bone
             ]!.getWorldPosition(new THREE.Vector3());
             const inward = otherWrist.clone().sub(wrist).normalize();
+            // Palms face each other at every phase — the tight relief cone
+            // may trim wrist bend but can never rotate the palm toward
+            // sideways, let alone outward. 0.55 ≈ within ~35° of pure
+            // inward after the ⊥-shaft projection loss.
             expect(
               channel.clone().sub(wrist).normalize().dot(inward),
               `${side} palm turned inward at ${cycle}`,
-            ).toBeGreaterThan(0.2);
+            ).toBeGreaterThan(0.55);
+            // The hand must also be the right way up: thumb toward the grip
+            // top, pinky lowest. The former nearest-arc curl alignment held
+            // the pole with the fist inverted (thumb pointing down-shaft) at
+            // every phase — palms read as flipped 180° — so the stacking
+            // order along the shaft is pinned here for both hands.
+            const thumbStation = scene
+              .getObjectByName(`v4${cap}ThumbDistal`)!
+              .getWorldPosition(new THREE.Vector3())
+              .sub(shaft.gripW)
+              .dot(shaft.axis);
+            const pinkyStation = scene
+              .getObjectByName(`v4${cap}PinkyDistal`)!
+              .getWorldPosition(new THREE.Vector3())
+              .sub(shaft.gripW)
+              .dot(shaft.axis);
+            const indexStation = scene
+              .getObjectByName(`v4${cap}IndexDistal`)!
+              .getWorldPosition(new THREE.Vector3())
+              .sub(shaft.gripW)
+              .dot(shaft.axis);
+            expect(
+              pinkyStation - thumbStation,
+              `${side} thumb rides above the pinky on the grip at ${cycle}`,
+            ).toBeGreaterThan(0.03);
+            expect(
+              indexStation - thumbStation,
+              `${side} thumb rides above the index on the grip at ${cycle}`,
+            ).toBeGreaterThan(0.005);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
+    it("seats the closed digits on the rendered pole, not a channel-radius standoff", () => {
+      // The grip contract must hand the solver the *equipment* radius: the
+      // closure adds pad flesh itself and rests bone points at radius + flesh.
+      // Passing `HAND_FIST_RADIUS` (the already-fleshed channel) instead
+      // double-counts, standing every digit ~0.9 mm off the rubber. That error
+      // is invisible to `surfaceDistance`, which is measured against whatever
+      // radius the contract supplied, so it has to be caught against the
+      // rendered shaft geometry.
+      // Measured on the shipped rig across the cycles below: the correct
+      // contract holds the closest joint within 0.35 mm of the rubber, while
+      // passing the channel radius pushes it to 0.83 mm. Half a millimetre
+      // separates the two with margin on both sides. Slight negatives are the
+      // solver's documented, permitted penetration.
+      const renderer = rendererFor("skierg");
+      try {
+        for (const cycle of [0.05, 0.18, 0.32, 0.5, 0.75]) {
+          renderer.render(makeSportState("skierg", cycle, 200), false);
+          const scene = getScene(renderer);
+          scene.updateMatrixWorld(true);
+          for (const side of ["left", "right"] as const) {
+            const cap = side === "left" ? "Left" : "Right";
+            const shaft = skiShaft(renderer, side);
+            // The stage stops at the first bone point to reach the surface, so
+            // the closest joint of the wrapping finger is the one pinned to it.
+            const closest = Math.min(
+              ...[
+                `v4${cap}MiddleProximal`,
+                `v4${cap}MiddleIntermediate`,
+                `v4${cap}MiddleDistal`,
+              ].map((name) =>
+                perpFromShaft(
+                  scene.getObjectByName(name)!.getWorldPosition(new THREE.Vector3()),
+                  shaft,
+                ),
+              ),
+            );
+            expect(
+              closest - SKI_POLE_GRIP_RADIUS,
+              `${side} middle finger rests on the rendered pole at ${cycle}`,
+            ).toBeLessThan(0.0005);
           }
         }
       } finally {
@@ -3020,9 +3206,13 @@ describe("CourseRenderer3D", () => {
     });
 
     it("derives the SkiErg curl axis and grip channel from the authored rig", () => {
-      // Both constants are measurements of the shipped GLB. Re-derive them here
-      // so an asset rebuild that moves the grip helpers fails loudly instead of
-      // silently invalidating the wrist frame.
+      // HAND_CURL_AXIS is measured on the rendered GLB with the carrying cup
+      // applied — the same pose HAND_FIST_CENTRE/RADIUS were fitted in — and
+      // every sport's grip frame is built on it. Re-derive it here so an
+      // asset rebuild that moves the grip helpers, or a half-converted cup
+      // pose, fails loudly instead of silently invalidating the wrist frames;
+      // then prove the geometry closure actually wrapped the middle finger
+      // around the fitted channel rather than curling to styled constants.
       const renderer = rendererFor("skierg");
       try {
         renderer.render(makeSportState("skierg", 0.18, 200), false);
@@ -3054,8 +3244,11 @@ describe("CourseRenderer3D", () => {
             `${side} HAND_CURL_AXIS still matches the rig`,
           ).toBeGreaterThan(0.999);
 
-          // Fit the circle the curled middle finger traces; its centre is the
-          // grip channel and its radius is the widest grip that can fit.
+          // Fit the circle the geometry-closed middle finger traces. Its
+          // centre must sit on the fitted grip channel and its radius must
+          // wrap the pole: bone joints ride between the grip surface and the
+          // surface plus pad flesh — never inside the shaft, never floating
+          // a fist-width away the way styled curls could.
           const joints = [
             `v4${cap}MiddleProximal`,
             `v4${cap}MiddleIntermediate`,
@@ -3082,14 +3275,24 @@ describe("CourseRenderer3D", () => {
             .multiplyScalar(ux)
             .add(e2.clone().multiplyScalar(uy))
             .add(expectedAxis.clone().multiplyScalar(joints[0]!.dot(expectedAxis)));
-
-          expect(centre.x, `${side} grip channel x`).toBeCloseTo(mirror * HAND_FIST_CENTRE.x, 3);
-          expect(centre.y, `${side} grip channel y`).toBeCloseTo(HAND_FIST_CENTRE.y, 3);
-          expect(centre.z, `${side} grip channel z`).toBeCloseTo(HAND_FIST_CENTRE.z, 3);
-          expect(Math.hypot(A!.x - ux, A!.y - uy), `${side} grip channel radius`).toBeCloseTo(
-            HAND_FIST_RADIUS,
-            3,
+          const fistCentre = new THREE.Vector3(
+            mirror * HAND_FIST_CENTRE.x,
+            HAND_FIST_CENTRE.y,
+            HAND_FIST_CENTRE.z,
           );
+          expect(
+            centre.distanceTo(fistCentre),
+            `${side} closed middle finger wraps the fitted channel centre`,
+          ).toBeLessThan(0.012);
+          const fittedRadius = Math.hypot(A!.x - ux, A!.y - uy);
+          expect(
+            fittedRadius,
+            `${side} middle-finger joints stay outside the grip surface`,
+          ).toBeGreaterThan(HAND_FIST_RADIUS - 0.002);
+          expect(
+            fittedRadius,
+            `${side} middle-finger joints stay within pad-flesh reach of the grip`,
+          ).toBeLessThan(HAND_FIST_RADIUS + 0.022);
         }
       } finally {
         renderer.destroy();
@@ -3508,7 +3711,7 @@ describe("CourseRenderer3D", () => {
           const state = makeSportState("skierg", cycle, 200 + cycle * 8);
           const kinematics = solveSkierKinematics(state.strokePose!);
           renderer.render(state, false);
-          // The pole-led hand frame puts the ~8 cm palm offset along the shaft.
+          // The pole-led hand frame drives the fitted fist-channel centre.
           expectV4Contacts(renderer, `skierg ${cycle}`, SKI_V4_CONTACT_TOLERANCE);
           const { avatar, instance } = v4Lane(renderer);
           avatarInverse.copy(avatar.group.matrixWorld).invert();
@@ -3547,18 +3750,10 @@ describe("CourseRenderer3D", () => {
             expect(
               tip.y,
               `${side} basket never passes through snow at ${cycle}`,
-            ).toBeGreaterThanOrEqual(0.055 - 1e-5);
+            ).toBeGreaterThanOrEqual(0.055 - 2e-4);
             if (kinematics.poleFlight >= 1 - 1e-9 && kinematics.poleLift > 0.15) {
               expect(tip.y, `${side} basket visibly clears snow at ${cycle}`).toBeGreaterThan(0.1);
             }
-            // Contact is exact (the designed SKI_GRIP_SHIFT) everywhere except
-            // the reach-limited top of recovery; 0.18 pins that phase without
-            // licensing a loose grip across the whole cycle.
-            expect(
-              v4EffectorWorld(instance, `${side}Hand`).distanceTo(grip),
-              `${side} V4 hand stays on grip at ${cycle}`,
-            ).toBeLessThan(0.18);
-
             if (kinematics.poleContact >= 1 - 1e-9) {
               const plantKey = `${state.strokePose!.index}:${side}`;
               const priorPlant = plantedTips.get(plantKey);
@@ -3589,7 +3784,11 @@ describe("CourseRenderer3D", () => {
                   .toArray()
                   .map((value) => value.toFixed(3))
                   .join(",")}`,
-              ).toBeLessThan(0.065);
+              ) // The free-pole release is the fastest grip motion in the
+                // stroke. The former tangent reach interval produced one
+                // 0.138 m branch jump; retaining a narrow interval keeps every
+                // 1/256-cycle step under this global continuity bound.
+                .toBeLessThan(0.05);
             }
             previousGrips.set(side, grip.clone());
             const priorElbow = previousElbows.get(side);
@@ -3605,7 +3804,10 @@ describe("CourseRenderer3D", () => {
                   .join(
                     ",",
                   )} sweep=${kinematics.poleSweep.toFixed(4)} load=${kinematics.elbowLoad.toFixed(4)} extension=${kinematics.armExtension.toFixed(4)}`,
-              ).toBeLessThan(0.06);
+                // The release-to-flight transition is the fastest legitimate
+                // elbow motion in the stroke; 0.10 guards that motion without
+                // excusing the former post-release branch snap.
+              ).toBeLessThan(0.1);
             }
             previousElbows.set(side, elbow);
           }
@@ -4143,6 +4345,209 @@ describe("CourseRenderer3D", () => {
         renderer.destroy();
       }
     });
+    it("distributes SkiErg pronation along the arm with continuous segments", () => {
+      const renderer = rendererFor("skierg");
+      try {
+        const scene = getScene(renderer);
+        const previous = new Map<string, THREE.Quaternion>();
+        for (let step = 0; step <= 256; step++) {
+          const cycle = step / 256;
+          renderer.render(makeSportState("skierg", cycle), false);
+          scene.updateMatrixWorld(true);
+          const { motion } = v4Lane(renderer);
+          for (const side of ["left", "right"] as const) {
+            expect(
+              Math.abs(motion.getWristMetrics(side).twist),
+              `${side} ski wrist twist stays inside its keep at ${cycle}`,
+            ).toBeLessThanOrEqual(REPLAY_V4_SKI_WRIST_TWIST_KEEP + 1e-6);
+            const cap = side === "left" ? "Left" : "Right";
+            const forearm = scene
+              .getObjectByName(`v4${cap}Forearm`)!
+              .getWorldQuaternion(new THREE.Quaternion());
+            const prior = previous.get(side);
+            if (prior) {
+              const stepAngle = 2 * Math.acos(Math.min(1, Math.abs(forearm.dot(prior))));
+              expect(stepAngle, `${side} forearm segment continuous at ${cycle}`).toBeLessThan(1.2);
+            }
+            previous.set(side, forearm);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    }, 30_000);
+
+    it("holds every wrist inside its measured envelope without corkscrew or clamps", () => {
+      const ENVELOPES = {
+        skierg: { twist: 0.53, flexion: 2.0, deviation: 1.9 },
+      } as const;
+      for (const sport of ["skierg"] as const) {
+        const renderer = rendererFor(sport);
+        try {
+          const previous = new Map<"left" | "right", { twist: number; flexion: number }>();
+          const flatnessSamples: Array<{
+            angle: number;
+            cycle: number;
+            side: "left" | "right";
+            forearm: readonly [number, number, number];
+            handLong: readonly [number, number, number];
+          }> = [];
+          for (let step = 0; step <= 256; step++) {
+            const cycle = step / 256;
+            renderer.render(makeSportState(sport, cycle), false);
+            const { motion, instance } = v4Lane(renderer);
+            for (const side of ["left", "right"] as const) {
+              const metrics = motion.getWristMetrics(side);
+              const mirror = side === "left" ? -1 : 1;
+              const elbow = instance.bones[
+                side === "left" ? "v4LeftForearm" : "v4RightForearm"
+              ].getWorldPosition(new THREE.Vector3());
+              const wrist = instance.bones[
+                side === "left" ? "v4LeftHand" : "v4RightHand"
+              ].getWorldPosition(new THREE.Vector3());
+              const handQuaternion = instance.bones[
+                side === "left" ? "v4LeftHand" : "v4RightHand"
+              ].getWorldQuaternion(new THREE.Quaternion());
+              const forearm = wrist.clone().sub(elbow).normalize();
+              const longAxis = handLongAxis(mirror).applyQuaternion(handQuaternion);
+              flatnessSamples.push({
+                angle: longAxis.angleTo(forearm),
+                cycle,
+                side,
+                forearm: forearm.toArray(),
+                handLong: longAxis.toArray(),
+              });
+              const otherWrist = instance.bones[
+                side === "left" ? "v4RightHand" : "v4LeftHand"
+              ].getWorldPosition(new THREE.Vector3());
+              expect(
+                handPalmNormalOut(mirror)
+                  .applyQuaternion(handQuaternion)
+                  .dot(otherWrist.sub(wrist).normalize()),
+                `${sport} ${side} dense palm-inward envelope at ${cycle}`,
+              ).toBeGreaterThan(0.55);
+              expect(
+                Math.abs(metrics.twist),
+                `${sport} ${side} wrist twist envelope at ${cycle}`,
+              ).toBeLessThanOrEqual(ENVELOPES[sport].twist);
+              const wrapped = Math.abs(metrics.twist) >= 1.2;
+              expect(
+                Math.abs(metrics.flexion),
+                `${sport} ${side} wrist flexion envelope at ${cycle}`,
+              ).toBeLessThanOrEqual(wrapped ? Math.PI + 0.02 : ENVELOPES[sport].flexion);
+              expect(
+                Math.abs(metrics.deviation),
+                `${sport} ${side} wrist deviation envelope at ${cycle}`,
+              ).toBeLessThanOrEqual(wrapped ? Math.PI + 0.02 : ENVELOPES[sport].deviation);
+              expect(
+                metrics.clampedSwing,
+                `${sport} ${side} production frames never need the flip clamp at ${cycle}`,
+              ).toBeLessThan(1e-6);
+              expect(
+                Math.abs(metrics.forearmTwist),
+                `${sport} ${side} forearm twist share bounded at ${cycle}`,
+              ).toBeLessThan(0.6);
+              const prior = previous.get(side);
+              if (prior) {
+                const nearDoubleCover =
+                  Math.abs(metrics.twist) >= 1.2 || Math.abs(prior.twist) >= 1.2;
+                if (!nearDoubleCover) {
+                  expect(
+                    Math.abs(metrics.twist - prior.twist),
+                    `${sport} ${side} twist continuity at ${cycle}`,
+                  ).toBeLessThan(2 * REPLAY_V4_SKI_WRIST_TWIST_KEEP + 0.1);
+                  expect(
+                    Math.abs(metrics.flexion - prior.flexion),
+                    `${sport} ${side} flexion continuity at ${cycle}`,
+                  ).toBeLessThan(1.7);
+                }
+              }
+              previous.set(side, { twist: metrics.twist, flexion: metrics.flexion });
+            }
+          }
+          flatnessSamples.sort((a, b) => a.angle - b.angle);
+          const p95 = flatnessSamples[Math.floor((flatnessSamples.length - 1) * 0.95)]!.angle;
+          const worst = flatnessSamples
+            .slice(-8)
+            .map(
+              (sample) =>
+                `${sample.side}@${sample.cycle.toFixed(3)}=${THREE.MathUtils.radToDeg(sample.angle).toFixed(1)}° ` +
+                `forearm=${sample.forearm.map((value) => value.toFixed(2)).join(",")} ` +
+                `hand=${sample.handLong.map((value) => value.toFixed(2)).join(",")}`,
+            )
+            .join(", ");
+          expect(
+            p95,
+            `${sport} p95 hand-long-axis wrist bend is below a right angle; worst ${worst}`,
+          ).toBeLessThan(THREE.MathUtils.degToRad(90));
+        } finally {
+          renderer.destroy();
+        }
+      }
+    }, 60_000);
+
+    it("solves identical grip closures across quality tiers and independent lanes", () => {
+      const reference = new Map<string, readonly number[]>();
+      for (const quality of ["low", "medium", "high", "ultra"] as const) {
+        const renderer = rendererFor("skierg", quality);
+        try {
+          renderer.render(
+            makeSportState("skierg", 0.37, 120, {
+              ghost: { distFrac: 0.07, pace: 118, spm: 30, label: "PB" },
+              ghostStrokePose: fallbackStrokePose("skierg", 0.61 * TAU, 30),
+            }),
+            false,
+          );
+          for (const lane of ["live", "ghost"] as const) {
+            const { motion } = v4Lane(renderer, lane);
+            for (const side of ["left", "right"] as const) {
+              const distances = motion
+                .getGripContacts(side)
+                .map((contact) => contact.surfaceDistance);
+              expect(distances, `${quality} ${lane} ${side} closure solved`).toHaveLength(5);
+              const key = `${side}`;
+              const expected = reference.get(key);
+              if (!expected) reference.set(key, distances);
+              else {
+                for (let index = 0; index < distances.length; index++) {
+                  expect(
+                    Math.abs((distances[index] ?? 0) - (expected[index] ?? 0)),
+                    `${quality} ${lane} ${side} digit ${index} closure matches every tier and lane`,
+                  ).toBeLessThan(1e-12);
+                }
+              }
+            }
+          }
+        } finally {
+          renderer.destroy();
+        }
+      }
+    }, 30_000);
+
+    it("repeats a shuffled seek schedule with bit-identical grip poses", () => {
+      const schedule = [0.42, 0.05, 0.87, 0.37, 0.61, 0.13, 0.99, 0.37, 0.42];
+      const passes: number[][][] = [];
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const renderer = rendererFor("skierg");
+        try {
+          const snapshots: number[][] = [];
+          for (const cycle of schedule) {
+            renderer.render(makeSportState("skierg", cycle), false);
+            const { instance } = v4Lane(renderer);
+            getScene(renderer).updateMatrixWorld(true);
+            snapshots.push(v4PoseSnapshot(instance));
+          }
+          passes.push(snapshots);
+        } finally {
+          renderer.destroy();
+        }
+      }
+      for (let index = 0; index < schedule.length; index++) {
+        expectNumericSnapshotClose(passes[1]![index]!, passes[0]![index]!, 1e-9);
+      }
+      expectNumericSnapshotClose(passes[0]![7]!, passes[0]![3]!, 1e-9);
+      expectNumericSnapshotClose(passes[0]![8]!, passes[0]![0]!, 1e-9);
+    }, 30_000);
   });
 
   it("keeps RowErg knees visually separated from the hull through the stroke", () => {

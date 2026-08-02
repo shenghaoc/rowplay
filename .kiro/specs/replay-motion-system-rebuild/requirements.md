@@ -113,11 +113,12 @@ viewing speed.
 2. WHEN SkiErg is shown THEN reach, velocity-matched plant, loaded pull, and
    release SHALL read as distinct states; baskets SHALL remain course-anchored
    throughout the loaded phase while the athlete advances relative to them.
-   Flexed elbows SHALL point down at plant, rotate rearward in the sagittal
-   plane during the loaded core-led press, and re-extend into pole-off without
-   selecting a sideways or horizontally inverted branch. During recovery the
-   hands and poles SHALL lift and travel forward while the elbow plane returns
-   underneath the arm, so the elbows point down again before the next plant.
+   Flexed elbows SHALL hang below the raised hands at plant, swing aft early
+   in the sagittal plane during the loaded core-led press to finish behind
+   the hips, and keep a soft bend at pole-off (long, never locked out)
+   without selecting a sideways or horizontally inverted branch. During recovery the hands SHALL
+   travel forward close to the body and lift back up to the next high plant,
+   retracing the press arc in the sagittal plane.
    Both skis and boots SHALL retain a narrow parallel stance rather than a
    fore/aft striding split. Each hip, knee, and foot SHALL preserve left/right
    order for the entire cycle; V4 SHALL use the shared same-side knee targets

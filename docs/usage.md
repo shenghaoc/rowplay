@@ -128,9 +128,10 @@ biomechanics. Its shared technique phases stage RowErg legs, body, then arms
 are nearly extended; both elbows then pull behind the torso as the handle
 approaches the lower ribs, and the arms straighten first on recovery);
 SkiErg's classic double-pole high reach,
-steep plant, down-pointing early elbow bend, core-led press with the elbow
-rotating rearward, long-arm pole-off, and lifted forward recovery that returns
-the elbow underneath the arm before the next plant. Its hips, knees, boots, and
+steep plant with the flexed elbows hanging below the raised hands, a core-led
+press that drives the elbows down and back to finish behind the hips,
+a soft elbow bend at pole-off (long, never locked out), and a close-to-body
+recovery that lifts the hands back up to the next high plant. Its hips, knees, boots, and
 skis retain left/right order in a narrow parallel stance rather than crossing
 or inventing a striding step. In Canvas, the neutral stance stays close to leg
 extension and compresses into an athletic standing bend rather than folding the

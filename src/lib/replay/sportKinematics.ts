@@ -82,23 +82,52 @@ function secondaryScale(intensity: number): number {
 }
 
 /**
- * Resolve the shared down → back → recovery → down SkiErg elbow sequence.
+ * Resolve the shared down-elbow → press → recovery SkiErg elbow sequence.
  *
- * The bend vector follows one continuous arc in the sagittal plane. During
- * contact, `poleSweep` turns it from down toward back. After pole-off, the same
- * C2 channel takes the shortest sagittal arc back underneath the recovering
- * arm. Following the circle avoids interpolating through a zero vector, which
- * would make a two-bone solver choose a lateral fallback and flip.
+ * The bend vector stays on one continuous arc in the sagittal plane. At the
+ * plant the elbows hang BELOW the up-forward shoulder→hand chord (down,
+ * tilted slightly forward) — the compact SkiErg catch, not a skyward
+ * chicken-wing. The press swings the elbow aft early, so through the loaded
+ * pull the elbows drive down-BACK past the ribs, finishing behind the hip at
+ * pole-off; the recovery then RETRACES that same arc rather than closing a
+ * full circle over the top — see the recovery branch below for why the
+ * over-the-top route was rejected. An earlier high-elbow contract (elbows
+ * above the chord at the plant) kept the pole-to-forearm angle nearer the
+ * neutral-wrist cone but read as elbows pointing at the sky; the wrist
+ * relief layers absorb the difference instead. Staying on a single arc
+ * avoids interpolating through a zero vector, which would make a two-bone
+ * solver choose a lateral fallback and flip.
  */
 export function solveSkierElbowDirection(
   kinematics: SkierKinematics,
   output: SkierElbowDirection = { vertical: -1, foreAft: 0 },
 ): SkierElbowDirection {
   const sweep = clampUnit(kinematics.poleSweep);
+  // vertical = cos(angle), foreAft = sin(angle): 0 is straight up, +π/2 is
+  // horizontal-forward. Plant: down, tilted slightly forward (~166° from
+  // vertical) — below the up-forward chord. Pole-off: down-back. The press
+  // sweeps aft between them; the recovery runs back along that same arc
+  // rather than continuing around.
+  const PLANT_ANGLE = 2.9;
+  const POLE_OFF_ANGLE = Math.PI + 1.1;
+  // Swing aft EARLY: the loaded pull (hands passing under the shoulders)
+  // needs the elbow already behind the arm chord, or the chord catches up
+  // with the still-down hint mid-press and hands the branch to the lateral
+  // floor — the winged look. Completing the swing in the first 45% of the
+  // sweep keeps the hint a quarter-turn off the chord through the deep load.
+  const pressSweep = clampUnit(sweep / 0.45);
+  const pressEase = pressSweep * pressSweep * (3 - 2 * pressSweep);
   const angle =
     kinematics.cycle <= SKI_POLE_OFF_CYCLE
-      ? Math.PI + sweep * (Math.PI / 2)
-      : Math.PI * 1.5 - (1 - sweep) * (Math.PI / 2);
+      ? PLANT_ANGLE + pressEase * (POLE_OFF_ANGLE - PLANT_ANGLE)
+      : // Recovery RETRACES the press arc: sweep decays 1 → 0 after pole-off,
+        // taking the elbow from down-back straight back up the forward-down
+        // path it descended — which is what a relaxed human arm does, and is
+        // continuous at both the pole-off boundary and the cycle seam by
+        // construction. Closing the circle over the top instead swept the
+        // hint through straight-up right where the pre-plant chord points up,
+        // degenerating the bend plane (measured 0.3 m sideways elbow).
+        POLE_OFF_ANGLE + (1 - sweep) * (PLANT_ANGLE - POLE_OFF_ANGLE);
   output.vertical = Math.cos(angle);
   output.foreAft = Math.sin(angle);
   return output;

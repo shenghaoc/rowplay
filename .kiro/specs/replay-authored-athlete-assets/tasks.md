@@ -95,7 +95,7 @@ figure, readability, and motion specs.
   - [x] Derive per-finger and opposing-thumb helper chains from the reviewed
     Blender hand topology and add the shared closure/orientation infrastructure
     without adding a second athlete or motion system
-  - [ ] Apply SkiErg cylindrical-grip closure after the authoritative palm
+  - [x] Apply SkiErg cylindrical-grip closure after the authoritative palm
     contact solve (#179)
   - [ ] Apply RowErg scull closure after the authoritative palm contact solve
     (#180)
@@ -147,8 +147,11 @@ figure, readability, and motion specs.
   - [x] Publish real in-app SkiErg evidence: chase and macro-grip poses, the
     four-tier geometry ladder, a full technique cycle, and a manifest recording
     requested vs effective quality and backend
-  - [ ] Resolve the left-hand recovery reach defect (up to 0.135 m at cycle
-    0.31–0.34; right hand and all other sports close to 0.015 m)
+  - [x] Resolve the one-sided recovery reach defect: solve the oriented fist
+    channel from each visible shoulder, retain a 60 mm reachable interval at
+    peak post-release extension instead of collapsing onto a tangent sphere,
+    and densely verify both hands within the 5 mm SkiErg contact budget with
+    every 1/256-cycle grip step below 50 mm
   - [x] Re-derive ski and pole length against the measured 1.64 m rig: skis
     1.90 m (~116%, inside 112–117%) and poles 1.37 m (~83.5%, inside 83–84%).
     The GLB generator scales its authored native profile to the

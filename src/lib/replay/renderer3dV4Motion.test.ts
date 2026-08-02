@@ -8,6 +8,8 @@ import {
   type ReplayV4ClipName,
   type ReplayV4EffectorMetrics,
 } from "./renderer3dV4Assets";
+import { HAND_CLOSURE_CUP } from "./handGrip";
+import { SKI_POLE_GRIP_RADIUS } from "./skiEquipment";
 import {
   installReplayV4MotionController,
   REPLAY_V4_HAND_HELPER_NAMES,
@@ -1239,5 +1241,144 @@ describe("V4 seat contract", () => {
 
     expect(hipY).toBeGreaterThan(padTopY);
     expect(hipY + sitOffsetY).toBeCloseTo(padTopY - nestle, 8);
+  });
+});
+
+describe("V4 geometry-closure grip contract", () => {
+  // The closure itself is unit-tested in handGrip.test.ts against the sealed
+  // contract's hand. What is only reachable here is the *wiring*: that a
+  // supplied contract actually switches the controller off the legacy curl
+  // table, that the solved poses reach the helper bones, and that the cup the
+  // closure solved in is the cup the renderer applies. No sport supplies a
+  // contract in this layer, so without this test the whole geometry path
+  // ships to the sport layers unexercised at runtime.
+  const contract = { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: 0.62 };
+
+  function helperLane(): TestLane {
+    const lane = createLane();
+    disposeLane(lane);
+    lane.instance = createInstance({ withHandHelpers: true });
+    lane.parent.add(lane.instance.root);
+    return lane;
+  }
+
+  function install(lane: TestLane, gripContract?: typeof contract) {
+    return installReplayV4MotionController({
+      sport: "skierg",
+      parent: lane.parent,
+      fallbackRoot: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+      diagnosticMode: "full",
+      ...(gripContract ? { gripContract } : {}),
+    });
+  }
+
+  it("stays on the legacy curl table when no contract is supplied", () => {
+    const lane = helperLane();
+    const controller = install(lane);
+    try {
+      // Dormant by default is what makes this layer safe to land ahead of the
+      // sport layers that wire the contracts.
+      expect(controller?.root.userData.replayV4GripMode).toBe("legacy-curl");
+      expect(controller?.getGripContacts("right")).toHaveLength(0);
+    } finally {
+      controller?.dispose();
+    }
+  });
+
+  it("switches to geometry closure and reports a contact per digit", () => {
+    const lane = helperLane();
+    const controller = install(lane, contract);
+    try {
+      expect(controller?.root.userData.replayV4GripMode).toBe("geometry-closure");
+      for (const side of ["left", "right"] as const) {
+        const contacts = controller?.getGripContacts(side) ?? [];
+        expect(contacts, `${side} reports every digit`).toHaveLength(5);
+        for (const report of contacts) {
+          expect(Number.isFinite(report.surfaceDistance), `${side} ${report.digit}`).toBe(true);
+          expect(report.tip.every((value) => Number.isFinite(value))).toBe(true);
+        }
+      }
+    } finally {
+      controller?.dispose();
+    }
+  });
+
+  it("drives the finger helpers off their rest pose under a contract", () => {
+    const lane = helperLane();
+    const rest = new Map<string, THREE.Quaternion>();
+    for (const name of REPLAY_V4_HAND_HELPER_NAMES) {
+      const bone = lane.instance.skeleton.getBoneByName(name);
+      if (bone) rest.set(name, bone.quaternion.clone());
+    }
+    const controller = install(lane, contract);
+    try {
+      controller?.update({ phase: 0, cycleFrac: 0.22, driveFrac: 0.4 });
+      lane.scene.updateMatrixWorld(true);
+      let moved = 0;
+      for (const [name, restQuaternion] of rest) {
+        const bone = lane.instance.skeleton.getBoneByName(name)!;
+        if (Math.abs(bone.quaternion.dot(restQuaternion)) < 1 - 1e-6) moved++;
+      }
+      // The solved closure has to actually reach the bones; a cached solve
+      // that never gets applied would leave every helper at rest.
+      expect(moved, "solved digits reach their helper bones").toBeGreaterThan(0);
+    } finally {
+      controller?.dispose();
+    }
+  });
+
+  it("holds the fitted carrying cup that the closure solved in", () => {
+    const lane = helperLane();
+    const cupRest = new Map<string, THREE.Quaternion>();
+    for (const name of ["v4LeftFingers", "v4RightFingers"]) {
+      const bone = lane.instance.skeleton.getBoneByName(name);
+      expect(bone, `${name} exists`).toBeTruthy();
+      cupRest.set(name, bone!.quaternion.clone());
+    }
+    const controller = install(lane, contract);
+    try {
+      controller?.update({ phase: 0, cycleFrac: 0.22, driveFrac: 0.4 });
+      lane.scene.updateMatrixWorld(true);
+      for (const side of [-1, 1] as const) {
+        const name = side < 0 ? "v4LeftFingers" : "v4RightFingers";
+        const bone = lane.instance.skeleton.getBoneByName(name)!;
+        // Rest times exactly the cup the closure assumed. A renderer that
+        // leaves the cup at rest flattens the palm the solved flex angles
+        // were closed around — the defect this layer had to fix.
+        const expected = cupRest
+          .get(name)!
+          .clone()
+          .multiply(
+            new THREE.Quaternion().setFromAxisAngle(
+              new THREE.Vector3(0, 1, 0),
+              -side * HAND_CLOSURE_CUP,
+            ),
+          );
+        expect(Math.abs(bone.quaternion.dot(expected)), `${name} carries the cup`).toBeGreaterThan(
+          1 - 1e-6,
+        );
+      }
+    } finally {
+      controller?.dispose();
+    }
+  });
+
+  it("keeps every wrist metric finite under the contract", () => {
+    const lane = helperLane();
+    const controller = install(lane, contract);
+    try {
+      controller?.update({ phase: 0, cycleFrac: 0.22, driveFrac: 0.4 });
+      for (const side of ["left", "right"] as const) {
+        const metrics = controller?.getWristMetrics(side);
+        expect(metrics, `${side} metrics`).toBeTruthy();
+        for (const [key, value] of Object.entries(metrics ?? {})) {
+          expect(Number.isFinite(value), `${side} ${key} finite`).toBe(true);
+        }
+      }
+    } finally {
+      controller?.dispose();
+    }
   });
 });

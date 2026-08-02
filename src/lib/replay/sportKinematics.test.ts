@@ -86,7 +86,7 @@ describe("sportKinematics", () => {
     expect(recovery.rebound).toBeGreaterThan(0);
   });
 
-  it("turns SkiErg elbows down at plant, rearward under load, then down for the next plant", () => {
+  it("hangs SkiErg elbows below the chord at plant, drives them down-back, then retraces", () => {
     const directionAt = (cycle: number) =>
       solveSkierElbowDirection(solveSkierKinematics(poseAt("skierg", cycle)));
     const plant = directionAt(0.02);
@@ -96,25 +96,38 @@ describe("sportKinematics", () => {
     const recovery = directionAt(0.72);
     const preplant = directionAt(0.97);
 
-    expect(plant.vertical).toBeLessThan(-0.95);
-    expect(plant.foreAft).toBeLessThan(0);
-    expect(loaded.vertical).toBeLessThan(-0.65);
-    expect(loaded.foreAft).toBeLessThan(-0.35);
-    expect(latePress.foreAft).toBeLessThan(-0.9);
-    expect(Math.abs(poleOff.vertical)).toBeLessThan(1e-10);
-    expect(poleOff.foreAft).toBeCloseTo(-1, 12);
-    expect(recovery.vertical).toBeLessThan(-0.65);
+    // SkiErg catch: the elbows hang DOWN below the up-forward arm chord
+    // (tilted slightly forward), swing aft early so the loaded pull drives
+    // them down-back past the ribs, and the recovery retraces the same arc
+    // into the next plant. The former high-elbow contract (elbows above the
+    // chord at the plant) read as elbows pointing at the sky.
+    expect(plant.vertical).toBeLessThan(-0.9);
+    expect(plant.foreAft).toBeGreaterThan(0.1);
+    expect(loaded.vertical).toBeLessThan(-0.3);
+    expect(loaded.foreAft).toBeLessThan(-0.7);
+    // Late press: fully down-back.
+    expect(latePress.vertical).toBeLessThan(0);
+    expect(poleOff.vertical).toBeLessThan(-0.4);
+    expect(poleOff.foreAft).toBeLessThan(-0.85);
+    // Recovery swings the arc back from down-back toward the down-forward
+    // plant; vertical stays below the horizon the whole way.
     expect(recovery.foreAft).toBeGreaterThan(poleOff.foreAft);
-    expect(preplant.vertical).toBeLessThan(-0.99);
-    expect(Math.abs(preplant.foreAft)).toBeLessThan(0.1);
+    expect(recovery.vertical).toBeLessThan(0);
+    expect(preplant.vertical).toBeLessThan(-0.9);
+    expect(preplant.foreAft).toBeGreaterThan(0.1);
 
+    // Bound derived from measurement, not slack: the early aft swing
+    // (smoothstep over the first 45% of the sweep, then the arc holds at
+    // down-back) peaks at 0.0708 per 1/256 step. The bound sits just above
+    // that peak, so any new discontinuity — or a retune that steepens the
+    // swing — fails here rather than hiding inside a slack allowance.
     let previous = directionAt(0);
     for (let step = 1; step <= 256; step++) {
       const next = directionAt(step / 256);
       expect(
         Math.hypot(next.vertical - previous.vertical, next.foreAft - previous.foreAft),
         `continuous SkiErg elbow plane at ${step / 256}`,
-      ).toBeLessThan(0.035);
+      ).toBeLessThan(0.075);
       previous = next;
     }
 
