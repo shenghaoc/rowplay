@@ -94,10 +94,15 @@ opposition, so no test could see it.
 The opposition is now the fitted `SKI_POLE_THUMB_OPPOSE = 1.75`, living in
 [`skiEquipment.ts`](../../src/lib/replay/skiEquipment.ts) beside the rubber it
 was fitted to. The [capture manifest](ski-equipment/in-app/pr-ski-thumb/manifest.json)
-records source commit `0e767d13`. Every frame is a real application capture from
-the Workers-faithful preview (`wrangler dev`) in headed Chromium on the hardware
+records source commit `3c1618aa` — the whole set was re-captured after #192 and
+#194 landed, so the frames describe the code that merges rather than the code as
+first written, and they double as proof that the closure survives the
+per-sport-module split. Every frame is a real application capture from the
+Workers-faithful preview (`wrangler dev`) in headed Chromium on the hardware
 WebGPU backend, at requested **and effective** Ultra, in the production
-1112×420 replay stage, with no browser errors or warnings.
+1112×420 replay stage, with no browser errors or warnings. The served renderer
+chunk was hash-matched to the local build and confirmed to carry the shipped
+1.75 before any frame was taken.
 
 | Frame                                                                                     | Acceptance purpose                                                                                                                                            |
 | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -119,10 +124,14 @@ columns is the thumb. Which hand is which is pinned by name in the suite rather
 than read off the pixels: the grip camera's rear-three-quarter framing shows one
 hand from the thumb side and the other from the back.
 
-No `front` frame is included. That capture-only portrait is framed for the
-seated rower and clears only the top of a standing skier's head, so it would add
-an unreadable file rather than a second angle. It is a pre-existing limitation of
-that camera, untouched by this pass.
+No `front` frame is included. The first pass omitted it because that portrait
+was framed for the seated rower and cleared only the top of a standing skier's
+head; [#194](replay-front-portrait.md) has since fixed exactly that, and it was
+found while capturing this evidence. It stays omitted for a different reason:
+the fixed portrait solves against the head/shoulder mass by design, so at the
+press the hands fall below the frame and at the plant they graze its bottom
+edge. It is a face lane, not a hands lane, at every phase — which is why the
+bilateral read here comes from the before/after sheet instead.
 
 Regression cover added with the fix:
 

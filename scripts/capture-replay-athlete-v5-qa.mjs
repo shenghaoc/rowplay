@@ -532,9 +532,10 @@ for (const thumbPose of [
   { name: "ski-grip-press", seconds: 0.5, camera: "grip" },
   { name: "ski-chase-plant", seconds: 0.05, camera: "normal" },
   { name: "ski-chase-press", seconds: 0.5, camera: "normal" },
-  // No `front` frame: that capture-only portrait is framed for the seated
-  // rower and clears only the top of a standing skier's head, so it would add
-  // an unreadable file rather than a second angle on the thumb.
+  // No `front` frame. Since #194 that portrait frames a standing athlete
+  // correctly, but it solves against the head/shoulder mass by design, so the
+  // hands fall below the frame at the press and graze its bottom edge at the
+  // plant. It is a face lane, not a hands lane, at every phase.
 ]) {
   if (shouldCapture(thumbPose.name)) {
     await captureStill({

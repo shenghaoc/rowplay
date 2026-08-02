@@ -1,5 +1,5 @@
 {
-  "commit": "0e767d13ed0887db95a783d21a004cbcb992545f",
+  "commit": "3c1618aa1cf90152a353b281981ba936a159aa53",
   "source": "http://127.0.0.1:8834",
   "command": "node scripts/capture-replay-athlete-v5-qa.mjs --headed --base-url=http://127.0.0.1:8834 --output=docs/visual-qa/ski-equipment/in-app/pr-ski-thumb --only=ski-grip-plant,ski-grip-press,ski-chase-plant,ski-chase-press",
   "note": "Real RowPlay 3D application capture. Requested Ultra may report High when the browser backend is WebGL; the manifest records the effective tier and backend for every file.",
@@ -109,5 +109,5 @@
       ]
     }
   ],
-  "buildIdentity": "Captured against wrangler dev on an uncontended port. The served renderer chunk was hash-matched to the local build and carries the shipped SKI_POLE_THUMB_OPPOSE = 1.75."
+  "buildIdentity": "Captured against wrangler dev on an uncontended port. The served renderer chunk was hash-matched to the local build and confirmed to carry the shipped SKI_POLE_THUMB_OPPOSE = 1.75."
 }
