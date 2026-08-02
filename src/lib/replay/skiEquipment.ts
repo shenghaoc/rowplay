@@ -91,6 +91,17 @@ export const SKI_GRIP_SHIFT = 0.042;
  */
 export const SKI_POLE_GRIP_RADIUS = HAND_FIST_REFERENCE_GRIP_RADIUS;
 
+/**
+ * Thumb opposition that closes the fist onto {@link SKI_POLE_GRIP_RADIUS},
+ * in the thumb root's bone frame — not anatomical thumb rotation.
+ *
+ * Fitted against the shipped rig, so it lives beside the rubber it was fitted
+ * to: the measured band and the failure mode on either side of it are recorded
+ * at the SkiErg branch of `gripContractFor`. Re-measure rather than nudge if
+ * the rubber or the hand channel moves.
+ */
+export const SKI_POLE_THUMB_OPPOSE = 1.75;
+
 export interface SkiEquipmentDetail {
   /** Radial resolution for the visible hard-surface fallback. */
   readonly radialSegments: number;

@@ -81,6 +81,85 @@ geometry, textures, or likenesses.
 
 ## In-app evidence
 
+### Thumb closure on the pole (2026-08-02)
+
+The SkiErg grip contract inherited `thumbOppose: 0.62` from a pose that asserts
+nothing about thumb contact. Measured on the shipped rig that stood the thumb
+pad ~20 mm off the rendered rubber, with the thumb extended up the shaft rather
+than closed around it — the same floating-thumb defect PR #181 fixed on the
+BikeErg hood. It survived PR #179 because RowErg and BikeErg each pin their five
+per-digit contact reports while SkiErg pinned only angular coverage and
+opposition, so no test could see it.
+
+The opposition is now the fitted `SKI_POLE_THUMB_OPPOSE = 1.75`, living in
+[`skiEquipment.ts`](../../src/lib/replay/skiEquipment.ts) beside the rubber it
+was fitted to. The [capture manifest](ski-equipment/in-app/pr-ski-thumb/manifest.json)
+records source commit `3c1618aa` — the whole set was re-captured after #192 and
+#194 landed, so the frames describe the code that merges rather than the code as
+first written, and they double as proof that the closure survives the
+per-sport-module split. Every frame is a real application capture from the
+Workers-faithful preview (`wrangler dev`) in headed Chromium on the hardware
+WebGPU backend, at requested **and effective** Ultra, in the production
+1112×420 replay stage, with no browser errors or warnings. The served renderer
+chunk was hash-matched to the local build and confirmed to carry the shipped
+1.75 before any frame was taken.
+
+| Frame                                                                                     | Acceptance purpose                                                                                                                                            |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Thumb before / after](ski-equipment/in-app/pr-ski-thumb/thumb-before-after.jpg)          | Both hands at both instants, against the same frames re-rendered at the inherited 0.62. The thumb closes from standing up the shaft to lying across the fist. |
+| [Grip camera, plant](ski-equipment/in-app/pr-ski-thumb/poses/ski-grip-plant.jpg)          | Macro: both fists closed on their shafts at the plant, with the far hand showing the thumb-side lane directly.                                                |
+| [Grip camera, loaded press](ski-equipment/in-app/pr-ski-thumb/poses/ski-grip-press.jpg)   | Macro: the closure survives the most flexed wrist of the cycle on both sides.                                                                                 |
+| [Chase camera, plant](ski-equipment/in-app/pr-ski-thumb/poses/ski-chase-plant.jpg)        | Ordinary viewing distance: the high plant reads as compact closed fists, no splayed or floating digit.                                                        |
+| [Chase camera, loaded press](ski-equipment/in-app/pr-ski-thumb/poses/ski-chase-press.jpg) | Ordinary viewing distance: down-and-back arms with both grips still closed and the poles trailing to their planted baskets.                                   |
+
+**Why the chase frames are part of acceptance, not a nicety.** A grip close-up
+has twice hidden a defect in this repo that the ordinary chase view showed
+plainly, so a macro frame alone is not acceptance here. Both cameras are
+captured at both instants.
+
+The before column of the comparison sheet is a throwaway build made by
+temporarily setting the constant back to 0.62; everything else — commit, camera,
+theme, quality, cycle times — is held fixed, so the digit that moves between the
+columns is the thumb. Which hand is which is pinned by name in the suite rather
+than read off the pixels: the grip camera's rear-three-quarter framing shows one
+hand from the thumb side and the other from the back.
+
+No `front` frame is included. The first pass omitted it because that portrait
+was framed for the seated rower and cleared only the top of a standing skier's
+head; [#194](replay-front-portrait.md) has since fixed exactly that, and it was
+found while capturing this evidence. It stays omitted for a different reason:
+the fixed portrait solves against the head/shoulder mass by design, so at the
+press the hands fall below the frame and at the plant they graze its bottom
+edge. It is a face lane, not a hands lane, at every phase — which is why the
+bilateral read here comes from the before/after sheet instead.
+
+Regression cover added with the fix:
+
+- **Per-digit contact** (`closes every reaching SkiErg digit onto the pole and
+reports the pinky honestly`) — the five contact reports SkiErg was missing.
+  The pinky saturates all three stage limits (~280° curl) and still stops ~6 mm
+  short of a shaft this thin, so `contact` is `false` and the test pins that it
+  closes _completely_ rather than that it arrives. Widening
+  `FINGER_STAGE_LIMITS` to force contact would author an anatomically
+  impossible pinky.
+- **Rendered-shaft check** (`presses the SkiErg thumb pad onto the rendered
+shaft`) — `surfaceDistance` is measured against whatever radius the contract
+  supplied, so a seated thumb there can still be a floating thumb on screen.
+  This measures the pad against the shaft geometry that actually renders, at
+  four points around the cycle on both hands.
+- **Solver guard** (`seats the pole thumb on the shaft instead of standing it
+alongside`) — with a deliberately-failing 1.50 control so the assertion cannot
+  be trivially satisfied.
+- **Stacking bounds** were re-fitted rather than relaxed. The old
+  pair was measured against a thumb standing _above_ the index, which a wrapped
+  thumb cannot satisfy; the invariant is now that the pad lies across the fist —
+  below the index, level with the middle, well above the pinky — which still
+  rejects the inverted fist the original assertion was written to catch.
+
+The closure _policy_ is unchanged: SkiErg keeps the sequential first-contact
+solve its approved poses were fitted against, and only the opposition constant
+moved. The BikeErg enclosure opt-in stays Bike-only.
+
 ### PR #179 exact-head regression audit (2026-08-02)
 
 Fresh Codex in-app browser captures audit source commit

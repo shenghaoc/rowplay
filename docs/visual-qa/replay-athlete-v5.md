@@ -176,6 +176,17 @@ their approved closure paths. Fresh WebGPU/Ultra desktop macro, crank-extreme,
 and seated-support evidence is documented in
 [BikeErg geometry-aware grip acceptance](replay-bike-grip.md).
 
+### SkiErg thumb closure follow-up
+
+The SkiErg layer kept an opposition constant inherited from a pose that asserts
+nothing about thumb contact, which stood the pad ~20 mm off the rendered pole
+with the thumb extended up the shaft. RowErg and BikeErg each pin five per-digit
+contact reports; SkiErg pinned only angular coverage, so no test could see it.
+The refitted constant closes the thumb across the fist, and the missing
+per-digit and rendered-shaft assertions are now in place. Its fresh WebGPU/Ultra
+grip and chase evidence, including a before/after render of the same frames, is
+documented in [SkiErg equipment and proportion visual acceptance](replay-ski-equipment.md).
+
 ### BikeErg equipment and seated fit — 2026-07-25
 
 Product goal: a better **machine** plus correct athlete interaction. The athlete
