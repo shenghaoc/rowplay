@@ -329,6 +329,38 @@ const CAMERA_RIGS: Record<Sport, CameraRig> = {
   skierg: { back: 3.15, height: 2.3, ahead: 0.9, lateral: 1.86, aimY: 1.14 },
   bike: { back: 3.12, height: 1.96, ahead: 0.58, lateral: 1.92, aimY: 0.92 },
 };
+
+/**
+ * Capture-only `athlete-front` portrait framing. The subject is the athlete's
+ * head and shoulder mass, measured live off the visible rig, so a standing
+ * SkiErg athlete is framed by the same rule as a seated rower or cyclist.
+ *
+ * Exported so the framing tests assert against these exact values rather than
+ * their own copies: re-tuning a bound here has to move the guard with it.
+ */
+export const QA_PORTRAIT = {
+  /**
+   * Crown above the head joint of the skinned hero. The shipped V4 rest pose
+   * puts its bounding box top 0.1381 m over `v4Head`, and the posed skin gives
+   * no cheap equivalent to measure per frame, so this tracks the sealed GLB.
+   * The procedural fallback is measured live instead — its headgear is
+   * per-sport (BikeErg's parented helmet alone reaches 0.195 m).
+   */
+  heroCrownRise: 0.14,
+  /** Deltoid and upper-chest mass hanging below the shoulder joint. */
+  shoulderDrop: 0.11,
+  /** Deltoid mass outboard of the shoulder joint, per side. */
+  shoulderFlesh: 0.08,
+  /**
+   * Share of the half-frame the head/shoulder mass may occupy. The remainder
+   * is portrait air, and it has to survive the narrowest supported stage as
+   * well as the head swinging away from the shoulders through a stroke.
+   */
+  fill: 0.7,
+  /** Look-down gradient over the standoff: a gentle ~12°, not a top-down. */
+  lookDown: 0.22,
+} as const;
+
 const BASE_CAMERA_FOV: Record<Sport, number> = {
   // Slightly tighter than Ski/Bike so the far bank compresses into fog; still
   // wide enough that the full scull span survives portrait viewports.
@@ -826,6 +858,25 @@ export class CourseRenderer3D implements ReplayRenderer {
   /** Query-gated grip camera scratch; inert during normal replay. */
   private readonly qaGripFocus = new THREE.Vector3();
   private readonly qaGripOther = new THREE.Vector3();
+  /** Query-gated front-portrait scratch; inert during normal replay. */
+  private readonly qaPortraitFocus = new THREE.Vector3();
+  private readonly qaPortraitHead = new THREE.Vector3();
+  private readonly qaPortraitShoulder = new THREE.Vector3();
+  private readonly qaPortraitOther = new THREE.Vector3();
+  /** Half-extents (m) of the head/shoulder mass resolved for this frame. */
+  private qaPortraitHalfHeight = 0;
+  private qaPortraitHalfWidth = 0;
+  /** Crown over the head joint of whichever rig is currently visible. */
+  private qaPortraitCrownRise: number = QA_PORTRAIT.heroCrownRise;
+  /** Reused world box for the procedural head subtree; hero path never uses it. */
+  private readonly qaPortraitBox = new THREE.Box3();
+  /** Procedural head/shoulder landmarks, resolved once on the QA path. */
+  private qaPortraitFallback: {
+    head: THREE.Object3D;
+    left: THREE.Object3D;
+    right: THREE.Object3D;
+  } | null = null;
+  private qaPortraitFallbackResolved = false;
   private worldFill!: THREE.DirectionalLight;
   private readonly environmentMidGroup = new THREE.Group();
   private readonly environmentDetailGroup = new THREE.Group();
@@ -2540,6 +2591,80 @@ export class CourseRenderer3D implements ReplayRenderer {
     return output;
   }
 
+  /**
+   * Head/shoulder landmarks of the *visible* athlete, for the capture-only
+   * front portrait. The skinned hero's head follows its clip and can sit ~0.2 m
+   * from the procedural head that owns the contact targets, so the bone is read
+   * whenever a hero is installed and the procedural rig only answers when it is
+   * the body actually on screen.
+   */
+  private resolveQaPortraitLandmarks(): boolean {
+    const motion = this.liveAvatar.v4Motion;
+    if (motion?.enabled) {
+      motion.getHeadWorld(this.qaPortraitHead);
+      motion.getShoulderWorld("left", this.qaPortraitShoulder);
+      motion.getShoulderWorld("right", this.qaPortraitOther);
+      this.qaPortraitCrownRise = QA_PORTRAIT.heroCrownRise;
+      return true;
+    }
+    if (!this.qaPortraitFallbackResolved) {
+      this.qaPortraitFallbackResolved = true;
+      const group = this.liveAvatar.group;
+      const head = group.getObjectByName("athlete:head");
+      const left = group.getObjectByName(`${this.sport}-shoulder-left`);
+      const right = group.getObjectByName(`${this.sport}-shoulder-right`);
+      this.qaPortraitFallback = head && left && right ? { head, left, right } : null;
+    }
+    const fallback = this.qaPortraitFallback;
+    if (!fallback) return false;
+    fallback.head.getWorldPosition(this.qaPortraitHead);
+    fallback.left.getWorldPosition(this.qaPortraitShoulder);
+    fallback.right.getWorldPosition(this.qaPortraitOther);
+    // Measure the rigid head subtree rather than assuming a crown height: the
+    // procedural rig carries per-sport headgear, and BikeErg's helmet sits
+    // 0.045 m above where the bare cranium and hair mass end. Reading the posed
+    // world box also keeps the rise honest while the head pitches.
+    this.qaPortraitBox.setFromObject(fallback.head);
+    this.qaPortraitCrownRise = Math.max(0, this.qaPortraitBox.max.y - this.qaPortraitHead.y);
+    return true;
+  }
+
+  /**
+   * Frame the front portrait on the athlete rather than on the course anchor.
+   * The anchor is the un-surged lane point: SkiErg carries up to
+   * `SPORT_PROFILES.skierg.surgeAmp` metres of intra-stroke travel on top of
+   * it, which is more than the whole portrait standoff, so an anchor-framed
+   * close-up walks off the standing athlete inside a single stroke. Writes
+   * `qaPortraitFocus` plus the mass half-extents and reports whether the
+   * landmarks were available at all.
+   */
+  private resolveQaPortraitFocus(): boolean {
+    if (!this.resolveQaPortraitLandmarks()) return false;
+    const head = this.qaPortraitHead;
+    const shoulderX = (this.qaPortraitShoulder.x + this.qaPortraitOther.x) * 0.5;
+    const shoulderY = (this.qaPortraitShoulder.y + this.qaPortraitOther.y) * 0.5;
+    const shoulderZ = (this.qaPortraitShoulder.z + this.qaPortraitOther.z) * 0.5;
+    // Centre the mass, not the face: a folded SkiErg athlete carries the head
+    // well ahead of the shoulder line, and a face-centred frame would push the
+    // shoulders out of the bottom of the portrait.
+    const crownY = head.y + this.qaPortraitCrownRise;
+    const massBottomY = shoulderY - QA_PORTRAIT.shoulderDrop;
+    this.qaPortraitFocus.set(
+      (head.x + shoulderX) * 0.5,
+      (crownY + massBottomY) * 0.5,
+      (head.z + shoulderZ) * 0.5,
+    );
+    this.qaPortraitHalfHeight = Math.max(0.05, (crownY - massBottomY) * 0.5);
+    this.qaPortraitHalfWidth =
+      Math.hypot(
+        this.qaPortraitShoulder.x - this.qaPortraitOther.x,
+        this.qaPortraitShoulder.z - this.qaPortraitOther.z,
+      ) *
+        0.5 +
+      QA_PORTRAIT.shoulderFlesh;
+    return true;
+  }
+
   render(state: RenderState, playing: boolean, themeName: "light" | "dark" = "light"): void {
     if (this.w === 0) return;
     try {
@@ -2875,16 +3000,29 @@ export class CourseRenderer3D implements ReplayRenderer {
       // `athlete-grip-left` keeps the port palm focus for the mirrored
       // enclosure evidence — both hands get their own close-up lane.
     }
+    // `athlete-front` is a capture-only portrait, not a reversed chase view:
+    // it must make the actual head, shoulder mass, and face treatment legible
+    // enough to review. The normal and diagnostic-close cameras keep their
+    // broadcast framing unchanged.
+    const qaFront = this.qaCamera === "athlete-front" && !state.ghost;
+    // Solving the portrait against the live head/shoulder mass is what makes
+    // one rule work for a seated rower, a seated cyclist and a standing skier.
+    // Without landmarks (no rig at all) the sport-rig framing below still runs.
+    const qaPortrait = qaFront && this.resolveQaPortraitFocus();
     const focusX = qaGrip
       ? this.qaGripFocus.x
-      : state.ghost
-        ? (p.x + this.ghostPlacement.x) * 0.5
-        : p.x;
+      : qaPortrait
+        ? this.qaPortraitFocus.x
+        : state.ghost
+          ? (p.x + this.ghostPlacement.x) * 0.5
+          : p.x;
     const focusZ = qaGrip
       ? this.qaGripFocus.z
-      : state.ghost
-        ? (p.z + this.ghostPlacement.z) * 0.5
-        : p.z;
+      : qaPortrait
+        ? this.qaPortraitFocus.z
+        : state.ghost
+          ? (p.z + this.ghostPlacement.z) * 0.5
+          : p.z;
     const comparisonSpan = state.ghost
       ? Math.hypot(p.x - this.ghostPlacement.x, p.z - this.ghostPlacement.z)
       : 0;
@@ -2911,11 +3049,6 @@ export class CourseRenderer3D implements ReplayRenderer {
     // rest of the QA rig; the production chase never uses them.
     const qaRear = this.qaCamera === "athlete-rear" && !state.ghost;
     const qaTop = this.qaCamera === "athlete-top" && !state.ghost;
-    // `athlete-front` is a capture-only portrait, not a reversed chase view:
-    // it must make the actual head, shoulder mass, and face treatment legible
-    // enough to review. The normal and diagnostic-close cameras keep their
-    // broadcast framing unchanged.
-    const qaFront = this.qaCamera === "athlete-front" && !state.ghost;
     // Row grips finish against the front of the lower ribs and are completely
     // occluded from a rear chase close-up. The grip diagnostic approaches only
     // RowErg from ahead; SkiErg/BikeErg retain the rear-three-quarter view that
@@ -2933,18 +3066,33 @@ export class CourseRenderer3D implements ReplayRenderer {
           : qaClose
             ? 0.42
             : 1;
-    const back = normalBack * closeScale;
+    // Derive the portrait standoff from the measured head/shoulder mass and the
+    // current lens instead of scaling the chase distance. A sport-rig fraction
+    // is only ever right for the sport it was tuned against: the same 0.22 that
+    // framed the seated rower left the standing SkiErg athlete's shoulders
+    // outside the frustum, and put the camera inside the surge envelope.
+    //
+    // Each axis is fitted against its own half-angle. Testing the shoulder span
+    // against the vertical lens instead would push the camera back by the stage
+    // aspect ratio and leave a 1140×420 portrait mostly venue.
+    const portraitBack = qaPortrait
+      ? Math.max(
+          this.qaPortraitHalfHeight / Math.max(0.05, Math.tan(verticalHalfFov) * QA_PORTRAIT.fill),
+          this.qaPortraitHalfWidth / Math.max(0.05, Math.tan(horizontalHalfFov) * QA_PORTRAIT.fill),
+        )
+      : 0;
+    const back = qaPortrait ? portraitBack : normalBack * closeScale;
     const baseHeight = this.reduceMotion
       ? sportRig.height + 0.7
       : sportRig.height + (narrow ? 0.3 : 0);
     // The camera looks gently down toward the face instead of shooting upward
     // from chest height. This branch is query-gated and never changes the
     // production chase view.
-    const portraitAimY = sportRig.aimY + 0.28;
+    const portraitAimY = qaPortrait ? this.qaPortraitFocus.y : sportRig.aimY + 0.28;
     const height = qaGrip
       ? this.qaGripFocus.y + (qaGripFront ? 0.55 : 0.24)
       : qaFront
-        ? portraitAimY + 0.42
+        ? portraitAimY + (qaPortrait ? portraitBack * QA_PORTRAIT.lookDown : 0.42)
         : qaTop
           ? sportRig.aimY + 3.1
           : (baseHeight + Math.min(2.5, comparisonSpan * 0.16)) * (qaClose ? 0.84 : 1);

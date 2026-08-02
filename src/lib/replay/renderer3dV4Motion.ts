@@ -326,6 +326,12 @@ export interface ReplayV4MotionController {
   update(sample: ReplayV4MotionSample): boolean;
   /** World-space shoulder joint after the latest successful prepare. */
   getShoulderWorld(side: "left" | "right", output?: THREE.Vector3): THREE.Vector3;
+  /**
+   * World-space head joint of the visible hero. The procedural fallback head
+   * can sit ~0.2 m away from it once a clip is driving the skin, so anything
+   * framing the actual face has to read the bone rather than the target rig.
+   */
+  getHeadWorld(output?: THREE.Vector3): THREE.Vector3;
   /** World-space knee target for the prepared contact-constrained leg. */
   getLegJointTargetWorld(side: "left" | "right", output?: THREE.Vector3): THREE.Vector3;
   /** World-space wrist→palm contact vector after the latest prepare. */
@@ -1545,6 +1551,10 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
         ? this.options.instance.bones.v4LeftUpperArm
         : this.options.instance.bones.v4RightUpperArm;
     return bone.getWorldPosition(output);
+  }
+
+  getHeadWorld(output = new THREE.Vector3()): THREE.Vector3 {
+    return this.options.instance.bones.v4Head.getWorldPosition(output);
   }
 
   getLegJointTargetWorld(side: "left" | "right", output = new THREE.Vector3()): THREE.Vector3 {
