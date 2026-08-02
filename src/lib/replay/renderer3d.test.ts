@@ -33,7 +33,14 @@ vi.mock("three", async (importOriginal) => {
 });
 
 import { CourseRenderer3D, replayV4ArmContactReach, SKI_PALM_TILT } from "./renderer3d";
-import { handPalmNormalOut } from "./handGrip";
+import {
+  handChannelCentre,
+  handLongAxis,
+  handPalmNormalOut,
+  HAND_CURL_AXIS,
+  HAND_FIST_CENTRE,
+  HAND_FIST_RADIUS,
+} from "./handGrip";
 import type { Sport } from "../types";
 import { COLORS_DARK, REDUCED_REPLAY_POSES } from "./renderer";
 import {
@@ -54,8 +61,8 @@ import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeM
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
 import { BIKE_RIG, bikeSaddleTopY } from "./bikeRig";
 import { BIKE_SADDLE_SHELL_THICKNESS, bikeSaddleDropAt } from "./bikeSaddle";
+import { ROWER_SCULL_GRIP } from "./rowRig";
 import { SKI_ATHLETE_PROPORTIONS, SKI_POLE_GRIP_RADIUS } from "./skiEquipment";
-import { handLongAxis, HAND_CURL_AXIS, HAND_FIST_CENTRE, HAND_FIST_RADIUS } from "./handGrip";
 import * as THREE from "three";
 
 /** Minimal 2D context stub for text sprite canvas creation. */
@@ -366,21 +373,22 @@ function v4EffectorWorld(
 }
 
 /**
- * World position of the SkiErg contact point the solver actually drives. Feet
- * keep authored sole offsets; hands drive the fitted fist-channel centre.
+ * World position of the contact point the sport layer actually drives. Feet
+ * keep authored sole offsets; SkiErg uses its fitted fist centre and RowErg
+ * uses the larger scull-channel centre.
  */
-function v4SkiEffectiveContactWorld(
+function v4EffectiveContactWorld(
+  sport: "rower" | "skierg" | "bike",
   instance: ReplayV4AthleteInstance,
   effector: ReplayV4EffectorName,
 ): THREE.Vector3 {
   const metric = instance.effectors[effector];
-  if (effector.endsWith("Foot")) return v4EffectorWorld(instance, effector);
+  if (effector.endsWith("Foot") || sport === "bike") return v4EffectorWorld(instance, effector);
   const side = effector.startsWith("left") ? -1 : 1;
-  const local = new THREE.Vector3(
-    side * HAND_FIST_CENTRE.x,
-    HAND_FIST_CENTRE.y,
-    HAND_FIST_CENTRE.z,
-  );
+  const local =
+    sport === "rower"
+      ? handChannelCentre(ROWER_SCULL_GRIP.radius, side)
+      : new THREE.Vector3(side * HAND_FIST_CENTRE.x, HAND_FIST_CENTRE.y, HAND_FIST_CENTRE.z);
   return instance.bones[metric.bone].localToWorld(local);
 }
 
@@ -402,11 +410,19 @@ function expectNumericSnapshotClose(
   tolerance = 1e-9,
 ): void {
   expect(actual).toHaveLength(expected.length);
-  const maximumDelta = actual.reduce(
-    (maximum, value, index) => Math.max(maximum, Math.abs(value - (expected[index] ?? 0))),
-    0,
-  );
-  expect(maximumDelta).toBeLessThan(tolerance);
+  let maximumDelta = 0;
+  let maximumIndex = -1;
+  for (let index = 0; index < actual.length; index++) {
+    const delta = Math.abs((actual[index] ?? 0) - (expected[index] ?? 0));
+    if (delta > maximumDelta) {
+      maximumDelta = delta;
+      maximumIndex = index;
+    }
+  }
+  expect(
+    maximumDelta,
+    `pose snapshot delta at index ${maximumIndex}: ${actual[maximumIndex]} vs ${expected[maximumIndex]}`,
+  ).toBeLessThan(tolerance);
 }
 
 function projectToPixels(
@@ -1600,7 +1616,19 @@ describe("CourseRenderer3D", () => {
         // A finish can bring the hands to the jersey, but never through its
         // volume. Keep a small core margin so a grazing outer cuff stays valid.
         const torsoCore = body!.clone().expandByScalar(-0.08);
-        expect(torsoCore.containsPoint(gripInTorsoSpace), `${side} grip at ${step}/64`).toBe(false);
+        expect(
+          torsoCore.containsPoint(gripInTorsoSpace),
+          `${side} grip at ${step}/64 (${gripInTorsoSpace
+            .toArray()
+            .map((value) => value.toFixed(4))
+            .join(", ")}) within ${torsoCore.min
+            .toArray()
+            .map((value) => value.toFixed(4))
+            .join(", ")}…${torsoCore.max
+            .toArray()
+            .map((value) => value.toFixed(4))
+            .join(", ")}`,
+        ).toBe(false);
       }
     }
     renderer.destroy();
@@ -1745,8 +1773,17 @@ describe("CourseRenderer3D", () => {
           // farther aft than the hands in a natural finish, so validate the
           // grip's chest band directly rather than forcing an elbow/hand order.
           expect(handLocal.z, `${side} hand stays on chest-level grip at ${cycle}`).toBeGreaterThan(
-            -0.1,
+            -0.2,
           );
+          // The athlete-origin band above is only a coarse proxy. The invariant
+          // the requirement actually names — no past-vertical behind-the-back
+          // haul — is shoulder-relative, so pin it directly: the retimed draw
+          // finishes with the handle still clearly forward of the laid-back
+          // shoulder plane (measured 0.170 m at the deepest finish fold).
+          expect(
+            handLocal.z - shoulder.z,
+            `${side} finish handle stays forward of the shoulder plane at ${cycle}`,
+          ).toBeGreaterThan(0.1);
         }
         if (graph.body.armDraw.value < 0.03) {
           expect(straightness, `${side} long arm before/after draw at ${cycle}`).toBeGreaterThan(
@@ -2338,10 +2375,7 @@ describe("CourseRenderer3D", () => {
       ] as const) {
         const metric = instance.effectors[effector];
         const target = avatar.v4Targets[targetName];
-        const contact =
-          sport === "skierg"
-            ? v4SkiEffectiveContactWorld(instance, effector)
-            : v4EffectorWorld(instance, effector);
+        const contact = v4EffectiveContactWorld(sport, instance, effector);
         const targetPosition = target.getWorldPosition(new THREE.Vector3());
         // The clip supplies base performance and arm bend planes; rigid sport
         // equipment remains the terminal contact authority. Orientation stays
@@ -2779,6 +2813,19 @@ describe("CourseRenderer3D", () => {
     it("keeps RowErg hands on separate scull grips without chicken-wing elbows", () => {
       const renderer = rendererFor("rower");
       try {
+        const { motion } = v4Lane(renderer);
+        expect(motion.root.userData.replayV4GripMode).toBe("geometry-closure");
+        for (const side of ["left", "right"] as const) {
+          const contacts = motion.getGripContacts(side);
+          expect(contacts, `${side} closes every digit`).toHaveLength(5);
+          for (const report of contacts) {
+            expect(report.contact, `${side} ${report.digit} contacts the scull`).toBe(true);
+            expect(
+              Math.abs(report.surfaceDistance),
+              `${side} ${report.digit} scull surface distance`,
+            ).toBeLessThan(0.004);
+          }
+        }
         const inv = new THREE.Matrix4();
         const leftLocal = new THREE.Vector3();
         const rightLocal = new THREE.Vector3();
@@ -3012,12 +3059,12 @@ describe("CourseRenderer3D", () => {
      * SkiErg contacts the way a shared default did.
      */
     const BIKE_V4_CONTACT_TOLERANCE = { hand: 0.17, foot: 0.19 } as const;
-    // The rower's rigid-grip wrist orientation is restrained, so the rotated
-    // palm offset can hold the effector up to ~23 mm off the grip at the
-    // hands-away oar angles. The full wrist/palm/handle interaction rework is
-    // tracked separately; keep the rower budget far tighter than ski/bike
-    // while allowing that measured restraint residual.
-    const ROW_V4_CONTACT_TOLERANCE = { hand: 0.03, foot: 0.015 } as const;
+    /**
+     * RowErg drives the fitted scull-channel centre, not the palm skin, onto
+     * the rigid rubber. The two-pass wrist-sphere refinement keeps that
+     * channel within the same 5 mm hand budget as SkiErg.
+     */
+    const ROW_V4_CONTACT_TOLERANCE = { hand: 0.005, foot: 0.015 } as const;
 
     /** Per-sport contact budget for the loops that exercise all three sports. */
     function reducedTolerance(
@@ -3525,11 +3572,16 @@ describe("CourseRenderer3D", () => {
           for (const side of ["left", "right"] as const) {
             const effector = `${side}Hand` as const;
             const palm = v4EffectorWorld(instance, effector);
+            const gripChannel = v4EffectiveContactWorld("rower", instance, effector);
             const grip = worldPosition(renderer, `rower-hand-contact-${side}`);
             expect(
+              gripChannel.distanceTo(grip),
+              `${side} grip channel stays on rigid scull grip at ${cycle}`,
+            ).toBeLessThan(ROW_V4_CONTACT_TOLERANCE.hand);
+            expect(
               palm.distanceTo(grip),
-              `${side} palm stays on rigid scull grip at ${cycle}`,
-            ).toBeLessThan(0.03);
+              `${side} palm skin remains outside the scull axis at ${cycle}`,
+            ).toBeGreaterThan(ROWER_SCULL_GRIP.radius);
             const elbow = instance.bones[
               side === "left" ? "v4LeftForearm" : "v4RightForearm"
             ].getWorldPosition(new THREE.Vector3());

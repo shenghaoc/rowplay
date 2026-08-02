@@ -536,9 +536,12 @@ describe("CourseRenderer stroke pose input", () => {
 
     expect(samples[clearanceIndex - 1]!.handMinusKnee).toBeGreaterThan(0);
     expect(samples[clearanceIndex]!.legExtension).toBeGreaterThan(0.99);
+    const maximumPreClearance = samples
+      .slice(peakIndex, clearanceIndex)
+      .reduce((maximum, sample) => (sample.bendDegrees > maximum.bendDegrees ? sample : maximum));
     expect(
-      Math.max(...samples.slice(peakIndex, clearanceIndex).map((sample) => sample.bendDegrees)),
-      "arms remain visually long before the handle clears the knees",
+      maximumPreClearance.bendDegrees,
+      `arms remain visually long before the handle clears the knees; max at cycle=${maximumPreClearance.cycle}, handMinusKnee=${maximumPreClearance.handMinusKnee}, armDraw=${maximumPreClearance.armDraw}, clearanceCycle=${samples[clearanceIndex]!.cycle}`,
     ).toBeLessThan(5);
     expect(
       visibleDrawIndex,

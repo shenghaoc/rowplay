@@ -97,7 +97,7 @@ figure, readability, and motion specs.
     without adding a second athlete or motion system
   - [x] Apply SkiErg cylindrical-grip closure after the authoritative palm
     contact solve (#179)
-  - [ ] Apply RowErg scull closure after the authoritative palm contact solve
+  - [x] Apply RowErg scull closure after the authoritative palm contact solve
     (#180)
   - [ ] Apply BikeErg hood closure after the authoritative palm contact solve
     (#181)

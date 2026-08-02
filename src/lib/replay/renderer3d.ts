@@ -33,7 +33,6 @@ import {
   SKI_POLE_OFF_CYCLE,
   type BikeMotionGraph,
 } from "./motionGraph";
-
 import { BIKE_RIG, bikeSaddleTopY, bikeWheelAxleY } from "./bikeRig";
 import { buildBikeSaddleGeometry } from "./bikeSaddle";
 import type { Sport } from "../types";
@@ -41,16 +40,21 @@ import { fmtPace } from "../format";
 import { METERS_PER_CYCLE, ParticlePool, PerfGovernor, clampDt, dampFactor } from "./motion";
 import { solveRigidContactPoint3D, solveTwoBone3D, type FigurePoint3 } from "./figurePose";
 import {
+  ROWER_DRAW_FINISH_FLEXION,
+  ROWER_DRAW_SOFT_FLEXION,
   ROWER_FOOT_CONTACT,
   ROWER_OARLOCK,
   ROWER_SCULL_GRIP,
   ROWER_STRETCHER,
-  solveRowerArmWithCorridor,
+  rowerReachForFlexion,
+  solveRowerArm,
   solveRowerOarYaw,
 } from "./rowRig";
 import {
+  handChannelCentre,
   orientHandToGripChannel,
   refineGripSpinForWrist,
+  handLongAxis,
   handPalmNormalOut,
   refineGripTiltForWrist,
   HAND_FIST_CENTRE,
@@ -985,7 +989,10 @@ const ELBOW_SIDE = new THREE.Vector3();
 const ELBOW_FRAME = new THREE.Matrix4();
 const ARM_BEND_SCRATCH = new THREE.Vector3();
 const GRIP_FOREARM_SCRATCH = new THREE.Vector3();
+const GRIP_SHAFT_SCRATCH = new THREE.Vector3();
+const GRIP_ROLL_SCRATCH = new THREE.Vector3();
 const GRIP_LONG_SCRATCH = new THREE.Vector3();
+const GRIP_SPIN_SCRATCH = new THREE.Quaternion();
 const SKI_FLAT_FOREARM = new THREE.Vector3();
 const SKI_CARRY_FORE = new THREE.Vector3();
 const SKI_CARRY_PALM = new THREE.Vector3();
@@ -1006,6 +1013,17 @@ const SKI_FLAT_MAX_SPIN = THREE.MathUtils.degToRad(48);
  * reorientation and linear-blend skinning tore the wrist ring open.
  */
 export const SKI_PALM_TILT = 0.65;
+/**
+ * Sculling diagonal-hold relief. The oar handle sweeps ~50-70° from lateral
+ * through the stroke, and the fist's channel axis is pinned 109.4° from the
+ * hand's long axis — so a square hold forces 40-60° of wrist bend. Real
+ * scullers keep the wrist flat and let the handle ride diagonally across the
+ * palm instead; the tilt models that with the palm facing unchanged. Comfort
+ * is the flat-wrist target (Concept2: "wrists should be flat"), the budget is
+ * how diagonal the handle may sit in the palm.
+ */
+export const ROWER_PALM_TILT = 0.75;
+export const ROWER_PALM_TILT_COMFORT = 0.3;
 /**
  * Hand-long-axis-vs-forearm misalignment (about the palm normal) a wrist
  * carries comfortably without any diagonal-grip relief. Below this the
@@ -1090,20 +1108,32 @@ function placeFigureSegmentBetween(
 }
 
 /**
- * SkiErg replaces the authored palm-surface contact with the centre of the
- * fitted fist channel, so the pole core sits inside the digit enclosure.
+ * Replace the authored palm-surface contact with the centre of the active
+ * grip channel. SkiErg uses the fitted fist centre; RowErg seats the larger
+ * rubber proportionally farther from the palm so the same hand becomes a
+ * relaxed hook instead of burying the handle in its roots.
  */
-function skiGripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
-  if (sport !== "skierg") return undefined;
-  const { x, y, z } = HAND_FIST_CENTRE;
-  return {
-    leftHand: { x: -x, y, z },
-    rightHand: { x, y, z },
-  };
+function gripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
+  if (sport === "skierg") {
+    const { x, y, z } = HAND_FIST_CENTRE;
+    return {
+      leftHand: { x: -x, y, z },
+      rightHand: { x, y, z },
+    };
+  }
+  if (sport === "rower") {
+    const left = handChannelCentre(ROWER_SCULL_GRIP.radius, -1);
+    const right = handChannelCentre(ROWER_SCULL_GRIP.radius, 1);
+    return {
+      leftHand: { x: left.x, y: left.y, z: left.z },
+      rightHand: { x: right.x, y: right.y, z: right.z },
+    };
+  }
+  return undefined;
 }
 
-/** SkiErg geometry contract handed to the V4 digit-closure solve. */
-function skiGripContract(
+/** Sport geometry handed to the V4 digit-closure solve in this stack layer. */
+function gripContractFor(
   sport: Sport,
 ): { radius: number; thumbOppose: number; thumbEndAxial?: number } | undefined {
   if (sport === "skierg") {
@@ -1113,6 +1143,13 @@ function skiGripContract(
     // radius here double-counts the flesh and stands every digit ~0.9 mm off
     // the pole — see the `radius` contract on `HandGripSurface`.
     return { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: 0.62 };
+  }
+  if (sport === "rower") {
+    return {
+      radius: ROWER_SCULL_GRIP.radius,
+      thumbOppose: 0.3,
+      thumbEndAxial: ROWER_SCULL_GRIP.anchorFromEnd,
+    };
   }
   return undefined;
 }
@@ -1816,11 +1853,13 @@ function makeRowerAvatar(
     oar.add(grip);
     const handleAnchor = new THREE.Object3D();
     handleAnchor.name = side < 0 ? "rower-hand-contact-left" : "rower-hand-contact-right";
-    // Land the palm within the rubber grip. The visible V4 hand extends around
-    // this contact so four fingers can hook over the cylinder while the thumb
-    // remains near its end; targeting either the cap or shaft seam makes the
-    // grip read as a fist floating beside the oar.
-    handleAnchor.position.x = -side * 0.78;
+    // Land the grip channel within the rubber, `anchorFromEnd` inboard of the
+    // flat thumb stop: the enclosure solve drives the hand's channel centre
+    // onto this axis point, so four fingers hook over the cylinder while the
+    // thumb presses its end. Targeting the cap or shaft seam instead makes
+    // the grip read as a fist floating beside the oar.
+    handleAnchor.position.x =
+      -side * (0.66 + ROWER_SCULL_GRIP.length / 2 - ROWER_SCULL_GRIP.anchorFromEnd);
     // The contact and rendered rubber share one axis. Keeping equipment and
     // solver coordinates identical prevents a visually closed fist from
     // floating above or below the actual handle.
@@ -1921,15 +1960,34 @@ function makeRowerAvatar(
   const sampledV4ReachOrigins = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const sampledV4ContactOffsets = [new THREE.Vector3(), new THREE.Vector3()] as const;
   const sampledV4ArmReaches: [number, number] = [BASE_ARM_REACH, BASE_ARM_REACH];
+  const sampledV4ReachCorrections: [number, number] = [0, 0];
   let pendingBodySwing = 0;
   let pendingArmDraw = 0;
+  /**
+   * Authored feather window for the flat-wrist grip roll: 1 through the drive
+   * and recovery, easing to 0 across the extraction (warped cycle
+   * 0.475-0.61, measured: the flat-roll target passes exactly through the
+   * ±π ambiguity at warped 0.530-0.546, where any scheme that keeps rolling
+   * toward it must jump). Keyed on the warped phase — the domain where the
+   * drive/recovery split is stationary — so the window stays on the
+   * extraction at any stroke ratio. Inside it the hand falls back to the
+   * stable down-reference: a brief wrist flex through the feather, which is
+   * what a real extraction does.
+   */
+  let pendingFlatWristWindow = 1;
   let pendingShoulderSet = 0;
   let pendingHandleTravel = 0;
-  // Blade immersion drives the elbow band: while the spoon is loaded the
-  // drawing elbow hangs deep below the handle line, and it rises back toward
-  // handle height as the blade extracts so the release cannot pin the deep
-  // solution against the behind-the-back floor and snap branches.
-  let pendingBladeLoad = 0;
+  const requestedRowerWristReach = (armReach: number, draw: number): number => {
+    const upperArmLength = armReach * UPPER_ARM_SHARE;
+    const forearmLength = armReach - upperArmLength;
+    return (
+      rowerReachForFlexion(
+        ROWER_DRAW_SOFT_FLEXION + draw * (ROWER_DRAW_FINISH_FLEXION - ROWER_DRAW_SOFT_FLEXION),
+        upperArmLength,
+        forearmLength,
+      ) - 0.002
+    );
+  };
   const placeArms = (
     bodySwing: number,
     armDraw: number,
@@ -1940,6 +1998,7 @@ function makeRowerAvatar(
       readonly reachOrigins: readonly [THREE.Vector3, THREE.Vector3];
       readonly contactOffsets: readonly [THREE.Vector3, THREE.Vector3];
       readonly armReaches: readonly [number, number];
+      readonly reachCorrections: readonly [number, number];
     },
   ): void => {
     // The shoulders lead the late draw but never detach from the torso. A
@@ -1981,11 +2040,23 @@ function makeRowerAvatar(
       // Finish at a realistic lower-rib draw. Public sculling coaching (e.g.
       // British Rowing / Concept2): hands draw *to the lower chest*, elbows
       // tuck beside/slightly behind the shoulder plane — never hauled through
-      // the torso into an illegal behind-the-back finish. The complete oar
-      // path follows the graph's handle travel, not only the late arm channel;
-      // the fixed oarlock therefore moves the handles during the leg/body
-      // phases while the arms remain long.
-      const reachRelaxation = 0.1 * THREE.MathUtils.smoothstep(draw, 0.22, 0.55);
+      // the torso into an illegal behind-the-back finish.
+      //
+      // The armDraw channel is the only velocity profile in this chain: it
+      // schedules the elbow's interior flexion affinely from the soft
+      // long-arm unlock to the measured production finish fold, the law of
+      // cosines converts that flexion into the requested shoulder→wrist
+      // reach, and the rigid-oar solve places the handle on that shrinking
+      // reach sphere. During the leg drive (draw = 0) this is the soft
+      // long-arm reach boundary — elbows unlocked, never at the straight
+      // singularity where mm-scale IK settling reads as an onset pop — so
+      // the fixed oarlock still sweeps the handles while the arms stay
+      // long; as the channel opens, the arm folds at constant angular
+      // velocity with C2-flat ends inherited from the channel. The former
+      // reach-relaxation smoothstep and boundary→staged yaw blend re-eased
+      // this path twice and compressed the visible pull into ~3 frames.
+      const requestedReach =
+        requestedRowerWristReach(activeArmReach, draw) - (v4Refinement?.reachCorrections[i] ?? 0);
       const solvedYaw = solveRowerOarYaw(
         v4Refinement?.reachOrigins[i] ?? arm.shoulderPoint,
         oar.group.position.x - rower.position.x,
@@ -1993,19 +2064,11 @@ function makeRowerAvatar(
         oar.group.position.z - rower.position.z,
         oar.handleAnchor.position.x,
         oar.group.rotation.z,
-        activeArmReach - 0.002 - reachRelaxation,
-        oar.group.rotation.y,
+        requestedReach,
+        oar.side * (OAR_YAW_CATCH + draw * OAR_YAW_SPAN),
         true,
       );
-      const stagedYaw = oar.side * (OAR_YAW_CATCH + draw * OAR_YAW_SPAN);
-      // Keep the early drive at the long-arm reach boundary, then hand the
-      // fixed oar back to the authored draw arc with a smooth transition. A
-      // direct branch switch at the first arm-draw sample makes the elbow
-      // jump even though the oar itself is moving continuously.
-      const boundaryBlend = 1 - THREE.MathUtils.smoothstep(draw, 0.22, 1);
-      const yawDelta =
-        THREE.MathUtils.euclideanModulo(stagedYaw - solvedYaw + Math.PI, Math.PI * 2) - Math.PI;
-      oar.group.rotation.y = solvedYaw + yawDelta * (1 - boundaryBlend);
+      oar.group.rotation.y = solvedYaw;
       // Convert the oar-local grip endpoint into rower-local coordinates. Both
       // objects share the avatar group as parent, so this is exact even before
       // Three updates matrixWorld for the draw.
@@ -2015,57 +2078,117 @@ function makeRowerAvatar(
       arm.wristTarget.copy(handlePoint);
       const v4ContactOffset = v4Refinement?.contactOffsets[i];
       if (v4ContactOffset) arm.wristTarget.sub(v4ContactOffset);
-      // A rower's elbows only ever point down (British Rowing indoor
-      // technique): the arms hang from the shoulders with a near-vertical
-      // bend plane through the whole stroke — soft at the catch and
-      // recovery, deep down-and-back at the loaded draw, tilted a touch
-      // outward by the corridor — and the upper arm never opens toward a
-      // horizontal 90° armpit. Solving the down-plane unconditionally (not
-      // gated on a draw phase) is what makes that true: with a long arm the
-      // elbow circle is tiny and the down preference costs nothing, and as
-      // the draw bends the arm the same continuous solve deepens the hang.
-      arm.bendHint.set(0, -1, 0);
-      solveRowerArmWithCorridor(
+      // A sculling elbow follows its handle line principally aft (British
+      // Rowing technique) once the arm actually bends. The solver schedules
+      // its own plane authority from the flexion the reach demands: a long
+      // early-drive arm keeps its relaxed hang (no forced down vector at the
+      // near-straight singularity), and the aft draw takes over smoothly as
+      // the handle comes to the ribs. The corridor remains a lateral safety
+      // clamp, not the desired pose.
+      solveRowerArm(
         arm.shoulderPoint,
         arm.wristTarget,
         activeUpperArmLength,
         activeForearmLength,
-        arm.bendHint,
+        arm.side,
         arm.elbowPoint,
         arm.handPoint,
-        // With ~28° of layback a straight-down humerus already hangs the
-        // elbow ~0.145 behind the shoulder plane, so the floor only forbids
-        // a past-vertical behind-the-back haul. A tighter floor bound the
-        // deep release elbow and made the floor-root selection snap.
-        arm.shoulderPoint.z - 0.16,
-        // Aim below the handle line. Targeting a band deeper than the elbow
-        // circle usually reaches makes the solve pick the lowest point of
-        // the circle, so straight-arm phases hang the elbow directly under
-        // the shoulder–grip chord. The depth follows blade load so the bent
-        // finish elbow rides deep while the spoon is buried and rises
-        // smoothly with the extraction instead of pinning against the
-        // behind-the-back floor.
-        arm.handTarget.y - THREE.MathUtils.lerp(0.125, 0.24, pendingBladeLoad),
-        arm.handTarget.y - THREE.MathUtils.lerp(-0.065, 0.05, pendingBladeLoad),
-        arm.side,
+        arm.bendHint,
       );
       arm.shoulder.position.copy(arm.shoulderPoint);
       placeFigureSegmentBetween(arm.upper, arm.shoulderPoint, arm.elbowPoint);
       placeFigureSegmentBetween(arm.forearm, arm.elbowPoint, arm.handPoint);
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
-      // The visible V4 target is the palm contact, not its wrist bone. Keep the
-      // hidden anatomical solve at the wrist while the terminal hand marker
-      // remains exactly on the rigid grip.
+      // The visible V4 target is the grip-channel centre, not the wrist bone.
+      // Keep the hidden anatomical solve at the wrist while the terminal
+      // hand marker remains exactly on the rigid grip.
       arm.hand.position.copy(arm.handTarget);
-      // The authored hand's local axes are fixed by its reviewed grip pose.
-      // Inherit the oar frame and apply only its small side-specific neutral
-      // wrist correction; a free look-at solve has two mathematically valid
-      // roll solutions and can turn a palm through 180 degrees.
-      arm.hand.quaternion.copy(oar.group.quaternion);
-      arm.hand.rotateZ(arm.side * (Math.PI / 2));
-      arm.hand.rotateX(-0.55 - shoulderSet * 0.08);
-      arm.hand.rotateY(arm.side * 0.12);
+      // Build the full sculling grip frame from the equipment: the hand's
+      // authored curl axis lies along the rubber, signed so the thumb faces
+      // the flat handle end. The free spin about the shaft is the wrist's
+      // flexion, so resolve it by laying the hand's long axis on the solved
+      // forearm — Concept2's "wrists should be flat" made literal. The old
+      // reference was a fixed world-down that claimed "knuckles up / flat
+      // wrist" while actually pointing the FINGERS at the floor: with a
+      // horizontal forearm that cocks the wrist ~60° at every phase of the
+      // stroke (measured 56–71°, spiking to 121° at the finish). The oar's
+      // feathering roll about its own shaft still cancels out, so the handle
+      // rolls inside the fingers instead of twisting the wrist with it.
+      GRIP_SHAFT_SCRATCH.set(-oar.side, 0, 0).applyQuaternion(oar.group.quaternion);
+      // Baseline: the legacy stable down-reference. It is never singular, so
+      // it anchors continuity through the feather; on its own it cocks the
+      // wrist ~60°, which the flat-wrist roll below removes.
+      GRIP_ROLL_SCRATCH.set(0, -1, 0);
+      orientHandToGripChannel(
+        arm.hand,
+        oar.side,
+        ROWER_SCULL_GRIP.radius,
+        GRIP_SHAFT_SCRATCH,
+        GRIP_ROLL_SCRATCH,
+        oar.group.quaternion,
+      );
+      // Flat wrist as an explicit extra roll about the shaft: rotate the
+      // hand's long axis onto the forearm (Concept2: "wrists should be
+      // flat"), weighted to zero through the feather window where the forearm
+      // crosses the handle line and the projected target spins. An angle
+      // scaled by the weight cannot flip through zero the way a blended
+      // reference vector can, so continuity survives the window edges; the
+      // brief wrist flex left at the extraction is how a real feather reads.
+      GRIP_ROLL_SCRATCH.set(
+        arm.handPoint.x - arm.elbowPoint.x,
+        arm.handPoint.y - arm.elbowPoint.y,
+        arm.handPoint.z - arm.elbowPoint.z,
+      ).normalize();
+      GRIP_FOREARM_SCRATCH.copy(GRIP_ROLL_SCRATCH);
+      const foreAcrossShaft = GRIP_FOREARM_SCRATCH.addScaledVector(
+        GRIP_SHAFT_SCRATCH,
+        -GRIP_FOREARM_SCRATCH.dot(GRIP_SHAFT_SCRATCH),
+      ).length();
+      const flatWristWeight =
+        pendingFlatWristWindow * THREE.MathUtils.smoothstep(foreAcrossShaft, 0.12, 0.3);
+      if (flatWristWeight > 1e-4) {
+        handLongAxis(oar.side, GRIP_LONG_SCRATCH).applyQuaternion(arm.hand.quaternion);
+        GRIP_LONG_SCRATCH.addScaledVector(
+          GRIP_SHAFT_SCRATCH,
+          -GRIP_LONG_SCRATCH.dot(GRIP_SHAFT_SCRATCH),
+        );
+        if (GRIP_LONG_SCRATCH.lengthSq() > 1e-8 && GRIP_FOREARM_SCRATCH.lengthSq() > 1e-8) {
+          GRIP_LONG_SCRATCH.normalize();
+          const flatCos = THREE.MathUtils.clamp(GRIP_LONG_SCRATCH.dot(GRIP_FOREARM_SCRATCH), -1, 1);
+          const flatSin = GRIP_LONG_SCRATCH.cross(GRIP_FOREARM_SCRATCH).dot(GRIP_SHAFT_SCRATCH);
+          const flatAngle = Math.atan2(flatSin, flatCos);
+          // atan2 wraps at ±π, and inside the feather window the flat target
+          // passes near-antiparallel to the baseline — a raw θ·w would jump
+          // by 2π·w across the wrap. Fade the blend out as |θ| approaches π
+          // so the applied roll goes smoothly to zero on BOTH sides of the
+          // wrap; a near-antiparallel target only occurs inside the window
+          // where the baseline is the wanted pose anyway.
+          const wrapGuard = THREE.MathUtils.smoothstep(Math.PI - Math.abs(flatAngle), 0.15, 0.6);
+          arm.hand.quaternion.premultiply(
+            GRIP_SPIN_SCRATCH.setFromAxisAngle(
+              GRIP_SHAFT_SCRATCH,
+              flatAngle * flatWristWeight * wrapGuard,
+            ),
+          );
+        }
+      }
+      // The roll above reaches the flattest wrist the square hold permits,
+      // but the swept handle leaves a 40-60° floor; close the rest with the
+      // sculler's diagonal hold, faded by the same feather-window weight.
+      GRIP_ROLL_SCRATCH.set(
+        arm.handPoint.x - arm.elbowPoint.x,
+        arm.handPoint.y - arm.elbowPoint.y,
+        arm.handPoint.z - arm.elbowPoint.z,
+      );
+      refineGripTiltForWrist(
+        arm.hand,
+        oar.side,
+        GRIP_ROLL_SCRATCH,
+        ROWER_PALM_TILT_COMFORT,
+        ROWER_PALM_TILT,
+        flatWristWeight,
+      );
     }
   };
 
@@ -2196,15 +2319,14 @@ function makeRowerAvatar(
     // channel is the equipment cue that moves the handle aft toward the
     // chest. Using the aggregate handle channel here would include its leg
     // contribution and pull the grip through the knees and torso too early.
-    // The shared graph begins its arm channel only after the legs have
-    // finished driving, so by the time armDraw rises the knees are flat and
-    // the raised drive-height grips travel above the knee envelope, not
-    // through it. Gating away just the first sliver of the channel keeps the
-    // long-arm reach through any residual leg motion while spreading the
-    // visible draw across most of the channel: the former 0.62 gate crushed
-    // the entire handle pull into roughly two display frames, which read as a
-    // finish teleport rather than a draw to the ribs.
-    const equipmentHandleTravel = THREE.MathUtils.smoothstep(graph.body.armDraw.value, 0.12, 1);
+    // The graph's armDraw channel is consumed verbatim: it is the single
+    // authored velocity profile for the pull (C2-flat cruise over the
+    // widened 0.68–0.995 drive window), and stacking another smoothstep on
+    // top of it re-compressed the visible draw into ~3 frames — the finish
+    // teleport this rework removes. The graph already opens the channel only
+    // after the legs have finished driving, so the raised grips travel above
+    // the flat knee envelope without a renderer-side gate.
+    const equipmentHandleTravel = graph.body.armDraw.value;
     placeUpperBody(
       graph.body.spineHinge.value,
       graph.body.shoulderSet.value,
@@ -2217,11 +2339,28 @@ function makeRowerAvatar(
       graph.contacts.bladeFeather.value,
     );
     placeLegs(graph.body.legExtension.value);
+    const warpedCycle = THREE.MathUtils.euclideanModulo(
+      resolvedPose.warpedPhase / (2 * Math.PI),
+      1,
+    );
+    pendingFlatWristWindow =
+      (1 -
+        (THREE.MathUtils.smoothstep(warpedCycle, 0.475, 0.53) -
+          THREE.MathUtils.smoothstep(warpedCycle, 0.555, 0.61))) *
+      // The wrist also yields slightly at the deepest catch reach: holding
+      // the hand perfectly flat there demands ~4 mm more reach than the arm
+      // has, which surfaced as a 5.8 mm grip-channel gap at one recovery
+      // sample. A human reaching full stretch lets the hand follow the
+      // handle line; both edges of the dip rejoin 1 so the catch itself
+      // stays flat.
+      (1 -
+        0.35 *
+          (THREE.MathUtils.smoothstep(warpedCycle, 0.8, 0.88) -
+            THREE.MathUtils.smoothstep(warpedCycle, 0.98, 1)));
     pendingBodySwing = graph.body.spineHinge.value;
     pendingArmDraw = equipmentHandleTravel;
     pendingShoulderSet = graph.body.shoulderSet.value;
     pendingHandleTravel = equipmentHandleTravel;
-    pendingBladeLoad = graph.contacts.bladeWater.value;
     placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel);
     return reduce
       ? STATIC_AVATAR_MOTION
@@ -2241,7 +2380,14 @@ function makeRowerAvatar(
   if (!leftArm || !rightArm || !leftLeg || !rightLeg) {
     throw new Error("RowErg V4 target rig is incomplete");
   }
-  const refineV4Targets = (motion: ReplayV4MotionController): void => {
+  const v4ArmRefinement = {
+    shoulders: sampledV4Shoulders,
+    reachOrigins: sampledV4ReachOrigins,
+    contactOffsets: sampledV4ContactOffsets,
+    armReaches: sampledV4ArmReaches,
+    reachCorrections: sampledV4ReachCorrections,
+  } as const;
+  const sampleV4ArmRefinement = (motion: ReplayV4MotionController): void => {
     motion.getShoulderWorld("left", sampledV4Shoulders[0]);
     motion.getShoulderWorld("right", sampledV4Shoulders[1]);
     motion.getHandContactOffsetWorld("left", sampledV4ContactOffsets[0]);
@@ -2256,6 +2402,12 @@ function makeRowerAvatar(
     // oar-pin circles and shared elbow branch markers.
     rower.worldToLocal(sampledV4Shoulders[0]);
     rower.worldToLocal(sampledV4Shoulders[1]);
+    rower.worldToLocal(sampledV4ReachOrigins[0]);
+    rower.worldToLocal(sampledV4ReachOrigins[1]);
+    sampledV4ContactOffsets[0].copy(sampledV4ReachOrigins[0]).sub(sampledV4Shoulders[0]);
+    sampledV4ContactOffsets[1].copy(sampledV4ReachOrigins[1]).sub(sampledV4Shoulders[1]);
+  };
+  const refineV4Targets = (motion: ReplayV4MotionController): void => {
     motion.getLegJointTargetWorld("left", sampledV4Knees[0]);
     motion.getLegJointTargetWorld("right", sampledV4Knees[1]);
     rower.worldToLocal(sampledV4Knees[0]);
@@ -2265,16 +2417,40 @@ function makeRowerAvatar(
     // asking that chain to imitate the shorter procedural fallback leg.
     leftLeg.knee.position.copy(sampledV4Knees[0]);
     rightLeg.knee.position.copy(sampledV4Knees[1]);
-    rower.worldToLocal(sampledV4ReachOrigins[0]);
-    rower.worldToLocal(sampledV4ReachOrigins[1]);
-    sampledV4ContactOffsets[0].copy(sampledV4ReachOrigins[0]).sub(sampledV4Shoulders[0]);
-    sampledV4ContactOffsets[1].copy(sampledV4ReachOrigins[1]).sub(sampledV4Shoulders[1]);
-    placeArms(pendingBodySwing, pendingArmDraw, pendingShoulderSet, pendingHandleTravel, {
-      shoulders: sampledV4Shoulders,
-      reachOrigins: sampledV4ReachOrigins,
-      contactOffsets: sampledV4ContactOffsets,
-      armReaches: sampledV4ArmReaches,
-    });
+    // The first rigid-oar solve changes the full grip-channel frame. Settle the
+    // prepared arm onto it, then measure how far that post-IK frame exceeds the
+    // structural wrist sphere. The second solve cancels only that excess;
+    // otherwise recovery retains the clip wrist offset and reopens centimetres
+    // of contact.
+    sampledV4ReachCorrections[0] = 0;
+    sampledV4ReachCorrections[1] = 0;
+    sampleV4ArmRefinement(motion);
+    placeArms(
+      pendingBodySwing,
+      pendingArmDraw,
+      pendingShoulderSet,
+      pendingHandleTravel,
+      v4ArmRefinement,
+    );
+    if (!motion.settleHandContacts()) return;
+    sampleV4ArmRefinement(motion);
+    for (let i = 0; i < arms.length; i++) {
+      const arm = arms[i];
+      if (!arm) continue;
+      arm.wristTarget.copy(arm.handTarget).sub(sampledV4ContactOffsets[i]);
+      sampledV4ReachCorrections[i] = Math.max(
+        0,
+        arm.wristTarget.distanceTo(sampledV4Shoulders[i]) - (sampledV4ArmReaches[i] - 0.002),
+      );
+    }
+    if (!motion.restoreHandPoseAfterSettle()) return;
+    placeArms(
+      pendingBodySwing,
+      pendingArmDraw,
+      pendingShoulderSet,
+      pendingHandleTravel,
+      v4ArmRefinement,
+    );
   };
   finalizeAvatar(group, castShadow, opacity);
   const rowerAvatar: Avatar = {
@@ -4713,8 +4889,8 @@ export class CourseRenderer3D implements ReplayRenderer {
       // SkiErg drives the centre of the closed fist onto the shaft, not the
       // authored palm-surface point: the latter lays the pole across the
       // knuckles and the fingers shut beside it instead of around it.
-      const effectorOffsets = skiGripEffectorOffsets(this.sport);
-      const gripContract = skiGripContract(this.sport);
+      const effectorOffsets = gripEffectorOffsets(this.sport);
+      const gripContract = gripContractFor(this.sport);
       this.liveAvatar.v4Motion = installReplayV4MotionController({
         sport: this.sport,
         parent: this.liveAvatar.group,
@@ -6116,33 +6292,27 @@ export class CourseRenderer3D implements ReplayRenderer {
     const tx = cos; // unit tangent (direction of increasing distance)
     const tz = -sin;
     const reduce = this.reduceMotion;
-    // Animate first and reuse its solved cues for the outer-body motion. This
-    // avoids solving RowErg/SkiErg kinematics a second time per live/ghost lane.
-    const motion = avatar.animate(pose.phase, reduce, pose, meters);
-    const v4Sample = reduce ? REDUCED_REPLAY_POSES[this.sport] : pose;
-    // Sample the visible skin before final equipment closure. RowErg can then
-    // solve each rigid inboard oar circle from the real shoulder for this exact
-    // pose instead of forcing IK to compensate for a hidden-rig mismatch.
-    const v4Motion = avatar.v4Motion;
-    let v4Prepared = v4Motion?.prepare(v4Sample) ?? false;
-    // RowErg pre-orients palms before refining the rigid oar arc so the wrist→
-    // palm vector is part of the exact grip solve. SkiErg/BikeErg keep their
-    // pole-led / hood-led terminal frames through the contact pass (pre-orient
-    // here would break seek-exact pose identity for those sports).
-    if (v4Prepared && this.sport === "rower") {
-      v4Prepared = v4Motion!.orientHandsToTargets();
-    }
-    if (v4Prepared && v4Motion) avatar.refineV4Targets?.(v4Motion);
-    // SkiErg's vertical cue is recovery rebound only, so planted pole tips stay
-    // on the course throughout the solver's contact stage.
-    const vertical = "vertical" in motion ? motion.vertical : motion.rebound;
-    const bob = reduce || this.profile.bobAmp === 0 ? 0 : vertical * this.profile.bobAmp;
+
+    // Install the current course frame before any sport solver samples world
+    // space. Leaving the previous frame here made an exact seek depend on the
+    // pose rendered immediately before it: RowErg's rigid-oar refinement and
+    // SkiErg's pole solve both cross this parent transform.
     outer.position.set(x, 0, z);
     // Rowing shells travel bow-first while the athlete faces the stern. The
     // rower rig's fixed-contact anatomy faces local +Z, so its racing bow is
     // local -Z and the complete shell needs a half-turn relative to the course
     // tangent. The other sport rigs continue to face local +Z down-course.
     outer.rotation.y = Math.atan2(tx, tz) + (this.sport === "rower" ? Math.PI : 0);
+    outer.updateMatrixWorld(true);
+
+    // Reuse the solved cues for outer-body motion. This avoids solving
+    // RowErg/SkiErg kinematics a second time per live/ghost lane.
+    const motion = avatar.animate(pose.phase, reduce, pose, meters);
+    const v4Sample = reduce ? REDUCED_REPLAY_POSES[this.sport] : pose;
+    // SkiErg's vertical cue is recovery rebound only, so planted pole tips stay
+    // on the course throughout the solver's contact stage.
+    const vertical = "vertical" in motion ? motion.vertical : motion.rebound;
+    const bob = reduce || this.profile.bobAmp === 0 ? 0 : vertical * this.profile.bobAmp;
     avatar.group.position.y = bob;
     // Stroke surge: the hull checks at the catch and runs out through the
     // drive — a local longitudinal offset synced to the shared stroke phase.
@@ -6157,6 +6327,21 @@ export class CourseRenderer3D implements ReplayRenderer {
     const rollDamp = "rollDamp" in motion && motion.rollDamp !== undefined ? motion.rollDamp : 1;
     avatar.group.rotation.z =
       reduce || !this.profile.roll ? 0 : (ambientRoll + strokeRoll) * rollDamp;
+    // Sample the visible skin only after the complete deterministic lane frame
+    // is current. RowErg can then solve each rigid inboard oar circle from the
+    // real shoulder for this exact pose instead of inheriting floating-point
+    // residue from the preceding seek.
+    outer.updateMatrixWorld(true);
+    const v4Motion = avatar.v4Motion;
+    let v4Prepared = v4Motion?.prepare(v4Sample) ?? false;
+    // RowErg pre-orients palms before refining the rigid oar arc so the wrist→
+    // palm vector is part of the exact grip solve. SkiErg/BikeErg keep their
+    // pole-led / hood-led terminal frames through the contact pass (pre-orient
+    // here would break seek-exact pose identity for those sports).
+    if (v4Prepared && this.sport === "rower") {
+      v4Prepared = v4Motion!.orientHandsToTargets();
+    }
+    if (v4Prepared && v4Motion) avatar.refineV4Targets?.(v4Motion);
     // Most contacts are local to their equipment. Nordic poles are different:
     // their basket has to stay fixed in the course while the skier advances and
     // folds through the drive. Resolve that only after the outer course pose,

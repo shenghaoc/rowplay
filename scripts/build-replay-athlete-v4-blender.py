@@ -1217,7 +1217,10 @@ def create_base_production_surface(
     bpy.context.view_layer.objects.active = surface
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.028)
+    # Preserve the reviewed Human Base UVs and the deterministic primitive UVs
+    # contributed by joined details. Blender's Smart UV Project changes island
+    # scheduling between identical background runs, alternately splitting 24+
+    # vertices and producing different GLBs from unchanged source.
     bpy.ops.mesh.normals_make_consistent(inside=False)
     bpy.ops.object.mode_set(mode="OBJECT")
     grip_centers = {}

@@ -978,6 +978,55 @@ describe("V4 motion determinism and fallback safety", () => {
     }
   });
 
+  it("settles RowErg hand contacts without consuming the prepared pose", () => {
+    const lane = createLane();
+    const controller = installReplayV4MotionController({
+      sport: "rower",
+      parent: lane.parent,
+      instance: lane.instance,
+      targets: lane.targets,
+    });
+    try {
+      expect(controller?.prepare({ phase: 0, cycleFrac: 0.54, driveFrac: 0.38 })).toBe(true);
+      placeTargetsNearClipEffectors(lane);
+      expect(controller?.orientHandsToTargets()).toBe(true);
+      const preparedArmRotations = [
+        lane.instance.bones.v4LeftUpperArm,
+        lane.instance.bones.v4LeftForearm,
+        lane.instance.bones.v4LeftHand,
+        lane.instance.bones.v4RightUpperArm,
+        lane.instance.bones.v4RightForearm,
+        lane.instance.bones.v4RightHand,
+      ].map((bone) => bone.quaternion.clone());
+      expect(controller?.settleHandContacts()).toBe(true);
+      expect(controller?.restoreHandPoseAfterSettle()).toBe(true);
+      for (const [index, bone] of [
+        lane.instance.bones.v4LeftUpperArm,
+        lane.instance.bones.v4LeftForearm,
+        lane.instance.bones.v4LeftHand,
+        lane.instance.bones.v4RightUpperArm,
+        lane.instance.bones.v4RightForearm,
+        lane.instance.bones.v4RightHand,
+      ].entries()) {
+        expect(bone.quaternion.toArray()).toEqual(preparedArmRotations[index]!.toArray());
+      }
+
+      // Refinement may move the rigid grips after the interim arm settle. The
+      // prepared sample must remain live so the normal final pass can close
+      // those latest targets, including the untouched leg chains.
+      lane.targets.leftHand.position.z -= 0.004;
+      lane.targets.rightHand.position.z -= 0.004;
+      lane.scene.updateMatrixWorld(true);
+      expect(controller?.constrain()).toBe(true);
+      for (const name of ["leftHand", "rightHand", "leftFoot", "rightFoot"] as const) {
+        const targetWorld = lane.targets[name].getWorldPosition(new THREE.Vector3());
+        expect(controller!.getContactWorld(name).distanceTo(targetWorld)).toBeLessThan(0.03);
+      }
+    } finally {
+      disposeLane(lane, controller);
+    }
+  });
+
   it("pins athlete detail map sizes to the sealed 0/128/256/512 ladder", () => {
     expect(REPLAY_V4_QUALITY_DETAIL_TEXTURE_SIZE).toEqual({
       low: 0,
@@ -1249,9 +1298,9 @@ describe("V4 geometry-closure grip contract", () => {
   // contract's hand. What is only reachable here is the *wiring*: that a
   // supplied contract actually switches the controller off the legacy curl
   // table, that the solved poses reach the helper bones, and that the cup the
-  // closure solved in is the cup the renderer applies. No sport supplies a
-  // contract in this layer, so without this test the whole geometry path
-  // ships to the sport layers unexercised at runtime.
+  // closure solved in is the cup the renderer applies. This controller-level
+  // test protects the generic path independently of the renderer integration
+  // tests that pin each active sport's contract.
   const contract = { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: 0.62 };
 
   function helperLane(): TestLane {

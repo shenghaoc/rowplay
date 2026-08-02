@@ -5,13 +5,13 @@
   "canonicalRigModule": "src/lib/replay/rigV4.ts",
   "webRuntimeArtifact": {
     "filename": "rowplay-athlete-v4.glb",
-    "byteCount": 5069284,
-    "sha256": "5021d4639a7886385b19e815e6258b6825417e91269f438a7f95558ef6fcb6e9"
+    "byteCount": 4584316,
+    "sha256": "a61a2c46cd520ba376c40bab28a161a233091173212e509f91f46730419111ba"
   },
   "nativeDerivativeArtifact": {
     "filename": "rowplay-athlete-v4.usdz",
-    "byteCount": 11830585,
-    "sha256": "624f6f9329849521218092c0b6ba1d982fa3d140419139d64b97c80d5610e78c"
+    "byteCount": 11565110,
+    "sha256": "82ecfee7f873cf0b1fbc7c74160fde8363e7e49aad5fd4c1b641ca13e1e2a904"
   },
   "coordinateSystem": {
     "units": "metres",
@@ -29,7 +29,7 @@
     "meshName": "v4Athlete",
     "skinnedMeshes": 1,
     "primitives": 1,
-    "vertices": 64200,
+    "vertices": 57069,
     "triangles": 106256,
     "topologyComponents": 28,
     "continuousCore": true,
@@ -317,7 +317,7 @@
           ],
           "scale": [0.9999998884701239, 0.9999999976696989, 0.9999998356269841]
         },
-        "influencedVertices": 664
+        "influencedVertices": 533
       },
       {
         "name": "v4LeftIndexProximal",
@@ -329,7 +329,7 @@
           ],
           "scale": [0.9999999991096058, 0.9999999392865716, 0.9999999401130225]
         },
-        "influencedVertices": 327
+        "influencedVertices": 253
       },
       {
         "name": "v4LeftIndexIntermediate",
@@ -341,7 +341,7 @@
           ],
           "scale": [0.9999999404479347, 0.9999998818818497, 0.9999999414385649]
         },
-        "influencedVertices": 316
+        "influencedVertices": 240
       },
       {
         "name": "v4LeftIndexDistal",
@@ -353,7 +353,7 @@
           ],
           "scale": [0.9999999410081355, 1.0000000040329622, 1.0000000034345677]
         },
-        "influencedVertices": 201
+        "influencedVertices": 152
       },
       {
         "name": "v4LeftMiddleProximal",
@@ -365,7 +365,7 @@
           ],
           "scale": [1.0000000000490736, 1.0000000000742248, 0.9999998808203326]
         },
-        "influencedVertices": 309
+        "influencedVertices": 240
       },
       {
         "name": "v4LeftMiddleIntermediate",
@@ -377,7 +377,7 @@
           ],
           "scale": [0.9999999403421292, 0.9999999997002831, 0.999999999747532]
         },
-        "influencedVertices": 323
+        "influencedVertices": 239
       },
       {
         "name": "v4LeftMiddleDistal",
@@ -389,7 +389,7 @@
           ],
           "scale": [1.0000001187704786, 0.9999999935973944, 0.9999999940286289]
         },
-        "influencedVertices": 208
+        "influencedVertices": 152
       },
       {
         "name": "v4LeftPinkyProximal",
@@ -401,7 +401,7 @@
           ],
           "scale": [1.0000000003107583, 1.000000119523518, 0.9999999404701752]
         },
-        "influencedVertices": 270
+        "influencedVertices": 217
       },
       {
         "name": "v4LeftPinkyIntermediate",
@@ -413,7 +413,7 @@
           ],
           "scale": [1.0000000000296354, 0.9999998808607231, 0.9999999404479589]
         },
-        "influencedVertices": 274
+        "influencedVertices": 203
       },
       {
         "name": "v4LeftPinkyDistal",
@@ -425,7 +425,7 @@
           ],
           "scale": [0.9999999463609203, 1.0000000237839668, 0.9999999589824764]
         },
-        "influencedVertices": 211
+        "influencedVertices": 152
       },
       {
         "name": "v4LeftRingProximal",
@@ -437,7 +437,7 @@
           ],
           "scale": [0.9999998807906553, 0.999999999995374, 0.9999999403907759]
         },
-        "influencedVertices": 290
+        "influencedVertices": 220
       },
       {
         "name": "v4LeftRingIntermediate",
@@ -449,7 +449,7 @@
           ],
           "scale": [0.9999999412228567, 1.0000000018543111, 1.00000000127348]
         },
-        "influencedVertices": 340
+        "influencedVertices": 257
       },
       {
         "name": "v4LeftRingDistal",
@@ -461,7 +461,7 @@
           ],
           "scale": [1.000000000137197, 1.000000002140599, 0.9999999424257907]
         },
-        "influencedVertices": 221
+        "influencedVertices": 170
       },
       {
         "name": "v4LeftThumb",
@@ -473,7 +473,7 @@
           ],
           "scale": [0.999999915163742, 0.9999999072655945, 0.9999998492251945]
         },
-        "influencedVertices": 290
+        "influencedVertices": 242
       },
       {
         "name": "v4LeftThumbIntermediate",
@@ -485,7 +485,7 @@
           ],
           "scale": [1.000000000034866, 1.0000001193237376, 1.0000000000800464]
         },
-        "influencedVertices": 323
+        "influencedVertices": 275
       },
       {
         "name": "v4LeftThumbDistal",
@@ -497,7 +497,7 @@
           ],
           "scale": [1.0000000031690444, 1.0000001236352605, 1.0000000014282577]
         },
-        "influencedVertices": 192
+        "influencedVertices": 157
       },
       {
         "name": "v4RightFingers",
@@ -509,7 +509,7 @@
           ],
           "scale": [0.9999997641615669, 0.9999998758951453, 0.9999997726817378]
         },
-        "influencedVertices": 667
+        "influencedVertices": 533
       },
       {
         "name": "v4RightIndexProximal",
@@ -521,7 +521,7 @@
           ],
           "scale": [0.9999998816952885, 1.0000000011225831, 0.9999998214696153]
         },
-        "influencedVertices": 322
+        "influencedVertices": 253
       },
       {
         "name": "v4RightIndexIntermediate",
@@ -533,7 +533,7 @@
           ],
           "scale": [0.9999999404544018, 1.0000000012036259, 1.0000001203591151]
         },
-        "influencedVertices": 311
+        "influencedVertices": 240
       },
       {
         "name": "v4RightIndexDistal",
@@ -545,7 +545,7 @@
           ],
           "scale": [0.9999998816167837, 0.9999999456495429, 0.9999999448435003]
         },
-        "influencedVertices": 195
+        "influencedVertices": 152
       },
       {
         "name": "v4RightMiddleProximal",
@@ -557,7 +557,7 @@
           ],
           "scale": [1.0000000006306196, 0.9999999413509982, 0.9999998811733187]
         },
-        "influencedVertices": 311
+        "influencedVertices": 240
       },
       {
         "name": "v4RightMiddleIntermediate",
@@ -569,7 +569,7 @@
           ],
           "scale": [1.0000000000732476, 1.0000000004290275, 0.9999999407593807]
         },
-        "influencedVertices": 329
+        "influencedVertices": 239
       },
       {
         "name": "v4RightMiddleDistal",
@@ -581,7 +581,7 @@
           ],
           "scale": [0.9999998805605851, 0.9999999961825699, 0.9999999368043144]
         },
-        "influencedVertices": 215
+        "influencedVertices": 152
       },
       {
         "name": "v4RightPinkyProximal",
@@ -593,7 +593,7 @@
           ],
           "scale": [0.9999999486225544, 0.9999999486992092, 0.9999998231499991]
         },
-        "influencedVertices": 276
+        "influencedVertices": 217
       },
       {
         "name": "v4RightPinkyIntermediate",
@@ -605,7 +605,7 @@
           ],
           "scale": [0.9999999404788871, 0.9999998809891416, 1.0000001193585928]
         },
-        "influencedVertices": 281
+        "influencedVertices": 203
       },
       {
         "name": "v4RightPinkyDistal",
@@ -617,7 +617,7 @@
           ],
           "scale": [1.0000000029000493, 1.0000001306719326, 1.0000000089414407]
         },
-        "influencedVertices": 214
+        "influencedVertices": 152
       },
       {
         "name": "v4RightRingProximal",
@@ -629,7 +629,7 @@
           ],
           "scale": [0.9999999999999082, 0.9999999999904698, 0.9999999999905468]
         },
-        "influencedVertices": 290
+        "influencedVertices": 220
       },
       {
         "name": "v4RightRingIntermediate",
@@ -641,7 +641,7 @@
           ],
           "scale": [0.9999999406636537, 1.0000000005851035, 0.9999999407920445]
         },
-        "influencedVertices": 337
+        "influencedVertices": 257
       },
       {
         "name": "v4RightRingDistal",
@@ -653,7 +653,7 @@
           ],
           "scale": [0.9999999407362151, 1.0000000049614617, 1.0000000046874737]
         },
-        "influencedVertices": 219
+        "influencedVertices": 170
       },
       {
         "name": "v4RightThumb",
@@ -665,7 +665,7 @@
           ],
           "scale": [1.0000000377307934, 0.9999999748330238, 0.9999998445533069]
         },
-        "influencedVertices": 292
+        "influencedVertices": 242
       },
       {
         "name": "v4RightThumbIntermediate",
@@ -677,7 +677,7 @@
           ],
           "scale": [1.0000000000341795, 0.9999998809100082, 1.0000000000855713]
         },
-        "influencedVertices": 330
+        "influencedVertices": 275
       },
       {
         "name": "v4RightThumbDistal",
@@ -689,7 +689,7 @@
           ],
           "scale": [0.9999999997916097, 0.9999999401044202, 0.9999999999060943]
         },
-        "influencedVertices": 201
+        "influencedVertices": 157
       }
     ]
   },

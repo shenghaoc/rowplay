@@ -192,8 +192,10 @@ remain automatic fallbacks.
   rejects skeleton, clip, drive-boundary, skin, or contact-metadata drift. The
   USDZ portability gate lives in `src/lib/replay/rigV4Usd.test.ts`.
 - **Reviewed artifact:** see `rowplay-athlete-v4.contract.json` for the sealed
-  byte count and SHA-256. Two independent Blender→Node builds should match
-  within normal float noise; commit the validator-checked binary.
+  byte count and SHA-256. The Blender→Node build preserves the reviewed Human
+  Base and primitive UVs instead of rerunning Blender's nondeterministic Smart
+  UV island scheduler; repeated builds must therefore produce a byte-identical
+  GLB. Commit only the validator-checked binary.
 - **Reviewed USDZ derivative:** Blender 5.2 does not produce byte-identical
   USDZ containers across repeat exports, so repeat-export acceptance is
   semantic: Three.js `USDLoader` must load one skinned athlete with the 19
@@ -248,12 +250,13 @@ remain automatic fallbacks.
   glTF extras encode exact local contact offsets: left/right hand
   `[-0.08,-0.01,0.035]` / `[0.08,-0.01,0.035]`; both feet
   `[0,-0.055,0.13]`.
-- **Grip closure:** after the exact palm solve, runtime applies bounded
-  sport-specific helper rotations for the RowErg scull, SkiErg cylindrical
-  grip, or BikeErg hood. Individual proximal/intermediate/distal segments and
-  the opposing thumb visibly enclose the local handle without moving the
-  semantic hand or equipment contact. The validator requires the exact helper
-  hierarchy and a meaningful checked skin influence for every helper.
+- **Grip closure:** after the exact contact solve, runtime applies bounded
+  geometry-aware helper rotations for the SkiErg cylindrical grip and RowErg
+  scull. BikeErg retains the bounded fixed-curl fallback until its stacked hood
+  layer lands. Individual proximal/intermediate/distal segments and the
+  opposing thumb visibly enclose the local handle without moving the semantic
+  hand or equipment contact. The validator requires the exact helper hierarchy
+  and a meaningful checked skin influence for every helper.
 - **Animations:** three normalized one-second clips, each with one hips
   translation and 19 semantic quaternion tracks: `rowplay-v4-row-cycle`
   (authored drive end `0.38`), `rowplay-v4-ski-cycle` (`0.34`), and
