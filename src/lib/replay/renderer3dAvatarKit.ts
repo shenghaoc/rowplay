@@ -21,18 +21,6 @@ import {
 } from "./renderer3dAssets";
 import { type ReplayV4MotionController } from "./renderer3dV4Motion";
 
-// Resolve lazily because this module is also imported during SSR. The returned
-// MediaQueryList stays live as the OS preference changes, while avoiding a new
-// matchMedia lookup on every animation frame.
-
-/**
- * One athlete + sport machine for a lane. `group` is placed on the lap
- * circle (and receives bob/roll); `animate` drives sport-specific motion from
- * the shared data-derived `StrokePose` and returns secondary outer-body cues
- * from that same solve. Distance is passed separately for BikeErg wheel roll.
- * Parts carrying `userData.accent` re-theme to the per-lane accent
- * (`--live` / `--ghost`); skin/kit/shafts stay fixed. Local +Z is travel.
- */
 /**
  * One course lap, in metres. Lives here rather than on `CourseRenderer3D` so a
  * sport avatar can place course-relative hardware without importing the course
@@ -44,6 +32,14 @@ export type AvatarMotionCues =
   | { vertical: number; surge: number; rollDamp?: number }
   | { rebound: number; surge: number };
 export const STATIC_AVATAR_MOTION: AvatarMotionCues = { vertical: 0, surge: 0 };
+/**
+ * One athlete + sport machine for a lane. `group` is placed on the lap
+ * circle (and receives bob/roll); `animate` drives sport-specific motion from
+ * the shared data-derived `StrokePose` and returns secondary outer-body cues
+ * from that same solve. Distance is passed separately for BikeErg wheel roll.
+ * Parts carrying `userData.accent` re-theme to the per-lane accent
+ * (`--live` / `--ghost`); skin/kit/shafts stay fixed. Local +Z is travel.
+ */
 export interface Avatar {
   group: THREE.Group;
   /** Maps V3's neutral geometry roles to this live/ghost rig's materials. */
