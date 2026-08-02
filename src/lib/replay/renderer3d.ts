@@ -86,6 +86,7 @@ import {
   SKI_ATHLETE_PROPORTIONS,
   SKI_GRIP_SHIFT,
   SKI_POLE_GRIP_RADIUS,
+  SKI_POLE_THUMB_OPPOSE,
   type SkiEquipmentDetail,
 } from "./skiEquipment";
 import { SkiGripReachSolver, skiPostReleaseExtensionAuthority } from "./skiGripReach";
@@ -1161,7 +1162,32 @@ function gripContractFor(sport: Sport): ReplayV4HandGripContract | undefined {
     // which for this grip is the fitted channel exactly. Passing the channel
     // radius here double-counts the flesh and stands every digit ~0.9 mm off
     // the pole — see the `radius` contract on `HandGripSurface`.
-    return { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: 0.62 };
+    /*
+     * Pole thumb wraps the shaft and comes to rest against it. Measured in the
+     * renderer on the shipped rig, worst point over the cycle — the thumb pad's
+     * distance off the rendered rubber, then where the pad lands relative to the
+     * fingers along the shaft (a wrapped thumb crosses them; it does not stand
+     * up the shaft beside them):
+     *
+     *   0.62 -> 20.7 mm off, pad 19..25 mm ABOVE the index — not a grip at all
+     *   1.60 ->  2.8 mm off, pad 3.6..9.3 mm above the middle
+     *   1.75 ->  1.0 mm off, pad level with the middle (0.6..2.3 mm), distal
+     *                        joint on the rubber within 0.7 mm
+     *   1.85 ->  0.9 mm off, pad has marched 1.1..1.6 mm PAST the middle
+     *
+     * So the pad is both seated on the shaft and still crossing the fingers over
+     * roughly 1.60..1.85; 1.75 centres it on the middle finger, which is where a
+     * closed fist puts a thumb. Below the band the pad floats — the old 0.62
+     * stood it two centimetres off the pole with the thumb extended up the shaft
+     * rather than closed around it. Above the band it slides toward the heel of
+     * the hand and the fist stops caging the shaft.
+     *
+     * The band is wider than the BikeErg hood's, but it is still a fitted
+     * constant: re-measure rather than nudging it if the pole radius or the hand
+     * channel moves. These are bone-frame radians, not anatomical thumb
+     * rotation — read the measured envelope above instead of converting.
+     */
+    return { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: SKI_POLE_THUMB_OPPOSE };
   }
   return {
     radius: BIKE_RIG.handlebar.hood.radius,

@@ -18,7 +18,7 @@ import {
   type HandDigitChain,
 } from "./handGrip";
 import { ROWER_SCULL_GRIP } from "./rowRig";
-import { SKI_POLE_GRIP_RADIUS } from "./skiEquipment";
+import { SKI_POLE_GRIP_RADIUS, SKI_POLE_THUMB_OPPOSE } from "./skiEquipment";
 import { BIKE_RIG } from "./bikeRig";
 
 // Right-hand digit joints in hand-local rest space, composed from the sealed
@@ -280,13 +280,36 @@ describe("solveHandGripClosure", () => {
     }
   });
 
+  it("seats the pole thumb on the shaft instead of standing it alongside", () => {
+    // The band this constant sits in, measured on the shipped chains. Below it
+    // the pad never reaches the shaft; above it the pad marches around into the
+    // fingers and the fist stops caging anything.
+    const seated = solveHandGripClosure(RIGHT_HAND_CHAINS, {
+      side: 1,
+      surface: { radius: SKI_POLE_GRIP_RADIUS },
+      thumbOppose: SKI_POLE_THUMB_OPPOSE,
+    }).contacts.find((contact) => contact.digit === "thumb")!;
+    expect(seated.contact, "the fitted opposition reaches the shaft").toBe(true);
+    expect(seated.surfaceDistance, "and rests on it").toBeLessThan(0.001);
+    const floating = solveHandGripClosure(RIGHT_HAND_CHAINS, {
+      side: 1,
+      surface: { radius: SKI_POLE_GRIP_RADIUS },
+      thumbOppose: 1.5,
+    }).contacts.find((contact) => contact.digit === "thumb")!;
+    // Just below the band the pad is measurably off the shaft — proof the
+    // assertion above is load-bearing rather than trivially satisfied.
+    expect(floating.surfaceDistance, "1.50 leaves the pad off the shaft").toBeGreaterThan(0.004);
+    expect(SKI_POLE_THUMB_OPPOSE).toBeGreaterThanOrEqual(1.6);
+    expect(SKI_POLE_THUMB_OPPOSE).toBeLessThanOrEqual(1.85);
+  });
+
   it("keeps the handle axis inside the finger/thumb enclosure with opposing contacts", () => {
     const closure = solveHandGripClosure(RIGHT_HAND_CHAINS, {
       side: 1,
       // The *equipment* radius, not the channel radius: the solver adds the
       // pad flesh that carries bone points out to the fitted channel.
       surface: { radius: SKI_POLE_GRIP_RADIUS },
-      thumbOppose: 0.62,
+      thumbOppose: SKI_POLE_THUMB_OPPOSE,
     });
     const fingerAngles = closure.contacts
       .filter((contact) => contact.digit !== "thumb")

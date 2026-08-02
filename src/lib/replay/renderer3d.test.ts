@@ -3191,29 +3191,46 @@ describe("CourseRenderer3D", () => {
             // the pole with the fist inverted (thumb pointing down-shaft) at
             // every phase — palms read as flipped 180° — so the stacking
             // order along the shaft is pinned here for both hands.
-            const thumbStation = scene
-              .getObjectByName(`v4${cap}ThumbDistal`)!
-              .getWorldPosition(new THREE.Vector3())
-              .sub(shaft.gripW)
-              .dot(shaft.axis);
-            const pinkyStation = scene
-              .getObjectByName(`v4${cap}PinkyDistal`)!
-              .getWorldPosition(new THREE.Vector3())
-              .sub(shaft.gripW)
-              .dot(shaft.axis);
-            const indexStation = scene
-              .getObjectByName(`v4${cap}IndexDistal`)!
-              .getWorldPosition(new THREE.Vector3())
-              .sub(shaft.gripW)
-              .dot(shaft.axis);
+            //
+            // Stations are measured along the shaft from its grip origin, so a
+            // SMALLER station is higher up the grip. These bounds were re-fitted
+            // when the thumb was closed onto the shaft: the previous pair was
+            // measured against a thumb standing 20 mm off the pole and 19-25 mm
+            // above the index, which is not a grip — a wrapped thumb necessarily
+            // crosses below the index. The invariant that actually encodes "the
+            // right way up" is that the pad lies ACROSS the fist — below the
+            // index, level with the middle, and well above the pinky — rather
+            // than pointing up the shaft or sliding down to the heel.
+            const station = (helper: string) =>
+              scene
+                .getObjectByName(`v4${cap}${helper}`)!
+                .getWorldPosition(new THREE.Vector3())
+                .sub(shaft.gripW)
+                .dot(shaft.axis);
+            const thumbStation = station("ThumbDistal");
+            const pinkyStation = station("PinkyDistal");
+            const indexStation = station("IndexDistal");
+            const middleStation = station("MiddleDistal");
+            // Measured 20.3-35.8 mm across the band and the cycle; the fist can
+            // never invert without collapsing this toward zero.
             expect(
               pinkyStation - thumbStation,
               `${side} thumb rides above the pinky on the grip at ${cycle}`,
-            ).toBeGreaterThan(0.03);
+            ).toBeGreaterThan(0.015);
             expect(
               indexStation - thumbStation,
-              `${side} thumb rides above the index on the grip at ${cycle}`,
-            ).toBeGreaterThan(0.005);
+              `${side} thumb pad has crossed below the index at ${cycle}`,
+            ).toBeLessThan(0);
+            // Level with the middle finger — where a closed fist puts a thumb.
+            // Measured 0.6-2.3 mm at the fitted opposition.
+            expect(
+              middleStation - thumbStation,
+              `${side} thumb pad stays level with the middle finger at ${cycle}`,
+            ).toBeGreaterThan(-0.005);
+            expect(
+              middleStation - thumbStation,
+              `${side} thumb pad has not slid to the heel of the hand at ${cycle}`,
+            ).toBeLessThan(0.014);
           }
         }
       } finally {
@@ -3261,6 +3278,91 @@ describe("CourseRenderer3D", () => {
               closest - SKI_POLE_GRIP_RADIUS,
               `${side} middle finger rests on the rendered pole at ${cycle}`,
             ).toBeLessThan(0.0005);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
+    it("closes every reaching SkiErg digit onto the pole and reports the pinky honestly", () => {
+      // RowErg and BikeErg both pin their five per-digit contact reports; this
+      // sport did not, and the gap hid a thumb that never touched the shaft —
+      // the shipped opposition was inherited from a pose that asserts nothing
+      // about thumb contact, so the pad stood ~20 mm off the pole while the
+      // suite's angular-coverage and opposition checks stayed green.
+      //
+      // The pinky is the one digit that genuinely cannot reach a shaft this
+      // thin: it saturates all three stage limits (a full ~280° curl) and still
+      // stops ~6 mm short. `contact` reports that truthfully rather than faking
+      // a touch, so the assertion here is that it closes *completely* and stops
+      // just short — not that it arrives. Widening the stage limits to force it
+      // would author an anatomically impossible pinky.
+      const renderer = rendererFor("skierg");
+      try {
+        const { motion } = v4Lane(renderer);
+        expect(motion.root.userData.replayV4GripMode).toBe("geometry-closure");
+        for (const side of ["left", "right"] as const) {
+          const contacts = motion.getGripContacts(side);
+          expect(contacts, `${side} closes every digit`).toHaveLength(5);
+          for (const report of contacts) {
+            if (report.digit === "pinky") {
+              expect(
+                report.contact,
+                `${side} pinky reports its shortfall rather than faking contact`,
+              ).toBe(false);
+              expect(
+                report.surfaceDistance,
+                `${side} pinky still closes all the way onto its limit`,
+              ).toBeLessThan(0.008);
+              continue;
+            }
+            expect(report.contact, `${side} ${report.digit} contacts the pole`).toBe(true);
+            expect(
+              report.surfaceDistance,
+              `${side} ${report.digit} does not sink through the pole`,
+            ).toBeGreaterThan(-0.004);
+            expect(
+              report.surfaceDistance,
+              `${side} ${report.digit} rests on the pole`,
+            ).toBeLessThan(0.004);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    });
+
+    it("presses the SkiErg thumb pad onto the rendered shaft", () => {
+      // `surfaceDistance` is measured against whatever radius the contract
+      // supplied, so a seated thumb there can still be a floating thumb here.
+      // Measure the pad against the shaft geometry that actually renders.
+      const renderer = rendererFor("skierg");
+      try {
+        for (const cycle of [0, 0.25, 0.5, 0.75]) {
+          renderer.render(makeSportState("skierg", cycle, 200), false);
+          const scene = getScene(renderer);
+          scene.updateMatrixWorld(true);
+          for (const side of ["left", "right"] as const) {
+            const cap = side === "left" ? "Left" : "Right";
+            const shaft = skiShaft(renderer, side);
+            const distal = scene.getObjectByName(`v4${cap}ThumbDistal`)!;
+            // The distal joint rides the rubber (measured within 0.7 mm at the
+            // fitted opposition; 20 mm off at the inherited 0.62).
+            expect(
+              Math.abs(
+                perpFromShaft(distal.getWorldPosition(new THREE.Vector3()), shaft) -
+                  SKI_POLE_GRIP_RADIUS,
+              ),
+              `${side} thumb joint on the rendered pole at ${cycle}`,
+            ).toBeLessThan(0.006);
+            // And the pad beyond it stays on the shaft rather than lifting off
+            // the far side. Measured 1.0-4.3 mm.
+            expect(
+              perpFromShaft(distal.localToWorld(new THREE.Vector3(0, 0.02, 0)), shaft) -
+                SKI_POLE_GRIP_RADIUS,
+              `${side} thumb pad on the rendered pole at ${cycle}`,
+            ).toBeLessThan(0.007);
           }
         }
       } finally {
