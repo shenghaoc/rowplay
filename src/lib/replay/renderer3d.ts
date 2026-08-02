@@ -41,6 +41,7 @@ import { solveRigidContactPoint3D, solveTwoBone3D, type FigurePoint3 } from "./f
 import {
   ROWER_FOOT_CONTACT,
   ROWER_OARLOCK,
+  ROWER_SCULL_GRIP,
   ROWER_STRETCHER,
   solveRowerArmWithCorridor,
   solveRowerOarYaw,
@@ -66,12 +67,12 @@ import {
   type ReplayV4MotionController,
   type ReplayV4SeatContract,
 } from "./renderer3dV4Motion";
+import { HAND_FIST_CENTRE, orientHandToGripChannel } from "./handGrip";
 import {
   skiEquipmentDetail,
   SKI_ATHLETE_PROPORTIONS,
-  SKI_HAND_CURL_AXIS,
-  SKI_HAND_FIST_CENTRE,
   SKI_GRIP_SHIFT,
+  SKI_POLE_GRIP_RADIUS,
   type SkiEquipmentDetail,
 } from "./skiEquipment";
 
@@ -1051,68 +1052,11 @@ function placeFigureSegmentBetween(
  */
 function skiGripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | undefined {
   if (sport !== "skierg") return undefined;
-  const { x, y, z } = SKI_HAND_FIST_CENTRE;
+  const { x, y, z } = HAND_FIST_CENTRE;
   return {
     leftHand: { x: -x, y, z },
     rightHand: { x, y, z },
   };
-}
-
-/**
- * SkiErg pole grip: lay the hand's authored finger-curl axis along the rigid
- * shaft so the fist closes *around* the pole.
- *
- * The shaft frame supplies the baseline, which fixes the one genuinely free
- * parameter — spin about the pole — continuously with the rigid link. The
- * curl axis is then rotated onto the shaft by the shortest arc, so the wrist
- * keeps whatever the arm solve chose and only the enclosure is corrected.
- *
- * `shaftDirLocal` is the shaft's own direction (grip end → tip) in the hand's
- * **parent** frame, which is where this whole construction lives. Deriving the
- * axis from parent-frame geometry is what keeps the grip heading-independent:
- * an earlier frame built from hand-local angles and a world-space axis drifted
- * a full 120° a quarter lap around the course.
- */
-function orientHandToNordicPole(
-  hand: THREE.Object3D,
-  poleShaft: THREE.Object3D,
-  side: number,
-  shaftDirLocal: THREE.Vector3,
-  athleteRightLocal: THREE.Vector3,
-  scratch: THREE.Quaternion,
-  scratchAxis: THREE.Vector3,
-  scratchTarget: THREE.Vector3,
-  scratchRoll: THREE.Vector3,
-): void {
-  hand.quaternion.copy(poleShaft.quaternion);
-  scratchAxis
-    .set(SKI_HAND_CURL_AXIS.x, side * SKI_HAND_CURL_AXIS.y, side * SKI_HAND_CURL_AXIS.z)
-    .normalize()
-    .applyQuaternion(hand.quaternion);
-  // Either shaft end may be the closer one; take the nearer so the correction
-  // is the shortest arc and the thumb never flips end-for-end mid-cycle.
-  scratchTarget.copy(shaftDirLocal).multiplyScalar(shaftDirLocal.dot(scratchAxis) >= 0 ? 1 : -1);
-  hand.quaternion.premultiply(scratch.setFromUnitVectors(scratchAxis, scratchTarget));
-
-  // Aligning the curl axis leaves exactly one freedom: spin about the shaft.
-  // Inheriting it from the shaft frame put the backs of the hands toward each
-  // other. Resolve it explicitly instead — the palm has to face **inward**, so
-  // the wrist→grip-channel vector points at the athlete's centreline. This is
-  // the parameter the earlier hand-frame angles were really groping for.
-  scratchAxis
-    .set(side * SKI_HAND_FIST_CENTRE.x, SKI_HAND_FIST_CENTRE.y, SKI_HAND_FIST_CENTRE.z)
-    .normalize()
-    .applyQuaternion(hand.quaternion);
-  scratchRoll.copy(athleteRightLocal).multiplyScalar(-side);
-  // Compare only the components across the shaft; the along-shaft parts carry
-  // no roll information.
-  scratchAxis.addScaledVector(scratchTarget, -scratchAxis.dot(scratchTarget));
-  scratchRoll.addScaledVector(scratchTarget, -scratchRoll.dot(scratchTarget));
-  if (scratchAxis.lengthSq() > 1e-8 && scratchRoll.lengthSq() > 1e-8) {
-    hand.quaternion.premultiply(
-      scratch.setFromUnitVectors(scratchAxis.normalize(), scratchRoll.normalize()),
-    );
-  }
 }
 
 /**
@@ -1792,7 +1736,12 @@ function makeRowerAvatar(
     shaft.position.x = side * 0.61;
     oar.add(shaft);
     const grip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.023, 0.023, 0.32, eqCylSegs),
+      new THREE.CylinderGeometry(
+        ROWER_SCULL_GRIP.radius,
+        ROWER_SCULL_GRIP.radius,
+        ROWER_SCULL_GRIP.length,
+        eqCylSegs,
+      ),
       equipmentGripMaterial,
     );
     grip.rotation.z = Math.PI / 2;
@@ -2625,7 +2574,7 @@ function makeSkierAvatar(
       ? setReplayAssetSlot(shaftMesh, "equipment:ski:pole-shaft")
       : shaftMesh;
     shaft.name = side < 0 ? "skierg-pole-shaft-left" : "skierg-pole-shaft-right";
-    const gripMesh = capsulePart(0.016, 0.15, gripMaterial, "z");
+    const gripMesh = capsulePart(SKI_POLE_GRIP_RADIUS, 0.15, gripMaterial, "z");
     const grip = useAuthoredSkiLeaves
       ? setReplayAssetSlot(gripMesh, "equipment:ski:pole-grip")
       : gripMesh;
@@ -2683,8 +2632,6 @@ function makeSkierAvatar(
   const courseForwardWorld = new THREE.Vector3();
   const athleteRightLocal = new THREE.Vector3();
   const inverseUpperWorld = new THREE.Quaternion();
-  const gripPitch = new THREE.Quaternion();
-  const gripCurlAxis = new THREE.Vector3();
   const gripCurlTarget = new THREE.Vector3();
   const gripCurlRoll = new THREE.Vector3();
   // Fixed arm lengths must contain every authored hand keyframe. A finish
@@ -2959,18 +2906,18 @@ function makeSkierAvatar(
       pole.basket.quaternion.copy(inverseUpperWorld);
       pole.tipAnchor.position.copy(tipLocalPoint);
       // Establish the terminal frame only after the current-frame rigid pole
-      // has been placed. `SEGMENT_DIR` still holds the grip-end → tip direction
-      // set just above, which is the axis the fist has to close around.
-      orientHandToNordicPole(
+      // has been placed. The shared grip frame replaces the former Ski-only
+      // duplicate; the thumb points toward the grip top while the palm rides
+      // inward, and equipment roll about the pole cancels inside the fingers.
+      gripCurlTarget.copy(SEGMENT_DIR).multiplyScalar(-1);
+      gripCurlRoll.copy(athleteRightLocal).multiplyScalar(-arm.side);
+      orientHandToGripChannel(
         arm.hand,
-        pole.shaft,
         arm.side,
-        SEGMENT_DIR,
-        athleteRightLocal,
-        gripPitch,
-        gripCurlAxis,
+        SKI_POLE_GRIP_RADIUS,
         gripCurlTarget,
         gripCurlRoll,
+        pole.shaft.quaternion,
       );
     }
   };

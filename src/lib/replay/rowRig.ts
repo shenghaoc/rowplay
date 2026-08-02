@@ -22,6 +22,16 @@ export const ROWER_STRETCHER = Object.freeze({
   shoeCatchPitch: THREE.MathUtils.degToRad(-35),
   shoeFinishPitch: THREE.MathUtils.degToRad(-42),
 });
+/**
+ * Physical scull-handle contract shared by the rendered rubber and grip
+ * closure. `anchorFromEnd` places the palm inboard of the flat thumb stop.
+ */
+export const ROWER_SCULL_GRIP = Object.freeze({
+  radius: 0.023,
+  length: 0.32,
+  anchorFromEnd: 0.04,
+} as const);
+
 export const ROWER_OARLOCK = Object.freeze({
   lateral: 0.88,
   // The pin rides ~0.14 above the seat top — real sculling rigging height —

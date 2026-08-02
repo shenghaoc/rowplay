@@ -52,12 +52,8 @@ import { buildStrokeTimeline, fallbackStrokePose, strokePoseAt } from "./strokeM
 import { solveBikeKinematics, solveRowerKinematics, solveSkierKinematics } from "./sportKinematics";
 import { BIKE_RIG, bikeSaddleTopY } from "./bikeRig";
 import { BIKE_SADDLE_SHELL_THICKNESS, bikeSaddleDropAt } from "./bikeSaddle";
-import {
-  SKI_ATHLETE_PROPORTIONS,
-  SKI_HAND_CURL_AXIS,
-  SKI_HAND_FIST_CENTRE,
-  SKI_HAND_FIST_RADIUS,
-} from "./skiEquipment";
+import { HAND_CURL_AXIS, HAND_FIST_CENTRE, HAND_FIST_RADIUS } from "./handGrip";
+import { SKI_ATHLETE_PROPORTIONS } from "./skiEquipment";
 import * as THREE from "three";
 
 /** Minimal 2D context stub for text sprite canvas creation. */
@@ -2985,7 +2981,7 @@ describe("CourseRenderer3D", () => {
             expect(
               perpFromShaft(tip, shaft),
               `${side} fingertip on the grip cylinder at ${cycle}`,
-            ).toBeLessThan(SKI_HAND_FIST_RADIUS + 0.008);
+            ).toBeLessThan(HAND_FIST_RADIUS + 0.008);
             // And the wrist has to be within a fist of the shaft, so the pole
             // passes through the hand instead of past it.
             const wrist = instance.bones[instance.effectors[`${side}Hand`].bone]!.getWorldPosition(
@@ -3003,9 +2999,9 @@ describe("CourseRenderer3D", () => {
             const mirror = side === "left" ? -1 : 1;
             const channel = handBone.localToWorld(
               new THREE.Vector3(
-                mirror * SKI_HAND_FIST_CENTRE.x,
-                SKI_HAND_FIST_CENTRE.y,
-                SKI_HAND_FIST_CENTRE.z,
+                mirror * HAND_FIST_CENTRE.x,
+                HAND_FIST_CENTRE.y,
+                HAND_FIST_CENTRE.z,
               ),
             );
             const otherWrist = instance.bones[
@@ -3049,13 +3045,13 @@ describe("CourseRenderer3D", () => {
             .applyQuaternion(handInverseQ)
             .normalize();
           const expectedAxis = new THREE.Vector3(
-            SKI_HAND_CURL_AXIS.x,
-            mirror * SKI_HAND_CURL_AXIS.y,
-            mirror * SKI_HAND_CURL_AXIS.z,
+            HAND_CURL_AXIS.x,
+            mirror * HAND_CURL_AXIS.y,
+            mirror * HAND_CURL_AXIS.z,
           ).normalize();
           expect(
             Math.abs(measured.dot(expectedAxis)),
-            `${side} SKI_HAND_CURL_AXIS still matches the rig`,
+            `${side} HAND_CURL_AXIS still matches the rig`,
           ).toBeGreaterThan(0.999);
 
           // Fit the circle the curled middle finger traces; its centre is the
@@ -3087,14 +3083,11 @@ describe("CourseRenderer3D", () => {
             .add(e2.clone().multiplyScalar(uy))
             .add(expectedAxis.clone().multiplyScalar(joints[0]!.dot(expectedAxis)));
 
-          expect(centre.x, `${side} grip channel x`).toBeCloseTo(
-            mirror * SKI_HAND_FIST_CENTRE.x,
-            3,
-          );
-          expect(centre.y, `${side} grip channel y`).toBeCloseTo(SKI_HAND_FIST_CENTRE.y, 3);
-          expect(centre.z, `${side} grip channel z`).toBeCloseTo(SKI_HAND_FIST_CENTRE.z, 3);
+          expect(centre.x, `${side} grip channel x`).toBeCloseTo(mirror * HAND_FIST_CENTRE.x, 3);
+          expect(centre.y, `${side} grip channel y`).toBeCloseTo(HAND_FIST_CENTRE.y, 3);
+          expect(centre.z, `${side} grip channel z`).toBeCloseTo(HAND_FIST_CENTRE.z, 3);
           expect(Math.hypot(A!.x - ux, A!.y - uy), `${side} grip channel radius`).toBeCloseTo(
-            SKI_HAND_FIST_RADIUS,
+            HAND_FIST_RADIUS,
             3,
           );
         }

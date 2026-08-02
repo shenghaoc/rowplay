@@ -1,0 +1,760 @@
+import * as THREE from "three";
+import { V4_CONTACT_OFFSETS } from "./rigV4";
+
+/**
+ * Geometry-constrained hand grips shared by all three sports.
+ *
+ * A grip is not "a palm near a target plus curled finger constants": the
+ * equipment must lie inside a collision-checked digit enclosure. This module
+ * owns the pieces that make that checkable:
+ *
+ * - the hand's grip-channel model — where a cylinder of radius R sits in the
+ *   hand, derived from the already-pinned SkiErg fist measurements rather
+ *   than a new set of eyeballed offsets;
+ * - the digit-closure solver — finger chains are posed into the carrying cup
+ *   the channel was fitted in, then each phalanx flexes until its bone points
+ *   reach the equipment surface and stops at contact, so curl angles are
+ *   outputs of the equipment geometry, not per-sport tuning constants;
+ * - the grip-frame orientation — the generalisation of the SkiErg pole frame
+ *   to any cylindrical channel (scull handles, brake-hood bodies), aligning
+ *   the hand's authored curl axis to the equipment axis and resolving the
+ *   remaining spin explicitly.
+ *
+ * Everything here is deterministic and unit-testable without a renderer.
+ */
+
+/**
+ * Authored finger-curl axis of the hand, in hand-local space, for the **right**
+ * hand; `y` and `z` mirror for the left.
+ *
+ * Every phalanx helper (`v4*Fingers`, `v4*MiddleProximal`, `v4*IndexProximal`,
+ * …) flexes about its own local +X, and this is that axis expressed in the
+ * hand's frame. A fist encloses a cylinder only when the cylinder is parallel
+ * to it, so the wrist frame has to be built from the shaft against this axis
+ * rather than from hand-frame angles chosen by eye — the shaft ran *along* the
+ * palm instead of across it, which walked the hand past the pole and left only
+ * the fingertips touching the grip.
+ *
+ * Measured on the SkiErg pole grip because that is the sport whose fist was
+ * fitted first, but it describes the **hand**, not the pole: sculls and brake
+ * hoods close the same phalanges about the same axis, which is why this lives
+ * here rather than in `skiEquipment.ts`.
+ *
+ * **Measured with the palm cup applied.** This constant and `HAND_FIST_CENTRE`
+ * are two measurements of one pose — the rendered hand carrying
+ * `HAND_CLOSURE_CUP` at the `v4*Fingers` helper — so the pose is a hidden
+ * third parameter of both. Whoever changes whether that cup is applied must
+ * re-derive *both* in the same change or keep the cup: converting one alone
+ * runs the grip channel through the finger roots, which satisfies every
+ * per-digit contact assertion while being physically impossible to wrap.
+ *
+ * Re-derived from the shipped rig by "derives the SkiErg curl axis and grip
+ * channel from the authored rig", so an asset rebuild cannot silently
+ * invalidate it. That test measures the *rendered* rig, so it is the guard
+ * that catches a half-converted pose.
+ */
+export const HAND_CURL_AXIS = Object.freeze({ x: -0.61, y: 0.16, z: 0.77 } as const);
+
+/**
+ * Centre of the closed fist's grip channel, in hand-local space, for the
+ * **right** hand; `x` mirrors for the left.
+ *
+ * The authored palm contact is a point on the palm *surface*, roughly 8.5 cm
+ * from the wrist. Driving that onto the shaft axis lays the equipment against
+ * the knuckles, so the fingers close beside it rather than around it. This is
+ * the centre of the circle the curled middle finger actually traces — put
+ * *this* on the axis and the shaft ends up inside the curl.
+ *
+ * Fitted from the shipped rig by "derives the SkiErg curl axis and grip
+ * channel from the authored rig", which also pins the `HAND_FIST_RADIUS`
+ * channel. Fitted **with the palm cup applied**, like `HAND_CURL_AXIS` — see
+ * the pose warning there.
+ */
+export const HAND_FIST_CENTRE = Object.freeze({ x: 0.0393, y: -0.0088, z: 0.0142 } as const);
+
+/**
+ * Radius of the circle the closed fist's finger joints trace — the channel the
+ * reference grip was fitted in.
+ *
+ * This is a *measurement of the hand*, not a ceiling on equipment: thicker
+ * grips are held perfectly well, and `handChannelCentre` seats them by pushing
+ * the axis proportionally further from the palm (the 0.023 m scull rubber
+ * turns the same hand from a fist into a relaxed hook). Its one hard role is
+ * the flesh calibration it forms with `HAND_FIST_REFERENCE_GRIP_RADIUS`.
+ */
+export const HAND_FIST_RADIUS = 0.0169;
+
+/**
+ * Radius of the equipment the fist channel above was fitted around — the
+ * SkiErg pole rubber, which `SKI_POLE_GRIP_RADIUS` re-exports so the rendered
+ * capsule and this calibration cannot drift apart.
+ *
+ * Paired with `HAND_FIST_RADIUS` it *is* the rig's digit-flesh calibration
+ * (see `DEFAULT_DIGIT_FLESH`), which is why the number lives with the hand
+ * rather than with the pole.
+ */
+export const HAND_FIST_REFERENCE_GRIP_RADIUS = 0.016;
+
+/**
+ * Authored palm-surface contact of the right hand — read from
+ * `V4_CONTACT_OFFSETS` rather than repeated, so the channel model and the
+ * contact solver cannot drift onto two different palms.
+ */
+export const HAND_PALM_CONTACT = (() => {
+  const [x, y, z] = V4_CONTACT_OFFSETS.v4RightHand;
+  return Object.freeze({ x, y, z } as const);
+})();
+
+/**
+ * Inward palm normal of the right hand: from the authored palm-surface
+ * contact toward the fitted SkiErg fist-channel centre. Both endpoints are
+ * pinned measurements of the shipped rig, so this direction is derived, not
+ * invented. Left mirrors x.
+ */
+export const HAND_PALM_NORMAL_IN = (() => {
+  const direction = new THREE.Vector3(
+    HAND_FIST_CENTRE.x - HAND_PALM_CONTACT.x,
+    HAND_FIST_CENTRE.y - HAND_PALM_CONTACT.y,
+    HAND_FIST_CENTRE.z - HAND_PALM_CONTACT.z,
+  ).normalize();
+  return Object.freeze({ x: direction.x, y: direction.y, z: direction.z });
+})();
+
+/**
+ * Distance from the palm skin to the surface of a held cylinder — the seat
+ * flesh the fist measurement already encodes: |palm→fistCentre| minus the
+ * fitted 0.0169 m channel radius.
+ */
+export const HAND_GRIP_SEAT_FLESH = (() => {
+  const distance = Math.hypot(
+    HAND_FIST_CENTRE.x - HAND_PALM_CONTACT.x,
+    HAND_FIST_CENTRE.y - HAND_PALM_CONTACT.y,
+    HAND_FIST_CENTRE.z - HAND_PALM_CONTACT.z,
+  );
+  return distance - HAND_FIST_RADIUS;
+})();
+
+/**
+ * Hand-local centre of the channel that a cylinder of `radius` occupies when
+ * held: the authored palm contact pushed inward by seat flesh plus the
+ * radius. `channelCentre(HAND_FIST_RADIUS)` reproduces the pinned SkiErg
+ * fist centre exactly; larger radii (the 0.023 m scull rubber, the brake-hood
+ * body) seat proportionally further from the palm, which is what turns the
+ * same hand from a fist into a relaxed hook. x mirrors by side.
+ */
+export function handChannelCentre(radius: number, side: number, out = new THREE.Vector3()) {
+  const seat = HAND_GRIP_SEAT_FLESH + radius;
+  out.set(
+    HAND_PALM_CONTACT.x + HAND_PALM_NORMAL_IN.x * seat,
+    HAND_PALM_CONTACT.y + HAND_PALM_NORMAL_IN.y * seat,
+    HAND_PALM_CONTACT.z + HAND_PALM_NORMAL_IN.z * seat,
+  );
+  out.x *= Math.sign(side) || 1;
+  return out;
+}
+
+/** Hand-local curl axis, mirrored the way the shipped rig mirrors hands. */
+export function handCurlAxis(side: number, out = new THREE.Vector3()) {
+  const mirror = Math.sign(side) || 1;
+  return out
+    .set(HAND_CURL_AXIS.x, mirror * HAND_CURL_AXIS.y, mirror * HAND_CURL_AXIS.z)
+    .normalize();
+}
+
+/**
+ * Curl axis signed from the pinky side toward the index/thumb side, measured
+ * from the shipped rig's finger-root line (dot ±0.896 with the raw axis, so
+ * the sign is unambiguous): the mirrored raw axis is already thumb-ward on
+ * the right hand and pinky-ward on the left. Grip frames must use this
+ * signed form or the left thumb lands on the wrong end of a stopped handle.
+ */
+export function handCurlAxisThumbward(side: number, out = new THREE.Vector3()) {
+  return handCurlAxis(side, out).multiplyScalar(Math.sign(side) || 1);
+}
+
+/** One solved digit-stage rotation: rest × oppose × flex, as radians. */
+export interface HandDigitStagePose {
+  readonly helper: string;
+  readonly flex: number;
+  readonly oppose: number;
+}
+
+export interface HandGripSurface {
+  /**
+   * Cylinder/capsule radius of the held **equipment** (m) — the rendered
+   * rubber, shaft or hood body the hand closes on.
+   *
+   * Not the hand's `HAND_FIST_RADIUS` channel. The two differ by the pad
+   * flesh, and the solver adds that flesh itself: bone points come to rest at
+   * `radius + flesh`, which for the reference pole is `0.016 + 0.0009` — the
+   * fitted channel exactly. Passing the channel radius instead double-counts
+   * the flesh, seating the axis ~0.9 mm deeper into the palm and standing
+   * every digit ~0.9 mm off the surface. Sport contracts must therefore pass
+   * `SKI_POLE_GRIP_RADIUS`, `ROWER_SCULL_GRIP.radius` or the hood radius.
+   */
+  readonly radius: number;
+  /**
+   * Signed axial coordinate (along the thumb-ward channel axis, from the
+   * channel centre) of a flat handle end for the thumb to press — the scull
+   * rubber's thumb stop. Omit for continuous shafts (pole, hood body).
+   */
+  readonly thumbEndAxial?: number;
+}
+
+export interface HandGripClosureOptions {
+  readonly side: number;
+  readonly surface: HandGripSurface;
+  /** Base opposition (local Z at the thumb root) bringing the thumb across. */
+  readonly thumbOppose: number;
+  /**
+   * Effective flesh radius of a finger pad pressed onto the surface.
+   * Defaults to the rig-calibrated `DEFAULT_DIGIT_FLESH`.
+   */
+  readonly fingerFlesh?: number;
+  /**
+   * Effective flesh radius of the thumb pad. Defaults to the rig-calibrated
+   * `DEFAULT_DIGIT_FLESH` radially and to `THUMB_END_PAD_ALLOWANCE` for the
+   * axial press onto a flat handle end.
+   */
+  readonly thumbFlesh?: number;
+}
+
+export interface HandDigitContactReport {
+  readonly digit: string;
+  /** Distance of the closest bone point to the equipment surface (m, signed: negative = penetration). */
+  readonly surfaceDistance: number;
+  /** True when the digit stopped because it reached the surface, not its flex limit. */
+  readonly contact: boolean;
+  /** Solved tip position in hand-local space. */
+  readonly tip: readonly [number, number, number];
+}
+
+export interface HandGripClosure {
+  readonly poses: readonly HandDigitStagePose[];
+  readonly contacts: readonly HandDigitContactReport[];
+}
+
+interface DigitJoint {
+  readonly helper: string;
+  readonly position: THREE.Vector3;
+  readonly quaternion: THREE.Quaternion;
+}
+
+export interface HandDigitChain {
+  readonly digit: "index" | "middle" | "ring" | "pinky" | "thumb";
+  /** Joints proximal→distal, in hand-local rest space. */
+  readonly joints: readonly DigitJoint[];
+  /** Estimated distal-tip length beyond the last joint (m). */
+  readonly tipLength: number;
+  /**
+   * Rest transform (relative to the hand) of the `v4*Fingers` palm-cup helper
+   * the chain hangs under, when there is one — the pivot about which the
+   * closure applies `HAND_CLOSURE_CUP` so the solve happens in the carrying
+   * pose the grip channel was fitted in. Thumbs parent the hand directly and
+   * carry no cup node.
+   */
+  readonly cupNode?: DigitJoint;
+}
+
+// Full-fist anatomical maxima (MCP ~90°, PIP ~110°, DIP ~80°; thumb MCP/IP
+// ~60/80°): the closure stops at contact, so these bind only for digits that
+// genuinely cannot reach a thin shaft — a pinky short of a 17 mm pole should
+// close all the way, not hang half-open at a styled limit.
+const FINGER_STAGE_LIMITS = [1.57, 1.92, 1.4] as const;
+const THUMB_STAGE_LIMITS = [1.0, 1.25, 1.35] as const;
+/**
+ * Digit-pad flesh calibrated from the rig's own approved envelope, not from
+ * anatomy tables: the fitted SkiErg fist closes its bone helpers onto a
+ * 0.0169 m circle around the 0.016 m rendered rubber, so a helper of this
+ * low-poly mesh sits ~0.9 mm off the equipment it presses — the helper lines
+ * run at the skin, not at anatomical bone depth. The former textbook 8 mm pad
+ * held every solved knuckle 8 mm off the shaft and left the closure a hook
+ * that could never cage what the shipped mesh visibly grips.
+ */
+const DEFAULT_DIGIT_FLESH = HAND_FIST_RADIUS - HAND_FIST_REFERENCE_GRIP_RADIUS;
+/**
+ * Axial allowance for a thumb pressing a flat handle end. This is a different
+ * quantity from the radial digit flesh: the chain's tip point is an estimate
+ * projected past the distal joint, and the end-press contact patch is the pad
+ * *under* that tip, roughly a distal-phalanx pad length behind it. Pressing
+ * the estimated tip all the way onto the end plane instead swings the thumb
+ * around the handle rim chasing millimetres of axial reach.
+ */
+const THUMB_END_PAD_ALLOWANCE = 0.0095;
+/**
+ * Samples used to sweep one stage's flexion range: to bracket the emergence
+ * of a digit that starts inside the grip surface, to catch a non-monotone
+ * mid-range touch, and to hold the closest approach when the surface is
+ * unreachable. The closure runs once per hand when a lane is built (never per
+ * frame), so a dense sweep is free; 24 samples resolve every crossing on the
+ * shipped rig at both the 16.9 mm pole and the 23 mm scull radius.
+ */
+const CLOSURE_EMERGE_SAMPLES = 24;
+
+/**
+ * Palm-cup carrying posture the grip channel was fitted under: the legacy
+ * SkiErg render applies this rotation about the `v4*Fingers` helper's local Y
+ * before curling, and the pinned `HAND_FIST_CENTRE` circle was measured
+ * in that pose ("derives the SkiErg curl axis and grip channel from the
+ * authored rig"). The closure must solve in the same space — with the cup at
+ * rest the finger roots collapse onto the fitted axis and no digit can wrap
+ * around a channel that runs through its own knuckles.
+ */
+export const HAND_CLOSURE_CUP = 0.14;
+
+/**
+ * Extract one hand's digit chains from a V4 skeleton in hand-local rest
+ * space. Helper rest transforms come from the loaded asset (or the reference
+ * rig), so the closure is solved against the athlete that actually renders.
+ */
+export function collectHandDigitChains(
+  hand: THREE.Object3D,
+  getBone: (name: string) => THREE.Object3D | null | undefined,
+  side: number,
+): HandDigitChain[] {
+  const prefix = side < 0 ? "v4Left" : "v4Right";
+  const chains: HandDigitChain[] = [];
+  const digits: readonly ["index" | "middle" | "ring" | "pinky" | "thumb", readonly string[]][] = [
+    ["index", [`${prefix}IndexProximal`, `${prefix}IndexIntermediate`, `${prefix}IndexDistal`]],
+    ["middle", [`${prefix}MiddleProximal`, `${prefix}MiddleIntermediate`, `${prefix}MiddleDistal`]],
+    ["ring", [`${prefix}RingProximal`, `${prefix}RingIntermediate`, `${prefix}RingDistal`]],
+    ["pinky", [`${prefix}PinkyProximal`, `${prefix}PinkyIntermediate`, `${prefix}PinkyDistal`]],
+    ["thumb", [`${prefix}Thumb`, `${prefix}ThumbIntermediate`, `${prefix}ThumbDistal`]],
+  ];
+  for (const [digit, names] of digits) {
+    const joints: DigitJoint[] = [];
+    let cupNode: DigitJoint | undefined;
+    let complete = true;
+    for (const name of names) {
+      const bone = getBone(name);
+      if (!bone) {
+        complete = false;
+        break;
+      }
+      // Compose the bone's rest transform relative to the hand bone.
+      const position = new THREE.Vector3();
+      const quaternion = new THREE.Quaternion();
+      let current: THREE.Object3D | null = bone;
+      const stack: THREE.Object3D[] = [];
+      while (current && current !== hand) {
+        stack.push(current);
+        current = current.parent;
+      }
+      if (current !== hand) {
+        complete = false;
+        break;
+      }
+      for (let index = stack.length - 1; index >= 0; index--) {
+        const node = stack[index]!;
+        position.add(node.position.clone().applyQuaternion(quaternion));
+        quaternion.multiply(node.quaternion);
+        if (!cupNode && node.name === `${prefix}Fingers`) {
+          cupNode = {
+            helper: node.name,
+            position: position.clone(),
+            quaternion: quaternion.clone(),
+          };
+        }
+      }
+      joints.push({ helper: name, position, quaternion });
+    }
+    if (!complete || joints.length < 3) continue;
+    const tipLength = Math.max(0.012, joints[2]!.position.distanceTo(joints[1]!.position) * 0.92);
+    chains.push({ digit, joints, tipLength, ...(cupNode ? { cupNode } : {}) });
+  }
+  return chains;
+}
+
+const CLOSURE_AXIS = new THREE.Vector3();
+const CLOSURE_CENTRE = new THREE.Vector3();
+const CLOSURE_DELTA = new THREE.Vector3();
+const CLOSURE_STAGE_ROT = new THREE.Quaternion();
+const CLOSURE_OPPOSE_ROT = new THREE.Quaternion();
+const CLOSURE_LOCAL_X = new THREE.Vector3(1, 0, 0);
+const CLOSURE_LOCAL_Y = new THREE.Vector3(0, 1, 0);
+const CLOSURE_LOCAL_Z = new THREE.Vector3(0, 0, 1);
+
+function distanceToAxis(point: THREE.Vector3): number {
+  CLOSURE_DELTA.copy(point).sub(CLOSURE_CENTRE);
+  const along = CLOSURE_DELTA.dot(CLOSURE_AXIS);
+  return Math.sqrt(Math.max(0, CLOSURE_DELTA.lengthSq() - along * along));
+}
+
+function axialCoordinate(point: THREE.Vector3): number {
+  return CLOSURE_DELTA.copy(point).sub(CLOSURE_CENTRE).dot(CLOSURE_AXIS);
+}
+
+/**
+ * Forward-kinematics of one digit chain for candidate stage flexions.
+ * Returns the chain's points (joint origins beyond the flexed stage plus the
+ * tip) in hand-local space. Stages beyond `stageCount` keep their rest pose.
+ */
+function digitPoints(
+  chain: HandDigitChain,
+  flexions: readonly number[],
+  oppose: number,
+  output: THREE.Vector3[],
+): THREE.Vector3[] {
+  let parentPosition = chain.joints[0]!.position;
+  let parentQuaternion = new THREE.Quaternion().copy(chain.joints[0]!.quaternion);
+  CLOSURE_OPPOSE_ROT.setFromAxisAngle(CLOSURE_LOCAL_Z, oppose);
+  CLOSURE_STAGE_ROT.setFromAxisAngle(CLOSURE_LOCAL_X, -(flexions[0] ?? 0));
+  parentQuaternion.multiply(CLOSURE_OPPOSE_ROT).multiply(CLOSURE_STAGE_ROT);
+  output[0]!.copy(parentPosition);
+  for (let stage = 1; stage < chain.joints.length; stage++) {
+    const joint = chain.joints[stage]!;
+    const previous = chain.joints[stage - 1]!;
+    // The child's rest offset/orientation relative to its parent joint.
+    const localPosition = joint.position
+      .clone()
+      .sub(previous.position)
+      .applyQuaternion(previous.quaternion.clone().invert());
+    const localQuaternion = previous.quaternion.clone().invert().multiply(joint.quaternion);
+    const worldPosition = localPosition.applyQuaternion(parentQuaternion).add(parentPosition);
+    const worldQuaternion = parentQuaternion.clone().multiply(localQuaternion);
+    CLOSURE_STAGE_ROT.setFromAxisAngle(CLOSURE_LOCAL_X, -(flexions[stage] ?? 0));
+    worldQuaternion.multiply(CLOSURE_STAGE_ROT);
+    output[stage]!.copy(worldPosition);
+    parentPosition = worldPosition;
+    parentQuaternion = worldQuaternion;
+  }
+  const tipOffset = new THREE.Vector3(0, chain.tipLength, 0).applyQuaternion(parentQuaternion);
+  output[chain.joints.length]!.copy(parentPosition).add(tipOffset);
+  return output;
+}
+
+/**
+ * Apply the carrying cup to a finger chain: conjugate every joint by the cup
+ * rotation about the `v4*Fingers` node, exactly the composition the renderer
+ * applies to the live helper (`rest × R_y(-side·cup)`). Chains without a cup
+ * node (thumbs, minimal test rigs) pass through untouched.
+ */
+function cupChain(chain: HandDigitChain, side: number): HandDigitChain {
+  const cup = chain.cupNode;
+  if (!cup) return chain;
+  const roll = new THREE.Quaternion().setFromAxisAngle(
+    CLOSURE_LOCAL_Y,
+    -(Math.sign(side) || 1) * HAND_CLOSURE_CUP,
+  );
+  const conjugate = cup.quaternion.clone().multiply(roll).multiply(cup.quaternion.clone().invert());
+  return {
+    ...chain,
+    joints: chain.joints.map((joint) => ({
+      helper: joint.helper,
+      position: joint.position
+        .clone()
+        .sub(cup.position)
+        .applyQuaternion(conjugate)
+        .add(cup.position),
+      quaternion: conjugate.clone().multiply(joint.quaternion),
+    })),
+  };
+}
+
+/**
+ * Close every digit of one hand around an equipment surface.
+ *
+ * The capsule axis runs through `handChannelCentre(radius)` along the hand's
+ * curl axis, thumb-ward positive; finger chains are first posed into the
+ * `HAND_CLOSURE_CUP` carrying posture the channel was fitted in. Each stage
+ * flexes until the first constrained bone point reaches the surface
+ * (radius + pad flesh) and stops there, so a reachable surface is never
+ * overshot into.
+ *
+ * Penetration is minimised, not forbidden. Where no pose in anatomical range
+ * clears the surface the stage holds its least-penetrating flexion, which is
+ * a real (small) overlap; callers must read `surfaceDistance` rather than
+ * assume non-negative. `contact` is likewise a 4 mm band around the surface,
+ * not an exact landing.
+ *
+ * This is an install-time solve. Renderer controllers must cache the returned
+ * helper poses rather than call it from an animation frame; the forward-
+ * kinematics workspace deliberately favors auditable geometry over hot-path
+ * allocation behavior.
+ */
+export function solveHandGripClosure(
+  chains: readonly HandDigitChain[],
+  options: HandGripClosureOptions,
+): HandGripClosure {
+  const { surface } = options;
+  const fingerFlesh = options.fingerFlesh ?? DEFAULT_DIGIT_FLESH;
+  // Pose the finger chains into the fitted carrying cup before any geometry
+  // is read: axis signing, closure, and contact reporting all happen in the
+  // same space the renderer will draw.
+  const posed = chains.map((chain) => cupChain(chain, options.side));
+  handCurlAxis(options.side, CLOSURE_AXIS);
+  // Thumb-ward sign: the axis must point from the pinky side toward the
+  // index/thumb side so `thumbEndAxial` has one meaning on both hands.
+  const index = posed.find((chain) => chain.digit === "index");
+  const pinky = posed.find((chain) => chain.digit === "pinky");
+  if (index && pinky) {
+    CLOSURE_DELTA.copy(index.joints[0]!.position).sub(pinky.joints[0]!.position);
+    if (CLOSURE_DELTA.dot(CLOSURE_AXIS) < 0) CLOSURE_AXIS.negate();
+  }
+  handChannelCentre(surface.radius, options.side, CLOSURE_CENTRE);
+
+  const poses: HandDigitStagePose[] = [];
+  const contacts: HandDigitContactReport[] = [];
+
+  const points = [
+    new THREE.Vector3(),
+    new THREE.Vector3(),
+    new THREE.Vector3(),
+    new THREE.Vector3(),
+  ];
+  for (const chain of posed) {
+    const isThumb = chain.digit === "thumb";
+    const limits = isThumb ? THUMB_STAGE_LIMITS : FINGER_STAGE_LIMITS;
+    const oppose = isThumb ? Math.sign(options.side) * options.thumbOppose : 0;
+    const flexions: number[] = [0, 0, 0];
+    const thumbEnd = isThumb && surface.thumbEndAxial !== undefined;
+    const flesh = isThumb
+      ? (options.thumbFlesh ?? (thumbEnd ? THUMB_END_PAD_ALLOWANCE : DEFAULT_DIGIT_FLESH))
+      : fingerFlesh;
+
+    // A thumb lies nearly along the shaft it opposes: its thenar and web
+    // press flesh-deep against the grip by design (that press *is* the
+    // required web-seat contact), so in radial mode only the pad tip is the
+    // opposing contact the solver may constrain. Fingers wrap across the
+    // shaft and constrain every downstream point.
+    const firstCollisionPoint = (stage: number): number =>
+      isThumb && !thumbEnd ? chain.joints.length : stage + 1;
+
+    const clearance = (stage: number): number => {
+      digitPoints(chain, flexions, oppose, points);
+      let nearest = Number.POSITIVE_INFINITY;
+      for (
+        let pointIndex = firstCollisionPoint(stage);
+        pointIndex <= chain.joints.length;
+        pointIndex++
+      ) {
+        const point = points[pointIndex]!;
+        if (thumbEnd) {
+          // The thumb lies along the handle beyond its flat end and presses
+          // the end face from outside — "thumbs on the handle ends" — so
+          // clearance is the axial distance still to travel down onto the
+          // stop, positive while beyond it and zero at pad contact.
+          const axial = axialCoordinate(point);
+          nearest = Math.min(nearest, axial - surface.thumbEndAxial! - flesh);
+        } else {
+          nearest = Math.min(nearest, distanceToAxis(point) - surface.radius - flesh);
+        }
+      }
+      return nearest;
+    };
+
+    for (let stage = 0; stage < chain.joints.length; stage++) {
+      const limit: number = limits[stage] ?? 1;
+      flexions[stage] = 0;
+      if (clearance(stage) > 0) {
+        // Outside the surface: close until the first constrained bone point
+        // lands on it.
+        flexions[stage] = limit;
+        if (clearance(stage) > 0) {
+          // Fully flexed still clears. Either the surface is beyond reach, or
+          // the sweep is non-monotone: it can dip onto the surface mid-range
+          // and recede again (the thumb's arc bows away from a shaft seated
+          // against its own web). Scan for a mid-range touch first.
+          let best = limit;
+          let bestClearance = clearance(stage);
+          let touched = -1;
+          let before = 0;
+          for (let sample = 0; sample < CLOSURE_EMERGE_SAMPLES; sample++) {
+            const candidate = (limit * sample) / CLOSURE_EMERGE_SAMPLES;
+            flexions[stage] = candidate;
+            const value = clearance(stage);
+            if (value <= 0) {
+              touched = candidate;
+              break;
+            }
+            before = candidate;
+            if (value < bestClearance) {
+              bestClearance = value;
+              best = candidate;
+            }
+          }
+          if (touched < 0) {
+            // No touch anywhere in range. A finger's non-terminal stage still
+            // curls fully: the wrap it carries is what brings the *next*
+            // segment around the shaft (a pinky short of the surface closes
+            // all the way, not half-open at a styled hover). The tip stage —
+            // and every stage of a radial thumb, whose single pad contact all
+            // three stages share — instead holds the closest approach, since
+            // curling past it walks the pad away from the equipment.
+            const holdClosest = (isThumb && !thumbEnd) || stage === chain.joints.length - 1;
+            flexions[stage] = holdClosest ? best : limit;
+            continue;
+          }
+          let low = before;
+          let high = touched;
+          for (let iteration = 0; iteration < 28; iteration++) {
+            const middle = (low + high) / 2;
+            flexions[stage] = middle;
+            if (clearance(stage) > 0) low = middle;
+            else high = middle;
+          }
+          flexions[stage] = low;
+          continue;
+        }
+        let low = 0;
+        let high = limit;
+        for (let iteration = 0; iteration < 28; iteration++) {
+          const middle = (low + high) / 2;
+          flexions[stage] = middle;
+          if (clearance(stage) > 0) low = middle;
+          else high = middle;
+        }
+        flexions[stage] = low;
+        continue;
+      }
+
+      // The stage starts *inside* the surface. This is not "already
+      // touching": the channel model seats a cylinder of the requested radius
+      // against the palm, so on a thick handle the ulnar knuckles genuinely
+      // begin inboard of the rubber. Freezing the stage at rest there authors
+      // precisely the deep penetration this solver promises it cannot
+      // produce — the pinky proximal phalanx ended 5.4 mm inside the 23 mm
+      // scull grip, which renders as fingers passing through the handle.
+      // Close further instead: the segment sweeps around the shaft and
+      // emerges onto the far side, which is what a real finger does when the
+      // handle is thicker than the span from its own knuckle. Clearance is
+      // not monotonic across that sweep, so sample first and then bisect the
+      // bracket that contains the crossing.
+      let previous = 0;
+      let emerged = -1;
+      for (let sample = 1; sample <= CLOSURE_EMERGE_SAMPLES; sample++) {
+        const candidate = (limit * sample) / CLOSURE_EMERGE_SAMPLES;
+        flexions[stage] = candidate;
+        if (clearance(stage) > 0) {
+          emerged = candidate;
+          break;
+        }
+        previous = candidate;
+      }
+      if (emerged < 0) {
+        // No pose in anatomical range clears the surface. Keep the flexion
+        // that penetrates least so the reported contact distance is the
+        // honest best this anatomy can reach rather than the rest-pose worst,
+        // and `contact` still tells callers the digit never made a clean
+        // landing.
+        let best = 0;
+        let bestClearance = Number.NEGATIVE_INFINITY;
+        for (let sample = 0; sample <= CLOSURE_EMERGE_SAMPLES; sample++) {
+          const candidate = (limit * sample) / CLOSURE_EMERGE_SAMPLES;
+          flexions[stage] = candidate;
+          const value = clearance(stage);
+          if (value > bestClearance) {
+            bestClearance = value;
+            best = candidate;
+          }
+        }
+        flexions[stage] = best;
+        continue;
+      }
+      // Stop at the first flexion that clears: the segment rests on the
+      // surface instead of continuing to curl into free space.
+      let low = previous;
+      let high = emerged;
+      for (let iteration = 0; iteration < 28; iteration++) {
+        const middle = (low + high) / 2;
+        flexions[stage] = middle;
+        if (clearance(stage) > 0) high = middle;
+        else low = middle;
+      }
+      flexions[stage] = high;
+    }
+
+    digitPoints(chain, flexions, oppose, points);
+    let surfaceDistance = Number.POSITIVE_INFINITY;
+    for (let pointIndex = firstCollisionPoint(0); pointIndex <= chain.joints.length; pointIndex++) {
+      const point = points[pointIndex]!;
+      surfaceDistance = Math.min(
+        surfaceDistance,
+        thumbEnd
+          ? axialCoordinate(point) - surface.thumbEndAxial! - flesh
+          : distanceToAxis(point) - surface.radius - flesh,
+      );
+    }
+    contacts.push({
+      digit: chain.digit,
+      surfaceDistance,
+      contact: Math.abs(surfaceDistance) < 0.004,
+      tip: [
+        points[chain.joints.length]!.x,
+        points[chain.joints.length]!.y,
+        points[chain.joints.length]!.z,
+      ],
+    });
+    for (let stage = 0; stage < chain.joints.length; stage++) {
+      poses.push({
+        helper: chain.joints[stage]!.helper,
+        flex: flexions[stage]!,
+        oppose: stage === 0 ? oppose : 0,
+      });
+    }
+  }
+  return { poses, contacts };
+}
+
+const FRAME_AXIS = new THREE.Vector3();
+const FRAME_TARGET = new THREE.Vector3();
+const FRAME_ROLL = new THREE.Vector3();
+const FRAME_SWING = new THREE.Quaternion();
+
+/**
+ * Orient a hand target so its authored grip channel encloses the equipment:
+ * the curl axis lands exactly on the thumb-ward signed shaft direction and
+ * the remaining spin about the shaft is resolved so the channel sits on the
+ * requested side of the wrist. This is the SkiErg pole-frame construction
+ * generalised to sculls and hoods; equipment roll about its own axis (blade
+ * feathering) cancels out, which is exactly "the handle rolls within the
+ * fingers". All arguments are read-only; the function is allocation-free so
+ * it may run in the per-frame avatar path.
+ *
+ * @param shaftDirThumbward equipment channel axis in the hand's parent
+ *   frame, already signed from the pinky side toward the thumb/index side —
+ *   a signed axis (instead of nearest-arc guessing) makes the thumb end of a
+ *   stopped handle deterministic.
+ * @param rollReference desired direction of (channel centre − wrist) in the
+ *   same frame — which side of the shaft the palm rides on.
+ */
+export function orientHandToGripChannel(
+  hand: THREE.Object3D,
+  side: number,
+  radius: number,
+  shaftDirThumbward: THREE.Vector3,
+  rollReference: THREE.Vector3,
+  baseQuaternion: THREE.Quaternion,
+  /**
+   * Hand-local vector aligned to `rollReference` when resolving the remaining
+   * spin about the shaft. Defaults to the channel-centre construction ray for
+   * the sports whose rendered grips were approved against it; pass
+   * `handPalmNormalOut(side)` to resolve roll against the palm's true facing.
+   */
+  rollVectorLocal?: THREE.Vector3,
+): void {
+  hand.quaternion.copy(baseQuaternion);
+  handCurlAxisThumbward(side, FRAME_AXIS).applyQuaternion(hand.quaternion);
+  FRAME_TARGET.copy(shaftDirThumbward).normalize();
+  hand.quaternion.premultiply(FRAME_SWING.setFromUnitVectors(FRAME_AXIS, FRAME_TARGET));
+
+  if (rollVectorLocal) FRAME_AXIS.copy(rollVectorLocal).normalize();
+  else handChannelCentre(radius, side, FRAME_AXIS).normalize();
+  FRAME_AXIS.applyQuaternion(hand.quaternion);
+  FRAME_ROLL.copy(rollReference).normalize();
+  FRAME_AXIS.addScaledVector(FRAME_TARGET, -FRAME_AXIS.dot(FRAME_TARGET));
+  FRAME_ROLL.addScaledVector(FRAME_TARGET, -FRAME_ROLL.dot(FRAME_TARGET));
+  if (FRAME_AXIS.lengthSq() > 1e-8 && FRAME_ROLL.lengthSq() > 1e-8) {
+    FRAME_AXIS.normalize();
+    FRAME_ROLL.normalize();
+    const cosine = THREE.MathUtils.clamp(FRAME_AXIS.dot(FRAME_ROLL), -1, 1);
+    // Both vectors are perpendicular to FRAME_TARGET, so their signed angle
+    // is an axial roll. Using atan2 keeps the exact 180° case on the shaft
+    // axis; setFromUnitVectors has no unique cross-axis there and can choose a
+    // swing that destroys the alignment established above.
+    const sine = FRAME_AXIS.cross(FRAME_ROLL).dot(FRAME_TARGET);
+    hand.quaternion.premultiply(
+      FRAME_SWING.setFromAxisAngle(FRAME_TARGET, Math.atan2(sine, cosine)),
+    );
+  }
+}
