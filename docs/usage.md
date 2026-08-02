@@ -203,7 +203,15 @@ apart. The production V4 athlete (PR #172) rests its measured sit-bone surface
 on a winged, cut-out performance saddle whose shape is derived from the rider's
 own seat geometry, so the body cannot pass through the cushion and the thighs
 clear the nose through the whole crank cycle; and it rebuilds the elbow branch
-from the visible shoulders to the hood contacts so palms lock to the grips. Equipment form and athlete–bike contact are present at
+from the visible shoulders to the hood contacts so palms lock to the grips.
+The rider hinges far enough forward to carry that reach, so the hands rest
+their weight on the brake hoods with the elbows softly bent, rather than
+hovering over them on locked-straight arms.
+After the palm contact solve, individually articulated fingers close onto the
+far side of each hood and the opposing thumb hooks underneath; this visual
+closure does not move the shared cockpit contact or infer the rider's real hand
+pose.
+Equipment form and athlete–bike contact are present at
 every 3D tier; higher tiers add material response and detail rather than
 replaying the same misfit at a larger pixel budget. These are deliberate
 illustrative motion constraints, not measured joint or force data from

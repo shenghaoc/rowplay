@@ -91,7 +91,7 @@ figure, readability, and motion specs.
   - [x] Rebuild and validate GLB, USDZ, and the eight-role native contract; run
     focused tests, the full local gate, E2E, and exact-head CI
 
-- [ ] **11. Articulate machine-specific hand grips**
+- [x] **11. Articulate machine-specific hand grips**
   - [x] Derive per-finger and opposing-thumb helper chains from the reviewed
     Blender hand topology and add the shared closure/orientation infrastructure
     without adding a second athlete or motion system
@@ -99,11 +99,11 @@ figure, readability, and motion specs.
     contact solve (#179)
   - [x] Apply RowErg scull closure after the authoritative palm contact solve
     (#180)
-  - [ ] Apply BikeErg hood closure after the authoritative palm contact solve
+  - [x] Apply BikeErg hood closure after the authoritative palm contact solve
     (#181)
-  - [ ] Reduce only oversized local grip cross-sections needed to expose the
+  - [x] Reduce only oversized local grip cross-sections needed to expose the
     existing human fingers; preserve equipment paths, timing, and environments
-  - [ ] Validate exact helper hierarchy/influence, deterministic reset,
+  - [x] Validate exact helper hierarchy/influence, deterministic reset,
     contact retention, and all three machine grips with bounded close-up frames
 
 - [x] **12. Rebuild BikeErg equipment around the seated athlete**

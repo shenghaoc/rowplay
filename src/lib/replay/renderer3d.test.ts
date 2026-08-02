@@ -40,6 +40,7 @@ import {
   HAND_CURL_AXIS,
   HAND_FIST_CENTRE,
   HAND_FIST_RADIUS,
+  HAND_FIST_REFERENCE_GRIP_RADIUS,
 } from "./handGrip";
 import type { Sport } from "../types";
 import { COLORS_DARK, REDUCED_REPLAY_POSES } from "./renderer";
@@ -374,8 +375,8 @@ function v4EffectorWorld(
 
 /**
  * World position of the contact point the sport layer actually drives. Feet
- * keep authored sole offsets; SkiErg uses its fitted fist centre and RowErg
- * uses the larger scull-channel centre.
+ * keep authored sole offsets; SkiErg uses its fitted fist centre, while
+ * RowErg and BikeErg use the channel centre for their equipment radius.
  */
 function v4EffectiveContactWorld(
   sport: "rower" | "skierg" | "bike",
@@ -383,12 +384,15 @@ function v4EffectiveContactWorld(
   effector: ReplayV4EffectorName,
 ): THREE.Vector3 {
   const metric = instance.effectors[effector];
-  if (effector.endsWith("Foot") || sport === "bike") return v4EffectorWorld(instance, effector);
+  if (effector.endsWith("Foot")) return v4EffectorWorld(instance, effector);
   const side = effector.startsWith("left") ? -1 : 1;
   const local =
-    sport === "rower"
-      ? handChannelCentre(ROWER_SCULL_GRIP.radius, side)
-      : new THREE.Vector3(side * HAND_FIST_CENTRE.x, HAND_FIST_CENTRE.y, HAND_FIST_CENTRE.z);
+    sport === "skierg"
+      ? new THREE.Vector3(side * HAND_FIST_CENTRE.x, HAND_FIST_CENTRE.y, HAND_FIST_CENTRE.z)
+      : handChannelCentre(
+          sport === "rower" ? ROWER_SCULL_GRIP.radius : BIKE_RIG.handlebar.hood.radius,
+          side,
+        );
   return instance.bones[metric.bone].localToWorld(local);
 }
 
@@ -2409,6 +2413,24 @@ describe("CourseRenderer3D", () => {
             )} required wrist reach=${shoulder.distanceTo(desiredWrist).toFixed(6)} structural reach=${(
             metric.proximalLength + metric.distalLength
           ).toFixed(6)}`;
+        } else if (sport === "bike" && effector.endsWith("Hand")) {
+          const side = effector.startsWith("left") ? -1 : 1;
+          const shoulder = instance.bones[
+            side < 0 ? "v4LeftUpperArm" : "v4RightUpperArm"
+          ].getWorldPosition(new THREE.Vector3());
+          const targetQuaternion = target.getWorldQuaternion(new THREE.Quaternion());
+          const desiredWrist = targetPosition
+            .clone()
+            .sub(
+              handChannelCentre(BIKE_RIG.handlebar.hood.radius, side).applyQuaternion(
+                targetQuaternion,
+              ),
+            );
+          contactDetail = `; required wrist reach=${shoulder
+            .distanceTo(desiredWrist)
+            .toFixed(
+              6,
+            )} structural reach=${(metric.proximalLength + metric.distalLength).toFixed(6)}`;
         }
         expect(
           contact.distanceTo(targetPosition),
@@ -3051,14 +3073,8 @@ describe("CourseRenderer3D", () => {
      */
     const SKI_V4_CONTACT_TOLERANCE = { hand: 0.005, foot: 0.015 } as const;
 
-    /**
-     * Soles trail the clip by a few centimetres on the deep reaches of the
-     * true-scale bike fit; palms stay equipment-locked much tighter. Carried
-     * over unchanged from the values the bicycle work validated against, but
-     * named per-sport so the bike's slack cannot silently widen the RowErg and
-     * SkiErg contacts the way a shared default did.
-     */
-    const BIKE_V4_CONTACT_TOLERANCE = { hand: 0.17, foot: 0.19 } as const;
+    /** The rebuilt Bike fit holds both hood channels and pedal soles to 5 mm. */
+    const BIKE_V4_CONTACT_TOLERANCE = { hand: 0.005, foot: 0.005 } as const;
     /**
      * RowErg drives the fitted scull-channel centre, not the palm skin, onto
      * the rigid rubber. The two-pass wrist-sphere refinement keeps that
@@ -3881,11 +3897,11 @@ describe("CourseRenderer3D", () => {
           const { instance } = v4Lane(renderer);
           for (const side of ["left", "right"] as const) {
             expect(
-              v4EffectorWorld(instance, `${side}Hand`).distanceTo(
+              v4EffectiveContactWorld("bike", instance, `${side}Hand`).distanceTo(
                 worldPosition(renderer, `bike-hand-contact-${side}`),
               ),
-              `${side} V4 palm-bar contact at ${cycle}`,
-            ).toBeLessThan(0.015);
+              `${side} V4 grip channel on the hood contact at ${cycle}`,
+            ).toBeLessThan(BIKE_V4_CONTACT_TOLERANCE.hand);
             expect(
               v4EffectorWorld(instance, `${side}Foot`).distanceTo(
                 worldPosition(renderer, `bike-pedal-${side}`),
@@ -4125,7 +4141,9 @@ describe("CourseRenderer3D", () => {
 
             for (const side of ["Left", "Right"] as const) {
               const lower = side.toLowerCase() as "left" | "right";
-              const hand = v4EffectorWorld(instance, `${lower}Hand`).applyMatrix4(inverse);
+              const hand = v4EffectiveContactWorld("bike", instance, `${lower}Hand`).applyMatrix4(
+                inverse,
+              );
               const grip = avatar.v4Targets[`${lower}Hand`]
                 .getWorldPosition(new THREE.Vector3())
                 .applyMatrix4(inverse);
@@ -4137,8 +4155,8 @@ describe("CourseRenderer3D", () => {
                 .applyMatrix4(inverse);
               expect(
                 hand.distanceTo(grip),
-                `${quality} ${lower} palm stays on the hood contact at ${cycle}`,
-              ).toBeLessThan(0.015);
+                `${quality} ${lower} grip channel stays on the hood contact at ${cycle}`,
+              ).toBeLessThan(0.03);
               expect(
                 elbow.y,
                 `${quality} ${lower} elbow drops below the shoulder at ${cycle}`,
@@ -4397,6 +4415,101 @@ describe("CourseRenderer3D", () => {
         renderer.destroy();
       }
     });
+
+    it("supports the bike palms on the hoods with digits hooked around opposing faces", () => {
+      const renderer = rendererFor("bike");
+      try {
+        const hood = BIKE_RIG.handlebar.hood;
+        for (let step = 0; step < 16; step++) {
+          const cycle = step / 16;
+          renderer.render(makeSportState("bike", cycle), false);
+          const { avatar, motion, instance } = v4Lane(renderer);
+          const scene = getScene(renderer);
+          scene.updateMatrixWorld(true);
+          const avatarQuaternion = avatar.group.getWorldQuaternion(new THREE.Quaternion());
+          const axis = new THREE.Vector3(
+            0,
+            -Math.sin(hood.rotationX),
+            Math.cos(hood.rotationX),
+          ).applyQuaternion(avatarQuaternion);
+          const topNormal = new THREE.Vector3(
+            0,
+            Math.cos(hood.rotationX),
+            Math.sin(hood.rotationX),
+          ).applyQuaternion(avatarQuaternion);
+          for (const side of ["left", "right"] as const) {
+            const sign = side === "left" ? -1 : 1;
+            const cap = side === "left" ? "Left" : "Right";
+            const contacts = motion.getGripContacts(side);
+            expect(contacts, `${side} hood closure report present`).toHaveLength(5);
+            for (const contact of contacts) {
+              expect(contact.contact, `${side} ${contact.digit} contacts the hood`).toBe(true);
+              expect(
+                contact.surfaceDistance,
+                `${side} ${contact.digit} never sinks through the hood at ${cycle}`,
+              ).toBeGreaterThanOrEqual(-0.0005);
+              expect(
+                contact.surfaceDistance,
+                `${side} ${contact.digit} stays on the hood at ${cycle}`,
+              ).toBeLessThan(0.004);
+            }
+            const anchorWorld = worldPosition(renderer, `bike-hand-contact-${side}`);
+            const inboard = new THREE.Vector3(-sign, 0, 0).applyQuaternion(avatarQuaternion);
+            // Palm-heel support: the wrist rides *above* the hood core (the
+            // hand's own channel geometry then puts the heel and web on the
+            // hood's upper surface — the authored open-palm skin point wraps
+            // to the far side of the core, so it cannot witness support).
+            const wrist = instance.bones[`v4${cap}Hand`].getWorldPosition(new THREE.Vector3());
+            const wristDelta = wrist.clone().sub(anchorWorld);
+            wristDelta.addScaledVector(axis, -wristDelta.dot(axis));
+            expect(
+              wristDelta.dot(topNormal),
+              `${side} wrist rides above the hood core at ${cycle}`,
+            ).toBeGreaterThan(0.012);
+            expect(
+              wristDelta.length(),
+              `${side} palm heel rests on the hood, not hovering, at ${cycle}`,
+            ).toBeLessThan(0.075);
+            // Measured hood grip (mirror-symmetric by construction): palm heel
+            // on the upper surface, fingertips close onto the far-side body,
+            // and the thumb hooks underneath the core.
+            const thumbTip = scene
+              .getObjectByName(`v4${cap}ThumbDistal`)!
+              .localToWorld(new THREE.Vector3(0, 0.02, 0))
+              .sub(anchorWorld);
+            expect(
+              thumbTip.dot(topNormal),
+              `${side} thumb hooks under the hood core at ${cycle}`,
+            ).toBeLessThan(-0.01);
+            expect(
+              thumbTip.dot(inboard),
+              `${side} thumb stays against the hood body at ${cycle}`,
+            ).toBeGreaterThan(-0.01);
+            const fingerSides: number[] = [];
+            const padRadius = hood.radius + HAND_FIST_RADIUS - HAND_FIST_REFERENCE_GRIP_RADIUS;
+            for (const digit of ["Index", "Middle", "Ring", "Pinky"] as const) {
+              const tip = scene
+                .getObjectByName(`v4${cap}${digit}Distal`)!
+                .localToWorld(new THREE.Vector3(0, 0.02, 0))
+                .sub(anchorWorld);
+              tip.addScaledVector(axis, -tip.dot(axis));
+              fingerSides.push(tip.dot(inboard));
+              expect(
+                Math.abs(tip.length() - padRadius),
+                `${side} ${digit} tip stays on the hood body at ${cycle}`,
+              ).toBeLessThan(0.004);
+            }
+            expect(
+              Math.max(...fingerSides),
+              `${side} fingers wrap onto the hood side at ${cycle}`,
+            ).toBeGreaterThan(0.005);
+          }
+        }
+      } finally {
+        renderer.destroy();
+      }
+    }, 30_000);
+
     it("distributes SkiErg pronation along the arm with continuous segments", () => {
       const renderer = rendererFor("skierg");
       try {

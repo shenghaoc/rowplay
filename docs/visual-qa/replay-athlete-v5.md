@@ -167,6 +167,15 @@ radius and hand-channel centre after the authoritative oar contact pass. Its
 fresh WebGPU/Ultra catch, finish, front, and mobile acceptance is documented in
 [RowErg geometry-aware grip acceptance](replay-row-grip.md).
 
+### Geometry-aware BikeErg closure (PR #181)
+
+The final stacked layer keeps the same hood contacts while a Bike-only,
+collision-bounded closure mode carries all four fingertips across the 36 mm
+hood body and hooks the opposing thumb underneath. RowErg and SkiErg remain on
+their approved closure paths. Fresh WebGPU/Ultra desktop macro, crank-extreme,
+and seated-support evidence is documented in
+[BikeErg geometry-aware grip acceptance](replay-bike-grip.md).
+
 ### BikeErg equipment and seated fit — 2026-07-25
 
 Product goal: a better **machine** plus correct athlete interaction. The athlete

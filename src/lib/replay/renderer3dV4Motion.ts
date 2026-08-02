@@ -144,6 +144,8 @@ function gripHelperMeta(name: ReplayV4HandHelperName): {
 export interface ReplayV4HandGripContract extends HandGripSurface {
   /** Base thumb opposition (rad) bringing the thumb across the channel. */
   readonly thumbOppose: number;
+  /** Far-side enclosure for palm-supported grips such as brake hoods. */
+  readonly wrapFingerStages?: boolean;
 }
 
 /**
@@ -1349,9 +1351,8 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
     // `solveHandGripClosure`), and the per-frame hot path only applies the
     // cached rotations.
     //
-    // The renderer now supplies SkiErg and RowErg contracts in their stack
-    // layers. BikeErg keeps the fixed-curl fallback until its own layer
-    // provides a hood contract; the controller itself remains sport-neutral.
+    // Each sport layer supplies its own surface contract; the controller
+    // remains sport-neutral and only executes the requested closure policy.
     const contract = options.gripContract;
     const handLongAxes = new Map<-1 | 1, THREE.Vector3>();
     if (contract && helpers.length === REPLAY_V4_HAND_HELPER_NAMES.length) {
@@ -1367,6 +1368,7 @@ class InstalledReplayV4MotionController implements ReplayV4MotionController {
           side,
           surface: contract,
           thumbOppose: contract.thumbOppose,
+          wrapFingerStages: contract.wrapFingerStages,
         });
         for (const pose of closure.poses) {
           solved.set(pose.helper, { flex: pose.flex, oppose: pose.oppose });

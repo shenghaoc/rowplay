@@ -251,12 +251,14 @@ remain automatic fallbacks.
   `[-0.08,-0.01,0.035]` / `[0.08,-0.01,0.035]`; both feet
   `[0,-0.055,0.13]`.
 - **Grip closure:** after the exact contact solve, runtime applies bounded
-  geometry-aware helper rotations for the SkiErg cylindrical grip and RowErg
-  scull. BikeErg retains the bounded fixed-curl fallback until its stacked hood
-  layer lands. Individual proximal/intermediate/distal segments and the
-  opposing thumb visibly enclose the local handle without moving the semantic
-  hand or equipment contact. The validator requires the exact helper hierarchy
-  and a meaningful checked skin influence for every helper.
+  geometry-aware helper rotations for the SkiErg cylinder, RowErg scull, and
+  BikeErg hood. RowErg and SkiErg retain their approved first-contact policy;
+  BikeErg explicitly searches a collision-bounded final enclosure so its palm
+  can rest on the 36 mm hood while all four fingertips reach the far-side body
+  and the thumb hooks underneath. Individual
+  proximal/intermediate/distal segments move without changing the semantic hand
+  or equipment contact. The validator requires the exact helper hierarchy and
+  a meaningful checked skin influence for every helper.
 - **Animations:** three normalized one-second clips, each with one hips
   translation and 19 semantic quaternion tracks: `rowplay-v4-row-cycle`
   (authored drive end `0.38`), `rowplay-v4-ski-cycle` (`0.34`), and

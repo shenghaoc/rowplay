@@ -307,12 +307,25 @@ export interface HandGripClosureOptions {
    * axial press onto a flat handle end.
    */
   readonly thumbFlesh?: number;
+  /**
+   * Solve all three bounded finger stages together for a final enclosure
+   * instead of freezing each stage on its first surface contact. This lets a
+   * palm-supported hood reach opposing faces while every final phalanx segment
+   * remains collision-bounded. Omit for the established pole/scull closures,
+   * whose approved poses intentionally use sequential first contact.
+   */
+  readonly wrapFingerStages?: boolean;
 }
 
 export interface HandDigitContactReport {
   readonly digit: string;
   /** Distance of the closest bone point to the equipment surface (m, signed: negative = penetration). */
   readonly surfaceDistance: number;
+  /**
+   * Closest complete downstream phalanx segment to the surface when a
+   * final-enclosure contract requests segment collision proof.
+   */
+  readonly segmentSurfaceDistance?: number;
   /** True when the digit stopped because it reached the surface, not its flex limit. */
   readonly contact: boolean;
   /** Solved tip position in hand-local space. */
@@ -380,6 +393,10 @@ const THUMB_END_PAD_ALLOWANCE = 0.0095;
  * shipped rig at both the 16.9 mm pole and the 23 mm scull radius.
  */
 const CLOSURE_EMERGE_SAMPLES = 24;
+/** Coarse deterministic search resolution for an opt-in final-pose enclosure. */
+const WRAP_GRID_STEPS = 16;
+/** Final helper points may compress into a held surface by at most 0.5 mm. */
+const WRAP_MAX_PENETRATION = 0.0005;
 
 /**
  * Palm-cup carrying posture the grip channel was fitted under: the legacy
@@ -458,6 +475,8 @@ export function collectHandDigitChains(
 const CLOSURE_AXIS = new THREE.Vector3();
 const CLOSURE_CENTRE = new THREE.Vector3();
 const CLOSURE_DELTA = new THREE.Vector3();
+const CLOSURE_SEGMENT_START = new THREE.Vector3();
+const CLOSURE_SEGMENT_DELTA = new THREE.Vector3();
 const CLOSURE_STAGE_ROT = new THREE.Quaternion();
 const CLOSURE_OPPOSE_ROT = new THREE.Quaternion();
 const CLOSURE_LOCAL_X = new THREE.Vector3(1, 0, 0);
@@ -468,6 +487,21 @@ function distanceToAxis(point: THREE.Vector3): number {
   CLOSURE_DELTA.copy(point).sub(CLOSURE_CENTRE);
   const along = CLOSURE_DELTA.dot(CLOSURE_AXIS);
   return Math.sqrt(Math.max(0, CLOSURE_DELTA.lengthSq() - along * along));
+}
+
+/** Minimum radial distance from a complete phalanx segment to the grip axis. */
+function segmentDistanceToAxis(start: THREE.Vector3, end: THREE.Vector3): number {
+  CLOSURE_SEGMENT_START.copy(start).sub(CLOSURE_CENTRE);
+  CLOSURE_SEGMENT_START.addScaledVector(CLOSURE_AXIS, -CLOSURE_SEGMENT_START.dot(CLOSURE_AXIS));
+  CLOSURE_SEGMENT_DELTA.copy(end).sub(CLOSURE_CENTRE);
+  CLOSURE_SEGMENT_DELTA.addScaledVector(CLOSURE_AXIS, -CLOSURE_SEGMENT_DELTA.dot(CLOSURE_AXIS));
+  CLOSURE_SEGMENT_DELTA.sub(CLOSURE_SEGMENT_START);
+  const lengthSq = CLOSURE_SEGMENT_DELTA.lengthSq();
+  const along =
+    lengthSq <= Number.EPSILON
+      ? 0
+      : THREE.MathUtils.clamp(-CLOSURE_SEGMENT_START.dot(CLOSURE_SEGMENT_DELTA) / lengthSq, 0, 1);
+  return CLOSURE_SEGMENT_START.addScaledVector(CLOSURE_SEGMENT_DELTA, along).length();
 }
 
 function axialCoordinate(point: THREE.Vector3): number {
@@ -547,9 +581,12 @@ function cupChain(chain: HandDigitChain, side: number): HandDigitChain {
  * The capsule axis runs through `handChannelCentre(radius)` along the hand's
  * curl axis, thumb-ward positive; finger chains are first posed into the
  * `HAND_CLOSURE_CUP` carrying posture the channel was fitted in. Each stage
- * flexes until the first constrained bone point reaches the surface
- * (radius + pad flesh) and stops there, so a reachable surface is never
- * overshot into.
+ * flexes until a constrained bone point reaches the surface (radius + pad
+ * flesh). By default the stage stops at that first contact. A contract may
+ * opt the fingers into a bounded final-pose search across all three stages;
+ * every phalanx segment and the fingertip must remain on or outside the held
+ * surface. The opt-in path changes neither thumb behavior nor the established
+ * pole/scull solution.
  *
  * Penetration is minimised, not forbidden. Where no pose in anatomical range
  * clears the surface the stage holds its least-penetrating flexion, which is
@@ -633,6 +670,123 @@ export function solveHandGripClosure(
       return nearest;
     };
 
+    const recordDigit = (reportSegments = false): void => {
+      digitPoints(chain, flexions, oppose, points);
+      let surfaceDistance = Number.POSITIVE_INFINITY;
+      for (
+        let pointIndex = firstCollisionPoint(0);
+        pointIndex <= chain.joints.length;
+        pointIndex++
+      ) {
+        const point = points[pointIndex]!;
+        surfaceDistance = Math.min(
+          surfaceDistance,
+          thumbEnd
+            ? axialCoordinate(point) - surface.thumbEndAxial! - flesh
+            : distanceToAxis(point) - surface.radius - flesh,
+        );
+      }
+      let segmentSurfaceDistance: number | undefined;
+      if (reportSegments) {
+        segmentSurfaceDistance = Number.POSITIVE_INFINITY;
+        for (let segment = 1; segment < chain.joints.length; segment++) {
+          segmentSurfaceDistance = Math.min(
+            segmentSurfaceDistance,
+            segmentDistanceToAxis(points[segment]!, points[segment + 1]!) - surface.radius - flesh,
+          );
+        }
+      }
+      contacts.push({
+        digit: chain.digit,
+        surfaceDistance,
+        ...(segmentSurfaceDistance === undefined ? {} : { segmentSurfaceDistance }),
+        contact: Math.abs(surfaceDistance) < 0.004,
+        tip: [
+          points[chain.joints.length]!.x,
+          points[chain.joints.length]!.y,
+          points[chain.joints.length]!.z,
+        ],
+      });
+      for (let stage = 0; stage < chain.joints.length; stage++) {
+        poses.push({
+          helper: chain.joints[stage]!.helper,
+          flex: flexions[stage]!,
+          oppose: stage === 0 ? oppose : 0,
+        });
+      }
+    };
+
+    let wrappedSolved = false;
+    if (options.wrapFingerStages === true && !isThumb) {
+      // A palm-supported hood needs a final-pose enclosure, not the first
+      // point reached while a finger is closing. Search the three bounded
+      // joint ranges together so the final chain can land on the far side
+      // without any joint/tip point penetrating the equipment. This path is
+      // install-time only and deliberately opt-in; pole/scull solutions below
+      // remain byte-for-byte on the sequential first-contact algorithm.
+      let bestScore = Number.NEGATIVE_INFINITY;
+      let bestFlexions: readonly [number, number, number] | undefined;
+      for (let proximal = 0; proximal <= WRAP_GRID_STEPS; proximal++) {
+        flexions[0] = (limits[0] * proximal) / WRAP_GRID_STEPS;
+        for (let intermediate = 0; intermediate <= WRAP_GRID_STEPS; intermediate++) {
+          flexions[1] = (limits[1] * intermediate) / WRAP_GRID_STEPS;
+          for (let distal = 0; distal <= WRAP_GRID_STEPS; distal++) {
+            flexions[2] = (limits[2] * distal) / WRAP_GRID_STEPS;
+            digitPoints(chain, flexions, oppose, points);
+            let nearest = Number.POSITIVE_INFINITY;
+            for (let pointIndex = 1; pointIndex <= chain.joints.length; pointIndex++) {
+              nearest = Math.min(
+                nearest,
+                distanceToAxis(points[pointIndex]!) - surface.radius - flesh,
+              );
+            }
+            // The root→first-joint span begins inside the palm cup by design;
+            // collision authority starts at the same first downstream point
+            // as the established solver. From there, check whole phalanx
+            // segments rather than endpoints alone.
+            for (let segment = 1; segment < chain.joints.length; segment++) {
+              nearest = Math.min(
+                nearest,
+                segmentDistanceToAxis(points[segment]!, points[segment + 1]!) -
+                  surface.radius -
+                  flesh,
+              );
+            }
+            const tipDistance =
+              distanceToAxis(points[chain.joints.length]!) - surface.radius - flesh;
+            if (
+              nearest < -WRAP_MAX_PENETRATION ||
+              Math.abs(nearest) >= 0.004 ||
+              Math.abs(tipDistance) >= 0.004
+            ) {
+              continue;
+            }
+            const wrap =
+              proximal / WRAP_GRID_STEPS +
+              intermediate / WRAP_GRID_STEPS +
+              distal / WRAP_GRID_STEPS;
+            const score = wrap - 12 * (Math.abs(nearest) + Math.abs(tipDistance));
+            if (score > bestScore) {
+              bestScore = score;
+              bestFlexions = [flexions[0], flexions[1], flexions[2]];
+            }
+          }
+        }
+      }
+      if (bestFlexions) {
+        flexions[0] = bestFlexions[0];
+        flexions[1] = bestFlexions[1];
+        flexions[2] = bestFlexions[2];
+        wrappedSolved = true;
+      }
+    }
+    if (wrappedSolved) {
+      recordDigit(true);
+      continue;
+    }
+    flexions[0] = 0;
+    flexions[1] = 0;
+    flexions[2] = 0;
     for (let stage = 0; stage < chain.joints.length; stage++) {
       const limit: number = limits[stage] ?? 1;
       flexions[stage] = 0;
@@ -753,35 +907,7 @@ export function solveHandGripClosure(
       }
       flexions[stage] = high;
     }
-
-    digitPoints(chain, flexions, oppose, points);
-    let surfaceDistance = Number.POSITIVE_INFINITY;
-    for (let pointIndex = firstCollisionPoint(0); pointIndex <= chain.joints.length; pointIndex++) {
-      const point = points[pointIndex]!;
-      surfaceDistance = Math.min(
-        surfaceDistance,
-        thumbEnd
-          ? axialCoordinate(point) - surface.thumbEndAxial! - flesh
-          : distanceToAxis(point) - surface.radius - flesh,
-      );
-    }
-    contacts.push({
-      digit: chain.digit,
-      surfaceDistance,
-      contact: Math.abs(surfaceDistance) < 0.004,
-      tip: [
-        points[chain.joints.length]!.x,
-        points[chain.joints.length]!.y,
-        points[chain.joints.length]!.z,
-      ],
-    });
-    for (let stage = 0; stage < chain.joints.length; stage++) {
-      poses.push({
-        helper: chain.joints[stage]!.helper,
-        flex: flexions[stage]!,
-        oppose: stage === 0 ? oppose : 0,
-      });
-    }
+    recordDigit();
   }
   return { poses, contacts };
 }

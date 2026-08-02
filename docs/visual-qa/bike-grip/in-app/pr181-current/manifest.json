@@ -1,0 +1,123 @@
+{
+  "commit": "c0fd9dd4e81b20354e74f6c44418b51f6b9d98cc",
+  "source": "http://127.0.0.1:8787",
+  "command": "node scripts/capture-replay-athlete-v5-qa.mjs --base-url=http://127.0.0.1:8787 --output=docs/visual-qa/bike-grip/in-app/pr181-current --only=grip-bike-pedal-top,bike-pedal-top,bike-pedal-bottom,saddle-bike-pedal-top-light,saddle-bike-pedal-bottom-light --headed",
+  "note": "Real RowPlay 3D application capture. Requested Ultra may report High when the browser backend is WebGL; the manifest records the effective tier and backend for every file.",
+  "evidence": [
+    {
+      "kind": "still",
+      "file": "poses/bike-pedal-top.jpg",
+      "sport": "bike",
+      "seconds": 0.05,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "poses/bike-pedal-bottom.jpg",
+      "sport": "bike",
+      "seconds": 0.72,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "close",
+      "effectiveQaCamera": "athlete-close",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "poses/grip-bike-pedal-top.jpg",
+      "sport": "bike",
+      "seconds": 0.05,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "grip",
+      "effectiveQaCamera": "athlete-grip",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "poses/saddle-bike-pedal-top-light.jpg",
+      "sport": "bike",
+      "seconds": 0.05,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    },
+    {
+      "kind": "still",
+      "file": "poses/saddle-bike-pedal-bottom-light.jpg",
+      "sport": "bike",
+      "seconds": 0.72,
+      "requestedQuality": "ultra",
+      "effectiveQuality": "ultra",
+      "backend": "WEBGPU",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 1024
+      },
+      "camera": "normal",
+      "effectiveQaCamera": "normal",
+      "skeleton": false,
+      "ghostPace": null,
+      "stage": {
+        "width": 1112,
+        "height": 420
+      },
+      "warnings": []
+    }
+  ]
+}

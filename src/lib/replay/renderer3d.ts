@@ -77,6 +77,7 @@ import {
 import {
   installReplayV4MotionController,
   type ReplayV4EffectorOffsetOverrides,
+  type ReplayV4HandGripContract,
   type ReplayV4MotionController,
   type ReplayV4SeatContract,
 } from "./renderer3dV4Motion";
@@ -991,6 +992,8 @@ const ARM_BEND_SCRATCH = new THREE.Vector3();
 const GRIP_FOREARM_SCRATCH = new THREE.Vector3();
 const GRIP_SHAFT_SCRATCH = new THREE.Vector3();
 const GRIP_ROLL_SCRATCH = new THREE.Vector3();
+const BIKE_HOOD_QUAT = new THREE.Quaternion();
+const BIKE_HOOD_AXIS_X = new THREE.Vector3(1, 0, 0);
 const GRIP_LONG_SCRATCH = new THREE.Vector3();
 const GRIP_SPIN_SCRATCH = new THREE.Quaternion();
 const SKI_FLAT_FOREARM = new THREE.Vector3();
@@ -1129,13 +1132,29 @@ function gripEffectorOffsets(sport: Sport): ReplayV4EffectorOffsetOverrides | un
       rightHand: { x: right.x, y: right.y, z: right.z },
     };
   }
+  if (sport === "bike") {
+    const radius = BIKE_RIG.handlebar.hood.radius;
+    const left = handChannelCentre(radius, -1);
+    const right = handChannelCentre(radius, 1);
+    return {
+      leftHand: { x: left.x, y: left.y, z: left.z },
+      rightHand: { x: right.x, y: right.y, z: right.z },
+    };
+  }
   return undefined;
 }
 
 /** Sport geometry handed to the V4 digit-closure solve in this stack layer. */
-function gripContractFor(
-  sport: Sport,
-): { radius: number; thumbOppose: number; thumbEndAxial?: number } | undefined {
+function gripContractFor(sport: Sport): ReplayV4HandGripContract | undefined {
+  if (sport === "rower") {
+    return {
+      radius: ROWER_SCULL_GRIP.radius,
+      // Sculling thumb: light opposition keeps it near the end of the handle
+      // where it presses the flat thumb stop instead of folding across.
+      thumbOppose: 0.3,
+      thumbEndAxial: ROWER_SCULL_GRIP.anchorFromEnd,
+    };
+  }
   if (sport === "skierg") {
     // The rendered pole rubber, not the fitted `HAND_FIST_RADIUS` channel:
     // the closure adds pad flesh itself and comes to rest at radius + flesh,
@@ -1144,14 +1163,35 @@ function gripContractFor(
     // the pole — see the `radius` contract on `HandGripSurface`.
     return { radius: SKI_POLE_GRIP_RADIUS, thumbOppose: 0.62 };
   }
-  if (sport === "rower") {
-    return {
-      radius: ROWER_SCULL_GRIP.radius,
-      thumbOppose: 0.3,
-      thumbEndAxial: ROWER_SCULL_GRIP.anchorFromEnd,
-    };
-  }
-  return undefined;
+  return {
+    radius: BIKE_RIG.handlebar.hood.radius,
+    wrapFingerStages: true,
+    /*
+     * Hood thumb hooks under the core opposite the fingers, and must actually
+     * reach it: the radial thumb pad only lands on the hood body once the
+     * opposition carries it far enough around. Measured on the shipped rig at
+     * the hood channel — `surfaceDistance`, then the thumb tip's height below
+     * the hood core at its worst point in the cycle:
+     *
+     *   0.70 -> 20.1 mm off      1.52..1.60 -> seated, and still >10 mm under
+     *   1.30 -> 12.2 mm off                    the core at every cycle sample
+     *   1.50 ->  4.3 mm off      1.61       -> seated, but the tip rises to
+     *   1.55 ->  seated                        10.0 mm under at cycle 0.25
+     *
+     * So the thumb is both seated on the hood and hooked beneath it only over
+     * roughly 1.52..1.60; 1.56 is the centre of that band. Below it the pad
+     * floats, above it the pad climbs toward the core's own height and stops
+     * reading as a hook. The old 0.70 stood the pad two centimetres off the
+     * hood — it was carried over from the SkiErg fist, which is solved against
+     * a pole held inside the fist and asserts nothing about thumb contact.
+     *
+     * The band is narrow, so re-measure it rather than nudging this constant if
+     * the hood radius or the hand channel ever moves. These are bone-frame
+     * radians, not anatomical thumb rotation: read the measured envelope above
+     * instead of converting to degrees.
+     */
+    thumbOppose: 1.56,
+  };
 }
 
 /**
@@ -3973,12 +4013,17 @@ function makeBikeAvatar(
 
     // The hood body itself — the raised lever housing the palm rests on.
     const hood = new THREE.Mesh(
-      roundedVenueBlockGeometry(0.036, 0.036, 0.105, 0.016),
+      roundedVenueBlockGeometry(
+        BIKE_RIG.handlebar.hood.radius * 2,
+        BIKE_RIG.handlebar.hood.radius * 2,
+        0.105,
+        0.016,
+      ),
       equipmentMaterial,
     );
     hood.name = side < 0 ? "bike-brake-hood-left" : "bike-brake-hood-right";
     hood.position.set(side * barHalfSpan, gripLocalY + 0.012, gripLocalZ - 0.012);
-    hood.rotation.x = -0.24;
+    hood.rotation.x = BIKE_RIG.handlebar.hood.rotationX;
 
     const anchor = new THREE.Object3D();
     anchor.name = side < 0 ? "bike-hand-contact-left" : "bike-hand-contact-right";
@@ -4156,7 +4201,10 @@ function makeBikeAvatar(
   // figure uses the same femur and tibia as the skinned athlete above it.
   const THIGH_LENGTH = BIKE_RIG.athlete.thigh;
   const SHIN_LENGTH = BIKE_RIG.athlete.shin;
-  const BIKE_AERO_SPINE_LEAN = 0.74;
+  // 0.74 -> 0.80: matches the deepened V4 clip hinge; the shoulders sat
+  // ~26 mm beyond full arm reach so the palms hovered off the hoods with
+  // locked elbows. Weight belongs on the hands.
+  const BIKE_AERO_SPINE_LEAN = 0.8;
   const BIKE_HEAD_GAZE_COMPENSATION = -0.47;
   // Pelvis stays at the rider root derived by bikeRiderHipY() — sit surface
   // on pad top. Do not add a vertical dig: averagePedalLoad used to sink the
@@ -4199,9 +4247,27 @@ function makeBikeAvatar(
       arm.elbow.position.copy(arm.elbowPoint);
       orientElbowCuff(arm.elbow, arm.shoulderPoint, arm.elbowPoint, arm.handPoint, arm.side);
       arm.hand.position.copy(arm.handPoint);
-      // Pronated hoods grip: palm over the bar, fingers curling forward/down
-      // so the cyclist is clearly holding the cockpit rather than floating.
-      arm.hand.rotation.set(-0.72, arm.side * 0.06, arm.side * 0.18);
+      // Pronated hoods grip built from the hood contract: the curl axis lies
+      // along the hood body's long axis (pinky at the bar tops, index toward
+      // the nose) and the spin resolves the palm heel onto the hood's upper
+      // surface, so the fingers close onto the hood body and the thumb hooks
+      // under it rather than posing a fixed Euler fist beside it.
+      //
+      // Bike opts into the shared solver's far-side enclosure mode: the palm
+      // stays supported on top while each finger chain closes around the hood
+      // body without changing the authoritative hand-contact anchor.
+      const hoodRotation = BIKE_RIG.handlebar.hood.rotationX;
+      GRIP_SHAFT_SCRATCH.set(0, -Math.sin(hoodRotation), Math.cos(hoodRotation));
+      GRIP_ROLL_SCRATCH.set(0, -Math.cos(hoodRotation), -Math.sin(hoodRotation));
+      BIKE_HOOD_QUAT.setFromAxisAngle(BIKE_HOOD_AXIS_X, hoodRotation);
+      orientHandToGripChannel(
+        arm.hand,
+        arm.side,
+        BIKE_RIG.handlebar.hood.radius,
+        GRIP_SHAFT_SCRATCH,
+        GRIP_ROLL_SCRATCH,
+        BIKE_HOOD_QUAT,
+      );
     }
   };
 

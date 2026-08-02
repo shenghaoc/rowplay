@@ -65,8 +65,20 @@ three-segment finger chains, and one three-segment opposing-thumb chain. The
 helpers carry bounded skin influence, inherit the terminal semantic hand, and
 are excluded from authored clip tracks. Runtime applies their sport-specific
 closure only after the authoritative palm contact solve, so RowErg sculls,
-SkiErg grips, and BikeErg hoods remain fixed while the visible fingers wrap
-around them.
+SkiErg grips, and BikeErg hoods remain fixed while the visible fingers close
+onto them.
+
+**Two explicit closure policies.** The established RowErg and SkiErg contracts
+retain the sequential first-contact solve that their approved poses were fitted
+against. BikeErg opts into a final-pose enclosure search across the three
+bounded finger stages: every candidate is checked against the complete
+downstream chain, may compress the analytic surface by at most 0.5 mm, and must
+land both the chain and fingertip inside the 4 mm contact band. This lets a palm
+rest on top of the hood while fingers reach its far-side surface and the
+opposing thumb hooks underneath. The opt-in is part of the sport's grip contract, so it
+cannot alter RowErg or SkiErg closure. The analytic hood surface uses the
+rendered 36 mm body's true 18 mm half-section rather than its 16 mm corner
+rounding, keeping contact and visible geometry on one contract.
 
 The filename is versioned. An incompatible slot or coordinate-contract change
 requires a new versioned filename and corresponding loader contract.

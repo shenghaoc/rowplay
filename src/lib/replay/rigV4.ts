@@ -1952,31 +1952,37 @@ function createBikeCycleClip(): THREE.AnimationClip {
         ]),
         1.6,
       ),
+      // Lean deepened from the historical -0.28 lumbar / -0.12 thoracic
+      // posture. The hood channel includes the full 18 mm rendered half-
+      // section, so the earlier -0.30 / -0.135 draft still required 4.6 mm
+      // beyond structural arm reach at quarter-cycle. This final hinge closes
+      // that measured reach without moving the authoritative hood targets and
+      // leaves a soft weight-bearing elbow instead of a locked reach.
       v4Spine: scalePitch(
         flipPitch([
-          [-0.28, -0.018, 0],
-          [-0.27, -0.012, 0],
-          [-0.26, 0, 0],
-          [-0.27, 0.012, 0],
-          [-0.28, 0.018, 0],
-          [-0.27, 0.012, 0],
-          [-0.26, 0, 0],
-          [-0.27, -0.012, 0],
-          [-0.28, -0.018, 0],
+          [-0.315, -0.018, 0],
+          [-0.305, -0.012, 0],
+          [-0.295, 0, 0],
+          [-0.305, 0.012, 0],
+          [-0.315, 0.018, 0],
+          [-0.305, 0.012, 0],
+          [-0.295, 0, 0],
+          [-0.305, -0.012, 0],
+          [-0.315, -0.018, 0],
         ]),
         1.6,
       ),
       v4Chest: scalePitch(
         flipPitch([
-          [-0.12, 0.012, 0],
-          [-0.115, 0.008, 0],
-          [-0.11, 0, 0],
-          [-0.115, -0.008, 0],
-          [-0.12, -0.012, 0],
-          [-0.115, -0.008, 0],
-          [-0.11, 0, 0],
-          [-0.115, 0.008, 0],
-          [-0.12, 0.012, 0],
+          [-0.14, 0.012, 0],
+          [-0.135, 0.008, 0],
+          [-0.13, 0, 0],
+          [-0.135, -0.008, 0],
+          [-0.14, -0.012, 0],
+          [-0.135, -0.008, 0],
+          [-0.13, 0, 0],
+          [-0.135, 0.008, 0],
+          [-0.14, 0.012, 0],
         ]),
         1.6,
       ),
