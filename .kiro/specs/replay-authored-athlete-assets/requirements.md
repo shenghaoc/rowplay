@@ -264,3 +264,37 @@ controls throughout the pedal cycle.
 8. WHEN the fit is released THEN dense crank-cycle tests across all four
    quality tiers, authored-asset validation, RowErg/SkiErg regression tests,
    visual QA, the repository gate, browser smoke, and exact-head CI SHALL pass.
+
+### Requirement 10: Maintainable 3D avatar module boundaries
+
+**User Story:** As a maintainer, I want each sport avatar isolated from the
+course controller and its sibling sports, so motion and equipment work can
+change without reopening one monolithic renderer or creating import cycles.
+
+#### Acceptance Criteria
+
+1. WHEN the 3D course is assembled THEN `renderer3d.ts` SHALL own course,
+   camera, environment, quality, asset-installation, and frame orchestration,
+   while avatar construction is delegated to a shared kit and one module per
+   sport.
+2. WHEN shared avatar code is extracted THEN `renderer3dAvatarKit.ts` SHALL
+   contain only cross-sport contracts, primitives, materials, placement
+   helpers, and scratch state; sport-specific grip policy SHALL remain in the
+   owning RowErg or SkiErg module.
+3. WHEN a sport avatar is imported THEN it SHALL NOT import the course renderer
+   or a sibling sport module, and the shared kit SHALL import none of the sport
+   modules.
+4. WHEN SkiErg needs the course lap length for deterministic pole plants THEN
+   one cycle-free shared constant SHALL remain authoritative and
+   `CourseRenderer3D.LOOP_METERS` SHALL re-expose that value without changing
+   the established `renderer3d` public export surface.
+5. WHEN live and ghost independence is tested THEN distinct phases SHALL be
+   interleaved and phase-dependent contact-target transforms SHALL be compared
+   with an independent control rig; unchanged course-owned root placement SHALL
+   NOT be accepted as independence evidence.
+6. WHEN per-sport construction is tested THEN every effective quality-tier
+   input SHALL be exercised, including BikeErg's 10/14/18/24 body-segment
+   ladder, and the test SHALL prove that the tier input changes built geometry.
+7. WHEN the extraction is released THEN co-located module tests, the existing
+   renderer regression suite, the repository gate, locale validation, browser
+   smoke, `git diff --check`, and exact-head CI SHALL pass.

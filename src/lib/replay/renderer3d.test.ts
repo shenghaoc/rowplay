@@ -32,7 +32,12 @@ vi.mock("three", async (importOriginal) => {
   return { ...THREE, WebGLRenderer: FakeWebGLRenderer };
 });
 
-import { CourseRenderer3D, replayV4ArmContactReach, SKI_PALM_TILT } from "./renderer3d";
+import {
+  CourseRenderer3D,
+  QA_PORTRAIT,
+  replayV4ArmContactReach,
+  SKI_PALM_TILT,
+} from "./renderer3d";
 import {
   handChannelCentre,
   handLongAxis,
@@ -329,6 +334,8 @@ interface V4MotionTestAccess {
   readonly enabled: boolean;
   readonly options: { readonly instance: ReplayV4AthleteInstance };
   getArmReach(side: "left" | "right"): number;
+  getHeadWorld(output?: THREE.Vector3): THREE.Vector3;
+  getShoulderWorld(side: "left" | "right", output?: THREE.Vector3): THREE.Vector3;
   getGripContacts(side: "left" | "right"): readonly {
     readonly digit: string;
     readonly surfaceDistance: number;
@@ -4815,6 +4822,118 @@ describe("CourseRenderer3D", () => {
       expectNumericSnapshotClose(passes[0]![7]!, passes[0]![3]!, 1e-9);
       expectNumericSnapshotClose(passes[0]![8]!, passes[0]![0]!, 1e-9);
     }, 30_000);
+
+    /**
+     * `athlete-front` is capture evidence, so it has to hold the head and
+     * shoulder mass of a *standing* athlete as reliably as a seated one.
+     * Scaling the chase distance off the course anchor did not: SkiErg carries
+     * 1.45 m of intra-stroke surge — more than the whole portrait standoff —
+     * so the frame filled with venue at the catch and the athlete's head ended
+     * up behind the camera by mid-drive. The visible hero's own head bone and
+     * shoulders are the frame now, so every sport is checked here; fixing one
+     * standing pose by breaking the seated pair is not a fix.
+     */
+    it("ties the front-portrait crown allowance to the shipped V4 rig", () => {
+      // `heroCrownRise` is how far over `v4Head` the camera reserves room for
+      // the skull, and the posed skin gives nothing cheap to measure per frame
+      // — so it is a constant, and a constant describing an asset has to be
+      // pinned to that asset. Re-author the rig taller and this fails instead
+      // of the portrait quietly cropping a forehead.
+      if (!v4Assets) throw new Error("production replay assets did not load");
+      v4Assets.root.updateMatrixWorld(true);
+      const rest = new THREE.Box3().setFromObject(v4Assets.root);
+      const headBone = v4Assets.root.getObjectByName("v4Head");
+      expect(headBone, "shipped rig exposes its head bone").toBeDefined();
+      const measured = rest.max.y - headBone!.getWorldPosition(new THREE.Vector3()).y;
+      expect(measured, "rest-pose crown over the head joint").toBeCloseTo(0.138, 2);
+      expect(QA_PORTRAIT.heroCrownRise, "allowance covers the rig").toBeGreaterThanOrEqual(
+        measured,
+      );
+      // Snug, not merely safe: a hugely padded allowance would also pass the
+      // bound above while pushing the portrait needlessly wide.
+      expect(QA_PORTRAIT.heroCrownRise, "allowance stays snug").toBeLessThan(measured + 0.03);
+    });
+
+    it("holds the front portrait on the athlete's head and shoulders", () => {
+      // Joint positions alone would pass while the visible mass hung outside
+      // the frame, so the camera's own crown and deltoid allowances are what
+      // gets projected. Sharing them means re-tuning one moves this guard too.
+      const CROWN_RISE = QA_PORTRAIT.heroCrownRise;
+      const SHOULDER_DROP = QA_PORTRAIT.shoulderDrop;
+      for (const [width, height] of [
+        [1140, 420],
+        [390, 360],
+      ] as const) {
+        for (const sport of ["skierg", "rower", "bike"] as const) {
+          // A capture can run with the reduced-motion preference set, and its
+          // static pose is a different fold from any animated phase.
+          for (const reduce of [false, true]) {
+            if (!v3Assets || !v4Assets) throw new Error("production replay assets did not load");
+            reducedMotion = reduce;
+            const renderer = new CourseRenderer3D(makeHost(), "ultra", sport, {
+              assets: v3Assets,
+              v4Assets,
+              qaCamera: "athlete-front",
+            });
+            try {
+              renderer.resize(width, height);
+              // Both stroke phase and lap position move the athlete relative to
+              // the course anchor: the surge that broke SkiErg is phase-driven,
+              // and the heading it acts along is lap-driven.
+              for (const cycle of [0.05, 0.35, 0.5, 0.8]) {
+                for (const meters of [0, 137, 421]) {
+                  renderer.render(makeSportState(sport, cycle, meters), false);
+                  getScene(renderer).updateMatrixWorld(true);
+                  const { motion } = v4Lane(renderer);
+                  const { camera } = getCameraRig(renderer);
+                  camera.updateMatrixWorld(true);
+                  camera.updateProjectionMatrix();
+                  const head = motion.getHeadWorld(new THREE.Vector3());
+                  const shoulder = (side: "left" | "right") => {
+                    const joint = motion.getShoulderWorld(side, new THREE.Vector3());
+                    return joint.setY(joint.y - SHOULDER_DROP);
+                  };
+                  const marks = {
+                    crown: head.clone().setY(head.y + CROWN_RISE),
+                    head,
+                    "shoulder-left": shoulder("left"),
+                    "shoulder-right": shoulder("right"),
+                  };
+                  const where = `${sport} ${width}×${height} ${
+                    reduce ? "reduced" : "animated"
+                  } cycle ${cycle} at ${meters} m`;
+                  const projected: Record<string, THREE.Vector3> = {};
+                  for (const [name, point] of Object.entries(marks)) {
+                    const ndc = point.clone().project(camera);
+                    projected[name] = ndc;
+                    // z leaving [-1, 1] is the specific failure this camera hit:
+                    // the athlete surging straight past the lens.
+                    expect(ndc.z, `${where}: ${name} between the clip planes`).toBeGreaterThan(-1);
+                    expect(ndc.z, `${where}: ${name} between the clip planes`).toBeLessThan(1);
+                    expect(Math.abs(ndc.x), `${where}: ${name} inside the frame`).toBeLessThan(0.9);
+                    expect(Math.abs(ndc.y), `${where}: ${name} inside the frame`).toBeLessThan(0.9);
+                  }
+                  // A portrait, not a wide shot: pulling the camera back until
+                  // everything trivially fits would satisfy the bounds above.
+                  const pixels = (ndc: THREE.Vector3) =>
+                    new THREE.Vector2(((ndc.x + 1) * width) / 2, ((1 - ndc.y) * height) / 2);
+                  const crownToShoulder = Math.max(
+                    pixels(projected.crown!).distanceTo(pixels(projected["shoulder-left"]!)),
+                    pixels(projected.crown!).distanceTo(pixels(projected["shoulder-right"]!)),
+                  );
+                  expect(
+                    crownToShoulder,
+                    `${where}: head/shoulder mass fills the frame`,
+                  ).toBeGreaterThan(height * 0.3);
+                }
+              }
+            } finally {
+              renderer.destroy();
+            }
+          }
+        }
+      }
+    }, 30_000);
   });
 
   it("keeps RowErg knees visually separated from the hull through the stroke", () => {
@@ -5790,6 +5909,70 @@ describe("CourseRenderer3D", () => {
           ).toBeGreaterThan(width >= 640 ? 24 : 18);
           renderer.destroy();
         }
+      }
+    });
+
+    /**
+     * Companion to the production-V4 portrait guard: with no skinned hero the
+     * procedural body *is* the visible athlete, so the portrait has to frame
+     * its landmarks instead. Nothing else exercises that fallback branch, and
+     * it is the branch whose crown is measured rather than assumed — BikeErg
+     * parents a helmet to the head, 0.045 m above the bare cranium and hair.
+     */
+    it("frames the front portrait on the procedural rig when no V4 hero is installed", () => {
+      const shoulders = {
+        rower: ["rower-shoulder-left", "rower-shoulder-right"],
+        skierg: ["skierg-shoulder-left", "skierg-shoulder-right"],
+        bike: ["bike-shoulder-left", "bike-shoulder-right"],
+      } as const;
+      for (const sport of ["skierg", "rower", "bike"] as const) {
+        const renderer = new CourseRenderer3D(makeHost(), "medium", sport, {
+          qaCamera: "athlete-front",
+        });
+        renderer.resize(1140, 420);
+        for (const cycle of [0.05, 0.5]) {
+          renderer.render(makeSportState(sport, cycle, 137), false);
+          const { camera } = getCameraRig(renderer);
+          camera.updateMatrixWorld(true);
+          camera.updateProjectionMatrix();
+          const where = `${sport} fallback portrait at cycle ${cycle}`;
+          // The visible mass, not the joints: the true top of the rendered head
+          // subtree (helmet included) and the deltoid below each shoulder.
+          const crown = new THREE.Box3().setFromObject(sceneObject(renderer, "athlete:head")).max;
+          const marks: Record<string, THREE.Vector3> = {
+            crown: new THREE.Vector3(
+              worldPosition(renderer, "athlete:head").x,
+              crown.y,
+              worldPosition(renderer, "athlete:head").z,
+            ),
+          };
+          for (const name of shoulders[sport]) {
+            const joint = worldPosition(renderer, name);
+            marks[name] = joint.setY(joint.y - QA_PORTRAIT.shoulderDrop);
+          }
+          const projected: Record<string, THREE.Vector3> = {};
+          for (const [name, point] of Object.entries(marks)) {
+            const ndc = point.project(camera);
+            projected[name] = ndc;
+            expect(Math.abs(ndc.x), `${where}: ${name} horizontal`).toBeLessThan(0.9);
+            expect(Math.abs(ndc.y), `${where}: ${name} vertical`).toBeLessThan(0.9);
+            expect(ndc.z, `${where}: ${name} near clip`).toBeGreaterThan(-1);
+            expect(ndc.z, `${where}: ${name} far clip`).toBeLessThan(1);
+          }
+          // Same anti-wide-shot floor as the hero guard: bounds alone would be
+          // satisfied by simply retreating until the athlete is a speck.
+          const pixels = (ndc: THREE.Vector3) =>
+            new THREE.Vector2(((ndc.x + 1) * 1140) / 2, ((1 - ndc.y) * 420) / 2);
+          const crownToShoulder = Math.max(
+            ...shoulders[sport].map((name) =>
+              pixels(projected.crown!).distanceTo(pixels(projected[name]!)),
+            ),
+          );
+          expect(crownToShoulder, `${where}: head/shoulder mass fills the frame`).toBeGreaterThan(
+            420 * 0.3,
+          );
+        }
+        renderer.destroy();
       }
     });
 
