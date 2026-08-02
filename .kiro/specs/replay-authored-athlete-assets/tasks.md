@@ -105,6 +105,11 @@ figure, readability, and motion specs.
     existing human fingers; preserve equipment paths, timing, and environments
   - [x] Validate exact helper hierarchy/influence, deterministic reset,
     contact retention, and all three machine grips with bounded close-up frames
+  - [x] Close the SkiErg thumb onto the pole and pin the per-digit contact
+    reports that sport was missing, so all three machines are held to the same
+    no-floating-digit evidence rather than SkiErg's angular coverage alone;
+    grip and chase acceptance in
+    [`replay-ski-equipment.md`](../../../docs/visual-qa/replay-ski-equipment.md)
 
 - [x] **12. Rebuild BikeErg equipment around the seated athlete**
   - [x] Centralize true-scale wheels, wheelbase, frame, steering, crank,

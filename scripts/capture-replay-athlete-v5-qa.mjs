@@ -521,6 +521,32 @@ for (const gripPose of [
   }
 }
 
+// SkiErg thumb closure. Captured at the two cycle extremes the thumb has to
+// survive: the plant, where the hands are highest and the shaft has just been
+// loaded, and the loaded press, where the wrist is most flexed. The grip camera
+// resolves the individual digit; the chase camera is captured at the same two
+// instants because a close-up has twice hidden a grip defect that the ordinary
+// viewing distance shows plainly, so a macro frame alone is not acceptance.
+for (const thumbPose of [
+  { name: "ski-grip-plant", seconds: 0.05, camera: "grip" },
+  { name: "ski-grip-press", seconds: 0.5, camera: "grip" },
+  { name: "ski-chase-plant", seconds: 0.05, camera: "normal" },
+  { name: "ski-chase-press", seconds: 0.5, camera: "normal" },
+  // No `front` frame: that capture-only portrait is framed for the seated
+  // rower and clears only the top of a standing skier's head, so it would add
+  // an unreadable file rather than a second angle on the thumb.
+]) {
+  if (shouldCapture(thumbPose.name)) {
+    await captureStill({
+      ...thumbPose,
+      sport: SPORTS.ski,
+      quality: "ultra",
+      theme: "light",
+      viewport: "desktop",
+    });
+  }
+}
+
 for (const sport of Object.values(SPORTS)) {
   if (shouldCapture(`${sport.label}-one-cycle`)) await captureCycle(sport);
 }
