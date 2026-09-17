@@ -527,7 +527,7 @@ Toujours bloqué ? La [FAQ](/docs/faq) couvre d'autres cas, et chaque page de ce
     faster: "{delta} plus rapide",
     slower: "{delta} plus lent",
     emptyTrend:
-      "Une seule séance dans cette tranche — enregistrez un autre {band} pour voir une tendance.",
+      "Seulement {n} séance dans cette tranche — enregistrez un autre {band} pour voir une tendance.",
     dpsTrend: {
       title: "Efficacité de coups (DPS)",
       raw: "DPS brut",
