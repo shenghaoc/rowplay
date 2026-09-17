@@ -914,5 +914,10 @@ export function makeBikeAvatar(
       leftKnee: leftLeg.knee,
       rightKnee: rightLeg.knee,
     },
+    // Pre-IK handlebar hand targets the arm solver aims at, live-referenced.
+    // Populated by animate() (placeBarArms); in `rider`-local space, the same
+    // frame as v4Targets.leftHand/.rightHand. See AvatarV4HandTargets for why
+    // this is a sibling of v4Targets.
+    v4HandTargets: { left: leftArm.handTarget, right: rightArm.handTarget },
   };
 }

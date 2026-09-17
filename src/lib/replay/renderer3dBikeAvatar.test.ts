@@ -111,4 +111,40 @@ describe("makeBikeAvatar", () => {
     ghost.animate(0.1, false, fallbackStrokePose("bike", 0.1 * Math.PI * 2), 5);
     expect(snapshotTargets(live)).toEqual(liveTargetsBeforeGhost);
   });
+
+  it("exposes live, solver-driven pre-IK hand targets", () => {
+    // The rowplay-qt parity port reads these to compare its `preferred_hand_*`
+    // against the web's pre-IK handlebar target. The rider solves the arms
+    // inside animate(); resolveWorldContacts?.() is a no-op here (kept for a
+    // uniform read sequence across the three avatars).
+    const avatar = makeBikeAvatar(0x3366aa, true, 1, 16);
+    const poseA = fallbackStrokePose("bike", 0.25 * Math.PI * 2);
+    avatar.animate(0.25, false, poseA, 10);
+    avatar.resolveWorldContacts?.();
+
+    const targets = avatar.v4HandTargets;
+    expect(targets, "v4HandTargets exposed").toBeTruthy();
+    const left = targets?.left;
+    const right = targets?.right;
+    for (const [name, target] of [
+      ["left", left],
+      ["right", right],
+    ] as const) {
+      expect(target, `${name} hand target present`).toBeInstanceOf(THREE.Vector3);
+      for (const c of target!.toArray()) {
+        expect(Number.isFinite(c), `${name} hand target finite`).toBe(true);
+      }
+      expect(target!.lengthSq(), `${name} hand target solved`).toBeGreaterThan(0);
+    }
+
+    // Live reference: the exposed field returns the same Vector3 instance the
+    // solver mutates in place, not a fresh snapshot each read. (The rider's
+    // hands stay locked to the handlebar, so unlike SkiErg/RowErg the target is
+    // deliberately near-constant across the cycle — a movement check would be
+    // wrong here, so liveness is asserted by identity.)
+    const leftRef = left!;
+    avatar.animate(0.75, false, fallbackStrokePose("bike", 0.75 * Math.PI * 2), 90);
+    expect(avatar.v4HandTargets?.left, "same Vector3 instance across frames").toBe(leftRef);
+    expect(leftRef.toArray().every(Number.isFinite), "still finite after reanimate").toBe(true);
+  });
 });

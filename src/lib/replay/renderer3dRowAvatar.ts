@@ -1164,6 +1164,12 @@ export function makeRowerAvatar(
       leftKnee: leftLeg.knee,
       rightKnee: rightLeg.knee,
     },
+    // Pre-IK grip-channel hand targets the arm solver aims at, live-referenced.
+    // Populated by animate() (placeArms); in `rower`-local space, the same
+    // frame as v4Targets.leftHand/.rightHand. That frame slides along the rail
+    // per frame, so world coordinates need the hand node's parent matrix. See
+    // AvatarV4HandTargets for why this is a sibling of v4Targets.
+    v4HandTargets: { left: leftArm.handTarget, right: rightArm.handTarget },
     setV4ArmReach(reach) {
       if (Number.isFinite(reach) && reach > 0) contactArmReach = reach;
     },

@@ -1306,6 +1306,11 @@ export function makeSkierAvatar(
       leftKnee: leftLeg.knee,
       rightKnee: rightLeg.knee,
     },
+    // Pre-IK pole-hand targets the arm solver aims at, live-referenced. Valid
+    // after resolveWorldContacts() (which runs placePoleArms); in `upper`-local
+    // space, the same frame as v4Targets.leftHand/.rightHand. See
+    // AvatarV4HandTargets for why this is a sibling of v4Targets.
+    v4HandTargets: { left: leftArm.handTarget, right: rightArm.handTarget },
     setV4ArmReach(reach) {
       if (Number.isFinite(reach) && reach > 0) contactArmReach = reach;
     },
