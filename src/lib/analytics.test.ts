@@ -84,6 +84,21 @@ describe("distanceBand", () => {
   it("uses coarse bands for odd distances", () => {
     expect(distanceBand(3500).label).toBe("3k–7k");
   });
+
+  it("gives the lowest fallback band the band midpoint, not 0", () => {
+    expect(distanceBand(0).nominal).toBe(375);
+    expect(distanceBand(200).nominal).toBe(375);
+    expect(distanceBand(749).nominal).toBe(375);
+  });
+
+  it("sorts the lowest band between the 100m and 500m standard bands", () => {
+    expect(distanceBand(100).nominal).toBeLessThan(distanceBand(700).nominal);
+    expect(distanceBand(700).nominal).toBeLessThan(distanceBand(500).nominal);
+  });
+
+  it("caps wide fallback bands' nominals at twice the lower bound", () => {
+    expect(distanceBand(3500).nominal).toBe(4500);
+  });
 });
 
 describe("summariseBySport", () => {
