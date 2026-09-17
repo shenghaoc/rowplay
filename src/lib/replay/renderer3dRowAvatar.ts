@@ -1164,6 +1164,16 @@ export function makeRowerAvatar(
       leftKnee: leftLeg.knee,
       rightKnee: rightLeg.knee,
     },
+    // Pre-IK grip-channel hand-contact targets the visible hand sits on,
+    // live-referenced. NB this is `handTarget` (grip channel), not the wrist
+    // point the arm IK aims at: the hidden wrist solve uses `wristTarget`, which
+    // differs by the installed V4 skin's per-hand contact offset (identical in
+    // the no-V4 procedural path). Populated by animate() (placeArms); in
+    // `rower`-local space, the same frame as v4Targets.leftHand/.rightHand. That
+    // frame slides along the rail per frame, so world coordinates need the hand
+    // node's parent matrix. See AvatarV4HandTargets for why this is a sibling of
+    // v4Targets.
+    v4HandTargets: { left: leftArm.handTarget, right: rightArm.handTarget },
     setV4ArmReach(reach) {
       if (Number.isFinite(reach) && reach > 0) contactArmReach = reach;
     },

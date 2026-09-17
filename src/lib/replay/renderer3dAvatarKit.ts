@@ -74,6 +74,48 @@ export interface Avatar {
    * than followers of a moving torso.
    */
   resolveWorldContacts?(): void;
+  /** Per-arm pre-IK hand/grip contact target the visible hand is placed on. */
+  v4HandTargets?: AvatarV4HandTargets;
+}
+/**
+ * The pre-IK hand/grip contact target the visible hand is placed on, exposed as
+ * a live read-only landmark for scene-graph parity consumers. It is deliberately
+ * a sibling of {@link AvatarV4Targets} rather than a member: `v4Targets` is a
+ * homogeneous map of `Object3D` scene nodes (consumers enumerate it and read
+ * `.position` / `.quaternion` off every entry), whereas these are raw
+ * `THREE.Vector3` landmarks. Keeping them on their own surface preserves that
+ * contract and avoids teaching every enumerator to skip odd-shaped members.
+ *
+ * These are NOT V4-skin landmarks; they are a solver input/landmark present on
+ * the procedural rig whether or not a V4 skin is installed.
+ *
+ * Per-avatar precision (matters for contact-phase parity): for SkiErg and
+ * BikeErg this point is also the direct input to the two-bone arm IK. For
+ * RowErg it is the grip-channel contact the visible hand marker sits on; the
+ * hidden wrist IK aims at a *separate* wrist target that differs from it by the
+ * installed V4 skin's per-hand contact offset — so with a V4 skin the exposed
+ * value is the grip contact, not literally the wrist-IK input (the two are
+ * identical in the procedural / no-V4 path, which the RowErg test pins).
+ *
+ * Liveness: each field is the very `Vector3` the solver mutates in place every
+ * frame (stable identity, never reassigned). Read it AFTER `animate()` — and,
+ * for avatars that define one, after `resolveWorldContacts()` — to see the
+ * value the arm was actually solved against on the latest frame. SkiErg
+ * populates its targets ONLY in `resolveWorldContacts()`, and that pass
+ * early-returns (leaving the value unchanged — zero until first solved) until
+ * the course renderer has parented the avatar group; read SkiErg's targets only
+ * after the rig has been placed on the course.
+ *
+ * Coordinate space: parent-local — the same frame as the matching
+ * `v4Targets.leftHand` / `v4Targets.rightHand` node, i.e. local to the athlete
+ * sub-group the hands hang from (`upper` for SkiErg, the `rower` group for
+ * RowErg, `rider` for BikeErg), NOT world space. For RowErg that sub-group
+ * slides along the rail per frame, so recovering a world position requires the
+ * hand node's parent world matrix, not just the avatar root transform.
+ */
+export interface AvatarV4HandTargets {
+  readonly left?: THREE.Vector3;
+  readonly right?: THREE.Vector3;
 }
 export interface AvatarV4Targets {
   readonly pelvis: THREE.Object3D;

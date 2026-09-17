@@ -95,4 +95,51 @@ describe("makeSkierAvatar", () => {
     ghost.animate(0.1, false, fallbackStrokePose("skierg", 0.1 * Math.PI * 2), 5);
     expect(snapshotTargets(live)).toEqual(liveTargetsBeforeGhost);
   });
+
+  it("exposes live, solver-driven pre-IK hand targets", () => {
+    // The rowplay-qt parity port reads these to compare its `preferred_hand_*`
+    // against the web's pre-IK arm target through the pole-contact phase (the
+    // post-IK `v4Targets.leftHand` is a different quantity there). SkiErg only
+    // solves the pole arms in resolveWorldContacts(), so the targets are valid
+    // after that pass.
+    const avatar = makeSkierAvatar(0x3366aa, true, 1, 16, "high");
+    // The pole solve needs the course-space (outer) transform the renderer
+    // supplies, so parent the rig as the course renderer does before resolving.
+    const outer = new THREE.Group();
+    outer.add(avatar.group);
+    outer.updateMatrixWorld(true);
+    const poseA = fallbackStrokePose("skierg", 0.25 * Math.PI * 2);
+    avatar.animate(0.25, false, poseA, 10);
+    avatar.resolveWorldContacts?.();
+
+    const targets = avatar.v4HandTargets;
+    expect(targets, "v4HandTargets exposed").toBeTruthy();
+    const left = targets?.left;
+    const right = targets?.right;
+    for (const [name, target] of [
+      ["left", left],
+      ["right", right],
+    ] as const) {
+      expect(target, `${name} hand target present`).toBeInstanceOf(THREE.Vector3);
+      for (const c of target!.toArray()) {
+        expect(Number.isFinite(c), `${name} hand target finite`).toBe(true);
+      }
+      // A real solve wrote it; it is not the untouched zero vector.
+      expect(target!.lengthSq(), `${name} hand target solved`).toBeGreaterThan(0);
+    }
+
+    // Live reference: the exposed vector is the same instance the solver mutates
+    // in place, and its value tracks the actual per-pose solve deterministically
+    // (a different pose moves it; returning to the pose restores it exactly).
+    const leftRef = left!;
+    const solvedA = leftRef.clone();
+    const poseB = fallbackStrokePose("skierg", 0.75 * Math.PI * 2);
+    avatar.animate(0.75, false, poseB, 90);
+    avatar.resolveWorldContacts?.();
+    expect(avatar.v4HandTargets?.left, "same Vector3 instance across frames").toBe(leftRef);
+    expect(leftRef.equals(solvedA), "target moved with the pose").toBe(false);
+    avatar.animate(0.25, false, poseA, 10);
+    avatar.resolveWorldContacts?.();
+    expect(leftRef.toArray(), "target is deterministic per pose").toEqual(solvedA.toArray());
+  });
 });

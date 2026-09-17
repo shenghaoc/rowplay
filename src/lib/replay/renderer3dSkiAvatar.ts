@@ -1306,6 +1306,15 @@ export function makeSkierAvatar(
       leftKnee: leftLeg.knee,
       rightKnee: rightLeg.knee,
     },
+    // Pre-IK pole-hand targets the arm solver aims at, live-referenced. These
+    // are populated ONLY by resolveWorldContacts() (which runs placePoleArms),
+    // and that pass early-returns while the avatar group has no course parent —
+    // so a consumer that calls resolveWorldContacts() before the course
+    // renderer parents the rig reads a stale/zero value with no signal. Read
+    // only after the rig is placed on the course. In `upper`-local space, the
+    // same frame as v4Targets.leftHand/.rightHand. See AvatarV4HandTargets for
+    // why this is a sibling of v4Targets.
+    v4HandTargets: { left: leftArm.handTarget, right: rightArm.handTarget },
     setV4ArmReach(reach) {
       if (Number.isFinite(reach) && reach > 0) contactArmReach = reach;
     },
