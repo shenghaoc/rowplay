@@ -211,13 +211,32 @@ export interface PersonalBest {
 const STANDARD_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
 
 /**
- * Fastest time for each standard distance the athlete has actually completed,
- * within ~2% so a "2000m" piece logged as 2003m still counts.
+ * Fastest pace (sec/500m) for each standard distance the athlete has actually
+ * completed, within ~2% so a "2000m" piece logged as 2003m still counts.
+ * Pace, not raw time: a shorter workout inside the tolerance must not beat a
+ * faster-paced longer one.
  */
 export function distancePBs(
   workouts: Workout[],
 ): { distance: number; time: number; pace: number; date: string; sport: Sport }[] {
   const out: { distance: number; time: number; pace: number; date: string; sport: Sport }[] = [];
+  for (const { target, workout: best } of bestStandardDistanceWorkouts(workouts)) {
+    out.push({
+      distance: target,
+      time: best.time,
+      pace: best.pace,
+      date: best.date,
+      sport: best.sport,
+    });
+  }
+  return out;
+}
+
+/** Best workout at each standard distance per sport, chosen by pace. */
+function bestStandardDistanceWorkouts(
+  workouts: Workout[],
+): { target: number; workout: Workout }[] {
+  const out: { target: number; workout: Workout }[] = [];
   const bySport = new Map<string, Workout[]>();
   for (let i = 0, len = workouts.length; i < len; i++) {
     const w = workouts[i];
@@ -233,27 +252,21 @@ export function distancePBs(
     for (let i = 0, dlen = STANDARD_DISTANCES.length; i < dlen; i++) {
       const target = STANDARD_DISTANCES[i];
       let best: Workout | null = null;
-      let minTime = Infinity;
+      let minPace = Infinity;
       const t02 = target * 0.02;
 
       for (let j = 0, slen = sportWorkouts.length; j < slen; j++) {
         const w = sportWorkouts[j];
-        if (w.time > 0 && Math.abs(w.distance - target) <= t02) {
-          if (w.time < minTime) {
+        if (w.time > 0 && w.pace > 0 && Math.abs(w.distance - target) <= t02) {
+          if (w.pace < minPace) {
             best = w;
-            minTime = w.time;
+            minPace = w.pace;
           }
         }
       }
 
       if (best !== null) {
-        out.push({
-          distance: target,
-          time: best.time,
-          pace: best.pace,
-          date: best.date,
-          sport: best.sport,
-        });
+        out.push({ target, workout: best });
       }
     }
   }
@@ -2057,38 +2070,8 @@ export function athleteBadges(
 /** Workout ids that currently hold a standard-distance PB (per sport). */
 export function pbWorkoutIds(workouts: Workout[]): Set<number> {
   const ids = new Set<number>();
-  const bySport = new Map<string, Workout[]>();
-  for (let i = 0, len = workouts.length; i < len; i++) {
-    const w = workouts[i];
-    const arr = bySport.get(w.sport);
-    if (arr) {
-      arr.push(w);
-    } else {
-      bySport.set(w.sport, [w]);
-    }
-  }
-
-  for (const sportWorkouts of bySport.values()) {
-    for (let i = 0, dlen = STANDARD_DISTANCES.length; i < dlen; i++) {
-      const target = STANDARD_DISTANCES[i];
-      let best: Workout | null = null;
-      let minTime = Infinity;
-      const t02 = target * 0.02;
-
-      for (let j = 0, slen = sportWorkouts.length; j < slen; j++) {
-        const w = sportWorkouts[j];
-        if (w.time > 0 && Math.abs(w.distance - target) <= t02) {
-          if (w.time < minTime) {
-            best = w;
-            minTime = w.time;
-          }
-        }
-      }
-
-      if (best !== null) {
-        ids.add(best.id);
-      }
-    }
+  for (const { workout } of bestStandardDistanceWorkouts(workouts)) {
+    ids.add(workout.id);
   }
   return ids;
 }
@@ -2101,7 +2084,7 @@ export function detectNewPBs(before: DistancePB[], after: DistancePB[]): Distanc
   const out: DistancePB[] = [];
   for (const pb of after) {
     const prev = beforeMap.get(`${pb.sport}-${pb.distance}`);
-    if (!prev || pb.time < prev.time - 0.001) out.push(pb);
+    if (!prev || pb.pace < prev.pace - 0.001) out.push(pb);
   }
   return out;
 }

@@ -89,8 +89,9 @@ modified.
 
 - **Trend over time** — follows one metric across weeks; pace trends compare
   like-for-like distance bands and need at least two sessions in a band.
-- **Personal bests** — fastest results at standard distances from the live
-  Concept2 history.
+- **Personal bests** — fastest pace (sec/500m) at standard distances from the
+  live Concept2 history. Pieces within ±2% of a standard distance count; a
+  shorter piece does not beat a faster-paced full-distance one.
 - **Training calendar & intensity** — daily volume shading plus the easy/hard
   distribution of training.
 - **Fitness, fatigue & form** — modelled from training load; form (fitness
