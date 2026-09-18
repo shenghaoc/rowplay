@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   destroySession,
+  getHomeTimezone,
   openSession,
   sealSession,
+  setHomeTimezone,
   writeSession,
   SESSION_COOKIE,
   TOKEN_COOKIE,
@@ -130,5 +132,52 @@ describe("cookie name constants", () => {
     expect(SESSION_COOKIE).toBe("rp_session");
     expect(TOKEN_COOKIE).toBe("rp_tok");
     expect(OAUTH_STATE_COOKIE).toBe("rp_oauth_state");
+  });
+});
+
+describe("getHomeTimezone / setHomeTimezone", () => {
+  it("returns undefined for a missing or blank session timezone", () => {
+    expect(getHomeTimezone(sampleSession)).toBeUndefined();
+    expect(getHomeTimezone({ ...sampleSession, homeTimezone: "   " })).toBeUndefined();
+  });
+
+  it("trims a stored timezone", () => {
+    expect(getHomeTimezone({ ...sampleSession, homeTimezone: "  Asia/Tokyo  " })).toBe(
+      "Asia/Tokyo",
+    );
+  });
+
+  it("persists a trimmed timezone into the session cookie", async () => {
+    const cookies = fakeCookies();
+    await setHomeTimezone(cookies, fakeEvent, TEST_SECRET, sampleSession, "  Europe/Paris  ");
+    const opened = await openSession(TEST_SECRET, cookies._store.get(SESSION_COOKIE)!.value);
+    expect(opened?.homeTimezone).toBe("Europe/Paris");
+  });
+
+  it("clears the timezone when the next value is empty or undefined", async () => {
+    const cookies = fakeCookies();
+    await setHomeTimezone(cookies, fakeEvent, TEST_SECRET, sampleSession, "UTC");
+    await setHomeTimezone(
+      cookies,
+      fakeEvent,
+      TEST_SECRET,
+      { ...sampleSession, homeTimezone: "UTC" },
+      "  ",
+    );
+    const clearedBlank = await openSession(TEST_SECRET, cookies._store.get(SESSION_COOKIE)!.value);
+    expect(clearedBlank?.homeTimezone).toBeUndefined();
+
+    await setHomeTimezone(
+      cookies,
+      fakeEvent,
+      TEST_SECRET,
+      { ...sampleSession, homeTimezone: "UTC" },
+      undefined,
+    );
+    const clearedMissing = await openSession(
+      TEST_SECRET,
+      cookies._store.get(SESSION_COOKIE)!.value,
+    );
+    expect(clearedMissing?.homeTimezone).toBeUndefined();
   });
 });
