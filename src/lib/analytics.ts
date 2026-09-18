@@ -233,9 +233,7 @@ export function distancePBs(
 }
 
 /** Best workout at each standard distance per sport, chosen by pace. */
-function bestStandardDistanceWorkouts(
-  workouts: Workout[],
-): { target: number; workout: Workout }[] {
+function bestStandardDistanceWorkouts(workouts: Workout[]): { target: number; workout: Workout }[] {
   const out: { target: number; workout: Workout }[] = [];
   const bySport = new Map<string, Workout[]>();
   for (let i = 0, len = workouts.length; i < len; i++) {
