@@ -26,10 +26,23 @@ import {
   workRestEfficiency,
   targetVsActual,
   workoutSideStats,
+  athleteBadges,
+  buildDistanceOverlay,
+  compareIntervalReps,
+  compareVerdict,
+  hasEverySportWeek,
+  powerAtDuration,
+  powerDurationComparison,
+  predictPaceForDuration,
+  predictTimeForDistance,
+  sampleStrokeAtDistance,
+  weeklyConsistency,
+  type CriticalPower,
 } from "./analytics";
 import { mockWorkoutDetail, mockWorkouts } from "./mockData";
 import {
   intervalSplits,
+  ladderStrokes,
   normalizedIntervalStrokes,
   normalizeRawStrokes,
   stroke,
@@ -37,6 +50,8 @@ import {
   workout,
 } from "../../tests/unit/fixtures";
 import { parseInstantMillis } from "./datetime";
+import { wattsToPaceForSport } from "./format";
+import type { WorkoutDetail } from "./types";
 
 const workouts = mockWorkouts();
 
@@ -804,5 +819,226 @@ describe("workoutSideStats", () => {
     const detail = mockWorkoutDetail(1001)!;
     const stats = workoutSideStats(detail);
     expect(stats.best5sPower).toBeGreaterThan(0);
+  });
+});
+
+const modelledCp: CriticalPower = {
+  cp: 200,
+  wPrime: 18_000,
+  ftp: 200,
+  method: "model",
+  sampleSize: 4,
+  envelopePoints: 4,
+  sportScope: "rower",
+  confidence: "medium",
+  warnings: [],
+};
+
+describe("powerAtDuration / CP predictions", () => {
+  it("returns 0 for non-positive duration or CP", () => {
+    expect(powerAtDuration(modelledCp, 0)).toBe(0);
+    expect(powerAtDuration(modelledCp, -30)).toBe(0);
+    expect(powerAtDuration({ ...modelledCp, cp: 0 }, 600)).toBe(0);
+  });
+
+  it("adds W′/t to CP and drops W′ when it is zero", () => {
+    expect(powerAtDuration(modelledCp, 600)).toBeCloseTo(230);
+    expect(powerAtDuration({ ...modelledCp, wPrime: 0 }, 600)).toBe(200);
+  });
+
+  it("converts sustainable watts back to even-split pace", () => {
+    const pace = predictPaceForDuration(modelledCp, 1200);
+    expect(pace).toBeCloseTo(wattsToPaceForSport("rower", 215));
+    expect(predictPaceForDuration({ ...modelledCp, cp: 0 }, 1200)).toBeNull();
+  });
+
+  it("uses BikeErg's 1000m-basis inverse for bike predictions", () => {
+    const rowPace = predictPaceForDuration(modelledCp, 1200, "rower")!;
+    const bikePace = predictPaceForDuration(modelledCp, 1200, "bike")!;
+    // wattsToPace(watts * 8) scales pace by 8^(1/3) = 2, so stored sec/500m is half.
+    expect(bikePace).toBeCloseTo(rowPace / 2);
+    expect(bikePace).toBeCloseTo(wattsToPaceForSport("bike", 215));
+  });
+
+  it("rejects invalid distances and scales finish time with distance", () => {
+    expect(predictTimeForDistance(modelledCp, 0)).toBeNull();
+    expect(predictTimeForDistance(modelledCp, Number.NaN)).toBeNull();
+    expect(predictTimeForDistance({ ...modelledCp, cp: 0 }, 2000)).toBeNull();
+    const twoK = predictTimeForDistance(modelledCp, 2000, "rower")!;
+    const fiveK = predictTimeForDistance(modelledCp, 5000, "rower")!;
+    expect(twoK).toBeGreaterThan(300);
+    expect(fiveK).toBeGreaterThan(twoK);
+  });
+
+  it("compares nearby session averages to the modelled curve", () => {
+    const comparison = powerDurationComparison(
+      [
+        workout({
+          id: 1,
+          time: 1200,
+          wattMinutes: 240 * 20,
+          pace: 120,
+        }),
+        workout({
+          id: 2,
+          time: 60,
+          wattMinutes: 400,
+          pace: 90,
+        }),
+      ],
+      modelledCp,
+    );
+    expect(comparison.durations).toContain(1200);
+    const i = comparison.durations.indexOf(1200);
+    expect(comparison.actual[i]).toBe(240);
+    expect(comparison.modelled[i]).toBe(Math.round(powerAtDuration(modelledCp, 1200)));
+    const sprintIndex = comparison.durations.indexOf(120);
+    expect(comparison.actual[sprintIndex]).toBeNull();
+  });
+});
+
+function detail(overrides: Partial<WorkoutDetail> = {}): WorkoutDetail {
+  return {
+    id: 1,
+    date: "2026-01-01 06:00:00",
+    sport: "rower",
+    distance: 2000,
+    time: 480,
+    pace: 120,
+    hasStrokeData: true,
+    strokes: ladderStrokes(),
+    splits: [],
+    isInterval: false,
+    ...overrides,
+  };
+}
+
+describe("sampleStrokeAtDistance / buildDistanceOverlay", () => {
+  it("returns null for an empty stream and clamps outside the recorded range", () => {
+    expect(sampleStrokeAtDistance([], 50)).toBeNull();
+    const strokes = ladderStrokes();
+    expect(sampleStrokeAtDistance(strokes, -10)).toEqual(strokes[0]);
+    expect(sampleStrokeAtDistance(strokes, 10_000)).toEqual(strokes[2]);
+  });
+
+  it("interpolates pace, power, and HR between adjacent samples", () => {
+    const mid = sampleStrokeAtDistance(ladderStrokes(), 25)!;
+    expect(mid.d).toBe(25);
+    expect(mid.t).toBeCloseTo(5);
+    expect(mid.pace).toBeCloseTo(115);
+    expect(mid.watts).toBeCloseTo(110);
+    expect(mid.hr).toBeCloseTo(145);
+  });
+
+  it("returns the exact sample when the distance lands on a recorded point", () => {
+    const strokes = ladderStrokes();
+    expect(sampleStrokeAtDistance(strokes, 50)).toEqual(strokes[1]);
+  });
+
+  it("aligns two stroke streams onto the shorter distance", () => {
+    const short = ladderStrokes().slice(0, 2);
+    const overlay = buildDistanceOverlay(ladderStrokes(), short, 2);
+    expect(overlay).not.toBeNull();
+    expect(overlay!.alignedMetres).toBe(50);
+    expect(overlay!.xs).toEqual([0, 25, 50]);
+    expect(overlay!.paceA[1]).toBeCloseTo(115);
+    expect(overlay!.paceB[1]).toBeCloseTo(115);
+  });
+
+  it("returns null when either stream has no positive distance", () => {
+    expect(buildDistanceOverlay([], ladderStrokes())).toBeNull();
+    expect(
+      buildDistanceOverlay([{ t: 0, d: 0, pace: 120, spm: 28, watts: 100 }], ladderStrokes()),
+    ).toBeNull();
+  });
+});
+
+describe("compareVerdict / compareIntervalReps", () => {
+  it("ties different sports without inventing a time delta", () => {
+    expect(compareVerdict(detail(), detail({ sport: "skierg" }))).toEqual({
+      winner: "tie",
+      timeDeltaSec: null,
+      paceDelta: null,
+    });
+  });
+
+  it("picks the faster like-for-like 2k and ties sub-half-second gaps", () => {
+    const faster = compareVerdict(detail({ time: 479 }), detail({ time: 481 }));
+    expect(faster.winner).toBe("a");
+    expect(faster.timeDeltaSec).toBeCloseTo(2);
+    expect(compareVerdict(detail({ time: 480 }), detail({ time: 480.4 })).winner).toBe("tie");
+  });
+
+  it("falls back to pace when distances are in different bands", () => {
+    const verdict = compareVerdict(
+      detail({ distance: 2000, pace: 118 }),
+      detail({ distance: 500, pace: 105 }),
+    );
+    expect(verdict.timeDeltaSec).toBeNull();
+    expect(verdict.winner).toBe("b");
+    expect(verdict.paceDelta).toBeCloseTo(13);
+  });
+
+  it("returns per-rep deltas for matching interval pieces", () => {
+    const a = detail({
+      isInterval: true,
+      splits: intervalSplits,
+      strokes: normalizedIntervalStrokes(),
+    });
+    const b = detail({
+      id: 2,
+      isInterval: true,
+      splits: [
+        { index: 0, distance: 50, time: 11, pace: 124 },
+        { index: 1, distance: 50, time: 12, pace: 128 },
+      ],
+      strokes: normalizedIntervalStrokes(),
+    });
+    const rows = compareIntervalReps(a, b);
+    expect(rows).toHaveLength(2);
+    expect(rows![0]).toMatchObject({ index: 1, paceA: 120, paceB: 124, timeA: 10, timeB: 11 });
+    expect(rows![0].paceDelta).toBeCloseTo(-4);
+    expect(rows![0].timeDelta).toBeCloseTo(1);
+  });
+
+  it("returns null when sports differ or a piece is not an interval set", () => {
+    expect(compareIntervalReps(detail({ sport: "rower" }), detail({ sport: "bike" }))).toBeNull();
+    expect(compareIntervalReps(detail(), detail({ id: 2 }))).toBeNull();
+  });
+});
+
+describe("athleteBadges / weeklyConsistency", () => {
+  it("credits lifetime metres and Club distances from PBs", () => {
+    const history = [
+      workout({ id: 1, distance: 80_000 }),
+      workout({ id: 2, sport: "bike", distance: 40_000 }),
+    ];
+    const badges = athleteBadges(history, [
+      { distance: 2000, time: 420, pace: 105, date: history[0].date, sport: "rower" },
+    ]);
+    expect(badges.find((b) => b.id === "meters_100k")).toMatchObject({ earned: true, progress: 1 });
+    expect(badges.find((b) => b.id === "meters_500k")?.earned).toBe(false);
+    expect(badges.find((b) => b.id === "club_2000")?.earned).toBe(true);
+    expect(badges.find((b) => b.id === "club_500")?.earned).toBe(false);
+  });
+
+  it("requires all three sports inside a rolling 7-day window", () => {
+    const mixed = [
+      workout({ id: 1, date: "2026-01-01 06:00:00", sport: "rower" }),
+      workout({ id: 2, date: "2026-01-03 06:00:00", sport: "skierg" }),
+      workout({ id: 3, date: "2026-01-06 06:00:00", sport: "bike" }),
+    ];
+    expect(hasEverySportWeek(mixed)).toBe(true);
+    expect(hasEverySportWeek(mixed.slice(0, 2))).toBe(false);
+    expect(athleteBadges(mixed, []).find((b) => b.id === "every_sport_week")?.earned).toBe(true);
+  });
+
+  it("counts an active week when any day in the lookback window has volume", () => {
+    const consistency = weeklyConsistency(
+      [workout({ id: 1, date: "2026-01-07 06:00:00" })],
+      "2026-01-07",
+      8,
+    );
+    expect(consistency).toEqual({ activeWeeks: 1, totalWeeks: 8 });
   });
 });
