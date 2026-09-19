@@ -13,4 +13,9 @@ describe("layout Worker bindings", () => {
   it("preserves demo mode and SSR preferences when OAuth is unconfigured", async () => {
     expect(await load(event as never)).toEqual({ ...event.locals, oauthEnabled: false });
   });
+
+  it("leaves OAuth disabled when the native client ID binding is empty", async () => {
+    setWorkerEnv({ CONCEPT2_CLIENT_ID: "" });
+    expect(await load(event as never)).toEqual({ ...event.locals, oauthEnabled: false });
+  });
 });

@@ -1,13 +1,19 @@
-import { describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import type { Stroke, WorkoutDetail } from "./types";
 import {
   applyHrImport,
+  clearHrOverlay,
   extractHrSeries,
+  hrOverlayStorageKey,
   interpolateHr,
   mergeHrIntoStrokes,
+  previewMergedAvgHr,
+  readHrOverlay,
   stripHrFromDetail,
+  strokesHaveHr,
   summarizeHr,
   validateHrSamples,
+  writeHrOverlay,
 } from "./hrImport";
 
 function stroke(t: number, hr?: number): Stroke {
@@ -98,5 +104,53 @@ describe("summarizeHr", () => {
       min: 100,
       max: 120,
     });
+  });
+});
+
+describe("previewMergedAvgHr / strokesHaveHr", () => {
+  it("returns the merged average before applying the overlay", () => {
+    expect(previewMergedAvgHr([stroke(0), stroke(10), stroke(20)], samples, 0)).toBe(120);
+  });
+
+  it("detects whether any stroke already carries HR", () => {
+    expect(strokesHaveHr([stroke(0), stroke(1, 110)])).toBe(true);
+    expect(strokesHaveHr([stroke(0), stroke(1)])).toBe(false);
+    expect(strokesHaveHr([stroke(0, 0)])).toBe(false);
+  });
+});
+
+describe("hr overlay storage", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("round-trips overlay samples keyed by workout id", () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        store.set(k, v);
+      },
+      removeItem: (k: string) => {
+        store.delete(k);
+      },
+    });
+
+    expect(hrOverlayStorageKey(42)).toBe("rowplay:hr-import:42");
+    writeHrOverlay(42, { samples, offset: 5 });
+    expect(readHrOverlay(42)).toEqual({ samples, offset: 5 });
+    clearHrOverlay(42);
+    expect(readHrOverlay(42)).toBeNull();
+  });
+
+  it("returns null for missing, empty, or corrupt overlay JSON", () => {
+    const store = new Map<string, string>([
+      ["rowplay:hr-import:1", "not-json"],
+      ["rowplay:hr-import:2", JSON.stringify({ samples: [], offset: 0 })],
+    ]);
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => store.get(k) ?? null,
+    });
+    expect(readHrOverlay(1)).toBeNull();
+    expect(readHrOverlay(2)).toBeNull();
+    expect(readHrOverlay(99)).toBeNull();
   });
 });
