@@ -1,11 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import {
+  addDaysToKey,
+  addMonthsToKey,
+  currentUtcYear,
   dayKeyEpochMillis,
+  dayOfWeekUtc,
+  dayOfYearUtc,
+  daysBetweenUtc,
   fmtDate,
   fmtDateFromEpochMillis,
   fmtLogbookDateTime,
+  fmtTimeFromEpochMillis,
+  instantIsoFromEpochMillis,
+  logbookDatePlusSecondsIso,
   logbookEpochMillis,
+  monthShortName,
   overlapDate,
+  parseInstant,
   parseInstantMillis,
   parseLogbookDateTime,
   todayKeyForTz,
@@ -272,5 +283,99 @@ describe("dayKeyEpochMillis", () => {
   it("returns NaN for invalid key", () => {
     expect(dayKeyEpochMillis("not-a-date")).toBeNaN();
     expect(dayKeyEpochMillis("")).toBeNaN();
+  });
+});
+
+describe("addDaysToKey", () => {
+  it("rolls across month and year boundaries", () => {
+    expect(addDaysToKey("2026-01-31", 1)).toBe("2026-02-01");
+    expect(addDaysToKey("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDaysToKey("2026-03-01", -1)).toBe("2026-02-28");
+  });
+
+  it("returns the original key when the day key is invalid", () => {
+    expect(addDaysToKey("not-a-date", 3)).toBe("not-a-date");
+  });
+});
+
+describe("addMonthsToKey", () => {
+  it("clamps January 31 into February on leap and non-leap years", () => {
+    expect(addMonthsToKey("2026-01-31", 1)).toBe("2026-02-28");
+    expect(addMonthsToKey("2024-01-31", 1)).toBe("2024-02-29");
+  });
+
+  it("rolls December into the next year", () => {
+    expect(addMonthsToKey("2026-12-15", 1)).toBe("2027-01-15");
+  });
+
+  it("returns the original key when the day key is invalid", () => {
+    expect(addMonthsToKey("bad", 1)).toBe("bad");
+  });
+});
+
+describe("dayOfYearUtc / dayOfWeekUtc / daysBetweenUtc", () => {
+  it("counts Jan 1 as day 1 and Dec 31 as 365 or 366", () => {
+    expect(dayOfYearUtc("2026-01-01")).toBe(1);
+    expect(dayOfYearUtc("2026-12-31")).toBe(365);
+    expect(dayOfYearUtc("2024-12-31")).toBe(366);
+    expect(dayOfYearUtc("not-a-date")).toBe(0);
+  });
+
+  it("returns UTC weekday numbers", () => {
+    // 2026-06-03 is a Wednesday.
+    expect(dayOfWeekUtc("2026-06-03")).toBe(3);
+    expect(dayOfWeekUtc("bad")).toBe(0);
+  });
+
+  it("counts inclusive-exclusive calendar days and clamps negatives to 0", () => {
+    expect(daysBetweenUtc("2026-01-01", "2026-01-01")).toBe(0);
+    expect(daysBetweenUtc("2026-01-01", "2026-01-03")).toBe(2);
+    expect(daysBetweenUtc("2026-01-03", "2026-01-01")).toBe(0);
+    expect(daysBetweenUtc("bad", "2026-01-01")).toBe(0);
+  });
+});
+
+describe("logbookDatePlusSecondsIso", () => {
+  it("treats a logbook wall clock as UTC and adds elapsed seconds", () => {
+    expect(logbookDatePlusSecondsIso("2026-05-01 06:00:00", 480)).toBe("2026-05-01T06:08:00.000Z");
+  });
+
+  it("keeps an explicit Z offset", () => {
+    expect(logbookDatePlusSecondsIso("2026-05-01T06:00:00Z", 0)).toBe("2026-05-01T06:00:00.000Z");
+  });
+
+  it("falls back to now when the logbook date is unparseable", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-03T12:00:00Z"));
+    expect(logbookDatePlusSecondsIso("not-a-date", 30)).toBe("2026-06-03T12:00:30.000Z");
+    vi.useRealTimers();
+  });
+});
+
+describe("parseInstant / currentUtcYear / format helpers", () => {
+  it("returns a Date for offset instants and null for invalid text", () => {
+    expect(parseInstant("2000-01-01T00:00:00Z")?.toISOString()).toBe("2000-01-01T00:00:00.000Z");
+    expect(parseInstant("not a timestamp")).toBeNull();
+  });
+
+  it("reads the UTC calendar year from the clock", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-12-31T23:30:00Z"));
+    expect(currentUtcYear()).toBe(2026);
+    vi.useRealTimers();
+  });
+
+  it("formats epoch millis as an ISO instant", () => {
+    expect(instantIsoFromEpochMillis(946684800000)).toBe("2000-01-01T00:00:00.000Z");
+  });
+
+  it("formats a time of day in UTC", () => {
+    const out = fmtTimeFromEpochMillis(946684800000, "en-GB", "UTC");
+    expect(out).toMatch(/00:00/);
+  });
+
+  it("returns a short English month name", () => {
+    expect(monthShortName(1, "en-US")).toMatch(/Jan/);
+    expect(monthShortName(12, "en-US")).toMatch(/Dec/);
   });
 });
