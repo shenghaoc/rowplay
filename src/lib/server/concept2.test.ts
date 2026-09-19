@@ -36,6 +36,13 @@ function tokenResponse(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function formParams(init: RequestInit | undefined): URLSearchParams {
+  const body = init?.body;
+  if (body instanceof URLSearchParams) return body;
+  if (typeof body === "string") return new URLSearchParams(body);
+  throw new Error("expected urlencoded body");
+}
+
 function personalClient() {
   return new Concept2Client(cfg, {
     user: { id: 1, username: "athlete" },
@@ -133,7 +140,7 @@ describe("exchangeCode / refreshTokens", () => {
     expect(fetchMock.mock.calls[0][0]).toBe("https://log.concept2.com/oauth/access_token");
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.method).toBe("POST");
-    const params = new URLSearchParams(String(init.body));
+    const params = formParams(init);
     expect(params.get("grant_type")).toBe("authorization_code");
     expect(params.get("code")).toBe("auth-code");
     expect(params.get("redirect_uri")).toBe("https://rowplay.test/auth/callback");
@@ -146,7 +153,7 @@ describe("exchangeCode / refreshTokens", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await refreshTokens(cfg, "stored-refresh");
-    const params = new URLSearchParams(String((fetchMock.mock.calls[0][1] as RequestInit).body));
+    const params = formParams(fetchMock.mock.calls[0][1] as RequestInit);
     expect(params.get("grant_type")).toBe("refresh_token");
     expect(params.get("refresh_token")).toBe("stored-refresh");
     expect(params.get("code")).toBeNull();
@@ -164,9 +171,11 @@ describe("exchangeCode / refreshTokens", () => {
 
 describe("fetchMe", () => {
   it("maps the logbook profile and sends a bearer token", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ data: { id: 7, username: "rower", first_name: "Ada" } })),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ data: { id: 7, username: "rower", first_name: "Ada" } })),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(fetchMe(cfg, "access-tok")).resolves.toEqual({
@@ -188,9 +197,11 @@ describe("fetchMe", () => {
 
 describe("Concept2Client token refresh", () => {
   it("does not refresh personal BYOT tokens even when expiresAt is in the past", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ data: [], meta: { pagination: { total_pages: 1 } } })),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ data: [], meta: { pagination: { total_pages: 1 } } })),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     await personalClient().listRecentWorkouts();
@@ -205,9 +216,11 @@ describe("Concept2Client token refresh", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-01T00:00:00Z"));
     const onTokenRefresh = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ data: [], meta: { pagination: { total_pages: 1 } } })),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ data: [], meta: { pagination: { total_pages: 1 } } })),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     const client = new Concept2Client(
@@ -260,7 +273,7 @@ describe("Concept2Client token refresh", () => {
     await client.listRecentWorkouts();
 
     expect(String(fetchMock.mock.calls[0][0])).toContain("/oauth/access_token");
-    const params = new URLSearchParams(String((fetchMock.mock.calls[0][1] as RequestInit).body));
+    const params = formParams(fetchMock.mock.calls[0][1] as RequestInit);
     expect(params.get("refresh_token")).toBe("stored-refresh");
     expect(onTokenRefresh).toHaveBeenCalledOnce();
     expect(onTokenRefresh.mock.calls[0][0].tokens.accessToken).toBe("fresh-access");
@@ -338,7 +351,9 @@ describe("Concept2Client.getWorkout", () => {
   it("synthesises a summary timeline when the result has no stroke flag", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response(JSON.stringify(resultPayload({ stroke_data: false })))),
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify(resultPayload({ stroke_data: false })))),
     );
 
     const detail = await personalClient().getWorkout(42);
