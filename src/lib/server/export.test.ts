@@ -160,6 +160,13 @@ describe("workoutDetailToTcx", () => {
     expect(tcx).toContain("<DistanceMeters>");
   });
 
+  it("emits UTC ISO timestamps from the logbook wall clock plus stroke elapsed time", () => {
+    const tcx = workoutDetailToTcx(detail);
+    expect(tcx).toContain('StartTime="2026-05-01T06:00:00.000Z"');
+    expect(tcx).toContain("<Time>2026-05-01T06:00:00.000Z</Time>");
+    expect(tcx).toContain("<Time>2026-05-01T06:08:00.000Z</Time>");
+  });
+
   it("XML-escapes special characters in workout names", () => {
     const d = { ...detail, workoutType: '<Test & "Row">' };
     const tcx = workoutDetailToTcx(d);

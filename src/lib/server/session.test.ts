@@ -79,6 +79,12 @@ describe("sealSession / openSession", () => {
     const opened = await openSession(TEST_SECRET, sealed);
     expect(opened?.homeTimezone).toBe("Asia/Tokyo");
   });
+
+  it("returns null when the sealed payload is not JSON", async () => {
+    const { sealToken } = await import("./tokenCrypto");
+    const sealed = await sealToken(TEST_SECRET, "not-json");
+    expect(await openSession(TEST_SECRET, sealed)).toBeNull();
+  });
 });
 
 describe("writeSession", () => {

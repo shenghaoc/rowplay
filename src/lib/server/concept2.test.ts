@@ -1,15 +1,55 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   Concept2Client,
+  exchangeCode,
+  fetchMe,
   mapHeartRate,
   mapMetadata,
   mapResult,
   mapSplits,
   mapTargets,
+  refreshTokens,
 } from "./concept2";
 import { bikePaceSecPer500 } from "../../../tests/unit/fixtures";
+import type { Concept2Config } from "./concept2";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+const cfg: Concept2Config = {
+  clientId: "test-client-id",
+  clientSecret: "test-secret",
+  baseUrl: "https://log.concept2.com",
+  appUrl: "https://rowplay.test",
+};
+
+function tokenResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    access_token: "fresh-access",
+    refresh_token: "fresh-refresh",
+    expires_in: 3600,
+    scope: "user:read,results:read",
+    token_type: "bearer",
+    ...overrides,
+  };
+}
+
+function formParams(init: RequestInit | undefined): URLSearchParams {
+  const body = init?.body;
+  if (body instanceof URLSearchParams) return body;
+  if (typeof body === "string") return new URLSearchParams(body);
+  throw new Error("expected urlencoded body");
+}
+
+function personalClient() {
+  return new Concept2Client(cfg, {
+    user: { id: 1, username: "athlete" },
+    personal: true,
+    tokens: { accessToken: "personal-token", refreshToken: "", expiresAt: 0, scope: "" },
+  });
+}
 
 describe("Concept2Client.listWorkouts", () => {
   it("follows the Concept2 pagination metadata to return the full logbook", async () => {
@@ -80,6 +120,274 @@ describe("Concept2Client.listWorkouts", () => {
     await expect(client.listRecentWorkouts()).resolves.toMatchObject([{ id: 3 }]);
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0][0]).toContain("page=1&number=25");
+  });
+});
+
+describe("exchangeCode / refreshTokens", () => {
+  it("exchanges an authorization code without echoing error bodies", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T00:00:00Z"));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(tokenResponse())));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(exchangeCode(cfg, "auth-code")).resolves.toEqual({
+      accessToken: "fresh-access",
+      refreshToken: "fresh-refresh",
+      expiresAt: Date.now() + 3600_000,
+      scope: "user:read,results:read",
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe("https://log.concept2.com/oauth/access_token");
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.method).toBe("POST");
+    const params = formParams(init);
+    expect(params.get("grant_type")).toBe("authorization_code");
+    expect(params.get("code")).toBe("auth-code");
+    expect(params.get("redirect_uri")).toBe("https://rowplay.test/auth/callback");
+    expect(params.get("client_id")).toBe("test-client-id");
+    expect(params.get("client_secret")).toBe("test-secret");
+  });
+
+  it("refreshes with the refresh_token grant", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(tokenResponse())));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await refreshTokens(cfg, "stored-refresh");
+    const params = formParams(fetchMock.mock.calls[0][1] as RequestInit);
+    expect(params.get("grant_type")).toBe("refresh_token");
+    expect(params.get("refresh_token")).toBe("stored-refresh");
+    expect(params.get("code")).toBeNull();
+  });
+
+  it("throws a status-only error so token response bodies never leak", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("client_secret leaked here", { status: 400 })),
+    );
+    await expect(exchangeCode(cfg, "bad")).rejects.toThrow("Concept2 token request failed (400)");
+    await expect(exchangeCode(cfg, "bad")).rejects.not.toThrow(/client_secret leaked/);
+  });
+});
+
+describe("fetchMe", () => {
+  it("maps the logbook profile and sends a bearer token", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ data: { id: 7, username: "rower", first_name: "Ada" } })),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchMe(cfg, "access-tok")).resolves.toEqual({
+      id: 7,
+      username: "rower",
+      firstName: "Ada",
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe("https://log.concept2.com/api/users/me");
+    expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({
+      authorization: "Bearer access-tok",
+    });
+  });
+
+  it("throws on a non-OK profile response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("nope", { status: 401 })));
+    await expect(fetchMe(cfg, "expired")).rejects.toThrow("fetchMe failed (401)");
+  });
+});
+
+describe("Concept2Client token refresh", () => {
+  it("does not refresh personal BYOT tokens even when expiresAt is in the past", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ data: [], meta: { pagination: { total_pages: 1 } } })),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await personalClient().listRecentWorkouts();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(String(fetchMock.mock.calls[0][0])).not.toContain("/oauth/access_token");
+    expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({
+      authorization: "Bearer personal-token",
+    });
+  });
+
+  it("reuses a still-valid OAuth access token", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T00:00:00Z"));
+    const onTokenRefresh = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ data: [], meta: { pagination: { total_pages: 1 } } })),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new Concept2Client(
+      cfg,
+      {
+        user: { id: 1, username: "athlete" },
+        personal: false,
+        tokens: {
+          accessToken: "live-access",
+          refreshToken: "rt",
+          expiresAt: Date.now() + 3600_000,
+          scope: "",
+        },
+      },
+      onTokenRefresh,
+    );
+    await client.listRecentWorkouts();
+    expect(onTokenRefresh).not.toHaveBeenCalled();
+    expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({
+      authorization: "Bearer live-access",
+    });
+  });
+
+  it("refreshes an OAuth token inside the 60s expiry window and persists it", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T00:00:00Z"));
+    const onTokenRefresh = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(tokenResponse())))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [], meta: { pagination: { total_pages: 1 } } })),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new Concept2Client(
+      cfg,
+      {
+        user: { id: 1, username: "athlete" },
+        personal: false,
+        tokens: {
+          accessToken: "stale-access",
+          refreshToken: "stored-refresh",
+          expiresAt: Date.now() + 30_000,
+          scope: "",
+        },
+      },
+      onTokenRefresh,
+    );
+    await client.listRecentWorkouts();
+
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/oauth/access_token");
+    const params = formParams(fetchMock.mock.calls[0][1] as RequestInit);
+    expect(params.get("refresh_token")).toBe("stored-refresh");
+    expect(onTokenRefresh).toHaveBeenCalledOnce();
+    expect(onTokenRefresh.mock.calls[0][0].tokens.accessToken).toBe("fresh-access");
+    expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toMatchObject({
+      authorization: "Bearer fresh-access",
+    });
+  });
+});
+
+describe("Concept2Client.getWorkout", () => {
+  function resultPayload(overrides: Record<string, unknown> = {}) {
+    return {
+      data: {
+        id: 42,
+        date: "2026-05-01 06:00:00",
+        type: "rower",
+        distance: 2000,
+        time: 4800,
+        stroke_data: true,
+        ...overrides,
+      },
+    };
+  }
+
+  it("keeps real strokes when the strokes endpoint succeeds", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(resultPayload())))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: [
+              { t: 0, d: 0, p: 1200, spm: 28 },
+              { t: 100, d: 500, p: 1180, spm: 30 },
+            ],
+          }),
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const detail = await personalClient().getWorkout(42);
+    expect(detail.hasStrokeData).toBe(true);
+    expect(detail.strokes).toHaveLength(2);
+    expect(detail.strokes[1]?.t).toBe(10);
+    expect(String(fetchMock.mock.calls[1][0])).toContain("/users/me/results/42/strokes");
+  });
+
+  it("synthesises a timeline and clears hasStrokeData when /strokes fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            resultPayload({
+              workout: {
+                splits: [
+                  { distance: 1000, time: 2400 },
+                  { distance: 1000, time: 2400 },
+                ],
+              },
+            }),
+          ),
+        ),
+      )
+      .mockResolvedValueOnce(new Response("nope", { status: 500 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const detail = await personalClient().getWorkout(42);
+    expect(detail.hasStrokeData).toBe(false);
+    expect(detail.strokes.length).toBeGreaterThan(1);
+    expect(detail.strokes.at(-1)?.d).toBe(2000);
+    expect(detail.strokes.at(-1)?.t).toBe(480);
+  });
+
+  it("synthesises a summary timeline when the result has no stroke flag", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify(resultPayload({ stroke_data: false })))),
+    );
+
+    const detail = await personalClient().getWorkout(42);
+    expect(detail.hasStrokeData).toBe(false);
+    expect(detail.strokes).toHaveLength(61);
+    expect(detail.strokes[0]?.t).toBe(0);
+    expect(detail.strokes.at(-1)?.t).toBe(480);
+    expect(detail.isInterval).toBe(false);
+  });
+
+  it("marks interval workouts from the intervals array", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify(
+            resultPayload({
+              stroke_data: false,
+              workout: { intervals: [{ distance: 500, time: 900 }] },
+            }),
+          ),
+        ),
+      ),
+    );
+
+    const detail = await personalClient().getWorkout(42);
+    expect(detail.isInterval).toBe(true);
+  });
+
+  it("throws when the workout detail request fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("gone", { status: 404 })));
+    await expect(personalClient().getWorkout(42)).rejects.toThrow(
+      "Concept2 API /users/me/results/42?include=metadata failed (404)",
+    );
   });
 });
 
@@ -161,6 +469,19 @@ describe("mapResult", () => {
     expect(w.verified).toBeUndefined();
   });
 
+  it("converts tenths of a second to seconds and derives pace", () => {
+    const w = mapResult(base);
+    expect(w.time).toBe(480);
+    expect(w.pace).toBe(120);
+  });
+
+  it("maps Concept2 type aliases onto Sport", () => {
+    expect(mapResult({ ...base, type: "ski" }).sport).toBe("skierg");
+    expect(mapResult({ ...base, type: "skierg" }).sport).toBe("skierg");
+    expect(mapResult({ ...base, type: "bikeerg" }).sport).toBe("bike");
+    expect(mapResult({ ...base, type: undefined }).sport).toBe("rower");
+  });
+
   it("captures HR ending/recovery and flat compat fields", () => {
     const w = mapResult({
       ...base,
@@ -214,6 +535,18 @@ describe("mapSplits", () => {
     expect(splits[0].isRest).toBe(false);
     expect(splits[1].isRest).toBe(true);
     expect(splits[1].restTime).toBeUndefined();
+  });
+
+  it("maps a split machine alias through toSport", () => {
+    const splits = mapSplits({
+      id: 1,
+      date: "2026-05-01",
+      distance: 2000,
+      time: 4800,
+      type: "rower",
+      workout: { splits: [{ distance: 2000, time: 4800, machine: "ski" }] },
+    });
+    expect(splits[0].machine).toBe("skierg");
   });
 });
 
