@@ -44,9 +44,13 @@ describe("POST /api/live/poll", () => {
   });
 
   it("rethrows an HttpError from the live poll instead of wrapping it as 502", async () => {
-    (pollRecentWorkouts as ReturnType<typeof vi.fn>).mockRejectedValue(
-      error(401, "Not authenticated."),
-    );
+    let authError: unknown;
+    try {
+      error(401, "Not authenticated.");
+    } catch (e) {
+      authError = e;
+    }
+    (pollRecentWorkouts as ReturnType<typeof vi.fn>).mockRejectedValue(authError);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect(POST(fakeEvent() as any)).rejects.toMatchObject({ status: 401 });
   });
