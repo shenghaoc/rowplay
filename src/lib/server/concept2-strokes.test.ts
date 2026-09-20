@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vite-plus/test";
-import { buildAuthorizeUrl, mapStrokes, redirectUri } from "./concept2";
+import {
+  buildAuthorizeUrl,
+  mapHeartRate,
+  mapResult,
+  mapSplits,
+  mapStrokes,
+  mapTargets,
+  redirectUri,
+} from "./concept2";
 import type { Concept2Config } from "./concept2";
 
 const cfg: Concept2Config = {
@@ -138,5 +146,87 @@ describe("mapStrokes", () => {
     expect(strokes[0].rawT).toBe(0);
     expect(strokes[1].rawT).toBe(10); // tenths = 100/10
     expect(strokes[1].rawD).toBe(50); // decimetres = 500/10
+  });
+});
+
+const resultBase = {
+  id: 42,
+  date: "2026-05-01 06:00:00",
+  type: "rower" as const,
+  distance: 2000,
+  time: 4800,
+  stroke_data: true,
+};
+
+describe("mapResult date_utc and units", () => {
+  it("copies Concept2 date_utc onto dateUtc", () => {
+    const w = mapResult({ ...resultBase, date_utc: "2026-05-01T10:00:00Z" });
+    expect(w.dateUtc).toBe("2026-05-01T10:00:00Z");
+  });
+
+  it("treats a null or omitted date_utc as undefined", () => {
+    expect(mapResult({ ...resultBase, date_utc: null }).dateUtc).toBeUndefined();
+    expect(mapResult(resultBase).dateUtc).toBeUndefined();
+  });
+
+  it("converts tenths of a second to seconds and derives pace per 500m", () => {
+    const w = mapResult(resultBase);
+    expect(w.time).toBe(480);
+    expect(w.pace).toBe(120);
+    expect(w.hasStrokeData).toBe(true);
+  });
+
+  it("stores pace 0 when distance is 0 so watts stay defined", () => {
+    const w = mapResult({ ...resultBase, distance: 0, time: 600 });
+    expect(w.pace).toBe(0);
+  });
+});
+
+describe("mapHeartRate empty and rest", () => {
+  it("returns undefined for an empty heart-rate object", () => {
+    expect(mapHeartRate({})).toBeUndefined();
+  });
+
+  it("keeps split-level rest bpm", () => {
+    expect(mapHeartRate({ rest: 92 })).toEqual({ rest: 92 });
+  });
+});
+
+describe("mapTargets empty payload", () => {
+  it("returns undefined when every target field is absent", () => {
+    expect(mapTargets({}, "rower")).toBeUndefined();
+  });
+});
+
+describe("mapSplits rest, types, and source preference", () => {
+  it("converts rest_time tenths and keeps calorie/wattminute interval types", () => {
+    const splits = mapSplits({
+      ...resultBase,
+      workout: {
+        intervals: [
+          { distance: 500, time: 1200, type: "calorie", rest_time: 300, rest_distance: 0 },
+          { distance: 0, time: 600, type: "wattminute" },
+          { distance: 250, time: 800, type: "unknown" },
+        ],
+      },
+    });
+    expect(splits[0].restTime).toBe(30);
+    expect(splits[0].type).toBe("calorie");
+    expect(splits[1].type).toBe("wattminute");
+    expect(splits[1].isRest).toBe(true);
+    expect(splits[2].type).toBeUndefined();
+  });
+
+  it("prefers workout.splits over intervals when both are present", () => {
+    const splits = mapSplits({
+      ...resultBase,
+      workout: {
+        splits: [{ distance: 2000, time: 4800, type: "distance" }],
+        intervals: [{ distance: 500, time: 1200, type: "time" }],
+      },
+    });
+    expect(splits).toHaveLength(1);
+    expect(splits[0].distance).toBe(2000);
+    expect(splits[0].type).toBe("distance");
   });
 });
