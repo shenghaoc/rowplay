@@ -1212,17 +1212,24 @@ export interface IntervalSet {
  * present) to compute distance-per-stroke and within-rep fade. Returns null for
  * single-segment pieces — there's nothing to compare.
  *
+ * Rest rows (`isRest`, or zero-distance timed gaps) are not reps: Concept2
+ * interval results interleave them with work, while `mapStrokes` / demo
+ * strokes use a work-only clock. Counting rest as a rep inflated the set
+ * size, scored 0-pace rest as the last-rep fade, and assigned work strokes
+ * to the wrong bucket.
+ *
  * Stroke timestamps are assumed to be **continuous** (as normalised on read by
  * `mapStrokes` / `normalizeRawStrokes`). Rep boundaries are determined by
- * cumulative split durations rather than timestamp resets.
+ * cumulative *work* split durations rather than timestamp resets.
  */
 export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalSet | null {
-  if (splits.length < 2) return null;
+  const work = splits.filter((s) => !s.isRest && !(s.distance === 0 && s.time > 0));
+  if (work.length < 2) return null;
 
-  // Build cumulative time boundaries from split durations.
+  // Build cumulative time boundaries from work-split durations (work-only clock).
   const edges: number[] = [];
   let cum = 0;
-  for (const sp of splits) {
+  for (const sp of work) {
     cum += sp.time;
     edges.push(cum);
   }
@@ -1230,7 +1237,7 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
   // Assign each stroke to the first rep whose cumulative time boundary it
   // falls within. We use a two-pointer approach since both strokes and edges
   // are monotonically increasing in time, reducing O(N*M) to O(N).
-  const buckets: Stroke[][] = splits.map(() => []);
+  const buckets: Stroke[][] = work.map(() => []);
   if (strokes.length) {
     let edgeIdx = 0;
     for (const s of strokes) {
@@ -1247,8 +1254,8 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
   let paceCount = 0;
   let fastest = Infinity;
   let slowest = -Infinity;
-  for (let i = 0; i < splits.length; i++) {
-    const p = splits[i].pace;
+  for (let i = 0; i < work.length; i++) {
+    const p = work[i].pace;
     if (p > 0) {
       paceSum += p;
       paceCount++;
@@ -1262,7 +1269,7 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
     slowest = 0;
   }
 
-  const reps: IntervalRep[] = splits.map((sp, i) => {
+  const reps: IntervalRep[] = work.map((sp, i) => {
     const bucket = buckets[i] ?? [];
 
     // Bolt: Single-pass loops avoid array allocations for spm, hr, and pace fades.
@@ -1327,8 +1334,8 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
   // Bolt: Single-pass for loop avoiding intermediate array allocations to compute the variance sum
   let sumSqDiff = 0;
   if (paceCount > 0) {
-    for (let i = 0; i < splits.length; i++) {
-      const p = splits[i].pace;
+    for (let i = 0; i < work.length; i++) {
+      const p = work[i].pace;
       if (p > 0) {
         sumSqDiff += (p - avgPace) ** 2;
       }
