@@ -11,6 +11,7 @@ vi.mock("$lib/server/data", () => ({
   loadHomeTimezone: vi.fn().mockResolvedValue(undefined),
 }));
 
+import { error } from "@sveltejs/kit";
 import { load } from "./+page.server";
 import { loadWorkouts } from "$lib/server/data";
 
@@ -70,10 +71,13 @@ describe("load /dashboard", () => {
   });
 
   it("rethrows an HttpError from the live fetch instead of swallowing it", async () => {
-    (loadWorkouts as ReturnType<typeof vi.fn>).mockRejectedValueOnce({
-      status: 401,
-      body: { message: "Not authenticated." },
-    });
+    let httpErr: unknown;
+    try {
+      error(401, "Not authenticated.");
+    } catch (e) {
+      httpErr = e;
+    }
+    (loadWorkouts as ReturnType<typeof vi.fn>).mockRejectedValueOnce(httpErr);
     const event = fakeEvent({ demo: false, user: { id: 7 } });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect(load(event as any)).rejects.toMatchObject({ status: 401 });
