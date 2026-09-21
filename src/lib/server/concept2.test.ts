@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { intervalBreakdown, strokeClockBasis } from "../analytics";
 import {
   Concept2Client,
   mapHeartRate,
@@ -220,5 +221,100 @@ describe("mapSplits", () => {
 describe("mapStrokes bike pace", () => {
   it("matches fixture halving for bike", () => {
     expect(bikePaceSecPer500(2000)).toBe(100);
+  });
+});
+
+describe("Concept2Client.getWorkout interval stroke clocks", () => {
+  function getIntervalWorkout(strokeData: boolean, strokeResponse?: Response) {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      Response.json({
+        data: {
+          id: 9,
+          date: "2026-05-01 06:00:00",
+          type: "rower",
+          distance: 2000,
+          time: 2450,
+          stroke_data: strokeData,
+          workout: {
+            intervals: [
+              { distance: 1000, time: 1200, heart_rate: { average: 150 } },
+              { distance: 0, time: 900, heart_rate: { average: 95 } },
+              { distance: 1000, time: 1250 },
+            ],
+          },
+        },
+      }),
+    );
+    if (strokeResponse) fetchMock.mockResolvedValueOnce(strokeResponse);
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new Concept2Client(
+      {
+        clientId: "",
+        clientSecret: "",
+        baseUrl: "https://log.concept2.com",
+        appUrl: "https://rowplay.test",
+      },
+      {
+        user: { id: 1, username: "athlete" },
+        personal: true,
+        tokens: { accessToken: "token", refreshToken: "", expiresAt: 0, scope: "" },
+      },
+    );
+    return { detail: client.getWorkout(9), fetchMock };
+  }
+
+  it.each(["missing", "failed"] as const)(
+    "does not count rest heart rate in the next rep on the %s-strokes fallback",
+    async (path) => {
+      const missing = path === "missing";
+      const { detail, fetchMock } = getIntervalWorkout(
+        !missing,
+        missing ? undefined : new Response(null, { status: 503 }),
+      );
+      const workout = await detail;
+      expect(fetchMock).toHaveBeenCalledTimes(missing ? 1 : 2);
+      if (!missing) expect(fetchMock.mock.calls[1][0]).toContain("/results/9/strokes");
+      expect(workout.hasStrokeData).toBe(false);
+      expect(workout.strokes.map(({ t, hr }) => [t, hr])).toEqual([
+        [0, 150],
+        [120, 150],
+        [210, 95],
+        [335, undefined],
+      ]);
+      expect(
+        intervalBreakdown(workout.splits, workout.strokes, strokeClockBasis(workout))?.reps.map(
+          ({ index, hr }) => [index, hr],
+        ),
+      ).toEqual([
+        [0, 150],
+        [1, undefined],
+      ]);
+    },
+  );
+
+  it("counts work from the next rep with mapped Concept2 stroke resets", async () => {
+    const { detail, fetchMock } = getIntervalWorkout(
+      true,
+      Response.json({
+        data: [
+          { t: 0, d: 0, spm: 30, p: 600, hr: 150 },
+          { t: 1200, d: 10000, spm: 30, p: 600, hr: 150 },
+          { t: 300, d: 2400, spm: 28, p: 625, hr: 160 },
+          { t: 1250, d: 10000, spm: 28, p: 625, hr: 160 },
+        ],
+      }),
+    );
+    const workout = await detail;
+    expect(fetchMock.mock.calls[1][0]).toContain("/results/9/strokes");
+    expect(workout.hasStrokeData).toBe(true);
+    expect(workout.strokes.map(({ t }) => t)).toEqual([0, 120, 150, 245]);
+    expect(
+      intervalBreakdown(workout.splits, workout.strokes, strokeClockBasis(workout))?.reps.map(
+        ({ index, hr }) => [index, hr],
+      ),
+    ).toEqual([
+      [0, 150],
+      [1, 160],
+    ]);
   });
 });

@@ -1,4 +1,4 @@
-import { intervalBreakdown } from "#lib/analytics.ts";
+import { intervalBreakdown, strokeClockBasis } from "#lib/analytics.ts";
 import { paceToWattsForSport } from "#lib/format.ts";
 import type { Split, Sport, Stroke, WorkoutDetail } from "#lib/types.ts";
 
@@ -231,11 +231,11 @@ function segmentPace(samples: Stroke[], startTime: number, endTime: number): Win
 }
 
 function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
-  const workSplits = detail.splits.filter(
-    (s) => !s.isRest && s.time > 0 && s.distance > 0 && s.pace > 0,
-  );
+  const isWork = (s: Split) => !s.isRest && s.time > 0 && s.distance > 0 && s.pace > 0;
+  const workSplits = detail.splits.filter(isWork);
   if (!detail.isInterval || workSplits.length < 2) return [];
-  const set = intervalBreakdown(workSplits, detail.strokes);
+  const clock = strokeClockBasis(detail);
+  const set = intervalBreakdown(detail.splits, detail.strokes, clock, isWork);
   if (!set || detail.strokes.length === 0) return [];
   const moments: WorkoutMoment[] = [];
 
@@ -255,8 +255,7 @@ function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
   let cumDist = 0;
   const last = detail.strokes.length - 1;
   for (const s of detail.splits) {
-    const isWork = !s.isRest && s.time > 0 && s.distance > 0 && s.pace > 0;
-    if (isWork) {
+    if (isWork(s)) {
       while (strokeIdx < detail.strokes.length && detail.strokes[strokeIdx].t < cumTime)
         strokeIdx++;
       const startIdx = Math.min(strokeIdx, last);
@@ -273,8 +272,8 @@ function repMoments(detail: WorkoutDetail): WorkoutMoment[] {
         endDistance: cumDist + s.distance,
       });
       cumTime += s.time;
-    } else if (!detail.hasStrokeData) {
-      // Synth strokes include rest in their timeline
+    } else if (clock === "elapsed") {
+      // The split-derived timeline includes rest.
       cumTime += s.time;
     }
     cumDist += s.distance;

@@ -1207,38 +1207,55 @@ export interface IntervalSet {
   slowest: number;
 }
 
+/** Mapped and demo strokes omit rest; Concept2's split-derived fallback includes it. */
+export type StrokeClockBasis = "work-only" | "elapsed";
+
+export function strokeClockBasis(workout: Pick<Workout, "hasStrokeData">): StrokeClockBasis {
+  return workout.hasStrokeData ? "work-only" : "elapsed";
+}
+
+function isIntervalWorkSplit(split: Split): boolean {
+  return !split.isRest && !(split.distance === 0 && split.time > 0);
+}
+
 /**
- * Build a rep-by-rep breakdown from a workout's splits, using strokes (when
- * present) to compute distance-per-stroke and within-rep fade. Returns null for
- * single-segment pieces — there's nothing to compare.
- *
- * Stroke timestamps are assumed to be **continuous** (as normalised on read by
- * `mapStrokes` / `normalizeRawStrokes`). Rep boundaries are determined by
- * cumulative split durations rather than timestamp resets.
+ * Build a work-rep breakdown from continuous stroke timestamps. Rest and other
+ * excluded splits advance only an elapsed clock; none of their strokes are
+ * counted in the work reps. Returns null for fewer than two work splits.
  */
-export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalSet | null {
-  if (splits.length < 2) return null;
-
-  // Build cumulative time boundaries from split durations.
-  const edges: number[] = [];
-  let cum = 0;
-  for (const sp of splits) {
-    cum += sp.time;
-    edges.push(cum);
+export function intervalBreakdown(
+  splits: Split[],
+  strokes: Stroke[],
+  clock: StrokeClockBasis,
+  isWork = isIntervalWorkSplit,
+): IntervalSet | null {
+  const work: Split[] = [];
+  const edges: { end: number; rep: number | null }[] = [];
+  let end = 0;
+  for (const split of splits) {
+    if (isWork(split)) {
+      end += split.time;
+      edges.push({ end, rep: work.length });
+      work.push(split);
+    } else if (clock === "elapsed") {
+      end += split.time;
+      edges.push({ end, rep: null });
+    }
   }
+  if (work.length < 2) return null;
 
-  // Assign each stroke to the first rep whose cumulative time boundary it
-  // falls within. We use a two-pointer approach since both strokes and edges
-  // are monotonically increasing in time, reducing O(N*M) to O(N).
-  const buckets: Stroke[][] = splits.map(() => []);
-  if (strokes.length) {
-    let edgeIdx = 0;
-    for (const s of strokes) {
-      while (edgeIdx < edges.length && s.t > edges[edgeIdx]) {
-        edgeIdx++;
-      }
-      const idx = edgeIdx < edges.length ? edgeIdx : buckets.length - 1;
-      buckets[idx].push(s);
+  // Split-derived samples are written at the end of each split, so a sample
+  // exactly at an edge belongs to the split that ends there (including rest).
+  const buckets: Stroke[][] = work.map(() => []);
+  let edgeIdx = 0;
+  for (const stroke of strokes) {
+    while (edgeIdx < edges.length && stroke.t > edges[edgeIdx].end) edgeIdx++;
+    if (edgeIdx < edges.length) {
+      const rep = edges[edgeIdx].rep;
+      if (rep != null) buckets[rep].push(stroke);
+    } else if (clock === "work-only") {
+      // Keep the existing clamp for mapped strokes beyond the work summary.
+      buckets[buckets.length - 1].push(stroke);
     }
   }
 
@@ -1247,8 +1264,8 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
   let paceCount = 0;
   let fastest = Infinity;
   let slowest = -Infinity;
-  for (let i = 0; i < splits.length; i++) {
-    const p = splits[i].pace;
+  for (let i = 0; i < work.length; i++) {
+    const p = work[i].pace;
     if (p > 0) {
       paceSum += p;
       paceCount++;
@@ -1262,7 +1279,7 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
     slowest = 0;
   }
 
-  const reps: IntervalRep[] = splits.map((sp, i) => {
+  const reps: IntervalRep[] = work.map((sp, i) => {
     const bucket = buckets[i] ?? [];
 
     // Bolt: Single-pass loops avoid array allocations for spm, hr, and pace fades.
@@ -1327,8 +1344,8 @@ export function intervalBreakdown(splits: Split[], strokes: Stroke[]): IntervalS
   // Bolt: Single-pass for loop avoiding intermediate array allocations to compute the variance sum
   let sumSqDiff = 0;
   if (paceCount > 0) {
-    for (let i = 0; i < splits.length; i++) {
-      const p = splits[i].pace;
+    for (let i = 0; i < work.length; i++) {
+      const p = work[i].pace;
       if (p > 0) {
         sumSqDiff += (p - avgPace) ** 2;
       }
@@ -1804,8 +1821,8 @@ export function compareIntervalReps(
   b: WorkoutDetail,
 ): IntervalCompareRow[] | null {
   if (a.sport !== b.sport) return null;
-  const setA = intervalBreakdown(a.splits, a.strokes);
-  const setB = intervalBreakdown(b.splits, b.strokes);
+  const setA = intervalBreakdown(a.splits, a.strokes, strokeClockBasis(a));
+  const setB = intervalBreakdown(b.splits, b.strokes, strokeClockBasis(b));
   if (!setA || !setB) return null;
   const n = Math.min(setA.reps.length, setB.reps.length);
   if (n < 2) return null;
