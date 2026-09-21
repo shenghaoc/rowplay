@@ -584,6 +584,47 @@ describe("intervalBreakdown", () => {
     expect(result!.slowest).toBe(124);
     expect(result!.consistency).toBeCloseTo((Math.sqrt(2) / 122) * 100);
   });
+
+  it("excludes rest splits from the demo 4x1500m set and does not score rest as fade", () => {
+    const detail = mockWorkoutDetail(1005)!;
+    expect(detail.splits.filter((s) => s.isRest).length).toBe(3);
+
+    const result = intervalBreakdown(detail.splits, detail.strokes);
+    expect(result).not.toBeNull();
+    expect(result!.reps).toHaveLength(4);
+    expect(result!.reps.every((rep) => rep.distance === 1500 && rep.pace > 0)).toBe(true);
+    // All four work reps share the fixture pace, so set fade is 0 — not the
+    // −100% that counting a trailing 0-pace rest row used to produce.
+    expect(result!.fade).toBe(0);
+  });
+
+  it("assigns work-only strokes to work reps when rest is interleaved", () => {
+    const splits = [
+      { index: 0, distance: 500, time: 10, pace: 120, isRest: false },
+      { index: 1, distance: 0, time: 90, pace: 0, isRest: true },
+      { index: 2, distance: 500, time: 10, pace: 122, isRest: false },
+    ];
+    // mapStrokes clock: rest is skipped, so rep 2 starts at t=10, not t=100.
+    const result = intervalBreakdown(splits, [stroke(5, 99), stroke(15, 88)]);
+    expect(result).not.toBeNull();
+    expect(result!.reps).toHaveLength(2);
+    expect(result!.reps[0].spm).toBe(99);
+    expect(result!.reps[1].spm).toBe(88);
+    expect(result!.reps[0].pace).toBe(120);
+    expect(result!.reps[1].pace).toBe(122);
+  });
+
+  it("returns null for a single work split even when rest rows pad the list", () => {
+    expect(
+      intervalBreakdown(
+        [
+          { index: 0, distance: 1500, time: 360, pace: 120 },
+          { index: 1, distance: 0, time: 90, pace: 0, isRest: true },
+        ],
+        [],
+      ),
+    ).toBeNull();
+  });
 });
 
 describe("calendar helpers", () => {
