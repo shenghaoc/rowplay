@@ -100,6 +100,37 @@ describe("actions /auth/token", () => {
     expect(writeSession).not.toHaveBeenCalled();
   });
 
+  it("returns fail(502) when Concept2 is unavailable instead of blaming the token", async () => {
+    (fetchMe as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("502 Bad Gateway"));
+    const { event } = fakeActionEvent({ token: "valid-looking-token", secret: "mysecret" });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.default(event as any);
+    expect(result).toMatchObject({ status: 502 });
+    expect(writeSession).not.toHaveBeenCalled();
+    expect(sealToken).not.toHaveBeenCalled();
+  });
+
+  it("returns fail(502) on Concept2 timeouts and aborts", async () => {
+    (fetchMe as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("request timeout"));
+    const timeoutEvent = fakeActionEvent({ token: "tok", secret: "mysecret" }).event;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(actions.default(timeoutEvent as any)).resolves.toMatchObject({ status: 502 });
+
+    (fetchMe as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("The operation was aborted"));
+    const abortEvent = fakeActionEvent({ token: "tok", secret: "mysecret" }).event;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(actions.default(abortEvent as any)).resolves.toMatchObject({ status: 502 });
+    expect(writeSession).not.toHaveBeenCalled();
+  });
+
+  it("returns fail(400) when the token field is missing from the form", async () => {
+    const { event } = fakeActionEvent({});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.default(event as any);
+    expect(result).toMatchObject({ status: 400 });
+    expect(fetchMe).not.toHaveBeenCalled();
+  });
+
   it("writes encrypted session cookie and sealed token cookie on successful auth", async () => {
     (fetchMe as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 7, username: "athlete" });
     const { event, cookiesSet } = fakeActionEvent({

@@ -29,4 +29,11 @@ describe("POST /api/live/mock", () => {
     expect(body.workouts).toHaveLength(1);
     expect(body.added).toBe(1);
   });
+
+  it("sets cache-control: private, no-store on the mock poll response", async () => {
+    const event = { locals: { demo: true } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await POST(event as any);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+  });
 });
