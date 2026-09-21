@@ -48,4 +48,18 @@ describe("load /settings", () => {
     expect(data).toMatchObject({ workoutCount: 0, homeTimezone: "Asia/Singapore" });
     expect(data.tcxWorkouts).toEqual([]);
   });
+
+  it("sets cache-control: private, no-store for authenticated users", async () => {
+    const ev = event();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await load(ev as any);
+    expect(ev.setHeaders).toHaveBeenCalledWith({ "cache-control": "private, no-store" });
+  });
+
+  it("does not lock demo Settings pages out of the service-worker cache", async () => {
+    const ev = event({ demo: true, user: null });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await load(ev as any);
+    expect(ev.setHeaders).not.toHaveBeenCalled();
+  });
 });
