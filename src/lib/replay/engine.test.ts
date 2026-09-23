@@ -249,19 +249,20 @@ describe("ReplayEngine", () => {
   });
 
   it("does not advance when a frame callback arrives after pause", () => {
-    let queued: FrameRequestCallback | null = null;
+    const queued: FrameRequestCallback[] = [];
     vi.stubGlobal("performance", { now: () => 0 });
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-      queued = cb;
+      queued.push(cb);
       return 4;
     });
     vi.stubGlobal("cancelAnimationFrame", () => {});
 
     const engine = new ReplayEngine(ladderStrokes(), () => {});
     engine.play();
-    const callback = queued;
+    const callback = queued[0];
     engine.pause();
     expect(engine.playing).toBe(false);
+    expect(callback).toBeTypeOf("function");
 
     callback?.(5_000);
     expect(engine.time).toBe(0);
