@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
-import { autoDetectTag, resolveTag, type TaggableWorkout, WORKOUT_TAGS } from "./workoutTag";
+import {
+  athleteMedianPace,
+  autoDetectTag,
+  isValidWorkoutTag,
+  resolveTag,
+  type TaggableWorkout,
+  WORKOUT_TAGS,
+} from "./workoutTag";
 import type { Split } from "./types";
 
 function base(overrides: Partial<TaggableWorkout> = {}): TaggableWorkout {
@@ -125,6 +132,38 @@ describe("autoDetectTag", () => {
     expect(autoDetectTag(w, { medianPaceSecs: 120 })).toBe("warmup-cooldown");
   });
 
+  it("treats a pace jump above 30 sec/500m as an implied rest", () => {
+    const w = base({
+      distance: 4000,
+      time: 1000,
+      pace: 120,
+      splits: [
+        { index: 0, distance: 2000, time: 400, pace: 100, isRest: false },
+        { index: 1, distance: 2000, time: 600, pace: 140, isRest: false },
+      ],
+    });
+    expect(autoDetectTag(w)).toBe("interval");
+  });
+
+  it("treats a zero-distance positive-time split as rest even without the rest flag", () => {
+    const w = base({
+      distance: 1000,
+      time: 300,
+      pace: 110,
+      splits: [
+        { index: 0, distance: 500, time: 110, pace: 110, isRest: false },
+        { index: 1, distance: 0, time: 60, pace: 0, isRest: false },
+        { index: 2, distance: 500, time: 110, pace: 110, isRest: false },
+      ],
+    });
+    expect(autoDetectTag(w)).toBe("interval");
+  });
+
+  it("returns unknown when distance or time is not positive", () => {
+    expect(autoDetectTag(base({ distance: 0, time: 300, pace: 100 }))).toBe("unknown");
+    expect(autoDetectTag(base({ distance: 2000, time: 0, pace: 120 }))).toBe("unknown");
+  });
+
   it("returns unknown when no rule matches", () => {
     const splits: Split[] = [
       { index: 0, distance: 2000, time: 480, pace: 100 },
@@ -142,6 +181,39 @@ describe("autoDetectTag", () => {
     ];
     const w = base({ distance: 6000, time: 1420, pace: 118, splits });
     expect(autoDetectTag(w, { medianPaceSecs: 120 })).toBe("unknown");
+  });
+});
+
+describe("isValidWorkoutTag", () => {
+  it("accepts only the exact tag vocabulary", () => {
+    for (const tag of WORKOUT_TAGS) {
+      expect(isValidWorkoutTag(tag)).toBe(true);
+    }
+    expect(isValidWorkoutTag(null)).toBe(false);
+    expect(isValidWorkoutTag(undefined)).toBe(false);
+    expect(isValidWorkoutTag("")).toBe(false);
+    expect(isValidWorkoutTag("race-piece ")).toBe(false);
+    expect(isValidWorkoutTag("Race-piece")).toBe(false);
+    expect(isValidWorkoutTag("sprint")).toBe(false);
+  });
+});
+
+describe("athleteMedianPace", () => {
+  it("returns undefined when no positive paces exist", () => {
+    expect(athleteMedianPace([])).toBeUndefined();
+    expect(athleteMedianPace([base({ pace: 0 }), base({ id: 2, pace: -4 })])).toBeUndefined();
+  });
+
+  it("uses the middle pace for an odd count and the mean of the two middle paces for an even count", () => {
+    expect(
+      athleteMedianPace([
+        base({ id: 1, pace: 140 }),
+        base({ id: 2, pace: 100 }),
+        base({ id: 3, pace: 120 }),
+        base({ id: 4, pace: 0 }),
+      ]),
+    ).toBe(120);
+    expect(athleteMedianPace([base({ id: 1, pace: 100 }), base({ id: 2, pace: 200 })])).toBe(150);
   });
 });
 
