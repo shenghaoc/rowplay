@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+import { paceToWatts } from "../format";
 import { constantPaceGhost, parsePaceInput, parseWorkoutFile } from "./sources";
 
 // ---------------------------------------------------------------------------
@@ -200,6 +201,51 @@ describe("parseWorkoutFile — CSV", () => {
     const file = makeTextFile("my-session.csv", CSV_CONTENT);
     const { name } = await parseWorkoutFile(file);
     expect(name).toBe("my-session.csv");
+  });
+
+  it("keeps a positive watts column instead of the pace model", async () => {
+    const csv = `time,distance,pace,watts\n0,0,2:00,180\n10,50,2:00,250\n`;
+    const { strokes } = await parseWorkoutFile(makeTextFile("power.csv", csv));
+    expect(strokes[1]?.watts).toBe(250);
+  });
+
+  it("falls back to the pace model when the watts column is not positive", async () => {
+    const csv = `time,distance,pace,watts\n0,0,2:00,0\n10,40,2:00,-5\n`;
+    const { strokes } = await parseWorkoutFile(makeTextFile("bad-watts.csv", csv));
+    expect(strokes[0]?.watts).toBeCloseTo(paceToWatts(120), 5);
+    expect(strokes[1]?.watts).toBeCloseTo(paceToWatts(120), 5);
+  });
+
+  it("sorts samples by time and drops negative distance", async () => {
+    const csv = `time,distance\n20,100\n10,-5\n0,0\n`;
+    const { strokes } = await parseWorkoutFile(makeTextFile("shuffled.csv", csv));
+    expect(strokes.map((s) => s.t)).toEqual([0, 20]);
+    expect(strokes.every((s) => s.d >= 0)).toBe(true);
+  });
+
+  it("does not treat a heart-rate column as stroke rate", async () => {
+    const csv = `time,distance,heart rate\n0,0,140\n10,50,150\n`;
+    const { strokes } = await parseWorkoutFile(makeTextFile("hr.csv", csv));
+    expect(strokes.map((s) => s.spm)).toEqual([0, 0]);
+    expect(strokes.map((s) => s.hr)).toEqual([140, 150]);
+  });
+
+  it("reads a generic rate column as cadence when it is not heart rate", async () => {
+    const csv = `time,distance,rate\n0,0,28\n10,50,30\n`;
+    const { strokes } = await parseWorkoutFile(makeTextFile("rate.csv", csv));
+    expect(strokes.map((s) => s.spm)).toEqual([28, 30]);
+  });
+
+  it("strips surrounding quotes and carries the previous pace across a zero distance step", async () => {
+    const quoted = `time,distance,pace\n"0","0","2:00"\n"10","50","1:58"\n`;
+    const quotedStrokes = await parseWorkoutFile(makeTextFile("quoted.csv", quoted));
+    expect(quotedStrokes.strokes[1]?.t).toBe(10);
+    expect(quotedStrokes.strokes[1]?.pace).toBeCloseTo(118, 5);
+
+    const stalled = `time,distance\n0,0\n10,50\n20,50\n`;
+    const { strokes } = await parseWorkoutFile(makeTextFile("stall.csv", stalled));
+    expect(strokes[2]?.pace).toBeCloseTo(strokes[1]?.pace ?? NaN, 5);
+    expect(strokes[2]?.pace).toBeCloseTo(100, 5);
   });
 });
 
