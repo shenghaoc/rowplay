@@ -12,6 +12,7 @@ import {
   paceToWatts,
   paceToWattsForSport,
   SPORT_LABEL,
+  wattsToPace,
   wattsToPaceForSport,
 } from "./format";
 import { parseInstantMillis } from "./datetime";
@@ -29,6 +30,9 @@ describe("fmtTime", () => {
   it("returns placeholder for invalid input", () => {
     expect(fmtTime(NaN)).toBe("--:--");
     expect(fmtTime(-1)).toBe("--:--");
+    expect(fmtTime(Number.POSITIVE_INFINITY)).toBe("--:--");
+    expect(fmtPace(Number.NaN)).toBe("--:--");
+    expect(fmtPaceBare(-1, true)).toBe("--:--");
   });
 });
 
@@ -75,6 +79,13 @@ describe("paceToWatts / avgWatts", () => {
     const w = workout({ id: 2, pace: 120, time: 480 });
     expect(avgWatts(w)).toBe(Math.round(paceToWatts(120)));
   });
+
+  it("ignores a zero watt-minute total and a zero duration", () => {
+    const zeroMinutes = workout({ id: 3, wattMinutes: 0, time: 600, pace: 120 });
+    const zeroTime = workout({ id: 4, wattMinutes: 600, time: 0, pace: 120 });
+    expect(avgWatts(zeroMinutes)).toBe(Math.round(paceToWatts(120)));
+    expect(avgWatts(zeroTime)).toBe(Math.round(paceToWatts(120)));
+  });
 });
 
 describe("bike pace per-1000m normalisation", () => {
@@ -83,6 +94,20 @@ describe("bike pace per-1000m normalisation", () => {
     const normalized = bikePaceSecPer500(1900);
     expect(normalized).toBe(95);
     expect(paceToWattsForSport("bike", normalized)).toBeCloseTo(paceToWatts(95) / 8, 1);
+  });
+});
+
+describe("wattsToPace", () => {
+  it("inverts the rower pace model", () => {
+    expect(wattsToPace(paceToWatts(120))).toBeCloseTo(120, 5);
+    expect(wattsToPace(paceToWatts(95))).toBeCloseTo(95, 5);
+  });
+
+  it("returns 0 for non-positive or non-finite watts", () => {
+    expect(wattsToPace(0)).toBe(0);
+    expect(wattsToPace(-40)).toBe(0);
+    expect(wattsToPace(Number.NaN)).toBe(0);
+    expect(wattsToPace(Number.POSITIVE_INFINITY)).toBe(0);
   });
 });
 
@@ -103,12 +128,19 @@ describe("wattsToPaceForSport", () => {
     const watts = paceToWattsForSport("bike", 95);
     expect(wattsToPaceForSport("bike", watts)).toBeCloseTo(95, 5);
   });
+
+  it("uses the rower basis when the sport is unknown and rejects invalid watts", () => {
+    expect(wattsToPaceForSport(undefined, paceToWatts(120))).toBeCloseTo(120, 5);
+    expect(wattsToPaceForSport("skierg", 0)).toBe(0);
+    expect(wattsToPaceForSport("bike", Number.NaN)).toBe(0);
+  });
 });
 
 describe("challengeDistanceMetres", () => {
   it("counts BikeErg distance at half for logbook challenges", () => {
     expect(challengeDistanceMetres({ sport: "bike", distance: 8000 })).toBe(4000);
     expect(challengeDistanceMetres({ sport: "rower", distance: 8000 })).toBe(8000);
+    expect(challengeDistanceMetres({ sport: "skierg", distance: 8000 })).toBe(8000);
   });
 });
 
