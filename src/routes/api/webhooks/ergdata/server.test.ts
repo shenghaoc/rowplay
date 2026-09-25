@@ -87,4 +87,23 @@ describe("POST /api/webhooks/ergdata", () => {
     expect(json.ok).toBe(true);
     expect(json.received).toBe(42);
   });
+
+  it("accepts workoutId 0 and a signature with or without the sha256 prefix", async () => {
+    const secret = "mysecret";
+    const body = '{"workoutId":0}';
+    const prefixed = await makeHmacSig(secret, body);
+    const hex = prefixed.slice("sha256=".length).toUpperCase();
+    for (const sig of [prefixed, hex, `sha256=${hex}`]) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const res = await POST(fakeEvent({ secret, sig, body }) as any);
+      expect(await res.json()).toEqual({ ok: true, received: 0 });
+    }
+  });
+
+  it("treats a blank webhook secret as not configured", async () => {
+    const event = fakeEvent({ secret: "ignored" });
+    event.platform.env = { ERGDATA_WEBHOOK_SECRET: "" };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(POST(event as any)).rejects.toMatchObject({ status: 501 });
+  });
 });

@@ -2,42 +2,50 @@ import { describe, expect, it } from "vite-plus/test";
 import { POST } from "./+server";
 import { SESSION_COOKIE, TOKEN_COOKIE } from "$lib/server/session";
 
-function fakeEvent(opts: { personal: boolean; user: { id: number } | null }) {
-  const deleted: string[] = [];
+type DeletedCookie = { name: string; options: Record<string, unknown> };
+
+function fakeEvent(opts: { url?: string }) {
+  const deleted: DeletedCookie[] = [];
   const event = {
     cookies: {
       get: () => "sid-123",
-      delete: (name: string) => deleted.push(name),
+      delete: (name: string, options: Record<string, unknown>) => {
+        deleted.push({ name, options });
+      },
     },
-    locals: { personal: opts.personal, user: opts.user },
+    locals: { personal: true, user: { id: 42 } },
     platform: { env: {} },
-    url: new URL("http://localhost/"),
+    url: new URL(opts.url ?? "http://localhost/"),
   };
   return { event, deleted };
 }
 
-async function runLogout(event: unknown) {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await POST({ ...(event as any) });
-  } catch (e) {
-    // redirect throw — status 303 to '/'
-    expect((e as { status?: number }).status).toBe(303);
-  }
-}
-
 describe("logout", () => {
-  it("clears session and token cookies on logout", async () => {
-    const { event, deleted } = fakeEvent({ personal: true, user: { id: 42 } });
-    await runLogout(event);
-    expect(deleted).toContain(SESSION_COOKIE);
-    expect(deleted).toContain(TOKEN_COOKIE);
+  it("clears the session and token cookies on http and redirects home", async () => {
+    const { event, deleted } = fakeEvent({});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(POST(event as any)).rejects.toMatchObject({ status: 303, location: "/" });
+    const session = deleted.find((cookie) => cookie.name === SESSION_COOKIE);
+    const token = deleted.find((cookie) => cookie.name === TOKEN_COOKIE);
+    expect(session?.options).toEqual({
+      path: "/",
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    expect(token?.options).toEqual({
+      path: "/",
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+    });
   });
 
-  it("clears cookies for non-personal (OAuth) sessions too", async () => {
-    const { event, deleted } = fakeEvent({ personal: false, user: { id: 42 } });
-    await runLogout(event);
-    expect(deleted).toContain(SESSION_COOKIE);
-    expect(deleted).toContain(TOKEN_COOKIE);
+  it("marks both cleared cookies secure when the page was served over https", async () => {
+    const { event, deleted } = fakeEvent({ url: "https://rowplay.example/auth/logout" });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(POST(event as any)).rejects.toMatchObject({ status: 303, location: "/" });
+    expect(deleted.map((cookie) => cookie.options.secure)).toEqual([true, true]);
   });
 });
