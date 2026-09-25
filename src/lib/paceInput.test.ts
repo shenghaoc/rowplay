@@ -12,6 +12,13 @@ describe("formatPaceInput", () => {
     expect(formatPaceInput(0)).toBe("");
     expect(formatPaceInput(-1)).toBe("");
   });
+
+  it("rounds to the nearest second and rejects non-finite values", () => {
+    expect(formatPaceInput(119.6)).toBe("2:00");
+    expect(formatPaceInput(119.4)).toBe("1:59");
+    expect(formatPaceInput(Number.NaN)).toBe("");
+    expect(formatPaceInput(Number.POSITIVE_INFINITY)).toBe("");
+  });
 });
 
 describe("parsePaceInput", () => {
@@ -34,5 +41,14 @@ describe("parsePaceInput", () => {
     expect(parsePaceInput("abc")).toBeNull();
     expect(parsePaceInput("-30")).toBeNull();
     expect(parsePaceInput("99:99")).toBeNull();
+    expect(parsePaceInput("1:60")).toBeNull();
+    expect(parsePaceInput("0")).toBeNull();
+    expect(parsePaceInput("0.0")).toBeNull();
+  });
+
+  it("parses fractional seconds, a single seconds digit, and surrounding whitespace", () => {
+    expect(parsePaceInput("  2:05.5 ")).toBe(125.5);
+    expect(parsePaceInput("2:5")).toBe(125);
+    expect(parsePaceInput("1.5")).toBe(1.5);
   });
 });

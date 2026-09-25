@@ -24,6 +24,13 @@ describe("predictTimes", () => {
     const map = predictTimes(1000, 180);
     expect([...map.keys()].sort((a, b) => a - b)).toEqual([...PREDICTOR_DISTANCES]);
   });
+
+  it("returns an empty map for a non-positive distance or time", () => {
+    expect(predictTimes(0, 400).size).toBe(0);
+    expect(predictTimes(-2000, 400).size).toBe(0);
+    expect(predictTimes(2000, 0).size).toBe(0);
+    expect(predictTimes(2000, -30).size).toBe(0);
+  });
 });
 
 describe("buildPredictionTable", () => {
@@ -60,5 +67,19 @@ describe("buildPredictionTable", () => {
     ]);
     const oneK = rows.find((r) => r.distance === 1000)!;
     expect(oneK.actualBestSeconds).toBe(180);
+  });
+
+  it("ignores personal bests that are not a standard predictor distance", () => {
+    const rows = buildPredictionTable(2000, 420, [{ distance: 1234, time: 300 }]);
+    expect(rows.every((row) => row.actualBestSeconds === null)).toBe(true);
+    expect(rows.every((row) => row.status === "untried")).toBe(true);
+  });
+
+  it("keeps recorded bests when the known effort cannot seed a prediction", () => {
+    const rows = buildPredictionTable(0, 0, [{ distance: 2000, time: 400 }]);
+    expect(rows).toHaveLength(PREDICTOR_DISTANCES.length);
+    const twoK = rows.find((row) => row.distance === 2000)!;
+    expect(twoK.actualBestSeconds).toBe(400);
+    expect(twoK.predictedSeconds).toBeUndefined();
   });
 });
