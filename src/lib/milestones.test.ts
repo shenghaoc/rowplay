@@ -40,6 +40,34 @@ describe("computeMilestones — lifetime distance", () => {
     expect(notYet?.achieved).toBe(false);
     expect(notYet?.progress).toBeCloseTo(99_999 / 100_000);
   });
+
+  it("dates the crossing from chronological order and keeps sports separate", () => {
+    const crossed = computeMilestones(
+      [w(2, "2026-01-03 06:00:00", 50_000), w(1, "2026-01-01 06:00:00", 60_000, "skierg")],
+      [],
+    );
+    expect(crossed.find((m) => m.id === "lifetime_distance_skierg_100k")?.achieved).toBe(false);
+    expect(crossed.find((m) => m.id === "lifetime_distance_rower_100k")?.achieved).toBe(false);
+    const combined = crossed.find((m) => m.id === "lifetime_distance_combined_100k");
+    expect(combined?.achieved).toBe(true);
+    expect(combined?.achievedAt).toBe("2026-01-03");
+  });
+
+  it("buckets the achievement day in the home timezone", () => {
+    const milestones = computeMilestones(
+      [
+        {
+          ...w(1, "2026-01-02 00:30:00", 100_000),
+          timezone: "UTC",
+        },
+      ],
+      [],
+      { homeTz: "America/Los_Angeles" },
+    );
+    expect(milestones.find((m) => m.id === "lifetime_distance_rower_100k")?.achievedAt).toBe(
+      "2026-01-01",
+    );
+  });
 });
 
 describe("computeMilestones — session count", () => {
@@ -59,6 +87,14 @@ describe("computeMilestones — session count", () => {
     const m = computeMilestones(workouts, []).find((x) => x.id === "session_count_10");
     expect(m?.achieved).toBe(false);
     expect(m?.progress).toBeCloseTo(0.9);
+  });
+
+  it("uses the tenth chronological session when the list is newest-first", () => {
+    const workouts = Array.from({ length: 10 }, (_, i) =>
+      w(i + 1, `2026-01-${String(10 - i).padStart(2, "0")} 06:00:00`, 2000),
+    );
+    const m = computeMilestones(workouts, []).find((x) => x.id === "session_count_10");
+    expect(m?.achievedAt).toBe("2026-01-10");
   });
 });
 
@@ -104,6 +140,22 @@ describe("computeMilestones — streak", () => {
     expect(m?.currentValue).toBe(7);
     expect(m?.achievedAt).toBe("2026-01-07");
   });
+
+  it("keeps the first day a streak was earned after the run later breaks", () => {
+    const workouts = [
+      ...Array.from({ length: 7 }, (_, i) =>
+        w(i + 1, `2026-01-${String(i + 1).padStart(2, "0")} 06:00:00`, 2000),
+      ),
+      w(8, "2026-01-10 06:00:00", 2000),
+    ];
+    const m = computeMilestones(workouts, [], { endDay: "2026-01-10" }).find(
+      (x) => x.id === "streak_7d",
+    );
+    expect(m?.achieved).toBe(true);
+    expect(m?.achievedAt).toBe("2026-01-07");
+    expect(m?.currentValue).toBe(1);
+    expect(m?.progress).toBe(1);
+  });
 });
 
 describe("computeMilestones — 2k speed gates", () => {
@@ -119,6 +171,41 @@ describe("computeMilestones — 2k speed gates", () => {
       [{ distance: 2000, sport: "rower", time: 7 * 60 - 0.1, date: "2026-01-01 06:00:00" }],
     ).find((m) => m.id === "pb_2k_sub7");
     expect(faster?.achieved).toBe(true);
+  });
+
+  it("uses the fastest rower 2k and ignores other sports and distances", () => {
+    const gates = computeMilestones(
+      [],
+      [
+        { distance: 2000, sport: "rower", time: 7 * 60 + 10, date: "2026-02-01 06:00:00" },
+        { distance: 2000, sport: "rower", time: 6 * 60 + 50, date: "2026-03-01 18:00:00" },
+        { distance: 2000, sport: "bike", time: 6 * 60, date: "2026-01-01 06:00:00" },
+        { distance: 5000, sport: "rower", time: 6 * 60, date: "2026-01-15 06:00:00" },
+      ],
+    );
+    const sub7 = gates.find((m) => m.id === "pb_2k_sub7")!;
+    expect(sub7.achieved).toBe(true);
+    expect(sub7.achievedAt).toBe("2026-03-01");
+    const sub630 = gates.find((m) => m.id === "pb_2k_sub630")!;
+    expect(sub630.achieved).toBe(false);
+    expect(sub630.progress).toBeCloseTo(40 / 60, 6);
+  });
+
+  it("reports full progress at an exact gate without marking it achieved", () => {
+    const atSeven = computeMilestones(
+      [],
+      [{ distance: 2000, sport: "rower", time: 7 * 60, date: "2026-01-01 06:00:00" }],
+    ).find((m) => m.id === "pb_2k_sub7")!;
+    expect(atSeven.achieved).toBe(false);
+    expect(atSeven.progress).toBe(1);
+    expect(atSeven.achievedAt).toBeUndefined();
+  });
+
+  it("reports zero progress when there is no rower 2k", () => {
+    const missing = computeMilestones([], []).find((m) => m.id === "pb_2k_sub7")!;
+    expect(missing.achieved).toBe(false);
+    expect(missing.progress).toBe(0);
+    expect(missing.currentValue).toBe(0);
   });
 });
 
@@ -136,6 +223,39 @@ describe("nextMilestones", () => {
     expect(next.achieved).toBe(false);
     expect(next.progress).toBeGreaterThan(0.8);
   });
+
+  it("breaks progress ties toward the smaller threshold and skips achieved rows", () => {
+    const ranked = nextMilestones(
+      [
+        {
+          id: "wide",
+          labelKey: "milestone.wide",
+          achieved: false,
+          progress: 0.5,
+          currentValue: 50,
+          threshold: 100,
+        },
+        {
+          id: "done",
+          labelKey: "milestone.done",
+          achieved: true,
+          progress: 1,
+          currentValue: 1,
+          threshold: 1,
+        },
+        {
+          id: "tight",
+          labelKey: "milestone.tight",
+          achieved: false,
+          progress: 0.5,
+          currentValue: 20,
+          threshold: 40,
+        },
+      ],
+      2,
+    );
+    expect(ranked.map((m) => m.id)).toEqual(["tight", "wide"]);
+  });
 });
 
 describe("newlyAchievedMilestones", () => {
@@ -152,6 +272,16 @@ describe("newlyAchievedMilestones", () => {
     );
     const fresh = newlyAchievedMilestones(before, after);
     expect(fresh.some((m) => m.id === "session_count_10")).toBe(true);
+    expect(
+      fresh.some(
+        (m) => m.id === "session_count_10" && before.some((b) => b.id === m.id && b.achieved),
+      ),
+    ).toBe(false);
+  });
+
+  it("does not repeat a milestone that was already achieved", () => {
+    const milestones = computeMilestones([w(1, "2026-01-01 06:00:00", 100_000)], []);
+    expect(newlyAchievedMilestones(milestones, milestones)).toEqual([]);
   });
 });
 
@@ -169,5 +299,10 @@ describe("showMilestonesPanel", () => {
     ];
     const milestones = computeMilestones(workouts, []);
     expect(showMilestonesPanel(workouts, milestones)).toBe(true);
+  });
+
+  it("shows the panel for a single workout that already cleared a milestone", () => {
+    const workouts = [w(1, "2026-01-01 06:00:00", 100_000)];
+    expect(showMilestonesPanel(workouts, computeMilestones(workouts, []))).toBe(true);
   });
 });
