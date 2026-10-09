@@ -1,7 +1,7 @@
 import { nowEpochMillis } from "./datetime";
 import { createContext } from "svelte";
-import type { DistancePB } from "$lib/analytics";
-import type { Workout } from "$lib/types";
+import type { DistancePB } from "#lib/analytics.ts";
+import type { Workout } from "#lib/types.ts";
 import {
   effectiveIntervalSec,
   loadLivePrefs,

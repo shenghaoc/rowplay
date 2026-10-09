@@ -1,11 +1,11 @@
 <script lang="ts">
 	import Radio from '@lucide/svelte/icons/radio';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
-	import ChipButton from '$components/ChipButton.svelte';
-	import ChipGroup from '$components/ChipGroup.svelte';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import { fmtTimeFromEpochMillis, instantIsoFromEpochMillis } from '$lib/datetime';
-	import { LIVE_INTERVALS, type LiveIntervalSec, type LiveMode } from '$lib/liveMode.svelte';
+	import ChipButton from '#components/ChipButton.svelte';
+	import ChipGroup from '#components/ChipGroup.svelte';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import { fmtTimeFromEpochMillis, instantIsoFromEpochMillis } from '#lib/datetime.ts';
+	import { LIVE_INTERVALS, type LiveIntervalSec, type LiveMode } from '#lib/liveMode.svelte.ts';
 
 	interface Props {
 		live: LiveMode;

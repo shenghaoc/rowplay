@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Workout } from '$lib/types';
-	import { fmtDistance, fmtTime } from '$lib/format';
+	import type { Workout } from '#lib/types.ts';
+	import { fmtDistance, fmtTime } from '#lib/format.ts';
 	import {
 		buildDistribution,
 		buildZoneConfig,
@@ -11,8 +11,8 @@
 		type ZoneLabel,
 		ZONES_3,
 		ZONES_5
-	} from '$lib/trainingZones';
-	import { getI18nContext } from '$lib/i18n.svelte';
+	} from '#lib/trainingZones.ts';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
 	import BarChart3 from '@lucide/svelte/icons/bar-chart-3';
 
 	let { workouts }: { workouts: Workout[] } = $props();

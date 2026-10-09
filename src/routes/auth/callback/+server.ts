@@ -1,8 +1,9 @@
+import { env } from "cloudflare:workers";
 import { error, redirect } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { getConfig } from "$lib/server/config";
-import { exchangeCode, fetchMe } from "$lib/server/concept2";
-import { OAUTH_STATE_COOKIE, writeSession } from "$lib/server/session";
+import { getConfig } from "#lib/server/config.ts";
+import { exchangeCode, fetchMe } from "#lib/server/concept2.ts";
+import { OAUTH_STATE_COOKIE, writeSession } from "#lib/server/session.ts";
 
 export const GET: RequestHandler = async (event) => {
   const cfg = getConfig(event);
@@ -33,7 +34,7 @@ export const GET: RequestHandler = async (event) => {
     throw error(400, "Invalid OAuth state. Please try logging in again.");
   }
 
-  const secret = event.platform?.env?.SESSION_SECRET;
+  const secret = env.SESSION_SECRET;
   if (!secret) throw error(500, "Server misconfigured.");
 
   const tokens = await exchangeCode(cfg, code);

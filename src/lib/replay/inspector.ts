@@ -1,5 +1,5 @@
-import { distancePerStroke as dpsFromPaceSpm } from "$lib/analytics";
-import type { Sport, Split, Stroke } from "$lib/types";
+import { distancePerStroke as dpsFromPaceSpm } from "#lib/analytics.ts";
+import type { Sport, Split, Stroke } from "#lib/types.ts";
 
 /** Concept2 wire representation reconstructed from a normalized stroke. */
 export interface LoggedStroke {

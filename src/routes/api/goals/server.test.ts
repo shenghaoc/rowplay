@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.ts", () => ({
   loadAnnualGoal: vi.fn().mockResolvedValue({ year: 2026, kind: "meters", target: 1_000_000 }),
   saveAnnualGoal: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { GET, PUT } from "./+server";
-import { loadAnnualGoal, saveAnnualGoal } from "$lib/server/data";
+import { loadAnnualGoal, saveAnnualGoal } from "#lib/server/data.ts";
 
 function event(search = "", demo = false, body?: unknown) {
   return {

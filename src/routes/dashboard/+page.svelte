@@ -1,17 +1,17 @@
 <script lang="ts">
 	import type uPlot from 'uplot';
-	import UPlotChart from '$components/UPlotChart.svelte';
-	import { base, resolve } from '$app/paths';
-	import WorkoutList from '$components/WorkoutList.svelte';
-	import WorkoutListFilters from '$components/WorkoutListFilters.svelte';
-	import TrainingHeatmap from '$components/TrainingHeatmap.svelte';
-	import TrainingIntensityChart from '$components/TrainingIntensityChart.svelte';
-	import EngagementPanel from '$components/EngagementPanel.svelte';
-	import MilestonesPanel from '$components/MilestonesPanel.svelte';
-	import CriticalPowerPanel from '$components/CriticalPowerPanel.svelte';
-	import PerformancePredictorCard from '$components/PerformancePredictorCard.svelte';
-	import SportIcon from '$components/SportIcon.svelte';
-	import { fmtDate, fmtDateFromEpochMillis, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
+	import UPlotChart from '#components/UPlotChart.svelte';
+	import { resolve } from '$app/paths';
+	import WorkoutList from '#components/WorkoutList.svelte';
+	import WorkoutListFilters from '#components/WorkoutListFilters.svelte';
+	import TrainingHeatmap from '#components/TrainingHeatmap.svelte';
+	import TrainingIntensityChart from '#components/TrainingIntensityChart.svelte';
+	import EngagementPanel from '#components/EngagementPanel.svelte';
+	import MilestonesPanel from '#components/MilestonesPanel.svelte';
+	import CriticalPowerPanel from '#components/CriticalPowerPanel.svelte';
+	import PerformancePredictorCard from '#components/PerformancePredictorCard.svelte';
+	import SportIcon from '#components/SportIcon.svelte';
+	import { fmtDate, fmtDateFromEpochMillis, fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '#lib/format.ts';
 	import {
 		distanceBand,
 		distancePBs,
@@ -21,16 +21,16 @@
 		summariseBySport,
 		trainingLoad,
 		type FormBand
-	} from '$lib/analytics';
-	import type { Sport, Workout } from '$lib/types';
-	import { MACHINE_COLOR } from '$lib/replay/sports';
+	} from '#lib/analytics.ts';
+	import type { Sport, Workout } from '#lib/types.ts';
+	import { MACHINE_COLOR } from '#lib/replay/sports.ts';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { readHomeTimezoneClient } from '$lib/homeTimezone';
-	import { serializeWorkoutListQuery, filterAndSortWorkouts, type WorkoutListQuery } from '$lib/workoutQuery';
-	import { WORKOUT_TAGS } from '$lib/workoutTag';
-	import ChipButton from '$components/ChipButton.svelte';
-	import ChipGroup from '$components/ChipGroup.svelte';
+	import { readHomeTimezoneClient } from '#lib/homeTimezone.ts';
+	import { serializeWorkoutListQuery, filterAndSortWorkouts, type WorkoutListQuery } from '#lib/workoutQuery.ts';
+	import { WORKOUT_TAGS } from '#lib/workoutTag.ts';
+	import ChipButton from '#components/ChipButton.svelte';
+	import ChipGroup from '#components/ChipGroup.svelte';
 	import { toast } from 'svelte-sonner';
 	import TrendingUp from '@lucide/svelte/icons/trending-up';
 	import TrendingDown from '@lucide/svelte/icons/trending-down';
@@ -38,21 +38,21 @@
 	import Play from '@lucide/svelte/icons/play';
 	import Activity from '@lucide/svelte/icons/activity';
 	import X from '@lucide/svelte/icons/x';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import { getThemeContext } from '$lib/theme.svelte';
-	import { chartTheme, baseOptions } from '$lib/chartTheme';
-	import LiveModePanel from '$components/LiveModePanel.svelte';
-	import { LiveMode } from '$lib/liveMode.svelte';
-	import { computeMilestones, newlyAchievedMilestones } from '$lib/milestones';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import { getThemeContext } from '#lib/theme.svelte.ts';
+	import { chartTheme, baseOptions } from '#lib/chartTheme.ts';
+	import LiveModePanel from '#components/LiveModePanel.svelte';
+	import { LiveMode } from '#lib/liveMode.svelte.ts';
+	import { computeMilestones, newlyAchievedMilestones } from '#lib/milestones.ts';
 	import {
 		dismissDashboardHint,
 		dismissFirstRunSurface,
 		visibleDashboardHints,
 		type DashboardHintId
-	} from '$lib/firstRun';
+	} from '#lib/firstRun.ts';
 
-	import { logbookEpochMillis, todayKeyForTz } from '$lib/datetime';
-	import { computeDpsTrend, movingAverage } from '$lib/dpsTrend';
+	import { logbookEpochMillis, todayKeyForTz } from '#lib/datetime.ts';
+	import { computeDpsTrend, movingAverage } from '#lib/dpsTrend.ts';
 
 	// Static lookup — never changes, shared across instances.
 	const formBandClass: Record<FormBand, string> = {
@@ -110,9 +110,8 @@
 		const params = serializeWorkoutListQuery(q);
 		const qs = params.toString();
 		goto(resolve(qs ? `/dashboard?${qs}` : '/dashboard'), {
-			replaceState: true,
-			keepFocus: true,
-			noScroll: true
+			replace: true,
+			reset: false
 		});
 	}
 
@@ -675,13 +674,9 @@
 					<div class="tour-hint">
 						<a
 							class="tour-link"
-							href={resolve(
-								hint.id === 'latestReplay'
-									? latest
-										? `/replay/${latest.id}`
-										: '/dashboard#workouts'
-									: `/dashboard#${hint.id === 'criticalPower' ? 'critical-power' : 'workout-filters'}`
-							)}
+							href={hint.id === 'latestReplay' && latest
+								? resolve('/replay/[id]', { id: String(latest.id) })
+								: resolve(`/dashboard#${hint.id === 'latestReplay' ? 'workouts' : hint.id === 'criticalPower' ? 'critical-power' : 'workout-filters'}`)}
 						>
 							<span class="tour-title">{hint.title}</span>
 							<span class="muted">{hint.body}</span>
@@ -1016,7 +1011,7 @@
 								band: bandScoped ? (bands.find((b) => b.key === activeBand)?.label ?? '') : ''
 							})}
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href="{base}/docs/charts-and-progress">{t('docs.contextual.charts')}</a>
+						<a href={resolve('/docs/charts-and-progress')}>{t('docs.contextual.charts')}</a>
 						</p>
 					{/if}
 				</div>
@@ -1065,7 +1060,7 @@
 					<p class="muted emptytrend">
 						{t('dashboard.dpsTrend.empty')}
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-					<a href="{base}/docs/troubleshooting">{t('docs.contextual.troubleshooting')}</a>
+					<a href={resolve('/docs/troubleshooting')}>{t('docs.contextual.troubleshooting')}</a>
 					</p>
 				{:else}
 					{#if dpsHover}

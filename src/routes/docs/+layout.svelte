@@ -2,10 +2,10 @@
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import { DOCS_SECTIONS, docsSectionPath, isActiveDocsSection } from '$lib/docs';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import { DOCS_SECTIONS, docsSectionPath, isActiveDocsSection } from '#lib/docs.ts';
 
 	let { children } = $props();
 
@@ -21,7 +21,7 @@
 			{t('docs.badge')}
 		</span>
 		<div class="join">
-			<a class="btn btn-primary btn-sm join-item" href="{base}/dashboard">
+			<a class="btn btn-primary btn-sm join-item" href={resolve('/dashboard')}>
 				<LayoutDashboard size={15} aria-hidden="true" />
 				{t('docs.openDashboard')}
 			</a>
@@ -36,11 +36,11 @@
 		<nav class="docs-nav" aria-label={t('docs.navLabel')}>
 			<ul class="menu menu-sm w-full p-0">
 				{#each DOCS_SECTIONS as section (section.key)}
-					{@const active = isActiveDocsSection(section.slug, page.url.pathname.slice(base.length) || '/')}
+					{@const active = isActiveDocsSection(section.slug, page.route.id ?? '')}
 					<li>
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 						<a
-							href="{base}{docsSectionPath(section.slug)}"
+							href={resolve(docsSectionPath(section.slug))}
 							class:menu-active={active}
 							aria-current={active ? 'page' : undefined}
 						>

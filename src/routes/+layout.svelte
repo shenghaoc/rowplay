@@ -8,10 +8,10 @@
 	import Moon from '@lucide/svelte/icons/moon';
 	import Menu from '@lucide/svelte/icons/menu';
 	import X from '@lucide/svelte/icons/x';
-	import LanguagePicker from '$components/LanguagePicker.svelte';
-	import { I18n, setI18nContext } from '$lib/i18n.svelte';
-	import { Theme, setThemeContext } from '$lib/theme.svelte';
-	import { initPwaUpdate } from '$lib/pwa-update';
+	import LanguagePicker from '#components/LanguagePicker.svelte';
+	import { I18n, setI18nContext } from '#lib/i18n.svelte.ts';
+	import { Theme, setThemeContext } from '#lib/theme.svelte.ts';
+	import { initPwaUpdate } from '#lib/pwa-update.ts';
 
 	let { data, children } = $props();
 

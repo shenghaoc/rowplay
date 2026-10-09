@@ -6,11 +6,11 @@
 		PREDICTOR_DISTANCES,
 		type PredictionRow,
 		type PredictionStatus
-	} from '$lib/performancePredictor';
-	import { fmtDistance, fmtTime } from '$lib/format';
-	import { parsePaceInput } from '$lib/replay/sources';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import type { Sport } from '$lib/types';
+	} from '#lib/performancePredictor.ts';
+	import { fmtDistance, fmtTime } from '#lib/format.ts';
+	import { parsePaceInput } from '#lib/replay/sources.ts';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import type { Sport } from '#lib/types.ts';
 
 	type PbRow = { distance: number; time: number; sport: Sport };
 

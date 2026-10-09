@@ -1,4 +1,4 @@
-import { safeStorage } from "$lib/safeStorage";
+import { safeStorage } from "#lib/safeStorage.ts";
 
 export type RendererKind = "2d" | "3d";
 export type RenderQuality = "low" | "medium" | "high" | "ultra";

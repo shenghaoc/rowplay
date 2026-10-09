@@ -1,4 +1,4 @@
-import { base } from "$app/paths";
+import { asset } from "$app/paths";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinnedHierarchy } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -445,7 +445,7 @@ const instanceStates = new WeakMap<ReplayV4AthleteInstance, InstanceState>();
 let cachedTemplate: Promise<ReplayV4AssetTemplate> | null = null;
 
 function assetUrl(): string {
-  return `${base}${REPLAY_V4_ASSET_PATH}`;
+  return asset("replay-assets/rowplay-athlete-v4.glb");
 }
 
 function finiteAttribute(

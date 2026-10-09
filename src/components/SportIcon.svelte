@@ -2,7 +2,7 @@
 	import Sailboat from '@lucide/svelte/icons/sailboat';
 	import Snowflake from '@lucide/svelte/icons/snowflake';
 	import Bike from '@lucide/svelte/icons/bike';
-	import type { Sport } from '$lib/types';
+	import type { Sport } from '#lib/types.ts';
 
 	interface Props {
 		sport: Sport;

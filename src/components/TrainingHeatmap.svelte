@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { Workout } from '$lib/types';
-	import { buildTrainingCalendar, type VolumeMetric } from '$lib/analytics';
-	import { monthShortName } from '$lib/datetime';
-	import { fmtDate, fmtDistance, fmtTime } from '$lib/format';
+	import type { Workout } from '#lib/types.ts';
+	import { buildTrainingCalendar, type VolumeMetric } from '#lib/analytics.ts';
+	import { monthShortName } from '#lib/datetime.ts';
+	import { fmtDate, fmtDistance, fmtTime } from '#lib/format.ts';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
-	import { getI18nContext } from '$lib/i18n.svelte';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
 
 	let {
 		workouts,

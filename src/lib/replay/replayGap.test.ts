@@ -6,7 +6,7 @@ import {
   ghostDistAtPlayerFinish,
   playerDistAtGhostFinish,
 } from "./replayGap";
-import type { Stroke } from "$lib/types";
+import type { Stroke } from "#lib/types.ts";
 
 function strokes(times: number[], dists: number[]): Stroke[] {
   return times.map((t, i) => ({ t, d: dists[i], pace: 120, spm: 28, watts: 200 }));

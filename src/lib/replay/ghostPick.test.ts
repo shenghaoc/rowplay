@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { pickDefaultGhostCandidate } from "./ghostPick";
-import type { Workout } from "$lib/types";
+import type { Workout } from "#lib/types.ts";
 
 function w(
   id: number,

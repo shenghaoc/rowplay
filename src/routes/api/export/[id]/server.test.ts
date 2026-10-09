@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.ts", () => ({
   loadWorkoutDetail: vi.fn(),
 }));
-vi.mock("$lib/server/export", () => ({
+vi.mock("#lib/server/export.ts", () => ({
   workoutDetailToTcx: vi.fn().mockReturnValue("<TrainingCenterDatabase/>"),
   workoutExportFilename: vi.fn().mockReturnValue("rowplay-workout-1001.tcx"),
 }));
 
 import { GET } from "./+server";
-import { loadWorkoutDetail } from "$lib/server/data";
+import { loadWorkoutDetail } from "#lib/server/data.ts";
 
 const sampleDetail = {
   id: 1001,

@@ -1,6 +1,6 @@
-import { intervalBreakdown } from "$lib/analytics";
-import { paceToWattsForSport } from "$lib/format";
-import type { Split, Sport, Stroke, WorkoutDetail } from "$lib/types";
+import { intervalBreakdown } from "#lib/analytics.ts";
+import { paceToWattsForSport } from "#lib/format.ts";
+import type { Split, Sport, Stroke, WorkoutDetail } from "#lib/types.ts";
 
 export type WorkoutMomentKind =
   | "best-sustained"

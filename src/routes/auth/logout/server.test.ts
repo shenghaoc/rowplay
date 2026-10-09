@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { POST } from "./+server";
-import { SESSION_COOKIE, TOKEN_COOKIE } from "$lib/server/session";
+import { SESSION_COOKIE, TOKEN_COOKIE } from "#lib/server/session.ts";
 
 function fakeEvent(opts: { personal: boolean; user: { id: number } | null }) {
   const deleted: string[] = [];
