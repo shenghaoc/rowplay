@@ -38,7 +38,6 @@
 				{#each DOCS_SECTIONS as section (section.key)}
 					{@const active = isActiveDocsSection(section.slug, page.route.id ?? '')}
 					<li>
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 						<a
 							href={resolve(docsSectionPath(section.slug))}
 							class:menu-active={active}

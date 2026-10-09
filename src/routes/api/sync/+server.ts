@@ -1,4 +1,5 @@
-import { error, json } from "@sveltejs/kit";
+import { withJsonContentLength } from "#lib/server/jsonResponse.ts";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /** Sync feature removed — workouts are fetched live from the Concept2 API. */
@@ -7,5 +8,7 @@ export const POST: RequestHandler = async () => {
 };
 
 export const GET: RequestHandler = async () => {
-  return json({ lastSyncAt: null, total: 0, backfillDone: true, inProgress: false });
+  return withJsonContentLength(
+    Response.json({ lastSyncAt: null, total: 0, backfillDone: true, inProgress: false }),
+  );
 };
