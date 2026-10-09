@@ -1,5 +1,5 @@
 import type { PageServerLoad } from "./$types";
-import { firstRunEligible } from "$lib/firstRun";
+import { firstRunEligible } from "#lib/firstRun.ts";
 
 export const load: PageServerLoad = async (event) => {
   return {

@@ -1,7 +1,7 @@
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { loadAnnualGoal, saveAnnualGoal } from "$lib/server/data";
-import type { AnnualGoalKind } from "$lib/analytics";
+import { loadAnnualGoal, saveAnnualGoal } from "#lib/server/data.ts";
+import type { AnnualGoalKind } from "#lib/analytics.ts";
 
 export const GET: RequestHandler = async (event) => {
   const raw = event.url.searchParams.get("year");

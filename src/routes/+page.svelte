@@ -7,11 +7,11 @@
 	import X from '@lucide/svelte/icons/x';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { getI18nContext } from '$lib/i18n.svelte';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
 	import {
 		dismissFirstRunSurface,
 		isFirstRunSurfaceDismissed
-	} from '$lib/firstRun';
+	} from '#lib/firstRun.ts';
 	let { data } = $props();
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);

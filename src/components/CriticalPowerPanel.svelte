@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type uPlot from 'uplot';
-	import UPlotChart from '$components/UPlotChart.svelte';
+	import UPlotChart from '#components/UPlotChart.svelte';
 	import Zap from '@lucide/svelte/icons/zap';
 	import {
 		estimateCriticalPower,
@@ -9,12 +9,12 @@
 		predictTimeForDistance,
 		type CriticalPower,
 		type CriticalPowerWarning
-	} from '$lib/analytics';
-	import { fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '$lib/format';
-	import type { Sport, Workout } from '$lib/types';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import { getThemeContext } from '$lib/theme.svelte';
-	import { chartTheme, baseOptions } from '$lib/chartTheme';
+	} from '#lib/analytics.ts';
+	import { fmtDistance, fmtPace, fmtPaceBare, fmtTime, SPORT_LABEL } from '#lib/format.ts';
+	import type { Sport, Workout } from '#lib/types.ts';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import { getThemeContext } from '#lib/theme.svelte.ts';
+	import { chartTheme, baseOptions } from '#lib/chartTheme.ts';
 
 	let { workouts }: { workouts: Workout[] } = $props();
 

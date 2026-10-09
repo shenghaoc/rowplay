@@ -1,6 +1,6 @@
 import type { PageServerLoad } from "./$types";
 import { redirect } from "@sveltejs/kit";
-import { loadHomeTimezone, loadWorkouts } from "$lib/server/data";
+import { loadHomeTimezone, loadWorkouts } from "#lib/server/data.ts";
 
 /**
  * Export and home-timezone preferences are stateless: both remain available

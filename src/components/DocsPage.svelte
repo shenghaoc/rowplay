@@ -1,7 +1,7 @@
 <script lang="ts">
-	import DocsArticle from '$components/DocsArticle.svelte';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import type { DocsSectionKey } from '$lib/docs';
+	import DocsArticle from '#components/DocsArticle.svelte';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import type { DocsSectionKey } from '#lib/docs.ts';
 
 	let { section }: { section: DocsSectionKey } = $props();
 

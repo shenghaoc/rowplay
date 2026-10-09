@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
-	import { getI18nContext } from '$lib/i18n.svelte';
+	import { fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '#lib/format.ts';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
 	import {
 		asLoggedStroke,
 		distancePerStroke,
 		type LoggedStroke
-	} from '$lib/replay/inspector';
-	import { themeFor } from '$lib/replay/sports';
-	import type { Sport, Stroke, WorkoutDetail } from '$lib/types';
+	} from '#lib/replay/inspector.ts';
+	import { themeFor } from '#lib/replay/sports.ts';
+	import type { Sport, Stroke, WorkoutDetail } from '#lib/types.ts';
 
 	let {
 		detail,

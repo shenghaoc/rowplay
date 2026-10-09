@@ -1,6 +1,6 @@
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { loadHomeTimezone, saveHomeTimezone } from "$lib/server/data";
+import { loadHomeTimezone, saveHomeTimezone } from "#lib/server/data.ts";
 
 export const GET: RequestHandler = async (event) => {
   const tz = await loadHomeTimezone(event);

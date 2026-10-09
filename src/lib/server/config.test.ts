@@ -1,16 +1,17 @@
+import { setWorkerEnv } from "../../../tests/setup";
 import { describe, expect, it } from "vite-plus/test";
 import { getConfig } from "./config";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fakeEvent(env: Record<string, string | undefined> = {}): any {
+  setWorkerEnv(env);
   return {
-    platform: { env },
     request: { url: "https://rowplay.example.com/dashboard" },
   };
 }
 
 describe("getConfig", () => {
-  it("reads clientId and clientSecret from the platform env", () => {
+  it("reads clientId and clientSecret from the native Worker env", () => {
     const cfg = getConfig(fakeEvent({ CONCEPT2_CLIENT_ID: "cid", CONCEPT2_CLIENT_SECRET: "sec" }));
     expect(cfg.clientId).toBe("cid");
     expect(cfg.clientSecret).toBe("sec");

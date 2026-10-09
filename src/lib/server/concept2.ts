@@ -1,4 +1,4 @@
-import { nowEpochMillis } from "$lib/datetime";
+import { nowEpochMillis } from "#lib/datetime.ts";
 import { paceToWattsForSport } from "../format";
 import {
   toSport,

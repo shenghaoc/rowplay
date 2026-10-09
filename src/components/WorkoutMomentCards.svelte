@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { fmtPace, fmtTime } from '$lib/format';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import { themeFor } from '$lib/replay/sports';
-	import type { Sport } from '$lib/types';
-	import type { WorkoutMoment, WorkoutMomentReport } from '$lib/workoutMoments';
+	import { fmtPace, fmtTime } from '#lib/format.ts';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import { themeFor } from '#lib/replay/sports.ts';
+	import type { Sport } from '#lib/types.ts';
+	import type { WorkoutMoment, WorkoutMomentReport } from '#lib/workoutMoments.ts';
 
 	let { report, sport, onseek }: { report: WorkoutMomentReport; sport: Sport; onseek: (seconds: number) => void } = $props();
 	const i18n = getI18nContext();

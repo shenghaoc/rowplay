@@ -1,5 +1,5 @@
-import { addDaysToKey, trainingStreakStats, workoutDayKey } from "$lib/analytics";
-import type { Sport, Workout } from "$lib/types";
+import { addDaysToKey, trainingStreakStats, workoutDayKey } from "#lib/analytics.ts";
+import type { Sport, Workout } from "#lib/types.ts";
 
 export interface Milestone {
   id: string;

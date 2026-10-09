@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.ts", () => ({
   loadWorkouts: vi.fn().mockResolvedValue([
     { id: 1001, hasStrokeData: true, date: "2026-01-01" },
     { id: 1002, hasStrokeData: false, date: "2026-01-02" },
@@ -9,7 +9,7 @@ vi.mock("$lib/server/data", () => ({
 }));
 
 import { load } from "./+page.server";
-import { loadWorkouts } from "$lib/server/data";
+import { loadWorkouts } from "#lib/server/data.ts";
 
 function event(opts: { demo?: boolean; user?: { id: number } | null } = {}) {
   return {

@@ -1,6 +1,6 @@
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { loadWorkoutDetail } from "$lib/server/data";
+import { loadWorkoutDetail } from "#lib/server/data.ts";
 
 export const GET: RequestHandler = async (event) => {
   const id = Number(event.params.id);

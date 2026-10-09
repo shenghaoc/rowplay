@@ -1,6 +1,6 @@
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { generateMockWorkout, mockWorkouts } from "$lib/mockData";
+import { generateMockWorkout, mockWorkouts } from "#lib/mockData.ts";
 
 /** Demo-only: synthesise a new workout for live-mode mock polling. */
 export const POST: RequestHandler = async (event) => {

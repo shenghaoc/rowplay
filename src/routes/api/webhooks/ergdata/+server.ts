@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -6,7 +7,7 @@ import type { RequestHandler } from "./$types";
  * Full integration deferred until ErgData publishes a stable webhook API.
  */
 export const POST: RequestHandler = async (event) => {
-  const secret = event.platform?.env?.ERGDATA_WEBHOOK_SECRET;
+  const secret = env.ERGDATA_WEBHOOK_SECRET;
   if (!secret) {
     throw error(501, "ErgData webhooks are not configured on this deployment.");
   }

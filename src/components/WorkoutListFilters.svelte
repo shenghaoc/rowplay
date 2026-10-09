@@ -11,11 +11,11 @@
 		toggleDurationChip,
 		type WorkoutListQuery,
 		type WorkoutSortField
-	} from '$lib/workoutQuery';
+	} from '#lib/workoutQuery.ts';
 	import { untrack } from 'svelte';
-	import ChipButton from '$components/ChipButton.svelte';
-	import ChipGroup from '$components/ChipGroup.svelte';
-	import { getI18nContext } from '$lib/i18n.svelte';
+	import ChipButton from '#components/ChipButton.svelte';
+	import ChipGroup from '#components/ChipGroup.svelte';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
 
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);

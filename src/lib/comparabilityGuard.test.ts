@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
-import { durationBand } from "$lib/analytics";
+import { durationBand } from "#lib/analytics.ts";
 import {
   areComparable,
   classifyAxis,
   type ComparableContext,
-} from "$lib/replay/comparabilityGuard";
+} from "#lib/replay/comparabilityGuard.ts";
 
 function ctx(overrides: Partial<ComparableContext> = {}): ComparableContext {
   return {

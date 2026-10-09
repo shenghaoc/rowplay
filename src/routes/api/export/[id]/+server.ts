@@ -1,7 +1,7 @@
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { loadWorkoutDetail } from "$lib/server/data";
-import { workoutDetailToTcx, workoutExportFilename } from "$lib/server/export";
+import { loadWorkoutDetail } from "#lib/server/data.ts";
+import { workoutDetailToTcx, workoutExportFilename } from "#lib/server/export.ts";
 
 export const GET: RequestHandler = async (event) => {
   const id = Number(event.params.id);

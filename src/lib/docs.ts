@@ -16,8 +16,8 @@ export const DOCS_SECTIONS = [
 
 export type DocsSectionKey = (typeof DOCS_SECTIONS)[number]["key"];
 
-export function docsSectionPath(slug: string): string {
-  return slug ? `/docs/${slug}` : "/docs";
+export function docsSectionPath(slug: (typeof DOCS_SECTIONS)[number]["slug"]) {
+  return slug ? (`/docs/${slug}` as const) : "/docs";
 }
 
 export function isActiveDocsSection(slug: string, pathname: string): boolean {

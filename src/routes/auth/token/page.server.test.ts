@@ -1,27 +1,28 @@
+import { setWorkerEnv } from "../../../../tests/setup";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/server/config", () => ({
+vi.mock("#lib/server/config.ts", () => ({
   getConfig: vi.fn().mockReturnValue({ clientId: null, appUrl: "http://localhost" }),
 }));
-vi.mock("$lib/server/concept2", () => ({
+vi.mock("#lib/server/concept2.ts", () => ({
   fetchMe: vi.fn(),
 }));
-vi.mock("$lib/server/session", () => ({
+vi.mock("#lib/server/session.ts", () => ({
   writeSession: vi.fn().mockResolvedValue(undefined),
   SESSION_COOKIE: "rp_session",
   TOKEN_COOKIE: "rp_tok",
 }));
-vi.mock("$lib/server/tokenCrypto", () => ({
+vi.mock("#lib/server/tokenCrypto.ts", () => ({
   sealToken: vi.fn().mockResolvedValue("sealed-token"),
 }));
-vi.mock("$lib/datetime", () => ({
+vi.mock("#lib/datetime.ts", () => ({
   nowEpochMillis: vi.fn().mockReturnValue(1_000_000_000),
 }));
 
 import { actions, load } from "./+page.server";
-import { fetchMe } from "$lib/server/concept2";
-import { TOKEN_COOKIE, writeSession } from "$lib/server/session";
-import { sealToken } from "$lib/server/tokenCrypto";
+import { fetchMe } from "#lib/server/concept2.ts";
+import { TOKEN_COOKIE, writeSession } from "#lib/server/session.ts";
+import { sealToken } from "#lib/server/tokenCrypto.ts";
 
 type Mock = ReturnType<typeof vi.fn>;
 
@@ -34,11 +35,11 @@ beforeEach(() => {
 function fakeLoadEvent(user?: { id: number; username: string } | null) {
   return {
     locals: { user: user ?? null },
-    platform: { env: {} },
   };
 }
 
 function fakeActionEvent(opts: { token?: string; secret?: string; url?: string }) {
+  setWorkerEnv(opts.secret ? { SESSION_SECRET: opts.secret } : {});
   const formData = new FormData();
   if (opts.token !== undefined) formData.append("token", opts.token);
 
@@ -47,7 +48,6 @@ function fakeActionEvent(opts: { token?: string; secret?: string; url?: string }
     event: {
       locals: { lang: "en" },
       request: { formData: async () => formData },
-      platform: { env: opts.secret ? { SESSION_SECRET: opts.secret } : {} },
       url: new URL(opts.url ?? "http://localhost/auth/token"),
       cookies: {
         set: (name: string, val: string, options: Record<string, unknown>) => {

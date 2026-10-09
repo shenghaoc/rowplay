@@ -1,6 +1,6 @@
 import type { PageServerLoad } from "./$types";
 import { isHttpError, redirect } from "@sveltejs/kit";
-import { todayKeyForTz } from "$lib/datetime";
+import { todayKeyForTz } from "#lib/datetime.ts";
 import {
   listQueryFromEvent,
   loadAnnualGoal,
@@ -8,9 +8,9 @@ import {
   loadHomeTimezone,
   loadWorkoutList,
   loadWorkouts,
-} from "$lib/server/data";
-import { createLogger } from "$lib/server/logger";
-import { firstRunEligible } from "$lib/firstRun";
+} from "#lib/server/data.ts";
+import { createLogger } from "#lib/server/logger.ts";
+import { firstRunEligible } from "#lib/firstRun.ts";
 
 const logger = createLogger(console);
 

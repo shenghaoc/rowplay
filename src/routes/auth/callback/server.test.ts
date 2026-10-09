@@ -1,13 +1,14 @@
+import { setWorkerEnv } from "../../../../tests/setup";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/server/config", () => ({
+vi.mock("#lib/server/config.ts", () => ({
   getConfig: vi.fn().mockReturnValue({
     clientId: "cid",
     clientSecret: "csecret",
     redirectUri: "http://localhost/auth/callback",
   }),
 }));
-vi.mock("$lib/server/concept2", () => ({
+vi.mock("#lib/server/concept2.ts", () => ({
   exchangeCode: vi.fn().mockResolvedValue({
     accessToken: "tok",
     refreshToken: "rtok",
@@ -16,7 +17,7 @@ vi.mock("$lib/server/concept2", () => ({
   }),
   fetchMe: vi.fn().mockResolvedValue({ id: 7, username: "athlete" }),
 }));
-vi.mock("$lib/server/session", () => ({
+vi.mock("#lib/server/session.ts", () => ({
   writeSession: vi.fn().mockResolvedValue(undefined),
   SESSION_COOKIE: "rp_session",
   OAUTH_STATE_COOKIE: "rp_oauth_state",
@@ -31,6 +32,7 @@ function fakeEvent(opts: {
   errorParam?: string | null;
   secret?: string;
 }) {
+  setWorkerEnv({ SESSION_SECRET: opts.secret ?? "test-secret-32-chars-long!!!!" });
   const params = new URLSearchParams();
   if (opts.code) params.set("code", opts.code);
   if (opts.state) params.set("state", opts.state);
@@ -49,7 +51,6 @@ function fakeEvent(opts: {
         delete: (name: string) => cookiesDeleted.push(name),
       },
       locals: {},
-      platform: { env: { SESSION_SECRET: opts.secret ?? "test-secret-32-chars-long!!!!" } },
     },
     cookiesSet,
     cookiesDeleted,
