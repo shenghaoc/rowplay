@@ -52,3 +52,19 @@ zero/negative/fractional IDs, while detail/replay retain their existing lookup
 404s. Hexadecimal, exponent, whitespace and leading-zero coercion remain valid.
 The retired tag endpoint remains 410 for every ID. Authentication, personal
 cache headers and best-effort replay candidates remain in the same order.
+
+## Central error observability without private request data
+
+Kit 3 sends app, framework, validation and unknown errors to `handleError`.
+Rowplay now logs kind, status and the static registered route ID through
+`createLogger`: expected errors at warning level, unknown failures at error
+level. Returning nothing preserves Kit's original status/message response.
+No raw error/message/stack/cause, path/query, headers, cookies, session/locals or
+validation input is logged. Static route IDs contain no parsed parameter values.
+
+Per-route logging removal is skipped after inspecting actual catch paths:
+dashboard fallback, replay candidate fallback and aggregate fallback recover
+errors into successful return values, so those errors never reach the hook.
+Tests explicitly retain dashboard/replay recovery output; existing aggregate
+failure tests retain null fallback behavior. Removing these logs would lose
+coverage. No new remote functions, tracing or shallow routing is introduced.

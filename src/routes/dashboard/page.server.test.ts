@@ -12,6 +12,7 @@ vi.mock("#lib/server/data.ts", () => ({
 }));
 
 import { load } from "./+page.server";
+import { loadWorkoutList } from "#lib/server/data.ts";
 
 function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null } = {}) {
   return {
@@ -56,4 +57,25 @@ describe("load /dashboard", () => {
     const data = (await load(event as any)) as any;
     expect(data.calendarEndDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
+});
+
+it("retains the dashboard recovery log for an error that never reaches handleError", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.mocked(loadWorkoutList).mockRejectedValueOnce(new Error("synthetic API outage"));
+  try {
+    const data = (await load(fakeEvent({ demo: true }) as never)) as {
+      workouts: unknown[];
+      listWorkouts: unknown[];
+      aggregates: unknown;
+    };
+    expect(data.workouts).toEqual([]);
+    expect(data.listWorkouts).toEqual([]);
+    expect(data.aggregates).toBeNull();
+    expect(log).toHaveBeenCalledExactlyOnceWith(
+      "[dashboard] workout fetch failed:",
+      "synthetic API outage",
+    );
+  } finally {
+    log.mockRestore();
+  }
 });
