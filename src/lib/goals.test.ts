@@ -100,4 +100,11 @@ describe("serializeGoalsCookie", () => {
     expect(parseGoalsCookie(raw, 8)).toBeNull();
     expect(parseGoalsCookie(raw)).toBeNull();
   });
+
+  it("returns null when a stored userId is not a positive integer", () => {
+    const goal = { year: 2026, kind: "meters" as const, target: 500000 };
+    expect(parseGoalsCookie(JSON.stringify({ ...goal, userId: 0 }), 1)).toBeNull();
+    expect(parseGoalsCookie(JSON.stringify({ ...goal, userId: -7 }), 1)).toBeNull();
+    expect(parseGoalsCookie(JSON.stringify({ ...goal, userId: 1.5 }), 1)).toBeNull();
+  });
 });

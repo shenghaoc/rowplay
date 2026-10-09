@@ -136,6 +136,31 @@ describe("persistLanguage", () => {
 
     expect(stored["lang"]).toBe("de");
     expect(cookiesSet.some((c) => c.startsWith("lang=de"))).toBe(true);
+    expect(cookiesSet.some((c) => c.includes("SameSite=Lax") && c.includes("Secure"))).toBe(true);
+  });
+
+  it("omits the Secure cookie flag on HTTP", () => {
+    const cookiesSet: string[] = [];
+    vi.stubGlobal("document", {
+      get documentElement() {
+        return { set lang(_v: string) {} };
+      },
+      set cookie(v: string) {
+        cookiesSet.push(v);
+      },
+    });
+    vi.stubGlobal("localStorage", {
+      setItem: () => {},
+      getItem: () => null,
+    });
+    vi.stubGlobal("location", { protocol: "http:" });
+
+    persistLanguage("en");
+
+    expect(cookiesSet.some((c) => c.startsWith("lang=en") && c.includes("SameSite=Lax"))).toBe(
+      true,
+    );
+    expect(cookiesSet.some((c) => c.includes("Secure"))).toBe(false);
   });
 
   it("does not throw when localStorage is blocked", () => {

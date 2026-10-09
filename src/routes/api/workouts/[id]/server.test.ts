@@ -41,4 +41,18 @@ describe("GET /api/workouts/[id]", () => {
     const body = await res.json();
     expect(body.id).toBe(1001);
   });
+
+  it("sets cache-control: private, no-store on workout detail", async () => {
+    (loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await GET(fakeEvent("1001") as any);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("throws 400 for non-finite ids such as Infinity", async () => {
+    (loadWorkoutDetail as ReturnType<typeof vi.fn>).mockClear();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(GET(fakeEvent("Infinity") as any)).rejects.toMatchObject({ status: 400 });
+    expect(loadWorkoutDetail).not.toHaveBeenCalled();
+  });
 });

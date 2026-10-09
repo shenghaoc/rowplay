@@ -71,6 +71,12 @@ describe("GET /auth/callback", () => {
     expect(err.body?.message ?? err.message ?? "").toContain("unknown_error");
   });
 
+  it("throws 400 when the authorization code is missing", async () => {
+    const { event } = fakeEvent({ state: "expected", storedState: "expected" });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(GET(event as any)).rejects.toMatchObject({ status: 400 });
+  });
+
   it("throws 400 when state param is missing", async () => {
     const { event } = fakeEvent({ code: "mycode", storedState: "expected" });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,6 +87,28 @@ describe("GET /auth/callback", () => {
     const { event } = fakeEvent({ code: "mycode", state: "wrong", storedState: "expected" });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect(GET(event as any)).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("always clears the OAuth state cookie, even on a CSRF mismatch", async () => {
+    const { event, cookiesDeleted } = fakeEvent({
+      code: "mycode",
+      state: "wrong",
+      storedState: "expected",
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(GET(event as any)).rejects.toMatchObject({ status: 400 });
+    expect(cookiesDeleted).toContain("rp_oauth_state");
+  });
+
+  it("throws 500 when SESSION_SECRET is not configured", async () => {
+    const { event } = fakeEvent({
+      code: "mycode",
+      state: "abc123",
+      storedState: "abc123",
+      secret: "",
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(GET(event as any)).rejects.toMatchObject({ status: 500 });
   });
 
   it("redirects to dashboard on successful OAuth exchange", async () => {

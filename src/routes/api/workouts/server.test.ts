@@ -8,6 +8,7 @@ vi.mock("$lib/server/data", () => ({
 }));
 
 import { GET } from "./+server";
+import { listQueryFromEvent } from "$lib/server/data";
 
 function fakeEvent(demo = true) {
   return {
@@ -33,5 +34,26 @@ describe("GET /api/workouts", () => {
     const res = await GET(fakeEvent(true) as any);
     const body = await res.json();
     expect(body.demo).toBe(true);
+  });
+
+  it("sets cache-control: private, no-store so personal lists are not cached", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await GET(fakeEvent(false) as any);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    const body = await res.json();
+    expect(body.demo).toBe(false);
+  });
+
+  it("marks the payload as filtered when list-specific filters are active", async () => {
+    (listQueryFromEvent as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      sport: null,
+      dateFrom: "2026-01-01",
+      sort: "date",
+      dir: "desc",
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await GET(fakeEvent() as any);
+    const body = await res.json();
+    expect(body.filtered).toBe(true);
   });
 });

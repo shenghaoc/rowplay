@@ -62,4 +62,15 @@ describe("load /replay/[id]", () => {
     expect(data.candidates).toHaveLength(1);
     expect(data.candidates[0].id).toBe(1002);
   });
+
+  it("keeps replay available when ghost candidate loading fails", async () => {
+    (loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
+    (loadWorkouts as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("rate limited"));
+    const event = fakeEvent({ demo: false, user: { id: 7 } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (await load(event as any)) as any;
+    expect(data.detail.id).toBe(1001);
+    expect(data.candidates).toEqual([]);
+    expect(data.demo).toBe(false);
+  });
 });
