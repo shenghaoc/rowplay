@@ -1,8 +1,9 @@
 import { env } from "cloudflare:workers";
-import type { Handle } from "@sveltejs/kit/hooks";
+import type { Handle, HandleServerError } from "@sveltejs/kit/hooks";
 import { daisyThemeName } from "#lib/theme.svelte.ts";
 import { openSession, SESSION_COOKIE } from "#lib/server/session.ts";
 import { isLanguage, type Language } from "#lib/i18n.ts";
+import { createLogger } from "#lib/server/logger.ts";
 // Vite resolves this to the hashed, self-hosted asset URL at build time so the
 // preload href always matches the emitted woff2.
 import sourceSans400Url from "@fontsource/source-sans-3/files/source-sans-3-latin-400-normal.woff2?url";
@@ -12,6 +13,20 @@ import sourceSans400Url from "@fontsource/source-sans-3/files/source-sans-3-lati
 // all forward would waste bandwidth. crossorigin is required even same-origin —
 // fonts are always fetched in CORS mode, and omitting it causes a double fetch.
 const FONT_PRELOAD = `<link rel="preload" href="${sourceSans400Url}" as="font" type="font/woff2" crossorigin="anonymous" />`;
+
+const logger = createLogger(console);
+
+/** Kit 3 includes expected errors; log bounded metadata and retain the default HTTP body. */
+export const handleError: HandleServerError = ({ kind, error, event }) => {
+  const metadata = {
+    kind,
+    status: kind === "unknown" ? 500 : error.status,
+    route: event.route.id,
+  };
+  // Error messages/stacks, URLs, headers, cookies and locals can contain credentials.
+  if (kind === "unknown") logger.error("[sveltekit] request failed", metadata);
+  else logger.warn("[sveltekit] request rejected", metadata);
+};
 
 export const handle: Handle = async ({ event, resolve }) => {
   // Unauthenticated visitors see demo (mock) data; a valid session — OAuth or a
