@@ -165,7 +165,7 @@
 					duration: 8000,
 					action: {
 						label: t('liveMode.view'),
-						onClick: () => goto(resolve('/replay/[id]', { id: String(w.id) }))
+						onClick: () => goto(resolve('/replay/[id=workoutId]', { id: w.id }))
 					}
 				}
 			);
@@ -617,7 +617,7 @@
 							const idx = u.cursor.idx;
 							const pts = dpsPoints;
 							if (idx != null && idx >= 0 && pts[idx]) {
-								goto(resolve('/replay/[id]', { id: String(pts[idx].workoutId) }));
+								goto(resolve('/replay/[id=workoutId]', { id: pts[idx].workoutId }));
 							}
 						});
 					}
@@ -675,7 +675,7 @@
 						<a
 							class="tour-link"
 							href={hint.id === 'latestReplay' && latest
-								? resolve('/replay/[id]', { id: String(latest.id) })
+								? resolve('/replay/[id=workoutId]', { id: latest.id })
 								: resolve(`/dashboard#${hint.id === 'latestReplay' ? 'workouts' : hint.id === 'criticalPower' ? 'critical-power' : 'workout-filters'}`)}
 						>
 							<span class="tour-title">{hint.title}</span>
@@ -706,7 +706,7 @@
 	{#if latest}
 		<a
 			class="card latest"
-			href={resolve('/replay/[id]', { id: String(latest.id) })}
+			href={resolve('/replay/[id=workoutId]', { id: latest.id })}
 			data-e2e="latest-replay"
 		>
 			<span class="latest-accent" aria-hidden="true"></span>

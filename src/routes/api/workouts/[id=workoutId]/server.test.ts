@@ -22,7 +22,7 @@ const sampleDetail = {
 
 function fakeEvent(id: string) {
   return {
-    params: { id },
+    params: { id: Number(id) },
     locals: { demo: true },
     platform: { env: { DB: {}, SESSIONS: {} } },
   };

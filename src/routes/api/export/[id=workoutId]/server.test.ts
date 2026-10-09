@@ -29,7 +29,7 @@ function fakeEvent(id: string, format?: string) {
     ? `http://localhost/api/export/${id}?format=${format}`
     : `http://localhost/api/export/${id}`;
   return {
-    params: { id },
+    params: { id: Number(id) },
     request: { url },
     locals: { demo: true },
     platform: { env: { DB: {}, SESSIONS: {} } },
