@@ -1,5 +1,5 @@
-import { distanceBand, durationBand } from "$lib/analytics";
-import type { Sport } from "$lib/types";
+import { distanceBand, durationBand } from "#lib/analytics.ts";
+import type { Sport } from "#lib/types.ts";
 
 export type ComparabilityAxis = "distance" | "time";
 

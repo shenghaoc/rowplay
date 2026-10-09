@@ -1,4 +1,4 @@
-import { base } from "$app/paths";
+import { asset } from "$app/paths";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
@@ -174,8 +174,12 @@ const TEMPLATE_ATTACHMENT_KEY = "replayAssetTemplateAttachment";
 const TEMPLATE_INSTANCE_KEY = "authoredReplayAssetTemplateInstance";
 const TEMPLATE_ERROR_KEY = "authoredReplayAssetTemplateError";
 
-function assetUrl(path = REPLAY_ASSET_PATH): string {
-  return `${base}${path}`;
+function assetUrl(
+  path: typeof REPLAY_ASSET_PATH | typeof REPLAY_ASSET_V3_PATH = REPLAY_ASSET_PATH,
+): string {
+  return path === REPLAY_ASSET_V3_PATH
+    ? asset("replay-assets/rowplay-rigs-v3.glb")
+    : asset("replay-assets/rowplay-rigs-v2.glb");
 }
 
 function disposeParsedScene(scene: THREE.Object3D): void {

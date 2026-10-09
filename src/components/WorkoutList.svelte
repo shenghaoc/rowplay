@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { createVirtualizer } from '@tanstack/svelte-virtual';
-	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '$lib/format';
-	import SportIcon from '$components/SportIcon.svelte';
-	import { base } from '$app/paths';
+	import { fmtDate, fmtDistance, fmtPace, fmtTime, SPORT_LABEL } from '#lib/format.ts';
+	import SportIcon from '#components/SportIcon.svelte';
+	import { resolve } from '$app/paths';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import type { Workout } from '$lib/types';
-	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
+	import type { Workout } from '#lib/types.ts';
+	import { MACHINE_COLOR, themeFor } from '#lib/replay/sports.ts';
 	import { get } from 'svelte/store';
-	import { getI18nContext } from '$lib/i18n.svelte';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
 
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);
@@ -95,7 +95,7 @@
 	<p class="muted">
 		{t('workoutList.empty')}
 		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-		<a href="{base}/docs/getting-started">{t('docs.contextual.gettingStarted')}</a>
+		<a href={resolve('/docs/getting-started')}>{t('docs.contextual.gettingStarted')}</a>
 	</p>
 {:else if virtual}
 	<!-- Windowed list: a fixed-height scroller with absolutely-positioned rows. -->

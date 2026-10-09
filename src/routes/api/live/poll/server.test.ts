@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.ts", () => ({
   pollRecentWorkouts: vi.fn(),
 }));
 
 import { POST } from "./+server";
-import { pollRecentWorkouts } from "$lib/server/data";
+import { pollRecentWorkouts } from "#lib/server/data.ts";
 
 function fakeEvent(demo = false) {
   return { locals: { demo }, platform: { env: {} } };

@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type uPlot from 'uplot';
-	import UPlotChart from '$components/UPlotChart.svelte';
-	import MetricGauge from '$components/MetricGauge.svelte';
-	import { base, resolve } from '$app/paths';
-	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '$lib/replay/engine';
-	import { splitIndexAt } from '$lib/replay/inspector';
-	import { CourseRenderer, type RenderState, type ReplayRenderer } from '$lib/replay/renderer';
+	import UPlotChart from '#components/UPlotChart.svelte';
+	import MetricGauge from '#components/MetricGauge.svelte';
+	import { resolve } from '$app/paths';
+	import { ReplayEngine, sampleAt, sampleIndexAt, type Frame } from '#lib/replay/engine.ts';
+	import { splitIndexAt } from '#lib/replay/inspector.ts';
+	import { CourseRenderer, type RenderState, type ReplayRenderer } from '#lib/replay/renderer.ts';
 	import {
 		loadRendererPref,
 		saveRendererPref,
@@ -14,15 +14,15 @@
 		saveQualityPref,
 		type RendererKind,
 		type RenderQuality
-	} from '$lib/replay/replayRenderer';
+	} from '#lib/replay/replayRenderer.ts';
 	import {
 		createRenderer3D,
 		renderer3dSupported,
 		webglSupported,
 		type Renderer3DBackend
-	} from '$lib/replay/renderer3dLoader';
-	import { MACHINE_COLOR, themeFor } from '$lib/replay/sports';
-	import { buildStrokeTimeline, strokePoseAt } from '$lib/replay/strokeModel';
+	} from '#lib/replay/renderer3dLoader.ts';
+	import { MACHINE_COLOR, themeFor } from '#lib/replay/sports.ts';
+	import { buildStrokeTimeline, strokePoseAt } from '#lib/replay/strokeModel.ts';
 	import {
 		hrZones,
 		powerCurve,
@@ -33,18 +33,18 @@
 		targetVsActual,
 		workRestEfficiency,
 		type TargetVsActualRow
-	} from '$lib/analytics';
-	import { avgWatts, fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, SPORT_LABEL } from '$lib/format';
-	import type { Sport, Stroke, Workout, WorkoutDetail } from '$lib/types';
-	import { isExrSource } from '$lib/exrSource';
+	} from '#lib/analytics.ts';
+	import { avgWatts, fmtDate, fmtDistance, fmtPace, fmtPaceBare, fmtTime, fmtLogbookDateTime, SPORT_LABEL } from '#lib/format.ts';
+	import type { Sport, Stroke, Workout, WorkoutDetail } from '#lib/types.ts';
+	import { isExrSource } from '#lib/exrSource.ts';
 	import { untrack } from 'svelte';
-	import { constantPaceGhost, parseWorkoutFile } from '$lib/replay/sources';
+	import { constantPaceGhost, parseWorkoutFile } from '#lib/replay/sources.ts';
 	import {
 		raceGapMetres,
 		raceGapSeconds,
 		ghostDistAtPlayerFinish,
 		playerDistAtGhostFinish
-	} from '$lib/replay/replayGap';
+	} from '#lib/replay/replayGap.ts';
 	import {
 		applyHrImport,
 		clearHrOverlay,
@@ -54,9 +54,9 @@
 		readHrOverlay,
 		strokesHaveHr,
 		writeHrOverlay
-	} from '$lib/hrImport';
-	import { pickDefaultGhostCandidate } from '$lib/replay/ghostPick';
-	import { areComparable } from '$lib/replay/comparabilityGuard';
+	} from '#lib/hrImport.ts';
+	import { pickDefaultGhostCandidate } from '#lib/replay/ghostPick.ts';
+	import { areComparable } from '#lib/replay/comparabilityGuard.ts';
 	import { toast } from 'svelte-sonner';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Play from '@lucide/svelte/icons/play';
@@ -66,18 +66,18 @@
 	import ImageDown from '@lucide/svelte/icons/image-down';
 	import Heart from '@lucide/svelte/icons/heart';
 	import Binary from '@lucide/svelte/icons/binary';
-	import { downloadRaceCardPng } from '$lib/replay/raceCard';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import { getThemeContext } from '$lib/theme.svelte';
-	import { chartTheme, baseOptions, type SeriesConfig, type SeriesRole } from '$lib/chartTheme';
-	import { formatPaceInput, parsePaceInput } from '$lib/paceInput';
-	import SportIcon from '$components/SportIcon.svelte';
+	import { downloadRaceCardPng } from '#lib/replay/raceCard.ts';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import { getThemeContext } from '#lib/theme.svelte.ts';
+	import { chartTheme, baseOptions, type SeriesConfig, type SeriesRole } from '#lib/chartTheme.ts';
+	import { formatPaceInput, parsePaceInput } from '#lib/paceInput.ts';
+	import SportIcon from '#components/SportIcon.svelte';
 	import { page } from '$app/state';
-	import InspectorPanel from '$components/InspectorPanel.svelte';
-	import RepComparisonChart from '$components/RepComparisonChart.svelte';
-	import WorkoutMomentCards from '$components/WorkoutMomentCards.svelte';
-	import { detectReps, repColor, repsHaveHr, type RepMetric } from '$lib/repComparison';
-	import { analyzeWorkoutMoments } from '$lib/workoutMoments';
+	import InspectorPanel from '#components/InspectorPanel.svelte';
+	import RepComparisonChart from '#components/RepComparisonChart.svelte';
+	import WorkoutMomentCards from '#components/WorkoutMomentCards.svelte';
+	import { detectReps, repColor, repsHaveHr, type RepMetric } from '#lib/repComparison.ts';
+	import { analyzeWorkoutMoments } from '#lib/workoutMoments.ts';
 
 	let { data } = $props();
 	const i18n = getI18nContext();
@@ -1721,7 +1721,7 @@
 	</div>
 	<p class="muted charts-help">
 	<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-	<a href="{base}/docs/pace-splits-watts">{t('docs.contextual.metrics')}</a>
+	<a href={resolve('/docs/pace-splits-watts')}>{t('docs.contextual.metrics')}</a>
 	</p>
 
 	<!-- Rep comparison -->

@@ -1,7 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { listQueryFromEvent, loadWorkoutList } from "$lib/server/data";
-import { listQueryIsFiltered } from "$lib/workoutQuery";
+import { listQueryFromEvent, loadWorkoutList } from "#lib/server/data.ts";
+import { listQueryIsFiltered } from "#lib/workoutQuery.ts";
 
 export const GET: RequestHandler = async (event) => {
   const q = listQueryFromEvent(event);

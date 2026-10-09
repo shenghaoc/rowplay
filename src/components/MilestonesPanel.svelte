@@ -5,10 +5,10 @@
 		showMilestonesPanel,
 		type Milestone,
 		type MilestonePersonalBest
-	} from '$lib/milestones';
-	import { fmtDate, fmtDistance, fmtTime } from '$lib/format';
-	import type { Workout } from '$lib/types';
-	import { getI18nContext } from '$lib/i18n.svelte';
+	} from '#lib/milestones.ts';
+	import { fmtDate, fmtDistance, fmtTime } from '#lib/format.ts';
+	import type { Workout } from '#lib/types.ts';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
 	import Award from '@lucide/svelte/icons/award';
 	import Flame from '@lucide/svelte/icons/flame';
 	import Flag from '@lucide/svelte/icons/flag';

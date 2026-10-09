@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.ts", () => ({
   listQueryFromEvent: vi
     .fn()
     .mockReturnValue({ sport: null, distance: null, duration: null, sort: "date" }),

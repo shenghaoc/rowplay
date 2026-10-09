@@ -7,12 +7,12 @@
 		type AnnualGoal,
 		type AnnualGoalKind,
 		type BadgeId
-	} from '$lib/analytics';
-	import { DEFAULT_ANNUAL_METERS } from '$lib/goals';
-	import { fmtDistance, fmtTime } from '$lib/format';
-	import type { Workout } from '$lib/types';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import { pluralKey } from '$lib/i18nPlural';
+	} from '#lib/analytics.ts';
+	import { DEFAULT_ANNUAL_METERS } from '#lib/goals.ts';
+	import { fmtDistance, fmtTime } from '#lib/format.ts';
+	import type { Workout } from '#lib/types.ts';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import { pluralKey } from '#lib/i18nPlural.ts';
 	import Flame from '@lucide/svelte/icons/flame';
 	import Medal from '@lucide/svelte/icons/medal';
 	import Target from '@lucide/svelte/icons/target';

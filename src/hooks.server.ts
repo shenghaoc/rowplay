@@ -1,7 +1,8 @@
-import type { Handle } from "@sveltejs/kit";
-import { daisyThemeName } from "$lib/theme.svelte";
-import { openSession, SESSION_COOKIE } from "$lib/server/session";
-import { isLanguage, type Language } from "$lib/i18n";
+import { env } from "cloudflare:workers";
+import type { Handle } from "@sveltejs/kit/hooks";
+import { daisyThemeName } from "#lib/theme.svelte.ts";
+import { openSession, SESSION_COOKIE } from "#lib/server/session.ts";
+import { isLanguage, type Language } from "#lib/i18n.ts";
 // Vite resolves this to the hashed, self-hosted asset URL at build time so the
 // preload href always matches the emitted woff2.
 import sourceSans400Url from "@fontsource/source-sans-3/files/source-sans-3-latin-400-normal.woff2?url";
@@ -13,8 +14,6 @@ import sourceSans400Url from "@fontsource/source-sans-3/files/source-sans-3-lati
 const FONT_PRELOAD = `<link rel="preload" href="${sourceSans400Url}" as="font" type="font/woff2" crossorigin="anonymous" />`;
 
 export const handle: Handle = async ({ event, resolve }) => {
-  const env = event.platform?.env;
-
   // Unauthenticated visitors see demo (mock) data; a valid session — OAuth or a
   // pasted personal token — flips us to that user's real data.
   event.locals.demo = true;

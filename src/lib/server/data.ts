@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import type { RequestEvent } from "@sveltejs/kit";
 import { error } from "@sveltejs/kit";
 import type { Sport, Workout, WorkoutDetail } from "../types";
@@ -18,15 +19,14 @@ import {
   parseWorkoutListQuery,
   pbWorkoutIds,
   type WorkoutListQuery,
-} from "$lib/workoutQuery";
-import type { SportSummary, AnnualGoal } from "$lib/analytics";
-import { defaultAnnualGoal, parseGoalsCookie, serializeGoalsCookie } from "$lib/goals";
+} from "#lib/workoutQuery.ts";
+import type { SportSummary, AnnualGoal } from "#lib/analytics.ts";
+import { defaultAnnualGoal, parseGoalsCookie, serializeGoalsCookie } from "#lib/goals.ts";
 import { createLogger } from "./logger";
 
 const logger = createLogger(console);
 
 async function client(event: RequestEvent): Promise<Concept2Client | null> {
-  const env = event.platform?.env;
   const secret = env?.SESSION_SECRET;
   const sealedSession = event.cookies.get(SESSION_COOKIE);
   if (!secret || !sealedSession) {
@@ -134,7 +134,6 @@ export async function loadAnnualGoal(event: RequestEvent, year: number): Promise
 
 export async function loadHomeTimezone(event: RequestEvent): Promise<string | undefined> {
   if (event.locals.demo) return undefined;
-  const env = event.platform?.env;
   const secret = env?.SESSION_SECRET;
   const sealedSession = event.cookies.get(SESSION_COOKIE);
   if (!secret || !sealedSession) {
@@ -154,7 +153,6 @@ export async function saveHomeTimezone(
   timezone: string | undefined,
 ): Promise<void> {
   if (event.locals.demo) return;
-  const env = event.platform?.env;
   const secret = env?.SESSION_SECRET;
   if (!secret) throw error(401, "Not authenticated.");
   const sealedSession = event.cookies.get(SESSION_COOKIE);

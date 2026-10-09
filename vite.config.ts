@@ -1,6 +1,16 @@
+import adapter from "@sveltejs/adapter-cloudflare";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite-plus";
 import tailwindcss from "@tailwindcss/vite";
+
+export const sveltekitConfig = {
+  preprocess: vitePreprocess(),
+  adapter: adapter(),
+  serviceWorker: { register: true },
+  // Keep the existing service-worker update prompt as the only polling mechanism.
+  version: { pollInterval: 0 },
+};
 
 export default defineConfig({
   staged: {
@@ -23,7 +33,7 @@ export default defineConfig({
     rules: { "vite-plus/prefer-vite-plus-imports": "error" },
     options: { typeAware: true, typeCheck: true },
   },
-  plugins: [tailwindcss(), sveltekit()],
+  plugins: [tailwindcss(), sveltekit(sveltekitConfig)],
   server: {
     port: 5173,
   },

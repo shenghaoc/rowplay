@@ -1,8 +1,8 @@
 import { redirect } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { getConfig } from "$lib/server/config";
-import { buildAuthorizeUrl } from "$lib/server/concept2";
-import { OAUTH_STATE_COOKIE } from "$lib/server/session";
+import { getConfig } from "#lib/server/config.ts";
+import { buildAuthorizeUrl } from "#lib/server/concept2.ts";
+import { OAUTH_STATE_COOKIE } from "#lib/server/session.ts";
 
 export const GET: RequestHandler = async (event) => {
   const cfg = getConfig(event);
@@ -20,5 +20,5 @@ export const GET: RequestHandler = async (event) => {
     maxAge: 600,
   });
 
-  throw redirect(302, buildAuthorizeUrl(cfg, state));
+  throw redirect(302, buildAuthorizeUrl(cfg, state), { external: [new URL(cfg.baseUrl).origin] });
 };

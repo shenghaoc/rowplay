@@ -1,3 +1,4 @@
+import { setWorkerEnv } from "../../../tests/setup";
 import { describe, expect, it, vi, beforeEach } from "vite-plus/test";
 
 // Mock all heavy dependencies so we only exercise the data.ts orchestration logic.
@@ -45,7 +46,6 @@ function mockConcept2Client(methods: Record<string, unknown>) {
 function demoEvent(extras: Record<string, unknown> = {}): any {
   return {
     locals: { demo: true, user: null },
-    platform: { env: {} },
     url: new URL("http://localhost/"),
     cookies: { get: () => undefined, set: vi.fn() },
     ...extras,
@@ -56,22 +56,17 @@ function demoEvent(extras: Record<string, unknown> = {}): any {
 function authedEvent(extras: Record<string, unknown> = {}): any {
   const base = {
     locals: { demo: false, user: { id: 7 }, personal: true },
-    platform: { env: { SESSION_SECRET: "test-secret-that-is-32-chars!!" } },
     url: new URL("http://localhost/"),
     cookies: { get: () => "sealed-session-or-token", set: vi.fn(), delete: vi.fn() },
   };
-  const platform = extras.platform as
-    | { env?: Record<string, unknown>; context?: unknown }
-    | undefined;
+  setWorkerEnv({
+    SESSION_SECRET: "test-secret-that-is-32-chars!!",
+    ...(extras.env as Record<string, string | undefined> | undefined),
+  });
   return {
     ...base,
     ...extras,
     locals: { ...base.locals, ...(extras.locals as Record<string, unknown> | undefined) },
-    platform: {
-      ...base.platform,
-      ...platform,
-      env: { ...base.platform.env, ...platform?.env },
-    },
     cookies: {
       ...base.cookies,
       ...(extras.cookies as Record<string, unknown> | undefined),
@@ -362,7 +357,7 @@ describe("loadHomeTimezone", () => {
   });
 
   it("returns undefined when SESSION_SECRET is missing", async () => {
-    const event = authedEvent({ platform: { env: { SESSION_SECRET: undefined } } });
+    const event = authedEvent({ env: { SESSION_SECRET: undefined } });
     expect(await loadHomeTimezone(event)).toBeUndefined();
   });
 
@@ -398,7 +393,7 @@ describe("saveHomeTimezone", () => {
   });
 
   it("throws 401 when SESSION_SECRET is missing", async () => {
-    const event = authedEvent({ platform: { env: { SESSION_SECRET: undefined } } });
+    const event = authedEvent({ env: { SESSION_SECRET: undefined } });
     await expect(saveHomeTimezone(event, "Asia/Tokyo")).rejects.toMatchObject({ status: 401 });
   });
 

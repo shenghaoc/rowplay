@@ -1,3 +1,4 @@
+import { sveltekitConfig } from "./vite.config";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
@@ -10,7 +11,7 @@ import { playwright } from "vite-plus/test/browser-playwright";
  * `vp test` stays fast and doesn't require a browser.
  */
 export default defineConfig({
-  plugins: [sveltekit()],
+  plugins: [sveltekit(sveltekitConfig)],
   test: {
     name: "browser",
     include: ["src/**/*.browser.test.ts"],

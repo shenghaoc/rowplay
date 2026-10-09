@@ -1,3 +1,4 @@
+import { setWorkerEnv } from "../../../../../tests/setup";
 import { describe, expect, it } from "vite-plus/test";
 import { POST } from "./+server";
 
@@ -18,8 +19,8 @@ async function makeHmacSig(secret: string, body: string): Promise<string> {
 
 function fakeEvent(opts: { secret?: string; sig?: string | null; body?: string }) {
   const body = opts.body ?? '{"workoutId":42}';
+  setWorkerEnv(opts.secret ? { ERGDATA_WEBHOOK_SECRET: opts.secret } : {});
   return {
-    platform: { env: opts.secret ? { ERGDATA_WEBHOOK_SECRET: opts.secret } : {} },
     request: {
       headers: {
         get: (name: string) =>

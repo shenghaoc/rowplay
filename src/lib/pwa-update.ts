@@ -1,5 +1,5 @@
 import { toast } from "svelte-sonner";
-import type { I18n } from "$lib/i18n.svelte";
+import type { I18n } from "#lib/i18n.svelte.ts";
 
 let updateToastShown = false;
 let reloadAfterUpdate = false;

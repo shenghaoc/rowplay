@@ -28,3 +28,8 @@ export function shouldCacheResponse(cacheControl: string | null): boolean {
   const normalized = (cacheControl ?? "").toLowerCase();
   return !normalized.includes("no-store") && !normalized.includes("private");
 }
+
+/** Keep 3D models out of the install-time shell; cache them on first use. */
+export function shouldPrecacheStaticFile(file: string): boolean {
+  return !/\.DS_Store/.test(file) && !file.startsWith("replay-assets/");
+}

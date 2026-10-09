@@ -1,6 +1,6 @@
 import type { Fetcher } from "@cloudflare/workers-types";
-import type { SessionUser } from "$lib/server/session";
-import type { Language } from "$lib/i18n";
+import type { SessionUser } from "#lib/server/session.ts";
+import type { Language } from "#lib/i18n.ts";
 
 declare module "*.md?raw" {
   const content: string;
@@ -8,6 +8,20 @@ declare module "*.md?raw" {
 }
 
 declare global {
+  namespace Cloudflare {
+    interface Env {
+      /** Static-asset server binding (Workers assets). */
+      ASSETS: Fetcher;
+      CONCEPT2_CLIENT_ID: string;
+      CONCEPT2_CLIENT_SECRET: string;
+      CONCEPT2_BASE_URL: string;
+      PUBLIC_APP_URL: string;
+      SESSION_SECRET: string;
+      /** Optional — enables ErgData webhook signature validation. */
+      ERGDATA_WEBHOOK_SECRET?: string;
+    }
+  }
+
   namespace App {
     interface Locals {
       /** Authenticated logbook user, or null when not logged in / demo mode. */
@@ -26,19 +40,6 @@ declare global {
     interface PageData {
       user: SessionUser | null;
       demo: boolean;
-    }
-    interface Platform {
-      env: {
-        /** Static-asset server binding (Workers assets). */
-        ASSETS: Fetcher;
-        CONCEPT2_CLIENT_ID: string;
-        CONCEPT2_CLIENT_SECRET: string;
-        CONCEPT2_BASE_URL: string;
-        PUBLIC_APP_URL: string;
-        SESSION_SECRET: string;
-        /** Optional — enables ErgData webhook signature validation. */
-        ERGDATA_WEBHOOK_SECRET?: string;
-      };
     }
   }
 }

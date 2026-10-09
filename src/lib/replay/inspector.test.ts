@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { mapStrokes } from "$lib/server/concept2";
-import type { Sport } from "$lib/types";
+import { mapStrokes } from "#lib/server/concept2.ts";
+import type { Sport } from "#lib/types.ts";
 import { ladderStrokes } from "../../../tests/unit/fixtures";
 import { asLoggedStroke, distancePerStroke, splitIndexAt } from "./inspector";
 

@@ -1,6 +1,11 @@
-import { distanceBand } from "$lib/analytics";
-import type { Sport, Workout } from "$lib/types";
-import { athleteMedianPace, isValidWorkoutTag, resolveTag, type WorkoutTag } from "$lib/workoutTag";
+import { distanceBand } from "#lib/analytics.ts";
+import type { Sport, Workout } from "#lib/types.ts";
+import {
+  athleteMedianPace,
+  isValidWorkoutTag,
+  resolveTag,
+  type WorkoutTag,
+} from "#lib/workoutTag.ts";
 
 /** Fields the list can sort by. */
 export type WorkoutSortField = "date" | "distance" | "time" | "pace" | "power";
