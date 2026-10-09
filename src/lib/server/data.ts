@@ -19,7 +19,7 @@ import {
   pbWorkoutIds,
   type WorkoutListQuery,
 } from "$lib/workoutQuery";
-import type { SportSummary, AnnualGoal } from "$lib/analytics";
+import { distancePBs, type AnnualGoal, type SportSummary } from "$lib/analytics";
 import { defaultAnnualGoal, parseGoalsCookie, serializeGoalsCookie } from "$lib/goals";
 import { createLogger } from "./logger";
 
@@ -236,36 +236,10 @@ export async function loadDashboardAggregates(
     longest: v.longest,
   }));
 
-  // Compute PBs per standard distance per sport. Compare pace (sec/500m) not
-  // raw time, so a shorter workout within the 2% tolerance doesn't beat a
-  // faster-paced longer one.
-  const STANDARD_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
-  const pbMap = new Map<
-    string,
-    { distance: number; time: number; pace: number; date: string; sport: Sport }
-  >();
-  for (const w of workouts) {
-    if (w.time <= 0 || w.pace <= 0) continue;
-    for (const target of STANDARD_DISTANCES) {
-      const tol = target * 0.02;
-      if (Math.abs(w.distance - target) <= tol) {
-        const key = `${w.sport}:${target}`;
-        const existing = pbMap.get(key);
-        if (!existing || w.pace < existing.pace) {
-          pbMap.set(key, {
-            distance: target,
-            time: w.time,
-            pace: w.pace,
-            date: w.date,
-            sport: w.sport,
-          });
-        }
-      }
-    }
-  }
-  const pbs = [...pbMap.values()];
-
-  return { bySport, pbs };
+  // PBs share distancePBs() so dashboard cards, chips, milestones, and the
+  // PBs-only filter all pick the fastest pace (sec/500m), not the shortest
+  // raw time inside the ±2% distance window.
+  return { bySport, pbs: distancePBs(workouts) };
 }
 
 export async function loadWorkoutDetail(event: RequestEvent, id: number): Promise<WorkoutDetail> {

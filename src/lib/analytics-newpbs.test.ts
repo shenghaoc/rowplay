@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { detectNewPBs, distancePBs } from "./analytics";
+import { detectNewPBs, distancePBs, pbWorkoutIds } from "./analytics";
 import { workout } from "../../tests/unit/fixtures";
 
 describe("distancePBs", () => {
@@ -12,6 +12,7 @@ describe("distancePBs", () => {
       id: 1,
       distance: 2000,
       time: 480,
+      pace: 120,
       sport: "rower",
       date: "2026-05-01 06:00:00",
     });
@@ -19,6 +20,7 @@ describe("distancePBs", () => {
       id: 2,
       distance: 2000,
       time: 490,
+      pace: 122.5,
       sport: "rower",
       date: "2026-04-01 06:00:00",
     });
@@ -26,6 +28,43 @@ describe("distancePBs", () => {
     const pb2k = pbs.find((p) => p.distance === 2000 && p.sport === "rower");
     expect(pb2k).toBeDefined();
     expect(pb2k!.time).toBe(480); // the faster one
+  });
+
+  it("picks the faster pace when a shorter piece is inside ±2% tolerance", () => {
+    // 1960m is exactly 2% short of 2000m. Its clock is faster, but the pace is
+    // slower, so it must not steal the 2k PB — the same rule loadDashboardAggregates
+    // already applied on the server.
+    const shortSlowerPace = workout({
+      id: 1,
+      distance: 1960,
+      time: 399,
+      pace: (399 * 500) / 1960,
+      sport: "rower",
+      date: "2026-05-01 06:00:00",
+    });
+    const fullFasterPace = workout({
+      id: 2,
+      distance: 2000,
+      time: 400,
+      pace: 100,
+      sport: "rower",
+      date: "2026-05-02 06:00:00",
+    });
+    const pbs = distancePBs([shortSlowerPace, fullFasterPace]);
+    const pb2k = pbs.find((p) => p.distance === 2000 && p.sport === "rower");
+    expect(pb2k).toMatchObject({ time: 400, pace: 100 });
+  });
+
+  it("ignores workouts with pace = 0", () => {
+    const w = workout({
+      id: 1,
+      distance: 2000,
+      time: 480,
+      pace: 0,
+      sport: "rower",
+      date: "2026-05-01 06:00:00",
+    });
+    expect(distancePBs([w])).toEqual([]);
   });
 
   it("returns separate PBs per sport", () => {
@@ -75,6 +114,26 @@ describe("distancePBs", () => {
   });
 });
 
+describe("pbWorkoutIds", () => {
+  it("tags the faster-paced 2k, not a shorter slower-paced piece", () => {
+    const shortSlowerPace = workout({
+      id: 1,
+      distance: 1960,
+      time: 399,
+      pace: (399 * 500) / 1960,
+    });
+    const fullFasterPace = workout({
+      id: 2,
+      distance: 2000,
+      time: 400,
+      pace: 100,
+    });
+    const ids = pbWorkoutIds([shortSlowerPace, fullFasterPace]);
+    expect(ids.has(2)).toBe(true);
+    expect(ids.has(1)).toBe(false);
+  });
+});
+
 describe("detectNewPBs", () => {
   const makeDistancePb = (sport: "rower" | "bike", distance: number, time: number) => ({
     sport,
@@ -112,6 +171,23 @@ describe("detectNewPBs", () => {
     expect(detectNewPBs(before, [makeDistancePb("rower", 2000, 480)])).toHaveLength(0);
     // Slower
     expect(detectNewPBs(before, [makeDistancePb("rower", 2000, 490)])).toHaveLength(0);
+  });
+
+  it("does not treat a shorter, slower-paced piece as a new 2k PB", () => {
+    const before = [makeDistancePb("rower", 2000, 400)];
+    const after = [
+      makeDistancePb("rower", 2000, 400),
+      { ...makeDistancePb("rower", 2000, 399), pace: (399 * 500) / 1960 },
+    ];
+    expect(detectNewPBs(before, after)).toHaveLength(0);
+  });
+
+  it("detects a pace improvement even when clock time is slightly slower", () => {
+    const before = [{ ...makeDistancePb("rower", 2000, 399), pace: (399 * 500) / 1960 }];
+    const after = [makeDistancePb("rower", 2000, 400)];
+    const newPbs = detectNewPBs(before, after);
+    expect(newPbs).toHaveLength(1);
+    expect(newPbs[0].pace).toBe(100);
   });
 
   it("treats sport as part of the key (rower 2k ≠ bike 2k)", () => {

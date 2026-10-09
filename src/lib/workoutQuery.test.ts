@@ -287,11 +287,31 @@ describe("filterAndSortWorkouts", () => {
 
 describe("pbWorkoutIds", () => {
   it("identifies the fastest 2k workout", () => {
-    const faster = workout({ id: 1, distance: 2000, time: 480, sport: "rower" });
-    const slower = workout({ id: 2, distance: 2000, time: 500, sport: "rower" });
+    const faster = workout({ id: 1, distance: 2000, time: 480, pace: 120, sport: "rower" });
+    const slower = workout({ id: 2, distance: 2000, time: 500, pace: 125, sport: "rower" });
     const ids = pbWorkoutIds([faster, slower]);
     expect(ids.has(1)).toBe(true);
     expect(ids.has(2)).toBe(false);
+  });
+
+  it("does not let a shorter slower-paced piece steal the 2k PB id", () => {
+    const shortSlowerPace = workout({
+      id: 1,
+      distance: 1960,
+      time: 399,
+      pace: (399 * 500) / 1960,
+      sport: "rower",
+    });
+    const fullFasterPace = workout({
+      id: 2,
+      distance: 2000,
+      time: 400,
+      pace: 100,
+      sport: "rower",
+    });
+    const ids = pbWorkoutIds([shortSlowerPace, fullFasterPace]);
+    expect(ids.has(2)).toBe(true);
+    expect(ids.has(1)).toBe(false);
   });
 
   it("identifies PBs at multiple standard distances", () => {

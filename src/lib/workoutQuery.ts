@@ -1,4 +1,4 @@
-import { distanceBand } from "$lib/analytics";
+import { distanceBand, pbWorkoutIds as standardDistancePbIds } from "$lib/analytics";
 import type { Sport, Workout } from "$lib/types";
 import { athleteMedianPace, isValidWorkoutTag, resolveTag, type WorkoutTag } from "$lib/workoutTag";
 
@@ -44,8 +44,6 @@ export const DURATION_CHIPS = [
   { sec: 1800, key: "30" },
   { sec: 3600, key: "60" },
 ] as const;
-
-const STANDARD_PB_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
 
 const SORT_FIELDS: WorkoutSortField[] = ["date", "distance", "time", "pace", "power"];
 
@@ -143,19 +141,8 @@ export function avgPowerWatts(w: Workout): number | null {
 
 /** Workout ids that are a PB at a standard distance (±2%), optionally filtered by sport. */
 export function pbWorkoutIds(workouts: Workout[], sport?: Sport): Set<number> {
-  const ids = new Set<number>();
-  for (const target of STANDARD_PB_DISTANCES) {
-    const matches = workouts.filter(
-      (w) =>
-        Math.abs(w.distance - target) <= target * 0.02 &&
-        w.time > 0 &&
-        (!sport || w.sport === sport),
-    );
-    if (!matches.length) continue;
-    const best = matches.reduce((a, b) => (a.time <= b.time ? a : b));
-    ids.add(best.id);
-  }
-  return ids;
+  const scoped = sport ? workouts.filter((w) => w.sport === sport) : workouts;
+  return standardDistancePbIds(scoped);
 }
 
 function matchesDistanceChip(metres: number, nominal: number): boolean {
