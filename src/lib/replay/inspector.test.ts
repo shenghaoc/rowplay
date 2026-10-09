@@ -84,4 +84,9 @@ describe("splitIndexAt", () => {
     expect(splitIndexAt(splits, 501)).toBe(1);
     expect(splitIndexAt(splits, 1000)).toBe(1);
   });
+
+  it("rejects a negative distance and clamps past the last split", () => {
+    expect(splitIndexAt(splits, -1)).toBeNull();
+    expect(splitIndexAt(splits, 5000)).toBe(1);
+  });
 });

@@ -53,6 +53,15 @@ describe("areComparable — mandatory cases", () => {
     ).toBe(false);
   });
 
+  it("rejects time-axis pieces that fall in different duration bands", () => {
+    expect(
+      areComparable(
+        ctx({ time: 1800, distance: 7000, workoutType: "JustRow" }),
+        ctx({ time: 3600, distance: 14000, workoutType: "FixedTime" }),
+      ),
+    ).toBe(false);
+  });
+
   it("rejects 2k rower vs 2k skierg", () => {
     expect(
       areComparable(
@@ -82,6 +91,19 @@ describe("classifyAxis", () => {
 
   it("defaults unknown strings to distance", () => {
     expect(classifyAxis("2000m test")).toBe("distance");
+  });
+
+  it("keeps calorie, watt-minute, and variable intervals on the distance axis", () => {
+    expect(classifyAxis("FixedCalorie")).toBe("distance");
+    expect(classifyAxis("FixedWattMinuteInterval")).toBe("distance");
+    expect(classifyAxis("VariableInterval")).toBe("distance");
+  });
+
+  it("matches time-axis markers case-insensitively and treats a blank type as distance", () => {
+    expect(classifyAxis("justrow")).toBe("time");
+    expect(classifyAxis("fixedtime")).toBe("time");
+    expect(classifyAxis(null)).toBe("distance");
+    expect(classifyAxis("")).toBe("distance");
   });
 });
 

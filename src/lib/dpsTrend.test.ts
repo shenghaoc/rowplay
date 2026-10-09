@@ -40,6 +40,43 @@ describe("computeDpsTrend", () => {
     expect(computeDpsTrend([])).toEqual([]);
   });
 
+  it("excludes zero stroke count and zero distance", () => {
+    const points = computeDpsTrend([
+      workout({ id: 1, strokeCount: 0, distance: 2000, pace: 120 }),
+      workout({ id: 2, strokeCount: 100, distance: 0, pace: 120 }),
+      workout({ id: 3, strokeCount: 100, distance: 2000, pace: 120 }),
+    ]);
+    expect(points.map((p) => p.workoutId)).toEqual([3]);
+  });
+
+  it("uses the 2:00 reference pace until three samples exist", () => {
+    const points = computeDpsTrend([
+      workout({ id: 1, distance: 2000, strokeCount: 100, pace: 100 }),
+      workout({ id: 2, distance: 2000, strokeCount: 100, pace: 160 }),
+    ]);
+    const fast = points.find((p) => p.workoutId === 1)!;
+    expect(fast.normDps).toBeCloseTo(fast.rawDps * Math.sqrt(120 / 100), 5);
+  });
+
+  it("normalises against the median pace once four samples are present", () => {
+    const points = computeDpsTrend([
+      workout({ id: 1, date: "2026-05-01 06:00:00", distance: 2000, strokeCount: 100, pace: 100 }),
+      workout({ id: 2, date: "2026-05-02 06:00:00", distance: 2000, strokeCount: 100, pace: 110 }),
+      workout({ id: 3, date: "2026-05-03 06:00:00", distance: 2000, strokeCount: 100, pace: 130 }),
+      workout({ id: 4, date: "2026-05-04 06:00:00", distance: 2000, strokeCount: 100, pace: 140 }),
+    ]);
+    const at110 = points.find((p) => p.workoutId === 2)!;
+    expect(at110.normDps).toBeCloseTo(at110.rawDps * Math.sqrt(120 / 110), 5);
+  });
+
+  it("returns points in date order", () => {
+    const points = computeDpsTrend([
+      workout({ id: 2, date: "2026-05-03 06:00:00", strokeCount: 100 }),
+      workout({ id: 1, date: "2026-05-01 06:00:00", strokeCount: 100 }),
+    ]);
+    expect(points.map((p) => p.workoutId)).toEqual([1, 2]);
+  });
+
   it("filters by sport when provided", () => {
     const points = computeDpsTrend(
       [
@@ -68,5 +105,17 @@ describe("movingAverage", () => {
     ]);
     const ma = movingAverage(points, "rawDps", 3);
     expect(ma[2]!.value).toBeCloseTo(30, 5);
+    expect(ma[0]!.value).toBeCloseTo(15, 5);
+    expect(ma[4]!.value).toBeCloseTo(45, 5);
+  });
+
+  it("averages normalised DPS over the same centred window", () => {
+    const points = computeDpsTrend([
+      workout({ id: 1, date: "2026-05-01 06:00:00", distance: 1000, strokeCount: 100, pace: 120 }),
+      workout({ id: 2, date: "2026-05-02 06:00:00", distance: 2000, strokeCount: 100, pace: 120 }),
+      workout({ id: 3, date: "2026-05-03 06:00:00", distance: 3000, strokeCount: 100, pace: 120 }),
+    ]);
+    const ma = movingAverage(points, "normDps", 3);
+    expect(ma[1]!.value).toBeCloseTo(20, 5);
   });
 });

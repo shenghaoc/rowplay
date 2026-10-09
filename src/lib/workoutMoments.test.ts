@@ -38,6 +38,17 @@ function strokesFromPaces(paces: number[], step = 30): Stroke[] {
   });
 }
 
+function strokesAt(samples: { t: number; pace: number }[]): Stroke[] {
+  let d = 0;
+  return samples.map((sample, i) => {
+    if (i > 0) {
+      const dt = sample.t - samples[i - 1].t;
+      d += (dt / sample.pace) * 500;
+    }
+    return { t: sample.t, d, pace: sample.pace, spm: 24, watts: 180, hr: 150 };
+  });
+}
+
 function intervalSplits(): Split[] {
   return [
     { index: 0, distance: 500, time: 110, pace: 110, spm: 28, restTime: 60 },
@@ -131,5 +142,69 @@ describe("analyzeWorkoutMoments", () => {
       detail({ strokes: [strokesFromPaces([120])[0]], splits: [] }),
     );
     expect(report.moments).toEqual([]);
+  });
+
+  it("does not roll a window across a rest gap longer than 30 seconds", () => {
+    const slow = Array.from({ length: 8 }, (_, i) => ({ t: i * 10, pace: 140 }));
+    const fast = Array.from({ length: 8 }, (_, i) => ({ t: 120 + i * 10, pace: 100 }));
+    const report = analyzeWorkoutMoments(detail({ strokes: strokesAt([...slow, ...fast]) }));
+
+    const best = report.moments.find((m) => m.kind === "best-sustained");
+    const slower = report.moments.find((m) => m.kind === "slower-patch");
+    expect(best).toBeDefined();
+    expect(slower).toBeDefined();
+    expect(best!.startTime).toBeGreaterThanOrEqual(120);
+    expect(slower!.endTime).toBeLessThanOrEqual(70);
+    expect(report.moments.every((m) => m.endTime <= 70 || m.startTime >= 120)).toBe(true);
+  });
+
+  it("ignores negative, non-positive-pace, and non-monotonic samples", () => {
+    const clean = strokesFromPaces([120, 118, 116, 122, 126, 124, 118, 114, 112, 112, 110, 108]);
+    const [first, second, third, ...rest] = clean;
+    const dirty: Stroke[] = [
+      { t: -5, d: -10, pace: 90, spm: 40, watts: 300 },
+      { ...first, pace: 0 },
+      first,
+      second,
+      third,
+      { ...third, d: third.d + 20, pace: 80, spm: 50, watts: 400 },
+      ...rest,
+    ];
+
+    const fromClean = analyzeWorkoutMoments(detail({ strokes: clean }));
+    const fromDirty = analyzeWorkoutMoments(detail({ strokes: dirty }));
+    expect(fromDirty.baselinePace).toBeCloseTo(fromClean.baselinePace, 5);
+    expect(fromDirty.moments.map((m) => [m.kind, m.startTime, m.endTime, m.avgPace])).toEqual(
+      fromClean.moments.map((m) => [m.kind, m.startTime, m.endTime, m.avgPace]),
+    );
+  });
+
+  it("classifies a faster, slower, and steady finish from the last third", () => {
+    const stronger = analyzeWorkoutMoments(
+      detail({ strokes: strokesFromPaces([160, 160, 160, 160, 110, 110, 110, 110]) }),
+    );
+    const fade = analyzeWorkoutMoments(
+      detail({ strokes: strokesFromPaces([110, 110, 110, 110, 160, 160, 160, 160]) }),
+    );
+    const steady = analyzeWorkoutMoments(
+      detail({ strokes: strokesFromPaces([120, 120, 120, 120, 120, 120, 120, 120]) }),
+    );
+
+    expect(stronger.moments.find((m) => m.kind === "finish-trend")?.reasonKey).toBe(
+      "replay.moments.reasonFinishStronger",
+    );
+    expect(fade.moments.find((m) => m.kind === "finish-trend")?.reasonKey).toBe(
+      "replay.moments.reasonFinishFade",
+    );
+    expect(steady.moments.find((m) => m.kind === "finish-trend")?.reasonKey).toBe(
+      "replay.moments.reasonFinishSteady",
+    );
+  });
+
+  it("skips the finish call on a piece shorter than 90 seconds", () => {
+    const report = analyzeWorkoutMoments(
+      detail({ strokes: strokesFromPaces([120, 110, 130, 115], 10) }),
+    );
+    expect(report.moments.map((m) => m.kind)).not.toContain("finish-trend");
   });
 });
