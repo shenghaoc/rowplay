@@ -23,7 +23,7 @@ const sampleDetail = {
 
 function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null; id?: string } = {}) {
   return {
-    params: { id: opts.id ?? "1001" },
+    params: { id: Number(opts.id ?? "1001") },
     locals: { demo: opts.demo ?? false, user: opts.user ?? null },
     platform: { env: {} },
     setHeaders: vi.fn(),
@@ -62,4 +62,24 @@ describe("load /replay/[id]", () => {
     expect(data.candidates).toHaveLength(1);
     expect(data.candidates[0].id).toBe(1002);
   });
+});
+
+it("retains the best-effort candidate log for an error that never reaches handleError", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.mocked(loadWorkoutDetail).mockResolvedValue(sampleDetail);
+  vi.mocked(loadWorkouts).mockRejectedValueOnce(new Error("synthetic candidate outage"));
+  try {
+    const data = (await load(fakeEvent({ demo: true }) as never)) as {
+      detail: { id: number };
+      candidates: unknown[];
+    };
+    expect(data.detail.id).toBe(1001);
+    expect(data.candidates).toEqual([]);
+    expect(log).toHaveBeenCalledExactlyOnceWith(
+      "[replay] ghost candidate load failed:",
+      "synthetic candidate outage",
+    );
+  } finally {
+    log.mockRestore();
+  }
 });

@@ -11,7 +11,7 @@
 	import LanguagePicker from '#components/LanguagePicker.svelte';
 	import { I18n, setI18nContext } from '#lib/i18n.svelte.ts';
 	import { Theme, setThemeContext } from '#lib/theme.svelte.ts';
-	import { initPwaUpdate } from '#lib/pwa-update.ts';
+	import { initPwaUpdate } from '#lib/pwa-update.svelte.ts';
 
 	let { data, children } = $props();
 
@@ -62,7 +62,7 @@
 
 	onMount(() => {
 		document.documentElement.dataset.appHydrated = 'true';
-		initPwaUpdate(i18n);
+		return initPwaUpdate(i18n);
 	});
 </script>
 

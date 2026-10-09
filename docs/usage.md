@@ -402,3 +402,11 @@ path. The section registry lives in `src/lib/docs.ts` (`DOCS_SECTIONS`).
 When a change alters user-visible behavior, workflows, routes, auth, data
 handling, setup, or deployment expectations, update this file and the locale
 guide content in the same pull request.
+
+### App updates
+
+When a new app version and a waiting service worker are ready, Rowplay shows one
+update prompt per open session. Choose Reload to activate the update. Dismissing
+the prompt keeps the current session running; reopening the app uses the normal
+service-worker lifecycle. Installed offline replay remains available, and update
+checks retry after connectivity returns.
