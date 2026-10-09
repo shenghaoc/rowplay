@@ -27,7 +27,7 @@ import { createLogger } from "./logger";
 const logger = createLogger(console);
 
 async function client(event: RequestEvent): Promise<Concept2Client | null> {
-  const secret = env?.SESSION_SECRET;
+  const secret = env.SESSION_SECRET;
   const sealedSession = event.cookies.get(SESSION_COOKIE);
   if (!secret || !sealedSession) {
     if (!secret) logger.warn("[session] SESSION_SECRET not configured");
@@ -134,7 +134,7 @@ export async function loadAnnualGoal(event: RequestEvent, year: number): Promise
 
 export async function loadHomeTimezone(event: RequestEvent): Promise<string | undefined> {
   if (event.locals.demo) return undefined;
-  const secret = env?.SESSION_SECRET;
+  const secret = env.SESSION_SECRET;
   const sealedSession = event.cookies.get(SESSION_COOKIE);
   if (!secret || !sealedSession) {
     if (!secret) logger.warn("[tz] SESSION_SECRET not configured for home timezone");
@@ -153,7 +153,7 @@ export async function saveHomeTimezone(
   timezone: string | undefined,
 ): Promise<void> {
   if (event.locals.demo) return;
-  const secret = env?.SESSION_SECRET;
+  const secret = env.SESSION_SECRET;
   if (!secret) throw error(401, "Not authenticated.");
   const sealedSession = event.cookies.get(SESSION_COOKIE);
   if (!sealedSession) throw error(401, "Not authenticated.");

@@ -1,10 +1,10 @@
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { loadHomeTimezone, saveHomeTimezone } from "#lib/server/data.ts";
 
 export const GET: RequestHandler = async (event) => {
   const tz = await loadHomeTimezone(event);
-  return json({ timezone: tz ?? null });
+  return Response.json({ timezone: tz ?? null });
 };
 
 export const POST: RequestHandler = async (event) => {
@@ -34,5 +34,5 @@ export const POST: RequestHandler = async (event) => {
     }
   }
   await saveHomeTimezone(event, tz);
-  return json({ ok: true });
+  return Response.json({ ok: true });
 };

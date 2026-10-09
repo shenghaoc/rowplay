@@ -1,4 +1,4 @@
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { generateMockWorkout, mockWorkouts } from "#lib/mockData.ts";
 
@@ -7,7 +7,7 @@ export const POST: RequestHandler = async (event) => {
   if (!event.locals.demo) throw error(400, "Mock poll is only available in demo mode.");
   const existing = mockWorkouts().map((w) => w.id);
   const workout = generateMockWorkout(existing);
-  return json(
+  return Response.json(
     { workouts: [workout], added: 1, total: existing.length + 1, newPbs: [] },
     { headers: { "cache-control": "private, no-store" } },
   );

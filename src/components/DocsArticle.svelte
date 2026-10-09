@@ -29,7 +29,7 @@
 					{@render inline(node.children)}
 				</a>
 		{:else}
-			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<!-- The parser permits arbitrary root paths; resolve('/') supplies their deployment base. -->
 			<a href={node.href.startsWith('#') ? node.href : `${resolve('/')}${node.href.slice(1)}`}>
 				{@render inline(node.children)}
 			</a>

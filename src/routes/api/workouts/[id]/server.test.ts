@@ -41,4 +41,14 @@ describe("GET /api/workouts/[id]", () => {
     const body = await res.json();
     expect(body.id).toBe(1001);
   });
+
+  it("returns the complete private JSON detail without writing a cookie", async () => {
+    (loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
+    const res = await GET(fakeEvent("1001") as unknown as Parameters<typeof GET>[0]);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/json");
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.has("set-cookie")).toBe(false);
+    expect(await res.json()).toEqual(sampleDetail);
+  });
 });

@@ -24,7 +24,7 @@
 	} from '#lib/analytics.ts';
 	import type { Sport, Workout } from '#lib/types.ts';
 	import { MACHINE_COLOR } from '#lib/replay/sports.ts';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { readHomeTimezoneClient } from '#lib/homeTimezone.ts';
 	import { serializeWorkoutListQuery, filterAndSortWorkouts, type WorkoutListQuery } from '#lib/workoutQuery.ts';
@@ -1010,7 +1010,6 @@
 								n: trendPoints.length,
 								band: bandScoped ? (bands.find((b) => b.key === activeBand)?.label ?? '') : ''
 							})}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 						<a href={resolve('/docs/charts-and-progress')}>{t('docs.contextual.charts')}</a>
 						</p>
 					{/if}
@@ -1059,7 +1058,6 @@
 				{#if dpsPoints.length === 0}
 					<p class="muted emptytrend">
 						{t('dashboard.dpsTrend.empty')}
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a href={resolve('/docs/troubleshooting')}>{t('docs.contextual.troubleshooting')}</a>
 					</p>
 				{:else}
