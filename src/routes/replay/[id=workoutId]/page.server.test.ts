@@ -23,7 +23,7 @@ const sampleDetail = {
 
 function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null; id?: string } = {}) {
   return {
-    params: { id: opts.id ?? "1001" },
+    params: { id: Number(opts.id ?? "1001") },
     locals: { demo: opts.demo ?? false, user: opts.user ?? null },
     platform: { env: {} },
     setHeaders: vi.fn(),

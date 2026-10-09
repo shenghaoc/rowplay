@@ -29,7 +29,7 @@ vi.mock("#lib/workoutQuery.ts", () => ({
 }));
 
 import { load as dashboardLoad } from "../routes/dashboard/+page.server";
-import { load as replayLoad } from "../routes/replay/[id]/+page.server";
+import { load as replayLoad } from "../routes/replay/[id=workoutId]/+page.server";
 
 /** Build a minimal RequestEvent with header tracking. */
 function fakeEvent(opts: { demo?: boolean; user?: object | null } = {}) {
@@ -39,7 +39,7 @@ function fakeEvent(opts: { demo?: boolean; user?: object | null } = {}) {
       demo: opts.demo ?? false,
       user: "user" in opts ? opts.user : { id: 1, username: "test" },
     },
-    params: { id: "1001" },
+    params: { id: 1001 },
     url: new URL("https://rowplay.shenghaoc.workers.dev/dashboard"),
     setHeaders: (headers: Record<string, string>) => {
       Object.assign(setHeaders, headers);
@@ -70,7 +70,7 @@ describe("page route cache-control headers", () => {
   it("replay sets cache-control: private, no-store for authenticated users", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const event = fakeEvent() as any;
-    event.params = { id: "1001" };
+    event.params = { id: 1001 };
     await replayLoad(event);
     expect(event._setHeaders["cache-control"]).toBe("private, no-store");
   });
@@ -78,7 +78,7 @@ describe("page route cache-control headers", () => {
   it("replay does NOT set cache-control in demo mode (cacheable for offline)", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const event = fakeEvent({ demo: true, user: null }) as any;
-    event.params = { id: "1001" };
+    event.params = { id: 1001 };
     await replayLoad(event);
     expect(event._setHeaders["cache-control"]).toBeUndefined();
   });

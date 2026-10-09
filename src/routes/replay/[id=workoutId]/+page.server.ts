@@ -16,7 +16,7 @@ export const load: PageServerLoad = async (event) => {
     event.setHeaders({ "cache-control": "private, no-store" });
   }
 
-  const id = Number(event.params.id);
+  const id = event.params.id;
   const detail = await loadWorkoutDetail(event, id);
 
   // Candidate ghosts: other sessions of the same sport to race against.

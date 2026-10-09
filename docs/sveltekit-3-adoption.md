@@ -37,3 +37,18 @@ The existing module-imported Fetcher, handmade `Cloudflare.Env` and env-only
 `ExecutionContext`/`R2Bucket` leakage and preserve DOM Request/native JSON types;
 unit tests exercise browser-compatible request/response behavior. No generated
 runtime declarations or fake secret config are committed.
+
+## Parsed workout IDs without new HTTP rejection
+
+`src/params.ts` uses `defineParams` to perform the existing Number coercion for
+workout detail, TCX export and replay routes. Route URLs do not change; registered
+route IDs and typed link arguments use `[id=workoutId]` and numbers.
+
+Installed Kit source accepts any number result, including NaN. A matcher that
+returns undefined/issues instead fails routing and produces 404, so strict
+matcher rejection is deliberately skipped. Malformed detail/export IDs still
+reach their existing 400 `Invalid workout id.` checks; export still rejects
+zero/negative/fractional IDs, while detail/replay retain their existing lookup
+404s. Hexadecimal, exponent, whitespace and leading-zero coercion remain valid.
+The retired tag endpoint remains 410 for every ID. Authentication, personal
+cache headers and best-effort replay candidates remain in the same order.
