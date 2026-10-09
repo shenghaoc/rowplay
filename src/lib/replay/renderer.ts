@@ -2473,7 +2473,7 @@ export class CourseRenderer implements ReplayRenderer {
 
     // Clumped pine stands — irregular gaps prevent a picket-fence tree line.
     ctx.fillStyle = withAlpha(palette.foliageFar, 0.88);
-    for (let x = -24 + midShift; x <= w + 28; ) {
+    for (let x = -24 + midShift; x <= w + 28;) {
       const i = Math.abs(Math.floor((x - midShift) / 11));
       const gap = i % 7 === 3 || i % 11 === 0;
       if (gap) {

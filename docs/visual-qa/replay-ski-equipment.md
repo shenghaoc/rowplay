@@ -136,19 +136,19 @@ bilateral read here comes from the before/after sheet instead.
 Regression cover added with the fix:
 
 - **Per-digit contact** (`closes every reaching SkiErg digit onto the pole and
-reports the pinky honestly`) — the five contact reports SkiErg was missing.
+  reports the pinky honestly`) — the five contact reports SkiErg was missing.
   The pinky saturates all three stage limits (~280° curl) and still stops ~6 mm
   short of a shaft this thin, so `contact` is `false` and the test pins that it
   closes _completely_ rather than that it arrives. Widening
   `FINGER_STAGE_LIMITS` to force contact would author an anatomically
   impossible pinky.
 - **Rendered-shaft check** (`presses the SkiErg thumb pad onto the rendered
-shaft`) — `surfaceDistance` is measured against whatever radius the contract
+  shaft`) — `surfaceDistance` is measured against whatever radius the contract
   supplied, so a seated thumb there can still be a floating thumb on screen.
   This measures the pad against the shaft geometry that actually renders, at
   four points around the cycle on both hands.
 - **Solver guard** (`seats the pole thumb on the shaft instead of standing it
-alongside`) — with a deliberately-failing 1.50 control so the assertion cannot
+  alongside`) — with a deliberately-failing 1.50 control so the assertion cannot
   be trivially satisfied.
 - **Stacking bounds** were re-fitted rather than relaxed. The old
   pair was measured against a thumb standing _above_ the index, which a wrapped

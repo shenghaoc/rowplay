@@ -65,7 +65,7 @@ jobs:
     # system dependencies are baked in — bypasses `playwright install
     # --with-deps` that was hanging on GitHub-hosted runners' apt mirror.
     container:
-      image: mcr.microsoft.com/playwright:v1.61.0-resolute-arm64
+      image: mcr.microsoft.com/playwright:v1.64.0-resolute-arm64
       options: --ipc=host
     steps:
       - uses: actions/checkout@v7
@@ -117,7 +117,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     timeout-minutes: 40
     container:
-      image: mcr.microsoft.com/playwright:v1.61.0-resolute-arm64
+      image: mcr.microsoft.com/playwright:v1.64.0-resolute-arm64
       options: --ipc=host
     steps:
       - uses: actions/checkout@v7
