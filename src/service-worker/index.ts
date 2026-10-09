@@ -1,7 +1,4 @@
-/// <reference types="@sveltejs/kit" />
-/// <reference no-default-lib="true"/>
-/// <reference lib="esnext" />
-/// <reference lib="webworker" />
+import { self as sw } from "$app/service-worker";
 import { version } from "$app/env";
 import { assets, immutable } from "$app/manifest";
 import { asset, resolve } from "$app/paths";
@@ -13,10 +10,6 @@ import {
   shouldCacheResponse,
 } from "../serviceWorkerPolicy";
 import { attachRuntimeCacheWrite } from "../serviceWorkerRuntimeCache";
-
-// `self` is typed as Window in the default lib; inside a service worker it is
-// a ServiceWorkerGlobalScope. This is the cast SvelteKit's docs prescribe.
-const sw = self as unknown as ServiceWorkerGlobalScope;
 
 /** Precached shell — versioned so activate can drop stale shells. */
 const SHELL_CACHE = `shell-${version}`;

@@ -1,5 +1,6 @@
+import { withJsonContentLength } from "#lib/server/jsonResponse.ts";
 import { env } from "cloudflare:workers";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -30,7 +31,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   // The stateless Worker deliberately does not queue or persist webhook data.
-  return json({ ok: true, received: payload.workoutId });
+  return withJsonContentLength(Response.json({ ok: true, received: payload.workoutId }));
 };
 
 async function validHmac(secret: string, body: string, provided: string): Promise<boolean> {

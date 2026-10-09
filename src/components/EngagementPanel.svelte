@@ -18,7 +18,7 @@
 	import Target from '@lucide/svelte/icons/target';
 	import Trophy from '@lucide/svelte/icons/trophy';
 	import { untrack } from 'svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { refreshAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 
 	interface Props {
@@ -111,7 +111,7 @@
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const body = (await res.json()) as { goal: AnnualGoal };
 			savedGoal = body.goal;
-			await invalidateAll();
+			await refreshAll();
 			savedGoal = null;
 			toast.success(t('dashboard.goalsSaved'));
 		} catch {

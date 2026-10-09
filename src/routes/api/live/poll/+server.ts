@@ -1,18 +1,23 @@
-import { error, isHttpError, json } from "@sveltejs/kit";
+import { withJsonContentLength } from "#lib/server/jsonResponse.ts";
+import { error, isHttpError } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { pollRecentWorkouts } from "#lib/server/data.ts";
 
 /** Live-mode polling — returns workouts from the Concept2 API. */
 export const POST: RequestHandler = async (event) => {
   if (event.locals.demo) {
-    return json(
-      { workouts: [], added: 0, total: 0, newPbs: [] },
-      { headers: { "cache-control": "private, no-store" } },
+    return withJsonContentLength(
+      Response.json(
+        { workouts: [], added: 0, total: 0, newPbs: [] },
+        { headers: { "cache-control": "private, no-store" } },
+      ),
     );
   }
   try {
     const result = await pollRecentWorkouts(event);
-    return json(result, { headers: { "cache-control": "private, no-store" } });
+    return withJsonContentLength(
+      Response.json(result, { headers: { "cache-control": "private, no-store" } }),
+    );
   } catch (e) {
     if (isHttpError(e)) throw e;
     const msg = e instanceof Error ? e.message : String(e);

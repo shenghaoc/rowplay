@@ -20,7 +20,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   event.locals.user = null;
   event.locals.personal = false;
 
-  const secret = env?.SESSION_SECRET;
+  const secret = env.SESSION_SECRET;
   const sealedSession = event.cookies.get(SESSION_COOKIE);
   if (sealedSession && secret) {
     const session = await openSession(secret, sealedSession);

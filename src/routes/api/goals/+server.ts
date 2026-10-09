@@ -1,4 +1,5 @@
-import { error, json } from "@sveltejs/kit";
+import { withJsonContentLength } from "#lib/server/jsonResponse.ts";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { loadAnnualGoal, saveAnnualGoal } from "#lib/server/data.ts";
 import type { AnnualGoalKind } from "#lib/analytics.ts";
@@ -8,7 +9,7 @@ export const GET: RequestHandler = async (event) => {
   const parsed = raw == null ? NaN : Number(raw);
   const year = Number.isInteger(parsed) && parsed > 0 ? parsed : new Date().getFullYear();
   const goal = await loadAnnualGoal(event, year);
-  return json(goal);
+  return withJsonContentLength(Response.json(goal));
 };
 
 export const PUT: RequestHandler = async (event) => {
@@ -47,5 +48,5 @@ export const PUT: RequestHandler = async (event) => {
   const kind = requestedKind as AnnualGoalKind;
   const goal = { year, kind, target: requestedTarget };
   await saveAnnualGoal(event, goal);
-  return json({ goal });
+  return withJsonContentLength(Response.json({ goal }));
 };
