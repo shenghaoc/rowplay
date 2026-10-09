@@ -5,6 +5,7 @@ vi.mock("./concept2", () => ({ Concept2Client: vi.fn() }));
 vi.mock("./config", () => ({ getConfig: vi.fn(() => ({})) }));
 vi.mock("./session", () => ({
   openSession: vi.fn(),
+  writeSession: vi.fn(),
   SESSION_COOKIE: "rp_session",
   TOKEN_COOKIE: "rp_tok",
   destroySession: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock("./logger", () => ({
 }));
 
 import {
+  listQueryFromEvent,
   loadAnnualGoal,
   loadDashboardAggregates,
   loadHomeTimezone,
@@ -28,7 +30,7 @@ import {
   saveHomeTimezone,
 } from "./data";
 import { Concept2Client } from "./concept2";
-import { openSession, getHomeTimezone, setHomeTimezone } from "./session";
+import { openSession, getHomeTimezone, setHomeTimezone, writeSession } from "./session";
 import { openToken } from "./tokenCrypto";
 import { mockWorkouts } from "../mockData";
 import type { Workout } from "../types";
@@ -86,6 +88,7 @@ beforeEach(() => {
   (openToken as unknown as Mock).mockReset();
   (getHomeTimezone as unknown as Mock).mockReset();
   (setHomeTimezone as unknown as Mock).mockReset();
+  (writeSession as unknown as Mock).mockReset();
   (openSession as unknown as Mock).mockResolvedValue({
     user: { id: 7, username: "athlete" },
     personal: true,
@@ -133,6 +136,78 @@ describe("loadWorkouts — authenticated live API", () => {
 
     await expect(loadWorkouts(authedEvent())).rejects.toMatchObject({ status: 401 });
   });
+
+  it("throws 401 when a BYOT session has no openable rp_tok cookie", async () => {
+    (openToken as unknown as Mock).mockResolvedValue(null);
+
+    await expect(loadWorkouts(authedEvent())).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("reuses the in-flight live fetch for the same request event", async () => {
+    const listWorkouts = vi.fn().mockResolvedValue([liveWorkout]);
+    mockConcept2Client({ listWorkouts });
+    const event = authedEvent();
+
+    const [a, b] = await Promise.all([loadWorkouts(event), loadWorkouts(event)]);
+    expect(a).toEqual([liveWorkout]);
+    expect(b).toEqual([liveWorkout]);
+    expect(listWorkouts).toHaveBeenCalledOnce();
+  });
+
+  it("does not share the live fetch across different requests", async () => {
+    const listWorkouts = vi.fn().mockResolvedValue([liveWorkout]);
+    mockConcept2Client({ listWorkouts });
+
+    await loadWorkouts(authedEvent());
+    await loadWorkouts(authedEvent());
+    expect(listWorkouts).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not open rp_tok for OAuth sessions and persists refreshed tokens", async () => {
+    (openSession as unknown as Mock).mockResolvedValue({
+      user: { id: 7, username: "athlete" },
+      personal: false,
+      tokens: { accessToken: "old", refreshToken: "r", expiresAt: 0, scope: "" },
+    });
+    const listWorkouts = vi.fn().mockResolvedValue([liveWorkout]);
+    mockConcept2Client({ listWorkouts });
+    const event = authedEvent({ locals: { demo: false, user: { id: 7 }, personal: false } });
+
+    await loadWorkouts(event);
+    expect(openToken).not.toHaveBeenCalled();
+
+    const onTokenRefresh = (Concept2Client as unknown as Mock).mock.calls[0][2] as (
+      session: unknown,
+    ) => Promise<void>;
+    const freshSession = {
+      user: { id: 7, username: "athlete" },
+      personal: false,
+      tokens: { accessToken: "fresh", refreshToken: "r2", expiresAt: 1, scope: "" },
+    };
+    await onTokenRefresh(freshSession);
+    expect(writeSession).toHaveBeenCalledWith(
+      event.cookies,
+      event,
+      "test-secret-that-is-32-chars!!",
+      freshSession,
+    );
+  });
+
+  it("does not persist token refresh for BYOT sessions", async () => {
+    const listWorkouts = vi.fn().mockResolvedValue([liveWorkout]);
+    mockConcept2Client({ listWorkouts });
+    await loadWorkouts(authedEvent());
+
+    const onTokenRefresh = (Concept2Client as unknown as Mock).mock.calls[0][2] as (
+      session: unknown,
+    ) => Promise<void>;
+    await onTokenRefresh({
+      user: { id: 7, username: "athlete" },
+      personal: true,
+      tokens: { accessToken: "should-not-write", refreshToken: "", expiresAt: 0, scope: "" },
+    });
+    expect(writeSession).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -157,6 +232,24 @@ describe("loadWorkoutList — authenticated", () => {
 
     await expect(loadWorkoutList(authedEvent(), q)).resolves.toEqual([liveWorkout]);
     expect(listWorkouts).toHaveBeenCalledOnce();
+  });
+});
+
+describe("listQueryFromEvent", () => {
+  it("parses dashboard search params into a workout list query", () => {
+    const event = {
+      url: new URL("http://localhost/dashboard?sport=bike&sort=pace&dir=asc"),
+    };
+    expect(listQueryFromEvent(event as never)).toMatchObject({
+      sport: "bike",
+      sort: "pace",
+      dir: "asc",
+    });
+  });
+
+  it("ignores an unknown sport filter", () => {
+    const event = { url: new URL("http://localhost/dashboard?sport=kayak") };
+    expect(listQueryFromEvent(event as never).sport).toBeUndefined();
   });
 });
 
