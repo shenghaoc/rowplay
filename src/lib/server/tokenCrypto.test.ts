@@ -37,4 +37,15 @@ describe("tokenCrypto", () => {
     expect(await openToken(SECRET, "not-a-real-blob")).toBeNull();
     expect(await openToken(SECRET, "")).toBeNull();
   });
+
+  it("round-trips an empty string and non-ASCII token text", async () => {
+    expect(await openToken(SECRET, await sealToken(SECRET, ""))).toBe("");
+    const token = "töken-日本語";
+    expect(await openToken(SECRET, await sealToken(SECRET, token))).toBe(token);
+  });
+
+  it("returns null when the blob is too short to hold an IV and ciphertext", async () => {
+    const short = btoa("12345678").replace(/=+$/, "");
+    expect(await openToken(SECRET, short)).toBeNull();
+  });
 });
