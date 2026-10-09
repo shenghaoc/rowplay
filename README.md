@@ -232,6 +232,11 @@ Concept2 developer application, but it is not required for BYOT.
 
 ## Local development
 
+Use Node 24.21.0 (pinned in `.node-version` and `.nvmrc`) and the
+`packageManager` version of pnpm. Vite+ requires Node 24.11 or newer on the
+24.x line; Node 26+ is also supported. Keep the 24-hour dependency release-age
+guard enabled when updating the lockfile.
+
 |                      | `vp dev`                        | `vp run preview`                         |
 | -------------------- | ------------------------------- | ---------------------------------------- |
 | URL                  | `http://localhost:5173`         | `http://127.0.0.1:8787`                  |
