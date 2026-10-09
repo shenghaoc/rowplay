@@ -1,3 +1,4 @@
+import { error } from "@sveltejs/kit";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("$lib/server/data", () => ({
@@ -40,5 +41,17 @@ describe("POST /api/live/poll", () => {
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect(POST(fakeEvent() as any)).rejects.toMatchObject({ status: 502 });
+  });
+
+  it("rethrows an HttpError from the live poll instead of wrapping it as 502", async () => {
+    let authError: unknown;
+    try {
+      error(401, "Not authenticated.");
+    } catch (e) {
+      authError = e;
+    }
+    (pollRecentWorkouts as ReturnType<typeof vi.fn>).mockRejectedValue(authError);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(POST(fakeEvent() as any)).rejects.toMatchObject({ status: 401 });
   });
 });

@@ -234,3 +234,39 @@ describe("session loading", () => {
     await handle({ event, resolve });
   });
 });
+
+describe("locale and theme cookies", () => {
+  it("seeds SSR locals from a supported lang cookie", async () => {
+    const resolve = async (event: { locals: { lang: string; theme: string } }) => {
+      expect(event.locals.lang).toBe("ja");
+      expect(event.locals.theme).toBe("light");
+      return new Response("<html></html>");
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await handle({ event: fakeEvent({ langCookie: "ja" }) as any, resolve });
+  });
+
+  it("falls back to English for an unknown lang cookie", async () => {
+    const resolve = async (event: { locals: { lang: string } }) => {
+      expect(event.locals.lang).toBe("en");
+      return new Response("<html></html>");
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await handle({ event: fakeEvent({ langCookie: "pt" }) as any, resolve });
+  });
+
+  it("treats only theme=dark as dark and otherwise stays light", async () => {
+    const darkResolve = async (event: { locals: { theme: string } }) => {
+      expect(event.locals.theme).toBe("dark");
+      return new Response("<html></html>");
+    };
+    const lightResolve = async (event: { locals: { theme: string } }) => {
+      expect(event.locals.theme).toBe("light");
+      return new Response("<html></html>");
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await handle({ event: fakeEvent({ themeCookie: "dark" }) as any, resolve: darkResolve });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await handle({ event: fakeEvent({ themeCookie: "rowplay" }) as any, resolve: lightResolve });
+  });
+});
