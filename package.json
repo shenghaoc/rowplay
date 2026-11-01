@@ -45,7 +45,7 @@
     "uplot": "^1.6.32"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261008.1",
+    "@cloudflare/workers-types": "^5.20261028.1",
     "@playwright/test": "1.64.0",
     "@sveltejs/adapter-cloudflare": "^7.2.9",
     "@sveltejs/kit": "^2.70.3",
@@ -62,7 +62,7 @@
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
-    "wrangler": "^4.148.0"
+    "wrangler": "^4.155.0"
   },
   "engines": {
     "node": "^24.11.0 || >=26.0.0"
