@@ -1,3 +1,4 @@
+import { expectDistinct } from "../../../tests/unit/fixtures";
 import { describe, expect, it } from "vite-plus/test";
 import { readFileSync } from "node:fs";
 import * as THREE from "three";
@@ -76,8 +77,8 @@ describe("makeSkierAvatar", () => {
     const control = makeSkierAvatar(0x3366aa, true, 1, 16, "high");
     const live = makeSkierAvatar(0x3366aa, true, 1, 16, "high");
     const ghost = makeSkierAvatar(0x996633, false, 0.4, 16, "high");
-    expect(live.group).not.toBe(ghost.group);
-    expect(live.v4Targets).not.toBe(ghost.v4Targets);
+    expectDistinct(live.group, ghost.group, "live and ghost groups");
+    expectDistinct(live.v4Targets, ghost.v4Targets, "live and ghost V4 targets");
 
     const livePose = fallbackStrokePose("skierg", 0.25 * Math.PI * 2);
     const ghostPose = fallbackStrokePose("skierg", 0.75 * Math.PI * 2);

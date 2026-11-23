@@ -1,3 +1,4 @@
+import { expectDistinct } from "../../../tests/unit/fixtures";
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import {
@@ -4429,13 +4430,17 @@ describe("CourseRenderer3D", () => {
         const live = v4Lane(renderer, "live").instance;
         const ghost = v4Lane(renderer, "ghost").instance;
 
-        expect(live.root).not.toBe(ghost.root);
-        expect(live.mesh).not.toBe(ghost.mesh);
-        expect(live.mesh.geometry).not.toBe(ghost.mesh.geometry);
-        expect(live.mesh.material).not.toBe(ghost.mesh.material);
-        expect(live.skeleton).not.toBe(ghost.skeleton);
-        expect(live.bones.v4LeftForearm).not.toBe(ghost.bones.v4LeftForearm);
-        expect(live.mixer).not.toBe(ghost.mixer);
+        expectDistinct(live.root, ghost.root, "live and ghost roots");
+        expectDistinct(live.mesh, ghost.mesh, "live and ghost meshes");
+        expectDistinct(live.mesh.geometry, ghost.mesh.geometry, "lane geometries");
+        expectDistinct(live.mesh.material, ghost.mesh.material, "lane materials");
+        expectDistinct(live.skeleton, ghost.skeleton, "live and ghost skeletons");
+        expectDistinct(
+          live.bones.v4LeftForearm,
+          ghost.bones.v4LeftForearm,
+          "live and ghost left forearm bones",
+        );
+        expectDistinct(live.mixer, ghost.mixer, "live and ghost mixers");
         expect(v4Lane(renderer, "ghost").motion.root.visible).toBe(true);
         for (const [lane, athlete, requestedOpacity] of [
           ["live", live, 1],

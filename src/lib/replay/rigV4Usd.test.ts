@@ -1,3 +1,4 @@
+import { expectDistinct } from "../../../tests/unit/fixtures";
 import { readFile } from "node:fs/promises";
 import { beforeAll, describe, expect, it } from "vite-plus/test";
 import * as THREE from "three";
@@ -184,9 +185,21 @@ describe("RowPlay V4 USDZ native handoff", () => {
       });
       expect(firstSkins).toHaveLength(1);
       expect(secondSkins).toHaveLength(1);
-      expect(firstSkins[0]!.skeleton).not.toBe(secondSkins[0]!.skeleton);
-      expect(firstSkins[0]!.skeleton.bones[0]).not.toBe(secondSkins[0]!.skeleton.bones[0]);
-      expect(firstSkins[0]!.material).not.toBe(secondSkins[0]!.material);
+      expectDistinct(
+        firstSkins[0]!.skeleton,
+        secondSkins[0]!.skeleton,
+        "first and second skeletons",
+      );
+      expectDistinct(
+        firstSkins[0]!.skeleton.bones[0],
+        secondSkins[0]!.skeleton.bones[0],
+        "first and second root bones",
+      );
+      expectDistinct(
+        firstSkins[0]!.material,
+        secondSkins[0]!.material,
+        "first and second materials",
+      );
     },
     USDZ_TEST_TIMEOUT_MS,
   );

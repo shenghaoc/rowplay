@@ -1,3 +1,4 @@
+import { expectDistinct } from "../../../tests/unit/fixtures";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
@@ -254,19 +255,23 @@ describe("V4 runtime asset contract", () => {
     const live = createReplayV4AthleteInstance(template);
     const ghost = createReplayV4AthleteInstance(template);
     try {
-      expect(live.root).not.toBe(ghost.root);
-      expect(live.mesh).not.toBe(ghost.mesh);
-      expect(live.skeleton).not.toBe(ghost.skeleton);
-      expect(live.bones.v4LeftForearm).not.toBe(ghost.bones.v4LeftForearm);
-      expect(live.mixer).not.toBe(ghost.mixer);
-      expect(live.mesh.geometry).not.toBe(template.mesh.geometry);
-      expect(ghost.mesh.geometry).not.toBe(template.mesh.geometry);
-      expect(live.mesh.geometry).not.toBe(ghost.mesh.geometry);
+      expectDistinct(live.root, ghost.root, "live and ghost roots");
+      expectDistinct(live.mesh, ghost.mesh, "live and ghost meshes");
+      expectDistinct(live.skeleton, ghost.skeleton, "live and ghost skeletons");
+      expectDistinct(
+        live.bones.v4LeftForearm,
+        ghost.bones.v4LeftForearm,
+        "live and ghost left forearm bones",
+      );
+      expectDistinct(live.mixer, ghost.mixer, "live and ghost mixers");
+      expectDistinct(live.mesh.geometry, template.mesh.geometry, "live and template geometries");
+      expectDistinct(ghost.mesh.geometry, template.mesh.geometry, "ghost and template geometries");
+      expectDistinct(live.mesh.geometry, ghost.mesh.geometry, "live and ghost geometries");
 
       const liveMaterial = materialAt(live.mesh);
       const ghostMaterial = materialAt(ghost.mesh);
-      expect(liveMaterial).not.toBe(ghostMaterial);
-      expect(liveMaterial).not.toBe(sourceMaterial);
+      expectDistinct(liveMaterial, ghostMaterial, "live and ghost materials");
+      expectDistinct(liveMaterial, sourceMaterial, "live and template materials");
       expect({
         opacity: liveMaterial.opacity,
         transparent: liveMaterial.transparent,
