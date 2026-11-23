@@ -221,7 +221,7 @@ export interface DistancePB {
   /** Pace-equivalent seconds at the nominal distance. */
   time: number;
   /** Recorded elapsed seconds, for locating the source workout. */
-  workoutTime: number;
+  workoutId: Workout["id"];
   pace: number;
   date: string;
   sport: Sport;
@@ -233,7 +233,7 @@ export function distancePBs(workouts: Workout[]): DistancePB[] {
     out.push({
       distance: target,
       time: (best.pace * target) / 500,
-      workoutTime: best.time,
+      workoutId: best.id,
       pace: best.pace,
       date: best.date,
       sport: best.sport,

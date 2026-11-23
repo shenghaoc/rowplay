@@ -17,7 +17,7 @@ it("reports the faster 2040m piece as a pace-equivalent 2k PB", () => {
   const [pb] = distancePBs([exact2k, faster2040]);
   expect(pb).toMatchObject({
     distance: 2000,
-    workoutTime: 421,
+    workoutId: faster2040.id,
     pace: faster2040.pace,
     date: faster2040.date,
   });
@@ -33,6 +33,15 @@ it("credits the sub-7 2k milestone from the pace-equivalent PB", () => {
 });
 
 describe("distancePBs", () => {
+  it("returns the faster-paced workout's id when two pieces have the same elapsed time", () => {
+    const shorter = workout({ id: 1, distance: 2000, time: 420, pace: 105 });
+    const longer = workout({ id: 2, distance: 2040, time: 420, pace: (420 * 500) / 2040 });
+
+    const [pb] = distancePBs([shorter, longer]);
+    expect(pb.workoutId).toBe(longer.id);
+    expect(pb.time).toBeCloseTo((420 * 2000) / 2040);
+  });
+
   it("returns an empty array for an empty list", () => {
     expect(distancePBs([])).toEqual([]);
   });
@@ -169,7 +178,7 @@ describe("detectNewPBs", () => {
     sport,
     distance,
     time,
-    workoutTime: time,
+    workoutId: 1,
     pace: time / (distance / 500),
     date: "2026-05-01 06:00:00",
   });
