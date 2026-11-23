@@ -165,8 +165,9 @@ describe("exchangeCode / refreshTokens", () => {
       "fetch",
       vi.fn().mockResolvedValue(new Response("client_secret leaked here", { status: 400 })),
     );
-    await expect(exchangeCode(cfg, "bad")).rejects.toThrow("Concept2 token request failed (400)");
-    await expect(exchangeCode(cfg, "bad")).rejects.not.toThrow(/client_secret leaked/);
+    await expect(exchangeCode(cfg, "bad")).rejects.toMatchObject({
+      message: "Concept2 token request failed (400)",
+    });
   });
 });
 
