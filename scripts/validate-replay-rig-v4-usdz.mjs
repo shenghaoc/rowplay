@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { USDLoader } from "three/examples/jsm/loaders/USDLoader.js";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { V4_BONE_NAMES } from "../src/lib/replay/rigV4.ts";
@@ -139,7 +140,7 @@ export async function validateV4Usdz(usdzPath = DEFAULT_USDZ, contractPath = DEF
   };
 }
 
-if (resolve(process.argv[1] ?? "") === resolve(new URL(import.meta.url).pathname)) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const result = await validateV4Usdz(process.argv[2] ?? DEFAULT_USDZ);
     const displayPath = relative(process.cwd(), result.path) || result.path;

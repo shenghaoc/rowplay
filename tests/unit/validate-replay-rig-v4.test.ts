@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -114,6 +114,32 @@ describe("V4 GLB build validator", () => {
       expect(stdout).toContain("3 clips");
     } finally {
       disposeV4AthleteAsset(asset);
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("V4 replay asset CLI entrypoints", () => {
+  it("validates the checked-in USDZ when launched directly", async () => {
+    const { stdout } = await execFileAsync(process.execPath, [
+      "scripts/validate-replay-rig-v4-usdz.mjs",
+    ]);
+    expect(stdout).toContain("1 SkinnedMesh, 51 bones");
+  });
+
+  it("writes the contract to the requested path when launched directly", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "rowplay-v4-contract-"));
+    const output = join(directory, "contract.json");
+    try {
+      const { stdout } = await execFileAsync(process.execPath, [
+        "scripts/build-replay-rig-v4-contract.mjs",
+        output,
+      ]);
+      expect(stdout).toContain("wrote ");
+      expect(JSON.parse(await readFile(output, "utf8"))).toMatchObject({
+        schemaVersion: 1,
+      });
+    } finally {
       await rm(directory, { recursive: true, force: true });
     }
   });

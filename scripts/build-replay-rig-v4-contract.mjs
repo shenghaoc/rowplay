@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { validateV4Asset } from "./validate-replay-rig-v4.mjs";
 import {
   V4_ASSET_FILENAME,
@@ -179,7 +180,7 @@ export async function buildV4Contract(outputPath = DEFAULT_OUTPUT) {
   return contract;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const output = resolve(process.argv[2] ?? DEFAULT_OUTPUT);
   const contract = await buildV4Contract(output);
   const displayPath = relative(process.cwd(), output) || output;
