@@ -1,3 +1,4 @@
+import type { StrokeClockBasis } from "#lib/analytics.ts";
 import type { Split, Stroke, WorkoutDetail } from "#lib/types.ts";
 import type uPlot from "uplot";
 
@@ -85,27 +86,25 @@ function paceToWattsFromSplit(sp: Split): number {
   return 2.8 / Math.pow(perMetre, 3);
 }
 
-function assignStrokesToWorkReps(splits: Split[], strokes: Stroke[]): Stroke[][] {
+function assignStrokesToWorkReps(
+  splits: Split[],
+  strokes: Stroke[],
+  clock: StrokeClockBasis,
+): Stroke[][] {
   const workCount = workSplits(splits).length;
   const buckets: Stroke[][] = Array.from({ length: workCount }, () => []);
   if (!strokes.length || workCount === 0) return buckets;
 
   const edges: number[] = [];
-  let cum = 0;
-  for (const sp of splits) {
-    cum += sp.time;
-    edges.push(cum);
-  }
-
-  // Map each split index to a work-rep bucket (or -1 for rest/short).
   const splitToWork: number[] = [];
+  let cum = 0;
   let workIdx = 0;
   for (const sp of splits) {
-    if (!sp.isRest && sp.time >= MIN_REP_SECONDS) {
-      splitToWork.push(workIdx++);
-    } else {
-      splitToWork.push(-1);
-    }
+    // Mapped strokes omit rest; synthetic elapsed-clock strokes include it.
+    if (sp.isRest && clock === "work-only") continue;
+    cum += sp.time;
+    edges.push(cum);
+    splitToWork.push(!sp.isRest && sp.time >= MIN_REP_SECONDS ? workIdx++ : -1);
   }
 
   let e = 0;
@@ -126,11 +125,11 @@ function workSplits(splits: Split[]): Split[] {
  * Returns one RepSeries per work interval, or null when the workout is not a
  * recognisable multi-rep piece (< 2 work intervals or each < 30 s).
  */
-export function detectReps(workout: WorkoutDetail): RepSeries[] | null {
+export function detectReps(workout: WorkoutDetail, clock: StrokeClockBasis): RepSeries[] | null {
   const work = workSplits(workout.splits);
   if (work.length < MIN_REPS) return null;
 
-  const buckets = assignStrokesToWorkReps(workout.splits, workout.strokes);
+  const buckets = assignStrokesToWorkReps(workout.splits, workout.strokes, clock);
   let repIndex = 0;
   const series: RepSeries[] = [];
 

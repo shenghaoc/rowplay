@@ -1,12 +1,16 @@
+import { strokeClockBasis } from "#lib/analytics.ts";
 import { describe, expect, it } from "vite-plus/test";
 import {
   alignRepsForChart,
   detectReps,
+  REP_PALETTE,
   repAvgPace,
+  repColor,
   repsHaveHr,
   type RepSeries,
 } from "./repComparison";
 import { mockWorkoutDetail } from "./mockData";
+import { mapStrokes } from "./server/concept2";
 import type { Split, Stroke, WorkoutDetail } from "./types";
 
 function workout(overrides: Partial<WorkoutDetail> & Pick<WorkoutDetail, "id">): WorkoutDetail {
@@ -31,7 +35,7 @@ describe("detectReps", () => {
       splits: [{ index: 0, distance: 2000, time: 480, pace: 120 }],
       strokes: [stroke(0, 120), stroke(240, 118)],
     });
-    expect(detectReps(detail)).toBeNull();
+    expect(detectReps(detail, strokeClockBasis(detail))).toBeNull();
   });
 
   it("returns null when work intervals are shorter than 30 s", () => {
@@ -43,13 +47,13 @@ describe("detectReps", () => {
       ],
       strokes: [],
     });
-    expect(detectReps(detail)).toBeNull();
+    expect(detectReps(detail, strokeClockBasis(detail))).toBeNull();
   });
 
   it("detects two qualifying work intervals and excludes rest", () => {
     const strokes = [stroke(0, 120), stroke(60, 118), stroke(120, 122), stroke(180, 121)];
     const detail = workout({ id: 3, splits: twoWorkSplits, strokes, isInterval: true });
-    const reps = detectReps(detail);
+    const reps = detectReps(detail, strokeClockBasis(detail));
     expect(reps).not.toBeNull();
     expect(reps!.length).toBe(2);
   });
@@ -57,7 +61,7 @@ describe("detectReps", () => {
   it("zero-bases every rep time axis", () => {
     const strokes = [stroke(0, 120), stroke(60, 118), stroke(180, 122), stroke(240, 121)];
     const detail = workout({ id: 4, splits: twoWorkSplits, strokes });
-    const reps = detectReps(detail)!;
+    const reps = detectReps(detail, strokeClockBasis(detail))!;
     for (const r of reps) {
       expect(r.times.length).toBeGreaterThan(0);
       expect(r.times[0]).toBe(0);
@@ -73,7 +77,7 @@ describe("detectReps", () => {
       ],
       strokes: [],
     });
-    const reps = detectReps(detail)!;
+    const reps = detectReps(detail, strokeClockBasis(detail))!;
     expect(repAvgPace(reps[0])).toBe(100);
     expect(repAvgPace(reps[1])).toBe(110);
   });
@@ -87,16 +91,82 @@ describe("detectReps", () => {
       ],
       strokes: [stroke(0, 120), stroke(180, 122)],
     });
-    const reps = detectReps(detail)!;
+    const reps = detectReps(detail, strokeClockBasis(detail))!;
     expect(repsHaveHr(reps)).toBe(false);
     expect([...reps[0].hr].every((v) => v === 0)).toBe(true);
   });
 
   it("detects reps on demo interval workout 1005", () => {
     const detail = mockWorkoutDetail(1005)!;
-    const reps = detectReps(detail);
+    const reps = detectReps(detail, strokeClockBasis(detail));
     expect(reps).not.toBeNull();
     expect(reps!.length).toBe(4);
+  });
+
+  it("keeps the rep closing edge and drops synthetic elapsed-clock rest strokes", () => {
+    const strokes = [stroke(0, 120), stroke(120, 118), stroke(150, 200), stroke(181, 121)];
+    const detail = workout({ id: 7, splits: twoWorkSplits, strokes, hasStrokeData: false });
+    const reps = detectReps(detail, strokeClockBasis(detail))!;
+    expect([...reps[0].pace]).toEqual([120, 118]);
+    expect([...reps[0].times]).toEqual([0, 120]);
+    expect([...reps[1].pace]).toEqual([121]);
+    expect(reps[1].times[0]).toBe(0);
+  });
+
+  it("keeps mapped work-only strokes from the second rep", () => {
+    const strokes = mapStrokes(
+      [
+        { t: 0, d: 0, p: 1200, spm: 28 },
+        { t: 1200, d: 5000, p: 1180, spm: 28 },
+        { t: 300, d: 1250, p: 1110, spm: 29 },
+        { t: 610, d: 2500, p: 1210, spm: 30 },
+      ],
+      "rower",
+    );
+    expect(strokes.map(({ t }) => t)).toEqual([0, 120, 150, 181]);
+
+    const detail = workout({ id: 10, splits: twoWorkSplits, strokes, hasStrokeData: true });
+    const reps = detectReps(detail, strokeClockBasis(detail))!;
+    expect([...reps[0].pace]).toEqual([120, 118]);
+    expect([...reps[1].pace]).toEqual([111, 121]);
+    expect([...reps[1].times]).toEqual([0, 31]);
+  });
+
+  it("derives split watts from watt-minutes and heart rate from the detail object", () => {
+    const splits: Split[] = [
+      {
+        index: 0,
+        distance: 500,
+        time: 120,
+        pace: 120,
+        isRest: false,
+        wattMinutes: 400,
+        heartRate: { average: 142 },
+      },
+      { index: 1, distance: 500, time: 120, pace: 130, isRest: false },
+    ];
+    const detail = workout({ id: 8, splits, strokes: [] });
+    const reps = detectReps(detail, strokeClockBasis(detail))!;
+    expect(reps[0].power[0]).toBeCloseTo(200, 6);
+    expect(reps[0].hr[0]).toBe(142);
+    expect(repsHaveHr(reps)).toBe(true);
+    const perMetre = 130 / 500;
+    expect(reps[1].power[0]).toBeCloseTo(2.8 / perMetre ** 3, 5);
+  });
+
+  it("falls back to split pace when every stroke pace is zero", () => {
+    const splits: Split[] = [
+      { index: 0, distance: 500, time: 120, pace: 100, isRest: false },
+      { index: 1, distance: 500, time: 120, pace: 110, isRest: false },
+    ];
+    const detail = workout({
+      id: 9,
+      splits,
+      strokes: [stroke(0, 0), stroke(60, 0), stroke(180, 0)],
+    });
+    const reps = detectReps(detail, strokeClockBasis(detail))!;
+    expect(repAvgPace(reps[0])).toBe(100);
+    expect(repAvgPace(reps[1])).toBe(110);
   });
 });
 
@@ -126,5 +196,52 @@ describe("alignRepsForChart", () => {
     expect(xs[xs.length - 1]).toBe(8);
     expect(y0[y0.length - 1]).toBeNull();
     expect(y1[y1.length - 1]).not.toBeNull();
+  });
+
+  it("interpolates inside a rep and returns null outside its samples", () => {
+    const reps: RepSeries[] = [
+      {
+        repIndex: 0,
+        avgPace: 100,
+        times: new Float32Array([2, 6]),
+        pace: new Float32Array([100, 140]),
+        rate: new Float32Array([20, 28]),
+        power: new Float32Array([150, 190]),
+        hr: new Float32Array([120, 140]),
+      },
+    ];
+    const pace = alignRepsForChart(reps, "pace")[1];
+    expect(pace[0]).toBeNull();
+    expect(pace[2]).toBeCloseTo(100, 5);
+    expect(pace[4]).toBeCloseTo(120, 5);
+    expect(pace[6]).toBeCloseTo(140, 5);
+
+    const rate = alignRepsForChart(reps, "rate")[1];
+    expect(rate[4]).toBeCloseTo(24, 5);
+    const hr = alignRepsForChart(reps, "hr")[1];
+    expect(hr[4]).toBeCloseTo(130, 5);
+  });
+
+  it("holds the earlier sample when two timestamps are identical", () => {
+    const reps: RepSeries[] = [
+      {
+        repIndex: 0,
+        avgPace: 10,
+        times: new Float32Array([0, 5, 5]),
+        pace: new Float32Array([10, 20, 40]),
+        rate: new Float32Array([1, 2, 3]),
+        power: new Float32Array([1, 2, 3]),
+        hr: new Float32Array([1, 2, 3]),
+      },
+    ];
+    expect(alignRepsForChart(reps, "pace")[1][5]).toBeCloseTo(20, 5);
+  });
+});
+
+describe("repColor", () => {
+  it("wraps the palette after the sixth rep", () => {
+    expect(repColor(0)).toBe(REP_PALETTE[0]);
+    expect(repColor(1)).toBe(REP_PALETTE[1]);
+    expect(repColor(REP_PALETTE.length)).toBe(REP_PALETTE[0]);
   });
 });
