@@ -185,7 +185,7 @@
 	let driftOverlayOn = $state(false);
 
 	// --- Rep comparison ---
-	const repSeries = $derived(detectReps(detail) ?? []);
+	const repSeries = $derived(detectReps(detail, strokeClockBasis(detail)) ?? []);
 	const hasReps = $derived(repSeries.length >= 2);
 	const showHrMetric = $derived(repsHaveHr(repSeries));
 	let repMetric = $state<RepMetric>('pace');
