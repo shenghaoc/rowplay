@@ -88,4 +88,25 @@ describe("pickDefaultGhostCandidate", () => {
     const candidates = [w(2, 1950, 115, "2026-01-01"), w(3, 2050, 115, "2026-05-01")];
     expect(pickDefaultGhostCandidate(candidates, current)?.id).toBe(3);
   });
+
+  it("breaks a time-axis tie by fastest pace, then most recent date", () => {
+    const current = {
+      id: 1,
+      distance: 7500,
+      sport: "rower" as const,
+      time: 1800,
+      workoutType: "JustRow",
+    };
+    const byPace = [
+      w(2, 7400, 130, "2026-06-01", { time: 1760, workoutType: "JustRow" }),
+      w(3, 7600, 118, "2026-01-01", { time: 1840, workoutType: "JustRow" }),
+    ];
+    expect(pickDefaultGhostCandidate(byPace, current)?.id).toBe(3);
+
+    const byDate = [
+      w(2, 7400, 120, "2026-01-01", { time: 1760, workoutType: "JustRow" }),
+      w(4, 7600, 120, "2026-06-01", { time: 1840, workoutType: "JustRow" }),
+    ];
+    expect(pickDefaultGhostCandidate(byDate, current)?.id).toBe(4);
+  });
 });
