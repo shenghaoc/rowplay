@@ -1,15 +1,12 @@
 {
   "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
   "name": "rowplay",
-  "main": ".svelte-kit/cloudflare/_worker.js",
   "compatibility_date": "2025-05-24",
   "compatibility_flags": ["nodejs_compat"],
-  // Static assets (client bundle, favicon) served by the Worker's built-in
-  // asset server. The SvelteKit adapter emits the worker and assets into the
-  // same directory and excludes _worker.js via .assetsignore.
+  // The adapter writes the deployment config with the Worker entry and client assets.
   "assets": {
     "binding": "ASSETS",
-    "directory": ".svelte-kit/cloudflare",
+    "directory": ".svelte-kit/cloudflare/client",
   },
   // Non-secret config. Secrets: SESSION_SECRET (required for token sessions).
   // CONCEPT2_CLIENT_SECRET only if OAuth is enabled. Production uses BYOT
