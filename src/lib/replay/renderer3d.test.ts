@@ -4429,13 +4429,17 @@ describe("CourseRenderer3D", () => {
         const live = v4Lane(renderer, "live").instance;
         const ghost = v4Lane(renderer, "ghost").instance;
 
-        expect(live.root).not.toBe(ghost.root);
-        expect(live.mesh).not.toBe(ghost.mesh);
-        expect(live.mesh.geometry).not.toBe(ghost.mesh.geometry);
-        expect(live.mesh.material).not.toBe(ghost.mesh.material);
-        expect(live.skeleton).not.toBe(ghost.skeleton);
-        expect(live.bones.v4LeftForearm).not.toBe(ghost.bones.v4LeftForearm);
-        expect(live.mixer).not.toBe(ghost.mixer);
+        // Compare references directly: Vitest's toBe can deep-compare distinct scene graphs.
+        expect(Object.is(live.root, ghost.root), "live and ghost roots").toBe(false);
+        expect(Object.is(live.mesh, ghost.mesh), "live and ghost meshes").toBe(false);
+        expect(Object.is(live.mesh.geometry, ghost.mesh.geometry), "lane geometries").toBe(false);
+        expect(Object.is(live.mesh.material, ghost.mesh.material), "lane materials").toBe(false);
+        expect(Object.is(live.skeleton, ghost.skeleton), "live and ghost skeletons").toBe(false);
+        expect(
+          Object.is(live.bones.v4LeftForearm, ghost.bones.v4LeftForearm),
+          "live and ghost left forearm bones",
+        ).toBe(false);
+        expect(Object.is(live.mixer, ghost.mixer), "live and ghost mixers").toBe(false);
         expect(v4Lane(renderer, "ghost").motion.root.visible).toBe(true);
         for (const [lane, athlete, requestedOpacity] of [
           ["live", live, 1],
