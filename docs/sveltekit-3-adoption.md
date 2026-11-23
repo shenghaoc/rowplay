@@ -1,7 +1,7 @@
 # SvelteKit 3 adoption decisions
 
-These followups use Kit 3.0.1, adapter-cloudflare 8.0.0 and Wrangler 4.155.0.
-Dependencies, release-age safeguards and the Workers deployment target stay unchanged.
+The initial adoption used Kit 3.0.1, adapter-cloudflare 8.0.0 and Wrangler 4.155.0.
+The 24-hour release-age safeguard and the Workers deployment target stay unchanged.
 
 ## Update detection and the installed PWA
 
@@ -70,3 +70,34 @@ errors into successful return values, so those errors never reach the hook.
 Tests explicitly retain dashboard/replay recovery output; existing aggregate
 failure tests retain null fallback behavior. Removing these logs would lose
 coverage. No new remote functions, tracing or shallow routing is introduced.
+
+## Kit 3.4 and Cloudflare adapter 9
+
+The lockfile resolves Kit 3.4.0, adapter 9.0.0, Wrangler 4.166.0, Workers types
+5.20261121.1, and Svelte 5.59.1. The Svelte Vite plugin remains at 7.3.1 because
+7.3.2 had not cleared 24 hours when the lockfile was resolved.
+
+[Adapter 9](https://github.com/sveltejs/kit/releases/tag/@sveltejs/adapter-cloudflare@9.0.0)
+rejects the previous generated Worker path in the source Wrangler config. It
+now writes a deployment config with `worker/index.js` as the entry point and
+`client/` as the static asset directory under `.svelte-kit/cloudflare`.
+Wrangler discovers the generated config through `.wrangler/deploy/config.json`.
+Keep the `ASSETS` binding and the default `worker: true`: Rowplay serves SSR and
+API routes, not a static-only site. The project uses Workers, not Pages, and
+does not set the removed adapter `fallback` option or `paths.assets`.
+
+The Worker and its maps are outside the public client tree. The postbuild
+step now appends the existing source-map exclusion to `client/.assetsignore`
+without replacing the adapter's exclusions. Replay release capture reads
+`_app/version.json` from the same client tree.
+
+[Kit 3.4](https://github.com/sveltejs/kit/releases/tag/@sveltejs/kit@3.4.0)
+allows adapters to opt out of the Node preview server with `vite.customPreview`.
+Adapter 9 does not opt out. Rowplay's preview tasks still use local Wrangler
+for Workers behavior, with or without the preceding build.
+
+The stricter checks of async `load` returns against `App.PageData` apply without casting.
+`DocsArticle` still passes the route string `"/"` to `resolve` and uses it
+as a prefix; query strings, fragments and replay paths are not passed as URL
+objects. Kit skips ETag hashing for `no-store`; Rowplay's `private, no-store`
+route responses keep their existing headers.

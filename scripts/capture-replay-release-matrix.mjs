@@ -57,7 +57,7 @@ const browserChannel = option("browser-channel");
  */
 async function assertServedBuildMatches() {
   const version = JSON.parse(
-    await readFile(resolve(".svelte-kit/cloudflare/_app/version.json"), "utf8"),
+    await readFile(resolve(".svelte-kit/cloudflare/client/_app/version.json"), "utf8"),
   ).version;
   const served = await fetch(`${baseUrl}/_app/version.json`).then((r) => r.json());
   if (served.version !== version) {

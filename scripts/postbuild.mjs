@@ -1,13 +1,8 @@
-// Post-build hardening for the Cloudflare *Workers* target.
-//
-// @sveltejs/adapter-cloudflare already writes an `.assetsignore` that keeps the
-// Workers asset server from serving `_worker.js`, `_routes.json`, `_headers`
-// and `_redirects`. It does NOT exclude the worker's source map, though, so we
-// append `_worker.js.map` (the server bundle's sourcemap) to the existing file
-// rather than replacing it.
+// Defense in depth: adapter 9 serves only cloudflare/client, not its worker
+// sibling. Preserve the adapter exclusions and the existing source-map exclusion.
 import { readFile, writeFile } from "node:fs/promises";
 
-const FILE = ".svelte-kit/cloudflare/.assetsignore";
+const FILE = ".svelte-kit/cloudflare/client/.assetsignore";
 const EXTRA = ["_worker.js.map"];
 
 let current = "";
