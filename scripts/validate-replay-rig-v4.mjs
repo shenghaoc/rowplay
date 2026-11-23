@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const DEFAULT_ASSET = "static/replay-assets/rowplay-athlete-v4.glb";
 // Hard surface rebuild: athletic form language needs denser remesh and
@@ -664,7 +665,7 @@ async function main() {
   );
 }
 
-if (resolve(process.argv[1] ?? "") === resolve(new URL(import.meta.url).pathname)) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     await main();
   } catch (error) {
