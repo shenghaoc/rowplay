@@ -161,22 +161,28 @@ describe("analyzeWorkoutMoments", () => {
   it("ignores negative, non-positive-pace, and non-monotonic samples", () => {
     const clean = strokesFromPaces([120, 118, 116, 122, 126, 124, 118, 114, 112, 112, 110, 108]);
     const [first, second, third, ...rest] = clean;
-    const dirty: Stroke[] = [
-      { t: -5, d: -10, pace: 90, spm: 40, watts: 300 },
-      { ...first, pace: 0 },
-      first,
-      second,
-      third,
-      { ...third, d: third.d + 20, pace: 80, spm: 50, watts: 400 },
-      ...rest,
+    const invalidSamples: Stroke[] = [
+      { t: -5, d: 0, pace: 90, spm: 40, watts: 300 },
+      { t: 0, d: -10, pace: 90, spm: 40, watts: 300 },
     ];
 
     const fromClean = analyzeWorkoutMoments(detail({ strokes: clean }));
-    const fromDirty = analyzeWorkoutMoments(detail({ strokes: dirty }));
-    expect(fromDirty.baselinePace).toBeCloseTo(fromClean.baselinePace, 5);
-    expect(fromDirty.moments.map((m) => [m.kind, m.startTime, m.endTime, m.avgPace])).toEqual(
-      fromClean.moments.map((m) => [m.kind, m.startTime, m.endTime, m.avgPace]),
-    );
+    for (const invalid of invalidSamples) {
+      const dirty: Stroke[] = [
+        invalid,
+        { ...first, pace: 0 },
+        first,
+        second,
+        third,
+        { ...third, d: third.d + 20, pace: 80, spm: 50, watts: 400 },
+        ...rest,
+      ];
+      const fromDirty = analyzeWorkoutMoments(detail({ strokes: dirty }));
+      expect(fromDirty.baselinePace).toBeCloseTo(fromClean.baselinePace, 5);
+      expect(fromDirty.moments.map((m) => [m.kind, m.startTime, m.endTime, m.avgPace])).toEqual(
+        fromClean.moments.map((m) => [m.kind, m.startTime, m.endTime, m.avgPace]),
+      );
+    }
   });
 
   it("classifies a faster, slower, and steady finish from the last third", () => {
@@ -203,7 +209,7 @@ describe("analyzeWorkoutMoments", () => {
 
   it("skips the finish call on a piece shorter than 90 seconds", () => {
     const report = analyzeWorkoutMoments(
-      detail({ strokes: strokesFromPaces([120, 110, 130, 115], 10) }),
+      detail({ strokes: strokesFromPaces([160, 160, 160, 160, 110, 110, 110, 110], 10) }),
     );
     expect(report.moments.map((m) => m.kind)).not.toContain("finish-trend");
   });
