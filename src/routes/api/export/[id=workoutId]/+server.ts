@@ -4,7 +4,7 @@ import { loadWorkoutDetail } from "#lib/server/data.ts";
 import { workoutDetailToTcx, workoutExportFilename } from "#lib/server/export.ts";
 
 export const GET: RequestHandler = async (event) => {
-  const id = Number(event.params.id);
+  const id = event.params.id;
   if (!Number.isFinite(id) || id <= 0 || !Number.isInteger(id))
     throw error(400, "Invalid workout id.");
   const format = new URL(event.request.url).searchParams.get("format") ?? "tcx";

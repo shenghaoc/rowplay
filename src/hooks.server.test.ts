@@ -1,6 +1,6 @@
 import { setWorkerEnv } from "../tests/setup";
 import { sealSession } from "#lib/server/session.ts";
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 /**
  * Security header tests for hooks.server.ts.
@@ -11,7 +11,7 @@ import { describe, expect, it } from "vite-plus/test";
  */
 
 // Import the module directly so these tests exercise the real hook defaults.
-import { handle } from "./hooks.server";
+import { handle, handleError } from "./hooks.server";
 
 /** Build a minimal RequestEvent for the hook. */
 function fakeEvent(
@@ -259,5 +259,99 @@ describe("native Worker session bindings", () => {
     const event = fakeEvent({ sessionCookie: "tampered" });
     await handle({ event: event as never, resolve: passthroughResolve() });
     expect(event.locals).toMatchObject({ demo: true, personal: false, user: null });
+  });
+});
+
+describe("Kit 3 request error logging", () => {
+  const privateEvent = {
+    route: { id: "/api/workouts/[id=workoutId]" },
+    get url() {
+      throw new Error("Request URLs must not be read for logging");
+    },
+    get request() {
+      throw new Error("Headers must not be read for logging");
+    },
+    get cookies() {
+      throw new Error("Cookies must not be read for logging");
+    },
+    get locals() {
+      throw new Error("Session contents must not be read for logging");
+    },
+  } as never;
+
+  const expected: Parameters<typeof handleError>[0][] = [
+    {
+      kind: "app",
+      error: { status: 400, message: "rp_tok=synthetic-private-cookie" },
+      event: privateEvent,
+    },
+    { kind: "framework", error: { status: 404, message: "private-path" }, event: privateEvent },
+    {
+      kind: "validation",
+      error: { status: 400, message: "Bad Request" },
+      issues: [{ message: "private-input" }],
+      event: privateEvent,
+    },
+  ];
+
+  it.each(expected)(
+    "logs $kind/$error.status metadata without overriding the expected response",
+    (input) => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        expect(handleError(input)).toBeUndefined();
+        expect(warn).toHaveBeenCalledExactlyOnceWith("[sveltekit] request rejected", {
+          kind: input.kind,
+          status: (input.error as { status: number }).status,
+          route: "/api/workouts/[id=workoutId]",
+        });
+        expect(error).not.toHaveBeenCalled();
+      } finally {
+        vi.restoreAllMocks();
+      }
+    },
+  );
+
+  it("logs unknown errors as 500 without their sensitive message, stack or cause", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const sensitive = new Error("Authorization: Bearer synthetic-private-token", {
+        cause: new Error("rp_session=synthetic-session; SESSION_SECRET=synthetic-secret"),
+      });
+      expect(
+        handleError({ kind: "unknown", error: sensitive, event: privateEvent }),
+      ).toBeUndefined();
+      expect(error).toHaveBeenCalledExactlyOnceWith("[sveltekit] request failed", {
+        kind: "unknown",
+        status: 500,
+        route: "/api/workouts/[id=workoutId]",
+      });
+      expect(JSON.stringify(error.mock.calls)).not.toContain("synthetic");
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("handles an unmatched framework route using null metadata", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      expect(
+        handleError({
+          kind: "framework",
+          error: { status: 404, message: "Not Found" },
+          event: { route: { id: null } } as never,
+        }),
+      ).toBeUndefined();
+      expect(warn).toHaveBeenCalledExactlyOnceWith("[sveltekit] request rejected", {
+        kind: "framework",
+        status: 404,
+        route: null,
+      });
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });

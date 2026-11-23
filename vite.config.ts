@@ -8,7 +8,7 @@ export const sveltekitConfig = {
   preprocess: vitePreprocess(),
   adapter: adapter(),
   serviceWorker: { register: true },
-  // Keep the existing service-worker update prompt as the only polling mechanism.
+  // Kit checks on focus/visibility; one hourly backstop checks metadata and updates the SW.
   version: { pollInterval: 0 },
 };
 
