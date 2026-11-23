@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { getI18nContext } from '$lib/i18n.svelte';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
 	let { data, form } = $props();
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);

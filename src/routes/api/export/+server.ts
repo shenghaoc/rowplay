@@ -1,7 +1,7 @@
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { loadWorkouts } from "$lib/server/data";
-import { exportFilename, workoutsToCsv, workoutsToJson } from "$lib/server/export";
+import { loadWorkouts } from "#lib/server/data.ts";
+import { exportFilename, workoutsToCsv, workoutsToJson } from "#lib/server/export.ts";
 
 export const GET: RequestHandler = async (event) => {
   const format = new URL(event.request.url).searchParams.get("format") ?? "json";

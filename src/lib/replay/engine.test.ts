@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { sampleAt, sampleIndexAt } from "./engine";
-import type { Stroke } from "$lib/types";
+import type { Stroke } from "#lib/types.ts";
 import { ladderStrokes } from "../../../tests/unit/fixtures";
 import { mockWorkoutDetail } from "../mockData";
 

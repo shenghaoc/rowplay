@@ -1,6 +1,6 @@
-import { distanceBand } from "$lib/analytics";
-import { areComparable, classifyAxis } from "$lib/replay/comparabilityGuard";
-import type { Sport, Workout } from "$lib/types";
+import { distanceBand } from "#lib/analytics.ts";
+import { areComparable, classifyAxis } from "#lib/replay/comparabilityGuard.ts";
+import type { Sport, Workout } from "#lib/types.ts";
 
 export interface GhostPickContext {
   id: number;

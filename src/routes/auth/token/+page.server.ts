@@ -1,11 +1,12 @@
+import { env } from "cloudflare:workers";
 import { fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
-import { nowEpochMillis } from "$lib/datetime";
-import { getConfig } from "$lib/server/config";
-import { getValue } from "$lib/i18n";
-import { fetchMe } from "$lib/server/concept2";
-import { TOKEN_COOKIE, writeSession, type SessionUser } from "$lib/server/session";
-import { sealToken } from "$lib/server/tokenCrypto";
+import { nowEpochMillis } from "#lib/datetime.ts";
+import { getConfig } from "#lib/server/config.ts";
+import { getValue } from "#lib/i18n.ts";
+import { fetchMe } from "#lib/server/concept2.ts";
+import { TOKEN_COOKIE, writeSession, type SessionUser } from "#lib/server/session.ts";
+import { sealToken } from "#lib/server/tokenCrypto.ts";
 
 export const load: PageServerLoad = async (event) => {
   // Already authenticated — nothing to enter.
@@ -24,7 +25,7 @@ export const actions: Actions = {
     if (!token) return fail(400, { error: tr("token.empty") });
 
     const cfg = getConfig(event);
-    const secret = event.platform?.env?.SESSION_SECRET;
+    const secret = env.SESSION_SECRET;
     if (!secret) return fail(500, { error: tr("token.serverMisconfigured") });
 
     // Validate by fetching the owner; a bad token is rejected here.

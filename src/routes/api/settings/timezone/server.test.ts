@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.ts", () => ({
   loadHomeTimezone: vi.fn(),
   saveHomeTimezone: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { POST } from "./+server";
-import { saveHomeTimezone } from "$lib/server/data";
+import { saveHomeTimezone } from "#lib/server/data.ts";
 
 function event(body: unknown, demo = false) {
   return {

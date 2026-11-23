@@ -1,8 +1,8 @@
 import type { PageServerLoad } from "./$types";
 import { redirect } from "@sveltejs/kit";
-import { loadWorkoutDetail, loadWorkouts } from "$lib/server/data";
-import { createLogger } from "$lib/server/logger";
-import type { Workout } from "$lib/types";
+import { loadWorkoutDetail, loadWorkouts } from "#lib/server/data.ts";
+import { createLogger } from "#lib/server/logger.ts";
+import type { Workout } from "#lib/types.ts";
 
 const logger = createLogger(console);
 

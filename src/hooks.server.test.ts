@@ -1,3 +1,5 @@
+import { setWorkerEnv } from "../tests/setup";
+import { sealSession } from "#lib/server/session.ts";
 import { describe, expect, it } from "vite-plus/test";
 
 /**
@@ -36,7 +38,6 @@ function fakeEvent(
       get: (name: string) => cookies.get(name) ?? null,
     },
     locals: {} as Record<string, unknown>,
-    platform: { env: {} },
   };
 }
 
@@ -232,5 +233,31 @@ describe("session loading", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const event = fakeEvent() as any;
     await handle({ event, resolve });
+  });
+});
+
+describe("native Worker session bindings", () => {
+  it("opens encrypted sessions without an event.platform", async () => {
+    const secret = "local-sveltekit-3-session-test-secret";
+    setWorkerEnv({ SESSION_SECRET: secret });
+    const sessionCookie = await sealSession(secret, {
+      user: { id: 7, username: "synthetic-athlete" },
+      personal: true,
+      tokens: { accessToken: "", refreshToken: "", expiresAt: 9999999999999, scope: "" },
+    });
+    const event = fakeEvent({ sessionCookie });
+    await handle({ event: event as never, resolve: passthroughResolve() });
+    expect(event.locals).toMatchObject({
+      demo: false,
+      personal: true,
+      user: { id: 7, username: "synthetic-athlete" },
+    });
+  });
+
+  it("keeps tampered sessions in demo mode", async () => {
+    setWorkerEnv({ SESSION_SECRET: "local-sveltekit-3-session-test-secret" });
+    const event = fakeEvent({ sessionCookie: "tampered" });
+    await handle({ event: event as never, resolve: passthroughResolve() });
+    expect(event.locals).toMatchObject({ demo: true, personal: false, user: null });
   });
 });

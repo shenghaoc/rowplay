@@ -3,8 +3,8 @@
 	import Download from '@lucide/svelte/icons/download';
 	import Globe from '@lucide/svelte/icons/globe';
 	import { toast } from 'svelte-sonner';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import { TIMEZONE_OPTIONS } from '$lib/timezoneOptions';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import { TIMEZONE_OPTIONS } from '#lib/timezoneOptions.ts';
 
 	let { data } = $props();
 	const i18n = getI18nContext();

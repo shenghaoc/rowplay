@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { base } from '$app/paths';
-	import { parseGuideMarkdown, type InlineNode } from '$lib/docs';
+	import { resolve } from '$app/paths';
+	import { parseGuideMarkdown, type InlineNode } from '#lib/docs.ts';
 
 	let { markdown, label }: { markdown: string; label: string } = $props();
 
@@ -30,7 +30,7 @@
 				</a>
 		{:else}
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a href="{base}{node.href}">
+			<a href={node.href.startsWith('#') ? node.href : `${resolve('/')}${node.href.slice(1)}`}>
 				{@render inline(node.children)}
 			</a>
 		{/if}

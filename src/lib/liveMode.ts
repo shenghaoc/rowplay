@@ -1,5 +1,5 @@
-import type { DistancePB } from "$lib/analytics";
-import type { Workout } from "$lib/types";
+import type { DistancePB } from "#lib/analytics.ts";
+import type { Workout } from "#lib/types.ts";
 import { safeStorage } from "./safeStorage";
 
 /** Polling interval presets (seconds). Minimum 30 per Concept2 rate guidance. */

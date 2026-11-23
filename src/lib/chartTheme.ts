@@ -1,5 +1,5 @@
 import type uPlot from "uplot";
-import type { ThemeName } from "$lib/theme.svelte";
+import type { ThemeName } from "#lib/theme.svelte.ts";
 
 /**
  * Charting contract for rowplay.

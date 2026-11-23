@@ -1,4 +1,4 @@
-import type { Split, Stroke, WorkoutDetail } from "$lib/types";
+import type { Split, Stroke, WorkoutDetail } from "#lib/types.ts";
 import type uPlot from "uplot";
 
 export interface RepSeries {

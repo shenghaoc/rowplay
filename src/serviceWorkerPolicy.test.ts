@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { shouldPrecacheStaticFile } from "../svelte.config.js";
 import {
+  shouldPrecacheStaticFile,
   isManagedServiceWorkerCache,
   isReplayAssetPath,
   replayAssetCacheStrategy,
@@ -13,7 +13,7 @@ import { attachRuntimeCacheWrite } from "./serviceWorkerRuntimeCache";
  * testability). The core invariant: networkFirst must not cache responses
  * with `no-store` or `private` in cache-control.
  *
- * The actual service-worker.ts runs in a ServiceWorkerGlobalScope which
+ * The actual service-worker/index.ts runs in a ServiceWorkerGlobalScope which
  * Vitest can't easily simulate, so we extract and test the filtering logic.
  */
 

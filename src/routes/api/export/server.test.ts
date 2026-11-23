@@ -1,16 +1,16 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.ts", () => ({
   loadWorkouts: vi.fn(),
 }));
-vi.mock("$lib/server/export", () => ({
+vi.mock("#lib/server/export.ts", () => ({
   exportFilename: vi.fn().mockImplementation((ext: string) => `rowplay-logbook-2026-01-01.${ext}`),
   workoutsToCsv: vi.fn().mockReturnValue("date,distance\n2026-01-01,2000"),
   workoutsToJson: vi.fn().mockReturnValue("[]"),
 }));
 
 import { GET } from "./+server";
-import { loadWorkouts } from "$lib/server/data";
+import { loadWorkouts } from "#lib/server/data.ts";
 
 const sampleWorkouts = [
   { id: 1, date: "2026-01-01", distance: 2000, time: 480, pace: 120, sport: "rower" },

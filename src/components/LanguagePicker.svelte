@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Languages from '@lucide/svelte/icons/languages';
-	import { LANGUAGES, type Language } from '$lib/i18n';
-	import { getI18nContext } from '$lib/i18n.svelte';
+	import { LANGUAGES, type Language } from '#lib/i18n.ts';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
 
 	const i18n = getI18nContext();
 	const t = $derived(i18n.translate);

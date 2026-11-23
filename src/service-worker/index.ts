@@ -2,14 +2,17 @@
 /// <reference no-default-lib="true"/>
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
-import { base, build, files, version } from "$service-worker";
+import { version } from "$app/env";
+import { assets, immutable } from "$app/manifest";
+import { asset, resolve } from "$app/paths";
 import {
+  shouldPrecacheStaticFile,
   isManagedServiceWorkerCache,
   REPLAY_MODEL_CACHE_PREFIX,
   replayAssetCacheStrategy,
   shouldCacheResponse,
-} from "./serviceWorkerPolicy";
-import { attachRuntimeCacheWrite } from "./serviceWorkerRuntimeCache";
+} from "../serviceWorkerPolicy";
+import { attachRuntimeCacheWrite } from "../serviceWorkerRuntimeCache";
 
 // `self` is typed as Window in the default lib; inside a service worker it is
 // a ServiceWorkerGlobalScope. This is the cast SvelteKit's docs prescribe.
@@ -22,7 +25,12 @@ const API_CACHE = `api-${version}`;
 const REPLAY_MODEL_CACHE = `${REPLAY_MODEL_CACHE_PREFIX}${version}`;
 const CURRENT_CACHES = new Set([SHELL_CACHE, PAGES_CACHE, API_CACHE, REPLAY_MODEL_CACHE]);
 
-const SHELL_ASSETS = [...build, ...files];
+const root = resolve("");
+const base = root.replace(/\/$/, "");
+const SHELL_ASSETS = [
+  ...immutable.map(({ path }) => `${root}${path}`),
+  ...assets.filter(({ path }) => shouldPrecacheStaticFile(path)).map(({ path }) => asset(path)),
+];
 
 /** App routes that should work offline after a prior visit. */
 const OFFLINE_PATHS = ["/dashboard", "/replay"];

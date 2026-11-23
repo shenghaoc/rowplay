@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.ts", () => ({
   loadWorkoutDetail: vi.fn(),
 }));
 
 import { GET } from "./+server";
-import { loadWorkoutDetail } from "$lib/server/data";
+import { loadWorkoutDetail } from "#lib/server/data.ts";
 
 const sampleDetail = {
   id: 1001,

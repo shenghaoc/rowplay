@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
  * Cache API.
  */
 
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.ts", () => ({
   loadWorkouts: vi.fn().mockResolvedValue([]),
   loadWorkoutList: vi.fn().mockResolvedValue([]),
   loadDashboardAggregates: vi.fn().mockResolvedValue({}),
@@ -16,15 +16,15 @@ vi.mock("$lib/server/data", () => ({
   listQueryFromEvent: vi.fn().mockReturnValue({}),
 }));
 
-vi.mock("$lib/firstRun", () => ({
+vi.mock("#lib/firstRun.ts", () => ({
   firstRunEligible: vi.fn().mockReturnValue(false),
 }));
 
-vi.mock("$lib/datetime", () => ({
+vi.mock("#lib/datetime.ts", () => ({
   todayKeyForTz: vi.fn().mockReturnValue("2026-06-07"),
 }));
 
-vi.mock("$lib/workoutQuery", () => ({
+vi.mock("#lib/workoutQuery.ts", () => ({
   listQueryIsFiltered: vi.fn().mockReturnValue(false),
 }));
 

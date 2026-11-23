@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("$lib/mockData", () => ({
+vi.mock("#lib/mockData.ts", () => ({
   mockWorkouts: vi.fn().mockReturnValue([{ id: 1001 }, { id: 1002 }]),
   generateMockWorkout: vi.fn().mockReturnValue({
     id: 2001,

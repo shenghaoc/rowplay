@@ -1,9 +1,17 @@
+import { fileURLToPath } from "node:url";
+import { sveltekitConfig } from "./vite.config";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  plugins: [sveltekit()],
+  plugins: [sveltekit(sveltekitConfig)],
   test: {
+    alias: {
+      "cloudflare:workers": fileURLToPath(
+        new URL("./tests/fixtures/worker-bindings.ts", import.meta.url),
+      ),
+    },
+    setupFiles: ["./tests/setup.ts"],
     include: ["src/**/*.test.ts", "tests/unit/**/*.test.ts"],
     exclude: ["src/**/*.browser.test.ts"],
     environment: "node",

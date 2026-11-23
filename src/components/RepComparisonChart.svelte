@@ -7,11 +7,11 @@
 		repColor,
 		type RepMetric,
 		type RepSeries
-	} from '$lib/repComparison';
-	import { chartTheme, withAlpha } from '$lib/chartTheme';
-	import { fmtPaceBare, fmtTime } from '$lib/format';
-	import { getI18nContext } from '$lib/i18n.svelte';
-	import { getThemeContext } from '$lib/theme.svelte';
+	} from '#lib/repComparison.ts';
+	import { chartTheme, withAlpha } from '#lib/chartTheme.ts';
+	import { fmtPaceBare, fmtTime } from '#lib/format.ts';
+	import { getI18nContext } from '#lib/i18n.svelte.ts';
+	import { getThemeContext } from '#lib/theme.svelte.ts';
 
 	interface Props {
 		reps: RepSeries[];
