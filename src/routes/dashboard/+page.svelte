@@ -191,7 +191,7 @@
 						(w) =>
 							w.sport === pb.sport &&
 							Math.abs(w.distance - pb.distance) <= pb.distance * 0.02 &&
-							w.time === pb.time
+							w.time === pb.workoutTime
 					)?.id
 				)
 				.filter((id): id is number => id != null)

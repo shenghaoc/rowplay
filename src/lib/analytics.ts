@@ -216,14 +216,24 @@ const STANDARD_DISTANCES = [500, 1000, 2000, 5000, 6000, 10000, 21097];
  * Pace, not raw time: a shorter workout inside the tolerance must not beat a
  * faster-paced longer one.
  */
-export function distancePBs(
-  workouts: Workout[],
-): { distance: number; time: number; pace: number; date: string; sport: Sport }[] {
-  const out: { distance: number; time: number; pace: number; date: string; sport: Sport }[] = [];
+export interface DistancePB {
+  distance: number;
+  /** Pace-equivalent seconds at the nominal distance. */
+  time: number;
+  /** Recorded elapsed seconds, for locating the source workout. */
+  workoutTime: number;
+  pace: number;
+  date: string;
+  sport: Sport;
+}
+
+export function distancePBs(workouts: Workout[]): DistancePB[] {
+  const out: DistancePB[] = [];
   for (const { target, workout: best } of bestStandardDistanceWorkouts(workouts)) {
     out.push({
       distance: target,
-      time: best.time,
+      time: (best.pace * target) / 500,
+      workoutTime: best.time,
       pace: best.pace,
       date: best.date,
       sport: best.sport,
@@ -2090,8 +2100,6 @@ export function pbWorkoutIds(workouts: Workout[]): Set<number> {
   }
   return ids;
 }
-
-export type DistancePB = ReturnType<typeof distancePBs>[number];
 
 /** PBs that improved (or are new) after a sync or data refresh. */
 export function detectNewPBs(before: DistancePB[], after: DistancePB[]): DistancePB[] {

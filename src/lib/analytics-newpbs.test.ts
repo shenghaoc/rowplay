@@ -2,6 +2,36 @@ import { describe, expect, it } from "vite-plus/test";
 import { detectNewPBs, distancePBs, pbWorkoutIds } from "./analytics";
 import { workout } from "../../tests/unit/fixtures";
 
+import { computeMilestones } from "./milestones.ts";
+
+const exact2k = workout({ distance: 2000, time: 419, pace: 419 / 4, id: 1 });
+const faster2040 = workout({
+  distance: 2040,
+  time: 421,
+  pace: (421 * 500) / 2040,
+  id: 2,
+  date: "2026-05-02 06:00:00",
+});
+
+it("reports the faster 2040m piece as a pace-equivalent 2k PB", () => {
+  const [pb] = distancePBs([exact2k, faster2040]);
+  expect(pb).toMatchObject({
+    distance: 2000,
+    workoutTime: 421,
+    pace: faster2040.pace,
+    date: faster2040.date,
+  });
+  expect(pb.time).toBeCloseTo(412.745, 3);
+});
+
+it("credits the sub-7 2k milestone from the pace-equivalent PB", () => {
+  const workouts = [exact2k, faster2040];
+  const milestone = computeMilestones(workouts, distancePBs(workouts)).find(
+    (m) => m.id === "pb_2k_sub7",
+  );
+  expect(milestone).toMatchObject({ achieved: true, achievedAt: "2026-05-02" });
+});
+
 describe("distancePBs", () => {
   it("returns an empty array for an empty list", () => {
     expect(distancePBs([])).toEqual([]);
@@ -139,6 +169,7 @@ describe("detectNewPBs", () => {
     sport,
     distance,
     time,
+    workoutTime: time,
     pace: time / (distance / 500),
     date: "2026-05-01 06:00:00",
   });
