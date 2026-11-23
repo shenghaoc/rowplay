@@ -85,4 +85,18 @@ describe("createLogger", () => {
     expect(firstArg).toBeInstanceOf(Error);
     expect((firstArg as Error).message).not.toContain("abcdef0123456789");
   });
+
+  it("redacts warn arguments the same way as error", () => {
+    const warns: unknown[][] = [];
+    const fakeConsole = {
+      error: vi.fn(),
+      warn: vi.fn((...args: unknown[]) => warns.push(args)),
+    };
+    const log = createLogger(fakeConsole);
+
+    log.warn("rp_tok=sealed-value-here; path=/");
+    expect(fakeConsole.warn).toHaveBeenCalled();
+    expect(String(warns[0]?.[0])).toContain(REDACTED);
+    expect(String(warns[0]?.[0])).not.toContain("sealed-value-here");
+  });
 });
