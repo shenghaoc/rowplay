@@ -1,3 +1,4 @@
+import { expect } from "vite-plus/test";
 import type { Split, Sport, Stroke, Workout } from "../../src/lib/types";
 
 /** Minimal stroke ladder for interpolation tests. */
@@ -97,4 +98,9 @@ export function normalizeRawStrokes(
       watts: 0,
     };
   });
+}
+
+/** Negated toBe can deep-compare distinct Three.js graphs before applying the negation. */
+export function expectDistinct(a: unknown, b: unknown, label: string): void {
+  expect(Object.is(a, b), label).toBe(false);
 }

@@ -1,3 +1,4 @@
+import { expectDistinct } from "../../../tests/unit/fixtures";
 import { describe, expect, it } from "vite-plus/test";
 import * as THREE from "three";
 import type { Sport } from "../types";
@@ -770,9 +771,13 @@ describe("V4 motion determinism and fallback safety", () => {
       const liveContact = effectorWorld(live.instance, "leftFoot").toArray();
       expect(ghostController?.update({ phase: 0, cycleFrac: 0.7, driveFrac: 0.5 })).toBe(true);
 
-      expect(live.instance.mixer).not.toBe(ghost.instance.mixer);
-      expect(live.instance.skeleton).not.toBe(ghost.instance.skeleton);
-      expect(live.instance.mesh.material).not.toBe(ghost.instance.mesh.material);
+      expectDistinct(live.instance.mixer, ghost.instance.mixer, "live and ghost mixers");
+      expectDistinct(live.instance.skeleton, ghost.instance.skeleton, "live and ghost skeletons");
+      expectDistinct(
+        live.instance.mesh.material,
+        ghost.instance.mesh.material,
+        "live and ghost materials",
+      );
       expect(quaternionValues(live.instance.bones.v4Spine.quaternion)).toEqual(liveSpine);
       expect(effectorWorld(live.instance, "leftFoot").toArray()).toEqual(liveContact);
       expect(live.instance.mixer.time).toBeCloseTo(0.1, 7);
