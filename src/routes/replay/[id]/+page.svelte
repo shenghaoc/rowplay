@@ -1720,7 +1720,6 @@
 		{/if}
 	</div>
 	<p class="muted charts-help">
-	<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 	<a href={resolve('/docs/pace-splits-watts')}>{t('docs.contextual.metrics')}</a>
 	</p>
 

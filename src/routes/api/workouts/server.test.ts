@@ -34,4 +34,18 @@ describe("GET /api/workouts", () => {
     const body = await res.json();
     expect(body.demo).toBe(true);
   });
+
+  it("returns private JSON without writing a cookie", async () => {
+    const res = await GET(fakeEvent() as unknown as Parameters<typeof GET>[0]);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/json");
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.has("set-cookie")).toBe(false);
+    expect(await res.json()).toEqual({
+      workouts: [],
+      demo: true,
+      query: { sport: null, distance: null, duration: null, sort: "date" },
+      filtered: false,
+    });
+  });
 });

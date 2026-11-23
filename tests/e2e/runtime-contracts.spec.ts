@@ -1,5 +1,46 @@
 import { expect, test } from "@playwright/test";
 
+test("demo endpoints keep their JSON response contracts", async ({ request, baseURL }) => {
+  const contracts = [
+    {
+      path: "/api/workouts",
+      cache: "private, no-store",
+      body: {
+        workouts: expect.arrayContaining([expect.objectContaining({ id: 1001 })]),
+        demo: true,
+      },
+    },
+    {
+      path: "/api/workouts/1001",
+      cache: "private, no-store",
+      body: { id: 1001, sport: "rower" },
+    },
+    { path: "/api/goals?year=2026", body: { year: 2026, target: expect.any(Number) } },
+    { path: "/api/settings/timezone", body: { timezone: null } },
+    {
+      path: "/api/sync",
+      body: { lastSyncAt: null, total: 0, backfillDone: true, inProgress: false },
+    },
+  ];
+  for (const { path, cache, body } of contracts) {
+    const response = await request.get(path);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toBe("application/json");
+    expect(response.headers()["cache-control"]).toBe(cache);
+    expect(response.headers()["set-cookie"]).toBeUndefined();
+    expect(await response.json()).toMatchObject(body);
+  }
+  const poll = await request.post("/api/live/poll", {
+    data: {},
+    headers: { Origin: new URL(baseURL!).origin },
+  });
+  expect(poll.status()).toBe(200);
+  expect(poll.headers()["content-type"]).toBe("application/json");
+  expect(poll.headers()["cache-control"]).toBe("private, no-store");
+  expect(poll.headers()["set-cookie"]).toBeUndefined();
+  expect(await poll.json()).toEqual({ workouts: [], added: 0, total: 0, newPbs: [] });
+});
+
 /** Migration contracts on the built Worker, using only demo requests. */
 test("SSR keeps locale, theme and security headers", async ({ request }) => {
   const response = await request.get("/dashboard", {
@@ -24,7 +65,7 @@ test("demo auth redirects and invalid token actions keep their HTTP contracts", 
   // Empty tokens fail before any Concept2 request or session write.
   const emptyToken = await request.post("/auth/token", {
     form: { token: "" },
-    headers: { Origin: new URL(baseURL!).origin },
+    headers: { Origin: new URL(baseURL!).origin, "Accept-Encoding": "identity" },
   });
   expect(emptyToken.status()).toBe(400);
   expect(emptyToken.headers()["set-cookie"]).toBeUndefined();
@@ -48,7 +89,7 @@ test("Worker rejects cross-origin mutations and preserves endpoint errors", asyn
   expect(await invalidWorkout.text()).toContain("Invalid workout id");
 
   const retired = await request.post("/api/sync", {
-    headers: { Origin: new URL(baseURL!).origin },
+    headers: { Origin: new URL(baseURL!).origin, "Accept-Encoding": "identity" },
   });
   expect(retired.status()).toBe(410);
 });

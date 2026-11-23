@@ -8,7 +8,7 @@ import { POST } from "./+server";
 import { pollRecentWorkouts } from "#lib/server/data.ts";
 
 function fakeEvent(demo = false) {
-  return { locals: { demo }, platform: { env: {} } };
+  return { locals: { demo } };
 }
 
 describe("POST /api/live/poll", () => {
