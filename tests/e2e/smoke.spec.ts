@@ -65,6 +65,53 @@ test.describe("smoke", () => {
     expect(errors, `unexpected page errors:\n${errors.join("\n")}`).toEqual([]);
   });
 
+  test("live PB highlight follows the faster workout when elapsed times match", async ({
+    page,
+  }) => {
+    const errors = collectPageErrors(page);
+    const elapsed = 408;
+    const first = {
+      id: 12001,
+      date: "2026-06-01 06:00:00",
+      sport: "rower",
+      distance: 2000,
+      time: elapsed,
+      pace: elapsed / 4,
+      hasStrokeData: false,
+    };
+    const winner = { ...first, id: 12002, distance: 2040, pace: (elapsed * 500) / 2040 };
+    await page.addInitScript(() => {
+      localStorage.setItem("live_mode_prefs", JSON.stringify({ enabled: true, intervalSec: 60 }));
+    });
+    await page.route("**/api/live/mock", (route) =>
+      route.fulfill({
+        json: {
+          workouts: [first, winner],
+          added: 2,
+          total: 2,
+          newPbs: [
+            {
+              sport: winner.sport,
+              distance: 2000,
+              time: (elapsed * 2000) / winner.distance,
+              pace: winner.pace,
+              date: winner.date,
+              workoutId: winner.id,
+            },
+          ],
+        },
+      }),
+    );
+
+    await page.goto("/dashboard");
+    const firstRow = page.locator(".row").filter({ has: page.locator('a[href="/replay/12001"]') });
+    const winnerRow = page.locator(".row").filter({ has: page.locator('a[href="/replay/12002"]') });
+    await expect(firstRow).toBeVisible();
+    await expect(winnerRow.getByText("New PB", { exact: true })).toBeVisible();
+    await expect(firstRow.getByText("New PB", { exact: true })).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
   test("dashboard hierarchy keeps workouts before advanced analysis and hints persist dismissal", async ({
     page,
   }) => {

@@ -181,21 +181,9 @@
 			toast.success(t('dashboard.pbCelebrateMore', { count: newPbs.length }));
 		}
 
-		// The PB was just earned this tick, so its workout is in `batch` — match
-		// there rather than scanning all history (faster, no $derived-flush race).
-		newPbIds = new Set([
-			...newPbIds,
-			...newPbs
-				.map((pb) =>
-					batch.find(
-						(w) =>
-							w.sport === pb.sport &&
-							Math.abs(w.distance - pb.distance) <= pb.distance * 0.02 &&
-							w.time === pb.time
-					)?.id
-				)
-				.filter((id): id is number => id != null)
-		]);
+		// Only highlight winning workouts that arrived in this batch.
+		const batchIds = new Set(batch.map((w) => w.id));
+		newPbIds = new Set([...newPbIds, ...newPbs.map((pb) => pb.workoutId).filter((id) => batchIds.has(id))]);
 	}
 
 	onMount(() => {

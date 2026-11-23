@@ -1057,7 +1057,14 @@ describe("athleteBadges / weeklyConsistency", () => {
       workout({ id: 2, sport: "bike", distance: 40_000 }),
     ];
     const badges = athleteBadges(history, [
-      { distance: 2000, time: 420, pace: 105, date: history[0].date, sport: "rower" },
+      {
+        distance: 2000,
+        time: 420,
+        pace: 105,
+        date: history[0].date,
+        sport: "rower",
+        workoutId: history[0].id,
+      },
     ]);
     expect(badges.find((b) => b.id === "meters_100k")).toMatchObject({ earned: true, progress: 1 });
     expect(badges.find((b) => b.id === "meters_500k")?.earned).toBe(false);
