@@ -97,7 +97,18 @@ describe("serializeGoalsCookie", () => {
     const goal = { year: 2027, kind: "hours" as const, target: 200 };
     const raw = serializeGoalsCookie(goal, 7);
     expect(parseGoalsCookie(raw, 7)).toEqual(goal);
-    expect(parseGoalsCookie(raw, 8)).toBeNull();
     expect(parseGoalsCookie(raw)).toBeNull();
+  });
+
+  it("rejects a positive integer userId belonging to another owner", () => {
+    const goal = { year: 2027, kind: "hours" as const, target: 200 };
+    expect(parseGoalsCookie(serializeGoalsCookie(goal, 7), 8)).toBeNull();
+  });
+
+  it("rejects an invalid userId even when the owner matches", () => {
+    const goal = { year: 2026, kind: "meters" as const, target: 500000 };
+    for (const userId of [0, -7, 1.5]) {
+      expect(parseGoalsCookie(JSON.stringify({ ...goal, userId }), userId)).toBeNull();
+    }
   });
 });

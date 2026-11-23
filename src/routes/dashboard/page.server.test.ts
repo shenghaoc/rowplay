@@ -11,8 +11,9 @@ vi.mock("#lib/server/data.ts", () => ({
   loadHomeTimezone: vi.fn().mockResolvedValue(undefined),
 }));
 
+import { error } from "@sveltejs/kit";
 import { load } from "./+page.server";
-import { loadWorkoutList } from "#lib/server/data.ts";
+import { loadWorkoutList, loadWorkouts } from "#lib/server/data.ts";
 
 function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null } = {}) {
   return {
@@ -56,6 +57,30 @@ describe("load /dashboard", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = (await load(event as any)) as any;
     expect(data.calendarEndDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("returns empty workout data when Concept2 fails with a generic error", async () => {
+    (loadWorkouts as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("Concept2 down"));
+    const event = fakeEvent({ demo: false, user: { id: 7 } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (await load(event as any)) as any;
+    expect(data.workouts).toEqual([]);
+    expect(data.listWorkouts).toEqual([]);
+    expect(data.aggregates).toBeNull();
+    expect(data.demo).toBe(false);
+  });
+
+  it("rethrows an HttpError from the live fetch instead of swallowing it", async () => {
+    let httpErr: unknown;
+    try {
+      error(401, "Not authenticated.");
+    } catch (e) {
+      httpErr = e;
+    }
+    (loadWorkouts as ReturnType<typeof vi.fn>).mockRejectedValueOnce(httpErr);
+    const event = fakeEvent({ demo: false, user: { id: 7 } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(load(event as any)).rejects.toMatchObject({ status: 401 });
   });
 });
 

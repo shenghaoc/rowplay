@@ -21,16 +21,16 @@ const sampleDetail = {
   isInterval: false,
 };
 
-function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null; id?: string } = {}) {
+function fakeEvent(opts: { demo?: boolean; user?: { id: number } | null; id?: number } = {}) {
   return {
-    params: { id: Number(opts.id ?? "1001") },
+    params: { id: opts.id ?? 1001 },
     locals: { demo: opts.demo ?? false, user: opts.user ?? null },
     platform: { env: {} },
     setHeaders: vi.fn(),
   };
 }
 
-describe("load /replay/[id]", () => {
+describe("load /replay/[id=workoutId]", () => {
   it("redirects to login when not demo and not authenticated", async () => {
     const event = fakeEvent({ demo: false, user: null });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,6 +61,17 @@ describe("load /replay/[id]", () => {
     const data = (await load(event as any)) as any;
     expect(data.candidates).toHaveLength(1);
     expect(data.candidates[0].id).toBe(1002);
+  });
+
+  it("keeps replay available when ghost candidate loading fails", async () => {
+    (loadWorkoutDetail as ReturnType<typeof vi.fn>).mockResolvedValue(sampleDetail);
+    (loadWorkouts as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("rate limited"));
+    const event = fakeEvent({ demo: false, user: { id: 7 } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (await load(event as any)) as any;
+    expect(data.detail.id).toBe(1001);
+    expect(data.candidates).toEqual([]);
+    expect(data.demo).toBe(false);
   });
 });
 

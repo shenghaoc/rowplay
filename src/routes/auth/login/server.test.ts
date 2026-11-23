@@ -10,6 +10,7 @@ vi.mock("#lib/server/concept2.ts", () => ({
 import { GET } from "./+server";
 import { getConfig } from "#lib/server/config.ts";
 import { buildAuthorizeUrl } from "#lib/server/concept2.ts";
+import { OAUTH_STATE_COOKIE } from "#lib/server/session.ts";
 
 beforeEach(() => {
   vi.mocked(buildAuthorizeUrl).mockReturnValue(
@@ -17,16 +18,16 @@ beforeEach(() => {
   );
 });
 
-function fakeEvent() {
-  const set: Record<string, string> = {};
+function fakeEvent(url = "http://localhost/auth/login") {
+  const set: Record<string, { value: string; options: Record<string, unknown> }> = {};
   return {
     event: {
       cookies: {
-        set: (name: string, val: string) => {
-          set[name] = val;
+        set: (name: string, val: string, options: Record<string, unknown>) => {
+          set[name] = { value: val, options };
         },
       },
-      url: new URL("http://localhost/auth/login"),
+      url: new URL(url),
     },
     cookiesSet: set,
   };
@@ -53,6 +54,40 @@ describe("GET /auth/login", () => {
       status: 302,
       location: "https://log.concept2.com/oauth/authorize?state=test",
     });
+  });
+
+  it("stores a short-lived httpOnly OAuth state cookie before redirecting", async () => {
+    (getConfig as ReturnType<typeof vi.fn>).mockReturnValue({
+      clientId: "myClientId",
+      baseUrl: "https://log.concept2.com",
+    });
+    const { event, cookiesSet } = fakeEvent();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(GET(event as any)).rejects.toMatchObject({ status: 302 });
+
+    expect(cookiesSet[OAUTH_STATE_COOKIE]).toMatchObject({
+      options: {
+        path: "/",
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 600,
+      },
+    });
+    expect(cookiesSet[OAUTH_STATE_COOKIE].value).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  it("marks the OAuth state cookie Secure on HTTPS", async () => {
+    (getConfig as ReturnType<typeof vi.fn>).mockReturnValue({
+      clientId: "myClientId",
+      baseUrl: "https://log.concept2.com",
+    });
+    const { event, cookiesSet } = fakeEvent("https://rowplay.example/auth/login");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(GET(event as any)).rejects.toMatchObject({ status: 302 });
+    expect(cookiesSet[OAUTH_STATE_COOKIE].options.secure).toBe(true);
   });
 });
 
