@@ -510,11 +510,11 @@ describe("powerCurve", () => {
 describe("intervalBreakdown", () => {
   it("returns null for single-segment pieces", () => {
     const detail = mockWorkoutDetail(1001)!;
-    expect(intervalBreakdown([detail.splits[0]], detail.strokes)).toBeNull();
+    expect(intervalBreakdown([detail.splits[0]], detail.strokes, "work-only")).toBeNull();
   });
 
   it("assigns strokes across reps using cumulative split time boundaries", () => {
-    const result = intervalBreakdown(intervalSplits, normalizedIntervalStrokes());
+    const result = intervalBreakdown(intervalSplits, normalizedIntervalStrokes(), "work-only");
     expect(result).not.toBeNull();
     expect(result!.reps).toHaveLength(2);
     expect(result!.reps[0].pace).toBe(120);
@@ -526,7 +526,7 @@ describe("intervalBreakdown", () => {
   });
 
   it("returns a breakdown with zero derived spm when strokes are empty", () => {
-    const result = intervalBreakdown(twoRepSplits, []);
+    const result = intervalBreakdown(twoRepSplits, [], "work-only");
     expect(result).not.toBeNull();
     expect(result!.reps).toHaveLength(2);
     expect(result!.reps[0].spm).toBe(0);
@@ -534,17 +534,17 @@ describe("intervalBreakdown", () => {
   });
 
   it("assigns a stroke exactly on a split boundary to that rep", () => {
-    const onFirstEdge = intervalBreakdown(twoRepSplits, [stroke(10, 99)]);
+    const onFirstEdge = intervalBreakdown(twoRepSplits, [stroke(10, 99)], "work-only");
     expect(onFirstEdge!.reps[0].spm).toBe(99);
     expect(onFirstEdge!.reps[1].spm).toBe(0);
 
-    const onLastEdge = intervalBreakdown(twoRepSplits, [stroke(20, 88)]);
+    const onLastEdge = intervalBreakdown(twoRepSplits, [stroke(20, 88)], "work-only");
     expect(onLastEdge!.reps[0].spm).toBe(0);
     expect(onLastEdge!.reps[1].spm).toBe(88);
   });
 
   it("assigns strokes after the last split boundary to the final rep", () => {
-    const result = intervalBreakdown(twoRepSplits, [stroke(25, 77)]);
+    const result = intervalBreakdown(twoRepSplits, [stroke(25, 77)], "work-only");
     expect(result!.reps[0].spm).toBe(0);
     expect(result!.reps[1].spm).toBe(77);
   });
@@ -557,6 +557,7 @@ describe("intervalBreakdown", () => {
         { index: 2, distance: 500, time: 120, pace: 0 },
       ],
       [],
+      "work-only",
     );
 
     expect(result).not.toBeNull();
@@ -575,7 +576,7 @@ describe("intervalBreakdown", () => {
       pace: 120 + (index % 5),
     }));
 
-    const result = intervalBreakdown(splits, []);
+    const result = intervalBreakdown(splits, [], "work-only");
 
     expect(result).not.toBeNull();
     expect(result!.reps).toHaveLength(5_000);
@@ -583,6 +584,48 @@ describe("intervalBreakdown", () => {
     expect(result!.fastest).toBe(120);
     expect(result!.slowest).toBe(124);
     expect(result!.consistency).toBeCloseTo((Math.sqrt(2) / 122) * 100);
+  });
+
+  it("excludes rest splits from the demo 4x1500m set and does not score rest as fade", () => {
+    const detail = mockWorkoutDetail(1005)!;
+    expect(detail.splits.filter((s) => s.isRest).length).toBe(3);
+
+    const result = intervalBreakdown(detail.splits, detail.strokes, "work-only");
+    expect(result).not.toBeNull();
+    expect(result!.reps).toHaveLength(4);
+    expect(result!.reps.every((rep) => rep.distance === 1500 && rep.pace > 0)).toBe(true);
+    // All four work reps share the fixture pace, so set fade is 0 — not the
+    // −100% that counting a trailing 0-pace rest row used to produce.
+    expect(result!.fade).toBe(0);
+  });
+
+  it("assigns work-only strokes to work reps when rest is interleaved", () => {
+    const splits = [
+      { index: 0, distance: 500, time: 10, pace: 120, isRest: false },
+      { index: 1, distance: 0, time: 90, pace: 0, isRest: true },
+      { index: 2, distance: 500, time: 10, pace: 122, isRest: false },
+    ];
+    // mapStrokes clock: rest is skipped, so rep 2 starts at t=10, not t=100.
+    const result = intervalBreakdown(splits, [stroke(5, 99), stroke(15, 88)], "work-only");
+    expect(result).not.toBeNull();
+    expect(result!.reps).toHaveLength(2);
+    expect(result!.reps[0].spm).toBe(99);
+    expect(result!.reps[1].spm).toBe(88);
+    expect(result!.reps[0].pace).toBe(120);
+    expect(result!.reps[1].pace).toBe(122);
+  });
+
+  it("returns null for a single work split even when rest rows pad the list", () => {
+    expect(
+      intervalBreakdown(
+        [
+          { index: 0, distance: 1500, time: 360, pace: 120 },
+          { index: 1, distance: 0, time: 90, pace: 0, isRest: true },
+        ],
+        [],
+        "work-only",
+      ),
+    ).toBeNull();
   });
 });
 

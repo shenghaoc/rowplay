@@ -30,6 +30,7 @@
 		efficiencyDrift,
 		efficiencyByRate,
 		intervalBreakdown,
+		strokeClockBasis,
 		targetVsActual,
 		workRestEfficiency,
 		type TargetVsActualRow
@@ -1054,7 +1055,7 @@
 
 	// ---- Interval / rep breakdown (null for single-segment pieces) ----
 	const momentReport = $derived(analyzeWorkoutMoments(detail));
-	const intervals = $derived(intervalBreakdown(detail.splits, strokes));
+	const intervals = $derived(intervalBreakdown(detail.splits, strokes, strokeClockBasis(detail)));
 	// "Interval breakdown" (reps with rest) vs "Splits" (even splits of a
 	// continuous piece) — same comparison, honest label.
 	const segLabel = $derived(
